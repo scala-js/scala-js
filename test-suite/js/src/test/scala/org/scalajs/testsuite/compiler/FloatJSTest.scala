@@ -7,7 +7,6 @@
 \*                                                                      */
 package org.scalajs.testsuite.compiler
 
-import org.scalajs.jasminetest.JasmineTest
 import org.junit.Test
 import org.junit.Assert._
 
@@ -15,7 +14,7 @@ import org.scalajs.testsuite.utils.Requires
 
 object FloatJSTest extends Requires.StrictFloats
 
-class FloatJSTest extends JasmineTest {
+class FloatJSTest {
 
   @noinline def froundNotInlined(x: Double): Float =
     x.toFloat

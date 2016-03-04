@@ -8,34 +8,35 @@
 package org.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
-import org.scalajs.jasminetest.JasmineTest
 
-object FunctionTest extends JasmineTest {
+import org.junit.Assert._
+import org.junit.Test
 
-  import js.Dynamic.{literal => lit}
+import org.scalajs.testsuite.utils.AssertThrows._
 
-  describe("scala.scalajs.js.Function") {
+class FunctionTest {
 
-    it("should support call() with expanded arguments") {
-      val f = js.eval("""
-          var f = function() { return arguments; }; f;
-      """).asInstanceOf[js.Function]
+  @Test def should_support_call_with_expanded_arguments(): Unit = {
+    val f = js.eval("""
+        var f = function() { return arguments; }; f;
+    """).asInstanceOf[js.Function]
 
-      expect(f.call(null, 42, true)).toEqual(lit(
-          `0` = 42,
-          `1` = true))
-    }
-
-    it("should support call() with the :_* notation to expand a Seq") {
-      val f = js.eval("""
-          var f = function() { return arguments; }; f;
-      """).asInstanceOf[js.Function]
-
-      val args = Seq[js.Any](42, true)
-      expect(f.call(null, args: _*)).toEqual(lit(
-          `0` = 42,
-          `1` = true))
-    }
-
+    val res = f.call(null, 42, true).asInstanceOf[js.Dictionary[Any]]
+    assertEquals(42, res("0"))
+    assertEquals(true, res("1"))
+    assertFalse(res.contains("2"))
   }
+
+  @Test def `should_support_call_with_the_:_*_notation_to_expand_a_Seq`(): Unit = {
+    val f = js.eval("""
+        var f = function() { return arguments; }; f;
+    """).asInstanceOf[js.Function]
+
+    val args = Seq[js.Any](42, true)
+    val res = f.call(null, args: _*).asInstanceOf[js.Dictionary[Any]]
+    assertEquals(42, res("0"))
+    assertEquals(true, res("1"))
+    assertFalse(res.contains("2"))
+  }
+
 }

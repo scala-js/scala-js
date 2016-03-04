@@ -7,36 +7,32 @@
 \*                                                                      */
 package org.scalajs.testsuite.jsinterop
 
-import scala.scalajs.js
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Assert._
+import org.junit.Test
 
-object PrimitivesTest extends JasmineTest {
+class PrimitivesTest {
 
-  describe("Interoperability for primitive types") {
+  @Test def should_convert_Java_boxed_types_to_js_Any(): Unit = {
+    assertEquals(false, new java.lang.Boolean(false))
+    assertNull(null: java.lang.Boolean)
 
-    it("should convert Java boxed types to js.Any") {
-      expect(new java.lang.Boolean(false)).toBe(false)
-      expect(null: java.lang.Boolean).toBeNull
+    assertEquals(42, new java.lang.Byte(42.toByte))
+    assertNull(null: java.lang.Byte)
 
-      expect(new java.lang.Byte(42.toByte)).toBe(42)
-      expect(null: java.lang.Byte).toBeNull
+    assertEquals(42, new java.lang.Short(42.toShort))
+    assertNull(null: java.lang.Short)
 
-      expect(new java.lang.Short(42.toShort)).toBe(42)
-      expect(null: java.lang.Short).toBeNull
+    assertEquals(42, new java.lang.Integer(42))
+    assertNull(null: java.lang.Integer)
 
-      expect(new java.lang.Integer(42)).toBe(42)
-      expect(null: java.lang.Integer).toBeNull
+    assertEquals(42L, new java.lang.Long(42L))
+    assertNull(null: java.lang.Long)
 
-      expect(new java.lang.Long(42L)).toBe(42)
-      expect(null: java.lang.Long).toBeNull
+    assertEquals(42.0f, new java.lang.Float(42.0f), 0.0f)
+    assertNull(null: java.lang.Float)
 
-      expect(new java.lang.Float(42.0f)).toBe(42)
-      expect(null: java.lang.Float).toBeNull
-
-      expect(new java.lang.Double(42.0)).toBe(42)
-      expect(null: java.lang.Double).toBeNull
-    }
-
+    assertEquals(42.0, new java.lang.Double(42.0), 0.0)
+    assertNull(null: java.lang.Double)
   }
 
 }

@@ -10,11 +10,1293 @@ package org.scalajs.testsuite.jsinterop
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Assert._
+import org.junit.Test
 
-object ScalaJSDefinedTest extends JasmineTest {
+import org.scalajs.testsuite.utils.JSAssert._
 
+class ScalaJSDefinedTest {
   import org.scalajs.testsuite.jsinterop.{ScalaJSDefinedTestSeparateRun => SepRun}
+  import ScalaJSDefinedTest._
+
+  @Test def minimal_definition(): Unit = {
+    val obj = new Minimal
+    assertEquals("object", js.typeOf(obj))
+    assertEquals(List[String](), js.Object.keys(obj).toList)
+    assertEquals("[object Object]", obj.toString())
+    assertNull(obj.getClass().asInstanceOf[js.Any])
+
+    assertTrue((obj: Any).isInstanceOf[Minimal])
+    assertTrue((obj: Any).isInstanceOf[js.Object])
+    assertFalse((obj: Any).isInstanceOf[js.Error])
+  }
+
+  @Test def minimal_static_object_with_lazy_initialization(): Unit = {
+    assertEquals(0, staticNonNativeObjectInitCount)
+    val obj = StaticNonNativeObject
+    assertEquals(1, staticNonNativeObjectInitCount)
+    assertSame(obj, StaticNonNativeObject)
+    assertEquals(1, staticNonNativeObjectInitCount)
+
+    assertEquals("object", js.typeOf(obj))
+    assertEquals(List[String](), js.Object.keys(obj).toList)
+    assertEquals("[object Object]", obj.toString())
+    assertNull(obj.getClass().asInstanceOf[js.Any])
+
+    assertFalse((obj: Any).isInstanceOf[Minimal])
+    assertTrue((obj: Any).isInstanceOf[js.Object])
+    assertFalse((obj: Any).isInstanceOf[js.Error])
+  }
+
+  @Test def simple_method(): Unit = {
+    val obj = new SimpleMethod
+    assertEquals(8, obj.foo(5))
+    assertEquals("hello42", obj.bar("hello", 42))
+
+    val dyn = obj.asInstanceOf[js.Dynamic]
+    assertEquals(8, dyn.foo(5))
+    assertEquals("hello42", dyn.bar("hello", 42))
+  }
+
+  @Test def static_object_with_simple_method(): Unit = {
+    val obj = StaticObjectSimpleMethod
+    assertEquals(8, obj.foo(5))
+    assertEquals("hello42", obj.bar("hello", 42))
+
+    val dyn = obj.asInstanceOf[js.Dynamic]
+    assertEquals(8, dyn.foo(5))
+    assertEquals("hello42", dyn.bar("hello", 42))
+  }
+
+  @Test def simple_field(): Unit = {
+    val obj = new SimpleField
+    assertEquals(List("x", "y"), js.Object.keys(obj).toList)
+    assertEquals(5, obj.x)
+    assertEquals(10, obj.y)
+    assertEquals(15, obj.sum())
+
+    obj.y = 3
+    assertEquals(3, obj.y)
+    assertEquals(8, obj.sum())
+
+    val dyn = obj.asInstanceOf[js.Dynamic]
+    assertEquals(5, dyn.x)
+    assertEquals(3, dyn.y)
+    assertEquals(8, dyn.sum())
+
+    dyn.y = 89
+    assertEquals(89, dyn.y)
+    assertEquals(89, obj.y)
+    assertEquals(94, dyn.sum())
+  }
+
+  @Test def static_object_with_simple_field(): Unit = {
+    val obj = StaticObjectSimpleField
+    assertEquals(List("x", "y"), js.Object.keys(obj).toList)
+    assertEquals(5, obj.x)
+    assertEquals(10, obj.y)
+    assertEquals(15, obj.sum())
+
+    obj.y = 3
+    assertEquals(3, obj.y)
+    assertEquals(8, obj.sum())
+
+    val dyn = obj.asInstanceOf[js.Dynamic]
+    assertEquals(5, dyn.x)
+    assertEquals(3, dyn.y)
+    assertEquals(8, dyn.sum())
+
+    dyn.y = 89
+    assertEquals(89, dyn.y)
+    assertEquals(89, obj.y)
+    assertEquals(94, dyn.sum())
+  }
+
+  @Test def simple_accessors(): Unit = {
+    val obj = new SimpleAccessors
+    assertEquals(List("x"), js.Object.keys(obj).toList)
+    assertEquals(1, obj.x)
+
+    assertEquals(2, obj.readPlus1)
+    assertEquals(-1, obj.neg)
+    obj.neg = 4
+    assertEquals(-4, obj.x)
+    assertEquals(4, obj.neg)
+    assertEquals(-3, obj.readPlus1)
+
+    val dyn = obj.asInstanceOf[js.Dynamic]
+    assertEquals(-4, dyn.x)
+
+    assertEquals(-3, dyn.readPlus1)
+    assertEquals(4, dyn.neg)
+    dyn.neg = -9
+    assertEquals(9, dyn.x)
+    assertEquals(-9, dyn.neg)
+    assertEquals(10, dyn.readPlus1)
+  }
+
+  @Test def simple_constructor(): Unit = {
+    val obj = new SimpleConstructor(5, 10)
+    assertEquals(List("x", "y"), js.Object.keys(obj).toList)
+    assertEquals(5, obj.x)
+    assertEquals(10, obj.y)
+    assertEquals(15, obj.sum())
+
+    obj.y = 3
+    assertEquals(3, obj.y)
+    assertEquals(8, obj.sum())
+
+    val dyn = obj.asInstanceOf[js.Dynamic]
+    assertEquals(5, dyn.x)
+    assertEquals(3, dyn.y)
+    assertEquals(8, dyn.sum())
+
+    dyn.y = 89
+    assertEquals(89, dyn.y)
+    assertEquals(89, obj.y)
+    assertEquals(94, dyn.sum())
+  }
+
+  @Test def simple_constructor_with_automatic_fields(): Unit = {
+    val obj = new SimpleConstructorAutoFields(5, 10)
+    assertEquals(List("x", "y"), js.Object.keys(obj).toList)
+    assertEquals(5, obj.x)
+    assertEquals(10, obj.y)
+    assertEquals(15, obj.sum())
+
+    obj.y = 3
+    assertEquals(3, obj.y)
+    assertEquals(8, obj.sum())
+
+    val dyn = obj.asInstanceOf[js.Dynamic]
+    assertEquals(5, dyn.x)
+    assertEquals(3, dyn.y)
+    assertEquals(8, dyn.sum())
+
+    dyn.y = 89
+    assertEquals(89, dyn.y)
+    assertEquals(89, obj.y)
+    assertEquals(94, dyn.sum())
+  }
+
+  @Test def simple_constructor_with_param_accessors(): Unit = {
+    val obj = new SimpleConstructorParamAccessors(5, 10)
+    assertNotEquals(Array("x", "y"), js.Object.keys(obj).toArray)
+    assertEquals(15, obj.sum())
+
+    val dyn = obj.asInstanceOf[js.Dynamic]
+    assertEquals(15, dyn.sum())
+  }
+
+  @Test def default_values_for_fields(): Unit = {
+    val obj = new DefaultFieldValues
+    assertEquals(0, obj.int)
+    assertEquals(false, obj.bool)
+    assertEquals(0, obj.char.toInt)
+    assertNull(obj.string)
+    assertJSUndefined(obj.unit)
+
+    /* Value class fields are initialized to null, instead of a boxed
+     * representation of the zero of their underlying types, as for a
+     * Scala class.
+     */
+    assertNull(obj.asInstanceOf[js.Dynamic].valueClass)
+  }
+
+  @Test def simple_inherited_from_a_native_class(): Unit = {
+    val obj = new SimpleInheritedFromNative(3, 5)
+    assertEquals(3, obj.x)
+    assertEquals(5, obj.y)
+    assertEquals(6, obj.bar)
+    assertTrue(obj.isInstanceOf[SimpleInheritedFromNative])
+    assertTrue(obj.isInstanceOf[NativeParentClass])
+  }
+
+  @Test def lambda_inside_a_method_issue_2220(): Unit = {
+    @ScalaJSDefined
+    class LambdaInsideMethod extends js.Object {
+      def foo(): Int = {
+        List(1, 2, 3).map(_ * 2).sum
+      }
+    }
+
+    assertEquals(12, new LambdaInsideMethod().foo())
+  }
+
+  @Test def nested_inside_a_Scala_class(): Unit = {
+    class OuterScalaClass(val x: Int) {
+      @ScalaJSDefined
+      class InnerJSClass(val y: Int) extends js.Object {
+        def sum(z: Int): Int = x + y + z
+      }
+    }
+
+    val outerObj = new OuterScalaClass(3)
+    val obj = new outerObj.InnerJSClass(6)
+    assertEquals(6, obj.y)
+    assertEquals(20, obj.sum(11))
+  }
+
+  @Test def nested_inside_a_Scala_js_defined_JS_class(): Unit = {
+    @ScalaJSDefined
+    class OuterJSClass(val x: Int) extends js.Object {
+      @ScalaJSDefined
+      class InnerJSClass(val y: Int) extends js.Object {
+        def sum(z: Int): Int = x + y + z
+      }
+    }
+
+    val outerObj = new OuterJSClass(3)
+    val obj = new outerObj.InnerJSClass(6)
+    assertEquals(6, obj.y)
+    assertEquals(20, obj.sum(11))
+  }
+
+  @Test def Scala_class_nested_inside_a_Scala_js_defined_JS_class(): Unit = {
+    @ScalaJSDefined
+    class OuterJSClass(val x: Int) extends js.Object {
+      class InnerScalaClass(val y: Int) {
+        def sum(z: Int): Int = x + y + z
+      }
+    }
+
+    val outerObj = new OuterJSClass(3)
+    val obj = new outerObj.InnerScalaClass(6)
+    assertEquals(6, obj.y)
+    assertEquals(20, obj.sum(11))
+  }
+
+  @Test def Scala_object_nested_inside_a_Scala_js_defined_JS_class(): Unit = {
+    @ScalaJSDefined
+    class Foo extends js.Object {
+      var innerInitCount: Int = _
+
+      object Inner {
+        innerInitCount += 1
+      }
+    }
+
+    val foo = new Foo
+    assertEquals(0, foo.innerInitCount)
+    val inner1 = foo.Inner
+    assertEquals(1, foo.innerInitCount)
+    assertTrue((foo.Inner: AnyRef) eq inner1)
+    assertEquals(1, foo.innerInitCount)
+
+    val dyn = (new Foo).asInstanceOf[js.Dynamic]
+    assertEquals(0, dyn.innerInitCount)
+    val inner2 = dyn.Inner
+    assertEquals(1, dyn.innerInitCount)
+    assertTrue((dyn.Inner: AnyRef) eq inner2)
+    assertEquals(1, dyn.innerInitCount)
+
+    assertFalse((inner2: AnyRef) eq inner1)
+  }
+
+  @Test def anonymous_class_with_captures(): Unit = {
+    val x = (() => 5)()
+    val obj = new js.Object {
+      val y = 10
+      def sum(z: Int): Int = x + y + z
+    }
+
+    val dyn = obj.asInstanceOf[js.Dynamic]
+    assertEquals(10, dyn.y)
+    assertEquals(26, dyn.sum(11))
+  }
+
+  @Test def local_object_is_lazy(): Unit = {
+    var initCount: Int = 0
+
+    @ScalaJSDefined
+    object Obj extends js.Object {
+      initCount += 1
+    }
+
+    assertEquals(0, initCount)
+    val obj = Obj
+    import js.DynamicImplicits.truthValue
+    assertTrue(obj.asInstanceOf[js.Dynamic])
+    assertEquals(1, initCount)
+    assertSame(obj, Obj)
+    assertEquals(1, initCount)
+  }
+
+  @Test def local_object_with_captures(): Unit = {
+    val x = (() => 5)()
+
+    @ScalaJSDefined
+    object Obj extends js.Object {
+      val y = 10
+      def sum(z: Int): Int = x + y + z
+    }
+
+    assertEquals(10, Obj.y)
+    assertEquals(26, Obj.sum(11))
+
+    val dyn = Obj.asInstanceOf[js.Dynamic]
+    assertEquals(10, dyn.y)
+    assertEquals(26, dyn.sum(11))
+  }
+
+  @Test def object_in_Scala_js_defined_JS_class(): Unit = {
+    @ScalaJSDefined
+    class Foo extends js.Object {
+      var innerInitCount: Int = _
+
+      @ScalaJSDefined
+      object Inner extends js.Object {
+        innerInitCount += 1
+      }
+    }
+
+    val foo = new Foo
+    assertEquals(0, foo.innerInitCount)
+    val inner1 = foo.Inner
+    assertEquals(1, foo.innerInitCount)
+    assertSame(inner1, foo.Inner)
+    assertEquals(1, foo.innerInitCount)
+
+    val dyn = (new Foo).asInstanceOf[js.Dynamic]
+    assertEquals(0, dyn.innerInitCount)
+    val inner2 = dyn.Inner
+    assertEquals(1, dyn.innerInitCount)
+    assertSame(inner2, dyn.Inner)
+    assertEquals(1, dyn.innerInitCount)
+
+    assertNotSame(inner1, inner2)
+  }
+
+  @Test def local_defs_must_not_be_exposed(): Unit = {
+    @ScalaJSDefined
+    class LocalDefsMustNotBeExposed extends js.Object {
+      def foo(): String = {
+        def bar(): String = "hello"
+        bar()
+      }
+    }
+
+    val obj = new LocalDefsMustNotBeExposed
+    assertFalse(js.Object.properties(obj).exists(_.contains("bar")))
+  }
+
+  @Test def local_objects_must_not_be_exposed(): Unit = {
+    @ScalaJSDefined
+    class LocalObjectsMustNotBeExposed extends js.Object {
+      def foo(): String = {
+        object Bar
+        Bar.toString()
+      }
+    }
+
+    val obj = new LocalObjectsMustNotBeExposed
+    assertFalse(js.Object.properties(obj).exists(_.contains("Bar")))
+  }
+
+  @Test def local_defs_with_captures_issue_1975(): Unit = {
+    @ScalaJSDefined
+    class LocalDefsWithCaptures extends js.Object {
+      def foo(suffix: String): String = {
+        def bar(): String = "hello " + suffix
+        bar()
+      }
+    }
+
+    val obj = new LocalDefsWithCaptures
+    assertEquals("hello world", obj.foo("world"))
+  }
+
+  @Test def methods_with_explicit_name(): Unit = {
+    @ScalaJSDefined
+    class MethodsWithExplicitName extends js.Object {
+      @JSName("theAnswer")
+      def bar(): Int = 42
+      @JSName("doubleTheParam")
+      def double(x: Int): Int = x*2
+    }
+
+    val foo = new MethodsWithExplicitName
+    assertEquals(42, foo.bar())
+    assertEquals(6, foo.double(3))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertJSUndefined(dyn.bar)
+    assertEquals(js.typeOf(dyn.theAnswer), "function")
+    assertEquals(42, dyn.theAnswer())
+    assertEquals(6, dyn.doubleTheParam(3))
+  }
+
+  @Test def methods_with_constant_folded_name(): Unit = {
+    @ScalaJSDefined
+    class MethodsWithConstantFoldedName extends js.Object {
+      @JSName(JSNameHolder.MethodName)
+      def bar(): Int = 42
+    }
+
+    val foo = new MethodsWithConstantFoldedName
+    assertEquals(42, foo.bar())
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertJSUndefined(dyn.bar)
+    assertEquals(42, dyn.myMethod())
+  }
+
+  @Test def protected_methods(): Unit = {
+    @ScalaJSDefined
+    class ProtectedMethods extends js.Object {
+      protected def bar(): Int = 42
+
+      protected[testsuite] def foo(): Int = 100
+    }
+
+    val foo = new ProtectedMethods
+    assertEquals(100, foo.foo())
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(js.typeOf(dyn.bar), "function")
+    assertEquals(42, dyn.bar())
+    assertEquals(js.typeOf(dyn.foo), "function")
+    assertEquals(100, dyn.foo())
+  }
+
+  @Test def properties_with_explicit_name(): Unit = {
+    @ScalaJSDefined
+    class PropertiesWithExplicitName extends js.Object {
+      private[this] var myY: String = "hello"
+      @JSName("answer")
+      val answerScala: Int = 42
+      @JSName("x")
+      var xScala: Int = 3
+      @JSName("doubleX")
+      def doubleXScala: Int = xScala*2
+      @JSName("y")
+      def yGetter: String = myY + " get"
+      @JSName("y")
+      def ySetter_=(v: String): Unit = myY = v + " set"
+    }
+
+    val foo = new PropertiesWithExplicitName
+    assertEquals(42, foo.answerScala)
+    assertEquals(3, foo.xScala)
+    assertEquals(6, foo.doubleXScala)
+    foo.xScala = 23
+    assertEquals(23, foo.xScala)
+    assertEquals(46, foo.doubleXScala)
+    assertEquals("hello get", foo.yGetter)
+    foo.ySetter_=("world")
+    assertEquals("world set get", foo.yGetter)
+
+    val dyn = (new PropertiesWithExplicitName).asInstanceOf[js.Dynamic]
+    assertJSUndefined(dyn.answerScala)
+    assertEquals(js.typeOf(dyn.answer), "number")
+    assertEquals(42, dyn.answer)
+    assertEquals(3, dyn.x)
+    assertEquals(6, dyn.doubleX)
+    dyn.x = 23
+    assertEquals(23, dyn.x)
+    assertEquals(46, dyn.doubleX)
+    assertEquals("hello get", dyn.y)
+    dyn.y = "world"
+    assertEquals("world set get", dyn.y)
+  }
+
+  @Test def protected_properties(): Unit = {
+    @ScalaJSDefined
+    class ProtectedProperties extends js.Object {
+      protected val x: Int = 42
+      protected[testsuite] val y: Int = 43
+    }
+
+    val foo = new ProtectedProperties
+    assertEquals(43, foo.y)
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(42, dyn.x)
+    assertEquals(43, dyn.y)
+  }
+
+  @Test def simple_overloaded_methods(): Unit = {
+    @ScalaJSDefined
+    class SimpleOverloadedMethods extends js.Object {
+      def foo(): Int = 42
+      def foo(x: Int): Int = x*2
+    }
+
+    val foo = new SimpleOverloadedMethods
+    assertEquals(42, foo.foo())
+    assertEquals(6, foo.foo(3))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(js.typeOf(dyn.foo), "function")
+    assertEquals(42, dyn.foo())
+    assertEquals(6, dyn.foo(3))
+  }
+
+  @Test def renamed_overloaded_methods(): Unit = {
+    @ScalaJSDefined
+    class RenamedOverloadedMethods extends js.Object {
+      @JSName("foobar")
+      def foo(): Int = 42
+      @JSName("foobar")
+      def bar(x: Int): Int = x*2
+    }
+
+    val foo = new RenamedOverloadedMethods
+    assertEquals(42, foo.foo())
+    assertEquals(6, foo.bar(3))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(js.typeOf(dyn.foobar), "function")
+    assertEquals(42, dyn.foobar())
+    assertEquals(6, dyn.foobar(3))
+  }
+
+  @Test def overloaded_constructors_num_parameters_resolution(): Unit = {
+    assertEquals(1, new OverloadedConstructorParamNumber(1).foo)
+    assertEquals(3, new OverloadedConstructorParamNumber(1, 2).foo)
+  }
+
+  @Test def overloaded_constructors_parameter_type_resolution(): Unit = {
+    assertEquals(1, new OverloadedConstructorParamType(1).foo)
+    assertEquals(3, new OverloadedConstructorParamType("abc").foo)
+  }
+
+  @Test def overloaded_constructors_with_captured_parameters(): Unit = {
+    @ScalaJSDefined
+    class OverloadedConstructorWithOuterContextOnly(val x: Int) extends js.Object {
+      def this(y: String) = this(y.length)
+    }
+
+    val z = (() => 5)()
+    @ScalaJSDefined
+    class OverloadedConstructorWithValCapture(val x: Int) extends js.Object {
+      def this(y: String) = this(z)
+    }
+
+    assertEquals(1, new OverloadedConstructorWithOuterContextOnly(1).x)
+    assertEquals(3, new OverloadedConstructorWithOuterContextOnly("abc").x)
+
+    assertEquals(1, new OverloadedConstructorWithValCapture(1).x)
+    assertEquals(5, new OverloadedConstructorWithValCapture("abc").x)
+  }
+
+  @Test def overloaded_constructors_with_super_class(): Unit = {
+    @ScalaJSDefined
+    class OverloadedConstructorSup(val x: Int) extends js.Object {
+      def this(y: String) = this(y.length)
+    }
+    @ScalaJSDefined
+    class OverloadedConstructorSub(x: Int)
+        extends OverloadedConstructorSup(3 * x) {
+      def this(y: String) = this(2 * y.length)
+    }
+    assertEquals(1, new OverloadedConstructorSup(1).x)
+    assertEquals(3, new OverloadedConstructorSup("abc").x)
+
+    assertEquals(9, new OverloadedConstructorSub(3).x)
+    assertEquals(12, new OverloadedConstructorSub("ab").x)
+  }
+
+  @Test def overloaded_constructors_with_repeated_parameters(): Unit = {
+    @ScalaJSDefined
+    class OverloadedConstructorWithRepeatedParameters(xs: Int*)
+        extends js.Object {
+      def this(y: String, ys: String*) = this(y.length +: ys.map(_.length): _*)
+      def sum: Int = xs.sum
+    }
+
+    assertEquals(0, new OverloadedConstructorWithRepeatedParameters().sum)
+    assertEquals(1, new OverloadedConstructorWithRepeatedParameters(1).sum)
+    assertEquals(3, new OverloadedConstructorWithRepeatedParameters(1, 2).sum)
+    assertEquals(7, new OverloadedConstructorWithRepeatedParameters(1, 2, 4).sum)
+
+    assertEquals(3, new OverloadedConstructorWithRepeatedParameters("abc").sum)
+    assertEquals(3, new OverloadedConstructorWithRepeatedParameters("ab", "c").sum)
+    assertEquals(3, new OverloadedConstructorWithRepeatedParameters("a", "b", "c").sum)
+  }
+
+  @Test def overloaded_constructors_complex_resolution(): Unit = {
+    val bazPrim = new OverloadedConstructorComplex(1, 2)
+    assertEquals(1, bazPrim.foo)
+    assertEquals(2, bazPrim.bar)
+
+    val baz1 = new OverloadedConstructorComplex()
+    assertEquals(5, baz1.foo)
+    assertEquals(6, baz1.bar)
+
+    val baz2 = new OverloadedConstructorComplex(3)
+    assertEquals(3, baz2.foo)
+    assertEquals(3, baz2.bar)
+
+    val baz3 = new OverloadedConstructorComplex(7, 8, 9)
+    assertEquals(7, baz3.foo)
+    assertEquals(9, baz3.bar)
+
+    val baz4 = new OverloadedConstructorComplex("abc")
+    assertEquals(3, baz4.foo)
+    assertEquals(3, baz4.bar)
+
+    val baz5 = new OverloadedConstructorComplex("abc", 10)
+    assertEquals(3, baz5.foo)
+    assertEquals(10, baz5.bar)
+
+    val baz6 = new OverloadedConstructorComplex(11, "abc")
+    assertEquals(11, baz6.foo)
+    assertEquals(3, baz6.bar)
+
+    val baz7 = new OverloadedConstructorComplex(1, 2, 4, 8)
+    assertEquals(3, baz7.foo)
+    assertEquals(4, baz7.bar)
+
+    val baz8 = new OverloadedConstructorComplex("abc", "abcd")
+    assertEquals(3, baz8.foo)
+    assertEquals(4, baz8.bar)
+
+    val baz9 = new OverloadedConstructorComplex("abc", "abcd", "zx")
+    assertEquals(5, baz9.foo)
+    assertEquals(4, baz9.bar)
+
+    val baz10 = new OverloadedConstructorComplex("abc", "abcd", "zx", "tfd")
+    assertEquals(5, baz10.foo)
+    assertEquals(7, baz10.bar)
+  }
+
+  @Test def default_parameters(): Unit = {
+    @ScalaJSDefined
+    class DefaultParameters extends js.Object {
+      def bar(x: Int, y: Int = 1): Int = x + y
+      def dependent(x: Int)(y: Int = x + 1): Int = x + y
+
+      def foobar(x: Int): Int = bar(x)
+    }
+
+    @ScalaJSDefined
+    object DefaultParametersMod extends js.Object {
+      def bar(x: Int, y: Int = 1): Int = x + y
+      def dependent(x: Int)(y: Int = x + 1): Int = x + y
+
+      def foobar(x: Int): Int = bar(x)
+    }
+
+    val foo = new DefaultParameters
+    assertEquals(9, foo.bar(4, 5))
+    assertEquals(5, foo.bar(4))
+    assertEquals(4, foo.foobar(3))
+    assertEquals(9, foo.dependent(4)(5))
+    assertEquals(17, foo.dependent(8)())
+
+    assertEquals(9, DefaultParametersMod.bar(4, 5))
+    assertEquals(5, DefaultParametersMod.bar(4))
+    assertEquals(4, DefaultParametersMod.foobar(3))
+    assertEquals(9, DefaultParametersMod.dependent(4)(5))
+    assertEquals(17, DefaultParametersMod.dependent(8)())
+
+    def testDyn(dyn: js.Dynamic): Unit = {
+      assertEquals(9, dyn.bar(4, 5))
+      assertEquals(5, dyn.bar(4))
+      assertEquals(4, dyn.foobar(3))
+      assertEquals(9, dyn.dependent(4, 5))
+      assertEquals(17, dyn.dependent(8))
+    }
+    testDyn(foo.asInstanceOf[js.Dynamic])
+    testDyn(DefaultParametersMod.asInstanceOf[js.Dynamic])
+  }
+
+  @Test def override_default_parameters(): Unit = {
+    @ScalaJSDefined
+    class OverrideDefaultParametersParent extends js.Object {
+      def bar(x: Int, y: Int = 1): Int = x + y
+      def dependent(x: Int)(y: Int = x + 1): Int = x + y
+
+      def foobar(x: Int): Int = bar(x)
+    }
+
+    @ScalaJSDefined
+    class OverrideDefaultParametersChild
+        extends OverrideDefaultParametersParent {
+      override def bar(x: Int, y: Int = 10): Int = super.bar(x, y)
+      override def dependent(x: Int)(y: Int = x * 2): Int = x + y
+    }
+
+    val foo = new OverrideDefaultParametersChild
+    assertEquals(9, foo.bar(4, 5))
+    assertEquals(14, foo.bar(4))
+    assertEquals(13, foo.foobar(3))
+    assertEquals(9, foo.dependent(4)(5))
+    assertEquals(24, foo.dependent(8)())
+
+    val parent: OverrideDefaultParametersParent = foo
+    assertEquals(9, parent.bar(4, 5))
+    assertEquals(14, parent.bar(4))
+    assertEquals(13, parent.foobar(3))
+    assertEquals(9, parent.dependent(4)(5))
+    assertEquals(24, parent.dependent(8)())
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(9, dyn.bar(4, 5))
+    assertEquals(14, dyn.bar(4))
+    assertEquals(13, dyn.foobar(3))
+    assertEquals(9, dyn.dependent(4, 5))
+    assertEquals(24, dyn.dependent(8))
+  }
+
+  @Test def override_method_with_default_parameters_without_new_default(): Unit = {
+    @ScalaJSDefined
+    class OverrideDefaultParametersWithoutDefaultParent extends js.Object {
+      def bar(x: Int, y: Int = 1): Int = x + y
+      def dependent(x: Int)(y: Int = x + 1): Int = x + y
+
+      def foobar(x: Int): Int = bar(x)
+    }
+
+    @ScalaJSDefined
+    class OverrideDefaultParametersWithoutDefaultChild
+        extends OverrideDefaultParametersWithoutDefaultParent {
+      override def bar(x: Int, y: Int): Int = x - y
+      override def dependent(x: Int)(y: Int): Int = x - y
+    }
+
+    val foo = new OverrideDefaultParametersWithoutDefaultChild
+    assertEquals(-1, foo.bar(4, 5))
+    assertEquals(3, foo.bar(4))
+    assertEquals(2, foo.foobar(3))
+    assertEquals(-4, foo.dependent(4)(8))
+    assertEquals(-1, foo.dependent(8)())
+
+    val parent: OverrideDefaultParametersWithoutDefaultParent = foo
+    assertEquals(-1, parent.bar(4, 5))
+    assertEquals(3, parent.bar(4))
+    assertEquals(2, parent.foobar(3))
+    assertEquals(-4, parent.dependent(4)(8))
+    assertEquals(-1, parent.dependent(8)())
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(-1, dyn.bar(4, 5))
+    assertEquals(3, dyn.bar(4))
+    assertEquals(2, dyn.foobar(3))
+    assertEquals(-4, dyn.dependent(4, 8))
+    assertEquals(-1, dyn.dependent(8))
+  }
+
+  @Test def `constructors_with_default_parameters_(ScalaJSDefined/-)`(): Unit = {
+    assertEquals(-1, new ConstructorDefaultParamJSNonNativeNone().foo)
+    assertEquals(1, new ConstructorDefaultParamJSNonNativeNone(1).foo)
+    assertEquals(5, new ConstructorDefaultParamJSNonNativeNone(5).foo)
+  }
+
+  @Test def `constructors_with_default_parameters_(ScalaJSDefined/ScalaJSDefined)`(): Unit = {
+    assertEquals(-1, new ConstructorDefaultParamJSNonNativeJSNonNative().foo)
+    assertEquals(1, new ConstructorDefaultParamJSNonNativeJSNonNative(1).foo)
+    assertEquals(5, new ConstructorDefaultParamJSNonNativeJSNonNative(5).foo)
+  }
+
+  @Test def `constructors_with_default_parameters_(ScalaJSDefined/Scala)`(): Unit = {
+    assertEquals(-1, new ConstructorDefaultParamJSNonNativeScala().foo)
+    assertEquals(1, new ConstructorDefaultParamJSNonNativeScala(1).foo)
+    assertEquals(5, new ConstructorDefaultParamJSNonNativeScala(5).foo)
+  }
+
+  @Test def `constructors_with_default_parameters_(Scala/ScalaJSDefined)`(): Unit = {
+    assertEquals(-1, new ConstructorDefaultParamScalaJSNonNative().foo)
+    assertEquals(1, new ConstructorDefaultParamScalaJSNonNative(1).foo)
+    assertEquals(5, new ConstructorDefaultParamScalaJSNonNative(5).foo)
+  }
+
+  @Test def `constructors_with_default_parameters_(Native/-)`(): Unit = {
+    assertEquals(-1, new ConstructorDefaultParamJSNativeNone().foo)
+    assertEquals(1, new ConstructorDefaultParamJSNativeNone(1).foo)
+    assertEquals(5, new ConstructorDefaultParamJSNativeNone(5).foo)
+  }
+
+  @Test def `constructors_with_default_parameters_(Native/Scala)`(): Unit = {
+    assertEquals(-1, new ConstructorDefaultParamJSNativeScala().foo)
+    assertEquals(1, new ConstructorDefaultParamJSNativeScala(1).foo)
+    assertEquals(5, new ConstructorDefaultParamJSNativeScala(5).foo)
+  }
+
+  @Test def `constructors_with_default_parameters_(Native/ScalaJSDefined)`(): Unit = {
+    assertEquals(-1, new ConstructorDefaultParamJSNativeJSNonNative().foo)
+    assertEquals(1, new ConstructorDefaultParamJSNativeJSNonNative(1).foo)
+    assertEquals(5, new ConstructorDefaultParamJSNativeJSNonNative(5).foo)
+  }
+
+  @Test def `constructors_with_default_parameters_(Native/Native)`(): Unit = {
+    assertEquals(-1, new ConstructorDefaultParamJSNativeJSNative().foo)
+    assertEquals(1, new ConstructorDefaultParamJSNativeJSNative(1).foo)
+    assertEquals(5, new ConstructorDefaultParamJSNativeJSNative(5).foo)
+  }
+
+  @Test def `constructors_with_default_parameters_(Scala/Scala)`(): Unit = {
+    assertEquals(-1, new ConstructorDefaultParamScalaScala().foo)
+    assertEquals(1, new ConstructorDefaultParamScalaScala(1).foo)
+    assertEquals(5, new ConstructorDefaultParamScalaScala(5).foo)
+  }
+
+  @Test def `constructors_with_default_parameters_(Scala/-)`(): Unit = {
+    assertEquals(-1, new ConstructorDefaultParamScalaNone().foo)
+    assertEquals(1, new ConstructorDefaultParamScalaNone(1).foo)
+    assertEquals(5, new ConstructorDefaultParamScalaNone(5).foo)
+  }
+
+  @Test def `call_super_constructor_with_:__*`(): Unit = {
+    @ScalaJSDefined
+    class CallSuperCtorWithSpread(x: Int, y: Int, z: Int)
+        extends NativeParentClassWithVarargs(x, Seq(y, z): _*)
+
+    val foo = new CallSuperCtorWithSpread(4, 8, 23)
+    assertEquals(4, foo.x)
+    assertJSArrayEquals(js.Array(8, 23), foo.args)
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(4, dyn.x)
+    val args = dyn.args.asInstanceOf[js.Array[Int]]
+    assertJSArrayEquals(js.Array(8, 23), args)
+  }
+
+  @Test def override_native_method(): Unit = {
+    @ScalaJSDefined
+    class OverrideNativeMethod extends NativeParentClass(3) {
+      override def foo(s: String): String = s + s + x
+    }
+
+    val foo = new OverrideNativeMethod
+    assertEquals(3, foo.x)
+    assertEquals("hellohello3", foo.foo("hello"))
+
+    val parent: NativeParentClass = foo
+    assertEquals(3, parent.x)
+    assertEquals("hellohello3", parent.foo("hello"))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(3, dyn.x)
+    assertEquals("hellohello3", dyn.foo("hello"))
+  }
+
+  @Test def override_non_native_method(): Unit = {
+    @ScalaJSDefined
+    class OverrideNonNativeMethod extends NonNativeParentClass(3) {
+      override def foo(s: String): String = s + s + x
+    }
+
+    val foo = new OverrideNonNativeMethod
+    assertEquals(3, foo.x)
+    assertEquals("hellohello3", foo.foo("hello"))
+
+    val parent: NonNativeParentClass = foo
+    assertEquals(3, parent.x)
+    assertEquals("hellohello3", parent.foo("hello"))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(3, dyn.x)
+    assertEquals("hellohello3", dyn.foo("hello"))
+  }
+
+  @Test def override_non_native_method_with_separate_compilation(): Unit = {
+    val foo = new SepRun.SimpleChildClass
+    assertEquals(6, foo.foo(3))
+
+    val fooParent: SepRun.SimpleParentClass = foo
+    assertEquals(6, fooParent.foo(3))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(6, foo.foo(3))
+  }
+
+  @Test def override_native_method_and_call_super(): Unit = {
+    @ScalaJSDefined
+    class OverrideNativeMethodSuperCall extends NativeParentClass(3) {
+      override def foo(s: String): String = super.foo("bar") + s
+    }
+
+    val foo = new OverrideNativeMethodSuperCall
+    assertEquals(3, foo.x)
+    assertEquals("bar3hello", foo.foo("hello"))
+
+    val parent: NativeParentClass = foo
+    assertEquals(3, parent.x)
+    assertEquals("bar3hello", parent.foo("hello"))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(3, dyn.x)
+    assertEquals("bar3hello", dyn.foo("hello"))
+  }
+
+  @Test def override_non_native_method_and_call_super(): Unit = {
+    @ScalaJSDefined
+    class OverrideNonNativeMethodSuperCall extends NonNativeParentClass(3) {
+      override def foo(s: String): String = super.foo("bar") + s
+    }
+
+    val foo = new OverrideNonNativeMethodSuperCall
+    assertEquals(3, foo.x)
+    assertEquals("bar3hello", foo.foo("hello"))
+
+    val parent: NonNativeParentClass = foo
+    assertEquals(3, parent.x)
+    assertEquals("bar3hello", parent.foo("hello"))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(3, dyn.x)
+    assertEquals("bar3hello", dyn.foo("hello"))
+  }
+
+  @Test def override_native_val(): Unit = {
+    @ScalaJSDefined
+    class OverrideNativeVal extends NativeParentClass(3) {
+      override val x: Int = 42
+    }
+
+    val foo = new OverrideNativeVal
+    assertEquals(42, foo.x)
+    assertEquals(84, foo.bar)
+    assertEquals("hello42", foo.foo("hello"))
+
+    val parent: NativeParentClass = foo
+    assertEquals(42, parent.x)
+    assertEquals(84, parent.bar)
+    assertEquals("hello42", parent.foo("hello"))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(42, dyn.x)
+    assertEquals(84, dyn.bar)
+    assertEquals("hello42", dyn.foo("hello"))
+  }
+
+  @Test def override_non_native_val(): Unit = {
+    @ScalaJSDefined
+    class OverrideNonNativeVal extends NonNativeParentClass(3) {
+      override val x: Int = 42
+    }
+
+    val foo = new OverrideNonNativeVal
+    assertEquals(42, foo.x)
+    assertEquals(84, foo.bar)
+    assertEquals("hello42", foo.foo("hello"))
+
+    val parent: NonNativeParentClass = foo
+    assertEquals(42, parent.x)
+    assertEquals(84, parent.bar)
+    assertEquals("hello42", parent.foo("hello"))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(42, dyn.x)
+    assertEquals(84, dyn.bar)
+    assertEquals("hello42", dyn.foo("hello"))
+  }
+
+  @Test def override_native_getter(): Unit = {
+    @ScalaJSDefined
+    class OverrideNativeGetter extends NativeParentClass(3) {
+      override def bar: Int = x * 3
+    }
+
+    val foo = new OverrideNativeGetter
+    assertEquals(3, foo.x)
+    assertEquals(9, foo.bar)
+
+    val parent: NativeParentClass = foo
+    assertEquals(3, parent.x)
+    assertEquals(9, parent.bar)
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(3, dyn.x)
+    assertEquals(9, dyn.bar)
+  }
+
+  @Test def override_non_native_getter(): Unit = {
+    @ScalaJSDefined
+    class OverrideNonNativeGetter extends NonNativeParentClass(3) {
+      override def bar: Int = x * 3
+    }
+
+    val foo = new OverrideNonNativeGetter
+    assertEquals(3, foo.x)
+    assertEquals(9, foo.bar)
+
+    val parent: NonNativeParentClass = foo
+    assertEquals(3, parent.x)
+    assertEquals(9, parent.bar)
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(3, dyn.x)
+    assertEquals(9, dyn.bar)
+  }
+
+  @Test def override_native_getter_with_val(): Unit = {
+    @ScalaJSDefined
+    class OverrideNativeGetterWithVal extends NativeParentClass(3) {
+      override val bar: Int = 1
+    }
+
+    val foo = new OverrideNativeGetterWithVal
+    assertEquals(3, foo.x)
+    assertEquals(1, foo.bar)
+
+    val parent: NativeParentClass = foo
+    assertEquals(3, parent.x)
+    assertEquals(1, parent.bar)
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(3, dyn.x)
+    assertEquals(1, dyn.bar)
+  }
+
+  @Test def override_non_native_getter_with_val(): Unit = {
+    @ScalaJSDefined
+    class OverrideNonNativeGetterWithVal extends NonNativeParentClass(3) {
+      override val bar: Int = 1
+    }
+
+    val foo = new OverrideNonNativeGetterWithVal
+    assertEquals(3, foo.x)
+    assertEquals(1, foo.bar)
+
+    val parent: NonNativeParentClass = foo
+    assertEquals(3, parent.x)
+    assertEquals(1, parent.bar)
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(3, dyn.x)
+    assertEquals(1, dyn.bar)
+  }
+
+  @Test def override_getter_with_super(): Unit = {
+    @ScalaJSDefined
+    class OverrideGetterSuperParent extends js.Object {
+      def bar: Int = 43
+    }
+    @ScalaJSDefined
+    class OverrideGetterSuperChild extends OverrideGetterSuperParent {
+      override def bar: Int = super.bar * 3
+    }
+
+    val foo = new OverrideGetterSuperChild
+    assertEquals(129, foo.bar)
+
+    val parent: OverrideGetterSuperParent = foo
+    assertEquals(129, parent.bar)
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(129, dyn.bar)
+  }
+
+  @Test def override_setter_with_super(): Unit = {
+    @ScalaJSDefined
+    class OverrideSetterSuperParent extends js.Object {
+      var x: Int = 43
+      def bar_=(v: Int): Unit = x = v
+    }
+    @ScalaJSDefined
+    class OverrideSetterSuperChild extends OverrideSetterSuperParent {
+      override def bar_=(v: Int): Unit = super.bar_=(v * 3)
+    }
+
+    val foo = new OverrideSetterSuperChild
+    foo.bar_=(4)
+    assertEquals(12, foo.x)
+
+    val parent: OverrideSetterSuperParent = foo
+    parent.bar_=(5)
+    assertEquals(15, parent.x)
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    dyn.bar = 6
+    assertEquals(18, dyn.x)
+  }
+
+  @Test def add_setter_in_subclass(): Unit = {
+    @ScalaJSDefined
+    class AddSetterInSubclassParent extends js.Object {
+      var x: Int = 43
+      def bar: Int = x
+    }
+    @ScalaJSDefined
+    class AddSetterInSubclassChild extends AddSetterInSubclassParent {
+      def bar_=(v: Int): Unit = x = v
+    }
+
+    val foo = new AddSetterInSubclassChild
+    foo.bar = 4
+    assertEquals(4, foo.x)
+    assertEquals(4, foo.bar)
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    dyn.bar = 6
+    assertEquals(6, dyn.x)
+    assertEquals(6, dyn.bar)
+  }
+
+  @Test def add_getter_in_subclass(): Unit = {
+    @ScalaJSDefined
+    class AddGetterInSubclassParent extends js.Object {
+      var x: Int = 43
+      def bar_=(v: Int): Unit = x = v
+    }
+    @ScalaJSDefined
+    class AddGetterInSubclassChild extends AddGetterInSubclassParent {
+      def bar: Int = x
+    }
+
+    val foo = new AddGetterInSubclassChild
+    foo.bar = 4
+    assertEquals(4, foo.x)
+    assertEquals(4, foo.bar)
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    dyn.bar = 6
+    assertEquals(6, dyn.x)
+    assertEquals(6, dyn.bar)
+  }
+
+  @Test def overload_native_method(): Unit = {
+    @ScalaJSDefined
+    class OverloadNativeMethod extends NativeParentClass(3) {
+      def foo(s: String, y: Int): String = foo(s) + " " + y
+    }
+
+    val foo = new OverloadNativeMethod
+    assertEquals("hello3", foo.foo("hello"))
+    assertEquals("hello3 4", foo.foo("hello", 4))
+
+    val parent: NativeParentClass = foo
+    assertEquals("hello3", parent.foo("hello"))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals("hello3", dyn.foo("hello"))
+    assertEquals("hello3 4", dyn.foo("hello", 4))
+  }
+
+  @Test def overload_non_native_method(): Unit = {
+    @ScalaJSDefined
+    class OverloadNonNativeMethod extends NonNativeParentClass(3) {
+      def foo(s: String, y: Int): String = foo(s) + " " + y
+    }
+
+    val foo = new OverloadNonNativeMethod
+    assertEquals("hello3", foo.foo("hello"))
+    assertEquals("hello3 4", foo.foo("hello", 4))
+
+    val parent: NonNativeParentClass = foo
+    assertEquals("hello3", parent.foo("hello"))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals("hello3", dyn.foo("hello"))
+    assertEquals("hello3 4", dyn.foo("hello", 4))
+  }
+
+  @Test def implement_a_simple_trait(): Unit = {
+    @ScalaJSDefined
+    class ImplementSimpleTrait extends js.Object with SimpleTrait {
+      def foo(x: Int): Int = x + 1
+    }
+
+    val foo = new ImplementSimpleTrait
+    assertEquals(4, foo.foo(3))
+
+    val fooTrait: SimpleTrait = foo
+    assertEquals(6, fooTrait.foo(5))
+  }
+
+  @Test def implement_a_simple_trait_under_separate_compilation(): Unit = {
+    @ScalaJSDefined
+    class ImplementSimpleTraitSepRun extends js.Object with SepRun.SimpleTrait {
+      def foo(x: Int): Int = x + 1
+    }
+
+    val foo = new ImplementSimpleTraitSepRun
+    assertEquals(4, foo.foo(3))
+
+    val fooTrait: SepRun.SimpleTrait = foo
+    assertEquals(6, fooTrait.foo(5))
+  }
+
+  @Test def implement_a_trait_with_a_val(): Unit = {
+    @ScalaJSDefined
+    trait TraitWithVal extends js.Object {
+      val x: Int
+    }
+
+    @ScalaJSDefined
+    class ImplWithVal extends TraitWithVal {
+      val x: Int = 3
+    }
+
+    val foo = new ImplWithVal
+    assertEquals(3, foo.x)
+
+    val fooTrait: TraitWithVal = foo
+    assertEquals(3, fooTrait.x)
+  }
+
+  @Test def implement_a_trait_with_a_var(): Unit = {
+    @ScalaJSDefined
+    trait TraitWithVar extends js.Object {
+      var x: Int
+    }
+
+    @ScalaJSDefined
+    class ImplWithVar extends TraitWithVar {
+      var x: Int = 3
+    }
+
+    val foo = new ImplWithVar
+    assertEquals(3, foo.x)
+
+    val fooTrait: TraitWithVar = foo
+    assertEquals(3, fooTrait.x)
+
+    foo.x = 5
+    assertEquals(5, fooTrait.x)
+    fooTrait.x = 19
+    assertEquals(19, foo.x)
+  }
+
+  @Test def implement_a_trait_extending_a_native_JS_class(): Unit = {
+    @ScalaJSDefined
+    trait TraitExtendsJSClass extends NativeParentClass {
+      def foobar(x: Int): Int
+    }
+
+    @ScalaJSDefined
+    class ImplExtendsJSClassAndTrait
+        extends NativeParentClass(5) with TraitExtendsJSClass {
+      def foobar(x: Int): Int = x * 3
+    }
+
+    val foo = new ImplExtendsJSClassAndTrait
+    assertEquals(18, foo.foobar(6))
+  }
+
+  @Test def implement_abstract_members_coming_from_a_native_JS_class(): Unit = {
+    @ScalaJSDefined
+    class ImplDeferredMembersFromJSParent
+        extends NativeParentClassWithDeferred {
+      val x: Int = 43
+
+      def bar(y: Int): Int = y * 2
+    }
+
+    val FooResult = (12 + 4) * 2 + 43
+
+    val foo = new ImplDeferredMembersFromJSParent
+    assertEquals(43, foo.x)
+    assertEquals(64, foo.bar(32))
+    assertEquals(FooResult, foo.foo(12))
+
+    val fooParent: NativeParentClassWithDeferred = foo
+    assertEquals(43, fooParent.x)
+    assertEquals(64, fooParent.bar(32))
+    assertEquals(FooResult, fooParent.foo(12))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(43, dyn.x)
+    assertEquals(64, dyn.bar(32))
+    assertEquals(FooResult, dyn.foo(12))
+  }
+
+}
+
+object ScalaJSDefinedTest {
 
   // Defined in test-suite/src/test/resources/ScalaJSDefinedTestNatives.js
   @JSName("ScalaJSDefinedTestNativeParentClass")
@@ -214,1283 +1496,6 @@ object ScalaJSDefinedTest extends JasmineTest {
   @ScalaJSDefined
   class SimpleInheritedFromNative(
       x: Int, val y: Int) extends NativeParentClass(x)
-
-  describe("Scala.js-defined JS classes") {
-
-    it("minimal definition") {
-      val obj = new Minimal
-      expect(js.typeOf(obj)).toEqual("object")
-      expect(js.Object.keys(obj)).toEqual(js.Array[String]())
-      expect(obj.toString()).toEqual("[object Object]")
-      expect(obj.getClass().asInstanceOf[js.Any]).toBeNull
-
-      expect((obj: Any).isInstanceOf[Minimal]).toBeTruthy
-      expect((obj: Any).isInstanceOf[js.Object]).toBeTruthy
-      expect((obj: Any).isInstanceOf[js.Error]).toBeFalsy
-    }
-
-    it("minimal static object with lazy initialization") {
-      expect(staticNonNativeObjectInitCount).toEqual(0)
-      val obj = StaticNonNativeObject
-      expect(staticNonNativeObjectInitCount).toEqual(1)
-      expect(StaticNonNativeObject).toBe(obj)
-      expect(staticNonNativeObjectInitCount).toEqual(1)
-
-      expect(js.typeOf(obj)).toEqual("object")
-      expect(js.Object.keys(obj)).toEqual(js.Array[String]())
-      expect(obj.toString()).toEqual("[object Object]")
-      expect(obj.getClass().asInstanceOf[js.Any]).toBeNull
-
-      expect((obj: Any).isInstanceOf[Minimal]).toBeFalsy
-      expect((obj: Any).isInstanceOf[js.Object]).toBeTruthy
-      expect((obj: Any).isInstanceOf[js.Error]).toBeFalsy
-    }
-
-    it("simple method") {
-      val obj = new SimpleMethod
-      expect(obj.foo(5)).toEqual(8)
-      expect(obj.bar("hello", 42)).toEqual("hello42")
-
-      val dyn = obj.asInstanceOf[js.Dynamic]
-      expect(dyn.foo(5)).toEqual(8)
-      expect(dyn.bar("hello", 42)).toEqual("hello42")
-    }
-
-    it("static object with simple method") {
-      val obj = StaticObjectSimpleMethod
-      expect(obj.foo(5)).toEqual(8)
-      expect(obj.bar("hello", 42)).toEqual("hello42")
-
-      val dyn = obj.asInstanceOf[js.Dynamic]
-      expect(dyn.foo(5)).toEqual(8)
-      expect(dyn.bar("hello", 42)).toEqual("hello42")
-    }
-
-    it("simple field") {
-      val obj = new SimpleField
-      expect(js.Object.keys(obj)).toEqual(js.Array("x", "y"))
-      expect(obj.x).toEqual(5)
-      expect(obj.y).toEqual(10)
-      expect(obj.sum()).toEqual(15)
-
-      obj.y = 3
-      expect(obj.y).toEqual(3)
-      expect(obj.sum()).toEqual(8)
-
-      val dyn = obj.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(5)
-      expect(dyn.y).toEqual(3)
-      expect(dyn.sum()).toEqual(8)
-
-      dyn.y = 89
-      expect(dyn.y).toEqual(89)
-      expect(obj.y).toEqual(89)
-      expect(dyn.sum()).toEqual(94)
-    }
-
-    it("static object with simple field") {
-      val obj = StaticObjectSimpleField
-      expect(js.Object.keys(obj)).toEqual(js.Array("x", "y"))
-      expect(obj.x).toEqual(5)
-      expect(obj.y).toEqual(10)
-      expect(obj.sum()).toEqual(15)
-
-      obj.y = 3
-      expect(obj.y).toEqual(3)
-      expect(obj.sum()).toEqual(8)
-
-      val dyn = obj.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(5)
-      expect(dyn.y).toEqual(3)
-      expect(dyn.sum()).toEqual(8)
-
-      dyn.y = 89
-      expect(dyn.y).toEqual(89)
-      expect(obj.y).toEqual(89)
-      expect(dyn.sum()).toEqual(94)
-    }
-
-    it("simple accessors") {
-      val obj = new SimpleAccessors
-      expect(js.Object.keys(obj)).toEqual(js.Array("x"))
-      expect(obj.x).toEqual(1)
-
-      expect(obj.readPlus1).toEqual(2)
-      expect(obj.neg).toEqual(-1)
-      obj.neg = 4
-      expect(obj.x).toEqual(-4)
-      expect(obj.neg).toEqual(4)
-      expect(obj.readPlus1).toEqual(-3)
-
-      val dyn = obj.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(-4)
-
-      expect(dyn.readPlus1).toEqual(-3)
-      expect(dyn.neg).toEqual(4)
-      dyn.neg = -9
-      expect(dyn.x).toEqual(9)
-      expect(dyn.neg).toEqual(-9)
-      expect(dyn.readPlus1).toEqual(10)
-    }
-
-    it("simple constructor") {
-      val obj = new SimpleConstructor(5, 10)
-      expect(js.Object.keys(obj)).toEqual(js.Array("x", "y"))
-      expect(obj.x).toEqual(5)
-      expect(obj.y).toEqual(10)
-      expect(obj.sum()).toEqual(15)
-
-      obj.y = 3
-      expect(obj.y).toEqual(3)
-      expect(obj.sum()).toEqual(8)
-
-      val dyn = obj.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(5)
-      expect(dyn.y).toEqual(3)
-      expect(dyn.sum()).toEqual(8)
-
-      dyn.y = 89
-      expect(dyn.y).toEqual(89)
-      expect(obj.y).toEqual(89)
-      expect(dyn.sum()).toEqual(94)
-    }
-
-    it("simple constructor with automatic fields") {
-      val obj = new SimpleConstructorAutoFields(5, 10)
-      expect(js.Object.keys(obj)).toEqual(js.Array("x", "y"))
-      expect(obj.x).toEqual(5)
-      expect(obj.y).toEqual(10)
-      expect(obj.sum()).toEqual(15)
-
-      obj.y = 3
-      expect(obj.y).toEqual(3)
-      expect(obj.sum()).toEqual(8)
-
-      val dyn = obj.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(5)
-      expect(dyn.y).toEqual(3)
-      expect(dyn.sum()).toEqual(8)
-
-      dyn.y = 89
-      expect(dyn.y).toEqual(89)
-      expect(obj.y).toEqual(89)
-      expect(dyn.sum()).toEqual(94)
-    }
-
-    it("simple constructor with param accessors") {
-      val obj = new SimpleConstructorParamAccessors(5, 10)
-      expect(js.Object.keys(obj)).not.toEqual(js.Array("x", "y"))
-      expect(obj.sum()).toEqual(15)
-
-      val dyn = obj.asInstanceOf[js.Dynamic]
-      expect(dyn.sum()).toEqual(15)
-    }
-
-    it("default values for fields") {
-      val obj = new DefaultFieldValues
-      expect(obj.int).toBe(0)
-      expect(obj.bool).toBe(false)
-      expect(obj.char.toInt).toBe(0)
-      expect(obj.string).toBeNull
-      expect(obj.unit).toBeUndefined
-
-      /* Value class fields are initialized to null, instead of a boxed
-       * representation of the zero of their underlying types, as for a
-       * Scala class.
-       */
-      expect(obj.asInstanceOf[js.Dynamic].valueClass).toBeNull
-    }
-
-    it("simple inherited from a native class") {
-      val obj = new SimpleInheritedFromNative(3, 5)
-      expect(obj.x).toEqual(3)
-      expect(obj.y).toEqual(5)
-      expect(obj.bar).toEqual(6)
-      expect(obj.isInstanceOf[SimpleInheritedFromNative]).toBeTruthy
-      expect(obj.isInstanceOf[NativeParentClass]).toBeTruthy
-    }
-
-    it("lambda inside a method - #2220") {
-      @ScalaJSDefined
-      class LambdaInsideMethod extends js.Object {
-        def foo(): Int = {
-          List(1, 2, 3).map(_ * 2).sum
-        }
-      }
-
-      expect(new LambdaInsideMethod().foo()).toEqual(12)
-    }
-
-    it("nested inside a Scala class") {
-      class OuterScalaClass(val x: Int) {
-        @ScalaJSDefined
-        class InnerJSClass(val y: Int) extends js.Object {
-          def sum(z: Int): Int = x + y + z
-        }
-      }
-
-      val outerObj = new OuterScalaClass(3)
-      val obj = new outerObj.InnerJSClass(6)
-      expect(obj.y).toEqual(6)
-      expect(obj.sum(11)).toEqual(20)
-    }
-
-    it("nested inside a Scala.js-defined JS class") {
-      @ScalaJSDefined
-      class OuterJSClass(val x: Int) extends js.Object {
-        @ScalaJSDefined
-        class InnerJSClass(val y: Int) extends js.Object {
-          def sum(z: Int): Int = x + y + z
-        }
-      }
-
-      val outerObj = new OuterJSClass(3)
-      val obj = new outerObj.InnerJSClass(6)
-      expect(obj.y).toEqual(6)
-      expect(obj.sum(11)).toEqual(20)
-    }
-
-    it("Scala class nested inside a Scala.js-defined JS class") {
-      @ScalaJSDefined
-      class OuterJSClass(val x: Int) extends js.Object {
-        class InnerScalaClass(val y: Int) {
-          def sum(z: Int): Int = x + y + z
-        }
-      }
-
-      val outerObj = new OuterJSClass(3)
-      val obj = new outerObj.InnerScalaClass(6)
-      expect(obj.y).toEqual(6)
-      expect(obj.sum(11)).toEqual(20)
-    }
-
-    it("Scala object nested inside a Scala.js-defined JS class") {
-      @ScalaJSDefined
-      class Foo extends js.Object {
-        var innerInitCount: Int = _
-
-        object Inner {
-          innerInitCount += 1
-        }
-      }
-
-      val foo = new Foo
-      expect(foo.innerInitCount).toEqual(0)
-      val inner1 = foo.Inner
-      expect(foo.innerInitCount).toEqual(1)
-      expect((foo.Inner: AnyRef) eq inner1).toBeTruthy
-      expect(foo.innerInitCount).toEqual(1)
-
-      val dyn = (new Foo).asInstanceOf[js.Dynamic]
-      expect(dyn.innerInitCount).toEqual(0)
-      val inner2 = dyn.Inner
-      expect(dyn.innerInitCount).toEqual(1)
-      expect((dyn.Inner: AnyRef) eq inner2).toBeTruthy
-      expect(dyn.innerInitCount).toEqual(1)
-
-      expect((inner2: AnyRef) eq inner1).toBeFalsy
-    }
-
-    it("anonymous class with captures") {
-      val x = (() => 5)()
-      val obj = new js.Object {
-        val y = 10
-        def sum(z: Int): Int = x + y + z
-      }
-
-      val dyn = obj.asInstanceOf[js.Dynamic]
-      expect(dyn.y).toEqual(10)
-      expect(dyn.sum(11)).toEqual(26)
-    }
-
-    it("local object is lazy") {
-      var initCount: Int = 0
-
-      @ScalaJSDefined
-      object Obj extends js.Object {
-        initCount += 1
-      }
-
-      expect(initCount).toEqual(0)
-      val obj = Obj
-      expect(obj).toBeTruthy
-      expect(initCount).toEqual(1)
-      expect(Obj).toBe(obj)
-      expect(initCount).toEqual(1)
-    }
-
-    it("local object with captures") {
-      val x = (() => 5)()
-
-      @ScalaJSDefined
-      object Obj extends js.Object {
-        val y = 10
-        def sum(z: Int): Int = x + y + z
-      }
-
-      expect(Obj.y).toEqual(10)
-      expect(Obj.sum(11)).toEqual(26)
-
-      val dyn = Obj.asInstanceOf[js.Dynamic]
-      expect(dyn.y).toEqual(10)
-      expect(dyn.sum(11)).toEqual(26)
-    }
-
-    it("object in Scala.js-defined JS class") {
-      @ScalaJSDefined
-      class Foo extends js.Object {
-        var innerInitCount: Int = _
-
-        @ScalaJSDefined
-        object Inner extends js.Object {
-          innerInitCount += 1
-        }
-      }
-
-      val foo = new Foo
-      expect(foo.innerInitCount).toEqual(0)
-      val inner1 = foo.Inner
-      expect(foo.innerInitCount).toEqual(1)
-      expect(foo.Inner).toBe(inner1)
-      expect(foo.innerInitCount).toEqual(1)
-
-      val dyn = (new Foo).asInstanceOf[js.Dynamic]
-      expect(dyn.innerInitCount).toEqual(0)
-      val inner2 = dyn.Inner
-      expect(dyn.innerInitCount).toEqual(1)
-      expect(dyn.Inner).toBe(inner2)
-      expect(dyn.innerInitCount).toEqual(1)
-
-      expect(inner2).not.toBe(inner1)
-    }
-
-    it("local defs must not be exposed") {
-      @ScalaJSDefined
-      class LocalDefsMustNotBeExposed extends js.Object {
-        def foo(): String = {
-          def bar(): String = "hello"
-          bar()
-        }
-      }
-
-      val obj = new LocalDefsMustNotBeExposed
-      expect(js.Object.properties(obj).exists(_.contains("bar"))).toBeFalsy
-    }
-
-    it("local objects must not be exposed") {
-      @ScalaJSDefined
-      class LocalObjectsMustNotBeExposed extends js.Object {
-        def foo(): String = {
-          object Bar
-          Bar.toString()
-        }
-      }
-
-      val obj = new LocalObjectsMustNotBeExposed
-      expect(js.Object.properties(obj).exists(_.contains("Bar"))).toBeFalsy
-    }
-
-    it("local defs with captures - #1975") {
-      @ScalaJSDefined
-      class LocalDefsWithCaptures extends js.Object {
-        def foo(suffix: String): String = {
-          def bar(): String = "hello " + suffix
-          bar()
-        }
-      }
-
-      val obj = new LocalDefsWithCaptures
-      expect(obj.foo("world")).toEqual("hello world")
-    }
-
-    it("methods with explicit name") {
-      @ScalaJSDefined
-      class MethodsWithExplicitName extends js.Object {
-        @JSName("theAnswer")
-        def bar(): Int = 42
-        @JSName("doubleTheParam")
-        def double(x: Int): Int = x*2
-      }
-
-      val foo = new MethodsWithExplicitName
-      expect(foo.bar()).toEqual(42)
-      expect(foo.double(3)).toEqual(6)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.bar).toBeUndefined
-      expect(js.typeOf(dyn.theAnswer)).toBe("function")
-      expect(dyn.theAnswer()).toEqual(42)
-      expect(dyn.doubleTheParam(3)).toEqual(6)
-    }
-
-    it("methods with constant folded name") {
-      @ScalaJSDefined
-      class MethodsWithConstantFoldedName extends js.Object {
-        @JSName(JSNameHolder.MethodName)
-        def bar(): Int = 42
-      }
-
-      val foo = new MethodsWithConstantFoldedName
-      expect(foo.bar()).toEqual(42)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.bar).toBeUndefined
-      expect(dyn.myMethod()).toEqual(42)
-    }
-
-    it("protected methods") {
-      @ScalaJSDefined
-      class ProtectedMethods extends js.Object {
-        protected def bar(): Int = 42
-
-        protected[testsuite] def foo(): Int = 100
-      }
-
-      val foo = new ProtectedMethods
-      expect(foo.foo()).toEqual(100)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(js.typeOf(dyn.bar)).toBe("function")
-      expect(dyn.bar()).toEqual(42)
-      expect(js.typeOf(dyn.foo)).toBe("function")
-      expect(dyn.foo()).toEqual(100)
-    }
-
-    it("properties with explicit name") {
-      @ScalaJSDefined
-      class PropertiesWithExplicitName extends js.Object {
-        private[this] var myY: String = "hello"
-        @JSName("answer")
-        val answerScala: Int = 42
-        @JSName("x")
-        var xScala: Int = 3
-        @JSName("doubleX")
-        def doubleXScala: Int = xScala*2
-        @JSName("y")
-        def yGetter: String = myY + " get"
-        @JSName("y")
-        def ySetter_=(v: String): Unit = myY = v + " set"
-      }
-
-      val foo = new PropertiesWithExplicitName
-      expect(foo.answerScala).toEqual(42)
-      expect(foo.xScala).toEqual(3)
-      expect(foo.doubleXScala).toEqual(6)
-      foo.xScala = 23
-      expect(foo.xScala).toEqual(23)
-      expect(foo.doubleXScala).toEqual(46)
-      expect(foo.yGetter).toEqual("hello get")
-      foo.ySetter_=("world")
-      expect(foo.yGetter).toEqual("world set get")
-
-      val dyn = (new PropertiesWithExplicitName).asInstanceOf[js.Dynamic]
-      expect(dyn.answerScala).toBeUndefined
-      expect(js.typeOf(dyn.answer)).toBe("number")
-      expect(dyn.answer).toEqual(42)
-      expect(dyn.x).toEqual(3)
-      expect(dyn.doubleX).toEqual(6)
-      dyn.x = 23
-      expect(dyn.x).toEqual(23)
-      expect(dyn.doubleX).toEqual(46)
-      expect(dyn.y).toEqual("hello get")
-      dyn.y = "world"
-      expect(dyn.y).toEqual("world set get")
-    }
-
-    it("protected properties") {
-      @ScalaJSDefined
-      class ProtectedProperties extends js.Object {
-        protected val x: Int = 42
-        protected[testsuite] val y: Int = 43
-      }
-
-      val foo = new ProtectedProperties
-      expect(foo.y).toEqual(43)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(42)
-      expect(dyn.y).toEqual(43)
-    }
-
-    it("simple overloaded methods") {
-      @ScalaJSDefined
-      class SimpleOverloadedMethods extends js.Object {
-        def foo(): Int = 42
-        def foo(x: Int): Int = x*2
-      }
-
-      val foo = new SimpleOverloadedMethods
-      expect(foo.foo()).toEqual(42)
-      expect(foo.foo(3)).toEqual(6)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(js.typeOf(dyn.foo)).toBe("function")
-      expect(dyn.foo()).toEqual(42)
-      expect(dyn.foo(3)).toEqual(6)
-    }
-
-    it("renamed overloaded methods") {
-      @ScalaJSDefined
-      class RenamedOverloadedMethods extends js.Object {
-        @JSName("foobar")
-        def foo(): Int = 42
-        @JSName("foobar")
-        def bar(x: Int): Int = x*2
-      }
-
-      val foo = new RenamedOverloadedMethods
-      expect(foo.foo()).toEqual(42)
-      expect(foo.bar(3)).toEqual(6)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(js.typeOf(dyn.foobar)).toBe("function")
-      expect(dyn.foobar()).toEqual(42)
-      expect(dyn.foobar(3)).toEqual(6)
-    }
-
-    it("overloaded constructors - num parameters resolution") {
-      expect(new OverloadedConstructorParamNumber(1).foo).toEqual(1)
-      expect(new OverloadedConstructorParamNumber(1, 2).foo).toEqual(3)
-    }
-
-    it("overloaded constructors - parameter type resolution") {
-      expect(new OverloadedConstructorParamType(1).foo).toEqual(1)
-      expect(new OverloadedConstructorParamType("abc").foo).toEqual(3)
-    }
-
-    it("overloaded constructors - with captured parameters") {
-      @ScalaJSDefined
-      class OverloadedConstructorWithOuterContextOnly(val x: Int) extends js.Object {
-        def this(y: String) = this(y.length)
-      }
-
-      val z = (() => 5)()
-      @ScalaJSDefined
-      class OverloadedConstructorWithValCapture(val x: Int) extends js.Object {
-        def this(y: String) = this(z)
-      }
-
-      expect(new OverloadedConstructorWithOuterContextOnly(1).x).toEqual(1)
-      expect(new OverloadedConstructorWithOuterContextOnly("abc").x).toEqual(3)
-
-      expect(new OverloadedConstructorWithValCapture(1).x).toEqual(1)
-      expect(new OverloadedConstructorWithValCapture("abc").x).toEqual(5)
-    }
-
-    it("overloaded constructors - with super class") {
-      @ScalaJSDefined
-      class OverloadedConstructorSup(val x: Int) extends js.Object {
-        def this(y: String) = this(y.length)
-      }
-      @ScalaJSDefined
-      class OverloadedConstructorSub(x: Int)
-          extends OverloadedConstructorSup(3 * x) {
-        def this(y: String) = this(2 * y.length)
-      }
-      expect(new OverloadedConstructorSup(1).x).toEqual(1)
-      expect(new OverloadedConstructorSup("abc").x).toEqual(3)
-
-      expect(new OverloadedConstructorSub(3).x).toEqual(9)
-      expect(new OverloadedConstructorSub("ab").x).toEqual(12)
-    }
-
-    it("overloaded constructors - with repeated parameters") {
-      @ScalaJSDefined
-      class OverloadedConstructorWithRepeatedParameters(xs: Int*)
-          extends js.Object {
-        def this(y: String, ys: String*) = this(y.length +: ys.map(_.length): _*)
-        def sum: Int = xs.sum
-      }
-
-      expect(new OverloadedConstructorWithRepeatedParameters().sum).toEqual(0)
-      expect(new OverloadedConstructorWithRepeatedParameters(1).sum).toEqual(1)
-      expect(new OverloadedConstructorWithRepeatedParameters(1, 2).sum).toEqual(3)
-      expect(new OverloadedConstructorWithRepeatedParameters(1, 2, 4).sum).toEqual(7)
-
-      expect(new OverloadedConstructorWithRepeatedParameters("abc").sum).toEqual(3)
-      expect(new OverloadedConstructorWithRepeatedParameters("ab", "c").sum).toEqual(3)
-      expect(new OverloadedConstructorWithRepeatedParameters("a", "b", "c").sum).toEqual(3)
-    }
-
-    it("overloaded constructors - complex resolution") {
-      val bazPrim = new OverloadedConstructorComplex(1, 2)
-      expect(bazPrim.foo).toEqual(1)
-      expect(bazPrim.bar).toEqual(2)
-
-      val baz1 = new OverloadedConstructorComplex()
-      expect(baz1.foo).toEqual(5)
-      expect(baz1.bar).toEqual(6)
-
-      val baz2 = new OverloadedConstructorComplex(3)
-      expect(baz2.foo).toEqual(3)
-      expect(baz2.bar).toEqual(3)
-
-      val baz3 = new OverloadedConstructorComplex(7, 8, 9)
-      expect(baz3.foo).toEqual(7)
-      expect(baz3.bar).toEqual(9)
-
-      val baz4 = new OverloadedConstructorComplex("abc")
-      expect(baz4.foo).toEqual(3)
-      expect(baz4.bar).toEqual(3)
-
-      val baz5 = new OverloadedConstructorComplex("abc", 10)
-      expect(baz5.foo).toEqual(3)
-      expect(baz5.bar).toEqual(10)
-
-      val baz6 = new OverloadedConstructorComplex(11, "abc")
-      expect(baz6.foo).toEqual(11)
-      expect(baz6.bar).toEqual(3)
-
-      val baz7 = new OverloadedConstructorComplex(1, 2, 4, 8)
-      expect(baz7.foo).toEqual(3)
-      expect(baz7.bar).toEqual(4)
-
-      val baz8 = new OverloadedConstructorComplex("abc", "abcd")
-      expect(baz8.foo).toEqual(3)
-      expect(baz8.bar).toEqual(4)
-
-      val baz9 = new OverloadedConstructorComplex("abc", "abcd", "zx")
-      expect(baz9.foo).toEqual(5)
-      expect(baz9.bar).toEqual(4)
-
-      val baz10 = new OverloadedConstructorComplex("abc", "abcd", "zx", "tfd")
-      expect(baz10.foo).toEqual(5)
-      expect(baz10.bar).toEqual(7)
-    }
-
-    it("default parameters") {
-      @ScalaJSDefined
-      class DefaultParameters extends js.Object {
-        def bar(x: Int, y: Int = 1): Int = x + y
-        def dependent(x: Int)(y: Int = x + 1): Int = x + y
-
-        def foobar(x: Int): Int = bar(x)
-      }
-
-      @ScalaJSDefined
-      object DefaultParametersMod extends js.Object {
-        def bar(x: Int, y: Int = 1): Int = x + y
-        def dependent(x: Int)(y: Int = x + 1): Int = x + y
-
-        def foobar(x: Int): Int = bar(x)
-      }
-
-      val foo = new DefaultParameters
-      expect(foo.bar(4, 5)).toEqual(9)
-      expect(foo.bar(4)).toEqual(5)
-      expect(foo.foobar(3)).toEqual(4)
-      expect(foo.dependent(4)(5)).toEqual(9)
-      expect(foo.dependent(8)()).toEqual(17)
-
-      expect(DefaultParametersMod.bar(4, 5)).toEqual(9)
-      expect(DefaultParametersMod.bar(4)).toEqual(5)
-      expect(DefaultParametersMod.foobar(3)).toEqual(4)
-      expect(DefaultParametersMod.dependent(4)(5)).toEqual(9)
-      expect(DefaultParametersMod.dependent(8)()).toEqual(17)
-
-      def testDyn(dyn: js.Dynamic): Unit = {
-        expect(dyn.bar(4, 5)).toEqual(9)
-        expect(dyn.bar(4)).toEqual(5)
-        expect(dyn.foobar(3)).toEqual(4)
-        expect(dyn.dependent(4, 5)).toEqual(9)
-        expect(dyn.dependent(8)).toEqual(17)
-      }
-      testDyn(foo.asInstanceOf[js.Dynamic])
-      testDyn(DefaultParametersMod.asInstanceOf[js.Dynamic])
-    }
-
-    it("override default parameters") {
-      @ScalaJSDefined
-      class OverrideDefaultParametersParent extends js.Object {
-        def bar(x: Int, y: Int = 1): Int = x + y
-        def dependent(x: Int)(y: Int = x + 1): Int = x + y
-
-        def foobar(x: Int): Int = bar(x)
-      }
-
-      @ScalaJSDefined
-      class OverrideDefaultParametersChild
-          extends OverrideDefaultParametersParent {
-        override def bar(x: Int, y: Int = 10): Int = super.bar(x, y)
-        override def dependent(x: Int)(y: Int = x * 2): Int = x + y
-      }
-
-      val foo = new OverrideDefaultParametersChild
-      expect(foo.bar(4, 5)).toEqual(9)
-      expect(foo.bar(4)).toEqual(14)
-      expect(foo.foobar(3)).toEqual(13)
-      expect(foo.dependent(4)(5)).toEqual(9)
-      expect(foo.dependent(8)()).toEqual(24)
-
-      val parent: OverrideDefaultParametersParent = foo
-      expect(parent.bar(4, 5)).toEqual(9)
-      expect(parent.bar(4)).toEqual(14)
-      expect(parent.foobar(3)).toEqual(13)
-      expect(parent.dependent(4)(5)).toEqual(9)
-      expect(parent.dependent(8)()).toEqual(24)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.bar(4, 5)).toEqual(9)
-      expect(dyn.bar(4)).toEqual(14)
-      expect(dyn.foobar(3)).toEqual(13)
-      expect(dyn.dependent(4, 5)).toEqual(9)
-      expect(dyn.dependent(8)).toEqual(24)
-    }
-
-    it("override method with default parameters without new default") {
-      @ScalaJSDefined
-      class OverrideDefaultParametersWithoutDefaultParent extends js.Object {
-        def bar(x: Int, y: Int = 1): Int = x + y
-        def dependent(x: Int)(y: Int = x + 1): Int = x + y
-
-        def foobar(x: Int): Int = bar(x)
-      }
-
-      @ScalaJSDefined
-      class OverrideDefaultParametersWithoutDefaultChild
-          extends OverrideDefaultParametersWithoutDefaultParent {
-        override def bar(x: Int, y: Int): Int = x - y
-        override def dependent(x: Int)(y: Int): Int = x - y
-      }
-
-      val foo = new OverrideDefaultParametersWithoutDefaultChild
-      expect(foo.bar(4, 5)).toEqual(-1)
-      expect(foo.bar(4)).toEqual(3)
-      expect(foo.foobar(3)).toEqual(2)
-      expect(foo.dependent(4)(8)).toEqual(-4)
-      expect(foo.dependent(8)()).toEqual(-1)
-
-      val parent: OverrideDefaultParametersWithoutDefaultParent = foo
-      expect(parent.bar(4, 5)).toEqual(-1)
-      expect(parent.bar(4)).toEqual(3)
-      expect(parent.foobar(3)).toEqual(2)
-      expect(parent.dependent(4)(8)).toEqual(-4)
-      expect(parent.dependent(8)()).toEqual(-1)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.bar(4, 5)).toEqual(-1)
-      expect(dyn.bar(4)).toEqual(3)
-      expect(dyn.foobar(3)).toEqual(2)
-      expect(dyn.dependent(4, 8)).toEqual(-4)
-      expect(dyn.dependent(8)).toEqual(-1)
-    }
-
-    it("constructors with default parameters (ScalaJSDefined/-)") {
-      expect(new ConstructorDefaultParamJSNonNativeNone().foo).toEqual(-1)
-      expect(new ConstructorDefaultParamJSNonNativeNone(1).foo).toEqual(1)
-      expect(new ConstructorDefaultParamJSNonNativeNone(5).foo).toEqual(5)
-    }
-
-    it("constructors with default parameters (ScalaJSDefined/ScalaJSDefined)") {
-      expect(new ConstructorDefaultParamJSNonNativeJSNonNative().foo).toEqual(-1)
-      expect(new ConstructorDefaultParamJSNonNativeJSNonNative(1).foo).toEqual(1)
-      expect(new ConstructorDefaultParamJSNonNativeJSNonNative(5).foo).toEqual(5)
-    }
-
-    it("constructors with default parameters (ScalaJSDefined/Scala)") {
-      expect(new ConstructorDefaultParamJSNonNativeScala().foo).toEqual(-1)
-      expect(new ConstructorDefaultParamJSNonNativeScala(1).foo).toEqual(1)
-      expect(new ConstructorDefaultParamJSNonNativeScala(5).foo).toEqual(5)
-    }
-
-    it("constructors with default parameters (Scala/ScalaJSDefined)") {
-      expect(new ConstructorDefaultParamScalaJSNonNative().foo).toEqual(-1)
-      expect(new ConstructorDefaultParamScalaJSNonNative(1).foo).toEqual(1)
-      expect(new ConstructorDefaultParamScalaJSNonNative(5).foo).toEqual(5)
-    }
-
-    it("constructors with default parameters (Native/-)") {
-      expect(new ConstructorDefaultParamJSNativeNone().foo).toEqual(-1)
-      expect(new ConstructorDefaultParamJSNativeNone(1).foo).toEqual(1)
-      expect(new ConstructorDefaultParamJSNativeNone(5).foo).toEqual(5)
-    }
-
-    it("constructors with default parameters (Native/Scala)") {
-      expect(new ConstructorDefaultParamJSNativeScala().foo).toEqual(-1)
-      expect(new ConstructorDefaultParamJSNativeScala(1).foo).toEqual(1)
-      expect(new ConstructorDefaultParamJSNativeScala(5).foo).toEqual(5)
-    }
-
-    it("constructors with default parameters (Native/ScalaJSDefined)") {
-      expect(new ConstructorDefaultParamJSNativeJSNonNative().foo).toEqual(-1)
-      expect(new ConstructorDefaultParamJSNativeJSNonNative(1).foo).toEqual(1)
-      expect(new ConstructorDefaultParamJSNativeJSNonNative(5).foo).toEqual(5)
-    }
-
-    it("constructors with default parameters (Native/Native)") {
-      expect(new ConstructorDefaultParamJSNativeJSNative().foo).toEqual(-1)
-      expect(new ConstructorDefaultParamJSNativeJSNative(1).foo).toEqual(1)
-      expect(new ConstructorDefaultParamJSNativeJSNative(5).foo).toEqual(5)
-    }
-
-    it("constructors with default parameters (Scala/Scala)") {
-      expect(new ConstructorDefaultParamScalaScala().foo).toEqual(-1)
-      expect(new ConstructorDefaultParamScalaScala(1).foo).toEqual(1)
-      expect(new ConstructorDefaultParamScalaScala(5).foo).toEqual(5)
-    }
-
-    it("constructors with default parameters (Scala/-)") {
-      expect(new ConstructorDefaultParamScalaNone().foo).toEqual(-1)
-      expect(new ConstructorDefaultParamScalaNone(1).foo).toEqual(1)
-      expect(new ConstructorDefaultParamScalaNone(5).foo).toEqual(5)
-    }
-
-    it("call super constructor with : _*") {
-      @ScalaJSDefined
-      class CallSuperCtorWithSpread(x: Int, y: Int, z: Int)
-          extends NativeParentClassWithVarargs(x, Seq(y, z): _*)
-
-      val foo = new CallSuperCtorWithSpread(4, 8, 23)
-      expect(foo.x).toEqual(4)
-      expect(foo.args).toEqual(js.Array(8, 23))
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(4)
-      expect(dyn.args).toEqual(js.Array(8, 23))
-    }
-
-    it("override native method") {
-      @ScalaJSDefined
-      class OverrideNativeMethod extends NativeParentClass(3) {
-        override def foo(s: String): String = s + s + x
-      }
-
-      val foo = new OverrideNativeMethod
-      expect(foo.x).toEqual(3)
-      expect(foo.foo("hello")).toEqual("hellohello3")
-
-      val parent: NativeParentClass = foo
-      expect(parent.x).toEqual(3)
-      expect(parent.foo("hello")).toEqual("hellohello3")
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(3)
-      expect(dyn.foo("hello")).toEqual("hellohello3")
-    }
-
-    it("override non-native method") {
-      @ScalaJSDefined
-      class OverrideNonNativeMethod extends NonNativeParentClass(3) {
-        override def foo(s: String): String = s + s + x
-      }
-
-      val foo = new OverrideNonNativeMethod
-      expect(foo.x).toEqual(3)
-      expect(foo.foo("hello")).toEqual("hellohello3")
-
-      val parent: NonNativeParentClass = foo
-      expect(parent.x).toEqual(3)
-      expect(parent.foo("hello")).toEqual("hellohello3")
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(3)
-      expect(dyn.foo("hello")).toEqual("hellohello3")
-    }
-
-    it("override non-native method with separate compilation") {
-      val foo = new SepRun.SimpleChildClass
-      expect(foo.foo(3)).toEqual(6)
-
-      val fooParent: SepRun.SimpleParentClass = foo
-      expect(fooParent.foo(3)).toEqual(6)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(foo.foo(3)).toEqual(6)
-    }
-
-    it("override native method and call super") {
-      @ScalaJSDefined
-      class OverrideNativeMethodSuperCall extends NativeParentClass(3) {
-        override def foo(s: String): String = super.foo("bar") + s
-      }
-
-      val foo = new OverrideNativeMethodSuperCall
-      expect(foo.x).toEqual(3)
-      expect(foo.foo("hello")).toEqual("bar3hello")
-
-      val parent: NativeParentClass = foo
-      expect(parent.x).toEqual(3)
-      expect(parent.foo("hello")).toEqual("bar3hello")
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(3)
-      expect(dyn.foo("hello")).toEqual("bar3hello")
-    }
-
-    it("override non-native method and call super") {
-      @ScalaJSDefined
-      class OverrideNonNativeMethodSuperCall extends NonNativeParentClass(3) {
-        override def foo(s: String): String = super.foo("bar") + s
-      }
-
-      val foo = new OverrideNonNativeMethodSuperCall
-      expect(foo.x).toEqual(3)
-      expect(foo.foo("hello")).toEqual("bar3hello")
-
-      val parent: NonNativeParentClass = foo
-      expect(parent.x).toEqual(3)
-      expect(parent.foo("hello")).toEqual("bar3hello")
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(3)
-      expect(dyn.foo("hello")).toEqual("bar3hello")
-    }
-
-    it("override native val") {
-      @ScalaJSDefined
-      class OverrideNativeVal extends NativeParentClass(3) {
-        override val x: Int = 42
-      }
-
-      val foo = new OverrideNativeVal
-      expect(foo.x).toEqual(42)
-      expect(foo.bar).toEqual(84)
-      expect(foo.foo("hello")).toEqual("hello42")
-
-      val parent: NativeParentClass = foo
-      expect(parent.x).toEqual(42)
-      expect(parent.bar).toEqual(84)
-      expect(parent.foo("hello")).toEqual("hello42")
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(42)
-      expect(dyn.bar).toEqual(84)
-      expect(dyn.foo("hello")).toEqual("hello42")
-    }
-
-    it("override non-native val") {
-      @ScalaJSDefined
-      class OverrideNonNativeVal extends NonNativeParentClass(3) {
-        override val x: Int = 42
-      }
-
-      val foo = new OverrideNonNativeVal
-      expect(foo.x).toEqual(42)
-      expect(foo.bar).toEqual(84)
-      expect(foo.foo("hello")).toEqual("hello42")
-
-      val parent: NonNativeParentClass = foo
-      expect(parent.x).toEqual(42)
-      expect(parent.bar).toEqual(84)
-      expect(parent.foo("hello")).toEqual("hello42")
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(42)
-      expect(dyn.bar).toEqual(84)
-      expect(dyn.foo("hello")).toEqual("hello42")
-    }
-
-    it("override native getter") {
-      @ScalaJSDefined
-      class OverrideNativeGetter extends NativeParentClass(3) {
-        override def bar: Int = x * 3
-      }
-
-      val foo = new OverrideNativeGetter
-      expect(foo.x).toEqual(3)
-      expect(foo.bar).toEqual(9)
-
-      val parent: NativeParentClass = foo
-      expect(parent.x).toEqual(3)
-      expect(parent.bar).toEqual(9)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(3)
-      expect(dyn.bar).toEqual(9)
-    }
-
-    it("override non-native getter") {
-      @ScalaJSDefined
-      class OverrideNonNativeGetter extends NonNativeParentClass(3) {
-        override def bar: Int = x * 3
-      }
-
-      val foo = new OverrideNonNativeGetter
-      expect(foo.x).toEqual(3)
-      expect(foo.bar).toEqual(9)
-
-      val parent: NonNativeParentClass = foo
-      expect(parent.x).toEqual(3)
-      expect(parent.bar).toEqual(9)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(3)
-      expect(dyn.bar).toEqual(9)
-    }
-
-    it("override native getter with val") {
-      @ScalaJSDefined
-      class OverrideNativeGetterWithVal extends NativeParentClass(3) {
-        override val bar: Int = 1
-      }
-
-      val foo = new OverrideNativeGetterWithVal
-      expect(foo.x).toEqual(3)
-      expect(foo.bar).toEqual(1)
-
-      val parent: NativeParentClass = foo
-      expect(parent.x).toEqual(3)
-      expect(parent.bar).toEqual(1)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(3)
-      expect(dyn.bar).toEqual(1)
-    }
-
-    it("override non-native getter with val") {
-      @ScalaJSDefined
-      class OverrideNonNativeGetterWithVal extends NonNativeParentClass(3) {
-        override val bar: Int = 1
-      }
-
-      val foo = new OverrideNonNativeGetterWithVal
-      expect(foo.x).toEqual(3)
-      expect(foo.bar).toEqual(1)
-
-      val parent: NonNativeParentClass = foo
-      expect(parent.x).toEqual(3)
-      expect(parent.bar).toEqual(1)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(3)
-      expect(dyn.bar).toEqual(1)
-    }
-
-    it("override getter with super") {
-      @ScalaJSDefined
-      class OverrideGetterSuperParent extends js.Object {
-        def bar: Int = 43
-      }
-      @ScalaJSDefined
-      class OverrideGetterSuperChild extends OverrideGetterSuperParent {
-        override def bar: Int = super.bar * 3
-      }
-
-      val foo = new OverrideGetterSuperChild
-      expect(foo.bar).toEqual(129)
-
-      val parent: OverrideGetterSuperParent = foo
-      expect(parent.bar).toEqual(129)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.bar).toEqual(129)
-    }
-
-    it("override setter with super") {
-      @ScalaJSDefined
-      class OverrideSetterSuperParent extends js.Object {
-        var x: Int = 43
-        def bar_=(v: Int): Unit = x = v
-      }
-      @ScalaJSDefined
-      class OverrideSetterSuperChild extends OverrideSetterSuperParent {
-        override def bar_=(v: Int): Unit = super.bar_=(v * 3)
-      }
-
-      val foo = new OverrideSetterSuperChild
-      foo.bar_=(4)
-      expect(foo.x).toEqual(12)
-
-      val parent: OverrideSetterSuperParent = foo
-      parent.bar_=(5)
-      expect(parent.x).toEqual(15)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      dyn.bar = 6
-      expect(dyn.x).toEqual(18)
-    }
-
-    it("add setter in subclass") {
-      @ScalaJSDefined
-      class AddSetterInSubclassParent extends js.Object {
-        var x: Int = 43
-        def bar: Int = x
-      }
-      @ScalaJSDefined
-      class AddSetterInSubclassChild extends AddSetterInSubclassParent {
-        def bar_=(v: Int): Unit = x = v
-      }
-
-      val foo = new AddSetterInSubclassChild
-      foo.bar = 4
-      expect(foo.x).toEqual(4)
-      expect(foo.bar).toEqual(4)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      dyn.bar = 6
-      expect(dyn.x).toEqual(6)
-      expect(dyn.bar).toEqual(6)
-    }
-
-    it("add getter in subclass") {
-      @ScalaJSDefined
-      class AddGetterInSubclassParent extends js.Object {
-        var x: Int = 43
-        def bar_=(v: Int): Unit = x = v
-      }
-      @ScalaJSDefined
-      class AddGetterInSubclassChild extends AddGetterInSubclassParent {
-        def bar: Int = x
-      }
-
-      val foo = new AddGetterInSubclassChild
-      foo.bar = 4
-      expect(foo.x).toEqual(4)
-      expect(foo.bar).toEqual(4)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      dyn.bar = 6
-      expect(dyn.x).toEqual(6)
-      expect(dyn.bar).toEqual(6)
-    }
-
-    it("overload native method") {
-      @ScalaJSDefined
-      class OverloadNativeMethod extends NativeParentClass(3) {
-        def foo(s: String, y: Int): String = foo(s) + " " + y
-      }
-
-      val foo = new OverloadNativeMethod
-      expect(foo.foo("hello")).toEqual("hello3")
-      expect(foo.foo("hello", 4)).toEqual("hello3 4")
-
-      val parent: NativeParentClass = foo
-      expect(parent.foo("hello")).toEqual("hello3")
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.foo("hello")).toEqual("hello3")
-      expect(dyn.foo("hello", 4)).toEqual("hello3 4")
-    }
-
-    it("overload non-native method") {
-      @ScalaJSDefined
-      class OverloadNonNativeMethod extends NonNativeParentClass(3) {
-        def foo(s: String, y: Int): String = foo(s) + " " + y
-      }
-
-      val foo = new OverloadNonNativeMethod
-      expect(foo.foo("hello")).toEqual("hello3")
-      expect(foo.foo("hello", 4)).toEqual("hello3 4")
-
-      val parent: NonNativeParentClass = foo
-      expect(parent.foo("hello")).toEqual("hello3")
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.foo("hello")).toEqual("hello3")
-      expect(dyn.foo("hello", 4)).toEqual("hello3 4")
-    }
-
-    it("implement a simple trait") {
-      @ScalaJSDefined
-      class ImplementSimpleTrait extends js.Object with SimpleTrait {
-        def foo(x: Int): Int = x + 1
-      }
-
-      val foo = new ImplementSimpleTrait
-      expect(foo.foo(3)).toEqual(4)
-
-      val fooTrait: SimpleTrait = foo
-      expect(fooTrait.foo(5)).toEqual(6)
-    }
-
-    it("implement a simple trait under separate compilation") {
-      @ScalaJSDefined
-      class ImplementSimpleTraitSepRun extends js.Object with SepRun.SimpleTrait {
-        def foo(x: Int): Int = x + 1
-      }
-
-      val foo = new ImplementSimpleTraitSepRun
-      expect(foo.foo(3)).toEqual(4)
-
-      val fooTrait: SepRun.SimpleTrait = foo
-      expect(fooTrait.foo(5)).toEqual(6)
-    }
-
-    it("implement a trait with a val") {
-      @ScalaJSDefined
-      trait TraitWithVal extends js.Object {
-        val x: Int
-      }
-
-      @ScalaJSDefined
-      class ImplWithVal extends TraitWithVal {
-        val x: Int = 3
-      }
-
-      val foo = new ImplWithVal
-      expect(foo.x).toEqual(3)
-
-      val fooTrait: TraitWithVal = foo
-      expect(fooTrait.x).toEqual(3)
-    }
-
-    it("implement a trait with a var") {
-      @ScalaJSDefined
-      trait TraitWithVar extends js.Object {
-        var x: Int
-      }
-
-      @ScalaJSDefined
-      class ImplWithVar extends TraitWithVar {
-        var x: Int = 3
-      }
-
-      val foo = new ImplWithVar
-      expect(foo.x).toEqual(3)
-
-      val fooTrait: TraitWithVar = foo
-      expect(fooTrait.x).toEqual(3)
-
-      foo.x = 5
-      expect(fooTrait.x).toEqual(5)
-      fooTrait.x = 19
-      expect(foo.x).toEqual(19)
-    }
-
-    it("implement a trait extending a native JS class") {
-      @ScalaJSDefined
-      trait TraitExtendsJSClass extends NativeParentClass {
-        def foobar(x: Int): Int
-      }
-
-      @ScalaJSDefined
-      class ImplExtendsJSClassAndTrait
-          extends NativeParentClass(5) with TraitExtendsJSClass {
-        def foobar(x: Int): Int = x * 3
-      }
-
-      val foo = new ImplExtendsJSClassAndTrait
-      expect(foo.foobar(6)).toEqual(18)
-    }
-
-    it("implement abstract members coming from a native JS class") {
-      @ScalaJSDefined
-      class ImplDeferredMembersFromJSParent
-          extends NativeParentClassWithDeferred {
-        val x: Int = 43
-
-        def bar(y: Int): Int = y * 2
-      }
-
-      val FooResult = (12 + 4) * 2 + 43
-
-      val foo = new ImplDeferredMembersFromJSParent
-      expect(foo.x).toEqual(43)
-      expect(foo.bar(32)).toEqual(64)
-      expect(foo.foo(12)).toEqual(FooResult)
-
-      val fooParent: NativeParentClassWithDeferred = foo
-      expect(fooParent.x).toEqual(43)
-      expect(fooParent.bar(32)).toEqual(64)
-      expect(fooParent.foo(12)).toEqual(FooResult)
-
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.x).toEqual(43)
-      expect(dyn.bar(32)).toEqual(64)
-      expect(dyn.foo(12)).toEqual(FooResult)
-    }
-
-  }
 
   class SomeValueClass(val i: Int) extends AnyVal
 

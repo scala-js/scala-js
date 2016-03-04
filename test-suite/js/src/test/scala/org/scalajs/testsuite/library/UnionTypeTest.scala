@@ -37,7 +37,7 @@ class UnionTypeTest {
     val list = List(1, 2, 3)
 
     val x1: Seq[Int] | CharSequence = list
-    assertTrue(x1.isInstanceOf[List[_]])
+    assertTrue((x1: Any).isInstanceOf[List[_]])
     assertEquals(List(1, 2, 3), x1.asInstanceOf[List[_]])
 
     val x2: Seq[Int] | CharSequence = "hello"

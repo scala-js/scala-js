@@ -7,22 +7,34 @@
 \*                                                                      */
 package org.scalajs.testsuite.jsinterop
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
+import org.scalajs.testsuite.junit.JUnitUtil
 
-object `1_TestName` extends JasmineTest { // scalastyle:ignore
-  describe("a test with name 1_TestName") {
-    it("should run") {}
-  }
+class `1_TestName` { // scalastyle:ignore
+  @Test def `a test with name 1_TestName`(): Unit = ()
 }
 
-object eval extends JasmineTest { // scalastyle:ignore
-  describe("a test with name eval") {
-    it("should run") {}
-  }
+class eval { // scalastyle:ignore
+  @Test def `a test with name eval`(): Unit = ()
 }
 
-object `\u1f4a7` extends JasmineTest { // scalastyle:ignore
-  describe("a test with name \u1f4a9") {
-    it("should run") {}
+class `\u1f4a7` { // scalastyle:ignore
+  @Test def `a test with name \u1f4a7`(): Unit = ()
+}
+
+class StrangeNamedTests {
+  @Test def testName1(): Unit = {
+    // This should not fail
+    JUnitUtil.loadBootstrapper("org.scalajs.testsuite.jsinterop.1_TestName")
+  }
+
+  @Test def testName2(): Unit = {
+    // This should not fail
+    JUnitUtil.loadBootstrapper("org.scalajs.testsuite.jsinterop.eval")
+  }
+
+  @Test def testName3(): Unit = {
+    // This should not fail
+    JUnitUtil.loadBootstrapper("org.scalajs.testsuite.jsinterop.\u1f4a7")
   }
 }
