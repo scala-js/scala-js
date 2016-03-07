@@ -12,139 +12,135 @@ import java.io.Serializable
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSName
-import org.scalajs.jasminetest.JasmineTest
+
+import org.junit.Test
+import org.junit.Assert._
+import org.junit.Assume._
+
+import org.scalajs.testsuite.utils.Platform._
 
 import scala.util.{ Try, Failure }
 
-object RuntimeTypesTest extends JasmineTest {
+class RuntimeTypesTest {
+  import RuntimeTypesTest._
 
-  describe("Scala Arrays") {
-    it("are instances of Serializable and Cloneable - #2094") {
-      expect((Array(3): Any).isInstanceOf[Serializable]).toBeTruthy
-      expect((Array(3): Any).isInstanceOf[Cloneable]).toBeTruthy
-      expect((Array("hello"): Any).isInstanceOf[Serializable]).toBeTruthy
-      expect((Array("hello"): Any).isInstanceOf[Cloneable]).toBeTruthy
-    }
-
-    it("cast to Serializable and Cloneable - #2094") {
-      expect(() => (Array(3): Any).asInstanceOf[Serializable]).not.toThrow
-      expect(() => (Array(3): Any).asInstanceOf[Cloneable]).not.toThrow
-      expect(() => (Array("hello"): Any).asInstanceOf[Serializable]).not.toThrow
-      expect(() => (Array("hello"): Any).asInstanceOf[Cloneable]).not.toThrow
-    }
+  @Test def scala_Arrays_are_instances_of_Serializable_and_Cloneable_issue_2094(): Unit = {
+    assertTrue((Array(3): Any).isInstanceOf[Serializable])
+    assertTrue((Array(3): Any).isInstanceOf[Cloneable])
+    assertTrue((Array("hello"): Any).isInstanceOf[Serializable])
+    assertTrue((Array("hello"): Any).isInstanceOf[Cloneable])
   }
 
-  describe("scala.Nothing") {
+  @Test def scala_Arrays_cast_to_Serializable_and_Cloneable_issue_2094(): Unit = {
+    (Array(3): Any).asInstanceOf[Serializable] // should not throw
+    (Array(3): Any).asInstanceOf[Cloneable] // should not throw
+    (Array("hello"): Any).asInstanceOf[Serializable] // should not throw
+    (Array("hello"): Any).asInstanceOf[Cloneable] // should not throw
+  }
 
-    when("compliant-asinstanceofs").
-    it("casts to scala.Nothing should fail") {
-      def test(x: Any): Unit = {
-        try {
-          x.asInstanceOf[Nothing]
-          fail("casting " + x + " to Nothing did not fail")
-        } catch {
-          case th: Throwable =>
-            expect(th.isInstanceOf[ClassCastException]).toBeTruthy
-            expect(th.getMessage).toEqual(
-                x + " is not an instance of scala.runtime.Nothing$")
-        }
+  @Test def scala_Nothing_casts_to_scala_Nothing_should_fail(): Unit = {
+    assumeTrue(hasCompliantAsInstanceOfs)
+    def test(x: Any): Unit = {
+      try {
+        x.asInstanceOf[Nothing]
+        fail("casting " + x + " to Nothing did not fail")
+      } catch {
+        case th: Throwable =>
+          assertTrue(th.isInstanceOf[ClassCastException])
+          assertEquals(x + " is not an instance of scala.runtime.Nothing$",
+              th.getMessage)
       }
-      test("a")
-      test(null)
     }
+    test("a")
+    test(null)
+  }
 
-    when("compliant-asinstanceofs").
-    it("reflected casts to scala.Nothing should fail") {
-      def test(x: Any): Unit = {
-        try {
-          classOf[Nothing].cast(x)
-          fail("casting " + x + " to Nothing did not fail")
-        } catch {
-          case th: Throwable =>
-            expect(th.isInstanceOf[ClassCastException]).toBeTruthy
-            expect(th.getMessage).toEqual(
-                x + " is not an instance of scala.runtime.Nothing$")
-        }
+  @Test def scala_Nothing_reflected_casts_to_scala_Nothing_should_fail(): Unit = {
+    assumeTrue(hasCompliantAsInstanceOfs)
+    def test(x: Any): Unit = {
+      try {
+        classOf[Nothing].cast(x)
+        fail("casting " + x + " to Nothing did not fail")
+      } catch {
+        case th: Throwable =>
+          assertTrue(th.isInstanceOf[ClassCastException])
+          assertEquals(x + " is not an instance of scala.runtime.Nothing$",
+              th.getMessage)
       }
-      test("a")
-      test(null)
     }
-
-    it("Array[Nothing] should be allowed to exists and be castable") {
-      val arr = Array[Nothing]()
-      arr.asInstanceOf[Array[Nothing]]
-    }
-
-    it("Array[Array[Nothing]], too") {
-      val arr = Array[Array[Nothing]]()
-      arr.asInstanceOf[Array[Array[Nothing]]]
-      // This apparently works too... Dunno why
-      arr.asInstanceOf[Array[Nothing]]
-    }
-
+    test("a")
+    test(null)
   }
 
-  describe("scala.Null") {
-
-    when("compliant-asinstanceofs").
-    it("casts to scala.Null should fail for everything else but null") {
-      val msg = Try("a".asInstanceOf[Null]) match {
-        case Failure(thr: ClassCastException) => thr.getMessage
-        case _ => "not failed"
-      }
-      expect(msg).toEqual("a is not an instance of scala.runtime.Null$")
-    }
-
-    it("classTag of scala.Null should contain proper Class[_] - #297") {
-      val tag = scala.reflect.classTag[Null]
-      expect(tag.runtimeClass != null).toBeTruthy
-      expect(tag.runtimeClass.getName).toEqual("scala.runtime.Null$")
-    }
-
-    it("casts to scala.Null should succeed on null") {
-      null.asInstanceOf[Null]
-    }
-
-    it("Array[Null] should be allowed to exist and be castable") {
-      val arr = Array.fill[Null](5)(null)
-      arr.asInstanceOf[Array[Null]]
-    }
-
-    it("Array[Array[Null]] too") {
-      val arr = Array.fill[Null](5,5)(null)
-      arr.asInstanceOf[Array[Array[Null]]]
-      // This apparently works too... Dunno why
-      arr.asInstanceOf[Array[Null]]
-    }
-
+  @Test def scala_Nothing_Array_Nothing_should_be_allowed_to_exists_and_be_castable(): Unit = {
+    val arr = Array[Nothing]()
+    arr.asInstanceOf[Array[Nothing]]
   }
 
-  describe("Raw JS types") {
-
-    it("Arrays of raw JS types") {
-      val arrayOfParentJSType = new Array[ParentJSType](0)
-      val arrayOfJSInterface = new Array[SomeJSInterface](0)
-      val arrayOfJSClass = new Array[SomeJSClass](0)
-
-      expect(arrayOfParentJSType.isInstanceOf[Array[AnyRef]]).toBeTruthy
-      expect(arrayOfJSInterface.isInstanceOf[Array[AnyRef]]).toBeTruthy
-      expect(arrayOfJSClass.isInstanceOf[Array[AnyRef]]).toBeTruthy
-
-      expect(arrayOfParentJSType.isInstanceOf[Array[ParentJSType]]).toBeTruthy
-      expect(arrayOfJSInterface.isInstanceOf[Array[SomeJSInterface]]).toBeTruthy
-      expect(arrayOfJSClass.isInstanceOf[Array[SomeJSClass]]).toBeTruthy
-
-      expect(arrayOfJSInterface.isInstanceOf[Array[ParentJSType]]).toBeTruthy
-      expect(arrayOfJSClass.isInstanceOf[Array[ParentJSType]]).toBeTruthy
-
-      expect(arrayOfParentJSType.isInstanceOf[Array[SomeJSInterface]]).toBeFalsy
-      expect(arrayOfParentJSType.isInstanceOf[Array[SomeJSClass]]).toBeFalsy
-
-      expect(arrayOfJSInterface.isInstanceOf[Array[js.Object]]).toBeFalsy
-      expect(arrayOfJSClass.isInstanceOf[Array[js.Object]]).toBeTruthy
-    }
-
+  @Test def scala_Nothing_Array_Array_Nothing_too(): Unit = {
+    val arr = Array[Array[Nothing]]()
+    arr.asInstanceOf[Array[Array[Nothing]]]
+    // This apparently works too... Dunno why
+    arr.asInstanceOf[Array[Nothing]]
   }
+
+  @Test def scala_Null_casts_to_scala_Null_should_fail_for_everything_else_but_null(): Unit = {
+    assumeTrue(hasCompliantAsInstanceOfs)
+    val msg = Try("a".asInstanceOf[Null]) match {
+      case Failure(thr: ClassCastException) => thr.getMessage
+      case _ => "not failed"
+    }
+    assertEquals("a is not an instance of scala.runtime.Null$", msg)
+  }
+
+  @Test def scala_Null_classTag_of_scala_Null_should_contain_proper_Class_issue_297(): Unit = {
+    val tag = scala.reflect.classTag[Null]
+    assertTrue(tag.runtimeClass != null)
+    assertEquals("scala.runtime.Null$", tag.runtimeClass.getName)
+  }
+
+  @Test def scala_Null_casts_to_scala_Null_should_succeed_on_null(): Unit = {
+    null.asInstanceOf[Null]
+  }
+
+  @Test def scala_Null_Array_Null_should_be_allowed_to_exist_and_be_castable(): Unit = {
+    val arr = Array.fill[Null](5)(null)
+    arr.asInstanceOf[Array[Null]]
+  }
+
+  @Test def scala_Null_Array_Array_Null_too(): Unit = {
+    val arr = Array.fill[Null](5,5)(null)
+    arr.asInstanceOf[Array[Array[Null]]]
+    // This apparently works too... Dunno why
+    arr.asInstanceOf[Array[Null]]
+  }
+
+  @Test def rawJSTypes_Arrays_of_raw_JS_types(): Unit = {
+    val arrayOfParentJSType = new Array[ParentJSType](0)
+    val arrayOfJSInterface = new Array[SomeJSInterface](0)
+    val arrayOfJSClass = new Array[SomeJSClass](0)
+
+    assertTrue(arrayOfParentJSType.isInstanceOf[Array[AnyRef]])
+    assertTrue(arrayOfJSInterface.isInstanceOf[Array[AnyRef]])
+    assertTrue(arrayOfJSClass.isInstanceOf[Array[AnyRef]])
+
+    assertTrue(arrayOfParentJSType.isInstanceOf[Array[ParentJSType]])
+    assertTrue(arrayOfJSInterface.isInstanceOf[Array[SomeJSInterface]])
+    assertTrue(arrayOfJSClass.isInstanceOf[Array[SomeJSClass]])
+
+    assertTrue(arrayOfJSInterface.isInstanceOf[Array[ParentJSType]])
+    assertTrue(arrayOfJSClass.isInstanceOf[Array[ParentJSType]])
+
+    assertFalse(arrayOfParentJSType.isInstanceOf[Array[SomeJSInterface]])
+    assertFalse(arrayOfParentJSType.isInstanceOf[Array[SomeJSClass]])
+
+    assertFalse(arrayOfJSInterface.isInstanceOf[Array[js.Object]])
+    assertTrue(arrayOfJSClass.isInstanceOf[Array[js.Object]])
+  }
+
+}
+
+object RuntimeTypesTest {
 
   @js.native
   trait ParentJSType extends js.Object

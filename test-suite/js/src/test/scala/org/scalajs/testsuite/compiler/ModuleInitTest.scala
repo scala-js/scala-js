@@ -7,22 +7,27 @@
 \*                                                                      */
 package org.scalajs.testsuite.compiler
 
-import org.scalajs.jasminetest.JasmineTest
-import scala.scalajs.js
+import org.junit.Test
+import org.junit.Assert._
+import org.junit.Assume._
 
-object ModuleInitTest extends JasmineTest {
+import org.scalajs.testsuite.utils.Platform._
 
-  describe("Scala Modules") {
-    when("compliant-moduleinit").
-    it("Should only execute module initializers once") {
-      val x = A.Y
-      val y = A.cs.head
-      expect(x ne null).toBeTruthy
-      expect(y eq null).toBeTruthy
-      expect(x eq A.Y).toBeTruthy
-      expect(Counter.c).toBe(1)
-    }
+class ModuleInitTest {
+  import ModuleInitTest._
+
+  @Test def should_only_execute_module_initializers_once(): Unit = {
+    assumeTrue(hasCompliantModule)
+    val x = A.Y
+    val y = A.cs.head
+    assertTrue(x ne null)
+    assertTrue(y eq null)
+    assertTrue(x eq A.Y)
+    assertEquals(1, Counter.c)
   }
+}
+
+object ModuleInitTest {
 
   object Counter {
     var c: Int = 0

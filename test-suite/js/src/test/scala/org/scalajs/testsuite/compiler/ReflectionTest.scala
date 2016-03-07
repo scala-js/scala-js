@@ -17,135 +17,141 @@ import scala.reflect.{classTag, ClassTag}
 import scala.scalajs.js
 import js.annotation.JSName
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
+import org.junit.Assert._
+import org.junit.Assume._
+
+import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform._
 
 /** Tests the little reflection we support */
-object ReflectionTest extends JasmineTest {
+class ReflectionTest {
+  import ReflectionTest._
 
   def implicitClassTagTest[A: ClassTag](x: Any): Boolean = x match {
     case x: A => true
-    case _    => false
+    case _ => false
   }
 
-  describe("Scala.js Reflection (through java.lang.Class)") {
-    it("java.lang.Class.getName under normal circumstances") {
-      expect(classOf[scala.Some[_]].getName).toEqual("scala.Some")
-    }
-
-    it("should append $ to class name of objects") {
-      expect(TestObject.getClass.getName).toEqual(
-        "org.scalajs.testsuite.compiler.ReflectionTest$TestObject$")
-    }
-
-    it("java.lang.Class.getName renamed through semantics") {
-      expect(classOf[RenamedTestClass].getName).toEqual("renamed.test.Class")
-    }
-
-    it("should support isInstance") {
-      class A
-      class B extends A
-      val b = new B
-      expect(classOf[A].isInstance(b)).toBeTruthy
-      expect(classOf[A].isInstance("hello")).toBeFalsy
-
-      expect(classOf[Array[Seq[_]]].isInstance(Array(List(3)))).toBeTruthy
-
-      expect(classOf[Serializable].isInstance("hello")).toBeTruthy
-
-      expect(classOf[Serializable].isInstance(new Array[Int](1))).toBeTruthy
-      expect(classOf[Cloneable].isInstance(new Array[Int](1))).toBeTruthy
-      expect(classOf[Serializable].isInstance(new Array[String](1))).toBeTruthy
-      expect(classOf[Cloneable].isInstance(new Array[String](1))).toBeTruthy
-    }
-
-    it("isInstance for raw JS class") {
-      js.Dynamic.global.ReflectionTestRawJSClass =
-        js.eval("""(function() {})""")
-
-      val obj = new ReflectionTestRawJSClass
-      expect(obj.isInstanceOf[ReflectionTestRawJSClass]).toBeTruthy
-      expect(classOf[ReflectionTestRawJSClass].isInstance(obj)).toBeTruthy
-
-      val other = (5, 6): Any
-      expect(other.isInstanceOf[ReflectionTestRawJSClass]).toBeFalsy
-      expect(classOf[ReflectionTestRawJSClass].isInstance(other)).toBeFalsy
-
-      val ct = classTag[ReflectionTestRawJSClass]
-      expect(ct.unapply(obj).isDefined).toBeTruthy
-      expect(ct.unapply(other).isDefined).toBeFalsy
-
-      expect(implicitClassTagTest[ReflectionTestRawJSClass](obj)).toBeTruthy
-      expect(implicitClassTagTest[ReflectionTestRawJSClass](other)).toBeFalsy
-    }
-
-    it("isInstance for raw JS traits should fail") {
-      expect(() => classOf[ReflectionTestRawJSTrait].isInstance(5)).toThrow
-
-      val ct = classTag[ReflectionTestRawJSTrait]
-      expect(() => ct.unapply(new AnyRef)).toThrow
-
-      expect(() => implicitClassTagTest[ReflectionTestRawJSTrait](new AnyRef)).toThrow
-    }
-
-    it("getClass() for normal types") {
-      class Foo {
-        def bar(): Class[_] = super.getClass()
-      }
-      val foo = new Foo
-      expect(foo.getClass() eq classOf[Foo]).toBeTruthy
-      expect(foo.bar() eq classOf[Foo]).toBeTruthy
-    }
-
-    it("getClass() for anti-boxed primitive types") {
-      implicit def classAsAny(c: java.lang.Class[_]): js.Any =
-        c.asInstanceOf[js.Any]
-      expect((false: Any).getClass).toBe(classOf[java.lang.Boolean])
-      expect(('a': Any).getClass).toBe(classOf[java.lang.Character])
-      expect((1.toByte: Any).getClass).toBe(classOf[java.lang.Byte])
-      expect((1.toShort: Any).getClass).toBe(classOf[java.lang.Byte])
-      expect((1: Any).getClass).toBe(classOf[java.lang.Byte])
-      expect((1L: Any).getClass).toBe(classOf[java.lang.Long])
-      expect((1.5f: Any).getClass).toBe(classOf[java.lang.Float])
-      expect((1.5: Any).getClass).toBe(classOf[java.lang.Float])
-      expect(((): Any).getClass).toBe(classOf[scala.runtime.BoxedUnit])
-    }
-
-    it("Class.isAssignableFrom should mimic runtime type tests behavior - #879") {
-      expect(classOf[Short].isAssignableFrom(classOf[Byte])).toBeTruthy
-      expect(classOf[Byte].isAssignableFrom(classOf[Byte])).toBeTruthy
-      expect(classOf[Byte].isAssignableFrom(classOf[Short])).toBeFalsy
-      expect(classOf[Int].isAssignableFrom(classOf[Byte])).toBeTruthy
-      expect(classOf[Double].isAssignableFrom(classOf[Int])).toBeTruthy
-      expect(classOf[Int].isAssignableFrom(classOf[Double])).toBeFalsy
-      expect(classOf[Long].isAssignableFrom(classOf[Int])).toBeFalsy
-    }
-
-    it("getSuperclass - #1489") {
-      expect(classOf[SomeChildClass].getSuperclass == classOf[SomeParentClass]).toBeTruthy
-      expect(classOf[AnyRef].getSuperclass == null).toBeTruthy
-      expect(classOf[String].getSuperclass == classOf[AnyRef]).toBeTruthy
-      expect(classOf[Integer].getSuperclass == classOf[Number]).toBeTruthy
-
-      expect(classOf[ChildClassWhoseDataIsAccessedDirectly].getSuperclass.getName).toEqual(
-          "org.scalajs.testsuite.compiler.ReflectionTest$ParentClassWhoseDataIsNotAccessedDirectly")
-    }
-
-    it("cast(), positive") {
-      expect(classOf[String].cast(null)).toBeNull
-      expect(classOf[String].cast("hello")).toEqual("hello")
-      expect(classOf[Seq[_]].cast(List(1, 2)) == List(1, 2)).toBeTruthy
-      expect(() => classOf[Serializable].cast(Array(3))).not.toThrow
-      expect(() => classOf[Cloneable].cast(Array(3))).not.toThrow
-      expect(() => classOf[Object].cast(js.Array(3, 4))).not.toThrow
-    }
-
-    when("compliant-asinstanceofs").
-    it("cast(), negative") {
-      expect(() => classOf[String].cast(5)).toThrow
-      expect(() => classOf[Seq[_]].cast(Some("foo"))).toThrow
-    }
+  @Test def java_lang_Class_getName_under_normal_circumstances(): Unit = {
+    assertEquals("scala.Some", classOf[scala.Some[_]].getName)
   }
 
+  @Test def should_append_$_to_class_name_of_objects(): Unit = {
+    assertEquals("org.scalajs.testsuite.compiler.ReflectionTest$TestObject$",
+      TestObject.getClass.getName)
+  }
+
+  @Test def java_lang_Class_getName_renamed_through_semantics(): Unit = {
+    assertEquals("renamed.test.Class", classOf[RenamedTestClass].getName)
+  }
+
+  @Test def should_support_isInstance(): Unit = {
+    class A
+    class B extends A
+    val b = new B
+    assertTrue(classOf[A].isInstance(b))
+    assertFalse(classOf[A].isInstance("hello"))
+
+    assertTrue(classOf[Array[Seq[_]]].isInstance(Array(List(3))))
+
+    assertTrue(classOf[Serializable].isInstance("hello"))
+
+    assertTrue(classOf[Serializable].isInstance(new Array[Int](1)))
+    assertTrue(classOf[Cloneable].isInstance(new Array[Int](1)))
+    assertTrue(classOf[Serializable].isInstance(new Array[String](1)))
+    assertTrue(classOf[Cloneable].isInstance(new Array[String](1)))
+  }
+
+  @Test def isInstance_for_raw_JS_class(): Unit = {
+    js.Dynamic.global.ReflectionTestRawJSClass =
+      js.eval("""(function() {})""")
+
+    val obj = new ReflectionTestRawJSClass
+    assertTrue(obj.isInstanceOf[ReflectionTestRawJSClass])
+    assertTrue(classOf[ReflectionTestRawJSClass].isInstance(obj))
+
+    val other = (5, 6): Any
+    assertFalse(other.isInstanceOf[ReflectionTestRawJSClass])
+    assertFalse(classOf[ReflectionTestRawJSClass].isInstance(other))
+
+    val ct = classTag[ReflectionTestRawJSClass]
+    assertTrue(ct.unapply(obj).isDefined)
+    assertFalse(ct.unapply(other).isDefined)
+
+    assertTrue(implicitClassTagTest[ReflectionTestRawJSClass](obj))
+    assertFalse(implicitClassTagTest[ReflectionTestRawJSClass](other))
+  }
+
+  @Test def isInstance_for_raw_JS_traits_should_fail(): Unit = {
+    assertThrows(classOf[Exception], classOf[ReflectionTestRawJSTrait].isInstance(5))
+
+    val ct = classTag[ReflectionTestRawJSTrait]
+    assertThrows(classOf[Exception], ct.unapply(new AnyRef))
+
+    assertThrows(classOf[Exception], implicitClassTagTest[ReflectionTestRawJSTrait](new AnyRef))
+  }
+
+  @Test def getClass_for_normal_types(): Unit = {
+    class Foo {
+      def bar(): Class[_] = super.getClass()
+    }
+    val foo = new Foo
+    assertSame(foo.getClass(), classOf[Foo])
+    assertSame(foo.bar(), classOf[Foo])
+  }
+
+  @Test def getClass_for_anti_boxed_primitive_types(): Unit = {
+    implicit def classAsAny(c: java.lang.Class[_]): js.Any =
+      c.asInstanceOf[js.Any]
+    assertEquals(classOf[java.lang.Boolean], (false: Any).getClass)
+    assertEquals(classOf[java.lang.Character], ('a': Any).getClass)
+    assertEquals(classOf[java.lang.Byte], (1.toByte: Any).getClass)
+    assertEquals(classOf[java.lang.Byte], (1.toShort: Any).getClass)
+    assertEquals(classOf[java.lang.Byte], (1: Any).getClass)
+    assertEquals(classOf[java.lang.Long], (1L: Any).getClass)
+    assertEquals(classOf[java.lang.Float], (1.5f: Any).getClass)
+    assertEquals(classOf[java.lang.Float], (1.5: Any).getClass)
+    assertEquals(classOf[scala.runtime.BoxedUnit], ((): Any).getClass)
+  }
+
+  @Test def class_isAssignableFrom_should_mimic_runtime_type_tests_behavior_issue_879(): Unit = {
+    assertTrue(classOf[Short].isAssignableFrom(classOf[Byte]))
+    assertTrue(classOf[Byte].isAssignableFrom(classOf[Byte]))
+    assertFalse(classOf[Byte].isAssignableFrom(classOf[Short]))
+    assertTrue(classOf[Int].isAssignableFrom(classOf[Byte]))
+    assertTrue(classOf[Double].isAssignableFrom(classOf[Int]))
+    assertFalse(classOf[Int].isAssignableFrom(classOf[Double]))
+    assertFalse(classOf[Long].isAssignableFrom(classOf[Int]))
+  }
+
+  @Test def getSuperclass_issue_1489(): Unit = {
+    assertEquals(classOf[SomeParentClass], classOf[SomeChildClass].getSuperclass)
+    assertNull(classOf[AnyRef].getSuperclass)
+    assertEquals(classOf[AnyRef], classOf[String].getSuperclass)
+    assertEquals(classOf[Number], classOf[Integer].getSuperclass)
+
+    assertEquals("org.scalajs.testsuite.compiler.ReflectionTest$ParentClassWhoseDataIsNotAccessedDirectly",
+      classOf[ChildClassWhoseDataIsAccessedDirectly].getSuperclass.getName)
+  }
+
+  @Test def cast_positive(): Unit = {
+    assertNull(classOf[String].cast(null))
+    assertEquals("hello", classOf[String].cast("hello"))
+    assertEquals(List(1, 2), classOf[Seq[_]].cast(List(1, 2)))
+    classOf[Serializable].cast(Array(3)) // should not throw
+    classOf[Cloneable].cast(Array(3)) // should not throw
+    classOf[Object].cast(js.Array(3, 4)) // should not throw
+  }
+
+  @Test def cast_negative(): Unit = {
+    assumeTrue(hasCompliantAsInstanceOfs)
+    assertThrows(classOf[Exception], classOf[String].cast(5))
+    assertThrows(classOf[Exception], classOf[Seq[_]].cast(Some("foo")))
+  }
+}
+
+object ReflectionTest {
   object TestObject
 
   class RenamedTestClass

@@ -10,451 +10,454 @@ package org.scalajs.testsuite.compiler
 import scala.annotation.tailrec
 
 import scala.scalajs.js
-import org.scalajs.jasminetest.JasmineTest
 
-import org.scalajs.testsuite.utils.ExpectExceptions
+import org.junit.Test
+import org.junit.Assert._
 
-object RegressionTest extends JasmineTest with ExpectExceptions {
+import org.scalajs.testsuite.utils.AssertThrows._
 
+class RegressionTest {
+  import RegressionTest._
+
+  @Test def `Wrong_division_conversion_(7_/_2.0)_issue_18`(): Unit = {
+    val div = 7 / 2.0
+    assertEquals(3.5, div)
+    assertEquals("double", div.getClass.getName)
+
+    val mod = 7 % 2.0
+    assertEquals(1.0, mod)
+    assertEquals("double", mod.getClass.getName)
+  }
+
+  @Test def Abort_with_some_pattern_match_guards_issue_22(): Unit = {
+    object PatternMatchGuards {
+      def go(f: Int => Int): Int = f(1)
+      def main(): Unit = {
+        go {
+          case x if false => x
+        }
+      }
+    }
+    // Nothing to check
+  }
+
+  @Test def Bad_encoding_for_characters_spanning_2_UTF_16_chars_issue_23(): Unit = {
+    val str = "A∀\uD835\uDCAB"
+    var s: String = ""
+    for (c <- str) {
+      val code: Int = c
+      s = s + code + " "
+    }
+    assertEquals("65 8704 55349 56491 ", s)
+  }
+
+  @Test def String_concatenation_with_null_issue_26(): Unit = {
+    val x: Object = null
+    assertEquals("nullcheck", x + "check")
+  }
+
+  @Test def should_emit_static_calls_when_forwarding_to_another_constructor_issue_66(): Unit = {
+    new Bug66B("", "")
+  }
+
+  @Test def should_not_swallow_Unit_expressions_when_converting_to_js_Any_issue_83(): Unit = {
+    var effectHappened = false
+    def doEffect(): Unit = effectHappened = true
+    def f(): js.Any = doEffect()
+    f()
+    assertTrue(effectHappened)
+  }
+
+  @Test def should_correctly_call_subSequence_on_non_string_CharSequences_issue_55(): Unit = {
+    val arr: CharSequence = Array('a','b','c','d')
+    val ss = arr.subSequence(2,3)
+    assertEquals(1, ss.length())
+    assertEquals('c', ss.charAt(0))
+  }
+
+  @Test def should_correctly_concat_primitive_values_to_strings_issue_113(): Unit = {
+    assertEquals("4foo", 4 + "foo")
+    assertEquals("afoo", 'a' + "foo")
+  }
+
+  @Test def should_resolve_overloads_on_scala_Function_apply_when_converting_to_js_Function_issue_125(): Unit = {
+    class Fct extends Function1[Int, Any] {
+      def apply(n: Int): Int = n
+    }
+
+    val scalaFunction = new Fct
+    val jsFunction: js.Any = scalaFunction
+    val thisFunction: js.ThisFunction = scalaFunction
+  }
+
+  @Test def should_correctly_dispatch_calls_on_private_functions_issue_165(): Unit = {
+    class A {
+      private def x: Int = 1
+      def value: Int = x
+    }
+    class B extends A {
+      private def x: Int = 2
+    }
+    assertEquals(1, new B().value)
+  }
+
+  @Test def should_correctly_mangle_JavaScript_reserved_identifiers_issue_153(): Unit = {
+    // scalastyle:off class.name
+
+    // Class name
+    class break {
+      // class variable
+      var continue: Int = 1
+      // method name
+      def switch: Int = {
+        // local name
+        val default = 2
+        default
+      }
+    }
+    trait Foo {
+      // static member (through mixin)
+      def function: Int = 3
+    }
+
+    val x = new break with Foo
+    assertEquals(1, x.continue)
+    assertEquals(2, x.switch)
+    assertEquals(3, x.function)
+
+    // scalastyle:on class.name
+  }
+
+  @Test def should_correctly_mangle_identifiers_starting_with_a_digit_issue_153(): Unit = {
+    // scalastyle:off class.name
+
+    // Class name
+    class `0` {
+      // class variable
+      var `1`: Int = 1
+      // method name
+      def `2`: Int = {
+        // local name
+        val `22` = 2
+        `22`
+      }
+    }
+    trait Foo {
+      // static member (through mixin)
+      def `3`: Int = 3
+    }
+
+    val x = new `0` with Foo
+    assertEquals(1, x.`1`)
+    assertEquals(2, x.`2`)
+    assertEquals(3, x.`3`)
+
+    // scalastyle:on class.name
+  }
+
+  @Test def should_reserve_eval_and_arguments_issue_743(): Unit = {
+    val eval = 5
+    assertEquals(5, eval)
+    val arguments = "hello"
+    assertEquals("hello", arguments)
+  }
+
+  @Test def should_support_class_literals_for_existential_value_types_issue_218(): Unit = {
+    assertEquals("org.scalajs.testsuite.compiler.RegressionTest$Bug218Foo",
+        scala.reflect.classTag[Bug218Foo[_]].toString)
+  }
+
+  @Test def should_support_Buffer_issue_268(): Unit = {
+    val a = scala.collection.mutable.Buffer.empty[Int]
+    a.insert(0, 0)
+    a.remove(0)
+    for (i <- 0 to 10) {
+      a.insert(a.length / 2, i)
+    }
+    assertEquals("1, 3, 5, 7, 9, 10, 8, 6, 4, 2, 0", a.mkString(", "))
+  }
+
+  @Test def should_not_call_equals_when_comparing_with_a_literal_null_issue_362(): Unit = {
+    // scalastyle:off equals.hash.code
+    class A {
+      override def equals(x: Any): Boolean = !(this == null)
+    }
+    // scalastyle:on equals.hash.code
+
+    val x = new A
+    val y = new A
+
+    // If the null comparisons actually call equals, the following two will
+    // cause infinite recursion
+    assertEquals(y, x)
+    assertEquals(x, y)
+  }
+
+  @Test def should_unbox_null_to_the_zero_of_types_issue_674(): Unit = {
+    class Box[A] {
+      var value: A = _
+    }
+    def zero[A]: A = new Box[A].value
+
+    /* Note: the same shape of test for Unit does not work, but it seems to
+     * be a problem in scalac because it does not work on the JVM either.
+     */
+
+    val bool = zero[Boolean]
+    assertTrue((bool: Any).isInstanceOf[Boolean])
+    assertEquals(false, bool) // scalastyle:ignore
+
+    val char = zero[Char]
+    assertTrue((char: Any).isInstanceOf[Char])
+    assertEquals('\u0000', char)
+
+    val byte = zero[Byte]
+    assertTrue((byte: Any).isInstanceOf[Byte])
+    assertEquals(0.toByte, byte)
+
+    val short = zero[Short]
+    assertTrue((short: Any).isInstanceOf[Short])
+    assertEquals(0.toShort, short)
+
+    val int = zero[Int]
+    assertTrue((int: Any).isInstanceOf[Int])
+    assertEquals(0, int)
+
+    val long = zero[Long]
+    assertTrue((long: Any).isInstanceOf[Long])
+    assertEquals(0L, long)
+
+    val float = zero[Float]
+    assertTrue((float: Any).isInstanceOf[Float])
+    assertEquals(0.0f, float)
+
+    val double = zero[Double]
+    assertTrue((double: Any).isInstanceOf[Double])
+    assertEquals(0.0, double)
+
+    val ref = zero[AnyRef]
+    assertEquals(null, ref)
+  }
+
+  @Test def Param_defs_in_tailrec_methods_should_be_considered_mutable_issue_825(): Unit = {
+    @tailrec
+    def foo(x: Int, y: Int): Unit = {
+      if (x < y) foo(y, x)
+      else {
+        assertEquals(4, x)
+        assertEquals(2, y)
+      }
+    }
+    foo(2, 4)
+  }
+
+  @Test def null_synchronized_should_throw_issue_874(): Unit = {
+    assertThrows(classOf[NullPointerException], null.synchronized(5))
+  }
+
+  @Test def x_synchronized_should_preserve_side_effects_of_x(): Unit = {
+    var c = 0
+    def x: RegressionTest.this.type = { c += 1; this }
+    assertEquals(5, x.synchronized(5))
+    assertEquals(1, c)
+  }
+
+  @Test def IR_checker_should_allow_Apply_Select_on_NullType_and_NothingType_issue_1123(): Unit = {
+    def giveMeANull(): Null = null
+    assertThrows(classOf[Exception], (giveMeANull(): StringBuilder).append(5))
+    assertThrows(classOf[Exception], (giveMeANull(): scala.runtime.IntRef).elem)
+
+    def giveMeANothing(): Nothing = sys.error("boom")
+    assertThrows(classOf[Exception], (giveMeANothing(): StringBuilder).append(5))
+    assertThrows(classOf[Exception], (giveMeANothing(): scala.runtime.IntRef).elem)
+  }
+
+  @Test def should_not_put_bad_flags_on_caseaccessor_export_forwarders_issue_1191(): Unit = {
+    // This test used to choke patmat
+
+    @scala.scalajs.js.annotation.JSExportAll
+    case class T(one: Int, two: Int)
+
+    val T(a, b) = T(1, 2)
+
+    assertEquals(1, a)
+    assertEquals(2, b)
+  }
+
+  @Test def should_properly_order_ctor_statements_when_inlining_issue_1369(): Unit = {
+    trait Bar {
+      def x: Int
+      var y = x + 1
+    }
+
+    @inline
+    class A(var x: Int) extends Bar
+
+    val obj = new A(1)
+    assertEquals(1, obj.x)
+    assertEquals(2, obj.y)
+  }
+
+  @Test def should_not_restrict_mutability_of_fields_issue_1021(): Unit = {
+    class A {
+      /* This var is refered to in the lambda passed to `foreach`. Therefore
+       * it is altered in another compilation unit (even though it is
+       * private[this]).
+       * This test makes sure the compiler doesn't wrongly mark it as
+       * immutable because it is not changed in its compilation unit itself.
+       */
+      private[this] var x: Int = 1
+
+      def get: Int = x
+
+      def foo(): Unit =
+        Seq(2).foreach(x = _)
+    }
+
+    val a = new A()
+    assertEquals(1, a.get)
+    a.foo()
+    assertEquals(2, a.get)
+  }
+
+  @Test def should_populate_desugar_environments_with_Closure_params_issue_1399(): Unit = {
+    /* To query whether a field is mutable, the JSDesugar needs to first
+     * unnest a statement block from an argument list, and then unnest the
+     * parameter under test.
+     * It will then test, if it is immutable, which will trigger an
+     * environment lookup.
+     */
+
+    // We need a true class for @noinline to work
+    class Test {
+      @noinline
+      def concat(x: Any, y: Any): String = x.toString + y.toString
+
+      @noinline
+      def fct: Function1[Any, String] = { (v: Any) => // parameter under test
+        /* Pass `v` as a first parameter, a true block as a second parameter.
+         * Note that this only works after optimizations, because `v` is first
+         * asInstanceOfd to Object and hence not the original `v` is used in
+         * the call itself.
+         * The optimizer eliminates the useless asInstanceOf.
+         */
+        concat(v, {
+          // This must be a true block
+          var x = 1
+          while (x < 5) x += 1
+          x
+        })
+      }
+    }
+
+    assertEquals("15", new Test().fct(1))
+  }
+
+  @Test def should_support_debugger_statements_through_the_whole_pipeline_issue_1402(): Unit = {
+    // A function that hopfully persuades the optimizer not to optimize
+    // we need a debugger statement that is unreachable, but not eliminated
+    @noinline
+    class A(var z: Int = 4) {
+      var x: Int = _
+      var y: Int = _
+
+      @noinline
+      def plus(x0: Int, y0: Int): Int = {
+        x = x0
+        y = y0
+        var res = 0
+        while (x > 0 || y > 0 || z > 0) {
+          if (x > 0) x -= 1
+          else if (y > 0) y -= 1
+          else z -= 1
+          res += 1
+        }
+        res
+      }
+    }
+
+    if (new A().plus(5, 10) < 3)
+      js.debugger()
+  }
+
+  @Test def should_not_cause_Closure_to_crash_with_Unexpected_variable_NaN_issue_1469(): Unit = {
+    /* Basically we want to make sure that a specialized bridge of Function1
+     * taking and returning Double is emitted (and not dce'ed) for this
+     * class F, which actually returns Unit.
+     * This, after optimizations, causes something like
+     *   +(apply__V(x), (void 0))
+     * to be emitted (inlining the bridge returning Any into the bridge
+     * returning Double).
+     * This in turn causes Closure to constant fold +(void 0) into NaN,
+     * which used to trigger the
+     *   Internal Compiler Error: Unexpected variable NaN
+     * Note that we *cannot* actually call that bridge on F, because we would
+     * run into undefined behavior! So we have another function that actually
+     * returns a Double, and we use to make sure that
+     * Function1.apply(Double)Double is reachable, which will make it
+     * reachable also for F.
+     */
+    class F extends Function1[Any, Unit] {
+      def apply(x: Any): Unit =
+        assertEquals(5, x.asInstanceOf[js.Any])
+    }
+
+    // Make sure the specialized Function1.apply(Double)Double is reachable.
+    @noinline def makeFun(y: Double): Double => Double = {
+      val z = y + 1.5
+      ((x: Double) => x * z): (Double => Double)
+    }
+    val someDoubleFun = makeFun(2.0)
+    assertEquals(147.0, someDoubleFun(42.0))
+
+    // Make sure F itself is reachable and not completely inlineable
+    @noinline def makeF: Any => Any = (() => new F)()
+    val f = makeF
+    f(5)
+  }
+
+  @Test def switch_match_with_2_guards_for_the_same_value_issue_1589(): Unit = {
+    @noinline def genB(): Int = 0xE1
+    val b = genB()
+    val x = b >> 4 match {
+      case 0xE if b == 0xE0 =>
+        4
+      case 0xE if b == 0xE1 =>
+        5
+    }
+    assertEquals(5, x)
+  }
+
+  @Test def switch_match_with_a_guard_and_a_result_type_of_BoxedUnit_issue_1955(): Unit = {
+    val bug = new Bug1955
+    bug.bug(2, true)
+    assertEquals(0, bug.result)
+    bug.bug(1, true)
+    assertEquals(579, bug.result)
+    assertThrows(classOf[MatchError], bug.bug(2, false))
+  }
+
+  @Test def null_asInstanceOf_Unit_should_succeed_issue_1691(): Unit = {
+    def getNull(): Any = null
+    val x = getNull().asInstanceOf[Unit]: Any
+    assertNull(x.asInstanceOf[js.Any])
+  }
+
+  @Test def lambda_parameter_with_a_dash_issue_1790(): Unit = {
+    val f = (`a-b`: Int) => `a-b` + 1
+    assertEquals(6, f(5))
+  }
+
+}
+
+object RegressionTest {
   class Bug218Foo[T](val x: T) extends AnyVal
 
-  describe("Scala.js compiler regression tests") {
-
-    it("Wrong division conversion (7 / 2.0) - #18") {
-      val div = 7 / 2.0
-      expect(div).toEqual(3.5)
-      expect(div.getClass.getName).toEqual("double")
-
-      val mod = 7 % 2.0
-      expect(mod).toEqual(1.0)
-      expect(mod.getClass.getName).toEqual("double")
-    }
-
-    it("Abort with some pattern match guards - #22") {
-      object PatternMatchGuards {
-        def go(f: Int => Int): Int = f(1)
-        def main(): Unit = {
-          go {
-            case x if false => x
-          }
-        }
-      }
-      // Nothing to check
-    }
-
-    it("Bad encoding for characters spanning 2 UTF-16 chars - #23") {
-      val str = "A∀\uD835\uDCAB"
-      var s: String = ""
-      for (c <- str) {
-        val code: Int = c
-        s = s + code + " "
-      }
-      expect(s).toEqual("65 8704 55349 56491 ")
-    }
-
-    it("String concatenation with null - #26") {
-      val x: Object = null
-      expect(x + "check").toEqual("nullcheck")
-    }
-
-    class Bug66A(s: String, e: Object) {
-      def this(e: Object) = this("", e)
-      def this(s: String) = this(s, "")
-    }
-    class Bug66B(s: String, e: Object) extends Bug66A(s)
-
-    it("should emit static calls when forwarding to another constructor - #66") {
-      new Bug66B("", "")
-    }
-
-    it("should not swallow Unit expressions when converting to js.Any - #83") {
-      var effectHappened = false
-      def doEffect(): Unit = effectHappened = true
-      def f(): js.Any = doEffect()
-      f()
-      expect(effectHappened).toBeTruthy
-    }
-
-    it("should correctly call subSequence on non-string CharSequences - #55") {
-      val arr: CharSequence = Array('a','b','c','d')
-      val ss = arr.subSequence(2,3)
-      expect(ss.length()).toEqual(1)
-      expect(ss.charAt(0)).toEqual('c')
-    }
-
-    it("should correctly concat primitive values to strings - #113") {
-      expect(4 + "foo").toEqual("4foo")
-      expect('a' + "foo").toEqual("afoo")
-    }
-
-    it("should resolve overloads on scala.Function.apply when converting to js.Function - #125") {
-      class Fct extends Function1[Int, Any] {
-        def apply(n: Int): Int = n
-      }
-
-      val scalaFunction = new Fct
-      val jsFunction: js.Any = scalaFunction
-      val thisFunction: js.ThisFunction = scalaFunction
-    }
-
-    it("should correctly dispatch calls on private functions - #165") {
-      class A {
-        private def x: Int = 1
-        def value: Int = x
-      }
-      class B extends A {
-        private def x: Int = 2
-      }
-      expect(new B().value).toEqual(1)
-    }
-
-    it("should correctly mangle JavaScript reserved identifiers - #153") {
-      // scalastyle:off class.name
-
-      // Class name
-      class break {
-        // class variable
-        var continue: Int = 1
-        // method name
-        def switch: Int = {
-          // local name
-          val default = 2
-          default
-        }
-      }
-      trait Foo {
-        // static member (through mixin)
-        def function: Int = 3
-      }
-
-      val x = new break with Foo
-      expect(x.continue).toEqual(1)
-      expect(x.switch).toEqual(2)
-      expect(x.function).toEqual(3)
-
-      // scalastyle:on class.name
-    }
-
-    it("should correctly mangle identifiers starting with a digit - #153") {
-      // scalastyle:off class.name
-
-      // Class name
-      class `0` {
-        // class variable
-        var `1`: Int = 1
-        // method name
-        def `2`: Int = {
-          // local name
-          val `22` = 2
-          `22`
-        }
-      }
-      trait Foo {
-        // static member (through mixin)
-        def `3`: Int = 3
-      }
-
-      val x = new `0` with Foo
-      expect(x.`1`).toEqual(1)
-      expect(x.`2`).toEqual(2)
-      expect(x.`3`).toEqual(3)
-
-      // scalastyle:on class.name
-    }
-
-    it("should reserve `eval` and `arguments` - #743") {
-      val eval = 5
-      expect(eval).toEqual(5)
-      val arguments = "hello"
-      expect(arguments).toEqual("hello")
-    }
-
-    it("should support class literals for existential value types - #218") {
-      expect(scala.reflect.classTag[Bug218Foo[_]].toString).toEqual(
-          "org.scalajs.testsuite.compiler.RegressionTest$Bug218Foo")
-    }
-
-    it("should support Buffer - #268") {
-      val a = scala.collection.mutable.Buffer.empty[Int]
-      a.insert(0, 0)
-      a.remove(0)
-      for (i <- 0 to 10) {
-        a.insert(a.length / 2, i)
-      }
-      expect(a.mkString(", ")).toEqual("1, 3, 5, 7, 9, 10, 8, 6, 4, 2, 0")
-    }
-
-    it("should not call equals when comparing with a literal null - #362") {
-      // scalastyle:off equals.hash.code
-      class A {
-        override def equals(x: Any): Boolean = !(this == null)
-      }
-      // scalastyle:on equals.hash.code
-
-      val x = new A
-      val y = new A
-
-      // If the null comparisons actually call equals, the following two will
-      // cause infinite recursion
-      expect(x == y).toBeTruthy
-      expect(y == x).toBeTruthy
-    }
-
-    it("should unbox null to the zero of types - #674") {
-      class Box[A] {
-        var value: A = _
-      }
-      def zero[A]: A = new Box[A].value
-
-      /* Note: the same shape of test for Unit does not work, but it seems to
-       * be a problem in scalac because it does not work on the JVM either.
-       */
-
-      val bool = zero[Boolean]
-      expect((bool: Any).isInstanceOf[Boolean]).toBeTruthy
-      expect(bool == false).toBeTruthy // scalastyle:ignore
-
-      val char = zero[Char]
-      expect((char: Any).isInstanceOf[Char]).toBeTruthy
-      expect(char == '\u0000').toBeTruthy
-
-      val byte = zero[Byte]
-      expect((byte: Any).isInstanceOf[Byte]).toBeTruthy
-      expect(byte == 0.toByte).toBeTruthy
-
-      val short = zero[Short]
-      expect((short: Any).isInstanceOf[Short]).toBeTruthy
-      expect(short == 0.toShort).toBeTruthy
-
-      val int = zero[Int]
-      expect((int: Any).isInstanceOf[Int]).toBeTruthy
-      expect(int == 0).toBeTruthy
-
-      val long = zero[Long]
-      expect((long: Any).isInstanceOf[Long]).toBeTruthy
-      expect(long == 0L).toBeTruthy
-
-      val float = zero[Float]
-      expect((float: Any).isInstanceOf[Float]).toBeTruthy
-      expect(float == 0.0f).toBeTruthy
-
-      val double = zero[Double]
-      expect((double: Any).isInstanceOf[Double]).toBeTruthy
-      expect(double == 0.0).toBeTruthy
-
-      val ref = zero[AnyRef]
-      expect(ref == null).toBeTruthy
-    }
-
-    it("Param defs in tailrec methods should be considered mutable - #825") {
-      @tailrec
-      def foo(x: Int, y: Int): Unit = {
-        if (x < y) foo(y, x)
-        else {
-          expect(x).toEqual(4)
-          expect(y).toEqual(2)
-        }
-      }
-      foo(2, 4)
-    }
-
-    it("null.synchronized should throw - #874") {
-      expect(() => null.synchronized(5)).toThrow
-    }
-
-    it("x.synchronized should preserve side-effects of x") {
-      var c = 0
-      def x: RegressionTest.this.type = { c += 1; this }
-      expect(x.synchronized(5)).toEqual(5)
-      expect(c).toEqual(1)
-    }
-
-    it("IR checker should allow Apply/Select on NullType and NothingType - #1123") {
-      def giveMeANull(): Null = null
-      expect(() => (giveMeANull(): StringBuilder).append(5)).toThrow
-      expect(() => (giveMeANull(): scala.runtime.IntRef).elem).toThrow
-
-      def giveMeANothing(): Nothing = sys.error("boom")
-      expect(() => (giveMeANothing(): StringBuilder).append(5)).toThrow
-      expect(() => (giveMeANothing(): scala.runtime.IntRef).elem).toThrow
-    }
-
-    it("should not put bad flags on caseaccessor export forwarders - #1191") {
-      // This test used to choke patmat
-
-      @scala.scalajs.js.annotation.JSExportAll
-      case class T(one: Int, two: Int)
-
-      val T(a, b) = T(1, 2)
-
-      expect(a).toEqual(1)
-      expect(b).toEqual(2)
-    }
-
-    it("should properly order ctor statements when inlining - #1369") {
-      trait Bar {
-        def x: Int
-        var y = x + 1
-      }
-
-      @inline
-      class A(var x: Int) extends Bar
-
-      val obj = new A(1)
-      expect(obj.x).toEqual(1)
-      expect(obj.y).toEqual(2)
-    }
-
-    it("should not restrict mutability of fields - #1021") {
-      class A {
-        /* This var is refered to in the lambda passed to `foreach`. Therefore
-         * it is altered in another compilation unit (even though it is
-         * private[this]).
-         * This test makes sure the compiler doesn't wrongly mark it as
-         * immutable because it is not changed in its compilation unit itself.
-         */
-        private[this] var x: Int = 1
-
-        def get: Int = x
-
-        def foo(): Unit =
-          Seq(2).foreach(x = _)
-      }
-
-      val a = new A()
-      expect(a.get).toEqual(1)
-      a.foo()
-      expect(a.get).toEqual(2)
-    }
-
-    it("should populate desugar environments with Closure params - #1399") {
-      /* To query whether a field is mutable, the JSDesugar needs to first
-       * unnest a statement block from an argument list, and then unnest the
-       * parameter under test.
-       * It will then test, if it is immutable, which will trigger an
-       * environment lookup.
-       */
-
-      // We need a true class for @noinline to work
-      class Test {
-        @noinline
-        def concat(x: Any, y: Any): String = x.toString + y.toString
-
-        @noinline
-        def fct: Function1[Any, String] = { (v: Any) => // parameter under test
-          /* Pass `v` as a first parameter, a true block as a second parameter.
-           * Note that this only works after optimizations, because `v` is first
-           * asInstanceOfd to Object and hence not the original `v` is used in
-           * the call itself.
-           * The optimizer eliminates the useless asInstanceOf.
-           */
-          concat(v, {
-            // This must be a true block
-            var x = 1
-            while (x < 5) x += 1
-            x
-          })
-        }
-      }
-
-      expect(new Test().fct(1)).toEqual("15")
-    }
-
-    it("should support debugger statements through the whole pipeline - #1402") {
-      // A function that hopfully persuades the optimizer not to optimize
-      // we need a debugger statement that is unreachable, but not eliminated
-      @noinline
-      class A(var z: Int = 4) {
-        var x: Int = _
-        var y: Int = _
-
-        @noinline
-        def plus(x0: Int, y0: Int): Int = {
-          x = x0
-          y = y0
-          var res = 0
-          while (x > 0 || y > 0 || z > 0) {
-            if (x > 0) x -= 1
-            else if (y > 0) y -= 1
-            else z -= 1
-            res += 1
-          }
-          res
-        }
-      }
-
-      if (new A().plus(5, 10) < 3)
-        js.debugger()
-    }
-
-    it("should not cause Closure to crash with Unexpected variable 'NaN' - #1469") {
-      /* Basically we want to make sure that a specialized bridge of Function1
-       * taking and returning Double is emitted (and not dce'ed) for this
-       * class F, which actually returns Unit.
-       * This, after optimizations, causes something like
-       *   +(apply__V(x), (void 0))
-       * to be emitted (inlining the bridge returning Any into the bridge
-       * returning Double).
-       * This in turn causes Closure to constant fold +(void 0) into NaN,
-       * which used to trigger the
-       *   Internal Compiler Error: Unexpected variable NaN
-       * Note that we *cannot* actually call that bridge on F, because we would
-       * run into undefined behavior! So we have another function that actually
-       * returns a Double, and we use to make sure that
-       * Function1.apply(Double)Double is reachable, which will make it
-       * reachable also for F.
-       */
-      class F extends Function1[Any, Unit] {
-        def apply(x: Any): Unit =
-          expect(x.asInstanceOf[js.Any]).toBe(5)
-      }
-
-      // Make sure the specialized Function1.apply(Double)Double is reachable.
-      @noinline def makeFun(y: Double): Double => Double = {
-        val z = y + 1.5
-        ((x: Double) => x * z): (Double => Double)
-      }
-      val someDoubleFun = makeFun(2.0)
-      expect(someDoubleFun(42.0)).toEqual(147.0)
-
-      // Make sure F itself is reachable and not completely inlineable
-      @noinline def makeF: Any => Any = (() => new F)()
-      val f = makeF
-      f(5)
-    }
-
-    it("switch-match with 2 guards for the same value - #1589") {
-      @noinline def genB(): Int = 0xE1
-      val b = genB()
-      val x = b >> 4 match {
-        case 0xE if b == 0xE0 =>
-          4
-        case 0xE if b == 0xE1 =>
-          5
-      }
-      expect(x).toEqual(5)
-    }
-
-    it("switch-match with a guard and a result type of BoxedUnit - #1955") {
-      val bug = new Bug1955
-      bug.bug(2, true)
-      expect(bug.result).toEqual(0)
-      bug.bug(1, true)
-      expect(bug.result).toEqual(579)
-      expectThrows[MatchError](bug.bug(2, false))
-    }
-
-    it("null.asInstanceOf[Unit] should succeed - #1691") {
-      def getNull(): Any = null
-      val x = getNull().asInstanceOf[Unit]: Any
-      expect(x.asInstanceOf[js.Any]).toBeNull
-    }
-
-    it("lambda parameter with a dash - #1790") {
-      val f = (`a-b`: Int) => `a-b` + 1
-      expect(f(5)).toEqual(6)
-    }
+  class Bug66A(s: String, e: Object) {
+    def this(e: Object) = this("", e)
+    def this(s: String) = this(s, "")
   }
+  class Bug66B(s: String, e: Object) extends Bug66A(s)
 
   class Bug1955 {
     var result: Int = 0

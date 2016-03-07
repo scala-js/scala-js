@@ -8,345 +8,344 @@
 package org.scalajs.testsuite.compiler
 
 import scala.scalajs.js
-import org.scalajs.jasminetest.JasmineTest
+
+import org.junit.Test
+import org.junit.Assert._
 
 import language.reflectiveCalls
 
 import java.lang.{Float => JFloat, Double => JDouble}
 
-object ReflectiveCallTest extends JasmineTest {
+class ReflectiveCallTest {
 
-  describe("Reflective Calls") {
-    it("should allow subtyping in return types") {
-      class A { def x: Int = 1 }
-      class B extends A { override def x: Int = 2 }
+  @Test def should_allow_subtyping_in_return_types(): Unit = {
+    class A { def x: Int = 1 }
+    class B extends A { override def x: Int = 2 }
 
-      object Generator {
-        def generate(): B = new B
-      }
-
-      def f(x: { def generate(): A }): A = x.generate
-
-      expect(f(Generator).x).toEqual(2)
+    object Generator {
+      def generate(): B = new B
     }
 
-    it("should allow this.type in return types") {
-      type ValueType = { def value: this.type }
-      def f(x: ValueType): ValueType = x.value
+    def f(x: { def generate(): A }): A = x.generate
 
-      class StringValue(x: String) {
-        def value: this.type = this
-        override def toString(): String = s"StringValue($x)"
-      }
+    assertEquals(2, f(Generator).x)
+  }
 
-      expect(f(new StringValue("foo")).toString).toEqual("StringValue(foo)")
+  @Test def should_allow_this_type_in_return_types(): Unit = {
+    type ValueType = { def value: this.type }
+    def f(x: ValueType): ValueType = x.value
+
+    class StringValue(x: String) {
+      def value: this.type = this
+      override def toString(): String = s"StringValue($x)"
     }
 
-    it("should allow generic return types") {
-      case class Tata(name: String)
+    assertEquals("StringValue(foo)", f(new StringValue("foo")).toString)
+  }
 
-      object Rec {
-        def e(x: Tata): Tata = new Tata("iei")
-      }
+  @Test def should_allow_generic_return_types(): Unit = {
+    case class Tata(name: String)
 
-      def m[T](r: Object { def e(x: Tata): T}): T =
-        r.e(new Tata("foo"))
-
-      expect(m[Tata](Rec).toString).toEqual("Tata(iei)")
+    object Rec {
+      def e(x: Tata): Tata = new Tata("iei")
     }
 
-    it("should work with unary methods on primitive types") {
-      // scalastyle:off disallow.space.before.token
-      def fInt(x: Any { def unary_- : Int }): Int = -x
-      expect(fInt(1.toByte)).toEqual(-1)
-      expect(fInt(1.toShort)).toEqual(-1)
-      expect(fInt(1.toChar)).toEqual(-1)
-      expect(fInt(1)).toEqual(-1)
+    def m[T](r: Object { def e(x: Tata): T}): T =
+      r.e(new Tata("foo"))
 
-      def fLong(x: Any { def unary_- : Long }): Long = -x
-      expect(fLong(1L) == -1L).toBeTruthy
+    assertEquals("Tata(iei)", m[Tata](Rec).toString)
+  }
 
-      def fFloat(x: Any { def unary_- : Float}): Float = -x
-      expect(fFloat(1.5f)).toEqual(-1.5f)
+  @Test def should_work_with_unary_methods_on_primitive_types(): Unit = {
+    // scalastyle:off disallow.space.before.token
+    def fInt(x: Any { def unary_- : Int }): Int = -x
+    assertEquals(-1, fInt(1.toByte))
+    assertEquals(-1, fInt(1.toShort))
+    assertEquals(-1, fInt(1.toChar))
+    assertEquals(-1, fInt(1))
 
-      def fDouble(x: Any { def unary_- : Double }): Double = -x
-      expect(fDouble(1.5)).toEqual(-1.5)
+    def fLong(x: Any { def unary_- : Long }): Long = -x
+    assertEquals(-1L, fLong(1L))
 
-      def fBoolean(x: Any { def unary_! : Boolean }): Boolean = !x
-      expect(fBoolean(false)).toBeTruthy
-      expect(fBoolean(true)).toBeFalsy
-      // scalastyle:on disallow.space.before.token
+    def fFloat(x: Any { def unary_- : Float}): Float = -x
+    assertEquals(-1.5f, fFloat(1.5f))
+
+    def fDouble(x: Any { def unary_- : Double }): Double = -x
+    assertEquals(-1.5, fDouble(1.5))
+
+    def fBoolean(x: Any { def unary_! : Boolean }): Boolean = !x
+    assertTrue(fBoolean(false))
+    assertFalse(fBoolean(true))
+    // scalastyle:on disallow.space.before.token
+  }
+
+  @Test def should_work_with_binary_operators_on_primitive_types(): Unit = {
+    def fLong(x: Any { def +(x: Long): Long }): Long = x + 5L
+    assertEquals(10L, fLong(5.toByte))
+    assertEquals(15L, fLong(10.toShort))
+    assertEquals(15L, fLong(10.toChar))
+    assertEquals(4L, fLong(-1))
+    assertEquals(22L, fLong(17L))
+
+    def fInt(x: Any { def /(x: Int): Int }): Int = x / 7
+    assertEquals(9, fInt(65.toByte))
+    assertEquals(2, fInt(15.toShort))
+    assertEquals(3, fInt(25.toChar))
+    assertEquals(-5, fInt(-40))
+
+    def fShort(x: Any { def +(x: Short): Int }): Int = x + 6.toShort
+    assertEquals(71, fShort(65.toByte))
+    assertEquals(21, fShort(15.toShort))
+    assertEquals(31, fShort(25.toChar))
+    assertEquals(-34, fShort(-40))
+
+    def fFloat(x: Any { def %(x: Float): Float}): Float = x % 3.4f
+    assertEquals(2.1f, fFloat(5.5f))
+
+    def fDouble(x: Any { def /(x: Double): Double }): Double = x / 1.4
+    assertEquals(-1.0714285714285714, fDouble(-1.5))
+
+    def fBoolean(x: Any { def &&(x: Boolean): Boolean }): Boolean = x && true // scalastyle:ignore
+    assertFalse(fBoolean(false))
+    assertTrue(fBoolean(true))
+  }
+
+  @Test def should_work_with_equality_operators_on_primitive_types(): Unit = {
+    def fNum(obj: Any { def ==(x: Int): Boolean }): Boolean = obj == 5
+    assertTrue(fNum(5.toByte))
+    assertFalse(fNum(6.toByte))
+    assertTrue(fNum(5.toShort))
+    assertFalse(fNum(7.toShort))
+    assertTrue(fNum(5.toChar))
+    assertFalse(fNum('r'))
+    assertTrue(fNum(5))
+    assertFalse(fNum(-4))
+    assertTrue(fNum(5L))
+    assertFalse(fNum(400L))
+    assertTrue(fNum(5.0f))
+    assertFalse(fNum(5.6f))
+    assertTrue(fNum(5.0))
+    assertFalse(fNum(7.9))
+    def fBool(obj: Any { def ==(x: Boolean): Boolean }): Boolean = obj == false // scalastyle:ignore
+    assertFalse(fBool(true))
+    assertTrue(fBool(false))
+
+    def fNumN(obj: Any { def !=(x: Int): Boolean }): Boolean = obj != 5
+    assertFalse(fNumN(5.toByte))
+    assertTrue(fNumN(6.toByte))
+    assertFalse(fNumN(5.toShort))
+    assertTrue(fNumN(7.toShort))
+    assertFalse(fNumN(5.toChar))
+    assertTrue(fNumN('r'))
+    assertFalse(fNumN(5))
+    assertTrue(fNumN(-4))
+    assertFalse(fNumN(5L))
+    assertTrue(fNumN(400L))
+    assertFalse(fNumN(5.0f))
+    assertTrue(fNumN(5.6f))
+    assertFalse(fNumN(5.0))
+    assertTrue(fNumN(7.9))
+    def fBoolN(obj: Any { def !=(x: Boolean): Boolean }): Boolean = obj != false // scalastyle:ignore
+    assertTrue(fBoolN(true))
+    assertFalse(fBoolN(false))
+
+  }
+
+  @Test def should_work_with_Arrays(): Unit = {
+    type UPD = { def update(i: Int, x: String): Unit }
+    type APL = { def apply(i: Int): String }
+    type LEN = { def length: Int }
+    type CLONE = Any { def clone(): Object }
+
+    def upd(obj: UPD, i: Int, x: String): Unit = obj.update(i,x)
+    def apl(obj: APL, i: Int): String = obj.apply(i)
+    def len(obj: LEN): Int = obj.length
+    def clone(obj: CLONE): Object = obj.clone
+
+    val x = Array("asdf","foo","bar")
+    val y = clone(x).asInstanceOf[Array[String]]
+
+    assertEquals(3, len(x))
+    assertEquals("asdf", apl(x,0))
+    upd(x,1,"2foo")
+    assertEquals("2foo", x(1))
+    assertEquals("foo", y(1))
+  }
+
+  @Test def should_work_with_Arrays_of_primitive_values(): Unit = {
+    type UPD = { def update(i: Int, x: Int): Unit }
+    type APL = { def apply(i: Int): Int}
+    type LEN = { def length: Int }
+    type CLONE = Any { def clone(): Object }
+
+    def upd(obj: UPD, i: Int, x: Int): Unit = obj.update(i,x)
+    def apl(obj: APL, i: Int): Int = obj.apply(i)
+    def len(obj: LEN): Int = obj.length
+    def clone(obj: CLONE): Object = obj.clone
+
+    val x = Array(5,2,8)
+    val y = clone(x).asInstanceOf[Array[Int]]
+
+    assertEquals(3, len(x))
+    assertEquals(5, apl(x,0))
+    upd(x,1,1000)
+    assertEquals(1000, x(1))
+    assertEquals(2, y(1))
+  }
+
+  @Test def should_work_with_Strings(): Unit = {
+    def get(obj: { def codePointAt(str: Int): Int }): Int =
+      obj.codePointAt(1)
+    assertEquals('i'.toInt, get("Hi"))
+
+    def sub(x: { def substring(x: Int): AnyRef }): AnyRef = x.substring(5)
+    assertEquals("sdfasdf", sub("asdfasdfasdf"))
+
+    type LEN_A = { def length: Any }
+    def lenA(x: LEN_A): Any = x.length
+    assertEquals(4, lenA("asdf"))
+  }
+
+  @Test def should_properly_generate_forwarders_for_inherited_methods(): Unit = {
+    trait A {
+      def foo: Int
     }
 
-    it("should work with binary operators on primitive types") {
-      def fLong(x: Any { def +(x: Long): Long }): Long = x + 5L
-      expect(fLong(5.toByte) == 10L).toBeTruthy
-      expect(fLong(10.toShort) == 15L).toBeTruthy
-      expect(fLong(10.toChar) == 15L).toBeTruthy
-      expect(fLong(-1) == 4L).toBeTruthy
-      expect(fLong(17L) == 22L).toBeTruthy
+    abstract class B extends A
 
-      def fInt(x: Any { def /(x: Int): Int }): Int = x / 7
-      expect(fInt(65.toByte)).toEqual(9)
-      expect(fInt(15.toShort)).toEqual(2)
-      expect(fInt(25.toChar)).toEqual(3)
-      expect(fInt(-40)).toEqual(-5)
-
-      def fShort(x: Any { def +(x: Short): Int }): Int = x + 6.toShort
-      expect(fShort(65.toByte)).toEqual(71)
-      expect(fShort(15.toShort)).toEqual(21)
-      expect(fShort(25.toChar)).toEqual(31)
-      expect(fShort(-40)).toEqual(-34)
-
-      def fFloat(x: Any { def %(x: Float): Float}): Float = x % 3.4f
-      expect(fFloat(5.5f)).toEqual(2.1f)
-
-      def fDouble(x: Any { def /(x: Double): Double }): Double = x / 1.4
-      expect(fDouble(-1.5)).toEqual(-1.0714285714285714)
-
-      def fBoolean(x: Any { def &&(x: Boolean): Boolean }): Boolean = x && true // scalastyle:ignore
-      expect(fBoolean(false)).toBeFalsy
-      expect(fBoolean(true)).toBeTruthy
+    class C extends B {
+      def foo: Int = 1
     }
 
-    it("should work with equality operators on primitive types") {
-      def fNum(obj: Any { def ==(x: Int): Boolean }): Boolean = obj == 5
-      expect(fNum(5.toByte)).toBeTruthy
-      expect(fNum(6.toByte)).toBeFalsy
-      expect(fNum(5.toShort)).toBeTruthy
-      expect(fNum(7.toShort)).toBeFalsy
-      expect(fNum(5.toChar)).toBeTruthy
-      expect(fNum('r')).toBeFalsy
-      expect(fNum(5)).toBeTruthy
-      expect(fNum(-4)).toBeFalsy
-      expect(fNum(5L)).toBeTruthy
-      expect(fNum(400L)).toBeFalsy
-      expect(fNum(5.0f)).toBeTruthy
-      expect(fNum(5.6f)).toBeFalsy
-      expect(fNum(5.0)).toBeTruthy
-      expect(fNum(7.9)).toBeFalsy
-      def fBool(obj: Any { def ==(x: Boolean): Boolean }): Boolean = obj == false // scalastyle:ignore
-      expect(fBool(true)).toBeFalsy
-      expect(fBool(false)).toBeTruthy
+    def call(x: { def foo: Int }): Int = x.foo
 
-      def fNumN(obj: Any { def !=(x: Int): Boolean }): Boolean = obj != 5
-      expect(fNumN(5.toByte)).toBeFalsy
-      expect(fNumN(6.toByte)).toBeTruthy
-      expect(fNumN(5.toShort)).toBeFalsy
-      expect(fNumN(7.toShort)).toBeTruthy
-      expect(fNumN(5.toChar)).toBeFalsy
-      expect(fNumN('r')).toBeTruthy
-      expect(fNumN(5)).toBeFalsy
-      expect(fNumN(-4)).toBeTruthy
-      expect(fNumN(5L)).toBeFalsy
-      expect(fNumN(400L)).toBeTruthy
-      expect(fNumN(5.0f)).toBeFalsy
-      expect(fNumN(5.6f)).toBeTruthy
-      expect(fNumN(5.0)).toBeFalsy
-      expect(fNumN(7.9)).toBeTruthy
-      def fBoolN(obj: Any { def !=(x: Boolean): Boolean }): Boolean = obj != false // scalastyle:ignore
-      expect(fBoolN(true)).toBeTruthy
-      expect(fBoolN(false)).toBeFalsy
+    assertEquals(1, call(new C))
+  }
 
+  @Test def should_be_bug_compatible_with_Scala_JVM_for_inherited_overloads(): Unit = {
+    class Base {
+      def foo(x: Option[Int]): String = "a"
     }
 
-    it("should work with Arrays") {
-      type UPD = { def update(i: Int, x: String): Unit }
-      type APL = { def apply(i: Int): String }
-      type LEN = { def length: Int }
-      type CLONE = Any { def clone(): Object }
-
-      def upd(obj: UPD, i: Int, x: String): Unit = obj.update(i,x)
-      def apl(obj: APL, i: Int): String = obj.apply(i)
-      def len(obj: LEN): Int = obj.length
-      def clone(obj: CLONE): Object = obj.clone
-
-      val x = Array("asdf","foo","bar")
-      val y = clone(x).asInstanceOf[Array[String]]
-
-      expect(len(x)).toEqual(3)
-      expect(apl(x,0)).toEqual("asdf")
-      upd(x,1,"2foo")
-      expect(x(1)).toEqual("2foo")
-      expect(y(1)).toEqual("foo")
+    class Sub extends Base {
+      def foo(x: Option[String]): Int = 1
     }
 
-    it("should work with Arrays of primitive values") {
-      type UPD = { def update(i: Int, x: Int): Unit }
-      type APL = { def apply(i: Int): Int}
-      type LEN = { def length: Int }
-      type CLONE = Any { def clone(): Object }
+    val sub = new Sub
 
-      def upd(obj: UPD, i: Int, x: Int): Unit = obj.update(i,x)
-      def apl(obj: APL, i: Int): Int = obj.apply(i)
-      def len(obj: LEN): Int = obj.length
-      def clone(obj: CLONE): Object = obj.clone
+    val x: { def foo(x: Option[Int]): Any } = sub
+    assertEquals(1, x.foo(Some(1)).asInstanceOf[js.Any]) // here is the "bug"
 
-      val x = Array(5,2,8)
-      val y = clone(x).asInstanceOf[Array[Int]]
+    val y: { def foo(x: Option[String]): Any } = sub
+    assertEquals(1, y.foo(Some("hello")).asInstanceOf[js.Any])
+  }
 
-      expect(len(x)).toEqual(3)
-      expect(apl(x,0)).toEqual(5)
-      upd(x,1,1000)
-      expect(x(1)).toEqual(1000)
-      expect(y(1)).toEqual(2)
+  @Test def should_work_on_java_lang_Object_notify_notifyAll_issue_303(): Unit = {
+    type ObjNotifyLike = Any {
+      def notify(): Unit
+      def notifyAll(): Unit
+    }
+    def objNotifyTest(obj: ObjNotifyLike): Int = {
+      obj.notify()
+      obj.notifyAll()
+      1
     }
 
-    it("should work with Strings") {
-      def get(obj: { def codePointAt(str: Int): Int }): Int =
-        obj.codePointAt(1)
-      expect(get("Hi")).toEqual('i'.toInt)
+    class A
 
-      def sub(x: { def substring(x: Int): AnyRef }): AnyRef = x.substring(5)
-      expect(sub("asdfasdfasdf") == "sdfasdf").toBeTruthy
+    assertEquals(1, objNotifyTest(new A()))
+  }
 
-      type LEN_A = { def length: Any }
-      def lenA(x: LEN_A): Any = x.length
-      expect(lenA("asdf") == 4).toBeTruthy
+  @Test def should_work_on_java_lang_Object_clone_issue_303(): Unit = {
+    type ObjCloneLike = Any { def clone(): AnyRef }
+    def objCloneTest(obj: ObjCloneLike): AnyRef = obj.clone()
+
+    class B(val x: Int) extends Cloneable {
+      override def clone(): AnyRef = super.clone()
     }
 
-    it("should properly generate forwarders for inherited methods") {
-      trait A {
-        def foo: Int
-      }
+    val b = new B(1)
+    val bClone = objCloneTest(b).asInstanceOf[B]
 
-      abstract class B extends A
+    assertFalse(b eq bClone)
+    assertEquals(1, bClone.x)
+  }
 
-      class C extends B {
-        def foo: Int = 1
-      }
+  @Test def should_work_on_scala_AnyRef_eq_ne_issue_303(): Unit = {
+    type ObjEqLike = Any {
+      def eq(that: AnyRef): Boolean
+      def ne(that: AnyRef): Boolean
+    }
+    def objEqTest(obj: ObjEqLike, that: AnyRef): Boolean = obj eq that
+    def objNeTest(obj: ObjEqLike, that: AnyRef): Boolean = obj ne that
 
-      def call(x: { def foo: Int }): Int = x.foo
+    class A
 
-      expect(call(new C)).toEqual(1)
+    val a1 = new A
+    val a2 = new A
+
+    assertFalse(objEqTest(a1,a2))
+    assertTrue(objEqTest(a1,a1))
+
+    assertTrue(objNeTest(a1,a2))
+    assertFalse(objNeTest(a1,a1))
+  }
+
+  @Test def should_work_on_java_lang_Float_Double_isNaN_isInfinite(): Unit = {
+    type FloatingNumberLike = Any {
+      def isNaN(): Boolean
+      def isInfinite(): Boolean
+    }
+    def test(x: FloatingNumberLike, isNaN: Boolean,
+        isInfinite: Boolean): Unit = {
+      assertEquals(isNaN, x.isNaN())
+      assertEquals(isInfinite, x.isInfinite())
     }
 
-    it("should be bug-compatible with Scala/JVM for inherited overloads") {
-      class Base {
-        def foo(x: Option[Int]): String = "a"
-      }
+    test(new JFloat(Float.NaN), true, false)
+    test(new JFloat(Float.PositiveInfinity), false, true)
+    test(new JFloat(Float.NegativeInfinity), false, true)
+    test(new JFloat(54.67), false, false)
 
-      class Sub extends Base {
-        def foo(x: Option[String]): Int = 1
-      }
+    test(new JDouble(Double.NaN), true, false)
+    test(new JDouble(Double.PositiveInfinity), false, true)
+    test(new JDouble(Double.NegativeInfinity), false, true)
+    test(new JDouble(54.67), false, false)
+  }
 
-      val sub = new Sub
-
-      val x: { def foo(x: Option[Int]): Any } = sub
-      expect(x.foo(Some(1)).asInstanceOf[js.Any]).toEqual(1) // here is the "bug"
-
-      val y: { def foo(x: Option[String]): Any } = sub
-      expect(y.foo(Some("hello")).asInstanceOf[js.Any]).toEqual(1)
+  @Test def should_work_with_default_arguments_issue_390(): Unit = {
+    def pimpIt(a: Int) = new { // scalastyle:ignore
+      def foo(b: Int, c: Int = 1): Int = a + b + c
     }
 
-    it("should work on java.lang.Object.{ notify, notifyAll } - #303") {
-      type ObjNotifyLike = Any {
-        def notify(): Unit
-        def notifyAll(): Unit
-      }
-      def objNotifyTest(obj: ObjNotifyLike): Int = {
-        obj.notify()
-        obj.notifyAll()
-        1
-      }
+    assertEquals(4, pimpIt(1).foo(2))
+    assertEquals(8, pimpIt(2).foo(2,4))
+  }
 
-      class A
+  @Test def should_unbox_all_types_of_arguments_issue_899(): Unit = {
+    class Foo {
+      def makeInt: Int = 5
+      def testInt(x: Int): Unit = assertEquals(5, x)
 
-      expect(objNotifyTest(new A())).toEqual(1)
+      def makeRef: Option[String] = Some("hi")
+      def testRef(x: Option[String]): Unit = assertEquals(Some("hi"), x)
     }
 
-    it("should work on java.lang.Object.clone - #303") {
-      type ObjCloneLike = Any { def clone(): AnyRef }
-      def objCloneTest(obj: ObjCloneLike): AnyRef = obj.clone()
+    /* Note: we should also test with value classes, except that Scala itself
+     * does not support value classes as parameters or result type of
+     * methods in structural types.
+     */
 
-      class B(val x: Int) extends Cloneable {
-        override def clone(): AnyRef = super.clone()
-      }
-
-      val b = new B(1)
-      val bClone = objCloneTest(b).asInstanceOf[B]
-
-      expect(b eq bClone).toBeFalsy
-      expect(bClone.x).toEqual(1)
+    def test(foo: {
+      def makeInt: Int
+      def testInt(x: Int): Unit
+      def makeRef: Option[String]
+      def testRef(x: Option[String]): Unit
+    }): Unit = {
+      foo.testInt(foo.makeInt)
+      foo.testRef(foo.makeRef)
     }
 
-    it("should work on scala.AnyRef.{ eq, ne } - #303") {
-      type ObjEqLike = Any {
-        def eq(that: AnyRef): Boolean
-        def ne(that: AnyRef): Boolean
-      }
-      def objEqTest(obj: ObjEqLike, that: AnyRef): Boolean = obj eq that
-      def objNeTest(obj: ObjEqLike, that: AnyRef): Boolean = obj ne that
-
-      class A
-
-      val a1 = new A
-      val a2 = new A
-
-      expect(objEqTest(a1,a2)).toBeFalsy
-      expect(objEqTest(a1,a1)).toBeTruthy
-
-      expect(objNeTest(a1,a2)).toBeTruthy
-      expect(objNeTest(a1,a1)).toBeFalsy
-    }
-
-    it("should work on java.lang.{Float,Double}.{isNaN,isInfinite}") {
-      type FloatingNumberLike = Any {
-        def isNaN(): Boolean
-        def isInfinite(): Boolean
-      }
-      def test(x: FloatingNumberLike, isNaN: Boolean,
-          isInfinite: Boolean): Unit = {
-        expect(x.isNaN()).toEqual(isNaN)
-        expect(x.isInfinite()).toEqual(isInfinite)
-      }
-
-      test(new JFloat(Float.NaN), true, false)
-      test(new JFloat(Float.PositiveInfinity), false, true)
-      test(new JFloat(Float.NegativeInfinity), false, true)
-      test(new JFloat(54.67), false, false)
-
-      test(new JDouble(Double.NaN), true, false)
-      test(new JDouble(Double.PositiveInfinity), false, true)
-      test(new JDouble(Double.NegativeInfinity), false, true)
-      test(new JDouble(54.67), false, false)
-    }
-
-    it("should work with default arguments - #390") {
-      def pimpIt(a: Int) = new { // scalastyle:ignore
-        def foo(b: Int, c: Int = 1): Int = a + b + c
-      }
-
-      expect(pimpIt(1).foo(2)).toEqual(4)
-      expect(pimpIt(2).foo(2,4)).toEqual(8)
-    }
-
-    it("should unbox all types of arguments - #899") {
-      class Foo {
-        def makeInt: Int = 5
-        def testInt(x: Int): Unit = expect(x).toEqual(5)
-
-        def makeRef: Option[String] = Some("hi")
-        def testRef(x: Option[String]): Unit = expect(x == Some("hi")).toBeTruthy
-      }
-
-      /* Note: we should also test with value classes, except that Scala itself
-       * does not support value classes as parameters or result type of
-       * methods in structural types.
-       */
-
-      def test(foo: {
-        def makeInt: Int
-        def testInt(x: Int): Unit
-        def makeRef: Option[String]
-        def testRef(x: Option[String]): Unit
-      }): Unit = {
-        foo.testInt(foo.makeInt)
-        foo.testRef(foo.makeRef)
-      }
-
-      test(new Foo)
-    }
-
+    test(new Foo)
   }
 }
