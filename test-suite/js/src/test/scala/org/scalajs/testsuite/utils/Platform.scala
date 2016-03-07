@@ -29,6 +29,7 @@ object Platform {
   def executingInNodeJS: Boolean = sysProp("nodejs")
   def executingInPhantomJS: Boolean = sysProp("phantomjs")
   def typedArrays: Boolean = sysProp("typedarray")
+  def sourceMaps: Boolean = sysProp("source-maps")
 
   def isInFastOpt: Boolean = sysProp("fastopt-stage")
   def isInFullOpt: Boolean = sysProp("fullopt-stage")

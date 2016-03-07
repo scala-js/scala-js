@@ -1,6 +1,10 @@
 package org.scalajs.testsuite.compiler
 
-import org.scalajs.jasminetest.{JasmineTest, TestSuiteContext}
+import org.junit.Assert._
+import org.junit.Assume._
+import org.junit.{BeforeClass, Test}
+
+import org.scalajs.testsuite.utils.Platform._
 
 /** The test counter */
 private[testsuite] object TC {
@@ -25,54 +29,54 @@ case class TestException(lineNo: Int) extends Exception
  * that it reports the line number expected (stored in the error
  * message). /three-star/s in are replaced with a dangling else (to
  * allow throwing in expression position).
- * `0/*<testCount>*/` is replaced by the number of /n-star/s in the
- * file.
+ * `@Test def workTest(): Unit = ...` is replaced by the list of all tests
+ * (in a single line) up to the number of /n-star/s in the file.
  */
-object SourceMapTest extends JasmineTest {
+object SourceMapTest {
+  @BeforeClass def beforeClass(): Unit = {
+    assumeTrue("source-maps", sourceMaps)
+  }
+}
 
-  val testCount: Int = 0/*<testCount>*/
+class SourceMapTest {
 
-  when("source-maps").
-  describe("Source Maps") {
+  @Test def workTest(): Unit = sys.error("stubs")
 
-    for (i <- 0 until testCount) {
-      it(s"work (test $i)") {
-        TC.testNum = i
+  def test(i: Int): Unit = {
+    TC.testNum = i
 
-        try {
-          run()
-          sys.error("No exception thrown")
-        } catch {
-          case e @ TestException(lineNo) =>
-            def normFileName(e: StackTraceElement): String =
-              e.getFileName.replace('\\', '/')
+    try {
+      run()
+      sys.error("No exception thrown")
+    } catch {
+      case e @ TestException(lineNo) =>
+        def normFileName(e: StackTraceElement): String =
+          e.getFileName.replace('\\', '/')
 
-            val trace0 = e.getStackTrace.toList
-            val trace1 = trace0.dropWhile(
-              normFileName(_).endsWith("/scala/scalajs/runtime/StackTrace.scala"))
-            val trace2 = trace1.dropWhile(
-              normFileName(_).endsWith("/java/lang/Throwables.scala"))
+        val trace0 = e.getStackTrace.toList
+        val trace1 = trace0.dropWhile(
+          normFileName(_).endsWith("/scala/scalajs/runtime/StackTrace.scala"))
+        val trace2 = trace1.dropWhile(
+          normFileName(_).endsWith("/java/lang/Throwables.scala"))
 
-            val topSte = trace2.head
-            expect(normFileName(topSte)).toContain("/SourceMapTest.scala")
+        val topSte = trace2.head
+        assertTrue(normFileName(topSte).contains("/SourceMapTest.scala"))
 
-            val throwSte = if (topSte.getLineNumber == 15) {
-              // line where `case class TestException is written` above
-              val throwSte = trace2.tail.head
-              expect(normFileName(throwSte)).toContain("/SourceMapTest.scala")
-              throwSte
-            } else {
-              /* In fullOpt, it may happen that the constructor of
-               * TestException is inlined, in which case there is no trace of
-               * it anymore. The first stack element in SourceMapTest.scala is
-               * therefore the one we're interested in.
-               */
-              topSte
-            }
-
-            expect(throwSte.getLineNumber).toBe(lineNo)
+        val throwSte = if (topSte.getLineNumber == 19) {
+          // line where `case class TestException is written` above
+          val throwSte = trace2.tail.head
+          assertTrue(normFileName(throwSte).contains("/SourceMapTest.scala"))
+          throwSte
+        } else {
+          /* In fullOpt, it may happen that the constructor of
+           * TestException is inlined, in which case there is no trace of
+           * it anymore. The first stack element in SourceMapTest.scala is
+           * therefore the one we're interested in.
+           */
+          topSte
         }
-      }
+
+        assertEquals(lineNo, throwSte.getLineNumber)
     }
   }
 
@@ -167,8 +171,6 @@ object SourceMapTest extends JasmineTest {
     /**/
   }
 }
-
-
 
 sealed trait JsValue {
   def value: Any

@@ -19,7 +19,8 @@ object Platform {
   def executingInRhino: Boolean = false
   def executingInNodeJS: Boolean = false
   def executingInPhantomJS: Boolean = false
-  def hasTypedArrays: Boolean = false
+  def typedArrays: Boolean = false
+  def sourceMaps: Boolean = false
 
   def isInFastOpt: Boolean = false
   def isInFullOpt: Boolean = false
