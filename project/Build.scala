@@ -1368,7 +1368,7 @@ object Build {
         }
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-    library, jUnitRuntime, jasmineTestFramework % "test"
+    library, jUnitRuntime
   )
 
   lazy val testSuiteJVM: Project = Project(

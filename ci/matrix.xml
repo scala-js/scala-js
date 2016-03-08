@@ -61,6 +61,7 @@
         'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
         ++$scala testingExample/test:run testingExample/test &&
     sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
+    sbtretry ++$scala testSuite/test:runMain org.scalajs.testsuite.junit.JUnitBootstrapTest testSuite/clean &&
     sbtretry 'set scalaJSUseRhino in Global := false' \
         ++$scala javalibExTestSuite/test &&
     sbtretry 'set scalaJSUseRhino in Global := false' \
