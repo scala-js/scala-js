@@ -18,6 +18,22 @@ val baseSettings = versionSettings ++ Seq(
     "non-existent-directory-please-dont-ever-create-this"
 )
 
+val regressionTestForIssue2243 = TaskKey[Unit]("regressionTestForIssue2243",
+  "", KeyRanks.BTask)
+
+def withRegretionTestForIssue2243(project: Project): Project = {
+  project.settings(inConfig(Compile)(Seq(
+    regressionTestForIssue2243 := {
+      // Regression test for issue #2243
+      val _ = Def.sequential(packageJSDependencies in Compile,
+          packageMinifiedJSDependencies in Compile).value
+      assert((artifactPath in(Compile, packageJSDependencies)).value.exists)
+      assert((artifactPath in(Compile, packageMinifiedJSDependencies)).value.exists)
+      streams.value.log.info("Regression test for issue #2243 passed")
+    }
+  )): _*)
+}
+
 lazy val referencedCrossProjectJS = ProjectRef(file("referencedCrossProject"), "referencedCrossProjectJS")
 lazy val referencedCrossProjectJVM = ProjectRef(file("referencedCrossProject"), "referencedCrossProjectJVM")
 
@@ -121,7 +137,8 @@ lazy val multiTest = crossProject.
 lazy val multiTestJS = multiTest.js
 lazy val multiTestJVM = multiTest.jvm
 
-lazy val jsDependenciesTest = project.settings(versionSettings: _*).
+lazy val jsDependenciesTest = withRegretionTestForIssue2243(
+  project.settings(versionSettings: _*).
   enablePlugins(ScalaJSPlugin).
   settings(
     jsDependencies ++= Seq(
@@ -185,6 +202,12 @@ lazy val jsDependenciesTest = project.settings(versionSettings: _*).
     })
   )): _*).
   dependsOn(jetty9) // depends on jQuery
+)
+
+lazy val jsNoDependenciesTest = withRegretionTestForIssue2243(
+  project.settings(versionSettings: _*).
+  enablePlugins(ScalaJSPlugin)
+)
 
 // Test %%% macro - #1331
 val unusedSettings = Seq(

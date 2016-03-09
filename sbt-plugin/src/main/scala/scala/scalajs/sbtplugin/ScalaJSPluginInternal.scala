@@ -149,7 +149,7 @@ object ScalaJSPluginInternal {
         val realFiles = deps.get(scalaJSSourceFiles).get
         val resolvedDeps = deps.data
 
-        FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
+        FileFunction.cached(s.cacheDirectory / cacheName, FilesInfo.lastModified,
             FilesInfo.exists) { _ => // We don't need the files
 
           IO.createDirectory(output.getParentFile)
