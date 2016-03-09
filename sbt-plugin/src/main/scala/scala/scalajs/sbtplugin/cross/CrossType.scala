@@ -34,6 +34,8 @@ abstract class CrossType {
    */
   def sharedSrcDir(projectBase: File, conf: String): Option[File]
 
+  /** Retro-compatibility */
+  implicit def optToSeq(fs: Option[File]): Seq[File] = fs.toSeq
 }
 
 object CrossType {
@@ -42,23 +44,23 @@ object CrossType {
     def projectDir(crossBase: File, projectType: String): File =
       crossBase / projectType
 
-    def sharedSrcDir(projectBase: File, conf: String): Option[File] =
-      Some(projectBase.getParentFile / "shared" / "src" / conf / "scala")
+    def sharedSrcDir(projectBase: File, conf: String): Seq[File] =
+      List(projectBase.getParentFile / "shared" / "src" / conf / "scala")
   }
 
   object Pure extends CrossType {
     def projectDir(crossBase: File, projectType: String): File =
       crossBase / ("." + projectType)
 
-    def sharedSrcDir(projectBase: File, conf: String): Option[File] =
-      Some(projectBase.getParentFile / "src" / conf / "scala")
+    def sharedSrcDir(projectBase: File, conf: String): Seq[File] =
+      List(projectBase.getParentFile / "src" / conf / "scala")
   }
 
   object Dummy extends CrossType {
     def projectDir(crossBase: File, projectType: String): File =
       crossBase / projectType
 
-    def sharedSrcDir(projectBase: File, conf: String): Option[File] = None
+    def sharedSrcDir(projectBase: File, conf: String): Seq[File] = Nil
   }
 
 }

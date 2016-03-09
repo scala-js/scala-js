@@ -315,11 +315,9 @@ object CrossProject extends CrossProjectExtra {
   )
 
   // Inspired by sbt's Defaults.makeCrossSources
-  private def makeCrossSources(sharedSrcDir: Option[File],
+  private def makeCrossSources(sharedSrcDir: Seq[File],
       scalaBinaryVersion: String, cross: Boolean): Seq[File] = {
-    sharedSrcDir.fold[Seq[File]] {
-      Seq.empty
-    } { srcDir =>
+    sharedSrcDir.map{ srcDir =>
       if (cross)
         Seq(srcDir.getParentFile / s"${srcDir.name}-$scalaBinaryVersion", srcDir)
       else
