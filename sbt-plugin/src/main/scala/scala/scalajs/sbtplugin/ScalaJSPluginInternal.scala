@@ -149,7 +149,7 @@ object ScalaJSPluginInternal {
         val realFiles = deps.get(scalaJSSourceFiles).get
         val resolvedDeps = deps.data
 
-        FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
+        FileFunction.cached(s.cacheDirectory / cacheName, FilesInfo.lastModified,
             FilesInfo.exists) { _ => // We don't need the files
 
           IO.createDirectory(output.getParentFile)
@@ -431,8 +431,8 @@ object ScalaJSPluginInternal {
       packageJSDependenciesSetting(packageJSDependencies, "package-js-deps", _.lib),
 
       artifactPath in packageMinifiedJSDependencies :=
-        ((crossTarget in packageJSDependencies).value /
-            ((moduleName in packageJSDependencies).value + "-jsdeps.min.js")),
+        ((crossTarget in packageMinifiedJSDependencies).value /
+            ((moduleName in packageMinifiedJSDependencies).value + "-jsdeps.min.js")),
 
       packageJSDependenciesSetting(packageMinifiedJSDependencies,
           "package-min-js-deps", dep => dep.minifiedLib.getOrElse(dep.lib)),
