@@ -247,11 +247,11 @@ abstract class GenJSCode extends plugins.PluginComponent
               val tree = if (isRawJSType(sym.tpe)) {
                 assert(!isRawJSFunctionDef(sym),
                     s"Raw JS function def should have been recorded: $cd")
-                if (!sym.isInterface && isScalaJSDefinedJSClass(sym))
+                if (!sym.isTraitOrInterface && isScalaJSDefinedJSClass(sym))
                   genScalaJSDefinedJSClass(cd)
                 else
                   genRawJSClassData(cd)
-              } else if (sym.isInterface) {
+              } else if (sym.isTraitOrInterface) {
                 genInterface(cd)
               } else if (sym.isImplClass) {
                 genImplClass(cd)
@@ -288,7 +288,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = cd.symbol
       implicit val pos = sym.pos
 
-      assert(!sym.isInterface && !sym.isImplClass,
+      assert(!sym.isTraitOrInterface && !sym.isImplClass,
           "genClass() must be called only for normal classes: "+sym)
       assert(sym.superClass != NoSymbol, sym)
 
@@ -496,10 +496,10 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val classIdent = encodeClassFullNameIdent(sym)
       val superClass =
-        if (sym.isInterface) None
+        if (sym.isTraitOrInterface) None
         else Some(encodeClassFullNameIdent(sym.superClass))
       val jsName =
-        if (sym.isInterface || sym.isModuleClass) None
+        if (sym.isTraitOrInterface || sym.isModuleClass) None
         else Some(fullJSNameOf(sym))
 
       js.ClassDef(classIdent, ClassKind.RawJSType,
@@ -584,7 +584,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         parent <- sym.info.parents
         typeSym = parent.typeSymbol
         _ = assert(typeSym != NoSymbol, "parent needs symbol")
-        if (typeSym.isInterface)
+        if typeSym.isTraitOrInterface
       } yield {
         encodeClassFullNameIdent(typeSym)
       }
@@ -1045,11 +1045,22 @@ abstract class GenJSCode extends plugins.PluginComponent
               mutable = false, rest = false)
         }
 
+        /* When scalac uses impl classes, we cannot trust `rhs` to be
+         * `EmptyTree` for deferred methods (probably due to an internal bug
+         * of scalac), as can be seen in run/t6443.scala.
+         * However, when it does not use impl class anymore, we have to use
+         * `rhs == EmptyTree` as predicate, just like the JVM back-end does.
+         */
+        def isAbstractMethod =
+          if (scalaUsesImplClasses) sym.isDeferred || sym.owner.isInterface
+          else rhs == EmptyTree
+
         if (scalaPrimitives.isPrimitive(sym) &&
             !jsPrimitives.shouldEmitPrimitiveBody(sym)) {
           None
-        } else if (sym.isDeferred || sym.owner.isInterface) {
-          val body = if (sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
+        } else if (isAbstractMethod) {
+          val body = if (scalaUsesImplClasses &&
+              sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
             /* For an interface method with @JavaDefaultMethod, make it a
              * default method calling the impl class method.
              */
@@ -1075,7 +1086,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           None
         } else if (sym.isClassConstructor && isHijackedBoxedClass(sym.owner)) {
           None
-        } else if (!sym.owner.isImplClass &&
+        } else if (scalaUsesImplClasses && !sym.owner.isImplClass &&
             sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
           // Do not emit trait impl forwarders with @JavaDefaultMethod
           None
@@ -1259,14 +1270,23 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
           initialThis match {
-            case This(_) =>
+            case Ident(_) =>
+              // TODO Is this special-case really needed?
+              withScopedVars(
+                fakeTailJumpParamRepl := (thisDef.symbol, initialThis.symbol)
+              ) {
+                genInnerBody()
+              }
+
+            case _ =>
               val thisSym = thisDef.symbol
               if (thisSym.isMutable)
                 mutableLocalVars += thisSym
 
               val thisLocalIdent = encodeLocalSym(thisSym)
+              val genRhs = genExpr(initialThis)
               val thisLocalVarDef = js.VarDef(thisLocalIdent,
-                  currentClassType, thisSym.isMutable, genThis())
+                  currentClassType, thisSym.isMutable, genRhs)
 
               val innerBody = {
                 withScopedVars(
@@ -1277,13 +1297,6 @@ abstract class GenJSCode extends plugins.PluginComponent
               }
 
               js.Block(thisLocalVarDef, innerBody)
-
-            case Ident(_) =>
-              withScopedVars(
-                fakeTailJumpParamRepl := (thisDef.symbol, initialThis.symbol)
-              ) {
-                genInnerBody()
-              }
           }
 
         case _ =>
@@ -3803,7 +3816,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen JS code representing a JS class (subclass of js.Any) */
     private def genPrimitiveJSClass(sym: Symbol)(
         implicit pos: Position): js.Tree = {
-      assert(!isStaticModule(sym) && !sym.isInterface,
+      assert(!isStaticModule(sym) && !sym.isTraitOrInterface,
           s"genPrimitiveJSClass called with non-class $sym")
       js.LoadJSConstructor(jstpe.ClassType(encodeClassFullName(sym)))
     }
