@@ -175,7 +175,7 @@ object StackTrace {
    */
   private def extractClassMethod(functionName: String): (String, String) = {
     val PatC = """^(?:Object\.|\[object Object\]\.)?(?:ScalaJS\.c\.|\$c_)([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
-    val PatS = """^(?:Object\.|\[object Object\]\.)?(?:ScalaJS\.s\.|\$s_)((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatS = """^(?:Object\.|\[object Object\]\.)?(?:ScalaJS\.(?:s|f)\.|\$(?:s|f)_)((?:_[^_]|[^_])+)__([^\.]+)$""".re
     val PatM = """^(?:Object\.|\[object Object\]\.)?(?:ScalaJS\.m\.|\$m_)([^\.]+)$""".re
 
     var isModule = false
