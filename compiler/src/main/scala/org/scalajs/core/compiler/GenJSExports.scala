@@ -727,7 +727,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
   private def isOverridingExport(sym: Symbol): Boolean = {
     lazy val osym = sym.nextOverriddenSymbol
-    sym.isOverridingSymbol && !osym.owner.isInterface
+    sym.isOverridingSymbol && !osym.owner.isTraitOrInterface
   }
 
   private sealed abstract class RTTypeTest

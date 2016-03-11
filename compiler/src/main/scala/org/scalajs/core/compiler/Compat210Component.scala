@@ -27,6 +27,10 @@ trait Compat210Component {
     def originalName: Name = sys.error("infinite loop in Compat")
 
     def isLocalToBlock: Boolean = self.isLocal
+
+    def implClass: Symbol = NoSymbol
+
+    def isTraitOrInterface: Boolean = self.isTrait || self.isInterface
   }
 
   // enteringPhase/exitingPhase replace beforePhase/afterPhase
@@ -56,6 +60,24 @@ trait Compat210Component {
       def freeVarsOf(function: Function): mutable.LinkedHashSet[Symbol] =
         sys.error("FreeVarTraverser should not be called on 2.10")
     }
+  }
+
+  // Impl classes disappeared in 2.12.0-M4
+
+  lazy val scalaUsesImplClasses: Boolean =
+    definitions.SeqClass.implClass != NoSymbol // a trait we know has an impl class
+
+  implicit final class StdTermNamesCompat(self: global.nme.type) {
+    def IMPL_CLASS_SUFFIX: String = sys.error("No impl classes in this version")
+
+    def isImplClassName(name: Name): Boolean = false
+  }
+
+  implicit final class StdTypeNamesCompat(self: global.tpnme.type) {
+    def IMPL_CLASS_SUFFIX: String = sys.error("No impl classes in this version")
+
+    def interfaceName(implname: Name): TypeName =
+      sys.error("No impl classes in this version")
   }
 
   /* global.genBCode.bTypes.initializeCoreBTypes()

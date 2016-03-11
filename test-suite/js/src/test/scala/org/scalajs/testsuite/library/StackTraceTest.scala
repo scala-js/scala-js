@@ -30,7 +30,8 @@ class StackTraceTest {
           assertTrue(trace exists { elem =>
             /* We use startsWith for class name because some VMs will add
              * additional information at the end of the class name, for some
-             * reason.
+             * reason + there can be a '$class' suffix for methods in impl
+             * classes (when default methods are not used by scalac).
              */
             val prefix = "org.scalajs.testsuite.library.StackTraceTest$"
             (elem.getClassName.startsWith(prefix + className) &&
@@ -57,11 +58,11 @@ class StackTraceTest {
         new Bar().g(7)
       }
 
-      verifyClassMethodNames("Foo" -> "f", "FooTrait$class" -> "h") {
+      verifyClassMethodNames("Foo" -> "f", "FooTrait" -> "h") {
         new Foo().h(78)
       }
 
-      verifyClassMethodNames("Foo" -> "f", "FooTrait$class" -> "h",
+      verifyClassMethodNames("Foo" -> "f", "FooTrait" -> "h",
           "Baz" -> "<init>") {
         new Baz()
       }
