@@ -10,57 +10,58 @@ package org.scalajs.testsuite.jsinterop
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Assert._
+import org.junit.Test
 
-object JSNameTest extends JasmineTest {
+class JSNameTest {
+  import JSNameTest._
 
-  describe("@JSName") {
-
-    it("should work with defs that are properties") {
-      val obj = js.Dynamic.literal(jsDef = 1).asInstanceOf[PropDefFacade]
-      expect(obj.internalDef).toEqual(1)
-    }
-
-    it("should work with vals") {
-      val obj = js.Dynamic.literal(jsVal = "hi").asInstanceOf[PropValFacade]
-      expect(obj.internalVal).toEqual("hi")
-    }
-
-    it("should work with vars") {
-      val obj = js.Dynamic.literal(jsVar = 0.1).asInstanceOf[PropVarFacade]
-      expect(obj.internalVar).toEqual(0.1)
-      obj.internalVar = 0.2
-      expect(obj.internalVar).toEqual(0.2)
-    }
-
-    it("should work with defs that are properties in Scala.js-defined trait - #2197") {
-      val obj = js.Dynamic.literal(jsDef = 1).asInstanceOf[PropDefSJSDefined]
-      expect(obj.internalDef).toEqual(1)
-    }
-
-    it("should work with vals in Scala.js-defined trait - #2197") {
-      val obj = js.Dynamic.literal(jsVal = "hi").asInstanceOf[PropValSJSDefined]
-      expect(obj.internalVal).toEqual("hi")
-    }
-
-    it("should work with vars in Scala.js-defined trait - #2197") {
-      val obj = js.Dynamic.literal(jsVar = 0.1).asInstanceOf[PropVarSJSDefined]
-      expect(obj.internalVar).toEqual(0.1)
-      obj.internalVar = 0.2
-      expect(obj.internalVar).toEqual(0.2)
-    }
-
-    it("should allow names ending in _=") {
-      val d = js.Dynamic.literal("a_=" -> 1)
-      val f = d.asInstanceOf[UndEqNamed]
-
-      expect(f.a).toEqual(1)
-      f.a = 2
-      expect(d.selectDynamic("a_=")).toEqual(2)
-      expect(f.a).toEqual(2)
-    }
-
+  @Test def should_work_with_defs_that_are_properties(): Unit = {
+    val obj = js.Dynamic.literal(jsDef = 1).asInstanceOf[PropDefFacade]
+    assertEquals(1, obj.internalDef)
   }
+
+  @Test def should_work_with_vals(): Unit = {
+    val obj = js.Dynamic.literal(jsVal = "hi").asInstanceOf[PropValFacade]
+    assertEquals("hi", obj.internalVal)
+  }
+
+  @Test def should_work_with_vars(): Unit = {
+    val obj = js.Dynamic.literal(jsVar = 0.1).asInstanceOf[PropVarFacade]
+    assertEquals(0.1, obj.internalVar)
+    obj.internalVar = 0.2
+    assertEquals(0.2, obj.internalVar)
+  }
+
+  @Test def should_work_with_defs_that_are_properties_in_Scala_js_defined_trait_issue_2197(): Unit = {
+    val obj = js.Dynamic.literal(jsDef = 1).asInstanceOf[PropDefSJSDefined]
+    assertEquals(1, obj.internalDef)
+  }
+
+  @Test def should_work_with_vals_in_Scala_js_defined_trait_issue_2197(): Unit = {
+    val obj = js.Dynamic.literal(jsVal = "hi").asInstanceOf[PropValSJSDefined]
+    assertEquals("hi", obj.internalVal)
+  }
+
+  @Test def should_work_with_vars_in_Scala_js_defined_trait_issue_2197(): Unit = {
+    val obj = js.Dynamic.literal(jsVar = 0.1).asInstanceOf[PropVarSJSDefined]
+    assertEquals(0.1, obj.internalVar)
+    obj.internalVar = 0.2
+    assertEquals(0.2, obj.internalVar)
+  }
+
+  @Test def should_allow_names_ending_in__=(): Unit = {
+    val d = js.Dynamic.literal("a_=" -> 1)
+    val f = d.asInstanceOf[UndEqNamed]
+
+    assertEquals(1, f.a)
+    f.a = 2
+    assertEquals(2, d.selectDynamic("a_="))
+    assertEquals(2, f.a)
+  }
+}
+
+object JSNameTest {
 
   @js.native
   trait PropDefFacade extends js.Any {

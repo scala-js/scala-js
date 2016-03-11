@@ -8,112 +8,120 @@
 package org.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
-import org.scalajs.jasminetest.JasmineTest
 
-object DictionaryTest extends JasmineTest {
+import org.junit.Assert._
+import org.junit.Assume._
+import org.junit.Test
 
-  describe("scala.scalajs.js.Dictionary") {
+import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform._
 
-    it("should provide an equivalent of the JS delete keyword - #255") {
-      val obj = js.Dictionary.empty[js.Any]
-      obj("foo") = 42
-      obj("bar") = "foobar"
+class DictionaryTest {
+  import DictionaryTest._
 
-      expect(obj("foo")).toEqual(42)
-      expect(obj("bar")).toEqual("foobar")
-      obj.delete("foo")
-      expect(obj.contains("foo")).toBeFalsy
-      expect(obj.asInstanceOf[js.Object].hasOwnProperty("foo")).toBeFalsy
-      expect(obj("bar")).toEqual("foobar")
-    }
+  // scala.scalajs.js.Dictionary
 
-    // This doesn't work on Rhino due to lack of full strict mode support - #679
-    unless("rhino").
-    it("should behave as specified when deleting a non-configurable property - #461 - #679") {
-      val obj = js.Dictionary.empty[js.Any]
-      js.Object.defineProperty(obj.asInstanceOf[js.Object], "nonconfig",
-          js.Dynamic.literal(value = 4, writable = false).asInstanceOf[js.PropertyDescriptor])
-      expect(obj("nonconfig")).toEqual(4)
-      expect(() => obj.delete("nonconfig")).toThrow
-      expect(obj("nonconfig")).toEqual(4)
-    }
+  @Test def should_provide_an_equivalent_of_the_JS_delete_keyword_issue_255(): Unit = {
+    val obj = js.Dictionary.empty[js.Any]
+    obj("foo") = 42
+    obj("bar") = "foobar"
 
-    it("apply should throw when not found") {
-      val obj = js.Dictionary("foo" -> "bar")
-      expect(() => obj("bar")).toThrow
-    }
-
-    it("should provide `get`") {
-      val obj = js.Dictionary.empty[Int]
-      obj("hello") = 1
-
-      expect(obj.get("hello") == Some(1)).toBeTruthy
-      expect(obj.get("world").isDefined).toBeFalsy
-    }
-
-    it("-= should ignore deleting a non-existent key") {
-      val obj = js.Dictionary("a" -> "A")
-      obj -= "b"
-    }
-
-    it("should treat delete as a statement - #907") {
-      val obj = js.Dictionary("a" -> "A")
-      obj.delete("a")
-    }
-
-    it("should provide keys") {
-      val obj = js.Dictionary("a" -> "A", "b" -> "B")
-      val keys = obj.keys.toList
-      expect(keys.size).toEqual(2)
-      expect(keys.contains("a")).toBeTruthy
-      expect(keys.contains("b")).toBeTruthy
-    }
-
-    it("should survive the key 'hasOwnProperty' - #1414") {
-      val obj = js.Dictionary.empty[Int]
-      expect(obj.contains("hasOwnProperty")).toBeFalsy
-      obj("hasOwnProperty") = 5
-      expect(obj.contains("hasOwnProperty")).toBeTruthy
-      obj.delete("hasOwnProperty")
-      expect(obj.contains("hasOwnProperty")).toBeFalsy
-    }
-
-    it("should provide an iterator") {
-      val obj = js.Dictionary("foo" -> 5, "bar" -> 42, "babar" -> 0)
-      var elems: List[(String, Int)] = Nil
-      for ((prop, value) <- obj) {
-        elems ::= (prop, value)
-      }
-      expect(elems.size).toEqual(3)
-      expect(elems.contains(("foo", 5))).toBeTruthy
-      expect(elems.contains(("bar", 42))).toBeTruthy
-      expect(elems.contains(("babar", 0))).toBeTruthy
-    }
-
-    it("should desugar arguments to delete statements - #908") {
-      val kh = js.Dynamic.literal(key = "a").asInstanceOf[KeyHolder]
-      val dict = js.Dictionary[String]("a" -> "A")
-      def a[T](foo: String): T = dict.asInstanceOf[T]
-      a[js.Dictionary[String]]("foo").delete(kh.key)
-    }
-
+    assertEquals(42, obj("foo"))
+    assertEquals("foobar", obj("bar"))
+    obj.delete("foo")
+    assertFalse(obj.contains("foo"))
+    assertFalse(obj.asInstanceOf[js.Object].hasOwnProperty("foo"))
+    assertEquals("foobar", obj("bar"))
   }
 
+  // This doesn't work on Rhino due to lack of full strict mode support - #679
+
+  @Test def should_behave_as_specified_when_deleting_a_non_configurable_property_issue_461_issue_679(): Unit = {
+    assumeFalse(executingInRhino)
+    val obj = js.Dictionary.empty[js.Any]
+    js.Object.defineProperty(obj.asInstanceOf[js.Object], "nonconfig",
+        js.Dynamic.literal(value = 4, writable = false).asInstanceOf[js.PropertyDescriptor])
+    assertEquals(4, obj("nonconfig"))
+    assertThrows(classOf[Exception], obj.delete("nonconfig"))
+    assertEquals(4, obj("nonconfig"))
+  }
+
+  @Test def apply_should_throw_when_not_found(): Unit = {
+    val obj = js.Dictionary("foo" -> "bar")
+    assertThrows(classOf[NoSuchElementException], obj("bar"))
+  }
+
+  @Test def should_provide_get(): Unit = {
+    val obj = js.Dictionary.empty[Int]
+    obj("hello") = 1
+
+    assertTrue(obj.get("hello") == Some(1))
+    assertFalse(obj.get("world").isDefined)
+  }
+
+  @Test def `-=_should_ignore_deleting_a_non_existent_key`(): Unit = {
+    val obj = js.Dictionary("a" -> "A")
+    obj -= "b"
+  }
+
+  @Test def should_treat_delete_as_a_statement_issue_907(): Unit = {
+    val obj = js.Dictionary("a" -> "A")
+    obj.delete("a")
+  }
+
+  @Test def should_provide_keys(): Unit = {
+    val obj = js.Dictionary("a" -> "A", "b" -> "B")
+    val keys = obj.keys.toList
+    assertEquals(2, keys.size)
+    assertTrue(keys.contains("a"))
+    assertTrue(keys.contains("b"))
+  }
+
+  @Test def should_survive_the_key_hasOwnProperty_issue_1414(): Unit = {
+    val obj = js.Dictionary.empty[Int]
+    assertFalse(obj.contains("hasOwnProperty"))
+    obj("hasOwnProperty") = 5
+    assertTrue(obj.contains("hasOwnProperty"))
+    obj.delete("hasOwnProperty")
+    assertFalse(obj.contains("hasOwnProperty"))
+  }
+
+  @Test def should_provide_an_iterator(): Unit = {
+    val obj = js.Dictionary("foo" -> 5, "bar" -> 42, "babar" -> 0)
+    var elems: List[(String, Int)] = Nil
+    for ((prop, value) <- obj) {
+      elems ::= (prop, value)
+    }
+    assertEquals(3, elems.size)
+    assertTrue(elems.contains(("foo", 5)))
+    assertTrue(elems.contains(("bar", 42)))
+    assertTrue(elems.contains(("babar", 0)))
+  }
+
+  @Test def should_desugar_arguments_to_delete_statements_issue_908(): Unit = {
+    val kh = js.Dynamic.literal(key = "a").asInstanceOf[KeyHolder]
+    val dict = js.Dictionary[String]("a" -> "A")
+    def a[T](foo: String): T = dict.asInstanceOf[T]
+    a[js.Dictionary[String]]("foo").delete(kh.key)
+  }
+
+  // scala.scalajs.js.JSConverters.JSRichGenMap
+
+  @Test def should_provide_toJSDictionary(): Unit = {
+    import js.JSConverters._
+    val dict1 = Map("a" -> 1, "b" -> 2).toJSDictionary
+    assertEquals(1, dict1("a"))
+    assertEquals(2, dict1("b"))
+
+    val dict2 = Map("a" -> "foo", "b" -> "bar").toJSDictionary
+    assertEquals("foo", dict2("a"))
+    assertEquals("bar", dict2("b"))
+  }
+}
+
+object DictionaryTest {
   @js.native
   trait KeyHolder extends js.Object {
     def key: String = js.native
-  }
-
-  describe("scala.scalajs.js.JSConverters.JSRichGenMap") {
-
-    import js.JSConverters._
-
-    it("should provide toJSDictionary") {
-      expect(Map("a" -> 1, "b" -> 2).toJSDictionary).toEqual(
-          js.Dynamic.literal(a = 1, b = 2))
-      expect(Map("a" -> "foo", "b" -> "bar").toJSDictionary).toEqual(
-          js.Dynamic.literal(a = "foo", b = "bar"))
-    }
-
   }
 }

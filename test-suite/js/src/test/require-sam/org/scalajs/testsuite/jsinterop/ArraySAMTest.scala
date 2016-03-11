@@ -9,24 +9,23 @@ package org.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Assert._
+import org.junit.Test
 
-object ArraySAMTest extends JasmineTest {
+import org.scalajs.testsuite.utils.JSAssert._
+
+class ArraySAMTest {
 
   import js.JSArrayOps._
 
-  describe("scala.scalajs.js.Array with SAM support") {
+  @Test def should_provide_jsMap(): Unit = {
+    assertJSArrayEquals(js.Array(2, 3, 1, 2),
+        js.Array("Sc", "ala", ".", "js").jsMap(_.length))
+  }
 
-    it("should provide jsMap") {
-      expect(js.Array("Sc", "ala", ".", "js").jsMap(_.length)).toEqual(
-          js.Array(2, 3, 1, 2))
-    }
-
-    it("should provide jsFilter") {
-      expect(js.Array(56, 30, -20, 33, 54, 86).jsFilter(_ % 3 != 0)).toEqual(
-          js.Array(56, -20, 86))
-    }
-
+  @Test def should_provide_jsFilter(): Unit = {
+    assertJSArrayEquals(js.Array(56, -20, 86),
+        js.Array(56, 30, -20, 33, 54, 86).jsFilter(_ % 3 != 0))
   }
 
 }
