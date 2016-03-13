@@ -21,6 +21,7 @@ import ir.{Trees => js, Types => jstpe, ClassKind, Hashers}
 import ir.Trees.OptimizerHints
 
 import util.ScopedVar
+import util.VarBox
 import ScopedVar.withScopedVars
 
 /** Generate JavaScript code and output it to disk
@@ -124,27 +125,36 @@ abstract class GenJSCode extends plugins.PluginComponent
     override def description: String = GenJSCode.this.description
     override def erasedTypes: Boolean = true
 
-    // Some state --------------------------------------------------------------
+    // Scoped state ------------------------------------------------------------
 
-    val currentClassSym          = new ScopedVar[Symbol]
-    val currentMethodSym         = new ScopedVar[Symbol]
-    val thisLocalVarIdent        = new ScopedVar[Option[js.Ident]](None)
-    val fakeTailJumpParamRepl    = new ScopedVar[(Symbol, Symbol)]((NoSymbol, NoSymbol))
-    val enclosingLabelDefParams  = new ScopedVar(Map.empty[Symbol, List[Symbol]])
-    val mutableLocalVars         = new ScopedVar[mutable.Set[Symbol]]
-    val mutatedLocalVars         = new ScopedVar[mutable.Set[Symbol]]
-    val unexpectedMutatedFields  = new ScopedVar[mutable.Set[Symbol]]
-    val paramAccessorLocals      = new ScopedVar(Map.empty[Symbol, js.ParamDef])
-
-    var isModuleInitialized: Boolean = false // see genApply for super calls
-
-    val countsOfReturnsToMatchEnd = mutable.Map.empty[Symbol, Int]
+    //// Per class body
+    val currentClassSym = new ScopedVar[Symbol]
+    private val unexpectedMutatedFields = new ScopedVar[mutable.Set[Symbol]]
 
     private def currentClassType = encodeClassType(currentClassSym)
 
-    val tryingToGenMethodAsJSFunction = new ScopedVar[Boolean](false)
-    class CancelGenMethodAsJSFunction(message: String)
+    //// Per method body
+    private val currentMethodSym = new ScopedVar[Symbol]
+    private val thisLocalVarIdent = new ScopedVar[Option[js.Ident]]
+    private val fakeTailJumpParamRepl = new ScopedVar[(Symbol, Symbol)]
+    private val enclosingLabelDefParams = new ScopedVar[Map[Symbol, List[Symbol]]]
+    private val isModuleInitialized = new ScopedVar[VarBox[Boolean]]
+    private val undefinedDefaultParams = new ScopedVar[mutable.Set[Symbol]]
+
+    //// For some method bodies
+    private val mutableLocalVars = new ScopedVar[mutable.Set[Symbol]]
+    private val mutatedLocalVars = new ScopedVar[mutable.Set[Symbol]]
+
+    //// For anonymous methods
+    // These have a default, since we always read them.
+    private val tryingToGenMethodAsJSFunction = new ScopedVar[Boolean](false)
+    private val paramAccessorLocals = new ScopedVar(Map.empty[Symbol, js.ParamDef])
+
+    private class CancelGenMethodAsJSFunction(message: String)
         extends Throwable(message) with scala.util.control.ControlThrowable
+
+    //// For matches
+    private val countsOfReturnsToMatchEnd = new ScopedVar[VarBox[Int]]
 
     // Rewriting of anonymous function classes ---------------------------------
 
@@ -153,8 +163,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       mutable.Map.empty[Symbol,
         /*ctor args:*/ List[js.Tree] => /*instance:*/ js.Tree]
     private val instantiatedAnonFunctions =
-      mutable.Set.empty[Symbol]
-    private val undefinedDefaultParams =
       mutable.Set.empty[Symbol]
     // scalastyle:on disallow.space.after.token
 
@@ -273,8 +281,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       } finally {
         translatedAnonFunctions.clear()
         instantiatedAnonFunctions.clear()
-        undefinedDefaultParams.clear()
-        countsOfReturnsToMatchEnd.clear()
         pos2irPosCache.clear()
       }
     }
@@ -1022,13 +1028,13 @@ abstract class GenJSCode extends plugins.PluginComponent
       val DefDef(mods, name, _, vparamss, _, rhs) = dd
       val sym = dd.symbol
 
-      isModuleInitialized = false
-
       withScopedVars(
           currentMethodSym        := sym,
           thisLocalVarIdent       := None,
           fakeTailJumpParamRepl   := (NoSymbol, NoSymbol),
-          enclosingLabelDefParams := Map.empty
+          enclosingLabelDefParams := Map.empty,
+          isModuleInitialized     := new VarBox(false),
+          undefinedDefaultParams  := mutable.Set.empty
       ) {
         assert(vparamss.isEmpty || vparamss.tail.isEmpty,
             "Malformed parameter list: " + vparamss)
@@ -1904,7 +1910,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         // Initialize the module instance just after the super constructor call.
         if (isStaticModule(currentClassSym) && !isModuleInitialized &&
             currentMethodSym.isClassConstructor) {
-          isModuleInitialized = true
+          isModuleInitialized.value = true
           val thisType = jstpe.ClassType(encodeClassFullName(currentClassSym))
           val initModule = js.StoreModule(thisType, js.This()(thisType))
           js.Block(superCall, initModule)
@@ -1973,7 +1979,7 @@ abstract class GenJSCode extends plugins.PluginComponent
          * position). We simply `return` the argument as the result of the
          * labeled block surrounding the match.
          */
-        countsOfReturnsToMatchEnd(sym) += 1
+        countsOfReturnsToMatchEnd.value += 1
         js.Return(genExpr(args.head), Some(encodeLabelSym(sym)))
       } else {
         /* No other label apply should ever happen. If it does, then we
@@ -2466,39 +2472,38 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genTranslatedMatch(cases: List[LabelDef],
         matchEnd: LabelDef)(implicit pos: Position): js.Tree = {
 
-      val matchEndSym = matchEnd.symbol
-      countsOfReturnsToMatchEnd(matchEndSym) = 0
+      withScopedVars(
+          countsOfReturnsToMatchEnd := new VarBox(0)
+      ) {
+        val nextCaseSyms = (cases.tail map (_.symbol)) :+ NoSymbol
 
-      val nextCaseSyms = (cases.tail map (_.symbol)) :+ NoSymbol
+        val translatedCases = for {
+          (LabelDef(_, Nil, rhs), nextCaseSym) <- cases zip nextCaseSyms
+        } yield {
+          def genCaseBody(tree: Tree): js.Tree = {
+            implicit val pos = tree.pos
+            tree match {
+              case If(cond, thenp, elsep) =>
+                js.If(genExpr(cond), genCaseBody(thenp), genCaseBody(elsep))(
+                    jstpe.NoType)
 
-      val translatedCases = for {
-        (LabelDef(_, Nil, rhs), nextCaseSym) <- cases zip nextCaseSyms
-      } yield {
-        def genCaseBody(tree: Tree): js.Tree = {
-          implicit val pos = tree.pos
-          tree match {
-            case If(cond, thenp, elsep) =>
-              js.If(genExpr(cond), genCaseBody(thenp), genCaseBody(elsep))(
-                  jstpe.NoType)
+              case Block(stats, expr) =>
+                js.Block((stats map genStat) :+ genCaseBody(expr))
 
-            case Block(stats, expr) =>
-              js.Block((stats map genStat) :+ genCaseBody(expr))
+              case Apply(_, Nil) if tree.symbol == nextCaseSym =>
+                js.Skip()
 
-            case Apply(_, Nil) if tree.symbol == nextCaseSym =>
-              js.Skip()
-
-            case _ =>
-              genStat(tree)
+              case _ =>
+                genStat(tree)
+            }
           }
+
+          genCaseBody(rhs)
         }
 
-        genCaseBody(rhs)
+        genOptimizedLabeled(encodeLabelSym(matchEnd.symbol),
+            toIRType(matchEnd.tpe), translatedCases, countsOfReturnsToMatchEnd)
       }
-
-      val returnCount = countsOfReturnsToMatchEnd.remove(matchEndSym).get
-
-      genOptimizedLabeled(encodeLabelSym(matchEndSym), toIRType(matchEnd.tpe),
-          translatedCases, returnCount)
     }
 
     /** Gen JS code for a Labeled block from a pattern match, while trying
