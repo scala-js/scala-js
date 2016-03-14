@@ -1,0 +1,2 @@
+error: bad options: -badCompilerFlag notAFlag -Yopt:badChoice
+one error found
