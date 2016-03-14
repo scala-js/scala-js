@@ -1,17 +1,11 @@
 package com.novocode.junit
 
-import org.scalajs.junit.{JUnitMasterRunner, JUnitSlaveRunner}
+import org.scalajs.junit.{JUnitFingerprint, JUnitMasterRunner, JUnitSlaveRunner}
 import sbt.testing._
 
 final class JUnitFramework extends Framework {
 
   val name: String = "Scala.js JUnit test framework"
-
-  private object JUnitFingerprint extends AnnotatedFingerprint {
-    override def annotationName(): String = "org.junit.Test"
-
-    override def isModule(): Boolean = false
-  }
 
   def fingerprints(): Array[Fingerprint] = {
     Array(JUnitFingerprint)

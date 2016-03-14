@@ -3,7 +3,7 @@ package org.scalajs.core.tools.test.js
 import scala.scalajs.js
 import js.annotation.JSExport
 
-import org.scalajs.jasminetest._
+import com.novocode.junit.JUnitFramework
 import org.scalajs.testinterface.ScalaJSClassLoader
 
 import org.scalajs.testsuite.utils.TestDetector
@@ -15,8 +15,9 @@ object TestRunner {
 
   @JSExport
   def runTests(): Unit = {
-    val framework = new JasmineFramework()
-    val runner = framework.runner(Array("-ttypedarray"), Array(),
+    System.setProperty("scalajs.typedarray", "true")
+    val framework = new JUnitFramework()
+    val runner = framework.runner(Array(), Array(),
         new ScalaJSClassLoader(js.Dynamic.global))
 
     val tasks = runner.tasks(taskDefs(framework.fingerprints.head).toArray)
@@ -44,7 +45,7 @@ object TestRunner {
 
     def hasFailed: Boolean = failed
 
-    def handle(ev: Event) = {
+    def handle(ev: Event): Unit = {
       if (ev.status == Status.Error || ev.status == Status.Failure)
         failed = true
     }

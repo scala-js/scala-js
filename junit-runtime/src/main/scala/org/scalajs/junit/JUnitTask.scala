@@ -20,8 +20,7 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
     val richLogger = new RichLogger(loggers, runner.runSettings,
         taskDef.fullyQualifiedName)
 
-    if (runner.runSettings.verbose)
-      richLogger.info(c("Test run started", INFO))
+    JUnitTask.printStart(richLogger, runner)
 
     val bootstrapperName = taskDef.fullyQualifiedName + "$scalajs$junit$bootstrapper"
 
@@ -44,8 +43,21 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
 
     runner.taskDone()
 
+    val time = System.nanoTime - startTime
+    JUnitTask.printEnd(richLogger, runner, time)
+    Array()
+  }
+
+}
+
+object JUnitTask {
+  def printStart(richLogger: RichLogger, runner: JUnitBaseRunner): Unit = {
+    if (runner.runSettings.verbose)
+      richLogger.info(c("Test run started", INFO))
+  }
+
+  def printEnd(richLogger: RichLogger, runner: JUnitBaseRunner, time: Long): Unit = {
     if (runner.runSettings.verbose) {
-      val time = System.nanoTime - startTime
       val failed = runner.taskFailedCount
       val ignored = runner.taskIgnoredCount
       val total = runner.taskTotalCount
@@ -57,7 +69,5 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
         c(s"${time.toDouble / 1000000000}s", INFO))
       richLogger.info(msg.mkString(" "))
     }
-
-    Array()
   }
 }

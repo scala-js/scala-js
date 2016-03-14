@@ -22,10 +22,13 @@ object TestDetector {
       "SJSDefinedAutoExportedIgnoreClassClass"
   ).map(basePackage + ".jsinterop." + _)
 
-  def detectTestNames(): List[String] = detectTestsInternal().map(_._2).toList
+  def detectTestNames(): List[String] = detectTestsInternal().map(_._2)
 
   @JSExport
   def loadDetectedTests(): Unit = detectTestsInternal().foreach(_._1())
+
+  def getDetectedTests(): List[js.Dynamic] =
+    detectTestsInternal().map(_._1())
 
   private def detectTestsInternal(): List[(js.Dynamic, String)] = {
     def isExportedModule(item: js.Dynamic): Boolean = {
