@@ -1,5 +1,4 @@
 import scala.scalajs.js
-import scala.scalajs.js.Dynamic.global
 import scala.scalajs.js.JSConverters._
 
 import org.scalajs.jasminetest.JasmineTest
