@@ -1249,7 +1249,10 @@ object Build extends sbt.Build {
           })
 
           val outFile = dir / "SourceMapTest.scala"
-          IO.write(outFile, replaced.replace("0/*<testCount>*/", i.toString))
+          val unitTests =
+            (0 until i).map(i => s"@Test def workTest$i(): Unit = test($i)").mkString("; ")
+          IO.write(outFile,
+              replaced.replace("@Test def workTest(): Unit = sys.error(\"stubs\")", unitTests))
           Seq(outFile)
         },
 
