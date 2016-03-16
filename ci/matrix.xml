@@ -214,7 +214,7 @@
   <task id="sbtplugin-test"><![CDATA[
     # Publish Scala.js artifacts locally
     # Then go into standalone project and test
-    sbt ++2.11.7 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
+    sbt ++2.11.8 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
                  testInterface/publishLocal jasmineTestFramework/publishLocal stubs/publishLocal \
                  jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++2.10.6 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
@@ -259,15 +259,15 @@
       <v n="java">1.8</v>
     </run>
     <run task="main">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.6</v>
     </run>
     <run task="main">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.7</v>
     </run>
     <run task="main">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
     </run>
     <run task="main">
@@ -289,15 +289,15 @@
       <v n="java">1.8</v>
     </run>
     <run task="test-suite-ecma-script5">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.6</v>
     </run>
     <run task="test-suite-ecma-script5">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.7</v>
     </run>
     <run task="test-suite-ecma-script5">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
     </run>
     <run task="test-suite-ecma-script5">
@@ -319,15 +319,15 @@
       <v n="java">1.8</v>
     </run>
     <run task="test-suite-ecma-script6">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.6</v>
     </run>
     <run task="test-suite-ecma-script6">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.7</v>
     </run>
     <run task="test-suite-ecma-script6">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
     </run>
     <run task="test-suite-ecma-script6">
@@ -350,11 +350,11 @@
     </run>
     <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
     <run task="bootstrap">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.7</v>
     </run>
     <run task="bootstrap">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
     </run>
     <run task="bootstrap">
@@ -377,11 +377,11 @@
     </run>
     <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
     <run task="tools-cli-stubs">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.7</v>
     </run>
     <run task="tools-cli-stubs">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
     </run>
 
@@ -391,7 +391,7 @@
       <v n="java">1.7</v>
     </run>
     <run task="partestc">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.7</v>
     </run>
 
@@ -490,6 +490,18 @@
       <v n="scala">2.11.6</v>
       <v n="java">1.8</v>
     </run>
+    <run task="main">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.8</v>
+    </run>
 
     <!-- Test suite on ECMAScript5 tasks (all remaining Scala versions) -->
     <run task="test-suite-ecma-script5">
@@ -578,6 +590,18 @@
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.6</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.7</v>
       <v n="java">1.8</v>
     </run>
 
@@ -670,6 +694,18 @@
       <v n="scala">2.11.6</v>
       <v n="java">1.8</v>
     </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.8</v>
+    </run>
 
     <!-- Bootstrap test tasks (all remaining Scala versions) -->
     <run task="bootstrap">
@@ -733,17 +769,25 @@
       <v n="scala">2.11.6</v>
       <v n="java">1.8</v>
     </run>
+    <run task="bootstrap">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.8</v>
+    </run>
 
     <run task="partest-noopt">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.7</v>
     </run>
     <run task="partest-fastopt">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.7</v>
     </run>
     <run task="partest-fullopt">
-      <v n="scala">2.11.7</v>
+      <v n="scala">2.11.8</v>
       <v n="java">1.7</v>
     </run>
     <run task="partest-noopt">
@@ -870,6 +914,18 @@
     </run>
     <run task="partest-fullopt">
       <v n="scala">2.11.7</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-noopt">
+      <v n="scala">2.11.8</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-fastopt">
+      <v n="scala">2.11.8</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-fullopt">
+      <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
     </run>
     <!--
