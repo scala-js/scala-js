@@ -10,10 +10,11 @@ fi
 
 FULL_VERSIONS="2.10.2 2.10.3 2.10.4 2.10.5 2.10.6 2.11.0 2.11.1 2.11.2 2.11.4 2.11.5 2.11.6 2.11.7 2.11.8 2.12.0-M3"
 BIN_VERSIONS="2.10.6 2.11.8 2.12.0-M3"
+CLI_VERSIONS="2.10.6 2.11.8"
 SBT_VERSION="2.10.6"
 
 COMPILER="compiler jUnitPlugin"
-LIBS="library javalibEx ir irJS tools toolsJS jsEnvs testAdapter stubs testInterface cli jUnitRuntime"
+LIBS="library javalibEx ir irJS tools toolsJS jsEnvs testAdapter stubs testInterface jUnitRuntime"
 
 # Publish compiler
 for v in $FULL_VERSIONS; do
@@ -24,13 +25,18 @@ for v in $FULL_VERSIONS; do
     $CMD $ARGS
 done
 
-# Package libraries
+# Publish libraries
 for v in $BIN_VERSIONS; do
     ARGS="++$v"
     for p in $LIBS; do
         ARGS="$ARGS $p/publishSigned"
     done
     $CMD $ARGS
+done
+
+# Publish the CLI
+for v in $CLI_VERSIONS; do
+    $CMD "++$v" "cli/publishSigned"
 done
 
 # Publish sbt-plugin
