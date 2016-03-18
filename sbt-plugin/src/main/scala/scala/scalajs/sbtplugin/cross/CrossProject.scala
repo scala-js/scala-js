@@ -122,8 +122,8 @@ import java.io.File
  *  the projects into Eclipse.
  *
  *  You can configure sbteclipse to
- *  [https://github.com/typesafehub/sbteclipse/wiki/Using-sbteclipse#useprojectid
- *  use the project ID] instead (which is unique in sbt as well):
+ *  [[https://github.com/typesafehub/sbteclipse/wiki/Using-sbteclipse#useprojectid
+ *  use the project ID]] instead (which is unique in sbt as well):
  *
  *  {{{
  *  EclipseKeys.useProjectId := true
