@@ -59,7 +59,7 @@ final class LinkerFrontend(
       if (linkResult.isComplete) {
         optimize(linkResult, symbolRequirements, optimizer, logger)
       } else {
-        logger.warn("Not running the optimizer because there where linking errors.")
+        logger.warn("Not running the optimizer because there were linking errors.")
         linkResult
       }
     }
