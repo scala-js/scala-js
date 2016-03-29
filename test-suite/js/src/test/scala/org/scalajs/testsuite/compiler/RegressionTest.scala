@@ -448,6 +448,34 @@ class RegressionTest {
     assertEquals(6, f(5))
   }
 
+  @Test def nested_labeled_block_sort_circuit_returns_issue_2307(): Unit = {
+    class UnsafeCrud(i: Int) {
+      def unsafeUpdate(l: List[Any], i: Int, f: Any => Any): (List[Any], Any) = {
+        def loop(l: List[Any], i: Int, prefix: List[Any]): (List[Any], List[Any], Any) = {
+          l match {
+            case hd :: (tl: List[Any]) =>
+              if (i == 0) (prefix, f(hd) :: tl, hd)
+              else loop(tl, i - 1, hd :: prefix)
+            case _ =>
+              throw new Exception("...")
+          }
+        }
+
+        val loopR = loop(l, i, Nil)
+        val prefix = loopR._1
+        val v = loopR._3
+        (prefix, v)
+      }
+
+      def apply(l: List[Any], f: Any => Any): (List[Any], Any) =
+        unsafeUpdate(l, i, f)
+    }
+
+    val r = 10 :: "foo" :: 'x' :: 42 :: Nil
+    val result = new UnsafeCrud(0).apply(r, _ => "newStr")
+    assertEquals((Nil, 10), result)
+  }
+
 }
 
 object RegressionTest {
