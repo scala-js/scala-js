@@ -353,6 +353,19 @@ object Build extends sbt.Build {
       if (isGeneratingEclipse) project
       else project.dependsOn(compiler % "plugin")
 
+    def withScalaJSJUnitPlugin: Project = {
+      project.settings(
+        scalacOptions in Test ++= {
+          if (isGeneratingEclipse) {
+            Seq.empty
+          } else {
+            val jar = (packageBin in (jUnitPlugin, Compile)).value
+            Seq(s"-Xplugin:$jar")
+          }
+        }
+      )
+    }
+
     /** Depends on library as if (exportJars in library) was set to false. */
     def dependsOnLibraryNoJar: Project = {
       if (isGeneratingEclipse) {
@@ -437,7 +450,8 @@ object Build extends sbt.Build {
               clean in reversi, clean in testingExample,
               clean in testSuite, clean in testSuiteJVM, clean in noIrCheckTest,
               clean in javalibExTestSuite,
-              clean in partest, clean in partestSuite).value,
+              clean in partest, clean in partestSuite,
+              clean in scalaTestSuite).value,
 
           publish := {},
           publishLocal := {}
@@ -1254,18 +1268,9 @@ object Build extends sbt.Build {
           IO.write(outFile,
               replaced.replace("@Test def workTest(): Unit = sys.error(\"stubs\")", unitTests))
           Seq(outFile)
-        },
-
-        scalacOptions in Test ++= {
-          if (isGeneratingEclipse) {
-            Seq.empty
-          } else {
-            val jar = (packageBin in (jUnitPlugin, Compile)).value
-            Seq(s"-Xplugin:$jar")
-          }
         }
       )
-  ).withScalaJSCompiler.dependsOn(
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
     library, jUnitRuntime, jasmineTestFramework % "test"
   )
 
@@ -1423,4 +1428,83 @@ object Build extends sbt.Build {
           }
       )
   ).dependsOn(partest % "test", library)
+
+  lazy val scalaTestSuite: Project = Project(
+    id = "scalaTestSuite",
+    base = file("scala-test-suite"),
+    settings = commonSettings ++ myScalaJSSettings ++ Seq(
+      publishArtifact in Compile := false,
+
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+
+      unmanagedSources in Test ++= {
+        assert(scalaBinaryVersion.value != "2.10",
+            "scalaTestSuite is not supported on Scala 2.10")
+
+        def loadList(listName: String): Set[String] = {
+          val listsDir = (resourceDirectory in Test).value / scalaVersion.value
+          val buff = scala.io.Source.fromFile(listsDir / listName)
+          val lines = buff.getLines().collect {
+            case line if !line.startsWith("#") && line.nonEmpty => line
+          }.toSeq
+          val linesSet = lines.toSet
+          if (linesSet.size != lines.size) {
+            val msg = listName + " contains contains duplicates: " +
+                lines.diff(linesSet.toSeq).toSet
+            throw new AssertionError(msg.toString)
+          }
+          linesSet
+        }
+
+        val whitelist: Set[String] = loadList("WhitelistedTests.txt")
+        val blacklist: Set[String] = loadList("BlacklistedTests.txt")
+
+        val jUnitTestsPath =
+          (fetchScalaSource in partest).value / "test" / "junit"
+
+        val scalaScalaJUnitSources = {
+          (jUnitTestsPath ** "*.scala").get.flatMap { file =>
+            file.relativeTo(jUnitTestsPath) match {
+              case Some(rel) => List((rel.toString, file))
+              case None      => Nil
+            }
+          }
+        }
+
+        // Check the coherence of the lists against the files found.
+        val allClasses = scalaScalaJUnitSources.map(_._1).toSet
+        val inBothLists = blacklist.intersect(whitelist)
+        val allListed = blacklist.union(whitelist)
+        val inNoList = allClasses.diff(allListed)
+        val nonexistentBlacklisted = blacklist.diff(allClasses)
+        val nonexistentWhitelisted = whitelist.diff(allClasses)
+        if (inBothLists.nonEmpty || inNoList.nonEmpty ||
+            nonexistentBlacklisted.nonEmpty || nonexistentWhitelisted.nonEmpty) {
+          val msg = new StringBuffer("Errors in black or white lists.\n")
+          if (inBothLists.nonEmpty) {
+            msg.append("Sources listed both in black and white list: ")
+            msg.append(inBothLists).append('\n')
+          }
+          if (inNoList.nonEmpty) {
+            msg.append("Sources not listed in back or white list: ")
+            msg.append(inNoList).append('\n')
+          }
+          if (nonexistentBlacklisted.nonEmpty) {
+            msg.append("Sources not found for blacklisted tests: ")
+            msg.append(nonexistentBlacklisted).append('\n')
+          }
+          if (nonexistentWhitelisted.nonEmpty) {
+            msg.append("Sources not found for whitelisted tests: ")
+            msg.append(nonexistentWhitelisted).append('\n')
+          }
+          throw new AssertionError(msg.toString)
+        }
+
+        scalaScalaJUnitSources.collect {
+          case fTup if whitelist(fTup._1) => fTup._2
+        }
+      }
+    )
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(jUnitRuntime)
+
 }

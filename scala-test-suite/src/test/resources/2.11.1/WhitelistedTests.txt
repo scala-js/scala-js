@@ -1,0 +1,12 @@
+scala/collection/ArraySortingTest.scala
+scala/collection/QueueTest.scala
+scala/collection/NumericRangeTest.scala
+scala/collection/PagedSeq.scala
+scala/collection/TraversableOnceTest.scala
+scala/collection/VectorTest.scala
+scala/math/NumericTest.scala
+scala/runtime/ScalaRunTimeTest.scala
+scala/tools/nsc/SampleTest.scala
+scala/tools/testing/AssertUtil.scala
+scala/util/TryTest.scala
+scala/util/t7265.scala

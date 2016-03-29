@@ -19,7 +19,7 @@
     sbtretry 'set scalaJSUseRhino in Global := false' \
         ++$scala helloworld/run &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-	'set scalaJSUseRhino in Global := false' \
+        'set scalaJSUseRhino in Global := false' \
         ++$scala helloworld/run \
         helloworld/clean &&
     sbtretry 'set scalaJSOptimizerOptions in helloworld ~= (_.withDisableOptimizer(true))' \
@@ -46,13 +46,13 @@
     sbtretry 'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
         ++$scala testingExample/test:run testingExample/test &&
     sbtretry 'set inScope(ThisScope in testingExample)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
-	'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
+        'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
         ++$scala testingExample/test:run testingExample/test &&
     sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
     sbtretry 'set scalaJSUseRhino in Global := false' \
         ++$scala javalibExTestSuite/test &&
     sbtretry 'set scalaJSUseRhino in Global := false' \
-	'set scalaJSStage in Global := FullOptStage' \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala javalibExTestSuite/test &&
     sbtretry ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
     sbtretry ++$scala compiler/compile:doc library/compile:doc javalibEx/compile:doc \
@@ -65,100 +65,100 @@
 
   <task id="test-suite-ecma-script5"><![CDATA[
     setJavaVersion $java
-    sbtretry ++$scala testSuite/test &&
+    sbtretry ++$scala $testSuite/test &&
     sbtretry 'set scalaJSUseRhino in Global := false' \
-        ++$scala testSuite/test &&
+        ++$scala $testSuite/test &&
     sbtretry 'set scalaJSUseRhino in Global := false' \
-	'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testSuite/test \
-        testSuite/clean &&
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
     sbtretry ++$scala noIrCheckTest/test &&
     sbtretry 'set scalaJSUseRhino in Global := false' \
         ++$scala noIrCheckTest/test &&
     sbtretry 'set scalaJSUseRhino in Global := false' \
-	'set scalaJSStage in Global := FullOptStage' \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala noIrCheckTest/test \
         noIrCheckTest/clean &&
-    sbtretry 'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
-        ++$scala testSuite/test &&
-    sbtretry 'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
+    sbtretry 'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
         'set scalaJSUseRhino in Global := false' \
-        ++$scala testSuite/test \
-        testSuite/clean &&
-    sbtretry 'set scalaJSSemantics in testSuite ~= makeCompliant' \
-        ++$scala testSuite/test &&
-    sbtretry 'set scalaJSSemantics in testSuite ~= makeCompliant' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         'set scalaJSUseRhino in Global := false' \
-        ++$scala testSuite/test &&
-    sbtretry 'set scalaJSSemantics in testSuite ~= makeCompliant' \
-        'set scalaJSUseRhino in Global := false' \
-        'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testSuite/test \
-        testSuite/clean &&
-    sbtretry 'set scalaJSSemantics in testSuite ~= makeCompliant' \
-        'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
-        ++$scala testSuite/test &&
-    sbtretry 'set scalaJSSemantics in testSuite ~= makeCompliant' \
-        'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
-        'set scalaJSUseRhino in Global := false' \
-        ++$scala testSuite/test \
-        testSuite/clean &&
-    sbtretry 'set inScope(ThisScope in testSuite)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
-        'set parallelExecution in (testSuite, Test) := false' \
-        ++$scala testSuite/test &&
-    sbtretry 'set inScope(ThisScope in testSuite)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
-        'set parallelExecution in (testSuite, Test) := false' \
-        'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testSuite/test \
-        testSuite/clean &&
-    sbtretry 'set scalacOptions in testSuite += "-Xexperimental"' \
-        ++$scala testSuite/test &&
-    sbtretry 'set scalacOptions in testSuite += "-Xexperimental"' \
-        'set scalaJSUseRhino in Global := false' \
-        ++$scala testSuite/test &&
-    sbtretry 'set scalacOptions in testSuite += "-Xexperimental"' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         'set scalaJSUseRhino in Global := false' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testSuite/test
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
+        'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
+        'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
+        'set scalaJSUseRhino in Global := false' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set inScope(ThisScope in $testSuite)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
+        'set parallelExecution in ($testSuite, Test) := false' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set inScope(ThisScope in $testSuite)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
+        'set parallelExecution in ($testSuite, Test) := false' \
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
+        'set scalaJSUseRhino in Global := false' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
+        'set scalaJSUseRhino in Global := false' \
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala $testSuite/test
   ]]></task>
 
   <task id="test-suite-ecma-script6"><![CDATA[
     setJavaVersion $java
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
-        ++$scala testSuite/test \
-        testSuite/clean &&
+    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+        'set jsEnv in $testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
     sbtretry 'set scalaJSOutputMode in noIrCheckTest := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
         'set jsEnv in noIrCheckTest := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
         ++$scala noIrCheckTest/test \
         noIrCheckTest/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
-        'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
-        ++$scala testSuite/test \
-        testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
-        'set scalaJSSemantics in testSuite ~= makeCompliant' \
-        ++$scala testSuite/test \
-        testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
-        'set scalaJSSemantics in testSuite ~= makeCompliant' \
-        'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
-        ++$scala testSuite/test \
-        testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
+    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+        'set jsEnv in $testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
+        'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+        'set jsEnv in $testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
+        'set scalaJSSemantics in $testSuite ~= makeCompliant' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+        'set jsEnv in $testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
+        'set scalaJSSemantics in $testSuite ~= makeCompliant' \
+        'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+        'set jsEnv in $testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testSuite/test \
-        testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+        'set jsEnv in $testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
         'set scalaJSStage in Global := FullOptStage' \
-        'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
-        ++$scala testSuite/test \
-        testSuite/clean
+        'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
+        ++$scala $testSuite/test \
+        $testSuite/clean
   ]]></task>
 
   <task id="bootstrap"><![CDATA[
@@ -279,60 +279,118 @@
     <run task="test-suite-ecma-script5">
       <v n="scala">2.10.2</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.10.2</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.10.2</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.8</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.8</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.12.0-M3</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
+    </run>
+
+    <!-- scala/scala test suite on ECMAScript5 tasks -->
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.8</v>
+      <v n="java">1.6</v>
+      <v n="testSuite">scalaTestSuite</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.8</v>
+      <v n="java">1.7</v>
+      <v n="testSuite">scalaTestSuite</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.8</v>
+      <v n="java">1.8</v>
+      <v n="testSuite">scalaTestSuite</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.12.0-M3</v>
+      <v n="java">1.8</v>
+      <v n="testSuite">scalaTestSuite</v>
     </run>
 
     <!-- Test suite on ECMAScript6 tasks -->
     <run task="test-suite-ecma-script6">
       <v n="scala">2.10.2</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.10.2</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.10.2</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.8</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.8</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.12.0-M3</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
+    </run>
+
+    <!-- scala/scala test suite on ECMAScript6 tasks -->
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.8</v>
+      <v n="java">1.6</v>
+      <v n="testSuite">scalaTestSuite</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.8</v>
+      <v n="java">1.7</v>
+      <v n="testSuite">scalaTestSuite</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.8</v>
+      <v n="java">1.8</v>
+      <v n="testSuite">scalaTestSuite</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.12.0-M3</v>
+      <v n="java">1.8</v>
+      <v n="testSuite">scalaTestSuite</v>
     </run>
 
     <!-- Bootstrap test tasks -->
@@ -507,204 +565,254 @@
     <run task="test-suite-ecma-script5">
       <v n="scala">2.10.3</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.10.4</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.10.5</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.10.5</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.10.5</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.10.6</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.10.6</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.10.6</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.0</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.1</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.2</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.2</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.2</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.4</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.4</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.4</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.5</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.5</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.5</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.6</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.6</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.6</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.7</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.7</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.7</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
 
     <!-- Test suite on ECMAScript6 tasks (all remaining Scala versions) -->
     <run task="test-suite-ecma-script6">
       <v n="scala">2.10.3</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.10.4</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.10.5</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.10.5</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.10.5</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.10.6</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.10.6</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.10.6</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.0</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.1</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.2</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.2</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.2</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.4</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.4</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.4</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.5</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.5</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.5</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.6</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.6</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.6</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.7</v>
       <v n="java">1.6</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.7</v>
       <v n="java">1.7</v>
+      <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.7</v>
       <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
     </run>
 
     <!-- Bootstrap test tasks (all remaining Scala versions) -->
