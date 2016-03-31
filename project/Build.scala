@@ -34,6 +34,7 @@ import Implicits._
 import org.scalajs.core.tools.io.MemVirtualJSFile
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
+import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.linker.backend.OutputMode
 
 import sbtassembly.AssemblyPlugin.autoImport._
@@ -74,6 +75,9 @@ object Build {
     "Defaults to what sbt is running with.")
 
   val javaDocBaseURL: String = "http://docs.oracle.com/javase/8/docs/api/"
+
+  val jsTestDefinitions = taskKey[File](
+    "A file containing information about detected tests.")
 
   // set scalaJSSemantics in someProject ~= makeCompliant
   val makeCompliant: Semantics => Semantics = { semantics =>
@@ -566,7 +570,13 @@ object Build {
       id = "toolsJS",
       base = file("tools/js"),
       settings = myScalaJSSettings ++ commonToolsSettings ++ Seq(
-          crossVersion := ScalaJSCrossVersion.binary
+          crossVersion := ScalaJSCrossVersion.binary,
+          resources in Test <+= jsTestDefinitions in (testSuite, Test),
+          jsDependencies += {
+            val artifact =
+              (artifactPath in (testSuite, Test, jsTestDefinitions)).value
+            ProvidedJS / artifact.getName % "test"
+          }
       ) ++ inConfig(Test) {
         // Redefine test to run Node.js and link HelloWorld
         test := {
@@ -578,7 +588,7 @@ object Build {
            * We assume here that the classpath is valid. This is checked by the
            * the scalaJSIR task.
            */
-          val cp = Attributed.data((fullClasspath in Test).value)
+          val cp = Attributed.data(fullClasspath.value)
 
           // Files must be Jars, non-files must be dirs
           val (jars, dirs) = cp.filter(_.exists).partition(_.isFile)
@@ -1229,8 +1239,52 @@ object Build {
     base = file("test-suite/js"),
     settings = commonSettings ++ myScalaJSSettings ++ testTagSettings ++
       testSuiteCommonSettings(isJSTest = true) ++ Seq(
-        name := "Scala.js test suite",
+        name := "Scala.js test suite"
+      ) ++ inConfig(Test)(Seq(
+        artifactPath in jsTestDefinitions :=
+          crossTarget.value / "test-definitions.js",
 
+        /* Generate a JS file that contains defined tests and testFrameworks.
+         *  The file will be called "test-definitions.js" and defines:
+         *  - var definedTests
+         *  - var testFrameworkNames
+         */
+        jsTestDefinitions := {
+          import org.scalajs.testadapter.TaskDefSerializers._
+
+          val outFile = (artifactPath in jsTestDefinitions).value
+
+          val allTests = for {
+            t <- definedTests.value.toList
+          } yield {
+            new sbt.testing.TaskDef(t.name, t.fingerprint,
+                t.explicitlySpecified, t.selectors)
+          }
+
+          val allFrameworks =
+            loadedTestFrameworks.value.map(_._1.implClassNames.toList)
+
+          val writer = new BufferedWriter(new FileWriter(outFile))
+
+          try {
+            writer.write("var definedTests = ")
+            writeJSON(allTests.toJSON, writer)
+            writer.write(";\n")
+
+            writer.write("var testFrameworkNames = ")
+            writeJSON(allFrameworks.toList.toJSON, writer)
+            writer.write(";\n")
+          } finally {
+            writer.close()
+          }
+
+          outFile
+        },
+        jsTestDefinitions <<=
+          jsTestDefinitions.triggeredBy(fastOptJS, fullOptJS),
+
+        skip in packageJSDependencies := false
+      )) ++ Seq(
         jsDependencies += ProvidedJS / "ScalaJSDefinedTestNatives.js" % "test",
 
         scalaJSSemantics ~= (_.withRuntimeClassName(_.fullName match {

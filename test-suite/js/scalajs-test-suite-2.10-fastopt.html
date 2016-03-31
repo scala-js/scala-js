@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Scala.js Test Suite - Jasmine HTML reporter</title>
+  <title>Scala.js Test Suite</title>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-  <link rel="stylesheet" type="text/css" href="http://cdn.jsdelivr.net/jasmine/1.3.1/jasmine.css"></link>
+  <link rel="stylesheet" type="text/css" href="test-stylesheet.css">
+  <script type="text/javascript">
+    var __ScalaJSEnv = {"javaSystemProperties": {
+      "scalajs.testsuite.testtag": "testtag.value",
+      "scalajs.browser": "true",
+      "scalajs.typedarray": "true",
+      "scalajs.fastopt-stage": "true"
+    }};
+  </script>
+  <script type="text/javascript" src="./target/scala-2.10/scalajs-test-suite-test-jsdeps.js"></script>
+  <script type="text/javascript" src="./target/scala-2.10/test-definitions.js"></script>
+  <script type="text/javascript" src="./target/scala-2.10/scalajs-test-suite-test-fastopt.js"></script>
 </head>
-<body>
-<script type="text/javascript" src="http://cdn.jsdelivr.net/jasmine/1.3.1/jasmine.js"></script>
-<script type="text/javascript" src="http://cdn.jsdelivr.net/jasmine/1.3.1/jasmine-html.js"></script>
-<script type="text/javascript" src="./src/test/resources/ScalaJSDefinedTestNatives.js"></script>
-<script type="text/javascript" src="./target/scala-2.10/scalajs-test-suite-test-fastopt.js"></script>
-<script type="text/javascript">var isFullOpt = false;</script>
-<script type="text/javascript" src="run-jasmine-tests.js"></script>
-
+<body onload="org.scalajs.testsuite.utils.HTMLRunner().main()">
 </body>
 </html>
