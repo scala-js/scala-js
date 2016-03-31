@@ -38,7 +38,17 @@ import org.scalajs.core.tools.linker.backend.OutputMode
 
 import sbtassembly.AssemblyPlugin.autoImport._
 
-object Build extends sbt.Build {
+/* In sbt 0.13 the Build trait would expose all vals to the shell, where you
+ * can use them in "set a := b" like expressions. This re-exposes them.
+ */
+object ExposedValues extends AutoPlugin {
+  object autoImport {
+    val makeCompliant = Build.makeCompliant
+    val ES6NodeArgs = Build.ES6NodeArgs
+  }
+}
+
+object Build {
 
   val isGeneratingEclipse =
     Properties.envOrElse("GENERATING_ECLIPSE", "false").toBoolean
@@ -394,8 +404,8 @@ object Build extends sbt.Build {
     }
   }
 
-  override lazy val settings = (
-      super.settings ++ inScope(Global)(ScalaJSPlugin.globalSettings)
+  val thisBuildSettings = (
+      inScope(Global)(ScalaJSPlugin.globalSettings)
   ) ++ Seq(
       // Most of the projects cross-compile
       crossScalaVersions := Seq(
