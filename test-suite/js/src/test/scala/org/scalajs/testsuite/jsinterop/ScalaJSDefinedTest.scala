@@ -305,6 +305,112 @@ class ScalaJSDefinedTest {
     assertEquals(26, dyn.sum(11))
   }
 
+  @Test def anonymous_class_has_no_own_prototype(): Unit = {
+    val obj = new js.Object {
+      val x = 1
+    }
+
+    assertEquals(1, obj.asInstanceOf[js.Dynamic].x)
+    assertSame(js.Object.getPrototypeOf(obj),
+        js.constructorOf[js.Object].prototype)
+  }
+
+  @Test def local_class_has_own_prototype(): Unit = {
+    @ScalaJSDefined
+    class Local extends js.Object {
+      val x = 1
+    }
+
+    val obj = new Local
+
+    assertEquals(1, obj.asInstanceOf[js.Dynamic].x)
+
+    val prototype = js.Object.getPrototypeOf(obj)
+
+    assertNotSame(prototype, js.constructorOf[js.Object].prototype)
+    assertSame(prototype, js.constructorOf[Local].prototype)
+  }
+
+  @Test def anonymous_class_non_trivial_supertype(): Unit = {
+    val obj = new SimpleConstructor(1, 2) {
+      val z = sum()
+    }
+
+    assertEquals(3, obj.asInstanceOf[js.Dynamic].z)
+  }
+
+  @Test def anonymous_class_using_own_method_in_ctor(): Unit = {
+    val obj = new js.Object {
+      val y = inc(0)
+      def inc(x: Int) = x + 1
+    }
+
+    assertEquals(1, obj.asInstanceOf[js.Dynamic].y)
+  }
+
+  @Test def anonymous_class_uninitialized_fields(): Unit = {
+    val obj = new js.Object {
+      var x: String = _
+    }
+
+    assertNull(obj.asInstanceOf[js.Dynamic].x)
+  }
+
+  @Test def anonymous_class_field_init_order(): Unit = {
+    val obj = new js.Object {
+      val x = y
+      val y = "Hello World"
+    }.asInstanceOf[js.Dynamic]
+
+    assertNull(obj.x)
+    assertEquals("Hello World", obj.y)
+  }
+
+  @Test def anonymous_class_dependent_fields(): Unit = {
+    val obj = new js.Object {
+      val x = 1
+      val y = x + 1
+    }
+
+    assertEquals(2, obj.asInstanceOf[js.Dynamic].y)
+  }
+
+  @Test def anonymous_class_use_this_in_ctor(): Unit = {
+    var obj0: js.Object = null
+    val obj1 = new js.Object {
+      obj0 = this
+    }
+
+    assertSame(obj0, obj1)
+  }
+
+  @Test def nested_anonymous_classes(): Unit = {
+    val outer = new js.Object {
+      private var _x = 1
+      def x = _x
+
+      val inner = new js.Object {
+        def inc() = _x += 1
+      }
+    }.asInstanceOf[js.Dynamic]
+
+    val inner = outer.inner
+    assertEquals(1, outer.x)
+    inner.inc()
+    assertEquals(2, outer.x)
+  }
+
+  @Test def nested_anonymous_classes_and_lambdas(): Unit = {
+    def call(f: Int => js.Any) = f(1)
+
+    // Also check that f's capture is properly transformed.
+    val obj = call(x => new js.Object { val f: js.Any = (y: Int) => x + y })
+    val res = obj.asInstanceOf[js.Dynamic].f(3)
+    assertEquals(4, res)
+
+    assertEquals(1, call(x => x))
+  }
+
   @Test def local_object_is_lazy(): Unit = {
     var initCount: Int = 0
 

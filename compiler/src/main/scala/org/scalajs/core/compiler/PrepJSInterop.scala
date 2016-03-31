@@ -454,8 +454,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       val isJSAnonFun = isJSLambda(sym)
 
       sym.addAnnotation(RawJSTypeAnnot)
-      if (sym.isAnonymousClass && !isJSAnonFun)
+      if (sym.isAnonymousClass && !isJSAnonFun) {
         sym.addAnnotation(ScalaJSDefinedAnnotation)
+        sym.addAnnotation(SJSDefinedAnonymousClassAnnotation)
+      }
 
       val isJSNative = !sym.hasAnnotation(ScalaJSDefinedAnnotation)
 
