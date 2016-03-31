@@ -57,10 +57,10 @@
     sbtretry ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
     sbtretry ++$scala compiler/compile:doc library/compile:doc javalibEx/compile:doc \
         testInterface/compile:doc jasmineTestFramework/compile:doc &&
-    sbtretry ++$scala partest/fetchScalaSource &&
+    # sbtretry ++$scala partest/fetchScalaSource &&
     sbtretry ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
-    sh ci/checksizes.sh $scala &&
-    sh ci/check-partest-coverage.sh $scala
+    sh ci/checksizes.sh $scala
+    # sh ci/check-partest-coverage.sh $scala
   ]]></task>
 
   <task id="test-suite-ecma-script5"><![CDATA[
@@ -246,7 +246,7 @@
 
   <matrix id="pr">
     <!-- Main test tasks -->
-    <run task="main">
+    <!--<run task="main">
       <v n="scala">2.10.2</v>
       <v n="java">1.6</v>
     </run>
@@ -269,14 +269,14 @@
     <run task="main">
       <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
-    </run>
+    </run>-->
     <run task="main">
-      <v n="scala">2.12.0-M3</v>
+      <v n="scala">2.12.0-5d7d644-SNAPSHOT</v>
       <v n="java">1.8</v>
     </run>
 
     <!-- Test suite on ECMAScript5 tasks -->
-    <run task="test-suite-ecma-script5">
+    <!--<run task="test-suite-ecma-script5">
       <v n="scala">2.10.2</v>
       <v n="java">1.6</v>
       <v n="testSuite">testSuite</v>
@@ -305,15 +305,15 @@
       <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
       <v n="testSuite">testSuite</v>
-    </run>
+    </run>-->
     <run task="test-suite-ecma-script5">
-      <v n="scala">2.12.0-M3</v>
+      <v n="scala">2.12.0-5d7d644-SNAPSHOT</v>
       <v n="java">1.8</v>
       <v n="testSuite">testSuite</v>
     </run>
 
     <!-- scala/scala test suite on ECMAScript5 tasks -->
-    <run task="test-suite-ecma-script5">
+    <!--<run task="test-suite-ecma-script5">
       <v n="scala">2.11.8</v>
       <v n="java">1.6</v>
       <v n="testSuite">scalaTestSuite</v>
@@ -327,15 +327,15 @@
       <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
       <v n="testSuite">scalaTestSuite</v>
-    </run>
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.12.0-M3</v>
+    </run>-->
+    <!--<run task="test-suite-ecma-script5">
+      <v n="scala">2.12.0-5d7d644-SNAPSHOT</v>
       <v n="java">1.8</v>
       <v n="testSuite">scalaTestSuite</v>
-    </run>
+    </run>-->
 
     <!-- Test suite on ECMAScript6 tasks -->
-    <run task="test-suite-ecma-script6">
+    <!--<run task="test-suite-ecma-script6">
       <v n="scala">2.10.2</v>
       <v n="java">1.6</v>
       <v n="testSuite">testSuite</v>
@@ -364,15 +364,15 @@
       <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
       <v n="testSuite">testSuite</v>
-    </run>
+    </run>-->
     <run task="test-suite-ecma-script6">
-      <v n="scala">2.12.0-M3</v>
+      <v n="scala">2.12.0-5d7d644-SNAPSHOT</v>
       <v n="java">1.8</v>
       <v n="testSuite">testSuite</v>
     </run>
 
     <!-- scala/scala test suite on ECMAScript6 tasks -->
-    <run task="test-suite-ecma-script6">
+    <!--<run task="test-suite-ecma-script6">
       <v n="scala">2.11.8</v>
       <v n="java">1.6</v>
       <v n="testSuite">scalaTestSuite</v>
@@ -386,15 +386,15 @@
       <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
       <v n="testSuite">scalaTestSuite</v>
-    </run>
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.12.0-M3</v>
+    </run>-->
+    <!--<run task="test-suite-ecma-script6">
+      <v n="scala">2.12.0-5d7d644-SNAPSHOT</v>
       <v n="java">1.8</v>
       <v n="testSuite">scalaTestSuite</v>
-    </run>
+    </run>-->
 
     <!-- Bootstrap test tasks -->
-    <run task="bootstrap">
+    <!--<run task="bootstrap">
       <v n="scala">2.10.2</v>
       <v n="java">1.6</v>
     </run>
@@ -405,23 +405,23 @@
     <run task="bootstrap">
       <v n="scala">2.10.2</v>
       <v n="java">1.8</v>
-    </run>
+    </run>-->
     <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
-    <run task="bootstrap">
+    <!--<run task="bootstrap">
       <v n="scala">2.11.8</v>
       <v n="java">1.7</v>
     </run>
     <run task="bootstrap">
       <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
-    </run>
+    </run>-->
     <run task="bootstrap">
-      <v n="scala">2.12.0-M3</v>
+      <v n="scala">2.12.0-5d7d644-SNAPSHOT</v>
       <v n="java">1.8</v>
     </run>
 
     <!-- Tools / CLI / Stubs / sbtPlugin test tasks -->
-    <run task="tools-cli-stubs-sbtplugin">
+    <!--<run task="tools-cli-stubs-sbtplugin">
       <v n="scala">2.10.6</v>
       <v n="java">1.6</v>
     </run>
@@ -432,19 +432,19 @@
     <run task="tools-cli-stubs-sbtplugin">
       <v n="scala">2.10.6</v>
       <v n="java">1.8</v>
-    </run>
+    </run>-->
     <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
-    <run task="tools-cli-stubs">
+    <!--<run task="tools-cli-stubs">
       <v n="scala">2.11.8</v>
       <v n="java">1.7</v>
     </run>
     <run task="tools-cli-stubs">
       <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
-    </run>
+    </run>-->
 
     <!-- Partest compilation test tasks -->
-    <run task="partestc">
+    <!--<run task="partestc">
       <v n="scala">2.11.0</v>
       <v n="java">1.7</v>
     </run>
@@ -453,7 +453,7 @@
       <v n="java">1.7</v>
     </run>
 
-    <run task="sbtplugin-test" />
+    <run task="sbtplugin-test" />-->
   </matrix>
 
   <matrix id="nightly">
@@ -899,15 +899,15 @@
       <v n="java">1.7</v>
     </run>
     <run task="partest-noopt">
-      <v n="scala">2.12.0-M3</v>
+      <v n="scala">2.12.0-5d7d644-SNAPSHOT</v>
       <v n="java">1.8</v>
     </run>
     <run task="partest-fastopt">
-      <v n="scala">2.12.0-M3</v>
+      <v n="scala">2.12.0-5d7d644-SNAPSHOT</v>
       <v n="java">1.8</v>
     </run>
     <run task="partest-fullopt">
-      <v n="scala">2.12.0-M3</v>
+      <v n="scala">2.12.0-5d7d644-SNAPSHOT</v>
       <v n="java">1.8</v>
     </run>
   </matrix>

@@ -407,6 +407,9 @@ object Build {
   val thisBuildSettings = (
       inScope(Global)(ScalaJSPlugin.globalSettings)
   ) ++ Seq(
+      // Temporary resolver
+      resolvers in Global +=
+        "pr-scala snapshots" at "https://scala-ci.typesafe.com/artifactory/scala-pr-validation-snapshots/",
       // Most of the projects cross-compile
       crossScalaVersions := Seq(
         "2.10.2",
