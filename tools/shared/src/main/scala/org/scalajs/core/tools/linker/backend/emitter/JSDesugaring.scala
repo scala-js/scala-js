@@ -971,6 +971,20 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         }
       }
 
+      def doReturnToLabel(l: Ident): js.Tree = {
+        val newLhs = labeledExprLHSes(l)
+        val body = pushLhsInto(newLhs, rhs)
+        if (newLhs.tpe == NothingType) {
+          /* A touch of peephole dead code elimination.
+           * This is actually necessary to avoid dangling breaks to eliminated
+           * labels, as in issue #2307.
+           */
+          body
+        } else {
+          js.Block(body, js.Break(Some(transformIdent(l))))
+        }
+      }
+
       if (rhs.tpe == NothingType && lhs != EmptyTree) {
         /* A touch of peephole dead code elimination.
          * Actually necessary to handle pushing an lhs into an infinite loop,
@@ -1008,14 +1022,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
               doAssign(lhs, rhs)
             case Return(_, None) =>
               js.Return(transformExpr(rhs))
-            case Return(_, label @ Some(l)) =>
-              labeledExprLHSes(l) match {
-                case newLhs @ Return(_, _) =>
-                  pushLhsInto(newLhs, rhs) // no need to break here
-                case newLhs =>
-                  js.Block(pushLhsInto(newLhs, rhs),
-                      js.Break(label.map(transformIdent)))
-              }
+            case Return(_, Some(l)) =>
+              doReturnToLabel(l)
           }
 
         // Almost base case with RecordValue
@@ -1038,10 +1046,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
                         RecordValue(recTpe, newElems)),
                     doAssign(lhs, VarRef(temp)(recTpe)))
               }
-            case Return(_, label @ Some(l)) =>
-              val newLhs = labeledExprLHSes(l)
-              js.Block(pushLhsInto(newLhs, rhs),
-                  js.Break(label.map(transformIdent)))
+            case Return(_, Some(l)) =>
+              doReturnToLabel(l)
           }
 
         // Control flow constructs
