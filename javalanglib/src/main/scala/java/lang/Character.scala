@@ -315,6 +315,9 @@ object Character {
   @inline def isSurrogatePair(high: scala.Char, low: scala.Char): scala.Boolean =
     isHighSurrogate(high) && isLowSurrogate(low)
 
+  @inline def charCount(codePoint: Int): Int =
+    if (codePoint >= MIN_SUPPLEMENTARY_CODE_POINT) 2 else 1
+
   @inline def toCodePoint(high: scala.Char, low: scala.Char): Int =
     ((high & SurrogateUsefulPartMask) << 10) + (low & SurrogateUsefulPartMask) + 0x10000
 

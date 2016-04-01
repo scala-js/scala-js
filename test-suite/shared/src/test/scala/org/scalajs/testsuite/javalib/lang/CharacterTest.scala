@@ -47,6 +47,26 @@ class CharacterTest {
     assertEquals('9', Character.forDigit(9, 10))
   }
 
+  @Test def charCount(): Unit = {
+    val rnd = new scala.util.Random(0x61c78a41cee81f34L)
+    def random(from: Int, to: Int): Int =
+      rnd.nextInt(to - from + 1) + from
+
+    assertEquals(1, Character.charCount(Character.MIN_VALUE))
+    assertEquals(1, Character.charCount(Character.MAX_VALUE))
+    val bmpCodePoints = List.fill(100)(random(Character.MIN_VALUE, Character.MAX_VALUE))
+    bmpCodePoints foreach { cp =>
+      assertEquals(1, Character.charCount(cp))
+    }
+
+    assertEquals(2, Character.charCount(Character.MIN_SUPPLEMENTARY_CODE_POINT))
+    assertEquals(2, Character.charCount(Character.MAX_CODE_POINT))
+    val supCodePoints = List.fill(100)(random(Character.MIN_SUPPLEMENTARY_CODE_POINT, Character.MAX_CODE_POINT))
+    supCodePoints foreach { cp =>
+      assertEquals(2, Character.charCount(cp))
+    }
+  }
+
   @Test def toChars(): Unit = {
     assertTrue(Character.toChars(0x61) sameElements Array('a'))
     assertTrue(Character.toChars(0x10000) sameElements Array('\uD800', '\uDC00'))
