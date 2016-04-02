@@ -77,6 +77,41 @@ class CharacterTest {
     expectThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE))
   }
 
+  @Test def toChars_in_place(): Unit = {
+    locally {
+      val dst = new Array[Char](2)
+      assertEquals(1, Character.toChars(0x61, dst, 0))
+      assertTrue(dst sameElements Array('a', 0.toChar))
+    }
+    locally {
+      val dst = new Array[Char](2)
+      assertEquals(1, Character.toChars(0x61, dst, 1))
+      assertTrue(dst sameElements Array(0.toChar, 'a'))
+    }
+    locally {
+      val dst = new Array[Char](2)
+      assertEquals(2, Character.toChars(0x10000, dst, 0))
+      assertTrue(dst sameElements Array('\uD800', '\uDC00'))
+    }
+    locally {
+      val dst = new Array[Char](3)
+      assertEquals(2, Character.toChars(0x10001, dst, 0))
+      assertTrue(dst sameElements Array('\uD800', '\uDC01', 0.toChar))
+    }
+    locally {
+      val dst = new Array[Char](3)
+      assertEquals(2, Character.toChars(0x10401, dst, 1))
+      assertTrue(dst sameElements Array(0.toChar, '\uD801', '\uDC01'))
+    }
+    locally {
+      val dst = new Array[Char](4)
+      assertEquals(2, Character.toChars(0x10FFFF, dst, 2))
+      assertTrue(dst sameElements Array(0.toChar, 0.toChar, '\uDBFF', '\uDFFF'))
+    }
+
+    expectThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE, new Array(2), 0))
+  }
+
   @Test def isDigit(): Unit = {
     assertFalse(Character.isDigit('a'))
     assertTrue(Character.isDigit('0'))
