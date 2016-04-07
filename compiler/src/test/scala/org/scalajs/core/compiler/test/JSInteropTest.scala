@@ -614,6 +614,18 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def nestedJSGlobalScopeWithoutJSName: Unit = {
+    // #2319
+    """
+    object Outer {
+      @js.native
+      object Foo extends js.GlobalScope
+    }
+    """.succeeds
+
+  }
+
+  @Test
   def noNativeClassObjectInsideScalaJSDefinedObject: Unit = {
 
     for {

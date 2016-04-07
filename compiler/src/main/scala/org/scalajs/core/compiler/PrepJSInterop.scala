@@ -541,7 +541,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           val fullJSName = ownerFullJSName + "." + jsName
           sym.addAnnotation(JSFullNameAnnotation,
               typer.typed(Literal(Constant(fullJSName))))
-        } else if (!sym.isTrait && !sym.hasAnnotation(JSNameAnnotation)) {
+        } else if (!sym.isTrait && !sym.hasAnnotation(JSNameAnnotation) &&
+            !isJSGlobalScope(implDef)) {
           if (enclosingOwner is OwnerKind.ScalaMod) {
             if (sym.isModuleClass) {
               reporter.error(implDef.pos, "Native JS objects inside " +
