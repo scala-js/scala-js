@@ -111,6 +111,36 @@ class BigDecimalConvertTest {
     expectThrows(classOf[ArithmeticException], aNumber.longValueExact())
   }
 
+  @Test def testLongValueMinMaxValues(): Unit = {
+    val longMaxValue = new BigDecimal(Long.MaxValue)
+    val longMinValue = new BigDecimal(Long.MinValue)
+
+    assertEquals(Long.MaxValue, longMaxValue.longValue)
+    assertEquals(Long.MinValue, longMinValue.longValue)
+    assertEquals(Long.MinValue, longMaxValue.add(BigDecimal.ONE).longValue)
+    assertEquals(Long.MaxValue, longMinValue.subtract(BigDecimal.ONE).longValue)
+
+    assertEquals(Long.MaxValue, longMaxValue.longValueExact)
+    assertEquals(Long.MinValue, longMinValue.longValueExact)
+    assertThrows(classOf[ArithmeticException], longMaxValue.add(BigDecimal.ONE).longValueExact)
+    assertThrows(classOf[ArithmeticException], longMinValue.subtract(BigDecimal.ONE).longValueExact)
+  }
+
+  @Test def bigDecimal_9_223372E285625056_should_not_be_a_valid_long_issue_2314(): Unit = {
+    val num = new BigDecimal("9.223372E+285625056")
+
+    // Sanity checks
+    assertEquals(-285625050, num.scale)
+    assertEquals(7, num.precision)
+    assertEquals("9.223372E+285625056", num.toString)
+
+    // Source of issue
+    assertThrows(classOf[ArithmeticException], num.longValueExact)
+
+    // Code from issue #2314
+    assertFalse(scala.math.BigDecimal("9.223372E+285625056").isValidLong)
+  }
+
   @Test def testScaleByPowerOfTen1(): Unit = {
     val a = "1231212478987482988429808779810457634781384756794987"
     val aScale = 13
