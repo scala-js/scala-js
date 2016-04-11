@@ -402,6 +402,22 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noJSNameOnJSGlobalScope: Unit = {
+    // #2320
+    """
+    @js.native
+    @JSName("foo")
+    object Bar extends js.GlobalScope
+    """ hasWarns
+    """
+      |newSource1.scala:7: warning: Objects extending js.GlobalScope should not have a @JSName annotation. This will be enforced in 1.0.
+      |    object Bar extends js.GlobalScope
+      |           ^
+    """
+
+  }
+
+  @Test
   def noLocalClass: Unit = {
 
     """
@@ -610,6 +626,18 @@ class JSInteropTest extends DirectTest with TestHelpers {
       object D extends js.Object
     }
     """.hasNoWarns
+
+  }
+
+  @Test
+  def nestedJSGlobalScopeWithoutJSName: Unit = {
+    // #2319
+    """
+    object Outer {
+      @js.native
+      object Foo extends js.GlobalScope
+    }
+    """.succeeds
 
   }
 

@@ -541,7 +541,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           val fullJSName = ownerFullJSName + "." + jsName
           sym.addAnnotation(JSFullNameAnnotation,
               typer.typed(Literal(Constant(fullJSName))))
-        } else if (!sym.isTrait && !sym.hasAnnotation(JSNameAnnotation)) {
+        } else if (!sym.isTrait && !sym.hasAnnotation(JSNameAnnotation) &&
+            !isJSGlobalScope(implDef)) {
           if (enclosingOwner is OwnerKind.ScalaMod) {
             if (sym.isModuleClass) {
               reporter.error(implDef.pos, "Native JS objects inside " +
@@ -556,11 +557,17 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         }
       }
 
-      // Check that only native objects extend js.GlobalScope
-      if (isJSGlobalScope(implDef) && implDef.symbol != JSGlobalScopeClass &&
-          (!sym.isModuleClass || !isJSNative)) {
-        reporter.error(implDef.pos,
-            "Only native objects may extend js.GlobalScope")
+      // Checks for things that extend js.GlobalScope
+      if (isJSGlobalScope(implDef) && implDef.symbol != JSGlobalScopeClass) {
+        // Only native objects may extend js.GlobalScope
+        if (!sym.isModuleClass || !isJSNative) {
+          reporter.error(implDef.pos,
+              "Only native objects may extend js.GlobalScope")
+        } else if (sym.hasAnnotation(JSNameAnnotation)) {
+          reporter.warning(implDef.pos, "Objects extending js.GlobalScope " +
+              "should not have a @JSName annotation. This will be enforced " +
+              "in 1.0.")
+        }
       }
 
       if (shouldPrepareExports) {
