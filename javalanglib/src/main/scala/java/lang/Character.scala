@@ -528,13 +528,33 @@ object Character {
       throw new IllegalArgumentException()
 
     if (isSupplementaryCodePoint(codePoint)) {
-      val cpPrime = codePoint - 0x10000
-      val high = 0xD800 | ((cpPrime >> 10) & 0x3FF)
-      val low = 0xDC00 | (cpPrime & 0x3FF)
-      Array(high.toChar, low.toChar)
+      val dst = new Array[Char](2)
+      toSurrogate(codePoint, dst, 0)
+      dst
     } else {
       Array(codePoint.toChar)
     }
+  }
+
+  def toChars(codePoint: Int, dst: Array[Char], dstIndex: Int): Int = {
+    if (!isValidCodePoint(codePoint))
+      throw new IllegalArgumentException()
+
+    if (isSupplementaryCodePoint(codePoint)) {
+      toSurrogate(codePoint, dst, dstIndex)
+      2
+    } else {
+      dst(dstIndex) = codePoint.toChar
+      1
+    }
+  }
+
+  @inline private[this] def toSurrogate(codePoint: Int, dst: Array[Char], dstIndex: Int): Unit = {
+    val cpPrime = codePoint - 0x10000
+    val high = 0xD800 | ((cpPrime >> 10) & 0x3FF)
+    val low = 0xDC00 | (cpPrime & 0x3FF)
+    dst(dstIndex) = high.toChar
+    dst(dstIndex + 1) = low.toChar
   }
 
   @inline def toString(c: scala.Char): String =
