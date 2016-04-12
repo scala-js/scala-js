@@ -25,6 +25,7 @@ object Platform {
   def areTypedArraysSupported: Boolean =
     runtime.Bits.areTypedArraysSupported
 
+  def executingInBrowser: Boolean = sysProp("browser")
   def executingInRhino: Boolean = sysProp("rhino")
   def executingInNodeJS: Boolean = sysProp("nodejs")
   def executingInPhantomJS: Boolean = sysProp("phantomjs")

@@ -19,12 +19,12 @@ abstract class JUnitBaseRunner(
   protected var skippedCount = 0
   protected var totalCount = 0
 
-  private[junit] def taskDoneCount: Int = doneCount
-  private[junit] def taskPassedCount: Int = passedCount
-  private[junit] def taskFailedCount: Int = failedCount
-  private[junit] def taskIgnoredCount: Int = ignoredCount
-  private[junit] def taskSkippedCount: Int = skippedCount
-  private[junit] def taskTotalCount: Int = totalCount
+  def taskDoneCount: Int = doneCount
+  def taskPassedCount: Int = passedCount
+  def taskFailedCount: Int = failedCount
+  def taskIgnoredCount: Int = ignoredCount
+  def taskSkippedCount: Int = skippedCount
+  def taskTotalCount: Int = totalCount
 
   private[junit] def taskDone(): Unit = doneCount += 1
   private[junit] def taskPassed(): Unit = passedCount += 1
