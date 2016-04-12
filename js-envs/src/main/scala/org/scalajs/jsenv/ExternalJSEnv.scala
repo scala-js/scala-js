@@ -29,7 +29,7 @@ abstract class ExternalJSEnv(
 
   protected class AbstractExtRunner(
       protected val libs: Seq[ResolvedJSDependency],
-      protected val code: VirtualJSFile) {
+      protected val code: VirtualJSFile) extends JSInitFiles {
 
     private[this] var _logger: Logger = _
     private[this] var _console: JSConsole = _
@@ -42,9 +42,6 @@ abstract class ExternalJSEnv(
       _logger = logger
       _console = console
     }
-
-    /** JS files used to setup VM */
-    protected def initFiles(): Seq[VirtualJSFile] = Nil
 
     /** Custom initialization scripts, defined by the environment. */
     final protected def customInitFiles(): Seq[VirtualJSFile] =

@@ -27,6 +27,7 @@ object Platform {
 
   def executingInRhino: Boolean = sysProp("rhino")
   def executingInNodeJS: Boolean = sysProp("nodejs")
+  def executingInNodeJSOnJSDOM: Boolean = sysProp("nodejs.jsdom")
   def executingInPhantomJS: Boolean = sysProp("phantomjs")
   def typedArrays: Boolean = sysProp("typedarray")
   def sourceMaps: Boolean = sysProp("source-maps")

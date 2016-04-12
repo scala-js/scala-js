@@ -104,22 +104,28 @@ class SystemJSTest {
     assertEquals(developmentMode, Platform.isInDevelopmentMode)
 
     val inNode = get("scalajs.nodejs") == "true"
+    val inNodeWithJSDOM = get("scalajs.nodejs.jsdom") == "true"
     val inPhantomJS = get("scalajs.phantomjs") == "true"
     val inRhino = get("scalajs.rhino") == "true"
     if (inNode) {
       val process = js.Dynamic.global.process
       assertFalse(js.isUndefined(process))
-      assertFalse(inPhantomJS || inRhino)
+      assertFalse(inNodeWithJSDOM || inPhantomJS || inRhino)
+    } else if (inNodeWithJSDOM) {
+      val window = js.Dynamic.global.window
+      assertFalse(js.isUndefined(window))
+      assertFalse(inNode || inPhantomJS || inRhino)
     } else if (inPhantomJS) {
       assertFalse(js.isUndefined(js.Dynamic.global.callPhantom))
-      assertFalse(inNode || inRhino)
+      assertFalse(inNode || inNodeWithJSDOM || inRhino)
     } else if (inRhino) {
       assertFalse(js.isUndefined(js.Dynamic.global.Packages))
-      assertFalse(inNode || inPhantomJS)
+      assertFalse(inNode || inNodeWithJSDOM || inPhantomJS)
     } else {
       fail("No known platform tag found.")
     }
     assertEquals(inNode, Platform.executingInNodeJS)
+    assertEquals(inNodeWithJSDOM, Platform.executingInNodeJSOnJSDOM)
     assertEquals(inPhantomJS, Platform.executingInPhantomJS)
     assertEquals(inRhino, Platform.executingInRhino)
 

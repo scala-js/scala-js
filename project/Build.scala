@@ -25,7 +25,7 @@ import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.sbtplugin._
 import org.scalajs.jsenv.{JSEnv, RetryingComJSEnv}
 import org.scalajs.jsenv.rhino.RhinoJSEnv
-import org.scalajs.jsenv.nodejs.NodeJSEnv
+import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
 import org.scalajs.jsenv.phantomjs.PhantomJSEnv
 import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
@@ -1118,6 +1118,9 @@ object Build {
             } else {
               baseArgs
             }
+
+          case env: JSDOMNodeJSEnv =>
+            Seq("nodejs.jsdom", "typedarray")
 
           case _: PhantomJSEnv =>
             Seq("phantomjs")

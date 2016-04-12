@@ -22,7 +22,7 @@ import org.scalajs.core.tools.jsdep.DependencyResolver.DependencyFilter
 import org.scalajs.core.ir.ScalaJSVersions
 
 import org.scalajs.jsenv.{JSEnv, JSConsole}
-import org.scalajs.jsenv.nodejs.NodeJSEnv
+import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
 import org.scalajs.jsenv.phantomjs.PhantomJSEnv
 
 object ScalaJSPlugin extends AutoPlugin {
@@ -82,6 +82,30 @@ object ScalaJSPlugin extends AutoPlugin {
         env: Map[String, String] = Map.empty
     ): Def.Initialize[Task[NodeJSEnv]] = Def.task {
       new NodeJSEnv(executable, args, env)
+    }
+
+    /**
+     *  Creates a [[sbt.Def.Initialize Def.Initialize]] for a JSDOMNodeJSEnv. Use
+     *  this to explicitly specify in your build that you would like to run with
+     *  Node.js on a JSDOM window:
+     *
+     *  {{{
+     *  jsEnv := JSDOMNodeJSEnv().value
+     *  }}}
+     *
+     *  Note that the resulting [[sbt.Def.Setting Setting]] is not scoped at
+     *  all, but must be scoped in a project that has the ScalaJSPlugin enabled
+     *  to work properly.
+     *  Therefore, either put the upper line in your project settings (common
+     *  case) or scope it manually, using
+     *  [[sbt.ProjectExtra.inScope[* Project.inScope]].
+     */
+    def JSDOMNodeJSEnv(
+        executable: String = "node",
+        args: Seq[String] = Seq.empty,
+        env: Map[String, String] = Map.empty
+    ): Def.Initialize[Task[JSDOMNodeJSEnv]] = Def.task {
+      new JSDOMNodeJSEnv(executable, args, env)
     }
 
     /**
