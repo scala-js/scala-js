@@ -129,6 +129,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     // Per class body
     val currentClassSym = new ScopedVar[Symbol]
     private val unexpectedMutatedFields = new ScopedVar[mutable.Set[Symbol]]
+    private val generatedSAMWrapperCount = new ScopedVar[VarBox[Int]]
 
     private def currentClassType = encodeClassType(currentClassSym)
 
@@ -164,6 +165,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       withScopedVars(
           currentClassSym := clsSym,
           unexpectedMutatedFields := mutable.Set.empty,
+          generatedSAMWrapperCount := null,
           currentMethodSym := null,
           thisLocalVarIdent := null,
           fakeTailJumpParamRepl := null,
@@ -181,7 +183,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     // Global class generation state -------------------------------------------
 
     private val lazilyGeneratedAnonClasses = mutable.Map.empty[Symbol, ClassDef]
-    private val generatedClasses = ListBuffer.empty[(Symbol, js.ClassDef)]
+    private val generatedClasses =
+      ListBuffer.empty[(Symbol, Option[String], js.ClassDef)]
 
     private def consumeLazilyGeneratedAnonClass(sym: Symbol): ClassDef = {
       /* If we are trying to generate an method as JSFunction, we cannot
@@ -284,8 +287,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           if (!isPrimitive && !isRawJSImplClass) {
             withScopedVars(
-                currentClassSym         := sym,
-                unexpectedMutatedFields := mutable.Set.empty
+                currentClassSym          := sym,
+                unexpectedMutatedFields  := mutable.Set.empty,
+                generatedSAMWrapperCount := new VarBox(0)
             ) {
               val tree = if (isRawJSType(sym.tpe)) {
                 assert(!isRawJSFunctionDef(sym),
@@ -302,16 +306,16 @@ abstract class GenJSCode extends plugins.PluginComponent
                 genClass(cd)
               }
 
-              generatedClasses += ((sym, tree))
+              generatedClasses += ((sym, None, tree))
             }
           }
         }
 
-        val clDefs = generatedClasses.map(_._2).toList
+        val clDefs = generatedClasses.map(_._3).toList
         generatedJSAST(clDefs)
 
-        for ((sym, tree) <- generatedClasses) {
-          genIRFile(cunit, sym, tree)
+        for ((sym, suffix, tree) <- generatedClasses) {
+          genIRFile(cunit, sym, suffix, tree)
         }
       } finally {
         lazilyGeneratedAnonClasses.clear()
@@ -587,7 +591,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             staticMembers.toList)(origJsClass.optimizerHints)
       }
 
-      generatedClasses += sym -> newClassDef
+      generatedClasses += ((sym, None, newClassDef))
 
       // Construct inline class definition
       val js.MethodDef(_, _, ctorParams, _, ctorBody) = constructor.getOrElse(
@@ -1751,7 +1755,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         case mtch: Match =>
           genMatch(mtch, isStat)
 
-        /** Anonymous function (only with -Ydelambdafy:method) */
+        /** Anonymous function (in 2.12, or with -Ydelambdafy:method in 2.11) */
         case fun: Function =>
           genAnonFunction(fun)
 
@@ -2144,7 +2148,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         tryGenAnonFunctionClass(classDef, args.map(genExpr)).getOrElse {
           // Cannot optimize anonymous function class. Generate full class.
           generatedClasses +=
-            clsSym -> nestedGenerateClass(clsSym)(genClass(classDef))
+            ((clsSym, None, nestedGenerateClass(clsSym)(genClass(classDef))))
           genNew(clsSym, ctor, genActualArgs(ctor, args))
         }
       } else if (isRawJSType(tpe)) {
@@ -4296,11 +4300,19 @@ abstract class GenJSCode extends plugins.PluginComponent
       assert(sym.isAnonymousFunction,
           s"tryGenAndRecordAnonFunctionClass called with non-anonymous function $cd")
 
-      nestedGenerateClass(sym) {
-        val (functionBase, arity) =
-          tryGenAnonFunctionClassGeneric(cd, capturedArgs)(_ => return None)
+      if (!sym.superClass.fullName.startsWith("scala.runtime.AbstractFunction")) {
+        /* This is an anonymous class for a non-LMF capable SAM in 2.12.
+         * We must not rewrite it, as it would then not inherit from the
+         * appropriate parent class and/or interface.
+         */
+        None
+      } else {
+        nestedGenerateClass(sym) {
+          val (functionBase, arity) =
+            tryGenAnonFunctionClassGeneric(cd, capturedArgs)(_ => return None)
 
-        Some(JSFunctionToScala(functionBase, arity))
+          Some(JSFunctionToScala(functionBase, arity))
+        }
       }
       // scalastyle:on return
     }
@@ -4517,28 +4529,46 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     /** Generate JS code for an anonymous function
      *
-     *  Anonymous functions survive until the backend only under
-     *  -Ydelambdafy:method
-     *  and when they do, their body is always of the form
+     *  Anonymous functions survive until the backend in 2.11 under
+     *  -Ydelambdafy:method (for Scala function types) and in 2.12 for any
+     *  LambdaMetaFactory-capable type.
+     *
+     *  When they do, their body is always of the form
+     *  {{{
      *  EnclosingClass.this.someMethod(args)
+     *  }}}
      *  where the args are either formal parameters of the lambda, or local
      *  variables or the enclosing def. The latter must be captured.
      *
      *  We identify the captures using the same method as the `delambdafy`
      *  phase. We have an additional hack for `this`.
      *
-     *  We translate them by instantiating scala.scalajs.runtime.AnonFunctionN
-     *  with a JS closure:
+     *  To translate them, we first construct a JS closure for the body:
+     *  {{{
+     *  lambda<this, capture1, ..., captureM>(
+     *      _this, capture1, ..., captureM, arg1, ..., argN) {
+     *    _this.someMethod(arg1, ..., argN, capture1, ..., captureM)
+     *  }
+     *  }}}
+     *  In the closure, input params are unboxed before use, and the result of
+     *  `someMethod()` is boxed back.
      *
-     *  new ScalaJS.c.sjsr_AnonFunctionN().init___xyz(
-     *    lambda<this, capture1, ..., captureM>(
-     *        _this, capture1, ..., captureM, arg1, ..., argN) {
-     *      _this.someMethod(arg1, ..., argN, capture1, ..., captureM)
+     *  Then, we wrap that closure in a class satisfying the expected type.
+     *  For Scala function types, we use the existing
+     *  `scala.scalajs.runtime.AnonFunctionN` from the library. For other
+     *  LMF-capable types, we generate a class on the fly, which looks like
+     *  this:
+     *  {{{
+     *  class AnonFun extends Object with FunctionalInterface {
+     *    val f: any
+     *    def <init>(f: any) {
+     *      super();
+     *      this.f = f
      *    }
-     *  )
-     *
-     *  In addition, input params are unboxed before use, and the result of
-     *  someMethod() is boxed back.
+     *    def theSAMMethod(params: Types...): Type =
+     *      unbox((this.f)(boxParams...))
+     *  }
+     *  }}}
      */
     private def genAnonFunction(originalFunction: Function): js.Tree = {
       implicit val pos = originalFunction.pos
@@ -4601,7 +4631,103 @@ abstract class GenJSCode extends plugins.PluginComponent
           patchedBody,
           allActualCaptures)
 
-      JSFunctionToScala(closure, params.size)
+      // Wrap the closure in the appropriate box for the SAM type
+      val funSym = originalFunction.tpe.typeSymbolDirect
+      if (isFunctionSymbol(funSym)) {
+        /* This is a scala.FunctionN. We use the existing AnonFunctionN
+         * wrapper.
+         */
+        JSFunctionToScala(closure, params.size)
+      } else {
+        /* This is an arbitrary SAM type (can only happen in 2.12).
+         * We have to synthesize a class like LambdaMetaFactory would do on
+         * the JVM.
+         */
+        val sam = originalFunction.attachments.get[SAMFunctionCompat].fold[Symbol] {
+          abort(s"Cannot find the SAMFunction attachment on $originalFunction at $pos")
+        } {
+          _.sam
+        }
+
+        val samWrapperClassName = synthesizeSAMWrapper(funSym, sam)
+        js.New(jstpe.ClassType(samWrapperClassName), js.Ident("init___O"),
+            List(closure))
+      }
+    }
+
+    private def synthesizeSAMWrapper(funSym: Symbol, sam: Symbol)(
+        implicit pos: Position): String = {
+      val intfName = encodeClassFullName(funSym)
+
+      val suffix = {
+        generatedSAMWrapperCount.value += 1
+        // LambdaMetaFactory names classes like this
+        "$$Lambda$" + generatedSAMWrapperCount.value
+      }
+      val generatedClassName = encodeClassFullName(currentClassSym) + suffix
+
+      val classType = jstpe.ClassType(generatedClassName)
+
+      // val f$1: Any
+      val fFieldIdent = js.Ident("f$1", Some("f"))
+      val fFieldDef = js.FieldDef(fFieldIdent, jstpe.AnyType, mutable = false)
+
+      // def this(f: Any) = { this.f$1 = f; super() }
+      val ctorDef = {
+        val fParamDef = js.ParamDef(js.Ident("f"), jstpe.AnyType,
+            mutable = false, rest = false)
+        js.MethodDef(static = false, js.Ident("init___O"), List(fParamDef),
+            jstpe.NoType,
+            js.Block(List(
+                js.Assign(
+                    js.Select(js.This()(classType), fFieldIdent)(jstpe.AnyType),
+                    fParamDef.ref),
+                js.ApplyStatically(js.This()(classType),
+                    jstpe.ClassType(ir.Definitions.ObjectClass),
+                    js.Ident("init___"),
+                    Nil)(jstpe.NoType))))(
+            js.OptimizerHints.empty, None)
+      }
+
+      // def samMethod(...params): resultType = this.f$f(...params)
+      val samMethodDef = {
+        val jsParams = for (param <- sam.tpe.params) yield {
+          js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
+              mutable = false, rest = false)
+        }
+        val resultType = toIRType(sam.tpe.finalResultType)
+
+        val actualParams = enteringPhase(currentRun.posterasurePhase) {
+          for ((formal, param) <- jsParams.zip(sam.tpe.params))
+            yield (formal.ref, param.tpe)
+        }.map((ensureBoxed _).tupled)
+
+        val call = js.JSFunctionApply(
+            js.Select(js.This()(classType), fFieldIdent)(jstpe.AnyType),
+            actualParams)
+
+        val body = fromAny(call, enteringPhase(currentRun.posterasurePhase) {
+          sam.tpe.finalResultType
+        })
+
+        js.MethodDef(static = false, encodeMethodSym(sam),
+            jsParams, resultType, body)(
+            js.OptimizerHints.empty, None)
+      }
+
+      // The class definition
+      val classDef = js.ClassDef(
+          js.Ident(generatedClassName),
+          ClassKind.Class,
+          Some(js.Ident(ir.Definitions.ObjectClass)),
+          List(js.Ident(intfName)),
+          None,
+          List(fFieldDef, ctorDef, samMethodDef))(
+          js.OptimizerHints.empty.withInline(true))
+
+      generatedClasses += ((currentClassSym.get, Some(suffix), classDef))
+
+      generatedClassName
     }
 
     private def patchFunBodyWithBoxes(methodSym: Symbol,

@@ -22,9 +22,9 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
   import global._
   import jsAddons._
 
-  def genIRFile(cunit: CompilationUnit, sym: Symbol,
+  def genIRFile(cunit: CompilationUnit, sym: Symbol, suffix: Option[String],
       tree: ir.Trees.ClassDef): Unit = {
-    val outfile = getFileFor(cunit, sym, ".sjsir")
+    val outfile = getFileFor(cunit, sym, suffix.getOrElse("") + ".sjsir")
     val output = outfile.bufferedOutput
     try {
       ir.InfoSerializers.serialize(output, Infos.generateClassInfo(tree))
