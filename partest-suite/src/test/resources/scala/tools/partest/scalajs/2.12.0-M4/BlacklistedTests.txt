@@ -5,10 +5,6 @@
 # Using Jsoup, what's that?
 pos/cycle-jsoup.scala
 
-# Using scala.actors
-pos/functions.scala
-pos/MailBox.scala
-
 #
 # NEG
 #
@@ -24,7 +20,6 @@ neg/t7622-cyclic-dependency
 neg/macro-incompatible-macro-engine-c.scala
 
 # Uses .java files
-neg/t6289
 run/t9200
 run/noInlineUnknownIndy
 #
@@ -62,7 +57,6 @@ run/lambda-serialization-gc.scala
 
 run/t2849.scala
 run/t1360.scala
-run/t6114.scala
 run/t3199b.scala
 run/t8690.scala
 
@@ -74,7 +68,6 @@ run/t2250.scala
 # Uses java.math.BigDecimal / BigInteger : but failures not due to them
 run/hashhash.scala
 run/is-valid-num.scala
-run/stringinterpolation_macro-run.scala
 
 # Documented semantic difference on String.split(x: Array[Char])
 run/t0325.scala
@@ -224,7 +217,6 @@ run/reflection-magicsymbols-vanilla.scala
 run/t5225_2.scala
 run/origins.scala
 run/runtimeEval1.scala
-run/reflection-implClass.scala
 run/reflection-enclosed-nested-inner-basic.scala
 run/reflection-fieldmirror-ctorparam.scala
 run/t6181.scala
@@ -411,7 +403,6 @@ run/toolbox_default_reporter_is_silent.scala
 run/toolbox_parse_package.scala
 run/toolbox_silent_reporter.scala
 run/toolbox_typecheck_inferimplicitvalue.scala
-run/trait-renaming
 run/typetags_serialize.scala
 run/valueclasses-typetag-basic.scala
 run/WeakHashSetTest.scala
@@ -598,6 +589,9 @@ run/t7521b.scala
 run/t8575b.scala
 run/t8575c.scala
 run/t8944c.scala
+run/t9535.scala
+run/t9437a
+run/t9437b
 
 # Uses refletction indirectly through
 # scala.runtime.ScalaRunTime.replStringOf
@@ -639,9 +633,6 @@ run/inlineHandlers.scala
 run/optimizer-array-load.scala
 run/t6827.scala
 run/t8601.scala
-
-# Reflection on the strategy for compiling anonymous functions
-run/delambdafy-specialized.scala
 
 # Playing with classfile format
 
@@ -767,6 +758,7 @@ run/xMigration.scala
 run/t6541-option.scala
 run/repl-serialization.scala
 run/t9174.scala
+run/repl-paste-5.scala
 
 # Using Scala Script (partest.ScriptTest)
 
@@ -776,14 +768,12 @@ run/t7711-script-args.scala
 
 run/t2512.scala
 run/analyzerPlugins.scala
-run/test-cpp.scala
 run/compiler-asSeenFrom.scala
 run/t5603.scala
 run/t6440.scala
 run/t5545.scala
 run/existentials-in-compiler.scala
 run/global-showdef.scala
-run/inline-ex-handlers.scala
 run/stream_length.scala
 run/annotatedRetyping.scala
 run/imain.scala
@@ -806,7 +796,6 @@ run/t1618.scala
 run/t2464
 run/t4072.scala
 run/t5064.scala
-run/t5313.scala
 run/t5385.scala
 run/t5699.scala
 run/t5717.scala
@@ -815,8 +804,6 @@ run/t6028.scala
 run/t6194.scala
 run/t6669.scala
 run/t6745-2.scala
-run/t6955.scala
-run/t6956.scala
 run/t7096.scala
 run/t7271.scala
 run/t7337.scala
@@ -866,6 +853,7 @@ run/t9097.scala
 run/macroPlugins-enterStats.scala
 run/sbt-icode-interface.scala
 run/t8502b.scala
+run/t9437c
 
 # partest.CompilerTest
 run/t8852a.scala
@@ -874,7 +862,6 @@ run/t8852a.scala
 run/t9403
 
 # partest.BytecodeTest
-run/t6546
 run/t7106
 run/t7974
 run/t8601-closure-elim.scala
@@ -920,11 +907,8 @@ run/t7374
 run/t3452e
 run/t3452g
 run/t3452d
-run/t3452b-bcode
 run/t3452b
 run/t3452a
-run/t1430
-run/t4729
 run/t8442
 run/t8601e
 run/t9298
@@ -934,6 +918,7 @@ run/t7741a
 run/t7741b
 run/bcodeInlinerMixed
 run/t9268
+run/t9489
 
 # Using scala-script
 run/t7791-script-linenums.scala
@@ -959,6 +944,10 @@ run/t6246.scala
 # Using ScalaRunTime.stringOf
 run/value-class-extractor-seq.scala
 run/t3493.scala
+
+# Custom invoke dynamic node
+run/indy-via-macro
+run/indy-via-macro-with-dynamic-args
 
 ###  Incorrect partests  ###
 # Badly uses constract of Console.print (no flush)

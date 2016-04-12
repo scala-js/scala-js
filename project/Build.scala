@@ -65,7 +65,7 @@ object Build {
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.6", "2.11.8", "2.12.0-M3")
+    Set("2.10.6", "2.11.8", "2.12.0-M4")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -422,7 +422,7 @@ object Build {
         "2.11.6",
         "2.11.7",
         "2.11.8",
-        "2.12.0-M3"
+        "2.12.0-M4"
       ),
       // JDK version we are running with
       javaVersion in Global := {
@@ -1239,6 +1239,14 @@ object Build {
           case fullName =>
             fullName
         })),
+
+        /* 2.12.0-M4 introduced this bug, this should be removed in 2.12.0-M5
+         * with all references to "scalac.hasBoxedUnitBug" in the tests
+         */
+        javaOptions in Test ++= {
+          if (scalaVersion.value != "2.12.0-M4") Nil
+          else Seq("-Dscalac.hasBoxedUnitBug=true")
+        },
 
         /* Generate a scala source file that throws exceptions in
          * various places (while attaching the source line to the

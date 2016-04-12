@@ -25,7 +25,6 @@ superaccessors   8  add super accessors in traits and nested classes
         jscode  23  generate JavaScript code from ASTs
        cleanup  24  platform-specific cleanups, generate reflective calls
     delambdafy  25  remove lambdas
-         icode  26  generate portable intermediate code
-           jvm  27  generate JVM bytecode
-       ploogin  28  A sample phase that does so many things it's kind of hard...
-      terminal  29  the last phase during a compilation run
+           jvm  26  generate JVM bytecode
+       ploogin  27  A sample phase that does so many things it's kind of hard...
+      terminal  28  the last phase during a compilation run

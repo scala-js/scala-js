@@ -1,0 +1,17 @@
+# The tests in this file should pass but have never passed so far
+# use scala.tools.partest.scalajs.testunknownonly to only run tests
+# which are neither in BuglistedTests.txt, WhitelistedTests.txt or
+# BlacklistedTests.txt
+
+# Bug #2309
+run/sammy_after_implicit_view.scala
+run/sammy_restrictions_LMF.scala
+run/sammy_vararg_cbn.scala
+
+# Bug with BoxedUnit/void
+run/t5568.scala
+run/t6318_primitives.scala
+
+# fails assert(x == y, x + " == " + y)
+# where (x: java.lang.Long = 5) and (y: scala.math.BigDecimal = 5)
+run/equality.scala
