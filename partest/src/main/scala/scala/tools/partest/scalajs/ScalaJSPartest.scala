@@ -17,7 +17,7 @@ import org.scalajs.core.compiler.ScalaJSPlugin
 
 import scala.io.Source
 
-import sbt.testing.{ EventHandler, Logger, Fingerprint }
+import _root_.sbt.testing._
 import java.io.File
 import java.net.URLClassLoader
 
@@ -175,12 +175,13 @@ class ScalaJSSBTRunner(
     javaCmd: File,
     javacCmd: File,
     scalacArgs: Array[String],
+    args: Array[String],
     val options: ScalaJSPartestOptions,
     val scalaVersion: String
 ) extends SBTRunner(
     partestFingerprint, eventHandler, loggers, "test/files", testClassLoader,
-    javaCmd, javacCmd, scalacArgs
-) with ScalaJSSuiteRunner {
+    javaCmd, javacCmd, scalacArgs, args
+) {
 
   // The test root for partest is read out through the system properties,
   // not passed as an argument
@@ -193,4 +194,28 @@ class ScalaJSSBTRunner(
   if (options.showDiff)
     NestUI.setDiffOnFail()
 
+  override val suiteRunner = new SuiteRunner(
+      testSourcePath = optSourcePath orElse Option("test/files") getOrElse PartestDefaults.sourcePath,
+      new FileManager(testClassLoader = testClassLoader),
+      updateCheck = optUpdateCheck,
+      failed  = optFailed,
+      javaCmdPath = Option(javaCmd).map(_.getAbsolutePath) getOrElse PartestDefaults.javaCmd,
+      javacCmdPath = Option(javacCmd).map(_.getAbsolutePath) getOrElse PartestDefaults.javacCmd,
+      scalacExtraArgs = scalacArgs,
+      javaOpts = javaOpts) with ScalaJSSuiteRunner {
+
+    val options: ScalaJSPartestOptions = ScalaJSSBTRunner.this.options
+    val scalaVersion: String = ScalaJSSBTRunner.this.scalaVersion
+
+    override def onFinishTest(testFile: File, result: TestState): TestState = {
+      eventHandler.handle(new Event {
+        def fullyQualifiedName: String = testFile.testIdent
+        def fingerprint: Fingerprint = partestFingerprint
+        def selector: Selector = new TestSelector(testFile.testIdent)
+        val (status, throwable) = makeStatus(result)
+        def duration: Long = -1
+      })
+      result
+    }
+  }
 }

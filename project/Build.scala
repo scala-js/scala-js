@@ -1369,7 +1369,7 @@ object Build {
             if (shouldPartest.value)
               Seq(
                 "org.scala-sbt" % "sbt" % sbtVersion.value,
-                "org.scala-lang.modules" %% "scala-partest" % "1.0.9",
+                "org.scala-lang.modules" %% "scala-partest" % "1.0.13",
                 "com.google.javascript" % "closure-compiler" % "v20130603",
                 "io.apigee" % "rhino" % "1.7R5pre4",
                 "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit")

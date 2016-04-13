@@ -9,12 +9,7 @@ package scalajs
 
 import scala.language.reflectiveCalls
 
-import sbt.testing.Fingerprint
-import sbt.testing.TaskDef
-import sbt.testing.EventHandler
-import sbt.testing.Logger
-import sbt.testing.Task
-import sbt.testing.AnnotatedFingerprint
+import _root_.sbt.testing._
 import java.net.URLClassLoader
 import java.io.File
 
@@ -25,17 +20,17 @@ object Framework {
   // TODO how can we export `fingerprint` so that a user can just add this to their build.sbt
   // definedTests in Test += new sbt.TestDefinition("partest", fingerprint, true, Array())
 }
-class Framework extends sbt.testing.Framework {
+class Framework extends _root_.sbt.testing.Framework {
   def fingerprints: Array[Fingerprint] = Array(Framework.fingerprint)
   def name: String = "partest"
 
-  def runner(args: Array[String], remoteArgs: Array[String], testClassLoader: ClassLoader): sbt.testing.Runner =
+  def runner(args: Array[String], remoteArgs: Array[String], testClassLoader: ClassLoader): _root_.sbt.testing.Runner =
     new Runner(args, remoteArgs, testClassLoader)
 }
 
 /** Represents one run of a suite of tests.
  */
-case class Runner(args: Array[String], remoteArgs: Array[String], testClassLoader: ClassLoader) extends sbt.testing.Runner {
+case class Runner(args: Array[String], remoteArgs: Array[String], testClassLoader: ClassLoader) extends _root_.sbt.testing.Runner {
   /** Returns an array of tasks that when executed will run tests and suites determined by the
    *  passed <code>TaskDef</code>s.
    *
@@ -58,8 +53,8 @@ case class Runner(args: Array[String], remoteArgs: Array[String], testClassLoade
    *  @return an array of <code>Task</code>s
    *  @throws IllegalStateException if invoked after <code>done</code> has been invoked.
    */
-  def tasks(taskDefs: Array[TaskDef]): Array[sbt.testing.Task] =
-    taskDefs map (PartestTask(_, args): sbt.testing.Task)
+  def tasks(taskDefs: Array[TaskDef]): Array[_root_.sbt.testing.Task] =
+    taskDefs map (PartestTask(_, args): _root_.sbt.testing.Task)
 
   /** Indicates the client is done with this <code>Runner</code> instance.
    *
@@ -92,9 +87,9 @@ case class PartestTask(taskDef: TaskDef, args: Array[String]) extends Task {
       val runner = SBTRunner(
           Framework.fingerprint, eventHandler, loggers,
           new File(s"../partest/fetchedSources/${scalaVersion}"),
-          classLoader, null, null, Array.empty[String], options, scalaVersion)
+          classLoader, null, null, Array.empty[String], Array("run", "pos", "neg"), options, scalaVersion)
 
-      try runner execute Array("run", "pos", "neg")
+      try runner.run()
       catch {
         case ex: ClassNotFoundException =>
           loggers foreach { l => l.error("Please make sure partest is running in a forked VM by including the following line in build.sbt:\nfork in Test := true") }
@@ -105,13 +100,13 @@ case class PartestTask(taskDef: TaskDef, args: Array[String]) extends Task {
     Array()
   }
 
-  type SBTRunner = { def execute(kinds: Array[String]): String }
+  type SBTRunner = { def run(): Unit }
 
   // use reflection to instantiate scala.tools.partest.scalajs.ScalaJSSBTRunner,
   // casting to the structural type SBTRunner above so that method calls on the result will be invoked reflectively as well
-  private def SBTRunner(partestFingerprint: Fingerprint, eventHandler: EventHandler, loggers: Array[Logger], testRoot: File, testClassLoader: URLClassLoader, javaCmd: File, javacCmd: File, scalacArgs: Array[String], options: ScalaJSPartestOptions, scalaVersion: String): SBTRunner = {
+  private def SBTRunner(partestFingerprint: Fingerprint, eventHandler: EventHandler, loggers: Array[Logger], testRoot: File, testClassLoader: URLClassLoader, javaCmd: File, javacCmd: File, scalacArgs: Array[String], args: Array[String], options: ScalaJSPartestOptions, scalaVersion: String): SBTRunner = {
     val runnerClass = Class.forName("scala.tools.partest.scalajs.ScalaJSSBTRunner")
-    runnerClass.getConstructors()(0).newInstance(partestFingerprint, eventHandler, loggers, testRoot, testClassLoader, javaCmd, javacCmd, scalacArgs, options, scalaVersion).asInstanceOf[SBTRunner]
+    runnerClass.getConstructors()(0).newInstance(partestFingerprint, eventHandler, loggers, testRoot, testClassLoader, javaCmd, javacCmd, scalacArgs, args, options, scalaVersion).asInstanceOf[SBTRunner]
   }
 
   /** A possibly zero-length array of string tags associated with this task. */
