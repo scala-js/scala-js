@@ -1173,46 +1173,55 @@ private[optimizer] abstract class OptimizerCore(
                 treeNotInlined
               }
             } else {
-              if (impls.forall(_.isForwarder)) {
-                val reference = impls.head
-                val areAllTheSame = getMethodBody(reference).body match {
-                  // Trait impl forwarder
-                  case ApplyStatic(ClassType(staticCls), Ident(methodName, _), _) =>
-                    impls.tail.forall(getMethodBody(_).body match {
-                      case ApplyStatic(ClassType(`staticCls`),
-                          Ident(`methodName`, _), _) => true
-                      case _ => false
-                    })
-
-                  // Bridge method
-                  case MaybeBox(Apply(This(), Ident(methodName, _), referenceArgs), boxID) =>
-                    impls.tail.forall(getMethodBody(_).body match {
-                      case MaybeBox(Apply(This(), Ident(`methodName`, _), implArgs), `boxID`) =>
-                        referenceArgs.zip(implArgs) forall {
-                          case (MaybeUnbox(_, unboxID1), MaybeUnbox(_, unboxID2)) =>
-                            unboxID1 == unboxID2
-                        }
-                      case _ => false
-                    })
-
-                  case body =>
-                    throw new AssertionError("Invalid forwarder shape: " + body)
-                }
-                if (!areAllTheSame) {
-                  // Not all doing the same thing
-                  treeNotInlined
-                } else {
-                  inline(allocationSites, Some(treceiver), targs, reference,
-                      isStat, usePreTransform)(cont)
-                }
+              if (canMultiInline(impls)) {
+                inline(allocationSites, Some(treceiver), targs, impls.head,
+                    isStat, usePreTransform)(cont)
               } else {
-                // TODO? Inline multiple non-trait-impl-forwarder with the exact same body?
                 treeNotInlined
               }
             }
           }
       }
     }
+  }
+
+  private def canMultiInline(impls: List[MethodID]): Boolean = {
+    // TODO? Inline multiple non-forwarders with the exact same body?
+    impls.forall(_.isForwarder) &&
+    (getMethodBody(impls.head).body match {
+      // Trait impl forwarder
+      case ApplyStatic(ClassType(staticCls), Ident(methodName, _), _) =>
+        impls.tail.forall(getMethodBody(_).body match {
+          case ApplyStatic(ClassType(`staticCls`), Ident(`methodName`, _), _) =>
+            true
+          case _ =>
+            false
+        })
+
+      // Shape of forwards to default methods
+      case ApplyStatically(This(), cls, Ident(methodName, _), args) =>
+        impls.tail.forall(getMethodBody(_).body match {
+          case ApplyStatically(This(), `cls`, Ident(`methodName`, _), _) =>
+            true
+          case _ =>
+            false
+        })
+
+      // Bridge method
+      case MaybeBox(Apply(This(), Ident(methodName, _), referenceArgs), boxID) =>
+        impls.tail.forall(getMethodBody(_).body match {
+          case MaybeBox(Apply(This(), Ident(`methodName`, _), implArgs), `boxID`) =>
+            referenceArgs.zip(implArgs) forall {
+              case (MaybeUnbox(_, unboxID1), MaybeUnbox(_, unboxID2)) =>
+                unboxID1 == unboxID2
+            }
+          case _ =>
+            false
+        })
+
+      case body =>
+        throw new AssertionError("Invalid forwarder shape: " + body)
+    })
   }
 
   private def boxedClassForType(tpe: Type): String = (tpe: @unchecked) match {
@@ -3822,6 +3831,16 @@ private[optimizer] object OptimizerCore {
                     ParamDef(Ident(pname, _), _, _, _)) => aname == pname
                 case _ => false
               }))
+
+        // Shape of forwards to default methods
+        case ApplyStatically(This(), cls, method, args) =>
+          args.size == params.size &&
+          args.zip(params).forall {
+            case (VarRef(Ident(aname, _)), ParamDef(Ident(pname, _), _, _, _)) =>
+              aname == pname
+            case _ =>
+              false
+          }
 
         // Shape of bridges for generic methods
         case MaybeBox(Apply(This(), method, args), _) =>
