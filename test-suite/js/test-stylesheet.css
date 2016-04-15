@@ -1,0 +1,37 @@
+body {
+  margin: 1em;
+}
+
+.log {
+  margin: 0;
+  border-left: 3px solid;
+  padding-left: 4px;
+}
+
+.info {
+  border-left-color: #FFFFFF;
+}
+
+.debug {
+  border-left-color: #D4D4D4;
+}
+
+.warn {
+  border-left-color: #FFE459;
+}
+
+.error {
+  border-left-color: #FF2C2C;
+}
+
+.had_failures {
+  padding: .3em 4px;
+  border-left-color: #FF3333;
+  background-color: #FF9999;
+}
+
+.all_passed {
+  padding: .3em 4px;
+  border-left-color: #33FF33;
+  background-color: #99FF99;
+}

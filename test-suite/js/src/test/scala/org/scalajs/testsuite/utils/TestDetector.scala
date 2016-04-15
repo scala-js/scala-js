@@ -1,61 +1,60 @@
 package org.scalajs.testsuite.utils
 
 import scala.scalajs.js
-import js.annotation.JSExport
-import js.JSConverters._
 
-/** An ad-hoc but centralized way to detect tests in this test suite */
-@JSExport("scalajs.TestDetector")
+import org.scalajs.testinterface.internal.TaskDefSerializer
+
+import sbt.testing._
+
+/** Fetches test definitions and frameworks. */
 object TestDetector {
+  def detectTests(): Seq[(Framework, Seq[TaskDef])] = {
+    import RawDefinitions._
 
-  private final val basePackage = "org.scalajs.testsuite"
+    val taskDefs = definedTests.map(TaskDefSerializer.deserialize _)
+    val frameworks = testFrameworkNames.flatMap(tryLoadFramework).toList
 
-  /** Exported Scala.js-defined JS classes cannot be distinguished from
-   *  module accessors, so we explicitly blacklist them.
-   */
-  private val isBlacklisted = Set(
-      "SJSDefinedExportedClass",
-      "SJSDefinedAutoExportedTraitClass",
-      "SJSDefinedAutoExportClass",
-      "SJSDefinedAutoExportedClassClass",
-      "SJSDefinedAutoExportIgnoreClass",
-      "SJSDefinedAutoExportedIgnoreClassClass"
-  ).map(basePackage + ".jsinterop." + _)
-
-  def detectTestNames(): List[String] = detectTestsInternal().map(_._2).toList
-
-  @JSExport
-  def loadDetectedTests(): Unit = detectTestsInternal().foreach(_._1())
-
-  private def detectTestsInternal(): List[(js.Dynamic, String)] = {
-    def isExportedModule(item: js.Dynamic): Boolean = {
-      /* We make sure to use only select exported modules (not classes) by
-       * checking .prototype of the exporters.
-       */
-      (js.typeOf(item) == "function") && {
-        js.isUndefined(item.prototype) || // happens for static methods
-        (js.Object.getPrototypeOf(item.prototype.asInstanceOf[js.Object]) eq
-            js.Object.asInstanceOf[js.Dynamic].prototype)
-      }
+    for {
+      framework <- frameworks
+    } yield {
+      val fingerprints = framework.fingerprints()
+      val eligibleTaskDefs = taskDefs.filter(taskDef =>
+        fingerprints.exists(fingerprintMatches(_, taskDef.fingerprint)))
+      (framework, eligibleTaskDefs.toSeq)
     }
-
-    def rec(item: js.Dynamic, fullName: String): List[(js.Dynamic, String)] = {
-      if (isBlacklisted(fullName)) {
-        Nil
-      } else if (js.typeOf(item) == "object") {
-        js.Object.properties(item).toList flatMap { prop =>
-          rec(item.selectDynamic(prop), s"$fullName.$prop")
-        }
-      } else if (isExportedModule(item)) {
-        List((item, fullName))
-      } else {
-        Nil
-      }
-    }
-
-    val parts = basePackage.split('.')
-    val base = parts.foldLeft(js.Dynamic.global)(_.selectDynamic(_))
-    rec(base, basePackage)
   }
 
+  private def tryLoadFramework(names: js.Array[String]): Option[Framework] = {
+    def tryLoadName(name: String) = {
+      val parts = name.split('.')
+
+      val ctor = parts.foldLeft[js.UndefOr[js.Dynamic]](js.Dynamic.global)(
+          (parent, name) => parent.map(_.selectDynamic(name)))
+
+      ctor.map(js.Dynamic.newInstance(_)()).collect {
+        case framework: Framework => framework
+      }.toOption
+    }
+
+    names.toStream.map(tryLoadName).flatten.headOption
+  }
+
+  // Copied from sbt.TestFramework
+  private def fingerprintMatches(a: Fingerprint, b: Fingerprint): Boolean = {
+    (a, b) match {
+      case (a: SubclassFingerprint, b: SubclassFingerprint) =>
+        a.isModule == b.isModule && a.superclassName == b.superclassName
+
+      case (a: AnnotatedFingerprint, b: AnnotatedFingerprint) =>
+        a.isModule == b.isModule && a.annotationName == b.annotationName
+
+      case _ => false
+    }
+  }
+
+  @js.native
+  private object RawDefinitions extends js.GlobalScope {
+    val definedTests: js.Array[js.Dynamic] = js.native
+    val testFrameworkNames: js.Array[js.Array[String]] = js.native
+  }
 }
