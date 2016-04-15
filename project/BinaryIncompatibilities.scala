@@ -29,6 +29,13 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+      /* In theory breaking, but JSStringOps is unlikely to be extended in practice
+       * + it's a facade type, so there are less constraints on binary compatibility.
+       */
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.js.JSStringOps.normalize"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.js.JSStringOps.normalize$default$1")
   )
 
   val TestInterface = Seq(
