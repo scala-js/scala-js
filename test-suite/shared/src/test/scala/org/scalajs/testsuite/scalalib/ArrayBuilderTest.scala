@@ -14,6 +14,7 @@ import scala.collection.mutable.ArrayBuilder
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.Platform._
 
@@ -190,28 +191,26 @@ class ArrayBuilderTest {
   }
 
   @Test def Unit_zeros_inline(): Unit = {
+    assumeFalse("Can't run on 2.12.0-M4.",
+        System.getProperty("scalac.hasBoxedUnitBug") != null)
     val a = zerosInline[Unit](3)
     assertSame(classOf[Array[Unit]], a.getClass)
     assertEquals(3, a.length)
     if (!executingInJVM) {
       assertTrue(erase(a(0)).isInstanceOf[Unit])
       assertTrue(() == erase(a(0)))
-    } else {
-      assertFalse(erase(a(0)).isInstanceOf[Unit])
-      assertFalse(() == erase(a(0)))
     }
   }
 
   @Test def Unit_zeros_noinline(): Unit = {
+    assumeFalse("Can't run on 2.12.0-M4.",
+        System.getProperty("scalac.hasBoxedUnitBug") != null)
     val a = zerosNoInline[Unit](3)
     assertSame(classOf[Array[Unit]], a.getClass)
     assertEquals(3, a.length)
     if (!executingInJVM) {
       assertTrue(erase(a(0)).isInstanceOf[Unit])
       assertTrue(() == erase(a(0)))
-    } else {
-      assertFalse(erase(a(0)).isInstanceOf[Unit])
-      assertFalse(() == erase(a(0)))
     }
   }
 

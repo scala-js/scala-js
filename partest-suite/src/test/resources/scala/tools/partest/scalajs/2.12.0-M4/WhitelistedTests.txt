@@ -62,7 +62,6 @@ pos/t613.scala
 pos/t6499.scala
 pos/xlint1.scala
 pos/t1150
-pos/sealed-final.scala
 pos/test4a.scala
 pos/t2664.scala
 pos/t3528.scala
@@ -326,15 +325,12 @@ pos/t2421_delitedsl.scala
 pos/t5626.scala
 pos/t690.scala
 pos/t711.scala
-pos/t6547.scala
 pos/t1937
 pos/t3999
-pos/SI-7060.scala
 pos/t2305.scala
 pos/t2168.scala
 pos/t2660.scala
 pos/t1693.scala
-pos/inliner2.scala
 pos/t2799.scala
 pos/t6966.scala
 pos/t1001.scala
@@ -453,7 +449,6 @@ pos/t5099.scala
 pos/tcpoly_seq_typealias.scala
 pos/t946.scala
 pos/tcpoly_infer_ticket1864.scala
-pos/t4579.scala
 pos/t4737
 pos/t7377b.scala
 pos/t616.scala
@@ -528,7 +523,6 @@ pos/t5020.scala
 pos/ilya
 pos/t2435.scala
 pos/t1279a.scala
-pos/t2171.scala
 pos/t1957.scala
 pos/gadts2.scala
 pos/t3567
@@ -609,7 +603,6 @@ pos/t5330b.scala
 pos/t6485b
 pos/t6072.scala
 pos/t5692c.scala
-pos/t3430.scala
 pos/tcpoly_param_scoping.scala
 pos/t6204-b.scala
 pos/attachments-typed-another-ident
@@ -680,7 +673,6 @@ pos/t4545.scala
 pos/t6651.scala
 pos/t2133.scala
 pos/tinondefcons.scala
-pos/t6157.scala
 pos/t6358.scala
 pos/t7690.scala
 pos/t5779-numeq-warn.scala
@@ -873,7 +865,6 @@ pos/t4970.scala
 pos/t607.scala
 pos/FPTest.scala
 pos/test1.scala
-pos/t3252.scala
 pos/t4176.scala
 pos/t112606A.scala
 pos/t2183.scala
@@ -931,12 +922,10 @@ pos/t9050.scala
 pos/t9135.scala
 pos/t9116.scala
 pos/t5154.scala
-pos/t9123.scala
 pos/t3368.scala
 pos/t9321.scala
 pos/t9285.scala
 pos/t8861.scala
-pos/t8359-closelim-crash.scala
 pos/t9020.scala
 pos/jesper.scala
 pos/t9356
@@ -1483,7 +1472,6 @@ pos/cyclics-pos.scala
 pos/cfcrash.scala
 pos/tcpoly_higherorder_bound_method.scala
 pos/t5084.scala
-pos/trait-force-info.scala
 pos/macro-qmarkqmarkqmark.scala
 pos/t7785.scala
 pos/nested.scala
@@ -1648,7 +1636,6 @@ neg/t5357.scala
 neg/interop_abstypetags_arenot_manifests.scala
 neg/t4460a.scala
 neg/t5318b.scala
-neg/t3234.scala
 neg/t4440.scala
 neg/t6663.scala
 neg/t6357.scala
@@ -2740,7 +2727,6 @@ pos/t8060.scala
 pos/t8001
 pos/t8138.scala
 pos/t8111.scala
-pos/t8062
 pos/t8011.scala
 pos/t8146b.scala
 pos/t8046b.scala
@@ -2885,11 +2871,8 @@ pos/t8244d
 pos/t8300-overloading.scala
 pos/t8300-patmat-a.scala
 pos/t8300-patmat-b.scala
-pos/t8315b.scala
-pos/t8306.scala
 pos/t8301.scala
 pos/t8324.scala
-pos/t8315.scala
 pos/t8301b.scala
 pos/t8363.scala
 pos/t8367.scala
@@ -2917,7 +2900,6 @@ run/t8280.scala
 run/t8395.scala
 run/t8321
 run/t8153.scala
-run/t8233-bcode.scala
 run/t8197.scala
 run/t8197b.scala
 run/t8233.scala
@@ -3026,7 +3008,6 @@ run/t8893.scala
 run/t8803.scala
 run/t7459b.scala
 run/t8823.scala
-run/sammy_repeated.scala
 run/t6541.scala
 run/nothingTypeDce.scala
 run/t8680.scala
@@ -3060,7 +3041,6 @@ neg/missing-arg-list.scala
 neg/deprecated-target.scala
 neg/t6895.scala
 neg/beanInfoDeprecation.scala
-neg/incompatibleSettings.scala
 neg/t8777.scala
 neg/t6895b.scala
 neg/t8892.scala
@@ -3091,7 +3071,6 @@ neg/implicit-ambiguous-2.scala
 neg/implicit-ambiguous-invalid.scala
 neg/warn-unused-imports
 run/t7269.scala
-run/equality.scala
 run/number-parsing.scala
 run/t6220.scala
 run/mapConserve.scala
@@ -3107,6 +3086,67 @@ run/t5608.scala
 run/t3518.scala
 run/t6198.scala
 run/t2813.2.scala
+pos/java-type-annotations
+pos/sammy_infer_argtype_subtypes.scala
+pos/sammy_ctor_arg.scala
+pos/fun_undo_eta.scala
+pos/sammy_inferargs.scala
+pos/existental-slow-compile2.scala
+pos/existential-slow-compile1.scala
+pos/sammy_implicit.scala
+pos/t9178b.scala
+pos/t9178.scala
+pos/t9449.scala
+pos/t3234.scala
+pos/t9542.scala
+pos/t8429.scala
+pos/t9658.scala
+pos/t9630
+pos/t9399.scala
+pos/t9411a.scala
+pos/t9411b.scala
+neg/partestInvalidFlag.scala
+neg/sammy_error.scala
+neg/sammy_disabled.scala
+neg/sammy_overload.scala
+neg/sammy_expected.scala
+neg/t8700a
+neg/t9527b.scala
+neg/t9527a.scala
+neg/t9572.scala
+neg/t9535.scala
+neg/t9629.scala
+neg/optimiseDeprecated.scala
+neg/t9398
+neg/outer-ref-checks.scala
+neg/t8685.scala
+neg/t8700b
+run/t9349
+run/t9178a.scala
+run/t9110.scala
+run/sammy_cbn.scala
+run/sammy_erasure_cce.scala
+run/t7807.scala
+run/sammy_return.scala
+run/t9546.scala
+run/t9546b.scala
+run/lisp.scala
+run/t9546c.scala
+run/t9546d.scala
+run/t9546e.scala
+run/t9567.scala
+run/t9567b.scala
+run/trait-clonable.scala
+run/t9567c.scala
+run/trait-defaults-modules.scala
+run/trait-defaults-modules3.scala
+run/trait-defaults-modules2
+pos/functions.scala
+pos/MailBox.scala
+neg/t6289
+run/t4729
+run/t6114.scala
+run/t1430
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala
@@ -3156,9 +3196,7 @@ neg/t6446-show-phases.scala
 neg/t6446-additional
 
 # Adapt checkfiles for different behavior with boxed types
-run/t5568.scala
 run/virtpatmat_typetag.scala
 run/virtpatmat_switch.scala
 run/t5629b.scala
-run/t6318_primitives.scala
 run/t5356.scala
