@@ -599,12 +599,25 @@ object Build {
               yield s""""${escapeJS(f.getAbsolutePath)}""""
           }
 
+          val scalaJSEnv = if (scalaVersion.value != "2.12.0-M4") {
+            "null"
+          } else {
+            /* 2.12.0-M4 introduced this bug, this should be removed in 2.12.0-M5
+             * with all references to "scalac.hasBoxedUnitBug" in the tests
+             */
+            """
+            {"javaSystemProperties": {
+              "scalac.hasBoxedUnitBug": "true"
+            }}
+            """
+          }
+
           val code = {
             s"""
             var linker = scalajs.QuickLinker();
             var lib = linker.linkTestSuiteNode(${irPaths.mkString(", ")});
 
-            var __ScalaJSEnv = null;
+            var __ScalaJSEnv = $scalaJSEnv;
 
             eval("(function() { 'use strict'; " +
               lib + ";" +
