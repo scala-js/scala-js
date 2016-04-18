@@ -3071,6 +3071,7 @@ neg/implicit-ambiguous-2.scala
 neg/implicit-ambiguous-invalid.scala
 neg/warn-unused-imports
 run/t7269.scala
+run/equality.scala
 run/number-parsing.scala
 run/t6220.scala
 run/mapConserve.scala

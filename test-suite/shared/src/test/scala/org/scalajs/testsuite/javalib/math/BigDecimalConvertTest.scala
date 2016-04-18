@@ -126,6 +126,27 @@ class BigDecimalConvertTest {
     assertThrows(classOf[ArithmeticException], longMinValue.subtract(BigDecimal.ONE).longValueExact)
   }
 
+  @Test def testSmallLongValueExact(): Unit = {
+    def test(x: Long): Unit =
+      assertEquals(x, new BigDecimal(x).longValueExact)
+
+    test(0L)
+    test(5L)
+    test(-5L)
+  }
+
+  @Test def testLongValueExactNonWhole(): Unit = {
+    def test(smallValue: Long, scale: Int): Unit = {
+      val value = new BigDecimal(java.math.BigInteger.valueOf(smallValue), scale)
+      assertThrows(classOf[ArithmeticException], value.longValueExact)
+    }
+
+    test(1L, 1)
+    test(15L, 1)
+    test(-1L, 1)
+    test(-15L, 1)
+  }
+
   @Test def bigDecimal_9_223372E285625056_should_not_be_a_valid_long_issue_2314(): Unit = {
     val num = new BigDecimal("9.223372E+285625056")
 

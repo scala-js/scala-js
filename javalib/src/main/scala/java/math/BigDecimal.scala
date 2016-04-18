@@ -1728,9 +1728,9 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
    */
   private def valueExact(bitLengthOfType: Int): Long = {
     // Fast path to avoid some large BigInteger creations by toBigIntegerExact
-    if (_scale < _precision || _scale > 19) {
-      /* If it is not an integral number or if the scale larger is than the
-       * digit length in base 10 of Long.MaxValue.
+    if (-scale + approxPrecision() > 19) {
+      /* If there are more digits than the number of digits of Long.MaxValue in
+       * base 10, this BigDecimal cannot possibly be an exact Long.
        */
       throw new ArithmeticException("Rounding necessary")
     }
