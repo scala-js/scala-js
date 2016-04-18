@@ -898,7 +898,7 @@ class ExportsTest {
   }
 
   @Test def should_reject_bad_values_for_arguments_of_primitive_value_type(): Unit = {
-    assumeTrue(hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
     @JSExportAll
     class Foo {
@@ -950,7 +950,7 @@ class ExportsTest {
   }
 
   @Test def should_reject_bad_values_for_arguments_of_value_class_type_issue_613(): Unit = {
-    assumeTrue(hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
     class Foo {
       @JSExport
@@ -966,7 +966,7 @@ class ExportsTest {
   }
 
   @Test def should_reject_bad_values_for_arguments_of_class_type(): Unit = {
-    assumeTrue(hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
     class A
     class B

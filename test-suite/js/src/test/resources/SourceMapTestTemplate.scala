@@ -34,7 +34,7 @@ case class TestException(lineNo: Int) extends Exception
  */
 object SourceMapTest {
   @BeforeClass def beforeClass(): Unit = {
-    assumeTrue("source-maps", sourceMaps)
+    assumeTrue("Assumed source-maps", sourceMaps)
   }
 }
 

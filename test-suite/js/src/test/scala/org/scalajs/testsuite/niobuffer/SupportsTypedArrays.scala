@@ -7,12 +7,13 @@
 \*                                                                      */
 package org.scalajs.testsuite.niobuffer
 
-import org.junit.{Assume, BeforeClass}
+import org.junit.BeforeClass
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.Platform
 
 trait SupportsTypedArrays {
   @BeforeClass def assumeThatContextSupportsTypedByteArrays(): Unit = {
-    Assume.assumeTrue(Platform.areTypedArraysSupported)
+    assumeTrue("Assumed typed arrays are supported", Platform.areTypedArraysSupported)
   }
 }

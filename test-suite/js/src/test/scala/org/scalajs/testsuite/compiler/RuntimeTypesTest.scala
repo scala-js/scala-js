@@ -39,7 +39,7 @@ class RuntimeTypesTest {
   }
 
   @Test def scala_Nothing_casts_to_scala_Nothing_should_fail(): Unit = {
-    assumeTrue(hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     def test(x: Any): Unit = {
       try {
         x.asInstanceOf[Nothing]
@@ -56,7 +56,7 @@ class RuntimeTypesTest {
   }
 
   @Test def scala_Nothing_reflected_casts_to_scala_Nothing_should_fail(): Unit = {
-    assumeTrue(hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     def test(x: Any): Unit = {
       try {
         classOf[Nothing].cast(x)
@@ -85,7 +85,7 @@ class RuntimeTypesTest {
   }
 
   @Test def scala_Null_casts_to_scala_Null_should_fail_for_everything_else_but_null(): Unit = {
-    assumeTrue(hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     val msg = Try("a".asInstanceOf[Null]) match {
       case Failure(thr: ClassCastException) => thr.getMessage
       case _ => "not failed"

@@ -45,7 +45,7 @@ trait CollectionsCheckedCollectionTest
   }
 
   @Test def testCheckedCollectionBadInputs(): Unit = {
-    assumeTrue("Needs compliant asInstanceOf", hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
     expectThrows(classOf[ClassCastException], superColl().add(new A))
     expectThrows(classOf[ClassCastException],

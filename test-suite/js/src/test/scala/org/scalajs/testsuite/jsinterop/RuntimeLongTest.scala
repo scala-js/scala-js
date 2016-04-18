@@ -407,7 +407,7 @@ class RuntimeLongTest {
   }
 
   @Test def toFloat_strict(): Unit = {
-    assumeTrue(hasStrictFloats)
+    assumeTrue("Assumed strict floats", hasStrictFloats)
     assertEquals(0, lg(0).toFloat)
     assertEquals(-1, lg(-1).toFloat)
 

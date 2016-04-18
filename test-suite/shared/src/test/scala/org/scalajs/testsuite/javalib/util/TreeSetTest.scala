@@ -274,8 +274,8 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
   }
 
   @Test def should_throw_exception_on_non_comparable_objects(): Unit = {
-    assumeTrue("Needs compliant as instanceOf.", hasCompliantAsInstanceOfs)
-    assumeTrue("Assumes JDK8 implementation.", !executingInJVMOnJDK6)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed JDK8 implementation", !executingInJVMOnJDK6)
 
     class TestObj(num: Int)
 
@@ -285,7 +285,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
   }
 
   @Test def should_throw_exceptions_on_access_outside_bound_on_views(): Unit = {
-    assumeTrue("Needs compliant as instanceOf.", hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
     val l = asJavaCollection(Set(2, 3, 6))
     val ts = factory.empty[Int]

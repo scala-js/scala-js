@@ -192,7 +192,7 @@ class MathTest {
 
   @Test def rint_for_Double(): Unit = {
     // js.Math.round() is buggy on Rhino
-    assumeFalse("Executing in rhino", executingInRhino)
+    assumeFalse("Assumed not executing in Rhino", executingInRhino)
 
     import Math.rint
 

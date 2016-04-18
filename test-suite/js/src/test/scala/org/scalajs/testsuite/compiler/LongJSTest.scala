@@ -28,7 +28,7 @@ class LongJSTest {
   }
 
   @Test def should_correctly_implement_asInstanceOf_Longs_negative(): Unit = {
-    assumeTrue(hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
     val dyn: Any = 5L
     assertThrows(classOf[Exception], dyn.asInstanceOf[Int])

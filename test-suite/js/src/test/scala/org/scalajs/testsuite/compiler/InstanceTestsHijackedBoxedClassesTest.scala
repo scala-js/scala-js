@@ -54,12 +54,12 @@ class InstanceTestsHijackedBoxedClassesTest {
   }
 
   @Test def isInstanceOf_Float_with_strict_floats(): Unit = {
-    assumeTrue(hasStrictFloats)
+    assumeTrue("Assumed strict floats", hasStrictFloats)
     assertFalse((1.2: Any).isInstanceOf[Float])
   }
 
   @Test def isInstanceOf_Float_with_non_strict_floats(): Unit = {
-    assumeFalse(hasStrictFloats)
+    assumeFalse("Assumed strict floats", hasStrictFloats)
     assertTrue((1.2: Any).isInstanceOf[Float])
 
     // from the bug report
@@ -83,7 +83,7 @@ class InstanceTestsHijackedBoxedClassesTest {
   }
 
   @Test def should_support_asInstanceOf_negative(): Unit = {
-    assumeTrue(hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     assertThrows(classOf[Exception], (12345: Any).asInstanceOf[Unit])
     assertThrows(classOf[Exception], (12345: Any).asInstanceOf[Boolean])
     assertThrows(classOf[Exception], (12345: Any).asInstanceOf[Char])
@@ -98,13 +98,13 @@ class InstanceTestsHijackedBoxedClassesTest {
   }
 
   @Test def asInstanceOf_Float_with_strict_floats(): Unit = {
-    assumeTrue(hasStrictFloats)
-    assumeTrue(hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed strict floats", hasStrictFloats)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     assertThrows(classOf[Exception], (1.2: Any).asInstanceOf[Float])
   }
 
   @Test def asInstanceOf_Float_with_non_strict_floats(): Unit = {
-    assumeFalse(hasStrictFloats)
+    assumeFalse("Assumed strict floats", hasStrictFloats)
     assertEquals(1.2, (1.2: Any).asInstanceOf[Float])
   }
 
@@ -145,12 +145,12 @@ class InstanceTestsHijackedBoxedClassesTest {
   }
 
   @Test def classOf_Float_isInstance_with_strict_floats(): Unit = {
-    assumeTrue(hasStrictFloats)
+    assumeTrue("Assumed strict floats", hasStrictFloats)
     assertFalse(classOf[java.lang.Float].isInstance(1.2))
   }
 
   @Test def classOf_Float_isInstance_with_non_strict_floats(): Unit = {
-    assumeFalse(hasStrictFloats)
+    assumeFalse("Assumed strict floats", hasStrictFloats)
     assertTrue(classOf[java.lang.Float].isInstance(1.2))
   }
 }

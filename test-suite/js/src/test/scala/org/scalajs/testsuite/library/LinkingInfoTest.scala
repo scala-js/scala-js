@@ -18,22 +18,22 @@ class LinkingInfoTest {
   import scala.scalajs.LinkingInfo
 
   @Test def productionMode_when_in_production_mode(): Unit = {
-    assumeTrue(isInProductionMode)
+    assumeTrue("Assumed in production mode", isInProductionMode)
     assertTrue(LinkingInfo.productionMode)
   }
 
   @Test def productionMode_when_in_development_mode(): Unit = {
-    assumeTrue(isInDevelopmentMode)
+    assumeTrue("Assumed in development mode", isInDevelopmentMode)
     assertFalse(LinkingInfo.productionMode)
   }
 
   @Test def developmentMode_when_in_production_mode(): Unit = {
-    assumeTrue(isInProductionMode)
+    assumeTrue("Assumed in production mode", isInProductionMode)
     assertFalse(LinkingInfo.developmentMode)
   }
 
   @Test def developmentMode_when_in_development_mode(): Unit = {
-    assumeTrue(isInDevelopmentMode)
+    assumeTrue("Assumed in development mode", isInDevelopmentMode)
     assertTrue(LinkingInfo.developmentMode)
   }
 
