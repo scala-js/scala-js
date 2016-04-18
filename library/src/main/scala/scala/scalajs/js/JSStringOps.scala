@@ -198,6 +198,12 @@ trait JSStringOps extends Any {
    * MDN
    */
   def toLocaleUpperCase(): String = native
+
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Returns the Unicode Normalization Form of this string.
+   */
+  def normalize(
+      form: UnicodeNormalizationForm = UnicodeNormalizationForm.NFC): String = native
 }
 
 object JSStringOps {
