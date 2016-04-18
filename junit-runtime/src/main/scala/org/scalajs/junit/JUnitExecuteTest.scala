@@ -11,6 +11,8 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
     classMetadata: JUnitTestBootstrapper, richLogger: RichLogger,
     eventHandler: EventHandler) {
 
+  private val verbose = runner.runSettings.verbose
+
   lazy val packageName = fullyQualifiedName.split('.').init.mkString(".")
   lazy val className = fullyQualifiedName.split('.').last
 
@@ -28,9 +30,13 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
         true
     }
 
+    def logTestIgnored(name: String): Unit = {
+      if (verbose) logFormattedInfo(name, "ignored")
+      else logFormattedDebug(name, "ignored")
+    }
+
     if (assumptionViolated) {
-      if (runner.runSettings.verbose)
-        logFormattedInfo(null, "ignored")
+      logTestIgnored(null)
       taskSkipped()
     } else {
       def runWithOrWithoutQuietMode[T](block: => T): T = {
@@ -47,8 +53,7 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
         for (method <- jUnitMetadata.testMethods) {
           method.getIgnoreAnnotation match {
             case Some(ign) =>
-              if (runner.runSettings.verbose)
-                logFormattedInfo(method.name, "ignored")
+              logTestIgnored(method.name)
               ignoreTest(method.name)
 
             case None =>
@@ -72,11 +77,15 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
     val t0 = System.nanoTime
     def getTimeInSeconds(): Double = (System.nanoTime - t0).toDouble / 1000000000
 
+    def logTestStarted(name: String): Unit = {
+      if (verbose) logFormattedInfo(name, "started")
+      else logFormattedDebug(name, "started")
+    }
+
     def executeTestMethods(): Unit = {
       val expectedException = testAnnotation.expected
       try {
-        if (runner.runSettings.verbose)
-          logFormattedInfo(methodName, "started")
+        logTestStarted(methodName)
 
         classMetadata.invoke(testClassInstance, methodName)
 
@@ -151,7 +160,7 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
 
     try {
       for (method <- jUnitMetadata.beforeMethod) {
-        logFormattedInfo(methodName, "started")
+        logTestStarted(methodName)
         classMetadata.invoke(testClassInstance, method.name)
       }
       executeTestMethods()
@@ -201,6 +210,12 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
   private[this] def logFormattedInfo(method: String, msg: String): Unit = {
     val fMethod = if (method != null) c(method, NNAME2) else null
     richLogger.info(
+        formatLayout("Test ", packageName, c(className, NNAME1), fMethod, msg))
+  }
+
+  private[this] def logFormattedDebug(method: String, msg: String): Unit = {
+    val fMethod = if (method != null) c(method, NNAME2) else null
+    richLogger.debug(
         formatLayout("Test ", packageName, c(className, NNAME1), fMethod, msg))
   }
 
