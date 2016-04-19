@@ -87,7 +87,6 @@ scala/util/SystemPropertiesTest.scala
 
 # Tests fail
 scala/reflect/ClassTagTest.scala
-scala/collection/ReusableBuildersTest.scala
 scala/collection/immutable/RangeConsistencyTest.scala
 scala/collection/convert/MapWrapperTest.scala
 scala/math/BigDecimalTest.scala

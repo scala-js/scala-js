@@ -1,6 +1,7 @@
 scala/PredefAutoboxingTest.scala
 scala/collection/IndexedSeqOptimizedTest.scala
 scala/collection/IterableViewLikeTest.scala
+scala/collection/ReusableBuildersTest.scala
 scala/collection/SearchingTest.scala
 scala/collection/TraversableOnceTest.scala
 scala/collection/immutable/QueueTest.scala
