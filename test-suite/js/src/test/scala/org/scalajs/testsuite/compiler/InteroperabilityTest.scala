@@ -470,7 +470,7 @@ class InteroperabilityTest {
   }
 
   @Test def should_asInstanceOf_values_received_from_calling_a_JS_interop_method(): Unit = {
-    assumeTrue("Requires compliant asInstanceOf", hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     val obj = js.eval("""
       var obj = {
         testChar: function() { return 5; },

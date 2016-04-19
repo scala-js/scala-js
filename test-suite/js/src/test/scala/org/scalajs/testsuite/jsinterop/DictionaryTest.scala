@@ -37,7 +37,7 @@ class DictionaryTest {
   // This doesn't work on Rhino due to lack of full strict mode support - #679
 
   @Test def should_behave_as_specified_when_deleting_a_non_configurable_property_issue_461_issue_679(): Unit = {
-    assumeFalse(executingInRhino)
+    assumeFalse("Assumed not executing in Rhino", executingInRhino)
     val obj = js.Dictionary.empty[js.Any]
     js.Object.defineProperty(obj.asInstanceOf[js.Object], "nonconfig",
         js.Dynamic.literal(value = 4, writable = false).asInstanceOf[js.PropertyDescriptor])

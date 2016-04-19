@@ -482,7 +482,7 @@ class BigIntegerConstructorsTest {
   }
 
   @Test def testConstructorStringRadix10Issue2228(): Unit = {
-    assumeFalse(Platform.executingInJVMOnJDK6)
+    assumeFalse("Assumed not executing on JDK6", Platform.executingInJVMOnJDK6)
 
     val value = "+100000000"
     val radix = 10

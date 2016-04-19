@@ -66,7 +66,7 @@ class PropertiesTest {
   }
 
   @Test def propertyNamesWithBadContents(): Unit = {
-    assumeTrue(hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
     val prop = new Properties()
     prop.setProperty("a", "A")
@@ -110,7 +110,7 @@ class PropertiesTest {
   }
 
   @Test def stringPropertyNamesWithBadContents(): Unit = {
-    assumeTrue(hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
     val prop = new Properties()
     prop.setProperty("a", "A")

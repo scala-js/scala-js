@@ -77,7 +77,8 @@ class AsyncTest {
   }
 
   @Test def scala_scalajs_concurrent_JSExecutionContext_queue(): Unit = {
-    assumeTrue(js.isUndefined(js.Dynamic.global.Promise))
+    assumeTrue("Assumed js.Dynamic.global.Promise is undefined",
+        js.isUndefined(js.Dynamic.global.Promise))
     TimeoutMock.withMockedTimeout { tick =>
       queueExecOrderTests { () =>
         tick(1)
@@ -99,7 +100,8 @@ class AsyncTest {
   }
 
   @Test def scala_scala_concurrent_ExecutionContext_global(): Unit = {
-    assumeTrue(js.isUndefined(js.Dynamic.global.Promise))
+    assumeTrue("Assumed js.Dynamic.global.Promise is undefined",
+        js.isUndefined(js.Dynamic.global.Promise))
     TimeoutMock.withMockedTimeout { tick =>
       queueExecOrderTests { () =>
         tick(1)

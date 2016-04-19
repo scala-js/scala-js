@@ -8,12 +8,12 @@ object Requires {
 
   trait TypedArray {
     @BeforeClass def needsTypedArrays(): Unit =
-      assumeTrue("Requires typedArrays", typedArrays)
+      assumeTrue("Assumed typed arrays are supported", typedArrays)
   }
 
   trait StrictFloats {
     @BeforeClass def needsTypedArrays(): Unit =
-      assumeTrue("Requires strict-floats", hasStrictFloats)
+      assumeTrue("Assumed strict floats", hasStrictFloats)
   }
 
 }

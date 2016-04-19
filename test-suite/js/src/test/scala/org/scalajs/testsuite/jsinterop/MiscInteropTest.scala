@@ -184,8 +184,8 @@ class MiscInteropTest {
   // Emitted classes
 
   @Test def should_have_a_meaningful_name_property(): Unit = {
-    assumeFalse(executingInRhino)
-    assumeFalse(isInFullOpt)
+    assumeFalse("Assumed not executing in Rhino", executingInRhino)
+    assumeFalse("Assumed not executing in FullOpt", isInFullOpt)
 
     def nameOf(obj: Any): js.Any =
       obj.asInstanceOf[js.Dynamic].constructor.name

@@ -29,7 +29,7 @@ class IntJSTest {
   final val AlmostMaxVal = Int.MaxValue - 36
 
   @Test def `should_support_%`(): Unit = {
-    assumeFalse(executingInPhantomJS) // see #593
+    assumeFalse("Assumed not executing in PhantomJS", executingInPhantomJS) // see #593
 
     def test(a: Int, b: Int, expected: Int): Unit =
       assertEquals(expected, a % b)

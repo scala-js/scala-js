@@ -145,7 +145,7 @@ class ReflectionTest {
   }
 
   @Test def cast_negative(): Unit = {
-    assumeTrue(hasCompliantAsInstanceOfs)
+    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     assertThrows(classOf[Exception], classOf[String].cast(5))
     assertThrows(classOf[Exception], classOf[Seq[_]].cast(Some("foo")))
   }

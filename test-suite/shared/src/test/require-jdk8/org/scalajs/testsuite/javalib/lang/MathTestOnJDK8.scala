@@ -246,7 +246,7 @@ class MathTestOnJDK8 {
   }
 
   @Test def floorMod() = {
-    assumeFalse("Executing in PhantomJS", executingInPhantomJS) // crashes otherwise, see #593
+    assumeFalse("Assumed not executing in PhantomJS", executingInPhantomJS) // crashes otherwise, see #593
 
     assertEquals(0, Math.floorMod(0, 1))
     assertEquals(0, Math.floorMod(0, -1))
