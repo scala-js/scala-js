@@ -16,6 +16,8 @@ import org.junit.Assert._
  *  for a test of the implementation itself
  */
 class LongTest {
+  import LongTest._
+
   @Test def `should_correctly_handle_literals`(): Unit = {
     assertEquals(105L, 5L + 100L)
     assertEquals(2147483651L, 2147483649L + 2L)
@@ -104,6 +106,20 @@ class LongTest {
     //assertEquals(-1689438124, 7632147899696541255L.##) // xx25 on 2.10
   }
 
+  @Test def `should_have_correct_hash_in_case_classes`(): Unit = {
+    assertEquals(-1669410282, HashTestBox(0L).##)
+    assertEquals(-1561146018, HashTestBox(55L).##)
+    assertEquals(-1266055417, HashTestBox(-12L).##)
+    assertEquals(-1383472436, HashTestBox(10006548L).##)
+    assertEquals(1748124846, HashTestBox(-1098748L).##)
+
+    assertEquals(1291324266, HashTestBox(9863155567412L).##)
+    assertEquals(-450677189, HashTestBox(3632147899696541255L).##)
+
+    assertEquals(259268522, HashTestBox(1461126709984L).##)
+    assertEquals(818387364, HashTestBox(1L).##)
+  }
+
   @Test def `should_correctly_concat_to_string`(): Unit = {
     val x = 20L
     assertEquals("asdf520hello", "asdf" + 5L + x + "hello")
@@ -137,4 +153,10 @@ class LongTest {
     assertTrue(4 != 5L)
     assertTrue('A' == 65L)
   }
+}
+
+object LongTest {
+
+  case class HashTestBox(long: Long)
+
 }
