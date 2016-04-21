@@ -80,6 +80,29 @@ trait Compat210Component {
       sys.error("No impl classes in this version")
   }
 
+  // SAMFunction was introduced in 2.12.0-M4 for LMF-capable SAM types
+
+  object SAMFunctionAttachCompatDef {
+    /* Should extend PlainAttachment, but it does not exist in 2.10, and we
+     * do not actually need this relationship.
+     */
+    case class SAMFunction(samTp: Type, sam: Symbol)
+  }
+
+  object SAMFunctionAttachCompat {
+    import SAMFunctionAttachCompatDef._
+
+    object Inner {
+      import global._
+
+      type SAMFunctionAlias = SAMFunction
+      val SAMFunctionAlias = SAMFunction
+    }
+  }
+
+  type SAMFunctionCompat = SAMFunctionAttachCompat.Inner.SAMFunctionAlias
+  lazy val SAMFunctionCompat = SAMFunctionAttachCompat.Inner.SAMFunctionAlias
+
   /* global.genBCode.bTypes.initializeCoreBTypes()
    *
    * This one has a very particular history:
@@ -171,10 +194,13 @@ trait Compat210Component {
     def original: TypeRef = sys.error("infinite loop in Compat")
   }
 
-  // repeatedToSingle
+  // Definitions
 
   @inline final def repeatedToSingle(t: Type): Type =
     global.definitions.repeatedToSingle(t)
+
+  final def isFunctionSymbol(sym: Symbol): Boolean =
+    global.definitions.isFunctionSymbol(sym)
 
   private implicit final class DefinitionsCompat(
       self: Compat210Component.this.global.definitions.type) {
@@ -183,6 +209,9 @@ trait Compat210Component {
       case TypeRef(_, self.RepeatedParamClass, arg :: Nil) => arg
       case _ => t
     }
+
+    def isFunctionSymbol(sym: Symbol): Boolean =
+      definitions.FunctionClass.seq.contains(definitions.unspecializedSymbol(sym))
 
   }
 

@@ -3127,6 +3127,9 @@ run/t9178a.scala
 run/t9110.scala
 run/sammy_cbn.scala
 run/sammy_erasure_cce.scala
+run/sammy_after_implicit_view.scala
+run/sammy_restrictions_LMF.scala
+run/sammy_vararg_cbn.scala
 run/t7807.scala
 run/sammy_return.scala
 run/t9546.scala

@@ -1232,15 +1232,24 @@ object Build {
     },
 
     sources in Test ++= {
+      val supportsSAM = scalaBinaryVersion.value match {
+        case "2.10" => false
+        case "2.11" => scalacOptions.value.contains("-Xexperimental")
+        case _      => true
+      }
+
       /* Can't add require-sam as unmanagedSourceDirectories because of the use
        * of scalacOptions. Hence sources are added individually.
        * Note that a testSuite/test will not trigger a compile when sources are
        * modified in require-sam
        */
-      if (isJSTest && scalaBinaryVersion.value != "2.10" &&
-          scalacOptions.value.contains("-Xexperimental")) {
-        val sourceDir = (sourceDirectory in Test).value / "require-sam"
-        (sourceDir ** "*.scala").get
+      if (supportsSAM) {
+        val testDir = (sourceDirectory in Test).value
+        val sharedTestDir =
+          testDir.getParentFile.getParentFile.getParentFile / "shared/src/test"
+
+        ((sharedTestDir / "require-sam") ** "*.scala").get ++
+        (if (isJSTest) ((testDir / "require-sam") ** "*.scala").get else Nil)
       } else {
         Nil
       }
