@@ -5,7 +5,8 @@ import scala.scalajs.js
 import java.util.Arrays
 
 @inline
-class Character(private val value: scala.Char) extends Comparable[Character] {
+class Character(private val value: scala.Char)
+    extends AnyRef with java.io.Serializable with Comparable[Character] {
 
   def charValue(): scala.Char = value
 

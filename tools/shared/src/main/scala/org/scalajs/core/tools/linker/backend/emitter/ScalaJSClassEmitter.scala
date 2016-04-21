@@ -495,6 +495,8 @@ private[scalajs] final class ScalaJSClassEmitter(
         AncestorsOfHijackedNumberClasses.contains(className)
       val isAncestorOfBoxedBooleanClass =
         AncestorsOfBoxedBooleanClass.contains(className)
+      val isAncestorOfBoxedUnitClass =
+        AncestorsOfBoxedUnitClass.contains(className)
 
       val objParam = js.ParamDef(Ident("obj"), rest = false)
       val obj = objParam.ref
@@ -528,6 +530,8 @@ private[scalajs] final class ScalaJSClassEmitter(
               if (isAncestorOfBoxedBooleanClass)
                 test = test || (
                     js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("boolean"))
+              if (isAncestorOfBoxedUnitClass)
+                test = test || (obj === js.Undefined())
 
               !(!test)
           })))

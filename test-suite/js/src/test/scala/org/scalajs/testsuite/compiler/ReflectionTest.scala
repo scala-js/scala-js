@@ -55,6 +55,11 @@ class ReflectionTest {
 
     assertTrue(classOf[Array[Seq[_]]].isInstance(Array(List(3))))
 
+    assertTrue(classOf[Serializable].isInstance(1))
+    assertTrue(classOf[Serializable].isInstance(1.4))
+    assertTrue(classOf[Serializable].isInstance(true))
+    assertTrue(classOf[Serializable].isInstance('Z'))
+    assertTrue(classOf[Serializable].isInstance(()))
     assertTrue(classOf[Serializable].isInstance("hello"))
 
     assertTrue(classOf[Serializable].isInstance(new Array[Int](1)))
