@@ -50,10 +50,12 @@ object Definitions {
       NumberClass, ComparableClass, SerializableClass)
   val AncestorsOfBoxedBooleanClass = Set(
       ComparableClass, SerializableClass)
+  val AncestorsOfBoxedUnitClass = Set(
+      SerializableClass)
 
   val AncestorsOfHijackedClasses =
     AncestorsOfStringClass ++ AncestorsOfHijackedNumberClasses ++
-    AncestorsOfBoxedBooleanClass
+    AncestorsOfBoxedBooleanClass ++ AncestorsOfBoxedUnitClass
 
   val RuntimeNullClass = "sr_Null$"
   val RuntimeNothingClass = "sr_Nothing$"

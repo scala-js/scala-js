@@ -3,7 +3,7 @@ package scala.runtime
 /* This is a hijacked class. Its only instance is the value 'undefined'.
  * Constructors are not emitted.
  */
-class BoxedUnit private {
+class BoxedUnit private () extends AnyRef with java.io.Serializable {
   @inline override def equals(that: Any): Boolean =
     this eq that.asInstanceOf[AnyRef]
 
