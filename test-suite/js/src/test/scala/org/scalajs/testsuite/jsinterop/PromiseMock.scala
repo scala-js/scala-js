@@ -197,17 +197,18 @@ object PromiseMock {
     }
 
     // 25.4.5.3 Promise.prototype.then
-    def `then`[B](
-        onFulfilled: js.Function1[A, B | Thenable[B]],
-        onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): MockPromise[B] = {
+    def `then`[B, C](
+        onFulfilled: js.Function1[A, B],
+        onRejected: js.UndefOr[js.Function1[scala.Any, B]]
+    )(implicit ev: js.Thenable.Returning[B, C]): MockPromise[C] = {
 
-      new MockPromise[B](
-        { (innerResolve: js.Function1[B | Thenable[B], _],
+      new MockPromise[C](
+        { (innerResolve: js.Function1[C | Thenable[C], _],
             innerReject: js.Function1[scala.Any, _]) =>
 
           def doFulfilled(value: A): Unit = {
             tryCatchAny[Unit] {
-              innerResolve(onFulfilled(value))
+              innerResolve(onFulfilled(value).asInstanceOf[C])
             } { e =>
               innerReject(e)
             }
@@ -218,7 +219,7 @@ object PromiseMock {
               onRejected.fold[Unit] {
                 innerReject(reason)
               } { onRejectedFun =>
-                innerResolve(onRejectedFun(reason))
+                innerResolve(onRejectedFun(reason).asInstanceOf[C])
               }
             } { e =>
               innerReject(e)
@@ -240,15 +241,17 @@ object PromiseMock {
       )
     }
 
-    def `then`[B >: A](
+    def `then`[B >: A, C](
         onFulfilled: Unit,
-        onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): MockPromise[B] = {
-      `then`((x: A) => (x: B | Thenable[B]), onRejected)
+        onRejected: js.UndefOr[js.Function1[scala.Any, B]]
+    )(implicit ev: js.Thenable.Returning[B, C]): MockPromise[C] = {
+      `then`((x: A) => x: B, onRejected)
     }
 
     // 25.4.5.1 Promise.prototype.catch
-    def `catch`[B >: A](
-        onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): MockPromise[B] = {
+    def `catch`[B >: A, C](
+        onRejected: js.UndefOr[js.Function1[scala.Any, B]]
+    )(implicit ev: js.Thenable.Returning[B, C]): MockPromise[C] = {
       `then`((), onRejected)
     }
   }

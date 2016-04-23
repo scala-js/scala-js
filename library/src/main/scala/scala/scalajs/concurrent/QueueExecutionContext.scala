@@ -3,7 +3,6 @@ package scala.scalajs.concurrent
 import scala.concurrent.ExecutionContextExecutor
 
 import scala.scalajs.js
-import scala.scalajs.js.|
 
 object QueueExecutionContext {
   def timeouts(): ExecutionContextExecutor =
@@ -32,7 +31,7 @@ object QueueExecutionContext {
   }
 
   private final class PromisesExecutionContext extends ExecutionContextExecutor {
-    private val resolvedUnitPromise = js.Promise.resolve[Unit](())
+    private val resolvedUnitPromise = js.Promise.resolve(())
 
     def execute(runnable: Runnable): Unit = {
       resolvedUnitPromise.`then` { (_: Unit) =>
@@ -41,7 +40,7 @@ object QueueExecutionContext {
         } catch {
           case t: Throwable => reportFailure(t)
         }
-        (): Unit | js.Thenable[Unit]
+        ()
       }
     }
 

@@ -9,11 +9,9 @@
 
 package scala.scalajs.js
 
-import scala.language.implicitConversions
-
+import scala.language.{higherKinds, implicitConversions}
 import scala.scalajs.js
 import js.annotation._
-
 import scala.concurrent.Future
 
 /** A thing on which one can call the `then` method.
@@ -29,13 +27,19 @@ import scala.concurrent.Future
  */
 @ScalaJSDefined
 trait Thenable[+A] extends js.Object {
-  def `then`[B](
-      onFulfilled: js.Function1[A, B | Thenable[B]],
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): Thenable[B]
+  def `then`[B, C](
+      onFulfilled: js.Function1[A, B],
+      onRejected: js.UndefOr[js.Function1[scala.Any, B]]
+  )(implicit
+      ev: Thenable.Returning[B, C]
+  ): Thenable[C]
 
-  def `then`[B >: A](
+  def `then`[B >: A, C](
       onFulfilled: Unit,
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): Thenable[B]
+      onRejected: js.UndefOr[js.Function1[scala.Any, B]]
+  )(implicit
+      ev: Thenable.Returning[B, C]
+  ): Thenable[C]
 }
 
 object Thenable {
@@ -51,17 +55,17 @@ object Thenable {
       def defined[A](x: A): js.UndefOr[A] = x
 
       val p2 = scala.concurrent.Promise[A]()
-      p.`then`[Unit](
+      p.`then`[Unit, Unit](
           { (v: A) =>
             p2.success(v)
-            (): Unit | Thenable[Unit]
+            ()
           },
           defined { (e: scala.Any) =>
             p2.failure(e match {
               case th: Throwable => th
               case _             => JavaScriptException(e)
             })
-            (): Unit | Thenable[Unit]
+            ()
           })
       p2.future
     }
@@ -79,5 +83,24 @@ object Thenable {
   object Implicits {
     implicit def thenable2future[A](p: Thenable[A]): Future[A] =
       p.toFuture
+  }
+
+  sealed trait Returning[A, B]
+
+  trait Returning1 {
+    implicit def default[A]: Returning[A, A] = new Returning[A, A] {}
+  }
+
+  object Returning extends Returning1 {
+
+    implicit def flattened[A, T[X] <: Thenable[X]]: Returning[T[A], A] =
+      new Returning[T[A], A] {}
+
+    implicit def union[A, B, C, D](implicit
+      left: Returning[A, C],
+      right: Returning[B, D]
+    ): Returning[A | B, C | D] =
+      new Returning[A | B, C | D] {}
+
   }
 }

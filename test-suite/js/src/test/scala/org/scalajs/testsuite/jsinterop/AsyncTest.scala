@@ -163,8 +163,8 @@ class AsyncTest {
     PromiseMock.withMockedPromise { processQueue =>
       implicit val ec = QueueExecutionContext.promises()
 
-      val p = new js.Promise[Int]({
-        (resolve: js.Function1[Int | js.Thenable[Int], _], reject: js.Function1[Any, _]) =>
+      val p = js.JSPromise[Int]({
+        (resolve: js.Function1[Int, _], reject: js.Function1[Any, _]) =>
           resolve(42)
       })
 
@@ -194,10 +194,10 @@ class AsyncTest {
 
       var callbackDone = false
 
-      pAssertType.`then`[Unit] { (x: Int) =>
+      pAssertType.`then` { (x: Int) =>
         assertEquals(42, x)
         callbackDone = true
-        (): Unit | js.Thenable[Unit]
+        ()
       }
 
       processQueue()
@@ -210,8 +210,8 @@ class AsyncTest {
     PromiseMock.withMockedPromise { processQueue =>
       implicit val ec = QueueExecutionContext.promises()
 
-      val initialPromise = new js.Promise[Int]({
-        (resolve: js.Function1[Int | js.Thenable[Int], _], reject: js.Function1[Any, _]) =>
+      val initialPromise = js.JSPromise[Int]({
+        (resolve: js.Function1[Int, _], reject: js.Function1[Any, _]) =>
           resolve(42)
       })
 
@@ -221,15 +221,47 @@ class AsyncTest {
 
       var callbackDone = false
 
-      pAssertType.`then`[Unit] { (x: Int) =>
+      pAssertType.`then` { (x: Int) =>
         assertEquals(42, x)
         callbackDone = true
-        (): Unit | js.Thenable[Unit]
+        ()
       }
 
       processQueue()
 
       assertTrue(callbackDone)
     }
+  }
+
+  @Test def JSPromiseTypeInference(): Unit = {
+
+    def typed[A](a: => A): Unit = ()
+
+    PromiseMock.withMockedPromise { processQueue =>
+
+      val promiseInt =
+        js.JSPromise[Int]((resolve: js.Function1[Int, _], error: js.Function1[Any, _]) => resolve(42))
+      typed[js.Thenable[Int]](promiseInt)
+
+      val promiseFromThenable =
+        js.JSPromise[Int](
+          (resolve: js.Function1[js.Thenable[Int], _], error: js.Function1[Any, _]) => resolve(promiseInt)
+        )
+      typed[js.Promise[Int]](promiseFromThenable)
+
+      typed[js.Thenable[Int]](promiseInt.`then`((x: Int) => x + 1))
+
+      typed[js.Thenable[Int]](promiseInt.`then`((x: Int) => promiseInt))
+
+      typed[js.Thenable[String | Int]] {
+        promiseInt.`then`((x: Int) => "foo": String | js.Promise[Int])
+      }
+
+      typed[js.Thenable[String | Int]] {
+        promiseInt.`then`((x: Int) => 0: js.Promise[String] | Int)
+      }
+
+    }
+
   }
 }

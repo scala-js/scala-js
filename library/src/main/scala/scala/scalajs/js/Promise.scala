@@ -37,26 +37,35 @@ import scala.concurrent.Future
  *  directly use the methods of `Future` on `Promise`s.
  */
 @js.native
-class Promise[+A](
+class Promise[+A] private[js] (
     executor: js.Function2[js.Function1[A | Thenable[A], _], js.Function1[scala.Any, _], _])
     extends js.Object with js.Thenable[A] {
 
-  def `then`[B](
-      onFulfilled: js.Function1[A, B | Thenable[B]],
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]] = js.undefined): Thenable[B] = js.native
+  def `then`[B, C](
+      onFulfilled: js.Function1[A, B],
+      onRejected: js.UndefOr[js.Function1[scala.Any, B]] = js.undefined
+  )(implicit
+      ev: Thenable.Returning[B, C]
+  ): Thenable[C] = js.native
 
-  def `then`[B >: A](
+  def `then`[B >: A, C](
       onFulfilled: Unit,
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): Thenable[B] = js.native
+      onRejected: js.UndefOr[js.Function1[scala.Any, B]]
+  )(implicit
+      ev: Thenable.Returning[B, C]
+  ): Thenable[C] = js.native
 
-  def `catch`[B >: A](
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]] = js.undefined): Promise[B] = js.native
+  def `catch`[B >: A, C](
+      onRejected: js.UndefOr[js.Function1[scala.Any, B]] = js.undefined
+  )(implicit
+    ev: Thenable.Returning[B, C]
+  ): Promise[C] = js.native
 }
 
 @js.native
 object Promise extends js.Object {
   /** Returns a new [[Promise]] completed with the specified `value`. */
-  def resolve[A](value: A | Thenable[A]): Promise[A] = js.native
+  def resolve[A, B](value: A)(implicit ev: Thenable.Returning[A, B]): Promise[B] = js.native
 
   /** Returns a new [[Promise]] failed with the specified `reason`. */
   def reject(reason: scala.Any): Promise[Nothing] = js.native
@@ -66,4 +75,23 @@ object Promise extends js.Object {
 
   // TODO Use js.Iterable
   def race[A](promises: js.Array[_ <: Promise[A]]): Promise[A] = js.native
+}
+
+object JSPromise {
+
+  def apply[A]: PromiseBuilder[A] = new PromiseBuilder[A]
+
+  class PromiseBuilder[A] {
+
+    def apply[B](
+      executor: js.Function2[js.Function1[B, _], js.Function1[scala.Any, _], _]
+    )(implicit
+      ev: Thenable.Returning[B, A]
+    ): Promise[A] =
+      new Promise[A](
+        executor.asInstanceOf[js.Function2[js.Function1[A | Thenable[A], _], js.Function1[scala.Any, _], _]]
+      )
+
+  }
+
 }
