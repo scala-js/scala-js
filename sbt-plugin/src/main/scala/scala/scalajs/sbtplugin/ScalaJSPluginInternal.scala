@@ -783,8 +783,10 @@ object ScalaJSPluginInternal {
   )
 
   val scalaJSProjectBaseSettings = Seq(
-      relativeSourceMaps   := false,
-      persistLauncher      := false,
+      isScalaJSProject := true,
+
+      relativeSourceMaps := false,
+      persistLauncher := false,
 
       emitSourceMaps := true,
 
