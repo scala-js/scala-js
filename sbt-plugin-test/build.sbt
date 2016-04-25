@@ -113,13 +113,25 @@ lazy val multiTest = crossProject.
     // Make FrameworkDetector resilient to other output - #1572
     jsDependencies in Test += ProvidedJS / "consoleWriter.js",
     testOptions += Tests.Argument(
-      TestFramework("com.novocode.junit.JUnitFramework"), "-v", "-a")
+      TestFramework("com.novocode.junit.JUnitFramework"), "-v", "-a"),
+
+    // Test isScalaJSProject (as a setting, it's evaluated when loading the build)
+    isScalaJSProject ~= { value =>
+      assert(value, "isScalaJSProject should be true in multiTestJS")
+      value
+    }
   ).
   jvmSettings(versionSettings: _*).
   jvmSettings(
     name := "Multi test framework test JVM",
     libraryDependencies +=
-      "com.novocode" % "junit-interface" % "0.9" % "test"
+      "com.novocode" % "junit-interface" % "0.9" % "test",
+
+    // Test isScalaJSProject (as a setting, it's evaluated when loading the build)
+    isScalaJSProject ~= { value =>
+      assert(!value, "isScalaJSProject should be true in multiTestJVM")
+      value
+    }
   ).
   settings(
     // Scala cross-version support for shared source directory - #2005

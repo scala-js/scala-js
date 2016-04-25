@@ -136,6 +136,11 @@ object ScalaJSPlugin extends AutoPlugin {
 
     // All our public-facing keys
 
+    val isScalaJSProject = SettingKey[Boolean]("isScalaJSProject",
+        "Tests whether the current project is a Scala.js project. " +
+        "Do not set the value of this setting (only use it as read-only).",
+        BSetting)
+
     val fastOptJS = TaskKey[Attributed[File]]("fastOptJS",
         "Quickly link all compiled JavaScript into a single file", APlusTask)
 
@@ -263,6 +268,7 @@ object ScalaJSPlugin extends AutoPlugin {
 
   override def globalSettings: Seq[Setting[_]] = {
     super.globalSettings ++ Seq(
+        isScalaJSProject := false,
         scalaJSStage := Stage.FastOpt,
         scalaJSUseRhino := true,
         scalaJSClearCacheStats := globalIRCache.clearStats()
