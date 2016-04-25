@@ -1404,10 +1404,10 @@ object Build {
       ) ++ Seq(
           name := "JavaLib Ex Test Suite",
           publishArtifact in Compile := false,
-
+          testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
           scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
       )
-  ).withScalaJSCompiler.dependsOn(javalibEx, jasmineTestFramework % "test")
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(javalibEx, jUnitRuntime)
 
   lazy val partest: Project = Project(
       id = "partest",

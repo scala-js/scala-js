@@ -1,52 +1,53 @@
 package scala.scalajs.testsuite.javalibex
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
+import org.junit.Assert._
+import org.junit.Assume._
+
+import scala.scalajs.testsuite.utils.Platform._
 
 import java.io._
 import java.util.zip._
 
-object ZipInputStreamTest extends JasmineTest {
+class ZipInputStreamTest {
 
-  when("typedarray").
-  describe("java.util.zip.ZipInputStream") {
+  @Test def should_read_zip_archives(): Unit = {
+    assumeTrue("Assumed typed arrays", typedArrays)
 
-    it("should read zip archives") {
-      val in = new ZipInputStream(new ByteArrayInputStream(binZip))
+    val in = new ZipInputStream(new ByteArrayInputStream(binZip))
 
-      def expectBinEntry(name: String, data: Seq[Int]): Unit = {
-        val e = in.getNextEntry()
-        expect(e.getName()).toEqual(name)
+    def expectBinEntry(name: String, data: Seq[Int]): Unit = {
+      val e = in.getNextEntry()
+      assertEquals(name, e.getName())
 
-        for (d <- data)
-          expect(in.read()).toBe(d)
+      for (d <- data)
+        assertEquals(d, in.read())
 
-        expect(in.read()).toBe(-1)
-      }
-
-      def expectStrEntry(name: String, content: String): Unit = {
-        val e = in.getNextEntry()
-        expect(e.getName()).toEqual(name)
-
-        val r = new InputStreamReader(in)
-
-        for (c <- content)
-          expect(r.read().toChar).toBe(c)
-
-        expect(r.read()).toBe(-1)
-      }
-
-      expectBinEntry("greetings/", Seq())
-      expectStrEntry("greetings/en.txt", "Hello World, how are you doing?\n")
-      expectStrEntry("greetings/es.txt", "¿Hola mundo, cómo estás?\n")
-      expectStrEntry("greetings/fr.txt", "Bonjour, comment ça va?\n")
-      expectStrEntry("greetings/ja.txt", "こんにちは、お元気ですか。\n")
-      expectBinEntry("binary/", Seq())
-      expectBinEntry("binary/bytes_0_to_50.bin", 0 to 50)
-
-      expect(in.getNextEntry() == null).toBeTruthy
-      in.close()
+      assertEquals(-1, in.read())
     }
 
+    def expectStrEntry(name: String, content: String): Unit = {
+      val e = in.getNextEntry()
+      assertEquals(name, e.getName())
+
+      val r = new InputStreamReader(in)
+
+      for (c <- content)
+        assertEquals(c, r.read().toChar)
+
+      assertEquals(-1, r.read())
+    }
+
+    expectBinEntry("greetings/", Seq())
+    expectStrEntry("greetings/en.txt", "Hello World, how are you doing?\n")
+    expectStrEntry("greetings/es.txt", "¿Hola mundo, cómo estás?\n")
+    expectStrEntry("greetings/fr.txt", "Bonjour, comment ça va?\n")
+    expectStrEntry("greetings/ja.txt", "こんにちは、お元気ですか。\n")
+    expectBinEntry("binary/", Seq())
+    expectBinEntry("binary/bytes_0_to_50.bin", 0 to 50)
+
+    assertTrue(in.getNextEntry() == null)
+    in.close()
   }
 
   /** A zip archive for testing:
