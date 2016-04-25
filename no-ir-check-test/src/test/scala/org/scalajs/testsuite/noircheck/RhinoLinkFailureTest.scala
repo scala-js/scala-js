@@ -7,26 +7,26 @@
 \*                                                                      */
 package org.scalajs.testsuite.noircheck
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
+import org.junit.Assert._
+import org.junit.Assume._
 
 import scala.scalajs.js
 
-object RhinoLinkFailureTest extends JasmineTest {
+class RhinoLinkFailureTest {
 
-  when("rhino").
-  describe("Rhino Linking") {
+  @Test def Rhino_linking_should_throw_an_exception_if_it_fails_loading_a_class(): Unit = {
+    val executingInRhino = System.getProperty("scalajs.rhino", "false") == "true"
+    assumeTrue("Assumed executing in Rhino", executingInRhino)
 
-    it("should throw an exception if it fails loading a class") {
-
-      // scala.collection.parallel.Splitter$ is not defined
-      try {
-        val pool = scala.collection.parallel.Splitter.empty
-        sys.error("Should not reach here")
-      } catch {
-        case js.JavaScriptException(e) =>
-          // Make sure offending class is reported
-          expect(e.toString).toContain("sc_parallel_Splitter$")
-      }
+    // scala.collection.parallel.Splitter$ is not defined
+    try {
+      val pool = scala.collection.parallel.Splitter.empty
+      sys.error("Should not reach here")
+    } catch {
+      case js.JavaScriptException(e) =>
+        // Make sure offending class is reported
+        assertTrue(e.toString.contains("sc_parallel_Splitter$"))
     }
 
   }

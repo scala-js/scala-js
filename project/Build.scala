@@ -1391,9 +1391,10 @@ object Build {
               withCheckScalaJSIR(false).
               withBypassLinkingErrors(true)
           ),
+          testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
           publishArtifact in Compile := false
      )
-  ).withScalaJSCompiler.dependsOn(library, jasmineTestFramework % "test")
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(library, jUnitRuntime)
 
   lazy val javalibExTestSuite: Project = Project(
       id = "javalibExTestSuite",

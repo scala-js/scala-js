@@ -7,27 +7,24 @@
 \*                                                                      */
 package org.scalajs.testsuite.noircheck
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
 
-object DummyParentsTest extends JasmineTest {
+class DummyParentsTest {
 
-  describe("Linking Stages") {
+  @Test def linking_stages_should_provide_dummy_parents_if_required(): Unit = {
 
-    it("should provide dummy parents if required") {
+    import scala.concurrent.forkjoin._
 
-      import scala.concurrent.forkjoin._
+    // scala.concurrent.forkjoin.ForkJoinWorkerThread is not defined
+    class DummyFJWorkerThread extends ForkJoinWorkerThread(null) {
+      override def onStart(): Unit = { /* something */ }
+    }
 
-      // scala.concurrent.forkjoin.ForkJoinWorkerThread is not defined
-      class DummyFJWorkerThread extends ForkJoinWorkerThread(null) {
-        override def onStart(): Unit = { /* something */ }
-      }
+    val x = "1".toInt
 
-      val x = "1".toInt
-
-      if (x + x < 0) {
-        // Ensure DummyFuture is not DCEd, but never instantiated
-        new DummyFJWorkerThread()
-      }
+    if (x + x < 0) {
+      // Ensure DummyFuture is not DCEd, but never instantiated
+      new DummyFJWorkerThread()
     }
 
   }
