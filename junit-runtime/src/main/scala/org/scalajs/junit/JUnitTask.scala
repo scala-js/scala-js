@@ -17,15 +17,23 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
   }
 
   def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
-    val richLogger = new RichLogger(loggers, runner.runSettings,
-        taskDef.fullyQualifiedName)
+    val fullClassName = taskDef.fullyQualifiedName
+    val richLogger = new RichLogger(loggers, runner.runSettings, fullClassName)
 
     if (runner.runSettings.verbose)
       richLogger.info(c("Test run started", INFO))
 
-    val bootstrapperName = taskDef.fullyQualifiedName + "$scalajs$junit$bootstrapper"
+    val bootstrapperName = fullClassName + "$scalajs$junit$bootstrapper"
 
     val startTime = System.nanoTime
+
+    def errorWhileLoadingClass(t: Throwable): Unit = {
+      richLogger.error("Error while loading test class: " + fullClassName, t)
+      val selector = new TestSelector(fullClassName)
+      val optThrowable = new OptionalThrowable(t)
+      val ev = new JUnitEvent(taskDef, Status.Failure, selector, optThrowable)
+      eventHandler.handle(ev)
+    }
 
     Try(TestUtils.loadModule(bootstrapperName, runner.testClassLoader)) match {
       case Success(classMetadata: JUnitTestBootstrapper) =>
@@ -33,13 +41,11 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
             richLogger, eventHandler).executeTests()
 
       case Success(_) =>
-        richLogger.error("Error while loading test class: " +
-            taskDef.fullyQualifiedName + ", expected " + bootstrapperName +
-            " to extend JUnitTestBootstrapper")
+        val msg = s"Expected $bootstrapperName to extend JUnitTestBootstrapper"
+        errorWhileLoadingClass(new Exception(msg))
 
       case Failure(exception) =>
-        richLogger.error("Error while loading test class: " +
-            taskDef.fullyQualifiedName, exception)
+        errorWhileLoadingClass(exception)
     }
 
     runner.taskDone()
