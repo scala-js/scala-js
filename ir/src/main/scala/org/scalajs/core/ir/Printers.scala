@@ -62,15 +62,14 @@ object Printers {
 
     protected final def printColumn(ts: List[Tree], start: String, sep: String,
         end: String): Unit = {
-      print(start); indent(); println()
+      print(start); indent()
       var rest = ts
       while (rest.nonEmpty) {
+        println()
         print(rest.head)
         rest = rest.tail
-        if (rest.nonEmpty) {
+        if (rest.nonEmpty)
           print(sep)
-          println()
-        }
       }
       undent(); println(); print(end)
     }
@@ -130,10 +129,8 @@ object Printers {
           print(ident)
           print(": ")
           print(vtpe)
-          if (rhs != EmptyTree) {
-            print(" = ")
-            print(rhs)
-          }
+          print(" = ")
+          print(rhs)
 
         case ParamDef(ident, ptpe, mutable, rest) =>
           if (mutable)
@@ -261,13 +258,11 @@ object Printers {
             print(";")
             undent
           }
-          if (default != EmptyTree) {
-            println()
-            print("default:"); indent; println()
-            print(default)
-            print(";")
-            undent
-          }
+          println()
+          print("default:"); indent; println()
+          print(default)
+          print(";")
+          undent
           undent; println(); print('}')
 
         case Debugger() =>
@@ -378,12 +373,12 @@ object Printers {
             case Int_/ => "/[int]"
             case Int_% => "%[int]"
 
-            case Int_|   => "|"
-            case Int_&   => "&"
-            case Int_^   => "^"
-            case Int_<<  => "<<"
-            case Int_>>> => ">>>"
-            case Int_>>  => ">>"
+            case Int_|   => "|[int]"
+            case Int_&   => "&[int]"
+            case Int_^   => "^[int]"
+            case Int_<<  => "<<[int]"
+            case Int_>>> => ">>>[int]"
+            case Int_>>  => ">>[int]"
 
             case Float_+ => "+[float]"
             case Float_- => "-[float]"
@@ -391,11 +386,11 @@ object Printers {
             case Float_/ => "/[float]"
             case Float_% => "%[float]"
 
-            case Double_+ => "+"
-            case Double_- => "-"
-            case Double_* => "*"
-            case Double_/ => "/"
-            case Double_% => "%"
+            case Double_+ => "+[double]"
+            case Double_- => "-[double]"
+            case Double_* => "*[double]"
+            case Double_/ => "/[double]"
+            case Double_% => "%[double]"
 
             case Num_== => "=="
             case Num_!= => "!="
@@ -530,7 +525,7 @@ object Printers {
         case JSFunctionApply(fun, args) =>
           fun match {
             case _:JSDotSelect | _:JSBracketSelect | _:Select =>
-              print("protect(")
+              print("(0, ")
               print(fun)
               print(')')
 
@@ -741,9 +736,18 @@ object Printers {
           print("this")
 
         case Closure(captureParams, params, body, captureValues) =>
-          print("(lambda")
-          printRow(captureValues, "<", ", ", ">")
-          printRow(captureParams ++ params, "(", ", ", ") = ")
+          print("(lambda<")
+          var first = true
+          for ((param, value) <- captureParams.zip(captureValues)) {
+            if (first)
+              first = false
+            else
+              print(", ")
+            print(param)
+            print(" = ")
+            print(value)
+          }
+          printRow(params, ">(", ", ", ") = ")
           printBlock(body)
           print(')')
 
@@ -782,7 +786,6 @@ object Printers {
           }
           print(" ")
           printColumn(defs, "{", "", "}")
-          println()
 
         case FieldDef(name, vtpe, mutable) =>
           if (mutable)
@@ -845,7 +848,7 @@ object Printers {
       case IntType              => print("int")
       case LongType             => print("long")
       case FloatType            => print("float")
-      case DoubleType           => print("number")
+      case DoubleType           => print("double")
       case StringType           => print("string")
       case NullType             => print("null")
       case ClassType(className) => print(className)
@@ -858,10 +861,12 @@ object Printers {
 
       case RecordType(fields) =>
         print('(')
-        var first = false
+        var first = true
         for (RecordType.Field(name, _, tpe, mutable) <- fields) {
-          if (first) first = false
-          else print(", ")
+          if (first)
+            first = false
+          else
+            print(", ")
           if (mutable)
             print("var ")
           print(name)
