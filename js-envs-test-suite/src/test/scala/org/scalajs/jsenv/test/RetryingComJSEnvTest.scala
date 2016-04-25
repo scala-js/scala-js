@@ -1,18 +1,13 @@
 package org.scalajs.jsenv.test
 
-import org.scalajs.jsenv.rhino.RhinoJSEnv
-import org.scalajs.jsenv._
-
 import org.scalajs.core.tools.io.VirtualJSFile
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
-import org.scalajs.core.tools.linker.LinkingUnit
 import org.scalajs.core.tools.logging._
-import org.scalajs.core.tools.sem.Semantics
+import org.scalajs.jsenv.rhino.RhinoJSEnv
+import org.scalajs.jsenv.{ComJSRunner, JSConsole, _}
 
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
-
-import org.junit.Test
 
 class RetryingComJSEnvTest extends JSEnvTest with ComTests {
 

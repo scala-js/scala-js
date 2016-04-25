@@ -1,6 +1,5 @@
 package org.scalajs.jsenv.test
 
-import org.scalajs.jsenv._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.jsenv.phantomjs.PhantomJSEnv
 

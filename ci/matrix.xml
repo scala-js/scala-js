@@ -193,29 +193,32 @@
   <task id="tools-cli-stubs"><![CDATA[
     setJavaVersion $java
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package jsEnvs/test \
+        stubs/package jsEnvsTestSuite/test \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
-        jsEnvs/mimaReportBinaryIssues testAdapter/mimaReportBinaryIssues \
+        jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
+        testAdapter/mimaReportBinaryIssues \
         stubs/mimaReportBinaryIssues cli/mimaReportBinaryIssues \
         irJS/mimaReportBinaryIssues toolsJS/mimaReportBinaryIssues &&
     sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
-        testAdapter/compile:doc stubs/compile:doc
+        jsEnvsTestKit/compile:doc testAdapter/compile:doc stubs/compile:doc
   ]]></task>
 
   <task id="tools-cli-stubs-sbtplugin"><![CDATA[
     setJavaVersion $java
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package jsEnvs/test \
+        stubs/package jsEnvsTestSuite/test \
         sbtPlugin/package \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
-        jsEnvs/mimaReportBinaryIssues testAdapter/mimaReportBinaryIssues \
+        jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
+        testAdapter/mimaReportBinaryIssues \
         stubs/mimaReportBinaryIssues cli/mimaReportBinaryIssues \
         sbtPlugin/mimaReportBinaryIssues \
         irJS/mimaReportBinaryIssues toolsJS/mimaReportBinaryIssues &&
     sbt ++$scala library/scalastyle javalanglib/scalastyle javalib/scalastyle \
         javalibEx/scalastyle ir/scalastyle compiler/scalastyle \
         compiler/test:scalastyle tools/scalastyle tools/test:scalastyle \
-        jsEnvs/scalastyle jsEnvs/test:scalastyle testAdapter/scalastyle \
+        jsEnvs/scalastyle jsEnvsTestKit/scalastyle \
+        jsEnvsTestSuite/test:scalastyle testAdapter/scalastyle \
         sbtPlugin/scalastyle testInterface/scalastyle \
         jasmineTestFramework/scalastyle testSuite/test:scalastyle \
         testSuiteJVM/test:scalastyle \
@@ -223,7 +226,8 @@
         reversi/scalastyle testingExample/scalastyle \
         testingExample/test:scalastyle &&
     sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
-        testAdapter/compile:doc stubs/compile:doc sbtPlugin/compile:doc
+        jsEnvsTestKit/compile:doc testAdapter/compile:doc stubs/compile:doc \
+        sbtPlugin/compile:doc
   ]]></task>
 
   <task id="partestc"><![CDATA[
