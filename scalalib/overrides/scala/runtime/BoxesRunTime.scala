@@ -81,45 +81,28 @@ object BoxesRunTime {
     }
   }
 
-  def hashFromLong(n: java.lang.Long): Int = {
-    val iv = n.intValue()
-    if (iv == n.longValue()) iv
-    else n.hashCode()
-  }
+  @inline
+  def hashFromLong(n: java.lang.Long): Int =
+    Statics.longHash(n.asInstanceOf[Long])
 
-  def hashFromDouble(n: java.lang.Double): Int = {
-    val iv = n.intValue()
-    val dv = n.doubleValue()
-    if (iv == dv) {
-      iv
-    } else {
-      val lv = n.longValue()
-      if (lv == dv) {
-        java.lang.Long.valueOf(lv).hashCode()
-      } else {
-        // don't test the case floatValue() == dv
-        n.hashCode()
-      }
-    }
-  }
+  @inline
+  def hashFromDouble(n: java.lang.Double): Int =
+    Statics.doubleHash(n.asInstanceOf[Double])
 
-  def hashFromFloat(n: java.lang.Float): Int = {
-    hashFromDouble(java.lang.Double.valueOf(n.doubleValue()))
-  }
+  @inline
+  def hashFromFloat(n: java.lang.Float): Int =
+    Statics.floatHash(n.asInstanceOf[Float])
 
+  @inline // called only by ScalaRunTime.hash()
   def hashFromNumber(n: java.lang.Number): Int = {
     (n: Any) match {
-      case n: Int              => n
-      case n: java.lang.Long   => hashFromLong(n)
-      case n: java.lang.Double => hashFromDouble(n)
-      case n                   => n.hashCode()
+      case n: Double => Statics.doubleHash(n)
+      case n: Long   => Statics.longHash(n)
+      case n         => n.hashCode()
     }
   }
 
-  def hashFromObject(a: Object): Int = {
-    a match {
-      case a: java.lang.Number => hashFromNumber(a)
-      case a                   => a.hashCode()
-    }
-  }
+  @inline
+  def hashFromObject(a: Object): Int =
+    Statics.anyHash(a)
 }

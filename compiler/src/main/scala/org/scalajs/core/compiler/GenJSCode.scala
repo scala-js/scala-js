@@ -115,6 +115,7 @@ abstract class GenJSCode extends plugins.PluginComponent
   override def newPhase(p: Phase): StdPhase = new JSCodePhase(p)
 
   private object jsnme { // scalastyle:ignore
+    val anyHash = newTermName("anyHash")
     val arg_outer = newTermName("arg$outer")
     val newString = newTermName("newString")
   }
@@ -3082,13 +3083,19 @@ abstract class GenJSCode extends plugins.PluginComponent
       js.BinaryOp(js.BinaryOp.String_+, lhs, rhs)
     }
 
-    /** Gen JS code for a call to Any.## */
+    /** Gen JS code for a call to `Any.##`.
+     *
+     *  This method unconditionally generates a call to `Statics.anyHash`.
+     *  On the JVM, `anyHash` is only called as of 2.12.0-M5. Previous versions
+     *  emitted a call to `ScalaRunTime.hash`. However, since our `anyHash`
+     *  is always consistent with `ScalaRunTime.hash`, we always use it.
+     */
     private def genScalaHash(tree: Apply, receiver: Tree): js.Tree = {
       implicit val pos = tree.pos
 
-      val instance = genLoadModule(ScalaRunTimeModule)
+      val instance = genLoadModule(RuntimeStaticsModule)
       val arguments = List(genExpr(receiver))
-      val sym = getMember(ScalaRunTimeModule, nme.hash_)
+      val sym = getMember(RuntimeStaticsModule, jsnme.anyHash)
 
       genApplyMethod(instance, sym, arguments)
     }
