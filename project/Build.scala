@@ -478,13 +478,18 @@ object Build {
       name := "Scala.js IR",
       previousArtifactSetting,
       binaryIssueFilters ++= BinaryIncompatibilities.IR,
-      exportJars := true // required so ScalaDoc linking works
+      exportJars := true, // required so ScalaDoc linking works
+
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
   )
 
   lazy val irProject: Project = Project(
       id = "ir",
       base = file("ir"),
-      settings = commonIrProjectSettings
+      settings = commonIrProjectSettings ++ Seq(
+          libraryDependencies +=
+            "com.novocode" % "junit-interface" % "0.9" % "test"
+      )
   )
 
   lazy val irProjectJS: Project = Project(
@@ -493,9 +498,13 @@ object Build {
       settings = commonIrProjectSettings ++ myScalaJSSettings ++ Seq(
           crossVersion := ScalaJSCrossVersion.binary,
           unmanagedSourceDirectories in Compile +=
-            (scalaSource in Compile in irProject).value
+            (scalaSource in Compile in irProject).value,
+          unmanagedSourceDirectories in Test +=
+            (scalaSource in Test in irProject).value
       )
-  ).withScalaJSCompiler.dependsOn(javalibEx)
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
+      javalibEx, jUnitRuntime % "test"
+  )
 
   lazy val compiler: Project = Project(
       id = "compiler",
