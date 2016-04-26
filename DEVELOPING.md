@@ -148,4 +148,4 @@ following incantations.
     > ++SCALA_VERSION
     > ;compiler/publishLocal;library/publishLocal;javalibEx/publishLocal;testInterface/publishLocal;stubs/publishLocal;jasmineTestFramework/publishLocal;jUnitRuntime/publishLocal;jUnitPlugin/publishLocal
     > ++2.10.6
-    > ;ir/publishLocal;tools/publishLocal;jsEnvs/publishLocal;testAdapter/publishLocal;sbtPlugin/publishLocal
+    > ;ir/publishLocal;tools/publishLocal;jsEnvs/publishLocal;jsEnvsTestKit/publishLocal;testAdapter/publishLocal;sbtPlugin/publishLocal

@@ -453,7 +453,8 @@ object Build {
           clean := clean.dependsOn(
               clean in compiler,
               clean in irProject, clean in irProjectJS,
-              clean in tools, clean in toolsJS, clean in jsEnvs,
+              clean in tools, clean in toolsJS,
+              clean in jsEnvs, clean in jsEnvsTestKit, clean in jsEnvsTestSuite,
               clean in testAdapter, clean in plugin,
               clean in javalanglib, clean in javalib, clean in scalalib,
               clean in libraryAux, clean in library, clean in javalibEx,
@@ -657,13 +658,39 @@ object Build {
           name := "Scala.js JS Envs",
           libraryDependencies ++= Seq(
               "io.apigee" % "rhino" % "1.7R5pre4",
-              "org.webjars" % "envjs" % "1.2",
-              "com.novocode" % "junit-interface" % "0.9" % "test"
+              "org.webjars" % "envjs" % "1.2"
           ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided"),
           previousArtifactSetting,
           binaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
       )
   ).dependsOn(tools)
+
+  lazy val jsEnvsTestKit: Project = Project(
+      id = "jsEnvsTestKit",
+      base = file("js-envs-test-kit"),
+      settings = (
+          commonSettings ++ publishSettings ++ fatalWarningsSettings
+      ) ++ Seq(
+          name := "Scala.js JS Envs Test Kit",
+          libraryDependencies +=
+            "junit" % "junit" % "4.8.2",
+          previousArtifact := None,
+          binaryIssueFilters ++= BinaryIncompatibilities.JSEnvsTestKit
+      )
+  ).dependsOn(tools, jsEnvs)
+
+  lazy val jsEnvsTestSuite: Project = Project(
+      id = "jsEnvsTestSuite",
+      base = file("js-envs-test-suite"),
+      settings = (
+          commonSettings ++ fatalWarningsSettings
+      ) ++ Seq(
+          name := "Scala.js JS Envs Test Suite",
+          libraryDependencies ++= Seq(
+              "com.novocode" % "junit-interface" % "0.9" % "test"
+          ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided")
+      )
+  ).dependsOn(tools, jsEnvs, jsEnvsTestKit % "test")
 
   lazy val testAdapter = Project(
       id = "testAdapter",

@@ -3,7 +3,6 @@ package org.scalajs.jsenv.test
 import org.scalajs.jsenv._
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.logging._
 
 import org.junit.Test
 import org.junit.Assert._

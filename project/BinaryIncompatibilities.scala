@@ -19,6 +19,9 @@ object BinaryIncompatibilities {
           "org.scalajs.jsenv.nodejs.NodeJSEnv$ComNodeRunner")
   )
 
+  val JSEnvsTestKit = Seq(
+  )
+
   val SbtPlugin = Seq(
   )
 
