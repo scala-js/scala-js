@@ -233,12 +233,12 @@
     # Publish Scala.js artifacts locally
     # Then go into standalone project and test
     sbt ++2.11.8 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
-                 testInterface/publishLocal jasmineTestFramework/publishLocal stubs/publishLocal \
+                 testInterface/publishLocal stubs/publishLocal \
                  jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++2.10.6 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
                  testAdapter/publishLocal sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&
-    sbt noDOM/run withDOM/run test \
+    sbt noDOM/run withDOM/run multiTestJS/test:run test \
         'set scalaJSUseRhino in Global := false' \
         jetty9/run test \
         jsDependenciesTest/packageJSDependencies \
