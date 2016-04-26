@@ -2,23 +2,18 @@ package sbttest.withDOM
 
 import scala.scalajs.js
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
+import org.junit.Assert._
 
-object LibTest extends JasmineTest {
-
-  describe("Dummy Library") {
-
-    it("should provide jQuery") {
-      expect(Lib.jQuery).toBeDefined
-    }
-
-    it("should append an element") {
-      def count = Lib.jQuery("p").length.asInstanceOf[Int]
-      val oldCount = count
-      Lib.appendDocument("foo")
-      expect(count - oldCount).toEqual(1)
-    }
-
+class LibTest {
+  @Test def dummy_library_should_provide_jQuery(): Unit = {
+    assertFalse(js.isUndefined(Lib.jQuery))
   }
 
+  @Test def dummy_library_should_append_an_element(): Unit = {
+    def count = Lib.jQuery("p").length.asInstanceOf[Int]
+    val oldCount = count
+    Lib.appendDocument("foo")
+    assertEquals(1, count - oldCount)
+  }
 }

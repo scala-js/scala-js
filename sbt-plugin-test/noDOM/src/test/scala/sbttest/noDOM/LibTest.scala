@@ -1,19 +1,16 @@
 package sbttest.noDOM
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
+import org.junit.Assert._
 
-object LibTest extends JasmineTest {
-
-  describe("Dummy Library") {
-    it("should provide `foo`") {
-      expect(Lib.foo("")).toEqual("foo")
-      expect(Lib.foo("a")).toEqual("afoo")
-    }
-
-    it("should provide `sq`") {
-      expect(Lib.sq(0)).toEqual(0)
-      expect(Lib.sq(10)).toEqual(100)
-    }
+class LibTest {
+  @Test def dummy_library_should_provide_foo(): Unit = {
+    assertEquals("foo", Lib.foo(""))
+    assertEquals("afoo", Lib.foo("a"))
   }
 
+  @Test def dummy_library_should_provide_sq(): Unit = {
+    assertEquals(0, Lib.sq(0))
+    assertEquals(100, Lib.sq(10))
+  }
 }

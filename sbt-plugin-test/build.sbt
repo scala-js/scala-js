@@ -10,8 +10,8 @@ val versionSettings = Seq(
 )
 
 val baseSettings = versionSettings ++ Seq(
-  libraryDependencies +=
-    "org.scala-js" %% "scalajs-jasmine-test-framework" % scalaJSVersion % "test",
+  testOptions += Tests.Argument(
+    TestFramework("com.novocode.junit.JUnitFramework"), "-v", "-a"),
 
   // Test that non-existent classpath entries are allowed - #2198
   fullClasspath in Compile += (baseDirectory in "root").value /
@@ -42,6 +42,7 @@ lazy val root = project.in(file(".")).
 
 lazy val noDOM = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSPlugin).
+  enablePlugins(ScalaJSJUnitPlugin).
   settings(
     name := "Scala.js sbt test w/o DOM",
     scalaJSOutputWrapper := (
@@ -55,6 +56,7 @@ lazy val noDOM = project.settings(baseSettings: _*).
 
 lazy val withDOM = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSPlugin).
+  enablePlugins(ScalaJSJUnitPlugin).
   settings(
     name := "Scala.js sbt test w/ DOM",
     jsDependencies ++= Seq(
@@ -103,8 +105,7 @@ lazy val multiTest = crossProject.
   settings(
     testFrameworks ++= Seq(
         TestFramework("sbttest.framework.DummyFramework"),
-        TestFramework("inexistent.Foo", "another.strange.Bar"),
-        TestFramework("org.scalajs.jasminetest.JasmineFramework")
+        TestFramework("inexistent.Foo", "another.strange.Bar")
     )
   ).
   jsSettings(baseSettings: _*).
@@ -112,8 +113,6 @@ lazy val multiTest = crossProject.
     name := "Multi test framework test JS",
     // Make FrameworkDetector resilient to other output - #1572
     jsDependencies in Test += ProvidedJS / "consoleWriter.js",
-    testOptions += Tests.Argument(
-      TestFramework("com.novocode.junit.JUnitFramework"), "-v", "-a"),
 
     // Test isScalaJSProject (as a setting, it's evaluated when loading the build)
     isScalaJSProject ~= { value =>
