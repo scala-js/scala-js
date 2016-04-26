@@ -342,8 +342,9 @@ object ScalaJSPluginInternal {
         results ++= collectJar(vf)
       } else if (cpEntry.isDirectory) {
         for {
-          (file, relPath) <- Path.selectSubpaths(cpEntry, filter)
+          (file, relPath0) <- Path.selectSubpaths(cpEntry, filter)
         } {
+          val relPath = relPath0.replace(java.io.File.separatorChar, '/')
           realFiles += file
           results += collectFile(file, relPath)
         }
