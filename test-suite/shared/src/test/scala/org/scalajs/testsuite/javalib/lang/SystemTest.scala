@@ -12,6 +12,7 @@ import language.implicitConversions
 import org.junit.Test
 import org.junit.Assert._
 
+import org.scalajs.testsuite.utils.AssertThrows.expectThrows
 import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class SystemTest {
@@ -146,5 +147,15 @@ class SystemTest {
 
       assertEquals(().hashCode(), System.identityHashCode(()))
     }
+  }
+
+  @Test def getenv_should_return_an_unmodifiable_map(): Unit = {
+    assertTrue(System.getenv().isInstanceOf[java.util.Map[String, String]])
+
+    expectThrows(classOf[Exception], System.getenv.put("", ""))
+  }
+
+  @Test def getenv_should_link_and_does_not_throw(): Unit = {
+    assertEquals(null, System.getenv(":${PATH}"))
   }
 }
