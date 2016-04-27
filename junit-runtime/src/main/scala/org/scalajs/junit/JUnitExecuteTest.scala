@@ -34,8 +34,7 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
     }
 
     def logTestIgnored(name: String): Unit = {
-      if (verbose) logFormattedInfo(name, "ignored")
-      else logFormattedDebug(name, "ignored")
+      logFormattedInfo(name, "ignored")
     }
 
     if (assumptionViolated) {
