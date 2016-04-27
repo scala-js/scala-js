@@ -83,15 +83,11 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
     val t0 = System.nanoTime
     def getTimeInSeconds(): Double = (System.nanoTime - t0).toDouble / 1000000000
 
-    def logTestStarted(name: String): Unit = {
-      if (verbose) logFormattedInfo(decodedMethodName, "started")
-      else logFormattedDebug(decodedMethodName, "started")
-    }
-
     def executeTestMethods(): Unit = {
       val expectedException = testAnnotation.expected
       try {
-        logTestStarted(decodedMethodName)
+        if (verbose) logFormattedInfo(decodedMethodName, "started")
+        else logFormattedDebug(decodedMethodName, "started")
 
         classMetadata.invoke(testClassInstance, method.name)
 
@@ -166,7 +162,6 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
 
     try {
       for (method <- jUnitMetadata.beforeMethod) {
-        logTestStarted(methodName)
         classMetadata.invoke(testClassInstance, method.name)
       }
       executeTestMethods()
