@@ -249,7 +249,7 @@ object Analysis {
                 log(level, s"$verb from ${methodInfo.fullDisplayName}")
                 if (onlyOnce(level, methodInfo)) {
                   involvedClasses ++= methodInfo.instantiatedSubclasses
-                  loopTrace(methodInfo.calledFrom.headOption)
+                  loopTrace(methodInfo.calledFrom.lastOption)
                 }
               case FromCore(moduleName) =>
                 log(level, s"$verb from core module $moduleName")
@@ -272,7 +272,7 @@ object Analysis {
             // recurse with Debug log level not to overwhelm the user
             if (onlyOnce(Level.Debug, classInfo)) {
               logCallStackImpl(Level.Debug,
-                  classInfo.instantiatedFrom.headOption, verb = "instantiated")
+                  classInfo.instantiatedFrom.lastOption, verb = "instantiated")
             }
           }
         }
