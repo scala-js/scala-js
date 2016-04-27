@@ -78,6 +78,9 @@
 
   <task id="test-suite-ecma-script5"><![CDATA[
     setJavaVersion $java
+    sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test \
+        'set scalaJSUseRhino in Global := false' jUnitTestOutputsJS/test \
+        'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test &&
     sbtretry ++$scala $testSuite/test &&
     sbtretry 'set scalaJSUseRhino in Global := false' \
         ++$scala $testSuite/test &&
@@ -143,6 +146,9 @@
 
   <task id="test-suite-ecma-script6"><![CDATA[
     setJavaVersion $java
+    sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test \
+        'set scalaJSUseRhino in Global := false' jUnitTestOutputsJS/test \
+        'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test &&
     sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
         'set jsEnv in $testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
         ++$scala $testSuite/test \
@@ -225,7 +231,10 @@
         testSuiteJVM/test:scalastyle \
         javalibExTestSuite/test:scalastyle helloworld/scalastyle \
         reversi/scalastyle testingExample/scalastyle \
-        testingExample/test:scalastyle &&
+        testingExample/test:scalastyle \
+        jUnitPlugin/scalastyle jUnitRuntime/scalastyle \
+        jUnitTestOutputsJVM/scalastyle jUnitTestOutputsJVM/test:scalastyle \
+        jUnitTestOutputsJS/scalastyle jUnitTestOutputsJS/test:scalastyle &&
     sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc testAdapter/compile:doc stubs/compile:doc \
         sbtPlugin/compile:doc
