@@ -7,11 +7,14 @@ import com.novocode.junit.RichLogger
 import org.junit._
 import sbt.testing._
 
+import scala.util.matching.Regex
+
 final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
     classMetadata: JUnitTestBootstrapper, richLogger: RichLogger,
     eventHandler: EventHandler) {
 
   private val verbose = runner.runSettings.verbose
+  private val decodeScalaNames = runner.runSettings.decodeScalaNames
 
   lazy val packageName = fullyQualifiedName.split('.').init.mkString(".")
   lazy val className = fullyQualifiedName.split('.').last
@@ -72,22 +75,26 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
     val jUnitMetadata = classMetadata.metadata()
     val testClassInstance = classMetadata.newInstance()
     val methodName = method.name
+    val decodedMethodName = {
+      if (decodeScalaNames) runner.runSettings.decodeName(methodName)
+      else methodName
+    }
     val testAnnotation = method.getTestAnnotation.get
 
     val t0 = System.nanoTime
     def getTimeInSeconds(): Double = (System.nanoTime - t0).toDouble / 1000000000
 
     def logTestStarted(name: String): Unit = {
-      if (verbose) logFormattedInfo(name, "started")
-      else logFormattedDebug(name, "started")
+      if (verbose) logFormattedInfo(decodedMethodName, "started")
+      else logFormattedDebug(decodedMethodName, "started")
     }
 
     def executeTestMethods(): Unit = {
       val expectedException = testAnnotation.expected
       try {
-        logTestStarted(methodName)
+        logTestStarted(decodedMethodName)
 
-        classMetadata.invoke(testClassInstance, methodName)
+        classMetadata.invoke(testClassInstance, method.name)
 
         if (expectedException == classOf[org.junit.Test.None]) {
           taskPassed(methodName)
@@ -97,7 +104,7 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
             s"failed: Expected exception: " + expectedException +
             s"took ${getTimeInSeconds()} sec"
           }
-          logFormattedError(methodName, msg, None)
+          logFormattedError(decodedMethodName, msg, None)
           taskFailed(methodName)
         }
       } catch {
@@ -105,7 +112,7 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
           val timeInSeconds = getTimeInSeconds()
           if (ex.isInstanceOf[AssumptionViolatedException] ||
               ex.isInstanceOf[internal.AssumptionViolatedException]) {
-            logAssertionWarning(methodName, ex, timeInSeconds)
+            logAssertionWarning(decodedMethodName, ex, timeInSeconds)
             taskSkipped()
           } else if (expectedException.isInstance(ex)) {
             taskPassed(methodName)
@@ -129,11 +136,11 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
               if (!ex.isInstanceOf[AssertionError] || runner.runSettings.logAssert) Some(ex)
               else None
             }
-            logFormattedError(methodName, msg, exOpt)
+            logFormattedError(decodedMethodName, msg, exOpt)
             taskFailed(methodName)
           } else {
             val msg = s"failed: ${ex.getClass}, took $timeInSeconds sec"
-            logFormattedError(methodName, msg, Some(ex))
+            logFormattedError(decodedMethodName, msg, Some(ex))
             taskFailed(methodName)
           }
       }

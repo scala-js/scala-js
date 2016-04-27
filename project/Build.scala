@@ -481,7 +481,7 @@ object Build {
       binaryIssueFilters ++= BinaryIncompatibilities.IR,
       exportJars := true, // required so ScalaDoc linking works
 
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s")
   )
 
   lazy val irProject: Project = Project(
@@ -1252,7 +1252,7 @@ object Build {
     libraryDependencies +=
       "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
 
-    testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+    testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
 
     unmanagedSourceDirectories in Test ++= {
       def includeIf(testDir: File, condition: Boolean): List[File] =
@@ -1428,7 +1428,7 @@ object Build {
               withCheckScalaJSIR(false).
               withBypassLinkingErrors(true)
           ),
-          testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+          testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
           publishArtifact in Compile := false
      )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(library, jUnitRuntime)
@@ -1441,7 +1441,7 @@ object Build {
       ) ++ Seq(
           name := "JavaLib Ex Test Suite",
           publishArtifact in Compile := false,
-          testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+          testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
           scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(javalibEx, jUnitRuntime)
@@ -1570,7 +1570,7 @@ object Build {
     settings = commonSettings ++ myScalaJSSettings ++ Seq(
       publishArtifact in Compile := false,
 
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
 
       unmanagedSources in Test ++= {
         assert(scalaBinaryVersion.value != "2.10",
