@@ -1404,7 +1404,7 @@ object Build {
         }
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-    library, jUnitRuntime, jasmineTestFramework % "test"
+    library, jUnitRuntime
   )
 
   lazy val testSuiteJVM: Project = Project(
@@ -1427,9 +1427,10 @@ object Build {
               withCheckScalaJSIR(false).
               withBypassLinkingErrors(true)
           ),
+          testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
           publishArtifact in Compile := false
      )
-  ).withScalaJSCompiler.dependsOn(library, jasmineTestFramework % "test")
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(library, jUnitRuntime)
 
   lazy val javalibExTestSuite: Project = Project(
       id = "javalibExTestSuite",
@@ -1439,10 +1440,10 @@ object Build {
       ) ++ Seq(
           name := "JavaLib Ex Test Suite",
           publishArtifact in Compile := false,
-
+          testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
           scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
       )
-  ).withScalaJSCompiler.dependsOn(javalibEx, jasmineTestFramework % "test")
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(javalibEx, jUnitRuntime)
 
   lazy val partest: Project = Project(
       id = "partest",

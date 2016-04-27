@@ -5,19 +5,14 @@
 ** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
 **                          |/____/                                     **
 \*                                                                      */
-package org.scalajs.testsuite.utils
+package scala.scalajs.testsuite.utils
 
-import org.junit.Test
-import org.junit.Assert._
-import org.junit.Assume._
+/** This is a partial copy of the implementation in the testSuite */
+object Platform {
 
-class PlatformTest {
-  import Platform._
+  def executingInRhino: Boolean = sysProp("rhino")
+  def typedArrays: Boolean = sysProp("typedarray")
 
-  @Test def typedarray_implies_areTypedArraysSupportedshould(): Unit = {
-    // Note that if we don't have the tag set we can't say anything
-    // on the typed arrays support.
-    assumeTrue("Assumed typed arrays", typedArrays)
-    assertTrue(areTypedArraysSupported)
-  }
+  private def sysProp(key: String): Boolean =
+    System.getProperty("scalajs." + key, "false") == "true"
 }

@@ -7,7 +7,8 @@
 \*                                                                      */
 package scala.scalajs.testsuite.jsinterop
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
+import org.junit.Assert._
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
@@ -18,20 +19,16 @@ import scala.scalajs.js.annotation._
  *  If moved to testSuite, those tests "fail to fail" due to mass effects
  *  produced by the immensity of the testSuite codebase.
  */
-object ScalaJSDefinedTestEx extends JasmineTest {
+class ScalaJSDefinedTestEx {
 
-  describe("Scala.js-defined JS classes ex") {
+  @Test def constructor_property_on_the_prototype_issue_1963(): Unit = {
+    @ScalaJSDefined
+    class ParentClass extends js.Object
 
-    it("constructor property on the prototype - #1963") {
-      @ScalaJSDefined
-      class ParentClass extends js.Object
+    @ScalaJSDefined
+    class ChildClass extends ParentClass
 
-      @ScalaJSDefined
-      class ChildClass extends ParentClass
-
-      val child = new ChildClass().asInstanceOf[js.Dynamic]
-      expect(child.constructor).toBe(js.constructorOf[ChildClass])
-    }
-
+    val child = new ChildClass().asInstanceOf[js.Dynamic]
+    assertSame(js.constructorOf[ChildClass], child.constructor)
   }
 }
