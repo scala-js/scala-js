@@ -115,16 +115,18 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
           } else if (expectedException == classOf[org.junit.Test.None]) {
             val failedMsg = new StringBuilder
             failedMsg ++= "failed: "
-            if (ex.isInstanceOf[AssertionError] && runner.runSettings.logAssert) {
-              failedMsg ++= "java.lang." ++= c("AssertionError", ERRMSG) ++= ": "
-              failedMsg ++= ex.getMessage
-            } else if (runner.runSettings.logExceptionClass) {
-              failedMsg ++= ex.getMessage
+            if (ex.isInstanceOf[AssertionError]) {
+              if (runner.runSettings.logAssert)
+                failedMsg ++= "java.lang." ++= c("AssertionError", ERRMSG) ++= ": "
             } else {
-              failedMsg ++= ex.getClass.toString ++= " expected<"
-              failedMsg ++= expectedException.toString ++= "> but was<"
-              failedMsg ++= ex.getClass.toString += '>'
+              if (runner.runSettings.logExceptionClass) {
+                val classParts = ex.getClass.getName.split('.')
+                failedMsg ++= classParts.init.mkString(".") + "."
+                failedMsg ++= c(classParts.last, ENAME2)
+                failedMsg ++= ": "
+              }
             }
+            failedMsg ++= ex.getMessage
             failedMsg += ','
             val msg = s"$failedMsg took $timeInSeconds sec"
             val exOpt = {
