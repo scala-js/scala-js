@@ -12,6 +12,7 @@ package org.scalajs.core.tools.linker.frontend
 import scala.annotation.tailrec
 
 import scala.collection.mutable
+import scala.util.Try
 
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.javascript.ESLevel
@@ -115,7 +116,18 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       }
 
       val linkingErrLevel = if (fatal) Level.Error else Level.Warn
-      analysis.errors.foreach(logError(_, logger, linkingErrLevel))
+      val maxDisplayErrors = {
+        val propName = "org.scalajs.core.tools.linker.maxlinkingerrors"
+        Try(System.getProperty(propName, "20").toInt).getOrElse(20).max(1)
+      }
+
+      analysis.errors
+        .take(maxDisplayErrors)
+        .foreach(logError(_, logger, linkingErrLevel))
+
+      val skipped = analysis.errors.size - maxDisplayErrors
+      if (skipped > 0)
+        logger.log(linkingErrLevel, s"Not showing $skipped more linking errors")
 
       if (fatal)
         sys.error("There were linking errors")
