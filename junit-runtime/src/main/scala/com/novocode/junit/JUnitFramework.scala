@@ -37,7 +37,7 @@ final class JUnitFramework extends Framework {
     var noColor = false
     var decodeScalaNames = false
     var logAssert = false
-    var logExceptionClass = true
+    var notLogExceptionClass = false
     var ignoreRunners = "org.junit.runners.Suite"
     var runListener: String = null
     for (str <- args) {
@@ -47,7 +47,7 @@ final class JUnitFramework extends Framework {
         case "-n" => noColor = true
         case "-s" => decodeScalaNames = true
         case "-a" => logAssert = true
-        case "-c" => logExceptionClass = false
+        case "-c" => notLogExceptionClass = true
 
         case s if s.startsWith("-tests=") =>
           throw new UnsupportedOperationException("-tests")
@@ -83,11 +83,11 @@ final class JUnitFramework extends Framework {
         case "+n" => noColor = false
         case "+s" => decodeScalaNames = false
         case "+a" => logAssert = false
-        case "+c" => logExceptionClass = false
+        case "+c" => notLogExceptionClass = false
         case _    =>
       }
     }
     new RunSettings(!noColor, decodeScalaNames, quiet, verbose, logAssert,
-        ignoreRunners, logExceptionClass)
+        ignoreRunners, notLogExceptionClass)
   }
 }

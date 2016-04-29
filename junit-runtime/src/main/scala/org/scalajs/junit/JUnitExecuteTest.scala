@@ -113,24 +113,22 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
             taskPassed(methodName)
             executeAfterMethods()
           } else if (expectedException == classOf[org.junit.Test.None]) {
+            val isAssertion = ex.isInstanceOf[AssertionError]
             val failedMsg = new StringBuilder
             failedMsg ++= "failed: "
-            if (ex.isInstanceOf[AssertionError]) {
-              if (runner.runSettings.logAssert)
-                failedMsg ++= "java.lang." ++= c("AssertionError", ERRMSG) ++= ": "
-            } else {
-              if (runner.runSettings.logExceptionClass) {
-                val classParts = ex.getClass.getName.split('.')
-                failedMsg ++= classParts.init.mkString(".") + "."
-                failedMsg ++= c(classParts.last, ENAME2)
-                failedMsg ++= ": "
-              }
+            if (!runner.runSettings.notLogExceptionClass &&
+                (!isAssertion || runner.runSettings.logAssert)) {
+              val classParts = ex.getClass.getName.split('.')
+              failedMsg ++= classParts.init.mkString(".")
+              failedMsg += '.'
+              failedMsg ++= c(classParts.last, ENAME2)
+              failedMsg ++= ": "
             }
             failedMsg ++= ex.getMessage
             failedMsg += ','
             val msg = s"$failedMsg took $timeInSeconds sec"
             val exOpt = {
-              if (!ex.isInstanceOf[AssertionError] || runner.runSettings.logAssert) Some(ex)
+              if (!isAssertion || runner.runSettings.logAssert) Some(ex)
               else None
             }
             logFormattedError(decodedMethodName, msg, exOpt)
