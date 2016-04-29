@@ -39,7 +39,7 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
 
     if (assumptionViolated) {
       logTestIgnored(null)
-      taskSkipped()
+      ignoreTestClass()
     } else {
       def runWithOrWithoutQuietMode[T](block: => T): T = {
         if (runner.runSettings.quiet) {
@@ -90,9 +90,11 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
         else logFormattedDebug(decodedMethodName, "started")
 
         classMetadata.invoke(testClassInstance, method.name)
+        logFormattedDebug(decodedMethodName,
+            s"finished, took ${getTimeInSeconds()} sec")
 
         if (expectedException == classOf[org.junit.Test.None]) {
-          taskPassed(methodName)
+          testPassed(methodName)
           executeAfterMethods()
         } else {
           val msg = {
@@ -100,7 +102,7 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
             s"took ${getTimeInSeconds()} sec"
           }
           logFormattedError(decodedMethodName, msg, None)
-          taskFailed(methodName)
+          testFailed(methodName)
         }
       } catch {
         case ex: Throwable =>
@@ -108,9 +110,9 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
           if (ex.isInstanceOf[AssumptionViolatedException] ||
               ex.isInstanceOf[internal.AssumptionViolatedException]) {
             logAssertionWarning(decodedMethodName, ex, timeInSeconds)
-            taskSkipped()
+            testSkipped()
           } else if (expectedException.isInstance(ex)) {
-            taskPassed(methodName)
+            testPassed(methodName)
             executeAfterMethods()
           } else if (expectedException == classOf[org.junit.Test.None]) {
             val isAssertion = ex.isInstanceOf[AssertionError]
@@ -132,14 +134,16 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
               else None
             }
             logFormattedError(decodedMethodName, msg, exOpt)
-            taskFailed(methodName)
+            testFailed(methodName)
           } else {
             val msg = s"failed: ${ex.getClass}, took $timeInSeconds sec"
             logFormattedError(decodedMethodName, msg, Some(ex))
-            taskFailed(methodName)
+            testFailed(methodName)
           }
+          logFormattedDebug(decodedMethodName,
+              s"finished, took $timeInSeconds sec")
       }
-      runner.taskRegisterTotal()
+      runner.testRegisterTotal()
     }
 
     def executeAfterMethods(): Unit = {
@@ -175,26 +179,31 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
   }
 
   private def ignoreTest(methodName: String) = {
-    runner.taskIgnored()
-    runner.taskRegisterTotal()
+    runner.testIgnored()
     val selector = new NestedTestSelector(fullyQualifiedName, methodName)
-    eventHandler.handle(new JUnitEvent(taskDef, Status.Ignored, selector))
+    eventHandler.handle(new JUnitEvent(taskDef, Status.Skipped, selector))
   }
 
-  private def taskSkipped(): Unit = {
-    runner.taskSkipped()
+  private def ignoreTestClass() = {
+    runner.testIgnored()
     val selector = new TestSelector(fullyQualifiedName)
     eventHandler.handle(new JUnitEvent(taskDef, Status.Skipped, selector))
   }
 
-  private def taskFailed(methodName: String): Unit = {
-    runner.taskFailed()
+  private def testSkipped(): Unit = {
+    runner.testSkipped()
+    val selector = new TestSelector(fullyQualifiedName)
+    eventHandler.handle(new JUnitEvent(taskDef, Status.Skipped, selector))
+  }
+
+  private def testFailed(methodName: String): Unit = {
+    runner.testFailed()
     val selector = new NestedTestSelector(fullyQualifiedName, methodName)
     eventHandler.handle(new JUnitEvent(taskDef, Status.Failure, selector))
   }
 
-  private def taskPassed(methodName: String): Unit = {
-    runner.taskPassed()
+  private def testPassed(methodName: String): Unit = {
+    runner.testPassed()
     val selector = new NestedTestSelector(fullyQualifiedName, methodName)
     eventHandler.handle(new JUnitEvent(taskDef, Status.Success, selector))
   }

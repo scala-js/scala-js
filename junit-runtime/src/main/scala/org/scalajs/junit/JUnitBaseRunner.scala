@@ -20,24 +20,32 @@ abstract class JUnitBaseRunner(
   protected var totalCount = 0
 
   private[junit] def taskDoneCount: Int = doneCount
-  private[junit] def taskPassedCount: Int = passedCount
-  private[junit] def taskFailedCount: Int = failedCount
-  private[junit] def taskIgnoredCount: Int = ignoredCount
-  private[junit] def taskSkippedCount: Int = skippedCount
-  private[junit] def taskTotalCount: Int = totalCount
+  private[junit] def testPassedCount: Int = passedCount
+  private[junit] def testFailedCount: Int = failedCount
+  private[junit] def testIgnoredCount: Int = ignoredCount
+  private[junit] def testSkippedCount: Int = skippedCount
+  private[junit] def testTotalCount: Int = totalCount
 
   private[junit] def taskDone(): Unit = doneCount += 1
-  private[junit] def taskPassed(): Unit = passedCount += 1
-  private[junit] def taskFailed(): Unit = failedCount += 1
-  private[junit] def taskIgnored(): Unit = ignoredCount += 1
-  private[junit] def taskSkipped(): Unit = skippedCount += 1
-  private[junit] def taskRegisterTotal(count: Int = 1): Unit = totalCount += count
+  private[junit] def testPassed(): Unit = passedCount += 1
+  private[junit] def testFailed(): Unit = failedCount += 1
+  private[junit] def testIgnored(): Unit = ignoredCount += 1
+  private[junit] def testSkipped(): Unit = skippedCount += 1
+  private[junit] def testRegisterTotal(count: Int = 1): Unit = totalCount += count
 
   def serializeTask(task: Task, serializer: TaskDef => String): String =
     serializer(task.taskDef)
 
   def deserializeTask(task: String, deserializer: String => TaskDef): Task =
     newTask(deserializer(task))
+
+  def resetTestCounts(): Unit = {
+    passedCount = 0
+    failedCount = 0
+    ignoredCount = 0
+    skippedCount = 0
+    totalCount = 0
+  }
 }
 
 object JUnitBaseRunner {

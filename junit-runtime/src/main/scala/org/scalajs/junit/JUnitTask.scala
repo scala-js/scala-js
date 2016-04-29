@@ -57,18 +57,20 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
     runner.taskDone()
 
     val time = System.nanoTime - startTime
-    val failed = runner.taskFailedCount
-    val ignored = runner.taskIgnoredCount
-    val total = runner.taskTotalCount
-    val msg = Seq(
-        c("Test run finished:", INFO),
-        c(s"$failed failed,", if (failed == 0) INFO else ERRCOUNT),
-        c(s"$ignored ignored,", if (ignored == 0) INFO else IGNCOUNT),
-        c(s"$total total,", INFO),
-        c(s"${time.toDouble / 1000000000}s", INFO)
-    ).mkString(" ")
+    val failed = runner.testFailedCount
+    val ignored = runner.testIgnoredCount
+    val total = runner.testTotalCount
+
+    val msg = {
+      c("Test run finished: ", INFO) +
+      c(s"$failed failed", if (failed == 0) INFO else ERRCOUNT) +
+      c(s", ", INFO) +
+      c(s"$ignored ignored", if (ignored == 0) INFO else IGNCOUNT) +
+      c(s", $total total, ${time.toDouble / 1000000000}s", INFO)
+    }
 
     infoOrDebug(msg)
+    runner.resetTestCounts()
 
     Array()
   }
