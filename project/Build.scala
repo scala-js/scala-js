@@ -59,7 +59,7 @@ object Build {
   val shouldPartest = settingKey[Boolean](
     "Whether we should partest the current scala version (and fail if we can't)")
 
-  val previousVersion = "0.6.8"
+  val previousVersion = "0.6.9"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
@@ -674,7 +674,7 @@ object Build {
           name := "Scala.js JS Envs Test Kit",
           libraryDependencies +=
             "junit" % "junit" % "4.8.2",
-          previousArtifact := None,
+          previousArtifactSetting,
           binaryIssueFilters ++= BinaryIncompatibilities.JSEnvsTestKit
       )
   ).dependsOn(tools, jsEnvs)
