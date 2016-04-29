@@ -20,8 +20,14 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
     val fullClassName = taskDef.fullyQualifiedName
     val richLogger = new RichLogger(loggers, runner.runSettings, fullClassName)
 
-    if (runner.runSettings.verbose)
-      richLogger.info(c("Test run started", INFO))
+    def infoOrDebug(msg: String): Unit = {
+      if (runner.runSettings.verbose)
+        richLogger.info(msg)
+      else
+        richLogger.debug(msg)
+    }
+
+    infoOrDebug(c("Test run started", INFO))
 
     val bootstrapperName = fullClassName + "$scalajs$junit$bootstrapper"
 
@@ -50,19 +56,19 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
 
     runner.taskDone()
 
-    if (runner.runSettings.verbose) {
-      val time = System.nanoTime - startTime
-      val failed = runner.taskFailedCount
-      val ignored = runner.taskIgnoredCount
-      val total = runner.taskTotalCount
-      val msg = Seq(
+    val time = System.nanoTime - startTime
+    val failed = runner.taskFailedCount
+    val ignored = runner.taskIgnoredCount
+    val total = runner.taskTotalCount
+    val msg = Seq(
         c("Test run finished:", INFO),
         c(s"$failed failed,", if (failed == 0) INFO else ERRCOUNT),
         c(s"$ignored ignored,", if (ignored == 0) INFO else IGNCOUNT),
         c(s"$total total,", INFO),
-        c(s"${time.toDouble / 1000000000}s", INFO))
-      richLogger.info(msg.mkString(" "))
-    }
+        c(s"${time.toDouble / 1000000000}s", INFO)
+    ).mkString(" ")
+
+    infoOrDebug(msg)
 
     Array()
   }
