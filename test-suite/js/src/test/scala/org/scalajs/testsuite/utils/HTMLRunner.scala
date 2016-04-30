@@ -95,7 +95,10 @@ object HTMLRunner extends js.JSApp {
 
   private def scheduleTask(task: Task): Future[Array[Task]] = {
     val promise = Promise[Array[Task]]
-    Future(task.execute(EventCounter, Array(logger), promise.success))
+    // Don't use a Future so we yield to the UI event thread.
+    js.timers.setTimeout(0) {
+      task.execute(EventCounter, Array(logger), promise.success)
+    }
     promise.future
   }
 
