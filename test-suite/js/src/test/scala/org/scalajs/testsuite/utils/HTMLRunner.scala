@@ -108,16 +108,31 @@ object HTMLRunner extends js.JSApp {
       el.textContent = msg
       el.setAttribute("class", s"log $clss")
       dom.document.body.appendChild(el)
+      scrollDown()
     }
 
     def hr(): Unit = {
       val elem = dom.document.createElement("hr")
       dom.document.body.appendChild(elem)
     }
+
+    private def scrollDown(): Unit = {
+      /* Note that we use scrollTo, rather than scrollIntoView, since scrollTo
+       * allows us to scroll the lower margin of the body into view. This margin
+       * makes it clear to the user, that this is the end of the log messages.
+       */
+      dom.window.scrollTo(0, dom.document.body.scrollHeight)
+    }
   }
 
   // Mini dom facade.
   private object dom { // scalastyle:ignore
+    @JSName("window")
+    @js.native
+    object window extends js.Object { // scalastyle:ignore
+      def scrollTo(x: Int, y: Int): Unit = js.native
+    }
+
     @JSName("document")
     @js.native
     object document extends js.Object { // scalastyle:ignore
@@ -130,6 +145,7 @@ object HTMLRunner extends js.JSApp {
       def appendChild(child: Element): Unit = js.native
       def setAttribute(name: String, value: String): Unit = js.native
       var textContent: String = js.native
+      def scrollHeight: Int = js.native
     }
   }
 }
