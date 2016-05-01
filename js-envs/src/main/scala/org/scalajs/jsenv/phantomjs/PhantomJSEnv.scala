@@ -322,23 +322,18 @@ class PhantomJSEnv(
 
   protected trait AbstractPhantomRunner extends AbstractExtRunner {
 
+    protected[this] val codeCache = new VirtualFileMaterializer
+
     override protected def getVMArgs() =
       // Add launcher file to arguments
       additionalArgs :+ createTmpLauncherFile().getAbsolutePath
 
     /** In phantom.js, we include JS using HTML */
     override protected def writeJSFile(file: VirtualJSFile, writer: Writer) = {
-      file match {
-        case file: FileVirtualJSFile =>
-          val fname = htmlEscape(fixFileURI(file.file.toURI).toASCIIString)
-          writer.write(
-              s"""<script type="text/javascript" src="$fname"></script>""" + "\n")
-        case _ =>
-          writer.write("""<script type="text/javascript">""" + "\n")
-          writer.write(s"// Virtual File: ${file.path}\n")
-          writer.write(file.content)
-          writer.write("</script>\n")
-      }
+      val realFile = codeCache.materialize(file)
+      val fname = htmlEscape(fixFileURI(realFile.toURI).toASCIIString)
+      writer.write(
+          s"""<script type="text/javascript" src="$fname"></script>""" + "\n")
     }
 
     /**
@@ -410,7 +405,7 @@ class PhantomJSEnv(
           <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />""")
       sendJS(getLibJSFiles(), out)
       writeCodeLauncher(code, out)
-      out.write("</head>\n<body></body>\n</html>\n")
+      out.write(s"</head>\n<body onload='$launcherName()'></body>\n</html>\n")
     }
 
     protected def createTmpLauncherFile(): File = {
@@ -493,13 +488,14 @@ class PhantomJSEnv(
     }
 
     protected def writeCodeLauncher(code: VirtualJSFile, out: Writer): Unit = {
-      out.write("""<script type="text/javascript">""" + "\n")
-      out.write("// Phantom.js code launcher\n")
-      out.write(s"// Origin: ${code.path}\n")
-      out.write("window.addEventListener('load', function() {\n")
-      out.write(code.content)
-      out.write("}, false);\n")
-      out.write("</script>\n")
+      // Create a file with the launcher function.
+      val launcherFile = new MemVirtualJSFile("phantomjs-launcher.js")
+      launcherFile.content = s"""
+        // Phantom.js code launcher
+        // Origin: ${code.path}
+        function $launcherName() {${code.content}}
+      """
+      writeJSFile(launcherFile, out)
     }
   }
 
@@ -517,4 +513,6 @@ private object PhantomJSEnv {
   private final val MaxByteMessageSize = 32768 // 32 KB
   private final val MaxCharMessageSize = MaxByteMessageSize / 2 // 2B per char
   private final val MaxCharPayloadSize = MaxCharMessageSize - 1 // frag flag
+
+  private final val launcherName = "scalaJSPhantomJSEnvLauncher"
 }

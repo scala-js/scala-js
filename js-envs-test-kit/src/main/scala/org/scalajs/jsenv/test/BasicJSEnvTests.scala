@@ -34,4 +34,13 @@ trait BasicJSEnvTests extends JSEnvTest {
 
   }
 
+  @Test
+  def allowScriptTags: Unit = {
+
+    """
+    console.log("<script></script>");
+    """ hasOutput "<script></script>\n";
+
+  }
+
 }
