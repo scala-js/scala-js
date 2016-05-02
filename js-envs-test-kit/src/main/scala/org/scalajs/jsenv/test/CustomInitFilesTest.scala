@@ -1,8 +1,5 @@
 package org.scalajs.jsenv.test
 
-import org.scalajs.jsenv.nodejs.NodeJSEnv
-import org.scalajs.jsenv.phantomjs.PhantomJSEnv
-
 import org.scalajs.core.tools.io._
 
 import org.junit.Test
@@ -23,17 +20,5 @@ abstract class CustomInitFilesTest extends JSEnvTest {
     """ hasOutput
     """|custom: hello
        |""".stripMargin
-  }
-}
-
-class NodeJSWithCustomInitFilesTest extends CustomInitFilesTest {
-  protected def newJSEnv: NodeJSEnv = new NodeJSEnv {
-    override def customInitFiles() = makeCustomInitFiles()
-  }
-}
-
-class PhantomJSWithCustomInitFilesTest extends CustomInitFilesTest {
-  protected def newJSEnv: PhantomJSEnv = new PhantomJSEnv {
-    override def customInitFiles() = makeCustomInitFiles()
   }
 }
