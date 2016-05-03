@@ -12,6 +12,11 @@ object BinaryIncompatibilities {
   )
 
   val JSEnvsTestKit = Seq(
+      // Breaking changes
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.jsenv.test.NodeJSWithCustomInitFilesTest"),
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.jsenv.test.PhantomJSWithCustomInitFilesTest")
   )
 
   val SbtPlugin = Seq(
