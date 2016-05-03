@@ -260,8 +260,15 @@ object System {
   def setProperty(key: String, value: String): String =
     SystemProperties.value.setProperty(key, value).asInstanceOf[String]
 
-  //def getenv(): java.util.Map[String,String]
-  //def getenv(name: String): String
+  def getenv(): ju.Map[String, String] =
+    ju.Collections.emptyMap()
+
+  def getenv(name: String): String = {
+    if (name eq null)
+      throw new NullPointerException
+
+    null
+  }
 
   def exit(status: scala.Int): Unit = Runtime.getRuntime().exit(status)
   def gc(): Unit = Runtime.getRuntime().gc()
