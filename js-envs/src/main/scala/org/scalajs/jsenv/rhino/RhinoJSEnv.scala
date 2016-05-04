@@ -287,7 +287,8 @@ final class RhinoJSEnv private (
       val cb = ensure[Function](args(0),
           "First argument to setTimeout must be a function")
 
-      val deadline = Context.toNumber(args(1)).toInt.millis.fromNow
+      val deadline =
+        args.lift(1).fold(0)(n => Context.toNumber(n).toInt).millis.fromNow
 
       val task = new TimeoutTask(deadline, () =>
         cb.call(context, scope, scope, args.slice(2, args.length)))

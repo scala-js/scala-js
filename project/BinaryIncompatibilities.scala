@@ -16,7 +16,11 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingClassProblem](
           "org.scalajs.jsenv.test.NodeJSWithCustomInitFilesTest"),
       ProblemFilters.exclude[MissingClassProblem](
-          "org.scalajs.jsenv.test.PhantomJSWithCustomInitFilesTest")
+          "org.scalajs.jsenv.test.PhantomJSWithCustomInitFilesTest"),
+
+      // Source compatible, not a problem.
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.jsenv.test.TimeoutTests.timeoutSingleArgTest")
   )
 
   val SbtPlugin = Seq(

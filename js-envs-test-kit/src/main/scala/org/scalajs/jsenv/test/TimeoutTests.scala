@@ -51,6 +51,13 @@ trait TimeoutTests extends JSEnvTest {
 
   }
 
+  @Test // #2368
+  def timeoutSingleArgTest: Unit = {
+    """
+    setTimeout(function() { console.log("ok"); });
+    """ hasOutput "ok\n"
+  }
+
   @Test
   def timeoutArgTest: Unit = {
 
