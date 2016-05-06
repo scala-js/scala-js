@@ -99,12 +99,20 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
      * because they are emitted as private by our .scala source files, but
      * they are considered public at use site since their symbols come from
      * Java-emitted .class files.
+     * We also special case outer fields because with multiple inheritance it
+     * is possible to have several definitions of such fields in the same
+     * instance, one for each class/trait that captures its outer context.
+     * The name for the outer field is always `$outer` which could potentially
+     * collapse into a single field.
      */
-    val idSuffix =
-      if (sym.isPrivate || allRefClasses.contains(sym.owner))
+    val idSuffix: String = {
+      if (sym.isOuterField)
+        encodeClassFullName(sym.owner)
+      else if (sym.isPrivate || allRefClasses.contains(sym.owner))
         sym.owner.ancestors.count(!_.isTraitOrInterface).toString
       else
         "f"
+    }
 
     val encodedName = name + "$" + idSuffix
     js.Ident(mangleJSName(encodedName), Some(sym.unexpandedName.decoded))

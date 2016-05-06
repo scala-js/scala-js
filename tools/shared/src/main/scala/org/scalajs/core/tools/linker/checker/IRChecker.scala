@@ -11,7 +11,7 @@ package org.scalajs.core.tools.linker.checker
 
 import scala.language.implicitConversions
 
-import scala.annotation.switch
+import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
 
@@ -155,7 +155,21 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
     name match {
       case _: Ident =>
-        // ok
+        // check if the field is already defined in one of the super classes.
+        @tailrec def checkClass(superClass: CheckedClass): Unit = {
+          if (superClass.fields.contains(name.name)) {
+            // TODO: Change println by reportError when we brake binnary compatibility
+            println(s"Warning: FieldDef '$name' of '${classDef.name.name}' is " +
+                s"already defined in '${superClass.name}'.")
+          } else {
+            superClass.superClass match {
+              case Some(cls) => checkClass(cls)
+              case None      => // ok
+            }
+          }
+        }
+        classDef.superClass.foreach(cls => checkClass(lookupClass(cls.name)))
+
       case _: StringLiteral =>
         if (!classDef.kind.isJSClass)
           reportError(s"FieldDef '$name' cannot have a string literal name")
