@@ -1,6 +1,5 @@
 package java.util
 
-class EventObject(@transient protected val source: AnyRef) extends java.io.Serializable {
-  private val serialVersionUID: Long = 5516075349620653480L
+class EventObject(protected val source: AnyRef) extends java.io.Serializable {
   def getSource = source
 }
