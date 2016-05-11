@@ -9,6 +9,12 @@ object BinaryIncompatibilities {
   )
 
   val JSEnvs = Seq(
+      // Breaking changes
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.jsenv.phantomjs.PhantomJSEnv#AbstractPhantomRunner.codeCache"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.jsenv.phantomjs.PhantomJSEnv#AbstractPhantomRunner.org$" +
+          "scalajs$jsenv$phantomjs$PhantomJSEnv$AbstractPhantomRunner$_setter_$codeCache_=")
   )
 
   val JSEnvsTestKit = Seq(
@@ -20,7 +26,9 @@ object BinaryIncompatibilities {
 
       // Source compatible, not a problem.
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.jsenv.test.TimeoutTests.timeoutSingleArgTest")
+          "org.scalajs.jsenv.test.TimeoutTests.timeoutSingleArgTest"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.jsenv.test.BasicJSEnvTests.allowScriptTags")
   )
 
   val SbtPlugin = Seq(
