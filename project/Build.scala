@@ -518,6 +518,7 @@ object Build {
               "org.scala-lang" % "scala-reflect" % scalaVersion.value,
               "com.novocode" % "junit-interface" % "0.9" % "test"
           ),
+          testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
           testOptions += Tests.Setup { () =>
             val testOutDir = (streams.value.cacheDirectory / "scalajs-compiler-test")
             IO.createDirectory(testOutDir)

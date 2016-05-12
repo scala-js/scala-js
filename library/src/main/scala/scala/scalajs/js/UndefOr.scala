@@ -21,7 +21,6 @@ import scala.scalajs.js.|.Evidence
  *  By extension, this type is also suited to typing optional fields in native
  *  JS types, i.e., fields that may not exist on the object.
  */
-@scala.scalajs.js.annotation.RawJSType // Don't do this at home!
 sealed trait UndefOr[+A]
 
 sealed abstract class UndefOrLowPrioImplicits {
