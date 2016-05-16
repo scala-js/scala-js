@@ -975,11 +975,40 @@ class PrintersTest {
 
   @Test def printPropertyDef(): Unit = {
     assertPrintEquals(
-        """<property: "prop">""",
+        """
+          |get "prop"(): any = {
+          |  5
+          |}
+        """,
         PropertyDef(StringLiteral("prop"),
             i(5),
             ParamDef("x", AnyType, mutable = false, rest = false),
             EmptyTree))
+
+    assertPrintEquals(
+        """
+          |set "prop"(x: any) {
+          |  7
+          |}
+        """,
+        PropertyDef(StringLiteral("prop"),
+            EmptyTree,
+            ParamDef("x", AnyType, mutable = false, rest = false),
+            i(7)))
+
+    assertPrintEquals(
+        """
+          |get "prop"(): any = {
+          |  5
+          |}
+          |set "prop"(x: any) {
+          |  7
+          |}
+        """,
+        PropertyDef(StringLiteral("prop"),
+            i(5),
+            ParamDef("x", AnyType, mutable = false, rest = false),
+            i(7)))
   }
 
   @Test def printConstructorExportDef(): Unit = {

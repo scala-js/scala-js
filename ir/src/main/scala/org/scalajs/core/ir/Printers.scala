@@ -809,11 +809,23 @@ object Printers {
           else
             printBlock(body)
 
-        case PropertyDef(name, _, _, _) =>
-          // TODO
-          print("<property: ")
-          print(name)
-          print('>')
+        case PropertyDef(name, getterBody, setterArg, setterBody) =>
+          if (getterBody != EmptyTree) {
+            print("get ")
+            print(name)
+            printSig(Nil, AnyType)
+            printBlock(getterBody)
+
+            if (setterBody != EmptyTree)
+              println()
+          }
+
+          if (setterBody != EmptyTree) {
+            print("set ")
+            print(name)
+            printSig(setterArg :: Nil, NoType)
+            printBlock(setterBody)
+          }
 
         case ConstructorExportDef(fullName, args, body) =>
           print("export \"")
