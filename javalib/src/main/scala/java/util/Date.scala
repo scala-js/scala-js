@@ -71,7 +71,7 @@ class Date private (private val date: js.Date) extends Object
   def getTime(): Long = date.getTime().toLong
 
   @Deprecated
-  def getTimeZoneOffset(): Int = date.getTimezoneOffset()
+  def getTimezoneOffset(): Int = date.getTimezoneOffset()
 
   @Deprecated
   def getYear(): Int = date.getFullYear() - 1900
