@@ -82,4 +82,9 @@ class DateTest {
     testYear(1920)
     testYear(2030)
   }
+
+  // #2392
+  @Test def getTimezoneOffset(): Unit = {
+    new Date().getTimezoneOffset // Test that it links.
+  }
 }
