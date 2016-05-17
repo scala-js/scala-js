@@ -25,6 +25,8 @@ class SimpleFormatterTest {
     val f = new SimpleFormatter()
     val r = new LogRecord(Level.INFO, "message")
     r.setLoggerName("logger")
+    // The JVM has a different logic for formatting though the javadocs
+    // indicate that the property above should be used
     if (!Platform.executingInJVM) {
       assertEquals("logger - message", f.format(r))
     }
