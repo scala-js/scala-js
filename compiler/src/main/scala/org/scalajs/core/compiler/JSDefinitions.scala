@@ -41,6 +41,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSGlobalScopeClass = getRequiredClass("scala.scalajs.js.GlobalScope")
 
     lazy val UndefOrClass = getRequiredClass("scala.scalajs.js.UndefOr")
+    lazy val UnionClass = getRequiredClass("scala.scalajs.js.$bar")
 
     lazy val JSArrayClass = getRequiredClass("scala.scalajs.js.Array")
       lazy val JSArray_apply  = getMemberMethod(JSArrayClass, newTermName("apply"))

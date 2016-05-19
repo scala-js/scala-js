@@ -17,7 +17,6 @@ import scala.language.implicitConversions
  *  interoperability scenarios. This type provides a (partial) encoding of
  *  union types using implicit evidences.
  */
-@scala.scalajs.js.annotation.RawJSType // Don't do this at home!
 sealed trait |[A, B] // scalastyle:ignore
 
 object | { // scalastyle:ignore

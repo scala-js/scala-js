@@ -136,220 +136,229 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     /** DefDefs in class templates that export methods to JavaScript */
     private val exporters = mutable.Map.empty[Symbol, mutable.ListBuffer[Tree]]
 
-    override def transform(tree: Tree): Tree = postTransform { tree match {
-      // Nothing is allowed in native JS classes and traits
-      case idef: ImplDef if enclosingOwner is OwnerKind.JSNativeClass =>
-        reporter.error(idef.pos, "Native JS traits and classes " +
-            "may not have inner traits, classes or objects")
-        super.transform(tree)
+    override def transform(tree: Tree): Tree = {
+      checkInternalAnnotations(tree)
 
-      // Handle js.Anys
-      case idef: ImplDef if isJSAny(idef) =>
-        transformJSAny(idef)
+      val preTransformedTree = tree match {
+        // Nothing is allowed in native JS classes and traits
+        case idef: ImplDef if enclosingOwner is OwnerKind.JSNativeClass =>
+          reporter.error(idef.pos, "Native JS traits and classes " +
+              "may not have inner traits, classes or objects")
+          super.transform(tree)
 
-      /* In native JS objects, only js.Any stuff is allowed. However, synthetic
-       * companion objects need to be allowed as they get generated, when a
-       * native class inside a native JS object has default arguments in its
-       * constructor (see #1891).
-       */
-      case modDef: ModuleDef if (enclosingOwner is OwnerKind.JSNativeMod) &&
-          modDef.symbol.isSynthetic =>
-        super.transform(tree)
+        // Handle js.Anys
+        case idef: ImplDef if isJSAny(idef) =>
+          transformJSAny(idef)
 
-      // In native JS objects, only js.Any stuff is allowed
-      case idef: ImplDef if enclosingOwner is OwnerKind.JSNativeMod =>
-        reporter.error(idef.pos, "Native JS objects cannot contain inner " +
-            "Scala traits, classes or objects (i.e., not extending js.Any)")
-        super.transform(tree)
+        /* In native JS objects, only js.Any stuff is allowed. However, synthetic
+         * companion objects need to be allowed as they get generated, when a
+         * native class inside a native JS object has default arguments in its
+         * constructor (see #1891).
+         */
+        case modDef: ModuleDef if (enclosingOwner is OwnerKind.JSNativeMod) &&
+            modDef.symbol.isSynthetic =>
+          super.transform(tree)
 
-      // @ScalaJSDefined is only valid on a js.Any
-      case idef: ImplDef if idef.symbol.hasAnnotation(ScalaJSDefinedAnnotation) =>
-        reporter.error(idef.pos,
-            "@ScalaJSDefined is only allowed on classes extending js.Any")
-        super.transform(tree)
+        // In native JS objects, only js.Any stuff is allowed
+        case idef: ImplDef if enclosingOwner is OwnerKind.JSNativeMod =>
+          reporter.error(idef.pos, "Native JS objects cannot contain inner " +
+              "Scala traits, classes or objects (i.e., not extending js.Any)")
+          super.transform(tree)
 
-      // Catch the definition of scala.Enumeration itself
-      case cldef: ClassDef if cldef.symbol == ScalaEnumClass =>
-        enterOwner(OwnerKind.EnumImpl) { super.transform(cldef) }
+        // @ScalaJSDefined is only valid on a js.Any
+        case idef: ImplDef if idef.symbol.hasAnnotation(ScalaJSDefinedAnnotation) =>
+          reporter.error(idef.pos,
+              "@ScalaJSDefined is only allowed on classes extending js.Any")
+          super.transform(tree)
 
-      // Catch Scala Enumerations to transform calls to scala.Enumeration.Value
-      case idef: ImplDef if isScalaEnum(idef) =>
-        val kind =
-          if (idef.isInstanceOf[ModuleDef]) OwnerKind.EnumMod
-          else OwnerKind.EnumClass
-        enterOwner(kind) { super.transform(idef) }
+        // Catch the definition of scala.Enumeration itself
+        case cldef: ClassDef if cldef.symbol == ScalaEnumClass =>
+          enterOwner(OwnerKind.EnumImpl) { super.transform(cldef) }
 
-      // Catch (Scala) ClassDefs to forbid js.Anys
-      case cldef: ClassDef =>
-        val sym = cldef.symbol
+        // Catch Scala Enumerations to transform calls to scala.Enumeration.Value
+        case idef: ImplDef if isScalaEnum(idef) =>
+          val kind =
+            if (idef.isInstanceOf[ModuleDef]) OwnerKind.EnumMod
+            else OwnerKind.EnumClass
+          enterOwner(kind) { super.transform(idef) }
 
-        if (sym.hasAnnotation(JSNativeAnnotation)) {
-          reporter.error(cldef.pos, "Traits and classes not extending js.Any " +
-              "may not have a @js.native annotation")
-        }
+        // Catch (Scala) ClassDefs to forbid js.Anys
+        case cldef: ClassDef =>
+          val sym = cldef.symbol
 
-        if (shouldPrepareExports && sym.isTrait) {
-          // Check that interface/trait is not exported
-          for {
-            exp <- exportsOf(sym)
-            if !exp.ignoreInvalid
-          } reporter.error(exp.pos, "You may not export a trait")
-        }
-
-        enterOwner(OwnerKind.NonEnumScalaClass) { super.transform(cldef) }
-
-      // Module export sanity check (export generated in JSCode phase)
-      case modDef: ModuleDef =>
-        val sym = modDef.symbol
-
-        if (sym.hasAnnotation(JSNativeAnnotation)) {
-          reporter.error(modDef.pos, "Objects not extending js.Any may not " +
-              "have a @js.native annotation")
-        }
-
-        if (shouldPrepareExports)
-          registerModuleExports(sym.moduleClass)
-
-        enterOwner(OwnerKind.NonEnumScalaMod) { super.transform(modDef) }
-
-      // ValOrDefDef's that are local to a block must not be transformed
-      case vddef: ValOrDefDef if vddef.symbol.isLocalToBlock =>
-        super.transform(tree)
-
-      // Catch ValDef in js.Any
-      case vdef: ValDef if enclosingOwner is OwnerKind.RawJSType =>
-        transformValOrDefDefInRawJSType(vdef)
-
-      // Catch DefDef in js.Any
-      case ddef: DefDef if enclosingOwner is OwnerKind.RawJSType =>
-        transformValOrDefDefInRawJSType(fixPublicBeforeTyper(ddef))
-
-      // Exporter generation
-      case ddef: DefDef =>
-        if (shouldPrepareExports) {
-          // Generate exporters for this ddef if required
-          exporters.getOrElseUpdate(ddef.symbol.owner,
-              mutable.ListBuffer.empty) ++= genExportMember(ddef)
-        }
-        super.transform(tree)
-
-      // Catch ValDefs in enumerations with simple calls to Value
-      case ValDef(mods, name, tpt, ScalaEnumValue.NoName(optPar))
-          if anyEnclosingOwner is OwnerKind.Enum =>
-        val nrhs = ScalaEnumValName(tree.symbol.owner, tree.symbol, optPar)
-        treeCopy.ValDef(tree, mods, name, transform(tpt), nrhs)
-
-      // Catch Select on Enumeration.Value we couldn't transform but need to
-      // we ignore the implementation of scala.Enumeration itself
-      case ScalaEnumValue.NoName(_) if noEnclosingOwner is OwnerKind.EnumImpl =>
-        reporter.warning(tree.pos,
-            """Couldn't transform call to Enumeration.Value.
-              |The resulting program is unlikely to function properly as this
-              |operation requires reflection.""".stripMargin)
-        super.transform(tree)
-
-      case ScalaEnumValue.NullName() if noEnclosingOwner is OwnerKind.EnumImpl =>
-        reporter.warning(tree.pos,
-            """Passing null as name to Enumeration.Value
-              |requires reflection at runtime. The resulting
-              |program is unlikely to function properly.""".stripMargin)
-        super.transform(tree)
-
-      case ScalaEnumVal.NoName(_) if noEnclosingOwner is OwnerKind.EnumImpl =>
-        reporter.warning(tree.pos,
-            """Calls to the non-string constructors of Enumeration.Val
-              |require reflection at runtime. The resulting
-              |program is unlikely to function properly.""".stripMargin)
-        super.transform(tree)
-
-      case ScalaEnumVal.NullName() if noEnclosingOwner is OwnerKind.EnumImpl =>
-        reporter.warning(tree.pos,
-            """Passing null as name to a constructor of Enumeration.Val
-              |requires reflection at runtime. The resulting
-              |program is unlikely to function properly.""".stripMargin)
-        super.transform(tree)
-
-      // Rewrite js.constructorOf[T] into runtime.constructorOf(classOf[T])
-      case TypeApply(ctorOfTree, List(tpeArg))
-          if ctorOfTree.symbol == JSPackage_constructorOf =>
-        genConstructorOf(tree, tpeArg)
-
-      /* Rewrite js.ConstructorTag.materialize[T] into
-       * runtime.newConstructorTag[T](runtime.constructorOf(classOf[T]))
-       */
-      case TypeApply(ctorOfTree, List(tpeArg))
-          if ctorOfTree.symbol == JSConstructorTag_materialize =>
-        val ctorOf = genConstructorOf(tree, tpeArg)
-        typer.typed {
-          atPos(tree.pos) {
-            gen.mkMethodCall(Runtime_newConstructorTag,
-                List(tpeArg.tpe), List(ctorOf))
+          if (sym.hasAnnotation(JSNativeAnnotation)) {
+            reporter.error(cldef.pos, "Traits and classes not extending js.Any " +
+                "may not have a @js.native annotation")
           }
-        }
 
-      /* Catch calls to Predef.classOf[T]. These should NEVER reach this phase
-       * but unfortunately do. In normal cases, the typer phase replaces these
-       * calls by a literal constant of the given type. However, when we compile
-       * the scala library itself and Predef.scala is in the sources, this does
-       * not happen.
-       *
-       * The trees reach this phase under the form:
-       *
-       *   scala.this.Predef.classOf[T]
-       *
-       * or, as of Scala 2.12.0-M3, as:
-       *
-       *   scala.Predef.classOf[T]
-       *
-       * or so it seems, at least.
-       *
-       * If we encounter such a tree, depending on the plugin options, we fail
-       * here or silently fix those calls.
-       */
-      case TypeApply(classOfTree @ Select(predef, nme.classOf), List(tpeArg))
-          if predef.symbol == PredefModule =>
-        if (scalaJSOpts.fixClassOf) {
-          // Replace call by literal constant containing type
-          if (typer.checkClassType(tpeArg)) {
-            typer.typed { Literal(Constant(tpeArg.tpe.dealias.widen)) }
+          if (sym == UndefOrClass || sym == UnionClass)
+            sym.addAnnotation(RawJSTypeAnnot)
+
+          if (shouldPrepareExports && sym.isTrait) {
+            // Check that interface/trait is not exported
+            for {
+              exp <- exportsOf(sym)
+              if !exp.ignoreInvalid
+            } reporter.error(exp.pos, "You may not export a trait")
+          }
+
+          enterOwner(OwnerKind.NonEnumScalaClass) { super.transform(cldef) }
+
+        // Module export sanity check (export generated in JSCode phase)
+        case modDef: ModuleDef =>
+          val sym = modDef.symbol
+
+          if (sym.hasAnnotation(JSNativeAnnotation)) {
+            reporter.error(modDef.pos, "Objects not extending js.Any may not " +
+                "have a @js.native annotation")
+          }
+
+          if (shouldPrepareExports)
+            registerModuleExports(sym.moduleClass)
+
+          enterOwner(OwnerKind.NonEnumScalaMod) { super.transform(modDef) }
+
+        // ValOrDefDef's that are local to a block must not be transformed
+        case vddef: ValOrDefDef if vddef.symbol.isLocalToBlock =>
+          super.transform(tree)
+
+        // Catch ValDef in js.Any
+        case vdef: ValDef if enclosingOwner is OwnerKind.RawJSType =>
+          transformValOrDefDefInRawJSType(vdef)
+
+        // Catch DefDef in js.Any
+        case ddef: DefDef if enclosingOwner is OwnerKind.RawJSType =>
+          transformValOrDefDefInRawJSType(fixPublicBeforeTyper(ddef))
+
+        // Exporter generation
+        case ddef: DefDef =>
+          if (shouldPrepareExports) {
+            // Generate exporters for this ddef if required
+            exporters.getOrElseUpdate(ddef.symbol.owner,
+                mutable.ListBuffer.empty) ++= genExportMember(ddef)
+          }
+          super.transform(tree)
+
+        // Catch ValDefs in enumerations with simple calls to Value
+        case ValDef(mods, name, tpt, ScalaEnumValue.NoName(optPar))
+            if anyEnclosingOwner is OwnerKind.Enum =>
+          val nrhs = ScalaEnumValName(tree.symbol.owner, tree.symbol, optPar)
+          treeCopy.ValDef(tree, mods, name, transform(tpt), nrhs)
+
+        // Catch Select on Enumeration.Value we couldn't transform but need to
+        // we ignore the implementation of scala.Enumeration itself
+        case ScalaEnumValue.NoName(_) if noEnclosingOwner is OwnerKind.EnumImpl =>
+          reporter.warning(tree.pos,
+              """Couldn't transform call to Enumeration.Value.
+                |The resulting program is unlikely to function properly as this
+                |operation requires reflection.""".stripMargin)
+          super.transform(tree)
+
+        case ScalaEnumValue.NullName() if noEnclosingOwner is OwnerKind.EnumImpl =>
+          reporter.warning(tree.pos,
+              """Passing null as name to Enumeration.Value
+                |requires reflection at runtime. The resulting
+                |program is unlikely to function properly.""".stripMargin)
+          super.transform(tree)
+
+        case ScalaEnumVal.NoName(_) if noEnclosingOwner is OwnerKind.EnumImpl =>
+          reporter.warning(tree.pos,
+              """Calls to the non-string constructors of Enumeration.Val
+                |require reflection at runtime. The resulting
+                |program is unlikely to function properly.""".stripMargin)
+          super.transform(tree)
+
+        case ScalaEnumVal.NullName() if noEnclosingOwner is OwnerKind.EnumImpl =>
+          reporter.warning(tree.pos,
+              """Passing null as name to a constructor of Enumeration.Val
+                |requires reflection at runtime. The resulting
+                |program is unlikely to function properly.""".stripMargin)
+          super.transform(tree)
+
+        // Rewrite js.constructorOf[T] into runtime.constructorOf(classOf[T])
+        case TypeApply(ctorOfTree, List(tpeArg))
+            if ctorOfTree.symbol == JSPackage_constructorOf =>
+          genConstructorOf(tree, tpeArg)
+
+        /* Rewrite js.ConstructorTag.materialize[T] into
+         * runtime.newConstructorTag[T](runtime.constructorOf(classOf[T]))
+         */
+        case TypeApply(ctorOfTree, List(tpeArg))
+            if ctorOfTree.symbol == JSConstructorTag_materialize =>
+          val ctorOf = genConstructorOf(tree, tpeArg)
+          typer.typed {
+            atPos(tree.pos) {
+              gen.mkMethodCall(Runtime_newConstructorTag,
+                  List(tpeArg.tpe), List(ctorOf))
+            }
+          }
+
+        /* Catch calls to Predef.classOf[T]. These should NEVER reach this phase
+         * but unfortunately do. In normal cases, the typer phase replaces these
+         * calls by a literal constant of the given type. However, when we compile
+         * the scala library itself and Predef.scala is in the sources, this does
+         * not happen.
+         *
+         * The trees reach this phase under the form:
+         *
+         *   scala.this.Predef.classOf[T]
+         *
+         * or, as of Scala 2.12.0-M3, as:
+         *
+         *   scala.Predef.classOf[T]
+         *
+         * or so it seems, at least.
+         *
+         * If we encounter such a tree, depending on the plugin options, we fail
+         * here or silently fix those calls.
+         */
+        case TypeApply(classOfTree @ Select(predef, nme.classOf), List(tpeArg))
+            if predef.symbol == PredefModule =>
+          if (scalaJSOpts.fixClassOf) {
+            // Replace call by literal constant containing type
+            if (typer.checkClassType(tpeArg)) {
+              typer.typed { Literal(Constant(tpeArg.tpe.dealias.widen)) }
+            } else {
+              reporter.error(tpeArg.pos, s"Type ${tpeArg} is not a class type")
+              EmptyTree
+            }
           } else {
-            reporter.error(tpeArg.pos, s"Type ${tpeArg} is not a class type")
+            reporter.error(classOfTree.pos,
+                """This classOf resulted in an unresolved classOf in the jscode
+                  |phase. This is most likely a bug in the Scala compiler. ScalaJS
+                  |is probably able to work around this bug. Enable the workaround
+                  |by passing the fixClassOf option to the plugin.""".stripMargin)
             EmptyTree
           }
-        } else {
-          reporter.error(classOfTree.pos,
-              """This classOf resulted in an unresolved classOf in the jscode
-                |phase. This is most likely a bug in the Scala compiler. ScalaJS
-                |is probably able to work around this bug. Enable the workaround
-                |by passing the fixClassOf option to the plugin.""".stripMargin)
-          EmptyTree
-        }
 
-      // Fix for issue with calls to js.Dynamic.x()
-      // Rewrite (obj: js.Dynamic).x(...) to obj.applyDynamic("x")(...)
-      case Select(Select(trg, jsnme.x), nme.apply) if isJSDynamic(trg) =>
-        val newTree = atPos(tree.pos) {
-          Apply(
-              Select(super.transform(trg), newTermName("applyDynamic")),
-              List(Literal(Constant("x")))
-          )
-        }
-        typer.typed(newTree, Mode.FUNmode, tree.tpe)
+        // Fix for issue with calls to js.Dynamic.x()
+        // Rewrite (obj: js.Dynamic).x(...) to obj.applyDynamic("x")(...)
+        case Select(Select(trg, jsnme.x), nme.apply) if isJSDynamic(trg) =>
+          val newTree = atPos(tree.pos) {
+            Apply(
+                Select(super.transform(trg), newTermName("applyDynamic")),
+                List(Literal(Constant("x")))
+            )
+          }
+          typer.typed(newTree, Mode.FUNmode, tree.tpe)
 
 
-      // Fix for issue with calls to js.Dynamic.x()
-      // Rewrite (obj: js.Dynamic).x to obj.selectDynamic("x")
-      case Select(trg, jsnme.x) if isJSDynamic(trg) =>
-        val newTree = atPos(tree.pos) {
-          Apply(
-              Select(super.transform(trg), newTermName("selectDynamic")),
-              List(Literal(Constant("x")))
-          )
-        }
-        typer.typed(newTree, Mode.FUNmode, tree.tpe)
+        // Fix for issue with calls to js.Dynamic.x()
+        // Rewrite (obj: js.Dynamic).x to obj.selectDynamic("x")
+        case Select(trg, jsnme.x) if isJSDynamic(trg) =>
+          val newTree = atPos(tree.pos) {
+            Apply(
+                Select(super.transform(trg), newTermName("selectDynamic")),
+                List(Literal(Constant("x")))
+            )
+          }
+          typer.typed(newTree, Mode.FUNmode, tree.tpe)
 
-      case _ => super.transform(tree)
-    } }
+        case _ => super.transform(tree)
+      }
+
+      postTransform(preTransformedTree)
+    }
 
     private def genConstructorOf(tree: Tree, tpeArg: Tree): Tree = {
       val classValue = try {
@@ -1025,6 +1034,38 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           ddef.vparamss, ddef.tpt, ddef.rhs)
     } else {
       ddef
+    }
+  }
+
+  private def checkInternalAnnotations(tree: Tree): Unit = {
+    /* The compiler internal annotations are categorized into two groups:
+     * 1) postTyper: annotations that are inserted in any phase
+     *    after the typer.
+     * 2) preTyper: annotations that are inserted before typer
+     *    (such as @WasPublicBeforeTyper), as the type is required to find them,
+     *    the check must be after typer. We use a heuristic to find the
+     *    instances of these annotations based on the existence of their
+     *    position in the source file. Unfortunately it is still possible for
+     *    macros to generate such annotations trees without positions.
+     */
+
+    def isPreTyper(annotation: AnnotationInfo) =
+      annotation.symbol == WasPublicBeforeTyperClass && annotation.pos.isDefined
+
+    def isPostTyper(annotation: AnnotationInfo) = {
+      annotation.symbol == ExposedJSMemberAnnot ||
+      annotation.symbol == JSFullNameAnnotation ||
+      annotation.symbol == RawJSTypeAnnot ||
+      annotation.symbol == SJSDefinedAnonymousClassAnnotation
+    }
+
+    if (tree.isInstanceOf[MemberDef]) {
+      for (annotation <- tree.symbol.annotations) {
+        if (isPreTyper(annotation) || isPostTyper(annotation)) {
+          reporter.error(annotation.pos, annotation +
+              " is for compiler internal use only. Do not use it yourself.")
+        }
+      }
     }
   }
 }
