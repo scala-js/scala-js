@@ -160,6 +160,8 @@ class BigDecimalConvertTest {
 
     // Code from issue #2314
     assertFalse(scala.math.BigDecimal("9.223372E+285625056").isValidLong)
+    assertFalse(scala.math.BigDecimal(10, scale = Int.MinValue).isValidLong)
+    assertFalse(scala.math.BigDecimal(10, scale = Int.MaxValue).isValidLong)
   }
 
   @Test def testScaleByPowerOfTen1(): Unit = {
