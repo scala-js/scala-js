@@ -24,7 +24,7 @@ class LogRecord protected[logging] (private[this] var level: Level,
 
   def getLoggerName():String = loggerName.orNull
 
-  def setLoggerName(loggerName: String):Unit =
+  def setLoggerName(loggerName: String): Unit =
     this.loggerName = Option(loggerName)
 
   // Not implemented, no locale in Scala.js
@@ -39,45 +39,45 @@ class LogRecord protected[logging] (private[this] var level: Level,
   // Message is not localizable, no-op
   def setResourceBundleName(name: String): Unit = {}
 
-  def getLevel():Level = level
+  def getLevel(): Level = level
 
-  def setLevel(level: Level):Unit = this.level = level
+  def setLevel(level: Level): Unit = this.level = level
 
-  def getSequenceNumber():Long = sequenceNumber
+  def getSequenceNumber(): Long = sequenceNumber
 
-  def setSequenceNumber(seq: Long):Unit = sequenceNumber = seq
+  def setSequenceNumber(seq: Long): Unit = sequenceNumber = seq
 
-  def getSourceClassName():String = sourceClassName.orNull
+  def getSourceClassName(): String = sourceClassName.orNull
 
-  def setSourceClassName(sourceClassName: String):Unit =
+  def setSourceClassName(sourceClassName: String): Unit =
     this.sourceClassName = Option(sourceClassName)
 
-  def getSourceMethodName():String = sourceMethodName.orNull
+  def getSourceMethodName(): String = sourceMethodName.orNull
 
-  def setSourceMethodName(sourceClassName: String):Unit =
+  def setSourceMethodName(sourceClassName: String): Unit =
     this.sourceMethodName = Option(sourceClassName)
 
-  def getMessage():String = msg
+  def getMessage(): String = msg
 
-  def setMessage(message: String):Unit = msg = message
+  def setMessage(message: String): Unit = msg = message
 
-  def getParameters():Array[AnyRef] =
-    if (parameters.isEmpty) null
-    else parameters.toArray
+  def getParameters(): Array[AnyRef] =
+    if (params.isEmpty) null
+    else params.toArray
 
-  def setParameters(parameters: Array[AnyRef]):Unit =
-    if (parameters == null) this.parameters = Nil
-    else this.parameters = parameters.toList
+  def setParameters(parameters: Array[AnyRef]): Unit =
+    if (parameters == null) this.params = Nil
+    else this.params = parameters.toList
 
-  def getThreadID():Int = threadId.toInt
+  def getThreadID(): Int = threadId.toInt
 
-  def setThreadID(threadID: Int):Unit = this.threadId = threadID
+  def setThreadID(threadID: Int): Unit = this.threadId = threadID
 
-  def getMillis():Long = millis
+  def getMillis(): Long = millis
 
-  def setMillis(millis: Long):Unit = this.millis = millis
+  def setMillis(millis: Long): Unit = this.millis = millis
 
-  def getThrown():Throwable = thrown.orNull
+  def getThrown(): Throwable = thrown.orNull
 
-  def setThrown(thrown: Throwable):Unit = this.thrown = Option(thrown)
+  def setThrown(thrown: Throwable): Unit = this.thrown = Option(thrown)
 }

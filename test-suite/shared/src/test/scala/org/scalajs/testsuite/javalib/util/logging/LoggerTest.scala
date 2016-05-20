@@ -166,4 +166,184 @@ class LoggerTest {
     logger.log(lrFine)
     assertEquals(None, testHandler.lastRecord)
   }
+
+  @Test def test_log_variants(): Unit = {
+    val logger = Logger.getLogger("TestLogger11")
+    val testHandler = new TestHandler
+    logger.setLevel(Level.ALL)
+    logger.addHandler(testHandler)
+    logger.setUseParentHandlers(false)
+
+    logger.log(Level.FINE, "Log")
+    assertEquals(Some(Level.FINE), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("Log"), testHandler.lastRecord.map(_.getMessage))
+
+    logger.log(Level.FINE, "Log", "param")
+    assertEquals(Some(Level.FINE), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("Log"), testHandler.lastRecord.map(_.getMessage))
+    assertArrayEquals(Array[AnyRef]("param"),
+      testHandler.lastRecord.map(_.getParameters).getOrElse(Array.empty))
+
+    logger.log(Level.FINE, "Log", Array[AnyRef]("param1", "param2"))
+    assertEquals(Some(Level.FINE), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("Log"), testHandler.lastRecord.map(_.getMessage))
+    assertArrayEquals(Array[AnyRef]("param1", "param2"),
+      testHandler.lastRecord.map(_.getParameters).getOrElse(Array.empty))
+
+    logger.log(Level.FINE, "Log", new RuntimeException())
+    assertEquals(Some(Level.FINE), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("Log"), testHandler.lastRecord.map(_.getMessage))
+    assertTrue(testHandler.lastRecord.map(_.getThrown).isDefined)
+  }
+
+  @Test def test_logp_variants(): Unit = {
+    val logger = Logger.getLogger("TestLogger11")
+    val testHandler = new TestHandler
+    logger.setLevel(Level.ALL)
+    logger.addHandler(testHandler)
+    logger.setUseParentHandlers(false)
+
+    logger.logp(Level.FINE, "cls", "method", "Log")
+    assertEquals(Some(Level.FINE), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("Log"), testHandler.lastRecord.map(_.getMessage))
+    assertEquals(Some("cls"), testHandler.lastRecord.map(_.getSourceClassName))
+    assertEquals(Some("method"),
+      testHandler.lastRecord.map(_.getSourceMethodName))
+
+    logger.logp(Level.FINE, "cls", "method", "Log", "param")
+    assertEquals(Some(Level.FINE), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("Log"), testHandler.lastRecord.map(_.getMessage))
+    assertArrayEquals(Array[AnyRef]("param"),
+      testHandler.lastRecord.map(_.getParameters).getOrElse(Array.empty))
+    assertEquals(Some("cls"), testHandler.lastRecord.map(_.getSourceClassName))
+    assertEquals(Some("method"),
+      testHandler.lastRecord.map(_.getSourceMethodName))
+
+    logger.logp(Level.FINE, "cls", "method", "Log",
+      Array[AnyRef]("param1", "param2"))
+    assertEquals(Some(Level.FINE), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("Log"), testHandler.lastRecord.map(_.getMessage))
+    assertArrayEquals(Array[AnyRef]("param1", "param2"),
+      testHandler.lastRecord.map(_.getParameters).getOrElse(Array.empty))
+    assertEquals(Some("cls"), testHandler.lastRecord.map(_.getSourceClassName))
+    assertEquals(Some("method"),
+      testHandler.lastRecord.map(_.getSourceMethodName))
+
+    logger.logp(Level.FINE, "cls", "method", "Log", new RuntimeException())
+    assertEquals(Some(Level.FINE), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("Log"), testHandler.lastRecord.map(_.getMessage))
+    assertTrue(testHandler.lastRecord.map(_.getThrown).isDefined)
+    assertEquals(Some("cls"), testHandler.lastRecord.map(_.getSourceClassName))
+    assertEquals(Some("method"),
+      testHandler.lastRecord.map(_.getSourceMethodName))
+  }
+
+  @Test def test_entering_variants(): Unit = {
+    val logger = Logger.getLogger("TestLogger11")
+    val testHandler = new TestHandler
+    logger.setLevel(Level.ALL)
+    logger.addHandler(testHandler)
+    logger.setUseParentHandlers(false)
+
+    logger.entering("cls", "method")
+    assertEquals(Some(Level.FINER), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("ENTRY"), testHandler.lastRecord.map(_.getMessage))
+    assertEquals(Some("cls"), testHandler.lastRecord.map(_.getSourceClassName))
+    assertEquals(Some("method"),
+      testHandler.lastRecord.map(_.getSourceMethodName))
+
+    logger.entering("cls", "method", "param")
+    assertEquals(Some(Level.FINER), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("ENTRY {0}"), testHandler.lastRecord.map(_.getMessage))
+    assertEquals(Some("cls"), testHandler.lastRecord.map(_.getSourceClassName))
+    assertEquals(Some("method"),
+      testHandler.lastRecord.map(_.getSourceMethodName))
+    assertArrayEquals(Array[AnyRef]("param"),
+      testHandler.lastRecord.map(_.getParameters).getOrElse(Array.empty))
+
+    logger.entering("cls", "method", Array[AnyRef]("param1", "param2"))
+    assertEquals(Some(Level.FINER), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("ENTRY {0} {1}"), testHandler.lastRecord.map(_.getMessage))
+    assertEquals(Some("cls"), testHandler.lastRecord.map(_.getSourceClassName))
+    assertEquals(Some("method"),
+      testHandler.lastRecord.map(_.getSourceMethodName))
+    assertArrayEquals(Array[AnyRef]("param1", "param2"),
+      testHandler.lastRecord.map(_.getParameters).getOrElse(Array.empty))
+  }
+
+  @Test def test_exiting_variants(): Unit = {
+    val logger = Logger.getLogger("TestLogger12")
+    val testHandler = new TestHandler
+    logger.setLevel(Level.ALL)
+    logger.addHandler(testHandler)
+    logger.setUseParentHandlers(false)
+
+    logger.exiting("cls", "method")
+    assertEquals(Some(Level.FINER), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("RETURN"), testHandler.lastRecord.map(_.getMessage))
+    assertEquals(Some("cls"), testHandler.lastRecord.map(_.getSourceClassName))
+    assertEquals(Some("method"),
+      testHandler.lastRecord.map(_.getSourceMethodName))
+
+    logger.exiting("cls", "method", "param")
+    assertEquals(Some(Level.FINER), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("RETURN {0}"), testHandler.lastRecord.map(_.getMessage))
+    assertEquals(Some("cls"), testHandler.lastRecord.map(_.getSourceClassName))
+    assertEquals(Some("method"),
+      testHandler.lastRecord.map(_.getSourceMethodName))
+    assertArrayEquals(Array[AnyRef]("param"),
+      testHandler.lastRecord.map(_.getParameters).getOrElse(Array.empty))
+  }
+
+  @Test def test_throwing(): Unit = {
+    val logger = Logger.getLogger("TestLogger13")
+    val testHandler = new TestHandler
+    logger.setLevel(Level.ALL)
+    logger.addHandler(testHandler)
+    logger.setUseParentHandlers(false)
+
+    logger.throwing("cls", "method", new RuntimeException)
+    assertEquals(Some(Level.FINER), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("THROW"), testHandler.lastRecord.map(_.getMessage))
+    assertEquals(Some("cls"), testHandler.lastRecord.map(_.getSourceClassName))
+    assertEquals(Some("method"),
+      testHandler.lastRecord.map(_.getSourceMethodName))
+    assertTrue(testHandler.lastRecord.map(_.getThrown).isDefined)
+  }
+
+  @Test def test_named_levels(): Unit = {
+    val logger = Logger.getLogger("TestLogger13")
+    val testHandler = new TestHandler
+    logger.setLevel(Level.ALL)
+    logger.addHandler(testHandler)
+    logger.setUseParentHandlers(false)
+
+    logger.severe("severe_msg")
+    assertEquals(Some(Level.SEVERE), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("severe_msg"), testHandler.lastRecord.map(_.getMessage))
+
+    logger.warning("warning_msg")
+    assertEquals(Some(Level.WARNING), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("warning_msg"), testHandler.lastRecord.map(_.getMessage))
+
+    logger.info("info_msg")
+    assertEquals(Some(Level.INFO), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("info_msg"), testHandler.lastRecord.map(_.getMessage))
+
+    logger.config("config_msg")
+    assertEquals(Some(Level.CONFIG), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("config_msg"), testHandler.lastRecord.map(_.getMessage))
+
+    logger.fine("fine_msg")
+    assertEquals(Some(Level.FINE), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("fine_msg"), testHandler.lastRecord.map(_.getMessage))
+
+    logger.finer("finer_msg")
+    assertEquals(Some(Level.FINER), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("finer_msg"), testHandler.lastRecord.map(_.getMessage))
+
+    logger.finest("finest_msg")
+    assertEquals(Some(Level.FINEST), testHandler.lastRecord.map(_.getLevel))
+    assertEquals(Some("finest_msg"), testHandler.lastRecord.map(_.getMessage))
+  }
 }
