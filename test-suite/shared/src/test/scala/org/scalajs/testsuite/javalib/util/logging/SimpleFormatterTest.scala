@@ -20,6 +20,22 @@ class SimpleFormatterTest {
     assertTrue(f.format(r).contains("logger"))
   }
 
+  @Test def test_format_with_params(): Unit = {
+    val f = new SimpleFormatter()
+    val msg = "message with params {0} {1}"
+    val r = new LogRecord(Level.INFO, msg)
+    assertTrue(f.format(r).contains(msg))
+
+    val r1 = new LogRecord(Level.INFO, msg)
+    r1.setParameters(Array("param1"))
+    assertTrue(f.format(r1).contains("message with params param1 {1}"))
+
+    val r2 = new LogRecord(Level.INFO, msg)
+    r2.setParameters(Array("param1", new java.lang.Integer(20)))
+    assertTrue(f.format(r2).contains("message with params param1 20"))
+
+  }
+
   @Test def test_format_property(): Unit = {
     System.setProperty("java.util.logging.SimpleFormatter.format", "%3$s - %5$s")
     val f = new SimpleFormatter()

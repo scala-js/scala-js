@@ -10,6 +10,13 @@ abstract class Formatter protected () {
 
   def formatMessage(record: LogRecord): String =
     // The Java spec uses java.text formatting not available in Scala.js
-    // Default to no formatting
-    record.getMessage
+    if (Option(record.getParameters).exists(_.nonEmpty)) {
+      // Simple text replacement
+      val msg = record.getMessage
+      record.getParameters.zipWithIndex.foldRight(msg) { case ((x, i), t) =>
+        t.replace(s"{$i}", x.toString)
+      }
+    } else {
+      record.getMessage
+    }
 }
