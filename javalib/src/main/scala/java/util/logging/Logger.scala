@@ -1,6 +1,7 @@
 package java.util.logging
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 object Logger {
   val GLOBAL_LOGGER_NAME: String =  "global"
@@ -10,37 +11,45 @@ object Logger {
 
   private val defaultLogLevel = Level.ALL
 
-  private val loggers: Map[String, Logger] = Map.empty
+  private val loggers: mutable.Map[String, Logger] = mutable.Map.empty
 
   // Root is not visible to the outside but gives defaults
   private[this] val rootLogger =
-    new Logger("root", None, Some(defaultLogLevel), false, None, None)
+    new Logger("", None, Some(defaultLogLevel), false, None)
 
   private[this] val globalLogger =
-    new Logger(GLOBAL_LOGGER_NAME, None, None, true, Some(rootLogger), None)
+    new Logger(GLOBAL_LOGGER_NAME, None, None, true, Some(rootLogger))
 
   def getGlobal():Logger = globalLogger
 
   def getLogger(name: String): Logger = {
     if (name == null)
       throw new NullPointerException("Logger name cannot be null")
-    loggers.getOrElse(name,
-      new Logger(name, None, None, true, Some(globalLogger), None))
+    loggers.getOrElseUpdate(name,
+      new Logger(name, None, None, true, Some(rootLogger)))
   }
 
-  def getLogger(name: String, resourceBundle: String): Logger = {
-    if (name == null)
-      throw new NullPointerException("Logger name cannot be null")
-    loggers.getOrElse(name,
-      new Logger(name, Some(resourceBundle), None, true, Some(globalLogger), None))
+  // Not implemented, no resource bundle in scala.js
+  //def getLogger(name: String, resourceBundle: String): Logger
+
+  protected def findParent(logger: Logger): Option[Logger] = {
+    def go(s: List[String]): Option[Logger] = s match {
+      case Nil                                    =>
+        None
+      case b if loggers.contains(b.mkString(".")) =>
+        loggers.get(b.mkString("."))
+      case b                                      =>
+        go(b.dropRight(1))
+    }
+    go(Option(logger.getName).getOrElse("").split("\\.").toList.dropRight(1))
   }
 
   def getAnonymousLogger():Logger =
     // No references to anonymous loggers are kept
     new Logger(null, None, None, true, Some(rootLogger))
 
-  def getAnonymousLogger(resourceBundle: String):Logger =
-    new Logger(null, Some(resourceBundle), None, true, Some(rootLogger))
+  // Not implemented, no resource bundle in scala.js
+  //def getAnonymousLogger(resourceBundle: String):Logger
 }
 
 class Logger private (protected val name: String,
@@ -77,8 +86,8 @@ class Logger private (protected val name: String,
   def getFilter(): Filter = filter.orNull
 
   def log(record: LogRecord): Unit = if (isLoggable(record.getLevel)) {
-    if (useParentsHandlers && parent.isDefined) {
-      parent.foreach(_.log(record))
+    if (useParentsHandlers) {
+      Logger.findParent(this).orElse(parent).foreach(_.log(record))
     }
     handlers.foreach(_.publish(record))
   }
@@ -211,7 +220,8 @@ class Logger private (protected val name: String,
 
   def getUseParentHandlers(): Boolean = useParentsHandlers
 
-  def getParent(): Logger = parent.orNull
+  def getParent(): Logger =
+    Logger.findParent(this).orElse(parent).orNull
 
   def setParent(parent: Logger): Unit = this.parent = Some(parent)
 }
