@@ -66,10 +66,10 @@ scala/io/SourceTest.scala
 scala/math/BigDecimalTest.scala
 scala/reflect/ClassTag.scala
 scala/tools/testing/AssertThrowsTest.scala
-scala/util/SortingTest.scala
 scala/util/matching/CharRegexTest.scala
 scala/util/matching/RegexTest.scala
 
 # Tests passed but are too slow (timeouts)
 scala/collection/immutable/RangeConsistencyTest.scala
 scala/collection/SetMapConsistencyTest.scala
+scala/util/SortingTest.scala

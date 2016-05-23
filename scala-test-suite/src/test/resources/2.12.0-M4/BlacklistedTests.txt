@@ -90,7 +90,6 @@ scala/reflect/ClassTagTest.scala
 scala/collection/immutable/RangeConsistencyTest.scala
 scala/collection/convert/MapWrapperTest.scala
 scala/math/BigDecimalTest.scala
-scala/util/SortingTest.scala
 scala/util/matching/CharRegexTest.scala
 scala/util/matching/RegexTest.scala
 
@@ -98,3 +97,6 @@ scala/util/matching/RegexTest.scala
 #   'set scalaJSOptimizerOptions in scalaTestSuite ~= (_.withDisableOptimizer(true))'
 #   and' 'set scalaJSUseRhino in Global := false'
 scala/collection/immutable/PagedSeqTest.scala
+
+# Tests passed but are too slow (timeouts)
+scala/util/SortingTest.scala

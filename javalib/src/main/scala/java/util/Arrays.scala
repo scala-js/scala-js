@@ -80,143 +80,92 @@ object Arrays {
   private def sortRangeImpl[@specialized T: ClassTag](
       a: Array[T], fromIndex: Int, toIndex: Int)(implicit ord: Ordering[T]): Unit = {
     checkIndicesForCopyOfRange(a.length, fromIndex, toIndex)
-    quickSort[T](a, fromIndex, toIndex)
+    stableMergeSort[T](a, fromIndex, toIndex)
   }
 
   @inline
   private def sortRangeAnyRefImpl(a: Array[AnyRef], fromIndex: Int, toIndex: Int)(
       implicit ord: Ordering[AnyRef]): Unit = {
     checkIndicesForCopyOfRange(a.length, fromIndex, toIndex)
-    quickSortAnyRef(a, fromIndex, toIndex)
+    stableMergeSortAnyRef(a, fromIndex, toIndex)
   }
 
   @inline
   private def sortImpl[@specialized T: ClassTag: Ordering](a: Array[T]): Unit =
-    quickSort[T](a, 0, a.length)
+    stableMergeSort[T](a, 0, a.length)
 
   @inline
   private def sortAnyRefImpl(a: Array[AnyRef])(implicit ord: Ordering[AnyRef]): Unit =
-    quickSortAnyRef(a, 0, a.length)
+    stableMergeSortAnyRef(a, 0, a.length)
 
-  // Implementation of sorting based on Scala 2.11.7 scala.util.Sorting
-  private final val qSortThreshold = 16
+  private final val inPlaceSortThreshold = 16
 
-  /** Sort array `a` with quicksort, using the Ordering on its elements.
-    * This algorithm sorts in place, so no additional memory is used aside from
-    * what might be required to box individual elements during comparison.
-    */
+  /** Sort array `a` with merge sort and insertion sort,
+   *  using the Ordering on its elements.
+   */
+  @inline
+  private def stableMergeSort[@specialized K: ClassTag](a: Array[K],
+      start: Int, end: Int)(implicit ord: Ordering[K]): Unit = {
+    if (end - start > inPlaceSortThreshold)
+      stableSplitMerge(a, new Array[K](a.length), start, end)
+    else
+      insertionSort(a, start, end)
+  }
+
   @noinline
-  private def quickSort[@specialized K](a: Array[K], i0: Int, iN: Int)(implicit ord: Ordering[K]): Unit = {
-    if (iN - i0 < qSortThreshold) {
-      insertionSort(a, i0, iN)
+  private def stableSplitMerge[@specialized K](a: Array[K], temp: Array[K],
+      start: Int, end: Int)(implicit ord: Ordering[K]): Unit = {
+    val length = end - start
+    if (length > inPlaceSortThreshold) {
+      val middle = start + (length / 2)
+      stableSplitMerge(a, temp, start, middle)
+      stableSplitMerge(a, temp, middle, end)
+      stableMerge(a, temp, start, middle, end)
+      System.arraycopy(temp, start, a, start, length)
     } else {
-      val iK = (i0 + iN) >>> 1    // Unsigned div by 2
-      // Find index of median of first, central, and last elements
-      var pL = {
-        if (ord.compare(a(i0), a(iN - 1)) <= 0) {
-          if (ord.compare(a(i0), a(iK)) >= 0) i0
-          else if (ord.compare(a(iN - 1), a(iK)) < 0) iN - 1
-          else iK
-        } else {
-          if (ord.compare(a(i0), a(iK)) < 0) i0
-          else if (ord.compare(a(iN - 1), a(iK)) <= 0) iN - 1
-          else iK
-        }
-      }
-      val pivot = a(pL)
-      // pL is the start of the pivot block; move it into the middle if needed
-      if (pL != iK) {
-        a(pL) = a(iK)
-        a(iK) = pivot
-        pL = iK
-      }
-      // Elements equal to the pivot will be in range pL until pR
-      var pR = pL + 1
-      // Items known to be less than pivot are below iA (range i0 until iA)
-      var iA = i0
-      // Items known to be greater than pivot are at or above iB (range iB until iN)
-      var iB = iN
-      // Scan through everything in the buffer before the pivot(s)
-      while (pL - iA > 0) {
-        val current = a(iA)
-        ord.compare(current, pivot) match {
-          case 0 =>
-            // Swap current out with pivot block
-            a(iA) = a(pL - 1)
-            a(pL - 1) = current
-            pL -= 1
-          case x if x < 0 =>
-            // Already in place.  Just update indicies.
-            iA += 1
-          case _ if iB > pR =>
-            // Wrong side.  There's room on the other side, so swap
-            a(iA) = a(iB - 1)
-            a(iB - 1) = current
-            iB -= 1
-          case _ =>
-            // Wrong side and there is no room.  Swap by rotating pivot block.
-            a(iA) = a(pL - 1)
-            a(pL - 1) = a(pR - 1)
-            a(pR - 1) = current
-            pL -= 1
-            pR -= 1
-            iB -= 1
-        }
-      }
-      // Get anything remaining in buffer after the pivot(s)
-      while (iB - pR > 0) {
-        val current = a(iB - 1)
-        ord.compare(current, pivot) match {
-          case 0 =>
-            // Swap current out with pivot block
-            a(iB - 1) = a(pR)
-            a(pR) = current
-            pR += 1
-          case x if x > 0 =>
-            // Already in place.  Just update indices.
-            iB -= 1
-          case _ =>
-            // Wrong side and we already know there is no room.  Swap by rotating pivot block.
-            a(iB - 1) = a(pR)
-            a(pR) = a(pL)
-            a(pL) = current
-            iA += 1
-            pL += 1
-            pR += 1
-        }
-      }
-      // Use tail recursion on large half (Sedgewick's method) so we don't blow
-      // up the stack if pivots are poorly chosen
-      if (iA - i0 < iN - iB) {
-        quickSort(a, i0, iA)  // True recursion
-        quickSort(a, iB, iN)  // Should be tail recursion
+      insertionSort(a, start, end)
+    }
+  }
+
+  @inline
+  private def stableMerge[@specialized K](a: Array[K], temp: Array[K],
+      start: Int, middle: Int, end: Int)(implicit ord: Ordering[K]): Unit = {
+    var outIndex = start
+    var leftInIndex = start
+    var rightInIndex = middle
+    while (outIndex < end) {
+      if (leftInIndex < middle &&
+          (rightInIndex >= end || ord.lteq(a(leftInIndex), a(rightInIndex)))) {
+        temp(outIndex) = a(leftInIndex)
+        leftInIndex += 1
       } else {
-        quickSort(a, iB, iN)  // True recursion
-        quickSort(a, i0, iA)  // Should be tail recursion
+        temp(outIndex) = a(rightInIndex)
+        rightInIndex += 1
       }
+      outIndex += 1
     }
   }
 
   // Ordering[T] might be slow especially for boxed primitives, so use binary
   // search variant of insertion sort
-  // Caller must pass iN >= i0 or math will fail.  Also, i0 >= 0.
+  // Caller must pass end >= start or math will fail.  Also, start >= 0.
   @noinline
-  private final def insertionSort[@specialized T](a: Array[T], i0: Int, iN: Int)(
-      implicit ord: Ordering[T]): Unit = {
-    val n = iN - i0
+  private final def insertionSort[@specialized T](a: Array[T], start: Int,
+      end: Int)(implicit ord: Ordering[T]): Unit = {
+    val n = end - start
     if (n >= 2) {
-      if (ord.compare(a(i0), a(i0 + 1)) > 0) {
-        val temp = a(i0)
-        a(i0) = a(i0 + 1)
-        a(i0 + 1) = temp
+      if (ord.compare(a(start), a(start + 1)) > 0) {
+        val temp = a(start)
+        a(start) = a(start + 1)
+        a(start + 1) = temp
       }
       var m = 2
       while (m < n) {
         // Speed up already-sorted case by checking last element first
-        val next = a(i0 + m)
-        if (ord.compare(next, a(i0 + m - 1)) < 0) {
-          var iA = i0
-          var iB = i0 + m - 1
+        val next = a(start + m)
+        if (ord.compare(next, a(start + m - 1)) < 0) {
+          var iA = start
+          var iB = start + m - 1
           while (iB - iA > 1) {
             val ix = (iA + iB) >>> 1 // Use bit shift to get unsigned div by 2
             if (ord.compare(next, a(ix)) < 0)
@@ -225,7 +174,7 @@ object Arrays {
               iA = ix
           }
           val ix = iA + (if (ord.compare(next, a(iA)) < 0) 0 else 1)
-          var i = i0 + m
+          var i = start + m
           while (i > ix) {
             a(i) = a(i - 1)
             i -= 1
@@ -237,116 +186,69 @@ object Arrays {
     }
   }
 
-  @noinline
-  private def quickSortAnyRef(a: Array[AnyRef], i0: Int, iN: Int)(
+  /** Sort array `a` with merge sort and insertion sort,
+   *  using the Ordering on its elements.
+   */
+  @inline
+  private def stableMergeSortAnyRef(a: Array[AnyRef], start: Int, end: Int)(
       implicit ord: Ordering[AnyRef]): Unit = {
-    if (iN - i0 < qSortThreshold) {
-      insertionSortAnyRef(a, i0, iN)
+    if (end - start > inPlaceSortThreshold)
+      stableSplitMergeAnyRef(a, new Array(a.length), start, end)
+    else
+      insertionSortAnyRef(a, start, end)
+  }
+
+  @noinline
+  private def stableSplitMergeAnyRef(a: Array[AnyRef], temp: Array[AnyRef],
+      start: Int, end: Int)(implicit ord: Ordering[AnyRef]): Unit = {
+    val length = end - start
+    if (length > inPlaceSortThreshold) {
+      val middle = start + (length / 2)
+      stableSplitMergeAnyRef(a, temp, start, middle)
+      stableSplitMergeAnyRef(a, temp, middle, end)
+      stableMergeAnyRef(a, temp, start, middle, end)
+      System.arraycopy(temp, start, a, start, length)
     } else {
-      val iK = (i0 + iN) >>> 1    // Unsigned div by 2
-      // Find index of median of first, central, and last elements
-      var pL = {
-        if (ord.compare(a(i0), a(iN - 1)) <= 0) {
-          if (ord.compare(a(i0), a(iK)) >= 0) i0
-          else if (ord.compare(a(iN - 1), a(iK)) < 0) iN - 1
-          else iK
-        } else {
-          if (ord.compare(a(i0), a(iK)) < 0) i0
-          else if (ord.compare(a(iN - 1), a(iK)) <= 0) iN - 1
-          else iK
-        }
-      }
-      val pivot = a(pL)
-      // pL is the start of the pivot block; move it into the middle if needed
-      if (pL != iK) {
-        a(pL) = a(iK)
-        a(iK) = pivot
-        pL = iK
-      }
-      // Elements equal to the pivot will be in range pL until pR
-      var pR = pL + 1
-      // Items known to be less than pivot are below iA (range i0 until iA)
-      var iA = i0
-      // Items known to be greater than pivot are at or above iB (range iB until iN)
-      var iB = iN
-      // Scan through everything in the buffer before the pivot(s)
-      while (pL - iA > 0) {
-        val current = a(iA)
-        ord.compare(current, pivot) match {
-          case 0 =>
-            // Swap current out with pivot block
-            a(iA) = a(pL - 1)
-            a(pL - 1) = current
-            pL -= 1
-          case x if x < 0 =>
-            // Already in place.  Just update indicies.
-            iA += 1
-          case _ if iB > pR =>
-            // Wrong side.  There's room on the other side, so swap
-            a(iA) = a(iB - 1)
-            a(iB - 1) = current
-            iB -= 1
-          case _ =>
-            // Wrong side and there is no room.  Swap by rotating pivot block.
-            a(iA) = a(pL - 1)
-            a(pL - 1) = a(pR - 1)
-            a(pR - 1) = current
-            pL -= 1
-            pR -= 1
-            iB -= 1
-        }
-      }
-      // Get anything remaining in buffer after the pivot(s)
-      while (iB - pR > 0) {
-        val current = a(iB - 1)
-        ord.compare(current, pivot) match {
-          case 0 =>
-            // Swap current out with pivot block
-            a(iB - 1) = a(pR)
-            a(pR) = current
-            pR += 1
-          case x if x > 0 =>
-            // Already in place.  Just update indices.
-            iB -= 1
-          case _ =>
-            // Wrong side and we already know there is no room.  Swap by rotating pivot block.
-            a(iB - 1) = a(pR)
-            a(pR) = a(pL)
-            a(pL) = current
-            iA += 1
-            pL += 1
-            pR += 1
-        }
-      }
-      // Use tail recursion on large half (Sedgewick's method) so we don't blow
-      // up the stack if pivots are poorly chosen
-      if (iA - i0 < iN - iB) {
-        quickSortAnyRef(a, i0, iA)  // True recursion
-        quickSortAnyRef(a, iB, iN)  // Should be tail recursion
+      insertionSortAnyRef(a, start, end)
+    }
+  }
+
+  @inline
+  private def stableMergeAnyRef(a: Array[AnyRef], temp: Array[AnyRef],
+      start: Int, middle: Int, end: Int)(implicit ord: Ordering[AnyRef]): Unit = {
+    var outIndex = start
+    var leftInIndex = start
+    var rightInIndex = middle
+    while (outIndex < end) {
+      if (leftInIndex < middle &&
+          (rightInIndex >= end || ord.lteq(a(leftInIndex), a(rightInIndex)))) {
+        temp(outIndex) = a(leftInIndex)
+        leftInIndex += 1
       } else {
-        quickSortAnyRef(a, iB, iN)  // True recursion
-        quickSortAnyRef(a, i0, iA)  // Should be tail recursion
+        temp(outIndex) = a(rightInIndex)
+        rightInIndex += 1
       }
+      outIndex += 1
     }
   }
 
   @noinline
-  private final def insertionSortAnyRef(a: Array[AnyRef], i0: Int, iN: Int)(
+  private final def insertionSortAnyRef(a: Array[AnyRef], start: Int, end: Int)(
       implicit ord: Ordering[AnyRef]): Unit = {
-    val n = iN - i0
+    val n = end - start
     if (n >= 2) {
-      if (ord.compare(a(i0), a(i0 + 1)) > 0) {
-        val temp = a(i0)
-        a(i0) = a(i0 + 1)
-        a(i0 + 1) = temp
+      if (ord.compare(a(start), a(start + 1)) > 0) {
+        val temp = a(start)
+        a(start) = a(start + 1)
+        a(start + 1) = temp
       }
       var m = 2
       while (m < n) {
         // Speed up already-sorted case by checking last element first
-        val next = a(i0 + m)
-        if (ord.compare(next, a(i0 + m - 1)) < 0) {
-          var iA = i0
-          var iB = i0 + m - 1
+        val next = a(start + m)
+        if (ord.compare(next, a(start + m - 1)) < 0) {
+          var iA = start
+          var iB = start + m - 1
           while (iB - iA > 1) {
             val ix = (iA + iB) >>> 1 // Use bit shift to get unsigned div by 2
             if (ord.compare(next, a(ix)) < 0)
@@ -355,7 +257,7 @@ object Arrays {
               iA = ix
           }
           val ix = iA + (if (ord.compare(next, a(iA)) < 0) 0 else 1)
-          var i = i0 + m
+          var i = start + m
           while (i > ix) {
             a(i) = a(i - 1)
             i -= 1

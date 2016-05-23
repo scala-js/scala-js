@@ -83,6 +83,25 @@ class ArraysTest {
     assertArrayEquals(arr, Array(1, 2, 3, 4, 5, 6).map(elem))
   }
 
+  @Test def sort_is_stable_issue_2400(): Unit = {
+    case class N(i: Int)
+
+    val cmp = new Comparator[N] {
+      def compare(o1: N, o2: N): Int = 0
+    }
+
+    def isStable(a: scala.Array[N]): Boolean =
+      a.zipWithIndex.forall { case (n, i) => n.i == i }
+
+    for (size <- Seq(2, 4, 5, 15, 16, 19, 32, 33, 63, 64, 65, 4356)) {
+      val sxs = scala.Array.tabulate(size)(i => N(i))
+      Arrays.sort(sxs, cmp)
+
+      assertTrue(s"Arrays.sort wasn't stable on array of size $size.'",
+          isStable(sxs))
+    }
+  }
+
   @Test def sortWithComparator(): Unit = {
     val scalajs: Array[String] = Array("S", "c", "a", "l", "a", ".", "j", "s")
     val sorted = Array[String](".", "S", "a", "a", "c", "j", "l", "s")
