@@ -1,7 +1,6 @@
 scala/collection/IndexedSeqOptimizedTest.scala
 scala/collection/IterableViewLikeTest.scala
 scala/collection/TraversableOnceTest.scala
-scala/collection/immutable/PagedSeqTest.scala
 scala/collection/immutable/QueueTest.scala
 scala/collection/immutable/TreeMapTest.scala
 scala/collection/immutable/TreeSetTest.scala

@@ -1,4 +1,4 @@
-# Do not compile
+## Do not compile
 scala/issues/BytecodeTest.scala
 scala/issues/OptimizedBytecodeTest.scala
 scala/issues/RunTest.scala
@@ -61,7 +61,7 @@ scala/tools/nsc/util/ClassPathImplComparator.scala
 scala/tools/nsc/util/StackTraceTest.scala
 scala/collection/convert/NullSafetyTest.scala
 
-# Do not link
+## Do not link
 scala/PartialFunctionSerializationTest.scala
 scala/StringContextTest.scala
 scala/collection/IteratorTest.scala
@@ -85,18 +85,26 @@ scala/tools/testing/AssertUtilTest.scala
 scala/tools/testing/AssertThrowsTest.scala
 scala/util/SystemPropertiesTest.scala
 
-# Tests fail
+## Tests fail
+
+# Reflection
 scala/reflect/ClassTagTest.scala
-scala/collection/immutable/RangeConsistencyTest.scala
-scala/collection/convert/MapWrapperTest.scala
-scala/math/BigDecimalTest.scala
+
+# Regex
 scala/util/matching/CharRegexTest.scala
 scala/util/matching/RegexTest.scala
+
+# Require strict-floats
+scala/math/BigDecimalTest.scala
 
 # Test fails only some times with
 #   'set scalaJSOptimizerOptions in scalaTestSuite ~= (_.withDisableOptimizer(true))'
 #   and' 'set scalaJSUseRhino in Global := false'
 scala/collection/immutable/PagedSeqTest.scala
+
+# Bugs
+scala/collection/convert/MapWrapperTest.scala
+scala/collection/immutable/RangeConsistencyTest.scala
 
 # Tests passed but are too slow (timeouts)
 scala/util/SortingTest.scala
