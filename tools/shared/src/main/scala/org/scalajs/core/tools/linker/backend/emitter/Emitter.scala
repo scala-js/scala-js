@@ -185,6 +185,9 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
           classEmitter.genInstanceTests(linkedClass),
           classEmitter.genArrayInstanceTests(linkedClass)
       )(linkedClass.pos)))
+      if (classEmitter.needsSubtypeArray(className)) {
+        addTree(classEmitter.genSubtypeArray(linkedClass))
+      }
     }
 
     if (linkedClass.hasRuntimeTypeInfo) {
@@ -192,9 +195,11 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
           classEmitter.genTypeData(linkedClass)))
     }
 
-    if (linkedClass.hasInstances && kind.isClass && linkedClass.hasRuntimeTypeInfo)
+    if (linkedClass.hasInstances && kind.isClass && linkedClass.hasRuntimeTypeInfo) {
       addTree(classTreeCache.setTypeData.getOrElseUpdate(
           classEmitter.genSetTypeData(linkedClass)))
+      addTree(classEmitter.genSetTypeTag(linkedClass))
+    }
 
     if (linkedClass.kind.hasModuleAccessor)
       addTree(classTreeCache.moduleAccessor.getOrElseUpdate(

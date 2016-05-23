@@ -9,11 +9,14 @@
 
 package org.scalajs.core.tools.linker.backend.emitter
 
+import scala.annotation.tailrec
+
 import org.scalajs.core.ir._
 import Position._
 import Transformers._
 import org.scalajs.core.ir.Trees._
 import Types._
+import Definitions._
 
 import org.scalajs.core.tools.sem._
 import CheckedBehavior.Unchecked
@@ -72,6 +75,74 @@ private[scalajs] final class ScalaJSClassEmitter(
 
   private[emitter] def semantics: Semantics = linkingUnit.semantics
 
+  private[emitter] final val ReservedTags = Map("V" -> 0, "Z" -> 1, "C" -> 2,
+      "B" -> 3, "S" -> 4, "I" -> 5, "J" -> 6, "F" -> 7, "D" -> 8,
+      ObjectClass -> 9, CloneableClass -> 10, SerializableClass -> 11)
+
+  private[emitter] final val MaxPrimitiveTag = 8
+  private[emitter] final val MaxReservedTag = 11
+  private[emitter] final val MaxTagValue = (1 << 23) - 1
+
+  private lazy val typeTags: Map[LinkedClass, Int] = {
+    val (nonRoots, roots) = linkingUnit.classDefs.partition { cls =>
+      cls.superClass.exists(parent => linkedClassByName.contains(parent.name))
+    }
+
+    val childrenMap =
+      nonRoots.groupBy(_.superClass.get.name).withDefaultValue(Nil)
+
+    val tags = Map.newBuilder[LinkedClass, Int]
+    var curTag = MaxReservedTag + 1
+
+    def computeTypeTag(cls: LinkedClass): Unit = {
+      if (ReservedTags.contains(cls.name.name)) {
+        tags += cls -> ReservedTags(cls.name.name)
+      } else {
+        tags += cls -> curTag
+        curTag += 1
+      }
+      childrenMap(cls.name.name).sortBy(_.name.name).foreach(computeTypeTag)
+    }
+
+    roots.sortBy(_.name.name).foreach(computeTypeTag)
+
+    val result = tags.result
+
+    // Sanity check: all classDefs must have a tag
+    assert(linkingUnit.classDefs.forall(result.contains))
+    result
+  }
+
+  private lazy val subtypeIntervals: Map[String, List[(Int, Int)]] = {
+    val parentToChilds = for {
+      child <- typeTags.keys
+      parent <- child.ancestors
+    } yield {
+      parent -> child
+    }
+
+    parentToChilds.groupBy(_._1).map {
+      case (parent, parentChilds) =>
+        val tags = parentChilds.map(t => typeTags(t._2)).toList.sorted
+        val intervals = tags.foldLeft[List[(Int, Int)]](Nil) {
+          case ((start, end) :: rest, tag) if tag == end + 1 =>
+            (start, tag) :: rest
+          case (intervals, tag) =>
+            (tag, tag) :: intervals
+        }.reverse
+        parent -> intervals
+    }
+  }
+
+  private[emitter] def needsSubtypeArray(className: String): Boolean = {
+    val numComparaisons = subtypeIntervals(className).map {
+      case (start, end) if start == end => 1
+      case _                            => 2
+    }.sum
+
+    numComparaisons > 3
+  }
+
   private implicit def implicitOutputMode: OutputMode = outputMode
 
   def genDeclareTypeData(tree: LinkedClass): js.Tree = {
@@ -107,11 +178,16 @@ private[scalajs] final class ScalaJSClassEmitter(
     if (needInstanceTests(tree)) {
       reverseParts ::= genInstanceTests(tree)
       reverseParts ::= genArrayInstanceTests(tree)
+      if (needsSubtypeArray(tree.name.name)) {
+        reverseParts ::= genSubtypeArray(tree)
+      }
     }
     if (tree.hasRuntimeTypeInfo)
       reverseParts ::= genTypeData(tree)
-    if (kind.isClass && tree.hasInstances && tree.hasRuntimeTypeInfo)
+    if (kind.isClass && tree.hasInstances && tree.hasRuntimeTypeInfo) {
       reverseParts ::= genSetTypeData(tree)
+      reverseParts ::= genSetTypeTag(tree)
+    }
     if (kind.hasModuleAccessor)
       reverseParts ::= genModuleAccessor(tree)
     reverseParts ::= genClassExports(tree)
@@ -478,8 +554,28 @@ private[scalajs] final class ScalaJSClassEmitter(
     }
   }
 
+  private[tools] def genIntervalsTest(className: String, tag: js.Tree)(
+      implicit pos: Position): js.Tree = {
+    import TreeDSL._
+
+    val intervals = subtypeIntervals(className)
+
+    assert(intervals.nonEmpty)
+
+    if (!needsSubtypeArray(className)) {
+      intervals.map {
+        case (a, b) if a == b =>
+          tag === js.IntLiteral(a)
+        case (lo, hi) =>
+          js.BinaryOp(JSBinaryOp.>=, tag, js.IntLiteral(lo)) &&
+          js.BinaryOp(JSBinaryOp.<=, tag, js.IntLiteral(hi))
+      }.reduce(_ || _)
+    } else {
+      js.BracketSelect(envField("Is", className), tag)
+    }
+  }
+
   def genInstanceTests(tree: LinkedClass): js.Tree = {
-    import Definitions._
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -497,30 +593,32 @@ private[scalajs] final class ScalaJSClassEmitter(
         AncestorsOfBoxedBooleanClass.contains(className)
       val isAncestorOfBoxedUnitClass =
         AncestorsOfBoxedUnitClass.contains(className)
+      val isAncestorOfPseudoArrayClass =
+        AncestorsOfPseudoArrayClass.contains(className)
 
       val objParam = js.ParamDef(Ident("obj"), rest = false)
       val obj = objParam.ref
 
       val createIsStat = {
         envFieldDef("is", className,
-          js.Function(List(objParam), js.Return(className match {
+          js.Function(List(objParam), className match {
             case Definitions.ObjectClass =>
-              js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
+              js.Return(js.BinaryOp(JSBinaryOp.!==, obj, js.Null()))
 
             case Definitions.StringClass =>
-              js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
+              js.Return(js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string"))
 
             case Definitions.RuntimeNothingClass =>
               // Even null is not an instance of Nothing
-              js.BooleanLiteral(false)
+              js.Return(js.BooleanLiteral(false))
 
             case _ =>
-              var test = {
-                genIsScalaJSObject(obj) &&
-                genIsClassNameInAncestors(className,
-                    obj DOT "$classData" DOT "ancestors")
-              }
+              val tagVarDef = genLet(js.Ident("tag"), mutable = false, obj && (obj DOT "$typeTag"))
+              val tag = tagVarDef.ref
+              var test = genIntervalsTest(className, tag)
 
+              if (isAncestorOfPseudoArrayClass)
+                test = test || js.BinaryOp(JSBinaryOp.<, tag, js.IntLiteral(0))
               if (isAncestorOfString)
                 test = test || (
                     js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string"))
@@ -533,8 +631,8 @@ private[scalajs] final class ScalaJSClassEmitter(
               if (isAncestorOfBoxedUnitClass)
                 test = test || (obj === js.Undefined())
 
-              !(!test)
-          })))
+              js.Block(tagVarDef, js.Return(!(!test)))
+          }))
       }
 
       val createAsStat = if (semantics.asInstanceOfs == Unchecked) {
@@ -571,7 +669,6 @@ private[scalajs] final class ScalaJSClassEmitter(
   }
 
   def genArrayInstanceTests(tree: LinkedClass): js.Tree = {
-    import Definitions._
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -589,17 +686,15 @@ private[scalajs] final class ScalaJSClassEmitter(
       envFieldDef("isArrayOf", className,
         js.Function(List(objParam, depthParam), className match {
           case Definitions.ObjectClass =>
-            val dataVarDef = genLet(Ident("data"), mutable = false, {
-              obj && (obj DOT "$classData")
-            })
-            val data = dataVarDef.ref
+            val tagVarDef = genLet(js.Ident("tag"), mutable = false, obj && (obj DOT "$typeTag"))
+            val tag = tagVarDef.ref
             js.Block(
-              dataVarDef,
-              js.If(!data, {
+              tagVarDef,
+              js.If(!tag, {
                 js.Return(js.BooleanLiteral(false))
               }, {
                 val arrayDepthVarDef = genLet(Ident("arrayDepth"), mutable = false, {
-                  (data DOT "arrayDepth") || js.IntLiteral(0)
+                  ((tag >> 23) & 255)
                 })
                 val arrayDepth = arrayDepthVarDef.ref
                 js.Block(
@@ -610,18 +705,20 @@ private[scalajs] final class ScalaJSClassEmitter(
                       // Array[Array[A]] <: Array[Object]
                       js.BinaryOp(JSBinaryOp.>, arrayDepth, depth) ||
                       // Array[Int] </: Array[Object]
-                      !genIdentBracketSelect(data DOT "arrayBase", "isPrimitive")
+                      js.BinaryOp(JSBinaryOp.>, (tag & MaxTagValue), js.IntLiteral(MaxPrimitiveTag))
                     )
                   })
               }))
 
           case _ =>
-            js.Return(!(!({
-              genIsScalaJSObject(obj) &&
-              ((obj DOT "$classData" DOT "arrayDepth") === depth) &&
-              genIsClassNameInAncestors(className,
-                  obj DOT "$classData" DOT "arrayBase" DOT "ancestors")
-            })))
+            val tagVarDef = genLet(js.Ident("tag"), mutable = false, obj && (obj DOT "$typeTag"))
+            val tag = tagVarDef.ref
+            val test = {
+              js.BinaryOp(JSBinaryOp.<, tag, js.IntLiteral(0)) &&
+              (((tag >> 23) & 255) === depth) &&
+              genIntervalsTest(className, tag & MaxTagValue)
+            }
+            js.Block(tagVarDef, js.Return(test))
         }))
     }
 
@@ -645,7 +742,7 @@ private[scalajs] final class ScalaJSClassEmitter(
 
   private def genIsScalaJSObject(obj: js.Tree)(implicit pos: Position): js.Tree = {
     import TreeDSL._
-    obj && (obj DOT "$classData")
+    obj && (obj DOT "$typeTag")
   }
 
   private def genIsClassNameInAncestors(className: String, ancestors: js.Tree)(
@@ -654,8 +751,23 @@ private[scalajs] final class ScalaJSClassEmitter(
     ancestors DOT className
   }
 
+  def genSubtypeArray(tree: LinkedClass): js.Tree = {
+    implicit val pos = tree.pos
+
+    val className = tree.name.name
+    val intervals = subtypeIntervals(className)
+
+    val compressed = js.ArrayConstr(intervals.toList.flatMap {
+      case (start, end) =>
+        List(js.IntLiteral(start), js.IntLiteral(end))
+    })
+
+    val array = js.Apply(envField("expandSubtypeArray"), compressed :: Nil)
+
+    envFieldDef("Is", className, array)
+  }
+
   def genTypeData(tree: LinkedClass): js.Tree = {
-    import Definitions._
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -688,8 +800,12 @@ private[scalajs] final class ScalaJSClassEmitter(
       js.Undefined()
     }
 
-    val ancestorsRecord = js.ObjectConstr(
-        tree.ancestors.map(ancestor => (js.Ident(ancestor), js.IntLiteral(1))))
+    // Ignore all ancestors who have been removed from linking unit
+    val ancestorsRecord = js.ArrayConstr(
+        tree.ancestors.collect {
+          case ancestor if linkedClassByName.contains(ancestor) =>
+            js.IntLiteral(typeTags(linkedClassByName(ancestor)))
+        })
 
     val (isInstanceFun, isArrayOfFun) = {
       if (isObjectClass) {
@@ -726,10 +842,10 @@ private[scalajs] final class ScalaJSClassEmitter(
     }
 
     val allParams = List(
-        js.ObjectConstr(List(classIdent -> js.IntLiteral(0))),
         js.BooleanLiteral(kind == ClassKind.Interface),
         js.StringLiteral(semantics.runtimeClassName(tree)),
         ancestorsRecord,
+        js.IntLiteral(typeTags(tree)),
         isRawJSTypeParam,
         parentData,
         isInstanceFun,
@@ -745,14 +861,27 @@ private[scalajs] final class ScalaJSClassEmitter(
     envFieldDef("d", className, typeData)
   }
 
-  def genSetTypeData(tree: LinkedClass): js.Tree = {
+  def genSetTypeTag(tree: LinkedClass): js.Tree = {
     import TreeDSL._
 
     implicit val pos = tree.pos
 
     assert(tree.kind.isClass)
+    val tag = typeTags(tree)
 
-    encodeClassVar(tree.name.name).prototype DOT "$classData" :=
+    encodeClassVar(tree.name.name).prototype DOT "$typeTag" :=
+      js.IntLiteral(tag)
+  }
+
+  def genSetTypeData(tree: LinkedClass): js.Tree = {
+    import TreeDSL._
+
+    implicit val pos = tree.pos
+    val tag = typeTags(tree)
+
+    assert(tree.kind.isClass)
+
+    js.BracketSelect(envField("ClassData"), js.IntLiteral(tag)) :=
       envField("d", tree.name.name)
   }
 
