@@ -31,38 +31,6 @@ class InternalAnnotationsTest extends DirectTest with TestHelpers {
     test("SJSDefinedAnonymousClass")
   }
 
-  @Test
-  def wasPublicBeforeTyper: Unit = {
-    test("WasPublicBeforeTyper")
-
-    /* Code from issue #1899 which needs the insertion of @WasPublicBeforeTyper */
-    s"""
-       class A {
-         def getJSObj(): js.Object = new js.Object {
-           val x1 = "x1"
-           var y1 = "y1"
-           def z1() = "z1"
-           private val x2 = "x2"
-           private var y2 = "y2"
-           private def z2() = "z2"
-           private[this] val x3 = "x3"
-           private[this] var y3 = "y3"
-           private[this] def z3() = "z3"
-           def checkOriginalY1() = y1
-           def checkOriginalY2() = y2
-           def checkOriginalY3() = y3
-           @WasPublicBeforeTyper def fail = ???
-
-         }
-       }
-    """ hasErrors
-    """
-      |newSource1.scala:16: error: scala.scalajs.js.annotation.WasPublicBeforeTyper is for compiler internal use only. Do not use it yourself.
-      |           @WasPublicBeforeTyper def fail = ???
-      |            ^
-    """.stripMargin
-  }
-
   private def test(annotation: String): Unit = {
     s"""
        @$annotation trait A
