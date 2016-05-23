@@ -1038,21 +1038,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   }
 
   private def checkInternalAnnotations(tree: Tree): Unit = {
-    /* The compiler internal annotations are categorized into two groups:
-     * 1) postTyper: annotations that are inserted in any phase
-     *    after the typer.
-     * 2) preTyper: annotations that are inserted before typer
-     *    (such as @WasPublicBeforeTyper), as the type is required to find them,
-     *    the check must be after typer. We use a heuristic to find the
-     *    instances of these annotations based on the existence of their
-     *    position in the source file. Unfortunately it is still possible for
-     *    macros to generate such annotations trees without positions.
+    /** Returns true iff it is a compiler annotations. This does not include
+     *  annotations inserted before the typer (such as `@WasPublicBeforeTyper`).
      */
-
-    def isPreTyper(annotation: AnnotationInfo) =
-      annotation.symbol == WasPublicBeforeTyperClass && annotation.pos.isDefined
-
-    def isPostTyper(annotation: AnnotationInfo) = {
+    def isCompilerAnnotation(annotation: AnnotationInfo): Boolean = {
       annotation.symbol == ExposedJSMemberAnnot ||
       annotation.symbol == JSFullNameAnnotation ||
       annotation.symbol == RawJSTypeAnnot ||
@@ -1061,7 +1050,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
     if (tree.isInstanceOf[MemberDef]) {
       for (annotation <- tree.symbol.annotations) {
-        if (isPreTyper(annotation) || isPostTyper(annotation)) {
+        if (isCompilerAnnotation(annotation)) {
           reporter.error(annotation.pos, annotation +
               " is for compiler internal use only. Do not use it yourself.")
         }
