@@ -93,36 +93,50 @@ class Logger private (protected val name: String,
   }
 
   def log(level: Level, msg: String): Unit =
-    log(new LogRecord(level, msg))
+    log(new LogRecord(level, msg, loggerName = Option(name)))
 
   def log(level: Level, msg: String, param: AnyRef): Unit =
-    log(new LogRecord(level, msg, params = List(param)))
+    log(new LogRecord(level, msg, params = List(param),
+      loggerName = Option(name)))
 
   def log(level: Level, msg: String, params: Array[AnyRef]): Unit =
-    log(new LogRecord(level, msg, params = params.toList))
+    log(new LogRecord(level, msg, params = params.toList,
+      loggerName = Option(name)))
 
   def log(level: Level, msg: String, thrown: Throwable): Unit =
-    log(new LogRecord(level, msg, thrown = Option(thrown)))
+    log(new LogRecord(level, msg, thrown = Option(thrown),
+      loggerName = Option(name)))
 
   def logp(level: Level, sourceClass: String, sourceMethod: String,
       msg: String): Unit =
-    log(new LogRecord(level, msg, sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod)))
+    log(new LogRecord(level, msg,
+      sourceClassName = Option(sourceClass),
+      sourceMethodName = Option(sourceMethod),
+      loggerName = Option(name)))
 
   def logp(level: Level, sourceClass: String, sourceMethod: String,
       msg: String, param: AnyRef): Unit =
-    log(new LogRecord(level, msg, sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod), params = List(param)))
+    log(new LogRecord(level, msg,
+      sourceClassName = Option(sourceClass),
+      sourceMethodName = Option(sourceMethod),
+      params = List(param),
+      loggerName = Option(name)))
 
   def logp(level: Level, sourceClass: String, sourceMethod: String,
       msg: String, params: Array[AnyRef]): Unit =
-    log(new LogRecord(level, msg, sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod), params = params.toList))
+    log(new LogRecord(level, msg,
+      sourceClassName = Option(sourceClass),
+      sourceMethodName = Option(sourceMethod),
+      params = params.toList,
+      loggerName = Option(name)))
 
   def logp(level: Level, sourceClass: String, sourceMethod: String,
       msg: String, thrown: Throwable): Unit =
-    log(new LogRecord(level, msg, sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod), thrown = Option(thrown)))
+    log(new LogRecord(level, msg,
+      sourceClassName = Option(sourceClass),
+      sourceMethodName = Option(sourceMethod),
+      thrown = Option(thrown),
+      loggerName = Option(name)))
 
   // Not implemented, no resource bundle
   //def logrb(level: Level, sourceClass: String, sourceMethod: String,
@@ -141,63 +155,74 @@ class Logger private (protected val name: String,
   //    bundleName: String, msg: String, thrown: Throwable): Unit = ???
 
   def entering(sourceClass: String, sourceMethod: String): Unit =
-    log(new LogRecord(Level.FINER, "ENTRY",
+    log(new LogRecord(Level.FINER,
+      "ENTRY",
       sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod)))
+      sourceMethodName = Option(sourceMethod),
+      loggerName = Option(name)))
 
   def entering(sourceClass: String, sourceMethod: String,
       param: AnyRef): Unit =
-    log(new LogRecord(Level.FINER, "ENTRY {0}", params = List(param),
+    log(new LogRecord(Level.FINER,
+      "ENTRY {0}",
       sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod)))
+      sourceMethodName = Option(sourceMethod),
+      params = List(param),
+      loggerName = Option(name)))
 
   private def paramsString(i: Int): String =
     (0 until i).map(i => s"{$i}").mkString(" ")
 
   def entering(sourceClass: String, sourceMethod: String,
       params: Array[AnyRef]): Unit =
-    log(new LogRecord(Level.FINER, s"ENTRY ${paramsString(params.length)}",
-      params = params.toList,
+    log(new LogRecord(Level.FINER,
+      s"ENTRY ${paramsString(params.length)}",
       sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod)))
+      sourceMethodName = Option(sourceMethod),
+      params = params.toList))
 
   def exiting(sourceClass: String, sourceMethod: String): Unit =
-    log(new LogRecord(Level.FINER, "RETURN",
+    log(new LogRecord(Level.FINER,
+      "RETURN",
       sourceClassName = Option(sourceClass),
       sourceMethodName = Option(sourceMethod)))
 
   def exiting(sourceClass: String, sourceMethod: String,
       result: AnyRef): Unit =
-    log(new LogRecord(Level.FINER, "RETURN {0}", params = List(result),
+    log(new LogRecord(Level.FINER,
+      "RETURN {0}",
       sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod)))
+      sourceMethodName = Option(sourceMethod),
+      params = List(result)))
 
   def throwing(sourceClass: String, sourceMethod: String,
       thrown: Throwable): Unit =
-    log(new LogRecord(Level.FINER, "THROW", thrown = Some(thrown),
+    log(new LogRecord(Level.FINER,
+      "THROW",
       sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod)))
+      sourceMethodName = Option(sourceMethod),
+      thrown = Some(thrown)))
 
   def severe(msg: String): Unit =
-    log(new LogRecord(Level.SEVERE, msg))
+    log(new LogRecord(Level.SEVERE, msg, loggerName = Option(name)))
 
   def warning(msg: String): Unit =
-    log(new LogRecord(Level.WARNING, msg))
+    log(new LogRecord(Level.WARNING, msg, loggerName = Option(name)))
 
   def info(msg: String): Unit =
-    log(new LogRecord(Level.INFO, msg))
+    log(new LogRecord(Level.INFO, msg, loggerName = Option(name)))
 
   def config(msg: String): Unit =
-    log(new LogRecord(Level.CONFIG, msg))
+    log(new LogRecord(Level.CONFIG, msg, loggerName = Option(name)))
 
   def fine(msg: String): Unit =
-    log(new LogRecord(Level.FINE, msg))
+    log(new LogRecord(Level.FINE, msg, loggerName = Option(name)))
 
   def finer(msg: String): Unit =
-    log(new LogRecord(Level.FINER, msg))
+    log(new LogRecord(Level.FINER, msg, loggerName = Option(name)))
 
   def finest(msg: String): Unit =
-    log(new LogRecord(Level.FINEST, msg))
+    log(new LogRecord(Level.FINEST, msg, loggerName = Option(name)))
 
   def setLevel(newLevel: Level): Unit = this.level = Option(newLevel)
 
