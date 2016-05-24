@@ -104,7 +104,6 @@ scala/collection/immutable/PagedSeqTest.scala
 
 # Bugs
 scala/collection/convert/MapWrapperTest.scala
-scala/collection/immutable/RangeConsistencyTest.scala
 
 # Tests passed but are too slow (timeouts)
 scala/util/SortingTest.scala

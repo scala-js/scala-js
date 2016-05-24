@@ -10,7 +10,8 @@ package scala
 package collection
 package immutable
 
-import mutable.{ Builder, ListBuffer }
+// TODO: Now the specialization exists there is no clear reason to have
+// separate classes for Range/NumericRange.  Investigate and consolidate.
 
 /** `NumericRange` is a more generic version of the
  *  `Range` class which works with arbitrary types.
@@ -27,9 +28,6 @@ import mutable.{ Builder, ListBuffer }
  *     val r2 = Range.Long(veryBig, veryBig + 100, 1)
  *     assert(r1 sameElements r2.map(_ - veryBig))
  *  }}}
- *
- *  TODO: Now the specialization exists there is no clear reason to have
- *  separate classes for Range/NumericRange.  Investigate and consolidate.
  *
  *  @author  Paul Phillips
  *  @version 2.8
@@ -175,30 +173,48 @@ extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
     catch { case _: ClassCastException => false }
 
   final override def sum[B >: T](implicit num: Numeric[B]): B = {
-    // arithmetic series formula  can be used for regular addition
-    if ((num eq scala.math.Numeric.IntIsIntegral)||
-        (num eq scala.math.Numeric.ShortIsIntegral)||
-        (num eq scala.math.Numeric.ByteIsIntegral)||
-        (num eq scala.math.Numeric.CharIsIntegral)||
-        (num eq scala.math.Numeric.LongIsIntegral)) {
-      val numAsIntegral = num.asInstanceOf[Integral[B]]
-      import numAsIntegral._
-      if (isEmpty) num fromInt 0
-      else if (numRangeElements == 1) head
-      else ((num fromInt numRangeElements) * (head + last) / (num fromInt 2))
-    } else {
-      // user provided custom Numeric, we cannot rely on arithmetic series formula
-      if (isEmpty) num.zero
+    if (isEmpty) num.zero
+    else if (numRangeElements == 1) head
+    else {
+      // If there is no overflow, use arithmetic series formula
+      //   a + ... (n terms total) ... + b = n*(a+b)/2
+      if ((num eq scala.math.Numeric.IntIsIntegral)||
+          (num eq scala.math.Numeric.ShortIsIntegral)||
+          (num eq scala.math.Numeric.ByteIsIntegral)||
+          (num eq scala.math.Numeric.CharIsIntegral)) {
+        // We can do math with no overflow in a Long--easy
+        val exact = (numRangeElements * ((num toLong head) + (num toInt last))) / 2
+        num fromInt exact.toInt
+      }
+      else if (num eq scala.math.Numeric.LongIsIntegral) {
+        // Uh-oh, might be overflow, so we have to divide before we overflow.
+        // Either numRangeElements or (head + last) must be even, so divide the even one before multiplying
+        val a = head.toLong
+        val b = last.toLong
+        val ans =
+          if ((numRangeElements & 1) == 0) (numRangeElements / 2) * (a + b)
+          else numRangeElements * {
+            // Sum is even, but we might overflow it, so divide in pieces and add back remainder
+            val ha = a/2
+            val hb = b/2
+            ha + hb + ((a - 2*ha) + (b - 2*hb)) / 2
+          }
+        ans.asInstanceOf[B]
+      }
       else {
-        var acc = num.zero
-        var i = head
-        var idx = 0
-        while(idx < length) {
-          acc = num.plus(acc, i)
-          i = i + step
-          idx = idx + 1
+        // User provided custom Numeric, so we cannot rely on arithmetic series formula (e.g. won't work on something like Z_6)
+        if (isEmpty) num.zero
+        else {
+          var acc = num.zero
+          var i = head
+          var idx = 0
+          while(idx < length) {
+            acc = num.plus(acc, i)
+            i = i + step
+            idx = idx + 1
+          }
+          acc
         }
-        acc
       }
     }
   }

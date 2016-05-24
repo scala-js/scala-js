@@ -5,6 +5,7 @@ scala/collection/ReusableBuildersTest.scala
 scala/collection/SearchingTest.scala
 scala/collection/TraversableOnceTest.scala
 scala/collection/immutable/QueueTest.scala
+scala/collection/immutable/RangeConsistencyTest.scala
 scala/collection/immutable/SetTest.scala
 scala/collection/immutable/TreeMapTest.scala
 scala/collection/immutable/TreeSetTest.scala

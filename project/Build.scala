@@ -1396,6 +1396,8 @@ object Build {
           else Seq("-Dscalac.hasBoxedUnitBug=true")
         },
 
+        javaOptions in Test += "-Dscalajs.scalaVersion=" + scalaVersion.value,
+
         /* Generate a scala source file that throws exceptions in
          * various places (while attaching the source line to the
          * exception). When we catch the exception, we can then
