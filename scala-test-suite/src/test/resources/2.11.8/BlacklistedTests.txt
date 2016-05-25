@@ -50,7 +50,7 @@ scala/tools/nsc/transform/patmat/SolvingTest.scala
 scala/tools/nsc/util/ClassPathImplComparator.scala
 scala/tools/nsc/util/StackTraceTest.scala
 
-# Do not link
+## Do not link
 scala/StringContextTest.scala
 scala/collection/IteratorTest.scala
 scala/collection/ParallelConsistencyTest.scala
@@ -60,21 +60,33 @@ scala/collection/mutable/ArrayBufferTest.scala
 scala/collection/mutable/MutableListTest.scala
 scala/collection/mutable/OpenHashMapTest.scala
 scala/collection/mutable/PriorityQueueTest.scala
-scala/tools/testing/AssertUtilTest.scala
-
-# Tests fail
-scala/collection/immutable/PagedSeqTest.scala
-scala/collection/convert/MapWrapperTest.scala
 scala/concurrent/duration/SerializationTest.scala
 scala/concurrent/impl/DefaultPromiseTest.scala
 scala/io/SourceTest.scala
-scala/math/BigDecimalTest.scala
+scala/tools/testing/AssertUtilTest.scala
+
+## Tests fail
+
+# Reflection
 scala/reflect/ClassTag.scala
 scala/tools/testing/AssertThrowsTest.scala
+
+# Regex
 scala/util/matching/CharRegexTest.scala
 scala/util/matching/RegexTest.scala
+
+# Require strict-floats
+scala/math/BigDecimalTest.scala
 
 # Tests passed but are too slow (timeouts)
 scala/collection/immutable/RangeConsistencyTest.scala
 scala/collection/SetMapConsistencyTest.scala
 scala/util/SortingTest.scala
+
+# Bugs
+scala/collection/convert/MapWrapperTest.scala
+
+# Test fails only some times with
+#   'set scalaJSOptimizerOptions in scalaTestSuite ~= (_.withDisableOptimizer(true))'
+#   and' 'set scalaJSUseRhino in Global := false'
+scala/collection/immutable/PagedSeqTest.scala

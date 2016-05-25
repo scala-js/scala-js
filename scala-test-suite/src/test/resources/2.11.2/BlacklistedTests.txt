@@ -1,4 +1,4 @@
-# Do not compile
+## Do not compile
 scala/reflect/io/ZipArchiveTest.scala
 scala/reflect/internal/MirrorsTest.scala
 scala/reflect/internal/NamesTest.scala
@@ -18,17 +18,23 @@ scala/tools/nsc/symtab/SymbolTableForUnitTesting.scala
 scala/tools/nsc/symtab/SymbolTableTest.scala
 scala/tools/nsc/util/StackTraceTest.scala
 
-# Do not link
+## Do not link
 scala/StringContextTest.scala
 scala/collection/PriorityQueueTest.scala
-
-# Tests fail
-scala/collection/convert/MapWrapperTest.scala
 scala/concurrent/impl/DefaultPromiseTest.scala
-scala/math/BigDecimalTest.scala
 scala/tools/testing/AssertThrowsTest.scala
+
+## Tests fail
+
+# Regex
 scala/util/matching/RegexTest.scala
 scala/util/matching/regextract-char.scala
 
+# Require strict-floats
+scala/math/BigDecimalTest.scala
+
 # Tests passed but are too slow (timeouts)
 scala/collection/SetMapConsistencyTest.scala
+
+# Bugs
+scala/collection/convert/MapWrapperTest.scala
