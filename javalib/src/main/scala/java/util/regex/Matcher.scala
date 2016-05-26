@@ -195,6 +195,11 @@ final class Matcher private[regex] (
 
   def group(group: Int): String = ensureLastMatch(group).orNull
 
+  def group(name: String): String = {
+    ensureLastMatch
+    throw new IllegalArgumentException
+  }
+
   // Seal the state
 
   def toMatchResult(): MatchResult = new SealedResult(inputstr, lastMatch)
