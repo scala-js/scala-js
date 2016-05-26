@@ -8,14 +8,14 @@ import scala.util.Try
 
 class RunSettings private (val color: Boolean, val decodeScalaNames: Boolean,
     val quiet: Boolean, val verbose: Boolean, val logAssert: Boolean,
-    val logExceptionClass: Boolean) {
+    val notLogExceptionClass: Boolean) {
 
   private val ignoreRunnersSet = new HashSet[String]
 
   def this(color: Boolean, decodeScalaNames: Boolean, quiet: Boolean,
       verbose: Boolean, logAssert: Boolean, ignoreRunners: String,
-      logExceptionClass: Boolean) = {
-    this(color, decodeScalaNames, quiet, verbose, logAssert, logExceptionClass)
+      notLogExceptionClass: Boolean) = {
+    this(color, decodeScalaNames, quiet, verbose, logAssert, notLogExceptionClass)
     for (s <- ignoreRunners.split(","))
       ignoreRunnersSet.add(s.trim)
   }
@@ -25,7 +25,7 @@ class RunSettings private (val color: Boolean, val decodeScalaNames: Boolean,
 
   def buildColoredMessage(t: Throwable, c1: String): String = {
     if (t == null) "null" else {
-      if (!logExceptionClass || (!logAssert && t.isInstanceOf[AssertionError])) {
+      if (notLogExceptionClass || (!logAssert && t.isInstanceOf[AssertionError])) {
         t.getMessage
       } else {
         val b = new StringBuilder()

@@ -11,7 +11,7 @@ val versionSettings = Seq(
 
 val baseSettings = versionSettings ++ Seq(
   testOptions += Tests.Argument(
-    TestFramework("com.novocode.junit.JUnitFramework"), "-v", "-a"),
+    TestFramework("com.novocode.junit.JUnitFramework"), "-v", "-a", "-s"),
 
   // Test that non-existent classpath entries are allowed - #2198
   fullClasspath in Compile += (baseDirectory in "root").value /

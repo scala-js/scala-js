@@ -461,6 +461,7 @@ object Build {
               clean in stubs, clean in cli,
               clean in testInterface, clean in jasmineTestFramework,
               clean in jUnitRuntime, clean in jUnitPlugin,
+              clean in jUnitTestOutputsJS, clean in jUnitTestOutputsJVM,
               clean in examples, clean in helloworld,
               clean in reversi, clean in testingExample,
               clean in testSuite, clean in testSuiteJVM, clean in noIrCheckTest,
@@ -481,7 +482,7 @@ object Build {
       binaryIssueFilters ++= BinaryIncompatibilities.IR,
       exportJars := true, // required so ScalaDoc linking works
 
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s")
   )
 
   lazy val irProject: Project = Project(
@@ -1092,6 +1093,40 @@ object Build {
       fatalWarningsSettings ++ Seq(name := "Scala.js JUnit test runtime")
   ).withScalaJSCompiler.dependsOn(testInterface)
 
+  val commonJUnitTestOutputsSettings = commonSettings ++ fatalWarningsSettings ++ Seq(
+      publishArtifact in Compile := false,
+      parallelExecution in Test := false,
+      unmanagedSourceDirectories in Test +=
+        baseDirectory.value.getParentFile / "shared/src/test/scala",
+      testOptions in Test ++= Seq(
+          Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
+          Tests.Filter(_.endsWith("Assertions"))
+      )
+  )
+
+  lazy val jUnitTestOutputsJS = Project(
+      id = "jUnitTestOutputsJS",
+      base = file("junit-test/output-js"),
+      settings = commonJUnitTestOutputsSettings ++ myScalaJSSettings ++ Seq(
+        name := "Tests for Scala.js JUnit output in JS."
+      )
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
+      jUnitRuntime % "test", testInterface % "test"
+  )
+
+
+  lazy val jUnitTestOutputsJVM = Project(
+      id = "jUnitTestOutputsJVM",
+      base = file("junit-test/output-jvm"),
+      settings = commonJUnitTestOutputsSettings ++ Seq(
+        name := "Tests for Scala.js JUnit output in JVM.",
+        libraryDependencies ++= Seq(
+            "org.scala-sbt" % "test-interface" % "1.0" % "test",
+            "com.novocode" % "junit-interface" % "0.11" % "test"
+        )
+      )
+  )
+
   lazy val jUnitPlugin = Project(
     id = "jUnitPlugin",
     base = file("junit-plugin"),
@@ -1252,7 +1287,7 @@ object Build {
     libraryDependencies +=
       "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
 
-    testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+    testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
 
     unmanagedSourceDirectories in Test ++= {
       def includeIf(testDir: File, condition: Boolean): List[File] =
@@ -1428,7 +1463,7 @@ object Build {
               withCheckScalaJSIR(false).
               withBypassLinkingErrors(true)
           ),
-          testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+          testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
           publishArtifact in Compile := false
      )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(library, jUnitRuntime)
@@ -1441,7 +1476,7 @@ object Build {
       ) ++ Seq(
           name := "JavaLib Ex Test Suite",
           publishArtifact in Compile := false,
-          testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+          testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
           scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(javalibEx, jUnitRuntime)
@@ -1570,7 +1605,7 @@ object Build {
     settings = commonSettings ++ myScalaJSSettings ++ Seq(
       publishArtifact in Compile := false,
 
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
 
       unmanagedSources in Test ++= {
         assert(scalaBinaryVersion.value != "2.10",
