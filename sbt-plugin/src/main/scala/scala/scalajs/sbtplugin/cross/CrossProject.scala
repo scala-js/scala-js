@@ -243,8 +243,17 @@ final class CrossProject private (
   def configs(cs: Configuration*): CrossProject =
     copy(jvm.configs(cs: _*), js.configs(cs: _*))
 
-  def configure(transforms: (CrossProject => CrossProject)*): CrossProject =
+  def configureCross(transforms: (CrossProject => CrossProject)*): CrossProject =
     transforms.foldLeft(this)((p, t) => t(p))
+
+  @deprecated("Use configureCross instead.", "0.6.10")
+  def configure(transforms: (CrossProject => CrossProject)*): CrossProject =
+    configureCross(transforms: _*)
+
+  // TODO: rename to "configure" when compatibility can be broken (1.0.0)
+  //       and the existing deprecated "configure" is removed
+  def configureAll(transforms: (Project => Project)*): CrossProject =
+    copy(jvm.configure(transforms: _*), js.configure(transforms: _*))
 
   def dependsOn(deps: CrossClasspathDependency*): CrossProject =
     copy(jvm.dependsOn(deps.map(_.jvm): _*), js.dependsOn(deps.map(_.js): _*))
