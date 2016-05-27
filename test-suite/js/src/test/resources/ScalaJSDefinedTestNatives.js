@@ -50,4 +50,21 @@
     }
   };
   $g.ConstructorDefaultParam = ConstructorDefaultParam;
+
+  $g.JSNativeObjectInPackageFoo = {};
+  $g.JSNativeObjectInPackageBar = {};
+  var JSNativeClassInPackageFoo = function() {
+    $g.Object.call(this);
+  };
+  JSNativeClassInPackageFoo.prototype.foo = function() {
+    return "foo";
+  };
+  $g.JSNativeClassInPackageFoo = JSNativeClassInPackageFoo;
+  var JSNativeClassInPackageBar = function() {
+    $g.Object.call(this);
+  };
+  JSNativeClassInPackageBar.prototype.baz = function() {
+    return "baz";
+  };
+  $g.JSNativeClassInPackageBar = JSNativeClassInPackageBar;
 }).call(this);
