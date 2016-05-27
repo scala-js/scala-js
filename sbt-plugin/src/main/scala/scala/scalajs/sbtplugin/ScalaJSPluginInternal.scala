@@ -3,13 +3,15 @@ package org.scalajs.sbtplugin
 import java.util.IllegalFormatException
 
 import sbt._
-import sbt.inc.{ClassfileManager, IncOptions}
+import sbt.inc.{IncOptions, ClassfileManager}
 import Keys._
 import sbinary.DefaultProtocol._
 import Cache.seqFormat
 import complete.Parser
 import complete.DefaultParsers._
+
 import Implicits._
+
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io.{IO => toolsIO, _}
 import org.scalajs.core.tools.jsdep._
@@ -17,14 +19,17 @@ import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.linker.{ClearableLinker, Linker}
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.backend.{LinkerBackend, OutputMode}
+
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.rhino.RhinoJSEnv
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.jsenv.phantomjs.{PhantomJSEnv, PhantomJettyClassLoader}
+
 import org.scalajs.core.ir
 import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.core.ir.ScalaJSVersions
 import org.scalajs.core.ir.Printers.{IRASTPrinter, IRTreePrinter, InfoPrinter}
+
 import org.scalajs.testadapter.ScalaJSFramework
 
 import scala.util.Try
