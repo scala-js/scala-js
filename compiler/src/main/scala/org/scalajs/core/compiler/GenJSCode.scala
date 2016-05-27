@@ -2512,21 +2512,22 @@ abstract class GenJSCode extends plugins.PluginComponent
       val expr = genExpr(selector)
       val resultType = toIRType(tree.tpe)
 
-      val List(defaultBody0) = for {
-        CaseDef(Ident(nme.WILDCARD), EmptyTree, body) <- cases
-      } yield body
-
-      val (defaultBody, defaultLabelSym) = defaultBody0 match {
-        case LabelDef(_, Nil, rhs) if hasSynthCaseSymbol(defaultBody0) =>
-          (rhs, defaultBody0.symbol)
-        case _ =>
-          (defaultBody0, NoSymbol)
-      }
-
-      val genDefaultBody = genStatOrExpr(defaultBody, isStat)
+      val defaultLabelSym = cases.collectFirst {
+        case CaseDef(Ident(nme.WILDCARD), EmptyTree,
+            body @ LabelDef(_, Nil, rhs)) if hasSynthCaseSymbol(body) =>
+          body.symbol
+      }.getOrElse(NoSymbol)
 
       var clauses: List[(List[js.Literal], js.Tree)] = Nil
       var elseClause: js.Tree = js.EmptyTree
+
+      var elseClauseLabel: Option[js.Ident] = None
+
+      def genJumpToElseClause(implicit pos: ir.Position): js.Tree = {
+        if (elseClauseLabel.isEmpty)
+          elseClauseLabel = Some(freshLocalIdent("default"))
+        js.Return(js.Undefined(), elseClauseLabel)
+      }
 
       for (caze @ CaseDef(pat, guard, body) <- cases) {
         assert(guard == EmptyTree)
@@ -2534,9 +2535,9 @@ abstract class GenJSCode extends plugins.PluginComponent
         def genBody(body: Tree): js.Tree = body match {
           // Yes, this will duplicate the default body in the output
           case app @ Apply(_, Nil) if app.symbol == defaultLabelSym =>
-            genDefaultBody
+            genJumpToElseClause
           case Block(List(app @ Apply(_, Nil)), _) if app.symbol == defaultLabelSym =>
-            genDefaultBody
+            genJumpToElseClause
 
           case If(cond, thenp, elsep) =>
             js.If(genExpr(cond), genBody(thenp), genBody(elsep))(
@@ -2577,7 +2578,12 @@ abstract class GenJSCode extends plugins.PluginComponent
           case lit: Literal =>
             clauses = (List(genLiteral(lit)), genBody(body)) :: clauses
           case Ident(nme.WILDCARD) =>
-            elseClause = genDefaultBody
+            elseClause = body match {
+              case LabelDef(_, Nil, rhs) if hasSynthCaseSymbol(body) =>
+                genBody(rhs)
+              case _ =>
+                genBody(body)
+            }
           case Alternative(alts) =>
             val genAlts = {
               alts map {
@@ -2594,7 +2600,25 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      js.Match(expr, clauses.reverse, elseClause)(resultType)
+      if (elseClauseLabel.isEmpty) {
+        js.Match(expr, clauses.reverse, elseClause)(resultType)
+      } else {
+        val switchResultLabel = freshLocalIdent()
+        val patchedClauses = for ((alts, body) <- clauses) yield {
+          implicit val pos = body.pos
+          val lab = Some(switchResultLabel)
+          val newBody =
+            if (isStat) js.Block(body, js.Return(js.Undefined(), lab))
+            else js.Return(body, lab)
+          (alts, newBody)
+        }
+        js.Labeled(switchResultLabel, resultType, js.Block(List(
+            js.Labeled(elseClauseLabel.get, jstpe.NoType, {
+              js.Match(expr, patchedClauses.reverse, js.Skip())(jstpe.NoType)
+            }),
+            elseClause
+        )))
+      }
     }
 
     private def genBlock(tree: Block, isStat: Boolean): js.Tree = {
