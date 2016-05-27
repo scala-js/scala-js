@@ -10,84 +10,56 @@ import js.annotation.JSName
 
 object HelloWorld extends js.JSApp {
   def main() {
-    import js.DynamicImplicits.truthValue
+    switchWithGuardsStat(3, 50)
+    switchWithGuardsExpr(3, 50)
 
-    if (js.Dynamic.global.document &&
-        js.Dynamic.global.document.getElementById("playground")) {
-      sayHelloFromDOM()
-      sayHelloFromTypedDOM()
-      sayHelloFromJQuery()
-      sayHelloFromTypedJQuery()
-    } else {
-      println("Hello world!")
+    rangeForeach(10)
+  }
+
+  def rangeForeach(n: Int): Unit = {
+    /*for (i <- 0 until n)
+      println(i)*/
+    val r = new scala.collection.immutable.Range(0, n, 1)
+    val empty = r.isEmpty
+    println(empty)
+
+    /*@noinline def startEnd = (Int.MinValue, Int.MaxValue)
+    val (start, end) = startEnd
+
+    val r = start to end by (1 << 23)
+    var i = 0
+    r.foreach(_ => i += 1)
+    println(i)
+    println(r.length)
+    println(r.sum)*/
+  }
+
+  def switchWithGuardsStat(x: Int, y: Int): Unit = {
+    x match {
+      case 1            => println("one")
+      case 2 if y < 10  => println("two special")
+      case 2            => println("two")
+      case 3 if y < 10  => println("three special")
+      case 3 if y > 100 => println("three big special")
+      case z if y > 100 => println("big " + z)
+      case _            => println("None of those")
     }
   }
 
-  def sayHelloFromDOM() {
-    val document = js.Dynamic.global.document
-    val playground = document.getElementById("playground")
-
-    val newP = document.createElement("p")
-    newP.innerHTML = "Hello world! <i>-- DOM</i>"
-    playground.appendChild(newP)
+  def switchWithGuardsExpr(x: Int, y: Int): Unit = {
+    val message = x match {
+      case 1            => "one"
+      case 2 if y < 10  => "two special"
+      case 2            => "two"
+      case 3 if y < 10  => "three special"
+      case 3 if y > 100 => "three big special"
+      case z if y > 100 => "big " + z
+      case _            => "None of those"
+    }
+    println(message)
   }
 
-  def sayHelloFromTypedDOM() {
-    val document = window.document
-    val playground = document.getElementById("playground")
-
-    val newP = document.createElement("p")
-    newP.innerHTML = "Hello world! <i>-- typed DOM</i>"
-    playground.appendChild(newP)
-  }
-
-  def sayHelloFromJQuery() {
-    // val $ is fine too, but not very recommended in Scala code
-    val jQuery = js.Dynamic.global.jQuery
-    val newP = jQuery("<p>").html("Hello world! <i>-- jQuery</i>")
-    newP.appendTo(jQuery("#playground"))
-  }
-
-  def sayHelloFromTypedJQuery() {
-    val jQuery = helloworld.JQuery
-    val newP = jQuery("<p>").html("Hello world! <i>-- typed jQuery</i>")
-    newP.appendTo(jQuery("#playground"))
-  }
-}
-
-@js.native
-object window extends js.GlobalScope {
-  val document: DOMDocument = js.native
-
-  def alert(msg: String): Unit = js.native
-}
-
-@js.native
-trait DOMDocument extends js.Object {
-  def getElementById(id: String): DOMElement = js.native
-  def createElement(tag: String): DOMElement = js.native
-}
-
-@js.native
-trait DOMElement extends js.Object {
-  var innerHTML: String = js.native
-
-  def appendChild(child: DOMElement): Unit = js.native
-}
-
-@js.native
-@JSName("jQuery")
-object JQuery extends js.Object {
-  def apply(selector: String): JQuery = js.native
-}
-
-@js.native
-trait JQuery extends js.Object {
-  def text(value: String): JQuery = js.native
-  def text(): String = js.native
-
-  def html(value: String): JQuery = js.native
-  def html(): String = js.native
-
-  def appendTo(parent: JQuery): JQuery = js.native
+  // To have a nicer JS display for demo
+  @noinline
+  def println(x: Any): Unit = Console.println(x)
 }

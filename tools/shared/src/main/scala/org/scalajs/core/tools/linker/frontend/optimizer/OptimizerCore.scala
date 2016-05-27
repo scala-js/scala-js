@@ -43,6 +43,9 @@ private[optimizer] abstract class OptimizerCore(
 
   val myself: MethodID
 
+  private lazy val debug =
+    myself.toString() == "Lhelloworld_HelloWorld$.rangeForeach__I__V"
+
   /** Returns the body of a method. */
   protected def getMethodBody(method: MethodID): MethodDef
 
@@ -3204,6 +3207,8 @@ private[optimizer] abstract class OptimizerCore(
   private def withNewLocalDef(binding: Binding)(
       buildInner: (LocalDef, PreTransCont) => TailRec[Tree])(
       cont: PreTransCont): TailRec[Tree] = tailcall {
+    //if (debug)
+    //  System.err.println(s"withNewLocalDef($binding)")
     val Binding(name, originalName, declaredType, mutable, value) = binding
     implicit val pos = value.pos
 
@@ -3223,6 +3228,8 @@ private[optimizer] abstract class OptimizerCore(
               case PreTransLocalDef(`localDef`) =>
                 cont(value)
               case _ if tinner.contains(localDef) =>
+                if (debug)
+                  System.err.println(s"Leaking $localDef through $tinner")
                 cont(PreTransBlock(varDef :: Nil, tinner))
               case _ =>
                 val rhsSideEffects = finishTransformStat(value)
