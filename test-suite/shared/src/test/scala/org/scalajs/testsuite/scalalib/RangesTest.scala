@@ -9,6 +9,11 @@ package org.scalajs.testsuite.scalalib
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
+
+import scala.collection.immutable.NumericRange
+
+import org.scalajs.testsuite.utils.Platform._
 
 class RangesTest {
 
@@ -34,5 +39,20 @@ class RangesTest {
     assertEquals(7, range.length)
 
     assertEquals(List(0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0), range.toList)
+  }
+
+  @Test def NumericRange_overflow_issue_2407(): Unit = {
+    val nr = NumericRange(Int.MinValue, Int.MaxValue, 1 << 23)
+    assertEquals(Int.MinValue, nr.sum)
+  }
+
+  @Test def Range_foreach_issue_2409(): Unit = {
+    assumeFalse(executingInJVM && scalaVersion.startsWith("2.10."))
+    val r = Int.MinValue to Int.MaxValue by (1 << 23)
+    var i = 0
+    r.foreach(_ => i += 1)
+    assertEquals(512, i)
+    assertEquals(512, r.length)
+    assertEquals(Int.MinValue, r.sum)
   }
 }

@@ -33,7 +33,13 @@ import scala.collection.parallel.immutable.ParRange
  *  `init`) are also permitted on overfull ranges.
  *
  *  @param start      the start of this range.
- *  @param end        the exclusive end of the range.
+ *  @param end        the end of the range.  For exclusive ranges, e.g.
+ *                    `Range(0,3)` or `(0 until 3)`, this is one
+ *                    step past the last one in the range.  For inclusive
+ *                    ranges, e.g. `Range.inclusive(0,3)` or `(0 to 3)`,
+ *                    it may be in the range if it is not skipped by the step size.
+ *                    To find the last element inside a non-empty range,
+                      use `last` instead.
  *  @param step       the step for the range.
  *
  *  @author Martin Odersky
@@ -147,19 +153,15 @@ extends scala.collection.AbstractSeq[Int]
   }
 
   @inline final override def foreach[@specialized(Unit) U](f: Int => U) {
-    validateMaxLength()
-    val isCommonCase = (start != Int.MinValue || end != Int.MinValue)
-    var i = start
-    var count = 0
-    val terminal = terminalElement
-    val step = this.step
-    while(
-      if(isCommonCase) { i != terminal }
-      else             { count < numRangeElements }
-    ) {
-      f(i)
-      count += 1
-      i += step
+    // Implementation chosen on the basis of favorable microbenchmarks
+    // Note--initialization catches step == 0 so we don't need to here
+    if (!isEmpty) {
+      var i = start
+      while (true) {
+        f(i)
+        if (i == lastElement) return
+        i += step
+      }
     }
   }
 
@@ -279,7 +281,7 @@ extends scala.collection.AbstractSeq[Int]
    */
   final override def splitAt(n: Int) = (take(n), drop(n))
 
-  /** Creates a new range consisting of the `length - n` last elements of the range.
+  /** Creates a new range consisting of the last `n` elements of the range.
    *
    *  $doesNotUseBuilders
    */
@@ -341,18 +343,19 @@ extends scala.collection.AbstractSeq[Int]
       // this is normal integer range with usual addition. arithmetic series formula can be used
       if (isEmpty) 0
       else if (numRangeElements == 1) head
-      else (numRangeElements.toLong * (head + last) / 2).toInt
+      else ((numRangeElements * (head.toLong + last)) / 2).toInt
     } else {
       // user provided custom Numeric, we cannot rely on arithmetic series formula
       if (isEmpty) num.toInt(num.zero)
       else {
         var acc = num.zero
         var i = head
-        while(i != terminalElement) {
+        while (true) {
           acc = num.plus(acc, i)
+          if (i == lastElement) return num.toInt(acc)
           i = i + step
         }
-        num.toInt(acc)
+        0 // Never hit this--just to satisfy compiler since it doesn't know while(true) has type Nothing
       }
     }
   }

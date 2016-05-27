@@ -132,20 +132,17 @@ extends scala.collection.AbstractSeq[Int]
     else start + (step * idx)
   }
 
+  // Backported from scala 2.11 commit 00d3f103b3db5530bfbf6b565843d0938a3cef48
   @inline final override def foreach[@specialized(Unit) U](f: Int => U) {
-    validateMaxLength()
-    val isCommonCase = (start != Int.MinValue || end != Int.MinValue)
-    var i = start
-    var count = 0
-    val terminal = terminalElement
-    val step = this.step
-    while(
-      if(isCommonCase) { i != terminal }
-      else             { count < numRangeElements }
-    ) {
-      f(i)
-      count += 1
-      i += step
+    // Implementation chosen on the basis of favorable microbenchmarks
+    // Note--initialization catches step == 0 so we don't need to here
+    if (!isEmpty) {
+      var i = start
+      while (true) {
+        f(i)
+        if (i == lastElement) return
+        i += step
+      }
     }
   }
 

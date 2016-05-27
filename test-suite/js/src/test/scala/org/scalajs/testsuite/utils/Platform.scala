@@ -10,6 +10,10 @@ package org.scalajs.testsuite.utils
 import scala.scalajs.runtime
 
 object Platform {
+
+  def scalaVersion: String =
+    System.getProperty("scalajs.scalaVersion")
+
   /** Returns `true` if and only if the code is executing on a JVM.
    *  Note: Returns `false` when executing on any JS VM.
    */
