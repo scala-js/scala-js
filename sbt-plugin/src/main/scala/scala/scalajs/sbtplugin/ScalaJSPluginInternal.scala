@@ -3,15 +3,13 @@ package org.scalajs.sbtplugin
 import java.util.IllegalFormatException
 
 import sbt._
-import sbt.inc.{IncOptions, ClassfileManager}
+import sbt.inc.{ClassfileManager, IncOptions}
 import Keys._
 import sbinary.DefaultProtocol._
 import Cache.seqFormat
 import complete.Parser
 import complete.DefaultParsers._
-
 import Implicits._
-
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io.{IO => toolsIO, _}
 import org.scalajs.core.tools.jsdep._
@@ -19,22 +17,18 @@ import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.linker.{ClearableLinker, Linker}
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.backend.{LinkerBackend, OutputMode}
-
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.rhino.RhinoJSEnv
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.jsenv.phantomjs.{PhantomJSEnv, PhantomJettyClassLoader}
-
 import org.scalajs.core.ir
 import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.core.ir.ScalaJSVersions
-import org.scalajs.core.ir.Printers.{InfoPrinter, IRTreePrinter}
-
+import org.scalajs.core.ir.Printers.{IRASTPrinter, IRTreePrinter, InfoPrinter}
 import org.scalajs.testadapter.ScalaJSFramework
 
 import scala.util.Try
 import scala.collection.mutable
-
 import java.io.FileNotFoundException
 import java.nio.charset.Charset
 import java.net.URLClassLoader
@@ -270,12 +264,15 @@ object ScalaJSPluginInternal {
 
   private def scalajspSettings: Seq[Setting[_]] = {
     case class Options(
-        infos: Boolean = false
+        infos: Boolean = false,
+        raw: Boolean = false
     )
 
     val optionsParser: Parser[Options] = {
       token(OptSpace ~> (
-          (literal("-i") | "--infos") ^^^ ((_: Options).copy(infos = true))
+          (literal("-i") | "--infos") ^^^ ((_: Options).copy(infos = true)) |
+            (literal("-r") | "--raw") ^^^ ((_: Options).copy(raw = true))
+
       )).* map {
         fns => Function.chain(fns)(Options())
       }
@@ -309,6 +306,8 @@ object ScalaJSPluginInternal {
           val stdout = new java.io.PrintWriter(System.out)
           if (options.infos)
             new InfoPrinter(stdout).print(vfile.info)
+          else if (options.raw)
+            new IRASTPrinter(stdout).printTopLevelTree(vfile.tree)
           else
             new IRTreePrinter(stdout).printTopLevelTree(vfile.tree)
           stdout.flush()
