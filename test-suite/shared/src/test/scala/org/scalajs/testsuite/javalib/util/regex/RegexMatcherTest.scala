@@ -9,12 +9,16 @@ package org.scalajs.testsuite.javalib.util.regex
 
 import scala.language.implicitConversions
 
-import java.util.regex.Pattern
+import java.util.regex._
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.Platform._
+import org.scalajs.testsuite.utils.AssertThrows._
+
+import scala.util.matching.Regex
 
 class RegexMatcherTest  {
 
@@ -285,5 +289,28 @@ class RegexMatcherTest  {
     assertTrue(m1.find())
     assertEquals("abc", m1.group())
     assertFalse(m1.find())
+  }
+
+  @Test def should_link_and_fail_on_group_of_String_issue_2381(): Unit = {
+    val r = new Regex("a(b*)c", "Bee")
+    val ms = r findAllIn "stuff abbbc more abc and so on"
+    if (!executingInJVM)
+      assertThrows(classOf[Exception], ms group "Ape")
+    assertTrue(ms.hasNext)
+    assertEquals("abbbc", ms.next())
+    assertEquals("bbb", ms group "Bee")
+    if (!executingInJVM)
+      assertThrows(classOf[Exception], ms group "Ape")
+    assertTrue(ms.hasNext)
+    assertEquals("abc", ms.next())
+    assertEquals("b", ms group "Bee")
+    if (!executingInJVM)
+      assertThrows(classOf[Exception], ms group "Ape")
+    assertFalse(ms.hasNext)
+
+    if (!executingInJVM) {
+      assertThrows(classOf[Exception], new Regex("a(?<Bee>b*)c"))
+      assertThrows(classOf[Exception], Pattern.compile("a(?<Bee>b*)c"))
+    }
   }
 }
