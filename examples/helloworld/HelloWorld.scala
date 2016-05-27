@@ -17,20 +17,24 @@ object HelloWorld extends js.JSApp {
   }
 
   def rangeForeach(n: Int): Unit = {
-    /*for (i <- 0 until n)
+    for (i <- 0 until n)
+      println(i)
+    /*val r = new scala.collection.immutable.Range(0, n, 1)
+    for (i <- r)
       println(i)*/
-    val r = new scala.collection.immutable.Range(0, n, 1)
-    val empty = r.isEmpty
-    println(empty)
+    /*val empty = r.isEmpty
+    println(empty)*/
 
-    /*@noinline def startEnd = (Int.MinValue, Int.MaxValue)
+    @noinline def startEnd = (Int.MinValue, Int.MaxValue)
     val (start, end) = startEnd
+    println(start)
+    println(end)
 
     val r = start to end by (1 << 23)
     var i = 0
     r.foreach(_ => i += 1)
     println(i)
-    println(r.length)
+    /*println(r.length)
     println(r.sum)*/
   }
 
