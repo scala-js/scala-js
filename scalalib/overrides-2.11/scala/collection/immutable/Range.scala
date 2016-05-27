@@ -93,20 +93,20 @@ extends scala.collection.AbstractSeq[Int]
     }
   }
   @deprecated("This method will be made private, use `last` instead.", "2.11")
-  final val lastElement = 
-    if (isEmpty) start - step
+  final val terminalElement =
+    if (isEmpty) start
     else step match {
-      case 1  => if (isInclusive) end else end-1
-      case -1 => if (isInclusive) end else end+1
+      case 1  => if (isInclusive) end+1 else end
+      case -1 => if (isInclusive) end-1 else end
       case _  =>
         val remainder = (gap % step).toInt
-        if (remainder != 0) end - remainder
-        else if (isInclusive) end
-        else end - step
+        if (remainder != 0) end + step - remainder
+        else if (isInclusive) end + step
+        else end
     }
-    
+
   @deprecated("This method will be made private.", "2.11")
-  final val terminalElement = lastElement + step
+  final val lastElement = terminalElement - step
 
   /** The last element of this range.  This method will return the correct value
    *  even if there are too many elements to iterate over.
@@ -157,11 +157,10 @@ extends scala.collection.AbstractSeq[Int]
     // Note--initialization catches step == 0 so we don't need to here
     if (!isEmpty) {
       var i = start
-      while (true) {
+      do {
         f(i)
-        if (i == lastElement) return
         i += step
-      }
+      } while (i != terminalElement)
     }
   }
 
@@ -350,12 +349,11 @@ extends scala.collection.AbstractSeq[Int]
       else {
         var acc = num.zero
         var i = head
-        while (true) {
+        do {
           acc = num.plus(acc, i)
-          if (i == lastElement) return num.toInt(acc)
           i = i + step
-        }
-        0 // Never hit this--just to satisfy compiler since it doesn't know while(true) has type Nothing
+        } while (i != terminalElement)
+        num.toInt(acc)
       }
     }
   }
