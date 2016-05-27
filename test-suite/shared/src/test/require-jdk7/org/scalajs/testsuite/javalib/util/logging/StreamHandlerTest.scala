@@ -8,11 +8,9 @@ import org.junit.Assert._
 
 class StreamHandlerTest {
   object TestFormatter extends SimpleFormatter {
-
     override def getHead(h: Handler): String = "header"
 
     override def getTail(h: Handler): String = "footer"
-
   }
 
   @Test def test_logging():Unit = {
@@ -21,6 +19,32 @@ class StreamHandlerTest {
     sh.publish(new LogRecord(Level.INFO, "message"))
     sh.flush()
     assertTrue(o.toString.contains("message"))
+  }
+
+  @Test def test_default_level():Unit = {
+    val o = new ByteArrayOutputStream()
+    val sh = new StreamHandler(o, new SimpleFormatter())
+    // Defaults to level INFO
+    sh.publish(new LogRecord(Level.FINER, "message"))
+    sh.flush()
+    assertFalse(o.toString.contains("message"))
+  }
+
+  @Test def test_default_config():Unit = {
+    val o = new ByteArrayOutputStream()
+    val sh = new StreamHandler(o, new SimpleFormatter())
+    assertNull(sh.getEncoding)
+    assertNull(sh.getFilter)
+    assertNotNull(sh.getFormatter)
+    assertNotNull(sh.getErrorManager)
+  }
+
+  @Test def test_default_constructor_config():Unit = {
+    val sh = new StreamHandler()
+    assertNull(sh.getEncoding)
+    assertNull(sh.getFilter)
+    assertNotNull(sh.getFormatter)
+    assertNotNull(sh.getErrorManager)
   }
 
   @Test def test_no_logging_for_level():Unit = {

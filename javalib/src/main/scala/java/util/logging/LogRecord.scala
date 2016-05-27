@@ -1,31 +1,28 @@
 package java.util.logging
 
-import java.util.concurrent.atomic.AtomicLong
-
 object LogRecord {
-  protected[logging] var sequence:AtomicLong = new AtomicLong(0)
+  protected[logging] var sequence: Long = 0L
 }
 
-class LogRecord protected[logging] (private[this] var level: Level,
-    private[this] var msg: String,
-    private[this] var sourceClassName: Option[String] = None,
-    private[this] var sourceMethodName: Option[String] = None,
-    private[this] var params: List[AnyRef] = Nil,
-    private[this] var thrown: Option[Throwable] = None,
-    private[this] var loggerName: Option[String] = None) {
+class LogRecord(private[this] var level: Level, private[this] var msg: String) {
 
-  def this(level: Level, msg: String) = this(level, msg, None)
-
+  private[this] var sourceClassName: String = null
+  private[this] var sourceMethodName: String = null
+  private[this] var params: Array[AnyRef] = null
+  private[this] var thrown: Throwable = null
+  private[this] var loggerName: String = null
   private[this] var millis: Long = System.currentTimeMillis()
   private[this] var threadId: Long = Thread.currentThread().getId
 
-  private[this] var sequenceNumber:Long =
-    LogRecord.sequence.getAndIncrement
+  private[this] var sequenceNumber: Long = {
+    LogRecord.sequence = LogRecord.sequence + 1
+    LogRecord.sequence
+  }
 
-  def getLoggerName():String = loggerName.orNull
+  def getLoggerName(): String = loggerName
 
   def setLoggerName(loggerName: String): Unit =
-    this.loggerName = Option(loggerName)
+    this.loggerName = loggerName
 
   // Not implemented, no locale in Scala.js
   //def getResourceBundle():ResourceBundle = ???
@@ -47,27 +44,23 @@ class LogRecord protected[logging] (private[this] var level: Level,
 
   def setSequenceNumber(seq: Long): Unit = sequenceNumber = seq
 
-  def getSourceClassName(): String = sourceClassName.orNull
+  def getSourceClassName(): String = sourceClassName
 
   def setSourceClassName(sourceClassName: String): Unit =
-    this.sourceClassName = Option(sourceClassName)
+    this.sourceClassName = sourceClassName
 
-  def getSourceMethodName(): String = sourceMethodName.orNull
+  def getSourceMethodName(): String = sourceMethodName
 
   def setSourceMethodName(sourceClassName: String): Unit =
-    this.sourceMethodName = Option(sourceClassName)
+    this.sourceMethodName = sourceClassName
 
   def getMessage(): String = msg
 
   def setMessage(message: String): Unit = msg = message
 
-  def getParameters(): Array[AnyRef] =
-    if (params.isEmpty) null
-    else params.toArray
+  def getParameters(): Array[AnyRef] = params
 
-  def setParameters(parameters: Array[AnyRef]): Unit =
-    if (parameters == null) this.params = Nil
-    else this.params = parameters.toList
+  def setParameters(parameters: Array[AnyRef]): Unit = this.params = parameters
 
   def getThreadID(): Int = threadId.toInt
 
@@ -77,7 +70,7 @@ class LogRecord protected[logging] (private[this] var level: Level,
 
   def setMillis(millis: Long): Unit = this.millis = millis
 
-  def getThrown(): Throwable = thrown.orNull
+  def getThrown(): Throwable = thrown
 
-  def setThrown(thrown: Throwable): Unit = this.thrown = Option(thrown)
+  def setThrown(thrown: Throwable): Unit = this.thrown = thrown
 }

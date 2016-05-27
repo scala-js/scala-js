@@ -6,7 +6,6 @@ import org.junit.Assert._
 import org.junit.Test
 
 class LevelTest {
-
   @Test def test_static(): Unit = {
     assertEquals("OFF", Level.OFF.getName)
     assertEquals(Int.MaxValue, Level.OFF.intValue())
@@ -38,7 +37,10 @@ class LevelTest {
 
   @Test def test_equals_hash_code(): Unit = {
     assertEquals(Level.SEVERE, Level.SEVERE)
+    assertSame(Level.SEVERE, Level.SEVERE)
     assertNotEquals(Level.SEVERE, Level.WARNING)
+    assertNotSame(Level.SEVERE, Level.WARNING)
+
     assertEquals(Level.SEVERE.hashCode(), Level.SEVERE.hashCode())
   }
 }

@@ -34,6 +34,26 @@ class SimpleFormatterTest {
     r2.setParameters(Array("param1", new java.lang.Integer(20)))
     assertTrue(f.format(r2).contains("message with params param1 20"))
 
+    // Bogus cases
+    val r3 = new LogRecord(Level.INFO, "message with params {0} {abc}")
+    r3.setParameters(Array("param1", "test"))
+    assertTrue(f.format(r3).contains("message with params {0} {abc}"))
+
+    val r4 = new LogRecord(Level.INFO, "message with params {0} {{1}}")
+    r4.setParameters(Array("param1", "test"))
+    assertTrue(f.format(r4).contains("message with params {0} {{1}}"))
+
+    val r5 = new LogRecord(Level.INFO, "message with params {0} {{1}")
+    r5.setParameters(Array("param1", "test"))
+    assertTrue(f.format(r5).contains("message with params {0} {{1}"))
+
+    val r6 = new LogRecord(Level.INFO, "message with params {0} {-1}")
+    r6.setParameters(Array("param1", "test"))
+    assertTrue(f.format(r6).contains("message with params {0} {-1}"))
+
+    val r7 = new LogRecord(Level.INFO, "message with params {0} {1")
+    r7.setParameters(Array("param1", "test"))
+    assertTrue(f.format(r7).contains("message with params {0} {1"))
   }
 
   @Test def test_format_property(): Unit = {
@@ -43,8 +63,7 @@ class SimpleFormatterTest {
     r.setLoggerName("logger")
     // The JVM has a different logic for formatting though the javadocs
     // indicate that the property above should be used
-    if (!Platform.executingInJVM) {
+    if (!Platform.executingInJVM)
       assertEquals("logger - message", f.format(r))
-    }
   }
 }

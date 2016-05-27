@@ -9,134 +9,173 @@ object Logger {
   // Not implemented, deprecated on JDK 1.8
   //val global: Logger
 
-  private val defaultLogLevel = Level.ALL
+  private val defaultLogLevel: Level = Level.ALL
 
   private val loggers: mutable.Map[String, Logger] = mutable.Map.empty
 
   // Root is not visible to the outside but gives defaults
-  private[this] val rootLogger =
-    new Logger("", None, Some(defaultLogLevel), false, None)
+  private[this] val rootLogger: Logger = {
+    val l = new Logger("", null)
+    l.setLevel(defaultLogLevel)
+    l.setUseParentHandlers(false)
+    l.setParent(null)
+    l
+  }
 
-  private[this] val globalLogger =
-    new Logger(GLOBAL_LOGGER_NAME, None, None, true, Some(rootLogger))
+  private[this] val globalLogger: Logger = {
+    val l = new Logger(GLOBAL_LOGGER_NAME, null)
+    l.setLevel(defaultLogLevel)
+    l.setUseParentHandlers(true)
+    l.setParent(rootLogger)
+    l
+  }
 
-  def getGlobal():Logger = globalLogger
+  def getGlobal(): Logger = globalLogger
 
   def getLogger(name: String): Logger = {
     if (name == null)
       throw new NullPointerException("Logger name cannot be null")
-    loggers.getOrElseUpdate(name,
-      new Logger(name, None, None, true, Some(rootLogger)))
+    loggers.getOrElseUpdate(name, {
+      val l = new Logger(name, null)
+      l.setLevel(null)
+      l.setUseParentHandlers(true)
+      l.setParent(rootLogger)
+      l
+    })
   }
 
   // Not implemented, no resource bundle in scala.js
   //def getLogger(name: String, resourceBundle: String): Logger
 
-  protected def findParent(logger: Logger): Option[Logger] = {
+  private[logging] def findParent(logger: Logger): Option[Logger] = {
+    @tailrec
     def go(s: List[String]): Option[Logger] = s match {
-      case Nil                                    =>
-        None
+      case Nil => None
+
       case b if loggers.contains(b.mkString(".")) =>
         loggers.get(b.mkString("."))
-      case b                                      =>
-        go(b.dropRight(1))
+
+      case b => go(b.dropRight(1))
     }
+
     go(Option(logger.getName).getOrElse("").split("\\.").toList.dropRight(1))
   }
 
-  def getAnonymousLogger():Logger =
+  def getAnonymousLogger(): Logger = {
     // No references to anonymous loggers are kept
-    new Logger(null, None, None, true, Some(rootLogger))
+    val l = new Logger(null, null)
+    l.setLevel(null)
+    l.setUseParentHandlers(true)
+    l.setParent(rootLogger)
+    l
+  }
 
   // Not implemented, no resource bundle in scala.js
   //def getAnonymousLogger(resourceBundle: String):Logger
 }
 
-class Logger private (protected val name: String,
-    protected val resourceBundle: Option[String],
-    protected var level: Option[Level],
-    protected var useParentsHandlers: Boolean,
-    protected var parent: Option[Logger] = None,
-    protected var filter: Option[Filter] = None) {
-
+class Logger(name: String, resourceBundle: String) {
+  private[this] var level: Level = null
+  private[this] var useParentsHandlers: Boolean = false
+  private[this] var parent: Logger = null
+  private[this] var filter: Filter = null
   private[this] var handlers: Array[Handler] = Array.empty
 
-  protected def this(name: String, resourceBundle: String) =
-    this(name, Option(resourceBundle), None, true)
-
-  // Not implemented, no resource bundle
-  //def getResourceBundle():ResourceBundle = ???
-
   // Find the effective level
-  private def levelR: Option[Level] = {
+  private def levelR: Level = {
     @tailrec
-    def go(logger: Logger): Option[Level] = logger.level match {
-      case l @ Some(_)                 => l
-      case None if getParent() != null => go(logger.getParent)
-      case None                        => None
+    def go(logger: Logger): Level = {
+      if (logger.getLevel != null) logger.getLevel
+      else if (logger.getParent == null) null
+      else go(logger.getParent)
     }
 
     go(this)
   }
 
-  def getResourceBundleName():String = resourceBundle.orNull
+  // Not implemented, no resource bundle
+  //def getResourceBundle():ResourceBundle = ???
+  
+  def getResourceBundleName(): String = resourceBundle
 
-  def setFilter(filter: Filter): Unit = this.filter = Option(filter)
+  def setFilter(filter: Filter): Unit = this.filter = filter
 
-  def getFilter(): Filter = filter.orNull
+  def getFilter(): Filter = filter
 
-  def log(record: LogRecord): Unit = if (isLoggable(record.getLevel)) {
-    if (useParentsHandlers) {
-      Logger.findParent(this).orElse(parent).foreach(_.log(record))
+  def log(record: LogRecord): Unit = {
+    if (isLoggable(record.getLevel)) {
+      if (useParentsHandlers) {
+        val parent = getParent()
+        if (parent != null) parent.log(record)
+      }
+      handlers.foreach(_.publish(record))
     }
-    handlers.foreach(_.publish(record))
   }
 
-  def log(level: Level, msg: String): Unit =
-    log(new LogRecord(level, msg, loggerName = Option(name)))
+  def log(level: Level, msg: String): Unit = {
+    val r = new LogRecord(level, msg)
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def log(level: Level, msg: String, param: AnyRef): Unit =
-    log(new LogRecord(level, msg, params = List(param),
-      loggerName = Option(name)))
+  def log(level: Level, msg: String, param: AnyRef): Unit = {
+    val r = new LogRecord(level, msg)
+    r.setParameters(Array(param))
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def log(level: Level, msg: String, params: Array[AnyRef]): Unit =
-    log(new LogRecord(level, msg, params = params.toList,
-      loggerName = Option(name)))
+  def log(level: Level, msg: String, params: Array[AnyRef]): Unit = {
+    val r = new LogRecord(level, msg)
+    r.setParameters(params)
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def log(level: Level, msg: String, thrown: Throwable): Unit =
-    log(new LogRecord(level, msg, thrown = Option(thrown),
-      loggerName = Option(name)))
+  def log(level: Level, msg: String, thrown: Throwable): Unit = {
+    val r = new LogRecord(level, msg)
+    r.setThrown(thrown)
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def logp(level: Level, sourceClass: String, sourceMethod: String,
-      msg: String): Unit =
-    log(new LogRecord(level, msg,
-      sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod),
-      loggerName = Option(name)))
-
-  def logp(level: Level, sourceClass: String, sourceMethod: String,
-      msg: String, param: AnyRef): Unit =
-    log(new LogRecord(level, msg,
-      sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod),
-      params = List(param),
-      loggerName = Option(name)))
-
-  def logp(level: Level, sourceClass: String, sourceMethod: String,
-      msg: String, params: Array[AnyRef]): Unit =
-    log(new LogRecord(level, msg,
-      sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod),
-      params = params.toList,
-      loggerName = Option(name)))
+  def logp(level: Level, sourceClass: String, sourceMethod: String, msg: String): Unit = {
+    val r = new LogRecord(level, msg)
+    r.setSourceClassName(sourceClass)
+    r.setSourceMethodName(sourceMethod)
+    r.setLoggerName(name)
+    log(r)
+  }
 
   def logp(level: Level, sourceClass: String, sourceMethod: String,
-      msg: String, thrown: Throwable): Unit =
-    log(new LogRecord(level, msg,
-      sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod),
-      thrown = Option(thrown),
-      loggerName = Option(name)))
+      msg: String, param: AnyRef): Unit = {
+    val r = new LogRecord(level, msg)
+    r.setParameters(Array(param))
+    r.setSourceClassName(sourceClass)
+    r.setSourceMethodName(sourceMethod)
+    r.setLoggerName(name)
+    log(r)
+  }
+
+  def logp(level: Level, sourceClass: String, sourceMethod: String,
+      msg: String, params: Array[AnyRef]): Unit = {
+    val r = new LogRecord(level, msg)
+    r.setParameters(params)
+    r.setSourceClassName(sourceClass)
+    r.setSourceMethodName(sourceMethod)
+    r.setLoggerName(name)
+    log(r)
+  }
+
+  def logp(level: Level, sourceClass: String, sourceMethod: String,
+      msg: String, thrown: Throwable): Unit = {
+    val r = new LogRecord(level, msg)
+    r.setThrown(thrown)
+    r.setSourceClassName(sourceClass)
+    r.setSourceMethodName(sourceMethod)
+    r.setLoggerName(name)
+    log(r)
+  }
 
   // Not implemented, no resource bundle
   //def logrb(level: Level, sourceClass: String, sourceMethod: String,
@@ -154,84 +193,113 @@ class Logger private (protected val name: String,
   //def logrb(level: Level, sourceClass: String, sourceMethod: String,
   //    bundleName: String, msg: String, thrown: Throwable): Unit = ???
 
-  def entering(sourceClass: String, sourceMethod: String): Unit =
-    log(new LogRecord(Level.FINER,
-      "ENTRY",
-      sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod),
-      loggerName = Option(name)))
+  def entering(sourceClass: String, sourceMethod: String): Unit = {
+    val r = new LogRecord(Level.FINER, "ENTRY")
+    r.setSourceClassName(sourceClass)
+    r.setSourceMethodName(sourceMethod)
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def entering(sourceClass: String, sourceMethod: String,
-      param: AnyRef): Unit =
-    log(new LogRecord(Level.FINER,
-      "ENTRY {0}",
-      sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod),
-      params = List(param),
-      loggerName = Option(name)))
+  def entering(sourceClass: String, sourceMethod: String, param: AnyRef): Unit = {
+    val r = new LogRecord(Level.FINER, "ENTRY {0}")
+    r.setSourceClassName(sourceClass)
+    r.setSourceMethodName(sourceMethod)
+    r.setParameters(Array(param))
+    r.setLoggerName(name)
+    log(r)
+  }
 
   private def paramsString(i: Int): String =
     (0 until i).map(i => s"{$i}").mkString(" ")
 
-  def entering(sourceClass: String, sourceMethod: String,
-      params: Array[AnyRef]): Unit =
-    log(new LogRecord(Level.FINER,
-      s"ENTRY ${paramsString(params.length)}",
-      sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod),
-      params = params.toList))
+  def entering(sourceClass: String, sourceMethod: String, params: Array[AnyRef]): Unit = {
+    val r = new LogRecord(Level.FINER, s"ENTRY ${paramsString(params.length)}")
+    r.setSourceClassName(sourceClass)
+    r.setSourceMethodName(sourceMethod)
+    r.setLoggerName(name)
+    r.setParameters(params)
+    log(r)
+  }
 
-  def exiting(sourceClass: String, sourceMethod: String): Unit =
-    log(new LogRecord(Level.FINER,
-      "RETURN",
-      sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod)))
+  def exiting(sourceClass: String, sourceMethod: String): Unit = {
+    val r = new LogRecord(Level.FINER, "RETURN")
+    r.setSourceClassName(sourceClass)
+    r.setSourceMethodName(sourceMethod)
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def exiting(sourceClass: String, sourceMethod: String,
-      result: AnyRef): Unit =
-    log(new LogRecord(Level.FINER,
-      "RETURN {0}",
-      sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod),
-      params = List(result)))
+  def exiting(sourceClass: String, sourceMethod: String, result: AnyRef): Unit = {
+    val r = new LogRecord(Level.FINER, "RETURN {0}")
+    r.setSourceClassName(sourceClass)
+    r.setSourceMethodName(sourceMethod)
+    r.setParameters(Array(result))
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def throwing(sourceClass: String, sourceMethod: String,
-      thrown: Throwable): Unit =
-    log(new LogRecord(Level.FINER,
-      "THROW",
-      sourceClassName = Option(sourceClass),
-      sourceMethodName = Option(sourceMethod),
-      thrown = Some(thrown)))
+  def throwing(sourceClass: String, sourceMethod: String, thrown: Throwable): Unit = {
+    val r = new LogRecord(Level.FINER, "THROW")
+    r.setSourceClassName(sourceClass)
+    r.setSourceMethodName(sourceMethod)
+    r.setThrown(thrown)
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def severe(msg: String): Unit =
-    log(new LogRecord(Level.SEVERE, msg, loggerName = Option(name)))
+  def severe(msg: String): Unit = {
+    val r = new LogRecord(Level.SEVERE, msg)
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def warning(msg: String): Unit =
-    log(new LogRecord(Level.WARNING, msg, loggerName = Option(name)))
+  def warning(msg: String): Unit = {
+    val r = new LogRecord(Level.WARNING, msg)
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def info(msg: String): Unit =
-    log(new LogRecord(Level.INFO, msg, loggerName = Option(name)))
+  def info(msg: String): Unit = {
+    val r = new LogRecord(Level.INFO, msg)
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def config(msg: String): Unit =
-    log(new LogRecord(Level.CONFIG, msg, loggerName = Option(name)))
+  def config(msg: String): Unit = {
+    val r = new LogRecord(Level.CONFIG, msg)
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def fine(msg: String): Unit =
-    log(new LogRecord(Level.FINE, msg, loggerName = Option(name)))
+  def fine(msg: String): Unit = {
+    val r = new LogRecord(Level.FINE, msg)
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def finer(msg: String): Unit =
-    log(new LogRecord(Level.FINER, msg, loggerName = Option(name)))
+  def finer(msg: String): Unit = {
+    val r = new LogRecord(Level.FINER, msg)
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def finest(msg: String): Unit =
-    log(new LogRecord(Level.FINEST, msg, loggerName = Option(name)))
+  def finest(msg: String): Unit = {
+    val r = new LogRecord(Level.FINEST, msg)
+    r.setLoggerName(name)
+    log(r)
+  }
 
-  def setLevel(newLevel: Level): Unit = this.level = Option(newLevel)
+  def setLevel(newLevel: Level): Unit = this.level = newLevel
 
-  def getLevel(): Level = level.orNull
+  def getLevel(): Level = level
 
   def getName(): String = name
 
-  def isLoggable(level: Level): Boolean =
-    levelR.forall(_.intValue() <= level.intValue())
+  def isLoggable(level: Level): Boolean = {
+    val effectiveLevel = levelR
+    effectiveLevel == null || effectiveLevel.intValue() <= level.intValue()
+  }
 
   def addHandler(handler: Handler): Unit = handlers = handlers :+ handler
 
@@ -245,8 +313,7 @@ class Logger private (protected val name: String,
 
   def getUseParentHandlers(): Boolean = useParentsHandlers
 
-  def getParent(): Logger =
-    Logger.findParent(this).orElse(parent).orNull
+  def getParent(): Logger = Logger.findParent(this).getOrElse(parent)
 
-  def setParent(parent: Logger): Unit = this.parent = Some(parent)
+  def setParent(parent: Logger): Unit = this.parent = parent
 }

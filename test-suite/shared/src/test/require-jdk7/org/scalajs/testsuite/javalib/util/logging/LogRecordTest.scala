@@ -20,25 +20,32 @@ class LogRecordTest {
     assertNull(record.getLoggerName)
     record.setLoggerName("logger")
     assertEquals("logger", record.getLoggerName)
+    record.setLoggerName(null)
+    assertNull(record.getLoggerName)
 
     assertNull(record.getSourceClassName)
     record.setSourceClassName("MyClass")
     assertEquals("MyClass", record.getSourceClassName)
+    record.setSourceClassName(null)
+    assertNull(record.getSourceClassName)
 
     assertNull(record.getSourceMethodName)
     record.setSourceMethodName("method")
     assertEquals("method", record.getSourceMethodName)
+    record.setSourceMethodName(null)
+    assertNull(record.getSourceMethodName)
 
     assertEquals("msg", record.getMessage)
     record.setMessage("newmsg")
     assertEquals("newmsg", record.getMessage)
-    // You can set message to null
     record.setMessage(null)
     assertNull(record.getMessage)
 
     assertNull(record.getParameters)
     record.setParameters(Array[AnyRef]("value"))
     assertArrayEquals(Array[AnyRef]("value"), record.getParameters)
+    record.setParameters(null)
+    assertNull(record.getParameters)
 
     assertEquals(Thread.currentThread().getId, record.getThreadID.toLong)
     record.setThreadID(5)
@@ -51,5 +58,19 @@ class LogRecordTest {
     assertNull(record.getThrown)
     record.setThrown(new RuntimeException("testmsg"))
     assertEquals("testmsg", record.getThrown.getMessage)
+    record.setThrown(null)
+    assertNull(record.getThrown)
   }
+
+
+  @Test def test_parameter_reference(): Unit = {
+    val params = Array[AnyRef]("abc", "cde")
+    val record = new LogRecord(Level.INFO, "msg")
+    record.setParameters(params)
+
+    // Change the params reference
+    params(0) = "101"
+    assertEquals("101", record.getParameters()(0))
+  }
+
 }
