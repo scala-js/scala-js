@@ -1083,9 +1083,9 @@ object Printers {
     }
 
     private final def printList(ts: List[Tree]): Unit = {
-      if (ts.isEmpty)
+      if (ts.isEmpty) {
         print("List ()")
-      else {
+      } else {
         println("List (")
         indent()
         var rest = ts
@@ -1106,9 +1106,9 @@ object Printers {
     }
 
     private final def printIdentList(is: List[Ident]): Unit = {
-      if (is.isEmpty)
+      if (is.isEmpty) {
         print("List ()")
-      else {
+      } else {
         println("List (")
         indent()
         var rest = is
@@ -1129,7 +1129,7 @@ object Printers {
     }
 
     private final def print(ident: Ident): Unit =
-      print(s"Ident(${ident.name}, ${ident.originalName}")
+      print(s"Ident(${ident.name}, ${ident.originalName})")
 
     private final def println(ident: Ident): Unit = {
       print(ident)
@@ -1161,7 +1161,7 @@ object Printers {
           indent()
           println(ident)
           println(vtpe)
-          println(mutable.toString)
+          println("mutable = " + mutable.toString)
           print(rhs); paren()
           undent()
 
@@ -1171,8 +1171,8 @@ object Printers {
           indent()
           println(ident)
           println(ptpe)
-          println(mutable.toString)
-          print(rest.toString); paren()
+          println("mutable = " + mutable.toString)
+          print("rest = " + rest.toString); paren()
           undent()
 
         // Control flow constructs
@@ -1288,10 +1288,8 @@ object Printers {
           undent()
 
         case LoadModule(cls) =>
-          println("LoadModule (")
-          indent()
+          print("LoadModule (")
           print(cls); paren()
-          undent()
 
         case StoreModule(cls, value) =>
           println("StoreModule (")
@@ -1586,13 +1584,15 @@ object Printers {
         case FieldDef(name, vtpe, mutable) =>
           println("FieldDef (")
           indent()
+          println(name.name)
           println(vtpe)
-          print(mutable.toString + ")")
+          print("mutable = " + mutable.toString + ")")
           undent()
 
         case MethodDef(static, name, args, resultType, body) =>
           println("MethodDef (")
           indent()
+          println("static = " + static.toString)
           println(name.toString)
           printlnList(args)
           println(resultType)
