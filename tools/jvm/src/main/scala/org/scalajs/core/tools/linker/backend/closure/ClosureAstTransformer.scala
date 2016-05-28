@@ -264,7 +264,7 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
     @inline def ctorDoc(node: Node) = {
       val b = new JSDocInfoBuilder(false)
       b.recordConstructor()
-      b.build(node)
+      b.build()
     }
 
     val block = new Node(Token.BLOCK)
