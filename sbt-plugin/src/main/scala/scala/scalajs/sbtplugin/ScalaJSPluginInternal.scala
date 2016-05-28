@@ -34,6 +34,7 @@ import org.scalajs.testadapter.ScalaJSFramework
 
 import scala.util.Try
 import scala.collection.mutable
+
 import java.io.FileNotFoundException
 import java.nio.charset.Charset
 import java.net.URLClassLoader

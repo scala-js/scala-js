@@ -891,7 +891,7 @@ object Printers {
     protected def print(ident: Ident): Unit =
       printEscapeJS(ident.name, out)
 
-    private final def print(propName: PropertyName): Unit = propName match {
+    private def print(propName: PropertyName): Unit = propName match {
       case lit: StringLiteral => print(lit: Tree)
       case ident: Ident       => print(ident)
     }
@@ -1052,12 +1052,14 @@ object Printers {
     def complete(): Unit = ()
   }
 
-  abstract class RawIndentationManager extends IndentationManager {
+  abstract class RawIndentationManager {
+    protected val out: Writer
+    
     private var indentSize = 0
     private val indentString = "  "
 
-    override def indent(): Unit = indentSize += 1
-    override def undent(): Unit = indentSize -= 1
+    protected def indent(): Unit = indentSize += 1
+    protected def undent(): Unit = indentSize -= 1
 
     protected def print(s: String): Unit = {
       out.write(indentString * indentSize)
@@ -1067,26 +1069,25 @@ object Printers {
     protected def println(s: String): Unit =
       print(s + "\n")
 
-    override protected def println(): Unit =
+    protected def println(): Unit =
       out.write("\n")
   }
 
   class IRASTPrinter(protected val out: Writer) extends RawIndentationManager {
-    /** Pretty-prints the IR's AST nodes.
-      */
+    /** Pretty-prints the IR's AST nodes. */
     def printTopLevelTree(tree: Tree): Unit =
       println(tree)
 
-    private final def println(tree: Tree): Unit = {
+    private def println(tree: Tree): Unit = {
       print(tree)
       out.write("\n")
     }
 
-    private final def printList(ts: List[Tree]): Unit = {
+    private def printList(ts: List[Tree]): Unit = {
       if (ts.isEmpty) {
-        print("List ()")
+        print("List()")
       } else {
-        println("List (")
+        println("List(")
         indent()
         var rest = ts
         while (rest.nonEmpty) {
@@ -1096,20 +1097,20 @@ object Printers {
             println()
         }
         undent()
-        paren()
+        out.write(")")
       }
     }
 
-    private final def printlnList(ts: List[Tree]): Unit = {
+    private def printlnList(ts: List[Tree]): Unit = {
       printList(ts)
       println()
     }
 
-    private final def printIdentList(is: List[Ident]): Unit = {
+    private def printIdentList(is: List[Ident]): Unit = {
       if (is.isEmpty) {
-        print("List ()")
+        print("List()")
       } else {
-        println("List (")
+        println("List(")
         indent()
         var rest = is
         while (rest.nonEmpty) {
@@ -1119,19 +1120,19 @@ object Printers {
             println()
         }
         undent()
-        paren()
+        out.write(")")
       }
     }
 
-    private final def printlnIdentList(is: List[Ident]): Unit = {
+    private def printlnIdentList(is: List[Ident]): Unit = {
       printIdentList(is)
       println()
     }
 
-    private final def print(ident: Ident): Unit =
+    private def print(ident: Ident): Unit =
       print(s"Ident(${ident.name}, ${ident.originalName})")
 
-    private final def println(ident: Ident): Unit = {
+    private def println(ident: Ident): Unit = {
       print(ident)
       out.write("\n")
     }
@@ -1140,16 +1141,12 @@ object Printers {
       print(tpe.toString)
 
 
-    private final def println(tp: Type): Unit = {
+    private def println(tp: Type): Unit = {
       print(tp)
       out.write("\n")
     }
 
-    private final def paren(): Unit = {
-      out.write(")")
-    }
-
-    private final def print(tree: Tree): Unit = {
+    private def print(tree: Tree): Unit = {
       tree match {
         case EmptyTree =>
           print("EmptyTree")
@@ -1157,416 +1154,468 @@ object Printers {
         // Definitions
 
         case VarDef(ident, vtpe, mutable, rhs) =>
-          println("VarDef (")
+          println("VarDef(")
           indent()
           println(ident)
           println(vtpe)
           println("mutable = " + mutable.toString)
-          print(rhs); paren()
+          print(rhs)
+          out.write(")")
           undent()
 
 
         case ParamDef(ident, ptpe, mutable, rest) =>
-          println("ParamDef (")
+          println("ParamDef(")
           indent()
           println(ident)
           println(ptpe)
           println("mutable = " + mutable.toString)
-          print("rest = " + rest.toString); paren()
+          print("rest = " + rest.toString)
+          out.write(")")
           undent()
 
         // Control flow constructs
 
         case Skip() =>
-          print("Skip")
+          print("Skip()")
 
         case Block(trees) =>
           printList(trees)
 
         case Labeled(label, tpe, body) =>
-          println("Labeled (")
+          println("Labeled(")
           indent()
           println(tpe)
-          print(body); paren()
+          print(body)
+          out.write(")")
           undent()
 
         case Assign(lhs, rhs) =>
-          println("Assign (")
+          println("Assign(")
           indent()
           println(lhs)
-          print(rhs); paren()
+          print(rhs)
+          out.write(")")
           undent()
 
         case Return(expr, label) =>
-          println("Return (")
+          println("Return(")
           indent()
           println(expr)
           label match {
             case Some(l) => print(l)
             case None    => print("None")
           }
-          paren()
+          out.write(")")
           undent()
 
-        case If(cond, thenp, elsep) =>
-          println("If (")
+        case ifExpr@If(cond, thenp, elsep) =>
+          println("If(")
           indent()
           println(cond)
           println(thenp)
-          print(elsep); paren()
+          print(elsep)
+          out.write(")(\n")
+          print(ifExpr.tpe)
+          out.write(")")
           undent()
 
         case While(cond, body, label) =>
-          println("While (")
+          println("While(")
           indent()
           println(cond)
-          print(body); paren()
+          print(body)
+          out.write(")")
           undent()
 
         case DoWhile(body, cond, label) =>
-          println("DoWhile (")
+          println("DoWhile(")
           indent()
           println(body)
           println(cond)
+
           label match {
             case Some(l) => print(l)
             case None    => print("None")
           }
-          paren()
+
+          out.write(")")
           undent()
 
         case Try(block, errVar, handler, finalizer) =>
-          println("Try (")
+          println("Try(")
           indent()
           println(block)
           println(errVar)
           println(handler)
-          print(finalizer); paren()
+          print(finalizer)
+          out.write(")")
           undent()
 
         case Throw(expr) =>
-          println("Throw (")
+          println("Throw(")
           indent()
-          print(expr); paren()
+          print(expr)
+          out.write(")")
           undent()
 
         case Continue(label) =>
-          println("Continue (")
+          println("Continue(")
           indent()
           label match {
             case Some(l) => print(l)
             case None    => print("None")
           }
-          paren()
+          out.write(")")
           undent()
 
         case Match(selector, cases, default) =>
-          println("Match (")
+          println("Match(")
           indent()
           println(selector)
 
-          cases foreach { pair =>
-            print(pair._1.toString()); println(":")
-            indent(); print(pair._2); undent()
+          for((alts, body) <- cases) {
+            print(alts.toString()); println(":")
+            indent(); print(body); undent()
           }
 
-          print(default); paren()
+          print(default)
+          out.write(")")
           undent()
 
 
         case Debugger() =>
-          print("Debugger")
+          print("Debugger()")
 
         // Scala expressions
 
         case New(cls, ctor, args) =>
-          println("New (")
+          println("New(")
           indent()
           println(cls)
           println(ctor)
-          printList(args); paren()
+          printList(args)
+          out.write(")")
           undent()
 
         case LoadModule(cls) =>
-          print("LoadModule (")
-          print(cls); paren()
+          print("LoadModule(")
+          print(cls)
+          out.write(")")
 
         case StoreModule(cls, value) =>
-          println("StoreModule (")
+          println("StoreModule(")
           indent()
           println(cls)
-          print(value); paren()
+          print(value)
+          out.write(")")
           undent()
 
         case Select(qualifier, item) =>
-          println("Select (")
+          println("Select(")
           indent()
           println(qualifier)
-          print(item); paren()
+          print(item)
+          out.write(")")
           undent()
 
         case Apply(receiver, method, args) =>
-          println("Apply (")
+          println("Apply(")
           indent()
           println(receiver)
           println(method)
-          printList(args); paren()
+          printList(args)
+          out.write(")")
           undent()
 
         case ApplyStatically(receiver, cls, method, args) =>
-          println("ApplyStatically (")
+          println("ApplyStatically(")
           indent()
           println(receiver)
           println(cls)
           println(method)
-          printList(args); paren()
+          printList(args)
+          out.write(")")
           undent()
 
         case ApplyStatic(cls, method, args) =>
-          print("ApplyStatic (")
+          print("ApplyStatic(")
           indent()
           println(cls)
           println(method)
-          printList(args); paren()
+          printList(args)
+          out.write(")")
           undent()
 
         case UnaryOp(op, lhs) =>
-          println("UnaryOp (")
+          println("UnaryOp(")
           indent()
           println(op.toString)
-          print(lhs); paren()
+          print(lhs)
+          out.write(")")
           undent()
 
         case BinaryOp(op, lhs, rhs) =>
-          println("BinaryOp (")
+          println("BinaryOp(")
           indent()
           println(op.toString)
           println(lhs)
-          print(rhs); paren()
+          print(rhs)
+          out.write(")")
           undent()
 
         case NewArray(tpe, lengths) =>
-          println("NewArray (")
+          println("NewArray(")
           indent()
           println(tpe)
-          printList(lengths); paren()
+          printList(lengths)
+          out.write(")")
           undent()
 
         case ArrayValue(tpe, elems) =>
-          println("ArrayValue (")
+          println("ArrayValue(")
           indent()
           println(tpe)
-          printList(elems); paren()
+          printList(elems)
+          out.write(")")
           undent()
 
         case ArrayLength(array) =>
-          println("ArrayLength (")
+          println("ArrayLength(")
           indent()
-          print(array); paren()
+          print(array)
+          out.write(")")
           undent()
 
         case ArraySelect(array, index) =>
-          println("ArraySelect (")
+          println("ArraySelect(")
           indent()
           println(array)
-          print(index); paren()
+          print(index)
+          out.write(")")
           undent()
 
         case RecordValue(tpe, elems) =>
-          println("RecordValue (")
+          println("RecordValue(")
           indent()
           println(tpe)
-          printList(elems); paren()
+          printList(elems)
+          out.write(")")
           undent()
 
         case IsInstanceOf(expr, cls) =>
-          println("IsInstanceOf (")
+          println("IsInstanceOf(")
           indent()
           println(expr)
-          printRefType(cls); paren()
+          printRefType(cls)
+          out.write(")")
           undent()
 
         case AsInstanceOf(expr, cls) =>
-          println("AsInstanceOf (")
+          println("AsInstanceOf(")
           indent()
           println(expr)
-          printRefType(cls); paren()
+          printRefType(cls)
+          out.write(")")
           undent()
 
         case Unbox(expr, charCode) =>
-          println("Unbox (")
+          println("Unbox(")
           indent()
           println(expr)
-          print(charCode); paren()
+          print(charCode)
+          out.write(")")
           undent()
 
         case GetClass(expr) =>
-          println("GetClass (")
+          println("GetClass(")
           indent()
-          print(expr); paren()
+          print(expr)
+          out.write(")")
           undent()
 
         case CallHelper(helper, args) =>
-          println("CallHelper (")
+          println("CallHelper(")
           indent()
           println(helper)
-          printList(args); paren()
+          printList(args)
+          out.write(")")
           undent()
 
         // JavaScript expressions
 
         case JSNew(ctor, args) =>
-          println("JSNew (")
+          println("JSNew(")
           indent()
           println(ctor)
-          printList(args); paren()
+          printList(args)
+          out.write(")")
           undent()
 
         case JSDotSelect(qualifier, item) =>
-          println("JSDotSelect (")
+          println("JSDotSelect(")
           indent()
           println(qualifier)
-          print(item); paren()
+          print(item)
+          out.write(")")
           undent()
 
         case JSBracketSelect(qualifier, item) =>
-          println("JSBracketSelect (")
+          println("JSBracketSelect(")
           indent()
           println(qualifier)
-          print(item); paren()
+          print(item)
+          out.write(")")
           undent()
 
         case JSFunctionApply(fun, args) =>
-          println("JSFunctionApply (")
+          println("JSFunctionApply(")
           indent()
           println(fun)
-          printList(args); paren()
+          printList(args)
+          out.write(")")
           undent()
 
         case JSDotMethodApply(receiver, method, args) =>
-          println("JSDotMethodApply (")
+          println("JSDotMethodApply(")
           indent()
           println(receiver)
           println(method)
-          printList(args); paren()
+          printList(args)
+          out.write(")")
           undent()
 
         case JSBracketMethodApply(receiver, method, args) =>
-          println("JSBracketMethodApply (")
+          println("JSBracketMethodApply(")
           indent()
           println(receiver)
           println(method)
-          printList(args); paren()
+          printList(args)
+          out.write(")")
           undent()
 
         case JSSuperBracketSelect(cls, qualifier, item) =>
-          println("JSSuperBracketSelect (")
+          println("JSSuperBracketSelect(")
           indent()
           println(qualifier)
           println(cls)
-          print(item); paren()
+          print(item)
+          out.write(")")
           undent()
 
         case JSSuperBracketCall(cls, receiver, method, args) =>
-          println("JSSuperBracketCall (")
+          println("JSSuperBracketCall(")
           indent()
           println(receiver)
           println(cls)
           println(method)
-          printList(args); paren()
+          printList(args)
+          out.write(")")
           undent()
 
         case JSSuperConstructorCall(args) =>
-          println("JSSuperConstructorCall (")
+          println("JSSuperConstructorCall(")
           indent()
-          printList(args); paren()
+          printList(args)
+          out.write(")")
           undent()
 
         case LoadJSConstructor(cls) =>
-          println("LoadJSConstructor (")
+          println("LoadJSConstructor(")
           indent()
-          print(cls); paren()
+          print(cls)
+          out.write(")")
           undent()
 
         case LoadJSModule(cls) =>
-          println("LoadJSModule (")
+          println("LoadJSModule(")
           indent()
-          print(cls); paren()
+          print(cls)
+          out.write(")")
           undent()
 
         case JSSpread(items) =>
-          println("JSSpreas (")
+          println("JSSpread(")
           indent()
-          print(items); paren()
+          print(items)
+          out.write(")")
           undent()
 
         case JSDelete(prop) =>
-          println("JSDelete (")
+          println("JSDelete(")
           indent()
-          print(prop); paren()
+          print(prop)
+          out.write(")")
           undent()
 
         case JSUnaryOp(op, lhs) =>
-          println("JSUnaryOp (")
+          println("JSUnaryOp(")
           indent()
-          print(lhs); paren()
+          print(lhs)
+          out.write(")")
           undent()
 
         case JSBinaryOp(op, lhs, rhs) =>
-          println("JSBinaryOp (")
+          println("JSBinaryOp(")
           indent()
           println(lhs)
-          print(rhs); paren()
+          print(rhs)
+          out.write(")")
           undent()
 
         case JSArrayConstr(items) =>
-          println("JSArrayConstr (")
+          println("JSArrayConstr(")
           indent()
-          printList(items); paren()
+          printList(items)
+          out.write(")")
           undent()
 
         case JSObjectConstr(fields) =>
-          println("JSObjectConstr (")
+          println("JSObjectConstr(")
           indent()
-          fields foreach { pair =>
-            print(pair._1); print(": "); println(pair._2)
+
+          for ((propName, tree) <- fields) {
+            print(propName); print(": "); println(tree)
           }
-          paren()
+
+          out.write(")")
           undent()
 
         case JSLinkingInfo() =>
-          print("JSLinkingInfo")
+          print("JSLinkingInfo()")
 
         case lit: Literal =>
           print(lit.toString)
 
         case UndefinedParam() =>
-          print("UndefinedParam")
+          print("UndefinedParam()")
 
         // Atomic expressions
 
         case VarRef(ident) =>
-          println("VarRef (")
+          println("VarRef(")
           indent()
-          print(ident); paren()
+          print(ident)
+          out.write(")")
           undent()
 
         case This() =>
-          print("This")
+          print("This()")
 
         case Closure(captureParams, params, body, captureValues) =>
-          println("Closure (")
+          println("Closure(")
           indent()
           printlnList(captureParams)
           printlnList(params)
           println(body)
-          printList(captureValues); paren()
+          printList(captureValues)
+          out.write(")")
           undent()
 
         // Classes
 
         case ClassDef(name, kind, superClass, interfaces, jsName, defs) =>
-          println("ClassDef (")
+          println("ClassDef(")
           indent()
           println(name)
           println(kind.toString)
@@ -1578,11 +1627,12 @@ object Printers {
 
           printlnIdentList(interfaces)
           println(jsName.toString)
-          printList(defs); paren()
+          printList(defs)
+          out.write(")")
           undent()
 
         case FieldDef(name, vtpe, mutable) =>
-          println("FieldDef (")
+          println("FieldDef(")
           indent()
           println(name.name)
           println(vtpe)
@@ -1590,26 +1640,28 @@ object Printers {
           undent()
 
         case MethodDef(static, name, args, resultType, body) =>
-          println("MethodDef (")
+          println("MethodDef(")
           indent()
           println("static = " + static.toString)
           println(name.toString)
           printlnList(args)
           println(resultType)
-          print(body); paren()
+          print(body)
+          out.write(")")
           undent()
 
         case PropertyDef(name, getterBody, setterArg, setterBody) =>
-          println("PropertyDef (")
+          println("PropertyDef(")
           indent()
           println(name.toString)
           println(getterBody)
           println(setterArg)
-          print(setterBody); paren()
+          print(setterBody)
+          out.write(")")
           undent()
 
         case ConstructorExportDef(fullName, args, body) =>
-          println("ConstructorExportDef (")
+          println("ConstructorExportDef(")
           indent()
           println(fullName)
           printlnList(args)
@@ -1617,13 +1669,13 @@ object Printers {
           undent()
 
         case JSClassExportDef(fullName) =>
-          println("JSClassExportDef (")
+          println("JSClassExportDef(")
           indent()
           print(fullName + ")")
           undent()
 
         case ModuleExportDef(fullName) =>
-          println("ModuleExportDef (")
+          println("ModuleExportDef(")
           indent()
           print(fullName + ")")
           undent()
@@ -1633,18 +1685,16 @@ object Printers {
       }
     }
 
-    private final def printRefType(tpe: ReferenceType): Unit =
+    private def printRefType(tpe: ReferenceType): Unit =
       print(tpe.asInstanceOf[Type])
 
-    private final def print(propName: PropertyName): Unit = propName match {
+    private def print(propName: PropertyName): Unit = propName match {
       case lit: StringLiteral => print(lit: Tree)
       case ident: Ident       => print(ident)
     }
 
     private def print(c: Int): Unit =
       print(c.toString)
-
-    override def println(): Unit = super.println()
 
     def complete(): Unit = ()
   }
