@@ -10,6 +10,7 @@ object ErrorManager {
 }
 
 class ErrorManager() {
+
   // The spec is a bit vague. This will implement the most
   // obvious interpretation of outputting only once
   private[this] var called = false
@@ -26,5 +27,4 @@ class ErrorManager() {
       called = true
     }
   }
-
 }

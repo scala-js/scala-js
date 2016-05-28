@@ -4,6 +4,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 object Logger {
+
   val GLOBAL_LOGGER_NAME: String =  "global"
 
   // Not implemented, deprecated on JDK 1.8
@@ -35,6 +36,7 @@ object Logger {
   def getLogger(name: String): Logger = {
     if (name == null)
       throw new NullPointerException("Logger name cannot be null")
+
     loggers.getOrElseUpdate(name, {
       val l = new Logger(name, null)
       l.setLevel(null)
@@ -75,6 +77,7 @@ object Logger {
 }
 
 class Logger(name: String, resourceBundle: String) {
+
   private[this] var level: Level = null
   private[this] var useParentsHandlers: Boolean = false
   private[this] var parent: Logger = null
@@ -95,7 +98,7 @@ class Logger(name: String, resourceBundle: String) {
 
   // Not implemented, no resource bundle
   //def getResourceBundle():ResourceBundle = ???
-  
+
   def getResourceBundleName(): String = resourceBundle
 
   def setFilter(filter: Filter): Unit = this.filter = filter

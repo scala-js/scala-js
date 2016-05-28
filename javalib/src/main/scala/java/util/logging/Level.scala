@@ -1,6 +1,7 @@
 package java.util.logging
 
 object Level {
+
   val OFF: Level = new Level("OFF", Int.MaxValue)
   val SEVERE: Level = new Level("SEVERE", 1000)
   val WARNING: Level = new Level("WARNING", 900)

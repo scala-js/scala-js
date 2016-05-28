@@ -60,6 +60,7 @@ abstract class Formatter protected () {
           msgAccumulator += currentChar
         }
       }
+
       if (substitutionFailure || inParam) msg
       else msgAccumulator.result()
     } else {

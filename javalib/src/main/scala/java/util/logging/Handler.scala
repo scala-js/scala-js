@@ -3,6 +3,7 @@ package java.util.logging
 import java.nio.charset.{Charset, UnsupportedCharsetException}
 
 abstract class Handler protected () {
+
   private[this] var level: Level = Level.ALL
   private[this] var filter: Filter = null
   private[this] var formatter: Formatter = null
@@ -15,8 +16,7 @@ abstract class Handler protected () {
 
   def close(): Unit
 
-  def setFormatter(formatter: Formatter): Unit =
-    this.formatter = formatter
+  def setFormatter(formatter: Formatter): Unit = this.formatter = formatter
 
   def getFormatter(): Formatter = formatter
 
@@ -28,8 +28,7 @@ abstract class Handler protected () {
 
   def getEncoding(): String = encoding
 
-  def setFilter(filter: Filter): Unit =
-    this.filter = filter
+  def setFilter(filter: Filter): Unit = this.filter = filter
 
   def getFilter(): Filter = filter
 
@@ -52,5 +51,4 @@ abstract class Handler protected () {
     level.intValue() <= record.getLevel.intValue() &&
     (filter == null || filter.isLoggable(record))
   }
-
 }
