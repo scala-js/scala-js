@@ -8,6 +8,7 @@
 package org.scalajs.testsuite.javalib.util
 
 import org.junit.Test
+import org.junit.Assert._
 
 class EventObjectTest {
 
