@@ -20,7 +20,7 @@ class EventObjectTest {
     }
   }
 
-  @Test def shouldHaveGetSourceMethod): Unit = {
+  @Test def shouldHaveGetSourceMethod(): Unit = {
     import java.util._
     val mySource = new AnyRef
     assertEquals(mySource, new EventObject(mySource).getSource)
