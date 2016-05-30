@@ -753,10 +753,60 @@ object ScalaJSPluginInternal {
       }
   )
 
+  private def scalaJSTestHtmlTaskSettings(
+      testHtmlKey: TaskKey[Attributed[File]], sjsKey: TaskKey[Attributed[File]],
+      jsdepsKey: TaskKey[File]) = {
+    testHtmlKey := {
+      if ((skip in jsdepsKey).value) {
+        sys.error(s"(skip in $jsdepsKey) must be false for $testHtmlKey.")
+      }
+
+      val log = streams.value.log
+      val output = (artifactPath in testHtmlKey).value
+
+      val css: java.io.File = {
+        val name = "test-runner.css"
+        val inputStream = getClass.getResourceAsStream(name)
+        try {
+          val outFile = (resourceManaged in testHtmlKey).value / name
+          IO.transfer(inputStream, outFile)
+          outFile
+        } finally {
+          inputStream.close()
+        }
+      }
+
+      IO.write(output, HTMLRunnerTemplate.render(name.value + " - tests",
+          (sjsKey in testHtmlKey).value.data, (jsdepsKey in testHtmlKey).value,
+          css, (loadedTestFrameworks in testHtmlKey).value,
+          (definedTests in testHtmlKey).value,
+          (scalaJSJavaSystemProperties in testHtmlKey).value))
+
+      log.info(s"Wrote HTML test runner. Point your browser to ${output.toURI}")
+
+      Attributed.blank(output)
+    }
+  }
+
+  val scalaJSTestHtmlSettings = Seq(
+      artifactPath in testHtmlFastOpt :=
+        ((crossTarget in testHtmlFastOpt).value /
+            ((moduleName in testHtmlFastOpt).value + "-fastopt-test.html")),
+      artifactPath in testHtmlFullOpt :=
+        ((crossTarget in testHtmlFullOpt).value /
+            ((moduleName in testHtmlFullOpt).value + "-opt-test.html"))
+  ) ++ (
+      scalaJSTestHtmlTaskSettings(testHtmlFastOpt, fastOptJS,
+          packageJSDependencies) ++
+      scalaJSTestHtmlTaskSettings(testHtmlFullOpt, fullOptJS,
+          packageMinifiedJSDependencies)
+  )
+
   val scalaJSTestSettings = (
       scalaJSTestBuildSettings ++
       scalaJSRunSettings ++
-      scalaJSTestFrameworkSettings
+      scalaJSTestFrameworkSettings ++
+      scalaJSTestHtmlSettings
   )
 
   val scalaJSDependenciesSettings = Seq(
@@ -848,8 +898,12 @@ object ScalaJSPluginInternal {
       addCompilerPlugin(
           "org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
 
-      // and of course the Scala.js library
-      libraryDependencies += "org.scala-js" %% "scalajs-library" % scalaJSVersion,
+      libraryDependencies ++= Seq(
+          // and of course the Scala.js library
+          "org.scala-js" %% "scalajs-library" % scalaJSVersion,
+          // also bump the version of the test-interface
+          "org.scala-js" %% "scalajs-test-interface" % scalaJSVersion % "test"
+      ),
 
       // and you will want to be cross-compiled on the Scala.js binary version
       crossVersion := ScalaJSCrossVersion.binary

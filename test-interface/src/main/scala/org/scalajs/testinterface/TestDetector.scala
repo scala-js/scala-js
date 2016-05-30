@@ -1,4 +1,4 @@
-package org.scalajs.testsuite.utils
+package org.scalajs.testinterface
 
 import scala.scalajs.js
 
@@ -7,7 +7,7 @@ import org.scalajs.testinterface.internal.TaskDefSerializer
 import sbt.testing._
 
 /** Fetches test definitions and frameworks. */
-object TestDetector {
+private[scalajs] object TestDetector {
   def detectTests(): Seq[(Framework, Seq[TaskDef])] = {
     import RawDefinitions._
 

@@ -3,9 +3,7 @@ package org.scalajs.core.tools.test.js
 import scala.scalajs.js
 import js.annotation.JSExport
 
-import org.scalajs.testinterface.ScalaJSClassLoader
-
-import org.scalajs.testsuite.utils.TestDetector
+import org.scalajs.testinterface.{ScalaJSClassLoader, TestDetector}
 
 import sbt.testing._
 
