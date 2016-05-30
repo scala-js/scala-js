@@ -257,7 +257,7 @@ object ScalaJSPlugin extends AutoPlugin {
         "scalaJSConfigurationLibs",
         "List of JS libraries used as project configuration.", CTask)
 
-    val scalaJSJavaSystemProperties = TaskKey[Seq[(String, String)]](
+    val scalaJSJavaSystemProperties = TaskKey[Map[String, String]](
         "scalaJSJavaSystemProperties",
         "List of arguments to pass to the Scala.js Java System.properties.",
         CTask)

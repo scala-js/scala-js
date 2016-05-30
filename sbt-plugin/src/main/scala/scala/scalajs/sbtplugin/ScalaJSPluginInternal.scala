@@ -583,7 +583,7 @@ object ScalaJSPluginInternal {
           case opt =>
             sys.error("Scala.js javaOptions can only be \"-D<key>=<value>\"," +
                 " but received: " + opt)
-        }
+        }.toMap
       },
 
       scalaJSConfigurationLibs ++= {
@@ -828,7 +828,7 @@ object ScalaJSPluginInternal {
 
         new PhantomJettyClassLoader(jettyLoader, getClass.getClassLoader)
       },
-      scalaJSJavaSystemProperties := Nil,
+      scalaJSJavaSystemProperties := Map.empty,
       scalaJSConfigurationLibs := Nil
   )
 
