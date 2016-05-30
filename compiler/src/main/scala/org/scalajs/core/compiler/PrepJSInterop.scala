@@ -552,7 +552,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               typer.typed(Literal(Constant(fullJSName))))
         } else if (!sym.isTrait && !sym.hasAnnotation(JSNameAnnotation) &&
             !isJSGlobalScope(implDef)) {
-          if (enclosingOwner is OwnerKind.ScalaMod) {
+          if ((enclosingOwner is OwnerKind.ScalaMod) &&
+              !sym.owner.isPackageObjectClass) {
             if (sym.isModuleClass) {
               reporter.error(implDef.pos, "Native JS objects inside " +
                   "non-native objects must have an @JSName annotation")
@@ -562,6 +563,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
                   "non-native objects should have an @JSName annotation. " +
                   "This will be enforced in 1.0.")
             }
+          } else if (sym.owner.isPackageObjectClass) {
+            sym.addAnnotation(JSFullNameAnnotation,
+                typer.typed(Literal(Constant(jsInterop.jsNameOf(sym)))))
           }
         }
       }

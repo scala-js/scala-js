@@ -597,6 +597,21 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |             ^
     """
 
+    // From issue #2401
+    """
+    package object A {
+      @js.native
+      object B extends js.Object
+    }
+    """.hasNoWarns
+
+    """
+    package object A {
+      @js.native
+      class B extends js.Object
+    }
+    """.hasNoWarns
+
     """
     object A {
       @JSName("InnerB")
