@@ -28,7 +28,7 @@ import org.scalajs.jsenv.phantomjs.{PhantomJSEnv, PhantomJettyClassLoader}
 import org.scalajs.core.ir
 import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.core.ir.ScalaJSVersions
-import org.scalajs.core.ir.Printers.{IRASTPrinter, IRTreePrinter, InfoPrinter}
+import org.scalajs.core.ir.Printers.{RawIRPrinter, IRTreePrinter, InfoPrinter}
 
 import org.scalajs.testadapter.ScalaJSFramework
 
@@ -276,9 +276,8 @@ object ScalaJSPluginInternal {
 
     val optionsParser: Parser[Options] = {
       token(OptSpace ~> (
-          (literal("-i") | "--infos") ^^^ ((_: Options).copy(infos = true)) |
-            (literal("-r") | "--raw") ^^^ ((_: Options).copy(raw = true))
-
+          (literal("-i") | "--infos") ^^^ ((_: Options).copy(infos = true))
+        | (literal("-r") | "--raw") ^^^ ((_: Options).copy(raw = true))
       )).* map {
         fns => Function.chain(fns)(Options())
       }
@@ -313,7 +312,7 @@ object ScalaJSPluginInternal {
           if (options.infos)
             new InfoPrinter(stdout).print(vfile.info)
           else if (options.raw)
-            new IRASTPrinter(stdout).printTopLevelTree(vfile.tree)
+            new RawIRPrinter(stdout).printTopLevelTree(vfile.tree)
           else
             new IRTreePrinter(stdout).printTopLevelTree(vfile.tree)
           stdout.flush()

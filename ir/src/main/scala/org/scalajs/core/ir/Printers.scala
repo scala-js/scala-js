@@ -1073,7 +1073,7 @@ object Printers {
       out.write("\n")
   }
 
-  class IRASTPrinter(protected val out: Writer) extends RawIndentationManager {
+  class RawIRPrinter(protected val out: Writer) extends RawIndentationManager {
     /** Pretty-prints the IR's AST nodes. */
     def printTopLevelTree(tree: Tree): Unit =
       println(tree)
@@ -1209,12 +1209,12 @@ object Printers {
           out.write(")")
           undent()
 
-        case ifExpr@If(cond, thenp, elsep) =>
+        case ifExpr: If =>
           println("If(")
           indent()
-          println(cond)
-          println(thenp)
-          print(elsep)
+          println(ifExpr.cond)
+          println(ifExpr.thenp)
+          print(ifExpr.elsep)
           out.write(")(\n")
           print(ifExpr.tpe)
           out.write(")")
@@ -1299,9 +1299,11 @@ object Printers {
           undent()
 
         case LoadModule(cls) =>
-          print("LoadModule(")
+          println("LoadModule(")
+          indent()
           print(cls)
           out.write(")")
+          undent()
 
         case StoreModule(cls, value) =>
           println("StoreModule(")
