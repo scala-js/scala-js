@@ -16,7 +16,7 @@ class EventObjectTest {
     import java.util._
     val mySource = new AnyRef
     new EventObject(mySource) {
-      assertEquals(mySource, super.source)
+      assertEquals(mySource, source)
     }
   }
 
