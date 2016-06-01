@@ -82,8 +82,8 @@ extends scala.collection.AbstractSeq[Int]
     || (start < end && step < 0)
     || (start == end && !isInclusive)
   )
-  @deprecated("This method will be made private, use `length` instead.", "2.11")
-  final val numRangeElements: Int = {
+
+  private val numRangeElements: Int = {
     if (step == 0) throw new IllegalArgumentException("step cannot be 0.")
     else if (isEmpty) 0
     else {
@@ -92,8 +92,8 @@ extends scala.collection.AbstractSeq[Int]
       else len.toInt
     }
   }
-  @deprecated("This method will be made private, use `last` instead.", "2.11")
-  final val lastElement = 
+
+  private val lastElement =
     if (isEmpty) start - step
     else step match {
       case 1  => if (isInclusive) end else end-1
@@ -104,9 +104,6 @@ extends scala.collection.AbstractSeq[Int]
         else if (isInclusive) end
         else end - step
     }
-    
-  @deprecated("This method will be made private.", "2.11")
-  final val terminalElement = lastElement + step
 
   /** The last element of this range.  This method will return the correct value
    *  even if there are too many elements to iterate over.
