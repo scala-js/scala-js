@@ -901,7 +901,7 @@ private[optimizer] abstract class OptimizerCore(
               cont(PreTransTree(transformedStat, RefinedType.Nothing))
             else {
               pretransformList(rest) { trest =>
-                cont(PreTransBlock(transformedStat :: Nil, trest))
+                cont(PreTransBlock(transformedStat, trest))
               }
             }
         }
@@ -1004,12 +1004,13 @@ private[optimizer] abstract class OptimizerCore(
   private def resolveLocalDef(preTrans: PreTransform): PreTransGenTree = {
     implicit val pos = preTrans.pos
     preTrans match {
-      case PreTransBlock(stats, result) =>
+      case PreTransBlock(bindingsAndStats, result) =>
         resolveLocalDef(result) match {
           case PreTransRecordTree(tree, tpe, cancelFun) =>
-            PreTransRecordTree(Block(stats :+ tree), tpe, cancelFun)
+            PreTransRecordTree(finishTransformBindings(bindingsAndStats, tree),
+                tpe, cancelFun)
           case PreTransTree(tree, tpe) =>
-            PreTransTree(Block(stats :+ tree), tpe)
+            PreTransTree(finishTransformBindings(bindingsAndStats, tree), tpe)
         }
 
       case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
@@ -1034,6 +1035,42 @@ private[optimizer] abstract class OptimizerCore(
 
       case preTrans: PreTransGenTree =>
         preTrans
+    }
+  }
+
+  /** Resolves any [[RecordType]] in a [[PreTransform]].
+   *
+   *  If `preTrans` would resolve to a `PreTransRecordTree`, returns a `Some`
+   *  of its (lowered) [[RecordType]] and its `cancelFun`. Otherwise, returns
+   *  `None`.
+   *
+   *  Note that the record type is not the same as `preTrans.tpe.base`, which
+   *  is the *original* type of the tree (not lowered to a record type).
+   */
+  private def resolveRecordType(
+      preTrans: PreTransform): Option[(RecordType, CancelFun)] = {
+    preTrans match {
+      case PreTransBlock(_, result) =>
+        resolveRecordType(result)
+
+      case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
+        replacement match {
+          case ReplaceWithRecordVarRef(name, originalName,
+              recordType, used, cancelFun) =>
+            Some((recordType, cancelFun))
+
+          case InlineClassInstanceReplacement(recordType, fieldLocalDefs, cancelFun) =>
+            Some((recordType, cancelFun))
+
+          case _ =>
+            None
+        }
+
+      case PreTransRecordTree(tree, _, cancelFun) =>
+        Some((tree.tpe.asInstanceOf[RecordType], cancelFun))
+
+      case PreTransTree(_, _) =>
+        None
     }
   }
 
@@ -1064,8 +1101,8 @@ private[optimizer] abstract class OptimizerCore(
   private def finishTransformExpr(preTrans: PreTransform): Tree = {
     implicit val pos = preTrans.pos
     preTrans match {
-      case PreTransBlock(stats, result) =>
-        Block(stats :+ finishTransformExpr(result))
+      case PreTransBlock(bindingsAndStats, result) =>
+        finishTransformBindings(bindingsAndStats, finishTransformExpr(result))
       case PreTransLocalDef(localDef) =>
         localDef.newReplacement
       case PreTransRecordTree(_, _, cancelFun) =>
@@ -1083,14 +1120,61 @@ private[optimizer] abstract class OptimizerCore(
    *  it is once in the 'try' part and once in the 'fallback' part.
    */
   private def finishTransformStat(stat: PreTransform): Tree = stat match {
-    case PreTransBlock(stats, result) =>
-      Block(stats :+ finishTransformStat(result))(stat.pos)
+    case PreTransBlock(bindingsAndStats, result) =>
+      finishTransformBindings(bindingsAndStats, finishTransformStat(result))
     case PreTransLocalDef(_) =>
       Skip()(stat.pos)
     case PreTransRecordTree(tree, _, _) =>
       keepOnlySideEffects(tree)
     case PreTransTree(tree, _) =>
       keepOnlySideEffects(tree)
+  }
+
+  /** Finishes the bindings and statements followed by a result to get a
+   *  normal [[Tree]].
+   *  This method must not be called more than once per `BindingOrStat` and
+   *  per translation.
+   *  By "per translation", we mean in an alternative path through
+   *  `tryOrRollback`. It could still be called several times as long as
+   *  it is once in the 'try' part and once in the 'fallback' part.
+   */
+  private def finishTransformBindings(bindingsAndStats: List[BindingOrStat],
+      result: Tree): Tree = {
+    bindingsAndStats.foldRight(result) {
+      case (Left(PreTransBinding(localDef, value)), innerBody) =>
+        implicit val pos = value.pos
+
+        val LocalDef(tpe, mutable, replacement) = localDef
+
+        val (name, originalName, used) = (replacement: @unchecked) match {
+          case ReplaceWithVarRef(name, originalName, used, _) =>
+            (name, originalName, used)
+          case ReplaceWithRecordVarRef(name, originalName, _, used, _) =>
+            (name, originalName, used)
+        }
+
+        if (used.value) {
+          val ident = Ident(name, originalName)
+          val varDef = resolveLocalDef(value) match {
+            case PreTransRecordTree(valueTree, valueTpe, cancelFun) =>
+              val recordType = valueTree.tpe.asInstanceOf[RecordType]
+              if (!isImmutableType(recordType))
+                cancelFun()
+              VarDef(ident, recordType, mutable, valueTree)
+
+            case PreTransTree(valueTree, valueTpe) =>
+              VarDef(ident, tpe.base, mutable, valueTree)
+          }
+
+          Block(varDef, innerBody)
+        } else {
+          val valueSideEffects = finishTransformStat(value)
+          Block(valueSideEffects, innerBody)
+        }
+
+      case (Right(stat), innerBody) =>
+        Block(stat, innerBody)(innerBody.pos)
+    }
   }
 
   /** Keeps only the side effects of a Tree (overapproximation). */
@@ -1915,7 +1999,7 @@ private[optimizer] abstract class OptimizerCore(
               inlineClassConstructorBodyList(allocationSite,
                   thisLocalDef, inputFieldsLocalDefs,
                   cls, rest, cancelFun)(buildInner) { tinner =>
-                cont(PreTransBlock(transformedStat :: Nil, tinner))
+                cont(PreTransBlock(transformedStat, tinner))
               }
             }
         }
@@ -3213,86 +3297,21 @@ private[optimizer] abstract class OptimizerCore(
 
       val used = newSimpleState(false)
 
-      def doBuildInner(localDef: LocalDef)(varDef: => VarDef)(
-          cont: PreTransCont): TailRec[Tree] = {
-        buildInner(localDef, { tinner =>
-          if (used.value) {
-            cont(PreTransBlock(varDef :: Nil, tinner))
-          } else {
-            tinner match {
-              case PreTransLocalDef(`localDef`) =>
-                cont(value)
-              case _ if tinner.contains(localDef) =>
-                cont(PreTransBlock(varDef :: Nil, tinner))
-              case _ =>
-                val rhsSideEffects = finishTransformStat(value)
-                rhsSideEffects match {
-                  case Skip() =>
-                    cont(tinner)
-                  case _ =>
-                    if (rhsSideEffects.tpe == NothingType)
-                      cont(PreTransTree(rhsSideEffects, RefinedType.Nothing))
-                    else
-                      cont(PreTransBlock(rhsSideEffects :: Nil, tinner))
-                }
-              }
-          }
-        })
+      val replacement = resolveRecordType(value) match {
+        case Some((recordType, cancelFun)) =>
+          ReplaceWithRecordVarRef(newName, newOriginalName, recordType,
+              used, cancelFun)
+
+        case None =>
+          ReplaceWithVarRef(newName, newOriginalName, used, None)
       }
 
-      resolveLocalDef(value) match {
-        case PreTransRecordTree(valueTree, valueTpe, cancelFun) =>
-          val recordType = valueTree.tpe.asInstanceOf[RecordType]
-          if (!isImmutableType(recordType))
-            cancelFun()
-          val localDef = LocalDef(valueTpe, mutable,
-              ReplaceWithRecordVarRef(newName, newOriginalName, recordType,
-                  used, cancelFun))
-          doBuildInner(localDef) {
-            VarDef(Ident(newName, newOriginalName), recordType, mutable,
-                valueTree)
-          } (cont)
+      val localDef = LocalDef(tpe, mutable, replacement)
+      val preTransBinding = PreTransBinding(localDef, value)
 
-        case PreTransTree(valueTree, valueTpe) =>
-          def doDoBuildInner(optValueTree: Option[() => Tree])(
-              cont1: PreTransCont) = {
-            val localDef = LocalDef(tpe, mutable, ReplaceWithVarRef(
-                newName, newOriginalName, used, optValueTree))
-            doBuildInner(localDef) {
-              VarDef(Ident(newName, newOriginalName), tpe.base, mutable,
-                  optValueTree.fold(valueTree)(_()))
-            } (cont1)
-          }
-          if (mutable) {
-            doDoBuildInner(None)(cont)
-          } else (valueTree match {
-            case LongFromInt(arg) =>
-              withNewLocalDef(
-                  Binding("x", None, IntType, false, PreTransTree(arg))) {
-                (intLocalDef, cont1) =>
-                  doDoBuildInner(Some(
-                      () => LongFromInt(intLocalDef.newReplacement)))(
-                      cont1)
-              } (cont)
-
-            case BinaryOp(op @ (BinaryOp.Long_+ | BinaryOp.Long_-),
-                LongFromInt(intLhs), LongFromInt(intRhs)) =>
-              withNewLocalDefs(List(
-                  Binding("x", None, IntType, false, PreTransTree(intLhs)),
-                  Binding("y", None, IntType, false, PreTransTree(intRhs)))) {
-                (intLocalDefs, cont1) =>
-                  val List(lhsLocalDef, rhsLocalDef) = intLocalDefs
-                  doDoBuildInner(Some(
-                      () => BinaryOp(op,
-                          LongFromInt(lhsLocalDef.newReplacement),
-                          LongFromInt(rhsLocalDef.newReplacement))))(
-                      cont1)
-              } (cont)
-
-            case _ =>
-              doDoBuildInner(None)(cont)
-          })
-      }
+      buildInner(localDef, { tinner =>
+        cont(addPreTransBinding(preTransBinding, tinner))
+      })
     }
 
     if (value.tpe.isNothingType) {
@@ -3302,9 +3321,9 @@ private[optimizer] abstract class OptimizerCore(
     } else {
       val refinedType = value.tpe
       value match {
-        case PreTransBlock(stats, result) =>
+        case PreTransBlock(bindingsAndStats, result) =>
           withNewLocalDef(binding.copy(value = result))(buildInner) { tresult =>
-            cont(PreTransBlock(stats, tresult))
+            cont(addPreTransBindings(bindingsAndStats, tresult))
           }
 
         case PreTransLocalDef(localDef) if !localDef.mutable =>
@@ -3323,6 +3342,57 @@ private[optimizer] abstract class OptimizerCore(
         case _ =>
           withDedicatedVar(refinedType)
       }
+    }
+  }
+
+  /** Adds a [[PreTransBinding]] in front a result [[PreTransform]].
+   *
+   *  This can force the binding if the result is a [[PreTransGenTree]].
+   */
+  private def addPreTransBinding(preTransBinding: PreTransBinding,
+      result: PreTransform): PreTransform = {
+    /* This is not the same as
+     *   addPreTransBindings(Left(preTransBinding) :: Nil, result)
+     * because this function is able to optimize the case
+     *   result: PreTransLocalDef
+     * if `!result.contains(preTransBinding)`.
+     */
+    result match {
+      case result: PreTransBlock =>
+        PreTransBlock(preTransBinding, result)
+      case result: PreTransLocalDef =>
+        PreTransBlock(preTransBinding, result)
+      case PreTransRecordTree(tree, tpe, cancelFun) =>
+        PreTransRecordTree(
+            finishTransformBindings(Left(preTransBinding) :: Nil, tree),
+            tpe, cancelFun)
+      case PreTransTree(tree, tpe) =>
+        PreTransTree(
+            finishTransformBindings(Left(preTransBinding) :: Nil, tree),
+            tpe)
+    }
+  }
+
+  /** Adds a sequence of [[PreTransBinding]]s and statements in front a result
+   *  [[PreTransform]].
+   *
+   *  This can force the bindings if the result is a [[PreTransGenTree]].
+   */
+  private def addPreTransBindings(bindingsAndStats: List[BindingOrStat],
+      result: PreTransform): PreTransform = {
+    result match {
+      case result: PreTransBlock =>
+        PreTransBlock(bindingsAndStats, result)
+      case result: PreTransLocalDef =>
+        PreTransBlock(bindingsAndStats, result)
+      case PreTransRecordTree(tree, tpe, cancelFun) =>
+        PreTransRecordTree(
+            finishTransformBindings(bindingsAndStats, tree),
+            tpe, cancelFun)
+      case PreTransTree(tree, tpe) =>
+        PreTransTree(
+            finishTransformBindings(bindingsAndStats, tree),
+            tpe)
     }
   }
 
@@ -3580,8 +3650,11 @@ private[optimizer] object OptimizerCore {
     val tpe: RefinedType
 
     def contains(localDef: LocalDef): Boolean = this match {
-      case PreTransBlock(_, result) =>
-        result.contains(localDef)
+      case PreTransBlock(bindingsAndStats, result) =>
+        result.contains(localDef) || bindingsAndStats.exists {
+          case Left(PreTransBinding(_, value)) => value.contains(localDef)
+          case Right(_)                        => false
+        }
       case PreTransLocalDef(thisLocalDef) =>
         thisLocalDef.contains(localDef)
       case _ =>
@@ -3589,36 +3662,82 @@ private[optimizer] object OptimizerCore {
     }
   }
 
-  private final class PreTransBlock private (val stats: List[Tree],
+  /** A pretransformed binding, part of a [[PreTransBlock]].
+   *
+   *  Even though it is not encoded in the type system, `localDef.replacement`
+   *  must be a [[ReplaceWithVarRef]] or a [[ReplaceWithRecordVarRef]].
+   */
+  private final case class PreTransBinding(localDef: LocalDef,
+      value: PreTransform) {
+
+    assert(
+        localDef.replacement.isInstanceOf[ReplaceWithVarRef] ||
+        localDef.replacement.isInstanceOf[ReplaceWithRecordVarRef],
+        "Cannot create a PreTransBinding with non-var-ref replacement " +
+        localDef.replacement)
+  }
+
+  private type BindingOrStat = Either[PreTransBinding, Tree]
+
+  private final class PreTransBlock private (
+      val bindingsAndStats: List[BindingOrStat],
       val result: PreTransLocalDef) extends PreTransform {
     def pos = result.pos
     val tpe = result.tpe
 
-    assert(stats.nonEmpty)
+    assert(bindingsAndStats.nonEmpty)
 
     override def toString(): String =
-      s"PreTransBlock($stats,$result)"
+      s"PreTransBlock($bindingsAndStats,$result)"
   }
 
   private object PreTransBlock {
-    def apply(stats: List[Tree], result: PreTransform): PreTransform = {
-      if (stats.isEmpty) result
+    def apply(bindingsAndStats: List[BindingOrStat],
+        result: PreTransLocalDef): PreTransform = {
+      if (bindingsAndStats.isEmpty) result
+      else new PreTransBlock(bindingsAndStats, result)
+    }
+
+    def apply(bindingsAndStats: List[BindingOrStat],
+        result: PreTransBlock): PreTransform = {
+      new PreTransBlock(bindingsAndStats ::: result.bindingsAndStats,
+          result.result)
+    }
+
+    def apply(binding: PreTransBinding,
+        result: PreTransLocalDef): PreTransform = {
+      if (result.contains(binding.localDef)) {
+        new PreTransBlock(Left(binding) :: Nil, result)
+      } else {
+        /* Eager dce of the binding to avoid unnecessary nesting in
+         * PreTransBlock, for better optimization.
+         */
+        result
+      }
+    }
+
+    def apply(binding: PreTransBinding, result: PreTransBlock): PreTransform = {
+      new PreTransBlock(Left(binding) :: result.bindingsAndStats, result.result)
+    }
+
+    def apply(stat: Tree, result: PreTransform): PreTransform = {
+      if (stat.isInstanceOf[Skip]) result
       else {
         result match {
-          case PreTransBlock(innerStats, innerResult) =>
-            new PreTransBlock(stats ++ innerStats, innerResult)
+          case PreTransBlock(innerBindingsAndStats, innerResult) =>
+            new PreTransBlock(Right(stat) :: innerBindingsAndStats, innerResult)
           case result: PreTransLocalDef =>
-            new PreTransBlock(stats, result)
+            new PreTransBlock(Right(stat) :: Nil, result)
           case PreTransRecordTree(tree, tpe, cancelFun) =>
-            PreTransRecordTree(Block(stats :+ tree)(tree.pos), tpe, cancelFun)
+            PreTransRecordTree(Block(stat, tree)(tree.pos), tpe, cancelFun)
           case PreTransTree(tree, tpe) =>
-            PreTransTree(Block(stats :+ tree)(tree.pos), tpe)
+            PreTransTree(Block(stat, tree)(tree.pos), tpe)
         }
       }
     }
 
-    def unapply(preTrans: PreTransBlock): Some[(List[Tree], PreTransLocalDef)] =
-      Some(preTrans.stats, preTrans.result)
+    def unapply(preTrans: PreTransBlock): Some[(List[BindingOrStat], PreTransLocalDef)] =
+      Some(preTrans.bindingsAndStats, preTrans.result)
   }
 
   private sealed abstract class PreTransNoBlock extends PreTransform

@@ -6,6 +6,11 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // private, not an issue
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#PreTransBlock.apply"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#PreTransBlock.stats")
   )
 
   val JSEnvs = Seq(
