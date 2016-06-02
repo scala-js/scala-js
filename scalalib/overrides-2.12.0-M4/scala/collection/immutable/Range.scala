@@ -82,8 +82,8 @@ extends scala.collection.AbstractSeq[Int]
     || (start < end && step < 0)
     || (start == end && !isInclusive)
   )
-
-  private val numRangeElements: Int = {
+  @deprecated("This method will be made private, use `length` instead.", "2.11")
+  final val numRangeElements: Int = {
     if (step == 0) throw new IllegalArgumentException("step cannot be 0.")
     else if (isEmpty) 0
     else {
@@ -92,17 +92,21 @@ extends scala.collection.AbstractSeq[Int]
       else len.toInt
     }
   }
-
-  // This field has a sensible value only for non-empty ranges
-  private val lastElement = step match {
-    case 1  => if (isInclusive) end else end-1
-    case -1 => if (isInclusive) end else end+1
-    case _  =>
-      val remainder = (gap % step).toInt
-      if (remainder != 0) end - remainder
-      else if (isInclusive) end
-      else end - step
-  }
+  @deprecated("This method will be made private, use `last` instead.", "2.11")
+  final val lastElement = 
+    if (isEmpty) start - step
+    else step match {
+      case 1  => if (isInclusive) end else end-1
+      case -1 => if (isInclusive) end else end+1
+      case _  =>
+        val remainder = (gap % step).toInt
+        if (remainder != 0) end - remainder
+        else if (isInclusive) end
+        else end - step
+    }
+    
+  @deprecated("This method will be made private.", "2.11")
+  final val terminalElement = lastElement + step
 
   /** The last element of this range.  This method will return the correct value
    *  even if there are too many elements to iterate over.
@@ -517,7 +521,7 @@ object Range {
 
   // As there is no appealing default step size for not-really-integral ranges,
   // we offer a partially constructed object.
-  class Partial[T, U](private val f: T => U) extends AnyVal {
+  class Partial[T, U](f: T => U) {
     def by(x: T): U = f(x)
   }
 
