@@ -77,7 +77,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
     expectThrows(classOf[NoSuchElementException], ts.first)
 
     if (factory.allowsNullElement) {
-      assertTrue(ts.add(null.asInstanceOf[Int]))
+      assertTrue(ts.asInstanceOf[TreeSet[Any]].add(null))
       assertTrue(ts.contains(null))
       assertTrue(ts.remove(null))
       assertFalse(ts.contains(null))
