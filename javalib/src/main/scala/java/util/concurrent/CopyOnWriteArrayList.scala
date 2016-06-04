@@ -1,13 +1,13 @@
 package java.util.concurrent
 
 import java.lang.{reflect => jlr}
+import java.util._
 
 import scala.annotation.tailrec
-import scala.collection.JavaConversions._
+
+import scala.collection.JavaConverters._
 
 import scala.scalajs._
-
-import java.util._
 
 class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     extends List[E] with RandomAccess with Cloneable with Serializable {
@@ -38,14 +38,14 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     size == 0
 
   def contains(o: scala.Any): Boolean =
-    iterator.exists(o === _)
+    iterator.asScala.exists(o === _)
 
   def indexOf(o: scala.Any): Int =
     indexOf(o.asInstanceOf[E], 0)
 
   def indexOf(e: E, index: Int): Int = {
     checkIndexInBounds(index)
-    index + listIterator(index).indexWhere(_ === e)
+    index + listIterator(index).asScala.indexWhere(_ === e)
   }
 
   def lastIndexOf(o: scala.Any): Int =
@@ -129,15 +129,15 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   }
 
   def containsAll(c: Collection[_]): Boolean =
-    c.iterator.forall(this.contains(_))
+    c.iterator.asScala.forall(this.contains(_))
 
   def removeAll(c: Collection[_]): Boolean = {
     copyIfNeeded()
-    c.foldLeft(false)((prev, elem) => remove(elem) || prev)
+    c.asScala.foldLeft(false)((prev, elem) => remove(elem) || prev)
   }
 
   def retainAll(c: Collection[_]): Boolean = {
-    val iter = iterator()
+    val iter = iterator().asScala
     clear()
     var modified = false
     for (elem <- iter) {
@@ -151,7 +151,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
 
   def addAllAbsent(c: Collection[_ <: E]): Int = {
     var added = 0
-    for (e <- c.iterator()) {
+    for (e <- c.iterator().asScala) {
       if (addIfAbsent(e))
         added += 1
     }
@@ -169,12 +169,12 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
     checkIndexOnBounds(index)
     copyIfNeeded()
-    innerSplice(index, 0, c.asInstanceOf[Collection[E]].toSeq: _*)
-    c.nonEmpty
+    innerSplice(index, 0, c.asInstanceOf[Collection[E]].asScala.toSeq: _*)
+    !c.isEmpty
   }
 
   override def toString: String =
-    iterator().mkString("[", ",", "]")
+    iterator().asScala.mkString("[", ",", "]")
 
   override def equals(obj: Any): Boolean = {
     if (obj.asInstanceOf[AnyRef] eq this) {
@@ -183,14 +183,14 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
       obj match {
         case obj: List[_] =>
           val oIter = obj.listIterator
-          this.forall(oIter.hasNext && _ === oIter.next()) && !oIter.hasNext
+          this.asScala.forall(oIter.hasNext && _ === oIter.next()) && !oIter.hasNext
         case _ => false
       }
     }
   }
 
   override def hashCode(): Int = {
-    iterator().foldLeft(1) {
+    iterator().asScala.foldLeft(1) {
       (prev, elem) => 31 * prev + (if (elem == null) 0 else elem.hashCode)
     }
   }

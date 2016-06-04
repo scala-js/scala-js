@@ -4,7 +4,7 @@ import java.lang.{reflect => jlr}
 import java.io.Serializable
 import java.util._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 class ConcurrentHashMap[K >: Null, V >: Null]
     extends AbstractMap[K, V] with ConcurrentMap[K, V] with Serializable { self =>
@@ -59,7 +59,7 @@ class ConcurrentHashMap[K >: Null, V >: Null]
   }
 
   override def putAll(m: Map[_ <: K, _ <: V]): Unit = {
-    for (e <- m.entrySet())
+    for (e <- m.entrySet().asScala)
       put(e.getKey, e.getValue)
   }
 
@@ -136,10 +136,10 @@ class ConcurrentHashMap[K >: Null, V >: Null]
   }
 
   def keys(): Enumeration[K] =
-    asJavaEnumeration(inner.keys.iterator.map(_.inner))
+    inner.keys.iterator.map(_.inner).asJavaEnumeration
 
   def elements(): Enumeration[V] =
-    asJavaEnumeration(inner.values.iterator)
+    inner.values.iterator.asJavaEnumeration
 }
 
 object ConcurrentHashMap {
@@ -166,7 +166,7 @@ object ConcurrentHashMap {
     }
 
     def toArray(): Array[AnyRef] =
-      chm.keys().asInstanceOf[Enumeration[AnyRef]].toArray[AnyRef]
+      chm.keys().asInstanceOf[Enumeration[AnyRef]].asScala.toArray[AnyRef]
 
     def toArray[T <: AnyRef](a: Array[T]): Array[T] = {
       val toFill: Array[T] =
@@ -187,7 +187,7 @@ object ConcurrentHashMap {
     def remove(o: Any): Boolean = chm.remove(o) != null
 
     def containsAll(c: Collection[_]): Boolean =
-      c.forall(item => chm.contains(item.asInstanceOf[K]))
+      c.asScala.forall(item => chm.asScala.contains(item.asInstanceOf[K]))
 
     def addAll(c: Collection[_ <: K]): Boolean =
       throw new UnsupportedOperationException()

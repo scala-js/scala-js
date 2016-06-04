@@ -1,10 +1,11 @@
 package java.util
 
 import java.lang.Comparable
-import scala.collection.mutable
+
 import scala.math.Ordering
 
-import scala.collection.JavaConversions._
+import scala.collection.mutable
+import scala.collection.JavaConverters._
 
 class TreeSet[E] (_comparator: Comparator[_ >: E])
     extends AbstractSet[E]
@@ -90,7 +91,7 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
   def descendingSet(): NavigableSet[E] = {
     val descSetFun = { () =>
       val retSet = new mutable.TreeSet[Box[E]]()(BoxOrdering.reverse)
-      retSet.addAll(inner)
+      retSet ++= inner
       retSet
     }
     new NavigableView(this, descSetFun, None, true, None, true)
@@ -211,16 +212,16 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
     inner.last.inner
 
   def lower(e: E): E =
-    headSet(e, false).lastOption.getOrElse(null.asInstanceOf[E])
+    headSet(e, false).asScala.lastOption.getOrElse(null.asInstanceOf[E])
 
   def floor(e: E): E =
-    headSet(e, true).lastOption.getOrElse(null.asInstanceOf[E])
+    headSet(e, true).asScala.lastOption.getOrElse(null.asInstanceOf[E])
 
   def ceiling(e: E): E =
-    tailSet(e, true).headOption.getOrElse(null.asInstanceOf[E])
+    tailSet(e, true).asScala.headOption.getOrElse(null.asInstanceOf[E])
 
   def higher(e: E): E =
-    tailSet(e, false).headOption.getOrElse(null.asInstanceOf[E])
+    tailSet(e, false).asScala.headOption.getOrElse(null.asInstanceOf[E])
 
   def pollFirst(): E = {
     val polled = inner.headOption
