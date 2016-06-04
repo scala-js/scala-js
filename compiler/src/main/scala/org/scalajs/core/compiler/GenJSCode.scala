@@ -369,7 +369,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Generate members (constructor + methods)
 
       val generatedMethods = new ListBuffer[js.MethodDef]
-      val exportedSymbols = new ListBuffer[Symbol]
 
       def gen(tree: Tree): Unit = {
         tree match {
@@ -380,22 +379,10 @@ abstract class GenJSCode extends plugins.PluginComponent
             () // fields are added via genClassFields()
 
           case dd: DefDef =>
-            val sym = dd.symbol
-
-            val isExport = jsInterop.isExport(sym)
-            val isNamedExport = isExport && sym.annotations.exists(
-                _.symbol == JSExportNamedAnnotation)
-
-            if (isNamedExport)
-              generatedMethods += genNamedExporterDef(dd)
+            if (isNamedExporterDef(dd))
+              generatedMethods ++= genNamedExporterDef(dd)
             else
               generatedMethods ++= genMethod(dd)
-
-            if (isExport) {
-              // We add symbols that we have to export here. This way we also
-              // get inherited stuff that is implemented in this class.
-              exportedSymbols += sym
-            }
 
           case _ => abort("Illegal tree in gen of genClass(): " + tree)
         }
@@ -411,7 +398,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Generate the exported members, constructors and accessors
       val exports = {
         // Generate the exported members
-        val memberExports = genMemberExports(sym, exportedSymbols.toList)
+        val memberExports = genMemberExports(sym)
 
         // Generate exported constructors or accessors
         val exportedConstructorsOrAccessors =
@@ -728,7 +715,13 @@ abstract class GenJSCode extends plugins.PluginComponent
         tree match {
           case EmptyTree            => Nil
           case Template(_, _, body) => body.flatMap(gen)
-          case dd: DefDef           => genMethod(dd).toList
+
+          case dd: DefDef =>
+            if (isNamedExporterDef(dd))
+              genNamedExporterDef(dd).toList
+            else
+              genMethod(dd).toList
+
           case _ =>
             abort("Illegal tree in gen of genInterface(): " + tree)
         }
@@ -1249,20 +1242,10 @@ abstract class GenJSCode extends plugins.PluginComponent
               mutable = false, rest = false)
         }
 
-        /* When scalac uses impl classes, we cannot trust `rhs` to be
-         * `EmptyTree` for deferred methods (probably due to an internal bug
-         * of scalac), as can be seen in run/t6443.scala.
-         * However, when it does not use impl class anymore, we have to use
-         * `rhs == EmptyTree` as predicate, just like the JVM back-end does.
-         */
-        def isAbstractMethod =
-          if (scalaUsesImplClasses) sym.isDeferred || sym.owner.isInterface
-          else rhs == EmptyTree
-
         if (scalaPrimitives.isPrimitive(sym) &&
             !jsPrimitives.shouldEmitPrimitiveBody(sym)) {
           None
-        } else if (isAbstractMethod) {
+        } else if (isAbstractMethod(dd)) {
           val body = if (scalaUsesImplClasses &&
               sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
             /* For an interface method with @JavaDefaultMethod, make it a
@@ -1362,6 +1345,19 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
         }
       }
+    }
+
+    def isAbstractMethod(dd: DefDef): Boolean = {
+      /* When scalac uses impl classes, we cannot trust `rhs` to be
+       * `EmptyTree` for deferred methods (probably due to an internal bug
+       * of scalac), as can be seen in run/t6443.scala.
+       * However, when it does not use impl class anymore, we have to use
+       * `rhs == EmptyTree` as predicate, just like the JVM back-end does.
+       */
+      if (scalaUsesImplClasses)
+        dd.symbol.isDeferred || dd.symbol.owner.isInterface
+      else
+        dd.rhs == EmptyTree
     }
 
     private val adHocInlineMethods = Set(
