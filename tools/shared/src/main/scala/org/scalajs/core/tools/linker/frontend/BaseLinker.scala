@@ -315,7 +315,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       implicit pos: Position): MethodDef = {
     val encodedName = methodInfo.encodedName
 
-    val inheritedMDef = findInheritedMethodDef(classInfo.superClass,
+    val inheritedMDef = findInheritedMethodDef(analysis, classInfo.superClass,
         encodedName, getTree, _.syntheticKind == MethodSyntheticKind.None)
 
     val origName = inheritedMDef.name.asInstanceOf[Ident].originalName
@@ -337,7 +337,8 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       analysis: Analysis): MethodDef = {
     val encodedName = methodInfo.encodedName
 
-    val targetMDef = findInheritedMethodDef(classInfo, targetName, getTree)
+    val targetMDef = findInheritedMethodDef(analysis, classInfo, targetName,
+        getTree)
 
     implicit val pos = targetMDef.pos
 
@@ -388,8 +389,8 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
         OptimizerHints.empty, targetMDef.hash)
   }
 
-  private def findInheritedMethodDef(classInfo: Analysis.ClassInfo,
-      methodName: String, getTree: TreeProvider,
+  private def findInheritedMethodDef(analysis: Analysis,
+      classInfo: Analysis.ClassInfo, methodName: String, getTree: TreeProvider,
       p: Analysis.MethodInfo => Boolean = _ => true): MethodDef = {
     @tailrec
     def loop(ancestorInfo: Analysis.ClassInfo): MethodDef = {
@@ -397,10 +398,25 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
           s"Could not find $methodName anywhere in ${classInfo.encodedName}")
 
       val inherited = ancestorInfo.methodInfos.get(methodName)
-      if (inherited.exists(p)) {
-        findMethodDef(ancestorInfo, methodName, getTree)
-      } else {
-        loop(ancestorInfo.superClass)
+      inherited.find(p) match {
+        case Some(m) =>
+          m.syntheticKind match {
+            case MethodSyntheticKind.None =>
+              findMethodDef(ancestorInfo, methodName, getTree)
+
+            case MethodSyntheticKind.DefaultBridge(targetInterface) =>
+              val targetInterfaceInfo = analysis.classInfos(targetInterface)
+              findMethodDef(targetInterfaceInfo, methodName, getTree)
+
+            case MethodSyntheticKind.InheritedConstructor |
+                MethodSyntheticKind.ReflectiveProxy(_) =>
+              throw new AssertionError(
+                  s"Cannot recursively follow $ancestorInfo.$methodName of " +
+                  s"kind ${m.syntheticKind}")
+          }
+
+        case None =>
+          loop(ancestorInfo.superClass)
       }
     }
 

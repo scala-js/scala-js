@@ -416,47 +416,43 @@ private final class Analyzer(semantics: Semantics,
       if (!allowAddingSyntheticMethods) {
         tryLookupMethod(proxyName)
       } else {
-        /* The lookup for a target method in this code implements the
-         * algorithm defining `java.lang.Class.getMethod`. This mimics how
-         * reflective calls are implemented on the JVM, at link time.
-         *
-         * Caveat: protected methods are not ignored. This can only make an
-         * otherwise invalid reflective call suddenly able to call a protected
-         * method. It never breaks valid reflective calls. This could be fixed
-         * if the IR retained the information that a method is protected.
-         */
-
-        @tailrec
-        def loop(ancestorInfo: ClassInfo): Option[MethodInfo] = {
-          if (ancestorInfo ne null) {
-            ancestorInfo.methodInfos.get(proxyName) match {
-              case Some(m) =>
-                assert(m.isReflProxy && !m.isAbstract)
-                Some(m)
-
-              case _ =>
-                ancestorInfo.findProxyMatch(proxyName) match {
-                  case Some(target) =>
-                    val targetName = target.encodedName
-                    Some(ancestorInfo.createReflProxy(proxyName, targetName))
-
-                  case None =>
-                    loop(ancestorInfo.superClass)
-                }
-            }
-          } else {
-            None
+        methodInfos.get(proxyName).orElse {
+          findReflectiveTarget(proxyName).map { reflectiveTarget =>
+            createReflProxy(proxyName, reflectiveTarget.encodedName)
           }
         }
+      }
+    }
 
-        loop(this)
+    private def findReflectiveTarget(proxyName: String): Option[MethodInfo] = {
+      /* The lookup for a target method in this code implements the
+       * algorithm defining `java.lang.Class.getMethod`. This mimics how
+       * reflective calls are implemented on the JVM, at link time.
+       *
+       * We add a bit of guess-work for default methods, as the documentation
+       * is very vague about them. Basically, we just take the first match in
+       * `ancestors`, as it's easy, and we're in a gray area anyway. At least,
+       * this will work when there is no overload.
+       *
+       * Caveat: protected methods are not ignored. This can only make an
+       * otherwise invalid reflective call suddenly able to call a protected
+       * method. It never breaks valid reflective calls. This could be fixed
+       * if the IR retained the information that a method is protected.
+       */
+
+      val superClasses =
+        Iterator.iterate(this)(_.superClass).takeWhile(_ ne null)
+      val superClassesThenAncestors = superClasses ++ ancestors.iterator
+
+      superClassesThenAncestors.map(_.findProxyMatch(proxyName)).collectFirst {
+        case Some(m) => m
       }
     }
 
     private def findProxyMatch(proxyName: String): Option[MethodInfo] = {
       val candidates = methodInfos.valuesIterator.filter { m =>
         // TODO In theory we should filter out protected methods
-        !m.isReflProxy && !m.isExported && !m.isAbstract &&
+        !m.isReflProxy && !m.isDefaultBridge && !m.isExported && !m.isAbstract &&
         reflProxyMatches(m.encodedName, proxyName)
       }.toSeq
 
