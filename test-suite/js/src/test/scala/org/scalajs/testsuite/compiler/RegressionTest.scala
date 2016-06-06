@@ -16,6 +16,8 @@ import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows._
 
+import org.scalajs.testsuite.utils.Platform
+
 class RegressionTest {
   import RegressionTest._
 
@@ -438,9 +440,22 @@ class RegressionTest {
   }
 
   @Test def null_asInstanceOf_Unit_should_succeed_issue_1691(): Unit = {
+    /* Avoid scalac's special treatment of `<literal null>.asInstanceOf[X]`.
+     * It does have the benefit to test our constant-folder of that pattern,
+     * once getNull() is inlined; and of our run-time implementation, when the
+     * optimizer is disabled.
+     */
     def getNull(): Any = null
     val x = getNull().asInstanceOf[Unit]: Any
-    assertNull(x.asInstanceOf[js.Any])
+
+    val scalaVersion = Platform.scalaVersion
+    if (scalaVersion.startsWith("2.10.") || scalaVersion.startsWith("2.11.") ||
+        scalaVersion == "2.12.0-M4") {
+      assertNull(x.asInstanceOf[AnyRef])
+    } else {
+      // As of Scala 2.12.0-M5, null.asInstanceOf[Unit] (correctly) returns ()
+      assertEquals((), x)
+    }
   }
 
   @Test def lambda_parameter_with_a_dash_issue_1790(): Unit = {

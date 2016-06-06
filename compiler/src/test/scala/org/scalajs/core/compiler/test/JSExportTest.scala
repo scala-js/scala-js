@@ -752,10 +752,10 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-    |newSource1.scala:7: error: Exported method a conflicts with A.$js$exported$prop$a
+    |newSource1.scala:4: error: Exported property a conflicts with A.$js$exported$meth$a
     |      @JSExport("a")
     |       ^
-    |newSource1.scala:4: error: Exported property a conflicts with A.$js$exported$meth$a
+    |newSource1.scala:7: error: Exported method a conflicts with A.$js$exported$prop$a
     |      @JSExport("a")
     |       ^
     """

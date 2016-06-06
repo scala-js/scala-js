@@ -31,18 +31,22 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
   trait JSExportsPhase { this: JSCodePhase =>
 
-    /**
-     * Generate exporter methods for a class
-     * @param classSym symbol of class we export for
-     * @param decldExports symbols exporter methods that have been encountered in
-     *   the class' tree. This is not the same as classSym.info.delcs since
-     *   inherited concrete methods from traits should be in this param, too
+    /** Generates exported methods and properties for a class.
+     *
+     *  @param classSym symbol of the class we export for
      */
-    def genMemberExports(
-        classSym: Symbol,
-        decldExports: List[Symbol]): List[js.Tree] = {
+    def genMemberExports(classSym: Symbol): List[js.Tree] = {
+      val allExports = classSym.info.members.filter(jsInterop.isExport(_))
 
-      val newlyDecldExports = decldExports.filterNot { isOverridingExport _ }
+      val newlyDecldExports = if (classSym.superClass == NoSymbol) {
+        allExports
+      } else {
+        allExports.filterNot { sym =>
+          classSym.superClass.info.member(sym.name)
+            .filter(_.tpe =:= sym.tpe).exists
+        }
+      }
+
       val newlyDecldExportNames =
         newlyDecldExports.map(_.name.toTermName).toList.distinct
 
@@ -117,26 +121,38 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
     }
 
+    /** Tests whether the given def a named exporter def that needs to be
+     *  generated with `genNamedExporterDef`.
+     */
+    def isNamedExporterDef(dd: DefDef): Boolean = {
+      jsInterop.isExport(dd.symbol) &&
+      dd.symbol.annotations.exists(_.symbol == JSExportNamedAnnotation)
+    }
+
     /** Generate the exporter proxy for a named export */
-    def genNamedExporterDef(dd: DefDef): js.MethodDef = {
+    def genNamedExporterDef(dd: DefDef): Option[js.MethodDef] = {
       implicit val pos = dd.pos
 
-      val sym = dd.symbol
+      if (isAbstractMethod(dd)) {
+        None
+      } else {
+        val sym = dd.symbol
 
-      val Block(Apply(fun, _) :: Nil, _) = dd.rhs
-      val trgSym = fun.symbol
+        val Block(Apply(fun, _) :: Nil, _) = dd.rhs
+        val trgSym = fun.symbol
 
-      val inArg =
-        js.ParamDef(js.Ident("namedParams"), jstpe.AnyType,
-            mutable = false, rest = false)
-      val inArgRef = inArg.ref
+        val inArg =
+          js.ParamDef(js.Ident("namedParams"), jstpe.AnyType,
+              mutable = false, rest = false)
+        val inArgRef = inArg.ref
 
-      val methodIdent = encodeMethodSym(sym)
+        val methodIdent = encodeMethodSym(sym)
 
-      js.MethodDef(static = false, methodIdent,
-          List(inArg), toIRType(sym.tpe.resultType),
-          genNamedExporterBody(trgSym, inArg.ref))(
-          OptimizerHints.empty, None)
+        Some(js.MethodDef(static = false, methodIdent,
+            List(inArg), toIRType(sym.tpe.resultType),
+            genNamedExporterBody(trgSym, inArg.ref))(
+            OptimizerHints.empty, None))
+      }
     }
 
     private def genNamedExporterBody(trgSym: Symbol, inArg: js.Tree)(
@@ -723,11 +739,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       def typeInfo: String = params.mkString("(", ", ", ")")
       val hasRepeatedParam: Boolean = false
     }
-  }
-
-  private def isOverridingExport(sym: Symbol): Boolean = {
-    lazy val osym = sym.nextOverriddenSymbol
-    sym.isOverridingSymbol && !osym.owner.isTraitOrInterface
   }
 
   private sealed abstract class RTTypeTest
