@@ -1,8 +1,8 @@
 package java.util
 
-import scala.collection.JavaConversions._
-
 import scala.annotation.tailrec
+
+import scala.collection.JavaConverters._
 
 abstract class AbstractList[E] protected () extends AbstractCollection[E]
     with List[E] {
@@ -23,7 +23,7 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
     throw new UnsupportedOperationException
 
   def indexOf(o: Any): Int =
-    iterator().indexWhere(_ === o)
+    iterator.asScala.indexWhere(_ === o)
 
   def lastIndexOf(o: Any): Int = {
     @tailrec
@@ -40,9 +40,9 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
 
   def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
     checkIndexOnBounds(index)
-    for ((elem, i) <- c.iterator().zipWithIndex)
+    for ((elem, i) <- c.iterator.asScala.zipWithIndex)
       add(index + i, elem)
-    c.nonEmpty
+    !c.isEmpty
   }
 
   def iterator(): Iterator[E] =
@@ -99,21 +99,24 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
       o match {
         case o: List[_] =>
           val oIter = o.listIterator
-          this.forall(oIter.hasNext && _ === oIter.next()) && !oIter.hasNext
+          this.asScala.forall(oIter.hasNext && _ === oIter.next()) && !oIter.hasNext
         case _ => false
       }
     }
   }
 
   override def hashCode(): Int = {
-    this.foldLeft(1) {
+    this.asScala.foldLeft(1) {
       (prev, elem) => 31 * prev + (if (elem == null) 0 else elem.hashCode)
     }
   }
 
   protected def removeRange(fromIndex: Int, toIndex: Int): Unit = {
     val iter = listIterator(fromIndex)
-    iter.take(toIndex - fromIndex).foreach(_ => iter.remove())
+    for (_ <- fromIndex until toIndex) {
+      iter.next()
+      iter.remove()
+    }
   }
 
   protected[this] def checkIndexInBounds(index: Int): Unit = {

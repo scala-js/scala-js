@@ -1,7 +1,8 @@
 package java.util
 
 import scala.annotation.tailrec
-import scala.collection.JavaConversions._
+
+import scala.collection.JavaConverters._
 
 import java.lang.{reflect => jlr}
 
@@ -12,7 +13,7 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
   def isEmpty(): Boolean = size == 0
 
   def contains(o: Any): Boolean =
-    iterator.exists(o === _)
+    iterator.asScala.exists(o === _)
 
   def toArray(): Array[AnyRef] =
     toArray(new Array[AnyRef](size))
@@ -49,10 +50,10 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
   }
 
   def containsAll(c: Collection[_]): Boolean =
-    c.iterator.forall(this.contains(_))
+    c.iterator.asScala.forall(this.contains(_))
 
   def addAll(c: Collection[_ <: E]): Boolean =
-    c.foldLeft(false)((prev, elem) => add(elem) || prev)
+    c.asScala.foldLeft(false)((prev, elem) => add(elem) || prev)
 
   def removeAll(c: Collection[_]): Boolean =
     removeWhere(c.contains(_))
@@ -76,5 +77,5 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
   }
 
   override def toString(): String =
-    iterator.mkString("[", ",", "]")
+    iterator.asScala.mkString("[", ",", "]")
 }

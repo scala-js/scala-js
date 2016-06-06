@@ -1,7 +1,8 @@
 package java.util
 
 import scala.annotation.tailrec
-import scala.collection.JavaConversions._
+
+import scala.collection.JavaConverters._
 
 object AbstractMap {
 
@@ -82,13 +83,13 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
   def isEmpty(): Boolean = size == 0
 
   def containsValue(value: Any): Boolean =
-    entrySet.iterator.exists(value === _.getValue)
+    entrySet.iterator.asScala.exists(value === _.getValue)
 
   def containsKey(key: Any): Boolean =
-    entrySet.iterator.exists(entry => entry === key)
+    entrySet.iterator.asScala.exists(entry => entry === key)
 
   def get(key: Any): V = {
-    entrySet.iterator.find(_.getKey === key).fold[V] {
+    entrySet.iterator.asScala.find(_.getKey === key).fold[V] {
       null.asInstanceOf[V]
     } { entry =>
       entry.getValue
@@ -115,7 +116,7 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
   }
 
   def putAll(m: Map[_ <: K, _ <: V]): Unit =
-    m.entrySet.iterator.foreach(e => put(e.getKey, e.getValue))
+    m.entrySet.iterator.asScala.foreach(e => put(e.getKey, e.getValue))
 
   def clear(): Unit =
     entrySet.clear()
@@ -163,19 +164,19 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
     else {
       o match {
         case m: Map[_, _] =>
-          (self.size == m.size &&
-              entrySet.forall(item => m.get(item.getKey) === item.getValue))
+          self.size == m.size &&
+          entrySet.asScala.forall(item => m.get(item.getKey) === item.getValue)
         case _ => false
       }
     }
   }
 
   override def hashCode(): Int =
-    entrySet.foldLeft(0)((prev, item) => item.hashCode + prev)
+    entrySet.asScala.foldLeft(0)((prev, item) => item.hashCode + prev)
 
   override def toString(): String = {
-    entrySet.iterator.map(
-        e => s"${e.getKey}=${e.getValue}"
-    ).mkString("{", ", ", "}")
+    entrySet.iterator.asScala.map {
+      e => s"${e.getKey}=${e.getValue}"
+    }.mkString("{", ", ", "}")
   }
 }
