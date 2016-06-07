@@ -13,6 +13,8 @@ import scala.language.implicitConversions
 
 import scala.annotation.{switch, tailrec}
 
+import scala.collection.mutable
+
 import org.scalajs.core.ir
 import ir._
 import ir.Position._
@@ -207,6 +209,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
     // LHS'es for labeled expressions
 
     var labeledExprLHSes: Map[Ident, Tree] = Map.empty
+    val usedLabels = mutable.Set.empty[String]
 
     // Now the work
 
@@ -377,16 +380,19 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
            * evaluation of the condition out of the loop.
            */
           val newLabel = label.map(transformIdent)
+          val bodyBreakTargets = tailPosLabels ++ label.map(_.name)
           if (isExpression(cond)) {
             js.While(transformExpr(cond),
-                transformStat(body, Set.empty),
+                transformStat(body, Set.empty)(
+                    env.withDefaultBreakTargets(bodyBreakTargets)),
                 newLabel)
           } else {
             js.While(js.BooleanLiteral(true), {
               unnest(cond) { (newCond, env0) =>
                 implicit val env = env0
                 js.If(transformExpr(newCond),
-                    transformStat(body, Set.empty),
+                    transformStat(body, Set.empty)(
+                        env.withDefaultBreakTargets(bodyBreakTargets)),
                     js.Break())
               }
             }, newLabel)
@@ -397,9 +403,11 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
            * evaluation of the condition out of the loop.
            */
           val newLabel = label.map(transformIdent)
+          val bodyBreakTargets = tailPosLabels ++ label.map(_.name)
           if (isExpression(cond)) {
             js.DoWhile(
-                transformStat(body, Set.empty),
+                transformStat(body, Set.empty)(
+                    env.withDefaultBreakTargets(bodyBreakTargets)),
                 transformExpr(cond), newLabel)
           } else {
             /* This breaks 'continue' statements for this loop, but we don't
@@ -408,7 +416,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
              */
             js.While(js.BooleanLiteral(true), {
               js.Block(
-                  transformStat(body, Set.empty),
+                  transformStat(body, Set.empty)(
+                      env.withDefaultBreakTargets(bodyBreakTargets)),
                   unnest(cond) { (newCond, env0) =>
                     implicit val env = env0
                     js.If(transformExpr(newCond), js.Skip(), js.Break())
@@ -989,7 +998,12 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
            * labels, as in issue #2307.
            */
           body
+        } else if (tailPosLabels.contains(l.name)) {
+          body
+        } else if (env.isDefaultBreakTarget(l.name)) {
+          js.Block(body, js.Break(None))
         } else {
+          usedLabels += l.name
           js.Block(body, js.Break(Some(transformIdent(l))))
         }
       }
@@ -1072,7 +1086,10 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
                 case _ =>
                   val newBody =
                     pushLhsInto(newLhs, body, tailPosLabels + label.name)
-                  js.Labeled(label, newBody)
+                  if (usedLabels.contains(label.name))
+                    js.Labeled(label, newBody)
+                  else
+                    newBody
               }
             } finally {
               labeledExprLHSes = savedMap
@@ -1148,7 +1165,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
          */
         case Match(selector, cases, default) =>
           unnest(selector) { (newSelector, env0) =>
-            implicit val env = env0
+            implicit val env = env0.withDefaultBreakTargets(tailPosLabels)
             extractLet { newLhs =>
               val newCases = {
                 for {
@@ -2053,8 +2070,14 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
   // Environment
 
-  final class Env private (vars: Map[String, Boolean]) {
+  final class Env private (
+      vars: Map[String, Boolean],
+      defaultBreakTargets: Set[String]
+  ) {
     def isLocalMutable(ident: Ident): Boolean = vars(ident.name)
+
+    def isDefaultBreakTarget(label: String): Boolean =
+      defaultBreakTargets.contains(label)
 
     def withParams(params: List[ParamDef]): Env = {
       params.foldLeft(this) {
@@ -2065,12 +2088,20 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
     }
 
     def withDef(ident: Ident, mutable: Boolean): Env =
-      new Env(vars + (ident.name -> mutable))
+      copy(vars = vars + (ident.name -> mutable))
 
+    def withDefaultBreakTargets(targets: Set[String]): Env =
+      copy(defaultBreakTargets = targets)
+
+    private def copy(
+        vars: Map[String, Boolean] = this.vars,
+        defaultBreakTargets: Set[String] = this.defaultBreakTargets): Env = {
+      new Env(vars, defaultBreakTargets)
+    }
   }
 
   object Env {
-    def empty: Env = new Env(Map.empty)
+    def empty: Env = new Env(Map.empty, Set.empty)
   }
 
   // Helpers
