@@ -231,14 +231,8 @@ object Trees {
   /** Unary operation (always preserves pureness). */
   case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(
       implicit val pos: Position) extends Tree {
-    import UnaryOp._
-    val tpe = (op: @switch) match {
-      case LongToInt | DoubleToInt  => IntType
-      case IntToLong | DoubleToLong => LongType
-      case DoubleToFloat            => FloatType
-      case LongToDouble             => DoubleType
-      case Boolean_!                => BooleanType
-    }
+
+    val tpe = UnaryOp.resultTypeOf(op)
   }
 
   object UnaryOp {
@@ -253,31 +247,21 @@ object Trees {
     final val DoubleToInt   = 5
     final val DoubleToFloat = 6
     final val DoubleToLong  = 7
+
+    def resultTypeOf(op: Code): Type = (op: @switch) match {
+      case LongToInt | DoubleToInt  => IntType
+      case IntToLong | DoubleToLong => LongType
+      case DoubleToFloat            => FloatType
+      case LongToDouble             => DoubleType
+      case Boolean_!                => BooleanType
+    }
   }
 
   /** Binary operation (always preserves pureness). */
   case class BinaryOp(op: BinaryOp.Code, lhs: Tree, rhs: Tree)(
       implicit val pos: Position) extends Tree {
-    import BinaryOp._
-    val tpe = (op: @switch) match {
-      case === | !== |
-          Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>= |
-          Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= |
-          Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
-        BooleanType
-      case String_+ =>
-        StringType
-      case Int_+ | Int_- | Int_* | Int_/ | Int_% |
-          Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> =>
-        IntType
-      case Float_+ | Float_- | Float_* | Float_/ | Float_% =>
-        FloatType
-      case Double_+ | Double_- | Double_* | Double_/ | Double_% =>
-        DoubleType
-      case Long_+ | Long_- | Long_* | Long_/ | Long_% |
-          Long_| | Long_& | Long_^ | Long_<< | Long_>>> | Long_>> =>
-        LongType
-    }
+
+    val tpe = BinaryOp.resultTypeOf(op)
   }
 
   object BinaryOp {
@@ -345,6 +329,26 @@ object Trees {
     final val Boolean_!= = 49
     final val Boolean_|  = 50
     final val Boolean_&  = 51
+
+    def resultTypeOf(op: Code): Type = (op: @switch) match {
+      case === | !== |
+          Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>= |
+          Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= |
+          Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
+        BooleanType
+      case String_+ =>
+        StringType
+      case Int_+ | Int_- | Int_* | Int_/ | Int_% |
+          Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> =>
+        IntType
+      case Float_+ | Float_- | Float_* | Float_/ | Float_% =>
+        FloatType
+      case Double_+ | Double_- | Double_* | Double_/ | Double_% =>
+        DoubleType
+      case Long_+ | Long_- | Long_* | Long_/ | Long_% |
+          Long_| | Long_& | Long_^ | Long_<< | Long_>>> | Long_>> =>
+        LongType
+    }
   }
 
   case class NewArray(tpe: ArrayType, lengths: List[Tree])(

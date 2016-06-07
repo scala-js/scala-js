@@ -455,13 +455,15 @@ private[optimizer] abstract class OptimizerCore(
               finishTransform(isStat))
         }
 
-      case tree @ UnaryOp(_, arg) =>
-        if (isStat) transformStat(arg)
-        else transformUnaryOp(tree)
+      case tree: UnaryOp =>
+        trampoline {
+          pretransformUnaryOp(tree)(finishTransform(isStat))
+        }
 
-      case tree @ BinaryOp(op, lhs, rhs) =>
-        if (isStat) Block(transformStat(lhs), transformStat(rhs))
-        else transformBinaryOp(tree)
+      case tree: BinaryOp =>
+        trampoline {
+          pretransformBinaryOp(tree)(finishTransform(isStat))
+        }
 
       case NewArray(tpe, lengths) =>
         NewArray(tpe, lengths map transformExpr)
@@ -714,14 +716,14 @@ private[optimizer] abstract class OptimizerCore(
             sys.error(s"Cannot find local def '$name' at $pos\n" +
                 s"While optimizing $myself\n" +
                 s"Env is ${scope.env}\nInlining ${scope.implsBeingInlined}"))
-        cont(PreTransLocalDef(localDef))
+        cont(localDef.toPreTransform)
 
       case This() =>
         val localDef = scope.env.localDefs.getOrElse("this",
             sys.error(s"Found invalid 'this' at $pos\n" +
                 s"While optimizing $myself\n" +
                 s"Env is ${scope.env}\nInlining ${scope.implsBeingInlined}"))
-        cont(PreTransLocalDef(localDef))
+        cont(localDef.toPreTransform)
 
       case If(cond, thenp, elsep) =>
         val newCond = transformExpr(cond)
@@ -766,8 +768,8 @@ private[optimizer] abstract class OptimizerCore(
                       val newElsep = finishTransformExpr(telsep)
                       val refinedType =
                         constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
-                      cont(PreTransTree(
-                          foldIf(newCond, newThenp, newElsep)(refinedType)))
+                      cont(foldIf(newCond, newThenp, newElsep)(
+                          refinedType).toPreTransform)
                   }
                 }
               }
@@ -776,8 +778,8 @@ private[optimizer] abstract class OptimizerCore(
               val newElsep = transformExpr(elsep)
               val refinedType =
                 constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
-              cont(PreTransTree(
-                  foldIf(newCond, newThenp, newElsep)(refinedType)))
+              cont(foldIf(newCond, newThenp, newElsep)(
+                  refinedType).toPreTransform)
             }
         }
 
@@ -790,9 +792,9 @@ private[optimizer] abstract class OptimizerCore(
             } getOrElse default
             pretransformExpr(body)(cont)
           case _ =>
-            cont(PreTransTree(Match(newSelector,
+            cont(Match(newSelector,
                 cases map (c => (c._1, transformExpr(c._2))),
-                transformExpr(default))(tree.tpe)))
+                transformExpr(default))(tree.tpe).toPreTransform)
         }
 
       case Labeled(ident @ Ident(label, _), tpe, body) =>
@@ -818,6 +820,12 @@ private[optimizer] abstract class OptimizerCore(
         pretransformApplyStatic(tree, isStat = false,
             usePreTransform = true)(cont)
 
+      case tree: UnaryOp =>
+        pretransformUnaryOp(tree)(cont)
+
+      case tree: BinaryOp =>
+        pretransformBinaryOp(tree)(cont)
+
       case tree: JSFunctionApply =>
         pretransformJSFunctionApply(tree, isStat = false,
             usePreTransform = true)(cont)
@@ -832,8 +840,7 @@ private[optimizer] abstract class OptimizerCore(
               if (isSubtype(texpr.tpe.base, tpe.asInstanceOf[Type])) {
                 cont(texpr)
               } else {
-                cont(PreTransTree(
-                    AsInstanceOf(finishTransformExpr(texpr), tpe)))
+                cont(AsInstanceOf(finishTransformExpr(texpr), tpe).toPreTransform)
               }
           }
         }
@@ -856,7 +863,7 @@ private[optimizer] abstract class OptimizerCore(
                   RefinedType(AnyType, isExact = false, isNullable = false),
                   mutable = false,
                   replacement)
-              cont1(PreTransLocalDef(localDef))
+              cont1(localDef.toPreTransform)
             } (cont)
           } { () =>
             val newClosure = transformClosureCommon(captureParams, params, body,
@@ -868,8 +875,7 @@ private[optimizer] abstract class OptimizerCore(
         }
 
       case _ =>
-        val result = transformExpr(tree)
-        cont(PreTransTree(result))
+        cont(transformExpr(tree).toPreTransform)
     }
   }
 
@@ -931,7 +937,7 @@ private[optimizer] abstract class OptimizerCore(
           InlineClassBeingConstructedReplacement(fieldLocalDefs, cancelFun))) =>
         val fieldLocalDef = fieldLocalDefs(item.name)
         if (!isLhsOfAssign || fieldLocalDef.mutable) {
-          cont(PreTransLocalDef(fieldLocalDef))
+          cont(fieldLocalDef.toPreTransform)
         } else {
           /* This is an assignment to an immutable field of a inlineable class
            * being constructed, but that does not appear at the "top-level" of
@@ -945,7 +951,7 @@ private[optimizer] abstract class OptimizerCore(
           InlineClassInstanceReplacement(_, fieldLocalDefs, cancelFun))) =>
         val fieldLocalDef = fieldLocalDefs(item.name)
         if (!isLhsOfAssign || fieldLocalDef.mutable) {
-          cont(PreTransLocalDef(fieldLocalDef))
+          cont(fieldLocalDef.toPreTransform)
         } else {
           /* In an ideal world, this should not happen (assigning to an
            * immutable field of an already constructed object). However, since
@@ -1013,6 +1019,9 @@ private[optimizer] abstract class OptimizerCore(
             PreTransTree(finishTransformBindings(bindingsAndStats, tree), tpe)
         }
 
+      case _:PreTransUnaryOp | _:PreTransBinaryOp =>
+        PreTransTree(finishTransformExpr(preTrans))
+
       case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
         replacement match {
           case ReplaceWithRecordVarRef(name, originalName,
@@ -1052,6 +1061,9 @@ private[optimizer] abstract class OptimizerCore(
     preTrans match {
       case PreTransBlock(_, result) =>
         resolveRecordType(result)
+
+      case _:PreTransUnaryOp | _:PreTransBinaryOp =>
+        None
 
       case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
         replacement match {
@@ -1103,6 +1115,10 @@ private[optimizer] abstract class OptimizerCore(
     preTrans match {
       case PreTransBlock(bindingsAndStats, result) =>
         finishTransformBindings(bindingsAndStats, finishTransformExpr(result))
+      case PreTransUnaryOp(op, lhs) =>
+        UnaryOp(op, finishTransformExpr(lhs))
+      case PreTransBinaryOp(op, lhs, rhs) =>
+        BinaryOp(op, finishTransformExpr(lhs), finishTransformExpr(rhs))
       case PreTransLocalDef(localDef) =>
         localDef.newReplacement
       case PreTransRecordTree(_, _, cancelFun) =>
@@ -1122,6 +1138,10 @@ private[optimizer] abstract class OptimizerCore(
   private def finishTransformStat(stat: PreTransform): Tree = stat match {
     case PreTransBlock(bindingsAndStats, result) =>
       finishTransformBindings(bindingsAndStats, finishTransformStat(result))
+    case PreTransUnaryOp(_, lhs) =>
+      finishTransformStat(lhs)
+    case PreTransBinaryOp(_, lhs, rhs) =>
+      Block(finishTransformStat(lhs), finishTransformStat(rhs))(stat.pos)
     case PreTransLocalDef(_) =>
       Skip()(stat.pos)
     case PreTransRecordTree(tree, _, _) =>
@@ -1223,10 +1243,10 @@ private[optimizer] abstract class OptimizerCore(
         case NothingType =>
           cont(treceiver)
         case NullType =>
-          cont(PreTransTree(Block(
+          cont(Block(
               finishTransformStat(treceiver),
               Throw(New(ClassType("jl_NullPointerException"),
-                  Ident("init___", Some("<init>")), Nil)))))
+                  Ident("init___", Some("<init>")), Nil))).toPreTransform)
         case _ =>
           if (isReflProxyName(methodName)) {
             // Never inline reflective proxies
@@ -1424,8 +1444,8 @@ private[optimizer] abstract class OptimizerCore(
     implicit val pos = tree.pos
 
     if (args.exists(_.isInstanceOf[JSSpread])) {
-      cont(PreTransTree(
-          JSFunctionApply(transformExpr(fun), args.map(transformExprOrSpread))))
+      cont(JSFunctionApply(transformExpr(fun),
+          args.map(transformExprOrSpread)).toPreTransform)
     } else {
       pretransformExpr(fun) { tfun =>
         tfun match {
@@ -1436,15 +1456,15 @@ private[optimizer] abstract class OptimizerCore(
             alreadyUsed.value = true
             pretransformExprs(args) { targs =>
               inlineBody(
-                  Some(PreTransTree(Undefined())), // `this` is `undefined`
+                  Some(PreTransLit(Undefined())), // `this` is `undefined`
                   captureParams ++ params, AnyType, body,
-                  captureLocalDefs.map(PreTransLocalDef(_)) ++ targs, isStat,
+                  captureLocalDefs.map(_.toPreTransform) ++ targs, isStat,
                   usePreTransform)(cont)
             }
 
           case _ =>
-            cont(PreTransTree(
-                JSFunctionApply(finishTransformExpr(tfun), args.map(transformExpr))))
+            cont(JSFunctionApply(finishTransformExpr(tfun),
+                args.map(transformExpr)).toPreTransform)
         }
       }
     }
@@ -1613,7 +1633,7 @@ private[optimizer] abstract class OptimizerCore(
     lazy val newReceiver = finishTransformExpr(optTReceiver.get)
     lazy val newArgs = targs.map(finishTransformExpr)
 
-    @inline def contTree(result: Tree) = cont(PreTransTree(result))
+    @inline def contTree(result: Tree) = cont(result.toPreTransform)
 
     @inline def StringClassType = ClassType(Definitions.StringClass)
 
@@ -1810,15 +1830,15 @@ private[optimizer] abstract class OptimizerCore(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
     pretransformNew(value, ClassType(Definitions.BoxedCharacterClass),
-        Ident("init___C"), List(PreTransTree(value)))(cont)
+        Ident("init___C"), List(value.toPreTransform))(cont)
   }
 
   private def unboxChar(tvalue: PreTransform)(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
     val BoxesRunTimeModuleClassName = "sr_BoxesRunTime$"
-    val treceiver = PreTransTree(LoadModule(
-        ClassType(BoxesRunTimeModuleClassName)))
+    val treceiver = LoadModule(
+        ClassType(BoxesRunTimeModuleClassName)).toPreTransform
     val target = staticCall(BoxesRunTimeModuleClassName, "unboxToChar__O__C").getOrElse {
       throw new AssertionError("Cannot find method sr_BoxesRunTime$.unboxToChar__O__C")
     }
@@ -1850,11 +1870,12 @@ private[optimizer] abstract class OptimizerCore(
 
         inlineClassConstructorBody(allocationSite, initialFieldLocalDefs,
             cls, cls, ctor, args, cancelFun) { (finalFieldLocalDefs, cont2) =>
-          cont2(PreTransLocalDef(LocalDef(
+          cont2(LocalDef(
               RefinedType(cls, isExact = true, isNullable = false,
                   allocationSite = Some(allocationSite)),
               mutable = false,
-              InlineClassInstanceReplacement(recordType, finalFieldLocalDefs, cancelFun))))
+              InlineClassInstanceReplacement(recordType, finalFieldLocalDefs,
+                  cancelFun)).toPreTransform)
         } (cont1)
       } (cont)
     }
@@ -2020,7 +2041,9 @@ private[optimizer] abstract class OptimizerCore(
         else elsep
 
       case _ =>
-        @inline def negCond = foldUnaryOp(UnaryOp.Boolean_!, cond)
+        @inline def negCond =
+          finishTransformExpr(foldUnaryOp(UnaryOp.Boolean_!, cond.toPreTransform))
+
         if (thenp.tpe == BooleanType && elsep.tpe == BooleanType) {
           (cond, thenp, elsep) match {
             case (_, BooleanLiteral(t), BooleanLiteral(e)) =>
@@ -2062,7 +2085,9 @@ private[optimizer] abstract class OptimizerCore(
                 ((op1 == Num_!=) || (op1 == Num_>) || (op1 == Num_>=)) ||
                 ((op2 == Num_!=) || (op2 == Num_>) || (op2 == Num_>=))
 
-              fold3WayComparison(canBeEqual, canBeLessThan, canBeGreaterThan, l1, r1)
+              finishTransformExpr(
+                  fold3WayComparison(canBeEqual, canBeLessThan,
+                      canBeGreaterThan, l1.toPreTransform, r1.toPreTransform))
 
             // Example: (x >= y) && (x <= y)  ->  (x == y)
             case (BinaryOp(op1 @ (Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>=), l1, r1),
@@ -2081,7 +2106,9 @@ private[optimizer] abstract class OptimizerCore(
                 ((op1 == Num_!=) || (op1 == Num_>) || (op1 == Num_>=)) &&
                 ((op2 == Num_!=) || (op2 == Num_>) || (op2 == Num_>=))
 
-              fold3WayComparison(canBeEqual, canBeLessThan, canBeGreaterThan, l1, r1)
+              finishTransformExpr(
+                  fold3WayComparison(canBeEqual, canBeLessThan,
+                      canBeGreaterThan, l1.toPreTransform, r1.toPreTransform))
 
             case _ => default
           }
@@ -2096,59 +2123,23 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def transformUnaryOp(tree: UnaryOp)(implicit scope: Scope): Tree = {
-    import UnaryOp._
-
+  private def pretransformUnaryOp(tree: UnaryOp)(cont: PreTransCont)(
+      implicit scope: Scope): TailRec[Tree] = {
     implicit val pos = tree.pos
     val UnaryOp(op, arg) = tree
 
-    op match {
-      case LongToInt =>
-        trampoline {
-          pretransformExpr(arg) { (targ) =>
-            TailCalls.done {
-              foldUnaryOp(op, finishTransformOptLongExpr(targ))
-            }
-          }
-        }
-
-      case _ =>
-        foldUnaryOp(op, transformExpr(arg))
+    pretransformExpr(arg) { tlhs =>
+      cont(foldUnaryOp(op, tlhs))
     }
   }
 
-  private def transformBinaryOp(tree: BinaryOp)(implicit scope: Scope): Tree = {
-    import BinaryOp._
-
+  private def pretransformBinaryOp(tree: BinaryOp)(cont: PreTransCont)(
+      implicit scope: Scope): TailRec[Tree] = {
     implicit val pos = tree.pos
     val BinaryOp(op, lhs, rhs) = tree
 
-    (op: @switch) match {
-      case === | !== =>
-        trampoline {
-          pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
-            TailCalls.done(foldReferenceEquality(tlhs, trhs, op == ===))
-          }
-        }
-
-      case Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= =>
-        trampoline {
-          pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
-            TailCalls.done {
-              if (isLiteralOrOptimizableLong(tlhs) &&
-                  isLiteralOrOptimizableLong(trhs)) {
-                foldBinaryOp(op, finishTransformOptLongExpr(tlhs),
-                    finishTransformOptLongExpr(trhs))
-              } else {
-                foldBinaryOp(op, finishTransformExpr(tlhs),
-                    finishTransformExpr(trhs))
-              }
-            }
-          }
-        }
-
-      case _ =>
-        foldBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
+    pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
+      cont(foldBinaryOp(op, tlhs, trhs))
     }
   }
 
@@ -2167,25 +2158,21 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def finishTransformOptLongExpr(targ: PreTransform): Tree = targ match {
-    case PreTransLocalDef(LocalDef(tpe, false,
-        ReplaceWithVarRef(_, _, _, Some(argValue)))) =>
-      argValue()
-    case _ =>
-      finishTransformExpr(targ)
-  }
-
-  private def foldUnaryOp(op: UnaryOp.Code, arg: Tree)(
-      implicit pos: Position): Tree = {
+  private def foldUnaryOp(op: UnaryOp.Code, arg: PreTransform)(
+      implicit pos: Position): PreTransform = {
     import UnaryOp._
-    @inline def default = UnaryOp(op, arg)
+
+    @inline def default = PreTransUnaryOp(op, arg)
+
     (op: @switch) match {
       case Boolean_! =>
         arg match {
-          case BooleanLiteral(v)     => BooleanLiteral(!v)
-          case UnaryOp(Boolean_!, x) => x
+          case PreTransLit(BooleanLiteral(v)) =>
+            PreTransLit(BooleanLiteral(!v))
 
-          case BinaryOp(innerOp, l, r) =>
+          case PreTransUnaryOp(Boolean_!, x) => x
+
+          case PreTransBinaryOp(innerOp, l, r) =>
             val newOp = (innerOp: @switch) match {
               case BinaryOp.=== => BinaryOp.!==
               case BinaryOp.!== => BinaryOp.===
@@ -2210,35 +2197,40 @@ private[optimizer] abstract class OptimizerCore(
               case _ => -1
             }
             if (newOp == -1) default
-            else BinaryOp(newOp, l, r)
+            else PreTransBinaryOp(newOp, l, r)
 
-          case _ => default
+          case _ =>
+            default
         }
 
       case IntToLong =>
         arg match {
-          case IntLiteral(v) => LongLiteral(v.toLong)
-          case _             => default
+          case PreTransLit(IntLiteral(v)) =>
+            PreTransLit(LongLiteral(v.toLong))
+          case _ =>
+            default
         }
 
       case LongToInt =>
         arg match {
-          case LongLiteral(v)        => IntLiteral(v.toInt)
-          case UnaryOp(IntToLong, x) => x
+          case PreTransLit(LongLiteral(v)) =>
+            PreTransLit(IntLiteral(v.toInt))
 
-          case BinaryOp(BinaryOp.Long_+, x, y) =>
+          case PreTransUnaryOp(IntToLong, x) => x
+
+          case PreTransBinaryOp(BinaryOp.Long_+, x, y) =>
             foldBinaryOp(BinaryOp.Int_+,
                 foldUnaryOp(LongToInt, x),
                 foldUnaryOp(LongToInt, y))
-          case BinaryOp(BinaryOp.Long_-, x, y) =>
+          case PreTransBinaryOp(BinaryOp.Long_-, x, y) =>
             foldBinaryOp(BinaryOp.Int_-,
                 foldUnaryOp(LongToInt, x),
                 foldUnaryOp(LongToInt, y))
 
-          case BinaryOp(BinaryOp.Long_>> | BinaryOp.Long_>>>,
-              x, IntLiteral(32)) =>
+          case PreTransBinaryOp(BinaryOp.Long_>> | BinaryOp.Long_>>>,
+              x, PreTransLit(IntLiteral(32))) =>
             // x.hi__I()
-            staticCall(LongImpl.RuntimeLongClass, LongImpl.hi).fold[Tree] {
+            staticCall(LongImpl.RuntimeLongClass, LongImpl.hi).fold[PreTransform] {
               default
             } { target =>
               trampoline {
@@ -2251,14 +2243,14 @@ private[optimizer] abstract class OptimizerCore(
                  * will not go into infinite recursion.
                  */
                 implicit val scope = Scope.Empty
-                inline(Nil, Some(PreTransTree(x)), Nil, target, isStat = false,
+                inline(Nil, Some(x), Nil, target, isStat = false,
                     usePreTransform = false)(finishTransform(isStat = false))
-              }
+              }.toPreTransform
             }
 
           case _ =>
             // arg.lo__I()
-            staticCall(LongImpl.RuntimeLongClass, LongImpl.lo).fold[Tree] {
+            staticCall(LongImpl.RuntimeLongClass, LongImpl.lo).fold[PreTransform] {
               default
             } { target =>
               trampoline {
@@ -2267,34 +2259,45 @@ private[optimizer] abstract class OptimizerCore(
                  * rationale.
                  */
                 implicit val scope = Scope.Empty
-                inline(Nil, Some(PreTransTree(arg)), Nil, target, isStat = false,
+                inline(Nil, Some(arg), Nil, target, isStat = false,
                     usePreTransform = false)(finishTransform(isStat = false))
-              }
+              }.toPreTransform
             }
         }
 
       case LongToDouble =>
         arg match {
-          case LongLiteral(v) => DoubleLiteral(v.toDouble)
-          case _              => default
+          case PreTransLit(LongLiteral(v)) =>
+            PreTransLit(DoubleLiteral(v.toDouble))
+          case _ =>
+            default
         }
       case DoubleToInt =>
         arg match {
-          case _ if arg.tpe == IntType => arg
-          case NumberLiteral(v)        => IntLiteral(v.toInt)
-          case _                       => default
+          case _ if arg.tpe == IntType =>
+            arg
+          case PreTransLit(NumberLiteral(v)) =>
+            PreTransLit(IntLiteral(v.toInt))
+          case _ =>
+            default
         }
       case DoubleToFloat =>
         arg match {
-          case _ if arg.tpe == FloatType => arg
-          case NumberLiteral(v)          => FloatLiteral(v.toFloat)
-          case _                         => default
+          case _ if arg.tpe == FloatType =>
+            arg
+          case PreTransLit(NumberLiteral(v)) =>
+            PreTransLit(FloatLiteral(v.toFloat))
+          case _  =>
+            default
         }
       case DoubleToLong =>
         arg match {
-          case _ if arg.tpe == IntType => foldUnaryOp(IntToLong, arg)
-          case NumberLiteral(v)        => LongLiteral(v.toLong)
-          case _                       => default
+          case _ if arg.tpe == IntType =>
+            foldUnaryOp(IntToLong, arg)
+          case PreTransLit(NumberLiteral(v)) =>
+            PreTransLit(LongLiteral(v.toLong))
+          case _ =>
+            default
         }
       case _ =>
         default
@@ -2319,20 +2322,136 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
+  private def constantFoldBinaryOp_except_String_+(op: BinaryOp.Code,
+      lhs: Literal, rhs: Literal)(implicit pos: Position): Literal = {
+    import BinaryOp._
+
+    @inline def int(lit: Literal): Int = (lit: @unchecked) match {
+      case IntLiteral(value) => value
+    }
+
+    @inline def long(lit: Literal): Long = (lit: @unchecked) match {
+      case LongLiteral(value) => value
+    }
+
+    @inline def float(lit: Literal): Float = (lit: @unchecked) match {
+      case FloatLiteral(value) => value
+    }
+
+    @inline def double(lit: Literal): Double = (lit: @unchecked) match {
+      case NumberLiteral(value) => value
+    }
+
+    @inline def boolean(lit: Literal): Boolean = (lit: @unchecked) match {
+      case BooleanLiteral(value) => value
+    }
+
+    (op: @switch) match {
+      case === | Num_== | Long_== | Boolean_== =>
+        BooleanLiteral(literal_===(lhs, rhs))
+      case !== | Num_!= | Long_!= | Boolean_!= =>
+        BooleanLiteral(!literal_===(lhs, rhs))
+
+      case String_+ =>
+        throw new IllegalArgumentException(
+            "constFoldBinaryOp_except_String_+ must not be called for String_+")
+
+      case Int_+ => IntLiteral(int(lhs) + int(rhs))
+      case Int_- => IntLiteral(int(lhs) - int(rhs))
+      case Int_* => IntLiteral(int(lhs) * int(rhs))
+
+      case Int_/ =>
+        int(rhs) match {
+          case 0 => IntLiteral(0) // Undefined Behavior
+          case r => IntLiteral(int(lhs) / r)
+        }
+
+      case Int_% =>
+        int(rhs) match {
+          case 0 => IntLiteral(0) // Undefined Behavior
+          case r => IntLiteral(int(lhs) % r)
+        }
+
+      case Int_|   => IntLiteral(int(lhs) | int(rhs))
+      case Int_&   => IntLiteral(int(lhs) & int(rhs))
+      case Int_^   => IntLiteral(int(lhs) ^ int(rhs))
+      case Int_<<  => IntLiteral(int(lhs) << int(rhs))
+      case Int_>>> => IntLiteral(int(lhs) >>> int(rhs))
+      case Int_>>  => IntLiteral(int(lhs) >> int(rhs))
+
+      case Float_+ => FloatLiteral(float(lhs) + float(rhs))
+      case Float_- => FloatLiteral(float(lhs) - float(rhs))
+      case Float_* => FloatLiteral(float(lhs) * float(rhs))
+      case Float_/ => FloatLiteral(float(lhs) / float(rhs))
+      case Float_% => FloatLiteral(float(lhs) % float(rhs))
+
+      case Double_+ => DoubleLiteral(double(lhs) + double(rhs))
+      case Double_- => DoubleLiteral(double(lhs) - double(rhs))
+      case Double_* => DoubleLiteral(double(lhs) * double(rhs))
+      case Double_/ => DoubleLiteral(double(lhs) / double(rhs))
+      case Double_% => DoubleLiteral(double(lhs) % double(rhs))
+
+      case Num_<  => BooleanLiteral(double(lhs) < double(rhs))
+      case Num_<= => BooleanLiteral(double(lhs) <= double(rhs))
+      case Num_>  => BooleanLiteral(double(lhs) > double(rhs))
+      case Num_>= => BooleanLiteral(double(lhs) >= double(rhs))
+
+      case Long_+ => LongLiteral(long(lhs) + long(rhs))
+      case Long_- => LongLiteral(long(lhs) - long(rhs))
+      case Long_* => LongLiteral(long(lhs) * long(rhs))
+
+      case Long_/ =>
+        long(rhs) match {
+          case 0 => LongLiteral(0L) // Undefined Behavior
+          case r => LongLiteral(long(lhs) / r)
+        }
+
+      case Long_% =>
+        long(rhs) match {
+          case 0 => LongLiteral(0L) // Undefined Behavior
+          case r => LongLiteral(long(lhs) % r)
+        }
+
+      case Long_|   => LongLiteral(long(lhs) | long(rhs))
+      case Long_&   => LongLiteral(long(lhs) & long(rhs))
+      case Long_^   => LongLiteral(long(lhs) ^ long(rhs))
+      case Long_<<  => LongLiteral(long(lhs) << int(rhs))
+      case Long_>>> => LongLiteral(long(lhs) >>> int(rhs))
+      case Long_>>  => LongLiteral(long(lhs) >> int(rhs))
+
+      case Long_<  => BooleanLiteral(long(lhs) < long(rhs))
+      case Long_<= => BooleanLiteral(long(lhs) <= long(rhs))
+      case Long_>  => BooleanLiteral(long(lhs) > long(rhs))
+      case Long_>= => BooleanLiteral(long(lhs) >= long(rhs))
+
+      case Boolean_| => BooleanLiteral(boolean(lhs) | boolean(rhs))
+      case Boolean_& => BooleanLiteral(boolean(lhs) & boolean(rhs))
+    }
+  }
+
   /** Translate literals to their Scala.js String representation. */
-  private def foldToStringForString_+(tree: Tree)(implicit pos : Position): Tree = tree match {
-    case FloatLiteral(value) =>
-      foldToStringForString_+(DoubleLiteral(value.toDouble))
+  private def foldToStringForString_+(preTrans: PreTransform)(
+      implicit pos : Position): PreTransform = preTrans match {
+    case PreTransLit(literal) =>
+      literal match {
+        case LongLiteral(value)    => PreTransLit(StringLiteral(value.toString))
+        case IntLiteral(value)     => PreTransLit(StringLiteral(value.toString))
+        case BooleanLiteral(value) => PreTransLit(StringLiteral(value.toString))
+        case Null()                => PreTransLit(StringLiteral("null"))
+        case Undefined()           => PreTransLit(StringLiteral("undefined"))
 
-    case DoubleLiteral(value) =>
-      jsNumberToString(value).fold(tree)(StringLiteral(_))
+        case NumberLiteral(value) =>
+          jsNumberToString(value).fold {
+            preTrans
+          } {
+            s => PreTransLit(StringLiteral(s))
+          }
 
-    case LongLiteral(value)    => StringLiteral(value.toString)
-    case IntLiteral(value)     => StringLiteral(value.toString)
-    case BooleanLiteral(value) => StringLiteral(value.toString)
-    case Null()                => StringLiteral("null")
-    case Undefined()           => StringLiteral("undefined")
-    case _                     => tree
+        case _ => preTrans
+      }
+
+    case _ =>
+      preTrans
   }
 
   /* Following the ECMAScript 6 specification */
@@ -2352,65 +2471,96 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def foldBinaryOp(op: BinaryOp.Code, lhs: Tree, rhs: Tree)(
-      implicit pos: Position): Tree = {
+  private def foldBinaryOp(op: BinaryOp.Code, lhs: PreTransform,
+      rhs: PreTransform)(
+      implicit pos: Position): PreTransform = {
     import BinaryOp._
-    @inline def default = BinaryOp(op, lhs, rhs)
+
+    (lhs, rhs) match {
+      case (PreTransLit(lhsLit), PreTransLit(rhsLit)) if op != String_+ =>
+        PreTransLit(constantFoldBinaryOp_except_String_+(op, lhsLit, rhsLit))
+
+      case _ =>
+        foldBinaryOpNonConstant(op, lhs, rhs)
+    }
+  }
+
+  private def foldBinaryOpNonConstant(op: BinaryOp.Code, lhs: PreTransform,
+      rhs: PreTransform)(
+      implicit pos: Position): PreTransform = {
+    import BinaryOp._
+
+    @inline def default =
+      PreTransBinaryOp(op, lhs, rhs)
+
     (op: @switch) match {
       case === | !== =>
         val positive = (op == ===)
         (lhs, rhs) match {
-          case (lhs: Literal, rhs: Literal) =>
-            BooleanLiteral(literal_===(lhs, rhs) == positive)
+          case (_, PreTransLit(Null())) if !lhs.tpe.isNullable =>
+            Block(
+                finishTransformStat(lhs),
+                BooleanLiteral(!positive)).toPreTransform
 
-          case (_: Literal, _) => foldBinaryOp(op, rhs, lhs)
-          case _               => default
+          case (PreTransLit(_), _) => foldBinaryOp(op, rhs, lhs)
+          case _                   => default
         }
 
       case String_+ =>
+        // Here things can be constant!
         val lhs1 = foldToStringForString_+(lhs)
         val rhs1 = foldToStringForString_+(rhs)
-        @inline def stringDefault = BinaryOp(String_+, lhs1, rhs1)
+
+        @inline def stringDefault = PreTransBinaryOp(String_+, lhs1, rhs1)
+
         (lhs1, rhs1) match {
-          case (StringLiteral(s1), StringLiteral(s2)) =>
-            StringLiteral(s1 + s2)
-          case (_, StringLiteral("")) =>
+          case (PreTransLit(StringLiteral(s1)), PreTransLit(StringLiteral(s2))) =>
+            PreTransLit(StringLiteral(s1 + s2))
+          case (_, PreTransLit(StringLiteral(""))) =>
             foldBinaryOp(op, rhs1, lhs1)
-          case (StringLiteral(""), _) if rhs1.tpe == StringType =>
+          case (PreTransLit(StringLiteral("")), _) if rhs1.tpe == StringType =>
             rhs1
-          case (_, BinaryOp(String_+, rl, rr)) =>
-            foldBinaryOp(String_+, BinaryOp(String_+, lhs1, rl), rr)
-          case (BinaryOp(String_+, ll, StringLiteral(lr)), StringLiteral(r)) =>
-            BinaryOp(String_+, ll, StringLiteral(lr + r))
-          case (BinaryOp(String_+, StringLiteral(""), lr), _) =>
-            BinaryOp(String_+, lr, rhs1)
+          case (_, PreTransBinaryOp(String_+, rl, rr)) =>
+            foldBinaryOp(String_+, PreTransBinaryOp(String_+, lhs1, rl), rr)
+          case (PreTransBinaryOp(String_+, ll, PreTransLit(StringLiteral(lr))),
+              PreTransLit(StringLiteral(r))) =>
+            PreTransBinaryOp(String_+, ll, PreTransLit(StringLiteral(lr + r)))
+          case (PreTransBinaryOp(String_+, PreTransLit(StringLiteral("")), lr), _) =>
+            PreTransBinaryOp(String_+, lr, rhs1)
           case _ =>
             stringDefault
       }
 
       case Int_+ =>
         (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l + r)
-          case (_, IntLiteral(_))             => foldBinaryOp(Int_+, rhs, lhs)
-          case (IntLiteral(0), _)             => rhs
+          case (_, PreTransLit(IntLiteral(_))) =>
+            foldBinaryOp(Int_+, rhs, lhs)
+          case (PreTransLit(IntLiteral(0)), _) =>
+            rhs
 
-          case (IntLiteral(x),
-              BinaryOp(innerOp @ (Int_+ | Int_-), IntLiteral(y), z)) =>
-            foldBinaryOp(innerOp, IntLiteral(x+y), z)
+          case (PreTransLit(IntLiteral(x)),
+              PreTransBinaryOp(innerOp @ (Int_+ | Int_-),
+                  PreTransLit(IntLiteral(y)), z)) =>
+            foldBinaryOp(innerOp, PreTransLit(IntLiteral(x + y)), z)
 
-          case _                              => default
+          case _ => default
         }
 
       case Int_- =>
         (lhs, rhs) match {
-          case (_, IntLiteral(r)) => foldBinaryOp(Int_+, lhs, IntLiteral(-r))
+          case (_, PreTransLit(IntLiteral(r))) =>
+            foldBinaryOp(Int_+, lhs, PreTransLit(IntLiteral(-r)))
 
-          case (IntLiteral(x), BinaryOp(Int_+, IntLiteral(y), z)) =>
-            foldBinaryOp(Int_-, IntLiteral(x-y), z)
-          case (IntLiteral(x), BinaryOp(Int_-, IntLiteral(y), z)) =>
-            foldBinaryOp(Int_+, IntLiteral(x-y), z)
+          case (PreTransLit(IntLiteral(x)),
+              PreTransBinaryOp(Int_+, PreTransLit(IntLiteral(y)), z)) =>
+            foldBinaryOp(Int_-,
+                PreTransLit(IntLiteral(x - y)), z)
 
-          case (_, BinaryOp(Int_-, IntLiteral(0), x)) =>
+          case (PreTransLit(IntLiteral(x)),
+              PreTransBinaryOp(Int_-, PreTransLit(IntLiteral(y)), z)) =>
+            foldBinaryOp(Int_+, PreTransLit(IntLiteral(x - y)), z)
+
+          case (_, PreTransBinaryOp(Int_-, PreTransLit(IntLiteral(0)), x)) =>
             foldBinaryOp(Int_+, lhs, x)
 
           case _ => default
@@ -2418,113 +2568,119 @@ private[optimizer] abstract class OptimizerCore(
 
       case Int_* =>
         (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l * r)
-          case (_, IntLiteral(_))             => foldBinaryOp(Int_*, rhs, lhs)
+          case (_, PreTransLit(IntLiteral(_))) =>
+            foldBinaryOp(Int_*, rhs, lhs)
 
-          case (IntLiteral(1), _)  => rhs
-          case (IntLiteral(-1), _) => foldBinaryOp(Int_-, IntLiteral(0), rhs)
+          case (PreTransLit(IntLiteral(1)), _)  =>
+            rhs
+          case (PreTransLit(IntLiteral(-1)), _) =>
+            foldBinaryOp(Int_-, PreTransLit(IntLiteral(0)), rhs)
 
           case _ => default
         }
 
       case Int_/ =>
         (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r)) if r != 0 => IntLiteral(l / r)
-
-          case (_, IntLiteral(1))  => lhs
-          case (_, IntLiteral(-1)) => foldBinaryOp(Int_-, IntLiteral(0), lhs)
+          case (_, PreTransLit(IntLiteral(1)))  =>
+            lhs
+          case (_, PreTransLit(IntLiteral(-1))) =>
+            foldBinaryOp(Int_-, PreTransLit(IntLiteral(0)), lhs)
 
           case _ => default
         }
 
       case Int_% =>
         (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r)) if r != 0 => IntLiteral(l % r)
-          case (_, IntLiteral(1 | -1))                  =>
-            Block(keepOnlySideEffects(lhs), IntLiteral(0))
-          case _                                        => default
+          case (_, PreTransLit(IntLiteral(1 | -1))) =>
+            Block(finishTransformStat(lhs), IntLiteral(0)).toPreTransform
+
+          case _ => default
         }
 
       case Int_| =>
         (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l | r)
-          case (_, IntLiteral(_))             => foldBinaryOp(Int_|, rhs, lhs)
-          case (IntLiteral(0), _)             => rhs
+          case (_, PreTransLit(IntLiteral(_))) => foldBinaryOp(Int_|, rhs, lhs)
+          case (PreTransLit(IntLiteral(0)), _) => rhs
 
-          case (IntLiteral(x), BinaryOp(Int_|, IntLiteral(y), z)) =>
-            foldBinaryOp(Int_|, IntLiteral(x | y), z)
+          case (PreTransLit(IntLiteral(x)),
+              PreTransBinaryOp(Int_|, PreTransLit(IntLiteral(y)), z)) =>
+            foldBinaryOp(Int_|, PreTransLit(IntLiteral(x | y)), z)
 
           case _ => default
         }
 
       case Int_& =>
         (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l & r)
-          case (_, IntLiteral(_))             => foldBinaryOp(Int_&, rhs, lhs)
-          case (IntLiteral(-1), _)            => rhs
+          case (_, PreTransLit(IntLiteral(_)))  => foldBinaryOp(Int_&, rhs, lhs)
+          case (PreTransLit(IntLiteral(-1)), _) => rhs
 
-          case (IntLiteral(x), BinaryOp(Int_&, IntLiteral(y), z)) =>
-            foldBinaryOp(Int_&, IntLiteral(x & y), z)
+          case (PreTransLit(IntLiteral(x)),
+              PreTransBinaryOp(Int_&, PreTransLit(IntLiteral(y)), z)) =>
+            foldBinaryOp(Int_&, PreTransLit(IntLiteral(x & y)), z)
 
           case _ => default
         }
 
       case Int_^ =>
         (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l ^ r)
-          case (_, IntLiteral(_))             => foldBinaryOp(Int_^, rhs, lhs)
-          case (IntLiteral(0), _)             => rhs
+          case (_, PreTransLit(IntLiteral(_))) => foldBinaryOp(Int_^, rhs, lhs)
+          case (PreTransLit(IntLiteral(0)), _) => rhs
 
-          case (IntLiteral(x), BinaryOp(Int_^, IntLiteral(y), z)) =>
-            foldBinaryOp(Int_^, IntLiteral(x ^ y), z)
+          case (PreTransLit(IntLiteral(x)),
+              PreTransBinaryOp(Int_^, PreTransLit(IntLiteral(y)), z)) =>
+            foldBinaryOp(Int_^, PreTransLit(IntLiteral(x ^ y)), z)
 
           case _ => default
         }
 
       case Int_<< =>
         (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r))    => IntLiteral(l << r)
-          case (_, IntLiteral(x)) if x % 32 == 0 => lhs
-          case _                                 => default
+          case (_, PreTransLit(IntLiteral(x))) if x % 32 == 0 => lhs
+
+          case _ => default
         }
 
       case Int_>>> =>
         (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r))    => IntLiteral(l >>> r)
-          case (_, IntLiteral(x)) if x % 32 == 0 => lhs
-          case _                                 => default
+          case (_, PreTransLit(IntLiteral(x))) if x % 32 == 0 => lhs
+
+          case _ => default
         }
 
       case Int_>> =>
         (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r))    => IntLiteral(l >> r)
-          case (_, IntLiteral(x)) if x % 32 == 0 => lhs
-          case _                                 => default
+          case (_, PreTransLit(IntLiteral(x))) if x % 32 == 0 => lhs
+
+          case _ => default
         }
 
       case Long_+ =>
         (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l + r)
-          case (_, LongLiteral(_))              => foldBinaryOp(Long_+, rhs, lhs)
-          case (LongLiteral(0), _)              => rhs
+          case (_, PreTransLit(LongLiteral(_))) => foldBinaryOp(Long_+, rhs, lhs)
+          case (PreTransLit(LongLiteral(0)), _) => rhs
 
-          case (LongLiteral(x),
-              BinaryOp(innerOp @ (Long_+ | Long_-), LongLiteral(y), z)) =>
-            foldBinaryOp(innerOp, LongLiteral(x+y), z)
+          case (PreTransLit(LongLiteral(x)),
+              PreTransBinaryOp(innerOp @ (Long_+ | Long_-),
+                  PreTransLit(LongLiteral(y)), z)) =>
+            foldBinaryOp(innerOp, PreTransLit(LongLiteral(x + y)), z)
 
           case _ => default
         }
 
       case Long_- =>
         (lhs, rhs) match {
-          case (_, LongLiteral(r)) => foldBinaryOp(Long_+, LongLiteral(-r), lhs)
+          case (_, PreTransLit(LongLiteral(r))) =>
+            foldBinaryOp(Long_+, PreTransLit(LongLiteral(-r)), lhs)
 
-          case (LongLiteral(x), BinaryOp(Long_+, LongLiteral(y), z)) =>
-            foldBinaryOp(Long_-, LongLiteral(x-y), z)
-          case (LongLiteral(x), BinaryOp(Long_-, LongLiteral(y), z)) =>
-            foldBinaryOp(Long_+, LongLiteral(x-y), z)
+          case (PreTransLit(LongLiteral(x)),
+              PreTransBinaryOp(Long_+, PreTransLit(LongLiteral(y)), z)) =>
+            foldBinaryOp(Long_-, PreTransLit(LongLiteral(x - y)), z)
+          case (PreTransLit(LongLiteral(x)),
+              PreTransBinaryOp(Long_-, PreTransLit(LongLiteral(y)), z)) =>
+            foldBinaryOp(Long_+, PreTransLit(LongLiteral(x - y)), z)
 
-          case (_, BinaryOp(BinaryOp.Long_-, LongLiteral(0L), x)) =>
+          case (_, PreTransBinaryOp(BinaryOp.Long_-,
+              PreTransLit(LongLiteral(0L)), x)) =>
             foldBinaryOp(Long_+, lhs, x)
 
           case _ => default
@@ -2532,36 +2688,41 @@ private[optimizer] abstract class OptimizerCore(
 
       case Long_* =>
         (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l * r)
-          case (_, LongLiteral(_))              => foldBinaryOp(Long_*, rhs, lhs)
+          case (_, PreTransLit(LongLiteral(_))) =>
+            foldBinaryOp(Long_*, rhs, lhs)
 
-          case (LongLiteral(1), _)  => rhs
-          case (LongLiteral(-1), _) => foldBinaryOp(Long_-, LongLiteral(0), lhs)
+          case (PreTransLit(LongLiteral(1)), _) =>
+            rhs
+          case (PreTransLit(LongLiteral(-1)), _) =>
+            foldBinaryOp(Long_-, PreTransLit(LongLiteral(0)), lhs)
 
           case _ => default
         }
 
       case Long_/ =>
         (lhs, rhs) match {
-          case (_, LongLiteral(0))              => default
-          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l / r)
+          case (_, PreTransLit(LongLiteral(0))) =>
+            default // Undefined Behavior
 
-          case (_, LongLiteral(1))  => lhs
-          case (_, LongLiteral(-1)) => foldBinaryOp(Long_-, LongLiteral(0), lhs)
+          case (_, PreTransLit(LongLiteral(1))) =>
+            lhs
+          case (_, PreTransLit(LongLiteral(-1))) =>
+            foldBinaryOp(Long_-, PreTransLit(LongLiteral(0)), lhs)
 
-          case (LongFromInt(x), LongFromInt(y: IntLiteral)) if y.value != -1 =>
-            LongFromInt(foldBinaryOp(Int_/, x, y))
+          case (LongFromInt(x), LongFromInt(PreTransLit(y: IntLiteral)))
+              if y.value != -1 =>
+            LongFromInt(foldBinaryOp(Int_/, x, PreTransLit(y)))
 
           case _ => default
         }
 
       case Long_% =>
         (lhs, rhs) match {
-          case (_, LongLiteral(0))              => default
-          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l % r)
+          case (_, PreTransLit(LongLiteral(0))) =>
+            default // Undefined Behavior
 
-          case (_, LongLiteral(1L | -1L)) =>
-            Block(keepOnlySideEffects(lhs), LongLiteral(0L))
+          case (_, PreTransLit(LongLiteral(1L | -1L))) =>
+            Block(finishTransformStat(lhs), LongLiteral(0L)).toPreTransform
 
           case (LongFromInt(x), LongFromInt(y)) =>
             LongFromInt(foldBinaryOp(Int_%, x, y))
@@ -2571,80 +2732,87 @@ private[optimizer] abstract class OptimizerCore(
 
       case Long_| =>
         (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l | r)
-          case (_, LongLiteral(_))              => foldBinaryOp(Long_|, rhs, lhs)
-          case (LongLiteral(0), _)              => rhs
+          case (_, PreTransLit(LongLiteral(_))) =>
+            foldBinaryOp(Long_|, rhs, lhs)
+          case (PreTransLit(LongLiteral(0)), _) =>
+            rhs
 
-          case (LongLiteral(x), BinaryOp(Long_|, LongLiteral(y), z)) =>
-            foldBinaryOp(Long_|, LongLiteral(x | y), z)
+          case (PreTransLit(LongLiteral(x)),
+              PreTransBinaryOp(Long_|, PreTransLit(LongLiteral(y)), z)) =>
+            foldBinaryOp(Long_|, PreTransLit(LongLiteral(x | y)), z)
 
           case _ => default
         }
 
       case Long_& =>
         (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l & r)
-          case (_, LongLiteral(_))              => foldBinaryOp(Long_&, rhs, lhs)
-          case (LongLiteral(-1), _)             => rhs
+          case (_, PreTransLit(LongLiteral(_))) =>
+            foldBinaryOp(Long_&, rhs, lhs)
+          case (PreTransLit(LongLiteral(-1)), _) =>
+            rhs
 
-          case (LongLiteral(x), BinaryOp(Long_&, LongLiteral(y), z)) =>
-            foldBinaryOp(Long_&, LongLiteral(x & y), z)
+          case (PreTransLit(LongLiteral(x)),
+              PreTransBinaryOp(Long_&, PreTransLit(LongLiteral(y)), z)) =>
+            foldBinaryOp(Long_&, PreTransLit(LongLiteral(x & y)), z)
 
           case _ => default
         }
 
       case Long_^ =>
         (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l ^ r)
-          case (_, LongLiteral(_))              => foldBinaryOp(Long_^, rhs, lhs)
-          case (LongLiteral(0), _)              => rhs
+          case (_, PreTransLit(LongLiteral(_))) =>
+            foldBinaryOp(Long_^, rhs, lhs)
+          case (PreTransLit(LongLiteral(0)), _) =>
+            rhs
 
-          case (LongLiteral(x), BinaryOp(Long_^, LongLiteral(y), z)) =>
-            foldBinaryOp(Long_^, LongLiteral(x ^ y), z)
+          case (PreTransLit(LongLiteral(x)),
+              PreTransBinaryOp(Long_^, PreTransLit(LongLiteral(y)), z)) =>
+            foldBinaryOp(Long_^, PreTransLit(LongLiteral(x ^ y)), z)
 
           case _ => default
         }
 
       case Long_<< =>
         (lhs, rhs) match {
-          case (LongLiteral(l), IntLiteral(r))   => LongLiteral(l << r)
-          case (_, IntLiteral(x)) if x % 64 == 0 => lhs
-          case _                                 => default
+          case (_, PreTransLit(IntLiteral(x))) if x % 64 == 0 => lhs
+
+          case _ => default
         }
 
       case Long_>>> =>
         (lhs, rhs) match {
-          case (LongLiteral(l), IntLiteral(r))   => LongLiteral(l >>> r)
-          case (_, IntLiteral(x)) if x % 64 == 0 => lhs
-          case _                                 => default
+          case (_, PreTransLit(IntLiteral(x))) if x % 64 == 0 => lhs
+
+          case _ => default
         }
 
       case Long_>> =>
         (lhs, rhs) match {
-          case (LongLiteral(l), IntLiteral(r))   => LongLiteral(l >> r)
-          case (_, IntLiteral(x)) if x % 64 == 0 => lhs
-          case _                                 => default
+          case (_, PreTransLit(IntLiteral(x))) if x % 64 == 0 => lhs
+
+          case _ => default
         }
 
       case Long_== | Long_!= =>
         val positive = (op == Long_==)
         (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) =>
-            BooleanLiteral((l == r) == positive)
-
           case (LongFromInt(x), LongFromInt(y)) =>
             foldBinaryOp(if (positive) === else !==, x, y)
-          case (LongFromInt(x), LongLiteral(y)) =>
+          case (LongFromInt(x), PreTransLit(LongLiteral(y))) =>
             assert(y > Int.MaxValue || y < Int.MinValue)
-            Block(keepOnlySideEffects(x), BooleanLiteral(!positive))
+            Block(finishTransformStat(x),
+                BooleanLiteral(!positive)).toPreTransform
 
-          case (BinaryOp(Long_+, LongLiteral(x), y), LongLiteral(z)) =>
-            foldBinaryOp(op, y, LongLiteral(z-x))
-          case (BinaryOp(Long_-, LongLiteral(x), y), LongLiteral(z)) =>
-            foldBinaryOp(op, y, LongLiteral(x-z))
+          case (PreTransBinaryOp(Long_+, PreTransLit(LongLiteral(x)), y),
+              PreTransLit(LongLiteral(z))) =>
+            foldBinaryOp(op, y, PreTransLit(LongLiteral(z - x)))
+          case (PreTransBinaryOp(Long_-, PreTransLit(LongLiteral(x)), y),
+              PreTransLit(LongLiteral(z))) =>
+            foldBinaryOp(op, y, PreTransLit(LongLiteral(x - z)))
 
-          case (LongLiteral(_), _) => foldBinaryOp(op, rhs, lhs)
-          case _                   => default
+          case (PreTransLit(LongLiteral(_)), _) => foldBinaryOp(op, rhs, lhs)
+
+          case _ => default
         }
 
       case Long_< | Long_<= | Long_> | Long_>= =>
@@ -2663,66 +2831,64 @@ private[optimizer] abstract class OptimizerCore(
         }
 
         (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) =>
-            val result = (op: @switch) match {
-              case Long_<  => l < r
-              case Long_<= => l <= r
-              case Long_>  => l > r
-              case Long_>= => l >= r
-            }
-            BooleanLiteral(result)
-
-          case (_, LongLiteral(Long.MinValue)) =>
-            if (op == Long_< || op == Long_>=)
-              Block(keepOnlySideEffects(lhs), BooleanLiteral(op == Long_>=))
-            else
+          case (_, PreTransLit(LongLiteral(Long.MinValue))) =>
+            if (op == Long_< || op == Long_>=) {
+              Block(finishTransformStat(lhs),
+                  BooleanLiteral(op == Long_>=)).toPreTransform
+            } else {
               foldBinaryOp(if (op == Long_<=) Long_== else Long_!=, lhs, rhs)
+            }
 
-          case (_, LongLiteral(Long.MaxValue)) =>
-            if (op == Long_> || op == Long_<=)
-              Block(keepOnlySideEffects(lhs), BooleanLiteral(op == Long_<=))
-            else
+          case (_, PreTransLit(LongLiteral(Long.MaxValue))) =>
+            if (op == Long_> || op == Long_<=) {
+              Block(finishTransformStat(lhs),
+                  BooleanLiteral(op == Long_<=)).toPreTransform
+            } else {
               foldBinaryOp(if (op == Long_>=) Long_== else Long_!=, lhs, rhs)
+            }
 
           case (LongFromInt(x), LongFromInt(y)) =>
             foldBinaryOp(intOp, x, y)
-          case (LongFromInt(x), LongLiteral(y)) =>
+          case (LongFromInt(x), PreTransLit(LongLiteral(y))) =>
             assert(y > Int.MaxValue || y < Int.MinValue)
             val result =
               if (y > Int.MaxValue) op == Long_< || op == Long_<=
               else                  op == Long_> || op == Long_>=
-            Block(keepOnlySideEffects(x), BooleanLiteral(result))
+            Block(finishTransformStat(x), BooleanLiteral(result)).toPreTransform
 
           /* x + y.toLong > z
            *      -x on both sides
            *      requires x + y.toLong not to overflow, and z - x likewise
            * y.toLong > z - x
            */
-          case (BinaryOp(Long_+, LongLiteral(x), y @ LongFromInt(_)), LongLiteral(z))
+          case (PreTransBinaryOp(Long_+, PreTransLit(LongLiteral(x)), y @ LongFromInt(_)),
+              PreTransLit(LongLiteral(z)))
               if canAddLongs(x, Int.MinValue) &&
                  canAddLongs(x, Int.MaxValue) &&
                  canSubtractLongs(z, x) =>
-            foldBinaryOp(op, y, LongLiteral(z-x))
+            foldBinaryOp(op, y, PreTransLit(LongLiteral(z-x)))
 
           /* x - y.toLong > z
            *      -x on both sides
            *      requires x - y.toLong not to overflow, and z - x likewise
            * -(y.toLong) > z - x
            */
-          case (BinaryOp(Long_-, LongLiteral(x), y @ LongFromInt(_)), LongLiteral(z))
+          case (PreTransBinaryOp(Long_-, PreTransLit(LongLiteral(x)), y @ LongFromInt(_)),
+              PreTransLit(LongLiteral(z)))
               if canSubtractLongs(x, Int.MinValue) &&
                  canSubtractLongs(x, Int.MaxValue) &&
                  canSubtractLongs(z, x) =>
             if (z-x != Long.MinValue) {
               // Since -(y.toLong) does not overflow, we can negate both sides
-              foldBinaryOp(flippedOp, y, LongLiteral(-(z-x)))
+              foldBinaryOp(flippedOp, y, PreTransLit(LongLiteral(-(z-x))))
             } else {
               /* -(y.toLong) > Long.MinValue
                * Depending on the operator, this is either always true or
                * always false.
                */
               val result = (op == Long_>) || (op == Long_>=)
-              Block(keepOnlySideEffects(y), BooleanLiteral(result))
+              Block(finishTransformStat(y),
+                  BooleanLiteral(result)).toPreTransform
             }
 
           /* x.toLong + y.toLong > Int.MaxValue.toLong
@@ -2736,51 +2902,59 @@ private[optimizer] abstract class OptimizerCore(
            *
            * This requires to evaluate x and y once.
            */
-          case (BinaryOp(Long_+, LongFromInt(x), LongFromInt(y)),
-              LongLiteral(Int.MaxValue)) =>
+          case (PreTransBinaryOp(Long_+, LongFromInt(x), LongFromInt(y)),
+              PreTransLit(LongLiteral(Int.MaxValue))) =>
             trampoline {
               withNewLocalDefs(List(
-                  Binding("x", None, IntType, false, PreTransTree(x)),
-                  Binding("y", None, IntType, false, PreTransTree(y)))) {
+                  Binding("x", None, IntType, false, x),
+                  Binding("y", None, IntType, false, y))) {
                 (tempsLocalDefs, cont) =>
                   val List(tempXDef, tempYDef) = tempsLocalDefs
                   val tempX = tempXDef.newReplacement
                   val tempY = tempYDef.newReplacement
-                  cont(PreTransTree(
-                      AndThen(AndThen(
-                          BinaryOp(Num_>, tempX, IntLiteral(0)),
-                          BinaryOp(Num_>, tempY, IntLiteral(0))),
-                          BinaryOp(Num_<, BinaryOp(Int_+, tempX, tempY), IntLiteral(0)))))
+                  cont(AndThen(AndThen(
+                      BinaryOp(Num_>, tempX, IntLiteral(0)),
+                      BinaryOp(Num_>, tempY, IntLiteral(0))),
+                      BinaryOp(Num_<, BinaryOp(Int_+, tempX, tempY), IntLiteral(0))
+                  ).toPreTransform)
               } (finishTransform(isStat = false))
-            }
+            }.toPreTransform
 
-          case (LongLiteral(_), _) => foldBinaryOp(flippedOp, rhs, lhs)
-          case _                   => default
+          case (PreTransLit(LongLiteral(_)), _) =>
+            foldBinaryOp(flippedOp, rhs, lhs)
+
+          case _ => default
         }
 
       case Float_+ =>
         (lhs, rhs) match {
-          case (FloatLiteral(l), FloatLiteral(r)) => FloatLiteral(l + r)
-          case (FloatLiteral(0), _)               => rhs
-          case (_, FloatLiteral(_))               => foldBinaryOp(Float_+, rhs, lhs)
+          case (PreTransLit(FloatLiteral(0)), _) =>
+            rhs
+          case (_, PreTransLit(FloatLiteral(_))) =>
+            foldBinaryOp(Float_+, rhs, lhs)
 
-          case (FloatLiteral(x),
-              BinaryOp(innerOp @ (Float_+ | Float_-), FloatLiteral(y), z)) =>
-            foldBinaryOp(innerOp, FloatLiteral(x+y), z)
+          case (PreTransLit(FloatLiteral(x)),
+              PreTransBinaryOp(innerOp @ (Float_+ | Float_-),
+                  PreTransLit(FloatLiteral(y)), z)) =>
+            foldBinaryOp(innerOp, PreTransLit(FloatLiteral(x + y)), z)
 
           case _ => default
         }
 
       case Float_- =>
         (lhs, rhs) match {
-          case (_, FloatLiteral(r)) => foldBinaryOp(Float_+, lhs, FloatLiteral(-r))
+          case (_, PreTransLit(FloatLiteral(r))) =>
+            foldBinaryOp(Float_+, lhs, PreTransLit(FloatLiteral(-r)))
 
-          case (FloatLiteral(x), BinaryOp(Float_+, FloatLiteral(y), z)) =>
-            foldBinaryOp(Float_-, FloatLiteral(x-y), z)
-          case (FloatLiteral(x), BinaryOp(Float_-, FloatLiteral(y), z)) =>
-            foldBinaryOp(Float_+, FloatLiteral(x-y), z)
+          case (PreTransLit(FloatLiteral(x)),
+              PreTransBinaryOp(Float_+, PreTransLit(FloatLiteral(y)), z)) =>
+            foldBinaryOp(Float_-, PreTransLit(FloatLiteral(x - y)), z)
+          case (PreTransLit(FloatLiteral(x)),
+              PreTransBinaryOp(Float_-, PreTransLit(FloatLiteral(y)), z)) =>
+            foldBinaryOp(Float_+, PreTransLit(FloatLiteral(x - y)), z)
 
-          case (_, BinaryOp(BinaryOp.Float_-, FloatLiteral(0), x)) =>
+          case (_, PreTransBinaryOp(BinaryOp.Float_-,
+              PreTransLit(FloatLiteral(0)), x)) =>
             foldBinaryOp(Float_+, lhs, x)
 
           case _ => default
@@ -2788,54 +2962,62 @@ private[optimizer] abstract class OptimizerCore(
 
       case Float_* =>
         (lhs, rhs) match {
-          case (FloatLiteral(l), FloatLiteral(r)) => FloatLiteral(l * r)
-          case (_, FloatLiteral(_))               => foldBinaryOp(Float_*, rhs, lhs)
+          case (_, PreTransLit(FloatLiteral(_))) =>
+            foldBinaryOp(Float_*, rhs, lhs)
 
-          case (FloatLiteral(1), _)  => rhs
-          case (FloatLiteral(-1), _) => foldBinaryOp(Float_-, FloatLiteral(0), rhs)
+          case (PreTransLit(FloatLiteral(1)), _) =>
+            rhs
+          case (PreTransLit(FloatLiteral(-1)), _) =>
+            foldBinaryOp(Float_-, PreTransLit(FloatLiteral(0)), rhs)
 
           case _ => default
         }
 
       case Float_/ =>
         (lhs, rhs) match {
-          case (FloatLiteral(l), FloatLiteral(r)) => FloatLiteral(l / r)
-
-          case (_, FloatLiteral(1))  => lhs
-          case (_, FloatLiteral(-1)) => foldBinaryOp(Float_-, FloatLiteral(0), lhs)
+          case (_, PreTransLit(FloatLiteral(1))) =>
+            lhs
+          case (_, PreTransLit(FloatLiteral(-1))) =>
+            foldBinaryOp(Float_-, PreTransLit(FloatLiteral(0)), lhs)
 
           case _ => default
         }
 
       case Float_% =>
         (lhs, rhs) match {
-          case (FloatLiteral(l), FloatLiteral(r)) => FloatLiteral(l % r)
-          case _                                  => default
+          case _ => default
         }
 
       case Double_+ =>
         (lhs, rhs) match {
-          case (NumberLiteral(l), NumberLiteral(r)) => DoubleLiteral(l + r)
-          case (NumberLiteral(0), _)                => rhs
-          case (_, NumberLiteral(_))                => foldBinaryOp(Double_+, rhs, lhs)
+          case (PreTransLit(NumberLiteral(0)), _) =>
+            rhs
+          case (_, PreTransLit(NumberLiteral(_))) =>
+            foldBinaryOp(Double_+, rhs, lhs)
 
-          case (NumberLiteral(x),
-              BinaryOp(innerOp @ (Double_+ | Double_-), NumberLiteral(y), z)) =>
-            foldBinaryOp(innerOp, DoubleLiteral(x+y), z)
+          case (PreTransLit(NumberLiteral(x)),
+              PreTransBinaryOp(innerOp @ (Double_+ | Double_-),
+                  PreTransLit(NumberLiteral(y)), z)) =>
+            foldBinaryOp(innerOp, PreTransLit(DoubleLiteral(x + y)), z)
 
           case _ => default
         }
 
       case Double_- =>
         (lhs, rhs) match {
-          case (_, NumberLiteral(r)) => foldBinaryOp(Double_+, lhs, DoubleLiteral(-r))
+          case (_, PreTransLit(NumberLiteral(r))) =>
+            foldBinaryOp(Double_+, lhs, PreTransLit(DoubleLiteral(-r)))
 
-          case (NumberLiteral(x), BinaryOp(Double_+, NumberLiteral(y), z)) =>
-            foldBinaryOp(Double_-, DoubleLiteral(x-y), z)
-          case (NumberLiteral(x), BinaryOp(Double_-, NumberLiteral(y), z)) =>
-            foldBinaryOp(Double_+, DoubleLiteral(x-y), z)
+          case (PreTransLit(NumberLiteral(x)),
+              PreTransBinaryOp(Double_+, PreTransLit(NumberLiteral(y)), z)) =>
+            foldBinaryOp(Double_-, PreTransLit(DoubleLiteral(x - y)), z)
 
-          case (_, BinaryOp(BinaryOp.Double_-, NumberLiteral(0), x)) =>
+          case (PreTransLit(NumberLiteral(x)),
+              PreTransBinaryOp(Double_-, PreTransLit(NumberLiteral(y)), z)) =>
+            foldBinaryOp(Double_+, PreTransLit(DoubleLiteral(x - y)), z)
+
+          case (_, PreTransBinaryOp(BinaryOp.Double_-,
+              PreTransLit(NumberLiteral(0)), x)) =>
             foldBinaryOp(Double_+, lhs, x)
 
           case _ => default
@@ -2843,71 +3025,76 @@ private[optimizer] abstract class OptimizerCore(
 
       case Double_* =>
         (lhs, rhs) match {
-          case (NumberLiteral(l), NumberLiteral(r)) => DoubleLiteral(l * r)
-          case (_, NumberLiteral(_))                => foldBinaryOp(Double_*, rhs, lhs)
+          case (_, PreTransLit(NumberLiteral(_))) =>
+            foldBinaryOp(Double_*, rhs, lhs)
 
-          case (NumberLiteral(1), _)  => rhs
-          case (NumberLiteral(-1), _) => foldBinaryOp(Double_-, DoubleLiteral(0), rhs)
+          case (PreTransLit(NumberLiteral(1)), _) =>
+            rhs
+          case (PreTransLit(NumberLiteral(-1)), _) =>
+            foldBinaryOp(Double_-, PreTransLit(DoubleLiteral(0)), rhs)
 
           case _ => default
         }
 
       case Double_/ =>
         (lhs, rhs) match {
-          case (NumberLiteral(l), NumberLiteral(r)) => DoubleLiteral(l / r)
-
-          case (_, NumberLiteral(1))  => lhs
-          case (_, NumberLiteral(-1)) => foldBinaryOp(Double_-, DoubleLiteral(0), lhs)
+          case (_, PreTransLit(NumberLiteral(1))) =>
+            lhs
+          case (_, PreTransLit(NumberLiteral(-1))) =>
+            foldBinaryOp(Double_-, PreTransLit(DoubleLiteral(0)), lhs)
 
           case _ => default
         }
 
       case Double_% =>
         (lhs, rhs) match {
-          case (NumberLiteral(l), NumberLiteral(r)) => DoubleLiteral(l % r)
-          case _                                    => default
+          case _ => default
         }
 
       case Boolean_== | Boolean_!= =>
         val positive = (op == Boolean_==)
         (lhs, rhs) match {
-          case (BooleanLiteral(l), _) =>
+          case (PreTransLit(_), _) =>
+            foldBinaryOp(op, rhs, lhs)
+
+          case (PreTransLit(BooleanLiteral(l)), _) =>
             if (l == positive) rhs
             else foldUnaryOp(UnaryOp.Boolean_!, rhs)
-          case (_, BooleanLiteral(r)) =>
-            if (r == positive) lhs
-            else foldUnaryOp(UnaryOp.Boolean_!, lhs)
+
           case _ =>
             default
         }
 
       case Boolean_| =>
         (lhs, rhs) match {
-          case (_, BooleanLiteral(false))             => lhs
-          case (BooleanLiteral(false), _)             => rhs
-          case _                                      => default
+          case (_, PreTransLit(BooleanLiteral(false))) => lhs
+          case (PreTransLit(BooleanLiteral(false)), _) => rhs
+
+          case _ => default
         }
 
       case Boolean_& =>
         (lhs, rhs) match {
-          case (_, BooleanLiteral(true))              => lhs
-          case (BooleanLiteral(true), _)              => rhs
-          case _                                      => default
+          case (_, PreTransLit(BooleanLiteral(true))) => lhs
+          case (PreTransLit(BooleanLiteral(true)), _) => rhs
+
+          case _ => default
         }
 
       case Num_== | Num_!= =>
         val positive = (op == Num_==)
         (lhs, rhs) match {
-          case (lhs: Literal, rhs: Literal) =>
-            BooleanLiteral(literal_===(lhs, rhs) == positive)
+          case (PreTransBinaryOp(Int_+, PreTransLit(IntLiteral(x)), y),
+              PreTransLit(IntLiteral(z))) =>
+            foldBinaryOp(op, y, PreTransLit(IntLiteral(z - x)))
 
-          case (BinaryOp(Int_+, IntLiteral(x), y), IntLiteral(z)) =>
-            foldBinaryOp(op, y, IntLiteral(z-x))
-          case (BinaryOp(Int_-, IntLiteral(x), y), IntLiteral(z)) =>
-            foldBinaryOp(op, y, IntLiteral(x-z))
+          case (PreTransBinaryOp(Int_-, PreTransLit(IntLiteral(x)), y),
+              PreTransLit(IntLiteral(z))) =>
+            foldBinaryOp(op, y, PreTransLit(IntLiteral(x - z)))
 
-          case (_: Literal, _) => foldBinaryOp(op, rhs, lhs)
-          case _               => default
+          case (PreTransLit(_), _) => foldBinaryOp(op, rhs, lhs)
+
+          case _ => default
         }
 
       case Num_< | Num_<= | Num_> | Num_>= =>
@@ -2918,43 +3105,31 @@ private[optimizer] abstract class OptimizerCore(
           case Num_>= => Num_<=
         }
 
-        if (lhs.tpe == IntType && rhs.tpe == IntType) {
+        if (lhs.tpe.base == IntType && rhs.tpe.base == IntType) {
           (lhs, rhs) match {
-            case (IntLiteral(l), IntLiteral(r)) =>
-              val result = (op: @switch) match {
-                case Num_<  => l < r
-                case Num_<= => l <= r
-                case Num_>  => l > r
-                case Num_>= => l >= r
-              }
-              BooleanLiteral(result)
-
-            case (_, IntLiteral(Int.MinValue)) =>
-              if (op == Num_< || op == Num_>=)
-                Block(keepOnlySideEffects(lhs), BooleanLiteral(op == Num_>=))
-              else
+            case (_, PreTransLit(IntLiteral(Int.MinValue))) =>
+              if (op == Num_< || op == Num_>=) {
+                Block(finishTransformStat(lhs),
+                    BooleanLiteral(op == Num_>=)).toPreTransform
+              } else {
                 foldBinaryOp(if (op == Num_<=) Num_== else Num_!=, lhs, rhs)
+              }
 
-            case (_, IntLiteral(Int.MaxValue)) =>
-              if (op == Num_> || op == Num_<=)
-                Block(keepOnlySideEffects(lhs), BooleanLiteral(op == Num_<=))
-              else
+            case (_, PreTransLit(IntLiteral(Int.MaxValue))) =>
+              if (op == Num_> || op == Num_<=) {
+                Block(finishTransformStat(lhs),
+                    BooleanLiteral(op == Num_<=)).toPreTransform
+              } else {
                 foldBinaryOp(if (op == Num_>=) Num_== else Num_!=, lhs, rhs)
+              }
 
-            case (IntLiteral(_), _) => foldBinaryOp(flippedOp, rhs, lhs)
-            case _                  => default
+            case (PreTransLit(IntLiteral(_)), _) =>
+              foldBinaryOp(flippedOp, rhs, lhs)
+
+            case _ => default
           }
         } else {
           (lhs, rhs) match {
-            case (NumberLiteral(l), NumberLiteral(r)) =>
-              val result = (op: @switch) match {
-                case Num_<  => l < r
-                case Num_<= => l <= r
-                case Num_>  => l > r
-                case Num_>= => l >= r
-              }
-              BooleanLiteral(result)
-
             case _ => default
           }
         }
@@ -2965,15 +3140,19 @@ private[optimizer] abstract class OptimizerCore(
   }
 
   private def fold3WayComparison(canBeEqual: Boolean, canBeLessThan: Boolean,
-      canBeGreaterThan: Boolean, lhs: Tree, rhs: Tree)(
-      implicit pos: Position): Tree = {
+      canBeGreaterThan: Boolean, lhs: PreTransform, rhs: PreTransform)(
+      implicit pos: Position): PreTransform = {
     import BinaryOp._
     if (canBeEqual) {
       if (canBeLessThan) {
-        if (canBeGreaterThan)
-          Block(keepOnlySideEffects(lhs), keepOnlySideEffects(rhs), BooleanLiteral(true))
-        else
+        if (canBeGreaterThan) {
+          Block(
+              finishTransformStat(lhs),
+              finishTransformStat(rhs),
+              BooleanLiteral(true)).toPreTransform
+        } else {
           foldBinaryOp(Num_<=, lhs, rhs)
+        }
       } else {
         if (canBeGreaterThan)
           foldBinaryOp(Num_>=, lhs, rhs)
@@ -2987,10 +3166,14 @@ private[optimizer] abstract class OptimizerCore(
         else
           foldBinaryOp(Num_<, lhs, rhs)
       } else {
-        if (canBeGreaterThan)
+        if (canBeGreaterThan) {
           foldBinaryOp(Num_>, lhs, rhs)
-        else
-          Block(keepOnlySideEffects(lhs), keepOnlySideEffects(rhs), BooleanLiteral(false))
+        } else {
+          Block(
+              finishTransformStat(lhs),
+              finishTransformStat(rhs),
+              BooleanLiteral(false)).toPreTransform
+        }
       }
     }
   }
@@ -3005,24 +3188,7 @@ private[optimizer] abstract class OptimizerCore(
       case 'D' if arg.tpe.base == DoubleType ||
           arg.tpe.base == IntType || arg.tpe.base == FloatType => cont(arg)
       case _ =>
-        cont(PreTransTree(Unbox(finishTransformExpr(arg), charCode)(arg.pos)))
-    }
-  }
-
-  private def foldReferenceEquality(tlhs: PreTransform, trhs: PreTransform,
-      positive: Boolean = true)(implicit pos: Position): Tree = {
-    (tlhs, trhs) match {
-      case (_, PreTransTree(Null(), _)) if !tlhs.tpe.isNullable =>
-        Block(
-            finishTransformStat(tlhs),
-            BooleanLiteral(!positive))
-      case (PreTransTree(Null(), _), _) if !trhs.tpe.isNullable =>
-        Block(
-            finishTransformStat(trhs),
-            BooleanLiteral(!positive))
-      case _ =>
-        foldBinaryOp(if (positive) BinaryOp.=== else BinaryOp.!==,
-            finishTransformExpr(tlhs), finishTransformExpr(trhs))
+        cont(Unbox(finishTransformExpr(arg), charCode)(arg.pos).toPreTransform)
     }
   }
 
@@ -3360,7 +3526,7 @@ private[optimizer] abstract class OptimizerCore(
     result match {
       case result: PreTransBlock =>
         PreTransBlock(preTransBinding, result)
-      case result: PreTransLocalDef =>
+      case result: PreTransResult =>
         PreTransBlock(preTransBinding, result)
       case PreTransRecordTree(tree, tpe, cancelFun) =>
         PreTransRecordTree(
@@ -3383,7 +3549,7 @@ private[optimizer] abstract class OptimizerCore(
     result match {
       case result: PreTransBlock =>
         PreTransBlock(bindingsAndStats, result)
-      case result: PreTransLocalDef =>
+      case result: PreTransResult =>
         PreTransBlock(bindingsAndStats, result)
       case PreTransRecordTree(tree, tpe, cancelFun) =>
         PreTransRecordTree(
@@ -3522,6 +3688,13 @@ private[optimizer] object OptimizerCore {
       mutable: Boolean,
       replacement: LocalDefReplacement) {
 
+    def toPreTransform(implicit pos: Position): PreTransform = {
+      replacement match {
+        case ReplaceWithConstant(value) => PreTransTree(value)
+        case _                          => PreTransLocalDef(this)
+      }
+    }
+
     def newReplacement(implicit pos: Position): Tree = replacement match {
       case ReplaceWithVarRef(name, originalName, used, _) =>
         used.value = true
@@ -3640,8 +3813,18 @@ private[optimizer] object OptimizerCore {
   }
 
   /** The result of pretransformExpr().
-   *  It has a `tpe` as precisely refined as if a full transformExpr() had
-   *  been performed.
+   *
+   *  A `PreTransform` is a virtualized representation of an expression. It
+   *  serves two major purposes:
+   *  - Holding references to virtual objects that are being partially
+   *    evaluated (see notably `PreTransLocalDef`) or stack-allocated as
+   *    records (see notably `PreTransRecordTree`).
+   *  - Keep arguments of nodes that are potentially side-effect-free as
+   *    virtual as possible, so that, should their value not be used, the
+   *    variables that are referenced can also be dead-code-eliminated.
+   *
+   *  A `PreTransform` has a `tpe` as precisely refined as if a full
+   *  `transformExpr()` had been performed.
    *  It is also not dependent on the environment anymore. In some sense, it
    *  has "captured" its environment at definition site.
    */
@@ -3655,9 +3838,13 @@ private[optimizer] object OptimizerCore {
           case Left(PreTransBinding(_, value)) => value.contains(localDef)
           case Right(_)                        => false
         }
+      case PreTransUnaryOp(_, lhs) =>
+        lhs.contains(localDef)
+      case PreTransBinaryOp(_, lhs, rhs) =>
+        lhs.contains(localDef) || rhs.contains(localDef)
       case PreTransLocalDef(thisLocalDef) =>
         thisLocalDef.contains(localDef)
-      case _ =>
+      case _: PreTransGenTree =>
         false
     }
   }
@@ -3675,13 +3862,26 @@ private[optimizer] object OptimizerCore {
         localDef.replacement.isInstanceOf[ReplaceWithRecordVarRef],
         "Cannot create a PreTransBinding with non-var-ref replacement " +
         localDef.replacement)
+
+    def isAlreadyUsed: Boolean = (localDef.replacement: @unchecked) match {
+      case ReplaceWithVarRef(_, _, used, _)          => used.value
+      case ReplaceWithRecordVarRef(_, _, _, used, _) => used.value
+    }
   }
 
   private type BindingOrStat = Either[PreTransBinding, Tree]
 
+  /** A pretransformed block, with bindings and statements followed by a result.
+   *
+   *  Statements in `bindingsAndStats` should have been stripped of their
+   *  side-effect-free parts. They should not be `VarDef`s.
+   *
+   *  Variable definitions should be `PreTransBinding`s instead, so that they
+   *  can eventually be dead-code-eliminated should their value never be used.
+   */
   private final class PreTransBlock private (
       val bindingsAndStats: List[BindingOrStat],
-      val result: PreTransLocalDef) extends PreTransform {
+      val result: PreTransResult) extends PreTransform {
     def pos = result.pos
     val tpe = result.tpe
 
@@ -3693,7 +3893,7 @@ private[optimizer] object OptimizerCore {
 
   private object PreTransBlock {
     def apply(bindingsAndStats: List[BindingOrStat],
-        result: PreTransLocalDef): PreTransform = {
+        result: PreTransResult): PreTransform = {
       if (bindingsAndStats.isEmpty) result
       else new PreTransBlock(bindingsAndStats, result)
     }
@@ -3705,8 +3905,8 @@ private[optimizer] object OptimizerCore {
     }
 
     def apply(binding: PreTransBinding,
-        result: PreTransLocalDef): PreTransform = {
-      if (result.contains(binding.localDef)) {
+        result: PreTransResult): PreTransform = {
+      if (result.contains(binding.localDef) || binding.isAlreadyUsed) {
         new PreTransBlock(Left(binding) :: Nil, result)
       } else {
         /* Eager dce of the binding to avoid unnecessary nesting in
@@ -3720,13 +3920,31 @@ private[optimizer] object OptimizerCore {
       new PreTransBlock(Left(binding) :: result.bindingsAndStats, result.result)
     }
 
+    @deprecated(
+        "You shouldn't be trying to create a PreTransBlock from a Tree stat " +
+        "when the static type of the result is already a PreTransRecordTree. " +
+        "Prefer directly creating the relevant PreTransRecordTree",
+        "forever")
+    def apply(stat: Tree, result: PreTransRecordTree): PreTransRecordTree = {
+      PreTransRecordTree(Block(stat, result.tree)(result.pos), result.tpe,
+          result.cancelFun)
+    }
+
+    @deprecated(
+        "You shouldn't be trying to create a PreTransBlock from a Tree stat " +
+        "when the static type of the result is already a PreTransTree. " +
+        "Prefer directly creating the relevant PreTransTree",
+        "forever")
+    def apply(stat: Tree, result: PreTransTree): PreTransTree =
+      PreTransTree(Block(stat, result.tree)(result.pos), result.tpe)
+
     def apply(stat: Tree, result: PreTransform): PreTransform = {
       if (stat.isInstanceOf[Skip]) result
       else {
         result match {
           case PreTransBlock(innerBindingsAndStats, innerResult) =>
             new PreTransBlock(Right(stat) :: innerBindingsAndStats, innerResult)
-          case result: PreTransLocalDef =>
+          case result: PreTransResult =>
             new PreTransBlock(Right(stat) :: Nil, result)
           case PreTransRecordTree(tree, tpe, cancelFun) =>
             PreTransRecordTree(Block(stat, tree)(tree.pos), tpe, cancelFun)
@@ -3736,19 +3954,54 @@ private[optimizer] object OptimizerCore {
       }
     }
 
-    def unapply(preTrans: PreTransBlock): Some[(List[BindingOrStat], PreTransLocalDef)] =
+    def unapply(preTrans: PreTransBlock): Some[(List[BindingOrStat], PreTransResult)] =
       Some(preTrans.bindingsAndStats, preTrans.result)
   }
 
-  private sealed abstract class PreTransNoBlock extends PreTransform
+  /** A `PreTransform` that can be the result of a `PreTransBlock`.
+   *
+   *  This is basically any `PreTransform` except:
+   *  - `PreTransBlock` itself (as `PreTransBlock`s flatten out)
+   *  - `PreTransGenTree` subclasses, as they would force the `PreTransBlock`
+   *    to become a `PreTransGenTree` itself.
+   */
+  private sealed abstract class PreTransResult extends PreTransform
 
+  /** A `PreTransform` for a `UnaryOp`. */
+  private final case class PreTransUnaryOp(op: UnaryOp.Code,
+      lhs: PreTransform)(implicit val pos: Position)
+      extends PreTransResult {
+
+    val tpe: RefinedType = RefinedType(UnaryOp.resultTypeOf(op))
+  }
+
+  /** A `PreTransform` for a `BinaryOp`. */
+  private final case class PreTransBinaryOp(op: BinaryOp.Code,
+      lhs: PreTransform, rhs: PreTransform)(implicit val pos: Position)
+      extends PreTransResult {
+
+    val tpe: RefinedType = RefinedType(BinaryOp.resultTypeOf(op))
+  }
+
+  /** A virtual reference to a `LocalDef`. */
   private final case class PreTransLocalDef(localDef: LocalDef)(
-      implicit val pos: Position) extends PreTransNoBlock {
+      implicit val pos: Position) extends PreTransResult {
     val tpe: RefinedType = localDef.tpe
   }
 
-  private sealed abstract class PreTransGenTree extends PreTransNoBlock
+  /** Either a `PreTransTree` or a `PreTransRecordTree`.
+   *
+   *  This is the result type `resolveLocalDef`.
+   */
+  private sealed abstract class PreTransGenTree extends PreTransform
 
+  /** A completely transformed `Tree` with a `RecordType` wrapped in
+   *  `PreTransform`.
+   *
+   *  The `tpe` of a `PreTransRecordTree` is the refined *original* type of
+   *  the expression (such as a `ClassType` for a stack-allocated object),
+   *  whereas `tree.tpe` is always the lowered `RecordType`.
+   */
   private final case class PreTransRecordTree(tree: Tree,
       tpe: RefinedType, cancelFun: CancelFun) extends PreTransGenTree {
     def pos = tree.pos
@@ -3757,6 +4010,11 @@ private[optimizer] object OptimizerCore {
         s"Cannot create a PreTransRecordTree with non-record type ${tree.tpe}")
   }
 
+  /** A completely transformed `Tree` wrapped in `PreTransform`.
+   *
+   *  The `Tree` cannot have a `RecordType`. If it had, it should/would be a
+   *  `PreTranRecordTree` instead.
+   */
   private final case class PreTransTree(tree: Tree,
       tpe: RefinedType) extends PreTransGenTree {
     def pos: Position = tree.pos
@@ -3779,6 +4037,30 @@ private[optimizer] object OptimizerCore {
     }
   }
 
+  private implicit class OptimizerTreeOps(val selfTree: Tree) extends AnyVal {
+    def toPreTransform: PreTransform = {
+      selfTree match {
+        case UnaryOp(op, lhs) =>
+          PreTransUnaryOp(op, lhs.toPreTransform)(selfTree.pos)
+        case BinaryOp(op, lhs, rhs) =>
+          PreTransBinaryOp(op, lhs.toPreTransform, rhs.toPreTransform)(selfTree.pos)
+        case _ =>
+          PreTransTree(selfTree)
+      }
+    }
+  }
+
+  /** Extractor for a `PreTransTree` that contains a `Literal`. */
+  private object PreTransLit {
+    def apply(tree: Literal): PreTransTree =
+      PreTransTree(tree)
+
+    def unapply(preTrans: PreTransTree): Option[Literal] = preTrans.tree match {
+      case tree: Literal => Some(tree)
+      case _             => None
+    }
+  }
+
   private final case class Binding(name: String, originalName: Option[String],
       declaredType: Type, mutable: Boolean, value: PreTransform)
 
@@ -3792,15 +4074,20 @@ private[optimizer] object OptimizerCore {
   }
 
   private object LongFromInt {
-    def apply(x: Tree)(implicit pos: Position): Tree = x match {
-      case IntLiteral(v) => LongLiteral(v)
-      case _             => UnaryOp(UnaryOp.IntToLong, x)
+    def apply(x: PreTransform)(implicit pos: Position): PreTransform = x match {
+      case PreTransLit(IntLiteral(v)) =>
+        PreTransLit(LongLiteral(v))
+      case _ =>
+        PreTransUnaryOp(UnaryOp.IntToLong, x)
     }
 
-    def unapply(tree: Tree): Option[Tree] = tree match {
-      case LongLiteral(v) if v.toInt == v => Some(IntLiteral(v.toInt)(tree.pos))
-      case UnaryOp(UnaryOp.IntToLong, x)  => Some(x)
-      case _                              => None
+    def unapply(tree: PreTransform): Option[PreTransform] = tree match {
+      case PreTransLit(LongLiteral(v)) if v.toInt == v =>
+        Some(PreTransLit(IntLiteral(v.toInt)(tree.pos)))
+      case PreTransUnaryOp(UnaryOp.IntToLong, x) =>
+        Some(x)
+      case _ =>
+        None
     }
   }
 
