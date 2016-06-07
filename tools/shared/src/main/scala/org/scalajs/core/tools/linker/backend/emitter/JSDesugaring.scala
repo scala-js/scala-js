@@ -140,7 +140,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       tree: Tree, isStat: Boolean): js.Tree = {
     val desugar = new JSDesugar(classEmitter, enclosingClassName, None)
     if (isStat)
-      desugar.transformStat(tree)(Env.empty)
+      desugar.transformStat(tree, Set.empty)(Env.empty)
     else
       desugar.transformExpr(tree)(Env.empty)
   }
@@ -237,7 +237,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       val newParams =
         (if (translateRestParam) params.init else params).map(transformParamDef)
 
-      val newBody = transformStat(withReturn)(env) match {
+      val newBody = transformStat(withReturn, Set.empty)(env) match {
         case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)
         case other                                        => other
       }
@@ -286,7 +286,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
     }
 
     /** Desugar a statement of the IR into ES5 JS */
-    def transformStat(tree: Tree)(implicit env: Env): js.Tree = {
+    def transformStat(tree: Tree, tailPosLabels: Set[String])(
+        implicit env: Env): js.Tree = {
       import TreeDSL._
 
       implicit val pos = tree.pos
@@ -299,7 +300,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           js.Skip()
 
         case VarDef(_, _, _, rhs) =>
-          pushLhsInto(EmptyTree, rhs)
+          pushLhsInto(EmptyTree, rhs, tailPosLabels)
 
         // Statement-only language constructs
 
@@ -307,7 +308,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           js.Skip()
 
         case Assign(RecordFieldVarRef(lhs), rhs) =>
-          pushLhsInto(Assign(lhs, EmptyTree), rhs)
+          pushLhsInto(Assign(lhs, EmptyTree), rhs, tailPosLabels)
 
         case Assign(select @ Select(qualifier, item), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
@@ -358,7 +359,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           }
 
         case Assign(_ : VarRef, rhs) =>
-          pushLhsInto(tree, rhs)
+          pushLhsInto(tree, rhs, tailPosLabels)
 
         case Assign(_, _) =>
           sys.error(s"Illegal Assign in transformStat: $tree")
@@ -377,12 +378,16 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
            */
           val newLabel = label.map(transformIdent)
           if (isExpression(cond)) {
-            js.While(transformExpr(cond), transformStat(body), newLabel)
+            js.While(transformExpr(cond),
+                transformStat(body, Set.empty),
+                newLabel)
           } else {
             js.While(js.BooleanLiteral(true), {
               unnest(cond) { (newCond, env0) =>
                 implicit val env = env0
-                js.If(transformExpr(newCond), transformStat(body), js.Break())
+                js.If(transformExpr(newCond),
+                    transformStat(body, Set.empty),
+                    js.Break())
               }
             }, newLabel)
           }
@@ -393,19 +398,21 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
            */
           val newLabel = label.map(transformIdent)
           if (isExpression(cond)) {
-            js.DoWhile(transformStat(body), transformExpr(cond), newLabel)
+            js.DoWhile(
+                transformStat(body, Set.empty),
+                transformExpr(cond), newLabel)
           } else {
             /* This breaks 'continue' statements for this loop, but we don't
              * care because we never emit continue statements for do..while
              * loops.
              */
             js.While(js.BooleanLiteral(true), {
-              js.Block(transformStat(body), {
-                unnest(cond) { (newCond, env0) =>
-                  implicit val env = env0
-                  js.If(transformExpr(newCond), js.Skip(), js.Break())
-                }
-              })
+              js.Block(
+                  transformStat(body, Set.empty),
+                  unnest(cond) { (newCond, env0) =>
+                    implicit val env = env0
+                    js.If(transformExpr(newCond), js.Skip(), js.Break())
+                  })
             }, newLabel)
           }
 
@@ -506,7 +513,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         // Treat 'return' as an LHS
 
         case Return(expr, label) =>
-          pushLhsInto(tree, expr)
+          pushLhsInto(tree, expr, tailPosLabels)
 
         /* Anything else is an expression => pushLhsInto(EmptyTree, _)
          * In order not to duplicate all the code of pushLhsInto() here, we
@@ -517,7 +524,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
          */
 
         case _ =>
-          pushLhsInto(EmptyTree, tree)
+          pushLhsInto(EmptyTree, tree, tailPosLabels)
       }
     }
 
@@ -541,11 +548,11 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           acc: List[js.Tree]): (List[js.Tree], Env) = trees match {
         case (tree @ VarDef(ident, tpe, mutable, rhs)) :: ts =>
           val newEnv = env.withDef(ident, tpe, mutable)
-          val newTree = pushLhsInto(tree, rhs)(env)
+          val newTree = pushLhsInto(tree, rhs, Set.empty)(env)
           transformLoop(ts, newEnv, newTree :: acc)
 
         case tree :: ts =>
-          transformLoop(ts, env, transformStat(tree)(env) :: acc)
+          transformLoop(ts, env, transformStat(tree, Set.empty)(env) :: acc)
 
         case Nil =>
           (acc.reverse, env)
@@ -702,7 +709,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
                 val newEnv = env.withDef(temp, arg.tpe, false)
                 innerEnv = newEnv
                 val computeTemp = pushLhsInto(
-                    VarDef(temp, arg.tpe, mutable = false, EmptyTree), arg)
+                    VarDef(temp, arg.tpe, mutable = false, EmptyTree), arg,
+                    Set.empty)
                 computeTemp +=: extractedStatements
                 VarRef(temp)(arg.tpe)
             }
@@ -944,12 +952,13 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
      *  lhs can be either a EmptyTree, a VarDef, a Assign or a
      *  Return
      */
-    def pushLhsInto(lhs: Tree, rhs: Tree)(implicit env: Env): js.Tree = {
+    def pushLhsInto(lhs: Tree, rhs: Tree, tailPosLabels: Set[String])(
+        implicit env: Env): js.Tree = {
       implicit val pos = rhs.pos
 
       /** Push the current lhs further into a deeper rhs. */
       @inline def redo(newRhs: Tree)(implicit env: Env) =
-        pushLhsInto(lhs, newRhs)
+        pushLhsInto(lhs, newRhs, tailPosLabels)
 
       /** Extract a definition of the lhs if it is a VarDef, to avoid changing
        *  its scope.
@@ -973,7 +982,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
       def doReturnToLabel(l: Ident): js.Tree = {
         val newLhs = labeledExprLHSes(l)
-        val body = pushLhsInto(newLhs, rhs)
+        val body = pushLhsInto(newLhs, rhs, Set.empty)
         if (newLhs.tpe == NothingType) {
           /* A touch of peephole dead code elimination.
            * This is actually necessary to avoid dangling breaks to eliminated
@@ -990,7 +999,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
          * Actually necessary to handle pushing an lhs into an infinite loop,
          * for example.
          */
-        val transformedRhs = pushLhsInto(EmptyTree, rhs)
+        val transformedRhs = pushLhsInto(EmptyTree, rhs, tailPosLabels)
         lhs match {
           case VarDef(name, tpe, _, _) =>
             /* We still need to declare the var, in case it is used somewhere
@@ -1058,8 +1067,12 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
             labeledExprLHSes = labeledExprLHSes + (label -> newLhs)
             try {
               newLhs match {
-                case Return(_, _) => redo(body)
-                case _            => js.Labeled(label, pushLhsInto(newLhs, body))
+                case Return(_, _) =>
+                  redo(body)
+                case _ =>
+                  val newBody =
+                    pushLhsInto(newLhs, body, tailPosLabels + label.name)
+                  js.Labeled(label, newBody)
               }
             } finally {
               labeledExprLHSes = savedMap
@@ -1067,7 +1080,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           }
 
         case Return(expr, _) =>
-          pushLhsInto(rhs, expr)
+          pushLhsInto(rhs, expr, tailPosLabels)
 
         case Continue(label) =>
           js.Continue(label.map(transformIdent))
@@ -1077,18 +1090,24 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
             implicit val env = env0
             extractLet { newLhs =>
               js.If(transformExpr(newCond),
-                  pushLhsInto(newLhs, thenp), pushLhsInto(newLhs, elsep))
+                  pushLhsInto(newLhs, thenp, tailPosLabels),
+                  pushLhsInto(newLhs, elsep, tailPosLabels))
             }
           }
 
         case Try(block, errVar, handler, finalizer) =>
           extractLet { newLhs =>
+            val blockAndHandlerTailPosLabels =
+              if (finalizer == EmptyTree) tailPosLabels
+              else Set.empty[String]
             val newBlock =
-              pushLhsInto(newLhs, block)
+              pushLhsInto(newLhs, block, blockAndHandlerTailPosLabels)
             val newHandler =
-              if (handler == EmptyTree) js.EmptyTree else pushLhsInto(newLhs, handler)
+              if (handler == EmptyTree) js.EmptyTree
+              else pushLhsInto(newLhs, handler, blockAndHandlerTailPosLabels)
             val newFinalizer =
-              if (finalizer == EmptyTree) js.EmptyTree else transformStat(finalizer)
+              if (finalizer == EmptyTree) js.EmptyTree
+              else transformStat(finalizer, tailPosLabels)
 
             if (newHandler != js.EmptyTree && newFinalizer != js.EmptyTree) {
               /* The Google Closure Compiler wrongly eliminates finally blocks, if
@@ -1136,7 +1155,9 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
                   (values, body) <- cases
                   newValues = (values map transformExpr)
                   // add the break statement
-                  newBody = js.Block(pushLhsInto(newLhs, body), js.Break())
+                  newBody = js.Block(
+                      pushLhsInto(newLhs, body, tailPosLabels),
+                      js.Break())
                   // desugar alternatives into several cases falling through
                   caze <- (newValues.init map (v => (v, js.Skip()))) :+ (newValues.last, newBody)
                 } yield {
@@ -1145,7 +1166,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
               }
               val newDefault =
                 if (default == EmptyTree) js.EmptyTree
-                else pushLhsInto(newLhs, default)
+                else pushLhsInto(newLhs, default, tailPosLabels)
               js.Switch(transformExpr(newSelector), newCases, newDefault)
             }
           }
@@ -1419,7 +1440,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
               case _:Skip | _:VarDef | _:Assign | _:While | _:DoWhile |
                   _:Debugger | _:JSSuperConstructorCall | _:JSDelete |
                   _:StoreModule | _:ClassDef =>
-                transformStat(rhs)
+                transformStat(rhs, tailPosLabels)
               case _ =>
                 sys.error("Illegal tree in JSDesugar.pushLhsInto():\n" +
                     "lhs = " + lhs + "\n" + "rhs = " + rhs +
@@ -1490,7 +1511,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           val temp = newSyntheticVar()
           val newEnv = env.withDef(temp, expr.tpe, false)
           val computeTemp = pushLhsInto(
-              VarDef(temp, expr.tpe, mutable = false, EmptyTree), expr)
+              VarDef(temp, expr.tpe, mutable = false, EmptyTree), expr,
+              Set.empty)
           js.Block(computeTemp, makeTree(VarRef(temp)(expr.tpe), newEnv))
       }
     }
