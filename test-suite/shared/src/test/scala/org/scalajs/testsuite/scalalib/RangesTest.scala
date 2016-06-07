@@ -42,12 +42,19 @@ class RangesTest {
   }
 
   @Test def NumericRange_overflow_issue_2407(): Unit = {
+    assumeFalse("Assumed not on JVM for 2.10.X",
+        executingInJVM && scalaVersion.startsWith("2.10."))
+    assumeFalse("Assumed not on JVM for 2.11.{0-7}",
+        executingInJVM && (0 to 7).map("2.11." + _).contains(scalaVersion))
     val nr = NumericRange(Int.MinValue, Int.MaxValue, 1 << 23)
     assertEquals(Int.MinValue, nr.sum)
   }
 
   @Test def Range_foreach_issue_2409(): Unit = {
-    assumeFalse(executingInJVM && scalaVersion.startsWith("2.10."))
+    assumeFalse("Assumed not on JVM for 2.10.X",
+        executingInJVM && scalaVersion.startsWith("2.10."))
+    assumeFalse("Assumed not on JVM for 2.11.{0-7}",
+        executingInJVM && (0 to 7).map("2.11." + _).contains(scalaVersion))
     val r = Int.MinValue to Int.MaxValue by (1 << 23)
     var i = 0
     r.foreach(_ => i += 1)
