@@ -100,6 +100,26 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |           ^
     """
 
+    """
+    @js.native
+    class A extends Enumeration
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Classes and objects not extending js.Any may not have a @js.native annotation
+      |    class A extends Enumeration
+      |          ^
+    """
+
+    """
+    @js.native
+    object A extends Enumeration
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Classes and objects not extending js.Any may not have a @js.native annotation
+      |    object A extends Enumeration
+      |           ^
+    """
+
   }
 
   @Test
