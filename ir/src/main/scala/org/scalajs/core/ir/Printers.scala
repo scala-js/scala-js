@@ -1242,14 +1242,14 @@ object Printers {
           out.write(")")
           undent()
 
-        case Try(block, errVar, handler, finalizer) =>
+        case t: Try =>
           println("Try(")
           indent()
-          println(block)
-          println(errVar)
-          println(handler)
-          print(finalizer)
-          out.write(")")
+          println(t.block)
+          println(t.errVar)
+          println(t.handler)
+          print(t.finalizer)
+          out.write(")(" + t.tpe + ")")
           undent()
 
         case Throw(expr) =>
@@ -1269,18 +1269,18 @@ object Printers {
           out.write(")")
           undent()
 
-        case Match(selector, cases, default) =>
+        case m: Match =>
           println("Match(")
           indent()
-          println(selector)
+          println(m.selector)
 
-          for((alts, body) <- cases) {
+          for((alts, body) <- m.cases) {
             print(alts.toString()); println(":")
             indent(); print(body); undent()
           }
 
-          print(default)
-          out.write(")")
+          print(m.default)
+          out.write(")(" + m.tpe + ")")
           undent()
 
 
@@ -1313,40 +1313,40 @@ object Printers {
           out.write(")")
           undent()
 
-        case Select(qualifier, item) =>
+        case s: Select =>
           println("Select(")
           indent()
-          println(qualifier)
-          print(item)
-          out.write(")")
+          println(s.qualifier)
+          print(s.item)
+          out.write(")(" + s.tpe + ")")
           undent()
 
-        case Apply(receiver, method, args) =>
+        case a: Apply =>
           println("Apply(")
           indent()
-          println(receiver)
-          println(method)
-          printList(args)
-          out.write(")")
+          println(a.receiver)
+          println(a.method)
+          printList(a.args)
+          out.write(")(" + a.tpe + ")")
           undent()
 
-        case ApplyStatically(receiver, cls, method, args) =>
+        case a: ApplyStatically =>
           println("ApplyStatically(")
           indent()
-          println(receiver)
-          println(cls)
-          println(method)
-          printList(args)
-          out.write(")")
+          println(a.receiver)
+          println(a.cls)
+          println(a.method)
+          printList(a.args)
+          out.write(")(" + a.tpe + ")")
           undent()
 
-        case ApplyStatic(cls, method, args) =>
-          print("ApplyStatic(")
+        case a: ApplyStatic =>
+          println("ApplyStatic(")
           indent()
-          println(cls)
-          println(method)
-          printList(args)
-          out.write(")")
+          println(a.cls)
+          println(a.method)
+          printList(a.args)
+          out.write(")(" + a.tpe + ")")
           undent()
 
         case UnaryOp(op, lhs) =>
@@ -1389,12 +1389,12 @@ object Printers {
           out.write(")")
           undent()
 
-        case ArraySelect(array, index) =>
+        case a: ArraySelect =>
           println("ArraySelect(")
           indent()
-          println(array)
-          print(index)
-          out.write(")")
+          println(a.array)
+          print(a.index)
+          out.write(")(" + a.tpe + ")")
           undent()
 
         case RecordValue(tpe, elems) =>
@@ -1436,12 +1436,12 @@ object Printers {
           out.write(")")
           undent()
 
-        case CallHelper(helper, args) =>
+        case c: CallHelper =>
           println("CallHelper(")
           indent()
-          println(helper)
-          printList(args)
-          out.write(")")
+          println(c.helper)
+          printList(c.args)
+          out.write(")(" + c.tpe + ")")
           undent()
 
         // JavaScript expressions
@@ -1577,7 +1577,10 @@ object Printers {
           indent()
 
           for ((propName, tree) <- fields) {
-            print(propName); print(": "); println(tree)
+            print(propName); out.write(":\n")
+            indent()
+            println(tree)
+            undent()
           }
 
           out.write(")")
@@ -1589,20 +1592,20 @@ object Printers {
         case lit: Literal =>
           print(lit.toString)
 
-        case UndefinedParam() =>
-          print("UndefinedParam()")
+        case u: UndefinedParam =>
+          print("UndefinedParam()(" + u.tpe + ")")
 
         // Atomic expressions
 
-        case VarRef(ident) =>
+        case v: VarRef =>
           println("VarRef(")
           indent()
-          print(ident)
-          out.write(")")
+          print(v.ident)
+          out.write(")(" + v.tpe + ")")
           undent()
 
-        case This() =>
-          print("This()")
+        case t: This =>
+          print("This()(" + t.tpe.toString + ")")
 
         case Closure(captureParams, params, body, captureValues) =>
           println("Closure(")
