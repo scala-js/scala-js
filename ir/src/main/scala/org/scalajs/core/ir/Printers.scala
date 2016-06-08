@@ -891,7 +891,7 @@ object Printers {
     protected def print(ident: Ident): Unit =
       printEscapeJS(ident.name, out)
 
-    private final def print(propName: PropertyName): Unit = propName match {
+    private def print(propName: PropertyName): Unit = propName match {
       case lit: StringLiteral => print(lit: Tree)
       case ident: Ident       => print(ident)
     }
@@ -1048,6 +1048,658 @@ object Printers {
 
     protected def print(c: Int): Unit =
       out.write(c)
+
+    def complete(): Unit = ()
+  }
+
+  abstract class RawIndentationManager {
+    protected val out: Writer
+    
+    private var indentSize = 0
+    private val indentString = "  "
+
+    protected def indent(): Unit = indentSize += 1
+    protected def undent(): Unit = indentSize -= 1
+
+    protected def print(s: String): Unit = {
+      out.write(indentString * indentSize)
+      out.write(s)
+    }
+
+    protected def println(s: String): Unit =
+      print(s + "\n")
+
+    protected def println(): Unit =
+      out.write("\n")
+  }
+
+  class RawIRPrinter(protected val out: Writer) extends RawIndentationManager {
+    /** Pretty-prints the IR's AST nodes. */
+    def printTopLevelTree(tree: Tree): Unit =
+      println(tree)
+
+    private def println(tree: Tree): Unit = {
+      print(tree)
+      out.write("\n")
+    }
+
+    private def printList(ts: List[Tree]): Unit = {
+      if (ts.isEmpty) {
+        print("List()")
+      } else {
+        println("List(")
+        indent()
+        var rest = ts
+        while (rest.nonEmpty) {
+          print(rest.head)
+          rest = rest.tail
+          if (rest.nonEmpty)
+            println()
+        }
+        undent()
+        out.write(")")
+      }
+    }
+
+    private def printlnList(ts: List[Tree]): Unit = {
+      printList(ts)
+      println()
+    }
+
+    private def printIdentList(is: List[Ident]): Unit = {
+      if (is.isEmpty) {
+        print("List()")
+      } else {
+        println("List(")
+        indent()
+        var rest = is
+        while (rest.nonEmpty) {
+          print(rest.head)
+          rest = rest.tail
+          if (rest.nonEmpty)
+            println()
+        }
+        undent()
+        out.write(")")
+      }
+    }
+
+    private def printlnIdentList(is: List[Ident]): Unit = {
+      printIdentList(is)
+      println()
+    }
+
+    private def print(ident: Ident): Unit =
+      print(s"Ident(${ident.name}, ${ident.originalName})")
+
+    private def println(ident: Ident): Unit = {
+      print(ident)
+      out.write("\n")
+    }
+
+    private def print(tpe: Type): Unit =
+      print(tpe.toString)
+
+
+    private def println(tp: Type): Unit = {
+      print(tp)
+      out.write("\n")
+    }
+
+    private def print(tree: Tree): Unit = {
+      tree match {
+        case EmptyTree =>
+          print("EmptyTree")
+
+        // Definitions
+
+        case VarDef(ident, vtpe, mutable, rhs) =>
+          println("VarDef(")
+          indent()
+          println(ident)
+          println(vtpe)
+          println("mutable = " + mutable.toString)
+          print(rhs)
+          out.write(")")
+          undent()
+
+
+        case ParamDef(ident, ptpe, mutable, rest) =>
+          println("ParamDef(")
+          indent()
+          println(ident)
+          println(ptpe)
+          println("mutable = " + mutable.toString)
+          print("rest = " + rest.toString)
+          out.write(")")
+          undent()
+
+        // Control flow constructs
+
+        case Skip() =>
+          print("Skip()")
+
+        case Block(trees) =>
+          printList(trees)
+
+        case Labeled(label, tpe, body) =>
+          println("Labeled(")
+          indent()
+          println(tpe)
+          print(body)
+          out.write(")")
+          undent()
+
+        case Assign(lhs, rhs) =>
+          println("Assign(")
+          indent()
+          println(lhs)
+          print(rhs)
+          out.write(")")
+          undent()
+
+        case Return(expr, label) =>
+          println("Return(")
+          indent()
+          println(expr)
+          label match {
+            case Some(l) => print(l)
+            case None    => print("None")
+          }
+          out.write(")")
+          undent()
+
+        case ifExpr: If =>
+          println("If(")
+          indent()
+          println(ifExpr.cond)
+          println(ifExpr.thenp)
+          print(ifExpr.elsep)
+          out.write(")(\n")
+          print(ifExpr.tpe)
+          out.write(")")
+          undent()
+
+        case While(cond, body, label) =>
+          println("While(")
+          indent()
+          println(cond)
+          print(body)
+          out.write(")")
+          undent()
+
+        case DoWhile(body, cond, label) =>
+          println("DoWhile(")
+          indent()
+          println(body)
+          println(cond)
+
+          label match {
+            case Some(l) => print(l)
+            case None    => print("None")
+          }
+
+          out.write(")")
+          undent()
+
+        case t: Try =>
+          println("Try(")
+          indent()
+          println(t.block)
+          println(t.errVar)
+          println(t.handler)
+          print(t.finalizer)
+          out.write(")(" + t.tpe + ")")
+          undent()
+
+        case Throw(expr) =>
+          println("Throw(")
+          indent()
+          print(expr)
+          out.write(")")
+          undent()
+
+        case Continue(label) =>
+          println("Continue(")
+          indent()
+          label match {
+            case Some(l) => print(l)
+            case None    => print("None")
+          }
+          out.write(")")
+          undent()
+
+        case m: Match =>
+          println("Match(")
+          indent()
+          println(m.selector)
+
+          for((alts, body) <- m.cases) {
+            print(alts.toString()); println(":")
+            indent(); print(body); undent()
+          }
+
+          print(m.default)
+          out.write(")(" + m.tpe + ")")
+          undent()
+
+
+        case Debugger() =>
+          print("Debugger()")
+
+        // Scala expressions
+
+        case New(cls, ctor, args) =>
+          println("New(")
+          indent()
+          println(cls)
+          println(ctor)
+          printList(args)
+          out.write(")")
+          undent()
+
+        case LoadModule(cls) =>
+          println("LoadModule(")
+          indent()
+          print(cls)
+          out.write(")")
+          undent()
+
+        case StoreModule(cls, value) =>
+          println("StoreModule(")
+          indent()
+          println(cls)
+          print(value)
+          out.write(")")
+          undent()
+
+        case s: Select =>
+          println("Select(")
+          indent()
+          println(s.qualifier)
+          print(s.item)
+          out.write(")(" + s.tpe + ")")
+          undent()
+
+        case a: Apply =>
+          println("Apply(")
+          indent()
+          println(a.receiver)
+          println(a.method)
+          printList(a.args)
+          out.write(")(" + a.tpe + ")")
+          undent()
+
+        case a: ApplyStatically =>
+          println("ApplyStatically(")
+          indent()
+          println(a.receiver)
+          println(a.cls)
+          println(a.method)
+          printList(a.args)
+          out.write(")(" + a.tpe + ")")
+          undent()
+
+        case a: ApplyStatic =>
+          println("ApplyStatic(")
+          indent()
+          println(a.cls)
+          println(a.method)
+          printList(a.args)
+          out.write(")(" + a.tpe + ")")
+          undent()
+
+        case UnaryOp(op, lhs) =>
+          println("UnaryOp(")
+          indent()
+          println(op.toString)
+          print(lhs)
+          out.write(")")
+          undent()
+
+        case BinaryOp(op, lhs, rhs) =>
+          println("BinaryOp(")
+          indent()
+          println(op.toString)
+          println(lhs)
+          print(rhs)
+          out.write(")")
+          undent()
+
+        case NewArray(tpe, lengths) =>
+          println("NewArray(")
+          indent()
+          println(tpe)
+          printList(lengths)
+          out.write(")")
+          undent()
+
+        case ArrayValue(tpe, elems) =>
+          println("ArrayValue(")
+          indent()
+          println(tpe)
+          printList(elems)
+          out.write(")")
+          undent()
+
+        case ArrayLength(array) =>
+          println("ArrayLength(")
+          indent()
+          print(array)
+          out.write(")")
+          undent()
+
+        case a: ArraySelect =>
+          println("ArraySelect(")
+          indent()
+          println(a.array)
+          print(a.index)
+          out.write(")(" + a.tpe + ")")
+          undent()
+
+        case RecordValue(tpe, elems) =>
+          println("RecordValue(")
+          indent()
+          println(tpe)
+          printList(elems)
+          out.write(")")
+          undent()
+
+        case IsInstanceOf(expr, cls) =>
+          println("IsInstanceOf(")
+          indent()
+          println(expr)
+          printRefType(cls)
+          out.write(")")
+          undent()
+
+        case AsInstanceOf(expr, cls) =>
+          println("AsInstanceOf(")
+          indent()
+          println(expr)
+          printRefType(cls)
+          out.write(")")
+          undent()
+
+        case Unbox(expr, charCode) =>
+          println("Unbox(")
+          indent()
+          println(expr)
+          print(charCode)
+          out.write(")")
+          undent()
+
+        case GetClass(expr) =>
+          println("GetClass(")
+          indent()
+          print(expr)
+          out.write(")")
+          undent()
+
+        case c: CallHelper =>
+          println("CallHelper(")
+          indent()
+          println(c.helper)
+          printList(c.args)
+          out.write(")(" + c.tpe + ")")
+          undent()
+
+        // JavaScript expressions
+
+        case JSNew(ctor, args) =>
+          println("JSNew(")
+          indent()
+          println(ctor)
+          printList(args)
+          out.write(")")
+          undent()
+
+        case JSDotSelect(qualifier, item) =>
+          println("JSDotSelect(")
+          indent()
+          println(qualifier)
+          print(item)
+          out.write(")")
+          undent()
+
+        case JSBracketSelect(qualifier, item) =>
+          println("JSBracketSelect(")
+          indent()
+          println(qualifier)
+          print(item)
+          out.write(")")
+          undent()
+
+        case JSFunctionApply(fun, args) =>
+          println("JSFunctionApply(")
+          indent()
+          println(fun)
+          printList(args)
+          out.write(")")
+          undent()
+
+        case JSDotMethodApply(receiver, method, args) =>
+          println("JSDotMethodApply(")
+          indent()
+          println(receiver)
+          println(method)
+          printList(args)
+          out.write(")")
+          undent()
+
+        case JSBracketMethodApply(receiver, method, args) =>
+          println("JSBracketMethodApply(")
+          indent()
+          println(receiver)
+          println(method)
+          printList(args)
+          out.write(")")
+          undent()
+
+        case JSSuperBracketSelect(cls, qualifier, item) =>
+          println("JSSuperBracketSelect(")
+          indent()
+          println(qualifier)
+          println(cls)
+          print(item)
+          out.write(")")
+          undent()
+
+        case JSSuperBracketCall(cls, receiver, method, args) =>
+          println("JSSuperBracketCall(")
+          indent()
+          println(receiver)
+          println(cls)
+          println(method)
+          printList(args)
+          out.write(")")
+          undent()
+
+        case JSSuperConstructorCall(args) =>
+          println("JSSuperConstructorCall(")
+          indent()
+          printList(args)
+          out.write(")")
+          undent()
+
+        case LoadJSConstructor(cls) =>
+          println("LoadJSConstructor(")
+          indent()
+          print(cls)
+          out.write(")")
+          undent()
+
+        case LoadJSModule(cls) =>
+          println("LoadJSModule(")
+          indent()
+          print(cls)
+          out.write(")")
+          undent()
+
+        case JSSpread(items) =>
+          println("JSSpread(")
+          indent()
+          print(items)
+          out.write(")")
+          undent()
+
+        case JSDelete(prop) =>
+          println("JSDelete(")
+          indent()
+          print(prop)
+          out.write(")")
+          undent()
+
+        case JSUnaryOp(op, lhs) =>
+          println("JSUnaryOp(")
+          indent()
+          print(lhs)
+          out.write(")")
+          undent()
+
+        case JSBinaryOp(op, lhs, rhs) =>
+          println("JSBinaryOp(")
+          indent()
+          println(lhs)
+          print(rhs)
+          out.write(")")
+          undent()
+
+        case JSArrayConstr(items) =>
+          println("JSArrayConstr(")
+          indent()
+          printList(items)
+          out.write(")")
+          undent()
+
+        case JSObjectConstr(fields) =>
+          println("JSObjectConstr(")
+          indent()
+
+          for ((propName, tree) <- fields) {
+            print(propName); out.write(":\n")
+            indent()
+            println(tree)
+            undent()
+          }
+
+          out.write(")")
+          undent()
+
+        case JSLinkingInfo() =>
+          print("JSLinkingInfo()")
+
+        case lit: Literal =>
+          print(lit.toString)
+
+        case u: UndefinedParam =>
+          print("UndefinedParam()(" + u.tpe + ")")
+
+        // Atomic expressions
+
+        case v: VarRef =>
+          println("VarRef(")
+          indent()
+          print(v.ident)
+          out.write(")(" + v.tpe + ")")
+          undent()
+
+        case t: This =>
+          print("This()(" + t.tpe.toString + ")")
+
+        case Closure(captureParams, params, body, captureValues) =>
+          println("Closure(")
+          indent()
+          printlnList(captureParams)
+          printlnList(params)
+          println(body)
+          printList(captureValues)
+          out.write(")")
+          undent()
+
+        // Classes
+
+        case ClassDef(name, kind, superClass, interfaces, jsName, defs) =>
+          println("ClassDef(")
+          indent()
+          println(name)
+          println(kind.toString)
+
+          superClass match {
+            case Some(sc) => println(sc)
+            case None     => println("None")
+          }
+
+          printlnIdentList(interfaces)
+          println(jsName.toString)
+          printList(defs)
+          out.write(")")
+          undent()
+
+        case FieldDef(name, vtpe, mutable) =>
+          println("FieldDef(")
+          indent()
+          println(name.name)
+          println(vtpe)
+          print("mutable = " + mutable.toString + ")")
+          undent()
+
+        case MethodDef(static, name, args, resultType, body) =>
+          println("MethodDef(")
+          indent()
+          println("static = " + static.toString)
+          println(name.toString)
+          printlnList(args)
+          println(resultType)
+          print(body)
+          out.write(")")
+          undent()
+
+        case PropertyDef(name, getterBody, setterArg, setterBody) =>
+          println("PropertyDef(")
+          indent()
+          println(name.toString)
+          println(getterBody)
+          println(setterArg)
+          print(setterBody)
+          out.write(")")
+          undent()
+
+        case ConstructorExportDef(fullName, args, body) =>
+          println("ConstructorExportDef(")
+          indent()
+          println(fullName)
+          printlnList(args)
+          print(body)
+          undent()
+
+        case JSClassExportDef(fullName) =>
+          println("JSClassExportDef(")
+          indent()
+          print(fullName + ")")
+          undent()
+
+        case ModuleExportDef(fullName) =>
+          println("ModuleExportDef(")
+          indent()
+          print(fullName + ")")
+          undent()
+
+        case _ =>
+          print(s"<error, elem of class ${tree.getClass()}>")
+      }
+    }
+
+    private def printRefType(tpe: ReferenceType): Unit =
+      print(tpe.asInstanceOf[Type])
+
+    private def print(propName: PropertyName): Unit = propName match {
+      case lit: StringLiteral => print(lit: Tree)
+      case ident: Ident       => print(ident)
+    }
+
+    private def print(c: Int): Unit =
+      print(c.toString)
 
     def complete(): Unit = ()
   }

@@ -12,7 +12,7 @@ package org.scalajs.cli
 import org.scalajs.core.ir
 import ir.ScalaJSVersions
 import ir.Trees.{Tree, ClassDef}
-import ir.Printers.{InfoPrinter, IRTreePrinter}
+import ir.Printers.{IRTreePrinter, InfoPrinter, RawIRPrinter}
 
 import org.scalajs.core.tools.io._
 import scala.collection.immutable.Seq
@@ -24,6 +24,7 @@ object Scalajsp {
 
   private case class Options(
     infos: Boolean = false,
+    raw: Boolean = false,
     jar: Option[File] = None,
     fileNames: Seq[String] = Seq.empty)
 
@@ -41,6 +42,9 @@ object Scalajsp {
       opt[Unit]('i', "infos")
         .action { (_, c) => c.copy(infos = true) }
         .text("Show DCE infos instead of trees")
+      opt[Unit]('r', "raw")
+        .action { (_, c) => c.copy(raw = true) }
+        .text("Show raw IR AST nodes instead of trees")
       opt[Unit]('s', "supported")
         .action { (_,_) => printSupported(); sys.exit() }
         .text("Show supported Scala.js IR versions")
@@ -79,6 +83,8 @@ object Scalajsp {
       opts: Options): Unit = {
     if (opts.infos)
       new InfoPrinter(stdout).print(vfile.info)
+    else if (opts.raw)
+      new RawIRPrinter(stdout).printTopLevelTree(vfile.tree)
     else
       new IRTreePrinter(stdout).printTopLevelTree(vfile.tree)
 
