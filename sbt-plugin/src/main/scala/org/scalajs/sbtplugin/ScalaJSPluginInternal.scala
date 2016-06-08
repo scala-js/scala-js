@@ -10,7 +10,7 @@ import Cache.seqFormat
 import complete.Parser
 import complete.DefaultParsers._
 
-import Implicits._
+import Loggers._
 
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io.{IO => toolsIO, _}
@@ -238,7 +238,7 @@ object ScalaJSPluginInternal {
             IO.createDirectory(output.getParentFile)
 
             val linker = (scalaJSLinker in key).value
-            linker.link(ir, AtomicWritableFileVirtualJSFile(output), log)
+            linker.link(ir, AtomicWritableFileVirtualJSFile(output), sbtLogger2ToolsLogger(log))
 
             logIRCacheStats(log)
 
@@ -614,7 +614,8 @@ object ScalaJSPluginInternal {
             Def.task {
               val linker = scalaJSLinker.value
               val ir = scalaJSIR.value.data
-              val unit = linker.linkUnit(ir, env.symbolRequirements, log)
+              val unit = linker.linkUnit(ir, env.symbolRequirements,
+                  sbtLogger2ToolsLogger(log))
 
               log.debug("Loading JSEnv with LinkingUnit")
               env.loadLibs(libs).loadLinkingUnit(unit)
@@ -637,7 +638,7 @@ object ScalaJSPluginInternal {
     log.debug(s"with JSEnv ${jsEnv.name}")
 
     val runner = jsEnv.jsRunner(launcher)
-    runner.run(log, console)
+    runner.run(sbtLogger2ToolsLogger(log), console)
   }
 
   private def launcherContent(mainCl: String) = {
@@ -735,7 +736,8 @@ object ScalaJSPluginInternal {
         val detector = new FrameworkDetector(jsEnv)
 
         detector.detect(frameworks) map { case (tf, name) =>
-          (tf, new ScalaJSFramework(name, jsEnv, logger, console))
+          val toolsLogger = sbtLogger2ToolsLogger(logger)
+          (tf, new ScalaJSFramework(name, jsEnv, toolsLogger, console))
         }
       },
       // Override default to avoid triggering a test:fastOptJS in a test:compile

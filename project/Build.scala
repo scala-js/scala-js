@@ -27,7 +27,7 @@ import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
 import org.scalajs.jsenv.phantomjs.PhantomJSEnv
 import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
-import Implicits._
+import Loggers._
 
 import org.scalajs.core.tools.io.MemVirtualJSFile
 import org.scalajs.core.tools.sem._
@@ -654,7 +654,7 @@ object Build {
               ResolvedJSDependency.minimal(linked)
           val runner = jsEnv.jsRunner(libs, launcher)
 
-          runner.run(streams.value.log, scalaJSConsole.value)
+          runner.run(sbtLogger2ToolsLogger(streams.value.log), scalaJSConsole.value)
         }
       }
   ).withScalaJSCompiler.dependsOn(javalibEx, testSuite % "test->test", irProjectJS)
