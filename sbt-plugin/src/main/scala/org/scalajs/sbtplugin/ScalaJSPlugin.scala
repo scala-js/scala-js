@@ -147,6 +147,12 @@ object ScalaJSPlugin extends AutoPlugin {
     val fullOptJS = TaskKey[Attributed[File]]("fullOptJS",
         "Link all compiled JavaScript into a single file and fully optimize", APlusTask)
 
+    val testHtmlFastOpt = TaskKey[Attributed[File]]("testHtmlFastOpt",
+        "Create an HTML test runner for fastOptJS", AMinusTask)
+
+    val testHtmlFullOpt = TaskKey[Attributed[File]]("testHtmlFullOpt",
+        "Create an HTML test runner for fullOptJS", AMinusTask)
+
     val scalaJSIR = TaskKey[Attributed[Seq[VirtualScalaJSIRFile with RelativeVirtualFile]]](
         "scalaJSIR", "All the *.sjsir files on the classpath", CTask)
 
@@ -257,7 +263,7 @@ object ScalaJSPlugin extends AutoPlugin {
         "scalaJSConfigurationLibs",
         "List of JS libraries used as project configuration.", CTask)
 
-    val scalaJSJavaSystemProperties = TaskKey[Seq[(String, String)]](
+    val scalaJSJavaSystemProperties = TaskKey[Map[String, String]](
         "scalaJSJavaSystemProperties",
         "List of arguments to pass to the Scala.js Java System.properties.",
         CTask)

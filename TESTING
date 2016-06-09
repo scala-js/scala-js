@@ -38,12 +38,16 @@ For each major Scala version on a *NIX distro and a Windows distro:
 
 ## HTML-Runners
 
-The following HTML-runners/testers must be manually tested:
+The following HTML-runners must be manually tested:
 
     examples/helloworld/helloworld-{2.10|2.11}{|-fastopt}.html
     examples/reversi/reversi-{2.10|2.11}{|-fastopt}.html
-    examples/testing/testing-{2.10|2.11}{|-fastopt}.html
-    test-suite/scalajs-test-suite-{2.10|2.11}{|-fastopt}.html
+
+The following sbt-plugin generated test runners must be manually tested (in both
+2.10 and 2.11):
+
+    testingExample/testHtml{Fast,Full}Opt
+    testSuite/testHtml{Fast,Full}Opt
 
 ## Sourcemaps
 

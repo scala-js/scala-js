@@ -50,5 +50,5 @@ sourceGenerators in Compile <+= Def.task {
 
 unmanagedResourceDirectories in Compile += {
   val root = baseDirectory.value.getParentFile
-  root / "tools/src/main/resources"
+  root / "sbt-plugin/src/main/resources"
 }

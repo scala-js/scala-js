@@ -254,7 +254,10 @@
     sbt ++2.10.6 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
                  testAdapter/publishLocal sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&
-    sbt noDOM/run withDOM/run multiTestJS/test:run test \
+    sbt noDOM/run noDOM/testHtmlFastOpt noDOM/testHtmlFullOpt \
+        withDOM/run withDOM/testHtmlFastOpt withDOM/testHtmlFullOpt \
+        multiTestJS/test:run multiTestJS/testHtmlFastOpt multiTestJS/testHtmlFullOpt \
+        test \
         'set scalaJSUseRhino in Global := false' \
         jetty9/run test \
         jsDependenciesTest/packageJSDependencies \

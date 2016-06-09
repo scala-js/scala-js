@@ -11,9 +11,7 @@ import com.typesafe.tools.mima.plugin.MimaKeys.{previousArtifact, binaryIssueFil
 
 import java.io.{
   BufferedOutputStream,
-  FileOutputStream,
-  BufferedWriter,
-  FileWriter
+  FileOutputStream
 }
 
 import scala.collection.mutable
@@ -75,9 +73,6 @@ object Build {
     "Defaults to what sbt is running with.")
 
   val javaDocBaseURL: String = "http://docs.oracle.com/javase/8/docs/api/"
-
-  val jsTestDefinitions = taskKey[File](
-    "A file containing information about detected tests.")
 
   // set scalaJSSemantics in someProject ~= makeCompliant
   val makeCompliant: Semantics => Semantics = { semantics =>
@@ -583,12 +578,21 @@ object Build {
       base = file("tools/js"),
       settings = myScalaJSSettings ++ commonToolsSettings ++ Seq(
           crossVersion := ScalaJSCrossVersion.binary,
-          resources in Test <+= jsTestDefinitions in (testSuite, Test),
-          jsDependencies += {
-            val artifact =
-              (artifactPath in (testSuite, Test, jsTestDefinitions)).value
-            ProvidedJS / artifact.getName % "test"
-          }
+          resourceGenerators in Test <+= Def.task {
+            val base = (resourceManaged in Compile).value
+            IO.createDirectory(base)
+            val outFile = base / "js-test-definitions.js"
+
+            val testDefinitions = {
+              org.scalajs.build.HTMLRunnerTemplateAccess.renderTestDefinitions(
+                  (loadedTestFrameworks in testSuite in Test).value,
+                  (definedTests in testSuite in Test).value)
+            }
+
+            IO.write(outFile, testDefinitions)
+            Seq(outFile)
+          },
+          jsDependencies += ProvidedJS / "js-test-definitions.js" % "test"
       ) ++ inConfig(Test) {
         // Redefine test to run Node.js and link HelloWorld
         test := {
@@ -1332,58 +1336,39 @@ object Build {
     }
   )
 
+  def testHtmlSettings[T](testHtmlKey: TaskKey[T], targetStage: Stage) = Seq(
+      // We need to patch the system properties.
+      scalaJSJavaSystemProperties in Test in testHtmlKey ~= { base =>
+        val unsupported =
+          Seq("rhino", "nodejs", "nodejs.jsdom", "phantomjs", "source-maps")
+        val supported =
+          Seq("typedarray", "browser")
+
+        base -- unsupported.map("scalajs." + _) ++
+            supported.map("scalajs." + _ -> "true")
+      },
+
+      // Fail if we are not in the right stage.
+      testHtmlKey in Test <<= (testHtmlKey in Test) dependsOn Def.task {
+        if (scalaJSStage.value != targetStage) {
+          sys.error("In the Scala.js test-suite, the testHtml* tasks need " +
+              "scalaJSStage to be set to their respecitve stage. Stage is: " +
+              scalaJSStage.value)
+        }
+      }
+  )
+
   lazy val testSuite: Project = Project(
     id = "testSuite",
     base = file("test-suite/js"),
     settings = commonSettings ++ myScalaJSSettings ++ testTagSettings ++
-      testSuiteCommonSettings(isJSTest = true) ++ Seq(
-        name := "Scala.js test suite"
-      ) ++ inConfig(Test)(Seq(
-        artifactPath in jsTestDefinitions :=
-          crossTarget.value / "test-definitions.js",
+      testSuiteCommonSettings(isJSTest = true) ++
+      testHtmlSettings(testHtmlFastOpt, FastOptStage) ++
+      testHtmlSettings(testHtmlFullOpt, FullOptStage) ++ Seq(
+        name := "Scala.js test suite",
 
-        /* Generate a JS file that contains defined tests and testFrameworks.
-         *  The file will be called "test-definitions.js" and defines:
-         *  - var definedTests
-         *  - var testFrameworkNames
-         */
-        jsTestDefinitions := {
-          import org.scalajs.testadapter.TaskDefSerializers._
-
-          val outFile = (artifactPath in jsTestDefinitions).value
-
-          val allTests = for {
-            t <- definedTests.value.toList
-          } yield {
-            new sbt.testing.TaskDef(t.name, t.fingerprint,
-                t.explicitlySpecified, t.selectors)
-          }
-
-          val allFrameworks =
-            loadedTestFrameworks.value.map(_._1.implClassNames.toList)
-
-          val writer = new BufferedWriter(new FileWriter(outFile))
-
-          try {
-            writer.write("var definedTests = ")
-            writeJSON(allTests.toJSON, writer)
-            writer.write(";\n")
-
-            writer.write("var testFrameworkNames = ")
-            writeJSON(allFrameworks.toList.toJSON, writer)
-            writer.write(";\n")
-          } finally {
-            writer.close()
-          }
-
-          outFile
-        },
-        jsTestDefinitions <<=
-          jsTestDefinitions.triggeredBy(fastOptJS, fullOptJS),
-
-        skip in packageJSDependencies := false
-      )) ++ Seq(
         jsDependencies += ProvidedJS / "ScalaJSDefinedTestNatives.js" % "test",
+        skip in packageJSDependencies in Test := false,
 
         scalaJSSemantics ~= (_.withRuntimeClassName(_.fullName match {
           case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>

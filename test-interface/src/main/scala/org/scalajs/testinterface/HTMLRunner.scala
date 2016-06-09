@@ -5,7 +5,7 @@
 ** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
 **                          |/____/                                     **
 \*                                                                      */
-package org.scalajs.testsuite.utils
+package org.scalajs.testinterface
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSName
@@ -15,11 +15,9 @@ import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 import scala.concurrent.ExecutionContext.Implicits.global
 
-import org.scalajs.testinterface.ScalaJSClassLoader
-
 import sbt.testing._
 
-object HTMLRunner extends js.JSApp {
+protected[testinterface] object HTMLRunner extends js.JSApp {
   private val classLoader = new ScalaJSClassLoader(js.Dynamic.global)
 
   private val logger = new Logger {

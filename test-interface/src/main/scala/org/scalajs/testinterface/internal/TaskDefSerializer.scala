@@ -6,7 +6,7 @@ import js.JSConverters._
 
 import sbt.testing._
 
-object TaskDefSerializer {
+private[testinterface] object TaskDefSerializer {
 
   def serialize(td: TaskDef): js.Dynamic = {
     lit(fullyQualifiedName = td.fullyQualifiedName,
