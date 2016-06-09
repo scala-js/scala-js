@@ -177,6 +177,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         // Catch Scala Enumerations to transform calls to scala.Enumeration.Value
         case idef: ImplDef if isScalaEnum(idef) =>
+          val sym = idef.symbol
+
+          if (sym.hasAnnotation(JSNativeAnnotation))
+            reportJSNativeOnNonJSAny(idef.pos, "Classes and objects")
+
           val kind =
             if (idef.isInstanceOf[ModuleDef]) OwnerKind.EnumMod
             else OwnerKind.EnumClass
@@ -186,10 +191,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case cldef: ClassDef =>
           val sym = cldef.symbol
 
-          if (sym.hasAnnotation(JSNativeAnnotation)) {
-            reporter.error(cldef.pos, "Traits and classes not extending js.Any " +
-                "may not have a @js.native annotation")
-          }
+          if (sym.hasAnnotation(JSNativeAnnotation))
+            reportJSNativeOnNonJSAny(cldef.pos, "Traits and classes")
 
           if (sym == UndefOrClass || sym == UnionClass)
             sym.addAnnotation(RawJSTypeAnnot)
@@ -208,10 +211,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case modDef: ModuleDef =>
           val sym = modDef.symbol
 
-          if (sym.hasAnnotation(JSNativeAnnotation)) {
-            reporter.error(modDef.pos, "Objects not extending js.Any may not " +
-                "have a @js.native annotation")
-          }
+          if (sym.hasAnnotation(JSNativeAnnotation))
+            reportJSNativeOnNonJSAny(modDef.pos, "Objects")
 
           if (shouldPrepareExports)
             registerModuleExports(sym.moduleClass)
@@ -1001,6 +1002,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     typer.typed {
       Apply(Select(This(thisSym), jsnme.Value), params)
     }
+  }
+
+  private def reportJSNativeOnNonJSAny(pos: Position, reportOn: String): Unit = {
+    reporter.error(pos, reportOn + " not extending js.Any may not have a " +
+        "@js.native annotation")
   }
 
   private lazy val ScalaEnumClass = getRequiredClass("scala.Enumeration")
