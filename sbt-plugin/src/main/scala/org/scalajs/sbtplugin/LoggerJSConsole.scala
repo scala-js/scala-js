@@ -13,6 +13,9 @@ import sbt.Logger
 import org.scalajs.jsenv.JSConsole
 
 /** A proxy for a Logger that looks like a Mozilla console object */
+@deprecated(
+    "Use org.scalajs.jsenv.ConsoleJSConsole or define your own instead.",
+    "0.6.10")
 class LoggerJSConsole(logger: Logger) extends JSConsole {
   def log(msg: Any): Unit = logger.info(msg.toString)
 }

@@ -37,6 +37,9 @@ object BinaryIncompatibilities {
   )
 
   val SbtPlugin = Seq(
+      // private, not an issue
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.sbtplugin.Implicits$SbtLoggerWrapper")
   )
 
   val TestAdapter = Seq(
