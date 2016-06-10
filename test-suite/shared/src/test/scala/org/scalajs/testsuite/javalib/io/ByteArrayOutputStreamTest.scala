@@ -14,7 +14,8 @@ import scala.language.implicitConversions
 import org.junit.Test
 import org.junit.Assert._
 
-class ByteArrayOutputStreamTest extends CommonStreamsTests {
+class ByteArrayOutputStreamTest {
+
   @Test def should_support_simple_write_int(): Unit = {
     val out = new ByteArrayOutputStream()
 

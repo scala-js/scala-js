@@ -18,13 +18,24 @@ import org.scalajs.testsuite.utils.AssertThrows._
 
 class InputStreamTest extends CommonStreamsTests {
 
-  class DummyInputStream(val length: Int) extends InputStream {
+  def mkStream(seq: Seq[Int]): InputStream = new InputStream {
     private var i: Int = 0
-    def read(): Int = if (i < length) { i += 1; i } else -1
+    private var m: Int = 0
+
+    override def read(b: Array[Byte], off: Int, len: Int): Int = super.read(b, off, len)
+
+    def read(): Int = if (i < seq.length) { val e = seq(i); i += 1; e & 0xFF } else -1
+    override def available(): Int = seq.length - i
+
+    override def mark(readlimit: Int): Unit = m = i
+
+    override def reset(): Unit = i = m
+
+    override def markSupported(): Boolean = true
   }
 
   @Test def should_provide_a_default_implementation_of_read_to_an_array(): Unit = {
-    val stream = new DummyInputStream(200)
+    val stream = mkStream(1 to 200)
 
     val buf = new Array[Byte](50)
 
@@ -71,7 +82,7 @@ class InputStreamTest extends CommonStreamsTests {
   }
 
   @Test def should_provide_a_default_implementation_of_skip(): Unit = {
-    val stream = new DummyInputStream(10)
+    val stream = mkStream(1 to 10)
 
     assertEquals(5L, stream.skip(5))
     assertEquals(6, stream.read())

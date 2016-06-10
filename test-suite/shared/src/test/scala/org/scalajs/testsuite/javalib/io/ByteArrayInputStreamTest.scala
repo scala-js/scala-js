@@ -12,7 +12,7 @@ import java.io._
 import scala.language.implicitConversions
 
 class ByteArrayInputStreamTest extends CommonStreamsTests {
-  byteArrayInputStreamLikeTests { seq =>
+  def mkStream(seq: Seq[Int]): InputStream = {
     new ByteArrayInputStream(seq.map(_.toByte).toArray)
   }
 }
