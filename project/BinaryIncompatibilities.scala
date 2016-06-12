@@ -8,9 +8,25 @@ object BinaryIncompatibilities {
   val Tools = Seq(
       // private, not an issue
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#PreTransBlock.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#PreTransBlock.apply"),
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#PreTransBlock.stats")
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#PreTransBlock.stats"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#PreTransBlock.result"),
+      ProblemFilters.exclude[MissingTypesProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore$PreTransTree"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#PreTransTree.apply"),
+      ProblemFilters.exclude[MissingTypesProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore$PreTransRecordTree"),
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore$PreTransNoBlock"),
+      ProblemFilters.exclude[MissingTypesProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore$PreTransGenTree"),
+      ProblemFilters.exclude[MissingTypesProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore$PreTransLocalDef")
   )
 
   val JSEnvs = Seq(
