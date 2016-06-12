@@ -1,24 +1,23 @@
 import scala.scalajs.js
 import scala.scalajs.js.Dynamic.global
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
+import org.junit.Assert._
 
-object ElementCreatorTest extends JasmineTest {
+class ElementCreatorTest {
 
-  describe("ElementCreator") {
+  @Test
+  def element_creator_create_an_element_in_body(): Unit = {
+    // create the element
+    ElementCreator.create()
 
-    it("should be able to create an element in the body") {
-      // create the element
-      ElementCreator.create()
+    // jquery would make this easier, but I wanted to
+    // only use pure html in the test itself
+    val body = global.document.getElementsByTagName("body")
+      .asInstanceOf[js.Array[js.Dynamic]].head
 
-      // jquery would make this easier, but I wanted to
-      // only use pure html in the test itself
-      val body = global.document.getElementsByTagName("body")
-        .asInstanceOf[js.Array[js.Dynamic]].head
-
-      // the Scala.js DOM API would make this easier
-      expect(body.lastChild.tagName.toString == "H1").toBeTruthy
-      expect(body.lastChild.innerHTML.toString == "Test").toBeTruthy
-    }
+    // the Scala.js DOM API would make this easier
+    assertEquals("H1", body.lastChild.tagName.toString)
+    assertEquals("Test", body.lastChild.innerHTML.toString)
   }
 }

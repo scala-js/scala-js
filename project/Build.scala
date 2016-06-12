@@ -1189,7 +1189,9 @@ object Build {
             "org.webjars" % "jquery" % "1.10.2" / "jquery.js" % "test"
           )
       )
-  ).withScalaJSCompiler.dependsOn(library, jasmineTestFramework % "test")
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
+      library, jUnitRuntime % "test"
+  )
 
   // Testing
 
