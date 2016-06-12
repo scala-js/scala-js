@@ -340,8 +340,6 @@ object Build {
   val myScalaJSSettings = ScalaJSPluginInternal.scalaJSAbstractSettings ++ Seq(
       autoCompilerPlugins := true,
       scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(true)),
-      testFrameworks +=
-        TestFramework("org.scalajs.jasminetest.JasmineFramework"),
 
       // Link source maps
       scalacOptions ++= {
@@ -454,7 +452,7 @@ object Build {
               clean in javalanglib, clean in javalib, clean in scalalib,
               clean in libraryAux, clean in library, clean in javalibEx,
               clean in stubs, clean in cli,
-              clean in testInterface, clean in jasmineTestFramework,
+              clean in testInterface,
               clean in jUnitRuntime, clean in jUnitPlugin,
               clean in jUnitTestOutputsJS, clean in jUnitTestOutputsJVM,
               clean in examples, clean in helloworld,
@@ -1077,22 +1075,6 @@ object Build {
           binaryIssueFilters ++= BinaryIncompatibilities.TestInterface
       )
   ).withScalaJSCompiler.dependsOn(library)
-
-  lazy val jasmineTestFramework = Project(
-      id = "jasmineTestFramework",
-      base = file("jasmine-test-framework"),
-      settings = (
-          commonSettings ++ myScalaJSSettings ++ fatalWarningsSettings
-      ) ++ Seq(
-          name := "Scala.js jasmine test framework",
-
-          jsDependencies ++= Seq(
-            ProvidedJS / "jasmine-polyfills.js",
-            "org.webjars" % "jasmine" % "1.3.1" /
-              "jasmine.js" dependsOn "jasmine-polyfills.js"
-          )
-      )
-  ).withScalaJSCompiler.dependsOn(library, testInterface)
 
   lazy val jUnitRuntime = Project(
     id = "jUnitRuntime",

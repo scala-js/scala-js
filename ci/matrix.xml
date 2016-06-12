@@ -69,7 +69,7 @@
         ++$scala javalibExTestSuite/test &&
     sbtretry ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
     sbtretry ++$scala compiler/compile:doc library/compile:doc javalibEx/compile:doc \
-        testInterface/compile:doc jasmineTestFramework/compile:doc &&
+        testInterface/compile:doc &&
     sbtretry ++$scala partest/fetchScalaSource &&
     sbtretry ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
     sh ci/checksizes.sh $scala &&
@@ -227,7 +227,7 @@
         jsEnvs/scalastyle jsEnvsTestKit/scalastyle \
         jsEnvsTestSuite/test:scalastyle testAdapter/scalastyle \
         sbtPlugin/scalastyle testInterface/scalastyle \
-        jasmineTestFramework/scalastyle testSuite/test:scalastyle \
+        testSuite/test:scalastyle \
         testSuiteJVM/test:scalastyle \
         javalibExTestSuite/test:scalastyle helloworld/scalastyle \
         reversi/scalastyle testingExample/scalastyle \
