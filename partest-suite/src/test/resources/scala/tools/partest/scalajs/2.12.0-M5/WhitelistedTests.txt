@@ -1623,7 +1623,6 @@ neg/t663.scala
 neg/t5892.scala
 neg/t1980.scala
 neg/macro-false-deprecation-warning
-neg/t5148.scala
 neg/t585.scala
 neg/t3776.scala
 neg/interop_classtags_arenot_manifests.scala
@@ -2406,7 +2405,6 @@ run/macro-expand-varargs-implicit-over-nonvarargs
 run/t0807.scala
 run/patmat-behavior.scala
 run/t2446.scala
-run/tuple-zipped.scala
 run/breakout.scala
 run/t4122.scala
 run/macro-settings
@@ -2661,7 +2659,6 @@ run/verify-ctor.scala
 run/t3647.scala
 run/t4560.scala
 run/t6632.scala
-run/hashCodeBoxesRunTime.scala
 run/richs.scala
 run/t6725-1.scala
 pos/t7776.scala
@@ -2906,7 +2903,6 @@ run/t8233.scala
 run/t8133
 run/t8133b
 run/t7475b.scala
-run/t7445.scala
 run/t6814
 run/t4577.scala
 run/t5134.scala
@@ -3151,6 +3147,47 @@ neg/t6289
 run/t4729
 run/t6114.scala
 run/t1430
+pos/constant-warning.scala
+pos/t2712-5.scala
+pos/t2712-2.scala
+pos/t2712-4.scala
+pos/t2712-1.scala
+pos/t2712-3.scala
+pos/t2712-6.scala
+pos/t5148.scala
+pos/t6895b.scala
+pos/t5683.scala
+pos/hkgadt.scala
+pos/t2712-7.scala
+pos/t9245.scala
+pos/t7088.scala
+pos/trait-defaults-super.scala
+pos/t8044.scala
+pos/t9665.scala
+pos/t9397.scala
+pos/t5183.scala
+pos/t8449
+neg/t8044-b.scala
+neg/t8044.scala
+neg/t2712-3.scala
+neg/t2712-2.scala
+neg/t2712-1.scala
+neg/t9045.scala
+neg/t8667.scala
+neg/t9361.scala
+neg/t9781.scala
+neg/trait-no-native.scala
+neg/hkgadt.scala
+neg/t9684b.scala
+neg/t9382.scala
+neg/trait-defaults-super.scala
+neg/t9684.scala
+neg/nowarnDefaultJunitMethods
+run/hashCodeStatics.scala
+run/t9390d.scala
+run/trait-static-clash.scala
+run/t5568.scala
+run/t6318_primitives.scala
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala
@@ -3175,6 +3212,7 @@ run/deeps.scala
 run/caseClassHash.scala
 run/interpolation.scala
 run/interpolationMultiline1.scala
+run/t9656.scala
 
 # Adapt checkfiles for ().toString == "undefined"
 run/t5680.scala

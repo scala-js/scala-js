@@ -449,8 +449,7 @@ class RegressionTest {
     val x = getNull().asInstanceOf[Unit]: Any
 
     val scalaVersion = Platform.scalaVersion
-    if (scalaVersion.startsWith("2.10.") || scalaVersion.startsWith("2.11.") ||
-        scalaVersion == "2.12.0-M4") {
+    if (scalaVersion.startsWith("2.10.") || scalaVersion.startsWith("2.11.")) {
       assertNull(x.asInstanceOf[AnyRef])
     } else {
       // As of Scala 2.12.0-M5, null.asInstanceOf[Unit] (correctly) returns ()

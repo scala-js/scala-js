@@ -54,6 +54,9 @@ run/t5293-map.scala
 run/serialize-stream.scala
 run/sysprops.scala
 run/lambda-serialization-gc.scala
+run/t9390.scala
+run/t9390b.scala
+run/t9390c.scala
 
 run/t2849.scala
 run/t1360.scala
@@ -89,7 +92,6 @@ run/t7880.scala
 
 # Taking too much time, because JavaScript is not as fast as the JVM
 
-run/t3822.scala
 run/collections.scala
 run/t3989.scala
 run/adding-growing-set.scala
@@ -215,7 +217,6 @@ run/t6392b.scala
 run/t5229_1.scala
 run/reflection-magicsymbols-vanilla.scala
 run/t5225_2.scala
-run/origins.scala
 run/runtimeEval1.scala
 run/reflection-enclosed-nested-inner-basic.scala
 run/reflection-fieldmirror-ctorparam.scala
@@ -593,6 +594,10 @@ run/t9535.scala
 run/t9437a
 run/t9437b
 
+run/t8756.scala
+run/inferred-type-constructors-hou.scala
+run/trait-static-forwarder
+
 # Uses refletction indirectly through
 # scala.runtime.ScalaRunTime.replStringOf
 run/t6634.scala
@@ -759,10 +764,25 @@ run/t6541-option.scala
 run/repl-serialization.scala
 run/t9174.scala
 run/repl-paste-5.scala
+run/repl-no-uescape.scala
+run/repl-no-imports-no-predef-classbased.scala
+run/repl-implicits-nopredef.scala
+run/repl-classbased.scala
+run/repl-no-imports-no-predef-power.scala
+run/repl-paste-b.scala
+run/repl-paste-6.scala
+run/repl-implicits.scala
+run/repl-no-imports-no-predef.scala
+run/repl-paste-raw-b.scala
+run/repl-paste-raw-c.scala
+run/t9749-repl-dot.scala
 
 # Using Scala Script (partest.ScriptTest)
 
 run/t7711-script-args.scala
+run/t4625.scala
+run/t4625c.scala
+run/t4625b.scala
 
 # Using the compiler API
 
@@ -812,8 +832,6 @@ run/t7569.scala
 run/t7852.scala
 run/t7817-tree-gen.scala
 run/t7825.scala
-run/t7933.scala
-run/t7843-jsr223-service.scala
 
 # partest.ParserTest
 run/t3368.scala
@@ -854,6 +872,8 @@ run/macroPlugins-enterStats.scala
 run/sbt-icode-interface.scala
 run/t8502b.scala
 run/t9437c
+run/repl-paste-parse.scala
+run/t5463.scala
 
 # partest.CompilerTest
 run/t8852a.scala

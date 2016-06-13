@@ -13,6 +13,8 @@ import scala.tools.nsc.{ Global, Settings }
 import scala.tools.nsc.reporters.{ Reporter }
 import scala.tools.nsc.plugins.Plugin
 
+import scala.tools.partest.sbt.SBTRunner
+
 import org.scalajs.core.compiler.ScalaJSPlugin
 
 import scala.io.Source
@@ -34,8 +36,8 @@ trait ScalaJSDirectCompiler extends DirectCompiler {
 
 class ScalaJSRunner(testFile: File, suiteRunner: SuiteRunner,
     scalaJSOverridePath: String,
-    options: ScalaJSPartestOptions) extends nest.Runner(testFile, suiteRunner) {
-
+    options: ScalaJSPartestOptions) extends nest.Runner(testFile, suiteRunner,
+        new nest.NestUI(diffOnFail = options.showDiff, colorEnabled = true)) {
   private val compliantSems: List[String] = {
     scalaJSConfigFile("sem").fold(List.empty[String]) { file =>
       Source.fromFile(file).getLines.toList
@@ -101,7 +103,7 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
           catch {
             case t: Throwable => throw new RuntimeException(s"Error running $testFile", t)
           }
-        NestUI.reportTest(state)
+        nestUI.reportTest(state, runner)
         runner.cleanup()
         state
       }
@@ -179,8 +181,8 @@ class ScalaJSSBTRunner(
     val options: ScalaJSPartestOptions,
     val scalaVersion: String
 ) extends SBTRunner(
-    partestFingerprint, eventHandler, loggers, "test/files", testClassLoader,
-    javaCmd, javacCmd, scalacArgs, args
+    RunnerSpec.forArgs(args), partestFingerprint, eventHandler, loggers,
+    "test/files", testClassLoader, javaCmd, javacCmd, scalacArgs, args
 ) {
 
   // The test root for partest is read out through the system properties,
@@ -190,15 +192,12 @@ class ScalaJSSBTRunner(
   // Partests take at least 5h. We double, just to be sure. (default is 4 hours)
   sys.props("partest.timeout") = "10 hours"
 
-  // Set showDiff on global UI module
-  if (options.showDiff)
-    NestUI.setDiffOnFail()
-
   override val suiteRunner = new SuiteRunner(
-      testSourcePath = optSourcePath orElse Option("test/files") getOrElse PartestDefaults.sourcePath,
-      new FileManager(testClassLoader = testClassLoader),
-      updateCheck = optUpdateCheck,
-      failed  = optFailed,
+      testSourcePath = config.optSourcePath orElse Option("test/files") getOrElse PartestDefaults.sourcePath,
+      fileManager = new FileManager(testClassLoader = testClassLoader),
+      updateCheck = config.optUpdateCheck,
+      failed = config.optFailed,
+      nestUI = nestUI,
       javaCmdPath = Option(javaCmd).map(_.getAbsolutePath) getOrElse PartestDefaults.javaCmd,
       javacCmdPath = Option(javacCmd).map(_.getAbsolutePath) getOrElse PartestDefaults.javacCmd,
       scalacExtraArgs = scalacArgs,

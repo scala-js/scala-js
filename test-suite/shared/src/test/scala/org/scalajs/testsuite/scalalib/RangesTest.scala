@@ -64,9 +64,7 @@ class RangesTest {
   }
 
   @Test def Range_toString_issue_2412(): Unit = {
-    if (scalaVersion.startsWith("2.12.") &&
-        // Remove this line when upgrading to 2.12.0-M5
-        !scalaVersion.startsWith("2.12.0-M4")) {
+    if (scalaVersion.startsWith("2.12.")) {
       assertEquals("inexact Range 1 to 10 by 2", (1 to 10 by 2).toString)
       assertEquals("empty Range 1 until 1 by 2", (1 until 1 by 2).toString)
       assertEquals("Range requires step", (0.0 to 1.0).toString)
@@ -80,9 +78,7 @@ class RangesTest {
   }
 
   @Test def NumericRange_toString_issue_2412(): Unit = {
-    if (scalaVersion.startsWith("2.12.") &&
-        // Remove this line when upgrading to 2.12.0-M5
-        !(executingInJVM && scalaVersion.startsWith("2.12.0-M4"))) {
+    if (scalaVersion.startsWith("2.12.")) {
       assertEquals(s"NumericRange 0.1 to ${1.0} by 0.1",
           (0.1 to 1.0 by 0.1).toString())
       assertEquals(

@@ -25,10 +25,7 @@ class ClassTagTest {
     assertSame(ClassTag.Float, ClassTag(classOf[Float]))
     assertSame(ClassTag.Double, ClassTag(classOf[Double]))
     assertSame(ClassTag.Boolean, ClassTag(classOf[Boolean]))
-    if (System.getProperty("scalac.hasBoxedUnitBug") == null) {
-      // Can't run on 2.12.0-M4.
-      assertSame(ClassTag.Unit, ClassTag(classOf[Unit]))
-    }
+    assertSame(ClassTag.Unit, ClassTag(classOf[Unit]))
     assertSame(ClassTag.Object, ClassTag(classOf[Object]))
     assertSame(ClassTag.Nothing, ClassTag(classOf[Nothing]))
     assertSame(ClassTag.Null, ClassTag(classOf[Null]))
@@ -59,10 +56,7 @@ class ClassTagTest {
     assertSame(classOf[Float], ClassTag.Float.runtimeClass)
     assertSame(classOf[Double], ClassTag.Double.runtimeClass)
     assertSame(classOf[Boolean], ClassTag.Boolean.runtimeClass)
-    if (System.getProperty("scalac.hasBoxedUnitBug") == null) {
-      // Can't run on 2.12.0-M4.
-      assertSame(classOf[Unit], ClassTag.Unit.runtimeClass)
-    }
+    assertSame(classOf[Unit], ClassTag.Unit.runtimeClass)
     assertSame(classOf[Any], ClassTag.Any.runtimeClass)
     assertSame(classOf[Object], ClassTag.Object.runtimeClass)
     assertSame(classOf[AnyVal], ClassTag.AnyVal.runtimeClass)
