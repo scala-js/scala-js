@@ -1,16 +1,11 @@
-import scala.scalajs.js
-import scala.scalajs.js.JSConverters._
+import org.junit.Test
+import org.junit.Assert._
 
-import org.scalajs.jasminetest.JasmineTest
-
-object CollectionTest extends JasmineTest {
-
-  describe("Array") {
-
-    it("should be able to map and filter integers") {
-      val array = Array(5, 7, 2, 6, -30, 33, 66, 76, 75, 0)
-      val result = array.filter(_.toInt % 3 != 0).map(x => x*x)
-      expect(result.toJSArray).toEqual(js.Array(25, 49, 4, 76*76))
-    }
+class CollectionTest {
+  @Test
+  def array_map_and_filter_ints(): Unit = {
+    val array = Array(5, 7, 2, 6, -30, 33, 66, 76, 75, 0)
+    val result = array.filter(_.toInt % 3 != 0).map(x => x*x)
+    assertArrayEquals(Array(25, 49, 4, 76*76), result)
   }
 }

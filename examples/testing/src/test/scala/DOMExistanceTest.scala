@@ -1,36 +1,36 @@
+import scala.scalajs.js
 import scala.scalajs.js.Dynamic.global
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
+import org.junit.Assert._
 
-object DOMExistenceTest extends JasmineTest {
+class DOMExistenceTest {
 
-  describe("document") {
-
-    it("should initialize 'document'") {
-      expect(global.document).toBeDefined
-      expect(global.document.nodeName).toEqual("#document")
-    }
-
-    it("should initialize 'document.body'") {
-      expect(global.document.body).toBeDefined
-    }
+  @Test
+  def should_initialize_document(): Unit = {
+    assertFalse(js.isUndefined(global.document))
+    assertEquals("#document", global.document.nodeName)
   }
 
-  describe("window") {
-    it("should initialize 'window'") {
-      expect(global.window).toBeDefined
-    }
+  @Test
+  def should_initialize_document_body(): Unit = {
+    assertFalse(js.isUndefined(global.document.body))
   }
 
-  describe("jQuery") {
-    it("should initialize 'jQuery'") {
-      expect(global.jQuery).toBeDefined
-      expect(global.window.jQuery).toBeDefined
-    }
+  @Test
+  def should_initialize_windod(): Unit = {
+    assertFalse(js.isUndefined(global.window))
+  }
 
-    it("should initialize '$'") {
-      expect(global.$).toBeDefined
-      expect(global.window.$).toBeDefined
-    }
+  @Test
+  def should_initialize_jQuery(): Unit = {
+    assertFalse(js.isUndefined(global.jQuery))
+    assertFalse(js.isUndefined(global.window.jQuery))
+  }
+
+  @Test
+  def should_initialize_dollar(): Unit = {
+    assertFalse(js.isUndefined(global.$))
+    assertFalse(js.isUndefined(global.window.$))
   }
 }
