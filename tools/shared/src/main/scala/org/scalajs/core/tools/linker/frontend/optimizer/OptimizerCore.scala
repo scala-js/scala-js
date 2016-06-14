@@ -3515,27 +3515,24 @@ private[optimizer] abstract class OptimizerCore(
    *
    *  This can force the binding if the result is a [[PreTransGenTree]].
    */
-  private def addPreTransBinding(preTransBinding: PreTransBinding,
+  private def addPreTransBinding(binding: PreTransBinding,
       result: PreTransform): PreTransform = {
     /* This is not the same as
-     *   addPreTransBindings(Left(preTransBinding) :: Nil, result)
+     *   addPreTransBindings(Left(binding) :: Nil, result)
      * because this function is able to optimize the case
      *   result: PreTransLocalDef
-     * if `!result.contains(preTransBinding)`.
+     * if `!result.contains(binding) && !binding.isAlreadyUsed`.
      */
     result match {
-      case result: PreTransBlock =>
-        PreTransBlock(preTransBinding, result)
-      case result: PreTransResult =>
-        PreTransBlock(preTransBinding, result)
-      case PreTransRecordTree(tree, tpe, cancelFun) =>
-        PreTransRecordTree(
-            finishTransformBindings(Left(preTransBinding) :: Nil, tree),
-            tpe, cancelFun)
-      case PreTransTree(tree, tpe) =>
-        PreTransTree(
-            finishTransformBindings(Left(preTransBinding) :: Nil, tree),
-            tpe)
+      case result: PreTransResult
+          if !result.contains(binding.localDef) && !binding.isAlreadyUsed =>
+        /* Eager dce of the binding to avoid unnecessary nesting in
+         * PreTransBlock, for better optimization.
+         */
+        PreTransBlock(finishTransformStat(binding.value), result)
+
+      case _ =>
+        addPreTransBindings(Left(binding) :: Nil, result)
     }
   }
 
@@ -3902,18 +3899,6 @@ private[optimizer] object OptimizerCore {
         result: PreTransBlock): PreTransform = {
       new PreTransBlock(bindingsAndStats ::: result.bindingsAndStats,
           result.result)
-    }
-
-    def apply(binding: PreTransBinding,
-        result: PreTransResult): PreTransform = {
-      if (result.contains(binding.localDef) || binding.isAlreadyUsed) {
-        new PreTransBlock(Left(binding) :: Nil, result)
-      } else {
-        /* Eager dce of the binding to avoid unnecessary nesting in
-         * PreTransBlock, for better optimization.
-         */
-        result
-      }
     }
 
     def apply(binding: PreTransBinding, result: PreTransBlock): PreTransform = {
