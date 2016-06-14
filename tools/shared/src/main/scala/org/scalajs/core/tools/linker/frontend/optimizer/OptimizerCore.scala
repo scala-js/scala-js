@@ -43,6 +43,12 @@ private[optimizer] abstract class OptimizerCore(
 
   val myself: MethodID
 
+  lazy val debug =
+    myself.toString() == "Lhelloworld_HelloWorld$.rangeForeach1__I__V"
+
+  def debugMsg(msg: => Any): Unit =
+    if (debug) System.err.println(msg)
+
   /** Returns the body of a method. */
   protected def getMethodBody(method: MethodID): MethodDef
 
@@ -119,6 +125,12 @@ private[optimizer] abstract class OptimizerCore(
       val m = MethodDef(static, name, newParams, resultType,
           newBody)(originalDef.optimizerHints, None)(originalDef.pos)
       val info = Infos.generateMethodInfo(m)
+
+      if (debug) {
+        val out = new java.io.PrintWriter(System.err)
+        new Printers.IRTreePrinter(out).printTopLevelTree(m)
+        out.flush()
+      }
 
       new LinkedMember(info, m, None)
     } catch {
@@ -1201,8 +1213,13 @@ private[optimizer] abstract class OptimizerCore(
   private def keepOnlySideEffects(stat: Tree): Tree = stat match {
     case _:VarRef | _:This | _:Literal =>
       Skip()(stat.pos)
+    case VarDef(_, _, _, rhs) =>
+      keepOnlySideEffects(rhs)
     case Block(init :+ last) =>
-      Block(init :+ keepOnlySideEffects(last))(stat.pos)
+      keepOnlySideEffects(last) match {
+        case Skip()  => keepOnlySideEffects(Block(init)(stat.pos))
+        case newLast => Block(init :+ last)(stat.pos)
+      }
     case LoadModule(ClassType(moduleClassName)) =>
       if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
       else stat
