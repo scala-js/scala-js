@@ -725,63 +725,8 @@ private[optimizer] abstract class OptimizerCore(
                 s"Env is ${scope.env}\nInlining ${scope.implsBeingInlined}"))
         cont(localDef.toPreTransform)
 
-      case If(cond, thenp, elsep) =>
-        val newCond = transformExpr(cond)
-        newCond match {
-          case BooleanLiteral(condValue) =>
-            if (condValue) pretransformExpr(thenp)(cont)
-            else           pretransformExpr(elsep)(cont)
-          case _ =>
-            tryOrRollback { cancelFun =>
-              pretransformNoLocalDef(thenp) { tthenp =>
-                pretransformNoLocalDef(elsep) { telsep =>
-                  (tthenp, telsep) match {
-                    case (PreTransRecordTree(thenTree, thenOrigType, thenCancelFun),
-                        PreTransRecordTree(elseTree, elseOrigType, elseCancelFun)) =>
-                      val commonType =
-                        if (thenTree.tpe == elseTree.tpe &&
-                            thenOrigType == elseOrigType) thenTree.tpe
-                        else cancelFun()
-                      val refinedOrigType =
-                        constrainedLub(thenOrigType, elseOrigType, tree.tpe)
-                      cont(PreTransRecordTree(
-                          If(newCond, thenTree, elseTree)(commonType),
-                          refinedOrigType,
-                          cancelFun))
-
-                    case (PreTransRecordTree(thenTree, thenOrigType, thenCancelFun), _)
-                        if telsep.tpe.isNothingType =>
-                      cont(PreTransRecordTree(
-                          If(newCond, thenTree, finishTransformExpr(telsep))(thenTree.tpe),
-                          thenOrigType,
-                          thenCancelFun))
-
-                    case (_, PreTransRecordTree(elseTree, elseOrigType, elseCancelFun))
-                        if tthenp.tpe.isNothingType =>
-                      cont(PreTransRecordTree(
-                          If(newCond, finishTransformExpr(tthenp), elseTree)(elseTree.tpe),
-                          elseOrigType,
-                          elseCancelFun))
-
-                    case _ =>
-                      val newThenp = finishTransformExpr(tthenp)
-                      val newElsep = finishTransformExpr(telsep)
-                      val refinedType =
-                        constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
-                      cont(foldIf(newCond, newThenp, newElsep)(
-                          refinedType).toPreTransform)
-                  }
-                }
-              }
-            } { () =>
-              val newThenp = transformExpr(thenp)
-              val newElsep = transformExpr(elsep)
-              val refinedType =
-                constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
-              cont(foldIf(newCond, newThenp, newElsep)(
-                  refinedType).toPreTransform)
-            }
-        }
+      case tree: If =>
+        pretransformIf(tree)(cont)
 
       case Match(selector, cases, default) =>
         val newSelector = transformExpr(selector)
@@ -916,6 +861,74 @@ private[optimizer] abstract class OptimizerCore(
         TailCalls.done(Skip()(tree.pos))
     }
     pretransformList(tree.stats)(cont)(scope)
+  }
+
+  private def pretransformIf(tree: If)(cont: PreTransCont)(
+      implicit scope: Scope): TailRec[Tree] = {
+    implicit val pos = tree.pos
+    val If(cond, thenp, elsep) = tree
+
+    val newCond = transformExpr(cond)
+    newCond match {
+      case BooleanLiteral(condValue) =>
+        if (condValue)
+          pretransformExpr(thenp)(cont)
+        else
+          pretransformExpr(elsep)(cont)
+
+      case _ =>
+        tryOrRollback { cancelFun =>
+          pretransformNoLocalDef(thenp) { tthenp =>
+            pretransformNoLocalDef(elsep) { telsep =>
+              (tthenp, telsep) match {
+                case (PreTransRecordTree(thenTree, thenOrigType, thenCancelFun),
+                    PreTransRecordTree(elseTree, elseOrigType, elseCancelFun)) =>
+                  val commonType = {
+                    if (thenTree.tpe == elseTree.tpe && thenOrigType == elseOrigType)
+                      thenTree.tpe
+                    else
+                      cancelFun()
+                  }
+                  val refinedOrigType =
+                    constrainedLub(thenOrigType, elseOrigType, tree.tpe)
+                  cont(PreTransRecordTree(
+                      If(newCond, thenTree, elseTree)(commonType),
+                      refinedOrigType,
+                      cancelFun))
+
+                case (PreTransRecordTree(thenTree, thenOrigType, thenCancelFun), _)
+                    if telsep.tpe.isNothingType =>
+                  cont(PreTransRecordTree(
+                      If(newCond, thenTree, finishTransformExpr(telsep))(thenTree.tpe),
+                      thenOrigType,
+                      thenCancelFun))
+
+                case (_, PreTransRecordTree(elseTree, elseOrigType, elseCancelFun))
+                    if tthenp.tpe.isNothingType =>
+                  cont(PreTransRecordTree(
+                      If(newCond, finishTransformExpr(tthenp), elseTree)(elseTree.tpe),
+                      elseOrigType,
+                      elseCancelFun))
+
+                case _ =>
+                  val newThenp = finishTransformExpr(tthenp)
+                  val newElsep = finishTransformExpr(telsep)
+                  val refinedType =
+                    constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
+                  cont(foldIf(newCond, newThenp, newElsep)(
+                      refinedType).toPreTransform)
+              }
+            }
+          }
+        } { () =>
+          val newThenp = transformExpr(thenp)
+          val newElsep = transformExpr(elsep)
+          val refinedType =
+            constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
+          cont(foldIf(newCond, newThenp, newElsep)(
+              refinedType).toPreTransform)
+        }
+    }
   }
 
   private def pretransformSelectCommon(tree: Select, isLhsOfAssign: Boolean)(
