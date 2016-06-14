@@ -82,6 +82,20 @@ class OptimizerTest {
     assertFalse(classOf[Array[Array[Object]]] == classOf[Array[Object]])
   }
 
+  @Test def side_effect_discard_in_eliminated_binding_issue_2467(): Unit = {
+    val b = Array.newBuilder[AnyRef]
+    def mockPrintln(x: Any): Unit =
+      b += ("" + x)
+
+    def get[T](x: T) = { mockPrintln("get: "+ x); x }
+
+    def bn2(a: Int, b: => Int)(c: Int = b) = a + b
+    mockPrintln(bn2(b = get(2), a = get(1))()) // should get: 1, 2, 2
+
+    assertArrayEquals(Array[AnyRef]("get: 1", "get: 2", "get: 2", "3"),
+        b.result())
+  }
+
   // +[string] constant folding
 
   @Test def must_not_break_when_folding_two_constant_strings(): Unit = {
