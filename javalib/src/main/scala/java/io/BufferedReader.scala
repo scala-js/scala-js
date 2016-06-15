@@ -18,6 +18,7 @@ class BufferedReader(in: Reader, sz: Int) extends Reader {
 
   override def close(): Unit = {
     closed = true
+    in.close()
   }
 
   override def mark(readAheadLimit: Int): Unit = {
