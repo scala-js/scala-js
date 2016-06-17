@@ -43,6 +43,11 @@ private[optimizer] abstract class OptimizerCore(
 
   val myself: MethodID
 
+  lazy val debug = myself.toString() == "Lreversi_Reversi.startTurn__V"
+
+  private def debugMsg(msg: => Any): Unit =
+    if (debug) System.err.println(msg)
+
   /** Returns the body of a method. */
   protected def getMethodBody(method: MethodID): MethodDef
 
@@ -119,6 +124,12 @@ private[optimizer] abstract class OptimizerCore(
       val m = MethodDef(static, name, newParams, resultType,
           newBody)(originalDef.optimizerHints, None)(originalDef.pos)
       val info = Infos.generateMethodInfo(m)
+
+      if (debug) {
+        val out = new java.io.PrintWriter(System.err)
+        new Printers.IRTreePrinter(out).printTopLevelTree(m)
+        out.flush()
+      }
 
       new LinkedMember(info, m, None)
     } catch {
@@ -733,9 +744,20 @@ private[optimizer] abstract class OptimizerCore(
             else           pretransformExpr(elsep)(cont)
           case _ =>
             tryOrRollback { cancelFun =>
-              pretransformNoLocalDef(thenp) { tthenp =>
-                pretransformNoLocalDef(elsep) { telsep =>
-                  (tthenp, telsep) match {
+              pretransformExprs(thenp, elsep) { (tthenp, telsep) =>
+                if (tthenp.tpe.isNothingType && !telsep.tpe.isNothingType) {
+                  cont(PreTransBlock(
+                      If(newCond, finishTransformStat(tthenp), Skip())(NoType),
+                      telsep))
+                } else if (telsep.tpe.isNothingType && !tthenp.tpe.isNothingType) {
+                  cont(PreTransBlock(
+                      If(foldUnaryOp(UnaryOp.Boolean_!, newCond),
+                          finishTransformStat(telsep), Skip())(NoType),
+                      tthenp))
+                } else {
+                  val tthenpNoLocalDef = resolveLocalDef(tthenp)
+                  val telsepNoLocalDef = resolveLocalDef(telsep)
+                  (tthenpNoLocalDef, telsepNoLocalDef) match {
                     case (PreTransRecordTree(thenTree, thenOrigType, thenCancelFun),
                         PreTransRecordTree(elseTree, elseOrigType, elseCancelFun)) =>
                       val commonType =
@@ -749,23 +771,9 @@ private[optimizer] abstract class OptimizerCore(
                           refinedOrigType,
                           cancelFun))
 
-                    case (PreTransRecordTree(thenTree, thenOrigType, thenCancelFun), _)
-                        if telsep.tpe.isNothingType =>
-                      cont(PreTransRecordTree(
-                          If(newCond, thenTree, finishTransformExpr(telsep))(thenTree.tpe),
-                          thenOrigType,
-                          thenCancelFun))
-
-                    case (_, PreTransRecordTree(elseTree, elseOrigType, elseCancelFun))
-                        if tthenp.tpe.isNothingType =>
-                      cont(PreTransRecordTree(
-                          If(newCond, finishTransformExpr(tthenp), elseTree)(elseTree.tpe),
-                          elseOrigType,
-                          elseCancelFun))
-
                     case _ =>
-                      val newThenp = finishTransformExpr(tthenp)
-                      val newElsep = finishTransformExpr(telsep)
+                      val newThenp = finishTransformExpr(tthenpNoLocalDef)
+                      val newElsep = finishTransformExpr(telsepNoLocalDef)
                       val refinedType =
                         constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
                       cont(foldIf(newCond, newThenp, newElsep)(
