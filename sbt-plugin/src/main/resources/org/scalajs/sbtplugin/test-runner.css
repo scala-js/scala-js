@@ -21,17 +21,38 @@ body {
 }
 
 .error {
-  border-left-color: #FF2C2C;
+  border-left-color: #FF2C2C !important;
 }
 
-.had_failures {
+.success {
+  border-left-color: #33FF33 !important;
+}
+
+.test-box-header {
+  font-family: monospace;
+  background-color: #E4E4E4;
+  border-left: 3px solid #D4D4D4;
   padding: .3em 4px;
-  border-left-color: #FF3333;
+  margin-top: 10px;
+}
+
+.test-box-header a:link, .test-box-header a:visited {
+  color: black;
+  text-decoration: none;
+}
+
+.test-box-header a:hover {
+  text-decoration: underline;
+}
+
+.test-box-header.success {
+  background-color: #99FF99;
+}
+
+.test-box-header.error {
   background-color: #FF9999;
 }
 
-.all_passed {
-  padding: .3em 4px;
-  border-left-color: #33FF33;
-  background-color: #99FF99;
+.test-box-body {
+  display: none;
 }
