@@ -878,9 +878,19 @@ private[optimizer] abstract class OptimizerCore(
 
       case _ =>
         tryOrRollback { cancelFun =>
-          pretransformNoLocalDef(thenp) { tthenp =>
-            pretransformNoLocalDef(elsep) { telsep =>
-              (tthenp, telsep) match {
+          pretransformExprs(thenp, elsep) { (tthenp, telsep) =>
+            if (tthenp.tpe.isNothingType) {
+              cont(PreTransBlock(
+                  If(newCond, finishTransformStat(tthenp), Skip())(NoType),
+                  telsep))
+            } else if (telsep.tpe.isNothingType) {
+              val negCond = finishTransformExpr(
+                  foldUnaryOp(UnaryOp.Boolean_!, newCond.toPreTransform))
+              cont(PreTransBlock(
+                  If(negCond, finishTransformStat(telsep), Skip())(NoType),
+                  tthenp))
+            } else {
+              (resolveLocalDef(tthenp), resolveLocalDef(telsep)) match {
                 case (PreTransRecordTree(thenTree, thenOrigType, thenCancelFun),
                     PreTransRecordTree(elseTree, elseOrigType, elseCancelFun)) =>
                   val commonType = {
@@ -896,23 +906,9 @@ private[optimizer] abstract class OptimizerCore(
                       refinedOrigType,
                       cancelFun))
 
-                case (PreTransRecordTree(thenTree, thenOrigType, thenCancelFun), _)
-                    if telsep.tpe.isNothingType =>
-                  cont(PreTransRecordTree(
-                      If(newCond, thenTree, finishTransformExpr(telsep))(thenTree.tpe),
-                      thenOrigType,
-                      thenCancelFun))
-
-                case (_, PreTransRecordTree(elseTree, elseOrigType, elseCancelFun))
-                    if tthenp.tpe.isNothingType =>
-                  cont(PreTransRecordTree(
-                      If(newCond, finishTransformExpr(tthenp), elseTree)(elseTree.tpe),
-                      elseOrigType,
-                      elseCancelFun))
-
-                case _ =>
-                  val newThenp = finishTransformExpr(tthenp)
-                  val newElsep = finishTransformExpr(telsep)
+                case (tthenpNoLocalDef, telsepNoLocalDef) =>
+                  val newThenp = finishTransformExpr(tthenpNoLocalDef)
+                  val newElsep = finishTransformExpr(telsepNoLocalDef)
                   val refinedType =
                     constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
                   cont(foldIf(newCond, newThenp, newElsep)(
