@@ -2571,10 +2571,24 @@ private[optimizer] abstract class OptimizerCore(
           case (_, PreTransLit(IntLiteral(_))) =>
             foldBinaryOp(Int_*, rhs, lhs)
 
-          case (PreTransLit(IntLiteral(1)), _)  =>
-            rhs
-          case (PreTransLit(IntLiteral(-1)), _) =>
-            foldBinaryOp(Int_-, PreTransLit(IntLiteral(0)), rhs)
+          case (PreTransLit(IntLiteral(x)), _) =>
+            x match {
+              case -1 => foldBinaryOp(Int_-, PreTransLit(IntLiteral(0)), rhs)
+              case 0  => PreTransBlock(finishTransformStat(rhs), lhs)
+              case 1  => rhs
+
+              // Exact power of 2
+              case _ if (x & (x - 1)) == 0 =>
+                /* Note that this would match 0, but 0 is handled above.
+                 * It will also match Int.MinValue, but that is not a problem
+                 * as the optimization also works (if you need convincing,
+                 * simply interpret the multiplication as unsigned).
+                 */
+                foldBinaryOp(Int_<<, rhs,
+                    PreTransLit(IntLiteral(Integer.numberOfTrailingZeros(x))))
+
+              case _ => default
+            }
 
           case _ => default
         }
@@ -2691,10 +2705,24 @@ private[optimizer] abstract class OptimizerCore(
           case (_, PreTransLit(LongLiteral(_))) =>
             foldBinaryOp(Long_*, rhs, lhs)
 
-          case (PreTransLit(LongLiteral(1)), _) =>
-            rhs
-          case (PreTransLit(LongLiteral(-1)), _) =>
-            foldBinaryOp(Long_-, PreTransLit(LongLiteral(0)), lhs)
+          case (PreTransLit(LongLiteral(x)), _) =>
+            x match {
+              case -1L => foldBinaryOp(Long_-, PreTransLit(LongLiteral(0)), rhs)
+              case 0L  => PreTransBlock(finishTransformStat(rhs), lhs)
+              case 1L  => rhs
+
+              // Exact power of 2
+              case _ if (x & (x - 1L)) == 0L =>
+                /* Note that this would match 0L, but 0L is handled above.
+                 * It will also match Long.MinValue, but that is not a problem
+                 * as the optimization also works (if you need convincing,
+                 * simply interpret the multiplication as unsigned).
+                 */
+                foldBinaryOp(Long_<<, rhs, PreTransLit(
+                    IntLiteral(java.lang.Long.numberOfTrailingZeros(x))))
+
+              case _ => default
+            }
 
           case _ => default
         }
