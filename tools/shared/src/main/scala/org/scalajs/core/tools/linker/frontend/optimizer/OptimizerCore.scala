@@ -1210,8 +1210,13 @@ private[optimizer] abstract class OptimizerCore(
   private def keepOnlySideEffects(stat: Tree): Tree = stat match {
     case _:VarRef | _:This | _:Literal =>
       Skip()(stat.pos)
+    case VarDef(_, _, _, rhs) =>
+      keepOnlySideEffects(rhs)
     case Block(init :+ last) =>
-      Block(init :+ keepOnlySideEffects(last))(stat.pos)
+      keepOnlySideEffects(last) match {
+        case Skip()      => keepOnlySideEffects(Block(init)(stat.pos))
+        case lastEffects => Block(init :+ lastEffects)(stat.pos)
+      }
     case LoadModule(ClassType(moduleClassName)) =>
       if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
       else stat
