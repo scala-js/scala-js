@@ -499,7 +499,7 @@ class RuntimeLongTest {
     test(lg(0x87654321, 0x654789ab), lg(0x12345678, 0x654789ab), 1)
     test(lg(0x87654321, 0x89abcdef), lg(0x12345678, 0x89abcdef), 1)
 
-    // Workaround for https://code.google.com/p/v8/issues/detail?id=3304
+    // Whitebox corner cases
     test(lg(-1, 0), lg(0, 0), 1)
     test(lg(0, 0), lg(-1, 0), -1)
 
@@ -1051,7 +1051,7 @@ class RuntimeLongTest {
   }
 
   @Test def minus_-(): Unit = {
-    // Workaround for https://code.google.com/p/v8/issues/detail?id=3304
+    // Whitebox corner case
     assertEquals(lg(-1), lg(0) - lg(1))
 
     assertEquals(lg(1318078695, 462416044), lg(406229717, 462416044) - lg(-911848978, -1))

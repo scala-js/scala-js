@@ -202,25 +202,17 @@ final class RuntimeLong(val lo: Int, val hi: Int)
   }
 
   def >(b: RuntimeLong): Boolean = {
-    /* Work around https://code.google.com/p/v8/issues/detail?id=3304
-     * 0x7fffffff > 0x80000000 is broken, so use < instead.
-     * This happens when comparing MaxValue to MinValue.
-     */
     val ahi = a.hi
     val bhi = b.hi
     if (ahi == bhi) inlineUnsignedInt_>(a.lo, b.lo)
-    else bhi < ahi // workaround here
+    else ahi > bhi
   }
 
   def >=(b: RuntimeLong): Boolean = {
-    /* Work around https://code.google.com/p/v8/issues/detail?id=3304
-     * 0x7fffffff > 0x80000000 is broken, so use < instead.
-     * This happens when comparing MaxValue to MinValue.
-     */
     val ahi = a.hi
     val bhi = b.hi
     if (ahi == bhi) inlineUnsignedInt_>=(a.lo, b.lo)
-    else bhi < ahi // workaround here
+    else ahi > bhi
   }
 
   // Bitwise operations
@@ -775,22 +767,12 @@ object RuntimeLong {
       (a ^ 0x80000000) < (b ^ 0x80000000)
 
     @inline
-    def inlineUnsignedInt_<=(a: Int, b: Int): Boolean = {
-      /* Work around https://code.google.com/p/v8/issues/detail?id=3304
-       * 0x7fffffff <= 0x80000000, so use >= here instead.
-       * This case is common because it happens when a == -1 and b == 0.
-       */
-      (b ^ 0x80000000) >= (a ^ 0x80000000)
-    }
+    def inlineUnsignedInt_<=(a: Int, b: Int): Boolean =
+      (a ^ 0x80000000) <= (b ^ 0x80000000)
 
     @inline
-    def inlineUnsignedInt_>(a: Int, b: Int): Boolean = {
-      /* Work around https://code.google.com/p/v8/issues/detail?id=3304
-       * 0x7fffffff > 0x80000000, so use < here instead.
-       * This case is common because it happens when a == -1 and b == 0.
-       */
-      (b ^ 0x80000000) < (a ^ 0x80000000)
-    }
+    def inlineUnsignedInt_>(a: Int, b: Int): Boolean =
+      (a ^ 0x80000000) > (b ^ 0x80000000)
 
     @inline
     def inlineUnsignedInt_>=(a: Int, b: Int): Boolean =
