@@ -13,6 +13,8 @@ import scala.language.implicitConversions
 
 import scala.annotation.{switch, tailrec}
 
+import scala.collection.mutable
+
 import org.scalajs.core.ir
 import ir._
 import ir.Position._
@@ -107,6 +109,90 @@ import java.io.StringWriter
  *    Scala.js class encoding into account.
  *  * And tiny details.
  *
+ *  --------------------------------------------------------------------------
+ *
+ *  About `Labeled` blocks, this phase maintains two sets of label names.
+ *
+ *  First, `tailPosLabels`, a set of labels for which we are in "tail
+ *  position", i.e., breaking to that label is equivalent to no-op. `Break`s to
+ *  labels in that set can be replaced by `Skip()`, allowing the removal of
+ *  the label altogether. For example, in
+ *
+ *  {{{
+ *  var y;
+ *  lbl: {
+ *    var x = 5;
+ *    if (b) {
+ *      y = x + 3;
+ *      break lbl;
+ *    } else {
+ *      y = x + 5;
+ *    }
+ *  }
+ *  }}}
+ *
+ *  the `break lbl` is in tail position for the label `lbl`, and can therefore
+ *  be removed. After removal of the labeled block itself, the snippet rewrites
+ *  as:
+ *
+ *  {{{
+ *  var y;
+ *  var x = 5;
+ *  if (b) {
+ *    y = x + 3;
+ *  } else {
+ *    y = x + 5;
+ *  }
+ *  }}}
+ *
+ *  `tailPosLabels` is a property of the *evaluation order*, and is therefore
+ *  passed explicitly in `transform` methods (as opposed to being stored in the
+ *  environment).
+ *
+ *  Second, `defaultBreakTargets`, a set of "default" labels, for which `break`
+ *  is equivalent to `break lbl`. This is the set of tail-position labels of the
+ *  closest enclosing `while/do..while/switch` "loop". `Break`s to labels in
+ *  that set can be replaced by `break` without label, also allowing the removal
+ *  of the labeled block. For example, in
+ *
+ *  {{{
+ *  var y;
+ *  lbl: {
+ *    var i = 0;
+ *    while (true) {
+ *      if (x == 5) {
+ *        y = 3;
+ *        break lbl;
+ *      }
+ *      i = i - 1;
+ *    }
+ *  }
+ *  }}}
+ *
+ *  the `break lbl` is in "default" position of the label `lbl`, since the
+ *  closest enclosing `while/do..while/switch` is in tail position of `lbl`.
+ *  The snippet can therefore be rewritten as:
+ *
+ *  {{{
+ *  var y;
+ *  var i = 0;
+ *  while (true) {
+ *    if (x == 5) {
+ *      y = 3;
+ *      break;
+ *    }
+ *    i = i - 1;
+ *  }
+ *  }}}
+ *
+ *  This is particularly interesting for `Range.foreach`, because, when inlined,
+ *  its `return` statement becomes a `break` to an `inlinereturn` label, which
+ *  is a default label at the point of the `return`. We can therefore avoid the
+ *  useless labeled block for this common case.
+ *
+ *  `defaultBreakTargets` is property of the *scope*, and is therefore stored
+ *  in the environment.
+ *
  *  @author Sébastien Doeraene
  */
 private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
@@ -140,7 +226,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       tree: Tree, isStat: Boolean): js.Tree = {
     val desugar = new JSDesugar(classEmitter, enclosingClassName, None)
     if (isStat)
-      desugar.transformStat(tree)(Env.empty)
+      desugar.transformStat(tree, Set.empty)(Env.empty)
     else
       desugar.transformExpr(tree)(Env.empty)
   }
@@ -207,6 +293,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
     // LHS'es for labeled expressions
 
     var labeledExprLHSes: Map[Ident, Tree] = Map.empty
+    val usedLabels = mutable.Set.empty[String]
 
     // Now the work
 
@@ -237,7 +324,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       val newParams =
         (if (translateRestParam) params.init else params).map(transformParamDef)
 
-      val newBody = transformStat(withReturn)(env) match {
+      val newBody = transformStat(withReturn, Set.empty)(env) match {
         case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)
         case other                                        => other
       }
@@ -286,7 +373,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
     }
 
     /** Desugar a statement of the IR into ES5 JS */
-    def transformStat(tree: Tree)(implicit env: Env): js.Tree = {
+    def transformStat(tree: Tree, tailPosLabels: Set[String])(
+        implicit env: Env): js.Tree = {
       import TreeDSL._
 
       implicit val pos = tree.pos
@@ -299,7 +387,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           js.Skip()
 
         case VarDef(_, _, _, rhs) =>
-          pushLhsInto(EmptyTree, rhs)
+          pushLhsInto(EmptyTree, rhs, tailPosLabels)
 
         // Statement-only language constructs
 
@@ -307,7 +395,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           js.Skip()
 
         case Assign(RecordFieldVarRef(lhs), rhs) =>
-          pushLhsInto(Assign(lhs, EmptyTree), rhs)
+          pushLhsInto(Assign(lhs, EmptyTree), rhs, tailPosLabels)
 
         case Assign(select @ Select(qualifier, item), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
@@ -358,7 +446,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           }
 
         case Assign(_ : VarRef, rhs) =>
-          pushLhsInto(tree, rhs)
+          pushLhsInto(tree, rhs, tailPosLabels)
 
         case Assign(_, _) =>
           sys.error(s"Illegal Assign in transformStat: $tree")
@@ -376,13 +464,20 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
            * evaluation of the condition out of the loop.
            */
           val newLabel = label.map(transformIdent)
+          val bodyBreakTargets = tailPosLabels ++ label.map(_.name)
           if (isExpression(cond)) {
-            js.While(transformExpr(cond), transformStat(body), newLabel)
+            js.While(transformExpr(cond),
+                transformStat(body, Set.empty)(
+                    env.withDefaultBreakTargets(bodyBreakTargets)),
+                newLabel)
           } else {
             js.While(js.BooleanLiteral(true), {
               unnest(cond) { (newCond, env0) =>
                 implicit val env = env0
-                js.If(transformExpr(newCond), transformStat(body), js.Break())
+                js.If(transformExpr(newCond),
+                    transformStat(body, Set.empty)(
+                        env.withDefaultBreakTargets(bodyBreakTargets)),
+                    js.Break())
               }
             }, newLabel)
           }
@@ -392,20 +487,25 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
            * evaluation of the condition out of the loop.
            */
           val newLabel = label.map(transformIdent)
+          val bodyBreakTargets = tailPosLabels ++ label.map(_.name)
           if (isExpression(cond)) {
-            js.DoWhile(transformStat(body), transformExpr(cond), newLabel)
+            js.DoWhile(
+                transformStat(body, Set.empty)(
+                    env.withDefaultBreakTargets(bodyBreakTargets)),
+                transformExpr(cond), newLabel)
           } else {
             /* This breaks 'continue' statements for this loop, but we don't
              * care because we never emit continue statements for do..while
              * loops.
              */
             js.While(js.BooleanLiteral(true), {
-              js.Block(transformStat(body), {
-                unnest(cond) { (newCond, env0) =>
-                  implicit val env = env0
-                  js.If(transformExpr(newCond), js.Skip(), js.Break())
-                }
-              })
+              js.Block(
+                  transformStat(body, Set.empty)(
+                      env.withDefaultBreakTargets(bodyBreakTargets)),
+                  unnest(cond) { (newCond, env0) =>
+                    implicit val env = env0
+                    js.If(transformExpr(newCond), js.Skip(), js.Break())
+                  })
             }, newLabel)
           }
 
@@ -506,7 +606,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         // Treat 'return' as an LHS
 
         case Return(expr, label) =>
-          pushLhsInto(tree, expr)
+          pushLhsInto(tree, expr, tailPosLabels)
 
         /* Anything else is an expression => pushLhsInto(EmptyTree, _)
          * In order not to duplicate all the code of pushLhsInto() here, we
@@ -517,7 +617,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
          */
 
         case _ =>
-          pushLhsInto(EmptyTree, tree)
+          pushLhsInto(EmptyTree, tree, tailPosLabels)
       }
     }
 
@@ -541,11 +641,11 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           acc: List[js.Tree]): (List[js.Tree], Env) = trees match {
         case (tree @ VarDef(ident, tpe, mutable, rhs)) :: ts =>
           val newEnv = env.withDef(ident, tpe, mutable)
-          val newTree = pushLhsInto(tree, rhs)(env)
+          val newTree = pushLhsInto(tree, rhs, Set.empty)(env)
           transformLoop(ts, newEnv, newTree :: acc)
 
         case tree :: ts =>
-          transformLoop(ts, env, transformStat(tree)(env) :: acc)
+          transformLoop(ts, env, transformStat(tree, Set.empty)(env) :: acc)
 
         case Nil =>
           (acc.reverse, env)
@@ -702,7 +802,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
                 val newEnv = env.withDef(temp, arg.tpe, false)
                 innerEnv = newEnv
                 val computeTemp = pushLhsInto(
-                    VarDef(temp, arg.tpe, mutable = false, EmptyTree), arg)
+                    VarDef(temp, arg.tpe, mutable = false, EmptyTree), arg,
+                    Set.empty)
                 computeTemp +=: extractedStatements
                 VarRef(temp)(arg.tpe)
             }
@@ -944,12 +1045,13 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
      *  lhs can be either a EmptyTree, a VarDef, a Assign or a
      *  Return
      */
-    def pushLhsInto(lhs: Tree, rhs: Tree)(implicit env: Env): js.Tree = {
+    def pushLhsInto(lhs: Tree, rhs: Tree, tailPosLabels: Set[String])(
+        implicit env: Env): js.Tree = {
       implicit val pos = rhs.pos
 
       /** Push the current lhs further into a deeper rhs. */
       @inline def redo(newRhs: Tree)(implicit env: Env) =
-        pushLhsInto(lhs, newRhs)
+        pushLhsInto(lhs, newRhs, tailPosLabels)
 
       /** Extract a definition of the lhs if it is a VarDef, to avoid changing
        *  its scope.
@@ -973,14 +1075,19 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
       def doReturnToLabel(l: Ident): js.Tree = {
         val newLhs = labeledExprLHSes(l)
-        val body = pushLhsInto(newLhs, rhs)
+        val body = pushLhsInto(newLhs, rhs, Set.empty)
         if (newLhs.tpe == NothingType) {
           /* A touch of peephole dead code elimination.
            * This is actually necessary to avoid dangling breaks to eliminated
            * labels, as in issue #2307.
            */
           body
+        } else if (tailPosLabels.contains(l.name)) {
+          body
+        } else if (env.isDefaultBreakTarget(l.name)) {
+          js.Block(body, js.Break(None))
         } else {
+          usedLabels += l.name
           js.Block(body, js.Break(Some(transformIdent(l))))
         }
       }
@@ -990,7 +1097,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
          * Actually necessary to handle pushing an lhs into an infinite loop,
          * for example.
          */
-        val transformedRhs = pushLhsInto(EmptyTree, rhs)
+        val transformedRhs = pushLhsInto(EmptyTree, rhs, tailPosLabels)
         lhs match {
           case VarDef(name, tpe, _, _) =>
             /* We still need to declare the var, in case it is used somewhere
@@ -1058,8 +1165,15 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
             labeledExprLHSes = labeledExprLHSes + (label -> newLhs)
             try {
               newLhs match {
-                case Return(_, _) => redo(body)
-                case _            => js.Labeled(label, pushLhsInto(newLhs, body))
+                case Return(_, _) =>
+                  redo(body)
+                case _ =>
+                  val newBody =
+                    pushLhsInto(newLhs, body, tailPosLabels + label.name)
+                  if (usedLabels.contains(label.name))
+                    js.Labeled(label, newBody)
+                  else
+                    newBody
               }
             } finally {
               labeledExprLHSes = savedMap
@@ -1067,7 +1181,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           }
 
         case Return(expr, _) =>
-          pushLhsInto(rhs, expr)
+          pushLhsInto(rhs, expr, tailPosLabels)
 
         case Continue(label) =>
           js.Continue(label.map(transformIdent))
@@ -1077,18 +1191,20 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
             implicit val env = env0
             extractLet { newLhs =>
               js.If(transformExpr(newCond),
-                  pushLhsInto(newLhs, thenp), pushLhsInto(newLhs, elsep))
+                  pushLhsInto(newLhs, thenp, tailPosLabels),
+                  pushLhsInto(newLhs, elsep, tailPosLabels))
             }
           }
 
         case Try(block, errVar, handler, finalizer) =>
           extractLet { newLhs =>
-            val newBlock =
-              pushLhsInto(newLhs, block)
+            val newBlock = pushLhsInto(newLhs, block, tailPosLabels)
             val newHandler =
-              if (handler == EmptyTree) js.EmptyTree else pushLhsInto(newLhs, handler)
+              if (handler == EmptyTree) js.EmptyTree
+              else pushLhsInto(newLhs, handler, tailPosLabels)
             val newFinalizer =
-              if (finalizer == EmptyTree) js.EmptyTree else transformStat(finalizer)
+              if (finalizer == EmptyTree) js.EmptyTree
+              else transformStat(finalizer, tailPosLabels)
 
             if (newHandler != js.EmptyTree && newFinalizer != js.EmptyTree) {
               /* The Google Closure Compiler wrongly eliminates finally blocks, if
@@ -1129,14 +1245,16 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
          */
         case Match(selector, cases, default) =>
           unnest(selector) { (newSelector, env0) =>
-            implicit val env = env0
+            implicit val env = env0.withDefaultBreakTargets(tailPosLabels)
             extractLet { newLhs =>
               val newCases = {
                 for {
                   (values, body) <- cases
                   newValues = (values map transformExpr)
                   // add the break statement
-                  newBody = js.Block(pushLhsInto(newLhs, body), js.Break())
+                  newBody = js.Block(
+                      pushLhsInto(newLhs, body, tailPosLabels),
+                      js.Break())
                   // desugar alternatives into several cases falling through
                   caze <- (newValues.init map (v => (v, js.Skip()))) :+ (newValues.last, newBody)
                 } yield {
@@ -1145,7 +1263,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
               }
               val newDefault =
                 if (default == EmptyTree) js.EmptyTree
-                else pushLhsInto(newLhs, default)
+                else pushLhsInto(newLhs, default, tailPosLabels)
               js.Switch(transformExpr(newSelector), newCases, newDefault)
             }
           }
@@ -1419,7 +1537,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
               case _:Skip | _:VarDef | _:Assign | _:While | _:DoWhile |
                   _:Debugger | _:JSSuperConstructorCall | _:JSDelete |
                   _:StoreModule | _:ClassDef =>
-                transformStat(rhs)
+                transformStat(rhs, tailPosLabels)
               case _ =>
                 sys.error("Illegal tree in JSDesugar.pushLhsInto():\n" +
                     "lhs = " + lhs + "\n" + "rhs = " + rhs +
@@ -1490,7 +1608,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           val temp = newSyntheticVar()
           val newEnv = env.withDef(temp, expr.tpe, false)
           val computeTemp = pushLhsInto(
-              VarDef(temp, expr.tpe, mutable = false, EmptyTree), expr)
+              VarDef(temp, expr.tpe, mutable = false, EmptyTree), expr,
+              Set.empty)
           js.Block(computeTemp, makeTree(VarRef(temp)(expr.tpe), newEnv))
       }
     }
@@ -2031,8 +2150,14 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
   // Environment
 
-  final class Env private (vars: Map[String, Boolean]) {
+  final class Env private (
+      vars: Map[String, Boolean],
+      defaultBreakTargets: Set[String]
+  ) {
     def isLocalMutable(ident: Ident): Boolean = vars(ident.name)
+
+    def isDefaultBreakTarget(label: String): Boolean =
+      defaultBreakTargets.contains(label)
 
     def withParams(params: List[ParamDef]): Env = {
       params.foldLeft(this) {
@@ -2043,12 +2168,20 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
     }
 
     def withDef(ident: Ident, mutable: Boolean): Env =
-      new Env(vars + (ident.name -> mutable))
+      copy(vars = vars + (ident.name -> mutable))
 
+    def withDefaultBreakTargets(targets: Set[String]): Env =
+      copy(defaultBreakTargets = targets)
+
+    private def copy(
+        vars: Map[String, Boolean] = this.vars,
+        defaultBreakTargets: Set[String] = this.defaultBreakTargets): Env = {
+      new Env(vars, defaultBreakTargets)
+    }
   }
 
   object Env {
-    def empty: Env = new Env(Map.empty)
+    def empty: Env = new Env(Map.empty, Set.empty)
   }
 
   // Helpers
