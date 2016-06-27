@@ -3538,16 +3538,16 @@ private[optimizer] abstract class OptimizerCore(
 
       val used = newSimpleState(false)
 
-      val replacement = resolveRecordType(value) match {
+      val (replacement, refinedType) = resolveRecordType(value) match {
         case Some((recordType, cancelFun)) =>
-          ReplaceWithRecordVarRef(newName, newOriginalName, recordType,
-              used, cancelFun)
+          (ReplaceWithRecordVarRef(newName, newOriginalName, recordType,
+              used, cancelFun), value.tpe)
 
         case None =>
-          ReplaceWithVarRef(newName, newOriginalName, used, None)
+          (ReplaceWithVarRef(newName, newOriginalName, used, None), tpe)
       }
 
-      val localDef = LocalDef(tpe, mutable, replacement)
+      val localDef = LocalDef(refinedType, mutable, replacement)
       val preTransBinding = PreTransBinding(localDef, value)
 
       buildInner(localDef, { tinner =>
