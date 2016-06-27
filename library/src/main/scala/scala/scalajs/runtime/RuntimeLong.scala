@@ -102,13 +102,14 @@ final class RuntimeLong(val lo: Int, val hi: Int)
       // (lo, hi) is small enough to be a Double, use that directly
       asUnsignedSafeDouble(lo, hi).toString
     } else {
-      /* We divide (lo, hi) once by 10^9 and keep the remainder.
+      /* At this point, (lo, hi) >= 2^53.
+       * We divide (lo, hi) once by 10^9 and keep the remainder.
        *
        * The remainder must then be < 10^9, and is therefore an int32.
        *
        * The quotient must be <= ULong.MaxValue / 10^9, which is < 2^53, and
-       * is therefore a valid double. It must also be non-zero, since we tested
-       * previously for cases where (lo, hi) < 2^53, but 2^10 is itself < 2^53.
+       * is therefore a valid double. It must also be non-zero, since
+       * (lo, hi) >= 2^53 > 10^9.
        */
       val TenPow9Lo = 1000000000L.toInt
       val TenPow9Hi = (1000000000L >>> 32).toInt
@@ -201,25 +202,17 @@ final class RuntimeLong(val lo: Int, val hi: Int)
   }
 
   def >(b: RuntimeLong): Boolean = {
-    /* Work around https://code.google.com/p/v8/issues/detail?id=3304
-     * 0x7fffffff > 0x80000000 is broken, so use < instead.
-     * This happens when comparing MaxValue to MinValue.
-     */
     val ahi = a.hi
     val bhi = b.hi
     if (ahi == bhi) inlineUnsignedInt_>(a.lo, b.lo)
-    else bhi < ahi // workaround here
+    else ahi > bhi
   }
 
   def >=(b: RuntimeLong): Boolean = {
-    /* Work around https://code.google.com/p/v8/issues/detail?id=3304
-     * 0x7fffffff > 0x80000000 is broken, so use < instead.
-     * This happens when comparing MaxValue to MinValue.
-     */
     val ahi = a.hi
     val bhi = b.hi
     if (ahi == bhi) inlineUnsignedInt_>=(a.lo, b.lo)
-    else bhi < ahi // workaround here
+    else ahi > bhi
   }
 
   // Bitwise operations
@@ -528,7 +521,7 @@ final class RuntimeLong(val lo: Int, val hi: Int)
      *   quot * b + rem == a
      *
      * The loop condition should be
-     *   while (shift >= 0 && isUnsignedSafeDouble(remHi))
+     *   while (shift >= 0 && !isUnsignedSafeDouble(remHi))
      * but we manually inline isUnsignedSafeDouble because remHi is a var. If
      * we let the optimizer inline it, it will first store remHi in a temporary
      * val, which will explose the while condition as a while(true) + if +
@@ -666,7 +659,7 @@ final class RuntimeLong(val lo: Int, val hi: Int)
 
 object RuntimeLong {
   private final val TwoPow32 = 4294967296.0
-  private final val TwoPow53 = 9223372036854775808.0
+  private final val TwoPow63 = 9223372036854775808.0
 
   /** The magical mask that allows to test whether an unsigned long is a safe
    *  double.
@@ -690,9 +683,9 @@ object RuntimeLong {
 
     if (value.isNaN) {
       Zero
-    } else if (value < -TwoPow53) {
+    } else if (value < -TwoPow63) {
       MinValue
-    } else if (value >= TwoPow53) {
+    } else if (value >= TwoPow63) {
       MaxValue
     } else {
       val neg = value < 0
@@ -774,22 +767,12 @@ object RuntimeLong {
       (a ^ 0x80000000) < (b ^ 0x80000000)
 
     @inline
-    def inlineUnsignedInt_<=(a: Int, b: Int): Boolean = {
-      /* Work around https://code.google.com/p/v8/issues/detail?id=3304
-       * 0x7fffffff <= 0x80000000, so use >= here instead.
-       * This case is common because it happens when a == -1 and b == 0.
-       */
-      (b ^ 0x80000000) >= (a ^ 0x80000000)
-    }
+    def inlineUnsignedInt_<=(a: Int, b: Int): Boolean =
+      (a ^ 0x80000000) <= (b ^ 0x80000000)
 
     @inline
-    def inlineUnsignedInt_>(a: Int, b: Int): Boolean = {
-      /* Work around https://code.google.com/p/v8/issues/detail?id=3304
-       * 0x7fffffff > 0x80000000, so use < here instead.
-       * This case is common because it happens when a == -1 and b == 0.
-       */
-      (b ^ 0x80000000) < (a ^ 0x80000000)
-    }
+    def inlineUnsignedInt_>(a: Int, b: Int): Boolean =
+      (a ^ 0x80000000) > (b ^ 0x80000000)
 
     @inline
     def inlineUnsignedInt_>=(a: Int, b: Int): Boolean =
