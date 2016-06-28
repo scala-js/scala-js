@@ -1245,61 +1245,74 @@ private[optimizer] abstract class OptimizerCore(
       usePreTransform: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
-    val Apply(receiver, methodIdent @ Ident(methodName, _), args) = tree
+    val Apply(receiver, methodIdent, args) = tree
     implicit val pos = tree.pos
 
     pretransformExprs(receiver, args) { (treceiver, targs) =>
-      def treeNotInlined =
-        cont(PreTransTree(Apply(finishTransformExpr(treceiver), methodIdent,
-            targs.map(finishTransformExpr))(tree.tpe), RefinedType(tree.tpe)))
+      pretransformApply(treceiver, methodIdent, targs, tree.tpe, isStat,
+          usePreTransform)(cont)
+    }
+  }
 
-      treceiver.tpe.base match {
-        case NothingType =>
-          cont(treceiver)
-        case NullType =>
-          cont(Block(
-              finishTransformStat(treceiver),
-              Throw(New(ClassType("jl_NullPointerException"),
-                  Ident("init___", Some("<init>")), Nil))).toPreTransform)
-        case _ =>
-          if (isReflProxyName(methodName)) {
-            // Never inline reflective proxies
+  private def pretransformApply(treceiver: PreTransform, methodIdent: Ident,
+      targs: List[PreTransform], resultType: Type, isStat: Boolean,
+      usePreTransform: Boolean)(
+      cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+
+    val methodName = methodIdent.name
+
+    def treeNotInlined = {
+      cont(PreTransTree(Apply(finishTransformExpr(treceiver), methodIdent,
+          targs.map(finishTransformExpr))(resultType), RefinedType(resultType)))
+    }
+
+    treceiver.tpe.base match {
+      case NothingType =>
+        cont(treceiver)
+      case NullType =>
+        cont(Block(
+            finishTransformStat(treceiver),
+            Throw(New(ClassType("jl_NullPointerException"),
+                Ident("init___", Some("<init>")), Nil))).toPreTransform)
+      case _ =>
+        if (isReflProxyName(methodName)) {
+          // Never inline reflective proxies
+          treeNotInlined
+        } else {
+          val cls = boxedClassForType(treceiver.tpe.base)
+          val impls =
+            if (treceiver.tpe.isExact) staticCall(cls, methodName).toList
+            else dynamicCall(cls, methodName)
+          val allocationSites =
+            (treceiver :: targs).map(_.tpe.allocationSite)
+          if (impls.isEmpty || impls.exists(impl =>
+              scope.implsBeingInlined((allocationSites, impl)))) {
+            // isEmpty could happen, have to leave it as is for the TypeError
             treeNotInlined
-          } else {
-            val cls = boxedClassForType(treceiver.tpe.base)
-            val impls =
-              if (treceiver.tpe.isExact) staticCall(cls, methodName).toList
-              else dynamicCall(cls, methodName)
-            val allocationSites =
-              (treceiver :: targs).map(_.tpe.allocationSite)
-            if (impls.isEmpty || impls.exists(impl =>
-                scope.implsBeingInlined((allocationSites, impl)))) {
-              // isEmpty could happen, have to leave it as is for the TypeError
-              treeNotInlined
-            } else if (impls.size == 1) {
-              val target = impls.head
-              val intrinsicCode = getIntrinsicCode(target)
-              if (intrinsicCode >= 0) {
-                callIntrinsic(intrinsicCode, Some(treceiver), targs,
-                    isStat, usePreTransform)(cont)
-              } else if (target.inlineable && (
-                  target.shouldInline ||
-                  shouldInlineBecauseOfArgs(target, treceiver :: targs))) {
-                inline(allocationSites, Some(treceiver), targs, target,
-                    isStat, usePreTransform)(cont)
-              } else {
-                treeNotInlined
-              }
+          } else if (impls.size == 1) {
+            val target = impls.head
+            val intrinsicCode = getIntrinsicCode(target)
+            if (intrinsicCode >= 0) {
+              callIntrinsic(intrinsicCode, Some(treceiver), targs,
+                  isStat, usePreTransform)(cont)
+            } else if (target.inlineable && (
+                target.shouldInline ||
+                shouldInlineBecauseOfArgs(target, treceiver :: targs))) {
+              inline(allocationSites, Some(treceiver), targs, target,
+                  isStat, usePreTransform)(cont)
             } else {
-              if (canMultiInline(impls)) {
-                inline(allocationSites, Some(treceiver), targs, impls.head,
-                    isStat, usePreTransform)(cont)
-              } else {
-                treeNotInlined
-              }
+              treeNotInlined
+            }
+          } else {
+            if (canMultiInline(impls)) {
+              inline(allocationSites, Some(treceiver), targs, impls.head,
+                  isStat, usePreTransform)(cont)
+            } else {
+              treeNotInlined
             }
           }
-      }
+        }
     }
   }
 
