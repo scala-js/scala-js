@@ -2625,6 +2625,9 @@ private[optimizer] abstract class OptimizerCore(
           case (_, PreTransLit(IntLiteral(_))) => foldBinaryOp(Int_|, rhs, lhs)
           case (PreTransLit(IntLiteral(0)), _) => rhs
 
+          case (PreTransLit(IntLiteral(-1)), _) =>
+            PreTransBlock(finishTransformStat(rhs), lhs)
+
           case (PreTransLit(IntLiteral(x)),
               PreTransBinaryOp(Int_|, PreTransLit(IntLiteral(y)), z)) =>
             foldBinaryOp(Int_|, PreTransLit(IntLiteral(x | y)), z)
@@ -2636,6 +2639,9 @@ private[optimizer] abstract class OptimizerCore(
         (lhs, rhs) match {
           case (_, PreTransLit(IntLiteral(_)))  => foldBinaryOp(Int_&, rhs, lhs)
           case (PreTransLit(IntLiteral(-1)), _) => rhs
+
+          case (PreTransLit(IntLiteral(0)), _) =>
+            PreTransBlock(finishTransformStat(rhs), lhs)
 
           case (PreTransLit(IntLiteral(x)),
               PreTransBinaryOp(Int_&, PreTransLit(IntLiteral(y)), z)) =>
@@ -2774,6 +2780,9 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransLit(LongLiteral(0)), _) =>
             rhs
 
+          case (PreTransLit(LongLiteral(-1)), _) =>
+            PreTransBlock(finishTransformStat(rhs), lhs)
+
           case (PreTransLit(LongLiteral(x)),
               PreTransBinaryOp(Long_|, PreTransLit(LongLiteral(y)), z)) =>
             foldBinaryOp(Long_|, PreTransLit(LongLiteral(x | y)), z)
@@ -2787,6 +2796,9 @@ private[optimizer] abstract class OptimizerCore(
             foldBinaryOp(Long_&, rhs, lhs)
           case (PreTransLit(LongLiteral(-1)), _) =>
             rhs
+
+          case (PreTransLit(LongLiteral(0)), _) =>
+            PreTransBlock(finishTransformStat(rhs), lhs)
 
           case (PreTransLit(LongLiteral(x)),
               PreTransBinaryOp(Long_&, PreTransLit(LongLiteral(y)), z)) =>
@@ -2846,6 +2858,10 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransBinaryOp(Long_-, PreTransLit(LongLiteral(x)), y),
               PreTransLit(LongLiteral(z))) =>
             foldBinaryOp(op, y, PreTransLit(LongLiteral(x - z)))
+
+          case (PreTransBinaryOp(Long_^, PreTransLit(LongLiteral(x)), y),
+              PreTransLit(LongLiteral(z))) =>
+            foldBinaryOp(op, y, PreTransLit(LongLiteral(x ^ z)))
 
           case (PreTransLit(LongLiteral(_)), _) => foldBinaryOp(op, rhs, lhs)
 
@@ -3129,6 +3145,10 @@ private[optimizer] abstract class OptimizerCore(
               PreTransLit(IntLiteral(z))) =>
             foldBinaryOp(op, y, PreTransLit(IntLiteral(x - z)))
 
+          case (PreTransBinaryOp(Int_^, PreTransLit(IntLiteral(x)), y),
+              PreTransLit(IntLiteral(z))) =>
+            foldBinaryOp(op, y, PreTransLit(IntLiteral(x ^ z)))
+
           case (PreTransLit(_), _) => foldBinaryOp(op, rhs, lhs)
 
           case _ => default
@@ -3144,20 +3164,33 @@ private[optimizer] abstract class OptimizerCore(
 
         if (lhs.tpe.base == IntType && rhs.tpe.base == IntType) {
           (lhs, rhs) match {
-            case (_, PreTransLit(IntLiteral(Int.MinValue))) =>
-              if (op == Num_< || op == Num_>=) {
-                Block(finishTransformStat(lhs),
-                    BooleanLiteral(op == Num_>=)).toPreTransform
-              } else {
-                foldBinaryOp(if (op == Num_<=) Num_== else Num_!=, lhs, rhs)
-              }
+            case (_, PreTransLit(IntLiteral(y))) =>
+              y match {
+                case Int.MinValue =>
+                  if (op == Num_< || op == Num_>=) {
+                    Block(finishTransformStat(lhs),
+                        BooleanLiteral(op == Num_>=)).toPreTransform
+                  } else {
+                    foldBinaryOp(if (op == Num_<=) Num_== else Num_!=, lhs, rhs)
+                  }
 
-            case (_, PreTransLit(IntLiteral(Int.MaxValue))) =>
-              if (op == Num_> || op == Num_<=) {
-                Block(finishTransformStat(lhs),
-                    BooleanLiteral(op == Num_<=)).toPreTransform
-              } else {
-                foldBinaryOp(if (op == Num_>=) Num_== else Num_!=, lhs, rhs)
+                case Int.MaxValue =>
+                  if (op == Num_> || op == Num_<=) {
+                    Block(finishTransformStat(lhs),
+                        BooleanLiteral(op == Num_<=)).toPreTransform
+                  } else {
+                    foldBinaryOp(if (op == Num_>=) Num_== else Num_!=, lhs, rhs)
+                  }
+
+                case _ if y == Int.MinValue + 1 && (op == Num_< || op == Num_>=) =>
+                  foldBinaryOp(if (op == Num_<) Num_== else Num_!=, lhs,
+                      PreTransLit(IntLiteral(Int.MinValue)))
+
+                case _ if y == Int.MaxValue - 1 && (op == Num_> || op == Num_<=) =>
+                  foldBinaryOp(if (op == Num_>) Num_== else Num_!=, lhs,
+                      PreTransLit(IntLiteral(Int.MaxValue)))
+
+                case _ => default
               }
 
             case (PreTransLit(IntLiteral(_)), _) =>
