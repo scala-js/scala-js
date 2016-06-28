@@ -100,6 +100,30 @@ private[optimizer] abstract class OptimizerCore(
 
   private var curTrampolineId = 0
 
+  /** The record type for inlined `RuntimeLong`, if the `RuntimeLong` in the
+   *  library is inlineable, otherwise `None`
+   */
+  private lazy val inlinedRTLongRecordType =
+    tryNewInlineableClass(LongImpl.RuntimeLongClass).map(_.tpe)
+
+  /** Tests whether the RuntimeLong in the library is inlineable. */
+  private lazy val hasInlineableRTLongImplementation =
+    inlinedRTLongRecordType.isDefined
+
+  /** The name of the `lo` field of in the record type of `RuntimeLong`.
+   *  Using this val is only valid when `hasInlineableRTLongImplementation` is
+   *  true.
+   */
+  private lazy val inlinedRTLongLoField =
+    inlinedRTLongRecordType.get.fields(0).name
+
+  /** The name of the `lo` field of in the record type of `RuntimeLong`.
+   *  Using this val is only valid when `hasInlineableRTLongImplementation` is
+   *  true.
+   */
+  private lazy val inlinedRTLongHiField =
+    inlinedRTLongRecordType.get.fields(1).name
+
   def optimize(thisType: Type, originalDef: MethodDef): LinkedMember[MethodDef] = {
     try {
       val MethodDef(static, name, params, resultType, body) = originalDef
@@ -216,8 +240,23 @@ private[optimizer] abstract class OptimizerCore(
     getAncestorsOf(lhs).contains(rhs)
 
   private val isSubclassFun = isSubclass _
-  private def isSubtype(lhs: Type, rhs: Type): Boolean =
-    Types.isSubtype(lhs, rhs)(isSubclassFun)
+
+  private def isSubtype(lhs: Type, rhs: Type): Boolean = {
+    Types.isSubtype(lhs, rhs)(isSubclassFun) || {
+      (lhs, rhs) match {
+        case (LongType | ClassType(Definitions.BoxedLongClass),
+            ClassType(LongImpl.RuntimeLongClass)) =>
+          true
+
+        case (ClassType(LongImpl.RuntimeLongClass),
+            ClassType(Definitions.BoxedLongClass)) =>
+          true
+
+        case _ =>
+          false
+      }
+    }
+  }
 
   /** Transforms a statement.
    *
@@ -284,14 +323,36 @@ private[optimizer] abstract class OptimizerCore(
           resolveLocalDef(preTransLhs) match {
             case PreTransRecordTree(lhsTree, lhsOrigType, lhsCancelFun) =>
               val recordType = lhsTree.tpe.asInstanceOf[RecordType]
-              pretransformNoLocalDef(rhs) {
-                case PreTransRecordTree(rhsTree, rhsOrigType, rhsCancelFun) =>
-                  if (rhsTree.tpe != recordType || rhsOrigType != lhsOrigType)
+
+              def buildInner(trhs: PreTransform): TailRec[Tree] = {
+                resolveLocalDef(trhs) match {
+                  case PreTransRecordTree(rhsTree, rhsOrigType, rhsCancelFun) =>
+                    if (rhsTree.tpe != recordType || rhsOrigType != lhsOrigType)
+                      lhsCancelFun()
+                    TailCalls.done(Assign(lhsTree, rhsTree))
+                  case _ =>
                     lhsCancelFun()
-                  TailCalls.done(Assign(lhsTree, rhsTree))
-                case _ =>
-                  lhsCancelFun()
+                }
               }
+
+              pretransformExpr(rhs) { trhs =>
+                (trhs.tpe.base, lhsOrigType) match {
+                  case (LongType, RefinedType(
+                      ClassType(LongImpl.RuntimeLongClass), true, false)) =>
+                    /* The lhs is a stack-allocated RuntimeLong, but the rhs is
+                     * a primitive Long. We expand the primitive Long into a
+                     * new stack-allocated RuntimeLong so that we do not need
+                     * to cancel.
+                     */
+                    expandLongValue(trhs) { expandedRhs =>
+                      buildInner(expandedRhs)
+                    }
+
+                  case _ =>
+                    buildInner(trhs)
+                }
+              }
+
             case PreTransTree(lhsTree, _) =>
               TailCalls.done(Assign(lhsTree, transformExpr(rhs)))
           }
@@ -524,9 +585,15 @@ private[optimizer] abstract class OptimizerCore(
           pretransformExpr(expr) { texpr =>
             texpr.tpe match {
               case RefinedType(base: ReferenceType, true, false) =>
+                val actualBase = base match {
+                  case ClassType(LongImpl.RuntimeLongClass) =>
+                    ClassType(Definitions.BoxedLongClass)
+                  case _ =>
+                    base
+                }
                 TailCalls.done(Block(
                     finishTransformStat(texpr),
-                    ClassOf(base)))
+                    ClassOf(actualBase)))
               case _ =>
                 TailCalls.done(GetClass(finishTransformExpr(texpr)))
             }
@@ -956,6 +1023,7 @@ private[optimizer] abstract class OptimizerCore(
            */
           cancelFun()
         }
+
       case PreTransLocalDef(LocalDef(_, _,
           InlineClassInstanceReplacement(_, fieldLocalDefs, cancelFun))) =>
         val fieldLocalDef = fieldLocalDefs(item.name)
@@ -972,6 +1040,19 @@ private[optimizer] abstract class OptimizerCore(
            */
           cancelFun()
         }
+
+      // Select the lo or hi "field" of a Long literal
+      case PreTransLit(LongLiteral(value))
+          if hasInlineableRTLongImplementation =>
+        val itemName = item.name
+        assert(itemName == inlinedRTLongLoField ||
+            itemName == inlinedRTLongHiField)
+        assert(expectedType == IntType)
+        val resultValue =
+          if (itemName == inlinedRTLongLoField) value.toInt
+          else (value >>> 32).toInt
+        cont(PreTransLit(IntLiteral(resultValue)))
+
       case _ =>
         resolveLocalDef(preTransQual) match {
           case PreTransRecordTree(newQual, origType, cancelFun) =>
@@ -1130,6 +1211,31 @@ private[optimizer] abstract class OptimizerCore(
         BinaryOp(op, finishTransformExpr(lhs), finishTransformExpr(rhs))
       case PreTransLocalDef(localDef) =>
         localDef.newReplacement
+
+      /* In general, it is not OK to allocate a new instance of an inlined
+       * class from its record value, because that can break object identity
+       * (not to mention we have no idea what the primary constructor does).
+       * However, for RuntimeLong specifically, it is OK. It is useful to do
+       * so because it allows us not to cancel the original stack allocation
+       * of the Long value, which means that all previous usages of it can
+       * stay on stack.
+       *
+       * We do something similar in LocalDef.newReplacement.
+       */
+      case PreTransRecordTree(tree, tpe, _)
+          if tpe.base == ClassType(LongImpl.RuntimeLongClass) =>
+        tree match {
+          case RecordValue(_, List(lo, hi)) =>
+            createNewLong(lo, hi)
+          case recordVarRef: VarRef =>
+            createNewLong(recordVarRef)
+          case _ =>
+            val varRefIdent = Ident(freshLocalName("x", mutable = false))
+            val recordVarDef =
+              VarDef(varRefIdent, tree.tpe, mutable = false, tree)
+            Block(recordVarDef, createNewLong(recordVarDef.ref))
+        }
+
       case PreTransRecordTree(_, _, cancelFun) =>
         cancelFun()
       case PreTransTree(tree, _) =>
@@ -1356,12 +1462,15 @@ private[optimizer] abstract class OptimizerCore(
   }
 
   private def boxedClassForType(tpe: Type): String = (tpe: @unchecked) match {
-    case ClassType(cls)  => cls
+    case ClassType(cls) =>
+      if (cls == Definitions.BoxedLongClass) LongImpl.RuntimeLongClass
+      else cls
+
     case AnyType         => Definitions.ObjectClass
     case UndefType       => Definitions.BoxedUnitClass
     case BooleanType     => Definitions.BoxedBooleanClass
     case IntType         => Definitions.BoxedIntegerClass
-    case LongType        => Definitions.BoxedLongClass
+    case LongType        => LongImpl.RuntimeLongClass
     case FloatType       => Definitions.BoxedFloatClass
     case DoubleType      => Definitions.BoxedDoubleClass
     case StringType      => Definitions.StringClass
@@ -1526,6 +1635,19 @@ private[optimizer] abstract class OptimizerCore(
         false
     }
 
+    def isLocalOnlyInlineType(tpe: RefinedType): Boolean = {
+      /* java.lang.Character and RuntimeLong are @inline so that *local*
+       * box/unbox pairs and instances can be eliminated. But we don't want
+       * that to force inlining of a method only because we pass it a boxed
+       * Char or an instance of RuntimeLong.
+       */
+      tpe.base match {
+        case ClassType(Definitions.BoxedCharacterClass) => true
+        case ClassType(LongImpl.RuntimeLongClass)       => true
+        case _                                          => false
+      }
+    }
+
     def isLikelyOptimizable(arg: PreTransform): Boolean = arg match {
       case PreTransBlock(_, result) =>
         isLikelyOptimizable(result)
@@ -1538,19 +1660,10 @@ private[optimizer] abstract class OptimizerCore(
           case InlineClassInstanceReplacement(_, _, _)       => true
           case _ =>
             isTypeLikelyOptimizable(localDef.tpe)
-        }) && {
-          /* java.lang.Character is @inline so that *local* box/unbox pairs
-           * can be eliminated. But we don't want that to force inlining of
-           * a method only because we pass it a boxed Char.
-           */
-          localDef.tpe.base match {
-            case ClassType(Definitions.BoxedCharacterClass) => false
-            case _                                          => true
-          }
-        }
+        }) && !isLocalOnlyInlineType(localDef.tpe)
 
       case PreTransRecordTree(_, _, _) =>
-        true
+        !isLocalOnlyInlineType(arg.tpe)
 
       case _ =>
         isTypeLikelyOptimizable(arg.tpe)
@@ -1678,11 +1791,6 @@ private[optimizer] abstract class OptimizerCore(
       })
     }
 
-    def asRTLong(arg: Tree): Tree =
-      AsInstanceOf(arg, ClassType(LongImpl.RuntimeLongClass))
-    def firstArgAsRTLong: Tree =
-      asRTLong(newArgs.head)
-
     (code: @switch) match {
       // java.lang.System
 
@@ -1756,16 +1864,23 @@ private[optimizer] abstract class OptimizerCore(
       // java.lang.Long
 
       case LongToString =>
-        contTree(Apply(firstArgAsRTLong, "toString__T", Nil)(StringClassType))
+        pretransformApply(targs.head, Ident("toString__T"), Nil,
+            StringClassType, isStat, usePreTransform)(
+            cont)
       case LongCompare =>
-        contTree(Apply(firstArgAsRTLong, "compareTo__sjsr_RuntimeLong__I",
-            List(asRTLong(newArgs(1))))(IntType))
+        pretransformApply(targs.head, Ident("compareTo__sjsr_RuntimeLong__I"),
+            targs.tail, IntType, isStat, usePreTransform)(
+            cont)
       case LongDivideUnsigned =>
-        contTree(Apply(firstArgAsRTLong, LongImpl.divideUnsigned,
-            List(asRTLong(newArgs(1))))(LongType))
+        pretransformApply(targs.head, Ident(LongImpl.divideUnsigned),
+            targs.tail, ClassType(LongImpl.RuntimeLongClass), isStat,
+            usePreTransform)(
+            cont)
       case LongRemainderUnsigned =>
-        contTree(Apply(firstArgAsRTLong, LongImpl.remainderUnsigned,
-            List(asRTLong(newArgs(1))))(LongType))
+        pretransformApply(targs.head, Ident(LongImpl.remainderUnsigned),
+            targs.tail, ClassType(LongImpl.RuntimeLongClass), isStat,
+            usePreTransform)(
+            cont)
 
       // scala.collection.mutable.ArrayBuilder
 
@@ -2156,7 +2271,7 @@ private[optimizer] abstract class OptimizerCore(
     val UnaryOp(op, arg) = tree
 
     pretransformExpr(arg) { tlhs =>
-      cont(foldUnaryOp(op, tlhs))
+      expandLongOps(foldUnaryOp(op, tlhs))(cont)
     }
   }
 
@@ -2166,7 +2281,122 @@ private[optimizer] abstract class OptimizerCore(
     val BinaryOp(op, lhs, rhs) = tree
 
     pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
-      cont(foldBinaryOp(op, tlhs, trhs))
+      expandLongOps(foldBinaryOp(op, tlhs, trhs))(cont)
+    }
+  }
+
+  private def expandLongValue(value: PreTransform)(cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+
+    assert(hasInlineableRTLongImplementation,
+        "Cannot call expandLongValue if RuntimeLong is not @inline")
+
+    /* To force the expansion, we use a trick: we insert a "no-op"
+     * `0L | value`, which we expand with `expandLongOps`. This causes the
+     * implementation of `RuntimeLong.|` to be inlined, which simply
+     * creates a new, stack-allocated, RuntimeLong with the same content.
+     *
+     * We could do this better if RuntimeLong had a "copy constructor", or a
+     * `copy` method. But this implementation is short.
+     */
+    expandLongOps(PreTransBinaryOp(BinaryOp.Long_|,
+        PreTransLit(LongLiteral(0L)), value))(cont)
+  }
+
+  private def expandLongOps(pretrans: PreTransform)(cont: PreTransCont)(
+      implicit scope: Scope): TailRec[Tree] = {
+    implicit val pos = pretrans.pos
+
+    def rtLongClassType = ClassType(LongImpl.RuntimeLongClass)
+
+    def rtLongModuleClassType = ClassType(LongImpl.RuntimeLongModuleClass)
+
+    def expandUnaryOp(methodName: String, arg: PreTransform,
+        resultType: Type = rtLongClassType): TailRec[Tree] = {
+      pretransformApply(arg, Ident(methodName), Nil,
+          resultType, isStat = false, usePreTransform = true)(
+          cont)
+    }
+
+    def expandBinaryOp(methodName: String, lhs: PreTransform,
+        rhs: PreTransform,
+        resultType: Type = rtLongClassType): TailRec[Tree] = {
+      pretransformApply(lhs, Ident(methodName), rhs :: Nil,
+          resultType, isStat = false, usePreTransform = true)(
+          cont)
+    }
+
+    if (!hasInlineableRTLongImplementation) {
+      cont(pretrans)
+    } else {
+      pretrans match {
+        case PreTransUnaryOp(op, arg) =>
+          import UnaryOp._
+
+          (op: @switch) match {
+            case IntToLong =>
+              pretransformNew(EmptyTree, rtLongClassType,
+                  Ident(LongImpl.initFromInt),
+                  arg :: Nil)(
+                  cont)
+
+            case LongToInt =>
+              expandUnaryOp(LongImpl.toInt, arg, IntType)
+
+            case LongToDouble =>
+              expandUnaryOp(LongImpl.toDouble, arg, DoubleType)
+
+            case DoubleToLong =>
+              val receiver = LoadModule(rtLongModuleClassType).toPreTransform
+              pretransformApply(receiver, Ident(LongImpl.fromDouble),
+                  arg :: Nil, rtLongClassType, isStat = false,
+                  usePreTransform = true)(
+                  cont)
+
+            case _ =>
+              cont(pretrans)
+          }
+
+        case PreTransBinaryOp(op, lhs, rhs) =>
+          import BinaryOp._
+
+          (op: @switch) match {
+            case Long_+ => expandBinaryOp(LongImpl.+, lhs, rhs)
+
+            case Long_- =>
+              lhs match {
+                case PreTransLit(LongLiteral(0L)) =>
+                  expandUnaryOp(LongImpl.UNARY_-, rhs)
+                case _ =>
+                  expandBinaryOp(LongImpl.-, lhs, rhs)
+              }
+
+            case Long_* => expandBinaryOp(LongImpl.*, lhs, rhs)
+            case Long_/ => expandBinaryOp(LongImpl./, lhs, rhs)
+            case Long_% => expandBinaryOp(LongImpl.%, lhs, rhs)
+
+            case Long_& => expandBinaryOp(LongImpl.&, lhs, rhs)
+            case Long_| => expandBinaryOp(LongImpl.|, lhs, rhs)
+            case Long_^ => expandBinaryOp(LongImpl.^, lhs, rhs)
+
+            case Long_<<  => expandBinaryOp(LongImpl.<<, lhs, rhs)
+            case Long_>>> => expandBinaryOp(LongImpl.>>>, lhs, rhs)
+            case Long_>>  => expandBinaryOp(LongImpl.>>, lhs, rhs)
+
+            case Long_== => expandBinaryOp(LongImpl.===, lhs, rhs)
+            case Long_!= => expandBinaryOp(LongImpl.!==, lhs, rhs)
+            case Long_<  => expandBinaryOp(LongImpl.<, lhs, rhs)
+            case Long_<= => expandBinaryOp(LongImpl.<=, lhs, rhs)
+            case Long_>  => expandBinaryOp(LongImpl.>, lhs, rhs)
+            case Long_>= => expandBinaryOp(LongImpl.>=, lhs, rhs)
+
+            case _ =>
+              cont(pretrans)
+          }
+
+        case _ =>
+          cont(pretrans)
+      }
     }
   }
 
@@ -2254,42 +2484,7 @@ private[optimizer] abstract class OptimizerCore(
                 foldUnaryOp(LongToInt, x),
                 foldUnaryOp(LongToInt, y))
 
-          case PreTransBinaryOp(BinaryOp.Long_>> | BinaryOp.Long_>>>,
-              x, PreTransLit(IntLiteral(32))) =>
-            // x.hi__I()
-            staticCall(LongImpl.RuntimeLongClass, LongImpl.hi).fold[PreTransform] {
-              default
-            } { target =>
-              trampoline {
-                /* Hack: use an empty scope to inline x.hi__I().
-                 * `inline` requires a scope to keep track of the set methods
-                 * currently being inlined, and prevent infinite inlining of
-                 * recursive methods. In theory we should provide a proper
-                 * scope, but we don't have one here. We give an empty scope
-                 * instead, which is ok-ish because we "know" that x.hi__I()
-                 * will not go into infinite recursion.
-                 */
-                implicit val scope = Scope.Empty
-                inline(Nil, Some(x), Nil, target, isStat = false,
-                    usePreTransform = false)(finishTransform(isStat = false))
-              }.toPreTransform
-            }
-
-          case _ =>
-            // arg.lo__I()
-            staticCall(LongImpl.RuntimeLongClass, LongImpl.lo).fold[PreTransform] {
-              default
-            } { target =>
-              trampoline {
-                /* Hack: use an empty scope to inline x.lo__I().
-                 * See the comment on the same hack for x.hi__I() above for the
-                 * rationale.
-                 */
-                implicit val scope = Scope.Empty
-                inline(Nil, Some(arg), Nil, target, isStat = false,
-                    usePreTransform = false)(finishTransform(isStat = false))
-              }.toPreTransform
-            }
+          case _ => default
         }
 
       case LongToDouble =>
@@ -2976,6 +3171,13 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransBinaryOp(Long_+, LongFromInt(x), LongFromInt(y)),
               PreTransLit(LongLiteral(Int.MaxValue))) =>
             trampoline {
+              /* HACK: We use an empty scope here for `withNewLocalDefs`.
+               * It's OKish to do that because we're only defining Ints, and
+               * we know withNewLocalDefs is not going to try and inline things
+               * when defining ints, so we cannot go into infinite inlining.
+               */
+              val emptyScope = Scope.Empty
+
               withNewLocalDefs(List(
                   Binding("x", None, IntType, false, x),
                   Binding("y", None, IntType, false, y))) {
@@ -2988,7 +3190,7 @@ private[optimizer] abstract class OptimizerCore(
                       BinaryOp(Num_>, tempY, IntLiteral(0))),
                       BinaryOp(Num_<, BinaryOp(Int_+, tempX, tempY), IntLiteral(0))
                   ).toPreTransform)
-              } (finishTransform(isStat = false))
+              } (finishTransform(isStat = false))(emptyScope)
             }.toPreTransform
 
           case (PreTransLit(LongLiteral(_)), _) =>
@@ -3518,7 +3720,8 @@ private[optimizer] abstract class OptimizerCore(
 
   private def withNewLocalDefs(bindings: List[Binding])(
       buildInner: (List[LocalDef], PreTransCont) => TailRec[Tree])(
-      cont: PreTransCont): TailRec[Tree] = {
+      cont: PreTransCont)(
+      implicit scope: Scope): TailRec[Tree] = {
     bindings match {
       case first :: rest =>
         withNewLocalDef(first) { (firstLocalDef, cont1) =>
@@ -3541,31 +3744,55 @@ private[optimizer] abstract class OptimizerCore(
 
   private def withNewLocalDef(binding: Binding)(
       buildInner: (LocalDef, PreTransCont) => TailRec[Tree])(
-      cont: PreTransCont): TailRec[Tree] = tailcall {
+      cont: PreTransCont)(
+      implicit scope: Scope): TailRec[Tree] = tailcall {
     val Binding(name, originalName, declaredType, mutable, value) = binding
     implicit val pos = value.pos
 
     def withDedicatedVar(tpe: RefinedType): TailRec[Tree] = {
-      val newName = freshLocalName(name, mutable)
-      val newOriginalName = originalName.orElse(Some(name))
+      val rtLongClassType = ClassType(LongImpl.RuntimeLongClass)
 
-      val used = newSimpleState(false)
+      if (tpe.base == LongType && declaredType != rtLongClassType &&
+          hasInlineableRTLongImplementation) {
+        /* If the value's type is a primitive Long, and the declared type is
+         * not RuntimeLong, we want to force the expansion of the primitive
+         * Long (which we know is in fact a RuntimeLong) into a local variable,
+         * and then its two components into a Record. This makes sure that all
+         * Longs are stack-allocated when they are put in a var/val, even if
+         * they came from a method call or other opaque sources, and also if a
+         * var is initialized with a literal long.
+         *
+         * We only do all that if the library contains a inlineable version of
+         * RuntimeLong.
+         */
+        expandLongValue(value) { expandedValue =>
+          val expandedBinding = Binding(name, originalName, rtLongClassType,
+              mutable, expandedValue)
+          withNewLocalDef(expandedBinding)(buildInner)(cont)
+        }
+      } else {
+        // Otherwise, we effectively declare a new binding
+        val newName = freshLocalName(name, mutable)
+        val newOriginalName = originalName.orElse(Some(name))
 
-      val (replacement, refinedType) = resolveRecordType(value) match {
-        case Some((recordType, cancelFun)) =>
-          (ReplaceWithRecordVarRef(newName, newOriginalName, recordType,
-              used, cancelFun), value.tpe)
+        val used = newSimpleState(false)
 
-        case None =>
-          (ReplaceWithVarRef(newName, newOriginalName, used, None), tpe)
+        val (replacement, refinedType) = resolveRecordType(value) match {
+          case Some((recordType, cancelFun)) =>
+            (ReplaceWithRecordVarRef(newName, newOriginalName, recordType,
+                used, cancelFun), value.tpe)
+
+          case None =>
+            (ReplaceWithVarRef(newName, newOriginalName, used, None), tpe)
+        }
+
+        val localDef = LocalDef(refinedType, mutable, replacement)
+        val preTransBinding = PreTransBinding(localDef, value)
+
+        buildInner(localDef, { tinner =>
+          cont(addPreTransBinding(preTransBinding, tinner))
+        })
       }
-
-      val localDef = LocalDef(refinedType, mutable, replacement)
-      val preTransBinding = PreTransBinding(localDef, value)
-
-      buildInner(localDef, { tinner =>
-        cont(addPreTransBinding(preTransBinding, tinner))
-      })
     }
 
     if (value.tpe.isNothingType) {
@@ -3785,6 +4012,15 @@ private[optimizer] object OptimizerCore {
         used.value = true
         VarRef(Ident(name, originalName))(tpe.base)
 
+      /* Allocate an instance of RuntimeLong on the fly.
+       * See the comment in finishTransformExpr about why it is desirable and
+       * safe to do so.
+       */
+      case ReplaceWithRecordVarRef(name, originalName, recordType, used, _)
+          if tpe.base == ClassType(LongImpl.RuntimeLongClass) =>
+        used.value = true
+        createNewLong(VarRef(Ident(name, originalName))(recordType))
+
       case ReplaceWithRecordVarRef(_, _, _, _, cancelFun) =>
         cancelFun()
 
@@ -3799,6 +4035,17 @@ private[optimizer] object OptimizerCore {
 
       case InlineClassBeingConstructedReplacement(_, cancelFun) =>
         cancelFun()
+
+      /* Allocate an instance of RuntimeLong on the fly.
+       * See the comment in finishTransformExpr about why it is desirable and
+       * safe to do so.
+       */
+      case InlineClassInstanceReplacement(recordType, fieldLocalDefs, _)
+          if tpe.base == ClassType(LongImpl.RuntimeLongClass) =>
+        val List(loField, hiField) = recordType.fields
+        val lo = fieldLocalDefs(loField.name).newReplacement
+        val hi = fieldLocalDefs(hiField.name).newReplacement
+        createNewLong(lo, hi)
 
       case InlineClassInstanceReplacement(_, _, cancelFun) =>
         cancelFun()
@@ -4167,6 +4414,26 @@ private[optimizer] object OptimizerCore {
   private object AndThen {
     def apply(lhs: Tree, rhs: Tree)(implicit pos: Position): Tree =
       If(lhs, rhs, BooleanLiteral(false))(BooleanType)
+  }
+
+  /** Creates a new instance of `RuntimeLong` from a record of its `lo` and
+   *  `hi` parts.
+   */
+  private def createNewLong(recordVarRef: VarRef)(
+      implicit pos: Position): Tree = {
+
+    val RecordType(List(loField, hiField)) = recordVarRef.tpe
+    createNewLong(
+        Select(recordVarRef, Ident(loField.name, loField.originalName))(IntType),
+        Select(recordVarRef, Ident(hiField.name, hiField.originalName))(IntType))
+  }
+
+  /** Creates a new instance of `RuntimeLong` from its `lo` and `hi` parts. */
+  private def createNewLong(lo: Tree, hi: Tree)(
+      implicit pos: Position): Tree = {
+
+    New(ClassType(LongImpl.RuntimeLongClass), Ident(LongImpl.initFromParts),
+        List(lo, hi))
   }
 
   /** Tests whether `x + y` is valid without falling out of range. */

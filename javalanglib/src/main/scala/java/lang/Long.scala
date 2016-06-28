@@ -358,36 +358,43 @@ object Long {
     else rem
   }
 
+  @inline
   def highestOneBit(i: scala.Long): scala.Long = {
     val hi = (i >>> 32).toInt
     if (hi != 0) Integer.highestOneBit(hi).toLong << 32
     else Integer.highestOneBit(i.toInt).toLong & 0xffffffffL
   }
 
+  @inline
   def lowestOneBit(i: scala.Long): scala.Long = {
     val lo = i.toInt
     if (lo != 0) Integer.lowestOneBit(lo).toLong & 0xffffffffL
     else Integer.lowestOneBit((i >>> 32).toInt).toLong << 32
   }
 
+  @inline
   def bitCount(i: scala.Long): scala.Int = {
     val lo = i.toInt
     val hi = (i >>> 32).toInt
     Integer.bitCount(lo) + Integer.bitCount(hi)
   }
 
+  @inline
   def reverseBytes(i: scala.Long): scala.Long = {
     val hiReversed = Integer.reverseBytes((i >>> 32).toInt)
     val loReversed = Integer.reverseBytes(i.toInt)
     (loReversed.toLong << 32) | (hiReversed.toLong & 0xffffffffL)
   }
 
+  @inline
   def rotateLeft(i: scala.Long, distance: scala.Int): scala.Long =
     (i << distance) | (i >>> -distance)
 
+  @inline
   def rotateRight(i: scala.Long, distance: scala.Int): scala.Long =
     (i >>> distance) | (i << -distance)
 
+  @inline
   def signum(i: scala.Long): Int = {
     val hi = (i >>> 32).toInt
     if (hi < 0) -1
@@ -395,12 +402,14 @@ object Long {
     else 1
   }
 
+  @inline
   def numberOfLeadingZeros(l: scala.Long): Int = {
     val hi = (l >>> 32).toInt
     if (hi != 0) Integer.numberOfLeadingZeros(hi)
     else         Integer.numberOfLeadingZeros(l.toInt) + 32
   }
 
+  @inline
   def numberOfTrailingZeros(l: scala.Long): Int = {
     val lo = l.toInt
     if (lo != 0) Integer.numberOfTrailingZeros(lo)

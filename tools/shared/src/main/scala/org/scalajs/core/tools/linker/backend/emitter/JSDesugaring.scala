@@ -1648,8 +1648,15 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         case Apply(receiver, method, args) =>
           val newReceiver = transformExpr(receiver)
           val newArgs = args map transformExpr
+
+          /* If the receiver is maybe a hijacked class instance, and there
+           * exists a hijacked method helper for the method, use it. Methods
+           * that do not have helpers are
+           * - Reflective proxies
+           * - Methods of RuntimeLong that are not also in java.lang.Long
+           */
           if (isMaybeHijackedClass(receiver.tpe) &&
-              !Definitions.isReflProxyName(method.name)) {
+              hijackedClassMethodToHelperName.contains(method.name)) {
             val helperName = hijackedClassMethodToHelperName(method.name)
             genCallHelper(helperName, newReceiver :: newArgs: _*)
           } else {
