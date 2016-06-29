@@ -7,7 +7,6 @@ import org.scalajs.core.tools.javascript.Trees.Tree
 import org.scalajs.core.tools.javascript.JSTreeBuilder
 
 import com.google.javascript.rhino._
-import com.google.javascript.rhino.jstype.{StaticSourceFile, SimpleSourceFile}
 import com.google.javascript.jscomp._
 
 import scala.collection.mutable

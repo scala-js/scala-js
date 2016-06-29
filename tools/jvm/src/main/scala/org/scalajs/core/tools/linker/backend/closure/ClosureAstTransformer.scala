@@ -261,10 +261,10 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
   }
 
   def transformBlock(stats: List[Tree], blockPos: Position): Node = {
-    @inline def ctorDoc(node: Node) = {
+    @inline def ctorDoc() = {
       val b = new JSDocInfoBuilder(false)
       b.recordConstructor()
-      b.build(node)
+      b.build()
     }
 
     val block = new Node(Token.BLOCK)
@@ -285,7 +285,7 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
             if (node.isExprResult()) node.getChildAtIndex(0)
             else node
 
-          trg.setJSDocInfo(ctorDoc(trg))
+          trg.setJSDocInfo(ctorDoc())
         }
 
         block.addChildToBack(node)

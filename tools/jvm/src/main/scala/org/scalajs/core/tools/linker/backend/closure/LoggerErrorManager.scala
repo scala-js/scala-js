@@ -8,15 +8,17 @@ import org.scalajs.core.tools.logging.Logger
 private[closure] class LoggerErrorManager(private val log: Logger)
     extends BasicErrorManager {
 
-  /** Ugly hack to disable FRACTIONAL_BITWISE_OPERAND warnings. Since its
-    * DiagnosticType (PeepholeFoldConstants.FRACTIONAL_BITWISE_OPERAND) is
-    * package private.
-    */
+  /** Ugly hack to disable FRACTIONAL_BITWISE_OPERAND and UNREACHABLE_CODE warnings.
+   *  Since its DiagnosticType (PeepholeFoldConstants.FRACTIONAL_BITWISE_OPERAND) is
+   *  package private. Similar issue for UNREACHABLE_CODE.
+   */
   override def report(level: CheckLevel, error: JSError): Unit = {
-    if (error.getType.key == "JSC_FRACTIONAL_BITWISE_OPERAND")
+    if (error.getType.key == "JSC_FRACTIONAL_BITWISE_OPERAND" ||
+        error.getType.key == "JSC_UNREACHABLE_CODE") {
       super.report(CheckLevel.OFF, error)
-    else
+    } else {
       super.report(level, error)
+    }
   }
 
   def println(level: CheckLevel, error: JSError): Unit = level match {
