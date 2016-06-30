@@ -53,6 +53,10 @@ body {
   background-color: #FF9999;
 }
 
+.test-box-header input {
+  float: right;
+}
+
 .test-box-body {
   display: none;
 }
