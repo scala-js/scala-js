@@ -66,4 +66,15 @@ object Promise extends js.Object {
 
   // TODO Use js.Iterable
   def race[A](promises: js.Array[_ <: Promise[A]]): Promise[A] = js.native
+  
+  implicit class FutureToJS[T](f: Future[T]) {
+    def toJSPromise = {
+      new js.Promise[T](js.Any.fromFunction2 { (resolve, reject) =>
+        f.onComplete {
+          case Success(r) => resolve(r)
+          case Failure(ex) => reject(ex)
+        }
+      })
+    }
+  }
 }
