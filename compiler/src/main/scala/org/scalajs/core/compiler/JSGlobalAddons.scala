@@ -109,7 +109,11 @@ trait JSGlobalAddons extends JSDefinitions
     /** has this symbol to be translated into a JS getter (both directions)? */
     def isJSGetter(sym: Symbol): Boolean = {
       sym.tpe.params.isEmpty && enteringUncurryIfAtPhaseAfter {
-        sym.tpe.isInstanceOf[NullaryMethodType]
+        sym.tpe match {
+          case _: NullaryMethodType              => true
+          case PolyType(_, _: NullaryMethodType) => true
+          case _                                 => false
+        }
       }
     }
 

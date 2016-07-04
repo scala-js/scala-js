@@ -369,6 +369,17 @@ class ExportsTest {
     assertEquals(js.Dynamic.literal(arg = "hello").toMap, a.foo("hello").toMap)
   }
 
+  @Test def exports_for_polytype_nullary_method_issue_2445(): Unit = {
+    class ExportPolyTypeNullaryMethod {
+      @JSExport def emptyArray[T]: js.Array[T] = js.Array()
+    }
+
+    val obj = (new ExportPolyTypeNullaryMethod).asInstanceOf[js.Dynamic]
+    val a = obj.emptyArray
+    assertTrue((a: Any).isInstanceOf[js.Array[_]])
+    assertEquals(0, a.length)
+  }
+
   @Test def exports_for_variable_argument_methods_issue_393(): Unit = {
     class A {
       @JSExport
