@@ -9,6 +9,9 @@ package org.scalajs.testsuite.compiler
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
+
+import org.scalajs.testsuite.utils.Platform
 
 /* General note on the way these tests are written:
  * We leverage the constant folding applied by the Scala compiler to write
@@ -331,6 +334,72 @@ class IntTest {
     test(MaxVal, 0, MaxVal >>> 0)
     test(MinVal, 1, MinVal >>> 1)
     test(MaxVal, 1, MaxVal >>> 1)
+  }
+
+  private def scalacCorrectlyHandlesIntShiftLong: Boolean = {
+    import Platform.scalaVersion
+    !(scalaVersion.startsWith("2.10.") || scalaVersion.startsWith("2.11.") ||
+        scalaVersion.startsWith("2.12.0-M4"))
+  }
+
+  @Test def intShiftLeftLongConstantFolded(): Unit = {
+    assumeTrue("scalac must correctly handle int shift long",
+        scalacCorrectlyHandlesIntShiftLong)
+
+    assert(0x01030507 << 36L == 271601776)
+    val r = 0x01030507 << 36L
+    assert(r == 271601776)
+  }
+
+  @Test def intShiftLeftLongAtRuntime(): Unit = {
+    assumeTrue("On the JVM, scalac must correctly handle int shift long",
+        !Platform.executingInJVM || scalacCorrectlyHandlesIntShiftLong)
+
+    var x: Int = 0x01030507
+    var y: Long = 36L
+    assert(x << y == 271601776)
+    val r = x << y
+    assert(r == 271601776)
+  }
+
+  @Test def intShiftLogicalRightLongConstantFolded(): Unit = {
+    assumeTrue("scalac must correctly handle int shift long",
+        scalacCorrectlyHandlesIntShiftLong)
+
+    assert(0x90503010 >>> 36L == 151323393)
+    val r = 0x90503010 >>> 36L
+    assert(r == 151323393)
+  }
+
+  @Test def intShiftLogicalRightLongAtRuntime(): Unit = {
+    assumeTrue("On the JVM, scalac must correctly handle int shift long",
+        !Platform.executingInJVM || scalacCorrectlyHandlesIntShiftLong)
+
+    var x: Int = 0x90503010
+    var y: Long = 36L
+    assert(x >>> y == 151323393)
+    val r = x >>> y
+    assert(r == 151323393)
+  }
+
+  @Test def intShiftArithmeticRightLongConstantFolded(): Unit = {
+    assumeTrue("scalac must correctly handle int shift long",
+        scalacCorrectlyHandlesIntShiftLong)
+
+    assert(0x90503010 >> 36L == -117112063)
+    val r = 0x90503010 >> 36L
+    assert(r == -117112063)
+  }
+
+  @Test def intShiftArithmeticRightLongAtRuntime(): Unit = {
+    assumeTrue("On the JVM, scalac must correctly handle int shift long",
+        !Platform.executingInJVM || scalacCorrectlyHandlesIntShiftLong)
+
+    var x: Int = 0x90503010
+    var y: Long = 36L
+    assert(x >> y == -117112063)
+    val r = x >> y
+    assert(r == -117112063)
   }
 }
 
