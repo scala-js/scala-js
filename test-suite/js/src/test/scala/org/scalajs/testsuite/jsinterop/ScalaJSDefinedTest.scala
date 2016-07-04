@@ -767,6 +767,23 @@ class ScalaJSDefinedTest {
     assertEquals(7, baz10.bar)
   }
 
+  @Test def polytype_nullary_method_issue_2445(): Unit = {
+    @ScalaJSDefined
+    class PolyTypeNullaryMethod extends js.Object {
+      def emptyArray[T]: js.Array[T] = js.Array()
+    }
+
+    val obj = new PolyTypeNullaryMethod
+    val a = obj.emptyArray[Int]
+    assertTrue((a: Any).isInstanceOf[js.Array[_]])
+    assertEquals(0, a.length)
+
+    val dyn = obj.asInstanceOf[js.Dynamic]
+    val b = dyn.emptyArray
+    assertTrue((b: Any).isInstanceOf[js.Array[_]])
+    assertEquals(0, b.length)
+  }
+
   @Test def default_parameters(): Unit = {
     @ScalaJSDefined
     class DefaultParameters extends js.Object {

@@ -244,6 +244,34 @@ class InteroperabilityTest {
     assertArrayEquals(Array("plop", 42, 51), stat.foo(elems: _*))
   }
 
+  @Test def call_polytype_nullary_method_issue_2445(): Unit = {
+    val obj = js.eval("""
+      var obj = {
+        emptyArray: []
+      };
+      obj;
+    """)
+
+    val objNative =
+      obj.asInstanceOf[InteroperabilityTestPolyTypeNullaryMethodNative]
+    val a = objNative.emptyArray[Int]
+    assertTrue((a: Any).isInstanceOf[js.Array[_]])
+    assertEquals(0, a.length)
+
+    val objNonNative =
+      obj.asInstanceOf[InteroperabilityTestPolyTypeNullaryMethodNonNative]
+    val b = objNonNative.emptyArray[Int]
+    assertTrue((b: Any).isInstanceOf[js.Array[_]])
+    assertEquals(0, b.length)
+
+    // From the bug report
+    val objPoly =
+      obj.asInstanceOf[InteroperabilityTestPolyClassPolyNullaryMethod[Int]]
+    val c = objPoly.emptyArray[Any]
+    assertTrue((c: Any).isInstanceOf[js.Array[_]])
+    assertEquals(0, c.length)
+  }
+
   @Test def should_allow_to_call_JS_constructors_with_variadic_parameters(): Unit = {
     import js.Dynamic.{newInstance => jsnew}
 
@@ -679,6 +707,21 @@ object InteroperabilityTestContainerObjectWithJSName extends js.Object {
 @js.native
 trait InteroperabilityTestVariadicMethod extends js.Object {
   def foo(args: Any*): js.Array[Any] = js.native
+}
+
+@js.native
+trait InteroperabilityTestPolyTypeNullaryMethodNative extends js.Object {
+  def emptyArray[T]: js.Array[T] = js.native
+}
+
+@ScalaJSDefined
+trait InteroperabilityTestPolyTypeNullaryMethodNonNative extends js.Object {
+  def emptyArray[T]: js.Array[T]
+}
+
+@js.native
+trait InteroperabilityTestPolyClassPolyNullaryMethod[+T] extends js.Object {
+  def emptyArray[T2 >: T]: js.Array[T2] = js.native
 }
 
 @js.native
