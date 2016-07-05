@@ -29,6 +29,21 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private var errorCount: Int = 0
 
+  /* Per-method state (setup with withPerMethodState).
+   * This state is reset per-Closure as well.
+   */
+  private var declaredLabelNamesPerMethod: mutable.Set[String] = _
+
+  private def withPerMethodState[A](body: => A): A = {
+    val savedDeclaredLabelNamesPerMethod = declaredLabelNamesPerMethod
+    try {
+      declaredLabelNamesPerMethod = mutable.Set.empty
+      body
+    } finally {
+      declaredLabelNamesPerMethod = savedDeclaredLabelNamesPerMethod
+    }
+  }
+
   private val classes: mutable.Map[String, CheckedClass] = {
     val tups = for (classDef <- unit.classDefs) yield {
       implicit val ctx = ErrorContext(classDef)
@@ -166,7 +181,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private def checkMethodDef(methodDef: MethodDef,
-      classDef: LinkedClass): Unit = {
+      classDef: LinkedClass): Unit = withPerMethodState {
 
     val MethodDef(static, Ident(name, _), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
@@ -196,6 +211,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           s"$advertizedSig, does not match its name (should be $sigFromName).")
     }
 
+    // Compute bodyEnv even for abstract defs for error checking in fromSignature
+    val thisType =
+      if (static) NoType
+      else ClassType(classDef.name.name)
+    val bodyEnv = Env.fromSignature(thisType, params, resultType, isConstructor)
+
     if (body == EmptyTree) {
       // Abstract
       if (static)
@@ -204,10 +225,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         reportError(s"Constructor ${classDef.name.name}.$name cannot be abstract")
     } else {
       // Concrete
-      val thisType =
-        if (static) NoType
-        else ClassType(classDef.name.name)
-      val bodyEnv = Env.fromSignature(thisType, params, resultType, isConstructor)
       if (resultType == NoType)
         typecheckStat(body, bodyEnv)
       else
@@ -216,7 +233,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private def checkExportedMethodDef(methodDef: MethodDef,
-      classDef: LinkedClass): Unit = {
+      classDef: LinkedClass): Unit = withPerMethodState {
     val MethodDef(static, StringLiteral(name), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
@@ -306,7 +323,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private def checkExportedPropertyDef(propDef: PropertyDef,
-      classDef: LinkedClass): Unit = {
+      classDef: LinkedClass): Unit = withPerMethodState {
     val PropertyDef(_, getterBody, setterArg, setterBody) = propDef
     implicit val ctx = ErrorContext(propDef)
 
@@ -337,7 +354,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private def checkConstructorExportDef(ctorDef: ConstructorExportDef,
-      classDef: LinkedClass): Unit = {
+      classDef: LinkedClass): Unit = withPerMethodState {
     val ConstructorExportDef(_, params, body) = ctorDef
     implicit val ctx = ErrorContext(ctorDef)
 
@@ -438,6 +455,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         env
 
       case Labeled(label, NoType, body) =>
+        checkDeclareLabel(label)
         typecheckStat(body, env.withLabeledReturnType(label.name, AnyType))
         env
 
@@ -448,11 +466,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         env
 
       case While(cond, body, label) =>
+        label.foreach(checkDeclareLabel)
         typecheckExpect(cond, env, BooleanType)
         typecheckStat(body, env)
         env
 
       case DoWhile(body, cond, label) =>
+        label.foreach(checkDeclareLabel)
         typecheckStat(body, env)
         typecheckExpect(cond, env, BooleanType)
         env
@@ -549,6 +569,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         typecheckExpr(expr, envAfterStats)
 
       case Labeled(label, tpe, body) =>
+        checkDeclareLabel(label)
         typecheckExpect(body, env.withLabeledReturnType(label.name, tpe), tpe)
 
       case Return(expr, label) =>
@@ -566,6 +587,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         typecheckExpect(elsep, env, tpe)
 
       case While(BooleanLiteral(true), body, label) if tree.tpe == NothingType =>
+        label.foreach(checkDeclareLabel)
         typecheckStat(body, env)
 
       case Try(block, errVar, handler, finalizer) =>
@@ -828,39 +850,53 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           reportError(s"this of type ${env.thisTpe} typed as ${tree.tpe}")
 
       case Closure(captureParams, params, body, captureValues) =>
+        /* Check compliance of captureValues wrt. captureParams in the current
+         * method state, i.e., outside `withPerMethodState`.
+         */
         if (captureParams.size != captureValues.size)
           reportError("Mismatched size for captures: "+
               s"${captureParams.size} params vs ${captureValues.size} values")
 
-        for ((ParamDef(name, ctpe, mutable, rest), value) <- captureParams zip captureValues) {
-          if (mutable)
-            reportError(s"Capture parameter $name cannot be mutable")
-          if (rest)
-            reportError(s"Capture parameter $name cannot be a rest parameter")
-          if (ctpe == NoType)
-            reportError(s"Parameter $name has type NoType")
-          else
-            typecheckExpect(value, env, ctpe)
+        for ((ParamDef(_, ctpe, _, _), value) <- captureParams zip captureValues) {
+          typecheckExpect(value, env, ctpe)
         }
 
-        for (ParamDef(name, ptpe, mutable, rest) <- params) {
-          if (ptpe == NoType)
-            reportError(s"Parameter $name has type NoType")
-          else if (ptpe != AnyType)
-            reportError(s"Closure parameter $name has type $ptpe instead of any")
-          if (rest)
-            reportError(s"Closure parameter $name cannot be a rest parameter")
-        }
+        // Then check the closure params and body in its own per-method state
+        withPerMethodState {
+          for (ParamDef(name, ctpe, mutable, rest) <- captureParams) {
+            if (mutable)
+              reportError(s"Capture parameter $name cannot be mutable")
+            if (rest)
+              reportError(s"Capture parameter $name cannot be a rest parameter")
+            if (ctpe == NoType)
+              reportError(s"Parameter $name has type NoType")
+          }
 
-        val bodyEnv = Env.fromSignature(
-            AnyType, captureParams ++ params, AnyType)
-        typecheckExpect(body, bodyEnv, AnyType)
+          for (ParamDef(name, ptpe, mutable, rest) <- params) {
+            if (ptpe == NoType)
+              reportError(s"Parameter $name has type NoType")
+            else if (ptpe != AnyType)
+              reportError(s"Closure parameter $name has type $ptpe instead of any")
+            if (rest)
+              reportError(s"Closure parameter $name cannot be a rest parameter")
+          }
+
+          val bodyEnv = Env.fromSignature(
+              AnyType, captureParams ++ params, AnyType)
+          typecheckExpect(body, bodyEnv, AnyType)
+        }
 
       case _ =>
         reportError(s"Invalid expression tree")
     }
 
     tree.tpe
+  }
+
+  private def checkDeclareLabel(label: Ident)(
+      implicit ctx: ErrorContext): Unit = {
+    if (!declaredLabelNamesPerMethod.add(label.name))
+      reportError(s"Duplicate label named ${label.name}.")
   }
 
   private def inferMethodType(encodedName: String, isStatic: Boolean)(
@@ -975,16 +1011,17 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       /** Whether we're in a constructor of the class */
       val inConstructor: Boolean
   ) {
+    import Env._
+
     def withThis(thisTpe: Type): Env =
       new Env(thisTpe, this.locals, this.returnTypes, this.inConstructor)
 
-    def withLocal(localDef: LocalDef): Env =
+    def withLocal(localDef: LocalDef)(implicit ctx: ErrorContext): Env = {
+      if (locals.contains(localDef.name))
+        reportDuplicateLocalVarName(localDef.name)
       new Env(thisTpe, locals + (localDef.name -> localDef), returnTypes,
           this.inConstructor)
-
-    def withLocals(localDefs: TraversableOnce[LocalDef]): Env =
-      new Env(thisTpe, locals ++ localDefs.map(d => d.name -> d), returnTypes,
-          this.inConstructor)
+    }
 
     def withReturnType(returnType: Type): Env =
       new Env(this.thisTpe, this.locals,
@@ -1003,12 +1040,22 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
     def fromSignature(thisType: Type, params: List[ParamDef],
         resultType: Type, isConstructor: Boolean = false): Env = {
-      val paramLocalDefs =
-        for (p @ ParamDef(name, tpe, mutable, _) <- params) yield
-          name.name -> LocalDef(name.name, tpe, mutable)(p.pos)
-      new Env(thisType, paramLocalDefs.toMap,
+      val paramLocalDefs = params.foldLeft(Map.empty[String, LocalDef]) {
+        case (prevParams, p @ ParamDef(ident, tpe, mutable, _)) =>
+          implicit val ctx = ErrorContext(p)
+          val name = ident.name
+          if (prevParams.contains(name))
+            reportDuplicateLocalVarName(name)
+          prevParams + (name -> LocalDef(name, tpe, mutable)(p.pos))
+      }
+      new Env(thisType, paramLocalDefs,
           Map(None -> (if (resultType == NoType) AnyType else resultType)),
           isConstructor)
+    }
+
+    private def reportDuplicateLocalVarName(name: String)(
+        implicit ctx: ErrorContext): Unit = {
+      reportError(s"Duplicate local variable name $name.")
     }
   }
 
