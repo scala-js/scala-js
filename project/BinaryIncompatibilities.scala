@@ -12,7 +12,11 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.transformStat"),
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.pushLhsInto")
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.pushLhsInto"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.labeledExprLHSes"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.labeledExprLHSes_=")
   )
 
   val JSEnvs = Seq(
