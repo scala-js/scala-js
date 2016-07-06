@@ -7,6 +7,9 @@ import org.junit.Test
 
 class JSExportTest extends DirectTest with TestHelpers {
 
+  override def extraArgs: List[String] =
+    super.extraArgs :+ "-deprecation"
+
   override def preamble: String =
     """import scala.scalajs.js, js.annotation._
     """
@@ -784,6 +787,26 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def namedExportIsDeprecated: Unit = {
+
+    """
+    class A {
+      @JSExportNamed
+      def foo(x: Int, y: Int) = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:5: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+      |      def foo(x: Int, y: Int) = 1
+      |          ^
+      |newSource1.scala:4: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+      |      @JSExportNamed
+      |       ^
+    """
+
+  }
+
+  @Test
   def noOverrideNamedExport: Unit = {
 
     """
@@ -798,10 +821,19 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
+      |newSource1.scala:5: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+      |      def foo(x: Int, y: Int) = 1
+      |          ^
+      |newSource1.scala:4: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+      |      @JSExportNamed
+      |       ^
       |newSource1.scala:9: error: overriding method $js$exported$meth$foo in class A of type (namedArgs: Any)Any;
       | method $js$exported$meth$foo cannot override final member
       |      @JSExportNamed
       |       ^
+      |newSource1.scala:10: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+      |      override def foo(x: Int, y: Int) = 2
+      |                   ^
     """
 
   }
@@ -882,6 +914,12 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
+      |newSource1.scala:5: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+      |      def foo(a: Int*) = 1
+      |          ^
+      |newSource1.scala:4: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+      |      @JSExportNamed
+      |       ^
       |newSource1.scala:4: error: You may not name-export a method with a *-parameter
       |      @JSExportNamed
       |       ^
@@ -1009,6 +1047,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       |          ^
     """
 
+    // For this case, deprecation warnings are not exactly the same in 2.10.x
     """
     @JSExportAll
     class A {
@@ -1016,7 +1055,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport("foo")
       def apply(): Int = 1
     }
-    """ hasWarns
+    """ containsWarns
     """
       |newSource1.scala:7: warning: Member cannot be exported to function application. It is available under the name apply instead. Add @JSExport("apply") to silence this warning. This will be enforced in 1.0.
       |      def apply(): Int = 1
