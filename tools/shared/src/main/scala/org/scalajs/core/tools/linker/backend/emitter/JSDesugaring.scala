@@ -292,7 +292,6 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
     // LHS'es for labeled expressions
 
-    var labeledExprLHSes: Map[Ident, Tree] = Map.empty
     val usedLabels = mutable.Set.empty[String]
 
     // Now the work
@@ -1074,7 +1073,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       }
 
       def doReturnToLabel(l: Ident): js.Tree = {
-        val newLhs = labeledExprLHSes(l)
+        val newLhs = env.lhsForLabeledExpr(l)
         val body = pushLhsInto(newLhs, rhs, Set.empty)
         if (newLhs.tpe == NothingType) {
           /* A touch of peephole dead code elimination.
@@ -1161,23 +1160,13 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
         case Labeled(label, tpe, body) =>
           extractLet { newLhs =>
-            val savedMap = labeledExprLHSes
-            labeledExprLHSes = labeledExprLHSes + (label -> newLhs)
-            try {
-              newLhs match {
-                case Return(_, _) =>
-                  redo(body)
-                case _ =>
-                  val newBody =
-                    pushLhsInto(newLhs, body, tailPosLabels + label.name)
-                  if (usedLabels.contains(label.name))
-                    js.Labeled(label, newBody)
-                  else
-                    newBody
-              }
-            } finally {
-              labeledExprLHSes = savedMap
-            }
+            val bodyEnv = env.withLabeledExprLHS(label, newLhs)
+            val newBody =
+              pushLhsInto(newLhs, body, tailPosLabels + label.name)(bodyEnv)
+            if (usedLabels.contains(label.name))
+              js.Labeled(label, newBody)
+            else
+              newBody
           }
 
         case Return(expr, _) =>
@@ -2152,9 +2141,12 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
   final class Env private (
       vars: Map[String, Boolean],
+      labeledExprLHSes: Map[String, Tree],
       defaultBreakTargets: Set[String]
   ) {
     def isLocalMutable(ident: Ident): Boolean = vars(ident.name)
+
+    def lhsForLabeledExpr(label: Ident): Tree = labeledExprLHSes(label.name)
 
     def isDefaultBreakTarget(label: String): Boolean =
       defaultBreakTargets.contains(label)
@@ -2170,18 +2162,22 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
     def withDef(ident: Ident, mutable: Boolean): Env =
       copy(vars = vars + (ident.name -> mutable))
 
+    def withLabeledExprLHS(label: Ident, lhs: Tree): Env =
+      copy(labeledExprLHSes = labeledExprLHSes + (label.name -> lhs))
+
     def withDefaultBreakTargets(targets: Set[String]): Env =
       copy(defaultBreakTargets = targets)
 
     private def copy(
         vars: Map[String, Boolean] = this.vars,
+        labeledExprLHSes: Map[String, Tree] = this.labeledExprLHSes,
         defaultBreakTargets: Set[String] = this.defaultBreakTargets): Env = {
-      new Env(vars, defaultBreakTargets)
+      new Env(vars, labeledExprLHSes, defaultBreakTargets)
     }
   }
 
   object Env {
-    def empty: Env = new Env(Map.empty, Set.empty)
+    def empty: Env = new Env(Map.empty, Map.empty, Set.empty)
   }
 
   // Helpers
