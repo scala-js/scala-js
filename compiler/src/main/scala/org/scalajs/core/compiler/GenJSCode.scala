@@ -2804,11 +2804,18 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       implicit val pos = tree.pos
 
-      def isLongOp(ltpe: Type, rtpe: Type) =
-        (isLongType(ltpe) || isLongType(rtpe)) &&
-        !(toTypeKind(ltpe).isInstanceOf[FLOAT] ||
-          toTypeKind(rtpe).isInstanceOf[FLOAT] ||
-          isStringType(ltpe) || isStringType(rtpe))
+      val isShift = isShiftOp(code)
+
+      def isLongOp(ltpe: Type, rtpe: Type) = {
+        if (isShift) {
+          isLongType(ltpe)
+        } else {
+          (isLongType(ltpe) || isLongType(rtpe)) &&
+          !(toTypeKind(ltpe).isInstanceOf[FLOAT] ||
+            toTypeKind(rtpe).isInstanceOf[FLOAT] ||
+            isStringType(ltpe) || isStringType(rtpe))
+        }
+      }
 
       val sources = args map genExpr
 
@@ -2897,10 +2904,15 @@ abstract class GenJSCode extends plugins.PluginComponent
           def convertArg(tree: js.Tree, kind: TypeKind) = {
             /* If we end up with a long, the op type must be float or double,
              * so we can first eliminate the Long case by converting to Double.
+             *
+             * Unless it is a shift operation, in which case the op type would
+             * be int.
              */
-            val notLong =
-              if (kind == LongKind) js.UnaryOp(js.UnaryOp.LongToDouble, tree)
-              else tree
+            val notLong = {
+              if (kind != LongKind) tree
+              else if (isShift) js.UnaryOp(js.UnaryOp.LongToInt, tree)
+              else js.UnaryOp(js.UnaryOp.LongToDouble, tree)
+            }
 
             if (opType != jstpe.FloatType) notLong
             else if (kind == FloatKind) notLong
