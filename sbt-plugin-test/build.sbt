@@ -20,6 +20,8 @@ val baseSettings = versionSettings ++ Seq(
 
 val regressionTestForIssue2243 = TaskKey[Unit]("regressionTestForIssue2243",
   "", KeyRanks.BTask)
+val testScalaJSSourceMapAttribute = TaskKey[Unit](
+  "testScalaJSSourceMapAttribute", "", KeyRanks.BTask)
 
 def withRegretionTestForIssue2243(project: Project): Project = {
   project.settings(inConfig(Compile)(Seq(
@@ -118,6 +120,19 @@ lazy val multiTest = crossProject.
     isScalaJSProject ~= { value =>
       assert(value, "isScalaJSProject should be true in multiTestJS")
       value
+    },
+
+    // Test the scalaJSSourceMap attribute of fastOptJS and fullOptJS
+    testScalaJSSourceMapAttribute in Test := {
+      val fastOptFile = (fastOptJS in Test).value
+      assert(fastOptFile.get(scalaJSSourceMap).exists {
+        _.getPath == fastOptFile.data.getPath + ".map"
+      }, "fastOptJS does not have the correct scalaJSSourceMap attribute")
+
+      val fullOptFile = (fullOptJS in Test).value
+      assert(fullOptFile.get(scalaJSSourceMap).exists {
+        _.getPath == fullOptFile.data.getPath + ".map"
+      }, "fullOptJS does not have the correct scalaJSSourceMap attribute")
     }
   ).
   jvmSettings(versionSettings: _*).
