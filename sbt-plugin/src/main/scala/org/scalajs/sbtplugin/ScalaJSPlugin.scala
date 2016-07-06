@@ -267,6 +267,10 @@ object ScalaJSPlugin extends AutoPlugin {
         "scalaJSJavaSystemProperties",
         "List of arguments to pass to the Scala.js Java System.properties.",
         CTask)
+
+    val scalaJSSourceMap = AttributeKey[File]("scalaJSSourceMap",
+        "Source map file attached to an Attributed .js file.",
+        BSetting)
   }
 
   import autoImport._

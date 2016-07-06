@@ -245,7 +245,8 @@ object ScalaJSPluginInternal {
             Set(output)
           } (realFiles.toSet)
 
-          Attributed.blank(output)
+          val sourceMapFile = FileVirtualJSFile(output).sourceMapFile
+          Attributed.blank(output).put(scalaJSSourceMap, sourceMapFile)
         } tag((usesScalaJSLinkerTag in key).value)
       },
 

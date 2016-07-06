@@ -263,7 +263,8 @@
         jsDependenciesTest/packageJSDependencies \
         jsDependenciesTest/packageMinifiedJSDependencies \
         jsDependenciesTest/regressionTestForIssue2243 \
-        jsNoDependenciesTest/regressionTestForIssue2243
+        jsNoDependenciesTest/regressionTestForIssue2243 \
+        multiTestJS/test:testScalaJSSourceMapAttribute
   ]]></task>
 
   <task id="partest-noopt"><![CDATA[
