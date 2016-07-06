@@ -677,7 +677,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             typecheckExpect(rhs, env, IntType)
           case Float_+ | Float_- | Float_* | Float_/ | Float_% =>
             typecheckExpect(lhs, env, FloatType)
-            typecheckExpect(lhs, env, FloatType)
+            typecheckExpect(rhs, env, FloatType)
           case Long_+ | Long_- | Long_* | Long_/ | Long_% |
               Long_| | Long_& | Long_^ |
               Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= =>
@@ -689,7 +689,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           case Double_+ | Double_- | Double_* | Double_/ | Double_% |
               Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>= =>
             typecheckExpect(lhs, env, DoubleType)
-            typecheckExpect(lhs, env, DoubleType)
+            typecheckExpect(rhs, env, DoubleType)
           case Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
             typecheckExpect(lhs, env, BooleanType)
             typecheckExpect(rhs, env, BooleanType)
