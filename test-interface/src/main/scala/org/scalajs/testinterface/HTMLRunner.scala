@@ -8,6 +8,7 @@
 package org.scalajs.testinterface
 
 import scala.scalajs.js
+import scala.scalajs.concurrent.QueueExecutionContext
 import scala.scalajs.js.annotation.JSName
 import js.URIUtils.{decodeURIComponent, encodeURIComponent}
 
@@ -15,6 +16,8 @@ import scala.collection.mutable
 
 import scala.concurrent.{Future, Promise}
 import scala.concurrent.ExecutionContext.Implicits.global
+
+import scala.util.Try
 
 import sbt.testing._
 
@@ -82,7 +85,7 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
     }
 
     // Report event counts.
-    Future.sequence(oks).map(and).foreach(ui.done)
+    Future.sequence(oks).map(and).onComplete(ui.done)
   }
 
   private def runTests(framework: Framework,
@@ -110,22 +113,26 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
   }
 
   private def scheduleTask(task: Task, ui: UI): Future[(Boolean, Array[Task])] = {
-    val promise = Promise[(Boolean, Array[Task])]
-
     val uiBox = ui.newTestTask(task.taskDef.fullyQualifiedName)
     val handler = new EventCounter.Handler
 
-    // Don't use a Future so we yield to the UI event thread.
-    js.timers.setTimeout(0) {
-      task.execute(handler, Array(uiBox.logger), { newTasks =>
-        val ok = !handler.hasErrors
+    // Schedule test via timeout so we yield to the UI event thread.
+    val newTasks = Promise[Array[Task]]
+    val invocation = Future(task.execute(handler, Array(uiBox.logger),
+        newTasks.success))(QueueExecutionContext.timeouts())
 
-        uiBox.done(ok)
-        promise.success((ok, newTasks))
-      })
+    val result = for {
+      _ <- invocation
+      tasks <- newTasks.future
+    } yield {
+      (!handler.hasErrors, tasks)
     }
 
-    promise.future
+    result.map(_._1).onComplete(uiBox.done)
+
+    result.recover {
+      case _ => (false, Array[Task]())
+    }
   }
 
   private class UI(excludedTaskDefs: Seq[TaskDef], totalTestCount: Int) {
@@ -151,7 +158,7 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
 
     trait TestTask {
       def logger: Logger
-      def done(ok: Boolean): Unit
+      def done(ok: Try[Boolean]): Unit
     }
 
     def newTestTask(testName: String): TestTask = {
@@ -160,9 +167,15 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
       task
     }
 
-    def done(ok: Boolean): Unit = {
+    def done(ok: Try[Boolean]): Unit = {
       _done = true
-      rootBox.done(ok)
+
+      ok.failed.foreach { t =>
+        rootBox.log("Test framework crashed during execution:", "error")
+        rootBox.log(t.toString, "error")
+      }
+
+      rootBox.done(ok.getOrElse(false))
       updateCounts()
     }
 
@@ -219,11 +232,17 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
 
       private var _ok = false
 
-      def done(ok: Boolean): Unit = {
-        _ok = ok
+      def done(ok: Try[Boolean]): Unit = {
+        ok.failed.foreach { t =>
+          logger.error("Test framework crashed during test:")
+          logger.trace(t)
+        }
+
+        _ok = ok.getOrElse(false)
+
         updateCounts()
-        box.done(ok)
-        if (!ok) {
+        box.done(_ok)
+        if (!_ok) {
           box.expand()
           nextFailureLocation.setNextSibling(box)
           nextFailureLocation = box
