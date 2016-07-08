@@ -125,8 +125,9 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
 
     private val rootBox = new RootBox(excludedTaskDefs.size, totalTestCount)
 
-    if (excludedTaskDefs.nonEmpty)
-      new ExcludedTestBox()
+    private[this] var nextFailureLocation: MoveTarget =
+      if (excludedTaskDefs.nonEmpty) new ExcludedTestBox()
+      else rootBox
 
     updateCounts()
 
@@ -179,6 +180,10 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
       def failed: Boolean
     }
 
+    private trait MoveTarget {
+      def setNextSibling(that: TestBox): Unit
+    }
+
     private class RunningTest(val testName: String) extends Test with TestTask {
       private val box = new TestBox(testName)
       box.checkbox.onclick = rootBox.updateCheckbox
@@ -189,8 +194,11 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
         _ok = ok
         updateCounts()
         box.done(ok)
-        if (!ok)
+        if (!ok) {
           box.expand()
+          nextFailureLocation.setNextSibling(box)
+          nextFailureLocation = box
+        }
       }
 
       def selected: Boolean = box.checkbox.checked
@@ -213,7 +221,7 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
       }
     }
 
-    private class TestBox(caption: String) {
+    private class TestBox(caption: String) extends MoveTarget {
       private val box = container.newElement(clss = "test-box")
 
       private val header = box.newElement(clss = "test-box-header")
@@ -242,6 +250,10 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
       def log(msg: String, clss: String): dom.Element =
         body.newElement(clss = s"log $clss", text = msg, tpe = "pre")
 
+      def setNextSibling(that: TestBox): Unit = {
+        this.box.insertAdjacentElement("afterend", that.box)
+      }
+
       private def toggleExpand(): Unit = {
         expanded = !expanded
         expandLink.textContent = if (expanded) "[-]" else "[+]"
@@ -249,7 +261,8 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
       }
     }
 
-    private class RootBox(excludedTestCount: Int, totalTestCount: Int) {
+    private class RootBox(excludedTestCount: Int,
+        totalTestCount: Int) extends MoveTarget {
       private val box = {
         val caption = {
           if (excludedTestCount == 0) {
@@ -296,6 +309,8 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
 
       def log(msg: String, clss: String): Unit = box.log(msg, clss)
 
+      def setNextSibling(that: TestBox): Unit = box.setNextSibling(that)
+
       private def runLink(condition: Test => Boolean): String = {
         // We create an exclude list. Therefore, filterNot
         (runningTests ++ excludedTests)
@@ -306,7 +321,7 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
       }
     }
 
-    private class ExcludedTestBox {
+    private class ExcludedTestBox extends MoveTarget {
       private val box = {
         val count = excludedTaskDefs.size
         new TestBox(s"Excluded Test Suites ($count)")
@@ -321,6 +336,8 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
       for (taskDef <- excludedTaskDefs) {
         excludedTests += new ExcludedTest(taskDef.fullyQualifiedName)
       }
+
+      def setNextSibling(that: TestBox): Unit = box.setNextSibling(that)
 
       private class ExcludedTest(val testName: String) extends Test {
         private val logLine = box.log("", "info")
@@ -379,6 +396,7 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
       var className: String = js.native
       val style: Style = js.native
       var onclick: js.Function0[Boolean] = js.native
+      def insertAdjacentElement(location: String, element: Element): Unit = js.native
     }
 
     @js.native
