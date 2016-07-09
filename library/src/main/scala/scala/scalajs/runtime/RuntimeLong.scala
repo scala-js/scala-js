@@ -281,12 +281,24 @@ final class RuntimeLong(val lo: Int, val hi: Int)
   }
 
   @inline
-  def +(b: RuntimeLong): RuntimeLong =
-    inline_+(a.lo, a.hi, b.lo, b.hi)
+  def +(b: RuntimeLong): RuntimeLong = {
+    val alo = a.lo
+    val ahi = a.hi
+    val bhi = b.hi
+    val lo = alo + b.lo
+    new RuntimeLong(lo,
+        if (inlineUnsignedInt_<(lo, alo)) ahi + bhi + 1 else ahi + bhi)
+  }
 
   @inline
-  def -(b: RuntimeLong): RuntimeLong =
-    inline_-(a.lo, a.hi, b.lo, b.hi)
+  def -(b: RuntimeLong): RuntimeLong = {
+    val alo = a.lo
+    val ahi = a.hi
+    val bhi = b.hi
+    val lo = alo - b.lo
+    new RuntimeLong(lo,
+        if (inlineUnsignedInt_>(lo, alo)) ahi - bhi - 1 else ahi - bhi)
+  }
 
   @inline
   def *(b: RuntimeLong): RuntimeLong = {
@@ -799,7 +811,8 @@ object RuntimeLong {
      */
     while (shift >= 0 && (remHi & UnsignedSafeDoubleHiMask) != 0) {
       if (inlineUnsigned_>=(remLo, remHi, bShiftLo, bShiftHi)) {
-        val newRem = inline_-(remLo, remHi, bShiftLo, bShiftHi)
+        val newRem =
+          new RuntimeLong(remLo, remHi) - new RuntimeLong(bShiftLo, bShiftHi)
         remLo = newRem.lo
         remHi = newRem.hi
         if (shift < 32)
@@ -819,10 +832,8 @@ object RuntimeLong {
       val bDouble = asUnsignedSafeDouble(blo, bhi)
 
       if (ask != AskRemainder) {
-        val rem_div_bDouble = remDouble / bDouble
-        val newQuot = inline_+(quotLo, quotHi,
-            unsignedSafeDoubleLo(rem_div_bDouble),
-            unsignedSafeDoubleHi(rem_div_bDouble))
+        val rem_div_bDouble = fromUnsignedSafeDouble(remDouble / bDouble)
+        val newQuot = new RuntimeLong(quotLo, quotHi) + rem_div_bDouble
         quotLo = newQuot.lo
         quotHi = newQuot.hi
       }
@@ -921,10 +932,6 @@ object RuntimeLong {
       (a ^ 0x80000000) < (b ^ 0x80000000)
 
     @inline
-    def inlineUnsignedInt_<=(a: Int, b: Int): Boolean =
-      (a ^ 0x80000000) <= (b ^ 0x80000000)
-
-    @inline
     def inlineUnsignedInt_>(a: Int, b: Int): Boolean =
       (a ^ 0x80000000) > (b ^ 0x80000000)
 
@@ -947,20 +954,6 @@ object RuntimeLong {
         if (neg) new RuntimeLong(inline_lo_unary_-(lo), inline_hi_unary_-(lo, hi))
         else new RuntimeLong(lo, hi)
       (neg, abs)
-    }
-
-    @inline
-    def inline_+(alo: Int, ahi: Int, blo: Int, bhi: Int): RuntimeLong = {
-      val lo = alo + blo
-      new RuntimeLong(lo,
-          if (inlineUnsignedInt_<(lo, alo)) ahi + bhi + 1 else ahi + bhi)
-    }
-
-    @inline
-    def inline_-(alo: Int, ahi: Int, blo: Int, bhi: Int): RuntimeLong = {
-      val lo = alo - blo
-      new RuntimeLong(lo,
-          if (inlineUnsignedInt_>(lo, alo)) ahi - bhi - 1 else ahi - bhi)
     }
   }
 
