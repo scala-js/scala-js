@@ -2886,21 +2886,70 @@ private[optimizer] abstract class OptimizerCore(
 
       case Int_<< =>
         (lhs, rhs) match {
-          case (_, PreTransLit(IntLiteral(x))) if x % 32 == 0 => lhs
+          case (PreTransLit(IntLiteral(0)), _) =>
+            PreTransBlock(finishTransformStat(rhs), lhs)
+
+          case (PreTransBinaryOp(Int_<<, x, PreTransLit(IntLiteral(y))),
+              PreTransLit(IntLiteral(z))) =>
+            val dist = (y & 31) + (z & 31)
+            if (dist >= 32)
+              PreTransTree(Block(finishTransformStat(x), IntLiteral(0)))
+            else
+              PreTransBinaryOp(Int_<<, x, PreTransLit(IntLiteral(dist)))
+
+          case (_, PreTransLit(IntLiteral(y))) =>
+            val dist = y & 31
+            if (dist == 0)
+              lhs
+            else
+              PreTransBinaryOp(Int_<<, lhs, PreTransLit(IntLiteral(dist)))
 
           case _ => default
         }
 
       case Int_>>> =>
         (lhs, rhs) match {
-          case (_, PreTransLit(IntLiteral(x))) if x % 32 == 0 => lhs
+          case (PreTransLit(IntLiteral(0)), _) =>
+            PreTransBlock(finishTransformStat(rhs), lhs)
+
+          case (PreTransBinaryOp(Int_>>>, x, PreTransLit(IntLiteral(y))),
+              PreTransLit(IntLiteral(z))) =>
+            val dist = (y & 31) + (z & 31)
+            if (dist >= 32)
+              PreTransTree(Block(finishTransformStat(x), IntLiteral(0)))
+            else
+              PreTransBinaryOp(Int_>>>, x, PreTransLit(IntLiteral(dist)))
+
+          case (_, PreTransLit(IntLiteral(y))) =>
+            val dist = y & 31
+            if (dist == 0)
+              lhs
+            else
+              PreTransBinaryOp(Int_>>>, lhs, PreTransLit(IntLiteral(dist)))
 
           case _ => default
         }
 
       case Int_>> =>
         (lhs, rhs) match {
-          case (_, PreTransLit(IntLiteral(x))) if x % 32 == 0 => lhs
+          case (PreTransLit(IntLiteral(0 | -1)), _) =>
+            PreTransBlock(finishTransformStat(rhs), lhs)
+
+          case (PreTransBinaryOp(Int_>>, x, PreTransLit(IntLiteral(y))),
+              PreTransLit(IntLiteral(z))) =>
+            val dist = Math.min((y & 31) + (z & 31), 31)
+            PreTransBinaryOp(Int_>>, x, PreTransLit(IntLiteral(dist)))
+
+          case (PreTransBinaryOp(Int_>>>, x, PreTransLit(IntLiteral(y))),
+              PreTransLit(IntLiteral(_))) if (y & 31) != 0 =>
+            foldBinaryOp(Int_>>>, lhs, rhs)
+
+          case (_, PreTransLit(IntLiteral(y))) =>
+            val dist = y & 31
+            if (dist == 0)
+              lhs
+            else
+              PreTransBinaryOp(Int_>>, lhs, PreTransLit(IntLiteral(dist)))
 
           case _ => default
         }
