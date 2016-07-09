@@ -477,6 +477,87 @@ class RuntimeLongTest {
     assertEquals(-1.71264450938175027E18, lg(-2016996893, -398756124).toDouble)
   }
 
+  @Test def fromDouble(): Unit = {
+    import RuntimeLong.{fromDouble => fromD}
+
+    val twoPow63 = 9.223372036854776E18
+    val twoPow63NextUp = 9.223372036854778E18
+    val twoPow63NextDown = 9.2233720368547748E18
+
+    // Specials
+    assertEquals(lg(0), fromD(0.0))
+    assertEquals(lg(0), fromD(-0.0))
+    assertEquals(lg(0), fromD(Double.NaN))
+    assertEquals(MaxVal, fromD(Double.PositiveInfinity))
+    assertEquals(MinVal, fromD(Double.NegativeInfinity))
+
+    // Corner cases
+    assertEquals(lg(0), fromD(Double.MinPositiveValue))
+    assertEquals(lg(0), fromD(-Double.MinPositiveValue))
+    assertEquals(MaxVal, fromD(twoPow63))
+    assertEquals(MaxVal, fromD(twoPow63NextUp))
+    if (!isInFullOpt) {
+      // GCC incorrectly rewrites the Double constants on the rhs
+      assertEquals(lg(-1024, 2147483647), fromD(twoPow63NextDown))
+      assertEquals(MinVal, fromD(-twoPow63))
+    }
+    assertEquals(MinVal, fromD(-twoPow63NextUp))
+    assertEquals(lg(1024, -2147483648), fromD(-twoPow63NextDown))
+
+    // Absolute value too big
+    assertEquals(MaxVal, fromD(1.5623101234432471E19))
+    assertEquals(MaxVal, fromD(1.0425697303244048E19))
+    assertEquals(MaxVal, fromD(1.500625248806836E19))
+    assertEquals(MinVal, fromD(-1.5623101234432471E19))
+    assertEquals(MinVal, fromD(-1.0425697303244048E19))
+    assertEquals(MinVal, fromD(-1.500625248806836E19))
+
+    // Normal cases
+    assertEquals(lg(-235867169, -1408375), fromD(-6.048920506403873E15))
+    assertEquals(lg(-69250108, 1979931), fromD(8.503743119053764E15))
+    assertEquals(lg(-305079043, 917242), fromD(3.939528382405885E15))
+    assertEquals(lg(687182505, -933310), fromD(-4.008535239847255E15))
+    assertEquals(lg(-268193171, -177333), fromD(-7.61635408727443E14))
+    assertEquals(lg(-1529111384, 564485), fromD(2.424447379938472E15))
+    assertEquals(lg(1128309745, -1082296), fromD(-4.648424796281871E15))
+    assertEquals(lg(-418524847, 1986827), fromD(8.533360864252241E15))
+    assertEquals(lg(615477490, -646039), fromD(-2.774715761463054E15))
+    assertEquals(lg(-1546293262, 815087), fromD(3.500774757068786E15))
+    assertEquals(lg(455797153, -1037726), fromD(-4.456998776411743E15))
+    assertEquals(lg(587409995, 1185272), fromD(5.090705064274507E15))
+    assertEquals(lg(-1405692887, -769407), fromD(-3.304575013039063E15))
+    assertEquals(lg(667130924, 412), fromD(1.770193656876E12))
+    assertEquals(lg(632602096, -506779), fromD(-2.176598598697488E15))
+    assertEquals(lg(1820137888, 955044), fromD(4.101884566378912E15))
+    assertEquals(lg(682339811, 951155), fromD(4.085180300766691E15))
+    assertEquals(lg(1394139649, -1084392), fromD(-4.657426781904383E15))
+    assertEquals(lg(-677499131, 663585), fromD(2.850079490584325E15))
+    assertEquals(lg(805667746, 1417318), fromD(6.087335263699874E15))
+    assertEquals(lg(990918920, -1563103), fromD(-6.713475274360568E15))
+    assertEquals(lg(-1427573595, 969167), fromD(4.162543436756133E15))
+    assertEquals(lg(-699306484, -1852353), fromD(-7.955791959986676E15))
+    assertEquals(lg(-1807820942, 1218020), fromD(5.231358553020274E15))
+    assertEquals(lg(1243383338, 349241), fromD(1.499979916805674E15))
+    assertEquals(lg(-479557118, 1183372), fromD(5.08254785441229E15))
+    assertEquals(lg(1413560577, 654135), fromD(2.809489845729537E15))
+    assertEquals(lg(-2047369879, 1135596), fromD(4.877349929065833E15))
+    assertEquals(lg(-741161617, -1594192), fromD(-6.846998949739153E15))
+    assertEquals(lg(-2115502919, 1443312), fromD(6.198980017388729E15))
+    assertEquals(lg(1015092168, 1152178), fromD(4.948567844262856E15))
+    assertEquals(lg(-1340352375, -863152), fromD(-3.707206656862071E15))
+    assertEquals(lg(1990353383, -2017544), fromD(-8.665283507887641E15))
+    assertEquals(lg(-1683508387, -666397), fromD(-2.862150709693603E15))
+    assertEquals(lg(2095665836, 369587), fromD(1.587366173692588E15))
+    assertEquals(lg(229204175, 77510), fromD(3.32903144317135E14))
+    assertEquals(lg(-1988104885, 1374301), fromD(5.902580156722507E15))
+    assertEquals(lg(-1032158224, -233238), fromD(-1.001746319375376E15))
+    assertEquals(lg(1321723055, -121058), fromD(-5.19938829196113E14))
+    assertEquals(lg(-1959869514, -1892991), fromD(-8.130332101524554E15))
+    assertEquals(lg(-1173650161, -412038), fromD(-1.769686613392113E15))
+    assertEquals(lg(-1692936735, -1697943), fromD(-7.292607053441567E15))
+    assertEquals(lg(-1368921565, 621023), fromD(2.667276401109539E15))
+  }
+
   @Test def comparisons(): Unit = {
     def test(x: RuntimeLong, y: RuntimeLong, expected: Int): Unit = {
       assertEquals(expected, x.compareTo(y).signum)
