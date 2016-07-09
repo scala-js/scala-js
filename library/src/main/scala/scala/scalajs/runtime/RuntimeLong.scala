@@ -438,26 +438,59 @@ object RuntimeLong {
   }
 
   private def fromDoubleImpl(value: Double): Int = {
-    if (value.isNaN) {
-      hiReturn = 0
-      0
-    } else if (value < -TwoPow63) {
+    /* When value is NaN, the conditions of the 3 `if`s are false, and we end
+     * up returning (NaN | 0, (NaN / TwoPow32) | 0), which is correctly (0, 0).
+     */
+
+    if (value < -TwoPow63) {
       hiReturn = 0x80000000
       0
     } else if (value >= TwoPow63) {
       hiReturn = 0x7fffffff
       0xffffffff
     } else {
-      val neg = value < 0
-      val absValue = if (neg) -value else value
-      val lo = rawToInt(absValue)
-      val hi = rawToInt(absValue / TwoPow32)
-      if (neg) {
-        inline_hiReturn_unary_-(lo, hi)
-      } else {
-        hiReturn = hi
-        lo
-      }
+      val rawLo = rawToInt(value)
+      val rawHi = rawToInt(value / TwoPow32)
+
+      /* Magic!
+       *
+       * When value < 0, this should *reasonably* be:
+       *   val absValue = -value
+       *   val absLo = rawToInt(absValue)
+       *   val absHi = rawToInt(absValue / TwoPow32)
+       *   val lo = -absLo
+       *   hiReturn = if (absLo != 0) ~absHi else -absHi
+       *   return lo
+       *
+       * Using the fact that rawToInt(-x) == -rawToInt(x), we can rewrite
+       * absLo and absHi without absValue as:
+       *   val absLo = -rawToInt(value)
+       *             = -rawLo
+       *   val absHi = -rawToInt(value / TwoPow32)
+       *             = -rawHi
+       *
+       * Now, we can replace absLo in the definition of lo and get:
+       *   val lo = -(-rawLo)
+       *          = rawLo
+       *
+       * The `hiReturn` definition can be rewritten as
+       *   hiReturn = if (lo != 0) -absHi - 1 else -absHi
+       *            = if (rawLo != 0) -(-rawHi) - 1 else -(-rawHi)
+       *            = if (rawLo != 0) rawHi - 1 else rawHi
+       *
+       * Now that we do not need absValue, absLo nor absHi anymore, we end
+       * end up with:
+       *   hiReturn = if (rawLo != 0) rawHi - 1 else rawHi
+       *   return rawLo
+       *
+       * When value >= 0, the definitions are simply
+       *   hiReturn = rawToInt(value / TwoPow32) = rawHi
+       *   lo = rawToInt(value) = rawLo
+       *
+       * Combining the negative and positive cases, we get:
+       */
+      hiReturn = if (value < 0 && rawLo != 0) rawHi - 1 else rawHi
+      rawLo
     }
   }
 
