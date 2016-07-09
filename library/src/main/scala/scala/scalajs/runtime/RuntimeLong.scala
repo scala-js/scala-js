@@ -182,38 +182,93 @@ final class RuntimeLong(val lo: Int, val hi: Int)
 
   /** Shift left */
   @inline
-  def <<(n0: Int): RuntimeLong = {
-    val n = n0 & 63
-    val lo = this.lo
-
-    if (n < 32)
-      new RuntimeLong(lo << n, if (n == 0) hi else (lo >>> -n) | (hi << n))
-    else
-      new RuntimeLong(0, lo << n)
+  def <<(n: Int): RuntimeLong = {
+    /* This should *reasonably* be:
+     *   val n1 = n & 63
+     *   if (n1 < 32)
+     *     new RuntimeLong(lo << n1, if (n1 == 0) hi else (lo >>> 32-n1) | (hi << n1))
+     *   else
+     *     new RuntimeLong(0, lo << n1)
+     *
+     * Replacing n1 by its definition, we have:
+     *   if (n & 63 < 32)
+     *     new RuntimeLong(lo << (n & 63),
+     *         if ((n & 63) == 0) hi else (lo >>> 32-(n & 63)) | (hi << (n & 63)))
+     *   else
+     *     new RuntimeLong(0, lo << (n & 63))
+     *
+     * Since the values on the rhs of shifts are always in arithmetic mod 32,
+     * we can get:
+     *   if (n & 63 < 32)
+     *     new RuntimeLong(lo << n, if ((n & 63) == 0) hi else (lo >>> -n) | (hi << n))
+     *   else
+     *     new RuntimeLong(0, lo << n)
+     *
+     * The condition `n & 63 < 32` is equivalent to
+     *   (n & 63) & 32 == 0
+     *   n & (63 & 32) == 0
+     *   n & 32 == 0
+     *
+     * In the then part, we have `n & 32 == 0` hence `n & 63 == n & 31`:
+     *   new RuntimeLong(lo << n, if ((n & 31) == 0) hi else (lo >>> -n) | (hi << n))
+     *
+     * Consider the following portion:
+     *   if ((n & 31) == 0) hi else (lo >>> -n) | (hi << n)
+     * When (n & 31) == 0, `hi == (hi << n)` and therefore we have
+     *   (if ((n & 31) == 0) 0 else (lo >>> -n)) | (hi << n)
+     *
+     * The left part of the |
+     *   if ((n & 31) == 0) 0 else (lo >>> -n)
+     * has the following branchless version:
+     *   lo >>> 1 >>> (31-n)
+     * Indeed, when `n & 31 == 0, we have
+     *   lo >>> 1 >>> 31 == 0
+     * and when `n & 31 != 0`, we know that ((31-n) & 31) < 31, and hence we have
+     *   lo >>> 1 >>> (31-n) == lo >>> (1+31-n) == lo >>> (32-n) == lo >>> -n
+     *
+     * Was it good? We have traded
+     *   if ((n & 31) == 0) hi else (lo >>> -n) | (hi << n)
+     * for
+     *   (lo >>> 1 >>> (31-n)) | (hi << n)
+     * When (n & 31) != 0, which is the common case, we have traded a test
+     * `if ((n & 31) == 0)` for one additional constant shift `>>> 1`. That's
+     * probably worth it performance-wise. The code is also shorter.
+     *
+     * Summarizing, so far we have
+     *   if (n & 32 == 0)
+     *     new RuntimeLong(lo << n, (lo >>> 1 >>> (31-n)) | (hi << n))
+     *   else
+     *     new RuntimeLong(0, lo << n)
+     *
+     * If we distribute the condition in the lo and hi arguments of the
+     * constructors, we get a version with only one RuntimeLong output, which
+     * avoids reification as records by the optimizer, yielding shorter code.
+     * It is potentially slightly less efficient, except when `n` is constant,
+     * which is often the case anyway.
+     *
+     * Finally we have:
+     */
+    new RuntimeLong(
+        if ((n & 32) == 0) lo << n else 0,
+        if ((n & 32) == 0) (lo >>> 1 >>> (31-n)) | (hi << n) else lo << n)
   }
 
   /** Logical shift right */
   @inline
-  def >>>(n0: Int): RuntimeLong = {
-    val n = n0 & 63
-    val hi = this.hi
-
-    if (n < 32)
-      new RuntimeLong(if (n == 0) lo else (lo >>> n) | (hi << -n), hi >>> n)
-    else
-      new RuntimeLong(hi >>> n, 0)
+  def >>>(n: Int): RuntimeLong = {
+    // This derives in a similar way as in <<
+    new RuntimeLong(
+        if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31-n)) else hi >>> n,
+        if ((n & 32) == 0) hi >>> n else 0)
   }
 
   /** Arithmetic shift right */
   @inline
-  def >>(n0: Int): RuntimeLong = {
-    val n = n0 & 63
-    val hi = this.hi
-
-    if (n < 32)
-      new RuntimeLong(if (n == 0) lo else (lo >>> n) | (hi << -n), hi >> n)
-    else
-      new RuntimeLong(hi >> n, hi >> 31)
+  def >>(n: Int): RuntimeLong = {
+    // This derives in a similar way as in <<
+    new RuntimeLong(
+        if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31-n)) else hi >> n,
+        if ((n & 32) == 0) hi >> n else hi >> 31)
   }
 
   // Arithmetic operations
@@ -611,13 +666,8 @@ object RuntimeLong {
     } else {
       if (bhi == 0 && isPowerOfTwo_IKnowItsNot0(blo)) {
         val pow = log2OfPowerOfTwo(blo)
-        if (pow == 0) {
-          hiReturn = ahi
-          alo
-        } else {
-          hiReturn = ahi >>> pow
-          (alo >>> pow) | (ahi << -pow)
-        }
+        hiReturn = ahi >>> pow
+        (alo >>> pow) | (ahi << 1 << (31-pow))
       } else if (blo == 0 && isPowerOfTwo_IKnowItsNot0(bhi)) {
         val pow = log2OfPowerOfTwo(bhi)
         hiReturn = 0
@@ -726,7 +776,7 @@ object RuntimeLong {
 
     var shift =
       inlineNumberOfLeadingZeros(blo, bhi) - inlineNumberOfLeadingZeros(alo, ahi)
-    val initialBShift = inline_<<(blo, bhi, shift)
+    val initialBShift = new RuntimeLong(blo, bhi) << shift
     var bShiftLo = initialBShift.lo
     var bShiftHi = initialBShift.hi
     var remLo = alo
@@ -758,7 +808,7 @@ object RuntimeLong {
           quotHi |= (1 << shift) // == (1 << (shift - 32))
       }
       shift -= 1
-      val newBShift = inline_>>>(bShiftLo, bShiftHi, 1)
+      val newBShift = new RuntimeLong(bShiftLo, bShiftHi) >>> 1
       bShiftLo = newBShift.lo
       bShiftHi = newBShift.hi
     }
@@ -897,22 +947,6 @@ object RuntimeLong {
         if (neg) new RuntimeLong(inline_lo_unary_-(lo), inline_hi_unary_-(lo, hi))
         else new RuntimeLong(lo, hi)
       (neg, abs)
-    }
-
-    @inline
-    def inline_<<(lo: Int, hi: Int, n: Int): RuntimeLong = {
-      if (n < 32)
-        new RuntimeLong(lo << n, if (n == 0) hi else (lo >>> -n) | (hi << n))
-      else
-        new RuntimeLong(0, lo << n)
-    }
-
-    @inline
-    def inline_>>>(lo: Int, hi: Int, n: Int): RuntimeLong = {
-      if (n < 32)
-        new RuntimeLong(if (n == 0) lo else (lo >>> n) | (hi << -n), hi >>> n)
-      else
-        new RuntimeLong(hi >>> n, 0)
     }
 
     @inline
