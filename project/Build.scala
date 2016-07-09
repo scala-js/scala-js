@@ -564,7 +564,7 @@ object Build {
       base = file("tools/jvm"),
       settings = commonToolsSettings ++ Seq(
           libraryDependencies ++= Seq(
-              "com.google.javascript" % "closure-compiler" % "v20130603",
+              "com.google.javascript" % "closure-compiler" % "v20160517",
               "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit"),
               "com.novocode" % "junit-interface" % "0.9" % "test"
           )
@@ -1502,7 +1502,7 @@ object Build {
               Seq(
                 "org.scala-sbt" % "sbt" % sbtVersion.value,
                 "org.scala-lang.modules" %% "scala-partest" % "1.0.13",
-                "com.google.javascript" % "closure-compiler" % "v20130603",
+                "com.google.javascript" % "closure-compiler" % "v20160517",
                 "io.apigee" % "rhino" % "1.7R5pre4",
                 "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit")
               )
