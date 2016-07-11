@@ -8,6 +8,10 @@ object BinaryIncompatibilities {
   val Tools = Seq(
       // private, not an issue
       ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.checker.IRChecker#Env.withLocals"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.checker.IRChecker#Env.withLocal"),
+      ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#Env.this"),
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.transformStat"),
