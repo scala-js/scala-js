@@ -44,10 +44,22 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
      * of a test. While this is reasonable in most cases, there could be a test
      * that is run by multiple test frameworks.
      */
-    val testFilter: TaskDef => Boolean = {
+    val (testFilter, optExcludedHash): (TaskDef => Boolean, Option[Int])  = {
       val search = dom.document.location.search.stripPrefix("?")
-      val excludeSet = search.split("&").map(decodeURIComponent).toSet
-      t => !excludeSet.contains(t.fullyQualifiedName)
+      search.split("&").map(decodeURIComponent).toList match {
+        case "i" :: excludedHash :: included =>
+          val includeSet = included.toSet
+          (t => includeSet.contains(t.fullyQualifiedName),
+              Some(excludedHash.toInt))
+
+        case "e" :: excluded =>
+          val excludeSet = excluded.toSet
+          (t => !excludeSet.contains(t.fullyQualifiedName), None)
+
+        case _ =>
+          // Invalid parameter. Run everything.
+          (_ => true, None)
+      }
     }
 
     val allTests = TestDetector.detectTests()
@@ -56,6 +68,12 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
     val excludedTests = allTests.flatMap(_._2.filterNot(testFilter))
 
     val ui = new UI(excludedTests, totalTestCount)
+
+    // Warn if test set changed.
+    def excludedHash = excludedTests.map(_.fullyQualifiedName).toSet.##
+    if (optExcludedHash.exists(_ != excludedHash)) {
+      ui.warnTestSetChanged()
+    }
 
     val oks = for {
       (framework, taskDefs) <- allTests
@@ -145,6 +163,17 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
       _done = true
       rootBox.done(ok)
       updateCounts()
+    }
+
+    def warnTestSetChanged(): Unit = {
+      val line = rootBox.log("", "warn")
+
+      // Note: The following is not entirely true. The warning will also appear
+      // if tests have been removed.
+      line.newTextNode("There are new excluded tests in your project. You " +
+        "may wish to ")
+      line.newLink("?", "Run all")
+      line.newTextNode(" to rediscover all available tests.")
     }
 
     def reportFrameworkResult(ok: Boolean,
@@ -294,15 +323,24 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
       val updateCheckbox: js.Function0[Boolean] =
         checkboxUpdater(runningTests, box.checkbox)
 
-      def log(msg: String, clss: String): Unit = box.log(msg, clss)
+      def log(msg: String, clss: String): dom.Element = box.log(msg, clss)
 
       private def runLink(condition: Test => Boolean): String = {
-        // We create an exclude list. Therefore, filterNot
-        (runningTests ++ excludedTests)
-          .filterNot(condition)
-          .map(_.testName)
-          .map(encodeURIComponent)
-          .mkString("?", "&", "")
+        val (included, excluded) =
+          (runningTests ++ excludedTests).partition(condition)
+
+        val params = {
+          if (included.size < excluded.size) {
+            // Create an include list.
+            val excludedHash = excluded.map(_.testName).toSet.##.toString
+            Seq("i", excludedHash) ++ included.map(_.testName)
+          } else {
+            // Create an exclude list.
+            "e" +: excluded.map(_.testName)
+          }
+        }
+
+        params.map(encodeURIComponent).mkString("?", "&", "")
       }
     }
 
