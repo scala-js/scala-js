@@ -96,6 +96,27 @@ class OptimizerTest {
         b.result())
   }
 
+  @Test def must_not_break_bitset_oreq_issue_2523(): Unit = {
+    import scala.collection.mutable.BitSet
+
+    val b0 = BitSet(5, 6)
+    val b1 = BitSet(7)
+    val b2 = BitSet(1, 5)
+    val b3 = BitSet(6, 7)
+    val b4 = BitSet(6, 7)
+
+    b1 |= b0
+    assertEquals("BitSet(5, 6, 7)", b1.toString)
+    b2 &= b0
+    assertEquals("BitSet(5)", b2.toString)
+    b3 ^= b0
+    assertEquals("BitSet(5, 7)", b3.toString)
+    b4 &~= b0
+    assertEquals("BitSet(7)", b4.toString)
+    b0 ^= b0 |= b1
+    assertEquals("BitSet(5, 6, 7)", b0.toString)
+  }
+
   // +[string] constant folding
 
   @Test def must_not_break_when_folding_two_constant_strings(): Unit = {
@@ -304,6 +325,39 @@ class OptimizerTest {
 }
 
 object OptimizerTest {
+
+  import scala.collection.mutable.BitSet
+
+  implicit class BitSet210Compat(val self: BitSet) extends AnyVal {
+    private def assert210(): Unit =
+      assert(scalaVersion.startsWith("2.10."))
+
+    def |=(that: BitSet): BitSet = {
+      assert210()
+      self ++= that
+    }
+
+    def &=(that: BitSet): BitSet = {
+      assert210()
+      for (elem <- self) {
+        if (!that.contains(elem))
+          self -= elem
+      }
+      self
+    }
+
+    def ^=(that: BitSet): BitSet = {
+      assert210()
+      val result = self ^ that
+      self.clear()
+      self ++= result
+    }
+
+    def &~=(that: BitSet): BitSet = {
+      assert210()
+      self --= that
+    }
+  }
 
   @inline
   class InlineClassDependentFields(val x: Int) {
