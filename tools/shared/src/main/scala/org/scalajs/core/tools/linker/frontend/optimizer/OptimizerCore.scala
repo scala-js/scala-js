@@ -2291,16 +2291,25 @@ private[optimizer] abstract class OptimizerCore(
     assert(hasInlineableRTLongImplementation,
         "Cannot call expandLongValue if RuntimeLong is not @inline")
 
-    /* To force the expansion, we use a trick: we insert a "no-op"
-     * `0L | value`, which we expand with `expandLongOps`. This causes the
-     * implementation of `RuntimeLong.|` to be inlined, which simply
-     * creates a new, stack-allocated, RuntimeLong with the same content.
+    /* To force the expansion, we first store the `value` in a temporary
+     * variable of type `RuntimeLong` (not `Long`, otherwise we would go into
+     * infinite recursion), then we create a `new RuntimeLong` with its lo and
+     * hi part. Basically, we're doing:
      *
-     * We could do this better if RuntimeLong had a "copy constructor", or a
-     * `copy` method. But this implementation is short.
+     * val t: RuntimeLong = value
+     * new RuntimeLong(t.lo__I(), t.hi__I())
      */
-    expandLongOps(PreTransBinaryOp(BinaryOp.Long_|,
-        PreTransLit(LongLiteral(0L)), value))(cont)
+    val rtLongClassType = ClassType(LongImpl.RuntimeLongClass)
+    val rtLongBinding = Binding("t", None, rtLongClassType,
+        mutable = false, value)
+    withBinding(rtLongBinding) { (scope1, cont1) =>
+      implicit val scope = scope1
+      val tRef = VarRef(Ident("t", None))(rtLongClassType)
+      val newTree = New(rtLongClassType, Ident(LongImpl.initFromParts),
+          List(Apply(tRef, Ident("lo__I"), Nil)(IntType),
+              Apply(tRef, Ident("hi__I"), Nil)(IntType)))
+      pretransformExpr(newTree)(cont1)
+    } (cont)
   }
 
   private def expandLongOps(pretrans: PreTransform)(cont: PreTransCont)(
