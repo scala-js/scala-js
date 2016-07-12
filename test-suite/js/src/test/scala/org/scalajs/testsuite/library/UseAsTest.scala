@@ -225,6 +225,40 @@ class UseAsScalaTypesTest {
     js.use(new A).as[JSVars]
   }
 
+  @Test def should_support_abstract_members_class(): Unit = {
+    abstract class AbstractFieldsClass {
+      @JSExport
+      def a: Int
+      @JSExport
+      def a_=(x: Int): Unit
+
+      @JSExport("b")
+      var fooB: String
+
+      @JSExport
+      var c: js.Object
+    }
+
+    js.use(null: AbstractFieldsClass).as[JSVars]
+  }
+
+  @Test def should_support_abstract_members_trait(): Unit = {
+    trait AbstractFieldsTrait {
+      @JSExport
+      def a: Int
+      @JSExport
+      def a_=(x: Int): Unit
+
+      @JSExport("b")
+      var fooB: String
+
+      @JSExport
+      var c: js.Object
+    }
+
+    js.use(null: AbstractFieldsTrait).as[JSVars]
+  }
+
   @Test def should_support_basic_default_arguments(): Unit = {
     @JSExportAll
     class A {

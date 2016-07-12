@@ -327,7 +327,9 @@ private[scalajs] object UseAsMacros {
      *  Looks on accessed field if this is an accessor
      */
     private def memberAnnotations(sym: MethodSymbol): List[Annotation] = {
-      val trgSym = if (sym.isAccessor) sym.accessed else sym
+      val trgSym =
+        if (sym.isAccessor && sym.accessed != NoSymbol) sym.accessed
+        else sym
 
       // Force typeSignature to calculate annotations
       trgSym.typeSignature

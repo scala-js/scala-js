@@ -153,6 +153,46 @@ class ExportsTest {
     assertEquals(43, foo.y)
   }
 
+  @Test def exports_for_abstract_properties_in_class_issue_2513(): Unit = {
+    abstract class Foo {
+      @JSExport
+      val x: Int
+      @JSExport
+      var y: Int
+    }
+
+    class Bar extends Foo {
+      val x: Int = 5
+      var y: Int = 6
+    }
+
+    val bar = (new Bar).asInstanceOf[js.Dynamic]
+    assertEquals(5, bar.x)
+    assertEquals(6, bar.y)
+    bar.y = 7
+    assertEquals(7, bar.y)
+  }
+
+  @Test def exports_for_abstract_properties_in_trait_issue_2513(): Unit = {
+    trait Foo {
+      @JSExport
+      val x: Int
+      @JSExport
+      var y: Int
+    }
+
+    class Bar extends Foo {
+      val x: Int = 5
+      var y: Int = 6
+    }
+
+    val bar = (new Bar).asInstanceOf[js.Dynamic]
+    assertEquals(5, bar.x)
+    assertEquals(6, bar.y)
+    bar.y = 7
+    assertEquals(7, bar.y)
+  }
+
   @Test def overloaded_exports_for_methods(): Unit = {
     class Foo {
       @JSExport("foobar")
@@ -773,12 +813,32 @@ class ExportsTest {
   }
 
   @Test def exporting_constructor_parameter_fields_issue_970(): Unit = {
+    class Foo(@JSExport val x: Int, @JSExport var y: Int)
+
+    val foo = new Foo(5, 6).asInstanceOf[js.Dynamic]
+    assertEquals(5, foo.x)
+    assertEquals(6, foo.y)
+    foo.y = 7
+    assertEquals(7, foo.y)
+  }
+
+  @Test def exporting_case_class_fields_issue_970(): Unit = {
+    case class Bar(@JSExport x: Int, @JSExport var y: Int)
+
+    val bar = Bar(5, 6).asInstanceOf[js.Dynamic]
+    assertEquals(5, bar.x)
+    assertEquals(6, bar.y)
+    bar.y = 7
+    assertEquals(7, bar.y)
+  }
+
+  @Test def exporting_constructor_parameter_fields_issue_970_old(): Unit = {
     class Foo(@(JSExport @meta.field) val x: Int)
     val foo = (new Foo(1)).asInstanceOf[js.Dynamic]
     assertEquals(1, foo.x)
   }
 
-  @Test def exporting_case_class_fields_issue_970(): Unit = {
+  @Test def exporting_case_class_fields_issue_970_old(): Unit = {
     case class Foo(@(JSExport @meta.field) x: Int)
     val foo = (new Foo(1)).asInstanceOf[js.Dynamic]
     assertEquals(1, foo.x)

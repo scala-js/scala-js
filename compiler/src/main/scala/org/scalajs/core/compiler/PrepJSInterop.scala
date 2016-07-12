@@ -410,16 +410,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             exp <- exportsOf(sym)
             if !exp.ignoreInvalid
           } {
-            val msg = {
-              val base = "You may not export a local definition"
-              if (sym.owner.isPrimaryConstructor)
-                base + ". To export a (case) class field, use the " +
-                "meta-annotation scala.annotation.meta.field like this: " +
-                "@(JSExport @field)."
-              else
-                base
-            }
-            reporter.error(exp.pos, msg)
+            reporter.error(exp.pos, "You may not export a local definition")
           }
         }
 
