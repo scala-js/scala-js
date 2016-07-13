@@ -1,9 +1,12 @@
-scala/PredefAutoboxingTest.scala
 scala/collection/IndexedSeqOptimizedTest.scala
 scala/collection/IterableViewLikeTest.scala
 scala/collection/ReusableBuildersTest.scala
 scala/collection/SearchingTest.scala
 scala/collection/TraversableOnceTest.scala
+scala/collection/convert/NullSafetyToJavaTest.scala
+scala/collection/convert/NullSafetyToScalaTest.scala
+scala/collection/immutable/HashMapTest.scala
+scala/collection/immutable/ListMapTest.scala
 scala/collection/immutable/QueueTest.scala
 scala/collection/immutable/RangeConsistencyTest.scala
 scala/collection/immutable/SetTest.scala
@@ -17,9 +20,11 @@ scala/collection/mutable/LinkedHashSetTest.scala
 scala/collection/mutable/SetLikeTest.scala
 scala/collection/mutable/UnrolledBufferTest.scala
 scala/collection/mutable/VectorTest.scala
+scala/lang/primitives/PredefAutoboxingTest.scala
 scala/math/BigIntTest.scala
 scala/math/NumericTest.scala
 scala/math/OrderingTest.scala
+scala/runtime/ZippedTest.scala
 scala/tools/nsc/SampleTest.scala
 scala/tools/testing/AssertUtil.scala
 scala/tools/testing/TempDir.scala

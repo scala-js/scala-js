@@ -27,11 +27,8 @@ class ClassTest {
   }
 
   @Test def wellKnownClasses(): Unit = {
-    if (System.getProperty("scalac.hasBoxedUnitBug") == null) {
-      // Can't run on 2.12.0-M4.
-      assertSame(classOf[Unit], scala.runtime.BoxedUnit.TYPE)
-      assertSame(classOf[Unit], java.lang.Void.TYPE)
-    }
+    assertSame(classOf[Unit], scala.runtime.BoxedUnit.TYPE)
+    assertSame(classOf[Unit], java.lang.Void.TYPE)
     assertSame(classOf[Boolean], java.lang.Boolean.TYPE)
     assertSame(classOf[Char], java.lang.Character.TYPE)
     assertSame(classOf[Byte], java.lang.Byte.TYPE)
@@ -41,11 +38,8 @@ class ClassTest {
     assertSame(classOf[Float], java.lang.Float.TYPE)
     assertSame(classOf[Double], java.lang.Double.TYPE)
 
-    if (System.getProperty("scalac.hasBoxedUnitBug") == null) {
-      // Can't run on 2.12.0-M4.
-      assertNotSame(classOf[java.lang.Void], scala.runtime.BoxedUnit.TYPE)
-      assertNotSame(classOf[java.lang.Void], java.lang.Void.TYPE)
-    }
+    assertNotSame(classOf[java.lang.Void], scala.runtime.BoxedUnit.TYPE)
+    assertNotSame(classOf[java.lang.Void], java.lang.Void.TYPE)
     assertNotSame(classOf[java.lang.Boolean], java.lang.Boolean.TYPE)
     assertNotSame(classOf[java.lang.Character], java.lang.Character.TYPE)
     assertNotSame(classOf[java.lang.Byte], java.lang.Byte.TYPE)

@@ -4,5 +4,4 @@
 # BlacklistedTests.txt
 
 # Bug with BoxedUnit/void
-run/t5568.scala
-run/t6318_primitives.scala
+run/t9516.scala

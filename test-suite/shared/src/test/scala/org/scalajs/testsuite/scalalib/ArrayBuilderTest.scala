@@ -191,8 +191,6 @@ class ArrayBuilderTest {
   }
 
   @Test def Unit_zeros_inline(): Unit = {
-    assumeFalse("Can't run on 2.12.0-M4.",
-        System.getProperty("scalac.hasBoxedUnitBug") != null)
     val a = zerosInline[Unit](3)
     assertSame(classOf[Array[Unit]], a.getClass)
     assertEquals(3, a.length)
@@ -203,8 +201,6 @@ class ArrayBuilderTest {
   }
 
   @Test def Unit_zeros_noinline(): Unit = {
-    assumeFalse("Can't run on 2.12.0-M4.",
-        System.getProperty("scalac.hasBoxedUnitBug") != null)
     val a = zerosNoInline[Unit](3)
     assertSame(classOf[Array[Unit]], a.getClass)
     assertEquals(3, a.length)

@@ -64,7 +64,7 @@ object Build {
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.6", "2.11.8", "2.12.0-M4")
+    Set("2.10.6", "2.11.8", "2.12.0-M5")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -370,6 +370,32 @@ object Build {
             Seq(s"-Xplugin:$jar")
           }
         }
+      ).withScalaJUnitMixinPlugin
+    }
+
+    def withScalaJUnitMixinPlugin: Project = {
+      project.settings(
+        ivyConfigurations += config("test-plugin").hide,
+        scalacOptions in Test ++= {
+          val report = update.value
+          val jars = report.select(configurationFilter("test-plugin"))
+          for {
+            jar <- jars
+            jarPath = jar.getPath
+            if jarPath.contains("plugin")
+          } yield {
+            s"-Xplugin:$jarPath"
+          }
+        },
+        libraryDependencies ++= {
+          if (scalaVersion.value.startsWith("2.10.") ||
+              scalaVersion.value.startsWith("2.11.")) {
+            Seq.empty
+          } else {
+            Seq("org.scala-js" % "scala-junit-mixin-plugin" % "0.1.0" %
+                "test-plugin" cross CrossVersion.full)
+          }
+        }
       )
     }
 
@@ -419,7 +445,7 @@ object Build {
         "2.11.6",
         "2.11.7",
         "2.11.8",
-        "2.12.0-M4"
+        "2.12.0-M5"
       ),
       // JDK version we are running with
       javaVersion in Global := {
@@ -613,18 +639,9 @@ object Build {
               yield s""""${escapeJS(f.getAbsolutePath)}""""
           }
 
-          val scalacBoxingUnitBugProp = if (scalaVersion.value != "2.12.0-M4") {
-            ""
-          } else {
-            /* 2.12.0-M4 introduced this bug, this should be removed in 2.12.0-M5
-             * with all references to "scalac.hasBoxedUnitBug" in the tests
-             */
-            """"scalac.hasBoxedUnitBug": "true","""
-          }
           val scalaJSEnv = {
             s"""
             {"javaSystemProperties": {
-              $scalacBoxingUnitBugProp
               "scalajs.scalaVersion": "${scalaVersion.value}"
             }}
             """
@@ -1361,14 +1378,6 @@ object Build {
             fullName
         })),
 
-        /* 2.12.0-M4 introduced this bug, this should be removed in 2.12.0-M5
-         * with all references to "scalac.hasBoxedUnitBug" in the tests
-         */
-        javaOptions in Test ++= {
-          if (scalaVersion.value != "2.12.0-M4") Nil
-          else Seq("-Dscalac.hasBoxedUnitBug=true")
-        },
-
         javaOptions in Test += "-Dscalajs.scalaVersion=" + scalaVersion.value,
 
         /* Generate a scala source file that throws exceptions in
@@ -1427,7 +1436,7 @@ object Build {
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.11" % "test"
     )
-  )
+  ).withScalaJUnitMixinPlugin
 
   lazy val noIrCheckTest: Project = Project(
       id = "noIrCheckTest",
@@ -1501,7 +1510,12 @@ object Build {
             if (shouldPartest.value)
               Seq(
                 "org.scala-sbt" % "sbt" % sbtVersion.value,
-                "org.scala-lang.modules" %% "scala-partest" % "1.0.13",
+                {
+                  if (scalaVersion.value.startsWith("2.11."))
+                    "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
+                  else
+                    "org.scala-lang.modules" %% "scala-partest" % "1.0.17"
+                },
                 "com.google.javascript" % "closure-compiler" % "v20130603",
                 "io.apigee" % "rhino" % "1.7R5pre4",
                 "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit")

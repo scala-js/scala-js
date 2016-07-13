@@ -781,11 +781,11 @@ class JSExportTest extends DirectTest with TestHelpers {
       def foo(x: Int, y: Int) = 1
     }
     """ hasWarns
-    """
-      |newSource1.scala:5: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+    s"""
+      |newSource1.scala:5: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
       |      def foo(x: Int, y: Int) = 1
       |          ^
-      |newSource1.scala:4: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+      |newSource1.scala:4: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
       |      @JSExportNamed
       |       ^
     """
@@ -806,18 +806,18 @@ class JSExportTest extends DirectTest with TestHelpers {
       override def foo(x: Int, y: Int) = 2
     }
     """ hasErrors
-    """
-      |newSource1.scala:5: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+    s"""
+      |newSource1.scala:5: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
       |      def foo(x: Int, y: Int) = 1
       |          ^
-      |newSource1.scala:4: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+      |newSource1.scala:4: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
       |      @JSExportNamed
       |       ^
-      |newSource1.scala:9: error: overriding method $js$exported$meth$foo in class A of type (namedArgs: Any)Any;
-      | method $js$exported$meth$foo cannot override final member
+      |newSource1.scala:9: error: overriding method $$js$$exported$$meth$$foo in class A of type (namedArgs: Any)Any;
+      | method $$js$$exported$$meth$$foo cannot override final member
       |      @JSExportNamed
       |       ^
-      |newSource1.scala:10: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+      |newSource1.scala:10: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
       |      override def foo(x: Int, y: Int) = 2
       |                   ^
     """
@@ -899,11 +899,11 @@ class JSExportTest extends DirectTest with TestHelpers {
       def foo(a: Int*) = 1
     }
     """ hasErrors
-    """
-      |newSource1.scala:5: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+    s"""
+      |newSource1.scala:5: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
       |      def foo(a: Int*) = 1
       |          ^
-      |newSource1.scala:4: warning: class JSExportNamed in package annotation is deprecated: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
+      |newSource1.scala:4: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
       |      @JSExportNamed
       |       ^
       |newSource1.scala:4: error: You may not name-export a method with a *-parameter
@@ -1068,4 +1068,9 @@ class JSExportTest extends DirectTest with TestHelpers {
 
   }
 
+  private def since(v: String): String = {
+    val version = scala.util.Properties.versionNumberString
+    if (version.startsWith("2.10.") || version.startsWith("2.11.")) ""
+    else s" (since $v)"
+  }
 }
