@@ -137,6 +137,9 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       assemble(infoInput, getTree, analysis)
     }
 
+    // Make sure we don't export to the same name twice.
+    checkConflictingExports(linkResult, logger, bypassLinkingErrors)
+
     if (checkIR) {
       logger.time("Linker: Check IR") {
         if (linkResult.isComplete) {
@@ -432,6 +435,34 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     }.getOrElse {
       throw new AssertionError(
           s"Cannot find $methodName in ${classInfo.encodedName}")
+    }
+  }
+
+  private def checkConflictingExports(unit: LinkingUnit, logger: Logger,
+      bypassLinkingErrors: Boolean): Unit = {
+    val namesAndClasses = for {
+      classDef <- unit.classDefs
+      name <- classDef.topLevelExportNames
+    } yield {
+      name -> classDef
+    }
+
+    val level = if (bypassLinkingErrors) Level.Warn else Level.Error
+    val errors = for {
+      (name, namesAndClasses) <- namesAndClasses.groupBy(_._1)
+      if namesAndClasses.size > 1
+    } yield {
+      logger.log(level, s"Conflicting top-level exports to $name from the " +
+            "following classes:")
+      for ((_, linkedClass) <- namesAndClasses) {
+        logger.log(level, s"- ${linkedClass.fullName}")
+      }
+
+      ()
+    }
+
+    if (errors.nonEmpty && !bypassLinkingErrors) {
+      sys.error("There were conflicting exports.")
     }
   }
 }
