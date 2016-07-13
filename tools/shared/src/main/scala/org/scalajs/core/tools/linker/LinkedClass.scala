@@ -61,6 +61,13 @@ final class LinkedClass(
   def encodedName: String = name.name
   def isExported: Boolean = classExports.nonEmpty
 
+  /** Names this class / module is exported under */
+  def topLevelExportNames: List[String] = classExports.collect {
+    case ConstructorExportDef(name, _, _) => name
+    case ModuleExportDef(name)            => name
+    case JSClassExportDef(name)           => name
+  }
+
   def fullName: String = Definitions.decodeClassName(encodedName)
 
   def toInfo: Infos.ClassInfo = {
