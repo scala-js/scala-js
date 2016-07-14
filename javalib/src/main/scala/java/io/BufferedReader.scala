@@ -17,7 +17,10 @@ class BufferedReader(in: Reader, sz: Int) extends Reader {
   private[this] var validMark = false
 
   override def close(): Unit = {
-    closed = true
+    if (!closed) {
+      closed = true
+      in.close()
+    }
   }
 
   override def mark(readAheadLimit: Int): Unit = {
@@ -105,14 +108,19 @@ class BufferedReader(in: Reader, sz: Int) extends Reader {
   }
 
   override def skip(n: Long): Long = {
-    if (n < 0) throw new IllegalArgumentException("n negative")
-    else if (pos < end) {
-      val count = Math.min(n, end - pos).toInt
-      pos += count
-      count.toLong
+    if (n < 0) {
+      throw new IllegalArgumentException("n negative")
     } else {
-      validMark = false
-      in.skip(n)
+      ensureOpen()
+
+      if (pos < end) {
+        val count = Math.min(n, end - pos).toInt
+        pos += count
+        count.toLong
+      } else {
+        validMark = false
+        in.skip(n)
+      }
     }
   }
 

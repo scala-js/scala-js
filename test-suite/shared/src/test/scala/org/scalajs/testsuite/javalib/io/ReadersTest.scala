@@ -114,7 +114,42 @@ class BufferedReaderTest {
   val str = "line1\nline2\r\n\nline4\rline5"
   def newReader: BufferedReader = new BufferedReader(new StringReader(str), 3)
 
-  @Test def should_provide_read()(): Unit = {
+  @Test def close(): Unit = {
+    class UnderlyingReader extends StringReader(str) {
+      var closeCount: Int = 0
+
+      override def close(): Unit = {
+        closeCount += 1
+        /* Do not call super.close(), to ensure IOExceptions come from
+         * BufferedReader, and not the underlying reader.
+         */
+      }
+    }
+
+    val underlying = new UnderlyingReader
+    val r = new BufferedReader(underlying)
+    r.read()
+    assertEquals(0, underlying.closeCount)
+    r.close()
+    assertEquals(1, underlying.closeCount)
+
+    // close() actually prevents further use of the reader
+    assertThrows(classOf[IOException], r.mark(1))
+    assertThrows(classOf[IOException], r.read())
+    assertThrows(classOf[IOException], r.read(new Array[Char](1), 0, 1))
+    assertThrows(classOf[IOException], r.read(new Array[Char](1)))
+    assertThrows(classOf[IOException], r.readLine())
+    assertThrows(classOf[IOException], r.ready())
+    assertThrows(classOf[IOException], r.reset())
+    assertThrows(classOf[IOException], r.skip(1L))
+    assertThrows(classOf[IllegalArgumentException], r.skip(-1L))
+
+    // close() is idempotent
+    r.close()
+    assertEquals(1, underlying.closeCount)
+  }
+
+  @Test def should_provide_read(): Unit = {
     val r = newReader
 
     for (c <- str) {
