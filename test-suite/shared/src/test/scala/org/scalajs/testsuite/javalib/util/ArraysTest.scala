@@ -602,6 +602,14 @@ class ArraysTest {
     assertArrayEquals(Array[A](B(3), B(4)), bscopyAsA)
   }
 
+  @Test def asList(): Unit = {
+    val list = Arrays.asList(1, 2, 3)
+    assertEquals(list.size(), 3)
+    assertEquals(list.get(0), 1)
+    assertEquals(list.get(1), 2)
+    assertEquals(list.get(2), 3)
+  }
+
   @Test def hashCode_Boolean(): Unit = {
     assertEquals(0, Arrays.hashCode(null: Array[Boolean]))
     assertEquals(1, Arrays.hashCode(Array[Boolean]()))
