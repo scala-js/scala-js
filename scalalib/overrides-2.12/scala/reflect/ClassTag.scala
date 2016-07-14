@@ -101,7 +101,7 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
   // case class accessories
   override def canEqual(x: Any) = x.isInstanceOf[ClassTag[_]]
   override def equals(x: Any) = x.isInstanceOf[ClassTag[_]] && this.runtimeClass == x.asInstanceOf[ClassTag[_]].runtimeClass
-  override def hashCode = scala.runtime.ScalaRunTime.hash(runtimeClass)
+  override def hashCode = runtimeClass.##
   override def toString = {
     def prettyprint(clazz: jClass[_]): String =
       if (clazz.isArray) s"Array[${prettyprint(clazz.getComponentType)}]" else
@@ -130,6 +130,9 @@ object ClassTag {
   def Nothing : ClassTag[scala.Nothing]    = ManifestFactory.Nothing
   def Null    : ClassTag[scala.Null]       = ManifestFactory.Null
 
+  @inline
+  private class GenericClassTag[T](val runtimeClass: jClass[_]) extends ClassTag[T]
+
   def apply[T](runtimeClass1: jClass[_]): ClassTag[T] =
     runtimeClass1 match {
       case java.lang.Byte.TYPE      => ClassTag.Byte.asInstanceOf[ClassTag[T]]
@@ -149,12 +152,8 @@ object ClassTag {
         else if (classOf[scala.runtime.Null$] == runtimeClass1)
           ClassTag.Null.asInstanceOf[ClassTag[T]]
         else
-          new ClassClassTag[T](runtimeClass1)
+          new GenericClassTag[T](runtimeClass1)
     }
-
-  @inline
-  private final class ClassClassTag[T](
-      val runtimeClass: Class[_]) extends ClassTag[T]
 
   def unapply[T](ctag: ClassTag[T]): Option[Class[_]] = Some(ctag.runtimeClass)
 }
