@@ -587,7 +587,7 @@ object Arrays {
       throw new ArrayIndexOutOfBoundsException
   }
 
-  @noinline def asList[T](a: Array[T]): List[T] = {
+  @noinline def asList[T <: AnyRef](a: Array[T]): List[T] = {
     new AbstractList[T] with RandomAccess {
       def size(): Int =
         a.length
