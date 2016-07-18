@@ -399,6 +399,19 @@ object Build {
       )
     }
 
+    def withScalaJSTestNGPlugin: Project = {
+      project.settings(
+        scalacOptions in Test ++= {
+          if (isGeneratingEclipse) {
+            Seq.empty
+          } else {
+            val jar = (packageBin in (testNGPlugin, Compile)).value
+            Seq(s"-Xplugin:$jar")
+          }
+        }
+      )
+    }
+
     /** Depends on library as if (exportJars in library) was set to false. */
     def dependsOnLibraryNoJar: Project = {
       if (isGeneratingEclipse) {
@@ -481,6 +494,8 @@ object Build {
               clean in testInterface,
               clean in jUnitRuntime, clean in jUnitPlugin,
               clean in jUnitTestOutputsJS, clean in jUnitTestOutputsJVM,
+              clean in testNGRuntime, clean in testNGPlugin,
+              clean in testNGTestOutputsJS, clean in testNGTestOutputsJVM,
               clean in examples, clean in helloworld,
               clean in reversi, clean in testingExample,
               clean in testSuite, clean in testSuiteJVM, clean in noIrCheckTest,
@@ -1079,7 +1094,7 @@ object Build {
       )
   ).dependsOn(tools)
 
-  // Test framework
+  // Test interface
   lazy val testInterface = Project(
       id = "testInterface",
       base = file("test-interface"),
@@ -1093,6 +1108,7 @@ object Build {
       )
   ).withScalaJSCompiler.dependsOn(library)
 
+  // Test framework – JUnit
   lazy val jUnitRuntime = Project(
     id = "jUnitRuntime",
     base = file("junit-runtime"),
@@ -1121,7 +1137,6 @@ object Build {
       jUnitRuntime % "test", testInterface % "test"
   )
 
-
   lazy val jUnitTestOutputsJVM = Project(
       id = "jUnitTestOutputsJVM",
       base = file("junit-test/output-jvm"),
@@ -1139,6 +1154,58 @@ object Build {
     base = file("junit-plugin"),
     settings = commonSettings ++ publishSettings ++ fatalWarningsSettings ++ Seq(
       name := "Scala.js JUnit test plugin",
+      crossVersion := CrossVersion.full,
+      libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
+      exportJars := true
+    )
+  )
+
+  // Test framework – TestNG
+  lazy val testNGRuntime = Project(
+    id = "testNGRuntime",
+    base = file("testng-runtime"),
+    settings = commonSettings ++ publishSettings ++ myScalaJSSettings ++
+      fatalWarningsSettings ++ Seq(name := "Scala.js TestNG test runtime")
+  ).withScalaJSCompiler.dependsOn(testInterface)
+
+  val commonTestNGTestOutputsSettings = commonSettings ++ fatalWarningsSettings ++ Seq(
+      publishArtifact in Compile := false,
+      parallelExecution in Test := false,
+      unmanagedSourceDirectories in Test +=
+        baseDirectory.value.getParentFile / "shared/src/test/scala",
+      testOptions in Test ++= Seq(
+          Tests.Filter(_.endsWith("Assertions"))
+      )
+  )
+
+  lazy val testNGTestOutputsJS = Project(
+      id = "testNGTestOutputsJS",
+      base = file("testng-test/output-js"),
+      settings = commonTestNGTestOutputsSettings ++ myScalaJSSettings ++ Seq(
+        name := "Tests for Scala.js TestNG output in JS.",    
+        testFrameworks += new TestFramework("org.scalajs.testng.TestNGFramework")
+      )
+  ).withScalaJSCompiler.withScalaJSTestNGPlugin.dependsOn(
+      testNGRuntime % "test", testInterface % "test"
+  )
+
+
+  lazy val testNGTestOutputsJVM = Project(
+      id = "testNGTestOutputsJVM",
+      base = file("testng-test/output-jvm"),
+      settings = commonTestNGTestOutputsSettings ++ Seq(
+        name := "Tests for Scala.js TestNG output in JVM.",
+        libraryDependencies ++= Seq(
+            "org.scala-sbt" % "test-interface" % "1.0" % "test"
+        )
+      )
+  )
+
+  lazy val testNGPlugin = Project(
+    id = "testNGPlugin",
+    base = file("testng-plugin"),
+    settings = commonSettings ++ publishSettings ++ fatalWarningsSettings ++ Seq(
+      name := "Scala.js TestNG test plugin",
       crossVersion := CrossVersion.full,
       libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
       exportJars := true
