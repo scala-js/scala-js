@@ -1511,7 +1511,10 @@ object Build {
               Seq(
                 "org.scala-sbt" % "sbt" % sbtVersion.value,
                 {
-                  if (scalaVersion.value.startsWith("2.11."))
+                  val v = scalaVersion.value
+                  if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
+                    "org.scala-lang.modules" %% "scala-partest" % "1.0.13"
+                  else if (v.startsWith("2.11."))
                     "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
                   else
                     "org.scala-lang.modules" %% "scala-partest" % "1.0.17"
@@ -1521,6 +1524,15 @@ object Build {
                 "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit")
               )
             else Seq()
+          },
+
+          unmanagedSourceDirectories in Compile += {
+            val sourceRoot = (sourceDirectory in Compile).value.getParentFile
+            val v = scalaVersion.value
+            if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
+              sourceRoot / "main-partest-1.0.13"
+            else
+              sourceRoot / "main-partest-1.0.16"
           },
 
           sources in Compile := {
