@@ -50,6 +50,17 @@ class ConcurrentHashMapTest extends MapTest {
     assertEquals("one", chm.get("ONE"))
   }
 
+  @Test def testPutIfAbsent_issue_2539(): Unit = {
+    val chm = factory.empty[String, String]
+    assertNull(chm.putIfAbsent("abc", "def"))
+    assertEquals("def", chm.get("abc"))
+    assertNull(chm.putIfAbsent("123", "456"))
+    assertEquals("456", chm.get("123"))
+    assertEquals("def", chm.putIfAbsent("abc", "def"))
+    assertEquals("def", chm.putIfAbsent("abc", "ghi"))
+    assertEquals("456", chm.putIfAbsent("123", "789"))
+    assertEquals("def", chm.putIfAbsent("abc", "jkl"))
+  }
 }
 
 object ConcurrentHashMapFactory extends ConcurrentHashMapFactory {
