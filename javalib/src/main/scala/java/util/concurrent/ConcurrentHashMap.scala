@@ -52,10 +52,14 @@ class ConcurrentHashMap[K >: Null, V >: Null]
   }
 
   def putIfAbsent(key: K, value: V): V = {
-    if (key != null && value != null)
-      inner.getOrElseUpdate(Box(key), value)
-    else
+    if (key == null || value == null)
       throw new NullPointerException()
+
+    val bKey = Box(key)
+    inner.get(bKey).getOrElse {
+      inner.put(bKey, value)
+      null
+    }
   }
 
   override def putAll(m: Map[_ <: K, _ <: V]): Unit = {
