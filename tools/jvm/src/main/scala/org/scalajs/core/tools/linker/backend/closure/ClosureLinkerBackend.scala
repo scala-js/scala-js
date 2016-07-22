@@ -75,19 +75,50 @@ final class ClosureLinkerBackend(
     module.add(new CompilerInput(ast, ast.getInputId(), false))
 
     // Compile the module
-    val closureExterns =
-      toClosureSource(ClosureLinkerBackend.ScalaJSExternsFile)
+    val closureExterns = List(
+        toClosureSource(ClosureLinkerBackend.ScalaJSExternsFile),
+        toClosureSource(makeExternsForExports(unit)))
     val options = closureOptions(output.name)
     val compiler = closureCompiler(logger)
 
     val result = logger.time("Closure: Compiler pass") {
       compiler.compileModules(
-          List(closureExterns).asJava, List(module).asJava, options)
+          closureExterns.asJava, List(module).asJava, options)
     }
 
     logger.time("Closure: Write result") {
       writeResult(result, compiler, output)
     }
+  }
+
+  /** Constructs an externs file listing all exported properties in a linking
+   *  unit.
+   *
+   *  This is necessary to avoid name clashes with renamed properties (#2491).
+   */
+  private def makeExternsForExports(linkingUnit: LinkingUnit): VirtualJSFile = {
+    import org.scalajs.core.ir.Trees._
+
+    def exportName(tree: Tree): String = (tree: @unchecked) match {
+      case MethodDef(_, StringLiteral(name), _, _, _) => name
+      case PropertyDef(StringLiteral(name), _, _, _)  => name
+    }
+
+    val exportedPropertyNames = for {
+      classDef <- linkingUnit.classDefs
+      member <- classDef.exportedMembers
+      name = exportName(member.tree)
+      if isValidIdentifier(name)
+    } yield {
+      name
+    }
+
+    val content = new java.lang.StringBuilder
+    for (exportedPropertyName <- exportedPropertyNames.distinct)
+      content.append(s"Object.prototype.$exportedPropertyName = 0;\n")
+
+    new MemVirtualJSFile("ScalaJSExportExterns.js")
+      .withContent(content.toString())
   }
 
   private def closureCompiler(logger: Logger) = {
