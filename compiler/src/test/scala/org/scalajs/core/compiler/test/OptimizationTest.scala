@@ -106,4 +106,70 @@ class OptimizationTest extends JSASTTest {
 
   }
 
+  @Test
+  def switchWithoutGuards: Unit = {
+    """
+    class Test {
+      def switchWithGuardsStat(x: Int, y: Int): Unit = {
+        x match {
+          case 1            => println("one")
+          case 2            => println("two")
+          case z if y > 100 => println("big " + z)
+          case _            => println("None of those")
+        }
+      }
+    }
+    """.hasNot("Labeled block") {
+      case js.Labeled(_, _, _) =>
+    }.has("Match node") {
+      case js.Match(_, _, _) =>
+    }
+  }
+
+  @Test
+  def switchWithGuards: Unit = {
+    // Statement position
+    """
+    class Test {
+      def switchWithGuardsStat(x: Int, y: Int): Unit = {
+        x match {
+          case 1            => println("one")
+          case 2 if y < 10  => println("two special")
+          case 2            => println("two")
+          case 3 if y < 10  => println("three special")
+          case 3 if y > 100 => println("three big special")
+          case z if y > 100 => println("big " + z)
+          case _            => println("None of those")
+        }
+      }
+    }
+    """.hasExactly(1, "default case (\"None of those\")") {
+      case js.StringLiteral("None of those") =>
+    }.has("Match node") {
+      case js.Match(_, _, _) =>
+    }
+
+    // Expression position
+    """
+    class Test {
+      def switchWithGuardsExpr(x: Int, y: Int): Unit = {
+        val message = x match {
+          case 1            => "one"
+          case 2 if y < 10  => "two special"
+          case 2            => "two"
+          case 3 if y < 10  => "three special"
+          case 3 if y > 100 => "three big special"
+          case z if y > 100 => "big " + z
+          case _            => "None of those"
+        }
+        println(message)
+      }
+    }
+    """.hasExactly(1, "default case (\"None of those\")") {
+      case js.StringLiteral("None of those") =>
+    }.has("Match node") {
+      case js.Match(_, _, _) =>
+    }
+  }
+
 }
