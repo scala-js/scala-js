@@ -153,7 +153,7 @@ private[math] object Multiplication {
    *  @param d parameter 4
    *  @return value of expression
    */
-  def unsignedMultAddAdd(a: Int, b: Int, c: Int, d: Int): Long =
+  @inline def unsignedMultAddAdd(a: Int, b: Int, c: Int, d: Int): Long =
     (a & 0xFFFFFFFFL) * (b & 0xFFFFFFFFL) + (c & 0xFFFFFFFFL) + (d & 0xFFFFFFFFL)
 
   /** Performs the multiplication with the Karatsuba's algorithm.
@@ -328,6 +328,7 @@ private[math] object Multiplication {
     }
   }
 
+  @noinline
   def pow(base: BigInteger, exponent: Int): BigInteger = {
     @inline
     @tailrec
@@ -436,7 +437,7 @@ private[math] object Multiplication {
         var carry = 0
         val aI = a(i)
         for (j <- 0 until bLen) {
-          val added = unsignedMultAddAdd(aI, b(j), t(i + j), carry.toInt)
+          val added = unsignedMultAddAdd(aI, b(j), t(i + j), carry)
           t(i + j) = added.toInt
           carry = (added >>> 32).toInt
         }

@@ -155,95 +155,54 @@ private[math] object Conversion {
     val sign: Int = bi.sign
     val numberLength: Int = bi.numberLength
     val digits: Array[Int] = bi.digits
-    var resLengthInChars: Int = 0
-    var currentChar: Int = 0
 
     if (sign == 0) {
       "0"
+    } else if (numberLength == 1) {
+      val absStr = MathJDK8Bridge.toUnsignedString(digits(0))
+      if (sign < 0) "-" + absStr
+      else absStr
     } else {
-      // one 32-bit unsigned value may contains 10 decimal digits
-      // Explanation why +1+7:
-      // +1 - one char for sign if needed.
-      // +7 - For "special case 2" (see below) we have 7 free chars for inserting necessary scaled digits.
-      resLengthInChars = numberLength * 10 + 1 + 7
       var result: String = ""
 
-      // a free latest character may be used for "special case 1" (see below)
-      currentChar = resLengthInChars
-      if (numberLength == 1) {
-        val highDigit = digits(0)
-        if (highDigit < 0) {
-          var v: Long = highDigit & 0xFFFFFFFFL
-          do {
-            val prev = v
-            v /= 10
-            currentChar -= 1
-            result = (48 + (prev - v * 10).toInt).toChar + result
-          } while (v != 0)
-        } else {
-          var v: Int = highDigit
-          do {
-            val prev = v
-            v /= 10
-            currentChar -= 1
-            result = (48 + (prev - v * 10)).toChar + result
-          } while (v != 0)
-        }
-      } else {
-        val temp = new Array[Int](numberLength)
-        var tempLen = numberLength
-        System.arraycopy(digits, 0, temp, 0, tempLen)
+      val temp = new Array[Int](numberLength)
+      var tempLen = numberLength
+      System.arraycopy(digits, 0, temp, 0, tempLen)
 
-        @inline
-        @tailrec
-        def loop(): Unit = {
-          // divide the array of digits by bigRadix and convert
-          // remainders
-          // to characters collecting them in the char array
-          var result11: Long = 0
-          var i1: Int = tempLen - 1
-          while (i1 >= 0) {
-            val temp1: Long = (result11 << 32) + (temp(i1) & 0xFFFFFFFFL)
-            val res: Long = divideLongByBillion(temp1)
-            temp(i1) = res.toInt
-            result11 = (res >> 32).toInt
-            i1 -= 1
-          }
-          var resDigit = result11.toInt
-          val previous = currentChar
-          @inline
-          @tailrec
-          def innerLoop(): Unit = {
-            currentChar -= 1
-            result = (48 + (resDigit % 10)).toChar + result
-            resDigit /= 10
-            if (resDigit != 0 && currentChar != 0)
-              innerLoop()
-          }
-
-          innerLoop()
-
-          val delta = 9 - previous + currentChar
-          var i = 0
-          while ((i < delta) && (currentChar > 0)) {
-            currentChar -= 1
-            result = '0' + result
-            i += 1
-          }
-          var j = tempLen - 1
-          while ((temp(j) == 0) && (j != 0)) {
-            j -= 1
-          }
-          tempLen = j + 1
-          if (!(j == 0 && (temp(j) == 0))) loop
+      do {
+        // Divide the array of digits by 1000000000 and compute the remainder
+        var rem: Int = 0
+        var i: Int = tempLen - 1
+        while (i >= 0) {
+          val temp1 = (rem.toLong << 32) + (temp(i) & 0xFFFFFFFFL)
+          val quot = MathJDK8Bridge.divideUnsigned(temp1, 1000000000L).toInt
+          temp(i) = quot
+          rem = (temp1 - quot * 1000000000L).toInt
+          i -= 1
         }
 
-        loop()
-        result = result.dropWhile(_ == '0')
-      }
+        // Convert the remainder to string, and add it to the result
+        val remStr = rem.toString()
+        val padding = "000000000".substring(remStr.length)
+        result = padding + remStr + result
+
+        while ((tempLen != 0) && (temp(tempLen - 1) == 0))
+          tempLen -= 1
+      } while (tempLen != 0)
+
+      result = dropLeadingZeros(result)
+
       if (sign < 0) '-' + result
       else result
     }
+  }
+
+  private def dropLeadingZeros(s: String): String = {
+    var zeroPrefixLength = 0
+    val len = s.length
+    while (zeroPrefixLength < len && s.charAt(zeroPrefixLength) == '0')
+      zeroPrefixLength += 1
+    s.substring(zeroPrefixLength)
   }
 
   /* can process only 32-bit numbers */
@@ -315,23 +274,6 @@ private[math] object Conversion {
       if (negNumber) '-' + result
       else result
     }
-  }
-
-  def divideLongByBillion(a: Long): Long = {
-    val (quot, rem) =
-      if (a >= 0) {
-        val bLong = 1000000000L
-        (a / bLong, a % bLong)
-      } else {
-        /*
-         * Make the dividend positive shifting it right by 1 bit then get
-         * the quotient an remainder and correct them properly
-         */
-        val aPos: Long = a >>> 1
-        val bPos: Long = 1000000000L >>> 1
-        (aPos / bPos, (aPos % bPos << 1) + (a & 1))
-    }
-    (rem << 32) | (quot & 0xFFFFFFFFL)
   }
 
   def bigInteger2Double(bi: BigInteger): Double = {

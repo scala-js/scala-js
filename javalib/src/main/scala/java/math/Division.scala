@@ -108,14 +108,14 @@ private[math] object Division {
       } else {
         val product: Long =
           ((normA(j) & UINT_MAX) << 32) + (normA(j - 1) & UINT_MAX)
-        val res: Long = Division.divideLongByInt(product, firstDivisorDigit)
-        guessDigit = res.toInt // the quotient of divideLongByInt
-        var rem = (res >> 32).toInt // the remainder of divideLongByInt
+        val firstDivisorDigitLong = firstDivisorDigit & UINT_MAX
+        val quotient =
+          MathJDK8Bridge.divideUnsigned(product, firstDivisorDigitLong)
+        guessDigit = quotient.toInt
+        var rem = (product - quotient * firstDivisorDigitLong).toInt
+
         // decrease guessDigit by 1 while leftHand > rightHand
         if (guessDigit != 0) {
-          //var leftHand: Long = 0
-          //var rightHand: Long = 0
-         // var rOverflowed = false
           guessDigit += 1 // to have the proper value in the loop below
 
           @inline
@@ -132,11 +132,11 @@ private[math] object Division {
             val longR: Long = (rem & UINT_MAX) + (firstDivisorDigit & UINT_MAX)
             // checks that longR does not fit in an unsigned int.
             // this ensures that rightHand will overflow unsigned long in the next step
-            if (!(Integer.numberOfLeadingZeros((longR >>> 32).toInt) < 32)) {
+            if ((longR >>> 32).toInt == 0) {
               rem = longR.toInt
 
               if ((leftHand ^ Long.MinValue) > (rightHand ^ Long.MinValue))
-                loop
+                loop()
             }
           }
           loop()
@@ -189,10 +189,9 @@ private[math] object Division {
     val valLen = bi.numberLength
     val valSign = bi.sign
     if (valLen == 1) {
-      val a: Long = valDigits(0) & UINT_MAX
-      val b: Long = divisor & UINT_MAX
-      var quo: Long = a / b
-      var rem: Long = a % b
+      val valDigit = valDigits(0)
+      var quo = MathJDK8Bridge.divideUnsigned(valDigit, divisor) & UINT_MAX
+      var rem = MathJDK8Bridge.remainderUnsigned(valDigit, divisor) & UINT_MAX
       if (valSign != divisorSign)
         quo = -quo
       if (valSign < 0)
@@ -202,9 +201,8 @@ private[math] object Division {
       val quotientLength = valLen
       val quotientSign = if (valSign == divisorSign) 1 else -1
       val quotientDigits = new Array[Int](quotientLength)
-      var remainderDigits: Array[Int] = Array()
       val div = divideArrayByInt(quotientDigits, valDigits, valLen, divisor)
-      remainderDigits = Array(div)
+      val remainderDigits = Array(div)
       val result0 = new BigInteger(quotientSign, quotientLength, quotientDigits)
       val result1 = new BigInteger(valSign, 1, remainderDigits)
       result0.cutOffLeadingZeroes()
@@ -226,89 +224,17 @@ private[math] object Division {
    */
   def divideArrayByInt(dest: Array[Int], src: Array[Int], srcLength: Int,
       divisor: Int): Int = {
-    var rem: Long = 0
+    var rem: Int = 0
     val bLong: Long = divisor & UINT_MAX
     var i = srcLength - 1
     while (i >= 0) {
-      val temp: Long = (rem << 32) | (src(i) & UINT_MAX)
-      var quot: Long = 0L
-      if (temp >= 0) {
-        quot = temp / bLong
-        rem = temp % bLong
-      } else {
-        /*
-         * make the dividend positive shifting it right by 1 bit then get the
-         * quotient an remainder and correct them properly
-         */
-        val aPos: Long = temp >>> 1
-        val bPos: Long = divisor >>> 1
-        quot = aPos / bPos
-        rem = aPos % bPos
-        // double the remainder and add 1 if a is odd
-        rem = (rem << 1) + (temp & 1)
-        if ((divisor & 1) != 0) {
-          // the divisor is odd
-          if (quot <= rem) {
-            rem -= quot
-          } else {
-            if (quot - rem <= bLong) {
-              rem += bLong - quot
-              quot -= 1
-            } else {
-              rem += (bLong << 1) - quot
-              quot -= 2
-            }
-          }
-        }
-      }
-      dest(i) = (quot & UINT_MAX).toInt
+      val temp: Long = (rem.toLong << 32) | (src(i) & UINT_MAX)
+      val quot = MathJDK8Bridge.divideUnsigned(temp, bLong)
+      rem = (temp - quot * bLong).toInt
+      dest(i) = quot.toInt
       i -= 1
     }
-    rem.toInt
-  }
-
-  /** Divides an unsigned long a by an unsigned int b.
-   *
-   *  It is supposed that the most significant bit of b is set to 1, i.e. b < 0
-   *
-   *  @param a the dividend
-   *  @param b the divisor
-   *  @return the long value containing the unsigned integer remainder in the
-   *          left half and the unsigned integer quotient in the right half
-   */
-  def divideLongByInt(a: Long, b: Int): Long = {
-    var quot: Long = 0L
-    var rem: Long = 0L
-    val bLong: Long = b & UINT_MAX
-    if (a >= 0) {
-      quot = a / bLong
-      rem = a % bLong
-    } else {
-      /*
-       * Make the dividend positive shifting it right by 1 bit then get the
-       * quotient an remainder and correct them properly
-       */
-      val aPos: Long = a >>> 1
-      val bPos: Long = b >>> 1
-      quot = aPos / bPos
-      rem = aPos % bPos
-      // double the remainder and add 1 if a is odd
-      rem = (rem << 1) + (a & 1)
-      if ((b & 1) != 0) { // the divisor is odd
-        if (quot <= rem) {
-          rem -= quot
-        } else {
-          if (quot - rem <= bLong) {
-            rem += bLong - quot
-            quot -= 1
-          } else {
-            rem += (bLong << 1) - quot
-            quot -= 2
-          }
-        }
-      }
-    }
-    (rem << 32) | (quot & UINT_MAX)
+    rem
   }
 
   /** Performs modular exponentiation using the Montgomery Reduction.
@@ -713,19 +639,21 @@ private[math] object Division {
    */
   def multiplyAndSubtract(a: Array[Int], start: Int, b: Array[Int],
       bLen: Int, c: Int): Int = {
-    var carry0:Long = 0
-    var carry1:Long = 0
+    var carry0: Int = 0 // unsigned
+    var carry1: Int = 0 // signed
     for (i <- 0 until bLen) {
-      carry0 = Multiplication.unsignedMultAddAdd(b(i), c, carry0.toInt, 0)
-      carry1 = (a(start + i) & UINT_MAX) - (carry0 & UINT_MAX) + carry1
-      a(start + i) = carry1.toInt
-      carry1 >>= 32
-      carry0 >>>= 32
+      val nextCarry0 = Multiplication.unsignedMultAddAdd(b(i), c, carry0, 0)
+      val nextCarry1 =
+        (a(start + i) & UINT_MAX) - (nextCarry0 & UINT_MAX) + carry1.toLong
+      a(start + i) = nextCarry1.toInt
+      carry1 = (nextCarry1 >> 32).toInt
+      carry0 = (nextCarry0 >> 32).toInt
     }
 
-    carry1 = (a(start + bLen) & UINT_MAX) - carry0 + carry1
-    a(start + bLen) = carry1.toInt
-    (carry1 >> 32).toInt
+    val finalCarry1 =
+      (a(start + bLen) & UINT_MAX) - (carry0 & UINT_MAX) + carry1.toLong
+    a(start + bLen) = finalCarry1.toInt
+    (finalCarry1 >> 32).toInt
   }
 
   /** Performs modular exponentiation using the Montgomery Reduction.
@@ -810,15 +738,15 @@ private[math] object Division {
    *  @return remainder
    */
   def remainderArrayByInt(src: Array[Int], srcLength: Int, divisor: Int): Int = {
-    var result: Long = 0
+    val longDivisor = divisor.toLong & UINT_MAX
+    var result: Int = 0
     var i = srcLength - 1
     while (i >= 0) {
-      val temp: Long = (result << 32) + (src(i) & UINT_MAX)
-      val res: Long = divideLongByInt(temp, divisor)
-      result = (res >>> 32).toInt
+      val temp = (result.toLong << 32) | (src(i).toLong & UINT_MAX)
+      result = MathJDK8Bridge.remainderUnsigned(temp, longDivisor).toInt
       i -= 1
     }
-    result.toInt
+    result
   }
 
   /** The Montgomery modular exponentiation.
@@ -949,23 +877,24 @@ private[math] object Division {
 
     val modulusDigits = modulus.digits
     val modulusLen = modulus.numberLength
-    var outerCarry: Long = 0
+    var outerCarry: Int = 0 // unsigned
     for (i <- 0 until modulusLen) {
-      var innnerCarry: Long = 0
+      var innnerCarry: Int = 0 // unsigned
       val m = Multiplication.unsignedMultAddAdd(res(i), n2, 0, 0).toInt
       for (j <- 0 until modulusLen) {
-        innnerCarry = unsignedMultAddAdd(m, modulusDigits(j), res(i + j), innnerCarry.toInt)
-        res(i + j) = innnerCarry.toInt
-        innnerCarry >>>= 32
+        val nextInnnerCarry =
+          unsignedMultAddAdd(m, modulusDigits(j), res(i + j), innnerCarry)
+        res(i + j) = nextInnnerCarry.toInt
+        innnerCarry = (nextInnnerCarry >> 32).toInt
       }
-      outerCarry += (res(i + modulusLen) & UINT_MAX) + innnerCarry
-      res(i + modulusLen) = outerCarry.toInt
-      outerCarry >>>= 32
+      val nextOuterCarry =
+        (outerCarry & UINT_MAX) + (res(i + modulusLen) & UINT_MAX) + (innnerCarry & UINT_MAX)
+      res(i + modulusLen) = nextOuterCarry.toInt
+      outerCarry = (nextOuterCarry >> 32).toInt
     }
-    res(modulusLen << 1) = outerCarry.toInt
+    res(modulusLen << 1) = outerCarry
     for (j <- 0 until modulusLen + 1) {
       res(j) = res(j + modulusLen)
     }
   }
 }
-

@@ -61,12 +61,10 @@ private[math] object Elementary {
    */
   def add(op1: BigInteger, op2: BigInteger): BigInteger = {
     // scalastyle:off return
-    var resDigits: Array[Int] = null
-    var resSign: Int = 0
     val op1Sign = op1.sign
     val op2Sign = op2.sign
-    val op1Len: Int = op1.numberLength
-    val op2Len: Int = op2.numberLength
+    val op1Len = op1.numberLength
+    val op2Len = op2.numberLength
 
     if (op1Sign == 0) {
       op2
@@ -75,20 +73,17 @@ private[math] object Elementary {
     } else if (op1Len + op2Len == 2) {
       val a: Long = op1.digits(0) & UINT_MAX
       val b: Long = op2.digits(0) & UINT_MAX
-      var res: Long = 0L
-      var valueLo: Int = 0
-      var valueHi: Int = 0
       if (op1Sign == op2Sign) {
-        res = a + b
-        valueLo = res.toInt
-        valueHi = (res >>> 32).toInt
+        val res = a + b
+        val valueLo = res.toInt
+        val valueHi = (res >>> 32).toInt
         if (valueHi == 0) new BigInteger(op1Sign, valueLo)
         else new BigInteger(op1Sign, 2, Array(valueLo, valueHi))
       } else {
         BigInteger.valueOf(if (op1Sign < 0) (b - a) else (a - b))
       }
     } else {
-      val (resSign, resDigits) =
+      val (resSign, resDigits) = {
         if (op1Sign == op2Sign) {
           // an augend should not be shorter than addend
           val res =
@@ -113,6 +108,8 @@ private[math] object Elementary {
           else
             (op2Sign, subtract(op2.digits, op2Len, op1.digits, op1Len))
         }
+      }
+
       val res = new BigInteger(resSign, resDigits.length, resDigits)
       res.cutOffLeadingZeroes()
       res
@@ -227,15 +224,15 @@ private[math] object Elementary {
    *  @return a possible generated carry (0 or 1)
    */
   def inplaceAdd(a: Array[Int], aSize: Int, addend: Int): Int = {
-    var carry: Long = addend & UINT_MAX
+    var carry: Int = addend // unsigned
     var i = 0
     while (carry != 0 && i < aSize) {
-      carry += (a(i) & UINT_MAX)
-      a(i) = carry.toInt
-      carry >>= 32
+      val sum = (carry & UINT_MAX) + (a(i) & UINT_MAX)
+      a(i) = sum.toInt
+      carry = (sum >> 32).toInt
       i += 1
     }
-    carry.toInt
+    carry
   }
 
   /** Performs {@code op1 -= op2}.
@@ -262,8 +259,6 @@ private[math] object Elementary {
    */
   def subtract(op1: BigInteger, op2: BigInteger): BigInteger = {
     // scalastyle:off return
-    var resSign = 0
-    var resDigits: Array[Int] = null
     val op1Sign = op1.sign
     val op2Sign = op2.sign
     val op1Len = op1.numberLength
@@ -330,69 +325,69 @@ private[math] object Elementary {
   private def add(res: Array[Int], a: Array[Int], aSize: Int,
       b: Array[Int], bSize: Int): Unit = {
     var i: Int = 1
-    var carry: Long = (a(0) & UINT_MAX) + (b(0) & UINT_MAX)
-    res(0) = carry.toInt
-    carry >>= 32
+    val firstSum: Long = (a(0) & UINT_MAX) + (b(0) & UINT_MAX)
+    res(0) = firstSum.toInt
+    var carry = (firstSum >> 32).toInt
     if (aSize >= bSize) {
       while (i < bSize) {
-        carry += (a(i) & UINT_MAX) + (b(i) & UINT_MAX)
-        res(i) = carry.toInt
-        carry >>= 32
+        val sum = (a(i) & UINT_MAX) + (b(i) & UINT_MAX) + (carry & UINT_MAX)
+        res(i) = sum.toInt
+        carry = (sum >> 32).toInt
         i += 1
       }
       while (i < aSize) {
-        carry += a(i) & UINT_MAX
-        res(i) = carry.toInt
-        carry >>= 32
+        val sum = (a(i) & UINT_MAX) + (carry & UINT_MAX)
+        res(i) = sum.toInt
+        carry = (sum >> 32).toInt
         i += 1
       }
     } else {
       while (i < aSize) {
-        carry += (a(i) & UINT_MAX) + (b(i) & UINT_MAX)
-        res(i) = carry.toInt
-        carry >>= 32
+        val sum = (a(i) & UINT_MAX) + (b(i) & UINT_MAX) + (carry & UINT_MAX)
+        res(i) = sum.toInt
+        carry = (sum >> 32).toInt
         i += 1
       }
       while (i < bSize) {
-        carry += b(i) & UINT_MAX
-        res(i) = carry.toInt
-        carry >>= 32
+        val sum = (b(i) & UINT_MAX) + (carry & UINT_MAX)
+        res(i) = sum.toInt
+        carry = (sum >> 32).toInt
         i += 1
       }
     }
     if (carry != 0)
-      res(i) = carry.toInt
+      res(i) = carry
   }
 
   /** Performs {@code res = b - a}. */
   private def inverseSubtract(res: Array[Int], a: Array[Int], aSize: Int,
       b: Array[Int], bSize: Int): Unit = {
     var i: Int = 0
-    var borrow: Long = 0
+    var borrow: Int = 0 // signed
     if (aSize < bSize) {
       while (i < aSize) {
-        borrow += (b(i) & UINT_MAX) - (a(i) & UINT_MAX)
-        res(i) = borrow.toInt
-        borrow >>= 32 // -1 or 0
+        val sub = (b(i) & UINT_MAX) - (a(i) & UINT_MAX) + borrow.toLong
+        res(i) = sub.toInt
+        borrow = (sub >> 32).toInt // -1 or 0
         i += 1
       }
       while (i < bSize) {
-        borrow += b(i) & UINT_MAX
-        res(i) = borrow.toInt
-        borrow >>= 32 // -1 or 0
+        val sub = (b(i) & UINT_MAX) + borrow.toLong
+        res(i) = sub.toInt
+        borrow = (sub >> 32).toInt // -1 or 0
         i += 1
       }
     } else {
       while (i < bSize) {
-        borrow += (b(i) & UINT_MAX) - (a(i) & UINT_MAX)
-        res(i) = borrow.toInt
-        borrow >>= 32 // -1 or 0
+        val sub = (b(i) & UINT_MAX) - (a(i) & UINT_MAX) + borrow.toLong
+        res(i) = sub.toInt
+        borrow = (sub >> 32).toInt // -1 or 0
         i += 1
       }
       while (i < aSize) {
-        borrow -= a(i) & UINT_MAX
-        res(i) = borrow.toInt
-        borrow >>= 32 // -1 or 0
+        val sub = borrow.toLong - (a(i) & UINT_MAX)
+        res(i) = sub.toInt
+        borrow = (sub >> 32).toInt // -1 or 0
         i += 1
       }
     }
@@ -417,17 +412,17 @@ private[math] object Elementary {
   private def subtract(res: Array[Int], a: Array[Int], aSize: Int,
       b: Array[Int], bSize: Int): Unit = {
     var i: Int = 0
-    var borrow: Long = 0
+    var borrow: Int = 0 // signed
     while (i < bSize) {
-      borrow += (a(i) & UINT_MAX) - (b(i) & UINT_MAX)
-      res(i) = borrow.toInt
-      borrow >>= 32
+      val sub = (a(i) & UINT_MAX) - (b(i) & UINT_MAX) + borrow.toLong
+      res(i) = sub.toInt
+      borrow = (sub >> 32).toInt
       i += 1
     }
     while (i < aSize) {
-      borrow += a(i) & UINT_MAX
-      res(i) = borrow.toInt
-      borrow >>= 32
+      val sub = (a(i) & UINT_MAX) + borrow.toLong
+      res(i) = sub.toInt
+      borrow = (sub >> 32).toInt
       i += 1
     }
   }

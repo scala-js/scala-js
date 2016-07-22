@@ -58,4 +58,24 @@ private[java] object MathJDK8Bridge {
   def floorMod(a: scala.Int, b: scala.Int): scala.Int = Math.floorMod(a, b)
 
   def floorMod(a: scala.Long, b: scala.Long): scala.Long = Math.floorMod(a, b)
+
+  // A few other Math-related methods that are not really in Math
+
+  def toUnsignedString(i: scala.Int): String =
+    Integer.toUnsignedString(i)
+
+  def toUnsignedString(i: scala.Long): String =
+    Long.toUnsignedString(i)
+
+  def divideUnsigned(a: scala.Int, b: scala.Int): scala.Int =
+    Integer.divideUnsigned(a, b)
+
+  def divideUnsigned(a: scala.Long, b: scala.Long): scala.Long =
+    Long.divideUnsigned(a, b)
+
+  def remainderUnsigned(a: scala.Int, b: scala.Int): scala.Int =
+    Integer.remainderUnsigned(a, b)
+
+  def remainderUnsigned(a: scala.Long, b: scala.Long): scala.Long =
+    Long.remainderUnsigned(a, b)
 }
