@@ -56,4 +56,19 @@ private[java] object MathJDK8Bridge {
   def floorMod(a: scala.Int, b: scala.Int): scala.Int = sys.error("stub")
 
   def floorMod(a: scala.Long, b: scala.Long): scala.Long = sys.error("stub")
+
+  // A few other Math-related methods that are not really in Math
+
+  def toUnsignedString(i: scala.Int): String = sys.error("stub")
+
+  def toUnsignedString(i: scala.Long): String = sys.error("stub")
+
+  def divideUnsigned(a: scala.Int, b: scala.Int): scala.Int = sys.error("stub")
+
+  def divideUnsigned(a: scala.Long, b: scala.Long): scala.Long = sys.error("stub")
+
+  def remainderUnsigned(a: scala.Int, b: scala.Int): scala.Int = sys.error("stub")
+
+  def remainderUnsigned(a: scala.Long, b: scala.Long): scala.Long = sys.error("stub")
+
 }
