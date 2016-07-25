@@ -2488,18 +2488,58 @@ abstract class GenJSCode extends plugins.PluginComponent
       js.ArrayValue(arrType, elems map genExpr)
     }
 
-    /** Gen JS code for a Match, i.e., a switch-able pattern match
-     *  Eventually, this is compiled into a JS switch construct. But because
-     *  we can be in expression position, and a JS switch cannot be given a
-     *  meaning in expression position, we emit a JS "match" construct (which
-     *  does not need the `break`s in each case. `JSDesugaring` will transform
-     *  that in a switch.
+    /** Gen JS code for a Match, i.e., a switch-able pattern match.
      *
-     *  Some caveat here. It may happen that there is a guard in here, despite
-     *  the fact that switches cannot have guards (in the JVM nor in JS).
-     *  The JVM backend emits a jump to the default clause when a guard is not
-     *  fulfilled. We cannot do that. Instead, currently we duplicate the body
-     *  of the default case in the else branch of the guard test.
+     *  In most cases, this straightforwardly translates to a Match in the IR,
+     *  which will eventually become a `switch` in JavaScript.
+     *
+     *  However, sometimes there is a guard in here, despite the fact that
+     *  matches cannot have guards (in the JVM nor in the IR). The JVM backend
+     *  emits a jump to the default clause when a guard is not fulfilled. We
+     *  cannot do that, since we do not have arbitrary jumps. We therefore use
+     *  a funny encoding with two nested `Labeled` blocks. For example,
+     *  {{{
+     *  x match {
+     *    case 1 if y > 0 => a
+     *    case 2          => b
+     *    case _          => c
+     *  }
+     *  }}}
+     *  arrives at the back-end as
+     *  {{{
+     *  x match {
+     *    case 1 =>
+     *      if (y > 0)
+     *        a
+     *      else
+     *        default()
+     *    case 2 =>
+     *      b
+     *    case _ =>
+     *      default() {
+     *        c
+     *      }
+     *  }
+     *  }}}
+     *  which we then translate into the following IR:
+     *  {{{
+     *  matchResult[I]: {
+     *    default[V]: {
+     *      x match {
+     *        case 1 =>
+     *          return(matchResult) if (y > 0)
+     *            a
+     *          else
+     *            return(default) (void 0)
+     *        case 2 =>
+     *          return(matchResult) b
+     *        case _ =>
+     *          ()
+     *      }
+     *    }
+     *    c
+     *  }
+     *  }}}
      */
     def genMatch(tree: Tree, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
@@ -2508,31 +2548,31 @@ abstract class GenJSCode extends plugins.PluginComponent
       val expr = genExpr(selector)
       val resultType = toIRType(tree.tpe)
 
-      val List(defaultBody0) = for {
-        CaseDef(Ident(nme.WILDCARD), EmptyTree, body) <- cases
-      } yield body
-
-      val (defaultBody, defaultLabelSym) = defaultBody0 match {
-        case LabelDef(_, Nil, rhs) if hasSynthCaseSymbol(defaultBody0) =>
-          (rhs, defaultBody0.symbol)
-        case _ =>
-          (defaultBody0, NoSymbol)
-      }
-
-      val genDefaultBody = genStatOrExpr(defaultBody, isStat)
+      val defaultLabelSym = cases.collectFirst {
+        case CaseDef(Ident(nme.WILDCARD), EmptyTree,
+            body @ LabelDef(_, Nil, rhs)) if hasSynthCaseSymbol(body) =>
+          body.symbol
+      }.getOrElse(NoSymbol)
 
       var clauses: List[(List[js.Literal], js.Tree)] = Nil
       var elseClause: js.Tree = js.EmptyTree
+
+      var elseClauseLabel: Option[js.Ident] = None
+
+      def genJumpToElseClause(implicit pos: ir.Position): js.Tree = {
+        if (elseClauseLabel.isEmpty)
+          elseClauseLabel = Some(freshLocalIdent("default"))
+        js.Return(js.Undefined(), elseClauseLabel)
+      }
 
       for (caze @ CaseDef(pat, guard, body) <- cases) {
         assert(guard == EmptyTree)
 
         def genBody(body: Tree): js.Tree = body match {
-          // Yes, this will duplicate the default body in the output
           case app @ Apply(_, Nil) if app.symbol == defaultLabelSym =>
-            genDefaultBody
+            genJumpToElseClause
           case Block(List(app @ Apply(_, Nil)), _) if app.symbol == defaultLabelSym =>
-            genDefaultBody
+            genJumpToElseClause
 
           case If(cond, thenp, elsep) =>
             js.If(genExpr(cond), genBody(thenp), genBody(elsep))(
@@ -2573,7 +2613,12 @@ abstract class GenJSCode extends plugins.PluginComponent
           case lit: Literal =>
             clauses = (List(genLiteral(lit)), genBody(body)) :: clauses
           case Ident(nme.WILDCARD) =>
-            elseClause = genDefaultBody
+            elseClause = body match {
+              case LabelDef(_, Nil, rhs) if hasSynthCaseSymbol(body) =>
+                genBody(rhs)
+              case _ =>
+                genBody(body)
+            }
           case Alternative(alts) =>
             val genAlts = {
               alts map {
@@ -2590,7 +2635,25 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      js.Match(expr, clauses.reverse, elseClause)(resultType)
+      if (elseClauseLabel.isEmpty) {
+        js.Match(expr, clauses.reverse, elseClause)(resultType)
+      } else {
+        val matchResultLabel = freshLocalIdent("matchResult")
+        val patchedClauses = for ((alts, body) <- clauses) yield {
+          implicit val pos = body.pos
+          val lab = Some(matchResultLabel)
+          val newBody =
+            if (isStat) js.Block(body, js.Return(js.Undefined(), lab))
+            else js.Return(body, lab)
+          (alts, newBody)
+        }
+        js.Labeled(matchResultLabel, resultType, js.Block(List(
+            js.Labeled(elseClauseLabel.get, jstpe.NoType, {
+              js.Match(expr, patchedClauses.reverse, js.Skip())(jstpe.NoType)
+            }),
+            elseClause
+        )))
+      }
     }
 
     private def genBlock(tree: Block, isStat: Boolean): js.Tree = {

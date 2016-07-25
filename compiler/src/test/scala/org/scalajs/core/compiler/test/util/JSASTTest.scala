@@ -64,6 +64,14 @@ abstract class JSASTTest extends DirectTest {
       this
     }
 
+    def hasExactly(count: Int, trgName: String)(pf: Pat): this.type = {
+      var actualCount = 0
+      val tr = new PFTraverser(pf.andThen(_ => actualCount += 1))
+      tr.traverse()
+      assertEquals(s"AST has the wrong number of $trgName", count, actualCount)
+      this
+    }
+
     def traverse(pf: Pat): this.type = {
       val tr = new PFTraverser(pf)
       tr.traverse()
