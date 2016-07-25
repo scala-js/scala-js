@@ -360,16 +360,20 @@ object Long {
 
   @inline
   def highestOneBit(i: scala.Long): scala.Long = {
+    val lo = i.toInt
     val hi = (i >>> 32).toInt
-    if (hi != 0) Integer.highestOneBit(hi).toLong << 32
-    else Integer.highestOneBit(i.toInt).toLong & 0xffffffffL
+    makeLongFromLoHi(
+        if (hi != 0) 0 else Integer.highestOneBit(lo),
+        Integer.highestOneBit(hi))
   }
 
   @inline
   def lowestOneBit(i: scala.Long): scala.Long = {
     val lo = i.toInt
-    if (lo != 0) Integer.lowestOneBit(lo).toLong & 0xffffffffL
-    else Integer.lowestOneBit((i >>> 32).toInt).toLong << 32
+    val hi = (i >> 32).toInt
+    makeLongFromLoHi(
+        Integer.lowestOneBit(lo),
+        if (lo != 0) 0 else Integer.lowestOneBit(hi))
   }
 
   @inline
@@ -381,10 +385,17 @@ object Long {
 
   @inline
   def reverseBytes(i: scala.Long): scala.Long = {
-    val hiReversed = Integer.reverseBytes((i >>> 32).toInt)
-    val loReversed = Integer.reverseBytes(i.toInt)
-    (loReversed.toLong << 32) | (hiReversed.toLong & 0xffffffffL)
+    makeLongFromLoHi(
+        Integer.reverseBytes((i >>> 32).toInt),
+        Integer.reverseBytes(i.toInt))
   }
+
+  /** Make a `Long` value from its lo and hi 32-bit parts.
+   *  When the optimizer is enabled, this operation is free.
+   */
+  @inline
+  private def makeLongFromLoHi(lo: Int, hi: Int): scala.Long =
+    (lo.toLong & 0xffffffffL) | (hi.toLong << 32)
 
   @inline
   def rotateLeft(i: scala.Long, distance: scala.Int): scala.Long =

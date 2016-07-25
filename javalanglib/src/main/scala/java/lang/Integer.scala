@@ -157,9 +157,23 @@ object Integer {
     asInt(dividend.toUint % divisor.toUint)
   }
 
-  @inline def highestOneBit(i: Int): Int =
-    if (i == 0) 0
-    else (1 << 31) >>> numberOfLeadingZeros(i)
+  @inline def highestOneBit(i: Int): Int = {
+    /* The natural way of implementing this is:
+     *   if (i == 0) 0
+     *   else (1 << 31) >>> numberOfLeadingZeros(i)
+     *
+     * We can deal with the 0 case in a branchless fashion by adding `& i` to
+     * the else branch:
+     *   ((1 << 31) >>> numberOfLeadingZeros(i)) & i
+     * Indeed, when i == 0, the `& i` collapses everything to 0. And otherwise,
+     * we know that ((1 << 31) >>> numberOfLeadingZeros(i)) is the highest 1
+     * bit of i, so &'ing with i is a no-op.
+     *
+     * Finally, since we're &'ing with i anyway, we can replace the >>> by a
+     * >>, which is shorter in JS and does not require the additional `| 0`.
+     */
+    ((1 << 31) >> numberOfLeadingZeros(i)) & i
+  }
 
   @inline def lowestOneBit(i: Int): Int =
     i & -i
