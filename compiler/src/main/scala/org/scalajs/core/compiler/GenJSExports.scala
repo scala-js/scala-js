@@ -665,8 +665,14 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
               result.take(defaultGetter.tpe.params.size).toList.map(_.ref)
 
             if (isRawJSType(trgSym.toTypeConstructor)) {
-              assert(isScalaJSDefinedJSClass(defaultGetter.owner))
-              genApplyJSClassMethod(trgTree, defaultGetter, defaultGetterArgs)
+              if (isScalaJSDefinedJSClass(defaultGetter.owner)) {
+                genApplyJSClassMethod(trgTree, defaultGetter, defaultGetterArgs)
+              } else {
+                reporter.error(param.pos, "When overriding a native method " +
+                    "with default arguments, the overriding method must " +
+                    "explicitly repeat the default arguments.")
+                js.Undefined()
+              }
             } else {
               genApplyMethod(trgTree, defaultGetter, defaultGetterArgs)
             }

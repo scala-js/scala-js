@@ -1417,6 +1417,20 @@ class ScalaJSDefinedTest {
     assertEquals(FooResult, dyn.foo(12))
   }
 
+  @Test def override_a_method_with_default_values_from_a_native_JS_class(): Unit = {
+    @ScalaJSDefined
+    class OverrideDefault extends NativeParentClass(7) {
+      override def methodWithDefault(x: Int = 9): Int = x * 2
+    }
+
+    val child = new OverrideDefault
+    assertEquals(18, child.methodWithDefault())
+    assertEquals(14, child.methodWithDefault(7))
+
+    val parent: NativeParentClass = child
+    assertEquals(18, parent.methodWithDefault())
+    assertEquals(14, parent.methodWithDefault(7))
+  }
 }
 
 object ScalaJSDefinedTest {
@@ -1428,6 +1442,8 @@ object ScalaJSDefinedTest {
     def foo(s: String): String = js.native
 
     def bar: Int = js.native
+
+    def methodWithDefault(x: Int = 5): Int = js.native
   }
 
   @ScalaJSDefined
