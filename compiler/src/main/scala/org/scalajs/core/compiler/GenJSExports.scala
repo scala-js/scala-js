@@ -202,8 +202,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             s"Exported $kind $jsName conflicts with ${alts.head.fullName}")
       }
 
-      genMemberExportOrDispatcher(classSym, jsName, isProp, alts,
-          isDispatcher = false)
+      genMemberExportOrDispatcher(classSym, jsName, isProp, alts)
     }
 
     private def genJSClassDispatcher(classSym: Symbol, name: String): js.Tree = {
@@ -228,13 +227,12 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             s"Conflicting properties and methods for ${classSym.fullName}::$name.")
         js.EmptyTree
       } else {
-        genMemberExportOrDispatcher(classSym, name, isProp, alts,
-            isDispatcher = true)
+        genMemberExportOrDispatcher(classSym, name, isProp, alts)
       }
     }
 
     def genMemberExportOrDispatcher(classSym: Symbol, jsName: String,
-        isProp: Boolean, alts: List[Symbol], isDispatcher: Boolean): js.Tree = {
+        isProp: Boolean, alts: List[Symbol]): js.Tree = {
       withNewLocalNameScope {
         if (isProp)
           genExportProperty(alts, jsName)
@@ -667,8 +665,14 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
               result.take(defaultGetter.tpe.params.size).toList.map(_.ref)
 
             if (isRawJSType(trgSym.toTypeConstructor)) {
-              assert(isScalaJSDefinedJSClass(defaultGetter.owner))
-              genApplyJSClassMethod(trgTree, defaultGetter, defaultGetterArgs)
+              if (isScalaJSDefinedJSClass(defaultGetter.owner)) {
+                genApplyJSClassMethod(trgTree, defaultGetter, defaultGetterArgs)
+              } else {
+                reporter.error(param.pos, "When overriding a native method " +
+                    "with default arguments, the overriding method must " +
+                    "explicitly repeat the default arguments.")
+                js.Undefined()
+              }
             } else {
               genApplyMethod(trgTree, defaultGetter, defaultGetterArgs)
             }

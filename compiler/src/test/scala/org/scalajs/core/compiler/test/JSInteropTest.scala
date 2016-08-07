@@ -1213,4 +1213,43 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |          ^
     """
   }
+
+  @Test // #2547
+  def noDefaultOverrideCrash: Unit = {
+    """
+    @js.native
+    class NativeBase extends js.Object {
+        def add(option: js.Any = js.native): js.Any = js.native
+    }
+    @ScalaJSDefined
+    class Derived extends NativeBase {
+        override def add(option: js.Any): js.Any = super.add(option)
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:11: error: When overriding a native method with default arguments, the overriding method must explicitly repeat the default arguments.
+      |        override def add(option: js.Any): js.Any = super.add(option)
+      |                         ^
+    """
+
+    """
+    @js.native
+    trait NativeTrait extends js.Object {
+        def add(option: js.Any = js.native): js.Any = js.native
+    }
+
+    @js.native
+    class NativeBase extends NativeTrait
+
+    @ScalaJSDefined
+    class Derived extends NativeBase {
+        override def add(option: js.Any): js.Any = super.add(option)
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:15: error: When overriding a native method with default arguments, the overriding method must explicitly repeat the default arguments.
+      |        override def add(option: js.Any): js.Any = super.add(option)
+      |                         ^
+    """
+  }
 }

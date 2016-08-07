@@ -9,6 +9,9 @@
   ScalaJSDefinedTestNativeParentClass.prototype.foo = function(s) {
     return s + this.x;
   };
+  ScalaJSDefinedTestNativeParentClass.prototype.methodWithDefault = function (x) {
+    return x || 5;
+  }
   $g.Object.defineProperty(ScalaJSDefinedTestNativeParentClass.prototype, "bar", {
     "configurable": false,
     "enumerable": false,
