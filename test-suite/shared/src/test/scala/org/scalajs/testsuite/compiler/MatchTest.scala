@@ -13,6 +13,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 class MatchTest {
+  import MatchTest._
 
   @Test def switchWithGuardsStat(): Unit = {
     def test(x: Int, y: Int): String = {
@@ -62,4 +63,39 @@ class MatchTest {
     assertEquals("None of those", test(5, 20))
   }
 
+  // #2554
+  @Test def matchWithNonIdentityMatchEndScalaLib(): Unit = {
+    val foo: Option[Int] = Some(42)
+
+    /* This match generates a value class boxing operation in the matchEnd (in
+     * 2.10 and 2.11).
+     */
+    val result =
+      "foo = " ++ (foo match { case Some(0) => "zero" case _ => "unknown" })
+
+    assertEquals("foo = unknown", result)
+  }
+
+
+  // #2554
+  @Test def matchWithNonIdentityMatchEndIndependent(): Unit = {
+    import scala.language.implicitConversions
+
+    implicit def toValueClass(x: Int): ValueClass = new ValueClass(x)
+    def show[T](x: ValueClassBase[T]): String = x.f().toString
+
+    val foo: Option[Int] = Some(42)
+    assertEquals("4", show(foo match { case Some(0) => 1 case _ => 2 }))
+  }
+
+}
+
+object MatchTest {
+  trait ValueClassBase[T] extends Any {
+    def f(): T
+  }
+
+  class ValueClass(val x: Int) extends AnyVal with ValueClassBase[Int] {
+    def f() = x * 2
+  }
 }

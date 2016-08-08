@@ -2175,7 +2175,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       if (enclosingLabelDefParams.contains(sym)) {
         genEnclosingLabelApply(tree)
-      } else if (sym.name.toString() startsWith "matchEnd") {
+      } else if (countsOfReturnsToMatchEnd.contains(sym)) {
         /* Jump the to the end-label of a pattern match
          * Such labels have exactly one argument, which is the result of
          * the pattern match (of type BoxedUnit if the match is in statement
@@ -2767,8 +2767,28 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val returnCount = countsOfReturnsToMatchEnd.remove(matchEndSym).get
 
-      genOptimizedLabeled(encodeLabelSym(matchEndSym), toIRType(matchEnd.tpe),
-          translatedCases, returnCount)
+      val LabelDef(_, List(matchEndParam), matchEndBody) = matchEnd
+
+      val innerResultType = toIRType(matchEndParam.tpe)
+      val optimized = genOptimizedLabeled(encodeLabelSym(matchEndSym),
+          innerResultType, translatedCases, returnCount)
+
+      matchEndBody match {
+        case Ident(_) if matchEndParam.symbol == matchEndBody.symbol =>
+          // matchEnd is identity.
+          optimized
+
+        case Literal(Constant(())) =>
+          // Unit return type.
+          optimized
+
+        case _ =>
+          // matchEnd does something.
+          val ident = encodeLocalSym(matchEndParam.symbol)
+          js.Block(
+              js.VarDef(ident, innerResultType, mutable = false, optimized),
+              genExpr(matchEndBody))
+      }
     }
 
     /** Gen JS code for a Labeled block from a pattern match, while trying
