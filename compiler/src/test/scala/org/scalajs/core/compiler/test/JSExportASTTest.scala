@@ -11,9 +11,6 @@ class JSExportASTTest extends JSASTTest {
 
   @Test
   def inheritExportMethods: Unit = {
-
-    var props = 0
-
     """
     import scala.scalajs.js.annotation.JSExport
 
@@ -26,13 +23,9 @@ class JSExportASTTest extends JSASTTest {
       @JSExport
       override def foo = 2
     }
-    """.traverse {
+    """.hasExactly(1, "definitions of property `foo`") {
       case js.PropertyDef(js.StringLiteral("foo"), _, _, _) =>
-        props += 1
     }
-
-    assertEquals("Only define the property `foo` once", props, 1)
-
   }
 
 }
