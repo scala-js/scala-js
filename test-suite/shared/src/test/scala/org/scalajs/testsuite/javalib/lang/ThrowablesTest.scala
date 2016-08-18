@@ -63,4 +63,84 @@ class ThrowablesTest {
     new VerifyError()
     new VirtualMachineError() {}
   }
+
+  @Test def throwable_message_issue_2559(): Unit = {
+    val t0 = new Throwable
+    val t1 = new Throwable("foo")
+
+    def test0(newThrowable: Throwable): Unit = {
+      assertNull(newThrowable.getMessage)
+    }
+
+    def test1(newThrowable: String => Throwable): Unit = {
+      assertEquals("foo", newThrowable("foo").getMessage)
+    }
+
+    def test2(newThrowable: Throwable => Throwable): Unit = {
+      assertEquals(t0.getClass.getName, newThrowable(t0).getMessage)
+      assertEquals(t0.getClass.getName + ": foo", newThrowable(t1).getMessage)
+    }
+
+    def test3(newThrowable: (String, Throwable) => Throwable): Unit = {
+      assertEquals("bar", newThrowable("bar", t0).getMessage)
+      assertEquals("bar", newThrowable("bar", t1).getMessage)
+      assertNull(newThrowable(null, t0).getMessage)
+      assertNull(newThrowable(null, t1).getMessage)
+    }
+
+    // java.lang
+
+    test0(new Throwable)
+    test1(new Throwable(_))
+    test2(new Throwable(_))
+    test3(new Throwable(_, _))
+
+    test0(new Exception)
+    test1(new Exception(_))
+    test2(new Exception(_))
+    test3(new Exception(_, _))
+
+    test0(new IllegalArgumentException)
+    test1(new IllegalArgumentException(_))
+    test2(new IllegalArgumentException(_))
+    test3(new IllegalArgumentException(_, _))
+
+    test0(new IllegalStateException)
+    test1(new IllegalStateException(_))
+    test2(new IllegalStateException(_))
+    test3(new IllegalStateException(_, _))
+
+    test0(new RuntimeException)
+    test1(new RuntimeException(_))
+    test2(new RuntimeException(_))
+    test3(new RuntimeException(_, _))
+
+    test0(new SecurityException)
+    test1(new SecurityException(_))
+    test2(new SecurityException(_))
+    test3(new SecurityException(_, _))
+
+    test0(new UnsupportedOperationException)
+    test1(new UnsupportedOperationException(_))
+    test2(new UnsupportedOperationException(_))
+    test3(new UnsupportedOperationException(_, _))
+
+    // java.io
+
+    import java.io.IOException
+    test0(new IOException)
+    test1(new IOException(_))
+    test2(new IOException(_))
+    test3(new IOException(_, _))
+
+    // java.util
+
+    import java.util.InvalidPropertiesFormatException
+    test1(new InvalidPropertiesFormatException(_))
+    test2(new InvalidPropertiesFormatException(_))
+
+    import java.util.concurrent.ExecutionException
+    test2(new ExecutionException(_))
+    test3(new ExecutionException(_, _))
+  }
 }

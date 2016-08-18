@@ -5,7 +5,8 @@ class ExecutionException(message: String, cause: Throwable)
 
   protected def this() = this(null, null)
   protected def this(message: String) = this(message, null)
-  def this(cause: Throwable) = this(null, cause)
+  def this(cause: Throwable) =
+    this(if (cause == null) null else cause.toString, cause)
 }
 
 class CancellationException(message: String)
