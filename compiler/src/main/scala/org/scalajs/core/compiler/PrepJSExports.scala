@@ -29,12 +29,13 @@ trait PrepJSExports { this: PrepJSInterop =>
   ) extends jsInterop.ExportInfo
 
   /** Generate the exporter for the given DefDef
+   *  or ValDef (abstract val in class, val in trait or lazy val;
+   *  these don't get DefDefs until the fields phase)
    *
    *  If this DefDef is a constructor, it is registered to be exported by
    *  GenJSCode instead and no trees are returned.
    */
-  def genExportMember(ddef: DefDef): List[Tree] = {
-    val baseSym = ddef.symbol
+  def genExportMember(baseSym: Symbol): List[Tree] = {
     val clsSym = baseSym.owner
 
     val exports = exportsOf(baseSym)
