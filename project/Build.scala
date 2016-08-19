@@ -578,6 +578,8 @@ object Build {
 
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value.getParentFile / "shared/src/main/scala",
+      unmanagedSourceDirectories in Test +=
+        baseDirectory.value.getParentFile / "shared/src/test/scala",
 
       sourceGenerators in Compile <+= Def.task {
         ScalaJSEnvGenerator.generateEnvHolder(
