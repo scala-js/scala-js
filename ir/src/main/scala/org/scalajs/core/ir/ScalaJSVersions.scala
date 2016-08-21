@@ -21,7 +21,7 @@ object ScalaJSVersions {
    *  - a prior release version (i.e. "0.5.0", *not* "0.5.0-SNAPSHOT")
    *  - `current`
    */
-  val binaryEmitted: String = "0.6.8"
+  val binaryEmitted: String = current
 
   /** Versions whose binary files we can support (used by deserializer) */
   val binarySupported: Set[String] =
