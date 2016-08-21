@@ -9,6 +9,8 @@ import scala.tools.nsc._
 
 import scala.collection.mutable
 
+import org.scalajs.core.ir.Trees.JSNativeLoadSpec
+
 /** Additions to Global meaningful for the JavaScript backend
  *
  *  @author Sébastien Doeraene
@@ -37,6 +39,10 @@ trait JSGlobalAddons extends JSDefinitions
     private val exportedSymbols =
       mutable.Map.empty[Symbol, List[ExportInfo]]
 
+    /** JS native load specs of the symbols in the current compilation run. */
+    private val jsNativeLoadSpecs =
+      mutable.Map.empty[Symbol, JSNativeLoadSpec]
+
     private val exportPrefix = "$js$exported$"
     private val methodExportPrefix = exportPrefix + "meth$"
     private val propExportPrefix = exportPrefix + "prop$"
@@ -47,13 +53,15 @@ trait JSGlobalAddons extends JSDefinitions
       val isNamed: Boolean
     }
 
+    def clearGlobalState(): Unit = {
+      exportedSymbols.clear()
+      jsNativeLoadSpecs.clear()
+    }
+
     private def assertValidForRegistration(sym: Symbol): Unit = {
       assert(sym.isConstructor || sym.isClass,
           "Can only register constructors or classes for export")
     }
-
-    def clearRegisteredExports(): Unit =
-      exportedSymbols.clear()
 
     def registerForExport(sym: Symbol, infos: List[ExportInfo]): Unit = {
       assert(!exportedSymbols.contains(sym), "Same symbol exported twice")
@@ -146,16 +154,34 @@ trait JSGlobalAddons extends JSDefinitions
       }
     }
 
-    /** Gets the fully qualified JS name of a static class of module Symbol.
-     *
-     *  This is the JS name of the symbol qualified by the fully qualified JS
-     *  name of its original owner if the latter is a native JS object.
+    /** Gets the fully qualified JS name of a static module Symbol compiled
+     *  with the 0.6.8 binary format or earlier.
      */
-    def fullJSNameOf(sym: Symbol): String = {
-      assert(sym.isClass, s"fullJSNameOf called for non-class symbol $sym")
+    def compat068FullJSNameOf(sym: Symbol): String = {
+      assert(sym.isModuleClass,
+          s"compat068FullJSNameOf called for non-module-class symbol $sym")
       sym.getAnnotation(JSFullNameAnnotation).flatMap(_.stringArg(0)) getOrElse {
         jsNameOf(sym)
       }
+    }
+
+    /** Stores the JS native load spec of a symbol for the current compilation
+     *  run.
+     */
+    def storeJSNativeLoadSpec(sym: Symbol, spec: JSNativeLoadSpec): Unit = {
+      assert(sym.isClass,
+          s"storeJSNativeLoadSpec called for non-class symbol $sym")
+
+      jsNativeLoadSpecs(sym) = spec
+    }
+
+    /** Gets the JS native load spec of a symbol in the current compilation run.
+     */
+    def jsNativeLoadSpecOf(sym: Symbol): JSNativeLoadSpec = {
+      assert(sym.isClass,
+          s"jsNativeLoadSpecOf called for non-class symbol $sym")
+
+      jsNativeLoadSpecs(sym)
     }
 
   }

@@ -11,6 +11,8 @@ import nsc._
 import scala.collection.immutable.ListMap
 import scala.collection.mutable
 
+import org.scalajs.core.ir.Trees.JSNativeLoadSpec
+
 /** Prepares classes extending js.Any for JavaScript interop
  *
  * This phase does:
@@ -51,7 +53,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     override def description: String = PrepJSInterop.this.description
     override def run(): Unit = {
       jsPrimitives.initPrepJSPrimitives()
-      jsInterop.clearRegisteredExports()
+      jsInterop.clearGlobalState()
       super.run()
     }
   }
@@ -533,33 +535,49 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         } else if (enclosingOwner is OwnerKind.JSMod) {
           reporter.error(implDef.pos, "Scala.js-defined JS objects " +
               "may not have inner native JS classes or objects")
-        } else if (!sym.isTrait && (enclosingOwner is OwnerKind.JSNativeMod)) {
-          /* Store the fully qualified JS name in an explicit @JSFullName
-           * annotation, before `flatten` destroys the name and (in 2.10) the
-           * original owner chain.
+        } else if (!sym.isTrait) {
+          /* Compute the loading spec now, before `flatten` destroys the name
+           * and (in 2.10) the original owner chain. We store it in a global
+           * map.
            */
-          val ownerFullJSName = jsInterop.fullJSNameOf(sym.owner)
-          val jsName = jsInterop.jsNameOf(sym)
-          val fullJSName = ownerFullJSName + "." + jsName
-          sym.addAnnotation(JSFullNameAnnotation,
-              typer.typed(Literal(Constant(fullJSName))))
-        } else if (!sym.isTrait && !sym.hasAnnotation(JSNameAnnotation) &&
-            !isJSGlobalScope(implDef)) {
-          if ((enclosingOwner is OwnerKind.ScalaMod) &&
-              !sym.owner.isPackageObjectClass) {
-            if (sym.isModuleClass) {
-              reporter.error(implDef.pos, "Native JS objects inside " +
-                  "non-native objects must have an @JSName annotation")
+          val loadSpec = {
+            if (enclosingOwner is OwnerKind.JSNativeMod) {
+              val ownerLoadSpec = jsInterop.jsNativeLoadSpecOf(sym.owner)
+              val jsName = jsInterop.jsNameOf(sym)
+              ownerLoadSpec match {
+                case JSNativeLoadSpec.Global(path) =>
+                  JSNativeLoadSpec.Global(path :+ jsName)
+              }
+            } else if (isJSGlobalScope(implDef)) {
+              JSNativeLoadSpec.Global(Nil)
             } else {
-              // This should be an error, but we erroneously allowed that before
-              reporter.warning(implDef.pos, "Native JS classes inside " +
-                  "non-native objects should have an @JSName annotation. " +
-                  "This will be enforced in 1.0.")
+              val needsExplicitJSName = {
+                (enclosingOwner is OwnerKind.ScalaMod) &&
+                !sym.owner.isPackageObjectClass
+              }
+
+              if (needsExplicitJSName && !sym.hasAnnotation(JSNameAnnotation)) {
+                if (sym.isModuleClass) {
+                  reporter.error(implDef.pos, "Native JS objects inside " +
+                      "non-native objects must have an @JSName annotation")
+                } else {
+                  // This should be an error, but we erroneously allowed that before
+                  reporter.warning(implDef.pos, "Native JS classes inside " +
+                      "non-native objects should have an @JSName annotation. " +
+                      "This will be enforced in 1.0.")
+                }
+              }
+
+              val path = jsInterop.jsNameOf(sym).split('.').toList
+              JSNativeLoadSpec.Global(path)
             }
-          } else if (sym.owner.isPackageObjectClass) {
-            sym.addAnnotation(JSFullNameAnnotation,
-                typer.typed(Literal(Constant(jsInterop.jsNameOf(sym)))))
           }
+
+          jsInterop.storeJSNativeLoadSpec(sym, loadSpec)
+
+          // Mark module classes as having the new format
+          if (sym.isModuleClass)
+            sym.addAnnotation(HasJSNativeLoadSpecAnnotation)
         }
       }
 

@@ -9,7 +9,7 @@
 
 package org.scalajs.core.tools.linker.backend.emitter
 
-import org.scalajs.core.ir.Trees.FieldDef
+import org.scalajs.core.ir.Trees.{FieldDef, JSNativeLoadSpec}
 
 private[emitter] trait GlobalKnowledge {
   /** Tests whether the parent class data is accessed in the linking unit. */
@@ -24,12 +24,13 @@ private[emitter] trait GlobalKnowledge {
   /** Tests whether the specified class name refers to an `Interface`. */
   def isInterface(className: String): Boolean
 
-  /** `None` for non-native JS classes; `Some(jsName)` for native JS classes.
+  /** `None` for non-native JS classes/objects; `Some(spec)` for native JS
+   *  classes/objects.
    *
    *  It is invalid to call this method with a class that is not a JS class
-   *  (native or not).
+   *  or object (native or not).
    */
-  def getJSClassJSName(className: String): Option[String]
+  def getJSNativeLoadSpec(className: String): Option[JSNativeLoadSpec]
 
   /** The `encodedName` of the superclass of a (non-native) JS class.
    *

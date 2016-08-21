@@ -181,11 +181,12 @@ private final class Analyzer(semantics: Semantics,
 
     val encodedName = data.encodedName
     val kind = data.kind
-    val isStaticModule = data.kind.hasModuleAccessor
+    val isAnyModuleClass =
+      data.kind.hasModuleAccessor || data.kind == ClassKind.NativeJSModuleClass
     val isInterface = data.kind == ClassKind.Interface
     val isScalaClass = data.kind.isClass || data.kind == ClassKind.HijackedClass
     val isJSClass = data.kind.isJSClass
-    val isAnyRawJSType = isJSClass || data.kind == ClassKind.RawJSType
+    val isJSType = data.kind.isJSType
     val isAnyClass = isScalaClass || isJSClass
     val isExported = data.isExported
 
@@ -252,6 +253,7 @@ private final class Analyzer(semantics: Semantics,
       areInstanceTestsUsed ||
       isDataAccessed ||
       isAnySubclassInstantiated ||
+      isModuleAccessed ||
       isAnyStaticMethodReachable ||
       isAnyDefaultMethodReachable
 
@@ -556,7 +558,7 @@ private final class Analyzer(semantics: Semantics,
 
       // Myself
       if (isExported) {
-        if (isStaticModule) accessModule()
+        if (isAnyModuleClass) accessModule()
         else instantiated()
       }
 
@@ -570,19 +572,37 @@ private final class Analyzer(semantics: Semantics,
     }
 
     def accessModule()(implicit from: From): Unit = {
-      if (!isStaticModule) {
+      if (!isAnyModuleClass) {
         _errors += NotAModule(this, from)
       } else if (!isModuleAccessed) {
         isModuleAccessed = true
-        instantiated()
-        if (isScalaClass)
-          callMethod("init___", statically = true)
+
+        if (kind != ClassKind.NativeJSModuleClass) {
+          instantiated()
+          if (isScalaClass)
+            callMethod("init___", statically = true)
+        }
       }
     }
 
     def instantiated()(implicit from: From): Unit = {
       instantiatedFrom ::= from
-      if (!isInstantiated && (isScalaClass || isAnyRawJSType)) {
+
+      /* TODO Get rid of this when we break binary compatibility.
+       * Due to the deserialization hacks for the 0.6.8 binary format, we
+       * might reach this point with `kind == ClassKind.AbstractJSType`, where
+       * in fact the ClassDef has `kind == ClassKind.NativeJSClass`. If an
+       * AbstractJSType is `instantiated()` here, we have to assume it is in
+       * fact a NativeJSClass.
+       */
+      val isNativeJSClass =
+        kind == ClassKind.NativeJSClass || kind == ClassKind.AbstractJSType
+
+      /* TODO? When the second line is false, shouldn't this be a linking error
+       * instead?
+       */
+      if (!isInstantiated &&
+          (isScalaClass || isJSClass || isNativeJSClass)) {
         isInstantiated = true
 
         if (isScalaClass) {
@@ -592,7 +612,7 @@ private final class Analyzer(semantics: Semantics,
           for ((methodName, from) <- delayedCalls)
             delayedCallMethod(methodName)(from)
         } else {
-          assert(isAnyRawJSType)
+          assert(isJSClass || isNativeJSClass)
 
           subclassInstantiated()
 
@@ -609,7 +629,7 @@ private final class Analyzer(semantics: Semantics,
 
     private def subclassInstantiated()(implicit from: From): Unit = {
       instantiatedFrom ::= from
-      if (!isAnySubclassInstantiated && (isScalaClass || isAnyRawJSType)) {
+      if (!isAnySubclassInstantiated && (isScalaClass || isJSType)) {
         isAnySubclassInstantiated = true
       }
     }

@@ -43,9 +43,22 @@ private final class InfoChecker(
   private def checkClassInfo(info: ClassInfo, expectedInfo: ClassInfo): Unit = {
     val className = expectedInfo.encodedName
 
+    /* Due to the hack for AbstractJSType and NativeJSClass in the
+     * deserializer, it is possible to get info where `kind == AbstractJSType`
+     * but `expectedInfo == NativeJSClass`. We need to tolerate that here.
+     * TODO Get rid of this when we break binary compatibility.
+     */
+    val patchedInfoKind = {
+      import ClassKind._
+      if (info.kind == AbstractJSType && expectedInfo.kind == NativeJSClass)
+        NativeJSClass
+      else
+        info.kind
+    }
+
     if (info.encodedName != expectedInfo.encodedName ||
         info.isExported != expectedInfo.isExported ||
-        info.kind != expectedInfo.kind ||
+        patchedInfoKind != expectedInfo.kind ||
         info.superClass != expectedInfo.superClass ||
         info.interfaces.toSet != expectedInfo.interfaces.toSet) {
       errorCount += 1

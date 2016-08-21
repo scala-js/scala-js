@@ -3,9 +3,24 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
+      // Breaking changes
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.ir.Trees#ClassDef.jsName")
   )
 
   val Tools = Seq(
+      // Breaking changes
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.LinkedClass.jsName"),
+
+      // private, not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.analyzer.Analyzer#ClassInfo.isAnyRawJSType"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.analyzer.Analyzer#ClassInfo.isStaticModule"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.checker.IRChecker#CheckedClass.jsName"),
+
       // private[emitter], not an issue
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.this"),

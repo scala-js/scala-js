@@ -56,9 +56,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   def check(): Int = {
     for (classDef <- unit.classDefs) {
       implicit val ctx = ErrorContext(classDef)
+      checkJSNativeLoadSpec(classDef)
       checkStaticMembers(classDef)
       classDef.kind match {
-        case ClassKind.RawJSType =>
+        case ClassKind.AbstractJSType | ClassKind.NativeJSClass |
+            ClassKind.NativeJSModuleClass =>
           if (classDef.fields.nonEmpty ||
               classDef.memberMethods.nonEmpty ||
               classDef.abstractMethods.nonEmpty ||
@@ -72,6 +74,24 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       }
     }
     errorCount
+  }
+
+  private def checkJSNativeLoadSpec(classDef: LinkedClass): Unit = {
+    implicit val ctx = ErrorContext(classDef)
+
+    classDef.kind match {
+      case ClassKind.NativeJSClass | ClassKind.NativeJSModuleClass =>
+        if (classDef.jsNativeLoadSpec.isEmpty) {
+          reportError(
+              s"Native JS type ${classDef.name} must have a jsNativeLoadSpec")
+        }
+      case _ =>
+        if (classDef.jsNativeLoadSpec.isDefined) {
+          reportError(
+              s"Non-native JS type ${classDef.name} must not have a " +
+              "jsNativeLoadSpec")
+        }
+    }
   }
 
   private def checkStaticMembers(classDef: LinkedClass): Unit = {
@@ -89,7 +109,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private def checkScalaClassDef(classDef: LinkedClass): Unit = {
-    assert(classDef.kind != ClassKind.RawJSType)
+    assert(classDef.kind != ClassKind.AbstractJSType &&
+        classDef.kind != ClassKind.NativeJSClass &&
+        classDef.kind != ClassKind.NativeJSModuleClass)
 
     // Is this a normal class?
     if (classDef.kind != ClassKind.HijackedClass &&
@@ -802,7 +824,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         val valid = clazz.kind match {
           case ClassKind.JSClass       => true
           case ClassKind.JSModuleClass => true
-          case ClassKind.RawJSType     => clazz.jsName.isDefined
+          case ClassKind.NativeJSClass => true
           case _                       => false
         }
         if (!valid)
@@ -810,7 +832,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case LoadJSModule(cls) =>
         val clazz = lookupClass(cls)
-        if (clazz.kind != ClassKind.JSModuleClass)
+        val valid = clazz.kind match {
+          case ClassKind.JSModuleClass       => true
+          case ClassKind.NativeJSModuleClass => true
+          case _                             => false
+        }
+        if (!valid)
           reportError(s"JS module class type expected but $cls found")
 
       case JSUnaryOp(op, lhs) =>
@@ -942,7 +969,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       NullType
     } else {
       val kind = tryLookupClass(encodedName).fold(_.kind, _.kind)
-      if (kind == ClassKind.RawJSType || kind.isJSClass) AnyType
+      if (kind.isJSType) AnyType
       else ClassType(encodedName)
     }
   }
@@ -1064,7 +1091,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       val kind: ClassKind,
       val superClassName: Option[String],
       val ancestors: Set[String],
-      val jsName: Option[String],
+      val jsNativeLoadSpec: Option[JSNativeLoadSpec],
       _fields: TraversableOnce[CheckedField])(
       implicit ctx: ErrorContext) {
 
@@ -1076,7 +1103,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       this(classDef.name.name, classDef.kind,
           classDef.superClass.map(_.name),
           classDef.ancestors.toSet,
-          classDef.jsName,
+          classDef.jsNativeLoadSpec,
           if (classDef.kind.isJSClass) Nil
           else classDef.fields.map(CheckedClass.checkedField))
     }

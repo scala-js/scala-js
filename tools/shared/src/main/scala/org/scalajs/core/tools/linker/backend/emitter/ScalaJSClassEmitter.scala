@@ -651,11 +651,11 @@ private[emitter] final class ScalaJSClassEmitter(
       HijackedBoxedClasses.contains(className)
     val isAncestorOfHijackedClass =
       AncestorsOfHijackedClasses.contains(className)
-    val isRawJSType =
-      kind == ClassKind.RawJSType || kind.isJSClass
+    val isJSType =
+      kind.isJSType
 
     val isRawJSTypeParam =
-      if (isRawJSType) js.BooleanLiteral(true)
+      if (isJSType) js.BooleanLiteral(true)
       else js.Undefined()
 
     val parentData = if (globalKnowledge.isParentDataAccessed) {
@@ -686,16 +686,18 @@ private[emitter] final class ScalaJSClassEmitter(
         /* java.lang.String and ancestors of hijacked classes have a normal
          * ScalaJS.is.pack_Class test but with a non-standard behavior. */
         (envField("is", className), js.Undefined())
-      } else if (isRawJSType) {
-        /* Raw JS types have an instanceof operator-based isInstanceOf test
-         * dictated by their jsName. If there is no jsName, the test cannot
-         * be performed and must throw.
-         * JS classes have something similar, based on their constructor.
+      } else if (isJSType) {
+        /* Native JS classes have an instanceof operator-based isInstanceOf
+         * test dictated by their jsNativeLoadSpec.
+         * Non-native JS classes have something similar, based on their
+         * constructor.
+         * Other JS types do not have any instanceof operator, so the test
+         * cannot be performed and must throw.
          */
-        if (tree.jsName.isEmpty && kind != ClassKind.JSClass) {
+        if (kind != ClassKind.JSClass && kind != ClassKind.NativeJSClass) {
           (envField("noIsInstance"), js.Undefined())
         } else {
-          val jsCtor = genRawJSClassConstructor(className, tree.jsName)
+          val jsCtor = genRawJSClassConstructor(className, tree.jsNativeLoadSpec)
           (js.Function(List(js.ParamDef(Ident("x"), rest = false)), js.Return {
             js.BinaryOp(JSBinaryOp.instanceof, js.VarRef(Ident("x")), jsCtor)
           }), js.Undefined())

@@ -770,7 +770,8 @@ object Trees {
   // Classes
 
   case class ClassDef(name: Ident, kind: ClassKind, superClass: Option[Ident],
-      interfaces: List[Ident], jsName: Option[String], defs: List[Tree])(
+      interfaces: List[Ident], jsNativeLoadSpec: Option[JSNativeLoadSpec],
+      defs: List[Tree])(
       val optimizerHints: OptimizerHints)(
       implicit val pos: Position) extends Tree {
     val tpe = NoType
@@ -836,6 +837,38 @@ object Trees {
 
     final val empty: OptimizerHints =
       new OptimizerHints(0)
+  }
+
+  /** Loading specification for a native JS class or object. */
+  sealed abstract class JSNativeLoadSpec
+
+  object JSNativeLoadSpec {
+
+    /** Load from the global scope.
+     *
+     *  The `path` is a series of nested property names starting from the
+     *  global object.
+     *
+     *  The path can be empty, in which case this denotes the global object
+     *  itself.
+     *
+     *  Any element in the path is a property selection from there. A global
+     *  scope loading spec with one path element is therefore a global variable.
+     *
+     *  Examples:
+     *  {{{
+     *  // <global>
+     *  Global(None, Nil)
+     *
+     *  // <global>.Date
+     *  Global(None, List("Date"))
+     *
+     *  // <global>.cp.Vect
+     *  Global(None, List("cp", "Vect"))
+     *  }}}
+     */
+    final case class Global(path: List[String]) extends JSNativeLoadSpec
+
   }
 
   /** A hash of a tree (usually a MethodDef). Contains two SHA-1 hashes */
