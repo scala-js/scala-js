@@ -300,13 +300,13 @@ private[runtime] object RuntimeString {
     if (offset < 0 || end < offset || end > value.length)
       throw new StringIndexOutOfBoundsException
 
-    val charCodes = new js.Array[Int]
+    var result = ""
     var i = offset
     while (i != end) {
-      charCodes += value(i).toInt
+      result += value(i).toString
       i += 1
     }
-    fromCharCode(charCodes: _*)
+    result
   }
 
   def newString(bytes: Array[Byte]): String =
@@ -334,22 +334,13 @@ private[runtime] object RuntimeString {
     if (offset < 0 || end < offset || end > codePoints.length)
       throw new StringIndexOutOfBoundsException
 
-    val charCodes = new js.Array[Int]
+    var result = ""
     var i = offset
     while (i != end) {
-      val cp = codePoints(i)
-      if (cp < 0 || cp > Character.MAX_CODE_POINT)
-        throw new IllegalArgumentException
-      if (cp <= Character.MAX_VALUE) {
-        charCodes += cp
-      } else {
-        val offsetCp = cp - 0x10000
-        charCodes += (offsetCp >> 10) | 0xd800
-        charCodes += (offsetCp & 0x3ff) | 0xdc00
-      }
+      result += fromCodePoint(codePoints(i))
       i += 1
     }
-    fromCharCode(charCodes: _*)
+    result
   }
 
   def newString(original: String): String =
@@ -396,20 +387,21 @@ private[runtime] object RuntimeString {
     else s
 
   private def fromCodePoint(codePoint: Int): String = {
-    if ((codePoint & ~Character.MAX_VALUE) == 0)
-      fromCharCode(codePoint)
-    else if (codePoint < 0 || codePoint > Character.MAX_CODE_POINT)
+    if ((codePoint & ~Character.MAX_VALUE) == 0) {
+      NativeJSString.fromCharCode(codePoint)
+    } else if (codePoint < 0 || codePoint > Character.MAX_CODE_POINT) {
       throw new IllegalArgumentException
-    else {
+    } else {
       val offsetCp = codePoint - 0x10000
-      fromCharCode(
+      NativeJSString.fromCharCode(
           (offsetCp >> 10) | 0xd800, (offsetCp & 0x3ff) | 0xdc00)
     }
   }
 
-  @inline private def fromCharCode(charCodes: Int*): String = {
-    js.Dynamic.global.String.applyDynamic("fromCharCode")(
-        charCodes.asInstanceOf[Seq[js.Any]]: _*).asInstanceOf[String]
+  @js.native
+  @js.annotation.JSName("String")
+  private object NativeJSString extends js.Object {
+    def fromCharCode(charCodes: Int*): String = js.native
   }
 
 }
