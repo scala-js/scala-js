@@ -117,8 +117,8 @@ class Date private (private val date: js.Date) extends Object
     val hours = pad0(Math.abs(offset) / 60)
     val mins = pad0(Math.abs(offset) % 60)
     Days(date.getDay()) + " "+ Months(date.getMonth()) + " " +
-      pad0(date.getHours()) + ":" + pad0(date.getMinutes()) + ":" +
-      pad0(date.getSeconds()) + " GMT" + sign + hours + mins + " " +
+      pad0(date.getDate()) + " " + pad0(date.getHours()) + ":" +
+      pad0(date.getMinutes()) + ":" + pad0(date.getSeconds()) + " GMT" + " " +
       date.getFullYear()
   }
 }
