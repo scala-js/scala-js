@@ -231,20 +231,21 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case ddef: DefDef if enclosingOwner is OwnerKind.RawJSType =>
           transformValOrDefDefInRawJSType(fixPublicBeforeTyper(ddef))
 
-        // Exporter generation
-        case ddef: DefDef =>
-          if (shouldPrepareExports) {
-            // Generate exporters for this ddef if required
-            exporters.getOrElseUpdate(ddef.symbol.owner,
-                mutable.ListBuffer.empty) ++= genExportMember(ddef)
-          }
-          super.transform(tree)
-
         // Catch ValDefs in enumerations with simple calls to Value
         case ValDef(mods, name, tpt, ScalaEnumValue.NoName(optPar))
             if anyEnclosingOwner is OwnerKind.Enum =>
           val nrhs = ScalaEnumValName(tree.symbol.owner, tree.symbol, optPar)
           treeCopy.ValDef(tree, mods, name, transform(tpt), nrhs)
+
+        // Exporter generation
+        case _: ValOrDefDef if tree.symbol.isMethod =>
+          val sym = tree.symbol
+          if (shouldPrepareExports) {
+            // Generate exporters for this ddef if required
+            exporters.getOrElseUpdate(sym.owner,
+                mutable.ListBuffer.empty) ++= genExportMember(sym)
+          }
+          super.transform(tree)
 
         // Catch Select on Enumeration.Value we couldn't transform but need to
         // we ignore the implementation of scala.Enumeration itself

@@ -48,7 +48,7 @@ class AbstractCollectionFactory extends CollectionFactory {
             elem
           }
 
-          def remove(): Unit = {
+          override def remove(): Unit = {
             last match {
               case Some(elem) =>
                 inner -= Box(elem)
