@@ -834,6 +834,7 @@ object ScalaJSPluginInternal {
 
       relativeSourceMaps := false,
       persistLauncher := false,
+      persistLauncher in Test := false,
 
       emitSourceMaps := true,
 
