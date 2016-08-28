@@ -20,10 +20,15 @@ import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.Test
 
+import org.scalajs.testsuite.utils.JSUtils
+
 class ExportsTest {
 
+  /** The namespace in which top-level exports are stored. */
+  val exportsNamespace = scala.scalajs.runtime.environmentInfo.exportsNamespace
+
   /** This package in the JS (export) namespace */
-  val jsPackage = js.Dynamic.global.org.scalajs.testsuite.jsinterop
+  val jsPackage = exportsNamespace.org.scalajs.testsuite.jsinterop
 
   // @JSExport
 
@@ -604,7 +609,7 @@ class ExportsTest {
   }
 
   @Test def exports_for_objects_with_explicit_name(): Unit = {
-    val accessor = js.Dynamic.global.TheExportedObject
+    val accessor = exportsNamespace.TheExportedObject
     assertJSNotUndefined(accessor)
     assertEquals("function", js.typeOf(accessor))
     val obj = accessor()
@@ -614,7 +619,7 @@ class ExportsTest {
   }
 
   @Test def exports_for_Scala_js_defined_JS_objects_with_explicit_name(): Unit = {
-    val accessor = js.Dynamic.global.TheSJSDefinedExportedObject
+    val accessor = exportsNamespace.TheSJSDefinedExportedObject
     assertJSNotUndefined(accessor)
     assertEquals("function", js.typeOf(accessor))
     val obj = accessor()
@@ -624,7 +629,7 @@ class ExportsTest {
   }
 
   @Test def exports_for_objects_with_qualified_name(): Unit = {
-    val accessor = js.Dynamic.global.qualified.testobject.ExportedObject
+    val accessor = exportsNamespace.qualified.testobject.ExportedObject
     assertJSNotUndefined(accessor)
     assertEquals("function", js.typeOf(accessor))
     val obj = accessor()
@@ -634,7 +639,7 @@ class ExportsTest {
   }
 
   @Test def exports_for_objects_with_constant_folded_name(): Unit = {
-    val accessor = js.Dynamic.global.ConstantFoldedObjectExport
+    val accessor = exportsNamespace.ConstantFoldedObjectExport
     assertJSNotUndefined(accessor)
     assertEquals("function", js.typeOf(accessor))
     val obj = accessor()
@@ -671,7 +676,7 @@ class ExportsTest {
   }
 
   @Test def exports_for_classes_with_explicit_name(): Unit = {
-    val constr = js.Dynamic.global.TheExportedClass
+    val constr = exportsNamespace.TheExportedClass
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)(5)
@@ -679,7 +684,7 @@ class ExportsTest {
   }
 
   @Test def exports_for_Scala_js_defined_JS_classes_with_explicit_name(): Unit = {
-    val constr = js.Dynamic.global.TheSJSDefinedExportedClass
+    val constr = exportsNamespace.TheSJSDefinedExportedClass
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)(5)
@@ -688,7 +693,7 @@ class ExportsTest {
   }
 
   @Test def exports_for_classes_with_qualified_name_ExportedClass(): Unit = {
-    val constr = js.Dynamic.global.qualified.testclass.ExportedClass
+    val constr = exportsNamespace.qualified.testclass.ExportedClass
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)(5)
@@ -696,7 +701,7 @@ class ExportsTest {
   }
 
   @Test def exports_for_classes_with_qualified_name_SJSDefinedExportedClass(): Unit = {
-    val constr = js.Dynamic.global.qualified.testclass.SJSDefinedExportedClass
+    val constr = exportsNamespace.qualified.testclass.SJSDefinedExportedClass
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)(5)
@@ -705,7 +710,7 @@ class ExportsTest {
   }
 
   @Test def exports_for_classes_with_constant_folded_name(): Unit = {
-    val constr = js.Dynamic.global.ConstantFoldedClassExport
+    val constr = exportsNamespace.ConstantFoldedClassExport
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)(5)
@@ -768,13 +773,13 @@ class ExportsTest {
 
     val funs = js.eval("""
         var funs = {
-          testIsChar: function(foo) { return JSUtils().isChar(foo.bar(65)); },
-          testCharValue: function(foo) { return JSUtils().charToString(foo.bar(65)); }
+          testIsChar: function(JSUtils, foo) { return JSUtils.isChar(foo.bar(65)); },
+          testCharValue: function(JSUtils, foo) { return JSUtils.charToString(foo.bar(65)); }
         }; funs;
         """).asInstanceOf[js.Dynamic]
 
-    assertTrue(funs.testIsChar(foo).asInstanceOf[Boolean])
-    assertEquals("A", funs.testCharValue(foo))
+    assertTrue(funs.testIsChar(JSUtils, foo).asInstanceOf[Boolean])
+    assertEquals("A", funs.testCharValue(JSUtils, foo))
   }
 
   @Test def should_take_boxed_Chars_as_parameter(): Unit = {
@@ -785,11 +790,11 @@ class ExportsTest {
     val foo = (new Foo).asInstanceOf[js.Dynamic]
 
     val f = js.eval("""
-        var f = function(foo) { return foo.bar(JSUtils().stringToChar('e')); };
+        var f = function(JSUtils, foo) { return foo.bar(JSUtils.stringToChar('e')); };
         f;
         """).asInstanceOf[js.Dynamic]
 
-    assertEquals('e'.toInt, f(foo))
+    assertEquals('e'.toInt, f(JSUtils, foo))
   }
 
   @Test def should_be_able_to_disambiguate_an_Int_from_a_Char(): Unit = {
@@ -803,12 +808,12 @@ class ExportsTest {
 
     val funs = js.eval("""
         var funs = {
-          testChar: function(foo) { return foo.bar(JSUtils().stringToChar('S')); },
+          testChar: function(JSUtils, foo) { return foo.bar(JSUtils.stringToChar('S')); },
           testInt: function(foo) { return foo.bar(68); }
         }; funs;
         """).asInstanceOf[js.Dynamic]
 
-    assertEquals("char: S", funs.testChar(foo))
+    assertEquals("char: S", funs.testChar(JSUtils, foo))
     assertEquals("int: 68", funs.testInt(foo))
   }
 
@@ -935,7 +940,7 @@ class ExportsTest {
   }
 
   @Test def exporting_under_org_namespace_issue_364(): Unit = {
-    val accessor = js.Dynamic.global.org.ExportedUnderOrgObject
+    val accessor = exportsNamespace.org.ExportedUnderOrgObject
     assertEquals("function", js.typeOf(accessor))
     val obj = accessor()
     assertSame(ExportedUnderOrgObject.asInstanceOf[js.Any], obj)
@@ -1204,7 +1209,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_objects_extending_a_trait(): Unit = {
     val accessor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportedTraitObject
+      exportsNamespace.org.scalajs.testsuite.jsinterop.AutoExportedTraitObject
     assertJSNotUndefined(accessor)
     assertEquals("function", js.typeOf(accessor))
     val obj = accessor()
@@ -1214,7 +1219,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_objects_extending_a_class(): Unit = {
     val accessor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportedClassObject
+      exportsNamespace.org.scalajs.testsuite.jsinterop.AutoExportedClassObject
     assertJSNotUndefined(accessor)
     assertEquals("function", js.typeOf(accessor))
     val obj = accessor()
@@ -1224,7 +1229,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_Scala_js_defined_JS_objects_extending_a_trait(): Unit = {
     val accessor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedTraitObject
+      exportsNamespace.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedTraitObject
     assertJSNotUndefined(accessor)
     assertEquals("function", js.typeOf(accessor))
     val obj = accessor()
@@ -1234,7 +1239,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_Scala_js_defined_JS_objects_extending_a_class(): Unit = {
     val accessor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedClassObject
+      exportsNamespace.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedClassObject
     assertJSNotUndefined(accessor)
     assertEquals("function", js.typeOf(accessor))
     val obj = accessor()
@@ -1244,7 +1249,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_objects_extending_a_trait_with_ignoreInvalidDescendants(): Unit = {
     val accessor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportIgnoreTraitObject
+      exportsNamespace.org.scalajs.testsuite.jsinterop.AutoExportIgnoreTraitObject
     assertJSNotUndefined(accessor)
     assertEquals("function", js.typeOf(accessor))
     val obj = accessor()
@@ -1254,7 +1259,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_objects_extending_a_class_with_ignoreInvalidDescendants(): Unit = {
     val accessor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportIgnoreClassObject
+      exportsNamespace.org.scalajs.testsuite.jsinterop.AutoExportIgnoreClassObject
     assertJSNotUndefined(accessor)
     assertEquals("function", js.typeOf(accessor))
     val obj = accessor()
@@ -1264,7 +1269,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_Scala_js_defined_JS_objects_extending_a_class_with_ignoreInvalidDescendants(): Unit = {
     val accessor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedIgnoreClassObject
+      exportsNamespace.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedIgnoreClassObject
     assertJSNotUndefined(accessor)
     assertEquals("function", js.typeOf(accessor))
     val obj = accessor()
@@ -1298,7 +1303,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_classes_extending_a_trait(): Unit = {
     val ctor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportedTraitClass
+      exportsNamespace.org.scalajs.testsuite.jsinterop.AutoExportedTraitClass
     assertJSNotUndefined(ctor)
     assertEquals("function", js.typeOf(ctor))
 
@@ -1313,7 +1318,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_classes_extending_a_class(): Unit = {
     val ctor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportedClassClass
+      exportsNamespace.org.scalajs.testsuite.jsinterop.AutoExportedClassClass
     assertJSNotUndefined(ctor)
     assertEquals("function", js.typeOf(ctor))
 
@@ -1328,7 +1333,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_Scala_js_defined_JS_classes_extending_a_trait(): Unit = {
     val ctor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedTraitClass
+      exportsNamespace.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedTraitClass
     assertJSNotUndefined(ctor)
     assertEquals("function", js.typeOf(ctor))
 
@@ -1340,7 +1345,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_Scala_js_defined_JS_classes_extending_a_class(): Unit = {
     val ctor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedClassClass
+      exportsNamespace.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedClassClass
     assertJSNotUndefined(ctor)
     assertEquals("function", js.typeOf(ctor))
 
@@ -1352,7 +1357,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_classes_extending_a_trait_with_ignoreInvalidDescendants(): Unit = {
     val ctor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportIgnoreTraitClass
+      exportsNamespace.org.scalajs.testsuite.jsinterop.AutoExportIgnoreTraitClass
     assertJSNotUndefined(ctor)
     assertEquals("function", js.typeOf(ctor))
 
@@ -1367,7 +1372,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_classes_extending_a_class_with_ignoreInvalidDescendants(): Unit = {
     val ctor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportIgnoreClassClass
+      exportsNamespace.org.scalajs.testsuite.jsinterop.AutoExportIgnoreClassClass
     assertJSNotUndefined(ctor)
     assertEquals("function", js.typeOf(ctor))
 
@@ -1382,7 +1387,7 @@ class ExportsTest {
 
   @Test def auto_exports_for_Scala_js_defined_JS_classes_extending_a_class_with_ignoreInvalidDescendants(): Unit = {
     val ctor =
-      js.Dynamic.global.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedIgnoreClassClass
+      exportsNamespace.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedIgnoreClassClass
     assertJSNotUndefined(ctor)
     assertEquals("function", js.typeOf(ctor))
 

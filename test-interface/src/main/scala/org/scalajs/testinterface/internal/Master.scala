@@ -36,7 +36,8 @@ final class Master(frameworkName: String) extends BridgeBase(frameworkName) {
   private def newRunner(data: js.Dynamic): Try[Unit] = {
     val args = data.args.asInstanceOf[js.Array[String]].toArray
     val remoteArgs = data.remoteArgs.asInstanceOf[js.Array[String]].toArray
-    val loader = new ScalaJSClassLoader(js.Dynamic.global)
+    val loader = new ScalaJSClassLoader(
+        scala.scalajs.runtime.environmentInfo.exportsNamespace)
 
     Try(runner = framework.runner(args, remoteArgs, loader))
   }
