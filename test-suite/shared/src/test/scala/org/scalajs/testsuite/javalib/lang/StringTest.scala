@@ -330,6 +330,28 @@ class StringTest {
     assertTrue(testU.regionMatches(true, 1, "bCdx", 1, -3))
   }
 
+  @Test def createFromLargeCharArray_issue2553(): Unit = {
+    val largeCharArray =
+      (1 to 100000).toArray.flatMap(_ => Array('a', 'b', 'c', 'd', 'e', 'f'))
+    val str = new String(largeCharArray)
+
+    assertEquals(600000, str.length)
+
+    for (i <- 0 until str.length)
+      assertEquals(('a' + i % 6).toChar, str.charAt(i))
+  }
+
+  @Test def createFromLargeCodePointArray_issue2553(): Unit = {
+    val largeCodePointArray =
+      (1 to 100000).toArray.flatMap(_ => Array[Int]('a', 'b', 'c', 'd', 'e', 'f'))
+    val str = new String(largeCodePointArray, 0, largeCodePointArray.length)
+
+    assertEquals(600000, str.length)
+
+    for (i <- 0 until str.length)
+      assertEquals(('a' + i % 6).toChar, str.charAt(i))
+  }
+
   @Test def String_CASE_INSENSITIVE_ORDERING(): Unit = {
     def compare(s1: String, s2: String): Int =
       String.CASE_INSENSITIVE_ORDER.compare(s1, s2)
