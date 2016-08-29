@@ -44,32 +44,45 @@ final class Pattern private (jsRegExp: js.RegExp, _pattern: String, _flags: Int)
   def split(input: CharSequence, limit: Int): Array[String] = {
     val lim = if (limit > 0) limit else Int.MaxValue
 
-    val result = js.Array[String]()
     val inputStr = input.toString
     val matcher = this.matcher(inputStr)
-    var prevEnd = 0
 
     // Actually split original string
-    while ((result.length < lim-1) && matcher.find()) {
-      result.push(inputStr.substring(prevEnd, matcher.start))
+    val builder = Array.newBuilder[String]
+    var prevEnd = 0
+    var size = 0
+    while ((size < lim-1) && matcher.find()) {
+      if (matcher.end == 0) {
+        /* If there is a zero-width match at the beginning of the string,
+         * ignore it, i.e., omit the resulting empty string at the beginning of
+         * the array.
+         */
+      } else {
+        builder += inputStr.substring(prevEnd, matcher.start)
+        size += 1
+      }
       prevEnd = matcher.end
     }
-    result.push(inputStr.substring(prevEnd))
+    builder += inputStr.substring(prevEnd)
+    val result = builder.result()
 
-    // Remove a leading empty element iff the first match was zero-length
-    // and there is no other place the regex matches
-    if (prevEnd == 0 && result.length == 2 && (lim > 2 || !matcher.find())) {
-      Array(inputStr)
+    /* With `limit == 0`, remove trailing empty strings (but do not reduce
+     * the array to be zero length).
+     */
+    if (limit != 0) {
+      result
     } else {
-      var len = result.length
-      if (limit == 0) {
-        while (len > 1 && result(len-1).isEmpty)
-          len -= 1
-      }
+      var actualLength = result.length
+      while (actualLength > 1 && result(actualLength - 1) == "")
+        actualLength -= 1
 
-      val actualResult = new Array[String](len)
-      result.copyToArray(actualResult)
-      actualResult
+      if (actualLength == result.length) {
+        result
+      } else {
+        val actualResult = new Array[String](actualLength)
+        System.arraycopy(result, 0, actualResult, 0, actualLength)
+        actualResult
+      }
     }
   }
 }
