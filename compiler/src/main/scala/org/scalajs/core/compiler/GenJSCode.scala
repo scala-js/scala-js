@@ -2004,7 +2004,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       fun match {
         case TypeApply(_, _) =>
-          genApplyTypeApply(tree)
+          genApplyTypeApply(tree, isStat)
 
         case _ if isRawJSDefaultParam =>
           js.UndefinedParam()(toIRType(sym.tpe.resultType))
@@ -2035,22 +2035,32 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen an Apply with a TypeApply method.
-     *  Only isInstanceOf and asInstanceOf keep their type argument until the
-     *  backend.
+     *
+     *  Until 2.12.0-M5, only `isInstanceOf` and `asInstanceOf` kept their type
+     *  argument until the backend. Since 2.12.0-RC1, `AnyRef.synchronized`
+     *  does so too.
      */
-    private def genApplyTypeApply(tree: Apply): js.Tree = {
+    private def genApplyTypeApply(tree: Apply, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
-      val Apply(TypeApply(fun @ Select(obj, _), targs), _) = tree
+      val Apply(TypeApply(fun @ Select(obj, _), targs), args) = tree
       val sym = fun.symbol
 
-      val cast = sym match {
-        case Object_isInstanceOf => false
-        case Object_asInstanceOf => true
+      sym match {
+        case Object_isInstanceOf =>
+          genIsAsInstanceOf(obj, targs, cast = false)
+        case Object_asInstanceOf =>
+          genIsAsInstanceOf(obj, targs, cast = true)
+        case Object_synchronized =>
+          genSynchronized(obj, args.head, isStat)
         case _ =>
           abort("Unexpected type application " + fun +
               "[sym: " + sym.fullName + "]" + " in: " + tree)
       }
+    }
 
+    /** Gen `isInstanceOf` or `asInstanceOf`. */
+    private def genIsAsInstanceOf(obj: Tree, targs: List[Tree], cast: Boolean)(
+        implicit pos: Position): js.Tree = {
       val to = targs.head.tpe
       val l = toTypeKind(obj.tpe)
       val r = toTypeKind(to)
@@ -2871,7 +2881,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       else if (isArrayOp(code))
         genArrayOp(tree, code)
       else if (code == SYNCHRONIZED)
-        genSynchronized(tree, isStat)
+        genSynchronized(receiver, args.head, isStat)
       else if (isCoercion(code))
         genCoercion(tree, receiver, code)
       else if (jsPrimitives.isJavaScriptPrimitive(code))
@@ -3224,11 +3234,11 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen JS code for a call to AnyRef.synchronized */
-    private def genSynchronized(tree: Apply, isStat: Boolean): js.Tree = {
+    private def genSynchronized(receiver: Tree, arg: Tree, isStat: Boolean)(
+        implicit pos: Position): js.Tree = {
       /* JavaScript is single-threaded, so we can drop the
        * synchronization altogether.
        */
-      val Apply(Select(receiver, _), List(arg)) = tree
       val newReceiver = genExpr(receiver)
       val newArg = genStatOrExpr(arg, isStat)
       newReceiver match {
@@ -3236,7 +3246,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           // common case for which there is no side-effect nor NPE
           newArg
         case _ =>
-          implicit val pos = tree.pos
           val NPECtor = getMemberMethod(NullPointerExceptionClass,
               nme.CONSTRUCTOR).suchThat(_.tpe.params.isEmpty)
           js.Block(
