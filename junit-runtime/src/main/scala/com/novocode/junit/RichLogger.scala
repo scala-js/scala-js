@@ -8,20 +8,20 @@ import Ansi._
 
 final class RichLogger private (loggers: Array[Logger], settings: RunSettings) {
 
-  private[this] val currentTestClassName = new mutable.Stack[String]()
+  private[this] var currentTestClassName: List[String] = Nil
 
   def this(loggers: Array[Logger], settings: RunSettings,
       testClassName: String) = {
     this(loggers, settings)
-    currentTestClassName.push(testClassName)
+    currentTestClassName ::= testClassName
   }
 
   def pushCurrentTestClassName(s: String): Unit =
-    currentTestClassName.push(s)
+    currentTestClassName ::= s
 
   def popCurrentTestClassName(): Unit = {
-    if (currentTestClassName.size > 1)
-      currentTestClassName.pop()
+    if (!currentTestClassName.isEmpty && !currentTestClassName.tail.isEmpty)
+      currentTestClassName = currentTestClassName.tail
   }
 
   def debug(s: String): Unit = {
