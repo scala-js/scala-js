@@ -157,9 +157,14 @@ object Build {
       // Add Java Scaladoc mapping
       apiMappings += {
         val rtJar = {
-          System.getProperty("sun.boot.class.path")
-            .split(java.io.File.pathSeparator)
-            .find(_.endsWith(java.io.File.separator + "rt.jar")).get
+          val jars =
+            System.getProperty("sun.boot.class.path")
+              .split(java.io.File.pathSeparator)
+          def matches(path: String, name: String): Boolean =
+            path.endsWith(s"${java.io.File.separator}$name.jar")
+          jars.find(matches(_, "rt")) // most JREs
+            .orElse(jars.find(matches(_, "classes"))) // Java 6 on Mac OS X
+            .get
         }
 
         file(rtJar) -> url(javaDocBaseURL)
