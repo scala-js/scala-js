@@ -21,9 +21,7 @@ import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.backend.{LinkerBackend, OutputMode}
 
 import org.scalajs.jsenv._
-import org.scalajs.jsenv.rhino.RhinoJSEnv
-import org.scalajs.jsenv.nodejs.NodeJSEnv
-import org.scalajs.jsenv.phantomjs.{PhantomJSEnv, PhantomJettyClassLoader}
+import org.scalajs.jsenv.phantomjs.PhantomJettyClassLoader
 
 import org.scalajs.core.ir
 import org.scalajs.core.ir.Utils.escapeJS
@@ -563,17 +561,12 @@ object ScalaJSPluginInternal {
       },
 
       resolvedJSEnv := jsEnv.?.value.getOrElse {
-        if (scalaJSUseRhino.value) {
-          /* We take the semantics from the linker, since they depend on the
-           * stage. This way we are sure we agree on the semantics with the
-           * linker.
-           */
-          val semantics = scalaJSLinker.value.semantics
-          new RhinoJSEnv(semantics, withDOM = scalaJSRequestsDOM.value)
+        if (scalaJSUseRhinoInternal.value) {
+          RhinoJSEnv().value
         } else if (scalaJSRequestsDOM.value) {
-          new PhantomJSEnv(jettyClassLoader = scalaJSPhantomJSClassLoader.value)
+          PhantomJSEnv().value
         } else {
-          new NodeJSEnv
+          NodeJSEnv().value
         }
       },
 

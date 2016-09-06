@@ -22,6 +22,7 @@ import org.scalajs.core.tools.jsdep.DependencyResolver.DependencyFilter
 import org.scalajs.core.ir.ScalaJSVersions
 
 import org.scalajs.jsenv.{JSEnv, JSConsole}
+import org.scalajs.jsenv.rhino.RhinoJSEnv
 import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
 import org.scalajs.jsenv.phantomjs.PhantomJSEnv
 
@@ -60,6 +61,34 @@ object ScalaJSPlugin extends AutoPlugin {
     val CrossType = cross.CrossType
 
     // Factory methods for JSEnvs
+
+    /** Creates a [[sbt.Def.Initialize Def.Initialize]] for a [[RhinoJSEnv]].
+     *
+     *  Use this to explicitly specify in your build that you would like to run
+     *  with Rhino:
+     *
+     *  {{{
+     *  Seq(Compile, Test).flatMap(c => inConfig(c)(jsEnv := RhinoJSEnv().value))
+     *  }}}
+     *
+     *  The Rhino JS environment will support DOM through `env.js` if and only
+     *  if `scalaJSRequestsDOM.value` evaluates to `true`.
+     *
+     *  Note that the resulting [[sbt.Def.Setting Setting]] must be scoped in a
+     *  project that has the `ScalaJSPlugin` enabled to work properly.
+     *  Therefore, either put the upper line in your project settings (common
+     *  case) or scope it manually, using
+     *  [[sbt.ProjectExtra.inScope[* Project.inScope]].
+     */
+    def RhinoJSEnv(): Def.Initialize[Task[RhinoJSEnv]] = Def.task {
+      /* We take the semantics from the linker, since they depend on the stage.
+       * This way we are sure we agree on the semantics with the linker.
+       */
+      import ScalaJSPluginInternal.{scalaJSLinker, scalaJSRequestsDOM}
+      val semantics = scalaJSLinker.value.semantics
+      val withDOM = scalaJSRequestsDOM.value
+      new RhinoJSEnv(semantics, withDOM)
+    }
 
     /**
      *  Creates a [[sbt.Def.Initialize Def.Initialize]] for a NodeJSEnv. Use
@@ -188,8 +217,18 @@ object ScalaJSPlugin extends AutoPlugin {
     val scalaJSConsole = TaskKey[JSConsole]("scalaJSConsole",
         "The JS console used by the Scala.js runner/tester", DTask)
 
-    val scalaJSUseRhino = SettingKey[Boolean]("scalaJSUseRhino",
-        "Whether Rhino should be used", APlusSetting)
+    /** Non-deprecated alias of `scalaJSUseRhino` for internal use. */
+    private[sbtplugin] val scalaJSUseRhinoInternal = SettingKey[Boolean](
+        "scalaJSUseRhino", "Whether Rhino should be used", KeyRanks.Invisible)
+
+    @deprecated(
+        "Will be removed in 1.0.0. " +
+        "Note that Rhino is not used by default anymore, " +
+        "so setting `scalaJSUseRhino` to `false` is redundant. " +
+        "To enable Rhino anew, use " +
+        "`Seq(Compile, Test).flatMap(c => inConfig(c)(jsEnv := RhinoJSEnv().value))`.",
+        "0.6.13")
+    val scalaJSUseRhino = scalaJSUseRhinoInternal
 
     val jsEnv = TaskKey[JSEnv]("jsEnv",
         "A JVM-like environment where Scala.js files can be run and tested.", AMinusTask)
@@ -280,7 +319,7 @@ object ScalaJSPlugin extends AutoPlugin {
     super.globalSettings ++ Seq(
         isScalaJSProject := false,
         scalaJSStage := Stage.FastOpt,
-        scalaJSUseRhino := true,
+        scalaJSUseRhinoInternal := false,
         scalaJSClearCacheStats := globalIRCache.clearStats()
     )
   }

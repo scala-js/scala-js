@@ -15,11 +15,9 @@
 
   <task id="main"><![CDATA[
     setJavaVersion $java
+    sbtretry ++$scala 'set scalaJSUseRhino in Global := true' helloworld/run &&
     sbtretry ++$scala helloworld/run &&
-    sbtretry 'set scalaJSUseRhino in Global := false' \
-        ++$scala helloworld/run &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        'set scalaJSUseRhino in Global := false' \
         ++$scala helloworld/run \
         helloworld/clean &&
     sbtretry 'set inScope(ThisScope in helloworld)(jsEnv := JSDOMNodeJSEnv().value)' \
@@ -29,9 +27,9 @@
         ++$scala helloworld/run \
         helloworld/clean &&
     sbtretry 'set scalaJSOptimizerOptions in helloworld ~= (_.withDisableOptimizer(true))' \
+        'set scalaJSUseRhino in Global := true' \
         ++$scala helloworld/run &&
     sbtretry 'set scalaJSOptimizerOptions in helloworld ~= (_.withDisableOptimizer(true))' \
-        'set scalaJSUseRhino in Global := false' \
         ++$scala helloworld/run \
         helloworld/clean &&
     sbtretry 'set scalaJSSemantics in helloworld ~= (_.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Unchecked))' \
@@ -42,11 +40,10 @@
     sbtretry 'set inScope(ThisScope in helloworld)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run &&
-    sbtretry ++$scala testingExample/test:run testingExample/test &&
-    sbtretry 'set scalaJSUseRhino in Global := false' \
+    sbtretry 'set scalaJSUseRhino in Global := true' \
         ++$scala testingExample/test:run testingExample/test &&
-    sbtretry 'set scalaJSUseRhino in Global := false' \
-        'set scalaJSStage in Global := FullOptStage' \
+    sbtretry ++$scala testingExample/test:run testingExample/test &&
+    sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala testingExample/test:run testingExample/test \
         testingExample/clean &&
     sbtretry 'set inScope(ThisScope in testingExample)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
@@ -62,10 +59,8 @@
         ++$scala testingExample/test:run testingExample/test &&
     sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
     sbtretry ++$scala 'testSuite/test:runMain org.scalajs.testsuite.junit.JUnitBootstrapTest' testSuite/clean &&
-    sbtretry 'set scalaJSUseRhino in Global := false' \
-        ++$scala javalibExTestSuite/test &&
-    sbtretry 'set scalaJSUseRhino in Global := false' \
-        'set scalaJSStage in Global := FullOptStage' \
+    sbtretry ++$scala javalibExTestSuite/test &&
+    sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala javalibExTestSuite/test &&
     sbtretry ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
     sbtretry ++$scala compiler/compile:doc library/compile:doc javalibEx/compile:doc \
@@ -79,13 +74,11 @@
   <task id="test-suite-ecma-script5"><![CDATA[
     setJavaVersion $java
     sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test \
-        'set scalaJSUseRhino in Global := false' jUnitTestOutputsJS/test \
         'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test &&
+    sbtretry ++$scala 'set scalaJSUseRhino in Global := true' jUnitTestOutputsJS/test &&
+    sbtretry ++$scala 'set scalaJSUseRhino in Global := true' $testSuite/test &&
     sbtretry ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSUseRhino in Global := false' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSUseRhino in Global := false' \
-        'set scalaJSStage in Global := FullOptStage' \
+    sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set inScope(ThisScope in $testSuite)(jsEnv := JSDOMNodeJSEnv().value)' \
@@ -94,35 +87,32 @@
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
+    sbtretry ++$scala 'set scalaJSUseRhino in Global := true' noIrCheckTest/test &&
     sbtretry ++$scala noIrCheckTest/test &&
-    sbtretry 'set scalaJSUseRhino in Global := false' \
-        ++$scala noIrCheckTest/test &&
-    sbtretry 'set scalaJSUseRhino in Global := false' \
-        'set scalaJSStage in Global := FullOptStage' \
+    sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala noIrCheckTest/test \
         noIrCheckTest/clean &&
     sbtretry 'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
+        'set scalaJSUseRhino in Global := true' \
         ++$scala $testSuite/test &&
     sbtretry 'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
-        'set scalaJSUseRhino in Global := false' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
+        'set scalaJSUseRhino in Global := true' \
         ++$scala $testSuite/test &&
     sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
-        'set scalaJSUseRhino in Global := false' \
         ++$scala $testSuite/test &&
     sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
-        'set scalaJSUseRhino in Global := false' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
+        'set scalaJSUseRhino in Global := true' \
         ++$scala $testSuite/test &&
     sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
-        'set scalaJSUseRhino in Global := false' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set inScope(ThisScope in $testSuite)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
@@ -134,21 +124,17 @@
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
+        'set scalaJSUseRhino in Global := true' \
         ++$scala $testSuite/test &&
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
-        'set scalaJSUseRhino in Global := false' \
         ++$scala $testSuite/test &&
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
-        'set scalaJSUseRhino in Global := false' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test
   ]]></task>
 
   <task id="test-suite-ecma-script6"><![CDATA[
     setJavaVersion $java
-    sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test \
-        'set scalaJSUseRhino in Global := false' jUnitTestOutputsJS/test \
-        'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test &&
     sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
         'set jsEnv in $testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
         ++$scala $testSuite/test \
@@ -188,11 +174,9 @@
 
   <task id="bootstrap"><![CDATA[
     setJavaVersion $java
-    sbt 'set scalaJSUseRhino in Global := false' \
-        'set jsEnv in toolsJS := NodeJSEnv(args = Seq("--max_old_space_size=2048")).value.withSourceMap(false)' \
+    sbt 'set jsEnv in toolsJS := NodeJSEnv(args = Seq("--max_old_space_size=2048")).value.withSourceMap(false)' \
         ++$scala irJS/test toolsJS/test &&
-    sbt 'set scalaJSUseRhino in Global := false' \
-        'set jsEnv in toolsJS := NodeJSEnv(args = Seq("--max_old_space_size=2048")).value.withSourceMap(false)' \
+    sbt 'set jsEnv in toolsJS := NodeJSEnv(args = Seq("--max_old_space_size=2048")).value.withSourceMap(false)' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala irJS/test toolsJS/test
   ]]></task>
@@ -257,14 +241,13 @@
     sbt noDOM/run noDOM/testHtmlFastOpt noDOM/testHtmlFullOpt \
         withDOM/run withDOM/testHtmlFastOpt withDOM/testHtmlFullOpt \
         multiTestJS/test:run multiTestJS/testHtmlFastOpt multiTestJS/testHtmlFullOpt \
-        test \
-        'set scalaJSUseRhino in Global := false' \
         jetty9/run test \
         jsDependenciesTest/packageJSDependencies \
         jsDependenciesTest/packageMinifiedJSDependencies \
         jsDependenciesTest/regressionTestForIssue2243 \
         jsNoDependenciesTest/regressionTestForIssue2243 \
-        multiTestJS/test:testScalaJSSourceMapAttribute
+        multiTestJS/test:testScalaJSSourceMapAttribute \
+        'set scalaJSUseRhino in Global := true' test
   ]]></task>
 
   <task id="partest-noopt"><![CDATA[
