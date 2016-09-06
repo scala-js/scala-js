@@ -62,6 +62,18 @@ object ScalaJSPlugin extends AutoPlugin {
 
     // Factory methods for JSEnvs
 
+    /** A non-deprecated version of `RhinoJSEnv` for internal use. */
+    private[sbtplugin]
+    def RhinoJSEnvInternal(): Def.Initialize[Task[RhinoJSEnv]] = Def.task {
+      /* We take the semantics from the linker, since they depend on the stage.
+       * This way we are sure we agree on the semantics with the linker.
+       */
+      import ScalaJSPluginInternal.{scalaJSLinker, scalaJSRequestsDOM}
+      val semantics = scalaJSLinker.value.semantics
+      val withDOM = scalaJSRequestsDOM.value
+      new RhinoJSEnv(semantics, withDOM, internal = ())
+    }
+
     /** Creates a [[sbt.Def.Initialize Def.Initialize]] for a [[RhinoJSEnv]].
      *
      *  Use this to explicitly specify in your build that you would like to run
@@ -80,15 +92,11 @@ object ScalaJSPlugin extends AutoPlugin {
      *  case) or scope it manually, using
      *  [[sbt.ProjectExtra.inScope[* Project.inScope]].
      */
-    def RhinoJSEnv(): Def.Initialize[Task[RhinoJSEnv]] = Def.task {
-      /* We take the semantics from the linker, since they depend on the stage.
-       * This way we are sure we agree on the semantics with the linker.
-       */
-      import ScalaJSPluginInternal.{scalaJSLinker, scalaJSRequestsDOM}
-      val semantics = scalaJSLinker.value.semantics
-      val withDOM = scalaJSRequestsDOM.value
-      new RhinoJSEnv(semantics, withDOM)
-    }
+    @deprecated(
+        "The Rhino JS environment is being phased out. " +
+        "It will be removed in Scala.js 1.0.0. ",
+        "0.6.13")
+    def RhinoJSEnv(): Def.Initialize[Task[RhinoJSEnv]] = RhinoJSEnvInternal()
 
     /**
      *  Creates a [[sbt.Def.Initialize Def.Initialize]] for a NodeJSEnv. Use

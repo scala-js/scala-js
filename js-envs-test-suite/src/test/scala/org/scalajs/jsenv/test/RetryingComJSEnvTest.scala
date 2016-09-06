@@ -3,7 +3,7 @@ package org.scalajs.jsenv.test
 import org.scalajs.core.tools.io.VirtualJSFile
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.logging._
-import org.scalajs.jsenv.rhino.RhinoJSEnv
+import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.jsenv.{ComJSRunner, JSConsole, _}
 
 import scala.concurrent.Future
@@ -19,7 +19,7 @@ class RetryingComJSEnvTest extends JSEnvTest with ComTests {
   }
 
   protected def newJSEnv: RetryingComJSEnv =
-    new RetryingComJSEnv(new FailingEnv(new RhinoJSEnv), maxFails)
+    new RetryingComJSEnv(new FailingEnv(new NodeJSEnv), maxFails)
 
   private final class FailingEnv(baseEnv: ComJSEnv) extends ComJSEnv {
     def name: String = s"FailingJSEnv of ${baseEnv.name}"

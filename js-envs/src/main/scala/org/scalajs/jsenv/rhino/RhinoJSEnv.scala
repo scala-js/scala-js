@@ -35,6 +35,11 @@ import scala.reflect.ClassTag
 
 import org.mozilla.javascript._
 
+/** A JS environment using a modified Rhino interpreter (deprecated).
+ *
+ *  As of Scala.js 0.6.13, `RhinoJSEnv` is deprecated. It will be removed in
+ *  Scala.js 1.0.0.
+ */
 final class RhinoJSEnv private (
     semantics: Semantics,
     withDOM: Boolean,
@@ -43,8 +48,18 @@ final class RhinoJSEnv private (
 
   import RhinoJSEnv._
 
+  @deprecated(
+      "The Rhino JS environment is being phased out. " +
+      "It will be removed in Scala.js 1.0.0. ",
+      "0.6.13")
   def this(semantics: Semantics = Semantics.Defaults, withDOM: Boolean = false) =
     this(semantics, withDOM, sourceMap = true)
+
+  /** A non-deprecated constructor for internal use. */
+  private[scalajs] def this(semantics: Semantics, withDOM: Boolean,
+      internal: Unit) = {
+    this(semantics, withDOM, sourceMap = true)
+  }
 
   def withSourceMap(sourceMap: Boolean): RhinoJSEnv =
     new RhinoJSEnv(semantics, withDOM, sourceMap)
