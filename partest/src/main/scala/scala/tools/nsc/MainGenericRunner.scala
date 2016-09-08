@@ -13,7 +13,6 @@ import org.scalajs.core.tools.linker.Linker
 import org.scalajs.core.ir
 
 import org.scalajs.jsenv.JSConsole
-import org.scalajs.jsenv.rhino.RhinoJSEnv
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 import scala.tools.partest.scalajs.ScalaJSPartestOptions._
@@ -67,29 +66,19 @@ class MainGenericRunner {
         runnerIR(command.thingToRun, command.arguments)
     )
 
-    val jsRunner = new MemVirtualJSFile("launcher.js")
-      .withContent(s"PartestLauncher().launch();")
-
     val linker = Linker(semantics, withSourceMap = false,
         useClosureCompiler = optMode == FullOpt)
 
-    val libJSEnv = {
-      /* Historically, we used Rhino in NoOpt and NodeJS in FastOpt and FullOpt.
-       * This is not necessary anymore: Rhino can run in FastOpt.
-       * We keep this for now, mainly to not change too many things at once.
-       */
-      if (optMode == NoOpt) {
-        val env = new RhinoJSEnv(semantics).withSourceMap(false)
-        val unit = linker.linkUnit(ir, env.symbolRequirements, logger)
-        env.loadLinkingUnit(unit)
-      } else {
-        val output = WritableMemVirtualJSFile("partest-fastOpt.js")
-        linker.link(ir, output, logger)
-        new NodeJSEnv().loadLibs(ResolvedJSDependency.minimal(output) :: Nil)
-      }
+    val sjsCode = {
+      val output = WritableMemVirtualJSFile("partest.js")
+      linker.link(ir, output, logger)
+      ResolvedJSDependency.minimal(output) :: Nil
     }
 
-    libJSEnv.jsRunner(jsRunner).run(logger, jsConsole)
+    val jsRunner = new MemVirtualJSFile("launcher.js")
+      .withContent(s"PartestLauncher().launch();")
+
+    new NodeJSEnv().jsRunner(sjsCode, jsRunner).run(logger, jsConsole)
 
     true
   }
@@ -107,7 +96,7 @@ class MainGenericRunner {
     import ir.Trees._
     import ir.Types._
 
-    val mainModuleClassName = ir.Definitions.encodeClassName(mainObj  + "$")
+    val mainModuleClassName = ir.Definitions.encodeClassName(mainObj + "$")
     val className = "PartestLauncher$"
     val exportName = "PartestLauncher"
     val encodedClassName = ir.Definitions.encodeClassName(className)
