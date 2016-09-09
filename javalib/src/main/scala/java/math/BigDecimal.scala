@@ -672,13 +672,27 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
 
   def multiply(multiplicand: BigDecimal): BigDecimal = {
     val newScale = this._scale.toLong + multiplicand._scale
-    if (this.isZero || multiplicand.isZero) {
-      zeroScaledBy(newScale)
-    } else if (this._bitLength + multiplicand._bitLength < 64) {
-      valueOf(this._smallValue * multiplicand._smallValue, safeLongToInt(newScale))
-    } else {
+
+    @inline
+    def bigMultiply: BigDecimal = {
       val unscaled = this.getUnscaledValue.multiply(multiplicand.getUnscaledValue)
       new BigDecimal(unscaled, safeLongToInt(newScale))
+    }
+
+    import java.lang.{Long => JLong}
+    if (this.isZero || multiplicand.isZero) {
+      zeroScaledBy(newScale)
+    } else if (this._bitLength + multiplicand._bitLength >= 64) {
+      bigMultiply
+    } else {
+      val x = this._smallValue
+      val y = multiplicand._smallValue
+      val z = x * y
+      if (JLong.signum(z) == JLong.signum(x) * JLong.signum(y)) {
+        valueOf(z, safeLongToInt(newScale))
+      } else {
+        bigMultiply
+      }
     }
   }
 

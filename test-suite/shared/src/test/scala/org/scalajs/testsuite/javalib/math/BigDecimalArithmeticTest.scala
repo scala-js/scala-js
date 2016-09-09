@@ -1405,4 +1405,11 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.toString, c)
     assertEquals(result.scale(), cScale)
   }
+
+  // https://github.com/scala-js/scala-js/issues/2587
+  @Test def testMultiplicationOverflow(): Unit = {
+    val x = new BigDecimal(Int.MinValue)
+    val y = new BigDecimal("9223372036854775808")
+    assertEquals(y, x.multiply(x.add(x)))
+  }
 }
