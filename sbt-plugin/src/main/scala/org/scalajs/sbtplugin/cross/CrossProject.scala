@@ -225,11 +225,11 @@ final class CrossProject private (
     copy(js = transformer(js))
 
   /** Add settings specific to the underlying JVM project */
-  def jvmSettings(ss: Def.Setting[_]*): CrossProject =
+  def jvmSettings(ss: Def.SettingsDefinition*): CrossProject =
     jvmConfigure(_.settings(ss: _*))
 
   /** Add settings specific to the underlying JS project */
-  def jsSettings(ss: Def.Setting[_]*): CrossProject =
+  def jsSettings(ss: Def.SettingsDefinition*): CrossProject =
     jsConfigure(_.settings(ss: _*))
 
   // Concrete alteration members
@@ -278,7 +278,7 @@ final class CrossProject private (
   def settingSets(select: AddSettings*): CrossProject =
     copy(jvm.settingSets(select: _*), js.settingSets(select: _*))
 
-  def settings(ss: Def.Setting[_]*): CrossProject =
+  def settings(ss: Def.SettingsDefinition*): CrossProject =
     copy(jvm.settings(ss: _*), js.settings(ss: _*))
 
   override def toString(): String = s"CrossProject(jvm = $jvm, js = $js)"
