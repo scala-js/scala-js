@@ -418,7 +418,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             receiver.tpe match {
               case ClassType(clazz) =>
                 for {
-                  c <- tryLookupClass(clazz).right
+                  c <- tryLookupClass(clazz)
                   f <- c.lookupField(name)
                   if !f.mutable
                 } reportError(s"Assignment to immutable field $name.")
@@ -643,7 +643,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             if (!kind.isClass) {
               reportError(s"Cannot select $item of non-class $cls")
             } else {
-              maybeClass.right foreach {
+              maybeClass.foreach {
                 _.lookupField(item).fold[Unit] {
                   reportError(s"Class $cls does not have a field $item")
                 } { fieldDef =>
@@ -1149,4 +1149,14 @@ object IRChecker {
 
   private case class LocalDef(name: String, tpe: Type, mutable: Boolean)(
       val pos: Position)
+
+  /** Enable the right-biased API of Either from 2.12 in earlier versions. */
+  private implicit class RightBiasedEither[A, B](val self: Either[A, B])
+      extends AnyVal {
+
+    def foreach[U](f: B => U): Unit = self match {
+      case Left(_)  =>
+      case Right(r) => f(r)
+    }
+  }
 }
