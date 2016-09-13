@@ -64,7 +64,7 @@ object Build {
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.6", "2.11.8", "2.12.0-M5")
+    Set("2.10.6", "2.11.8", "2.12.0-RC1")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -375,32 +375,6 @@ object Build {
             Seq(s"-Xplugin:$jar")
           }
         }
-      ).withScalaJUnitMixinPlugin
-    }
-
-    def withScalaJUnitMixinPlugin: Project = {
-      project.settings(
-        ivyConfigurations += config("test-plugin").hide,
-        scalacOptions in Test ++= {
-          val report = update.value
-          val jars = report.select(configurationFilter("test-plugin"))
-          for {
-            jar <- jars
-            jarPath = jar.getPath
-            if jarPath.contains("plugin")
-          } yield {
-            s"-Xplugin:$jarPath"
-          }
-        },
-        libraryDependencies ++= {
-          if (scalaVersion.value.startsWith("2.10.") ||
-              scalaVersion.value.startsWith("2.11.")) {
-            Seq.empty
-          } else {
-            Seq("org.scala-js" % "scala-junit-mixin-plugin" % "0.1.0" %
-                "test-plugin" cross CrossVersion.full)
-          }
-        }
       )
     }
 
@@ -450,7 +424,7 @@ object Build {
         "2.11.6",
         "2.11.7",
         "2.11.8",
-        "2.12.0-M5"
+        "2.12.0-RC1"
       ),
       // JDK version we are running with
       javaVersion in Global := {
@@ -1441,7 +1415,7 @@ object Build {
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.11" % "test"
     )
-  ).withScalaJUnitMixinPlugin
+  )
 
   lazy val noIrCheckTest: Project = Project(
       id = "noIrCheckTest",
