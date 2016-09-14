@@ -42,46 +42,48 @@ final class Pattern private (jsRegExp: js.RegExp, _pattern: String, _flags: Int)
     split(input, 0)
 
   def split(input: CharSequence, limit: Int): Array[String] = {
-    val lim = if (limit > 0) limit else Int.MaxValue
-
     val inputStr = input.toString
-    val matcher = this.matcher(inputStr)
 
-    // Actually split original string
-    val builder = Array.newBuilder[String]
-    var prevEnd = 0
-    var size = 0
-    while ((size < lim-1) && matcher.find()) {
-      if (matcher.end == 0) {
-        /* If there is a zero-width match at the beginning of the string,
-         * ignore it, i.e., omit the resulting empty string at the beginning of
-         * the array.
-         */
-      } else {
-        builder += inputStr.substring(prevEnd, matcher.start)
-        size += 1
-      }
-      prevEnd = matcher.end
-    }
-    builder += inputStr.substring(prevEnd)
-    val result = builder.result()
-
-    /* With `limit == 0`, remove trailing empty strings (but do not reduce
-     * the array to be zero length).
-     */
-    if (limit != 0) {
-      result
+    // If the input string is empty, always return Array("") - #987, #2592
+    if (inputStr == "") {
+      Array("")
     } else {
-      var actualLength = result.length
-      while (actualLength > 1 && result(actualLength - 1) == "")
-        actualLength -= 1
+      // Actually split original string
+      val lim = if (limit > 0) limit else Int.MaxValue
+      val matcher = this.matcher(inputStr)
+      val builder = Array.newBuilder[String]
+      var prevEnd = 0
+      var size = 0
+      while ((size < lim-1) && matcher.find()) {
+        if (matcher.end == 0) {
+          /* If there is a zero-width match at the beginning of the string,
+           * ignore it, i.e., omit the resulting empty string at the beginning
+           * of the array.
+           */
+        } else {
+          builder += inputStr.substring(prevEnd, matcher.start)
+          size += 1
+        }
+        prevEnd = matcher.end
+      }
+      builder += inputStr.substring(prevEnd)
+      val result = builder.result()
 
-      if (actualLength == result.length) {
+      // With `limit == 0`, remove trailing empty strings.
+      if (limit != 0) {
         result
       } else {
-        val actualResult = new Array[String](actualLength)
-        System.arraycopy(result, 0, actualResult, 0, actualLength)
-        actualResult
+        var actualLength = result.length
+        while (actualLength != 0 && result(actualLength - 1) == "")
+          actualLength -= 1
+
+        if (actualLength == result.length) {
+          result
+        } else {
+          val actualResult = new Array[String](actualLength)
+          System.arraycopy(result, 0, actualResult, 0, actualLength)
+          actualResult
+        }
       }
     }
   }

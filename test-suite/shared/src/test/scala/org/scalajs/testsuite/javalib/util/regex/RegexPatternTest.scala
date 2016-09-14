@@ -52,9 +52,16 @@ class RegexPatternTest {
 
     // Splitting the empty string must return 1 element - #987
     split("", "a", Array(""))
+    split("", "a?", Array(""))
     split("", "\\*", Array(""))
     split("", "\n", Array(""))
     split("", "", Array(""))
+
+    /* Unless splitting the empty string, all trailing empty strings are
+     * removed, which can reduce it to an empty array. #2592
+     */
+    split("a", "a", Array())
+    split("a", "a?", Array())
 
     /* Should remove leading empty match under some conditions - #1171, #2573
      * The behavior changed in JDK 8 (at which point it became properly
@@ -98,9 +105,18 @@ class RegexPatternTest {
 
     // Splitting the empty string must return 1 element - #987
     splitWithLimit("", "a", 0, Array(""))
+    splitWithLimit("", "a?", 0, Array(""))
     splitWithLimit("", "\\*", 5, Array(""))
     splitWithLimit("", "\n", -2, Array(""))
     splitWithLimit("", "", 1, Array(""))
+
+    /* Unless splitting the empty string, if `limit` is 0, all trailing empty
+     * strings are removed, which can reduce it to an empty array. #2592
+     */
+    splitWithLimit("a", "a", 0, Array())
+    splitWithLimit("a", "a?", 0, Array())
+    splitWithLimit("a", "a", -1, Array("", ""))
+    splitWithLimit("a", "a?", -1, Array("", "", ""))
 
     /* Should remove leading empty match under some conditions - #1171, #2573
      * The behavior changed in JDK 8 (at which point it became properly
