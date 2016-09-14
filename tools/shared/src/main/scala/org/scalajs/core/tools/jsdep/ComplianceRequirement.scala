@@ -4,9 +4,30 @@ import org.scalajs.core.tools.sem.Semantics
 
 /** Expresses a requirement for a given semantic to be compliant */
 final class ComplianceRequirement(
-    val semantics: String, val origins: List[Origin])
+    val semantics: String, val origins: List[Origin]) {
+  override def toString(): String =
+    s"ComplianceRequirement($semantics, origins = [${origins.mkString(", ")}])"
+
+  override def equals(that: Any): Boolean = that match {
+    case that: ComplianceRequirement =>
+      this.semantics == that.semantics &&
+      this.origins == that.origins
+    case _ =>
+      false
+  }
+
+  override def hashCode(): Int = {
+    import scala.util.hashing.MurmurHash3._
+    var acc = ComplianceRequirement.HashSeed
+    acc = mix(acc, semantics.##)
+    acc = mixLast(acc, origins.##)
+    finalizeHash(acc, 2)
+  }
+}
 
 object ComplianceRequirement {
+  // "org.scalajs.core.tools.jsdep.ComplianceRequirement".##
+  private final val HashSeed = -1738348249
 
   /** Checks whether the given semantics are compliant with the given
    *  requirements.
