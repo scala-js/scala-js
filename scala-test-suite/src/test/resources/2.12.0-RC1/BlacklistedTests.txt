@@ -71,6 +71,7 @@ scala/tools/testing/RunTesting.scala
 scala/PartialFunctionSerializationTest.scala
 scala/lang/stringinterpol/StringContextTest.scala
 scala/collection/IteratorTest.scala
+scala/collection/NewBuilderTest.scala
 scala/collection/ParallelConsistencyTest.scala
 scala/collection/SeqViewTest.scala
 scala/collection/SetMapConsistencyTest.scala

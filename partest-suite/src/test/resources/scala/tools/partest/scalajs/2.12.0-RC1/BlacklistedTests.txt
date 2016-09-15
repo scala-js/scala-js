@@ -129,6 +129,8 @@ run/t8188.scala
 run/t9375.scala
 run/t9365.scala
 run/inlineAddDeserializeLambda.scala
+run/sammy_seriazable.scala
+run/lambda-serialization-security.scala
 
 # Using System.getProperties
 
@@ -470,6 +472,12 @@ run/t9102.scala
 run/t720.scala
 run/t9408.scala
 run/trait-default-specialize.scala
+run/lazy-locals-2.scala
+run/t5294.scala
+run/trait_fields_final.scala
+run/trait_fields_bytecode.scala
+run/trait_fields_volatile.scala
+run/junitForwarders
 
 run/reify_newimpl_29.scala
 run/reify_magicsymbols.scala
@@ -776,6 +784,7 @@ run/repl-no-imports-no-predef.scala
 run/repl-paste-raw-b.scala
 run/repl-paste-raw-c.scala
 run/t9749-repl-dot.scala
+run/trait_fields_repl.scala
 
 # Using Scala Script (partest.ScriptTest)
 
@@ -853,7 +862,6 @@ run/dynamic-applyDynamicNamed.scala
 run/t4841-isolate-plugins
 run/large_code.scala
 run/macroPlugins-namerHooks.scala
-run/t4287inferredMethodTypes.scala
 run/t4841-no-plugin.scala
 run/t4332.scala
 run/t8029.scala
