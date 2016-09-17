@@ -718,6 +718,7 @@ object ScalaJSPluginInternal {
 
         val console = scalaJSConsole.value
         val logger = streams.value.log
+        val toolsLogger = sbtLogger2ToolsLogger(logger)
         val frameworks = testFrameworks.value
 
         val jsEnv = loadedJSEnv.value match {
@@ -729,8 +730,7 @@ object ScalaJSPluginInternal {
 
         val detector = new FrameworkDetector(jsEnv)
 
-        detector.detect(frameworks) map { case (tf, name) =>
-          val toolsLogger = sbtLogger2ToolsLogger(logger)
+        detector.detect(frameworks, toolsLogger) map { case (tf, name) =>
           (tf, new ScalaJSFramework(name, jsEnv, toolsLogger, console))
         }
       },

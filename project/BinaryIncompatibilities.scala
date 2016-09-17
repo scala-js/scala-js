@@ -15,6 +15,9 @@ object BinaryIncompatibilities {
   )
 
   val SbtPlugin = Seq(
+      // private[sbtplugin], not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.FrameworkDetector.detect")
   )
 
   val TestAdapter = Seq(
