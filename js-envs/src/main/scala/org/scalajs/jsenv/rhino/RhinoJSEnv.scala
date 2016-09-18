@@ -64,9 +64,8 @@ final class RhinoJSEnv private (
   def withSourceMap(sourceMap: Boolean): RhinoJSEnv =
     new RhinoJSEnv(semantics, withDOM, sourceMap)
 
-  /* Although RhinoJSEnv does not use the Emitter directly, it uses
-   * ScalaJSCoreLib which uses the same underlying components
-   * (ScalaJSClassEmitter, JSDesugaring and CoreJSLibs).
+  /* Ask the Emitter, which we'll use in ScalaJSCoreLib to generate JS code,
+   * what are its requirements.
    */
   val symbolRequirements = Emitter.symbolRequirements(semantics, ESLevel.ES5)
 
