@@ -183,6 +183,7 @@ trait VirtualJarFile extends VirtualBinaryFile {
     findEntries(_.endsWith(".sjsir")) { (entry, stream) =>
       val file = new JarEntryIRFile(path, entry.getName)
       file.content = IO.readInputStreamToByteArray(stream)
+      file.version = version
       file
     }
   }
@@ -191,6 +192,7 @@ trait VirtualJarFile extends VirtualBinaryFile {
     findEntries(_.endsWith(".js")) { (entry, stream) =>
       val file = new JarEntryJSFile(path, entry.getName)
       file.content = IO.readInputStreamToString(stream)
+      file.version = version
       file
     }
   }
