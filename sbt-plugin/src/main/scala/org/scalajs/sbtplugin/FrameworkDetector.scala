@@ -4,7 +4,7 @@ import sbt._
 
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.json._
-import org.scalajs.core.tools.logging._
+import org.scalajs.core.tools.logging.Logger
 
 import org.scalajs.jsenv._
 
@@ -26,7 +26,8 @@ private[sbtplugin] final class FrameworkDetector(jsEnv: JSEnv) {
    *
    *  Note: No JavaScript type tests are performed by this method
    */
-  def detect(frameworks: Seq[TestFramework]): Map[TestFramework, String] = {
+  def detect(frameworks: Seq[TestFramework],
+      logger: Logger): Map[TestFramework, String] = {
     val data = frameworks.map(_.implClassNames.toList).toList.toJSON
 
     val code = s"""
@@ -63,7 +64,7 @@ private[sbtplugin] final class FrameworkDetector(jsEnv: JSEnv) {
     val console = new StoreConsole
 
     val runner = jsEnv.jsRunner(vf)
-    runner.run(NullLogger, console)
+    runner.run(logger, console)
 
     // Filter jsDependencies unexpected output
     val results = console.buf collect {
