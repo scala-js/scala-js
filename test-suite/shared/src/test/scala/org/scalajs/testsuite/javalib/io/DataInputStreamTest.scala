@@ -1,16 +1,13 @@
-package scala.scalajs.testsuite.javalibex
+package org.scalajs.testsuite.javalib.io
 
 import java.io._
 
-import scala.scalajs.testsuite.utils.AssertThrows._
-import scala.scalajs.testsuite.utils.Platform._
+import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 import org.junit._
 import org.junit.Assert._
 import org.junit.Assume._
-
-import scala.scalajs.js.typedarray._
-import scala.scalajs.js.JSConverters._
 
 trait DataInputStreamTest {
 
@@ -300,6 +297,8 @@ trait DataInputStreamTest {
   }
 
   @Test def should_allow_marking_even_when_readLine_has_to_push_back(): Unit = {
+    assumeFalse("Not supported on JDK", executingInJVM)
+
     val stream = newStream(
         "Hello World\nUNIX\nWindows\r\nMac (old)\rStuff".map(_.toInt): _*)
 
@@ -321,40 +320,7 @@ trait DataInputStreamTest {
     range.toArray.map(_.asInstanceOf[Byte])
 }
 
-trait AssumeTypedArrays {
-  @BeforeClass def assumeTypedArrays(): Unit = {
-    assumeTrue("Assumed typed arrays", typedArrays)
-  }
-}
-
-object DataInputStreamGenericTest extends AssumeTypedArrays
-
 class DataInputStreamGenericTest extends DataInputStreamTest {
   protected def inFromBytes(bytes: Seq[Byte]): InputStream =
     new ByteArrayInputStream(bytes.toArray)
-}
-
-object DataInputStreamArrayBufferInputStreamTest extends AssumeTypedArrays
-
-class DataInputStreamArrayBufferInputStreamTest extends DataInputStreamTest {
-  protected def inFromBytes(bytes: Seq[Byte]): InputStream =
-    new ArrayBufferInputStream(new Int8Array(bytes.toJSArray).buffer)
-}
-
-object DataInputStreamArrayPartiallyConsumedArrayBufferInputStreamTest
-    extends AssumeTypedArrays
-
-class DataInputStreamArrayPartiallyConsumedArrayBufferInputStreamTest
-    extends DataInputStreamTest {
-
-  protected def inFromBytes(bytes: Seq[Byte]): InputStream = {
-    val addBytes = Seq[Byte](0, 0, 0, 0)
-    val allBytes = addBytes ++ bytes
-    val in = new ArrayBufferInputStream(
-        new Int8Array(allBytes.toJSArray).buffer)
-
-    for (_ <- addBytes) in.read()
-
-    in
-  }
 }
