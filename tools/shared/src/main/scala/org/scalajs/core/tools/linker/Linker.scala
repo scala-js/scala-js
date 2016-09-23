@@ -56,12 +56,12 @@ final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
       throw new IllegalStateException("Linker used concurrently")
     }
 
-    if (!_valid) {
-      throw new IllegalStateException(
-          "Linker is invalid due to a previous exception in a component")
-    }
-
     try {
+      if (!_valid) {
+        throw new IllegalStateException(
+          "Linker is invalid due to a previous exception in a component")
+      }
+
       body
     } catch {
       case t: Throwable =>
