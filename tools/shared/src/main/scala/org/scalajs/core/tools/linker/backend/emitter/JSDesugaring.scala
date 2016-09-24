@@ -21,6 +21,8 @@ import ir.Position._
 import ir.Transformers._
 import ir.Trees._
 import ir.Types._
+import Definitions._
+import IncClassEmitter.InvalidatableCache
 
 import org.scalajs.core.tools.sem._
 import CheckedBehavior._
@@ -203,28 +205,38 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
    */
   private[emitter] def desugarToFunction(
       classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
-      params: List[ParamDef], body: Tree, isStat: Boolean)(
-      implicit pos: Position): js.Function = {
-    desugarToFunction(classEmitter, enclosingClassName,
+      callerCache: InvalidatableCache, params: List[ParamDef],
+      body: Tree, isStat: Boolean)(implicit pos: Position): js.Function = {
+    desugarToFunction(classEmitter, enclosingClassName, callerCache,
         None, params, body, isStat)
   }
 
   /** Desugars parameters and body to a JS function.
    */
-  private[emitter] def desugarToFunction(
-      classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
-      thisIdent: Option[js.Ident], params: List[ParamDef],
-      body: Tree, isStat: Boolean)(
-      implicit pos: Position): js.Function = {
-    new JSDesugar(classEmitter, enclosingClassName,
+  private[emitter] def desugarToFunction(classEmitter: ScalaJSClassEmitter,
+      enclosingClassName: String, callerCache: InvalidatableCache,
+      thisIdent: Option[js.Ident], params: List[ParamDef], body: Tree,
+      isStat: Boolean)(implicit pos: Position): js.Function = {
+    new JSDesugar(classEmitter, enclosingClassName, callerCache,
         thisIdent).desugarToFunction(params, body, isStat)
   }
 
-  /** Desugars a statement or an expression. */
-  private[emitter] def desugarTree(
+  private[emitter] def desugarToConstructor(
       classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
+      callerCache: InvalidatableCache, params: List[ParamDef],
+      body: Tree, superCall: js.Tree)(implicit pos: Position): js.Function = {
+    val js.Function(args, newBody) = desugarToFunction(classEmitter,
+        enclosingClassName, callerCache, params, body, isStat = true)
+    js.Function(args, js.Block(List(superCall, newBody)))
+  }
+
+  /** Desugars a statement or an expression. */
+  private[emitter] def desugarTree(classEmitter: ScalaJSClassEmitter,
+      enclosingClassName: String, callerCache: InvalidatableCache,
       tree: Tree, isStat: Boolean): js.Tree = {
-    val desugar = new JSDesugar(classEmitter, enclosingClassName, None)
+    val desugar = new JSDesugar(classEmitter, enclosingClassName,
+        callerCache, None)
+
     if (isStat)
       desugar.transformStat(tree, Set.empty)(Env.empty)
     else
@@ -237,8 +249,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   private[emitter] def transformParamDef(paramDef: ParamDef): js.ParamDef =
     js.ParamDef(paramDef.name, paramDef.rest)(paramDef.pos)
 
-  private class JSDesugar(
-      classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
+  private class JSDesugar(classEmitter: ScalaJSClassEmitter,
+      enclosingClassName: String, callerCache: InvalidatableCache,
       thisIdent: Option[js.Ident]) {
 
     private val semantics = classEmitter.semantics
@@ -1633,8 +1645,12 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         // Scala expressions
 
         case New(cls, ctor, args) =>
-          js.Apply(js.New(encodeClassVar(cls.className), Nil) DOT ctor,
-              args map transformExpr)
+          if (classEmitter.usesJSConstructorOpt(cls.className, callerCache)) {
+            js.New(encodeClassVar(cls.className), args map transformExpr)
+          } else {
+            js.Apply(js.New(encodeClassVar(cls.className), Nil) DOT ctor,
+                args map transformExpr)
+          }
 
         case LoadModule(cls) =>
           genLoadModule(cls.className)
@@ -2111,20 +2127,6 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       js.Apply(receiver DOT methodName, args.toList)
     }
 
-    private def genLongModuleApply(methodName: String, args: js.Tree*)(
-        implicit pos: Position): js.Tree = {
-      import TreeDSL._
-      js.Apply(
-          genLoadModule(LongImpl.RuntimeLongModuleClass) DOT methodName,
-          args.toList)
-    }
-
-    private def genLoadModule(moduleClass: String)(
-        implicit pos: Position): js.Tree = {
-      import TreeDSL._
-      js.Apply(envField("m", moduleClass), Nil)
-    }
-
     private implicit class RecordAwareEnv(env: Env) {
       def withDef(ident: Ident, tpe: Type, mutable: Boolean): Env = tpe match {
         case RecordType(fields) =>
@@ -2197,6 +2199,20 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       case OutputMode.ECMAScript6 =>
         js.Let(name, mutable, rhs)
     }
+  }
+
+  private[emitter] def genLongModuleApply(methodName: String, args: js.Tree*)(
+      implicit outputmode: OutputMode, pos: Position): js.Tree = {
+    import TreeDSL._
+    js.Apply(
+        genLoadModule(LongImpl.RuntimeLongModuleClass) DOT methodName,
+        args.toList)
+  }
+
+  private def genLoadModule(moduleClass: String)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    import TreeDSL._
+    js.Apply(envField("m", moduleClass), Nil)
   }
 
   private[emitter] def genIsInstanceOf(expr: js.Tree, cls: ReferenceType)(
