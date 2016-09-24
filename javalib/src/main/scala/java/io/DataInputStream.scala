@@ -2,19 +2,22 @@ package java.io
 
 import scala.scalajs.js.typedarray._
 
-/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
- *  DataInputStream implementation using JavaScript typed arrays.
- */
 class DataInputStream(in: InputStream) extends FilterInputStream(in)
                                           with DataInput {
 
+  /* Due to the method readLine, we need to be able to push back a byte (if we
+   * read a \r and the following byte is NOT a \n). We implement this in the
+   * read() and the consumePos() method.
+   */
   private var pushedBack: Int = -1
   private var pushedBackMark: Int = -1
 
-  // -- ArrayBufferInputStream mode helpers --
-  // These variables are used to special case on ArrayBufferInputStreams
-  // They allow directly accessing the underlying ArrayBuffer rather than
-  // creating byte arrays first
+  /* ArrayBufferInputStream mode helpers
+   *
+   * These variables are used to special case on ArrayBufferInputStreams
+   * They allow directly accessing the underlying ArrayBuffer rather than
+   * creating byte arrays first.
+   */
   private val inArrayBufferStream = in match {
     case in: ArrayBufferInputStream => in
     case _ => null
@@ -24,7 +27,9 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     if (hasArrayBuffer) {
       val in = inArrayBufferStream
       new DataView(in.buffer, in.offset, in.length)
-    } else null
+    } else {
+      null
+    }
   }
 
   private def consumePos(n: Int) = {
@@ -33,26 +38,6 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     val toSkip = n - off
     if (in.skip(toSkip) != toSkip) eof()
     resultPos
-  }
-
-  // -- General InputStream mode helpers --
-  // Due to the method readLine, we need to be able to push back a byte (if we
-  // read a \r and the following byte is NOT a \n). We implement this here.
-  // We also provide a method to create an ad-hoc data view of the next n bytes
-  private val convBufLen = 8
-  private val convBuf = new ArrayBuffer(convBufLen)
-  private val convInView = new Int8Array(convBuf)
-  private val convOutView = new DataView(convBuf)
-  private def view(len: Int) = {
-    assert(len <= convBufLen)
-    var i = 0
-    while (i < len) {
-      val byte = read()
-      if (byte == -1) eof()
-      convInView(i) = byte.toByte
-      i += 1
-    }
-    convOutView
   }
 
   // General Helpers
@@ -72,21 +57,21 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     if (hasArrayBuffer)
       bufDataView.getUint16(consumePos(2)).toChar
     else
-      view(2).getUint16(0).toChar
+      ((readByte() << 8) | readUnsignedByte()).toChar
   }
 
   def readDouble(): Double = {
     if (hasArrayBuffer)
       bufDataView.getFloat64(consumePos(8))
     else
-      view(8).getFloat64(0)
+      java.lang.Double.longBitsToDouble(readLong())
   }
 
   def readFloat(): Float = {
     if (hasArrayBuffer)
       bufDataView.getFloat32(consumePos(4))
     else
-      view(4).getFloat32(0)
+      java.lang.Float.intBitsToFloat(readInt())
   }
 
   def readFully(b: Array[Byte]): Unit = readFully(b, 0, b.length)
@@ -106,10 +91,12 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
   }
 
   def readInt(): Int = {
-    if (hasArrayBuffer)
+    if (hasArrayBuffer) {
       bufDataView.getInt32(consumePos(4))
-    else
-      view(4).getInt32(0)
+    } else {
+      (readUnsignedByte() << 24) | (readUnsignedByte() << 16) |
+      (readUnsignedByte() << 8) | readUnsignedByte()
+    }
   }
 
   def readLine(): String = {
@@ -140,7 +127,7 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     if (hasArrayBuffer)
       bufDataView.getInt16(consumePos(2))
     else
-      view(2).getInt16(0)
+      ((readByte() << 8) | readUnsignedByte()).toShort
   }
 
   def readUnsignedByte(): Int = {
@@ -153,7 +140,7 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     if (hasArrayBuffer)
       bufDataView.getUint16(consumePos(2))
     else
-      view(2).getUint16(0)
+      (readUnsignedByte() << 8) | readUnsignedByte()
   }
 
   def readUTF(): String = {
