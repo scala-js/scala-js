@@ -28,6 +28,10 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
 
   require(linkingUnit.esLevel == ESLevel.ES5, "RhinoJSEnv only supports ES5")
 
+  private val emitter = new Emitter(linkingUnit.semantics, ECMAScript51Global)
+
+  emitter.rhinoAPI.initialize(linkingUnit)
+
   private val (providers, exportedSymbols) = {
     val providers = mutable.Map.empty[String, LinkedClass]
     val exportedSymbols = mutable.ListBuffer.empty[String]
@@ -43,7 +47,7 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
 
   def insertInto(context: Context, scope: Scriptable): Unit = {
     val semantics = linkingUnit.semantics
-    context.evaluateFile(scope, CoreJSLibs.lib(semantics, ECMAScript51Global))
+    context.evaluateFile(scope, emitter.rhinoAPI.getHeaderFile())
     lazifyScalaJSFields(scope)
 
     // Make sure exported symbols are loaded
@@ -105,8 +109,7 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
   private def getSourceMapper(fileName: String, untilLine: Int) = {
     val linked = providers(fileName.stripSuffix(PseudoFileSuffix))
     val mapper = new Printers.ReverseSourceMapPrinter(untilLine)
-    val desugared =
-      new ScalaJSClassEmitter(ECMAScript51Global, linkingUnit).genClassDef(linked)
+    val desugared = emitter.rhinoAPI.genClassDef(linked)
     mapper.reverseSourceMap(desugared)
     mapper
   }
@@ -160,8 +163,7 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
     val linkedClass = providers.getOrElse(encodedName,
         throw new RhinoJSEnv.ClassNotFoundException(encodedName))
 
-    val desugared =
-      new ScalaJSClassEmitter(ECMAScript51Global, linkingUnit).genClassDef(linkedClass)
+    val desugared = emitter.rhinoAPI.genClassDef(linkedClass)
 
     // Write tree
     val codeWriter = new java.io.StringWriter

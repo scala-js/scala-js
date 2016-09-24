@@ -204,7 +204,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   private[emitter] def desugarToFunction(
       classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
       params: List[ParamDef], body: Tree, isStat: Boolean)(
-      implicit pos: Position): js.Function = {
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
     desugarToFunction(classEmitter, enclosingClassName,
         None, params, body, isStat)
   }
@@ -215,7 +215,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
       thisIdent: Option[js.Ident], params: List[ParamDef],
       body: Tree, isStat: Boolean)(
-      implicit pos: Position): js.Function = {
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
     new JSDesugar(classEmitter, enclosingClassName,
         thisIdent).desugarToFunction(params, body, isStat)
   }
@@ -223,7 +223,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   /** Desugars a statement or an expression. */
   private[emitter] def desugarTree(
       classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
-      tree: Tree, isStat: Boolean): js.Tree = {
+      tree: Tree, isStat: Boolean)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     val desugar = new JSDesugar(classEmitter, enclosingClassName, None)
     if (isStat)
       desugar.transformStat(tree, Set.empty)(Env.empty)
@@ -239,18 +240,11 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
   private class JSDesugar(
       classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
-      thisIdent: Option[js.Ident]) {
+      thisIdent: Option[js.Ident])(
+      implicit globalKnowledge: GlobalKnowledge) {
 
     private val semantics = classEmitter.semantics
     private implicit val outputMode: OutputMode = classEmitter.outputMode
-
-    // TODO Get rid of this when we break backward binary compatibility
-    private lazy val hasNewRuntimeLong = {
-      val rtLongClass = classEmitter.linkedClassByName(LongImpl.RuntimeLongClass)
-      rtLongClass.memberMethods.exists { linkedMethod =>
-        linkedMethod.tree.name.name == LongImpl.initFromParts
-      }
-    }
 
     // Synthetic variables
 
@@ -437,8 +431,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           unnest(List(qualifier, item, rhs)) {
             case (List(newQualifier, newItem, newRhs), env0) =>
               implicit val env = env0
-              val linkedClass = classEmitter.linkedClassByName(cls.className)
-              val ctor = genRawJSClassConstructor(linkedClass)
+              val ctor = genRawJSClassConstructor(cls.className)
               genCallHelper("superSet", ctor DOT "prototype",
                   transformExpr(newQualifier), transformExpr(item),
                   transformExpr(rhs))
@@ -515,13 +508,11 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           unnestOrSpread(args) { (newArgs, env0) =>
             implicit val env = env0
 
-            val linkedClass = classEmitter.linkedClassByName(enclosingClassName)
-
             val superCtorCall = {
               outputMode match {
                 case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
                   val superCtor = genRawJSClassConstructor(
-                      getSuperClassOfJSClass(linkedClass))
+                      globalKnowledge.getSuperClassOfJSClass(enclosingClassName))
 
                   if (containsAnySpread(newArgs)) {
                     val argArray = spreadToArgArray(newArgs)
@@ -539,8 +530,11 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
               }
             }
 
+            val enclosingClassFieldDefs =
+              globalKnowledge.getJSClassFieldDefs(enclosingClassName)
+
             val fieldDefs = for {
-              field @ FieldDef(name, ftpe, mutable) <- linkedClass.fields
+              field @ FieldDef(name, ftpe, mutable) <- enclosingClassFieldDefs
             } yield {
               implicit val pos = field.pos
               /* Here, a naive translation would emit something like this:
@@ -950,11 +944,14 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         case LoadJSModule(_) =>
           allowSideEffects
 
-        // LoadJSConstructor is pure only for Scala.js-defined JS classes
+        /* LoadJSConstructor is pure only for Scala.js-defined JS classes,
+         * which do not have a jsName. Note that this test makes sense per se,
+         * as the actual desugaring of `LoadJSConstructor` is based on the
+         * jsName of the class.
+         */
         case LoadJSConstructor(cls) =>
           allowUnpure || {
-            val linkedClass = classEmitter.linkedClassByName(cls.className)
-            linkedClass.kind == ClassKind.JSClass
+            globalKnowledge.getJSClassJSName(cls.className).isEmpty
           }
 
         // Non-expressions
@@ -1413,10 +1410,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           }
 
         case JSSuperBracketCall(cls, receiver, method, args) =>
-          val superClass = getSuperClassOfJSClass(
-              classEmitter.linkedClassByName(cls.className))
-          val superCtor =
-            LoadJSConstructor(ClassType(superClass.encodedName))
+          val superClass = globalKnowledge.getSuperClassOfJSClass(cls.className)
+          val superCtor = LoadJSConstructor(ClassType(superClass))
 
           redo {
             JSBracketMethodApply(
@@ -1667,7 +1662,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           val className = cls.className
           val transformedArgs = (receiver :: args) map transformExpr
 
-          if (classEmitter.isInterface(className)) {
+          if (globalKnowledge.isInterface(className)) {
             val Ident(methodName, origName) = method
             val fullName = className + "__" + methodName
             js.Apply(envField("f", fullName, origName),
@@ -1930,14 +1925,12 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
               transformExpr(method)), args map transformExpr)
 
         case JSSuperBracketSelect(cls, qualifier, item) =>
-          val linkedClass = classEmitter.linkedClassByName(cls.className)
-          val ctor = genRawJSClassConstructor(linkedClass)
+          val ctor = genRawJSClassConstructor(cls.className)
           genCallHelper("superGet", ctor DOT "prototype",
               transformExpr(qualifier), transformExpr(item))
 
         case LoadJSConstructor(cls) =>
-          val linkedClass = classEmitter.linkedClassByName(cls.className)
-          genRawJSClassConstructor(linkedClass)
+          genRawJSClassConstructor(cls.className)
 
         case LoadJSModule(cls) =>
           genLoadModule(cls.className)
@@ -1979,7 +1972,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         case LongLiteral(0L) =>
           genLongModuleApply(LongImpl.Zero)
         case LongLiteral(value) =>
-          if (hasNewRuntimeLong) {
+          if (globalKnowledge.hasNewRuntimeLong) {
             val (lo, hi) = LongImpl.extractParts(value)
             genNewLong(LongImpl.initFromParts,
                 js.IntLiteral(lo), js.IntLiteral(hi))
@@ -2084,13 +2077,6 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
             js.Apply(js.DotSelect(prev, js.Ident("getArrayOf")), Nil)
           }
       }
-    }
-
-    private def getSuperClassOfJSClass(linkedClass: LinkedClass)(
-        implicit pos: Position): LinkedClass = {
-      require(linkedClass.kind.isJSClass)
-      assert(linkedClass.superClass.isDefined, linkedClass.encodedName)
-      classEmitter.linkedClassByName(linkedClass.superClass.get.name)
     }
 
     private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree = {
@@ -2262,15 +2248,27 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       implicit outputMode: OutputMode, pos: Position): js.Tree =
     envField("c", className)
 
-  private[emitter] def genRawJSClassConstructor(linkedClass: LinkedClass)(
+  private[emitter] def genRawJSClassConstructor(className: String)(
+      implicit globalKnowledge: GlobalKnowledge, outputMode: OutputMode,
+      pos: Position): js.Tree = {
+
+    genRawJSClassConstructor(className,
+        globalKnowledge.getJSClassJSName(className))
+  }
+
+  private[emitter] def genRawJSClassConstructor(className: String,
+      jsName: Option[String])(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
-    if (linkedClass.kind == ClassKind.JSClass) {
-      encodeClassVar(linkedClass.encodedName)
-    } else {
-      require(linkedClass.jsName.isDefined)
-      linkedClass.jsName.get.split("\\.").foldLeft(envField("g")) {
-        (prev, part) => genBracketSelect(prev, js.StringLiteral(part))
-      }
+    jsName match {
+      case None =>
+        // this is a Scala.js-defined JS class
+        encodeClassVar(className)
+
+      case Some(jsName) =>
+        // this is a native JS class
+        jsName.split("\\.").foldLeft(envField("g")) {
+          (prev, part) => genBracketSelect(prev, js.StringLiteral(part))
+        }
     }
   }
 

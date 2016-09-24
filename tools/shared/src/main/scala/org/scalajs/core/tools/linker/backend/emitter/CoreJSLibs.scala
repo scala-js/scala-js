@@ -20,8 +20,10 @@ import org.scalajs.core.tools.linker.backend.OutputMode
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 
-// The only reason this is not private[backend] is that Rhino needs it
-private[scalajs] object CoreJSLibs {
+/* The only reason this is not private[emitter] is that Closure needs it.
+ * TODO We should try and get rid of this coupling.
+ */
+private[backend] object CoreJSLibs {
 
   private type Config = (Semantics, OutputMode)
 

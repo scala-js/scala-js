@@ -33,7 +33,11 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
   def this(semantics: Semantics, outputMode: OutputMode) =
     this(semantics, outputMode, InternalOptions())
 
-  private var classEmitter: ScalaJSClassEmitter = _
+  private val knowledgeGuardian = new KnowledgeGuardian
+
+  private val classEmitter =
+    new ScalaJSClassEmitter(semantics, outputMode, internalOptions)
+
   private val classCaches = mutable.Map.empty[List[String], ClassCache]
 
   private[this] var statsClassesReused: Int = 0
@@ -73,15 +77,13 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
   }
 
   def emit(unit: LinkingUnit, builder: JSTreeBuilder, logger: Logger): Unit = {
-    classEmitter = new ScalaJSClassEmitter(outputMode, internalOptions, unit)
-    startRun()
+    startRun(unit)
     try {
       val orderedClasses = unit.classDefs.sortWith(compareClasses)
       for (classInfo <- orderedClasses)
         emitLinkedClass(classInfo, builder)
     } finally {
       endRun(logger)
-      classEmitter = null
     }
   }
 
@@ -103,11 +105,16 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     else lhs.encodedName.compareTo(rhs.encodedName) < 0
   }
 
-  private def startRun(): Unit = {
+  private def startRun(unit: LinkingUnit): Unit = {
     statsClassesReused = 0
     statsClassesInvalidated = 0
     statsMethodsReused = 0
     statsMethodsInvalidated = 0
+
+    val invalidateAll = knowledgeGuardian.update(unit)
+    if (invalidateAll)
+      classCaches.clear()
+
     classCaches.valuesIterator.foreach(_.startRun())
   }
 
@@ -136,24 +143,24 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       val methodCache = classCache.getStaticCache(m.info.encodedName)
 
       addTree(methodCache.getOrElseUpdate(m.version,
-        classEmitter.genMethod(className, m.tree)))
+          classEmitter.genMethod(className, m.tree)(methodCache)))
     }
 
     if (linkedClass.hasInstances && kind.isAnyScalaJSDefinedClass) {
       val ctor = classTreeCache.constructor.getOrElseUpdate(
-          classEmitter.genConstructor(linkedClass))
+          classEmitter.genConstructor(linkedClass)(classCache))
 
       // Normal methods
       val memberMethods = for (m <- linkedClass.memberMethods) yield {
         val methodCache = classCache.getMethodCache(m.info.encodedName)
 
         methodCache.getOrElseUpdate(m.version,
-            classEmitter.genMethod(className, m.tree))
+            classEmitter.genMethod(className, m.tree)(methodCache))
       }
 
       // Exported Members
       val exportedMembers = classTreeCache.exportedMembers.getOrElseUpdate(
-          classEmitter.genExportedMembers(linkedClass))
+          classEmitter.genExportedMembers(linkedClass)(classCache))
 
       outputMode match {
         case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
@@ -169,14 +176,14 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
             case js.Skip()         => Nil
             case oneMember         => List(oneMember)
           }
-          addTree(classEmitter.genES6Class(linkedClass, allMembers))
+          addTree(classEmitter.genES6Class(linkedClass, allMembers)(classCache))
       }
     } else if (kind == ClassKind.Interface) {
       // Default methods
       for (m <- linkedClass.memberMethods) yield {
         val methodCache = classCache.getMethodCache(m.info.encodedName)
         addTree(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genDefaultMethod(className, m.tree)))
+            classEmitter.genDefaultMethod(className, m.tree)(methodCache)))
       }
     }
 
@@ -189,7 +196,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
     if (linkedClass.hasRuntimeTypeInfo) {
       addTree(classTreeCache.typeData.getOrElseUpdate(
-          classEmitter.genTypeData(linkedClass)))
+          classEmitter.genTypeData(linkedClass)(classCache)))
     }
 
     if (linkedClass.hasInstances && kind.isClass && linkedClass.hasRuntimeTypeInfo)
@@ -201,7 +208,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
           classEmitter.genModuleAccessor(linkedClass)))
 
     addTree(classTreeCache.classExports.getOrElseUpdate(
-        classEmitter.genClassExports(linkedClass)))
+        classEmitter.genClassExports(linkedClass)(classCache)))
   }
 
   // Helpers
@@ -226,15 +233,44 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       emitNextLine(0)
   }
 
+  // Private API for Rhino
+
+  private[scalajs] object rhinoAPI { // scalastyle:ignore
+    /** A GlobalKnowledge that never tracks dependencies. This can be used in
+     *  cases where we do not use any cache, which is what `genClassDef()` in
+     *  this class does.
+     */
+    private val globalKnowledge: GlobalKnowledge =
+      new knowledgeGuardian.KnowledgeAccessor {}
+
+    def initialize(linkingUnit: LinkingUnit): Unit =
+      startRun(linkingUnit)
+
+    def getHeaderFile(): org.scalajs.core.tools.io.VirtualJSFile =
+      CoreJSLibs.lib(semantics, outputMode)
+
+    def genClassDef(linkedClass: LinkedClass): js.Tree =
+      classEmitter.genClassDef(linkedClass)(globalKnowledge)
+  }
+
   // Caching
 
-  private final class ClassCache {
+  private final class ClassCache extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _cache: DesugaredClassCache = null
     private[this] var _lastVersion: Option[String] = None
     private[this] var _cacheUsed = false
 
     private[this] val _staticCaches = mutable.Map.empty[String, MethodCache]
     private[this] val _methodCaches = mutable.Map.empty[String, MethodCache]
+
+    override def invalidate(): Unit = {
+      /* Do not invalidate contained methods, as they have their own
+       * invalidation logic.
+       */
+      super.invalidate()
+      _cache = null
+      _lastVersion = None
+    }
 
     def startRun(): Unit = {
       _cacheUsed = false
@@ -244,6 +280,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
     def getCache(version: Option[String]): DesugaredClassCache = {
       if (_cache == null || _lastVersion.isEmpty || _lastVersion != version) {
+        invalidate()
         statsClassesInvalidated += 1
         _lastVersion = version
         _cache = new DesugaredClassCache
@@ -265,21 +302,28 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       _methodCaches.retain((_, c) => c.cleanAfterRun())
 
       if (!_cacheUsed)
-        _cache = null
+        invalidate()
 
       _staticCaches.nonEmpty || _methodCaches.nonEmpty || _cacheUsed
     }
   }
 
-  private final class MethodCache {
+  private final class MethodCache extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _tree: js.Tree = null
     private[this] var _lastVersion: Option[String] = None
     private[this] var _cacheUsed = false
+
+    override def invalidate(): Unit = {
+      super.invalidate()
+      _tree = null
+      _lastVersion = None
+    }
 
     def startRun(): Unit = _cacheUsed = false
 
     def getOrElseUpdate(version: Option[String], v: => js.Tree): js.Tree = {
       if (_tree == null || _lastVersion.isEmpty || _lastVersion != version) {
+        invalidate()
         statsMethodsInvalidated += 1
         _tree = v
         _lastVersion = version
@@ -290,7 +334,12 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       _tree
     }
 
-    def cleanAfterRun(): Boolean = _cacheUsed
+    def cleanAfterRun(): Boolean = {
+      if (!_cacheUsed)
+        invalidate()
+
+      _cacheUsed
+    }
   }
 }
 

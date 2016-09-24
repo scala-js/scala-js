@@ -22,55 +22,19 @@ import org.scalajs.core.tools.javascript.{Trees => js}
 import org.scalajs.core.tools.linker.backend.OutputMode
 import org.scalajs.core.tools.linker.{LinkedClass, LinkingUnit}
 
-/** Defines methods to emit Scala.js classes to JavaScript code.
- *  The results are completely desugared.
- *
- *  The only reason this is not `private[emitter]` is because `RhinoJSEnv`
- *  needs it.
- */
-private[scalajs] final class ScalaJSClassEmitter(
+/** Emitter for the skeleton of classes. */
+private[emitter] final class ScalaJSClassEmitter(
+    private[emitter] val semantics: Semantics,
     private[emitter] val outputMode: OutputMode,
-    internalOptions: InternalOptions,
-    linkingUnit: LinkingUnit) {
+    internalOptions: InternalOptions) {
 
   private val jsDesugaring = new JSDesugaring(internalOptions)
 
   import ScalaJSClassEmitter._
   import jsDesugaring._
 
-  def this(outputMode: OutputMode, linkingUnit: LinkingUnit) =
-    this(outputMode, InternalOptions(), linkingUnit)
-
-  private[emitter] lazy val linkedClassByName: Map[String, LinkedClass] =
-    linkingUnit.classDefs.map(c => c.encodedName -> c).toMap
-
-  private[emitter] def isInterface(className: String): Boolean = {
-    /* TODO In theory, there is a flaw in the incremental behavior about this.
-     *
-     * This method is used to desugar ApplyStatically nodes. Depending on
-     * whether className is a class or an interface, the desugaring changes.
-     * This means that the result of desugaring an ApplyStatically depends on
-     * some global knowledge from the whole program (and not only of the method
-     * being desugared). If, from one run to the next, className switches from
-     * being a class to an interface or vice versa, there is nothing demanding
-     * that the IR of the call site change, yet the desugaring should change.
-     * In theory, this causes a flaw in the incremental behavior of the
-     * Emitter, which will not invalidate its cache for this.
-     *
-     * In practice, this should not happen, though. A method can only be called
-     * statically by subclasses and subtraits at the Scala *language* level.
-     * We also know that when a class/trait changes, all its subclasses and
-     * subtraits are recompiled by sbt's incremental compilation. This should
-     * mean that the input IR is always changed in that case anyway.
-     *
-     * It would be good to fix thoroughly if the Emitter/ScalaJSClassEmitter
-     * gets something for incremental whole-program updates, but for now, we
-     * live with the theoretical flaw.
-     */
-    linkedClassByName(className).kind == ClassKind.Interface
-  }
-
-  private[emitter] def semantics: Semantics = linkingUnit.semantics
+  def this(semantics: Semantics, outputMode: OutputMode) =
+    this(semantics, outputMode, InternalOptions())
 
   private implicit def implicitOutputMode: OutputMode = outputMode
 
@@ -93,7 +57,9 @@ private[scalajs] final class ScalaJSClassEmitter(
    *  @param ancestors Encoded names of the ancestors of the class (not only
    *                   parents), including the class itself.
    */
-  def genClassDef(tree: LinkedClass): js.Tree = {
+  def genClassDef(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+
     implicit val pos = tree.pos
     val kind = tree.kind
 
@@ -119,21 +85,25 @@ private[scalajs] final class ScalaJSClassEmitter(
     js.Block(reverseParts.reverse)
   }
 
-  def genStaticMembers(tree: LinkedClass): js.Tree = {
+  def genStaticMembers(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     val className = tree.name.name
     val staticMemberDefs =
       tree.staticMethods.map(m => genMethod(className, m.tree))
     js.Block(staticMemberDefs)(tree.pos)
   }
 
-  def genDefaultMethods(tree: LinkedClass): js.Tree = {
+  def genDefaultMethods(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     val className = tree.name.name
     val defaultMethodDefs =
       tree.memberMethods.map(m => genDefaultMethod(className, m.tree))
     js.Block(defaultMethodDefs)(tree.pos)
   }
 
-  def genClass(tree: LinkedClass): js.Tree = {
+  def genClass(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+
     val className = tree.name.name
     val typeFunctionDef = genConstructor(tree)
     val memberDefs =
@@ -159,7 +129,9 @@ private[scalajs] final class ScalaJSClassEmitter(
   }
 
   /** Generates an ECMAScript 6 class for a linked class. */
-  def genES6Class(tree: LinkedClass, members: List[js.Tree]): js.Tree = {
+  def genES6Class(tree: LinkedClass, members: List[js.Tree])(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+
     require(outputMode == OutputMode.ECMAScript6)
 
     val className = tree.name.name
@@ -171,14 +143,16 @@ private[scalajs] final class ScalaJSClassEmitter(
       if (!tree.kind.isJSClass)
         encodeClassVar(parentIdent.name)
       else
-        genRawJSClassConstructor(linkedClassByName(parentIdent.name))
+        genRawJSClassConstructor(parentIdent.name)
     }
 
     js.ClassDef(Some(classIdent), parentVar, members)(tree.pos)
   }
 
   /** Generates the JS constructor for a class. */
-  def genConstructor(tree: LinkedClass): js.Tree = {
+  def genConstructor(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+
     assert(tree.kind.isAnyScalaJSDefinedClass)
     assert(tree.superClass.isDefined || tree.name.name == Definitions.ObjectClass,
         s"Class ${tree.name.name} is missing a parent class")
@@ -193,7 +167,8 @@ private[scalajs] final class ScalaJSClassEmitter(
   }
 
   /** Generates the JS constructor for a class, ES5 style. */
-  private def genES5Constructor(tree: LinkedClass): js.Tree = {
+  private def genES5Constructor(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     implicit val pos = tree.pos
 
     val className = tree.name.name
@@ -231,8 +206,7 @@ private[scalajs] final class ScalaJSClassEmitter(
       val (inheritedCtorDef, inheritedCtorRef) = if (!isJSClass) {
         (js.Skip(), envField("h", parentIdent.name))
       } else {
-        val superCtor = genRawJSClassConstructor(
-            linkedClassByName(parentIdent.name))
+        val superCtor = genRawJSClassConstructor(parentIdent.name)
         (makeInheritableCtorDef(superCtor), envField("h", className))
       }
       js.Block(
@@ -250,7 +224,8 @@ private[scalajs] final class ScalaJSClassEmitter(
   }
 
   /** Generates the JS constructor for a class, ES6 style. */
-  private def genES6Constructor(tree: LinkedClass): js.Tree = {
+  private def genES6Constructor(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     implicit val pos = tree.pos
 
     if (tree.kind.isJSClass) {
@@ -272,7 +247,8 @@ private[scalajs] final class ScalaJSClassEmitter(
     }
   }
 
-  private def genConstructorFunForJSClass(tree: LinkedClass): js.Function = {
+  private def genConstructorFunForJSClass(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Function = {
     implicit val pos = tree.pos
 
     require(tree.kind.isJSClass)
@@ -288,7 +264,8 @@ private[scalajs] final class ScalaJSClassEmitter(
   }
 
   /** Generates the creation of fields for a class. */
-  private def genFieldDefs(tree: LinkedClass): List[js.Tree] = {
+  private def genFieldDefs(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     val tpe = ClassType(tree.encodedName)
     for {
       field @ FieldDef(name, ftpe, mutable) <- tree.fields
@@ -303,7 +280,8 @@ private[scalajs] final class ScalaJSClassEmitter(
   }
 
   /** Generates a method. */
-  def genMethod(className: String, method: MethodDef): js.Tree = {
+  def genMethod(className: String, method: MethodDef)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     implicit val pos = method.pos
 
     val methodFun0 = desugarToFunction(this, className,
@@ -339,7 +317,8 @@ private[scalajs] final class ScalaJSClassEmitter(
   }
 
   /** Generates a default method. */
-  def genDefaultMethod(className: String, method: MethodDef): js.Tree = {
+  def genDefaultMethod(className: String, method: MethodDef)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     implicit val pos = method.pos
 
     /* TODO The identifier `$thiz` cannot be produced by 0.6.x compilers due to
@@ -363,7 +342,8 @@ private[scalajs] final class ScalaJSClassEmitter(
   }
 
   /** Generates a property. */
-  def genProperty(className: String, property: PropertyDef): js.Tree = {
+  def genProperty(className: String, property: PropertyDef)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     outputMode match {
       case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
         genPropertyES5(className, property)
@@ -372,8 +352,8 @@ private[scalajs] final class ScalaJSClassEmitter(
     }
   }
 
-  private def genPropertyES5(className: String,
-      property: PropertyDef): js.Tree = {
+  private def genPropertyES5(className: String, property: PropertyDef)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     implicit val pos = property.pos
 
     // defineProperty method
@@ -422,8 +402,8 @@ private[scalajs] final class ScalaJSClassEmitter(
     js.Apply(defProp, proto :: name :: descriptor :: Nil)
   }
 
-  private def genPropertyES6(className: String,
-      property: PropertyDef): js.Tree = {
+  private def genPropertyES6(className: String, property: PropertyDef)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     implicit val pos = property.pos
 
     val propName = genPropertyName(property.name)
@@ -654,7 +634,8 @@ private[scalajs] final class ScalaJSClassEmitter(
     ancestors DOT className
   }
 
-  def genTypeData(tree: LinkedClass): js.Tree = {
+  def genTypeData(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     import Definitions._
     import TreeDSL._
 
@@ -677,7 +658,7 @@ private[scalajs] final class ScalaJSClassEmitter(
       if (isRawJSType) js.BooleanLiteral(true)
       else js.Undefined()
 
-    val parentData = if (linkingUnit.globalInfo.isParentDataAccessed) {
+    val parentData = if (globalKnowledge.isParentDataAccessed) {
       tree.superClass.fold[js.Tree] {
         if (isObjectClass) js.Null()
         else js.Undefined()
@@ -714,7 +695,7 @@ private[scalajs] final class ScalaJSClassEmitter(
         if (tree.jsName.isEmpty && kind != ClassKind.JSClass) {
           (envField("noIsInstance"), js.Undefined())
         } else {
-          val jsCtor = genRawJSClassConstructor(tree)
+          val jsCtor = genRawJSClassConstructor(className, tree.jsName)
           (js.Function(List(js.ParamDef(Ident("x"), rest = false)), js.Return {
             js.BinaryOp(JSBinaryOp.instanceof, js.VarRef(Ident("x")), jsCtor)
           }), js.Undefined())
@@ -819,7 +800,8 @@ private[scalajs] final class ScalaJSClassEmitter(
     js.Block(createModuleInstanceField, createAccessor)
   }
 
-  def genExportedMembers(tree: LinkedClass): js.Tree = {
+  def genExportedMembers(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     val exports = tree.exportedMembers map { member =>
       member.tree match {
         case MethodDef(false, StringLiteral("constructor"), _, _, _)
@@ -838,7 +820,8 @@ private[scalajs] final class ScalaJSClassEmitter(
     js.Block(exports)(tree.pos)
   }
 
-  def genClassExports(tree: LinkedClass): js.Tree = {
+  def genClassExports(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     val exports = tree.classExports collect {
       case e: ConstructorExportDef =>
         genConstructorExportDef(tree, e)
@@ -851,8 +834,8 @@ private[scalajs] final class ScalaJSClassEmitter(
     js.Block(exports)(tree.pos)
   }
 
-  def genConstructorExportDef(cd: LinkedClass,
-      tree: ConstructorExportDef): js.Tree = {
+  def genConstructorExportDef(cd: LinkedClass, tree: ConstructorExportDef)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     import TreeDSL._
 
     implicit val pos = tree.pos
