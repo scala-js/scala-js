@@ -1307,6 +1307,19 @@ class ScalaJSDefinedTest {
     assertEquals("hello3 4", dyn.foo("hello", 4))
   }
 
+  @Test def overload_with_default_parameter(): Unit = {
+    @ScalaJSDefined
+    class OverloadDefaultParameter extends js.Object {
+      def foo(x: Int): Int = x
+      def foo(x: String = ""): String = x
+    }
+
+    val foo = new OverloadDefaultParameter
+    assertEquals(5, foo.foo(5))
+    assertEquals("", foo.foo())
+    assertEquals("hello", foo.foo("hello"))
+  }
+
   @Test def implement_a_simple_trait(): Unit = {
     @ScalaJSDefined
     class ImplementSimpleTrait extends js.Object with SimpleTrait {
@@ -1430,6 +1443,27 @@ class ScalaJSDefinedTest {
     val parent: NativeParentClass = child
     assertEquals(18, parent.methodWithDefault())
     assertEquals(14, parent.methodWithDefault(7))
+  }
+
+  // #2603
+  @Test def default_values_in_non_exposed_methods(): Unit = {
+    @ScalaJSDefined
+    class DefaultParameterss(val default: Int) extends js.Object {
+      /* We don't use a constant default value to make sure it actually comes
+       * from the default parameter accessors.
+       */
+      private def privateWithDefault(x: Int = default) = x
+
+      def callPrivate(): Int = privateWithDefault()
+      def callNested(): Int = {
+        def nested(x: Int = default) = x
+        nested()
+      }
+    }
+
+    val x = new DefaultParameterss(5)
+    assertEquals(5, x.callPrivate())
+    assertEquals(5, x.callNested())
   }
 }
 
