@@ -1998,7 +1998,25 @@ abstract class GenJSCode extends plugins.PluginComponent
           isRawJSCtorDefaultParam(sym)
         } else {
           sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
-          isRawJSType(sym.owner.tpe)
+          isRawJSType(sym.owner.tpe) && {
+            /* If this is a default parameter accessor on a
+             * ScalaJSDefinedJSClass, we need to know if the method for which we
+             * are the default parameter is exposed or not.
+             * We do this by removing the $default suffix from the method name,
+             * and looking up a member with that name in the owner.
+             * Note that this does not work for local methods. But local methods
+             * are never exposed.
+             * Further note that overloads are easy, because either all or none
+             * of them are exposed.
+             */
+            def isAttachedMethodExposed = {
+              val methodName = nme.defaultGetterToMethod(sym.name)
+              val ownerMethod = sym.owner.info.decl(methodName)
+              ownerMethod.filter(isExposed).exists
+            }
+
+            !isScalaJSDefinedJSClass(sym.owner) || isAttachedMethodExposed
+          }
         }
       }
 
