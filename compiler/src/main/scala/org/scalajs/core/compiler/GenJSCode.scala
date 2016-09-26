@@ -1317,8 +1317,12 @@ abstract class GenJSCode extends plugins.PluginComponent
                     jsParams, jstpe.NoType,
                     genStat(rhs))(optimizerHints, None)
               } else {
+                val static = {
+                  sym.owner.isImplClass || // <= 2.11
+                  sym.isStaticMember       // >= 2.12.0-RC2 ($init$ method)
+                }
                 val resultIRType = toIRType(sym.tpe.resultType)
-                genMethodDef(static = sym.owner.isImplClass, methodName,
+                genMethodDef(static, methodName,
                     params, resultIRType, rhs, optimizerHints)
               }
             }
@@ -2315,6 +2319,10 @@ abstract class GenJSCode extends plugins.PluginComponent
           genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
       } else if (foreignIsImplClass(sym.owner)) {
         genTraitImplApply(sym, args map genExpr)
+      } else if (sym.isStaticMember && !sym.isJavaDefined) {
+        assert(sym.isMixinConstructor,
+            "Unexpected non-Java-defined static method that is not a $init$ method: " + sym)
+        genApplyStatic(sym, args map genExpr)
       } else if (sym.isClassConstructor) {
         /* See #66: we have to emit a statically linked call to avoid calling a
          * constructor with the same signature in a subclass. */
