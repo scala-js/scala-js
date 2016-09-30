@@ -869,6 +869,38 @@ object Trees {
      */
     final case class Global(path: List[String]) extends JSNativeLoadSpec
 
+    /** Load from a module import.
+     *
+     *  The `module` is the ES module identifier. The `path` is a series of
+     *  nested property names starting from the module object.
+     *
+     *  The path can be empty, in which case the specification denotes the
+     *  namespace import, i.e., import a special object whose fields are all
+     *  the exports of the module.
+     *
+     *  Any element in the path is a property selection from there. A module
+     *  import info with one path element is importing that particular value
+     *  from the module.
+     *
+     *  Examples:
+     *  {{{
+     *  // import { Bar as x } from 'foo'
+     *  Import("foo", List("Bar"))
+     *
+     *  // import { Bar as y } from 'foo'
+     *  // y.Baz
+     *  Import("foo", List("Bar", "Baz"))
+     *
+     *  // import * as x from 'foo' (namespace import)
+     *  Import("foo", Nil)
+     *
+     *  // import x from 'foo' (default import)
+     *  Import("foo", List("default"))
+     *  }}}
+     */
+    final case class Import(module: String, path: List[String])
+        extends JSNativeLoadSpec
+
   }
 
   /** A hash of a tree (usually a MethodDef). Contains two SHA-1 hashes */

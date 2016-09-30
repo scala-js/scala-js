@@ -183,6 +183,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
           if (sym.hasAnnotation(JSNativeAnnotation))
             reportJSNativeOnNonJSAny(idef.pos, "Classes and objects")
+          else if (sym.hasAnnotation(JSImportAnnotation))
+            reportJSImportOnNonJSNative(idef.pos)
 
           val kind =
             if (idef.isInstanceOf[ModuleDef]) OwnerKind.EnumMod
@@ -195,6 +197,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
           if (sym.hasAnnotation(JSNativeAnnotation))
             reportJSNativeOnNonJSAny(cldef.pos, "Traits and classes")
+          else if (sym.hasAnnotation(JSImportAnnotation))
+            reportJSImportOnNonJSNative(cldef.pos)
 
           if (sym == UndefOrClass || sym == UnionClass)
             sym.addAnnotation(RawJSTypeAnnot)
@@ -215,6 +219,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
           if (sym.hasAnnotation(JSNativeAnnotation))
             reportJSNativeOnNonJSAny(modDef.pos, "Objects")
+          else if (sym.hasAnnotation(JSImportAnnotation))
+            reportJSImportOnNonJSNative(modDef.pos)
 
           if (shouldPrepareExports)
             registerModuleExports(sym.moduleClass)
@@ -521,6 +527,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               s"A Scala.js-defined JS $strKind cannot directly extend a "+
               "native JS trait.")
         }
+
+        // Check that there is no @JSImport annotation
+        if (sym.hasAnnotation(JSImportAnnotation))
+          reportJSImportOnNonJSNative(implDef.pos)
+      }
+
+      if (shouldCheckLiterals) {
+        checkJSNameLiteral(sym)
+        checkJSImportLiteral(sym)
       }
 
       // Checks for native JS stuff, excluding JS anon functions
@@ -547,9 +562,22 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               ownerLoadSpec match {
                 case JSNativeLoadSpec.Global(path) =>
                   JSNativeLoadSpec.Global(path :+ jsName)
+                case JSNativeLoadSpec.Import(module, path) =>
+                  JSNativeLoadSpec.Import(module, path :+ jsName)
               }
             } else if (isJSGlobalScope(implDef)) {
               JSNativeLoadSpec.Global(Nil)
+            } else if (sym.hasAnnotation(JSImportAnnotation)) {
+              val annot = sym.getAnnotation(JSImportAnnotation).get
+              val module = annot.stringArg(0).getOrElse {
+                "" // do not care because it does not compile anyway
+              }
+              annot.stringArg(1).fold {
+                JSNativeLoadSpec.Import(module, Nil)
+              } { pathName =>
+                val path = pathName.split('.').toList
+                JSNativeLoadSpec.Import(module, path)
+              }
             } else {
               val needsExplicitJSName = {
                 (enclosingOwner is OwnerKind.ScalaMod) &&
@@ -558,12 +586,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
               if (needsExplicitJSName && !sym.hasAnnotation(JSNameAnnotation)) {
                 if (sym.isModuleClass) {
-                  reporter.error(implDef.pos, "Native JS objects inside " +
-                      "non-native objects must have an @JSName annotation")
+                  reporter.error(implDef.pos,
+                      "Native JS objects inside non-native objects must " +
+                      "have an @JSName or @JSImport annotation")
                 } else {
                   // This should be an error, but we erroneously allowed that before
-                  reporter.warning(implDef.pos, "Native JS classes inside " +
-                      "non-native objects should have an @JSName annotation. " +
+                  reporter.warning(implDef.pos,
+                      "Native JS classes inside non-native objects should " +
+                      "have an @JSName or @JSImport annotation. " +
                       "This will be enforced in 1.0.")
                 }
               }
@@ -578,6 +608,12 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           // Mark module classes as having the new format
           if (sym.isModuleClass)
             sym.addAnnotation(HasJSNativeLoadSpecAnnotation)
+        } else {
+          assert(sym.isTrait) // just tested in the previous `if`
+          if (sym.hasAnnotation(JSImportAnnotation)) {
+            reporter.error(implDef.pos,
+                "Traits may not have an @JSImport annotation")
+          }
         }
       }
 
@@ -591,6 +627,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           reporter.warning(implDef.pos, "Objects extending js.GlobalScope " +
               "should not have a @JSName annotation. This will be enforced " +
               "in 1.0.")
+        } else if (sym.hasAnnotation(JSImportAnnotation)) {
+          reporter.error(implDef.pos,
+              "Objects extending js.GlobalScope cannot have an @JSImport " +
+              "annotation.")
         }
       }
 
@@ -619,9 +659,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             registerClassExports(sym)
         }
       }
-
-      if (shouldCheckLiterals)
-        checkJSNameLiteral(sym)
 
       // Check for overrides with different JS names - issue #1983
       for (overridingPair <- new overridingPairs.Cursor(sym).iterator) {
@@ -754,6 +791,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       if (sym.hasAnnotation(NativeAttr)) {
         // Native methods are not allowed
         reporter.error(tree.pos, "Methods in a js.Any may not be @native")
+      }
+
+      if (sym.hasAnnotation(JSImportAnnotation)) {
+        reporter.error(tree.pos,
+            "Methods and fields cannot be annotated with @JSImport.")
       }
 
       if (shouldCheckLiterals)
@@ -918,6 +960,38 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
   }
 
+  /** Checks that arguments to `@JSImport` on [[sym]] are literals.
+   *
+   *  The second argument can also be the singleton `JSImport.Namespace`
+   *  object.
+   *
+   *  Reports an error on each annotation where this is not the case.
+   */
+  private def checkJSImportLiteral(sym: Symbol): Unit = {
+    for {
+      annot <- sym.getAnnotation(JSImportAnnotation)
+    } {
+      assert(annot.args.size == 2,
+          s"@JSImport annotation $annot does not have exactly 2 arguments")
+
+      val firstArgIsValid = annot.stringArg(0).isDefined
+      if (!firstArgIsValid) {
+        reporter.error(annot.args(0).pos,
+            "The first argument to @JSImport must be a literal string.")
+      }
+
+      val secondArgIsValid = {
+        annot.stringArg(1).isDefined ||
+        annot.args(1).symbol == JSImportNamespaceObject
+      }
+      if (!secondArgIsValid) {
+        reporter.error(annot.args(1).pos,
+            "The second argument to @JSImport must be literal string or the " +
+            "JSImport.Namespace object.")
+      }
+    }
+  }
+
   private trait ScalaEnumFctExtractors {
     protected val methSym: Symbol
 
@@ -1017,6 +1091,12 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   private def reportJSNativeOnNonJSAny(pos: Position, reportOn: String): Unit = {
     reporter.error(pos, reportOn + " not extending js.Any may not have a " +
         "@js.native annotation")
+  }
+
+  private def reportJSImportOnNonJSNative(pos: Position): Unit = {
+    reporter.error(pos,
+        s"Non JS-native classes, traits and objects may not have an " +
+        "@JSImport annotation")
   }
 
   private lazy val ScalaEnumClass = getRequiredClass("scala.Enumeration")

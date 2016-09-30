@@ -885,6 +885,15 @@ class PrintersTest {
         ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
             Some(JSNativeLoadSpec.Global(List("Foo"))), Nil)(
             NoOptHints))
+
+    assertPrintEquals(
+        """
+          |native js class LTest extends O loadfrom Import(foo,List(Bar)) {
+          |}
+        """,
+        ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
+            Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil)(
+            NoOptHints))
   }
 
   @Test def printClassDefOptimizerHints(): Unit = {

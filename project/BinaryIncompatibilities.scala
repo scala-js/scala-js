@@ -69,7 +69,11 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genExportedMembers"),
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genStaticMembers")
+          "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genStaticMembers"),
+
+      // private[emitter], not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.CoreJSLibs.lib")
   )
 
   val JSEnvs = Seq(
@@ -81,6 +85,8 @@ object BinaryIncompatibilities {
   val SbtPlugin = Seq(
       // private[sbtplugin], not an issue
       ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.FrameworkDetector.this"),
+      ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.sbtplugin.FrameworkDetector.detect")
   )
 
@@ -88,6 +94,15 @@ object BinaryIncompatibilities {
   )
 
   val CLI = Seq(
+      // private, not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.cli.Scalajsld#Options.this"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply"),
+      ProblemFilters.exclude[MissingTypesProblem](
+          "org.scalajs.cli.Scalajsld$Options$")
   )
 
   val Library = Seq(

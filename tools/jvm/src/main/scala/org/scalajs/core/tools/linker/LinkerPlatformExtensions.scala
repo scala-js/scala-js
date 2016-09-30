@@ -18,7 +18,7 @@ import org.scalajs.core.tools.linker.backend.closure.ClosureLinkerBackend
 
 trait LinkerPlatformExtensions { this: Linker.type =>
   def apply(semantics: Semantics, outputMode: OutputMode,
-      config: Config): Linker = {
+      moduleKind: ModuleKind, config: Config): Linker = {
 
     val optOptimizerFactory = {
       if (!config.optimizer) None
@@ -33,11 +33,11 @@ trait LinkerPlatformExtensions { this: Linker.type =>
       if (config.closureCompiler) {
         require(outputMode == OutputMode.ECMAScript51Isolated,
             s"Cannot use output mode $outputMode with the Closure Compiler")
-        new ClosureLinkerBackend(semantics, config.sourceMap,
-            config.backendConfig)
+        new ClosureLinkerBackend(semantics, moduleKind,
+            config.sourceMap, config.backendConfig)
       } else {
-        new BasicLinkerBackend(semantics, outputMode, config.sourceMap,
-            config.backendConfig)
+        new BasicLinkerBackend(semantics, outputMode, moduleKind,
+            config.sourceMap, config.backendConfig)
       }
     }
 
@@ -63,7 +63,7 @@ trait LinkerPlatformExtensions { this: Linker.type =>
       .withFrontendConfig(frontendConfig)
       .withBackendConfig(backendConfig)
 
-    apply(semantics, outputMode, config)
+    apply(semantics, outputMode, ModuleKind.NoModule, config)
   }
 }
 

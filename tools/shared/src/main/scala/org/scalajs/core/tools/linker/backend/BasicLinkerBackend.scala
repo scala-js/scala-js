@@ -24,11 +24,20 @@ import org.scalajs.core.tools.javascript.{JSFileBuilder, JSFileBuilderWithSource
 final class BasicLinkerBackend(
     semantics: Semantics,
     outputMode: OutputMode,
+    moduleKind: ModuleKind,
     withSourceMap: Boolean,
     config: LinkerBackend.Config
-) extends LinkerBackend(semantics, outputMode.esLevel, withSourceMap, config) {
+) extends LinkerBackend(semantics, outputMode.esLevel, moduleKind,
+    withSourceMap, config) {
 
-  private[this] val emitter = new Emitter(semantics, outputMode)
+  @deprecated("Use the overload with an explicit ModuleKind", "0.6.13")
+  def this(semantics: Semantics, outputMode: OutputMode, withSourceMap: Boolean,
+      config: LinkerBackend.Config) {
+    this(semantics, outputMode, ModuleKind.NoModule, withSourceMap, config)
+  }
+
+  private[this] val emitter =
+    new Emitter(semantics, outputMode, moduleKind)
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
 

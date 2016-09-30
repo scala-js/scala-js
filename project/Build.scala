@@ -85,6 +85,10 @@ object Build {
   // set postLinkJSEnv in someProject := NodeJSEnv(args = ES6NodeArgs).value
   val ES6NodeArgs = Seq("--harmony-rest-parameters", "--harmony-spreadcalls")
 
+  private def includeIf(testDir: File, condition: Boolean): List[File] =
+    if (condition) List(testDir)
+    else Nil
+
   val previousArtifactSetting: Setting[_] = {
     previousArtifact := {
       val scalaV = scalaVersion.value
@@ -1280,10 +1284,6 @@ object Build {
     testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
 
     unmanagedSourceDirectories in Test ++= {
-      def includeIf(testDir: File, condition: Boolean): List[File] =
-        if (condition) List(testDir)
-        else Nil
-
       val testDir = (sourceDirectory in Test).value
       val sharedTestDir =
         testDir.getParentFile.getParentFile.getParentFile / "shared/src/test"
@@ -1348,6 +1348,13 @@ object Build {
       testHtmlSettings(testHtmlFastOpt, FastOptStage) ++
       testHtmlSettings(testHtmlFullOpt, FullOptStage) ++ Seq(
         name := "Scala.js test suite",
+
+        unmanagedSourceDirectories in Test ++= {
+          val testDir = (sourceDirectory in Test).value
+
+          includeIf(testDir / "require-modules",
+              scalaJSModuleKind.value != ModuleKind.NoModule)
+        },
 
         jsDependencies += ProvidedJS / "ScalaJSDefinedTestNatives.js" % "test",
         skip in packageJSDependencies in Test := false,

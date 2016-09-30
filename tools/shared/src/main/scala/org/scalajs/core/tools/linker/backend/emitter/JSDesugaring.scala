@@ -2279,12 +2279,72 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
   private[emitter] def genLoadJSFromSpec(spec: JSNativeLoadSpec)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
+
+    def pathSelection(from: js.Tree, path: List[String]): js.Tree = {
+      path.foldLeft(from) {
+        (prev, part) => genBracketSelect(prev, js.StringLiteral(part))
+      }
+    }
+
     spec match {
       case JSNativeLoadSpec.Global(path) =>
-        path.foldLeft(envField("g")) {
-          (prev, part) => genBracketSelect(prev, js.StringLiteral(part))
+        pathSelection(envField("g"), path)
+
+      case JSNativeLoadSpec.Import(module, path) =>
+        val moduleValue = envModuleField(module)
+        path match {
+          case DefaultExportName :: rest =>
+            val defaultField = genCallHelper("moduleDefault", moduleValue)
+            pathSelection(defaultField, rest)
+          case _ =>
+            pathSelection(moduleValue, path)
         }
     }
+  }
+
+  private final val DefaultExportName = "default"
+
+  private[emitter] def envModuleField(module: String)(
+      implicit pos: Position): js.VarRef = {
+
+    /* This is written so that the happy path, when `module` contains only
+     * valid characters, is fast.
+     */
+
+    def isValidChar(c: Char): Boolean =
+      (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+
+    def containsOnlyValidChars(): Boolean = {
+      val len = module.length
+      var i = 0
+      while (i != len) {
+        if (!isValidChar(module.charAt(i)))
+          return false
+        i += 1
+      }
+      true
+    }
+
+    def buildValidName(): String = {
+      val result = new java.lang.StringBuilder("$i_")
+      val len = module.length
+      var i = 0
+      while (i != len) {
+        val c = module.charAt(i)
+        if (isValidChar(c))
+          result.append(c)
+        else
+          result.append("$%04x".format(c.toInt))
+        i += 1
+      }
+      result.toString()
+    }
+
+    val varName =
+      if (containsOnlyValidChars()) "$i_" + module
+      else buildValidName()
+
+    js.VarRef(js.Ident(varName, Some(module)))
   }
 
   private[emitter] def envField(field: String, subField: String,

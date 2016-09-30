@@ -582,6 +582,11 @@ object Serializers {
           case JSNativeLoadSpec.Global(path) =>
             writeByte(TagJSNativeLoadSpecGlobal)
             writeStrings(path)
+
+          case JSNativeLoadSpec.Import(module, path) =>
+            writeByte(TagJSNativeLoadSpecImport)
+            writeString(module)
+            writeStrings(path)
         }
       }
     }
@@ -942,6 +947,8 @@ object Serializers {
             None
           case TagJSNativeLoadSpecGlobal =>
             Some(JSNativeLoadSpec.Global(readStrings()))
+          case TagJSNativeLoadSpecImport =>
+            Some(JSNativeLoadSpec.Import(readString(), readStrings()))
         }
       }
     }

@@ -6,7 +6,7 @@ import org.junit.Assert._
 import org.scalajs.core.tools.logging.NullLogger
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.linker.backend.OutputMode
+import org.scalajs.core.tools.linker.backend.{OutputMode, ModuleKind}
 
 class LinkerTest {
 
@@ -23,7 +23,7 @@ class LinkerTest {
     }
 
     val linker = Linker(Semantics.Defaults, OutputMode.ECMAScript51Isolated,
-        Linker.Config())
+        ModuleKind.NoModule, Linker.Config())
 
     def callLink(): Unit =
       linker.link(badSeq, WritableMemVirtualJSFile("some_file"), NullLogger)

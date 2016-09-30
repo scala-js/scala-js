@@ -17,7 +17,7 @@ import org.scalajs.core.tools.linker.backend._
 
 trait LinkerPlatformExtensions { this: Linker.type =>
   def apply(semantics: Semantics, outputMode: OutputMode,
-      config: Config): Linker = {
+      moduleKind: ModuleKind, config: Config): Linker = {
 
     val optOptimizerFactory = {
       if (!config.optimizer) None
@@ -27,7 +27,7 @@ trait LinkerPlatformExtensions { this: Linker.type =>
     val frontend = new LinkerFrontend(semantics, outputMode.esLevel,
         config.sourceMap, config.frontendConfig, optOptimizerFactory)
 
-    val backend = new BasicLinkerBackend(semantics, outputMode,
+    val backend = new BasicLinkerBackend(semantics, outputMode, moduleKind,
         config.sourceMap, config.backendConfig)
 
     new Linker(frontend, backend)
@@ -48,7 +48,7 @@ trait LinkerPlatformExtensions { this: Linker.type =>
       .withFrontendConfig(frontendConfig)
       .withBackendConfig(backendConfig)
 
-    apply(semantics, outputMode, config)
+    apply(semantics, outputMode, ModuleKind.NoModule, config)
   }
 }
 

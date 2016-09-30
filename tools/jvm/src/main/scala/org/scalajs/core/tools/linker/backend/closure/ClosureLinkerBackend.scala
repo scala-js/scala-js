@@ -25,7 +25,7 @@ import org.scalajs.core.tools.sem.Semantics
 
 import org.scalajs.core.tools.linker.LinkingUnit
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
-import org.scalajs.core.tools.linker.backend.{OutputMode, LinkerBackend}
+import org.scalajs.core.tools.linker.backend._
 import org.scalajs.core.tools.linker.backend.emitter.{Emitter, CoreJSLibs}
 
 /** The Closure backend of the Scala.js linker.
@@ -35,12 +35,20 @@ import org.scalajs.core.tools.linker.backend.emitter.{Emitter, CoreJSLibs}
  */
 final class ClosureLinkerBackend(
     semantics: Semantics,
+    moduleKind: ModuleKind,
     withSourceMap: Boolean,
     config: LinkerBackend.Config
-) extends LinkerBackend(semantics, ESLevel.ES5, withSourceMap, config) {
+) extends LinkerBackend(semantics, ESLevel.ES5, moduleKind, withSourceMap,
+    config) {
+
+  @deprecated("Use the overload with an explicit ModuleKind", "0.6.13")
+  def this(semantics: Semantics, withSourceMap: Boolean,
+      config: LinkerBackend.Config) {
+    this(semantics, ModuleKind.NoModule, withSourceMap, config)
+  }
 
   private[this] val emitter = {
-    new Emitter(semantics, OutputMode.ECMAScript51Isolated)
+    new Emitter(semantics, OutputMode.ECMAScript51Isolated, moduleKind)
       .withOptimizeBracketSelects(false)
   }
 
@@ -69,7 +77,7 @@ final class ClosureLinkerBackend(
     val module = new JSModule("Scala.js")
 
     module.add(new CompilerInput(toClosureSource(
-        CoreJSLibs.lib(semantics, OutputMode.ECMAScript51Isolated))))
+        CoreJSLibs.lib(semantics, OutputMode.ECMAScript51Isolated, moduleKind))))
 
     val ast = builder.closureAST
     module.add(new CompilerInput(ast, ast.getInputId(), false))
@@ -190,7 +198,9 @@ private object ClosureLinkerBackend {
     Function.prototype.constructor = function() {};
     Function.prototype.call = function() {};
     Function.prototype.apply = function() {};
+    function require() {}
     var global = {};
+    var exports = {};
     var __ScalaJSEnv = {};
     var NaN = 0.0/0.0, Infinity = 1.0/0.0, undefined = void 0;
     """
