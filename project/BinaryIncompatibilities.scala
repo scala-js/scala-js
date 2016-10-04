@@ -21,6 +21,10 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.checker.IRChecker#CheckedClass.jsName"),
 
+      // "sealed" trait, not an issue to add methods
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.LinkerPlatformExtensions.apply"),
+
       // private[emitter], not an issue
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.this"),

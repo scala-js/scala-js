@@ -189,10 +189,16 @@ object ScalaJSPluginInternal {
           .withCustomOutputWrapper(scalaJSOutputWrapper.value)
           .withPrettyPrint(opts.prettyPrintFullOptJS)
 
+        val config = Linker.Config()
+          .withSourceMap(withSourceMap)
+          .withOptimizer(!opts.disableOptimizer)
+          .withParallel(opts.parallel)
+          .withClosureCompiler(opts.useClosureCompiler)
+          .withFrontendConfig(frontendConfig)
+          .withBackendConfig(backendConfig)
+
         val newLinker = { () =>
-          Linker(semantics, outputMode, withSourceMap, opts.disableOptimizer,
-              opts.parallel, opts.useClosureCompiler, frontendConfig,
-              backendConfig)
+          Linker(semantics, outputMode, config)
         }
 
         new ClearableLinker(newLinker, opts.batchMode)

@@ -165,10 +165,15 @@ object Scalajsld {
         .withRelativizeSourceMapBase(options.relativizeSourceMap)
         .withPrettyPrint(options.prettyPrint)
 
-      val linker = Linker(semantics, options.outputMode, options.sourceMap,
-          disableOptimizer = options.noOpt, parallel = true,
-          useClosureCompiler = options.fullOpt,
-          frontendConfig, backendConfig)
+      val config = Linker.Config()
+        .withSourceMap(options.sourceMap)
+        .withOptimizer(!options.noOpt)
+        .withParallel(true)
+        .withClosureCompiler(options.fullOpt)
+        .withFrontendConfig(frontendConfig)
+        .withBackendConfig(backendConfig)
+
+      val linker = Linker(semantics, options.outputMode, config)
 
       val logger = new ScalaConsoleLogger(options.logLevel)
       val outFile = WritableFileVirtualJSFile(options.output)
