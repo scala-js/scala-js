@@ -256,7 +256,7 @@ private[emitter] final class ScalaJSClassEmitter(
     tree.exportedMembers.map(_.tree) collectFirst {
       case MethodDef(false, StringLiteral("constructor"), params, _, body) =>
         desugarToFunction(this, tree.encodedName,
-            params, body, isStat = true)
+            params, body.get, isStat = true)
     } getOrElse {
       throw new IllegalArgumentException(
           s"${tree.encodedName} does not have an exported constructor")
@@ -282,10 +282,13 @@ private[emitter] final class ScalaJSClassEmitter(
   /** Generates a method. */
   def genMethod(className: String, method: MethodDef)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+    val methodBody = method.body.getOrElse(
+        throw new AssertionError("Cannot generate an abstract method"))
+
     implicit val pos = method.pos
 
     val methodFun0 = desugarToFunction(this, className,
-        method.args, method.body, method.resultType == NoType)
+        method.args, methodBody, method.resultType == NoType)
 
     val methodFun = if (Definitions.isConstructorName(method.name.name)) {
       // init methods have to return `this` so that we can chain them to `new`
@@ -328,7 +331,7 @@ private[emitter] final class ScalaJSClassEmitter(
     val thisIdent = js.Ident("$thiz", Some("this"))
 
     val methodFun0 = desugarToFunction(this, className, Some(thisIdent),
-        method.args, method.body, method.resultType == NoType)
+        method.args, method.body.get, method.resultType == NoType)
 
     val methodFun = js.Function(
         js.ParamDef(thisIdent, rest = false) :: methodFun0.args,
@@ -374,30 +377,25 @@ private[emitter] final class ScalaJSClassEmitter(
             js.ObjectConstr(transformIdent(id) -> js.IntLiteral(0) :: Nil))
     }
 
-    // Options passed to the defineProperty method
-    val descriptor = js.ObjectConstr {
-      // Basic config
-      val base =
-        js.StringLiteral("enumerable") -> js.BooleanLiteral(true) :: Nil
-
-      // Optionally add getter
-      val wget = {
-        if (property.getterBody == EmptyTree) base
-        else {
-          val fun = desugarToFunction(this, className,
-              Nil, property.getterBody, isStat = false)
-          js.StringLiteral("get") -> fun :: base
-        }
-      }
-
-      // Optionally add setter
-      if (property.setterBody == EmptyTree) wget
-      else {
-        val fun = desugarToFunction(this, className,
-            property.setterArg :: Nil, property.setterBody, isStat = true)
-        js.StringLiteral("set") -> fun :: wget
-      }
+    // optional getter definition
+    val optGetter = property.getterBody map { body =>
+      val fun = desugarToFunction(this, className, Nil, body, isStat = false)
+      js.StringLiteral("get") -> fun
     }
+
+    // optional setter definition
+    val optSetter = property.setterArgAndBody map { case (arg, body) =>
+      val fun = desugarToFunction(this, className, arg :: Nil,
+          body, isStat = true)
+      js.StringLiteral("set") -> fun
+    }
+
+    // Options passed to the defineProperty method
+    val descriptor = js.ObjectConstr(
+      optGetter.toList ++
+      optSetter ++
+      List(js.StringLiteral("enumerable") -> js.BooleanLiteral(true))
+    )
 
     js.Apply(defProp, proto :: name :: descriptor :: Nil)
   }
@@ -408,22 +406,19 @@ private[emitter] final class ScalaJSClassEmitter(
 
     val propName = genPropertyName(property.name)
 
-    val getter = {
-      if (property.getterBody == EmptyTree) js.Skip()
-      else {
-        val fun = desugarToFunction(this, className,
-            Nil, property.getterBody, isStat = false)
-        js.GetterDef(static = false, propName, fun.body)
-      }
+    val getter = property.getterBody.fold[js.Tree] {
+      js.Skip()
+    } { body =>
+      val fun = desugarToFunction(this, className, Nil, body, isStat = false)
+      js.GetterDef(static = false, propName, fun.body)
     }
 
-    val setter = {
-      if (property.setterBody == EmptyTree) js.Skip()
-      else {
-        val fun = desugarToFunction(this, className,
-            property.setterArg :: Nil, property.setterBody, isStat = true)
-        js.SetterDef(static = false, propName, fun.args.head, fun.body)
-      }
+    val setter = property.setterArgAndBody.fold[js.Tree] {
+      js.Skip()
+    } { case (arg, body) =>
+      val fun = desugarToFunction(this, className, arg :: Nil,
+          body, isStat = true)
+      js.SetterDef(static = false, propName, fun.args.head, fun.body)
     }
 
     js.Block(getter, setter)

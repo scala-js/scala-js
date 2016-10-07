@@ -5,7 +5,32 @@ object BinaryIncompatibilities {
   val IR = Seq(
       // Breaking changes
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.core.ir.Trees#ClassDef.jsName")
+          "org.scalajs.core.ir.Trees#ClassDef.jsName"),
+
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.ir.Trees$Try"),
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.ir.Trees$Try$"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.ir.Trees#MethodDef.apply"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.ir.Trees#MethodDef.body"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.ir.Trees#MethodDef.copy"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.ir.Trees#MethodDef.this"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.apply"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.copy"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.getterBody"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.setterArg"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.setterBody"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.this")
   )
 
   val Tools = Seq(

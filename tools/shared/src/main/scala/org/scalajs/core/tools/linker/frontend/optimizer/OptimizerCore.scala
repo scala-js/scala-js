@@ -126,7 +126,11 @@ private[optimizer] abstract class OptimizerCore(
 
   def optimize(thisType: Type, originalDef: MethodDef): LinkedMember[MethodDef] = {
     try {
-      val MethodDef(static, name, params, resultType, body) = originalDef
+      val MethodDef(static, name, params, resultType, optBody) = originalDef
+      val body = optBody getOrElse {
+        throw new AssertionError("Methods to optimize must be concrete")
+      }
+
       val (newParams, newBody1) = try {
         transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       } catch {
@@ -141,7 +145,7 @@ private[optimizer] abstract class OptimizerCore(
         if (name.name == "init___") tryElimStoreModule(newBody1)
         else newBody1
       val m = MethodDef(static, name, newParams, resultType,
-          newBody)(originalDef.optimizerHints, None)(originalDef.pos)
+          Some(newBody))(originalDef.optimizerHints, None)(originalDef.pos)
       val info = Infos.generateMethodInfo(m)
 
       new LinkedMember(info, m, None)
@@ -438,12 +442,7 @@ private[optimizer] abstract class OptimizerCore(
           case _                     => DoWhile(newBody, newCond, None)
         }
 
-      case Try(block, errVar, EmptyTree, finalizer) =>
-        val newBlock = transform(block, isStat)
-        val newFinalizer = transformStat(finalizer)
-        Try(newBlock, errVar, EmptyTree, newFinalizer)(newBlock.tpe)
-
-      case Try(block, errVar @ Ident(name, originalName), handler, finalizer) =>
+      case TryCatch(block, errVar @ Ident(name, originalName), handler) =>
         val newBlock = transform(block, isStat)
 
         val newName = freshLocalName(name, false)
@@ -455,11 +454,14 @@ private[optimizer] abstract class OptimizerCore(
           transform(handler, isStat)(handlerScope)
         }
 
-        val newFinalizer = transformStat(finalizer)
-
         val refinedType = constrainedLub(newBlock.tpe, newHandler.tpe, tree.tpe)
-        Try(newBlock, Ident(newName, newOriginalName)(errVar.pos),
-            newHandler, newFinalizer)(refinedType)
+        TryCatch(newBlock, Ident(newName, newOriginalName)(errVar.pos),
+            newHandler)(refinedType)
+
+      case TryFinally(block, finalizer) =>
+        val newBlock = transform(block, isStat)
+        val newFinalizer = transformStat(finalizer)
+        TryFinally(newBlock, newFinalizer)
 
       case Throw(expr) =>
         Throw(transformExpr(expr))
@@ -669,8 +671,7 @@ private[optimizer] abstract class OptimizerCore(
       // Trees that need not be transformed
 
       case _:Skip | _:Debugger | _:LoadModule | _:LoadJSConstructor |
-          _:LoadJSModule | _:JSLinkingInfo | _:Literal |
-          EmptyTree =>
+          _:LoadJSModule | _:JSLinkingInfo | _:Literal =>
         tree
 
       case _ =>
@@ -1423,10 +1424,10 @@ private[optimizer] abstract class OptimizerCore(
   private def canMultiInline(impls: List[MethodID]): Boolean = {
     // TODO? Inline multiple non-forwarders with the exact same body?
     impls.forall(_.isForwarder) &&
-    (getMethodBody(impls.head).body match {
+    (getMethodBody(impls.head).body.get match {
       // Trait impl forwarder
       case ApplyStatic(ClassType(staticCls), Ident(methodName, _), _) =>
-        impls.tail.forall(getMethodBody(_).body match {
+        impls.tail.forall(getMethodBody(_).body.get match {
           case ApplyStatic(ClassType(`staticCls`), Ident(`methodName`, _), _) =>
             true
           case _ =>
@@ -1435,7 +1436,7 @@ private[optimizer] abstract class OptimizerCore(
 
       // Shape of forwards to default methods
       case ApplyStatically(This(), cls, Ident(methodName, _), args) =>
-        impls.tail.forall(getMethodBody(_).body match {
+        impls.tail.forall(getMethodBody(_).body.get match {
           case ApplyStatically(This(), `cls`, Ident(`methodName`, _), _) =>
             true
           case _ =>
@@ -1444,7 +1445,7 @@ private[optimizer] abstract class OptimizerCore(
 
       // Bridge method
       case MaybeBox(Apply(This(), Ident(methodName, _), referenceArgs), boxID) =>
-        impls.tail.forall(getMethodBody(_).body match {
+        impls.tail.forall(getMethodBody(_).body.get match {
           case MaybeBox(Apply(This(), Ident(`methodName`, _), implArgs), `boxID`) =>
             referenceArgs.zip(implArgs) forall {
               case (MaybeUnbox(_, unboxID1), MaybeUnbox(_, unboxID2)) =>
@@ -1687,9 +1688,12 @@ private[optimizer] abstract class OptimizerCore(
 
     attemptedInlining += target
 
-    val MethodDef(static, _, formals, resultType, body) = getMethodBody(target)
+    val MethodDef(static, _, formals, resultType, optBody) = getMethodBody(target)
     assert(static == optReceiver.isEmpty,
         "There must be receiver if and only if the method is not static")
+    val body = optBody.getOrElse {
+      throw new AssertionError("A method to inline must be conrete")
+    }
 
     body match {
       case Skip() =>
@@ -2038,7 +2042,7 @@ private[optimizer] abstract class OptimizerCore(
 
     val targetMethodDef = getMethodBody(target)
     val formals = targetMethodDef.args
-    val stats = targetMethodDef.body match {
+    val stats = targetMethodDef.body.get match {
       case Block(stats) => stats
       case singleStat   => List(singleStat)
     }
@@ -4648,7 +4652,10 @@ private[optimizer] object OptimizerCore {
     var isForwarder: Boolean = false
 
     protected def updateInlineable(): Unit = {
-      val MethodDef(_, Ident(methodName, _), params, _, body) = originalDef
+      val MethodDef(_, Ident(methodName, _), params, _, optBody) = originalDef
+      val body = optBody getOrElse {
+        throw new AssertionError("Methods in optimizer must be concrete")
+      }
 
       isForwarder = body match {
         // Shape of forwarders to trait impls
@@ -4686,7 +4693,6 @@ private[optimizer] object OptimizerCore {
       inlineable = !optimizerHints.noinline
       shouldInline = inlineable && {
         optimizerHints.inline || isForwarder || {
-          val MethodDef(_, _, params, _, body) = originalDef
           body match {
             case _:Skip | _:This | _:Literal                          => true
 

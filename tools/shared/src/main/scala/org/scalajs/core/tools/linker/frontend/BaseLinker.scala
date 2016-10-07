@@ -232,10 +232,10 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
         if (analyzerInfo.methodInfos(m.name.name).isReachable) {
           if (m.name.isInstanceOf[StringLiteral])
             exportedMembers += linkedMethod(m)
-          else if (m.body == EmptyTree)
-            abstractMethods += linkedMethod(m)
-          else
+          else if (m.body.isDefined)
             memberMethods += linkedMethod(m)
+          else
+            abstractMethods += linkedMethod(m)
         }
 
       case m: PropertyDef =>
@@ -328,8 +328,8 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     val superClassType = ClassType(classInfo.superClass.encodedName)
     MethodDef(static = false, ctorIdent,
         params, NoType,
-        ApplyStatically(This()(currentClassType),
-            superClassType, ctorIdent, params.map(_.ref))(NoType))(
+        Some(ApplyStatically(This()(currentClassType),
+            superClassType, ctorIdent, params.map(_.ref))(NoType)))(
         OptimizerHints.empty,
         inheritedMDef.hash) // over-approximation
   }
@@ -364,7 +364,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       call
     }
 
-    MethodDef(static = false, proxyIdent, params, AnyType, body)(
+    MethodDef(static = false, proxyIdent, params, AnyType, Some(body))(
         OptimizerHints.empty, targetMDef.hash)
   }
 
@@ -388,7 +388,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
         This()(currentClassType), ClassType(targetInterface), targetIdent,
         params.map(_.ref))(targetMDef.resultType)
 
-    MethodDef(static = false, bridgeIdent, params, targetMDef.resultType, body)(
+    MethodDef(static = false, bridgeIdent, params, targetMDef.resultType, Some(body))(
         OptimizerHints.empty, targetMDef.hash)
   }
 

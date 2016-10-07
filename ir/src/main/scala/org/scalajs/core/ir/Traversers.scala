@@ -48,9 +48,12 @@ object Traversers {
         traverse(body)
         traverse(cond)
 
-      case Try(block, errVar, handler, finalizer) =>
+      case TryCatch(block, errVar, handler) =>
         traverse(block)
         traverse(handler)
+
+      case TryFinally(block, finalizer) =>
+        traverse(block)
         traverse(finalizer)
 
       case Throw(expr) =>
@@ -190,11 +193,13 @@ object Traversers {
         defs foreach traverse
 
       case MethodDef(static, name, args, resultType, body) =>
-        traverse(body)
+        body.foreach(traverse)
 
-      case PropertyDef(name, getterBody, setterArg, setterBody) =>
-        traverse(getterBody)
-        traverse(setterBody)
+      case PropertyDef(name, getterBody, setterArgAndBody) =>
+        getterBody.foreach(traverse)
+        setterArgAndBody foreach { case (_, body) =>
+          traverse(body)
+        }
 
       case ConstructorExportDef(fullName, args, body) =>
         traverse(body)
@@ -204,7 +209,7 @@ object Traversers {
       case _:Skip | _:Continue | _:Debugger | _:LoadModule |
           _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo | _:Literal |
           _:UndefinedParam | _:VarRef | _:This | _:FieldDef |
-          _:JSClassExportDef | _:ModuleExportDef | EmptyTree =>
+          _:JSClassExportDef | _:ModuleExportDef =>
 
       case _ =>
         sys.error(s"Invalid tree in traverse() of class ${tree.getClass}")

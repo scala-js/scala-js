@@ -111,9 +111,6 @@ object Serializers {
       import buffer._
       writePosition(tree.pos)
       tree match {
-        case EmptyTree =>
-          writeByte(TagEmptyTree)
-
         case VarDef(ident, vtpe, mutable, rhs) =>
           writeByte(TagVarDef)
           writeIdent(ident); writeType(vtpe); writeBoolean(mutable); writeTree(rhs)
@@ -154,10 +151,14 @@ object Serializers {
           writeByte(TagDoWhile)
           writeTree(body); writeTree(cond); writeOptIdent(label)
 
-        case Try(block, errVar, handler, finalizer) =>
-          writeByte(TagTry)
-          writeTree(block); writeIdent(errVar); writeTree(handler); writeTree(finalizer)
+        case TryCatch(block, errVar, handler) =>
+          writeByte(TagTryCatch)
+          writeTree(block); writeIdent(errVar); writeTree(handler)
           writeType(tree.tpe)
+
+        case TryFinally(block, finalizer) =>
+          writeByte(TagTryFinally)
+          writeTree(block); writeTree(finalizer)
 
         case Throw(expr) =>
           writeByte(TagThrow)
@@ -428,7 +429,7 @@ object Serializers {
 
           // Write out method def
           writeBoolean(static); writePropertyName(name)
-          writeTrees(args); writeType(resultType); writeTree(body)
+          writeTrees(args); writeType(resultType); writeOptTree(body)
           writeInt(methodDef.optimizerHints.bits)
 
           // Jump back and write true length
@@ -436,9 +437,14 @@ object Serializers {
           writeInt(length)
           bufferUnderlying.continue()
 
-        case PropertyDef(name, getter, arg, setter) =>
+        case PropertyDef(name, getter, setterArgAndBody) =>
           writeByte(TagPropertyDef)
-          writePropertyName(name); writeTree(getter); writeTree(arg); writeTree(setter)
+          writePropertyName(name)
+          writeOptTree(getter)
+          writeBoolean(setterArgAndBody.isDefined)
+          setterArgAndBody foreach { case (arg, body) =>
+            writeTree(arg); writeTree(body)
+          }
 
         case ConstructorExportDef(fullName, args, body) =>
           writeByte(TagConstructorExportDef)
@@ -459,6 +465,15 @@ object Serializers {
     def writeTrees(trees: List[Tree]): Unit = {
       buffer.writeInt(trees.size)
       trees.foreach(writeTree)
+    }
+
+    def writeOptTree(optTree: Option[Tree]): Unit = {
+      optTree.fold {
+        writePosition(Position.NoPosition)
+        buffer.writeByte(TagEmptyTree)
+      } { tree =>
+        writeTree(tree)
+      }
     }
 
     def writeIdent(ident: Ident): Unit = {
@@ -634,11 +649,23 @@ object Serializers {
     }
 
     def readTree(): Tree = {
+      val pos = readPosition()
+      readTreeFromTag(input.readByte())(pos)
+    }
+
+    def readOptTree(): Option[Tree] = {
+      // TODO switch tag and position when we can break binary compat.
+      val pos = readPosition()
+      val tag = input.readByte()
+      if (tag == TagEmptyTree) None
+      else Some(readTreeFromTag(tag)(pos))
+    }
+
+    private def readTreeFromTag(tag: Byte)(implicit pos: Position): Tree = {
       import input._
-      implicit val pos = readPosition()
-      val tag = readByte()
       val result = (tag: @switch) match {
-        case TagEmptyTree => EmptyTree
+        case TagEmptyTree =>
+          sys.error("Found invalid TagEmptyTree")
 
         case TagVarDef   => VarDef(readIdent(), readType(), readBoolean(), readTree())
         case TagParamDef =>
@@ -653,7 +680,29 @@ object Serializers {
         case TagIf       => If(readTree(), readTree(), readTree())(readType())
         case TagWhile    => While(readTree(), readTree(), readOptIdent())
         case TagDoWhile  => DoWhile(readTree(), readTree(), readOptIdent())
-        case TagTry      => Try(readTree(), readIdent(), readTree(), readTree())(readType())
+
+        case TagTry =>
+          if (!useHacks068) {
+            sys.error("Invalid tag TagTry")
+          }
+
+          val block = readTree()
+          val errVar = readIdent()
+          val handler = readOptTree()
+          val finalizer = readOptTree()
+          val tpe = readType()
+
+          val maybeCatch = handler.fold(block)(
+              handler => TryCatch(block, errVar, handler)(tpe))
+          finalizer.fold(maybeCatch)(
+              finalizer => TryFinally(maybeCatch, finalizer))
+
+        case TagTryCatch =>
+          TryCatch(readTree(), readIdent(), readTree())(readType())
+
+        case TagTryFinally =>
+          TryFinally(readTree(), readTree())
+
         case TagThrow    => Throw(readTree())
         case TagContinue => Continue(readOptIdent())
         case TagMatch    =>
@@ -782,7 +831,7 @@ object Serializers {
           val len = readInt()
           assert(len >= 0)
           val result1 = MethodDef(readBoolean(), readPropertyName(),
-              readParamDefs(), readType(), readTree())(
+              readParamDefs(), readType(), readOptTree())(
               new OptimizerHints(readInt()), optHash)
           val result2 = if (foundArguments) {
             foundArguments = false
@@ -799,8 +848,20 @@ object Serializers {
             result2
           }
         case TagPropertyDef =>
-          PropertyDef(readPropertyName(), readTree(),
-              readTree().asInstanceOf[ParamDef], readTree())
+          val name = readPropertyName()
+          val getterBody = readOptTree()
+          val setterArgAndBody = if (useHacks068) {
+            val setterArg = readTree().asInstanceOf[ParamDef]
+            readOptTree().map(setterBody => (setterArg, setterBody))
+          } else {
+            if (readBoolean())
+              Some((readTree().asInstanceOf[ParamDef], readTree()))
+            else
+              None
+          }
+
+          PropertyDef(name, getterBody, setterArgAndBody)
+
         case TagConstructorExportDef =>
           val result = ConstructorExportDef(readString(), readParamDefs(), readTree())
           if (foundArguments) {
@@ -985,7 +1046,7 @@ object Serializers {
       val MethodDef(static, name, args, resultType, body) = tree
       setupParamToIndex(args)
       MethodDef(static, name, List(argumentsParamDef(tree.pos)),
-          resultType, transform(body, isStat = resultType == NoType))(
+          resultType, body.map(transform(_, isStat = resultType == NoType)))(
           tree.optimizerHints, None)(tree.pos)
     }
 

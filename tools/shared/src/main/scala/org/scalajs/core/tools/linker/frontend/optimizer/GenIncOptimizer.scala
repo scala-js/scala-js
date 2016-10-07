@@ -625,7 +625,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
         case Assign(Select(This(), _), rhs) =>
           isTriviallySideEffectFree(rhs)
         case ApplyStatic(ClassType(cls), methodName, List(This())) =>
-          statics(cls).methods(methodName.name).originalDef.body match {
+          statics(cls).methods(methodName.name).originalDef.body.exists {
             case Skip() => true
             case _      => false
           }
@@ -641,7 +641,11 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
         case _ =>
           isTriviallySideEffectFree(tree)
       }
-      isElidableStat(impl.originalDef.body)
+      impl.originalDef.body.fold {
+        throw new AssertionError("Module constructor cannot be abstract")
+      } { body =>
+        isElidableStat(body)
+      }
     }
 
     /** All the methods of this class, including inherited ones.

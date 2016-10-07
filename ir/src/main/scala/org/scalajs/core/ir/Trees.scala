@@ -28,11 +28,6 @@ object Trees {
     }
   }
 
-  case object EmptyTree extends Tree {
-    val pos = NoPosition
-    val tpe = NoType
-  }
-
   // Identifiers and properties
 
   sealed trait PropertyName {
@@ -170,8 +165,13 @@ object Trees {
     val tpe = NoType // cannot be in expression position
   }
 
-  case class Try(block: Tree, errVar: Ident, handler: Tree, finalizer: Tree)(
+  case class TryCatch(block: Tree, errVar: Ident, handler: Tree)(
       val tpe: Type)(implicit val pos: Position) extends Tree
+
+  case class TryFinally(block: Tree, finalizer: Tree)(
+      implicit val pos: Position) extends Tree {
+    val tpe = block.tpe
+  }
 
   case class Throw(expr: Tree)(implicit val pos: Position) extends Tree {
     val tpe = NothingType
@@ -783,14 +783,14 @@ object Trees {
   }
 
   case class MethodDef(static: Boolean, name: PropertyName,
-      args: List[ParamDef], resultType: Type, body: Tree)(
+      args: List[ParamDef], resultType: Type, body: Option[Tree])(
       val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
       implicit val pos: Position) extends Tree {
     val tpe = NoType
   }
 
-  case class PropertyDef(name: PropertyName, getterBody: Tree,
-      setterArg: ParamDef, setterBody: Tree)(
+  case class PropertyDef(name: PropertyName, getterBody: Option[Tree],
+      setterArgAndBody: Option[(ParamDef, Tree)])(
       implicit val pos: Position) extends Tree {
     val tpe = NoType
   }

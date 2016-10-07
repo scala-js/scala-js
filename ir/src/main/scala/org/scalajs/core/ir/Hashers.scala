@@ -21,7 +21,7 @@ object Hashers {
       hasher.mixPropertyName(name)
       hasher.mixTrees(args)
       hasher.mixType(resultType)
-      hasher.mixTree(body)
+      body.foreach(hasher.mixTree)
       hasher.mixInt(methodDef.optimizerHints.bits)
 
       val hash = hasher.finalizeHash()
@@ -89,9 +89,6 @@ object Hashers {
     def mixTree(tree: Tree): Unit = {
       mixPos(tree.pos)
       tree match {
-        case EmptyTree =>
-          mixTag(TagEmptyTree)
-
         case VarDef(ident, vtpe, mutable, rhs) =>
           mixTag(TagVarDef)
           mixIdent(ident)
@@ -154,11 +151,16 @@ object Hashers {
           mixTree(cond)
           mixOptIdent(label)
 
-        case Try(block, errVar, handler, finalizer) =>
-          mixTag(TagTry)
+        case TryCatch(block, errVar, handler) =>
+          mixTag(TagTryCatch)
           mixTree(block)
           mixIdent(errVar)
           mixTree(handler)
+          mixType(tree.tpe)
+
+        case TryFinally(block, finalizer) =>
+          mixTag(TagTryFinally)
+          mixTree(block)
           mixTree(finalizer)
           mixType(tree.tpe)
 

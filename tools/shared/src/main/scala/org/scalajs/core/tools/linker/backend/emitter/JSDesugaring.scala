@@ -377,9 +377,6 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         // VarDefs at the end of block. Normal VarDefs are handled in
         // transformBlockStats
 
-        case VarDef(_, _, _, EmptyTree) =>
-          js.Skip()
-
         case VarDef(_, _, _, rhs) =>
           pushLhsInto(Lhs.Discard, rhs, tailPosLabels)
 
@@ -1187,34 +1184,26 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
             }
           }
 
-        case Try(block, errVar, handler, finalizer) =>
+        /* The Google Closure Compiler used to wrongly eliminate finally blocks,
+         * if the catch block throws an exception.
+         * Issues: #563, google/closure-compiler#186
+         *
+         * Therefore, we do not special case TryFinally(TryCatch(...)).
+         * We should do this now, since GCC seems to have fixed it (#2619).
+         */
+
+        case TryCatch(block, errVar, handler) =>
           extractLet { newLhs =>
             val newBlock = pushLhsInto(newLhs, block, tailPosLabels)
-            val newHandler =
-              if (handler == EmptyTree) js.EmptyTree
-              else pushLhsInto(newLhs, handler, tailPosLabels)
-            val newFinalizer =
-              if (finalizer == EmptyTree) js.EmptyTree
-              else transformStat(finalizer, tailPosLabels)
+            val newHandler = pushLhsInto(newLhs, handler, tailPosLabels)
+            js.Try(newBlock, errVar, newHandler, js.EmptyTree)
+          }
 
-            if (newHandler != js.EmptyTree && newFinalizer != js.EmptyTree) {
-              /* The Google Closure Compiler wrongly eliminates finally blocks, if
-               * the catch block throws an exception.
-               * Issues: #563, google/closure-compiler#186
-               *
-               * Therefore, we desugar
-               *
-               *   try { ... } catch { ... } finally { ... }
-               *
-               * into
-               *
-               *   try { try { ... } catch { ... } } finally { ... }
-               */
-              js.Try(js.Try(newBlock, errVar, newHandler, js.EmptyTree),
-                  errVar, js.EmptyTree, newFinalizer)
-            } else {
-              js.Try(newBlock, errVar, newHandler, newFinalizer)
-            }
+        case TryFinally(block, finalizer) =>
+          extractLet { newLhs =>
+            val newBlock = pushLhsInto(newLhs, block, tailPosLabels)
+            val newFinalizer = transformStat(finalizer, tailPosLabels)
+            js.Try(newBlock, js.Ident("dummy"), js.EmptyTree, newFinalizer)
           }
 
         // TODO Treat throw as an LHS?
@@ -1252,9 +1241,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
                   caze
                 }
               }
-              val newDefault =
-                if (default == EmptyTree) js.EmptyTree
-                else pushLhsInto(newLhs, default, tailPosLabels)
+              val newDefault = pushLhsInto(newLhs, default, tailPosLabels)
               js.Switch(transformExpr(newSelector), newCases, newDefault)
             }
           }

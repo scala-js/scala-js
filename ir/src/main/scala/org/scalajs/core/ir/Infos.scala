@@ -299,11 +299,10 @@ object Infos {
       builder
         .setEncodedName(methodDef.name.name)
         .setIsStatic(methodDef.static)
-        .setIsAbstract(methodDef.body == EmptyTree)
+        .setIsAbstract(methodDef.body.isEmpty)
         .setIsExported(methodDef.name.isInstanceOf[StringLiteral])
 
-      // body can be EmptyTree, but that's fine
-      traverse(methodDef.body)
+      methodDef.body.foreach(traverse)
 
       builder.result()
     }
@@ -313,9 +312,10 @@ object Infos {
         .setEncodedName(propertyDef.name.name)
         .setIsExported(true)
 
-      // Any of getterBody and setterBody can be EmptyTree, but that's fine
-      traverse(propertyDef.getterBody)
-      traverse(propertyDef.setterBody)
+      propertyDef.getterBody.foreach(traverse)
+      propertyDef.setterArgAndBody foreach { case (_, body) =>
+        traverse(body)
+      }
 
       builder.result()
     }

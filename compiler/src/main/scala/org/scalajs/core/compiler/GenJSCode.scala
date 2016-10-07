@@ -582,8 +582,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       generatedClasses += ((sym, None, newClassDef))
 
       // Construct inline class definition
-      val js.MethodDef(_, _, ctorParams, _, ctorBody) = constructor.getOrElse(
-          throw new AssertionError("No ctor found"));
+      val js.MethodDef(_, _, ctorParams, _, Some(ctorBody)) =
+        constructor.getOrElse(throw new AssertionError("No ctor found"))
 
       val selfName = freshLocalIdent("this")(pos)
       def selfRef(implicit pos: ir.Position) =
@@ -606,7 +606,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         case mdef: js.MethodDef =>
           implicit val pos = mdef.pos
           val name = mdef.name.asInstanceOf[js.StringLiteral]
-          val impl = lambda(mdef.args, mdef.body)
+          val impl = lambda(mdef.args, mdef.body.getOrElse(
+              throw new AssertionError("Got anon SJS class with abstract method")))
           js.Assign(js.JSBracketSelect(selfRef, name), impl)
 
         case pdef: js.PropertyDef =>
@@ -618,15 +619,21 @@ abstract class GenJSCode extends plugins.PluginComponent
           def field(name: String, value: js.Tree) =
             List(js.StringLiteral(name) -> value)
 
-          def accessor(tree: js.Tree, name: String)(genBody: js.Tree => js.Tree) =
-            if (tree == js.EmptyTree) Nil
-            else field(name, genBody(tree))
+          val optGetter = pdef.getterBody map { body =>
+            js.StringLiteral("get") -> lambda(params = Nil, body)
+          }
+
+          val optSetter = pdef.setterArgAndBody map { case (arg, body) =>
+            js.StringLiteral("set") -> lambda(params = arg :: Nil, body)
+          }
 
           val descriptor = js.JSObjectConstr(
-              accessor(pdef.getterBody, "get")(lambda(params = Nil, _)) ++
-              accessor(pdef.setterBody, "set")(lambda(pdef.setterArg :: Nil, _)) ++
-              field("configurable", js.BooleanLiteral(true)) ++
-              field("enumerable", js.BooleanLiteral(true))
+              optGetter.toList ++
+              optSetter ++
+              List(
+                  js.StringLiteral("configurable") -> js.BooleanLiteral(true),
+                  js.StringLiteral("enumerable") -> js.BooleanLiteral(true)
+              )
           )
 
           js.JSBracketMethodApply(jsObject, js.StringLiteral("defineProperty"),
@@ -860,7 +867,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             "Implementation restriction: constructors of " +
             "Scala.js-defined JS classes cannot have default parameters " +
             "if their companion module is JS native.")
-        js.EmptyTree
+        js.Skip()
       } else {
         withNewLocalNameScope {
           val ctors: List[js.MethodDef] = constructorTrees.flatMap { tree =>
@@ -870,7 +877,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           val dispatch =
             genJSConstructorExport(constructorTrees.map(_.symbol))
           val js.MethodDef(_, dispatchName, dispatchArgs, dispatchResultType,
-          dispatchResolution) = dispatch
+              Some(dispatchResolution)) = dispatch
 
           val jsConstructorBuilder = mkJSConstructorBuilder(ctors)
 
@@ -898,7 +905,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               primaryCtorBody :: postPrimaryCtorBody :: Nil)
 
           js.MethodDef(static = false, dispatchName, dispatchArgs, jstpe.NoType,
-              newBody)(dispatch.optimizerHints, None)
+              Some(newBody))(dispatch.optimizerHints, None)
         }
       }
     }
@@ -933,7 +940,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     private class JSConstructorBuilder(root: ConstructorTree) {
 
-      def primaryCtorBody: js.Tree = root.method.body
+      def primaryCtorBody: js.Tree = root.method.body.getOrElse(
+          throw new AssertionError("Found abstract constructor"))
 
       def hasSubConstructors: Boolean = root.subConstructors.nonEmpty
 
@@ -979,7 +987,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           mkSubPreCalls(constructorTree, overrideNumRef)
 
         val preSuperCall = {
-          constructorTree.method.body match {
+          constructorTree.method.body.get match {
             case js.Block(stats) =>
               val beforeSuperCall = stats.takeWhile {
                 case js.ApplyStatic(_, mtd, _) => !ir.Definitions.isConstructorName(mtd.name)
@@ -1022,7 +1030,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       private def mkPostPrimaryCtorBodyOnSndCtr(constructorTree: ConstructorTree,
           overrideNumRef: js.VarRef)(implicit pos: Position): js.Tree = {
         val postSuperCall = {
-          constructorTree.method.body match {
+          constructorTree.method.body.get match {
             case js.Block(stats) =>
               stats.dropWhile {
                 case js.ApplyStatic(_, mtd, _) => !ir.Definitions.isConstructorName(mtd.name)
@@ -1165,7 +1173,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       val (primaryCtor :: Nil, secondaryCtors) = ctors.partition {
-        _.body match {
+        _.body.get match {
           case js.Block(stats) =>
             stats.exists(_.isInstanceOf[js.JSSuperConstructorCall])
 
@@ -1175,7 +1183,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       val ctorToChildren = secondaryCtors.map { ctor =>
-        findCtorForwarderCall(ctor.body) -> ctor
+        findCtorForwarderCall(ctor.body.get) -> ctor
       }.groupBy(_._1).mapValues(_.map(_._2)).withDefaultValue(Nil)
 
       var overrideNum = -1
@@ -1263,10 +1271,10 @@ abstract class GenJSCode extends plugins.PluginComponent
                   sParam.tpe =:= symParam.tpe
               }
             }
-            genTraitImplApply(implMethodSym,
-                js.This()(currentClassType) :: jsParams.map(_.ref))
+            Some(genTraitImplApply(implMethodSym,
+                js.This()(currentClassType) :: jsParams.map(_.ref)))
           } else {
-            js.EmptyTree
+            None
           }
           Some(js.MethodDef(static = false, methodName,
               jsParams, toIRType(sym.tpe.resultType), body)(
@@ -1313,11 +1321,11 @@ abstract class GenJSCode extends plugins.PluginComponent
                   if (!sym.isPrimaryConstructor) body0
                   else moveAllStatementsAfterSuperConstructorCall(body0)
                 js.MethodDef(static = false, methodName,
-                    jsParams, jstpe.NoType, body1)(optimizerHints, None)
+                    jsParams, jstpe.NoType, Some(body1))(optimizerHints, None)
               } else if (sym.isClassConstructor) {
                 js.MethodDef(static = false, methodName,
                     jsParams, jstpe.NoType,
-                    genStat(rhs))(optimizerHints, None)
+                    Some(genStat(rhs)))(optimizerHints, None)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
                 genMethodDef(static = sym.owner.isImplClass, methodName,
@@ -1398,8 +1406,8 @@ abstract class GenJSCode extends plugins.PluginComponent
             super.transform(tree, isStat)
         }
       }
-      val newBody =
-        transformer.transform(body, isStat = resultType == jstpe.NoType)
+      val newBody = body.map(
+          b => transformer.transform(b, isStat = resultType == jstpe.NoType))
       js.MethodDef(static, methodName, newParams, resultType,
           newBody)(methodDef.optimizerHints, None)(methodDef.pos)
     }
@@ -1507,8 +1515,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       if (!isScalaJSDefinedJSClass(currentClassSym)) {
-        js.MethodDef(static, methodName, jsParams, resultIRType, genBody())(
-            optimizerHints, None)
+        js.MethodDef(static, methodName, jsParams, resultIRType,
+            Some(genBody()))(optimizerHints, None)
       } else {
         assert(!static, tree.pos)
 
@@ -1519,7 +1527,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               jstpe.AnyType, mutable = false, rest = false)
 
           js.MethodDef(static = true, methodName, thisParamDef :: jsParams,
-              resultIRType, genBody())(
+              resultIRType, Some(genBody()))(
               optimizerHints, None)
         }
       }
@@ -1899,89 +1907,86 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Try(block, catches, finalizer) = tree
 
       val blockAST = genStatOrExpr(block, isStat)
+      val resultType = toIRType(tree.tpe)
 
+      val handled =
+        if (catches.isEmpty) blockAST
+        else genTryCatch(blockAST, catches, resultType, isStat)
+
+      genStat(finalizer) match {
+        case js.Skip() => handled
+        case ast       => js.TryFinally(handled, ast)
+      }
+    }
+
+    private def genTryCatch(body: js.Tree, catches: List[CaseDef],
+        resultType: jstpe.Type,
+        isStat: Boolean)(implicit pos: Position): js.Tree = {
       val exceptIdent = freshLocalIdent("e")
       val origExceptVar = js.VarRef(exceptIdent)(jstpe.AnyType)
 
-      val resultType = toIRType(tree.tpe)
-
-      val handlerAST = {
-        if (catches.isEmpty) {
-          js.EmptyTree
-        } else {
-          val mightCatchJavaScriptException = catches.exists { caseDef =>
-            caseDef.pat match {
-              case Typed(Ident(nme.WILDCARD), tpt) =>
-                isMaybeJavaScriptException(tpt.tpe)
-              case Ident(nme.WILDCARD) =>
-                true
-              case pat @ Bind(_, _) =>
-                isMaybeJavaScriptException(pat.symbol.tpe)
-            }
-          }
-
-          val (exceptValDef, exceptVar) = if (mightCatchJavaScriptException) {
-            val valDef = js.VarDef(freshLocalIdent("e"),
-                encodeClassType(ThrowableClass), mutable = false, {
-              genApplyMethod(
-                  genLoadModule(RuntimePackageModule),
-                  Runtime_wrapJavaScriptException,
-                  List(origExceptVar))
-            })
-            (valDef, valDef.ref)
-          } else {
-            (js.Skip(), origExceptVar)
-          }
-
-          val elseHandler: js.Tree = js.Throw(origExceptVar)
-
-          val handler0 = catches.foldRight(elseHandler) { (caseDef, elsep) =>
-            implicit val pos = caseDef.pos
-            val CaseDef(pat, _, body) = caseDef
-
-            // Extract exception type and variable
-            val (tpe, boundVar) = (pat match {
-              case Typed(Ident(nme.WILDCARD), tpt) =>
-                (tpt.tpe, None)
-              case Ident(nme.WILDCARD) =>
-                (ThrowableClass.tpe, None)
-              case Bind(_, _) =>
-                (pat.symbol.tpe, Some(encodeLocalSym(pat.symbol)))
-            })
-
-            // Generate the body that must be executed if the exception matches
-            val bodyWithBoundVar = (boundVar match {
-              case None =>
-                genStatOrExpr(body, isStat)
-              case Some(bv) =>
-                val castException = genAsInstanceOf(exceptVar, tpe)
-                js.Block(
-                    js.VarDef(bv, toIRType(tpe), mutable = false, castException),
-                    genStatOrExpr(body, isStat))
-            })
-
-            // Generate the test
-            if (tpe == ThrowableClass.tpe) {
-              bodyWithBoundVar
-            } else {
-              val cond = genIsInstanceOf(exceptVar, tpe)
-              js.If(cond, bodyWithBoundVar, elsep)(resultType)
-            }
-          }
-
-          js.Block(
-              exceptValDef,
-              handler0)
+      val mightCatchJavaScriptException = catches.exists { caseDef =>
+        caseDef.pat match {
+          case Typed(Ident(nme.WILDCARD), tpt) =>
+            isMaybeJavaScriptException(tpt.tpe)
+          case Ident(nme.WILDCARD) =>
+            true
+          case pat @ Bind(_, _) =>
+            isMaybeJavaScriptException(pat.symbol.tpe)
         }
       }
 
-      val finalizerAST = genStat(finalizer) match {
-        case js.Skip() => js.EmptyTree
-        case ast       => ast
+      val (exceptValDef, exceptVar) = if (mightCatchJavaScriptException) {
+        val valDef = js.VarDef(freshLocalIdent("e"),
+            encodeClassType(ThrowableClass), mutable = false, {
+          genApplyMethod(
+              genLoadModule(RuntimePackageModule),
+              Runtime_wrapJavaScriptException,
+              List(origExceptVar))
+        })
+        (valDef, valDef.ref)
+      } else {
+        (js.Skip(), origExceptVar)
       }
 
-      if (handlerAST == js.EmptyTree && finalizerAST == js.EmptyTree) blockAST
-      else js.Try(blockAST, exceptIdent, handlerAST, finalizerAST)(resultType)
+      val elseHandler: js.Tree = js.Throw(origExceptVar)
+
+      val handler = catches.foldRight(elseHandler) { (caseDef, elsep) =>
+        implicit val pos = caseDef.pos
+        val CaseDef(pat, _, body) = caseDef
+
+        // Extract exception type and variable
+        val (tpe, boundVar) = (pat match {
+          case Typed(Ident(nme.WILDCARD), tpt) =>
+            (tpt.tpe, None)
+          case Ident(nme.WILDCARD) =>
+            (ThrowableClass.tpe, None)
+          case Bind(_, _) =>
+            (pat.symbol.tpe, Some(encodeLocalSym(pat.symbol)))
+        })
+
+        // Generate the body that must be executed if the exception matches
+        val bodyWithBoundVar = (boundVar match {
+          case None =>
+            genStatOrExpr(body, isStat)
+          case Some(bv) =>
+            val castException = genAsInstanceOf(exceptVar, tpe)
+            js.Block(
+                js.VarDef(bv, toIRType(tpe), mutable = false, castException),
+                genStatOrExpr(body, isStat))
+        })
+
+        // Generate the test
+        if (tpe == ThrowableClass.tpe) {
+          bodyWithBoundVar
+        } else {
+          val cond = genIsInstanceOf(exceptVar, tpe)
+          js.If(cond, bodyWithBoundVar, elsep)(resultType)
+        }
+      }
+
+      js.TryCatch(body, exceptIdent,
+          js.Block(exceptValDef, handler))(resultType)
     }
 
     /** Gen JS code for an Apply node (method call)
@@ -4614,7 +4619,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         val js.MethodDef(_, _, params, _, body) = applyMethod
         val (patchedParams, patchedBody) =
-          patchFunBodyWithBoxes(applyDef.symbol, params, body)
+          patchFunBodyWithBoxes(applyDef.symbol, params, body.get)
 
         // Fifth step: build the js.Closure
 
@@ -4800,14 +4805,14 @@ abstract class GenJSCode extends plugins.PluginComponent
             mutable = false, rest = false)
         js.MethodDef(static = false, js.Ident("init___O"), List(fParamDef),
             jstpe.NoType,
-            js.Block(List(
+            Some(js.Block(List(
                 js.Assign(
                     js.Select(js.This()(classType), fFieldIdent)(jstpe.AnyType),
                     fParamDef.ref),
                 js.ApplyStatically(js.This()(classType),
                     jstpe.ClassType(ir.Definitions.ObjectClass),
                     js.Ident("init___"),
-                    Nil)(jstpe.NoType))))(
+                    Nil)(jstpe.NoType)))))(
             js.OptimizerHints.empty, None)
       }
 
@@ -4833,7 +4838,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         })
 
         js.MethodDef(static = false, encodeMethodSym(sam),
-            jsParams, resultType, body)(
+            jsParams, resultType, Some(body))(
             js.OptimizerHints.empty, None)
       }
 
