@@ -5,12 +5,14 @@ import sbt._
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.logging.Logger
+import org.scalajs.core.tools.linker.backend.ModuleKind
 
 import org.scalajs.jsenv._
 
 import scala.collection.mutable
 
-private[sbtplugin] final class FrameworkDetector(jsEnv: JSEnv) {
+private[sbtplugin] final class FrameworkDetector(jsEnv: JSEnv,
+    moduleKind: ModuleKind, moduleIdentifier: Option[String]) {
 
   import FrameworkDetector._
 
@@ -30,34 +32,41 @@ private[sbtplugin] final class FrameworkDetector(jsEnv: JSEnv) {
       logger: Logger): Map[TestFramework, String] = {
     val data = frameworks.map(_.implClassNames.toList).toList.toJSON
 
+    val exportsNamespaceExpr =
+      ScalaJSPluginInternal.makeExportsNamespaceExpr(moduleKind, moduleIdentifier)
+
     val code = s"""
-      var data = ${jsonToString(data)};
+      (function(exportsNamespace) {
+        "use strict";
 
-      function frameworkExists(name) {
-        var parts = name.split(".");
-        var obj = ${ScalaJSPluginInternal.jsGlobalExpr};
-        for (var i = 0; i < parts.length; ++i) {
-          obj = obj[parts[i]];
-          if (obj === void 0)
-            return false;
+        var data = ${jsonToString(data)};
+
+        function frameworkExists(name) {
+          var parts = name.split(".");
+          var obj = exportsNamespace;
+          for (var i = 0; i < parts.length; ++i) {
+            obj = obj[parts[i]];
+            if (obj === void 0)
+              return false;
+          }
+          return true;
         }
-        return true;
-      }
 
-      for (var i = 0; i < data.length; ++i) {
-        var gotOne = false;
-        for (var j = 0; j < data[i].length; ++j) {
-          if (frameworkExists(data[i][j])) {
-            console.log("$ConsoleFrameworkPrefix" + data[i][j]);
-            gotOne = true;
-            break;
+        for (var i = 0; i < data.length; ++i) {
+          var gotOne = false;
+          for (var j = 0; j < data[i].length; ++j) {
+            if (frameworkExists(data[i][j])) {
+              console.log("$ConsoleFrameworkPrefix" + data[i][j]);
+              gotOne = true;
+              break;
+            }
+          }
+          if (!gotOne) {
+            // print an empty line with prefix to zip afterwards
+            console.log("$ConsoleFrameworkPrefix");
           }
         }
-        if (!gotOne) {
-          // print an empty line with prefix to zip afterwards
-          console.log("$ConsoleFrameworkPrefix");
-        }
-      }
+      })($exportsNamespaceExpr);
     """
 
     val vf = new MemVirtualJSFile("frameworkDetector.js").withContent(code)

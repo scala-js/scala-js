@@ -754,16 +754,19 @@ object Printers {
         // Classes
 
         case tree: ClassDef =>
-          val ClassDef(name, kind, superClass, interfaces, jsName, defs) = tree
+          val ClassDef(name, kind, superClass, interfaces, jsNativeLoadSpec,
+              defs) = tree
           print(tree.optimizerHints)
           kind match {
-            case ClassKind.Class         => print("class ")
-            case ClassKind.ModuleClass   => print("module class ")
-            case ClassKind.Interface     => print("interface ")
-            case ClassKind.RawJSType     => print("jstype ")
-            case ClassKind.HijackedClass => print("hijacked class ")
-            case ClassKind.JSClass       => print("js class ")
-            case ClassKind.JSModuleClass => print("js module class ")
+            case ClassKind.Class               => print("class ")
+            case ClassKind.ModuleClass         => print("module class ")
+            case ClassKind.Interface           => print("interface ")
+            case ClassKind.AbstractJSType      => print("abstract js type ")
+            case ClassKind.HijackedClass       => print("hijacked class ")
+            case ClassKind.JSClass             => print("js class ")
+            case ClassKind.JSModuleClass       => print("js module class ")
+            case ClassKind.NativeJSClass       => print("native js class ")
+            case ClassKind.NativeJSModuleClass => print("native js module class ")
           }
           print(name)
           superClass.foreach { cls =>
@@ -780,9 +783,9 @@ object Printers {
                 print(", ")
             }
           }
-          jsName.foreach { name =>
-            print(" jsname ")
-            print(name)
+          jsNativeLoadSpec.foreach { spec =>
+            print(" loadfrom ")
+            print(spec.toString)
           }
           print(" ")
           printColumn(defs, "{", "", "}")

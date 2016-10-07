@@ -1,9 +1,10 @@
 package org.scalajs.testsuite.utils
 
+import scala.language.implicitConversions
+
 import scala.scalajs.js
 import js.annotation.JSExport
 
-@JSExport("JSUtils")
 object JSUtils {
   /* We use java.lang.Character explicitly, because this class is used by
    * tests that check that Chars are actually boxed by the compiler.
@@ -23,4 +24,7 @@ object JSUtils {
   @JSExport
   def charToString(c: Any): String =
     c.asInstanceOf[java.lang.Character].toString()
+
+  implicit def asJSAny(jsUtils: JSUtils.type): js.Any =
+    jsUtils.asInstanceOf[js.Any]
 }

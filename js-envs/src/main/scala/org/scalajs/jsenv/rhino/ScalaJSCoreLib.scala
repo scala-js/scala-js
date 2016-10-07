@@ -20,6 +20,7 @@ import org.scalajs.core.tools.linker.{LinkedClass, LinkingUnit}
 import org.scalajs.core.tools.javascript._
 import org.scalajs.core.tools.io._
 
+import org.scalajs.core.tools.linker.backend.ModuleKind.NoModule
 import org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript51Global
 import org.scalajs.core.tools.linker.backend.emitter._
 
@@ -28,7 +29,8 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
 
   require(linkingUnit.esLevel == ESLevel.ES5, "RhinoJSEnv only supports ES5")
 
-  private val emitter = new Emitter(linkingUnit.semantics, ECMAScript51Global)
+  private val emitter =
+    new Emitter(linkingUnit.semantics, ECMAScript51Global, NoModule)
 
   emitter.rhinoAPI.initialize(linkingUnit)
 

@@ -7,8 +7,8 @@ import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.io.IRFileCache.IRContainer
-import org.scalajs.core.tools.javascript.OutputMode
 import org.scalajs.core.tools.linker.Linker
+import org.scalajs.core.tools.linker.backend.{OutputMode, ModuleKind}
 
 import org.scalajs.core.ir
 
@@ -66,8 +66,12 @@ class MainGenericRunner {
         runnerIR(command.thingToRun, command.arguments)
     )
 
-    val linker = Linker(semantics, withSourceMap = false,
-        useClosureCompiler = optMode == FullOpt)
+    val linkerConfig = Linker.Config()
+      .withSourceMap(false)
+      .withClosureCompiler(optMode == FullOpt)
+
+    val linker = Linker(semantics, OutputMode.ECMAScript51Isolated,
+        ModuleKind.NoModule, linkerConfig)
 
     val sjsCode = {
       val output = WritableMemVirtualJSFile("partest.js")

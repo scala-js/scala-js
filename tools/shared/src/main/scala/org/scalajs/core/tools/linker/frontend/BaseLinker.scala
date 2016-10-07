@@ -295,7 +295,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
         kind,
         classDef.superClass,
         classDef.interfaces,
-        classDef.jsName,
+        classDef.jsNativeLoadSpec,
         fields.toList,
         staticMethods.toList,
         memberMethods.toList,

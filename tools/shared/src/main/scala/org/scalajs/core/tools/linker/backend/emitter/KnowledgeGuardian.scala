@@ -12,7 +12,7 @@ package org.scalajs.core.tools.linker.backend.emitter
 import scala.collection.mutable
 
 import org.scalajs.core.ir.ClassKind
-import org.scalajs.core.ir.Trees.FieldDef
+import org.scalajs.core.ir.Trees.{FieldDef, JSNativeLoadSpec}
 
 import org.scalajs.core.tools.linker._
 
@@ -92,8 +92,8 @@ private[emitter] final class KnowledgeGuardian {
     def isInterface(className: String): Boolean =
       classes(className).askIsInterface(this)
 
-    def getJSClassJSName(className: String): Option[String] =
-      classes(className).askJSClassJSName(this)
+    def getJSNativeLoadSpec(className: String): Option[JSNativeLoadSpec] =
+      classes(className).askJSNativeLoadSpec(this)
 
     def getSuperClassOfJSClass(className: String): String =
       classes(className).askJSSuperClass(this)
@@ -131,12 +131,12 @@ private[emitter] object KnowledgeGuardian {
     private var isAlive: Boolean = true
 
     private var isInterface = computeIsInterface(initClass)
-    private var jsName = computeJSName(initClass)
+    private var jsNativeLoadSpec = computeJSNativeLoadSpec(initClass)
     private var jsSuperClass = computeJSSuperClass(initClass)
     private var jsClassFieldDefs = computeJSClassFieldDefs(initClass)
 
     private val isInterfaceAskers = mutable.Set.empty[Invalidatable]
-    private val jsNameAskers = mutable.Set.empty[Invalidatable]
+    private val jsNativeLoadSpecAskers = mutable.Set.empty[Invalidatable]
     private val jsSuperClassAskers = mutable.Set.empty[Invalidatable]
     private val jsClassFieldDefsAskers = mutable.Set.empty[Invalidatable]
 
@@ -149,10 +149,10 @@ private[emitter] object KnowledgeGuardian {
         invalidateAskers(isInterfaceAskers)
       }
 
-      val newJSName = computeJSName(linkedClass)
-      if (newJSName != jsName) {
-        jsName = newJSName
-        invalidateAskers(jsNameAskers)
+      val newJSNativeLoadSpec = computeJSNativeLoadSpec(linkedClass)
+      if (newJSNativeLoadSpec != jsNativeLoadSpec) {
+        jsNativeLoadSpec = newJSNativeLoadSpec
+        invalidateAskers(jsNativeLoadSpecAskers)
       }
 
       val newJSSuperClass = computeJSSuperClass(linkedClass)
@@ -171,8 +171,8 @@ private[emitter] object KnowledgeGuardian {
     private def computeIsInterface(linkedClass: LinkedClass): Boolean =
       linkedClass.kind == ClassKind.Interface
 
-    private def computeJSName(linkedClass: LinkedClass): Option[String] =
-      linkedClass.jsName
+    private def computeJSNativeLoadSpec(linkedClass: LinkedClass): Option[JSNativeLoadSpec] =
+      linkedClass.jsNativeLoadSpec
 
     private def computeJSSuperClass(linkedClass: LinkedClass): String = {
       linkedClass.kind match {
@@ -214,10 +214,10 @@ private[emitter] object KnowledgeGuardian {
       isInterface
     }
 
-    def askJSClassJSName(invalidatable: Invalidatable): Option[String] = {
+    def askJSNativeLoadSpec(invalidatable: Invalidatable): Option[JSNativeLoadSpec] = {
       invalidatable.registeredTo(this)
-      jsNameAskers += invalidatable
-      jsName
+      jsNativeLoadSpecAskers += invalidatable
+      jsNativeLoadSpec
     }
 
     def askJSSuperClass(invalidatable: Invalidatable): String = {
@@ -234,7 +234,7 @@ private[emitter] object KnowledgeGuardian {
 
     def unregister(invalidatable: Invalidatable): Unit = {
       isInterfaceAskers -= invalidatable
-      jsNameAskers -= invalidatable
+      jsNativeLoadSpecAskers -= invalidatable
       jsSuperClassAskers -= invalidatable
       jsClassFieldDefsAskers -= invalidatable
     }
@@ -242,7 +242,7 @@ private[emitter] object KnowledgeGuardian {
     /** Call this when we invalidate all caches. */
     def unregisterAll(): Unit = {
       isInterfaceAskers.clear()
-      jsNameAskers.clear()
+      jsNativeLoadSpecAskers.clear()
       jsSuperClassAskers.clear()
       jsClassFieldDefsAskers.clear()
     }

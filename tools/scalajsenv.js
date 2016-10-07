@@ -22,9 +22,13 @@ ScalaJS.g =
 ScalaJS.env["global"] = ScalaJS.g;
 
 // Where to send exports
+//!if moduleKind == CommonJSModule
+ScalaJS.e = exports;
+//!else
 ScalaJS.e =
   (typeof ScalaJS.env["exportsNamespace"] === "object" && ScalaJS.env["exportsNamespace"])
     ? ScalaJS.env["exportsNamespace"] : ScalaJS.g;
+//!endif
 ScalaJS.env["exportsNamespace"] = ScalaJS.e;
 
 // Freeze the environment info
@@ -492,6 +496,12 @@ ScalaJS.superSet = function(initialProto, self, propName, value) {
   }
   throw new ScalaJS.g["TypeError"]("super has no setter '" + propName + "'.");
 };
+
+//!if moduleKind == CommonJSModule
+ScalaJS.moduleDefault = function(m) {
+  return (m && (typeof m === "object") && "default" in m) ? m["default"] : m;
+};
+//!endif
 
 ScalaJS.propertiesOf = function(obj) {
   const result = [];

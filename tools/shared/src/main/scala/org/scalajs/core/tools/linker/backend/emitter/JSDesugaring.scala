@@ -945,13 +945,13 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           allowSideEffects
 
         /* LoadJSConstructor is pure only for Scala.js-defined JS classes,
-         * which do not have a jsName. Note that this test makes sense per se,
-         * as the actual desugaring of `LoadJSConstructor` is based on the
-         * jsName of the class.
+         * which do not have a native load spec. Note that this test makes
+         * sense per se, as the actual desugaring of `LoadJSConstructor` is
+         * based on the jsNativeLoadSpec of the class.
          */
         case LoadJSConstructor(cls) =>
           allowUnpure || {
-            globalKnowledge.getJSClassJSName(cls.className).isEmpty
+            globalKnowledge.getJSNativeLoadSpec(cls.className).isEmpty
           }
 
         // Non-expressions
@@ -1933,7 +1933,15 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           genRawJSClassConstructor(cls.className)
 
         case LoadJSModule(cls) =>
-          genLoadModule(cls.className)
+          val className = cls.className
+          globalKnowledge.getJSNativeLoadSpec(className) match {
+            case None =>
+              // this is a Scala.js-defined JS module class
+              genLoadModule(className)
+
+            case Some(spec) =>
+              genLoadJSFromSpec(spec)
+          }
 
         case JSSpread(items) =>
           assert(outputMode == OutputMode.ECMAScript6)
@@ -2253,23 +2261,90 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       pos: Position): js.Tree = {
 
     genRawJSClassConstructor(className,
-        globalKnowledge.getJSClassJSName(className))
+        globalKnowledge.getJSNativeLoadSpec(className))
   }
 
   private[emitter] def genRawJSClassConstructor(className: String,
-      jsName: Option[String])(
+      spec: Option[JSNativeLoadSpec])(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
-    jsName match {
+    spec match {
       case None =>
         // this is a Scala.js-defined JS class
         encodeClassVar(className)
 
-      case Some(jsName) =>
-        // this is a native JS class
-        jsName.split("\\.").foldLeft(envField("g")) {
-          (prev, part) => genBracketSelect(prev, js.StringLiteral(part))
+      case Some(spec) =>
+        genLoadJSFromSpec(spec)
+    }
+  }
+
+  private[emitter] def genLoadJSFromSpec(spec: JSNativeLoadSpec)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+
+    def pathSelection(from: js.Tree, path: List[String]): js.Tree = {
+      path.foldLeft(from) {
+        (prev, part) => genBracketSelect(prev, js.StringLiteral(part))
+      }
+    }
+
+    spec match {
+      case JSNativeLoadSpec.Global(path) =>
+        pathSelection(envField("g"), path)
+
+      case JSNativeLoadSpec.Import(module, path) =>
+        val moduleValue = envModuleField(module)
+        path match {
+          case DefaultExportName :: rest =>
+            val defaultField = genCallHelper("moduleDefault", moduleValue)
+            pathSelection(defaultField, rest)
+          case _ =>
+            pathSelection(moduleValue, path)
         }
     }
+  }
+
+  private final val DefaultExportName = "default"
+
+  private[emitter] def envModuleField(module: String)(
+      implicit pos: Position): js.VarRef = {
+
+    /* This is written so that the happy path, when `module` contains only
+     * valid characters, is fast.
+     */
+
+    def isValidChar(c: Char): Boolean =
+      (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+
+    def containsOnlyValidChars(): Boolean = {
+      val len = module.length
+      var i = 0
+      while (i != len) {
+        if (!isValidChar(module.charAt(i)))
+          return false
+        i += 1
+      }
+      true
+    }
+
+    def buildValidName(): String = {
+      val result = new java.lang.StringBuilder("$i_")
+      val len = module.length
+      var i = 0
+      while (i != len) {
+        val c = module.charAt(i)
+        if (isValidChar(c))
+          result.append(c)
+        else
+          result.append("$%04x".format(c.toInt))
+        i += 1
+      }
+      result.toString()
+    }
+
+    val varName =
+      if (containsOnlyValidChars()) "$i_" + module
+      else buildValidName()
+
+    js.VarRef(js.Ident(varName, Some(module)))
   }
 
   private[emitter] def envField(field: String, subField: String,

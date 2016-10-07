@@ -28,8 +28,15 @@ import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 abstract class LinkerBackend(
     val semantics: Semantics,
     val esLevel: ESLevel,
+    val moduleKind: ModuleKind,
     val withSourceMap: Boolean,
     protected val config: LinkerBackend.Config) {
+
+  @deprecated("Use the overload with an explicit ModuleKind", "0.6.13")
+  def this(semantics: Semantics, esLevel: ESLevel, withSourceMap: Boolean,
+      config: LinkerBackend.Config) {
+    this(semantics, esLevel, ModuleKind.NoModule, withSourceMap, config)
+  }
 
   /** Symbols this backend needs to be present in the linking unit. */
   val symbolRequirements: SymbolRequirement

@@ -16,6 +16,24 @@ import org.scalajs.core.tools.linker.frontend.optimizer.IncOptimizer
 import org.scalajs.core.tools.linker.backend._
 
 trait LinkerPlatformExtensions { this: Linker.type =>
+  def apply(semantics: Semantics, outputMode: OutputMode,
+      moduleKind: ModuleKind, config: Config): Linker = {
+
+    val optOptimizerFactory = {
+      if (!config.optimizer) None
+      else Some(IncOptimizer.factory)
+    }
+
+    val frontend = new LinkerFrontend(semantics, outputMode.esLevel,
+        config.sourceMap, config.frontendConfig, optOptimizerFactory)
+
+    val backend = new BasicLinkerBackend(semantics, outputMode, moduleKind,
+        config.sourceMap, config.backendConfig)
+
+    new Linker(frontend, backend)
+  }
+
+  @deprecated("Use the overload with a Config object.", "0.6.13")
   def apply(
       semantics: Semantics = Semantics.Defaults,
       outputMode: OutputMode = OutputMode.Default,
@@ -23,14 +41,26 @@ trait LinkerPlatformExtensions { this: Linker.type =>
       disableOptimizer: Boolean = false,
       frontendConfig: LinkerFrontend.Config = LinkerFrontend.Config(),
       backendConfig: LinkerBackend.Config = LinkerBackend.Config()): Linker = {
-    val optOptimizerFactory =
-      if (disableOptimizer) None
-      else Some(IncOptimizer.factory)
 
-    val frontend = new LinkerFrontend(semantics, outputMode.esLevel,
-        withSourceMap, frontendConfig, optOptimizerFactory)
-    val backend = new BasicLinkerBackend(semantics, outputMode, withSourceMap,
-        backendConfig)
-    new Linker(frontend, backend)
+    val config = Config()
+      .withSourceMap(withSourceMap)
+      .withOptimizer(!disableOptimizer)
+      .withFrontendConfig(frontendConfig)
+      .withBackendConfig(backendConfig)
+
+    apply(semantics, outputMode, ModuleKind.NoModule, config)
+  }
+}
+
+object LinkerPlatformExtensions {
+  import Linker.Config
+
+  final class ConfigExt(val config: Config) extends AnyVal {
+    /** Whether to actually use the Google Closure Compiler pass.
+     *
+     *  On the JavaScript platform, this always returns `false`, as GCC is not
+     *  available.
+     */
+    def closureCompiler: Boolean = false
   }
 }

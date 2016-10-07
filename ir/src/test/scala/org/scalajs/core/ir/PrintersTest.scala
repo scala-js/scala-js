@@ -806,10 +806,10 @@ class PrintersTest {
 
     assertPrintEquals(
         """
-          |jstype LTest extends O {
+          |abstract js type LTest extends O {
           |}
         """,
-        makeForKind(RawJSType))
+        makeForKind(AbstractJSType))
 
     assertPrintEquals(
         """
@@ -831,6 +831,20 @@ class PrintersTest {
           |}
         """,
         makeForKind(JSModuleClass))
+
+    assertPrintEquals(
+        """
+          |native js class LTest extends O {
+          |}
+        """,
+        makeForKind(NativeJSClass))
+
+    assertPrintEquals(
+        """
+          |native js module class LTest extends O {
+          |}
+        """,
+        makeForKind(NativeJSModuleClass))
   }
 
   @Test def printClassDefParents(): Unit = {
@@ -862,14 +876,23 @@ class PrintersTest {
         makeForParents(Some("sr_AbstractFunction0"), List("LIntf1", "LIntf2")))
   }
 
-  @Test def printClassDefJSName(): Unit = {
+  @Test def printClassDefJSNativeLoadSpec(): Unit = {
     assertPrintEquals(
         """
-          |jstype LTest extends O jsname Foo {
+          |native js class LTest extends O loadfrom Global(List(Foo)) {
           |}
         """,
-        ClassDef("LTest", ClassKind.RawJSType, Some(ObjectClass), Nil,
-            Some("Foo"), Nil)(
+        ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
+            Some(JSNativeLoadSpec.Global(List("Foo"))), Nil)(
+            NoOptHints))
+
+    assertPrintEquals(
+        """
+          |native js class LTest extends O loadfrom Import(foo,List(Bar)) {
+          |}
+        """,
+        ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
+            Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil)(
             NoOptHints))
   }
 

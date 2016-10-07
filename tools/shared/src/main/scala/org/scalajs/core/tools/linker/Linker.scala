@@ -9,6 +9,8 @@
 
 package org.scalajs.core.tools.linker
 
+import scala.language.implicitConversions
+
 import java.util.concurrent.atomic.AtomicBoolean
 
 import org.scalajs.core.tools.logging.Logger
@@ -73,4 +75,86 @@ final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
   }
 }
 
-object Linker extends LinkerPlatformExtensions
+object Linker extends LinkerPlatformExtensions {
+  /** Configuration to be passed to the `apply()` method. */
+  final class Config private (
+      /** Whether to generate source maps. */
+      val sourceMap: Boolean,
+      /** Whether to use the Scala.js optimizer. */
+      val optimizer: Boolean,
+      /** Whether things that can be parallelized should be parallelized.
+       *  On the JavaScript platform, this does not have any effect.
+       */
+      val parallel: Boolean,
+      /** Whether to use the Google Closure Compiler pass, if it is available.
+       *  On the JavaScript platform, this does not have any effect.
+       */
+      val closureCompilerIfAvailable: Boolean,
+      /** Additional configuration for the linker frontend. */
+      val frontendConfig: LinkerFrontend.Config,
+      /** Additional configuration for the linker backend. */
+      val backendConfig: LinkerBackend.Config
+  ) {
+    def withSourceMap(sourceMap: Boolean): Config =
+      copy(sourceMap = sourceMap)
+
+    def withOptimizer(optimizer: Boolean): Config =
+      copy(optimizer = optimizer)
+
+    def withParallel(parallel: Boolean): Config =
+      copy(parallel = parallel)
+
+    def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): Config =
+      copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
+
+    def withFrontendConfig(frontendConfig: LinkerFrontend.Config): Config =
+      copy(frontendConfig = frontendConfig)
+
+    def withBackendConfig(backendConfig: LinkerBackend.Config): Config =
+      copy(backendConfig = backendConfig)
+
+    private def copy(
+        sourceMap: Boolean = sourceMap,
+        optimizer: Boolean = optimizer,
+        parallel: Boolean = parallel,
+        closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
+        frontendConfig: LinkerFrontend.Config = frontendConfig,
+        backendConfig: LinkerBackend.Config = backendConfig): Config = {
+      new Config(
+          sourceMap = sourceMap,
+          optimizer = optimizer,
+          parallel = parallel,
+          closureCompilerIfAvailable = closureCompilerIfAvailable,
+          frontendConfig = frontendConfig,
+          backendConfig = backendConfig)
+    }
+  }
+
+  object Config {
+    import LinkerPlatformExtensions._
+
+    implicit def toPlatformExtensions(config: Config): ConfigExt =
+      new ConfigExt(config)
+
+    /** Default configuration.
+     *
+     *  - `sourceMap`: true
+     *  - `optimizer`: true
+     *  - `parallel`: true
+     *  - `closureCompilerIfAvailable`: false
+     *  - `frontendConfig`: default frontend configuration as returned by
+     *    [[org.scalajs.core.tools.linker.frontend.LinkerFrontend.Config.apply]]
+     *  - `backendConfig`: default backend configuration as returned by
+     *    [[org.scalajs.core.tools.linker.backend.LinkerBackend.Config.apply]]
+     */
+    def apply(): Config = {
+      new Config(
+          sourceMap = true,
+          optimizer = true,
+          parallel = true,
+          closureCompilerIfAvailable = false,
+          frontendConfig = LinkerFrontend.Config(),
+          backendConfig = LinkerBackend.Config())
+    }
+  }
+}

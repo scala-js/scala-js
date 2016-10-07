@@ -46,7 +46,7 @@ abstract class GenJSCode extends plugins.PluginComponent
   import rootMirror._
   import definitions._
   import jsDefinitions._
-  import jsInterop.{jsNameOf, fullJSNameOf}
+  import jsInterop.{jsNameOf, compat068FullJSNameOf, jsNativeLoadSpecOf}
   import JSTreeExtractors._
 
   import treeInfo.hasSynthCaseSymbol
@@ -574,8 +574,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       val newClassDef = {
         implicit val pos = origJsClass.pos
         val parent = js.Ident(ir.Definitions.ObjectClass)
-        js.ClassDef(origJsClass.name, ClassKind.RawJSType,
-            Some(parent), interfaces = Nil, jsName = None,
+        js.ClassDef(origJsClass.name, ClassKind.AbstractJSType,
+            Some(parent), interfaces = Nil, jsNativeLoadSpec = None,
             staticMembers.toList)(origJsClass.optimizerHints)
       }
 
@@ -685,18 +685,20 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = sym.pos
 
       val classIdent = encodeClassFullNameIdent(sym)
+      val kind = {
+        if (sym.isTraitOrInterface) ClassKind.AbstractJSType
+        else if (sym.isModuleClass) ClassKind.NativeJSModuleClass
+        else ClassKind.NativeJSClass
+      }
       val superClass =
         if (sym.isTraitOrInterface) None
         else Some(encodeClassFullNameIdent(sym.superClass))
-      val jsName =
-        if (sym.isTraitOrInterface || sym.isModuleClass) None
-        else Some(fullJSNameOf(sym))
+      val jsNativeLoadSpec =
+        if (sym.isTraitOrInterface) None
+        else Some(jsNativeLoadSpecOf(sym))
 
-      js.ClassDef(classIdent, ClassKind.RawJSType,
-          superClass,
-          genClassInterfaces(sym),
-          jsName,
-          Nil)(
+      js.ClassDef(classIdent, kind, superClass, genClassInterfaces(sym),
+          jsNativeLoadSpec, Nil)(
           OptimizerHints.empty)
     }
 
@@ -4161,16 +4163,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       js.LoadJSConstructor(jstpe.ClassType(encodeClassFullName(sym)))
     }
 
-    /** Gen JS code representing a JS module (var of the global scope) */
-    private def genPrimitiveJSModule(sym: Symbol)(
-        implicit pos: Position): js.Tree = {
-      assert(sym.isModuleClass,
-          s"genPrimitiveJSModule called with non-module $sym")
-      fullJSNameOf(sym).split('.').foldLeft(genLoadGlobal()) { (memo, chunk) =>
-        js.JSBracketSelect(memo, js.StringLiteral(chunk))
-      }
-    }
-
     /** Gen actual actual arguments to Scala method call.
      *  Returns a list of the transformed arguments.
      *
@@ -4931,12 +4923,21 @@ abstract class GenJSCode extends plugins.PluginComponent
         if (sym1 == StringModule) RuntimeStringModule.moduleClass
         else sym1
 
-      val isGlobalScope = sym.tpe.typeSymbol isSubClass JSGlobalScopeClass
-
-      if (isGlobalScope) {
-        genLoadGlobal()
-      } else if (isJSNativeClass(sym)) {
-        genPrimitiveJSModule(sym)
+      if (isJSNativeClass(sym) &&
+          !sym.hasAnnotation(HasJSNativeLoadSpecAnnotation)) {
+        /* Compatibility for native JS modules compiled with Scala.js 0.6.12
+         * and earlier. Since they did not store their loading spec in the IR,
+         * the js.LoadJSModule() IR node cannot be used to load them. We must
+         * "desugar" it early in the compiler.
+         */
+        if (sym.isSubClass(JSGlobalScopeClass)) {
+          genLoadGlobal()
+        } else {
+          compat068FullJSNameOf(sym).split('.').foldLeft(genLoadGlobal()) {
+            (memo, chunk) =>
+              js.JSBracketSelect(memo, js.StringLiteral(chunk))
+          }
+        }
       } else {
         val moduleClassName = encodeClassFullName(sym)
 

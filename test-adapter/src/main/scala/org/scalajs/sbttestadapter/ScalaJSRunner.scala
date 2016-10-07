@@ -190,20 +190,22 @@ final class ScalaJSRunner private[testadapter] (
   // Helpers
 
   private def slaveLauncher = {
+    val prefix = framework.optionalExportsNamespacePrefix
     val frameworkJS = jsonToString(framework.frameworkName.toJSON)
     val argsJS = jsonToString(args.toList.toJSON)
     val remoteArgsJS = jsonToString(args.toList.toJSON)
     val code = s"""
-      new org.scalajs.testinterface.internal.Slave($frameworkJS,
+      new ${prefix}org.scalajs.testinterface.internal.Slave($frameworkJS,
         $argsJS, $remoteArgsJS).init();
     """
     new MemVirtualJSFile("testSlave.js").withContent(code)
   }
 
   private def masterLauncher = {
+    val prefix = framework.optionalExportsNamespacePrefix
     val name = jsonToString(framework.frameworkName.toJSON)
     val code = s"""
-      new org.scalajs.testinterface.internal.Master($name).init();
+      new ${prefix}org.scalajs.testinterface.internal.Master($name).init();
     """
     new MemVirtualJSFile(s"testMaster.js").withContent(code)
   }

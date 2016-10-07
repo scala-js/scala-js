@@ -14,7 +14,7 @@ import sbt._
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.linker.LinkingUnit
-import org.scalajs.core.tools.linker.backend.OutputMode
+import org.scalajs.core.tools.linker.backend.{ModuleKind, OutputMode}
 import org.scalajs.core.tools.jsdep.{JSDependencyManifest, ResolvedJSDependency}
 import org.scalajs.core.tools.jsdep.ManifestFilters.ManifestFilter
 import org.scalajs.core.tools.jsdep.DependencyResolver.DependencyFilter
@@ -171,6 +171,9 @@ object ScalaJSPlugin extends AutoPlugin {
       new PhantomJSEnv(executable, args, env, autoExit, loader)
     }
 
+    // ModuleKind
+    val ModuleKind = org.scalajs.core.tools.linker.backend.ModuleKind
+
     // All our public-facing keys
 
     val isScalaJSProject = SettingKey[Boolean]("isScalaJSProject",
@@ -271,6 +274,9 @@ object ScalaJSPlugin extends AutoPlugin {
 
     val scalaJSOutputMode = SettingKey[OutputMode]("scalaJSOutputMode",
         "Output mode of Scala.js.", BPlusSetting)
+
+    val scalaJSModuleKind = SettingKey[ModuleKind]("scalaJSModuleKind",
+        "Kind of JavaScript modules emitted by Scala.js.", BPlusSetting)
 
     val jsDependencyFilter = SettingKey[DependencyFilter]("jsDependencyFilter",
         "The filter applied to the raw JavaScript dependencies before execution", CSetting)

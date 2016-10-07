@@ -19,7 +19,7 @@ import CheckedBehavior.Compliant
 
 import org.scalajs.core.tools.linker.Linker
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
-import org.scalajs.core.tools.linker.backend.{LinkerBackend, OutputMode}
+import org.scalajs.core.tools.linker.backend.{LinkerBackend, OutputMode, ModuleKind}
 
 import scala.collection.immutable.Seq
 
@@ -34,6 +34,7 @@ object Scalajsld {
     jsoutput: Boolean = false,
     semantics: Semantics = Semantics.Defaults,
     outputMode: OutputMode = OutputMode.ECMAScript51Isolated,
+    moduleKind: ModuleKind = ModuleKind.NoModule,
     noOpt: Boolean = false,
     fullOpt: Boolean = false,
     prettyPrint: Boolean = false,
@@ -49,6 +50,14 @@ object Scalajsld {
     val reads = { (s: String) =>
       OutputMode.All.find(_.toString() == s).getOrElse(
           throw new IllegalArgumentException(s"$s is not a valid output mode"))
+    }
+  }
+
+  private implicit object ModuleKindRead extends scopt.Read[ModuleKind] {
+    val arity = 1
+    val reads = { (s: String) =>
+      ModuleKind.All.find(_.toString() == s).getOrElse(
+          throw new IllegalArgumentException(s"$s is not a valid module kind"))
     }
   }
 
@@ -93,6 +102,9 @@ object Scalajsld {
       opt[OutputMode]('m', "outputMode")
         .action { (mode, c) => c.copy(outputMode = mode) }
         .text("Output mode " + OutputMode.All.mkString("(", ", ", ")"))
+      opt[ModuleKind]('k', "moduleKind")
+        .action { (kind, c) => c.copy(moduleKind = kind) }
+        .text("Module kind " + ModuleKind.All.mkString("(", ", ", ")"))
       opt[Unit]('b', "bypassLinkingErrors")
         .action { (_, c) => c.copy(bypassLinkingErrors = true) }
         .text("Only warn if there are linking errors (deprecated)")
@@ -165,10 +177,16 @@ object Scalajsld {
         .withRelativizeSourceMapBase(options.relativizeSourceMap)
         .withPrettyPrint(options.prettyPrint)
 
-      val linker = Linker(semantics, options.outputMode, options.sourceMap,
-          disableOptimizer = options.noOpt, parallel = true,
-          useClosureCompiler = options.fullOpt,
-          frontendConfig, backendConfig)
+      val config = Linker.Config()
+        .withSourceMap(options.sourceMap)
+        .withOptimizer(!options.noOpt)
+        .withParallel(true)
+        .withClosureCompiler(options.fullOpt)
+        .withFrontendConfig(frontendConfig)
+        .withBackendConfig(backendConfig)
+
+      val linker = Linker(semantics, options.outputMode, options.moduleKind,
+          config)
 
       val logger = new ScalaConsoleLogger(options.logLevel)
       val outFile = WritableFileVirtualJSFile(options.output)

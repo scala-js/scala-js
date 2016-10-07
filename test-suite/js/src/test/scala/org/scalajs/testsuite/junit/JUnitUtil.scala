@@ -11,7 +11,9 @@ object JUnitUtil {
   def loadBootstrapper(classFullName: String): JUnitTestBootstrapper = {
     val fullName = s"$classFullName$BootstrapperSuffix"
     try {
-      fullName.split('.').foldLeft(js.Dynamic.global) { (obj, n) =>
+      val exportsNamespace =
+        scala.scalajs.runtime.environmentInfo.exportsNamespace
+      fullName.split('.').foldLeft(exportsNamespace) { (obj, n) =>
         obj.selectDynamic(n)
       }.apply().asInstanceOf[JUnitTestBootstrapper]
     } catch {

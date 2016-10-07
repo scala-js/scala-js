@@ -151,9 +151,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
       getInterface(linkedClass.encodedName).ancestors = linkedClass.ancestors
 
       if (linkedClass.hasInstances &&
-          linkedClass.kind != ClassKind.RawJSType &&
-          linkedClass.kind != ClassKind.Interface &&
-          linkedClass.kind != ClassKind.JSClass) {
+          (linkedClass.kind.isClass || linkedClass.kind == ClassKind.HijackedClass)) {
         CollOps.put(neededClasses, linkedClass.encodedName, linkedClass)
       }
 

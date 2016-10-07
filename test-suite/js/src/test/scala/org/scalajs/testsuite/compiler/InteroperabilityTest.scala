@@ -17,6 +17,7 @@ import org.junit.Assert._
 import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.JSUtils
 import org.scalajs.testsuite.utils.Platform._
 
 /*
@@ -439,23 +440,23 @@ class InteroperabilityTest {
   @Test def should_unbox_Chars_received_from_calling_a_JS_interop_method(): Unit = {
     val obj = js.eval("""
       var obj = {
-        get: function() { return JSUtils().stringToChar('e'); }
+        get: function(JSUtils) { return JSUtils.stringToChar('e'); }
       };
       obj;
     """).asInstanceOf[InteroperabilityTestCharResult]
 
-    assertEquals('e'.toInt, obj.get().toInt)
+    assertEquals('e'.toInt, obj.get(JSUtils).toInt)
   }
 
   @Test def should_box_Chars_given_to_a_JS_interop_method(): Unit = {
     val obj = js.eval("""
       var obj = {
-        twice: function(c) { c = JSUtils().charToString(c); return c+c; }
+        twice: function(JSUtils, c) { c = JSUtils.charToString(c); return c+c; }
       };
       obj;
     """).asInstanceOf[InteroperabilityTestCharParam]
 
-    assertEquals("xx", obj.twice('x'))
+    assertEquals("xx", obj.twice(JSUtils, 'x'))
   }
 
   @Test def should_unbox_value_classes_received_from_calling_a_JS_interop_method(): Unit = {
@@ -504,7 +505,7 @@ class InteroperabilityTest {
         testChar: function() { return 5; },
         testInt: function() { return 6.4; },
         testShort: function() { return 60000; },
-        testDouble: function() { return JSUtils().stringToChar('e'); },
+        testDouble: function() { return "hello"; },
         testString: function() { return {}; },
         testValueClass: function() { return "hello"; },
         testNormalClass: function() { return 45; },
@@ -585,12 +586,12 @@ object InteroperabilityTest {
 
   @js.native
   trait InteroperabilityTestCharResult extends js.Object {
-    def get(): Char = js.native
+    def get(jsUtils: JSUtils.type): Char = js.native
   }
 
   @js.native
   trait InteroperabilityTestCharParam extends js.Object {
-    def twice(c: Char): String = js.native
+    def twice(jsUtils: JSUtils.type, c: Char): String = js.native
   }
 
   @js.native

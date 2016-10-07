@@ -391,13 +391,14 @@ object Serializers {
           writeTrees(captureValues)
 
         case tree: ClassDef =>
-          val ClassDef(name, kind, superClass, parents, jsName, defs) = tree
+          val ClassDef(name, kind, superClass, parents, jsNativeLoadSpec,
+              defs) = tree
           writeByte(TagClassDef)
           writeIdent(name)
           writeByte(ClassKind.toByte(kind))
           writeOptIdent(superClass)
           writeIdents(parents)
-          writeString(jsName.getOrElse(""))
+          writeJSNativeLoadSpec(jsNativeLoadSpec)
           writeTrees(defs)
           writeInt(tree.optimizerHints.bits)
 
@@ -571,6 +572,25 @@ object Serializers {
         writeInt(PosDebugMagic)
     }
 
+    def writeJSNativeLoadSpec(jsNativeLoadSpec: Option[JSNativeLoadSpec]): Unit = {
+      import buffer._
+
+      jsNativeLoadSpec.fold {
+        writeByte(TagJSNativeLoadSpecNone)
+      } { spec =>
+        spec match {
+          case JSNativeLoadSpec.Global(path) =>
+            writeByte(TagJSNativeLoadSpecGlobal)
+            writeStrings(path)
+
+          case JSNativeLoadSpec.Import(module, path) =>
+            writeByte(TagJSNativeLoadSpecImport)
+            writeString(module)
+            writeStrings(path)
+        }
+      }
+    }
+
     def writeOptHash(optHash: Option[TreeHash]): Unit = {
       buffer.writeBoolean(optHash.isDefined)
       for (hash <- optHash) {
@@ -581,6 +601,11 @@ object Serializers {
 
     def writeString(s: String): Unit =
       buffer.writeInt(stringToIndex(s))
+
+    def writeStrings(strings: List[String]): Unit = {
+      buffer.writeInt(strings.size)
+      strings.foreach(writeString)
+    }
   }
 
   private final class Deserializer(stream: InputStream, sourceVersion: String) {
@@ -589,6 +614,8 @@ object Serializers {
       Set("0.6.0", "0.6.3", "0.6.4", "0.6.5").contains(sourceVersion)
     private[this] val useHacks066 =
       useHacks065 || sourceVersion == "0.6.6"
+    private[this] val useHacks068 =
+      useHacks066 || sourceVersion == "0.6.8"
 
     private[this] val input = new DataInputStream(stream)
 
@@ -712,10 +739,10 @@ object Serializers {
 
         case TagClassDef =>
           val name = readIdent()
-          val kind = ClassKind.fromByte(readByte())
+          val kind0 = ClassKind.fromByte(readByte())
           val superClass = readOptIdent()
           val parents = readIdents()
-          val jsName = Some(readString()).filter(_ != "")
+          val jsNativeLoadSpec = readJSNativeLoadSpec()
           val defs0 = readTrees()
           val defs = if (useHacks065) {
             defs0.filter {
@@ -728,7 +755,18 @@ object Serializers {
             defs0
           }
           val optimizerHints = new OptimizerHints(readInt())
-          ClassDef(name, kind, superClass, parents, jsName, defs)(optimizerHints)
+
+          val kind = {
+            if (useHacks068 && kind0 == ClassKind.AbstractJSType &&
+                jsNativeLoadSpec.isDefined) {
+              ClassKind.NativeJSClass
+            } else {
+              kind0
+            }
+          }
+
+          ClassDef(name, kind, superClass, parents, jsNativeLoadSpec, defs)(
+              optimizerHints)
 
         case TagFieldDef =>
           FieldDef(readIdent(), readType(), readBoolean())
@@ -898,6 +936,23 @@ object Serializers {
       result
     }
 
+    def readJSNativeLoadSpec(): Option[JSNativeLoadSpec] = {
+      if (useHacks068) {
+        Some(readString()).filter(_ != "").map { jsFullName =>
+          JSNativeLoadSpec.Global(jsFullName.split("\\.").toList)
+        }
+      } else {
+        (input.readByte(): @switch) match {
+          case TagJSNativeLoadSpecNone =>
+            None
+          case TagJSNativeLoadSpecGlobal =>
+            Some(JSNativeLoadSpec.Global(readStrings()))
+          case TagJSNativeLoadSpecImport =>
+            Some(JSNativeLoadSpec.Import(readString(), readStrings()))
+        }
+      }
+    }
+
     def readOptHash(): Option[TreeHash] = {
       if (input.readBoolean()) {
         val treeHash = new Array[Byte](20)
@@ -911,6 +966,9 @@ object Serializers {
     def readString(): String = {
       strings(input.readInt())
     }
+
+    def readStrings(): List[String] =
+      List.fill(input.readInt())(readString())
   }
 
   private class RewriteArgumentsTransformer extends Transformers.Transformer {
