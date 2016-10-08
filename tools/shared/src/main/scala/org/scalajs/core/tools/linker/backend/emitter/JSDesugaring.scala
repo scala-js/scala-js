@@ -54,7 +54,7 @@ import java.io.StringWriter
  *     * Assign, i.e., `x =`
  *     * VarDef, i.e., `val x =` or `var x =`
  *     * Return, i.e., `return`
- *     * (EmptyTree is also used as a trick for code reuse)
+ *     * Discard, i.e. just evaluate and discard
  *     In fact, think that, in this context, LHS means: what to do with the
  *     result of evaluating the RHS.
  *
@@ -196,6 +196,7 @@ import java.io.StringWriter
  *  @author Sébastien Doeraene
  */
 private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
+  import JSDesugaring._
 
   private final val ScalaJSEnvironmentName = "ScalaJS"
 
@@ -380,7 +381,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           js.Skip()
 
         case VarDef(_, _, _, rhs) =>
-          pushLhsInto(EmptyTree, rhs, tailPosLabels)
+          pushLhsInto(Lhs.Discard, rhs, tailPosLabels)
 
         // Statement-only language constructs
 
@@ -388,7 +389,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           js.Skip()
 
         case Assign(RecordFieldVarRef(lhs), rhs) =>
-          pushLhsInto(Assign(lhs, EmptyTree), rhs, tailPosLabels)
+          pushLhsInto(Lhs.Assign(lhs), rhs, tailPosLabels)
 
         case Assign(select @ Select(qualifier, item), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
@@ -437,8 +438,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
                   transformExpr(rhs))
           }
 
-        case Assign(_ : VarRef, rhs) =>
-          pushLhsInto(tree, rhs, tailPosLabels)
+        case Assign(varRef: VarRef, rhs) =>
+          pushLhsInto(Lhs.Assign(varRef), rhs, tailPosLabels)
 
         case Assign(_, _) =>
           sys.error(s"Illegal Assign in transformStat: $tree")
@@ -599,18 +600,18 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         // Treat 'return' as an LHS
 
         case Return(expr, label) =>
-          pushLhsInto(tree, expr, tailPosLabels)
+          pushLhsInto(Lhs.Return(label), expr, tailPosLabels)
 
-        /* Anything else is an expression => pushLhsInto(EmptyTree, _)
+        /* Anything else is an expression => pushLhsInto(Lhs.Discard, _)
          * In order not to duplicate all the code of pushLhsInto() here, we
-         * use a trick: EmptyTree is a dummy LHS that says "do nothing
+         * use a trick: Lhs.Discard is a dummy LHS that says "do nothing
          * with the result of the rhs".
          * This is exactly what an expression statement is doing: it evaluates
          * the expression, but does nothing with its result.
          */
 
         case _ =>
-          pushLhsInto(EmptyTree, tree, tailPosLabels)
+          pushLhsInto(Lhs.Discard, tree, tailPosLabels)
       }
     }
 
@@ -632,9 +633,10 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       @tailrec
       def transformLoop(trees: List[Tree], env: Env,
           acc: List[js.Tree]): (List[js.Tree], Env) = trees match {
-        case (tree @ VarDef(ident, tpe, mutable, rhs)) :: ts =>
+        case VarDef(ident, tpe, mutable, rhs) :: ts =>
           val newEnv = env.withDef(ident, tpe, mutable)
-          val newTree = pushLhsInto(tree, rhs, Set.empty)(env)
+          val lhs = Lhs.VarDef(ident, tpe, mutable)
+          val newTree = pushLhsInto(lhs, rhs, Set.empty)(env)
           transformLoop(ts, newEnv, newTree :: acc)
 
         case tree :: ts =>
@@ -795,7 +797,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
                 val newEnv = env.withDef(temp, arg.tpe, false)
                 innerEnv = newEnv
                 val computeTemp = pushLhsInto(
-                    VarDef(temp, arg.tpe, mutable = false, EmptyTree), arg,
+                    Lhs.VarDef(temp, arg.tpe, mutable = false), arg,
                     Set.empty)
                 computeTemp +=: extractedStatements
                 VarRef(temp)(arg.tpe)
@@ -1037,11 +1039,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       }
     }
 
-    /** Push an lhs into a (potentially complex) rhs
-     *  lhs can be either a EmptyTree, a VarDef, a Assign or a
-     *  Return
-     */
-    def pushLhsInto(lhs: Tree, rhs: Tree, tailPosLabels: Set[String])(
+    /** Push an lhs into a (potentially complex) rhs */
+    def pushLhsInto(lhs: Lhs, rhs: Tree, tailPosLabels: Set[String])(
         implicit env: Env): js.Tree = {
       implicit val pos = rhs.pos
 
@@ -1053,16 +1052,16 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
        *  its scope.
        *  This only matters in ECMAScript 6, because we emit Lets.
        */
-      def extractLet(inner: Tree => js.Tree): js.Tree = {
+      def extractLet(inner: Lhs => js.Tree): js.Tree = {
         outputMode match {
           case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
             inner(lhs)
           case OutputMode.ECMAScript6 =>
             lhs match {
-              case VarDef(name, tpe, mutable, oldRhs) =>
+              case Lhs.VarDef(name, tpe, mutable) =>
                 js.Block(
                     doEmptyVarDef(name, tpe),
-                    inner(Assign(VarRef(name)(tpe), oldRhs)))
+                    inner(Lhs.Assign(VarRef(name)(tpe))))
               case _ =>
                 inner(lhs)
             }
@@ -1072,7 +1071,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       def doReturnToLabel(l: Ident): js.Tree = {
         val newLhs = env.lhsForLabeledExpr(l)
         val body = pushLhsInto(newLhs, rhs, Set.empty)
-        if (newLhs.tpe == NothingType) {
+        if (newLhs.hasNothingType) {
           /* A touch of peephole dead code elimination.
            * This is actually necessary to avoid dangling breaks to eliminated
            * labels, as in issue #2307.
@@ -1088,14 +1087,14 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         }
       }
 
-      if (rhs.tpe == NothingType && lhs != EmptyTree) {
+      if (rhs.tpe == NothingType && lhs != Lhs.Discard) {
         /* A touch of peephole dead code elimination.
          * Actually necessary to handle pushing an lhs into an infinite loop,
          * for example.
          */
-        val transformedRhs = pushLhsInto(EmptyTree, rhs, tailPosLabels)
+        val transformedRhs = pushLhsInto(Lhs.Discard, rhs, tailPosLabels)
         lhs match {
-          case VarDef(name, tpe, _, _) =>
+          case Lhs.VarDef(name, tpe, _) =>
             /* We still need to declare the var, in case it is used somewhere
              * else in the function, where we can't dce it.
              */
@@ -1115,32 +1114,34 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         // Base case, rhs is already a regular JS expression
 
         case _ if isExpression(rhs) =>
-          (lhs: @unchecked) match {
-            case EmptyTree =>
+          lhs match {
+            case Lhs.Discard =>
               if (isSideEffectFreeExpression(rhs)) js.Skip()
               else transformExpr(rhs)
-            case VarDef(name, tpe, mutable, _) =>
+            case Lhs.VarDef(name, tpe, mutable) =>
               doVarDef(name, tpe, mutable, rhs)
-            case Assign(lhs, _) =>
+            case Lhs.Assign(lhs) =>
               doAssign(lhs, rhs)
-            case Return(_, None) =>
+            case Lhs.Return(None) =>
               js.Return(transformExpr(rhs))
-            case Return(_, Some(l)) =>
+            case Lhs.Return(Some(l)) =>
               doReturnToLabel(l)
           }
 
         // Almost base case with RecordValue
 
         case RecordValue(recTpe, elems) =>
-          (lhs: @unchecked) match {
-            case EmptyTree =>
+          lhs match {
+            case Lhs.Discard =>
               val (newStat, _) = transformBlockStats(elems)
               js.Block(newStat)
-            case VarDef(name, tpe, mutable, _) =>
+
+            case Lhs.VarDef(name, tpe, mutable) =>
               unnest(elems) { (newElems, env) =>
                 doVarDef(name, tpe, mutable, RecordValue(recTpe, newElems))(env)
               }
-            case Assign(lhs, _) =>
+
+            case Lhs.Assign(lhs) =>
               unnest(elems) { (newElems, env0) =>
                 implicit val env = env0
                 val temp = newSyntheticVar()
@@ -1149,7 +1150,11 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
                         RecordValue(recTpe, newElems)),
                     doAssign(lhs, VarRef(temp)(recTpe)))
               }
-            case Return(_, Some(l)) =>
+
+            case Lhs.Return(None) =>
+              throw new AssertionError("Cannot return a record value.")
+
+            case Lhs.Return(Some(l)) =>
               doReturnToLabel(l)
           }
 
@@ -1166,8 +1171,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
               newBody
           }
 
-        case Return(expr, _) =>
-          pushLhsInto(rhs, expr, tailPosLabels)
+        case Return(expr, label) =>
+          pushLhsInto(Lhs.Return(label), expr, tailPosLabels)
 
         case Continue(label) =>
           js.Continue(label.map(transformIdent))
@@ -1511,11 +1516,10 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           }
 
         case _ =>
-          if (lhs == EmptyTree) {
+          if (lhs == Lhs.Discard) {
             /* Go "back" to transformStat() after having dived into
-             * expression statements. Remember that (lhs == EmptyTree)
-             * is a trick that we use to "add" all the code of pushLhsInto()
-             * to transformStat().
+             * expression statements. Remember that Lhs.Discard is a trick that
+             * we use to "add" all the code of pushLhsInto() to transformStat().
              */
             rhs match {
               case _:Skip | _:VarDef | _:Assign | _:While | _:DoWhile |
@@ -1592,7 +1596,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           val temp = newSyntheticVar()
           val newEnv = env.withDef(temp, expr.tpe, false)
           val computeTemp = pushLhsInto(
-              VarDef(temp, expr.tpe, mutable = false, EmptyTree), expr,
+              Lhs.VarDef(temp, expr.tpe, mutable = false), expr,
               Set.empty)
           js.Block(computeTemp, makeTree(VarRef(temp)(expr.tpe), newEnv))
       }
@@ -2138,49 +2142,6 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
     }
   }
 
-  // Environment
-
-  final class Env private (
-      vars: Map[String, Boolean],
-      labeledExprLHSes: Map[String, Tree],
-      defaultBreakTargets: Set[String]
-  ) {
-    def isLocalMutable(ident: Ident): Boolean = vars(ident.name)
-
-    def lhsForLabeledExpr(label: Ident): Tree = labeledExprLHSes(label.name)
-
-    def isDefaultBreakTarget(label: String): Boolean =
-      defaultBreakTargets.contains(label)
-
-    def withParams(params: List[ParamDef]): Env = {
-      params.foldLeft(this) {
-        case (env, ParamDef(name, tpe, mutable, _)) =>
-          // ParamDefs may not contain record types
-          env.withDef(name, mutable)
-      }
-    }
-
-    def withDef(ident: Ident, mutable: Boolean): Env =
-      copy(vars = vars + (ident.name -> mutable))
-
-    def withLabeledExprLHS(label: Ident, lhs: Tree): Env =
-      copy(labeledExprLHSes = labeledExprLHSes + (label.name -> lhs))
-
-    def withDefaultBreakTargets(targets: Set[String]): Env =
-      copy(defaultBreakTargets = targets)
-
-    private def copy(
-        vars: Map[String, Boolean] = this.vars,
-        labeledExprLHSes: Map[String, Tree] = this.labeledExprLHSes,
-        defaultBreakTargets: Set[String] = this.defaultBreakTargets): Env = {
-      new Env(vars, labeledExprLHSes, defaultBreakTargets)
-    }
-  }
-
-  object Env {
-    def empty: Env = new Env(Map.empty, Map.empty, Set.empty)
-  }
-
   // Helpers
 
   private[emitter] def genLet(name: js.Ident, mutable: Boolean, rhs: js.Tree)(
@@ -2452,5 +2413,67 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
     val printer = new ir.Printers.IRTreePrinter(writer)
     printer.printTopLevelTree(tree)
     "Exception while desugaring: " + writer.toString
+  }
+}
+
+private object JSDesugaring {
+  /** A left hand side that can be pushed into a right hand side tree. */
+  sealed abstract class Lhs {
+    def hasNothingType: Boolean = false
+  }
+
+  object Lhs {
+    case class Assign(lhs: Tree) extends Lhs
+    case class VarDef(name: Ident, tpe: Type, mutable: Boolean) extends Lhs
+
+    case class Return(label: Option[Ident]) extends Lhs {
+      override def hasNothingType: Boolean = true
+    }
+
+    /** Discard the value of rhs (but retain side effects). */
+    case object Discard extends Lhs
+  }
+
+  // Environment
+
+  final class Env private (
+      vars: Map[String, Boolean],
+      labeledExprLHSes: Map[String, Lhs],
+      defaultBreakTargets: Set[String]
+  ) {
+    def isLocalMutable(ident: Ident): Boolean = vars(ident.name)
+
+    def lhsForLabeledExpr(label: Ident): Lhs = labeledExprLHSes(label.name)
+
+    def isDefaultBreakTarget(label: String): Boolean =
+      defaultBreakTargets.contains(label)
+
+    def withParams(params: List[ParamDef]): Env = {
+      params.foldLeft(this) {
+        case (env, ParamDef(name, tpe, mutable, _)) =>
+          // ParamDefs may not contain record types
+          env.withDef(name, mutable)
+      }
+    }
+
+    def withDef(ident: Ident, mutable: Boolean): Env =
+      copy(vars = vars + (ident.name -> mutable))
+
+    def withLabeledExprLHS(label: Ident, lhs: Lhs): Env =
+      copy(labeledExprLHSes = labeledExprLHSes + (label.name -> lhs))
+
+    def withDefaultBreakTargets(targets: Set[String]): Env =
+      copy(defaultBreakTargets = targets)
+
+    private def copy(
+        vars: Map[String, Boolean] = this.vars,
+        labeledExprLHSes: Map[String, Lhs] = this.labeledExprLHSes,
+        defaultBreakTargets: Set[String] = this.defaultBreakTargets): Env = {
+      new Env(vars, labeledExprLHSes, defaultBreakTargets)
+    }
+  }
+
+  object Env {
+    def empty: Env = new Env(Map.empty, Map.empty, Set.empty)
   }
 }

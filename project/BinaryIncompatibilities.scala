@@ -37,6 +37,17 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.desugarToFunction"),
 
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.Env"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#Env.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#Env.withLabeledExprLHS"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#Env.lhsForLabeledExpr"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.pushLhsInto"),
+
       // private[emitter], not an issue
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.this"),
