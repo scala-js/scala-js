@@ -3702,49 +3702,57 @@ private[optimizer] abstract class OptimizerCore(
    *      GenJSCode.genOptimizedLabeled.
    */
   def tryOptimizePatternMatch(oldLabelName: String, refinedType: Type,
-      returnCount: Int, newBody: Tree): Option[Tree] = {
-    if (!oldLabelName.startsWith("matchEnd")) None
-    else {
-      newBody match {
+      returnCount: Int, body: Tree): Option[Tree] = {
+    if (!oldLabelName.startsWith("matchEnd")) {
+      None
+    } else {
+      body match {
         case Block(stats) =>
           @tailrec
-          def createRevAlts(xs: List[Tree], acc: List[(Tree, Tree)]): List[(Tree, Tree)] = xs match {
+          def createRevAlts(xs: List[Tree],
+              acc: List[(Tree, Tree)]): (List[(Tree, Tree)], Tree) = xs match {
             case If(cond, body, Skip()) :: xr =>
               createRevAlts(xr, (cond, body) :: acc)
             case remaining =>
-              (EmptyTree, Block(remaining)(remaining.head.pos)) :: acc
+              (acc, Block(remaining)(remaining.head.pos))
           }
-          val revAlts = createRevAlts(stats, Nil)
+          val (revAlts, elsep) = createRevAlts(stats, Nil)
 
-          if (revAlts.size == returnCount) {
+          if (revAlts.size == returnCount - 1) {
+            def tryDropReturn(body: Tree): Option[Tree] = body match {
+              case BlockOrAlone(prep, Return(result, Some(_))) =>
+                val result1 =
+                  if (refinedType == NoType) keepOnlySideEffects(result)
+                  else result
+                Some(Block(prep :+ result1)(body.pos))
+
+              case _ =>
+                None
+            }
+
             @tailrec
-            def constructOptimized(revAlts: List[(Tree, Tree)], elsep: Tree): Option[Tree] = {
+            def constructOptimized(revAlts: List[(Tree, Tree)],
+                elsep: Tree): Option[Tree] = {
               revAlts match {
                 case (cond, body) :: revAltsRest =>
-                  body match {
-                    case BlockOrAlone(prep,
-                        Return(result, Some(Ident(newLabel, _)))) =>
-                      val result1 =
-                        if (refinedType == NoType) keepOnlySideEffects(result)
-                        else result
-                      val prepAndResult = Block(prep :+ result1)(body.pos)
-                      if (cond == EmptyTree) {
-                        assert(elsep == EmptyTree)
-                        constructOptimized(revAltsRest, prepAndResult)
-                      } else {
-                        assert(elsep != EmptyTree)
-                        constructOptimized(revAltsRest,
-                            foldIf(cond, prepAndResult, elsep)(refinedType)(cond.pos))
-                      }
-                    case _ =>
+                  // cannot use flatMap due to tailrec
+                  tryDropReturn(body) match {
+                    case Some(newBody) =>
+                      constructOptimized(revAltsRest,
+                          foldIf(cond, newBody, elsep)(refinedType)(cond.pos))
+
+                    case None =>
                       None
                   }
                 case Nil =>
                   Some(elsep)
               }
             }
-            constructOptimized(revAlts, EmptyTree)
-          } else None
+
+            tryDropReturn(elsep).flatMap(constructOptimized(revAlts, _))
+          } else {
+            None
+          }
         case _ =>
           None
       }

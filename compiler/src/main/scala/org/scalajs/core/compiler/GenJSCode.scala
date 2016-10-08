@@ -2585,14 +2585,13 @@ abstract class GenJSCode extends plugins.PluginComponent
       }.getOrElse(NoSymbol)
 
       var clauses: List[(List[js.Literal], js.Tree)] = Nil
-      var elseClause: js.Tree = js.EmptyTree
-
-      var elseClauseLabel: Option[js.Ident] = None
+      var optElseClause: Option[js.Tree] = None
+      var optElseClauseLabel: Option[js.Ident] = None
 
       def genJumpToElseClause(implicit pos: ir.Position): js.Tree = {
-        if (elseClauseLabel.isEmpty)
-          elseClauseLabel = Some(freshLocalIdent("default"))
-        js.Return(js.Undefined(), elseClauseLabel)
+        if (optElseClauseLabel.isEmpty)
+          optElseClauseLabel = Some(freshLocalIdent("default"))
+        js.Return(js.Undefined(), optElseClauseLabel)
       }
 
       for (caze @ CaseDef(pat, guard, body) <- cases) {
@@ -2643,12 +2642,12 @@ abstract class GenJSCode extends plugins.PluginComponent
           case lit: Literal =>
             clauses = (List(genLiteral(lit)), genBody(body)) :: clauses
           case Ident(nme.WILDCARD) =>
-            elseClause = body match {
+            optElseClause = Some(body match {
               case LabelDef(_, Nil, rhs) if hasSynthCaseSymbol(body) =>
                 genBody(rhs)
               case _ =>
                 genBody(body)
-            }
+            })
           case Alternative(alts) =>
             val genAlts = {
               alts map {
@@ -2665,9 +2664,12 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      if (elseClauseLabel.isEmpty) {
+      val elseClause = optElseClause.getOrElse(
+          throw new AssertionError("No elseClause in pattern match"))
+
+      optElseClauseLabel.fold[js.Tree] {
         js.Match(expr, clauses.reverse, elseClause)(resultType)
-      } else {
+      } { elseClauseLabel =>
         val matchResultLabel = freshLocalIdent("matchResult")
         val patchedClauses = for ((alts, body) <- clauses) yield {
           implicit val pos = body.pos
@@ -2678,7 +2680,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           (alts, newBody)
         }
         js.Labeled(matchResultLabel, resultType, js.Block(List(
-            js.Labeled(elseClauseLabel.get, jstpe.NoType, {
+            js.Labeled(elseClauseLabel, jstpe.NoType, {
               js.Match(expr, patchedClauses.reverse, js.Skip())(jstpe.NoType)
             }),
             elseClause
@@ -2837,45 +2839,48 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genOptimizedLabeled(label: js.Ident, tpe: jstpe.Type,
         translatedCases: List[js.Tree], returnCount: Int)(
         implicit pos: Position): js.Tree = {
-      def default =
+      def default: js.Tree =
         js.Labeled(label, tpe, js.Block(translatedCases))
 
       @tailrec
       def createRevAlts(xs: List[js.Tree],
-          acc: List[(js.Tree, js.Tree)]): List[(js.Tree, js.Tree)] = xs match {
+          acc: List[(js.Tree, js.Tree)]): (List[(js.Tree, js.Tree)], js.Tree) = xs match {
         case js.If(cond, body, js.Skip()) :: xr =>
           createRevAlts(xr, (cond, body) :: acc)
         case remaining =>
-          (js.EmptyTree, js.Block(remaining)(remaining.head.pos)) :: acc
+          (acc, js.Block(remaining)(remaining.head.pos))
       }
-      val revAlts = createRevAlts(translatedCases, Nil)
+      val (revAlts, elsep) = createRevAlts(translatedCases, Nil)
 
-      if (revAlts.size == returnCount) {
+      if (revAlts.size == returnCount - 1) {
+        def tryDropReturn(body: js.Tree): Option[js.Tree] = body match {
+          case jse.BlockOrAlone(prep, js.Return(result, Some(`label`))) =>
+            Some(js.Block(prep :+ result)(body.pos))
+
+          case _ =>
+            None
+        }
+
         @tailrec
         def constructOptimized(revAlts: List[(js.Tree, js.Tree)],
             elsep: js.Tree): js.Tree = {
           revAlts match {
             case (cond, body) :: revAltsRest =>
-              body match {
-                case jse.BlockOrAlone(prep,
-                    js.Return(result, Some(`label`))) =>
-                  val prepAndResult = js.Block(prep :+ result)(body.pos)
-                  if (cond == js.EmptyTree) {
-                    assert(elsep == js.EmptyTree)
-                    constructOptimized(revAltsRest, prepAndResult)
-                  } else {
-                    assert(elsep != js.EmptyTree)
-                    constructOptimized(revAltsRest,
-                        js.If(cond, prepAndResult, elsep)(tpe)(cond.pos))
-                  }
-                case _ =>
+              // cannot use flatMap due to tailrec
+              tryDropReturn(body) match {
+                case Some(newBody) =>
+                  constructOptimized(revAltsRest,
+                      js.If(cond, newBody, elsep)(tpe)(cond.pos))
+
+                case None =>
                   default
               }
             case Nil =>
               elsep
           }
         }
-        constructOptimized(revAlts, js.EmptyTree)
+
+        tryDropReturn(elsep).fold(default)(constructOptimized(revAlts, _))
       } else {
         default
       }
