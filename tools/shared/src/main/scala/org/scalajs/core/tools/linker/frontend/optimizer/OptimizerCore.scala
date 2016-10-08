@@ -814,7 +814,7 @@ private[optimizer] abstract class OptimizerCore(
 
       case New(cls, ctor, args) =>
         pretransformExprs(args) { targs =>
-          pretransformNew(tree, cls, ctor, targs)(cont)
+          pretransformNew(AllocationSite.Tree(tree), cls, ctor, targs)(cont)
         }
 
       case tree: Select =>
@@ -1073,17 +1073,15 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def pretransformNew(tree: Tree, cls: ClassType, ctor: Ident,
-      targs: List[PreTransform])(
-      cont: PreTransCont)(
+  private def pretransformNew(allocationSite: AllocationSite, cls: ClassType,
+      ctor: Ident, targs: List[PreTransform])(cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
     tryNewInlineableClass(cls.className) match {
       case Some(initialValue) =>
         tryOrRollback { cancelFun =>
-          inlineClassConstructor(
-              new AllocationSite(tree),
-              cls, initialValue, ctor, targs, cancelFun)(cont)
+          inlineClassConstructor(allocationSite, cls, initialValue,
+              ctor, targs, cancelFun)(cont)
         } { () =>
           cont(PreTransTree(
               New(cls, ctor, targs.map(finishTransformExpr)),
@@ -1678,7 +1676,7 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def inline(allocationSites: List[Option[AllocationSite]],
+  private def inline(allocationSites: List[AllocationSite],
       optReceiver: Option[PreTransform],
       args: List[PreTransform], target: MethodID, isStat: Boolean,
       usePreTransform: Boolean)(
@@ -1971,8 +1969,9 @@ private[optimizer] abstract class OptimizerCore(
   private def boxChar(value: Tree)(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
-    pretransformNew(value, ClassType(Definitions.BoxedCharacterClass),
-        Ident("init___C"), List(value.toPreTransform))(cont)
+    pretransformNew(AllocationSite.Tree(value),
+        ClassType(Definitions.BoxedCharacterClass), Ident("init___C"),
+        List(value.toPreTransform))(cont)
   }
 
   private def unboxChar(tvalue: PreTransform)(
@@ -2014,7 +2013,7 @@ private[optimizer] abstract class OptimizerCore(
             cls, cls, ctor, args, cancelFun) { (finalFieldLocalDefs, cont2) =>
           cont2(LocalDef(
               RefinedType(cls, isExact = true, isNullable = false,
-                  allocationSite = Some(allocationSite)),
+                  allocationSite = allocationSite),
               mutable = false,
               InlineClassInstanceReplacement(recordType, finalFieldLocalDefs,
                   cancelFun)).toPreTransform)
@@ -2033,7 +2032,7 @@ private[optimizer] abstract class OptimizerCore(
       implicit scope: Scope): TailRec[Tree] = tailcall {
 
     val target = staticCall(ctorClass.className, ctor.name).getOrElse(cancelFun())
-    val targetID = (Some(allocationSite) :: args.map(_.tpe.allocationSite), target)
+    val targetID = (allocationSite :: args.map(_.tpe.allocationSite), target)
     if (scope.implsBeingInlined.contains(targetID))
       cancelFun()
 
@@ -2344,7 +2343,7 @@ private[optimizer] abstract class OptimizerCore(
 
           (op: @switch) match {
             case IntToLong =>
-              pretransformNew(EmptyTree, rtLongClassType,
+              pretransformNew(AllocationSite.Anonymous, rtLongClassType,
                   Ident(LongImpl.initFromInt),
                   arg :: Nil)(
                   cont)
@@ -3609,7 +3608,7 @@ private[optimizer] abstract class OptimizerCore(
 
     val allLocalDefs = thisLocalDef ++: paramLocalDefs
 
-    val allocationSites = List.fill(allLocalDefs.size)(None)
+    val allocationSites = List.fill(allLocalDefs.size)(AllocationSite.Anonymous)
     val scope0 = optTarget.fold(Scope.Empty)(
         target => Scope.Empty.inlining((allocationSites, target)))
     val scope = scope0.withEnv(OptEnv.Empty.withLocalDefs(allLocalDefs))
@@ -4010,19 +4009,18 @@ private[optimizer] object OptimizerCore {
   private type PreTransCont = PreTransform => TailRec[Tree]
 
   private case class RefinedType private (base: Type, isExact: Boolean,
-      isNullable: Boolean)(
-      val allocationSite: Option[AllocationSite], dummy: Int = 0) {
+      isNullable: Boolean)(val allocationSite: AllocationSite, dummy: Int = 0) {
 
     def isNothingType: Boolean = base == NothingType
   }
 
   private object RefinedType {
     def apply(base: Type, isExact: Boolean, isNullable: Boolean,
-        allocationSite: Option[AllocationSite]): RefinedType =
+        allocationSite: AllocationSite): RefinedType =
       new RefinedType(base, isExact, isNullable)(allocationSite)
 
     def apply(base: Type, isExact: Boolean, isNullable: Boolean): RefinedType =
-      RefinedType(base, isExact, isNullable, None)
+      RefinedType(base, isExact, isNullable, AllocationSite.Anonymous)
 
     def apply(tpe: Type): RefinedType = tpe match {
       case IntType | FloatType | DoubleType =>
@@ -4040,17 +4038,37 @@ private[optimizer] object OptimizerCore {
     val Nothing = RefinedType(NothingType)
   }
 
-  private class AllocationSite(private val node: Tree) {
-    override def equals(that: Any): Boolean = that match {
-      case that: AllocationSite => this.node eq that.node
-      case _                    => false
+  /**
+   *  Global, lexical identity of an inlined object, given by the source
+   *  location of its allocation.
+   *
+   *  A crucial property of AllocationSite is that there is a finite amount of
+   *  them, function of the program source. It is not permitted to create
+   *  AllocationSites out of trees generated by the optimizer, as it would
+   *  potentially grow the supply to an infinite amount.
+   */
+  private sealed abstract class AllocationSite
+
+  private object AllocationSite {
+    object Anonymous extends AllocationSite {
+      override def toString(): String = "AllocationSite(<anonymous>)"
     }
 
-    override def hashCode(): Int =
-      System.identityHashCode(node)
+    def Tree(tree: Tree): AllocationSite = new TreeAllocationSite(tree)
 
-    override def toString(): String =
-      s"AllocationSite($node)"
+    private class TreeAllocationSite(
+        private val node: Tree) extends AllocationSite {
+      override def equals(that: Any): Boolean = that match {
+        case that: TreeAllocationSite => this.node eq that.node
+        case _                        => false
+      }
+
+      override def hashCode(): Int =
+        System.identityHashCode(node)
+
+      override def toString(): String =
+        s"AllocationSite($node)"
+    }
   }
 
   private case class LocalDef(
@@ -4187,12 +4205,11 @@ private[optimizer] object OptimizerCore {
   }
 
   private class Scope(val env: OptEnv,
-      val implsBeingInlined: Set[(List[Option[AllocationSite]], AbstractMethodID)]) {
+      val implsBeingInlined: Set[(List[AllocationSite], AbstractMethodID)]) {
     def withEnv(env: OptEnv): Scope =
       new Scope(env, implsBeingInlined)
 
-    def inlining(impl: (List[Option[AllocationSite]],
-        AbstractMethodID)): Scope = {
+    def inlining(impl: (List[AllocationSite], AbstractMethodID)): Scope = {
       assert(!implsBeingInlined(impl), s"Circular inlining of $impl")
       new Scope(env, implsBeingInlined + impl)
     }

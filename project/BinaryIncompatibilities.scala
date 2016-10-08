@@ -84,7 +84,23 @@ object BinaryIncompatibilities {
 
       // private[emitter], not an issue
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.core.tools.linker.backend.emitter.CoreJSLibs.lib")
+          "org.scalajs.core.tools.linker.backend.emitter.CoreJSLibs.lib"),
+
+      // private, not an issue
+      ProblemFilters.exclude[AbstractClassProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore$AllocationSite"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#AllocationSite.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RefinedType.apply"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RefinedType.apply"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RefinedType.copy"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RefinedType.allocationSite"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RefinedType.this")
   )
 
   val JSEnvs = Seq(
