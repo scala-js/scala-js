@@ -6,7 +6,7 @@
 package helloworld
 
 import scala.scalajs.js
-import js.annotation.JSName
+import js.annotation._
 
 object HelloWorld extends js.JSApp {
   def main() {
@@ -56,7 +56,8 @@ object HelloWorld extends js.JSApp {
 }
 
 @js.native
-object window extends js.GlobalScope {
+@JSGlobalScope
+object window extends js.Object {
   val document: DOMDocument = js.native
 
   def alert(msg: String): Unit = js.native

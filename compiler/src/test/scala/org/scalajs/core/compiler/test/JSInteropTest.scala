@@ -15,6 +15,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
     import scala.scalajs.js.annotation._
     """
 
+  private val JSNativeLoadSpecAnnots = Seq(
+      "JSName" -> "@JSName(\"foo\")",
+      "JSImport" -> "@JSImport(\"foo\", \"bar\")",
+      "JSGlobalScope" -> "@JSGlobalScope"
+  )
+
   @Test
   def warnNoJSNativeAnnotation: Unit = {
 
@@ -144,9 +150,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     trait A extends js.Object
     """ hasWarns
     s"""
-      |newSource1.scala:7: warning: Traits should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
-      |    trait A extends js.Object
-      |          ^
+      |newSource1.scala:6: warning: Traits should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+      |    @JSName("foo")
+      |     ^
     """
 
   }
@@ -160,11 +166,60 @@ class JSInteropTest extends DirectTest with TestHelpers {
     trait A extends js.Object
     """ hasErrors
     s"""
-      |newSource1.scala:7: error: Traits may not have an @JSImport annotation
-      |    trait A extends js.Object
-      |          ^
+      |newSource1.scala:6: error: Traits may not have an @JSImport annotation.
+      |    @JSImport("foo", JSImport.Namespace)
+      |     ^
     """
 
+  }
+
+  @Test def noTwoJSNativeLoadSpecAnnots: Unit = {
+    for {
+      (firstAnnotName, firstAnnot) <- JSNativeLoadSpecAnnots
+      (secondAnnotName, secondAnnot) <- JSNativeLoadSpecAnnots
+    } {
+      val expectedMessageShort = {
+        if (firstAnnotName == "JSName" && secondAnnotName == firstAnnotName)
+          "warning: A duplicate @JSName annotation is ignored, and should be removed. This will be enforced in 1.0."
+        else if (firstAnnotName == "JSGlobalScope" && secondAnnotName == "JSName")
+          "warning: An @JSName annotation is ignored in the presence of @JSGlobalScope (or extends js.GlobalScope), and should be removed. This will be enforced in 1.0."
+        else
+          "error: Native JS classes and objects can only have one annotation among JSName, JSImport and JSGlobalScope (extending js.GlobalScope is treated as having @JSGlobalScope)."
+      }
+
+      val onlyWarn = expectedMessageShort.startsWith("warning: ")
+
+      val expectedMessage = {
+        s"""
+          |newSource1.scala:7: $expectedMessageShort
+          |$secondAnnot
+          | ^
+        """
+      }
+
+      val kinds = {
+        if (firstAnnotName == "JSGlobalScope" || secondAnnotName == "JSGlobalScope")
+          Seq("object")
+        else
+          Seq("class", "object")
+      }
+
+      for (kind <- kinds) {
+        val snippet = {
+          s"""
+            |@js.native
+            |$firstAnnot
+            |$secondAnnot
+            |$kind A extends js.Object
+          """.stripMargin
+        }
+
+        if (onlyWarn)
+          snippet hasWarns expectedMessage
+        else
+          snippet hasErrors expectedMessage
+      }
+    }
   }
 
   @Test
@@ -474,7 +529,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class A extends js.GlobalScope
     """ hasErrors
     """
-      |newSource1.scala:6: error: Only native objects may extend js.GlobalScope
+      |newSource1.scala:6: error: Only native JS objects can have an @JSGlobalScope annotation (or extend js.GlobalScope).
       |    class A extends js.GlobalScope
       |          ^
     """
@@ -484,7 +539,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     trait A extends js.GlobalScope
     """ hasErrors
     """
-      |newSource1.scala:6: error: Only native objects may extend js.GlobalScope
+      |newSource1.scala:6: error: Traits may not have an @JSGlobalScope annotation.
       |    trait A extends js.GlobalScope
       |          ^
     """
@@ -528,11 +583,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSName("foo")
     object Bar extends js.GlobalScope
-    """ hasWarns
+    """ containsWarns
     """
-      |newSource1.scala:7: warning: Objects extending js.GlobalScope should not have a @JSName annotation. This will be enforced in 1.0.
-      |    object Bar extends js.GlobalScope
-      |           ^
+      |newSource1.scala:6: warning: An @JSName annotation is ignored in the presence of @JSGlobalScope (or extends js.GlobalScope), and should be removed. This will be enforced in 1.0.
+      |    @JSName("foo")
+      |     ^
     """
 
   }
@@ -546,9 +601,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     object Bar extends js.GlobalScope
     """ hasErrors
     """
-      |newSource1.scala:7: error: Objects extending js.GlobalScope cannot have an @JSImport annotation.
-      |    object Bar extends js.GlobalScope
-      |           ^
+      |newSource1.scala:6: error: Native JS classes and objects can only have one annotation among JSName, JSImport and JSGlobalScope (extending js.GlobalScope is treated as having @JSGlobalScope).
+      |    @JSImport("foo", JSImport.Namespace)
+      |     ^
     """
 
   }

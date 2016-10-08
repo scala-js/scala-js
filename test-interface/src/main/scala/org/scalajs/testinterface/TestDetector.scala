@@ -1,6 +1,7 @@
 package org.scalajs.testinterface
 
 import scala.scalajs.js
+import js.annotation.JSGlobalScope
 
 import org.scalajs.testinterface.internal.TaskDefSerializer
 
@@ -53,7 +54,8 @@ private[scalajs] object TestDetector {
   }
 
   @js.native
-  private object RawDefinitions extends js.GlobalScope {
+  @JSGlobalScope
+  private object RawDefinitions extends js.Object {
     val definedTests: js.Array[js.Dynamic] = js.native
     val testFrameworkNames: js.Array[js.Array[String]] = js.native
   }
