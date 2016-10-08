@@ -68,6 +68,40 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noJSNameAnnotOnNonJSNative: Unit = {
+
+    for {
+      obj <- Seq("class", "trait", "object")
+    } yield {
+      s"""
+      @ScalaJSDefined
+      @JSName("foo")
+      $obj A extends js.Object
+      """ hasWarns
+      s"""
+        |newSource1.scala:6: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+        |      @JSName("foo")
+        |       ^
+      """
+    }
+
+    for {
+      obj <- Seq("class", "trait", "object")
+    } yield {
+      s"""
+      @JSName("foo")
+      $obj A
+      """ hasWarns
+      s"""
+        |newSource1.scala:5: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+        |      @JSName("foo")
+        |       ^
+      """
+    }
+
+  }
+
+  @Test
   def noJSImportAnnotOnNonJSNative: Unit = {
 
     for {
@@ -79,9 +113,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       $obj A extends js.Object
       """ hasErrors
       s"""
-        |newSource1.scala:7: error: Non JS-native classes, traits and objects may not have an @JSImport annotation
-        |      $obj A extends js.Object
-        |      ${" " * obj.length} ^
+        |newSource1.scala:6: error: Non JS-native classes, traits and objects may not have an @JSImport annotation.
+        |      @JSImport("foo", JSImport.Namespace)
+        |       ^
       """
     }
 
@@ -93,11 +127,27 @@ class JSInteropTest extends DirectTest with TestHelpers {
       $obj A
       """ hasErrors
       s"""
-        |newSource1.scala:6: error: Non JS-native classes, traits and objects may not have an @JSImport annotation
-        |      $obj A
-        |      ${" " * obj.length} ^
+        |newSource1.scala:5: error: Non JS-native classes, traits and objects may not have an @JSImport annotation.
+        |      @JSImport("foo", JSImport.Namespace)
+        |       ^
       """
     }
+
+  }
+
+  @Test
+  def noJSNameAnnotOnTrait: Unit = {
+
+    s"""
+    @js.native
+    @JSName("foo")
+    trait A extends js.Object
+    """ hasWarns
+    s"""
+      |newSource1.scala:7: warning: Traits should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+      |    trait A extends js.Object
+      |          ^
+    """
 
   }
 
@@ -125,7 +175,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class A
     """ hasErrors
     """
-      |newSource1.scala:6: error: Traits and classes not extending js.Any may not have a @js.native annotation
+      |newSource1.scala:6: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
       |    class A
       |          ^
     """
@@ -135,7 +185,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     trait A
     """ hasErrors
     """
-      |newSource1.scala:6: error: Traits and classes not extending js.Any may not have a @js.native annotation
+      |newSource1.scala:6: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
       |    trait A
       |          ^
     """
@@ -145,7 +195,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     object A
     """ hasErrors
     """
-      |newSource1.scala:6: error: Objects not extending js.Any may not have a @js.native annotation
+      |newSource1.scala:6: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
       |    object A
       |           ^
     """
@@ -155,7 +205,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class A extends Enumeration
     """ hasErrors
     """
-      |newSource1.scala:6: error: Classes and objects not extending js.Any may not have a @js.native annotation
+      |newSource1.scala:6: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
       |    class A extends Enumeration
       |          ^
     """
@@ -165,7 +215,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     object A extends Enumeration
     """ hasErrors
     """
-      |newSource1.scala:6: error: Classes and objects not extending js.Any may not have a @js.native annotation
+      |newSource1.scala:6: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
       |    object A extends Enumeration
       |           ^
     """

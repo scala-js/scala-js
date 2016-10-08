@@ -167,12 +167,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               "Scala traits, classes or objects (i.e., not extending js.Any)")
           super.transform(tree)
 
-        // @ScalaJSDefined is only valid on a js.Any
-        case idef: ImplDef if idef.symbol.hasAnnotation(ScalaJSDefinedAnnotation) =>
-          reporter.error(idef.pos,
-              "@ScalaJSDefined is only allowed on classes extending js.Any")
-          super.transform(tree)
-
         // Catch the definition of scala.Enumeration itself
         case cldef: ClassDef if cldef.symbol == ScalaEnumClass =>
           enterOwner(OwnerKind.EnumImpl) { super.transform(cldef) }
@@ -181,10 +175,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case idef: ImplDef if isScalaEnum(idef) =>
           val sym = idef.symbol
 
-          if (sym.hasAnnotation(JSNativeAnnotation))
-            reportJSNativeOnNonJSAny(idef.pos, "Classes and objects")
-          else if (sym.hasAnnotation(JSImportAnnotation))
-            reportJSImportOnNonJSNative(idef.pos)
+          checkJSAnySpecificAnnotsOnNonJSAny(idef.pos, sym)
 
           val kind =
             if (idef.isInstanceOf[ModuleDef]) OwnerKind.EnumMod
@@ -195,10 +186,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case cldef: ClassDef =>
           val sym = cldef.symbol
 
-          if (sym.hasAnnotation(JSNativeAnnotation))
-            reportJSNativeOnNonJSAny(cldef.pos, "Traits and classes")
-          else if (sym.hasAnnotation(JSImportAnnotation))
-            reportJSImportOnNonJSNative(cldef.pos)
+          checkJSAnySpecificAnnotsOnNonJSAny(cldef.pos, sym)
 
           if (sym == UndefOrClass || sym == UnionClass)
             sym.addAnnotation(RawJSTypeAnnot)
@@ -217,10 +205,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case modDef: ModuleDef =>
           val sym = modDef.symbol
 
-          if (sym.hasAnnotation(JSNativeAnnotation))
-            reportJSNativeOnNonJSAny(modDef.pos, "Objects")
-          else if (sym.hasAnnotation(JSImportAnnotation))
-            reportJSImportOnNonJSNative(modDef.pos)
+          checkJSAnySpecificAnnotsOnNonJSAny(modDef.pos, sym)
 
           if (shouldPrepareExports)
             registerModuleExports(sym.moduleClass)
@@ -528,9 +513,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               "native JS trait.")
         }
 
-        // Check that there is no @JSImport annotation
-        if (sym.hasAnnotation(JSImportAnnotation))
-          reportJSImportOnNonJSNative(implDef.pos)
+        // Check that there is no JS-native-specific annotation
+        checkJSNativeSpecificAnnotsOnNonJSNative(sym)
       }
 
       if (shouldCheckLiterals) {
@@ -610,6 +594,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             sym.addAnnotation(HasJSNativeLoadSpecAnnotation)
         } else {
           assert(sym.isTrait) // just tested in the previous `if`
+          if (sym.hasAnnotation(JSNameAnnotation)) {
+            reporter.warning(implDef.pos,
+                "Traits should not have an @JSName annotation, as it does " +
+                "not have any effect. This will be enforced in 1.0.")
+          }
           if (sym.hasAnnotation(JSImportAnnotation)) {
             reporter.error(implDef.pos,
                 "Traits may not have an @JSImport annotation")
@@ -1088,15 +1077,35 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
   }
 
-  private def reportJSNativeOnNonJSAny(pos: Position, reportOn: String): Unit = {
-    reporter.error(pos, reportOn + " not extending js.Any may not have a " +
-        "@js.native annotation")
+  private def checkJSAnySpecificAnnotsOnNonJSAny(pos: Position,
+      sym: Symbol): Unit = {
+    if (sym.hasAnnotation(ScalaJSDefinedAnnotation)) {
+      reporter.error(pos,
+          "@ScalaJSDefined is only allowed on classes extending js.Any")
+    }
+
+    if (sym.hasAnnotation(JSNativeAnnotation)) {
+      reporter.error(pos,
+          "Classes, traits and objects not extending js.Any may not have an " +
+          "@js.native annotation")
+    } else {
+      checkJSNativeSpecificAnnotsOnNonJSNative(sym)
+    }
   }
 
-  private def reportJSImportOnNonJSNative(pos: Position): Unit = {
-    reporter.error(pos,
-        s"Non JS-native classes, traits and objects may not have an " +
-        "@JSImport annotation")
+  private def checkJSNativeSpecificAnnotsOnNonJSNative(sym: Symbol): Unit = {
+    for (annot <- sym.annotations) {
+      if (annot.symbol == JSNameAnnotation) {
+        reporter.warning(annot.pos,
+            "Non JS-native classes, traits and objects should not have an " +
+            "@JSName annotation, as it does not have any effect. " +
+            "This will be enforced in 1.0.")
+      } else if (annot.symbol == JSImportAnnotation) {
+        reporter.error(annot.pos,
+            "Non JS-native classes, traits and objects may not have an " +
+            "@JSImport annotation.")
+      }
+    }
   }
 
   private lazy val ScalaEnumClass = getRequiredClass("scala.Enumeration")
