@@ -14,13 +14,15 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js
+
 /** Base class of all JavaScript objects. */
-@native
+@js.native
 class Object extends Any {
   def this(value: Any) = this()
 
-  def toLocaleString(): String = native
-  def valueOf(): scala.Any = native
+  def toLocaleString(): String = js.native
+  def valueOf(): scala.Any = js.native
 
   /** Tests whether this object has the specified property as a direct property.
    *
@@ -29,10 +31,10 @@ class Object extends Any {
    *
    * MDN
    */
-  def hasOwnProperty(v: String): Boolean = native
+  def hasOwnProperty(v: String): Boolean = js.native
 
   /** Tests whether this object is in the prototype chain of another object. */
-  def isPrototypeOf(v: Object): Boolean = native
+  def isPrototypeOf(v: Object): Boolean = js.native
 
   /** Tests whether the specified property in an object can be enumerated by a
    *  call to [[js.Object.properties]], with the exception of properties
@@ -41,14 +43,14 @@ class Object extends Any {
    *
    *  MDN
    */
-  def propertyIsEnumerable(v: String): Boolean = native
+  def propertyIsEnumerable(v: String): Boolean = js.native
 }
 
 /** The top-level `Object` JavaScript object. */
-@native
+@js.native
 object Object extends Object {
-  def apply(): Object = native
-  def apply(value: Any): Object = native
+  def apply(): Object = js.native
+  def apply(value: Any): Object = js.native
 
   /** Tests whether the object has a property on itself or in its prototype
    *  chain. This method is the equivalent of `p in o` in JavaScript.
@@ -61,7 +63,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def getPrototypeOf(o: Object): Object = native
+  def getPrototypeOf(o: Object): Object = js.native
 
   /**
    * The Object.getOwnPropertyDescriptor() method returns a property descriptor
@@ -70,7 +72,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def getOwnPropertyDescriptor(o: Object, p: String): PropertyDescriptor = native
+  def getOwnPropertyDescriptor(o: Object, p: String): PropertyDescriptor = js.native
 
   /**
    * Object.getOwnPropertyNames returns an array whose elements are strings
@@ -82,7 +84,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def getOwnPropertyNames(o: Object): Array[String] = native
+  def getOwnPropertyNames(o: Object): Array[String] = js.native
 
   /**
    * The Object.create() method creates a new object with the specified
@@ -90,8 +92,8 @@ object Object extends Object {
    *
    * MDN
    */
-  def create(o: Object, properties: Any): Object = native
-  def create(o: Object): Object = native
+  def create(o: Object, properties: Any): Object = js.native
+  def create(o: Object): Object = js.native
 
   /**
    * The Object.defineProperty() method defines a new property directly on an
@@ -112,7 +114,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def defineProperty(o: Object, p: String, attributes: PropertyDescriptor): o.type = native
+  def defineProperty(o: Object, p: String, attributes: PropertyDescriptor): o.type = js.native
 
   /**
    * The Object.defineProperties() method defines new or modifies existing
@@ -120,7 +122,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def defineProperties(o: Object, properties: Any): o.type = native
+  def defineProperties(o: Object, properties: Any): o.type = js.native
 
   /**
    * The Object.seal() method seals an object, preventing new properties from
@@ -130,7 +132,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def seal(o: Object): o.type = native
+  def seal(o: Object): o.type = js.native
 
   /**
    * The Object.freeze() method freezes an object: that is, prevents new properties
@@ -141,7 +143,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def freeze(o: Object): o.type = native
+  def freeze(o: Object): o.type = js.native
 
   /**
    * The Object.preventExtensions() method prevents new properties from ever
@@ -161,7 +163,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def preventExtensions(o: Object): o.type = native
+  def preventExtensions(o: Object): o.type = js.native
 
   /**
    * Returns true if the object is sealed, otherwise false. An object is sealed
@@ -170,7 +172,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def isSealed(o: Object): Boolean = native
+  def isSealed(o: Object): Boolean = js.native
 
   /**
    * The Object.isFrozen() determines if an object is frozen.
@@ -181,7 +183,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def isFrozen(o: Object): Boolean = native
+  def isFrozen(o: Object): Boolean = js.native
 
   /**
    * Determines if extending of an object is allowed
@@ -193,7 +195,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def isExtensible(o: Object): Boolean = native
+  def isExtensible(o: Object): Boolean = js.native
 
   /**
    * The Object.keys() method returns an array of a given object's own enumerable
@@ -203,7 +205,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def keys(o: Object): Array[String] = native
+  def keys(o: Object): Array[String] = js.native
 
   /** Returns the names of all the enumerable properties of this object,
    *  including properties in its prototype chain.

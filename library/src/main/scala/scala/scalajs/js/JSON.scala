@@ -14,13 +14,15 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js
+
 /**
  * The JSON object contains methods for converting values to JavaScript Object
  * Notation (JSON) and for converting JSON to values.
  *
  * MDN
  */
-@native
+@js.native
 object JSON extends Object {
   /**
    * Parse a string as JSON, optionally transforming the value produced by parsing.
@@ -31,7 +33,7 @@ object JSON extends Object {
    *
    * MDN
    */
-  def parse(text: String, reviver: Function2[Any, Any, Any] = ???): Dynamic = native
+  def parse(text: String, reviver: Function2[Any, Any, Any] = ???): Dynamic = js.native
 
   /**
    * Convert a value to JSON, optionally replacing values if a replacer function
@@ -46,7 +48,7 @@ object JSON extends Object {
    *
    * MDN
    */
-  def stringify(value: Any, replacer: Function2[String, Any, Any] = ???, space: Any = ???): String = native
-  def stringify(value: Any, replacer: Array[Any]): String = native
-  def stringify(value: Any, replacer: Array[Any], space: Any): String = native
+  def stringify(value: Any, replacer: Function2[String, Any, Any] = ???, space: Any = ???): String = js.native
+  def stringify(value: Any, replacer: Array[Any]): String = js.native
+  def stringify(value: Any, replacer: Array[Any], space: Any): String = js.native
 }

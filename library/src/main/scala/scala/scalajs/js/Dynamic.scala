@@ -16,7 +16,8 @@ package scala.scalajs.js
 
 import scala.language.dynamics
 
-import annotation.{JSBracketAccess, JSBracketCall}
+import scala.scalajs.js
+import js.annotation.{JSBracketAccess, JSBracketCall}
 
 /** Dynamically typed JavaScript value.
  *
@@ -24,52 +25,52 @@ import annotation.{JSBracketAccess, JSBracketCall}
  *  dynamically typed way. You can read and write any field, call any method,
  *  apply any JavaScript operator to values of this type.
  */
-@native
+@js.native
 sealed trait Dynamic extends Any with scala.Dynamic {
   /** Calls a method of this object. */
   @JSBracketCall
-  def applyDynamic(name: String)(args: Any*): Dynamic = native
+  def applyDynamic(name: String)(args: Any*): Dynamic = js.native
 
   /** Reads a field of this object. */
   @JSBracketAccess
-  def selectDynamic(name: String): Dynamic = native
+  def selectDynamic(name: String): Dynamic = js.native
 
   /** Writes a field of this object. */
   @JSBracketAccess
-  def updateDynamic(name: String)(value: Any): Unit = native
+  def updateDynamic(name: String)(value: Any): Unit = js.native
 
   /** Calls this object as a callable. */
-  def apply(args: Any*): Dynamic = native
+  def apply(args: Any*): Dynamic = js.native
 
-  def unary_!(): Dynamic = native
+  def unary_!(): Dynamic = js.native
 
-  def unary_+(): Dynamic = native
-  def unary_-(): Dynamic = native
-  def unary_~(): Dynamic = native
+  def unary_+(): Dynamic = js.native
+  def unary_-(): Dynamic = js.native
+  def unary_~(): Dynamic = js.native
 
-  def +(that: Dynamic): Dynamic = native
-  def -(that: Dynamic): Dynamic = native
-  def *(that: Dynamic): Dynamic = native
-  def /(that: Dynamic): Dynamic = native
-  def %(that: Dynamic): Dynamic = native
-  def <<(that: Dynamic): Dynamic = native
-  def >>(that: Dynamic): Dynamic = native
-  def >>>(that: Dynamic): Dynamic = native
-  def &(that: Dynamic): Dynamic = native
-  def |(that: Dynamic): Dynamic = native
-  def ^(that: Dynamic): Dynamic = native
+  def +(that: Dynamic): Dynamic = js.native
+  def -(that: Dynamic): Dynamic = js.native
+  def *(that: Dynamic): Dynamic = js.native
+  def /(that: Dynamic): Dynamic = js.native
+  def %(that: Dynamic): Dynamic = js.native
+  def <<(that: Dynamic): Dynamic = js.native
+  def >>(that: Dynamic): Dynamic = js.native
+  def >>>(that: Dynamic): Dynamic = js.native
+  def &(that: Dynamic): Dynamic = js.native
+  def |(that: Dynamic): Dynamic = js.native
+  def ^(that: Dynamic): Dynamic = js.native
 
-  def <(that: Dynamic): Dynamic = native
-  def >(that: Dynamic): Dynamic = native
-  def <=(that: Dynamic): Dynamic = native
-  def >=(that: Dynamic): Dynamic = native
+  def <(that: Dynamic): Dynamic = js.native
+  def >(that: Dynamic): Dynamic = js.native
+  def <=(that: Dynamic): Dynamic = js.native
+  def >=(that: Dynamic): Dynamic = js.native
 
-  def &&(that: Dynamic): Dynamic = native
-  def ||(that: Dynamic): Dynamic = native
+  def &&(that: Dynamic): Dynamic = js.native
+  def ||(that: Dynamic): Dynamic = js.native
 
   // Work around the annoying implicits in Predef in Scala 2.10.
-  def x: Dynamic = native
-  def x_=(value: Any): Unit = native
+  def x: Dynamic = js.native
+  def x_=(value: Any): Unit = js.native
 }
 
 /** Factory for dynamically typed JavaScript values. */

@@ -16,13 +16,14 @@ package scala.scalajs.js
 
 import scala.language.implicitConversions
 
-import scala.scalajs.js.annotation._
+import scala.scalajs.js
+import js.annotation._
 
 /** Operations on JavaScript numbers. */
-@native
+@js.native
 trait JSNumberOps extends Any {
 
-  def toString(radix: Int): String = native
+  def toString(radix: Int): String = js.native
 
   /**
    * Returns a string representation of number that does not use exponential
@@ -34,8 +35,8 @@ trait JSNumberOps extends Any {
    *
    * MDN
    */
-  def toFixed(fractionDigits: Int): String = native
-  def toFixed(): String = native
+  def toFixed(fractionDigits: Int): String = js.native
+  def toFixed(): String = js.native
 
   /**
    * Returns a string representing a Number object in exponential notation with one
@@ -51,8 +52,8 @@ trait JSNumberOps extends Any {
    *
    * MDN
    */
-  def toExponential(fractionDigits: Int): String = native
-  def toExponential(): String = native
+  def toExponential(fractionDigits: Int): String = js.native
+  def toExponential(): String = js.native
 
   /**
    * Returns a string representing a Number object in fixed-point or exponential
@@ -65,8 +66,8 @@ trait JSNumberOps extends Any {
    *
    * MDN
    */
-  def toPrecision(precision: Int): String = native
-  def toPrecision(): String = native
+  def toPrecision(precision: Int): String = js.native
+  def toPrecision(): String = js.native
 }
 
 object JSNumberOps {

@@ -14,7 +14,8 @@
  */
 package scala.scalajs.js
 
-import annotation._
+import scala.scalajs.js
+import js.annotation._
 
 /**
  *  Arrays are list-like objects whose prototype has methods to perform
@@ -36,7 +37,7 @@ import annotation._
  *
  *  @constructor Creates a new array of length 0.
  */
-@native
+@js.native
 class Array[A] extends Object {
   /** Creates a new array with the given length.
    *  @param arrayLength Initial length of the array.
@@ -47,21 +48,21 @@ class Array[A] extends Object {
   // def this(items: A*) = this()
 
   /** Length of the array. */
-  def length: Int = native
+  def length: Int = js.native
 
   /** Sets the length of the array.
    *  If the new length is bigger than the old length, created slots are
    *  filled with `undefined` (irrespective of the type argument `A`!).
    *  If the new length is smaller than the old length, the array is shrunk.
    */
-  def length_=(v: Int): Unit = native
+  def length_=(v: Int): Unit = js.native
 
   /** Access the element at the given index. */
   @JSBracketAccess
-  def apply(index: Int): A = native
+  def apply(index: Int): A = js.native
   /** Set the element at the given index. */
   @JSBracketAccess
-  def update(index: Int, value: A): Unit = native
+  def update(index: Int, value: A): Unit = js.native
 
   /**
    * concat creates a new array consisting of the elements in the this object
@@ -71,7 +72,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def concat[B >: A](items: Array[_ <: B]*): Array[B] = native
+  def concat[B >: A](items: Array[_ <: B]*): Array[B] = js.native
 
   /**
    * The join() method joins all elements of an array into a string.
@@ -80,7 +81,7 @@ class Array[A] extends Object {
    * The separator is converted to a string if necessary. If omitted, the
    * array elements are separated with a comma.
    */
-  def join(seperator: String = ","): String = native
+  def join(seperator: String = ","): String = js.native
 
   /**
    * The pop() method removes the last element from an array and returns that
@@ -88,7 +89,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def pop(): A = native
+  def pop(): A = js.native
 
   /**
    * The push() method mutates an array by appending the given elements and
@@ -96,7 +97,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def push(items: A*): Int = native
+  def push(items: A*): Int = js.native
 
   /**
    * The reverse() method reverses an array in place. The first array element
@@ -105,7 +106,7 @@ class Array[A] extends Object {
    * MDN
    */
   @JSName("reverse")
-  def reverseInPlace(): Array[A] = native
+  def reverseInPlace(): Array[A] = js.native
 
   /**
    * The shift() method removes the first element from an array and returns that
@@ -113,7 +114,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def shift(): A = native
+  def shift(): A = js.native
 
   /**
    * The slice() method returns a shallow copy of a portion of an array.
@@ -121,7 +122,7 @@ class Array[A] extends Object {
    * MDN
    */
   @JSName("slice")
-  def jsSlice(start: Int = 0, end: Int = Int.MaxValue): Array[A] = native
+  def jsSlice(start: Int = 0, end: Int = Int.MaxValue): Array[A] = js.native
 
   /**
    * The sort() method sorts the elements of an array in place and returns the
@@ -135,7 +136,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def sort(compareFn: Function2[A, A, Int] = ???): Array[A] = native
+  def sort(compareFn: Function2[A, A, Int] = ???): Array[A] = js.native
 
   /** Removes and adds new elements at a given index in the array.
    *
@@ -150,7 +151,7 @@ class Array[A] extends Object {
    *  @param items       Elements to insert at index
    *  @return An array of the elements that were deleted
    */
-  def splice(index: Int, deleteCount: Int, items: A*): Array[A] = native
+  def splice(index: Int, deleteCount: Int, items: A*): Array[A] = js.native
 
   /**
    * The unshift() method adds one or more elements to the beginning of an array
@@ -158,18 +159,18 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def unshift(items: A*): Int = native
+  def unshift(items: A*): Int = js.native
 }
 
 /** Factory for [[js.Array]] objects. */
-@native
+@js.native
 object Array extends Object {
   // Do not expose this one - use new Array(len) instead
-  // def apply[A](arrayLength: Int): Array[A] = native
+  // def apply[A](arrayLength: Int): Array[A] = js.native
 
   /** Creates a new array with the given items. */
   def apply[A](items: A*): Array[A] = sys.error("stub")
 
   /** Returns true if the given value is an array. */
-  def isArray(arg: Any): Boolean = native
+  def isArray(arg: Any): Boolean = js.native
 }

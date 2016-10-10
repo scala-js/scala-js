@@ -10,12 +10,14 @@
 
 package scala.scalajs.js
 
-@native
+import scala.scalajs.js
+
+@js.native
 trait PropertyDescriptor extends Object {
-  var configurable: Boolean = native
-  var enumerable: Boolean = native
-  var value: Any = native
-  var writable: Boolean = native
-  var get: Function0[Any] = native
-  var set: Function1[Any, Any] = native
+  var configurable: Boolean = js.native
+  var enumerable: Boolean = js.native
+  var value: Any = js.native
+  var writable: Boolean = js.native
+  var get: Function0[Any] = js.native
+  var set: Function1[Any, Any] = js.native
 }

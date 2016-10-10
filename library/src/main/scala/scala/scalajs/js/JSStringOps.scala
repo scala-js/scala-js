@@ -16,14 +16,15 @@ package scala.scalajs.js
 
 import scala.language.implicitConversions
 
-import scala.scalajs.js.annotation._
+import scala.scalajs.js
+import js.annotation._
 
 /** Operations on JavaScript strings.
  *
  *  The methods with an equivalent signature in [[java.lang.String String]] but
  *  with a different meaning are prefixed by `js` in this trait.
  */
-@native
+@js.native
 trait JSStringOps extends Any {
 
   /**
@@ -35,9 +36,9 @@ trait JSStringOps extends Any {
    * MDN
    */
   @JSName("indexOf")
-  def jsIndexOf(searchString: String, position: Int): Int = native
+  def jsIndexOf(searchString: String, position: Int): Int = js.native
   @JSName("indexOf")
-  def jsIndexOf(searchString: String): Int = native
+  def jsIndexOf(searchString: String): Int = js.native
 
   /**
    * Returns the index within the calling String object of the last occurrence
@@ -47,9 +48,9 @@ trait JSStringOps extends Any {
    * MDN
    */
   @JSName("lastIndexOf")
-  def jsLastIndexOf(searchString: String, position: Int): Int = native
+  def jsLastIndexOf(searchString: String, position: Int): Int = js.native
   @JSName("lastIndexOf")
-  def jsLastIndexOf(searchString: String): Int = native
+  def jsLastIndexOf(searchString: String): Int = js.native
 
   /**
    * Returns a number indicating whether a reference string comes before or
@@ -61,7 +62,7 @@ trait JSStringOps extends Any {
    *
    * MDN
    */
-  def localeCompare(that: String): Int = native
+  def localeCompare(that: String): Int = js.native
 
   /**
    * Used to retrieve the matches when matching a string against a regular
@@ -78,8 +79,8 @@ trait JSStringOps extends Any {
    *
    * MDN
    */
-  def `match`(regexp: String): Array[String] = native
-  def `match`(regexp: RegExp): Array[String] = native
+  def `match`(regexp: String): Array[String] = js.native
+  def `match`(regexp: RegExp): Array[String] = js.native
 
   /**
    * Returns a new string with some or all matches of a pattern replaced by a
@@ -96,13 +97,13 @@ trait JSStringOps extends Any {
    * MDN
    */
   @JSName("replace")
-  def jsReplace(searchValue: String, replaceValue: String): String = native
+  def jsReplace(searchValue: String, replaceValue: String): String = js.native
   @JSName("replace")
-  def jsReplace(searchValue: String, replaceValue: Any): String = native
+  def jsReplace(searchValue: String, replaceValue: Any): String = js.native
   @JSName("replace")
-  def jsReplace(searchValue: RegExp, replaceValue: String): String = native
+  def jsReplace(searchValue: RegExp, replaceValue: String): String = js.native
   @JSName("replace")
-  def jsReplace(searchValue: RegExp, replaceValue: Any): String = native
+  def jsReplace(searchValue: RegExp, replaceValue: Any): String = js.native
 
   /**
    * If successful, search returns the index of the regular expression inside
@@ -115,8 +116,8 @@ trait JSStringOps extends Any {
    *
    * MDN
    */
-  def search(regexp: String): Int = native
-  def search(regexp: RegExp): Int = native
+  def search(regexp: String): Int = js.native
+  def search(regexp: RegExp): Int = js.native
 
   /**
    * slice extracts the text from one string and returns a new string. Changes
@@ -132,9 +133,9 @@ trait JSStringOps extends Any {
    * MDN
    */
   @JSName("slice")
-  def jsSlice(start: Int, end: Int): String = native
+  def jsSlice(start: Int, end: Int): String = js.native
   @JSName("slice")
-  def jsSlice(start: Int): String = native
+  def jsSlice(start: Int): String = js.native
 
   /**
    * Splits a String object into an array of strings by separating the string
@@ -156,13 +157,13 @@ trait JSStringOps extends Any {
    * MDN
    */
   @JSName("split")
-  def jsSplit(separator: String, limit: Int): Array[String] = native
+  def jsSplit(separator: String, limit: Int): Array[String] = js.native
   @JSName("split")
-  def jsSplit(separator: String): Array[String] = native
+  def jsSplit(separator: String): Array[String] = js.native
   @JSName("split")
-  def jsSplit(separator: RegExp, limit: Int): Array[String] = native
+  def jsSplit(separator: RegExp, limit: Int): Array[String] = js.native
   @JSName("split")
-  def jsSplit(separator: RegExp): Array[String] = native
+  def jsSplit(separator: RegExp): Array[String] = js.native
 
   /**
    * Returns a subset of a string between one index and another, or through
@@ -171,9 +172,9 @@ trait JSStringOps extends Any {
    * MDN
    */
   @JSName("substring")
-  def jsSubstring(start: Int, end: Int): String = native
+  def jsSubstring(start: Int, end: Int): String = js.native
   @JSName("substring")
-  def jsSubstring(start: Int): String = native
+  def jsSubstring(start: Int): String = js.native
 
   /**
    * The toLocaleLowerCase method returns the value of the string converted to
@@ -185,7 +186,7 @@ trait JSStringOps extends Any {
    *
    * MDN
    */
-  def toLocaleLowerCase(): String = native
+  def toLocaleLowerCase(): String = js.native
 
   /**
    * The toLocaleUpperCase method returns the value of the string converted to
@@ -197,13 +198,13 @@ trait JSStringOps extends Any {
    *
    * MDN
    */
-  def toLocaleUpperCase(): String = native
+  def toLocaleUpperCase(): String = js.native
 
   /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
    *  Returns the Unicode Normalization Form of this string.
    */
   def normalize(
-      form: UnicodeNormalizationForm = UnicodeNormalizationForm.NFC): String = native
+      form: UnicodeNormalizationForm = UnicodeNormalizationForm.NFC): String = js.native
 }
 
 object JSStringOps {

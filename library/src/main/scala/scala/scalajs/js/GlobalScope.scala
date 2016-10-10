@@ -10,6 +10,8 @@
 
 package scala.scalajs.js
 
+import scala.scalajs.js
+
 /** Marker trait for top-level objects representing the JS global scope.
  *
  *  When calling method on a top-level object or package object that is a
@@ -19,5 +21,5 @@ package scala.scalajs.js
  *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
 @deprecated("Use the annotation @js.annotation.JSGlobalScope instead.", "0.6.13")
-@native
+@js.native
 trait GlobalScope extends Any

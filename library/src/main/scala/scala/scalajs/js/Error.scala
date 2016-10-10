@@ -14,20 +14,22 @@
  */
 package scala.scalajs.js
 
-@native
+import scala.scalajs.js
+
+@js.native
 class Error(message0: String = "") extends Object {
-  val name: String = native
+  val name: String = js.native
   /**
    * Human-readable description of the error
    *
    * MDN
    */
-  val message: String = native
+  val message: String = js.native
 }
 
-@native
+@js.native
 object Error extends Object {
-  def apply(message: String = ""): Error = native
+  def apply(message: String = ""): Error = js.native
 }
 
 /**
@@ -36,12 +38,12 @@ object Error extends Object {
  *
  * MDN
  */
-@native
+@js.native
 class EvalError(message: String = "") extends Error
 
-@native
+@js.native
 object EvalError extends Object {
-  def apply(message: String = ""): EvalError = native
+  def apply(message: String = ""): EvalError = js.native
 }
 
 /**
@@ -56,12 +58,12 @@ object EvalError extends Object {
  *
  * MDN
  */
-@native
+@js.native
 class RangeError(message: String = "") extends Error
 
-@native
+@js.native
 object RangeError extends Object {
-  def apply(message: String = ""): RangeError = native
+  def apply(message: String = ""): RangeError = js.native
 }
 
 /**
@@ -72,12 +74,12 @@ object RangeError extends Object {
  *
  * MDN
  */
-@native
+@js.native
 class ReferenceError(message: String = "") extends Error
 
-@native
+@js.native
 object ReferenceError extends Object {
-  def apply(message: String = ""): ReferenceError = native
+  def apply(message: String = ""): ReferenceError = js.native
 }
 
 /**
@@ -88,12 +90,12 @@ object ReferenceError extends Object {
  *
  * MDN
  */
-@native
+@js.native
 class SyntaxError(message: String = "") extends Error
 
-@native
+@js.native
 object SyntaxError extends Object {
-  def apply(message: String = ""): SyntaxError = native
+  def apply(message: String = ""): SyntaxError = js.native
 }
 
 /**
@@ -104,12 +106,12 @@ object SyntaxError extends Object {
  *
  * MDN
  */
-@native
+@js.native
 class TypeError(message: String = "") extends Error
 
-@native
+@js.native
 object TypeError extends Object {
-  def apply(message: String = ""): TypeError = native
+  def apply(message: String = ""): TypeError = js.native
 }
 
 /**
@@ -119,10 +121,10 @@ object TypeError extends Object {
  *
  * MDN
  */
-@native
+@js.native
 class URIError(message: String = "") extends Error
 
-@native
+@js.native
 object URIError extends Object {
-  def apply(message: String = ""): URIError = native
+  def apply(message: String = ""): URIError = js.native
 }

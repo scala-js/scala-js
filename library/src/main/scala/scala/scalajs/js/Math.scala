@@ -14,64 +14,66 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js
+
 /**
  * Math is a built-in object that has properties and methods for mathematical
  * constants and functions. Not a function object.
  *
  * MDN
  */
-@native
+@js.native
 object Math extends Object {
   /**
    * Euler's constant and the base of natural logarithms, approximately 2.718.
    *
    * MDN
    */
-  val E: Double = native
+  val E: Double = js.native
   /**
    * Natural logarithm of 10, approximately 2.303.
    *
    * MDN
    */
-  val LN10: Double = native
+  val LN10: Double = js.native
   /**
    * Natural logarithm of 2, approximately 0.693.
    *
    * MDN
    */
-  val LN2: Double = native
+  val LN2: Double = js.native
   /**
    * Base 2 logarithm of E, approximately 1.443.
    *
    * MDN
    */
-  val LOG2E: Double = native
+  val LOG2E: Double = js.native
   /**
    * Base 10 logarithm of E, approximately 0.434.
    *
    * MSN
    */
-  val LOG10E: Double = native
+  val LOG10E: Double = js.native
   /**
    * Ratio of the circumference of a circle to its diameter, approximately 3.14159.
    *
    * MDN
    */
-  val PI: Double = native
+  val PI: Double = js.native
 
   /**
    * Square root of 1/2; equivalently, 1 over the square root of 2, approximately 0.707.
    *
    * MDN
    */
-  val SQRT1_2: Double = native
+  val SQRT1_2: Double = js.native
 
   /**
    * Square root of 2, approximately 1.414.
    *
    * MDN
    */
-  val SQRT2: Double = native
+  val SQRT2: Double = js.native
 
   /**
    * Returns the absolute value of a number.
@@ -81,7 +83,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def abs(x: Int): Int = native
+  def abs(x: Int): Int = js.native
 
   /**
    * Returns the absolute value of a number.
@@ -91,7 +93,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def abs(x: Double): Double = native
+  def abs(x: Double): Double = js.native
 
   /**
    * The Math.acos() function returns the arccosine (in radians) of a number.
@@ -101,7 +103,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def acos(x: Double): Double = native
+  def acos(x: Double): Double = js.native
 
   /**
    * The Math.asin() function returns the arcsine (in radians) of a number.
@@ -111,7 +113,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def asin(x: Double): Double = native
+  def asin(x: Double): Double = js.native
 
   /**
    * The Math.atan() function returns the arctangent (in radians) of a number.
@@ -120,7 +122,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def atan(x: Double): Double = native
+  def atan(x: Double): Double = js.native
 
   /**
    * The Math.atan2() function returns the arctangent of the quotient of its
@@ -137,7 +139,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def atan2(y: Double, x: Double): Double = native
+  def atan2(y: Double, x: Double): Double = js.native
 
   /**
    * The Math.ceil() function returns the smallest integer greater than or
@@ -145,7 +147,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def ceil(x: Double): Double = native
+  def ceil(x: Double): Double = js.native
 
   /**
    * The Math.cos() function returns the cosine of a number.
@@ -155,7 +157,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def cos(x: Double): Double = native
+  def cos(x: Double): Double = js.native
 
   /**
    * The Math.exp() function returns E^x, where x is the argument, and E is
@@ -163,7 +165,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def exp(x: Double): Double = native
+  def exp(x: Double): Double = js.native
 
   /**
    * The Math.floor() function returns the largest integer less than or equal
@@ -171,7 +173,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def floor(x: Double): Double = native
+  def floor(x: Double): Double = js.native
 
   /**
    * The Math.log() function returns the natural logarithm (base E) of a number.
@@ -180,14 +182,14 @@ object Math extends Object {
    *
    * MDN
    */
-  def log(x: Double): Double = native
+  def log(x: Double): Double = js.native
 
   /**
    * The Math.max() function returns the largest of zero or more numbers.
    *
    * MDN
    */
-  def max(value1: Int, values: Int*): Int = native
+  def max(value1: Int, values: Int*): Int = js.native
 
   /**
    * The Math.max() function returns the largest of zero or more numbers.
@@ -198,14 +200,14 @@ object Math extends Object {
    *
    * MDN
    */
-  def max(values: Double*): Double = native
+  def max(values: Double*): Double = js.native
 
   /**
    * The Math.min() function returns the smallest of zero or more numbers.
    *
    * MDN
    */
-  def min(value1: Int, values: Int*): Int = native
+  def min(value1: Int, values: Int*): Int = js.native
 
   /**
    * The Math.min() function returns the smallest of zero or more numbers.
@@ -216,14 +218,14 @@ object Math extends Object {
    *
    * MDN
    */
-  def min(values: Double*): Double = native
+  def min(values: Double*): Double = js.native
 
   /**
    * The Math.pow() function returns the base to the exponent Power,  that is, base^^exponent.
    *
    * MDN
    */
-  def pow(x: Double, y: Double): Double = native
+  def pow(x: Double, y: Double): Double = js.native
 
   /**
    * The Math.random() function returns a floating-point, pseudo-random number in
@@ -234,7 +236,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def random(): Double = native
+  def random(): Double = js.native
 
   /**
    * The Math.round() function returns the value of a number rounded to the
@@ -246,7 +248,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def round(x: Double): Double = native
+  def round(x: Double): Double = js.native
 
   /**
    * The Math.sin() function returns the sine of a number.
@@ -256,7 +258,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def sin(x: Double): Double = native
+  def sin(x: Double): Double = js.native
 
   /**
    * The Math.sqrt() function returns the square root (x\sqrt{x}) of a number.
@@ -265,7 +267,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def sqrt(x: Double): Double = native
+  def sqrt(x: Double): Double = js.native
 
   /**
    * The Math.tan() function returns the tangent of a number.
@@ -274,5 +276,5 @@ object Math extends Object {
    *
    * MDN
    */
-  def tan(x: Double): Double = native
+  def tan(x: Double): Double = js.native
 }

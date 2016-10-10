@@ -14,6 +14,8 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js
+
 /**
  * The Function constructor creates a new Function object. In JavaScript every
  * function is actually a Function object.
@@ -39,7 +41,7 @@ package scala.scalajs.js
  *
  * MDN
  */
-@native
+@js.native
 class Function(args: String*) extends Object {
   /**
    * length is a property of a function object, and indicates how many arguments
@@ -50,7 +52,7 @@ class Function(args: String*) extends Object {
    *
    * MDN
    */
-  val length: Int = native
+  val length: Int = js.native
 
   /**
    * The call() method calls a function with a given this value and arguments
@@ -82,11 +84,11 @@ class Function(args: String*) extends Object {
    * }}}
    *
    */
-  def call(thisArg: Any, argArray: Any*): Dynamic = native
+  def call(thisArg: Any, argArray: Any*): Dynamic = js.native
 
   // Do not expose apply: use call(thisArg, argArray: _*) instead.
-  // def apply[A](thisArg: Any, argArray: Array[A]): Dynamic = native
-  // def apply(thisArg: Any): Dynamic = native
+  // def apply[A](thisArg: Any, argArray: Array[A]): Dynamic = js.native
+  // def apply(thisArg: Any): Dynamic = js.native
 
   /**
    * The bind() method creates a new function that, when called, has its this
@@ -95,127 +97,127 @@ class Function(args: String*) extends Object {
    *
    * MDN
    */
-  def bind(thisArg: Any, argArray: Any*): Dynamic = native
+  def bind(thisArg: Any, argArray: Any*): Dynamic = js.native
 }
 
-@native
+@js.native
 object Function extends Object {
-  def apply(args: String*): Function = native
+  def apply(args: String*): Function = js.native
 }
 
 // scalastyle:off line.size.limit
 
-@native
+@js.native
 trait Function0[+R] extends Function {
   def apply(): R
 }
 
-@native
+@js.native
 trait Function1[-T1, +R] extends Function {
   def apply(arg1: T1): R
 }
 
-@native
+@js.native
 trait Function2[-T1, -T2, +R] extends Function {
   def apply(arg1: T1, arg2: T2): R
 }
 
-@native
+@js.native
 trait Function3[-T1, -T2, -T3, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3): R
 }
 
-@native
+@js.native
 trait Function4[-T1, -T2, -T3, -T4, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4): R
 }
 
-@native
+@js.native
 trait Function5[-T1, -T2, -T3, -T4, -T5, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5): R
 }
 
-@native
+@js.native
 trait Function6[-T1, -T2, -T3, -T4, -T5, -T6, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6): R
 }
 
-@native
+@js.native
 trait Function7[-T1, -T2, -T3, -T4, -T5, -T6, -T7, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7): R
 }
 
-@native
+@js.native
 trait Function8[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8): R
 }
 
-@native
+@js.native
 trait Function9[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9): R
 }
 
-@native
+@js.native
 trait Function10[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10): R
 }
 
-@native
+@js.native
 trait Function11[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10, arg11: T11): R
 }
 
-@native
+@js.native
 trait Function12[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10, arg11: T11, arg12: T12): R
 }
 
-@native
+@js.native
 trait Function13[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10, arg11: T11, arg12: T12, arg13: T13): R
 }
 
-@native
+@js.native
 trait Function14[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10, arg11: T11, arg12: T12, arg13: T13, arg14: T14): R
 }
 
-@native
+@js.native
 trait Function15[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, -T15, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10, arg11: T11, arg12: T12, arg13: T13, arg14: T14, arg15: T15): R
 }
 
-@native
+@js.native
 trait Function16[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, -T15, -T16, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10, arg11: T11, arg12: T12, arg13: T13, arg14: T14, arg15: T15, arg16: T16): R
 }
 
-@native
+@js.native
 trait Function17[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, -T15, -T16, -T17, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10, arg11: T11, arg12: T12, arg13: T13, arg14: T14, arg15: T15, arg16: T16, arg17: T17): R
 }
 
-@native
+@js.native
 trait Function18[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, -T15, -T16, -T17, -T18, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10, arg11: T11, arg12: T12, arg13: T13, arg14: T14, arg15: T15, arg16: T16, arg17: T17, arg18: T18): R
 }
 
-@native
+@js.native
 trait Function19[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, -T15, -T16, -T17, -T18, -T19, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10, arg11: T11, arg12: T12, arg13: T13, arg14: T14, arg15: T15, arg16: T16, arg17: T17, arg18: T18, arg19: T19): R
 }
 
-@native
+@js.native
 trait Function20[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, -T15, -T16, -T17, -T18, -T19, -T20, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10, arg11: T11, arg12: T12, arg13: T13, arg14: T14, arg15: T15, arg16: T16, arg17: T17, arg18: T18, arg19: T19, arg20: T20): R
 }
 
-@native
+@js.native
 trait Function21[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, -T15, -T16, -T17, -T18, -T19, -T20, -T21, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10, arg11: T11, arg12: T12, arg13: T13, arg14: T14, arg15: T15, arg16: T16, arg17: T17, arg18: T18, arg19: T19, arg20: T20, arg21: T21): R
 }
 
-@native
+@js.native
 trait Function22[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, -T15, -T16, -T17, -T18, -T19, -T20, -T21, -T22, +R] extends Function {
   def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10, arg11: T11, arg12: T12, arg13: T13, arg14: T14, arg15: T15, arg16: T16, arg17: T17, arg18: T18, arg19: T19, arg20: T20, arg21: T21, arg22: T22): R
 }

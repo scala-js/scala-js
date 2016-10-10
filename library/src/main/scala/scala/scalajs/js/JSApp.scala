@@ -1,6 +1,7 @@
 package scala.scalajs.js
 
-import annotation.{JSExport, JSExportDescendentObjects}
+import scala.scalajs.js
+import js.annotation.{JSExport, JSExportDescendentObjects}
 
 /** Base class for top-level, entry point main objects.
  *

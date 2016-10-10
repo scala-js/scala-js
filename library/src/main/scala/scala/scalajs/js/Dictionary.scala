@@ -14,7 +14,8 @@
  */
 package scala.scalajs.js
 
-import annotation.JSBracketAccess
+import scala.scalajs.js
+import js.annotation.JSBracketAccess
 
 /** Dictionary "view" of a JavaScript value.
  *
@@ -48,18 +49,18 @@ import annotation.JSBracketAccess
  *  call methods of [[Object js.Object]] on it, given that the name of these
  *  methods could be used as keys in the dictionary.
  */
-@native
+@js.native
 sealed trait Dictionary[A] extends Any {
   /** Reads a field of this object by its name.
    *
    *  This must not be called if the dictionary does not contain the key.
    */
   @JSBracketAccess
-  private[js] def rawApply(key: String): A = native
+  private[js] def rawApply(key: String): A = js.native
 
   /** Writes a field of this object by its name. */
   @JSBracketAccess
-  def update(key: String, value: A): Unit = native
+  def update(key: String, value: A): Unit = js.native
 
   /** Deletes a property of this object by its name.
    *
