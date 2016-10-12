@@ -1409,6 +1409,31 @@ object Build {
           IO.write(outFile,
               replaced.replace("@Test def workTest(): Unit = sys.error(\"stubs\")", unitTests))
           Seq(outFile)
+        },
+
+        // Exclude tests based on version-dependent bugs
+        sources in Test := {
+          val sourceFiles = (sources in Test).value
+          val v = scalaVersion.value
+
+          val hasBug2625 = v == "2.12.0-RC1"
+          val sourceFiles1 = {
+            if (hasBug2625)
+              sourceFiles.filterNot(_.getName == "PatMatOuterPointerCheckTest.scala")
+            else
+              sourceFiles
+          }
+
+          val hasBug2382 =
+            v.startsWith("2.10.") || v.startsWith("2.11.") || v == "2.12.0-RC1"
+          val sourceFiles2 = {
+            if (hasBug2382)
+              sourceFiles1.filterNot(_.getName == "OuterClassTest.scala")
+            else
+              sourceFiles1
+          }
+
+          sourceFiles2
         }
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
