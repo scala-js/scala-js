@@ -86,6 +86,12 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
         refClass.values ++ volatileRefClass.values)
   }
 
+  /** See comment in `encodeFieldSym()`. */
+  private lazy val shouldMangleOuterPointerName = {
+    val v = scala.util.Properties.versionNumberString
+    !(v.startsWith("2.10.") || v.startsWith("2.11.") || v == "2.12.0-RC1")
+  }
+
   def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
         "encodeFieldSym called with non-field symbol: " + sym)
@@ -99,12 +105,29 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
      * because they are emitted as private by our .scala source files, but
      * they are considered public at use site since their symbols come from
      * Java-emitted .class files.
+     *
+     * Starting with 2.12.0-RC2, we also special case outer fields. This
+     * essentially fixes #2382, which is caused by a class having various $outer
+     * pointers in its hierarchy that points to different outer instances.
+     * Without this fix, they all collapse to the same field in the IR. We
+     * cannot fix this for all Scala versions at the moment, because that would
+     * break backwards binary compatibility. We *do* fix it for 2.12.0-RC2
+     * onwards because that also fixes #2625, which surfaced in 2.12 and is
+     * therefore a regression. We can do this because the 2.12 ecosystem is
+     * not binary compatible anyway (because of Scala) so we can break it on
+     * our side at the same time.
      */
-    val idSuffix =
-      if (sym.isPrivate || allRefClasses.contains(sym.owner))
+    val idSuffix: String = {
+      val usePerClassSuffix = {
+        sym.isPrivate ||
+        allRefClasses.contains(sym.owner) ||
+        (shouldMangleOuterPointerName && sym.isOuterField)
+      }
+      if (usePerClassSuffix)
         sym.owner.ancestors.count(!_.isTraitOrInterface).toString
       else
         "f"
+    }
 
     val encodedName = name + "$" + idSuffix
     js.Ident(mangleJSName(encodedName), Some(sym.unexpandedName.decoded))
