@@ -4929,6 +4929,10 @@ abstract class GenJSCode extends plugins.PluginComponent
          * and earlier. Since they did not store their loading spec in the IR,
          * the js.LoadJSModule() IR node cannot be used to load them. We must
          * "desugar" it early in the compiler.
+         *
+         * Moreover, before 0.6.13, these objects would not have the
+         * annotation @JSGlobalScope. Instead, they would inherit from the
+         * magical trait js.GlobalScope.
          */
         if (sym.isSubClass(JSGlobalScopeClass)) {
           genLoadGlobal()

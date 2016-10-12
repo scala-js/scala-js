@@ -106,6 +106,17 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+      /* Technically breaking: remove `extends js.GlobalScope`.
+       * Even though not binary compatible at .class file level, this is binary
+       * compatible at the .sjsir level, because the parent js.GlobalScope is
+       * a JS type, so its IR type is `any` anyway.
+       * It is however not source compatible, but I'm willing to break the code
+       * of someone who would have declared a value of type js.GlobalScope.
+       */
+      ProblemFilters.exclude[MissingTypesProblem](
+          "scala.scalajs.js.URIUtils$"),
+      ProblemFilters.exclude[MissingTypesProblem](
+          "scala.scalajs.js.timers.RawTimers$")
   )
 
   val TestInterface = Seq(

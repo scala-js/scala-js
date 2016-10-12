@@ -10,6 +10,7 @@
 package scala.scalajs.js.timers
 
 import scala.scalajs.js
+import js.annotation.JSGlobalScope
 
 /**
  *  <span class="badge badge-non-std" style="float: right;">Non-Standard</span>
@@ -20,7 +21,8 @@ import scala.scalajs.js
  *  [[timers]] as they are more Scala-like.
  */
 @js.native
-object RawTimers extends js.GlobalScope {
+@JSGlobalScope
+object RawTimers extends js.Object {
 
   /** Schedule `handler` for execution in `interval` milliseconds.
    *
