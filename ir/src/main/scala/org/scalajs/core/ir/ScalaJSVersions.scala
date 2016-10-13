@@ -10,7 +10,7 @@ object ScalaJSVersions {
    */
 
   /** Scala.js version. */
-  val current: String = "0.6.13-SNAPSHOT"
+  val current: String = "0.6.13"
 
   /** true iff the Scala.js version is a snapshot version. */
   val currentIsSnapshot: Boolean = current endsWith "-SNAPSHOT"
@@ -21,11 +21,13 @@ object ScalaJSVersions {
    *  - a prior release version (i.e. "0.5.0", *not* "0.5.0-SNAPSHOT")
    *  - `current`
    */
-  val binaryEmitted: String = current
+  val binaryEmitted: String = "0.6.13"
 
   /** Versions whose binary files we can support (used by deserializer) */
-  val binarySupported: Set[String] =
-    Set("0.6.0", "0.6.3", "0.6.4", "0.6.5", "0.6.6", "0.6.8", binaryEmitted)
+  val binarySupported: Set[String] = {
+    Set("0.6.0", "0.6.3", "0.6.4", "0.6.5", "0.6.6", "0.6.8", "0.6.13",
+        binaryEmitted)
+  }
 
   // Just to be extra safe
   assert(binarySupported contains binaryEmitted)
