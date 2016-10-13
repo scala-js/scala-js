@@ -119,12 +119,16 @@ class MainGenericRunner {
             StringLiteral("launch"),
             Nil,
             AnyType,
-            Block(
-              Apply(LoadModule(ClassType(mainModuleClassName)),
-                Ident("main__AT__V"),
-                List(ArrayValue(ArrayType("T", 1), args.map(StringLiteral(_))))
-              )(NoType),
-              Undefined()
+            Some(
+              Block(
+                Apply(LoadModule(ClassType(mainModuleClassName)),
+                  Ident("main__AT__V"),
+                  List(
+                    ArrayValue(ArrayType("T", 1), args.map(StringLiteral(_)))
+                  )
+                )(NoType),
+                Undefined()
+              )
             )
           )(OptimizerHints.empty, None),
           ModuleExportDef(exportName)

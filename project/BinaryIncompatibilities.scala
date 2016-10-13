@@ -5,7 +5,32 @@ object BinaryIncompatibilities {
   val IR = Seq(
       // Breaking changes
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.core.ir.Trees#ClassDef.jsName")
+          "org.scalajs.core.ir.Trees#ClassDef.jsName"),
+
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.ir.Trees$Try"),
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.ir.Trees$Try$"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.ir.Trees#MethodDef.apply"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.ir.Trees#MethodDef.body"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.ir.Trees#MethodDef.copy"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.ir.Trees#MethodDef.this"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.apply"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.copy"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.getterBody"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.setterArg"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.setterBody"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.this")
   )
 
   val Tools = Seq(
@@ -36,6 +61,17 @@ object BinaryIncompatibilities {
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.desugarToFunction"),
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.desugarToFunction"),
+
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.Env"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#Env.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#Env.withLabeledExprLHS"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#Env.lhsForLabeledExpr"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.pushLhsInto"),
 
       // private[emitter], not an issue
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
@@ -73,7 +109,23 @@ object BinaryIncompatibilities {
 
       // private[emitter], not an issue
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.core.tools.linker.backend.emitter.CoreJSLibs.lib")
+          "org.scalajs.core.tools.linker.backend.emitter.CoreJSLibs.lib"),
+
+      // private, not an issue
+      ProblemFilters.exclude[AbstractClassProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore$AllocationSite"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#AllocationSite.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RefinedType.apply"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RefinedType.apply"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RefinedType.copy"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RefinedType.allocationSite"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RefinedType.this")
   )
 
   val JSEnvs = Seq(

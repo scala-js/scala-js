@@ -40,7 +40,7 @@ object JavaLangString {
           List(ParamDef(Ident("that", Some("that")), AnyType,
             mutable = false, rest = false)),
           BooleanType,
-          {
+          Some {
             BinaryOp(BinaryOp.===,
               This()(ThisType),
               VarRef(Ident("that", Some("that")))(AnyType))
@@ -52,7 +52,7 @@ object JavaLangString {
           Ident("hashCode__I", Some("hashCode__I")),
           Nil,
           IntType,
-          {
+          Some {
             Apply(
               LoadModule(ClassType("sjsr_RuntimeString$")),
               Ident("hashCode__T__I", Some("hashCode__T__I")),
@@ -66,7 +66,7 @@ object JavaLangString {
           List(ParamDef(Ident("that", Some("that")), ThisType,
             mutable = false, rest = false)),
           IntType,
-          {
+          Some {
             Apply(
               LoadModule(ClassType("sjsr_RuntimeString$")),
               Ident("compareTo__T__T__I", Some("compareTo__T__T__I")),
@@ -82,7 +82,7 @@ object JavaLangString {
           List(ParamDef(Ident("that", Some("that")), AnyType,
             mutable = false, rest = false)),
           IntType,
-          {
+          Some {
             Apply(
               This()(ThisType),
               Ident("compareTo__T__I", Some("compareTo__T__I")),
@@ -97,7 +97,7 @@ object JavaLangString {
           Ident("toString__T", Some("toString__T")),
           Nil,
           ClassType(StringClass),
-          {
+          Some {
             This()(ThisType)
           })(OptimizerHints.empty.withInline(true), None),
 
@@ -108,7 +108,7 @@ object JavaLangString {
           List(ParamDef(Ident("i", Some("i")), IntType,
             mutable = false, rest = false)),
           IntType,
-          {
+          Some {
             Apply(
               LoadModule(ClassType("sjsr_RuntimeString$")),
               Ident("charAt__T__I__C", Some("charAt__T__I__C")),
@@ -123,7 +123,7 @@ object JavaLangString {
           Ident("length__I", Some("length__I")),
           Nil,
           IntType,
-          {
+          Some {
             Apply(
               LoadModule(ClassType("sjsr_RuntimeString$")),
               Ident("length__T__I", Some("length__T__I")),
@@ -144,7 +144,7 @@ object JavaLangString {
               mutable = false, rest = false)
           ),
           ClassType("jl_CharSequence"),
-          {
+          Some {
             Apply(
               LoadModule(ClassType("sjsr_RuntimeString$")),
               Ident("subSequence__T__I__I__jl_CharSequence",

@@ -116,9 +116,6 @@ object Printers {
 
     def print(tree: Tree): Unit = {
       tree match {
-        case EmptyTree =>
-          print("<empty>")
-
         // Definitions
 
         case VarDef(ident, vtpe, mutable, rhs) =>
@@ -222,19 +219,29 @@ object Printers {
           print(cond)
           print(')')
 
-        case Try(block, errVar, handler, finalizer) =>
+        case TryFinally(TryCatch(block, errVar, handler), finalizer) =>
           print("try ")
           printBlock(block)
-          if (handler != EmptyTree) {
-            print(" catch (")
-            print(errVar)
-            print(") ")
-            printBlock(handler)
-          }
-          if (finalizer != EmptyTree) {
-            print(" finally ")
-            printBlock(finalizer)
-          }
+          print(" catch (")
+          print(errVar)
+          print(") ")
+          printBlock(handler)
+          print(" finally ")
+          printBlock(finalizer)
+
+        case TryCatch(block, errVar, handler) =>
+          print("try ")
+          printBlock(block)
+          print(" catch (")
+          print(errVar)
+          print(") ")
+          printBlock(handler)
+
+        case TryFinally(block, finalizer) =>
+          print("try ")
+          printBlock(block)
+          print(" finally ")
+          printBlock(finalizer)
 
         case Throw(expr) =>
           print("throw ")
@@ -807,27 +814,29 @@ object Printers {
           print("def ")
           print(name)
           printSig(args, resultType)
-          if (body == EmptyTree)
+          body.fold {
             print("<abstract>")
-          else
+          } { body =>
             printBlock(body)
+          }
 
-        case PropertyDef(name, getterBody, setterArg, setterBody) =>
-          if (getterBody != EmptyTree) {
+        case PropertyDef(name, getterBody, setterArgAndBody) =>
+          getterBody foreach { body =>
             print("get ")
             print(name)
             printSig(Nil, AnyType)
-            printBlock(getterBody)
-
-            if (setterBody != EmptyTree)
-              println()
+            printBlock(body)
           }
 
-          if (setterBody != EmptyTree) {
+          if (getterBody.isDefined && setterArgAndBody.isDefined) {
+            println()
+          }
+
+          setterArgAndBody foreach { case (arg, body) =>
             print("set ")
             print(name)
-            printSig(setterArg :: Nil, NoType)
-            printBlock(setterBody)
+            printSig(arg :: Nil, NoType)
+            printBlock(body)
           }
 
         case ConstructorExportDef(fullName, args, body) =>

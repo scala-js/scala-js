@@ -239,13 +239,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       else ClassType(classDef.name.name)
     val bodyEnv = Env.fromSignature(thisType, params, resultType, isConstructor)
 
-    if (body == EmptyTree) {
+    body.fold {
       // Abstract
       if (static)
         reportError(s"Static method ${classDef.name.name}.$name cannot be abstract")
       else if (isConstructor)
         reportError(s"Constructor ${classDef.name.name}.$name cannot be abstract")
-    } else {
+    } { body =>
       // Concrete
       if (resultType == NoType)
         typecheckStat(body, bodyEnv)
@@ -297,8 +297,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         if (classDef.kind.isJSClass) AnyType
         else ClassType(classDef.name.name)
 
-      val bodyEnv = Env.fromSignature(thisType, params, resultType)
-      typecheckExpect(body, bodyEnv, resultType)
+      body.fold {
+        reportError("Exported method cannot be abstract")
+      } { body =>
+        val bodyEnv = Env.fromSignature(thisType, params, resultType)
+        typecheckExpect(body, bodyEnv, resultType)
+      }
     }
   }
 
@@ -312,41 +316,45 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           "but must be NoType")
     }
 
-    val bodyStats = body match {
-      case Block(stats) => stats
-      case _            => body :: Nil
+    body.fold {
+      reportError("JS class constructor cannot be abstract.")
+    } { body =>
+      val bodyStats = body match {
+        case Block(stats) => stats
+        case _            => body :: Nil
+      }
+
+      val (prepStats, superCallAndRest) =
+        bodyStats.span(!_.isInstanceOf[JSSuperConstructorCall])
+
+      val (superCall, restStats) = superCallAndRest match {
+        case (superCall: JSSuperConstructorCall) :: restStats =>
+          (superCall, restStats)
+        case _ =>
+          reportError(
+              "A JS class constructor must contain one super constructor " +
+              "call at the top-level")
+          (JSSuperConstructorCall(Nil)(methodDef.pos), Nil)
+      }
+
+      val initialEnv = Env.fromSignature(NoType, params, NoType,
+          isConstructor = true)
+
+      val preparedEnv = (initialEnv /: prepStats) { (prevEnv, stat) =>
+        typecheckStat(stat, prevEnv)
+      }
+
+      for (arg <- superCall.args)
+        typecheckExprOrSpread(arg, preparedEnv)
+
+      val restEnv = preparedEnv.withThis(AnyType)
+      typecheckStat(Block(restStats)(methodDef.pos), restEnv)
     }
-
-    val (prepStats, superCallAndRest) =
-      bodyStats.span(!_.isInstanceOf[JSSuperConstructorCall])
-
-    val (superCall, restStats) = superCallAndRest match {
-      case (superCall: JSSuperConstructorCall) :: restStats =>
-        (superCall, restStats)
-      case _ =>
-        reportError(
-            "A JS class constructor must contain one super constructor call " +
-            "at the top-level")
-        (JSSuperConstructorCall(Nil)(methodDef.pos), Nil)
-    }
-
-    val initialEnv = Env.fromSignature(NoType, params, NoType,
-        isConstructor = true)
-
-    val preparedEnv = (initialEnv /: prepStats) { (prevEnv, stat) =>
-      typecheckStat(stat, prevEnv)
-    }
-
-    for (arg <- superCall.args)
-      typecheckExprOrSpread(arg, preparedEnv)
-
-    val restEnv = preparedEnv.withThis(AnyType)
-    typecheckStat(Block(restStats)(methodDef.pos), restEnv)
   }
 
   private def checkExportedPropertyDef(propDef: PropertyDef,
       classDef: LinkedClass): Unit = withPerMethodState {
-    val PropertyDef(_, getterBody, setterArg, setterBody) = propDef
+    val PropertyDef(_, getterBody, setterArgAndBody) = propDef
     implicit val ctx = ErrorContext(propDef)
 
     if (!classDef.kind.isAnyScalaJSDefinedClass) {
@@ -358,12 +366,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       if (classDef.kind.isJSClass) AnyType
       else ClassType(classDef.name.name)
 
-    if (getterBody != EmptyTree) {
+    getterBody.foreach { getterBody =>
       val getterBodyEnv = Env.fromSignature(thisType, Nil, AnyType)
       typecheckExpect(getterBody, getterBodyEnv, AnyType)
     }
 
-    if (setterBody != EmptyTree) {
+    setterArgAndBody.foreach { case (setterArg, setterBody) =>
       if (setterArg.ptpe != AnyType)
         reportError("Setter argument of exported property def has type "+
             s"${setterArg.ptpe}, but must be Any")
@@ -499,16 +507,16 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         typecheckExpect(cond, env, BooleanType)
         env
 
-      case Try(block, errVar, handler, finalizer) =>
+      case TryCatch(block, errVar, handler) =>
         typecheckStat(block, env)
-        if (handler != EmptyTree) {
-          val handlerEnv =
-            env.withLocal(LocalDef(errVar.name, AnyType, false)(errVar.pos))
-          typecheckStat(handler, handlerEnv)
-        }
-        if (finalizer != EmptyTree) {
-          typecheckStat(finalizer, env)
-        }
+        val handlerEnv =
+          env.withLocal(LocalDef(errVar.name, AnyType, false)(errVar.pos))
+        typecheckStat(handler, handlerEnv)
+        env
+
+      case TryFinally(block, finalizer) =>
+        typecheckStat(block, env)
+        typecheckStat(finalizer, env)
         env
 
       case Match(selector, cases, default) =>
@@ -612,17 +620,17 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         label.foreach(checkDeclareLabel)
         typecheckStat(body, env)
 
-      case Try(block, errVar, handler, finalizer) =>
+      case TryCatch(block, errVar, handler) =>
         val tpe = tree.tpe
         typecheckExpect(block, env, tpe)
-        if (handler != EmptyTree) {
-          val handlerEnv =
-            env.withLocal(LocalDef(errVar.name, AnyType, false)(errVar.pos))
-          typecheckExpect(handler, handlerEnv, tpe)
-        }
-        if (finalizer != EmptyTree) {
-          typecheckStat(finalizer, env)
-        }
+        val handlerEnv =
+          env.withLocal(LocalDef(errVar.name, AnyType, false)(errVar.pos))
+        typecheckExpect(handler, handlerEnv, tpe)
+
+      case TryFinally(block, finalizer) =>
+        val tpe = tree.tpe
+        typecheckExpect(block, env, tpe)
+        typecheckStat(finalizer, env)
 
       case Throw(expr) =>
         typecheckExpr(expr, env)

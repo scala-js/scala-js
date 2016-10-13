@@ -37,7 +37,7 @@ object JavaLangObject {
           Ident("init___", Some("<init>")),
           Nil,
           NoType,
-          Skip())(OptimizerHints.empty, None),
+          Some(Skip()))(OptimizerHints.empty, None),
 
         /* def getClass(): java.lang.Class[_] = <getclass>(this) */
         MethodDef(
@@ -45,7 +45,7 @@ object JavaLangObject {
           Ident("getClass__jl_Class", Some("getClass__jl_Class")),
           Nil,
           ClassType(ClassClass),
-          {
+          Some {
             GetClass(This()(ThisType))
           })(OptimizerHints.empty.withInline(true), None),
 
@@ -55,7 +55,7 @@ object JavaLangObject {
           Ident("hashCode__I", Some("hashCode__I")),
           Nil,
           IntType,
-          {
+          Some {
             Apply(
               LoadModule(ClassType("jl_System$")),
               Ident("identityHashCode__O__I", Some("identityHashCode")),
@@ -69,7 +69,7 @@ object JavaLangObject {
           List(ParamDef(Ident("that", Some("that")), AnyType,
             mutable = false, rest = false)),
           BooleanType,
-          {
+          Some {
             BinaryOp(BinaryOp.===,
               This()(ThisType),
               VarRef(Ident("that", Some("that")))(AnyType))
@@ -84,7 +84,7 @@ object JavaLangObject {
           Ident("clone__O", Some("clone__O")),
           Nil,
           AnyType,
-          {
+          Some {
             If(IsInstanceOf(This()(ThisType), ClassType("jl_Cloneable")), {
               Apply(LoadModule(ClassType("sjsr_package$")),
                   Ident("cloneObject__sjs_js_Object__sjs_js_Object", Some("cloneObject")),
@@ -103,7 +103,7 @@ object JavaLangObject {
           Ident("toString__T", Some("toString__T")),
           Nil,
           ClassType(StringClass),
-          {
+          Some {
             BinaryOp(BinaryOp.String_+, BinaryOp(BinaryOp.String_+,
               Apply(
                 Apply(This()(ThisType),
@@ -130,7 +130,7 @@ object JavaLangObject {
           Ident("notify__V", Some("notify__V")),
           Nil,
           NoType,
-          Skip())(OptimizerHints.empty, None),
+          Some(Skip()))(OptimizerHints.empty, None),
 
         /* def notifyAll(): Unit = () */
         MethodDef(
@@ -138,7 +138,7 @@ object JavaLangObject {
           Ident("notifyAll__V", Some("notifyAll__V")),
           Nil,
           NoType,
-          Skip())(OptimizerHints.empty, None),
+          Some(Skip()))(OptimizerHints.empty, None),
 
         /* def finalize(): Unit = () */
         MethodDef(
@@ -146,7 +146,7 @@ object JavaLangObject {
           Ident("finalize__V", Some("finalize__V")),
           Nil,
           NoType,
-          Skip())(OptimizerHints.empty, None),
+          Some(Skip()))(OptimizerHints.empty, None),
 
         // Exports
 
@@ -156,7 +156,7 @@ object JavaLangObject {
           StringLiteral("toString"),
           Nil,
           AnyType,
-          {
+          Some {
             Apply(This()(ThisType),
                 Ident("toString__T", Some("toString__T")),
                 Nil)(ClassType(StringClass))

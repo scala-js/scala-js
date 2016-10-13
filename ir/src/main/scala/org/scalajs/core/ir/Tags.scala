@@ -14,6 +14,7 @@ private[ir] object Tags {
 
   // Tags for Trees
 
+  /** Use to denote optional trees. */
   final val TagEmptyTree = 1
 
   final val TagVarDef = TagEmptyTree + 1
@@ -27,7 +28,10 @@ private[ir] object Tags {
   final val TagIf = TagReturn + 1
   final val TagWhile = TagIf + 1
   final val TagDoWhile = TagWhile + 1
+
+  // TODO remove when we can break binary compat.
   final val TagTry = TagDoWhile + 1
+
   final val TagThrow = TagTry + 1
   final val TagContinue = TagThrow + 1
   final val TagMatch = TagContinue + 1
@@ -98,6 +102,8 @@ private[ir] object Tags {
   final val TagLoadJSConstructor = TagJSSuperConstructorCall + 1
   final val TagLoadJSModule = TagLoadJSConstructor + 1
   final val TagJSClassExportDef = TagLoadJSModule + 1
+  final val TagTryCatch = TagJSClassExportDef + 1
+  final val TagTryFinally = TagTryCatch + 1
 
   // Tags for Types
 

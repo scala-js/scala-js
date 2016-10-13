@@ -57,7 +57,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         dispatchMethodsNames: List[String]): List[js.Tree] = {
       dispatchMethodsNames
         .map(genJSClassDispatcher(classSym, _))
-        .filter(_ != js.EmptyTree)
     }
 
     def genConstructorExports(classSym: Symbol): List[js.ConstructorExportDef] = {
@@ -94,7 +93,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           val js.MethodDef(_, _, args, _, body) =
             withNewLocalNameScope(genExportMethod(ctors, jsName))
 
-          js.ConstructorExportDef(jsName, args, body)
+          js.ConstructorExportDef(jsName, args, body.get)
         }
 
         exports.toList
@@ -150,7 +149,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         Some(js.MethodDef(static = false, methodIdent,
             List(inArg), toIRType(sym.tpe.resultType),
-            genNamedExporterBody(trgSym, inArg.ref))(
+            Some(genNamedExporterBody(trgSym, inArg.ref)))(
             OptimizerHints.empty, None))
       }
     }
@@ -225,7 +224,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       if (isProp && methodSyms.nonEmpty) {
         reporter.error(alts.head.pos,
             s"Conflicting properties and methods for ${classSym.fullName}::$name.")
-        js.EmptyTree
+        js.Skip()(ir.Position.NoPosition)
       } else {
         genMemberExportOrDispatcher(classSym, name, isProp, alts)
       }
@@ -256,15 +255,19 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       assert(getter.size <= 1,
           s"Found more than one getter to export for name ${jsName}.")
 
-      val getTree =
-        if (getter.isEmpty) js.EmptyTree
-        else genApplyForSym(0, false, getter.head)
+      val getterBody = getter.headOption.map(genApplyForSym(0, false, _))
 
-      val setTree =
-        if (setters.isEmpty) js.EmptyTree
-        else genExportSameArgc(1, false, setters.map(ExportedSymbol), 0) // we only have 1 argument
+      val setterArgAndBody = {
+        if (setters.isEmpty) {
+          None
+        } else {
+          val arg = genFormalArg(1)
+          val body = genExportSameArgc(1, false, setters.map(ExportedSymbol), 0)
+          Some((arg, body))
+        }
+      }
 
-      js.PropertyDef(js.StringLiteral(jsName), getTree, genFormalArg(1), setTree)
+      js.PropertyDef(js.StringLiteral(jsName), getterBody, setterArgAndBody)
     }
 
     /** generates the exporter function (i.e. exporter for non-properties) for
@@ -389,7 +392,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
 
       js.MethodDef(static = false, js.StringLiteral(jsName),
-          formalArgs, jstpe.AnyType, body)(OptimizerHints.empty, None)
+          formalArgs, jstpe.AnyType, Some(body))(OptimizerHints.empty, None)
     }
 
     /**

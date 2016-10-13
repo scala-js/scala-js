@@ -64,10 +64,6 @@ class PrintersTest {
             RecordType.Field("y", None, AnyType, mutable = true))))
   }
 
-  @Test def printEmpty(): Unit = {
-    assertPrintEquals("<empty>", EmptyTree)
-  }
-
   @Test def printVarDef(): Unit = {
     assertPrintEquals("val x: int = 5",
         VarDef("x", IntType, mutable = false, i(5)))
@@ -221,7 +217,7 @@ class PrintersTest {
           |  6
           |}
         """,
-        Try(i(5), "e", i(6), EmptyTree)(IntType))
+        TryCatch(i(5), "e", i(6))(IntType))
 
     assertPrintEquals(
         """
@@ -231,7 +227,7 @@ class PrintersTest {
           |  6
           |}
         """,
-        Try(i(5), "e", EmptyTree, i(6))(IntType))
+        TryFinally(i(5), i(6)))
 
     assertPrintEquals(
         """
@@ -243,7 +239,7 @@ class PrintersTest {
           |  7
           |}
         """,
-        Try(i(5), "e", i(6), i(7))(IntType))
+        TryFinally(TryCatch(i(5), "e", i(6))(IntType), i(7)))
   }
 
   @Test def printThrow(): Unit = {
@@ -933,7 +929,7 @@ class PrintersTest {
         """,
         MethodDef(static = false, "m__I__I",
             List(ParamDef("x", IntType, mutable = false, rest = false)),
-            IntType, EmptyTree)(NoOptHints, None))
+            IntType, None)(NoOptHints, None))
 
     assertPrintEquals(
         """
@@ -943,7 +939,7 @@ class PrintersTest {
         """,
         MethodDef(static = false, "m__I__I",
             List(ParamDef("x", IntType, mutable = false, rest = false)),
-            IntType, i(5))(NoOptHints, None))
+            IntType, Some(i(5)))(NoOptHints, None))
 
     assertPrintEquals(
         """
@@ -953,7 +949,7 @@ class PrintersTest {
         """,
         MethodDef(static = false, "m__I__I",
             List(ParamDef("x", IntType, mutable = false, rest = false)),
-            IntType, i(5))(NoOptHints.withInline(true), None))
+            IntType, Some(i(5)))(NoOptHints.withInline(true), None))
 
     assertPrintEquals(
         """
@@ -963,7 +959,7 @@ class PrintersTest {
         """,
         MethodDef(static = false, "m__I__V",
             List(ParamDef("x", IntType, mutable = false, rest = false)),
-            NoType, i(5))(NoOptHints, None))
+            NoType, Some(i(5)))(NoOptHints, None))
 
     assertPrintEquals(
         """
@@ -973,7 +969,7 @@ class PrintersTest {
         """,
         MethodDef(static = false, StringLiteral("m"),
             List(ParamDef("x", AnyType, mutable = false, rest = false)),
-            AnyType, i(5))(NoOptHints, None))
+            AnyType, Some(i(5)))(NoOptHints, None))
 
     assertPrintEquals(
         """
@@ -983,7 +979,7 @@ class PrintersTest {
         """,
         MethodDef(static = false, StringLiteral("m"),
             List(ParamDef("x", AnyType, mutable = false, rest = true)),
-            AnyType, i(5))(NoOptHints, None))
+            AnyType, Some(i(5)))(NoOptHints, None))
 
     assertPrintEquals(
         """
@@ -993,7 +989,7 @@ class PrintersTest {
         """,
         MethodDef(static = true, "m__I__I",
             List(ParamDef("x", IntType, mutable = false, rest = false)),
-            IntType, i(5))(NoOptHints, None))
+            IntType, Some(i(5)))(NoOptHints, None))
   }
 
   @Test def printPropertyDef(): Unit = {
@@ -1003,10 +999,7 @@ class PrintersTest {
           |  5
           |}
         """,
-        PropertyDef(StringLiteral("prop"),
-            i(5),
-            ParamDef("x", AnyType, mutable = false, rest = false),
-            EmptyTree))
+        PropertyDef(StringLiteral("prop"), Some(i(5)), None))
 
     assertPrintEquals(
         """
@@ -1015,9 +1008,8 @@ class PrintersTest {
           |}
         """,
         PropertyDef(StringLiteral("prop"),
-            EmptyTree,
-            ParamDef("x", AnyType, mutable = false, rest = false),
-            i(7)))
+            None,
+            Some((ParamDef("x", AnyType, mutable = false, rest = false), i(7)))))
 
     assertPrintEquals(
         """
@@ -1029,9 +1021,9 @@ class PrintersTest {
           |}
         """,
         PropertyDef(StringLiteral("prop"),
-            i(5),
-            ParamDef("x", AnyType, mutable = false, rest = false),
-            i(7)))
+            Some(i(5)),
+            Some((ParamDef("x", AnyType, mutable = false, rest = false),
+                i(7)))))
   }
 
   @Test def printConstructorExportDef(): Unit = {

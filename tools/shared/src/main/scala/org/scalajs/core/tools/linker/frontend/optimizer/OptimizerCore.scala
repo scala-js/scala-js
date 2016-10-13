@@ -126,7 +126,11 @@ private[optimizer] abstract class OptimizerCore(
 
   def optimize(thisType: Type, originalDef: MethodDef): LinkedMember[MethodDef] = {
     try {
-      val MethodDef(static, name, params, resultType, body) = originalDef
+      val MethodDef(static, name, params, resultType, optBody) = originalDef
+      val body = optBody getOrElse {
+        throw new AssertionError("Methods to optimize must be concrete")
+      }
+
       val (newParams, newBody1) = try {
         transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       } catch {
@@ -141,7 +145,7 @@ private[optimizer] abstract class OptimizerCore(
         if (name.name == "init___") tryElimStoreModule(newBody1)
         else newBody1
       val m = MethodDef(static, name, newParams, resultType,
-          newBody)(originalDef.optimizerHints, None)(originalDef.pos)
+          Some(newBody))(originalDef.optimizerHints, None)(originalDef.pos)
       val info = Infos.generateMethodInfo(m)
 
       new LinkedMember(info, m, None)
@@ -438,12 +442,7 @@ private[optimizer] abstract class OptimizerCore(
           case _                     => DoWhile(newBody, newCond, None)
         }
 
-      case Try(block, errVar, EmptyTree, finalizer) =>
-        val newBlock = transform(block, isStat)
-        val newFinalizer = transformStat(finalizer)
-        Try(newBlock, errVar, EmptyTree, newFinalizer)(newBlock.tpe)
-
-      case Try(block, errVar @ Ident(name, originalName), handler, finalizer) =>
+      case TryCatch(block, errVar @ Ident(name, originalName), handler) =>
         val newBlock = transform(block, isStat)
 
         val newName = freshLocalName(name, false)
@@ -455,11 +454,14 @@ private[optimizer] abstract class OptimizerCore(
           transform(handler, isStat)(handlerScope)
         }
 
-        val newFinalizer = transformStat(finalizer)
-
         val refinedType = constrainedLub(newBlock.tpe, newHandler.tpe, tree.tpe)
-        Try(newBlock, Ident(newName, newOriginalName)(errVar.pos),
-            newHandler, newFinalizer)(refinedType)
+        TryCatch(newBlock, Ident(newName, newOriginalName)(errVar.pos),
+            newHandler)(refinedType)
+
+      case TryFinally(block, finalizer) =>
+        val newBlock = transform(block, isStat)
+        val newFinalizer = transformStat(finalizer)
+        TryFinally(newBlock, newFinalizer)
 
       case Throw(expr) =>
         Throw(transformExpr(expr))
@@ -669,8 +671,7 @@ private[optimizer] abstract class OptimizerCore(
       // Trees that need not be transformed
 
       case _:Skip | _:Debugger | _:LoadModule | _:LoadJSConstructor |
-          _:LoadJSModule | _:JSLinkingInfo | _:Literal |
-          EmptyTree =>
+          _:LoadJSModule | _:JSLinkingInfo | _:Literal =>
         tree
 
       case _ =>
@@ -814,7 +815,7 @@ private[optimizer] abstract class OptimizerCore(
 
       case New(cls, ctor, args) =>
         pretransformExprs(args) { targs =>
-          pretransformNew(tree, cls, ctor, targs)(cont)
+          pretransformNew(AllocationSite.Tree(tree), cls, ctor, targs)(cont)
         }
 
       case tree: Select =>
@@ -1073,17 +1074,15 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def pretransformNew(tree: Tree, cls: ClassType, ctor: Ident,
-      targs: List[PreTransform])(
-      cont: PreTransCont)(
+  private def pretransformNew(allocationSite: AllocationSite, cls: ClassType,
+      ctor: Ident, targs: List[PreTransform])(cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
     tryNewInlineableClass(cls.className) match {
       case Some(initialValue) =>
         tryOrRollback { cancelFun =>
-          inlineClassConstructor(
-              new AllocationSite(tree),
-              cls, initialValue, ctor, targs, cancelFun)(cont)
+          inlineClassConstructor(allocationSite, cls, initialValue,
+              ctor, targs, cancelFun)(cont)
         } { () =>
           cont(PreTransTree(
               New(cls, ctor, targs.map(finishTransformExpr)),
@@ -1425,10 +1424,10 @@ private[optimizer] abstract class OptimizerCore(
   private def canMultiInline(impls: List[MethodID]): Boolean = {
     // TODO? Inline multiple non-forwarders with the exact same body?
     impls.forall(_.isForwarder) &&
-    (getMethodBody(impls.head).body match {
+    (getMethodBody(impls.head).body.get match {
       // Trait impl forwarder
       case ApplyStatic(ClassType(staticCls), Ident(methodName, _), _) =>
-        impls.tail.forall(getMethodBody(_).body match {
+        impls.tail.forall(getMethodBody(_).body.get match {
           case ApplyStatic(ClassType(`staticCls`), Ident(`methodName`, _), _) =>
             true
           case _ =>
@@ -1437,7 +1436,7 @@ private[optimizer] abstract class OptimizerCore(
 
       // Shape of forwards to default methods
       case ApplyStatically(This(), cls, Ident(methodName, _), args) =>
-        impls.tail.forall(getMethodBody(_).body match {
+        impls.tail.forall(getMethodBody(_).body.get match {
           case ApplyStatically(This(), `cls`, Ident(`methodName`, _), _) =>
             true
           case _ =>
@@ -1446,7 +1445,7 @@ private[optimizer] abstract class OptimizerCore(
 
       // Bridge method
       case MaybeBox(Apply(This(), Ident(methodName, _), referenceArgs), boxID) =>
-        impls.tail.forall(getMethodBody(_).body match {
+        impls.tail.forall(getMethodBody(_).body.get match {
           case MaybeBox(Apply(This(), Ident(`methodName`, _), implArgs), `boxID`) =>
             referenceArgs.zip(implArgs) forall {
               case (MaybeUnbox(_, unboxID1), MaybeUnbox(_, unboxID2)) =>
@@ -1678,7 +1677,7 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def inline(allocationSites: List[Option[AllocationSite]],
+  private def inline(allocationSites: List[AllocationSite],
       optReceiver: Option[PreTransform],
       args: List[PreTransform], target: MethodID, isStat: Boolean,
       usePreTransform: Boolean)(
@@ -1689,9 +1688,12 @@ private[optimizer] abstract class OptimizerCore(
 
     attemptedInlining += target
 
-    val MethodDef(static, _, formals, resultType, body) = getMethodBody(target)
+    val MethodDef(static, _, formals, resultType, optBody) = getMethodBody(target)
     assert(static == optReceiver.isEmpty,
         "There must be receiver if and only if the method is not static")
+    val body = optBody.getOrElse {
+      throw new AssertionError("A method to inline must be conrete")
+    }
 
     body match {
       case Skip() =>
@@ -1971,8 +1973,9 @@ private[optimizer] abstract class OptimizerCore(
   private def boxChar(value: Tree)(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
-    pretransformNew(value, ClassType(Definitions.BoxedCharacterClass),
-        Ident("init___C"), List(value.toPreTransform))(cont)
+    pretransformNew(AllocationSite.Tree(value),
+        ClassType(Definitions.BoxedCharacterClass), Ident("init___C"),
+        List(value.toPreTransform))(cont)
   }
 
   private def unboxChar(tvalue: PreTransform)(
@@ -2014,7 +2017,7 @@ private[optimizer] abstract class OptimizerCore(
             cls, cls, ctor, args, cancelFun) { (finalFieldLocalDefs, cont2) =>
           cont2(LocalDef(
               RefinedType(cls, isExact = true, isNullable = false,
-                  allocationSite = Some(allocationSite)),
+                  allocationSite = allocationSite),
               mutable = false,
               InlineClassInstanceReplacement(recordType, finalFieldLocalDefs,
                   cancelFun)).toPreTransform)
@@ -2033,13 +2036,13 @@ private[optimizer] abstract class OptimizerCore(
       implicit scope: Scope): TailRec[Tree] = tailcall {
 
     val target = staticCall(ctorClass.className, ctor.name).getOrElse(cancelFun())
-    val targetID = (Some(allocationSite) :: args.map(_.tpe.allocationSite), target)
+    val targetID = (allocationSite :: args.map(_.tpe.allocationSite), target)
     if (scope.implsBeingInlined.contains(targetID))
       cancelFun()
 
     val targetMethodDef = getMethodBody(target)
     val formals = targetMethodDef.args
-    val stats = targetMethodDef.body match {
+    val stats = targetMethodDef.body.get match {
       case Block(stats) => stats
       case singleStat   => List(singleStat)
     }
@@ -2344,7 +2347,7 @@ private[optimizer] abstract class OptimizerCore(
 
           (op: @switch) match {
             case IntToLong =>
-              pretransformNew(EmptyTree, rtLongClassType,
+              pretransformNew(AllocationSite.Anonymous, rtLongClassType,
                   Ident(LongImpl.initFromInt),
                   arg :: Nil)(
                   cont)
@@ -3609,7 +3612,7 @@ private[optimizer] abstract class OptimizerCore(
 
     val allLocalDefs = thisLocalDef ++: paramLocalDefs
 
-    val allocationSites = List.fill(allLocalDefs.size)(None)
+    val allocationSites = List.fill(allLocalDefs.size)(AllocationSite.Anonymous)
     val scope0 = optTarget.fold(Scope.Empty)(
         target => Scope.Empty.inlining((allocationSites, target)))
     val scope = scope0.withEnv(OptEnv.Empty.withLocalDefs(allLocalDefs))
@@ -3703,49 +3706,57 @@ private[optimizer] abstract class OptimizerCore(
    *      GenJSCode.genOptimizedLabeled.
    */
   def tryOptimizePatternMatch(oldLabelName: String, refinedType: Type,
-      returnCount: Int, newBody: Tree): Option[Tree] = {
-    if (!oldLabelName.startsWith("matchEnd")) None
-    else {
-      newBody match {
+      returnCount: Int, body: Tree): Option[Tree] = {
+    if (!oldLabelName.startsWith("matchEnd")) {
+      None
+    } else {
+      body match {
         case Block(stats) =>
           @tailrec
-          def createRevAlts(xs: List[Tree], acc: List[(Tree, Tree)]): List[(Tree, Tree)] = xs match {
+          def createRevAlts(xs: List[Tree],
+              acc: List[(Tree, Tree)]): (List[(Tree, Tree)], Tree) = xs match {
             case If(cond, body, Skip()) :: xr =>
               createRevAlts(xr, (cond, body) :: acc)
             case remaining =>
-              (EmptyTree, Block(remaining)(remaining.head.pos)) :: acc
+              (acc, Block(remaining)(remaining.head.pos))
           }
-          val revAlts = createRevAlts(stats, Nil)
+          val (revAlts, elsep) = createRevAlts(stats, Nil)
 
-          if (revAlts.size == returnCount) {
+          if (revAlts.size == returnCount - 1) {
+            def tryDropReturn(body: Tree): Option[Tree] = body match {
+              case BlockOrAlone(prep, Return(result, Some(_))) =>
+                val result1 =
+                  if (refinedType == NoType) keepOnlySideEffects(result)
+                  else result
+                Some(Block(prep :+ result1)(body.pos))
+
+              case _ =>
+                None
+            }
+
             @tailrec
-            def constructOptimized(revAlts: List[(Tree, Tree)], elsep: Tree): Option[Tree] = {
+            def constructOptimized(revAlts: List[(Tree, Tree)],
+                elsep: Tree): Option[Tree] = {
               revAlts match {
                 case (cond, body) :: revAltsRest =>
-                  body match {
-                    case BlockOrAlone(prep,
-                        Return(result, Some(Ident(newLabel, _)))) =>
-                      val result1 =
-                        if (refinedType == NoType) keepOnlySideEffects(result)
-                        else result
-                      val prepAndResult = Block(prep :+ result1)(body.pos)
-                      if (cond == EmptyTree) {
-                        assert(elsep == EmptyTree)
-                        constructOptimized(revAltsRest, prepAndResult)
-                      } else {
-                        assert(elsep != EmptyTree)
-                        constructOptimized(revAltsRest,
-                            foldIf(cond, prepAndResult, elsep)(refinedType)(cond.pos))
-                      }
-                    case _ =>
+                  // cannot use flatMap due to tailrec
+                  tryDropReturn(body) match {
+                    case Some(newBody) =>
+                      constructOptimized(revAltsRest,
+                          foldIf(cond, newBody, elsep)(refinedType)(cond.pos))
+
+                    case None =>
                       None
                   }
                 case Nil =>
                   Some(elsep)
               }
             }
-            constructOptimized(revAlts, EmptyTree)
-          } else None
+
+            tryDropReturn(elsep).flatMap(constructOptimized(revAlts, _))
+          } else {
+            None
+          }
         case _ =>
           None
       }
@@ -4010,19 +4021,18 @@ private[optimizer] object OptimizerCore {
   private type PreTransCont = PreTransform => TailRec[Tree]
 
   private case class RefinedType private (base: Type, isExact: Boolean,
-      isNullable: Boolean)(
-      val allocationSite: Option[AllocationSite], dummy: Int = 0) {
+      isNullable: Boolean)(val allocationSite: AllocationSite, dummy: Int = 0) {
 
     def isNothingType: Boolean = base == NothingType
   }
 
   private object RefinedType {
     def apply(base: Type, isExact: Boolean, isNullable: Boolean,
-        allocationSite: Option[AllocationSite]): RefinedType =
+        allocationSite: AllocationSite): RefinedType =
       new RefinedType(base, isExact, isNullable)(allocationSite)
 
     def apply(base: Type, isExact: Boolean, isNullable: Boolean): RefinedType =
-      RefinedType(base, isExact, isNullable, None)
+      RefinedType(base, isExact, isNullable, AllocationSite.Anonymous)
 
     def apply(tpe: Type): RefinedType = tpe match {
       case IntType | FloatType | DoubleType =>
@@ -4040,17 +4050,37 @@ private[optimizer] object OptimizerCore {
     val Nothing = RefinedType(NothingType)
   }
 
-  private class AllocationSite(private val node: Tree) {
-    override def equals(that: Any): Boolean = that match {
-      case that: AllocationSite => this.node eq that.node
-      case _                    => false
+  /**
+   *  Global, lexical identity of an inlined object, given by the source
+   *  location of its allocation.
+   *
+   *  A crucial property of AllocationSite is that there is a finite amount of
+   *  them, function of the program source. It is not permitted to create
+   *  AllocationSites out of trees generated by the optimizer, as it would
+   *  potentially grow the supply to an infinite amount.
+   */
+  private sealed abstract class AllocationSite
+
+  private object AllocationSite {
+    object Anonymous extends AllocationSite {
+      override def toString(): String = "AllocationSite(<anonymous>)"
     }
 
-    override def hashCode(): Int =
-      System.identityHashCode(node)
+    def Tree(tree: Tree): AllocationSite = new TreeAllocationSite(tree)
 
-    override def toString(): String =
-      s"AllocationSite($node)"
+    private class TreeAllocationSite(
+        private val node: Tree) extends AllocationSite {
+      override def equals(that: Any): Boolean = that match {
+        case that: TreeAllocationSite => this.node eq that.node
+        case _                        => false
+      }
+
+      override def hashCode(): Int =
+        System.identityHashCode(node)
+
+      override def toString(): String =
+        s"AllocationSite($node)"
+    }
   }
 
   private case class LocalDef(
@@ -4187,12 +4217,11 @@ private[optimizer] object OptimizerCore {
   }
 
   private class Scope(val env: OptEnv,
-      val implsBeingInlined: Set[(List[Option[AllocationSite]], AbstractMethodID)]) {
+      val implsBeingInlined: Set[(List[AllocationSite], AbstractMethodID)]) {
     def withEnv(env: OptEnv): Scope =
       new Scope(env, implsBeingInlined)
 
-    def inlining(impl: (List[Option[AllocationSite]],
-        AbstractMethodID)): Scope = {
+    def inlining(impl: (List[AllocationSite], AbstractMethodID)): Scope = {
       assert(!implsBeingInlined(impl), s"Circular inlining of $impl")
       new Scope(env, implsBeingInlined + impl)
     }
@@ -4623,7 +4652,10 @@ private[optimizer] object OptimizerCore {
     var isForwarder: Boolean = false
 
     protected def updateInlineable(): Unit = {
-      val MethodDef(_, Ident(methodName, _), params, _, body) = originalDef
+      val MethodDef(_, Ident(methodName, _), params, _, optBody) = originalDef
+      val body = optBody getOrElse {
+        throw new AssertionError("Methods in optimizer must be concrete")
+      }
 
       isForwarder = body match {
         // Shape of forwarders to trait impls
@@ -4661,7 +4693,6 @@ private[optimizer] object OptimizerCore {
       inlineable = !optimizerHints.noinline
       shouldInline = inlineable && {
         optimizerHints.inline || isForwarder || {
-          val MethodDef(_, _, params, _, body) = originalDef
           body match {
             case _:Skip | _:This | _:Literal                          => true
 

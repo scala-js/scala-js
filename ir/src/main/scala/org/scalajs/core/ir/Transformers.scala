@@ -53,9 +53,12 @@ object Transformers {
         case DoWhile(body, cond, label) =>
           DoWhile(transformStat(body), transformExpr(cond), label)
 
-        case Try(block, errVar, handler, finalizer) =>
-          Try(transform(block, isStat), errVar, transform(handler, isStat),
-              transformStat(finalizer))(tree.tpe)
+        case TryCatch(block, errVar, handler) =>
+          TryCatch(transform(block, isStat), errVar,
+              transform(handler, isStat))(tree.tpe)
+
+        case TryFinally(block, finalizer) =>
+          TryFinally(transform(block, isStat), transformStat(finalizer))
 
         case Throw(expr) =>
           Throw(transformExpr(expr))
@@ -186,7 +189,7 @@ object Transformers {
 
         case _:Skip | _:Continue | _:Debugger | _:LoadModule |
             _:LoadJSConstructor | _:LoadJSModule  | _:JSLinkingInfo |
-            _:Literal | _:UndefinedParam | _:VarRef | _:This | EmptyTree =>
+            _:Literal | _:UndefinedParam | _:VarRef | _:This  =>
           tree
 
         case _ =>
@@ -211,15 +214,16 @@ object Transformers {
 
         case tree: MethodDef =>
           val MethodDef(static, name, args, resultType, body) = tree
-          MethodDef(static, name, args, resultType, transformStat(body))(
+          MethodDef(static, name, args, resultType, body.map(transformStat))(
               tree.optimizerHints, None)
 
-        case PropertyDef(name, getterBody, setterArg, setterBody) =>
+        case PropertyDef(name, getterBody, setterArgAndBody) =>
           PropertyDef(
               name,
-              transformStat(getterBody),
-              setterArg,
-              transformStat(setterBody))
+              getterBody.map(transformStat),
+              setterArgAndBody map { case (arg, body) =>
+                (arg, transformStat(body))
+              })
 
         case ConstructorExportDef(fullName, args, body) =>
           ConstructorExportDef(fullName, args, transformStat(body))
