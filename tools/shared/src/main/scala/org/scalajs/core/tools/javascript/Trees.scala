@@ -30,10 +30,6 @@ object Trees {
     }
   }
 
-  case object EmptyTree extends Tree {
-    val pos = NoPosition
-  }
-
   // Comments
 
   case class DocComment(text: String)(implicit val pos: Position) extends Tree
@@ -64,12 +60,12 @@ object Trees {
     def ref(implicit pos: Position): Tree = VarRef(name)
   }
 
-  case class VarDef(name: Ident, rhs: Tree)(implicit val pos: Position) extends LocalDef {
+  case class VarDef(name: Ident, rhs: Option[Tree])(implicit val pos: Position) extends LocalDef {
     def mutable: Boolean = true
   }
 
   /** ES6 let or const (depending on the mutable flag). */
-  case class Let(name: Ident, mutable: Boolean, rhs: Tree)(implicit val pos: Position) extends LocalDef
+  case class Let(name: Ident, mutable: Boolean, rhs: Option[Tree])(implicit val pos: Position) extends LocalDef
 
   case class ParamDef(name: Ident, rest: Boolean)(implicit val pos: Position) extends LocalDef {
     def mutable: Boolean = true
@@ -121,7 +117,9 @@ object Trees {
 
   case class DoWhile(body: Tree, cond: Tree, label: Option[Ident] = None)(implicit val pos: Position) extends Tree
 
-  case class Try(block: Tree, errVar: Ident, handler: Tree, finalizer: Tree)(implicit val pos: Position) extends Tree
+  case class TryCatch(block: Tree, errVar: Ident, handler: Tree)(implicit val pos: Position) extends Tree
+
+  case class TryFinally(block: Tree, finalizer: Tree)(implicit val pos: Position) extends Tree
 
   case class Throw(expr: Tree)(implicit val pos: Position) extends Tree
 

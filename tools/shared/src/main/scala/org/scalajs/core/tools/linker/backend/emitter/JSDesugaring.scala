@@ -1010,7 +1010,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           })
 
         case _ =>
-          genLet(ident, mutable = true, js.EmptyTree)
+          genEmptyMutableLet(ident)
       }
     }
 
@@ -1184,26 +1184,18 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
             }
           }
 
-        /* The Google Closure Compiler used to wrongly eliminate finally blocks,
-         * if the catch block throws an exception.
-         * Issues: #563, google/closure-compiler#186
-         *
-         * Therefore, we do not special case TryFinally(TryCatch(...)).
-         * We should do this now, since GCC seems to have fixed it (#2619).
-         */
-
         case TryCatch(block, errVar, handler) =>
           extractLet { newLhs =>
             val newBlock = pushLhsInto(newLhs, block, tailPosLabels)
             val newHandler = pushLhsInto(newLhs, handler, tailPosLabels)
-            js.Try(newBlock, errVar, newHandler, js.EmptyTree)
+            js.TryCatch(newBlock, errVar, newHandler)
           }
 
         case TryFinally(block, finalizer) =>
           extractLet { newLhs =>
             val newBlock = pushLhsInto(newLhs, block, tailPosLabels)
             val newFinalizer = transformStat(finalizer, tailPosLabels)
-            js.Try(newBlock, js.Ident("dummy"), js.EmptyTree, newFinalizer)
+            js.TryFinally(newBlock, newFinalizer)
           }
 
         // TODO Treat throw as an LHS?
@@ -2135,9 +2127,19 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       implicit outputMode: OutputMode, pos: Position): js.LocalDef = {
     outputMode match {
       case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
-        js.VarDef(name, rhs)
+        js.VarDef(name, Some(rhs))
       case OutputMode.ECMAScript6 =>
-        js.Let(name, mutable, rhs)
+        js.Let(name, mutable, Some(rhs))
+    }
+  }
+
+  private[emitter] def genEmptyMutableLet(name: js.Ident)(
+      implicit outputMode: OutputMode, pos: Position): js.LocalDef = {
+    outputMode match {
+      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+        js.VarDef(name, rhs = None)
+      case OutputMode.ECMAScript6 =>
+        js.Let(name, mutable = true, rhs = None)
     }
   }
 
@@ -2356,7 +2358,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
             // Make sure the function has a meaningful `name` property
             js.FunctionDef(globalVarIdent, args, body)
           case _ =>
-            js.VarDef(globalVarIdent, value)
+            js.VarDef(globalVarIdent, Some(value))
         }
 
       case OutputMode.ECMAScript6 =>

@@ -10,7 +10,29 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genDeclareModule"),
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genDeclareTypeData")
+          "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genDeclareTypeData"),
+
+      // Breaking (remove js.EmptyTree)
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.javascript.Trees#Let.apply"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.javascript.Trees#Let.copy"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.javascript.Trees#Let.rhs"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.javascript.Trees#Let.this"),
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.tools.javascript.Trees$Try"),
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.tools.javascript.Trees$Try$"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.javascript.Trees#VarDef.apply"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.javascript.Trees#VarDef.copy"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.javascript.Trees#VarDef.rhs"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.javascript.Trees#VarDef.this")
   )
 
   val JSEnvs = Seq(

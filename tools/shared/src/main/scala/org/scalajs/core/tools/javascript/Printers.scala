@@ -108,9 +108,6 @@ object Printers {
 
     def printTree(tree: Tree, isStat: Boolean): Unit = {
       tree match {
-        case EmptyTree =>
-          print("<empty>")
-
         // Comments
 
         case DocComment(text) =>
@@ -135,18 +132,18 @@ object Printers {
 
         // Definitions
 
-        case VarDef(ident, rhs) =>
+        case VarDef(ident, optRhs) =>
           print("var ")
           print(ident)
-          if (rhs ne EmptyTree) {
+          optRhs foreach { rhs =>
             print(" = ")
             print(rhs)
           }
 
-        case Let(ident, mutable, rhs) =>
+        case Let(ident, mutable, optRhs) =>
           print(if (mutable) "let " else "const ")
           print(ident)
-          if (rhs ne EmptyTree) {
+          optRhs foreach { rhs =>
             print(" = ")
             print(rhs)
           }
@@ -227,19 +224,29 @@ object Printers {
           print(cond)
           print(')')
 
-        case Try(block, errVar, handler, finalizer) =>
+        case TryFinally(TryCatch(block, errVar, handler), finalizer) =>
           print("try ")
           printBlock(block)
-          if (handler ne EmptyTree) {
-            print(" catch (")
-            print(errVar)
-            print(") ")
-            printBlock(handler)
-          }
-          if (finalizer ne EmptyTree) {
-            print(" finally ")
-            printBlock(finalizer)
-          }
+          print(" catch (")
+          print(errVar)
+          print(") ")
+          printBlock(handler)
+          print(" finally ")
+          printBlock(finalizer)
+
+        case TryCatch(block, errVar, handler) =>
+          print("try ")
+          printBlock(block)
+          print(" catch (")
+          print(errVar)
+          print(") ")
+          printBlock(handler)
+
+        case TryFinally(block, finalizer) =>
+          print("try ")
+          printBlock(block)
+          print(" finally ")
+          printBlock(finalizer)
 
         case Throw(expr) =>
           print("throw ")
@@ -278,11 +285,15 @@ object Printers {
               printBlock(next._2)
             }
           }
-          if (default ne EmptyTree) {
-            println()
-            print("default: ")
-            printBlock(default)
+
+          default match {
+            case Skip() =>
+            case _ =>
+              println()
+              print("default: ")
+              printBlock(default)
           }
+
           undent()
           println()
           print('}')
