@@ -565,6 +565,32 @@ class ScalaJSDefinedTest {
     assertEquals(100, dyn.foo())
   }
 
+  @Test def properties_are_configurable(): Unit = {
+    // Named classes
+    @ScalaJSDefined
+    class Foo extends js.Object {
+      def myProp: Int = 1
+    }
+
+    // Delete property from prototype.
+    val prototype = js.constructorOf[Foo].prototype
+    prototype.asInstanceOf[js.Dictionary[js.Any]].delete("myProp")
+
+    // Check it is actually gone.
+    assertTrue(js.isUndefined((new Foo()).asInstanceOf[js.Dynamic].myProp))
+
+    // Anonymous classes
+    val y = new js.Object {
+      def myProp: Int = 1
+    }
+
+    // The property should be on the instance itself.
+    assertTrue(y.hasOwnProperty("myProp"))
+    y.asInstanceOf[js.Dictionary[js.Any]].delete("myProp")
+    assertTrue(js.isUndefined(y.asInstanceOf[js.Dynamic].myProp))
+    assertFalse(y.hasOwnProperty("myProp"))
+  }
+
   @Test def properties_with_explicit_name(): Unit = {
     @ScalaJSDefined
     class PropertiesWithExplicitName extends js.Object {
