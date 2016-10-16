@@ -38,19 +38,6 @@ private[emitter] final class ScalaJSClassEmitter(
 
   private implicit def implicitOutputMode: OutputMode = outputMode
 
-  def genDeclareTypeData(tree: LinkedClass): js.Tree = {
-    implicit val pos = tree.pos
-    envFieldDef("d", tree.encodedName, js.Null(), mutable = true)
-  }
-
-  def genDeclareModule(tree: LinkedClass): js.Tree = {
-    implicit val pos = tree.pos
-    if (tree.kind.hasModuleAccessor)
-      envFieldDef("n", tree.encodedName, js.Undefined(), mutable = true)
-    else
-      js.Skip()
-  }
-
   /** Desugar a Scala.js class into ECMAScript 5 constructs
    *
    *  @param tree The IR tree to emit to raw JavaScript

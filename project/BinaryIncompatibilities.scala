@@ -6,6 +6,11 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // private[emitter], not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genDeclareModule"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genDeclareTypeData")
   )
 
   val JSEnvs = Seq(
