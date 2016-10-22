@@ -381,10 +381,7 @@ private[emitter] final class ScalaJSClassEmitter(
     val descriptor = js.ObjectConstr(
       optGetter.toList ++
       optSetter ++
-      List(
-          js.StringLiteral("configurable") -> js.BooleanLiteral(true),
-          js.StringLiteral("enumerable") -> js.BooleanLiteral(true)
-      )
+      List(js.StringLiteral("configurable") -> js.BooleanLiteral(true))
     )
 
     js.Apply(defProp, proto :: name :: descriptor :: Nil)

@@ -565,6 +565,24 @@ class ScalaJSDefinedTest {
     assertEquals(100, dyn.foo())
   }
 
+  @Test def properties_are_not_enumerable(): Unit = {
+    // Named classes
+    @ScalaJSDefined
+    class Foo extends js.Object {
+      def myProp: Int = 1
+    }
+
+    val x: js.Any = (new Foo()).asInstanceOf[js.Any]
+    assertFalse(js.Object.properties(x).contains("myProp"))
+
+    // Anonymous classes
+    val y = new js.Object {
+      def myProp: Int = 1
+    }
+
+    assertFalse(js.Object.properties(y).contains("myProp"))
+  }
+
   @Test def properties_are_configurable(): Unit = {
     // Named classes
     @ScalaJSDefined
