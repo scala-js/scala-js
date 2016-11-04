@@ -251,6 +251,9 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       case e: ModuleExportDef =>
         classExports += e
 
+      case e: TopLevelExportDef =>
+        classExports += e
+
       case tree =>
         sys.error(s"Illegal tree in ClassDef of class ${tree.getClass}")
     }
@@ -281,8 +284,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       }
     }
 
-    val classExportInfo =
-      memberInfoByName.get(Definitions.ExportedConstructorsName)
+    val classExportInfo = memberInfoByName.get(Definitions.ClassExportsName)
 
     val kind =
       if (analyzerInfo.isModuleAccessed) classDef.kind

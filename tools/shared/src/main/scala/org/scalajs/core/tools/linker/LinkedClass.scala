@@ -66,6 +66,9 @@ final class LinkedClass(
     case ConstructorExportDef(name, _, _) => name
     case ModuleExportDef(name)            => name
     case JSClassExportDef(name)           => name
+
+    case TopLevelExportDef(MethodDef(_, StringLiteral(name), _, _, _)) =>
+      name
   }
 
   def fullName: String = Definitions.decodeClassName(encodedName)
@@ -182,8 +185,7 @@ object LinkedClass {
         sys.error(s"Illegal tree in ClassDef of class ${tree.getClass}")
     }
 
-    val classExportInfo =
-      memberInfoByName.get(Definitions.ExportedConstructorsName)
+    val classExportInfo = memberInfoByName.get(Definitions.ClassExportsName)
 
     new LinkedClass(
         classDef.name,

@@ -810,6 +810,11 @@ object Trees {
     val tpe = NoType
   }
 
+  case class TopLevelExportDef(member: Tree)(
+      implicit val pos: Position) extends Tree {
+    val tpe = NoType
+  }
+
   final class OptimizerHints(val bits: Int) extends AnyVal {
     import OptimizerHints._
 

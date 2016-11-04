@@ -231,6 +231,9 @@ object Transformers {
         case _:JSClassExportDef | _:ModuleExportDef =>
           tree
 
+        case TopLevelExportDef(member) =>
+          TopLevelExportDef(transformDef(member))
+
         case _ =>
           sys.error(s"Invalid tree in transformDef() of class ${tree.getClass}")
       }

@@ -25,8 +25,11 @@ trait PrepJSExports { this: PrepJSInterop =>
       jsName: String,
       pos: Position,
       isNamed: Boolean,
+      isTopLevel: Boolean,
       ignoreInvalid: Boolean
-  ) extends jsInterop.ExportInfo
+  ) extends jsInterop.ExportInfo {
+    assert(!isNamed || !isTopLevel)
+  }
 
   /** Generate the exporter for the given DefDef
    *  or ValDef (abstract val in class, val in trait or lazy val;
@@ -87,8 +90,15 @@ trait PrepJSExports { this: PrepJSInterop =>
       // Reset interface flag: Any trait will contain non-empty methods
       clsSym.resetFlag(Flags.INTERFACE)
 
+      val (topLevelExports, otherExports) = exports.partition(_.isTopLevel)
+
+      /* We can handle top level exports entirely in the backend. So just
+       * register them here.
+       */
+      jsInterop.registerForExport(baseSym, topLevelExports)
+
       // Actually generate exporter methods
-      exports.flatMap { exp =>
+      otherExports.flatMap { exp =>
         if (exp.isNamed)
           genNamedExport(baseSym, exp.jsName, exp.pos) :: Nil
         else
@@ -167,11 +177,13 @@ trait PrepJSExports { this: PrepJSInterop =>
   def exportsOf(sym: Symbol): List[ExportInfo] = {
     val exports = directExportsOf(sym) ++ inheritedExportsOf(sym)
 
-    // Calculate the distinct exports for this symbol (eliminate double
-    // occurrences of (name, isNamed) pairs).
-    val grouped = exports.groupBy(exp => (exp.jsName, exp.isNamed))
+    /* Calculate the distinct exports for this symbol (eliminate double
+     * occurrences of (name, isNamed, isTopLevel) tuples).
+     */
+    val grouped = exports.groupBy(
+        exp => (exp.jsName, exp.isNamed, exp.isTopLevel))
 
-    for (((jsName, isNamed), exps) <- grouped.toList)
+    for ((_, exps) <- grouped.toList)
       // Make sure that we are strict if necessary
       yield exps.find(!_.ignoreInvalid).getOrElse(exps.head)
   }
@@ -192,11 +204,8 @@ trait PrepJSExports { this: PrepJSInterop =>
     }
 
     // Annotations that are directly on the member
-    val directAnnots = for {
-      annot <- trgSym.annotations
-      if annot.symbol == JSExportAnnotation ||
-         annot.symbol == JSExportNamedAnnotation
-    } yield annot
+    val directAnnots = trgSym.annotations.filter(
+        annot => isDirectMemberAnnot(annot.symbol))
 
     // Is this a member export (i.e. not a class or module export)?
     val isMember = sym.isMethod && !sym.isConstructor
@@ -214,6 +223,7 @@ trait PrepJSExports { this: PrepJSInterop =>
     } yield {
       val isNamedExport = annot.symbol == JSExportNamedAnnotation
       val isExportAll = annot.symbol == JSExportAllAnnotation
+      val isTopLevelExport = annot.symbol == JSExportTopLevelAnnotation
       val hasExplicitName = annot.args.nonEmpty
 
       def explicitName = annot.stringArg(0).getOrElse {
@@ -244,7 +254,7 @@ trait PrepJSExports { this: PrepJSInterop =>
 
       // Make sure we do not override the default export of toString
       def isIllegalToString = {
-        isMember && !isNamedExport &&
+        isMember && !isNamedExport && !isTopLevelExport &&
         name == "toString" && sym.name != nme.toString_ &&
         sym.tpe.params.isEmpty && !jsInterop.isJSGetter(sym)
       }
@@ -255,7 +265,7 @@ trait PrepJSExports { this: PrepJSInterop =>
       }
 
       def isIllegalApplyExport = {
-        isMember && !hasExplicitName &&
+        isMember && !hasExplicitName && !isTopLevelExport &&
         sym.name == nme.apply &&
         !(isExportAll && directAnnots.exists(annot =>
             annot.symbol == JSExportAnnotation &&
@@ -293,7 +303,23 @@ trait PrepJSExports { this: PrepJSInterop =>
             "You may not export a getter or a setter as a named export")
       }
 
-      ExportInfo(name, annot.pos, isNamedExport, ignoreInvalid = false)
+      if (isTopLevelExport) {
+        if (jsInterop.isJSProperty(sym)) {
+          reporter.error(annot.pos,
+              "You may not export a getter or a setter to the top level")
+        }
+
+        if (!isMember) {
+          reporter.error(annot.pos, "Use @JSExport on objects and " +
+              "constructors to export to the top level")
+        } else if (!sym.owner.isStatic || !sym.owner.isModuleClass) {
+          reporter.error(annot.pos,
+              "Only static objects may export their members to the top level")
+        }
+      }
+
+      ExportInfo(name, annot.pos, isNamedExport,
+          isTopLevelExport, ignoreInvalid = false)
     }
   }
 
@@ -348,7 +374,8 @@ trait PrepJSExports { this: PrepJSInterop =>
               s"a @${trgAnnot.name} on $forcingSym")
         }
 
-        ExportInfo(name, sym.pos, false, ignoreInvalid)
+        ExportInfo(name, sym.pos, isNamed = false, isTopLevel = false,
+            ignoreInvalid)
       }
 
       optExport.toList
@@ -525,5 +552,12 @@ trait PrepJSExports { this: PrepJSInterop =>
     val isDefParam = (_: Symbol).hasFlag(Flags.DEFAULTPARAM)
     sym.paramss.flatten.reverse.dropWhile(isDefParam).exists(isDefParam)
   }
+
+  /** Whether a symbol is an annotation that goes directly on a member */
+  private lazy val isDirectMemberAnnot = Set[Symbol](
+      JSExportAnnotation,
+      JSExportNamedAnnotation,
+      JSExportTopLevelAnnotation
+  )
 
 }

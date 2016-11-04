@@ -130,7 +130,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           case m: MethodDef =>
             assert(m.name.isInstanceOf[StringLiteral],
               "Exported method must have StringLiteral as name")
-            checkExportedMethodDef(m, classDef)
+            checkExportedMethodDef(m, classDef, isTopLevel = false)
           case p: PropertyDef =>
             assert(p.name.isInstanceOf[StringLiteral],
               "Exported property must have StringLiteral as name")
@@ -149,10 +149,23 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         tree match {
           case member @ ConstructorExportDef(_, _, _) =>
             checkConstructorExportDef(member, classDef)
+
           case member @ JSClassExportDef(_) =>
             checkJSClassExportDef(member, classDef)
+
           case member @ ModuleExportDef(_) =>
             checkModuleExportDef(member, classDef)
+
+          case TopLevelExportDef(member) =>
+            member match {
+              case methodDef: MethodDef =>
+                checkExportedMethodDef(methodDef, classDef, isTopLevel = true)
+
+              case _ =>
+                reportError("Illegal top level export of type " +
+                    member.getClass.getName)
+            }
+
           // Anything else is illegal
           case _ =>
             reportError("Illegal class export of type " +
@@ -255,19 +268,22 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private def checkExportedMethodDef(methodDef: MethodDef,
-      classDef: LinkedClass): Unit = withPerMethodState {
+      classDef: LinkedClass, isTopLevel: Boolean): Unit = withPerMethodState {
     val MethodDef(static, StringLiteral(name), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
-    if (!classDef.kind.isAnyScalaJSDefinedClass) {
+    if (!isTopLevel && !classDef.kind.isAnyScalaJSDefinedClass) {
       reportError(s"Exported method def can only appear in a class")
       return
     }
 
-    if (static)
+    if (!isTopLevel && static)
       reportError("Exported method def cannot be static")
 
-    if (name.contains("__") && name != Definitions.ExportedConstructorsName)
+    if (isTopLevel && !static)
+      reportError("Top level export must be static")
+
+    if (name.contains("__") && name != Definitions.ClassExportsName)
       reportError("Exported method def name cannot contain __")
 
     for (ParamDef(name, tpe, _, _) <- params) {
@@ -293,9 +309,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             "but must be Any")
       }
 
-      val thisType =
-        if (classDef.kind.isJSClass) AnyType
+      val thisType = {
+        if (static) NoType
+        else if (classDef.kind.isJSClass) AnyType
         else ClassType(classDef.name.name)
+      }
 
       body.fold {
         reportError("Exported method cannot be abstract")

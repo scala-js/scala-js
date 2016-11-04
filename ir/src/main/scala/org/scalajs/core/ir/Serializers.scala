@@ -457,6 +457,10 @@ object Serializers {
         case ModuleExportDef(fullName) =>
           writeByte(TagModuleExportDef)
           writeString(fullName)
+
+        case TopLevelExportDef(member) =>
+          writeByte(TagTopLevelExportDef)
+          writeTree(member)
       }
       if (UseDebugMagic)
         writeInt(DebugMagic)
@@ -870,10 +874,10 @@ object Serializers {
           } else {
             result
           }
-        case TagJSClassExportDef =>
-          JSClassExportDef(readString())
-        case TagModuleExportDef =>
-          ModuleExportDef(readString())
+
+        case TagJSClassExportDef  => JSClassExportDef(readString())
+        case TagModuleExportDef   => ModuleExportDef(readString())
+        case TagTopLevelExportDef => TopLevelExportDef(readTree())
       }
       if (UseDebugMagic) {
         val magic = readInt()

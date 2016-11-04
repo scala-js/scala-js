@@ -3,6 +3,9 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
+      // private, not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.ir.Infos#GenInfoTraverser.generateExportedConstructorsInfo")
   )
 
   val Tools = Seq(

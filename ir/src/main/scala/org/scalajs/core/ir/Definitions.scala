@@ -66,7 +66,16 @@ object Definitions {
   val AncestorsOfPseudoArrayClass = Set(
       ObjectClass, SerializableClass, CloneableClass)
 
-  val ExportedConstructorsName = "__exportedInits"
+  /** Name used for infos of class exports
+   *
+   *  These currently are exported constructors and top level exports)
+   *
+   *  TODO give this a better name once we can break backwards compat.
+   */
+  val ClassExportsName = "__exportedInits"
+
+  @deprecated("Use ClassExportsName instead", "0.6.14")
+  def ExportedConstructorsName: String = "__exportedInits"
 
   /** Encodes a class name. */
   def encodeClassName(fullName: String): String = {

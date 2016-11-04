@@ -856,6 +856,10 @@ object Printers {
           printEscapeJS(fullName, out)
           print('\"')
 
+        case TopLevelExportDef(member) =>
+          print("export top ")
+          print(member)
+
         case _ =>
           print(s"<error, elem of class ${tree.getClass()}>")
       }

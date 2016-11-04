@@ -405,7 +405,9 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (isStaticModule(sym)) genModuleAccessorExports(sym)
           else genConstructorExports(sym)
 
-        memberExports ++ exportedConstructorsOrAccessors
+        val topLevelExports = genTopLevelExports(sym)
+
+        memberExports ++ exportedConstructorsOrAccessors ++ topLevelExports
       }
 
       // Hashed definitions of the class
