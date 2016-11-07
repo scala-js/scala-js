@@ -71,4 +71,31 @@ class ThisFunctionTest {
     assertEquals("foo:42", f(obj, 42))
   }
 
+  @Test def thisFunction_in_trait_issue2643(): Unit = {
+    trait TraitWithThisFunction {
+      def create = {
+        val f = { (passedThis: js.Dynamic) =>
+          passedThis
+        }
+        js.Dynamic.literal(
+          "foo" -> ({ (passedThis: js.Dynamic) => {
+            passedThis
+          } }: js.ThisFunction0[js.Dynamic, js.Dynamic]),
+          "bar" -> js.ThisFunction.fromFunction1(f),
+          "foobar" -> (f: js.ThisFunction)
+        )
+      }
+    }
+
+    class TraitWithThisFunctionImpl extends TraitWithThisFunction
+
+    val objFactory = new TraitWithThisFunctionImpl()
+    val obj = new TraitWithThisFunctionImpl().create
+    val thisValue = new js.Object
+
+    assertSame(thisValue, obj.foo.call(thisValue))
+    assertSame(thisValue, obj.bar.call(thisValue))
+    assertSame(thisValue, obj.foobar.call(thisValue))
+  }
+
 }

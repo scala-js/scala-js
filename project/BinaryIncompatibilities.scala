@@ -12,6 +12,12 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genDeclareTypeData"),
 
+      // private, not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#Env.this"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.this"),
+
       // Breaking (remove js.EmptyTree)
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "org.scalajs.core.tools.javascript.Trees#Let.apply"),
