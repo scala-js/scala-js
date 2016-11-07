@@ -217,8 +217,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       thisIdent: Option[js.Ident], params: List[ParamDef],
       body: Tree, isStat: Boolean)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
-    new JSDesugar(classEmitter, enclosingClassName,
-        thisIdent).desugarToFunction(params, body, isStat)
+    new JSDesugar(classEmitter, enclosingClassName)
+      .desugarToFunction(params, body, isStat, Env.empty.withThisIdent(thisIdent))
   }
 
   /** Desugars a statement or an expression. */
@@ -226,7 +226,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
       tree: Tree, isStat: Boolean)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
-    val desugar = new JSDesugar(classEmitter, enclosingClassName, None)
+    val desugar = new JSDesugar(classEmitter, enclosingClassName)
     if (isStat)
       desugar.transformStat(tree, Set.empty)(Env.empty)
     else
@@ -240,8 +240,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
     js.ParamDef(paramDef.name, paramDef.rest)(paramDef.pos)
 
   private class JSDesugar(
-      classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
-      thisIdent: Option[js.Ident])(
+      classEmitter: ScalaJSClassEmitter, enclosingClassName: String)(
       implicit globalKnowledge: GlobalKnowledge) {
 
     private val semantics = classEmitter.semantics
@@ -294,8 +293,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
     /** Desugars parameters and body to a JS function.
      */
     def desugarToFunction(
-        params: List[ParamDef], body: Tree, isStat: Boolean,
-        env0: Env = Env.empty)(
+        params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
         implicit pos: Position): js.Function = {
 
       val env = env0.withParams(params)
@@ -1982,7 +1980,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
           js.VarRef(name)
 
         case This() =>
-          thisIdent.fold[js.Tree] {
+          env.thisIdent.fold[js.Tree] {
             js.This()
           } { ident =>
             js.VarRef(ident)
@@ -2426,6 +2424,7 @@ private object JSDesugaring {
   // Environment
 
   final class Env private (
+      val thisIdent: Option[js.Ident],
       vars: Map[String, Boolean],
       labeledExprLHSes: Map[String, Lhs],
       defaultBreakTargets: Set[String]
@@ -2436,6 +2435,9 @@ private object JSDesugaring {
 
     def isDefaultBreakTarget(label: String): Boolean =
       defaultBreakTargets.contains(label)
+
+    def withThisIdent(thisIdent: Option[js.Ident]): Env =
+      copy(thisIdent = thisIdent)
 
     def withParams(params: List[ParamDef]): Env = {
       params.foldLeft(this) {
@@ -2455,14 +2457,15 @@ private object JSDesugaring {
       copy(defaultBreakTargets = targets)
 
     private def copy(
+        thisIdent: Option[js.Ident] = this.thisIdent,
         vars: Map[String, Boolean] = this.vars,
         labeledExprLHSes: Map[String, Lhs] = this.labeledExprLHSes,
         defaultBreakTargets: Set[String] = this.defaultBreakTargets): Env = {
-      new Env(vars, labeledExprLHSes, defaultBreakTargets)
+      new Env(thisIdent, vars, labeledExprLHSes, defaultBreakTargets)
     }
   }
 
   object Env {
-    def empty: Env = new Env(Map.empty, Map.empty, Set.empty)
+    def empty: Env = new Env(None, Map.empty, Map.empty, Set.empty)
   }
 }
