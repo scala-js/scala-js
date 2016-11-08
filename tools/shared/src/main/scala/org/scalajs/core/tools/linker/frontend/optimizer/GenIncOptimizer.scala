@@ -620,15 +620,28 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
         case _                                      => false
       }
       def isElidableStat(tree: Tree): Boolean = tree match {
-        case Block(stats) =>
-          stats.forall(isElidableStat)
-        case Assign(Select(This(), _), rhs) =>
-          isTriviallySideEffectFree(rhs)
+        case Block(stats)                   => stats.forall(isElidableStat)
+        case Assign(Select(This(), _), rhs) => isTriviallySideEffectFree(rhs)
+
+        // Mixin constructor, 2.10/2.11
         case ApplyStatic(ClassType(cls), methodName, List(This())) =>
           statics(cls).methods(methodName.name).originalDef.body.exists {
             case Skip() => true
             case _      => false
           }
+
+        // Mixin constructor, 2.12
+        case ApplyStatically(This(), ClassType(cls), methodName, Nil)
+            if !classes.contains(cls) =>
+          // Since cls is not in classes, it must be a default method call.
+          defaults(cls).methods.get(methodName.name) exists { methodDef =>
+            methodDef.originalDef.body exists {
+              case Skip() => true
+              case _      => false
+            }
+          }
+
+        // Super class constructor.
         case ApplyStatically(This(), ClassType(cls), methodName, args) =>
           Definitions.isConstructorName(methodName.name) &&
           args.forall(isTriviallySideEffectFree) &&
@@ -636,10 +649,9 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
             superCls.encodedName == cls &&
             superCls.lookupMethod(methodName.name).exists(isElidableModuleConstructor)
           }
-        case StoreModule(_, _) =>
-          true
-        case _ =>
-          isTriviallySideEffectFree(tree)
+
+        case StoreModule(_, _) => true
+        case _                 => isTriviallySideEffectFree(tree)
       }
       impl.originalDef.body.fold {
         throw new AssertionError("Module constructor cannot be abstract")
