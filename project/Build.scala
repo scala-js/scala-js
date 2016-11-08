@@ -64,7 +64,7 @@ object Build {
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.6", "2.11.8", "2.12.0-RC1")
+    Set("2.10.6", "2.11.8", "2.12.0")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -428,7 +428,7 @@ object Build {
         "2.11.6",
         "2.11.7",
         "2.11.8",
-        "2.12.0-RC1"
+        "2.12.0"
       ),
       // JDK version we are running with
       javaVersion in Global := {
@@ -1419,24 +1419,15 @@ object Build {
           val sourceFiles = (sources in Test).value
           val v = scalaVersion.value
 
-          val hasBug2625 = v == "2.12.0-RC1"
+          val hasBug2382 = v.startsWith("2.10.") || v.startsWith("2.11.")
           val sourceFiles1 = {
-            if (hasBug2625)
-              sourceFiles.filterNot(_.getName == "PatMatOuterPointerCheckTest.scala")
+            if (hasBug2382)
+              sourceFiles.filterNot(_.getName == "OuterClassTest.scala")
             else
               sourceFiles
           }
 
-          val hasBug2382 =
-            v.startsWith("2.10.") || v.startsWith("2.11.") || v == "2.12.0-RC1"
-          val sourceFiles2 = {
-            if (hasBug2382)
-              sourceFiles1.filterNot(_.getName == "OuterClassTest.scala")
-            else
-              sourceFiles1
-          }
-
-          sourceFiles2
+          sourceFiles1
         }
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(

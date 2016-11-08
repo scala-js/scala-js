@@ -49,8 +49,6 @@ run/t3895b.scala
 run/t5974.scala
 run/hashset.scala
 run/t5262.scala
-run/t5293.scala
-run/t5293-map.scala
 run/serialize-stream.scala
 run/sysprops.scala
 run/lambda-serialization-gc.scala
@@ -605,6 +603,7 @@ run/t9437b
 run/t8756.scala
 run/inferred-type-constructors-hou.scala
 run/trait-static-forwarder
+run/SD-235.scala
 
 # Uses refletction indirectly through
 # scala.runtime.ScalaRunTime.replStringOf
