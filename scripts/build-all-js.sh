@@ -3,7 +3,7 @@
 tasks="fastOptJS fullOptJS"
 projects="helloworld/ reversi/ testingExample/test: testSuite/test:"
 
-for v in 2.11.8 2.10.6 2.12.0-RC1; do
+for v in 2.11.8 2.10.6 2.12.0; do
     echo "++$v"
     echo "package"
 

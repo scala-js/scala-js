@@ -3150,7 +3150,6 @@ pos/t2712-4.scala
 pos/t2712-1.scala
 pos/t2712-3.scala
 pos/t2712-6.scala
-pos/t5148.scala
 pos/t6895b.scala
 pos/t5683.scala
 pos/hkgadt.scala
@@ -3256,6 +3255,24 @@ run/caseClassHash.scala
 run/interpolation.scala
 run/interpolationMultiline1.scala
 run/t9656.scala
+pos/sd219.scala
+pos/t9918
+pos/shapeless-regression.scala
+pos/issue244.scala
+pos/t9920.scala
+pos/t9943.scala
+neg/t5148.scala
+run/sd242.scala
+run/local_obj.scala
+run/t9697.scala
+run/t9920.scala
+run/t9920c.scala
+run/t9920d.scala
+run/t9920b.scala
+run/t9946a.scala
+run/t9946c.scala
+run/t9946b.scala
+run/trait-super-calls.scala
 
 # Adapt checkfiles for ().toString == "undefined"
 run/t5680.scala
