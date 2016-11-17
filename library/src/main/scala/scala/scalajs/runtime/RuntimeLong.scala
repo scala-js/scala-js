@@ -427,7 +427,7 @@ object RuntimeLong {
 
   private final val AskQuotient = 0
   private final val AskRemainder = 1
-  private final val AskBoth = 2
+  private final val AskToString = 2
 
   /** The hi part of a (lo, hi) return value. */
   private[this] var hiReturn: Int = _
@@ -472,20 +472,14 @@ object RuntimeLong {
        * The quotient must be <= ULong.MaxValue / 10^9, which is < 2^53, and
        * is therefore a valid double. It must also be non-zero, since
        * (lo, hi) >= 2^53 > 10^9.
+       *
+       * To avoid allocating a tuple with the quotient and remainder, we push
+       * the final conversion to string inside unsignedDivModHelper. According
+       * to micro-benchmarks, this optimization makes toString 25% faster in
+       * this branch.
        */
-      val TenPow9Lo = 1000000000L.toInt
-      val TenPow9Hi = (1000000000L >>> 32).toInt
-
-      val quotRem = unsignedDivModHelper(lo, hi, TenPow9Lo, TenPow9Hi,
-          AskBoth).asInstanceOf[js.Tuple4[Int, Int, Int, Int]]
-      val quotLo = quotRem._1
-      val quotHi = quotRem._2
-      val rem = quotRem._3 // remHi must be 0 by construction
-
-      val quot = asUnsignedSafeDouble(quotLo, quotHi)
-
-      val remStr = rem.toString
-      quot.toString + "000000000".jsSubstring(remStr.length) + remStr
+      unsignedDivModHelper(lo, hi, 1000000000, 0,
+          AskToString).asInstanceOf[String]
     }
   }
 
@@ -783,8 +777,17 @@ object RuntimeLong {
     }
   }
 
+  /** Helper for `unsigned_/`, `unsigned_%` and `toUnsignedString()`.
+   *
+   *  The value of `ask` may be one of:
+   *
+   *  - `AskQuotient`: returns the quotient (with the hi part in `hiReturn`)
+   *  - `AskRemainder`: returns the remainder (with the hi part in `hiReturn`)
+   *  - `AskToString`: returns the conversion of `(alo, ahi)` to string.
+   *    In this case, `blo` must be 10^9 and `bhi` must be 0.
+   */
   private def unsignedDivModHelper(alo: Int, ahi: Int, blo: Int, bhi: Int,
-      ask: Int): Int | js.Tuple4[Int, Int, Int, Int] = {
+      ask: Int): Int | String = {
 
     var shift =
       inlineNumberOfLeadingZeros(blo, bhi) - inlineNumberOfLeadingZeros(alo, ahi)
@@ -852,7 +855,10 @@ object RuntimeLong {
       hiReturn = remHi
       remLo
     } else {
-      js.Tuple4(quotLo, quotHi, remLo, remHi)
+      // AskToString (recall that b = 10^9 in this case)
+      val quot = asUnsignedSafeDouble(quotLo, quotHi) // != 0
+      val remStr = remLo.toString // remHi is always 0
+      quot.toString + "000000000".jsSubstring(remStr.length) + remStr
     }
   }
 
