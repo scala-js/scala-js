@@ -93,4 +93,9 @@ class RangesTest {
           Range.Double(0.1, 1.0, 0.1).toString)
     }
   }
+
+  @Test def NumericRange_min_issue_2655(): Unit = {
+    val range = 1.0 to 10.0 by 1.0
+    assertEquals(1.0, range.min)
+  }
 }
