@@ -302,9 +302,229 @@ final class RuntimeLong(val lo: Int, val hi: Int)
 
   @inline
   def *(b: RuntimeLong): RuntimeLong = {
+    /* The following algorithm is based on the decomposition in 32-bit and then
+     * 16-bit subproducts of the unsigned interpretation of operands.
+     *
+     * Since everything is interpreted as unsigned, all values are Natural
+     * numbers and are >= 0, by construction.
+     *
+     * We are looking to compute
+     * a *[64] b = (a * b) % 2^64
+     *
+     * We use the notation * and + for mathematical, non-overflowing
+     * operations, and *[64] and +[64] for overflowing operations. Eventually,
+     * we need to implement everything in terms of *[32] and +[32]. The symbol
+     * ^ is used for exponentiation (not bitwise xor).
+     *
+     * The decomposition in 32-bit components yields:
+     *
+     * a *[64] b
+     *   = ( (2^32*ahi + alo) * (2^32*bhi + blo) ) % 2^64
+     *   = ( 2^64*ahi*bhi + 2^32*(ahi*blo + bhi*alo) + alo*blo ) % 2^64
+     *
+     * With Natural numbers, congruence theory tells us that we can "distribute"
+     * `% n` on + and *, as long as we also keep the outer `% n`. To be more
+     * precise:
+     *   (a + b) % n = (a%n + b) % n = (a + b%n) % n = (a%n + b%n) % n
+     *   (a * b) % n = (a%n * b) % n = (a * b%n) % n = (a%n * b%n) % n
+     *
+     * From the latter, we derive a corollary that we'll implicitly use several
+     * times later:
+     *   (n * x) % n = 0  for any n > 0 and any x
+     *
+     * We can use these equivalences to get rid of parts of our computation:
+     *
+     * ( 2^64*ahi*bhi + 2^32*(ahi*blo + bhi*alo) + alo*blo ) % 2^64
+     *   = ( (2^64*ahi*bhi % 2^64) + 2^32*(ahi*blo + bhi*alo) + alo*blo ) % 2^64
+     *        -------------------
+     *             = 0
+     *   = ( 2^32*(ahi*blo + bhi*alo) + alo*blo ) % 2^64
+     *
+     * Observe that we can rewrite any quantity x as
+     * x = n*(x/n) + x%n
+     * where n is > 0 and / denotes the floor division.
+     *
+     * We can rewrite the product ahi*blo as
+     *
+     * ahi*blo
+     *   = 2^32*(ahi*blo / 2^32) + (ahi*blo % 2^32)
+     *   = 2^32*(ahi*blo / 2^32) + (ahi *[32] blo)
+     *
+     * Similarly,
+     *
+     * bhi*alo = 2^32*(alo*bhi / 2^32) + (alo *[32] bhi)
+     *
+     * Taking back our complete computation:
+     *
+     * a *[64] b
+     *   = ( 2^32*(ahi*blo + bhi*alo) + alo*blo ) % 2^64
+     *   = ( 2^64*(ahi*blo / 2^32) + 2^32*(ahi *[32] blo)
+     *        + 2^64*(alo*bhi / 2^32) + 2^32*(alo *[32] bhi)
+     *        + alo*blo ) % 2^64
+     *
+     * where distributing % 2^64 allows to get rid of the most awful parts:
+     *
+     *   = ( 2^32*(ahi *[32] blo) + 2^32*(alo *[32] bhi) + alo*blo) % 2^64
+     *
+     * Now we focus on the `alo*blo` part. We decompose it in 16-bit components.
+     *
+     * alo * blo
+     *   = 2^32*a1*b1 + 2^16*a1*b0 + 2^16*a0*b1 + a0*b0
+     *
+     * Because a1, a0, b1 and b0 are all <= 2^16-1, their pair-wise products
+     * are all <= (2^16-1)^2 = 2^32 - 2*2^16 + 1 = 0xfffe0001 < 2^32. This
+     * means that, for example,
+     *   a1*b0 = (a1*b0) % 2^32 = a1 *[32] b0
+     * with the same applying to other subproducts.
+     *
+     * Let
+     *   a1b1 = a1 *[32] b1
+     *   a1b0 = a1 *[32] b0
+     *   a0b1 = a0 *[32] b1
+     *   a0b0 = a0 *[32] b0
+     *
+     * Each of those is <= 0xfffe0001.
+     *
+     * We now have:
+     *
+     * alo * blo
+     *   = 2^32*a1b1 + 2^16*a1b0 + 2^16*a0b1 + a0b0
+     *
+     * We can decompose it using / and % as follows:
+     * alo * blo
+     *   = 2^32*((alo * blo) / 2^32) + ((alo * blo) % 2^32)
+     *
+     * Let
+     *   aloblo = (alo * blo) % 2^32
+     *   carry_from_lo_* = (alo * blo) / 2^32
+     *
+     * Then
+     * alo * blo = 2^32 * carry_from_lo_* + aloblo
+     *
+     * aloblo = (alo * blo) % 2^32
+     *   = (2^32*a1b1 + 2^16*a1b0 + 2^16*a0b1 + a0b0) % 2^32
+     *   = (2^16*a1b0 + 2^16*a0b1 + a0b0) % 2^32
+     *   = (((2^16*a1b0 % 2^32 + 2^16*a0b1 % 2^32) % 2^32) + a0b0 % 2^32) % 2^32
+     *   = (2^16*a1b0 % 2^32) +[32] (2^16*a0b1 % 2^32) +[32] (a0b0 % 2^32)
+     *   = (a1b0 <<[32] 16) +[32] (a0b1 <<[32] 16) +[32] a0b0
+     *
+     * carry_from_lo_* is more difficult.
+     *
+     * carry_from_lo_* = (alo * blo) / 2^32
+     *   = (2^32*a1b1 + 2^16*a1b0 + 2^16*a0b1 + a0b0) / 2^32
+     *   = a1b1 + (2^16*a1b0 + 2^16*a0b1 + a0b0) / 2^32
+     *   = a1b1 + (2^16*a1b0 + 2^16*a0b1 + (2^16*(a0b0 / 2^16) + (a0b0 % 2^16))) / 2^32
+     *   = a1b1 + (2^16*(a1b0 + a0b1 + (a0b0 / 2^16)) + (a0 % 2^16)) / 2^32
+     *             ----------------------------------
+     *                  multiple of 2^16
+     *   = a1b1 + ( (2^16*(a1b0 + a0b1 + (a0b0 / 2^16))) / 2^16 + (a0 % 2^16) / 2^16 ) / 2^16
+     *                                                             ---------
+     *                                                               < 2^16
+     *   = a1b1 + (a1b0 + a0b1 + (a0b0 / 2^16)) / 2^16
+     *   = a1b1 + (a1b0 + (a0b1 + (a0b0 >>>[32] 16))) / 2^16
+     *                     ----    ---------------
+     *               <= 0xfffe0001    <= 0xffff
+     *                     ------------------------
+     *                       <= 0xffff0000, hence the + does not overflow
+     *   = a1b1 + (a1b0 + (a0b1 +[32] (a0b0 >>>[32] 16))) / 2^16
+     *
+     * Let
+     *   c1part = a0b1 +[32] (a0b0 >>>[32] 16)
+     *
+     * carry_from_lo_*
+     *   = a1b1 + (a1b0 + c1part) / 2^16
+     *   = a1b1 + (a1b0 + (2^16*(c1part / 2^16) + (c1part % 2^16))) / 2^16
+     *   = a1b1 + (2^16*(c1part / 2^16) + (a1b0 + (c1part % 2^16))) / 2^16
+     *   = a1b1 + (2^16*(c1part / 2^16) + (a1b0 + (c1part &[32] 0xffff))) / 2^16
+     *                                     ----    -------------------
+     *                               <= 0xfffe0001     <= 0xffff
+     *                                     ----------------------------
+     *                              <= 0xffff0000, hence the + does not overflow
+     *   = a1b1 + (2^16*(c1part / 2^16) + (a1b0 +[32] (c1part &[32] 0xffff))) / 2^16
+     *             --------------------
+     *               multiple of 2^16
+     *   = a1b1 + ( 2^16*(c1part / 2^16) / 2^16 + (a1b0 +[32] (c1part &[32] 0xffff)) / 2^16 )
+     *   = a1b1 + (c1part / 2^16) + (a1b0 +[32] (c1part &[32] 0xffff)) / 2^16
+     *             ------            --------------------------------
+     *             < 2^32                      < 2^32
+     *   = a1b1 + (c1part >>>[32] 16) + ((a1b0 +[32] (c1part &[32] 0xffff)) >>>[32] 16)
+     *
+     * Recap so far:
+     *
+     * a *[64] b
+     *   = ( 2^32*(ahi *[32] blo) + 2^32*(alo *[32] bhi) + alo*blo ) % 2^64
+     * alo*blo
+     *   = 2^32*carry_from_lo_* + aloblo
+     * aloblo
+     *   = (a1b0 <<[32] 16) +[32] (a0b1 <<[32] 16) +[32] a0b0
+     * carry_from_lo_*
+     *   = a1b1 + (c1part >>>[32] 16) + ((a1b0 +[32] (c1part &[32] 0xffff)) >>>[32] 16)
+     *
+     * Substituting,
+     *
+     * a *[64] b
+     *   = ( 2^32*(ahi *[32] blo) + 2^32*(alo *[32] bhi) + 2^32*carry_from_lo_* + aloblo ) % 2^64
+     *   = ( 2^32*((ahi *[32] blo) + (alo *[32] bhi) + carry_from_lo_*) + aloblo ) % 2^64
+     *   = ( 2^32*((ahi *[32] blo) + (alo *[32] bhi) + carry_from_lo_*) % 2^64 + aloblo ) % 2^64
+     *       Using (n * x) % (n * m) = (n * (x % m)) with n = m = 2^32 (see proof below)
+     *   = ( 2^32*(((ahi *[32] blo) + (alo *[32] bhi) + carry_from_lo_*) % 2^32) + aloblo ) % 2^64
+     *   = ( 2^32*((ahi *[32] blo) +[32] (alo *[32] bhi) +[32] (carry_from_lo_* % 2^32)) + aloblo ) % 2^64
+     *
+     * Lemma: (n * x) % (n * m) = n * (x % m)
+     * (n * x) % (n * m)
+     *   = (n * x) - ((n * x) / (n * m))*(n * m)   using a % b = a - (a / b)*b
+     *   = (n * x) - (x / m)*(n * m)
+     *   = n * (x - (x / m)*m)
+     *   = n * (x % m)              using again a % b = a - (a / b)*b
+     *
+     * Since aloblo < 2^32 and the inner sum is also < 2^32:
+     *
+     * lo = aloblo
+     *   = (a1b0 <<[32] 16) +[32] (a0b1 <<[32] 16) +[32] a0b0
+     *   = ((a1b0 +[32] a0a1) <<[32] 16) +[32] a0b0
+     *
+     * hi = (ahi *[32] blo) +[32] (alo *[32] bhi) +[32] (carry_from_lo_* % 2^32)
+     *   = (ahi *[32] blo) +[32] (alo *[32] bhi) +[32]
+     *        (a1b1 + (c1part >>>[32] 16) + ((a1b0 +[32] (c1part &[32] 0xffff)) >>>[32] 16)) % 2^32
+     *   = (ahi *[32] blo) +[32] (alo *[32] bhi) +[32]
+     *        a1b1 +[32] (c1part >>>[32] 16) +[32] ((a1b0 +[32] (c1part &[32] 0xffff)) >>>[32] 16)
+     */
+
     val alo = a.lo
     val blo = b.lo
-    new RuntimeLong(alo * blo, RuntimeLong.timesHi(alo, a.hi, blo, b.hi))
+
+    /* Note that the optimizer normalizes constants in * to be on the
+     * left-hand-side (when it cannot do constant-folding to begin with).
+     * Therefore, `b` is never constant in practice.
+     */
+
+    val a0 = alo & 0xffff
+    val a1 = alo >>> 16
+    val b0 = blo & 0xffff
+    val b1 = blo >>> 16
+
+    val a0b0 = a0 * b0
+    val a1b0 = a1 * b0 // collapses to 0 when a is constant and 0 <= a <= 0xffff
+    val a0b1 = a0 * b1 // (*)
+
+    /* (*) Since b is never constant in practice, the only case where a0b1
+     * would be constant 0 is if b's lo part is constant but not its hi part.
+     * That's not a likely scenario, though (not seen at all in our test suite).
+     */
+
+    /* lo = a.lo * b.lo, but we compute the above 3 subproducts for hi
+     * anyway, we reuse them to compute lo too, trading a * for 2 +'s and 1 <<.
+     */
+    val lo = a0b0 + ((a1b0 + a0b1) << 16)
+
+    // hi = a.lo*b.hi + a.hi*b.lo + carry_from_lo_*
+    val c1part = (a0b0 >>> 16) + a0b1
+    val hi = {
+      alo*b.hi + a.hi*blo + a1 * b1 + (c1part >>> 16) +
+      (((c1part & 0xffff) + a1b0) >>> 16) // collapses to 0 when a1b0 = 0
+    }
+
+    new RuntimeLong(lo, hi)
   }
 
   @inline
@@ -564,30 +784,6 @@ object RuntimeLong {
       if (ahi < bhi) -1
       else 1
     }
-  }
-
-  private def timesHi(alo: Int, ahi: Int, blo: Int, bhi: Int): Int = {
-    val a0 = alo & 0xffff
-    val a1 = alo >>> 16
-    val a2 = ahi & 0xffff
-    val a3 = ahi >>> 16
-    val b0 = blo & 0xffff
-    val b1 = blo >>> 16
-    val b2 = bhi & 0xffff
-    val b3 = bhi >>> 16
-
-    val c1part = ((a0 * b0) >>> 16) + (a1 * b0)
-    var c2 = (c1part >>> 16) + (((c1part & 0xffff) + (a0 * b1)) >>> 16)
-    var c3 = c2 >>> 16
-    c2 = (c2 & 0xffff) + a2 * b0
-    c3 = c3 + (c2 >>> 16)
-    c2 = (c2 & 0xffff) + a1 * b1
-    c3 = c3 + (c2 >>> 16)
-    c2 = (c2 & 0xffff) + a0 * b2
-    c3 = c3 + (c2 >>> 16)
-    c3 = c3 + a3 * b0 + a2 * b1 + a1 * b2 + a0 * b3
-
-    (c2 & 0xffff) | (c3 << 16)
   }
 
   @inline

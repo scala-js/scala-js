@@ -2923,6 +2923,14 @@ private[optimizer] abstract class OptimizerCore(
             else
               PreTransBinaryOp(Int_>>>, x, PreTransLit(IntLiteral(dist)))
 
+          case (PreTransBinaryOp(op @ (Int_| | Int_& | Int_^),
+              PreTransLit(IntLiteral(x)), y),
+              z @ PreTransLit(IntLiteral(zValue))) =>
+            foldBinaryOp(
+                op,
+                PreTransLit(IntLiteral(x >>> zValue)),
+                foldBinaryOp(Int_>>>, y, z))
+
           case (_, PreTransLit(IntLiteral(y))) =>
             val dist = y & 31
             if (dist == 0)
