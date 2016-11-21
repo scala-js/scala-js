@@ -75,7 +75,8 @@ sealed trait Dictionary[A] extends Any {
 /** Factory for [[Dictionary]] instances. */
 object Dictionary {
   /** Returns a new empty dictionary */
-  def empty[A]: Dictionary[A] = (new Object).asInstanceOf[Dictionary[A]]
+  @inline def empty[A]: Dictionary[A] =
+    (new Object).asInstanceOf[Dictionary[A]]
 
   def apply[A](properties: (String, A)*): Dictionary[A] = {
     val result = empty[A]
