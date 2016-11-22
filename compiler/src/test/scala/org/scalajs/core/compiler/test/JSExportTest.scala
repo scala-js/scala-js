@@ -471,7 +471,10 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
     class A {
       @JSExport
-      class Nested
+      class Nested {
+        @JSExport
+        def this(x: Int) = this()
+      }
 
       @JSExport
       @ScalaJSDefined class Nested2 extends js.Object
@@ -481,25 +484,39 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:4: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
       |      @JSExport
       |       ^
-      |newSource1.scala:7: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
+      |newSource1.scala:6: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
+      |        @JSExport
+      |         ^
+      |newSource1.scala:10: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
       |      @JSExport
       |       ^
     """
+
+  }
+
+  @Test
+  def noImplicitNameNestedExportClass: Unit = {
 
     """
     object A {
       @JSExport
-      class Nested
+      class Nested {
+        @JSExport
+        def this(x: Int) = this
+      }
 
       @JSExport
       @ScalaJSDefined class Nested2 extends js.Object
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
+      |newSource1.scala:4: error: You must set an explicit name for exports of nested classes.
       |      @JSExport
       |       ^
-      |newSource1.scala:7: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
+      |newSource1.scala:6: error: You must set an explicit name for exports of nested classes.
+      |        @JSExport
+      |         ^
+      |newSource1.scala:10: error: You must set an explicit name for exports of nested classes.
       |      @JSExport
       |       ^
     """
@@ -527,6 +544,11 @@ class JSExportTest extends DirectTest with TestHelpers {
       |       ^
     """
 
+  }
+
+  @Test
+  def noImplicitNameNestedExportObject: Unit = {
+
     """
     object A {
       @JSExport
@@ -537,10 +559,10 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: You may not export a nested object
+      |newSource1.scala:4: error: You must set an explicit name for exports of nested classes.
       |      @JSExport
       |       ^
-      |newSource1.scala:7: error: You may not export a nested object
+      |newSource1.scala:7: error: You must set an explicit name for exports of nested classes.
       |      @JSExport
       |       ^
     """
