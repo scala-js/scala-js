@@ -638,6 +638,16 @@ class ExportsTest {
     assertEquals("witness", obj.witness)
   }
 
+  @Test def exports_for_nested_objects(): Unit = {
+    val accessor = exportsNamespace.qualified.nested.ExportedObject
+    assertJSNotUndefined(accessor)
+    assertEquals("function", js.typeOf(accessor))
+    val obj = accessor()
+    assertJSNotUndefined(obj)
+    assertEquals("object", js.typeOf(obj))
+    assertSame(obj, ExportHolder.ExportedObject)
+  }
+
   @Test def exports_for_objects_with_constant_folded_name(): Unit = {
     val accessor = exportsNamespace.ConstantFoldedObjectExport
     assertJSNotUndefined(accessor)
@@ -700,6 +710,14 @@ class ExportsTest {
     assertEquals(5, obj.x)
   }
 
+  @Test def exports_for_nested_classes(): Unit = {
+    val constr = exportsNamespace.qualified.nested.ExportedClass
+    assertJSNotUndefined(constr)
+    assertEquals("function", js.typeOf(constr))
+    val obj = js.Dynamic.newInstance(constr)()
+    assertTrue((obj: Any).isInstanceOf[ExportHolder.ExportedClass])
+  }
+
   @Test def exports_for_classes_with_qualified_name_SJSDefinedExportedClass(): Unit = {
     val constr = exportsNamespace.qualified.testclass.SJSDefinedExportedClass
     assertJSNotUndefined(constr)
@@ -707,6 +725,14 @@ class ExportsTest {
     val obj = js.Dynamic.newInstance(constr)(5)
     assertTrue((obj: Any).isInstanceOf[SJSDefinedExportedClass])
     assertEquals(5, obj.x)
+  }
+
+  @Test def exports_for_nested_sjs_defined_classes(): Unit = {
+    val constr = exportsNamespace.qualified.nested.SJSDefinedExportedClass
+    assertJSNotUndefined(constr)
+    assertEquals("function", js.typeOf(constr))
+    val obj = js.Dynamic.newInstance(constr)()
+    assertTrue((obj: Any).isInstanceOf[ExportHolder.SJSDefinedExportedClass])
   }
 
   @Test def exports_for_classes_with_constant_folded_name(): Unit = {
@@ -1602,4 +1628,16 @@ class ExportClassSetterNamed_= { // scalastyle:ignore
 object ExportObjSetterNamed_= { // scalastyle:ignore
   @JSExport
   val x = 1
+}
+
+object ExportHolder {
+  @JSExport("qualified.nested.ExportedClass")
+  class ExportedClass
+
+  @JSExport("qualified.nested.ExportedObject")
+  object ExportedObject
+
+  @JSExport("qualified.nested.SJSDefinedExportedClass")
+  @ScalaJSDefined
+  class SJSDefinedExportedClass extends js.Object
 }

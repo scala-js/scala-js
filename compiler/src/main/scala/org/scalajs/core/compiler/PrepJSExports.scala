@@ -75,7 +75,7 @@ trait PrepJSExports { this: PrepJSInterop =>
         err("You may not export an abstract class")
       else if (clsSym.isLocalToBlock)
         err("You may not export a local class")
-      else if (clsSym.isNestedClass)
+      else if (!clsSym.isStatic)
         err(s"You may not export a nested class. $createFactoryInOuterClassHint")
       else {
         jsInterop.registerForExport(baseSym, exports)
@@ -131,7 +131,7 @@ trait PrepJSExports { this: PrepJSInterop =>
       } else if (sym.isLocalToBlock) {
         err("You may not export a local " +
             (if (isMod) "object" else "class"))
-      } else if (!sym.owner.hasPackageFlag) {
+      } else if (!sym.isStatic) {
         err("You may not export a nested " +
             (if (isMod) "object" else s"class. $createFactoryInOuterClassHint"))
       } else if (sym.isAbstractClass) {
@@ -272,6 +272,20 @@ trait PrepJSExports { this: PrepJSInterop =>
             "application. It is available under the name apply instead. " +
             "Add @JSExport(\"apply\") to silence this warning. " +
             "This will be enforced in 1.0.")
+      }
+
+      // Don't allow nested class / module exports without explicit name.
+      def isStaticNested = {
+        /* For Scala.js defined JS classes, sym is the class itself. For normal
+         * classes, sym is the constructor that is to be exported.
+         */
+        val clsSym = if (sym.isClass) sym else sym.owner
+        clsSym.isNestedClass && clsSym.isStatic && !clsSym.isLocalToBlock
+      }
+
+      if (!isMember && !hasExplicitName && isStaticNested) {
+        reporter.error(annot.pos,
+            "You must set an explicit name for exports of nested classes.")
       }
 
       if (isNamedExport && jsInterop.isJSProperty(sym)) {
