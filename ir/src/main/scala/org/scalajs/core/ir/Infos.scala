@@ -258,6 +258,7 @@ object Infos {
       .addInterfaces(classDef.interfaces.map(_.name))
 
     var exportedConstructors: List[ConstructorExportDef] = Nil
+    var topLevelExports: List[TopLevelExportDef] = Nil
 
     classDef.defs foreach {
       case methodDef: MethodDef =>
@@ -269,11 +270,16 @@ object Infos {
         exportedConstructors ::= constructorDef
       case _:JSClassExportDef | _:ModuleExportDef =>
         builder.setIsExported(true)
+      case topLevelExport: TopLevelExportDef =>
+        builder.setIsExported(true)
+        topLevelExports ::= topLevelExport
       case _ =>
     }
 
-    if (exportedConstructors.nonEmpty)
-      builder.addMethod(generateExportedConstructorsInfo(exportedConstructors))
+    if (exportedConstructors.nonEmpty || topLevelExports.nonEmpty) {
+      builder.addMethod(
+          generateClassExportsInfo(exportedConstructors, topLevelExports))
+    }
 
     builder.result()
   }
@@ -287,9 +293,17 @@ object Infos {
     new GenInfoTraverser().generatePropertyInfo(propertyDef)
 
   /** Generates the [[MethodInfo]] of a list of [[Trees.ConstructorExportDef]]s. */
+  @deprecated("Use generateClassExportsInfo instead", "0.6.14")
   def generateExportedConstructorsInfo(
       constructorDefs: List[ConstructorExportDef]): MethodInfo = {
-    new GenInfoTraverser().generateExportedConstructorsInfo(constructorDefs)
+    generateClassExportsInfo(constructorDefs, Nil)
+  }
+
+  /** Generates the [[MethodInfo]] for the class exports. */
+  def generateClassExportsInfo(constructorDefs: List[ConstructorExportDef],
+      topLevelExports: List[TopLevelExportDef]): MethodInfo = {
+    new GenInfoTraverser().generateClassExportsInfo(constructorDefs,
+        topLevelExports)
   }
 
   private final class GenInfoTraverser extends Traversers.Traverser {
@@ -320,14 +334,17 @@ object Infos {
       builder.result()
     }
 
-    def generateExportedConstructorsInfo(
-        constructorDefs: List[ConstructorExportDef]): MethodInfo = {
+    def generateClassExportsInfo(constructorDefs: List[ConstructorExportDef],
+        topLevelExports: List[TopLevelExportDef]): MethodInfo = {
       builder
-        .setEncodedName(ExportedConstructorsName)
+        .setEncodedName(ClassExportsName)
         .setIsExported(true)
 
       for (constructorDef <- constructorDefs)
         traverse(constructorDef.body)
+
+      for (topLevelExport <- topLevelExports)
+        traverse(topLevelExport.member)
 
       builder.result()
     }

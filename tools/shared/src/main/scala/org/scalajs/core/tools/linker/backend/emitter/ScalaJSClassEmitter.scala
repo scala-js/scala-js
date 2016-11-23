@@ -806,13 +806,18 @@ private[emitter] final class ScalaJSClassEmitter(
 
   def genClassExports(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
-    val exports = tree.classExports collect {
+    val exports = tree.classExports map {
       case e: ConstructorExportDef =>
         genConstructorExportDef(tree, e)
       case e: JSClassExportDef =>
         genJSClassExportDef(tree, e)
       case e: ModuleExportDef =>
         genModuleExportDef(tree, e)
+      case e: TopLevelExportDef =>
+        genTopLevelExportDef(tree, e)
+      case tree =>
+        throw new AssertionError(
+            "Illegal class export " + tree.getClass.getName)
     }
 
     js.Block(exports)(tree.pos)
@@ -877,6 +882,27 @@ private[emitter] final class ScalaJSClassEmitter(
     js.Block(
       createNamespace,
       expAccessorVar := exportedValue
+    )
+  }
+
+  def genTopLevelExportDef(cd: LinkedClass, tree: TopLevelExportDef)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+    import TreeDSL._
+
+    val MethodDef(true, StringLiteral(fullName), args, resultType, Some(body)) =
+        tree.member
+
+    implicit val pos = tree.pos
+
+    val (createNamespace, expAccessorVar) =
+      genCreateNamespaceInExports(fullName)
+
+    val methodDef = desugarToFunction(this, cd.encodedName, args,
+        body, isStat = resultType == NoType)
+
+    js.Block(
+        createNamespace,
+        expAccessorVar := methodDef
     )
   }
 

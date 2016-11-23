@@ -1231,6 +1231,35 @@ class ExportsTest {
     assertThrows(classOf[Throwable], obj2.z1)
   }
 
+  // @JSExportTopLevel
+
+  @Test def basic_top_level_export(): Unit = {
+    assertEquals(1, jsPackage.toplevel.basic())
+  }
+
+  @Test def overloaded_top_level_export(): Unit = {
+    assertEquals("Hello World", jsPackage.toplevel.overload("World"))
+    assertEquals(2, jsPackage.toplevel.overload(2))
+    assertEquals(9, jsPackage.toplevel.overload(2, 7))
+    assertEquals(10, jsPackage.toplevel.overload(1, 2, 3, 4))
+  }
+
+  @Test def top_level_export_uses_unique_object(): Unit = {
+    jsPackage.toplevel.set(3)
+    assertEquals(3, TopLevelExports.myVar)
+    jsPackage.toplevel.set(7)
+    assertEquals(7, TopLevelExports.myVar)
+  }
+
+  @Test def top_level_export_from_nested_object(): Unit = {
+    jsPackage.toplevel.setNested(28)
+    assertEquals(28, TopLevelExports.Nested.myVar)
+  }
+
+  @Test def top_level_export_is_always_reachable(): Unit = {
+    assertEquals("Hello World", jsPackage.toplevel.reachability())
+  }
+
   // @JSExportDescendentObjects
 
   @Test def auto_exports_for_objects_extending_a_trait(): Unit = {
@@ -1640,4 +1669,37 @@ object ExportHolder {
   @JSExport("qualified.nested.SJSDefinedExportedClass")
   @ScalaJSDefined
   class SJSDefinedExportedClass extends js.Object
+}
+
+object TopLevelExports {
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.basic")
+  def basic(): Int = 1
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.overload")
+  def overload(x: String): String = "Hello " + x
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.overload")
+  def overload(x: Int, y: Int*): Int = x + y.sum
+
+  var myVar: Int = _
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.set")
+  def setMyVar(x: Int): Unit = myVar = x
+
+  object Nested {
+    var myVar: Int = _
+
+    @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.setNested")
+    def setMyVar(x: Int): Unit = myVar = x
+  }
+}
+
+/* This object is only reachable via the top level export to make sure the
+ * analyzer behaves correctly.
+ */
+object TopLevelExportsReachability {
+  private val name = "World"
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.reachability")
+  def basic(): String = "Hello " + name
 }

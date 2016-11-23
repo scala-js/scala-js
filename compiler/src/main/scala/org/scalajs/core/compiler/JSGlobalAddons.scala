@@ -51,6 +51,7 @@ trait JSGlobalAddons extends JSDefinitions
       val jsName: String
       val pos: Position
       val isNamed: Boolean
+      val isTopLevel: Boolean
     }
 
     def clearGlobalState(): Unit = {
@@ -58,19 +59,12 @@ trait JSGlobalAddons extends JSDefinitions
       jsNativeLoadSpecs.clear()
     }
 
-    private def assertValidForRegistration(sym: Symbol): Unit = {
-      assert(sym.isConstructor || sym.isClass,
-          "Can only register constructors or classes for export")
-    }
-
     def registerForExport(sym: Symbol, infos: List[ExportInfo]): Unit = {
       assert(!exportedSymbols.contains(sym), "Same symbol exported twice")
-      assertValidForRegistration(sym)
       exportedSymbols.put(sym, infos)
     }
 
     def registeredExportsOf(sym: Symbol): List[ExportInfo] = {
-      assertValidForRegistration(sym)
       exportedSymbols.getOrElse(sym, Nil)
     }
 

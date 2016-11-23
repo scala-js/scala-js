@@ -204,6 +204,9 @@ object Traversers {
       case ConstructorExportDef(fullName, args, body) =>
         traverse(body)
 
+      case TopLevelExportDef(member) =>
+        traverse(member)
+
       // Trees that need not be traversed
 
       case _:Skip | _:Continue | _:Debugger | _:LoadModule |

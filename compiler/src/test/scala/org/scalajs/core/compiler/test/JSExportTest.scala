@@ -1095,4 +1095,160 @@ class JSExportTest extends DirectTest with TestHelpers {
     if (version.startsWith("2.10.") || version.startsWith("2.11.")) ""
     else s" (since $v)"
   }
+
+  @Test
+  def noExportTopLevelModule: Unit = {
+    """
+    @JSExportTopLevel("foo")
+    object A
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: Use @JSExport on objects and constructors to export to the top level
+      |    @JSExportTopLevel("foo")
+      |     ^
+    """
+  }
+
+  @Test
+  def noExportTopLevelTrait: Unit = {
+    """
+    @JSExportTopLevel("foo")
+    trait A
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: Use @JSExport on objects and constructors to export to the top level
+      |    @JSExportTopLevel("foo")
+      |     ^
+    """
+  }
+
+  @Test
+  def noExportTopLevelClass: Unit = {
+    """
+    @JSExportTopLevel("foo")
+    class A
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: Use @JSExport on objects and constructors to export to the top level
+      |    @JSExportTopLevel("foo")
+      |     ^
+    """
+
+    """
+    class A {
+      @JSExportTopLevel("foo")
+      def this(x: Int) = this()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: Use @JSExport on objects and constructors to export to the top level
+      |      @JSExportTopLevel("foo")
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportTopLevelGetter: Unit = {
+    """
+    object A {
+      @JSExportTopLevel("foo")
+      def a: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a getter or a setter to the top level
+      |      @JSExportTopLevel("foo")
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportTopLevelVal: Unit = {
+    """
+    object A {
+      @JSExportTopLevel("foo")
+      val a: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a getter or a setter to the top level
+      |      @JSExportTopLevel("foo")
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportTopLevelVar: Unit = {
+    """
+    object A {
+      @JSExportTopLevel("foo")
+      var a: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a getter or a setter to the top level
+      |      @JSExportTopLevel("foo")
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportTopLevelSetter: Unit = {
+    """
+    object A {
+      @JSExportTopLevel("foo")
+      def a_=(x: Int): Unit = ()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a getter or a setter to the top level
+      |      @JSExportTopLevel("foo")
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportTopLevelNonStatic: Unit = {
+    """
+    class A {
+      @JSExportTopLevel("foo")
+      def a(): Unit = ()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: Only static objects may export their members to the top level
+      |      @JSExportTopLevel("foo")
+      |       ^
+    """
+
+    """
+    class A {
+      object B {
+        @JSExportTopLevel("foo")
+        def a(): Unit = ()
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: Only static objects may export their members to the top level
+      |        @JSExportTopLevel("foo")
+      |         ^
+    """
+  }
+
+  @Test
+  def noExportTopLevelJSModule: Unit = {
+    """
+    @ScalaJSDefined
+    object A extends js.Object {
+      @JSExportTopLevel("foo")
+      def a(): Unit = ()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: You may not export a method of a subclass of js.Any
+      |      @JSExportTopLevel("foo")
+      |       ^
+    """
+  }
 }
