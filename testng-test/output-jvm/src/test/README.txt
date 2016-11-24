@@ -1,0 +1,1 @@
+Do not put sources here, sources should be in junit-test/shared.

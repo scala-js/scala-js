@@ -94,7 +94,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
-        "encodeFieldSym called with non-field symbol: " + sym)
+        "encodeFieldSym called with non-field symbol: " + sym + " (owned by " + sym.owner + ")")
 
     val name0 = encodeMemberNameInternal(sym)
     val name =

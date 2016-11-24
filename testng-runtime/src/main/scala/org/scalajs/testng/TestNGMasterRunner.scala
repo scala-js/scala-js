@@ -1,14 +1,13 @@
-package org.scalajs.junit
+package org.scalajs.testng
 
-import com.novocode.junit.RunSettings
 import sbt.testing._
 
-final class JUnitMasterRunner(
+final class TestNGMasterRunner(
     args: Array[String],
     remoteArgs: Array[String],
     testClassLoader: ClassLoader,
     runSettings: RunSettings)
-    extends JUnitBaseRunner(args, remoteArgs, testClassLoader, runSettings) {
+    extends TestNGBaseRunner(args, remoteArgs, testClassLoader, runSettings) {
 
   private[this] var registeredCount = 0
   private[this] var slaveCount = 0
@@ -36,7 +35,7 @@ final class JUnitMasterRunner(
 
   def receiveMessage(msg: String): Option[String] = msg(0) match {
     case 'd' =>
-      val slaveDone = JUnitBaseRunner.Done.deserialize(msg.tail)
+      val slaveDone = TestNGBaseRunner.Done.deserialize(msg.tail)
       doneCount += slaveDone.done
       passedCount += slaveDone.passed
       failedCount += slaveDone.failed
