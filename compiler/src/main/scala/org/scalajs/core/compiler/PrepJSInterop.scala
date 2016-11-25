@@ -610,10 +610,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         }
       }
 
-      // Check for overrides with different JS names - issue #1983
+      // Check for consistency of JS semantics across overriding
       for (overridingPair <- new overridingPairs.Cursor(sym).iterator) {
         val low = overridingPair.low
         val high = overridingPair.high
+
+        def memberDefString(membSym: Symbol): String =
+          membSym.defStringSeenAs(sym.thisType.memberType(membSym))
+
+        // Check for overrides with different JS names - issue #1983
         if (jsInterop.jsNameOf(low) != jsInterop.jsNameOf(high)) {
           val pos = {
             if (sym == low.owner) low.pos
@@ -622,18 +627,26 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           }
 
           val msg = {
-            def memberDefString(membSym: Symbol) = {
-              membSym.defStringSeenAs(sym.thisType.memberType(membSym)) +
+            def memberDefStringWithJSName(membSym: Symbol) = {
+              memberDefString(membSym) +
               membSym.locationString + " with JSName '" +
               jsInterop.jsNameOf(membSym) + '\''
             }
             "A member of a JS class is overriding another member with a different JS name.\n\n" +
-            memberDefString(low) + "\n" +
+            memberDefStringWithJSName(low) + "\n" +
             "    is conflicting with\n" +
-            memberDefString(high) + "\n"
+            memberDefStringWithJSName(high) + "\n"
           }
 
           reporter.warning(pos, msg)
+        }
+
+        // Cannot override a non-@JSOptional with an @JSOptional
+        if (low.hasAnnotation(JSOptionalAnnotation) &&
+            !high.hasAnnotation(JSOptionalAnnotation)) {
+          reporter.error(low.pos,
+              s"Overriding non-optional ${memberDefString(high)} with " +
+              s"@JSOptional ${memberDefString(low)} is not allowed")
         }
       }
 
@@ -775,6 +788,18 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       if (sym.isAccessor && !sym.hasAnnotation(JSNameAnnotation))
         sym.accessed.getAnnotation(JSNameAnnotation).foreach(sym.addAnnotation)
 
+      /* If this is a field, copy the @JSOptional annotation from its getter,
+       * if it has one. This shouldn't be necessary, since @JSOptional has the
+       * three meta-annotations @field @getter @setter. However, it appears to
+       * be necessary when overriding an optional val/def with an optional val,
+       * without specifying an explicit result type.
+       */
+      if (!sym.isMethod) {
+        val getter = sym.getter(sym.owner)
+        if (getter != NoSymbol)
+          getter.getAnnotation(JSOptionalAnnotation).foreach(sym.addAnnotation)
+      }
+
       if (sym.name == nme.apply && !sym.hasAnnotation(JSNameAnnotation)) {
         if (jsInterop.isJSGetter(sym)) {
           reporter.error(sym.pos, s"A member named apply represents function " +
@@ -847,10 +872,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         // Traits must be pure interfaces
         if (sym.owner.isTrait && sym.isTerm && !sym.isConstructor) {
-          if (!sym.isDeferred) {
+          if (!sym.isDeferred && !sym.hasAnnotation(JSOptionalAnnotation)) {
             reporter.error(tree.pos,
-                "A Scala.js-defined JS trait can only contain abstract members")
-          } else if (isPrivateMaybeWithin(sym)) {
+                "A Scala.js-defined JS trait can only contain abstract members and/or @JSOptional members")
+          } else if (sym.isMethod && isPrivateMaybeWithin(sym)) {
             reporter.error(tree.pos,
                 "A Scala.js-defined JS trait cannot contain private members")
           }
@@ -913,7 +938,62 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         }
       }
 
-      super.transform(tree)
+      val patchedTree = {
+        if (sym.hasAnnotation(JSOptionalAnnotation)){
+          if (sym.isMethod && !sym.isAccessor) {
+            sym.tpe match {
+              case _: NullaryMethodType =>
+                // ok
+              case PolyType(_, _: NullaryMethodType) =>
+                // ok
+              case _ =>
+                reporter.error(sym.getAnnotation(JSOptionalAnnotation).get.pos,
+                    "@JSOptional cannot be used on methods with parentheses")
+            }
+          }
+
+          /* On 2.12+, fields are created later than this phase, and getters
+           * still hold the right-hand-side that we need to check.
+           * On 2.11 and before, however, the getter has already been rewritten
+           * to read the field, so we must not check it.
+           * In either case, setters must not be checked.
+           */
+          if (!sym.isAccessor || (sym.isGetter && sym.accessed == NoSymbol)) {
+            // Check that the tree's body is `js.undefined`
+            tree.rhs match {
+              case sel: Select if sel.symbol == JSPackage_undefined =>
+                // ok
+              case _ =>
+                val pos = if (tree.rhs != EmptyTree) tree.rhs.pos else tree.pos
+                reporter.error(pos,
+                    "The right-hand-side of an @JSOptional member must be " +
+                    "`js.undefined`.")
+            }
+
+            // and replace it with `runtime.optionalUndefined()`
+            val newRhs = typer.typed {
+              atPos(tree.pos) {
+                Apply(
+                    Select(Ident(RuntimePackageModule),
+                        newTermName("optionalUndefined")),
+                    Nil)
+              }
+            }
+            tree match {
+              case ValDef(mods, name, tpt, _) =>
+                treeCopy.ValDef(tree, mods, name, tpt, newRhs)
+              case DefDef(mods, name, tparams, vparamss, tpt, _) =>
+                treeCopy.DefDef(tree, mods, name, tparams, vparamss, tpt, newRhs)
+            }
+          } else {
+            tree
+          }
+        } else {
+          tree
+        }
+      }
+
+      super.transform(patchedTree)
     }
 
   }

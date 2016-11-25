@@ -81,6 +81,16 @@ package object runtime {
   def newConstructorTag[T <: js.Any](constructor: js.Dynamic): js.ConstructorTag[T] =
     new js.ConstructorTag[T](constructor)
 
+  /** Dummy method to identify "assignments" of `js.undefined` to `@JSOptional`
+   *  members.
+   *
+   *  An early phase of the compiler reroutes calls to `js.undefined` in the
+   *  rhs of `@JSOptional` members into `runtime.optionalUndefined()`. The
+   *  back-end then ignores assignments of `runtime.optionalUndefined()` to
+   *  fields.
+   */
+  def optionalUndefined(): js.UndefOr[Nothing] = sys.error("stub")
+
   /** Returns an array of the enumerable properties in an object's prototype
    *  chain.
    *

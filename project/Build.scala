@@ -1291,9 +1291,14 @@ object Build {
       val sharedTestDir =
         testDir.getParentFile.getParentFile.getParentFile / "shared/src/test"
 
+      val scalaV = scalaVersion.value
+      val isScalaAtLeast212 =
+        !scalaV.startsWith("2.10.") && ! scalaV.startsWith("2.11.")
+
       List(sharedTestDir / "scala") ++
       includeIf(sharedTestDir / "require-jdk7", javaVersion.value >= 7) ++
-      includeIf(sharedTestDir / "require-jdk8", javaVersion.value >= 8)
+      includeIf(sharedTestDir / "require-jdk8", javaVersion.value >= 8) ++
+      includeIf(testDir / "require-2.12", isJSTest && isScalaAtLeast212)
     },
 
     sources in Test ++= {

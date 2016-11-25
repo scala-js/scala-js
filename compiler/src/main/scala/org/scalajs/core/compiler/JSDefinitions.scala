@@ -28,6 +28,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSPackage_constructorOf = getMemberMethod(ScalaJSJSPackage, newTermName("constructorOf"))
       lazy val JSPackage_debugger      = getMemberMethod(ScalaJSJSPackage, newTermName("debugger"))
       lazy val JSPackage_native        = getMemberMethod(ScalaJSJSPackage, newTermName("native"))
+      lazy val JSPackage_undefined     = getMemberMethod(ScalaJSJSPackage, newTermName("undefined"))
 
     lazy val JSNativeAnnotation = getRequiredClass("scala.scalajs.js.native")
 
@@ -66,6 +67,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSExportTopLevelAnnotation = getRequiredClass("scala.scalajs.js.annotation.JSExportTopLevel")
     lazy val JSImportAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSImport")
     lazy val JSGlobalScopeAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSGlobalScope")
+    lazy val JSOptionalAnnotation      = getRequiredClass("scala.scalajs.js.annotation.JSOptional")
     lazy val ScalaJSDefinedAnnotation  = getRequiredClass("scala.scalajs.js.annotation.ScalaJSDefined")
     lazy val SJSDefinedAnonymousClassAnnotation = getRequiredClass("scala.scalajs.js.annotation.SJSDefinedAnonymousClass")
     lazy val HasJSNativeLoadSpecAnnotation = getRequiredClass("scala.scalajs.js.annotation.internal.HasJSNativeLoadSpec")
@@ -121,6 +123,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val Runtime_jsTupleArray2jsObject      = getMemberMethod(RuntimePackageModule, newTermName("jsTupleArray2jsObject"))
       lazy val Runtime_constructorOf              = getMemberMethod(RuntimePackageModule, newTermName("constructorOf"))
       lazy val Runtime_newConstructorTag          = getMemberMethod(RuntimePackageModule, newTermName("newConstructorTag"))
+      lazy val Runtime_optionalUndefined          = getMemberMethod(RuntimePackageModule, newTermName("optionalUndefined"))
       lazy val Runtime_propertiesOf               = getMemberMethod(RuntimePackageModule, newTermName("propertiesOf"))
       lazy val Runtime_linkingInfo                = getMemberMethod(RuntimePackageModule, newTermName("linkingInfo"))
 
