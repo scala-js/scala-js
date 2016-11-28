@@ -596,12 +596,16 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
     @ScalaJSDefined
     trait A extends js.Object {
       def foo(x: Int): Int = x + 1
+      def bar[A](x: A): A = x
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: A Scala.js-defined JS trait can only contain abstract members
+      |newSource1.scala:7: error: In Scala.js-defined JS traits, defs with parentheses must be abstract.
       |      def foo(x: Int): Int = x + 1
-      |          ^
+      |                               ^
+      |newSource1.scala:8: error: In Scala.js-defined JS traits, defs with parentheses must be abstract.
+      |      def bar[A](x: A): A = x
+      |                            ^
     """
   }
 
