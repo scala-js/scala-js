@@ -18,6 +18,7 @@ import org.scalajs.jsenv._
 import org.scalajs.core.ir.Utils.escapeJS
 
 class JSDOMNodeJSEnv(
+  jsdomDirectory: File,
   nodejsPath: String = "node",
   addArgs: Seq[String] = Seq.empty,
   addEnv: Map[String, String] = Map.empty
@@ -88,7 +89,14 @@ class JSDOMNodeJSEnv(
            |})();
            |""".stripMargin
       }
-      Seq(new MemVirtualJSFile("codeWithJSDOMContext.js").withContent(jsDOMCode))
+      val codeFile = new File(jsdomDirectory, "codeWithJSDOMContext.js")
+      val writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(codeFile), "UTF-8"))
+      try {
+        writer.write(jsDOMCode)
+        Seq(FileVirtualJSFile(codeFile))
+      } finally {
+        writer.close()
+      }
     }
 
     override protected def getJSFiles(): Seq[VirtualJSFile] =

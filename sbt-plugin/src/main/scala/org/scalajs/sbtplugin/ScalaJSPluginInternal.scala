@@ -2,8 +2,8 @@ package org.scalajs.sbtplugin
 
 import java.util.IllegalFormatException
 
-import sbt._
-import sbt.inc.{IncOptions, ClassfileManager}
+import sbt.{Process, _}
+import sbt.inc.{ClassfileManager, IncOptions}
 import Keys._
 import sbinary.DefaultProtocol._
 import Cache.seqFormat
@@ -94,6 +94,12 @@ object ScalaJSPluginInternal {
   val scalaJSSourceFiles = AttributeKey[Seq[File]]("scalaJSSourceFiles",
       "Files used to compute this value (can be used in FileFunctions later).",
       KeyRanks.Invisible)
+
+  val scalaJSInstallJsdom = TaskKey[File](
+    "scalaJSInstallJsdom",
+    "Locally installs jsdom. Returns the directory in which jsdom is installed.",
+    KeyRanks.Invisible
+  )
 
   val stageKeys: Map[Stage, TaskKey[Attributed[File]]] = Map(
     Stage.FastOpt -> fastOptJS,
@@ -590,13 +596,15 @@ object ScalaJSPluginInternal {
       },
 
       resolvedJSEnv := jsEnv.?.value.getOrElse {
-        if (scalaJSUseRhinoInternal.value) {
-          RhinoJSEnvInternal().value
-        } else if (scalaJSRequestsDOM.value) {
-          JSDOMNodeJSEnv().value
-        } else {
-          NodeJSEnv().value
-        }
+        Def.taskDyn {
+          if (scalaJSUseRhinoInternal.value) {
+            RhinoJSEnvInternal().map(e => e: JSEnv) // .map is needed because `Task[A]` is non variant.
+          } else if (scalaJSRequestsDOM.value) {
+            JSDOMNodeJSEnv().map(e => e: JSEnv)
+          } else {
+            NodeJSEnv().map(e => e: JSEnv)
+          }
+        }.value
       },
 
       scalaJSJavaSystemProperties ++= {
@@ -961,7 +969,24 @@ object ScalaJSPluginInternal {
         new PhantomJettyClassLoader(jettyLoader, getClass.getClassLoader)
       },
       scalaJSJavaSystemProperties := Map.empty,
-      scalaJSConfigurationLibs := Nil
+      scalaJSConfigurationLibs := Nil,
+      scalaJSInstallJsdom := {
+        val jsdomDirectory = target.value / "scalajs-jsdom"
+        val logger = streams.value.log
+        if (!jsdomDirectory.exists()) {
+          val npm = sys.props("os.name").toLowerCase match {
+            case os if os.contains("win") ⇒ "cmd /c npm"
+            case _ ⇒ "npm"
+          }
+          IO.createDirectory(jsdomDirectory)
+          val process = Process(s"$npm install jsdom", jsdomDirectory)
+          val code = process ! logger
+          if (code != 0) {
+            sys.error(s"Non-zero exit code: $code")
+          }
+        }
+        jsdomDirectory
+      }
   )
 
   val scalaJSAbstractSettings: Seq[Setting[_]] = (
