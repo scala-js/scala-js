@@ -142,7 +142,7 @@ object ScalaJSPlugin extends AutoPlugin {
         args: Seq[String] = Seq.empty,
         env: Map[String, String] = Map.empty
     ): Def.Initialize[Task[JSDOMNodeJSEnv]] = Def.task {
-      val jsdomDirectory = ScalaJSPluginInternal.scalaJSInstallJsdom.value
+      val jsdomDirectory = ScalaJSPluginInternal.scalaJSInstallJSDOM.value
       new JSDOMNodeJSEnv(jsdomDirectory, executable, args, env)
     }
 

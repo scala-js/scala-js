@@ -95,7 +95,7 @@ object ScalaJSPluginInternal {
       "Files used to compute this value (can be used in FileFunctions later).",
       KeyRanks.Invisible)
 
-  val scalaJSInstallJsdom = TaskKey[File](
+  val scalaJSInstallJSDOM = TaskKey[File](
     "scalaJSInstallJsdom",
     "Locally installs jsdom. Returns the directory in which jsdom is installed.",
     KeyRanks.Invisible
@@ -970,23 +970,25 @@ object ScalaJSPluginInternal {
       },
       scalaJSJavaSystemProperties := Map.empty,
       scalaJSConfigurationLibs := Nil,
-      scalaJSInstallJsdom := {
+      scalaJSInstallJSDOM := {
+        val jsdomVersion = (version in scalaJSInstallJSDOM).value
         val jsdomDirectory = target.value / "scalajs-jsdom"
         val logger = streams.value.log
-        if (!jsdomDirectory.exists()) {
+        if (!(jsdomDirectory / "node_modules" / "jsdom").exists()) {
           val npm = sys.props("os.name").toLowerCase match {
             case os if os.contains("win") ⇒ "cmd /c npm"
             case _ ⇒ "npm"
           }
           IO.createDirectory(jsdomDirectory)
-          val process = Process(s"$npm install jsdom", jsdomDirectory)
+          val process = Process(s"$npm install jsdom@$jsdomVersion", jsdomDirectory)
           val code = process ! logger
           if (code != 0) {
             sys.error(s"Non-zero exit code: $code")
           }
         }
         jsdomDirectory
-      }
+      },
+      version in scalaJSInstallJSDOM := "9.8.3"
   )
 
   val scalaJSAbstractSettings: Seq[Setting[_]] = (
