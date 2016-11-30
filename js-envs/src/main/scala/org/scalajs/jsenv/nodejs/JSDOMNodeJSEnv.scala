@@ -14,6 +14,7 @@ import java.io.{Console => _, _}
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.jsenv._
+
 import org.scalajs.core.ir.Utils.escapeJS
 
 import scala.sys.process.{Process, ProcessLogger}
