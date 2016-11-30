@@ -82,8 +82,9 @@ class JSDOMNodeJSEnv(
         case file                  => libCache.materialize(file).getAbsolutePath
       }
       // Install jsdom on the fly, if necessary
-      if (!new File(jsdomDirectory, "node_modules/jsdom").exists()) {
-        assert(jsdomDirectory.mkdirs())
+      val jsdomModule = new File(jsdomDirectory, "node_modules/jsdom")
+      if (!jsdomModule.exists()) {
+        jsdomDirectory.mkdirs()
         val npm = sys.props("os.name").toLowerCase match {
           case os if os.contains("win") ⇒ "cmd /c npm"
           case _ ⇒ "npm"
@@ -94,6 +95,7 @@ class JSDOMNodeJSEnv(
         if (code != 0) {
           sys.error(s"Non-zero exit code: $code")
         }
+        assert(jsdomModule.exists(), "Installation of jsdom failed")
       }
       val scriptsStringPath = scriptsJSPaths.map('"' + escapeJS(_) + '"')
       val jsDOMCode = {
