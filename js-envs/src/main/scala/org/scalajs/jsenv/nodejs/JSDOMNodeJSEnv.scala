@@ -84,6 +84,7 @@ class JSDOMNodeJSEnv(
       // Install jsdom on the fly, if necessary
       val jsdomModule = new File(jsdomDirectory, "node_modules/jsdom")
       if (!jsdomModule.exists()) {
+        logger.info(s"Installing jsdom at ${jsdomModule.getAbsolutePath}")
         jsdomDirectory.mkdirs()
         val npm = sys.props("os.name").toLowerCase match {
           case os if os.contains("win") ⇒ "cmd /c npm"
