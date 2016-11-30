@@ -2,8 +2,8 @@ package org.scalajs.sbtplugin
 
 import java.util.IllegalFormatException
 
-import sbt.{Process, _}
-import sbt.inc.{ClassfileManager, IncOptions}
+import sbt._
+import sbt.inc.{IncOptions, ClassfileManager}
 import Keys._
 import sbinary.DefaultProtocol._
 import Cache.seqFormat
