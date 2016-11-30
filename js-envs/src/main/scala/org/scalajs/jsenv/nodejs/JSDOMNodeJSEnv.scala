@@ -25,9 +25,9 @@ import scala.sys.process.{Process, ProcessLogger}
 class JSDOMNodeJSEnv(
   jsdomDirectory: File,
   jsdomVersion: String,
-  nodejsPath: String = "node",
-  addArgs: Seq[String] = Seq.empty,
-  addEnv: Map[String, String] = Map.empty
+  nodejsPath: String,
+  addArgs: Seq[String],
+  addEnv: Map[String, String]
 ) extends AbstractNodeJSEnv(nodejsPath, addArgs, addEnv, sourceMap = false) {
 
   /**
@@ -35,9 +35,9 @@ class JSDOMNodeJSEnv(
     * as the jsdom installation directory.
     */
   def this(
-    nodejsPath: String,
-    addArgs: Seq[String],
-    addEnv: Map[String, String]
+    nodejsPath: String = "node",
+    addArgs: Seq[String] = Seq.empty,
+    addEnv: Map[String, String] = Map.empty
   ) = this(new File(System.getProperty("user.dir")), "9.8.3", nodejsPath, addArgs, addEnv)
 
   protected def vmName: String = "Node.js with JSDOM"
