@@ -17,6 +17,9 @@ import org.scalajs.jsenv._
 
 import org.scalajs.core.ir.Utils.escapeJS
 
+/**
+  * @param jsdomDirectory Directory where jsdom is installed (there must be a node_modules/jsdom/ subdirectory)
+  */
 class JSDOMNodeJSEnv(
   jsdomDirectory: File,
   nodejsPath: String = "node",
@@ -24,6 +27,10 @@ class JSDOMNodeJSEnv(
   addEnv: Map[String, String] = Map.empty
 ) extends AbstractNodeJSEnv(nodejsPath, addArgs, addEnv, sourceMap = false) {
 
+  /**
+    * Secondary constructor provided for binary compatibility only. Uses the current working directory
+    * as the jsdom installation directory.
+    */
   def this(
     nodejsPath: String = "node",
     addArgs: Seq[String] = Seq.empty,
