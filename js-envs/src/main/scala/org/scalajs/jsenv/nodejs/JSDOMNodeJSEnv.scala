@@ -35,9 +35,9 @@ class JSDOMNodeJSEnv(
     * as the jsdom installation directory.
     */
   def this(
-    nodejsPath: String = "node",
-    addArgs: Seq[String] = Seq.empty,
-    addEnv: Map[String, String] = Map.empty
+    nodejsPath: String,
+    addArgs: Seq[String],
+    addEnv: Map[String, String]
   ) = this(new File(System.getProperty("user.dir")), "9.8.3", nodejsPath, addArgs, addEnv)
 
   protected def vmName: String = "Node.js with JSDOM"
