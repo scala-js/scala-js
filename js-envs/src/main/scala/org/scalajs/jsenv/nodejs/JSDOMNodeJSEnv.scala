@@ -24,6 +24,12 @@ class JSDOMNodeJSEnv(
   addEnv: Map[String, String] = Map.empty
 ) extends AbstractNodeJSEnv(nodejsPath, addArgs, addEnv, sourceMap = false) {
 
+  def this(
+    nodejsPath: String = "node",
+    addArgs: Seq[String] = Seq.empty,
+    addEnv: Map[String, String] = Map.empty
+  ) = this(new File(System.getProperty("user.dir")), nodejsPath, addArgs, addEnv)
+
   protected def vmName: String = "Node.js with JSDOM"
 
   override def jsRunner(libs: Seq[ResolvedJSDependency],
