@@ -14,14 +14,17 @@ import java.io.{Console => _, _}
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.jsenv._
-
 import org.scalajs.core.ir.Utils.escapeJS
 
+import scala.sys.process.{Process, ProcessLogger}
+
 /**
-  * @param jsdomDirectory Directory where jsdom is installed (there must be a node_modules/jsdom/ subdirectory)
+  * @param jsdomDirectory Directory where jsdom will be installed
+  * @param jsdomVersion Version of jsdom to use
   */
 class JSDOMNodeJSEnv(
   jsdomDirectory: File,
+  jsdomVersion: String,
   nodejsPath: String = "node",
   addArgs: Seq[String] = Seq.empty,
   addEnv: Map[String, String] = Map.empty
@@ -35,7 +38,7 @@ class JSDOMNodeJSEnv(
     nodejsPath: String = "node",
     addArgs: Seq[String] = Seq.empty,
     addEnv: Map[String, String] = Map.empty
-  ) = this(new File(System.getProperty("user.dir")), nodejsPath, addArgs, addEnv)
+  ) = this(new File(System.getProperty("user.dir")), "9.8.3", nodejsPath, addArgs, addEnv)
 
   protected def vmName: String = "Node.js with JSDOM"
 
@@ -65,10 +68,32 @@ class JSDOMNodeJSEnv(
 
   protected trait AbstractDOMNodeRunner extends AbstractNodeRunner {
 
+    /**
+      * Locally install jsdom (in the `jsdomDirectory`) if necessary, and then create the .js file in
+      * the same directory.
+      *
+      * Be careful to ''not'' call this method ''concurrently''.
+      *
+      * @return The .js file containing the code to run.
+      */
     protected def codeWithJSDOMContext(): Seq[VirtualJSFile] = {
       val scriptsJSPaths = getLibJSFiles().map {
         case file: FileVirtualFile => file.path
         case file                  => libCache.materialize(file).getAbsolutePath
+      }
+      // Install jsdom on the fly, if necessary
+      if (!new File(jsdomDirectory, "node_modules/jsdom").exists()) {
+        assert(jsdomDirectory.mkdirs())
+        val npm = sys.props("os.name").toLowerCase match {
+          case os if os.contains("win") ⇒ "cmd /c npm"
+          case _ ⇒ "npm"
+        }
+        val process = Process(s"$npm install jsdom@$jsdomVersion", jsdomDirectory)
+        val processLogger = ProcessLogger(s => logger.info(s), s => logger.error(s))
+        val code = process ! processLogger
+        if (code != 0) {
+          sys.error(s"Non-zero exit code: $code")
+        }
       }
       val scriptsStringPath = scriptsJSPaths.map('"' + escapeJS(_) + '"')
       val jsDOMCode = {
