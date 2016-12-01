@@ -45,6 +45,8 @@ object BinaryIncompatibilities {
   )
 
   val JSEnvs = Seq(
+    ProblemFilters.exclude[MissingMethodProblem](
+      "org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv#AbstractDOMNodeRunner.org$scalajs$jsenv$nodejs$JSDOMNodeJSEnv$AbstractDOMNodeRunner$$super$logger")
   )
 
   val JSEnvsTestKit = Seq(
