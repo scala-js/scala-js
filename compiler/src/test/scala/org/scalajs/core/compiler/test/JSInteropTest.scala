@@ -422,6 +422,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |          ^
     """
 
+    """
+    @js.native
+    class A extends js.Object {
+      @js.annotation.JSBracketAccess
+      def foo(x: Int, y: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: @JSBracketAccess methods with two parameters must return Unit
+      |      def foo(x: Int, y: Int): Int = js.native
+      |          ^
+    """
+
   }
 
   @Test

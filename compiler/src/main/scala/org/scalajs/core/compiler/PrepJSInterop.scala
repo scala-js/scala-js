@@ -799,6 +799,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           if (paramCount != 1 && paramCount != 2) {
             reporter.error(tree.pos,
                 "@JSBracketAccess methods must have one or two parameters")
+          } else if (paramCount == 2 &&
+              sym.tpe.finalResultType.typeSymbol != UnitClass) {
+            reporter.error(tree.pos,
+                "@JSBracketAccess methods with two parameters must return Unit")
           }
         }
       }
