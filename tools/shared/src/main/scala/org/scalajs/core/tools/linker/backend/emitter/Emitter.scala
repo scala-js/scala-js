@@ -15,6 +15,7 @@ import scala.collection.mutable
 
 import org.scalajs.core.ir.{ClassKind, Position}
 import org.scalajs.core.ir.Trees.JSNativeLoadSpec
+import org.scalajs.core.ir.Definitions.decodeClassName
 
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.logging._
@@ -106,7 +107,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     try {
       val orderedClasses = unit.classDefs.sortWith(compareClasses)
 
-      emitModuleImports(orderedClasses, builder)
+      emitModuleImports(orderedClasses, builder, logger)
 
       for (classInfo <- orderedClasses)
         emitLinkedClass(classInfo, builder)
@@ -116,9 +117,29 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
   }
 
   private def emitModuleImports(orderedClasses: List[LinkedClass],
-      builder: JSTreeBuilder): Unit = {
+      builder: JSTreeBuilder, logger: Logger): Unit = {
     moduleKind match {
       case ModuleKind.NoModule =>
+        var importsFound: Boolean = false
+
+        for (classDef <- orderedClasses) {
+          classDef.jsNativeLoadSpec match {
+            case Some(JSNativeLoadSpec.Import(module, _)) =>
+              val displayName = decodeClassName(classDef.encodedName)
+              logger.error(s"$displayName needs to be imported from module " +
+                  s"'$module' but module support is disabled.")
+              importsFound = true
+
+            case _ =>
+              // ok
+          }
+        }
+
+        if (importsFound) {
+          sys.error("There were module imports, but module support is " +
+              "disabled.\nTo enable module support, set scalaJSModuleKind := " +
+              "ModuleKind.CommonJSModule.")
+        }
 
       case ModuleKind.CommonJSModule =>
         val jsDesugaring = new JSDesugaring(internalOptions)
