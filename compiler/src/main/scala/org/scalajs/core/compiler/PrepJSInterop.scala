@@ -804,6 +804,16 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             reporter.error(tree.pos,
                 "@JSBracketAccess methods with two parameters must return Unit")
           }
+
+          for (param <- sym.paramss.flatten) {
+            if (isScalaRepeatedParamType(param.tpe)) {
+              reporter.error(param.pos,
+                  "@JSBracketAccess methods may not have repeated parameters")
+            } else if (param.isParamWithDefault) {
+              reporter.error(param.pos,
+                  "@JSBracketAccess methods may not have default parameters")
+            }
+          }
         }
       }
 

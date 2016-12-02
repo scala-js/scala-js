@@ -435,6 +435,32 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |          ^
     """
 
+    """
+    @js.native
+    class A extends js.Object {
+      @js.annotation.JSBracketAccess
+      def bar(x: Int*): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: @JSBracketAccess methods may not have repeated parameters
+      |      def bar(x: Int*): Int = js.native
+      |              ^
+    """
+
+    """
+    @js.native
+    class A extends js.Object {
+      @js.annotation.JSBracketAccess
+      def bar(x: Int = 1): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: @JSBracketAccess methods may not have default parameters
+      |      def bar(x: Int = 1): Int = js.native
+      |              ^
+    """
+
   }
 
   @Test
