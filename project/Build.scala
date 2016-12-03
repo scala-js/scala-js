@@ -529,21 +529,29 @@ object Build {
               testOutDir.getAbsolutePath
             sys.props("scala.scalajs.compiler.test.scalajslib") =
               (packageBin in (library, Compile)).value.getAbsolutePath
-            sys.props("scala.scalajs.compiler.test.scalalib") = {
 
-              def isScalaLib(att: Attributed[File]) = {
+            def scalaArtifact(name: String): String = {
+              def isTarget(att: Attributed[File]) = {
                 att.metadata.get(moduleID.key).exists { mId =>
                   mId.organization == "org.scala-lang" &&
-                  mId.name         == "scala-library"  &&
-                  mId.revision     == scalaVersion.value
+                  mId.name == name &&
+                  mId.revision == scalaVersion.value
                 }
               }
 
-              val lib = (managedClasspath in Test).value.find(isScalaLib)
-              lib.map(_.data.getAbsolutePath).getOrElse {
-                streams.value.log.error("Couldn't find Scala library on the classpath. CP: " + (managedClasspath in Test).value); ""
+              (managedClasspath in Test).value.find(isTarget).fold {
+                streams.value.log.error(s"Couldn't find $name on the classpath")
+                ""
+              } { lib =>
+                lib.data.getAbsolutePath
               }
             }
+
+            sys.props("scala.scalajs.compiler.test.scalalib") =
+              scalaArtifact("scala-library")
+
+            sys.props("scala.scalajs.compiler.test.scalareflect") =
+              scalaArtifact("scala-reflect")
           },
           exportJars := true
       )

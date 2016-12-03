@@ -382,6 +382,14 @@ object Infos {
         case LoadJSModule(ClassType(cls)) =>
           builder.addAccessedModule(cls)
 
+        /* We explicitly catch UndefinedParam here to make sure, we do not
+         * emit it in the compiler. This does not entirely belong here, as it
+         * supports GenJSCode, but it is not wrong to throw an exception.
+         */
+        case UndefinedParam() =>
+          throw new InvalidIRException(tree,
+              "Found UndefinedParam while building infos")
+
         case _ =>
       }
 
