@@ -8,6 +8,8 @@ import org.scalajs.core.compiler.ScalaJSPlugin
 
 import scala.collection.mutable
 
+import java.io.File
+
 /** This is heavily inspired by scala's partest suite's DirectTest */
 abstract class DirectTest {
 
@@ -26,7 +28,7 @@ abstract class DirectTest {
         List(
             "-d", testOutputPath,
             "-bootclasspath", scalaLibPath,
-            "-classpath", scalaJSLibPath) ++
+            "-classpath", classpath.mkString(File.pathSeparator)) ++
         extraArgs ++ args.toList)
 
     lazy val global: Global = new Global(settings, newReporter(settings)) {
@@ -68,8 +70,16 @@ abstract class DirectTest {
   // Filed as #1443
   def defaultGlobal: Global = newScalaJSCompiler()
 
-  def testOutputPath: String = sys.props("scala.scalajs.compiler.test.output")
+  def testOutputPath: String = {
+    val baseDir = sys.props("scala.scalajs.compiler.test.output")
+    val outDir = new File(baseDir, getClass.getName)
+    outDir.mkdirs()
+    outDir.getAbsolutePath
+  }
+
   def scalaJSLibPath: String = sys.props("scala.scalajs.compiler.test.scalajslib")
   def scalaLibPath: String   = sys.props("scala.scalajs.compiler.test.scalalib")
+  def scalaReflectPath: String = sys.props("scala.scalajs.compiler.test.scalareflect")
 
+  def classpath: List[String] = List(scalaJSLibPath)
 }
