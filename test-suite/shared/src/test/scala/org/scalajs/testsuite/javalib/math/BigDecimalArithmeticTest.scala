@@ -1104,6 +1104,14 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), cScale)
   }
 
+  @Test def testMultiplySmallOverflow_issue2587(): Unit = {
+    val x = new BigDecimal(Int.MinValue)
+    val y = new BigDecimal(Int.MinValue.toLong * 2L)
+    val z = new BigDecimal("9223372036854775808")
+    assertEquals(z, x.multiply(y))
+    assertEquals(z, y.multiply(x))
+  }
+
   @Test def testPow(): Unit = {
     val a = "123121247898748298842980"
     val aScale = 10
