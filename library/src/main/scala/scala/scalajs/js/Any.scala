@@ -109,7 +109,12 @@ object Any extends LowPrioAnyImplicits {
    * implicit materialization of a recursive call in the first place.
    */
   implicit def fromFunction0[R](f: scala.Function0[R]): Function0[R] = identity(() => f())
-  implicit def fromFunction1[T1, R](f: scala.Function1[T1, R]): Function1[T1, R] = identity((x1: T1) => f(x1))
+  implicit def fromFunction1[T1, R](f: scala.Function1[T1, R]): Function1[T1, R] = {
+    f match {
+      case anon: scalajs.runtime.AnonFunction1[T1, R] => anon.f
+      case _ => identity((x1: T1) => f(x1))
+    }
+  }
   implicit def fromFunction2[T1, T2, R](f: scala.Function2[T1, T2, R]): Function2[T1, T2, R] = identity((x1: T1, x2: T2) => f(x1, x2))
   implicit def fromFunction3[T1, T2, T3, R](f: scala.Function3[T1, T2, T3, R]): Function3[T1, T2, T3, R] = identity((x1: T1, x2: T2, x3: T3) => f(x1, x2, x3))
   implicit def fromFunction4[T1, T2, T3, T4, R](f: scala.Function4[T1, T2, T3, T4, R]): Function4[T1, T2, T3, T4, R] = identity((x1: T1, x2: T2, x3: T3, x4: T4) => f(x1, x2, x3, x4))
