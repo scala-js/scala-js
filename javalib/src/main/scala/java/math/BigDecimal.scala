@@ -675,7 +675,14 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     if (this.isZero || multiplicand.isZero) {
       zeroScaledBy(newScale)
     } else if (this._bitLength + multiplicand._bitLength < 64) {
-      valueOf(this._smallValue * multiplicand._smallValue, safeLongToInt(newScale))
+      val smallResult = this._smallValue * multiplicand._smallValue
+      if (smallResult == Long.MinValue &&
+          this._smallValue < 0L && multiplicand._smallValue < 0L) {
+        // Corner case #2587: the result should be -Long.MinValue
+        new BigDecimal(BigInteger.getPowerOfTwo(63), safeLongToInt(newScale))
+      } else {
+        valueOf(smallResult, safeLongToInt(newScale))
+      }
     } else {
       val unscaled = this.getUnscaledValue.multiply(multiplicand.getUnscaledValue)
       new BigDecimal(unscaled, safeLongToInt(newScale))
