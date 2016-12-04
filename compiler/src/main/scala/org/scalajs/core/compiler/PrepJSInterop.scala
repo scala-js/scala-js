@@ -794,6 +794,26 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         if (enclosingOwner is OwnerKind.JSNonNative) {
           reporter.error(tree.pos,
               "@JSBracketAccess is not allowed in Scala.js-defined JS classes")
+        } else {
+          val paramCount = sym.paramss.map(_.size).sum
+          if (paramCount != 1 && paramCount != 2) {
+            reporter.error(tree.pos,
+                "@JSBracketAccess methods must have one or two parameters")
+          } else if (paramCount == 2 &&
+              sym.tpe.finalResultType.typeSymbol != UnitClass) {
+            reporter.error(tree.pos,
+                "@JSBracketAccess methods with two parameters must return Unit")
+          }
+
+          for (param <- sym.paramss.flatten) {
+            if (isScalaRepeatedParamType(param.tpe)) {
+              reporter.error(param.pos,
+                  "@JSBracketAccess methods may not have repeated parameters")
+            } else if (param.isParamWithDefault) {
+              reporter.error(param.pos,
+                  "@JSBracketAccess methods may not have default parameters")
+            }
+          }
         }
       }
 
