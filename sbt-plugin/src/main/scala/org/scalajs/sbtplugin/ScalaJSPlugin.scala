@@ -142,8 +142,8 @@ object ScalaJSPlugin extends AutoPlugin {
         args: Seq[String] = Seq.empty,
         env: Map[String, String] = Map.empty
     ): Def.Initialize[Task[JSDOMNodeJSEnv]] = Def.task {
-      val jsdomDirectory = ScalaJSPluginInternal.scalaJSJSDOMDirectory.value
-      val jsdomVersion = ScalaJSPluginInternal.scalaJSJSDOMVersion.value
+      val jsdomDirectory = (Keys.target in ThisProject).value / "scalajs-jsdom"
+      val jsdomVersion = "9.8.3"
       new JSDOMNodeJSEnv(jsdomDirectory, jsdomVersion, executable, args, env)
     }
 

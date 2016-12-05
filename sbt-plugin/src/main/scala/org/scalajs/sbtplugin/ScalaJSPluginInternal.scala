@@ -95,18 +95,6 @@ object ScalaJSPluginInternal {
       "Files used to compute this value (can be used in FileFunctions later).",
       KeyRanks.Invisible)
 
-  val scalaJSJSDOMDirectory = SettingKey[File](
-    "scalaJSJSDOMDirectory",
-    "Directory in which jsdom should be installed.",
-    KeyRanks.Invisible
-  )
-
-  val scalaJSJSDOMVersion = SettingKey[String](
-    "scalaJSJSDOMVersion",
-    "Version of jsdom to install",
-    KeyRanks.Invisible
-  )
-
   val stageKeys: Map[Stage, TaskKey[Attributed[File]]] = Map(
     Stage.FastOpt -> fastOptJS,
     Stage.FullOpt -> fullOptJS
@@ -975,9 +963,7 @@ object ScalaJSPluginInternal {
         new PhantomJettyClassLoader(jettyLoader, getClass.getClassLoader)
       },
       scalaJSJavaSystemProperties := Map.empty,
-      scalaJSConfigurationLibs := Nil,
-      scalaJSJSDOMDirectory := target.value / "scalajs-jsdom",
-      scalaJSJSDOMVersion := "9.8.3"
+      scalaJSConfigurationLibs := Nil
   )
 
   val scalaJSAbstractSettings: Seq[Setting[_]] = (
