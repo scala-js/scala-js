@@ -119,6 +119,7 @@ class  BigDecimalScaleOperationsTest {
     val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_UP)
     assertEquals(newScale, bNumber.scale())
     assertEquals(b, bNumber.unscaledValue().toString)
+    assertEquals("ROUND_UP", BigDecimal.ONE.compareTo(BigDecimal.valueOf(0.5).setScale(0, BigDecimal.ROUND_UP)), 0)
   }
 
   @Test def testSetScaleRoundDown(): Unit = {
@@ -130,6 +131,7 @@ class  BigDecimalScaleOperationsTest {
     val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_DOWN)
     assertTrue(bNumber.scale() == newScale)
     assertTrue(bNumber.unscaledValue().toString == b)
+    assertEquals("ROUND_DOWN", BigDecimal.ZERO.compareTo(BigDecimal.valueOf(0.5).setScale(0, BigDecimal.ROUND_DOWN)), 0)
   }
 
   @Test def testSetScaleRoundCeiling(): Unit = {
@@ -141,6 +143,7 @@ class  BigDecimalScaleOperationsTest {
     val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_CEILING)
     assertTrue(bNumber.scale() == newScale)
     assertTrue(bNumber.unscaledValue().toString == b)
+    assertEquals("ROUND_CEILING", BigDecimal.ONE.compareTo(BigDecimal.valueOf(0.5).setScale(0, BigDecimal.ROUND_CEILING)), 0)
   }
 
   @Test def testSetScaleRoundFloor(): Unit = {
@@ -152,6 +155,7 @@ class  BigDecimalScaleOperationsTest {
     val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_FLOOR)
     assertTrue(bNumber.scale() == newScale)
     assertTrue(bNumber.unscaledValue().toString == b)
+    assertEquals("ROUND_FLOOR", BigDecimal.ZERO.compareTo(BigDecimal.valueOf(0.5).setScale(0, BigDecimal.ROUND_FLOOR)), 0)
   }
 
   @Test def testSetScaleRoundHalfUp(): Unit = {
@@ -163,6 +167,7 @@ class  BigDecimalScaleOperationsTest {
     val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_HALF_UP)
     assertTrue(bNumber.scale() == newScale)
     assertTrue(bNumber.unscaledValue().toString == b)
+    assertEquals("ROUND_HALF_UP", BigDecimal.ONE.compareTo(BigDecimal.valueOf(0.5).setScale(0, BigDecimal.ROUND_HALF_UP)), 0)
   }
 
   @Test def testSetScaleRoundHalfDown(): Unit = {
@@ -174,6 +179,7 @@ class  BigDecimalScaleOperationsTest {
     val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_HALF_DOWN)
     assertTrue(bNumber.scale() == newScale)
     assertTrue(bNumber.unscaledValue().toString == b)
+    assertEquals("ROUND_HALF_DOWN", BigDecimal.ZERO.compareTo(BigDecimal.valueOf(0.5).setScale(0, BigDecimal.ROUND_HALF_DOWN)), 0)
   }
 
   @Test def testSetScaleRoundHalfEven(): Unit = {
@@ -185,6 +191,7 @@ class  BigDecimalScaleOperationsTest {
     val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_HALF_EVEN)
     assertTrue(bNumber.scale() == newScale)
     assertTrue(bNumber.unscaledValue().toString == b)
+    assertEquals("ROUND_HALF_EVEN", BigDecimal.ZERO.compareTo(BigDecimal.valueOf(0.5).setScale(0, BigDecimal.ROUND_HALF_EVEN)), 0)
   }
 
   @Test def testSetScaleIntRoundingMode(): Unit = {
