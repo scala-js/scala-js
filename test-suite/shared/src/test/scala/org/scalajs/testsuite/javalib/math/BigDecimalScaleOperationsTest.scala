@@ -262,6 +262,16 @@ class  BigDecimalScaleOperationsTest {
     assertEquals(a, bNumber.unscaledValue().toString)
   }
 
+  @Test def testMovePointRightIncreasePrecision(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val b = "12312124789874829884298087798104576347813847567949870"
+    val shift = 1
+    val aNumber = (new BigDecimal(new BigInteger(a), 0)).movePointRight(shift)
+    val bNumber = new BigDecimal(new BigInteger(b), 0)
+    assertEquals(aNumber.precision, bNumber.precision)
+    assertEquals(bNumber.compareTo(aNumber), 0)
+  }
+  
   @Test def testMovePointRightException(): Unit = {
     val a = "12312124789874829887348723648726347429808779810457634781384756794987"
     val aScale = Int.MaxValue
