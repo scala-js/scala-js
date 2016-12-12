@@ -1,6 +1,6 @@
 package org.scalajs.testsuite.junit
 
-import scalajs.js
+import scala.scalajs.js
 
 import org.junit.Test
 import org.junit.Assert.assertTrue
