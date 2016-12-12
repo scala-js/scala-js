@@ -3,8 +3,6 @@ package org.scalajs.testsuite.junit
 import org.scalajs.junit.JUnitTestBootstrapper
 import org.junit.Assert.fail
 
-import scalajs.js
-
 object JUnitUtil {
   private final val BootstrapperSuffix = "$scalajs$junit$bootstrapper"
 
