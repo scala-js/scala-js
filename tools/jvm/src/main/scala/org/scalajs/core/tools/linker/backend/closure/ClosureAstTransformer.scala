@@ -204,6 +204,8 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
 
       case Function(args, body) =>
         genFunction("", args, body)
+      case FunctionDef(name, args, body) =>
+        genFunction(name.name, args, body)
 
       case _ =>
         throw new TransformException(s"Unknown tree of class ${tree.getClass()}")

@@ -2217,8 +2217,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
     spec match {
       case None =>
-        // this is a Scala.js-defined JS class
-        encodeClassVar(className)
+        // This is a Scala.js-defined JS class, call its class value accessor
+        js.Apply(envField("a", className), Nil)
 
       case Some(spec) =>
         genLoadJSFromSpec(spec)
@@ -2343,6 +2343,14 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   private[emitter] def envFieldDef(field: String, subField: String,
       origName: Option[String], value: js.Tree, mutable: Boolean)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    envFieldDef(field, subField, origName, value, mutable,
+        keepFunctionExpression = false)
+  }
+
+  private[emitter] def envFieldDef(field: String, subField: String,
+      origName: Option[String], value: js.Tree, mutable: Boolean,
+      keepFunctionExpression: Boolean)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
     val globalVar = envField(field, subField, origName)
     def globalVarIdent = globalVar.asInstanceOf[js.VarRef].ident
 
@@ -2354,7 +2362,11 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         value match {
           case js.Function(args, body) =>
             // Make sure the function has a meaningful `name` property
-            js.FunctionDef(globalVarIdent, args, body)
+            val functionExpr = js.FunctionDef(globalVarIdent, args, body)
+            if (keepFunctionExpression)
+              js.VarDef(globalVarIdent, Some(functionExpr))
+            else
+              functionExpr
           case _ =>
             js.VarDef(globalVarIdent, Some(value))
         }
