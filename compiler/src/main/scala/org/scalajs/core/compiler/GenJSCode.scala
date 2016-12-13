@@ -1223,7 +1223,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  Interface methods with the {{{@JavaDefaultMethod}}} annotation produce
      *  default methods forwarding to the trait impl class method.
      *
-     *  Other (normal) methods are emitted with `genMethodBody()`.
+     *  Other (normal) methods are emitted with `genMethodDef()`.
      */
     def genMethodWithCurrentLocalNameScope(dd: DefDef): Option[js.MethodDef] = {
       implicit val pos = dd.pos
@@ -1579,7 +1579,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         /** Local val or var declaration */
         case ValDef(_, name, _, rhs) =>
           /* Must have been eliminated by the tail call transform performed
-           * by genMethodBody(). */
+           * by genMethodDef(). */
           assert(name != nme.THIS,
               s"ValDef(_, nme.THIS, _, _) found at ${tree.pos}")
 
