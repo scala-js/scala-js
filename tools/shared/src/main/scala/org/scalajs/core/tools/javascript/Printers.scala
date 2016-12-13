@@ -491,10 +491,14 @@ object Printers {
         // Named function definition
 
         case FunctionDef(name, args, body) =>
+          if (!isStat)
+            print('(')
           print("function ")
           print(name)
           printSig(args)
           printBlock(body)
+          if (!isStat)
+            print(')')
 
         // ECMAScript 6 classes
 

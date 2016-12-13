@@ -38,13 +38,11 @@ private[emitter] final class ScalaJSClassEmitter(
 
   private implicit def implicitOutputMode: OutputMode = outputMode
 
-  /** Desugar a Scala.js class into ECMAScript 5 constructs
+  /** Desugars a Scala.js class specifically for use by the Rhino interpreter.
    *
    *  @param tree The IR tree to emit to raw JavaScript
-   *  @param ancestors Encoded names of the ancestors of the class (not only
-   *                   parents), including the class itself.
    */
-  def genClassDef(tree: LinkedClass)(
+  def genClassDefForRhino(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
 
     implicit val pos = tree.pos
@@ -56,7 +54,7 @@ private[emitter] final class ScalaJSClassEmitter(
     if (kind == ClassKind.Interface)
       reverseParts ::= genDefaultMethods(tree)
     if (kind.isAnyScalaJSDefinedClass && tree.hasInstances)
-      reverseParts ::= genClass(tree)
+      reverseParts ::= genClassForRhino(tree)
     if (needInstanceTests(tree)) {
       reverseParts ::= genInstanceTests(tree)
       reverseParts ::= genArrayInstanceTests(tree)
@@ -88,20 +86,26 @@ private[emitter] final class ScalaJSClassEmitter(
     js.Block(defaultMethodDefs)(tree.pos)
   }
 
-  def genClass(tree: LinkedClass)(
+  private def genClassForRhino(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
 
     val className = tree.name.name
-    val typeFunctionDef = genConstructor(tree)
+    val ctor = genConstructor(tree)
     val memberDefs =
       tree.memberMethods.map(m => genMethod(className, m.tree))
-
     val exportedDefs = genExportedMembers(tree)
 
-    val allDefsBlock =
-      js.Block(typeFunctionDef +: memberDefs :+ exportedDefs)(tree.pos)
+    buildClass(tree, ctor, memberDefs, exportedDefs)
+  }
 
-    outputMode match {
+  def buildClass(tree: LinkedClass, ctor: js.Tree, memberDefs: List[js.Tree],
+      exportedDefs: js.Tree)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+    val className = tree.name.name
+    val allDefsBlock =
+      js.Block(ctor +: memberDefs :+ exportedDefs)(tree.pos)
+
+    val entireClassDef = outputMode match {
       case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
         allDefsBlock
 
@@ -112,6 +116,37 @@ private[emitter] final class ScalaJSClassEmitter(
           case oneDef            => List(oneDef)
         }
         genES6Class(tree, allDefs)
+    }
+
+    if (!tree.kind.isJSClass) {
+      entireClassDef
+    } else {
+      // Wrap the entire class def in an accessor function
+      import TreeDSL._
+      implicit val pos = tree.pos
+
+      val createClassValueVar =
+        envFieldDef("b", className, js.Undefined(), mutable = true)
+
+      val createAccessor = {
+        val classValueVar = envField("b", className)
+
+        val body = js.Block(
+            js.If(!classValueVar, {
+              js.Block(
+                  entireClassDef,
+                  classValueVar := envField("c", className)
+              )
+            }, {
+              js.Skip()
+            }),
+            js.Return(classValueVar)
+        )
+
+        envFieldDef("a", className, js.Function(Nil, body))
+      }
+
+      js.Block(createClassValueVar, createAccessor)
     }
   }
 
@@ -164,7 +199,8 @@ private[emitter] final class ScalaJSClassEmitter(
     def makeInheritableCtorDef(ctorToMimic: js.Tree) = {
       js.Block(
         js.DocComment("@constructor"),
-        envFieldDef("h", className, js.Function(Nil, js.Skip())),
+        envFieldDef("h", className, None, js.Function(Nil, js.Skip()),
+            mutable = false, keepFunctionExpression = isJSClass),
         js.Assign(envField("h", className).prototype, ctorToMimic.prototype)
       )
     }
@@ -185,7 +221,8 @@ private[emitter] final class ScalaJSClassEmitter(
 
     val typeVar = encodeClassVar(className)
     val docComment = js.DocComment("@constructor")
-    val ctorDef = envFieldDef("c", className, ctorFun)
+    val ctorDef = envFieldDef("c", className, None, ctorFun, mutable = false,
+        keepFunctionExpression = isJSClass)
 
     val chainProto = tree.superClass.fold[js.Tree] {
       js.Skip()
@@ -763,11 +800,17 @@ private[emitter] final class ScalaJSClassEmitter(
       val moduleInstanceVar = envField("n", className)
 
       val assignModule = {
-        val jsNew = js.New(encodeClassVar(className), Nil)
-        val instantiateModule =
-          if (tree.kind == ClassKind.JSModuleClass) jsNew
-          else js.Apply(jsNew DOT js.Ident("init___"), Nil)
-        moduleInstanceVar := instantiateModule
+        moduleInstanceVar := {
+          if (tree.kind == ClassKind.JSModuleClass) {
+            js.New(
+                genRawJSClassConstructor(className, None),
+                Nil)
+          } else {
+            js.Apply(
+                js.New(encodeClassVar(className), Nil) DOT js.Ident("init___"),
+                Nil)
+          }
+        }
       }
 
       val initBlock = semantics.moduleInit match {
@@ -883,7 +926,7 @@ private[emitter] final class ScalaJSClassEmitter(
 
     implicit val pos = tree.pos
 
-    val classVar = envField("c", cd.name.name)
+    val classVar = genRawJSClassConstructor(cd.name.name, None)
     genClassOrModuleExportDef(cd, tree.fullName, classVar)
   }
 

@@ -125,6 +125,8 @@ ScalaJS.clz32 = ScalaJS.g["Math"]["clz32"] || (function(i) {
 // Other fields
 //!if outputMode == ECMAScript51Global
 ScalaJS.d = {};         // Data for types
+ScalaJS.a = {};         // Scala.js-defined JS class value accessors
+ScalaJS.b = {};         // Scala.js-defined JS class value fields
 ScalaJS.c = {};         // Scala.js constructors
 ScalaJS.h = {};         // Inheritable constructors (without initialization code)
 ScalaJS.s = {};         // Static methods
