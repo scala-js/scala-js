@@ -599,7 +599,7 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: A Scala.js-defined JS trait can only contain abstract members
+      |newSource1.scala:7: error: A Scala.js-defined JS trait can only contain abstract members and/or @JSOptional members
       |      def foo(x: Int): Int = x + 1
       |          ^
     """
