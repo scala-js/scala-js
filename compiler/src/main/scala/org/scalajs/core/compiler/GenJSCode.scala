@@ -281,12 +281,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           val isPrimitive =
             isPrimitiveValueClass(sym) || (sym == ArrayClass)
 
-          /* Similarly, do not emit code for impl classes of raw JS traits. */
-          val isRawJSImplClass =
-            sym.isImplClass && isRawJSType(
-                sym.owner.info.decl(sym.name.dropRight(nme.IMPL_CLASS_SUFFIX.length)).tpe)
-
-          if (!isPrimitive && !isRawJSImplClass) {
+          if (!isPrimitive && !isRawJSImplClass(sym)) {
             withScopedVars(
                 currentClassSym          := sym,
                 unexpectedMutatedFields  := mutable.Set.empty,
@@ -468,6 +463,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               /* Exposed accessors must not be emitted, since the field they
                * access is enough.
                */
+            } else if (sym.hasAnnotation(JSOptionalAnnotation)) {
+              // Optional methods must not be emitted
             } else {
               generatedMethods ++= genMethod(dd)
 
@@ -811,6 +808,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       (for {
         f <- classSym.info.decls
         if !f.isMethod && f.isTerm && !f.isModule
+        if !f.hasAnnotation(JSOptionalAnnotation)
       } yield {
         implicit val pos = f.pos
 
@@ -2133,7 +2131,15 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = fun.symbol
 
       if (isScalaJSDefinedJSClass(currentClassSym)) {
-        genJSSuperCall(tree, isStat)
+        if (sym.isMixinConstructor) {
+          /* Do not emit a call to the $init$ method of JS traits.
+           * This exception is necessary because @JSOptional fields cause the
+           * creation of a $init$ method, which we must not call.
+           */
+          js.Skip()
+        } else {
+          genJSSuperCall(tree, isStat)
+        }
       } else {
         val superCall = genApplyMethodStatically(
             genThis()(sup.pos), sym, genActualArgs(sym, args))
@@ -2346,7 +2352,15 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     def genTraitImplApply(method: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      genApplyStatic(method, arguments)
+      if (method.isMixinConstructor && isRawJSImplClass(method.owner)) {
+        /* Do not emit a call to the $init$ method of JS traits.
+         * This exception is necessary because @JSOptional fields cause the
+         * creation of a $init$ method, which we must not call.
+         */
+        js.Skip()
+      } else {
+        genApplyStatic(method, arguments)
+      }
     }
 
     def genApplyJSClassMethod(receiver: js.Tree, method: Symbol,
@@ -5011,6 +5025,12 @@ abstract class GenJSCode extends plugins.PluginComponent
   /** Tests whether the given class is a JS native class. */
   private def isJSNativeClass(sym: Symbol): Boolean =
     isRawJSType(sym.tpe) && !isScalaJSDefinedJSClass(sym)
+
+  /** Tests whether the given class is the impl class of a raw JS trait. */
+  private def isRawJSImplClass(sym: Symbol): Boolean = {
+    sym.isImplClass && isRawJSType(
+        sym.owner.info.decl(sym.name.dropRight(nme.IMPL_CLASS_SUFFIX.length)).tpe)
+  }
 
   /** Tests whether the given member is exposed, i.e., whether it was
    *  originally a public or protected member of a Scala.js-defined JS class.

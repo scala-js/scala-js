@@ -610,30 +610,52 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         }
       }
 
-      // Check for overrides with different JS names - issue #1983
+      // Check for consistency of JS semantics across overriding
       for (overridingPair <- new overridingPairs.Cursor(sym).iterator) {
         val low = overridingPair.low
         val high = overridingPair.high
-        if (jsInterop.jsNameOf(low) != jsInterop.jsNameOf(high)) {
-          val pos = {
-            if (sym == low.owner) low.pos
-            else if (sym == high.owner) high.pos
-            else sym.pos
-          }
 
+        def errorPos = {
+          if (sym == low.owner) low.pos
+          else if (sym == high.owner) high.pos
+          else sym.pos
+        }
+
+        def memberDefString(membSym: Symbol): String =
+          membSym.defStringSeenAs(sym.thisType.memberType(membSym))
+
+        // Check for overrides with different JS names - issue #1983
+        if (jsInterop.jsNameOf(low) != jsInterop.jsNameOf(high)) {
           val msg = {
-            def memberDefString(membSym: Symbol) = {
-              membSym.defStringSeenAs(sym.thisType.memberType(membSym)) +
+            def memberDefStringWithJSName(membSym: Symbol) = {
+              memberDefString(membSym) +
               membSym.locationString + " with JSName '" +
               jsInterop.jsNameOf(membSym) + '\''
             }
             "A member of a JS class is overriding another member with a different JS name.\n\n" +
-            memberDefString(low) + "\n" +
+            memberDefStringWithJSName(low) + "\n" +
             "    is conflicting with\n" +
-            memberDefString(high) + "\n"
+            memberDefStringWithJSName(high) + "\n"
           }
 
-          reporter.warning(pos, msg)
+          reporter.warning(errorPos, msg)
+        }
+
+        /* Cannot override a non-@JSOptional with an @JSOptional. Unfortunately
+         * at this point the symbols do not have @JSOptional yet, so we need
+         * to detect whether it would be applied.
+         */
+        if (!isJSNative) {
+          def isJSOptional(sym: Symbol): Boolean = {
+            sym.owner.isTrait && !sym.isDeferred && !sym.isConstructor &&
+            sym.owner.hasAnnotation(ScalaJSDefinedAnnotation)
+          }
+
+          if (isJSOptional(low) && !(high.isDeferred || isJSOptional(high))) {
+            reporter.error(errorPos,
+                s"Cannot override concrete ${memberDefString(high)} from " +
+                s"${high.owner.fullName} in a Scala.js-defined JS trait.")
+          }
         }
       }
 
@@ -865,14 +887,52 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               "must be final")
         }
 
-        // Traits must be pure interfaces
+        // Traits must be pure interfaces, except for js.undefined members
         if (sym.owner.isTrait && sym.isTerm && !sym.isConstructor) {
-          if (!sym.isDeferred) {
-            reporter.error(tree.pos,
-                "A Scala.js-defined JS trait can only contain abstract members")
-          } else if (isPrivateMaybeWithin(sym)) {
+          if (sym.isMethod && isPrivateMaybeWithin(sym)) {
             reporter.error(tree.pos,
                 "A Scala.js-defined JS trait cannot contain private members")
+          } else if (!sym.isDeferred) {
+            /* Tell the back-end not emit this thing. In fact, this only
+             * matters for mixed-in members created from this member.
+             */
+            sym.addAnnotation(JSOptionalAnnotation)
+
+            // For non-accessor methods, check that they do not have parens
+            if (sym.isMethod && !sym.isAccessor) {
+              sym.tpe match {
+                case _: NullaryMethodType =>
+                  // ok
+                case PolyType(_, _: NullaryMethodType) =>
+                  // ok
+                case _ =>
+                  reporter.error(tree.rhs.pos,
+                      "In Scala.js-defined JS traits, defs with parentheses " +
+                      "must be abstract.")
+              }
+            }
+
+            /* Check that the right-hand-side is `js.undefined`.
+             *
+             * On 2.12+, fields are created later than this phase, and getters
+             * still hold the right-hand-side that we need to check (we
+             * identify this case with `sym.accessed == NoSymbol`).
+             * On 2.11 and before, however, the getter has already been
+             * rewritten to read the field, so we must not check it.
+             * In either case, setters must not be checked.
+             */
+            if (!sym.isAccessor || (sym.isGetter && sym.accessed == NoSymbol)) {
+              // Check that the tree's body is `js.undefined`
+              tree.rhs match {
+                case sel: Select if sel.symbol == JSPackage_undefined =>
+                  // ok
+                case _ =>
+                  reporter.error(tree.rhs.pos,
+                      "Members of Scala.js-defined JS traits must either be " +
+                      "abstract, or their right-hand-side must be " +
+                      "`js.undefined`.")
+              }
+            }
           }
         }
       }
@@ -1255,7 +1315,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       annotation.symbol == ExposedJSMemberAnnot ||
       annotation.symbol == JSFullNameAnnotation ||
       annotation.symbol == RawJSTypeAnnot ||
-      annotation.symbol == SJSDefinedAnonymousClassAnnotation
+      annotation.symbol == SJSDefinedAnonymousClassAnnotation ||
+      annotation.symbol == JSOptionalAnnotation
     }
 
     if (tree.isInstanceOf[MemberDef]) {
