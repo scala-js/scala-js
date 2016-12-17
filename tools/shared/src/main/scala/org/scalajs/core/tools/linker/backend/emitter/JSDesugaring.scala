@@ -1192,7 +1192,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         case TryFinally(block, finalizer) =>
           extractLet { newLhs =>
             val newBlock = pushLhsInto(newLhs, block, tailPosLabels)
-            val newFinalizer = transformStat(finalizer, tailPosLabels)
+            val newFinalizer = transformStat(finalizer, Set.empty)
             js.TryFinally(newBlock, newFinalizer)
           }
 
