@@ -1669,7 +1669,7 @@ object Build {
         val scalaScalaJUnitSources = {
           (jUnitTestsPath ** "*.scala").get.flatMap { file =>
             file.relativeTo(jUnitTestsPath) match {
-              case Some(rel) => List((rel.toString, file))
+              case Some(rel) => List((rel.toString.replace('\\', '/'), file))
               case None      => Nil
             }
           }
