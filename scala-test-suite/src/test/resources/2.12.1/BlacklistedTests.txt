@@ -1,0 +1,121 @@
+## Do not compile
+scala/lang/annotations/BytecodeTest.scala
+scala/lang/annotations/RunTest.scala
+scala/lang/traits/BytecodeTest.scala
+scala/lang/traits/RunTest.scala
+scala/lang/primitives/NaNTest.scala
+scala/lang/primitives/BoxUnboxTest.scala
+scala/reflect/ClassOfTest.scala
+scala/reflect/QTest.scala
+scala/reflect/io/ZipArchiveTest.scala
+scala/reflect/internal/util/AbstractFileClassLoaderTest.scala
+scala/reflect/internal/util/SourceFileTest.scala
+scala/reflect/internal/util/StringOpsTest.scala
+scala/reflect/internal/PrintersTest.scala
+scala/reflect/internal/ScopeTest.scala
+scala/reflect/internal/TreeGenTest.scala
+scala/reflect/internal/TypesTest.scala
+scala/reflect/internal/util/WeakHashSetTest.scala
+scala/reflect/internal/MirrorsTest.scala
+scala/reflect/internal/NamesTest.scala
+scala/tools/nsc/backend/jvm/BTypesTest.scala
+scala/tools/nsc/backend/jvm/BytecodeTest.scala
+scala/tools/nsc/backend/jvm/DefaultMethodTest.scala
+scala/tools/nsc/backend/jvm/DirectCompileTest.scala
+scala/tools/nsc/backend/jvm/IndyLambdaTest.scala
+scala/tools/nsc/backend/jvm/IndySammyTest.scala
+scala/tools/nsc/backend/jvm/OptimizedBytecodeTest.scala
+scala/tools/nsc/backend/jvm/StringConcatTest.scala
+scala/tools/nsc/backend/jvm/analysis/NullnessAnalyzerTest.scala
+scala/tools/nsc/backend/jvm/analysis/ProdConsAnalyzerTest.scala
+scala/tools/nsc/backend/jvm/opt/AnalyzerTest.scala
+scala/tools/nsc/backend/jvm/opt/BTypesFromClassfileTest.scala
+scala/tools/nsc/backend/jvm/opt/CallGraphTest.scala
+scala/tools/nsc/backend/jvm/opt/ClosureOptimizerTest.scala
+scala/tools/nsc/backend/jvm/opt/CompactLocalVariablesTest.scala
+scala/tools/nsc/backend/jvm/opt/EmptyExceptionHandlersTest.scala
+scala/tools/nsc/backend/jvm/opt/EmptyLabelsAndLineNumbersTest.scala
+scala/tools/nsc/backend/jvm/opt/InlineInfoTest.scala
+scala/tools/nsc/backend/jvm/opt/InlinerIllegalAccessTest.scala
+scala/tools/nsc/backend/jvm/opt/InlinerSeparateCompilationTest.scala
+scala/tools/nsc/backend/jvm/opt/InlinerTest.scala
+scala/tools/nsc/backend/jvm/opt/InlineWarningTest.scala
+scala/tools/nsc/backend/jvm/opt/MethodLevelOptsTest.scala
+scala/tools/nsc/backend/jvm/opt/ScalaInlineInfoTest.scala
+scala/tools/nsc/backend/jvm/opt/SimplifyJumpsTest.scala
+scala/tools/nsc/backend/jvm/opt/UnreachableCodeTest.scala
+scala/tools/nsc/backend/jvm/opt/UnusedLocalVariablesTest.scala
+scala/tools/nsc/ScriptRunnerTest.scala
+scala/tools/nsc/classpath/AggregateClassPathTest.scala
+scala/tools/nsc/classpath/PathResolverBaseTest.scala
+scala/tools/nsc/classpath/VirtualDirectoryClassPathTest.scala
+scala/tools/nsc/doc/html/HtmlDocletTest.scala
+scala/tools/nsc/interpreter/CompletionTest.scala
+scala/tools/nsc/interpreter/ScriptedTest.scala
+scala/tools/nsc/interpreter/TabulatorTest.scala
+scala/tools/nsc/settings/ScalaVersionTest.scala
+scala/tools/nsc/settings/SettingsTest.scala
+scala/tools/nsc/symtab/CannotHaveAttrsTest.scala
+scala/tools/nsc/symtab/FlagsTest.scala
+scala/tools/nsc/symtab/FreshNameExtractorTest.scala
+scala/tools/nsc/symtab/StdNamesTest.scala
+scala/tools/nsc/symtab/SymbolTableForUnitTesting.scala
+scala/tools/nsc/symtab/SymbolTableTest.scala
+scala/tools/nsc/transform/delambdafy/DelambdafyTest.scala
+scala/tools/nsc/transform/patmat/SolvingTest.scala
+scala/tools/nsc/transform/patmat/PatmatBytecodeTest.scala
+scala/tools/nsc/util/StackTraceTest.scala
+scala/tools/testing/BytecodeTesting.scala
+scala/tools/testing/RunTesting.scala
+
+## Do not link
+scala/PartialFunctionSerializationTest.scala
+scala/lang/stringinterpol/StringContextTest.scala
+scala/collection/IteratorTest.scala
+scala/collection/NewBuilderTest.scala
+scala/collection/ParallelConsistencyTest.scala
+scala/collection/SeqViewTest.scala
+scala/collection/SetMapConsistencyTest.scala
+scala/collection/convert/WrapperSerializationTest.scala
+scala/collection/immutable/ListTest.scala
+scala/collection/immutable/StreamTest.scala
+scala/collection/immutable/StringLikeTest.scala
+scala/collection/mutable/ArrayBufferTest.scala
+scala/collection/mutable/MutableListTest.scala
+scala/collection/mutable/OpenHashMapTest.scala
+scala/collection/mutable/PriorityQueueTest.scala
+scala/collection/parallel/immutable/ParRangeTest.scala
+scala/concurrent/duration/SerializationTest.scala
+scala/concurrent/impl/DefaultPromiseTest.scala
+scala/io/SourceTest.scala
+scala/runtime/ScalaRunTimeTest.scala
+scala/sys/process/PipedProcessTest.scala
+scala/sys/process/ProcessTest.scala
+scala/tools/testing/AssertUtilTest.scala
+scala/tools/testing/AssertThrowsTest.scala
+scala/util/SpecVersionTest.scala
+scala/util/SystemPropertiesTest.scala
+
+## Tests fail
+
+# Reflection
+scala/reflect/ClassTagTest.scala
+
+# Regex
+scala/util/matching/CharRegexTest.scala
+scala/util/matching/RegexTest.scala
+
+# Require strict-floats
+scala/math/BigDecimalTest.scala
+
+# Test fails only some times with
+#   'set scalaJSOptimizerOptions in scalaTestSuite ~= (_.withDisableOptimizer(true))'
+#   and' 'set scalaJSUseRhino in Global := false'
+scala/collection/immutable/PagedSeqTest.scala
+
+# Bugs
+scala/collection/convert/MapWrapperTest.scala
+
+# Tests passed but are too slow (timeouts)
+scala/collection/immutable/ListSetTest.scala
+scala/util/SortingTest.scala

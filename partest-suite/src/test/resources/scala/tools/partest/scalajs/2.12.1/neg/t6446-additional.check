@@ -1,0 +1,30 @@
+    phase name  id  description
+    ----------  --  -----------
+        parser   1  parse source into ASTs, perform simple desugaring
+    jspretyper   2  capture pre-typer only tree info (for Scala.js)
+         namer   3  resolve names, attach symbols to named trees
+packageobjects   4  load package objects
+         typer   5  the meat and potatoes: type the trees
+     jsinterop   6  prepare ASTs for JavaScript interop
+        patmat   7  translate match expressions
+superaccessors   8  add super accessors in traits and nested classes
+    extmethods   9  add extension methods for inline classes
+       pickler  10  serialize symbol tables
+     refchecks  11  reference/override checking, translate nested objects
+       uncurry  12  uncurry, translate function values to anonymous classes
+        fields  13  synthesize accessors and fields, add bitmaps for lazy vals
+     tailcalls  14  replace tail calls by jumps
+    specialize  15  @specialized-driven class and method specialization
+ explicitouter  16  this refs to outer pointers
+       erasure  17  erase types, add interfaces for traits
+   posterasure  18  clean up erased inline classes
+    lambdalift  19  move nested functions to top level
+  constructors  20  move field definitions into constructors
+       flatten  21  eliminate inner classes
+         mixin  22  mixin composition
+        jscode  23  generate JavaScript code from ASTs
+       cleanup  24  platform-specific cleanups, generate reflective calls
+    delambdafy  25  remove lambdas
+           jvm  26  generate JVM bytecode
+       ploogin  27  A sample phase that does so many things it's kind of hard...
+      terminal  28  the last phase during a compilation run
