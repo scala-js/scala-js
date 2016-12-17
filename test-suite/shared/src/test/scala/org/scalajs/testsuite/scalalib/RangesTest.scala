@@ -93,4 +93,50 @@ class RangesTest {
           Range.Double(0.1, 1.0, 0.1).toString)
     }
   }
+
+  @Test def NumericRange_min_issue_2655(): Unit = {
+    val y = 1.0 to 10.0 by 1.0
+    assertEquals(1.0, y.min, 0.0)
+  }
+
+  @Test def NumericRange_max_issue_2655(): Unit = {
+    val y = 1.0 to 10.0 by 1.0
+    assertEquals(10.0, y.max, 0.0)
+  }
+
+  @Test def NumericRange_with_arbitrary_integral(): Unit = {
+    // This is broken in Scala JVM up to (including) 2.11.8, 2.12.1 (SI-10086).
+    assumeFalse("Assumed not on JVM for 2.10.X",
+        executingInJVM && scalaVersion.startsWith("2.10."))
+    assumeFalse("Assumed not on JVM for 2.11.{0-8}",
+        executingInJVM && (0 to 8).map("2.11." + _).contains(scalaVersion))
+    assumeFalse("Assumed not on JVM for 2.12.{0-1}",
+        executingInJVM && (0 to 1).map("2.12." + _).contains(scalaVersion))
+
+    // Our custom integral type.
+    case class A(v: Int)
+
+    implicit object aIsIntegral extends scala.math.Integral[A] {
+      def compare(x: A, y: A): Int = x.v.compare(y.v)
+      def fromInt(x: Int): A = A(x)
+      def minus(x: A, y: A): A = A(x.v - y.v)
+      def negate(x: A): A = A(-x.v)
+      def plus(x: A, y: A): A = A(x.v + y.v)
+      def times(x: A, y: A): A = A(x.v * y.v)
+      def quot(x: A, y: A): A = A(x.v / y.v)
+      def rem(x: A, y: A): A = A(x.v % y.v)
+      def toDouble(x: A): Double = x.v.toDouble
+      def toFloat(x: A): Float = x.v.toFloat
+      def toInt(x: A): Int = x.v
+      def toLong(x: A): Long = x.v.toLong
+    }
+
+    val r = NumericRange(A(1), A(10), A(1))
+    assertEquals(A(1), r.min)
+    assertEquals(A(9), r.max)
+
+    // Also test with custom ordering.
+    assertEquals(A(9), r.min(aIsIntegral.reverse))
+    assertEquals(A(1), r.max(aIsIntegral.reverse))
+  }
 }
