@@ -2,6 +2,3 @@
 # use scala.tools.partest.scalajs.testunknownonly to only run tests
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
-
-# Bug with BoxedUnit/void
-run/t9516.scala
