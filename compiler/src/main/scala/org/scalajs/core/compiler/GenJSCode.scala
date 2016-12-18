@@ -629,10 +629,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           val descriptor = js.JSObjectConstr(
               optGetter.toList ++
               optSetter ++
-              List(
-                  js.StringLiteral("configurable") -> js.BooleanLiteral(true),
-                  js.StringLiteral("enumerable") -> js.BooleanLiteral(true)
-              )
+              List(js.StringLiteral("configurable") -> js.BooleanLiteral(true))
           )
 
           js.JSBracketMethodApply(jsObject, js.StringLiteral("defineProperty"),

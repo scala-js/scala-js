@@ -198,6 +198,16 @@ class ExportsTest {
     assertEquals(7, bar.y)
   }
 
+  @Test def properties_are_not_enumerable(): Unit = {
+    class Foo {
+      @JSExport
+      def myProp: Int = 1
+    }
+
+    val x: js.Any = (new Foo()).asInstanceOf[js.Any]
+    assertFalse(js.Object.properties(x).contains("myProp"))
+  }
+
   @Test def overloaded_exports_for_methods(): Unit = {
     class Foo {
       @JSExport("foobar")
