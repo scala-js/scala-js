@@ -225,7 +225,7 @@ class JSOptionalTest {
     assertEquals(Some(3), obj.z)
   }
 
-  def polyOptionalMethod(): Unit = {
+  @Test def polyOptionalMethod(): Unit = {
     @ScalaJSDefined
     trait TraitWithPolyOptionalMethod extends js.Object {
       def foo[A]: js.UndefOr[A] = js.undefined
