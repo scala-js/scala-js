@@ -47,16 +47,13 @@ object Thenable {
      *  operations on it will be well-typed in turn.
      */
     def toFuture: Future[A] = {
-      // Help for inference
-      def defined[A](x: A): js.UndefOr[A] = x
-
       val p2 = scala.concurrent.Promise[A]()
       p.`then`[Unit](
           { (v: A) =>
             p2.success(v)
             (): Unit | Thenable[Unit]
           },
-          defined { (e: scala.Any) =>
+          js.defined { (e: scala.Any) =>
             p2.failure(e match {
               case th: Throwable => th
               case _             => JavaScriptException(e)

@@ -236,6 +236,16 @@ class JSOptionalTest {
     assertEquals(js.undefined, obj.foo[Int])
     assertFalse(js.Object.hasProperty(obj, "foo"))
   }
+
+  @Test def traitWithOptionalFunction(): Unit = {
+    val obj = new TraitWithOptionalFunction {
+      override val f: js.UndefOr[js.Function1[Int, Int]] =
+        js.defined((x: Int) => x + 1)
+    }
+
+    assertEquals("function", js.typeOf(obj.f))
+    assertEquals(6, obj.f.get(5))
+  }
 }
 
 object JSOptionalTest {
@@ -295,5 +305,10 @@ object JSOptionalTest {
     override val x = js.undefined
     override val y = js.undefined
     override def y2 = js.undefined // scalastyle:ignore
+  }
+
+  @ScalaJSDefined
+  trait TraitWithOptionalFunction extends js.Object {
+    val f: js.UndefOr[js.Function1[Int, Int]] = js.undefined
   }
 }

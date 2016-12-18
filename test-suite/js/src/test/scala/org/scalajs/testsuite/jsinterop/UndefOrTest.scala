@@ -38,6 +38,16 @@ class UndefOrTest {
     assertThrows(classOf[NoSuchElementException], x.get)
   }
 
+  @Test def explicitly_convert_A_to_js_UndefOr_A(): Unit = {
+    val x: js.UndefOr[Int] = js.defined(42)
+    assertFalse(x.isEmpty)
+    assertEquals(42, x.get)
+
+    val f: js.UndefOr[js.Function1[Int, Int]] = js.defined((x: Int) => x + 1)
+    assertFalse(f.isEmpty)
+    assertEquals(6, f.get(5))
+  }
+
   @Test def `convert_to_js_Any_when_A_<%_js_Any`(): Unit = {
     val x: js.UndefOr[Int] = 42
     assertEquals(42, x)
