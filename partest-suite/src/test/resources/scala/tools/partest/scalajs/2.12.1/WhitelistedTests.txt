@@ -479,7 +479,6 @@ pos/t2669.scala
 pos/trait-parents.scala
 pos/virtpatmat_exhaust.scala
 pos/patterns1.scala
-pos/t7014
 pos/t1231
 pos/t1751
 pos/t7233.scala
@@ -590,7 +589,6 @@ pos/t2764
 pos/presuperContext.scala
 pos/spec-simple.scala
 pos/t3120
-pos/t5729.scala
 pos/tcpoly_infer_ticket716.scala
 pos/tcpoly_bounds1.scala
 pos/t7369.scala
@@ -3231,6 +3229,7 @@ run/trait-fields-override-lazy.scala
 run/trait_fields_init.scala
 run/trait_fields_three_layer_overrides.scala
 run/t9516.scala
+run/t10032.scala
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala
@@ -3274,6 +3273,19 @@ run/t9946a.scala
 run/t9946c.scala
 run/t9946b.scala
 run/trait-super-calls.scala
+pos/sd268.scala
+pos/sd248
+pos/t6734.scala
+pos/t10009.scala
+pos/t7551
+pos/t6978
+pos/t7046-2
+neg/t9953.scala
+neg/t7014
+neg/t7046-2
+neg/t7046
+run/t7046-1
+run/t7046-2
 
 # Adapt checkfiles for ().toString == "undefined"
 run/t5680.scala
