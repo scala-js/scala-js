@@ -117,6 +117,39 @@ class OptimizerTest {
     assertEquals("BitSet(5, 6, 7)", b0.toString)
   }
 
+  @Test def must_not_eliminate_break_to_label_within_finally_block_issue2689(): Unit = {
+    // scalastyle:off return
+    val logs = js.Array[String]()
+
+    @noinline def log(s: String): Unit =
+      logs += s
+
+    def a1(): Unit = log("a1")
+
+    def i1: Int = { log("i1"); 1 }
+    def i2: Int = { log("i2"); 2 }
+
+    def e1: Int = { log("e1"); throw new Exception("Boom! #2689") }
+
+    def t4(i: => Int): Int = {
+      log("t4")
+      try {
+        return i
+      } finally {
+        return i2
+      }
+    }
+
+    assertEquals(2, t4(i1))
+    assertArrayEquals(Array[AnyRef]("t4", "i1", "i2"), logs.toArray[AnyRef])
+    logs.clear()
+
+    assertEquals(2, t4(e1))
+    assertArrayEquals(Array[AnyRef]("t4", "e1", "i2"), logs.toArray[AnyRef])
+    logs.clear()
+    // scalastyle:on return
+  }
+
   // +[string] constant folding
 
   @Test def must_not_break_when_folding_two_constant_strings(): Unit = {
