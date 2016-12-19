@@ -204,6 +204,15 @@ class JSOptionalTest212 {
     obj.z = Some(3)
     assertEquals(Some(3), obj.z)
   }
+
+  @Test def traitWithOptionalFunction(): Unit = {
+    val obj = new TraitWithOptionalFunction {
+      override val f = js.defined(x => x + 1)
+    }
+
+    assertEquals("function", js.typeOf(obj.f))
+    assertEquals(6, obj.f.get(5))
+  }
 }
 
 object JSOptionalTest212 {
@@ -241,5 +250,10 @@ object JSOptionalTest212 {
     override val y = "hello"
     override def y2 = "world" // scalastyle:ignore
     z = Some(5)
+  }
+
+  @ScalaJSDefined
+  trait TraitWithOptionalFunction extends js.Object {
+    val f: js.UndefOr[js.Function1[Int, Int]] = js.undefined
   }
 }
