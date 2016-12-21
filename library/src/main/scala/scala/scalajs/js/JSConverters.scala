@@ -22,7 +22,7 @@ sealed abstract class JSConvertersLowPrioImplicits { this: JSConverters.type =>
 
   @inline
   implicit def JSRichFutureNonThenable[A](f: Future[A]): JSRichFuture[A] =
-    new JSRichFuture[A](f.asInstanceOf[Future[A | Thenable[A]]])
+    new JSRichFuture(f)
 
 }
 
@@ -63,10 +63,10 @@ object JSConverters extends JSConvertersLowPrioImplicits {
     new JSRichGenTraversableOnce(arr)
 
   @inline
-  implicit def JSRichFutureThenable[A](f: Future[Thenable[A]]): JSRichFuture[A] =
-    new JSRichFuture[A](f.asInstanceOf[Future[A | Thenable[A]]])
+  implicit def JSRichFutureThenable[A](f: Future[Thenable[A]]): JSRichFuture[Thenable[A]] =
+    new JSRichFuture(f)
 
-  final class JSRichFuture[A](val self: Future[A | Thenable[A]]) extends AnyVal {
+  final class JSRichFuture[A](val self: Future[A]) extends AnyVal {
     /** Converts the Future to a JavaScript [[Promise]].
      *
      *  Attention! The nature of the [[Promise]] class, from the ECMAScript
@@ -76,9 +76,9 @@ object JSConverters extends JSConvertersLowPrioImplicits {
      *  The signature of the `toJSPromise` method is only valid
      *  <i>provided that</i> the values of `A` do not have a `then` method.
      */
-    def toJSPromise(implicit executor: ExecutionContext): Promise[A] = {
-      new Promise[A]({
-        (resolve: js.Function1[A | Thenable[A], _], reject: js.Function1[scala.Any, _]) =>
+    def toJSPromise[B](implicit executor: ExecutionContext, ev: Thenable.Returning[A, B]): Promise[B] = {
+      JSPromise[B]({
+        (resolve: js.Function1[A, _], reject: js.Function1[scala.Any, _]) =>
           self onComplete {
             case scala.util.Success(value) =>
               resolve(value)
