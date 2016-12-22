@@ -20,7 +20,8 @@ import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.JSUtils
+import org.scalajs.testsuite.utils.{JSUtils, Platform}
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class ExportsTest {
 
@@ -196,6 +197,28 @@ class ExportsTest {
     assertEquals(6, bar.y)
     bar.y = 7
     assertEquals(7, bar.y)
+  }
+
+  @Test def readonly_properties(): Unit = {
+    assumeFalse(
+        "Assuming strict mode semantics, which are not honored by Rhino",
+        Platform.executingInRhino)
+
+    class Foo {
+      @JSExport
+      val foo: Int = 1
+      @JSExport
+      def bar: Int = 1
+    }
+
+    val x: js.Dynamic = (new Foo()).asInstanceOf[js.Dynamic]
+
+    assertThrows(classOf[js.JavaScriptException], {
+      x.foo = 2
+    })
+    assertThrows(classOf[js.JavaScriptException], {
+      x.bar = 2
+    })
   }
 
   @Test def properties_are_not_enumerable(): Unit = {
