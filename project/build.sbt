@@ -5,7 +5,7 @@ resolvers += Resolver.url(
 
 addSbtPlugin("me.lessis" % "bintray-sbt" % "0.1.2")
 
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.1")
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.3")
 
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.13")
 
