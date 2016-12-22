@@ -7,7 +7,7 @@ import bintray.Plugin.bintrayPublishSettings
 import bintray.Keys.{repository, bintrayOrganization, bintray}
 
 import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
-import com.typesafe.tools.mima.plugin.MimaKeys.{previousArtifact, binaryIssueFilters}
+import com.typesafe.tools.mima.plugin.MimaKeys.{previousArtifacts, binaryIssueFilters}
 
 import java.io.{
   BufferedOutputStream,
@@ -90,15 +90,15 @@ object Build {
     else Nil
 
   val previousArtifactSetting: Setting[_] = {
-    previousArtifact := {
+    previousArtifacts ++= {
       val scalaV = scalaVersion.value
       val scalaBinaryV = scalaBinaryVersion.value
       if (!scalaVersionsUsedForPublishing.contains(scalaV)) {
         // This artifact will not be published. Binary compatibility is irrelevant.
-        None
+        Set.empty
       } else if (newScalaBinaryVersionsInThisRelease.contains(scalaBinaryV)) {
         // New in this release, no binary compatibility to comply to
-        None
+        Set.empty
       } else {
         val thisProjectID = projectID.value
         val previousCrossVersion = thisProjectID.crossVersion match {
@@ -114,7 +114,7 @@ object Build {
           (thisProjectID.organization % thisProjectID.name % previousVersion)
             .cross(previousCrossVersion)
             .extra(prevExtraAttributes.toSeq: _*)
-        Some(CrossVersion(scalaV, scalaBinaryV)(prevProjectID).cross(CrossVersion.Disabled))
+        Set(CrossVersion(scalaV, scalaBinaryV)(prevProjectID).cross(CrossVersion.Disabled))
       }
     }
   }
@@ -616,7 +616,7 @@ object Build {
         test := {
           val jsEnv = resolvedJSEnv.value
           if (!jsEnv.isInstanceOf[NodeJSEnv])
-            error("toolsJS/test must be run with Node.js")
+            sys.error("toolsJS/test must be run with Node.js")
 
           /* Collect IR relevant files from the classpath
            * We assume here that the classpath is valid. This is checked by the
