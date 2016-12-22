@@ -1074,11 +1074,21 @@ object Build {
       ) ++ Seq(
           name := "Scala.js CLI",
           libraryDependencies ++= Seq(
-              "com.github.scopt" %% "scopt" % "3.2.0"
+              "com.github.scopt" %% "scopt" % "3.5.0"
           ),
 
           previousArtifactSetting,
           mimaBinaryIssueFilters ++= BinaryIncompatibilities.CLI,
+
+          // TODO Remove this when going towards 0.6.16
+          // Ignore bin compat of cli for 2.12 because it's new in 0.6.15.
+          mimaPreviousArtifacts := {
+            val scalaV = scalaVersion.value
+            if (scalaV.startsWith("2.10.") || scalaV.startsWith("2.11."))
+              mimaPreviousArtifacts.value
+            else
+              Set.empty
+          },
 
           // assembly options
           mainClass in assembly := None, // don't want an executable JAR
