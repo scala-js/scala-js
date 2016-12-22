@@ -943,7 +943,6 @@ pos/t9356
 pos/virtpatmat_exhaust_big.scala
 pos/t9239
 pos/t9111-inliner-workaround
-pos/t9181.scala
 
 neg/volatile_no_override.scala
 neg/t800.scala

@@ -5,6 +5,9 @@
 # Using Jsoup, what's that?
 pos/cycle-jsoup.scala
 
+# Kills our IR serializer, it's an artificially super-deep if/else if
+pos/t9181.scala
+
 #
 # NEG
 #
