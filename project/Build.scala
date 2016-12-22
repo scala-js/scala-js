@@ -6,8 +6,7 @@ import scala.annotation.tailrec
 import bintray.Plugin.bintrayPublishSettings
 import bintray.Keys.{repository, bintrayOrganization, bintray}
 
-import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
-import com.typesafe.tools.mima.plugin.MimaKeys.{previousArtifacts, binaryIssueFilters}
+import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
 
 import java.io.{
   BufferedOutputStream,
@@ -90,7 +89,7 @@ object Build {
     else Nil
 
   val previousArtifactSetting: Setting[_] = {
-    previousArtifacts ++= {
+    mimaPreviousArtifacts ++= {
       val scalaV = scalaVersion.value
       val scalaBinaryV = scalaBinaryVersion.value
       if (!scalaVersionsUsedForPublishing.contains(scalaV)) {
@@ -248,7 +247,7 @@ object Build {
         if (errorsSeen.size > 0) sys.error("ScalaDoc patching had errors")
         else outDir
       }
-  ) ++ mimaDefaultSettings
+  )
 
   val noClassFilesSettings: Setting[_] = (
       scalacOptions in (Compile, compile) ++= {
@@ -482,7 +481,7 @@ object Build {
   ) ++ Seq(
       name := "Scala.js IR",
       previousArtifactSetting,
-      binaryIssueFilters ++= BinaryIncompatibilities.IR,
+      mimaBinaryIssueFilters ++= BinaryIncompatibilities.IR,
       exportJars := true, // required so ScalaDoc linking works
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s")
@@ -575,7 +574,7 @@ object Build {
       }.taskValue,
 
       previousArtifactSetting,
-      binaryIssueFilters ++= BinaryIncompatibilities.Tools,
+      mimaBinaryIssueFilters ++= BinaryIncompatibilities.Tools,
       exportJars := true // required so ScalaDoc linking works
   )
 
@@ -680,7 +679,7 @@ object Build {
               "org.webjars" % "envjs" % "1.2"
           ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided"),
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
       )
   ).dependsOn(tools)
 
@@ -694,7 +693,7 @@ object Build {
           libraryDependencies +=
             "junit" % "junit" % "4.8.2",
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.JSEnvsTestKit
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvsTestKit
       )
   ).dependsOn(tools, jsEnvs)
 
@@ -720,7 +719,7 @@ object Build {
           name := "Scala.js sbt test adapter",
           libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0",
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.TestAdapter
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestAdapter
       )
   ).dependsOn(jsEnvs)
 
@@ -737,7 +736,7 @@ object Build {
           scalaBinaryVersion :=
             CrossVersion.binaryScalaVersion(scalaVersion.value),
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
           // Add API mappings for sbt (seems they don't export their API URL)
           apiMappings ++= {
@@ -1000,7 +999,7 @@ object Build {
           scalacOptions in (Compile, doc) ++= Seq("-implicits", "-groups"),
           exportJars := !isGeneratingEclipse,
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.Library,
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
           libraryDependencies +=
             "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided"
       ) ++ (
@@ -1079,7 +1078,7 @@ object Build {
           ),
 
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.CLI,
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.CLI,
 
           // assembly options
           mainClass in assembly := None, // don't want an executable JAR
@@ -1099,7 +1098,7 @@ object Build {
           name := "Scala.js test interface",
           delambdafySetting,
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.TestInterface
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestInterface
       )
   ).withScalaJSCompiler.dependsOn(library)
 
