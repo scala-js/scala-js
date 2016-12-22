@@ -141,7 +141,7 @@ object ScalaJSPluginInternal {
 
   private def packageJSDependenciesSetting(taskKey: TaskKey[File], cacheName: String,
       getLib: ResolvedJSDependency => VirtualJSFile): Setting[Task[File]] = {
-    taskKey <<= Def.taskDyn {
+    taskKey := Def.taskDyn {
       if ((skip in taskKey).value)
         Def.task((artifactPath in taskKey).value)
       else Def.task {
@@ -165,7 +165,7 @@ object ScalaJSPluginInternal {
 
         output
       }
-    }
+    }.value
   }
 
   /** Settings for the production key (e.g. fastOptJS) of a given stage */
@@ -226,7 +226,7 @@ object ScalaJSPluginInternal {
       concurrentRestrictions in Global +=
         Tags.limit((usesScalaJSLinkerTag in key).value, 1),
 
-      key <<= Def.taskDyn {
+      key := Def.taskDyn {
         val s = (streams in key).value
         val log = s.log
         val irInfo = (scalaJSIR in key).value
@@ -258,25 +258,25 @@ object ScalaJSPluginInternal {
           val sourceMapFile = FileVirtualJSFile(output).sourceMapFile
           Attributed.blank(output).put(scalaJSSourceMap, sourceMapFile)
         } tag((usesScalaJSLinkerTag in key).value)
-      },
+      }.value,
 
-      key <<= key.dependsOn(packageJSDependencies, packageScalaJSLauncher),
+      key := key.dependsOn(packageJSDependencies, packageScalaJSLauncher).value,
 
       scalaJSLinkedFile in key := new FileVirtualJSFile(key.value.data)
   )
 
   private def dispatchSettingKeySettings[T](key: SettingKey[T]) = Seq(
-      key <<= Def.settingDyn {
+      key := Def.settingDyn {
         val stageKey = stageKeys(scalaJSStage.value)
         Def.setting { (key in stageKey).value }
-      }
+      }.value
   )
 
   private def dispatchTaskKeySettings[T](key: TaskKey[T]) = Seq(
-      key <<= Def.taskDyn {
+      key := Def.taskDyn {
         val stageKey = stageKeys(scalaJSStage.value)
         Def.task { (key in stageKey).value }
-      }
+      }.value
   )
 
   private def scalajspSettings: Seq[Setting[_]] = {
@@ -306,9 +306,9 @@ object ScalaJSPluginInternal {
     }
 
     Seq(
-        sjsirFilesOnClasspath <<= Def.task {
+        sjsirFilesOnClasspath := Def.task {
           scalaJSIR.value.data.map(_.relativePath).toSeq
-        } storeAs(sjsirFilesOnClasspath) triggeredBy(scalaJSIR),
+        }.storeAs(sjsirFilesOnClasspath).triggeredBy(scalaJSIR).value,
 
         scalajsp := {
           val (options, relPath) = parser.parsed
@@ -381,8 +381,9 @@ object ScalaJSPluginInternal {
        * Also note that it doesn't get cleared by the sbt's clean task.
        */
       scalaJSIRCacheHolder := globalIRCache.newCache,
-      scalaJSIRCache <<=
-        Def.task(scalaJSIRCacheHolder.value).dependsOn(scalaJSClearCacheStats),
+      scalaJSIRCache := Def.task {
+        scalaJSIRCacheHolder.value
+      }.dependsOn(scalaJSClearCacheStats).value,
 
       scalaJSIR := {
         import IRFileCache.IRContainer
@@ -412,7 +413,7 @@ object ScalaJSPluginInternal {
         prev.withUseClosureCompiler(outputMode == OutputMode.ECMAScript51Isolated)
       },
 
-      fullOptJS <<= fullOptJS.dependsOn(packageMinifiedJSDependencies),
+      fullOptJS := fullOptJS.dependsOn(packageMinifiedJSDependencies).value,
 
       artifactPath in packageScalaJSLauncher :=
         ((crossTarget in packageScalaJSLauncher).value /
@@ -428,7 +429,7 @@ object ScalaJSPluginInternal {
         value
       },
 
-      packageScalaJSLauncher <<= Def.taskDyn {
+      packageScalaJSLauncher := Def.taskDyn {
         if ((skip in packageScalaJSLauncher).value) {
           Def.task {
             Attributed.blank((artifactPath in packageScalaJSLauncher).value)
@@ -451,7 +452,7 @@ object ScalaJSPluginInternal {
             }
           }
         }
-      },
+      }.value,
 
       artifactPath in packageJSDependencies :=
         ((crossTarget in packageJSDependencies).value /
@@ -512,12 +513,12 @@ object ScalaJSPluginInternal {
         file
       },
 
-      products <<= products.dependsOn(jsDependencyManifest),
+      products := products.dependsOn(jsDependencyManifest).value,
 
-      console <<= console.dependsOn(Def.task(
-          streams.value.log.warn("Scala REPL doesn't work with Scala.js. You " +
-              "are running a JVM REPL. JavaScript things won't work.")
-      )),
+      console := console.dependsOn(Def.task {
+        streams.value.log.warn("Scala REPL doesn't work with Scala.js. You " +
+            "are running a JVM REPL. JavaScript things won't work.")
+      }).value,
 
       scalaJSNativeLibraries := {
         collectFromClasspath(fullClasspath.value,
@@ -627,7 +628,7 @@ object ScalaJSPluginInternal {
         }
       },
 
-      loadedJSEnv <<= Def.taskDyn {
+      loadedJSEnv := Def.taskDyn {
         val log = streams.value.log
         val libs =
           resolvedJSDependencies.value.data ++ scalaJSConfigurationLibs.value
@@ -656,9 +657,9 @@ object ScalaJSPluginInternal {
               env.loadLibs(libs :+ ResolvedJSDependency.minimal(file))
             }
         }
-      },
+      }.value,
 
-      scalaJSModuleIdentifier <<= Def.taskDyn {
+      scalaJSModuleIdentifier := Def.taskDyn[Option[String]] {
         scalaJSModuleKind.value match {
           case ModuleKind.NoModule =>
             Def.task {
@@ -670,7 +671,7 @@ object ScalaJSPluginInternal {
               Some(scalaJSLinkedFile.value.path)
             }
         }
-      }
+      }.value
   )
 
   /** Run a class in a given environment using a given launcher */
@@ -738,7 +739,7 @@ object ScalaJSPluginInternal {
   // These settings will be filtered by the stage dummy tasks
   val scalaJSRunSettings = Seq(
       mainClass in scalaJSLauncher := (mainClass in run).value,
-      scalaJSLauncher <<= Def.taskDyn {
+      scalaJSLauncher := Def.taskDyn[Attributed[VirtualJSFile]] {
         if (persistLauncher.value) {
           Def.task {
             packageScalaJSLauncher.value.map(FileVirtualJSFile)
@@ -757,12 +758,12 @@ object ScalaJSPluginInternal {
             }
           }
         }
-      },
+      }.value,
 
-      discoveredMainClasses <<= compile.map(discoverJSApps).
-        storeAs(discoveredMainClasses).triggeredBy(compile),
+      discoveredMainClasses := compile.map(discoverJSApps).
+        storeAs(discoveredMainClasses).triggeredBy(compile).value,
 
-      run <<= Def.inputTask {
+      run := {
         // use assert to prevent warning about pure expr in stat pos
         assert(scalaJSEnsureUnforked.value)
 
@@ -820,8 +821,10 @@ object ScalaJSPluginInternal {
       },
       // Override default to avoid triggering a test:fastOptJS in a test:compile
       // without loosing autocompletion.
-      definedTestNames <<= definedTests map (_.map(_.name).distinct)
-        storeAs definedTestNames triggeredBy loadedJSEnv
+      definedTestNames := {
+        definedTests.map(_.map(_.name).distinct)
+          .storeAs(definedTestNames).triggeredBy(loadedJSEnv).value
+      }
   )
 
   val scalaJSTestBuildSettings = (
@@ -937,13 +940,15 @@ object ScalaJSPluginInternal {
 
       scalaJSConsole := ConsoleJSConsole,
 
-      clean <<= clean.dependsOn(Def.task {
+      clean := {
         // have clean reset incremental linker state
+        val _ = clean.value
         (scalaJSLinker in (Compile, fastOptJS)).value.clear()
         (scalaJSLinker in (Test, fastOptJS)).value.clear()
         (scalaJSLinker in (Compile, fullOptJS)).value.clear()
         (scalaJSLinker in (Test, fullOptJS)).value.clear()
-      }),
+        ()
+      },
 
       /* Depend on jetty artifacts in dummy configuration to be able to inject
        * them into the PhantomJS runner if necessary.

@@ -105,7 +105,7 @@ object ExternalCompile {
 
       // Make sure jsDependencyManifest runs after compile, otherwise compile
       // might remove the entire directory afterwards.
-      jsDependencyManifest <<= jsDependencyManifest.dependsOn(compile)
+      jsDependencyManifest := jsDependencyManifest.dependsOn(compile).value
   )
 
   val scalaJSExternalCompileSettings = (

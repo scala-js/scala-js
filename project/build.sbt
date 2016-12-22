@@ -5,9 +5,9 @@ resolvers += Resolver.url(
 
 addSbtPlugin("me.lessis" % "bintray-sbt" % "0.1.2")
 
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.1")
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.3")
 
-addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.8")
+addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.13")
 
 addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "0.8.0")
 
@@ -42,11 +42,11 @@ unmanagedSourceDirectories in Compile ++= {
 sources in Compile +=
   baseDirectory.value / "project" / "ScalaJSEnvGenerator.scala"
 
-sourceGenerators in Compile <+= Def.task {
+sourceGenerators in Compile += Def.task {
   ScalaJSEnvGenerator.generateEnvHolder(
     baseDirectory.value.getParentFile / "tools",
     (sourceManaged in Compile).value)
-}
+}.taskValue
 
 unmanagedResourceDirectories in Compile += {
   val root = baseDirectory.value.getParentFile

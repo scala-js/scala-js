@@ -6,8 +6,7 @@ import scala.annotation.tailrec
 import bintray.Plugin.bintrayPublishSettings
 import bintray.Keys.{repository, bintrayOrganization, bintray}
 
-import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
-import com.typesafe.tools.mima.plugin.MimaKeys.{previousArtifact, binaryIssueFilters}
+import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
 
 import java.io.{
   BufferedOutputStream,
@@ -90,15 +89,15 @@ object Build {
     else Nil
 
   val previousArtifactSetting: Setting[_] = {
-    previousArtifact := {
+    mimaPreviousArtifacts ++= {
       val scalaV = scalaVersion.value
       val scalaBinaryV = scalaBinaryVersion.value
       if (!scalaVersionsUsedForPublishing.contains(scalaV)) {
         // This artifact will not be published. Binary compatibility is irrelevant.
-        None
+        Set.empty
       } else if (newScalaBinaryVersionsInThisRelease.contains(scalaBinaryV)) {
         // New in this release, no binary compatibility to comply to
-        None
+        Set.empty
       } else {
         val thisProjectID = projectID.value
         val previousCrossVersion = thisProjectID.crossVersion match {
@@ -114,7 +113,7 @@ object Build {
           (thisProjectID.organization % thisProjectID.name % previousVersion)
             .cross(previousCrossVersion)
             .extra(prevExtraAttributes.toSeq: _*)
-        Some(CrossVersion(scalaV, scalaBinaryV)(prevProjectID).cross(CrossVersion.Disabled))
+        Set(CrossVersion(scalaV, scalaBinaryV)(prevProjectID).cross(CrossVersion.Disabled))
       }
     }
   }
@@ -248,7 +247,7 @@ object Build {
         if (errorsSeen.size > 0) sys.error("ScalaDoc patching had errors")
         else outDir
       }
-  ) ++ mimaDefaultSettings
+  )
 
   val noClassFilesSettings: Setting[_] = (
       scalacOptions in (Compile, compile) ++= {
@@ -482,7 +481,7 @@ object Build {
   ) ++ Seq(
       name := "Scala.js IR",
       previousArtifactSetting,
-      binaryIssueFilters ++= BinaryIncompatibilities.IR,
+      mimaBinaryIssueFilters ++= BinaryIncompatibilities.IR,
       exportJars := true, // required so ScalaDoc linking works
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s")
@@ -568,14 +567,14 @@ object Build {
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile / "shared/src/test/scala",
 
-      sourceGenerators in Compile <+= Def.task {
+      sourceGenerators in Compile += Def.task {
         ScalaJSEnvGenerator.generateEnvHolder(
           baseDirectory.value.getParentFile,
           (sourceManaged in Compile).value)
-      },
+      }.taskValue,
 
       previousArtifactSetting,
-      binaryIssueFilters ++= BinaryIncompatibilities.Tools,
+      mimaBinaryIssueFilters ++= BinaryIncompatibilities.Tools,
       exportJars := true // required so ScalaDoc linking works
   )
 
@@ -596,7 +595,7 @@ object Build {
       base = file("tools/js"),
       settings = myScalaJSSettings ++ commonToolsSettings ++ Seq(
           crossVersion := ScalaJSCrossVersion.binary,
-          resourceGenerators in Test <+= Def.task {
+          resourceGenerators in Test += Def.task {
             val base = (resourceManaged in Compile).value
             IO.createDirectory(base)
             val outFile = base / "js-test-definitions.js"
@@ -609,14 +608,14 @@ object Build {
 
             IO.write(outFile, testDefinitions)
             Seq(outFile)
-          },
+          }.taskValue,
           jsDependencies += ProvidedJS / "js-test-definitions.js" % "test"
       ) ++ inConfig(Test) {
         // Redefine test to run Node.js and link HelloWorld
         test := {
           val jsEnv = resolvedJSEnv.value
           if (!jsEnv.isInstanceOf[NodeJSEnv])
-            error("toolsJS/test must be run with Node.js")
+            sys.error("toolsJS/test must be run with Node.js")
 
           /* Collect IR relevant files from the classpath
            * We assume here that the classpath is valid. This is checked by the
@@ -680,7 +679,7 @@ object Build {
               "org.webjars" % "envjs" % "1.2"
           ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided"),
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
       )
   ).dependsOn(tools)
 
@@ -694,7 +693,7 @@ object Build {
           libraryDependencies +=
             "junit" % "junit" % "4.8.2",
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.JSEnvsTestKit
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvsTestKit
       )
   ).dependsOn(tools, jsEnvs)
 
@@ -720,7 +719,7 @@ object Build {
           name := "Scala.js sbt test adapter",
           libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0",
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.TestAdapter
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestAdapter
       )
   ).dependsOn(jsEnvs)
 
@@ -737,7 +736,7 @@ object Build {
           scalaBinaryVersion :=
             CrossVersion.binaryScalaVersion(scalaVersion.value),
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
           // Add API mappings for sbt (seems they don't export their API URL)
           apiMappings ++= {
@@ -793,13 +792,13 @@ object Build {
           delambdafySetting,
           noClassFilesSettings,
 
-          resourceGenerators in Compile <+= Def.task {
+          resourceGenerators in Compile += Def.task {
             val base = (resourceManaged in Compile).value
             Seq(
                 serializeHardcodedIR(base, JavaLangObject.InfoAndTree),
                 serializeHardcodedIR(base, JavaLangString.InfoAndTree)
             )
-          }
+          }.taskValue
       ) ++ (
           scalaJSExternalCompileSettings
       )
@@ -1000,7 +999,7 @@ object Build {
           scalacOptions in (Compile, doc) ++= Seq("-implicits", "-groups"),
           exportJars := !isGeneratingEclipse,
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.Library,
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
           libraryDependencies +=
             "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided"
       ) ++ (
@@ -1075,11 +1074,21 @@ object Build {
       ) ++ Seq(
           name := "Scala.js CLI",
           libraryDependencies ++= Seq(
-              "com.github.scopt" %% "scopt" % "3.2.0"
+              "com.github.scopt" %% "scopt" % "3.5.0"
           ),
 
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.CLI,
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.CLI,
+
+          // TODO Remove this when going towards 0.6.16
+          // Ignore bin compat of cli for 2.12 because it's new in 0.6.15.
+          mimaPreviousArtifacts := {
+            val scalaV = scalaVersion.value
+            if (scalaV.startsWith("2.10.") || scalaV.startsWith("2.11."))
+              mimaPreviousArtifacts.value
+            else
+              Set.empty
+          },
 
           // assembly options
           mainClass in assembly := None, // don't want an executable JAR
@@ -1099,7 +1108,7 @@ object Build {
           name := "Scala.js test interface",
           delambdafySetting,
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.TestInterface
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestInterface
       )
   ).withScalaJSCompiler.dependsOn(library)
 
@@ -1361,13 +1370,13 @@ object Build {
       },
 
       // Fail if we are not in the right stage.
-      testHtmlKey in Test <<= (testHtmlKey in Test) dependsOn Def.task {
+      testHtmlKey in Test := (testHtmlKey in Test).dependsOn(Def.task {
         if (scalaJSStage.value != targetStage) {
           sys.error("In the Scala.js test-suite, the testHtml* tasks need " +
               "scalaJSStage to be set to their respecitve stage. Stage is: " +
               scalaJSStage.value)
         }
-      }
+      }).value
   )
 
   lazy val testSuite: Project = Project(
@@ -1406,7 +1415,7 @@ object Build {
          *
          * see test-suite/src/test/resources/SourceMapTestTemplate.scala
          */
-        sourceGenerators in Test <+= Def.task {
+        sourceGenerators in Test += Def.task {
           val dir = (sourceManaged in Test).value
           IO.createDirectory(dir)
 
@@ -1439,7 +1448,7 @@ object Build {
           IO.write(outFile,
               replaced.replace("@Test def workTest(): Unit = sys.error(\"stubs\")", unitTests))
           Seq(outFile)
-        },
+        }.taskValue,
 
         // Exclude tests based on version-dependent bugs
         sources in Test := {
@@ -1613,7 +1622,7 @@ object Build {
             else Seq()
           },
 
-          definedTests in Test <++= Def.taskDyn[Seq[sbt.TestDefinition]] {
+          definedTests in Test ++= Def.taskDyn[Seq[sbt.TestDefinition]] {
             if (shouldPartest.value) Def.task {
               val _ = (fetchScalaSource in partest).value
               Seq(new sbt.TestDefinition(
@@ -1630,7 +1639,7 @@ object Build {
             } else {
               Def.task(Seq())
             }
-          }
+          }.value
       )
   ).dependsOn(partest % "test", library)
 

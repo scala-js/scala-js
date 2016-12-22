@@ -405,6 +405,10 @@
       <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
     </run>
+    <run task="tools-cli-stubs">
+      <v n="scala">2.12.1</v>
+      <v n="java">1.8</v>
+    </run>
 
     <!-- Partest compilation test tasks -->
     <run task="partestc">
