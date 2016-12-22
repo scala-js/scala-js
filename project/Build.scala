@@ -568,11 +568,11 @@ object Build {
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile / "shared/src/test/scala",
 
-      sourceGenerators in Compile <+= Def.task {
+      sourceGenerators in Compile += Def.task {
         ScalaJSEnvGenerator.generateEnvHolder(
           baseDirectory.value.getParentFile,
           (sourceManaged in Compile).value)
-      },
+      }.taskValue,
 
       previousArtifactSetting,
       binaryIssueFilters ++= BinaryIncompatibilities.Tools,
@@ -596,7 +596,7 @@ object Build {
       base = file("tools/js"),
       settings = myScalaJSSettings ++ commonToolsSettings ++ Seq(
           crossVersion := ScalaJSCrossVersion.binary,
-          resourceGenerators in Test <+= Def.task {
+          resourceGenerators in Test += Def.task {
             val base = (resourceManaged in Compile).value
             IO.createDirectory(base)
             val outFile = base / "js-test-definitions.js"
@@ -609,7 +609,7 @@ object Build {
 
             IO.write(outFile, testDefinitions)
             Seq(outFile)
-          },
+          }.taskValue,
           jsDependencies += ProvidedJS / "js-test-definitions.js" % "test"
       ) ++ inConfig(Test) {
         // Redefine test to run Node.js and link HelloWorld
@@ -793,13 +793,13 @@ object Build {
           delambdafySetting,
           noClassFilesSettings,
 
-          resourceGenerators in Compile <+= Def.task {
+          resourceGenerators in Compile += Def.task {
             val base = (resourceManaged in Compile).value
             Seq(
                 serializeHardcodedIR(base, JavaLangObject.InfoAndTree),
                 serializeHardcodedIR(base, JavaLangString.InfoAndTree)
             )
-          }
+          }.taskValue
       ) ++ (
           scalaJSExternalCompileSettings
       )
@@ -1361,13 +1361,13 @@ object Build {
       },
 
       // Fail if we are not in the right stage.
-      testHtmlKey in Test <<= (testHtmlKey in Test) dependsOn Def.task {
+      testHtmlKey in Test := (testHtmlKey in Test).dependsOn(Def.task {
         if (scalaJSStage.value != targetStage) {
           sys.error("In the Scala.js test-suite, the testHtml* tasks need " +
               "scalaJSStage to be set to their respecitve stage. Stage is: " +
               scalaJSStage.value)
         }
-      }
+      }).value
   )
 
   lazy val testSuite: Project = Project(
@@ -1406,7 +1406,7 @@ object Build {
          *
          * see test-suite/src/test/resources/SourceMapTestTemplate.scala
          */
-        sourceGenerators in Test <+= Def.task {
+        sourceGenerators in Test += Def.task {
           val dir = (sourceManaged in Test).value
           IO.createDirectory(dir)
 
@@ -1439,7 +1439,7 @@ object Build {
           IO.write(outFile,
               replaced.replace("@Test def workTest(): Unit = sys.error(\"stubs\")", unitTests))
           Seq(outFile)
-        },
+        }.taskValue,
 
         // Exclude tests based on version-dependent bugs
         sources in Test := {
@@ -1613,7 +1613,7 @@ object Build {
             else Seq()
           },
 
-          definedTests in Test <++= Def.taskDyn[Seq[sbt.TestDefinition]] {
+          definedTests in Test ++= Def.taskDyn[Seq[sbt.TestDefinition]] {
             if (shouldPartest.value) Def.task {
               val _ = (fetchScalaSource in partest).value
               Seq(new sbt.TestDefinition(
@@ -1630,7 +1630,7 @@ object Build {
             } else {
               Def.task(Seq())
             }
-          }
+          }.value
       )
   ).dependsOn(partest % "test", library)
 
