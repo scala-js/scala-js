@@ -11,9 +11,12 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
 import org.junit.Assert._
+import org.junit.Assume._
 import org.junit.Test
 
 import org.scalajs.testsuite.utils.JSAssert._
+import org.scalajs.testsuite.utils.Platform
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class ScalaJSDefinedTest {
   import org.scalajs.testsuite.jsinterop.{ScalaJSDefinedTestSeparateRun => SepRun}
@@ -563,6 +566,32 @@ class ScalaJSDefinedTest {
     assertEquals(42, dyn.bar())
     assertEquals(js.typeOf(dyn.foo), "function")
     assertEquals(100, dyn.foo())
+  }
+
+  @Test def readonly_properties(): Unit = {
+    assumeFalse(
+        "Assuming strict mode semantics, which are not honored by Rhino",
+        Platform.executingInRhino)
+
+    // Named classes
+    @ScalaJSDefined
+    class Foo extends js.Object {
+      def bar: Int = 1
+    }
+
+    val x: js.Dynamic = (new Foo()).asInstanceOf[js.Dynamic]
+    assertThrows(classOf[js.JavaScriptException], {
+      x.bar = 2
+    })
+
+    // Anonymous classes
+    val y = new js.Object {
+      def bar: Int = 1
+    }.asInstanceOf[js.Dynamic]
+
+    assertThrows(classOf[js.JavaScriptException], {
+      y.bar = 2
+    })
   }
 
   @Test def properties_are_not_enumerable(): Unit = {
