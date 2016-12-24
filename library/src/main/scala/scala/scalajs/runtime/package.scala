@@ -187,7 +187,7 @@ package object runtime {
           if (f0 / twoPowFbits >= 2) {
             //val e = e0 + 1.0 // not used
             val f = 1.0
-            if (e0 > bias-1) { // === (e > bias) because e0 is whole
+            if (e0 > bias - 1) { // === (e > bias) because e0 is whole
               // Overflow
               Double.PositiveInfinity
             } else {

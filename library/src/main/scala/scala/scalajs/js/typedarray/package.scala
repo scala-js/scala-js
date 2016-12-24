@@ -128,8 +128,7 @@ package object typedarray {
 
   @inline private def array2typedArrayImpl[
       @specialized(Byte, Short, Int, Float, Double) T,
-      Repr <: TypedArray[T, Repr]](
-      array: scala.Array[T], dest: Repr): Repr = {
+      Repr <: TypedArray[T, Repr]](array: scala.Array[T], dest: Repr): Repr = {
     val len = array.length
     var i = 0
     while (i < len) {
@@ -170,8 +169,8 @@ package object typedarray {
 
   @inline private def typedArray2arrayImpl[
       @specialized(Byte, Short, Int, Float, Double) T,
-      Repr <: TypedArray[T, Repr]](
-      array: Repr, dest: scala.Array[T]): scala.Array[T] = {
+      Repr <: TypedArray[T, Repr]](array: Repr,
+      dest: scala.Array[T]): scala.Array[T] = {
     val len = dest.length
     var i = 0
     while (i < len) {

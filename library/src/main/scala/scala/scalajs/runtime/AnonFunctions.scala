@@ -4,6 +4,7 @@ import scala.scalajs.js
 import scala.runtime._
 
 // scalastyle:off line.size.limit
+// scalafmt: { maxColumn = 500 }
 
 @inline
 final class AnonFunction0[+R](f: js.Function0[R]) extends AbstractFunction0[R] {
@@ -120,4 +121,5 @@ final class AnonFunction22[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T
   override def apply(arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, arg7: T7, arg8: T8, arg9: T9, arg10: T10, arg11: T11, arg12: T12, arg13: T13, arg14: T14, arg15: T15, arg16: T16, arg17: T17, arg18: T18, arg19: T19, arg20: T20, arg21: T21, arg22: T22): R = f(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18, arg19, arg20, arg21, arg22)
 }
 
+// scalafmt: { maxColumn = 80 }
 // scalastyle:on line.size.limit

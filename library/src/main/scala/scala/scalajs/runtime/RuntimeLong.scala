@@ -7,6 +7,9 @@ import js.|
 import js.JSNumberOps._
 import js.JSStringOps._
 
+// This file has been carefully formatted. Do not mess with it, scalafmt.
+// format: off
+
 /* IMPORTANT NOTICE about this file
  *
  * The code of RuntimeLong is code-size- and performance critical. The methods

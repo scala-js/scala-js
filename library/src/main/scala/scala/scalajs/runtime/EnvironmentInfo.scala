@@ -44,12 +44,15 @@ trait EnvironmentInfo extends js.Object {
    */
   def exitFunction: js.UndefOr[js.Function1[Int, Nothing]] = js.native
 
+  // https://github.com/olafurpg/scalafmt/issues/646
+  // format: off
   /** Method used to source map JavaScript stack traces
    *
    *  @group envInfo
    */
   def sourceMapper: js.UndefOr[js.Function1[
       js.Array[JSStackTraceElem], js.Array[JSStackTraceElem]]] = js.native
+  // format: on
 
   /** Dictionary of system properties to add to java.lang.System.getProperties()
    *

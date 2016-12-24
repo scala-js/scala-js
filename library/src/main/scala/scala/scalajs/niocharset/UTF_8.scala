@@ -36,6 +36,7 @@ private[niocharset] object UTF_8 // scalastyle:ignore
    * 11110uuu  10zzzzzz  10yyyyyy  10xxxxxx   000uuuzz zzzzyyyy yyxxxxxx
    */
 
+  // format: off
   private val lengthByLeading: Array[Int] = Array(
       // 10wwwwww
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -52,6 +53,7 @@ private[niocharset] object UTF_8 // scalastyle:ignore
       // > 11110111
       -1, -1, -1, -1, -1, -1, -1, -1
   )
+  // format: on
 
   @inline
   private class DecodedMultiByte(val failure: CoderResult, val high: Char,
@@ -288,9 +290,13 @@ private[niocharset] object UTF_8 // scalastyle:ignore
         } else {
           // Here, we need to encode the code point as a surrogate pair.
           // http://en.wikipedia.org/wiki/UTF-16
+
+          // https://github.com/olafurpg/scalafmt/issues/644
+          // format: off
           val offsetCodePoint = codePoint - 0x10000
           DecodedMultiByte(((offsetCodePoint >> 10) | 0xd800).toChar,
               ((offsetCodePoint & 0x3ff) | 0xdc00).toChar)
+          // format: on
         }
       }
     }
@@ -464,8 +470,10 @@ private[niocharset] object UTF_8 // scalastyle:ignore
     }
   }
 
+  // format: off
   private final val SurrogateMask = 0xf800 // 11111 0 00  00000000
   private final val SurrogateID = 0xd800   // 11011 0 00  00000000
+  // format: on
 
   @inline private def isSurrogate(c: Char): Boolean =
     (c & SurrogateMask) == SurrogateID

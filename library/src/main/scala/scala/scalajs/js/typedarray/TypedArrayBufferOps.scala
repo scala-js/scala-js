@@ -20,8 +20,7 @@ import java.nio._
  *  elements in the buffer.
  */
 final class TypedArrayBufferOps[
-    TypedArrayType <: TypedArray[_, TypedArrayType]](
-    val buffer: Buffer)
+    TypedArrayType <: TypedArray[_, TypedArrayType]](val buffer: Buffer)
     extends AnyVal {
 
   /** Tests whether this buffer has a valid associated [[ArrayBuffer]].
@@ -72,6 +71,7 @@ final class TypedArrayBufferOps[
   def hasTypedArray(): Boolean =
     TypedArrayBufferBridge.Buffer_hasTypedArray(buffer)
 
+  // scalafmt: { maxColumn = 90 }
   /** [[TypedArray]] backing this direct buffer _(optional operation)_.
    *
    *  The [[TypedArray]] is sliced to the portion of the [[ArrayBuffer]] seen
@@ -82,6 +82,7 @@ final class TypedArrayBufferOps[
    */
   def typedArray(): TypedArrayType =
     TypedArrayBufferBridge.Buffer_typedArray(buffer).asInstanceOf[TypedArrayType]
+  // scalafmt: { maxColumn = 80 }
 }
 
 /** Extensions to [[java.nio.Buffer Buffer]]s for interoperability with

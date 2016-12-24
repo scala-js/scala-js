@@ -239,6 +239,11 @@
         sbtPlugin/compile:doc
   ]]></task>
 
+  <task id="scalafmt"><![CDATA[
+    setJavaVersion $java
+    sbt ++$scala scalafmtTest
+  ]]></task>
+
   <task id="partestc"><![CDATA[
     setJavaVersion $java
     sbt ++$scala partest/compile
@@ -407,6 +412,12 @@
     </run>
     <run task="tools-cli-stubs">
       <v n="scala">2.12.1</v>
+      <v n="java">1.8</v>
+    </run>
+
+    <!-- scalafmt, only on 2.11 because of https://github.com/olafurpg/scalafmt/issues/641 -->
+    <run task="scalafmt">
+      <v n="scala">2.11.8</v>
       <v n="java">1.8</v>
     </run>
 

@@ -14,5 +14,7 @@ import scala.annotation.meta._
  *
  *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
-@field @getter @setter
+@field
+@getter
+@setter
 class JSName(name: String) extends scala.annotation.StaticAnnotation

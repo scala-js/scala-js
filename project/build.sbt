@@ -11,6 +11,8 @@ addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.13")
 
 addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "0.8.0")
 
+addSbtPlugin("com.geirsson" % "sbt-scalafmt" % "0.5.1")
+
 libraryDependencies += "org.scala-js" % "closure-compiler-java-6" % "v20160517"
 
 libraryDependencies += "io.apigee" % "rhino" % "1.7R5pre4"

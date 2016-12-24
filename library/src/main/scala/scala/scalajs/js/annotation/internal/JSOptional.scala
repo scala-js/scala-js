@@ -18,5 +18,7 @@ import scala.annotation.meta._
  *
  *  Do not use this annotation yourself.
  */
-@field @getter @setter
+@field
+@getter
+@setter
 class JSOptional extends scala.annotation.StaticAnnotation

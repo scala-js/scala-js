@@ -187,6 +187,7 @@ final class UndefOrOps[A](val self: UndefOr[A]) extends AnyVal {
   @inline final def foreach[U](f: A => U): Unit =
     if (!isEmpty) f(this.forceGet)
 
+  // scalafmt: { maxColumn = 85 }
   /** Returns the result of applying `pf` to this $option's contained
    *  value, '''if''' this option is
    *  nonempty '''and''' `pf` is defined for that value.
@@ -199,6 +200,7 @@ final class UndefOrOps[A](val self: UndefOr[A]) extends AnyVal {
   @inline final def collect[B](pf: PartialFunction[A, B]): UndefOr[B] =
     if (isEmpty) undefined
     else pf.applyOrElse(this.forceGet, (_: A) => undefined).asInstanceOf[UndefOr[B]]
+  // scalafmt: { maxColumn = 80 }
 
   /** Returns this $option if it is nonempty,
    *  otherwise return the result of evaluating `alternative`.

@@ -19,8 +19,7 @@ class UndefinedBehaviorError(message: String, cause: Throwable)
   def this(cause: Throwable) =
     this(
         "An undefined behavior was detected" +
-        (if (cause == null) "" else ": " + cause.getMessage),
-        cause)
+        (if (cause == null) "" else ": " + cause.getMessage), cause)
 
   override def fillInStackTrace(): Throwable =
     super[Error].fillInStackTrace()

@@ -66,8 +66,7 @@ package scala.scalajs.js.annotation
  */
 @deprecated(
     "Use @JSExport with an explicit option bag instead. " +
-    "See the Scaladoc for more details.",
-    "0.6.11")
+    "See the Scaladoc for more details.", "0.6.11")
 class JSExportNamed extends scala.annotation.StaticAnnotation {
   def this(name: String) = this()
 }

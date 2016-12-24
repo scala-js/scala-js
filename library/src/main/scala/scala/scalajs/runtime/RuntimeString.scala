@@ -46,7 +46,7 @@ private[runtime] object RuntimeString {
 
   def codePointAt(thiz: String, index: Int): Int = {
     val high = thiz.charAt(index)
-    if (index+1 < thiz.length) {
+    if (index + 1 < thiz.length) {
       val low = thiz.charAt(index + 1)
       if (Character.isSurrogatePair(high, low))
         Character.toCodePoint(high, low)
@@ -398,8 +398,8 @@ private[runtime] object RuntimeString {
       throw new IllegalArgumentException
     } else {
       val offsetCp = codePoint - 0x10000
-      NativeJSString.fromCharCode(
-          (offsetCp >> 10) | 0xd800, (offsetCp & 0x3ff) | 0xdc00)
+      NativeJSString
+        .fromCharCode((offsetCp >> 10) | 0xd800, (offsetCp & 0x3ff) | 0xdc00)
     }
   }
 

@@ -80,7 +80,7 @@ object Bits {
    */
   def numberHashCode(value: Double): Int = {
     val iv = rawToInt(value)
-    if (iv == value && 1.0/value != Double.NegativeInfinity) iv
+    if (iv == value && 1.0 / value != Double.NegativeInfinity) iv
     else doubleToLongBits(value).hashCode()
   }
 
@@ -114,9 +114,12 @@ object Bits {
 
   def doubleToLongBits(value: Double): Long = {
     if (areTypedArraysSupported) {
+      // https://github.com/olafurpg/scalafmt/issues/652
+      // format: off
       float64Array(0) = value
       ((int32Array(highOffset).toLong << 32) |
           (int32Array(lowOffset).toLong & 0xffffffffL))
+      // format: on
     } else {
       doubleToLongBitsPolyfill(value)
     }

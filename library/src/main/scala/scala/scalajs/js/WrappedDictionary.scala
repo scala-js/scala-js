@@ -100,10 +100,12 @@ object WrappedDictionary {
     CanBuildFrom[WrappedDictionary[_], (String, A), WrappedDictionary[A]]
 
   implicit def canBuildFrom[A]: CBF[A] = new CBF[A] {
+    // scalafmt: { maxColumn = 90 }
     def apply(from: WrappedDictionary[_]): Builder[(String, A), WrappedDictionary[A]] =
       new WrappedDictionaryBuilder[A]
     def apply(): Builder[(String, A), WrappedDictionary[A]] =
       new WrappedDictionaryBuilder[A]
+    // scalafmt: { maxColumn = 80 }
   }
 
   class WrappedDictionaryBuilder[A]
