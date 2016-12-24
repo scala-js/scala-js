@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 /**
  * All doc-comments marked as "MDN" are by Mozilla Contributors,
  * distributed under the Creative Commons Attribution-ShareAlike license from
@@ -51,6 +50,7 @@ import js.annotation.JSBracketAccess
  */
 @js.native
 sealed trait Dictionary[A] extends Any {
+
   /** Reads a field of this object by its name.
    *
    *  This must not be called if the dictionary does not contain the key.
@@ -75,6 +75,7 @@ sealed trait Dictionary[A] extends Any {
 
 /** Factory for [[Dictionary]] instances. */
 object Dictionary {
+
   /** Returns a new empty dictionary */
   @inline def empty[A]: Dictionary[A] =
     (new Object).asInstanceOf[Dictionary[A]]

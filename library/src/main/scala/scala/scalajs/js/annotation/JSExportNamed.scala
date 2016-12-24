@@ -6,8 +6,6 @@
 **                          |/                                          **
 \*                                                                      */
 
-
-
 package scala.scalajs.js.annotation
 
 /** Exports the given method to JavaScript with named parameters.

@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 /* All doc-comments marked as "MDN" are by Mozilla Contributors,
  * distributed under the Creative Commons Attribution-ShareAlike license from
  * https://developer.mozilla.org/en-US/docs/Web/Reference/API
@@ -25,6 +24,7 @@ import scala.scalajs.js
 sealed trait UnicodeNormalizationForm extends Any
 
 object UnicodeNormalizationForm {
+
   /** Normalization Form Canonical Composition. */
   final val NFC = "NFC".asInstanceOf[UnicodeNormalizationForm]
 

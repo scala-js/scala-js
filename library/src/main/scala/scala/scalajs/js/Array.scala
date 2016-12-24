@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 /**
  * All doc-comments marked as "MDN" are by Mozilla Contributors,
  * distributed under the Creative Commons Attribution-ShareAlike license from
@@ -39,6 +38,7 @@ import js.annotation._
  */
 @js.native
 class Array[A] extends Object {
+
   /** Creates a new array with the given length.
    *  @param arrayLength Initial length of the array.
    */
@@ -60,6 +60,7 @@ class Array[A] extends Object {
   /** Access the element at the given index. */
   @JSBracketAccess
   def apply(index: Int): A = js.native
+
   /** Set the element at the given index. */
   @JSBracketAccess
   def update(index: Int, value: A): Unit = js.native

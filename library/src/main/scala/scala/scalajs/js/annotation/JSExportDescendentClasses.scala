@@ -6,8 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
-
 package scala.scalajs.js.annotation
 
 /** Specifies that all the concrete classes extending the annotated class or
@@ -21,6 +19,7 @@ package scala.scalajs.js.annotation
  */
 class JSExportDescendentClasses(ignoreInvalidDescendants: Boolean)
     extends scala.annotation.StaticAnnotation {
+
   /** Constructor that makes invalid descendants fail.
    *
    *  same as setting ingoreInvalidDescendants to false

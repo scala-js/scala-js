@@ -21,7 +21,8 @@ class Uint32Array private extends TypedArray[Double, Uint32Array] {
   def this(array: js.Array[_]) = this()
 
   /** Creates a Uint32Array view on the given ArrayBuffer */
-  def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) = this()
+  def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) =
+    this()
 
 }
 

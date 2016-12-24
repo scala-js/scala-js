@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 /**
  * All doc-comments marked as "MDN" are by Mozilla Contributors,
  * distributed under the Creative Commons Attribution-ShareAlike license from
@@ -116,7 +115,6 @@ object Tuple4 {
   @inline implicit def toScalaTuple4[T1, T2, T3, T4](t: Tuple4[T1, T2, T3, T4]): (T1, T2, T3, T4) =
     (t._1, t._2, t._3, t._4)
 }
-
 
 /**
  *  A tuple "view" of 5 elements of a JavaScript [[Array]].

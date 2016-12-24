@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 /**
  * All doc-comments marked as "MDN" are by Mozilla Contributors,
  * distributed under the Creative Commons Attribution-ShareAlike license from
@@ -168,10 +167,10 @@ class Date extends Object {
       ms: Int = getMilliseconds()): Unit = js.native
   def setUTCMinutes(min: Int, sec: Int = getSeconds(),
       ms: Int = getMilliseconds()): Unit = js.native
-  def setHours(hours: Int, min: Int = getMinutes(),
-      sec: Int = getSeconds(), ms: Int = getMilliseconds()): Unit = js.native
-  def setUTCHours(hours: Int, min: Int = getMinutes(),
-      sec: Int = getSeconds(), ms: Int = getMilliseconds()): Unit = js.native
+  def setHours(hours: Int, min: Int = getMinutes(), sec: Int = getSeconds(),
+      ms: Int = getMilliseconds()): Unit = js.native
+  def setUTCHours(hours: Int, min: Int = getMinutes(), sec: Int = getSeconds(),
+      ms: Int = getMilliseconds()): Unit = js.native
 
   def setDate(date: Int): Unit = js.native
   def setUTCDate(date: Int): Unit = js.native

@@ -21,7 +21,8 @@ class Uint16Array private extends TypedArray[Int, Uint16Array] {
   def this(array: js.Array[_]) = this()
 
   /** Creates a Uint16Array view on the given ArrayBuffer */
-  def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) = this()
+  def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) =
+    this()
 
 }
 

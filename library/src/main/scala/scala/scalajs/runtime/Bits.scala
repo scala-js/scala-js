@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 package scala.scalajs.runtime
 
 import scala.scalajs.js
@@ -64,7 +63,7 @@ object Bits {
   }
 
   private val highOffset = if (areTypedArraysBigEndian) 0 else 1
-  private val lowOffset  = if (areTypedArraysBigEndian) 1 else 0
+  private val lowOffset = if (areTypedArraysBigEndian) 1 else 0
 
   /** Hash code of a number (excluding Longs).
    *
@@ -156,7 +155,7 @@ object Bits {
 
     val ebits = 11
     val fbits = 52
-    val hifbits = fbits-32
+    val hifbits = fbits - 32
     val hi = (bits >>> 32).toInt
     val lo = bits.toInt.toUint
     val s = hi < 0
@@ -168,7 +167,7 @@ object Bits {
   private def doubleToLongBitsPolyfill(value: Double): Long = {
     val ebits = 11
     val fbits = 52
-    val hifbits = fbits-32
+    val hifbits = fbits - 32
     val (s, e, f) = encodeIEEE754(ebits, fbits, value)
     val hif = rawToInt(f / 0x100000000L.toDouble)
     val hi = (if (s) 0x80000000 else 0) | (e << hifbits) | hif
@@ -176,12 +175,12 @@ object Bits {
     (hi.toLong << 32) | (lo.toLong & 0xffffffffL)
   }
 
-  @inline private def decodeIEEE754(ebits: Int, fbits: Int,
-      s: Boolean, e: Int, f: Double): Double = {
+  @inline private def decodeIEEE754(ebits: Int, fbits: Int, s: Boolean, e: Int,
+      f: Double): Double = {
 
     import Math.pow
 
-    val bias = (1 << (ebits-1)) - 1 // constant
+    val bias = (1 << (ebits - 1)) - 1 // constant
 
     if (e == (1 << ebits) - 1) {
       // Special
@@ -190,11 +189,11 @@ object Bits {
       else Double.PositiveInfinity
     } else if (e > 0) {
       // Normalized
-      val x = pow(2, e-bias) * (1 + f / pow(2, fbits))
+      val x = pow(2, e - bias) * (1 + f / pow(2, fbits))
       if (s) -x else x
     } else if (f != 0.0) {
       // Subnormal
-      val x = pow(2, -(bias-1)) * (f / pow(2, fbits))
+      val x = pow(2, -(bias - 1)) * (f / pow(2, fbits))
       if (s) -x else x
     } else {
       // Zero
@@ -207,11 +206,11 @@ object Bits {
 
     import Math._
 
-    val bias = (1 << (ebits-1)) - 1 // constant
+    val bias = (1 << (ebits - 1)) - 1 // constant
 
     if (v.isNaN) {
       // http://dev.w3.org/2006/webapi/WebIDL/#es-type-mapping
-      (false, (1 << ebits) - 1, pow(2, fbits-1))
+      (false, (1 << ebits) - 1, pow(2, fbits - 1))
     } else if (v.isInfinite) {
       (v < 0, (1 << ebits) - 1, 0.0)
     } else if (v == 0.0) {
@@ -222,7 +221,7 @@ object Bits {
       val s = v < 0
       val av = if (s) -v else v
 
-      if (av >= pow(2, 1-bias)) {
+      if (av >= pow(2, 1 - bias)) {
         val twoPowFbits = pow(2, fbits)
 
         var e = min(rawToInt(floor(log(av) / LN2)), 1023)
@@ -243,7 +242,7 @@ object Bits {
         (s, e, f)
       } else {
         // Subnormal
-        (s, 0, roundToEven(av / pow(2, 1-bias-fbits)))
+        (s, 0, roundToEven(av / pow(2, 1 - bias - fbits)))
       }
     }
   }

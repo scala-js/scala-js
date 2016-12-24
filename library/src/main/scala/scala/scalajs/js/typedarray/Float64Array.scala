@@ -21,7 +21,8 @@ class Float64Array private extends TypedArray[Double, Float64Array] {
   def this(array: js.Array[_]) = this()
 
   /** Creates a Float64Array view on the given ArrayBuffer */
-  def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) = this()
+  def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) =
+    this()
 
 }
 

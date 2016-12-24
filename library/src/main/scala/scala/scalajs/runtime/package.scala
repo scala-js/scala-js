@@ -78,8 +78,10 @@ package object runtime {
   /** Public access to `new ConstructorTag` for the codegen of
    *  `js.ConstructorTag.materialize`.
    */
-  def newConstructorTag[T <: js.Any](constructor: js.Dynamic): js.ConstructorTag[T] =
+  def newConstructorTag[T <: js.Any](
+      constructor: js.Dynamic): js.ConstructorTag[T] = {
     new js.ConstructorTag[T](constructor)
+  }
 
   /** Returns an array of the enumerable properties in an object's prototype
    *  chain.
@@ -166,7 +168,7 @@ package object runtime {
       val LN2 = 0.6931471805599453
       val ebits = 8
       val fbits = 23
-      val bias = (1 << (ebits-1)) - 1
+      val bias = (1 << (ebits - 1)) - 1
       val twoPowFbits = (1 << fbits).toDouble
       val SubnormalThreshold = 1.1754943508222875E-38 // pow(2, 1-bias)
 
@@ -190,7 +192,7 @@ package object runtime {
               Double.PositiveInfinity
             } else {
               // Normalized case 1
-              val twoPowE = 2*twoPowE0
+              val twoPowE = 2 * twoPowE0
               twoPowE * (1.0 + (f - twoPowFbits) / twoPowFbits)
             }
           } else {

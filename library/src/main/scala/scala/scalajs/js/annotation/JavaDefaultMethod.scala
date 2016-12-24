@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 package scala.scalajs.js.annotation
 
 /** Mark a concrete trait method as a Java default method.

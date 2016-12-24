@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 /* !!!!!
  * THIS FILE IS ALMOST COPY-PASTED IN javalib/ AND library/.
  * THEY MUST BE KEPT IN SYNC.
@@ -27,7 +26,6 @@
  * (Yes, this is a hack.)
  * !!!!!
  */
-
 
 package scala.scalajs.js.typedarray
 

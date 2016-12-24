@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 /**
  * All doc-comments marked as "MDN" are by Mozilla Contributors,
  * distributed under the Creative Commons Attribution-ShareAlike license from
@@ -43,6 +42,7 @@ import scala.scalajs.js
  */
 @js.native
 class Function(args: String*) extends Object {
+
   /**
    * length is a property of a function object, and indicates how many arguments
    * the function expects, i.e. the number of formal parameters. This number

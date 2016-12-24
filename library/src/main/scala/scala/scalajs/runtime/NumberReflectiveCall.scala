@@ -29,12 +29,12 @@ class NumberReflectiveCall(value: Double) {
 
   // Methods of scala.Double
 
-  def toByte: scala.Byte     = value.toByte
-  def toShort: scala.Short   = value.toShort
-  def toChar: scala.Char     = value.toChar
-  def toInt: scala.Int       = value.toInt
-  def toLong: scala.Long     = value.toLong
-  def toFloat: scala.Float   = value.toFloat
+  def toByte: scala.Byte = value.toByte
+  def toShort: scala.Short = value.toShort
+  def toChar: scala.Char = value.toChar
+  def toInt: scala.Int = value.toInt
+  def toLong: scala.Long = value.toLong
+  def toFloat: scala.Float = value.toFloat
   def toDouble: scala.Double = value
 
   // scalastyle:off disallow.space.before.token

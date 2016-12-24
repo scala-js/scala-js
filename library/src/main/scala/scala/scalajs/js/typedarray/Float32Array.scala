@@ -21,7 +21,8 @@ class Float32Array private extends TypedArray[Float, Float32Array] {
   def this(array: js.Array[_]) = this()
 
   /** Creates a Float32Array view on the given ArrayBuffer */
-  def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) = this()
+  def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) =
+    this()
 
 }
 

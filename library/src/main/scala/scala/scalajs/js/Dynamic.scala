@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 /**
  * All doc-comments marked as "MDN" are by Mozilla Contributors,
  * distributed under the Creative Commons Attribution-ShareAlike license from
@@ -27,6 +26,7 @@ import js.annotation.{JSBracketAccess, JSBracketCall}
  */
 @js.native
 sealed trait Dynamic extends Any with scala.Dynamic {
+
   /** Calls a method of this object. */
   @JSBracketCall
   def applyDynamic(name: String)(args: Any*): Dynamic = js.native
@@ -75,11 +75,13 @@ sealed trait Dynamic extends Any with scala.Dynamic {
 
 /** Factory for dynamically typed JavaScript values. */
 object Dynamic {
+
   /** Dynamic view of the global scope. */
   @inline def global: Dynamic = scala.scalajs.runtime.environmentInfo.global
 
   /** Instantiates a new object of a JavaScript class. */
-  def newInstance(clazz: Dynamic)(args: Any*): Object with Dynamic = sys.error("stub")
+  def newInstance(clazz: Dynamic)(args: Any*): Object with Dynamic =
+    sys.error("stub")
 
   /** Creates a new object with a literal syntax.
    *

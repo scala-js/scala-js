@@ -6,8 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
-
 package scala.scalajs.js
 
 import scala.scalajs.js
@@ -20,6 +18,7 @@ import scala.scalajs.js
  *
  *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
-@deprecated("Use the annotation @js.annotation.JSGlobalScope instead.", "0.6.13")
+@deprecated("Use the annotation @js.annotation.JSGlobalScope instead.",
+    "0.6.13")
 @js.native
 trait GlobalScope extends Any

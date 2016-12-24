@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 /**
  * All doc-comments marked as "MDN" are by Mozilla Contributors,
  * distributed under the Creative Commons Attribution-ShareAlike license from
@@ -24,6 +23,7 @@ import scala.scalajs.js
  */
 @js.native
 object JSON extends Object {
+
   /**
    * Parse a string as JSON, optionally transforming the value produced by parsing.
    * @param text The string to parse as JSON.  See the JSON object for a
@@ -33,7 +33,8 @@ object JSON extends Object {
    *
    * MDN
    */
-  def parse(text: String, reviver: Function2[Any, Any, Any] = ???): Dynamic = js.native
+  def parse(text: String,
+      reviver: Function2[Any, Any, Any] = ???): Dynamic = js.native
 
   /**
    * Convert a value to JSON, optionally replacing values if a replacer function
@@ -48,7 +49,9 @@ object JSON extends Object {
    *
    * MDN
    */
-  def stringify(value: Any, replacer: Function2[String, Any, Any] = ???, space: Any = ???): String = js.native
+  def stringify(value: Any, replacer: Function2[String, Any, Any] = ???,
+      space: Any = ???): String = js.native
   def stringify(value: Any, replacer: Array[Any]): String = js.native
-  def stringify(value: Any, replacer: Array[Any], space: Any): String = js.native
+  def stringify(value: Any, replacer: Array[Any],
+      space: Any): String = js.native
 }

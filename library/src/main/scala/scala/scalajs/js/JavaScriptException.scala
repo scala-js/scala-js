@@ -6,8 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
-
 package scala.scalajs.js
 
 case class JavaScriptException(exception: scala.Any) extends RuntimeException {

@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 package scala.scalajs.macroimpls
 
 import Compat210._
@@ -31,6 +30,7 @@ private[macroimpls] trait JSMembers {
   import c.universe._
 
   sealed trait JSMember {
+
     /** Whether this JSMember conforms to that JSMember */
     def conformsTo(that: JSMember): Boolean
 
@@ -47,8 +47,8 @@ private[macroimpls] trait JSMembers {
       else info.toString
   }
 
-  case class JSMethod(params: List[JSMethodParam],
-      resultType: Type) extends JSMember {
+  case class JSMethod(params: List[JSMethodParam], resultType: Type)
+      extends JSMember {
 
     def conformsTo(that: JSMember): Boolean = that match {
       case JSMethod(thatParams, thatResultType) =>

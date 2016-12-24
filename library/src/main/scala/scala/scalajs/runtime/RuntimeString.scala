@@ -47,7 +47,7 @@ private[runtime] object RuntimeString {
   def codePointAt(thiz: String, index: Int): Int = {
     val high = thiz.charAt(index)
     if (index+1 < thiz.length) {
-      val low = thiz.charAt(index+1)
+      val low = thiz.charAt(index + 1)
       if (Character.isSurrogatePair(high, low))
         Character.toCodePoint(high, low)
       else
@@ -74,7 +74,7 @@ private[runtime] object RuntimeString {
   def hashCode(thiz: String): Int = {
     var res = 0
     var mul = 1 // holds pow(31, length-i-1)
-    var i = thiz.length-1
+    var i = thiz.length - 1
     while (i >= 0) {
       res += thiz.charAt(i) * mul
       mul *= 31
@@ -85,9 +85,11 @@ private[runtime] object RuntimeString {
 
   @inline
   def compareTo(thiz: String, anotherString: String): Int = {
+    val dynThiz = thiz.asInstanceOf[js.Dynamic]
+    val dynOther = anotherString.asInstanceOf[js.Dynamic]
+
     if (thiz.equals(anotherString)) 0
-    else if ((thiz.asInstanceOf[js.Dynamic] <
-        anotherString.asInstanceOf[js.Dynamic]).asInstanceOf[Boolean]) -1
+    else if ((dynThiz < dynOther).asInstanceOf[Boolean]) -1
     else 1
   }
 
@@ -122,11 +124,11 @@ private[runtime] object RuntimeString {
     res
   }
 
-  def getChars(thiz: String, srcBegin: Int, srcEnd: Int,
-      dst: Array[Char], dstBegin: Int): Unit = {
-    if (srcEnd   > thiz.length || // first test uses thiz
+  def getChars(thiz: String, srcBegin: Int, srcEnd: Int, dst: Array[Char],
+      dstBegin: Int): Unit = {
+    if (srcEnd > thiz.length || // first test uses thiz
         srcBegin < 0 ||
-        srcEnd   < 0 ||
+        srcEnd < 0 ||
         srcBegin > srcEnd) {
       throw new StringIndexOutOfBoundsException("Index out of Bound")
     }
@@ -134,7 +136,7 @@ private[runtime] object RuntimeString {
     val offset = dstBegin - srcBegin
     var i = srcBegin
     while (i < srcEnd) {
-      dst(i+offset) = thiz.charAt(i)
+      dst(i + offset) = thiz.charAt(i)
       i += 1
     }
   }
@@ -194,8 +196,8 @@ private[runtime] object RuntimeString {
   /* Both regionMatches ported from
    * https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/lang/String.java
    */
-  def regionMatches(thiz: String, ignoreCase: Boolean,
-      toffset: Int, other: String, ooffset: Int, len: Int): Boolean = {
+  def regionMatches(thiz: String, ignoreCase: Boolean, toffset: Int,
+      other: String, ooffset: Int, len: Int): Boolean = {
     checkNull(thiz)
     if (other == null) {
       throw new NullPointerException()
@@ -211,8 +213,8 @@ private[runtime] object RuntimeString {
   }
 
   @inline
-  def regionMatches(thiz: String, toffset: Int,
-      other: String, ooffset: Int, len: Int): Boolean = {
+  def regionMatches(thiz: String, toffset: Int, other: String, ooffset: Int,
+      len: Int): Boolean = {
     regionMatches(thiz, false, toffset, other, ooffset, len)
   }
 
@@ -221,15 +223,18 @@ private[runtime] object RuntimeString {
     thiz.replace(oldChar.toString, newChar.toString)
 
   @inline
-  def replace(thiz: String, target: CharSequence, replacement: CharSequence): String =
+  def replace(thiz: String, target: CharSequence,
+      replacement: CharSequence): String = {
     thiz.jsSplit(target.toString).join(replacement.toString)
+  }
 
   def replaceAll(thiz: String, regex: String, replacement: String): String = {
     checkNull(thiz)
     Pattern.compile(regex).matcher(thiz).replaceAll(replacement)
   }
 
-  def replaceFirst(thiz: String, regex: String, replacement: String): String = {
+  def replaceFirst(thiz: String, regex: String,
+      replacement: String): String = {
     checkNull(thiz)
     Pattern.compile(regex).matcher(thiz).replaceFirst(replacement)
   }
@@ -250,7 +255,7 @@ private[runtime] object RuntimeString {
   @inline
   def startsWith(thiz: String, prefix: String, toffset: Int): Boolean = {
     (toffset <= thiz.length && toffset >= 0 &&
-        thiz.jsSubstring(toffset, toffset + prefix.length) == prefix)
+    thiz.jsSubstring(toffset, toffset + prefix.length) == prefix)
   }
 
   @inline
@@ -355,13 +360,13 @@ private[runtime] object RuntimeString {
   // Static methods (aka methods on the companion object)
 
   def valueOf(value: Boolean): String = value.toString()
-  def valueOf(value: Char): String    = value.toString()
-  def valueOf(value: Byte): String    = value.toString()
-  def valueOf(value: Short): String   = value.toString()
-  def valueOf(value: Int): String     = value.toString()
-  def valueOf(value: Long): String    = value.toString()
-  def valueOf(value: Float): String   = value.toString()
-  def valueOf(value: Double): String  = value.toString()
+  def valueOf(value: Char): String = value.toString()
+  def valueOf(value: Byte): String = value.toString()
+  def valueOf(value: Short): String = value.toString()
+  def valueOf(value: Int): String = value.toString()
+  def valueOf(value: Long): String = value.toString()
+  def valueOf(value: Float): String = value.toString()
+  def valueOf(value: Double): String = value.toString()
 
   def valueOf(value: Object): String =
     if (value eq null) "null" else value.toString()

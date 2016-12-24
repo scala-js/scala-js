@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 /**
  * All doc-comments marked as "MDN" are by Mozilla Contributors,
  * distributed under the Creative Commons Attribution-ShareAlike license from
@@ -19,6 +18,7 @@ import scala.scalajs.js
 @js.native
 class Error(message0: String = "") extends Object {
   val name: String = js.native
+
   /**
    * Human-readable description of the error
    *

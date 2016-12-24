@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 package scala.scalajs.js.timers
 
 import scala.scalajs.js
@@ -31,7 +30,8 @@ object RawTimers extends js.Object {
    *  @return A handle that can be used to cancel the timeout by passing it
    *          to [[clearTimeout]].
    */
-  def setTimeout(handler: js.Function0[Any], interval: Double): SetTimeoutHandle = js.native
+  def setTimeout(handler: js.Function0[Any],
+      interval: Double): SetTimeoutHandle = js.native
 
   /** Cancel a timeout execution
    *  @param handle The handle returned by [[setTimeout]]
@@ -46,7 +46,8 @@ object RawTimers extends js.Object {
    *  @return A handle that can be used to cancel the interval by passing it
    *          to [[clearInterval]].
    */
-  def setInterval(handler: js.Function0[Any], interval: Double): SetIntervalHandle = js.native
+  def setInterval(handler: js.Function0[Any],
+      interval: Double): SetIntervalHandle = js.native
 
   /** Cancel an interval execution
    *  @param handle The handle returned by [[setInterval]]

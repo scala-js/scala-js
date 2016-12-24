@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 package scala.scalajs.js.annotation.internal
 
 /** IMPLEMENTATION DETAIL: Marks this JS native module class as having stored

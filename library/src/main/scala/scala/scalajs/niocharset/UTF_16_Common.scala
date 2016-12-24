@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 package scala.scalajs.niocharset
 
 import scala.annotation.tailrec
@@ -17,8 +16,8 @@ import java.nio.charset._
 /** This is a very specific common implementation for UTF_16BE and UTF_16LE.
  */
 private[niocharset] abstract class UTF_16_Common protected ( // scalastyle:ignore
-    name: String, aliases: Array[String],
-    private val endianness: Int) extends Charset(name, aliases) {
+    name: String, aliases: Array[String], private val endianness: Int)
+    extends Charset(name, aliases) {
 
   import UTF_16_Common._
 
@@ -27,8 +26,8 @@ private[niocharset] abstract class UTF_16_Common protected ( // scalastyle:ignor
   def newDecoder(): CharsetDecoder = new Decoder
   def newEncoder(): CharsetEncoder = new Encoder
 
-  private class Decoder extends CharsetDecoder(
-      UTF_16_Common.this, 0.5f, 1.0f) {
+  private class Decoder
+      extends CharsetDecoder(UTF_16_Common.this, 0.5f, 1.0f) {
     private var endianness = UTF_16_Common.this.endianness
 
     override protected def implReset(): Unit = {
@@ -113,10 +112,10 @@ private[niocharset] abstract class UTF_16_Common protected ( // scalastyle:ignor
     }
   }
 
-  private class Encoder extends CharsetEncoder(
-      UTF_16_Common.this, 2.0f, 2.0f,
-      // Character 0xfffd
-      if (endianness == LittleEndian) Array(-3, -1) else Array(-1, -3)) {
+  private class Encoder
+      extends CharsetEncoder(UTF_16_Common.this, 2.0f, 2.0f,
+          // Character 0xfffd
+          if (endianness == LittleEndian) Array(-3, -1) else Array(-1, -3)) {
 
     private var needToWriteBOM: Boolean = endianness == AutoEndian
 

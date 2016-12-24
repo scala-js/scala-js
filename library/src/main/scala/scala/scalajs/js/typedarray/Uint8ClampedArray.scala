@@ -22,7 +22,8 @@ class Uint8ClampedArray private extends TypedArray[Int, Uint8ClampedArray] {
   def this(array: js.Array[_]) = this()
 
   /** Creates a Uint8ClampedArray view on the given ArrayBuffer */
-  def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) = this()
+  def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) =
+    this()
 
 }
 

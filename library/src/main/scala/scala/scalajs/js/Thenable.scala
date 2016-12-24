@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 package scala.scalajs.js
 
 import scala.language.implicitConversions
@@ -29,17 +28,18 @@ import scala.concurrent.Future
  */
 @ScalaJSDefined
 trait Thenable[+A] extends js.Object {
-  def `then`[B](
-      onFulfilled: js.Function1[A, B | Thenable[B]],
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): Thenable[B]
+  def `then`[B](onFulfilled: js.Function1[A, B | Thenable[B]],
+      onRejected: js.UndefOr[
+          js.Function1[scala.Any, B | Thenable[B]]]): Thenable[B]
 
-  def `then`[B >: A](
-      onFulfilled: Unit,
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): Thenable[B]
+  def `then`[B >: A](onFulfilled: Unit,
+      onRejected: js.UndefOr[
+          js.Function1[scala.Any, B | Thenable[B]]]): Thenable[B]
 }
 
 object Thenable {
   implicit class ThenableOps[+A](val p: Thenable[A]) extends AnyVal {
+
     /** Converts the [[Thenable]] into a Scala [[scala.concurrent.Future Future]].
      *
      *  Unlike when calling the `then` methods of [[Thenable]], the resulting

@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 package scala.scalajs.js.annotation
 
 /** Marks the annotated object as representing the JavaScript global scope.

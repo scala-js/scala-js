@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 package scala.scalajs.js.annotation
 
 /** IMPLEMENTATION DETAIL: Marks the annotated member as exposed as a JS member.

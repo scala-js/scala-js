@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 package scala.scalajs.js.annotation
 
 /** Marks the annotated class as a Scala.js-defined JavaScript class.

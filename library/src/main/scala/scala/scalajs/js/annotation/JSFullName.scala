@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 package scala.scalajs.js.annotation
 
 /** IMPLEMENTATION DETAIL: Saves the fully qualified JS name of a symbol.

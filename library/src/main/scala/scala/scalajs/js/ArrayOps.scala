@@ -16,8 +16,7 @@ import mutable.Builder
 /** Equivalent of scm.ArrayOps for js.Array */
 @inline
 final class ArrayOps[A](private[this] val array: Array[A])
-    extends mutable.ArrayLike[A, Array[A]]
-       with Builder[A, Array[A]] {
+    extends mutable.ArrayLike[A, Array[A]] with Builder[A, Array[A]] {
 
   import ArrayOps._
 
@@ -70,7 +69,7 @@ final class ArrayOps[A](private[this] val array: Array[A])
     @tailrec
     def loop(start: Int, z: B): B =
       if (start == length) z
-      else loop(start+1, op(z, this(start)))
+      else loop(start + 1, op(z, this(start)))
 
     loop(1, this(0))
   }
@@ -84,9 +83,9 @@ final class ArrayOps[A](private[this] val array: Array[A])
     @tailrec
     def loop(end: Int, z: B): B =
       if (end == 0) z
-      else loop(end-1, op(this(end-1), z))
+      else loop(end - 1, op(this(end - 1), z))
 
-    loop(length-1, this(length-1))
+    loop(length - 1, this(length - 1))
   }
 
 }
@@ -98,7 +97,8 @@ object ArrayOps {
     throw new UnsupportedOperationException(msg)
 
   /** Non-inlined implementation of [[ArrayOps.++]]. */
-  private def concat[A](left: Array[_ <: A], right: Array[_ <: A]): Array[A] = {
+  private def concat[A](left: Array[_ <: A],
+      right: Array[_ <: A]): Array[A] = {
     val leftLength = left.length
     val rightLength = right.length
     val result = new Array[A](leftLength + rightLength)
@@ -107,8 +107,8 @@ object ArrayOps {
     @tailrec
     def loop(src: Array[_ <: A], i: Int, len: Int, offset: Int): Unit =
       if (i != len) {
-        result(i+offset) = src(i)
-        loop(src, i+1, len, offset)
+        result(i + offset) = src(i)
+        loop(src, i + 1, len, offset)
       }
 
     loop(left, 0, leftLength, 0)

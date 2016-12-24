@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 package scala.scalajs.js
 
 import scala.language.implicitConversions
@@ -24,6 +23,7 @@ import scala.scalajs.js.|.Evidence
 sealed trait UndefOr[+A]
 
 sealed abstract class UndefOrLowPrioImplicits {
+
   /** Upcast `A` to `UndefOr[B1 | B2]`.
    *
    *  This needs evidence that `A <: B1 | B2`.
@@ -41,8 +41,10 @@ object UndefOr extends UndefOrLowPrioImplicits {
   implicit def undefOr2ops[A](value: UndefOr[A]): UndefOrOps[A] =
     new UndefOrOps(value)
 
-  implicit def undefOr2jsAny[A](value: UndefOr[A])(implicit ev: A => Any): Any =
+  implicit def undefOr2jsAny[A](value: UndefOr[A])(
+      implicit ev: A => Any): Any = {
     value.map(ev).asInstanceOf[Any]
+  }
 }
 
 /** @define option [[UndefOr]]

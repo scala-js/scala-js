@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 /**
  * All doc-comments marked as "MDN" are by Mozilla Contributors,
  * distributed under the Creative Commons Attribution-ShareAlike license from
@@ -92,15 +91,19 @@ object JSNumberOps {
    * number operations on a Long by error.
    */
 
-  @deprecated("A Long is converted to Double to perform JavaScript "+
-      "operations. This is almost certainly not what you want. "+
-      "Use `.toDouble` explicitly if you need it.", "0.6.0")
+  @deprecated(
+      "A Long is converted to Double to perform JavaScript " +
+      "operations. This is almost certainly not what you want. " +
+      "Use `.toDouble` explicitly if you need it.",
+      "0.6.0")
   implicit def enableJSNumberOps(x: Long): JSNumberOps =
     x.toDouble.asInstanceOf[JSNumberOps]
 
-  @deprecated("A Long is converted to Double to perform JavaScript "+
-      "operations. This is almost certainly not what you want. "+
-      "Use `.toDouble` explicitly if you need it.", "0.6.0")
+  @deprecated(
+      "A Long is converted to Double to perform JavaScript " +
+      "operations. This is almost certainly not what you want. " +
+      "Use `.toDouble` explicitly if you need it.",
+      "0.6.0")
   implicit def enableJSNumberExtOps(x: Long): ExtOps =
     new ExtOps(x.toDouble.asInstanceOf[Dynamic])
 }

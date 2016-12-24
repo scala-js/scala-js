@@ -24,7 +24,8 @@ import java.io.InputStream
  *  @param length Length in bytes in [[buffer]]
  */
 class ArrayBufferInputStream(val buffer: ArrayBuffer, val offset: Int,
-    val length: Int) extends InputStream {
+    val length: Int)
+    extends InputStream {
 
   /** Convenience constructor. Strictly equivalent to
    *  {{new ArrayBufferInputStream(buffer, 0, buffer.byteLength)}
@@ -63,7 +64,7 @@ class ArrayBufferInputStream(val buffer: ArrayBuffer, val offset: Int,
     val len = Math.min(reqLen, length - pos)
 
     if (reqLen == 0)
-       0 // 0 requested, 0 returned
+      0 // 0 requested, 0 returned
     else if (len == 0)
       -1 // nothing to read at all
     else {

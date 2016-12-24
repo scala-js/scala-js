@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 /**
  * All doc-comments marked as "MDN" are by Mozilla Contributors,
  * distributed under the Creative Commons Attribution-ShareAlike license from
@@ -72,7 +71,8 @@ object Object extends Object {
    *
    * MDN
    */
-  def getOwnPropertyDescriptor(o: Object, p: String): PropertyDescriptor = js.native
+  def getOwnPropertyDescriptor(o: Object,
+      p: String): PropertyDescriptor = js.native
 
   /**
    * Object.getOwnPropertyNames returns an array whose elements are strings
@@ -114,7 +114,8 @@ object Object extends Object {
    *
    * MDN
    */
-  def defineProperty(o: Object, p: String, attributes: PropertyDescriptor): o.type = js.native
+  def defineProperty(o: Object, p: String,
+      attributes: PropertyDescriptor): o.type = js.native
 
   /**
    * The Object.defineProperties() method defines new or modifies existing

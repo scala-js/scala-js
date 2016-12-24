@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 package scala.scalajs.js
 
 import scala.language.implicitConversions
@@ -38,23 +37,26 @@ import scala.concurrent.Future
  */
 @js.native
 class Promise[+A](
-    executor: js.Function2[js.Function1[A | Thenable[A], _], js.Function1[scala.Any, _], _])
+    executor: js.Function2[
+        js.Function1[A | Thenable[A], _], js.Function1[scala.Any, _], _])
     extends js.Object with js.Thenable[A] {
 
-  def `then`[B](
-      onFulfilled: js.Function1[A, B | Thenable[B]],
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]] = js.undefined): Thenable[B] = js.native
+  def `then`[B](onFulfilled: js.Function1[A, B | Thenable[B]],
+      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]] =
+        js.undefined): Thenable[B] = js.native
 
-  def `then`[B >: A](
-      onFulfilled: Unit,
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): Thenable[B] = js.native
+  def `then`[B >: A](onFulfilled: Unit,
+      onRejected: js.UndefOr[
+          js.Function1[scala.Any, B | Thenable[B]]]): Thenable[B] = js.native
 
   def `catch`[B >: A](
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]] = js.undefined): Promise[B] = js.native
+      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]] =
+        js.undefined): Promise[B] = js.native
 }
 
 @js.native
 object Promise extends js.Object {
+
   /** Returns a new [[Promise]] completed with the specified `value`. */
   def resolve[A](value: A | Thenable[A]): Promise[A] = js.native
 
@@ -62,7 +64,8 @@ object Promise extends js.Object {
   def reject(reason: scala.Any): Promise[Nothing] = js.native
 
   // TODO Use js.Iterable
-  def all[A](promises: js.Array[_ <: Promise[A]]): Promise[js.Array[A]] = js.native
+  def all[A](
+      promises: js.Array[_ <: Promise[A]]): Promise[js.Array[A]] = js.native
 
   // TODO Use js.Iterable
   def race[A](promises: js.Array[_ <: Promise[A]]): Promise[A] = js.native

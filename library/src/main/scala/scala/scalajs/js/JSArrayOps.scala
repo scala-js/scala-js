@@ -6,7 +6,6 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
 /**
  * All doc-comments marked as "MDN" are by Mozilla Contributors,
  * distributed under the Creative Commons Attribution-ShareAlike license from
@@ -86,7 +85,8 @@ trait JSArrayOps[A] extends Object {
   def jsEvery[T](callbackfn: ThisFunction3[T, A, Int, Array[A], Boolean],
       thisArg: T): Boolean = js.native
   @JSName("every")
-  def jsEvery(callbackfn: Function3[A, Int, Array[A], Boolean]): Boolean = js.native
+  def jsEvery(
+      callbackfn: Function3[A, Int, Array[A], Boolean]): Boolean = js.native
 
   /**
    * some executes the callback function once for each element present in the
@@ -111,7 +111,8 @@ trait JSArrayOps[A] extends Object {
   def jsSome[T](callbackfn: ThisFunction3[T, A, Int, Array[A], Boolean],
       thisArg: T): Boolean = js.native
   @JSName("some")
-  def jsSome(callbackfn: Function3[A, Int, Array[A], Boolean]): Boolean = js.native
+  def jsSome(
+      callbackfn: Function3[A, Int, Array[A], Boolean]): Boolean = js.native
   @JSName("some")
   def jsSome(callbackfn: Function2[A, Int, Boolean]): Boolean = js.native
   @JSName("some")
@@ -169,7 +170,8 @@ trait JSArrayOps[A] extends Object {
   def jsMap[B, T](callbackfn: ThisFunction3[T, A, Int, Array[A], B],
       thisArg: T): Array[B] = js.native
   @JSName("map")
-  def jsMap[B](callbackfn: Function3[A, Int, Array[A], B]): Array[B] = js.native
+  def jsMap[B](
+      callbackfn: Function3[A, Int, Array[A], B]): Array[B] = js.native
   @JSName("map")
   def jsMap[B](callbackfn: Function2[A, Int, B]): Array[B] = js.native
   @JSName("map")
@@ -201,7 +203,8 @@ trait JSArrayOps[A] extends Object {
   def jsFilter[T](callbackfn: ThisFunction3[T, A, Int, Array[A], Boolean],
       thisArg: T): Array[A] = js.native
   @JSName("filter")
-  def jsFilter(callbackfn: Function3[A, Int, Array[A], Boolean]): Array[A] = js.native
+  def jsFilter(
+      callbackfn: Function3[A, Int, Array[A], Boolean]): Array[A] = js.native
   @JSName("filter")
   def jsFilter(callbackfn: Function2[A, Int, Boolean]): Array[A] = js.native
   @JSName("filter")
@@ -224,11 +227,14 @@ trait JSArrayOps[A] extends Object {
    * MDN
    */
   @JSName("reduce")
-  def jsReduce[B](callbackfn: Function4[B, A, Int, Array[A], B], initialValue: B): B = js.native
+  def jsReduce[B](callbackfn: Function4[B, A, Int, Array[A], B],
+      initialValue: B): B = js.native
   @JSName("reduce")
-  def jsReduce[B](callbackfn: Function3[B, A, Int, B], initialValue: B): B = js.native
+  def jsReduce[B](callbackfn: Function3[B, A, Int, B],
+      initialValue: B): B = js.native
   @JSName("reduce")
-  def jsReduce[B](callbackfn: Function2[B, A, B], initialValue: B): B = js.native
+  def jsReduce[B](callbackfn: Function2[B, A, B],
+      initialValue: B): B = js.native
   @JSName("reduce")
   def jsReduce[B](callbackfn: Function4[B, A, Int, Array[A], B]): B = js.native
   @JSName("reduce")
@@ -246,13 +252,17 @@ trait JSArrayOps[A] extends Object {
    * MDN
    */
   @JSName("reduceRight")
-  def jsReduceRight[B](callbackfn: Function4[B, A, Int, Array[A], B], initialValue: B): B = js.native
+  def jsReduceRight[B](callbackfn: Function4[B, A, Int, Array[A], B],
+      initialValue: B): B = js.native
   @JSName("reduceRight")
-  def jsReduceRight[B](callbackfn: Function3[B, A, Int, B], initialValue: B): B = js.native
+  def jsReduceRight[B](callbackfn: Function3[B, A, Int, B],
+      initialValue: B): B = js.native
   @JSName("reduceRight")
-  def jsReduceRight[B](callbackfn: Function2[B, A, B], initialValue: B): B = js.native
+  def jsReduceRight[B](callbackfn: Function2[B, A, B],
+      initialValue: B): B = js.native
   @JSName("reduceRight")
-  def jsReduceRight[B](callbackfn: Function4[B, A, Int, Array[A], B]): B = js.native
+  def jsReduceRight[B](
+      callbackfn: Function4[B, A, Int, Array[A], B]): B = js.native
   @JSName("reduceRight")
   def jsReduceRight[B](callbackfn: Function3[B, A, Int, B]): B = js.native
   @JSName("reduceRight")
