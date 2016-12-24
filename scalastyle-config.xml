@@ -61,7 +61,6 @@
   <check level="error" enabled="true" class="org.scalastyle.scalariform.PublicMethodsHaveTypeChecker"/>
 
   <check level="error" enabled="true" class="org.scalastyle.scalariform.NoWhitespaceBeforeLeftBracketChecker"/>
-  <check level="error" enabled="true" class="org.scalastyle.scalariform.NoWhitespaceAfterLeftBracketChecker"/>
 
   <check level="error" enabled="true" class="org.scalastyle.scalariform.DisallowSpaceBeforeTokenChecker">
     <parameters>
@@ -70,7 +69,7 @@
   </check>
   <check level="error" enabled="true" class="org.scalastyle.scalariform.DisallowSpaceAfterTokenChecker">
     <parameters>
-      <parameter name="tokens">LPAREN</parameter>
+      <parameter name="tokens">LPAREN, LBRACKET</parameter>
     </parameters>
   </check>
   <check level="error" enabled="true" class="org.scalastyle.scalariform.EnsureSingleSpaceAfterTokenChecker">

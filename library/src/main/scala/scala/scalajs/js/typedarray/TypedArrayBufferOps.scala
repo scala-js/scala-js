@@ -20,7 +20,7 @@ import java.nio._
  *  this interface for some TypedArrayType, which depends on the type of
  *  elements in the buffer.
  */
-final class TypedArrayBufferOps[ // scalastyle:ignore
+final class TypedArrayBufferOps[
     TypedArrayType <: TypedArray[_, TypedArrayType]](
     val buffer: Buffer) extends AnyVal {
   /** Tests whether this buffer has a valid associated [[ArrayBuffer]].
