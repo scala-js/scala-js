@@ -129,11 +129,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         member.tree match {
           case m: MethodDef =>
             assert(m.name.isInstanceOf[StringLiteral],
-              "Exported method must have StringLiteral as name")
+                "Exported method must have StringLiteral as name")
             checkExportedMethodDef(m, classDef, isTopLevel = false)
           case p: PropertyDef =>
             assert(p.name.isInstanceOf[StringLiteral],
-              "Exported property must have StringLiteral as name")
+                "Exported property must have StringLiteral as name")
             checkExportedPropertyDef(p, classDef)
           // Anything else is illegal
           case _ =>
@@ -277,8 +277,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       return
     }
 
-    if (!isTopLevel && static)
-      reportError("Exported method def cannot be static")
+    if (!isTopLevel && static && classDef.kind != ClassKind.JSClass)
+      reportError("Exported method def in non-JS class cannot be static")
 
     if (isTopLevel && !static)
       reportError("Top level export must be static")
@@ -301,7 +301,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       }
     }
 
-    if (classDef.kind.isJSClass && name == "constructor") {
+    if (classDef.kind.isJSClass && name == "constructor" && !static) {
       checkJSClassConstructor(methodDef, classDef)
     } else {
       if (resultType != AnyType) {

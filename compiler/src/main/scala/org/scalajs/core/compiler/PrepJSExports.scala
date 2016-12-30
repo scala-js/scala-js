@@ -25,10 +25,10 @@ trait PrepJSExports { this: PrepJSInterop =>
       jsName: String,
       pos: Position,
       isNamed: Boolean,
-      isTopLevel: Boolean,
+      destination: ExportDestination,
       ignoreInvalid: Boolean
   ) extends jsInterop.ExportInfo {
-    assert(!isNamed || !isTopLevel)
+    assert(!isNamed || destination == ExportDestination.Normal)
   }
 
   /** Generate the exporter for the given DefDef
@@ -90,15 +90,16 @@ trait PrepJSExports { this: PrepJSInterop =>
       // Reset interface flag: Any trait will contain non-empty methods
       clsSym.resetFlag(Flags.INTERFACE)
 
-      val (topLevelExports, otherExports) = exports.partition(_.isTopLevel)
+      val (normalExports, topLevelAndStaticExports) =
+        exports.partition(_.destination == ExportDestination.Normal)
 
-      /* We can handle top level exports entirely in the backend. So just
-       * register them here.
+      /* We can handle top level exports and static exports entirely in the
+       * backend. So just register them here.
        */
-      jsInterop.registerForExport(baseSym, topLevelExports)
+      jsInterop.registerForExport(baseSym, topLevelAndStaticExports)
 
       // Actually generate exporter methods
-      otherExports.flatMap { exp =>
+      normalExports.flatMap { exp =>
         if (exp.isNamed)
           genNamedExport(baseSym, exp.jsName, exp.pos) :: Nil
         else
@@ -178,14 +179,15 @@ trait PrepJSExports { this: PrepJSInterop =>
     val exports = directExportsOf(sym) ++ inheritedExportsOf(sym)
 
     /* Calculate the distinct exports for this symbol (eliminate double
-     * occurrences of (name, isNamed, isTopLevel) tuples).
+     * occurrences of (name, isNamed, isTopLevel, isStatic) tuples).
      */
     val grouped = exports.groupBy(
-        exp => (exp.jsName, exp.isNamed, exp.isTopLevel))
+        exp => (exp.jsName, exp.isNamed, exp.destination))
 
-    for ((_, exps) <- grouped.toList)
+    for ((_, exps) <- grouped.toList) yield {
       // Make sure that we are strict if necessary
-      yield exps.find(!_.ignoreInvalid).getOrElse(exps.head)
+      exps.find(!_.ignoreInvalid).getOrElse(exps.head)
+    }
   }
 
   private def directExportsOf(sym: Symbol): List[ExportInfo] = {
@@ -224,7 +226,11 @@ trait PrepJSExports { this: PrepJSInterop =>
       val isNamedExport = annot.symbol == JSExportNamedAnnotation
       val isExportAll = annot.symbol == JSExportAllAnnotation
       val isTopLevelExport = annot.symbol == JSExportTopLevelAnnotation
+      val isStaticExport = annot.symbol == JSExportStaticAnnotation
       val hasExplicitName = annot.args.nonEmpty
+
+      assert(!isTopLevelExport || hasExplicitName,
+          "Found a top-level export without an explicit name at " + annot.pos)
 
       def explicitName = annot.stringArg(0).getOrElse {
         reporter.error(annot.pos,
@@ -237,6 +243,12 @@ trait PrepJSExports { this: PrepJSInterop =>
         else if (sym.isConstructor) decodedFullName(sym.owner)
         else if (sym.isClass) decodedFullName(sym)
         else sym.unexpandedName.decoded.stripSuffix("_=")
+      }
+
+      val destination = {
+        if (isTopLevelExport) ExportDestination.TopLevel
+        else if (isStaticExport) ExportDestination.Static
+        else ExportDestination.Normal
       }
 
       // Enforce proper setter signature
@@ -252,74 +264,128 @@ trait PrepJSExports { this: PrepJSInterop =>
             "An exported name may not contain a double underscore (`__`)")
       }
 
-      // Make sure we do not override the default export of toString
-      def isIllegalToString = {
-        isMember && !isNamedExport && !isTopLevelExport &&
-        name == "toString" && sym.name != nme.toString_ &&
-        sym.tpe.params.isEmpty && !jsInterop.isJSGetter(sym)
-      }
+      /* Illegal function application exports, i.e., method named 'apply'
+       * without an explicit export name.
+       */
+      if (isMember && !hasExplicitName && sym.name == nme.apply) {
+        destination match {
+          case ExportDestination.Normal =>
+            def shouldBeTolerated = {
+              isExportAll && directAnnots.exists { annot =>
+                annot.symbol == JSExportAnnotation &&
+                annot.args.nonEmpty &&
+                annot.stringArg(0) == Some("apply")
+              }
+            }
 
-      if (isIllegalToString) {
-        reporter.error(annot.pos, "You may not export a zero-argument " +
-            "method named other than 'toString' under the name 'toString'")
-      }
+            // Don't allow apply without explicit name
+            if (!shouldBeTolerated) {
+              // Get position for error message
+              val pos = if (isExportAll) trgSym.pos else annot.pos
 
-      def isIllegalApplyExport = {
-        isMember && !hasExplicitName && !isTopLevelExport &&
-        sym.name == nme.apply &&
-        !(isExportAll && directAnnots.exists(annot =>
-            annot.symbol == JSExportAnnotation &&
-            annot.args.nonEmpty &&
-            annot.stringArg(0) == Some("apply")))
-      }
+              reporter.warning(pos, "Member cannot be exported to function " +
+                  "application. It is available under the name apply " +
+                  "instead. Add @JSExport(\"apply\") to silence this " +
+                  "warning. This will be enforced in 1.0.")
+            }
 
-      // Don't allow apply without explicit name
-      if (isIllegalApplyExport) {
-        // Get position for error message
-        val pos = if (isExportAll) trgSym.pos else annot.pos
+          case ExportDestination.TopLevel =>
+            throw new AssertionError(
+                "Found a top-level export without an explicit name at " +
+                annot.pos)
 
-        reporter.warning(pos, "Member cannot be exported to function " +
-            "application. It is available under the name apply instead. " +
-            "Add @JSExport(\"apply\") to silence this warning. " +
-            "This will be enforced in 1.0.")
-      }
-
-      // Don't allow nested class / module exports without explicit name.
-      def isStaticNested = {
-        /* For Scala.js defined JS classes, sym is the class itself. For normal
-         * classes, sym is the constructor that is to be exported.
-         */
-        val clsSym = if (sym.isClass) sym else sym.owner
-        clsSym.isNestedClass && clsSym.isStatic && !clsSym.isLocalToBlock
-      }
-
-      if (!isMember && !hasExplicitName && isStaticNested) {
-        reporter.error(annot.pos,
-            "You must set an explicit name for exports of nested classes.")
-      }
-
-      if (isNamedExport && jsInterop.isJSProperty(sym)) {
-        reporter.error(annot.pos,
-            "You may not export a getter or a setter as a named export")
-      }
-
-      if (isTopLevelExport) {
-        if (jsInterop.isJSProperty(sym)) {
-          reporter.error(annot.pos,
-              "You may not export a getter or a setter to the top level")
-        }
-
-        if (!isMember) {
-          reporter.error(annot.pos, "Use @JSExport on objects and " +
-              "constructors to export to the top level")
-        } else if (!sym.owner.isStatic || !sym.owner.isModuleClass) {
-          reporter.error(annot.pos,
-              "Only static objects may export their members to the top level")
+          case ExportDestination.Static =>
+            reporter.error(annot.pos,
+                "A member cannot be exported to function application as " +
+                "static. Use @JSExportStatic(\"apply\") to export it under " +
+                "the name 'apply'.")
         }
       }
 
-      ExportInfo(name, annot.pos, isNamedExport,
-          isTopLevelExport, ignoreInvalid = false)
+      // Destination-specific restrictions
+      destination match {
+        case ExportDestination.Normal =>
+          // Make sure we do not override the default export of toString
+          def isIllegalToString = {
+            isMember && !isNamedExport &&
+            name == "toString" && sym.name != nme.toString_ &&
+            sym.tpe.params.isEmpty && !jsInterop.isJSGetter(sym)
+          }
+          if (isIllegalToString) {
+            reporter.error(annot.pos, "You may not export a zero-argument " +
+                "method named other than 'toString' under the name 'toString'")
+          }
+
+          if (isNamedExport && jsInterop.isJSProperty(sym)) {
+            reporter.error(annot.pos,
+                "You may not export a getter or a setter as a named export")
+          }
+
+          // Don't allow nested class / module exports without explicit name.
+          def isStaticNested = {
+            /* For Scala.js defined JS classes, sym is the class itself. For
+             * normal classes, sym is the constructor that is to be exported.
+             */
+            val clsSym = if (sym.isClass) sym else sym.owner
+            clsSym.isNestedClass && clsSym.isStatic && !clsSym.isLocalToBlock
+          }
+          if (!isMember && !hasExplicitName && isStaticNested) {
+            reporter.error(annot.pos,
+                "You must set an explicit name for exports of nested classes.")
+          }
+
+        case ExportDestination.TopLevel =>
+          if (jsInterop.isJSProperty(sym)) {
+            reporter.error(annot.pos,
+                "You may not export a getter or a setter to the top level")
+          }
+
+          if (!isMember) {
+            reporter.error(annot.pos, "Use @JSExport on objects and " +
+                "constructors to export to the top level")
+          } else if (!sym.owner.isStatic || !sym.owner.isModuleClass) {
+            reporter.error(annot.pos,
+                "Only static objects may export their members to the top level")
+          }
+
+        case ExportDestination.Static =>
+          val symOwner =
+            if (sym.isClassConstructor) sym.owner.owner
+            else sym.owner
+
+          def companionIsScalaJSDefinedJSClass: Boolean = {
+            val companion = symOwner.companionClass
+            companion != NoSymbol &&
+            !companion.isTrait &&
+            isJSAny(companion) &&
+            companion.hasAnnotation(ScalaJSDefinedAnnotation)
+          }
+
+          if (!symOwner.isStatic || !symOwner.isModuleClass ||
+              !companionIsScalaJSDefinedJSClass) {
+            reporter.error(annot.pos,
+                "Only a static object whose companion class is a " +
+                "Scala.js-defined JS class may export its members as static.")
+          }
+
+          if (!isMember) {
+            if (sym.isTrait) {
+              reporter.error(annot.pos,
+                  "You may not export a trait as static.")
+            } else {
+              reporter.error(annot.pos,
+                  "Implementation restriction: cannot export a class or " +
+                  "object as static")
+            }
+          } else if (jsInterop.isJSProperty(sym)) {
+            reporter.error(annot.pos,
+                "Implementation restriction: cannot export a getter or a " +
+                "setter as static")
+          }
+      }
+
+      ExportInfo(name, annot.pos, isNamedExport, destination,
+          ignoreInvalid = false)
     }
   }
 
@@ -374,7 +440,7 @@ trait PrepJSExports { this: PrepJSInterop =>
               s"a @${trgAnnot.name} on $forcingSym")
         }
 
-        ExportInfo(name, sym.pos, isNamed = false, isTopLevel = false,
+        ExportInfo(name, sym.pos, isNamed = false, ExportDestination.Normal,
             ignoreInvalid)
       }
 
@@ -557,7 +623,8 @@ trait PrepJSExports { this: PrepJSInterop =>
   private lazy val isDirectMemberAnnot = Set[Symbol](
       JSExportAnnotation,
       JSExportNamedAnnotation,
-      JSExportTopLevelAnnotation
+      JSExportTopLevelAnnotation,
+      JSExportStaticAnnotation
   )
 
 }

@@ -290,10 +290,22 @@ private[emitter] final class ScalaJSClassEmitter(
     }
 
     if (method.static) {
-      val Ident(methodName, origName) = method.name
-      envFieldDef(
-          "s", className + "__" + methodName, origName,
-          methodFun)
+      method.name match {
+        case Ident(methodName, origName) =>
+          envFieldDef(
+              "s", className + "__" + methodName, origName,
+              methodFun)
+
+        case methodName: StringLiteral =>
+          outputMode match {
+            case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+              genAddToObject(encodeClassVar(className), methodName, methodFun)
+
+            case OutputMode.ECMAScript6 =>
+              js.MethodDef(static = true, genPropertyName(methodName),
+                  methodFun.args, methodFun.body)
+          }
+      }
     } else {
       outputMode match {
         case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
@@ -414,18 +426,29 @@ private[emitter] final class ScalaJSClassEmitter(
   /** Generate `classVar.prototype.name = value` */
   def genAddToPrototype(className: String, name: js.PropertyName,
       value: js.Tree)(implicit pos: Position): js.Tree = {
-    val proto = encodeClassVar(className).prototype
-    val select = name match {
-      case name: js.Ident         => js.DotSelect(proto, name)
-      case name: js.StringLiteral => genBracketSelect(proto, name)
-    }
-    js.Assign(select, value)
+    genAddToObject(encodeClassVar(className).prototype, name, value)
   }
 
   /** Generate `classVar.prototype.name = value` */
   def genAddToPrototype(className: String, name: PropertyName,
       value: js.Tree)(implicit pos: Position): js.Tree = {
     genAddToPrototype(className, genPropertyName(name), value)
+  }
+
+  /** Generate `obj.name = value` */
+  def genAddToObject(obj: js.Tree, name: js.PropertyName,
+      value: js.Tree)(implicit pos: Position): js.Tree = {
+    val select = name match {
+      case name: js.Ident         => js.DotSelect(obj, name)
+      case name: js.StringLiteral => genBracketSelect(obj, name)
+    }
+    js.Assign(select, value)
+  }
+
+  /** Generate `obj.name = value` */
+  def genAddToObject(obj: js.Tree, name: PropertyName,
+      value: js.Tree)(implicit pos: Position): js.Tree = {
+    genAddToObject(obj, genPropertyName(name), value)
   }
 
   def genPropertyName(name: PropertyName): js.PropertyName = name match {

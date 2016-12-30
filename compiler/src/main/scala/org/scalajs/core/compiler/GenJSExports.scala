@@ -121,26 +121,36 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     }
 
     def genTopLevelExports(classSym: Symbol): List[js.TopLevelExportDef] = {
-      val allTopLevelExports = for {
+      for (m <- genTopLevelOrStaticExports(classSym, ExportDestination.TopLevel))
+        yield js.TopLevelExportDef(m)(m.pos)
+    }
+
+    def genStaticExports(classSym: Symbol): List[js.MethodDef] =
+      genTopLevelOrStaticExports(classSym, ExportDestination.Static)
+
+    private def genTopLevelOrStaticExports(classSym: Symbol,
+        destination: ExportDestination): List[js.MethodDef] = {
+      require(
+          destination == ExportDestination.TopLevel ||
+          destination == ExportDestination.Static)
+
+      val allRelevantExports = for {
         methodSym <- classSym.info.members
         if methodSym.isMethod && !methodSym.isConstructor
         export <- jsInterop.registeredExportsOf(methodSym)
+        if export.destination == destination
       } yield {
-        assert(export.isTopLevel)
         (export, methodSym)
       }
 
-      val result = for {
-        (jsName, tups) <- allTopLevelExports.groupBy(_._1.jsName)
+      for {
+        (jsName, tups) <- allRelevantExports.groupBy(_._1.jsName).toList
       } yield {
         implicit val pos = tups.head._1.pos
 
         val alts = tups.map(t => ExportedSymbol(t._2)).toList
-
-        js.TopLevelExportDef(genExportMethod(alts, jsName, static = true))
+        genExportMethod(alts, jsName, static = true)
       }
-
-      result.toList
     }
 
     /** Tests whether the given def a named exporter def that needs to be

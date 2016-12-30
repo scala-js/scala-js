@@ -30,6 +30,21 @@ trait JSGlobalAddons extends JSDefinitions
       JSGlobalAddons.this.asInstanceOf[ThisJSGlobalAddons]
   }
 
+  sealed abstract class ExportDestination
+
+  object ExportDestination {
+    /** Export in the "normal" way: as an instance member, or at the top-level
+     *  for naturally top-level things (classes and modules).
+     */
+    case object Normal extends ExportDestination
+
+    /** Export at the top-level. */
+    case object TopLevel extends ExportDestination
+
+    /** Export as a static member of the companion class. */
+    case object Static extends ExportDestination
+  }
+
   /** global javascript interop related helpers */
   object jsInterop { // scalastyle:ignore
     import scala.reflect.NameTransformer
@@ -51,7 +66,7 @@ trait JSGlobalAddons extends JSDefinitions
       val jsName: String
       val pos: Position
       val isNamed: Boolean
-      val isTopLevel: Boolean
+      val destination: ExportDestination
     }
 
     def clearGlobalState(): Unit = {

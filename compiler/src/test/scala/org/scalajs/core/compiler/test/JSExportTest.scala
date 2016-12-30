@@ -1251,4 +1251,272 @@ class JSExportTest extends DirectTest with TestHelpers {
       |       ^
     """
   }
+
+  @Test
+  def noExportStaticModule: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      object A
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Implementation restriction: cannot export a class or object as static
+      |      @JSExportStatic
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportStaticTrait: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      trait A
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: You may not export a trait as static.
+      |      @JSExportStatic
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportStaticClass: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      class A
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Implementation restriction: cannot export a class or object as static
+      |      @JSExportStatic
+      |       ^
+    """
+
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      class A {
+        @JSExportStatic
+        def this(x: Int) = this()
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: Implementation restriction: cannot export a class or object as static
+      |        @JSExportStatic
+      |         ^
+    """
+  }
+
+  @Test
+  def noExportStaticVal: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      val a: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Implementation restriction: cannot export a getter or a setter as static
+      |      @JSExportStatic
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportStaticVar: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      var a: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Implementation restriction: cannot export a getter or a setter as static
+      |      @JSExportStatic
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportStaticGetter: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      def a: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Implementation restriction: cannot export a getter or a setter as static
+      |      @JSExportStatic
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportStaticSetter: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      def a_=(x: Int): Unit = ()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Implementation restriction: cannot export a getter or a setter as static
+      |      @JSExportStatic
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportStaticCollapsingMethods: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      def foo(x: Int): Int = x
+
+      @JSExportStatic("foo")
+      def bar(x: Int): Int = x + 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:11: error: Cannot disambiguate overloads for exported method bar with types
+      |  (x: Int)Int
+      |  (x: Int)Int
+      |      def bar(x: Int): Int = x + 1
+      |          ^
+    """
+  }
+
+  @Test
+  def noExportStaticNonStatic: Unit = {
+    """
+    class A {
+      @ScalaJSDefined
+      class StaticContainer extends js.Object
+
+      object StaticContainer {
+        @JSExportStatic
+        def a(): Unit = ()
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: Only a static object whose companion class is a Scala.js-defined JS class may export its members as static.
+      |        @JSExportStatic
+      |         ^
+    """
+  }
+
+  @Test
+  def noExportStaticInJSModule: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    @ScalaJSDefined
+    object StaticContainer extends js.Object {
+      @JSExportStatic
+      def a(): Unit = ()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: You may not export a method of a subclass of js.Any
+      |      @JSExportStatic
+      |       ^
+    """
+
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    @js.native
+    object StaticContainer extends js.Object {
+      @JSExportStatic
+      def a(): Unit = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: You may not export a method of a subclass of js.Any
+      |      @JSExportStatic
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportStaticIfWrongCompanionType: Unit = {
+    """
+    class StaticContainer
+
+    object StaticContainer {
+      @JSExportStatic
+      def a(): Unit = ()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Only a static object whose companion class is a Scala.js-defined JS class may export its members as static.
+      |      @JSExportStatic
+      |       ^
+    """
+
+    """
+    @ScalaJSDefined
+    trait StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      def a(): Unit = ()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Only a static object whose companion class is a Scala.js-defined JS class may export its members as static.
+      |      @JSExportStatic
+      |       ^
+    """
+
+    """
+    @js.native
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      def a(): Unit = ()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Only a static object whose companion class is a Scala.js-defined JS class may export its members as static.
+      |      @JSExportStatic
+      |       ^
+    """
+  }
 }

@@ -619,6 +619,10 @@ private final class Analyzer(semantics: Semantics,
           if (isJSClass)
             superClass.instantiated()
 
+          for (methodInfo <- staticMethodInfos.values) {
+            if (methodInfo.isExported)
+              methodInfo.reachStatic()(FromExports)
+          }
           for (methodInfo <- methodInfos.values) {
             if (methodInfo.isExported)
               methodInfo.reach(this)(FromExports)

@@ -190,7 +190,8 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       getTree: TreeProvider, analysis: Analysis) = {
     import ir.Trees._
 
-    val memberInfoByName = Map(info.methods.map(m => m.encodedName -> m): _*)
+    val memberInfoByStaticAndName =
+      Map(info.methods.map(m => (m.isStatic, m.encodedName) -> m): _*)
 
     val fields = mutable.Buffer.empty[FieldDef]
     val staticMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
@@ -200,13 +201,13 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     val classExports = mutable.Buffer.empty[Tree]
 
     def linkedMethod(m: MethodDef) = {
-      val info = memberInfoByName(m.name.name)
+      val info = memberInfoByStaticAndName((m.static, m.name.name))
       val version = m.hash.map(Hashers.hashAsVersion(_, considerPositions))
       new LinkedMember(info, m, version)
     }
 
     def linkedProperty(p: PropertyDef) = {
-      val info = memberInfoByName(p.name.name)
+      val info = memberInfoByStaticAndName((false, p.name.name))
       new LinkedMember(info, p, None)
     }
 
@@ -219,8 +220,12 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     classDef.defs.foreach {
       // Static methods
       case m: MethodDef if m.static =>
-        if (analyzerInfo.staticMethodInfos(m.name.name).isReachable)
-          staticMethods += linkedMethod(m)
+        if (analyzerInfo.staticMethodInfos(m.name.name).isReachable) {
+          if (m.name.isInstanceOf[StringLiteral])
+            exportedMembers += linkedMethod(m)
+          else
+            staticMethods += linkedMethod(m)
+        }
 
       // Fields
       case field @ FieldDef(_, _, _) =>
@@ -284,7 +289,8 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       }
     }
 
-    val classExportInfo = memberInfoByName.get(Definitions.ClassExportsName)
+    val classExportInfo =
+      memberInfoByStaticAndName.get((false, Definitions.ClassExportsName))
 
     val kind =
       if (analyzerInfo.isModuleAccessed) classDef.kind
