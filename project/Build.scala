@@ -996,7 +996,6 @@ object Build {
       ) ++ Seq(
           name := "Scala.js library",
           delambdafySetting,
-          scalacOptions in (Compile, doc) ++= Seq("-implicits", "-groups"),
           exportJars := !isGeneratingEclipse,
           previousArtifactSetting,
           mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
@@ -1005,6 +1004,32 @@ object Build {
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
+          scalacOptions in doc ++= Seq("-implicits", "-groups"),
+
+          // Filter doc sources to remove implementation details from doc.
+          sources in doc := {
+            def containsFileFilter(s: String): FileFilter = new FileFilter {
+              override def accept(f: File): Boolean = {
+                val path = f.getAbsolutePath.replace('\\', '/')
+                path.contains(s)
+              }
+            }
+
+            val filter: FileFilter = (
+                AllPassFilter
+                  -- containsFileFilter("/scala/scalajs/runtime/")
+                  -- containsFileFilter("/scala/scalajs/js/annotation/internal/")
+                  -- "*.nodoc.scala"
+            )
+
+            (sources in doc).value.filter(filter.accept)
+          },
+
+          /* Add compiled .class files to doc dependencyClasspath, so we can
+           * still compile even with only part of the files being present.
+           */
+          dependencyClasspath in doc ++= exportedProducts.value,
+
           /* Add the .sjsir files from other lib projects
            * (but not .class files)
            */
