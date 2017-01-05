@@ -797,7 +797,9 @@ object Printers {
           print(" ")
           printColumn(defs, "{", "", "}")
 
-        case FieldDef(name, vtpe, mutable) =>
+        case FieldDef(static, name, vtpe, mutable) =>
+          if (static)
+            print("static ")
           if (mutable)
             print("var ")
           else

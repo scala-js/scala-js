@@ -125,15 +125,59 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         yield js.TopLevelExportDef(m)(m.pos)
     }
 
-    def genStaticExports(classSym: Symbol): List[js.MethodDef] =
+    def genStaticExports(classSym: Symbol): List[js.Tree] =
       genTopLevelOrStaticExports(classSym, ExportDestination.Static)
 
     private def genTopLevelOrStaticExports(classSym: Symbol,
-        destination: ExportDestination): List[js.MethodDef] = {
+        destination: ExportDestination): List[js.Tree] = {
       require(
           destination == ExportDestination.TopLevel ||
           destination == ExportDestination.Static)
 
+      val exportsNamesAndPositions = {
+        genTopLevelOrStaticFieldExports(classSym, destination) ++
+        genTopLevelOrStaticMethodExports(classSym, destination)
+      }
+
+      for {
+        exportsWithSameName <- exportsNamesAndPositions.groupBy(_._2).values
+        duplicate <- exportsWithSameName.tail
+      } {
+        val strKind =
+          if (destination == ExportDestination.TopLevel) "top-level"
+          else "static"
+        reporter.error(duplicate._3,
+            s"Duplicate $strKind export with name '${duplicate._2}': " +
+            "a field may not share its exported name with another field or " +
+            "method")
+      }
+
+      exportsNamesAndPositions.map(_._1)
+    }
+
+    private def genTopLevelOrStaticFieldExports(classSym: Symbol,
+        destination: ExportDestination): List[(js.FieldDef, String, Position)] = {
+      (for {
+        fieldSym <- classSym.info.members
+        if !fieldSym.isMethod && fieldSym.isTerm && !fieldSym.isModule
+        export <- jsInterop.registeredExportsOf(fieldSym)
+        if export.destination == destination
+      } yield {
+        // in fact, top-level field exports do not exist yet
+        assert(export.destination == ExportDestination.Static)
+
+        implicit val pos = fieldSym.pos
+
+        val mutable = true // static fields must always be mutable
+        val name = js.StringLiteral(export.jsName)
+        val irTpe = genExposedFieldIRType(fieldSym)
+
+        (js.FieldDef(static = true, name, irTpe, mutable), export.jsName, pos)
+      }).toList
+    }
+
+    private def genTopLevelOrStaticMethodExports(classSym: Symbol,
+        destination: ExportDestination): List[(js.MethodDef, String, Position)] = {
       val allRelevantExports = for {
         methodSym <- classSym.info.members
         if methodSym.isMethod && !methodSym.isConstructor
@@ -149,7 +193,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         implicit val pos = tups.head._1.pos
 
         val alts = tups.map(t => ExportedSymbol(t._2)).toList
-        genExportMethod(alts, jsName, static = true)
+        (genExportMethod(alts, jsName, static = true), jsName, pos)
       }
     }
 

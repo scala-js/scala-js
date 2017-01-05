@@ -228,7 +228,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
         }
 
       // Fields
-      case field @ FieldDef(_, _, _) =>
+      case field @ FieldDef(_, _, _, _) =>
         if (analyzerInfo.isAnySubclassInstantiated)
           fields += field
 

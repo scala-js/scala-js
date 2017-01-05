@@ -75,7 +75,8 @@ trait JSGlobalAddons extends JSDefinitions
     }
 
     def registerForExport(sym: Symbol, infos: List[ExportInfo]): Unit = {
-      assert(!exportedSymbols.contains(sym), "Same symbol exported twice")
+      assert(!exportedSymbols.contains(sym),
+          "Same symbol exported twice: " + sym)
       exportedSymbols.put(sym, infos)
     }
 
@@ -141,6 +142,18 @@ trait JSGlobalAddons extends JSDefinitions
     /** has this symbol to be translated into a JS setter (both directions)? */
     def isJSSetter(sym: Symbol): Boolean =
       nme.isSetterName(sym.name) && sym.isMethod && !sym.isConstructor
+
+    /** Is this field symbol a static field at the IR level? */
+    def isFieldStatic(sym: Symbol): Boolean = {
+      sym.owner.isModuleClass && // usually false, avoids a lookup in the map
+      registeredExportsOf(sym).nonEmpty
+    }
+
+    /** The only export info of a static field.
+     *  Requires `isFieldStatic(sym)`.
+     */
+    def staticFieldInfoOf(sym: Symbol): ExportInfo =
+      registeredExportsOf(sym).head
 
     /** has this symbol to be translated into a JS bracket access (JS to Scala) */
     def isJSBracketAccess(sym: Symbol): Boolean =

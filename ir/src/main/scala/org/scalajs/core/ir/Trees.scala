@@ -777,7 +777,8 @@ object Trees {
     val tpe = NoType
   }
 
-  case class FieldDef(name: PropertyName, ftpe: Type, mutable: Boolean)(
+  case class FieldDef(static: Boolean, name: PropertyName, ftpe: Type,
+      mutable: Boolean)(
       implicit val pos: Position) extends Tree {
     val tpe = NoType
   }

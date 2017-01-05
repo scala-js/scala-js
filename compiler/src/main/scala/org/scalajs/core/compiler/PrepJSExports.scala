@@ -220,7 +220,7 @@ trait PrepJSExports { this: PrepJSInterop =>
         Nil
     }
 
-    for {
+    val allExportInfos = for {
       annot <- directAnnots ++ unitAnnots
     } yield {
       val isNamedExport = annot.symbol == JSExportNamedAnnotation
@@ -377,7 +377,7 @@ trait PrepJSExports { this: PrepJSInterop =>
                   "Implementation restriction: cannot export a class or " +
                   "object as static")
             }
-          } else if (jsInterop.isJSProperty(sym)) {
+          } else if (!sym.isAccessor && jsInterop.isJSProperty(sym)) {
             reporter.error(annot.pos,
                 "Implementation restriction: cannot export a getter or a " +
                 "setter as static")
@@ -386,6 +386,37 @@ trait PrepJSExports { this: PrepJSInterop =>
 
       ExportInfo(name, annot.pos, isNamedExport, destination,
           ignoreInvalid = false)
+    }
+
+    /* Filter out static exports of accessors (as they are not actually
+     * exported, their fields are). The above is only used to uniformly perform
+     * checks.
+     */
+    if (!sym.isAccessor || sym.accessed == NoSymbol) {
+      allExportInfos
+    } else {
+      /* For accessors, we need to apply some special logic to static exports.
+       * When tested on accessors, they actually apply on *fields*, not on the
+       * accessors. We use the same code paths hereabove to uniformly perform
+       * relevant checks, but at the end of the day, we have to throw away the
+       * ExportInfo.
+       * However, we must make sure that no field is exported *twice* as static.
+       */
+      val (staticExportInfos, actualExportInfos) =
+        allExportInfos.partition(_.destination == ExportDestination.Static)
+
+      if (sym.isGetter) {
+        val duplicates = staticExportInfos.drop(1) // no-op if isEmpty
+        for (duplicate <- duplicates) {
+          reporter.error(duplicate.pos,
+              "Fields (val or var) cannot be exported as static more than " +
+              "once")
+        }
+
+        jsInterop.registerForExport(sym.accessed, staticExportInfos)
+      }
+
+      actualExportInfos
     }
   }
 

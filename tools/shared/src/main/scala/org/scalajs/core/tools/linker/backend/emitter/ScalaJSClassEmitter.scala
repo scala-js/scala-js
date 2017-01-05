@@ -135,7 +135,9 @@ private[emitter] final class ScalaJSClassEmitter(
             js.If(!classValueVar, {
               js.Block(
                   entireClassDef,
-                  classValueVar := envField("c", className)
+                  genCreateStaticFieldsOfJSClass(tree),
+                  classValueVar := envField("c", className),
+                  genStaticInitializationOfJSClass(tree)
               )
             }, {
               js.Skip()
@@ -292,7 +294,7 @@ private[emitter] final class ScalaJSClassEmitter(
       implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     val tpe = ClassType(tree.encodedName)
     for {
-      field @ FieldDef(name, ftpe, mutable) <- tree.fields
+      field @ FieldDef(false, name, ftpe, mutable) <- tree.fields
     } yield {
       implicit val pos = field.pos
       val selectField = (name: @unchecked) match {
@@ -300,6 +302,34 @@ private[emitter] final class ScalaJSClassEmitter(
       }
       desugarTree(this, tree.encodedName,
           Assign(selectField, zeroOf(ftpe)), isStat = true)
+    }
+  }
+
+  /** Generates the creation of the static fields for a JavaScript class. */
+  private def genCreateStaticFieldsOfJSClass(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+    val className = tree.encodedName
+    val stats = for {
+      field @ FieldDef(true, name, ftpe, mutable) <- tree.fields
+    } yield {
+      implicit val pos = field.pos
+      val classVar = envField("c", className)
+      val select = genPropSelect(classVar, genPropertyName(name))
+      js.Assign(select, genZeroOf(ftpe))
+    }
+    js.Block(stats)(tree.pos)
+  }
+
+  /** Generates the static initializer invocation of a JavaScript class. */
+  private def genStaticInitializationOfJSClass(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+    import Definitions.StaticInitializerName
+    implicit val pos = tree.pos
+    if (tree.staticMethods.exists(_.tree.name.name == StaticInitializerName)) {
+      val fullName = tree.encodedName + "__" + StaticInitializerName
+      js.Apply(envField("s", fullName, Some("<clinit>")), Nil)
+    } else {
+      js.Skip()
     }
   }
 

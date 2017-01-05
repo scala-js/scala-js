@@ -616,8 +616,12 @@ private final class Analyzer(semantics: Semantics,
 
           subclassInstantiated()
 
-          if (isJSClass)
+          if (isJSClass) {
             superClass.instantiated()
+            tryLookupStaticMethod(Definitions.StaticInitializerName).foreach {
+              staticInit => staticInit.reachStatic()
+            }
+          }
 
           for (methodInfo <- staticMethodInfos.values) {
             if (methodInfo.isExported)

@@ -159,7 +159,7 @@ object LinkedClass {
         staticMethods += linkedMethod(m)
 
       // Fields
-      case field @ FieldDef(_, _, _) =>
+      case field @ FieldDef(_, _, _, _) =>
         fields += field
 
       // Normal methods

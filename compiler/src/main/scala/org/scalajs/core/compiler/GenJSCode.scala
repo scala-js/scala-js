@@ -509,8 +509,20 @@ abstract class GenJSCode extends plugins.PluginComponent
         companionModuleClasses.get(sym).fold[List[js.Tree]] {
           Nil
         } { companionModuleClass =>
-          withScopedVars(currentClassSym := companionModuleClass) {
+          val exports = withScopedVars(currentClassSym := companionModuleClass) {
             genStaticExports(companionModuleClass)
+          }
+          if (exports.exists(_.isInstanceOf[js.FieldDef])) {
+            val staticInitializer = js.MethodDef(
+                static = true,
+                js.Ident(ir.Definitions.StaticInitializerName),
+                Nil,
+                jstpe.NoType,
+                Some(genLoadModule(companionModuleClass)))(
+                OptimizerHints.empty, None)
+            exports :+ staticInitializer
+          } else {
+            exports
           }
         }
       }
@@ -839,6 +851,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         f <- classSym.info.decls
         if !f.isMethod && f.isTerm && !f.isModule
         if !f.hasAnnotation(JSOptionalAnnotation)
+        if !jsInterop.isFieldStatic(f)
       } yield {
         implicit val pos = f.pos
 
@@ -848,42 +861,44 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (isExposed(f)) js.StringLiteral(jsNameOf(f))
           else encodeFieldSym(f)
 
-        val irTpe = if (!isScalaJSDefinedJSClass(classSym)) {
-          toIRType(f.tpe)
-        } else {
-          val tpeEnteringPosterasure =
-            enteringPhase(currentRun.posterasurePhase)(f.tpe)
-          tpeEnteringPosterasure match {
-            case tpe: ErasedValueType =>
-              /* Here, we must store the field as the boxed representation of
-               * the value class. The default value of that field, as
-               * initialized at the time the instance is created, will
-               * therefore be null. This will not match the behavior we would
-               * get in a Scala class. To match the behavior, we would need to
-               * initialized to an instance of the boxed representation, with
-               * an underlying value set to the zero of its type. However we
-               * cannot implement that, so we live with the discrepancy.
-               * Anyway, scalac also has problems with uninitialized value
-               * class values, if they come from a generic context.
-               */
-              jstpe.ClassType(encodeClassFullName(tpe.valueClazz))
+        val irTpe =
+          if (!isScalaJSDefinedJSClass(classSym)) toIRType(f.tpe)
+          else genExposedFieldIRType(f)
 
-            case _ if f.tpe.typeSymbol == CharClass =>
-              /* Will be initialized to null, which will unbox to '\0' when
-               * read.
-               */
-              jstpe.ClassType(ir.Definitions.BoxedCharacterClass)
-
-            case _ =>
-              /* Other types are not boxed, so we can initialized them to
-               * their true zero.
-               */
-              toIRType(f.tpe)
-          }
-        }
-
-        js.FieldDef(name, irTpe, mutable)
+        js.FieldDef(static = false, name, irTpe, mutable)
       }).toList
+    }
+
+    def genExposedFieldIRType(f: Symbol): jstpe.Type = {
+      val tpeEnteringPosterasure =
+        enteringPhase(currentRun.posterasurePhase)(f.tpe)
+      tpeEnteringPosterasure match {
+        case tpe: ErasedValueType =>
+          /* Here, we must store the field as the boxed representation of
+           * the value class. The default value of that field, as
+           * initialized at the time the instance is created, will
+           * therefore be null. This will not match the behavior we would
+           * get in a Scala class. To match the behavior, we would need to
+           * initialized to an instance of the boxed representation, with
+           * an underlying value set to the zero of its type. However we
+           * cannot implement that, so we live with the discrepancy.
+           * Anyway, scalac also has problems with uninitialized value
+           * class values, if they come from a generic context.
+           */
+          jstpe.ClassType(encodeClassFullName(tpe.valueClazz))
+
+        case _ if f.tpe.typeSymbol == CharClass =>
+          /* Will be initialized to null, which will unbox to '\0' when
+           * read.
+           */
+          jstpe.ClassType(ir.Definitions.BoxedCharacterClass)
+
+        case _ =>
+          /* Other types are not boxed, so we can initialize them to
+           * their true zero.
+           */
+          toIRType(f.tpe)
+      }
     }
 
     // Constructor of a Scala.js-defined JS class ------------------------------
@@ -1676,6 +1691,12 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case Select(qualifier, selector) =>
           val sym = tree.symbol
+
+          def unboxFieldValue(boxed: js.Tree): js.Tree = {
+            fromAny(boxed,
+                enteringPhase(currentRun.posterasurePhase)(sym.tpe))
+          }
+
           if (sym.isModule) {
             assert(!sym.isPackageClass, "Cannot use package as value: " + tree)
             genLoadModule(sym)
@@ -1689,8 +1710,14 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.JSBracketSelect(genQual, js.StringLiteral(jsNameOf(sym)))
             else
               js.JSDotSelect(genQual, encodeFieldSym(sym))
-            fromAny(boxed,
-                enteringPhase(currentRun.posterasurePhase)(sym.tpe))
+            unboxFieldValue(boxed)
+          } else if (jsInterop.isFieldStatic(sym)) {
+            val exportInfo = jsInterop.staticFieldInfoOf(sym)
+            assert(exportInfo.destination == ExportDestination.Static)
+            val companionClass = patchedLinkedClassOfClass(sym.owner)
+            val boxed = js.JSBracketSelect(genPrimitiveJSClass(companionClass),
+                js.StringLiteral(exportInfo.jsName))
+            unboxFieldValue(boxed)
           } else {
             js.Select(genExpr(qualifier),
                 encodeFieldSym(sym))(toIRType(sym.tpe))
@@ -1763,15 +1790,25 @@ abstract class GenJSCode extends plugins.PluginComponent
 
               val genQual = genExpr(qualifier)
 
+              def genBoxedRhs: js.Tree = {
+                ensureBoxed(genRhs,
+                    enteringPhase(currentRun.posterasurePhase)(rhs.tpe))
+              }
+
               if (isScalaJSDefinedJSClass(sym.owner)) {
                 val genLhs = if (isExposed(sym))
                   js.JSBracketSelect(genQual, js.StringLiteral(jsNameOf(sym)))
                 else
                   js.JSDotSelect(genQual, encodeFieldSym(sym))
-                val boxedRhs =
-                  ensureBoxed(genRhs,
-                      enteringPhase(currentRun.posterasurePhase)(rhs.tpe))
-                js.Assign(genLhs, boxedRhs)
+                js.Assign(genLhs, genBoxedRhs)
+              } else if (jsInterop.isFieldStatic(sym)) {
+                val exportInfo = jsInterop.staticFieldInfoOf(sym)
+                assert(exportInfo.destination == ExportDestination.Static)
+                val companionClass = patchedLinkedClassOfClass(sym.owner)
+                val select = js.JSBracketSelect(
+                    genPrimitiveJSClass(companionClass),
+                    js.StringLiteral(exportInfo.jsName))
+                js.Assign(select, genBoxedRhs)
               } else {
                 js.Assign(
                     js.Select(genQual, encodeFieldSym(sym))(toIRType(sym.tpe)),
@@ -4843,7 +4880,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // val f$1: Any
       val fFieldIdent = js.Ident("f$1", Some("f"))
-      val fFieldDef = js.FieldDef(fFieldIdent, jstpe.AnyType, mutable = false)
+      val fFieldDef = js.FieldDef(static = false, fFieldIdent, jstpe.AnyType,
+          mutable = false)
 
       // def this(f: Any) = { this.f$1 = f; super() }
       val ctorDef = {

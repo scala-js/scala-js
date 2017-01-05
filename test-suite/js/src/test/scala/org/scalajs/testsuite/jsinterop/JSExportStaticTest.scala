@@ -18,6 +18,8 @@ import org.junit.Assume._
 import org.junit.Test
 
 class JSExportStaticTest {
+  // Methods
+
   @Test def toplevel_basic_static_method_export(): Unit = {
     val statics = js.constructorOf[TopLevelStaticExportMethods]
 
@@ -124,6 +126,91 @@ class JSExportStaticTest {
     assertEquals(6, obj.alsoExistsAsMember(3))
   }
 
+  // Fields
+
+  @Test def basic_field(): Unit = {
+    val statics = js.constructorOf[JSExportStaticTest.StaticExportFields]
+
+    // Initialization
+    assertEquals(5, statics.basicVal)
+    assertEquals("hello", statics.basicVar)
+
+    // JS modifies var
+    statics.basicVar = "hello world"
+    assertEquals("hello world", statics.basicVar)
+    assertEquals("hello world", JSExportStaticTest.StaticExportFields.basicVar)
+
+    // Scala modifies var
+    JSExportStaticTest.StaticExportFields.basicVar = "modified once more"
+    assertEquals("modified once more",
+        JSExportStaticTest.StaticExportFields.basicVar)
+    assertEquals("modified once more", statics.basicVar)
+
+    // Reset var
+    JSExportStaticTest.StaticExportFields.basicVar = "hello"
+  }
+
+  @Test def read_tampered_var_causes_class_cast_exception(): Unit = {
+    assumeTrue("assuming compliant asInstanceOfs", hasCompliantAsInstanceOfs)
+
+    val statics = js.constructorOf[JSExportStaticTest.StaticExportFields]
+
+    // JS modifies var with an incorrect type
+    statics.basicVar = 42
+    assertThrows(classOf[ClassCastException], {
+      assertEquals(42, JSExportStaticTest.StaticExportFields.basicVar)
+    })
+
+    // Reset var
+    JSExportStaticTest.StaticExportFields.basicVar = "hello"
+  }
+
+  @Test def renamed_field(): Unit = {
+    val statics = js.constructorOf[JSExportStaticTest.StaticExportFields]
+
+    // Initialization
+    assertEquals(6, statics.renamedVal)
+    assertEquals("world", statics.renamedVar)
+
+    // JS modifies var
+    statics.renamedVar = "hello world"
+    assertEquals("hello world", statics.renamedVar)
+    assertEquals("hello world",
+        JSExportStaticTest.StaticExportFields.renamedBasicVar)
+
+    // Scala modifies var
+    JSExportStaticTest.StaticExportFields.renamedBasicVar = "modified once more"
+    assertEquals("modified once more",
+        JSExportStaticTest.StaticExportFields.renamedBasicVar)
+    assertEquals("modified once more", statics.renamedVar)
+
+    // Reset var
+    JSExportStaticTest.StaticExportFields.renamedBasicVar = "world"
+  }
+
+  @Test def uninitialized_fields(): Unit = {
+    val statics = js.constructorOf[JSExportStaticTest.StaticExportFields]
+
+    assertEquals(0, JSExportStaticTest.StaticExportFields.uninitializedVarInt)
+    assertEquals(0, statics.uninitializedVarInt)
+
+    assertEquals(null,
+        JSExportStaticTest.StaticExportFields.uninitializedVarString)
+    assertEquals(null, statics.uninitializedVarString)
+
+    assertEquals('\0',
+        JSExportStaticTest.StaticExportFields.uninitializedVarChar)
+    assertEquals(null, statics.uninitializedVarChar)
+  }
+
+  @Test def field_also_exists_in_member(): Unit = {
+    val statics = js.constructorOf[JSExportStaticTest.StaticExportFields]
+    assertEquals("hello", statics.alsoExistsAsMember)
+
+    val obj = new JSExportStaticTest.StaticExportFields
+    assertEquals(5, obj.alsoExistsAsMember)
+  }
+
 }
 
 @ScalaJSDefined
@@ -197,5 +284,36 @@ object JSExportStaticTest {
 
     @JSExportStatic
     def alsoExistsAsMember(x: Int): Int = x * 5
+  }
+
+  @ScalaJSDefined
+  class StaticExportFields extends js.Object {
+    val alsoExistsAsMember: Int = 5
+  }
+
+  object StaticExportFields {
+    @JSExportStatic
+    val basicVal: Int = 5
+
+    @JSExportStatic
+    var basicVar: String = "hello"
+
+    @JSExportStatic("renamedVal")
+    val renamedBasicVal: Int = 6
+
+    @JSExportStatic("renamedVar")
+    var renamedBasicVar: String = "world"
+
+    @JSExportStatic
+    var uninitializedVarInt: Int = _
+
+    @JSExportStatic
+    var uninitializedVarString: String = _
+
+    @JSExportStatic
+    var uninitializedVarChar: Char = _
+
+    @JSExportStatic
+    val alsoExistsAsMember: String = "hello"
   }
 }

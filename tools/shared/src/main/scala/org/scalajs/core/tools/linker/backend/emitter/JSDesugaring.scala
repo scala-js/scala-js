@@ -530,7 +530,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
               globalKnowledge.getJSClassFieldDefs(enclosingClassName)
 
             val fieldDefs = for {
-              field @ FieldDef(name, ftpe, mutable) <- enclosingClassFieldDefs
+              field @ FieldDef(false, name, ftpe, mutable) <-
+                enclosingClassFieldDefs
             } yield {
               implicit val pos = field.pos
               /* Here, a naive translation would emit something like this:
@@ -569,7 +570,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
                   js.StringLiteral("configurable") -> js.BooleanLiteral(true),
                   js.StringLiteral("enumerable") -> js.BooleanLiteral(true),
                   js.StringLiteral("writable") -> js.BooleanLiteral(true),
-                  js.StringLiteral("value") -> transformExpr(zeroOf(ftpe))
+                  js.StringLiteral("value") -> genZeroOf(ftpe)
               ))
               val descriptors = js.ObjectConstr(List(
                   transformedName -> descriptor))
@@ -1959,7 +1960,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         case StringLiteral(value)   => js.StringLiteral(value)
 
         case LongLiteral(0L) =>
-          genLongModuleApply(LongImpl.Zero)
+          genLongZero()
         case LongLiteral(value) =>
           if (globalKnowledge.hasNewRuntimeLong) {
             val (lo, hi) = LongImpl.extractParts(value)
@@ -2086,20 +2087,6 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       js.Apply(receiver DOT methodName, args.toList)
     }
 
-    private def genLongModuleApply(methodName: String, args: js.Tree*)(
-        implicit pos: Position): js.Tree = {
-      import TreeDSL._
-      js.Apply(
-          genLoadModule(LongImpl.RuntimeLongModuleClass) DOT methodName,
-          args.toList)
-    }
-
-    private def genLoadModule(moduleClass: String)(
-        implicit pos: Position): js.Tree = {
-      import TreeDSL._
-      js.Apply(envField("m", moduleClass), Nil)
-    }
-
     private implicit class RecordAwareEnv(env: Env) {
       def withDef(ident: Ident, tpe: Type, mutable: Boolean): Env = tpe match {
         case RecordType(fields) =>
@@ -2120,6 +2107,33 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   }
 
   // Helpers
+
+  private[emitter] def genZeroOf(tpe: Type)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    tpe match {
+      case BooleanType => js.BooleanLiteral(false)
+      case IntType     => js.IntLiteral(0)
+      case LongType    => genLongZero()
+      case FloatType   => js.DoubleLiteral(0.0)
+      case DoubleType  => js.DoubleLiteral(0.0)
+      case StringType  => js.StringLiteral("")
+      case UndefType   => js.Undefined()
+      case _           => js.Null()
+    }
+  }
+
+  private def genLongZero()(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    genLongModuleApply(LongImpl.Zero)
+  }
+
+  private def genLongModuleApply(methodName: String, args: js.Tree*)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    import TreeDSL._
+    js.Apply(
+        genLoadModule(LongImpl.RuntimeLongModuleClass) DOT methodName,
+        args.toList)
+  }
 
   private[emitter] def genLet(name: js.Ident, mutable: Boolean, rhs: js.Tree)(
       implicit outputMode: OutputMode, pos: Position): js.LocalDef = {
@@ -2203,6 +2217,12 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   private[emitter] def encodeClassVar(className: String)(
       implicit outputMode: OutputMode, pos: Position): js.Tree =
     envField("c", className)
+
+  private[emitter] def genLoadModule(moduleClass: String)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    import TreeDSL._
+    js.Apply(envField("m", moduleClass), Nil)
+  }
 
   private[emitter] def genRawJSClassConstructor(className: String)(
       implicit globalKnowledge: GlobalKnowledge, outputMode: OutputMode,
@@ -2373,6 +2393,14 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
       case OutputMode.ECMAScript6 =>
         genLet(globalVarIdent, mutable, value)
+    }
+  }
+
+  private[emitter] def genPropSelect(qual: js.Tree, item: js.PropertyName)(
+      implicit pos: Position): js.Tree = {
+    item match {
+      case item: js.Ident         => js.DotSelect(qual, item)
+      case item: js.StringLiteral => genBracketSelect(qual, item)
     }
   }
 

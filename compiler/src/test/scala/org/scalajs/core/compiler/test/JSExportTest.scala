@@ -1324,37 +1324,39 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticVal: Unit = {
+  def noExportStaticValTwice: Unit = {
     """
     @ScalaJSDefined
     class StaticContainer extends js.Object
 
     object StaticContainer {
       @JSExportStatic
+      @JSExportStatic("b")
       val a: Int = 1
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: Implementation restriction: cannot export a getter or a setter as static
-      |      @JSExportStatic
+      |newSource1.scala:8: error: Fields (val or var) cannot be exported as static more than once
+      |      @JSExportStatic("b")
       |       ^
     """
   }
 
   @Test
-  def noExportStaticVar: Unit = {
+  def noExportStaticVarTwice: Unit = {
     """
     @ScalaJSDefined
     class StaticContainer extends js.Object
 
     object StaticContainer {
       @JSExportStatic
+      @JSExportStatic("b")
       var a: Int = 1
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: Implementation restriction: cannot export a getter or a setter as static
-      |      @JSExportStatic
+      |newSource1.scala:8: error: Fields (val or var) cannot be exported as static more than once
+      |      @JSExportStatic("b")
       |       ^
     """
   }
@@ -1415,6 +1417,66 @@ class JSExportTest extends DirectTest with TestHelpers {
       |  (x: Int)Int
       |      def bar(x: Int): Int = x + 1
       |          ^
+    """
+  }
+
+  @Test
+  def noExportStaticFieldsWithSameName: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      val a: Int = 1
+
+      @JSExportStatic("a")
+      var b: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: Duplicate static export with name 'a': a field may not share its exported name with another field or method
+      |      val a: Int = 1
+      |          ^
+    """
+  }
+
+  @Test
+  def noExportStaticFieldsAndMethodsWithSameName: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      val a: Int = 1
+
+      @JSExportStatic("a")
+      def b(x: Int): Int = x + 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:10: error: Duplicate static export with name 'a': a field may not share its exported name with another field or method
+      |      @JSExportStatic("a")
+      |       ^
+    """
+
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      def a(x: Int): Int = x + 1
+
+      @JSExportStatic("a")
+      val b: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Duplicate static export with name 'a': a field may not share its exported name with another field or method
+      |      @JSExportStatic
+      |       ^
     """
   }
 

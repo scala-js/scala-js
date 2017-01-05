@@ -200,8 +200,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private def checkFieldDef(fieldDef: FieldDef, classDef: LinkedClass): Unit = {
-    val FieldDef(name, tpe, mutable) = fieldDef
+    val FieldDef(static, name, tpe, mutable) = fieldDef
     implicit val ctx = ErrorContext(fieldDef)
+
+    if (static && !classDef.kind.isJSClass)
+      reportError(s"FieldDef '$name' cannot be static")
 
     name match {
       case _: Ident =>
@@ -960,6 +963,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
     val resultType = resultRefType.fold[Type] {
       if (isConstructorName(encodedName)) NoType
+      else if (encodedName == StaticInitializerName) NoType
       else AnyType // reflective proxy
     } { refType =>
       refTypeToType(refType)
@@ -1143,7 +1147,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private object CheckedClass {
     private def checkedField(fieldDef: FieldDef) = {
-      val FieldDef(Ident(name, _), tpe, mutable) = fieldDef
+      val FieldDef(false, Ident(name, _), tpe, mutable) = fieldDef
       new CheckedField(name, tpe, mutable)
     }
   }
