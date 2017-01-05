@@ -37,7 +37,6 @@ object Trees {
   // Identifiers and properties
 
   sealed trait PropertyName {
-    def name: String
     def pos: Position
   }
 
@@ -205,9 +204,7 @@ object Trees {
   case class DoubleLiteral(value: Double)(implicit val pos: Position) extends Literal
 
   case class StringLiteral(value: String)(
-      implicit val pos: Position) extends Literal with PropertyName {
-    override def name = value
-  }
+      implicit val pos: Position) extends Literal with PropertyName
 
   // Atomic expressions
 

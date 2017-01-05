@@ -45,6 +45,12 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // Breaking. Remove PropertyName.name
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.javascript.Trees#PropertyName.name"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.javascript.Trees#StringLiteral.name"),
+
       // private, not an issue
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.sem.Semantics.this"),
@@ -58,6 +64,10 @@ object BinaryIncompatibilities {
           "org.scalajs.core.tools.linker.analyzer.Analyzer.org$scalajs$core$tools$linker$analyzer$Analyzer$$createMissingMethodInfo$default$2"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.analyzer.Analyzer.org$scalajs$core$tools$linker$analyzer$Analyzer$$createMissingMethodInfo$default$3"),
+
+      // private[closure], not an issue
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.backend.closure.ClosureAstTransformer.transformString"),
 
       // private[emitter], not an issue
       ProblemFilters.exclude[MissingMethodProblem](
