@@ -373,7 +373,7 @@ object Infos {
 
     def generateMethodInfo(methodDef: MethodDef): MethodInfo = {
       builder
-        .setEncodedName(methodDef.name.name)
+        .setEncodedName(methodDef.name.encodedName)
         .setIsStatic(methodDef.static)
         .setIsAbstract(methodDef.body.isEmpty)
         .setIsExported(methodDef.name.isInstanceOf[StringLiteral])
@@ -385,7 +385,7 @@ object Infos {
 
     def generatePropertyInfo(propertyDef: PropertyDef): MethodInfo = {
       builder
-        .setEncodedName(propertyDef.name.name)
+        .setEncodedName(propertyDef.name.encodedName)
         .setIsStatic(propertyDef.static)
         .setIsExported(true)
 

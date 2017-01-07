@@ -142,7 +142,7 @@ private[optimizer] abstract class OptimizerCore(
           transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       }
       val newBody =
-        if (name.name == "init___") tryElimStoreModule(newBody1)
+        if (name.encodedName == "init___") tryElimStoreModule(newBody1)
         else newBody1
       val m = MethodDef(static, name, newParams, resultType,
           Some(newBody))(originalDef.optimizerHints, None)(originalDef.pos)

@@ -201,13 +201,13 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     val classExports = mutable.Buffer.empty[Tree]
 
     def linkedMethod(m: MethodDef) = {
-      val info = memberInfoByStaticAndName((m.static, m.name.name))
+      val info = memberInfoByStaticAndName((m.static, m.name.encodedName))
       val version = m.hash.map(Hashers.hashAsVersion(_, considerPositions))
       new LinkedMember(info, m, version)
     }
 
     def linkedProperty(p: PropertyDef) = {
-      val info = memberInfoByStaticAndName((p.static, p.name.name))
+      val info = memberInfoByStaticAndName((p.static, p.name.encodedName))
       new LinkedMember(info, p, None)
     }
 
@@ -220,7 +220,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     classDef.defs.foreach {
       // Static methods
       case m: MethodDef if m.static =>
-        if (analyzerInfo.staticMethodInfos(m.name.name).isReachable) {
+        if (analyzerInfo.staticMethodInfos(m.name.encodedName).isReachable) {
           if (m.name.isInstanceOf[StringLiteral])
             exportedMembers += linkedMethod(m)
           else
@@ -234,7 +234,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
 
       // Normal methods
       case m: MethodDef =>
-        if (analyzerInfo.methodInfos(m.name.name).isReachable) {
+        if (analyzerInfo.methodInfos(m.name.encodedName).isReachable) {
           if (m.name.isInstanceOf[StringLiteral])
             exportedMembers += linkedMethod(m)
           else if (m.body.isDefined)
@@ -445,7 +445,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     val (classDef, _) = getTree(classInfo.encodedName)
     classDef.defs.collectFirst {
       case mDef: MethodDef
-          if !mDef.static && mDef.name.name == methodName => mDef
+          if !mDef.static && mDef.name.encodedName == methodName => mDef
     }.getOrElse {
       throw new AssertionError(
           s"Cannot find $methodName in ${classInfo.encodedName}")

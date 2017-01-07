@@ -1100,7 +1100,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         else (subConstructors.head.overrideNumBounds._1, overrideNum)
 
       def get(methodName: String): Option[ConstructorTree] = {
-        if (methodName == this.method.name.name) {
+        if (methodName == this.method.name.encodedName) {
           Some(this)
         } else {
           subConstructors.iterator.map(_.get(methodName)).collectFirst {
@@ -1370,7 +1370,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       var overrideNum = -1
       def mkConstructorTree(method: js.MethodDef): ConstructorTree = {
-        val methodName = method.name.name
+        val methodName = method.name.encodedName
         val subCtrTrees = ctorToChildren(methodName).map(mkConstructorTree)
         overrideNum += 1
         new ConstructorTree(overrideNum, method, subCtrTrees)

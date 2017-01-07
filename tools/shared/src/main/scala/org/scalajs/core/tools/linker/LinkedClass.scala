@@ -146,12 +146,12 @@ object LinkedClass {
     val classExports = mutable.Buffer.empty[Tree]
 
     def linkedMethod(m: MethodDef) = {
-      val info = memberInfoByName(m.name.name)
+      val info = memberInfoByName(m.name.encodedName)
       new LinkedMember(info, m, None)
     }
 
     def linkedProperty(p: PropertyDef) = {
-      val info = memberInfoByName(p.name.name)
+      val info = memberInfoByName(p.name.encodedName)
       new LinkedMember(info, p, None)
     }
 

@@ -37,6 +37,14 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.ir.Tags.TagTopLevelExportDef"),
 
+      // Breaking: PropertyName.{name -> encodedName}
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyName.encodedName"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.ir.Trees#StringLiteral.name"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyName.name"),
+
       // private, not an issue
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.ir.Infos#MethodInfo.this"),

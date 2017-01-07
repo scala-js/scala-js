@@ -41,7 +41,7 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
     for (linkedClass <- linkingUnit.classDefs) {
       def hasStaticInitializer = {
         linkedClass.staticMethods.exists {
-          _.tree.name.name == ir.Definitions.StaticInitializerName
+          _.tree.name.encodedName == ir.Definitions.StaticInitializerName
         }
       }
 

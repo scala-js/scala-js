@@ -128,7 +128,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
        */
       val staticFieldDefs = classDef.fields.filter(_.static)
       for {
-        fieldsWithSameName <- staticFieldDefs.groupBy(_.name.name).values
+        fieldsWithSameName <- staticFieldDefs.groupBy(_.name.encodedName).values
         duplicate <- fieldsWithSameName.tail
       } {
         implicit val ctx = ErrorContext(duplicate)

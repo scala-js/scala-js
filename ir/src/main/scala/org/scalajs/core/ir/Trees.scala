@@ -31,13 +31,15 @@ object Trees {
   // Identifiers and properties
 
   sealed trait PropertyName {
-    def name: String
+    /** Encoded name of this PropertyName within its owner's scope. */
+    def encodedName: String
     def pos: Position
   }
 
   case class Ident(name: String, originalName: Option[String])(
       implicit val pos: Position) extends PropertyName {
     requireValidIdent(name)
+    def encodedName: String = name
   }
 
   object Ident {
@@ -741,7 +743,7 @@ object Trees {
   case class StringLiteral(value: String)(
       implicit val pos: Position) extends Literal with PropertyName {
     val tpe = StringType
-    override def name: String = value
+    override def encodedName: String = value
   }
 
   case class ClassOf(cls: ReferenceType)(

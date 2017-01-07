@@ -1478,7 +1478,7 @@ private[emitter] class JSDesugaring(semantics: Semantics,
             val assignFields = fields.foldRight((Set.empty[String], List.empty[Tree])) {
               case ((prop, value), (namesSeen, statsAcc)) =>
                 implicit val pos = value.pos
-                val name = prop.name
+                val name = prop.encodedName
                 val stat = prop match {
                   case _ if namesSeen.contains(name) =>
                     /* Important: do not emit the assignment, otherwise
@@ -1574,7 +1574,7 @@ private[emitter] class JSDesugaring(semantics: Semantics,
     /** Tests whether a [[JSObjectConstr]] must be desugared. */
     private def doesObjectConstrRequireDesugaring(
         tree: JSObjectConstr): Boolean = {
-      val names = tree.fields.map(_._1.name)
+      val names = tree.fields.map(_._1.encodedName)
       names.toSet.size != names.size // i.e., there is at least one duplicate
     }
 

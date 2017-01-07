@@ -340,7 +340,7 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
   def genStaticInitialization(tree: LinkedClass): js.Tree = {
     import Definitions.StaticInitializerName
     implicit val pos = tree.pos
-    if (tree.staticMethods.exists(_.tree.name.name == StaticInitializerName)) {
+    if (tree.staticMethods.exists(_.tree.name.encodedName == StaticInitializerName)) {
       val fullName = tree.encodedName + "__" + StaticInitializerName
       js.Apply(envField("s", fullName, Some("<clinit>")), Nil)
     } else {
@@ -359,7 +359,7 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
     val methodFun0 = desugarToFunction(className,
         method.args, methodBody, method.resultType == NoType)
 
-    val methodFun = if (Definitions.isConstructorName(method.name.name)) {
+    val methodFun = if (Definitions.isConstructorName(method.name.encodedName)) {
       // init methods have to return `this` so that we can chain them to `new`
       js.Function(methodFun0.args, {
         implicit val pos = methodFun0.body.pos
