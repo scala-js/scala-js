@@ -31,7 +31,7 @@ object ScalaRunTime {
     x != null && isArrayClass(x.getClass, atLevel)
 
   private def isArrayClass(clazz: jClass[_], atLevel: Int): Boolean =
-    clazz.isArray && (atLevel == 1 || isArrayClass(clazz.getComponentType, atLevel - 1))
+    clazz != null && clazz.isArray && (atLevel == 1 || isArrayClass(clazz.getComponentType, atLevel - 1))
 
   def isValueClass(clazz: jClass[_]) = clazz.isPrimitive()
 
