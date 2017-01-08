@@ -218,20 +218,24 @@ private[emitter] class JSDesugaring(semantics: Semantics,
       thisIdent: Option[js.Ident], params: List[ParamDef],
       body: Tree, isStat: Boolean)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
-    new JSDesugar(enclosingClassName)
-      .desugarToFunction(params, body, isStat, Env.empty.withThisIdent(thisIdent))
+    val env = Env.empty
+      .withThisIdent(thisIdent)
+      .withEnclosingClassName(Some(enclosingClassName))
+
+    new JSDesugar().desugarToFunction(params, body, isStat, env)
   }
 
   /** Desugars a statement or an expression. */
   private[emitter] def desugarTree(
-      enclosingClassName: String,
+      enclosingClassName: Option[String],
       tree: Tree, isStat: Boolean)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
-    val desugar = new JSDesugar(enclosingClassName)
+    val env = Env.empty.withEnclosingClassName(enclosingClassName)
+    val desugar = new JSDesugar()
     if (isStat)
-      desugar.transformStat(tree, Set.empty)(Env.empty)
+      desugar.transformStat(tree, Set.empty)(env)
     else
-      desugar.transformExpr(tree)(Env.empty)
+      desugar.transformExpr(tree)(env)
   }
 
   private[emitter] implicit def transformIdent(ident: Ident): js.Ident =
@@ -240,8 +244,7 @@ private[emitter] class JSDesugaring(semantics: Semantics,
   private[emitter] def transformParamDef(paramDef: ParamDef): js.ParamDef =
     js.ParamDef(paramDef.name, paramDef.rest)(paramDef.pos)
 
-  private class JSDesugar(enclosingClassName: String)(
-      implicit globalKnowledge: GlobalKnowledge) {
+  private class JSDesugar()(implicit globalKnowledge: GlobalKnowledge) {
 
     // Synthetic variables
 
@@ -500,6 +503,10 @@ private[emitter] class JSDesugaring(semantics: Semantics,
         case JSSuperConstructorCall(args) =>
           unnestOrSpread(args) { (newArgs, env0) =>
             implicit val env = env0
+
+            val enclosingClassName = env.enclosingClassName.getOrElse {
+              sys.error("Need enclosing class for super constructor call.")
+            }
 
             val superCtorCall = {
               outputMode match {
@@ -2471,6 +2478,7 @@ private object JSDesugaring {
 
   final class Env private (
       val thisIdent: Option[js.Ident],
+      val enclosingClassName: Option[String],
       vars: Map[String, Boolean],
       labeledExprLHSes: Map[String, Lhs],
       defaultBreakTargets: Set[String]
@@ -2481,6 +2489,9 @@ private object JSDesugaring {
 
     def isDefaultBreakTarget(label: String): Boolean =
       defaultBreakTargets.contains(label)
+
+    def withEnclosingClassName(enclosingClassName: Option[String]): Env =
+      copy(enclosingClassName = enclosingClassName)
 
     def withThisIdent(thisIdent: Option[js.Ident]): Env =
       copy(thisIdent = thisIdent)
@@ -2504,14 +2515,16 @@ private object JSDesugaring {
 
     private def copy(
         thisIdent: Option[js.Ident] = this.thisIdent,
+        enclosingClassName: Option[String] = this.enclosingClassName,
         vars: Map[String, Boolean] = this.vars,
         labeledExprLHSes: Map[String, Lhs] = this.labeledExprLHSes,
         defaultBreakTargets: Set[String] = this.defaultBreakTargets): Env = {
-      new Env(thisIdent, vars, labeledExprLHSes, defaultBreakTargets)
+      new Env(thisIdent, enclosingClassName, vars, labeledExprLHSes,
+          defaultBreakTargets)
     }
   }
 
   object Env {
-    def empty: Env = new Env(None, Map.empty, Map.empty, Set.empty)
+    def empty: Env = new Env(None, None, Map.empty, Map.empty, Set.empty)
   }
 }

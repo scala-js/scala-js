@@ -302,7 +302,7 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
       val selectField = (name: @unchecked) match {
         case name: Ident => Select(This()(tpe), name)(ftpe)
       }
-      desugarTree(tree.encodedName,
+      desugarTree(Some(tree.encodedName),
           Assign(selectField, zeroOf(ftpe)), isStat = true)
     }
   }

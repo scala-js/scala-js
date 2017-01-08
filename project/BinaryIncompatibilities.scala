@@ -71,7 +71,11 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.this"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.this")
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.this"),
+
+      // private, not an issue.
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#Env.this")
   )
 
   val JSEnvs = Seq(
