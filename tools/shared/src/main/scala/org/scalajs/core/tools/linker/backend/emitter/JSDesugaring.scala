@@ -195,7 +195,8 @@ import java.io.StringWriter
  *
  *  @author Sébastien Doeraene
  */
-private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
+private[emitter] class JSDesugaring(semantics: Semantics,
+    outputMode: OutputMode, internalOptions: InternalOptions) {
   import JSDesugaring._
 
   private final val ScalaJSEnvironmentName = "ScalaJS"
@@ -203,30 +204,30 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   /** Desugars parameters and body to a JS function.
    */
   private[emitter] def desugarToFunction(
-      classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
+      enclosingClassName: String,
       params: List[ParamDef], body: Tree, isStat: Boolean)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
-    desugarToFunction(classEmitter, enclosingClassName,
+    desugarToFunction(enclosingClassName,
         None, params, body, isStat)
   }
 
   /** Desugars parameters and body to a JS function.
    */
   private[emitter] def desugarToFunction(
-      classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
+      enclosingClassName: String,
       thisIdent: Option[js.Ident], params: List[ParamDef],
       body: Tree, isStat: Boolean)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
-    new JSDesugar(classEmitter, enclosingClassName)
+    new JSDesugar(enclosingClassName)
       .desugarToFunction(params, body, isStat, Env.empty.withThisIdent(thisIdent))
   }
 
   /** Desugars a statement or an expression. */
   private[emitter] def desugarTree(
-      classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
+      enclosingClassName: String,
       tree: Tree, isStat: Boolean)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
-    val desugar = new JSDesugar(classEmitter, enclosingClassName)
+    val desugar = new JSDesugar(enclosingClassName)
     if (isStat)
       desugar.transformStat(tree, Set.empty)(Env.empty)
     else
@@ -239,12 +240,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   private[emitter] def transformParamDef(paramDef: ParamDef): js.ParamDef =
     js.ParamDef(paramDef.name, paramDef.rest)(paramDef.pos)
 
-  private class JSDesugar(
-      classEmitter: ScalaJSClassEmitter, enclosingClassName: String)(
+  private class JSDesugar(enclosingClassName: String)(
       implicit globalKnowledge: GlobalKnowledge) {
-
-    private val semantics = classEmitter.semantics
-    private implicit val outputMode: OutputMode = classEmitter.outputMode
 
     // Synthetic variables
 
@@ -2115,8 +2112,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
   // Helpers
 
-  private[emitter] def genZeroOf(tpe: Type)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+  private[emitter] def genZeroOf(tpe: Type)(implicit pos: Position): js.Tree = {
     tpe match {
       case BooleanType => js.BooleanLiteral(false)
       case IntType     => js.IntLiteral(0)
@@ -2129,13 +2125,12 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
     }
   }
 
-  private def genLongZero()(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+  private def genLongZero()(implicit pos: Position): js.Tree = {
     genLongModuleApply(LongImpl.Zero)
   }
 
   private def genLongModuleApply(methodName: String, args: js.Tree*)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
     import TreeDSL._
     js.Apply(
         genLoadModule(LongImpl.RuntimeLongModuleClass) DOT methodName,
@@ -2143,7 +2138,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   }
 
   private[emitter] def genLet(name: js.Ident, mutable: Boolean, rhs: js.Tree)(
-      implicit outputMode: OutputMode, pos: Position): js.LocalDef = {
+      implicit pos: Position): js.LocalDef = {
     outputMode match {
       case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
         js.VarDef(name, Some(rhs))
@@ -2153,7 +2148,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   }
 
   private[emitter] def genEmptyMutableLet(name: js.Ident)(
-      implicit outputMode: OutputMode, pos: Position): js.LocalDef = {
+      implicit pos: Position): js.LocalDef = {
     outputMode match {
       case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
         js.VarDef(name, rhs = None)
@@ -2163,20 +2158,20 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   }
 
   private[emitter] def genSelectStatic(className: String, item: Ident)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
     envField("t", className + "__" + item.name)
   }
 
   private[emitter] def genIsInstanceOf(expr: js.Tree, cls: ReferenceType)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree =
+      implicit pos: Position): js.Tree =
     genIsAsInstanceOf(expr, cls, test = true)
 
   private def genAsInstanceOf(expr: js.Tree, cls: ReferenceType)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree =
+      implicit pos: Position): js.Tree =
     genIsAsInstanceOf(expr, cls, test = false)
 
   private def genIsAsInstanceOf(expr: js.Tree, cls: ReferenceType, test: Boolean)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
     import Definitions._
     import TreeDSL._
 
@@ -2222,23 +2217,22 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   }
 
   private[emitter] def genCallHelper(helperName: String, args: js.Tree*)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
     js.Apply(envField(helperName), args.toList)
   }
 
   private[emitter] def encodeClassVar(className: String)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree =
+      implicit pos: Position): js.Tree =
     envField("c", className)
 
   private[emitter] def genLoadModule(moduleClass: String)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
     import TreeDSL._
     js.Apply(envField("m", moduleClass), Nil)
   }
 
   private[emitter] def genRawJSClassConstructor(className: String)(
-      implicit globalKnowledge: GlobalKnowledge, outputMode: OutputMode,
-      pos: Position): js.Tree = {
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Tree = {
 
     genRawJSClassConstructor(className,
         globalKnowledge.getJSNativeLoadSpec(className))
@@ -2246,7 +2240,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
   private[emitter] def genRawJSClassConstructor(className: String,
       spec: Option[JSNativeLoadSpec])(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
     spec match {
       case None =>
         // This is a Scala.js-defined JS class, call its class value accessor
@@ -2258,7 +2252,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   }
 
   private[emitter] def genLoadJSFromSpec(spec: JSNativeLoadSpec)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
 
     def pathSelection(from: js.Tree, path: List[String]): js.Tree = {
       path.foldLeft(from) {
@@ -2329,7 +2323,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
   private[emitter] def envField(field: String, subField: String,
       origName: Option[String] = None)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
     import TreeDSL._
 
     outputMode match {
@@ -2342,7 +2336,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   }
 
   private[emitter] def envField(field: String)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
     import TreeDSL._
 
     outputMode match {
@@ -2356,25 +2350,25 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
   private[emitter] def envFieldDef(field: String, subField: String,
       value: js.Tree)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
     envFieldDef(field, subField, value, mutable = false)
   }
 
   private[emitter] def envFieldDef(field: String, subField: String,
       value: js.Tree, mutable: Boolean)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
     envFieldDef(field, subField, origName = None, value, mutable)
   }
 
   private[emitter] def envFieldDef(field: String, subField: String,
       origName: Option[String], value: js.Tree)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
     envFieldDef(field, subField, origName, value, mutable = false)
   }
 
   private[emitter] def envFieldDef(field: String, subField: String,
       origName: Option[String], value: js.Tree, mutable: Boolean)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
     envFieldDef(field, subField, origName, value, mutable,
         keepFunctionExpression = false)
   }
@@ -2382,7 +2376,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   private[emitter] def envFieldDef(field: String, subField: String,
       origName: Option[String], value: js.Tree, mutable: Boolean,
       keepFunctionExpression: Boolean)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+      implicit pos: Position): js.Tree = {
     val globalVar = envField(field, subField, origName)
     def globalVarIdent = globalVar.asInstanceOf[js.VarRef].ident
 
