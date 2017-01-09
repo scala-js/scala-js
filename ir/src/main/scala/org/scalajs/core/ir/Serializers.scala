@@ -198,6 +198,11 @@ object Serializers {
           writeTree(qualifier); writeIdent(item)
           writeType(tree.tpe)
 
+        case SelectStatic(cls, item) =>
+          writeByte(TagSelectStatic)
+          writeClassType(cls); writeIdent(item)
+          writeType(tree.tpe)
+
         case Apply(receiver, method, args) =>
           writeByte(TagApply)
           writeTree(receiver); writeIdent(method); writeTrees(args)
@@ -463,6 +468,10 @@ object Serializers {
         case TopLevelExportDef(member) =>
           writeByte(TagTopLevelExportDef)
           writeTree(member)
+
+        case TopLevelFieldExportDef(fullName, field) =>
+          writeByte(TagTopLevelFieldExportDef)
+          writeString(fullName); writeIdent(field)
       }
       if (UseDebugMagic)
         writeInt(DebugMagic)
@@ -723,6 +732,7 @@ object Serializers {
         case TagLoadModule      => LoadModule(readClassType())
         case TagStoreModule     => StoreModule(readClassType(), readTree())
         case TagSelect          => Select(readTree(), readIdent())(readType())
+        case TagSelectStatic    => SelectStatic(readClassType(), readIdent())(readType())
         case TagApply           => Apply(readTree(), readIdent(), readTrees())(readType())
         case TagApplyStatically =>
           val result1 =
@@ -886,9 +896,10 @@ object Serializers {
             result
           }
 
-        case TagJSClassExportDef  => JSClassExportDef(readString())
-        case TagModuleExportDef   => ModuleExportDef(readString())
-        case TagTopLevelExportDef => TopLevelExportDef(readTree())
+        case TagJSClassExportDef       => JSClassExportDef(readString())
+        case TagModuleExportDef        => ModuleExportDef(readString())
+        case TagTopLevelExportDef      => TopLevelExportDef(readTree())
+        case TagTopLevelFieldExportDef => TopLevelFieldExportDef(readString(), readIdent())
       }
       if (UseDebugMagic) {
         val magic = readInt()

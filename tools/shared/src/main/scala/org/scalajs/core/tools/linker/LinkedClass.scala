@@ -69,6 +69,8 @@ final class LinkedClass(
 
     case TopLevelExportDef(MethodDef(_, StringLiteral(name), _, _, _)) =>
       name
+
+    case TopLevelFieldExportDef(name, _) => name
   }
 
   def fullName: String = Definitions.decodeClassName(encodedName)

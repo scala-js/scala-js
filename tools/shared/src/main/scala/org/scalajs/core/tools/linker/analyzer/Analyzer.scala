@@ -244,6 +244,7 @@ private final class Analyzer(semantics: Semantics,
     var isModuleAccessed: Boolean = false
     var areInstanceTestsUsed: Boolean = false
     var isDataAccessed: Boolean = false
+    var isAnyStaticFieldReachable: Boolean = false
 
     var instantiatedFrom: List[From] = Nil
 
@@ -254,6 +255,7 @@ private final class Analyzer(semantics: Semantics,
       isDataAccessed ||
       isAnySubclassInstantiated ||
       isModuleAccessed ||
+      isAnyStaticFieldReachable ||
       isAnyStaticMethodReachable ||
       isAnyDefaultMethodReachable
 
@@ -287,7 +289,7 @@ private final class Analyzer(semantics: Semantics,
             assert(inherited.nonExistent)
             inherited
           } else {
-            val syntheticInfo = Infos.MethodInfo(
+            val syntheticInfo = makeSyntheticMethodInfo(
                 encodedName = ctorName,
                 methodsCalledStatically = Map(
                     superClass.encodedName -> List(ctorName)))
@@ -403,7 +405,7 @@ private final class Analyzer(semantics: Semantics,
       val methodName = target.encodedName
       val targetOwner = target.owner
 
-      val syntheticInfo = Infos.MethodInfo(
+      val syntheticInfo = makeSyntheticMethodInfo(
           encodedName = methodName,
           methodsCalledStatically = Map(
               targetOwner.encodedName -> List(methodName)))
@@ -521,7 +523,7 @@ private final class Analyzer(semantics: Semantics,
           s"Cannot create reflective proxy in non-Scala class $this")
 
       val returnsChar = targetName.endsWith("__C")
-      val syntheticInfo = Infos.MethodInfo(
+      val syntheticInfo = makeSyntheticMethodInfo(
           encodedName = proxyName,
           methodsCalled = Map(
               this.encodedName -> List(targetName)),
@@ -539,7 +541,7 @@ private final class Analyzer(semantics: Semantics,
 
     def lookupStaticMethod(methodName: String): MethodInfo = {
       tryLookupStaticMethod(methodName).getOrElse {
-        val syntheticData = createMissingMethodInfo(methodName, isStatic = true)
+        val syntheticData = createMissingStaticMethodInfo(methodName)
         val m = new MethodInfo(this, syntheticData)
         m.nonExistent = true
         staticMethodInfos += methodName -> m
@@ -567,6 +569,15 @@ private final class Analyzer(semantics: Semantics,
         for (methodInfo <- methodInfos.values) {
           if (methodInfo.isExported)
             callMethod(methodInfo.encodedName)
+        }
+      }
+
+      /* My static initializer.
+       * Not technically an export, but also reachable out of thin air.
+       */
+      if (!isJSType) {
+        staticMethodInfos.get(StaticInitializerName).foreach {
+          _.reachStatic()(fromAnalyzer)
         }
       }
     }
@@ -788,8 +799,23 @@ private final class Analyzer(semantics: Semantics,
       }
 
       /* `for` loops on maps are written with `while` loops to help the JIT
-       * compiler to inline and stack allocate tupples created by the iterators
+       * compiler to inline and stack allocate tuples created by the iterators
        */
+
+      val staticFieldsReadIterator = data.staticFieldsRead.iterator
+      while (staticFieldsReadIterator.hasNext) {
+        val (className, fields) = staticFieldsReadIterator.next()
+        if (fields.nonEmpty)
+          lookupClass(className).isAnyStaticFieldReachable = true
+      }
+
+      val staticFieldsWrittenIterator = data.staticFieldsRead.iterator
+      while (staticFieldsWrittenIterator.hasNext) {
+        val (className, fields) = staticFieldsWrittenIterator.next()
+        if (fields.nonEmpty)
+          lookupClass(className).isAnyStaticFieldReachable = true
+      }
+
       val methodsCalledIterator = data.methodsCalled.iterator
       while (methodsCalledIterator.hasNext) {
         val (className, methods) = methodsCalledIterator.next()
@@ -846,11 +872,38 @@ private final class Analyzer(semantics: Semantics,
     )
   }
 
-  private def createMissingMethodInfo(encodedName: String,
+  private def createMissingMethodInfo(
+      encodedName: String): Infos.MethodInfo = {
+    makeSyntheticMethodInfo(encodedName = encodedName)
+  }
+
+  private def createMissingStaticMethodInfo(
+      encodedName: String): Infos.MethodInfo = {
+    makeSyntheticMethodInfo(encodedName = encodedName, isStatic = true)
+  }
+
+  private def makeSyntheticMethodInfo(
+      encodedName: String,
       isStatic: Boolean = false,
-      isAbstract: Boolean = false): Infos.MethodInfo = {
-    Infos.MethodInfo(encodedName = encodedName,
-        isStatic = isStatic, isAbstract = isAbstract)
+      methodsCalled: Map[String, List[String]] = Map.empty,
+      methodsCalledStatically: Map[String, List[String]] = Map.empty,
+      instantiatedClasses: List[String] = Nil
+  ): Infos.MethodInfo = {
+    Infos.MethodInfo(
+        encodedName,
+        isStatic,
+        isAbstract = false,
+        isExported = false,
+        staticFieldsRead = Map.empty,
+        staticFieldsWritten = Map.empty,
+        methodsCalled = methodsCalled,
+        methodsCalledStatically = methodsCalledStatically,
+        staticMethodsCalled = Map.empty,
+        instantiatedClasses = instantiatedClasses,
+        accessedModules = Nil,
+        usedInstanceTests = Nil,
+        accessedClassData = Nil
+    )
   }
 
 }

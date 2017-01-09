@@ -109,8 +109,28 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
       emitModuleImports(orderedClasses, builder, logger)
 
+      /* Emit all the classes, in the appropriate order:
+       *
+       * - First, all class definitions, which depend on nothing but their
+       *   superclasses.
+       * - Second, all static field definitions, which depend on nothing,
+       *   except those of type Long which need to instantiate RuntimeLong.
+       * - Third, all static initializers, which in the worst case can observe
+       *   some "zero" state of other static field definitions, but must not
+       *   observe a *non-initialized* (undefined) state.
+       * - Finally, all the exports, during which some JS class creation can
+       *   happen, causing JS static initializers to run. Those also must not
+       *   observe a non-initialized state of other static fields.
+       */
+
       for (linkedClass <- orderedClasses)
         emitLinkedClass(linkedClass, builder)
+
+      for (linkedClass <- orderedClasses)
+        emitLinkedClassStaticFields(linkedClass, builder)
+
+      for (linkedClass <- orderedClasses)
+        emitLinkedClassStaticInitializer(linkedClass, builder)
 
       for (linkedClass <- orderedClasses)
         emitLinkedClassClassExports(linkedClass, builder)
@@ -270,16 +290,39 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
           classEmitter.genModuleAccessor(linkedClass)))
   }
 
+  /** Emits the static fields of a linked class.
+   *
+   *  They are initialized with the zero of their type at this point. It is
+   *  the job of static initializers to properly initialize them.
+   */
+  private def emitLinkedClassStaticFields(linkedClass: LinkedClass,
+      builder: JSTreeBuilder): Unit = {
+
+    if (!linkedClass.kind.isJSType) {
+      val classCache = getClassCache(linkedClass.ancestors)
+      val classTreeCache = classCache.getCache(linkedClass.version)
+
+      builder.addJSTree(classTreeCache.staticFields.getOrElseUpdate(
+          classEmitter.genCreateStaticFieldsOfScalaClass(linkedClass)(classCache)))
+    }
+  }
+
+  /** Emits the static initializer of a linked class, if any. */
+  private def emitLinkedClassStaticInitializer(linkedClass: LinkedClass,
+      builder: JSTreeBuilder): Unit = {
+
+    if (!linkedClass.kind.isJSType)
+      builder.addJSTree(classEmitter.genStaticInitialization(linkedClass))
+  }
+
   /** Emits the class exports of a linked class.
    *
    *  This is done after everything else has been emitted for all the classes
    *  in the program. That is necessary because class exports can call class
    *  value accessors, which may have unknown circular references.
    */
-  private def emitLinkedClassClassExports(
-      linkedClass: LinkedClass, builder: JSTreeBuilder): Unit = {
-
-    def addTree(tree: js.Tree): Unit = builder.addJSTree(tree)
+  private def emitLinkedClassClassExports(linkedClass: LinkedClass,
+      builder: JSTreeBuilder): Unit = {
 
     /* `if` to avoid looking up the caches for nothing. Probably worth doing
      * because only few classes have class exports.
@@ -288,7 +331,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       val classCache = getClassCache(linkedClass.ancestors)
       val classTreeCache = classCache.getCache(linkedClass.version)
 
-      addTree(classTreeCache.classExports.getOrElseUpdate(
+      builder.addJSTree(classTreeCache.classExports.getOrElseUpdate(
           classEmitter.genClassExports(linkedClass)(classCache)))
     }
   }
@@ -434,6 +477,7 @@ private[scalajs] object Emitter {
     val typeData = new OneTimeCache[js.Tree]
     val setTypeData = new OneTimeCache[js.Tree]
     val moduleAccessor = new OneTimeCache[js.Tree]
+    val staticFields = new OneTimeCache[js.Tree]
     val classExports = new OneTimeCache[js.Tree]
   }
 

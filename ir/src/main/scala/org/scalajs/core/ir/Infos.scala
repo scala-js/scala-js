@@ -44,6 +44,8 @@ object Infos {
       val isStatic: Boolean,
       val isAbstract: Boolean,
       val isExported: Boolean,
+      val staticFieldsRead: Map[String, List[String]],
+      val staticFieldsWritten: Map[String, List[String]],
       val methodsCalled: Map[String, List[String]],
       val methodsCalledStatically: Map[String, List[String]],
       val staticMethodsCalled: Map[String, List[String]],
@@ -57,6 +59,8 @@ object Infos {
   )
 
   object MethodInfo {
+    @deprecated("Use the overload with all the fields and no defaults",
+        "0.6.15")
     def apply(
         encodedName: String,
         isStatic: Boolean = false,
@@ -69,7 +73,29 @@ object Infos {
         accessedModules: List[String] = Nil,
         usedInstanceTests: List[String] = Nil,
         accessedClassData: List[String] = Nil): MethodInfo = {
+      apply(encodedName, isStatic, isAbstract, isExported,
+          staticFieldsRead = Map.empty, staticFieldsWritten = Map.empty,
+          methodsCalled, methodsCalledStatically, staticMethodsCalled,
+          instantiatedClasses, accessedModules, usedInstanceTests,
+          accessedClassData)
+    }
+
+    def apply(
+        encodedName: String,
+        isStatic: Boolean,
+        isAbstract: Boolean,
+        isExported: Boolean,
+        staticFieldsRead: Map[String, List[String]],
+        staticFieldsWritten: Map[String, List[String]],
+        methodsCalled: Map[String, List[String]],
+        methodsCalledStatically: Map[String, List[String]],
+        staticMethodsCalled: Map[String, List[String]],
+        instantiatedClasses: List[String],
+        accessedModules: List[String],
+        usedInstanceTests: List[String],
+        accessedClassData: List[String]): MethodInfo = {
       new MethodInfo(encodedName, isStatic, isAbstract, isExported,
+          staticFieldsRead, staticFieldsWritten,
           methodsCalled, methodsCalledStatically, staticMethodsCalled,
           instantiatedClasses, accessedModules, usedInstanceTests,
           accessedClassData)
@@ -131,6 +157,8 @@ object Infos {
     private var isAbstract: Boolean = false
     private var isExported: Boolean = false
 
+    private val staticFieldsRead = mutable.Map.empty[String, mutable.Set[String]]
+    private val staticFieldsWritten = mutable.Map.empty[String, mutable.Set[String]]
     private val methodsCalled = mutable.Map.empty[String, mutable.Set[String]]
     private val methodsCalledStatically = mutable.Map.empty[String, mutable.Set[String]]
     private val staticMethodsCalled = mutable.Map.empty[String, mutable.Set[String]]
@@ -156,6 +184,16 @@ object Infos {
 
     def setIsExported(isExported: Boolean): this.type = {
       this.isExported = isExported
+      this
+    }
+
+    def addStaticFieldRead(cls: String, field: String): this.type = {
+      staticFieldsRead.getOrElseUpdate(cls, mutable.Set.empty) += field
+      this
+    }
+
+    def addStaticFieldWritten(cls: String, field: String): this.type = {
+      staticFieldsWritten.getOrElseUpdate(cls, mutable.Set.empty) += field
       this
     }
 
@@ -233,14 +271,21 @@ object Infos {
     }
 
     def result(): MethodInfo = {
+      def toMapOfLists(
+          m: mutable.Map[String, mutable.Set[String]]): Map[String, List[String]] = {
+        m.mapValues(_.toList).toMap
+      }
+
       MethodInfo(
           encodedName = encodedName,
           isStatic = isStatic,
           isAbstract = isAbstract,
           isExported = isExported,
-          methodsCalled = methodsCalled.toMap.mapValues(_.toList),
-          methodsCalledStatically = methodsCalledStatically.toMap.mapValues(_.toList),
-          staticMethodsCalled = staticMethodsCalled.toMap.mapValues(_.toList),
+          staticFieldsRead = toMapOfLists(staticFieldsRead),
+          staticFieldsWritten = toMapOfLists(staticFieldsWritten),
+          methodsCalled = toMapOfLists(methodsCalled),
+          methodsCalledStatically = toMapOfLists(methodsCalledStatically),
+          staticMethodsCalled = toMapOfLists(staticMethodsCalled),
           instantiatedClasses = instantiatedClasses.toList,
           accessedModules = accessedModules.toList,
           usedInstanceTests = usedInstanceTests.toList,
@@ -259,6 +304,7 @@ object Infos {
 
     var exportedConstructors: List[ConstructorExportDef] = Nil
     var topLevelExports: List[TopLevelExportDef] = Nil
+    var topLevelFieldExports: List[TopLevelFieldExportDef] = Nil
 
     classDef.defs foreach {
       case methodDef: MethodDef =>
@@ -273,12 +319,15 @@ object Infos {
       case topLevelExport: TopLevelExportDef =>
         builder.setIsExported(true)
         topLevelExports ::= topLevelExport
+      case topLevelFieldExport: TopLevelFieldExportDef =>
+        builder.setIsExported(true)
+        topLevelFieldExports ::= topLevelFieldExport
       case _ =>
     }
 
     if (exportedConstructors.nonEmpty || topLevelExports.nonEmpty) {
-      builder.addMethod(
-          generateClassExportsInfo(exportedConstructors, topLevelExports))
+      builder.addMethod(generateClassExportsInfo(classDef.name.name,
+          exportedConstructors, topLevelExports, topLevelFieldExports))
     }
 
     builder.result()
@@ -300,10 +349,22 @@ object Infos {
   }
 
   /** Generates the [[MethodInfo]] for the class exports. */
+  @deprecated(
+      "Use the overload with an enclosingClass and topLevelFieldExports.",
+      "0.6.15")
   def generateClassExportsInfo(constructorDefs: List[ConstructorExportDef],
       topLevelExports: List[TopLevelExportDef]): MethodInfo = {
-    new GenInfoTraverser().generateClassExportsInfo(constructorDefs,
-        topLevelExports)
+    // enclosingClass won't be used when topLevelFieldExports is empty
+    generateClassExportsInfo("", constructorDefs, topLevelExports, Nil)
+  }
+
+  /** Generates the [[MethodInfo]] for the class exports. */
+  def generateClassExportsInfo(enclosingClass: String,
+      constructorDefs: List[ConstructorExportDef],
+      topLevelExports: List[TopLevelExportDef],
+      topLevelFieldExports: List[TopLevelFieldExportDef]): MethodInfo = {
+    new GenInfoTraverser().generateClassExportsInfo(enclosingClass,
+        constructorDefs, topLevelExports, topLevelFieldExports)
   }
 
   private final class GenInfoTraverser extends Traversers.Traverser {
@@ -334,8 +395,10 @@ object Infos {
       builder.result()
     }
 
-    def generateClassExportsInfo(constructorDefs: List[ConstructorExportDef],
-        topLevelExports: List[TopLevelExportDef]): MethodInfo = {
+    def generateClassExportsInfo(enclosingClass: String,
+        constructorDefs: List[ConstructorExportDef],
+        topLevelExports: List[TopLevelExportDef],
+        topLevelFieldExports: List[TopLevelFieldExportDef]): MethodInfo = {
       builder
         .setEncodedName(ClassExportsName)
         .setIsExported(true)
@@ -346,54 +409,74 @@ object Infos {
       for (topLevelExport <- topLevelExports)
         traverse(topLevelExport.member)
 
+      for (topLevelFieldExport <- topLevelFieldExports) {
+        val field = topLevelFieldExport.field.name
+        builder.addStaticFieldRead(enclosingClass, field)
+        builder.addStaticFieldWritten(enclosingClass, field)
+      }
+
       builder.result()
     }
 
     override def traverse(tree: Tree): Unit = {
       tree match {
-        case New(ClassType(cls), ctor, _) =>
-          builder.addInstantiatedClass(cls, ctor.name)
-
-        case Apply(receiver, Ident(method, _), _) =>
-          builder.addMethodCalled(receiver.tpe, method)
-        case ApplyStatically(_, ClassType(cls), method, _) =>
-          builder.addMethodCalledStatically(cls, method.name)
-        case ApplyStatic(ClassType(cls), method, _) =>
-          builder.addStaticMethodCalled(cls, method.name)
-
-        case LoadModule(ClassType(cls)) =>
-          builder.addAccessedModule(cls)
-
-        case IsInstanceOf(_, tpe) =>
-          builder.addUsedInstanceTest(tpe)
-        case AsInstanceOf(_, tpe) =>
-          builder.addUsedInstanceTest(tpe)
-
-        case NewArray(tpe, _) =>
-          builder.addAccessedClassData(tpe)
-        case ArrayValue(tpe, _) =>
-          builder.addAccessedClassData(tpe)
-        case ClassOf(cls) =>
-          builder.addAccessedClassData(cls)
-
-        case LoadJSConstructor(cls) =>
-          builder.addInstantiatedClass(cls.className)
-
-        case LoadJSModule(ClassType(cls)) =>
-          builder.addAccessedModule(cls)
-
-        /* We explicitly catch UndefinedParam here to make sure, we do not
-         * emit it in the compiler. This does not entirely belong here, as it
-         * supports GenJSCode, but it is not wrong to throw an exception.
+        /* Do not call super.traverse() so that the field is not also marked as
+         * read.
          */
-        case UndefinedParam() =>
-          throw new InvalidIRException(tree,
-              "Found UndefinedParam while building infos")
+        case Assign(SelectStatic(ClassType(cls), Ident(field, _)), rhs) =>
+          builder.addStaticFieldWritten(cls, field)
+          traverse(rhs)
 
+        // In all other cases, we'll have to call super.traverse()
         case _ =>
-      }
+          tree match {
+            case New(ClassType(cls), ctor, _) =>
+              builder.addInstantiatedClass(cls, ctor.name)
 
-      super.traverse(tree)
+            case SelectStatic(ClassType(cls), Ident(field, _)) =>
+              builder.addStaticFieldRead(cls, field)
+
+            case Apply(receiver, Ident(method, _), _) =>
+              builder.addMethodCalled(receiver.tpe, method)
+            case ApplyStatically(_, ClassType(cls), method, _) =>
+              builder.addMethodCalledStatically(cls, method.name)
+            case ApplyStatic(ClassType(cls), method, _) =>
+              builder.addStaticMethodCalled(cls, method.name)
+
+            case LoadModule(ClassType(cls)) =>
+              builder.addAccessedModule(cls)
+
+            case IsInstanceOf(_, tpe) =>
+              builder.addUsedInstanceTest(tpe)
+            case AsInstanceOf(_, tpe) =>
+              builder.addUsedInstanceTest(tpe)
+
+            case NewArray(tpe, _) =>
+              builder.addAccessedClassData(tpe)
+            case ArrayValue(tpe, _) =>
+              builder.addAccessedClassData(tpe)
+            case ClassOf(cls) =>
+              builder.addAccessedClassData(cls)
+
+            case LoadJSConstructor(cls) =>
+              builder.addInstantiatedClass(cls.className)
+
+            case LoadJSModule(ClassType(cls)) =>
+              builder.addAccessedModule(cls)
+
+            /* We explicitly catch UndefinedParam here to make sure, we do not
+             * emit it in the compiler. This does not entirely belong here, as
+             * it supports GenJSCode, but it is not wrong to throw an exception.
+             */
+            case UndefinedParam() =>
+              throw new InvalidIRException(tree,
+                  "Found UndefinedParam while building infos")
+
+            case _ =>
+          }
+
+          super.traverse(tree)
+      }
     }
   }
 

@@ -296,6 +296,11 @@ class PrintersTest {
     assertPrintEquals("x.f$1", Select(ref("x", "Ltest_Test"), "f$1")(IntType))
   }
 
+  @Test def printSelectStatic(): Unit = {
+    assertPrintEquals("Ltest_Test.f$1",
+        SelectStatic("Ltest_Test", "f$1")(IntType))
+  }
+
   @Test def printApply(): Unit = {
     assertPrintEquals("x.m__V()",
         Apply(ref("x", "Ltest_Test"), "m__V", Nil)(NoType))
@@ -1071,5 +1076,13 @@ class PrintersTest {
         TopLevelExportDef(MethodDef(static = true, StringLiteral("pkg.foo"),
             List(ParamDef("x", AnyType, mutable = false, rest = false)),
             AnyType, Some(i(5)))(NoOptHints, None)))
+  }
+
+  @Test def printTopLevelFieldExportDef(): Unit = {
+    assertPrintEquals(
+        """
+          |export top static field x$1 as "x"
+        """,
+        TopLevelFieldExportDef("x", "x$1"))
   }
 }

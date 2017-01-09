@@ -65,6 +65,10 @@ private[emitter] final class ScalaJSClassEmitter(
       reverseParts ::= genSetTypeData(tree)
     if (kind.hasModuleAccessor)
       reverseParts ::= genModuleAccessor(tree)
+    if (!kind.isJSType) {
+      reverseParts ::= genCreateStaticFieldsOfScalaClass(tree)
+      reverseParts ::= genStaticInitialization(tree)
+    }
     reverseParts ::= genClassExports(tree)
 
     js.Block(reverseParts.reverse)
@@ -137,7 +141,7 @@ private[emitter] final class ScalaJSClassEmitter(
                   entireClassDef,
                   genCreateStaticFieldsOfJSClass(tree),
                   classValueVar := envField("c", className),
-                  genStaticInitializationOfJSClass(tree)
+                  genStaticInitialization(tree)
               )
             }, {
               js.Skip()
@@ -305,6 +309,20 @@ private[emitter] final class ScalaJSClassEmitter(
     }
   }
 
+  /** Generates the creation of the static fields for a Scala class. */
+  def genCreateStaticFieldsOfScalaClass(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+    val className = tree.encodedName
+    val stats = for {
+      field @ FieldDef(true, Ident(name, origName), ftpe, mutable) <- tree.fields
+    } yield {
+      implicit val pos = field.pos
+      val fullName = className + "__" + name
+      envFieldDef("t", fullName, origName, genZeroOf(ftpe), mutable)
+    }
+    js.Block(stats)(tree.pos)
+  }
+
   /** Generates the creation of the static fields for a JavaScript class. */
   private def genCreateStaticFieldsOfJSClass(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
@@ -321,8 +339,7 @@ private[emitter] final class ScalaJSClassEmitter(
   }
 
   /** Generates the static initializer invocation of a JavaScript class. */
-  private def genStaticInitializationOfJSClass(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+  def genStaticInitialization(tree: LinkedClass): js.Tree = {
     import Definitions.StaticInitializerName
     implicit val pos = tree.pos
     if (tree.staticMethods.exists(_.tree.name.name == StaticInitializerName)) {
@@ -911,6 +928,8 @@ private[emitter] final class ScalaJSClassEmitter(
         genModuleExportDef(tree, e)
       case e: TopLevelExportDef =>
         genTopLevelExportDef(tree, e)
+      case e: TopLevelFieldExportDef =>
+        genTopLevelFieldExportDef(tree, e)
       case tree =>
         throw new AssertionError(
             "Illegal class export " + tree.getClass.getName)
@@ -1002,18 +1021,73 @@ private[emitter] final class ScalaJSClassEmitter(
     )
   }
 
+  private def genTopLevelFieldExportDef(cd: LinkedClass,
+      tree: TopLevelFieldExportDef)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+    import TreeDSL._
+
+    val TopLevelFieldExportDef(fullName, field) = tree
+
+    implicit val pos = tree.pos
+
+    val (createNamespace, namespace, fieldName) =
+      genCreateNamespaceInExportsAndGetNamespace(fullName)
+
+    // defineProperty method
+    val defProp =
+      genIdentBracketSelect(js.VarRef(js.Ident("Object")), "defineProperty")
+
+    // optional getter definition
+    val getterDef = {
+      js.StringLiteral("get") -> js.Function(Nil, {
+        js.Return(genSelectStatic(cd.encodedName, field))
+      })
+    }
+
+    // Options passed to the defineProperty method
+    val descriptor = js.ObjectConstr(
+        getterDef ::
+        (js.StringLiteral("configurable") -> js.BooleanLiteral(true)) ::
+        Nil
+    )
+
+    val callDefineProp =
+      js.Apply(defProp, namespace :: fieldName :: descriptor :: Nil)
+
+    js.Block(createNamespace, callDefineProp)
+  }
+
   // Helpers
 
   /** Gen JS code for assigning an rhs to a qualified name in the exports scope.
-   *  For example, given the qualified name "foo.bar.Something", generates:
+   *  For example, given the qualified name `"foo.bar.Something"`, generates:
    *
-   *  ScalaJS.e["foo"] = ScalaJS.e["foo"] || {};
-   *  ScalaJS.e["foo"]["bar"] = ScalaJS.e["foo"]["bar"] || {};
+   *  {{{
+   *  $e["foo"] = $e["foo"] || {};
+   *  $e["foo"]["bar"] = $e["foo"]["bar"] || {};
+   *  }}}
    *
-   *  Returns (statements, ScalaJS.e["foo"]["bar"]["Something"])
+   *  Returns `(statements, $e["foo"]["bar"]["Something"])`
    */
   private def genCreateNamespaceInExports(qualName: String)(
       implicit pos: Position): (js.Tree, js.Tree) = {
+    val (createNamespace, namespace, lastPart) =
+      genCreateNamespaceInExportsAndGetNamespace(qualName)
+    (createNamespace, genBracketSelect(namespace, lastPart))
+  }
+
+  /** Gen JS code for assigning an rhs to a qualified name in the exports scope.
+   *  For example, given the qualified name `"foo.bar.Something"`, generates:
+   *
+   *  {{{
+   *  $e["foo"] = $e["foo"] || {};
+   *  $e["foo"]["bar"] = $e["foo"]["bar"] || {};
+   *  }}}
+   *
+   *  Returns `(statements, $e["foo"]["bar"], "Something")`
+   */
+  private def genCreateNamespaceInExportsAndGetNamespace(qualName: String)(
+      implicit pos: Position): (js.Tree, js.Tree, js.StringLiteral) = {
     val parts = qualName.split("\\.")
     val statements = List.newBuilder[js.Tree]
     var namespace = envField("e")
@@ -1023,8 +1097,7 @@ private[emitter] final class ScalaJSClassEmitter(
         js.Assign(namespace, js.BinaryOp(JSBinaryOp.||,
             namespace, js.ObjectConstr(Nil)))
     }
-    val lhs = genBracketSelect(namespace, js.StringLiteral(parts.last))
-    (js.Block(statements.result()), lhs)
+    (js.Block(statements.result()), namespace, js.StringLiteral(parts.last))
   }
 
 }

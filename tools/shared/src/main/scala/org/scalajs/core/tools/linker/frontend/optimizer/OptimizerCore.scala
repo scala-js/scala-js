@@ -173,8 +173,9 @@ private[optimizer] abstract class OptimizerCore(
         } else {
           val after = from.tail
           val afterIsTrivial = after.forall {
-            case Assign(Select(This(), Ident(_, _)),
-                _:Literal | _:VarRef) =>
+            case Assign(Select(This(), _), _:Literal | _:VarRef) =>
+              true
+            case Assign(SelectStatic(_, _), _:Literal | _:VarRef) =>
               true
             case _ =>
               false
@@ -670,8 +671,8 @@ private[optimizer] abstract class OptimizerCore(
 
       // Trees that need not be transformed
 
-      case _:Skip | _:Debugger | _:LoadModule | _:LoadJSConstructor |
-          _:LoadJSModule | _:JSLinkingInfo | _:Literal =>
+      case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic |
+          _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo | _:Literal =>
         tree
 
       case _ =>
@@ -1313,7 +1314,7 @@ private[optimizer] abstract class OptimizerCore(
 
   /** Keeps only the side effects of a Tree (overapproximation). */
   private def keepOnlySideEffects(stat: Tree): Tree = stat match {
-    case _:VarRef | _:This | _:Literal =>
+    case _:VarRef | _:This | _:Literal | _:SelectStatic =>
       Skip()(stat.pos)
     case VarDef(_, _, _, rhs) =>
       keepOnlySideEffects(rhs)

@@ -149,11 +149,16 @@ trait JSGlobalAddons extends JSDefinitions
       registeredExportsOf(sym).nonEmpty
     }
 
-    /** The only export info of a static field.
+    /** The export info of a static field.
+     *
      *  Requires `isFieldStatic(sym)`.
+     *
+     *  The result is non-empty. If it contains an `ExportInfo` with
+     *  `isStatic = true`, then it is the only element in the list. Otherwise,
+     *  all elements have `isTopLevel = true`.
      */
-    def staticFieldInfoOf(sym: Symbol): ExportInfo =
-      registeredExportsOf(sym).head
+    def staticFieldInfoOf(sym: Symbol): List[ExportInfo] =
+      registeredExportsOf(sym)
 
     /** has this symbol to be translated into a JS bracket access (JS to Scala) */
     def isJSBracketAccess(sym: Symbol): Boolean =
