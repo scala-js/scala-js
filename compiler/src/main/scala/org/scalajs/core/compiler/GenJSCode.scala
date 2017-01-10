@@ -646,10 +646,16 @@ abstract class GenJSCode extends plugins.PluginComponent
           case js.JSSuperConstructorCall(args) =>
             implicit val pos = tree.pos
 
-            val ident =
-              origJsClass.superClass.getOrElse(sys.error("No superclass"))
-            val superTpe = jstpe.ClassType(ident.name)
-            val newTree = js.JSNew(js.LoadJSConstructor(superTpe), args)
+            val newTree = {
+              val ident =
+                origJsClass.superClass.getOrElse(sys.error("No superclass"))
+              if (args.isEmpty && ident.name == "sjs_js_Object") {
+                js.JSObjectConstr(Nil)
+              } else {
+                val superTpe = jstpe.ClassType(ident.name)
+                js.JSNew(js.LoadJSConstructor(superTpe), args)
+              }
+            }
 
             js.Block(
                 js.VarDef(selfName, jstpe.AnyType, mutable = false, newTree) ::

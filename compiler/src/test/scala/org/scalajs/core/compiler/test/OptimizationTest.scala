@@ -172,4 +172,55 @@ class OptimizationTest extends JSASTTest {
     }
   }
 
+  @Test
+  def newSJSDefinedTraitProducesObjectConstr: Unit = {
+    """
+    import scala.scalajs.js
+    import scala.scalajs.js.annotation._
+
+    @ScalaJSDefined
+    trait Point extends js.Object {
+      val x: Double
+      val y: Double
+    }
+
+    class Test {
+      def newSJSDefinedTraitProducesObjectConstr(): Any = {
+        new Point {
+          val x = 5.0
+          val y = 6.5
+        }
+      }
+    }
+    """.hasNot("`new Object`") {
+      case js.JSNew(_, _) =>
+    }.has("object literal") {
+      case js.JSObjectConstr(Nil) =>
+    }
+
+    """
+    import scala.scalajs.js
+    import scala.scalajs.js.annotation._
+
+    @ScalaJSDefined
+    trait Point extends js.Object {
+      var x: js.UndefOr[Double] = js.undefined
+      var y: js.UndefOr[Double] = js.undefined
+    }
+
+    class Test {
+      def newSJSDefinedTraitProducesObjectConstr(): Any = {
+        new Point {
+          x = 5.0
+          y = 6.5
+        }
+      }
+    }
+    """.hasNot("`new Object`") {
+      case js.JSNew(_, _) =>
+    }.has("object literal") {
+      case js.JSObjectConstr(Nil) =>
+    }
+  }
+
 }
