@@ -66,6 +66,9 @@ object Definitions {
   val AncestorsOfPseudoArrayClass = Set(
       ObjectClass, SerializableClass, CloneableClass)
 
+  /** Name of the static initializer method. */
+  final val StaticInitializerName = "clinit___"
+
   /** Name used for infos of class exports
    *
    *  These currently are exported constructors and top level exports)
@@ -166,6 +169,8 @@ object Definitions {
         if (encodedName == "init___") ""
         else encodedName.stripPrefix("init___") + "__"
       ("<init>", privateAndSigString)
+    } else if (encodedName == StaticInitializerName) {
+      ("<clinit>", "")
     } else {
       val pos = encodedName.indexOf("__")
       val pos2 =
@@ -205,7 +210,10 @@ object Definitions {
   def isConstructorName(name: String): Boolean =
     name.startsWith("init___")
 
-  def isReflProxyName(name: String): Boolean =
-    name.endsWith("__") && !isConstructorName(name)
+  def isReflProxyName(name: String): Boolean = {
+    name.endsWith("__") &&
+    !isConstructorName(name) &&
+    name != StaticInitializerName
+  }
 
 }

@@ -30,6 +30,21 @@ trait JSGlobalAddons extends JSDefinitions
       JSGlobalAddons.this.asInstanceOf[ThisJSGlobalAddons]
   }
 
+  sealed abstract class ExportDestination
+
+  object ExportDestination {
+    /** Export in the "normal" way: as an instance member, or at the top-level
+     *  for naturally top-level things (classes and modules).
+     */
+    case object Normal extends ExportDestination
+
+    /** Export at the top-level. */
+    case object TopLevel extends ExportDestination
+
+    /** Export as a static member of the companion class. */
+    case object Static extends ExportDestination
+  }
+
   /** global javascript interop related helpers */
   object jsInterop { // scalastyle:ignore
     import scala.reflect.NameTransformer
@@ -51,7 +66,7 @@ trait JSGlobalAddons extends JSDefinitions
       val jsName: String
       val pos: Position
       val isNamed: Boolean
-      val isTopLevel: Boolean
+      val destination: ExportDestination
     }
 
     def clearGlobalState(): Unit = {
@@ -60,7 +75,8 @@ trait JSGlobalAddons extends JSDefinitions
     }
 
     def registerForExport(sym: Symbol, infos: List[ExportInfo]): Unit = {
-      assert(!exportedSymbols.contains(sym), "Same symbol exported twice")
+      assert(!exportedSymbols.contains(sym),
+          "Same symbol exported twice: " + sym)
       exportedSymbols.put(sym, infos)
     }
 
@@ -126,6 +142,18 @@ trait JSGlobalAddons extends JSDefinitions
     /** has this symbol to be translated into a JS setter (both directions)? */
     def isJSSetter(sym: Symbol): Boolean =
       nme.isSetterName(sym.name) && sym.isMethod && !sym.isConstructor
+
+    /** Is this field symbol a static field at the IR level? */
+    def isFieldStatic(sym: Symbol): Boolean = {
+      sym.owner.isModuleClass && // usually false, avoids a lookup in the map
+      registeredExportsOf(sym).nonEmpty
+    }
+
+    /** The only export info of a static field.
+     *  Requires `isFieldStatic(sym)`.
+     */
+    def staticFieldInfoOf(sym: Symbol): ExportInfo =
+      registeredExportsOf(sym).head
 
     /** has this symbol to be translated into a JS bracket access (JS to Scala) */
     def isJSBracketAccess(sym: Symbol): Boolean =

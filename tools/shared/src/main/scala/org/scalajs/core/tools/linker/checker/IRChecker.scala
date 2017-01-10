@@ -129,11 +129,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         member.tree match {
           case m: MethodDef =>
             assert(m.name.isInstanceOf[StringLiteral],
-              "Exported method must have StringLiteral as name")
+                "Exported method must have StringLiteral as name")
             checkExportedMethodDef(m, classDef, isTopLevel = false)
           case p: PropertyDef =>
             assert(p.name.isInstanceOf[StringLiteral],
-              "Exported property must have StringLiteral as name")
+                "Exported property must have StringLiteral as name")
             checkExportedPropertyDef(p, classDef)
           // Anything else is illegal
           case _ =>
@@ -200,8 +200,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private def checkFieldDef(fieldDef: FieldDef, classDef: LinkedClass): Unit = {
-    val FieldDef(name, tpe, mutable) = fieldDef
+    val FieldDef(static, name, tpe, mutable) = fieldDef
     implicit val ctx = ErrorContext(fieldDef)
+
+    if (static && !classDef.kind.isJSClass)
+      reportError(s"FieldDef '$name' cannot be static")
 
     name match {
       case _: Ident =>
@@ -277,8 +280,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       return
     }
 
-    if (!isTopLevel && static)
-      reportError("Exported method def cannot be static")
+    if (!isTopLevel && static && classDef.kind != ClassKind.JSClass)
+      reportError("Exported method def in non-JS class cannot be static")
 
     if (isTopLevel && !static)
       reportError("Top level export must be static")
@@ -301,7 +304,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       }
     }
 
-    if (classDef.kind.isJSClass && name == "constructor") {
+    if (classDef.kind.isJSClass && name == "constructor" && !static) {
       checkJSClassConstructor(methodDef, classDef)
     } else {
       if (resultType != AnyType) {
@@ -960,6 +963,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
     val resultType = resultRefType.fold[Type] {
       if (isConstructorName(encodedName)) NoType
+      else if (encodedName == StaticInitializerName) NoType
       else AnyType // reflective proxy
     } { refType =>
       refTypeToType(refType)
@@ -1143,7 +1147,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private object CheckedClass {
     private def checkedField(fieldDef: FieldDef) = {
-      val FieldDef(Ident(name, _), tpe, mutable) = fieldDef
+      val FieldDef(false, Ident(name, _), tpe, mutable) = fieldDef
       new CheckedField(name, tpe, mutable)
     }
   }

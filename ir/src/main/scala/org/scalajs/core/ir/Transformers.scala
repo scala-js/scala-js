@@ -209,7 +209,7 @@ object Transformers {
       implicit val pos = tree.pos
 
       tree match {
-        case FieldDef(_, _, _) =>
+        case FieldDef(_, _, _, _) =>
           tree
 
         case tree: MethodDef =>

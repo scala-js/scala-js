@@ -530,7 +530,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
               globalKnowledge.getJSClassFieldDefs(enclosingClassName)
 
             val fieldDefs = for {
-              field @ FieldDef(name, ftpe, mutable) <- enclosingClassFieldDefs
+              field @ FieldDef(false, name, ftpe, mutable) <-
+                enclosingClassFieldDefs
             } yield {
               implicit val pos = field.pos
               /* Here, a naive translation would emit something like this:
@@ -569,7 +570,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
                   js.StringLiteral("configurable") -> js.BooleanLiteral(true),
                   js.StringLiteral("enumerable") -> js.BooleanLiteral(true),
                   js.StringLiteral("writable") -> js.BooleanLiteral(true),
-                  js.StringLiteral("value") -> transformExpr(zeroOf(ftpe))
+                  js.StringLiteral("value") -> genZeroOf(ftpe)
               ))
               val descriptors = js.ObjectConstr(List(
                   transformedName -> descriptor))
@@ -1959,7 +1960,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         case StringLiteral(value)   => js.StringLiteral(value)
 
         case LongLiteral(0L) =>
-          genLongModuleApply(LongImpl.Zero)
+          genLongZero()
         case LongLiteral(value) =>
           if (globalKnowledge.hasNewRuntimeLong) {
             val (lo, hi) = LongImpl.extractParts(value)
@@ -2086,20 +2087,6 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       js.Apply(receiver DOT methodName, args.toList)
     }
 
-    private def genLongModuleApply(methodName: String, args: js.Tree*)(
-        implicit pos: Position): js.Tree = {
-      import TreeDSL._
-      js.Apply(
-          genLoadModule(LongImpl.RuntimeLongModuleClass) DOT methodName,
-          args.toList)
-    }
-
-    private def genLoadModule(moduleClass: String)(
-        implicit pos: Position): js.Tree = {
-      import TreeDSL._
-      js.Apply(envField("m", moduleClass), Nil)
-    }
-
     private implicit class RecordAwareEnv(env: Env) {
       def withDef(ident: Ident, tpe: Type, mutable: Boolean): Env = tpe match {
         case RecordType(fields) =>
@@ -2120,6 +2107,33 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   }
 
   // Helpers
+
+  private[emitter] def genZeroOf(tpe: Type)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    tpe match {
+      case BooleanType => js.BooleanLiteral(false)
+      case IntType     => js.IntLiteral(0)
+      case LongType    => genLongZero()
+      case FloatType   => js.DoubleLiteral(0.0)
+      case DoubleType  => js.DoubleLiteral(0.0)
+      case StringType  => js.StringLiteral("")
+      case UndefType   => js.Undefined()
+      case _           => js.Null()
+    }
+  }
+
+  private def genLongZero()(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    genLongModuleApply(LongImpl.Zero)
+  }
+
+  private def genLongModuleApply(methodName: String, args: js.Tree*)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    import TreeDSL._
+    js.Apply(
+        genLoadModule(LongImpl.RuntimeLongModuleClass) DOT methodName,
+        args.toList)
+  }
 
   private[emitter] def genLet(name: js.Ident, mutable: Boolean, rhs: js.Tree)(
       implicit outputMode: OutputMode, pos: Position): js.LocalDef = {
@@ -2204,6 +2218,12 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       implicit outputMode: OutputMode, pos: Position): js.Tree =
     envField("c", className)
 
+  private[emitter] def genLoadModule(moduleClass: String)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    import TreeDSL._
+    js.Apply(envField("m", moduleClass), Nil)
+  }
+
   private[emitter] def genRawJSClassConstructor(className: String)(
       implicit globalKnowledge: GlobalKnowledge, outputMode: OutputMode,
       pos: Position): js.Tree = {
@@ -2217,8 +2237,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
     spec match {
       case None =>
-        // this is a Scala.js-defined JS class
-        encodeClassVar(className)
+        // This is a Scala.js-defined JS class, call its class value accessor
+        js.Apply(envField("a", className), Nil)
 
       case Some(spec) =>
         genLoadJSFromSpec(spec)
@@ -2343,6 +2363,14 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
   private[emitter] def envFieldDef(field: String, subField: String,
       origName: Option[String], value: js.Tree, mutable: Boolean)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    envFieldDef(field, subField, origName, value, mutable,
+        keepFunctionExpression = false)
+  }
+
+  private[emitter] def envFieldDef(field: String, subField: String,
+      origName: Option[String], value: js.Tree, mutable: Boolean,
+      keepFunctionExpression: Boolean)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
     val globalVar = envField(field, subField, origName)
     def globalVarIdent = globalVar.asInstanceOf[js.VarRef].ident
 
@@ -2354,13 +2382,25 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         value match {
           case js.Function(args, body) =>
             // Make sure the function has a meaningful `name` property
-            js.FunctionDef(globalVarIdent, args, body)
+            val functionExpr = js.FunctionDef(globalVarIdent, args, body)
+            if (keepFunctionExpression)
+              js.VarDef(globalVarIdent, Some(functionExpr))
+            else
+              functionExpr
           case _ =>
             js.VarDef(globalVarIdent, Some(value))
         }
 
       case OutputMode.ECMAScript6 =>
         genLet(globalVarIdent, mutable, value)
+    }
+  }
+
+  private[emitter] def genPropSelect(qual: js.Tree, item: js.PropertyName)(
+      implicit pos: Position): js.Tree = {
+    item match {
+      case item: js.Ident         => js.DotSelect(qual, item)
+      case item: js.StringLiteral => genBracketSelect(qual, item)
     }
   }
 

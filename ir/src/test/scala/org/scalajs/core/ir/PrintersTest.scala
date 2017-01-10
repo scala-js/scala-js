@@ -912,14 +912,26 @@ class PrintersTest {
         """,
         ClassDef("LTest", ClassKind.Class, Some(ObjectClass), Nil, None,
             List(
-                FieldDef("x$1", IntType, mutable = false),
-                FieldDef("y$1", IntType, mutable = true)))(
+                FieldDef(static = false, "x$1", IntType, mutable = false),
+                FieldDef(static = false, "y$1", IntType, mutable = true)))(
             NoOptHints))
   }
 
   @Test def printFieldDef(): Unit = {
-    assertPrintEquals("val x$1: int", FieldDef("x$1", IntType, mutable = false))
-    assertPrintEquals("var y$1: any", FieldDef("y$1", AnyType, mutable = true))
+    assertPrintEquals("val x$1: int",
+        FieldDef(static = false, "x$1", IntType, mutable = false))
+    assertPrintEquals("var y$1: any",
+        FieldDef(static = false, "y$1", AnyType, mutable = true))
+
+    assertPrintEquals("""val "x": int""",
+        FieldDef(static = false, StringLiteral("x"), IntType, mutable = false))
+    assertPrintEquals("""var "y": any""",
+        FieldDef(static = false, StringLiteral("y"), AnyType, mutable = true))
+
+    assertPrintEquals("""static val "x": int""",
+        FieldDef(static = true, StringLiteral("x"), IntType, mutable = false))
+    assertPrintEquals("""static var "y": any""",
+        FieldDef(static = true, StringLiteral("y"), AnyType, mutable = true))
   }
 
   @Test def printMethodDef(): Unit = {

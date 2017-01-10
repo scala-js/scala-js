@@ -560,7 +560,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
       } else {
         val allFields = reverseParentChain.flatMap(_.fields)
         val (fieldValues, fieldTypes) = (for {
-          f @ FieldDef(Ident(name, originalName), tpe, mutable) <- allFields
+          f @ FieldDef(false, Ident(name, originalName), tpe, mutable) <- allFields
         } yield {
           (zeroOf(tpe)(f.pos),
               RecordType.Field(name, originalName, tpe, mutable))

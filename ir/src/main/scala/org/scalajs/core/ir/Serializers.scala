@@ -403,16 +403,18 @@ object Serializers {
           writeTrees(defs)
           writeInt(tree.optimizerHints.bits)
 
-        case FieldDef(name, ftpe, mutable) =>
+        case FieldDef(static, name, ftpe, mutable) =>
           /* TODO Simply use `writePropertyName` when we can break binary
            * compatibility.
            */
           name match {
             case name: Ident =>
               writeByte(TagFieldDef)
+              writeBoolean(static)
               writeIdent(name)
             case name: StringLiteral =>
               writeByte(TagStringLitFieldDef)
+              writeBoolean(static)
               writeTree(name)
           }
           writeType(ftpe); writeBoolean(mutable)
@@ -635,6 +637,8 @@ object Serializers {
       useHacks065 || sourceVersion == "0.6.6"
     private[this] val useHacks068 =
       useHacks066 || sourceVersion == "0.6.8"
+    private[this] val useHacks0614 =
+      useHacks068 || Set("0.6.13", "0.6.14").contains(sourceVersion)
 
     private[this] val input = new DataInputStream(stream)
 
@@ -822,12 +826,19 @@ object Serializers {
               optimizerHints)
 
         case TagFieldDef =>
-          FieldDef(readIdent(), readType(), readBoolean())
+          val static =
+            if (useHacks0614) false
+            else readBoolean()
+          FieldDef(static, readIdent(), readType(), readBoolean())
         case TagStringLitFieldDef =>
           /* TODO Merge this into TagFieldDef and use readPropertyName()
            * when we can break binary compatibility.
            */
-          FieldDef(readTree().asInstanceOf[StringLiteral], readType(), readBoolean())
+          val static =
+            if (useHacks0614) false
+            else readBoolean()
+          FieldDef(static, readTree().asInstanceOf[StringLiteral], readType(),
+              readBoolean())
 
         case TagMethodDef =>
           val optHash = readOptHash()
