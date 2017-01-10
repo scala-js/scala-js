@@ -133,6 +133,8 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
 
   private val scalaJSLazyFields = Seq(
       Info("d"),
+      Info("a"),
+      Info("b"),
       Info("c"),
       Info("h"),
       Info("s", isStatics = true),

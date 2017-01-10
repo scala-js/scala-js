@@ -109,8 +109,11 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
       emitModuleImports(orderedClasses, builder, logger)
 
-      for (classInfo <- orderedClasses)
-        emitLinkedClass(classInfo, builder)
+      for (linkedClass <- orderedClasses)
+        emitLinkedClass(linkedClass, builder)
+
+      for (linkedClass <- orderedClasses)
+        emitLinkedClassClassExports(linkedClass, builder)
     } finally {
       endRun(logger)
     }
@@ -235,22 +238,8 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       val exportedMembers = classTreeCache.exportedMembers.getOrElseUpdate(
           classEmitter.genExportedMembers(linkedClass)(classCache))
 
-      outputMode match {
-        case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
-          addTree(ctor)
-          memberMethods.foreach(addTree)
-          addTree(exportedMembers)
-
-        case OutputMode.ECMAScript6 =>
-          val allMembersBlock = js.Block(
-              ctor :: memberMethods ::: exportedMembers :: Nil)(Position.NoPosition)
-          val allMembers = allMembersBlock match {
-            case js.Block(members) => members
-            case js.Skip()         => Nil
-            case oneMember         => List(oneMember)
-          }
-          addTree(classEmitter.genES6Class(linkedClass, allMembers)(classCache))
-      }
+      addTree(classEmitter.buildClass(linkedClass, ctor, memberMethods,
+          exportedMembers)(classCache))
     } else if (kind == ClassKind.Interface) {
       // Default methods
       for (m <- linkedClass.memberMethods) yield {
@@ -279,9 +268,29 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     if (linkedClass.kind.hasModuleAccessor)
       addTree(classTreeCache.moduleAccessor.getOrElseUpdate(
           classEmitter.genModuleAccessor(linkedClass)))
+  }
 
-    addTree(classTreeCache.classExports.getOrElseUpdate(
-        classEmitter.genClassExports(linkedClass)(classCache)))
+  /** Emits the class exports of a linked class.
+   *
+   *  This is done after everything else has been emitted for all the classes
+   *  in the program. That is necessary because class exports can call class
+   *  value accessors, which may have unknown circular references.
+   */
+  private def emitLinkedClassClassExports(
+      linkedClass: LinkedClass, builder: JSTreeBuilder): Unit = {
+
+    def addTree(tree: js.Tree): Unit = builder.addJSTree(tree)
+
+    /* `if` to avoid looking up the caches for nothing. Probably worth doing
+     * because only few classes have class exports.
+     */
+    if (linkedClass.classExports.nonEmpty) {
+      val classCache = getClassCache(linkedClass.ancestors)
+      val classTreeCache = classCache.getCache(linkedClass.version)
+
+      addTree(classTreeCache.classExports.getOrElseUpdate(
+          classEmitter.genClassExports(linkedClass)(classCache)))
+    }
   }
 
   // Helpers
@@ -323,7 +332,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       CoreJSLibs.lib(semantics, outputMode, moduleKind)
 
     def genClassDef(linkedClass: LinkedClass): js.Tree =
-      classEmitter.genClassDef(linkedClass)(globalKnowledge)
+      classEmitter.genClassDefForRhino(linkedClass)(globalKnowledge)
   }
 
   // Caching
