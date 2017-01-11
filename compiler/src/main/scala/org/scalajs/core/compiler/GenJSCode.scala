@@ -3465,14 +3465,23 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = tree.pos
 
       val sym = tree.symbol
+      val name = sym.name
       val params = sym.tpe.params
 
-      /** check if the method we are invoking is eq or ne. they cannot be
-       *  overridden since they are final. If this is true, we only emit a
-       *  `===` or `!==`.
+      /* Is this a primitive method introduced in AnyRef?
+       * The concerned methods are `eq`, `ne` and `synchronized`.
+       *
+       * If it is, it can be defined in a custom value class. Calling it
+       * reflectively works on the JVM in that case. However, it does not work
+       * if the reflective call should in fact resolve to the method in
+       * `AnyRef` (it causes a `NoSuchMethodError`). We maintain bug
+       * compatibility for these methods: they work if redefined in a custom
+       * AnyVal, and fail at run-time (with a `TypeError`) otherwise.
        */
-      val isEqOrNeq = (sym.name == nme.eq || sym.name == nme.ne) &&
+      val isAnyRefPrimitive = {
+        (name == nme.eq || name == nme.ne || name == nme.synchronized_) &&
         params.size == 1 && params.head.tpe.typeSymbol == ObjectClass
+      }
 
       /** check if the method we are invoking conforms to a method on
        *  scala.Array. If this is the case, we check that case specially at
@@ -3483,15 +3492,17 @@ abstract class GenJSCode extends plugins.PluginComponent
        *  Note that we cannot check if the expected return type is correct,
        *  since this type information is already erased.
        */
-      def isArrayLikeOp = {
-        sym.name == nme.update &&
-          params.size == 2 && params.head.tpe.typeSymbol == IntClass ||
-        sym.name == nme.apply &&
-          params.size == 1 && params.head.tpe.typeSymbol == IntClass ||
-        sym.name == nme.length &&
-          params.size == 0 ||
-        sym.name == nme.clone_ &&
+      def isArrayLikeOp = name match {
+        case nme.update =>
+          params.size == 2 && params.head.tpe.typeSymbol == IntClass
+        case nme.apply =>
+          params.size == 1 && params.head.tpe.typeSymbol == IntClass
+        case nme.length =>
           params.size == 0
+        case nme.clone_ =>
+          params.size == 0
+        case _ =>
+          false
       }
 
       /**
@@ -3500,7 +3511,7 @@ abstract class GenJSCode extends plugins.PluginComponent
        * (result != NoSymbol), we generate a runtime instance check if we are
        * dealing with the appropriate primitive type.
        */
-      def matchingSymIn(clazz: Symbol) = clazz.tpe.member(sym.name).suchThat { s =>
+      def matchingSymIn(clazz: Symbol) = clazz.tpe.member(name).suchThat { s =>
         val sParams = s.tpe.params
         !s.isBridge &&
         params.size == sParams.size &&
@@ -3511,40 +3522,33 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val ApplyDynamic(receiver, args) = tree
 
-      if (isEqOrNeq) {
-        // Just emit a boxed equality check
-        val jsThis = genExpr(receiver)
-        val jsThat = genExpr(args.head)
-        val op = if (sym.name == nme.eq) js.BinaryOp.=== else js.BinaryOp.!==
-        ensureBoxed(js.BinaryOp(op, jsThis, jsThat), BooleanClass.tpe)
-      } else {
-        // Create a fully-fledged reflective call
-        val receiverType = toIRType(receiver.tpe)
-        val callTrgIdent = freshLocalIdent()
-        val callTrgVarDef =
-          js.VarDef(callTrgIdent, receiverType, mutable = false, genExpr(receiver))
-        val callTrg = js.VarRef(callTrgIdent)(receiverType)
+      val receiverType = toIRType(receiver.tpe)
+      val callTrgIdent = freshLocalIdent()
+      val callTrgVarDef =
+        js.VarDef(callTrgIdent, receiverType, mutable = false, genExpr(receiver))
+      val callTrg = js.VarRef(callTrgIdent)(receiverType)
 
-        val arguments = args zip sym.tpe.params map { case (arg, param) =>
-          /* No need for enteringPosterasure, because value classes are not
-           * supported as parameters of methods in structural types.
-           * We could do it for safety and future-proofing anyway, except that
-           * I am weary of calling enteringPosterasure for a reflective method
-           * symbol.
-           *
-           * Note also that this will typically unbox a primitive value that
-           * has just been boxed, or will .asInstanceOf[T] an expression which
-           * is already of type T. But the optimizer will get rid of that, and
-           * reflective calls are not numerous, so we don't complicate the
-           * compiler to eliminate them early.
-           */
-          fromAny(genExpr(arg), param.tpe)
-        }
+      val arguments = args zip sym.tpe.params map { case (arg, param) =>
+        /* No need for enteringPosterasure, because value classes are not
+         * supported as parameters of methods in structural types.
+         * We could do it for safety and future-proofing anyway, except that
+         * I am weary of calling enteringPosterasure for a reflective method
+         * symbol.
+         *
+         * Note also that this will typically unbox a primitive value that
+         * has just been boxed, or will .asInstanceOf[T] an expression which
+         * is already of type T. But the optimizer will get rid of that, and
+         * reflective calls are not numerous, so we don't complicate the
+         * compiler to eliminate them early.
+         */
+        fromAny(genExpr(arg), param.tpe)
+      }
 
-        val proxyIdent = encodeMethodSym(sym, reflProxy = true)
-        var callStatement: js.Tree =
-          genApplyMethod(callTrg, proxyIdent, arguments, jstpe.AnyType)
+      val proxyIdent = encodeMethodSym(sym, reflProxy = true)
+      var callStatement: js.Tree =
+        genApplyMethod(callTrg, proxyIdent, arguments, jstpe.AnyType)
 
+      if (!isAnyRefPrimitive) {
         if (isArrayLikeOp) {
           def genRTCall(method: Symbol, args: js.Tree*) =
             genApplyMethod(genLoadModule(ScalaRunTimeModule),
@@ -3552,7 +3556,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           val isArrayTree =
             genRTCall(ScalaRunTime_isArray, callTrg, js.IntLiteral(1))
           callStatement = js.If(isArrayTree, {
-            sym.name match {
+            name match {
               case nme.update =>
                 js.Block(
                     genRTCall(currentRun.runDefinitions.arrayUpdateMethod,
@@ -3632,9 +3636,9 @@ abstract class GenJSCode extends plugins.PluginComponent
             callStatement
           })(jstpe.AnyType)
         }
-
-        js.Block(callTrgVarDef, callStatement)
       }
+
+      js.Block(callTrgVarDef, callStatement)
     }
 
     /** Ensures that the value of the given tree is boxed.
