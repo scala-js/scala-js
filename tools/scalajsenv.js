@@ -709,12 +709,6 @@ ScalaJS.typedArray2DoubleArray = function(value) {
   return new arrayClassData.constr(new ScalaJS.g["Float64Array"](value));
 };
 
-/* We have to force a non-elidable *read* of ScalaJS.e, otherwise Closure will
- * eliminate it altogether, along with all the exports, which is ... er ...
- * plain wrong.
- */
-this["__ScalaJSExportsNamespace"] = ScalaJS.e;
-
 // TypeData class
 
 //!if outputMode != ECMAScript6
