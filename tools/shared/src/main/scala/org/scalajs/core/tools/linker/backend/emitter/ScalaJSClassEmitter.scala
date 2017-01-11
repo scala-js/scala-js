@@ -378,10 +378,11 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
               "s", className + "__" + methodName, origName,
               methodFun)
 
-        case methodName: StringLiteral =>
+        case methodName =>
           outputMode match {
             case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
-              genAddToObject(encodeClassVar(className), methodName, methodFun)
+              genAddToObject(className, encodeClassVar(className), methodName,
+                  methodFun)
 
             case OutputMode.ECMAScript6 =>
               js.MethodDef(static = true, genPropertyName(methodName),
@@ -451,14 +452,15 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
       else classVar.prototype
 
     // property name
-    val name = property.name match {
-      case StringLiteral(value) =>
-        js.StringLiteral(value)
-      case id: Ident =>
+    val name = genPropertyName(property.name) match {
+      case value: js.StringLiteral => value
+      case js.ComputedName(tree)   => tree
+
+      case id: js.Ident =>
         // We need to work around the closure compiler. Call propertyName to
         // get a string representation of the optimized name
         genCallHelper("propertyName",
-            js.ObjectConstr(transformIdent(id) -> js.IntLiteral(0) :: Nil))
+            js.ObjectConstr(id -> js.IntLiteral(0) :: Nil))
     }
 
     // optional getter definition
@@ -508,36 +510,48 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
   }
 
   /** Generate `classVar.prototype.name = value` */
-  def genAddToPrototype(className: String, name: js.PropertyName,
-      value: js.Tree)(implicit pos: Position): js.Tree = {
+  def genAddToPrototype(className: String, name: js.PropertyName, value: js.Tree)(
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Tree = {
     genAddToObject(encodeClassVar(className).prototype, name, value)
   }
 
   /** Generate `classVar.prototype.name = value` */
-  def genAddToPrototype(className: String, name: PropertyName,
-      value: js.Tree)(implicit pos: Position): js.Tree = {
+  def genAddToPrototype(className: String, name: PropertyName, value: js.Tree)(
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Tree = {
     genAddToPrototype(className, genPropertyName(name), value)
   }
 
   /** Generate `obj.name = value` */
   def genAddToObject(obj: js.Tree, name: js.PropertyName,
       value: js.Tree)(implicit pos: Position): js.Tree = {
-    val select = name match {
-      case name: js.Ident         => js.DotSelect(obj, name)
-      case name: js.StringLiteral => genBracketSelect(obj, name)
-    }
-    js.Assign(select, value)
+    js.Assign(genPropSelect(obj, name), value)
   }
 
   /** Generate `obj.name = value` */
-  def genAddToObject(obj: js.Tree, name: PropertyName,
-      value: js.Tree)(implicit pos: Position): js.Tree = {
+  def genAddToObject(className: String, obj: js.Tree, name: PropertyName,
+      value: js.Tree)(
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Tree = {
     genAddToObject(obj, genPropertyName(name), value)
   }
 
-  def genPropertyName(name: PropertyName): js.PropertyName = name match {
-    case ident: Ident         => transformIdent(ident)
-    case StringLiteral(value) => js.StringLiteral(value)(name.pos)
+  def genPropertyName(name: PropertyName)(
+      implicit globalKnowledge: GlobalKnowledge): js.PropertyName = {
+    name match {
+      case ident: Ident         => transformIdent(ident)
+      case StringLiteral(value) => js.StringLiteral(value)(name.pos)
+
+      case ComputedName(tree, _) =>
+        implicit val pos = name.pos
+        val fun = desugarToFunction(params = Nil, body = tree, isStat = false)
+        val nameTree = fun match {
+          case js.Function(Nil, js.Return(expr)) =>
+            // no need for an IIFE, we can just use `expr` directly
+            expr
+          case _ =>
+            js.Apply(fun, Nil)
+        }
+        js.ComputedName(nameTree)
+    }
   }
 
   private[tools] def needInstanceTests(tree: LinkedClass): Boolean = {

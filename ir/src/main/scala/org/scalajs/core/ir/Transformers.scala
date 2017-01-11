@@ -176,7 +176,14 @@ object Transformers {
 
         case JSObjectConstr(fields) =>
           JSObjectConstr(fields map {
-            case (name, value) => (name, transformExpr(value))
+            case (name, value) =>
+              val newName = name match {
+                case ComputedName(tree, logicalName) =>
+                  ComputedName(transformExpr(tree), logicalName)
+                case _ =>
+                  name
+              }
+              (newName, transformExpr(value))
           })
 
         // Atomic expressions

@@ -141,13 +141,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
         member.tree match {
           case m: MethodDef =>
-            assert(m.name.isInstanceOf[StringLiteral],
-                "Exported method must have StringLiteral as name")
             checkExportedMethodDef(m, classDef, isTopLevel = false)
+
           case p: PropertyDef =>
-            assert(p.name.isInstanceOf[StringLiteral],
-                "Exported property must have StringLiteral as name")
             checkExportedPropertyDef(p, classDef)
+
           // Anything else is illegal
           case _ =>
             reportError("Illegal exported class member of type " +
@@ -227,6 +225,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case _: StringLiteral =>
         if (!classDef.kind.isJSClass)
           reportError(s"FieldDef '$name' cannot have a string literal name")
+      case ComputedName(tree, _) =>
+        if (!classDef.kind.isJSClass)
+          reportError(s"FieldDef '$name' cannot have a computed name")
+        typecheckExpect(tree, Env.empty, AnyType)
     }
 
     if (tpe == NoType)
@@ -287,7 +289,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def checkExportedMethodDef(methodDef: MethodDef,
       classDef: LinkedClass, isTopLevel: Boolean): Unit = withPerMethodState {
-    val MethodDef(static, StringLiteral(name), params, resultType, body) = methodDef
+    val MethodDef(static, pName, params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
     if (!isTopLevel && !classDef.kind.isAnyScalaJSDefinedClass) {
@@ -301,8 +303,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     if (isTopLevel && !static)
       reportError("Top level export must be static")
 
-    if (name.contains("__") && name != Definitions.ClassExportsName)
-      reportError("Exported method def name cannot contain __")
+    checkExportedPropertyName(pName, classDef, isTopLevel)
 
     for (ParamDef(name, tpe, _, _) <- params) {
       if (tpe == NoType)
@@ -319,7 +320,14 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       }
     }
 
-    if (classDef.kind.isJSClass && name == "constructor" && !static) {
+    def isJSConstructor = {
+      !static && (pName match {
+        case StringLiteral("constructor") => true
+        case _                            => false
+      })
+    }
+
+    if (classDef.kind.isJSClass && isJSConstructor) {
       checkJSClassConstructor(methodDef, classDef)
     } else {
       if (resultType != AnyType) {
@@ -390,13 +398,15 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def checkExportedPropertyDef(propDef: PropertyDef,
       classDef: LinkedClass): Unit = withPerMethodState {
-    val PropertyDef(static, _, getterBody, setterArgAndBody) = propDef
+    val PropertyDef(static, pName, getterBody, setterArgAndBody) = propDef
     implicit val ctx = ErrorContext(propDef)
 
     if (!classDef.kind.isAnyScalaJSDefinedClass) {
       reportError(s"Exported property def can only appear in a class")
       return
     }
+
+    checkExportedPropertyName(pName, classDef, isTopLevel = false)
 
     val thisType =
       if (static) NoType
@@ -417,6 +427,24 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       val setterBodyEnv = Env.fromSignature(thisType, List(setterArg), NoType)
       typecheckStat(setterBody, setterBodyEnv)
+    }
+  }
+
+  private def checkExportedPropertyName(pName: PropertyName,
+      classDef: LinkedClass, isTopLevel: Boolean)(
+      implicit ctx: ErrorContext): Unit = {
+    pName match {
+      case _: Ident =>
+        throw new AssertionError("Exported method may not have Ident as name")
+
+      case StringLiteral(name) =>
+        if (name.contains("__") && name != Definitions.ClassExportsName)
+          reportError("Exported method def name cannot contain __")
+
+      case ComputedName(tree, _) =>
+        if (isTopLevel || !classDef.kind.isJSClass)
+          reportError("Only JS classes may contain members with computed names")
+        typecheckExpect(tree, Env.empty, AnyType)
     }
   }
 

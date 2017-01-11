@@ -933,6 +933,13 @@ object Printers {
     private final def print(propName: PropertyName): Unit = propName match {
       case lit: StringLiteral => print(lit: Tree)
       case ident: Ident       => print(ident)
+
+      case ComputedName(tree, index) =>
+        print("[")
+        print(tree)
+        print("](")
+        print(index)
+        print(")")
     }
 
     private def print(spec: JSNativeLoadSpec): Unit = {

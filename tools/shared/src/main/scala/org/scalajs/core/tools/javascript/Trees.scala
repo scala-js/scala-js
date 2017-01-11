@@ -50,6 +50,10 @@ object Trees {
       new Ident(name, Some(name))
   }
 
+  case class ComputedName(tree: Tree) extends PropertyName {
+    def pos = tree.pos
+  }
+
   // Definitions
 
   sealed trait LocalDef extends Tree {

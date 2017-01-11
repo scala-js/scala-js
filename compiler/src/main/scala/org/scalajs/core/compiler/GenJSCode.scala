@@ -46,7 +46,7 @@ abstract class GenJSCode extends plugins.PluginComponent
   import rootMirror._
   import definitions._
   import jsDefinitions._
-  import jsInterop.{jsNameOf, compat068FullJSNameOf, jsNativeLoadSpecOf}
+  import jsInterop.{jsNameOf, compat068FullJSNameOf, jsNativeLoadSpecOf, JSName}
   import JSTreeExtractors._
 
   import treeInfo.hasSynthCaseSymbol
@@ -491,7 +491,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val constructorTrees = new ListBuffer[DefDef]
       val generatedMethods = new ListBuffer[js.MethodDef]
-      val dispatchMethodNames = new ListBuffer[String]
+      val dispatchMethodNames = new ListBuffer[JSName]
 
       def gen(tree: Tree): Unit = {
         tree match {
@@ -621,15 +621,14 @@ abstract class GenJSCode extends plugins.PluginComponent
               assert(mdef.static, "Non-static method in SJS defined JS class")
               staticMembers += mdef
 
-            case js.StringLiteral(name) =>
+            case js.StringLiteral("constructor") =>
               assert(!mdef.static, "Exported static method")
+              assert(constructor.isEmpty, "two ctors in class")
+              constructor = Some(mdef)
 
-              if (name == "constructor") {
-                assert(constructor.isEmpty, "two ctors in class")
-                constructor = Some(mdef)
-              } else {
-                classMembers += mdef
-              }
+            case _ =>
+              assert(!mdef.static, "Exported static method")
+              classMembers += mdef
           }
 
         case property: js.PropertyDef =>
@@ -667,8 +666,9 @@ abstract class GenJSCode extends plugins.PluginComponent
         case fdef: js.FieldDef =>
           implicit val pos = fdef.pos
           val select = fdef.name match {
-            case lit: js.StringLiteral => js.JSBracketSelect(selfRef, lit)
-            case ident: js.Ident       => js.JSDotSelect(selfRef, ident)
+            case ident: js.Ident          => js.JSDotSelect(selfRef, ident)
+            case lit: js.StringLiteral    => js.JSBracketSelect(selfRef, lit)
+            case js.ComputedName(tree, _) => js.JSBracketSelect(selfRef, tree)
           }
           js.Assign(select, jstpe.zeroOf(fdef.tpe))
 
@@ -896,7 +896,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
 
         val name =
-          if (isExposed(f)) js.StringLiteral(jsNameOf(f))
+          if (isExposed(f)) genPropertyName(jsNameOf(f))
           else encodeFieldSym(f)
 
         val irTpe = {
@@ -1844,7 +1844,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           } else if (isScalaJSDefinedJSClass(sym.owner)) {
             val genQual = genExpr(qualifier)
             val boxed = if (isExposed(sym))
-              js.JSBracketSelect(genQual, js.StringLiteral(jsNameOf(sym)))
+              js.JSBracketSelect(genQual, genExpr(jsNameOf(sym)))
             else
               js.JSDotSelect(genQual, encodeFieldSym(sym))
             unboxFieldValue(boxed)
@@ -1929,7 +1929,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
               if (isScalaJSDefinedJSClass(sym.owner)) {
                 val genLhs = if (isExposed(sym))
-                  js.JSBracketSelect(genQual, js.StringLiteral(jsNameOf(sym)))
+                  js.JSBracketSelect(genQual, genExpr(jsNameOf(sym)))
                 else
                   js.JSDotSelect(genQual, encodeFieldSym(sym))
                 js.Assign(genLhs, genBoxedRhs)
@@ -4199,7 +4199,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.JSFunctionApply(receiver, args)
 
         case _ =>
-          def jsFunName = js.StringLiteral(jsNameOf(sym))
+          def jsFunName: js.Tree = genExpr(jsNameOf(sym))
 
           def genSuperReference(propName: js.Tree): js.Tree = {
             superIn.fold[js.Tree] {
@@ -5142,6 +5142,40 @@ abstract class GenJSCode extends plugins.PluginComponent
           paramsLocal :+ ensureBoxed(body, methodType.resultType))
 
       (patchedParams, patchedBody)
+    }
+
+    // Methods to deal with JSName ---------------------------------------------
+
+    def genPropertyName(name: JSName)(implicit pos: Position): js.PropertyName = {
+      name match {
+        case JSName.Literal(name) => js.StringLiteral(name)
+
+        case JSName.Computed(sym) =>
+          js.ComputedName(genComputedJSName(sym), encodeComputedNameIdentity(sym))
+      }
+    }
+
+    def genExpr(name: JSName)(implicit pos: Position): js.Tree = name match {
+      case JSName.Literal(name) => js.StringLiteral(name)
+      case JSName.Computed(sym) => genComputedJSName(sym)
+    }
+
+    private def genComputedJSName(sym: Symbol)(implicit pos: Position): js.Tree = {
+      /* By construction (i.e. restriction in PrepJSInterop), we know that sym
+       * must be a static method.
+       * Therefore, at this point, we can invoke it by loading its owner and
+       * calling it.
+       */
+      val module = genLoadModule(sym.owner)
+
+      if (isRawJSType(sym.owner.tpe)) {
+        if (!isScalaJSDefinedJSClass(sym.owner) || isExposed(sym))
+          genJSCallGeneric(sym, module, args = Nil, isStat = false)
+        else
+          genApplyJSClassMethod(module, sym, arguments = Nil)
+      } else {
+        genApplyMethod(module, sym, arguments = Nil)
+      }
     }
 
     // Utilities ---------------------------------------------------------------

@@ -42,6 +42,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   import definitions._
   import rootMirror._
   import jsDefinitions._
+  import jsInterop.JSName
 
   val phaseName: String = "jsinterop"
   override def description: String = "prepare ASTs for JavaScript interop"
@@ -546,7 +547,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       }
 
       if (shouldCheckLiterals) {
-        checkJSNameLiteral(sym)
+        checkJSNameArgument(sym)
         checkJSImportLiteral(sym)
       }
 
@@ -638,7 +639,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             def memberDefStringWithJSName(membSym: Symbol) = {
               memberDefString(membSym) +
               membSym.locationString + " with JSName '" +
-              jsInterop.jsNameOf(membSym) + '\''
+              jsInterop.jsNameOf(membSym).displayName + '\''
             }
             "A member of a JS class is overriding another member with a different JS name.\n\n" +
             memberDefStringWithJSName(low) + "\n" +
@@ -685,15 +686,25 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         for {
           annot <- sym.annotations
           annotSym = annot.symbol
-          if annotSym != JSNameAnnotation && JSNativeLoadingSpecAnnots.contains(annotSym)
+          if JSNativeLoadingSpecAnnots.contains(annotSym)
         } {
-          reporter.error(annot.pos,
-              "Classes and objects nested in a JS native object cannot have " +
-              s"an ${annotSym.nameString} annotation.")
+          if (annotSym != JSNameAnnotation) {
+            reporter.error(annot.pos,
+                "Classes and objects nested in a JS native object cannot " +
+                s"have an ${annotSym.nameString} annotation.")
+          } else if (annot.args.head.tpe.typeSymbol != StringClass) {
+            reporter.error(annot.pos,
+                "Implementation restriction: @JSName with a js.Symbol is not " +
+                "supported on nested native classes and objects")
+          }
+        }
+
+        val jsName = jsInterop.jsNameOf(sym) match {
+          case JSName.Literal(jsName) => jsName
+          case JSName.Computed(_)     => "<erroneous>" // compile error above
         }
 
         val ownerLoadSpec = jsInterop.jsNativeLoadSpecOf(sym.owner)
-        val jsName = jsInterop.jsNameOf(sym)
         ownerLoadSpec match {
           case JSNativeLoadSpec.Global(path) =>
             JSNativeLoadSpec.Global(path :+ jsName)
@@ -702,7 +713,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         }
       } else {
         def globalFromName = {
-          val path = jsInterop.jsNameOf(sym).split('.').toList
+          val path = jsInterop.jsNameOf(sym) match {
+            case JSName.Literal(name) =>
+              name.split('.').toList
+            case JSName.Computed(_) =>
+              // this happens in erroneous cases that report a compile error
+              List("<erroneous>")
+          }
           JSNativeLoadSpec.Global(path)
         }
 
@@ -874,7 +891,17 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       }
 
       if (shouldCheckLiterals)
-        checkJSNameLiteral(sym)
+        checkJSNameArgument(sym)
+
+      /* Check that there is at most one @JSName annotation. We used not to
+       * check this, so we can only warn.
+       */
+      val allJSNameAnnots = sym.annotations.filter(_.symbol == JSNameAnnotation)
+      for (duplicate <- allJSNameAnnots.drop(1)) { // does not throw if empty
+        reporter.warning(duplicate.pos,
+            "A duplicate @JSName annotation is ignored. " +
+            "This will become an error in 1.0.0.")
+      }
 
       if (enclosingOwner is OwnerKind.JSNonNative) {
         // Private methods cannot be overloaded
@@ -1060,13 +1087,23 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   /** Checks that argument to @JSName on [[sym]] is a literal.
    *  Reports an error on each annotation where this is not the case.
    */
-  private def checkJSNameLiteral(sym: Symbol): Unit = {
-    for {
-      annot <- sym.getAnnotation(JSNameAnnotation)
-      if annot.stringArg(0).isEmpty
-    } {
-      reporter.error(annot.pos,
-        "The argument to JSName must be a literal string")
+  private def checkJSNameArgument(sym: Symbol): Unit = {
+    for (annot <- sym.getAnnotation(JSNameAnnotation)) {
+      val argTree = annot.args.head
+      if (argTree.tpe.typeSymbol == StringClass) {
+        if (!argTree.isInstanceOf[Literal]) {
+          reporter.error(argTree.pos,
+              "A string argument to JSName must be a literal string")
+        }
+      } else {
+        // We have a js.Symbol
+        val sym = argTree.symbol
+        if (!sym.isStatic || !sym.isStable) {
+          reporter.error(argTree.pos,
+              "A js.Symbol argument to JSName must be a static, stable identifier")
+        }
+      }
+
     }
   }
 
@@ -1244,6 +1281,17 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         None
 
       case result :: duplicates =>
+        val actualResult = {
+          if (result.args.headOption.forall(_.tpe.typeSymbol == StringClass)) {
+            Some(result)
+          } else {
+            reporter.error(result.pos,
+                "@JSName with a js.Symbol can only be used on members of " +
+                "JavaScript types")
+            None
+          }
+        }
+
         for (annot <- duplicates) {
           if (annot.symbol == JSNameAnnotation &&
               result.symbol == JSNameAnnotation) {
@@ -1270,7 +1318,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
                 "js.GlobalScope is treated as having @JSGlobalScope).")
           }
         }
-        Some(result)
+
+        actualResult
     }
   }
 

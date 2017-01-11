@@ -126,6 +126,12 @@ private[ir] object Tags {
   final val TagRecordType = TagArrayType + 1
   final val TagNoType = TagRecordType + 1
 
+  // Tags for PropertyNames
+
+  final val TagPropertyNameIdent = 1
+  final val TagPropertyNameStringLiteral = TagPropertyNameIdent + 1
+  final val TagPropertyNameComputedName = TagPropertyNameStringLiteral + 1
+
   // Tags for JS native loading specs
 
   final val TagJSNativeLoadSpecNone = 0

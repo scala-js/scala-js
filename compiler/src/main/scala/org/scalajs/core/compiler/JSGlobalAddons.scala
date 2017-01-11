@@ -69,6 +69,22 @@ trait JSGlobalAddons extends JSDefinitions
       val destination: ExportDestination
     }
 
+    sealed abstract class JSName {
+      def displayName: String
+    }
+
+    object JSName {
+      // Not final because it causes annoying compile warnings
+      case class Literal(name: String) extends JSName {
+        def displayName: String = name
+      }
+
+      // Not final because it causes annoying compile warnings
+      case class Computed(sym: Symbol) extends JSName {
+        def displayName: String = sym.fullName
+      }
+    }
+
     def clearGlobalState(): Unit = {
       exportedSymbols.clear()
       jsNativeLoadSpecs.clear()
@@ -173,11 +189,18 @@ trait JSGlobalAddons extends JSDefinitions
      *  If it is not explicitly specified with an `@JSName` annotation, the
      *  JS name is inferred from the Scala name.
      */
-    def jsNameOf(sym: Symbol): String = {
-      sym.getAnnotation(JSNameAnnotation).flatMap(_.stringArg(0)) getOrElse {
+    def jsNameOf(sym: Symbol): JSName = {
+      sym.getAnnotation(JSNameAnnotation).fold[JSName] {
         val base = sym.unexpandedName.decoded.stripSuffix("_=")
-        if (!sym.isMethod) base.stripSuffix(" ")
-        else base
+        val name =
+          if (!sym.isMethod) base.stripSuffix(" ")
+          else base
+        JSName.Literal(name)
+      } { annotation =>
+        annotation.args.head match {
+          case Literal(Constant(name: String)) => JSName.Literal(name)
+          case tree                            => JSName.Computed(tree.symbol)
+        }
       }
     }
 
@@ -188,7 +211,10 @@ trait JSGlobalAddons extends JSDefinitions
       assert(sym.isModuleClass,
           s"compat068FullJSNameOf called for non-module-class symbol $sym")
       sym.getAnnotation(JSFullNameAnnotation).flatMap(_.stringArg(0)) getOrElse {
-        jsNameOf(sym)
+        /* In 0.6.8, computed names did not exist, so we are necessarily
+         * reading a Literal here.
+         */
+        jsNameOf(sym).asInstanceOf[JSName.Literal].name
       }
     }
 

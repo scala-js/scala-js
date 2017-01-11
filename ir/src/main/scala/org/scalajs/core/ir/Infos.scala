@@ -376,7 +376,13 @@ object Infos {
         .setEncodedName(methodDef.name.encodedName)
         .setIsStatic(methodDef.static)
         .setIsAbstract(methodDef.body.isEmpty)
-        .setIsExported(methodDef.name.isInstanceOf[StringLiteral])
+        .setIsExported(!methodDef.name.isInstanceOf[Ident])
+
+      methodDef.name match {
+        case ComputedName(tree, _) =>
+          traverse(tree)
+        case _ =>
+      }
 
       methodDef.body.foreach(traverse)
 
@@ -388,6 +394,12 @@ object Infos {
         .setEncodedName(propertyDef.name.encodedName)
         .setIsStatic(propertyDef.static)
         .setIsExported(true)
+
+      propertyDef.name match {
+        case ComputedName(tree, _) =>
+          traverse(tree)
+        case _ =>
+      }
 
       propertyDef.getterBody.foreach(traverse)
       propertyDef.setterArgAndBody foreach { case (_, body) =>

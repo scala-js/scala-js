@@ -457,9 +457,9 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:12: error: The argument to JSName must be a literal string
+      |newSource1.scala:12: error: A string argument to JSName must be a literal string
       |      @JSName(A.a)
-      |       ^
+      |                ^
     """
 
     """
@@ -477,9 +477,9 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:12: error: The argument to JSName must be a literal string
+      |newSource1.scala:12: error: A string argument to JSName must be a literal string
       |      @JSName(A.a)
-      |       ^
+      |                ^
     """
   }
 

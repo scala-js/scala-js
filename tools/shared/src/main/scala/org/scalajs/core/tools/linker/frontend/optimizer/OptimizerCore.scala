@@ -655,7 +655,23 @@ private[optimizer] abstract class OptimizerCore(
 
       case JSObjectConstr(fields) =>
         JSObjectConstr(fields map {
-          case (name, value) => (name, transformExpr(value))
+          case (name, value) =>
+            /* #2773 - The ascription `: PropertyName` side-steps the issue by
+             * pushing down an appropriate expected type.
+             * TODO We need to minimize and fix the root cause.
+             */
+            val newName: PropertyName = name match {
+              case _:StringLiteral | _:Ident =>
+                name
+              case ComputedName(nameExpr, logicalName) =>
+                transformExpr(nameExpr) match {
+                  case newName: StringLiteral =>
+                    newName
+                  case newName =>
+                    ComputedName(newName, logicalName)
+                }
+            }
+            (newName, transformExpr(value))
         })
 
       // Atomic expressions

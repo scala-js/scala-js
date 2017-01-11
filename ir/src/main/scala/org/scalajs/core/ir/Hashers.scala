@@ -492,8 +492,18 @@ object Hashers {
     def mixOptIdent(optIdent: Option[Ident]): Unit = optIdent.foreach(mixIdent)
 
     def mixPropertyName(name: PropertyName): Unit = name match {
-      case name: Ident         => mixIdent(name)
-      case name: StringLiteral => mixTree(name)
+      case name: Ident =>
+        mixTag(TagPropertyNameIdent)
+        mixIdent(name)
+
+      case name: StringLiteral =>
+        mixTag(TagPropertyNameStringLiteral)
+        mixTree(name)
+
+      case ComputedName(tree, logicalName) =>
+        mixTag(TagPropertyNameComputedName)
+        mixTree(tree)
+        mixString(logicalName)
     }
 
     def mixPos(pos: Position): Unit = {

@@ -246,6 +246,12 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
         val node = Node.newString(Token.STRING_KEY, name)
         node.setQuotedString()
         node
+
+      case ComputedName(tree) =>
+        throw new AssertionError(
+            "The Closure AST compiler received a ComputedName, which it " +
+            "cannot translate because it always emits ES 5.1 code. " +
+            "Position: " + parentPos)
     }
 
     setNodePosition(node, pName.pos orElse parentPos)

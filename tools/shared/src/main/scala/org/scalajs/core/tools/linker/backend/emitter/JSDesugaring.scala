@@ -225,6 +225,15 @@ private[emitter] class JSDesugaring(semantics: Semantics,
     new JSDesugar().desugarToFunction(params, body, isStat, env)
   }
 
+  /** Desugars parameters and body to a JS function.
+   */
+  private[emitter] def desugarToFunction(
+      params: List[ParamDef],
+      body: Tree, isStat: Boolean)(
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
+    new JSDesugar().desugarToFunction(params, body, isStat, Env.empty)
+  }
+
   /** Desugars a statement or an expression. */
   private[emitter] def desugarTree(
       enclosingClassName: Option[String],
@@ -557,37 +566,68 @@ private[emitter] class JSDesugaring(semantics: Semantics,
                * setter.
                * Instead, we must force the creation of a field on the object,
                * irrespective of the presence of a getter/setter in the
-               * prototype chain. This is why we use `defineProperties`:
+               * prototype chain. This is why we use `defineProperty`:
                *
-               *   Object.defineProperties(this, { "field": {
+               *   Object.defineProperty(this, "field", {
                *     "configurable": true,
                *     "enumerable": true,
                *     "writable": true,
                *     "value": 0
-               *   } });
+               *   });
                *
                * which has all the same semantics as the assignment, except
                * it disregards the prototype chain.
+               *
+               * If the field is an identifier, we cannot directly translate
+               * it to a string for use in `defineProperty`, because Closure
+               * would fail to rename it. In that case, we use
+               * `defineProperties` instead, as follows:
+               *
+               *   Object.defineProperties(this, {
+               *     field: {
+               *       "configurable": true,
+               *       "enumerable": true,
+               *       "writable": true,
+               *       "value": 0
+               *     }
+               *   });
                */
-              val defineProperties = {
-                genIdentBracketSelect(genIdentBracketSelect(
-                    envField("g"),
-                    "Object"),
-                    "defineProperties")
+
+              def makeObjectMethodApply(methodName: String,
+                  args: List[js.Tree]): js.Tree = {
+                js.Apply(
+                  genIdentBracketSelect(genIdentBracketSelect(
+                      envField("g"),
+                      "Object"),
+                      methodName),
+                  args)
               }
-              val transformedName = name match {
-                case name: Ident      => transformIdent(name)
-                case StringLiteral(s) => js.StringLiteral(s)
-              }
+
               val descriptor = js.ObjectConstr(List(
                   js.StringLiteral("configurable") -> js.BooleanLiteral(true),
                   js.StringLiteral("enumerable") -> js.BooleanLiteral(true),
                   js.StringLiteral("writable") -> js.BooleanLiteral(true),
                   js.StringLiteral("value") -> genZeroOf(ftpe)
               ))
-              val descriptors = js.ObjectConstr(List(
-                  transformedName -> descriptor))
-              js.Apply(defineProperties, List(js.This(), descriptors))
+
+              unnestPropertyName(name) { (newName, env0) =>
+                implicit val env = env0
+                newName match {
+                  case newName: Ident =>
+                    val descriptors = js.ObjectConstr(List(
+                        transformIdent(newName) -> descriptor))
+                    makeObjectMethodApply("defineProperties",
+                        List(js.This(), descriptors))
+
+                  case newName: StringLiteral =>
+                    makeObjectMethodApply("defineProperty",
+                        List(js.This(), transformExpr(newName), descriptor))
+
+                  case ComputedName(nameTree, _) =>
+                    makeObjectMethodApply("defineProperty",
+                        List(js.This(), transformExpr(nameTree), descriptor))
+                }
+              }
             }
 
             js.Block(superCtorCall :: fieldDefs)
@@ -770,10 +810,23 @@ private[emitter] class JSDesugaring(semantics: Semantics,
                 ArrayValue(tpe, recs(elems))
               case JSArrayConstr(items) if !containsAnySpread(items) =>
                 JSArrayConstr(recs(items))
+
               case arg @ JSObjectConstr(items)
                   if !doesObjectConstrRequireDesugaring(arg) =>
-                val newValues = recs(items.map(_._2))
-                JSObjectConstr(items.map(_._1) zip newValues)
+                // We need to properly interleave keys and values here
+                val newItems = items.foldRight[List[(PropertyName, Tree)]](Nil) {
+                  case ((key, value), acc) =>
+                    val newValue = rec(value) // value first!
+                    val newKey = key match {
+                      case _:Ident | _:StringLiteral =>
+                        key
+                      case ComputedName(keyExpr, logicalName) =>
+                        ComputedName(rec(keyExpr), logicalName)
+                    }
+                    (newKey, newValue) :: acc
+                }
+                JSObjectConstr(newItems)
+
               case Closure(captureParams, params, body, captureValues) =>
                 Closure(captureParams, params, body, recs(captureValues))
 
@@ -857,6 +910,53 @@ private[emitter] class JSDesugaring(semantics: Semantics,
       }
     }
 
+    /** Unnest for the fields of a `JSObjectConstr`. */
+    def unnestJSObjectConstrFields(fields: List[(PropertyName, Tree)])(
+        makeStat: (List[(PropertyName, Tree)], Env) => js.Tree)(
+        implicit env: Env): js.Tree = {
+
+      // Collect all the trees that need unnesting, in evaluation order
+      val trees = fields.flatMap {
+        case (ComputedName(tree, _), value) => List(tree, value)
+        case (_, value)                     => List(value)
+      }
+
+      unnest(trees) { (newTrees, env) =>
+        val newTreesIterator = newTrees.iterator
+
+        val newFields = fields.map {
+          case (propName, value) =>
+            val newPropName = propName match {
+              case ComputedName(_, logicalName) =>
+                val newTree = newTreesIterator.next()
+                ComputedName(newTree, logicalName)
+              case _:StringLiteral | _:Ident =>
+                propName
+            }
+            val newValue = newTreesIterator.next()
+            (newPropName, newValue)
+        }
+
+        assert(!newTreesIterator.hasNext)
+        makeStat(newFields, env)
+      }
+    }
+
+    /** Unnest for a `PropertyName`. */
+    def unnestPropertyName(arg: PropertyName)(
+        makeStat: (PropertyName, Env) => js.Tree)(
+        implicit env: Env): js.Tree = {
+
+      arg match {
+        case _:StringLiteral | _:Ident =>
+          makeStat(arg, env)
+        case ComputedName(tree, logicalName) =>
+          unnest(tree) { (newTree, env) =>
+            makeStat(ComputedName(newTree, logicalName), env)
+          }
+      }
+    }
+
     /** Common implementation for the functions below.
      *  A pure expression can be moved around or executed twice, because it
      *  will always produce the same result and never have side-effects.
@@ -905,8 +1005,14 @@ private[emitter] class JSDesugaring(semantics: Semantics,
         case JSArrayConstr(items) =>
           allowUnpure && (items forall test)
         case tree @ JSObjectConstr(items) =>
-          allowUnpure && (items forall (item => test(item._2))) &&
-          !doesObjectConstrRequireDesugaring(tree)
+          allowUnpure &&
+          !doesObjectConstrRequireDesugaring(tree) &&
+          items.forall { item =>
+            test(item._2) && (item._1 match {
+              case ComputedName(tree, _) => test(tree)
+              case _                     => true
+            })
+          }
         case Closure(captureParams, params, body, captureValues) =>
           allowUnpure && (captureValues forall test)
 
@@ -1478,9 +1584,12 @@ private[emitter] class JSDesugaring(semantics: Semantics,
             val assignFields = fields.foldRight((Set.empty[String], List.empty[Tree])) {
               case ((prop, value), (namesSeen, statsAcc)) =>
                 implicit val pos = value.pos
-                val name = prop.encodedName
+                val nameForDupes = prop match {
+                  case _:StringLiteral | _:Ident => Some(prop.encodedName)
+                  case _: ComputedName           => None
+                }
                 val stat = prop match {
-                  case _ if namesSeen.contains(name) =>
+                  case _ if nameForDupes.exists(namesSeen) =>
                     /* Important: do not emit the assignment, otherwise
                      * Closure recreates a literal with the duplicate field!
                      */
@@ -1489,17 +1598,17 @@ private[emitter] class JSDesugaring(semantics: Semantics,
                     Assign(JSDotSelect(objVarDef.ref, prop), value)
                   case prop: StringLiteral =>
                     Assign(JSBracketSelect(objVarDef.ref, prop), value)
+                  case ComputedName(tree, _) =>
+                    Assign(JSBracketSelect(objVarDef.ref, tree), value)
                 }
-                (namesSeen + name, stat :: statsAcc)
+                (namesSeen ++ nameForDupes, stat :: statsAcc)
             }._2
             redo {
               Block(objVarDef :: assignFields ::: objVarDef.ref :: Nil)
             }
           } else {
-            val names = fields map (_._1)
-            val items = fields map (_._2)
-            unnest(items) { (newItems, env) =>
-              redo(JSObjectConstr(names.zip(newItems)))(env)
+            unnestJSObjectConstrFields(fields) { (newFields, env) =>
+              redo(JSObjectConstr(newFields))(env)
             }
           }
 
@@ -1574,8 +1683,21 @@ private[emitter] class JSDesugaring(semantics: Semantics,
     /** Tests whether a [[JSObjectConstr]] must be desugared. */
     private def doesObjectConstrRequireDesugaring(
         tree: JSObjectConstr): Boolean = {
-      val names = tree.fields.map(_._1.encodedName)
-      names.toSet.size != names.size // i.e., there is at least one duplicate
+      def computedNamesAllowed: Boolean =
+        outputMode == OutputMode.ECMAScript6
+
+      def hasComputedName: Boolean =
+        tree.fields.exists(_._1.isInstanceOf[ComputedName])
+
+      def hasDuplicateNonComputedProp: Boolean = {
+        val names = tree.fields.collect {
+          case (StringLiteral(name), _) => name
+          case (Ident(name, _), _)      => name
+        }
+        names.toSet.size != names.size
+      }
+
+      (!computedNamesAllowed && hasComputedName) || hasDuplicateNonComputedProp
     }
 
     /** Evaluates `expr` and stores the result in a temp, then evaluates the
@@ -1965,11 +2087,8 @@ private[emitter] class JSDesugaring(semantics: Semantics,
           js.ArrayConstr(items map transformExpr)
 
         case JSObjectConstr(fields) =>
-          js.ObjectConstr(fields map {
-            case (name: Ident, value) =>
-              (transformIdent(name), transformExpr(value))
-            case (StringLiteral(name), value) =>
-              (js.StringLiteral(name), transformExpr(value))
+          js.ObjectConstr(fields map { case (name, value) =>
+            (transformPropertyName(name), transformExpr(value))
           })
 
         case JSLinkingInfo() =>
@@ -2083,6 +2202,16 @@ private[emitter] class JSDesugaring(semantics: Semantics,
         "isNaN__Z"      -> "isNaN",
         "isInfinite__Z" -> "isInfinite"
     )
+
+    def transformPropertyName(pName: PropertyName)(
+        implicit env: Env): js.PropertyName = {
+      implicit val pos = pName.pos
+      pName match {
+        case name: Ident           => transformIdent(name)
+        case StringLiteral(s)      => js.StringLiteral(s)
+        case ComputedName(tree, _) => js.ComputedName(transformExpr(tree))
+      }
+    }
 
     def genClassDataOf(cls: ReferenceType)(implicit pos: Position): js.Tree = {
       cls match {
@@ -2429,6 +2558,7 @@ private[emitter] class JSDesugaring(semantics: Semantics,
     item match {
       case item: js.Ident         => js.DotSelect(qual, item)
       case item: js.StringLiteral => genBracketSelect(qual, item)
+      case js.ComputedName(tree)  => genBracketSelect(qual, tree)
     }
   }
 

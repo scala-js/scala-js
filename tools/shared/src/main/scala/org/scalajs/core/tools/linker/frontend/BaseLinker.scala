@@ -221,10 +221,10 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       // Static methods
       case m: MethodDef if m.static =>
         if (analyzerInfo.staticMethodInfos(m.name.encodedName).isReachable) {
-          if (m.name.isInstanceOf[StringLiteral])
-            exportedMembers += linkedMethod(m)
-          else
+          if (m.name.isInstanceOf[Ident])
             staticMethods += linkedMethod(m)
+          else
+            exportedMembers += linkedMethod(m)
         }
 
       // Fields
@@ -235,12 +235,14 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       // Normal methods
       case m: MethodDef =>
         if (analyzerInfo.methodInfos(m.name.encodedName).isReachable) {
-          if (m.name.isInstanceOf[StringLiteral])
+          if (m.name.isInstanceOf[Ident]) {
+            if (m.body.isDefined)
+              memberMethods += linkedMethod(m)
+            else
+              abstractMethods += linkedMethod(m)
+          } else {
             exportedMembers += linkedMethod(m)
-          else if (m.body.isDefined)
-            memberMethods += linkedMethod(m)
-          else
-            abstractMethods += linkedMethod(m)
+          }
         }
 
       case m: PropertyDef =>

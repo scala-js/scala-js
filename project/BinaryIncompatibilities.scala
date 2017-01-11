@@ -78,10 +78,14 @@ object BinaryIncompatibilities {
           "org.scalajs.core.tools.linker.backend.closure.ClosureAstTransformer.transformString"),
 
       // private[emitter], not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genAddToPrototype"),
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genClass"),
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genClassDef"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genPropertyName"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genTopLevelExportDef"),
       ProblemFilters.exclude[DirectMissingMethodProblem](

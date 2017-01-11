@@ -179,7 +179,14 @@ object Traversers {
         items foreach traverse
 
       case JSObjectConstr(fields) =>
-        fields foreach { f => traverse(f._2) }
+        for ((key, value) <- fields) {
+          key match {
+            case ComputedName(tree, _) =>
+              traverse(tree)
+            case _ =>
+          }
+          traverse(value)
+        }
 
       // Atomic expressions
 
