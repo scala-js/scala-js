@@ -7,16 +7,19 @@
 \*                                                                      */
 package org.scalajs.testsuite.compiler
 
-import scala.scalajs.js
+import language.reflectiveCalls
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
-import language.reflectiveCalls
+import org.scalajs.testsuite.utils.Platform
+import org.scalajs.testsuite.utils.AssertThrows._
 
 import java.lang.{Float => JFloat, Double => JDouble}
 
 class ReflectiveCallTest {
+  import ReflectiveCallTest._
 
   @Test def should_allow_subtyping_in_return_types(): Unit = {
     class A { def x: Int = 1 }
@@ -68,10 +71,10 @@ class ReflectiveCallTest {
     assertEquals(-1L, fLong(1L))
 
     def fFloat(x: Any { def unary_- : Float}): Float = -x
-    assertEquals(-1.5f, fFloat(1.5f))
+    assertEquals(-1.5f, fFloat(1.5f), 1e-5f)
 
     def fDouble(x: Any { def unary_- : Double }): Double = -x
-    assertEquals(-1.5, fDouble(1.5))
+    assertEquals(-1.5, fDouble(1.5), 1e-5d)
 
     def fBoolean(x: Any { def unary_! : Boolean }): Boolean = !x
     assertTrue(fBoolean(false))
@@ -100,10 +103,10 @@ class ReflectiveCallTest {
     assertEquals(-34, fShort(-40))
 
     def fFloat(x: Any { def %(x: Float): Float}): Float = x % 3.4f
-    assertEquals(2.1f, fFloat(5.5f))
+    assertEquals(2.1f, fFloat(5.5f), 1e-5f)
 
     def fDouble(x: Any { def /(x: Double): Double }): Double = x / 1.4
-    assertEquals(-1.0714285714285714, fDouble(-1.5))
+    assertEquals(-1.0714285714285714, fDouble(-1.5), 1e-5d)
 
     def fBoolean(x: Any { def &&(x: Boolean): Boolean }): Boolean = x && true // scalastyle:ignore
     assertFalse(fBoolean(false))
@@ -111,6 +114,9 @@ class ReflectiveCallTest {
   }
 
   @Test def should_work_with_equality_operators_on_primitive_types(): Unit = {
+    assumeFalse("Reflective call to == and != is broken on the JVM",
+        Platform.executingInJVM)
+
     def fNum(obj: Any { def ==(x: Int): Boolean }): Boolean = obj == 5
     assertTrue(fNum(5.toByte))
     assertFalse(fNum(6.toByte))
@@ -126,6 +132,7 @@ class ReflectiveCallTest {
     assertFalse(fNum(5.6f))
     assertTrue(fNum(5.0))
     assertFalse(fNum(7.9))
+
     def fBool(obj: Any { def ==(x: Boolean): Boolean }): Boolean = obj == false // scalastyle:ignore
     assertFalse(fBool(true))
     assertTrue(fBool(false))
@@ -145,10 +152,10 @@ class ReflectiveCallTest {
     assertTrue(fNumN(5.6f))
     assertFalse(fNumN(5.0))
     assertTrue(fNumN(7.9))
+
     def fBoolN(obj: Any { def !=(x: Boolean): Boolean }): Boolean = obj != false // scalastyle:ignore
     assertTrue(fBoolN(true))
     assertFalse(fBoolN(false))
-
   }
 
   @Test def should_work_with_Arrays(): Unit = {
@@ -234,10 +241,10 @@ class ReflectiveCallTest {
     val sub = new Sub
 
     val x: { def foo(x: Option[Int]): Any } = sub
-    assertEquals(1, x.foo(Some(1)).asInstanceOf[js.Any]) // here is the "bug"
+    assertEquals(1, x.foo(Some(1))) // here is the "bug"
 
     val y: { def foo(x: Option[String]): Any } = sub
-    assertEquals(1, y.foo(Some("hello")).asInstanceOf[js.Any])
+    assertEquals(1, y.foo(Some("hello")))
   }
 
   @Test def should_work_on_java_lang_Object_notify_notifyAll_issue_303(): Unit = {
@@ -253,7 +260,10 @@ class ReflectiveCallTest {
 
     class A
 
-    assertEquals(1, objNotifyTest(new A()))
+    val a = new A()
+    a.synchronized {
+      assertEquals(1, objNotifyTest(a))
+    }
   }
 
   @Test def should_work_on_java_lang_Object_clone_issue_303(): Unit = {
@@ -271,24 +281,71 @@ class ReflectiveCallTest {
     assertEquals(1, bClone.x)
   }
 
-  @Test def should_work_on_scala_AnyRef_eq_ne_issue_303(): Unit = {
-    type ObjEqLike = Any {
+  @Test def should_not_work_on_scala_AnyRef_eq_ne_synchronized_issue_2709(): Unit = {
+    // Bug compatible with Scala/JVM
+
+    assumeFalse(
+        "GCC is a bit too eager in its optimizations in this error case",
+        Platform.isInFullOpt)
+
+    type ObjWithAnyRefPrimitives = Any {
       def eq(that: AnyRef): Boolean
       def ne(that: AnyRef): Boolean
+      def synchronized[T](f: T): Any
     }
-    def objEqTest(obj: ObjEqLike, that: AnyRef): Boolean = obj eq that
-    def objNeTest(obj: ObjEqLike, that: AnyRef): Boolean = obj ne that
+
+    def objEqTest(obj: ObjWithAnyRefPrimitives, that: AnyRef): Boolean =
+      obj eq that
+    def objNeTest(obj: ObjWithAnyRefPrimitives, that: AnyRef): Boolean =
+      obj ne that
+    def objSynchronizedTest(obj: ObjWithAnyRefPrimitives, f: String): Any =
+      obj.synchronized(f)
+
+    /* The name of the expected exception class. We cannot use
+     * classOf[js.JavaScriptException] as that would not compile on the JVM.
+     */
+    val expectedClassName =
+      if (Platform.executingInJVM) "java.lang.NoSuchMethodException"
+      else "scala.scalajs.js.JavaScriptException"
+
+    def testWith(body: => Unit): Unit = {
+      val exception = expectThrows(classOf[Throwable], body)
+      assertEquals(expectedClassName, exception.getClass.getName)
+    }
 
     class A
 
     val a1 = new A
     val a2 = new A
 
-    assertFalse(objEqTest(a1,a2))
-    assertTrue(objEqTest(a1,a1))
+    testWith(objEqTest(a1, a2))
+    testWith(objNeTest(a1, a2))
+    testWith(objSynchronizedTest(a1, "hello"))
+  }
 
-    assertTrue(objNeTest(a1,a2))
-    assertFalse(objNeTest(a1,a1))
+  @Test def should_work_on_AnyVal_eq_ne_synchronized_issue_2709(): Unit = {
+    type ObjWithAnyRefPrimitives = Any {
+      def eq(that: AnyRef): Boolean
+      def ne(that: AnyRef): Boolean
+      def synchronized[T](f: T): Any
+    }
+
+    def objEqTest(obj: ObjWithAnyRefPrimitives, that: AnyRef): Boolean =
+      obj eq that
+    def objNeTest(obj: ObjWithAnyRefPrimitives, that: AnyRef): Boolean =
+      obj ne that
+    def objSynchronizedTest(obj: ObjWithAnyRefPrimitives, f: String): Any =
+      obj.synchronized(f)
+
+    val a = new AnyValWithAnyRefPrimitiveMethods(5)
+
+    assertFalse(objEqTest(a, 5: Integer))
+    assertTrue(objEqTest(a, 6: Integer))
+
+    assertTrue(objNeTest(a, 5: Integer))
+    assertFalse(objNeTest(a, 6: Integer))
+
+    assertEquals("hellothere", objSynchronizedTest(a, "hello"))
   }
 
   @Test def should_work_on_java_lang_Float_Double_isNaN_isInfinite(): Unit = {
@@ -347,5 +404,13 @@ class ReflectiveCallTest {
     }
 
     test(new Foo)
+  }
+}
+
+object ReflectiveCallTest {
+  class AnyValWithAnyRefPrimitiveMethods(val x: Int) extends AnyVal {
+    def eq(that: AnyRef): Boolean = (x + 1) == that
+    def ne(that: AnyRef): Boolean = (x + 1) != that
+    def synchronized[T](f: T): Any = f + "there"
   }
 }
