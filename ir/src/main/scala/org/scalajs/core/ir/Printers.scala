@@ -863,9 +863,9 @@ object Printers {
           printEscapeJS(fullName, out)
           print('\"')
 
-        case TopLevelExportDef(member) =>
+        case TopLevelMethodExportDef(methodDef) =>
           print("export top ")
-          print(member)
+          print(methodDef)
 
         case TopLevelFieldExportDef(fullName, field) =>
           print("export top static field ")

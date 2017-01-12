@@ -17,6 +17,14 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[IncompatibleResultTypeProblem](
           "org.scalajs.core.ir.Trees#FieldDef.copy$default$3"),
 
+      // Breaking: TopLevelExportDef has been renamed to TopLevelMethodExportDef
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.ir.Trees$TopLevelExportDef"),
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.ir.Trees$TopLevelExportDef$"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.ir.Tags.TagTopLevelExportDef"),
+
       // private, not an issue
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.ir.Infos#MethodInfo.this"),
@@ -40,6 +48,8 @@ object BinaryIncompatibilities {
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genClass"),
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genClassDef"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genTopLevelExportDef"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.outputMode"),
       ProblemFilters.exclude[DirectMissingMethodProblem](

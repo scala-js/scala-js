@@ -303,7 +303,7 @@ object Infos {
       .addInterfaces(classDef.interfaces.map(_.name))
 
     var exportedConstructors: List[ConstructorExportDef] = Nil
-    var topLevelExports: List[TopLevelExportDef] = Nil
+    var topLevelMethodExports: List[TopLevelMethodExportDef] = Nil
     var topLevelFieldExports: List[TopLevelFieldExportDef] = Nil
 
     classDef.defs foreach {
@@ -316,18 +316,18 @@ object Infos {
         exportedConstructors ::= constructorDef
       case _:JSClassExportDef | _:ModuleExportDef =>
         builder.setIsExported(true)
-      case topLevelExport: TopLevelExportDef =>
+      case topLevelMethodExport: TopLevelMethodExportDef =>
         builder.setIsExported(true)
-        topLevelExports ::= topLevelExport
+        topLevelMethodExports ::= topLevelMethodExport
       case topLevelFieldExport: TopLevelFieldExportDef =>
         builder.setIsExported(true)
         topLevelFieldExports ::= topLevelFieldExport
       case _ =>
     }
 
-    if (exportedConstructors.nonEmpty || topLevelExports.nonEmpty) {
+    if (exportedConstructors.nonEmpty || topLevelMethodExports.nonEmpty) {
       builder.addMethod(generateClassExportsInfo(classDef.name.name,
-          exportedConstructors, topLevelExports, topLevelFieldExports))
+          exportedConstructors, topLevelMethodExports, topLevelFieldExports))
     }
 
     builder.result()
@@ -353,18 +353,18 @@ object Infos {
       "Use the overload with an enclosingClass and topLevelFieldExports.",
       "0.6.15")
   def generateClassExportsInfo(constructorDefs: List[ConstructorExportDef],
-      topLevelExports: List[TopLevelExportDef]): MethodInfo = {
+      topLevelMethodExports: List[TopLevelMethodExportDef]): MethodInfo = {
     // enclosingClass won't be used when topLevelFieldExports is empty
-    generateClassExportsInfo("", constructorDefs, topLevelExports, Nil)
+    generateClassExportsInfo("", constructorDefs, topLevelMethodExports, Nil)
   }
 
   /** Generates the [[MethodInfo]] for the class exports. */
   def generateClassExportsInfo(enclosingClass: String,
       constructorDefs: List[ConstructorExportDef],
-      topLevelExports: List[TopLevelExportDef],
+      topLevelMethodExports: List[TopLevelMethodExportDef],
       topLevelFieldExports: List[TopLevelFieldExportDef]): MethodInfo = {
     new GenInfoTraverser().generateClassExportsInfo(enclosingClass,
-        constructorDefs, topLevelExports, topLevelFieldExports)
+        constructorDefs, topLevelMethodExports, topLevelFieldExports)
   }
 
   private final class GenInfoTraverser extends Traversers.Traverser {
@@ -397,7 +397,7 @@ object Infos {
 
     def generateClassExportsInfo(enclosingClass: String,
         constructorDefs: List[ConstructorExportDef],
-        topLevelExports: List[TopLevelExportDef],
+        topLevelMethodExports: List[TopLevelMethodExportDef],
         topLevelFieldExports: List[TopLevelFieldExportDef]): MethodInfo = {
       builder
         .setEncodedName(ClassExportsName)
@@ -406,8 +406,8 @@ object Infos {
       for (constructorDef <- constructorDefs)
         traverse(constructorDef.body)
 
-      for (topLevelExport <- topLevelExports)
-        traverse(topLevelExport.member)
+      for (topLevelMethodExport <- topLevelMethodExports)
+        traverse(topLevelMethodExport.methodDef)
 
       for (topLevelFieldExport <- topLevelFieldExports) {
         val field = topLevelFieldExport.field.name

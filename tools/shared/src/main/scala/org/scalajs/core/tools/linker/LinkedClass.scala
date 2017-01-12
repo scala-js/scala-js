@@ -67,7 +67,7 @@ final class LinkedClass(
     case ModuleExportDef(name)            => name
     case JSClassExportDef(name)           => name
 
-    case TopLevelExportDef(MethodDef(_, StringLiteral(name), _, _, _)) =>
+    case TopLevelMethodExportDef(MethodDef(_, StringLiteral(name), _, _, _)) =>
       name
 
     case TopLevelFieldExportDef(name, _) => name
