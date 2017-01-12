@@ -122,6 +122,19 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         checkFieldDef(field, classDef)
       }
 
+      /* Check for static field collisions.
+       * TODO #2627 We currently cannot check instance field collisions because
+       * of #2382.
+       */
+      val staticFieldDefs = classDef.fields.filter(_.static)
+      for {
+        fieldsWithSameName <- staticFieldDefs.groupBy(_.name.name).values
+        duplicate <- fieldsWithSameName.tail
+      } {
+        implicit val ctx = ErrorContext(duplicate)
+        reportError(s"Duplicate static field with name '${duplicate.name}'")
+      }
+
       // Check exported members
       for (member <- classDef.exportedMembers) {
         implicit val ctx = ErrorContext(member.tree)
@@ -166,6 +179,15 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
                     member.getClass.getName)
             }
 
+          case TopLevelFieldExportDef(fullName, field) =>
+            lookupClass(classDef.name.name).lookupStaticField(field.name).fold {
+              reportError(s"Cannot export non-existent static field '$field'")
+            } { checkedField =>
+              val tpe = checkedField.tpe
+              if (tpe != AnyType)
+                reportError(s"Cannot export field '$field' of type $tpe")
+            }
+
           // Anything else is illegal
           case _ =>
             reportError("Illegal class export of type " +
@@ -202,9 +224,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   private def checkFieldDef(fieldDef: FieldDef, classDef: LinkedClass): Unit = {
     val FieldDef(static, name, tpe, mutable) = fieldDef
     implicit val ctx = ErrorContext(fieldDef)
-
-    if (static && !classDef.kind.isJSClass)
-      reportError(s"FieldDef '$name' cannot be static")
 
     name match {
       case _: Ident =>
@@ -475,6 +494,14 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
                 } reportError(s"Assignment to immutable field $name.")
               case _ =>
             }
+          case SelectStatic(ClassType(cls), Ident(name, _)) =>
+            for {
+              c <- tryLookupClass(cls)
+              f <- c.lookupStaticField(name)
+              if !f.mutable
+            } {
+              reportError(s"Assignment to immutable static field $name.")
+            }
           case VarRef(Ident(name, _)) if !env.locals(name).mutable =>
             reportError(s"Assignment to immutable variable $name.")
           case _ =>
@@ -708,6 +735,20 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             // always ok
           case _ =>
             reportError(s"Cannot select $item of non-class type $qualType")
+        }
+
+      case SelectStatic(ClassType(cls), Ident(item, _)) =>
+        val checkedClass = lookupClass(cls)
+        if (checkedClass.kind.isJSType) {
+          reportError(s"Cannot select static $item of JS type $cls")
+        } else {
+          checkedClass.lookupStaticField(item).fold[Unit] {
+            reportError(s"Class $cls does not have a static field $item")
+          } { fieldDef =>
+            if (fieldDef.tpe != tree.tpe)
+              reportError(s"SelectStatic $cls.$item of type "+
+                  s"${fieldDef.tpe} typed as ${tree.tpe}")
+          }
         }
 
       case Apply(receiver, Ident(method, _), args) =>
@@ -1125,7 +1166,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       _fields: TraversableOnce[CheckedField])(
       implicit ctx: ErrorContext) {
 
-    val fields = _fields.map(f => f.name -> f).toMap
+    val fields = _fields.filter(!_.static).map(f => f.name -> f).toMap
+    val staticFields = _fields.filter(_.static).map(f => f.name -> f).toMap
 
     lazy val superClass = superClassName.map(classes)
 
@@ -1143,17 +1185,20 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
     def lookupField(name: String): Option[CheckedField] =
       fields.get(name).orElse(superClass.flatMap(_.lookupField(name)))
+
+    def lookupStaticField(name: String): Option[CheckedField] =
+      staticFields.get(name)
   }
 
   private object CheckedClass {
     private def checkedField(fieldDef: FieldDef) = {
-      val FieldDef(false, Ident(name, _), tpe, mutable) = fieldDef
-      new CheckedField(name, tpe, mutable)
+      val FieldDef(static, Ident(name, _), tpe, mutable) = fieldDef
+      new CheckedField(static, name, tpe, mutable)
     }
   }
 
-  private class CheckedField(val name: String, val tpe: Type,
-      val mutable: Boolean)
+  private class CheckedField(val static: Boolean, val name: String,
+      val tpe: Type, val mutable: Boolean)
 }
 
 object IRChecker {

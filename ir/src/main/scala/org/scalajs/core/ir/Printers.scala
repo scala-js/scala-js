@@ -299,6 +299,11 @@ object Printers {
           print('.')
           print(item)
 
+        case SelectStatic(cls, item) =>
+          print(cls)
+          print('.')
+          print(item)
+
         case Apply(receiver, method, args) =>
           print(receiver)
           print(".")
@@ -861,6 +866,13 @@ object Printers {
         case TopLevelExportDef(member) =>
           print("export top ")
           print(member)
+
+        case TopLevelFieldExportDef(fullName, field) =>
+          print("export top static field ")
+          print(field)
+          print(" as \"")
+          printEscapeJS(fullName, out)
+          print('\"')
 
         case _ =>
           print(s"<error, elem of class ${tree.getClass()}>")

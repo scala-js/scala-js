@@ -120,9 +120,15 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
     }
 
-    def genTopLevelExports(classSym: Symbol): List[js.TopLevelExportDef] = {
-      for (m <- genTopLevelOrStaticExports(classSym, ExportDestination.TopLevel))
-        yield js.TopLevelExportDef(m)(m.pos)
+    def genTopLevelExports(classSym: Symbol): List[js.Tree] = {
+      for {
+        m <- genTopLevelOrStaticExports(classSym, ExportDestination.TopLevel)
+      } yield {
+        m match {
+          case m: js.TopLevelFieldExportDef => m
+          case _                            => js.TopLevelExportDef(m)(m.pos)
+        }
+      }
     }
 
     def genStaticExports(classSym: Symbol): List[js.Tree] =
@@ -156,23 +162,25 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     }
 
     private def genTopLevelOrStaticFieldExports(classSym: Symbol,
-        destination: ExportDestination): List[(js.FieldDef, String, Position)] = {
+        destination: ExportDestination): List[(js.Tree, String, Position)] = {
       (for {
         fieldSym <- classSym.info.members
         if !fieldSym.isMethod && fieldSym.isTerm && !fieldSym.isModule
         export <- jsInterop.registeredExportsOf(fieldSym)
         if export.destination == destination
       } yield {
-        // in fact, top-level field exports do not exist yet
-        assert(export.destination == ExportDestination.Static)
-
         implicit val pos = fieldSym.pos
 
-        val mutable = true // static fields must always be mutable
-        val name = js.StringLiteral(export.jsName)
-        val irTpe = genExposedFieldIRType(fieldSym)
+        val tree = if (destination == ExportDestination.Static) {
+          val mutable = true // static fields must always be mutable
+          val name = js.StringLiteral(export.jsName)
+          val irTpe = genExposedFieldIRType(fieldSym)
+          js.FieldDef(static = true, name, irTpe, mutable)
+        } else {
+          js.TopLevelFieldExportDef(export.jsName, encodeFieldSym(fieldSym))
+        }
 
-        (js.FieldDef(static = true, name, irTpe, mutable), export.jsName, pos)
+        (tree, export.jsName, pos)
       }).toList
     }
 

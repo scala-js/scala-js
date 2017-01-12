@@ -1293,6 +1293,69 @@ class ExportsTest {
     assertEquals("Hello World", jsPackage.toplevel.reachability())
   }
 
+  // @JSExportTopLevel fields
+
+  @Test def top_level_export_basic_field(): Unit = {
+    // Initialization
+    assertEquals(5, jsPackage.toplevel.basicVal)
+    assertEquals("hello", jsPackage.toplevel.basicVar)
+
+    // Scala modifies var
+    TopLevelFieldExports.basicVar = "modified"
+    assertEquals("modified", TopLevelFieldExports.basicVar)
+    assertEquals("modified", jsPackage.toplevel.basicVar)
+
+    // Reset var
+    TopLevelFieldExports.basicVar = "hello"
+  }
+
+  @Test def top_level_export_field_twice(): Unit = {
+    // Initialization
+    assertEquals(5, jsPackage.toplevel.valExportedTwice1)
+    assertEquals("hello", jsPackage.toplevel.varExportedTwice1)
+    assertEquals("hello", jsPackage.toplevel.varExportedTwice2)
+
+    // Scala modifies var
+    TopLevelFieldExports.varExportedTwice = "modified"
+    assertEquals("modified", TopLevelFieldExports.varExportedTwice)
+    assertEquals("modified", jsPackage.toplevel.varExportedTwice1)
+    assertEquals("modified", jsPackage.toplevel.varExportedTwice2)
+
+    // Reset var
+    TopLevelFieldExports.varExportedTwice = "hello"
+  }
+
+  @Test def top_level_export_write_val_var_causes_typeerror(): Unit = {
+    assumeFalse("Assuming strict mode, not supported by Rhino",
+        Platform.executingInRhino)
+
+    assertThrows(classOf[js.JavaScriptException], {
+      jsPackage.toplevel.basicVal = 54
+    })
+
+    assertThrows(classOf[js.JavaScriptException], {
+      jsPackage.toplevel.basicVar = 54
+    })
+  }
+
+  @Test def top_level_export_uninitialized_fields(): Unit = {
+    assertEquals(0, TopLevelFieldExports.uninitializedVarInt)
+    assertEquals(null, jsPackage.toplevel.uninitializedVarInt)
+
+    assertEquals(0L, TopLevelFieldExports.uninitializedVarLong)
+    assertEquals(null, jsPackage.toplevel.uninitializedVarLong)
+
+    assertEquals(null, TopLevelFieldExports.uninitializedVarString)
+    assertEquals(null, jsPackage.toplevel.uninitializedVarString)
+
+    assertEquals('\0', TopLevelFieldExports.uninitializedVarChar)
+    assertEquals(null, jsPackage.toplevel.uninitializedVarChar)
+  }
+
+  @Test def top_level_export_field_is_always_reachable_and_initialized(): Unit = {
+    assertEquals("Hello World", jsPackage.toplevel.fieldreachability)
+  }
+
   // @JSExportDescendentObjects
 
   @Test def auto_exports_for_objects_extending_a_trait(): Unit = {
@@ -1735,4 +1798,43 @@ object TopLevelExportsReachability {
 
   @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.reachability")
   def basic(): String = "Hello " + name
+}
+
+object TopLevelFieldExports {
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.basicVal")
+  val basicVal: Int = 5
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.basicVar")
+  var basicVar: String = "hello"
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.valExportedTwice1")
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.valExportedTwice2")
+  val valExportedTwice: Int = 5
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.varExportedTwice1")
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.varExportedTwice2")
+  var varExportedTwice: String = "hello"
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.uninitializedVarInt")
+  var uninitializedVarInt: Int = _
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.uninitializedVarLong")
+  var uninitializedVarLong: Long = _
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.uninitializedVarString")
+  var uninitializedVarString: String = _
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.uninitializedVarChar")
+  var uninitializedVarChar: Char = _
+}
+
+/* This object and its static initializer are only reachable via the top-level
+ * export of its field, to make sure the analyzer and the static initiliazer
+ * behave correctly.
+ */
+object TopLevelFieldExportsReachability {
+  private val name = "World"
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.fieldreachability")
+  val greeting = "Hello " + name
 }

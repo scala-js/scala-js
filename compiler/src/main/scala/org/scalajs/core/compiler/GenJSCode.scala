@@ -420,7 +420,14 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         val topLevelExports = genTopLevelExports(sym)
 
-        memberExports ++ exportedConstructorsOrAccessors ++ topLevelExports
+        val needsStaticInitializer =
+          topLevelExports.exists(_.isInstanceOf[js.TopLevelFieldExportDef])
+        val optStaticInitializer =
+          if (!needsStaticInitializer) Nil
+          else genStaticInitializerLoadingModule(sym) :: Nil
+
+        (memberExports ++ exportedConstructorsOrAccessors ++ topLevelExports ++
+            optStaticInitializer)
       }
 
       // Hashed definitions of the class
@@ -513,13 +520,8 @@ abstract class GenJSCode extends plugins.PluginComponent
             genStaticExports(companionModuleClass)
           }
           if (exports.exists(_.isInstanceOf[js.FieldDef])) {
-            val staticInitializer = js.MethodDef(
-                static = true,
-                js.Ident(ir.Definitions.StaticInitializerName),
-                Nil,
-                jstpe.NoType,
-                Some(genLoadModule(companionModuleClass)))(
-                OptimizerHints.empty, None)
+            val staticInitializer =
+              genStaticInitializerLoadingModule(companionModuleClass)
             exports :+ staticInitializer
           } else {
             exports
@@ -852,26 +854,35 @@ abstract class GenJSCode extends plugins.PluginComponent
       assert(currentClassSym.get == classSym,
           "genClassFields called with a ClassDef other than the current one")
 
+      def isStaticBecauseOfTopLevelExport(f: Symbol): Boolean =
+        jsInterop.registeredExportsOf(f).head.destination == ExportDestination.TopLevel
+
       // Non-method term members are fields, except for module members.
       (for {
         f <- classSym.info.decls
         if !f.isMethod && f.isTerm && !f.isModule
         if !f.hasAnnotation(JSOptionalAnnotation)
-        if !jsInterop.isFieldStatic(f)
+        static = jsInterop.isFieldStatic(f)
+        if !static || isStaticBecauseOfTopLevelExport(f)
       } yield {
         implicit val pos = f.pos
 
-        val mutable =
+        val mutable = {
+          static || // static fields must always be mutable
           suspectFieldMutable(f) || unexpectedMutatedFields.contains(f)
+        }
+
         val name =
           if (isExposed(f)) js.StringLiteral(jsNameOf(f))
           else encodeFieldSym(f)
 
-        val irTpe =
-          if (!isScalaJSDefinedJSClass(classSym)) toIRType(f.tpe)
-          else genExposedFieldIRType(f)
+        val irTpe = {
+          if (isScalaJSDefinedJSClass(classSym)) genExposedFieldIRType(f)
+          else if (static) jstpe.AnyType
+          else toIRType(f.tpe)
+        }
 
-        js.FieldDef(static = false, name, irTpe, mutable)
+        js.FieldDef(static, name, irTpe, mutable)
       }).toList
     }
 
@@ -905,6 +916,19 @@ abstract class GenJSCode extends plugins.PluginComponent
            */
           toIRType(f.tpe)
       }
+    }
+
+    // Static initializers -----------------------------------------------------
+
+    private def genStaticInitializerLoadingModule(sym: Symbol)(
+        implicit pos: Position): js.MethodDef = {
+      js.MethodDef(
+          static = true,
+          js.Ident(ir.Definitions.StaticInitializerName),
+          Nil,
+          jstpe.NoType,
+          Some(genLoadModule(sym)))(
+          OptimizerHints.empty, None)
     }
 
     // Constructor of a Scala.js-defined JS class ------------------------------
@@ -1718,12 +1742,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.JSDotSelect(genQual, encodeFieldSym(sym))
             unboxFieldValue(boxed)
           } else if (jsInterop.isFieldStatic(sym)) {
-            val exportInfo = jsInterop.staticFieldInfoOf(sym)
-            assert(exportInfo.destination == ExportDestination.Static)
-            val companionClass = patchedLinkedClassOfClass(sym.owner)
-            val boxed = js.JSBracketSelect(genPrimitiveJSClass(companionClass),
-                js.StringLiteral(exportInfo.jsName))
-            unboxFieldValue(boxed)
+            unboxFieldValue(genSelectStaticFieldAsBoxed(sym))
           } else {
             js.Select(genExpr(qualifier),
                 encodeFieldSym(sym))(toIRType(sym.tpe))
@@ -1808,13 +1827,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                   js.JSDotSelect(genQual, encodeFieldSym(sym))
                 js.Assign(genLhs, genBoxedRhs)
               } else if (jsInterop.isFieldStatic(sym)) {
-                val exportInfo = jsInterop.staticFieldInfoOf(sym)
-                assert(exportInfo.destination == ExportDestination.Static)
-                val companionClass = patchedLinkedClassOfClass(sym.owner)
-                val select = js.JSBracketSelect(
-                    genPrimitiveJSClass(companionClass),
-                    js.StringLiteral(exportInfo.jsName))
-                js.Assign(select, genBoxedRhs)
+                js.Assign(genSelectStaticFieldAsBoxed(sym), genBoxedRhs)
               } else {
                 js.Assign(
                     js.Select(genQual, encodeFieldSym(sym))(toIRType(sym.tpe)),
@@ -1862,6 +1875,23 @@ abstract class GenJSCode extends plugins.PluginComponent
         js.This()(currentClassType)
       } { thisLocalIdent =>
         js.VarRef(thisLocalIdent)(currentClassType)
+      }
+    }
+
+    private def genSelectStaticFieldAsBoxed(sym: Symbol)(
+        implicit pos: Position): js.Tree = {
+      val exportInfos = jsInterop.staticFieldInfoOf(sym)
+      (exportInfos.head.destination: @unchecked) match {
+        case ExportDestination.TopLevel =>
+          val cls = jstpe.ClassType(encodeClassFullName(sym.owner))
+          js.SelectStatic(cls, encodeFieldSym(sym))(jstpe.AnyType)
+
+        case ExportDestination.Static =>
+          val exportInfo = exportInfos.head
+          val companionClass = patchedLinkedClassOfClass(sym.owner)
+          js.JSBracketSelect(
+              genPrimitiveJSClass(companionClass),
+              js.StringLiteral(exportInfo.jsName))
       }
     }
 

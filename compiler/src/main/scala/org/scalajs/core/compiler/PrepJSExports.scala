@@ -335,7 +335,7 @@ trait PrepJSExports { this: PrepJSInterop =>
           }
 
         case ExportDestination.TopLevel =>
-          if (jsInterop.isJSProperty(sym)) {
+          if (!sym.isAccessor && jsInterop.isJSProperty(sym)) {
             reporter.error(annot.pos,
                 "You may not export a getter or a setter to the top level")
           }
@@ -400,20 +400,34 @@ trait PrepJSExports { this: PrepJSInterop =>
        * accessors. We use the same code paths hereabove to uniformly perform
        * relevant checks, but at the end of the day, we have to throw away the
        * ExportInfo.
-       * However, we must make sure that no field is exported *twice* as static.
+       * However, we must make sure that no field is exported *twice* as static,
+       * nor both as static and as top-level (it is possible to export a field
+       * several times as top-level, though).
        */
-      val (staticExportInfos, actualExportInfos) =
-        allExportInfos.partition(_.destination == ExportDestination.Static)
+      val (topLevelAndStaticExportInfos, actualExportInfos) =
+        allExportInfos.partition(_.destination != ExportDestination.Normal)
 
       if (sym.isGetter) {
-        val duplicates = staticExportInfos.drop(1) // no-op if isEmpty
-        for (duplicate <- duplicates) {
-          reporter.error(duplicate.pos,
-              "Fields (val or var) cannot be exported as static more than " +
-              "once")
+        topLevelAndStaticExportInfos.find {
+          _.destination == ExportDestination.Static
+        }.foreach { firstStatic =>
+          for {
+            duplicate <- topLevelAndStaticExportInfos
+            if duplicate ne firstStatic
+          } {
+            if (duplicate.destination == ExportDestination.Static) {
+              reporter.error(duplicate.pos,
+                  "Fields (val or var) cannot be exported as static more " +
+                  "than once")
+            } else {
+              reporter.error(duplicate.pos,
+                  "Fields (val or var) cannot be exported both as static " +
+                  "and at the top-level")
+            }
+          }
         }
 
-        jsInterop.registerForExport(sym.accessed, staticExportInfos)
+        jsInterop.registerForExport(sym.accessed, topLevelAndStaticExportInfos)
       }
 
       actualExportInfos

@@ -15,10 +15,26 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[IncompatibleResultTypeProblem](
           "org.scalajs.core.ir.Trees#FieldDef.copy$default$2"),
       ProblemFilters.exclude[IncompatibleResultTypeProblem](
-          "org.scalajs.core.ir.Trees#FieldDef.copy$default$3")
+          "org.scalajs.core.ir.Trees#FieldDef.copy$default$3"),
+
+      // private, not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.ir.Infos#MethodInfo.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.ir.Infos#GenInfoTraverser.generateClassExportsInfo")
   )
 
   val Tools = Seq(
+      // private, not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.checker.IRChecker#CheckedField.this"),
+
+      // private, not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.analyzer.Analyzer.org$scalajs$core$tools$linker$analyzer$Analyzer$$createMissingMethodInfo$default$2"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.analyzer.Analyzer.org$scalajs$core$tools$linker$analyzer$Analyzer$$createMissingMethodInfo$default$3"),
+
       // private[emitter], not an issue
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genClass"),

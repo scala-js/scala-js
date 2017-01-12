@@ -259,6 +259,9 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       case e: TopLevelExportDef =>
         classExports += e
 
+      case e: TopLevelFieldExportDef =>
+        classExports += e
+
       case tree =>
         sys.error(s"Illegal tree in ClassDef of class ${tree.getClass}")
     }

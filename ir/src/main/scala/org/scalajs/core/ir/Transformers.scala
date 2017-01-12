@@ -187,7 +187,7 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Skip | _:Continue | _:Debugger | _:LoadModule |
+        case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:SelectStatic |
             _:LoadJSConstructor | _:LoadJSModule  | _:JSLinkingInfo |
             _:Literal | _:UndefinedParam | _:VarRef | _:This  =>
           tree
@@ -228,7 +228,7 @@ object Transformers {
         case ConstructorExportDef(fullName, args, body) =>
           ConstructorExportDef(fullName, args, transformStat(body))
 
-        case _:JSClassExportDef | _:ModuleExportDef =>
+        case _:JSClassExportDef | _:ModuleExportDef | _:TopLevelFieldExportDef =>
           tree
 
         case TopLevelExportDef(member) =>

@@ -130,6 +130,7 @@ ScalaJS.b = {};         // Scala.js-defined JS class value fields
 ScalaJS.c = {};         // Scala.js constructors
 ScalaJS.h = {};         // Inheritable constructors (without initialization code)
 ScalaJS.s = {};         // Static methods
+ScalaJS.t = {};         // Static fields
 ScalaJS.f = {};         // Default methods
 ScalaJS.n = {};         // Module instances
 ScalaJS.m = {};         // Module accessors

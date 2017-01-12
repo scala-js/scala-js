@@ -433,8 +433,8 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
                   transformExpr(rhs))
           }
 
-        case Assign(varRef: VarRef, rhs) =>
-          pushLhsInto(Lhs.Assign(varRef), rhs, tailPosLabels)
+        case Assign(lhs @ (_:VarRef | _:SelectStatic), rhs) =>
+          pushLhsInto(Lhs.Assign(lhs), rhs, tailPosLabels)
 
         case Assign(_, _) =>
           sys.error(s"Illegal Assign in transformStat: $tree")
@@ -867,6 +867,10 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         // Fields may throw if qualifier is null
         case Select(qualifier, item) =>
           allowSideEffects && test(qualifier)
+
+        // Static fields are side-effect free
+        case SelectStatic(_, _) =>
+          allowUnpure
 
         // Expressions preserving pureness
         case Block(trees)            => trees forall test
@@ -1622,6 +1626,9 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         case Select(qualifier, item) =>
           transformExpr(qualifier) DOT item
 
+        case SelectStatic(cls, item) =>
+          genSelectStatic(cls.className, item)
+
         case Apply(receiver, method, args) =>
           val newReceiver = transformExpr(receiver)
           val newArgs = args map transformExpr
@@ -2153,6 +2160,11 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
       case OutputMode.ECMAScript6 =>
         js.Let(name, mutable = true, rhs = None)
     }
+  }
+
+  private[emitter] def genSelectStatic(className: String, item: Ident)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    envField("t", className + "__" + item.name)
   }
 
   private[emitter] def genIsInstanceOf(expr: js.Tree, cls: ReferenceType)(

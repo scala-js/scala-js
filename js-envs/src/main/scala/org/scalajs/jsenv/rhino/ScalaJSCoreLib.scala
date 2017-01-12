@@ -138,6 +138,7 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
       Info("c"),
       Info("h"),
       Info("s", isStatics = true),
+      Info("t", isStatics = true),
       Info("f", isStatics = true),
       Info("n"),
       Info("m"),

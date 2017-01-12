@@ -1163,36 +1163,6 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelVal: Unit = {
-    """
-    object A {
-      @JSExportTopLevel("foo")
-      val a: Int = 1
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:4: error: You may not export a getter or a setter to the top level
-      |      @JSExportTopLevel("foo")
-      |       ^
-    """
-  }
-
-  @Test
-  def noExportTopLevelVar: Unit = {
-    """
-    object A {
-      @JSExportTopLevel("foo")
-      var a: Int = 1
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:4: error: You may not export a getter or a setter to the top level
-      |      @JSExportTopLevel("foo")
-      |       ^
-    """
-  }
-
-  @Test
   def noExportTopLevelSetter: Unit = {
     """
     object A {
@@ -1202,6 +1172,57 @@ class JSExportTest extends DirectTest with TestHelpers {
     """ hasErrors
     """
       |newSource1.scala:4: error: You may not export a getter or a setter to the top level
+      |      @JSExportTopLevel("foo")
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportTopLevelFieldsWithSameName: Unit = {
+    """
+    object A {
+      @JSExportTopLevel("foo")
+      val a: Int = 1
+
+      @JSExportTopLevel("foo")
+      var b: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: Duplicate top-level export with name 'foo': a field may not share its exported name with another field or method
+      |      val a: Int = 1
+      |          ^
+    """
+  }
+
+  @Test
+  def noExportTopLevelFieldsAndMethodsWithSameName: Unit = {
+    """
+    object A {
+      @JSExportTopLevel("foo")
+      val a: Int = 1
+
+      @JSExportTopLevel("foo")
+      def b(x: Int): Int = x + 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Duplicate top-level export with name 'foo': a field may not share its exported name with another field or method
+      |      @JSExportTopLevel("foo")
+      |       ^
+    """
+
+    """
+    object A {
+      @JSExportTopLevel("foo")
+      def a(x: Int): Int = x + 1
+
+      @JSExportTopLevel("foo")
+      val b: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: Duplicate top-level export with name 'foo': a field may not share its exported name with another field or method
       |      @JSExportTopLevel("foo")
       |       ^
     """
@@ -1357,6 +1378,44 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
       |newSource1.scala:8: error: Fields (val or var) cannot be exported as static more than once
       |      @JSExportStatic("b")
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportValAsStaticAndTopLevel: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      @JSExportTopLevel("foo")
+      val a: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: Fields (val or var) cannot be exported both as static and at the top-level
+      |      @JSExportTopLevel("foo")
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportVarAsStaticAndTopLevel: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      @JSExportTopLevel("foo")
+      var a: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: Fields (val or var) cannot be exported both as static and at the top-level
+      |      @JSExportTopLevel("foo")
       |       ^
     """
   }
