@@ -120,16 +120,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
     }
 
-    def genTopLevelExports(classSym: Symbol): List[js.Tree] = {
-      for {
-        m <- genTopLevelOrStaticExports(classSym, ExportDestination.TopLevel)
-      } yield {
-        m match {
-          case m: js.TopLevelFieldExportDef => m
-          case _                            => js.TopLevelExportDef(m)(m.pos)
-        }
-      }
-    }
+    def genTopLevelExports(classSym: Symbol): List[js.Tree] =
+      genTopLevelOrStaticExports(classSym, ExportDestination.TopLevel)
 
     def genStaticExports(classSym: Symbol): List[js.Tree] =
       genTopLevelOrStaticExports(classSym, ExportDestination.Static)
@@ -185,7 +177,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     }
 
     private def genTopLevelOrStaticMethodExports(classSym: Symbol,
-        destination: ExportDestination): List[(js.MethodDef, String, Position)] = {
+        destination: ExportDestination): List[(js.Tree, String, Position)] = {
       val allRelevantExports = for {
         methodSym <- classSym.info.members
         if methodSym.isMethod && !methodSym.isConstructor
@@ -201,7 +193,12 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         implicit val pos = tups.head._1.pos
 
         val alts = tups.map(t => ExportedSymbol(t._2)).toList
-        (genExportMethod(alts, jsName, static = true), jsName, pos)
+        val methodDef = genExportMethod(alts, jsName, static = true)
+        val exportDef =
+          if (destination == ExportDestination.Static) methodDef
+          else js.TopLevelMethodExportDef(methodDef)
+
+        (exportDef, jsName, pos)
       }
     }
 

@@ -169,15 +169,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           case member @ ModuleExportDef(_) =>
             checkModuleExportDef(member, classDef)
 
-          case TopLevelExportDef(member) =>
-            member match {
-              case methodDef: MethodDef =>
-                checkExportedMethodDef(methodDef, classDef, isTopLevel = true)
-
-              case _ =>
-                reportError("Illegal top level export of type " +
-                    member.getClass.getName)
-            }
+          case TopLevelMethodExportDef(methodDef) =>
+            checkExportedMethodDef(methodDef, classDef, isTopLevel = true)
 
           case TopLevelFieldExportDef(fullName, field) =>
             lookupClass(classDef.name.name).lookupStaticField(field.name).fold {

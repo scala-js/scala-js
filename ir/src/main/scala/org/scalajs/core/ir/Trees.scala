@@ -814,7 +814,7 @@ object Trees {
     val tpe = NoType
   }
 
-  case class TopLevelExportDef(member: Tree)(
+  case class TopLevelMethodExportDef(methodDef: MethodDef)(
       implicit val pos: Position) extends Tree {
     val tpe = NoType
   }

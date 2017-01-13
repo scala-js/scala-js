@@ -1067,13 +1067,14 @@ class PrintersTest {
         ModuleExportDef("pkg.Foo"))
   }
 
-  @Test def printTopLevelExportDef(): Unit = {
+  @Test def printTopLevelMethodExportDef(): Unit = {
     assertPrintEquals(
         """
           |export top static def "pkg.foo"(x: any): any = {
           |  5
           |}""",
-        TopLevelExportDef(MethodDef(static = true, StringLiteral("pkg.foo"),
+        TopLevelMethodExportDef(MethodDef(static = true,
+            StringLiteral("pkg.foo"),
             List(ParamDef("x", AnyType, mutable = false, rest = false)),
             AnyType, Some(i(5)))(NoOptHints, None)))
   }

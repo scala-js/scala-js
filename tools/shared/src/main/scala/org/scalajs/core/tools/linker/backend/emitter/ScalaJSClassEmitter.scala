@@ -922,8 +922,8 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
         genJSClassExportDef(tree, e)
       case e: ModuleExportDef =>
         genModuleExportDef(tree, e)
-      case e: TopLevelExportDef =>
-        genTopLevelExportDef(tree, e)
+      case e: TopLevelMethodExportDef =>
+        genTopLevelMethodExportDef(tree, e)
       case e: TopLevelFieldExportDef =>
         genTopLevelFieldExportDef(tree, e)
       case tree =>
@@ -996,12 +996,13 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
     )
   }
 
-  def genTopLevelExportDef(cd: LinkedClass, tree: TopLevelExportDef)(
+  private def genTopLevelMethodExportDef(cd: LinkedClass,
+      tree: TopLevelMethodExportDef)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     import TreeDSL._
 
     val MethodDef(true, StringLiteral(fullName), args, resultType, Some(body)) =
-        tree.member
+      tree.methodDef
 
     implicit val pos = tree.pos
 
