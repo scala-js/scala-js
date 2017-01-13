@@ -325,7 +325,8 @@ object Infos {
       case _ =>
     }
 
-    if (exportedConstructors.nonEmpty || topLevelMethodExports.nonEmpty) {
+    if (exportedConstructors.nonEmpty || topLevelMethodExports.nonEmpty ||
+        topLevelFieldExports.nonEmpty) {
       builder.addMethod(generateClassExportsInfo(classDef.name.name,
           exportedConstructors, topLevelMethodExports, topLevelFieldExports))
     }
