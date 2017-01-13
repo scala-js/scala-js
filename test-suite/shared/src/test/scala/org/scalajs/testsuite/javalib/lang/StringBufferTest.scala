@@ -98,8 +98,10 @@ class StringBufferTest {
     buf.setCharAt(5, 'h')
     assertEquals("foxbah", buf.toString)
 
-    expectThrows(classOf[IndexOutOfBoundsException], buf.setCharAt(-1, 'h'))
-    expectThrows(classOf[IndexOutOfBoundsException], buf.setCharAt(6,  'h'))
+    expectThrows(classOf[StringIndexOutOfBoundsException],
+        buf.setCharAt(-1, 'h'))
+    expectThrows(classOf[StringIndexOutOfBoundsException],
+        buf.setCharAt(6,  'h'))
   }
 
   @Test def ensureCapacity(): Unit = {
@@ -111,7 +113,7 @@ class StringBufferTest {
     val buf = newBuf
     buf.append("foobar")
 
-    expectThrows(classOf[IndexOutOfBoundsException], buf.setLength(-3))
+    expectThrows(classOf[StringIndexOutOfBoundsException], buf.setLength(-3))
 
     assertEquals("foo", { buf.setLength(3); buf.toString })
     assertEquals("foo\u0000\u0000\u0000", { buf.setLength(6); buf.toString })
@@ -218,8 +220,10 @@ class StringBuilderTest {
     b.setCharAt(5, 'h')
     assertEquals("foxbah", b.toString)
 
-    expectThrows(classOf[IndexOutOfBoundsException], b.setCharAt(-1, 'h'))
-    expectThrows(classOf[IndexOutOfBoundsException], b.setCharAt(6,  'h'))
+    expectThrows(classOf[StringIndexOutOfBoundsException],
+        b.setCharAt(-1, 'h'))
+    expectThrows(classOf[StringIndexOutOfBoundsException],
+        b.setCharAt(6,  'h'))
   }
 
   @Test def ensureCapacity(): Unit = {
@@ -231,7 +235,7 @@ class StringBuilderTest {
     val b = newBuilder
     b.append("foobar")
 
-    expectThrows(classOf[IndexOutOfBoundsException], b.setLength(-3))
+    expectThrows(classOf[StringIndexOutOfBoundsException], b.setLength(-3))
 
     assertEquals("foo", { b.setLength(3); b.toString })
     assertEquals("foo\u0000\u0000\u0000", { b.setLength(6); b.toString })
