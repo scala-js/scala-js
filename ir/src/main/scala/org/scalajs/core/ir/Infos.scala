@@ -386,6 +386,7 @@ object Infos {
     def generatePropertyInfo(propertyDef: PropertyDef): MethodInfo = {
       builder
         .setEncodedName(propertyDef.name.name)
+        .setIsStatic(propertyDef.static)
         .setIsExported(true)
 
       propertyDef.getterBody.foreach(traverse)

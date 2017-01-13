@@ -207,7 +207,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     }
 
     def linkedProperty(p: PropertyDef) = {
-      val info = memberInfoByStaticAndName((false, p.name.name))
+      val info = memberInfoByStaticAndName((p.static, p.name.name))
       new LinkedMember(info, p, None)
     }
 

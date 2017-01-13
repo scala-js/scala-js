@@ -445,7 +445,10 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
       genIdentBracketSelect(js.VarRef(js.Ident("Object")), "defineProperty")
 
     // class prototype
-    val proto = encodeClassVar(className).prototype
+    val classVar = encodeClassVar(className)
+    val targetObject =
+      if (property.static) classVar
+      else classVar.prototype
 
     // property name
     val name = property.name match {
@@ -477,27 +480,28 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
       List(js.StringLiteral("configurable") -> js.BooleanLiteral(true))
     )
 
-    js.Apply(defProp, proto :: name :: descriptor :: Nil)
+    js.Apply(defProp, targetObject :: name :: descriptor :: Nil)
   }
 
   private def genPropertyES6(className: String, property: PropertyDef)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     implicit val pos = property.pos
 
+    val static = property.static
     val propName = genPropertyName(property.name)
 
     val getter = property.getterBody.fold[js.Tree] {
       js.Skip()
     } { body =>
       val fun = desugarToFunction(className, Nil, body, isStat = false)
-      js.GetterDef(static = false, propName, fun.body)
+      js.GetterDef(static, propName, fun.body)
     }
 
     val setter = property.setterArgAndBody.fold[js.Tree] {
       js.Skip()
     } { case (arg, body) =>
       val fun = desugarToFunction(className, arg :: Nil, body, isStat = true)
-      js.SetterDef(static = false, propName, fun.args.head, fun.body)
+      js.SetterDef(static, propName, fun.args.head, fun.body)
     }
 
     js.Block(getter, setter)

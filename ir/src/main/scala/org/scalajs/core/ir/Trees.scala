@@ -793,8 +793,8 @@ object Trees {
     val tpe = NoType
   }
 
-  case class PropertyDef(name: PropertyName, getterBody: Option[Tree],
-      setterArgAndBody: Option[(ParamDef, Tree)])(
+  case class PropertyDef(static: Boolean, name: PropertyName,
+      getterBody: Option[Tree], setterArgAndBody: Option[(ParamDef, Tree)])(
       implicit val pos: Position) extends Tree {
     val tpe = NoType
   }

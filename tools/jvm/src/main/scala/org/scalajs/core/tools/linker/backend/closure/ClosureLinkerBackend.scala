@@ -109,7 +109,7 @@ final class ClosureLinkerBackend(
 
     def exportName(tree: Tree): String = (tree: @unchecked) match {
       case MethodDef(_, StringLiteral(name), _, _, _) => name
-      case PropertyDef(StringLiteral(name), _, _)     => name
+      case PropertyDef(_, StringLiteral(name), _, _)  => name
     }
 
     val exportedPropertyNames = for {
