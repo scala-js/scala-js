@@ -23,12 +23,11 @@ import org.scalajs.core.tools.linker.backend.OutputMode
 import org.scalajs.core.tools.linker.{LinkedClass, LinkingUnit}
 
 /** Emitter for the skeleton of classes. */
-private[emitter] final class ScalaJSClassEmitter(
-    private[emitter] val semantics: Semantics,
-    private[emitter] val outputMode: OutputMode,
-    internalOptions: InternalOptions) {
+private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
+    outputMode: OutputMode, internalOptions: InternalOptions) {
 
-  private val jsDesugaring = new JSDesugaring(internalOptions)
+  private val jsDesugaring =
+    new JSDesugaring(semantics, outputMode, internalOptions)
 
   import ScalaJSClassEmitter._
   import jsDesugaring._
@@ -163,8 +162,8 @@ private[emitter] final class ScalaJSClassEmitter(
     require(outputMode == OutputMode.ECMAScript6)
 
     val className = tree.name.name
-    val classIdent = encodeClassVar(className)(
-        outputMode, tree.name.pos).asInstanceOf[js.VarRef].ident
+    val classIdent =
+      encodeClassVar(className)(tree.name.pos).asInstanceOf[js.VarRef].ident
 
     val parentVar = for (parentIdent <- tree.superClass) yield {
       implicit val pos = parentIdent.pos
@@ -285,8 +284,7 @@ private[emitter] final class ScalaJSClassEmitter(
 
     tree.exportedMembers.map(_.tree) collectFirst {
       case MethodDef(false, StringLiteral("constructor"), params, _, body) =>
-        desugarToFunction(this, tree.encodedName,
-            params, body.get, isStat = true)
+        desugarToFunction(tree.encodedName, params, body.get, isStat = true)
     } getOrElse {
       throw new IllegalArgumentException(
           s"${tree.encodedName} does not have an exported constructor")
@@ -304,7 +302,7 @@ private[emitter] final class ScalaJSClassEmitter(
       val selectField = (name: @unchecked) match {
         case name: Ident => Select(This()(tpe), name)(ftpe)
       }
-      desugarTree(this, tree.encodedName,
+      desugarTree(Some(tree.encodedName),
           Assign(selectField, zeroOf(ftpe)), isStat = true)
     }
   }
@@ -358,7 +356,7 @@ private[emitter] final class ScalaJSClassEmitter(
 
     implicit val pos = method.pos
 
-    val methodFun0 = desugarToFunction(this, className,
+    val methodFun0 = desugarToFunction(className,
         method.args, methodBody, method.resultType == NoType)
 
     val methodFun = if (Definitions.isConstructorName(method.name.name)) {
@@ -413,7 +411,7 @@ private[emitter] final class ScalaJSClassEmitter(
      */
     val thisIdent = js.Ident("$thiz", Some("this"))
 
-    val methodFun0 = desugarToFunction(this, className, Some(thisIdent),
+    val methodFun0 = desugarToFunction(className, Some(thisIdent),
         method.args, method.body.get, method.resultType == NoType)
 
     val methodFun = js.Function(
@@ -462,14 +460,13 @@ private[emitter] final class ScalaJSClassEmitter(
 
     // optional getter definition
     val optGetter = property.getterBody map { body =>
-      val fun = desugarToFunction(this, className, Nil, body, isStat = false)
+      val fun = desugarToFunction(className, Nil, body, isStat = false)
       js.StringLiteral("get") -> fun
     }
 
     // optional setter definition
     val optSetter = property.setterArgAndBody map { case (arg, body) =>
-      val fun = desugarToFunction(this, className, arg :: Nil,
-          body, isStat = true)
+      val fun = desugarToFunction(className, arg :: Nil, body, isStat = true)
       js.StringLiteral("set") -> fun
     }
 
@@ -492,15 +489,14 @@ private[emitter] final class ScalaJSClassEmitter(
     val getter = property.getterBody.fold[js.Tree] {
       js.Skip()
     } { body =>
-      val fun = desugarToFunction(this, className, Nil, body, isStat = false)
+      val fun = desugarToFunction(className, Nil, body, isStat = false)
       js.GetterDef(static = false, propName, fun.body)
     }
 
     val setter = property.setterArgAndBody.fold[js.Tree] {
       js.Skip()
     } { case (arg, body) =>
-      val fun = desugarToFunction(this, className, arg :: Nil,
-          body, isStat = true)
+      val fun = desugarToFunction(className, arg :: Nil, body, isStat = true)
       js.SetterDef(static = false, propName, fun.args.head, fun.body)
     }
 
@@ -951,7 +947,7 @@ private[emitter] final class ScalaJSClassEmitter(
     val thisIdent = js.Ident("$thiz")
 
     val js.Function(ctorParams, ctorBody) =
-      desugarToFunction(this, cd.encodedName,
+      desugarToFunction(cd.encodedName,
           Some(thisIdent), args, body, isStat = true)
 
     val exportedCtor = js.Function(ctorParams, js.Block(
@@ -1012,8 +1008,8 @@ private[emitter] final class ScalaJSClassEmitter(
     val (createNamespace, expAccessorVar) =
       genCreateNamespaceInExports(fullName)
 
-    val methodDef = desugarToFunction(this, cd.encodedName, args,
-        body, isStat = resultType == NoType)
+    val methodDef = desugarToFunction(cd.encodedName, args, body,
+        isStat = resultType == NoType)
 
     js.Block(
         createNamespace,

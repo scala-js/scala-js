@@ -165,7 +165,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
         }
 
       case ModuleKind.CommonJSModule =>
-        val jsDesugaring = new JSDesugaring(internalOptions)
+        val jsDesugaring = new JSDesugaring(semantics, outputMode, internalOptions)
         val encounteredModuleNames = mutable.Set.empty[String]
         for (classDef <- orderedClasses) {
           classDef.jsNativeLoadSpec match {
