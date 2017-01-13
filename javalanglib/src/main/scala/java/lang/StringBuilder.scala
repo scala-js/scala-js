@@ -123,14 +123,18 @@ class StringBuilder(private var content: String) extends CharSequence
   }
 
   def setCharAt(index: Int, ch: scala.Char): Unit = {
-    if (index < 0 || index >= content.length)
-      throw new IndexOutOfBoundsException("String index out of range: " + index)
+    if (index < 0 || index >= content.length) {
+      throw new StringIndexOutOfBoundsException(
+          "String index out of range: " + index)
+    }
     content = content.substring(0, index) + ch + content.substring(index + 1)
   }
 
   def setLength(newLength: Int): Unit = {
-    if (newLength < 0)
-      throw new IndexOutOfBoundsException("String index out of range: " + newLength)
+    if (newLength < 0) {
+      throw new StringIndexOutOfBoundsException(
+          "String index out of range: " + newLength)
+    }
 
     val len = length()
     if (len == newLength) {
