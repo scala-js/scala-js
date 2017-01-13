@@ -78,7 +78,7 @@ class ThreadLocalRandom extends Random {
       throw new IllegalArgumentException()
 
     val difference = bound - least
-    if (difference >= 0) {
+    if (difference > 0) {
       nextLong(difference) + least
     } else {
       /* The interval size here is greater than Long.MaxValue,
