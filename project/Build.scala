@@ -77,6 +77,7 @@ object Build {
   val makeCompliant: Semantics => Semantics = { semantics =>
     semantics
       .withAsInstanceOfs(CheckedBehavior.Compliant)
+      .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
       .withModuleInit(CheckedBehavior.Compliant)
       .withStrictFloats(true)
   }
@@ -1294,6 +1295,11 @@ object Build {
         val semTags = (
             if (sems.asInstanceOfs == CheckedBehavior.Compliant)
               Seq("compliant-asinstanceofs")
+            else
+              Seq()
+        ) ++ (
+            if (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant)
+              Seq("compliant-arrayindexoutofbounds")
             else
               Seq()
         ) ++ (

@@ -13,6 +13,7 @@ import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.Test
 
+import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
 
 import java.util.{ Arrays, Comparator }
@@ -475,40 +476,32 @@ class ArraysTest {
     assertEquals(-7, ret)
   }
 
-  @Test def should_check_ranges_of_input_to_binarySearch(): Unit = {
-    def expectException(block: => Unit)(expected: PartialFunction[Throwable, Unit]): Unit = {
-      val catchAll: PartialFunction[Throwable, Unit] = {
-        case e: Throwable => assertEquals("not thrown", e.getClass.getName)
-      }
+  @Test def binarySearchIllegalArgumentException(): Unit = {
+    val array = Array(0, 1, 3, 4)
 
-      try {
-        block
-        assertEquals("thrown", "exception")
-      } catch expected orElse catchAll
-    }
+    val e1 = expectThrows(classOf[IllegalArgumentException],
+        Arrays.binarySearch(array, 3, 2, 2))
+    assertEquals("fromIndex(3) > toIndex(2)", e1.getMessage)
+
+    // start/end comparison is made before index ranges checks
+    val e2 = expectThrows(classOf[IllegalArgumentException],
+        Arrays.binarySearch(array, 7, 5, 2))
+    assertEquals("fromIndex(7) > toIndex(5)", e2.getMessage)
+  }
+
+  @Test def binarySearchArrayIndexOutOfBoundsException(): Unit = {
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
+        hasCompliantArrayIndexOutOfBounds)
 
     val array = Array(0, 1, 3, 4)
 
-    expectException({ Arrays.binarySearch(array, 3, 2, 2) }) {
-      case exception: IllegalArgumentException =>
-        assertEquals("fromIndex(3) > toIndex(2)", exception.getMessage)
-    }
+    val e1 = expectThrows(classOf[ArrayIndexOutOfBoundsException],
+        Arrays.binarySearch(array, -1, 4, 2))
+    assertEquals("Array index out of range: -1", e1.getMessage)
 
-    // start/end comparison is made before index ranges checks
-    expectException({ Arrays.binarySearch(array, 7, 5, 2) }) {
-      case exception: IllegalArgumentException =>
-        assertEquals("fromIndex(7) > toIndex(5)", exception.getMessage)
-    }
-
-    expectException({ Arrays.binarySearch(array, -1, 4, 2) }) {
-      case exception: ArrayIndexOutOfBoundsException =>
-        assertEquals("Array index out of range: -1", exception.getMessage)
-    }
-
-    expectException({ Arrays.binarySearch(array, 0, 5, 2) }) {
-      case exception: ArrayIndexOutOfBoundsException =>
-        assertEquals("Array index out of range: 5", exception.getMessage)
-    }
+    val e2 = expectThrows(classOf[ArrayIndexOutOfBoundsException],
+        Arrays.binarySearch(array, 0, 5, 2))
+    assertEquals("Array index out of range: 5", e2.getMessage)
   }
 
   @Test def copyOf_Int(): Unit = {
@@ -600,6 +593,17 @@ class ArraysTest {
     val bscopyAsA = Arrays.copyOfRange(bs, 2, 4, classOf[Array[A]])
     assertEquals(classOf[Array[A]], bscopyAsA.getClass())
     assertArrayEquals(Array[A](B(3), B(4)), bscopyAsA)
+  }
+
+  @Test def copyOfRange_AnyRef_ArrayIndexOutOfBoundsException(): Unit = {
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
+        hasCompliantArrayIndexOutOfBounds)
+
+    val anyrefs: Array[AnyRef] = Array("a", "b", "c", "d", "e")
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        Arrays.copyOfRange(anyrefs, -1, 4))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        Arrays.copyOfRange(anyrefs, 6, 8))
   }
 
   @Test def asList(): Unit = {

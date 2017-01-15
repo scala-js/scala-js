@@ -512,7 +512,11 @@ private[scalajs] object Emitter {
           instantiateClass("jl_ClassCastException", "init___T")
         },
 
-        cond(asInstanceOfs == Fatal) {
+        cond(arrayIndexOutOfBounds != Unchecked) {
+          instantiateClass("jl_ArrayIndexOutOfBoundsException", "init___T")
+        },
+
+        cond(asInstanceOfs == Fatal || arrayIndexOutOfBounds == Fatal) {
           instantiateClass("sjsr_UndefinedBehaviorError", "init___jl_Throwable")
         },
 

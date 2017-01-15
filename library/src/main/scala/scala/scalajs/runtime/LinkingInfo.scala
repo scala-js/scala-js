@@ -25,6 +25,9 @@ object LinkingInfo {
     /** Compliance level of asInstanceOfs. */
     val asInstanceOfs: Int = js.native
 
+    /** Compliance level of arrayIndexOutOfBounds. */
+    val arrayIndexOutOfBounds: Int = js.native
+
     /** Compliance level of moduleInit. */
     val moduleInit: Int = js.native
 

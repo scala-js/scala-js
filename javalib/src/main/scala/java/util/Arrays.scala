@@ -1,6 +1,7 @@
 package java.util
 
-import scalajs.js
+import scala.scalajs.js
+import scala.scalajs.runtime.SemanticsUtils
 
 import scala.annotation.tailrec
 
@@ -583,8 +584,8 @@ object Arrays {
       len: Int, start: Int, end: Int): Unit = {
     if (start > end)
       throw new IllegalArgumentException(start + " > " + end)
-    if (start < 0 || start > len)
-      throw new ArrayIndexOutOfBoundsException
+    SemanticsUtils.arrayIndexOutOfBoundsCheck(start < 0 || start > len,
+        new ArrayIndexOutOfBoundsException)
   }
 
   @noinline def asList[T <: AnyRef](a: Array[T]): List[T] = {
@@ -726,10 +727,10 @@ object Arrays {
   private def checkRangeIndices(length: Int, start: Int, end: Int): Unit = {
     if (start > end)
       throw new IllegalArgumentException("fromIndex(" + start + ") > toIndex(" + end + ")")
-    if (start < 0)
-      throw new ArrayIndexOutOfBoundsException("Array index out of range: " + start)
-    if (end > length)
-      throw new ArrayIndexOutOfBoundsException("Array index out of range: " + end)
+    SemanticsUtils.arrayIndexOutOfBoundsCheck(start < 0,
+        new ArrayIndexOutOfBoundsException("Array index out of range: " + start))
+    SemanticsUtils.arrayIndexOutOfBoundsCheck(end > length,
+        new ArrayIndexOutOfBoundsException("Array index out of range: " + end))
   }
 
   @inline

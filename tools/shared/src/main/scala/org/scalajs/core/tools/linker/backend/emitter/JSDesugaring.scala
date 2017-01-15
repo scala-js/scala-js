@@ -398,11 +398,20 @@ private[emitter] class JSDesugaring(semantics: Semantics,
           unnest(List(array, index, rhs)) {
             case (List(newArray, newIndex, newRhs), env0) =>
               implicit val env = env0
-              js.Assign(
-                  js.BracketSelect(js.DotSelect(transformExpr(newArray),
-                      js.Ident("u"))(select.pos),
-                      transformExpr(newIndex))(select.pos),
-                  transformExpr(newRhs))
+              val genArray = transformExpr(newArray)
+              val genIndex = transformExpr(newIndex)
+              val genRhs = transformExpr(newRhs)
+              semantics.arrayIndexOutOfBounds match {
+                case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
+                  js.Apply(js.DotSelect(genArray, js.Ident("set")),
+                      List(genIndex, genRhs))
+                case CheckedBehavior.Unchecked =>
+                  js.Assign(
+                      js.BracketSelect(
+                          js.DotSelect(genArray, js.Ident("u"))(select.pos),
+                          genIndex)(select.pos),
+                      genRhs)
+              }
           }
 
         case Assign(select @ JSDotSelect(qualifier, item), rhs) =>
@@ -1812,8 +1821,14 @@ private[emitter] class JSDesugaring(semantics: Semantics,
               Ident("u")), "length")
 
         case ArraySelect(array, index) =>
-          js.BracketSelect(js.DotSelect(transformExpr(array),
-              Ident("u")), transformExpr(index))
+          val newArray = transformExpr(array)
+          val newIndex = transformExpr(index)
+          semantics.arrayIndexOutOfBounds match {
+            case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
+              js.Apply(js.DotSelect(newArray, js.Ident("get")), List(newIndex))
+            case CheckedBehavior.Unchecked =>
+              js.BracketSelect(js.DotSelect(newArray, js.Ident("u")), newIndex)
+          }
 
         case IsInstanceOf(expr, cls) =>
           genIsInstanceOf(transformExpr(expr), cls)

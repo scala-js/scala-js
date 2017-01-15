@@ -23,6 +23,19 @@ object SemanticsUtils {
   }
 
   @inline
+  private def arrayIndexOutOfBounds: Int =
+    linkingInfo.semantics.arrayIndexOutOfBounds
+
+  /** Tests for an erroneous condition governed by the `arrayIndexOutOfBounds`
+   *  semantics.
+   */
+  @inline
+  def arrayIndexOutOfBoundsCheck(shouldThrow: => Boolean,
+      exception: => Throwable): Unit = {
+    genericCheck(arrayIndexOutOfBounds, shouldThrow, exception)
+  }
+
+  @inline
   private def genericCheck(complianceLevel: Int, shouldThrow: => Boolean,
       exception: => Throwable): Unit = {
     if (complianceLevel != Unchecked && shouldThrow) {
