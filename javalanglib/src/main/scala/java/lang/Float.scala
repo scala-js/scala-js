@@ -50,10 +50,12 @@ object Float {
   final val NEGATIVE_INFINITY = 1.0f / -0.0f
   final val NaN = 0.0f / 0.0f
   final val MAX_VALUE = scala.Float.MaxValue
+  final val MIN_NORMAL = 1.17549435e-38f
   final val MIN_VALUE = scala.Float.MinPositiveValue
   final val MAX_EXPONENT = 127
   final val MIN_EXPONENT = -126
   final val SIZE = 32
+  final val BYTES = 4
 
   @inline def valueOf(floatValue: scala.Float): Float = new Float(floatValue)
 

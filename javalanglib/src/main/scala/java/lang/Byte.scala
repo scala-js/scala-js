@@ -35,6 +35,7 @@ final class Byte private () extends Number with Comparable[Byte] {
 object Byte {
   final val TYPE = classOf[scala.Byte]
   final val SIZE = 8
+  final val BYTES = 1
 
   /* MIN_VALUE and MAX_VALUE should be 'final val's. But it is impossible to
    * write a proper Byte literal in Scala, that would both considered a Byte

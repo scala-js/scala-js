@@ -51,10 +51,12 @@ object Double {
   final val NEGATIVE_INFINITY = 1.0 / -0.0
   final val NaN = 0.0 / 0.0
   final val MAX_VALUE = scala.Double.MaxValue
+  final val MIN_NORMAL = 2.2250738585072014e-308
   final val MIN_VALUE = scala.Double.MinPositiveValue
   final val MAX_EXPONENT = 1023
   final val MIN_EXPONENT = -1022
   final val SIZE = 64
+  final val BYTES = 8
 
   @inline def valueOf(doubleValue: scala.Double): Double =
     new Double(doubleValue)
