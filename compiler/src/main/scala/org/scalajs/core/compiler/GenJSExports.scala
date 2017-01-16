@@ -91,7 +91,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           implicit val pos = ctors.head.pos
 
           val js.MethodDef(_, _, args, _, body) =
-            withNewLocalNameScope(genExportMethod(ctors, jsName))
+            withNewLocalNameScope(genExportMethod(ctors, jsName, static = false))
 
           js.ConstructorExportDef(jsName, args, body.get)
         }
@@ -192,11 +192,29 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       } yield {
         implicit val pos = tups.head._1.pos
 
-        val alts = tups.map(t => ExportedSymbol(t._2)).toList
-        val methodDef = genExportMethod(alts, jsName, static = true)
+        val alts = tups.map(_._2).toList
+        val firstAlt = alts.head
+        val isProp = jsInterop.isJSProperty(firstAlt)
+
+        // Check for conflict between method vs property
+
+        for {
+          conflicting <- alts.tail
+          if jsInterop.isJSProperty(conflicting) != isProp
+        } {
+          val kindStr = if (isProp) "method" else "property"
+          reporter.error(conflicting.pos,
+              s"Exported $kindStr $jsName conflicts with ${firstAlt.nameString}")
+        }
+
+        // Generate the export
+
+        val exportedMember = genMemberExportOrDispatcher(classSym, jsName,
+            isProp, alts, static = true)
+
         val exportDef =
-          if (destination == ExportDestination.Static) methodDef
-          else js.TopLevelMethodExportDef(methodDef)
+          if (destination == ExportDestination.Static) exportedMember
+          else js.TopLevelMethodExportDef(exportedMember.asInstanceOf[js.MethodDef])
 
         (exportDef, jsName, pos)
       }
@@ -283,7 +301,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             s"Exported $kind $jsName conflicts with ${alts.head.fullName}")
       }
 
-      genMemberExportOrDispatcher(classSym, jsName, isProp, alts)
+      genMemberExportOrDispatcher(classSym, jsName, isProp, alts,
+          static = false)
     }
 
     private def genJSClassDispatcher(classSym: Symbol, name: String): js.Tree = {
@@ -308,24 +327,26 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             s"Conflicting properties and methods for ${classSym.fullName}::$name.")
         js.Skip()(ir.Position.NoPosition)
       } else {
-        genMemberExportOrDispatcher(classSym, name, isProp, alts)
+        genMemberExportOrDispatcher(classSym, name, isProp, alts,
+            static = false)
       }
     }
 
     def genMemberExportOrDispatcher(classSym: Symbol, jsName: String,
-        isProp: Boolean, alts: List[Symbol]): js.Tree = {
+        isProp: Boolean, alts: List[Symbol], static: Boolean): js.Tree = {
       withNewLocalNameScope {
         if (isProp)
-          genExportProperty(alts, jsName)
+          genExportProperty(alts, jsName, static)
         else
-          genExportMethod(alts.map(ExportedSymbol), jsName)
+          genExportMethod(alts.map(ExportedSymbol), jsName, static)
       }
     }
 
     def genJSConstructorExport(alts: List[Symbol]): js.MethodDef =
-      genExportMethod(alts.map(ExportedSymbol), "constructor")
+      genExportMethod(alts.map(ExportedSymbol), "constructor", static = false)
 
-    private def genExportProperty(alts: List[Symbol], jsName: String) = {
+    private def genExportProperty(alts: List[Symbol], jsName: String,
+        static: Boolean): js.PropertyDef = {
       assert(!alts.isEmpty)
       implicit val pos = alts.head.pos
 
@@ -333,12 +354,21 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       // we just check the parameter list length.
       val (getter, setters) = alts.partition(_.tpe.params.isEmpty)
 
-      // if we have more than one getter, something went horribly wrong
-      assert(getter.size <= 1,
-          s"Found more than one getter to export for name ${jsName}.")
+      // We can have at most one getter
+      if (getter.size > 1) {
+        /* Member export of properties should be caught earlier, so if we get
+         * here with a non-static export, something went horribly wrong.
+         */
+        assert(static,
+            s"Found more than one instance getter to export for name $jsName.")
+        for (duplicate <- getter.tail) {
+          reporter.error(duplicate.pos,
+              s"Duplicate static getter export with name '$jsName'")
+        }
+      }
 
       val getterBody = getter.headOption.map(genApplyForSym(minArgc = 0,
-          hasRestParam = false, _, static = false))
+          hasRestParam = false, _, static))
 
       val setterArgAndBody = {
         if (setters.isEmpty) {
@@ -347,18 +377,19 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           val arg = genFormalArg(1)
           val body = genExportSameArgc(minArgc = 1, hasRestParam = false,
               alts = setters.map(ExportedSymbol), paramIndex = 0,
-              static = false)
+              static = static)
           Some((arg, body))
         }
       }
 
-      js.PropertyDef(js.StringLiteral(jsName), getterBody, setterArgAndBody)
+      js.PropertyDef(static, js.StringLiteral(jsName), getterBody,
+          setterArgAndBody)
     }
 
     /** generates the exporter function (i.e. exporter for non-properties) for
      *  a given name */
     private def genExportMethod(alts0: List[Exported], jsName: String,
-        static: Boolean = false) = {
+        static: Boolean): js.MethodDef = {
       assert(alts0.nonEmpty,
           "need at least one alternative to generate exporter method")
 

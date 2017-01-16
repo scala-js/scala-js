@@ -1421,36 +1421,18 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticGetter: Unit = {
+  def noExportSetterWithBadSetterType: Unit = {
     """
     @ScalaJSDefined
     class StaticContainer extends js.Object
 
     object StaticContainer {
       @JSExportStatic
-      def a: Int = 1
+      def a_=(x: Int, y: Int): Unit = ()
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: Implementation restriction: cannot export a getter or a setter as static
-      |      @JSExportStatic
-      |       ^
-    """
-  }
-
-  @Test
-  def noExportStaticSetter: Unit = {
-    """
-    @ScalaJSDefined
-    class StaticContainer extends js.Object
-
-    object StaticContainer {
-      @JSExportStatic
-      def a_=(x: Int): Unit = ()
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Implementation restriction: cannot export a getter or a setter as static
+      |newSource1.scala:7: error: Exported setters must have exactly one argument
       |      @JSExportStatic
       |       ^
     """
@@ -1475,6 +1457,50 @@ class JSExportTest extends DirectTest with TestHelpers {
       |  (x: Int)Int
       |  (x: Int)Int
       |      def bar(x: Int): Int = x + 1
+      |          ^
+    """
+  }
+
+  @Test
+  def noExportStaticCollapsingGetters: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      def foo: Int = 1
+
+      @JSExportStatic("foo")
+      def bar: Int = 2
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: Duplicate static getter export with name 'foo'
+      |      def foo: Int = 1
+      |          ^
+    """
+  }
+
+  @Test
+  def noExportStaticCollapsingSetters: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      def foo_=(v: Int): Unit = ()
+
+      @JSExportStatic("foo")
+      def bar_=(v: Int): Unit = ()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:11: error: Cannot disambiguate overloads for exported method bar_$eq with types
+      |  (v: Int)Unit
+      |  (v: Int)Unit
+      |      def bar_=(v: Int): Unit = ()
       |          ^
     """
   }
@@ -1536,6 +1562,84 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:7: error: Duplicate static export with name 'a': a field may not share its exported name with another field or method
       |      @JSExportStatic
       |       ^
+    """
+  }
+
+  @Test
+  def noExportStaticFieldsAndPropertiesWithSameName: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      val a: Int = 1
+
+      @JSExportStatic("a")
+      def b: Int = 2
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:10: error: Duplicate static export with name 'a': a field may not share its exported name with another field or method
+      |      @JSExportStatic("a")
+      |       ^
+    """
+
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      def a: Int = 1
+
+      @JSExportStatic("a")
+      val b: Int = 2
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Duplicate static export with name 'a': a field may not share its exported name with another field or method
+      |      @JSExportStatic
+      |       ^
+    """
+  }
+
+  @Test
+  def noExportStaticPropertiesAndMethodsWithSameName: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      def a: Int = 1
+
+      @JSExportStatic("a")
+      def b(x: Int): Int = x + 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: Exported property a conflicts with b
+      |      def a: Int = 1
+      |          ^
+    """
+
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      def a(x: Int): Int = x + 1
+
+      @JSExportStatic("a")
+      def b: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: Exported method a conflicts with b
+      |      def a(x: Int): Int = x + 1
+      |          ^
     """
   }
 

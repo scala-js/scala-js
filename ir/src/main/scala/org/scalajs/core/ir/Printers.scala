@@ -827,8 +827,10 @@ object Printers {
             printBlock(body)
           }
 
-        case PropertyDef(name, getterBody, setterArgAndBody) =>
+        case PropertyDef(static, name, getterBody, setterArgAndBody) =>
           getterBody foreach { body =>
+            if (static)
+              print("static ")
             print("get ")
             print(name)
             printSig(Nil, AnyType)
@@ -840,6 +842,8 @@ object Printers {
           }
 
           setterArgAndBody foreach { case (arg, body) =>
+            if (static)
+              print("static ")
             print("set ")
             print(name)
             printSig(arg :: Nil, NoType)

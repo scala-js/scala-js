@@ -1010,37 +1010,43 @@ class PrintersTest {
   }
 
   @Test def printPropertyDef(): Unit = {
-    assertPrintEquals(
-        """
-          |get "prop"(): any = {
-          |  5
-          |}
-        """,
-        PropertyDef(StringLiteral("prop"), Some(i(5)), None))
+    for (static <- Seq(false, true)) {
+      val staticStr =
+        if (static) "static "
+        else ""
 
-    assertPrintEquals(
-        """
-          |set "prop"(x: any) {
-          |  7
-          |}
-        """,
-        PropertyDef(StringLiteral("prop"),
-            None,
-            Some((ParamDef("x", AnyType, mutable = false, rest = false), i(7)))))
+      assertPrintEquals(
+          s"""
+            |${staticStr}get "prop"(): any = {
+            |  5
+            |}
+          """,
+          PropertyDef(static, StringLiteral("prop"), Some(i(5)), None))
 
-    assertPrintEquals(
-        """
-          |get "prop"(): any = {
-          |  5
-          |}
-          |set "prop"(x: any) {
-          |  7
-          |}
-        """,
-        PropertyDef(StringLiteral("prop"),
-            Some(i(5)),
-            Some((ParamDef("x", AnyType, mutable = false, rest = false),
-                i(7)))))
+      assertPrintEquals(
+          s"""
+            |${staticStr}set "prop"(x: any) {
+            |  7
+            |}
+          """,
+          PropertyDef(static, StringLiteral("prop"),
+              None,
+              Some((ParamDef("x", AnyType, mutable = false, rest = false), i(7)))))
+
+      assertPrintEquals(
+          s"""
+            |${staticStr}get "prop"(): any = {
+            |  5
+            |}
+            |${staticStr}set "prop"(x: any) {
+            |  7
+            |}
+          """,
+          PropertyDef(static, StringLiteral("prop"),
+              Some(i(5)),
+              Some((ParamDef("x", AnyType, mutable = false, rest = false),
+                  i(7)))))
+    }
   }
 
   @Test def printConstructorExportDef(): Unit = {

@@ -387,7 +387,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def checkExportedPropertyDef(propDef: PropertyDef,
       classDef: LinkedClass): Unit = withPerMethodState {
-    val PropertyDef(_, getterBody, setterArgAndBody) = propDef
+    val PropertyDef(static, _, getterBody, setterArgAndBody) = propDef
     implicit val ctx = ErrorContext(propDef)
 
     if (!classDef.kind.isAnyScalaJSDefinedClass) {
@@ -396,7 +396,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
 
     val thisType =
-      if (classDef.kind.isJSClass) AnyType
+      if (static) NoType
+      else if (classDef.kind.isJSClass) AnyType
       else ClassType(classDef.name.name)
 
     getterBody.foreach { getterBody =>

@@ -444,8 +444,9 @@ object Serializers {
           writeInt(length)
           bufferUnderlying.continue()
 
-        case PropertyDef(name, getter, setterArgAndBody) =>
+        case PropertyDef(static, name, getter, setterArgAndBody) =>
           writeByte(TagPropertyDef)
+          writeBoolean(static)
           writePropertyName(name)
           writeOptTree(getter)
           writeBoolean(setterArgAndBody.isDefined)
@@ -872,7 +873,11 @@ object Serializers {
           } else {
             result2
           }
+
         case TagPropertyDef =>
+          val static =
+            if (useHacks0614) false
+            else readBoolean()
           val name = readPropertyName()
           val getterBody = readOptTree()
           val setterArgAndBody = if (useHacks068) {
@@ -884,8 +889,7 @@ object Serializers {
             else
               None
           }
-
-          PropertyDef(name, getterBody, setterArgAndBody)
+          PropertyDef(static, name, getterBody, setterArgAndBody)
 
         case TagConstructorExportDef =>
           val result = ConstructorExportDef(readString(), readParamDefs(), readTree())

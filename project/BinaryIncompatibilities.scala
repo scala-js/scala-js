@@ -17,6 +17,18 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[IncompatibleResultTypeProblem](
           "org.scalajs.core.ir.Trees#FieldDef.copy$default$3"),
 
+      // Breaking: PropertyDef has new field `static`
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.apply"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.copy"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.copy$default$1"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.ir.Trees#PropertyDef.copy$default$2"),
+
       // Breaking: TopLevelExportDef has been renamed to TopLevelMethodExportDef
       ProblemFilters.exclude[MissingClassProblem](
           "org.scalajs.core.ir.Trees$TopLevelExportDef"),

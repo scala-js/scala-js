@@ -195,7 +195,7 @@ object Traversers {
       case MethodDef(static, name, args, resultType, body) =>
         body.foreach(traverse)
 
-      case PropertyDef(name, getterBody, setterArgAndBody) =>
+      case PropertyDef(static, name, getterBody, setterArgAndBody) =>
         getterBody.foreach(traverse)
         setterArgAndBody foreach { case (_, body) =>
           traverse(body)

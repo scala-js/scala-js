@@ -217,8 +217,9 @@ object Transformers {
           MethodDef(static, name, args, resultType, body.map(transformStat))(
               tree.optimizerHints, None)
 
-        case PropertyDef(name, getterBody, setterArgAndBody) =>
+        case PropertyDef(static, name, getterBody, setterArgAndBody) =>
           PropertyDef(
+              static,
               name,
               getterBody.map(transformStat),
               setterArgAndBody map { case (arg, body) =>

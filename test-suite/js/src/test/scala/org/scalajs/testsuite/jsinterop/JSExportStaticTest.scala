@@ -126,6 +126,66 @@ class JSExportStaticTest {
     assertEquals(6, obj.alsoExistsAsMember(3))
   }
 
+  // Properties
+
+  @Test def basic_static_prop_readonly(): Unit = {
+    val statics = js.constructorOf[JSExportStaticTest.StaticExportProperties]
+
+    assertEquals(1, statics.basicReadOnly)
+  }
+
+  @Test def basic_static_prop_readwrite(): Unit = {
+    val statics = js.constructorOf[JSExportStaticTest.StaticExportProperties]
+
+    assertEquals(5, statics.basicReadWrite)
+    statics.basicReadWrite = 10
+    assertEquals(15, statics.basicReadWrite)
+  }
+
+  @Test def static_prop_set_wrong_type_throws_classcastexception(): Unit = {
+    assumeTrue("assuming compliant asInstanceOfs", hasCompliantAsInstanceOfs)
+
+    val statics = js.constructorOf[JSExportStaticTest.StaticExportProperties]
+
+    assertThrows(classOf[ClassCastException], {
+      statics.basicReadWrite = "wrong type"
+    })
+  }
+
+  @Test def overloaded_static_prop_setter(): Unit = {
+    val statics = js.constructorOf[JSExportStaticTest.StaticExportProperties]
+
+    assertEquals("got: ", statics.overloadedSetter)
+    statics.overloadedSetter = "foo"
+    assertEquals("got: foo", statics.overloadedSetter)
+    statics.overloadedSetter = 5
+    assertEquals("got: foo10", statics.overloadedSetter)
+  }
+
+  @Test def overloaded_static_prop_renamed(): Unit = {
+    val statics = js.constructorOf[JSExportStaticTest.StaticExportProperties]
+
+    assertEquals(5, statics.renamed)
+    statics.renamed = 10
+    assertEquals(15, statics.renamed)
+    statics.renamed = "foobar"
+    assertEquals(21, statics.renamed)
+  }
+
+  @Test def static_prop_constructor(): Unit = {
+    val statics = js.constructorOf[JSExportStaticTest.StaticExportProperties]
+
+    assertEquals(102, statics.constructor)
+  }
+
+  @Test def static_prop_also_exists_in_member(): Unit = {
+    val statics = js.constructorOf[JSExportStaticTest.StaticExportProperties]
+    assertEquals("also a member", statics.alsoExistsAsMember)
+
+    val obj = new JSExportStaticTest.StaticExportProperties
+    assertEquals(54, obj.alsoExistsAsMember)
+  }
+
   // Fields
 
   @Test def basic_field(): Unit = {
@@ -284,6 +344,52 @@ object JSExportStaticTest {
 
     @JSExportStatic
     def alsoExistsAsMember(x: Int): Int = x * 5
+  }
+
+  @ScalaJSDefined
+  class StaticExportProperties extends js.Object {
+    def alsoExistsAsMember: Int = 54
+  }
+
+  object StaticExportProperties {
+    @JSExportStatic
+    def basicReadOnly: Int = 1
+
+    private var basicVar: Int = 5
+
+    @JSExportStatic
+    def basicReadWrite: Int = basicVar
+
+    @JSExportStatic
+    def basicReadWrite_=(v: Int): Unit = basicVar += v
+
+    private var overloadedSetterVar: String = ""
+
+    @JSExportStatic
+    def overloadedSetter: String = "got: " + overloadedSetterVar
+
+    @JSExportStatic
+    def overloadedSetter_=(x: String): Unit = overloadedSetterVar += x
+
+    @JSExportStatic
+    def overloadedSetter_=(x: Int): Unit = overloadedSetterVar += 2 * x
+
+    private var renamedPropVar: Int = 5
+
+    @JSExportStatic("renamed")
+    def renamedProp: Int = renamedPropVar
+
+    @JSExportStatic("renamed")
+    def renamedProp_=(v: Int): Unit = renamedPropVar += v
+
+    @JSExportStatic("renamed")
+    def renamedOverload_=(x: String): Unit = renamedPropVar += x.length
+
+    @JSExportStatic
+    def constructor: Int = 102
+
+    @JSExportStatic
+    def alsoExistsAsMember: String = "also a member"
   }
 
   @ScalaJSDefined

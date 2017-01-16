@@ -377,10 +377,6 @@ trait PrepJSExports { this: PrepJSInterop =>
                   "Implementation restriction: cannot export a class or " +
                   "object as static")
             }
-          } else if (!sym.isAccessor && jsInterop.isJSProperty(sym)) {
-            reporter.error(annot.pos,
-                "Implementation restriction: cannot export a getter or a " +
-                "setter as static")
           }
       }
 
