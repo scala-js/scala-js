@@ -34,6 +34,7 @@ final class Short private () extends Number with Comparable[Short] {
 object Short {
   final val TYPE = classOf[scala.Short]
   final val SIZE = 16
+  final val BYTES = 2
 
   /* MIN_VALUE and MAX_VALUE should be 'final val's. But it is impossible to
    * write a proper Short literal in Scala, that would both considered a Short

@@ -164,6 +164,7 @@ object Character {
   final val MIN_VALUE = '\u0000'
   final val MAX_VALUE = '\uffff'
   final val SIZE = 16
+  final val BYTES = 2
 
   def valueOf(charValue: scala.Char): Character = new Character(charValue)
 

@@ -29,7 +29,7 @@ final class Double private () extends Number with Comparable[Double] {
   }
 
   @inline override def hashCode(): Int =
-    scala.scalajs.runtime.Bits.numberHashCode(doubleValue)
+    Double.hashCode(doubleValue)
 
   @inline override def compareTo(that: Double): Int =
     Double.compare(doubleValue, that.doubleValue)
@@ -51,10 +51,12 @@ object Double {
   final val NEGATIVE_INFINITY = 1.0 / -0.0
   final val NaN = 0.0 / 0.0
   final val MAX_VALUE = scala.Double.MaxValue
+  final val MIN_NORMAL = 2.2250738585072014e-308
   final val MIN_VALUE = scala.Double.MinPositiveValue
   final val MAX_EXPONENT = 1023
   final val MIN_EXPONENT = -1022
   final val SIZE = 64
+  final val BYTES = 8
 
   @inline def valueOf(doubleValue: scala.Double): Double =
     new Double(doubleValue)
@@ -81,6 +83,61 @@ object Double {
 
   @inline def toString(d: scala.Double): String =
     "" + d
+
+  def toHexString(d: scala.Double): String = {
+    val ebits = 11 // exponent size
+    val mbits = 52 // mantissa size
+    val bias = (1 << (ebits - 1)) - 1
+
+    val bits = doubleToLongBits(d)
+    val s = bits < 0
+    val m = bits & ((1L << mbits) - 1L)
+    val e = (bits >>> mbits).toInt & ((1 << ebits) - 1) // biased
+
+    val posResult = if (e > 0) {
+      if (e == (1 << ebits) - 1) {
+        // Special
+        if (m != 0L) "NaN"
+        else "Infinity"
+      } else {
+        // Normalized
+        "0x1." + mantissaToHexString(m) + "p" + (e - bias)
+      }
+    } else {
+      if (m != 0L) {
+        // Subnormal
+        "0x0." + mantissaToHexString(m) + "p-1022"
+      } else {
+        // Zero
+        "0x0.0p0"
+      }
+    }
+
+    if (bits < 0) "-" + posResult else posResult
+  }
+
+  @inline
+  private def mantissaToHexString(m: scala.Long): String =
+    mantissaToHexStringLoHi(m.toInt, (m >>> 32).toInt)
+
+  private def mantissaToHexStringLoHi(lo: Int, hi: Int): String = {
+    @inline def padHex5(i: Int): String = {
+      val s = Integer.toHexString(i)
+      "00000".substring(s.length) + s // 5 zeros
+    }
+
+    @inline def padHex8(i: Int): String = {
+      val s = Integer.toHexString(i)
+      "00000000".substring(s.length) + s // 8 zeros
+    }
+
+    val padded = padHex5(hi) + padHex8(lo)
+
+    var len = padded.length
+    while (len > 1 && padded.charAt(len - 1) == '0')
+      len -= 1
+    padded.substring(0, len)
+  }
 
   def compare(a: scala.Double, b: scala.Double): scala.Int = {
     // NaN must equal itself, and be greater than anything else
@@ -113,9 +170,24 @@ object Double {
   @inline def isInfinite(v: scala.Double): scala.Boolean =
     v == POSITIVE_INFINITY || v == NEGATIVE_INFINITY
 
+  @inline def isFinite(d: scala.Double): scala.Boolean =
+    !isNaN(d) && !isInfinite(d)
+
+  @inline def hashCode(value: scala.Double): Int =
+    scala.scalajs.runtime.Bits.numberHashCode(value)
+
   @inline def longBitsToDouble(bits: scala.Long): scala.Double =
     scala.scalajs.runtime.Bits.longBitsToDouble(bits)
 
   @inline def doubleToLongBits(value: scala.Double): scala.Long =
     scala.scalajs.runtime.Bits.doubleToLongBits(value)
+
+  @inline def sum(a: scala.Double, b: scala.Double): scala.Double =
+    a + b
+
+  @inline def max(a: scala.Double, b: scala.Double): scala.Double =
+    Math.max(a, b)
+
+  @inline def min(a: scala.Double, b: scala.Double): scala.Double =
+    Math.min(a, b)
 }
