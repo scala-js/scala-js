@@ -79,6 +79,28 @@ class FloatTest {
     assertEquals("1.2", 1.2f.toString.substring(0,3))
   }
 
+  @Test def toHexStringTest(): Unit = {
+    import java.lang.Float.toHexString
+
+    assertEquals("NaN", toHexString(Float.NaN))
+    assertEquals("Infinity", toHexString(Float.PositiveInfinity))
+    assertEquals("-Infinity", toHexString(Float.NegativeInfinity))
+    assertEquals("0x0.0p0", toHexString(0.0f))
+    assertEquals("-0x0.0p0", toHexString(-0.0f))
+    assertEquals("0x1.0p0", toHexString(1.0f))
+    assertEquals("-0x1.0p0", toHexString(-1.0f))
+    assertEquals("0x1.0p1", toHexString(2.0f))
+    assertEquals("0x1.8p1", toHexString(3.0f))
+    assertEquals("0x1.0p-1", toHexString(0.5f))
+    assertEquals("0x1.0p-2", toHexString(0.25f))
+    assertEquals("0x1.00204p3", toHexString(8.003937f))
+    assertEquals("0x0.00204p-126", toHexString(5.785e-42f))
+    assertEquals("0x1.fffffep127", toHexString(Float.MaxValue))
+    assertEquals("0x1.0p-126", toHexString(java.lang.Float.MIN_NORMAL))
+    assertEquals("0x0.fffffep-126", toHexString(1.1754942E-38f))
+    assertEquals("0x0.000002p-126", toHexString(Float.MinPositiveValue))
+  }
+
   @Test def should_parse_strings(): Unit = {
     assertEquals(0.0f, "0.0".toFloat, 0.0f)
     assertTrue("NaN".toFloat.isNaN)

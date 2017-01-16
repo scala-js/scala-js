@@ -76,6 +76,28 @@ class DoubleTest {
     assertEquals("1.2", 1.2.toString)
   }
 
+  @Test def toHexStringTest(): Unit = {
+    import java.lang.Double.toHexString
+
+    assertEquals("0x0.0p0", toHexString(0.0))
+    assertEquals("-0x0.0p0", toHexString(-0.0))
+    assertEquals("NaN", toHexString(Double.NaN))
+    assertEquals("Infinity", toHexString(Double.PositiveInfinity))
+    assertEquals("-Infinity", toHexString(Double.NegativeInfinity))
+    assertEquals("0x1.0p0", toHexString(1.0))
+    assertEquals("-0x1.0p0", toHexString(-1.0))
+    assertEquals("0x1.0p1", toHexString(2.0))
+    assertEquals("0x1.8p1", toHexString(3.0))
+    assertEquals("0x1.0p-1", toHexString(0.5))
+    assertEquals("0x1.0p-2", toHexString(0.25))
+    assertEquals("0x1.00204p3", toHexString(8.003936767578125))
+    assertEquals("0x0.00204p-1022", toHexString(1.094949828138e-311))
+    assertEquals("0x1.fffffffffffffp1023", toHexString(Double.MaxValue))
+    assertEquals("0x1.0p-1022", toHexString(java.lang.Double.MIN_NORMAL))
+    assertEquals("0x0.fffffffffffffp-1022", toHexString(2.225073858507201E-308))
+    assertEquals("0x0.0000000000001p-1022", toHexString(Double.MinPositiveValue))
+  }
+
   @Test def should_parse_strings(): Unit = {
     assertEquals(0.0, "0.0".toDouble, 0.0)
     assertTrue("NaN".toDouble.isNaN)
