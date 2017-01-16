@@ -841,7 +841,8 @@ object ScalaJSPluginInternal {
       jsdepsKey: TaskKey[File]) = {
     testHtmlKey := {
       if ((skip in jsdepsKey).value) {
-        sys.error(s"(skip in $jsdepsKey) must be false for $testHtmlKey.")
+        throw new MessageOnlyException(
+            s"(skip in ${jsdepsKey.key}) must be false for ${testHtmlKey.key}.")
       }
 
       val log = streams.value.log
