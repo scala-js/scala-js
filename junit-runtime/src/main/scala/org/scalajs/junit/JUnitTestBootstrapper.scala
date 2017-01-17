@@ -4,9 +4,9 @@ import java.lang.annotation.Annotation
 
 import org.junit.FixMethodOrder
 
-import scala.scalajs.js.annotation.JSExportDescendentObjects
+import scala.scalajs.reflect.annotation._
 
-@JSExportDescendentObjects
+@EnableReflectiveInstantiation
 trait JUnitTestBootstrapper {
   def metadata(): JUnitClassMetadata
   def newInstance(): AnyRef

@@ -3,7 +3,7 @@ package sbttest.multitest
 import org.scalajs.junit.JUnitTestBootstrapper
 import org.junit.Assert.fail
 
-import scalajs.js
+import scala.scalajs.reflect.Reflect
 
 object JUnitUtil {
   private final val bootstrapperSuffix = "$scalajs$junit$bootstrapper"
@@ -11,9 +11,8 @@ object JUnitUtil {
   def loadBootstrapper(classFullName: String): JUnitTestBootstrapper = {
     val fullName = s"$classFullName$bootstrapperSuffix"
     try {
-      fullName.split('.').foldLeft(js.Dynamic.global) { (obj, n) =>
-        obj.selectDynamic(n)
-      }.apply().asInstanceOf[JUnitTestBootstrapper]
+      val modClass = Reflect.lookupLoadableModuleClass(fullName + "$").get
+      modClass.loadModule().asInstanceOf[JUnitTestBootstrapper]
     } catch {
       case ex: Throwable =>
         throw new AssertionError(s"could not load $fullName: ${ex.getMessage}")
