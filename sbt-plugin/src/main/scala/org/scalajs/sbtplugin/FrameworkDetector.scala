@@ -40,31 +40,10 @@ private[sbtplugin] final class FrameworkDetector(jsEnv: JSEnv,
         "use strict";
 
         var data = ${jsonToString(data)};
-
-        function frameworkExists(name) {
-          var parts = name.split(".");
-          var obj = exportsNamespace;
-          for (var i = 0; i < parts.length; ++i) {
-            obj = obj[parts[i]];
-            if (obj === void 0)
-              return false;
-          }
-          return true;
-        }
-
-        for (var i = 0; i < data.length; ++i) {
-          var gotOne = false;
-          for (var j = 0; j < data[i].length; ++j) {
-            if (frameworkExists(data[i][j])) {
-              console.log("$ConsoleFrameworkPrefix" + data[i][j]);
-              gotOne = true;
-              break;
-            }
-          }
-          if (!gotOne) {
-            // print an empty line with prefix to zip afterwards
-            console.log("$ConsoleFrameworkPrefix");
-          }
+        var results =
+          exportsNamespace.org.scalajs.testinterface.internal.detectFrameworks(data);
+        for (var i = 0; i < results.length; ++i) {
+          console.log("$ConsoleFrameworkPrefix" + (results[i] || ""));
         }
       })($exportsNamespaceExpr);
     """
