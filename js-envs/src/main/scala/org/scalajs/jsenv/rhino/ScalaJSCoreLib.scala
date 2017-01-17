@@ -39,8 +39,14 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
     val exportedSymbols = mutable.ListBuffer.empty[String]
 
     for (linkedClass <- linkingUnit.classDefs) {
+      def hasStaticInitializer = {
+        linkedClass.staticMethods.exists {
+          _.tree.name.name == ir.Definitions.StaticInitializerName
+        }
+      }
+
       providers += linkedClass.encodedName -> linkedClass
-      if (linkedClass.isExported)
+      if (linkedClass.isExported || hasStaticInitializer)
         exportedSymbols += linkedClass.encodedName
     }
 
