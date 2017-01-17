@@ -420,19 +420,42 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         val topLevelExports = genTopLevelExports(sym)
 
-        val needsStaticInitializer =
-          topLevelExports.exists(_.isInstanceOf[js.TopLevelFieldExportDef])
-        val optStaticInitializer =
-          if (!needsStaticInitializer) Nil
-          else genStaticInitializerLoadingModule(sym) :: Nil
+        memberExports ++ exportedConstructorsOrAccessors ++ topLevelExports
+      }
 
-        (memberExports ++ exportedConstructorsOrAccessors ++ topLevelExports ++
-            optStaticInitializer)
+      // Static initializer
+      val optStaticInitializer = {
+        // Initialization of reflection data, if required
+        val reflectInit = {
+          val enableReflectiveInstantiation = {
+            (sym :: sym.ancestors).exists { ancestor =>
+              ancestor.hasAnnotation(EnableReflectiveInstantiationAnnotation)
+            }
+          }
+          if (enableReflectiveInstantiation)
+            genRegisterReflectiveInstantiation(sym)
+          else
+            None
+        }
+
+        // Initialization of the module because of field exports
+        val needsStaticModuleInit =
+          exports.exists(_.isInstanceOf[js.TopLevelFieldExportDef])
+        val staticModuleInit =
+          if (!needsStaticModuleInit) None
+          else Some(genLoadModule(sym))
+
+        val staticInitializerStats =
+          reflectInit.toList ::: staticModuleInit.toList
+        if (staticInitializerStats.nonEmpty)
+          Some(genStaticInitializerWithStats(js.Block(staticInitializerStats)))
+        else
+          None
       }
 
       // Hashed definitions of the class
       val hashedDefs =
-        Hashers.hashDefs(generatedMembers ++ exports)
+        Hashers.hashDefs(generatedMembers ++ exports ++ optStaticInitializer)
 
       // The complete class definition
       val kind =
@@ -521,7 +544,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
           if (exports.exists(_.isInstanceOf[js.FieldDef])) {
             val staticInitializer =
-              genStaticInitializerLoadingModule(companionModuleClass)
+              genStaticInitializerWithStats(genLoadModule(companionModuleClass))
             exports :+ staticInitializer
           } else {
             exports
@@ -920,15 +943,99 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Static initializers -----------------------------------------------------
 
-    private def genStaticInitializerLoadingModule(sym: Symbol)(
+    private def genStaticInitializerWithStats(stats: js.Tree)(
         implicit pos: Position): js.MethodDef = {
       js.MethodDef(
           static = true,
           js.Ident(ir.Definitions.StaticInitializerName),
           Nil,
           jstpe.NoType,
-          Some(genLoadModule(sym)))(
+          Some(stats))(
           OptimizerHints.empty, None)
+    }
+
+    private def genRegisterReflectiveInstantiation(sym: Symbol)(
+        implicit pos: Position): Option[js.Tree] = {
+      if (sym.isModuleClass)
+        genRegisterReflectiveInstantiationForModuleClass(sym)
+      else
+        genRegisterReflectiveInstantiationForNormalClass(sym)
+    }
+
+    private def genRegisterReflectiveInstantiationForModuleClass(sym: Symbol)(
+        implicit pos: Position): Option[js.Tree] = {
+      val fqcnArg = js.StringLiteral(sym.fullName + "$")
+      val runtimeClassArg = js.ClassOf(toReferenceType(sym.info))
+      val loadModuleFunArg = js.Closure(Nil, Nil, genLoadModule(sym), Nil)
+
+      val stat = genApplyMethod(
+          genLoadModule(ReflectModule),
+          Reflect_registerLoadableModuleClass,
+          List(fqcnArg, runtimeClassArg, loadModuleFunArg))
+
+      Some(stat)
+    }
+
+    private def genRegisterReflectiveInstantiationForNormalClass(sym: Symbol)(
+        implicit pos: Position): Option[js.Tree] = {
+      val ctors =
+        if (sym.isAbstractClass) Nil
+        else sym.info.member(nme.CONSTRUCTOR).alternatives.filter(_.isPublic)
+
+      if (ctors.isEmpty) {
+        None
+      } else {
+        val constructorsInfos = for {
+          ctor <- ctors
+        } yield {
+          withNewLocalNameScope {
+            val (parameterTypes, formalParams, actualParams) = (for {
+              param <- ctor.tpe.params
+            } yield {
+              /* Note that we do *not* use `param.tpe` entering posterasure
+               * (neither to compute `paramType` nor to give to `fromAny`).
+               * Logic would tell us that we should do so, but we intentionally
+               * do not to preserve the behavior on the JVM regarding value
+               * classes. If a constructor takes a value class as parameter, as
+               * in:
+               *
+               *   class ValueClass(val underlying: Int) extends AnyVal
+               *   class Foo(val vc: ValueClass)
+               *
+               * then, from a reflection point of view, on the JVM, the
+               * constructor of `Foo` takes an `Int`, not a `ValueClas`. It
+               * must therefore be identified as the constructor whose
+               * parameter types is `List(classOf[Int])`, and when invoked
+               * reflectively, it must be given an `Int` (or `Integer`).
+               */
+              val paramType = js.ClassOf(toReferenceType(param.tpe))
+              val paramDef = js.ParamDef(encodeLocalSym(param), jstpe.AnyType,
+                  mutable = false, rest = false)
+              val actualParam = fromAny(paramDef.ref, param.tpe)
+              (paramType, paramDef, actualParam)
+            }).unzip3
+
+            val paramTypesArray = js.JSArrayConstr(parameterTypes)
+
+            val newInstanceFun = js.Closure(Nil, formalParams, {
+              genNew(sym, ctor, actualParams)
+            }, Nil)
+
+            js.JSArrayConstr(List(paramTypesArray, newInstanceFun))
+          }
+        }
+
+        val fqcnArg = js.StringLiteral(sym.fullName)
+        val runtimeClassArg = js.ClassOf(toReferenceType(sym.info))
+        val ctorsInfosArg = js.JSArrayConstr(constructorsInfos)
+
+        val stat = genApplyMethod(
+            genLoadModule(ReflectModule),
+            Reflect_registerInstantiatableClass,
+            List(fqcnArg, runtimeClassArg, ctorsInfosArg))
+
+        Some(stat)
+      }
     }
 
     // Constructor of a Scala.js-defined JS class ------------------------------

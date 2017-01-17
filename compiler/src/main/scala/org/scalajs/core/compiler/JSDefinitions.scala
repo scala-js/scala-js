@@ -137,6 +137,12 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val BoxesRunTime_boxToCharacter = getMemberMethod(BoxesRunTimeModule, newTermName("boxToCharacter"))
     lazy val BoxesRunTime_unboxToChar    = getMemberMethod(BoxesRunTimeModule, newTermName("unboxToChar"))
 
+    lazy val ReflectModule = getRequiredModule("scala.scalajs.reflect.Reflect")
+      lazy val Reflect_registerLoadableModuleClass = getMemberMethod(ReflectModule, newTermName("registerLoadableModuleClass"))
+      lazy val Reflect_registerInstantiatableClass = getMemberMethod(ReflectModule, newTermName("registerInstantiatableClass"))
+
+    lazy val EnableReflectiveInstantiationAnnotation = getRequiredClass("scala.scalajs.reflect.annotation.EnableReflectiveInstantiation")
+
   }
 
   // scalastyle:on line.size.limit

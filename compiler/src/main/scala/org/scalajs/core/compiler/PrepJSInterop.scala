@@ -476,6 +476,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       val isJSNative = !sym.hasAnnotation(ScalaJSDefinedAnnotation)
 
+      // Forbid @EnableReflectiveInstantiation on JS types
+      sym.getAnnotation(EnableReflectiveInstantiationAnnotation).foreach {
+        annot =>
+          reporter.error(annot.pos,
+              "@EnableReflectiveInstantiation cannot be used on types " +
+              "extending js.Any.")
+      }
+
       if (sym.isPackageObjectClass) {
         reporter.warning(implDef.pos,
             "Package objects inheriting from js.Any are deprecated. " +
