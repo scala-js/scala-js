@@ -1,9 +1,9 @@
 package sbt.testing
 
-import scala.scalajs.js.annotation._
+import scala.scalajs.reflect.annotation._
 
 /** Interface implemented by test frameworks. */
-@JSExportDescendentClasses
+@EnableReflectiveInstantiation
 trait Framework {
 
   /** A human-friendly name of the test framework that this object represents.
