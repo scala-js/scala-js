@@ -256,6 +256,9 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       case e: ModuleExportDef =>
         classExports += e
 
+      case e: TopLevelModuleExportDef =>
+        classExports += e
+
       case e: TopLevelMethodExportDef =>
         classExports += e
 

@@ -651,6 +651,13 @@ class ExportsTest {
     assertEquals("witness", obj.witness)
   }
 
+  @Test def toplevel_exports_for_objects(): Unit = {
+    val obj = exportsNamespace.TopLevelExportedObject
+    assertJSNotUndefined(obj)
+    assertEquals("object", js.typeOf(obj))
+    assertEquals("witness", obj.witness)
+  }
+
   @Test def exports_for_Scala_js_defined_JS_objects_with_explicit_name(): Unit = {
     val accessor = exportsNamespace.TheSJSDefinedExportedObject
     assertJSNotUndefined(accessor)
@@ -661,11 +668,28 @@ class ExportsTest {
     assertEquals("witness", obj.witness)
   }
 
+  @Test def toplevel_exports_for_Scala_js_defined_JS_objects(): Unit = {
+    val obj1 = exportsNamespace.SJSDefinedTopLevelExportedObject
+    assertJSNotUndefined(obj1)
+    assertEquals("object", js.typeOf(obj1))
+    assertEquals("witness", obj1.witness)
+
+    val obj2 = exportsNamespace.TheSJSDefinedTopLevelExportedObject
+    assertSame(obj1, obj2)
+  }
+
   @Test def exports_for_objects_with_qualified_name(): Unit = {
     val accessor = exportsNamespace.qualified.testobject.ExportedObject
     assertJSNotUndefined(accessor)
     assertEquals("function", js.typeOf(accessor))
     val obj = accessor()
+    assertJSNotUndefined(obj)
+    assertEquals("object", js.typeOf(obj))
+    assertEquals("witness", obj.witness)
+  }
+
+  @Test def toplevel_exports_for_objects_with_qualified_name(): Unit = {
+    val obj = exportsNamespace.qualified.testobject.TopLevelExportedObject
     assertJSNotUndefined(obj)
     assertEquals("object", js.typeOf(obj))
     assertEquals("witness", obj.witness)
@@ -679,6 +703,13 @@ class ExportsTest {
     assertJSNotUndefined(obj)
     assertEquals("object", js.typeOf(obj))
     assertSame(obj, ExportHolder.ExportedObject)
+  }
+
+  @Test def toplevel_exports_for_nested_objects(): Unit = {
+    val obj = exportsNamespace.qualified.nested.TopLevelExportedObject
+    assertJSNotUndefined(obj)
+    assertEquals("object", js.typeOf(obj))
+    assertSame(obj, ExportHolder.TopLevelExportedObject)
   }
 
   @Test def exports_for_objects_with_constant_folded_name(): Unit = {
@@ -726,6 +757,14 @@ class ExportsTest {
     assertEquals(5, obj.x)
   }
 
+  @Test def toplevel_exports_for_classes(): Unit = {
+    val constr = exportsNamespace.TopLevelExportedClass
+    assertJSNotUndefined(constr)
+    assertEquals("function", js.typeOf(constr))
+    val obj = js.Dynamic.newInstance(constr)(5)
+    assertEquals(5, obj.x)
+  }
+
   @Test def exports_for_Scala_js_defined_JS_classes_with_explicit_name(): Unit = {
     val constr = exportsNamespace.TheSJSDefinedExportedClass
     assertJSNotUndefined(constr)
@@ -735,8 +774,28 @@ class ExportsTest {
     assertEquals(5, obj.x)
   }
 
+  @Test def toplevel_exports_for_Scala_js_defined_JS_classes(): Unit = {
+    val constr = exportsNamespace.SJSDefinedTopLevelExportedClass
+    assertJSNotUndefined(constr)
+    assertEquals("function", js.typeOf(constr))
+    val obj = js.Dynamic.newInstance(constr)(5)
+    assertTrue((obj: Any).isInstanceOf[SJSDefinedTopLevelExportedClass])
+    assertEquals(5, obj.x)
+
+    val constr2 = exportsNamespace.TheSJSDefinedTopLevelExportedClass
+    assertSame(constr, constr2)
+  }
+
   @Test def exports_for_classes_with_qualified_name_ExportedClass(): Unit = {
     val constr = exportsNamespace.qualified.testclass.ExportedClass
+    assertJSNotUndefined(constr)
+    assertEquals("function", js.typeOf(constr))
+    val obj = js.Dynamic.newInstance(constr)(5)
+    assertEquals(5, obj.x)
+  }
+
+  @Test def toplevel_exports_for_classes_with_qualified_name(): Unit = {
+    val constr = exportsNamespace.qualified.testclass.TopLevelExportedClass
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)(5)
@@ -749,6 +808,14 @@ class ExportsTest {
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)()
     assertTrue((obj: Any).isInstanceOf[ExportHolder.ExportedClass])
+  }
+
+  @Test def toplevel_exports_for_nested_classes(): Unit = {
+    val constr = exportsNamespace.qualified.nested.TopLevelExportedClass
+    assertJSNotUndefined(constr)
+    assertEquals("function", js.typeOf(constr))
+    val obj = js.Dynamic.newInstance(constr)()
+    assertTrue((obj: Any).isInstanceOf[ExportHolder.TopLevelExportedClass])
   }
 
   @Test def exports_for_classes_with_qualified_name_SJSDefinedExportedClass(): Unit = {
@@ -1597,11 +1664,25 @@ object ExportedObject {
   def witness: String = "witness"
 }
 
+@JSExportTopLevel("TopLevelExportedObject")
+@JSExportTopLevel("qualified.testobject.TopLevelExportedObject")
+object TopLevelExportedObject {
+  @JSExport
+  val witness: String = "witness"
+}
+
 @JSExport
 @JSExport("TheSJSDefinedExportedObject")
 @ScalaJSDefined
 object SJSDefinedExportedObject extends js.Object {
   def witness: String = "witness"
+}
+
+@JSExportTopLevel("SJSDefinedTopLevelExportedObject")
+@JSExportTopLevel("TheSJSDefinedTopLevelExportedObject")
+@ScalaJSDefined
+object SJSDefinedTopLevelExportedObject extends js.Object {
+  val witness: String = "witness"
 }
 
 @JSExport
@@ -1619,11 +1700,23 @@ class ExportedClass(_x: Int) {
   val x = _x
 }
 
+@JSExportTopLevel("TopLevelExportedClass")
+@JSExportTopLevel("qualified.testclass.TopLevelExportedClass")
+class TopLevelExportedClass(_x: Int) {
+  @JSExport
+  val x = _x
+}
+
 @JSExport
 @JSExport("TheSJSDefinedExportedClass")
 @JSExport("qualified.testclass.SJSDefinedExportedClass")
 @ScalaJSDefined
 class SJSDefinedExportedClass(val x: Int) extends js.Object
+
+@JSExportTopLevel("SJSDefinedTopLevelExportedClass")
+@JSExportTopLevel("TheSJSDefinedTopLevelExportedClass")
+@ScalaJSDefined
+class SJSDefinedTopLevelExportedClass(val x: Int) extends js.Object
 
 @JSExport
 protected class ProtectedExportedClass(_x: Int) {
@@ -1759,8 +1852,14 @@ object ExportHolder {
   @JSExport("qualified.nested.ExportedClass")
   class ExportedClass
 
+  @JSExportTopLevel("qualified.nested.TopLevelExportedClass")
+  class TopLevelExportedClass
+
   @JSExport("qualified.nested.ExportedObject")
   object ExportedObject
+
+  @JSExportTopLevel("qualified.nested.TopLevelExportedObject")
+  object TopLevelExportedObject
 
   @JSExport("qualified.nested.SJSDefinedExportedClass")
   @ScalaJSDefined

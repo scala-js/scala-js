@@ -106,17 +106,33 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       } yield {
         implicit val pos = exp.pos
         assert(!exp.isNamed, "Class cannot be exported named")
-        js.JSClassExportDef(exp.jsName)
+
+        exp.destination match {
+          case ExportDestination.Normal | ExportDestination.TopLevel =>
+            js.JSClassExportDef(exp.jsName)
+          case ExportDestination.Static =>
+            throw new AssertionError(
+                "Found a class export static for " + classSym.fullName)
+        }
       }
     }
 
-    def genModuleAccessorExports(classSym: Symbol): List[js.ModuleExportDef] = {
+    def genModuleAccessorExports(classSym: Symbol): List[js.Tree] = {
       for {
         exp <- jsInterop.registeredExportsOf(classSym)
       } yield {
         implicit val pos = exp.pos
         assert(!exp.isNamed, "Module cannot be exported named")
-        js.ModuleExportDef(exp.jsName)
+
+        exp.destination match {
+          case ExportDestination.Normal =>
+            js.ModuleExportDef(exp.jsName)
+          case ExportDestination.TopLevel =>
+            js.TopLevelModuleExportDef(exp.jsName)
+          case ExportDestination.Static =>
+            throw new AssertionError(
+                "Found a module export static for " + classSym.fullName)
+        }
       }
     }
 

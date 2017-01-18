@@ -466,6 +466,10 @@ object Serializers {
           writeByte(TagModuleExportDef)
           writeString(fullName)
 
+        case TopLevelModuleExportDef(fullName) =>
+          writeByte(TagTopLevelModuleExportDef)
+          writeString(fullName)
+
         case TopLevelMethodExportDef(methodDef) =>
           writeByte(TagTopLevelMethodExportDef)
           writeTree(methodDef)
@@ -902,6 +906,7 @@ object Serializers {
 
         case TagJSClassExportDef        => JSClassExportDef(readString())
         case TagModuleExportDef         => ModuleExportDef(readString())
+        case TagTopLevelModuleExportDef => TopLevelModuleExportDef(readString())
         case TagTopLevelMethodExportDef => TopLevelMethodExportDef(readTree().asInstanceOf[MethodDef])
         case TagTopLevelFieldExportDef  => TopLevelFieldExportDef(readString(), readIdent())
       }

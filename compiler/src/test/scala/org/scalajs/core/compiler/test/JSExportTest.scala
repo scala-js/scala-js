@@ -1097,52 +1097,40 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelModule: Unit = {
-    """
-    @JSExportTopLevel("foo")
-    object A
-    """ hasErrors
-    """
-      |newSource1.scala:3: error: Use @JSExport on objects and constructors to export to the top level
-      |    @JSExportTopLevel("foo")
-      |     ^
-    """
-  }
-
-  @Test
   def noExportTopLevelTrait: Unit = {
     """
     @JSExportTopLevel("foo")
     trait A
+
+    @JSExportTopLevel("bar")
+    @ScalaJSDefined
+    trait B extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:3: error: Use @JSExport on objects and constructors to export to the top level
+      |newSource1.scala:3: error: You may not export a trait
       |    @JSExportTopLevel("foo")
       |     ^
-    """
-  }
-
-  @Test
-  def noExportTopLevelClass: Unit = {
-    """
-    @JSExportTopLevel("foo")
-    class A
-    """ hasErrors
-    """
-      |newSource1.scala:3: error: Use @JSExport on objects and constructors to export to the top level
-      |    @JSExportTopLevel("foo")
+      |newSource1.scala:6: error: You may not export a trait
+      |    @JSExportTopLevel("bar")
       |     ^
     """
 
     """
-    class A {
+    object Container {
       @JSExportTopLevel("foo")
-      def this(x: Int) = this()
+      trait A
+
+      @JSExportTopLevel("bar")
+      @ScalaJSDefined
+      trait B extends js.Object
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: Use @JSExport on objects and constructors to export to the top level
+      |newSource1.scala:4: error: You may not export a trait
       |      @JSExportTopLevel("foo")
+      |       ^
+      |newSource1.scala:7: error: You may not export a trait
+      |      @JSExportTopLevel("bar")
       |       ^
     """
   }
@@ -1254,6 +1242,56 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:5: error: Only static objects may export their members to the top level
       |        @JSExportTopLevel("foo")
       |         ^
+    """
+
+    """
+    class A {
+      @JSExportTopLevel("Foo")
+      object B
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: Only static objects may export their members to the top level
+      |      @JSExportTopLevel("Foo")
+      |       ^
+    """
+
+    """
+    class A {
+      @JSExportTopLevel("Foo")
+      @ScalaJSDefined
+      object B extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: Only static objects may export their members to the top level
+      |      @JSExportTopLevel("Foo")
+      |       ^
+    """
+
+    """
+    class A {
+      @JSExportTopLevel("Foo")
+      @ScalaJSDefined
+      class B extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: Only static objects may export their members to the top level
+      |      @JSExportTopLevel("Foo")
+      |       ^
+    """
+
+    """
+    class A {
+      @JSExportTopLevel("Foo")
+      class B
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: Only static objects may export their members to the top level
+      |      @JSExportTopLevel("Foo")
+      |       ^
     """
   }
 
