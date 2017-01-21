@@ -97,13 +97,15 @@ abstract class JSASTTest extends DirectTest {
 
   def stringAST(code: String): JSAST = stringAST(defaultGlobal)(code)
   def stringAST(global: Global)(code: String): JSAST = {
-    compileString(global)(code)
+    if (!compileString(global)(code))
+      throw new IllegalArgumentException("snippet did not compile")
     lastAST
   }
 
   def sourceAST(source: SourceFile): JSAST = sourceAST(defaultGlobal)(source)
   def sourceAST(global: Global)(source: SourceFile): JSAST = {
-    compileSources(global)(source)
+    if (!compileSources(global)(source))
+      throw new IllegalArgumentException("snippet did not compile")
     lastAST
   }
 
