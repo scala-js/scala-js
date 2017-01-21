@@ -19,7 +19,6 @@ class EventObjectTest {
     assertSame(src, e.getSource)
   }
 
-  /* #2532 This does not link, because we cannot declare a Java field
   @Test def sourceField(): Unit = {
     class E(s: AnyRef) extends EventObject(s) {
       def setSource(s: AnyRef): Unit = source = s
@@ -35,7 +34,6 @@ class EventObjectTest {
     assertSame(src2, e.otherGetSource)
     assertSame(src2, e.getSource)
   }
-  */
 
   @Test def testToString(): Unit = {
     /* There is not much we can test about toString, but it should not be the

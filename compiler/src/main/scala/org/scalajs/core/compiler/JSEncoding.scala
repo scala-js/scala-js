@@ -80,12 +80,6 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     js.Ident(localSymbolName(sym), Some(sym.unexpandedName.decoded))
   }
 
-  private lazy val allRefClasses: Set[Symbol] = {
-    import definitions._
-    (Set(ObjectRefClass, VolatileObjectRefClass) ++
-        refClass.values ++ volatileRefClass.values)
-  }
-
   /** See comment in `encodeFieldSym()`. */
   private lazy val shouldMangleOuterPointerName = {
     val v = scala.util.Properties.versionNumberString
@@ -101,10 +95,15 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
       if (name0.charAt(name0.length()-1) != ' ') name0
       else name0.substring(0, name0.length()-1)
 
-    /* We have to special-case fields of Ref types (IntRef, ObjectRef, etc.)
-     * because they are emitted as private by our .scala source files, but
-     * they are considered public at use site since their symbols come from
-     * Java-emitted .class files.
+    /* Java-defined fields are always accessed as if they were private. This
+     * is necessary because they are defined as private by our .scala source
+     * files, but they are considered `!isPrivate` at use site, since their
+     * symbols come from Java-emitted .class files. Fortunately, we can
+     * easily detect those as `isJavaDefined`. This includes fields of Ref
+     * types (IntRef, ObjectRef, etc.) which were special-cased at use-site
+     * in Scala.js < 0.6.15.
+     * Caveat: because of this, changing the length of the superclass chain of
+     * a Java-defined class is a binary incompatible change.
      *
      * Starting with 2.12.0-RC2, we also special case outer fields. This
      * essentially fixes #2382, which is caused by a class having various $outer
@@ -116,11 +115,15 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
      * therefore a regression. We can do this because the 2.12 ecosystem is
      * not binary compatible anyway (because of Scala) so we can break it on
      * our side at the same time.
+     *
+     * TODO We should probably consider emitting *all* fields with an ancestor
+     * count. We cannot do that in a binary compatible way, though. This is
+     * filed as #2629.
      */
     val idSuffix: String = {
       val usePerClassSuffix = {
         sym.isPrivate ||
-        allRefClasses.contains(sym.owner) ||
+        sym.isJavaDefined ||
         (shouldMangleOuterPointerName && sym.isOuterField)
       }
       if (usePerClassSuffix)
