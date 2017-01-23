@@ -4305,7 +4305,11 @@ abstract class GenJSCode extends plugins.PluginComponent
     private def genActualArgs(sym: Symbol, args: List[Tree])(
         implicit pos: Position): List[js.Tree] = {
       val wereRepeated = exitingPhase(currentRun.typerPhase) {
-        sym.tpe.params.map(p => isScalaRepeatedParamType(p.tpe))
+        /* Do NOT use `params` instead of `paramss.flatten` here! Exiting
+         * typer, `params` only contains the *first* parameter list.
+         * This was causing #2265 and #2741.
+         */
+        sym.tpe.paramss.flatten.map(p => isScalaRepeatedParamType(p.tpe))
       }
 
       if (wereRepeated.size > args.size) {
@@ -4313,7 +4317,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         args.map(genExpr)
       } else {
         /* Arguments that are in excess compared to the type signature after
-         * erasure are lambda-lifted arguments. They cannot be repeated, hence
+         * typer are lambda-lifted arguments. They cannot be repeated, hence
          * the extension to `false`.
          */
         for ((arg, wasRepeated) <- args.zipAll(wereRepeated, EmptyTree, false)) yield {
