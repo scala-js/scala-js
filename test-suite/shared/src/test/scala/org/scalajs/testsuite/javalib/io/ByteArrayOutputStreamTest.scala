@@ -67,4 +67,41 @@ class ByteArrayOutputStreamTest {
     assertArrayEquals(Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9), out.toByteArray)
   }
 
+  @Test def buf_field(): Unit = {
+    class ByteArrayOutputStreamWithBufAccess extends ByteArrayOutputStream {
+      def getBuf(): Array[Byte] = buf
+      def setBuf(b: Array[Byte]): Unit = buf = b
+    }
+
+    val os = new ByteArrayOutputStreamWithBufAccess
+    os.write(5.toInt)
+    os.flush()
+    assertEquals(5.toByte, os.getBuf()(0))
+
+    val newBuf = Array(10.toByte)
+    os.setBuf(newBuf)
+    assertSame(newBuf, os.getBuf())
+    val output = os.toByteArray()
+    assertArrayEquals(newBuf, output)
+    assertNotSame(newBuf, output)
+  }
+
+  @Test def count_field(): Unit = {
+    class ByteArrayOutputStreamWithCountAccess extends ByteArrayOutputStream {
+      def getCount(): Int = count
+      def setCount(c: Int): Unit = count = c
+    }
+
+    val os = new ByteArrayOutputStreamWithCountAccess
+    os.write(Array[Byte](5, 7, 10, 15, 25, -4))
+    os.flush()
+    assertEquals(6, os.getCount())
+    assertArrayEquals(Array[Byte](5, 7, 10, 15, 25, -4), os.toByteArray())
+
+    os.setCount(3)
+    assertEquals(3, os.getCount())
+    assertEquals(3, os.size())
+    assertArrayEquals(Array[Byte](5, 7, 10), os.toByteArray())
+  }
+
 }
