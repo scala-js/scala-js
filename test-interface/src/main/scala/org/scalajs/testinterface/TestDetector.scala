@@ -1,7 +1,8 @@
 package org.scalajs.testinterface
 
 import scala.scalajs.js
-import js.annotation.JSGlobalScope
+import scala.scalajs.js.annotation.JSGlobalScope
+import scala.scalajs.reflect.Reflect
 
 import org.scalajs.testinterface.internal.TaskDefSerializer
 
@@ -26,18 +27,31 @@ private[scalajs] object TestDetector {
   }
 
   private def tryLoadFramework(names: js.Array[String]): Option[Framework] = {
-    def tryLoadName(name: String) = {
-      val parts = name.split('.')
+    def tryLoadFromReflect(name: String): Option[Framework] = {
+      Reflect.lookupInstantiatableClass(name).collect {
+        case clazz if classOf[Framework].isAssignableFrom(clazz.runtimeClass) =>
+          clazz.newInstance().asInstanceOf[Framework]
+      }
+    }
 
-      val ctor = parts.foldLeft[js.UndefOr[js.Dynamic]](js.Dynamic.global)(
-          (parent, name) => parent.map(_.selectDynamic(name)))
+    def tryLoadFromExportsNamespace(name: String): Option[Framework] = {
+      val exportsNamespace =
+        scala.scalajs.runtime.linkingInfo.envInfo.exportsNamespace
+
+      val parts = name.split('.')
+      val ctor = parts.foldLeft[js.UndefOr[js.Dynamic]](exportsNamespace) {
+        (parent, name) => parent.map(_.selectDynamic(name))
+      }
 
       ctor.map(js.Dynamic.newInstance(_)()).collect {
         case framework: Framework => framework
       }.toOption
     }
 
-    names.toStream.map(tryLoadName).flatten.headOption
+    def tryLoad(name: String): Option[Framework] =
+      tryLoadFromReflect(name).orElse(tryLoadFromExportsNamespace(name))
+
+    names.toStream.map(tryLoad).flatten.headOption
   }
 
   // Copied from sbt.TestFramework

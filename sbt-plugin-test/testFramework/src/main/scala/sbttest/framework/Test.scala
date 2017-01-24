@@ -1,6 +1,6 @@
 package sbttest.framework
 
-import scala.scalajs.js.annotation.JSExportDescendentClasses
+import scala.scalajs.reflect.annotation.EnableReflectiveInstantiation
 
-@JSExportDescendentClasses
+@EnableReflectiveInstantiation
 class Test

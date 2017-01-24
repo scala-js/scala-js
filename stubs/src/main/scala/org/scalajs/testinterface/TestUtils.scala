@@ -15,8 +15,15 @@ object TestUtils {
   import scala.reflect.macros._ // shadows blackbox from above
   import blackbox.Context
 
+  @deprecated(
+      "Use the overload with explicit formal constructor parameter types.",
+      "0.6.15")
   def newInstance(name: String, loader: ClassLoader)(args: Seq[AnyRef]): AnyRef =
     macro newInstance_impl
+
+  def newInstance(name: String, loader: ClassLoader, paramTypes: Seq[Class[_]])(
+      args: Seq[AnyRef]): AnyRef =
+    macro newInstance_impl2
 
   def newInstance_impl(c: Context)(name: c.Expr[String],
       loader: c.Expr[ClassLoader])(
@@ -31,6 +38,15 @@ object TestUtils {
     }
 
     val ctor = ctors.head
+    ctor.newInstance(args.splice: _*).asInstanceOf[AnyRef]
+  }
+
+  def newInstance_impl2(c: Context)(name: c.Expr[String],
+      loader: c.Expr[ClassLoader], paramTypes: c.Expr[Seq[Class[_]]])(
+      args: c.Expr[Seq[AnyRef]]): c.Expr[AnyRef] = c.universe.reify {
+
+    val clazz = loader.splice.loadClass(name.splice)
+    val ctor = clazz.getConstructor(paramTypes.splice.toArray[Class[_]]: _*)
     ctor.newInstance(args.splice: _*).asInstanceOf[AnyRef]
   }
 
