@@ -475,7 +475,7 @@ object RedBlackTree {
        *
        * We also don't store the deepest nodes in the path so the maximum path length is further reduced by one.
        */
-      val maximumHeight = 2 * (32 - Integer.numberOfLeadingZeros(tree.count + 2 - 1)) - 2 - 1
+      val maximumHeight = 2 * (32 - Integer.numberOfLeadingZeros(tree.count + 2 - 1)) - 2
       new Array[Tree[A, B]](maximumHeight)
     }
     private[this] var index = 0
