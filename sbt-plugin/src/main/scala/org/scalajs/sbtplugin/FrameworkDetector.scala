@@ -39,9 +39,25 @@ private[sbtplugin] final class FrameworkDetector(jsEnv: JSEnv,
       (function(exportsNamespace) {
         "use strict";
 
+        /* #2752: if there is no testing framework at all on the classpath,
+         * the testing interface will not be there, and therefore the
+         * `detectFrameworks` function will not exist. We must therefore be
+         * careful when selecting it.
+         */
+        var namespace = exportsNamespace;
+        namespace = namespace.org || {};
+        namespace = namespace.scalajs || {};
+        namespace = namespace.testinterface || {};
+        namespace = namespace.internal || {};
+        var detectFrameworksFun = namespace.detectFrameworks || (function(data) {
+          var results = [];
+          for (var i = 0; i < data.length; ++i)
+            results.push(void 0);
+          return results;
+        });
+
         var data = ${jsonToString(data)};
-        var results =
-          exportsNamespace.org.scalajs.testinterface.internal.detectFrameworks(data);
+        var results = detectFrameworksFun(data);
         for (var i = 0; i < results.length; ++i) {
           console.log("$ConsoleFrameworkPrefix" + (results[i] || ""));
         }
