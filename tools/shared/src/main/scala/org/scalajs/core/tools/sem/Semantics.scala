@@ -13,8 +13,11 @@ import scala.collection.immutable.Traversable
 
 import org.scalajs.core.tools.linker.LinkedClass
 
+import CheckedBehavior._
+
 final class Semantics private (
     val asInstanceOfs: CheckedBehavior,
+    val arrayIndexOutOfBounds: CheckedBehavior,
     val moduleInit: CheckedBehavior,
     val strictFloats: Boolean,
     val productionMode: Boolean,
@@ -24,6 +27,9 @@ final class Semantics private (
 
   def withAsInstanceOfs(behavior: CheckedBehavior): Semantics =
     copy(asInstanceOfs = behavior)
+
+  def withArrayIndexOutOfBounds(behavior: CheckedBehavior): Semantics =
+    copy(arrayIndexOutOfBounds = behavior)
 
   def withModuleInit(moduleInit: CheckedBehavior): Semantics =
     copy(moduleInit = moduleInit)
@@ -39,15 +45,17 @@ final class Semantics private (
 
   def optimized: Semantics = {
     copy(asInstanceOfs = this.asInstanceOfs.optimized,
+        arrayIndexOutOfBounds = this.arrayIndexOutOfBounds.optimized,
         moduleInit = this.moduleInit.optimized,
         productionMode = true)
   }
 
   override def equals(that: Any): Boolean = that match {
     case that: Semantics =>
-      this.asInstanceOfs  == that.asInstanceOfs &&
-      this.moduleInit     == that.moduleInit &&
-      this.strictFloats   == that.strictFloats &&
+      this.asInstanceOfs == that.asInstanceOfs &&
+      this.arrayIndexOutOfBounds == that.arrayIndexOutOfBounds &&
+      this.moduleInit == that.moduleInit &&
+      this.strictFloats == that.strictFloats &&
       this.productionMode == that.productionMode
     case _ =>
       false
@@ -56,50 +64,56 @@ final class Semantics private (
   override def hashCode(): Int = {
     import scala.util.hashing.MurmurHash3._
     var acc = HashSeed
-    acc = mix(acc, asInstanceOfs.hashCode)
-    acc = mix(acc, moduleInit.hashCode)
+    acc = mix(acc, asInstanceOfs.##)
+    acc = mix(acc, arrayIndexOutOfBounds.##)
+    acc = mix(acc, moduleInit.##)
     acc = mix(acc, strictFloats.##)
     acc = mixLast(acc, productionMode.##)
-    finalizeHash(acc, 4)
+    finalizeHash(acc, 5)
   }
 
   override def toString(): String = {
     s"""Semantics(
-       |  asInstanceOfs  = $asInstanceOfs,
-       |  moduleInit     = $moduleInit,
-       |  strictFloats   = $strictFloats,
-       |  productionMode = $productionMode
+       |  asInstanceOfs         = $asInstanceOfs,
+       |  arrayIndexOutOfBounds = $arrayIndexOutOfBounds,
+       |  moduleInit            = $moduleInit,
+       |  strictFloats          = $strictFloats,
+       |  productionMode        = $productionMode
        |)""".stripMargin
   }
 
   /** Checks whether the given semantics setting is Java compliant */
   def isCompliant(name: String): Boolean = name match {
-    case "asInstanceOfs" => asInstanceOfs == CheckedBehavior.Compliant
-    case "moduleInit"    => moduleInit == CheckedBehavior.Compliant
-    case "strictFloats"  => strictFloats
-    case _               => false
+    case "asInstanceOfs"         => asInstanceOfs == Compliant
+    case "arrayIndexOutOfBounds" => arrayIndexOutOfBounds == Compliant
+    case "moduleInit"            => moduleInit == Compliant
+    case "strictFloats"          => strictFloats
+    case _                       => false
   }
 
   /** Retrieve a list of semantics which are set to compliant */
   def compliants: List[String] = {
     def cl(name: String, cond: Boolean) = if (cond) List(name) else Nil
 
-    cl("asInstanceOfs", asInstanceOfs == CheckedBehavior.Compliant) ++
-    cl("moduleInit",    moduleInit == CheckedBehavior.Compliant) ++
-    cl("strictFloats",  strictFloats)
+    cl("asInstanceOfs", asInstanceOfs == Compliant) ++
+    cl("arrayIndexOutOfBounds", arrayIndexOutOfBounds == Compliant) ++
+    cl("moduleInit", moduleInit == Compliant) ++
+    cl("strictFloats", strictFloats)
   }
 
   private def copy(
       asInstanceOfs: CheckedBehavior = this.asInstanceOfs,
+      arrayIndexOutOfBounds: CheckedBehavior = this.arrayIndexOutOfBounds,
       moduleInit: CheckedBehavior = this.moduleInit,
       strictFloats: Boolean = this.strictFloats,
       productionMode: Boolean = this.productionMode,
       runtimeClassName: RuntimeClassNameFunction = this.runtimeClassName): Semantics = {
     new Semantics(
-        asInstanceOfs    = asInstanceOfs,
-        moduleInit       = moduleInit,
-        strictFloats     = strictFloats,
-        productionMode   = productionMode,
+        asInstanceOfs = asInstanceOfs,
+        arrayIndexOutOfBounds = arrayIndexOutOfBounds,
+        moduleInit = moduleInit,
+        strictFloats = strictFloats,
+        productionMode = productionMode,
         runtimeClassName = runtimeClassName)
   }
 }
@@ -111,15 +125,15 @@ object Semantics {
   type RuntimeClassNameFunction = LinkedClass => String
 
   val Defaults: Semantics = new Semantics(
-      asInstanceOfs    = CheckedBehavior.Fatal,
-      moduleInit       = CheckedBehavior.Unchecked,
-      strictFloats     = false,
-      productionMode   = false,
+      asInstanceOfs = Fatal,
+      arrayIndexOutOfBounds = Fatal,
+      moduleInit = Unchecked,
+      strictFloats = false,
+      productionMode = false,
       runtimeClassName = _.fullName)
 
   def compliantTo(semantics: Traversable[String]): Semantics = {
     import Defaults._
-    import CheckedBehavior._
 
     val semsSet = semantics.toSet
 
@@ -127,10 +141,12 @@ object Semantics {
       if (semsSet.contains(name)) compliant else default
 
     new Semantics(
-        asInstanceOfs    = sw("asInstanceOfs", Compliant, asInstanceOfs),
-        moduleInit       = sw("moduleInit",    Compliant, moduleInit),
-        strictFloats     = sw("strictFloats",  true,      strictFloats),
-        productionMode   = false,
+        asInstanceOfs = sw("asInstanceOfs", Compliant, asInstanceOfs),
+        arrayIndexOutOfBounds =
+          sw("arrayIndexOutOfBounds", Compliant, arrayIndexOutOfBounds),
+        moduleInit = sw("moduleInit", Compliant, moduleInit),
+        strictFloats = sw("strictFloats", true, strictFloats),
+        productionMode = false,
         runtimeClassName = Defaults.runtimeClassName)
   }
 }

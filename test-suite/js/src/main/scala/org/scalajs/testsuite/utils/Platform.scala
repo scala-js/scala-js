@@ -43,6 +43,10 @@ object Platform {
   def isInDevelopmentMode: Boolean = sysProp("development-mode")
 
   def hasCompliantAsInstanceOfs: Boolean = sysProp("compliant-asinstanceofs")
+
+  def hasCompliantArrayIndexOutOfBounds: Boolean =
+    sysProp("compliant-arrayindexoutofbounds")
+
   def hasCompliantModule: Boolean = sysProp("compliant-moduleinit")
   def hasStrictFloats: Boolean = sysProp("strict-floats")
 

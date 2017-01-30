@@ -3,12 +3,11 @@ package java.lang
 import java.io._
 
 import scala.scalajs.js
-import js.Dynamic.global
+import scala.scalajs.js.Dynamic.global
 import scala.scalajs.LinkingInfo.assumingES6
-import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.runtime.{environmentInfo, linkingInfo, SemanticsUtils}
 
 import java.{util => ju}
-import scalajs.runtime.environmentInfo
 
 object System {
   var out: PrintStream = new JSConsoleBasedPrintStream(isErr = false)
@@ -54,9 +53,13 @@ object System {
     import scala.{Boolean, Char, Byte, Short, Int, Long, Float, Double}
 
     @inline def checkIndices(srcLen: Int, destLen: Int): Unit = {
-      if (srcPos < 0 || destPos < 0 || length < 0 ||
-          srcPos + length > srcLen || destPos + length > destLen)
-        throw new ArrayIndexOutOfBoundsException("Array index out of bounds")
+      SemanticsUtils.arrayIndexOutOfBoundsCheck({
+        srcPos < 0 || destPos < 0 || length < 0 ||
+        srcPos > srcLen - length ||
+        destPos > destLen - length
+      }, {
+        new ArrayIndexOutOfBoundsException()
+      })
     }
 
     def mismatch(): Nothing =

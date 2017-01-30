@@ -47,6 +47,10 @@ object BinaryIncompatibilities {
   val Tools = Seq(
       // private, not an issue
       ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.sem.Semantics.this"),
+
+      // private, not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.checker.IRChecker#CheckedField.this"),
 
       // private, not an issue
@@ -116,6 +120,11 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+      // New members of an @js.native trait in `runtime`, not an issue
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "scala.scalajs.runtime.LinkingInfo#Semantics.arrayIndexOutOfBounds"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "scala.scalajs.runtime.LinkingInfo#Semantics.scala$scalajs$runtime$LinkingInfo$Semantics$_setter_$arrayIndexOutOfBounds_=")
   )
 
   val TestInterface = Seq(

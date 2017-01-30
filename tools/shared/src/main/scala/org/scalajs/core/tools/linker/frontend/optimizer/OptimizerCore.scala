@@ -3572,6 +3572,8 @@ private[optimizer] abstract class OptimizerCore(
         semanticsStr match {
           case "asInstanceOfs" =>
             behavior2IntLiteral(semantics.asInstanceOfs)
+          case "arrayIndexOutOfBounds" =>
+            behavior2IntLiteral(semantics.arrayIndexOutOfBounds)
           case "moduleInit" =>
             behavior2IntLiteral(semantics.moduleInit)
           case "strictFloats" =>

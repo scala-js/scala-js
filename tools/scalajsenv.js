@@ -47,6 +47,15 @@ ScalaJS.linkingInfo = {
     "asInstanceOfs": 2,
 //!endif
 //!endif
+//!if arrayIndexOutOfBounds == Compliant
+    "arrayIndexOutOfBounds": 0,
+//!else
+//!if arrayIndexOutOfBounds == Fatal
+    "arrayIndexOutOfBounds": 1,
+//!else
+    "arrayIndexOutOfBounds": 2,
+//!endif
+//!endif
 //!if moduleInit == Compliant
     "moduleInit": 0,
 //!else
@@ -208,6 +217,18 @@ ScalaJS.throwArrayCastException = function(instance, classArrayEncodedName, dept
   for (; depth; --depth)
     classArrayEncodedName = "[" + classArrayEncodedName;
   ScalaJS.throwClassCastException(instance, classArrayEncodedName);
+};
+//!endif
+
+//!if arrayIndexOutOfBounds != Unchecked
+ScalaJS.throwArrayIndexOutOfBoundsException = function(i) {
+  const msg = (i === null) ? null : ("" + i);
+//!if arrayIndexOutOfBounds == Compliant
+  throw new ScalaJS.c.jl_ArrayIndexOutOfBoundsException().init___T(msg);
+//!else
+  throw new ScalaJS.c.sjsr_UndefinedBehaviorError().init___jl_Throwable(
+    new ScalaJS.c.jl_ArrayIndexOutOfBoundsException().init___T(msg));
+//!endif
 };
 //!endif
 
@@ -516,12 +537,21 @@ ScalaJS.propertiesOf = function(obj) {
 ScalaJS.systemArraycopy = function(src, srcPos, dest, destPos, length) {
   const srcu = src.u;
   const destu = dest.u;
-  if (srcu !== destu || destPos < srcPos || srcPos + length < destPos) {
-    for (let i = 0; i < length; i++)
-      destu[destPos+i] = srcu[srcPos+i];
+
+//!if arrayIndexOutOfBounds != Unchecked
+  if (srcPos < 0 || destPos < 0 || length < 0 ||
+      (srcPos > ((srcu.length - length) | 0)) ||
+      (destPos > ((destu.length - length) | 0))) {
+    ScalaJS.throwArrayIndexOutOfBoundsException(null);
+  }
+//!endif
+
+  if (srcu !== destu || destPos < srcPos || (((srcPos + length) | 0) < destPos)) {
+    for (let i = 0; i < length; i = (i + 1) | 0)
+      destu[(destPos + i) | 0] = srcu[(srcPos + i) | 0];
   } else {
-    for (let i = length-1; i >= 0; i--)
-      destu[destPos+i] = srcu[srcPos+i];
+    for (let i = (length - 1) | 0; i >= 0; i = (i - 1) | 0)
+      destu[(destPos + i) | 0] = srcu[(srcPos + i) | 0];
   }
 };
 
@@ -828,6 +858,19 @@ initArray(
   ArrayClass.prototype = new ScalaJS.h.O;
   ArrayClass.prototype.constructor = ArrayClass;
 
+//!if arrayIndexOutOfBounds != Unchecked
+  ArrayClass.prototype.get = function(i) {
+    if (i < 0 || i >= this.u.length)
+      ScalaJS.throwArrayIndexOutOfBoundsException(i);
+    return this.u[i];
+  };
+  ArrayClass.prototype.set = function(i, v) {
+    if (i < 0 || i >= this.u.length)
+      ScalaJS.throwArrayIndexOutOfBoundsException(i);
+    this.u[i] = v;
+  };
+//!endif
+
   ArrayClass.prototype.clone__O = function() {
     if (this.u instanceof Array)
       return new ArrayClass(this.u["slice"](0));
@@ -849,6 +892,19 @@ initArray(
         this.u = arg;
       }
     };
+
+//!if arrayIndexOutOfBounds != Unchecked
+    get(i) {
+      if (i < 0 || i >= this.u.length)
+        ScalaJS.throwArrayIndexOutOfBoundsException(i);
+      return this.u[i];
+    };
+    set(i, v) {
+      if (i < 0 || i >= this.u.length)
+        ScalaJS.throwArrayIndexOutOfBoundsException(i);
+      this.u[i] = v;
+    };
+//!endif
 
     clone__O() {
       if (this.u instanceof Array)

@@ -57,6 +57,8 @@ private[backend] object CoreJSLibs {
     def getOption(name: String): String = name match {
       case "asInstanceOfs" =>
         semantics.asInstanceOfs.toString()
+      case "arrayIndexOutOfBounds" =>
+        semantics.arrayIndexOutOfBounds.toString()
       case "moduleInit" =>
         semantics.moduleInit.toString()
       case "floats" =>

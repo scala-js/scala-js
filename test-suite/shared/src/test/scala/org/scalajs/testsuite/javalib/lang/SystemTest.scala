@@ -11,9 +11,10 @@ import language.implicitConversions
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
-import org.scalajs.testsuite.utils.AssertThrows.expectThrows
-import org.scalajs.testsuite.utils.Platform.executingInJVM
+import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform._
 
 class SystemTest {
 
@@ -105,6 +106,43 @@ class SystemTest {
     val reversed = array.reverse
     System.arraycopy(reversed, 5, array, 5, 5)
     assertArrayEquals(Array(0, 1, 2, 0, 1, 1, 0, 2, 1, 0), array)
+  }
+
+  @Test def arraycopyIndexOutOfBounds(): Unit = {
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
+        hasCompliantArrayIndexOutOfBounds)
+
+    val src = Array(0, 1, 2, 3, 4, 5, 6, 0, 0, 0)
+    val dest = Array(11, 12, 13, 15, 15, 16)
+    val original = Array(11, 12, 13, 15, 15, 16)
+
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        System.arraycopy(src, -1, dest, 3, 4))
+    assertArrayEquals(original, dest)
+
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        System.arraycopy(src, 8, dest, 3, 4))
+    assertArrayEquals(original, dest)
+
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        System.arraycopy(src, 1, dest, -1, 4))
+    assertArrayEquals(original, dest)
+
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        System.arraycopy(src, 1, dest, 4, 4))
+    assertArrayEquals(original, dest)
+
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        System.arraycopy(src, 11, dest, 3, 4))
+    assertArrayEquals(original, dest)
+
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        System.arraycopy(src, 1, dest, 13, 4))
+    assertArrayEquals(original, dest)
+
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
+        System.arraycopy(src, 1, dest, 3, Int.MaxValue))
+    assertArrayEquals(original, dest)
   }
 
   @Test def identityHashCode(): Unit = {

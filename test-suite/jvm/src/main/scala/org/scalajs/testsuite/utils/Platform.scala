@@ -33,6 +33,7 @@ object Platform {
   def isInDevelopmentMode: Boolean = true
 
   def hasCompliantAsInstanceOfs: Boolean = true
+  def hasCompliantArrayIndexOutOfBounds: Boolean = true
   def hasCompliantModule: Boolean = true
   def hasStrictFloats: Boolean = true
 }
