@@ -42,7 +42,6 @@ import sbtassembly.AssemblyPlugin.autoImport._
 object ExposedValues extends AutoPlugin {
   object autoImport {
     val makeCompliant = Build.makeCompliant
-    val ES6NodeArgs = Build.ES6NodeArgs
   }
 }
 
@@ -81,9 +80,6 @@ object Build {
       .withModuleInit(CheckedBehavior.Compliant)
       .withStrictFloats(true)
   }
-
-  // set postLinkJSEnv in someProject := NodeJSEnv(args = ES6NodeArgs).value
-  val ES6NodeArgs = Seq("--harmony-rest-parameters", "--harmony-spreadcalls")
 
   private def includeIf(testDir: File, condition: Boolean): List[File] =
     if (condition) List(testDir)
