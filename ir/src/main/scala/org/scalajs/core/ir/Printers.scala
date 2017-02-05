@@ -867,6 +867,11 @@ object Printers {
           printEscapeJS(fullName, out)
           print('\"')
 
+        case TopLevelModuleExportDef(fullName) =>
+          print("export top module \"")
+          printEscapeJS(fullName, out)
+          print('\"')
+
         case TopLevelMethodExportDef(methodDef) =>
           print("export top ")
           print(methodDef)

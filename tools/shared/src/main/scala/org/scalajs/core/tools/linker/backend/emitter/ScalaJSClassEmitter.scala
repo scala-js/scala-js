@@ -926,6 +926,8 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
         genJSClassExportDef(tree, e)
       case e: ModuleExportDef =>
         genModuleExportDef(tree, e)
+      case e: TopLevelModuleExportDef =>
+        genTopLevelModuleExportDef(tree, e)
       case e: TopLevelMethodExportDef =>
         genTopLevelMethodExportDef(tree, e)
       case e: TopLevelFieldExportDef =>
@@ -979,6 +981,13 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
     genClassOrModuleExportDef(cd, tree.fullName, classVar)
   }
 
+  /** Generates an exporter for a module as a 0-arg function.
+   *
+   *  This corresponds to the old-style `@JSExport` of modules. Basically this
+   *  exports the module accessor. The object will be initialized lazily on
+   *  the first call of the accessor, exactly like the accesses to objects from
+   *  Scala code.
+   */
   def genModuleExportDef(cd: LinkedClass, tree: ModuleExportDef): js.Tree = {
     import TreeDSL._
 
@@ -986,6 +995,23 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
 
     val baseAccessor = envField("m", cd.name.name)
     genClassOrModuleExportDef(cd, tree.fullName, baseAccessor)
+  }
+
+  /** Generates an exporter for a module at the "top-level", which is directly
+   *  as a variable holding the module instance.
+   *
+   *  This corresponds the the new-style `@JSExportTopLevel` of modules. In
+   *  this case, the module instance is initialized during ES moduleµ
+   *  instantiation.
+   */
+  def genTopLevelModuleExportDef(cd: LinkedClass,
+      tree: TopLevelModuleExportDef): js.Tree = {
+    import TreeDSL._
+
+    implicit val pos = tree.pos
+
+    val moduleVar = genLoadModule(cd.name.name)
+    genClassOrModuleExportDef(cd, tree.fullName, moduleVar)
   }
 
   private def genClassOrModuleExportDef(cd: LinkedClass, exportFullName: String,

@@ -1073,6 +1073,12 @@ class PrintersTest {
         ModuleExportDef("pkg.Foo"))
   }
 
+  @Test def printTopLevelModuleExportDef(): Unit = {
+    assertPrintEquals(
+        """export top module "pkg.Foo"""",
+        TopLevelModuleExportDef("pkg.Foo"))
+  }
+
   @Test def printTopLevelMethodExportDef(): Unit = {
     assertPrintEquals(
         """

@@ -340,10 +340,10 @@ trait PrepJSExports { this: PrepJSInterop =>
                 "You may not export a getter or a setter to the top level")
           }
 
-          if (!isMember) {
-            reporter.error(annot.pos, "Use @JSExport on objects and " +
-                "constructors to export to the top level")
-          } else if (!sym.owner.isStatic || !sym.owner.isModuleClass) {
+          val symOwner =
+            if (sym.isConstructor) sym.owner.owner
+            else sym.owner
+          if (!symOwner.isStatic || !symOwner.isModuleClass) {
             reporter.error(annot.pos,
                 "Only static objects may export their members to the top level")
           }

@@ -160,14 +160,17 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         implicit val ctx = ErrorContext(tree)
 
         tree match {
-          case member @ ConstructorExportDef(_, _, _) =>
-            checkConstructorExportDef(member, classDef)
+          case tree: ConstructorExportDef =>
+            checkConstructorExportDef(tree, classDef)
 
-          case member @ JSClassExportDef(_) =>
-            checkJSClassExportDef(member, classDef)
+          case tree: JSClassExportDef =>
+            checkJSClassExportDef(tree, classDef)
 
-          case member @ ModuleExportDef(_) =>
-            checkModuleExportDef(member, classDef)
+          case tree: ModuleExportDef =>
+            checkModuleExportDef(tree, classDef)
+
+          case tree: TopLevelModuleExportDef =>
+            checkTopLevelModuleExportDef(tree, classDef)
 
           case TopLevelMethodExportDef(methodDef) =>
             checkExportedMethodDef(methodDef, classDef, isTopLevel = true)
@@ -461,6 +464,17 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
     if (!classDef.kind.hasModuleAccessor)
       reportError(s"Exported module def can only appear in a module class")
+  }
+
+  private def checkTopLevelModuleExportDef(
+      topLevelModuleDef: TopLevelModuleExportDef,
+      classDef: LinkedClass): Unit = {
+    implicit val ctx = ErrorContext(topLevelModuleDef)
+
+    if (!classDef.kind.hasModuleAccessor) {
+      reportError(
+          "Top-level module export def can only appear in a module class")
+    }
   }
 
   private def typecheckStat(tree: Tree, env: Env): Env = {
