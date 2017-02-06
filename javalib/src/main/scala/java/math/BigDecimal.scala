@@ -704,52 +704,56 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     else if (divisor.isZero)
       throw new ArithmeticException("Division by zero")
 
-    val diffScale: Long = (this._scale.toLong - divisor._scale) - scale
+    val diffScale = {
+      val diffScaleLong = (this._scale.toLong - divisor._scale) - scale
+      val diffScale = diffScaleLong.toInt
 
-    // Check whether the diffScale will fit into an int.
-    if (bitLength(diffScale) > 32) {
-      val msg = s"Unable to scale as difference is too big ($diffScale)"
-      throw new ArithmeticException(msg)
+      // Check whether the diffScale will fit into an Int
+      if (diffScale.toLong != diffScaleLong) {
+        throw new ArithmeticException(
+            s"Unable to scale as difference is too big ($diffScaleLong)")
+      }
+
+      diffScale
     }
 
-    @inline
     def default(): BigDecimal = {
       val scaledDividend0 = this.getUnscaledValue
       val scaledDivisor0 = divisor.getUnscaledValue
 
       val (scaledDividend, scaledDivisor) =
         if (diffScale > 0)
-          (scaledDividend0, multiplyByTenPow(scaledDivisor0, diffScale.toInt))
+          (scaledDividend0, multiplyByTenPow(scaledDivisor0, diffScale))
         else if (diffScale < 0)
-          (multiplyByTenPow(scaledDividend0, -diffScale.toInt), scaledDivisor0)
+          (multiplyByTenPow(scaledDividend0, -diffScale), scaledDivisor0)
         else
-          (scaledDividend0,scaledDivisor0)
+          (scaledDividend0, scaledDivisor0)
 
       divideBigIntegers(scaledDividend, scaledDivisor, scale, roundingMode)
     }
 
     if (this._bitLength < 64 && divisor._bitLength < 64) {
-      val lpt = LongTenPows(diffScale.toInt)
       val lptLen = LongTenPows.length
-      val lptbLen = LongTenPowsBitLength(diffScale.toInt)
-      val lptMinus = LongTenPows(-diffScale.toInt)
-      val lptbMinusLen = LongTenPowsBitLength(-diffScale.toInt)
 
       if (diffScale == 0) {
         val div = divisor._smallValue
         dividePrimitiveLongs(_smallValue, div, scale, roundingMode)
       } else if (diffScale > 0) {
-        if (diffScale < lptLen && divisor._bitLength + lptbLen < 64) {
-          val div = divisor._smallValue * lpt
+        if (diffScale < lptLen &&
+            divisor._bitLength + LongTenPowsBitLength(diffScale) < 64) {
+          val div = divisor._smallValue * LongTenPows(diffScale)
           dividePrimitiveLongs(_smallValue, div, scale, roundingMode)
         } else {
           default()
         }
-      } else if (-diffScale < lptLen && this._bitLength + lptbMinusLen < 64) {
-        val div = _smallValue * lptMinus
-        dividePrimitiveLongs(div, divisor._smallValue, scale, roundingMode)
       } else {
-        default()
+        if (diffScale > -lptLen && // `-diffScale < lptLen` without overflow
+            this._bitLength + LongTenPowsBitLength(-diffScale) < 64) {
+          val div = _smallValue * LongTenPows(-diffScale)
+          dividePrimitiveLongs(div, divisor._smallValue, scale, roundingMode)
+        } else {
+          default()
+        }
       }
     } else {
       default()

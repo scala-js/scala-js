@@ -497,6 +497,14 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), newScale)
   }
 
+  @Test def testDivideBigDecimalScale_issue2755(): Unit = {
+    val a = new BigDecimal(2L)
+    val b = new BigDecimal(1L)
+    val r = a.divide(b, 1, RoundingMode.UNNECESSARY)
+    assertEquals(1, r.scale())
+    assertEquals(2L, r.longValueExact())
+  }
+
   @Test def testDivideByZero(): Unit = {
     val a = "1231212478987482988429808779810457634781384756794987"
     val aScale = 15
