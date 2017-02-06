@@ -111,6 +111,14 @@ class UndefOrTest {
     assertFalse(none[Int].filterNot(_ > 0).isDefined)
   }
 
+  @Test def contains(): Unit = {
+    assertTrue(some(7).contains(7))
+    assertFalse(some(7).contains(8))
+    assertFalse(none[Int].contains(7))
+
+    assertFalse(some(()).contains(()))
+  }
+
   @Test def exists(): Unit = {
     assertTrue(some(7).exists(_ > 0))
     assertFalse(some(7).exists(_ < 0))

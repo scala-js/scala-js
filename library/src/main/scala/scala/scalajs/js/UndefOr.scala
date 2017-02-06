@@ -158,6 +158,18 @@ final class UndefOrOps[A](val self: UndefOr[A]) extends AnyVal {
   @inline final def withFilter(p: A => Boolean): WithFilter[A] =
     new WithFilter(self, p)
 
+  /** Tests whether the $option contains a given value as an element.
+   *
+   *  `x.contains(y)` differs from `x == y` only in the fact that it will
+   *  return `false` when `x` and `y` are both `undefined`.
+   *
+   *  @param elem the element to test.
+   *  @return `true` if the $option has an element that is equal (as
+   *  determined by `==`) to `elem`, `false` otherwise.
+   */
+  @inline final def contains[A1 >: A](elem: A1): Boolean =
+    !isEmpty && elem == this.forceGet
+
   /** Returns true if this option is nonempty '''and''' the predicate
    *  `p` returns true when applied to this $option's value.
    *  Otherwise, returns false.
