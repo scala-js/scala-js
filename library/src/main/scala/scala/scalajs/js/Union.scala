@@ -10,6 +10,7 @@
 package scala.scalajs.js
 
 import scala.language.implicitConversions
+import scala.language.higherKinds
 
 /** Value of type A or B (union type).
  *
@@ -20,7 +21,7 @@ import scala.language.implicitConversions
 sealed trait |[A, B] // scalastyle:ignore
 
 object | { // scalastyle:ignore
-  /** Evidence that `A <: B`, taking top-level `|`-types into account. */
+  /** Evidence that `A <: B`, taking `|`-types into account. */
   sealed trait Evidence[-A, +B]
 
   /** A unique (and typically dead-code-eliminated away) instance of
@@ -32,6 +33,18 @@ object | { // scalastyle:ignore
     /** If `A <: B2`, then `A <: B1 | B2`. */
     implicit def right[A, B1, B2](implicit ev: Evidence[A, B2]): Evidence[A, B1 | B2] =
       ReusableEvidence.asInstanceOf[Evidence[A, B1 | B2]]
+
+    /** Given a covariant type constructor `F[+_]`, if `A <: B`, then
+     *  `F[A] <: F[B]`.
+     */
+    implicit def covariant[F[+_], A, B](implicit ev: Evidence[A, B]): Evidence[F[A], F[B]] =
+      ReusableEvidence.asInstanceOf[Evidence[F[A], F[B]]]
+
+    /** Given a contravariant type constructor `F[-_]`, if `B <: A`, then
+     *  `F[A] <: F[B]`.
+     */
+    implicit def contravariant[F[-_], A, B](implicit ev: Evidence[B, A]): Evidence[F[A], F[B]] =
+      ReusableEvidence.asInstanceOf[Evidence[F[A], F[B]]]
   }
 
   abstract sealed class EvidenceLowPrioImplicits extends EvidenceLowestPrioImplicits {
@@ -65,6 +78,14 @@ object | { // scalastyle:ignore
    */
   implicit def from[A, B1, B2](a: A)(implicit ev: Evidence[A, B1 | B2]): B1 | B2 =
     a.asInstanceOf[B1 | B2]
+
+  /** Upcast `F[A]` to `F[B]`.
+   *
+   *  This needs evidence that `F[A] <: F[B]`.
+   */
+  implicit def fromTypeConstructor[F[_], A, B](a: F[A])(
+      implicit ev: Evidence[F[A], F[B]]): F[B] =
+    a.asInstanceOf[F[B]]
 
   /** Operations on union types. */
   implicit class UnionOps[A <: _ | _](val self: A) extends AnyVal {

@@ -19,9 +19,12 @@ import org.scalajs.testsuite.Typechecking._
 import org.junit.Assert._
 import org.junit.Test
 
-class UnionTypeTest {
+object UnionTypeTest {
+  class Consumer[-A]
+}
 
-  private implicit def unionAsJSAny(x: _ | _): js.Any = x.asInstanceOf[js.Any]
+class UnionTypeTest {
+  import UnionTypeTest._
 
   // js.| (postive)
 
@@ -176,6 +179,29 @@ class UnionTypeTest {
     assertEquals(a, a: js.UndefOr[js.UndefOr[Object] | Object | String])
   }
 
+  @Test def covariant_type_constructor(): Unit = {
+    val a: List[Int] = List(5)
+
+    assertSame(a, a: List[Int | String])
+    assertSame(a, a: List[String | AnyVal])
+
+    val b: Int | List[Int] = a
+
+    assertSame(a, b: AnyVal | List[Int | String])
+  }
+
+  @Test def contravariant_type_constructor(): Unit = {
+    val a: Consumer[CharSequence | Int] = new Consumer
+
+    assertSame(a, a: Consumer[Int])
+    assertSame(a, a: Consumer[String])
+    assertSame(a, a: Consumer[Int | String])
+
+    val b: Int | Consumer[CharSequence | Int] = a
+
+    assertSame(a, b: Consumer[Int | String] | AnyVal)
+  }
+
   // js.| (negative)
 
   /* Error messages vary a lot depending on the version of Scala, so we do
@@ -212,5 +238,20 @@ class UnionTypeTest {
   @Test def merge_with_an_incorrect_subtype(): Unit = {
     typeError(
         "(List(1, 2): List[Int] | Set[Int]).merge: Seq[Int]")
+  }
+
+  @Test def invariant_type_constructor(): Unit = {
+    typeError(
+        "(Array[Int]()): Array[Int | String]")
+  }
+
+  @Test def covariant_type_constructor_in_contravariant_pos(): Unit = {
+    typeError(
+        "(Nil: List[Int | String]): List[Int]")
+  }
+
+  @Test def contravariant_type_constructor_in_covariant_pos(): Unit = {
+    typeError(
+        "(new Consumer[Int]): Consumer[Int | String]")
   }
 }
