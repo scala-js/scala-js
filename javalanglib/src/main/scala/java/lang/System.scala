@@ -245,6 +245,8 @@ object System {
   def getProperties(): ju.Properties =
     SystemProperties.value
 
+  def lineSeparator(): String = "\n"
+
   def setProperties(properties: ju.Properties): Unit = {
     SystemProperties.value =
       if (properties != null) properties
