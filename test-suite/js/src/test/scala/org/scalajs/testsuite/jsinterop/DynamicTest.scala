@@ -177,6 +177,50 @@ class DynamicTest {
     assertEquals(1, count)
   }
 
+  @Test def should_preserve_evaluation_order_of_keys_and_values(): Unit = {
+    import js.Dynamic.{ literal => obj }
+
+    val orderCheck = Array.newBuilder[Int]
+    val x = obj(
+        { orderCheck += 1; "foo" } -> { orderCheck += 2; 3 },
+        { orderCheck += 3; "bar" } -> { orderCheck += 4; "foobar" })
+    val x_foo = x.foo
+    assertEquals(3, x_foo)
+    val x_bar = x.bar
+    assertEquals("foobar", x_bar)
+    val x_unknown = x.unknown
+    assertJSUndefined(x_unknown)
+    assertArrayEquals(Array(1, 2, 3, 4), orderCheck.result())
+
+    val orderCheck2 = Array.newBuilder[Int]
+
+    def tup1 = ({ orderCheck2 += 1; "hello1" }, { orderCheck2 += 2; 3: js.Any })
+    def tup2 = ({ orderCheck2 += 3; "hello2" }, { orderCheck2 += 4; 10: js.Any })
+
+    val y = obj(tup1, tup2)
+    val y_hello1 = y.hello1
+    assertEquals(3, y_hello1)
+    val y_hello2 = y.hello2
+    assertEquals(10, y_hello2)
+    assertArrayEquals(Array(1, 2, 3, 4), orderCheck2.result())
+
+    @noinline def block[A](a: A): A = a
+
+    val orderCheck3 = Array.newBuilder[Int]
+    val z = obj(
+        { val a = block("foo"); orderCheck3 += 1; a } ->
+          { val a = block(3); orderCheck3 += 2; a },
+        { val a = block("bar"); orderCheck3 += 3; a } ->
+          { val a = block("foobar"); orderCheck3 += 4; a })
+    val z_foo = z.foo
+    assertEquals(3, z_foo)
+    val z_bar = z.bar
+    assertEquals("foobar", z_bar)
+    val z_unknown = z.unknown
+    assertJSUndefined(z_unknown)
+    assertArrayEquals(Array(1, 2, 3, 4), orderCheck3.result())
+  }
+
   @Test def should_allow_to_create_an_empty_object_with_the_literal_syntax(): Unit = {
     import js.Dynamic.{ literal => obj }
     val x = obj()
