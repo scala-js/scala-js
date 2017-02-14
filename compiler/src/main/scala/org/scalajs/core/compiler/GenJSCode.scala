@@ -3908,9 +3908,10 @@ abstract class GenJSCode extends plugins.PluginComponent
          *   {name1: arg1, name2: arg2, ... }
          */
 
-        def warnIfDuplicatedKey(pairs: List[(js.StringLiteral, js.Tree)]): Unit = {
-          val allKeys = pairs.collect { case (js.StringLiteral(keyName), _) => keyName }
-          val keyCounts = allKeys.distinct.map(key => key -> allKeys.count(_ == key))
+        def warnIfDuplicatedKey(keys: List[js.StringLiteral]): Unit = {
+          val keyNames = keys.map(_.value)
+          val keyCounts =
+            keyNames.distinct.map(key => key -> keyNames.count(_ == key))
           val duplicateKeyCounts = keyCounts.filter(1 < _._2)
           if (duplicateKeyCounts.nonEmpty) {
             reporter.warning(pos,
@@ -3923,12 +3924,21 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
         }
 
+        def keyToPropName(key: js.Tree, index: Int): js.PropertyName = key match {
+          case key: js.StringLiteral => key
+          case _                     => js.ComputedName(key, "local" + index)
+        }
+
         // Extract first arg to future proof against varargs
         extractFirstArg(genArgs) match {
-          // case js.Dynamic.literal("name1" -> ..., "name2" -> ...)
-          case (js.StringLiteral("apply"), jse.LitNamed(pairs)) =>
-            warnIfDuplicatedKey(pairs)
-            js.JSObjectConstr(pairs)
+          // case js.Dynamic.literal("name1" -> ..., nameExpr2 -> ...)
+          case (js.StringLiteral("apply"), jse.Tuple2List(pairs)) =>
+            warnIfDuplicatedKey(pairs.collect {
+              case (key: js.StringLiteral, _) => key
+            })
+            js.JSObjectConstr(pairs.zipWithIndex.map {
+              case ((key, value), index) => (keyToPropName(key, index), value)
+            })
 
           /* case js.Dynamic.literal(x: _*)
            * Even though scalac does not support this notation, it is still
@@ -3950,31 +3960,27 @@ abstract class GenJSCode extends plugins.PluginComponent
           // case js.Dynamic.literal(x, y)
           case (js.StringLiteral("apply"), tups) =>
             // Check for duplicated explicit keys
-            val pairs = jse.LitNamedExtractor.extractFrom(tups)
-            warnIfDuplicatedKey(pairs)
+            warnIfDuplicatedKey(jse.extractLiteralKeysFrom(tups))
 
-            // Create tmp variable
-            val resIdent = freshLocalIdent("obj")
-            val resVarDef = js.VarDef(resIdent, jstpe.AnyType, mutable = false,
-                js.JSObjectConstr(Nil))
-            val res = resVarDef.ref
-
-            // Assign fields
+            // Evaluate all tuples first
             val tuple2Type = encodeClassType(TupleClass(2))
-            val assigns = tups flatMap {
-              // special case for literals
-              case jse.Tuple2(name, value) =>
-                js.Assign(js.JSBracketSelect(res, name), value) :: Nil
-              case tupExpr =>
-                val tupIdent = freshLocalIdent("tup")
-                val tup = js.VarRef(tupIdent)(tuple2Type)
-                js.VarDef(tupIdent, tuple2Type, mutable = false, tupExpr) ::
-                js.Assign(js.JSBracketSelect(res,
-                    genApplyMethod(tup, js.Ident("$$und1__O"), Nil, jstpe.AnyType)),
-                    genApplyMethod(tup, js.Ident("$$und2__O"), Nil, jstpe.AnyType)) :: Nil
+            val evalTuples = tups.map { tup =>
+              js.VarDef(freshLocalIdent("tup"), tuple2Type, mutable = false,
+                  tup)(tup.pos)
             }
 
-            js.Block(resVarDef +: assigns :+ res: _*)
+            // Build the resulting object
+            val result = js.JSObjectConstr(evalTuples.zipWithIndex.map {
+              case (evalTuple, index) =>
+                val tupRef = evalTuple.ref
+                val key = genApplyMethod(tupRef, js.Ident("$$und1__O"), Nil,
+                    jstpe.AnyType)
+                val value = genApplyMethod(tupRef, js.Ident("$$und2__O"), Nil,
+                    jstpe.AnyType)
+                keyToPropName(key, index) -> value
+            })
+
+            js.Block(evalTuples :+ result)
 
           // case where another method is called
           case (js.StringLiteral(name), _) if name != "apply" =>
