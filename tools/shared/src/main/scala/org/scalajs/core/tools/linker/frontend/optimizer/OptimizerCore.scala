@@ -287,16 +287,6 @@ private[optimizer] abstract class OptimizerCore(
   private def transformExpr(tree: Tree)(implicit scope: Scope): Tree =
     transform(tree, isStat = false)
 
-  /** Transforms an expression or a JSSpread. */
-  private def transformExprOrSpread(tree: Tree)(implicit scope: Scope): Tree = {
-    tree match {
-      case JSSpread(items) =>
-        JSSpread(transformExpr(items))(tree.pos)
-      case _ =>
-        transformExpr(tree)
-    }
-  }
-
   /** Transforms a tree. */
   private def transform(tree: Tree, isStat: Boolean)(
       implicit scope: Scope): Tree = {
@@ -366,6 +356,8 @@ private[optimizer] abstract class OptimizerCore(
           lhs match {
             case lhs: Select =>
               pretransformSelectCommon(lhs, isLhsOfAssign = true)(cont)
+            case lhs: JSBracketSelect =>
+              pretransformJSBracketSelect(lhs, isLhsOfAssign = true)(cont)
             case _ =>
               pretransformExpr(lhs)(cont)
           }
@@ -606,13 +598,16 @@ private[optimizer] abstract class OptimizerCore(
       // JavaScript expressions
 
       case JSNew(ctor, args) =>
-        JSNew(transformExpr(ctor), args map transformExprOrSpread)
+        JSNew(transformExpr(ctor), transformExprsOrSpreads(args))
 
       case JSDotSelect(qualifier, item) =>
         JSDotSelect(transformExpr(qualifier), item)
 
-      case JSBracketSelect(qualifier, item) =>
-        foldJSBracketSelect(transformExpr(qualifier), transformExpr(item))
+      case tree: JSBracketSelect =>
+        trampoline {
+          pretransformJSBracketSelect(tree, isLhsOfAssign = false)(
+              finishTransform(isStat))
+        }
 
       case tree: JSFunctionApply =>
         trampoline {
@@ -622,21 +617,21 @@ private[optimizer] abstract class OptimizerCore(
 
       case JSDotMethodApply(receiver, method, args) =>
         JSDotMethodApply(transformExpr(receiver), method,
-            args map transformExprOrSpread)
+            transformExprsOrSpreads(args))
 
       case JSBracketMethodApply(receiver, method, args) =>
         JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
-            args map transformExprOrSpread)
+            transformExprsOrSpreads(args))
 
       case JSSuperBracketSelect(cls, qualifier, item) =>
         JSSuperBracketSelect(cls, transformExpr(qualifier), transformExpr(item))
 
       case JSSuperBracketCall(cls, receiver, method, args) =>
         JSSuperBracketCall(cls, transformExpr(receiver), transformExpr(method),
-            args map transformExprOrSpread)
+            transformExprsOrSpreads(args))
 
       case JSSuperConstructorCall(args) =>
-        JSSuperConstructorCall(args map transformExprOrSpread)
+        JSSuperConstructorCall(transformExprsOrSpreads(args))
 
       case JSDelete(JSDotSelect(obj, prop)) =>
         JSDelete(JSDotSelect(transformExpr(obj), prop))
@@ -651,7 +646,7 @@ private[optimizer] abstract class OptimizerCore(
         JSBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
 
       case JSArrayConstr(items) =>
-        JSArrayConstr(items map transformExprOrSpread)
+        JSArrayConstr(transformExprsOrSpreads(items))
 
       case JSObjectConstr(fields) =>
         JSObjectConstr(fields map {
@@ -840,9 +835,43 @@ private[optimizer] abstract class OptimizerCore(
       case tree: BinaryOp =>
         pretransformBinaryOp(tree)(cont)
 
+      case tree: JSBracketSelect =>
+        pretransformJSBracketSelect(tree, isLhsOfAssign = false)(cont)
+
       case tree: JSFunctionApply =>
         pretransformJSFunctionApply(tree, isStat = false,
             usePreTransform = true)(cont)
+
+      case JSArrayConstr(items) =>
+        if (items.exists(_.isInstanceOf[JSSpread])) {
+          /* TODO This means spread in array constr does not compose under
+           * this optimization. We could improve this with a
+           * pretransformExprsOrSpreads() or something like that.
+           */
+          cont(JSArrayConstr(transformExprsOrSpreads(items)).toPreTransform)
+        } else {
+          pretransformExprs(items) { titems =>
+            tryOrRollback { cancelFun =>
+              val itemBindings = for {
+                (titem, index) <- titems.zipWithIndex
+              } yield {
+                Binding("x" + index, None, AnyType, mutable = false, titem)
+              }
+              withNewLocalDefs(itemBindings) { (itemLocalDefs, cont1) =>
+                val replacement = InlineJSArrayReplacement(
+                    itemLocalDefs.toVector, cancelFun)
+                val localDef = LocalDef(
+                    RefinedType(AnyType, isExact = false, isNullable = false),
+                    mutable = false,
+                    replacement)
+                cont1(localDef.toPreTransform)
+              } (cont)
+            } { () =>
+              cont(PreTransTree(JSArrayConstr(titems.map(finishTransformExpr)),
+                  RefinedType(AnyType, isExact = false, isNullable = false)))
+            }
+          }
+        }
 
       case AsInstanceOf(expr, tpe) =>
         pretransformExpr(expr) { texpr =>
@@ -1572,16 +1601,85 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
+  private def pretransformJSBracketSelect(tree: JSBracketSelect,
+      isLhsOfAssign: Boolean)(
+      cont: PreTransCont)(
+      implicit scope: Scope): TailRec[Tree] = {
+
+    val JSBracketSelect(qual, item) = tree
+    implicit val pos = tree.pos
+
+    pretransformExprs(qual, item) { (tqual, titem0) =>
+      val titem = optimizeJSBracketSelectItem(titem0)
+
+      def default: TailRec[Tree] = {
+        cont(PreTransTree(foldJSBracketSelect(finishTransformExpr(tqual),
+            finishTransformExpr(titem))))
+      }
+
+      titem match {
+        case _ if isLhsOfAssign =>
+          default
+
+        case PreTransLit(itemLit) =>
+          itemLit match {
+            case IntLiteral(itemInt) =>
+              tqual match {
+                case PreTransLocalDef(LocalDef(_, false,
+                    InlineJSArrayReplacement(itemLocalDefs, _))) =>
+                  if (itemInt >= 0 && itemInt < itemLocalDefs.size)
+                    cont(itemLocalDefs(itemInt).toPreTransform)
+                  else
+                    cont(PreTransLit(Undefined()))
+
+                case _ =>
+                  default
+              }
+
+            case StringLiteral("length") =>
+              tqual match {
+                case PreTransLocalDef(LocalDef(_, false,
+                    InlineJSArrayReplacement(itemLocalDefs, _))) =>
+                  cont(PreTransLit(IntLiteral(itemLocalDefs.size)))
+
+                case _ =>
+                  default
+              }
+
+            case _ =>
+              default
+          }
+
+        case _ =>
+          default
+      }
+    }
+  }
+
+  private def optimizeJSBracketSelectItem(item: PreTransform): PreTransform = {
+    item match {
+      case PreTransLit(StringLiteral(s)) =>
+        scala.util.Try(s.toInt).toOption match {
+          case Some(intValue) if intValue.toString == s =>
+            PreTransLit(IntLiteral(intValue)(item.pos))
+          case _ =>
+            item
+        }
+      case _ =>
+        item
+    }
+  }
+
   private def pretransformJSFunctionApply(tree: JSFunctionApply,
       isStat: Boolean, usePreTransform: Boolean)(
       cont: PreTransCont)(
-      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+      implicit scope: Scope): TailRec[Tree] = {
     val JSFunctionApply(fun, args) = tree
     implicit val pos = tree.pos
 
     if (args.exists(_.isInstanceOf[JSSpread])) {
       cont(JSFunctionApply(transformExpr(fun),
-          args.map(transformExprOrSpread)).toPreTransform)
+          transformExprsOrSpreads(args)).toPreTransform)
     } else {
       pretransformExpr(fun) { tfun =>
         tfun match {
@@ -1603,6 +1701,44 @@ private[optimizer] abstract class OptimizerCore(
                 args.map(transformExpr)).toPreTransform)
         }
       }
+    }
+  }
+
+  private def transformExprsOrSpreads(trees: List[Tree])(
+      implicit scope: Scope): List[Tree] = {
+
+    trees match {
+      case (spread: JSSpread) :: rest =>
+        implicit val pos = spread.pos
+
+        val newSpreadItems = trampoline {
+          pretransformExpr(spread.items) { tspreadItems =>
+            TailCalls.done {
+              tspreadItems match {
+                case PreTransLocalDef(LocalDef(_, false,
+                    InlineJSArrayReplacement(itemLocalDefs, _))) =>
+                  JSArrayConstr(
+                      itemLocalDefs.toList.map(_.newReplacement(spread.pos)))
+
+                case _ =>
+                  finishTransformExpr(tspreadItems)
+              }
+            }
+          }
+        }
+
+        val newRest = transformExprsOrSpreads(rest)
+
+        newSpreadItems match {
+          case JSArrayConstr(newFirsts) => newFirsts ::: newRest
+          case _                        => JSSpread(newSpreadItems) :: newRest
+        }
+
+      case first :: rest =>
+        transformExpr(first) :: transformExprsOrSpreads(rest)
+
+      case Nil =>
+        Nil
     }
   }
 
@@ -4148,6 +4284,9 @@ private[optimizer] object OptimizerCore {
 
       case InlineClassInstanceReplacement(_, _, cancelFun) =>
         cancelFun()
+
+      case InlineJSArrayReplacement(_, cancelFun) =>
+        cancelFun()
     }
 
     def contains(that: LocalDef): Boolean = {
@@ -4156,6 +4295,8 @@ private[optimizer] object OptimizerCore {
           captureLocalDefs.exists(_.contains(that))
         case InlineClassInstanceReplacement(_, fieldLocalDefs, _) =>
           fieldLocalDefs.valuesIterator.exists(_.contains(that))
+        case InlineJSArrayReplacement(elemLocalDefs, _) =>
+          elemLocalDefs.exists(_.contains(that))
         case _ =>
           false
       })
@@ -4193,6 +4334,10 @@ private[optimizer] object OptimizerCore {
   private final case class InlineClassInstanceReplacement(
       recordType: RecordType,
       fieldLocalDefs: Map[String, LocalDef],
+      cancelFun: CancelFun) extends LocalDefReplacement
+
+  private final case class InlineJSArrayReplacement(
+      elemLocalDefs: Vector[LocalDef],
       cancelFun: CancelFun) extends LocalDefReplacement
 
   private final class LabelInfo(

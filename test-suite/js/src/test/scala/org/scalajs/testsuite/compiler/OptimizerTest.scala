@@ -8,6 +8,7 @@
 package org.scalajs.testsuite.compiler
 
 import scala.scalajs.js
+import scala.scalajs.js.annotation._
 
 import org.junit.Test
 import org.junit.Assert._
@@ -354,6 +355,87 @@ class OptimizerTest {
   @Test def must_not_break_when_folding_char_and_stringLit(): Unit = {
     assertEquals("Scala.js", 'S' + "cala.js")
     assertEquals("Scala.js", "Scala.j" + 's')
+  }
+
+  // Virtualization of JSArrayConstr
+
+  @Test def must_not_break_virtualized_jsarrayconstr(): Unit = {
+    @noinline def b = 42
+
+    val a = js.Array[Any]("hello", b)
+
+    assertEquals(2, a.length)
+    assertEquals("hello", a(0))
+    assertEquals(42, a(1))
+    assertEquals(js.undefined, a(-1))
+    assertEquals(js.undefined, a(2))
+  }
+
+  @Test def must_not_break_escaped_jsarrayconstr(): Unit = {
+    @noinline def escape[A](a: A): A = a
+
+    val a = js.Array[Any]("hello", 42)
+
+    assertEquals(2, a.length)
+    assertEquals("hello", a(0))
+    assertEquals(42, a(1))
+    assertEquals(js.undefined, a(-1))
+    assertEquals(js.undefined, a(2))
+
+    assertEquals(2, escape(a).length)
+  }
+
+  @Test def must_not_break_modified_jsarrayconstr(): Unit = {
+    @noinline def escape[A](a: A): A = a
+
+    val a = js.Array[Any]("hello", 42)
+
+    assertEquals(2, a.length)
+    assertEquals("hello", a(0))
+    assertEquals(42, a(1))
+    assertEquals(js.undefined, a(-1))
+    assertEquals(js.undefined, a(2))
+
+    a(0) = "bar"
+
+    assertEquals("bar", a(0))
+  }
+
+  @Test def must_not_break_virtualized_jsarrayconstr_in_spread(): Unit = {
+    @ScalaJSDefined
+    class Foo extends js.Object {
+      def check(a: Int, b: String, rest: Any*): Unit = {
+        assertEquals(5, a)
+        assertEquals("foobar", b)
+        assertEquals(2, rest.length)
+        assertEquals("hello", rest(0))
+        assertEquals(42, rest(1))
+      }
+    }
+
+    val a = js.Array[Any]("hello", 42)
+    val foo = new Foo
+    foo.check(5, "foobar", a: _*)
+  }
+
+  @Test def must_not_break_virtualized_tuple(): Unit = {
+    @noinline def b = 42
+
+    val a = js.Tuple2("hello", b)
+
+    assertEquals("hello", a._1)
+    assertEquals(42, a._2)
+  }
+
+  @Test def must_not_break_escaped_tuple(): Unit = {
+    @noinline def escape[A](a: A): A = a
+
+    val a = js.Tuple2("hello", 42)
+
+    assertEquals("hello", a._1)
+    assertEquals(42, a._2)
+
+    assertEquals("hello", escape(a)._1)
   }
 }
 
