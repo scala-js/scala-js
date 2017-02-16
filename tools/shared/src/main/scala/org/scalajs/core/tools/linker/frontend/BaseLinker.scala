@@ -180,7 +180,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     } yield linkedClassDef
 
     new LinkingUnit(semantics, esLevel, linkedClassDefs.toList, infoByName,
-        analysis.allAvailable)
+        analysis.allAvailable, dummyInternal = ())
   }
 
   /** Takes a Infos, a ClassDef and DCE infos to construct a stripped down

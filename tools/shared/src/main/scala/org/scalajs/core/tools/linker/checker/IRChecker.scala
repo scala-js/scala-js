@@ -1094,7 +1094,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def lookupInfo(className: String)(
       implicit ctx: ErrorContext): Infos.ClassInfo = {
-    unit.infos.getOrElse(className, {
+    unit.infosInternal.getOrElse(className, {
       reportError(s"Cannot find info for class $className")
       Infos.ClassInfo(className)
     })

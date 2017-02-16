@@ -24,7 +24,7 @@ final class Refiner {
       logger: Logger): LinkingUnit = {
     val analysis = logger.time("Refiner: Compute reachability") {
       Analyzer.computeReachability(unit.semantics, symbolRequirements,
-          unit.infos.values.toList, allowAddingSyntheticMethods = false)
+          unit.infosInternal.values.toList, allowAddingSyntheticMethods = false)
     }
 
     /* There really should not be linking errors at this point. If there are,
@@ -57,7 +57,7 @@ final class Refiner {
         linkedClassDef <- optClassDef(classInfo)
       } yield linkedClassDef
 
-      unit.updated(classDefs = linkedClassDefs.toList,
+      unit.updatedInternal(classDefs = linkedClassDefs.toList,
           isComplete = analysis.allAvailable)
     }
   }
