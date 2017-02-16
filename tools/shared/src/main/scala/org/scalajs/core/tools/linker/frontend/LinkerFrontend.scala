@@ -15,7 +15,7 @@ import org.scalajs.core.tools.io.VirtualScalaJSIRFile
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.javascript.ESLevel
 
-import org.scalajs.core.tools.linker.LinkingUnit
+import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.frontend.optimizer.{GenIncOptimizer, IncOptimizer}
 
@@ -43,7 +43,15 @@ final class LinkerFrontend(
   private[this] val refiner: Refiner = new Refiner
 
   /** Link and optionally optimize the given IR to a [[LinkingUnit]]. */
+  @deprecated("Use the overload with explicit module initializers.", "0.6.15")
   def link(irFiles: Seq[VirtualScalaJSIRFile],
+      symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit = {
+    link(irFiles, Nil, symbolRequirements, logger)
+  }
+
+  /** Link and optionally optimize the given IR to a [[LinkingUnit]]. */
+  def link(irFiles: Seq[VirtualScalaJSIRFile],
+      moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit = {
 
     val preOptimizerRequirements = optOptimizer.fold(symbolRequirements) {
@@ -51,8 +59,8 @@ final class LinkerFrontend(
     }
 
     val linkResult = logger.time("Basic Linking") {
-      linker.linkInternal(irFiles, logger, preOptimizerRequirements,
-          config.bypassLinkingErrors, config.checkIR)
+      linker.linkInternal(irFiles, moduleInitializers, logger,
+          preOptimizerRequirements, config.bypassLinkingErrors, config.checkIR)
     }
 
     optOptimizer.fold(linkResult) { optimizer =>

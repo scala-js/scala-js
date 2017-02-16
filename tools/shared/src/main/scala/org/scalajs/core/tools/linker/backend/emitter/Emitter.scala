@@ -132,6 +132,11 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
       for (linkedClass <- orderedClasses)
         emitLinkedClassClassExports(linkedClass, builder)
+
+      // Emit the module initializers
+
+      for (moduleInitializer <- unit.moduleInitializers)
+        emitModuleInitializer(moduleInitializer, builder)
     } finally {
       endRun(logger)
     }
@@ -333,6 +338,15 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     }
   }
 
+  /** Emits an [[EntryPoint]].
+   *
+   *  This is done at the very end of the emitted module/script.
+   */
+  private def emitModuleInitializer(moduleInitializer: ModuleInitializer,
+      builder: JSTreeBuilder): Unit = {
+    builder.addJSTree(classEmitter.genModuleInitializer(moduleInitializer))
+  }
+
   // Helpers
 
   private def getClassTreeCache(linkedClass: LinkedClass): DesugaredClassCache =
@@ -373,6 +387,12 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
     def genClassDef(linkedClass: LinkedClass): js.Tree =
       classEmitter.genClassDefForRhino(linkedClass)(globalKnowledge)
+
+    def genModuleInitializers(linkingUnit: LinkingUnit): js.Tree = {
+      val genModuleInitializers =
+        linkingUnit.moduleInitializers.map(classEmitter.genModuleInitializer(_))
+      js.Block(genModuleInitializers)(Position.NoPosition)
+    }
   }
 
   // Caching

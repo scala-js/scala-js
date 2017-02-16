@@ -13,7 +13,7 @@ import sbt._
 
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.linker.LinkingUnit
+import org.scalajs.core.tools.linker.{ModuleInitializer, LinkingUnit}
 import org.scalajs.core.tools.linker.backend.{ModuleKind, OutputMode}
 import org.scalajs.core.tools.jsdep.{JSDependencyManifest, ResolvedJSDependency}
 import org.scalajs.core.tools.jsdep.ManifestFilters.ManifestFilter
@@ -195,6 +195,10 @@ object ScalaJSPlugin extends AutoPlugin {
 
     val scalaJSIR = TaskKey[Attributed[Seq[VirtualScalaJSIRFile with RelativeVirtualFile]]](
         "scalaJSIR", "All the *.sjsir files on the classpath", CTask)
+
+    val scalaJSModuleInitializers = TaskKey[Seq[ModuleInitializer]]("scalaJSModuleInitializers",
+        "Module initializers of the Scala.js application, to be called when it starts.",
+        AMinusTask)
 
     val scalaJSNativeLibraries = TaskKey[Attributed[Seq[VirtualJSFile with RelativeVirtualFile]]](
         "scalaJSNativeLibraries", "All the *.js files on the classpath", CTask)

@@ -11,8 +11,8 @@ final class LinkingUnit private[linker] (
     val esLevel: ESLevel,
     val classDefs: List[LinkedClass],
     private[linker] val infosInternal: Map[String, Infos.ClassInfo],
-    val isComplete: Boolean,
-    dummyInternal: Unit
+    val moduleInitializers: List[ModuleInitializer],
+    val isComplete: Boolean
 ) {
 
   import LinkingUnit._
@@ -24,7 +24,8 @@ final class LinkingUnit private[linker] (
       "0.6.15")
   def this(semantics: Semantics, esLevel: ESLevel, classDefs: List[LinkedClass],
       infos: Map[String, Infos.ClassInfo], isComplete: Boolean) = {
-    this(semantics, esLevel, classDefs, infos, isComplete, dummyInternal = ())
+    this(semantics, esLevel, classDefs, infos, moduleInitializers = Nil,
+        isComplete)
   }
 
   @deprecated(
@@ -68,8 +69,8 @@ final class LinkingUnit private[linker] (
       isComplete: Boolean): LinkingUnit = {
     val newInfos =
       infosInternal ++ classDefs.map(cd => cd.encodedName -> cd.toInfo)
-    new LinkingUnit(semantics, esLevel, classDefs, newInfos, isComplete,
-        dummyInternal = ())
+    new LinkingUnit(semantics, esLevel, classDefs, newInfos, moduleInitializers,
+        isComplete)
   }
 }
 

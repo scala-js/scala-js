@@ -32,6 +32,7 @@ import org.scalajs.core.tools.io.MemVirtualJSFile
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.json._
+import org.scalajs.core.tools.linker.ModuleInitializer
 import org.scalajs.core.tools.linker.backend.OutputMode
 
 import sbtassembly.AssemblyPlugin.autoImport._
@@ -624,9 +625,26 @@ object Build {
           val (jars, dirs) = cp.filter(_.exists).partition(_.isFile)
           val irFiles = dirs.flatMap(dir => (dir ** "*.sjsir").get)
 
-          val irPaths =  {
-            for (f <- jars ++ irFiles)
-              yield s""""${escapeJS(f.getAbsolutePath)}""""
+          def seqOfStringsToJSArrayCode(strings: Seq[String]): String =
+            strings.map(s => "\"" + escapeJS(s) + "\"").mkString("[", ", ", "]")
+
+          val irPaths = {
+            val absolutePaths = (jars ++ irFiles).map(_.getAbsolutePath)
+            seqOfStringsToJSArrayCode(absolutePaths)
+          }
+
+          val mainMethods = {
+            /* Ideally we would read `scalaJSModuleInitializers in (testSuite, Test)`,
+             * but we cannot convert the ModuleInitializers to strings to be
+             * passed to the QuickLinker (because ModuleInitializer is a
+             * write-only data structure). So we have some duplication.
+             */
+            val unescapedMainMethods = List(
+                "org.scalajs.testsuite.compiler.ModuleInitializerInNoConfiguration.main",
+                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.main2",
+                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.main1"
+            )
+            seqOfStringsToJSArrayCode(unescapedMainMethods)
           }
 
           val scalaJSEnv = {
@@ -640,7 +658,7 @@ object Build {
           val code = {
             s"""
             var linker = scalajs.QuickLinker;
-            var lib = linker.linkTestSuiteNode(${irPaths.mkString(", ")});
+            var lib = linker.linkTestSuiteNode($irPaths, $mainMethods);
 
             var __ScalaJSEnv = $scalaJSEnv;
 
@@ -1532,6 +1550,28 @@ object Build {
           } else {
             sourceFiles
           }
+        },
+
+        // Module initializers. Duplicated in toolsJS/test
+        scalaJSModuleInitializers += {
+          ModuleInitializer.mainMethod(
+              "org.scalajs.testsuite.compiler.ModuleInitializerInNoConfiguration",
+              "main")
+        },
+        scalaJSModuleInitializers in Compile += {
+          ModuleInitializer.mainMethod(
+              "org.scalajs.testsuite.compiler.ModuleInitializerInCompileConfiguration",
+              "main")
+        },
+        scalaJSModuleInitializers in Test += {
+          ModuleInitializer.mainMethod(
+              "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
+              "main2")
+        },
+        scalaJSModuleInitializers in Test += {
+          ModuleInitializer.mainMethod(
+              "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
+              "main1")
         }
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(

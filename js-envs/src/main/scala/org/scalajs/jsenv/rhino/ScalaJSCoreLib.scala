@@ -63,6 +63,10 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
     val c = Context.toObject(ScalaJS.get("c", ScalaJS), scope)
     for (encodedName <- exportedSymbols)
       c.get(encodedName, c)
+
+    // Execute the module initializers
+    evaluateJSTree(scope, emitter.rhinoAPI.genModuleInitializers(linkingUnit),
+        "ScalaJSEntryPoints.js")
   }
 
   /** Source maps the given stack trace (where possible) */
@@ -175,14 +179,16 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
         throw new RhinoJSEnv.ClassNotFoundException(encodedName))
 
     val desugared = emitter.rhinoAPI.genClassDef(linkedClass)
+    evaluateJSTree(scope, desugared, encodedName + PseudoFileSuffix)
+  }
 
-    // Write tree
+  private def evaluateJSTree(scope: Scriptable, tree: Trees.Tree,
+      fakeFileName: String): Unit = {
     val codeWriter = new java.io.StringWriter
     val printer = new Printers.JSTreePrinter(codeWriter)
-    printer.printTopLevelTree(desugared)
+    printer.printTopLevelTree(tree)
     printer.complete()
     val ctx = Context.getCurrentContext()
-    val fakeFileName = encodedName + PseudoFileSuffix
     ctx.evaluateString(scope, codeWriter.toString(),
         fakeFileName, 1, null)
   }

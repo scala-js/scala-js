@@ -19,8 +19,8 @@ import org.scalajs.core.tools.sem._
 import CheckedBehavior.Unchecked
 
 import org.scalajs.core.tools.javascript.{Trees => js}
+import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.backend.OutputMode
-import org.scalajs.core.tools.linker.{LinkedClass, LinkingUnit}
 
 /** Emitter for the skeleton of classes. */
 private[emitter] final class ClassEmitter(jsGen: JSGen) {
@@ -1163,6 +1163,18 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             namespace, js.ObjectConstr(Nil)))
     }
     (js.Block(statements.result()), namespace, js.StringLiteral(parts.last))
+  }
+
+  /** Gen JS code for an [[ModuleInitializer]]. */
+  def genModuleInitializer(moduleInitializer: ModuleInitializer): js.Tree = {
+    import TreeDSL._
+
+    implicit val pos = Position.NoPosition
+
+    moduleInitializer match {
+      case ModuleInitializer.VoidMainMethod(moduleClassName, mainMethodName) =>
+        js.Apply(genLoadModule(moduleClassName) DOT mainMethodName, Nil)
+    }
   }
 
 }

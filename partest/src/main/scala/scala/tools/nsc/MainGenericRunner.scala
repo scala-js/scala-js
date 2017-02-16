@@ -7,7 +7,7 @@ import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.io.IRFileCache.IRContainer
-import org.scalajs.core.tools.linker.Linker
+import org.scalajs.core.tools.linker.{Linker, ModuleInitializer}
 import org.scalajs.core.tools.linker.backend.{OutputMode, ModuleKind}
 
 import org.scalajs.core.ir
@@ -66,6 +66,9 @@ class MainGenericRunner {
         runnerIR(command.thingToRun, command.arguments)
     )
 
+    val moduleInitializers =
+      Seq(ModuleInitializer.mainMethod("PartestLauncher", "main"))
+
     val linkerConfig = Linker.Config()
       .withSourceMap(false)
       .withClosureCompiler(optMode == FullOpt)
@@ -75,14 +78,11 @@ class MainGenericRunner {
 
     val sjsCode = {
       val output = WritableMemVirtualJSFile("partest.js")
-      linker.link(ir, output, logger)
-      ResolvedJSDependency.minimal(output) :: Nil
+      linker.link(ir, moduleInitializers, output, logger)
+      output
     }
 
-    val jsRunner = new MemVirtualJSFile("launcher.js")
-      .withContent(s"PartestLauncher().launch();")
-
-    new NodeJSEnv().jsRunner(sjsCode, jsRunner).run(logger, jsConsole)
+    new NodeJSEnv().jsRunner(sjsCode).run(logger, jsConsole)
 
     true
   }
@@ -102,7 +102,6 @@ class MainGenericRunner {
 
     val mainModuleClassName = ir.Definitions.encodeClassName(mainObj + "$")
     val className = "PartestLauncher$"
-    val exportName = "PartestLauncher"
     val encodedClassName = ir.Definitions.encodeClassName(className)
 
     val definition = {
@@ -116,22 +115,31 @@ class MainGenericRunner {
         List(
           MethodDef(
             static = false,
-            StringLiteral("launch"),
+            Ident("init___", Some("<init>")),
             Nil,
-            AnyType,
+            NoType,
             Some(
-              Block(
-                Apply(LoadModule(ClassType(mainModuleClassName)),
-                  Ident("main__AT__V"),
-                  List(
-                    ArrayValue(ArrayType("T", 1), args.map(StringLiteral(_)))
-                  )
-                )(NoType),
-                Undefined()
-              )
+              ApplyStatically(This()(ClassType(encodedClassName)),
+                ClassType(ir.Definitions.ObjectClass),
+                Ident("init___"),
+                Nil
+              )(NoType)
             )
           )(OptimizerHints.empty, None),
-          ModuleExportDef(exportName)
+          MethodDef(
+            static = false,
+            Ident("main__V", Some("main")),
+            Nil,
+            NoType,
+            Some(
+              Apply(LoadModule(ClassType(mainModuleClassName)),
+                Ident("main__AT__V"),
+                List(
+                  ArrayValue(ArrayType("T", 1), args.map(StringLiteral(_)))
+                )
+              )(NoType)
+            )
+          )(OptimizerHints.empty, None)
         )
       )(OptimizerHints.empty)
     }

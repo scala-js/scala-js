@@ -23,7 +23,11 @@ final class Refiner {
   def refine(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
       logger: Logger): LinkingUnit = {
     val analysis = logger.time("Refiner: Compute reachability") {
-      Analyzer.computeReachability(unit.semantics, symbolRequirements,
+      val allSymbolRequirements = {
+        symbolRequirements ++
+        ModuleInitializer.toSymbolRequirement(unit.moduleInitializers)
+      }
+      Analyzer.computeReachability(unit.semantics, allSymbolRequirements,
           unit.infosInternal.values.toList, allowAddingSyntheticMethods = false)
     }
 

@@ -232,6 +232,7 @@ object ScalaJSPluginInternal {
         val irInfo = (scalaJSIR in key).value
         val realFiles = irInfo.get(scalaJSSourceFiles).get
         val ir = irInfo.data
+        val moduleInitializers = scalaJSModuleInitializers.value
         val output = (artifactPath in key).value
 
         Def.task {
@@ -248,7 +249,9 @@ object ScalaJSPluginInternal {
             IO.createDirectory(output.getParentFile)
 
             val linker = (scalaJSLinker in key).value
-            linker.link(ir, AtomicWritableFileVirtualJSFile(output), sbtLogger2ToolsLogger(log))
+            linker.link(ir, moduleInitializers,
+                AtomicWritableFileVirtualJSFile(output),
+                sbtLogger2ToolsLogger(log))
 
             logIRCacheStats(log)
 
@@ -644,8 +647,9 @@ object ScalaJSPluginInternal {
             Def.task {
               val linker = scalaJSLinker.value
               val ir = scalaJSIR.value.data
-              val unit = linker.linkUnit(ir, env.symbolRequirements,
-                  sbtLogger2ToolsLogger(log))
+              val moduleInitializers = scalaJSModuleInitializers.value
+              val unit = linker.linkUnit(ir, moduleInitializers,
+                  env.symbolRequirements, sbtLogger2ToolsLogger(log))
 
               log.debug("Loading JSEnv with LinkingUnit")
               env.loadLibs(libs).loadLinkingUnit(unit)
@@ -939,6 +943,11 @@ object ScalaJSPluginInternal {
       scalaJSOutputMode := OutputMode.ECMAScript51Isolated,
       scalaJSModuleKind := ModuleKind.NoModule,
       checkScalaJSSemantics := true,
+
+      scalaJSModuleInitializers := Seq(),
+      scalaJSModuleInitializers in Compile := scalaJSModuleInitializers.value,
+      // Do not inherit scalaJSModuleInitializers in Test from Compile
+      scalaJSModuleInitializers in Test := scalaJSModuleInitializers.value,
 
       scalaJSConsole := ConsoleJSConsole,
 
