@@ -263,7 +263,7 @@ object ScalaJSPluginInternal {
         } tag((usesScalaJSLinkerTag in key).value)
       }.value,
 
-      key := key.dependsOn(packageJSDependencies, packageScalaJSLauncher).value,
+      key := key.dependsOn(packageJSDependencies, packageScalaJSLauncherInternal).value,
 
       scalaJSLinkedFile in key := new FileVirtualJSFile(key.value.data)
   )
@@ -418,12 +418,12 @@ object ScalaJSPluginInternal {
 
       fullOptJS := fullOptJS.dependsOn(packageMinifiedJSDependencies).value,
 
-      artifactPath in packageScalaJSLauncher :=
-        ((crossTarget in packageScalaJSLauncher).value /
-            ((moduleName in packageScalaJSLauncher).value + "-launcher.js")),
+      artifactPath in packageScalaJSLauncherInternal :=
+        ((crossTarget in packageScalaJSLauncherInternal).value /
+            ((moduleName in packageScalaJSLauncherInternal).value + "-launcher.js")),
 
-      skip in packageScalaJSLauncher := {
-        val value = !persistLauncher.value
+      skip in packageScalaJSLauncherInternal := {
+        val value = !persistLauncherInternal.value
         if (!value) {
           if (scalaJSUseMainModuleInitializer.value) {
             throw new MessageOnlyException(
@@ -440,15 +440,15 @@ object ScalaJSPluginInternal {
         value
       },
 
-      packageScalaJSLauncher := Def.taskDyn {
-        if ((skip in packageScalaJSLauncher).value) {
+      packageScalaJSLauncherInternal := Def.taskDyn {
+        if ((skip in packageScalaJSLauncherInternal).value) {
           Def.task {
-            Attributed.blank((artifactPath in packageScalaJSLauncher).value)
+            Attributed.blank((artifactPath in packageScalaJSLauncherInternal).value)
           }
         } else {
           Def.task {
             mainClass.value map { mainCl =>
-              val file = (artifactPath in packageScalaJSLauncher).value
+              val file = (artifactPath in packageScalaJSLauncherInternal).value
               assert(scalaJSModuleKind.value == ModuleKind.NoModule,
                   "Cannot produce a launcher file when scalaJSModuleKind " +
                   "is different from NoModule")
@@ -770,11 +770,11 @@ object ScalaJSPluginInternal {
         }
       },
 
-      mainClass in scalaJSLauncher := (mainClass in run).value,
-      scalaJSLauncher := Def.taskDyn[Attributed[VirtualJSFile]] {
-        if (persistLauncher.value) {
+      mainClass in scalaJSLauncherInternal := (mainClass in run).value,
+      scalaJSLauncherInternal := Def.taskDyn[Attributed[VirtualJSFile]] {
+        if (persistLauncherInternal.value) {
           Def.task {
-            packageScalaJSLauncher.value.map(FileVirtualJSFile)
+            packageScalaJSLauncherInternal.value.map(FileVirtualJSFile)
           }
         } else if (scalaJSUseMainModuleInitializer.value) {
           Def.task {
@@ -788,7 +788,7 @@ object ScalaJSPluginInternal {
           }
         } else {
           Def.task {
-            (mainClass in scalaJSLauncher).value.fold {
+            (mainClass in scalaJSLauncherInternal).value.fold {
               sys.error("No main class detected.")
             } { mainClass =>
               val moduleKind = scalaJSModuleKind.value
@@ -809,7 +809,7 @@ object ScalaJSPluginInternal {
         // use assert to prevent warning about pure expr in stat pos
         assert(scalaJSEnsureUnforked.value)
 
-        val launch = scalaJSLauncher.value
+        val launch = scalaJSLauncherInternal.value
         val className = launch.get(name.key).getOrElse("<unknown class>")
         jsRun(loadedJSEnv.value, className, launch.data,
             streams.value.log, scalaJSConsole.value)
@@ -880,7 +880,7 @@ object ScalaJSPluginInternal {
   val scalaJSTestBuildSettings = (
       scalaJSConfigSettings
   ) ++ (
-      Seq(fastOptJS, fullOptJS, packageScalaJSLauncher,
+      Seq(fastOptJS, fullOptJS, packageScalaJSLauncherInternal,
           packageJSDependencies) map { packageJSTask =>
         moduleName in packageJSTask := moduleName.value + "-test"
       }
@@ -972,8 +972,8 @@ object ScalaJSPluginInternal {
       isScalaJSProject := true,
 
       relativeSourceMaps := false,
-      persistLauncher := false,
-      persistLauncher in Test := false,
+      persistLauncherInternal := false,
+      persistLauncherInternal in Test := false,
 
       emitSourceMaps := true,
 
