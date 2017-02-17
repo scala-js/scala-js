@@ -880,7 +880,7 @@ class PrintersTest {
   @Test def printClassDefJSNativeLoadSpec(): Unit = {
     assertPrintEquals(
         """
-          |native js class LTest extends O loadfrom Global(List(Foo)) {
+          |native js class LTest extends O loadfrom <global>.Foo {
           |}
         """,
         ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
@@ -889,7 +889,7 @@ class PrintersTest {
 
     assertPrintEquals(
         """
-          |native js class LTest extends O loadfrom Import(foo,List(Bar)) {
+          |native js class LTest extends O loadfrom import(foo).Bar {
           |}
         """,
         ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
