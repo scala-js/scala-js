@@ -16,7 +16,7 @@ import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io.{IO => toolsIO, _}
 import org.scalajs.core.tools.jsdep._
 import org.scalajs.core.tools.json._
-import org.scalajs.core.tools.linker.{ClearableLinker, Linker}
+import org.scalajs.core.tools.linker.{ClearableLinker, ModuleInitializer, Linker}
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.backend.{LinkerBackend, ModuleKind, OutputMode}
 
@@ -424,10 +424,18 @@ object ScalaJSPluginInternal {
 
       skip in packageScalaJSLauncher := {
         val value = !persistLauncher.value
-        if (!value && (scalaJSModuleKind.value != ModuleKind.NoModule)) {
-          throw new MessageOnlyException(
-              "persistLauncher := true is not compatible with emitting " +
-              "JavaScript modules")
+        if (!value) {
+          if (scalaJSUseMainModuleInitializer.value) {
+            throw new MessageOnlyException(
+                "persistLauncher := true is not compatible with using a main " +
+                "module initializer (scalaJSUseMainModuleInitializer := " +
+                "true), nor is it necessary, since fastOptJS/fullOptJS " +
+                "includes the call to the main method")
+          } else if (scalaJSModuleKind.value != ModuleKind.NoModule) {
+            throw new MessageOnlyException(
+                "persistLauncher := true is not compatible with emitting " +
+                "JavaScript modules")
+          }
         }
         value
       },
@@ -742,11 +750,41 @@ object ScalaJSPluginInternal {
 
   // These settings will be filtered by the stage dummy tasks
   val scalaJSRunSettings = Seq(
+      scalaJSMainModuleInitializer := {
+        mainClass.value.map(ModuleInitializer.mainMethod(_, "main"))
+      },
+
+      scalaJSModuleInitializers ++= {
+        if (scalaJSUseMainModuleInitializer.value) {
+          Seq(scalaJSMainModuleInitializer.value.getOrElse {
+            throw new MessageOnlyException(
+                "No main module initializer was specified (possibly because " +
+                "no or multiple main classes were found), but " +
+                "scalaJSUseMainModuleInitializer was set to true. " +
+                "You can explicitly specify it either with " +
+                "`mainClass := Some(...)` or with " +
+                "`scalaJSMainModuleInitializer := Some(...)`")
+          })
+        } else {
+          Seq.empty
+        }
+      },
+
       mainClass in scalaJSLauncher := (mainClass in run).value,
       scalaJSLauncher := Def.taskDyn[Attributed[VirtualJSFile]] {
         if (persistLauncher.value) {
           Def.task {
             packageScalaJSLauncher.value.map(FileVirtualJSFile)
+          }
+        } else if (scalaJSUseMainModuleInitializer.value) {
+          Def.task {
+            val base = Attributed.blank[VirtualJSFile](
+                new MemVirtualJSFile("No-op generated launcher file"))
+            mainClass.value.fold {
+              base
+            } { mainClass =>
+              base.put(name.key, mainClass)
+            }
           }
         } else {
           Def.task {
@@ -782,6 +820,14 @@ object ScalaJSPluginInternal {
         assert(scalaJSEnsureUnforked.value)
 
         val mainClass = runMainParser.parsed
+
+        if (scalaJSUseMainModuleInitializer.value) {
+          throw new MessageOnlyException(
+              "`runMain` is not supported when using a main module " +
+              "initializer (scalaJSUseMainModuleInitializer := true) since " +
+              "the (unique) entry point is burned in the fastOptJS/fullOptJS.")
+        }
+
         val moduleKind = scalaJSModuleKind.value
         val moduleIdentifier = scalaJSModuleIdentifier.value
         jsRun(loadedJSEnv.value, mainClass,
@@ -948,6 +994,9 @@ object ScalaJSPluginInternal {
       scalaJSModuleInitializers in Compile := scalaJSModuleInitializers.value,
       // Do not inherit scalaJSModuleInitializers in Test from Compile
       scalaJSModuleInitializers in Test := scalaJSModuleInitializers.value,
+
+      scalaJSUseMainModuleInitializer := false,
+      scalaJSUseMainModuleInitializer in Test := false,
 
       scalaJSConsole := ConsoleJSConsole,
 

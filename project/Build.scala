@@ -1225,7 +1225,7 @@ object Build {
       settings = exampleSettings ++ Seq(
           name := "Hello World - Scala.js example",
           moduleName := "helloworld",
-          persistLauncher := true
+          scalaJSUseMainModuleInitializer := true
       )
   ).withScalaJSCompiler.dependsOn(library)
 

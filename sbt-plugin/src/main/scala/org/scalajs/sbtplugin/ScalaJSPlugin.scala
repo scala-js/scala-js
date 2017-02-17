@@ -200,6 +200,16 @@ object ScalaJSPlugin extends AutoPlugin {
         "Module initializers of the Scala.js application, to be called when it starts.",
         AMinusTask)
 
+    val scalaJSUseMainModuleInitializer = SettingKey[Boolean]("scalaJSUseMainModuleInitializer",
+        "If true, adds the `mainClass` as a module initializer of the Scala.js module",
+        APlusSetting)
+
+    val scalaJSMainModuleInitializer = TaskKey[Option[ModuleInitializer]](
+        "scalaJSMainModuleInitializer",
+        "The main module initializer, used if " +
+        "`scalaJSUseMainModuleInitializer` is true",
+        CTask)
+
     val scalaJSNativeLibraries = TaskKey[Attributed[Seq[VirtualJSFile with RelativeVirtualFile]]](
         "scalaJSNativeLibraries", "All the *.js files on the classpath", CTask)
 
