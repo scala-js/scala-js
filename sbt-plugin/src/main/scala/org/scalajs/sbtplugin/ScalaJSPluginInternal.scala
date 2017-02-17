@@ -192,7 +192,7 @@ object ScalaJSPluginInternal {
 
         val backendConfig = LinkerBackend.Config()
           .withRelativizeSourceMapBase(relSourceMapBase)
-          .withCustomOutputWrapper(scalaJSOutputWrapper.value)
+          .withCustomOutputWrapperInternal(scalaJSOutputWrapperInternal.value)
           .withPrettyPrint(opts.prettyPrintFullOptJS)
 
         val config = Linker.Config()
@@ -977,7 +977,7 @@ object ScalaJSPluginInternal {
 
       emitSourceMaps := true,
 
-      scalaJSOutputWrapper := ("", ""),
+      scalaJSOutputWrapperInternal := ("", ""),
 
       scalaJSOptimizerOptions := OptimizerOptions(),
 
