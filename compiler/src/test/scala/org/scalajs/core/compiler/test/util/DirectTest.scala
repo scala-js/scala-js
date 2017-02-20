@@ -1,6 +1,7 @@
 package org.scalajs.core.compiler.test.util
 
 import scala.tools.nsc._
+import scala.tools.nsc.plugins.Plugin
 import reporters.{Reporter, ConsoleReporter}
 import scala.reflect.internal.util.{ SourceFile, BatchSourceFile }
 
@@ -32,7 +33,23 @@ abstract class DirectTest {
         extraArgs ++ args.toList)
 
     lazy val global: Global = new Global(settings, newReporter(settings)) {
-      override lazy val plugins = newScalaJSPlugin(global) :: Nil
+      private implicit class PluginCompat(val plugin: Plugin) {
+        def options: List[String] = {
+          val prefix = plugin.name + ":"
+          for {
+            option <- settings.pluginOptions.value
+            if option.startsWith(prefix)
+          } yield {
+            option.stripPrefix(prefix)
+          }
+        }
+      }
+
+      override lazy val plugins = {
+        val scalaJSPlugin = newScalaJSPlugin(global)
+        scalaJSPlugin.processOptions(scalaJSPlugin.options, sys.error(_))
+        scalaJSPlugin :: Nil
+      }
     }
 
     global
