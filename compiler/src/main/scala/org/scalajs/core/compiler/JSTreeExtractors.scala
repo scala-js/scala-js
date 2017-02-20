@@ -22,45 +22,36 @@ object JSTreeExtractors {
       })
     }
 
-    /**
-     *  A partially literally named sequence (like in a call to applyDynamicNamed)
-     *  Where some parameters are expected to be literally named.
+    /** Extracts the literal strings in "key" position of a sequence of Tuple2.
      *
-     *  Example (Scala): method(("name1", x), (a, y), z)
+     *  Non-Tuple2 constructors are silently ignored, as well as non-literal
+     *  keys.
      */
-    object LitNamedExtractor {
-      def extractFrom(exprs: List[Tree]): List[(StringLiteral, Tree)] = {
-        // Note that with 'failIfNonLit = false'
-        // genNameLitExtract will never return None
-        genNamedLitExtract(exprs, Nil, false).getOrElse(Nil)
-      }
-
-      @tailrec
-      private[jse] final def genNamedLitExtract(
-          exprs: List[Tree],
-          acc: List[(StringLiteral, Tree)],
-          failIfNonLit: Boolean
-        ): Option[List[(StringLiteral, Tree)]] = exprs match {
-        case Tuple2(name: StringLiteral, value) :: xs =>
-          genNamedLitExtract(xs, (name, value) :: acc, failIfNonLit)
-        case _ :: xs =>
-          if (failIfNonLit)
-            None
-          else
-            genNamedLitExtract(xs, acc, failIfNonLit)
-        case Nil => Some(acc.reverse)
+    def extractLiteralKeysFrom(exprs: List[Tree]): List[StringLiteral] = {
+      exprs.collect {
+        case Tuple2(key: StringLiteral, _) => key
       }
     }
 
-    /**
-     *  A literally named sequence (like in a call to applyDynamicNamed)
-     *  Where all parameters are expected to be literally named.
+    /** A list of Tuple2, for example used as a list of key/value pairs
+     *  (like in a call to applyDynamicNamed).
      *
-     *  Example (Scala): method(("name1", x), ("name2", y))
+     *  Examples (Scala):
+     *  {{{
+     *  method(("name1", x), ("name2", y))
+     *  method("name1" -> x, "name2" -> y)
+     *  method(nameExpr1 -> x, (nameExpr2, y))
+     *  }}}
      */
-    object LitNamed {
-      def unapply(exprs: List[Tree]): Option[List[(StringLiteral, Tree)]] = {
-        LitNamedExtractor.genNamedLitExtract(exprs, Nil, true)
+    object Tuple2List {
+      def unapply(exprs: List[Tree]): Option[List[(Tree, Tree)]] = {
+        val tuples = exprs.collect {
+          case Tuple2(key, value) => (key, value)
+        }
+        if (tuples.size == exprs.size)
+          Some(tuples)
+        else
+          None
       }
     }
 

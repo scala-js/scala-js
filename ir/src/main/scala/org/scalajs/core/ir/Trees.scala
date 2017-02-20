@@ -31,13 +31,20 @@ object Trees {
   // Identifiers and properties
 
   sealed trait PropertyName {
-    def name: String
+    /** Encoded name of this PropertyName within its owner's scope.
+     *
+     *  For [[ComputedName]]s, the value of `encodedName` cannot be relied on
+     *  beyond equality tests, and the fact that it starts with `"__computed_"`.
+     */
+    def encodedName: String
+
     def pos: Position
   }
 
   case class Ident(name: String, originalName: Option[String])(
       implicit val pos: Position) extends PropertyName {
     requireValidIdent(name)
+    def encodedName: String = name
   }
 
   object Ident {
@@ -78,6 +85,12 @@ object Trees {
       "goto", "int", "long", "native", "short", "synchronized", "throws",
       "transient", "volatile"
   )
+
+  case class ComputedName(tree: Tree, logicalName: String) extends PropertyName {
+    requireValidIdent(logicalName)
+    def pos: Position = tree.pos
+    override def encodedName: String = "__computed_" + logicalName
+  }
 
   // Definitions
 
@@ -741,7 +754,7 @@ object Trees {
   case class StringLiteral(value: String)(
       implicit val pos: Position) extends Literal with PropertyName {
     val tpe = StringType
-    override def name: String = value
+    override def encodedName: String = value
   }
 
   case class ClassOf(cls: ReferenceType)(

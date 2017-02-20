@@ -83,10 +83,21 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @ScalaJSDefined
       @JSName("foo")
       $obj A extends js.Object
+
+      object Sym {
+        val sym = js.Symbol()
+      }
+
+      @ScalaJSDefined
+      @JSName(Sym.sym)
+      $obj B extends js.Object
       """ hasWarns
       s"""
         |newSource1.scala:6: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
         |      @JSName("foo")
+        |       ^
+        |newSource1.scala:14: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+        |      @JSName(Sym.sym)
         |       ^
       """
     }
@@ -97,10 +108,20 @@ class JSInteropTest extends DirectTest with TestHelpers {
       s"""
       @JSName("foo")
       $obj A
+
+      object Sym {
+        val sym = js.Symbol()
+      }
+
+      @JSName(Sym.sym)
+      $obj B
       """ hasWarns
       s"""
         |newSource1.scala:5: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
         |      @JSName("foo")
+        |       ^
+        |newSource1.scala:12: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+        |      @JSName(Sym.sym)
         |       ^
       """
     }
@@ -148,10 +169,21 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSName("foo")
     trait A extends js.Object
+
+    object Sym {
+      val sym = js.Symbol()
+    }
+
+    @js.native
+    @JSName(Sym.sym)
+    trait B extends js.Object
     """ hasWarns
     s"""
       |newSource1.scala:6: warning: Traits should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
       |    @JSName("foo")
+      |     ^
+      |newSource1.scala:14: warning: Traits should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+      |    @JSName(Sym.sym)
       |     ^
     """
 
@@ -963,9 +995,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:14: error: The argument to JSName must be a literal string
+      |newSource1.scala:14: error: A string argument to JSName must be a literal string
       |      @JSName(A.a)
-      |       ^
+      |                ^
     """
 
     // #1664
@@ -985,12 +1017,55 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:11: error: The argument to JSName must be a literal string
+      |newSource1.scala:11: error: A string argument to JSName must be a literal string
       |    @JSName(A.a)
-      |     ^
-      |newSource1.scala:15: error: The argument to JSName must be a literal string
+      |              ^
+      |newSource1.scala:15: error: A string argument to JSName must be a literal string
       |    @JSName(A.a)
-      |     ^
+      |              ^
+    """
+
+  }
+
+  @Test
+  def noNonStaticStableJSNameSymbol: Unit = {
+
+    """
+    import js.annotation.JSName
+
+    class A {
+      val a = js.Symbol("foo")
+    }
+
+    @js.native
+    class B extends js.Object {
+      @JSName(js.Symbol())
+      def foo: Int = js.native
+      @JSName(new A().a)
+      def bar: Int = js.native
+    }
+
+    @ScalaJSDefined
+    class C extends js.Object {
+      @JSName(js.Symbol())
+      def foo: Int = js.native
+      @JSName(new A().a)
+      def bar: Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:13: error: A js.Symbol argument to JSName must be a static, stable identifier
+      |      @JSName(js.Symbol())
+      |                       ^
+      |newSource1.scala:15: error: A js.Symbol argument to JSName must be a static, stable identifier
+      |      @JSName(new A().a)
+      |                      ^
+      |newSource1.scala:21: error: A js.Symbol argument to JSName must be a static, stable identifier
+      |      @JSName(js.Symbol())
+      |                       ^
+      |newSource1.scala:23: error: A js.Symbol argument to JSName must be a static, stable identifier
+      |      @JSName(new A().a)
+      |                      ^
     """
 
   }
@@ -1177,6 +1252,78 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """.succeeds
 
+  }
+
+  @Test
+  def noJSSymbolNameOnTopLevelClassesAndObjects: Unit = {
+    for {
+      kind <- Seq("class", "object")
+    } {
+      s"""
+      object Sym {
+        val sym = js.Symbol()
+      }
+
+      @JSName(Sym.sym)
+      @js.native
+      $kind A extends js.Object
+      """ hasErrors
+      """
+        |newSource1.scala:9: error: @JSName with a js.Symbol can only be used on members of JavaScript types
+        |      @JSName(Sym.sym)
+        |       ^
+      """
+    }
+  }
+
+  @Test
+  def noJSSymbolNameOnNestedNativeClassesAndObjects: Unit = {
+    for {
+      kind <- Seq("class", "object")
+    } {
+      s"""
+      object Sym {
+        val sym = js.Symbol()
+      }
+
+      @js.native
+      object Enclosing extends js.Object {
+        @JSName(Sym.sym)
+        @js.native
+        $kind A extends js.Object
+      }
+      """ hasErrors
+      """
+        |newSource1.scala:11: error: Implementation restriction: @JSName with a js.Symbol is not supported on nested native classes and objects
+        |        @JSName(Sym.sym)
+        |         ^
+      """
+    }
+  }
+
+  @Test
+  def warnOnDuplicateJSNameAnnotOnMember: Unit = {
+    for {
+      kind <- Seq("class", "object", "trait")
+    } {
+      """
+      object A {
+        val a = js.Symbol()
+      }
+
+      @js.native
+      class A extends js.Object {
+        @JSName(A.a)
+        @JSName("foo")
+        def a: Int = js.native
+      }
+      """ hasWarns
+      """
+        |newSource1.scala:12: warning: A duplicate @JSName annotation is ignored. This will become an error in 1.0.0.
+        |        @JSName("foo")
+        |         ^
+      """
+    }
   }
 
   @Test
@@ -1532,6 +1679,467 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:15: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in trait B with JSName 'bar'
+      |    is conflicting with
+      |def foo: Int in trait A with JSName 'foo'
+      |
+      |    abstract class C extends A with B
+      |                   ^
+    """
+  }
+
+  @Test
+  def scalaJSDefinedJSNameWithSymbolOverrideWarnings: Unit = {
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    trait A extends js.Object {
+      @JSName(Syms.sym1)
+      def bar(): Int
+    }
+    @ScalaJSDefined
+    class B extends A {
+      @JSName(Syms.sym1)
+      override def bar() = 1
+    }
+    """.hasNoWarns
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    abstract class A extends js.Object {
+      @JSName(Syms.sym1)
+      def bar(): Int
+    }
+    @ScalaJSDefined
+    class B extends A {
+      @JSName(Syms.sym1)
+      override def bar() = 1
+    }
+    """.hasNoWarns
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+      val sym2 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    abstract class A extends js.Object {
+      @JSName(Syms.sym1)
+      def bar(): Int
+    }
+    @ScalaJSDefined
+    class B extends A {
+      @JSName(Syms.sym2)
+      override def bar() = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:18: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): Int in class B with JSName 'Syms.sym2'
+      |    is conflicting with
+      |def bar(): Int in class A with JSName 'Syms.sym1'
+      |
+      |      override def bar() = 1
+      |                   ^
+    """
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    abstract class A extends js.Object {
+      @JSName(Syms.sym1)
+      def bar(): Int
+    }
+    @ScalaJSDefined
+    class B extends A {
+      @JSName("baz")
+      override def bar() = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:17: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): Int in class B with JSName 'baz'
+      |    is conflicting with
+      |def bar(): Int in class A with JSName 'Syms.sym1'
+      |
+      |      override def bar() = 1
+      |                   ^
+    """
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    abstract class A extends js.Object {
+      @JSName("foo")
+      def bar(): Int
+    }
+    @ScalaJSDefined
+    class B extends A {
+      @JSName(Syms.sym1)
+      override def bar() = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:17: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): Int in class B with JSName 'Syms.sym1'
+      |    is conflicting with
+      |def bar(): Int in class A with JSName 'foo'
+      |
+      |      override def bar() = 1
+      |                   ^
+    """
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    abstract class A extends js.Object {
+      @JSName(Syms.sym1)
+      def bar(): Int
+    }
+    @ScalaJSDefined
+    class B extends A {
+      override def bar() = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): Int in class B with JSName 'bar'
+      |    is conflicting with
+      |def bar(): Int in class A with JSName 'Syms.sym1'
+      |
+      |      override def bar() = 1
+      |                   ^
+    """
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    abstract class A extends js.Object {
+      @JSName(Syms.sym1)
+      def bar(): Object
+    }
+    @ScalaJSDefined
+    abstract class B extends A {
+      override def bar(): String
+    }
+    @ScalaJSDefined
+    class C extends B {
+      override def bar() = "1"
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): String in class B with JSName 'bar'
+      |    is conflicting with
+      |def bar(): Object in class A with JSName 'Syms.sym1'
+      |
+      |      override def bar(): String
+      |                   ^
+      |newSource1.scala:20: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): String in class C with JSName 'bar'
+      |    is conflicting with
+      |def bar(): Object in class A with JSName 'Syms.sym1'
+      |
+      |      override def bar() = "1"
+      |                   ^
+    """
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    abstract class A extends js.Object {
+      def bar(): Object
+    }
+    @ScalaJSDefined
+    abstract class B extends A {
+      @JSName(Syms.sym1)
+      override def bar(): String
+    }
+    @ScalaJSDefined
+    class C extends B {
+      override def bar() = "1"
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): String in class B with JSName 'Syms.sym1'
+      |    is conflicting with
+      |def bar(): Object in class A with JSName 'bar'
+      |
+      |      override def bar(): String
+      |                   ^
+      |newSource1.scala:20: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): String in class C with JSName 'bar'
+      |    is conflicting with
+      |override def bar(): String in class B with JSName 'Syms.sym1'
+      |
+      |      override def bar() = "1"
+      |                   ^
+    """
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    class A extends js.Object {
+      def foo: Int = 5
+    }
+    @ScalaJSDefined
+    trait B extends A {
+      @JSName(Syms.sym1)
+      def foo: Int
+    }
+    @ScalaJSDefined
+    class C extends B
+    """ hasWarns
+    """
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |def foo: Int in class A with JSName 'foo'
+      |    is conflicting with
+      |def foo: Int in trait B with JSName 'Syms.sym1'
+      |
+      |      def foo: Int
+      |          ^
+    """
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    class A extends js.Object {
+      @JSName(Syms.sym1)
+      def foo: Int = 5
+    }
+    @ScalaJSDefined
+    trait B extends A {
+      def foo: Int
+    }
+    @ScalaJSDefined
+    class C extends B
+    """ hasWarns
+    """
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |def foo: Int in class A with JSName 'Syms.sym1'
+      |    is conflicting with
+      |def foo: Int in trait B with JSName 'foo'
+      |
+      |      def foo: Int
+      |          ^
+    """
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    class A[T] extends js.Object {
+      @JSName(Syms.sym1)
+      def foo(x: T): T = x
+    }
+    @ScalaJSDefined
+    class B extends A[Int] {
+      override def foo(x: Int): Int = x
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def foo(x: Int): Int in class B with JSName 'foo'
+      |    is conflicting with
+      |def foo(x: Int): Int in class A with JSName 'Syms.sym1'
+      |
+      |      override def foo(x: Int): Int = x
+      |                   ^
+    """
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    trait A[T] extends js.Object {
+      @JSName(Syms.sym1)
+      def foo(x: T): T
+    }
+    @ScalaJSDefined
+    class B extends A[Int] {
+      override def foo(x: Int): Int = x
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def foo(x: Int): Int in class B with JSName 'foo'
+      |    is conflicting with
+      |def foo(x: Int): Int in trait A with JSName 'Syms.sym1'
+      |
+      |      override def foo(x: Int): Int = x
+      |                   ^
+    """
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    class A[T] extends js.Object {
+      @JSName(Syms.sym1)
+      def foo(x: T): T = x
+    }
+    @ScalaJSDefined
+    trait B extends A[Int] {
+      def foo(x: Int): Int
+    }
+    @ScalaJSDefined
+    class C extends B {
+      override def foo(x: Int): Int = x
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |def foo(x: Int): Int in class A with JSName 'Syms.sym1'
+      |    is conflicting with
+      |def foo(x: Int): Int in trait B with JSName 'foo'
+      |
+      |      def foo(x: Int): Int
+      |          ^
+      |newSource1.scala:20: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def foo(x: Int): Int in class C with JSName 'foo'
+      |    is conflicting with
+      |def foo(x: Int): Int in class A with JSName 'Syms.sym1'
+      |
+      |      override def foo(x: Int): Int = x
+      |                   ^
+    """
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    class A[T] extends js.Object {
+      def foo(x: T): T = x
+    }
+    @ScalaJSDefined
+    trait B extends A[Int] {
+      @JSName(Syms.sym1)
+      def foo(x: Int): Int
+    }
+    @ScalaJSDefined
+    class C extends B {
+      override def foo(x: Int): Int = x
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |def foo(x: Int): Int in class A with JSName 'foo'
+      |    is conflicting with
+      |def foo(x: Int): Int in trait B with JSName 'Syms.sym1'
+      |
+      |      def foo(x: Int): Int
+      |          ^
+      |newSource1.scala:20: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def foo(x: Int): Int in class C with JSName 'foo'
+      |    is conflicting with
+      |def foo(x: Int): Int in trait B with JSName 'Syms.sym1'
+      |
+      |      override def foo(x: Int): Int = x
+      |                   ^
+    """
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    trait A extends js.Object {
+      def foo: Int
+    }
+    @ScalaJSDefined
+    trait B extends js.Object {
+      @JSName(Syms.sym1)
+      def foo: Int
+    }
+    @ScalaJSDefined
+    trait C extends A with B
+    """ hasWarns
+    """
+      |newSource1.scala:19: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |def foo: Int in trait B with JSName 'Syms.sym1'
+      |    is conflicting with
+      |def foo: Int in trait A with JSName 'foo'
+      |
+      |    trait C extends A with B
+      |          ^
+    """
+
+    """
+    object Syms {
+      val sym1 = js.Symbol()
+    }
+
+    @ScalaJSDefined
+    trait A extends js.Object {
+      def foo: Int
+    }
+    @ScalaJSDefined
+    trait B extends js.Object {
+      @JSName(Syms.sym1)
+      def foo: Int
+    }
+    @ScalaJSDefined
+    abstract class C extends A with B
+    """ hasWarns
+    """
+      |newSource1.scala:19: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |def foo: Int in trait B with JSName 'Syms.sym1'
       |    is conflicting with
       |def foo: Int in trait A with JSName 'foo'
       |

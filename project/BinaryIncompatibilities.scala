@@ -37,6 +37,14 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.ir.Tags.TagTopLevelExportDef"),
 
+      // Breaking: PropertyName.{name -> encodedName}
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyName.encodedName"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.ir.Trees#StringLiteral.name"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.ir.Trees#PropertyName.name"),
+
       // private, not an issue
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.ir.Infos#MethodInfo.this"),
@@ -45,6 +53,12 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // Breaking. Remove PropertyName.name
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.javascript.Trees#PropertyName.name"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.javascript.Trees#StringLiteral.name"),
+
       // private, not an issue
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.sem.Semantics.this"),
@@ -59,11 +73,19 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.analyzer.Analyzer.org$scalajs$core$tools$linker$analyzer$Analyzer$$createMissingMethodInfo$default$3"),
 
+      // private[closure], not an issue
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.backend.closure.ClosureAstTransformer.transformString"),
+
       // private[emitter], not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genAddToPrototype"),
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genClass"),
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genClassDef"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genPropertyName"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genTopLevelExportDef"),
       ProblemFilters.exclude[DirectMissingMethodProblem](

@@ -239,6 +239,11 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def needsModuleClassSuffix(sym: Symbol): Boolean =
     sym.isModuleClass && !foreignIsImplClass(sym)
 
+  def encodeComputedNameIdentity(sym: Symbol): String = {
+    assert(sym.owner.isModuleClass)
+    encodeClassFullName(sym.owner) + "__" + encodeMemberNameInternal(sym)
+  }
+
   private def encodeMemberNameInternal(sym: Symbol): String =
     sym.name.toString.replace("_", "$und")
 

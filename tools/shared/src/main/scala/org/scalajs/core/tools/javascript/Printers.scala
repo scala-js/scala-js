@@ -561,6 +561,11 @@ object Printers {
     private final def print(propName: PropertyName): Unit = propName match {
       case lit: StringLiteral => print(lit: Tree)
       case ident: Ident       => print(ident)
+
+      case ComputedName(tree) =>
+        print("[")
+        print(tree)
+        print("]")
     }
 
     protected def print(s: String): Unit =

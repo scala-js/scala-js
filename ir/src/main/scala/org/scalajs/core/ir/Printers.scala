@@ -797,7 +797,7 @@ object Printers {
           }
           jsNativeLoadSpec.foreach { spec =>
             print(" loadfrom ")
-            print(spec.toString)
+            print(spec)
           }
           print(" ")
           printColumn(defs, "{", "", "}")
@@ -933,6 +933,40 @@ object Printers {
     private final def print(propName: PropertyName): Unit = propName match {
       case lit: StringLiteral => print(lit: Tree)
       case ident: Ident       => print(ident)
+
+      case ComputedName(tree, index) =>
+        print("[")
+        print(tree)
+        print("](")
+        print(index)
+        print(")")
+    }
+
+    private def print(spec: JSNativeLoadSpec): Unit = {
+      def printPath(path: List[String]): Unit = {
+        for (propName <- path) {
+          if (isValidIdentifier(propName)) {
+            print('.')
+            print(propName)
+          } else {
+            print('[')
+            print(propName)
+            print(']')
+          }
+        }
+      }
+
+      spec match {
+        case JSNativeLoadSpec.Global(path) =>
+          print("<global>")
+          printPath(path)
+
+        case JSNativeLoadSpec.Import(module, path) =>
+          print("import(")
+          print(module)
+          print(')')
+          printPath(path)
+      }
     }
 
     protected def print(s: String): Unit =

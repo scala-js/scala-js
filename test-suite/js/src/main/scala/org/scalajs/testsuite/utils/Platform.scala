@@ -7,6 +7,7 @@
 \*                                                                      */
 package org.scalajs.testsuite.utils
 
+import scala.scalajs.js
 import scala.scalajs.runtime
 
 object Platform {
@@ -28,6 +29,9 @@ object Platform {
 
   def areTypedArraysSupported: Boolean =
     runtime.Bits.areTypedArraysSupported
+
+  def areJSSymbolsSupported: Boolean =
+    !js.isUndefined(js.Dynamic.global.Symbol)
 
   def executingInRhino: Boolean = sysProp("rhino")
   def executingInNodeJS: Boolean = sysProp("nodejs")

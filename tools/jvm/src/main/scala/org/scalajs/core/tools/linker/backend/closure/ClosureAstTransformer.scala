@@ -233,15 +233,26 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
     setNodePosition(Node.newString(Token.LABEL_NAME, ident.name),
         ident.pos orElse parentPos)
 
-  def transformString(pName: PropertyName)(implicit parentPos: Position): Node =
-    setNodePosition(Node.newString(pName.name), pName.pos orElse parentPos)
+  def transformString(ident: Ident)(implicit parentPos: Position): Node =
+    setNodePosition(Node.newString(ident.name), ident.pos orElse parentPos)
 
   def transformStringKey(pName: PropertyName)(
       implicit parentPos: Position): Node = {
-    val node = Node.newString(Token.STRING_KEY, pName.name)
+    val node = pName match {
+      case Ident(name, _) =>
+        Node.newString(Token.STRING_KEY, name)
 
-    if (pName.isInstanceOf[StringLiteral])
-      node.setQuotedString()
+      case StringLiteral(name) =>
+        val node = Node.newString(Token.STRING_KEY, name)
+        node.setQuotedString()
+        node
+
+      case ComputedName(tree) =>
+        throw new AssertionError(
+            "The Closure AST compiler received a ComputedName, which it " +
+            "cannot translate because it always emits ES 5.1 code. " +
+            "Position: " + parentPos)
+    }
 
     setNodePosition(node, pName.pos orElse parentPos)
   }

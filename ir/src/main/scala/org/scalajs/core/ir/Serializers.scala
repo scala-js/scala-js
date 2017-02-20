@@ -409,20 +409,11 @@ object Serializers {
           writeInt(tree.optimizerHints.bits)
 
         case FieldDef(static, name, ftpe, mutable) =>
-          /* TODO Simply use `writePropertyName` when we can break binary
-           * compatibility.
-           */
-          name match {
-            case name: Ident =>
-              writeByte(TagFieldDef)
-              writeBoolean(static)
-              writeIdent(name)
-            case name: StringLiteral =>
-              writeByte(TagStringLitFieldDef)
-              writeBoolean(static)
-              writeTree(name)
-          }
-          writeType(ftpe); writeBoolean(mutable)
+          writeByte(TagFieldDef)
+          writeBoolean(static)
+          writePropertyName(name)
+          writeType(ftpe)
+          writeBoolean(mutable)
 
         case methodDef: MethodDef =>
           val MethodDef(static, name, args, resultType, body) = methodDef
@@ -556,11 +547,19 @@ object Serializers {
     def writeReferenceType(tpe: ReferenceType): Unit =
       writeType(tpe.asInstanceOf[Type])
 
-    def writePropertyName(name: PropertyName): Unit = {
-      name match {
-        case name: Ident         => buffer.writeBoolean(true); writeIdent(name)
-        case name: StringLiteral => buffer.writeBoolean(false); writeTree(name)
-      }
+    def writePropertyName(name: PropertyName): Unit = name match {
+      case name: Ident =>
+        buffer.writeByte(TagPropertyNameIdent)
+        writeIdent(name)
+
+      case name: StringLiteral =>
+        buffer.writeByte(TagPropertyNameStringLiteral)
+        writeTree(name)
+
+      case ComputedName(tree, index) =>
+        buffer.writeByte(TagPropertyNameComputedName)
+        writeTree(tree)
+        writeString(index)
     }
 
     def writePosition(pos: Position): Unit = {
@@ -841,19 +840,14 @@ object Serializers {
               optimizerHints)
 
         case TagFieldDef =>
-          val static =
-            if (useHacks0614) false
-            else readBoolean()
-          FieldDef(static, readIdent(), readType(), readBoolean())
-        case TagStringLitFieldDef =>
-          /* TODO Merge this into TagFieldDef and use readPropertyName()
-           * when we can break binary compatibility.
-           */
-          val static =
-            if (useHacks0614) false
-            else readBoolean()
-          FieldDef(static, readTree().asInstanceOf[StringLiteral], readType(),
-              readBoolean())
+          if (useHacks0614)
+            FieldDef(static = false, readIdent(), readType(), readBoolean())
+          else
+            FieldDef(readBoolean(), readPropertyName(), readType(), readBoolean())
+
+        case TagStringLitFieldDef if useHacks0614 =>
+          FieldDef(static = false, readTree().asInstanceOf[StringLiteral],
+              readType(), readBoolean())
 
         case TagMethodDef =>
           val optHash = readOptHash()
@@ -870,7 +864,7 @@ object Serializers {
             result1
           }
           if (useHacks065 && result2.resultType != NoType &&
-              isConstructorName(result2.name.name)) {
+              isConstructorName(result2.name.encodedName)) {
             result2.copy(resultType = NoType, body = result2.body)(
                 result2.optimizerHints, result2.hash)(
                 result2.pos)
@@ -980,8 +974,21 @@ object Serializers {
       readType().asInstanceOf[ReferenceType]
 
     def readPropertyName(): PropertyName = {
-      if (input.readBoolean()) readIdent()
-      else readTree().asInstanceOf[StringLiteral]
+      if (useHacks0614) {
+        if (input.readBoolean()) readIdent()
+        else readTree().asInstanceOf[StringLiteral]
+      } else {
+        input.readByte() match {
+          case TagPropertyNameIdent =>
+            readIdent()
+
+          case TagPropertyNameStringLiteral =>
+            readTree().asInstanceOf[StringLiteral]
+
+          case TagPropertyNameComputedName =>
+            ComputedName(readTree(), readString())
+        }
+      }
     }
 
     def readPosition(): Position = {

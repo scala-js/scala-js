@@ -46,7 +46,7 @@ abstract class GenJSCode extends plugins.PluginComponent
   import rootMirror._
   import definitions._
   import jsDefinitions._
-  import jsInterop.{jsNameOf, compat068FullJSNameOf, jsNativeLoadSpecOf}
+  import jsInterop.{jsNameOf, compat068FullJSNameOf, jsNativeLoadSpecOf, JSName}
   import JSTreeExtractors._
 
   import treeInfo.hasSynthCaseSymbol
@@ -491,7 +491,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val constructorTrees = new ListBuffer[DefDef]
       val generatedMethods = new ListBuffer[js.MethodDef]
-      val dispatchMethodNames = new ListBuffer[String]
+      val dispatchMethodNames = new ListBuffer[JSName]
 
       def gen(tree: Tree): Unit = {
         tree match {
@@ -621,15 +621,14 @@ abstract class GenJSCode extends plugins.PluginComponent
               assert(mdef.static, "Non-static method in SJS defined JS class")
               staticMembers += mdef
 
-            case js.StringLiteral(name) =>
+            case js.StringLiteral("constructor") =>
               assert(!mdef.static, "Exported static method")
+              assert(constructor.isEmpty, "two ctors in class")
+              constructor = Some(mdef)
 
-              if (name == "constructor") {
-                assert(constructor.isEmpty, "two ctors in class")
-                constructor = Some(mdef)
-              } else {
-                classMembers += mdef
-              }
+            case _ =>
+              assert(!mdef.static, "Exported static method")
+              classMembers += mdef
           }
 
         case property: js.PropertyDef =>
@@ -667,8 +666,9 @@ abstract class GenJSCode extends plugins.PluginComponent
         case fdef: js.FieldDef =>
           implicit val pos = fdef.pos
           val select = fdef.name match {
-            case lit: js.StringLiteral => js.JSBracketSelect(selfRef, lit)
-            case ident: js.Ident       => js.JSDotSelect(selfRef, ident)
+            case ident: js.Ident          => js.JSDotSelect(selfRef, ident)
+            case lit: js.StringLiteral    => js.JSBracketSelect(selfRef, lit)
+            case js.ComputedName(tree, _) => js.JSBracketSelect(selfRef, tree)
           }
           js.Assign(select, jstpe.zeroOf(fdef.tpe))
 
@@ -896,7 +896,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
 
         val name =
-          if (isExposed(f)) js.StringLiteral(jsNameOf(f))
+          if (isExposed(f)) genPropertyName(jsNameOf(f))
           else encodeFieldSym(f)
 
         val irTpe = {
@@ -1100,7 +1100,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         else (subConstructors.head.overrideNumBounds._1, overrideNum)
 
       def get(methodName: String): Option[ConstructorTree] = {
-        if (methodName == this.method.name.name) {
+        if (methodName == this.method.name.encodedName) {
           Some(this)
         } else {
           subConstructors.iterator.map(_.get(methodName)).collectFirst {
@@ -1370,7 +1370,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       var overrideNum = -1
       def mkConstructorTree(method: js.MethodDef): ConstructorTree = {
-        val methodName = method.name.name
+        val methodName = method.name.encodedName
         val subCtrTrees = ctorToChildren(methodName).map(mkConstructorTree)
         overrideNum += 1
         new ConstructorTree(overrideNum, method, subCtrTrees)
@@ -1844,7 +1844,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           } else if (isScalaJSDefinedJSClass(sym.owner)) {
             val genQual = genExpr(qualifier)
             val boxed = if (isExposed(sym))
-              js.JSBracketSelect(genQual, js.StringLiteral(jsNameOf(sym)))
+              js.JSBracketSelect(genQual, genExpr(jsNameOf(sym)))
             else
               js.JSDotSelect(genQual, encodeFieldSym(sym))
             unboxFieldValue(boxed)
@@ -1929,7 +1929,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
               if (isScalaJSDefinedJSClass(sym.owner)) {
                 val genLhs = if (isExposed(sym))
-                  js.JSBracketSelect(genQual, js.StringLiteral(jsNameOf(sym)))
+                  js.JSBracketSelect(genQual, genExpr(jsNameOf(sym)))
                 else
                   js.JSDotSelect(genQual, encodeFieldSym(sym))
                 js.Assign(genLhs, genBoxedRhs)
@@ -3908,9 +3908,10 @@ abstract class GenJSCode extends plugins.PluginComponent
          *   {name1: arg1, name2: arg2, ... }
          */
 
-        def warnIfDuplicatedKey(pairs: List[(js.StringLiteral, js.Tree)]): Unit = {
-          val allKeys = pairs.collect { case (js.StringLiteral(keyName), _) => keyName }
-          val keyCounts = allKeys.distinct.map(key => key -> allKeys.count(_ == key))
+        def warnIfDuplicatedKey(keys: List[js.StringLiteral]): Unit = {
+          val keyNames = keys.map(_.value)
+          val keyCounts =
+            keyNames.distinct.map(key => key -> keyNames.count(_ == key))
           val duplicateKeyCounts = keyCounts.filter(1 < _._2)
           if (duplicateKeyCounts.nonEmpty) {
             reporter.warning(pos,
@@ -3923,12 +3924,21 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
         }
 
+        def keyToPropName(key: js.Tree, index: Int): js.PropertyName = key match {
+          case key: js.StringLiteral => key
+          case _                     => js.ComputedName(key, "local" + index)
+        }
+
         // Extract first arg to future proof against varargs
         extractFirstArg(genArgs) match {
-          // case js.Dynamic.literal("name1" -> ..., "name2" -> ...)
-          case (js.StringLiteral("apply"), jse.LitNamed(pairs)) =>
-            warnIfDuplicatedKey(pairs)
-            js.JSObjectConstr(pairs)
+          // case js.Dynamic.literal("name1" -> ..., nameExpr2 -> ...)
+          case (js.StringLiteral("apply"), jse.Tuple2List(pairs)) =>
+            warnIfDuplicatedKey(pairs.collect {
+              case (key: js.StringLiteral, _) => key
+            })
+            js.JSObjectConstr(pairs.zipWithIndex.map {
+              case ((key, value), index) => (keyToPropName(key, index), value)
+            })
 
           /* case js.Dynamic.literal(x: _*)
            * Even though scalac does not support this notation, it is still
@@ -3950,31 +3960,27 @@ abstract class GenJSCode extends plugins.PluginComponent
           // case js.Dynamic.literal(x, y)
           case (js.StringLiteral("apply"), tups) =>
             // Check for duplicated explicit keys
-            val pairs = jse.LitNamedExtractor.extractFrom(tups)
-            warnIfDuplicatedKey(pairs)
+            warnIfDuplicatedKey(jse.extractLiteralKeysFrom(tups))
 
-            // Create tmp variable
-            val resIdent = freshLocalIdent("obj")
-            val resVarDef = js.VarDef(resIdent, jstpe.AnyType, mutable = false,
-                js.JSObjectConstr(Nil))
-            val res = resVarDef.ref
-
-            // Assign fields
+            // Evaluate all tuples first
             val tuple2Type = encodeClassType(TupleClass(2))
-            val assigns = tups flatMap {
-              // special case for literals
-              case jse.Tuple2(name, value) =>
-                js.Assign(js.JSBracketSelect(res, name), value) :: Nil
-              case tupExpr =>
-                val tupIdent = freshLocalIdent("tup")
-                val tup = js.VarRef(tupIdent)(tuple2Type)
-                js.VarDef(tupIdent, tuple2Type, mutable = false, tupExpr) ::
-                js.Assign(js.JSBracketSelect(res,
-                    genApplyMethod(tup, js.Ident("$$und1__O"), Nil, jstpe.AnyType)),
-                    genApplyMethod(tup, js.Ident("$$und2__O"), Nil, jstpe.AnyType)) :: Nil
+            val evalTuples = tups.map { tup =>
+              js.VarDef(freshLocalIdent("tup"), tuple2Type, mutable = false,
+                  tup)(tup.pos)
             }
 
-            js.Block(resVarDef +: assigns :+ res: _*)
+            // Build the resulting object
+            val result = js.JSObjectConstr(evalTuples.zipWithIndex.map {
+              case (evalTuple, index) =>
+                val tupRef = evalTuple.ref
+                val key = genApplyMethod(tupRef, js.Ident("$$und1__O"), Nil,
+                    jstpe.AnyType)
+                val value = genApplyMethod(tupRef, js.Ident("$$und2__O"), Nil,
+                    jstpe.AnyType)
+                keyToPropName(key, index) -> value
+            })
+
+            js.Block(evalTuples :+ result)
 
           // case where another method is called
           case (js.StringLiteral(name), _) if name != "apply" =>
@@ -4199,7 +4205,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.JSFunctionApply(receiver, args)
 
         case _ =>
-          def jsFunName = js.StringLiteral(jsNameOf(sym))
+          def jsFunName: js.Tree = genExpr(jsNameOf(sym))
 
           def genSuperReference(propName: js.Tree): js.Tree = {
             superIn.fold[js.Tree] {
@@ -5142,6 +5148,40 @@ abstract class GenJSCode extends plugins.PluginComponent
           paramsLocal :+ ensureBoxed(body, methodType.resultType))
 
       (patchedParams, patchedBody)
+    }
+
+    // Methods to deal with JSName ---------------------------------------------
+
+    def genPropertyName(name: JSName)(implicit pos: Position): js.PropertyName = {
+      name match {
+        case JSName.Literal(name) => js.StringLiteral(name)
+
+        case JSName.Computed(sym) =>
+          js.ComputedName(genComputedJSName(sym), encodeComputedNameIdentity(sym))
+      }
+    }
+
+    def genExpr(name: JSName)(implicit pos: Position): js.Tree = name match {
+      case JSName.Literal(name) => js.StringLiteral(name)
+      case JSName.Computed(sym) => genComputedJSName(sym)
+    }
+
+    private def genComputedJSName(sym: Symbol)(implicit pos: Position): js.Tree = {
+      /* By construction (i.e. restriction in PrepJSInterop), we know that sym
+       * must be a static method.
+       * Therefore, at this point, we can invoke it by loading its owner and
+       * calling it.
+       */
+      val module = genLoadModule(sym.owner)
+
+      if (isRawJSType(sym.owner.tpe)) {
+        if (!isScalaJSDefinedJSClass(sym.owner) || isExposed(sym))
+          genJSCallGeneric(sym, module, args = Nil, isStat = false)
+        else
+          genApplyJSClassMethod(module, sym, arguments = Nil)
+      } else {
+        genApplyMethod(module, sym, arguments = Nil)
+      }
     }
 
     // Utilities ---------------------------------------------------------------

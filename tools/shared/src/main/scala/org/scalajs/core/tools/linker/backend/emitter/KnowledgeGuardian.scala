@@ -55,7 +55,7 @@ private[emitter] final class KnowledgeGuardian {
 
       if (linkedClass.encodedName == LongImpl.RuntimeLongClass) {
         newHasNewRuntimeLong = linkedClass.memberMethods.exists { linkedMethod =>
-          linkedMethod.tree.name.name == LongImpl.initFromParts
+          linkedMethod.tree.name.encodedName == LongImpl.initFromParts
         }
       }
     }

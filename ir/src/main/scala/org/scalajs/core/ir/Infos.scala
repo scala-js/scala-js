@@ -373,10 +373,16 @@ object Infos {
 
     def generateMethodInfo(methodDef: MethodDef): MethodInfo = {
       builder
-        .setEncodedName(methodDef.name.name)
+        .setEncodedName(methodDef.name.encodedName)
         .setIsStatic(methodDef.static)
         .setIsAbstract(methodDef.body.isEmpty)
-        .setIsExported(methodDef.name.isInstanceOf[StringLiteral])
+        .setIsExported(!methodDef.name.isInstanceOf[Ident])
+
+      methodDef.name match {
+        case ComputedName(tree, _) =>
+          traverse(tree)
+        case _ =>
+      }
 
       methodDef.body.foreach(traverse)
 
@@ -385,9 +391,15 @@ object Infos {
 
     def generatePropertyInfo(propertyDef: PropertyDef): MethodInfo = {
       builder
-        .setEncodedName(propertyDef.name.name)
+        .setEncodedName(propertyDef.name.encodedName)
         .setIsStatic(propertyDef.static)
         .setIsExported(true)
+
+      propertyDef.name match {
+        case ComputedName(tree, _) =>
+          traverse(tree)
+        case _ =>
+      }
 
       propertyDef.getterBody.foreach(traverse)
       propertyDef.setterArgAndBody foreach { case (_, body) =>
