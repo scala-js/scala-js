@@ -1501,6 +1501,37 @@ object Build {
           }
 
           sourceFiles1
+        },
+
+        /* Reduce the amount of tests on PhantomJS to avoid a crash.
+         * It seems we reached the limits of what PhantomJS can handle in terms
+         * of code mass. Since PhantomJS support is due to be moved to a
+         * separate repository in 1.0.0, the easiest way to fix this is to
+         * reduce the pressure on PhantomJS. We therefore remove the tests of
+         * java.math (BigInteger and BigDecimal) when running with PhantomJS.
+         * These tests are well isolated, and the less likely to have
+         * environmental differences.
+         *
+         * Note that `jsEnv` is never set from this Build, but it is set via
+         * the command-line in the CI matrix.
+         */
+        sources in Test := {
+          def isPhantomJS(env: JSEnv): Boolean = env match {
+            case _: PhantomJSEnv       => true
+            case env: RetryingComJSEnv => isPhantomJS(env.baseEnv)
+            case _                     => false
+          }
+
+          val sourceFiles = (sources in Test).value
+          if ((jsEnv in Test).?.value.exists(isPhantomJS)) {
+            sourceFiles.filter { f =>
+              !f.getAbsolutePath
+                .replace('\\', '/')
+                .contains("/org/scalajs/testsuite/javalib/math/")
+            }
+          } else {
+            sourceFiles
+          }
         }
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
