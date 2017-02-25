@@ -9,38 +9,38 @@
 
 package org.scalajs.sbtplugin
 
-import java.io.File
-import java.io.Writer
+import java.net.URI
 
 import sbt.testing.{Framework, TaskDef}
 
+import org.scalajs.core.ir.Utils
 import org.scalajs.core.tools.json._
 import org.scalajs.testadapter.TaskDefSerializers._
 
 /** Template for the HTML runner. */
 private[scalajs] object HTMLRunnerTemplate {
 
-  def render(title: String, sjsFile: File, jsdepsFile: File, css: File,
-      loadedFrameworks: Map[sbt.TestFramework, Framework],
+  def render(baseURI: URI, title: String, sjsFile: URI, jsdepsFile: URI,
+      css: URI, loadedFrameworks: Map[sbt.TestFramework, Framework],
       definedTests: Seq[sbt.TestDefinition],
       sysProps: Map[String, String]): String = {
+    def relURI(uri: URI) =
+      htmlEscaped(Utils.relativize(baseURI, uri).toASCIIString)
+
     s"""
     <!DOCTYPE html>
     <html>
       <head>
         <title>${htmlEscaped(title)}</title>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-        <link rel="stylesheet" type="text/css"
-              href="${htmlEscaped(css.toURI.toASCIIString)}" />
+        <link rel="stylesheet" type="text/css" href="${relURI(css)}" />
         <script type="text/javascript">
           var __ScalaJSEnv = {
             javaSystemProperties: ${jsonToString(sysProps.toJSON)}
           };
         </script>
-        <script type="text/javascript"
-                src="${htmlEscaped(jsdepsFile.toURI.toASCIIString)}"></script>
-        <script type="text/javascript"
-                src="${htmlEscaped(sjsFile.toURI.toASCIIString)}"></script>
+        <script type="text/javascript" src="${relURI(jsdepsFile)}"></script>
+        <script type="text/javascript" src="${relURI(sjsFile)}"></script>
         <script type="text/javascript">
         ${renderTestDefinitions(loadedFrameworks, definedTests)}
         </script>

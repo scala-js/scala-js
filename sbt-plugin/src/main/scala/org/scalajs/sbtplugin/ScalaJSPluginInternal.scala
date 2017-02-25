@@ -860,9 +860,10 @@ object ScalaJSPluginInternal {
         }
       }
 
-      IO.write(output, HTMLRunnerTemplate.render(name.value + " - tests",
-          (sjsKey in testHtmlKey).value.data, (jsdepsKey in testHtmlKey).value,
-          css, (loadedTestFrameworks in testHtmlKey).value,
+      IO.write(output, HTMLRunnerTemplate.render(output.toURI,
+          name.value + " - tests", (sjsKey in testHtmlKey).value.data.toURI,
+          (jsdepsKey in testHtmlKey).value.toURI, css.toURI,
+          (loadedTestFrameworks in testHtmlKey).value,
           (definedTests in testHtmlKey).value,
           (scalaJSJavaSystemProperties in testHtmlKey).value))
 
