@@ -133,6 +133,9 @@ object BinaryIncompatibilities {
   )
 
   val SbtPlugin = Seq(
+    // private[scalajs], not an issue.
+    ProblemFilters.exclude[DirectMissingMethodProblem](
+        "org.scalajs.sbtplugin.HTMLRunnerTemplate.render")
   )
 
   val TestAdapter = Seq(

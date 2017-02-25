@@ -29,8 +29,11 @@ object Utils {
         base.getRawAuthority != trgt.getRawAuthority)
       trgt
     else {
-      val trgtCmps = trgt.getRawPath.split('/')
-      val baseCmps = base.getRawPath.split('/')
+      val trgtCmps = trgt.getRawPath.split("/", -1)
+
+      // Disregard the last element, since it is the filename
+      // (or empty string for a directory).
+      val baseCmps = base.getRawPath.split("/", -1).init
 
       val prefixLen = (trgtCmps zip baseCmps).takeWhile(t => t._1 == t._2).size
 
