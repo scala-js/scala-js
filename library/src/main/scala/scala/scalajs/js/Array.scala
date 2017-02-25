@@ -37,7 +37,7 @@ import annotation._
  *  @constructor Creates a new array of length 0.
  */
 @native
-class Array[A] extends Object {
+class Array[A] extends Object with Iterable[A] {
   /** Creates a new array with the given length.
    *  @param arrayLength Initial length of the array.
    */
@@ -72,6 +72,12 @@ class Array[A] extends Object {
    * MDN
    */
   def concat[B >: A](items: Array[_ <: B]*): Array[B] = native
+
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  JavaScript Iterator for this Array.
+   */
+  @JSName(Symbol.iterator)
+  def jsIterator(): Iterator[A] = native
 
   /**
    * The join() method joins all elements of an array into a string.

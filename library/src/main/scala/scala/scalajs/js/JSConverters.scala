@@ -12,6 +12,7 @@ package scala.scalajs.js
 import scala.language.implicitConversions
 
 import scala.scalajs.js
+import scala.scalajs.js.annotation.{JSName, ScalaJSDefined}
 
 import scala.collection._
 import scala.concurrent.{ExecutionContext, Future}
@@ -39,6 +40,42 @@ object JSConverters extends JSConvertersLowPrioImplicits {
   implicit class JSRichGenTraversableOnce[T](
       val col: GenTraversableOnce[T]) extends AnyVal {
     @inline final def toJSArray: Array[T] = genTraversableOnce2jsArray(col)
+  }
+
+  implicit class JSRichGenIterable[T](
+      val __self: GenIterable[T]) extends AnyVal {
+    @inline final def toJSIterable: Iterable[T] = new IterableAdapter(__self)
+  }
+
+  implicit class JSRichIterator[T](
+      val __self: scala.collection.Iterator[T]) extends AnyVal {
+    @inline final def toJSIterator: Iterator[T] = new IteratorAdapter(__self)
+  }
+
+  @ScalaJSDefined
+  private class IterableAdapter[+T](col: GenIterable[T]) extends Iterable[T] {
+    @JSName(Symbol.iterator)
+    final def jsIterator(): Iterator[T] = col.iterator.toJSIterator
+  }
+
+  @ScalaJSDefined
+  private class IteratorAdapter[+T](
+      it: scala.collection.Iterator[T]) extends Iterator[T] {
+    final def next(): Iterator.Entry[T] = {
+      if (it.hasNext) {
+        new Iterator.Entry[T] {
+          val done: Boolean = false
+          val value: T = it.next()
+        }
+      } else {
+        new Iterator.Entry[T] {
+          val done: Boolean = true
+          // Evil cast to work around typing. By specification, reading `value`
+          // is undefined behavior, so this is ok.
+          val value: T = js.undefined.asInstanceOf[T]
+        }
+      }
+    }
   }
 
   implicit class JSRichGenMap[T](val map: GenMap[String, T]) extends AnyVal {

@@ -220,7 +220,7 @@ final class UndefOrOps[A](val self: UndefOr[A]) extends AnyVal {
   /** Returns a singleton iterator returning the $option's value
    *  if it is nonempty, or an empty iterator if the option is empty.
    */
-  def iterator: Iterator[A] =
+  def iterator: scala.collection.Iterator[A] =
     if (isEmpty) scala.collection.Iterator.empty
     else scala.collection.Iterator.single(this.forceGet)
 
