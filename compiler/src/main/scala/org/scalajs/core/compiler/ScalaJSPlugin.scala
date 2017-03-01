@@ -44,6 +44,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   object scalaJSOpts extends ScalaJSOptions { // scalastyle:ignore
     import ScalaJSOptions.URIMap
     var fixClassOf: Boolean = false
+    var suppressExportDeprecations: Boolean = false
     lazy val sourceURIMaps: List[URIMap] = {
       if (_sourceURIMaps.nonEmpty)
         _sourceURIMaps.reverse
@@ -97,7 +98,6 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     for (option <- options) {
       if (option == "fixClassOf") {
         fixClassOf = true
-
       } else if (option.startsWith("mapSourceURI:")) {
         val uris = option.stripPrefix("mapSourceURI:").split("->")
 
@@ -113,7 +113,8 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
               error(s"${e.getInput} is not a valid URI")
           }
         }
-
+      } else if (option == "suppressExportDeprecations") {
+        suppressExportDeprecations = true
       // The following options are deprecated (how do we show this to the user?)
       } else if (option.startsWith("relSourceMap:")) {
         val uriStr = option.stripPrefix("relSourceMap:")
@@ -145,15 +146,24 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
 
   override val optionsHelp: Option[String] = Some(s"""
       |  -P:$name:mapSourceURI:FROM_URI[->TO_URI]
-      |     change the location the source URIs in the emitted IR point to
+      |     Change the location the source URIs in the emitted IR point to
       |     - strips away the prefix FROM_URI (if it matches)
       |     - optionally prefixes the TO_URI, where stripping has been performed
       |     - any number of occurences are allowed. Processing is done on a first match basis.
-      |  -P:$name:fixClassOf          repair calls to Predef.classOf that reach ScalaJS
+      |  -P:$name:suppressExportDeprecations
+      |     Silence deprecations of top-level @JSExport,
+      |     @JSExportDescendentClasses and @JSExportDescendentObjects.
+      |     This can be used as a transition path in the 0.6.x cycle,
+      |     to avoid too many deprecation warnings that are not trivial
+      |     to address.
+      |  -P:$name:fixClassOf
+      |     Repair calls to Predef.classOf that reach Scala.js.
       |     WARNING: This is a tremendous hack! Expect ugly errors if you use this option.
       |Deprecated options
-      |  -P:$name:relSourceMap:<URI>  relativize emitted source maps with <URI>
-      |  -P:$name:absSourceMap:<URI>  absolutize emitted source maps with <URI>
+      |  -P:$name:relSourceMap:<URI>
+      |     Relativize emitted source maps with <URI>
+      |  -P:$name:absSourceMap:<URI>
+      |     Absolutize emitted source maps with <URI>
       |     This option requires the use of relSourceMap
       """.stripMargin)
 

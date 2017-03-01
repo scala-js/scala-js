@@ -8,7 +8,7 @@ import org.junit.Test
 class JSExportTest extends DirectTest with TestHelpers {
 
   override def extraArgs: List[String] =
-    super.extraArgs :+ "-deprecation"
+    super.extraArgs ::: List("-deprecation", "-P:scalajs:suppressExportDeprecations")
 
   override def preamble: String =
     """import scala.scalajs.js, js.annotation._

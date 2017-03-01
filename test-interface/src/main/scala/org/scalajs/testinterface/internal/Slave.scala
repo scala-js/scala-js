@@ -1,7 +1,7 @@
 package org.scalajs.testinterface.internal
 
 import scala.scalajs.js
-import js.annotation.JSExport
+import js.annotation._
 
 import sbt.testing._
 
@@ -12,7 +12,7 @@ import scala.util.{Try, Success, Failure}
 
 import org.scalajs.testinterface.ScalaJSClassLoader
 
-@JSExport
+@JSExportTopLevel("org.scalajs.testinterface.internal.Slave")
 final class Slave(frameworkName: String, args: js.Array[String],
     remoteArgs: js.Array[String]) extends BridgeBase(frameworkName) {
 

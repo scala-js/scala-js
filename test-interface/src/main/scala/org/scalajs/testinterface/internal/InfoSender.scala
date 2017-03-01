@@ -3,9 +3,9 @@ package org.scalajs.testinterface.internal
 import scala.scalajs.js
 import js.Dynamic.{literal => lit}
 import js.JSConverters._
-import js.annotation.JSExport
+import js.annotation._
 
-@JSExport
+@JSExportTopLevel("org.scalajs.testinterface.internal.InfoSender")
 final class InfoSender(frameworkName: String) {
 
   @JSExport

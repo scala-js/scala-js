@@ -639,14 +639,14 @@ object Build {
 
           val code = {
             s"""
-            var linker = scalajs.QuickLinker();
+            var linker = scalajs.QuickLinker;
             var lib = linker.linkTestSuiteNode(${irPaths.mkString(", ")});
 
             var __ScalaJSEnv = $scalaJSEnv;
 
             eval("(function() { 'use strict'; " +
               lib + ";" +
-              "scalajs.TestRunner().runTests();" +
+              "scalajs.TestRunner.runTests();" +
             "}).call(this);");
             """
           }
@@ -997,7 +997,10 @@ object Build {
           previousArtifactSetting,
           mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
           libraryDependencies +=
-            "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided"
+            "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
+
+          // js.JSApp is annotated with @JSExportDescendentObjects
+          scalacOptions += "-P:scalajs:suppressExportDeprecations"
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
@@ -1414,6 +1417,11 @@ object Build {
       testHtmlSettings(testHtmlFastOpt, FastOptStage) ++
       testHtmlSettings(testHtmlFullOpt, FullOptStage) ++ Seq(
         name := "Scala.js test suite",
+
+        /* We still have zillions of run test for top-level @JSExport. Don't
+         * drown the test:compile output under useless warnings.
+         */
+        scalacOptions in Test += "-P:scalajs:suppressExportDeprecations",
 
         unmanagedSourceDirectories in Test ++= {
           val testDir = (sourceDirectory in Test).value

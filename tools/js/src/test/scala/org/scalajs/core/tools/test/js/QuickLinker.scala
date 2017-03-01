@@ -7,9 +7,9 @@ import org.scalajs.core.tools.io.IRFileCache.IRContainer
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.linker.Linker
 
-import scala.scalajs.js.annotation.JSExport
+import scala.scalajs.js.annotation._
 
-@JSExport("scalajs.QuickLinker")
+@JSExportTopLevel("scalajs.QuickLinker")
 object QuickLinker {
 
   /** Link a Scala.js application on Node.js */

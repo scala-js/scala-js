@@ -9,6 +9,9 @@ import org.junit.Ignore
 
 class ScalaJSDefinedTest extends DirectTest with TestHelpers {
 
+  override def extraArgs: List[String] =
+    super.extraArgs :+ "-P:scalajs:suppressExportDeprecations"
+
   override def preamble: String =
     """
     import scala.scalajs.js

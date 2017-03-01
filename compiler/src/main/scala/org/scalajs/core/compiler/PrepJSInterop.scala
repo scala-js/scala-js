@@ -353,6 +353,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case _ => super.transform(tree)
       }
 
+      if (tree.isInstanceOf[ImplDef])
+        checkDeprecationOfJSExportDescendentClassesObjects(tree.symbol)
+
       postTransform(preTransformedTree)
     }
 

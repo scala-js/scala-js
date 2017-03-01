@@ -31,6 +31,11 @@ trait PrepJSExports { this: PrepJSInterop =>
     assert(!isNamed || destination == ExportDestination.Normal)
   }
 
+  private final val SuppressExportDeprecationsMsg = {
+    "\n  (you can suppress this warning in 0.6.x by passing the option " +
+    "`-P:scalajs:suppressExportDeprecations` to scalac)"
+  }
+
   /** Generate the exporter for the given DefDef
    *  or ValDef (abstract val in class, val in trait or lazy val;
    *  these don't get DefDefs until the fields phase)
@@ -161,6 +166,37 @@ trait PrepJSExports { this: PrepJSInterop =>
         }
 
         jsInterop.registerForExport(sym, normal)
+      }
+    }
+  }
+
+  /** Deprecate `@JSExportDescendentClasses` and `@JSExportDescendentObjects`.
+   *
+   *  We do this only on the annotated symbol (not in descendants), which is
+   *  why this test is a bit separate from everything else.
+   *  Ideally we would simply `@deprecate` the annotations, but that would not
+   *  allow us to suppress the deprecations.
+   */
+  def checkDeprecationOfJSExportDescendentClassesObjects(sym: Symbol): Unit = {
+    if (!scalaJSOpts.suppressExportDeprecations) {
+      for (annot <- sym.annotations) {
+        if (annot.symbol == JSExportDescendentClassesAnnotation) {
+          reporter.warning(annot.pos,
+              "@JSExportDescendentClasses is deprecated and will be removed " +
+              "in 1.0.0. For use cases where you want to simulate "+
+              "\"reflective\" instantiation, use @EnableReflectiveInstantion " +
+              "and scala.scalajs.reflect.Reflect.lookupInstantiatableClass " +
+              "instead." +
+              SuppressExportDeprecationsMsg)
+        } else if (annot.symbol == JSExportDescendentObjectsAnnotation) {
+          reporter.warning(annot.pos,
+              "@JSExportDescendentObjects is deprecated and will be removed " +
+              "in 1.0.0. For use cases where you want to simulate " +
+              "\"reflective\" loading, use @EnableReflectiveInstantion and " +
+              "scala.scalajs.reflect.Reflect.lookupLoadableModuleClass " +
+              "instead." +
+              SuppressExportDeprecationsMsg)
+        }
       }
     }
   }
@@ -332,6 +368,25 @@ trait PrepJSExports { this: PrepJSInterop =>
           if (!isMember && !hasExplicitName && isStaticNested) {
             reporter.error(annot.pos,
                 "You must set an explicit name for exports of nested classes.")
+          }
+
+          // Deprecate @JSExport on classes and objects
+          if (!isMember && !scalaJSOpts.suppressExportDeprecations) {
+            if (sym.isModuleClass) {
+              reporter.warning(annot.pos,
+                  "@JSExport on objects is deprecated and will be removed " +
+                  "in 1.0.0. Use @JSExportTopLevel instead. Note that it " +
+                  "exports the object itself (rather than a 0-arg function " +
+                  "returning the object), so the calling JavaScript code " +
+                  "must be adapted." +
+                  SuppressExportDeprecationsMsg)
+            } else {
+              reporter.warning(annot.pos,
+                  "@JSExport on classes is deprecated and will be removed " +
+                  "in 1.0.0. Use @JSExportTopLevel instead (which does " +
+                  "exactly the same thing on classes)." +
+                  SuppressExportDeprecationsMsg)
+            }
           }
 
         case ExportDestination.TopLevel =>

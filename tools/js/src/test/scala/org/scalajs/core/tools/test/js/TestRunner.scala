@@ -1,13 +1,13 @@
 package org.scalajs.core.tools.test.js
 
 import scala.scalajs.js
-import js.annotation.JSExport
+import scala.scalajs.js.annotation._
 
 import org.scalajs.testinterface.{ScalaJSClassLoader, TestDetector}
 
 import sbt.testing._
 
-@JSExport("scalajs.TestRunner")
+@JSExportTopLevel("scalajs.TestRunner")
 object TestRunner {
 
   @JSExport
