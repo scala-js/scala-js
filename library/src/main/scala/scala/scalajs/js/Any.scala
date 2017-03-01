@@ -176,9 +176,14 @@ object Any extends LowPrioAnyImplicits {
     value.asInstanceOf[Any]
 }
 
-trait LowPrioAnyImplicits {
+trait LowPrioAnyImplicits extends LowestPrioAnyImplicits {
   implicit def wrapArray[A](array: Array[A]): WrappedArray[A] =
     new WrappedArray(array)
   implicit def wrapDictionary[A](dict: Dictionary[A]): WrappedDictionary[A] =
     new WrappedDictionary(dict)
+}
+
+sealed trait LowestPrioAnyImplicits {
+  implicit def iterableOps[A](iterable: Iterable[A]): IterableOps[A] =
+    new IterableOps(iterable)
 }

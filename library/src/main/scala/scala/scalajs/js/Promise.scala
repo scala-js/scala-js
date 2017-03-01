@@ -61,9 +61,7 @@ object Promise extends js.Object {
   /** Returns a new [[Promise]] failed with the specified `reason`. */
   def reject(reason: scala.Any): Promise[Nothing] = js.native
 
-  // TODO Use js.Iterable
-  def all[A](promises: js.Array[_ <: Promise[A]]): Promise[js.Array[A]] = js.native
+  def all[A](promises: js.Iterable[Promise[A]]): Promise[js.Array[A]] = js.native
 
-  // TODO Use js.Iterable
-  def race[A](promises: js.Array[_ <: Promise[A]]): Promise[A] = js.native
+  def race[A](promises: js.Iterable[Promise[A]]): Promise[A] = js.native
 }

@@ -145,6 +145,18 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+      // Relaxed typing (js.Iterable instead of js.Array) in js.Promise.
+      // Not a compatibility issue (due to JS land).
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.Promise.race"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.Promise.all"),
+
+      // New member in non-sealed trait (for low prio implicits).
+      // Theoretically breaking.
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem](
+          "scala.scalajs.js.LowestPrioAnyImplicits.iterableOps"),
+
       // New members of an @js.native trait in `runtime`, not an issue
       ProblemFilters.exclude[ReversedMissingMethodProblem](
           "scala.scalajs.runtime.LinkingInfo#Semantics.arrayIndexOutOfBounds"),
