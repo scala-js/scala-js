@@ -1108,6 +1108,37 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noSelfReferenceJSNameSymbol: Unit = {
+
+    """
+    @ScalaJSDefined
+    object A extends js.Object {
+      val a = js.Symbol("foo")
+
+      @JSName(a)
+      def foo: Int = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:9: warning: This symbol is defined in the same object as the annotation's target. This will cause a stackoverflow at runtime
+      |      @JSName(a)
+      |              ^
+    """
+
+    // Native objects are OK, since we do not control definition order.
+    """
+    @js.native
+    object A extends js.Object {
+      val a: js.Symbol = js.native
+
+      @JSName(a)
+      def foo: Int = js.native
+    }
+    """.succeeds
+
+  }
+
+  @Test
   def noJSImportOnMembers: Unit = {
 
     """

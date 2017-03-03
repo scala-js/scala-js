@@ -545,7 +545,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       }
 
       if (shouldCheckLiterals) {
-        checkJSNameArgument(sym)
+        checkJSNameArgument(implDef)
         checkJSImportLiteral(sym)
       }
 
@@ -889,7 +889,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       }
 
       if (shouldCheckLiterals)
-        checkJSNameArgument(sym)
+        checkJSNameArgument(tree)
 
       /* Check that there is at most one @JSName annotation. We used not to
        * check this, so we can only warn.
@@ -1074,6 +1074,34 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       }
     }
 
+    /** Checks that argument to @JSName on [[member]] is a literal.
+     *  Reports an error on each annotation where this is not the case.
+     */
+    private def checkJSNameArgument(member: MemberDef): Unit = {
+      for (annot <- member.symbol.getAnnotation(JSNameAnnotation)) {
+        val argTree = annot.args.head
+        if (argTree.tpe.typeSymbol == StringClass) {
+          if (!argTree.isInstanceOf[Literal]) {
+            reporter.error(argTree.pos,
+                "A string argument to JSName must be a literal string")
+          }
+        } else {
+          // We have a js.Symbol
+          val sym = argTree.symbol
+          if (!sym.isStatic || !sym.isStable) {
+            reporter.error(argTree.pos,
+                "A js.Symbol argument to JSName must be a static, stable identifier")
+          } else if ((enclosingOwner is OwnerKind.JSNonNative) &&
+              sym.owner == member.symbol.owner) {
+            reporter.warning(argTree.pos,
+                "This symbol is defined in the same object as the annotation's " +
+                "target. This will cause a stackoverflow at runtime")
+          }
+        }
+
+      }
+    }
+
   }
 
   def isJSAny(sym: Symbol): Boolean =
@@ -1126,29 +1154,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
    */
   def isPrivateMaybeWithin(sym: Symbol): Boolean =
     sym.isPrivate || (sym.hasAccessBoundary && !sym.isProtected)
-
-  /** Checks that argument to @JSName on [[sym]] is a literal.
-   *  Reports an error on each annotation where this is not the case.
-   */
-  private def checkJSNameArgument(sym: Symbol): Unit = {
-    for (annot <- sym.getAnnotation(JSNameAnnotation)) {
-      val argTree = annot.args.head
-      if (argTree.tpe.typeSymbol == StringClass) {
-        if (!argTree.isInstanceOf[Literal]) {
-          reporter.error(argTree.pos,
-              "A string argument to JSName must be a literal string")
-        }
-      } else {
-        // We have a js.Symbol
-        val sym = argTree.symbol
-        if (!sym.isStatic || !sym.isStable) {
-          reporter.error(argTree.pos,
-              "A js.Symbol argument to JSName must be a static, stable identifier")
-        }
-      }
-
-    }
-  }
 
   /** Checks that arguments to `@JSImport` on [[sym]] are literals.
    *
