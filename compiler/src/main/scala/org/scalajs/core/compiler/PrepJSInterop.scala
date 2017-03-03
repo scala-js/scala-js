@@ -414,12 +414,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         // Expose objects (modules) members of Scala.js-defined JS classes
         if (sym.isModule && (enclosingOwner is OwnerKind.JSNonNative)) {
-          def shouldBeExposed: Boolean = {
-            !sym.isLocalToBlock &&
-            !sym.isSynthetic &&
-            !isPrivateMaybeWithin(sym)
-          }
-          if (shouldBeExposed)
+          if (shouldModuleBeExposed(sym))
             sym.addAnnotation(ExposedJSMemberAnnot)
         }
 
@@ -1034,6 +1029,47 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       super.transform(tree)
     }
 
+    private def checkJSAnySpecificAnnotsOnNonJSAny(pos: Position,
+        sym: Symbol): Unit = {
+      if (sym.hasAnnotation(ScalaJSDefinedAnnotation)) {
+        reporter.error(pos,
+            "@ScalaJSDefined is only allowed on classes extending js.Any")
+      }
+
+      if (sym.hasAnnotation(JSNativeAnnotation)) {
+        reporter.error(pos,
+            "Classes, traits and objects not extending js.Any may not have an " +
+            "@js.native annotation")
+      } else {
+        checkJSNativeSpecificAnnotsOnNonJSNative(sym)
+      }
+    }
+
+    private def checkJSNativeSpecificAnnotsOnNonJSNative(sym: Symbol): Unit = {
+      val allowJSName = {
+        sym.isModuleOrModuleClass &&
+        (enclosingOwner is OwnerKind.JSNonNative) &&
+        shouldModuleBeExposed(sym)
+      }
+
+      for (annot <- sym.annotations) {
+        if (annot.symbol == JSNameAnnotation && !allowJSName) {
+          reporter.warning(annot.pos,
+              "Non JS-native classes, traits and objects should not have an " +
+              "@JSName annotation, as it does not have any effect. " +
+              "This will be enforced in 1.0.")
+        } else if (annot.symbol == JSImportAnnotation) {
+          reporter.error(annot.pos,
+              "Non JS-native classes, traits and objects may not have an " +
+              "@JSImport annotation.")
+        } else if (annot.symbol == JSGlobalScopeAnnotation) {
+          reporter.error(annot.pos,
+              "Only native JS objects can have an @JSGlobalScope annotation " +
+              "(or extend js.GlobalScope).")
+        }
+      }
+    }
+
   }
 
   def isJSAny(sym: Symbol): Boolean =
@@ -1238,41 +1274,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
   }
 
-  private def checkJSAnySpecificAnnotsOnNonJSAny(pos: Position,
-      sym: Symbol): Unit = {
-    if (sym.hasAnnotation(ScalaJSDefinedAnnotation)) {
-      reporter.error(pos,
-          "@ScalaJSDefined is only allowed on classes extending js.Any")
-    }
-
-    if (sym.hasAnnotation(JSNativeAnnotation)) {
-      reporter.error(pos,
-          "Classes, traits and objects not extending js.Any may not have an " +
-          "@js.native annotation")
-    } else {
-      checkJSNativeSpecificAnnotsOnNonJSNative(sym)
-    }
-  }
-
-  private def checkJSNativeSpecificAnnotsOnNonJSNative(sym: Symbol): Unit = {
-    for (annot <- sym.annotations) {
-      if (annot.symbol == JSNameAnnotation) {
-        reporter.warning(annot.pos,
-            "Non JS-native classes, traits and objects should not have an " +
-            "@JSName annotation, as it does not have any effect. " +
-            "This will be enforced in 1.0.")
-      } else if (annot.symbol == JSImportAnnotation) {
-        reporter.error(annot.pos,
-            "Non JS-native classes, traits and objects may not have an " +
-            "@JSImport annotation.")
-      } else if (annot.symbol == JSGlobalScopeAnnotation) {
-        reporter.error(annot.pos,
-            "Only native JS objects can have an @JSGlobalScope annotation " +
-            "(or extend js.GlobalScope).")
-      }
-    }
-  }
-
   private def checkAndGetJSNativeLoadingSpecAnnotOf(
       sym: Symbol): Option[Annotation] = {
     val annots = sym.annotations.filter { annot =>
@@ -1346,6 +1347,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     tpe.declaration(nme.CONSTRUCTOR).alternatives.collectFirst {
       case ctor: MethodSymbol if ctor.isPrimaryConstructor => ctor
     }
+
+  private def shouldModuleBeExposed(sym: Symbol) = {
+    assert(sym.isModuleOrModuleClass)
+    !sym.isLocalToBlock && !sym.isSynthetic && !isPrivateMaybeWithin(sym)
+  }
 
   private def wasPublicBeforeTyper(sym: Symbol): Boolean =
     sym.hasAnnotation(WasPublicBeforeTyperClass)
