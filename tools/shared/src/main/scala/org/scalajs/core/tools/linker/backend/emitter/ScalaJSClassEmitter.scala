@@ -32,11 +32,6 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
   import ScalaJSClassEmitter._
   import jsDesugaring._
 
-  def this(semantics: Semantics, outputMode: OutputMode) =
-    this(semantics, outputMode, InternalOptions())
-
-  private implicit def implicitOutputMode: OutputMode = outputMode
-
   /** Desugars a Scala.js class specifically for use by the Rhino interpreter.
    *
    *  @param tree The IR tree to emit to raw JavaScript

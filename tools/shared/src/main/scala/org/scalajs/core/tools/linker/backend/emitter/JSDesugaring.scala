@@ -2530,16 +2530,6 @@ private[emitter] class JSDesugaring(semantics: Semantics,
     else
       js.BracketSelect(qual, js.StringLiteral(item))
   }
-
-  class DesugarException(tree: Tree,
-      cause: Throwable) extends Exception(exceptionMsg(tree), cause)
-
-  private def exceptionMsg(tree: Tree): String = {
-    val writer = new StringWriter
-    val printer = new ir.Printers.IRTreePrinter(writer)
-    printer.printTopLevelTree(tree)
-    "Exception while desugaring: " + writer.toString
-  }
 }
 
 private object JSDesugaring {

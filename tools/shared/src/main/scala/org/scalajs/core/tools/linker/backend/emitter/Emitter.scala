@@ -45,8 +45,6 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
   def this(semantics: Semantics, outputMode: OutputMode) =
     this(semantics, outputMode, ModuleKind.NoModule, InternalOptions())
 
-  private implicit def implicitOutputMode: OutputMode = outputMode
-
   private val knowledgeGuardian = new KnowledgeGuardian
 
   private val classEmitter =
