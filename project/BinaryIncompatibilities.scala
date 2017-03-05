@@ -130,6 +130,20 @@ object BinaryIncompatibilities {
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.this"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring#JSDesugar.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.envField$default$3"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.genBracketSelect"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.envModuleField"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.genIdentBracketSelect"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.transformParamDef"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.transformIdent"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.this"),
 
       // private, not an issue.
       ProblemFilters.exclude[DirectMissingMethodProblem](

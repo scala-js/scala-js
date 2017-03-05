@@ -47,8 +47,8 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
   private val knowledgeGuardian = new KnowledgeGuardian
 
-  private val classEmitter =
-    new ScalaJSClassEmitter(semantics, outputMode, internalOptions)
+  private val jsGen = new JSGen(semantics, outputMode, internalOptions)
+  private val classEmitter = new ScalaJSClassEmitter(jsGen)
 
   private val classCaches = mutable.Map.empty[List[String], ClassCache]
 
@@ -163,7 +163,6 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
         }
 
       case ModuleKind.CommonJSModule =>
-        val jsDesugaring = new JSDesugaring(semantics, outputMode, internalOptions)
         val encounteredModuleNames = mutable.Set.empty[String]
         for (classDef <- orderedClasses) {
           classDef.jsNativeLoadSpec match {
@@ -175,8 +174,8 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
                 implicit val pos = classDef.pos
                 val rhs = js.Apply(js.VarRef(js.Ident("require")),
                     List(js.StringLiteral(module)))
-                val lhs = jsDesugaring.envModuleField(module)
-                val decl = jsDesugaring.genLet(lhs.ident, mutable = false, rhs)
+                val lhs = jsGen.envModuleField(module)
+                val decl = jsGen.genLet(lhs.ident, mutable = false, rhs)
                 builder.addJSTree(decl)
               }
           }
