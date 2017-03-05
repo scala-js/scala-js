@@ -23,12 +23,12 @@ import org.scalajs.core.tools.linker.backend.OutputMode
 import org.scalajs.core.tools.linker.{LinkedClass, LinkingUnit}
 
 /** Emitter for the skeleton of classes. */
-private[emitter] final class ScalaJSClassEmitter(jsGen: JSGen) {
+private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
-  private val jsDesugaring = new JSDesugaring(jsGen)
+  private val functionEmitter = new FunctionEmitter(jsGen)
 
-  import ScalaJSClassEmitter._
-  import jsDesugaring._
+  import ClassEmitter._
+  import functionEmitter._
   import jsGen._
 
   /** Desugars a Scala.js class specifically for use by the Rhino interpreter.
@@ -1167,7 +1167,7 @@ private[emitter] final class ScalaJSClassEmitter(jsGen: JSGen) {
 
 }
 
-private object ScalaJSClassEmitter {
+private object ClassEmitter {
   private val ClassesWhoseDataReferToTheirInstanceTests = {
     Definitions.AncestorsOfHijackedClasses +
     Definitions.ObjectClass + Definitions.StringClass

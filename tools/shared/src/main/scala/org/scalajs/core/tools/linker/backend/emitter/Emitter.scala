@@ -48,7 +48,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
   private val knowledgeGuardian = new KnowledgeGuardian
 
   private val jsGen = new JSGen(semantics, outputMode, internalOptions)
-  private val classEmitter = new ScalaJSClassEmitter(jsGen)
+  private val classEmitter = new ClassEmitter(jsGen)
 
   private val classCaches = mutable.Map.empty[List[String], ClassCache]
 

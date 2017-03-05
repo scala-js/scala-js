@@ -29,7 +29,7 @@ import org.scalajs.core.tools.javascript.{Trees => js}
 
 import java.io.StringWriter
 
-/** Desugaring of the IR to JavaScript.
+/** Desugaring of the IR to JavaScript functions.
  *
  *  The general shape and compliance to standards is chosen with an
  *  [[OutputMode]].
@@ -95,14 +95,14 @@ import java.io.StringWriter
  *
  *  --------------------------------------------------------------------------
  *
- *  JSDesugaring does all this in a single pass, but it helps to think that:
+ *  FunctionEmitter does all this in a single pass, but it helps to think that:
  *  * Rule 1) is implemented by unnest(), and used most notably in
  *    * transformStat() for statement-only constructs
  *    * pushLhsInto() for statement-or-expression constructs
  *  * Rule 2) is implemented by pushLhsInto()
  *  * Emitting the class structure is delegated to [[ScalaJSClassEmitter]].
  *
- *  There are a few other things that JSDesugaring takes care of:
+ *  There are a few other things that FunctionEmitter takes care of:
  *  * Transform Scala expressions into their JS equivalent, taking the
  *    Scala.js class encoding into account.
  *  * And tiny details.
@@ -193,8 +193,8 @@ import java.io.StringWriter
  *
  *  @author Sébastien Doeraene
  */
-private[emitter] class JSDesugaring(jsGen: JSGen) {
-  import JSDesugaring._
+private[emitter] class FunctionEmitter(jsGen: JSGen) {
+  import FunctionEmitter._
   import jsGen._
 
   /** Desugars parameters and body to a JS function.
@@ -2255,7 +2255,7 @@ private[emitter] class JSDesugaring(jsGen: JSGen) {
   }
 }
 
-private object JSDesugaring {
+private object FunctionEmitter {
   /** A left hand side that can be pushed into a right hand side tree. */
   sealed abstract class Lhs {
     def hasNothingType: Boolean = false
