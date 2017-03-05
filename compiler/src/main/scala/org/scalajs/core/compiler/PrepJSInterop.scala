@@ -176,7 +176,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case idef: ImplDef if isScalaEnum(idef) =>
           val sym = idef.symbol
 
-          checkJSAnySpecificAnnotsOnNonJSAny(idef.pos, sym)
+          checkJSAnySpecificAnnotsOnNonJSAny(idef)
 
           val kind =
             if (idef.isInstanceOf[ModuleDef]) OwnerKind.EnumMod
@@ -187,7 +187,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case cldef: ClassDef =>
           val sym = cldef.symbol
 
-          checkJSAnySpecificAnnotsOnNonJSAny(cldef.pos, sym)
+          checkJSAnySpecificAnnotsOnNonJSAny(cldef)
 
           if (sym == UndefOrClass || sym == UnionClass)
             sym.addAnnotation(RawJSTypeAnnot)
@@ -206,7 +206,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case modDef: ModuleDef =>
           val sym = modDef.symbol
 
-          checkJSAnySpecificAnnotsOnNonJSAny(modDef.pos, sym)
+          checkJSAnySpecificAnnotsOnNonJSAny(modDef)
 
           if (shouldPrepareExports)
             registerModuleExports(sym.moduleClass)
@@ -541,7 +541,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         }
 
         // Check that there is no JS-native-specific annotation
-        checkJSNativeSpecificAnnotsOnNonJSNative(sym)
+        checkJSNativeSpecificAnnotsOnNonJSNative(implDef)
       }
 
       if (shouldCheckLiterals) {
@@ -1029,23 +1029,27 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       super.transform(tree)
     }
 
-    private def checkJSAnySpecificAnnotsOnNonJSAny(pos: Position,
-        sym: Symbol): Unit = {
+    private def checkJSAnySpecificAnnotsOnNonJSAny(implDef: ImplDef): Unit = {
+      val sym = implDef.symbol
+
       if (sym.hasAnnotation(ScalaJSDefinedAnnotation)) {
-        reporter.error(pos,
+        reporter.error(implDef.pos,
             "@ScalaJSDefined is only allowed on classes extending js.Any")
       }
 
       if (sym.hasAnnotation(JSNativeAnnotation)) {
-        reporter.error(pos,
+        reporter.error(implDef.pos,
             "Classes, traits and objects not extending js.Any may not have an " +
             "@js.native annotation")
       } else {
-        checkJSNativeSpecificAnnotsOnNonJSNative(sym)
+        checkJSNativeSpecificAnnotsOnNonJSNative(implDef)
       }
     }
 
-    private def checkJSNativeSpecificAnnotsOnNonJSNative(sym: Symbol): Unit = {
+    private def checkJSNativeSpecificAnnotsOnNonJSNative(
+        implDef: ImplDef): Unit = {
+      val sym = implDef.symbol
+
       val allowJSName = {
         sym.isModuleOrModuleClass &&
         (enclosingOwner is OwnerKind.JSNonNative) &&
