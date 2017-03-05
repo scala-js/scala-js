@@ -196,6 +196,7 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
   /** Generates the JS constructor for a class, ES5 style. */
   private def genES5Constructor(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+    import TreeDSL._
     implicit val pos = tree.pos
 
     val className = tree.name.name
@@ -206,7 +207,7 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
         js.DocComment("@constructor"),
         envFieldDef("h", className, js.Function(Nil, js.Skip()),
             keepFunctionExpression = isJSClass),
-        js.Assign(envField("h", className).prototype, ctorToMimic.prototype)
+        envField("h", className).prototype := ctorToMimic.prototype
       )
     }
 
@@ -238,9 +239,10 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
         val superCtor = genRawJSClassConstructor(parentIdent.name)
         (makeInheritableCtorDef(superCtor), envField("h", className))
       }
+
       js.Block(
           inheritedCtorDef,
-          js.Assign(typeVar.prototype, js.New(inheritedCtorRef, Nil)),
+          typeVar.prototype := js.New(inheritedCtorRef, Nil),
           genAddToPrototype(className, js.StringLiteral("constructor"), typeVar)
       )
     }
@@ -435,6 +437,7 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
 
   private def genPropertyES5(className: String, property: PropertyDef)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+    import TreeDSL._
     implicit val pos = property.pos
 
     // defineProperty method
@@ -508,6 +511,8 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
   /** Generate `classVar.prototype.name = value` */
   def genAddToPrototype(className: String, name: js.PropertyName, value: js.Tree)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Tree = {
+    import TreeDSL._
+
     genAddToObject(encodeClassVar(className).prototype, name, value)
   }
 

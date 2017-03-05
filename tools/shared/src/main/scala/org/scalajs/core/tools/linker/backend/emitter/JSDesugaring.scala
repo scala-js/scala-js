@@ -2531,11 +2531,6 @@ private[emitter] class JSDesugaring(semantics: Semantics,
       js.BracketSelect(qual, js.StringLiteral(item))
   }
 
-  private[emitter] implicit class MyTreeOps(val self: js.Tree) {
-    def prototype(implicit pos: Position): js.Tree =
-      js.DotSelect(self, js.Ident("prototype"))
-  }
-
   class DesugarException(tree: Tree,
       cause: Throwable) extends Exception(exceptionMsg(tree), cause)
 

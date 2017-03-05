@@ -93,6 +93,10 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.semantics"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.MyTreeOps"),
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring$MyTreeOps"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.genCallHelper"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.genLet"),
