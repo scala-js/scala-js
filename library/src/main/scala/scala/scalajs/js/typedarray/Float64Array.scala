@@ -18,7 +18,7 @@ class Float64Array private extends TypedArray[Double, Float64Array] {
   def this(typedArray: TypedArray[_, _]) = this()
 
   /** Creates a new Float64Array with the elements in the given array */
-  def this(array: js.Array[_]) = this()
+  def this(array: js.Iterable[_]) = this()
 
   /** Creates a Float64Array view on the given ArrayBuffer */
   def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) = this()

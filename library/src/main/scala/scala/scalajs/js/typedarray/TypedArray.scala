@@ -1,14 +1,14 @@
 package scala.scalajs.js.typedarray
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.JSBracketAccess
+import scala.scalajs.js.annotation.{JSBracketAccess, JSName}
 
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
  *  A TypedArray allows to view an [[ArrayBuffer]] as an array of values of a
  *  particular numeric type.
  */
 @js.native
-trait TypedArray[T, Repr] extends ArrayBufferView {
+trait TypedArray[T, Repr] extends ArrayBufferView with js.Iterable[T] {
 
   /** The number of elements in this TypedArray */
   val length: Int = js.native
@@ -25,6 +25,9 @@ trait TypedArray[T, Repr] extends ArrayBufferView {
   @JSBracketAccess
   def get(index: Int): T = js.native
 
+  @JSName(js.Symbol.iterator)
+  def jsIterator(): js.Iterator[T] = js.native
+
   /** Set element at index */
   @JSBracketAccess
   def set(index: Int, value: T): Unit = js.native
@@ -36,10 +39,10 @@ trait TypedArray[T, Repr] extends ArrayBufferView {
   def set(typedArray: TypedArray[_, _], offset: Int): Unit = js.native
 
   /** Set the values from array in this TypedArray */
-  def set(array: js.Array[_]): Unit = js.native
+  def set(array: js.Iterable[_]): Unit = js.native
 
   /** Set the values from array in this TypedArray at given offset */
-  def set(array: js.Array[_], offset: Int): Unit = js.native
+  def set(array: js.Iterable[_], offset: Int): Unit = js.native
 
   /** Create a new TypedArray view of this TypedArray at given location */
   def subarray(begin: Int, end: Int = ???): Repr = js.native
