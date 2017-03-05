@@ -204,8 +204,8 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
     def makeInheritableCtorDef(ctorToMimic: js.Tree) = {
       js.Block(
         js.DocComment("@constructor"),
-        envFieldDef("h", className, None, js.Function(Nil, js.Skip()),
-            mutable = false, keepFunctionExpression = isJSClass),
+        envFieldDef("h", className, js.Function(Nil, js.Skip()),
+            keepFunctionExpression = isJSClass),
         js.Assign(envField("h", className).prototype, ctorToMimic.prototype)
       )
     }
@@ -226,7 +226,7 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
 
     val typeVar = encodeClassVar(className)
     val docComment = js.DocComment("@constructor")
-    val ctorDef = envFieldDef("c", className, None, ctorFun, mutable = false,
+    val ctorDef = envFieldDef("c", className, ctorFun,
         keepFunctionExpression = isJSClass)
 
     val chainProto = tree.superClass.fold[js.Tree] {
@@ -316,7 +316,7 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
     } yield {
       implicit val pos = field.pos
       val fullName = className + "__" + name
-      envFieldDef("t", fullName, origName, genZeroOf(ftpe), mutable)
+      envFieldDef("t", fullName, genZeroOf(ftpe), origName, mutable)
     }
     js.Block(stats)(tree.pos)
   }
@@ -374,9 +374,7 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
     if (method.static) {
       method.name match {
         case Ident(methodName, origName) =>
-          envFieldDef(
-              "s", className + "__" + methodName, origName,
-              methodFun)
+          envFieldDef("s", className + "__" + methodName, methodFun, origName)
 
         case methodName =>
           outputMode match {
@@ -421,9 +419,7 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
 
     val Ident(methodName, origName) = method.name
 
-    envFieldDef(
-        "f", className + "__" + methodName, origName,
-        methodFun)
+    envFieldDef("f", className + "__" + methodName, methodFun, origName)
   }
 
   /** Generates a property. */
@@ -1099,6 +1095,35 @@ private[emitter] final class ScalaJSClassEmitter(semantics: Semantics,
   }
 
   // Helpers
+
+  private def envFieldDef(field: String, subField: String, value: js.Tree,
+      origName: Option[String] = None, mutable: Boolean = false,
+      keepFunctionExpression: Boolean = false)(
+      implicit pos: Position): js.Tree = {
+    val globalVar = envField(field, subField, origName)
+    def globalVarIdent = globalVar.asInstanceOf[js.VarRef].ident
+
+    outputMode match {
+      case OutputMode.ECMAScript51Global =>
+        js.Assign(globalVar, value)
+
+      case OutputMode.ECMAScript51Isolated =>
+        value match {
+          case js.Function(args, body) =>
+            // Make sure the function has a meaningful `name` property
+            val functionExpr = js.FunctionDef(globalVarIdent, args, body)
+            if (keepFunctionExpression)
+              js.VarDef(globalVarIdent, Some(functionExpr))
+            else
+              functionExpr
+          case _ =>
+            js.VarDef(globalVarIdent, Some(value))
+        }
+
+      case OutputMode.ECMAScript6 =>
+        genLet(globalVarIdent, mutable, value)
+    }
+  }
 
   /** Gen JS code for assigning an rhs to a qualified name in the exports scope.
    *  For example, given the qualified name `"foo.bar.Something"`, generates:

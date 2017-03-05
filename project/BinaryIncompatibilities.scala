@@ -112,6 +112,8 @@ object BinaryIncompatibilities {
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.desugarToFunction"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.envField"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.envFieldDef"),
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSDesugaring.envFieldDef"),
       ProblemFilters.exclude[DirectMissingMethodProblem](

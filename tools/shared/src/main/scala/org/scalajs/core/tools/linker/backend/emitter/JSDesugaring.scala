@@ -2499,60 +2499,6 @@ private[emitter] class JSDesugaring(semantics: Semantics,
     }
   }
 
-  private[emitter] def envFieldDef(field: String, subField: String,
-      value: js.Tree)(
-      implicit pos: Position): js.Tree = {
-    envFieldDef(field, subField, value, mutable = false)
-  }
-
-  private[emitter] def envFieldDef(field: String, subField: String,
-      value: js.Tree, mutable: Boolean)(
-      implicit pos: Position): js.Tree = {
-    envFieldDef(field, subField, origName = None, value, mutable)
-  }
-
-  private[emitter] def envFieldDef(field: String, subField: String,
-      origName: Option[String], value: js.Tree)(
-      implicit pos: Position): js.Tree = {
-    envFieldDef(field, subField, origName, value, mutable = false)
-  }
-
-  private[emitter] def envFieldDef(field: String, subField: String,
-      origName: Option[String], value: js.Tree, mutable: Boolean)(
-      implicit pos: Position): js.Tree = {
-    envFieldDef(field, subField, origName, value, mutable,
-        keepFunctionExpression = false)
-  }
-
-  private[emitter] def envFieldDef(field: String, subField: String,
-      origName: Option[String], value: js.Tree, mutable: Boolean,
-      keepFunctionExpression: Boolean)(
-      implicit pos: Position): js.Tree = {
-    val globalVar = envField(field, subField, origName)
-    def globalVarIdent = globalVar.asInstanceOf[js.VarRef].ident
-
-    outputMode match {
-      case OutputMode.ECMAScript51Global =>
-        js.Assign(globalVar, value)
-
-      case OutputMode.ECMAScript51Isolated =>
-        value match {
-          case js.Function(args, body) =>
-            // Make sure the function has a meaningful `name` property
-            val functionExpr = js.FunctionDef(globalVarIdent, args, body)
-            if (keepFunctionExpression)
-              js.VarDef(globalVarIdent, Some(functionExpr))
-            else
-              functionExpr
-          case _ =>
-            js.VarDef(globalVarIdent, Some(value))
-        }
-
-      case OutputMode.ECMAScript6 =>
-        genLet(globalVarIdent, mutable, value)
-    }
-  }
-
   private[emitter] def genPropSelect(qual: js.Tree, item: js.PropertyName)(
       implicit pos: Position): js.Tree = {
     item match {
