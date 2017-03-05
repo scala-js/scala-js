@@ -296,6 +296,35 @@ class ScalaJSDefinedTest {
     assertFalse((inner2: AnyRef) eq inner1)
   }
 
+  // #2772
+  @Test def Scala_object_nested_inside_a_Scala_js_defined_JS_class_JSName(): Unit = {
+    @ScalaJSDefined
+    class Foo extends js.Object {
+      var innerInitCount: Int = _
+
+      @JSName("innerName")
+      object Inner {
+        innerInitCount += 1
+      }
+    }
+
+    val foo = new Foo
+    assertEquals(0, foo.innerInitCount)
+    val inner1 = foo.Inner
+    assertEquals(1, foo.innerInitCount)
+    assertTrue((foo.Inner: AnyRef) eq inner1)
+    assertEquals(1, foo.innerInitCount)
+
+    val dyn = (new Foo).asInstanceOf[js.Dynamic]
+    assertEquals(0, dyn.innerInitCount)
+    val inner2 = dyn.innerName
+    assertEquals(1, dyn.innerInitCount)
+    assertTrue((dyn.innerName: AnyRef) eq inner2)
+    assertEquals(1, dyn.innerInitCount)
+
+    assertFalse((inner2: AnyRef) eq inner1)
+  }
+
   @Test def anonymous_class_with_captures(): Unit = {
     val x = (() => 5)()
     val obj = new js.Object {

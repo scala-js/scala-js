@@ -129,6 +129,43 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def okJSNameOnNestedObjects: Unit = {
+
+    """
+    @ScalaJSDefined
+    class A extends js.Object {
+      @JSName("foo")
+      object toto
+
+      @JSName("bar")
+      @ScalaJSDefined
+      object tata extends js.Object
+    }
+    """.hasNoWarns
+
+    """
+    @ScalaJSDefined
+    class A extends js.Object {
+      @JSName("foo")
+      private object toto
+
+      @JSName("bar")
+      @ScalaJSDefined
+      private object tata extends js.Object
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:7: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+      |      @JSName("foo")
+      |       ^
+      |newSource1.scala:10: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+      |      @JSName("bar")
+      |       ^
+    """
+
+  }
+
+  @Test
   def noJSImportAnnotOnNonJSNative: Unit = {
 
     for {
