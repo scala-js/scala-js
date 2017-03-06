@@ -8,6 +8,7 @@
 package org.scalajs.testsuite.typedarray
 
 import org.junit.Assert._
+import org.junit.Assume._
 import org.junit.Test
 import org.scalajs.testsuite.utils.Requires
 
@@ -23,7 +24,7 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   def bytesPerElement: Int
   def lenCtor(len: Int): T
   def tarrCtor(tarr: TypedArray[_, _]): T
-  def arrCtor(arr: js.Array[_]): T
+  def itCtor(arr: js.Iterable[_]): T
   def bufCtor1(buf: ArrayBuffer): T
   def bufCtor2(buf: ArrayBuffer, start: Int): T
   def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): T
@@ -46,7 +47,7 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   }
 
   @Test def should_allow_constructing_a_new_name_from_a_js_Array(): Unit = {
-    val x = arrCtor(js.Array(5,6,7))
+    val x = itCtor(js.Array(5,6,7))
     assertTrue(hasType(x))
     assertEquals(3, x.length)
 
@@ -56,7 +57,7 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   }
 
   @Test def should_allow_constructing_a_new_name_from_an_ArrayBuffer_1_arg(): Unit = {
-    val buf = arrCtor(js.Array(5, 6, 7, 8)).buffer
+    val buf = itCtor(js.Array(5, 6, 7, 8)).buffer
     val x = bufCtor1(buf)
     assertTrue(hasType(x))
     assertEquals(4, x.length)
@@ -68,7 +69,7 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   }
 
   @Test def should_allow_constructing_a_new_name_from_an_ArrayBuffer_2_args(): Unit = {
-    val buf = arrCtor(js.Array(5, 6, 7, 8)).buffer
+    val buf = itCtor(js.Array(5, 6, 7, 8)).buffer
     val x = bufCtor2(buf, bytesPerElement)
     assertTrue(hasType(x))
     assertEquals(3, x.length)
@@ -79,7 +80,7 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   }
 
   @Test def should_allow_constructing_a_new_name_from_an_ArrayBuffer_3_args(): Unit = {
-    val buf = arrCtor(js.Array(5, 6, 7, 8)).buffer
+    val buf = itCtor(js.Array(5, 6, 7, 8)).buffer
     val x = bufCtor3(buf, bytesPerElement, 2)
     assertTrue(hasType(x))
     assertEquals(2, x.length)
@@ -94,7 +95,7 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   }
 
   @Test def should_allow_retrieving_an_should_allow_retrieving_an(): Unit = {
-    val x = arrCtor(js.Array(5))
+    val x = itCtor(js.Array(5))
     assertEquals(5, x(0))
   }
 
@@ -109,7 +110,7 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   }
 
   @Test def should_provide_should_provide(): Unit = {
-    val x = arrCtor(js.Array(10))
+    val x = itCtor(js.Array(10))
     assertEquals(10, x.get(0))
   }
 
@@ -168,7 +169,7 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   }
 
   @Test def subarray_with_one_argument(): Unit = {
-    val x = arrCtor(js.Array(1,2,3,4,5,6,7,8,9))
+    val x = itCtor(js.Array(1,2,3,4,5,6,7,8,9))
     val y = x.subarray(2)
 
     assertEquals(7, y.length)
@@ -180,7 +181,7 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   }
 
   @Test def subarray_with_two_arguments(): Unit = {
-    val x = arrCtor(js.Array(1,2,3,4,5,6,7,8,9))
+    val x = itCtor(js.Array(1,2,3,4,5,6,7,8,9))
     val y = x.subarray(2, 4)
 
     assertEquals(2, y.length)
@@ -192,24 +193,53 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   }
 
   @Test def buffer(): Unit = {
-    val x = arrCtor(js.Array(1,2,3,4,5,6,7,8,9))
+    val x = itCtor(js.Array(1,2,3,4,5,6,7,8,9))
     val y = bufCtor3(x.buffer, 0, 2)
 
     assertSame(x.buffer, y.buffer)
   }
 
   @Test def byteLength(): Unit = {
-    val x = arrCtor(js.Array(0 until bytesPerElement * 4: _*))
+    val x = itCtor(js.Array(0 until bytesPerElement * 4: _*))
     val y = bufCtor3(x.buffer, bytesPerElement, 3)
 
     assertEquals(3 * bytesPerElement, y.byteLength)
   }
 
   @Test def byteOffset(): Unit = {
-    val x = arrCtor(js.Array(0 until bytesPerElement * 4: _*))
+    val x = itCtor(js.Array(0 until bytesPerElement * 4: _*))
     val y = bufCtor3(x.buffer, bytesPerElement, 3)
 
     assertEquals(bytesPerElement, y.byteOffset)
+  }
+
+  @Test def is_iterable(): Unit = {
+    assumeTrue("Assuming JavaScript symbols are supported",
+        org.scalajs.testsuite.utils.Platform.areJSSymbolsSupported)
+
+    import js.JSConverters._
+
+    val testData: List[Int] = (1 to 10).toList
+    val typedArray: T = itCtor(testData.toJSArray)
+    val jsIterable: js.Iterable[V] = typedArray
+    val iterable: Iterable[V] = jsIterable
+
+    assertEquals(iterable.toList, testData.map(intToV))
+  }
+
+  @Test def from_iterable(): Unit = {
+    assumeTrue("Assuming JavaScript symbols are supported",
+        org.scalajs.testsuite.utils.Platform.areJSSymbolsSupported)
+
+    import js.JSConverters._
+
+    val x = itCtor(Iterable(1, 2, 3, 4).toJSIterable)
+
+    assertEquals(4, x.length)
+    assertEquals(1, x(0))
+    assertEquals(2, x(1))
+    assertEquals(3, x(2))
+    assertEquals(4, x(3))
   }
 }
 
@@ -219,7 +249,7 @@ class Int8ArrayTest extends TypedArrayTest[Byte, Int8Array] {
   def bytesPerElement: Int = Int8Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Int8Array = new Int8Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Int8Array = new Int8Array(tarr)
-  def arrCtor(arr: js.Array[_]): Int8Array = new Int8Array(arr)
+  def itCtor(arr: js.Iterable[_]): Int8Array = new Int8Array(arr)
   def bufCtor1(buf: ArrayBuffer): Int8Array = new Int8Array(buf)
   def bufCtor2(buf: ArrayBuffer, start: Int): Int8Array = new Int8Array(buf, start)
   def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Int8Array = new Int8Array(buf, start, end)
@@ -233,7 +263,7 @@ class Uint8ArrayTest extends TypedArrayTest[Short, Uint8Array] {
   def bytesPerElement: Int = Uint8Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Uint8Array = new Uint8Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Uint8Array = new Uint8Array(tarr)
-  def arrCtor(arr: js.Array[_]): Uint8Array = new Uint8Array(arr)
+  def itCtor(arr: js.Iterable[_]): Uint8Array = new Uint8Array(arr)
   def bufCtor1(buf: ArrayBuffer): Uint8Array = new Uint8Array(buf)
   def bufCtor2(buf: ArrayBuffer, start: Int): Uint8Array = new Uint8Array(buf, start)
   def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Uint8Array = new Uint8Array(buf, start, end)
@@ -247,7 +277,7 @@ class Uint8ClampedArrayTest extends TypedArrayTest[Int, Uint8ClampedArray] {
   def bytesPerElement: Int = Uint8ClampedArray.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Uint8ClampedArray = new Uint8ClampedArray(len)
   def tarrCtor(tarr: TypedArray[_, _]): Uint8ClampedArray = new Uint8ClampedArray(tarr)
-  def arrCtor(arr: js.Array[_]): Uint8ClampedArray = new Uint8ClampedArray(arr)
+  def itCtor(arr: js.Iterable[_]): Uint8ClampedArray = new Uint8ClampedArray(arr)
   def bufCtor1(buf: ArrayBuffer): Uint8ClampedArray = new Uint8ClampedArray(buf)
   def bufCtor2(buf: ArrayBuffer, start: Int): Uint8ClampedArray = new Uint8ClampedArray(buf, start)
   def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Uint8ClampedArray = new Uint8ClampedArray(buf, start, end)
@@ -261,7 +291,7 @@ class Int16ArrayTest extends TypedArrayTest[Short, Int16Array] {
   def bytesPerElement: Int = Int16Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Int16Array = new Int16Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Int16Array = new Int16Array(tarr)
-  def arrCtor(arr: js.Array[_]): Int16Array = new Int16Array(arr)
+  def itCtor(arr: js.Iterable[_]): Int16Array = new Int16Array(arr)
   def bufCtor1(buf: ArrayBuffer): Int16Array = new Int16Array(buf)
   def bufCtor2(buf: ArrayBuffer, start: Int): Int16Array = new Int16Array(buf, start)
   def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Int16Array = new Int16Array(buf, start, end)
@@ -275,7 +305,7 @@ class Uint16ArrayTest extends TypedArrayTest[Int, Uint16Array] {
   def bytesPerElement: Int = Uint16Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Uint16Array = new Uint16Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Uint16Array = new Uint16Array(tarr)
-  def arrCtor(arr: js.Array[_]): Uint16Array =  new Uint16Array(arr)
+  def itCtor(arr: js.Iterable[_]): Uint16Array =  new Uint16Array(arr)
   def bufCtor1(buf: ArrayBuffer): Uint16Array = new Uint16Array(buf)
   def bufCtor2(buf: ArrayBuffer, start: Int): Uint16Array = new Uint16Array(buf, start)
   def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Uint16Array = new Uint16Array(buf, start, end)
@@ -289,7 +319,7 @@ class Int32ArrayTest extends TypedArrayTest[Int, Int32Array] {
   def bytesPerElement: Int = Int32Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Int32Array = new Int32Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Int32Array = new Int32Array(tarr)
-  def arrCtor(arr: js.Array[_]): Int32Array = new Int32Array(arr)
+  def itCtor(arr: js.Iterable[_]): Int32Array = new Int32Array(arr)
   def bufCtor1(buf: ArrayBuffer): Int32Array = new Int32Array(buf)
   def bufCtor2(buf: ArrayBuffer, start: Int): Int32Array = new Int32Array(buf, start)
   def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Int32Array = new Int32Array(buf, start, end)
@@ -303,7 +333,7 @@ class Uint32ArrayTest extends TypedArrayTest[Double, Uint32Array] {
   def bytesPerElement: Int = Uint32Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Uint32Array = new Uint32Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Uint32Array = new Uint32Array(tarr)
-  def arrCtor(arr: js.Array[_]): Uint32Array = new Uint32Array(arr)
+  def itCtor(arr: js.Iterable[_]): Uint32Array = new Uint32Array(arr)
   def bufCtor1(buf: ArrayBuffer): Uint32Array = new Uint32Array(buf)
   def bufCtor2(buf: ArrayBuffer, start: Int): Uint32Array = new Uint32Array(buf, start)
   def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Uint32Array = new Uint32Array(buf, start, end)
@@ -317,7 +347,7 @@ class Float32ArrayTest extends TypedArrayTest[Float, Float32Array] {
   def bytesPerElement: Int = Float32Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Float32Array = new Float32Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Float32Array = new Float32Array(tarr)
-  def arrCtor(arr: js.Array[_]): Float32Array =  new Float32Array(arr)
+  def itCtor(arr: js.Iterable[_]): Float32Array =  new Float32Array(arr)
   def bufCtor1(buf: ArrayBuffer): Float32Array = new Float32Array(buf)
   def bufCtor2(buf: ArrayBuffer, start: Int): Float32Array = new Float32Array(buf, start)
   def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Float32Array = new Float32Array(buf, start, end)
@@ -331,7 +361,7 @@ class Float64ArrayTest extends TypedArrayTest[Double, Float64Array] {
   def bytesPerElement: Int = Float64Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Float64Array = new Float64Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Float64Array = new Float64Array(tarr)
-  def arrCtor(arr: js.Array[_]): Float64Array = new Float64Array(arr)
+  def itCtor(arr: js.Iterable[_]): Float64Array = new Float64Array(arr)
   def bufCtor1(buf: ArrayBuffer): Float64Array = new Float64Array(buf)
   def bufCtor2(buf: ArrayBuffer, start: Int): Float64Array = new Float64Array(buf, start)
   def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Float64Array = new Float64Array(buf, start, end)

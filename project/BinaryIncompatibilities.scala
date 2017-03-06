@@ -152,6 +152,55 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "scala.scalajs.js.Promise.all"),
 
+      // js.Iterable support in TypedArray.
+      // Not a compatibility issue (due to JS land).
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Int8Array.set"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Int8Array.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Uint8ClampedArray.set"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Uint8ClampedArray.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Uint16Array.set"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Uint16Array.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Uint8Array.set"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Uint8Array.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.TypedArray.set"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "scala.scalajs.js.typedarray.TypedArray.set"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "scala.scalajs.js.typedarray.TypedArray.set"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "scala.scalajs.js.typedarray.TypedArray.jsIterator"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem](
+          "scala.scalajs.js.Iterable.jsIterator"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Int32Array.set"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Int32Array.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Float32Array.set"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Float32Array.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Float64Array.set"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Float64Array.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Int16Array.set"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Int16Array.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Uint32Array.set"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.typedarray.Uint32Array.this"),
+
       // New member in non-sealed trait (for low prio implicits).
       // Theoretically breaking.
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem](
