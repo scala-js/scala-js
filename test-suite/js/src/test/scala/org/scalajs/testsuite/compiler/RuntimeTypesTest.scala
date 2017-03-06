@@ -11,7 +11,7 @@ import java.lang.Cloneable
 import java.io.Serializable
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.JSName
+import scala.scalajs.js.annotation.JSGlobal
 
 import org.junit.Test
 import org.junit.Assert._
@@ -148,7 +148,7 @@ object RuntimeTypesTest {
   @js.native
   trait SomeJSInterface extends ParentJSType
 
-  @JSName("SomeJSClass")
+  @JSGlobal("SomeJSClass")
   @js.native
   class SomeJSClass extends ParentJSType
 

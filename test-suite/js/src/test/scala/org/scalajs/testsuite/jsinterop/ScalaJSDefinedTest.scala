@@ -1572,7 +1572,7 @@ class ScalaJSDefinedTest {
 object ScalaJSDefinedTest {
 
   // Defined in test-suite/src/test/resources/ScalaJSDefinedTestNatives.js
-  @JSName("ScalaJSDefinedTestNativeParentClass")
+  @JSGlobal("ScalaJSDefinedTestNativeParentClass")
   @js.native
   class NativeParentClass(val x: Int) extends js.Object {
     def foo(s: String): String = js.native
@@ -1595,7 +1595,7 @@ object ScalaJSDefinedTest {
   }
 
   // Defined in test-suite/src/test/resources/ScalaJSDefinedTestNatives.js
-  @JSName("ScalaJSDefinedTestNativeParentClassWithDeferred")
+  @JSGlobal("ScalaJSDefinedTestNativeParentClassWithDeferred")
   @js.native
   abstract class NativeParentClassWithDeferred extends NativeTraitWithDeferred {
     def foo(y: Int): Int = js.native // = bar(y + 4) + x
@@ -1604,7 +1604,7 @@ object ScalaJSDefinedTest {
   }
 
   // Defined in test-suite/src/test/resources/ScalaJSDefinedTestNatives.js
-  @JSName("ScalaJSDefinedTestNativeParentClassWithVarargs")
+  @JSGlobal("ScalaJSDefinedTestNativeParentClassWithVarargs")
   @js.native
   class NativeParentClassWithVarargs(
       _x: Int, _args: Int*) extends js.Object {
@@ -1689,25 +1689,25 @@ object ScalaJSDefinedTest {
   object ConstructorDefaultParamScalaJSNonNative extends js.Object
 
   @js.native
-  @JSName("ConstructorDefaultParam")
+  @JSGlobal("ConstructorDefaultParam")
   class ConstructorDefaultParamJSNativeNone(val foo: Int = -1) extends js.Object
 
   @js.native
-  @JSName("ConstructorDefaultParam")
+  @JSGlobal("ConstructorDefaultParam")
   class ConstructorDefaultParamJSNativeScala(val foo: Int = -1) extends js.Object
   object ConstructorDefaultParamJSNativeScala
 
   @js.native
-  @JSName("ConstructorDefaultParam")
+  @JSGlobal("ConstructorDefaultParam")
   class ConstructorDefaultParamJSNativeJSNonNative(val foo: Int = -1) extends js.Object
   @ScalaJSDefined
   object ConstructorDefaultParamJSNativeJSNonNative extends js.Object
 
   @js.native
-  @JSName("ConstructorDefaultParam")
+  @JSGlobal("ConstructorDefaultParam")
   class ConstructorDefaultParamJSNativeJSNative(val foo: Int = -1) extends js.Object
   @js.native
-  @JSName("ConstructorDefaultParam")
+  @JSGlobal("ConstructorDefaultParam")
   object ConstructorDefaultParamJSNativeJSNative extends js.Object
 
   // sanity check

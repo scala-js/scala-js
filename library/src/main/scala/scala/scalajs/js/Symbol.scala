@@ -31,6 +31,7 @@ sealed trait Symbol extends js.Any
  *  @groupprio 30
  */
 @js.native
+@JSGlobal
 object Symbol extends js.Object {
   /** Creates a new unique symbol without description.
    *

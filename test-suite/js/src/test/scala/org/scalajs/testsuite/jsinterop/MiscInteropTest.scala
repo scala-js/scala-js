@@ -215,7 +215,7 @@ object MiscInteropTest {
     def foo(x: Int): Int = js.native
   }
 
-  @JSName("DirectSubclassOfJSAny")
+  @JSGlobal("DirectSubclassOfJSAny")
   @js.native
   class DirectSubclassOfJSAny extends js.Any {
     def bar(x: Int): Int = js.native

@@ -191,17 +191,19 @@ trait JSGlobalAddons extends JSDefinitions
      */
     def jsNameOf(sym: Symbol): JSName = {
       sym.getAnnotation(JSNameAnnotation).fold[JSName] {
-        val base = sym.unexpandedName.decoded.stripSuffix("_=")
-        val name =
-          if (!sym.isMethod) base.stripSuffix(" ")
-          else base
-        JSName.Literal(name)
+        JSName.Literal(defaultJSNameOf(sym))
       } { annotation =>
         annotation.args.head match {
           case Literal(Constant(name: String)) => JSName.Literal(name)
           case tree                            => JSName.Computed(tree.symbol)
         }
       }
+    }
+
+    def defaultJSNameOf(sym: Symbol): String = {
+      val base = sym.unexpandedName.decoded.stripSuffix("_=")
+      if (!sym.isMethod) base.stripSuffix(" ")
+      else base
     }
 
     /** Gets the fully qualified JS name of a static module Symbol compiled

@@ -1821,9 +1821,9 @@ object SJSDefinedAutoExportedIgnoreClassObject extends SJSDefinedAutoExportIgnor
 @ScalaJSDefined
 class SJSDefinedAutoExportedIgnoreClassClass(val x: Int) extends SJSDefinedAutoExportIgnoreClass
 
-@js.native
+@js.native @JSGlobal
 object NativeInvalidExportObject extends SJSDefinedAutoExportIgnoreClass
-@js.native
+@js.native @JSGlobal
 class NativeInvalidExportClass extends SJSDefinedAutoExportIgnoreClass
 @ScalaJSDefined
 class SJSDefinedInvalidExportClass private () extends SJSDefinedAutoExportIgnoreClass

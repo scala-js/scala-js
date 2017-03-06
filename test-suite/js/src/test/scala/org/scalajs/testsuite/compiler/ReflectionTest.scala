@@ -15,7 +15,7 @@ import java.io.Serializable
 import scala.reflect.{classTag, ClassTag}
 
 import scala.scalajs.js
-import js.annotation.JSName
+import js.annotation.JSGlobal
 
 import org.junit.Test
 import org.junit.Assert._
@@ -161,7 +161,7 @@ object ReflectionTest {
 
   class RenamedTestClass
 
-  @JSName("ReflectionTestRawJSClass")
+  @JSGlobal("ReflectionTestRawJSClass")
   @js.native
   class ReflectionTestRawJSClass extends js.Object
 

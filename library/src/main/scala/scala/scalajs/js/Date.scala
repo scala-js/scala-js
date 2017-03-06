@@ -14,6 +14,8 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js.annotation._
+
 /**
  * Creates a JavaScript Date instance that represents a single moment in time.
  * Date objects are based on a time value that is the number of milliseconds
@@ -22,6 +24,7 @@ package scala.scalajs.js
  * MDN
  */
 @native
+@JSGlobal
 class Date extends Object {
 
   def this(value: Double) = this()
@@ -188,6 +191,7 @@ class Date extends Object {
 
 /** Factory for [[js.Date]] objects. */
 @native
+@JSGlobal
 object Date extends Object {
   def apply(): String = native
 

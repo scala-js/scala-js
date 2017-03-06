@@ -14,6 +14,8 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js.annotation._
+
 /**
  * The JSON object contains methods for converting values to JavaScript Object
  * Notation (JSON) and for converting JSON to values.
@@ -21,6 +23,7 @@ package scala.scalajs.js
  * MDN
  */
 @native
+@JSGlobal
 object JSON extends Object {
   /**
    * Parse a string as JSON, optionally transforming the value produced by parsing.

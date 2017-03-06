@@ -77,7 +77,7 @@ trait DOMElement extends js.Object {
 }
 
 @js.native
-@JSName("jQuery")
+@JSGlobal("jQuery")
 object JQuery extends js.Object {
   def apply(selector: String): JQuery = js.native
 }

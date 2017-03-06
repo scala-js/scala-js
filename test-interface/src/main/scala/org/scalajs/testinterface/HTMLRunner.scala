@@ -9,7 +9,7 @@ package org.scalajs.testinterface
 
 import scala.scalajs.js
 import scala.scalajs.concurrent.QueueExecutionContext
-import scala.scalajs.js.annotation.JSName
+import scala.scalajs.js.annotation._
 import js.URIUtils.{decodeURIComponent, encodeURIComponent}
 
 import scala.collection.mutable
@@ -432,7 +432,7 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
 
   // Mini dom facade.
   private object dom { // scalastyle:ignore
-    @JSName("document")
+    @JSGlobal("document")
     @js.native
     object document extends js.Object { // scalastyle:ignore
       def body: Element = js.native

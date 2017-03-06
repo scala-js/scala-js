@@ -14,8 +14,11 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js.annotation._
+
 /** Base class of all JavaScript objects. */
 @native
+@JSGlobal
 class Object extends Any {
   def this(value: Any) = this()
 
@@ -46,6 +49,7 @@ class Object extends Any {
 
 /** The top-level `Object` JavaScript object. */
 @native
+@JSGlobal
 object Object extends Object {
   def apply(): Object = native
   def apply(value: Any): Object = native

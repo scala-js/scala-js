@@ -55,6 +55,7 @@
   $g.ConstructorDefaultParam = ConstructorDefaultParam;
 
   $g.JSNativeObjectInPackageFoo = {};
+  $g.JSNativeObjectInPackageFooJSNameOmitted = $g.JSNativeObjectInPackageFoo;
   $g.JSNativeObjectInPackageBar = {};
   var JSNativeClassInPackageFoo = function() {
     $g.Object.call(this);
@@ -63,6 +64,7 @@
     return "foo";
   };
   $g.JSNativeClassInPackageFoo = JSNativeClassInPackageFoo;
+  $g.JSNativeClassInPackageFooJSNameOmitted = $g.JSNativeClassInPackageFoo;
   var JSNativeClassInPackageBar = function() {
     $g.Object.call(this);
   };

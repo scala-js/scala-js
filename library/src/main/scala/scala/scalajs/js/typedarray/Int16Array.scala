@@ -1,11 +1,13 @@
 package scala.scalajs.js.typedarray
 
 import scala.scalajs.js
+import scala.scalajs.js.annotation._
 
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
  *  A [[TypedArray]] of signed 16-bit integers
  */
 @js.native
+@JSGlobal
 class Int16Array private extends TypedArray[Short, Int16Array] {
 
   /** Constructs a Int16Array with the given length. Initialized to all 0 */
@@ -29,4 +31,5 @@ class Int16Array private extends TypedArray[Short, Int16Array] {
  *  [[Int16Array]] companion
  */
 @js.native
+@JSGlobal
 object Int16Array extends TypedArrayStatic

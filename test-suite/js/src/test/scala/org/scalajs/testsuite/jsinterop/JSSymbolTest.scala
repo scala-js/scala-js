@@ -341,7 +341,7 @@ object JSSymbolTest {
   }
 
   @js.native
-  @JSName("dummy")
+  @JSGlobal("dummy")
   class PropDefClass extends js.Any {
     @JSName(sym1)
     def internalDef: Int = js.native
@@ -360,7 +360,7 @@ object JSSymbolTest {
   }
 
   @js.native
-  @JSName("dummy")
+  @JSGlobal("dummy")
   class PropValClass extends js.Any {
     @JSName(sym1)
     val internalVal: String = js.native
@@ -379,7 +379,7 @@ object JSSymbolTest {
   }
 
   @js.native
-  @JSName("dummy")
+  @JSGlobal("dummy")
   class PropVarClass extends js.Any {
     @JSName(sym1)
     var internalVar: Double = js.native
@@ -415,7 +415,7 @@ object JSSymbolTest {
   }
 
   @js.native
-  @JSName("dummy")
+  @JSGlobal("dummy")
   class MethodClass extends js.Any {
     @JSName(sym1)
     def foo(x: Int): Int = js.native
@@ -443,7 +443,7 @@ object JSSymbolTest {
   }
 
   @js.native
-  @JSName("dummy")
+  @JSGlobal("dummy")
   class OverloadedMethodClass extends js.Any {
     @JSName(sym1)
     def foo(x: Int): Int = js.native
@@ -471,7 +471,7 @@ object JSSymbolTest {
   }
 
   @js.native
-  @JSName("dummy")
+  @JSGlobal("dummy")
   class OverloadedRuntimeDispatchMethodClass extends js.Any {
     @JSName(sym1)
     def foo(x: Int): Int = js.native
@@ -497,7 +497,7 @@ object JSSymbolTest {
   }
 
   @js.native
-  @JSName("dummy")
+  @JSGlobal("dummy")
   class ClassWithSymsInSJSDefinedObject extends js.Object {
     @JSName(sym3)
     def symInSJSDefinedObject(x: Int): Int = js.native
@@ -517,7 +517,7 @@ object JSSymbolTest {
   }
 
   @js.native
-  @JSName("dummy")
+  @JSGlobal("dummy")
   class ClassJSIterable[+A] extends JSIterable[A] {
     @JSName(js.Symbol.iterator)
     def iterator(): js.Dynamic = js.native

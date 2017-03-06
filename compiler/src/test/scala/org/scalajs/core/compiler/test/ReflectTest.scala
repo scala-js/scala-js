@@ -29,6 +29,7 @@ class ReflectTest extends DirectTest with TestHelpers {
 
     @EnableReflectiveInstantiation
     @js.native
+    @JSGlobal
     class D extends js.Object
 
     @EnableReflectiveInstantiation
@@ -37,6 +38,7 @@ class ReflectTest extends DirectTest with TestHelpers {
 
     @EnableReflectiveInstantiation
     @js.native
+    @JSGlobal
     object F extends js.Object
     """ hasErrors
     """
@@ -52,10 +54,10 @@ class ReflectTest extends DirectTest with TestHelpers {
       |newSource1.scala:16: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
       |    @EnableReflectiveInstantiation
       |     ^
-      |newSource1.scala:20: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
+      |newSource1.scala:21: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
       |    @EnableReflectiveInstantiation
       |     ^
-      |newSource1.scala:24: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
+      |newSource1.scala:25: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
       |    @EnableReflectiveInstantiation
       |     ^
     """

@@ -3,6 +3,7 @@ package scala.scalajs.runtime
 import java.util.Comparator
 
 import scala.scalajs.js
+import scala.scalajs.js.annotation._
 import js.JSStringOps._
 
 import java.nio.ByteBuffer
@@ -399,7 +400,7 @@ private[runtime] object RuntimeString {
   }
 
   @js.native
-  @js.annotation.JSName("String")
+  @JSGlobal("String")
   private object NativeJSString extends js.Object {
     def fromCharCode(charCodes: Int*): String = js.native
   }
