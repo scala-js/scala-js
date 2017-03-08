@@ -8,7 +8,7 @@ import scala.scalajs.js.annotation._
  */
 @js.native
 @JSGlobal
-class Int8Array private extends TypedArray[Byte, Int8Array] {
+class Int8Array private[this] () extends TypedArray[Byte, Int8Array] {
 
   /** Constructs a Int8Array with the given length. Initialized to all 0 */
   def this(length: Int) = this()

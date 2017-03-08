@@ -199,6 +199,10 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "scala.scalajs.js.typedarray.Uint32Array.this"),
 
+      // private[js], not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "scala.scalajs.js.Dictionary.rawApply"),
+
       // New member in non-sealed trait (for low prio implicits).
       // Theoretically breaking.
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem](

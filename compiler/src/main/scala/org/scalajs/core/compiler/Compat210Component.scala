@@ -7,6 +7,7 @@ package org.scalajs.core.compiler
 
 import scala.collection.mutable
 
+import scala.reflect.internal.Flags.{LOCAL, PRIVATE}
 import scala.tools.nsc._
 
 /** Hacks to have our source code compatible with 2.10 and 2.11.
@@ -26,6 +27,7 @@ trait Compat210Component {
     def unexpandedName: Name = self.originalName
     def originalName: Name = sys.error("infinite loop in Compat")
 
+    def isPrivateThis: Boolean = self.hasAllFlags(PRIVATE | LOCAL)
     def isLocalToBlock: Boolean = self.isLocal
 
     def implClass: Symbol = NoSymbol
