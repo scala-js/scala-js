@@ -76,7 +76,7 @@ class Base64Test {
     }
   }
 
-  // @Test // Fails on the JVM (bug no bug id yet)
+  // @Test // Fails on the JVM (bug JDK-8176379)
   def encodeOutputStreamFailsOnJVM(): Unit = {
     val encoder = Base64.getMimeEncoder(1, Array('@')) // the 1 will create a buggy encoder on the jvm
     val input = "Man"
