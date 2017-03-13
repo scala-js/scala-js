@@ -9,10 +9,9 @@ package org.scalajs.testsuite.compiler
 
 import scala.annotation.tailrec
 
-import scala.scalajs.js
-
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows._
 
@@ -23,11 +22,11 @@ class RegressionTest {
 
   @Test def `Wrong_division_conversion_(7_/_2.0)_issue_18`(): Unit = {
     val div = 7 / 2.0
-    assertEquals(3.5, div)
+    assertEquals(3.5, div, 0.0)
     assertEquals("double", div.getClass.getName)
 
     val mod = 7 % 2.0
-    assertEquals(1.0, mod)
+    assertEquals(1.0, mod, 0.0)
     assertEquals("double", mod.getClass.getName)
   }
 
@@ -62,14 +61,6 @@ class RegressionTest {
     new Bug66B("", "")
   }
 
-  @Test def should_not_swallow_Unit_expressions_when_converting_to_js_Any_issue_83(): Unit = {
-    var effectHappened = false
-    def doEffect(): Unit = effectHappened = true
-    def f(): js.Any = doEffect()
-    f()
-    assertTrue(effectHappened)
-  }
-
   @Test def should_correctly_call_subSequence_on_non_string_CharSequences_issue_55(): Unit = {
     val arr: CharSequence = Array('a','b','c','d')
     val ss = arr.subSequence(2,3)
@@ -80,16 +71,6 @@ class RegressionTest {
   @Test def should_correctly_concat_primitive_values_to_strings_issue_113(): Unit = {
     assertEquals("4foo", 4 + "foo")
     assertEquals("afoo", 'a' + "foo")
-  }
-
-  @Test def should_resolve_overloads_on_scala_Function_apply_when_converting_to_js_Function_issue_125(): Unit = {
-    class Fct extends Function1[Int, Any] {
-      def apply(n: Int): Int = n
-    }
-
-    val scalaFunction = new Fct
-    val jsFunction: js.Any = scalaFunction
-    val thisFunction: js.ThisFunction = scalaFunction
   }
 
   @Test def should_correctly_dispatch_calls_on_private_functions_issue_165(): Unit = {
@@ -165,6 +146,9 @@ class RegressionTest {
   }
 
   @Test def should_support_class_literals_for_existential_value_types_issue_218(): Unit = {
+    assumeFalse("Not bug-compatible with the JVM, issue #2801",
+        Platform.executingInJVM)
+
     assertEquals("org.scalajs.testsuite.compiler.RegressionTest$Bug218Foo",
         scala.reflect.classTag[Bug218Foo[_]].toString)
   }
@@ -231,11 +215,11 @@ class RegressionTest {
 
     val float = zero[Float]
     assertTrue((float: Any).isInstanceOf[Float])
-    assertEquals(0.0f, float)
+    assertEquals(0.0f, float, 0.0f)
 
     val double = zero[Double]
     assertTrue((double: Any).isInstanceOf[Double])
-    assertEquals(0.0, double)
+    assertEquals(0.0, double, 0.0)
 
     val ref = zero[AnyRef]
     assertEquals(null, ref)
@@ -272,18 +256,6 @@ class RegressionTest {
     def giveMeANothing(): Nothing = sys.error("boom")
     assertThrows(classOf[Exception], (giveMeANothing(): StringBuilder).append(5))
     assertThrows(classOf[Exception], (giveMeANothing(): scala.runtime.IntRef).elem)
-  }
-
-  @Test def should_not_put_bad_flags_on_caseaccessor_export_forwarders_issue_1191(): Unit = {
-    // This test used to choke patmat
-
-    @scala.scalajs.js.annotation.JSExportAll
-    case class T(one: Int, two: Int)
-
-    val T(a, b) = T(1, 2)
-
-    assertEquals(1, a)
-    assertEquals(2, b)
   }
 
   @Test def should_properly_order_ctor_statements_when_inlining_issue_1369(): Unit = {
@@ -355,33 +327,6 @@ class RegressionTest {
     assertEquals("15", new Test().fct(1))
   }
 
-  @Test def should_support_debugger_statements_through_the_whole_pipeline_issue_1402(): Unit = {
-    // A function that hopfully persuades the optimizer not to optimize
-    // we need a debugger statement that is unreachable, but not eliminated
-    @noinline
-    class A(var z: Int = 4) {
-      var x: Int = _
-      var y: Int = _
-
-      @noinline
-      def plus(x0: Int, y0: Int): Int = {
-        x = x0
-        y = y0
-        var res = 0
-        while (x > 0 || y > 0 || z > 0) {
-          if (x > 0) x -= 1
-          else if (y > 0) y -= 1
-          else z -= 1
-          res += 1
-        }
-        res
-      }
-    }
-
-    if (new A().plus(5, 10) < 3)
-      js.debugger()
-  }
-
   @Test def should_not_cause_Closure_to_crash_with_Unexpected_variable_NaN_issue_1469(): Unit = {
     /* Basically we want to make sure that a specialized bridge of Function1
      * taking and returning Double is emitted (and not dce'ed) for this
@@ -401,7 +346,7 @@ class RegressionTest {
      */
     class F extends Function1[Any, Unit] {
       def apply(x: Any): Unit =
-        assertEquals(5, x.asInstanceOf[js.Any])
+        assertEquals(5, x)
     }
 
     // Make sure the specialized Function1.apply(Double)Double is reachable.
@@ -410,7 +355,7 @@ class RegressionTest {
       ((x: Double) => x * z): (Double => Double)
     }
     val someDoubleFun = makeFun(2.0)
-    assertEquals(147.0, someDoubleFun(42.0))
+    assertEquals(147.0, someDoubleFun(42.0), 0.0)
 
     // Make sure F itself is reachable and not completely inlineable
     @noinline def makeF: Any => Any = (() => new F)()
