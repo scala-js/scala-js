@@ -435,6 +435,106 @@ class RegressionTest {
     assertEquals((Nil, 10), result)
   }
 
+  private val hasEqEqJLFloatDoubleBug: Boolean = {
+    val v = Platform.scalaVersion
+
+    {
+      v.startsWith("2.10.") ||
+      v.startsWith("2.11.") ||
+      v == "2.12.0" ||
+      v == "2.12.1"
+    }
+  }
+
+  def assertTrueUnlessEqEqJLFloatDoubleBug(actual: Boolean): Unit = {
+    if (hasEqEqJLFloatDoubleBug)
+      assertFalse(actual)
+    else
+      assertTrue(actual)
+  }
+
+  @Test def eqEqJLDouble(): Unit = {
+    // Taken from run/sd329.scala in scala/scala
+
+    def d1: Double = 0.0
+    def d2: Double = -0.0
+    def d3: Double = Double.NaN
+    def d4: Double = Double.NaN
+    assertTrue(d1 == d2)
+    assertTrue(d3 != d4)
+
+    def d1B: java.lang.Double = d1
+    def d2B: java.lang.Double = d2
+    def d3B: java.lang.Double = d3
+    def d4B: java.lang.Double = d4
+    assertTrueUnlessEqEqJLFloatDoubleBug(d1B == d2B)
+    assertTrue(d1 == d1B)
+    assertTrue(d1B == d1)
+    assertTrueUnlessEqEqJLFloatDoubleBug(d3B != d4B)
+    assertTrue(d3 != d4B)
+    assertTrue(d3B != d4)
+
+    assertFalse(d1B.equals(d2B)) // ! see javadoc
+    assertTrue(d3B.equals(d4B)) // ! see javadoc
+
+    def d1A: Any = d1
+    def d2A: Any = d2
+    def d3A: Any = d3
+    def d4A: Any = d4
+    assertTrue(d1A == d2A)
+    assertTrue(d1 == d1A)
+    assertTrue(d1A == d1)
+    assertTrue(d1B == d1A)
+    assertTrue(d1A == d1B)
+
+    assertTrue(d3A != d4A)
+    assertTrue(d3 != d4A)
+    assertTrue(d3A != d4)
+    assertTrue(d3B != d4A)
+    assertTrue(d3A != d4B)
+  }
+
+  @Test def eqEqJLFloat(): Unit = {
+    // Taken from run/sd329.scala in scala/scala
+
+    def f1: Float = 0.0f
+    def f2: Float = -0.0f
+    def f3: Float = Float.NaN
+    def f4: Float = Float.NaN
+    assertTrue(f1 == f2)
+    assertTrue(f3 != f4)
+
+    def f1B: java.lang.Float = f1
+    def f2B: java.lang.Float = f2
+    def f3B: java.lang.Float = f3
+    def f4B: java.lang.Float = f4
+    assertTrueUnlessEqEqJLFloatDoubleBug(f1B == f2B)
+    assertTrue(f1 == f1B)
+    assertTrue(f1B == f1)
+    assertTrueUnlessEqEqJLFloatDoubleBug(f3B != f4B)
+    assertTrue(f3 != f4B)
+    assertTrue(f3B != f4)
+
+    assertFalse(f1B.equals(f2B)) // ! see javadoc
+    assertTrue(f3B.equals(f4B)) // ! see javadoc
+
+    def f1A: Any = f1
+    def f2A: Any = f2
+    def f3A: Any = f3
+    def f4A: Any = f4
+    assertTrue(f1A == f2A)
+    assertTrue(f1 == f1A)
+    assertTrue(f1A == f1)
+    assertTrue(f1B == f1A)
+    assertTrue(f1A == f1B)
+
+    assertTrue(f3A != f4A)
+    assertTrue(f3 != f4A)
+    assertTrue(f3A != f4)
+    assertTrue(f3B != f4A)
+    assertTrue(f3A != f4B)
+  }
+
 }
 
 object RegressionTest {

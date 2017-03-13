@@ -3359,6 +3359,18 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
+    /** See comment in `genEqEqPrimitive()` about `mustUseAnyComparator`. */
+    private lazy val shouldPreserveEqEqBugWithJLFloatDouble = {
+      val v = scala.util.Properties.versionNumberString
+
+      {
+        v.startsWith("2.10.") ||
+        v.startsWith("2.11.") ||
+        v == "2.12.0" ||
+        v == "2.12.1"
+      }
+    }
+
     /** Gen JS code for a call to Any.== */
     def genEqEqPrimitive(ltpe: Type, rtpe: Type, lsrc: js.Tree, rsrc: js.Tree)(
         implicit pos: Position): js.Tree = {
@@ -3368,13 +3380,30 @@ abstract class GenJSCode extends plugins.PluginComponent
        * This is the case when either side of the comparison might have a
        * run-time type subtype of java.lang.Number or java.lang.Character,
        * **which includes when either is a raw JS type**.
+       *
        * When it is statically known that both sides are equal and subtypes of
        * Number or Character, not using the rich equality is possible (their
-       * own equals method will do ok.)
+       * own equals method will do ok), except for java.lang.Float and
+       * java.lang.Double: their `equals` have different behavior around `NaN`
+       * and `-0.0`, see Javadoc (scala-dev#329, #2799).
+       *
+       * The latter case is only avoided in 2.12.2+, to remain bug-compatible
+       * with the Scala/JVM compiler.
        */
-      val mustUseAnyComparator: Boolean = isRawJSType(ltpe) || isRawJSType(rtpe) || {
-        val areSameFinals = ltpe.isFinalType && rtpe.isFinalType && (ltpe =:= rtpe)
-        !areSameFinals && isMaybeBoxed(ltpe.typeSymbol) && isMaybeBoxed(rtpe.typeSymbol)
+      val mustUseAnyComparator: Boolean = {
+        isRawJSType(ltpe) || isRawJSType(rtpe) || {
+          isMaybeBoxed(ltpe.typeSymbol) && isMaybeBoxed(rtpe.typeSymbol) && {
+            val areSameFinals =
+              ltpe.isFinalType && rtpe.isFinalType && (ltpe =:= rtpe)
+            !areSameFinals || {
+              val sym = ltpe.typeSymbol
+              (sym == BoxedFloatClass || sym == BoxedDoubleClass) && {
+                // Bug-compatibility for Scala < 2.12.2
+                !shouldPreserveEqEqBugWithJLFloatDouble
+              }
+            }
+          }
+        }
       }
 
       if (mustUseAnyComparator) {
