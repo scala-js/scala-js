@@ -14,6 +14,8 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js.annotation._
+
 /**
  * The Function constructor creates a new Function object. In JavaScript every
  * function is actually a Function object.
@@ -40,6 +42,7 @@ package scala.scalajs.js
  * MDN
  */
 @native
+@JSGlobal
 class Function(args: String*) extends Object {
   /**
    * length is a property of a function object, and indicates how many arguments
@@ -99,6 +102,7 @@ class Function(args: String*) extends Object {
 }
 
 @native
+@JSGlobal
 object Function extends Object {
   def apply(args: String*): Function = native
 }

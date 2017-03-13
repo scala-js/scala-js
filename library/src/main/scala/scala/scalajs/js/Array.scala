@@ -37,6 +37,7 @@ import annotation._
  *  @constructor Creates a new array of length 0.
  */
 @native
+@JSGlobal
 class Array[A] extends Object with Iterable[A] {
   /** Creates a new array with the given length.
    *  @param arrayLength Initial length of the array.
@@ -169,6 +170,7 @@ class Array[A] extends Object with Iterable[A] {
 
 /** Factory for [[js.Array]] objects. */
 @native
+@JSGlobal
 object Array extends Object {
   // Do not expose this one - use new Array(len) instead
   // def apply[A](arrayLength: Int): Array[A] = native

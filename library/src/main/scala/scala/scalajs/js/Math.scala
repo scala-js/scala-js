@@ -14,6 +14,8 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js.annotation._
+
 /**
  * Math is a built-in object that has properties and methods for mathematical
  * constants and functions. Not a function object.
@@ -21,6 +23,7 @@ package scala.scalajs.js
  * MDN
  */
 @native
+@JSGlobal
 object Math extends Object {
   /**
    * Euler's constant and the base of natural logarithms, approximately 2.718.

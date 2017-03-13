@@ -1,10 +1,10 @@
 package org.scalajs.testinterface.internal
 
 import scala.scalajs.js
-import js.annotation.JSName
+import scala.scalajs.js.annotation._
 
 @js.native
-@JSName("scalajsCom")
+@JSGlobal("scalajsCom")
 object Com extends js.Object {
   def init(onReceive: js.Function1[String, Unit]): Unit = js.native
   def send(msg: String): Unit = js.native

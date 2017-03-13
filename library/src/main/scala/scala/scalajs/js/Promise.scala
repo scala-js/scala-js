@@ -12,6 +12,7 @@ package scala.scalajs.js
 import scala.language.implicitConversions
 
 import scala.scalajs.js
+import scala.scalajs.js.annotation._
 
 import scala.concurrent.Future
 
@@ -37,6 +38,7 @@ import scala.concurrent.Future
  *  directly use the methods of `Future` on `Promise`s.
  */
 @js.native
+@JSGlobal
 class Promise[+A](
     executor: js.Function2[js.Function1[A | Thenable[A], _], js.Function1[scala.Any, _], _])
     extends js.Object with js.Thenable[A] {
@@ -54,6 +56,7 @@ class Promise[+A](
 }
 
 @js.native
+@JSGlobal
 object Promise extends js.Object {
   /** Returns a new [[Promise]] completed with the specified `value`. */
   def resolve[A](value: A | Thenable[A]): Promise[A] = js.native

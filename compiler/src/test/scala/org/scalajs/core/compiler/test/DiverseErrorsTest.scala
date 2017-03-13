@@ -58,9 +58,9 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     """
 
     """
-    @js.native class NativeJSClass extends js.Object
+    @js.native @JSGlobal class NativeJSClass extends js.Object
     @js.native trait NativeJSTrait extends js.Object
-    @js.native object NativeJSObject extends js.Object
+    @js.native @JSGlobal object NativeJSObject extends js.Object
 
     @ScalaJSDefined class JSClass extends js.Object
     @ScalaJSDefined trait JSTrait extends js.Object
@@ -145,9 +145,9 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     """
 
     """
-    @js.native class NativeJSClass extends js.Object
+    @js.native @JSGlobal class NativeJSClass extends js.Object
     @js.native trait NativeJSTrait extends js.Object
-    @js.native object NativeJSObject extends js.Object
+    @js.native @JSGlobal object NativeJSObject extends js.Object
 
     @ScalaJSDefined class JSClass extends js.Object
     @ScalaJSDefined trait JSTrait extends js.Object
@@ -212,7 +212,7 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     import scala.scalajs.runtime
 
     object ScalaObject
-    @js.native object NativeJSObject extends js.Object
+    @js.native @JSGlobal object NativeJSObject extends js.Object
     @ScalaJSDefined object JSObject extends js.Object
 
     object A {
@@ -239,9 +239,9 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     class ScalaClass
     trait ScalaTrait
 
-    @js.native class NativeJSClass extends js.Object
+    @js.native @JSGlobal class NativeJSClass extends js.Object
     @js.native trait NativeJSTrait extends js.Object
-    @js.native object NativeJSObject extends js.Object
+    @js.native @JSGlobal object NativeJSObject extends js.Object
 
     @ScalaJSDefined class JSClass extends js.Object
     @ScalaJSDefined trait JSTrait extends js.Object

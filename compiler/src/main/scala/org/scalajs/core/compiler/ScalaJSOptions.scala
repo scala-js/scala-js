@@ -22,6 +22,9 @@ trait ScalaJSOptions {
   /** Should we suppress deprecations of exports coming from 0.6.15? */
   def suppressExportDeprecations: Boolean
 
+  /** Should we suppress deprecations related to missing `@JSGlobal`? */
+  def suppressMissingJSGlobalDeprecations: Boolean
+
   /** which source locations in source maps should be relativized (or where
    *  should they be mapped to)? */
   def sourceURIMaps: List[URIMap]

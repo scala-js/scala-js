@@ -85,6 +85,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
 
     s"""
     @js.native
+    @JSGlobal
     class A extends js.Object {
       val a: js.UndefOr[Int] = js.native
       def b: js.UndefOr[Int] = js.native
@@ -97,10 +98,10 @@ class JSOptionalTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     s"""
-      |newSource1.scala:13: error: Cannot override concrete val a: scala.scalajs.js.UndefOr[Int] from A in a Scala.js-defined JS trait.
+      |newSource1.scala:14: error: Cannot override concrete val a: scala.scalajs.js.UndefOr[Int] from A in a Scala.js-defined JS trait.
       |      override val a: js.UndefOr[Int] = js.undefined
       |                   ^
-      |newSource1.scala:14: error: Cannot override concrete def b: scala.scalajs.js.UndefOr[Int] from A in a Scala.js-defined JS trait.
+      |newSource1.scala:15: error: Cannot override concrete def b: scala.scalajs.js.UndefOr[Int] from A in a Scala.js-defined JS trait.
       |      override def b: js.UndefOr[Int] = js.undefined
       |                   ^
     """
@@ -113,6 +114,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
     }
 
     @js.native
+    @JSGlobal
     class B extends A
 
     @ScalaJSDefined
@@ -122,10 +124,10 @@ class JSOptionalTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     s"""
-      |newSource1.scala:16: error: Cannot override concrete val a: scala.scalajs.js.UndefOr[Int] from A in a Scala.js-defined JS trait.
+      |newSource1.scala:17: error: Cannot override concrete val a: scala.scalajs.js.UndefOr[Int] from A in a Scala.js-defined JS trait.
       |      override val a: js.UndefOr[Int] = js.undefined
       |                   ^
-      |newSource1.scala:17: error: Cannot override concrete def b: scala.scalajs.js.UndefOr[Int] from A in a Scala.js-defined JS trait.
+      |newSource1.scala:18: error: Cannot override concrete def b: scala.scalajs.js.UndefOr[Int] from A in a Scala.js-defined JS trait.
       |      override def b: js.UndefOr[Int] = js.undefined
       |                   ^
     """

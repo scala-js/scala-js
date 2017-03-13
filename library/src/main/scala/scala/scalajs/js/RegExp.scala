@@ -14,6 +14,8 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js.annotation._
+
 /**
  * The RegExp constructor creates a regular expression object for matching
  * text with a pattern.
@@ -21,6 +23,7 @@ package scala.scalajs.js
  * MDN
  */
 @native
+@JSGlobal
 class RegExp(pattern: String, flags: String = "") extends Object {
   /** Creates a new RegExp with the same pattern and flags as the given one. */
   def this(pattern: RegExp) = this("", "")
@@ -103,6 +106,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
 }
 
 @native
+@JSGlobal
 object RegExp extends Object {
   def apply(pattern: String, flags: String = ""): RegExp = native
 
