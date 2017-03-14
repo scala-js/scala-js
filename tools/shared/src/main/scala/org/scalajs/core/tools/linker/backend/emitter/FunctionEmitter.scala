@@ -9,8 +9,6 @@
 
 package org.scalajs.core.tools.linker.backend.emitter
 
-import scala.language.implicitConversions
-
 import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
@@ -31,7 +29,7 @@ import org.scalajs.core.tools.javascript.{Trees => js}
 
 import java.io.StringWriter
 
-/** Desugaring of the IR to JavaScript.
+/** Desugaring of the IR to JavaScript functions.
  *
  *  The general shape and compliance to standards is chosen with an
  *  [[OutputMode]].
@@ -97,14 +95,14 @@ import java.io.StringWriter
  *
  *  --------------------------------------------------------------------------
  *
- *  JSDesugaring does all this in a single pass, but it helps to think that:
+ *  FunctionEmitter does all this in a single pass, but it helps to think that:
  *  * Rule 1) is implemented by unnest(), and used most notably in
  *    * transformStat() for statement-only constructs
  *    * pushLhsInto() for statement-or-expression constructs
  *  * Rule 2) is implemented by pushLhsInto()
  *  * Emitting the class structure is delegated to [[ScalaJSClassEmitter]].
  *
- *  There are a few other things that JSDesugaring takes care of:
+ *  There are a few other things that FunctionEmitter takes care of:
  *  * Transform Scala expressions into their JS equivalent, taking the
  *    Scala.js class encoding into account.
  *  * And tiny details.
@@ -195,15 +193,13 @@ import java.io.StringWriter
  *
  *  @author Sébastien Doeraene
  */
-private[emitter] class JSDesugaring(semantics: Semantics,
-    outputMode: OutputMode, internalOptions: InternalOptions) {
-  import JSDesugaring._
-
-  private final val ScalaJSEnvironmentName = "ScalaJS"
+private[emitter] class FunctionEmitter(jsGen: JSGen) {
+  import FunctionEmitter._
+  import jsGen._
 
   /** Desugars parameters and body to a JS function.
    */
-  private[emitter] def desugarToFunction(
+  def desugarToFunction(
       enclosingClassName: String,
       params: List[ParamDef], body: Tree, isStat: Boolean)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
@@ -213,7 +209,7 @@ private[emitter] class JSDesugaring(semantics: Semantics,
 
   /** Desugars parameters and body to a JS function.
    */
-  private[emitter] def desugarToFunction(
+  def desugarToFunction(
       enclosingClassName: String,
       thisIdent: Option[js.Ident], params: List[ParamDef],
       body: Tree, isStat: Boolean)(
@@ -227,7 +223,7 @@ private[emitter] class JSDesugaring(semantics: Semantics,
 
   /** Desugars parameters and body to a JS function.
    */
-  private[emitter] def desugarToFunction(
+  def desugarToFunction(
       params: List[ParamDef],
       body: Tree, isStat: Boolean)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
@@ -235,7 +231,7 @@ private[emitter] class JSDesugaring(semantics: Semantics,
   }
 
   /** Desugars a statement or an expression. */
-  private[emitter] def desugarTree(
+  def desugarTree(
       enclosingClassName: Option[String],
       tree: Tree, isStat: Boolean)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
@@ -247,10 +243,7 @@ private[emitter] class JSDesugaring(semantics: Semantics,
       desugar.transformExpr(tree)(env)
   }
 
-  private[emitter] implicit def transformIdent(ident: Ident): js.Ident =
-    js.Ident(ident.name, ident.originalName)(ident.pos)
-
-  private[emitter] def transformParamDef(paramDef: ParamDef): js.ParamDef =
+  private def transformParamDef(paramDef: ParamDef): js.ParamDef =
     js.ParamDef(paramDef.name, paramDef.rest)(paramDef.pos)
 
   private class JSDesugar()(implicit globalKnowledge: GlobalKnowledge) {
@@ -2260,348 +2253,9 @@ private[emitter] class JSDesugaring(semantics: Semantics,
       }
     }
   }
-
-  // Helpers
-
-  private[emitter] def genZeroOf(tpe: Type)(implicit pos: Position): js.Tree = {
-    tpe match {
-      case BooleanType => js.BooleanLiteral(false)
-      case IntType     => js.IntLiteral(0)
-      case LongType    => genLongZero()
-      case FloatType   => js.DoubleLiteral(0.0)
-      case DoubleType  => js.DoubleLiteral(0.0)
-      case StringType  => js.StringLiteral("")
-      case UndefType   => js.Undefined()
-      case _           => js.Null()
-    }
-  }
-
-  private def genLongZero()(implicit pos: Position): js.Tree = {
-    genLongModuleApply(LongImpl.Zero)
-  }
-
-  private def genLongModuleApply(methodName: String, args: js.Tree*)(
-      implicit pos: Position): js.Tree = {
-    import TreeDSL._
-    js.Apply(
-        genLoadModule(LongImpl.RuntimeLongModuleClass) DOT methodName,
-        args.toList)
-  }
-
-  private[emitter] def genLet(name: js.Ident, mutable: Boolean, rhs: js.Tree)(
-      implicit pos: Position): js.LocalDef = {
-    outputMode match {
-      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
-        js.VarDef(name, Some(rhs))
-      case OutputMode.ECMAScript6 =>
-        js.Let(name, mutable, Some(rhs))
-    }
-  }
-
-  private[emitter] def genEmptyMutableLet(name: js.Ident)(
-      implicit pos: Position): js.LocalDef = {
-    outputMode match {
-      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
-        js.VarDef(name, rhs = None)
-      case OutputMode.ECMAScript6 =>
-        js.Let(name, mutable = true, rhs = None)
-    }
-  }
-
-  private[emitter] def genSelectStatic(className: String, item: Ident)(
-      implicit pos: Position): js.Tree = {
-    envField("t", className + "__" + item.name)
-  }
-
-  private[emitter] def genIsInstanceOf(expr: js.Tree, cls: ReferenceType)(
-      implicit pos: Position): js.Tree =
-    genIsAsInstanceOf(expr, cls, test = true)
-
-  private def genAsInstanceOf(expr: js.Tree, cls: ReferenceType)(
-      implicit pos: Position): js.Tree =
-    genIsAsInstanceOf(expr, cls, test = false)
-
-  private def genIsAsInstanceOf(expr: js.Tree, cls: ReferenceType, test: Boolean)(
-      implicit pos: Position): js.Tree = {
-    import Definitions._
-    import TreeDSL._
-
-    cls match {
-      case ClassType(className0) =>
-        val className =
-          if (className0 == BoxedLongClass) LongImpl.RuntimeLongClass
-          else className0
-
-        if (HijackedBoxedClasses.contains(className)) {
-          if (test) {
-            className match {
-              case BoxedUnitClass    => expr === js.Undefined()
-              case BoxedBooleanClass => typeof(expr) === "boolean"
-              case BoxedByteClass    => genCallHelper("isByte", expr)
-              case BoxedShortClass   => genCallHelper("isShort", expr)
-              case BoxedIntegerClass => genCallHelper("isInt", expr)
-              case BoxedFloatClass   => genCallHelper("isFloat", expr)
-              case BoxedDoubleClass  => typeof(expr) === "number"
-            }
-          } else {
-            className match {
-              case BoxedUnitClass    => genCallHelper("asUnit", expr)
-              case BoxedBooleanClass => genCallHelper("asBoolean", expr)
-              case BoxedByteClass    => genCallHelper("asByte", expr)
-              case BoxedShortClass   => genCallHelper("asShort", expr)
-              case BoxedIntegerClass => genCallHelper("asInt", expr)
-              case BoxedFloatClass   => genCallHelper("asFloat", expr)
-              case BoxedDoubleClass  => genCallHelper("asDouble", expr)
-            }
-          }
-        } else {
-          js.Apply(
-              envField(if (test) "is" else "as", className),
-              List(expr))
-        }
-
-      case ArrayType(base, depth) =>
-        js.Apply(
-            envField(if (test) "isArrayOf" else "asArrayOf", base),
-            List(expr, js.IntLiteral(depth)))
-    }
-  }
-
-  private[emitter] def genCallHelper(helperName: String, args: js.Tree*)(
-      implicit pos: Position): js.Tree = {
-    js.Apply(envField(helperName), args.toList)
-  }
-
-  private[emitter] def encodeClassVar(className: String)(
-      implicit pos: Position): js.Tree =
-    envField("c", className)
-
-  private[emitter] def genLoadModule(moduleClass: String)(
-      implicit pos: Position): js.Tree = {
-    import TreeDSL._
-    js.Apply(envField("m", moduleClass), Nil)
-  }
-
-  private[emitter] def genRawJSClassConstructor(className: String)(
-      implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Tree = {
-
-    genRawJSClassConstructor(className,
-        globalKnowledge.getJSNativeLoadSpec(className))
-  }
-
-  private[emitter] def genRawJSClassConstructor(className: String,
-      spec: Option[JSNativeLoadSpec])(
-      implicit pos: Position): js.Tree = {
-    spec match {
-      case None =>
-        // This is a Scala.js-defined JS class, call its class value accessor
-        js.Apply(envField("a", className), Nil)
-
-      case Some(spec) =>
-        genLoadJSFromSpec(spec)
-    }
-  }
-
-  private[emitter] def genLoadJSFromSpec(spec: JSNativeLoadSpec)(
-      implicit pos: Position): js.Tree = {
-
-    def pathSelection(from: js.Tree, path: List[String]): js.Tree = {
-      path.foldLeft(from) {
-        (prev, part) => genBracketSelect(prev, js.StringLiteral(part))
-      }
-    }
-
-    spec match {
-      case JSNativeLoadSpec.Global(path) =>
-        pathSelection(envField("g"), path)
-
-      case JSNativeLoadSpec.Import(module, path) =>
-        val moduleValue = envModuleField(module)
-        path match {
-          case DefaultExportName :: rest =>
-            val defaultField = genCallHelper("moduleDefault", moduleValue)
-            pathSelection(defaultField, rest)
-          case _ =>
-            pathSelection(moduleValue, path)
-        }
-    }
-  }
-
-  private final val DefaultExportName = "default"
-
-  private[emitter] def envModuleField(module: String)(
-      implicit pos: Position): js.VarRef = {
-
-    /* This is written so that the happy path, when `module` contains only
-     * valid characters, is fast.
-     */
-
-    def isValidChar(c: Char): Boolean =
-      (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
-
-    def containsOnlyValidChars(): Boolean = {
-      val len = module.length
-      var i = 0
-      while (i != len) {
-        if (!isValidChar(module.charAt(i)))
-          return false
-        i += 1
-      }
-      true
-    }
-
-    def buildValidName(): String = {
-      val result = new java.lang.StringBuilder("$i_")
-      val len = module.length
-      var i = 0
-      while (i != len) {
-        val c = module.charAt(i)
-        if (isValidChar(c))
-          result.append(c)
-        else
-          result.append("$%04x".format(c.toInt))
-        i += 1
-      }
-      result.toString()
-    }
-
-    val varName =
-      if (containsOnlyValidChars()) "$i_" + module
-      else buildValidName()
-
-    js.VarRef(js.Ident(varName, Some(module)))
-  }
-
-  private[emitter] def envField(field: String, subField: String,
-      origName: Option[String] = None)(
-      implicit pos: Position): js.Tree = {
-    import TreeDSL._
-
-    outputMode match {
-      case OutputMode.ECMAScript51Global =>
-        envField(field) DOT js.Ident(subField, origName)
-
-      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
-        js.VarRef(js.Ident("$" + field + "_" + subField, origName))
-    }
-  }
-
-  private[emitter] def envField(field: String)(
-      implicit pos: Position): js.Tree = {
-    import TreeDSL._
-
-    outputMode match {
-      case OutputMode.ECMAScript51Global =>
-        js.VarRef(js.Ident(ScalaJSEnvironmentName)) DOT field
-
-      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
-        js.VarRef(js.Ident("$" + field))
-    }
-  }
-
-  private[emitter] def envFieldDef(field: String, subField: String,
-      value: js.Tree)(
-      implicit pos: Position): js.Tree = {
-    envFieldDef(field, subField, value, mutable = false)
-  }
-
-  private[emitter] def envFieldDef(field: String, subField: String,
-      value: js.Tree, mutable: Boolean)(
-      implicit pos: Position): js.Tree = {
-    envFieldDef(field, subField, origName = None, value, mutable)
-  }
-
-  private[emitter] def envFieldDef(field: String, subField: String,
-      origName: Option[String], value: js.Tree)(
-      implicit pos: Position): js.Tree = {
-    envFieldDef(field, subField, origName, value, mutable = false)
-  }
-
-  private[emitter] def envFieldDef(field: String, subField: String,
-      origName: Option[String], value: js.Tree, mutable: Boolean)(
-      implicit pos: Position): js.Tree = {
-    envFieldDef(field, subField, origName, value, mutable,
-        keepFunctionExpression = false)
-  }
-
-  private[emitter] def envFieldDef(field: String, subField: String,
-      origName: Option[String], value: js.Tree, mutable: Boolean,
-      keepFunctionExpression: Boolean)(
-      implicit pos: Position): js.Tree = {
-    val globalVar = envField(field, subField, origName)
-    def globalVarIdent = globalVar.asInstanceOf[js.VarRef].ident
-
-    outputMode match {
-      case OutputMode.ECMAScript51Global =>
-        js.Assign(globalVar, value)
-
-      case OutputMode.ECMAScript51Isolated =>
-        value match {
-          case js.Function(args, body) =>
-            // Make sure the function has a meaningful `name` property
-            val functionExpr = js.FunctionDef(globalVarIdent, args, body)
-            if (keepFunctionExpression)
-              js.VarDef(globalVarIdent, Some(functionExpr))
-            else
-              functionExpr
-          case _ =>
-            js.VarDef(globalVarIdent, Some(value))
-        }
-
-      case OutputMode.ECMAScript6 =>
-        genLet(globalVarIdent, mutable, value)
-    }
-  }
-
-  private[emitter] def genPropSelect(qual: js.Tree, item: js.PropertyName)(
-      implicit pos: Position): js.Tree = {
-    item match {
-      case item: js.Ident         => js.DotSelect(qual, item)
-      case item: js.StringLiteral => genBracketSelect(qual, item)
-      case js.ComputedName(tree)  => genBracketSelect(qual, tree)
-    }
-  }
-
-  private[emitter] def genBracketSelect(qual: js.Tree, item: js.Tree)(
-      implicit pos: Position): js.Tree = {
-    item match {
-      case js.StringLiteral(name) if internalOptions.optimizeBracketSelects &&
-          isValidIdentifier(name) && name != "eval" =>
-        /* We exclude "eval" because Rhino does not respect the strict mode
-         * specificities of eval().
-         */
-        js.DotSelect(qual, js.Ident(name))
-      case _ =>
-        js.BracketSelect(qual, item)
-    }
-  }
-
-  private[emitter] def genIdentBracketSelect(qual: js.Tree, item: String)(
-      implicit pos: Position): js.Tree = {
-    require(item != "eval")
-    if (internalOptions.optimizeBracketSelects)
-      js.DotSelect(qual, js.Ident(item))
-    else
-      js.BracketSelect(qual, js.StringLiteral(item))
-  }
-
-  private[emitter] implicit class MyTreeOps(val self: js.Tree) {
-    def prototype(implicit pos: Position): js.Tree =
-      js.DotSelect(self, js.Ident("prototype"))
-  }
-
-  class DesugarException(tree: Tree,
-      cause: Throwable) extends Exception(exceptionMsg(tree), cause)
-
-  private def exceptionMsg(tree: Tree): String = {
-    val writer = new StringWriter
-    val printer = new ir.Printers.IRTreePrinter(writer)
-    printer.printTopLevelTree(tree)
-    "Exception while desugaring: " + writer.toString
-  }
 }
 
-private object JSDesugaring {
+private object FunctionEmitter {
   /** A left hand side that can be pushed into a right hand side tree. */
   sealed abstract class Lhs {
     def hasNothingType: Boolean = false
