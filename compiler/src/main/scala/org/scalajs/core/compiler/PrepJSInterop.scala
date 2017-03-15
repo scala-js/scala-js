@@ -401,6 +401,28 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       case Template(parents, self, body) =>
         val clsSym = tree.symbol.owner
+
+        // Check that @JSExportStatic fields come first
+        if (clsSym.isModuleClass) { // quick check to avoid useless work
+          var foundStatOrNonStaticVal: Boolean = false
+          for (tree <- body) {
+            tree match {
+              case vd: ValDef if vd.symbol.hasAnnotation(JSExportStaticAnnotation) =>
+                if (foundStatOrNonStaticVal) {
+                  reporter.error(vd.pos,
+                      "@JSExportStatic vals and vars must be defined before " +
+                      "any other val/var, and before any constructor " +
+                      "statement.")
+                }
+              case vd: ValDef if !vd.symbol.isLazy =>
+                foundStatOrNonStaticVal = true
+              case _: MemberDef =>
+              case _ =>
+                foundStatOrNonStaticVal = true
+            }
+          }
+        }
+
         val exports = exporters.get(clsSym).toIterable.flatten
         // Add exports to the template
         treeCopy.Template(tree, parents, self, body ++ exports)
