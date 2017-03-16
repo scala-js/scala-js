@@ -390,7 +390,10 @@ trait PrepJSExports { this: PrepJSInterop =>
           }
 
         case ExportDestination.TopLevel =>
-          if (!sym.isAccessor && jsInterop.isJSProperty(sym)) {
+          if (sym.isLazy) {
+            reporter.error(annot.pos,
+                "You may not export a lazy val to the top level")
+          } else if (!sym.isAccessor && jsInterop.isJSProperty(sym)) {
             reporter.error(annot.pos,
                 "You may not export a getter or a setter to the top level")
           }

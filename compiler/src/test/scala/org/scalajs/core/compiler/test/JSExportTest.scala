@@ -1139,6 +1139,21 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noExportTopLevelLazyVal: Unit = {
+    """
+    object A {
+      @JSExportTopLevel("foo")
+      lazy val a: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a lazy val to the top level
+      |      @JSExportTopLevel("foo")
+      |       ^
+    """
+  }
+
+  @Test
   def noExportTopLevelGetter: Unit = {
     """
     object A {
