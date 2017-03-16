@@ -1439,6 +1439,24 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noExportStaticLazyVal: Unit = {
+    """
+    @ScalaJSDefined
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      lazy val a: Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: You may not export a lazy val as static
+      |      @JSExportStatic
+      |       ^
+    """
+  }
+
+  @Test
   def noExportValAsStaticAndTopLevel: Unit = {
     """
     @ScalaJSDefined

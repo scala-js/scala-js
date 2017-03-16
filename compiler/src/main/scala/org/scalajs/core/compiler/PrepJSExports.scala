@@ -426,7 +426,12 @@ trait PrepJSExports { this: PrepJSInterop =>
                 "Scala.js-defined JS class may export its members as static.")
           }
 
-          if (!isMember) {
+          if (isMember) {
+            if (sym.isLazy) {
+              reporter.error(annot.pos,
+                  "You may not export a lazy val as static")
+            }
+          } else {
             if (sym.isTrait) {
               reporter.error(annot.pos,
                   "You may not export a trait as static.")
