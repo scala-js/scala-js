@@ -8,7 +8,7 @@ import scala.scalajs.js.annotation._
  */
 @js.native
 @JSGlobal
-class Float32Array private extends TypedArray[Float, Float32Array] {
+class Float32Array private[this] () extends TypedArray[Float, Float32Array] {
 
   /** Constructs a Float32Array with the given length. Initialized to all 0 */
   def this(length: Int) = this()

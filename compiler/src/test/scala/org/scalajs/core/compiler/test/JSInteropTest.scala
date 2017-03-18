@@ -1002,6 +1002,89 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def warnPrivateMemberInNative: Unit = {
+
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      private[this] val a: Int = js.native
+      private val b: Int = js.native
+      private[A] val c: Int = js.native
+
+      private[this] var d: Int = js.native
+      private var e: Int = js.native
+      private[A] var f: Int = js.native
+
+      private[this] def g(): Int = js.native
+      private def h(): Int = js.native
+      private[A] def i(): Int = js.native
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:8: warning: Declaring private members in native JS classes is deprecated, because they do not behave the same way as in Scala.js-defined JS classes. Use a public member in a private facade instead. This will become an error in 1.0.0.
+      |      private[this] val a: Int = js.native
+      |                        ^
+      |newSource1.scala:9: warning: Declaring private members in native JS classes is deprecated, because they do not behave the same way as in Scala.js-defined JS classes. Use a public member in a private facade instead. This will become an error in 1.0.0.
+      |      private val b: Int = js.native
+      |                  ^
+      |newSource1.scala:10: warning: Declaring private members in native JS classes is deprecated, because they do not behave the same way as in Scala.js-defined JS classes. Use a public member in a private facade instead. This will become an error in 1.0.0.
+      |      private[A] val c: Int = js.native
+      |                     ^
+      |newSource1.scala:12: warning: Declaring private members in native JS classes is deprecated, because they do not behave the same way as in Scala.js-defined JS classes. Use a public member in a private facade instead. This will become an error in 1.0.0.
+      |      private[this] var d: Int = js.native
+      |                        ^
+      |newSource1.scala:13: warning: Declaring private members in native JS classes is deprecated, because they do not behave the same way as in Scala.js-defined JS classes. Use a public member in a private facade instead. This will become an error in 1.0.0.
+      |      private var e: Int = js.native
+      |                  ^
+      |newSource1.scala:14: warning: Declaring private members in native JS classes is deprecated, because they do not behave the same way as in Scala.js-defined JS classes. Use a public member in a private facade instead. This will become an error in 1.0.0.
+      |      private[A] var f: Int = js.native
+      |                     ^
+      |newSource1.scala:16: warning: Declaring private members in native JS classes is deprecated, because they do not behave the same way as in Scala.js-defined JS classes. Use a public member in a private facade instead. This will become an error in 1.0.0.
+      |      private[this] def g(): Int = js.native
+      |                        ^
+      |newSource1.scala:17: warning: Declaring private members in native JS classes is deprecated, because they do not behave the same way as in Scala.js-defined JS classes. Use a public member in a private facade instead. This will become an error in 1.0.0.
+      |      private def h(): Int = js.native
+      |                  ^
+      |newSource1.scala:18: warning: Declaring private members in native JS classes is deprecated, because they do not behave the same way as in Scala.js-defined JS classes. Use a public member in a private facade instead. This will become an error in 1.0.0.
+      |      private[A] def i(): Int = js.native
+      |                     ^
+    """
+
+  }
+
+  @Test
+  def warnPrivateConstructorInNative: Unit = {
+
+    """
+    @js.native
+    @JSGlobal
+    class A private () extends js.Object
+    """ containsWarns
+    """
+      |newSource1.scala:7: warning: Declaring private constructors in native JS classes is deprecated, because they do not behave the same way as in Scala.js-defined JS classes. Use `private[this]` instead. This will become an error in 1.0.0.
+      |    class A private () extends js.Object
+    """
+
+    """
+    @js.native
+    @JSGlobal
+    class A private[A] () extends js.Object
+    """ containsWarns
+    """
+      |newSource1.scala:7: warning: Declaring private constructors in native JS classes is deprecated, because they do not behave the same way as in Scala.js-defined JS classes. Use `private[this]` instead. This will become an error in 1.0.0.
+      |    class A private[A] () extends js.Object
+    """
+
+    """
+    @js.native
+    @JSGlobal
+    class A private[this] () extends js.Object
+    """.hasNoWarns
+
+  }
+
+  @Test
   def noUseJsNative: Unit = {
 
     """

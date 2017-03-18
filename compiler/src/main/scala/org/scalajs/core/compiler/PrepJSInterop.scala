@@ -962,6 +962,35 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             "This will become an error in 1.0.0.")
       }
 
+      /* In native JS types, there should not be any private member, except
+       * private[this] constructors.
+       */
+      if ((enclosingOwner is OwnerKind.JSNative) && isPrivateMaybeWithin(sym)) {
+        // Necessary for `private[this] val/var
+        def isFieldPrivateThis: Boolean = {
+          sym.isPrivateThis &&
+          !sym.isParamAccessor &&
+          !sym.owner.info.decls.exists(s => s.isGetter && s.accessed == sym)
+        }
+
+        if (sym.isClassConstructor) {
+          if (!sym.isPrivateThis) {
+            reporter.warning(tree.pos,
+                "Declaring private constructors in native JS classes is " +
+                "deprecated, because they do not behave the same way as in " +
+                "Scala.js-defined JS classes. Use `private[this]` instead. " +
+                "This will become an error in 1.0.0.")
+          }
+        } else if (sym.isMethod || isFieldPrivateThis) {
+          reporter.warning(tree.pos,
+              "Declaring private members in native JS classes is " +
+              "deprecated, because they do not behave the same way as in " +
+              "Scala.js-defined JS classes. Use a public member in a " +
+              "private facade instead. " +
+              "This will become an error in 1.0.0.")
+        }
+      }
+
       if (enclosingOwner is OwnerKind.JSNonNative) {
         // Private methods cannot be overloaded
         if (sym.isMethod && isPrivateMaybeWithin(sym)) {

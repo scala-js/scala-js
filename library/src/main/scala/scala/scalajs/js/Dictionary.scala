@@ -50,13 +50,6 @@ import annotation.JSBracketAccess
  */
 @native
 sealed trait Dictionary[A] extends Any {
-  /** Reads a field of this object by its name.
-   *
-   *  This must not be called if the dictionary does not contain the key.
-   */
-  @JSBracketAccess
-  private[js] def rawApply(key: String): A = native
-
   /** Writes a field of this object by its name. */
   @JSBracketAccess
   def update(key: String, value: A): Unit = native

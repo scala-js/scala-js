@@ -8,6 +8,9 @@
 
 package scala.scalajs.js
 
+import scala.scalajs.js
+import scala.scalajs.js.annotation._
+
 import scala.collection.mutable
 import mutable.Builder
 
@@ -24,17 +27,21 @@ class WrappedDictionary[A](val dict: Dictionary[A])
 
   def get(key: String): Option[A] = {
     if (contains(key))
-      Some(dict.rawApply(key))
+      Some(rawApply(key))
     else
       None
   }
 
   override def apply(key: String): A = {
     if (contains(key))
-      dict.rawApply(key)
+      rawApply(key)
     else
       throw new NoSuchElementException("key not found: " + key)
   }
+
+  @inline
+  private def rawApply(key: String): A =
+    dict.asInstanceOf[DictionaryRawApply[A]].rawApply(key)
 
   override def contains(key: String): Boolean = {
     /* We have to use a safe version of hasOwnProperty, because
@@ -82,6 +89,16 @@ object WrappedDictionary {
   @inline
   private def safeHasOwnProperty(dict: Dictionary[_], key: String): Boolean =
     Cache.safeHasOwnProperty(dict, key)
+
+  @js.native
+  private trait DictionaryRawApply[A] extends js.Object {
+    /** Reads a field of this object by its name.
+     *
+     *  This must not be called if the dictionary does not contain the key.
+     */
+    @JSBracketAccess
+    def rawApply(key: String): A = native
+  }
 
   private final class DictionaryIterator[+A](
       dict: Dictionary[A]) extends scala.collection.Iterator[(String, A)] {
