@@ -16,7 +16,7 @@ import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io.{IO => toolsIO, _}
 import org.scalajs.core.tools.jsdep._
 import org.scalajs.core.tools.json._
-import org.scalajs.core.tools.linker.{ClearableLinker, Linker}
+import org.scalajs.core.tools.linker.{ClearableLinker, ModuleInitializer, Linker}
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.backend.{LinkerBackend, ModuleKind, OutputMode}
 
@@ -192,7 +192,7 @@ object ScalaJSPluginInternal {
 
         val backendConfig = LinkerBackend.Config()
           .withRelativizeSourceMapBase(relSourceMapBase)
-          .withCustomOutputWrapper(scalaJSOutputWrapper.value)
+          .withCustomOutputWrapperInternal(scalaJSOutputWrapperInternal.value)
           .withPrettyPrint(opts.prettyPrintFullOptJS)
 
         val config = Linker.Config()
@@ -232,6 +232,7 @@ object ScalaJSPluginInternal {
         val irInfo = (scalaJSIR in key).value
         val realFiles = irInfo.get(scalaJSSourceFiles).get
         val ir = irInfo.data
+        val moduleInitializers = scalaJSModuleInitializers.value
         val output = (artifactPath in key).value
 
         Def.task {
@@ -248,7 +249,9 @@ object ScalaJSPluginInternal {
             IO.createDirectory(output.getParentFile)
 
             val linker = (scalaJSLinker in key).value
-            linker.link(ir, AtomicWritableFileVirtualJSFile(output), sbtLogger2ToolsLogger(log))
+            linker.link(ir, moduleInitializers,
+                AtomicWritableFileVirtualJSFile(output),
+                sbtLogger2ToolsLogger(log))
 
             logIRCacheStats(log)
 
@@ -260,7 +263,7 @@ object ScalaJSPluginInternal {
         } tag((usesScalaJSLinkerTag in key).value)
       }.value,
 
-      key := key.dependsOn(packageJSDependencies, packageScalaJSLauncher).value,
+      key := key.dependsOn(packageJSDependencies, packageScalaJSLauncherInternal).value,
 
       scalaJSLinkedFile in key := new FileVirtualJSFile(key.value.data)
   )
@@ -415,29 +418,37 @@ object ScalaJSPluginInternal {
 
       fullOptJS := fullOptJS.dependsOn(packageMinifiedJSDependencies).value,
 
-      artifactPath in packageScalaJSLauncher :=
-        ((crossTarget in packageScalaJSLauncher).value /
-            ((moduleName in packageScalaJSLauncher).value + "-launcher.js")),
+      artifactPath in packageScalaJSLauncherInternal :=
+        ((crossTarget in packageScalaJSLauncherInternal).value /
+            ((moduleName in packageScalaJSLauncherInternal).value + "-launcher.js")),
 
-      skip in packageScalaJSLauncher := {
-        val value = !persistLauncher.value
-        if (!value && (scalaJSModuleKind.value != ModuleKind.NoModule)) {
-          throw new MessageOnlyException(
-              "persistLauncher := true is not compatible with emitting " +
-              "JavaScript modules")
+      skip in packageScalaJSLauncherInternal := {
+        val value = !persistLauncherInternal.value
+        if (!value) {
+          if (scalaJSUseMainModuleInitializer.value) {
+            throw new MessageOnlyException(
+                "persistLauncher := true is not compatible with using a main " +
+                "module initializer (scalaJSUseMainModuleInitializer := " +
+                "true), nor is it necessary, since fastOptJS/fullOptJS " +
+                "includes the call to the main method")
+          } else if (scalaJSModuleKind.value != ModuleKind.NoModule) {
+            throw new MessageOnlyException(
+                "persistLauncher := true is not compatible with emitting " +
+                "JavaScript modules")
+          }
         }
         value
       },
 
-      packageScalaJSLauncher := Def.taskDyn {
-        if ((skip in packageScalaJSLauncher).value) {
+      packageScalaJSLauncherInternal := Def.taskDyn {
+        if ((skip in packageScalaJSLauncherInternal).value) {
           Def.task {
-            Attributed.blank((artifactPath in packageScalaJSLauncher).value)
+            Attributed.blank((artifactPath in packageScalaJSLauncherInternal).value)
           }
         } else {
           Def.task {
             mainClass.value map { mainCl =>
-              val file = (artifactPath in packageScalaJSLauncher).value
+              val file = (artifactPath in packageScalaJSLauncherInternal).value
               assert(scalaJSModuleKind.value == ModuleKind.NoModule,
                   "Cannot produce a launcher file when scalaJSModuleKind " +
                   "is different from NoModule")
@@ -644,8 +655,9 @@ object ScalaJSPluginInternal {
             Def.task {
               val linker = scalaJSLinker.value
               val ir = scalaJSIR.value.data
-              val unit = linker.linkUnit(ir, env.symbolRequirements,
-                  sbtLogger2ToolsLogger(log))
+              val moduleInitializers = scalaJSModuleInitializers.value
+              val unit = linker.linkUnit(ir, moduleInitializers,
+                  env.symbolRequirements, sbtLogger2ToolsLogger(log))
 
               log.debug("Loading JSEnv with LinkingUnit")
               env.loadLibs(libs).loadLinkingUnit(unit)
@@ -738,15 +750,45 @@ object ScalaJSPluginInternal {
 
   // These settings will be filtered by the stage dummy tasks
   val scalaJSRunSettings = Seq(
-      mainClass in scalaJSLauncher := (mainClass in run).value,
-      scalaJSLauncher := Def.taskDyn[Attributed[VirtualJSFile]] {
-        if (persistLauncher.value) {
+      scalaJSMainModuleInitializer := {
+        mainClass.value.map(ModuleInitializer.mainMethod(_, "main"))
+      },
+
+      scalaJSModuleInitializers ++= {
+        if (scalaJSUseMainModuleInitializer.value) {
+          Seq(scalaJSMainModuleInitializer.value.getOrElse {
+            throw new MessageOnlyException(
+                "No main module initializer was specified (possibly because " +
+                "no or multiple main classes were found), but " +
+                "scalaJSUseMainModuleInitializer was set to true. " +
+                "You can explicitly specify it either with " +
+                "`mainClass := Some(...)` or with " +
+                "`scalaJSMainModuleInitializer := Some(...)`")
+          })
+        } else {
+          Seq.empty
+        }
+      },
+
+      mainClass in scalaJSLauncherInternal := (mainClass in run).value,
+      scalaJSLauncherInternal := Def.taskDyn[Attributed[VirtualJSFile]] {
+        if (persistLauncherInternal.value) {
           Def.task {
-            packageScalaJSLauncher.value.map(FileVirtualJSFile)
+            packageScalaJSLauncherInternal.value.map(FileVirtualJSFile)
+          }
+        } else if (scalaJSUseMainModuleInitializer.value) {
+          Def.task {
+            val base = Attributed.blank[VirtualJSFile](
+                new MemVirtualJSFile("No-op generated launcher file"))
+            mainClass.value.fold {
+              base
+            } { mainClass =>
+              base.put(name.key, mainClass)
+            }
           }
         } else {
           Def.task {
-            (mainClass in scalaJSLauncher).value.fold {
+            (mainClass in scalaJSLauncherInternal).value.fold {
               sys.error("No main class detected.")
             } { mainClass =>
               val moduleKind = scalaJSModuleKind.value
@@ -767,7 +809,7 @@ object ScalaJSPluginInternal {
         // use assert to prevent warning about pure expr in stat pos
         assert(scalaJSEnsureUnforked.value)
 
-        val launch = scalaJSLauncher.value
+        val launch = scalaJSLauncherInternal.value
         val className = launch.get(name.key).getOrElse("<unknown class>")
         jsRun(loadedJSEnv.value, className, launch.data,
             streams.value.log, scalaJSConsole.value)
@@ -778,6 +820,14 @@ object ScalaJSPluginInternal {
         assert(scalaJSEnsureUnforked.value)
 
         val mainClass = runMainParser.parsed
+
+        if (scalaJSUseMainModuleInitializer.value) {
+          throw new MessageOnlyException(
+              "`runMain` is not supported when using a main module " +
+              "initializer (scalaJSUseMainModuleInitializer := true) since " +
+              "the (unique) entry point is burned in the fastOptJS/fullOptJS.")
+        }
+
         val moduleKind = scalaJSModuleKind.value
         val moduleIdentifier = scalaJSModuleIdentifier.value
         jsRun(loadedJSEnv.value, mainClass,
@@ -830,7 +880,7 @@ object ScalaJSPluginInternal {
   val scalaJSTestBuildSettings = (
       scalaJSConfigSettings
   ) ++ (
-      Seq(fastOptJS, fullOptJS, packageScalaJSLauncher,
+      Seq(fastOptJS, fullOptJS, packageScalaJSLauncherInternal,
           packageJSDependencies) map { packageJSTask =>
         moduleName in packageJSTask := moduleName.value + "-test"
       }
@@ -922,12 +972,12 @@ object ScalaJSPluginInternal {
       isScalaJSProject := true,
 
       relativeSourceMaps := false,
-      persistLauncher := false,
-      persistLauncher in Test := false,
+      persistLauncherInternal := false,
+      persistLauncherInternal in Test := false,
 
       emitSourceMaps := true,
 
-      scalaJSOutputWrapper := ("", ""),
+      scalaJSOutputWrapperInternal := ("", ""),
 
       scalaJSOptimizerOptions := OptimizerOptions(),
 
@@ -939,6 +989,14 @@ object ScalaJSPluginInternal {
       scalaJSOutputMode := OutputMode.ECMAScript51Isolated,
       scalaJSModuleKind := ModuleKind.NoModule,
       checkScalaJSSemantics := true,
+
+      scalaJSModuleInitializers := Seq(),
+      scalaJSModuleInitializers in Compile := scalaJSModuleInitializers.value,
+      // Do not inherit scalaJSModuleInitializers in Test from Compile
+      scalaJSModuleInitializers in Test := scalaJSModuleInitializers.value,
+
+      scalaJSUseMainModuleInitializer := false,
+      scalaJSUseMainModuleInitializer in Test := false,
 
       scalaJSConsole := ConsoleJSConsole,
 

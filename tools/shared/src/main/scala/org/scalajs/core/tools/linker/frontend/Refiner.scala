@@ -23,8 +23,12 @@ final class Refiner {
   def refine(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
       logger: Logger): LinkingUnit = {
     val analysis = logger.time("Refiner: Compute reachability") {
-      Analyzer.computeReachability(unit.semantics, symbolRequirements,
-          unit.infos.values.toList, allowAddingSyntheticMethods = false)
+      val allSymbolRequirements = {
+        symbolRequirements ++
+        ModuleInitializer.toSymbolRequirement(unit.moduleInitializers)
+      }
+      Analyzer.computeReachability(unit.semantics, allSymbolRequirements,
+          unit.infosInternal.values.toList, allowAddingSyntheticMethods = false)
     }
 
     /* There really should not be linking errors at this point. If there are,
@@ -57,7 +61,7 @@ final class Refiner {
         linkedClassDef <- optClassDef(classInfo)
       } yield linkedClassDef
 
-      unit.updated(classDefs = linkedClassDefs.toList,
+      unit.updatedInternal(classDefs = linkedClassDefs.toList,
           isComplete = analysis.allAvailable)
     }
   }

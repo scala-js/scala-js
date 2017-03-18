@@ -26,7 +26,7 @@ class LinkerTest {
         ModuleKind.NoModule, Linker.Config())
 
     def callLink(): Unit =
-      linker.link(badSeq, WritableMemVirtualJSFile("some_file"), NullLogger)
+      linker.link(badSeq, Nil, WritableMemVirtualJSFile("some_file"), NullLogger)
 
     // Call first time. Get exception from badSeq.
     try {

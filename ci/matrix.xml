@@ -39,7 +39,20 @@
         ++$scala helloworld/run &&
     sbtretry 'set inScope(ThisScope in helloworld)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala helloworld/run &&
+        ++$scala helloworld/run \
+        helloworld/clean &&
+    sbtretry ++$scala \
+        'set scalaJSModuleKind in helloworld := ModuleKind.CommonJSModule' \
+        helloworld/run \
+        helloworld/clean &&
+    sbtretry ++$scala \
+        'set Seq(scalaJSUseMainModuleInitializer in helloworld := false, persistLauncher in helloworld := true)' \
+        'set scalaJSUseRhino in Global := true' \
+        helloworld/run &&
+    sbtretry ++$scala \
+        'set Seq(scalaJSUseMainModuleInitializer in helloworld := false, persistLauncher in helloworld := true)' \
+        helloworld/run \
+        helloworld/clean &&
     sbtretry 'set scalaJSUseRhino in Global := true' \
         ++$scala testingExample/test:run testingExample/test &&
     sbtretry ++$scala testingExample/test:run testingExample/test &&

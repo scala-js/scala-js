@@ -17,7 +17,7 @@ import org.scalajs.core.tools.logging._
 
 import CheckedBehavior.Compliant
 
-import org.scalajs.core.tools.linker.Linker
+import org.scalajs.core.tools.linker.{ModuleInitializer, Linker}
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.backend.{LinkerBackend, OutputMode, ModuleKind}
 
@@ -30,6 +30,7 @@ object Scalajsld {
 
   private case class Options(
     cp: Seq[File] = Seq.empty,
+    moduleInitializers: Seq[ModuleInitializer] = Seq.empty,
     output: File = null,
     jsoutput: Boolean = false,
     semantics: Semantics = Semantics.Defaults,
@@ -44,6 +45,17 @@ object Scalajsld {
     checkIR: Boolean = false,
     stdLib: Option[File] = None,
     logLevel: Level = Level.Info)
+
+  private implicit object MainMethodRead extends scopt.Read[ModuleInitializer] {
+    val arity = 1
+    val reads = { (s: String) =>
+      val lastDot = s.lastIndexOf('.')
+      if (lastDot < 0)
+        throw new IllegalArgumentException(s"$s is not a valid main method")
+      ModuleInitializer.mainMethod(s.substring(0, lastDot),
+          s.substring(lastDot + 1))
+    }
+  }
 
   private implicit object OutputModeRead extends scopt.Read[OutputMode] {
     val arity = 1
@@ -68,6 +80,12 @@ object Scalajsld {
         .unbounded()
         .action { (x, c) => c.copy(cp = c.cp :+ x) }
         .text("Entries of Scala.js classpath to link")
+      opt[ModuleInitializer]("mainMethod")
+        .valueName("<full.name.Object.main>")
+        .abbr("mm")
+        .unbounded()
+        .action { (x, c) => c.copy(moduleInitializers = c.moduleInitializers :+ x) }
+        .text("Execute the specified main method on startup")
       opt[File]('o', "output")
         .valueName("<file>")
         .required()
@@ -148,6 +166,7 @@ object Scalajsld {
     for (options <- parser.parse(args, Options())) {
       val classpath = options.stdLib.toList ++ options.cp
       val irContainers = IRFileCache.IRContainer.fromClasspath(classpath)
+      val moduleInitializers = options.moduleInitializers
 
       // Warn if writing JS dependencies was requested.
       if (options.jsoutput) {
@@ -192,7 +211,8 @@ object Scalajsld {
       val outFile = WritableFileVirtualJSFile(options.output)
       val cache = (new IRFileCache).newCache
 
-      linker.link(cache.cached(irContainers), outFile, logger)
+      linker.link(cache.cached(irContainers), moduleInitializers, outFile,
+          logger)
     }
   }
 }

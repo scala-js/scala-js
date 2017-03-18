@@ -41,13 +41,16 @@ final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
   private[this] val _linking = new AtomicBoolean(false)
 
   def linkUnit(irFiles: Seq[VirtualScalaJSIRFile],
+      moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit =
-    guard(frontend.link(irFiles, symbolRequirements, logger))
+    guard(frontend.link(irFiles, moduleInitializers, symbolRequirements, logger))
 
   def link(irFiles: Seq[VirtualScalaJSIRFile],
+      moduleInitializers: Seq[ModuleInitializer],
       output: WritableVirtualJSFile, logger: Logger): Unit = {
     guard {
-      val unit = frontend.link(irFiles, backend.symbolRequirements, logger)
+      val unit = frontend.link(irFiles, moduleInitializers,
+          backend.symbolRequirements, logger)
       backend.emit(unit, output, logger)
     }
   }

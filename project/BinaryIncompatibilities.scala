@@ -53,6 +53,12 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // Breaking: add 2 methods to the GenLinker trait
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "org.scalajs.core.tools.linker.GenLinker.link"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "org.scalajs.core.tools.linker.GenLinker.linkUnit"),
+
       // Breaking. Remove PropertyName.name
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.javascript.Trees#PropertyName.name"),
@@ -72,6 +78,10 @@ object BinaryIncompatibilities {
           "org.scalajs.core.tools.linker.analyzer.Analyzer.org$scalajs$core$tools$linker$analyzer$Analyzer$$createMissingMethodInfo$default$2"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.analyzer.Analyzer.org$scalajs$core$tools$linker$analyzer$Analyzer$$createMissingMethodInfo$default$3"),
+
+      // private[frontend], not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.frontend.BaseLinker.linkInternal"),
 
       // private[closure], not an issue
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
@@ -140,6 +150,75 @@ object BinaryIncompatibilities {
   )
 
   val CLI = Seq(
+      // private, not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.cli.Scalajsld#Options.this"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.<init>$default$2"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.<init>$default$3"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.<init>$default$4"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.<init>$default$5"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.<init>$default$6"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.<init>$default$7"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.<init>$default$11"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.<init>$default$12"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.<init>$default$14"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.<init>$default$15"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy$default$2"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy$default$3"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy$default$4"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy$default$5"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy$default$6"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy$default$7"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy$default$11"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy$default$12"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy$default$14"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy$default$15"),
+      ProblemFilters.exclude[MissingTypesProblem](
+          "org.scalajs.cli.Scalajsld$Options$"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply$default$2"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply$default$3"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply$default$4"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply$default$5"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply$default$6"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply$default$7"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply$default$11"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply$default$12"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply$default$14"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply$default$15")
   )
 
   val Library = Seq(

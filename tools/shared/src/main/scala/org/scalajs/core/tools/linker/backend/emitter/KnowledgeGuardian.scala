@@ -11,7 +11,7 @@ package org.scalajs.core.tools.linker.backend.emitter
 
 import scala.collection.mutable
 
-import org.scalajs.core.ir.ClassKind
+import org.scalajs.core.ir.{ClassKind, Definitions}
 import org.scalajs.core.ir.Trees.{FieldDef, JSNativeLoadSpec}
 
 import org.scalajs.core.tools.linker._
@@ -41,7 +41,7 @@ private[emitter] final class KnowledgeGuardian {
    *  the rare events where they do change.
    */
   def update(linkingUnit: LinkingUnit): Boolean = {
-    val newIsParentDataAccessed = linkingUnit.globalInfo.isParentDataAccessed
+    var newIsParentDataAccessed = false
     var newHasNewRuntimeLong: Boolean = false
 
     // Update classes
@@ -53,10 +53,15 @@ private[emitter] final class KnowledgeGuardian {
         existingCls.update(linkedClass)
       }
 
-      if (linkedClass.encodedName == LongImpl.RuntimeLongClass) {
-        newHasNewRuntimeLong = linkedClass.memberMethods.exists { linkedMethod =>
-          linkedMethod.tree.name.encodedName == LongImpl.initFromParts
-        }
+      def methodExists(encodedName: String): Boolean =
+        linkedClass.memberMethods.exists(_.tree.name.encodedName == encodedName)
+
+      linkedClass.encodedName match {
+        case Definitions.ClassClass =>
+          newIsParentDataAccessed = methodExists("getSuperclass__jl_Class")
+        case LongImpl.RuntimeLongClass =>
+          newHasNewRuntimeLong = methodExists(LongImpl.initFromParts)
+        case _ =>
       }
     }
 

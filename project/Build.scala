@@ -32,6 +32,7 @@ import org.scalajs.core.tools.io.MemVirtualJSFile
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.json._
+import org.scalajs.core.tools.linker.ModuleInitializer
 import org.scalajs.core.tools.linker.backend.OutputMode
 
 import sbtassembly.AssemblyPlugin.autoImport._
@@ -624,9 +625,26 @@ object Build {
           val (jars, dirs) = cp.filter(_.exists).partition(_.isFile)
           val irFiles = dirs.flatMap(dir => (dir ** "*.sjsir").get)
 
-          val irPaths =  {
-            for (f <- jars ++ irFiles)
-              yield s""""${escapeJS(f.getAbsolutePath)}""""
+          def seqOfStringsToJSArrayCode(strings: Seq[String]): String =
+            strings.map(s => "\"" + escapeJS(s) + "\"").mkString("[", ", ", "]")
+
+          val irPaths = {
+            val absolutePaths = (jars ++ irFiles).map(_.getAbsolutePath)
+            seqOfStringsToJSArrayCode(absolutePaths)
+          }
+
+          val mainMethods = {
+            /* Ideally we would read `scalaJSModuleInitializers in (testSuite, Test)`,
+             * but we cannot convert the ModuleInitializers to strings to be
+             * passed to the QuickLinker (because ModuleInitializer is a
+             * write-only data structure). So we have some duplication.
+             */
+            val unescapedMainMethods = List(
+                "org.scalajs.testsuite.compiler.ModuleInitializerInNoConfiguration.main",
+                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.main2",
+                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.main1"
+            )
+            seqOfStringsToJSArrayCode(unescapedMainMethods)
           }
 
           val scalaJSEnv = {
@@ -640,7 +658,7 @@ object Build {
           val code = {
             s"""
             var linker = scalajs.QuickLinker;
-            var lib = linker.linkTestSuiteNode(${irPaths.mkString(", ")});
+            var lib = linker.linkTestSuiteNode($irPaths, $mainMethods);
 
             var __ScalaJSEnv = $scalaJSEnv;
 
@@ -1207,7 +1225,7 @@ object Build {
       settings = exampleSettings ++ Seq(
           name := "Hello World - Scala.js example",
           moduleName := "helloworld",
-          persistLauncher := true
+          scalaJSUseMainModuleInitializer := true
       )
   ).withScalaJSCompiler.dependsOn(library)
 
@@ -1501,6 +1519,59 @@ object Build {
           }
 
           sourceFiles1
+        },
+
+        /* Reduce the amount of tests on PhantomJS to avoid a crash.
+         * It seems we reached the limits of what PhantomJS can handle in terms
+         * of code mass. Since PhantomJS support is due to be moved to a
+         * separate repository in 1.0.0, the easiest way to fix this is to
+         * reduce the pressure on PhantomJS. We therefore remove the tests of
+         * java.math (BigInteger and BigDecimal) when running with PhantomJS.
+         * These tests are well isolated, and the less likely to have
+         * environmental differences.
+         *
+         * Note that `jsEnv` is never set from this Build, but it is set via
+         * the command-line in the CI matrix.
+         */
+        sources in Test := {
+          def isPhantomJS(env: JSEnv): Boolean = env match {
+            case _: PhantomJSEnv       => true
+            case env: RetryingComJSEnv => isPhantomJS(env.baseEnv)
+            case _                     => false
+          }
+
+          val sourceFiles = (sources in Test).value
+          if ((jsEnv in Test).?.value.exists(isPhantomJS)) {
+            sourceFiles.filter { f =>
+              !f.getAbsolutePath
+                .replace('\\', '/')
+                .contains("/org/scalajs/testsuite/javalib/math/")
+            }
+          } else {
+            sourceFiles
+          }
+        },
+
+        // Module initializers. Duplicated in toolsJS/test
+        scalaJSModuleInitializers += {
+          ModuleInitializer.mainMethod(
+              "org.scalajs.testsuite.compiler.ModuleInitializerInNoConfiguration",
+              "main")
+        },
+        scalaJSModuleInitializers in Compile += {
+          ModuleInitializer.mainMethod(
+              "org.scalajs.testsuite.compiler.ModuleInitializerInCompileConfiguration",
+              "main")
+        },
+        scalaJSModuleInitializers in Test += {
+          ModuleInitializer.mainMethod(
+              "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
+              "main2")
+        },
+        scalaJSModuleInitializers in Test += {
+          ModuleInitializer.mainMethod(
+              "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
+              "main1")
         }
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(

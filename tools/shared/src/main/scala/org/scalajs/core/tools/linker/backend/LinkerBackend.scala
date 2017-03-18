@@ -77,8 +77,19 @@ object LinkerBackend {
     def withRelativizeSourceMapBase(relativizeSourceMapBase: Option[URI]): Config =
       copy(relativizeSourceMapBase = relativizeSourceMapBase)
 
+    @deprecated(
+        "The functionality of custom output wrappers has been superseded " +
+        "by the support for CommonJS modules, module initializers, and " +
+        "top-level exports.",
+        "0.6.15")
     def withCustomOutputWrapper(customOutputWrapper: (String, String)): Config =
       copy(customOutputWrapper = customOutputWrapper)
+
+    // Non-deprecated version to call from the sbt plugin
+    private[scalajs] def withCustomOutputWrapperInternal(
+        customOutputWrapper: (String, String)): Config = {
+      copy(customOutputWrapper = customOutputWrapper)
+    }
 
     def withPrettyPrint(prettyPrint: Boolean): Config =
       copy(prettyPrint = prettyPrint)

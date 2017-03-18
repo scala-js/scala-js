@@ -37,13 +37,21 @@ import Analysis._
 /** Links the information from [[io.VirtualScalaJSIRFile]]s into
  *  [[LinkedClass]]es. Does a dead code elimination pass.
  */
-final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions: Boolean) {
+final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
+    considerPositions: Boolean) {
 
   private type TreeProvider = String => (ClassDef, Option[String])
 
+  @deprecated("Use the overload with explicit module initializers.", "0.6.15")
   def link(irInput: Seq[VirtualScalaJSIRFile], logger: Logger,
       symbolRequirements: SymbolRequirement, checkIR: Boolean): LinkingUnit = {
-    linkInternal(irInput, logger, symbolRequirements,
+    link(irInput, Nil, logger, symbolRequirements, checkIR)
+  }
+
+  def link(irInput: Seq[VirtualScalaJSIRFile],
+      moduleInitializers: Seq[ModuleInitializer], logger: Logger,
+      symbolRequirements: SymbolRequirement, checkIR: Boolean): LinkingUnit = {
+    linkInternal(irInput, moduleInitializers, logger, symbolRequirements,
         bypassLinkingErrors = false, checkIR = checkIR)
   }
 
@@ -54,12 +62,25 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
   def link(irInput: Seq[VirtualScalaJSIRFile], logger: Logger,
       symbolRequirements: SymbolRequirement, bypassLinkingErrors: Boolean,
       checkIR: Boolean): LinkingUnit = {
-    linkInternal(irInput, logger, symbolRequirements,
+    linkInternal(irInput, Nil, logger, symbolRequirements,
+        bypassLinkingErrors, checkIR)
+  }
+
+  @deprecated(
+      "Bypassing linking errors will not be possible in the next major version. " +
+      "Use the overload without the bypassLinkingError parameter instead.",
+      "0.6.6")
+  def link(irInput: Seq[VirtualScalaJSIRFile],
+      moduleInitializers: Seq[ModuleInitializer], logger: Logger,
+      symbolRequirements: SymbolRequirement, bypassLinkingErrors: Boolean,
+      checkIR: Boolean): LinkingUnit = {
+    linkInternal(irInput, moduleInitializers, logger, symbolRequirements,
         bypassLinkingErrors, checkIR)
   }
 
   // Non-deprecated version to be called from `LinkerFrontend`
-  private[frontend] def linkInternal(irInput: Seq[VirtualScalaJSIRFile], logger: Logger,
+  private[frontend] def linkInternal(irInput: Seq[VirtualScalaJSIRFile],
+      moduleInitializers: Seq[ModuleInitializer], logger: Logger,
       symbolRequirements: SymbolRequirement, bypassLinkingErrors: Boolean,
       checkIR: Boolean): LinkingUnit = {
 
@@ -83,13 +104,13 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       (pf.tree, pf.version)
     }
 
-    linkInternal(infos, getTree, logger, symbolRequirements,
+    linkInternal(infos, getTree, moduleInitializers, logger, symbolRequirements,
         bypassLinkingErrors, checkIR)
   }
 
   private def linkInternal(infoInput: List[Infos.ClassInfo],
-      getTree: TreeProvider, logger: Logger,
-      symbolRequirements: SymbolRequirement,
+      getTree: TreeProvider, moduleInitializers: Seq[ModuleInitializer],
+      logger: Logger, symbolRequirements: SymbolRequirement,
       bypassLinkingErrors: Boolean, checkIR: Boolean): LinkingUnit = {
 
     if (checkIR) {
@@ -103,7 +124,11 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     }
 
     val analysis = logger.time("Linker: Compute reachability") {
-      Analyzer.computeReachability(semantics, symbolRequirements, infoInput,
+      val allSymbolRequirements = {
+        symbolRequirements ++
+        ModuleInitializer.toSymbolRequirement(moduleInitializers)
+      }
+      Analyzer.computeReachability(semantics, allSymbolRequirements, infoInput,
           allowAddingSyntheticMethods = true)
     }
 
@@ -134,7 +159,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     }
 
     val linkResult = logger.time("Linker: Assemble LinkedClasses") {
-      assemble(infoInput, getTree, analysis)
+      assemble(infoInput, getTree, moduleInitializers, analysis)
     }
 
     // Make sure we don't export to the same name twice.
@@ -155,8 +180,8 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     linkResult
   }
 
-  private def assemble(infoInput: List[Infos.ClassInfo],
-      getTree: TreeProvider, analysis: Analysis) = {
+  private def assemble(infoInput: List[Infos.ClassInfo], getTree: TreeProvider,
+      moduleInitializers: Seq[ModuleInitializer], analysis: Analysis) = {
     val infoByName = Map(infoInput.map(c => c.encodedName -> c): _*)
 
     def optClassDef(analyzerInfo: Analysis.ClassInfo) = {
@@ -180,7 +205,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     } yield linkedClassDef
 
     new LinkingUnit(semantics, esLevel, linkedClassDefs.toList, infoByName,
-        analysis.allAvailable)
+        moduleInitializers.toList, analysis.allAvailable)
   }
 
   /** Takes a Infos, a ClassDef and DCE infos to construct a stripped down

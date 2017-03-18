@@ -135,7 +135,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
             memberMethods = defs(memberNamespace))
       }
 
-      unit.updated(classDefs = newLinkedClasses, isComplete = true)
+      unit.updatedInternal(classDefs = newLinkedClasses, isComplete = true)
     }
   }
 
