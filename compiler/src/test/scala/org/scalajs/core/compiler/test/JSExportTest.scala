@@ -3,6 +3,8 @@ package org.scalajs.core.compiler.test
 import org.scalajs.core.compiler.test.util._
 import org.junit.Test
 
+import org.junit.Assume._
+
 // scalastyle:off line.size.limit
 
 class JSExportTest extends DirectTest with TestHelpers {
@@ -1440,6 +1442,9 @@ class JSExportTest extends DirectTest with TestHelpers {
 
   @Test
   def noExportStaticLazyVal: Unit = {
+    // Affected by Scala bug SI-10075
+    assumeTrue(scala.util.Properties.versionNumberString != "2.12.0")
+
     """
     @ScalaJSDefined
     class StaticContainer extends js.Object
