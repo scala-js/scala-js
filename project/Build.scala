@@ -56,7 +56,7 @@ object Build {
   val shouldPartest = settingKey[Boolean](
     "Whether we should partest the current scala version (and fail if we can't)")
 
-  val previousVersion = "0.6.14"
+  val previousVersion = "0.6.15"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
@@ -1122,16 +1122,6 @@ object Build {
 
           previousArtifactSetting,
           mimaBinaryIssueFilters ++= BinaryIncompatibilities.CLI,
-
-          // TODO Remove this when going towards 0.6.16
-          // Ignore bin compat of cli for 2.12 because it's new in 0.6.15.
-          mimaPreviousArtifacts := {
-            val scalaV = scalaVersion.value
-            if (scalaV.startsWith("2.10.") || scalaV.startsWith("2.11."))
-              mimaPreviousArtifacts.value
-            else
-              Set.empty
-          },
 
           // assembly options
           mainClass in assembly := None, // don't want an executable JAR
