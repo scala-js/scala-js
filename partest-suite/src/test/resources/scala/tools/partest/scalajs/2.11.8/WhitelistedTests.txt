@@ -3093,6 +3093,7 @@ neg/t9401.scala
 neg/t9572.scala
 neg/warn-unused-imports
 neg/partestInvalidFlag.scala
+run/patmat-exprs.scala
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala

@@ -31,42 +31,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   import functionEmitter._
   import jsGen._
 
-  /** Desugars a Scala.js class specifically for use by the Rhino interpreter.
-   *
-   *  @param tree The IR tree to emit to raw JavaScript
-   */
-  def genClassDefForRhino(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
-
-    implicit val pos = tree.pos
-    val kind = tree.kind
-
-    var reverseParts: List[js.Tree] = Nil
-
-    reverseParts ::= genStaticMembers(tree)
-    if (kind == ClassKind.Interface)
-      reverseParts ::= genDefaultMethods(tree)
-    if (kind.isAnyScalaJSDefinedClass && tree.hasInstances)
-      reverseParts ::= genClassForRhino(tree)
-    if (needInstanceTests(tree)) {
-      reverseParts ::= genInstanceTests(tree)
-      reverseParts ::= genArrayInstanceTests(tree)
-    }
-    if (tree.hasRuntimeTypeInfo)
-      reverseParts ::= genTypeData(tree)
-    if (kind.isClass && tree.hasInstances && tree.hasRuntimeTypeInfo)
-      reverseParts ::= genSetTypeData(tree)
-    if (kind.hasModuleAccessor)
-      reverseParts ::= genModuleAccessor(tree)
-    if (!kind.isJSType) {
-      reverseParts ::= genCreateStaticFieldsOfScalaClass(tree)
-      reverseParts ::= genStaticInitialization(tree)
-    }
-    reverseParts ::= genClassExports(tree)
-
-    js.Block(reverseParts.reverse)
-  }
-
   def genStaticMembers(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     val className = tree.name.name
@@ -81,18 +45,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val defaultMethodDefs =
       tree.memberMethods.map(m => genDefaultMethod(className, m.tree))
     js.Block(defaultMethodDefs)(tree.pos)
-  }
-
-  private def genClassForRhino(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
-
-    val className = tree.name.name
-    val ctor = genConstructor(tree)
-    val memberDefs =
-      tree.memberMethods.map(m => genMethod(className, m.tree))
-    val exportedDefs = genExportedMembers(tree)
-
-    buildClass(tree, ctor, memberDefs, exportedDefs)
   }
 
   def buildClass(tree: LinkedClass, ctor: js.Tree, memberDefs: List[js.Tree],

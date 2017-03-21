@@ -369,32 +369,6 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       emitNextLine(0)
   }
 
-  // Private API for Rhino
-
-  private[scalajs] object rhinoAPI { // scalastyle:ignore
-    /** A GlobalKnowledge that never tracks dependencies. This can be used in
-     *  cases where we do not use any cache, which is what `genClassDef()` in
-     *  this class does.
-     */
-    private val globalKnowledge: GlobalKnowledge =
-      new knowledgeGuardian.KnowledgeAccessor {}
-
-    def initialize(linkingUnit: LinkingUnit): Unit =
-      startRun(linkingUnit)
-
-    def getHeaderFile(): org.scalajs.core.tools.io.VirtualJSFile =
-      CoreJSLibs.lib(semantics, outputMode, moduleKind)
-
-    def genClassDef(linkedClass: LinkedClass): js.Tree =
-      classEmitter.genClassDefForRhino(linkedClass)(globalKnowledge)
-
-    def genModuleInitializers(linkingUnit: LinkingUnit): js.Tree = {
-      val genModuleInitializers =
-        linkingUnit.moduleInitializers.map(classEmitter.genModuleInitializer(_))
-      js.Block(genModuleInitializers)(Position.NoPosition)
-    }
-  }
-
   // Caching
 
   private final class ClassCache extends knowledgeGuardian.KnowledgeAccessor {
@@ -485,8 +459,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
   }
 }
 
-// The only reason this is not private is that Rhino needs it
-private[scalajs] object Emitter {
+private object Emitter {
   private final class DesugaredClassCache {
     val constructor = new OneTimeCache[js.Tree]
     val exportedMembers = new OneTimeCache[js.Tree]
@@ -507,8 +480,7 @@ private[scalajs] object Emitter {
     }
   }
 
-  // The only reason this is not private is that Rhino needs it
-  private[scalajs] def symbolRequirements(semantics: Semantics,
+  private def symbolRequirements(semantics: Semantics,
       esLevel: ESLevel): SymbolRequirement = {
     import semantics._
     import CheckedBehavior._

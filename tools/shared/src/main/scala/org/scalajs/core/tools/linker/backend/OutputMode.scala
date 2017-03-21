@@ -29,8 +29,11 @@ object OutputMode {
   /** The default output mode. This is always the first element of [[All]] */
   val Default = All.head
 
+  // TODO Remove this now that the support for Rhino is dead
   /** Legacy output mode where everything is stored in a global ScalaJS variable.
-   *  This is suited to the special Rhino interpreter.
+   *  This used to be necessary for the special Rhino interpreter. Since it
+   *  has been removed, this output mode is completely useless, and will be
+   *  removed as well.
    */
   case object ECMAScript51Global extends OutputMode {
     val esLevel: ESLevel = ESLevel.ES5

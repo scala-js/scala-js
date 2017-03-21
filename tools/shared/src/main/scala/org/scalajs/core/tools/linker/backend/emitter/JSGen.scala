@@ -272,8 +272,9 @@ private[emitter] final class JSGen(val semantics: Semantics,
     item match {
       case StringLiteral(name) if internalOptions.optimizeBracketSelects &&
           irt.isValidIdentifier(name) && name != "eval" =>
-        /* We exclude "eval" because Rhino does not respect the strict mode
-         * specificities of eval().
+        /* We exclude "eval" because we do not want to rely too much on the
+         * strict mode peculiarities of eval(), so that we can keep running
+         * on VMs that do not support strict mode.
          */
         DotSelect(qual, Ident(name))
       case _ =>

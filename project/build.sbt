@@ -13,10 +13,6 @@ addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "0.8.0")
 
 libraryDependencies += "org.scala-js" % "closure-compiler-java-6" % "v20160517"
 
-libraryDependencies += "io.apigee" % "rhino" % "1.7R5pre4"
-
-libraryDependencies += "org.webjars" % "envjs" % "1.2"
-
 libraryDependencies += "org.eclipse.jgit" % "org.eclipse.jgit.pgm" % "3.2.0.201312181205-r"
 
 libraryDependencies += "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit")

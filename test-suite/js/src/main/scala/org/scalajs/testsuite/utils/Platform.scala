@@ -33,7 +33,6 @@ object Platform {
   def areJSSymbolsSupported: Boolean =
     !js.isUndefined(js.Dynamic.global.Symbol)
 
-  def executingInRhino: Boolean = sysProp("rhino")
   def executingInNodeJS: Boolean = sysProp("nodejs")
   def executingInNodeJSOnJSDOM: Boolean = sysProp("nodejs.jsdom")
   def executingInPhantomJS: Boolean = sysProp("phantomjs")

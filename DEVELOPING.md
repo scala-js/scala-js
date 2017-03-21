@@ -38,11 +38,7 @@ you typically need to
 
     > reload
 
-To test with Node.js instead of Rhino, use the usual Scala.js setting:
-
-    > set scalaJSUseRhino in Global := false
-
-and to run in fullOpt stage:
+To test in fullOpt stage:
 
     > set scalaJSStage in Global := FullOptStage
 
@@ -50,11 +46,11 @@ When running with Node.js, by default, the test suite requires the
 `source-map-support` package to be installed in `npm`. You can bypass the
 source map tests locally with this setting:
 
-    > set postLinkJSEnv in testSuite := NodeJSEnv().value.withSourceMap(false)
+    > set jsEnv in testSuite := NodeJSEnv().value.withSourceMap(false)
 
 To test with PhantomJS, use this setting:
 
-    > set inScope(ThisScope in testSuite)(Seq(postLinkJSEnv := PhantomJSEnv().value))
+    > set inScope(ThisScope in testSuite)(Seq(jsEnv := PhantomJSEnv().value))
 
 The tests for the javalibEx are in a separate testing project:
 
@@ -115,7 +111,7 @@ of `library/package`.
 
 Note that the sbt plugin depends on the IR and the tools.
 
-* `js-envs/` The JavaScript environments and runners (Rhino, Node.js and PhantomJS)
+* `js-envs/` The JavaScript environments and runners (Node.js and PhantomJS)
 * `sbt-plugin/` The sbt plugin itself
 
 ### Testing projects
@@ -128,7 +124,7 @@ Note that the sbt plugin depends on the IR and the tools.
 
 * `examples/helloworld/` A simple Hello World, typically used as sandbox for quick testing
 * `examples/reversi/` The historical Reversi demo - we use it to track the impact of changes on the emitted code size
-* `examples/testing/` A simple project with tests using the DOM, mostly used to test the support for the DOM in Rhino
+* `examples/testing/` A simple project with tests using the DOM, mostly used to test the support for the DOM with jsdom and PhantomJS
 
 These example projects also have HTML pages to run them in real browsers.
 

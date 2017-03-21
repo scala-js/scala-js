@@ -62,7 +62,13 @@ object StackTrace {
   @inline def captureState(throwable: Throwable, e: Any): Unit =
     throwable.asInstanceOf[js.Dynamic].stackdata = e.asInstanceOf[js.Any]
 
-  /** Tests whether we're running under Rhino. */
+  /** Tests whether we're running under Rhino (or Nashorn).
+   *
+   *  Even though we do not support Rhino nor Nashorn in the core repository,
+   *  we can always hope that someone will eventually pull off a third-party JS
+   *  env that manages to use either without surgery in the Scala.js linker.
+   *  So we keep support of stack trace detection for those engines.
+   */
   private lazy val isRhino: Boolean = {
     try {
       js.Dynamic.global.Packages.org.mozilla.javascript.JavaScriptException

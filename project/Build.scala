@@ -21,7 +21,6 @@ import org.scalajs.core.ir.Utils.escapeJS
 
 import org.scalajs.sbtplugin._
 import org.scalajs.jsenv.{JSEnv, RetryingComJSEnv}
-import org.scalajs.jsenv.rhino.RhinoJSEnv
 import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
 import org.scalajs.jsenv.phantomjs.PhantomJSEnv
 import ScalaJSPlugin.autoImport._
@@ -694,10 +693,8 @@ object Build {
           commonSettings ++ publishSettings ++ fatalWarningsSettings
       ) ++ Seq(
           name := "Scala.js JS Envs",
-          libraryDependencies ++= Seq(
-              "io.apigee" % "rhino" % "1.7R5pre4",
-              "org.webjars" % "envjs" % "1.2"
-          ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided"),
+          libraryDependencies ++=
+            ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided"),
           previousArtifactSetting,
           mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
       )
@@ -1260,11 +1257,6 @@ object Build {
       testOptionTags := {
         @tailrec
         def envTagsFor(env: JSEnv): Seq[String] = env match {
-          case env: RhinoJSEnv =>
-            val baseArgs = Seq("rhino")
-            if (env.sourceMap) baseArgs :+ "source-maps"
-            else baseArgs
-
           case env: NodeJSEnv =>
             val baseArgs = Seq("nodejs", "typedarray")
             if (env.sourceMap) {
@@ -1404,7 +1396,7 @@ object Build {
       // We need to patch the system properties.
       scalaJSJavaSystemProperties in Test in testHtmlKey ~= { base =>
         val unsupported =
-          Seq("rhino", "nodejs", "nodejs.jsdom", "phantomjs", "source-maps")
+          Seq("nodejs", "nodejs.jsdom", "phantomjs", "source-maps")
         val supported =
           Seq("typedarray", "browser")
 
@@ -1666,7 +1658,6 @@ object Build {
                     "org.scala-lang.modules" %% "scala-partest" % "1.0.17"
                 },
                 "org.scala-js" % "closure-compiler-java-6" % "v20160517",
-                "io.apigee" % "rhino" % "1.7R5pre4",
                 "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit")
               )
             else Seq()
@@ -1695,8 +1686,7 @@ object Build {
                 val scalaFilter: FileFilter = "*.scala"
                 val files = (
                     (jsenvBase * scalaFilter) +++
-                    (jsenvBase / "nodejs" ** scalaFilter) +++
-                    (jsenvBase / "rhino" ** scalaFilter))
+                    (jsenvBase / "nodejs" ** scalaFilter))
 
                 files.get
               }

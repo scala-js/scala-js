@@ -64,5 +64,4 @@ scala/collection/convert/MapWrapperTest.scala
 
 # Test fails only some times with
 #   'set scalaJSOptimizerOptions in scalaTestSuite ~= (_.withDisableOptimizer(true))'
-#   and' 'set scalaJSUseRhino in Global := false'
 scala/collection/immutable/PagedSeqTest.scala
