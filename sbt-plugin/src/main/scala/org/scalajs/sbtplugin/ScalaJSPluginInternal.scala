@@ -602,13 +602,15 @@ object ScalaJSPluginInternal {
       },
 
       resolvedJSEnv := jsEnv.?.value.getOrElse {
-        if (scalaJSUseRhinoInternal.value) {
-          RhinoJSEnvInternal().value
-        } else if (scalaJSRequestsDOM.value) {
-          JSDOMNodeJSEnv().value
-        } else {
-          NodeJSEnv().value
-        }
+        Def.taskDyn {
+          if (scalaJSUseRhinoInternal.value) {
+            RhinoJSEnvInternal().map(e => e: JSEnv) // .map is needed because `Task[A]` is non variant.
+          } else if (scalaJSRequestsDOM.value) {
+            JSDOMNodeJSEnv().map(e => e: JSEnv)
+          } else {
+            NodeJSEnv().map(e => e: JSEnv)
+          }
+        }.value
       },
 
       scalaJSJavaSystemProperties ++= {
