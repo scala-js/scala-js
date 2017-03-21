@@ -56,6 +56,7 @@ object Build {
   val shouldPartest = settingKey[Boolean](
     "Whether we should partest the current scala version (and fail if we can't)")
 
+  /* MiMa configuration -- irrelevant while in 1.0.0-SNAPSHOT.
   val previousVersion = "0.6.15"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
@@ -66,6 +67,7 @@ object Build {
     Set("2.10.6", "2.11.8", "2.12.1")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
+  */
 
   val javaVersion = settingKey[Int](
     "The major Java SDK version that should be assumed for compatibility. " +
@@ -88,6 +90,7 @@ object Build {
 
   val previousArtifactSetting: Setting[_] = {
     mimaPreviousArtifacts ++= {
+      /* MiMa is completely disabled while we are in 1.0.0-SNAPSHOT.
       val scalaV = scalaVersion.value
       val scalaBinaryV = scalaBinaryVersion.value
       if (!scalaVersionsUsedForPublishing.contains(scalaV)) {
@@ -113,6 +116,8 @@ object Build {
             .extra(prevExtraAttributes.toSeq: _*)
         Set(CrossVersion(scalaV, scalaBinaryV)(prevProjectID).cross(CrossVersion.Disabled))
       }
+      */
+      Set.empty
     }
   }
 
