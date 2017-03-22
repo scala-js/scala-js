@@ -23,21 +23,10 @@ object OutputMode {
    */
   val All = List(
       ECMAScript51Isolated,
-      ECMAScript6,
-      ECMAScript51Global)
+      ECMAScript6)
 
   /** The default output mode. This is always the first element of [[All]] */
   val Default = All.head
-
-  // TODO Remove this now that the support for Rhino is dead
-  /** Legacy output mode where everything is stored in a global ScalaJS variable.
-   *  This used to be necessary for the special Rhino interpreter. Since it
-   *  has been removed, this output mode is completely useless, and will be
-   *  removed as well.
-   */
-  case object ECMAScript51Global extends OutputMode {
-    val esLevel: ESLevel = ESLevel.ES5
-  }
 
   /** Modern output mode compliant with ECMAScript 5.1 in a function scope.
    *  This is the default output mode used by fastOpt and fullOpt.

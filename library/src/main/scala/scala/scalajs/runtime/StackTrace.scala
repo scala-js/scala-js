@@ -163,14 +163,8 @@ object StackTrace {
    *    \$c_<encoded class name>.prototype.<encoded method name>
    *    \$c_<encoded class name>.<encoded method name>
    *    \$s_<encoded class name>__<encoded method name>
+   *    \$f_<encoded class name>__<encoded method name>
    *    \$m_<encoded module name>
-   *  }}}
-   *  and their ECMAScript51Global equivalents:
-   *  {{{
-   *    ScalaJS.c.<encoded class name>.prototype.<encoded method name>
-   *    ScalaJS.c.<encoded class name>.<encoded method name>
-   *    ScalaJS.s.<encoded class name>__<encoded method name>
-   *    ScalaJS.m.<encoded module name>
    *  }}}
    *  all of them optionally prefixed by `Object.` or `[object Object].`.
    *
@@ -180,9 +174,9 @@ object StackTrace {
    *  display the function name.
    */
   private def extractClassMethod(functionName: String): (String, String) = {
-    val PatC = """^(?:Object\.|\[object Object\]\.)?(?:ScalaJS\.c\.|\$c_)([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
-    val PatS = """^(?:Object\.|\[object Object\]\.)?(?:ScalaJS\.(?:s|f)\.|\$(?:s|f)_)((?:_[^_]|[^_])+)__([^\.]+)$""".re
-    val PatM = """^(?:Object\.|\[object Object\]\.)?(?:ScalaJS\.m\.|\$m_)([^\.]+)$""".re
+    val PatC = """^(?:Object\.|\[object Object\]\.)?\$c_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
+    val PatS = """^(?:Object\.|\[object Object\]\.)?\$[sf]_((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatM = """^(?:Object\.|\[object Object\]\.)?\$m_([^\.]+)$""".re
 
     var isModule = false
     var mtch = PatC.exec(functionName)

@@ -123,9 +123,6 @@ private[backend] object CoreJSLibs {
         "{{LINKER_VERSION}}", ScalaJSVersions.current)
 
     val content1 = outputMode match {
-      case OutputMode.ECMAScript51Global =>
-        content
-
       case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
         content
           .replaceAll("ScalaJS\\.d\\.", "\\$d_")
@@ -143,7 +140,7 @@ private[backend] object CoreJSLibs {
     }
 
     outputMode match {
-      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Isolated =>
         content1
           .replaceAll(raw"\b(let|const)\b", "var")
 

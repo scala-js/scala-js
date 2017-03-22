@@ -7,10 +7,6 @@
  * The top-level Scala.js environment *
  * ---------------------------------- */
 
-//!if outputMode == ECMAScript51Global
-var ScalaJS = {};
-//!endif
-
 // Get the environment info
 ScalaJS.env = (typeof __ScalaJSEnv === "object" && __ScalaJSEnv) ? __ScalaJSEnv : {};
 
@@ -131,33 +127,12 @@ ScalaJS.clz32 = ScalaJS.g["Math"]["clz32"] || (function(i) {
 });
 //!endif
 
-// Other fields
-//!if outputMode == ECMAScript51Global
-ScalaJS.d = {};         // Data for types
-ScalaJS.a = {};         // Scala.js-defined JS class value accessors
-ScalaJS.b = {};         // Scala.js-defined JS class value fields
-ScalaJS.c = {};         // Scala.js constructors
-ScalaJS.h = {};         // Inheritable constructors (without initialization code)
-ScalaJS.s = {};         // Static methods
-ScalaJS.t = {};         // Static fields
-ScalaJS.f = {};         // Default methods
-ScalaJS.n = {};         // Module instances
-ScalaJS.m = {};         // Module accessors
-ScalaJS.is = {};        // isInstanceOf methods
-ScalaJS.isArrayOf = {}; // isInstanceOfArrayOf methods
-//!if asInstanceOfs != Unchecked
-ScalaJS.as = {};        // asInstanceOf methods
-ScalaJS.asArrayOf = {}; // asInstanceOfArrayOf methods
-//!endif
-ScalaJS.lastIDHash = 0; // last value attributed to an id hash code
-ScalaJS.idHashCodeMap = ScalaJS.g["WeakMap"] ? new ScalaJS.g["WeakMap"]() : null;
-//!else
+// identityHashCode support
 let $lastIDHash = 0; // last value attributed to an id hash code
 //!if outputMode == ECMAScript6
 const $idHashCodeMap = new ScalaJS.g["WeakMap"]();
 //!else
 const $idHashCodeMap = ScalaJS.g["WeakMap"] ? new ScalaJS.g["WeakMap"]() : null;
-//!endif
 //!endif
 
 // Core mechanism

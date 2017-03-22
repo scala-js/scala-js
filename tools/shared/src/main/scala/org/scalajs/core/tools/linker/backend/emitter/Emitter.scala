@@ -32,10 +32,6 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
   import Emitter._
 
-  require(
-      outputMode != OutputMode.ECMAScript51Global || moduleKind == ModuleKind.NoModule,
-      "The ECMAScript51Global output mode is not compatible with modules")
-
   def this(semantics: Semantics, outputMode: OutputMode,
       moduleKind: ModuleKind) = {
     this(semantics, outputMode, moduleKind, InternalOptions())
@@ -62,16 +58,8 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
   private val needsIIFEWrapper = {
     moduleKind match {
-      case ModuleKind.NoModule =>
-        outputMode match {
-          case OutputMode.ECMAScript51Global =>
-            false
-          case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
-            true
-        }
-
-      case ModuleKind.CommonJSModule =>
-        false
+      case ModuleKind.NoModule       => true
+      case ModuleKind.CommonJSModule => false
     }
   }
 

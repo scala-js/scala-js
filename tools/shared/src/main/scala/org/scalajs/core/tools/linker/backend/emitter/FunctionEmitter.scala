@@ -305,7 +305,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         else Return(body)
 
       val translateRestParam = outputMode match {
-        case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+        case OutputMode.ECMAScript51Isolated =>
           params.nonEmpty && params.last.rest
         case _ =>
           false
@@ -521,7 +521,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
             val superCtorCall = {
               outputMode match {
-                case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+                case OutputMode.ECMAScript51Isolated =>
                   val superCtor = genRawJSClassConstructor(
                       globalKnowledge.getSuperClassOfJSClass(enclosingClassName))
 
@@ -1166,7 +1166,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
        */
       def extractLet(inner: Lhs => js.Tree): js.Tree = {
         outputMode match {
-          case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+          case OutputMode.ECMAScript51Isolated =>
             inner(lhs)
           case OutputMode.ECMAScript6 =>
             lhs match {
@@ -2211,7 +2211,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case ClassType(className) =>
           envField("d", className)
         case ArrayType(base, dims) =>
-          (1 to dims).foldLeft(envField("d", base)) { (prev, _) =>
+          (1 to dims).foldLeft[js.Tree](envField("d", base)) { (prev, _) =>
             js.Apply(js.DotSelect(prev, js.Ident("getArrayOf")), Nil)
           }
       }

@@ -55,7 +55,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       js.Block(ctor +: memberDefs :+ exportedDefs)(tree.pos)
 
     val entireClassDef = outputMode match {
-      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Isolated =>
         allDefsBlock
 
       case OutputMode.ECMAScript6 =>
@@ -131,7 +131,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         s"Class ${tree.name.name} is missing a parent class")
 
     outputMode match {
-      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Isolated =>
         genES5Constructor(tree)
 
       case OutputMode.ECMAScript6 =>
@@ -326,7 +326,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
         case methodName =>
           outputMode match {
-            case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+            case OutputMode.ECMAScript51Isolated =>
               genAddToObject(className, encodeClassVar(className), methodName,
                   methodFun)
 
@@ -337,7 +337,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       }
     } else {
       outputMode match {
-        case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+        case OutputMode.ECMAScript51Isolated =>
           genAddToPrototype(className, method.name, methodFun)
 
         case OutputMode.ECMAScript6 =>
@@ -374,7 +374,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def genProperty(className: String, property: PropertyDef)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     outputMode match {
-      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Isolated =>
         genPropertyES5(className, property)
       case OutputMode.ECMAScript6 =>
         genPropertyES6(className, property)
@@ -724,7 +724,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     val (isInstanceFun, isArrayOfFun) = {
       if (isObjectClass) {
-        /* Object has special ScalaJS.is.O *and* ScalaJS.isArrayOf.O. */
+        /* Object has special $is_O *and* $isArrayOf_O. */
         (envField("is", className), envField("isArrayOf", className))
       } else if (isHijackedBoxedClass) {
         /* Hijacked boxed classes have a special isInstanceOf test. */
@@ -734,7 +734,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         }), js.Undefined())
       } else if (isAncestorOfHijackedClass || className == StringClass) {
         /* java.lang.String and ancestors of hijacked classes have a normal
-         * ScalaJS.is.pack_Class test but with a non-standard behavior. */
+         * $is_pack_Class test but with a non-standard behavior. */
         (envField("is", className), js.Undefined())
       } else if (isJSType) {
         /* Native JS classes have an instanceof operator-based isInstanceOf
@@ -1052,12 +1052,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       keepFunctionExpression: Boolean = false)(
       implicit pos: Position): js.Tree = {
     val globalVar = envField(field, subField, origName)
-    def globalVarIdent = globalVar.asInstanceOf[js.VarRef].ident
+    val globalVarIdent = globalVar.ident
 
     outputMode match {
-      case OutputMode.ECMAScript51Global =>
-        js.Assign(globalVar, value)
-
       case OutputMode.ECMAScript51Isolated =>
         value match {
           case js.Function(args, body) =>
@@ -1107,7 +1104,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit pos: Position): (js.Tree, js.Tree, js.StringLiteral) = {
     val parts = qualName.split("\\.")
     val statements = List.newBuilder[js.Tree]
-    var namespace = envField("e")
+    var namespace: js.Tree = envField("e")
     for (i <- 0 until parts.length-1) {
       namespace = genBracketSelect(namespace, js.StringLiteral(parts(i)))
       statements +=
