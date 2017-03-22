@@ -8,31 +8,31 @@
  * ---------------------------------- */
 
 // Get the environment info
-ScalaJS.env = (typeof __ScalaJSEnv === "object" && __ScalaJSEnv) ? __ScalaJSEnv : {};
+const $env = (typeof __ScalaJSEnv === "object" && __ScalaJSEnv) ? __ScalaJSEnv : {};
 
 // Global scope
-ScalaJS.g =
-  (typeof ScalaJS.env["global"] === "object" && ScalaJS.env["global"])
-    ? ScalaJS.env["global"]
+const $g =
+  (typeof $env["global"] === "object" && $env["global"])
+    ? $env["global"]
     : ((typeof global === "object" && global && global["Object"] === Object) ? global : this);
-ScalaJS.env["global"] = ScalaJS.g;
+$env["global"] = $g;
 
 // Where to send exports
 //!if moduleKind == CommonJSModule
-ScalaJS.e = exports;
+const $e = exports;
 //!else
-ScalaJS.e =
-  (typeof ScalaJS.env["exportsNamespace"] === "object" && ScalaJS.env["exportsNamespace"])
-    ? ScalaJS.env["exportsNamespace"] : ScalaJS.g;
+const $e =
+  (typeof $env["exportsNamespace"] === "object" && $env["exportsNamespace"])
+    ? $env["exportsNamespace"] : $g;
 //!endif
-ScalaJS.env["exportsNamespace"] = ScalaJS.e;
+$env["exportsNamespace"] = $e;
 
 // Freeze the environment info
-ScalaJS.g["Object"]["freeze"](ScalaJS.env);
+$g["Object"]["freeze"]($env);
 
 // Linking info - must be in sync with scala.scalajs.runtime.LinkingInfo
-ScalaJS.linkingInfo = {
-  "envInfo": ScalaJS.env,
+const $linkingInfo = {
+  "envInfo": $env,
   "semantics": {
 //!if asInstanceOfs == Compliant
     "asInstanceOfs": 0,
@@ -79,17 +79,17 @@ ScalaJS.linkingInfo = {
 //!endif
   "linkerVersion": "{{LINKER_VERSION}}"
 };
-ScalaJS.g["Object"]["freeze"](ScalaJS.linkingInfo);
-ScalaJS.g["Object"]["freeze"](ScalaJS.linkingInfo["semantics"]);
+$g["Object"]["freeze"]($linkingInfo);
+$g["Object"]["freeze"]($linkingInfo["semantics"]);
 
 // Snapshots of builtins and polyfills
 
 //!if outputMode == ECMAScript6
-ScalaJS.imul = ScalaJS.g["Math"]["imul"];
-ScalaJS.fround = ScalaJS.g["Math"]["fround"];
-ScalaJS.clz32 = ScalaJS.g["Math"]["clz32"];
+const $imul = $g["Math"]["imul"];
+const $fround = $g["Math"]["fround"];
+const $clz32 = $g["Math"]["clz32"];
 //!else
-ScalaJS.imul = ScalaJS.g["Math"]["imul"] || (function(a, b) {
+const $imul = $g["Math"]["imul"] || (function(a, b) {
   // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
   const ah = (a >>> 16) & 0xffff;
   const al = a & 0xffff;
@@ -100,14 +100,14 @@ ScalaJS.imul = ScalaJS.g["Math"]["imul"] || (function(a, b) {
   return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0);
 });
 
-ScalaJS.fround = ScalaJS.g["Math"]["fround"] ||
+const $fround = $g["Math"]["fround"] ||
 //!if floats == Strict
-  (ScalaJS.g["Float32Array"] ? (function(v) {
-    const array = new ScalaJS.g["Float32Array"](1);
+  ($g["Float32Array"] ? (function(v) {
+    const array = new $g["Float32Array"](1);
     array[0] = v;
     return array[0];
   }) : (function(v) {
-    return ScalaJS.m.sjsr_package$().froundPolyfill__D__D(+v);
+    return $m_sjsr_package$().froundPolyfill__D__D(+v);
   }));
 //!else
   (function(v) {
@@ -115,7 +115,7 @@ ScalaJS.fround = ScalaJS.g["Math"]["fround"] ||
   });
 //!endif
 
-ScalaJS.clz32 = ScalaJS.g["Math"]["clz32"] || (function(i) {
+const $clz32 = $g["Math"]["clz32"] || (function(i) {
   // See Hacker's Delight, Section 5-3
   if (i === 0) return 32;
   let r = 1;
@@ -130,14 +130,14 @@ ScalaJS.clz32 = ScalaJS.g["Math"]["clz32"] || (function(i) {
 // identityHashCode support
 let $lastIDHash = 0; // last value attributed to an id hash code
 //!if outputMode == ECMAScript6
-const $idHashCodeMap = new ScalaJS.g["WeakMap"]();
+const $idHashCodeMap = new $g["WeakMap"]();
 //!else
-const $idHashCodeMap = ScalaJS.g["WeakMap"] ? new ScalaJS.g["WeakMap"]() : null;
+const $idHashCodeMap = $g["WeakMap"] ? new $g["WeakMap"]() : null;
 //!endif
 
 // Core mechanism
 
-ScalaJS.makeIsArrayOfPrimitive = function(primitiveData) {
+function $makeIsArrayOfPrimitive(primitiveData) {
   return function(obj, depth) {
     return !!(obj && obj.$classData &&
       (obj.$classData.arrayDepth === depth) &&
@@ -146,12 +146,12 @@ ScalaJS.makeIsArrayOfPrimitive = function(primitiveData) {
 };
 
 //!if asInstanceOfs != Unchecked
-ScalaJS.makeAsArrayOfPrimitive = function(isInstanceOfFunction, arrayEncodedName) {
+function $makeAsArrayOfPrimitive(isInstanceOfFunction, arrayEncodedName) {
   return function(obj, depth) {
     if (isInstanceOfFunction(obj, depth) || (obj === null))
       return obj;
     else
-      ScalaJS.throwArrayCastException(obj, arrayEncodedName, depth);
+      $throwArrayCastException(obj, arrayEncodedName, depth);
   }
 };
 //!endif
@@ -165,62 +165,62 @@ ScalaJS.makeAsArrayOfPrimitive = function(isInstanceOfFunction, arrayEncodedName
   *  but we must still get hold of a string of that name for runtime
   * reflection.
   */
-ScalaJS.propertyName = function(obj) {
+function $propertyName(obj) {
   for (const prop in obj)
     return prop;
 };
 
 // Runtime functions
 
-ScalaJS.isScalaJSObject = function(obj) {
+function $isScalaJSObject(obj) {
   return !!(obj && obj.$classData);
 };
 
 //!if asInstanceOfs != Unchecked
-ScalaJS.throwClassCastException = function(instance, classFullName) {
+function $throwClassCastException(instance, classFullName) {
 //!if asInstanceOfs == Compliant
-  throw new ScalaJS.c.jl_ClassCastException().init___T(
+  throw new $c_jl_ClassCastException().init___T(
     instance + " is not an instance of " + classFullName);
 //!else
-  throw new ScalaJS.c.sjsr_UndefinedBehaviorError().init___jl_Throwable(
-    new ScalaJS.c.jl_ClassCastException().init___T(
+  throw new $c_sjsr_UndefinedBehaviorError().init___jl_Throwable(
+    new $c_jl_ClassCastException().init___T(
       instance + " is not an instance of " + classFullName));
 //!endif
 };
 
-ScalaJS.throwArrayCastException = function(instance, classArrayEncodedName, depth) {
+function $throwArrayCastException(instance, classArrayEncodedName, depth) {
   for (; depth; --depth)
     classArrayEncodedName = "[" + classArrayEncodedName;
-  ScalaJS.throwClassCastException(instance, classArrayEncodedName);
+  $throwClassCastException(instance, classArrayEncodedName);
 };
 //!endif
 
 //!if arrayIndexOutOfBounds != Unchecked
-ScalaJS.throwArrayIndexOutOfBoundsException = function(i) {
+function $throwArrayIndexOutOfBoundsException(i) {
   const msg = (i === null) ? null : ("" + i);
 //!if arrayIndexOutOfBounds == Compliant
-  throw new ScalaJS.c.jl_ArrayIndexOutOfBoundsException().init___T(msg);
+  throw new $c_jl_ArrayIndexOutOfBoundsException().init___T(msg);
 //!else
-  throw new ScalaJS.c.sjsr_UndefinedBehaviorError().init___jl_Throwable(
-    new ScalaJS.c.jl_ArrayIndexOutOfBoundsException().init___T(msg));
+  throw new $c_sjsr_UndefinedBehaviorError().init___jl_Throwable(
+    new $c_jl_ArrayIndexOutOfBoundsException().init___T(msg));
 //!endif
 };
 //!endif
 
-ScalaJS.noIsInstance = function(instance) {
-  throw new ScalaJS.g["TypeError"](
+function $noIsInstance(instance) {
+  throw new $g["TypeError"](
     "Cannot call isInstance() on a Class representing a raw JS trait/object");
 };
 
-ScalaJS.makeNativeArrayWrapper = function(arrayClassData, nativeArray) {
+function $makeNativeArrayWrapper(arrayClassData, nativeArray) {
   return new arrayClassData.constr(nativeArray);
 };
 
-ScalaJS.newArrayObject = function(arrayClassData, lengths) {
-  return ScalaJS.newArrayObjectInternal(arrayClassData, lengths, 0);
+function $newArrayObject(arrayClassData, lengths) {
+  return $newArrayObjectInternal(arrayClassData, lengths, 0);
 };
 
-ScalaJS.newArrayObjectInternal = function(arrayClassData, lengths, lengthIndex) {
+function $newArrayObjectInternal(arrayClassData, lengths, lengthIndex) {
   const result = new arrayClassData.constr(lengths[lengthIndex]);
 
   if (lengthIndex < lengths.length-1) {
@@ -228,7 +228,7 @@ ScalaJS.newArrayObjectInternal = function(arrayClassData, lengths, lengthIndex) 
     const subLengthIndex = lengthIndex+1;
     const underlying = result.u;
     for (let i = 0; i < underlying.length; i++) {
-      underlying[i] = ScalaJS.newArrayObjectInternal(
+      underlying[i] = $newArrayObjectInternal(
         subArrayClassData, lengths, subLengthIndex);
     }
   }
@@ -236,84 +236,84 @@ ScalaJS.newArrayObjectInternal = function(arrayClassData, lengths, lengthIndex) 
   return result;
 };
 
-ScalaJS.objectToString = function(instance) {
+function $objectToString(instance) {
   if (instance === void 0)
     return "undefined";
   else
     return instance.toString();
 };
 
-ScalaJS.objectGetClass = function(instance) {
+function $objectGetClass(instance) {
   switch (typeof instance) {
     case "string":
-      return ScalaJS.d.T.getClassOf();
+      return $d_T.getClassOf();
     case "number": {
       const v = instance | 0;
       if (v === instance) { // is the value integral?
-        if (ScalaJS.isByte(v))
-          return ScalaJS.d.jl_Byte.getClassOf();
-        else if (ScalaJS.isShort(v))
-          return ScalaJS.d.jl_Short.getClassOf();
+        if ($isByte(v))
+          return $d_jl_Byte.getClassOf();
+        else if ($isShort(v))
+          return $d_jl_Short.getClassOf();
         else
-          return ScalaJS.d.jl_Integer.getClassOf();
+          return $d_jl_Integer.getClassOf();
       } else {
-        if (ScalaJS.isFloat(instance))
-          return ScalaJS.d.jl_Float.getClassOf();
+        if ($isFloat(instance))
+          return $d_jl_Float.getClassOf();
         else
-          return ScalaJS.d.jl_Double.getClassOf();
+          return $d_jl_Double.getClassOf();
       }
     }
     case "boolean":
-      return ScalaJS.d.jl_Boolean.getClassOf();
+      return $d_jl_Boolean.getClassOf();
     case "undefined":
-      return ScalaJS.d.sr_BoxedUnit.getClassOf();
+      return $d_sr_BoxedUnit.getClassOf();
     default:
       if (instance === null)
         return instance.getClass__jl_Class();
-      else if (ScalaJS.is.sjsr_RuntimeLong(instance))
-        return ScalaJS.d.jl_Long.getClassOf();
-      else if (ScalaJS.isScalaJSObject(instance))
+      else if ($is_sjsr_RuntimeLong(instance))
+        return $d_jl_Long.getClassOf();
+      else if ($isScalaJSObject(instance))
         return instance.$classData.getClassOf();
       else
         return null; // Exception?
   }
 };
 
-ScalaJS.objectClone = function(instance) {
-  if (ScalaJS.isScalaJSObject(instance) || (instance === null))
+function $objectClone(instance) {
+  if ($isScalaJSObject(instance) || (instance === null))
     return instance.clone__O();
   else
-    throw new ScalaJS.c.jl_CloneNotSupportedException().init___();
+    throw new $c_jl_CloneNotSupportedException().init___();
 };
 
-ScalaJS.objectNotify = function(instance) {
+function $objectNotify(instance) {
   // final and no-op in java.lang.Object
   if (instance === null)
     instance.notify__V();
 };
 
-ScalaJS.objectNotifyAll = function(instance) {
+function $objectNotifyAll(instance) {
   // final and no-op in java.lang.Object
   if (instance === null)
     instance.notifyAll__V();
 };
 
-ScalaJS.objectFinalize = function(instance) {
-  if (ScalaJS.isScalaJSObject(instance) || (instance === null))
+function $objectFinalize(instance) {
+  if ($isScalaJSObject(instance) || (instance === null))
     instance.finalize__V();
   // else no-op
 };
 
-ScalaJS.objectEquals = function(instance, rhs) {
-  if (ScalaJS.isScalaJSObject(instance) || (instance === null))
+function $objectEquals(instance, rhs) {
+  if ($isScalaJSObject(instance) || (instance === null))
     return instance.equals__O__Z(rhs);
   else if (typeof instance === "number")
-    return typeof rhs === "number" && ScalaJS.numberEquals(instance, rhs);
+    return typeof rhs === "number" && $numberEquals(instance, rhs);
   else
     return instance === rhs;
 };
 
-ScalaJS.numberEquals = function(lhs, rhs) {
+function $numberEquals(lhs, rhs) {
   return (lhs === rhs) ? (
     // 0.0.equals(-0.0) must be false
     lhs !== 0 || 1/lhs === 1/rhs
@@ -323,43 +323,43 @@ ScalaJS.numberEquals = function(lhs, rhs) {
   );
 };
 
-ScalaJS.objectHashCode = function(instance) {
+function $objectHashCode(instance) {
   switch (typeof instance) {
     case "string":
-      return ScalaJS.m.sjsr_RuntimeString$().hashCode__T__I(instance);
+      return $m_sjsr_RuntimeString$().hashCode__T__I(instance);
     case "number":
-      return ScalaJS.m.sjsr_Bits$().numberHashCode__D__I(instance);
+      return $m_sjsr_Bits$().numberHashCode__D__I(instance);
     case "boolean":
       return instance ? 1231 : 1237;
     case "undefined":
       return 0;
     default:
-      if (ScalaJS.isScalaJSObject(instance) || instance === null)
+      if ($isScalaJSObject(instance) || instance === null)
         return instance.hashCode__I();
 //!if outputMode != ECMAScript6
-      else if (ScalaJS.idHashCodeMap === null)
+      else if ($idHashCodeMap === null)
         return 42;
 //!endif
       else
-        return ScalaJS.systemIdentityHashCode(instance);
+        return $systemIdentityHashCode(instance);
   }
 };
 
-ScalaJS.comparableCompareTo = function(instance, rhs) {
+function $comparableCompareTo(instance, rhs) {
   switch (typeof instance) {
     case "string":
 //!if asInstanceOfs != Unchecked
-      ScalaJS.as.T(rhs);
+      $as_T(rhs);
 //!endif
       return instance === rhs ? 0 : (instance < rhs ? -1 : 1);
     case "number":
 //!if asInstanceOfs != Unchecked
-      ScalaJS.as.jl_Number(rhs);
+      $as_jl_Number(rhs);
 //!endif
-      return ScalaJS.m.jl_Double$().compare__D__D__I(instance, rhs);
+      return $m_jl_Double$().compare__D__D__I(instance, rhs);
     case "boolean":
 //!if asInstanceOfs != Unchecked
-      ScalaJS.asBoolean(rhs);
+      $asBoolean(rhs);
 //!endif
       return instance - rhs; // yes, this gives the right result
     default:
@@ -367,10 +367,10 @@ ScalaJS.comparableCompareTo = function(instance, rhs) {
   }
 };
 
-ScalaJS.charSequenceLength = function(instance) {
+function $charSequenceLength(instance) {
   if (typeof(instance) === "string")
 //!if asInstanceOfs != Unchecked
-    return ScalaJS.uI(instance["length"]);
+    return $uI(instance["length"]);
 //!else
     return instance["length"] | 0;
 //!endif
@@ -378,10 +378,10 @@ ScalaJS.charSequenceLength = function(instance) {
     return instance.length__I();
 };
 
-ScalaJS.charSequenceCharAt = function(instance, index) {
+function $charSequenceCharAt(instance, index) {
   if (typeof(instance) === "string")
 //!if asInstanceOfs != Unchecked
-    return ScalaJS.uI(instance["charCodeAt"](index)) & 0xffff;
+    return $uI(instance["charCodeAt"](index)) & 0xffff;
 //!else
     return instance["charCodeAt"](index) & 0xffff;
 //!endif
@@ -389,10 +389,10 @@ ScalaJS.charSequenceCharAt = function(instance, index) {
     return instance.charAt__I__C(index);
 };
 
-ScalaJS.charSequenceSubSequence = function(instance, start, end) {
+function $charSequenceSubSequence(instance, start, end) {
   if (typeof(instance) === "string")
 //!if asInstanceOfs != Unchecked
-    return ScalaJS.as.T(instance["substring"](start, end));
+    return $as_T(instance["substring"](start, end));
 //!else
     return instance["substring"](start, end);
 //!endif
@@ -400,54 +400,54 @@ ScalaJS.charSequenceSubSequence = function(instance, start, end) {
     return instance.subSequence__I__I__jl_CharSequence(start, end);
 };
 
-ScalaJS.booleanBooleanValue = function(instance) {
+function $booleanBooleanValue(instance) {
   if (typeof instance === "boolean") return instance;
   else                               return instance.booleanValue__Z();
 };
 
-ScalaJS.numberByteValue = function(instance) {
+function $numberByteValue(instance) {
   if (typeof instance === "number") return (instance << 24) >> 24;
   else                              return instance.byteValue__B();
 };
-ScalaJS.numberShortValue = function(instance) {
+function $numberShortValue(instance) {
   if (typeof instance === "number") return (instance << 16) >> 16;
   else                              return instance.shortValue__S();
 };
-ScalaJS.numberIntValue = function(instance) {
+function $numberIntValue(instance) {
   if (typeof instance === "number") return instance | 0;
   else                              return instance.intValue__I();
 };
-ScalaJS.numberLongValue = function(instance) {
+function $numberLongValue(instance) {
   if (typeof instance === "number")
-    return ScalaJS.m.sjsr_RuntimeLong$().fromDouble__D__sjsr_RuntimeLong(instance);
+    return $m_sjsr_RuntimeLong$().fromDouble__D__sjsr_RuntimeLong(instance);
   else
     return instance.longValue__J();
 };
-ScalaJS.numberFloatValue = function(instance) {
-  if (typeof instance === "number") return ScalaJS.fround(instance);
+function $numberFloatValue(instance) {
+  if (typeof instance === "number") return $fround(instance);
   else                              return instance.floatValue__F();
 };
-ScalaJS.numberDoubleValue = function(instance) {
+function $numberDoubleValue(instance) {
   if (typeof instance === "number") return instance;
   else                              return instance.doubleValue__D();
 };
 
-ScalaJS.isNaN = function(instance) {
+function $isNaN(instance) {
   return instance !== instance;
 };
 
-ScalaJS.isInfinite = function(instance) {
-  return !ScalaJS.g["isFinite"](instance) && !ScalaJS.isNaN(instance);
+function $isInfinite(instance) {
+  return !$g["isFinite"](instance) && !$isNaN(instance);
 };
 
-ScalaJS.doubleToInt = function(x) {
+function $doubleToInt(x) {
   return (x > 2147483647) ? (2147483647) : ((x < -2147483648) ? -2147483648 : (x | 0));
 };
 
 /** Instantiates a JS object with variadic arguments to the constructor. */
-ScalaJS.newJSObjectWithVarargs = function(ctor, args) {
+function $newJSObjectWithVarargs(ctor, args) {
   // This basically emulates the ECMAScript specification for 'new'.
-  const instance = ScalaJS.g["Object"]["create"](ctor.prototype);
+  const instance = $g["Object"]["create"](ctor.prototype);
   const result = ctor["apply"](instance, args);
   switch (typeof result) {
     case "string": case "number": case "boolean": case "undefined": case "symbol":
@@ -457,9 +457,9 @@ ScalaJS.newJSObjectWithVarargs = function(ctor, args) {
   }
 };
 
-ScalaJS.resolveSuperRef = function(initialProto, propName) {
-  const getPrototypeOf = ScalaJS.g["Object"]["getPrototypeOf"];
-  const getOwnPropertyDescriptor = ScalaJS.g["Object"]["getOwnPropertyDescriptor"];
+function $resolveSuperRef(initialProto, propName) {
+  const getPrototypeOf = $g["Object"]["getPrototypeOf"];
+  const getOwnPropertyDescriptor = $g["Object"]["getOwnPropertyDescriptor"];
 
   let superProto = getPrototypeOf(initialProto);
   while (superProto !== null) {
@@ -472,8 +472,8 @@ ScalaJS.resolveSuperRef = function(initialProto, propName) {
   return void 0;
 };
 
-ScalaJS.superGet = function(initialProto, self, propName) {
-  const desc = ScalaJS.resolveSuperRef(initialProto, propName);
+function $superGet(initialProto, self, propName) {
+  const desc = $resolveSuperRef(initialProto, propName);
   if (desc !== void 0) {
     const getter = desc["get"];
     if (getter !== void 0)
@@ -484,8 +484,8 @@ ScalaJS.superGet = function(initialProto, self, propName) {
   return void 0;
 };
 
-ScalaJS.superSet = function(initialProto, self, propName, value) {
-  const desc = ScalaJS.resolveSuperRef(initialProto, propName);
+function $superSet(initialProto, self, propName, value) {
+  const desc = $resolveSuperRef(initialProto, propName);
   if (desc !== void 0) {
     const setter = desc["set"];
     if (setter !== void 0) {
@@ -493,23 +493,23 @@ ScalaJS.superSet = function(initialProto, self, propName, value) {
       return void 0;
     }
   }
-  throw new ScalaJS.g["TypeError"]("super has no setter '" + propName + "'.");
+  throw new $g["TypeError"]("super has no setter '" + propName + "'.");
 };
 
 //!if moduleKind == CommonJSModule
-ScalaJS.moduleDefault = function(m) {
+function $moduleDefault(m) {
   return (m && (typeof m === "object") && "default" in m) ? m["default"] : m;
 };
 //!endif
 
-ScalaJS.propertiesOf = function(obj) {
+function $propertiesOf(obj) {
   const result = [];
   for (const prop in obj)
     result["push"](prop);
   return result;
 };
 
-ScalaJS.systemArraycopy = function(src, srcPos, dest, destPos, length) {
+function $systemArraycopy(src, srcPos, dest, destPos, length) {
   const srcu = src.u;
   const destu = dest.u;
 
@@ -517,7 +517,7 @@ ScalaJS.systemArraycopy = function(src, srcPos, dest, destPos, length) {
   if (srcPos < 0 || destPos < 0 || length < 0 ||
       (srcPos > ((srcu.length - length) | 0)) ||
       (destPos > ((destu.length - length) | 0))) {
-    ScalaJS.throwArrayIndexOutOfBoundsException(null);
+    $throwArrayIndexOutOfBoundsException(null);
   }
 //!endif
 
@@ -530,23 +530,23 @@ ScalaJS.systemArraycopy = function(src, srcPos, dest, destPos, length) {
   }
 };
 
-ScalaJS.systemIdentityHashCode =
+const $systemIdentityHashCode =
 //!if outputMode != ECMAScript6
-  (ScalaJS.idHashCodeMap !== null) ?
+  ($idHashCodeMap !== null) ?
 //!endif
   (function(obj) {
     switch (typeof obj) {
       case "string": case "number": case "boolean": case "undefined":
-        return ScalaJS.objectHashCode(obj);
+        return $objectHashCode(obj);
       default:
         if (obj === null) {
           return 0;
         } else {
-          let hash = ScalaJS.idHashCodeMap["get"](obj);
+          let hash = $idHashCodeMap["get"](obj);
           if (hash === void 0) {
-            hash = (ScalaJS.lastIDHash + 1) | 0;
-            ScalaJS.lastIDHash = hash;
-            ScalaJS.idHashCodeMap["set"](obj, hash);
+            hash = ($lastIDHash + 1) | 0;
+            $lastIDHash = hash;
+            $idHashCodeMap["set"](obj, hash);
           }
           return hash;
         }
@@ -554,13 +554,13 @@ ScalaJS.systemIdentityHashCode =
 //!if outputMode != ECMAScript6
   }) :
   (function(obj) {
-    if (ScalaJS.isScalaJSObject(obj)) {
+    if ($isScalaJSObject(obj)) {
       let hash = obj["$idHashCode$0"];
       if (hash !== void 0) {
         return hash;
-      } else if (!ScalaJS.g["Object"]["isSealed"](obj)) {
-        hash = (ScalaJS.lastIDHash + 1) | 0;
-        ScalaJS.lastIDHash = hash;
+      } else if (!$g["Object"]["isSealed"](obj)) {
+        hash = ($lastIDHash + 1) | 0;
+        $lastIDHash = hash;
         obj["$idHashCode$0"] = hash;
         return hash;
       } else {
@@ -569,157 +569,157 @@ ScalaJS.systemIdentityHashCode =
     } else if (obj === null) {
       return 0;
     } else {
-      return ScalaJS.objectHashCode(obj);
+      return $objectHashCode(obj);
     }
 //!endif
   });
 
 // is/as for hijacked boxed classes (the non-trivial ones)
 
-ScalaJS.isByte = function(v) {
+function $isByte(v) {
   return (v << 24 >> 24) === v && 1/v !== 1/-0;
 };
 
-ScalaJS.isShort = function(v) {
+function $isShort(v) {
   return (v << 16 >> 16) === v && 1/v !== 1/-0;
 };
 
-ScalaJS.isInt = function(v) {
+function $isInt(v) {
   return (v | 0) === v && 1/v !== 1/-0;
 };
 
-ScalaJS.isFloat = function(v) {
+function $isFloat(v) {
 //!if floats == Strict
-  return v !== v || ScalaJS.fround(v) === v;
+  return v !== v || $fround(v) === v;
 //!else
   return typeof v === "number";
 //!endif
 };
 
 //!if asInstanceOfs != Unchecked
-ScalaJS.asUnit = function(v) {
+function $asUnit(v) {
   if (v === void 0 || v === null)
     return v;
   else
-    ScalaJS.throwClassCastException(v, "scala.runtime.BoxedUnit");
+    $throwClassCastException(v, "scala.runtime.BoxedUnit");
 };
 
-ScalaJS.asBoolean = function(v) {
+function $asBoolean(v) {
   if (typeof v === "boolean" || v === null)
     return v;
   else
-    ScalaJS.throwClassCastException(v, "java.lang.Boolean");
+    $throwClassCastException(v, "java.lang.Boolean");
 };
 
-ScalaJS.asByte = function(v) {
-  if (ScalaJS.isByte(v) || v === null)
+function $asByte(v) {
+  if ($isByte(v) || v === null)
     return v;
   else
-    ScalaJS.throwClassCastException(v, "java.lang.Byte");
+    $throwClassCastException(v, "java.lang.Byte");
 };
 
-ScalaJS.asShort = function(v) {
-  if (ScalaJS.isShort(v) || v === null)
+function $asShort(v) {
+  if ($isShort(v) || v === null)
     return v;
   else
-    ScalaJS.throwClassCastException(v, "java.lang.Short");
+    $throwClassCastException(v, "java.lang.Short");
 };
 
-ScalaJS.asInt = function(v) {
-  if (ScalaJS.isInt(v) || v === null)
+function $asInt(v) {
+  if ($isInt(v) || v === null)
     return v;
   else
-    ScalaJS.throwClassCastException(v, "java.lang.Integer");
+    $throwClassCastException(v, "java.lang.Integer");
 };
 
-ScalaJS.asFloat = function(v) {
-  if (ScalaJS.isFloat(v) || v === null)
+function $asFloat(v) {
+  if ($isFloat(v) || v === null)
     return v;
   else
-    ScalaJS.throwClassCastException(v, "java.lang.Float");
+    $throwClassCastException(v, "java.lang.Float");
 };
 
-ScalaJS.asDouble = function(v) {
+function $asDouble(v) {
   if (typeof v === "number" || v === null)
     return v;
   else
-    ScalaJS.throwClassCastException(v, "java.lang.Double");
+    $throwClassCastException(v, "java.lang.Double");
 };
 //!endif
 
 // Unboxes
 
 //!if asInstanceOfs != Unchecked
-ScalaJS.uZ = function(value) {
-  return !!ScalaJS.asBoolean(value);
+function $uZ(value) {
+  return !!$asBoolean(value);
 };
-ScalaJS.uB = function(value) {
-  return ScalaJS.asByte(value) | 0;
+function $uB(value) {
+  return $asByte(value) | 0;
 };
-ScalaJS.uS = function(value) {
-  return ScalaJS.asShort(value) | 0;
+function $uS(value) {
+  return $asShort(value) | 0;
 };
-ScalaJS.uI = function(value) {
-  return ScalaJS.asInt(value) | 0;
+function $uI(value) {
+  return $asInt(value) | 0;
 };
-ScalaJS.uJ = function(value) {
-  return null === value ? ScalaJS.m.sjsr_RuntimeLong$().Zero$1
-                        : ScalaJS.as.sjsr_RuntimeLong(value);
+function $uJ(value) {
+  return null === value ? $m_sjsr_RuntimeLong$().Zero$1
+                        : $as_sjsr_RuntimeLong(value);
 };
-ScalaJS.uF = function(value) {
+function $uF(value) {
   /* Here, it is fine to use + instead of fround, because asFloat already
    * ensures that the result is either null or a float.
    */
-  return +ScalaJS.asFloat(value);
+  return +$asFloat(value);
 };
-ScalaJS.uD = function(value) {
-  return +ScalaJS.asDouble(value);
+function $uD(value) {
+  return +$asDouble(value);
 };
 //!else
-ScalaJS.uJ = function(value) {
-  return null === value ? ScalaJS.m.sjsr_RuntimeLong$().Zero$1 : value;
+function $uJ(value) {
+  return null === value ? $m_sjsr_RuntimeLong$().Zero$1 : value;
 };
 //!endif
 
 // TypeArray conversions
 
-ScalaJS.byteArray2TypedArray = function(value) { return new ScalaJS.g["Int8Array"](value.u); };
-ScalaJS.shortArray2TypedArray = function(value) { return new ScalaJS.g["Int16Array"](value.u); };
-ScalaJS.charArray2TypedArray = function(value) { return new ScalaJS.g["Uint16Array"](value.u); };
-ScalaJS.intArray2TypedArray = function(value) { return new ScalaJS.g["Int32Array"](value.u); };
-ScalaJS.floatArray2TypedArray = function(value) { return new ScalaJS.g["Float32Array"](value.u); };
-ScalaJS.doubleArray2TypedArray = function(value) { return new ScalaJS.g["Float64Array"](value.u); };
+function $byteArray2TypedArray(value) { return new $g["Int8Array"](value.u); };
+function $shortArray2TypedArray(value) { return new $g["Int16Array"](value.u); };
+function $charArray2TypedArray(value) { return new $g["Uint16Array"](value.u); };
+function $intArray2TypedArray(value) { return new $g["Int32Array"](value.u); };
+function $floatArray2TypedArray(value) { return new $g["Float32Array"](value.u); };
+function $doubleArray2TypedArray(value) { return new $g["Float64Array"](value.u); };
 
-ScalaJS.typedArray2ByteArray = function(value) {
-  const arrayClassData = ScalaJS.d.B.getArrayOf();
-  return new arrayClassData.constr(new ScalaJS.g["Int8Array"](value));
+function $typedArray2ByteArray(value) {
+  const arrayClassData = $d_B.getArrayOf();
+  return new arrayClassData.constr(new $g["Int8Array"](value));
 };
-ScalaJS.typedArray2ShortArray = function(value) {
-  const arrayClassData = ScalaJS.d.S.getArrayOf();
-  return new arrayClassData.constr(new ScalaJS.g["Int16Array"](value));
+function $typedArray2ShortArray(value) {
+  const arrayClassData = $d_S.getArrayOf();
+  return new arrayClassData.constr(new $g["Int16Array"](value));
 };
-ScalaJS.typedArray2CharArray = function(value) {
-  const arrayClassData = ScalaJS.d.C.getArrayOf();
-  return new arrayClassData.constr(new ScalaJS.g["Uint16Array"](value));
+function $typedArray2CharArray(value) {
+  const arrayClassData = $d_C.getArrayOf();
+  return new arrayClassData.constr(new $g["Uint16Array"](value));
 };
-ScalaJS.typedArray2IntArray = function(value) {
-  const arrayClassData = ScalaJS.d.I.getArrayOf();
-  return new arrayClassData.constr(new ScalaJS.g["Int32Array"](value));
+function $typedArray2IntArray(value) {
+  const arrayClassData = $d_I.getArrayOf();
+  return new arrayClassData.constr(new $g["Int32Array"](value));
 };
-ScalaJS.typedArray2FloatArray = function(value) {
-  const arrayClassData = ScalaJS.d.F.getArrayOf();
-  return new arrayClassData.constr(new ScalaJS.g["Float32Array"](value));
+function $typedArray2FloatArray(value) {
+  const arrayClassData = $d_F.getArrayOf();
+  return new arrayClassData.constr(new $g["Float32Array"](value));
 };
-ScalaJS.typedArray2DoubleArray = function(value) {
-  const arrayClassData = ScalaJS.d.D.getArrayOf();
-  return new arrayClassData.constr(new ScalaJS.g["Float64Array"](value));
+function $typedArray2DoubleArray(value) {
+  const arrayClassData = $d_D.getArrayOf();
+  return new arrayClassData.constr(new $g["Float64Array"](value));
 };
 
 // TypeData class
 
 //!if outputMode != ECMAScript6
 /** @constructor */
-ScalaJS.TypeData = function() {
+function $TypeData() {
 //!else
 class $TypeData {
 constructor() {
@@ -747,7 +747,7 @@ constructor() {
 };
 
 //!if outputMode != ECMAScript6
-ScalaJS.TypeData.prototype.initPrim = function(
+$TypeData.prototype.initPrim = function(
 //!else
 initPrim(
 //!endif
@@ -768,13 +768,13 @@ initPrim(
 };
 
 //!if outputMode != ECMAScript6
-ScalaJS.TypeData.prototype.initClass = function(
+$TypeData.prototype.initClass = function(
 //!else
 initClass(
 //!endif
     internalNameObj, isInterface, fullName,
     ancestors, isRawJSType, parentData, isInstance, isArrayOf) {
-  const internalName = ScalaJS.propertyName(internalNameObj);
+  const internalName = $propertyName(internalNameObj);
 
   isInstance = isInstance || function(obj) {
     return !!(obj && obj.$classData && obj.$classData.ancestors[internalName]);
@@ -801,7 +801,7 @@ initClass(
 };
 
 //!if outputMode != ECMAScript6
-ScalaJS.TypeData.prototype.initArray = function(
+$TypeData.prototype.initArray = function(
 //!else
 initArray(
 //!endif
@@ -814,7 +814,7 @@ initArray(
   // is a special case here, since the class has not
   // been defined yet, when this file is read
   const componentZero = (componentZero0 == "longZero")
-    ? ScalaJS.m.sjsr_RuntimeLong$().Zero$1
+    ? $m_sjsr_RuntimeLong$().Zero$1
     : componentZero0;
 
 //!if outputMode != ECMAScript6
@@ -830,18 +830,18 @@ initArray(
       this.u = arg;
     }
   }
-  ArrayClass.prototype = new ScalaJS.h.O;
+  ArrayClass.prototype = new $h_O;
   ArrayClass.prototype.constructor = ArrayClass;
 
 //!if arrayIndexOutOfBounds != Unchecked
   ArrayClass.prototype.get = function(i) {
     if (i < 0 || i >= this.u.length)
-      ScalaJS.throwArrayIndexOutOfBoundsException(i);
+      $throwArrayIndexOutOfBoundsException(i);
     return this.u[i];
   };
   ArrayClass.prototype.set = function(i, v) {
     if (i < 0 || i >= this.u.length)
-      ScalaJS.throwArrayIndexOutOfBoundsException(i);
+      $throwArrayIndexOutOfBoundsException(i);
     this.u[i] = v;
   };
 //!endif
@@ -854,7 +854,7 @@ initArray(
       return new ArrayClass(new this.u.constructor(this.u));
   };
 //!else
-  class ArrayClass extends ScalaJS.c.O {
+  class ArrayClass extends $c_O {
     constructor(arg) {
       super();
       if (typeof(arg) === "number") {
@@ -871,12 +871,12 @@ initArray(
 //!if arrayIndexOutOfBounds != Unchecked
     get(i) {
       if (i < 0 || i >= this.u.length)
-        ScalaJS.throwArrayIndexOutOfBoundsException(i);
+        $throwArrayIndexOutOfBoundsException(i);
       return this.u[i];
     };
     set(i, v) {
       if (i < 0 || i >= this.u.length)
-        ScalaJS.throwArrayIndexOutOfBoundsException(i);
+        $throwArrayIndexOutOfBoundsException(i);
       this.u[i] = v;
     };
 //!endif
@@ -908,7 +908,7 @@ initArray(
 
   // Runtime support
   this.constr = ArrayClass;
-  this.parentData = ScalaJS.d.O;
+  this.parentData = $d_O;
   this.ancestors = {O: 1, jl_Cloneable: 1, Ljava_io_Serializable: 1};
   this.componentData = componentData;
   this.arrayBase = componentBase;
@@ -930,52 +930,52 @@ initArray(
 };
 
 //!if outputMode != ECMAScript6
-ScalaJS.TypeData.prototype.getClassOf = function() {
+$TypeData.prototype.getClassOf = function() {
 //!else
 getClassOf() {
 //!endif
   if (!this._classOf)
-    this._classOf = new ScalaJS.c.jl_Class().init___jl_ScalaJSClassData(this);
+    this._classOf = new $c_jl_Class().init___jl_ScalaJSClassData(this);
   return this._classOf;
 };
 
 //!if outputMode != ECMAScript6
-ScalaJS.TypeData.prototype.getArrayOf = function() {
+$TypeData.prototype.getArrayOf = function() {
 //!else
 getArrayOf() {
 //!endif
   if (!this._arrayOf)
-    this._arrayOf = new ScalaJS.TypeData().initArray(this);
+    this._arrayOf = new $TypeData().initArray(this);
   return this._arrayOf;
 };
 
 // java.lang.Class support
 
 //!if outputMode != ECMAScript6
-ScalaJS.TypeData.prototype["getFakeInstance"] = function() {
+$TypeData.prototype["getFakeInstance"] = function() {
 //!else
 "getFakeInstance"() {
 //!endif
-  if (this === ScalaJS.d.T)
+  if (this === $d_T)
     return "some string";
-  else if (this === ScalaJS.d.jl_Boolean)
+  else if (this === $d_jl_Boolean)
     return false;
-  else if (this === ScalaJS.d.jl_Byte ||
-           this === ScalaJS.d.jl_Short ||
-           this === ScalaJS.d.jl_Integer ||
-           this === ScalaJS.d.jl_Float ||
-           this === ScalaJS.d.jl_Double)
+  else if (this === $d_jl_Byte ||
+           this === $d_jl_Short ||
+           this === $d_jl_Integer ||
+           this === $d_jl_Float ||
+           this === $d_jl_Double)
     return 0;
-  else if (this === ScalaJS.d.jl_Long)
-    return ScalaJS.m.sjsr_RuntimeLong$().Zero$1;
-  else if (this === ScalaJS.d.sr_BoxedUnit)
+  else if (this === $d_jl_Long)
+    return $m_sjsr_RuntimeLong$().Zero$1;
+  else if (this === $d_sr_BoxedUnit)
     return void 0;
   else
     return {$classData: this};
 };
 
 //!if outputMode != ECMAScript6
-ScalaJS.TypeData.prototype["getSuperclass"] = function() {
+$TypeData.prototype["getSuperclass"] = function() {
 //!else
 "getSuperclass"() {
 //!endif
@@ -983,7 +983,7 @@ ScalaJS.TypeData.prototype["getSuperclass"] = function() {
 };
 
 //!if outputMode != ECMAScript6
-ScalaJS.TypeData.prototype["getComponentType"] = function() {
+$TypeData.prototype["getComponentType"] = function() {
 //!else
 "getComponentType"() {
 //!endif
@@ -991,14 +991,14 @@ ScalaJS.TypeData.prototype["getComponentType"] = function() {
 };
 
 //!if outputMode != ECMAScript6
-ScalaJS.TypeData.prototype["newArrayOfThisClass"] = function(lengths) {
+$TypeData.prototype["newArrayOfThisClass"] = function(lengths) {
 //!else
 "newArrayOfThisClass"(lengths) {
 //!endif
   let arrayClassData = this;
   for (let i = 0; i < lengths.length; i++)
     arrayClassData = arrayClassData.getArrayOf();
-  return ScalaJS.newArrayObject(arrayClassData, lengths);
+  return $newArrayObject(arrayClassData, lengths);
 };
 //!if outputMode == ECMAScript6
 };
@@ -1006,50 +1006,50 @@ ScalaJS.TypeData.prototype["newArrayOfThisClass"] = function(lengths) {
 
 // Create primitive types
 
-ScalaJS.d.V = new ScalaJS.TypeData().initPrim(undefined, "V", "void");
-ScalaJS.d.Z = new ScalaJS.TypeData().initPrim(false, "Z", "boolean");
-ScalaJS.d.C = new ScalaJS.TypeData().initPrim(0, "C", "char");
-ScalaJS.d.B = new ScalaJS.TypeData().initPrim(0, "B", "byte");
-ScalaJS.d.S = new ScalaJS.TypeData().initPrim(0, "S", "short");
-ScalaJS.d.I = new ScalaJS.TypeData().initPrim(0, "I", "int");
-ScalaJS.d.J = new ScalaJS.TypeData().initPrim("longZero", "J", "long");
-ScalaJS.d.F = new ScalaJS.TypeData().initPrim(0.0, "F", "float");
-ScalaJS.d.D = new ScalaJS.TypeData().initPrim(0.0, "D", "double");
+const $d_V = new $TypeData().initPrim(undefined, "V", "void");
+const $d_Z = new $TypeData().initPrim(false, "Z", "boolean");
+const $d_C = new $TypeData().initPrim(0, "C", "char");
+const $d_B = new $TypeData().initPrim(0, "B", "byte");
+const $d_S = new $TypeData().initPrim(0, "S", "short");
+const $d_I = new $TypeData().initPrim(0, "I", "int");
+const $d_J = new $TypeData().initPrim("longZero", "J", "long");
+const $d_F = new $TypeData().initPrim(0.0, "F", "float");
+const $d_D = new $TypeData().initPrim(0.0, "D", "double");
 
 // Instance tests for array of primitives
 
-ScalaJS.isArrayOf.Z = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.Z);
-ScalaJS.d.Z.isArrayOf = ScalaJS.isArrayOf.Z;
+const $isArrayOf_Z = $makeIsArrayOfPrimitive($d_Z);
+$d_Z.isArrayOf = $isArrayOf_Z;
 
-ScalaJS.isArrayOf.C = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.C);
-ScalaJS.d.C.isArrayOf = ScalaJS.isArrayOf.C;
+const $isArrayOf_C = $makeIsArrayOfPrimitive($d_C);
+$d_C.isArrayOf = $isArrayOf_C;
 
-ScalaJS.isArrayOf.B = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.B);
-ScalaJS.d.B.isArrayOf = ScalaJS.isArrayOf.B;
+const $isArrayOf_B = $makeIsArrayOfPrimitive($d_B);
+$d_B.isArrayOf = $isArrayOf_B;
 
-ScalaJS.isArrayOf.S = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.S);
-ScalaJS.d.S.isArrayOf = ScalaJS.isArrayOf.S;
+const $isArrayOf_S = $makeIsArrayOfPrimitive($d_S);
+$d_S.isArrayOf = $isArrayOf_S;
 
-ScalaJS.isArrayOf.I = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.I);
-ScalaJS.d.I.isArrayOf = ScalaJS.isArrayOf.I;
+const $isArrayOf_I = $makeIsArrayOfPrimitive($d_I);
+$d_I.isArrayOf = $isArrayOf_I;
 
-ScalaJS.isArrayOf.J = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.J);
-ScalaJS.d.J.isArrayOf = ScalaJS.isArrayOf.J;
+const $isArrayOf_J = $makeIsArrayOfPrimitive($d_J);
+$d_J.isArrayOf = $isArrayOf_J;
 
-ScalaJS.isArrayOf.F = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.F);
-ScalaJS.d.F.isArrayOf = ScalaJS.isArrayOf.F;
+const $isArrayOf_F = $makeIsArrayOfPrimitive($d_F);
+$d_F.isArrayOf = $isArrayOf_F;
 
-ScalaJS.isArrayOf.D = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.D);
-ScalaJS.d.D.isArrayOf = ScalaJS.isArrayOf.D;
+const $isArrayOf_D = $makeIsArrayOfPrimitive($d_D);
+$d_D.isArrayOf = $isArrayOf_D;
 
 //!if asInstanceOfs != Unchecked
 // asInstanceOfs for array of primitives
-ScalaJS.asArrayOf.Z = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.Z, "Z");
-ScalaJS.asArrayOf.C = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.C, "C");
-ScalaJS.asArrayOf.B = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.B, "B");
-ScalaJS.asArrayOf.S = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.S, "S");
-ScalaJS.asArrayOf.I = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.I, "I");
-ScalaJS.asArrayOf.J = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.J, "J");
-ScalaJS.asArrayOf.F = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.F, "F");
-ScalaJS.asArrayOf.D = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.D, "D");
+const $asArrayOf_Z = $makeAsArrayOfPrimitive($isArrayOf_Z, "Z");
+const $asArrayOf_C = $makeAsArrayOfPrimitive($isArrayOf_C, "C");
+const $asArrayOf_B = $makeAsArrayOfPrimitive($isArrayOf_B, "B");
+const $asArrayOf_S = $makeAsArrayOfPrimitive($isArrayOf_S, "S");
+const $asArrayOf_I = $makeAsArrayOfPrimitive($isArrayOf_I, "I");
+const $asArrayOf_J = $makeAsArrayOfPrimitive($isArrayOf_J, "J");
+const $asArrayOf_F = $makeAsArrayOfPrimitive($isArrayOf_F, "F");
+const $asArrayOf_D = $makeAsArrayOfPrimitive($isArrayOf_D, "D");
 //!endif

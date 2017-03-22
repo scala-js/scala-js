@@ -122,30 +122,13 @@ private[backend] object CoreJSLibs {
     val content = lines.mkString("", "\n", "\n").replace(
         "{{LINKER_VERSION}}", ScalaJSVersions.current)
 
-    val content1 = outputMode match {
-      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
-        content
-          .replaceAll("ScalaJS\\.d\\.", "\\$d_")
-          .replaceAll("ScalaJS\\.c\\.", "\\$c_")
-          .replaceAll("ScalaJS\\.h\\.", "\\$h_")
-          .replaceAll("ScalaJS\\.s\\.", "\\$s_")
-          .replaceAll("ScalaJS\\.n\\.", "\\$n_")
-          .replaceAll("ScalaJS\\.m\\.", "\\$m_")
-          .replaceAll("ScalaJS\\.is\\.", "\\$is_")
-          .replaceAll("ScalaJS\\.as\\.", "\\$as_")
-          .replaceAll("ScalaJS\\.isArrayOf\\.", "\\$isArrayOf_")
-          .replaceAll("ScalaJS\\.asArrayOf\\.", "\\$asArrayOf_")
-          .replaceAll("ScalaJS\\.", "\\$")
-          .replaceAll("\n(\\$[A-Za-z0-9_]+) =", "\nconst $1 =")
-    }
-
     outputMode match {
       case OutputMode.ECMAScript51Isolated =>
-        content1
+        content
           .replaceAll(raw"\b(let|const)\b", "var")
 
       case OutputMode.ECMAScript6 =>
-        content1
+        content
     }
   }
 
