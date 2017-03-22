@@ -1696,7 +1696,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           else            genExpr(tree)
       }
 
-      if (!isScalaJSDefinedJSClass(currentClassSym)) {
+      if (!isScalaJSDefinedJSClass(currentClassSym) ||
+          isRawJSFunctionDef(currentClassSym)) {
         js.MethodDef(static, methodName, jsParams, resultIRType,
             Some(genBody()))(optimizerHints, None)
       } else {
@@ -5305,14 +5306,14 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   /** Tests whether the given class is a Scala.js-defined JS class. */
   def isScalaJSDefinedJSClass(sym: Symbol): Boolean =
-    !sym.isTrait && sym.hasAnnotation(ScalaJSDefinedAnnotation)
+    !sym.isTrait && isRawJSType(sym.tpe) && !sym.hasAnnotation(JSNativeAnnotation)
 
   def isScalaJSDefinedAnonJSClass(sym: Symbol): Boolean =
     sym.hasAnnotation(SJSDefinedAnonymousClassAnnotation)
 
   /** Tests whether the given class is a JS native class. */
   private def isJSNativeClass(sym: Symbol): Boolean =
-    isRawJSType(sym.tpe) && !isScalaJSDefinedJSClass(sym)
+    sym.hasAnnotation(JSNativeAnnotation)
 
   /** Tests whether the given class is the impl class of a raw JS trait. */
   private def isRawJSImplClass(sym: Symbol): Boolean = {

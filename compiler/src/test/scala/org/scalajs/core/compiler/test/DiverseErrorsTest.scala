@@ -62,9 +62,9 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     @js.native trait NativeJSTrait extends js.Object
     @js.native @JSGlobal object NativeJSObject extends js.Object
 
-    @ScalaJSDefined class JSClass extends js.Object
-    @ScalaJSDefined trait JSTrait extends js.Object
-    @ScalaJSDefined object JSObject extends js.Object
+    class JSClass extends js.Object
+    trait JSTrait extends js.Object
+    object JSObject extends js.Object
 
     object A {
       val a = js.constructorOf[NativeJSTrait]
@@ -149,9 +149,9 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     @js.native trait NativeJSTrait extends js.Object
     @js.native @JSGlobal object NativeJSObject extends js.Object
 
-    @ScalaJSDefined class JSClass extends js.Object
-    @ScalaJSDefined trait JSTrait extends js.Object
-    @ScalaJSDefined object JSObject extends js.Object
+    class JSClass extends js.Object
+    trait JSTrait extends js.Object
+    object JSObject extends js.Object
 
     object A {
       val a = js.constructorTag[NativeJSTrait]
@@ -213,7 +213,7 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
 
     object ScalaObject
     @js.native @JSGlobal object NativeJSObject extends js.Object
-    @ScalaJSDefined object JSObject extends js.Object
+    object JSObject extends js.Object
 
     object A {
       val a = runtime.constructorOf(classOf[ScalaObject.type].asInstanceOf[Class[_ <: js.Any]])
@@ -243,9 +243,9 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     @js.native trait NativeJSTrait extends js.Object
     @js.native @JSGlobal object NativeJSObject extends js.Object
 
-    @ScalaJSDefined class JSClass extends js.Object
-    @ScalaJSDefined trait JSTrait extends js.Object
-    @ScalaJSDefined object JSObject extends js.Object
+    class JSClass extends js.Object
+    trait JSTrait extends js.Object
+    object JSObject extends js.Object
 
     object A {
       val a = runtime.constructorOf(classOf[ScalaClass].asInstanceOf[Class[_ <: js.Any]])

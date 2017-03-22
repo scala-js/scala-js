@@ -46,7 +46,6 @@ package scala.scalajs.js.annotation
  *  }}}
  *  you should write:
  *  {{{
- *  @ScalaJSDefined
  *  trait FooOptions extends js.Object {
  *    val a: Int
  *    val b: String

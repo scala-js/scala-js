@@ -469,14 +469,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       def isNativeJSTraitType(tpe: Type): Boolean = {
         val sym = tpe.typeSymbol
-        sym.isTrait && !sym.hasAnnotation(ScalaJSDefinedAnnotation)
+        sym.isTrait && sym.hasAnnotation(JSNativeAnnotation)
       }
 
       val isJSAnonFun = isJSLambda(sym)
 
       sym.addAnnotation(RawJSTypeAnnot)
       if (sym.isAnonymousClass && !isJSAnonFun) {
-        sym.addAnnotation(ScalaJSDefinedAnnotation)
         sym.addAnnotation(SJSDefinedAnonymousClassAnnotation)
       }
 
@@ -500,7 +499,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         sym.addAnnotation(annotInfo)
       }
 
-      val isJSNative = !sym.hasAnnotation(ScalaJSDefinedAnnotation)
+      /* Anonymous functions are considered native, since they are handled
+       * specially in the backend.
+       */
+      val isJSNative = sym.hasAnnotation(JSNativeAnnotation) || isJSAnonFun
 
       // Forbid @EnableReflectiveInstantiation on JS types
       sym.getAnnotation(EnableReflectiveInstantiationAnnotation).foreach {
@@ -514,16 +516,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         reporter.warning(implDef.pos,
             "Package objects inheriting from js.Any are deprecated. " +
             "Use a normal object instead.")
-      } else if (isJSNative && !isJSAnonFun &&
-          !sym.hasAnnotation(JSNativeAnnotation)) {
-        reporter.warning(implDef.pos,
-            "Classes, traits and objects inheriting from js.Any should be " +
-            "annotated with @js.native, unless they have @ScalaJSDefined. " +
-            "The default will switch to Scala.js-defined in the next major " +
-            "version of Scala.js.")
-      } else if (!isJSNative && sym.hasAnnotation(JSNativeAnnotation)) {
-        reporter.error(implDef.pos,
-            "@ScalaJSDefined and @js.native cannot be used together")
       }
 
       def strKind =
@@ -683,7 +675,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         if (!isJSNative) {
           def isJSOptional(sym: Symbol): Boolean = {
             sym.owner.isTrait && !sym.isDeferred && !sym.isConstructor &&
-            sym.owner.hasAnnotation(ScalaJSDefinedAnnotation)
+            !sym.owner.hasAnnotation(JSNativeAnnotation)
           }
 
           if (isJSOptional(low) && !(high.isDeferred || isJSOptional(high))) {
@@ -1121,11 +1113,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
     private def checkJSAnySpecificAnnotsOnNonJSAny(implDef: ImplDef): Unit = {
       val sym = implDef.symbol
-
-      if (sym.hasAnnotation(ScalaJSDefinedAnnotation)) {
-        reporter.error(implDef.pos,
-            "@ScalaJSDefined is only allowed on classes extending js.Any")
-      }
 
       if (sym.hasAnnotation(JSNativeAnnotation)) {
         reporter.error(implDef.pos,

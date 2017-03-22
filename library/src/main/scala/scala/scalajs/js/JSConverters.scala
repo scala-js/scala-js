@@ -52,13 +52,11 @@ object JSConverters extends JSConvertersLowPrioImplicits {
     @inline final def toJSIterator: Iterator[T] = new IteratorAdapter(__self)
   }
 
-  @ScalaJSDefined
   private class IterableAdapter[+T](col: GenIterable[T]) extends Iterable[T] {
     @JSName(Symbol.iterator)
     final def jsIterator(): Iterator[T] = col.iterator.toJSIterator
   }
 
-  @ScalaJSDefined
   private class IteratorAdapter[+T](
       it: scala.collection.Iterator[T]) extends Iterator[T] {
     final def next(): Iterator.Entry[T] = {

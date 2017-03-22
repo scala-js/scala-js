@@ -14,4 +14,6 @@ package scala.scalajs.js.annotation
  *  This annotation may only be used on a class extending
  *  [[scala.scalajs.js.Any js.Any]].
  */
+@deprecated("Scala.js defined is now the default. This annotation has no " +
+    "effect and can be safely removed.", "1.0.0")
 class ScalaJSDefined extends scala.annotation.StaticAnnotation

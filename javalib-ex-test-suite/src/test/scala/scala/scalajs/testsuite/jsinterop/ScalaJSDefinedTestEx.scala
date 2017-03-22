@@ -22,10 +22,8 @@ import scala.scalajs.js.annotation._
 class ScalaJSDefinedTestEx {
 
   @Test def constructor_property_on_the_prototype_issue_1963(): Unit = {
-    @ScalaJSDefined
     class ParentClass extends js.Object
 
-    @ScalaJSDefined
     class ChildClass extends ParentClass
 
     val child = new ChildClass().asInstanceOf[js.Dynamic]
