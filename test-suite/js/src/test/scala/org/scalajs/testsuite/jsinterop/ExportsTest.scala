@@ -200,10 +200,6 @@ class ExportsTest {
   }
 
   @Test def readonly_properties(): Unit = {
-    assumeFalse(
-        "Assuming strict mode semantics, which are not honored by Rhino",
-        Platform.executingInRhino)
-
     class Foo {
       @JSExport
       val foo: Int = 1
@@ -1393,9 +1389,6 @@ class ExportsTest {
   }
 
   @Test def top_level_export_write_val_var_causes_typeerror(): Unit = {
-    assumeFalse("Assuming strict mode, not supported by Rhino",
-        Platform.executingInRhino)
-
     assertThrows(classOf[js.JavaScriptException], {
       jsPackage.toplevel.basicVal = 54
     })

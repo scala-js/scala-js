@@ -3228,6 +3228,7 @@ run/trait_fields_init.scala
 run/trait_fields_three_layer_overrides.scala
 run/t9516.scala
 run/t10032.scala
+run/patmat-exprs.scala
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala

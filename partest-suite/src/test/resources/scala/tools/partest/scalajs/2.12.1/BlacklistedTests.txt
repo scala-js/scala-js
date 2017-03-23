@@ -25,6 +25,7 @@ neg/macro-incompatible-macro-engine-c.scala
 # Uses .java files
 run/t9200
 run/noInlineUnknownIndy
+
 #
 # RUN
 #
@@ -107,11 +108,7 @@ run/t6253b.scala
 run/t6253c.scala
 run/numbereq.scala
 run/t4658.scala
-
-# Crashes Rhino
-
 run/bridges.scala
-run/patmat-exprs.scala
 
 # Using partest properties
 

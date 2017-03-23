@@ -92,7 +92,7 @@ package object js {
    *  MDN
    *
    *  Browser support:
-   *  - Has no effect in Rhino nor, apparently, in Firefox
+   *  - Has no effect in Firefox, apparently
    *  - In Chrome, it has no effect unless the developer tools are opened
    *    beforehand.
    */

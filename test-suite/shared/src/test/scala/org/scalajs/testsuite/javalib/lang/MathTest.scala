@@ -191,9 +191,6 @@ class MathTest {
   }
 
   @Test def rint_for_Double(): Unit = {
-    // js.Math.round() is buggy on Rhino
-    assumeFalse("Assumed not executing in Rhino", executingInRhino)
-
     import Math.rint
 
     def isPosZero(x: Double): Boolean =

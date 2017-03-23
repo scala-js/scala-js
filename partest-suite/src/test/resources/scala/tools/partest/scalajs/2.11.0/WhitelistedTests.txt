@@ -2887,6 +2887,7 @@ run/t5608.scala
 run/t3518.scala
 run/t6198.scala
 run/t2813.2.scala
+run/patmat-exprs.scala
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala

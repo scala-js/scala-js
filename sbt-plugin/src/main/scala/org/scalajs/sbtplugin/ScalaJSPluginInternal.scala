@@ -602,9 +602,7 @@ object ScalaJSPluginInternal {
       },
 
       resolvedJSEnv := jsEnv.?.value.getOrElse {
-        if (scalaJSUseRhinoInternal.value) {
-          RhinoJSEnvInternal().value
-        } else if (scalaJSRequestsDOM.value) {
+        if (scalaJSRequestsDOM.value) {
           JSDOMNodeJSEnv().value
         } else {
           NodeJSEnv().value

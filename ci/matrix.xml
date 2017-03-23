@@ -15,7 +15,6 @@
 
   <task id="main"><![CDATA[
     setJavaVersion $java
-    sbtretry ++$scala 'set scalaJSUseRhino in Global := true' helloworld/run &&
     sbtretry ++$scala helloworld/run &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run \
@@ -26,9 +25,6 @@
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbtretry 'set scalaJSOptimizerOptions in helloworld ~= (_.withDisableOptimizer(true))' \
-        'set scalaJSUseRhino in Global := true' \
-        ++$scala helloworld/run &&
     sbtretry 'set scalaJSOptimizerOptions in helloworld ~= (_.withDisableOptimizer(true))' \
         ++$scala helloworld/run \
         helloworld/clean &&
@@ -47,14 +43,8 @@
         helloworld/clean &&
     sbtretry ++$scala \
         'set Seq(scalaJSUseMainModuleInitializer in helloworld := false, persistLauncher in helloworld := true)' \
-        'set scalaJSUseRhino in Global := true' \
-        helloworld/run &&
-    sbtretry ++$scala \
-        'set Seq(scalaJSUseMainModuleInitializer in helloworld := false, persistLauncher in helloworld := true)' \
         helloworld/run \
         helloworld/clean &&
-    sbtretry 'set scalaJSUseRhino in Global := true' \
-        ++$scala testingExample/test:run testingExample/test &&
     sbtretry ++$scala testingExample/test:run testingExample/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala testingExample/test:run testingExample/test \
@@ -90,8 +80,6 @@
     setJavaVersion $java
     sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test \
         'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test &&
-    sbtretry ++$scala 'set scalaJSUseRhino in Global := true' jUnitTestOutputsJS/test &&
-    sbtretry ++$scala 'set scalaJSUseRhino in Global := true' $testSuite/test &&
     sbtretry ++$scala $testSuite/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
@@ -102,30 +90,19 @@
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry ++$scala 'set scalaJSUseRhino in Global := true' noIrCheckTest/test &&
     sbtretry ++$scala noIrCheckTest/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala noIrCheckTest/test \
         noIrCheckTest/clean &&
     sbtretry 'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
-        'set scalaJSUseRhino in Global := true' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
-        'set scalaJSUseRhino in Global := true' \
-        ++$scala $testSuite/test &&
     sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         ++$scala $testSuite/test &&
     sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
-        'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
-        'set scalaJSUseRhino in Global := true' \
-        ++$scala $testSuite/test &&
     sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
         ++$scala $testSuite/test \
@@ -138,9 +115,6 @@
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
-        'set scalaJSUseRhino in Global := true' \
-        ++$scala $testSuite/test &&
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
         ++$scala $testSuite/test &&
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
@@ -275,8 +249,7 @@
         jsDependenciesTest/packageMinifiedJSDependencies \
         jsDependenciesTest/regressionTestForIssue2243 \
         jsNoDependenciesTest/regressionTestForIssue2243 \
-        multiTestJS/test:testScalaJSSourceMapAttribute \
-        'set scalaJSUseRhino in Global := true' test
+        multiTestJS/test:testScalaJSSourceMapAttribute
   ]]></task>
 
   <task id="partest-noopt"><![CDATA[

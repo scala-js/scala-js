@@ -598,10 +598,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def readonly_properties(): Unit = {
-    assumeFalse(
-        "Assuming strict mode semantics, which are not honored by Rhino",
-        Platform.executingInRhino)
-
     // Named classes
     @ScalaJSDefined
     class Foo extends js.Object {

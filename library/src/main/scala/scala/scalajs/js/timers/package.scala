@@ -14,10 +14,10 @@ import scala.concurrent.duration.FiniteDuration
 /**
  *  <span class="badge badge-non-std" style="float: right;">Non-Standard</span>
  *  Non-standard, but in general well supported methods to schedule asynchronous
- *  exeuction.
+ *  execution.
  *
  *  The methods in this package work in all JavaScript virtual machines
- *  supported by Scala.js (currently Rhino, Node.js and PhantomJS).
+ *  supporting `setTimeout` and `setInterval`.
  */
 package object timers {
 

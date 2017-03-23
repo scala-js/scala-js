@@ -110,11 +110,7 @@ run/t6253b.scala
 run/t6253c.scala
 run/numbereq.scala
 run/t4658.scala
-
-# Crashes Rhino
-
 run/bridges.scala
-run/patmat-exprs.scala
 
 # Using partest properties
 

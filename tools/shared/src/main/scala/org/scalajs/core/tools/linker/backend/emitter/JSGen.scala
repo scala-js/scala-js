@@ -60,7 +60,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genLet(name: Ident, mutable: Boolean, rhs: Tree)(
       implicit pos: Position): LocalDef = {
     outputMode match {
-      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Isolated =>
         VarDef(name, Some(rhs))
       case OutputMode.ECMAScript6 =>
         Let(name, mutable, Some(rhs))
@@ -69,7 +69,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genEmptyMutableLet(name: Ident)(implicit pos: Position): LocalDef = {
     outputMode match {
-      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Isolated =>
         VarDef(name, rhs = None)
       case OutputMode.ECMAScript6 =>
         Let(name, mutable = true, rhs = None)
@@ -235,29 +235,12 @@ private[emitter] final class JSGen(val semantics: Semantics,
   }
 
   def envField(field: String, subField: String, origName: Option[String] = None)(
-      implicit pos: Position): Tree = {
-    import TreeDSL._
-
-    outputMode match {
-      case OutputMode.ECMAScript51Global =>
-        envField(field) DOT Ident(subField, origName)
-
-      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
-        VarRef(Ident("$" + field + "_" + subField, origName))
-    }
+      implicit pos: Position): VarRef = {
+    VarRef(Ident("$" + field + "_" + subField, origName))
   }
 
-  def envField(field: String)(implicit pos: Position): Tree = {
-    import TreeDSL._
-
-    outputMode match {
-      case OutputMode.ECMAScript51Global =>
-        VarRef(Ident(ScalaJSEnvironmentName)) DOT field
-
-      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
-        VarRef(Ident("$" + field))
-    }
-  }
+  def envField(field: String)(implicit pos: Position): VarRef =
+    VarRef(Ident("$" + field))
 
   def genPropSelect(qual: Tree, item: PropertyName)(
       implicit pos: Position): Tree = {
@@ -272,8 +255,9 @@ private[emitter] final class JSGen(val semantics: Semantics,
     item match {
       case StringLiteral(name) if internalOptions.optimizeBracketSelects &&
           irt.isValidIdentifier(name) && name != "eval" =>
-        /* We exclude "eval" because Rhino does not respect the strict mode
-         * specificities of eval().
+        /* We exclude "eval" because we do not want to rely too much on the
+         * strict mode peculiarities of eval(), so that we can keep running
+         * on VMs that do not support strict mode.
          */
         DotSelect(qual, Ident(name))
       case _ =>

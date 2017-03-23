@@ -10,7 +10,6 @@ package scala.scalajs.testsuite.utils
 /** This is a partial copy of the implementation in the testSuite */
 object Platform {
 
-  def executingInRhino: Boolean = sysProp("rhino")
   def typedArrays: Boolean = sysProp("typedarray")
 
   private def sysProp(key: String): Boolean =

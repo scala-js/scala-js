@@ -20,7 +20,6 @@ object Platform {
     else throw new Exception("Unknown java.version format")
   }
 
-  def executingInRhino: Boolean = false
   def executingInNodeJS: Boolean = false
   def executingInNodeJSOnJSDOM: Boolean = false
   def executingInPhantomJS: Boolean = false
