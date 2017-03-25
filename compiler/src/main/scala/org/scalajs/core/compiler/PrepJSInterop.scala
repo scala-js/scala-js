@@ -934,19 +934,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         if (sym.isClassConstructor) {
           if (!sym.isPrivateThis) {
-            reporter.warning(tree.pos,
-                "Declaring private constructors in native JS classes is " +
-                "deprecated, because they do not behave the same way as in " +
-                "Scala.js-defined JS classes. Use `private[this]` instead. " +
-                "This will become an error in 1.0.0.")
+            reporter.error(sym.pos,
+                "Native JS classes may not have private constructors. " +
+                "Use `private[this]` to declare an internal constructor.")
           }
         } else if (sym.isMethod || isFieldPrivateThis) {
-          reporter.warning(tree.pos,
-              "Declaring private members in native JS classes is " +
-              "deprecated, because they do not behave the same way as in " +
-              "Scala.js-defined JS classes. Use a public member in a " +
-              "private facade instead. " +
-              "This will become an error in 1.0.0.")
+          reporter.error(tree.pos,
+              "Native JS classes may not have private members. " +
+              "Use a public member in a private facade instead.")
         }
       }
 

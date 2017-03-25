@@ -107,7 +107,7 @@ object ModulesTest {
    */
   @js.native
   @JSImport("buffer", "Buffer")
-  class Buffer private () extends js.typedarray.Uint8Array(0) {
+  class Buffer private[this] () extends js.typedarray.Uint8Array(0) {
     def this(size: Int) = this()
     def this(array: js.Array[Short]) = this()
   }
