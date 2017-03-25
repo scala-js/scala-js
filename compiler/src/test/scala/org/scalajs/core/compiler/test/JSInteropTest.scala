@@ -241,12 +241,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSName(Sym.sym)
     trait B extends js.Object
-    """ hasWarns
+    """ hasErrors
     s"""
-      |newSource1.scala:6: warning: Traits should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+      |newSource1.scala:6: error: Traits may not have an @JSName annotation.
       |    @JSName("foo")
       |     ^
-      |newSource1.scala:14: warning: Traits should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+      |newSource1.scala:14: error: Traits may not have an @JSName annotation.
       |    @JSName(Sym.sym)
       |     ^
     """

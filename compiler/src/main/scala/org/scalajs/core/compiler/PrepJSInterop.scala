@@ -576,14 +576,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             annotSym = annot.symbol
             if JSNativeLoadingSpecAnnots.contains(annotSym)
           } {
-            if (annotSym == JSNameAnnotation) {
-              reporter.warning(annot.pos,
-                  "Traits should not have an @JSName annotation, as it does " +
-                  "not have any effect. This will be enforced in 1.0.")
-            } else {
-              reporter.error(annot.pos,
-                  s"Traits may not have an @${annotSym.nameString} annotation.")
-            }
+            reporter.error(annot.pos,
+                s"Traits may not have an @${annotSym.nameString} annotation.")
           }
         }
       }
