@@ -121,7 +121,7 @@ trait PrepJSExports { this: PrepJSInterop =>
 
   /** Checks and registers class exports on the symbol. */
   def registerClassExports(sym: Symbol): Unit = {
-    assert(!sym.isModuleClass && sym.hasAnnotation(ScalaJSDefinedAnnotation),
+    assert(!sym.isModuleClass && !sym.hasAnnotation(JSNativeAnnotation),
         "Expected a Scala.js-defined JS class")
     registerClassOrModuleExportsInternal(sym)
   }
@@ -416,7 +416,7 @@ trait PrepJSExports { this: PrepJSInterop =>
             companion != NoSymbol &&
             !companion.isTrait &&
             isJSAny(companion) &&
-            companion.hasAnnotation(ScalaJSDefinedAnnotation)
+            !companion.hasAnnotation(JSNativeAnnotation)
           }
 
           if (!symOwner.isStatic || !symOwner.isModuleClass ||

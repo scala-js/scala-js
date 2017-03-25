@@ -15,17 +15,14 @@ import scala.scalajs.js.annotation._
  */
 object ScalaJSDefinedTestSeparateRun {
 
-  @ScalaJSDefined
   class SimpleParentClass extends js.Object {
     def foo(x: Int): Int = x + 1
   }
 
-  @ScalaJSDefined
   class SimpleChildClass extends SimpleParentClass {
     override def foo(x: Int): Int = x + 3
   }
 
-  @ScalaJSDefined
   trait SimpleTrait extends js.Any {
     def foo(x: Int): Int
   }

@@ -115,7 +115,6 @@ object PromiseMock {
     }
   }
 
-  @ScalaJSDefined
   private class MockPromise[+A](
       executor: js.Function2[js.Function1[A | Thenable[A], _], js.Function1[scala.Any, _], _])
       extends js.Object with js.Thenable[A] {

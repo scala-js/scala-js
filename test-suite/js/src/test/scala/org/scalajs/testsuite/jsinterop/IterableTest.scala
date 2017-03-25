@@ -20,13 +20,11 @@ object IterableTest {
         org.scalajs.testsuite.utils.Platform.areJSSymbolsSupported)
   }
 
-  @ScalaJSDefined
   private class CounterIterable(val max: Int) extends js.Iterable[Int] {
     @JSName(js.Symbol.iterator)
     def jsIterator(): js.Iterator[Int] = new CounterIterator(max)
   }
 
-  @ScalaJSDefined
   private class CounterIterator(val max: Int) extends js.Iterator[Int] {
     private[this] var nextNum = 0
 

@@ -1244,7 +1244,6 @@ class ExportsTest {
       def checkOriginalY3() = y3
     }
 
-    @ScalaJSDefined
     class JSClass extends js.Object
 
     def getJSObj2(): js.Object = new JSClass {
@@ -1262,7 +1261,6 @@ class ExportsTest {
       def checkOriginalY3() = y3
     }
 
-    @ScalaJSDefined
     abstract class JSAbstractClass extends js.Object
 
     def getJSObj3(): js.Object = new JSAbstractClass {
@@ -1280,7 +1278,6 @@ class ExportsTest {
       def checkOriginalY3() = y3
     }
 
-    @ScalaJSDefined
     abstract class JSTrait extends js.Object
 
     def getJSObj4(): js.Object = new JSTrait {
@@ -1493,7 +1490,6 @@ class ExportsTest {
     object A extends AutoExportIgnoreTrait { var x = 1 }
     object B extends AutoExportIgnoreClass { var x = 2 }
 
-    @ScalaJSDefined
     object C extends SJSDefinedAutoExportIgnoreClass { var x = 3 }
 
     // Check that the objects are usable
@@ -1611,14 +1607,12 @@ class ExportsTest {
   @Test def should_ignore_invalid_descendants2(): Unit = {
     trait HasBar { def bar: Int }
 
-    @ScalaJSDefined
     trait SJSDefinedHasBar extends js.Any { def bar: Int }
 
     // This is just to check that everything here compiles
     class A extends AutoExportIgnoreTrait { def foo: Int = 1 }
     class B extends AutoExportIgnoreClass { def foo: Int = 2 }
 
-    @ScalaJSDefined
     class C extends SJSDefinedAutoExportIgnoreClass { def foo: Int = 3 }
 
     val a = new A { override def foo: Int = 3 }
@@ -1666,14 +1660,12 @@ object TopLevelExportedObject {
 
 @JSExport
 @JSExport("TheSJSDefinedExportedObject")
-@ScalaJSDefined
 object SJSDefinedExportedObject extends js.Object {
   def witness: String = "witness"
 }
 
 @JSExportTopLevel("SJSDefinedTopLevelExportedObject")
 @JSExportTopLevel("TheSJSDefinedTopLevelExportedObject")
-@ScalaJSDefined
 object SJSDefinedTopLevelExportedObject extends js.Object {
   val witness: String = "witness"
 }
@@ -1703,12 +1695,10 @@ class TopLevelExportedClass(_x: Int) {
 @JSExport
 @JSExport("TheSJSDefinedExportedClass")
 @JSExport("qualified.testclass.SJSDefinedExportedClass")
-@ScalaJSDefined
 class SJSDefinedExportedClass(val x: Int) extends js.Object
 
 @JSExportTopLevel("SJSDefinedTopLevelExportedClass")
 @JSExportTopLevel("TheSJSDefinedTopLevelExportedClass")
-@ScalaJSDefined
 class SJSDefinedTopLevelExportedClass(val x: Int) extends js.Object
 
 @JSExport
@@ -1764,22 +1754,16 @@ class AutoExportedClassClass(_x: Int) extends AutoExportTrait {
 
 @JSExportDescendentClasses
 @JSExportDescendentObjects
-@ScalaJSDefined
 trait SJSDefinedAutoExportTrait extends js.Object
 
-@ScalaJSDefined
 object SJSDefinedAutoExportedTraitObject extends SJSDefinedAutoExportTrait
-@ScalaJSDefined
 class SJSDefinedAutoExportedTraitClass(val x: Int) extends SJSDefinedAutoExportTrait
 
 @JSExportDescendentClasses
 @JSExportDescendentObjects
-@ScalaJSDefined
 class SJSDefinedAutoExportClass extends js.Object
 
-@ScalaJSDefined
 object SJSDefinedAutoExportedClassObject extends SJSDefinedAutoExportClass
-@ScalaJSDefined
 class SJSDefinedAutoExportedClassClass(val x: Int) extends SJSDefinedAutoExportClass
 
 @JSExportDescendentClasses(ignoreInvalidDescendants = true)
@@ -1806,19 +1790,15 @@ class AutoExportIgnoreClassClass(_x: Int) extends AutoExportIgnoreTrait {
 
 @JSExportDescendentClasses(ignoreInvalidDescendants = true)
 @JSExportDescendentObjects(ignoreInvalidDescendants = true)
-@ScalaJSDefined
 class SJSDefinedAutoExportIgnoreClass extends js.Object
 
-@ScalaJSDefined
 object SJSDefinedAutoExportedIgnoreClassObject extends SJSDefinedAutoExportIgnoreClass
-@ScalaJSDefined
 class SJSDefinedAutoExportedIgnoreClassClass(val x: Int) extends SJSDefinedAutoExportIgnoreClass
 
 @js.native @JSGlobal
 object NativeInvalidExportObject extends SJSDefinedAutoExportIgnoreClass
 @js.native @JSGlobal
 class NativeInvalidExportClass extends SJSDefinedAutoExportIgnoreClass
-@ScalaJSDefined
 class SJSDefinedInvalidExportClass private () extends SJSDefinedAutoExportIgnoreClass
 
 class SomeValueClass(val i: Int) extends AnyVal
@@ -1855,7 +1835,6 @@ object ExportHolder {
   object TopLevelExportedObject
 
   @JSExport("qualified.nested.SJSDefinedExportedClass")
-  @ScalaJSDefined
   class SJSDefinedExportedClass extends js.Object
 }
 

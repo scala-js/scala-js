@@ -460,10 +460,10 @@ object Trees {
    *
    *  `cls` must be a Scala.js-defined JS class.
    *
-   *  Given the Scala.js-defined JS class
+   *  Given the Scala.js-defined JS classes
    *
    *  {{{
-   *  @ScalaJSDefined
+   *  class Bar extends js.Object
    *  class Foo extends Bar
    *  }}}
    *
@@ -497,10 +497,10 @@ object Trees {
    *
    *  `cls` must be a Scala.js-defined JS class.
    *
-   *  Given the Scala.js-defined JS class
+   *  Given the Scala.js-defined JS classes
    *
    *  {{{
-   *  @ScalaJSDefined
+   *  class Bar extends js.Object
    *  class Foo extends Bar
    *  }}}
    *
@@ -585,7 +585,6 @@ object Trees {
    *  if it is a Scala.js-defined JS class. Given the class
    *
    *  {{{
-   *  @ScalaJSDefined
    *  class Foo(x: Int) extends js.Object
    *  }}}
    *

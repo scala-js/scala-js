@@ -261,7 +261,6 @@ object JSSymbolTest {
   lazy val sym1 = js.Symbol()
   lazy val sym2 = js.Symbol()
 
-  @ScalaJSDefined
   object SJSDefinedWithSyms extends js.Object {
     val sym3 = js.Symbol()
   }
@@ -334,7 +333,6 @@ object JSSymbolTest {
     def update(s: js.Symbol, v: js.Any): Unit = js.native
   }
 
-  @ScalaJSDefined
   trait PropDefTrait extends js.Any {
     @JSName(sym1)
     def internalDef: Int
@@ -347,13 +345,11 @@ object JSSymbolTest {
     def internalDef: Int = js.native
   }
 
-  @ScalaJSDefined
   class SJSDefinedPropDef extends js.Object with PropDefTrait {
     @JSName(sym1)
     def internalDef: Int = 456
   }
 
-  @ScalaJSDefined
   trait PropValTrait extends js.Any {
     @JSName(sym1)
     val internalVal: String
@@ -366,13 +362,11 @@ object JSSymbolTest {
     val internalVal: String = js.native
   }
 
-  @ScalaJSDefined
   class SJSDefinedPropVal extends js.Object with PropValTrait {
     @JSName(sym1)
     val internalVal: String = "hello"
   }
 
-  @ScalaJSDefined
   trait PropVarTrait extends js.Any {
     @JSName(sym1)
     var internalVar: Double
@@ -385,19 +379,16 @@ object JSSymbolTest {
     var internalVar: Double = js.native
   }
 
-  @ScalaJSDefined
   class SJSDefinedPropVar extends js.Object with PropVarTrait {
     @JSName(sym1)
     var internalVar: Double = 1511.1989
   }
 
-  @ScalaJSDefined
   trait InnerObjectTrait extends js.Any {
     @JSName(sym1)
     val innerObject: AnyRef
   }
 
-  @ScalaJSDefined
   class SJSDefinedInnerObject extends js.Object with InnerObjectTrait {
     @JSName(sym1)
     object innerObject { // scalastyle:ignore
@@ -405,7 +396,6 @@ object JSSymbolTest {
     }
   }
 
-  @ScalaJSDefined
   trait MethodTrait extends js.Any {
     @JSName(sym1)
     def foo(x: Int): Int
@@ -424,7 +414,6 @@ object JSSymbolTest {
     def bar(x: String): String = js.native
   }
 
-  @ScalaJSDefined
   class SJSDefinedMethod extends js.Object with MethodTrait {
     @JSName(sym1)
     def foo(x: Int): Int = x + 2
@@ -433,7 +422,6 @@ object JSSymbolTest {
     def bar(x: String): String = "Hello " + x
   }
 
-  @ScalaJSDefined
   trait OverloadedMethodTrait extends js.Any {
     @JSName(sym1)
     def foo(x: Int): Int
@@ -452,7 +440,6 @@ object JSSymbolTest {
     def foo(x: String): String = js.native
   }
 
-  @ScalaJSDefined
   class SJSDefinedOverloadedMethod extends js.Object with OverloadedMethodTrait {
     @JSName(sym1)
     def foo(x: Int): Int = x + 3
@@ -461,7 +448,6 @@ object JSSymbolTest {
     def foo(x: String): String = "Hello " + x
   }
 
-  @ScalaJSDefined
   trait OverloadedRuntimeDispatchMethodTrait extends js.Any {
     @JSName(sym1)
     def foo(x: Int): Int
@@ -480,7 +466,6 @@ object JSSymbolTest {
     def foo(x: String): String = js.native
   }
 
-  @ScalaJSDefined
   class SJSDefinedOverloadedRuntimeDispatchMethod
       extends js.Object with OverloadedRuntimeDispatchMethodTrait {
     @JSName(sym1)
@@ -490,7 +475,6 @@ object JSSymbolTest {
     def foo(x: String): String = "Hello " + x
   }
 
-  @ScalaJSDefined
   trait TraitWithSymsInSJSDefinedObject extends js.Object {
     @JSName(sym3)
     def symInSJSDefinedObject(x: Int): Int
@@ -503,14 +487,12 @@ object JSSymbolTest {
     def symInSJSDefinedObject(x: Int): Int = js.native
   }
 
-  @ScalaJSDefined
   class SJSDefinedWithSymsInSJSDefinedObject
       extends TraitWithSymsInSJSDefinedObject {
     @JSName(sym3)
     def symInSJSDefinedObject(x: Int): Int = x + 2
   }
 
-  @ScalaJSDefined
   trait JSIterable[+A] extends js.Object {
     @JSName(js.Symbol.iterator)
     def iterator(): js.Dynamic
@@ -523,7 +505,6 @@ object JSSymbolTest {
     def iterator(): js.Dynamic = js.native
   }
 
-  @ScalaJSDefined
   class SJSDefinedIterable extends JSIterable[Int] {
     @JSName(js.Symbol.iterator)
     def iterator(): js.Dynamic = singletonIterator(532)

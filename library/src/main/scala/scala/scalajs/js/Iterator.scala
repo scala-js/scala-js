@@ -15,14 +15,12 @@ import js.annotation._
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
  *  JavaScript Iterator.
  */
-@ScalaJSDefined
 trait Iterator[+A] extends js.Object {
   def next(): Iterator.Entry[A]
 }
 
 object Iterator {
   /** Return value of [[Iterator.next]]. */
-  @ScalaJSDefined
   trait Entry[+A] extends js.Object {
     /** Whether the iterator has completed. */
     def done: Boolean

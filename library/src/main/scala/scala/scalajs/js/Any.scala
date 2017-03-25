@@ -52,7 +52,6 @@ import annotation.ScalaJSDefined
  *  See the [[http://www.scala-js.org/doc/js-interoperability.html JavaScript
  *  interoperability guide]] of Scala.js for more details.
  */
-@ScalaJSDefined
 trait Any extends scala.AnyRef
 
 /** Provides implicit conversions from Scala values to JavaScript values. */
