@@ -1706,7 +1706,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def warnOnDuplicateJSNameAnnotOnMember: Unit = {
+  def noDuplicateJSNameAnnotOnMember: Unit = {
     for {
       kind <- Seq("class", "object", "trait")
     } {
@@ -1722,9 +1722,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
         @JSName("foo")
         def a: Int = js.native
       }
-      """ hasWarns
+      """ hasErrors
       """
-        |newSource1.scala:13: warning: A duplicate @JSName annotation is ignored. This will become an error in 1.0.0.
+        |newSource1.scala:13: error: A member can only have a single @JSName annotation.
         |        @JSName("foo")
         |         ^
       """

@@ -914,14 +914,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       if (shouldCheckLiterals)
         checkJSNameArgument(tree)
 
-      /* Check that there is at most one @JSName annotation. We used not to
-       * check this, so we can only warn.
-       */
+      // Check that there is at most one @JSName annotation.
       val allJSNameAnnots = sym.annotations.filter(_.symbol == JSNameAnnotation)
       for (duplicate <- allJSNameAnnots.drop(1)) { // does not throw if empty
-        reporter.warning(duplicate.pos,
-            "A duplicate @JSName annotation is ignored. " +
-            "This will become an error in 1.0.0.")
+        reporter.error(duplicate.pos,
+            "A member can only have a single @JSName annotation.")
       }
 
       /* In native JS types, there should not be any private member, except
