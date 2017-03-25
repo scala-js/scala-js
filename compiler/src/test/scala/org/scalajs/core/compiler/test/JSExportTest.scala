@@ -706,9 +706,9 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport
       def foo_=(x: Int = 1) = ()
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:4: warning: Exported setters may not have default params. This will be enforced in 1.0.
+      |newSource1.scala:4: error: Exported setters may not have default params
       |      @JSExport
       |       ^
     """

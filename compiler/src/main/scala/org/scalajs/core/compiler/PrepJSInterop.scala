@@ -1167,13 +1167,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         if (isScalaRepeatedParamType(arg.tpe))
           reporter.error(pos, s"$typeStr setters may not have repeated params")
 
-        if (arg.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
-          val msg = s"$typeStr setters may not have default params"
-          if (exported)
-            reporter.warning(pos, msg + ". This will be enforced in 1.0.")
-          else
-            reporter.error(pos, msg)
-        }
+        if (arg.hasFlag(reflect.internal.Flags.DEFAULTPARAM))
+          reporter.error(pos, s"$typeStr setters may not have default params")
 
       case _ =>
         reporter.error(pos, s"$typeStr setters must have exactly one argument")
