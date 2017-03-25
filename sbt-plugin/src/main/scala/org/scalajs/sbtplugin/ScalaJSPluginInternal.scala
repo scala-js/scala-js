@@ -637,37 +637,15 @@ object ScalaJSPluginInternal {
         }
       },
 
-      loadedJSEnv := Def.taskDyn {
+      loadedJSEnv := {
         val log = streams.value.log
+        val env = resolvedJSEnv.value
         val libs =
           resolvedJSDependencies.value.data ++ scalaJSConfigurationLibs.value
-        resolvedJSEnv.value match {
-          /* Do not apply the LinkingUnitJSEnv treatment when
-           * scalaJSModuleKind != NoModule, because the API of LinkingUnitJSEnv
-           * is not designed to deal with modules, and would ignore that
-           * setting.
-           */
-          case env: LinkingUnitJSEnv
-              if scalaJSModuleKind.value == ModuleKind.NoModule =>
-            log.debug(s"Generating LinkingUnit for JSEnv ${env.name}")
-            Def.task {
-              val linker = scalaJSLinker.value
-              val ir = scalaJSIR.value.data
-              val moduleInitializers = scalaJSModuleInitializers.value
-              val unit = linker.linkUnit(ir, moduleInitializers,
-                  env.symbolRequirements, sbtLogger2ToolsLogger(log))
-
-              log.debug("Loading JSEnv with LinkingUnit")
-              env.loadLibs(libs).loadLinkingUnit(unit)
-            } tag(usesScalaJSLinkerTag.value)
-          case env =>
-            Def.task {
-              val file = scalaJSLinkedFile.value
-              log.debug(s"Loading JSEnv with linked file ${file.path}")
-              env.loadLibs(libs :+ ResolvedJSDependency.minimal(file))
-            }
-        }
-      }.value,
+        val file = scalaJSLinkedFile.value
+        log.debug(s"Loading JSEnv with linked file ${file.path}")
+        env.loadLibs(libs :+ ResolvedJSDependency.minimal(file))
+      },
 
       scalaJSModuleIdentifier := Def.taskDyn[Option[String]] {
         scalaJSModuleKind.value match {
