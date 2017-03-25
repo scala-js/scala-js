@@ -492,11 +492,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               "extending js.Any.")
       }
 
-      if (sym.isPackageObjectClass) {
-        reporter.warning(implDef.pos,
-            "Package objects inheriting from js.Any are deprecated. " +
-            "Use a normal object instead.")
-      }
+      if (sym.isPackageObjectClass)
+        reporter.error(implDef.pos, "Package objects may not extend js.Any.")
 
       def strKind =
         if (sym.isTrait) "trait"
