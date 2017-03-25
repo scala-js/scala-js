@@ -1055,9 +1055,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           case sel: Select if sel.symbol == JSPackage_native =>
           case _ =>
             val pos = if (tree.rhs != EmptyTree) tree.rhs.pos else tree.pos
-            reporter.warning(pos, "Members of traits, classes and objects " +
-              "extending js.Any may only contain members that call js.native. " +
-              "This will be enforced in 1.0.")
+            reporter.error(pos,
+                "Concrete members of JS native types may only call js.native.")
         }
 
         if (sym.tpe.resultType.typeSymbol == NothingClass &&

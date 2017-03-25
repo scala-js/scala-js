@@ -784,7 +784,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def warnJSAnyBody: Unit = {
+  def checkJSAnyBody: Unit = {
 
     """
     @js.native
@@ -793,12 +793,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def value: Int = ???
       val x: Int = ???
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:8: warning: Members of traits, classes and objects extending js.Any may only contain members that call js.native. This will be enforced in 1.0.
+      |newSource1.scala:8: error: Concrete members of JS native types may only call js.native.
       |      def value: Int = ???
       |                       ^
-      |newSource1.scala:9: warning: Members of traits, classes and objects extending js.Any may only contain members that call js.native. This will be enforced in 1.0.
+      |newSource1.scala:9: error: Concrete members of JS native types may only call js.native.
       |      val x: Int = ???
       |                   ^
     """
