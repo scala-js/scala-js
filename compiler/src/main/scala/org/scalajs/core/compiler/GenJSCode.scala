@@ -46,7 +46,7 @@ abstract class GenJSCode extends plugins.PluginComponent
   import rootMirror._
   import definitions._
   import jsDefinitions._
-  import jsInterop.{jsNameOf, compat068FullJSNameOf, jsNativeLoadSpecOf, JSName}
+  import jsInterop.{jsNameOf, jsNativeLoadSpecOf, JSName}
   import JSTreeExtractors._
 
   import treeInfo.hasSynthCaseSymbol
@@ -5238,32 +5238,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         if (sym1 == StringModule) RuntimeStringModule.moduleClass
         else sym1
 
-      if (isJSNativeClass(sym) &&
-          !sym.hasAnnotation(HasJSNativeLoadSpecAnnotation)) {
-        /* Compatibility for native JS modules compiled with Scala.js 0.6.12
-         * and earlier. Since they did not store their loading spec in the IR,
-         * the js.LoadJSModule() IR node cannot be used to load them. We must
-         * "desugar" it early in the compiler.
-         *
-         * Moreover, before 0.6.13, these objects would not have the
-         * annotation @JSGlobalScope. Instead, they would inherit from the
-         * magical trait js.GlobalScope.
-         */
-        if (sym.isSubClass(JSGlobalScopeClass)) {
-          genLoadGlobal()
-        } else {
-          compat068FullJSNameOf(sym).split('.').foldLeft(genLoadGlobal()) {
-            (memo, chunk) =>
-              js.JSBracketSelect(memo, js.StringLiteral(chunk))
-          }
-        }
-      } else {
-        val moduleClassName = encodeClassFullName(sym)
+      val moduleClassName = encodeClassFullName(sym)
 
-        val cls = jstpe.ClassType(moduleClassName)
-        if (isRawJSType(sym.tpe)) js.LoadJSModule(cls)
-        else js.LoadModule(cls)
-      }
+      val cls = jstpe.ClassType(moduleClassName)
+      if (isRawJSType(sym.tpe)) js.LoadJSModule(cls)
+      else js.LoadModule(cls)
     }
 
     /** Gen JS code to load the global scope. */

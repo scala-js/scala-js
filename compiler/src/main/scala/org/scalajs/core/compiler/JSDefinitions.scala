@@ -39,8 +39,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSObjectClass    = getRequiredClass("scala.scalajs.js.Object")
     lazy val JSThisFunctionClass = getRequiredClass("scala.scalajs.js.ThisFunction")
 
-    lazy val JSGlobalScopeClass = getRequiredClass("scala.scalajs.js.GlobalScope")
-
     lazy val UndefOrClass = getRequiredClass("scala.scalajs.js.UndefOr")
     lazy val UnionClass = getRequiredClass("scala.scalajs.js.$bar")
 
@@ -79,8 +77,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSAnyTpe    = JSAnyClass.toTypeConstructor
     lazy val JSObjectTpe = JSObjectClass.toTypeConstructor
-
-    lazy val JSGlobalScopeTpe = JSGlobalScopeClass.toTypeConstructor
 
     lazy val JSFunctionTpes = JSFunctionClasses.map(_.toTypeConstructor)
 
