@@ -20,9 +20,12 @@ import org.scalajs.core.ir
 import org.scalajs.core.ir.Utils.escapeJS
 
 import org.scalajs.sbtplugin._
-import org.scalajs.jsenv.{JSEnv, RetryingComJSEnv}
+import org.scalajs.jsenv.JSEnv
 import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
-import org.scalajs.jsenv.phantomjs.PhantomJSEnv
+
+import org.scalajs.jsenv.phantomjs.sbtplugin.PhantomJSEnvPlugin
+import org.scalajs.jsenv.phantomjs.{PhantomJSEnv, RetryingComJSEnv}
+
 import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
@@ -347,7 +350,10 @@ object Build {
       publishMavenStyle := false
   )
 
-  val myScalaJSSettings = ScalaJSPluginInternal.scalaJSAbstractSettings ++ Seq(
+  val myScalaJSSettings = (
+      ScalaJSPluginInternal.scalaJSAbstractSettings ++
+      PhantomJSEnvPlugin.projectSettings
+  ) ++ Seq(
       autoCompilerPlugins := true,
       scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(true)),
 
@@ -700,8 +706,6 @@ object Build {
           commonSettings ++ publishSettings ++ fatalWarningsSettings
       ) ++ Seq(
           name := "Scala.js JS Envs",
-          libraryDependencies ++=
-            ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided"),
           previousArtifactSetting,
           mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
       )
@@ -728,9 +732,8 @@ object Build {
           commonSettings ++ fatalWarningsSettings
       ) ++ Seq(
           name := "Scala.js JS Envs Test Suite",
-          libraryDependencies ++= Seq(
-              "com.novocode" % "junit-interface" % "0.9" % "test"
-          ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided")
+          libraryDependencies +=
+            "com.novocode" % "junit-interface" % "0.9" % "test"
       )
   ).dependsOn(tools, jsEnvs, jsEnvsTestKit % "test")
 
@@ -1205,6 +1208,47 @@ object Build {
       exportJars := true
     )
   )
+
+  // PhantomJS support - to be moved out of the core repository
+
+  lazy val phantomJSEnv: Project = Project(
+      id = "phantomJSEnv",
+      base = file("phantomjs-env"),
+      settings = (
+          commonSettings ++ publishSettings ++ fatalWarningsSettings
+      ) ++ Seq(
+          name := "scalajs-env-phantomjs",
+          libraryDependencies ++=
+            PhantomJSEnvPlugin.phantomJSJettyModules.map(_ % "provided"),
+          libraryDependencies +=
+            "com.novocode" % "junit-interface" % "0.9" % "test"
+      )
+  ).dependsOn(jsEnvs, jsEnvsTestKit % "test")
+
+  lazy val phantomJSEnvPlugin: Project = Project(
+      id = "phantomJSEnvPlugin",
+      base = file("phantomjs-sbt-plugin"),
+      settings = (
+          commonSettings ++ publishIvySettings ++ fatalWarningsSettings
+      ) ++ Seq(
+          name := "sbt-scalajs-env-phantomjs",
+          sbtPlugin := true,
+          scalaBinaryVersion :=
+            CrossVersion.binaryScalaVersion(scalaVersion.value),
+
+          // Add API mappings for sbt (seems they don't export their API URL)
+          apiMappings ++= {
+            val deps = (externalDependencyClasspath in Compile).value
+            val sbtJars = deps filter { attributed =>
+              val p = attributed.data.getPath
+              p.contains("/org.scala-sbt/") && p.endsWith(".jar")
+            }
+            val docUrl =
+              url(s"http://www.scala-sbt.org/${sbtVersion.value}/api/")
+            sbtJars.map(_.data -> docUrl).toMap
+          }
+      )
+  ).dependsOn(plugin, phantomJSEnv)
 
   // Examples
 

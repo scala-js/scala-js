@@ -1,17 +1,18 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___      __ ____  Scala.js sbt plugin        **
-**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2013, LAMP/EPFL        **
-**  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-js.org/       **
-** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
-**                          |/____/                                     **
-\*                                                                      */
+/*                     __                                                   *\
+**     ________ ___   / /  ___      __ ____  PhantomJS support for Scala.js **
+**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2013-2017, LAMP/EPFL       **
+**  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    https://www.scala-js.org/      **
+** /____/\___/_/ |_/____/_/ | |__/ /____/                                   **
+**                          |/____/                                         **
+\*                                                                          */
 
-
-package org.scalajs.jsenv
+package org.scalajs.jsenv.phantomjs
 
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
+
+import org.scalajs.jsenv._
 
 import scala.concurrent.{Future, Promise, ExecutionContext}
 import scala.concurrent.duration.Duration
@@ -30,6 +31,10 @@ import scala.util.{Try, Failure, Success}
  *  property.
  *
  *  No retrying is performed for synchronous, or normal asynchronous runs.
+ *
+ *  Although `RetryingComJSEnv` is agnostic of the underlying JS env, and is
+ *  therefore not tied to PhantomJS, it is most often used to compensate for
+ *  flakiness effects of PhantomJS.
  */
 final class RetryingComJSEnv(val baseEnv: ComJSEnv,
     val maxRetries: Int) extends ComJSEnv {

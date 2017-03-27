@@ -73,15 +73,8 @@ lazy val jetty9 = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSPlugin).
   settings(
     name := "Scala.js sbt test with jetty9 on classpath",
-    // This project also tests packageJSDependencies, although we don't use it
-    jsDependencies ++= Seq(
-        RuntimeDOM,
-        // The jsDependenciesTest relies on this jQuery dependency
-        // If you change it, make sure we still test properly
-        "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
-    ),
     // Use PhantomJS, allow cross domain requests
-    postLinkJSEnv := PhantomJSEnv(args = Seq("--web-security=no")).value,
+    jsEnv := PhantomJSEnv(args = Seq("--web-security=no")).value,
     Jetty9Test.runSetting
   )
 
@@ -163,6 +156,19 @@ lazy val multiTest = crossProject.
 lazy val multiTestJS = multiTest.js
 lazy val multiTestJVM = multiTest.jvm
 
+lazy val jsDependenciesTestDependee = project.
+  settings(versionSettings: _*).
+  enablePlugins(ScalaJSPlugin).
+  settings(
+    // This project contains some jsDependencies to test in jsDependenciesTest
+    jsDependencies ++= Seq(
+        RuntimeDOM,
+        // The jsDependenciesTest relies on this jQuery dependency
+        // If you change it, make sure we still test properly
+        "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
+    )
+  )
+
 lazy val jsDependenciesTest = withRegretionTestForIssue2243(
   project.settings(versionSettings: _*).
   enablePlugins(ScalaJSPlugin).
@@ -179,14 +185,17 @@ lazy val jsDependenciesTest = withRegretionTestForIssue2243(
         "org.webjars" % "mustachejs" % "0.8.2" / "mustache.js" commonJSName "Mustache",
         "org.webjars" % "mustachejs" % "0.8.2" / "0.8.2/mustache.js" commonJSName "Mustache",
 
-        // cause an ambiguity with jQuery dependency from jetty9 project (if we don't filter)
+        // cause an ambiguity with the jQuery dependency from the
+        // jsDependenciesTestDependee project (if we don't filter)
         ProvidedJS / "js/customJQuery/jquery.js" dependsOn "1.10.2/jquery.js",
 
         // Test minified dependencies
         "org.webjars" % "immutable" % "3.4.0" / "immutable.js" minified "immutable.min.js"
     ),
-    jsManifestFilter := ManifestFilters.reinterpretResourceNames("jetty9")(
-        "jquery.js" -> "1.10.2/jquery.js")
+    jsManifestFilter := {
+      ManifestFilters.reinterpretResourceNames("jsDependenciesTestDependee")(
+          "jquery.js" -> "1.10.2/jquery.js")
+    }
   ).
   settings(inConfig(Compile)(Seq(
     packageJSDependencies <<= packageJSDependencies.dependsOn(Def.task {
@@ -227,7 +236,7 @@ lazy val jsDependenciesTest = withRegretionTestForIssue2243(
       streams.value.log.info("jsDependencies resolution test passed")
     })
   )): _*).
-  dependsOn(jetty9) // depends on jQuery
+  dependsOn(jsDependenciesTestDependee) // depends on jQuery
 )
 
 lazy val jsNoDependenciesTest = withRegretionTestForIssue2243(
