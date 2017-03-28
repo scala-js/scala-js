@@ -667,7 +667,7 @@ object ScalaJSPluginInternal {
 
         val file = scalaJSLinkedFile.value
         log.debug(s"Loading JSEnv with linked file ${file.path}")
-        env.loadLibs((libs :+ file).map(ResolvedJSDependency.minimal(_)))
+        env.loadLibs(libs :+ file)
       },
 
       scalaJSModuleIdentifier := Def.taskDyn[Option[String]] {

@@ -12,7 +12,6 @@ package org.scalajs.jsenv.nodejs
 import java.io.{Console => _, _}
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.jsenv._
 
 import org.scalajs.core.ir.Utils.escapeJS
@@ -25,28 +24,28 @@ class JSDOMNodeJSEnv(
 
   protected def vmName: String = "Node.js with JSDOM"
 
-  override def jsRunner(libs: Seq[ResolvedJSDependency],
+  override def jsRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile): JSRunner = {
     new DOMNodeRunner(libs, code)
   }
 
-  override def asyncRunner(libs: Seq[ResolvedJSDependency],
+  override def asyncRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile): AsyncJSRunner = {
     new AsyncDOMNodeRunner(libs, code)
   }
 
-  override def comRunner(libs: Seq[ResolvedJSDependency],
+  override def comRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile): ComJSRunner = {
     new ComDOMNodeRunner(libs, code)
   }
 
-  protected class DOMNodeRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile)
+  protected class DOMNodeRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
       extends ExtRunner(libs, code) with AbstractDOMNodeRunner
 
-  protected class AsyncDOMNodeRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile)
+  protected class AsyncDOMNodeRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
       extends AsyncExtRunner(libs, code) with AbstractDOMNodeRunner
 
-  protected class ComDOMNodeRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile)
+  protected class ComDOMNodeRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
       extends AsyncDOMNodeRunner(libs, code) with NodeComJSRunner
 
   protected trait AbstractDOMNodeRunner extends AbstractNodeRunner {
@@ -95,9 +94,9 @@ class JSDOMNodeJSEnv(
     override protected def getJSFiles(): Seq[VirtualJSFile] =
       initFiles() ++ customInitFiles() ++ codeWithJSDOMContext()
 
-    /** Libraries are loaded via scripts in Node.js */
+    /** Libraries are loaded via scripts in the jsdom environment. */
     override protected def getLibJSFiles(): Seq[VirtualJSFile] =
-      libs.map(_.lib)
+      libs
 
     // Send code to Stdin
     override protected def sendVMStdin(out: OutputStream): Unit = {

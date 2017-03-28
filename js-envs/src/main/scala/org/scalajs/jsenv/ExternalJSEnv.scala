@@ -2,7 +2,6 @@ package org.scalajs.jsenv
 
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.logging.Logger
-import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 
 import java.io.{ Console => _, _ }
 import scala.io.Source
@@ -28,7 +27,7 @@ abstract class ExternalJSEnv(
   protected def customInitFiles(): Seq[VirtualJSFile] = Nil
 
   protected class AbstractExtRunner(
-      protected val libs: Seq[ResolvedJSDependency],
+      protected val libs: Seq[VirtualJSFile],
       protected val code: VirtualJSFile) extends JSInitFiles {
 
     private[this] var _logger: Logger = _
@@ -64,7 +63,7 @@ abstract class ExternalJSEnv(
 
     /** Get files that are a library (i.e. that do not run anything) */
     protected def getLibJSFiles(): Seq[VirtualJSFile] =
-      initFiles() ++ customInitFiles() ++ libs.map(_.lib)
+      initFiles() ++ customInitFiles() ++ libs
 
     /** Get all files that are passed to VM (libraries and code) */
     protected def getJSFiles(): Seq[VirtualJSFile] =
@@ -144,7 +143,7 @@ abstract class ExternalJSEnv(
 
   }
 
-  protected class ExtRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile)
+  protected class ExtRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
       extends AbstractExtRunner(libs, code) with JSRunner {
 
     def run(logger: Logger, console: JSConsole): Unit = {
@@ -157,7 +156,7 @@ abstract class ExternalJSEnv(
     }
   }
 
-  protected class AsyncExtRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile)
+  protected class AsyncExtRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
       extends AbstractExtRunner(libs, code) with AsyncJSRunner {
 
     private[this] var vmInst: Process = null

@@ -12,7 +12,6 @@ package org.scalajs.jsenv.nodejs
 import org.scalajs.jsenv._
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.logging._
 
 import java.io.{ Console => _, _ }
@@ -38,28 +37,28 @@ class NodeJSEnv private (
   // For binary compatibility, now `executable` is defined in AbstractNodeJSEnv
   override protected def executable: String = super.executable
 
-  override def jsRunner(libs: Seq[ResolvedJSDependency],
+  override def jsRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile): JSRunner = {
     new NodeRunner(libs, code)
   }
 
-  override def asyncRunner(libs: Seq[ResolvedJSDependency],
+  override def asyncRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile): AsyncJSRunner = {
     new AsyncNodeRunner(libs, code)
   }
 
-  override def comRunner(libs: Seq[ResolvedJSDependency],
+  override def comRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile): ComJSRunner = {
     new ComNodeRunner(libs, code)
   }
 
-  protected class NodeRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile)
+  protected class NodeRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
       extends ExtRunner(libs, code) with AbstractBasicNodeRunner
 
-  protected class AsyncNodeRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile)
+  protected class AsyncNodeRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
       extends AsyncExtRunner(libs, code) with AbstractBasicNodeRunner
 
-  protected class ComNodeRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile)
+  protected class ComNodeRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
       extends AsyncNodeRunner(libs, code) with NodeComJSRunner
 
   protected trait AbstractBasicNodeRunner extends AbstractNodeRunner {

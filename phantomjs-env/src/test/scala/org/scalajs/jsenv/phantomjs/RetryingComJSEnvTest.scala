@@ -1,7 +1,6 @@
 package org.scalajs.jsenv.phantomjs
 
 import org.scalajs.core.tools.io.VirtualJSFile
-import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.logging._
 
 import org.scalajs.jsenv.nodejs.NodeJSEnv
@@ -29,17 +28,17 @@ class RetryingComJSEnvTest extends JSEnvTest with ComTests {
     private[this] var fails = 0
     private[this] var failedReceive = false
 
-    def jsRunner(libs: Seq[ResolvedJSDependency],
+    def jsRunner(libs: Seq[VirtualJSFile],
         code: VirtualJSFile): JSRunner = {
       baseEnv.jsRunner(libs, code)
     }
 
-    def asyncRunner(libs: Seq[ResolvedJSDependency],
+    def asyncRunner(libs: Seq[VirtualJSFile],
         code: VirtualJSFile): AsyncJSRunner = {
       baseEnv.asyncRunner(libs, code)
     }
 
-    def comRunner(libs: Seq[ResolvedJSDependency],
+    def comRunner(libs: Seq[VirtualJSFile],
         code: VirtualJSFile): ComJSRunner = {
       new FailingComJSRunner(baseEnv.comRunner(libs, code))
     }
