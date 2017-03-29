@@ -206,20 +206,6 @@ trait JSGlobalAddons extends JSDefinitions
       else base
     }
 
-    /** Gets the fully qualified JS name of a static module Symbol compiled
-     *  with the 0.6.8 binary format or earlier.
-     */
-    def compat068FullJSNameOf(sym: Symbol): String = {
-      assert(sym.isModuleClass,
-          s"compat068FullJSNameOf called for non-module-class symbol $sym")
-      sym.getAnnotation(JSFullNameAnnotation).flatMap(_.stringArg(0)) getOrElse {
-        /* In 0.6.8, computed names did not exist, so we are necessarily
-         * reading a Literal here.
-         */
-        jsNameOf(sym).asInstanceOf[JSName.Literal].name
-      }
-    }
-
     /** Stores the JS native load spec of a symbol for the current compilation
      *  run.
      */

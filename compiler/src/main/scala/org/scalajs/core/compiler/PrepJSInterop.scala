@@ -479,26 +479,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         sym.addAnnotation(SJSDefinedAnonymousClassAnnotation)
       }
 
-      /* Convert `extends js.GlobalScope` to `@JSGlobalScope`.
-       * No warning because `js.GlobalScope` already causes a deprecation
-       * warning.
-       *
-       * Note that due to an implementation detail of `addAnnotation()`, this
-       * will add `@JSGlobalScope` *before* all user-defined annotations. This
-       * is what we want here. The association `extends js.GlobalScope` +
-       * `@JSName` used not to be checked, in which case `js.GlobalScope` took
-       * precedence. The fact that `@JSGlobalScope` appears first in this case
-       * allows us to more easily preserve this behavior in
-       * `checkAndGetJSNativeLoadingSpecAnnotOf()`.
-       */
-      if (sym.isSubClass(JSGlobalScopeClass) && sym != JSGlobalScopeClass) {
-        val annotInfo = {
-          AnnotationInfo(JSGlobalScopeAnnotation.tpe, Nil, Nil)
-            .setPos(implDef.pos)
-        }
-        sym.addAnnotation(annotInfo)
-      }
-
       /* Anonymous functions are considered native, since they are handled
        * specially in the backend.
        */
@@ -753,8 +733,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           case Some(annot) if annot.symbol == JSGlobalScopeAnnotation =>
             if (!sym.isModuleClass) {
               reporter.error(annot.pos,
-                  "Only native JS objects can have an " +
-                  "@JSGlobalScope annotation (or extend js.GlobalScope).")
+                  "Only native JS objects can have an @JSGlobalScope annotation.")
             }
             JSNativeLoadSpec.Global(Nil)
 
@@ -1149,8 +1128,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               "@JSImport annotation.")
         } else if (annot.symbol == JSGlobalScopeAnnotation) {
           reporter.error(annot.pos,
-              "Only native JS objects can have an @JSGlobalScope annotation " +
-              "(or extend js.GlobalScope).")
+              "Only native JS objects can have an @JSGlobalScope annotation.")
         }
       }
     }
@@ -1407,31 +1385,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         }
 
         for (annot <- duplicates) {
-          if (annot.symbol == JSNameAnnotation &&
-              result.symbol == JSNameAnnotation) {
-            // This used not to be checked, so we can only warn
-            reporter.warning(annot.pos,
-                "A duplicate @JSName annotation is ignored, and should be " +
-                "removed. This will be enforced in 1.0.")
-          } else if (annot.symbol == JSNameAnnotation &&
-              result.symbol == JSGlobalScopeAnnotation) {
-            /* This used not to be checked for `extends js.GlobalScope`, so we
-             * can only warn. See the comment where we deal with the legacy
-             * `extends js.GlobalScope` for the reason why we do not need to
-             * deal with the converse case (i.e., `@JSGlobalScope` always comes
-             * before `@JSName` in this case.
-             */
-            reporter.warning(annot.pos,
-                "An @JSName annotation is ignored in the presence of " +
-                "@JSGlobalScope (or extends js.GlobalScope), and should be " +
-                "removed. This will be enforced in 1.0.")
-          } else {
-            reporter.error(annot.pos,
-                "Native JS classes and objects can only have one annotation " +
-                "among JSName, JSGlobal, JSImport and JSGlobalScope " +
-                "(extending js.GlobalScope is treated as having " +
-                "@JSGlobalScope).")
-          }
+          reporter.error(annot.pos,
+              "Native JS classes and objects can only have one annotation " +
+              "among JSName, JSGlobal, JSImport and JSGlobalScope.")
         }
 
         actualResult
