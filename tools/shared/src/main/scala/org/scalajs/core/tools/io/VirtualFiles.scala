@@ -173,56 +173,96 @@ trait VirtualSerializedScalaJSIRFile extends VirtualBinaryFile with VirtualScala
   }
 }
 
-trait VirtualJarFile extends VirtualBinaryFile {
-  /** All the `*.sjsir` files in this Jar
+/** A virtual file container.
+ *
+ *  This is a generic virtual container for embedded virtual files, especially
+ *  one found on a classpath such as a jar, and containing `.sjsir` files.
+ */
+trait VirtualFileContainer extends VirtualFile {
+  import VirtualFileContainer._
+
+  /** Lists the entries of this container that satisfy a given predicate.
+   *
+   *  @param p
+   *    Predicate on the relative path of files to select.
+   *  @param makeResult
+   *    Function building an element of the result list for an entry, given
+   *    its relative path an `InputStream` of the content. `makeResult` may
+   *    `close()` the input stream, but it is not mandatory. In any case, the
+   *    input stream cannot be used after `makeResult` returns.
+   */
+  def listEntries[T](p: String => Boolean)(
+      makeResult: (String, InputStream) => T): List[T]
+
+  /** All the `*.sjsir` files in this container.
    *
    *  It is up to the implementation whether these files are read lazily or not.
    *  The default implementation reads them into memory.
+   *
+   *  Depending on the implementation, calling `sjsirFiles` might be more
+   *  efficient than using `listEntries` with a predicate
+   *  `_.endsWith(".sjsir")`.
    */
-  def sjsirFiles: Seq[VirtualScalaJSIRFile with RelativeVirtualFile] = {
-    findEntries(_.endsWith(".sjsir")) { (entry, stream) =>
-      val file = new JarEntryIRFile(path, entry.getName)
+  def sjsirFiles: List[VirtualScalaJSIRFile with RelativeVirtualFile] = {
+    listEntries(_.endsWith(".sjsir")) { (relPath, stream) =>
+      val file = new EntryIRFile(path, relPath)
       file.content = IO.readInputStreamToByteArray(stream)
       file.version = version
       file
     }
   }
 
-  def jsFiles: Seq[VirtualJSFile with RelativeVirtualFile] = {
-    findEntries(_.endsWith(".js")) { (entry, stream) =>
-      val file = new JarEntryJSFile(path, entry.getName)
+  def jsFiles: List[VirtualJSFile with RelativeVirtualFile] = {
+    listEntries(_.endsWith(".js")) { (relPath, stream) =>
+      val file = new EntryJSFile(path, relPath)
       file.content = IO.readInputStreamToString(stream)
       file.version = version
       file
     }
   }
 
-  def jsDependencyManifests: Seq[JSDependencyManifest] = {
-    findEntries(_ == JSDependencyManifest.ManifestFileName) { (_, stream) =>
+  def jsDependencyManifests: List[JSDependencyManifest] = {
+    listEntries(_ == JSDependencyManifest.ManifestFileName) { (_, stream) =>
       val json = readJSON(new InputStreamReader(stream, "UTF-8"))
       fromJSON[JSDependencyManifest](json)
     }
   }
+}
 
-  private def findEntries[T](cond: String => Boolean)(
-      mkResult: (ZipEntry, InputStream) => T): Seq[T] = {
+private object VirtualFileContainer {
+  private class EntryIRFile(outerPath: String, val relativePath: String)
+      extends MemVirtualSerializedScalaJSIRFile(s"$outerPath:$relativePath")
+      with RelativeVirtualFile
+
+  private class EntryJSFile(outerPath: String, val relativePath: String)
+      extends MemVirtualJSFile(s"$outerPath:$relativePath")
+      with RelativeVirtualFile
+}
+
+/** A virtual jar file. */
+trait VirtualJarFile extends VirtualFileContainer with VirtualBinaryFile {
+  import VirtualJarFile._
+
+  def listEntries[T](p: String => Boolean)(
+      makeResult: (String, InputStream) => T): List[T] = {
     val stream = new ZipInputStream(inputStream)
     try {
+      val streamIgnoreClose = new IgnoreCloseFilterInputStream(stream)
       Iterator.continually(stream.getNextEntry())
         .takeWhile(_ != null)
-        .filter(entry => cond(entry.getName))
-        .map(entry => mkResult(entry, stream))
+        .filter(entry => p(entry.getName))
+        .map(entry => makeResult(entry.getName, streamIgnoreClose))
         .toList
     } finally {
       stream.close()
     }
   }
+}
 
-  private class JarEntryIRFile(outerPath: String, val relativePath: String)
-      extends MemVirtualSerializedScalaJSIRFile(s"$outerPath:$relativePath")
-      with RelativeVirtualFile
+private object VirtualJarFile {
+  private final class IgnoreCloseFilterInputStream(in: InputStream)
+      extends FilterInputStream(in) {
 
-  private class JarEntryJSFile(outerPath: String, val relativePath: String)
-      extends MemVirtualJSFile(s"$outerPath:$relativePath")
-      with RelativeVirtualFile
+    override def close(): Unit = ()
+  }
 }
