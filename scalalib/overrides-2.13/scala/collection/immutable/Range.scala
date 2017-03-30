@@ -10,8 +10,6 @@
 package scala
 package collection.immutable
 
-import scala.collection.parallel.immutable.ParRange
-
 /** The `Range` class represents integer values in range
  *  ''[start;end)'' with non-zero step value `step`.
  *  It's a special case of an indexed sequence.
@@ -62,11 +60,8 @@ import scala.collection.parallel.immutable.ParRange
 class Range(val start: Int, val end: Int, val step: Int)
 extends scala.collection.AbstractSeq[Int]
    with IndexedSeq[Int]
-   with scala.collection.CustomParallelizable[Int, ParRange]
    with Serializable
 {
-  override def par = new ParRange(this)
-
   private def gap           = end.toLong - start.toLong
   private def isExact       = gap % step == 0
   private def hasStub       = isInclusive || !isExact
@@ -449,7 +444,6 @@ object Range {
 
   @inline
   class Inclusive(start: Int, end: Int, step: Int) extends Range(start, end, step) {
-//    override def par = new ParRange(this)
     override def isInclusive = true
     override protected def copy(start: Int, end: Int, step: Int): Range = new Inclusive(start, end, step)
   }
