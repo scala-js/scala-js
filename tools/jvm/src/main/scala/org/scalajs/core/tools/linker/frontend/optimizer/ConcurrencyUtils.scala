@@ -12,6 +12,7 @@ package org.scalajs.core.tools.linker.frontend.optimizer
 import scala.annotation.tailrec
 
 import scala.collection.concurrent.TrieMap
+import scala.collection.parallel.immutable.ParVector
 
 import java.util.concurrent.atomic._
 
@@ -19,12 +20,12 @@ private[optimizer] object ConcurrencyUtils {
 
   /** An atomic accumulator supports adding single elements and retrieving and
    *  deleting all contained elements */
-  type AtomicAcc[T] = AtomicReference[List[T]]
+  type AtomicAcc[T] = AtomicReference[ParVector[T]]
 
   object AtomicAcc {
     @inline final def empty[T]: AtomicAcc[T] =
-      new AtomicReference[List[T]](Nil)
-    @inline final def apply[T](l: List[T]): AtomicAcc[T] =
+      new AtomicReference(ParVector.empty[T])
+    @inline final def apply[T](l: ParVector[T]): AtomicAcc[T] =
       new AtomicReference(l)
   }
 
@@ -35,7 +36,7 @@ private[optimizer] object ConcurrencyUtils {
     final def +=(x: T): Unit = AtomicAccOps.append(acc, x)
 
     @inline
-    final def removeAll(): List[T] = AtomicAccOps.removeAll(acc)
+    final def removeAll(): ParVector[T] = AtomicAccOps.removeAll(acc)
   }
 
   object AtomicAccOps {
@@ -43,13 +44,13 @@ private[optimizer] object ConcurrencyUtils {
     @tailrec
     private final def append[T](acc: AtomicAcc[T], x: T): Boolean = {
       val oldV = acc.get
-      val newV = x :: oldV
+      val newV = oldV :+ x
       acc.compareAndSet(oldV, newV) || append(acc, x)
     }
 
     @inline
-    private final def removeAll[T](acc: AtomicAcc[T]): List[T] =
-      acc.getAndSet(Nil)
+    private final def removeAll[T](acc: AtomicAcc[T]): ParVector[T] =
+      acc.getAndSet(ParVector.empty)
   }
 
   type TrieSet[T] = TrieMap[T, Null]
