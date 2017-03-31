@@ -1,10 +1,10 @@
-package scala.scalajs.testsuite.javalibex
+package org.scalajs.testsuite.javalibex
 
 import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
-import scala.scalajs.testsuite.utils.Platform._
+import org.scalajs.testsuite.utils.Platform._
 
 import java.io._
 import java.util.zip._

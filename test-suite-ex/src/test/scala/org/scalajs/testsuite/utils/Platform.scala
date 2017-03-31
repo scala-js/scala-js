@@ -5,7 +5,7 @@
 ** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
 **                          |/____/                                     **
 \*                                                                      */
-package scala.scalajs.testsuite.utils
+package org.scalajs.testsuite.utils
 
 /** This is a partial copy of the implementation in the testSuite */
 object Platform {

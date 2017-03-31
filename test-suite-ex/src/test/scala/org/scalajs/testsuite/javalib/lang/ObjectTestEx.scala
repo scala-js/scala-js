@@ -7,11 +7,12 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib.lang
 
+import scala.scalajs.js
+
 import org.junit.Test
 import org.junit.Assert._
 
-import scala.scalajs.js
-import scala.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows._
 
 /** Additional tests for java.lang.Object that have to be in a separate
  *  codebase than testSuite to be meaningful.

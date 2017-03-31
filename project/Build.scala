@@ -475,7 +475,7 @@ object Build {
               clean in examples, clean in helloworld,
               clean in reversi, clean in testingExample,
               clean in testSuite, clean in testSuiteJVM, clean in noIrCheckTest,
-              clean in javalibExTestSuite,
+              clean in testSuiteEx,
               clean in partest, clean in partestSuite,
               clean in scalaTestSuite).value,
 
@@ -1642,13 +1642,23 @@ object Build {
      )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(library, jUnitRuntime)
 
-  lazy val javalibExTestSuite: Project = Project(
-      id = "javalibExTestSuite",
-      base = file("javalib-ex-test-suite"),
+  /* Additional test suite, for tests that should not be part of the normal
+   * test suite for various reasons. The most common reason is that the tests
+   * in there "fail to fail" if they happen in the larger test suite, due to
+   * all the other code that's there (can have impact on dce, optimizations,
+   * GCC, etc.).
+   *
+   * TODO Ideally, we should have a mechanism to separately compile, link and
+   * test each file in this test suite, so that we're sure that do not
+   * interfere with other.
+   */
+  lazy val testSuiteEx: Project = Project(
+      id = "testSuiteEx",
+      base = file("test-suite-ex"),
       settings = (
           commonSettings ++ myScalaJSSettings ++ testTagSettings
       ) ++ Seq(
-          name := "JavaLib Ex Test Suite",
+          name := "Scala.js test suite ex",
           publishArtifact in Compile := false,
           testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
           scalacOptions in Test ~= (_.filter(_ != "-deprecation"))

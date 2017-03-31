@@ -64,9 +64,9 @@
     sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
     sbtretry ++$scala 'testSuite/test:runMain org.scalajs.testsuite.junit.JUnitBootstrapTest' &&
     sbtretry ++$scala testSuite/test &&
-    sbtretry ++$scala javalibExTestSuite/test &&
+    sbtretry ++$scala testSuiteEx/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala javalibExTestSuite/test &&
+        ++$scala testSuiteEx/test &&
     sbtretry ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
     sbtretry ++$scala compiler/compile:doc library/compile:doc javalibEx/compile:doc \
         testInterface/compile:doc &&
@@ -216,7 +216,7 @@
         sbtPlugin/scalastyle testInterface/scalastyle \
         testSuite/test:scalastyle \
         testSuiteJVM/test:scalastyle \
-        javalibExTestSuite/test:scalastyle helloworld/scalastyle \
+        testSuiteEx/test:scalastyle helloworld/scalastyle \
         reversi/scalastyle testingExample/scalastyle \
         testingExample/test:scalastyle \
         jUnitPlugin/scalastyle jUnitRuntime/scalastyle \

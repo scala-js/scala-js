@@ -52,9 +52,9 @@ To test with PhantomJS, use this setting:
 
     > set inScope(ThisScope in testSuite)(Seq(jsEnv := PhantomJSEnv().value))
 
-The tests for the javalibEx are in a separate testing project:
+There are also a few additional tests in a separate testing project:
 
-    > javalibExTestSuite/test
+    > testSuiteEx/test
 
 The compiler tests (mostly verifying expected compile error messages) can be
 run with
