@@ -467,7 +467,7 @@ object Build {
               clean in jsEnvs, clean in jsEnvsTestKit, clean in jsEnvsTestSuite,
               clean in testAdapter, clean in plugin,
               clean in javalanglib, clean in javalib, clean in scalalib,
-              clean in libraryAux, clean in library, clean in javalibEx,
+              clean in libraryAux, clean in library,
               clean in stubs, clean in cli,
               clean in testInterface,
               clean in jUnitRuntime, clean in jUnitPlugin,
@@ -1094,23 +1094,6 @@ object Build {
       ))
   ).withScalaJSCompiler
 
-  lazy val javalibEx: Project = Project(
-      id = "javalibEx",
-      base = file("javalib-ex"),
-      settings = (
-          commonSettings ++ publishSettings ++ myScalaJSSettings ++ fatalWarningsSettings
-      ) ++ Seq(
-          name := "Scala.js JavaLib Ex",
-          delambdafySetting,
-          noClassFilesSettings,
-          exportJars := true,
-          jsDependencies +=
-            "org.webjars" % "jszip" % "2.4.0" / "jszip.min.js" commonJSName "JSZip"
-      ) ++ (
-          scalaJSExternalCompileSettings
-      )
-  ).withScalaJSCompiler.dependsOn(library)
-
   lazy val stubs: Project = Project(
       id = "stubs",
       base = file("stubs"),
@@ -1663,7 +1646,7 @@ object Build {
           testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
           scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
       )
-  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(javalibEx, jUnitRuntime)
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(library, jUnitRuntime)
 
   lazy val partest: Project = Project(
       id = "partest",
