@@ -515,7 +515,7 @@ object Build {
             (scalaSource in Test in irProject).value
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      javalibEx, jUnitRuntime % "test"
+      library, jUnitRuntime % "test"
   )
 
   lazy val compiler: Project = Project(
@@ -624,7 +624,10 @@ object Build {
             IO.write(outFile, testDefinitions)
             Seq(outFile)
           }.taskValue,
-          jsDependencies += ProvidedJS / "js-test-definitions.js" % "test"
+
+          jsDependencies += ProvidedJS / "js-test-definitions.js" % "test",
+          jsDependencies +=
+            "org.webjars" % "jszip" % "2.4.0" % "test" / "jszip.min.js" commonJSName "JSZip"
       ) ++ inConfig(Test) {
         // Redefine test to run Node.js and link HelloWorld
         test := {
@@ -693,7 +696,9 @@ object Build {
           runner.run(sbtLogger2ToolsLogger(streams.value.log), scalaJSConsole.value)
         }
       }
-  ).withScalaJSCompiler.dependsOn(javalibEx, testSuite % "test->test", irProjectJS)
+  ).withScalaJSCompiler.dependsOn(
+      library, irProjectJS, testSuite % "test->test"
+  )
 
   lazy val jsEnvs: Project = Project(
       id = "jsEnvs",
