@@ -14,7 +14,6 @@ import org.scalajs.jsenv.Utils.OptDeadline
 import org.scalajs.core.ir.Utils.{escapeJS, fixFileURI}
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.logging._
 
 import java.io.{ Console => _, _ }
@@ -40,30 +39,30 @@ class PhantomJSEnv(
   protected def vmName: String = "PhantomJS"
   protected def executable: String = phantomjsPath
 
-  override def jsRunner(libs: Seq[ResolvedJSDependency],
+  override def jsRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile): JSRunner = {
     new PhantomRunner(libs, code)
   }
 
-  override def asyncRunner(libs: Seq[ResolvedJSDependency],
+  override def asyncRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile): AsyncJSRunner = {
     new AsyncPhantomRunner(libs, code)
   }
 
-  override def comRunner(libs: Seq[ResolvedJSDependency],
+  override def comRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile): ComJSRunner = {
     new ComPhantomRunner(libs, code)
   }
 
-  protected class PhantomRunner(libs: Seq[ResolvedJSDependency],
+  protected class PhantomRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile) extends ExtRunner(libs, code)
       with AbstractPhantomRunner
 
-  protected class AsyncPhantomRunner(libs: Seq[ResolvedJSDependency],
+  protected class AsyncPhantomRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile) extends AsyncExtRunner(libs, code)
       with AbstractPhantomRunner
 
-  protected class ComPhantomRunner(libs: Seq[ResolvedJSDependency],
+  protected class ComPhantomRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile) extends AsyncPhantomRunner(libs, code)
       with ComJSRunner {
 

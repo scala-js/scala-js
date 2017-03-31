@@ -10,14 +10,13 @@
 package org.scalajs.jsenv
 
 import org.scalajs.core.tools.io.VirtualJSFile
-import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 
 trait JSEnv {
   /** Human-readable name for this [[JSEnv]] */
   def name: String
 
   /** Prepare a runner for the code in the virtual file. */
-  def jsRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile): JSRunner
+  def jsRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile): JSRunner
 
   /** Prepare a runner without any libraries.
    *
@@ -36,15 +35,15 @@ trait JSEnv {
    *  jsEnv.jsRunner(a ++ b, c)
    *  }}}
    */
-  def loadLibs(libs: Seq[ResolvedJSDependency]): JSEnv =
+  def loadLibs(libs: Seq[VirtualJSFile]): JSEnv =
     new LoadedLibs { val loadedLibs = libs }
 
   private[jsenv] trait LoadedLibs extends JSEnv {
-    val loadedLibs: Seq[ResolvedJSDependency]
+    val loadedLibs: Seq[VirtualJSFile]
 
     def name: String = JSEnv.this.name
 
-    def jsRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile): JSRunner =
+    def jsRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile): JSRunner =
       JSEnv.this.jsRunner(loadedLibs ++ libs, code)
   }
 }

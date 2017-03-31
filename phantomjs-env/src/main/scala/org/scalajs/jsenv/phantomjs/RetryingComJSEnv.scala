@@ -10,7 +10,6 @@ package org.scalajs.jsenv.phantomjs
 
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.logging.Logger
-import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 
 import org.scalajs.jsenv._
 
@@ -43,27 +42,21 @@ final class RetryingComJSEnv(val baseEnv: ComJSEnv,
 
   def name: String = s"Retrying ${baseEnv.name}"
 
-  def jsRunner(libs: Seq[ResolvedJSDependency],
-      code: VirtualJSFile): JSRunner = {
+  def jsRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile): JSRunner =
     baseEnv.jsRunner(libs, code)
-  }
 
-  def asyncRunner(libs: Seq[ResolvedJSDependency],
-      code: VirtualJSFile): AsyncJSRunner = {
+  def asyncRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile): AsyncJSRunner =
     baseEnv.asyncRunner(libs, code)
-  }
 
-  def comRunner(libs: Seq[ResolvedJSDependency],
-      code: VirtualJSFile): ComJSRunner = {
+  def comRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile): ComJSRunner =
     new RetryingComJSRunner(libs, code)
-  }
 
   /** Hack to work around abstract override in ComJSRunner */
   private trait DummyJSRunner {
     def stop(): Unit = ()
   }
 
-  private class RetryingComJSRunner(libs: Seq[ResolvedJSDependency],
+  private class RetryingComJSRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile) extends DummyJSRunner with ComJSRunner {
 
     private[this] val promise = Promise[Unit]

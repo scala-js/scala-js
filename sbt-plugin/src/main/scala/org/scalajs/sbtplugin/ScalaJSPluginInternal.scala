@@ -638,11 +638,36 @@ object ScalaJSPluginInternal {
       loadedJSEnv := {
         val log = streams.value.log
         val env = resolvedJSEnv.value
-        val libs =
+        val deps =
           resolvedJSDependencies.value.data ++ scalaJSConfigurationLibs.value
+
+        /* Implement the behavior of commonJSName without having to burn it
+         * inside NodeJSEnv, and hence in the JSEnv API.
+         * Since this matches against NodeJSEnv specifically, it obviously
+         * breaks the OO approach, but oh well ...
+         */
+        val libs = env match {
+          case _: org.scalajs.jsenv.nodejs.NodeJSEnv =>
+            val libCache = new VirtualFileMaterializer(false)
+
+            for (dep <- deps) yield {
+              dep.info.commonJSName.fold {
+                dep.lib
+              } { commonJSName =>
+                val fname = libCache.materialize(dep.lib).getAbsolutePath
+                new MemVirtualJSFile(s"require-$fname").withContent(
+                  s"""$commonJSName = require("${escapeJS(fname)}");"""
+                )
+              }
+            }
+
+          case _ =>
+            deps.map(_.lib)
+        }
+
         val file = scalaJSLinkedFile.value
         log.debug(s"Loading JSEnv with linked file ${file.path}")
-        env.loadLibs(libs :+ ResolvedJSDependency.minimal(file))
+        env.loadLibs(libs :+ file)
       },
 
       scalaJSModuleIdentifier := Def.taskDyn[Option[String]] {
