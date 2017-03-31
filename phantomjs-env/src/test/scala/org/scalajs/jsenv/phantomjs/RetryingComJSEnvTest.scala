@@ -1,10 +1,12 @@
-package org.scalajs.jsenv.test
+package org.scalajs.jsenv.phantomjs
 
 import org.scalajs.core.tools.io.VirtualJSFile
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.logging._
+
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.jsenv.{ComJSRunner, JSConsole, _}
+import org.scalajs.jsenv.test._
 
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration

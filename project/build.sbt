@@ -30,7 +30,9 @@ unmanagedSourceDirectories in Compile ++= {
     root / "tools/jvm/src/main/scala",
     root / "js-envs/src/main/scala",
     root / "test-adapter/src/main/scala",
-    root / "sbt-plugin/src/main/scala"
+    root / "sbt-plugin/src/main/scala",
+    root / "phantomjs-env/src/main/scala",
+    root / "phantomjs-sbt-plugin/src/main/scala"
   )
 }
 

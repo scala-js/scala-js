@@ -21,7 +21,6 @@ import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.backend.{LinkerBackend, ModuleKind, OutputMode}
 
 import org.scalajs.jsenv._
-import org.scalajs.jsenv.phantomjs.PhantomJettyClassLoader
 
 import org.scalajs.core.ir
 import org.scalajs.core.ir.Utils.escapeJS
@@ -35,7 +34,6 @@ import scala.collection.mutable
 
 import java.io.FileNotFoundException
 import java.nio.charset.Charset
-import java.net.URLClassLoader
 
 /** Contains settings used by ScalaJSPlugin that should not be automatically
  *  be in the *.sbt file's scope.
@@ -939,11 +937,6 @@ object ScalaJSPluginInternal {
       scalaJSDependenciesSettings
   )
 
-  val phantomJSJettyModules = Seq(
-      "org.eclipse.jetty" % "jetty-websocket" % "8.1.16.v20140903",
-      "org.eclipse.jetty" % "jetty-server" % "8.1.16.v20140903"
-  )
-
   val scalaJSProjectBaseSettings = Seq(
       isScalaJSProject := true,
 
@@ -986,21 +979,6 @@ object ScalaJSPluginInternal {
         ()
       },
 
-      /* Depend on jetty artifacts in dummy configuration to be able to inject
-       * them into the PhantomJS runner if necessary.
-       * See scalaJSPhantomJSClassLoader
-       */
-      ivyConfigurations += config("phantom-js-jetty").hide,
-      libraryDependencies ++= phantomJSJettyModules.map(_ % "phantom-js-jetty"),
-      scalaJSPhantomJSClassLoader := {
-        val report = update.value
-        val jars = report.select(configurationFilter("phantom-js-jetty"))
-
-        val jettyLoader =
-          new URLClassLoader(jars.map(_.toURI.toURL).toArray, null)
-
-        new PhantomJettyClassLoader(jettyLoader, getClass.getClassLoader)
-      },
       scalaJSJavaSystemProperties := Map.empty,
       scalaJSConfigurationLibs := Nil
   )

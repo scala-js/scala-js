@@ -27,17 +27,17 @@ object Jetty9Test {
     val code = new MemVirtualJSFile("runner.js").withContent(
       """
       scalajsCom.init(function(msg) {
-        jQuery.ajax({
-          url: msg,
-          success: function(dat) {
-            scalajsCom.send(dat.trim());
-            scalajsCom.close();
-          },
-          error: function() {
-            scalajsCom.send("failed!");
-            scalajsCom.close();
-          }
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", msg);
+        xhr.onload = (function() {
+          scalajsCom.send(xhr.responseText.trim());
+          scalajsCom.close();
         });
+        xhr.onerror = (function() {
+          scalajsCom.send("failed!");
+          scalajsCom.close();
+        });
+        xhr.send();
       });
       """
     )
