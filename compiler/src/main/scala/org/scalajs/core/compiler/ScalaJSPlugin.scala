@@ -45,7 +45,6 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     import ScalaJSOptions.URIMap
     var fixClassOf: Boolean = false
     var suppressExportDeprecations: Boolean = false
-    var suppressMissingJSGlobalDeprecations: Boolean = false
     lazy val sourceURIMaps: List[URIMap] = {
       if (_sourceURIMaps.nonEmpty)
         _sourceURIMaps.reverse
@@ -116,8 +115,6 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
         }
       } else if (option == "suppressExportDeprecations") {
         suppressExportDeprecations = true
-      } else if (option == "suppressMissingJSGlobalDeprecations") {
-        suppressMissingJSGlobalDeprecations = true
       // The following options are deprecated (how do we show this to the user?)
       } else if (option.startsWith("relSourceMap:")) {
         val uriStr = option.stripPrefix("relSourceMap:")

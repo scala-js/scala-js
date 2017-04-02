@@ -1386,7 +1386,6 @@ object Build {
        * useless warnings.
        */
       scalacOptions in Test += "-P:scalajs:suppressExportDeprecations",
-      scalacOptions in Test += "-P:scalajs:suppressMissingJSGlobalDeprecations",
 
       unmanagedSourceDirectories in Test ++= {
         val testDir = (sourceDirectory in Test).value
