@@ -492,11 +492,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               "extending js.Any.")
       }
 
-      if (sym.isPackageObjectClass) {
-        reporter.warning(implDef.pos,
-            "Package objects inheriting from js.Any are deprecated. " +
-            "Use a normal object instead.")
-      }
+      if (sym.isPackageObjectClass)
+        reporter.error(implDef.pos, "Package objects may not extend js.Any.")
 
       def strKind =
         if (sym.isTrait) "trait"
@@ -579,14 +576,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             annotSym = annot.symbol
             if JSNativeLoadingSpecAnnots.contains(annotSym)
           } {
-            if (annotSym == JSNameAnnotation) {
-              reporter.warning(annot.pos,
-                  "Traits should not have an @JSName annotation, as it does " +
-                  "not have any effect. This will be enforced in 1.0.")
-            } else {
-              reporter.error(annot.pos,
-                  s"Traits may not have an @${annotSym.nameString} annotation.")
-            }
+            reporter.error(annot.pos,
+                s"Traits may not have an @${annotSym.nameString} annotation.")
           }
         }
       }
@@ -923,14 +914,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       if (shouldCheckLiterals)
         checkJSNameArgument(tree)
 
-      /* Check that there is at most one @JSName annotation. We used not to
-       * check this, so we can only warn.
-       */
+      // Check that there is at most one @JSName annotation.
       val allJSNameAnnots = sym.annotations.filter(_.symbol == JSNameAnnotation)
       for (duplicate <- allJSNameAnnots.drop(1)) { // does not throw if empty
-        reporter.warning(duplicate.pos,
-            "A duplicate @JSName annotation is ignored. " +
-            "This will become an error in 1.0.0.")
+        reporter.error(duplicate.pos,
+            "A member can only have a single @JSName annotation.")
       }
 
       /* In native JS types, there should not be any private member, except
@@ -946,19 +934,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         if (sym.isClassConstructor) {
           if (!sym.isPrivateThis) {
-            reporter.warning(tree.pos,
-                "Declaring private constructors in native JS classes is " +
-                "deprecated, because they do not behave the same way as in " +
-                "Scala.js-defined JS classes. Use `private[this]` instead. " +
-                "This will become an error in 1.0.0.")
+            reporter.error(sym.pos,
+                "Native JS classes may not have private constructors. " +
+                "Use `private[this]` to declare an internal constructor.")
           }
         } else if (sym.isMethod || isFieldPrivateThis) {
-          reporter.warning(tree.pos,
-              "Declaring private members in native JS classes is " +
-              "deprecated, because they do not behave the same way as in " +
-              "Scala.js-defined JS classes. Use a public member in a " +
-              "private facade instead. " +
-              "This will become an error in 1.0.0.")
+          reporter.error(tree.pos,
+              "Native JS classes may not have private members. " +
+              "Use a public member in a private facade instead.")
         }
       }
 
@@ -1072,9 +1055,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           case sel: Select if sel.symbol == JSPackage_native =>
           case _ =>
             val pos = if (tree.rhs != EmptyTree) tree.rhs.pos else tree.pos
-            reporter.warning(pos, "Members of traits, classes and objects " +
-              "extending js.Any may only contain members that call js.native. " +
-              "This will be enforced in 1.0.")
+            reporter.error(pos,
+                "Concrete members of JS native types may only call js.native.")
         }
 
         if (sym.tpe.resultType.typeSymbol == NothingClass &&
@@ -1185,13 +1167,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         if (isScalaRepeatedParamType(arg.tpe))
           reporter.error(pos, s"$typeStr setters may not have repeated params")
 
-        if (arg.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
-          val msg = s"$typeStr setters may not have default params"
-          if (exported)
-            reporter.warning(pos, msg + ". This will be enforced in 1.0.")
-          else
-            reporter.error(pos, msg)
-        }
+        if (arg.hasFlag(reflect.internal.Flags.DEFAULTPARAM))
+          reporter.error(pos, s"$typeStr setters may not have default params")
 
       case _ =>
         reporter.error(pos, s"$typeStr setters must have exactly one argument")
