@@ -76,8 +76,8 @@ object PhantomJSEnvPlugin extends AutoPlugin {
   import autoImport._
 
   val phantomJSJettyModules: Seq[ModuleID] = Seq(
-      "org.eclipse.jetty" % "jetty-websocket" % "8.1.16.v20140903",
-      "org.eclipse.jetty" % "jetty-server" % "8.1.16.v20140903"
+      "org.eclipse.jetty" % "jetty-websocket" % "8.2.0.v20160908",
+      "org.eclipse.jetty" % "jetty-server" % "8.2.0.v20160908"
   )
 
   override def projectSettings: Seq[Setting[_]] = Seq(
