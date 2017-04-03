@@ -142,7 +142,7 @@ object Build {
 
       shouldPartest := {
         val testListDir = (
-          (resourceDirectory in (partestSuite, Test)).value / "scala"
+          (resourceDirectory in (LocalProject("partestSuite"), Test)).value / "scala"
             / "tools" / "partest" / "scalajs" / scalaVersion.value
         )
         testListDir.exists
@@ -536,7 +536,7 @@ object Build {
             sys.props("scala.scalajs.compiler.test.output") =
               testOutDir.getAbsolutePath
             sys.props("scala.scalajs.compiler.test.scalajslib") =
-              (packageBin in (library, Compile)).value.getAbsolutePath
+              (packageBin in (LocalProject("library"), Compile)).value.getAbsolutePath
 
             def scalaArtifact(name: String): String = {
               def isTarget(att: Attributed[File]) = {
@@ -1076,16 +1076,16 @@ object Build {
 
             val filter = ("*.sjsir": NameFilter)
 
-            val javalibProducts = (products in javalib).value
+            val javalibProducts = (products in LocalProject("javalib")).value
             val javalibMappings =
               javalibProducts.flatMap(base => Path.selectSubpaths(base, filter))
             val javalibFilteredMappings = javalibMappings.filter(
                 _._2.replace('\\', '/') != "java/lang/MathJDK8Bridge$.sjsir")
 
             val otherProducts = (
-                (products in javalanglib).value ++
-                (products in scalalib).value ++
-                (products in libraryAux).value)
+                (products in LocalProject("javalanglib")).value ++
+                (products in LocalProject("scalalib")).value ++
+                (products in LocalProject("libraryAux")).value)
             val otherMappings =
               otherProducts.flatMap(base => Path.selectSubpaths(base, filter))
 
