@@ -64,11 +64,11 @@
     sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
     sbtretry ++$scala 'testSuite/test:runMain org.scalajs.testsuite.junit.JUnitBootstrapTest' &&
     sbtretry ++$scala testSuite/test &&
-    sbtretry ++$scala javalibExTestSuite/test &&
+    sbtretry ++$scala testSuiteEx/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala javalibExTestSuite/test &&
+        ++$scala testSuiteEx/test &&
     sbtretry ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
-    sbtretry ++$scala compiler/compile:doc library/compile:doc javalibEx/compile:doc \
+    sbtretry ++$scala compiler/compile:doc library/compile:doc \
         testInterface/compile:doc &&
     sbtretry ++$scala partest/fetchScalaSource &&
     sbtretry ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
@@ -209,14 +209,14 @@
         sbtPlugin/mimaReportBinaryIssues \
         irJS/mimaReportBinaryIssues toolsJS/mimaReportBinaryIssues &&
     sbt ++$scala library/scalastyle javalanglib/scalastyle javalib/scalastyle \
-        javalibEx/scalastyle ir/scalastyle compiler/scalastyle \
+        ir/scalastyle compiler/scalastyle \
         compiler/test:scalastyle tools/scalastyle tools/test:scalastyle \
         jsEnvs/scalastyle jsEnvsTestKit/scalastyle \
         jsEnvsTestSuite/test:scalastyle testAdapter/scalastyle \
         sbtPlugin/scalastyle testInterface/scalastyle \
         testSuite/test:scalastyle \
         testSuiteJVM/test:scalastyle \
-        javalibExTestSuite/test:scalastyle helloworld/scalastyle \
+        testSuiteEx/test:scalastyle helloworld/scalastyle \
         reversi/scalastyle testingExample/scalastyle \
         testingExample/test:scalastyle \
         jUnitPlugin/scalastyle jUnitRuntime/scalastyle \
@@ -235,7 +235,7 @@
   <task id="sbtplugin-test"><![CDATA[
     # Publish Scala.js artifacts locally
     # Then go into standalone project and test
-    sbt ++2.11.8 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
+    sbt ++2.11.8 compiler/publishLocal library/publishLocal \
                  testInterface/publishLocal stubs/publishLocal \
                  jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++2.10.6 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \

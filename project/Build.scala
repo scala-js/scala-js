@@ -467,7 +467,7 @@ object Build {
               clean in jsEnvs, clean in jsEnvsTestKit, clean in jsEnvsTestSuite,
               clean in testAdapter, clean in plugin,
               clean in javalanglib, clean in javalib, clean in scalalib,
-              clean in libraryAux, clean in library, clean in javalibEx,
+              clean in libraryAux, clean in library,
               clean in stubs, clean in cli,
               clean in testInterface,
               clean in jUnitRuntime, clean in jUnitPlugin,
@@ -475,7 +475,7 @@ object Build {
               clean in examples, clean in helloworld,
               clean in reversi, clean in testingExample,
               clean in testSuite, clean in testSuiteJVM, clean in noIrCheckTest,
-              clean in javalibExTestSuite,
+              clean in testSuiteEx,
               clean in partest, clean in partestSuite,
               clean in scalaTestSuite).value,
 
@@ -515,7 +515,7 @@ object Build {
             (scalaSource in Test in irProject).value
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      javalibEx, jUnitRuntime % "test"
+      library, jUnitRuntime % "test"
   )
 
   lazy val compiler: Project = Project(
@@ -624,7 +624,10 @@ object Build {
             IO.write(outFile, testDefinitions)
             Seq(outFile)
           }.taskValue,
-          jsDependencies += ProvidedJS / "js-test-definitions.js" % "test"
+
+          jsDependencies += ProvidedJS / "js-test-definitions.js" % "test",
+          jsDependencies +=
+            "org.webjars" % "jszip" % "2.4.0" % "test" / "jszip.min.js" commonJSName "JSZip"
       ) ++ inConfig(Test) {
         // Redefine test to run Node.js and link HelloWorld
         test := {
@@ -693,7 +696,9 @@ object Build {
           runner.run(sbtLogger2ToolsLogger(streams.value.log), scalaJSConsole.value)
         }
       }
-  ).withScalaJSCompiler.dependsOn(javalibEx, testSuite % "test->test", irProjectJS)
+  ).withScalaJSCompiler.dependsOn(
+      library, irProjectJS, testSuite % "test->test"
+  )
 
   lazy val jsEnvs: Project = Project(
       id = "jsEnvs",
@@ -1088,23 +1093,6 @@ object Build {
           }
       ))
   ).withScalaJSCompiler
-
-  lazy val javalibEx: Project = Project(
-      id = "javalibEx",
-      base = file("javalib-ex"),
-      settings = (
-          commonSettings ++ publishSettings ++ myScalaJSSettings ++ fatalWarningsSettings
-      ) ++ Seq(
-          name := "Scala.js JavaLib Ex",
-          delambdafySetting,
-          noClassFilesSettings,
-          exportJars := true,
-          jsDependencies +=
-            "org.webjars" % "jszip" % "2.4.0" / "jszip.min.js" commonJSName "JSZip"
-      ) ++ (
-          scalaJSExternalCompileSettings
-      )
-  ).withScalaJSCompiler.dependsOn(library)
 
   lazy val stubs: Project = Project(
       id = "stubs",
@@ -1637,18 +1625,28 @@ object Build {
      )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(library, jUnitRuntime)
 
-  lazy val javalibExTestSuite: Project = Project(
-      id = "javalibExTestSuite",
-      base = file("javalib-ex-test-suite"),
+  /* Additional test suite, for tests that should not be part of the normal
+   * test suite for various reasons. The most common reason is that the tests
+   * in there "fail to fail" if they happen in the larger test suite, due to
+   * all the other code that's there (can have impact on dce, optimizations,
+   * GCC, etc.).
+   *
+   * TODO Ideally, we should have a mechanism to separately compile, link and
+   * test each file in this test suite, so that we're sure that do not
+   * interfere with other.
+   */
+  lazy val testSuiteEx: Project = Project(
+      id = "testSuiteEx",
+      base = file("test-suite-ex"),
       settings = (
           commonSettings ++ myScalaJSSettings ++ testTagSettings
       ) ++ Seq(
-          name := "JavaLib Ex Test Suite",
+          name := "Scala.js test suite ex",
           publishArtifact in Compile := false,
           testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
           scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
       )
-  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(javalibEx, jUnitRuntime)
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(library, jUnitRuntime)
 
   lazy val partest: Project = Project(
       id = "partest",

@@ -5,7 +5,7 @@
 ** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
 **                          |/____/                                     **
 \*                                                                      */
-package scala.scalajs.testsuite.jsinterop
+package org.scalajs.testsuite.jsinterop
 
 import org.junit.Test
 import org.junit.Assert._

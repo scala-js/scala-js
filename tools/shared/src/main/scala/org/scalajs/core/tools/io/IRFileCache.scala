@@ -312,7 +312,7 @@ object IRFileCache {
       override def toURI: URI = ir.toURI
     }
 
-    final case class Jar(jar: VirtualJarFile) extends IRContainer {
+    final case class Jar(jar: VirtualFileContainer) extends IRContainer {
       override def path: String = jar.path
       override def name: String = jar.name
       override def version: Option[String] = jar.version

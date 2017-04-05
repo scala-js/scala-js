@@ -1,4 +1,4 @@
-package scala.scalajs.testsuite.utils
+package org.scalajs.testsuite.utils
 
 /** This is a copy of the implementation in the testSuite */
 object AssertThrows {
