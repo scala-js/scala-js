@@ -21,16 +21,4 @@ class DOMExistenceTest {
   def should_initialize_windod(): Unit = {
     assertFalse(js.isUndefined(global.window))
   }
-
-  @Test
-  def should_initialize_jQuery(): Unit = {
-    assertFalse(js.isUndefined(global.jQuery))
-    assertFalse(js.isUndefined(global.window.jQuery))
-  }
-
-  @Test
-  def should_initialize_dollar(): Unit = {
-    assertFalse(js.isUndefined(global.$))
-    assertFalse(js.isUndefined(global.window.$))
-  }
 }

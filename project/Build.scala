@@ -1195,11 +1195,7 @@ object Build {
       exampleSettings,
       name := "Testing - Scala.js example",
       moduleName := "testing",
-
-      jsDependencies ++= Seq(
-        RuntimeDOM % "test",
-        "org.webjars" % "jquery" % "1.10.2" / "jquery.js" % "test"
-      )
+      jsEnv := new JSDOMNodeJSEnv()
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime % "test"
   )
