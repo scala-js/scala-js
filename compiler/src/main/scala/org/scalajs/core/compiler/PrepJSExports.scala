@@ -21,11 +21,9 @@ trait PrepJSExports { this: PrepJSInterop =>
 
   import scala.reflect.internal.Flags
 
-  case class ExportInfo(jsName: String, isNamed: Boolean,
+  case class ExportInfo(jsName: String,
       destination: ExportDestination)(val pos: Position)
-      extends jsInterop.ExportInfo {
-    assert(!isNamed || destination == ExportDestination.Normal)
-  }
+      extends jsInterop.ExportInfo
 
   private final val SuppressExportDeprecationsMsg = {
     "\n  (you can suppress this warning in 0.6.x by passing the option " +
@@ -98,12 +96,7 @@ trait PrepJSExports { this: PrepJSInterop =>
       jsInterop.registerForExport(baseSym, topLevelAndStaticExports)
 
       // Actually generate exporter methods
-      normalExports.flatMap { exp =>
-        if (exp.isNamed)
-          genNamedExport(baseSym, exp.jsName, exp.pos) :: Nil
-        else
-          genExportDefs(baseSym, exp.jsName, exp.pos)
-      }
+      normalExports.flatMap(exp => genExportDefs(baseSym, exp.jsName, exp.pos))
     }
   }
 
@@ -147,16 +140,7 @@ trait PrepJSExports { this: PrepJSInterop =>
       } else if (!isMod && !hasAnyNonPrivateCtor) {
         err("You may not export a class that has only private constructors")
       } else {
-        val (named, normal) = exports.partition(_.isNamed)
-
-        for {
-          exp <- named
-        } {
-          reporter.error(exp.pos, "You may not use @JSNamedExport on " +
-              (if (isMod) "an object" else "a Scala.js-defined JS class"))
-        }
-
-        jsInterop.registerForExport(sym, normal)
+        jsInterop.registerForExport(sym, exports)
       }
     }
   }
@@ -204,7 +188,6 @@ trait PrepJSExports { this: PrepJSInterop =>
     val allExportInfos = for {
       annot <- directAnnots ++ unitAnnots
     } yield {
-      val isNamedExport = annot.symbol == JSExportNamedAnnotation
       val isExportAll = annot.symbol == JSExportAllAnnotation
       val isTopLevelExport = annot.symbol == JSExportTopLevelAnnotation
       val isStaticExport = annot.symbol == JSExportStaticAnnotation
@@ -288,18 +271,12 @@ trait PrepJSExports { this: PrepJSInterop =>
         case ExportDestination.Normal =>
           // Make sure we do not override the default export of toString
           def isIllegalToString = {
-            isMember && !isNamedExport &&
-            name == "toString" && sym.name != nme.toString_ &&
+            isMember && name == "toString" && sym.name != nme.toString_ &&
             sym.tpe.params.isEmpty && !jsInterop.isJSGetter(sym)
           }
           if (isIllegalToString) {
             reporter.error(annot.pos, "You may not export a zero-argument " +
                 "method named other than 'toString' under the name 'toString'")
-          }
-
-          if (isNamedExport && jsInterop.isJSProperty(sym)) {
-            reporter.error(annot.pos,
-                "You may not export a getter or a setter as a named export")
           }
 
           // Don't allow nested class / module exports without explicit name.
@@ -388,7 +365,7 @@ trait PrepJSExports { this: PrepJSInterop =>
           }
       }
 
-      ExportInfo(name, isNamedExport, destination)(annot.pos)
+      ExportInfo(name, destination)(annot.pos)
     }
 
     /* Filter out static exports of accessors (as they are not actually
@@ -483,7 +460,6 @@ trait PrepJSExports { this: PrepJSInterop =>
 
     // Remove export annotations
     expSym.removeAnnotation(JSExportAnnotation)
-    expSym.removeAnnotation(JSExportNamedAnnotation)
 
     // Add symbol to class
     clsSym.info.decls.enter(expSym)
@@ -498,43 +474,6 @@ trait PrepJSExports { this: PrepJSInterop =>
     } yield genExportDefaultGetter(clsSym, defSym, expSym, i + 1, pos)
 
     exporter :: defaultGetters
-  }
-
-  /** Generate a dummy DefDef tree for a named export. This tree is captured
-   *  by GenJSCode again to generate the required JavaScript logic.
-   */
-  private def genNamedExport(defSym: Symbol, jsName: String, pos: Position) = {
-    val clsSym = defSym.owner
-    val scalaName = jsInterop.scalaExportName(jsName, false)
-
-    // Create symbol for the new exporter method
-    val expSym = clsSym.newMethodSymbol(scalaName, pos,
-        Flags.SYNTHETIC | Flags.FINAL)
-
-    // Mark the symbol to be a named export
-    expSym.addAnnotation(JSExportNamedAnnotation)
-
-    // Create a single parameter of type Any
-    val param = expSym.newValueParameter(newTermName("namedArgs"), pos)
-    param.setInfo(AnyTpe)
-
-    // Set method type
-    expSym.setInfo(MethodType(param :: Nil, AnyClass.tpe))
-
-    // Register method to parent
-    clsSym.info.decls.enter(expSym)
-
-    // Placeholder tree
-    def ph = Ident(Predef_???)
-
-    // Create a call to the forwarded method with ??? as args
-    val sel: Tree = Select(This(clsSym), defSym)
-    val call = (sel /: defSym.paramss) {
-      (fun, params) => Apply(fun, List.fill(params.size)(ph))
-    }
-
-    // rhs is a block to prevent boxing of result
-    typer.typedDefDef(DefDef(expSym, Block(call, ph)))
   }
 
   private def genExportDefaultGetter(clsSym: Symbol, trgMethod: Symbol,
@@ -613,7 +552,6 @@ trait PrepJSExports { this: PrepJSInterop =>
   /** Whether a symbol is an annotation that goes directly on a member */
   private lazy val isDirectMemberAnnot = Set[Symbol](
       JSExportAnnotation,
-      JSExportNamedAnnotation,
       JSExportTopLevelAnnotation,
       JSExportStaticAnnotation
   )

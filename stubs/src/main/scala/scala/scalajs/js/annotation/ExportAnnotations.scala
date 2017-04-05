@@ -13,10 +13,6 @@ import scala.annotation.Annotation
 
 class JSExportAll extends scala.annotation.Annotation
 
-class JSExportNamed extends scala.annotation.Annotation {
-  def this(name: String) = this()
-}
-
 class JSExport extends scala.annotation.Annotation {
   def this(name: String) = this()
 }

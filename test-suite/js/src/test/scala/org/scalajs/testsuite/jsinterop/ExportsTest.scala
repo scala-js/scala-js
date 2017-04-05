@@ -1024,43 +1024,6 @@ class ExportsTest {
     assertEquals(1, foo.b)
   }
 
-  @Test def named_exports(): Unit = {
-    import js.Dynamic.{literal => lit}
-
-    class FooNamed {
-      @JSExportNamed("bar1")
-      def bar(x: Int, y: Int): Int = x + y
-
-      @JSExportNamed("bar2")
-      @JSExport
-      def bar(x: Int = 1)(y: Int = x)(z: Int = y): Int = x + y + z
-    }
-
-    val foo = (new FooNamed).asInstanceOf[js.Dynamic]
-
-    assertEquals(3, foo.bar1(lit(x = 1, y = 2)))
-    if (hasCompliantAsInstanceOfs)
-      assertThrows(classOf[Exception], foo.bar1(lit(x = 1)))// missing arg
-    assertEquals(3, foo.bar2(lit()))
-    assertEquals(6, foo.bar2(lit(x = 2)))
-    assertEquals(5, foo.bar2(lit(y = 2)))
-    assertEquals(4, foo.bar2(lit(y = 2, z = 1)))
-    assertEquals(6, foo.bar(2))
-    assertEquals(8, foo.bar(2,3))
-  }
-
-  @Test def named_constructor_exports(): Unit = {
-    import js.Dynamic.{literal => lit}
-
-    val constr = jsPackage.ExportedNamedArgClass
-    val result1 = js.Dynamic.newInstance(constr)(lit(x = 2)).result
-    assertEquals("22true", result1)
-    val result2 = js.Dynamic.newInstance(constr)(lit(y = "foo")).result
-    assertEquals("1foofalse", result2)
-    val result3 = js.Dynamic.newInstance(constr)(lit(z = true, y = "foo")).result
-    assertEquals("1footrue", result3)
-  }
-
   @Test def exporting_under_org_namespace_issue_364(): Unit = {
     val accessor = exportsNamespace.org.ExportedUnderOrgObject
     assertEquals("function", js.typeOf(accessor))
@@ -1510,12 +1473,6 @@ class ExportedDefaultArgClass(x: Int, y: Int, z: Int) {
 object ExportedUnderOrgObject
 
 class SomeValueClass(val i: Int) extends AnyVal
-
-@JSExportNamed
-class ExportedNamedArgClass(x: Int = 1)(y: String = x.toString)(z: Boolean = y != "foo") {
-  @JSExport
-  val result = x + y + z
-}
 
 @JSExport
 class ExportClassSetterNamed_= { // scalastyle:ignore

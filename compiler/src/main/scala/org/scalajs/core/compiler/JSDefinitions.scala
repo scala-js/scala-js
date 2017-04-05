@@ -59,7 +59,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSBracketCallAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSBracketCall")
     lazy val JSExportAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSExport")
     lazy val JSExportAllAnnotation     = getRequiredClass("scala.scalajs.js.annotation.JSExportAll")
-    lazy val JSExportNamedAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSExportNamed")
     lazy val JSExportStaticAnnotation  = getRequiredClass("scala.scalajs.js.annotation.JSExportStatic")
     lazy val JSExportTopLevelAnnotation = getRequiredClass("scala.scalajs.js.annotation.JSExportTopLevel")
     lazy val JSImportAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSImport")
