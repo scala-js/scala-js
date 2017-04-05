@@ -21,6 +21,7 @@ import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.backend.{LinkerBackend, ModuleKind, OutputMode}
 
 import org.scalajs.jsenv._
+import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 import org.scalajs.core.ir
 import org.scalajs.core.ir.Utils.escapeJS
@@ -599,13 +600,7 @@ object ScalaJSPluginInternal {
             jsDependencyManifests.value.data.exists(_.requiresDOM))
       },
 
-      resolvedJSEnv := jsEnv.?.value.getOrElse {
-        if (scalaJSRequestsDOM.value) {
-          JSDOMNodeJSEnv().value
-        } else {
-          NodeJSEnv().value
-        }
-      },
+      resolvedJSEnv := jsEnv.?.value.getOrElse(new NodeJSEnv()),
 
       scalaJSJavaSystemProperties ++= {
         val javaSysPropsPattern = "-D([^=]*)=(.*)".r
