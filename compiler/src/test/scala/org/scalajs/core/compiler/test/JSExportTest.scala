@@ -48,70 +48,6 @@ class JSExportTest extends DirectTest with TestHelpers {
       |    class C__ extends js.Object
       |          ^
     """
-
-    // Inherited exports (objects)
-    """
-    @JSExportDescendentObjects
-    trait A
-
-    package fo__o {
-      object B extends A
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentObjects on trait A
-      |      object B extends A
-      |             ^
-    """
-
-    """
-    @JSExportDescendentObjects
-    trait A extends js.Object
-
-    package fo__o {
-      object B extends A
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentObjects on trait A
-      |      object B extends A
-      |             ^
-    """
-
-    // Inherited exports (classes)
-    """
-    @JSExportDescendentClasses
-    trait A
-
-    package fo__o {
-      class B(x: Int) extends A {
-        def this() = this(1)
-        private def this(s: String) = this(1)
-      }
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentClasses on trait A
-      |      class B(x: Int) extends A {
-      |             ^
-      |newSource1.scala:8: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentClasses on trait A
-      |        def this() = this(1)
-      |            ^
-    """
-
-    """
-    @JSExportDescendentClasses
-    trait A extends js.Object
-
-    package fo__o {
-      class B(x: Int) extends A
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentClasses on trait A
-      |      class B(x: Int) extends A
-      |            ^
-    """
   }
 
   @Test
@@ -1008,28 +944,6 @@ class JSExportTest extends DirectTest with TestHelpers {
       |       ^
     """
 
-  }
-
-  @Test
-  def noInheritIgnoreInvalidDescendants: Unit = {
-
-    """
-    @JSExportDescendentClasses
-    trait A
-
-    @JSExportDescendentClasses(ignoreInvalidDescendants = true)
-    trait B
-
-    object A {
-      // Local class is not allowed
-      def foo = { new A with B }
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:11: error: You may not export a local class
-      |      def foo = { new A with B }
-      |                      ^
-    """
   }
 
   @Test

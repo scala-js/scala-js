@@ -982,8 +982,6 @@ object Build {
       libraryDependencies +=
         "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
 
-      // js.JSApp is annotated with @JSExportDescendentObjects
-      scalacOptions += "-P:scalajs:suppressExportDeprecations",
       scalaJSExternalCompileSettings,
       inConfig(Compile)(Seq(
           scalacOptions in doc ++= Seq("-implicits", "-groups"),
