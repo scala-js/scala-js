@@ -19,9 +19,9 @@
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbtretry 'set requiresDOM in helloworld := true' \
+    sbtretry 'set jsEnv in helloworld := new org.scalajs.jsenv.nodejs.NodeJSEnv' \
         ++$scala helloworld/run &&
-    sbtretry 'set requiresDOM in helloworld := true' \
+    sbtretry 'set jsEnv in helloworld := new org.scalajs.jsenv.nodejs.NodeJSEnv' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
@@ -84,9 +84,9 @@
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set requiresDOM in $testSuite := true' \
+    sbtretry 'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv' \
         ++$scala $testSuite/test &&
-    sbtretry 'set requiresDOM in $testSuite := true' \
+    sbtretry 'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&

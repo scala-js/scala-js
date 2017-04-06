@@ -1,4 +1,5 @@
 import org.scalajs.core.tools.jsdep.ManifestFilters
+import org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv
 
 name := "Scala.js sbt test"
 
@@ -61,9 +62,7 @@ lazy val withDOM = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSJUnitPlugin).
   settings(
     name := "Scala.js sbt test w/ DOM",
-    jsDependencies ++= Seq(
-        RuntimeDOM,
-        "org.webjars" % "jquery" % "1.10.2" / "jquery.js"),
+    jsEnv := new JSDOMNodeJSEnv(),
     scalaJSOutputWrapper := (
         "// Scala.js - withDOM sbt test\n//\n// Compiled with Scala.js\n",
         "// End of Scala.js generated script")

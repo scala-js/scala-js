@@ -8,7 +8,7 @@ object TestApp extends js.JSApp {
     Lib.appendDocument("Hello World")
     Lib.appendDocument("Still Here!")
 
-    println(Lib.jQuery("p").text())
+    println(Lib.getElementsByTagName("p").head.innerHTML)
   }
 
 }

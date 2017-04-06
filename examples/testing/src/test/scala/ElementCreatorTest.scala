@@ -8,15 +8,11 @@ class ElementCreatorTest {
 
   @Test
   def element_creator_create_an_element_in_body(): Unit = {
-    // create the element
+    // Create the element
     ElementCreator.create()
 
-    // jquery would make this easier, but I wanted to
-    // only use pure html in the test itself
-    val body = global.document.getElementsByTagName("body")
-      .asInstanceOf[js.Array[js.Dynamic]].head
-
-    // the Scala.js DOM API would make this easier
+    // Test that it was correctly created
+    val body = global.document.body
     assertEquals("H1", body.lastChild.tagName.toString)
     assertEquals("Test", body.lastChild.innerHTML.toString)
   }
