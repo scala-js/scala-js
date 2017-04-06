@@ -11,8 +11,8 @@ package org.scalajs.core.tools.linker.frontend.optimizer
 
 import scala.collection.{GenTraversableOnce, GenIterable}
 import scala.collection.concurrent.TrieMap
-import scala.collection.parallel.mutable.ParTrieMap
-import scala.collection.parallel.immutable.ParVector
+import scala.collection.parallel.mutable.{ParTrieMap, ParArray}
+import scala.collection.parallel._
 
 import java.util.concurrent.atomic._
 
@@ -29,13 +29,13 @@ final class ParIncOptimizer(semantics: Semantics, esLevel: ESLevel,
     type Map[K, V] = TrieMap[K, V]
     type ParMap[K, V] = ParTrieMap[K, V]
     type AccMap[K, V] = TrieMap[K, AtomicAcc[V]]
-    type ParIterable[V] = ParVector[V]
+    type ParIterable[V] = ParArray[V]
     type Addable[V] = AtomicAcc[V]
 
     def emptyAccMap[K, V]: AccMap[K, V] = TrieMap.empty
     def emptyMap[K, V]: Map[K, V] = TrieMap.empty
     def emptyParMap[K, V]: ParMap[K, V] =  ParTrieMap.empty
-    def emptyParIterable[V]: ParIterable[V] = ParVector.empty
+    def emptyParIterable[V]: ParIterable[V] = ParArray.empty
 
     // Operations on ParMap
     def put[K, V](map: ParMap[K, V], k: K, v: V): Unit = map.put(k, v)
@@ -53,21 +53,21 @@ final class ParIncOptimizer(semantics: Semantics, esLevel: ESLevel,
       map.getOrPut(k, AtomicAcc.empty) += v
 
     def getAcc[K, V](map: AccMap[K, V], k: K): GenIterable[V] =
-      map.get(k).fold[ParVector[V]](ParVector.empty)(_.removeAll())
+      map.get(k).fold[Iterable[V]](Nil)(_.removeAll()).toParArray
 
     def parFlatMapKeys[A, B](map: AccMap[A, _])(
         f: A => GenTraversableOnce[B]): GenIterable[B] =
-      new ParVector(map.keys.flatMap(f).toVector)
+      map.keys.flatMap(f).toParArray
 
     // Operations on ParIterable
     def prepAdd[V](it: ParIterable[V]): Addable[V] =
-      AtomicAcc(it)
+      AtomicAcc(it.toList)
 
     def add[V](addable: Addable[V], v: V): Unit =
       addable += v
 
     def finishAdd[V](addable: Addable[V]): ParIterable[V] =
-      addable.removeAll()
+      addable.removeAll().toParArray
   }
 
   private val _interfaces = TrieMap.empty[String, InterfaceType]
@@ -82,7 +82,7 @@ final class ParIncOptimizer(semantics: Semantics, esLevel: ESLevel,
       encodedName: String): MethodImpl = new ParMethodImpl(owner, encodedName)
 
   private[optimizer] def processAllTaggedMethods(): Unit = {
-    val methods = methodsToProcess.removeAll()
+    val methods = methodsToProcess.removeAll().toParArray
     logProcessingMethods(methods.count(!_.deleted))
     for (method <- methods)
       method.process()

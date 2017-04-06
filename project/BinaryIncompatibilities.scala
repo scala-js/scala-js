@@ -6,19 +6,6 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
-      // private[optimizer], not an issue
-      ProblemFilters.exclude[IncompatibleMethTypeProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.ConcurrencyUtils#AtomicAcc.apply"),
-      ProblemFilters.exclude[IncompatibleResultTypeProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.ConcurrencyUtils#AtomicAccOps.removeAll$extension"),
-      ProblemFilters.exclude[IncompatibleResultTypeProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.ConcurrencyUtils#AtomicAccOps.removeAll"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.ParIncOptimizer#CollOps.prepAdd"),
-      ProblemFilters.exclude[IncompatibleResultTypeProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.ParIncOptimizer#CollOps.finishAdd"),
-      ProblemFilters.exclude[IncompatibleResultTypeProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.ParIncOptimizer#CollOps.emptyParIterable")
   )
 
   val JSEnvs = Seq(
