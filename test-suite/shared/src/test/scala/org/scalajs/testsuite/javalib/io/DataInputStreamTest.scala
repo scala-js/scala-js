@@ -284,6 +284,21 @@ trait DataInputStreamTest {
     assertThrows(classOf[UTFDataFormatException], badStream.readUTF)
   }
 
+  @Test def readUTF_with_very_long_string(): Unit = {
+    val length = 40000
+    val inputBytes = new Array[Byte](2 + length)
+    inputBytes(0) = (length >> 8).toByte
+    inputBytes(1) = length.toByte
+    for (i <- 2 until (2 + length))
+      inputBytes(i) = 'a'.toByte
+
+    val stream = new DataInputStream(new ByteArrayInputStream(inputBytes))
+    val result = stream.readUTF()
+    assertEquals(length, result.length)
+    assertTrue(result.forall(_ == 'a'))
+    assertEquals(-1, stream.read())
+  }
+
   @Test def should_provide_readLine(): Unit = {
     val stream = newStream(
         "Hello World\nUNIX\nWindows\r\nMac (old)\rStuff".map(_.toInt): _*)

@@ -144,7 +144,7 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
   }
 
   def readUTF(): String = {
-    val length = readShort()
+    val length = readUnsignedShort()
     var res = ""
     var i = 0
 

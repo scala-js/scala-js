@@ -84,6 +84,10 @@ class DataOutputStream(out: OutputStream)
     }
 
     val len = idx - 2
+
+    if (len >= 0x10000)
+      throw new UTFDataFormatException(s"encoded string too long: $len bytes")
+
     buffer(0) = (len >> 8).toByte
     buffer(1) = len.toByte
 
