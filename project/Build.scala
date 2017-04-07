@@ -1375,12 +1375,6 @@ object Build {
       testHtmlSettings(testHtmlFullOpt, FullOptStage),
       name := "Scala.js test suite",
 
-      /* We still have zillions of run test for top-level @JSExport and for
-       * @JSName/missing @JSGlobal. Don't drown the test:compile output under
-       * useless warnings.
-       */
-      scalacOptions in Test += "-P:scalajs:suppressExportDeprecations",
-
       unmanagedSourceDirectories in Test ++= {
         val testDir = (sourceDirectory in Test).value
 

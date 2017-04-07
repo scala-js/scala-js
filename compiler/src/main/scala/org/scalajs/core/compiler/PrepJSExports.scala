@@ -25,11 +25,6 @@ trait PrepJSExports { this: PrepJSInterop =>
       destination: ExportDestination)(val pos: Position)
       extends jsInterop.ExportInfo
 
-  private final val SuppressExportDeprecationsMsg = {
-    "\n  (you can suppress this warning in 0.6.x by passing the option " +
-    "`-P:scalajs:suppressExportDeprecations` to scalac)"
-  }
-
   /** Generate the exporter for the given DefDef
    *  or ValDef (abstract val in class, val in trait or lazy val;
    *  these don't get DefDefs until the fields phase)
@@ -190,7 +185,7 @@ trait PrepJSExports { this: PrepJSInterop =>
         annot => isDirectMemberAnnot(annot.symbol))
 
     // Is this a member export (i.e. not a class or module export)?
-    val isMember = sym.isMethod && !sym.isConstructor
+    val isMember = !sym.isClass && !sym.isConstructor
 
     // Annotations for this member on the whole unit
     val unitAnnots = {
@@ -281,6 +276,10 @@ trait PrepJSExports { this: PrepJSInterop =>
         }
       }
 
+      val symOwner =
+        if (sym.isConstructor) sym.owner.owner
+        else sym.owner
+
       // Destination-specific restrictions
       destination match {
         case ExportDestination.Normal =>
@@ -294,36 +293,11 @@ trait PrepJSExports { this: PrepJSInterop =>
                 "method named other than 'toString' under the name 'toString'")
           }
 
-          // Don't allow nested class / module exports without explicit name.
-          def isStaticNested = {
-            /* For Scala.js defined JS classes, sym is the class itself. For
-             * normal classes, sym is the constructor that is to be exported.
-             */
-            val clsSym = if (sym.isClass) sym else sym.owner
-            clsSym.isNestedClass && clsSym.isStatic && !clsSym.isLocalToBlock
-          }
-          if (!isMember && !hasExplicitName && isStaticNested) {
+          // Disallow @JSExport on non-members.
+          if (!isMember && !sym.isTrait) {
             reporter.error(annot.pos,
-                "You must set an explicit name for exports of nested classes.")
-          }
-
-          // Deprecate @JSExport on classes and objects
-          if (!isMember && !scalaJSOpts.suppressExportDeprecations) {
-            if (sym.isModuleClass) {
-              reporter.warning(annot.pos,
-                  "@JSExport on objects is deprecated and will be removed " +
-                  "in 1.0.0. Use @JSExportTopLevel instead. Note that it " +
-                  "exports the object itself (rather than a 0-arg function " +
-                  "returning the object), so the calling JavaScript code " +
-                  "must be adapted." +
-                  SuppressExportDeprecationsMsg)
-            } else {
-              reporter.warning(annot.pos,
-                  "@JSExport on classes is deprecated and will be removed " +
-                  "in 1.0.0. Use @JSExportTopLevel instead (which does " +
-                  "exactly the same thing on classes)." +
-                  SuppressExportDeprecationsMsg)
-            }
+                "@JSExport is forbidden on objects and classes. " +
+                "Use @JSExportTopLevel instead.")
           }
 
         case ExportDestination.TopLevel =>
@@ -335,19 +309,16 @@ trait PrepJSExports { this: PrepJSInterop =>
                 "You may not export a getter or a setter to the top level")
           }
 
-          val symOwner =
-            if (sym.isConstructor) sym.owner.owner
-            else sym.owner
-          if (!symOwner.isStatic || !symOwner.isModuleClass) {
+          /* Disallow non-static methods.
+           * Note: Non-static classes have more specific error messages in
+           * checkClassOrModuleExports
+           */
+          if (sym.isMethod && (!symOwner.isStatic || !symOwner.isModuleClass)) {
             reporter.error(annot.pos,
                 "Only static objects may export their members to the top level")
           }
 
         case ExportDestination.Static =>
-          val symOwner =
-            if (sym.isClassConstructor) sym.owner.owner
-            else sym.owner
-
           def companionIsScalaJSDefinedJSClass: Boolean = {
             val companion = symOwner.companionClass
             companion != NoSymbol &&

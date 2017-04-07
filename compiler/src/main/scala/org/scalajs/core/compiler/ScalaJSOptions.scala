@@ -19,9 +19,6 @@ trait ScalaJSOptions {
    *  If false, bad calls to classOf will cause an error. */
   def fixClassOf: Boolean
 
-  /** Should we suppress deprecations of exports coming from 0.6.15? */
-  def suppressExportDeprecations: Boolean
-
   /** which source locations in source maps should be relativized (or where
    *  should they be mapped to)? */
   def sourceURIMaps: List[URIMap]

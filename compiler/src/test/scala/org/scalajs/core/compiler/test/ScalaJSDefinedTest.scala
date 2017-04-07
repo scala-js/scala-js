@@ -9,9 +9,6 @@ import org.junit.Ignore
 
 class ScalaJSDefinedTest extends DirectTest with TestHelpers {
 
-  override def extraArgs: List[String] =
-    super.extraArgs :+ "-P:scalajs:suppressExportDeprecations"
-
   override def preamble: String =
     """
     import scala.scalajs.js
@@ -501,34 +498,34 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
   @Test
   def noExportClassWithOnlyPrivateCtors: Unit = {
     """
-    @JSExport
+    @JSExportTopLevel("A")
     class A private () extends js.Object
     """ hasErrors
     """
       |newSource1.scala:5: error: You may not export a class that has only private constructors
-      |    @JSExport
+      |    @JSExportTopLevel("A")
       |     ^
     """
 
     """
-    @JSExport
+    @JSExportTopLevel("A")
     class A private[this] () extends js.Object
     """ hasErrors
     """
       |newSource1.scala:5: error: You may not export a class that has only private constructors
-      |    @JSExport
+      |    @JSExportTopLevel("A")
       |     ^
     """
 
     """
-    @JSExport
+    @JSExportTopLevel("A")
     class A private[A] () extends js.Object
 
     object A
     """ hasErrors
     """
       |newSource1.scala:5: error: You may not export a class that has only private constructors
-      |    @JSExport
+      |    @JSExportTopLevel("A")
       |     ^
     """
   }

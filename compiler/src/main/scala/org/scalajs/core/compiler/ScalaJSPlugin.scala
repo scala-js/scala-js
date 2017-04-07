@@ -44,7 +44,6 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   object scalaJSOpts extends ScalaJSOptions { // scalastyle:ignore
     import ScalaJSOptions.URIMap
     var fixClassOf: Boolean = false
-    var suppressExportDeprecations: Boolean = false
     lazy val sourceURIMaps: List[URIMap] = {
       if (_sourceURIMaps.nonEmpty)
         _sourceURIMaps.reverse
@@ -113,8 +112,6 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
               error(s"${e.getInput} is not a valid URI")
           }
         }
-      } else if (option == "suppressExportDeprecations") {
-        suppressExportDeprecations = true
       // The following options are deprecated (how do we show this to the user?)
       } else if (option.startsWith("relSourceMap:")) {
         val uriStr = option.stripPrefix("relSourceMap:")
@@ -150,12 +147,6 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
       |     - strips away the prefix FROM_URI (if it matches)
       |     - optionally prefixes the TO_URI, where stripping has been performed
       |     - any number of occurences are allowed. Processing is done on a first match basis.
-      |  -P:$name:suppressExportDeprecations
-      |     Silence deprecations of top-level @JSExport,
-      |     @JSExportDescendentClasses and @JSExportDescendentObjects.
-      |     This can be used as a transition path in the 0.6.x cycle,
-      |     to avoid too many deprecation warnings that are not trivial
-      |     to address.
       |  -P:$name:fixClassOf
       |     Repair calls to Predef.classOf that reach Scala.js.
       |     WARNING: This is a tremendous hack! Expect ugly errors if you use this option.
