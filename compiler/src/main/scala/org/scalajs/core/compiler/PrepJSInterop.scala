@@ -571,13 +571,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             sym.addAnnotation(HasJSNativeLoadSpecAnnotation)
         } else {
           assert(sym.isTrait) // just tested in the previous `if`
-          for {
-            annot <- sym.annotations
-            annotSym = annot.symbol
-            if JSNativeLoadingSpecAnnots.contains(annotSym)
-          } {
-            reporter.error(annot.pos,
-                s"Traits may not have an @${annotSym.nameString} annotation.")
+          for (annot <- sym.annotations) {
+            val annotSym = annot.symbol
+            if (JSNativeLoadingSpecAnnots.contains(annotSym) ||
+                annotSym == JSNameAnnotation) {
+              reporter.error(annot.pos,
+                  s"Traits may not have an @${annotSym.nameString} annotation.")
+            }
           }
         }
       }
@@ -672,16 +672,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     private def checkAndComputeJSNativeLoadSpecOf(pos: Position,
         sym: Symbol): JSNativeLoadSpec = {
       if (enclosingOwner is OwnerKind.JSNativeMod) {
-        for {
-          annot <- sym.annotations
-          annotSym = annot.symbol
-          if JSNativeLoadingSpecAnnots.contains(annotSym)
-        } {
-          if (annotSym != JSNameAnnotation) {
+        for (annot <- sym.annotations) {
+          val annotSym = annot.symbol
+
+          if (JSNativeLoadingSpecAnnots.contains(annotSym)) {
             reporter.error(annot.pos,
                 "Classes and objects nested in a JS native object cannot " +
                 s"have an @${annotSym.nameString} annotation.")
-          } else if (annot.args.head.tpe.typeSymbol != StringClass) {
+          } else if (annotSym == JSNameAnnotation &&
+              annot.args.head.tpe.typeSymbol != StringClass) {
             reporter.error(annot.pos,
                 "Implementation restriction: @JSName with a js.Symbol is not " +
                 "supported on nested native classes and objects")
@@ -704,23 +703,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         def parsePath(pathName: String): List[String] =
           pathName.split('.').toList
 
-        def needsExplicitJSName = {
-          (enclosingOwner is OwnerKind.ScalaMod) &&
-          !sym.owner.isPackageObjectClass
-        }
-
-        def globalFromName = {
-          val path = jsInterop.jsNameOf(sym) match {
-            case JSName.Literal(pathName) =>
-              parsePath(pathName)
-            case JSName.Computed(_) =>
-              // this happens in erroneous cases that report a compile error
-              List("<erroneous>")
-          }
-          JSNativeLoadSpec.Global(path)
-        }
-
-        checkAndGetJSNativeLoadingSpecAnnotOf(sym) match {
+        checkAndGetJSNativeLoadingSpecAnnotOf(pos, sym) match {
           case Some(annot) if annot.symbol == JSGlobalScopeAnnotation =>
             if (!sym.isModuleClass) {
               reporter.error(annot.pos,
@@ -730,6 +713,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
           case Some(annot) if annot.symbol == JSGlobalAnnotation =>
             val pathName = annot.stringArg(0).getOrElse {
+              val needsExplicitJSName = {
+                (enclosingOwner is OwnerKind.ScalaMod) &&
+                !sym.owner.isPackageObjectClass
+              }
+
               if (needsExplicitJSName) {
                 reporter.error(annot.pos,
                     "Native JS classes and objects inside non-native objects " +
@@ -746,45 +734,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             val path = annot.stringArg(1).fold[List[String]](Nil)(parsePath)
             JSNativeLoadSpec.Import(module, path)
 
-          case Some(annot) if annot.symbol == JSNameAnnotation =>
-            if (!scalaJSOpts.suppressMissingJSGlobalDeprecations) {
-              reporter.warning(annot.pos,
-                  "@JSName on top-level native JS classes and objects " +
-                  "(or native JS classes and objects inside Scala objects) " +
-                  "is deprecated, and should be replaced by @JSGlobal (with " +
-                  "the same meaning). This will be enforced in 1.0." +
-                  SuppressMissingJSGlobalDeprecationsMsg)
-            }
-
-            globalFromName
-
           case None =>
-            if (needsExplicitJSName) {
-              if (sym.isModuleClass) {
-                reporter.error(pos,
-                    "Native JS objects inside non-native objects must " +
-                    "have an @JSGlobal or @JSImport annotation")
-              } else {
-                // This should be an error, but we erroneously allowed that before
-                reporter.warning(pos,
-                    "Native JS classes inside non-native objects should " +
-                    "have an @JSGlobal or @JSImport annotation. " +
-                    "This will be enforced in 1.0.")
-              }
-            } else {
-              if (!scalaJSOpts.suppressMissingJSGlobalDeprecations &&
-                  !sym.isPackageObjectClass) {
-                reporter.warning(pos,
-                    "Top-level native JS classes and objects should have an " +
-                    "@JSGlobal or @JSImport annotation. This will be " +
-                    "enforced in 1.0.\n" +
-                    "  If migrating from 0.6.14 or earlier, the equivalent " +
-                    "behavior is an @JSGlobal without parameter." +
-                    SuppressMissingJSGlobalDeprecationsMsg)
-              }
-            }
-
-            globalFromName
+            // We already emitted an error. Just propagate something.
+            JSNativeLoadSpec.Global(Nil)
         }
       }
     }
@@ -1340,40 +1292,35 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   }
 
   private def checkAndGetJSNativeLoadingSpecAnnotOf(
-      sym: Symbol): Option[Annotation] = {
+      pos: Position, sym: Symbol): Option[Annotation] = {
+    for (annot <- sym.getAnnotation(JSNameAnnotation)) {
+      reporter.error(annot.pos, "@JSName annotations are not allowed on top " +
+          "level classes or objects (or classes and objects inside Scala objects).")
+    }
+
     val annots = sym.annotations.filter { annot =>
       JSNativeLoadingSpecAnnots.contains(annot.symbol)
     }
 
+    val badAnnotCountMsg =
+      "Native JS classes and objects must have exactly one " +
+      "annotation among @JSGlobal, @JSImport and @JSGlobalScope."
+
     annots match {
       case Nil =>
+        reporter.error(pos, badAnnotCountMsg)
         None
 
       case result :: duplicates =>
-        val actualResult = {
-          if (result.args.headOption.forall(_.tpe.typeSymbol == StringClass)) {
-            Some(result)
-          } else {
-            reporter.error(result.pos,
-                "@JSName with a js.Symbol can only be used on members of " +
-                "JavaScript types")
-            None
-          }
-        }
+        for (annot <- duplicates)
+          reporter.error(annot.pos, badAnnotCountMsg)
 
-        for (annot <- duplicates) {
-          reporter.error(annot.pos,
-              "Native JS classes and objects can only have one annotation " +
-              "among JSName, JSGlobal, JSImport and JSGlobalScope.")
-        }
-
-        actualResult
+        Some(result)
     }
   }
 
   private lazy val JSNativeLoadingSpecAnnots: Set[Symbol] = {
-    Set(JSNameAnnotation, JSGlobalAnnotation, JSImportAnnotation,
-        JSGlobalScopeAnnotation)
+    Set(JSGlobalAnnotation, JSImportAnnotation, JSGlobalScopeAnnotation)
   }
 
   private lazy val ScalaEnumClass = getRequiredClass("scala.Enumeration")

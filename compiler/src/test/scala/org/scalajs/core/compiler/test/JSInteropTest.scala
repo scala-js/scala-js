@@ -16,7 +16,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
   private val JSNativeLoadSpecAnnots = Seq(
-      "JSName" -> "@JSName(\"foo\")",
       "JSGlobal" -> "@JSGlobal",
       "JSGlobal" -> "@JSGlobal(\"foo\")",
       "JSImport" -> "@JSImport(\"foo\", \"bar\")",
@@ -225,6 +224,49 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
   }
+  @Test
+  def noJSNameAnnotOnClass: Unit = {
+    """
+    @js.native
+    @JSName("Foo")
+    class A extends js.Object
+
+    @js.native
+    @JSName("Foo")
+    abstract class B extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: @JSName annotations are not allowed on top level classes or objects (or classes and objects inside Scala objects).
+      |    @JSName("Foo")
+      |     ^
+      |newSource1.scala:7: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+      |    class A extends js.Object
+      |          ^
+      |newSource1.scala:10: error: @JSName annotations are not allowed on top level classes or objects (or classes and objects inside Scala objects).
+      |    @JSName("Foo")
+      |     ^
+      |newSource1.scala:11: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+      |    abstract class B extends js.Object
+      |                   ^
+    """
+  }
+
+  @Test
+  def noJSNameAnnotOnObject: Unit = {
+    """
+    @js.native
+    @JSName("Foo")
+    object A extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: @JSName annotations are not allowed on top level classes or objects (or classes and objects inside Scala objects).
+      |    @JSName("Foo")
+      |     ^
+      |newSource1.scala:7: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+      |    object A extends js.Object
+      |           ^
+    """
+  }
 
   @Test
   def noJSNameAnnotOnTrait: Unit = {
@@ -301,27 +343,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
       (firstAnnotName, firstAnnot) <- JSNativeLoadSpecAnnots
       (secondAnnotName, secondAnnot) <- JSNativeLoadSpecAnnots
     } {
-      val expectedMessage = {
-        s"""
-          |newSource1.scala:7: error: Native JS classes and objects can only have one annotation among JSName, JSGlobal, JSImport and JSGlobalScope.
-          |$secondAnnot
-          | ^
-        """
-      }
-
-      val jsNameWarning = if (firstAnnotName == "JSName") {
-        s"""
-          |newSource1.scala:6: warning: @JSName on top-level native JS classes and objects (or native JS classes and objects inside Scala objects) is deprecated, and should be replaced by @JSGlobal (with the same meaning). This will be enforced in 1.0.
-          |  (you can suppress this warning in 0.6.x by passing the option `-P:scalajs:suppressMissingJSGlobalDeprecations` to scalac)
-          |$firstAnnot
-          | ^
-        """.trim
-      } else {
-        ""
-      }
-
-      val fullExpectedMessage = expectedMessage + jsNameWarning
-
       val kinds = {
         if (firstAnnotName == "JSGlobalScope" || secondAnnotName == "JSGlobalScope")
           Seq("object")
@@ -339,7 +360,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
           """.stripMargin
         }
 
-        snippet hasErrors fullExpectedMessage
+        snippet hasErrors s"""
+          |newSource1.scala:7: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+          |$secondAnnot
+          | ^
+        """
       }
     }
   }
@@ -970,6 +995,38 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def nativeClassMustHaveLoadingSpec: Unit = {
+    """
+    @js.native
+    class A extends js.Object
+
+    @js.native
+    abstract class B extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+      |    class A extends js.Object
+      |          ^
+      |newSource1.scala:9: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+      |    abstract class B extends js.Object
+      |                   ^
+    """
+  }
+
+  @Test
+  def nativeObjectMustHaveLoadingSpec: Unit = {
+    """
+    @js.native
+    object A extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+      |    object A extends js.Object
+      |           ^
+    """
+  }
+
+  @Test
   def noNativeClassObjectWithoutExplicitNameInsideScalaObject: Unit = {
 
     """
@@ -977,9 +1034,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native
       class B extends js.Object
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:7: warning: Native JS classes inside non-native objects should have an @JSGlobal or @JSImport annotation. This will be enforced in 1.0.
+      |newSource1.scala:7: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
       |      class B extends js.Object
       |            ^
     """
@@ -991,7 +1048,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: Native JS objects inside non-native objects must have an @JSGlobal or @JSImport annotation
+      |newSource1.scala:7: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
       |      object B extends js.Object
       |             ^
     """
@@ -1032,11 +1089,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSGlobal
       object C extends js.Object
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:7: warning: Top-level native JS classes and objects should have an @JSGlobal or @JSImport annotation. This will be enforced in 1.0.
-      |  If migrating from 0.6.14 or earlier, the equivalent behavior is an @JSGlobal without parameter.
-      |  (you can suppress this warning in 0.6.x by passing the option `-P:scalajs:suppressMissingJSGlobalDeprecations` to scalac)
+      |newSource1.scala:7: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
       |      object B extends js.Object
       |             ^
     """
@@ -1050,11 +1105,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSGlobal
       class C extends js.Object
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:7: warning: Top-level native JS classes and objects should have an @JSGlobal or @JSImport annotation. This will be enforced in 1.0.
-      |  If migrating from 0.6.14 or earlier, the equivalent behavior is an @JSGlobal without parameter.
-      |  (you can suppress this warning in 0.6.x by passing the option `-P:scalajs:suppressMissingJSGlobalDeprecations` to scalac)
+      |newSource1.scala:7: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
       |      class B extends js.Object
       |            ^
     """
@@ -1067,18 +1120,32 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
       @JSName("InnerC")
       @js.native
-      object C extends js.Object
+      abstract class C extends js.Object
+
+      @JSName("InnerD")
+      @js.native
+      object D extends js.Object
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:6: warning: @JSName on top-level native JS classes and objects (or native JS classes and objects inside Scala objects) is deprecated, and should be replaced by @JSGlobal (with the same meaning). This will be enforced in 1.0.
-      |  (you can suppress this warning in 0.6.x by passing the option `-P:scalajs:suppressMissingJSGlobalDeprecations` to scalac)
+      |newSource1.scala:6: error: @JSName annotations are not allowed on top level classes or objects (or classes and objects inside Scala objects).
       |      @JSName("InnerB")
       |       ^
-      |newSource1.scala:10: warning: @JSName on top-level native JS classes and objects (or native JS classes and objects inside Scala objects) is deprecated, and should be replaced by @JSGlobal (with the same meaning). This will be enforced in 1.0.
-      |  (you can suppress this warning in 0.6.x by passing the option `-P:scalajs:suppressMissingJSGlobalDeprecations` to scalac)
+      |newSource1.scala:8: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+      |      class B extends js.Object
+      |            ^
+      |newSource1.scala:10: error: @JSName annotations are not allowed on top level classes or objects (or classes and objects inside Scala objects).
       |      @JSName("InnerC")
       |       ^
+      |newSource1.scala:12: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+      |      abstract class C extends js.Object
+      |                     ^
+      |newSource1.scala:14: error: @JSName annotations are not allowed on top level classes or objects (or classes and objects inside Scala objects).
+      |      @JSName("InnerD")
+      |       ^
+      |newSource1.scala:16: error: Native JS classes and objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+      |      object D extends js.Object
+      |             ^
     """
 
     """
@@ -1177,39 +1244,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |                ^
     """
 
-    // #1664
-    """
-    import js.annotation.JSName
-
-    object A {
-      val a = "Hello"
-    }
-
-    @JSName(A.a)
-    @js.native
-    object B extends js.Object
-
-    @JSName(A.a)
-    @js.native
-    class C extends js.Object
-    """ hasErrors
-    """
-      |newSource1.scala:11: error: A string argument to JSName must be a literal string
-      |    @JSName(A.a)
-      |              ^
-      |newSource1.scala:11: warning: @JSName on top-level native JS classes and objects (or native JS classes and objects inside Scala objects) is deprecated, and should be replaced by @JSGlobal (with the same meaning). This will be enforced in 1.0.
-      |  (you can suppress this warning in 0.6.x by passing the option `-P:scalajs:suppressMissingJSGlobalDeprecations` to scalac)
-      |    @JSName(A.a)
-      |     ^
-      |newSource1.scala:15: error: A string argument to JSName must be a literal string
-      |    @JSName(A.a)
-      |              ^
-      |newSource1.scala:15: warning: @JSName on top-level native JS classes and objects (or native JS classes and objects inside Scala objects) is deprecated, and should be replaced by @JSGlobal (with the same meaning). This will be enforced in 1.0.
-      |  (you can suppress this warning in 0.6.x by passing the option `-P:scalajs:suppressMissingJSGlobalDeprecations` to scalac)
-      |    @JSName(A.a)
-      |     ^
-    """
-
   }
 
   @Test
@@ -1274,6 +1308,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
     // Native objects are OK, since we do not control definition order.
     """
+    @JSGlobal
     @js.native
     object A extends js.Object {
       val a: js.Symbol = js.native
@@ -1652,33 +1687,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """.succeeds
 
-  }
-
-  @Test
-  def noJSSymbolNameOnTopLevelClassesAndObjects: Unit = {
-    for {
-      kind <- Seq("class", "object")
-    } {
-      s"""
-      object Sym {
-        val sym = js.Symbol()
-      }
-
-      @JSName(Sym.sym)
-      @js.native
-      $kind A extends js.Object
-      """ hasErrors
-      s"""
-        |newSource1.scala:9: error: @JSName with a js.Symbol can only be used on members of JavaScript types
-        |      @JSName(Sym.sym)
-        |       ^
-        |newSource1.scala:11: warning: Top-level native JS classes and objects should have an @JSGlobal or @JSImport annotation. This will be enforced in 1.0.
-        |  If migrating from 0.6.14 or earlier, the equivalent behavior is an @JSGlobal without parameter.
-        |  (you can suppress this warning in 0.6.x by passing the option `-P:scalajs:suppressMissingJSGlobalDeprecations` to scalac)
-        |      $kind A extends js.Object
-        |      ${" " * kind.length} ^
-      """
-    }
   }
 
   @Test

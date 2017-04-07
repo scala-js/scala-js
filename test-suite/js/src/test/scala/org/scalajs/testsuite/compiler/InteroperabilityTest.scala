@@ -118,12 +118,6 @@ class InteroperabilityTest {
     assertEquals(42, obj.field)
     assertEquals("42", obj.method)
     assertEquals("Scala.js", obj.getConstructorParam)
-
-    // With @JSName (old-style)
-    val objOld = new InteroperabilityTestPatternJSName("Scala.js")
-    assertEquals(42, objOld.field)
-    assertEquals("42", objOld.method)
-    assertEquals("Scala.js", objOld.getConstructorParam)
   }
 
   @Test def should_acces_top_level_JS_objects_via_Scala_objects_inheriting_from_js_Object(): Unit = {
@@ -143,13 +137,6 @@ class InteroperabilityTest {
     val obj = TopLevel("7357")
     assertEquals("7357", obj.value)
     assertEquals(7357, obj.valueAsInt)
-
-    // With @JSName (old-style)
-    val TopLevelOld = InteroperabilityTestTopLevelJSName
-    assertSame(TopLevel, TopLevelOld)
-    val objOld = TopLevelOld("7357")
-    assertEquals("7357", objOld.value)
-    assertEquals(7357, objOld.valueAsInt)
   }
 
   @Test def should_access_native_JS_classes_and_objects_nested_in_JS_objects(): Unit = {
@@ -171,8 +158,6 @@ class InteroperabilityTest {
           this.x = x || 42;
         }
       };
-      var InteroperabilityTestContainerObjectJSNameOmitted =
-        InteroperabilityTestContainerObject;
     """)
 
     // Use alias for convenience: see end of file for definition
@@ -195,28 +180,6 @@ class InteroperabilityTest {
 
     val obj6 = new TopLevel.ContainedClassWithDefaultParam(10)
     assertEquals(10, obj6.x)
-
-    // With an omitted @JSName (old-style)
-    val TopLevelOld = InteroperabilityTestContainerObjectJSNameOmitted
-    assertSame(TopLevel, TopLevelOld)
-
-    val obj1Old = new TopLevelOld.ContainedClass(34)
-    assertEquals(34, obj1Old.x)
-
-    val obj2Old = TopLevelOld.ContainedObject
-    assertEquals(42, obj2Old.x)
-
-    val obj3Old = new TopLevelOld.ContainedClassWithJSName(65)
-    assertEquals(130, obj3Old.x)
-
-    val obj4Old = TopLevelOld.ContainedObjectWithJSName
-    assertEquals(4242, obj4Old.x)
-
-    val obj5Old = new TopLevelOld.ContainedClassWithDefaultParam()
-    assertEquals(42, obj5Old.x)
-
-    val obj6Old = new TopLevelOld.ContainedClassWithDefaultParam(10)
-    assertEquals(10, obj6Old.x)
   }
 
   @Test def should_access_native_JS_classes_and_objects_nested_in_atJSNamed_JS_objects(): Unit = {
@@ -251,22 +214,6 @@ class InteroperabilityTest {
 
     val obj4 = TopLevel.ContainedObjectWithJSName
     assertEquals(4242, obj4.x)
-
-    // With @JSName (old-style)
-    val TopLevelOld = InteroperabilityTestContainerObjectExplicitNameJSName
-    assertSame(TopLevel, TopLevelOld)
-
-    val obj1Old = new TopLevelOld.ContainedClass(34)
-    assertEquals(34, obj1Old.x)
-
-    val obj2Old = TopLevelOld.ContainedObject
-    assertEquals(42, obj2Old.x)
-
-    val obj3Old = new TopLevelOld.ContainedClassWithJSName(65)
-    assertEquals(130, obj3Old.x)
-
-    val obj4Old = TopLevelOld.ContainedObjectWithJSName
-    assertEquals(4242, obj4Old.x)
   }
 
   @Test def should_allow_to_call_JS_methods_with_variadic_parameters(): Unit = {
@@ -689,15 +636,6 @@ class InteroperabilityTestPattern protected () extends js.Object {
   def getConstructorParam(): String = js.native
 }
 
-@JSName("InteroperabilityTestInherit.Pattern")
-@js.native
-class InteroperabilityTestPatternJSName protected () extends js.Object {
-  def this(pattern: String) = this()
-  val field: Int = js.native
-  def method(): String = js.native
-  def getConstructorParam(): String = js.native
-}
-
 @js.native
 trait InteroperabilityTestTopLevel extends js.Object {
   val value: String = js.native
@@ -707,12 +645,6 @@ trait InteroperabilityTestTopLevel extends js.Object {
 @JSGlobal("InteroperabilityTestTopLevelObject")
 @js.native
 object InteroperabilityTestTopLevel extends js.Object {
-  def apply(value: String): InteroperabilityTestTopLevel = js.native
-}
-
-@JSName("InteroperabilityTestTopLevelObject")
-@js.native
-object InteroperabilityTestTopLevelJSName extends js.Object {
   def apply(value: String): InteroperabilityTestTopLevel = js.native
 }
 
@@ -747,65 +679,9 @@ object InteroperabilityTestContainerObject extends js.Object {
   }
 }
 
-@js.native
-object InteroperabilityTestContainerObjectJSNameOmitted extends js.Object {
-  @js.native
-  class ContainedClass(_x: Int) extends js.Object {
-    val x: Int = js.native
-  }
-
-  @js.native
-  object ContainedObject extends js.Object {
-    val x: Int = js.native
-  }
-
-  @JSName("ContainedClassRenamed")
-  @js.native
-  class ContainedClassWithJSName(_x: Int) extends js.Object {
-    val x: Int = js.native
-  }
-
-  @JSName("ContainedObjectRenamed")
-  @js.native
-  object ContainedObjectWithJSName extends js.Object {
-    val x: Int = js.native
-  }
-
-  @js.native
-  class ContainedClassWithDefaultParam(_x: Int = ???) extends js.Object {
-    val x: Int = js.native
-  }
-}
-
 @JSGlobal("InteroperabilityTestContainerObjectRenamed")
 @js.native
 object InteroperabilityTestContainerObjectExplicitName extends js.Object {
-  @js.native
-  class ContainedClass(_x: Int) extends js.Object {
-    val x: Int = js.native
-  }
-
-  @js.native
-  object ContainedObject extends js.Object {
-    val x: Int = js.native
-  }
-
-  @JSName("ContainedClassRenamed")
-  @js.native
-  class ContainedClassWithJSName(_x: Int) extends js.Object {
-    val x: Int = js.native
-  }
-
-  @JSName("ContainedObjectRenamed")
-  @js.native
-  object ContainedObjectWithJSName extends js.Object {
-    val x: Int = js.native
-  }
-}
-
-@JSName("InteroperabilityTestContainerObjectRenamed")
-@js.native
-object InteroperabilityTestContainerObjectExplicitNameJSName extends js.Object {
   @js.native
   class ContainedClass(_x: Int) extends js.Object {
     val x: Int = js.native
