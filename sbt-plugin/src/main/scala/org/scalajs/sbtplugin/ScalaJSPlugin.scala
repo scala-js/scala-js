@@ -113,6 +113,9 @@ object ScalaJSPlugin extends AutoPlugin {
      *  case) or scope it manually, using
      *  [[sbt.ProjectExtra.inScope[* Project.inScope]].
      */
+    @deprecated(
+        "Use `jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv(...)` instead.",
+        "0.6.16")
     def NodeJSEnv(
         executable: String = "node",
         args: Seq[String] = Seq.empty,
@@ -137,6 +140,10 @@ object ScalaJSPlugin extends AutoPlugin {
      *  case) or scope it manually, using
      *  [[sbt.ProjectExtra.inScope[* Project.inScope]].
      */
+    @deprecated(
+        "Use `jsEnv := new org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv(...)` " +
+        "instead.",
+        "0.6.16")
     def JSDOMNodeJSEnv(
         executable: String = "node",
         args: Seq[String] = Seq.empty,
