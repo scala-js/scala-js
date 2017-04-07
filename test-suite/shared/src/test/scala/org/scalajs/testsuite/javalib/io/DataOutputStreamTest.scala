@@ -5,6 +5,8 @@ import java.io._
 import org.junit._
 import org.junit.Assert._
 
+import org.scalajs.testsuite.utils.AssertThrows._
+
 object DataOutputStreamTest {
   class DataOutputStreamWrittenAccess(out: OutputStream)
       extends DataOutputStream(out) {
@@ -273,5 +275,17 @@ class DataOutputStreamTest {
         0x2d, 0x3e, 0x20, 0xed, 0xa0, 0xbd, 0xed, 0xb2,
         0xa9, 0x00, 0x03, 0xe6, 0x84, 0x9b
     )
+  }
+
+  @Test def writeUTFTooLong(): Unit = {
+    val (stream, checker) = newStream()
+
+    var longString = "aaa"
+    while (longString.length < 0x10000)
+      longString = longString + longString
+
+    assertThrows(classOf[UTFDataFormatException], {
+      stream.writeUTF(longString)
+    })
   }
 }
