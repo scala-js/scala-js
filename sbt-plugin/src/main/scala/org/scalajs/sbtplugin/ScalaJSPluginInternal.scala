@@ -605,9 +605,9 @@ object ScalaJSPluginInternal {
         if (scalaJSUseRhinoInternal.value) {
           RhinoJSEnvInternal().value
         } else if (scalaJSRequestsDOM.value) {
-          JSDOMNodeJSEnv().value
+          new org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv()
         } else {
-          NodeJSEnv().value
+          new org.scalajs.jsenv.nodejs.NodeJSEnv()
         }
       },
 

@@ -19,26 +19,30 @@ import org.scalajs.core.tools.logging._
 
 import java.io.{ Console => _, _ }
 
-
 class NodeJSEnv private (
-  nodejsPath: String,
-  addArgs: Seq[String],
-  addEnv: Map[String, String],
-  sourceMap: Boolean
-) extends AbstractNodeJSEnv(nodejsPath, addArgs, addEnv, sourceMap) {
+    @deprecatedName('nodejsPath)
+    override protected val executable: String, // override val for bin compat
+    @deprecatedName('addArgs)
+    args: Seq[String],
+    @deprecatedName('addEnv)
+    env: Map[String, String],
+    sourceMap: Boolean)
+    extends AbstractNodeJSEnv(executable, args, env, sourceMap) {
 
-  def this(nodejsPath: String = "node", addArgs: Seq[String] = Seq.empty,
-      addEnv: Map[String, String] = Map.empty) = {
-    this(nodejsPath, addArgs, addEnv, sourceMap = true)
+  def this(
+      @deprecatedName('nodejsPath)
+      executable: String = "node",
+      @deprecatedName('addArgs)
+      args: Seq[String] = Seq.empty,
+      @deprecatedName('addEnv)
+      env: Map[String, String] = Map.empty) = {
+    this(executable, args, env, sourceMap = true)
   }
 
   def withSourceMap(sourceMap: Boolean): NodeJSEnv =
-    new NodeJSEnv(nodejsPath, addArgs, addEnv, sourceMap)
+    new NodeJSEnv(executable, args, env, sourceMap)
 
   protected def vmName: String = "Node.js"
-
-  // For binary compatibility, now `executable` is defined in AbstractNodeJSEnv
-  override protected def executable: String = super.executable
 
   override def jsRunner(libs: Seq[ResolvedJSDependency],
       code: VirtualJSFile): JSRunner = {

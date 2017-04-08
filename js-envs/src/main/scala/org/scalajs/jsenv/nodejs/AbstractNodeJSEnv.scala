@@ -22,9 +22,15 @@ import org.scalajs.jsenv.Utils.OptDeadline
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
 
-abstract class AbstractNodeJSEnv(nodejsPath: String, addArgs: Seq[String],
-    addEnv: Map[String, String], val sourceMap: Boolean)
-    extends ExternalJSEnv(addArgs, addEnv) with ComJSEnv {
+abstract class AbstractNodeJSEnv(
+    @deprecatedName('nodejsPath)
+    protected val executable: String,
+    @deprecatedName('addArgs)
+    args: Seq[String],
+    @deprecatedName('addEnv)
+    env: Map[String, String],
+    val sourceMap: Boolean)
+    extends ExternalJSEnv(args, env) with ComJSEnv {
 
   /** True, if the installed node executable supports source mapping.
    *
@@ -42,8 +48,6 @@ abstract class AbstractNodeJSEnv(nodejsPath: String, addArgs: Seq[String],
         false
     }
   }
-
-  protected def executable: String = nodejsPath
 
   /** Retry-timeout to wait for the JS VM to connect */
   protected val acceptTimeout = 5000
