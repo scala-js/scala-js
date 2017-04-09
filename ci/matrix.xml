@@ -62,7 +62,6 @@
         ++$scala testingExample/test:run testingExample/test &&
     sbtretry ++$scala library/test &&
     sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
-    sbtretry ++$scala 'testSuite/test:runMain org.scalajs.testsuite.junit.JUnitBootstrapTest' &&
     sbtretry ++$scala testSuite/test &&
     sbtretry ++$scala testSuiteEx/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
@@ -244,7 +243,7 @@
     cd sbt-plugin-test &&
     sbt noDOM/run noDOM/testHtmlFastOpt noDOM/testHtmlFullOpt \
         withDOM/run withDOM/testHtmlFastOpt withDOM/testHtmlFullOpt \
-        multiTestJS/test:run multiTestJS/testHtmlFastOpt multiTestJS/testHtmlFullOpt \
+        multiTestJS/testHtmlFastOpt multiTestJS/testHtmlFullOpt \
         jetty9/run test \
         jsDependenciesTest/packageJSDependencies \
         jsDependenciesTest/packageMinifiedJSDependencies \
