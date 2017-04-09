@@ -262,7 +262,7 @@ object ScalaJSPluginInternal {
         } tag((usesScalaJSLinkerTag in key).value)
       }.value,
 
-      key := key.dependsOn(packageJSDependencies, packageScalaJSLauncherInternal).value,
+      key := key.dependsOn(packageJSDependencies).value,
 
       scalaJSLinkedFile in key := new FileVirtualJSFile(key.value.data)
   )
@@ -416,53 +416,6 @@ object ScalaJSPluginInternal {
       },
 
       fullOptJS := fullOptJS.dependsOn(packageMinifiedJSDependencies).value,
-
-      artifactPath in packageScalaJSLauncherInternal :=
-        ((crossTarget in packageScalaJSLauncherInternal).value /
-            ((moduleName in packageScalaJSLauncherInternal).value + "-launcher.js")),
-
-      skip in packageScalaJSLauncherInternal := {
-        val value = !persistLauncherInternal.value
-        if (!value) {
-          if (scalaJSUseMainModuleInitializer.value) {
-            throw new MessageOnlyException(
-                "persistLauncher := true is not compatible with using a main " +
-                "module initializer (scalaJSUseMainModuleInitializer := " +
-                "true), nor is it necessary, since fastOptJS/fullOptJS " +
-                "includes the call to the main method")
-          } else if (scalaJSModuleKind.value != ModuleKind.NoModule) {
-            throw new MessageOnlyException(
-                "persistLauncher := true is not compatible with emitting " +
-                "JavaScript modules")
-          }
-        }
-        value
-      },
-
-      packageScalaJSLauncherInternal := Def.taskDyn {
-        if ((skip in packageScalaJSLauncherInternal).value) {
-          Def.task {
-            Attributed.blank((artifactPath in packageScalaJSLauncherInternal).value)
-          }
-        } else {
-          Def.task {
-            mainClass.value map { mainCl =>
-              val file = (artifactPath in packageScalaJSLauncherInternal).value
-              assert(scalaJSModuleKind.value == ModuleKind.NoModule,
-                  "Cannot produce a launcher file when scalaJSModuleKind " +
-                  "is different from NoModule")
-              IO.write(file,
-                  launcherContent(mainCl, ModuleKind.NoModule, None),
-                  Charset.forName("UTF-8"))
-
-              // Attach the name of the main class used, (ab?)using the name key
-              Attributed(file)(AttributeMap.empty.put(name.key, mainCl))
-            } getOrElse {
-              sys.error("Cannot write launcher file, since there is no or multiple mainClasses")
-            }
-          }
-        }
-      }.value,
 
       artifactPath in packageJSDependencies :=
         ((crossTarget in packageJSDependencies).value /
@@ -680,25 +633,6 @@ object ScalaJSPluginInternal {
       }.value
   )
 
-  /** Run a class in a given environment using a given launcher */
-  private def jsRun(jsEnv: JSEnv, mainCl: String,
-      launcher: VirtualJSFile, log: Logger, console: JSConsole) = {
-
-    log.info("Running " + mainCl)
-    log.debug(s"with JSEnv ${jsEnv.name}")
-
-    val runner = jsEnv.jsRunner(launcher)
-    runner.run(sbtLogger2ToolsLogger(log), console)
-  }
-
-  private def launcherContent(mainCl: String, moduleKind: ModuleKind,
-      moduleIdentifier: Option[String]): String = {
-    val exportsNamespaceExpr =
-      makeExportsNamespaceExpr(moduleKind, moduleIdentifier)
-    val parts = mainCl.split('.').map(s => s"""["${escapeJS(s)}"]""").mkString
-    s"$exportsNamespaceExpr$parts().main();\n"
-  }
-
   private[sbtplugin] def makeExportsNamespaceExpr(moduleKind: ModuleKind,
       moduleIdentifier: Option[String]): String = {
     // !!! DUPLICATE code with ScalaJSFramework.optionalExportsNamespacePrefix
@@ -713,12 +647,6 @@ object ScalaJSPluginInternal {
         }
         s"""require("${escapeJS(moduleIdent)}")"""
     }
-  }
-
-  private def memLauncher(mainCl: String, moduleKind: ModuleKind,
-      moduleIdentifier: Option[String]): VirtualJSFile = {
-    new MemVirtualJSFile("Generated launcher file")
-      .withContent(launcherContent(mainCl, moduleKind, moduleIdentifier))
   }
 
   def discoverJSApps(analysis: inc.Analysis): Seq[String] = {
@@ -764,38 +692,6 @@ object ScalaJSPluginInternal {
         }
       },
 
-      mainClass in scalaJSLauncherInternal := (mainClass in run).value,
-      scalaJSLauncherInternal := Def.taskDyn[Attributed[VirtualJSFile]] {
-        if (persistLauncherInternal.value) {
-          Def.task {
-            packageScalaJSLauncherInternal.value.map(FileVirtualJSFile)
-          }
-        } else if (scalaJSUseMainModuleInitializer.value) {
-          Def.task {
-            val base = Attributed.blank[VirtualJSFile](
-                new MemVirtualJSFile("No-op generated launcher file"))
-            mainClass.value.fold {
-              base
-            } { mainClass =>
-              base.put(name.key, mainClass)
-            }
-          }
-        } else {
-          Def.task {
-            (mainClass in scalaJSLauncherInternal).value.fold {
-              sys.error("No main class detected.")
-            } { mainClass =>
-              val moduleKind = scalaJSModuleKind.value
-              val moduleIdentifier = scalaJSModuleIdentifier.value
-              val memLaunch =
-                memLauncher(mainClass, moduleKind, moduleIdentifier)
-              Attributed[VirtualJSFile](memLaunch)(
-                  AttributeMap.empty.put(name.key, mainClass))
-            }
-          }
-        }
-      }.value,
-
       discoveredMainClasses := compile.map(discoverJSApps).
         storeAs(discoveredMainClasses).triggeredBy(compile).value,
 
@@ -803,30 +699,25 @@ object ScalaJSPluginInternal {
         // use assert to prevent warning about pure expr in stat pos
         assert(scalaJSEnsureUnforked.value)
 
-        val launch = scalaJSLauncherInternal.value
-        val className = launch.get(name.key).getOrElse("<unknown class>")
-        jsRun(loadedJSEnv.value, className, launch.data,
-            streams.value.log, scalaJSConsole.value)
+        if (!scalaJSUseMainModuleInitializer.value) {
+          throw new MessageOnlyException("`run` is only supported with " +
+              "scalaJSUseMainModuleInitializer := true")
+        }
+
+        val log = streams.value.log
+        val jsEnv = loadedJSEnv.value
+
+        log.info("Running " + mainClass.value.getOrElse("<unknown class>"))
+        log.debug(s"with JSEnv ${jsEnv.name}")
+
+        val dummyLauncher = new MemVirtualJSFile("No-op generated launcher file")
+
+        jsEnv.jsRunner(dummyLauncher).run(
+            sbtLogger2ToolsLogger(log), scalaJSConsole.value)
       },
 
       runMain := {
-        // use assert to prevent warning about pure expr in stat pos
-        assert(scalaJSEnsureUnforked.value)
-
-        val mainClass = runMainParser.parsed
-
-        if (scalaJSUseMainModuleInitializer.value) {
-          throw new MessageOnlyException(
-              "`runMain` is not supported when using a main module " +
-              "initializer (scalaJSUseMainModuleInitializer := true) since " +
-              "the (unique) entry point is burned in the fastOptJS/fullOptJS.")
-        }
-
-        val moduleKind = scalaJSModuleKind.value
-        val moduleIdentifier = scalaJSModuleIdentifier.value
-        jsRun(loadedJSEnv.value, mainClass,
-            memLauncher(mainClass, moduleKind, moduleIdentifier),
-            streams.value.log, scalaJSConsole.value)
+        throw new MessageOnlyException("`runMain` is not supported in Scala.js")
       }
   )
 
@@ -874,8 +765,7 @@ object ScalaJSPluginInternal {
   val scalaJSTestBuildSettings = (
       scalaJSConfigSettings
   ) ++ (
-      Seq(fastOptJS, fullOptJS, packageScalaJSLauncherInternal,
-          packageJSDependencies) map { packageJSTask =>
+      Seq(fastOptJS, fullOptJS, packageJSDependencies) map { packageJSTask =>
         moduleName in packageJSTask := moduleName.value + "-test"
       }
   )
@@ -961,8 +851,6 @@ object ScalaJSPluginInternal {
       isScalaJSProject := true,
 
       relativeSourceMaps := false,
-      persistLauncherInternal := false,
-      persistLauncherInternal in Test := false,
 
       emitSourceMaps := true,
 

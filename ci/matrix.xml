@@ -41,10 +41,6 @@
         'set scalaJSModuleKind in helloworld := ModuleKind.CommonJSModule' \
         helloworld/run \
         helloworld/clean &&
-    sbtretry ++$scala \
-        'set Seq(scalaJSUseMainModuleInitializer in helloworld := false, persistLauncher in helloworld := true)' \
-        helloworld/run \
-        helloworld/clean &&
     sbtretry ++$scala testingExample/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala testingExample/test \

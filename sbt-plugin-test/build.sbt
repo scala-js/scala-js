@@ -50,7 +50,8 @@ lazy val noDOM = project.settings(baseSettings: _*).
     name := "Scala.js sbt test w/o DOM",
     scalaJSOutputWrapper := (
         "// Scala.js - noDOM sbt test\n//\n// Compiled with Scala.js\n",
-        "// End of Scala.js generated script")
+        "// End of Scala.js generated script"),
+    scalaJSUseMainModuleInitializer := true
   ).
   /* This hopefully exposes concurrent uses of the linker. If it fails/gets
    * flaky, there is a bug somewhere - #2202
@@ -65,7 +66,8 @@ lazy val withDOM = project.settings(baseSettings: _*).
     jsEnv := new JSDOMNodeJSEnv(),
     scalaJSOutputWrapper := (
         "// Scala.js - withDOM sbt test\n//\n// Compiled with Scala.js\n",
-        "// End of Scala.js generated script")
+        "// End of Scala.js generated script"),
+    scalaJSUseMainModuleInitializer := true
   )
 
 lazy val jetty9 = project.settings(baseSettings: _*).
