@@ -138,6 +138,10 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val BoxesRunTime_boxToCharacter = getMemberMethod(BoxesRunTimeModule, newTermName("boxToCharacter"))
     lazy val BoxesRunTime_unboxToChar    = getMemberMethod(BoxesRunTimeModule, newTermName("unboxToChar"))
 
+    // Copy-pasted from `Definitions.scala`, because it was removed in 2.13.
+    lazy val SysPackage = getPackageObject("scala.sys")
+      def Sys_error: Symbol = getMemberMethod(SysPackage, nme.error)
+
     lazy val ReflectModule = getRequiredModule("scala.scalajs.reflect.Reflect")
       lazy val Reflect_registerLoadableModuleClass = getMemberMethod(ReflectModule, newTermName("registerLoadableModuleClass"))
       lazy val Reflect_registerInstantiatableClass = getMemberMethod(ReflectModule, newTermName("registerInstantiatableClass"))
