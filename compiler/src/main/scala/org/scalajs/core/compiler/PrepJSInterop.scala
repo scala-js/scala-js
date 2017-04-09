@@ -1078,7 +1078,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         if (sym != JSPackage_native) {
           tree.rhs match {
             case Apply(trg, Literal(Constant("stub")) :: Nil)
-                if trg.symbol == definitions.Sys_error =>
+                if trg.symbol == jsDefinitions.Sys_error =>
             case _ =>
               reporter.error(tree.pos,
                   "The body of a primitive must be `sys.error(\"stub\")`.")
