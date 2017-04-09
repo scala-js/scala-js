@@ -197,11 +197,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           if (sym == UndefOrClass || sym == UnionClass)
             sym.addAnnotation(RawJSTypeAnnot)
 
-          if (shouldPrepareExports && sym.isTrait) {
-            // Check that interface/trait is not exported
-            for (exp <- exportsOf(sym))
-              reporter.error(exp.pos, "You may not export a trait")
-          }
+          if (shouldPrepareExports)
+            registerClassOrModuleExports(sym)
 
           enterOwner(OwnerKind.NonEnumScalaClass) { super.transform(cldef) }
 
@@ -212,7 +209,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           checkJSAnySpecificAnnotsOnNonJSAny(modDef)
 
           if (shouldPrepareExports)
-            registerModuleExports(sym.moduleClass)
+            registerClassOrModuleExports(sym.moduleClass)
 
           enterOwner(OwnerKind.NonEnumScalaMod) { super.transform(modDef) }
 
@@ -424,10 +421,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       case memDef: MemberDef =>
         val sym = memDef.symbol
-        if (sym.isLocalToBlock && !sym.owner.isCaseApplyOrUnapply) {
-          // We exclude case class apply (and unapply) to work around SI-8826
-          for (exp <- exportsOf(sym))
-            reporter.error(exp.pos, "You may not export a local definition")
+        if (shouldPrepareExports && sym.isLocalToBlock) {
+          // Exports are never valid on local definitions, but delegate complaining.
+          val exports = genExportMember(sym)
+          assert(exports.isEmpty, "Generated exports for local definition.")
         }
 
         // Expose objects (modules) members of Scala.js-defined JS classes
@@ -573,24 +570,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         }
       }
 
-      if (shouldPrepareExports) {
-        if (sym.isTrait) {
-          // Check that interface/trait is not exported
-          for (exp <- exportsOf(sym))
-            reporter.error(exp.pos, "You may not export a trait")
-        } else if (isJSNative) {
-          // Check that a JS native type is not exported
-          for (exp <- exportsOf(sym)) {
-            reporter.error(exp.pos,
-                "You may not export a native JS class or object")
-          }
-        } else {
-          if (sym.isModuleClass)
-            registerModuleExports(sym)
-          else if (!sym.isTrait)
-            registerClassExports(sym)
-        }
-      }
+      if (shouldPrepareExports)
+        registerClassOrModuleExports(sym)
 
       // Check for consistency of JS semantics across overriding
       for (overridingPair <- new overridingPairs.Cursor(sym).iterator) {
@@ -732,12 +713,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       assert(!sym.isLocalToBlock, s"$tree at ${tree.pos}")
 
       if (shouldPrepareExports) {
-        // Exports are never valid on members of JS types
-        lazy val memType = if (sym.isConstructor) "constructor" else "method"
-        for (exp <- exportsOf(sym)) {
-          reporter.error(exp.pos,
-              s"You may not export a $memType of a subclass of js.Any")
-        }
+        // Exports are never valid on members of JS types, but delegate
+        // complaining.
+        val exports = genExportMember(sym)
+        assert(exports.isEmpty, "Generated exports for member JS type.")
 
         /* Add the @ExposedJSMember annotation to exposed symbols in
          * Scala.js-defined classes.

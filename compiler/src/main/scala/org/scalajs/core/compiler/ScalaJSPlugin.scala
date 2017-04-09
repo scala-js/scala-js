@@ -63,7 +63,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
    *  `@JSExport` annotation to the module.
    */
   def registerModuleExports(sym: Symbol): Unit =
-    PrepInteropComponent.registerModuleExports(sym)
+    PrepInteropComponent.registerClassOrModuleExports(sym)
 
   object PreTyperComponentComponent extends {
     val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global

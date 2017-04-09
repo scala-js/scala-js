@@ -50,37 +50,37 @@ trait PrepJSExports { this: PrepJSInterop =>
 
     def memType = if (baseSym.isConstructor) "constructor" else "method"
 
-    if (exports.isEmpty)
+    if (exports.isEmpty) {
       Nil
-    else if (!hasLegalExportVisibility(baseSym))
+    } else if (!hasLegalExportVisibility(baseSym)) {
       err(s"You may only export public and protected ${memType}s")
-    else if (baseSym.isMacro)
+    } else if (baseSym.isMacro) {
       err("You may not export a macro")
-    else if (scalaPrimitives.isPrimitive(baseSym))
+    } else if (isJSAny(clsSym)) {
+      err(s"You may not export a $memType of a subclass of js.Any")
+    } else if (scalaPrimitives.isPrimitive(baseSym)) {
       err("You may not export a primitive")
-    else if (hasIllegalRepeatedParam(baseSym))
+    } else if (baseSym.isLocalToBlock) {
+      // We exclude case class apply (and unapply) to work around SI-8826
+      if (clsSym.isCaseApplyOrUnapply) {
+        Nil
+      } else {
+        err("You may not export a local definition")
+      }
+    } else if (hasIllegalRepeatedParam(baseSym)) {
       err(s"In an exported $memType, a *-parameter must come last " +
         "(through all parameter lists)")
-    else if (hasIllegalDefaultParam(baseSym))
+    } else if (hasIllegalDefaultParam(baseSym)) {
       err(s"In an exported $memType, all parameters with defaults " +
         "must be at the end")
-    else if (baseSym.isConstructor) {
+    } else if (baseSym.isConstructor) {
       // we can generate constructors entirely in the backend, since they
       // do not need inheritance and such. But we want to check their sanity
       // here by previous tests and the following ones.
-
-      if (!hasLegalExportVisibility(clsSym))
-        err("You may only export public and protected classes")
-      else if (clsSym.isAbstractClass)
-        err("You may not export an abstract class")
-      else if (clsSym.isLocalToBlock)
-        err("You may not export a local class")
-      else if (!clsSym.isStatic)
-        err(s"You may not export a nested class. $createFactoryInOuterClassHint")
-      else {
+      if (checkClassOrModuleExports(clsSym, exports.head.pos))
         jsInterop.registerForExport(baseSym, exports)
-        Nil
-      }
+
+      Nil
     } else {
       assert(!baseSym.isBridge)
 
@@ -100,48 +100,63 @@ trait PrepJSExports { this: PrepJSInterop =>
     }
   }
 
-  /** Checks and registers module exports on the symbol */
-  def registerModuleExports(sym: Symbol): Unit = {
-    assert(sym.isModuleClass, "Expected module class")
-    registerClassOrModuleExportsInternal(sym)
+  /** Check and (potentially) register a class or module for export.
+   *
+   *  Note that Scala classes are never registered for export, their
+   *  constructors are.
+   */
+  def registerClassOrModuleExports(sym: Symbol): Unit = {
+    val exports = exportsOf(sym)
+    def isScalaClass = !sym.isModuleClass && !isJSAny(sym)
+
+    if (exports.nonEmpty && checkClassOrModuleExports(sym, exports.head.pos) &&
+        !isScalaClass) {
+      jsInterop.registerForExport(sym, exports)
+    }
   }
 
-  /** Checks and registers class exports on the symbol. */
-  def registerClassExports(sym: Symbol): Unit = {
-    assert(!sym.isModuleClass && !sym.hasAnnotation(JSNativeAnnotation),
-        "Expected a Scala.js-defined JS class")
-    registerClassOrModuleExportsInternal(sym)
-  }
-
-  private def registerClassOrModuleExportsInternal(sym: Symbol): Unit = {
+  /** Check a class or module for export.
+   *
+   *  There are 2 ways that this method can be reached:
+   *  - via `registerClassOrModuleExports`
+   *  - via `genExportMember` (constructor of Scala class)
+   */
+  private def checkClassOrModuleExports(sym: Symbol, errPos: Position): Boolean = {
     val isMod = sym.isModuleClass
 
-    val exports = exportsOf(sym)
+    def err(msg: String) = {
+      reporter.error(errPos, msg)
+      false
+    }
 
-    if (exports.nonEmpty) {
-      def err(msg: String) = {
-        reporter.error(exports.head.pos, msg)
-      }
+    def hasAnyNonPrivateCtor: Boolean =
+      sym.info.member(nme.CONSTRUCTOR).filter(!isPrivateMaybeWithin(_)).exists
 
-      def hasAnyNonPrivateCtor: Boolean =
-        sym.info.member(nme.CONSTRUCTOR).filter(!isPrivateMaybeWithin(_)).exists
+    def isJSNative = sym.hasAnnotation(JSNativeAnnotation)
 
-      if (!hasLegalExportVisibility(sym)) {
-        err("You may only export public and protected " +
-            (if (isMod) "objects" else "classes"))
-      } else if (sym.isLocalToBlock) {
-        err("You may not export a local " +
-            (if (isMod) "object" else "class"))
-      } else if (!sym.isStatic) {
-        err("You may not export a nested " +
-            (if (isMod) "object" else s"class. $createFactoryInOuterClassHint"))
-      } else if (sym.isAbstractClass) {
-        err("You may not export an abstract class")
-      } else if (!isMod && !hasAnyNonPrivateCtor) {
-        err("You may not export a class that has only private constructors")
-      } else {
-        jsInterop.registerForExport(sym, exports)
-      }
+    if (sym.isTrait) {
+      err("You may not export a trait")
+    } else if (isJSNative) {
+      err("You may not export a native JS " + (if (isMod) "object" else "class"))
+    } else if (!hasLegalExportVisibility(sym)) {
+      err("You may only export public and protected " +
+          (if (isMod) "objects" else "classes"))
+    } else if (sym.isLocalToBlock) {
+      err("You may not export a local " +
+          (if (isMod) "object" else "class"))
+    } else if (!sym.isStatic) {
+      err("You may not export a nested " +
+          (if (isMod) "object" else s"class. $createFactoryInOuterClassHint"))
+    } else if (sym.isAbstractClass) {
+      err("You may not export an abstract class")
+    } else if (!isMod && !hasAnyNonPrivateCtor) {
+      /* This test is only relevant for JS classes but doesn't hurt for Scala
+       * classes as we could not reach it if there were only private
+       * constructors.
+       */
+      err("You may not export a class that has only private constructors")
+    } else {
+      true
     }
   }
 
@@ -155,7 +170,7 @@ trait PrepJSExports { this: PrepJSInterop =>
    *  Note that for accessor symbols, the annotations of the accessed symbol
    *  are used, rather than the annotations of the accessor itself.
    */
-  def exportsOf(sym: Symbol): List[ExportInfo] = {
+  private def exportsOf(sym: Symbol): List[ExportInfo] = {
     val trgSym = {
       def isOwnerScalaClass = !sym.owner.isModuleClass && !isJSAny(sym.owner)
 

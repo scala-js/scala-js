@@ -519,7 +519,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     object A extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a native JS class or object
+      |newSource1.scala:5: error: You may not export a native JS object
       |    @JSExport
       |     ^
     """
@@ -549,7 +549,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a native JS class or object
+      |newSource1.scala:5: error: You may not export a native JS class
       |    @JSExport
       |     ^
       |newSource1.scala:9: error: You may not export a constructor of a subclass of js.Any
