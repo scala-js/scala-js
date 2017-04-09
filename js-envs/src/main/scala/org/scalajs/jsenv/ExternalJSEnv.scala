@@ -10,8 +10,11 @@ import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
 abstract class ExternalJSEnv(
-  final protected val additionalArgs: Seq[String],
-  final protected val additionalEnv:  Map[String, String]) extends AsyncJSEnv {
+    @deprecatedName('additionalArgs)
+    final protected val args: Seq[String],
+    @deprecatedName('additionalEnv)
+    final protected val env: Map[String, String])
+    extends AsyncJSEnv {
 
   import ExternalJSEnv._
 
@@ -22,6 +25,12 @@ abstract class ExternalJSEnv(
 
   /** Command to execute (on shell) for this VM */
   protected def executable: String
+
+  @deprecated("Use `args` instead.", "0.6.16")
+  final protected def additionalArgs: Seq[String] = args
+
+  @deprecated("Use `env` instead.", "0.6.16")
+  final protected def additionalEnv: Map[String, String] = env
 
   /** Custom initialization scripts. */
   protected def customInitFiles(): Seq[VirtualJSFile] = Nil
@@ -50,16 +59,17 @@ abstract class ExternalJSEnv(
     protected def sendVMStdin(out: OutputStream): Unit = {}
 
     /** VM arguments excluding executable. Override to adapt.
-     *  Overrider is responsible to add additionalArgs.
+     *
+     *  The default value in `ExternalJSEnv` is `args`.
      */
-    protected def getVMArgs(): Seq[String] = additionalArgs
+    protected def getVMArgs(): Seq[String] = args
 
     /** VM environment. Override to adapt.
      *
-     *  Default is `sys.env` and [[additionalEnv]]
+     *  The default value in `ExternalJSEnv` is `sys.env ++ env`.
      */
     protected def getVMEnv(): Map[String, String] =
-      sys.env ++ additionalEnv
+      sys.env ++ env
 
     /** Get files that are a library (i.e. that do not run anything) */
     protected def getLibJSFiles(): Seq[VirtualJSFile] =

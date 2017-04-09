@@ -275,6 +275,11 @@ final class CrossProject private (
    *
    *  Note: If you disable AutoPlugins here, Scala.js will not work
    */
+  @deprecated(
+      "Project#settingSets will be removed from sbt 1.0, hence " +
+      "CrossProject#settingSets will be removed from Scala.js 1.0. " +
+      "As a temporary measure, use `.configureAll(_.settingSets(select))`.",
+      "0.6.16")
   def settingSets(select: AddSettings*): CrossProject =
     copy(jvm.settingSets(select: _*), js.settingSets(select: _*))
 

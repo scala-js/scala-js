@@ -27,17 +27,19 @@ import scala.concurrent.{ExecutionContext, TimeoutException, Future}
 import scala.concurrent.duration.Duration
 
 class PhantomJSEnv(
-    phantomjsPath: String = "phantomjs",
-    addArgs: Seq[String] = Seq.empty,
-    addEnv: Map[String, String] = Map.empty,
+    @deprecatedName('phantomjsPath)
+    protected val executable: String = "phantomjs",
+    @deprecatedName('addArgs)
+    args: Seq[String] = Seq.empty,
+    @deprecatedName('addEnv)
+    env: Map[String, String] = Map.empty,
     val autoExit: Boolean = true,
     jettyClassLoader: ClassLoader = null
-) extends ExternalJSEnv(addArgs, addEnv) with ComJSEnv {
+) extends ExternalJSEnv(args, env) with ComJSEnv {
 
   import PhantomJSEnv._
 
   protected def vmName: String = "PhantomJS"
-  protected def executable: String = phantomjsPath
 
   override def jsRunner(libs: Seq[VirtualJSFile],
       code: VirtualJSFile): JSRunner = {
