@@ -30,8 +30,6 @@ final class IRFileCache {
    * that paying the cost for synchronization is lower than I/O.
    */
 
-  import IRFileCache._
-
   /** Holds the cached IR */
   private[this] val globalCache = new ConcurrentHashMap[String, PersistedFiles]
 
@@ -71,15 +69,15 @@ final class IRFileCache {
      *  [[free]].
      *
      *  @note Updating any of the underlying files in the container during the
-     *      lifetime of a returned [[IRFileCache.VirtualRelativeIRFile]] yields
+     *      lifetime of a returned [[VirtualRelativeScalaJSIRFile]] yields
      *      unspecified behavior.
      */
-    def cached(files: Seq[IRContainer]): Seq[VirtualRelativeIRFile] = {
+    def cached(files: Seq[ScalaJSIRContainer]): Seq[VirtualRelativeScalaJSIRFile] = {
       update(files)
       localCache.flatMap(_.files)
     }
 
-    private def update(files: Seq[IRContainer]): Unit = clearOnThrow {
+    private def update(files: Seq[ScalaJSIRContainer]): Unit = clearOnThrow {
       val result = Seq.newBuilder[PersistedFiles]
 
       for (file <- files) {
@@ -145,9 +143,9 @@ final class IRFileCache {
      *  May only be written under synchronization, except if this is a tombstone
      */
     @volatile
-    private[this] var _files: Seq[VirtualRelativeIRFile] = null
+    private[this] var _files: Seq[VirtualRelativeScalaJSIRFile] = null
 
-    def files: Seq[VirtualRelativeIRFile] = _files
+    def files: Seq[VirtualRelativeScalaJSIRFile] = _files
 
     /** Try to reference this block of files.
      *  @return true if referencing succeeded, false if this is a tombstone
@@ -195,11 +193,11 @@ final class IRFileCache {
       _files = null
     }
 
-    /** Updates this file with the given [[IRContainer]].
+    /** Updates this file with the given [[ScalaJSIRContainer]].
      *
      *  May only be called by a thread, if it holds a reference to this file.
      */
-    def update(file: IRContainer): Unit = {
+    def update(file: ScalaJSIRContainer): Unit = {
       assert(_references.get > 0, "Updating an unreferenced file")
       assert(file.path == path, s"Path mismatch: $path, ${file.path}")
 
@@ -218,22 +216,17 @@ final class IRFileCache {
             statsReused.incrementAndGet()
           } else {
             statsInvalidated.incrementAndGet()
-            _files = extractIRFiles(file).map(new PersistentIRFile(_))
+            _files = file.sjsirFiles.map(new PersistentIRFile(_))
             _version = file.version
           }
         }
       }
     }
-
-    private def extractIRFiles(file: IRContainer) = file match {
-      case IRContainer.File(file) => file :: Nil
-      case IRContainer.Jar(jar)   => jar.sjsirFiles
-    }
   }
 
   private final class PersistentIRFile(
-      private[this] var _irFile: VirtualRelativeIRFile)
-      extends VirtualScalaJSIRFile with RelativeVirtualFile {
+      private[this] var _irFile: VirtualRelativeScalaJSIRFile)
+      extends VirtualRelativeScalaJSIRFile {
 
     import ir.Trees._
     import ir.Infos
@@ -296,28 +289,6 @@ object IRFileCache {
       s"reused: $reused -- " +
       s"invalidated: $invalidated -- " +
       s"trees read: $treesRead"
-    }
-  }
-
-  type VirtualRelativeIRFile = VirtualScalaJSIRFile with RelativeVirtualFile
-
-  sealed trait IRContainer extends VirtualFile
-
-  object IRContainer extends IRContainerPlatformExtensions {
-    final case class File(ir: VirtualRelativeIRFile) extends IRContainer {
-      override def path: String = ir.path
-      override def name: String = ir.name
-      override def version: Option[String] = ir.version
-      override def exists: Boolean = ir.exists
-      override def toURI: URI = ir.toURI
-    }
-
-    final case class Jar(jar: VirtualFileContainer) extends IRContainer {
-      override def path: String = jar.path
-      override def name: String = jar.name
-      override def version: Option[String] = jar.version
-      override def exists: Boolean = jar.exists
-      override def toURI: URI = jar.toURI
     }
   }
 }

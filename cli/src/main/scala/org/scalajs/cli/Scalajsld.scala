@@ -161,7 +161,7 @@ object Scalajsld {
 
     for (options <- parser.parse(args, Options())) {
       val classpath = options.stdLib.toList ++ options.cp
-      val irContainers = IRFileCache.IRContainer.fromClasspath(classpath)
+      val irContainers = FileScalaJSIRContainer.fromClasspath(classpath)
       val moduleInitializers = options.moduleInitializers
 
       // Warn if writing JS dependencies was requested.

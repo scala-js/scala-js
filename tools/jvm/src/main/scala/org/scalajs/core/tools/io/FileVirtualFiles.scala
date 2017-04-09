@@ -168,13 +168,44 @@ object FileVirtualScalaJSIRFile extends (File => FileVirtualScalaJSIRFile) {
   def apply(f: File): FileVirtualScalaJSIRFile =
     new FileVirtualScalaJSIRFile(f)
 
-  def relative(f: File,
-      relPath: String): FileVirtualScalaJSIRFile with RelativeVirtualFile = {
-    new FileVirtualScalaJSIRFile(f) with RelativeVirtualFile {
+  def relative(f: File, relPath: String): FileVirtualScalaJSIRFile
+      with VirtualRelativeScalaJSIRFile = {
+    new FileVirtualScalaJSIRFile(f) with VirtualRelativeScalaJSIRFile {
       def relativePath: String = relPath
     }
   }
 
   def isScalaJSIRFile(file: File): Boolean =
     hasExtension(file, ".sjsir")
+}
+
+object FileScalaJSIRContainer {
+  def fromClasspath(classpath: Seq[File]): Seq[ScalaJSIRContainer] = {
+    classpath flatMap { entry =>
+      if (!entry.exists)
+        Nil
+      else if (entry.isDirectory)
+        fromDirectory(entry)
+      else if (entry.getName.endsWith(".jar"))
+        List(new FileVirtualBinaryFile(entry) with VirtualJarFile)
+      else
+        throw new IllegalArgumentException("Illegal classpath entry " + entry)
+    }
+  }
+
+  private def fromDirectory(dir: File): Seq[ScalaJSIRContainer] = {
+    require(dir.isDirectory)
+
+    val baseDir = dir.getAbsoluteFile
+
+    def walkForIR(dir: File): Seq[File] = {
+      val (subdirs, files) = dir.listFiles().partition(_.isDirectory)
+      subdirs.flatMap(walkForIR) ++ files.filter(_.getName.endsWith(".sjsir"))
+    }
+
+    for (ir <- walkForIR(baseDir)) yield {
+      val relDir = ir.getPath.stripPrefix(baseDir.getPath)
+      FileVirtualScalaJSIRFile.relative(ir, relDir)
+    }
+  }
 }

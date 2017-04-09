@@ -6,7 +6,6 @@ import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
-import org.scalajs.core.tools.io.IRFileCache.IRContainer
 import org.scalajs.core.tools.linker.{Linker, ModuleInitializer}
 import org.scalajs.core.tools.linker.backend.{OutputMode, ModuleKind}
 
@@ -89,7 +88,7 @@ class MainGenericRunner {
 
   private def loadIR(classpathURLs: Seq[URL]) = {
     val irContainers =
-      IRContainer.fromClasspath(classpathURLs.map(urlToFile))
+      FileScalaJSIRContainer.fromClasspath(classpathURLs.map(urlToFile))
     val cache = (new IRFileCache).newCache
     cache.cached(irContainers)
   }
