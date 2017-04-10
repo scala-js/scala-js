@@ -535,6 +535,35 @@ object ScalaJSPluginInternal {
             .put(scalaJSSourceFiles, realFiles)
       },
 
+      // Add the resolved JS dependencies to the list of JS files given to envs
+      jsExecutionFiles ++= {
+        val deps = resolvedJSDependencies.value.data
+
+        /* Implement the behavior of commonJSName without having to burn it
+         * inside NodeJSEnv, and hence in the JSEnv API.
+         * Since this matches against NodeJSEnv specifically, it obviously
+         * breaks the OO approach, but oh well ...
+         */
+        resolvedJSEnv.value match {
+          case _: org.scalajs.jsenv.nodejs.NodeJSEnv =>
+            val libCache = new VirtualFileMaterializer(false)
+
+            for (dep <- deps) yield {
+              dep.info.commonJSName.fold {
+                dep.lib
+              } { commonJSName =>
+                val fname = libCache.materialize(dep.lib).getAbsolutePath
+                new MemVirtualJSFile(s"require-$fname").withContent(
+                  s"""$commonJSName = require("${escapeJS(fname)}");"""
+                )
+              }
+            }
+
+          case _ =>
+            deps.map(_.lib)
+        }
+      },
+
       // Give tasks ability to check we are not forking at build reading time
       scalaJSEnsureUnforked := {
         if (fork.value)
@@ -560,7 +589,8 @@ object ScalaJSPluginInternal {
         }.toMap
       },
 
-      scalaJSConfigurationLibs ++= {
+      // Optionally add a JS file defining Java system properties
+      jsExecutionFiles ++= {
         val javaSystemProperties = scalaJSJavaSystemProperties.value
         if (javaSystemProperties.isEmpty) {
           Nil
@@ -573,45 +603,14 @@ object ScalaJSPluginInternal {
             "var __ScalaJSEnv = (typeof __ScalaJSEnv === \"object\" && __ScalaJSEnv) ? __ScalaJSEnv : {};\n" +
             "__ScalaJSEnv.javaSystemProperties = {" + formattedProps.mkString(", ") + "};\n"
           }
-          Seq(ResolvedJSDependency.minimal(
-              new MemVirtualJSFile("setJavaSystemProperties.js").withContent(code)))
+          Seq(new MemVirtualJSFile("setJavaSystemProperties.js").withContent(code))
         }
       },
 
-      loadedJSEnv := {
-        val log = streams.value.log
-        val env = resolvedJSEnv.value
-        val deps =
-          resolvedJSDependencies.value.data ++ scalaJSConfigurationLibs.value
+      // Crucially, add the Scala.js linked file to the JS files
+      jsExecutionFiles += scalaJSLinkedFile.value,
 
-        /* Implement the behavior of commonJSName without having to burn it
-         * inside NodeJSEnv, and hence in the JSEnv API.
-         * Since this matches against NodeJSEnv specifically, it obviously
-         * breaks the OO approach, but oh well ...
-         */
-        val libs = env match {
-          case _: org.scalajs.jsenv.nodejs.NodeJSEnv =>
-            val libCache = new VirtualFileMaterializer(false)
-
-            for (dep <- deps) yield {
-              dep.info.commonJSName.fold {
-                dep.lib
-              } { commonJSName =>
-                val fname = libCache.materialize(dep.lib).getAbsolutePath
-                new MemVirtualJSFile(s"require-$fname").withContent(
-                  s"""$commonJSName = require("${escapeJS(fname)}");"""
-                )
-              }
-            }
-
-          case _ =>
-            deps.map(_.lib)
-        }
-
-        val file = scalaJSLinkedFile.value
-        log.debug(s"Loading JSEnv with linked file ${file.path}")
-        env.loadLibs(libs :+ file)
-      },
+      loadedJSEnv := resolvedJSEnv.value.loadLibs(jsExecutionFiles.value),
 
       scalaJSModuleIdentifier := Def.taskDyn[Option[String]] {
         scalaJSModuleKind.value match {
@@ -868,6 +867,11 @@ object ScalaJSPluginInternal {
       scalaJSUseMainModuleInitializer := false,
       scalaJSUseMainModuleInitializer in Test := false,
 
+      jsExecutionFiles := Nil,
+      jsExecutionFiles in Compile := jsExecutionFiles.value,
+      // Do not inherit jsExecutionFiles in Test from Compile
+      jsExecutionFiles in Test := jsExecutionFiles.value,
+
       scalaJSConsole := ConsoleJSConsole,
 
       clean := {
@@ -880,8 +884,7 @@ object ScalaJSPluginInternal {
         ()
       },
 
-      scalaJSJavaSystemProperties := Map.empty,
-      scalaJSConfigurationLibs := Nil
+      scalaJSJavaSystemProperties := Map.empty
   )
 
   val scalaJSAbstractSettings: Seq[Setting[_]] = (
