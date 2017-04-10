@@ -936,6 +936,8 @@ run/t3452g
 run/t3452d
 run/t3452b
 run/t3452a
+run/t1430
+run/t4729
 run/t8442
 run/t8601e
 run/t9298

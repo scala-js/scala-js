@@ -3138,9 +3138,7 @@ run/trait-defaults-modules2
 pos/functions.scala
 pos/MailBox.scala
 neg/t6289
-run/t4729
 run/t6114.scala
-run/t1430
 pos/constant-warning.scala
 pos/t2712-5.scala
 pos/t2712-2.scala
