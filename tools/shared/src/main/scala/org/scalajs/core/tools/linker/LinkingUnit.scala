@@ -11,22 +11,10 @@ final class LinkingUnit private[linker] (
     val esLevel: ESLevel,
     val classDefs: List[LinkedClass],
     private[linker] val infosInternal: Map[String, Infos.ClassInfo],
-    val moduleInitializers: List[ModuleInitializer],
-    val isComplete: Boolean
+    val moduleInitializers: List[ModuleInitializer]
 ) {
 
   import LinkingUnit._
-
-  /** Creates a `LinkingUnit` without any entry point. */
-  @deprecated(
-      "The LinkingUnit constructor was not intended to be exposed to user " +
-      "code. It will be removed in 1.0.0.",
-      "0.6.15")
-  def this(semantics: Semantics, esLevel: ESLevel, classDefs: List[LinkedClass],
-      infos: Map[String, Infos.ClassInfo], isComplete: Boolean) = {
-    this(semantics, esLevel, classDefs, infos, moduleInitializers = Nil,
-        isComplete)
-  }
 
   @deprecated(
       "LinkingUnit.infos was not intended to be exposed to user code. " +
@@ -57,20 +45,10 @@ final class LinkingUnit private[linker] (
     }
   }
 
-  @deprecated(
-      "LinkingUnit.updated was not intended to be exposed to user code. " +
-      "It will be removed in 1.0.0.",
-      "0.6.15")
-  def updated(classDefs: List[LinkedClass], isComplete: Boolean): LinkingUnit =
-    updatedInternal(classDefs, isComplete)
-
-  /** Non-deprecated version of `updated` for internal use. */
-  private[linker] def updatedInternal(classDefs: List[LinkedClass],
-      isComplete: Boolean): LinkingUnit = {
+  private[linker] def updated(classDefs: List[LinkedClass]): LinkingUnit = {
     val newInfos =
       infosInternal ++ classDefs.map(cd => cd.encodedName -> cd.toInfo)
-    new LinkingUnit(semantics, esLevel, classDefs, newInfos, moduleInitializers,
-        isComplete)
+    new LinkingUnit(semantics, esLevel, classDefs, newInfos, moduleInitializers)
   }
 }
 

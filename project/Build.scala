@@ -468,7 +468,7 @@ object Build {
           clean in jUnitTestOutputsJS, clean in jUnitTestOutputsJVM,
           clean in examples, clean in helloworld,
           clean in reversi, clean in testingExample,
-          clean in testSuite, clean in testSuiteJVM, clean in noIrCheckTest,
+          clean in testSuite, clean in testSuiteJVM,
           clean in testSuiteEx,
           clean in partest, clean in partestSuite,
           clean in scalaTestSuite).value,
@@ -1523,19 +1523,6 @@ object Build {
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.11" % "test"
   )
-
-  lazy val noIrCheckTest: Project = (project in file("no-ir-check-test")).settings(
-      commonSettings,
-      myScalaJSSettings,
-      testTagSettings,
-      name := "Scala.js not IR checked tests",
-      scalaJSOptimizerOptions ~= (_.
-          withCheckScalaJSIR(false).
-          withBypassLinkingErrors(true)
-      ),
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
-      publishArtifact in Compile := false
-  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(library, jUnitRuntime)
 
   /* Additional test suite, for tests that should not be part of the normal
    * test suite for various reasons. The most common reason is that the tests

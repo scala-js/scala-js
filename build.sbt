@@ -29,7 +29,6 @@ val reversi = Build.reversi
 val testingExample = Build.testingExample
 val testSuite = Build.testSuite
 val testSuiteJVM = Build.testSuiteJVM
-val noIrCheckTest = Build.noIrCheckTest
 val testSuiteEx = Build.testSuiteEx
 val partest = Build.partest
 val partestSuite = Build.partestSuite

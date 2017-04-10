@@ -51,38 +51,6 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
   def link(irInput: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer], logger: Logger,
       symbolRequirements: SymbolRequirement, checkIR: Boolean): LinkingUnit = {
-    linkInternal(irInput, moduleInitializers, logger, symbolRequirements,
-        bypassLinkingErrors = false, checkIR = checkIR)
-  }
-
-  @deprecated(
-      "Bypassing linking errors will not be possible in the next major version. " +
-      "Use the overload without the bypassLinkingError parameter instead.",
-      "0.6.6")
-  def link(irInput: Seq[VirtualScalaJSIRFile], logger: Logger,
-      symbolRequirements: SymbolRequirement, bypassLinkingErrors: Boolean,
-      checkIR: Boolean): LinkingUnit = {
-    linkInternal(irInput, Nil, logger, symbolRequirements,
-        bypassLinkingErrors, checkIR)
-  }
-
-  @deprecated(
-      "Bypassing linking errors will not be possible in the next major version. " +
-      "Use the overload without the bypassLinkingError parameter instead.",
-      "0.6.6")
-  def link(irInput: Seq[VirtualScalaJSIRFile],
-      moduleInitializers: Seq[ModuleInitializer], logger: Logger,
-      symbolRequirements: SymbolRequirement, bypassLinkingErrors: Boolean,
-      checkIR: Boolean): LinkingUnit = {
-    linkInternal(irInput, moduleInitializers, logger, symbolRequirements,
-        bypassLinkingErrors, checkIR)
-  }
-
-  // Non-deprecated version to be called from `LinkerFrontend`
-  private[frontend] def linkInternal(irInput: Seq[VirtualScalaJSIRFile],
-      moduleInitializers: Seq[ModuleInitializer], logger: Logger,
-      symbolRequirements: SymbolRequirement, bypassLinkingErrors: Boolean,
-      checkIR: Boolean): LinkingUnit = {
 
     val infosBuilder = List.newBuilder[Infos.ClassInfo]
     val encodedNameToFile = mutable.Map.empty[String, VirtualScalaJSIRFile]
@@ -105,13 +73,13 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
     }
 
     linkInternal(infos, getTree, moduleInitializers, logger, symbolRequirements,
-        bypassLinkingErrors, checkIR)
+        checkIR)
   }
 
   private def linkInternal(infoInput: List[Infos.ClassInfo],
       getTree: TreeProvider, moduleInitializers: Seq[ModuleInitializer],
       logger: Logger, symbolRequirements: SymbolRequirement,
-      bypassLinkingErrors: Boolean, checkIR: Boolean): LinkingUnit = {
+      checkIR: Boolean): LinkingUnit = {
 
     if (checkIR) {
       logger.time("Linker: Check Infos") {
@@ -133,14 +101,6 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
     }
 
     if (analysis.errors.nonEmpty) {
-      // TODO Make it always fatal when we can get rid of bypassLinkingErrors
-      val fatal = !bypassLinkingErrors || analysis.errors.exists {
-        case _: Analysis.MissingJavaLangObjectClass => true
-        case _: Analysis.CycleInInheritanceChain    => true
-        case _                                      => false
-      }
-
-      val linkingErrLevel = if (fatal) Level.Error else Level.Warn
       val maxDisplayErrors = {
         val propName = "org.scalajs.core.tools.linker.maxlinkingerrors"
         Try(System.getProperty(propName, "20").toInt).getOrElse(20).max(1)
@@ -148,14 +108,13 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
 
       analysis.errors
         .take(maxDisplayErrors)
-        .foreach(logError(_, logger, linkingErrLevel))
+        .foreach(logError(_, logger, Level.Error))
 
       val skipped = analysis.errors.size - maxDisplayErrors
       if (skipped > 0)
-        logger.log(linkingErrLevel, s"Not showing $skipped more linking errors")
+        logger.log(Level.Error, s"Not showing $skipped more linking errors")
 
-      if (fatal)
-        sys.error("There were linking errors")
+      sys.error("There were linking errors")
     }
 
     val linkResult = logger.time("Linker: Assemble LinkedClasses") {
@@ -163,17 +122,13 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
     }
 
     // Make sure we don't export to the same name twice.
-    checkConflictingExports(linkResult, logger, bypassLinkingErrors)
+    checkConflictingExports(linkResult, logger)
 
     if (checkIR) {
       logger.time("Linker: Check IR") {
-        if (linkResult.isComplete) {
-          val errorCount = IRChecker.check(linkResult, logger)
-          if (errorCount != 0)
-            sys.error(s"There were $errorCount IR checking errors.")
-        } else {
-          sys.error("Could not check IR because there were linking errors.")
-        }
+        val errorCount = IRChecker.check(linkResult, logger)
+        if (errorCount != 0)
+          sys.error(s"There were $errorCount IR checking errors.")
       }
     }
 
@@ -184,28 +139,18 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
       moduleInitializers: Seq[ModuleInitializer], analysis: Analysis) = {
     val infoByName = Map(infoInput.map(c => c.encodedName -> c): _*)
 
-    def optClassDef(analyzerInfo: Analysis.ClassInfo) = {
+    val linkedClassDefs = for {
+      analyzerInfo <- analysis.classInfos.values
+      if analyzerInfo.isNeededAtAll
+    } yield {
       val encodedName = analyzerInfo.encodedName
-
-      def optDummyParent =
-        if (!analyzerInfo.isAnySubclassInstantiated) None
-        else Some(LinkedClass.dummyParent(encodedName, Some("dummy")))
-
-      infoByName.get(encodedName).map { info =>
-        val (tree, version) = getTree(encodedName)
-        val newVersion = version.map("real" + _) // avoid collision with dummy
-        linkedClassDef(info, tree, analyzerInfo, newVersion, getTree, analysis)
-      }.orElse(optDummyParent)
+      val (tree, version) = getTree(encodedName)
+      linkedClassDef(infoByName(encodedName), tree, analyzerInfo, version,
+          getTree, analysis)
     }
 
-    val linkedClassDefs = for {
-      classInfo <- analysis.classInfos.values
-      if classInfo.isNeededAtAll
-      linkedClassDef <- optClassDef(classInfo)
-    } yield linkedClassDef
-
     new LinkingUnit(semantics, esLevel, linkedClassDefs.toList, infoByName,
-        moduleInitializers.toList, analysis.allAvailable)
+        moduleInitializers.toList)
   }
 
   /** Takes a Infos, a ClassDef and DCE infos to construct a stripped down
@@ -479,8 +424,8 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
     }
   }
 
-  private def checkConflictingExports(unit: LinkingUnit, logger: Logger,
-      bypassLinkingErrors: Boolean): Unit = {
+  private def checkConflictingExports(unit: LinkingUnit,
+      logger: Logger): Unit = {
     val namesAndClasses = for {
       classDef <- unit.classDefs
       name <- classDef.topLevelExportNames
@@ -488,21 +433,20 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
       name -> classDef
     }
 
-    val level = if (bypassLinkingErrors) Level.Warn else Level.Error
     val errors = for {
       (name, namesAndClasses) <- namesAndClasses.groupBy(_._1)
       if namesAndClasses.size > 1
     } yield {
-      logger.log(level, s"Conflicting top-level exports to $name from the " +
-            "following classes:")
+      logger.log(Level.Error,
+          s"Conflicting top-level exports to $name from the following classes:")
       for ((_, linkedClass) <- namesAndClasses) {
-        logger.log(level, s"- ${linkedClass.fullName}")
+        logger.log(Level.Error, s"- ${linkedClass.fullName}")
       }
 
       ()
     }
 
-    if (errors.nonEmpty && !bypassLinkingErrors) {
+    if (errors.nonEmpty) {
       sys.error("There were conflicting exports.")
     }
   }

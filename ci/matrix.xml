@@ -85,10 +85,6 @@
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry ++$scala noIrCheckTest/test &&
-    sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala noIrCheckTest/test \
-        noIrCheckTest/clean &&
     sbtretry 'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
@@ -128,10 +124,6 @@
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv().withSourceMap(false)' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in noIrCheckTest := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in noIrCheckTest := new org.scalajs.jsenv.nodejs.NodeJSEnv().withSourceMap(false)' \
-        ++$scala noIrCheckTest/test \
-        noIrCheckTest/clean &&
     sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv().withSourceMap(false)' \
         'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \

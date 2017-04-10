@@ -59,17 +59,12 @@ final class LinkerFrontend(
     }
 
     val linkResult = logger.time("Basic Linking") {
-      linker.linkInternal(irFiles, moduleInitializers, logger,
-          preOptimizerRequirements, config.bypassLinkingErrors, config.checkIR)
+      linker.link(irFiles, moduleInitializers, logger,
+          preOptimizerRequirements, config.checkIR)
     }
 
     optOptimizer.fold(linkResult) { optimizer =>
-      if (linkResult.isComplete) {
-        optimize(linkResult, symbolRequirements, optimizer, logger)
-      } else {
-        logger.warn("Not running the optimizer because there were linking errors.")
-        linkResult
-      }
+      optimize(linkResult, symbolRequirements, optimizer, logger)
     }
   }
 
@@ -88,30 +83,15 @@ final class LinkerFrontend(
 object LinkerFrontend {
   /** Configurations relevant to the frontend */
   final class Config private (
-      /** Whether to only warn if the linker has errors. */
-      val bypassLinkingErrors: Boolean = false,
       /** If true, performs expensive checks of the IR for the used parts. */
       val checkIR: Boolean = false
   ) {
-    @deprecated(
-        "Bypassing linking errors will not be possible in the next major version.",
-        "0.6.6")
-    def withBypassLinkingErrors(bypassLinkingErrors: Boolean): Config =
-      copy(bypassLinkingErrors = bypassLinkingErrors)
-
-    // Non-deprecated version to call from the sbt plugin
-    private[scalajs] def withBypassLinkingErrorsInternal(
-        bypassLinkingErrors: Boolean): Config = {
-      copy(bypassLinkingErrors = bypassLinkingErrors)
-    }
-
     def withCheckIR(checkIR: Boolean): Config =
       copy(checkIR = checkIR)
 
     private def copy(
-        bypassLinkingErrors: Boolean = bypassLinkingErrors,
         checkIR: Boolean = checkIR): Config = {
-      new Config(bypassLinkingErrors, checkIR)
+      new Config(checkIR)
     }
   }
 

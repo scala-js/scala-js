@@ -29,7 +29,6 @@ import ir.Definitions.{decodeClassName, decodeMethodName}
 trait Analysis {
   import Analysis._
 
-  def allAvailable: Boolean
   def classInfos: scala.collection.Map[String, ClassInfo]
   def errors: Seq[Error]
 }

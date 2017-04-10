@@ -20,8 +20,6 @@ import OptimizerOptions._
  *  instance.
  */
 final class OptimizerOptions private (
-    /** Whether to only warn if the linker has errors */
-    val bypassLinkingErrors: Boolean = false,
     /** Whether to parallelize the optimizer (currently fastOptJS only) **/
     val parallel: Boolean = true,
     /** Whether to run the optimizer in batch (i.e. non-incremental) mode */
@@ -35,12 +33,6 @@ final class OptimizerOptions private (
     /** Use Google Closure Backend */
     val useClosureCompiler: Boolean = false
 ) {
-
-  @deprecated(
-      "Bypassing linking errors will not be possible in the next major version.",
-      "0.6.6")
-  def withBypassLinkingErrors(bypassLinkingErrors: Boolean): OptimizerOptions =
-    copy(bypassLinkingErrors = bypassLinkingErrors)
 
   def withParallel(parallel: Boolean): OptimizerOptions =
     copy(parallel = parallel)
@@ -60,20 +52,18 @@ final class OptimizerOptions private (
   def withUseClosureCompiler(useClosureCompiler: Boolean): OptimizerOptions =
     copy(useClosureCompiler = useClosureCompiler)
 
-  private def copy(bypassLinkingErrors: Boolean = bypassLinkingErrors,
+  private def copy(
       parallel: Boolean = parallel, batchMode: Boolean = batchMode,
       disableOptimizer: Boolean = disableOptimizer,
       prettyPrintFullOptJS: Boolean = prettyPrintFullOptJS,
       checkScalaJSIR: Boolean = checkScalaJSIR,
       useClosureCompiler: Boolean = useClosureCompiler) = {
-    new OptimizerOptions(bypassLinkingErrors, parallel, batchMode,
-        disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR,
-        useClosureCompiler)
+    new OptimizerOptions(parallel, batchMode, disableOptimizer,
+        prettyPrintFullOptJS, checkScalaJSIR, useClosureCompiler)
   }
 
   override def toString: String = {
     s"""OptimizerOptions(
-       |  bypassLinkingErrors  = $bypassLinkingErrors
        |  parallel             = $parallel
        |  batchMode            = $batchMode
        |  disableOptimizer     = $disableOptimizer
