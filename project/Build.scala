@@ -48,10 +48,46 @@ object ExposedValues extends AutoPlugin {
   }
 }
 
-object Build {
+object MyScalaJSPlugin extends AutoPlugin {
+  override def requires: Plugins = ScalaJSPlugin && PhantomJSEnvPlugin
 
   val isGeneratingEclipse =
     Properties.envOrElse("GENERATING_ECLIPSE", "false").toBoolean
+
+  override def projectSettings: Seq[Setting[_]] = Seq(
+      /* Remove libraryDependencies on ourselves; we use .dependsOn() instead
+       * inside this build.
+       */
+      libraryDependencies ~= { libDeps =>
+        val blacklist =
+          Set("scalajs-compiler", "scalajs-library", "scalajs-test-interface")
+        libDeps.filterNot(dep => blacklist.contains(dep.name))
+      },
+
+      /* Most of our Scala.js libraries are not cross-compiled against the
+       * the Scala.js binary version number.
+       */
+      crossVersion := CrossVersion.binary,
+
+      scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(true)),
+
+      // Link source maps
+      scalacOptions ++= {
+        val base = (baseDirectory in LocalProject("scalajs")).value
+        if (isGeneratingEclipse) Seq()
+        else if (scalaJSIsSnapshotVersion) Seq()
+        else Seq(
+          // Link source maps to github sources
+          "-P:scalajs:mapSourceURI:" + base.toURI +
+          "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
+          scalaJSVersion + "/"
+        )
+      }
+  )
+}
+
+object Build {
+  import MyScalaJSPlugin.isGeneratingEclipse
 
   val fetchScalaSource = taskKey[File](
     "Fetches the scala source for the current scala version")
@@ -348,25 +384,6 @@ object Build {
       publishMavenStyle := false
   )
 
-  val myScalaJSSettings = Def.settings(
-      ScalaJSPluginInternal.scalaJSAbstractSettings,
-      PhantomJSEnvPlugin.projectSettings,
-      autoCompilerPlugins := true,
-      scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(true)),
-
-      // Link source maps
-      scalacOptions ++= {
-        if (isGeneratingEclipse) Seq()
-        else if (scalaJSIsSnapshotVersion) Seq()
-        else Seq(
-          // Link source maps to github sources
-          "-P:scalajs:mapSourceURI:" + root.base.toURI +
-          "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
-          scalaJSVersion + "/"
-        )
-      }
-  )
-
   implicit class ProjectOps(val project: Project) extends AnyVal {
     /** Uses the Scala.js compiler plugin. */
     def withScalaJSCompiler: Project =
@@ -415,7 +432,6 @@ object Build {
   }
 
   val thisBuildSettings = Def.settings(
-      inScope(Global)(ScalaJSPlugin.globalSettings),
       // Most of the projects cross-compile
       crossScalaVersions := Seq(
         "2.10.2",
@@ -495,9 +511,12 @@ object Build {
         "com.novocode" % "junit-interface" % "0.9" % "test"
   )
 
-  lazy val irProjectJS: Project = Project(id = "irJS", base = file("ir/.js")).settings(
+  lazy val irProjectJS: Project = Project(
+      id = "irJS", base = file("ir/.js")
+  ).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       commonIrProjectSettings,
-      myScalaJSSettings,
       crossVersion := ScalaJSCrossVersion.binary,
       unmanagedSourceDirectories in Compile +=
         (scalaSource in Compile in irProject).value,
@@ -590,8 +609,9 @@ object Build {
       )
   ).dependsOn(irProject)
 
-  lazy val toolsJS: Project = (project in file("tools/js")).settings(
-      myScalaJSSettings,
+  lazy val toolsJS: Project = (project in file("tools/js")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       commonToolsSettings,
       crossVersion := ScalaJSCrossVersion.binary,
       resourceGenerators in Test += Def.task {
@@ -605,8 +625,8 @@ object Build {
               (definedTests in testSuite in Test).value)
         }
 
-            IO.write(outFile, testDefinitions)
-            Seq(outFile)
+        IO.write(outFile, testDefinitions)
+        Seq(outFile)
       }.taskValue,
 
       jsDependencies += ProvidedJS / "js-test-definitions.js" % "test",
@@ -778,9 +798,10 @@ object Build {
     output
   }
 
-  lazy val javalanglib: Project = project.settings(
+  lazy val javalanglib: Project = project.enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       commonSettings,
-      myScalaJSSettings,
       fatalWarningsSettings,
       name := "java.lang library for Scala.js",
       publishArtifact in Compile := false,
@@ -797,9 +818,10 @@ object Build {
       scalaJSExternalCompileSettings
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
-  lazy val javalib: Project = project.settings(
+  lazy val javalib: Project = project.enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       commonSettings,
-      myScalaJSSettings,
       fatalWarningsSettings,
       name := "Java library for Scala.js",
       publishArtifact in Compile := false,
@@ -808,19 +830,24 @@ object Build {
       scalaJSExternalCompileSettings
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
-  lazy val scalalib: Project = project.settings(
+  lazy val scalalib: Project = project.enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       commonSettings,
       /* Link source maps to the GitHub sources of the original scalalib
-       * #2195 This must come *before* the option added by myScalaJSSettings
+       * #2195 This must come *before* the option added by MyScalaJSPlugin
        * because mapSourceURI works on a first-match basis.
        */
-      scalacOptions += {
-        "-P:scalajs:mapSourceURI:" +
-        (artifactPath in fetchScalaSource).value.toURI +
-        "->https://raw.githubusercontent.com/scala/scala/v" +
-        scalaVersion.value + "/src/library/"
+      scalacOptions := {
+        val previousScalacOptions = scalacOptions.value
+        val sourceMapOption = {
+          "-P:scalajs:mapSourceURI:" +
+          (artifactPath in fetchScalaSource).value.toURI +
+          "->https://raw.githubusercontent.com/scala/scala/v" +
+          scalaVersion.value + "/src/library/"
+        }
+        sourceMapOption +: previousScalacOptions
       },
-      myScalaJSSettings,
       name := "Scala library for Scala.js",
       publishArtifact in Compile := false,
       delambdafySetting,
@@ -958,9 +985,10 @@ object Build {
       scalaJSExternalCompileSettings
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
-  lazy val libraryAux: Project = (project in file("library-aux")).settings(
+  lazy val libraryAux: Project = (project in file("library-aux")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       commonSettings,
-      myScalaJSSettings,
       fatalWarningsSettings,
       name := "Scala.js aux library",
       publishArtifact in Compile := false,
@@ -969,10 +997,11 @@ object Build {
       scalaJSExternalCompileSettings
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
-  lazy val library: Project = project.settings(
+  lazy val library: Project = project.enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       commonSettings,
       publishSettings,
-      myScalaJSSettings,
       fatalWarningsSettings,
       name := "Scala.js library",
       delambdafySetting,
@@ -1072,10 +1101,11 @@ object Build {
   ).dependsOn(tools)
 
   // Test framework
-  lazy val testInterface = (project in file("test-interface")).settings(
+  lazy val testInterface = (project in file("test-interface")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       commonSettings,
       publishSettings,
-      myScalaJSSettings,
       fatalWarningsSettings,
       name := "Scala.js test interface",
       delambdafySetting,
@@ -1083,10 +1113,11 @@ object Build {
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestInterface
   ).withScalaJSCompiler.dependsOn(library)
 
-  lazy val jUnitRuntime = (project in file("junit-runtime")).settings(
+  lazy val jUnitRuntime = (project in file("junit-runtime")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       commonSettings,
       publishSettings,
-      myScalaJSSettings,
       fatalWarningsSettings,
       name := "Scala.js JUnit test runtime"
   ).withScalaJSCompiler.dependsOn(testInterface)
@@ -1104,9 +1135,10 @@ object Build {
       )
   )
 
-  lazy val jUnitTestOutputsJS = (project in file("junit-test/output-js")).settings(
+  lazy val jUnitTestOutputsJS = (project in file("junit-test/output-js")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       commonJUnitTestOutputsSettings,
-      myScalaJSSettings,
       name := "Tests for Scala.js JUnit output in JS."
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       jUnitRuntime % "test", testInterface % "test"
@@ -1174,22 +1206,28 @@ object Build {
       name := "Scala.js examples"
   ).aggregate(helloworld, reversi, testingExample)
 
-  lazy val exampleSettings = commonSettings ++ myScalaJSSettings ++ fatalWarningsSettings
+  lazy val exampleSettings = commonSettings ++ fatalWarningsSettings
 
-  lazy val helloworld: Project = (project in (file("examples") / "helloworld")).settings(
+  lazy val helloworld: Project = (project in (file("examples") / "helloworld")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       exampleSettings,
       name := "Hello World - Scala.js example",
       moduleName := "helloworld",
       scalaJSUseMainModuleInitializer := true
   ).withScalaJSCompiler.dependsOn(library)
 
-  lazy val reversi = (project in (file("examples") / "reversi")).settings(
+  lazy val reversi = (project in (file("examples") / "reversi")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       exampleSettings,
       name := "Reversi - Scala.js example",
       moduleName := "reversi"
   ).withScalaJSCompiler.dependsOn(library)
 
-  lazy val testingExample = (project in (file("examples") / "testing")).settings(
+  lazy val testingExample = (project in (file("examples") / "testing")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       exampleSettings,
       name := "Testing - Scala.js example",
       moduleName := "testing",
@@ -1366,9 +1404,10 @@ object Build {
       }).value
   )
 
-  lazy val testSuite: Project = (project in file("test-suite/js")).settings(
+  lazy val testSuite: Project = (project in file("test-suite/js")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       commonSettings,
-      myScalaJSSettings,
       testTagSettings,
       testSuiteCommonSettings(isJSTest = true),
       testHtmlSettings(testHtmlFastOpt, FastOptStage),
@@ -1528,9 +1567,10 @@ object Build {
    * test each file in this test suite, so that we're sure that do not
    * interfere with other.
    */
-  lazy val testSuiteEx: Project = (project in file("test-suite-ex")).settings(
+  lazy val testSuiteEx: Project = (project in file("test-suite-ex")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       commonSettings,
-      myScalaJSSettings,
       testTagSettings,
       name := "Scala.js test suite ex",
       publishArtifact in Compile := false,
@@ -1666,9 +1706,10 @@ object Build {
       }.value
   ).dependsOn(partest % "test", library)
 
-  lazy val scalaTestSuite: Project = (project in file("scala-test-suite")).settings(
+  lazy val scalaTestSuite: Project = (project in file("scala-test-suite")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
       commonSettings,
-      myScalaJSSettings,
       publishArtifact in Compile := false,
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
