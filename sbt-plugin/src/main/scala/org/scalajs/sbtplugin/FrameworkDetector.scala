@@ -67,7 +67,7 @@ private[sbtplugin] final class FrameworkDetector(jsEnv: JSEnv,
     val vf = new MemVirtualJSFile("frameworkDetector.js").withContent(code)
     val console = new StoreConsole
 
-    val runner = jsEnv.jsRunner(vf)
+    val runner = jsEnv.jsRunner(vf :: Nil)
     runner.run(logger, console)
 
     // Filter jsDependencies unexpected output

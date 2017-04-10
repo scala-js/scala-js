@@ -42,26 +42,26 @@ final class RetryingComJSEnv(val baseEnv: ComJSEnv,
 
   def name: String = s"Retrying ${baseEnv.name}"
 
-  def jsRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile): JSRunner =
-    baseEnv.jsRunner(libs, code)
+  def jsRunner(files: Seq[VirtualJSFile]): JSRunner =
+    baseEnv.jsRunner(files)
 
-  def asyncRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile): AsyncJSRunner =
-    baseEnv.asyncRunner(libs, code)
+  def asyncRunner(files: Seq[VirtualJSFile]): AsyncJSRunner =
+    baseEnv.asyncRunner(files)
 
-  def comRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile): ComJSRunner =
-    new RetryingComJSRunner(libs, code)
+  def comRunner(files: Seq[VirtualJSFile]): ComJSRunner =
+    new RetryingComJSRunner(files)
 
   /** Hack to work around abstract override in ComJSRunner */
   private trait DummyJSRunner {
     def stop(): Unit = ()
   }
 
-  private class RetryingComJSRunner(libs: Seq[VirtualJSFile],
-      code: VirtualJSFile) extends DummyJSRunner with ComJSRunner {
+  private class RetryingComJSRunner(files: Seq[VirtualJSFile])
+      extends DummyJSRunner with ComJSRunner {
 
     private[this] val promise = Promise[Unit]
 
-    private[this] var curRunner = baseEnv.comRunner(libs, code)
+    private[this] var curRunner = baseEnv.comRunner(files)
 
     private[this] var hasReceived = false
     private[this] var retryCount = 0
@@ -135,7 +135,7 @@ final class RetryingComJSEnv(val baseEnv: ComJSEnv,
         val oldRunner = curRunner
 
         curRunner = try {
-          baseEnv.comRunner(libs, code)
+          baseEnv.comRunner(files)
         } catch {
           case NonFatal(t) =>
             _logger.error("Could not retry: creating an new runner failed: " +

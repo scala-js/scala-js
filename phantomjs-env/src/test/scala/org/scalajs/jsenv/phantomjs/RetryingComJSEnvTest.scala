@@ -28,20 +28,14 @@ class RetryingComJSEnvTest extends JSEnvTest with ComTests {
     private[this] var fails = 0
     private[this] var failedReceive = false
 
-    def jsRunner(libs: Seq[VirtualJSFile],
-        code: VirtualJSFile): JSRunner = {
-      baseEnv.jsRunner(libs, code)
-    }
+    def jsRunner(files: Seq[VirtualJSFile]): JSRunner =
+      baseEnv.jsRunner(files)
 
-    def asyncRunner(libs: Seq[VirtualJSFile],
-        code: VirtualJSFile): AsyncJSRunner = {
-      baseEnv.asyncRunner(libs, code)
-    }
+    def asyncRunner(files: Seq[VirtualJSFile]): AsyncJSRunner =
+      baseEnv.asyncRunner(files)
 
-    def comRunner(libs: Seq[VirtualJSFile],
-        code: VirtualJSFile): ComJSRunner = {
-      new FailingComJSRunner(baseEnv.comRunner(libs, code))
-    }
+    def comRunner(files: Seq[VirtualJSFile]): ComJSRunner =
+      new FailingComJSRunner(baseEnv.comRunner(files))
 
     /** Hack to work around abstract override in ComJSRunner */
     private trait DummyJSRunner {

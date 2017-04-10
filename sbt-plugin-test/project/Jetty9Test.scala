@@ -42,7 +42,7 @@ object Jetty9Test {
       """
     )
 
-    val runner = jsEnv.comRunner(code)
+    val runner = jsEnv.comRunner(code :: Nil)
 
     runner.start(streams.value.log, jsConsole)
 

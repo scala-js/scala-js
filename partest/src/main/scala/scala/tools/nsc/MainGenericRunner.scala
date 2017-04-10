@@ -82,7 +82,7 @@ class MainGenericRunner {
       output
     }
 
-    new NodeJSEnv().jsRunner(sjsCode).run(logger, jsConsole)
+    new NodeJSEnv().jsRunner(sjsCode :: Nil).run(logger, jsConsole)
 
     true
   }

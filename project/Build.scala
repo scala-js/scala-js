@@ -676,7 +676,7 @@ object Build {
           val launcher = new MemVirtualJSFile("Generated launcher file")
             .withContent(code)
 
-          val runner = loadedJSEnv.value.jsRunner(launcher)
+          val runner = loadedJSEnv.value.jsRunner(launcher :: Nil)
 
           runner.run(sbtLogger2ToolsLogger(streams.value.log), scalaJSConsole.value)
         }

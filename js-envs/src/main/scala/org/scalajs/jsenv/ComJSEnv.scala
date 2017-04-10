@@ -27,17 +27,14 @@ import org.scalajs.core.tools.io.VirtualJSFile
  *  }}}
  */
 trait ComJSEnv extends AsyncJSEnv {
-  def comRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile): ComJSRunner
-
-  final def comRunner(code: VirtualJSFile): ComJSRunner = comRunner(Nil, code)
+  def comRunner(files: Seq[VirtualJSFile]): ComJSRunner
 
   override def loadLibs(libs: Seq[VirtualJSFile]): ComJSEnv =
     new ComLoadedLibs { val loadedLibs = libs }
 
   private[jsenv] trait ComLoadedLibs extends AsyncLoadedLibs with ComJSEnv {
-    def comRunner(libs: Seq[VirtualJSFile],
-        code: VirtualJSFile): ComJSRunner = {
-      ComJSEnv.this.comRunner(loadedLibs ++ libs, code)
+    def comRunner(files: Seq[VirtualJSFile]): ComJSRunner = {
+      ComJSEnv.this.comRunner(loadedLibs ++ files)
     }
   }
 }

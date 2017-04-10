@@ -41,32 +41,23 @@ class PhantomJSEnv(
 
   protected def vmName: String = "PhantomJS"
 
-  override def jsRunner(libs: Seq[VirtualJSFile],
-      code: VirtualJSFile): JSRunner = {
-    new PhantomRunner(libs, code)
-  }
+  override def jsRunner(files: Seq[VirtualJSFile]): JSRunner =
+    new PhantomRunner(files)
 
-  override def asyncRunner(libs: Seq[VirtualJSFile],
-      code: VirtualJSFile): AsyncJSRunner = {
-    new AsyncPhantomRunner(libs, code)
-  }
+  override def asyncRunner(files: Seq[VirtualJSFile]): AsyncJSRunner =
+    new AsyncPhantomRunner(files)
 
-  override def comRunner(libs: Seq[VirtualJSFile],
-      code: VirtualJSFile): ComJSRunner = {
-    new ComPhantomRunner(libs, code)
-  }
+  override def comRunner(files: Seq[VirtualJSFile]): ComJSRunner =
+    new ComPhantomRunner(files)
 
-  protected class PhantomRunner(libs: Seq[VirtualJSFile],
-      code: VirtualJSFile) extends ExtRunner(libs, code)
-      with AbstractPhantomRunner
+  protected class PhantomRunner(files: Seq[VirtualJSFile])
+      extends ExtRunner(files) with AbstractPhantomRunner
 
-  protected class AsyncPhantomRunner(libs: Seq[VirtualJSFile],
-      code: VirtualJSFile) extends AsyncExtRunner(libs, code)
-      with AbstractPhantomRunner
+  protected class AsyncPhantomRunner(files: Seq[VirtualJSFile])
+      extends AsyncExtRunner(files) with AbstractPhantomRunner
 
-  protected class ComPhantomRunner(libs: Seq[VirtualJSFile],
-      code: VirtualJSFile) extends AsyncPhantomRunner(libs, code)
-      with ComJSRunner {
+  protected class ComPhantomRunner(files: Seq[VirtualJSFile])
+      extends AsyncPhantomRunner(files) with ComJSRunner {
 
     private var mgrIsRunning: Boolean = false
 
@@ -403,9 +394,8 @@ class PhantomJSEnv(
       out.write(s"""<html><head>
           <title>Phantom.js Launcher</title>
           <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />""")
-      sendJS(getLibJSFiles(), out)
-      writeCodeLauncher(code, out)
-      out.write(s"</head>\n<body onload='$launcherName()'></body>\n</html>\n")
+      sendJS(getJSFiles(), out)
+      out.write(s"</head>\n<body></body>\n</html>\n")
     }
 
     protected def createTmpLauncherFile(): File = {
@@ -486,17 +476,6 @@ class PhantomJSEnv(
 
       webTmpF
     }
-
-    protected def writeCodeLauncher(code: VirtualJSFile, out: Writer): Unit = {
-      // Create a file with the launcher function.
-      val launcherFile = new MemVirtualJSFile("phantomjs-launcher.js")
-      launcherFile.content = s"""
-        // Phantom.js code launcher
-        // Origin: ${code.path}
-        function $launcherName() {${code.content}}
-      """
-      writeJSFile(launcherFile, out)
-    }
   }
 
   protected def htmlEscape(str: String): String = str.flatMap {
@@ -513,6 +492,4 @@ private object PhantomJSEnv {
   private final val MaxByteMessageSize = 32768 // 32 KB
   private final val MaxCharMessageSize = MaxByteMessageSize / 2 // 2B per char
   private final val MaxCharPayloadSize = MaxCharMessageSize - 1 // frag flag
-
-  private final val launcherName = "scalaJSPhantomJSEnvLauncher"
 }

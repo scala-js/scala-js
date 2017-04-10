@@ -27,66 +27,66 @@ class JSDOMNodeJSEnv(
 
   protected def vmName: String = "Node.js with JSDOM"
 
-  override def jsRunner(libs: Seq[VirtualJSFile],
-      code: VirtualJSFile): JSRunner = {
-    new DOMNodeRunner(libs, code)
-  }
+  override def jsRunner(files: Seq[VirtualJSFile]): JSRunner =
+    new DOMNodeRunner(files)
 
-  override def asyncRunner(libs: Seq[VirtualJSFile],
-      code: VirtualJSFile): AsyncJSRunner = {
-    new AsyncDOMNodeRunner(libs, code)
-  }
+  override def asyncRunner(files: Seq[VirtualJSFile]): AsyncJSRunner =
+    new AsyncDOMNodeRunner(files)
 
-  override def comRunner(libs: Seq[VirtualJSFile],
-      code: VirtualJSFile): ComJSRunner = {
-    new ComDOMNodeRunner(libs, code)
-  }
+  override def comRunner(files: Seq[VirtualJSFile]): ComJSRunner =
+    new ComDOMNodeRunner(files)
 
-  protected class DOMNodeRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
-      extends ExtRunner(libs, code) with AbstractDOMNodeRunner
+  protected class DOMNodeRunner(files: Seq[VirtualJSFile])
+      extends ExtRunner(files) with AbstractDOMNodeRunner
 
-  protected class AsyncDOMNodeRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
-      extends AsyncExtRunner(libs, code) with AbstractDOMNodeRunner
+  protected class AsyncDOMNodeRunner(files: Seq[VirtualJSFile])
+      extends AsyncExtRunner(files) with AbstractDOMNodeRunner
 
-  protected class ComDOMNodeRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
-      extends AsyncDOMNodeRunner(libs, code) with NodeComJSRunner
+  protected class ComDOMNodeRunner(files: Seq[VirtualJSFile])
+      extends AsyncDOMNodeRunner(files) with NodeComJSRunner
 
   protected trait AbstractDOMNodeRunner extends AbstractNodeRunner {
 
     protected def codeWithJSDOMContext(): Seq[VirtualJSFile] = {
-      val scriptsJSPaths = getLibJSFiles().map {
+      val scriptsPaths = getScriptsJSFiles().map {
         case file: FileVirtualFile => file.path
         case file                  => libCache.materialize(file).getAbsolutePath
       }
-      val scriptsStringPath = scriptsJSPaths.map('"' + escapeJS(_) + '"')
+      val scriptsURIs =
+        scriptsPaths.map(path => new java.io.File(path).toURI.toASCIIString)
+      val scriptsURIsAsJSStrings = scriptsURIs.map('"' + escapeJS(_) + '"')
       val jsDOMCode = {
         s"""
            |(function () {
            |  const jsdom = require("jsdom");
-           |  var windowKeys = [];
+           |
+           |  var virtualConsole = jsdom.createVirtualConsole()
+           |    .sendTo(console, { omitJsdomErrors: true });
+           |  virtualConsole.on("jsdomError", function (error) {
+           |    /* This inelegant if + console.error is the only way I found
+           |     * to make sure the stack trace of the original error is
+           |     * printed out.
+           |     */
+           |    if (error.detail && error.detail.stack)
+           |      console.error(error.detail.stack);
+           |
+           |    // Throw the error anew to make sure the whole execution fails
+           |    throw error;
+           |  });
            |
            |  jsdom.env({
            |    html: "",
-           |    virtualConsole: jsdom.createVirtualConsole().sendTo(console),
+           |    url: "http://localhost/",
+           |    virtualConsole: virtualConsole,
            |    created: function (error, window) {
            |      if (error == null) {
            |        window["__ScalaJSEnv"] = __ScalaJSEnv;
            |        window["scalajsCom"] = global.scalajsCom;
-           |        windowKeys = Object.keys(window);
            |      } else {
-           |        console.log(error);
+           |        throw error;
            |      }
            |    },
-           |    scripts: [${scriptsStringPath.mkString(", ")}],
-           |    onload: function (window) {
-           |      jsdom.changeURL(window, "http://localhost");
-           |      for (var k in window) {
-           |        if (windowKeys.indexOf(k) == -1)
-           |          global[k] = window[k];
-           |      }
-           |
-           |      ${code.content}
-           |    }
+           |    scripts: [${scriptsURIsAsJSStrings.mkString(", ")}]
            |  });
            |})();
            |""".stripMargin
@@ -94,12 +94,28 @@ class JSDOMNodeJSEnv(
       Seq(new MemVirtualJSFile("codeWithJSDOMContext.js").withContent(jsDOMCode))
     }
 
+    /** All the JS files that are passed to the VM.
+     *
+     *  This method can overridden to provide custom behavior in subclasses.
+     *
+     *  This method is overridden in `JSDOMNodeJSEnv` so that user-provided
+     *  JS files (excluding "init" files) are executed as *scripts* within the
+     *  jsdom environment, rather than being directly executed by the VM.
+     *
+     *  The value returned by this method in `JSDOMNodeJSEnv` is
+     *  `initFiles() ++ customInitFiles() ++ codeWithJSDOMContext()`.
+     */
     override protected def getJSFiles(): Seq[VirtualJSFile] =
       initFiles() ++ customInitFiles() ++ codeWithJSDOMContext()
 
-    /** Libraries are loaded via scripts in the jsdom environment. */
-    override protected def getLibJSFiles(): Seq[VirtualJSFile] =
-      libs
+    /** JS files to be loaded via scripts in the jsdom environment.
+     *
+     *  This method can be overridden to provide a different list of scripts.
+     *
+     *  The default value in `JSDOMNodeJSEnv` is `files`.
+     */
+    protected def getScriptsJSFiles(): Seq[VirtualJSFile] =
+      files
 
     // Send code to Stdin
     override protected def sendVMStdin(out: OutputStream): Unit = {

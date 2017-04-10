@@ -15,24 +15,15 @@ trait JSEnv {
   /** Human-readable name for this [[JSEnv]] */
   def name: String
 
-  /** Prepare a runner for the code in the virtual file. */
-  def jsRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile): JSRunner
-
-  /** Prepare a runner without any libraries.
-   *
-   *  Strictly equivalent to:
-   *  {{{
-   *  this.jsRunner(Nil, code)
-   *  }}}
-   */
-  final def jsRunner(code: VirtualJSFile): JSRunner = jsRunner(Nil, code)
+  /** Prepare a runner with the specified JavaScript files. */
+  def jsRunner(files: Seq[VirtualJSFile]): JSRunner
 
   /** Return this [[JSEnv]] with the given libraries already loaded.
    *
    *  The following two are equivalent:
    *  {{{
-   *  jsEnv.loadLibs(a).jsRunner(b, c)
-   *  jsEnv.jsRunner(a ++ b, c)
+   *  jsEnv.loadLibs(a).jsRunner(b)
+   *  jsEnv.jsRunner(a ++ b)
    *  }}}
    */
   def loadLibs(libs: Seq[VirtualJSFile]): JSEnv =
@@ -43,7 +34,7 @@ trait JSEnv {
 
     def name: String = JSEnv.this.name
 
-    def jsRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile): JSRunner =
-      JSEnv.this.jsRunner(loadedLibs ++ libs, code)
+    def jsRunner(files: Seq[VirtualJSFile]): JSRunner =
+      JSEnv.this.jsRunner(loadedLibs ++ files)
   }
 }

@@ -41,7 +41,7 @@ abstract class AbstractNodeJSEnv(
       .withContent("""require('source-map-support').install();""")
 
     try {
-      jsRunner(code).run(NullLogger, NullJSConsole)
+      jsRunner(Seq(code)).run(NullLogger, NullJSConsole)
       true
     } catch {
       case t: ExternalJSEnv.NonZeroExitException =>
