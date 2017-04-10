@@ -48,70 +48,6 @@ class JSExportTest extends DirectTest with TestHelpers {
       |    class C__ extends js.Object
       |          ^
     """
-
-    // Inherited exports (objects)
-    """
-    @JSExportDescendentObjects
-    trait A
-
-    package fo__o {
-      object B extends A
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentObjects on trait A
-      |      object B extends A
-      |             ^
-    """
-
-    """
-    @JSExportDescendentObjects
-    trait A extends js.Object
-
-    package fo__o {
-      object B extends A
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentObjects on trait A
-      |      object B extends A
-      |             ^
-    """
-
-    // Inherited exports (classes)
-    """
-    @JSExportDescendentClasses
-    trait A
-
-    package fo__o {
-      class B(x: Int) extends A {
-        def this() = this(1)
-        private def this(s: String) = this(1)
-      }
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentClasses on trait A
-      |      class B(x: Int) extends A {
-      |             ^
-      |newSource1.scala:8: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentClasses on trait A
-      |        def this() = this(1)
-      |            ^
-    """
-
-    """
-    @JSExportDescendentClasses
-    trait A extends js.Object
-
-    package fo__o {
-      class B(x: Int) extends A
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentClasses on trait A
-      |      class B(x: Int) extends A
-      |            ^
-    """
   }
 
   @Test
@@ -799,179 +735,6 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def namedExportIsDeprecated: Unit = {
-
-    """
-    class A {
-      @JSExportNamed
-      def foo(x: Int, y: Int) = 1
-    }
-    """ hasWarns
-    s"""
-      |newSource1.scala:5: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
-      |      def foo(x: Int, y: Int) = 1
-      |          ^
-      |newSource1.scala:4: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
-      |      @JSExportNamed
-      |       ^
-    """
-
-  }
-
-  @Test
-  def noOverrideNamedExport: Unit = {
-
-    """
-    class A {
-      @JSExportNamed
-      def foo(x: Int, y: Int) = 1
-    }
-
-    class B extends A {
-      @JSExportNamed
-      override def foo(x: Int, y: Int) = 2
-    }
-    """ hasErrors
-    s"""
-      |newSource1.scala:5: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
-      |      def foo(x: Int, y: Int) = 1
-      |          ^
-      |newSource1.scala:4: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
-      |      @JSExportNamed
-      |       ^
-      |newSource1.scala:9: error: overriding method $$js$$exported$$meth$$foo in class A of type (namedArgs: Any)Any;
-      | method $$js$$exported$$meth$$foo cannot override final member
-      |      @JSExportNamed
-      |       ^
-      |newSource1.scala:10: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
-      |      override def foo(x: Int, y: Int) = 2
-      |                   ^
-    """
-
-  }
-
-  @Test
-  def noConflictNamedExport: Unit = {
-
-    // Normal method
-    """
-    class A {
-      @JSExportNamed
-      def foo(x: Int, y: Int) = 1
-
-      @JSExport
-      def foo(x: scala.scalajs.js.Any) = 2
-    }
-    """ fails() // No error test, Scala version dependent error messages
-
-    // Ctors
-    """
-    class A {
-      @JSExportNamed
-      def this(x: Int) = this()
-
-      @JSExport
-      def this(x: scala.scalajs.js.Any) = this
-
-      @JSExportNamed
-      def this(x: Long) = this()
-    }
-    """ fails() // No error test, Scala version dependent error messages
-
-  }
-
-  @Test
-  def noNamedExportObject: Unit = {
-
-    """
-    @JSExportNamed
-    object A
-
-    @JSExportNamed
-    object B extends js.Object
-    """ hasErrors
-    """
-      |newSource1.scala:3: error: You may not use @JSNamedExport on an object
-      |    @JSExportNamed
-      |     ^
-      |newSource1.scala:6: error: You may not use @JSNamedExport on an object
-      |    @JSExportNamed
-      |     ^
-    """
-
-  }
-
-  @Test
-  def noNamedExportSJSDefinedClass: Unit = {
-
-    """
-    @JSExportNamed
-    class A extends js.Object
-    """ hasErrors
-    """
-      |newSource1.scala:3: error: You may not use @JSNamedExport on a Scala.js-defined JS class
-      |    @JSExportNamed
-      |     ^
-    """
-
-  }
-
-  @Test
-  def noNamedExportVarArg: Unit = {
-
-    """
-    class A {
-      @JSExportNamed
-      def foo(a: Int*) = 1
-    }
-    """ hasErrors
-    s"""
-      |newSource1.scala:5: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
-      |      def foo(a: Int*) = 1
-      |          ^
-      |newSource1.scala:4: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
-      |      @JSExportNamed
-      |       ^
-      |newSource1.scala:4: error: You may not name-export a method with a *-parameter
-      |      @JSExportNamed
-      |       ^
-    """
-
-  }
-
-  @Test
-  def noNamedExportProperty: Unit = {
-
-    // Getter
-    """
-    class A {
-      @JSExportNamed
-      def a = 1
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:4: error: You may not export a getter or a setter as a named export
-      |      @JSExportNamed
-      |       ^
-    """
-
-
-    // Setter
-    """
-    class A {
-      @JSExportNamed
-      def a_=(x: Int) = ()
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:4: error: You may not export a getter or a setter as a named export
-      |      @JSExportNamed
-      |       ^
-    """
-
-  }
-
-  @Test
   def gracefulDoubleDefaultFail: Unit = {
     // This used to blow up (i.e. not just fail), because PrepJSExports asked
     // for the symbol of the default parameter getter of [[y]], and asserted its
@@ -1011,28 +774,6 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noInheritIgnoreInvalidDescendants: Unit = {
-
-    """
-    @JSExportDescendentClasses
-    trait A
-
-    @JSExportDescendentClasses(ignoreInvalidDescendants = true)
-    trait B
-
-    object A {
-      // Local class is not allowed
-      def foo = { new A with B }
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:11: error: You may not export a local class
-      |      def foo = { new A with B }
-      |                      ^
-    """
-  }
-
-  @Test
   def noExportImplicitApply: Unit = {
 
     """
@@ -1059,17 +800,15 @@ class JSExportTest extends DirectTest with TestHelpers {
       |          ^
     """
 
-    // For this case, deprecation warnings are not exactly the same in 2.10.x
     """
     @JSExportAll
     class A {
-      @JSExportNamed("apply")
       @JSExport("foo")
       def apply(): Int = 1
     }
-    """ containsWarns
+    """ hasWarns
     """
-      |newSource1.scala:7: warning: Member cannot be exported to function application. It is available under the name apply instead. Add @JSExport("apply") to silence this warning. This will be enforced in 1.0.
+      |newSource1.scala:6: warning: Member cannot be exported to function application. It is available under the name apply instead. Add @JSExport("apply") to silence this warning. This will be enforced in 1.0.
       |      def apply(): Int = 1
       |          ^
     """

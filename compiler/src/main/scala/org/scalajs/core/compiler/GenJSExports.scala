@@ -74,19 +74,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         val exports = for {
           (jsName, specs) <- ctorExports.groupBy(_._1.jsName) // group by exported name
         } yield {
-          val (namedExports, normalExports) = specs.partition(_._1.isNamed)
-
-          val normalCtors = normalExports.map(s => ExportedSymbol(s._2))
-          val namedCtors = for {
-            (exp, ctor) <- namedExports
-          } yield {
-            implicit val pos = exp.pos
-            ExportedBody(List(JSAnyTpe),
-              genNamedExporterBody(ctor, genFormalArg(1).ref),
-              nme.CONSTRUCTOR.toString, pos)
-          }
-
-          val ctors = normalCtors ++ namedCtors
+          val ctors = specs.map(s => ExportedSymbol(s._2))
 
           implicit val pos = ctors.head.pos
 
@@ -106,7 +94,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         exp <- jsInterop.registeredExportsOf(classSym)
       } yield {
         implicit val pos = exp.pos
-        assert(!exp.isNamed, "Class cannot be exported named")
 
         exp.destination match {
           case ExportDestination.Normal | ExportDestination.TopLevel =>
@@ -123,7 +110,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         exp <- jsInterop.registeredExportsOf(classSym)
       } yield {
         implicit val pos = exp.pos
-        assert(!exp.isNamed, "Module cannot be exported named")
 
         exp.destination match {
           case ExportDestination.Normal =>
@@ -235,66 +221,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         (exportDef, jsName, pos)
       }
-    }
-
-    /** Tests whether the given def a named exporter def that needs to be
-     *  generated with `genNamedExporterDef`.
-     */
-    def isNamedExporterDef(dd: DefDef): Boolean = {
-      jsInterop.isExport(dd.symbol) &&
-      dd.symbol.annotations.exists(_.symbol == JSExportNamedAnnotation)
-    }
-
-    /** Generate the exporter proxy for a named export */
-    def genNamedExporterDef(dd: DefDef): Option[js.MethodDef] = {
-      implicit val pos = dd.pos
-
-      if (isAbstractMethod(dd)) {
-        None
-      } else {
-        val sym = dd.symbol
-
-        val Block(Apply(fun, _) :: Nil, _) = dd.rhs
-        val trgSym = fun.symbol
-
-        val inArg =
-          js.ParamDef(js.Ident("namedParams"), jstpe.AnyType,
-              mutable = false, rest = false)
-        val inArgRef = inArg.ref
-
-        val methodIdent = encodeMethodSym(sym)
-
-        Some(js.MethodDef(static = false, methodIdent,
-            List(inArg), toIRType(sym.tpe.resultType),
-            Some(genNamedExporterBody(trgSym, inArg.ref)))(
-            OptimizerHints.empty, None))
-      }
-    }
-
-    private def genNamedExporterBody(trgSym: Symbol, inArg: js.Tree)(
-        implicit pos: Position) = {
-
-      if (hasRepeatedParam(trgSym)) {
-        reporter.error(pos,
-            "You may not name-export a method with a *-parameter")
-      }
-
-      val jsArgs = for {
-        (pSym, index) <- trgSym.info.params.zipWithIndex
-      } yield {
-        val rhs = js.JSBracketSelect(inArg,
-            js.StringLiteral(pSym.name.decoded))
-        js.VarDef(js.Ident("namedArg$" + index), jstpe.AnyType,
-            mutable = false, rhs = rhs)
-      }
-
-      val jsArgRefs = jsArgs.map(_.ref)
-
-      // Generate JS code to prepare arguments (default getters and unboxes)
-      val jsArgPrep = genPrepareArgs(jsArgRefs, trgSym)
-      val jsResult = genResult(trgSym, jsArgPrep.map(_.ref), static = false)
-
-      js.Block(jsArgs ++ jsArgPrep :+ jsResult)
     }
 
     private def genMemberExport(classSym: Symbol, name: TermName): js.Tree = {

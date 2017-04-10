@@ -199,10 +199,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
           if (shouldPrepareExports && sym.isTrait) {
             // Check that interface/trait is not exported
-            for {
-              exp <- exportsOf(sym)
-              if !exp.ignoreInvalid
-            } reporter.error(exp.pos, "You may not export a trait")
+            for (exp <- exportsOf(sym))
+              reporter.error(exp.pos, "You may not export a trait")
           }
 
           enterOwner(OwnerKind.NonEnumScalaClass) { super.transform(cldef) }
@@ -358,9 +356,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case _ => super.transform(tree)
       }
 
-      if (tree.isInstanceOf[ImplDef])
-        checkDeprecationOfJSExportDescendentClassesObjects(tree.symbol)
-
       postTransform(preTransformedTree)
     }
 
@@ -431,12 +426,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         val sym = memDef.symbol
         if (sym.isLocalToBlock && !sym.owner.isCaseApplyOrUnapply) {
           // We exclude case class apply (and unapply) to work around SI-8826
-          for {
-            exp <- exportsOf(sym)
-            if !exp.ignoreInvalid
-          } {
+          for (exp <- exportsOf(sym))
             reporter.error(exp.pos, "You may not export a local definition")
-          }
         }
 
         // Expose objects (modules) members of Scala.js-defined JS classes
@@ -585,18 +576,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       if (shouldPrepareExports) {
         if (sym.isTrait) {
           // Check that interface/trait is not exported
-          for {
-            exp <- exportsOf(sym)
-            if !exp.ignoreInvalid
-          } {
+          for (exp <- exportsOf(sym))
             reporter.error(exp.pos, "You may not export a trait")
-          }
         } else if (isJSNative) {
           // Check that a JS native type is not exported
-          for {
-            exp <- exportsOf(sym)
-            if !exp.ignoreInvalid
-          } {
+          for (exp <- exportsOf(sym)) {
             reporter.error(exp.pos,
                 "You may not export a native JS class or object")
           }
@@ -750,10 +734,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       if (shouldPrepareExports) {
         // Exports are never valid on members of JS types
         lazy val memType = if (sym.isConstructor) "constructor" else "method"
-        for {
-          exp <- exportsOf(sym)
-          if !exp.ignoreInvalid
-        } {
+        for (exp <- exportsOf(sym)) {
           reporter.error(exp.pos,
               s"You may not export a $memType of a subclass of js.Any")
         }

@@ -392,10 +392,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             () // fields are added via genClassFields()
 
           case dd: DefDef =>
-            if (isNamedExporterDef(dd))
-              generatedMethods ++= genNamedExporterDef(dd)
-            else
-              generatedMethods ++= genMethod(dd)
+            generatedMethods ++= genMethod(dd)
 
           case _ => abort("Illegal tree in gen of genClass(): " + tree)
         }
@@ -798,10 +795,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           case Template(_, _, body) => body.flatMap(gen)
 
           case dd: DefDef =>
-            if (isNamedExporterDef(dd))
-              genNamedExporterDef(dd).toList
-            else
-              genMethod(dd).toList
+            genMethod(dd).toList
 
           case _ =>
             abort("Illegal tree in gen of genInterface(): " + tree)

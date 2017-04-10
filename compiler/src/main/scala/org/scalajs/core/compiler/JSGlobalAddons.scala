@@ -65,7 +65,6 @@ trait JSGlobalAddons extends JSDefinitions
     trait ExportInfo {
       val jsName: String
       val pos: Position
-      val isNamed: Boolean
       val destination: ExportDestination
     }
 
