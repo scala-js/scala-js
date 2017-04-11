@@ -1394,6 +1394,31 @@ object Build {
             supported.map("scalajs." + _ -> "true")
       },
 
+      // And we need to actually use those patched system properties.
+      jsExecutionFiles in (Test, testHtmlKey) := {
+        val previousFiles = (jsExecutionFiles in (Test, testHtmlKey)).value
+
+        val patchedSystemProperties =
+          (scalaJSJavaSystemProperties in (Test, testHtmlKey)).value
+
+        val code = s"""
+          var __ScalaJSEnv = {
+            javaSystemProperties: ${jsonToString(patchedSystemProperties.toJSON)}
+          };
+        """
+
+        val patchedSystemPropertiesFile =
+          new MemVirtualJSFile("setJavaSystemProperties.js").withContent(code)
+
+        // Replace the normal `setJavaSystemProperties.js` file with the patch
+        for (file <- previousFiles) yield {
+          if (file.path == "setJavaSystemProperties.js")
+            patchedSystemPropertiesFile
+          else
+            file
+        }
+      },
+
       // Fail if we are not in the right stage.
       testHtmlKey in Test := (testHtmlKey in Test).dependsOn(Def.task {
         if (scalaJSStage.value != targetStage) {

@@ -20,10 +20,9 @@ import org.scalajs.testadapter.TaskDefSerializers._
 /** Template for the HTML runner. */
 private[scalajs] object HTMLRunnerTemplate {
 
-  def render(baseURI: URI, title: String, sjsFile: URI, jsdepsFile: URI,
+  def render(baseURI: URI, title: String, jsFiles: Seq[URI],
       css: URI, loadedFrameworks: Map[sbt.TestFramework, Framework],
-      definedTests: Seq[sbt.TestDefinition],
-      sysProps: Map[String, String]): String = {
+      definedTests: Seq[sbt.TestDefinition]): String = {
     def relURI(uri: URI) =
       htmlEscaped(Utils.relativize(baseURI, uri).toASCIIString)
 
@@ -34,13 +33,9 @@ private[scalajs] object HTMLRunnerTemplate {
         <title>${htmlEscaped(title)}</title>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <link rel="stylesheet" type="text/css" href="${relURI(css)}" />
-        <script type="text/javascript">
-          var __ScalaJSEnv = {
-            javaSystemProperties: ${jsonToString(sysProps.toJSON)}
-          };
-        </script>
-        <script type="text/javascript" src="${relURI(jsdepsFile)}"></script>
-        <script type="text/javascript" src="${relURI(sjsFile)}"></script>
+        ${(for (jsFile <- jsFiles) yield s"""
+        <script type="text/javascript" src="${relURI(jsFile)}"></script>
+        """).mkString("")}
         <script type="text/javascript">
         ${renderTestDefinitions(loadedFrameworks, definedTests)}
         </script>

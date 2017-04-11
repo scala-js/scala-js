@@ -763,40 +763,64 @@ object ScalaJSPluginInternal {
   )
 
   private def scalaJSTestHtmlTaskSettings(
-      testHtmlKey: TaskKey[Attributed[File]], sjsKey: TaskKey[Attributed[File]],
-      jsdepsKey: TaskKey[File]) = {
-    testHtmlKey := {
-      if ((skip in jsdepsKey).value) {
-        throw new MessageOnlyException(
-            s"(skip in ${jsdepsKey.key}) must be false for ${testHtmlKey.key}.")
-      }
+      testHtmlKey: TaskKey[Attributed[File]],
+      sjsFileKey: TaskKey[Attributed[File]]) = {
+    Def.settings(
+        jsExecutionFiles in testHtmlKey := {
+          /* Forcefully choose the appropriate Scala.js-generated .js file
+           * (fastOptJS or fullOptJS). The way we do this is absolutely hacky.
+           * We find in `inherited` the `VirtualFile` that corresponds to
+           * `scalaJSLinkedFile.value` (which depends on `scalaJSStage`) and
+           * replace it with `sjsFileKey` (which does not). Since tasks are
+           * only evaluated once per command run, we know that
+           * `scalaJSLinkedFile.value` returns the exact same file (as in `eq`)
+           * which we will find in `inherited`, hence we can reliably recognize
+           * the proper and replace it. If we do not find it, we do not touch
+           * anything.
+           */
+          val inherited = jsExecutionFiles.value
+          val stageDependentSJSFile = scalaJSLinkedFile.value
+          val replacementSJSFile = (scalaJSLinkedFile in sjsFileKey).value
+          for (file <- inherited) yield {
+            if (file eq stageDependentSJSFile)
+              replacementSJSFile
+            else
+              file
+          }
+        },
 
-      val log = streams.value.log
-      val output = (artifactPath in testHtmlKey).value
+        testHtmlKey := {
+          val log = streams.value.log
+          val output = (artifactPath in testHtmlKey).value
 
-      val css: java.io.File = {
-        val name = "test-runner.css"
-        val inputStream = getClass.getResourceAsStream(name)
-        try {
-          val outFile = (resourceManaged in testHtmlKey).value / name
-          IO.transfer(inputStream, outFile)
-          outFile
-        } finally {
-          inputStream.close()
+          val jsFileCache = new VirtualFileMaterializer(true)
+          val jsFileURIs = (jsExecutionFiles in testHtmlKey).value.map {
+            case file: FileVirtualFile => file.toURI
+            case file                  => jsFileCache.materialize(file).toURI
+          }
+
+          val css: java.io.File = {
+            val name = "test-runner.css"
+            val inputStream = getClass.getResourceAsStream(name)
+            try {
+              val outFile = (resourceManaged in testHtmlKey).value / name
+              IO.transfer(inputStream, outFile)
+              outFile
+            } finally {
+              inputStream.close()
+            }
+          }
+
+          IO.write(output, HTMLRunnerTemplate.render(output.toURI,
+              name.value + " - tests", jsFileURIs, css.toURI,
+              (loadedTestFrameworks in testHtmlKey).value,
+              (definedTests in testHtmlKey).value))
+
+          log.info(s"Wrote HTML test runner. Point your browser to ${output.toURI}")
+
+          Attributed.blank(output)
         }
-      }
-
-      IO.write(output, HTMLRunnerTemplate.render(output.toURI,
-          name.value + " - tests", (sjsKey in testHtmlKey).value.data.toURI,
-          (jsdepsKey in testHtmlKey).value.toURI, css.toURI,
-          (loadedTestFrameworks in testHtmlKey).value,
-          (definedTests in testHtmlKey).value,
-          (scalaJSJavaSystemProperties in testHtmlKey).value))
-
-      log.info(s"Wrote HTML test runner. Point your browser to ${output.toURI}")
-
-      Attributed.blank(output)
-    }
+    )
   }
 
   val scalaJSTestHtmlSettings = Seq(
@@ -807,10 +831,8 @@ object ScalaJSPluginInternal {
         ((crossTarget in testHtmlFullOpt).value /
             ((moduleName in testHtmlFullOpt).value + "-opt-test.html"))
   ) ++ (
-      scalaJSTestHtmlTaskSettings(testHtmlFastOpt, fastOptJS,
-          packageJSDependencies) ++
-      scalaJSTestHtmlTaskSettings(testHtmlFullOpt, fullOptJS,
-          packageMinifiedJSDependencies)
+      scalaJSTestHtmlTaskSettings(testHtmlFastOpt, fastOptJS) ++
+      scalaJSTestHtmlTaskSettings(testHtmlFullOpt, fullOptJS)
   )
 
   val scalaJSTestSettings = (
