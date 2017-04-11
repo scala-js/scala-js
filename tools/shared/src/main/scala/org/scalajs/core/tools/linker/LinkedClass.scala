@@ -211,31 +211,4 @@ object LinkedClass {
         version = None)
   }
 
-  def dummyParent(encodedName: String, version: Option[String]): LinkedClass = {
-    import ir.Trees.{Ident, OptimizerHints}
-
-    implicit val pos = Position.NoPosition
-
-    new LinkedClass(
-        name = Ident(encodedName),
-        kind = ClassKind.Class,
-        superClass = Some(Ident(Definitions.ObjectClass)),
-        interfaces = Nil,
-        jsNativeLoadSpec = None,
-        fields = Nil,
-        staticMethods = Nil,
-        memberMethods = Nil,
-        abstractMethods = Nil,
-        exportedMembers = Nil,
-        classExports = Nil,
-        classExportInfo = None,
-        optimizerHints = OptimizerHints.empty,
-        pos = Position.NoPosition,
-        ancestors = List(Definitions.ObjectClass, encodedName),
-        hasInstances = true,
-        hasInstanceTests = true,
-        hasRuntimeTypeInfo = true,
-        version = version)
-  }
-
 }

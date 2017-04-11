@@ -25,13 +25,11 @@ private final class Analyzer(semantics: Semantics,
   import Analyzer._
   import Analysis._
 
-  private[this] var _allAvailable: Boolean = true
   private[this] val _classInfos = mutable.Map.empty[String, ClassInfo]
   private[this] val _errors = mutable.Buffer.empty[Error]
 
   private val fromAnalyzer = FromCore("analyzer")
 
-  def allAvailable: Boolean = _allAvailable
   def classInfos: scala.collection.Map[String, Analysis.ClassInfo] = _classInfos
   def errors: Seq[Error] = _errors
 
@@ -668,10 +666,8 @@ private final class Analyzer(semantics: Semantics,
     }
 
     def checkExistent()(implicit from: From): Unit = {
-      if (nonExistent) {
+      if (nonExistent)
         _errors += MissingClass(this, from)
-        _allAvailable = false
-      }
     }
 
     def callMethod(methodName: String, statically: Boolean = false)(
@@ -771,10 +767,8 @@ private final class Analyzer(semantics: Semantics,
     }
 
     private def checkExistent()(implicit from: From) = {
-      if (nonExistent) {
+      if (nonExistent)
         _errors += MissingMethod(this, from)
-        _allAvailable = false
-      }
     }
 
     private[this] def doReach(): Unit = {

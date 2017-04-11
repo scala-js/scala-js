@@ -41,7 +41,6 @@ object Scalajsld {
     prettyPrint: Boolean = false,
     sourceMap: Boolean = false,
     relativizeSourceMap: Option[URI] = None,
-    bypassLinkingErrors: Boolean = false,
     checkIR: Boolean = false,
     stdLib: Option[File] = None,
     logLevel: Level = Level.Info)
@@ -123,9 +122,6 @@ object Scalajsld {
       opt[ModuleKind]('k', "moduleKind")
         .action { (kind, c) => c.copy(moduleKind = kind) }
         .text("Module kind " + ModuleKind.All.mkString("(", ", ", ")"))
-      opt[Unit]('b', "bypassLinkingErrors")
-        .action { (_, c) => c.copy(bypassLinkingErrors = true) }
-        .text("Only warn if there are linking errors (deprecated)")
       opt[Unit]('c', "checkIR")
         .action { (_, c) => c.copy(checkIR = true) }
         .text("Check IR before optimizing")
@@ -177,19 +173,11 @@ object Scalajsld {
             "if you rely on this feature.")
       }
 
-      // Warn if bypassing linking errors was requested.
-      if (options.bypassLinkingErrors) {
-        Console.err.println(
-            "Support for bypassing linking errors with -b or " +
-            "--bypassLinkingErrors will be dropped in the next major version.")
-      }
-
       val semantics =
         if (options.fullOpt) options.semantics.optimized
         else options.semantics
 
       val frontendConfig = LinkerFrontend.Config()
-        .withBypassLinkingErrorsInternal(options.bypassLinkingErrors)
         .withCheckIR(options.checkIR)
 
       val backendConfig = LinkerBackend.Config()

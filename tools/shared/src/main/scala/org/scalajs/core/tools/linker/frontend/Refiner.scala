@@ -31,38 +31,32 @@ final class Refiner {
           unit.infosInternal.values.toList, allowAddingSyntheticMethods = false)
     }
 
-    /* There really should not be linking errors at this point. If there are,
-     * it is most likely a bug in the optimizer. We should crash here, but we
-     * used to silently ignore any errors before 0.6.6. So currently we only
-     * warn, not to break compatibility.
-     * TODO Issue errors when we can break backward compatibility.
+    /* There must not be linking errors at this point. If there are, it is a
+     * bug in the optimizer.
      */
-    analysis.errors.foreach(Analysis.logError(_, logger, Level.Warn))
+    if (analysis.errors.nonEmpty) {
+      analysis.errors.foreach(Analysis.logError(_, logger, Level.Error))
+      throw new AssertionError(
+          "There were linking errors after the optimizer has run. " +
+          "This is a bug, please report it. " +
+          "You can work around the bug by disabling the optimizer. " +
+          "In the sbt plugin, this can be done with " +
+          "`scalaJSOptimizerOptions ~= { _.withDisableOptimizer(true) }`.")
+    }
 
     logger.time("Refiner: Assemble LinkedClasses") {
       val linkedClassesByName =
         Map(unit.classDefs.map(c => c.encodedName -> c): _*)
 
-      def optClassDef(analyzerInfo: Analysis.ClassInfo) = {
-        val encodedName = analyzerInfo.encodedName
-
-        def optDummyParent =
-          if (!analyzerInfo.isAnySubclassInstantiated) None
-          else Some(LinkedClass.dummyParent(encodedName, Some("dummy")))
-
-        linkedClassesByName.get(encodedName).map {
-          refineClassDef(_, analyzerInfo)
-        }.orElse(optDummyParent)
+      val linkedClassDefs = for {
+        analyzerInfo <- analysis.classInfos.values
+        if analyzerInfo.isNeededAtAll
+      } yield {
+        refineClassDef(linkedClassesByName(analyzerInfo.encodedName),
+            analyzerInfo)
       }
 
-      val linkedClassDefs = for {
-        classInfo <- analysis.classInfos.values
-        if classInfo.isNeededAtAll
-        linkedClassDef <- optClassDef(classInfo)
-      } yield linkedClassDef
-
-      unit.updatedInternal(classDefs = linkedClassDefs.toList,
-          isComplete = analysis.allAvailable)
+      unit.updated(classDefs = linkedClassDefs.toList)
     }
   }
 

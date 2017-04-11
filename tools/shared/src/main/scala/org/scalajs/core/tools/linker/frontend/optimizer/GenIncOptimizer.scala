@@ -120,8 +120,6 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
 
   /** Update the incremental analyzer with a new run. */
   def update(unit: LinkingUnit, logger: Logger): LinkingUnit = {
-    require(unit.isComplete, "Cannot optimize incomplete LinkingUnits")
-
     withLogger(logger) {
       batchMode = objectClass == null
       logger.debug(s"Inc. optimizer: Batch mode: $batchMode")
@@ -152,7 +150,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
             memberMethods = defs(memberNamespace))
       }
 
-      unit.updatedInternal(classDefs = newLinkedClasses, isComplete = true)
+      unit.updated(classDefs = newLinkedClasses)
     }
   }
 
