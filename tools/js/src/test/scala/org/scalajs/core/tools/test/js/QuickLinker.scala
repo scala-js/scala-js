@@ -4,7 +4,6 @@ import java.io.InputStream
 
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.io.IRFileCache.IRContainer
 import org.scalajs.core.tools.linker.{ModuleInitializer, Linker}
 import org.scalajs.core.tools.linker.backend.{OutputMode, ModuleKind}
 import org.scalajs.core.tools.logging._
@@ -46,14 +45,12 @@ object QuickLinker {
 
     val irContainers = irFilesAndJars.map { file =>
       if (file.endsWith(".jar")) {
-        val vf = new NodeVirtualJarFile(file)
-        IRContainer.Jar(vf)
+        new NodeVirtualJarFile(file)
       } else if (file.endsWith(".sjsir")) {
-        val vf = new NodeVirtualScalaJSIRFile(file) with RelativeVirtualFile {
+        new NodeVirtualScalaJSIRFile(file) with VirtualRelativeScalaJSIRFile {
           // The compiler should not use this (only scalajsp does)
           def relativePath: String = s"<dummy relative path from $getClass>"
         }
-        IRContainer.File(vf)
       } else {
         sys.error("Illegal IR file / Jar: " + file)
       }

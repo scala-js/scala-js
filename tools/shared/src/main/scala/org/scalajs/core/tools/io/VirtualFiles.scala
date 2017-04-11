@@ -118,6 +118,20 @@ trait WritableVirtualJSFile extends WritableVirtualTextFile with VirtualJSFile {
   def sourceMapWriter: Writer
 }
 
+/** A virtual file containing Scala.js IR.
+ *
+ *  This can be a [[VirtualScalaJSIRFile]] (with [[RelativeVirtualFile]]) or a
+ *  [[VirtualFileContainer]].
+ *
+ *  The main difference compared to using individual files
+ *  (that are extracted beforehand) is that the fileset can be versioned at a
+ *  higher level: the container needs to change its version when any of the
+ *  files change. Therefore, the entire extraction process can be cached.
+ */
+trait ScalaJSIRContainer extends VirtualFile {
+  def sjsirFiles: List[VirtualRelativeScalaJSIRFile]
+}
+
 /** A virtual Scala.js IR file.
  *  It contains the class info and the IR tree.
  */
@@ -132,6 +146,11 @@ trait VirtualScalaJSIRFile extends VirtualFile {
 
   /** Class info and IR tree of this file. */
   def infoAndTree: (ir.Infos.ClassInfo, ir.Trees.ClassDef)
+}
+
+trait VirtualRelativeScalaJSIRFile extends VirtualScalaJSIRFile
+    with RelativeVirtualFile with ScalaJSIRContainer {
+  def sjsirFiles: List[VirtualRelativeScalaJSIRFile] = this :: Nil
 }
 
 /** Base trait for virtual Scala.js IR files that are serialized as binary file.
@@ -178,7 +197,7 @@ trait VirtualSerializedScalaJSIRFile extends VirtualBinaryFile with VirtualScala
  *  This is a generic virtual container for embedded virtual files, especially
  *  one found on a classpath such as a jar, and containing `.sjsir` files.
  */
-trait VirtualFileContainer extends VirtualFile {
+trait VirtualFileContainer extends ScalaJSIRContainer {
   import VirtualFileContainer._
 
   /** Lists the entries of this container that satisfy a given predicate.
@@ -203,7 +222,7 @@ trait VirtualFileContainer extends VirtualFile {
    *  efficient than using `listEntries` with a predicate
    *  `_.endsWith(".sjsir")`.
    */
-  def sjsirFiles: List[VirtualScalaJSIRFile with RelativeVirtualFile] = {
+  def sjsirFiles: List[VirtualRelativeScalaJSIRFile] = {
     listEntries(_.endsWith(".sjsir")) { (relPath, stream) =>
       val file = new EntryIRFile(path, relPath)
       file.content = IO.readInputStreamToByteArray(stream)
@@ -232,7 +251,7 @@ trait VirtualFileContainer extends VirtualFile {
 private object VirtualFileContainer {
   private class EntryIRFile(outerPath: String, val relativePath: String)
       extends MemVirtualSerializedScalaJSIRFile(s"$outerPath:$relativePath")
-      with RelativeVirtualFile
+      with VirtualRelativeScalaJSIRFile
 
   private class EntryJSFile(outerPath: String, val relativePath: String)
       extends MemVirtualJSFile(s"$outerPath:$relativePath")

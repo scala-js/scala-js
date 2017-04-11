@@ -387,13 +387,9 @@ object ScalaJSPluginInternal {
       }.dependsOn(scalaJSClearCacheStats).value,
 
       scalaJSIR := {
-        import IRFileCache.IRContainer
-
-        val rawIR = collectFromClasspath(fullClasspath.value,
-            "*.sjsir", collectJar = jar => IRContainer.Jar(jar) :: Nil,
-            collectFile = { (file, relPath) =>
-              IRContainer.File(FileVirtualScalaJSIRFile.relative(file, relPath))
-            })
+        val rawIR = collectFromClasspath(fullClasspath.value, "*.sjsir",
+            collectJar = Seq(_),
+            collectFile = FileVirtualScalaJSIRFile.relative)
 
         val cache = scalaJSIRCache.value
         rawIR.map(cache.cached)
