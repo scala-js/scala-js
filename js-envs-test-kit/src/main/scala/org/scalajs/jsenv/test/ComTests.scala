@@ -16,7 +16,7 @@ trait ComTests extends AsyncTests {
 
   protected def comRunner(code: String): ComJSRunner = {
     val codeVF = new MemVirtualJSFile("testScript.js").withContent(code)
-    newJSEnv.comRunner(codeVF)
+    newJSEnv.comRunner(codeVF :: Nil)
   }
 
   private def assertThrowClosed(msg: String, body: => Unit): Unit = {

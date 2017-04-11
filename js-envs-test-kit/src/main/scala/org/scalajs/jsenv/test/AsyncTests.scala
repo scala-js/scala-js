@@ -20,7 +20,7 @@ trait AsyncTests extends BasicJSEnvTests {
 
   protected def asyncRunner(code: String): AsyncJSRunner = {
     val codeVF = new MemVirtualJSFile("testScript.js").withContent(code)
-    newJSEnv.asyncRunner(codeVF)
+    newJSEnv.asyncRunner(codeVF :: Nil)
   }
 
   protected def start(runner: AsyncJSRunner): Future[Unit] = {

@@ -36,8 +36,7 @@ abstract class ExternalJSEnv(
   protected def customInitFiles(): Seq[VirtualJSFile] = Nil
 
   protected class AbstractExtRunner(
-      protected val libs: Seq[VirtualJSFile],
-      protected val code: VirtualJSFile) extends JSInitFiles {
+      protected val files: Seq[VirtualJSFile]) extends JSInitFiles {
 
     private[this] var _logger: Logger = _
     private[this] var _console: JSConsole = _
@@ -71,13 +70,15 @@ abstract class ExternalJSEnv(
     protected def getVMEnv(): Map[String, String] =
       sys.env ++ env
 
-    /** Get files that are a library (i.e. that do not run anything) */
-    protected def getLibJSFiles(): Seq[VirtualJSFile] =
-      initFiles() ++ customInitFiles() ++ libs
-
-    /** Get all files that are passed to VM (libraries and code) */
+    /** All the JS files that are passed to the VM.
+     *
+     *  This method can overridden to provide custom behavior in subclasses.
+     *
+     *  The default value in `ExternalJSEnv` is
+     *  `initFiles() ++ customInitFiles() ++ files`.
+     */
     protected def getJSFiles(): Seq[VirtualJSFile] =
-      getLibJSFiles() :+ code
+      initFiles() ++ customInitFiles() ++ files
 
     /** write a single JS file to a writer using an include fct if appropriate */
     protected def writeJSFile(file: VirtualJSFile, writer: Writer): Unit = {
@@ -153,8 +154,8 @@ abstract class ExternalJSEnv(
 
   }
 
-  protected class ExtRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
-      extends AbstractExtRunner(libs, code) with JSRunner {
+  protected class ExtRunner(files: Seq[VirtualJSFile])
+      extends AbstractExtRunner(files) with JSRunner {
 
     def run(logger: Logger, console: JSConsole): Unit = {
       setupLoggerAndConsole(logger, console)
@@ -166,8 +167,8 @@ abstract class ExternalJSEnv(
     }
   }
 
-  protected class AsyncExtRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
-      extends AbstractExtRunner(libs, code) with AsyncJSRunner {
+  protected class AsyncExtRunner(files: Seq[VirtualJSFile])
+      extends AbstractExtRunner(files) with AsyncJSRunner {
 
     private[this] var vmInst: Process = null
     private[this] var ioThreadEx: Throwable = null

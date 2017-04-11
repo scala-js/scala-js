@@ -41,29 +41,23 @@ class NodeJSEnv private (
 
   protected def vmName: String = "Node.js"
 
-  override def jsRunner(libs: Seq[VirtualJSFile],
-      code: VirtualJSFile): JSRunner = {
-    new NodeRunner(libs, code)
-  }
+  override def jsRunner(files: Seq[VirtualJSFile]): JSRunner =
+    new NodeRunner(files)
 
-  override def asyncRunner(libs: Seq[VirtualJSFile],
-      code: VirtualJSFile): AsyncJSRunner = {
-    new AsyncNodeRunner(libs, code)
-  }
+  override def asyncRunner(files: Seq[VirtualJSFile]): AsyncJSRunner =
+    new AsyncNodeRunner(files)
 
-  override def comRunner(libs: Seq[VirtualJSFile],
-      code: VirtualJSFile): ComJSRunner = {
-    new ComNodeRunner(libs, code)
-  }
+  override def comRunner(files: Seq[VirtualJSFile]): ComJSRunner =
+    new ComNodeRunner(files)
 
-  protected class NodeRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
-      extends ExtRunner(libs, code) with AbstractBasicNodeRunner
+  protected class NodeRunner(files: Seq[VirtualJSFile])
+      extends ExtRunner(files) with AbstractBasicNodeRunner
 
-  protected class AsyncNodeRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
-      extends AsyncExtRunner(libs, code) with AbstractBasicNodeRunner
+  protected class AsyncNodeRunner(files: Seq[VirtualJSFile])
+      extends AsyncExtRunner(files) with AbstractBasicNodeRunner
 
-  protected class ComNodeRunner(libs: Seq[VirtualJSFile], code: VirtualJSFile)
-      extends AsyncNodeRunner(libs, code) with NodeComJSRunner
+  protected class ComNodeRunner(files: Seq[VirtualJSFile])
+      extends AsyncNodeRunner(files) with NodeComJSRunner
 
   protected trait AbstractBasicNodeRunner extends AbstractNodeRunner {
 

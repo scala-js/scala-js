@@ -710,9 +710,7 @@ object ScalaJSPluginInternal {
         log.info("Running " + mainClass.value.getOrElse("<unknown class>"))
         log.debug(s"with JSEnv ${jsEnv.name}")
 
-        val dummyLauncher = new MemVirtualJSFile("No-op generated launcher file")
-
-        jsEnv.jsRunner(dummyLauncher).run(
+        jsEnv.jsRunner(Nil).run(
             sbtLogger2ToolsLogger(log), scalaJSConsole.value)
       },
 

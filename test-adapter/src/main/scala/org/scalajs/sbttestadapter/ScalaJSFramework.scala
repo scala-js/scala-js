@@ -58,7 +58,7 @@ final class ScalaJSFramework(
   private[testadapter] def runDone(): Unit = synchronized(_isRunning = false)
 
   private def fetchFrameworkInfo() = {
-    val runner = libEnv.comRunner(frameworkInfoLauncher)
+    val runner = libEnv.comRunner(frameworkInfoLauncher :: Nil)
     runner.start(logger, jsConsole)
 
     try {
