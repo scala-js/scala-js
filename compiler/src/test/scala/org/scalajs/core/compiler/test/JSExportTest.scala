@@ -10,11 +10,49 @@ import org.junit.Assume._
 class JSExportTest extends DirectTest with TestHelpers {
 
   override def extraArgs: List[String] =
-    super.extraArgs ::: List("-deprecation", "-P:scalajs:suppressExportDeprecations")
+    super.extraArgs ::: List("-deprecation")
 
   override def preamble: String =
     """import scala.scalajs.js, js.annotation._
     """
+
+  @Test
+  def noJSExportClass: Unit = {
+    """
+    @JSExport
+    class A
+
+    @JSExport("Foo")
+    class B
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
+      |    @JSExport
+      |     ^
+      |newSource1.scala:6: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
+      |    @JSExport("Foo")
+      |     ^
+    """
+  }
+
+  @Test
+  def noJSExportObject: Unit = {
+    """
+    @JSExport
+    object A
+
+    @JSExport("Foo")
+    object B
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
+      |    @JSExport
+      |     ^
+      |newSource1.scala:6: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
+      |    @JSExport("Foo")
+      |     ^
+    """
+  }
 
   @Test
   def noDoubleUnderscoreExport: Unit = {
@@ -28,10 +66,10 @@ class JSExportTest extends DirectTest with TestHelpers {
       def bar__(x: Int) = x
     }
 
-    @JSExport
+    @JSExportTopLevel("B__")
     class B__
 
-    @JSExport
+    @JSExportTopLevel("C__")
     class C__ extends js.Object
     """ hasErrors
     """
@@ -41,12 +79,12 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:8: error: An exported name may not contain a double underscore (`__`)
       |      def bar__(x: Int) = x
       |          ^
-      |newSource1.scala:12: error: An exported name may not contain a double underscore (`__`)
-      |    class B__
-      |          ^
-      |newSource1.scala:15: error: An exported name may not contain a double underscore (`__`)
-      |    class C__ extends js.Object
-      |          ^
+      |newSource1.scala:11: error: An exported name may not contain a double underscore (`__`)
+      |    @JSExportTopLevel("B__")
+      |                      ^
+      |newSource1.scala:14: error: An exported name may not contain a double underscore (`__`)
+      |    @JSExportTopLevel("C__")
+      |                      ^
     """
   }
 
@@ -152,10 +190,10 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a local class
+      |newSource1.scala:5: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
       |        @JSExport
       |         ^
-      |newSource1.scala:8: error: You may not export a local class
+      |newSource1.scala:8: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
       |        @JSExport
       |         ^
     """
@@ -173,10 +211,10 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a local object
+      |newSource1.scala:5: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
       |        @JSExport
       |         ^
-      |newSource1.scala:8: error: You may not export a local object
+      |newSource1.scala:8: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
       |        @JSExport
       |         ^
     """
@@ -266,33 +304,33 @@ class JSExportTest extends DirectTest with TestHelpers {
   def noExportAbstractClass: Unit = {
 
     """
-    @JSExport
+    @JSExportTopLevel("A")
     abstract class A
 
     abstract class B(x: Int) {
-      @JSExport
+      @JSExportTopLevel("B")
       def this() = this(5)
     }
 
-    @JSExport
+    @JSExportTopLevel("C")
     abstract class C extends js.Object
     """ hasErrors
     """
       |newSource1.scala:3: error: You may not export an abstract class
-      |    @JSExport
+      |    @JSExportTopLevel("A")
       |     ^
       |newSource1.scala:7: error: You may not export an abstract class
-      |      @JSExport
+      |      @JSExportTopLevel("B")
       |       ^
       |newSource1.scala:11: error: You may not export an abstract class
-      |    @JSExport
+      |    @JSExportTopLevel("C")
       |     ^
     """
 
   }
 
   @Test
-  def noExportTrait: Unit = {
+  def noJSExportOnTrait: Unit = {
 
     """
     @JSExport
@@ -323,58 +361,58 @@ class JSExportTest extends DirectTest with TestHelpers {
   def noExportNonPublicClassOrObject: Unit = {
 
     """
-    @JSExport
+    @JSExportTopLevel("A")
     private class A
 
-    @JSExport
+    @JSExportTopLevel("B")
     protected[this] class B
 
-    @JSExport
+    @JSExportTopLevel("C")
     private class C extends js.Object
 
-    @JSExport
+    @JSExportTopLevel("D")
     protected[this] class D extends js.Object
     """ hasErrors
     """
       |newSource1.scala:3: error: You may only export public and protected classes
-      |    @JSExport
+      |    @JSExportTopLevel("A")
       |     ^
       |newSource1.scala:6: error: You may only export public and protected classes
-      |    @JSExport
+      |    @JSExportTopLevel("B")
       |     ^
       |newSource1.scala:9: error: You may only export public and protected classes
-      |    @JSExport
+      |    @JSExportTopLevel("C")
       |     ^
       |newSource1.scala:12: error: You may only export public and protected classes
-      |    @JSExport
+      |    @JSExportTopLevel("D")
       |     ^
     """
 
     """
-    @JSExport
+    @JSExportTopLevel("A")
     private object A
 
-    @JSExport
+    @JSExportTopLevel("B")
     protected[this] object B
 
-    @JSExport
+    @JSExportTopLevel("C")
     private object C extends js.Object
 
-    @JSExport
+    @JSExportTopLevel("D")
     protected[this] object D extends js.Object
     """ hasErrors
     """
       |newSource1.scala:3: error: You may only export public and protected objects
-      |    @JSExport
+      |    @JSExportTopLevel("A")
       |     ^
       |newSource1.scala:6: error: You may only export public and protected objects
-      |    @JSExport
+      |    @JSExportTopLevel("B")
       |     ^
       |newSource1.scala:9: error: You may only export public and protected objects
-      |    @JSExport
+      |    @JSExportTopLevel("C")
       |     ^
       |newSource1.scala:12: error: You may only export public and protected objects
-      |    @JSExport
+      |    @JSExportTopLevel("D")
       |     ^
     """
 
@@ -419,13 +457,13 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
+      |newSource1.scala:4: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
       |      @JSExport
       |       ^
-      |newSource1.scala:6: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
+      |newSource1.scala:6: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
       |        @JSExport
       |         ^
-      |newSource1.scala:10: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
+      |newSource1.scala:10: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
       |      @JSExport
       |       ^
     """
@@ -433,7 +471,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noImplicitNameNestedExportClass: Unit = {
+  def noNestedExportClass: Unit = {
 
     """
     object A {
@@ -448,13 +486,14 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: You must set an explicit name for exports of nested classes.
+
+      |newSource1.scala:4: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
       |      @JSExport
       |       ^
-      |newSource1.scala:6: error: You must set an explicit name for exports of nested classes.
+      |newSource1.scala:6: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
       |        @JSExport
       |         ^
-      |newSource1.scala:10: error: You must set an explicit name for exports of nested classes.
+      |newSource1.scala:10: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
       |      @JSExport
       |       ^
     """
@@ -462,30 +501,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportNestedObject: Unit = {
-
-    """
-    class A {
-      @JSExport
-      object Nested
-
-      @JSExport
-      object Nested2 extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:4: error: You may not export a nested object
-      |      @JSExport
-      |       ^
-      |newSource1.scala:7: error: You may not export a nested object
-      |      @JSExport
-      |       ^
-    """
-
-  }
-
-  @Test
-  def noImplicitNameNestedExportObject: Unit = {
+  def noNestedExportObject: Unit = {
 
     """
     object A {
@@ -497,10 +513,10 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: You must set an explicit name for exports of nested classes.
+      |newSource1.scala:4: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
       |      @JSExport
       |       ^
-      |newSource1.scala:7: error: You must set an explicit name for exports of nested classes.
+      |newSource1.scala:7: error: @JSExport is forbidden on objects and classes. Use @JSExportTopLevel instead.
       |      @JSExport
       |       ^
     """
@@ -508,52 +524,75 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportJSRaw: Unit = {
+  def noExportTopLevelNestedObject: Unit = {
+
+    """
+    class A {
+      @JSExportTopLevel("Nested")
+      object Nested
+
+      @JSExportTopLevel("Nested2")
+      object Nested2 extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a nested object
+      |      @JSExportTopLevel("Nested")
+      |       ^
+      |newSource1.scala:7: error: You may not export a nested object
+      |      @JSExportTopLevel("Nested2")
+      |       ^
+    """
+
+  }
+
+  @Test
+  def noExportJSNative: Unit = {
 
     """
     import scala.scalajs.js
 
-    @JSExport
+    @JSExportTopLevel("A")
     @js.native
     @JSGlobal("Dummy")
     object A extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a native JS class or object
-      |    @JSExport
+      |newSource1.scala:5: error: You may not export a native JS object
+      |    @JSExportTopLevel("A")
       |     ^
     """
 
     """
     import scala.scalajs.js
 
-    @JSExport
+    @JSExportTopLevel("A")
     @js.native
     trait A extends js.Object
     """ hasErrors
     """
       |newSource1.scala:5: error: You may not export a trait
-      |    @JSExport
+      |    @JSExportTopLevel("A")
       |     ^
     """
 
     """
     import scala.scalajs.js
 
-    @JSExport
+    @JSExportTopLevel("A")
     @js.native
     @JSGlobal("Dummy")
     class A extends js.Object {
-      @JSExport
+      @JSExportTopLevel("A")
       def this(x: Int) = this()
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a native JS class or object
-      |    @JSExport
+      |newSource1.scala:5: error: You may not export a native JS class
+      |    @JSExportTopLevel("A")
       |     ^
       |newSource1.scala:9: error: You may not export a constructor of a subclass of js.Any
-      |      @JSExport
+      |      @JSExportTopLevel("A")
       |       ^
     """
 
@@ -827,7 +866,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   def exportObjectAsToString: Unit = {
 
     """
-    @JSExport("toString")
+    @JSExportTopLevel("toString")
     object ExportAsToString
     """.succeeds
 
@@ -1007,7 +1046,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: Only static objects may export their members to the top level
+      |newSource1.scala:4: error: You may not export a nested object
       |      @JSExportTopLevel("Foo")
       |       ^
     """
@@ -1019,7 +1058,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: Only static objects may export their members to the top level
+      |newSource1.scala:4: error: You may not export a nested object
       |      @JSExportTopLevel("Foo")
       |       ^
     """
@@ -1031,7 +1070,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: Only static objects may export their members to the top level
+      |newSource1.scala:4: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
       |      @JSExportTopLevel("Foo")
       |       ^
     """
@@ -1043,9 +1082,54 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: Only static objects may export their members to the top level
+      |newSource1.scala:4: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
       |      @JSExportTopLevel("Foo")
       |       ^
+    """
+  }
+
+  @Test
+  def noExportTopLevelLocal: Unit = {
+    // Local class
+    """
+    class A {
+      def method = {
+        @JSExportTopLevel("A")
+        class A
+
+        @JSExportTopLevel("B")
+        class B extends js.Object
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: You may not export a local class
+      |        @JSExportTopLevel("A")
+      |         ^
+      |newSource1.scala:8: error: You may not export a local class
+      |        @JSExportTopLevel("B")
+      |         ^
+    """
+
+    // Local object
+    """
+    class A {
+      def method = {
+        @JSExportTopLevel("A")
+        object A
+
+        @JSExportTopLevel("B")
+        object B extends js.Object
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: You may not export a local object
+      |        @JSExportTopLevel("A")
+      |         ^
+      |newSource1.scala:8: error: You may not export a local object
+      |        @JSExportTopLevel("B")
+      |         ^
     """
   }
 
