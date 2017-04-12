@@ -535,6 +535,35 @@ object ScalaJSPluginInternal {
             .put(scalaJSSourceFiles, realFiles)
       },
 
+      // Add the resolved JS dependencies to the list of JS files given to envs
+      jsExecutionFiles ++= {
+        val deps = resolvedJSDependencies.value.data
+
+        /* Implement the behavior of commonJSName without having to burn it
+         * inside NodeJSEnv, and hence in the JSEnv API.
+         * Since this matches against NodeJSEnv specifically, it obviously
+         * breaks the OO approach, but oh well ...
+         */
+        resolvedJSEnv.value match {
+          case _: org.scalajs.jsenv.nodejs.NodeJSEnv =>
+            val libCache = new VirtualFileMaterializer(false)
+
+            for (dep <- deps) yield {
+              dep.info.commonJSName.fold {
+                dep.lib
+              } { commonJSName =>
+                val fname = libCache.materialize(dep.lib).getAbsolutePath
+                new MemVirtualJSFile(s"require-$fname").withContent(
+                  s"""$commonJSName = require("${escapeJS(fname)}");"""
+                )
+              }
+            }
+
+          case _ =>
+            deps.map(_.lib)
+        }
+      },
+
       // Give tasks ability to check we are not forking at build reading time
       scalaJSEnsureUnforked := {
         if (fork.value)
@@ -560,7 +589,8 @@ object ScalaJSPluginInternal {
         }.toMap
       },
 
-      scalaJSConfigurationLibs ++= {
+      // Optionally add a JS file defining Java system properties
+      jsExecutionFiles ++= {
         val javaSystemProperties = scalaJSJavaSystemProperties.value
         if (javaSystemProperties.isEmpty) {
           Nil
@@ -573,45 +603,14 @@ object ScalaJSPluginInternal {
             "var __ScalaJSEnv = (typeof __ScalaJSEnv === \"object\" && __ScalaJSEnv) ? __ScalaJSEnv : {};\n" +
             "__ScalaJSEnv.javaSystemProperties = {" + formattedProps.mkString(", ") + "};\n"
           }
-          Seq(ResolvedJSDependency.minimal(
-              new MemVirtualJSFile("setJavaSystemProperties.js").withContent(code)))
+          Seq(new MemVirtualJSFile("setJavaSystemProperties.js").withContent(code))
         }
       },
 
-      loadedJSEnv := {
-        val log = streams.value.log
-        val env = resolvedJSEnv.value
-        val deps =
-          resolvedJSDependencies.value.data ++ scalaJSConfigurationLibs.value
+      // Crucially, add the Scala.js linked file to the JS files
+      jsExecutionFiles += scalaJSLinkedFile.value,
 
-        /* Implement the behavior of commonJSName without having to burn it
-         * inside NodeJSEnv, and hence in the JSEnv API.
-         * Since this matches against NodeJSEnv specifically, it obviously
-         * breaks the OO approach, but oh well ...
-         */
-        val libs = env match {
-          case _: org.scalajs.jsenv.nodejs.NodeJSEnv =>
-            val libCache = new VirtualFileMaterializer(false)
-
-            for (dep <- deps) yield {
-              dep.info.commonJSName.fold {
-                dep.lib
-              } { commonJSName =>
-                val fname = libCache.materialize(dep.lib).getAbsolutePath
-                new MemVirtualJSFile(s"require-$fname").withContent(
-                  s"""$commonJSName = require("${escapeJS(fname)}");"""
-                )
-              }
-            }
-
-          case _ =>
-            deps.map(_.lib)
-        }
-
-        val file = scalaJSLinkedFile.value
-        log.debug(s"Loading JSEnv with linked file ${file.path}")
-        env.loadLibs(libs :+ file)
-      },
+      loadedJSEnv := resolvedJSEnv.value.loadLibs(jsExecutionFiles.value),
 
       scalaJSModuleIdentifier := Def.taskDyn[Option[String]] {
         scalaJSModuleKind.value match {
@@ -764,40 +763,64 @@ object ScalaJSPluginInternal {
   )
 
   private def scalaJSTestHtmlTaskSettings(
-      testHtmlKey: TaskKey[Attributed[File]], sjsKey: TaskKey[Attributed[File]],
-      jsdepsKey: TaskKey[File]) = {
-    testHtmlKey := {
-      if ((skip in jsdepsKey).value) {
-        throw new MessageOnlyException(
-            s"(skip in ${jsdepsKey.key}) must be false for ${testHtmlKey.key}.")
-      }
+      testHtmlKey: TaskKey[Attributed[File]],
+      sjsFileKey: TaskKey[Attributed[File]]) = {
+    Def.settings(
+        jsExecutionFiles in testHtmlKey := {
+          /* Forcefully choose the appropriate Scala.js-generated .js file
+           * (fastOptJS or fullOptJS). The way we do this is absolutely hacky.
+           * We find in `inherited` the `VirtualFile` that corresponds to
+           * `scalaJSLinkedFile.value` (which depends on `scalaJSStage`) and
+           * replace it with `sjsFileKey` (which does not). Since tasks are
+           * only evaluated once per command run, we know that
+           * `scalaJSLinkedFile.value` returns the exact same file (as in `eq`)
+           * which we will find in `inherited`, hence we can reliably recognize
+           * the proper and replace it. If we do not find it, we do not touch
+           * anything.
+           */
+          val inherited = jsExecutionFiles.value
+          val stageDependentSJSFile = scalaJSLinkedFile.value
+          val replacementSJSFile = (scalaJSLinkedFile in sjsFileKey).value
+          for (file <- inherited) yield {
+            if (file eq stageDependentSJSFile)
+              replacementSJSFile
+            else
+              file
+          }
+        },
 
-      val log = streams.value.log
-      val output = (artifactPath in testHtmlKey).value
+        testHtmlKey := {
+          val log = streams.value.log
+          val output = (artifactPath in testHtmlKey).value
 
-      val css: java.io.File = {
-        val name = "test-runner.css"
-        val inputStream = getClass.getResourceAsStream(name)
-        try {
-          val outFile = (resourceManaged in testHtmlKey).value / name
-          IO.transfer(inputStream, outFile)
-          outFile
-        } finally {
-          inputStream.close()
+          val jsFileCache = new VirtualFileMaterializer(true)
+          val jsFileURIs = (jsExecutionFiles in testHtmlKey).value.map {
+            case file: FileVirtualFile => file.toURI
+            case file                  => jsFileCache.materialize(file).toURI
+          }
+
+          val css: java.io.File = {
+            val name = "test-runner.css"
+            val inputStream = getClass.getResourceAsStream(name)
+            try {
+              val outFile = (resourceManaged in testHtmlKey).value / name
+              IO.transfer(inputStream, outFile)
+              outFile
+            } finally {
+              inputStream.close()
+            }
+          }
+
+          IO.write(output, HTMLRunnerTemplate.render(output.toURI,
+              name.value + " - tests", jsFileURIs, css.toURI,
+              (loadedTestFrameworks in testHtmlKey).value,
+              (definedTests in testHtmlKey).value))
+
+          log.info(s"Wrote HTML test runner. Point your browser to ${output.toURI}")
+
+          Attributed.blank(output)
         }
-      }
-
-      IO.write(output, HTMLRunnerTemplate.render(output.toURI,
-          name.value + " - tests", (sjsKey in testHtmlKey).value.data.toURI,
-          (jsdepsKey in testHtmlKey).value.toURI, css.toURI,
-          (loadedTestFrameworks in testHtmlKey).value,
-          (definedTests in testHtmlKey).value,
-          (scalaJSJavaSystemProperties in testHtmlKey).value))
-
-      log.info(s"Wrote HTML test runner. Point your browser to ${output.toURI}")
-
-      Attributed.blank(output)
-    }
+    )
   }
 
   val scalaJSTestHtmlSettings = Seq(
@@ -808,10 +831,8 @@ object ScalaJSPluginInternal {
         ((crossTarget in testHtmlFullOpt).value /
             ((moduleName in testHtmlFullOpt).value + "-opt-test.html"))
   ) ++ (
-      scalaJSTestHtmlTaskSettings(testHtmlFastOpt, fastOptJS,
-          packageJSDependencies) ++
-      scalaJSTestHtmlTaskSettings(testHtmlFullOpt, fullOptJS,
-          packageMinifiedJSDependencies)
+      scalaJSTestHtmlTaskSettings(testHtmlFastOpt, fastOptJS) ++
+      scalaJSTestHtmlTaskSettings(testHtmlFullOpt, fullOptJS)
   )
 
   val scalaJSTestSettings = (
@@ -868,6 +889,11 @@ object ScalaJSPluginInternal {
       scalaJSUseMainModuleInitializer := false,
       scalaJSUseMainModuleInitializer in Test := false,
 
+      jsExecutionFiles := Nil,
+      jsExecutionFiles in Compile := jsExecutionFiles.value,
+      // Do not inherit jsExecutionFiles in Test from Compile
+      jsExecutionFiles in Test := jsExecutionFiles.value,
+
       scalaJSConsole := ConsoleJSConsole,
 
       clean := {
@@ -880,8 +906,7 @@ object ScalaJSPluginInternal {
         ()
       },
 
-      scalaJSJavaSystemProperties := Map.empty,
-      scalaJSConfigurationLibs := Nil
+      scalaJSJavaSystemProperties := Map.empty
   )
 
   val scalaJSAbstractSettings: Seq[Setting[_]] = (

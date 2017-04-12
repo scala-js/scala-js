@@ -251,9 +251,10 @@ object ScalaJSPlugin extends AutoPlugin {
         "Prints the content of a .sjsir file in human readable form.",
         CTask)
 
-    val scalaJSConfigurationLibs = TaskKey[Seq[ResolvedJSDependency]](
-        "scalaJSConfigurationLibs",
-        "List of JS libraries used as project configuration.", CTask)
+    val jsExecutionFiles = TaskKey[Seq[VirtualJSFile]](
+        "jsExecutionFiles",
+        "All the JS files given to JS environments on `run`, `test`, etc.",
+        BTask)
 
     val scalaJSJavaSystemProperties = TaskKey[Map[String, String]](
         "scalaJSJavaSystemProperties",

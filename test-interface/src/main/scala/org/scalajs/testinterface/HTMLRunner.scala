@@ -21,7 +21,7 @@ import scala.util.Try
 
 import sbt.testing._
 
-protected[testinterface] object HTMLRunner extends js.JSApp {
+protected[testinterface] object HTMLRunner {
   private val classLoader = new ScalaJSClassLoader(js.Dynamic.global)
 
   private object EventCounter {
@@ -42,6 +42,7 @@ protected[testinterface] object HTMLRunner extends js.JSApp {
     }
   }
 
+  @JSExportTopLevel("org.scalajs.testinterface.HTMLRunner.main")
   def main(): Unit = {
     /* Note: Test filtering is currently done based on the fully qualified name
      * of a test. While this is reasonable in most cases, there could be a test
