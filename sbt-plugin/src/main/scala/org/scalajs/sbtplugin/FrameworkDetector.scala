@@ -12,7 +12,8 @@ import org.scalajs.jsenv._
 import scala.collection.mutable
 
 private[sbtplugin] final class FrameworkDetector(jsEnv: JSEnv,
-    moduleKind: ModuleKind, moduleIdentifier: Option[String]) {
+    jsFiles: Seq[VirtualJSFile], moduleKind: ModuleKind,
+    moduleIdentifier: Option[String]) {
 
   import FrameworkDetector._
 
@@ -67,7 +68,7 @@ private[sbtplugin] final class FrameworkDetector(jsEnv: JSEnv,
     val vf = new MemVirtualJSFile("frameworkDetector.js").withContent(code)
     val console = new StoreConsole
 
-    val runner = jsEnv.jsRunner(vf :: Nil)
+    val runner = jsEnv.jsRunner(jsFiles :+ vf)
     runner.run(logger, console)
 
     // Filter jsDependencies unexpected output

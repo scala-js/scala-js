@@ -22,16 +22,18 @@ import sbt.testing.{Logger => _, _}
 
 final class ScalaJSFramework(
     private[testadapter] val frameworkName: String,
-    private[testadapter] val libEnv: ComJSEnv,
+    private val jsEnv: ComJSEnv,
+    private val jsFiles: Seq[VirtualJSFile],
     private[testadapter] val moduleKind: ModuleKind,
     private[testadapter] val moduleIdentifier: Option[String],
     private[testadapter] val logger: Logger,
     private[testadapter] val jsConsole: JSConsole
 ) extends Framework {
 
-  def this(frameworkName: String, libEnv: ComJSEnv, logger: Logger,
-      jsConsole: JSConsole) = {
-    this(frameworkName, libEnv, ModuleKind.NoModule, None, logger, jsConsole)
+  def this(frameworkName: String, jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
+      logger: Logger, jsConsole: JSConsole) = {
+    this(frameworkName, jsEnv, jsFiles, ModuleKind.NoModule, None, logger,
+        jsConsole)
   }
 
   private[this] val frameworkInfo = fetchFrameworkInfo()
@@ -57,8 +59,11 @@ final class ScalaJSFramework(
 
   private[testadapter] def runDone(): Unit = synchronized(_isRunning = false)
 
+  private[testadapter] def newComRunner(files: Seq[VirtualJSFile]): ComJSRunner =
+    jsEnv.comRunner(jsFiles ++ files)
+
   private def fetchFrameworkInfo() = {
-    val runner = libEnv.comRunner(frameworkInfoLauncher :: Nil)
+    val runner = newComRunner(frameworkInfoLauncher :: Nil)
     runner.start(logger, jsConsole)
 
     try {

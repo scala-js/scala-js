@@ -17,24 +17,4 @@ trait JSEnv {
 
   /** Prepare a runner with the specified JavaScript files. */
   def jsRunner(files: Seq[VirtualJSFile]): JSRunner
-
-  /** Return this [[JSEnv]] with the given libraries already loaded.
-   *
-   *  The following two are equivalent:
-   *  {{{
-   *  jsEnv.loadLibs(a).jsRunner(b)
-   *  jsEnv.jsRunner(a ++ b)
-   *  }}}
-   */
-  def loadLibs(libs: Seq[VirtualJSFile]): JSEnv =
-    new LoadedLibs { val loadedLibs = libs }
-
-  private[jsenv] trait LoadedLibs extends JSEnv {
-    val loadedLibs: Seq[VirtualJSFile]
-
-    def name: String = JSEnv.this.name
-
-    def jsRunner(files: Seq[VirtualJSFile]): JSRunner =
-      JSEnv.this.jsRunner(loadedLibs ++ files)
-  }
 }

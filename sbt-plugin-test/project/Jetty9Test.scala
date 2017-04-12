@@ -21,7 +21,8 @@ object Jetty9Test {
   private val jettyPort = 23548
 
   val runSetting = run <<= Def.inputTask {
-    val jsEnv = (loadedJSEnv in Compile).value.asInstanceOf[ComJSEnv]
+    val env = (jsEnv in Compile).value.asInstanceOf[ComJSEnv]
+    val files = (jsExecutionFiles in Compile).value
     val jsConsole = scalaJSConsole.value
 
     val code = new MemVirtualJSFile("runner.js").withContent(
@@ -42,7 +43,7 @@ object Jetty9Test {
       """
     )
 
-    val runner = jsEnv.comRunner(code :: Nil)
+    val runner = env.comRunner(files :+ code)
 
     runner.start(streams.value.log, jsConsole)
 

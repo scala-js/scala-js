@@ -13,13 +13,4 @@ import org.scalajs.core.tools.io.VirtualJSFile
 
 trait AsyncJSEnv extends JSEnv {
   def asyncRunner(files: Seq[VirtualJSFile]): AsyncJSRunner
-
-  override def loadLibs(libs: Seq[VirtualJSFile]): AsyncJSEnv =
-    new AsyncLoadedLibs { val loadedLibs = libs }
-
-  private[jsenv] trait AsyncLoadedLibs extends LoadedLibs with AsyncJSEnv {
-    def asyncRunner(files: Seq[VirtualJSFile]): AsyncJSRunner = {
-      AsyncJSEnv.this.asyncRunner(loadedLibs ++ files)
-    }
-  }
 }
