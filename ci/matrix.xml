@@ -233,6 +233,7 @@
         withDOM/run withDOM/testHtmlFastOpt withDOM/testHtmlFullOpt \
         multiTestJS/testHtmlFastOpt multiTestJS/testHtmlFullOpt \
         jetty9/run test \
+        noDOM/clean noDOM/concurrentUseOfLinkerTest \
         jsDependenciesTest/packageJSDependencies \
         jsDependenciesTest/packageMinifiedJSDependencies \
         jsDependenciesTest/regressionTestForIssue2243 \
