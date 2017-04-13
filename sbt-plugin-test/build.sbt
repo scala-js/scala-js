@@ -1,5 +1,11 @@
+import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.jsdep.ManifestFilters
 import org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv
+import org.scalajs.sbtplugin.ScalaJSPluginInternal._
+import org.scalajs.sbtplugin.Loggers.sbtLogger2ToolsLogger
+
+lazy val concurrentFakeFullOptJS = taskKey[Any]("")
+lazy val concurrentUseOfLinkerTest = taskKey[Any]("")
 
 name := "Scala.js sbt test"
 
@@ -56,7 +62,32 @@ lazy val noDOM = project.settings(baseSettings: _*).
   /* This hopefully exposes concurrent uses of the linker. If it fails/gets
    * flaky, there is a bug somewhere - #2202
    */
-  settings(inConfig(Compile)(run <<= run.dependsOn(fastOptJS, loadedJSEnv)): _*)
+  settings(inConfig(Compile)(Seq(
+      // A fake fullOptJS that we will run concurrently with the true fullOptJS
+      concurrentFakeFullOptJS := Def.taskDyn {
+        val s = (streams in fullOptJS).value
+        val log = s.log
+        val ir = (scalaJSIR in fullOptJS).value.data
+        val moduleInitializers = scalaJSModuleInitializers.value
+
+        Def.task {
+          log.info("Fake full optimizing")
+          val linker = (scalaJSLinker in fullOptJS).value
+          linker.link(ir, moduleInitializers,
+              WritableMemVirtualJSFile("fake-fastopt.js"),
+              sbtLogger2ToolsLogger(log))
+        }.tag((usesScalaJSLinkerTag in fullOptJS).value)
+      }.value,
+
+      /* Depend on both fullOptJS and concurrentFakeFullOptJS, so that they
+       * are hopefully executed in parallel (potentially, but they should be
+       * blocked from actually doing so by the concurrent restrictions on
+       * usesScalaJSLinkerTag).
+       */
+      concurrentUseOfLinkerTest := {
+        (fullOptJS.value, concurrentFakeFullOptJS.value)
+      }
+  )))
 
 lazy val withDOM = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSPlugin).

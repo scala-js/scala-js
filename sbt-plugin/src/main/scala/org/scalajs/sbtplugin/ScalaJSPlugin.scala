@@ -180,17 +180,8 @@ object ScalaJSPlugin extends AutoPlugin {
         "The JS console used by the Scala.js runner/tester", DTask)
 
     val jsEnv = TaskKey[JSEnv]("jsEnv",
-        "A JVM-like environment where Scala.js files can be run and tested.", AMinusTask)
-
-    val resolvedJSEnv = TaskKey[JSEnv]("resolvedJSEnv",
-        "The JSEnv used for execution. This equals the setting of jsEnv or a " +
-        "reasonable default value if jsEnv is not set.", DTask)
-
-    @deprecated("Use jsEnv instead.", "0.6.6")
-    val preLinkJSEnv = jsEnv
-
-    @deprecated("Use jsEnv instead.", "0.6.6")
-    val postLinkJSEnv = jsEnv
+        "The JavaScript environment in which to run and test Scala.js applications.",
+        AMinusTask)
 
     val requiresDOM = SettingKey[Boolean]("requiresDOM",
         "Whether this projects needs the DOM. Overrides anything inherited through dependencies.", AMinusSetting)
@@ -242,9 +233,6 @@ object ScalaJSPlugin extends AutoPlugin {
 
     val scalaJSOptimizerOptions = SettingKey[OptimizerOptions]("scalaJSOptimizerOptions",
         "All kinds of options for the Scala.js optimizer stages", DSetting)
-
-    val loadedJSEnv = TaskKey[JSEnv]("loadedJSEnv",
-        "A JSEnv already loaded up with library and Scala.js code. Ready to run.", DTask)
 
     /** Prints the content of a .sjsir file in human readable form. */
     val scalajsp = InputKey[Unit]("scalajsp",

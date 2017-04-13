@@ -544,7 +544,7 @@ object ScalaJSPluginInternal {
          * Since this matches against NodeJSEnv specifically, it obviously
          * breaks the OO approach, but oh well ...
          */
-        resolvedJSEnv.value match {
+        jsEnv.value match {
           case _: org.scalajs.jsenv.nodejs.NodeJSEnv =>
             val libCache = new VirtualFileMaterializer(false)
 
@@ -577,8 +577,6 @@ object ScalaJSPluginInternal {
             jsDependencyManifests.value.data.exists(_.requiresDOM))
       },
 
-      resolvedJSEnv := jsEnv.?.value.getOrElse(new NodeJSEnv()),
-
       scalaJSJavaSystemProperties ++= {
         val javaSysPropsPattern = "-D([^=]*)=(.*)".r
         javaOptions.value.map {
@@ -609,8 +607,6 @@ object ScalaJSPluginInternal {
 
       // Crucially, add the Scala.js linked file to the JS files
       jsExecutionFiles += scalaJSLinkedFile.value,
-
-      loadedJSEnv := resolvedJSEnv.value.loadLibs(jsExecutionFiles.value),
 
       scalaJSModuleIdentifier := Def.taskDyn[Option[String]] {
         scalaJSModuleKind.value match {
@@ -699,12 +695,13 @@ object ScalaJSPluginInternal {
         }
 
         val log = streams.value.log
-        val jsEnv = loadedJSEnv.value
+        val env = jsEnv.value
+        val files = jsExecutionFiles.value
 
         log.info("Running " + mainClass.value.getOrElse("<unknown class>"))
-        log.debug(s"with JSEnv ${jsEnv.name}")
+        log.debug(s"with JSEnv ${env.name}")
 
-        jsEnv.jsRunner(Nil).run(
+        env.jsRunner(files).run(
             sbtLogger2ToolsLogger(log), scalaJSConsole.value)
       },
 
@@ -728,29 +725,31 @@ object ScalaJSPluginInternal {
         val toolsLogger = sbtLogger2ToolsLogger(logger)
         val frameworks = testFrameworks.value
 
-        val jsEnv = loadedJSEnv.value match {
-          case jsEnv: ComJSEnv => jsEnv
+        val env = jsEnv.value match {
+          case env: ComJSEnv => env
 
-          case jsEnv =>
-            sys.error(s"You need a ComJSEnv to test (found ${jsEnv.name})")
+          case env =>
+            sys.error(s"You need a ComJSEnv to test (found ${env.name})")
         }
+
+        val files = jsExecutionFiles.value
 
         val moduleKind = scalaJSModuleKind.value
         val moduleIdentifier = scalaJSModuleIdentifier.value
 
         val detector =
-          new FrameworkDetector(jsEnv, moduleKind, moduleIdentifier)
+          new FrameworkDetector(env, files, moduleKind, moduleIdentifier)
 
         detector.detect(frameworks, toolsLogger) map { case (tf, name) =>
-          (tf, new ScalaJSFramework(name, jsEnv, moduleKind, moduleIdentifier,
-              toolsLogger, console))
+          (tf, new ScalaJSFramework(name, env, files, moduleKind,
+              moduleIdentifier, toolsLogger, console))
         }
       },
       // Override default to avoid triggering a test:fastOptJS in a test:compile
       // without loosing autocompletion.
       definedTestNames := {
         definedTests.map(_.map(_.name).distinct)
-          .storeAs(definedTestNames).triggeredBy(loadedJSEnv).value
+          .storeAs(definedTestNames).triggeredBy(loadedTestFrameworks).value
       }
   )
 
@@ -888,6 +887,8 @@ object ScalaJSPluginInternal {
 
       scalaJSUseMainModuleInitializer := false,
       scalaJSUseMainModuleInitializer in Test := false,
+
+      jsEnv := new NodeJSEnv(),
 
       jsExecutionFiles := Nil,
       jsExecutionFiles in Compile := jsExecutionFiles.value,

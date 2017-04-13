@@ -636,7 +636,7 @@ object Build {
       inConfig(Test) {
         // Redefine test to run Node.js and link HelloWorld
         test := {
-          if (!resolvedJSEnv.value.isInstanceOf[NodeJSEnv])
+          if (!jsEnv.value.isInstanceOf[NodeJSEnv])
             sys.error("toolsJS/test must be run with Node.js")
 
           /* Collect IR relevant files from the classpath
@@ -696,7 +696,7 @@ object Build {
           val launcher = new MemVirtualJSFile("Generated launcher file")
             .withContent(code)
 
-          val runner = loadedJSEnv.value.jsRunner(launcher :: Nil)
+          val runner = jsEnv.value.jsRunner(jsExecutionFiles.value :+ launcher)
 
           runner.run(sbtLogger2ToolsLogger(streams.value.log), scalaJSConsole.value)
         }
@@ -1277,7 +1277,7 @@ object Build {
                 "don't know what tags to specify for the test suite")
         }
 
-        val envTags = envTagsFor((resolvedJSEnv in Test).value)
+        val envTags = envTagsFor((jsEnv in Test).value)
 
         val stage = (scalaJSStage in Test).value
 

@@ -177,7 +177,7 @@ final class ScalaJSRunner private[testadapter] (
     ensureNotDone()
 
     // Launch the slave
-    val slave = framework.libEnv.comRunner(slaveLauncher :: Nil)
+    val slave = framework.newComRunner(slaveLauncher :: Nil)
     slave.start(framework.logger, framework.jsConsole)
 
     // Create a runner on the slave
@@ -218,7 +218,7 @@ final class ScalaJSRunner private[testadapter] (
   private def createRemoteRunner(): Unit = {
     assert(master == null)
 
-    master = framework.libEnv.comRunner(masterLauncher :: Nil)
+    master = framework.newComRunner(masterLauncher :: Nil)
     master.start(framework.logger, framework.jsConsole)
 
     val data = {
