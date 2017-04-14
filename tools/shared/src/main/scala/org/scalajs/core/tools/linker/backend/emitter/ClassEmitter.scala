@@ -352,18 +352,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     implicit val pos = method.pos
 
-    /* TODO The identifier `$thiz` cannot be produced by 0.6.x compilers due to
-     * their name mangling, which guarantees that it is unique. We should find
-     * a better way to do this in the future, though.
-     */
-    val thisIdent = js.Ident("$thiz", Some("this"))
-
-    val methodFun0 = desugarToFunction(className, Some(thisIdent),
+    val methodFun = desugarToFunctionWithExplicitThis(className,
         method.args, method.body.get, method.resultType == NoType)
-
-    val methodFun = js.Function(
-        js.ParamDef(thisIdent, rest = false) :: methodFun0.args,
-        methodFun0.body)(methodFun0.pos)
 
     val Ident(methodName, origName) = method.name
 
@@ -911,11 +901,11 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     val baseCtor = envField("c", cd.name.name, cd.name.originalName)
 
-    val thisIdent = js.Ident("$thiz")
+    val js.Function(thisParam :: ctorParams, ctorBody) =
+      desugarToFunctionWithExplicitThis(cd.encodedName,
+          args, body, isStat = true)
 
-    val js.Function(ctorParams, ctorBody) =
-      desugarToFunction(cd.encodedName,
-          Some(thisIdent), args, body, isStat = true)
+    val thisIdent = thisParam.name
 
     val exportedCtor = js.Function(ctorParams, js.Block(
       genLet(thisIdent, mutable = false, js.New(baseCtor, Nil)),

@@ -203,22 +203,19 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       enclosingClassName: String,
       params: List[ParamDef], body: Tree, isStat: Boolean)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
-    desugarToFunction(enclosingClassName,
-        None, params, body, isStat)
+    new JSDesugar().desugarToFunction(params, body, isStat,
+        Env.empty.withEnclosingClassName(Some(enclosingClassName)))
   }
 
-  /** Desugars parameters and body to a JS function.
+  /** Desugars parameters and body to a JS function where `this` is given as
+   *  an explicit normal parameter.
    */
-  def desugarToFunction(
-      enclosingClassName: String,
-      thisIdent: Option[js.Ident], params: List[ParamDef],
+  def desugarToFunctionWithExplicitThis(
+      enclosingClassName: String, params: List[ParamDef],
       body: Tree, isStat: Boolean)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
-    val env = Env.empty
-      .withThisIdent(thisIdent)
-      .withEnclosingClassName(Some(enclosingClassName))
-
-    new JSDesugar().desugarToFunction(params, body, isStat, env)
+    new JSDesugar().desugarToFunctionWithExplicitThis(params, body, isStat,
+        Env.empty.withEnclosingClassName(Some(enclosingClassName)))
   }
 
   /** Desugars parameters and body to a JS function.
@@ -291,6 +288,24 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     val usedLabels = mutable.Set.empty[String]
 
     // Now the work
+
+    /** Desugars parameters and body to a JS function where `this` is given as
+     *  a normal parameter.
+     */
+    def desugarToFunctionWithExplicitThis(
+        params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
+        implicit pos: Position): js.Function = {
+
+      /* TODO The identifier `$thiz` cannot be produced by 0.6.x compilers due
+       * to their name mangling, which guarantees that it is unique. We should
+       * find a better way to do this in the future, though.
+       */
+      val thisIdent = js.Ident("$thiz", Some("this"))
+      val env = env0.withThisIdent(Some(thisIdent))
+      val js.Function(jsParams, jsBody) =
+        desugarToFunction(params, body, isStat, env)
+      js.Function(js.ParamDef(thisIdent, rest = false) :: jsParams, jsBody)
+    }
 
     /** Desugars parameters and body to a JS function.
      */
