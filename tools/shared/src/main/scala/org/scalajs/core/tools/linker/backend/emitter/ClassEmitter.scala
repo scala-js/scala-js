@@ -474,8 +474,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def genPropertyName(name: PropertyName)(
       implicit globalKnowledge: GlobalKnowledge): js.PropertyName = {
     name match {
-      case ident: Ident         => transformIdent(ident)
-      case StringLiteral(value) => js.StringLiteral(value)(name.pos)
+      case Ident(nameStr, origName) => js.Ident(nameStr, origName)(name.pos)
+      case StringLiteral(value)     => js.StringLiteral(value)(name.pos)
 
       case ComputedName(tree, _) =>
         implicit val pos = name.pos
@@ -518,7 +518,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       val isAncestorOfBoxedUnitClass =
         AncestorsOfBoxedUnitClass.contains(className)
 
-      val objParam = js.ParamDef(Ident("obj"), rest = false)
+      val objParam = js.ParamDef(js.Ident("obj"), rest = false)
       val obj = objParam.ref
 
       val createIsStat = {
@@ -599,17 +599,17 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val className = tree.name.name
     val displayName = decodeClassName(className)
 
-    val objParam = js.ParamDef(Ident("obj"), rest = false)
+    val objParam = js.ParamDef(js.Ident("obj"), rest = false)
     val obj = objParam.ref
 
-    val depthParam = js.ParamDef(Ident("depth"), rest = false)
+    val depthParam = js.ParamDef(js.Ident("depth"), rest = false)
     val depth = depthParam.ref
 
     val createIsArrayOfStat = {
       envFieldDef("isArrayOf", className,
         js.Function(List(objParam, depthParam), className match {
           case Definitions.ObjectClass =>
-            val dataVarDef = genLet(Ident("data"), mutable = false, {
+            val dataVarDef = genLet(js.Ident("data"), mutable = false, {
               obj && (obj DOT "$classData")
             })
             val data = dataVarDef.ref
@@ -618,7 +618,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
               js.If(!data, {
                 js.Return(js.BooleanLiteral(false))
               }, {
-                val arrayDepthVarDef = genLet(Ident("arrayDepth"), mutable = false, {
+                val arrayDepthVarDef = genLet(js.Ident("arrayDepth"), mutable = false, {
                   (data DOT "arrayDepth") || js.IntLiteral(0)
                 })
                 val arrayDepth = arrayDepthVarDef.ref
@@ -681,8 +681,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     implicit val pos = tree.pos
 
-    val classIdent = transformIdent(tree.name)
-    val className = classIdent.name
+    val className = tree.name.name
     val kind = tree.kind
 
     val isObjectClass =
@@ -718,7 +717,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         (envField("is", className), envField("isArrayOf", className))
       } else if (isHijackedBoxedClass) {
         /* Hijacked boxed classes have a special isInstanceOf test. */
-        val xParam = js.ParamDef(Ident("x"), rest = false)
+        val xParam = js.ParamDef(js.Ident("x"), rest = false)
         (js.Function(List(xParam), js.Return {
           genIsInstanceOf(xParam.ref, ClassType(className))
         }), js.Undefined())
@@ -738,8 +737,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
           (envField("noIsInstance"), js.Undefined())
         } else {
           val jsCtor = genRawJSClassConstructor(className, tree.jsNativeLoadSpec)
-          (js.Function(List(js.ParamDef(Ident("x"), rest = false)), js.Return {
-            js.BinaryOp(JSBinaryOp.instanceof, js.VarRef(Ident("x")), jsCtor)
+          (js.Function(List(js.ParamDef(js.Ident("x"), rest = false)), js.Return {
+            js.BinaryOp(JSBinaryOp.instanceof, js.VarRef(js.Ident("x")), jsCtor)
           }), js.Undefined())
         }
       } else {
@@ -749,7 +748,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
 
     val allParams = List(
-        js.ObjectConstr(List(classIdent -> js.IntLiteral(0))),
+        js.ObjectConstr(List(js.Ident(className) -> js.IntLiteral(0))),
         js.BooleanLiteral(kind == ClassKind.Interface),
         js.StringLiteral(semantics.runtimeClassName(tree)),
         ancestorsRecord,
@@ -784,8 +783,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     implicit val pos = tree.pos
 
-    val classIdent = transformIdent(tree.name)
-    val className = classIdent.name
+    val className = tree.name.name
     val tpe = ClassType(className)
 
     require(tree.kind.hasModuleAccessor,
