@@ -240,9 +240,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       desugar.transformExpr(tree)(env)
   }
 
-  private def transformParamDef(paramDef: ParamDef): js.ParamDef =
-    js.ParamDef(paramDef.name, paramDef.rest)(paramDef.pos)
-
   private class JSDesugar()(implicit globalKnowledge: GlobalKnowledge) {
 
     // Synthetic variables
@@ -346,13 +343,13 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       val offset = params.size - 1
       val restParamDef = params.last
 
-      val lenIdent = newSyntheticVar()
+      val lenIdent = transformLocalVarIdent(newSyntheticVar())
       val len = js.VarRef(lenIdent)
 
-      val counterIdent = newSyntheticVar()
+      val counterIdent = transformLocalVarIdent(newSyntheticVar())
       val counter = js.VarRef(counterIdent)
 
-      val restParamIdent = restParamDef.name
+      val restParamIdent = transformLocalVarIdent(restParamDef.name)
       val restParam = js.VarRef(restParamIdent)
 
       val arguments = js.VarRef(js.Ident("arguments"))
@@ -407,7 +404,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
             js.Assign(
-                js.DotSelect(transformExpr(newQualifier), item)(select.pos),
+                js.DotSelect(transformExpr(newQualifier),
+                    transformPropIdent(item))(select.pos),
                 transformExpr(newRhs))
           }
 
@@ -435,7 +433,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
             js.Assign(
-                js.DotSelect(transformExpr(newQualifier), item)(select.pos),
+                js.DotSelect(transformExpr(newQualifier),
+                    transformPropIdent(item))(select.pos),
                 transformExpr(newRhs))
           }
 
@@ -477,7 +476,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           /* We cannot simply unnest(cond) here, because that would eject the
            * evaluation of the condition out of the loop.
            */
-          val newLabel = label.map(transformIdent)
+          val newLabel = label.map(transformLabelIdent)
           val bodyBreakTargets = tailPosLabels ++ label.map(_.name)
           if (isExpression(cond)) {
             js.While(transformExpr(cond),
@@ -500,7 +499,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           /* We cannot simply unnest(cond) here, because that would eject the
            * evaluation of the condition out of the loop.
            */
-          val newLabel = label.map(transformIdent)
+          val newLabel = label.map(transformLabelIdent)
           val bodyBreakTargets = tailPosLabels ++ label.map(_.name)
           if (isExpression(cond)) {
             js.DoWhile(
@@ -623,7 +622,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 newName match {
                   case newName: Ident =>
                     val descriptors = js.ObjectConstr(List(
-                        transformIdent(newName) -> descriptor))
+                        transformPropIdent(newName) -> descriptor))
                     makeObjectMethodApply("defineProperties",
                         List(js.This(), descriptors))
 
@@ -644,7 +643,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSDelete(JSDotSelect(obj, prop)) =>
           unnest(obj) { (newObj, env0) =>
             implicit val env = env0
-            js.Delete(js.DotSelect(transformExpr(newObj), prop))
+            js.Delete(js.DotSelect(transformExpr(newObj),
+                transformPropIdent(prop)))
           }
 
         case JSDelete(JSBracketSelect(obj, prop)) =>
@@ -1125,7 +1125,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           })
 
         case _ =>
-          genLet(ident, mutable, transformExpr(rhs))
+          genLet(transformLocalVarIdent(ident), mutable, transformExpr(rhs))
       }
     }
 
@@ -1140,7 +1140,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           })
 
         case _ =>
-          genEmptyMutableLet(ident)
+          genEmptyMutableLet(transformLocalVarIdent(ident))
       }
     }
 
@@ -1210,7 +1210,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           js.Block(body, js.Break(None))
         } else {
           usedLabels += l.name
-          js.Block(body, js.Break(Some(transformIdent(l))))
+          js.Block(body, js.Break(Some(transformLabelIdent(l))))
         }
       }
 
@@ -1293,7 +1293,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             val newBody =
               pushLhsInto(newLhs, body, tailPosLabels + label.name)(bodyEnv)
             if (usedLabels.contains(label.name))
-              js.Labeled(label, newBody)
+              js.Labeled(transformLabelIdent(label), newBody)
             else
               newBody
           }
@@ -1302,7 +1302,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           pushLhsInto(Lhs.Return(label), expr, tailPosLabels)
 
         case Continue(label) =>
-          js.Continue(label.map(transformIdent))
+          js.Continue(label.map(transformLabelIdent))
 
         case If(cond, thenp, elsep) =>
           unnest(cond) { (newCond, env0) =>
@@ -1318,7 +1318,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           extractLet { newLhs =>
             val newBlock = pushLhsInto(newLhs, block, tailPosLabels)
             val newHandler = pushLhsInto(newLhs, handler, tailPosLabels)
-            js.TryCatch(newBlock, errVar, newHandler)
+            js.TryCatch(newBlock, transformLocalVarIdent(errVar), newHandler)
           }
 
         case TryFinally(block, finalizer) =>
@@ -1757,17 +1757,20 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // Scala expressions
 
         case New(cls, ctor, args) =>
-          js.Apply(js.New(encodeClassVar(cls.className), Nil) DOT ctor,
+          js.Apply(
+              js.DotSelect(
+                  js.New(encodeClassVar(cls.className), Nil),
+                  transformPropIdent(ctor)),
               args map transformExpr)
 
         case LoadModule(cls) =>
           genLoadModule(cls.className)
 
         case RecordFieldVarRef(VarRef(name)) =>
-          js.VarRef(name)
+          js.VarRef(transformLocalVarIdent(name))
 
         case Select(qualifier, item) =>
-          transformExpr(qualifier) DOT item
+          transformExpr(qualifier) DOT transformPropIdent(item)
 
         case SelectStatic(cls, item) =>
           genSelectStatic(cls.className, item)
@@ -1787,7 +1790,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             val helperName = hijackedClassMethodToHelperName(method.name)
             genCallHelper(helperName, newReceiver :: newArgs: _*)
           } else {
-            js.Apply(newReceiver DOT method, newArgs)
+            js.Apply(newReceiver DOT transformPropIdent(method), newArgs)
           }
 
         case ApplyStatically(receiver, cls, method, args) =>
@@ -1800,7 +1803,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             js.Apply(envField("f", fullName, origName),
                 transformedArgs)
           } else {
-            val fun = encodeClassVar(className).prototype DOT method
+            val fun =
+              encodeClassVar(className).prototype DOT transformPropIdent(method)
             js.Apply(fun DOT "call", transformedArgs)
           }
 
@@ -1948,7 +1952,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case ArrayLength(array) =>
           genIdentBracketSelect(js.DotSelect(transformExpr(array),
-              Ident("u")), "length")
+              js.Ident("u")), "length")
 
         case ArraySelect(array, index) =>
           val newArray = transformExpr(array)
@@ -2029,7 +2033,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           js.New(transformExpr(constr), args map transformExpr)
 
         case JSDotSelect(qualifier, item) =>
-          js.DotSelect(transformExpr(qualifier), item)
+          js.DotSelect(transformExpr(qualifier), transformPropIdent(item))
 
         case JSBracketSelect(qualifier, item) =>
           genBracketSelect(transformExpr(qualifier), transformExpr(item))
@@ -2055,7 +2059,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           js.Apply(protectedFun, args map transformExpr)
 
         case JSDotMethodApply(receiver, method, args) =>
-          js.Apply(js.DotSelect(transformExpr(receiver), method),
+          js.Apply(
+              js.DotSelect(transformExpr(receiver), transformPropIdent(method)),
               args map transformExpr)
 
         case JSBracketMethodApply(receiver, method, args) =>
@@ -2126,12 +2131,13 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           }
 
         case ClassOf(cls) =>
-          js.Apply(js.DotSelect(genClassDataOf(cls), Ident("getClassOf")), Nil)
+          js.Apply(js.DotSelect(genClassDataOf(cls), js.Ident("getClassOf")),
+              Nil)
 
         // Atomic expressions
 
         case VarRef(name) =>
-          js.VarRef(name)
+          js.VarRef(transformLocalVarIdent(name))
 
         case This() =>
           env.thisIdent.fold[js.Tree] {
@@ -2211,15 +2217,29 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         "isInfinite__Z" -> "isInfinite"
     )
 
+    private def transformParamDef(paramDef: ParamDef): js.ParamDef = {
+      js.ParamDef(transformLocalVarIdent(paramDef.name), paramDef.rest)(
+          paramDef.pos)
+    }
+
     def transformPropertyName(pName: PropertyName)(
         implicit env: Env): js.PropertyName = {
       implicit val pos = pName.pos
       pName match {
-        case name: Ident           => transformIdent(name)
+        case name: Ident           => transformPropIdent(name)
         case StringLiteral(s)      => js.StringLiteral(s)
         case ComputedName(tree, _) => js.ComputedName(transformExpr(tree))
       }
     }
+
+    private def transformLabelIdent(ident: Ident): js.Ident =
+      js.Ident(ident.name, ident.originalName)(ident.pos)
+
+    private def transformPropIdent(ident: Ident): js.Ident =
+      js.Ident(ident.name, ident.originalName)(ident.pos)
+
+    private def transformLocalVarIdent(ident: Ident): js.Ident =
+      js.Ident(ident.name, ident.originalName)(ident.pos)
 
     def genClassDataOf(cls: ReferenceType)(implicit pos: Position): js.Tree = {
       cls match {

@@ -29,9 +29,6 @@ private[emitter] final class JSGen(val semantics: Semantics,
     val outputMode: OutputMode, internalOptions: InternalOptions) {
   import JSGen._
 
-  implicit def transformIdent(ident: irt.Ident): Ident =
-    Ident(ident.name, ident.originalName)(ident.pos)
-
   def genZeroOf(tpe: Type)(implicit pos: Position): Tree = {
     tpe match {
       case BooleanType => BooleanLiteral(false)
