@@ -55,13 +55,12 @@ object Assert {
   def assertEquals(expected: Any, actual: Any): Unit =
     assertEquals(null, expected, actual)
 
-  def assertNotEquals(message: String, unexpected: AnyRef,
-      actual: AnyRef): Unit = {
+  def assertNotEquals(message: String, unexpected: Any, actual: Any): Unit = {
     if (equalsRegardingNull(unexpected, actual))
       failEquals(message, actual)
   }
 
-  def assertNotEquals(unexpected: AnyRef, actual: AnyRef): Unit =
+  def assertNotEquals(unexpected: Any, actual: Any): Unit =
     assertNotEquals(null, unexpected, actual)
 
   private def failEquals(message: String, actual: Any): Unit = {
@@ -213,39 +212,39 @@ object Assert {
   def assertEquals(expected: Float, actual: Float, delta: Float): Unit =
     assertEquals(null, expected, actual, delta)
 
-  def assertNotNull(message: String, obj: AnyRef): Unit =
+  def assertNotNull(message: String, obj: Any): Unit =
     assertTrue(message, obj != null)
 
-  def assertNotNull(obj: AnyRef): Unit =
+  def assertNotNull(obj: Any): Unit =
     assertNotNull(null, obj)
 
-  def assertNull(message: String, obj: AnyRef): Unit = {
+  def assertNull(message: String, obj: Any): Unit = {
     if (obj != null)
       failNotNull(message, obj)
   }
 
-  def assertNull(obj: AnyRef): Unit =
+  def assertNull(obj: Any): Unit =
     assertNull(null, obj)
 
-  private def failNotNull(message: String, actual: AnyRef): Unit = {
+  private def failNotNull(message: String, actual: Any): Unit = {
     val formatted = if (message != null) message + " " else ""
     fail(s"${formatted}expected null, but was:<$actual}>")
   }
 
-  def assertSame(message: String, expected: AnyRef, actual: AnyRef): Unit = {
-    if (expected ne actual)
+  def assertSame(message: String, expected: Any, actual: Any): Unit = {
+    if (expected.asInstanceOf[AnyRef] ne actual.asInstanceOf[AnyRef])
       failNotSame(message, expected, actual)
   }
 
-  def assertSame(expected: AnyRef, actual: AnyRef): Unit =
+  def assertSame(expected: Any, actual: Any): Unit =
     assertSame(null, expected, actual)
 
-  def assertNotSame(message: String, unexpected: AnyRef, actual: AnyRef): Unit = {
-    if (unexpected eq actual)
+  def assertNotSame(message: String, unexpected: Any, actual: Any): Unit = {
+    if (unexpected.asInstanceOf[AnyRef] eq actual.asInstanceOf[AnyRef])
       failSame(message)
   }
 
-  def assertNotSame(unexpected: AnyRef, actual: AnyRef): Unit =
+  def assertNotSame(unexpected: Any, actual: Any): Unit =
     assertNotSame(null, unexpected, actual)
 
   private def failSame(message: String): Unit = {
@@ -255,8 +254,7 @@ object Assert {
       fail(s"$message expected not same")
   }
 
-  private def failNotSame(message: String, expected: AnyRef,
-      actual: AnyRef): Unit = {
+  private def failNotSame(message: String, expected: Any, actual: Any): Unit = {
     if (message == null)
       fail(s"expected same:<$expected> was not:<$actual>")
     else
