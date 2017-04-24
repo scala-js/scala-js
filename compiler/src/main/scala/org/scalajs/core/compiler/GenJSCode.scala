@@ -4276,6 +4276,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           } else if (jsInterop.isJSBracketCall(sym)) {
             val (methodName, actualArgs) = extractFirstArg(args)
             genCall(methodName, actualArgs)
+          } else if (jsInterop.isJSConstructorMethod(sym)) {
+            js.JSNew(genSuperReference(jsFunName), args)
           } else {
             genCall(jsFunName, args)
           }
