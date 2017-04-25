@@ -21,7 +21,7 @@ object Framework {
   // definedTests in Test += new sbt.TestDefinition("partest", fingerprint, true, Array())
 }
 class Framework extends _root_.sbt.testing.Framework {
-  def fingerprints: Array[Fingerprint] = Array(Framework.fingerprint)
+  def fingerprints: Array[Fingerprint] = Array[Fingerprint](Framework.fingerprint)
   def name: String = "partest"
 
   def runner(args: Array[String], remoteArgs: Array[String], testClassLoader: ClassLoader): _root_.sbt.testing.Runner =
