@@ -9,6 +9,12 @@ import org.scalajs.testsuite.utils.Platform._
 
 class MathTestOnJDK8 {
 
+  /** Like `assertEquals` with `delta = 0.0`, but positive and negative zeros
+   *  compare not equal.
+   */
+  private def assertSameDouble(expected: Double, actual: Double): Unit =
+    assertTrue(s"expected: $expected but was: $actual", expected.equals(actual))
+
   @Test def addExact(): Unit = {
     assertEquals(0, Math.addExact(0, 0))
     assertEquals(1, Math.addExact(0, 1))
@@ -284,5 +290,28 @@ class MathTestOnJDK8 {
 
     for (n <- Seq(0L, 1L, -1L, Long.MaxValue, Long.MinValue))
       assertThrows(classOf[ArithmeticException], Math.floorMod(n, 0))
+  }
+
+  @Test def nextDown_for_Double(): Unit = {
+    // Specials
+    assertSameDouble(-Double.MinPositiveValue, Math.nextDown(0.0))
+    assertSameDouble(-Double.MinPositiveValue, Math.nextDown(-0.0))
+    assertSameDouble(Double.MaxValue, Math.nextDown(Double.PositiveInfinity))
+    assertSameDouble(Double.NegativeInfinity, Math.nextDown(Double.NegativeInfinity))
+    assertSameDouble(Double.NaN, Math.nextDown(Double.NaN))
+
+    // Corner cases
+    val MinNormal = java.lang.Double.MIN_NORMAL
+    val MaxSubnormal = 2.225073858507201e-308
+    assertSameDouble(1.7976931348623155e+308, Math.nextDown(Double.MaxValue))
+    assertSameDouble(Double.NegativeInfinity, Math.nextDown(Double.MinValue))
+    assertSameDouble(0.0, Math.nextDown(Double.MinPositiveValue))
+    assertSameDouble(MaxSubnormal, Math.nextDown(MinNormal))
+    assertSameDouble(-MinNormal, Math.nextDown(-MaxSubnormal))
+
+    // Random values
+    assertSameDouble(9007199254740991.0, Math.nextDown(9007199254740992.0))
+    assertSameDouble(9007199254740992.0, Math.nextDown(9007199254740994.0))
+    assertSameDouble(0.9999999999999999, Math.nextDown(1.0))
   }
 }

@@ -108,6 +108,18 @@ object Math {
     }
   }
 
+  def nextDown(a: scala.Double): scala.Double = {
+    if (a != a || a == scala.Double.NegativeInfinity) {
+      a
+    } else if (a == 0.0) { // also matches -0.0 but that's fine
+      -scala.Double.MinPositiveValue
+    } else {
+      val abits = Double.doubleToLongBits(a)
+      val rbits = if (a > 0) abits - 1L else abits + 1L
+      Double.longBitsToDouble(rbits)
+    }
+  }
+
   def nextAfter(a: scala.Double, b: scala.Double): scala.Double = {
     if (b < a)
       -nextUp(-a)
@@ -316,7 +328,6 @@ object Math {
   // def getExponent(a: scala.Double): scala.Int
   // def nextAfter(a: scala.Float, b: scala.Double): scala.Float
   // def nextUp(a: scala.Float): scala.Float
-  // def nextDown(a: scala.Double): scala.Double
   // def nextDown(a: scala.Float): scala.Float
   // def scalb(a: scala.Double, scalaFactor: scala.Int): scala.Double
   // def scalb(a: scala.Float, scalaFactor: scala.Int): scala.Float
