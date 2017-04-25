@@ -121,11 +121,11 @@ object Math {
   }
 
   def nextAfter(a: scala.Double, b: scala.Double): scala.Double = {
-    if (b < a)
-      -nextUp(-a)
-    else if (a < b)
+    if (b > a)
       nextUp(a)
-    else if (a != a || b != b)
+    else if (b < a)
+      nextDown(a)
+    else if (a != a)
       scala.Double.NaN
     else
       b

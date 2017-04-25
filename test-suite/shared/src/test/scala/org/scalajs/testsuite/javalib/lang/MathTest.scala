@@ -144,19 +144,36 @@ class MathTest {
   }
 
   @Test def nextAfter_for_Double(): Unit = {
-    assertTrue(Math.nextAfter(1.0, Double.NaN).isNaN)
-    assertTrue(Math.nextAfter(Double.NaN, 1.0).isNaN)
-    assertEquals(0.0, Math.nextAfter(0.0, 0.0), 0.0)
-    assertEquals(-0.0, Math.nextAfter(0.0, -0.0), 0.0)
-    assertEquals(0.0, Math.nextAfter(-0.0, 0.0), 0.0)
-    assertEquals(-0.0, Math.nextAfter(-0.0, -0.0), 0.0)
-    assertEquals(Double.NegativeInfinity, Math.nextAfter(Double.MinValue, Double.NegativeInfinity), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.nextAfter(-Double.MinValue, Double.PositiveInfinity), 0.0)
-    assertEquals(Double.MaxValue, Math.nextAfter(Double.PositiveInfinity, Double.NegativeInfinity), 0.0)
-    assertEquals(Double.MinValue, Math.nextAfter(Double.NegativeInfinity, Double.PositiveInfinity), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.nextAfter(Double.MaxValue, Double.PositiveInfinity), 0.0)
-    assertEquals(Double.NegativeInfinity, Math.nextAfter(-Double.MaxValue, Double.NegativeInfinity), 0.0)
-    assertEquals(1.0, Math.nextAfter(1.0, 1.0), 0.0)
+    assertSameDouble(Double.NaN, Math.nextAfter(Double.NaN, Double.NaN))
+    assertSameDouble(Double.NaN, Math.nextAfter(1.0, Double.NaN))
+    assertSameDouble(Double.NaN, Math.nextAfter(Double.NaN, 1.0))
+
+    assertSameDouble(0.0, Math.nextAfter(0.0, 0.0))
+    assertSameDouble(-0.0, Math.nextAfter(0.0, -0.0))
+    assertSameDouble(0.0, Math.nextAfter(-0.0, 0.0))
+    assertSameDouble(-0.0, Math.nextAfter(-0.0, -0.0))
+
+    assertSameDouble(Double.PositiveInfinity,
+        Math.nextAfter(Double.PositiveInfinity, Double.PositiveInfinity))
+    assertSameDouble(Double.NegativeInfinity,
+        Math.nextAfter(Double.NegativeInfinity, Double.NegativeInfinity))
+
+    assertSameDouble(Double.NegativeInfinity,
+        Math.nextAfter(Double.MinValue, Double.NegativeInfinity))
+    assertSameDouble(Double.PositiveInfinity,
+        Math.nextAfter(-Double.MinValue, Double.PositiveInfinity))
+    assertSameDouble(Double.MaxValue,
+        Math.nextAfter(Double.PositiveInfinity, Double.NegativeInfinity))
+    assertSameDouble(Double.MinValue,
+        Math.nextAfter(Double.NegativeInfinity, Double.PositiveInfinity))
+    assertSameDouble(Double.PositiveInfinity,
+        Math.nextAfter(Double.MaxValue, Double.PositiveInfinity))
+    assertSameDouble(Double.NegativeInfinity,
+        Math.nextAfter(-Double.MaxValue, Double.NegativeInfinity))
+
+    assertSameDouble(1.0, Math.nextAfter(1.0, 1.0))
+    assertSameDouble(1.0000000000000002, Math.nextAfter(1.0, 2.0))
+    assertSameDouble(0.9999999999999999, Math.nextAfter(1.0, 0.5))
   }
 
   @Test def ulp_for_Double(): Unit = {
