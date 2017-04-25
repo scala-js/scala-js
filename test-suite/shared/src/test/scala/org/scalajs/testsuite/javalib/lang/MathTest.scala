@@ -17,6 +17,12 @@ import org.scalajs.testsuite.utils.Platform._
 
 class MathTest {
 
+  /** Like `assertEquals` with `delta = 0.0`, but positive and negative zeros
+   *  compare not equal.
+   */
+  private def assertSameDouble(expected: Double, actual: Double): Unit =
+    assertTrue(s"expected: $expected but was: $actual", expected.equals(actual))
+
   @Test def abs(): Unit = {
     assertEquals(0, Math.abs(0))
     assertEquals(42, Math.abs(42))
@@ -115,16 +121,26 @@ class MathTest {
   }
 
   @Test def nextUp_for_Double(): Unit = {
-    assertEquals(Double.PositiveInfinity, Math.nextUp(Double.PositiveInfinity), 0.0)
-    assertEquals(Double.MinValue, Math.nextUp(Double.NegativeInfinity), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.nextUp(Double.MaxValue), 0.0)
-    assertEquals(-1.7976931348623155e+308, Math.nextUp(-Double.MaxValue), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.nextUp(-Double.MinValue), 0.0)
-    assertEquals(Double.MinPositiveValue, Math.nextUp(0.0), 0.0)
-    assertEquals(Double.MinPositiveValue, Math.nextUp(-0.0), 0.0)
-    assertEquals(9007199254740992.0, Math.nextUp(9007199254740991.0), 0.0)
-    assertEquals(9007199254740994.0, Math.nextUp(9007199254740992.0), 0.0)
-    assertEquals(1 + 2.2204460492503130808472633361816E-16, Math.nextUp(1.0), 0.0)
+    // Specials
+    assertSameDouble(Double.MinPositiveValue, Math.nextUp(0.0))
+    assertSameDouble(Double.MinPositiveValue, Math.nextUp(-0.0))
+    assertSameDouble(Double.PositiveInfinity, Math.nextUp(Double.PositiveInfinity))
+    assertSameDouble(Double.MinValue, Math.nextUp(Double.NegativeInfinity))
+    assertSameDouble(Double.NaN, Math.nextUp(Double.NaN))
+
+    // Corner cases
+    val MinNormal = java.lang.Double.MIN_NORMAL
+    val MaxSubnormal = 2.225073858507201e-308
+    assertSameDouble(Double.PositiveInfinity, Math.nextUp(Double.MaxValue))
+    assertSameDouble(-1.7976931348623155e+308, Math.nextUp(Double.MinValue))
+    assertSameDouble(-0.0, Math.nextUp(-Double.MinPositiveValue))
+    assertSameDouble(MinNormal, Math.nextUp(MaxSubnormal))
+    assertSameDouble(-MaxSubnormal, Math.nextUp(-MinNormal))
+
+    // Random values
+    assertSameDouble(9007199254740992.0, Math.nextUp(9007199254740991.0))
+    assertSameDouble(9007199254740994.0, Math.nextUp(9007199254740992.0))
+    assertSameDouble(1.0000000000000002, Math.nextUp(1.0))
   }
 
   @Test def nextAfter_for_Double(): Unit = {
