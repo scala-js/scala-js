@@ -22,6 +22,9 @@ neg/t7622-cyclic-dependency
 # Uses some strange macro cross compile mechanism.
 neg/macro-incompatible-macro-engine-c.scala
 
+# Spurious failures
+neg/patmatexhaust-huge.scala
+
 # Uses .java files
 run/t9200
 run/noInlineUnknownIndy
