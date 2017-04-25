@@ -1060,7 +1060,6 @@ neg/t9286c.scala
 neg/t9286a.scala
 neg/virtpatmat_exhaust_big.scala
 neg/inlineMaxSize.scala
-neg/patmatexhaust-huge.scala
 
 run/t7249.scala
 run/t3563.scala
