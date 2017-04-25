@@ -108,6 +108,18 @@ object Math {
     }
   }
 
+  def nextUp(a: scala.Float): scala.Float = {
+    if (a != a || a == scala.Float.PositiveInfinity) {
+      a
+    } else if (a == -0.0f) { // also matches +0.0f but that's fine
+      scala.Float.MinPositiveValue
+    } else {
+      val abits = Float.floatToIntBits(a)
+      val rbits = if (a > 0) abits + 1 else abits - 1
+      Float.intBitsToFloat(rbits)
+    }
+  }
+
   def nextDown(a: scala.Double): scala.Double = {
     if (a != a || a == scala.Double.NegativeInfinity) {
       a
@@ -120,6 +132,18 @@ object Math {
     }
   }
 
+  def nextDown(a: scala.Float): scala.Float = {
+    if (a != a || a == scala.Float.NegativeInfinity) {
+      a
+    } else if (a == 0.0f) { // also matches -0.0f but that's fine
+      -scala.Float.MinPositiveValue
+    } else {
+      val abits = Float.floatToIntBits(a)
+      val rbits = if (a > 0) abits - 1 else abits + 1
+      Float.intBitsToFloat(rbits)
+    }
+  }
+
   def nextAfter(a: scala.Double, b: scala.Double): scala.Double = {
     if (b > a)
       nextUp(a)
@@ -129,6 +153,17 @@ object Math {
       scala.Double.NaN
     else
       b
+  }
+
+  def nextAfter(a: scala.Float, b: scala.Double): scala.Float = {
+    if (b > a)
+      nextUp(a)
+    else if (b < a)
+      nextDown(a)
+    else if (a != a)
+      scala.Float.NaN
+    else
+      b.toFloat
   }
 
   def ulp(a: scala.Double): scala.Double = {
@@ -326,9 +361,6 @@ object Math {
   // def copySign(magnitude: scala.Float, sign: scala.Float): scala.Float
   // def getExponent(a: scala.Float): scala.Int
   // def getExponent(a: scala.Double): scala.Int
-  // def nextAfter(a: scala.Float, b: scala.Double): scala.Float
-  // def nextUp(a: scala.Float): scala.Float
-  // def nextDown(a: scala.Float): scala.Float
   // def scalb(a: scala.Double, scalaFactor: scala.Int): scala.Double
   // def scalb(a: scala.Float, scalaFactor: scala.Int): scala.Float
 }

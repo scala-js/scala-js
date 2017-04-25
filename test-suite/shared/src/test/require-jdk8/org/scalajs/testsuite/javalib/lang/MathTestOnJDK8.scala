@@ -15,6 +15,12 @@ class MathTestOnJDK8 {
   private def assertSameDouble(expected: Double, actual: Double): Unit =
     assertTrue(s"expected: $expected but was: $actual", expected.equals(actual))
 
+  /** Like `assertEquals` with `delta = 0.0f`, but positive and negative zeros
+   *  compare not equal.
+   */
+  private def assertSameFloat(expected: Float, actual: Float): Unit =
+    assertTrue(s"expected: $expected but was: $actual", expected.equals(actual))
+
   @Test def addExact(): Unit = {
     assertEquals(0, Math.addExact(0, 0))
     assertEquals(1, Math.addExact(0, 1))
@@ -313,5 +319,27 @@ class MathTestOnJDK8 {
     assertSameDouble(9007199254740991.0, Math.nextDown(9007199254740992.0))
     assertSameDouble(9007199254740992.0, Math.nextDown(9007199254740994.0))
     assertSameDouble(0.9999999999999999, Math.nextDown(1.0))
+  }
+
+  @Test def nextDown_for_Float(): Unit = {
+    // Specials
+    assertSameFloat(-Float.MinPositiveValue, Math.nextDown(0.0f))
+    assertSameFloat(-Float.MinPositiveValue, Math.nextDown(-0.0f))
+    assertSameFloat(Float.MaxValue, Math.nextDown(Float.PositiveInfinity))
+    assertSameFloat(Float.NegativeInfinity, Math.nextDown(Float.NegativeInfinity))
+    assertSameFloat(Float.NaN, Math.nextDown(Float.NaN))
+
+    // Corner cases
+    val MinNormal = java.lang.Float.MIN_NORMAL
+    val MaxSubnormal = 1.1754942e-38f
+    assertSameFloat(3.4028233e38f, Math.nextDown(Float.MaxValue))
+    assertSameFloat(Float.NegativeInfinity, Math.nextDown(Float.MinValue))
+    assertSameFloat(0.0f, Math.nextDown(Float.MinPositiveValue))
+    assertSameFloat(MaxSubnormal, Math.nextDown(MinNormal))
+    assertSameFloat(-MinNormal, Math.nextDown(-MaxSubnormal))
+
+    // Random values
+    assertSameFloat(9007198700000000.0f, Math.nextDown(9007199300000000.0f))
+    assertSameFloat(0.99999994f, Math.nextDown(1.0f))
   }
 }

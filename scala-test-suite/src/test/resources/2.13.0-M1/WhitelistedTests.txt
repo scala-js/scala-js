@@ -39,5 +39,6 @@ scala/tools/nsc/SampleTest.scala
 scala/tools/testing/AssertUtil.scala
 scala/tools/testing/TempDir.scala
 scala/util/RandomTest.scala
+scala/util/RandomUtilTest.scala
 scala/util/TryTest.scala
 scala/util/control/ExceptionTest.scala
