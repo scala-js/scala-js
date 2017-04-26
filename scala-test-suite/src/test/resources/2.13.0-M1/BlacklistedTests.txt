@@ -100,9 +100,6 @@ scala/tools/testing/AssertThrowsTest.scala
 scala/util/SpecVersionTest.scala
 scala/util/SystemPropertiesTest.scala
 
-# Doesn't link because of #2906
-scala/util/RandomUtilTest.scala
-
 ## Tests fail
 
 # Reflection

@@ -17,6 +17,18 @@ import org.scalajs.testsuite.utils.Platform._
 
 class MathTest {
 
+  /** Like `assertEquals` with `delta = 0.0`, but positive and negative zeros
+   *  compare not equal.
+   */
+  private def assertSameDouble(expected: Double, actual: Double): Unit =
+    assertTrue(s"expected: $expected but was: $actual", expected.equals(actual))
+
+  /** Like `assertEquals` with `delta = 0.0f`, but positive and negative zeros
+   *  compare not equal.
+   */
+  private def assertSameFloat(expected: Float, actual: Float): Unit =
+    assertTrue(s"expected: $expected but was: $actual", expected.equals(actual))
+
   @Test def abs(): Unit = {
     assertEquals(0, Math.abs(0))
     assertEquals(42, Math.abs(42))
@@ -115,32 +127,114 @@ class MathTest {
   }
 
   @Test def nextUp_for_Double(): Unit = {
-    assertEquals(Double.PositiveInfinity, Math.nextUp(Double.PositiveInfinity), 0.0)
-    assertEquals(Double.MinValue, Math.nextUp(Double.NegativeInfinity), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.nextUp(Double.MaxValue), 0.0)
-    assertEquals(-1.7976931348623155e+308, Math.nextUp(-Double.MaxValue), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.nextUp(-Double.MinValue), 0.0)
-    assertEquals(Double.MinPositiveValue, Math.nextUp(0.0), 0.0)
-    assertEquals(Double.MinPositiveValue, Math.nextUp(-0.0), 0.0)
-    assertEquals(9007199254740992.0, Math.nextUp(9007199254740991.0), 0.0)
-    assertEquals(9007199254740994.0, Math.nextUp(9007199254740992.0), 0.0)
-    assertEquals(1 + 2.2204460492503130808472633361816E-16, Math.nextUp(1.0), 0.0)
+    // Specials
+    assertSameDouble(Double.MinPositiveValue, Math.nextUp(0.0))
+    assertSameDouble(Double.MinPositiveValue, Math.nextUp(-0.0))
+    assertSameDouble(Double.PositiveInfinity, Math.nextUp(Double.PositiveInfinity))
+    assertSameDouble(Double.MinValue, Math.nextUp(Double.NegativeInfinity))
+    assertSameDouble(Double.NaN, Math.nextUp(Double.NaN))
+
+    // Corner cases
+    val MinNormal = java.lang.Double.MIN_NORMAL
+    val MaxSubnormal = 2.225073858507201e-308
+    assertSameDouble(Double.PositiveInfinity, Math.nextUp(Double.MaxValue))
+    assertSameDouble(-1.7976931348623155e+308, Math.nextUp(Double.MinValue))
+    assertSameDouble(-0.0, Math.nextUp(-Double.MinPositiveValue))
+    assertSameDouble(MinNormal, Math.nextUp(MaxSubnormal))
+    assertSameDouble(-MaxSubnormal, Math.nextUp(-MinNormal))
+
+    // Random values
+    assertSameDouble(9007199254740992.0, Math.nextUp(9007199254740991.0))
+    assertSameDouble(9007199254740994.0, Math.nextUp(9007199254740992.0))
+    assertSameDouble(1.0000000000000002, Math.nextUp(1.0))
+  }
+
+  @Test def nextUp_for_Float(): Unit = {
+    // Specials
+    assertSameFloat(Float.MinPositiveValue, Math.nextUp(0.0f))
+    assertSameFloat(Float.MinPositiveValue, Math.nextUp(-0.0f))
+    assertSameFloat(Float.PositiveInfinity, Math.nextUp(Float.PositiveInfinity))
+    assertSameFloat(Float.MinValue, Math.nextUp(Float.NegativeInfinity))
+    assertSameFloat(Float.NaN, Math.nextUp(Float.NaN))
+
+    // Corner cases
+    val MinNormal = java.lang.Float.MIN_NORMAL
+    val MaxSubnormal = 1.1754942e-38f
+    assertSameFloat(Float.PositiveInfinity, Math.nextUp(Float.MaxValue))
+    assertSameFloat(-3.4028233e38f, Math.nextUp(Float.MinValue))
+    assertSameFloat(-0.0f, Math.nextUp(-Float.MinPositiveValue))
+    assertSameFloat(MinNormal, Math.nextUp(MaxSubnormal))
+    assertSameFloat(-MaxSubnormal, Math.nextUp(-MinNormal))
+
+    // Random values
+    assertSameFloat(9007200300000000.0f, Math.nextUp(9007199300000000.0f))
+    assertSameFloat(1.0000001f, Math.nextUp(1.0f))
   }
 
   @Test def nextAfter_for_Double(): Unit = {
-    assertTrue(Math.nextAfter(1.0, Double.NaN).isNaN)
-    assertTrue(Math.nextAfter(Double.NaN, 1.0).isNaN)
-    assertEquals(0.0, Math.nextAfter(0.0, 0.0), 0.0)
-    assertEquals(-0.0, Math.nextAfter(0.0, -0.0), 0.0)
-    assertEquals(0.0, Math.nextAfter(-0.0, 0.0), 0.0)
-    assertEquals(-0.0, Math.nextAfter(-0.0, -0.0), 0.0)
-    assertEquals(Double.NegativeInfinity, Math.nextAfter(Double.MinValue, Double.NegativeInfinity), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.nextAfter(-Double.MinValue, Double.PositiveInfinity), 0.0)
-    assertEquals(Double.MaxValue, Math.nextAfter(Double.PositiveInfinity, Double.NegativeInfinity), 0.0)
-    assertEquals(Double.MinValue, Math.nextAfter(Double.NegativeInfinity, Double.PositiveInfinity), 0.0)
-    assertEquals(Double.PositiveInfinity, Math.nextAfter(Double.MaxValue, Double.PositiveInfinity), 0.0)
-    assertEquals(Double.NegativeInfinity, Math.nextAfter(-Double.MaxValue, Double.NegativeInfinity), 0.0)
-    assertEquals(1.0, Math.nextAfter(1.0, 1.0), 0.0)
+    assertSameDouble(Double.NaN, Math.nextAfter(Double.NaN, Double.NaN))
+    assertSameDouble(Double.NaN, Math.nextAfter(1.0, Double.NaN))
+    assertSameDouble(Double.NaN, Math.nextAfter(Double.NaN, 1.0))
+
+    assertSameDouble(0.0, Math.nextAfter(0.0, 0.0))
+    assertSameDouble(-0.0, Math.nextAfter(0.0, -0.0))
+    assertSameDouble(0.0, Math.nextAfter(-0.0, 0.0))
+    assertSameDouble(-0.0, Math.nextAfter(-0.0, -0.0))
+
+    assertSameDouble(Double.PositiveInfinity,
+        Math.nextAfter(Double.PositiveInfinity, Double.PositiveInfinity))
+    assertSameDouble(Double.NegativeInfinity,
+        Math.nextAfter(Double.NegativeInfinity, Double.NegativeInfinity))
+
+    assertSameDouble(Double.NegativeInfinity,
+        Math.nextAfter(Double.MinValue, Double.NegativeInfinity))
+    assertSameDouble(Double.PositiveInfinity,
+        Math.nextAfter(-Double.MinValue, Double.PositiveInfinity))
+    assertSameDouble(Double.MaxValue,
+        Math.nextAfter(Double.PositiveInfinity, Double.NegativeInfinity))
+    assertSameDouble(Double.MinValue,
+        Math.nextAfter(Double.NegativeInfinity, Double.PositiveInfinity))
+    assertSameDouble(Double.PositiveInfinity,
+        Math.nextAfter(Double.MaxValue, Double.PositiveInfinity))
+    assertSameDouble(Double.NegativeInfinity,
+        Math.nextAfter(-Double.MaxValue, Double.NegativeInfinity))
+
+    assertSameDouble(1.0, Math.nextAfter(1.0, 1.0))
+    assertSameDouble(1.0000000000000002, Math.nextAfter(1.0, 2.0))
+    assertSameDouble(0.9999999999999999, Math.nextAfter(1.0, 0.5))
+  }
+
+  @Test def nextAfter_for_Float(): Unit = {
+    assertSameFloat(Float.NaN, Math.nextAfter(Float.NaN, Double.NaN))
+    assertSameFloat(Float.NaN, Math.nextAfter(1.0f, Double.NaN))
+    assertSameFloat(Float.NaN, Math.nextAfter(Float.NaN, 1.0))
+
+    assertSameFloat(0.0f, Math.nextAfter(0.0f, 0.0))
+    assertSameFloat(-0.0f, Math.nextAfter(0.0f, -0.0))
+    assertSameFloat(0.0f, Math.nextAfter(-0.0f, 0.0))
+    assertSameFloat(-0.0f, Math.nextAfter(-0.0f, -0.0))
+
+    assertSameFloat(Float.PositiveInfinity,
+        Math.nextAfter(Float.PositiveInfinity, Double.PositiveInfinity))
+    assertSameFloat(Float.NegativeInfinity,
+        Math.nextAfter(Float.NegativeInfinity, Double.NegativeInfinity))
+
+    assertSameFloat(Float.NegativeInfinity,
+        Math.nextAfter(Float.MinValue, Double.NegativeInfinity))
+    assertSameFloat(Float.PositiveInfinity,
+        Math.nextAfter(-Float.MinValue, Double.PositiveInfinity))
+    assertSameFloat(Float.MaxValue,
+        Math.nextAfter(Float.PositiveInfinity, Double.NegativeInfinity))
+    assertSameFloat(Float.MinValue,
+        Math.nextAfter(Float.NegativeInfinity, Double.PositiveInfinity))
+    assertSameFloat(Float.PositiveInfinity,
+        Math.nextAfter(Float.MaxValue, Double.PositiveInfinity))
+    assertSameFloat(Float.NegativeInfinity,
+        Math.nextAfter(-Float.MaxValue, Double.NegativeInfinity))
+
+    assertSameFloat(1.0f, Math.nextAfter(1.0f, 1.0))
+    assertSameFloat(1.0000001f, Math.nextAfter(1.0f, 2.0))
+    assertSameFloat(0.99999994f, Math.nextAfter(1.0f, 0.5))
   }
 
   @Test def ulp_for_Double(): Unit = {
