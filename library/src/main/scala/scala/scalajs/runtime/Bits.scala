@@ -226,7 +226,20 @@ object Bits {
         val twoPowFbits = pow(2, fbits)
 
         var e = min(rawToInt(floor(log(av) / LN2)), 1023)
-        var f = roundToEven(av / pow(2, e) * twoPowFbits)
+        var twoPowE = pow(2, e)
+
+        /* #2911: When av is very close under a power of 2 (e.g.,
+         * 9007199254740991.0 == 2^53 - 1), `log(av) / LN2` will already round
+         * *up* to an `e` which is 1 too much. The `floor()` afterwards comes
+         * too late to fix that.
+         * We now decrement `e` if it ends up being too big.
+         */
+        if (twoPowE > av) {
+          e -= 1
+          twoPowE /= 2
+        }
+
+        var f = roundToEven(av / twoPowE * twoPowFbits)
         if (f / twoPowFbits >= 2) {
           e = e + 1
           f = 1
