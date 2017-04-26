@@ -3265,6 +3265,7 @@ run/t10097.scala
 run/t10072.scala
 run/t10261
 run/t9114.scala
+run/t10069b.scala
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala

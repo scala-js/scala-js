@@ -5,6 +5,3 @@
 
 # Broken by GCC, filed as #2815
 run/Predef.readLine.scala
-
-# `Int.box(???)` crashes the compiler, filed as #2901
-run/t10069b.scala
