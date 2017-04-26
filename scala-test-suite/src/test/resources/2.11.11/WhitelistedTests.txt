@@ -9,6 +9,7 @@ scala/collection/immutable/SetTests.scala
 scala/collection/immutable/TreeMapTest.scala
 scala/collection/immutable/TreeSetTest.scala
 scala/collection/immutable/VectorTest.scala
+scala/collection/mutable/ArrayBuilderTest.scala
 scala/collection/mutable/ArraySortingTest.scala
 scala/collection/mutable/BitSetTest.scala
 scala/collection/mutable/LinkedHashMapTest.scala

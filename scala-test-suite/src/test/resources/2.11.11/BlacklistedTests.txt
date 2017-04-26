@@ -87,9 +87,6 @@ scala/util/SortingTest.scala
 # Bugs
 scala/collection/convert/MapWrapperTest.scala
 
-# Bug #2717 (ArrayBuilder needs to be reusable)
-scala/collection/mutable/ArrayBuilderTest.scala
-
 # Test fails only some times with
 #   'set scalaJSOptimizerOptions in scalaTestSuite ~= (_.withDisableOptimizer(true))'
 #   and' 'set scalaJSUseRhino in Global := false'

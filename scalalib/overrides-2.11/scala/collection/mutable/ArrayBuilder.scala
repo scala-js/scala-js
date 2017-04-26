@@ -47,7 +47,7 @@ object ArrayBuilder {
   private final class generic[T](elementClass: Class[_]) extends ArrayBuilder[T] {
 
     private val isCharArrayBuilder = classOf[Char] == elementClass
-    private val elems: js.Array[Any] = js.Array()
+    private var elems: js.Array[Any] = js.Array()
 
     def +=(elem: T): this.type = {
       val unboxedElem =
@@ -59,7 +59,7 @@ object ArrayBuilder {
     }
 
     def clear(): Unit =
-      elems.length = 0
+      elems = js.Array()
 
     def result(): Array[T] = {
       val elemRuntimeClass =
@@ -167,7 +167,10 @@ object ArrayBuilder {
     }
 
     def result() = {
-      if (capacity != 0 && capacity == size) elems
+      if (capacity != 0 && capacity == size) {
+        capacity = 0
+        elems
+      }
       else mkArray(size)
     }
 
@@ -232,7 +235,10 @@ object ArrayBuilder {
     }
 
     def result() = {
-      if (capacity != 0 && capacity == size) elems
+      if (capacity != 0 && capacity == size) {
+        capacity = 0
+        elems
+      }
       else mkArray(size)
     }
 
@@ -297,7 +303,10 @@ object ArrayBuilder {
     }
 
     def result() = {
-      if (capacity != 0 && capacity == size) elems
+      if (capacity != 0 && capacity == size) {
+        capacity = 0
+        elems
+      }
       else mkArray(size)
     }
 
@@ -362,7 +371,10 @@ object ArrayBuilder {
     }
 
     def result() = {
-      if (capacity != 0 && capacity == size) elems
+      if (capacity != 0 && capacity == size) {
+        capacity = 0
+        elems
+      }
       else mkArray(size)
     }
 
@@ -427,7 +439,10 @@ object ArrayBuilder {
     }
 
     def result() = {
-      if (capacity != 0 && capacity == size) elems
+      if (capacity != 0 && capacity == size) {
+        capacity = 0
+        elems
+      }
       else mkArray(size)
     }
 
@@ -492,7 +507,10 @@ object ArrayBuilder {
     }
 
     def result() = {
-      if (capacity != 0 && capacity == size) elems
+      if (capacity != 0 && capacity == size) {
+        capacity = 0
+        elems
+      }
       else mkArray(size)
     }
 
@@ -557,7 +575,10 @@ object ArrayBuilder {
     }
 
     def result() = {
-      if (capacity != 0 && capacity == size) elems
+      if (capacity != 0 && capacity == size) {
+        capacity = 0
+        elems
+      }
       else mkArray(size)
     }
 
@@ -622,7 +643,10 @@ object ArrayBuilder {
     }
 
     def result() = {
-      if (capacity != 0 && capacity == size) elems
+      if (capacity != 0 && capacity == size) {
+        capacity = 0
+        elems
+      }
       else mkArray(size)
     }
 
@@ -686,7 +710,10 @@ object ArrayBuilder {
     }
 
     def result() = {
-      if (capacity != 0 && capacity == size) elems
+      if (capacity != 0 && capacity == size) {
+        capacity = 0
+        elems
+      }
       else mkArray(size)
     }
 
@@ -751,7 +778,10 @@ object ArrayBuilder {
     }
 
     def result() = {
-      if (capacity != 0 && capacity == size) elems
+      if (capacity != 0 && capacity == size) {
+        capacity = 0
+        elems
+      }
       else mkArray(size)
     }
 
