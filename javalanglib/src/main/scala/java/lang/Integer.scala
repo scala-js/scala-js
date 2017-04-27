@@ -186,6 +186,13 @@ object Integer {
     byte0 | byte1 | byte2 | byte3
   }
 
+  def reverse(i: scala.Int): scala.Int = {
+    // From Hacker's Delight, 7-1, Figure 7-1
+    val j = (i & 0x55555555) << 1 | (i >> 1) & 0x55555555
+    val k = (j & 0x33333333) << 2 | (j >> 2) & 0x33333333
+    reverseBytes((k & 0x0F0F0F0F) << 4 | (k >> 4) & 0x0F0F0F0F)
+  }
+
   @inline def rotateLeft(i: scala.Int, distance: scala.Int): scala.Int =
     (i << distance) | (i >>> -distance)
 
