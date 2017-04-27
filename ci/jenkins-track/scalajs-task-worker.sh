@@ -35,7 +35,7 @@ echo '}' >> tmp.sh
 # Define sbt and sbtretry
 
 echo 'sbtretry() {' >> tmp.sh
-echo '  local TIMEOUT=25m' >> tmp.sh
+echo '  local TIMEOUT=35m' >> tmp.sh
 echo '  echo "RUNNING timeout -k 5 $TIMEOUT sbt" "$@"' >> tmp.sh
 echo '  timeout -k 5 $TIMEOUT sbt $SBT_OPTS "$@"' >> tmp.sh
 echo '  local CODE=$?' >> tmp.sh
