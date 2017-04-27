@@ -19,6 +19,9 @@ neg/t7494-right-after-before
 neg/t7622-multi-followers
 neg/t7622-cyclic-dependency
 
+# Wants an old version of partest for the exact error message
+neg/t7014
+
 # Uses some strange macro cross compile mechanism.
 neg/macro-incompatible-macro-engine-c.scala
 
