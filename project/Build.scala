@@ -56,7 +56,7 @@ object Build {
   val shouldPartest = settingKey[Boolean](
     "Whether we should partest the current scala version (and fail if we can't)")
 
-  val previousVersion = "0.6.15"
+  val previousVersion = "0.6.16"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
@@ -65,7 +65,7 @@ object Build {
   val scalaVersionsUsedForPublishing: Set[String] =
     Set("2.10.6", "2.11.11", "2.12.2", "2.13.0-M1")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
-    Set("2.13.0-M1")
+    Set()
 
   val javaVersion = settingKey[Int](
     "The major Java SDK version that should be assumed for compatibility. " +

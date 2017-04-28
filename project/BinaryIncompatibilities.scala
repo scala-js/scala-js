@@ -3,9 +3,6 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
-      // Breaking: Utils.printEscapeJS now returns Int
-      ProblemFilters.exclude[IncompatibleResultTypeProblem](
-          "org.scalajs.core.ir.Utils.printEscapeJS")
   )
 
   val Tools = Seq(
