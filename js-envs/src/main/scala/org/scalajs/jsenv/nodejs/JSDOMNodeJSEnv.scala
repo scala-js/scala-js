@@ -58,7 +58,12 @@ class JSDOMNodeJSEnv(
       val jsDOMCode = {
         s"""
            |(function () {
-           |  const jsdom = require("jsdom");
+           |  var jsdom;
+           |  try {
+           |    jsdom = require("jsdom/lib/old-api.js"); // jsdom >= 10.x
+           |  } catch (e) {
+           |    jsdom = require("jsdom"); // jsdom <= 9.x
+           |  }
            |
            |  var virtualConsole = jsdom.createVirtualConsole()
            |    .sendTo(console, { omitJsdomErrors: true });

@@ -1045,7 +1045,6 @@ neg/t9286c.scala
 neg/t9286a.scala
 neg/virtpatmat_exhaust_big.scala
 neg/inlineMaxSize.scala
-neg/patmatexhaust-huge.scala
 
 run/t7249.scala
 run/t3563.scala
@@ -3278,7 +3277,6 @@ pos/t7551
 pos/t6978
 pos/t7046-2
 neg/t9953.scala
-neg/t7014
 neg/t7046-2
 neg/t7046
 run/t7046-1

@@ -22,7 +22,6 @@ import org.scalajs.core.ir
 import ir.Position
 import ir.Position.NoPosition
 import ir.Printers.IndentationManager
-import ir.Utils.printEscapeJS
 
 import Trees._
 
@@ -471,7 +470,7 @@ object Printers {
 
         case StringLiteral(value) =>
           print('\"')
-          printEscapeJS(value, out)
+          printEscapeJS(value)
           print('\"')
 
         // Atomic expressions
@@ -555,8 +554,11 @@ object Printers {
       }
     }
 
+    protected def printEscapeJS(s: String): Unit =
+      ir.Utils.printEscapeJS(s, out)
+
     protected def print(ident: Ident): Unit =
-      printEscapeJS(ident.name, out)
+      printEscapeJS(ident.name)
 
     private final def print(propName: PropertyName): Unit = propName match {
       case lit: StringLiteral => print(lit: Tree)
@@ -595,6 +597,9 @@ object Printers {
       if (pos.isDefined)
         sourceMap.endNode(column)
     }
+
+    override protected def printEscapeJS(s: String): Unit =
+      column += ir.Utils.printEscapeJS(s, out)
 
     override protected def print(ident: Ident): Unit = {
       if (ident.pos.isDefined)

@@ -2253,7 +2253,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           } else if (currentRun.runDefinitions.isBox(sym)) {
             // Box a primitive value (cannot be Unit)
             val arg = args.head
-            makePrimitiveBox(genExpr(arg), arg.tpe)
+            makePrimitiveBox(genExpr(arg), sym.firstParam.tpe)
           } else if (currentRun.runDefinitions.isUnbox(sym)) {
             // Unbox a primitive value (cannot be Unit)
             val arg = args.head

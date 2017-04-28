@@ -95,14 +95,14 @@ object Build {
     "Whether we should partest the current scala version (and fail if we can't)")
 
   /* MiMa configuration -- irrelevant while in 1.0.0-SNAPSHOT.
-  val previousVersion = "0.6.15"
+  val previousVersion = "0.6.16"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.6", "2.11.8", "2.12.1")
+    Set("2.10.6", "2.11.11", "2.12.2", "2.13.0-M1")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
   */
@@ -160,7 +160,7 @@ object Build {
   }
 
   val commonSettings = Seq(
-      scalaVersion := "2.11.8",
+      scalaVersion := "2.11.11",
       organization := "org.scala-js",
       version := scalaJSVersion,
 
@@ -384,6 +384,16 @@ object Build {
       publishMavenStyle := false
   )
 
+  private def parallelCollectionsDependencies(
+      scalaVersion: String): Seq[ModuleID] = {
+    CrossVersion.partialVersion(scalaVersion) match {
+      case Some((2, n)) if n >= 13 =>
+        Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "0.1.2")
+
+      case _ => Nil
+    }
+  }
+
   implicit class ProjectOps(val project: Project) extends AnyVal {
     /** Uses the Scala.js compiler plugin. */
     def withScalaJSCompiler: Project =
@@ -447,8 +457,11 @@ object Build {
         "2.11.6",
         "2.11.7",
         "2.11.8",
+        "2.11.11",
         "2.12.0",
-        "2.12.1"
+        "2.12.1",
+        "2.12.2",
+        "2.13.0-M1"
       ),
       // JDK version we are running with
       javaVersion in Global := {
@@ -600,12 +613,7 @@ object Build {
           "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit"),
           "com.novocode" % "junit-interface" % "0.9" % "test"
       ) ++ (
-          CrossVersion.partialVersion(scalaVersion.value) match {
-            case Some((2, n)) if n >= 13 =>
-              Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "0.1.1")
-
-            case _ => Nil
-          }
+          parallelCollectionsDependencies(scalaVersion.value)
       )
   ).dependsOn(irProject)
 
@@ -1644,22 +1652,27 @@ object Build {
       },
 
       libraryDependencies ++= {
-        if (shouldPartest.value)
+        if (shouldPartest.value) {
           Seq(
-            "org.scala-sbt" % "sbt" % sbtVersion.value,
-            {
-              val v = scalaVersion.value
-              if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
-                "org.scala-lang.modules" %% "scala-partest" % "1.0.13"
-              else if (v.startsWith("2.11."))
-                "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
-              else
-                "org.scala-lang.modules" %% "scala-partest" % "1.0.17"
-            },
-            "org.scala-js" % "closure-compiler-java-6" % "v20160517",
-            "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit")
+              "org.scala-sbt" % "sbt" % sbtVersion.value,
+              {
+                val v = scalaVersion.value
+                if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
+                  "org.scala-lang.modules" %% "scala-partest" % "1.0.13"
+                else if (v.startsWith("2.11."))
+                  "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
+                else
+                  "org.scala-lang.modules" %% "scala-partest" % "1.1.1"
+              },
+              "org.scala-js" % "closure-compiler-java-6" % "v20160517",
+              "io.apigee" % "rhino" % "1.7R5pre4",
+              "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit")
+          ) ++ (
+              parallelCollectionsDependencies(scalaVersion.value)
           )
-        else Seq()
+        } else {
+          Seq()
+        }
       },
 
       unmanagedSourceDirectories in Compile += {

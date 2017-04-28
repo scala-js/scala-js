@@ -249,6 +249,9 @@ class DoubleTest {
     assertEquals(0xffefffffffffffffL, f(-1.7976931348623157e308))  // largest neg normal form
     assertEquals(0xcd124568bc6584caL, f(-1.8790766677624813e63))   // an arbitrary neg normal form
 
+    // #2911 Normal form very close under a power of 2
+    assertEquals(4845873199050653695L, f(9007199254740991.0))
+
     // Subnormal forms
     assertEquals(0x0000000000000001L, f(Double.MinPositiveValue))  // smallest pos subnormal form
     assertEquals(0x000fffffffffffffL, f(2.225073858507201e-308))   // largest pos subnormal form

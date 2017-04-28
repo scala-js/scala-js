@@ -75,12 +75,13 @@ object Utils {
     sb.toString
   }
 
-  def printEscapeJS(str: String, out: java.lang.Appendable): Unit = {
+  def printEscapeJS(str: String, out: java.lang.Appendable): Int = {
     /* Note that Java and JavaScript happen to use the same encoding for
      * Unicode, namely UTF-16, which means that 1 char from Java always equals
      * 1 char in JavaScript. */
     val end = str.length()
     var i = 0
+    var writtenChars = 0
     /* Loop prints all consecutive ASCII printable characters starting
      * from current i and one non ASCII printable character (if it exists).
      * The new i is set at the end of the appended characters.
@@ -95,8 +96,10 @@ object Utils {
           c = str.charAt(i)
       }
       // Print ASCII printable characters from `start`
-      if (start != i)
+      if (start != i) {
         out.append(str, start, i)
+        writtenChars += i
+      }
 
       // Print next non ASCII printable character
       if (i != end) {
@@ -104,18 +107,23 @@ object Utils {
           if (6 < c && c < 14) {
             val i = 2 * (c - 7)
             out.append(EscapeJSChars, i, i + 2)
+            writtenChars += 2
           } else if (c == 34) {
             out.append(EscapeJSChars, 14, 16)
+            writtenChars += 2
           } else if (c == 92) {
             out.append(EscapeJSChars, 16, 18)
+            writtenChars += 2
           } else {
             out.append(f"\\u$c%04x")
+            writtenChars += 6
           }
         }
         escapeJSEncoded(c)
         i += 1
       }
     }
+    writtenChars
   }
 
   /** A ByteArrayOutput stream that allows to jump back to a given
