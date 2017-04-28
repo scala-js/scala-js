@@ -10,6 +10,8 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.FunctionEmitter.desugarToFunction"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.FunctionEmitter.desugarTree"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.JSGen.transformIdent")
   )
 

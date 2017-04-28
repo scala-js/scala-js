@@ -213,7 +213,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             js.DotSelect(encodeClassVar(parentIdent.name), js.Ident("call")),
             List(js.This()))
       }
-      val fieldDefs = genFieldDefs(tree)
+      val fieldDefs = genFieldDefsOfScalaClass(tree)
       js.Function(Nil, js.Block(superCtorCall :: fieldDefs))
     } else {
       genConstructorFunForJSClass(tree)
@@ -257,7 +257,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       val js.Function(params, body) = genConstructorFunForJSClass(tree)
       js.MethodDef(static = false, js.Ident("constructor"), params, body)
     } else {
-      val fieldDefs = genFieldDefs(tree)
+      val fieldDefs = genFieldDefsOfScalaClass(tree)
       if (fieldDefs.isEmpty && outputMode == OutputMode.ECMAScript6) {
         js.Skip()
       } else {
@@ -287,19 +287,18 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
   }
 
-  /** Generates the creation of fields for a class. */
-  private def genFieldDefs(tree: LinkedClass)(
+  /** Generates the creation of fields for a Scala class. */
+  private def genFieldDefsOfScalaClass(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     val tpe = ClassType(tree.encodedName)
     for {
       field @ FieldDef(false, name, ftpe, mutable) <- tree.fields
     } yield {
       implicit val pos = field.pos
-      val selectField = (name: @unchecked) match {
-        case name: Ident => Select(This()(tpe), name)(ftpe)
+      val jsIdent = (name: @unchecked) match {
+        case Ident(name, origName) => js.Ident(name, origName)
       }
-      desugarTree(Some(tree.encodedName),
-          Assign(selectField, zeroOf(ftpe)), isStat = true)
+      js.Assign(js.DotSelect(js.This(), jsIdent), genZeroOf(ftpe))
     }
   }
 

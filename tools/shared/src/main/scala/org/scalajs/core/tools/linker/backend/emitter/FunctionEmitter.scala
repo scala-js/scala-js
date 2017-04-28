@@ -227,19 +227,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     new JSDesugar().desugarToFunction(params, body, isStat, Env.empty)
   }
 
-  /** Desugars a statement or an expression. */
-  def desugarTree(
-      enclosingClassName: Option[String],
-      tree: Tree, isStat: Boolean)(
-      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
-    val env = Env.empty.withEnclosingClassName(enclosingClassName)
-    val desugar = new JSDesugar()
-    if (isStat)
-      desugar.transformStat(tree, Set.empty)(env)
-    else
-      desugar.transformExpr(tree)(env)
-  }
-
   private class JSDesugar()(implicit globalKnowledge: GlobalKnowledge) {
 
     // Synthetic variables
