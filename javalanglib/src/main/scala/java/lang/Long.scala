@@ -390,6 +390,13 @@ object Long {
         Integer.reverseBytes(i.toInt))
   }
 
+  @inline
+  def reverse(i: scala.Long): scala.Long = {
+    makeLongFromLoHi(
+        Integer.reverse((i >>> 32).toInt),
+        Integer.reverse(i.toInt))
+  }
+
   /** Make a `Long` value from its lo and hi 32-bit parts.
    *  When the optimizer is enabled, this operation is free.
    */
