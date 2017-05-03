@@ -1008,10 +1008,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       for (annot <- sym.annotations) {
         if (annot.symbol == JSNameAnnotation && !allowJSName) {
-          reporter.warning(annot.pos,
-              "Non JS-native classes, traits and objects should not have an " +
-              "@JSName annotation, as it does not have any effect. " +
-              "This will be enforced in 1.0.")
+          reporter.error(annot.pos,
+              "Non JS-native classes, traits and objects may not have an " +
+              "@JSName annotation.")
         } else if (annot.symbol == JSGlobalAnnotation) {
           reporter.error(annot.pos,
               "Non JS-native classes, traits and objects may not have an " +
