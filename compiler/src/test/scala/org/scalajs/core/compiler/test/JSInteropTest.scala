@@ -52,12 +52,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
       @JSName(Sym.sym)
       $obj B extends js.Object
-      """ hasWarns
+      """ hasErrors
       s"""
-        |newSource1.scala:5: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+        |newSource1.scala:5: error: Non JS-native classes, traits and objects may not have an @JSName annotation.
         |      @JSName("foo")
         |       ^
-        |newSource1.scala:12: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+        |newSource1.scala:12: error: Non JS-native classes, traits and objects may not have an @JSName annotation.
         |      @JSName(Sym.sym)
         |       ^
       """
@@ -76,12 +76,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
       @JSName(Sym.sym)
       $obj B
-      """ hasWarns
+      """ hasErrors
       s"""
-        |newSource1.scala:5: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+        |newSource1.scala:5: error: Non JS-native classes, traits and objects may not have an @JSName annotation.
         |      @JSName("foo")
         |       ^
-        |newSource1.scala:12: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+        |newSource1.scala:12: error: Non JS-native classes, traits and objects may not have an @JSName annotation.
         |      @JSName(Sym.sym)
         |       ^
       """
@@ -110,12 +110,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("bar")
       private object tata extends js.Object
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:6: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+      |newSource1.scala:6: error: Non JS-native classes, traits and objects may not have an @JSName annotation.
       |      @JSName("foo")
       |       ^
-      |newSource1.scala:9: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+      |newSource1.scala:9: error: Non JS-native classes, traits and objects may not have an @JSName annotation.
       |      @JSName("bar")
       |       ^
     """
