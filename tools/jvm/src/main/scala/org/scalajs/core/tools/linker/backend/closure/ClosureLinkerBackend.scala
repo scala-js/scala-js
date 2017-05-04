@@ -54,6 +54,11 @@ final class ClosureLinkerBackend(
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
 
+  private val needsIIFEWrapper = moduleKind match {
+    case ModuleKind.NoModule       => true
+    case ModuleKind.CommonJSModule => false
+  }
+
   private def toClosureSource(file: VirtualJSFile) =
     ClosureSource.fromReader(file.toURI.toString(), file.reader)
 
@@ -139,10 +144,11 @@ final class ClosureLinkerBackend(
   private def writeResult(result: Result, compiler: ClosureCompiler,
       output: WritableVirtualJSFile): Unit = {
     def withNewLine(str: String): String = if (str == "") "" else str + "\n"
+    def ifIIFE(str: String): String = if (needsIIFEWrapper) str else ""
 
     val (header0, footer0) = config.customOutputWrapper
-    val header = withNewLine(header0) + "(function(){'use strict';\n"
-    val footer = "}).call(this);\n" + withNewLine(footer0)
+    val header = withNewLine(header0) + ifIIFE("(function(){") + "'use strict';\n"
+    val footer = ifIIFE("}).call(this);\n") + withNewLine(footer0)
 
     val outputContent =
       if (result.errors.nonEmpty) "// errors while producing source\n"
