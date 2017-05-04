@@ -337,7 +337,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case Select(Select(trg, jsnme.x), nme.apply) if isJSDynamic(trg) =>
           val newTree = atPos(tree.pos) {
             Apply(
-                Select(super.transform(trg), newTermName("applyDynamic")),
+                Select(transform(trg), newTermName("applyDynamic")),
                 List(Literal(Constant("x")))
             )
           }
@@ -349,7 +349,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case Select(trg, jsnme.x) if isJSDynamic(trg) =>
           val newTree = atPos(tree.pos) {
             Apply(
-                Select(super.transform(trg), newTermName("selectDynamic")),
+                Select(transform(trg), newTermName("selectDynamic")),
                 List(Literal(Constant("x")))
             )
           }
