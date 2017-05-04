@@ -69,15 +69,14 @@ final class ClosureLinkerBackend(
     val builder = new ClosureAstBuilder(config.relativizeSourceMapBase)
 
     // Build Closure IR
-    logger.time("Emitter (create Closure trees)") {
-      emitter.emit(unit, builder, logger)
+    val coreJSLib = logger.time("Emitter (create Closure trees)") {
+      emitter.emitForClosure(unit, builder, logger)
     }
 
     // Build a Closure JSModule which includes the core libs
     val module = new JSModule("Scala.js")
 
-    module.add(new CompilerInput(toClosureSource(
-        CoreJSLibs.lib(semantics, OutputMode.ECMAScript51Isolated, moduleKind))))
+    module.add(new CompilerInput(toClosureSource(coreJSLib)))
 
     val ast = builder.closureAST
     module.add(new CompilerInput(ast, ast.getInputId(), false))

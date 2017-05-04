@@ -31,7 +31,7 @@ object Platform {
     runtime.Bits.areTypedArraysSupported
 
   def areJSSymbolsSupported: Boolean =
-    !js.isUndefined(js.Dynamic.global.Symbol)
+    js.typeOf(js.Dynamic.global.Symbol) != "undefined"
 
   def executingInRhino: Boolean = sysProp("rhino")
   def executingInNodeJS: Boolean = sysProp("nodejs")

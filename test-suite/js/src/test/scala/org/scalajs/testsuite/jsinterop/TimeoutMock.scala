@@ -9,7 +9,8 @@ object TimeoutMock {
   @noinline
   def withMockedTimeout[A](body: (Int => Unit) => A): A = {
     assert(!installed, "Mock timeout already installed.")
-    import js.Dynamic.global
+
+    val global = scala.scalajs.runtime.environmentInfo.global
 
     val realSetTimeout = global.setTimeout
     val realClearTimeout = global.clearTimeout
