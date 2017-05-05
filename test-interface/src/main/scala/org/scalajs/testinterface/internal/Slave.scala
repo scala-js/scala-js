@@ -75,10 +75,8 @@ final class Slave(frameworkName: String, args: js.Array[String],
   // Message handler methods
 
   private def newRunner(): Try[Unit] = {
-    val loader = new ScalaJSClassLoader(
-        scala.scalajs.runtime.environmentInfo.exportsNamespace)
     Try(runner = framework.slaveRunner(args.toArray, remoteArgs.toArray,
-        loader, outboundRunnerMessage))
+        new ScalaJSClassLoader(), outboundRunnerMessage))
   }
 
   private def execute(data: js.Dynamic): Unit = {

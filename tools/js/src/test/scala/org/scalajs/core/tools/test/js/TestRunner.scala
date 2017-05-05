@@ -29,8 +29,7 @@ object TestRunner {
     for {
       (framework, taskDefs) <- TestDetector.detectTests()
     } {
-      val runner = framework.runner(Array(), Array(),
-          new ScalaJSClassLoader(js.Dynamic.global))
+      val runner = framework.runner(Array(), Array(), new ScalaJSClassLoader())
       val tasks = runner.tasks(taskDefs.toArray)
       taskLoop(tasks)
     }
