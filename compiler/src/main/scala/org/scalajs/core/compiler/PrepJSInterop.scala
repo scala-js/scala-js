@@ -601,7 +601,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             memberDefStringWithJSName(high) + "\n"
           }
 
-          reporter.warning(errorPos, msg)
+          reporter.error(errorPos, msg)
         }
 
         /* Cannot override a non-@JSOptional with an @JSOptional. Unfortunately

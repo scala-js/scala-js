@@ -1742,7 +1742,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def scalaJSDefinedJSNameOverrideWarnings: Unit = {
+  def scalaJSDefinedJSNameOverrideErrors: Unit = {
     """
     abstract class A extends js.Object {
       def bar(): Int
@@ -1783,9 +1783,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("baz")
       override def bar() = 1
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:11: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:11: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'baz'
       |    is conflicting with
@@ -1803,9 +1803,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends A {
       override def bar() = 1
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'bar'
       |    is conflicting with
@@ -1826,9 +1826,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def bar() = "1"
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class B with JSName 'bar'
       |    is conflicting with
@@ -1836,7 +1836,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar(): String
       |                   ^
-      |newSource1.scala:13: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class C with JSName 'bar'
       |    is conflicting with
@@ -1857,9 +1857,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def bar() = "1"
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class B with JSName 'foo'
       |    is conflicting with
@@ -1867,7 +1867,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar(): String
       |                   ^
-      |newSource1.scala:13: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class C with JSName 'bar'
       |    is conflicting with
@@ -1886,9 +1886,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     class C extends B
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in class A with JSName 'foo'
       |    is conflicting with
@@ -1907,9 +1907,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     class C extends B
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in class A with JSName 'bar'
       |    is conflicting with
@@ -1927,9 +1927,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends A[Int] {
       override def foo(x: Int): Int = x
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class B with JSName 'foo'
       |    is conflicting with
@@ -1947,9 +1947,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends A[Int] {
       override def foo(x: Int): Int = x
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class B with JSName 'foo'
       |    is conflicting with
@@ -1970,9 +1970,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def foo(x: Int): Int = x
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo(x: Int): Int in class A with JSName 'bar'
       |    is conflicting with
@@ -1980,7 +1980,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      def foo(x: Int): Int
       |          ^
-      |newSource1.scala:13: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class C with JSName 'foo'
       |    is conflicting with
@@ -2001,9 +2001,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def foo(x: Int): Int = x
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo(x: Int): Int in class A with JSName 'foo'
       |    is conflicting with
@@ -2011,7 +2011,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      def foo(x: Int): Int
       |          ^
-      |newSource1.scala:13: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class C with JSName 'foo'
       |    is conflicting with
@@ -2030,9 +2030,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     trait C extends A with B
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:12: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in trait B with JSName 'bar'
       |    is conflicting with
@@ -2051,9 +2051,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     abstract class C extends A with B
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:12: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in trait B with JSName 'bar'
       |    is conflicting with
@@ -2065,7 +2065,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def scalaJSDefinedJSNameWithSymbolOverrideWarnings: Unit = {
+  def scalaJSDefinedJSNameWithSymbolOverrideErrors: Unit = {
     """
     object Syms {
       val sym1 = js.Symbol()
@@ -2110,9 +2110,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(Syms.sym2)
       override def bar() = 1
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'Syms.sym2'
       |    is conflicting with
@@ -2135,9 +2135,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("baz")
       override def bar() = 1
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:15: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:15: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'baz'
       |    is conflicting with
@@ -2160,9 +2160,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(Syms.sym1)
       override def bar() = 1
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:15: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:15: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'Syms.sym1'
       |    is conflicting with
@@ -2184,9 +2184,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends A {
       override def bar() = 1
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'bar'
       |    is conflicting with
@@ -2211,9 +2211,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def bar() = "1"
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class B with JSName 'bar'
       |    is conflicting with
@@ -2221,7 +2221,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar(): String
       |                   ^
-      |newSource1.scala:17: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:17: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class C with JSName 'bar'
       |    is conflicting with
@@ -2246,9 +2246,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def bar() = "1"
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class B with JSName 'Syms.sym1'
       |    is conflicting with
@@ -2256,7 +2256,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar(): String
       |                   ^
-      |newSource1.scala:17: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:17: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class C with JSName 'bar'
       |    is conflicting with
@@ -2279,9 +2279,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     class C extends B
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in class A with JSName 'foo'
       |    is conflicting with
@@ -2304,9 +2304,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     class C extends B
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in class A with JSName 'Syms.sym1'
       |    is conflicting with
@@ -2328,9 +2328,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends A[Int] {
       override def foo(x: Int): Int = x
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class B with JSName 'foo'
       |    is conflicting with
@@ -2352,9 +2352,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends A[Int] {
       override def foo(x: Int): Int = x
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class B with JSName 'foo'
       |    is conflicting with
@@ -2379,9 +2379,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def foo(x: Int): Int = x
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo(x: Int): Int in class A with JSName 'Syms.sym1'
       |    is conflicting with
@@ -2389,7 +2389,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      def foo(x: Int): Int
       |          ^
-      |newSource1.scala:17: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:17: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class C with JSName 'foo'
       |    is conflicting with
@@ -2414,9 +2414,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def foo(x: Int): Int = x
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo(x: Int): Int in class A with JSName 'foo'
       |    is conflicting with
@@ -2424,7 +2424,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      def foo(x: Int): Int
       |          ^
-      |newSource1.scala:17: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:17: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class C with JSName 'foo'
       |    is conflicting with
@@ -2447,9 +2447,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     trait C extends A with B
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in trait B with JSName 'Syms.sym1'
       |    is conflicting with
@@ -2472,9 +2472,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     abstract class C extends A with B
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in trait B with JSName 'Syms.sym1'
       |    is conflicting with
