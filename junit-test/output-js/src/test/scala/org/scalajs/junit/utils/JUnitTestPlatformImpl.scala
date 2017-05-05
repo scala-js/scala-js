@@ -2,12 +2,10 @@ package org.scalajs.junit.utils
 
 import sbt.testing._
 
-import scala.scalajs.js
-
 object JUnitTestPlatformImpl {
 
   def getClassLoader: ClassLoader =
-    new org.scalajs.testinterface.ScalaJSClassLoader(js.Dynamic.global)
+    new org.scalajs.testinterface.ScalaJSClassLoader()
 
   def executeLoop(tasks: Array[Task], recorder: Logger with EventHandler): Unit = {
     if (tasks.nonEmpty) {

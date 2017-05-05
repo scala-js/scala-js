@@ -22,7 +22,7 @@ import scala.util.Try
 import sbt.testing._
 
 protected[testinterface] object HTMLRunner {
-  private val classLoader = new ScalaJSClassLoader(js.Dynamic.global)
+  private val classLoader = new ScalaJSClassLoader()
 
   private object EventCounter {
     private val isErrorStatus = Set(Status.Error, Status.Failure)
