@@ -29,10 +29,7 @@ private[ir] object Tags {
   final val TagWhile = TagIf + 1
   final val TagDoWhile = TagWhile + 1
 
-  // TODO remove when we can break binary compat.
-  final val TagTry = TagDoWhile + 1
-
-  final val TagThrow = TagTry + 1
+  final val TagThrow = TagDoWhile + 1
   final val TagContinue = TagThrow + 1
   final val TagMatch = TagContinue + 1
   final val TagDebugger = TagMatch + 1
@@ -68,9 +65,8 @@ private[ir] object Tags {
   final val TagJSBinaryOp = TagJSUnaryOp + 1
   final val TagJSArrayConstr = TagJSBinaryOp + 1
   final val TagJSObjectConstr = TagJSArrayConstr + 1
-  final val TagJSEnvInfo = TagJSObjectConstr + 1
 
-  final val TagUndefined = TagJSEnvInfo + 1
+  final val TagUndefined = TagJSObjectConstr + 1
   final val TagUndefinedParam = TagUndefined + 1 // TODO Move this
   final val TagNull = TagUndefinedParam + 1
   final val TagBooleanLiteral = TagNull + 1
@@ -95,8 +91,7 @@ private[ir] object Tags {
   // TODO Reorganize these when we can break binary compatibility
   final val TagJSSpread = TagModuleExportDef + 1
   final val TagJSLinkingInfo = TagJSSpread + 1
-  final val TagStringLitFieldDef = TagJSLinkingInfo + 1
-  final val TagJSSuperBracketSelect = TagStringLitFieldDef + 1
+  final val TagJSSuperBracketSelect = TagJSLinkingInfo + 1
   final val TagJSSuperBracketCall = TagJSSuperBracketSelect + 1
   final val TagJSSuperConstructorCall = TagJSSuperBracketCall + 1
   final val TagLoadJSConstructor = TagJSSuperConstructorCall + 1

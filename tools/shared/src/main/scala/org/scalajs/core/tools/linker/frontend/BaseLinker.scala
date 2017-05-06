@@ -250,11 +250,6 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
         case MethodSyntheticKind.None =>
           // nothing to do
 
-        case MethodSyntheticKind.InheritedConstructor =>
-          val syntheticMDef = synthesizeInheritedConstructor(
-              analyzerInfo, m, getTree, analysis)(classDef.pos)
-          memberMethods += linkedSyntheticMethod(syntheticMDef)
-
         case MethodSyntheticKind.ReflectiveProxy(targetName) =>
           val syntheticMDef = synthesizeReflectiveProxy(
               analyzerInfo, m, targetName, getTree, analysis)
@@ -296,28 +291,6 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
         hasInstanceTests = analyzerInfo.areInstanceTestsUsed,
         hasRuntimeTypeInfo = analyzerInfo.isDataAccessed,
         version)
-  }
-
-  private def synthesizeInheritedConstructor(
-      classInfo: Analysis.ClassInfo, methodInfo: Analysis.MethodInfo,
-      getTree: TreeProvider, analysis: Analysis)(
-      implicit pos: Position): MethodDef = {
-    val encodedName = methodInfo.encodedName
-
-    val inheritedMDef = findInheritedMethodDef(analysis, classInfo.superClass,
-        encodedName, getTree, _.syntheticKind == MethodSyntheticKind.None)
-
-    val origName = inheritedMDef.name.asInstanceOf[Ident].originalName
-    val ctorIdent = Ident(encodedName, origName)
-    val params = inheritedMDef.args.map(_.copy()) // for the new pos
-    val currentClassType = ClassType(classInfo.encodedName)
-    val superClassType = ClassType(classInfo.superClass.encodedName)
-    MethodDef(static = false, ctorIdent,
-        params, NoType,
-        Some(ApplyStatically(This()(currentClassType),
-            superClassType, ctorIdent, params.map(_.ref))(NoType)))(
-        OptimizerHints.empty,
-        inheritedMDef.hash) // over-approximation
   }
 
   private def synthesizeReflectiveProxy(
@@ -397,8 +370,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
               val targetInterfaceInfo = analysis.classInfos(targetInterface)
               findMethodDef(targetInterfaceInfo, methodName, getTree)
 
-            case MethodSyntheticKind.InheritedConstructor |
-                MethodSyntheticKind.ReflectiveProxy(_) =>
+            case MethodSyntheticKind.ReflectiveProxy(_) =>
               throw new AssertionError(
                   s"Cannot recursively follow $ancestorInfo.$methodName of " +
                   s"kind ${m.syntheticKind}")
