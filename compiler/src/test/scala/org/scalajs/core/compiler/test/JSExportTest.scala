@@ -820,9 +820,9 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport
       def apply(): Int = 1
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:4: warning: Member cannot be exported to function application. It is available under the name apply instead. Add @JSExport("apply") to silence this warning. This will be enforced in 1.0.
+      |newSource1.scala:4: error: A member cannot be exported to function application. Add @JSExport("apply") to export under the name apply.
       |      @JSExport
       |       ^
     """
@@ -832,9 +832,9 @@ class JSExportTest extends DirectTest with TestHelpers {
     class A {
       def apply(): Int = 1
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:5: warning: Member cannot be exported to function application. It is available under the name apply instead. Add @JSExport("apply") to silence this warning. This will be enforced in 1.0.
+      |newSource1.scala:5: error: A member cannot be exported to function application. Add @JSExport("apply") to export under the name apply.
       |      def apply(): Int = 1
       |          ^
     """
@@ -845,9 +845,9 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport("foo")
       def apply(): Int = 1
     }
-    """ hasWarns
+    """ hasErrors
     """
-      |newSource1.scala:6: warning: Member cannot be exported to function application. It is available under the name apply instead. Add @JSExport("apply") to silence this warning. This will be enforced in 1.0.
+      |newSource1.scala:6: error: A member cannot be exported to function application. Add @JSExport("apply") to export under the name apply.
       |      def apply(): Int = 1
       |          ^
     """

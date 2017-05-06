@@ -112,6 +112,7 @@ class UseAsScalaTypesTest {
   @Test def should_work_with_JSExportAll_with_an_apply_method(): Unit = {
     @JSExportAll
     class A {
+      @JSExport("apply")
       @JSExport("bar")
       def apply(x: Int): Int = x * 2
     }

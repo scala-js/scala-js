@@ -257,10 +257,9 @@ trait PrepJSExports { this: PrepJSInterop =>
               // Get position for error message
               val pos = if (isExportAll) trgSym.pos else annot.pos
 
-              reporter.warning(pos, "Member cannot be exported to function " +
-                  "application. It is available under the name apply " +
-                  "instead. Add @JSExport(\"apply\") to silence this " +
-                  "warning. This will be enforced in 1.0.")
+              reporter.error(pos, "A member cannot be exported to function " +
+                  "application. Add @JSExport(\"apply\") to export under the " +
+                  "name apply.")
             }
 
           case ExportDestination.TopLevel =>
