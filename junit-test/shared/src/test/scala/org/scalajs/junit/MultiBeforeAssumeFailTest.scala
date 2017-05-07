@@ -3,7 +3,7 @@ package org.scalajs.junit
 import org.junit.Assume._
 import org.junit._
 
-import org.scalajs.junit.utils.{JUnitTest, SuccessFrameworkArgs}
+import org.scalajs.junit.utils.JUnitTest
 
 object MultiBeforeAssumeFailTest {
   @BeforeClass def beforeClass(): Unit = {
@@ -19,19 +19,7 @@ class MultiBeforeAssumeFailTest {
   @Test def multiTest5(): Unit = ()
 }
 
-class MultiBeforeAssumeFailTestAssertions
-    extends JUnitTest with SuccessFrameworkArgs {
-
-  override val expectedIgnored: Int = 1
-
-  protected def expectedOutput(context: OutputContext): List[Output] = {
-    import context._
-    List(
-        testRunStartedOutput,
-        testIgnoredClassOutput,
-        skippedEvent,
-        testRunFinishedOutput,
-        done
-    )
-  }
+class MultiBeforeAssumeFailTestAssertions extends JUnitTest {
+  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
+    builder.ignoredClass()
 }

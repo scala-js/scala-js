@@ -14,19 +14,7 @@ class BeforeAndAfterTest {
   @Test def test(): Unit = ()
 }
 
-class BeforeAndAfterTestAssertions extends JUnitTest with SuccessFrameworkArgs {
-
-  override val expectedTotal: Int = 1
-
-  protected def expectedOutput(context: OutputContext): List[Output] = {
-    import context._
-    List(
-        testRunStartedOutput,
-        testStartedOutput("test"),
-        testFinishedOutput("test"),
-        successEvent,
-        testRunFinishedOutput,
-        done
-    )
-  }
+class BeforeAndAfterTestAssertions extends JUnitTest {
+  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
+    builder.success("test")
 }

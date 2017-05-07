@@ -2,7 +2,8 @@ package org.scalajs.junit
 
 import org.junit.Assume._
 import org.junit.Test
-import org.scalajs.junit.utils.{JUnitTest, SuccessFrameworkArgs}
+
+import org.scalajs.junit.utils.JUnitTest
 
 class MultiAssumeFail2Test {
   @Test def multiTest1(): Unit = {
@@ -16,33 +17,17 @@ class MultiAssumeFail2Test {
   @Test def multiTest5(): Unit = ()
 }
 
-class MultiAssumeFail2TestAssertions extends JUnitTest with SuccessFrameworkArgs {
+class MultiAssumeFail2TestAssertions extends JUnitTest {
+  // Don't test -c, due to #2944.
+  override protected def frameworkArgss: List[List[String]] =
+    super.frameworkArgss.filterNot(_.contains("-c"))
 
-  override val expectedTotal: Int = 5
-
-  protected def expectedOutput(context: OutputContext): List[Output] = {
-    import context._
-    List(
-        testRunStartedOutput,
-        testStartedOutput("multiTest1"),
-        testAssumptionViolatedOutput("multiTest1"),
-        skippedEvent,
-        testFinishedOutput("multiTest1"),
-        testStartedOutput("multiTest2"),
-        testFinishedOutput("multiTest2"),
-        successEvent,
-        testStartedOutput("multiTest3"),
-        testFinishedOutput("multiTest3"),
-        successEvent,
-        testStartedOutput("multiTest4"),
-        testAssumptionViolatedOutput("multiTest4"),
-        skippedEvent,
-        testFinishedOutput("multiTest4"),
-        testStartedOutput("multiTest5"),
-        testFinishedOutput("multiTest5"),
-        successEvent,
-        testRunFinishedOutput,
-        done
-    )
+  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
+    builder
+      .assumptionViolated("multiTest1")
+      .success("multiTest2")
+      .success("multiTest3")
+      .assumptionViolated("multiTest4")
+      .success("multiTest5")
   }
 }

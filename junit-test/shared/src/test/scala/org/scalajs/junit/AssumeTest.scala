@@ -11,20 +11,11 @@ class AssumeTest {
   }
 }
 
-class AssumeTestAssertions extends JUnitTest with SuccessFrameworkArgs {
+class AssumeTestAssertions extends JUnitTest {
+  // Don't test -c, due to #2944.
+  override protected def frameworkArgss: List[List[String]] =
+    super.frameworkArgss.filterNot(_.contains("-c"))
 
-  override val expectedTotal: Int = 1
-
-  protected def expectedOutput(context: OutputContext): List[Output] = {
-    import context._
-    List(
-        testRunStartedOutput,
-        testStartedOutput("assumeFail"),
-        testAssumptionViolatedOutput("assumeFail"),
-        skippedEvent,
-        testFinishedOutput("assumeFail"),
-        testRunFinishedOutput,
-        done
-    )
-  }
+  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
+    builder.assumptionViolated("assumeFail")
 }

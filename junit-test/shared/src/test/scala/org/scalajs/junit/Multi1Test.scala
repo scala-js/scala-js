@@ -9,22 +9,10 @@ class Multi1Test {
   @Test def multiTest2(): Unit = ()
 }
 
-class Multi1TestAssertions extends JUnitTest with SuccessFrameworkArgs {
-
-  override val expectedTotal: Int = 2
-
-  protected def expectedOutput(context: OutputContext): List[Output] = {
-    import context._
-    List(
-        testRunStartedOutput,
-        testStartedOutput("multiTest1"),
-        testFinishedOutput("multiTest1"),
-        successEvent,
-        testStartedOutput("multiTest2"),
-        testFinishedOutput("multiTest2"),
-        successEvent,
-        testRunFinishedOutput,
-        done
-    )
+class Multi1TestAssertions extends JUnitTest {
+  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
+    builder
+      .success("multiTest1")
+      .success("multiTest2")
   }
 }
