@@ -104,11 +104,6 @@ object InfoSerializers {
 
       import input._
 
-      val useHacks065 =
-        Set("0.6.0", "0.6.3", "0.6.4", "0.6.5").contains(version)
-      val useHacks0614 =
-        useHacks065 || Set("0.6.6", "0.6.8", "0.6.13", "0.6.14").contains(version)
-
       val encodedName = readUTF()
       val isExported = readBoolean()
       val kind = ClassKind.fromByte(readByte())
@@ -124,12 +119,8 @@ object InfoSerializers {
         val isStatic = readBoolean()
         val isAbstract = readBoolean()
         val isExported = readBoolean()
-        val staticFieldsRead =
-          if (useHacks0614) Map.empty[String, List[String]]
-          else readPerClassStrings()
-        val staticFieldsWritten =
-          if (useHacks0614) Map.empty[String, List[String]]
-          else readPerClassStrings()
+        val staticFieldsRead = readPerClassStrings()
+        val staticFieldsWritten = readPerClassStrings()
         val methodsCalled = readPerClassStrings()
         val methodsCalledStatically = readPerClassStrings()
         val staticMethodsCalled = readPerClassStrings()
@@ -144,12 +135,7 @@ object InfoSerializers {
             accessedClassData)
       }
 
-      val methods0 = readList(readMethod())
-      val methods = if (useHacks065) {
-        methods0.filter(m => !Definitions.isReflProxyName(m.encodedName))
-      } else {
-        methods0
-      }
+      val methods = readList(readMethod())
 
       val info = ClassInfo(encodedName, isExported, kind,
           superClass, interfaces, methods)

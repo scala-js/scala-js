@@ -117,20 +117,6 @@ object Analysis {
     /** Not a synthetic method. */
     final case object None extends MethodSyntheticKind
 
-    // TODO Get rid of InheritedConstructor when we can break binary compat
-    /** An explicit call-super constructor.
-     *
-     *  In a class `Foo` with parent class `Bar`, an inherited
-     *  constructor `init___xyz` looks like
-     *
-     *  {{{
-     *  def init___xyz(p1: T1, ..., pn: TN) {
-     *    this.Bar::init___xyz(p1, ..., pn)
-     *  }
-     *  }}}
-     */
-    final case object InheritedConstructor extends MethodSyntheticKind
-
     /** A reflective proxy bridge to the appropriate target method.
      *
      *  A reflective proxy `method__xyz__` dynamically calls some `target`

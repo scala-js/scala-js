@@ -207,10 +207,11 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
           mkInvokeJUnitMethodOnInstanceDef(annotatedMethods, bootSym,
               clazz.symbol)
         }
+        val ctorDef = mkConstructorDef(clazz.symbol, bootSym, clazz.pos)
 
         val bootBody = {
           List(getJUnitMetadataDef, newInstanceDef, invokeJUnitMethodDef,
-              invokeJUnitMethodOnInstanceDef)
+              invokeJUnitMethodOnInstanceDef, ctorDef)
         }
         val bootParents = List(
           TypeTree(definitions.ObjectTpe),
@@ -250,6 +251,22 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         sym.selfType.members.collect {
           case m: MethodSymbol if hasJUnitMethodAnnotation(m) => m
         }.toList
+      }
+
+      /** Generates the constructor of a bootstrapper class. */
+      private def mkConstructorDef(classSym: Symbol, bootSymbol: Symbol,
+          pos: Position): DefDef = {
+        val rhs = Block(
+            Apply(
+                Select(
+                    Super(This(tpnme.EMPTY) setSymbol bootSymbol, tpnme.EMPTY),
+                    nme.CONSTRUCTOR).setSymbol(
+                    definitions.ObjectClass.primaryConstructor),
+                Nil),
+            Literal(Constant(()))
+        )
+        val sym = bootSymbol.newClassConstructor(pos)
+        typer.typedDefDef(newDefDef(sym, rhs)())
       }
 
       /** This method generates a method that invokes a test method in the module
