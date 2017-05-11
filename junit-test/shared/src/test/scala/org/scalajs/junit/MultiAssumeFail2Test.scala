@@ -18,10 +18,6 @@ class MultiAssumeFail2Test {
 }
 
 class MultiAssumeFail2TestAssertions extends JUnitTest {
-  // Don't test -c, due to #2944.
-  override protected def frameworkArgss: List[List[String]] =
-    super.frameworkArgss.filterNot(_.contains("-c"))
-
   protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
     builder
       .assumptionViolated("multiTest1")
