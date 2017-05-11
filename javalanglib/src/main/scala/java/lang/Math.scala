@@ -2,6 +2,9 @@ package java
 package lang
 
 import scala.scalajs.js
+import js.Dynamic.{ global => g }
+
+import scala.scalajs.LinkingInfo.assumingES6
 
 object Math {
   final val E  = 2.718281828459045
@@ -46,8 +49,20 @@ object Math {
 
   @inline def exp(a: scala.Double): scala.Double = js.Math.exp(a)
   @inline def log(a: scala.Double): scala.Double = js.Math.log(a)
-  @inline def log10(a: scala.Double): scala.Double = log(a) / 2.302585092994046
-  @inline def log1p(a: scala.Double): scala.Double = log(a + 1)
+
+  @inline def log10(a: scala.Double): scala.Double = {
+    if (assumingES6 || !js.isUndefined(g.Math.log10))
+      js.Math.log10(a)
+    else
+      log(a) / 2.302585092994046
+  }
+
+  @inline def log1p(a: scala.Double): scala.Double = {
+    if (assumingES6 || !js.isUndefined(g.Math.log1p))
+      js.Math.log1p(a)
+    else if (a == 0.0) a
+    else log(a + 1)
+  }
 
   @inline def sin(a: scala.Double): scala.Double = js.Math.sin(a)
   @inline def cos(a: scala.Double): scala.Double = js.Math.cos(a)
@@ -75,24 +90,28 @@ object Math {
   }
 
   def cbrt(a: scala.Double): scala.Double = {
-    if (a == 0 || a.isNaN) {
-      a
+    if (assumingES6 || !js.isUndefined(g.Math.cbrt)) {
+      js.Math.cbrt(a)
     } else {
-      val sign = if (a < 0.0) -1.0 else 1.0
-      val value = sign * a
+      if (a == 0 || a.isNaN || a.isPosInfinity || a.isNegInfinity) {
+        a
+      } else {
+        val sign = if (a < 0.0) -1.0 else 1.0
+        val value = sign * a
 
-      //Initial Approximation
-      var x = 0.0
-      var xi = pow(value, 0.3333333333333333)
+        //Initial Approximation
+        var x = 0.0
+        var xi = pow(value, 0.3333333333333333)
 
-      //Halley's Method (http://metamerist.com/cbrt/cbrt.htm)
-      while (abs(x - xi) >= 1E-16) {
-        x = xi
-        val x3 = js.Math.pow(x, 3)
-        val x3Plusa = x3 + value
-        xi = x * (x3Plusa + value) / (x3Plusa + x3)
+        //Halley's Method (http://metamerist.com/cbrt/cbrt.htm)
+        while (abs(x - xi) >= 1E-16) {
+          x = xi
+          val x3 = js.Math.pow(x, 3)
+          val x3Plusa = x3 + value
+          xi = x * (x3Plusa + value) / (x3Plusa + x3)
+        }
+        sign * xi
       }
-      sign * xi
     }
   }
 
@@ -176,69 +195,87 @@ object Math {
   }
 
   def hypot(a: scala.Double, b: scala.Double): scala.Double = {
-    // http://en.wikipedia.org/wiki/Hypot#Implementation
-    if (abs(a) == scala.Double.PositiveInfinity || abs(b) == scala.Double.PositiveInfinity)
-      scala.Double.PositiveInfinity
-    else if (a.isNaN || b.isNaN)
-      scala.Double.NaN
-    else if (a == 0 && b == 0)
-      0.0
-    else {
-      //To Avoid Overflow and UnderFlow
-      // calculate |x| * sqrt(1 - (y/x)^2) instead of sqrt(x^2 + y^2)
-      val x = abs(a)
-      val y = abs(b)
-      val m = max(x, y)
-      val t = min(x, y) / m
-      m * sqrt(1 + t * t)
+    if (assumingES6 || !js.isUndefined(g.Math.hypot)) {
+      js.Math.hypot(a, b)
+    } else {
+      // http://en.wikipedia.org/wiki/Hypot#Implementation
+      if (abs(a) == scala.Double.PositiveInfinity || abs(b) == scala.Double.PositiveInfinity)
+        scala.Double.PositiveInfinity
+      else if (a.isNaN || b.isNaN)
+        scala.Double.NaN
+      else if (a == 0 && b == 0)
+        0.0
+      else {
+        //To Avoid Overflow and UnderFlow
+        // calculate |x| * sqrt(1 - (y/x)^2) instead of sqrt(x^2 + y^2)
+        val x = abs(a)
+        val y = abs(b)
+        val m = max(x, y)
+        val t = min(x, y) / m
+        m * sqrt(1 + t * t)
+      }
     }
   }
 
   def expm1(a: scala.Double): scala.Double = {
-    // https://github.com/ghewgill/picomath/blob/master/javascript/expm1.js
-    if (a == 0 || a.isNaN)
-      a
-    // Power Series http://en.wikipedia.org/wiki/Power_series
-    // for small values of a, exp(a) = 1 + a + (a*a)/2
-    else if (abs(a) < 1E-5)
-      a + 0.5 * a * a
-    else
-      exp(a) - 1.0
+    if (assumingES6 || !js.isUndefined(g.Math.expm1)) {
+      js.Math.expm1(a)
+    } else {
+      // https://github.com/ghewgill/picomath/blob/master/javascript/expm1.js
+      if (a == 0 || a.isNaN)
+        a
+      // Power Series http://en.wikipedia.org/wiki/Power_series
+      // for small values of a, exp(a) = 1 + a + (a*a)/2
+      else if (abs(a) < 1E-5)
+        a + 0.5 * a * a
+      else
+        exp(a) - 1.0
+    }
   }
 
   def sinh(a: scala.Double): scala.Double = {
-    if (a.isNaN || a == 0.0 || abs(a) == scala.Double.PositiveInfinity)
-      a
-    else
-      (exp(a) - exp(-a)) / 2.0
+    if (assumingES6 || !js.isUndefined(g.Math.sinh)) {
+      js.Math.sinh(a)
+    } else {
+      if (a.isNaN || a == 0.0 || abs(a) == scala.Double.PositiveInfinity) a
+      else (exp(a) - exp(-a)) / 2.0
+    }
   }
 
   def cosh(a: scala.Double): scala.Double = {
-    if (a.isNaN)
-      a
-    else if (a == 0.0)
-      1.0
-    else if (abs(a) == scala.Double.PositiveInfinity)
-      scala.Double.PositiveInfinity
-    else
-      (exp(a) + exp(-a)) / 2.0
+    if (assumingES6 || !js.isUndefined(g.Math.cosh)) {
+      js.Math.cosh(a)
+    } else {
+      if (a.isNaN)
+        a
+      else if (a == 0.0)
+        1.0
+      else if (abs(a) == scala.Double.PositiveInfinity)
+        scala.Double.PositiveInfinity
+      else
+        (exp(a) + exp(-a)) / 2.0
+    }
   }
 
   def tanh(a: scala.Double): scala.Double = {
-    if (a.isNaN || a == 0.0)
-      a
-    else if (abs(a) == scala.Double.PositiveInfinity)
-      signum(a)
-    else {
-      // sinh(a) / cosh(a) =
-      // 1 - 2 * (exp(-a)/ (exp(-a) + exp (a)))
-      val expma = exp(-a)
-      if (expma == scala.Double.PositiveInfinity) //Infinity / Infinity
-        -1.0
+    if (assumingES6 || !js.isUndefined(g.Math.tanh)) {
+      js.Math.tanh(a)
+    } else {
+      if (a.isNaN || a == 0.0)
+        a
+      else if (abs(a) == scala.Double.PositiveInfinity)
+        signum(a)
       else {
-        val expa = exp(a)
-        val ret = expma / (expa + expma)
-        1.0 - (2.0 * ret)
+        // sinh(a) / cosh(a) =
+        // 1 - 2 * (exp(-a)/ (exp(-a) + exp (a)))
+        val expma = exp(-a)
+        if (expma == scala.Double.PositiveInfinity) //Infinity / Infinity
+          -1.0
+        else {
+          val expa = exp(a)
+          val ret = expma / (expa + expma)
+          1.0 - (2.0 * ret)
+        }
       }
     }
   }
