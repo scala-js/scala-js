@@ -441,14 +441,8 @@ object ScalaJSPluginInternal {
           case _ => false
         }
 
-        /* We make the assumption here, that scalaJSSemantics has not
-         * unreasonably overridden values for the fastOptJS and fullOptJS
-         * tasks. Otherwise this value does not really make sense.
-         */
-        val compliantSemantics = scalaJSSemantics.value.compliants
-
         val manifest = new JSDependencyManifest(new Origin(myModule, config),
-            jsDeps.toList, requiresDOM, compliantSemantics)
+            jsDeps.toList, requiresDOM)
 
         // Write dependency file to class directory
         val targetDir = classDirectory.value
@@ -500,18 +494,6 @@ object ScalaJSPluginInternal {
         val dependencyFilter = jsDependencyFilter.value
         val attLibs = scalaJSNativeLibraries.value
         val attManifests = jsDependencyManifests.value
-
-        // Verify semantics compliance
-        if (checkScalaJSSemantics.value) {
-          import ComplianceRequirement._
-          val requirements = mergeFromManifests(attManifests.data)
-
-          /* We make the assumption here, that scalaJSSemantics has not
-           * unreasonably overridden values for the fastOptJS and fullOptJS
-           * tasks. Otherwise, this check is bogus.
-           */
-          checkCompliance(requirements, scalaJSSemantics.value)
-        }
 
         // Collect originating files
         val realFiles = {
@@ -878,7 +860,6 @@ object ScalaJSPluginInternal {
       scalaJSSemantics := Semantics.Defaults,
       scalaJSOutputMode := OutputMode.ECMAScript51Isolated,
       scalaJSModuleKind := ModuleKind.NoModule,
-      checkScalaJSSemantics := true,
 
       scalaJSModuleInitializers := Seq(),
       scalaJSModuleInitializers in Compile := scalaJSModuleInitializers.value,

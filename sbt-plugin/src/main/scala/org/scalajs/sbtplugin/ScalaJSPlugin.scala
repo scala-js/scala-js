@@ -227,10 +227,6 @@ object ScalaJSPlugin extends AutoPlugin {
     val resolvedJSDependencies = TaskKey[Attributed[Seq[ResolvedJSDependency]]]("resolvedJSDependencies",
         "JS dependencies after resolution.", DTask)
 
-    val checkScalaJSSemantics = SettingKey[Boolean]("checkScalaJSSemantics",
-        "Whether to check that the current semantics meet compliance " +
-        "requirements of dependencies.", CSetting)
-
     val scalaJSOptimizerOptions = SettingKey[OptimizerOptions]("scalaJSOptimizerOptions",
         "All kinds of options for the Scala.js optimizer stages", DSetting)
 

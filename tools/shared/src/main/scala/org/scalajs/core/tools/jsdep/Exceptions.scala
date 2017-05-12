@@ -102,18 +102,3 @@ object JSLibResolveException {
     msg.toString()
   }
 }
-
-class BadComplianceException(val unmet: List[ComplianceRequirement])
-    extends Exception(BadComplianceException.mkMsg(unmet))
-
-private object BadComplianceException {
-  private def mkMsg(unmets: List[ComplianceRequirement]): String = {
-    val msg = new StringBuilder()
-    msg.append("Unmet required semantic compliance(s): \n")
-    for (unmet <- unmets) {
-      msg.append(s"- ${unmet.semantics}")
-      msg.append(s" originating from: ${unmet.origins.mkString(", ")}\n")
-    }
-    msg.toString
-  }
-}

@@ -8,8 +8,7 @@ class ManifestFiltersTest {
 
   private def mkManifest(module: String, deps: String*) = {
     new JSDependencyManifest(new Origin(module, "compile"),
-        deps.map(new JSDependency(_)).toList, requiresDOM = false,
-        compliantSemantics = Nil)
+        deps.map(new JSDependency(_)).toList, requiresDOM = false)
   }
 
   @Test

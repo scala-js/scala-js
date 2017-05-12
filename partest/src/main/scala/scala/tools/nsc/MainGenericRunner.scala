@@ -40,10 +40,19 @@ class MainGenericRunner {
   val optMode = OptMode.fromId(sys.props("scalajs.partest.optMode"))
 
   def readSemantics() = {
+    import org.scalajs.core.tools.sem.CheckedBehavior.Compliant
+
     val opt = sys.props.get("scalajs.partest.compliantSems")
-    opt.fold(Semantics.Defaults) { str =>
-      val sems = str.split(',')
-      Semantics.compliantTo(sems.toList)
+    val compliantSems =
+      opt.fold[List[String]](Nil)(_.split(',').toList.filter(_.nonEmpty))
+
+    compliantSems.foldLeft(Semantics.Defaults) { (prev, compliantSem) =>
+      compliantSem match {
+        case "asInstanceOfs"         => prev.withAsInstanceOfs(Compliant)
+        case "arrayIndexOutOfBounds" => prev.withArrayIndexOutOfBounds(Compliant)
+        case "moduleInit"            => prev.withModuleInit(Compliant)
+        case "strictFloats"          => prev.withStrictFloats(true)
+      }
     }
   }
 

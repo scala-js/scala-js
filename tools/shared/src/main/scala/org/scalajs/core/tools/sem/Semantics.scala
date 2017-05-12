@@ -82,25 +82,6 @@ final class Semantics private (
        |)""".stripMargin
   }
 
-  /** Checks whether the given semantics setting is Java compliant */
-  def isCompliant(name: String): Boolean = name match {
-    case "asInstanceOfs"         => asInstanceOfs == Compliant
-    case "arrayIndexOutOfBounds" => arrayIndexOutOfBounds == Compliant
-    case "moduleInit"            => moduleInit == Compliant
-    case "strictFloats"          => strictFloats
-    case _                       => false
-  }
-
-  /** Retrieve a list of semantics which are set to compliant */
-  def compliants: List[String] = {
-    def cl(name: String, cond: Boolean) = if (cond) List(name) else Nil
-
-    cl("asInstanceOfs", asInstanceOfs == Compliant) ++
-    cl("arrayIndexOutOfBounds", arrayIndexOutOfBounds == Compliant) ++
-    cl("moduleInit", moduleInit == Compliant) ++
-    cl("strictFloats", strictFloats)
-  }
-
   private def copy(
       asInstanceOfs: CheckedBehavior = this.asInstanceOfs,
       arrayIndexOutOfBounds: CheckedBehavior = this.arrayIndexOutOfBounds,
@@ -131,22 +112,4 @@ object Semantics {
       strictFloats = false,
       productionMode = false,
       runtimeClassName = _.fullName)
-
-  def compliantTo(semantics: Traversable[String]): Semantics = {
-    import Defaults._
-
-    val semsSet = semantics.toSet
-
-    def sw[T](name: String, compliant: T, default: T): T =
-      if (semsSet.contains(name)) compliant else default
-
-    new Semantics(
-        asInstanceOfs = sw("asInstanceOfs", Compliant, asInstanceOfs),
-        arrayIndexOutOfBounds =
-          sw("arrayIndexOutOfBounds", Compliant, arrayIndexOutOfBounds),
-        moduleInit = sw("moduleInit", Compliant, moduleInit),
-        strictFloats = sw("strictFloats", true, strictFloats),
-        productionMode = false,
-        runtimeClassName = Defaults.runtimeClassName)
-  }
 }
