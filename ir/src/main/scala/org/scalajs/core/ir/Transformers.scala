@@ -196,7 +196,7 @@ object Transformers {
 
         case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:SelectStatic |
             _:LoadJSConstructor | _:LoadJSModule  | _:JSLinkingInfo |
-            _:Literal | _:UndefinedParam | _:VarRef | _:This  =>
+            _:Literal | _:UndefinedParam | _:VarRef | _:This | _:JSGlobalRef  =>
           tree
 
         case _ =>

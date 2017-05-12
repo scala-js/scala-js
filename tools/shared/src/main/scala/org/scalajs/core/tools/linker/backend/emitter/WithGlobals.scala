@@ -8,6 +8,8 @@
 
 package org.scalajs.core.tools.linker.backend.emitter
 
+import GlobalRefUtils.unionPreserveEmpty
+
 /** A monad that associates a set of global variable names to a value.
  *
  *  This is used to track the set of (dangerous) global variable names used in
@@ -98,16 +100,4 @@ private[emitter] object WithGlobals {
 
   def option[A](xs: Option[WithGlobals[A]]): WithGlobals[Option[A]] =
     xs.fold[WithGlobals[Option[A]]](WithGlobals(None))(_.map(Some(_)))
-
-  /** Semantically equivalent to `a ++ b`, but optimized for empty sets.
-   *
-   *  Using this method over `a ++ b` is meaningful is there is a strong
-   *  likelihood that one or both parameters are empty, which is the case for
-   *  sets of mentioned global refs.
-   */
-  private def unionPreserveEmpty(a: Set[String], b: Set[String]): Set[String] = {
-    if (a.isEmpty) b
-    else if (b.isEmpty) a
-    else a ++ b
-  }
 }

@@ -31,7 +31,7 @@ object Platform {
     runtime.Bits.areTypedArraysSupported
 
   def areJSSymbolsSupported: Boolean =
-    !js.isUndefined(js.Dynamic.global.Symbol)
+    js.typeOf(js.Dynamic.global.Symbol) != "undefined"
 
   def executingInNodeJS: Boolean = sysProp("nodejs")
   def executingInNodeJSOnJSDOM: Boolean = sysProp("nodejs.jsdom")
@@ -57,4 +57,18 @@ object Platform {
 
   private def sysProp(key: String): Boolean =
     System.getProperty("scalajs." + key, "false") == "true"
+
+  /** Runs the specified piece of code in the global context.
+   *
+   *  This only works on Node.js. It needs functionality from the `vm` module.
+   *
+   *  This method can be used to declare global let/const/classes. Any other
+   *  attempt to do so (e.g., using a `require`d source file or a `js.eval`)
+   *  would not expose the bindings in the global scope.
+   */
+  def nodejs_runInThisContext(code: String): Unit = {
+    val vm = js.Dynamic.global.require("vm")
+    val script = js.Dynamic.newInstance(vm.Script)(code)
+    script.runInThisContext()
+  }
 }

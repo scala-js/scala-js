@@ -31,7 +31,7 @@ object System {
     import js.DynamicImplicits.truthValue
 
     // We've got to use selectDynamic explicitly not to crash Scala 2.10
-    if (global.selectDynamic("performance")) {
+    if (js.typeOf(global.selectDynamic("performance")) != "undefined") {
       if (global.performance.selectDynamic("now")) {
         () => global.performance.now().asInstanceOf[scala.Double]
       } else if (global.performance.selectDynamic("webkitNow")) {
@@ -202,7 +202,7 @@ object System {
     private var lastIDHashCode: Int = 0
 
     val idHashCodeMap =
-      if (assumingES6 || !js.isUndefined(global.WeakMap))
+      if (assumingES6 || js.typeOf(global.WeakMap) != "undefined")
         js.Dynamic.newInstance(global.WeakMap)()
       else
         null
@@ -360,7 +360,7 @@ private[lang] final class JSConsoleBasedPrintStream(isErr: Boolean)
     import js.DynamicImplicits.truthValue
 
     // We've got to use selectDynamic explicitly not to crash Scala 2.10
-    if (global.selectDynamic("console")) {
+    if (js.typeOf(global.selectDynamic("console")) != "undefined") {
       if (isErr && global.console.selectDynamic("error"))
         global.console.error(line)
       else

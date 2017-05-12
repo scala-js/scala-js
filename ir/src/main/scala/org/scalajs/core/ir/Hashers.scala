@@ -432,6 +432,10 @@ object Hashers {
           mixTag(TagThis)
           mixType(tree.tpe)
 
+        case JSGlobalRef(ident) =>
+          mixTag(TagJSGlobalRef)
+          mixIdent(ident)
+
         case Closure(captureParams, params, body, captureValues) =>
           mixTag(TagClosure)
           mixTrees(captureParams)

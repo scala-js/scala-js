@@ -11,6 +11,8 @@ package org.scalajs.core.tools.linker.backend.emitter
 
 import scala.language.implicitConversions
 
+import scala.annotation.tailrec
+
 import org.scalajs.core.ir
 import ir._
 import ir.Types._
@@ -27,7 +29,9 @@ import org.scalajs.core.tools.javascript.Trees._
  */
 private[emitter] final class JSGen(val semantics: Semantics,
     val outputMode: OutputMode, val moduleKind: ModuleKind,
-    internalOptions: InternalOptions) {
+    internalOptions: InternalOptions,
+    mentionedDangerousGlobalRefs: Set[String]) {
+
   import JSGen._
 
   def genZeroOf(tpe: Type)(implicit pos: Position): Tree = {
@@ -146,16 +150,19 @@ private[emitter] final class JSGen(val semantics: Semantics,
     Apply(envField("m", moduleClass), Nil)
   }
 
-  def genRawJSClassConstructor(className: String)(
+  def genRawJSClassConstructor(className: String,
+      keepOnlyDangerousVarNames: Boolean)(
       implicit globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[Tree] = {
 
     genRawJSClassConstructor(className,
-        globalKnowledge.getJSNativeLoadSpec(className))
+        globalKnowledge.getJSNativeLoadSpec(className),
+        keepOnlyDangerousVarNames)
   }
 
   def genRawJSClassConstructor(className: String,
-      spec: Option[irt.JSNativeLoadSpec])(
+      spec: Option[irt.JSNativeLoadSpec],
+      keepOnlyDangerousVarNames: Boolean)(
       implicit pos: Position): WithGlobals[Tree] = {
     spec match {
       case None =>
@@ -163,7 +170,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
         WithGlobals(genNonNativeJSClassConstructor(className))
 
       case Some(spec) =>
-        genLoadJSFromSpec(spec)
+        genLoadJSFromSpec(spec, keepOnlyDangerousVarNames)
     }
   }
 
@@ -172,7 +179,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
     Apply(envField("a", className), Nil)
   }
 
-  def genLoadJSFromSpec(spec: irt.JSNativeLoadSpec)(
+  def genLoadJSFromSpec(spec: irt.JSNativeLoadSpec,
+      keepOnlyDangerousVarNames: Boolean)(
       implicit pos: Position): WithGlobals[Tree] = {
 
     def pathSelection(from: Tree, path: List[String]): Tree = {
@@ -182,8 +190,15 @@ private[emitter] final class JSGen(val semantics: Semantics,
     }
 
     spec match {
-      case irt.JSNativeLoadSpec.Global(path) =>
-        WithGlobals(pathSelection(envField("g"), path))
+      case irt.JSNativeLoadSpec.Global(globalRef, path) =>
+        val globalVarRef = VarRef(Ident(globalRef, Some(globalRef)))
+        val globalVarNames = {
+          if (keepOnlyDangerousVarNames && !GlobalRefUtils.isDangerousGlobalRef(globalRef))
+            Set.empty[String]
+          else
+            Set(globalRef)
+        }
+        WithGlobals(pathSelection(globalVarRef, path), globalVarNames)
 
       case irt.JSNativeLoadSpec.Import(module, path) =>
         val moduleValue = envModuleField(module)
@@ -198,9 +213,9 @@ private[emitter] final class JSGen(val semantics: Semantics,
       case irt.JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, globalSpec) =>
         moduleKind match {
           case ModuleKind.NoModule =>
-            genLoadJSFromSpec(globalSpec)
+            genLoadJSFromSpec(globalSpec, keepOnlyDangerousVarNames)
           case ModuleKind.CommonJSModule =>
-            genLoadJSFromSpec(importSpec)
+            genLoadJSFromSpec(importSpec, keepOnlyDangerousVarNames)
         }
     }
   }
@@ -243,16 +258,43 @@ private[emitter] final class JSGen(val semantics: Semantics,
       if (containsOnlyValidChars()) "$i_" + module
       else buildValidName()
 
-    VarRef(Ident(varName, Some(module)))
+    VarRef(Ident(avoidClashWithGlobalRef(varName), Some(module)))
   }
 
   def envField(field: String, subField: String, origName: Option[String] = None)(
       implicit pos: Position): VarRef = {
-    VarRef(Ident("$" + field + "_" + subField, origName))
+    VarRef(Ident(avoidClashWithGlobalRef("$" + field + "_" + subField),
+        origName))
   }
 
   def envField(field: String)(implicit pos: Position): VarRef =
-    VarRef(Ident("$" + field))
+    VarRef(Ident(avoidClashWithGlobalRef("$" + field)))
+
+  def avoidClashWithGlobalRef(envFieldName: String): String = {
+    /* This is not cached because it should virtually never happen.
+     * slowPath() is only called if we use a dangerous global ref, which should
+     * already be very rare. And if do a second iteration in the loop only if
+     * we refer to the global variables `$foo` *and* `$$foo`. At this point the
+     * likelihood is so close to 0 that caching would be more expensive than
+     * not caching.
+     */
+    @tailrec
+    def slowPath(lastNameTried: String): String = {
+      val nextNameToTry = "$" + lastNameTried
+      if (mentionedDangerousGlobalRefs.contains(nextNameToTry))
+        slowPath(nextNameToTry)
+      else
+        nextNameToTry
+    }
+
+    /* Hopefully this is JIT'ed away as `false` because
+     * `mentionedDangerousGlobalRefs` is in fact `Set.EmptySet`.
+     */
+    if (mentionedDangerousGlobalRefs.contains(envFieldName))
+      slowPath(envFieldName)
+    else
+      envFieldName
+  }
 
   def genPropSelect(qual: Tree, item: PropertyName)(
       implicit pos: Position): Tree = {

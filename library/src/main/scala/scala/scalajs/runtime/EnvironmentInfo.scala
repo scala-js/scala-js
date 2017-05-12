@@ -25,12 +25,6 @@ import StackTrace.JSStackTraceElem
 @js.native
 trait EnvironmentInfo extends js.Object {
 
-  /** The global JavaScript scope (corresponds to js.Dynamic.global)
-   *
-   *  @group envInfo
-   */
-  def global: js.Dynamic = js.native
-
   /** The scope for Scala.js exports (i.e. objects and classes)
    *
    *  @group envInfo

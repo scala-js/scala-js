@@ -228,16 +228,74 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
   private class JSDesugar()(implicit globalKnowledge: GlobalKnowledge) {
 
+    // Name management
+
+    /** Whether we are running in the "optimistic naming" run.
+     *
+     *  In theory, `JSDesugar` works in two passes: the optimistic run,
+     *  followed by the pessimistic run should the first one fail.
+     *
+     *  The optimistic run assumes that there is no clash between a local
+     *  variable name and a global variable name (i.e., a `JSGlobalRef`). This
+     *  allows it to straightforwardly translate IR identifiers to JS
+     *  identifiers. While it does that, it records all the local variable and
+     *  global variable names that are used in the method.
+     *
+     *  At the end of the translation, we check whether there was a clash by
+     *  testing if the two sets intersect. If they do not, we are lucky, and
+     *  can completely by-pass the pessimistic run. If there is a clash, then
+     *  we need to restart everything in pessimistic mode.
+     *
+     *  In the pessimistic run, we use the set of global variable names that
+     *  was collected during the optimistic run to *prevent* clashes from
+     *  happening. This requires that we maintain a map of IR identifiers to
+     *  allocated JS identifiers, as some IR identifiers need to be renamed.
+     */
+    private var isOptimisticNamingRun: Boolean = true
+
+    private val globalVarNames = mutable.Set.empty[String]
+    private val localVarNames = mutable.Set.empty[String]
+
+    private lazy val localVarAllocs = mutable.Map.empty[String, String]
+
+    private def referenceGlobalName(name: String): Unit =
+      globalVarNames += name
+
     private def extractWithGlobals[A](withGlobals: WithGlobals[A]): A = {
-      // Disregard withGlobals.globalVarNames for now
+      for (globalRef <- withGlobals.globalVarNames)
+        referenceGlobalName(globalRef)
       withGlobals.value
     }
 
-    // Synthetic variables
+    private def transformLocalName(name: String): String = {
+      if (isOptimisticNamingRun) {
+        localVarNames += name
+        name
+      } else {
+        // Slow path in a different `def` to keep it out of the JIT's way
+        def slowPath(): String = {
+          localVarAllocs.getOrElseUpdate(name, {
+            var suffix = 0
+            var result = name
+            while (globalVarNames.contains(result) ||
+                localVarNames.contains(result)) {
+              suffix += 1
+              result = name + "$" + suffix
+            }
+            localVarNames += result
+            result
+          })
+        }
+        slowPath()
+      }
+    }
 
     var syntheticVarCounter: Int = 0
 
     def newSyntheticVar()(implicit pos: Position): Ident = {
+      /* TODO Integrate this with proper name management.
+       * This is filed as #2971.
+       */
       syntheticVarCounter += 1
       Ident("jsx$" + syntheticVarCounter, None)
     }
@@ -247,6 +305,31 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       syntheticVarCounter = 0
       try f
       finally syntheticVarCounter = savedCounter
+    }
+
+    @inline
+    @tailrec
+    private def performOptimisticThenPessimisticRuns[A](
+        body: => A): WithGlobals[A] = {
+      val result = body
+      if (!isOptimisticNamingRun || !globalVarNames.exists(localVarNames)) {
+        /* Filter out non-dangerous global refs at this point. Outside of the
+         * function being desugared, only dangerous global refs still need to
+         * be tracked. Hopefully, the set is already emptied at this point for
+         * the large majority of methods, if not all.
+         */
+        WithGlobals(result,
+            GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalVarNames.toSet))
+      } else {
+        /* Clear the local var names, but *not* the global var names.
+         * In the pessimistic run, we will use the knowledge gathered during
+         * the optimistic run about the set of global variable names that are
+         * used.
+         */
+        localVarNames.clear()
+        isOptimisticNamingRun = false
+        performOptimisticThenPessimisticRuns(body)
+      }
     }
 
     // Record names
@@ -284,17 +367,18 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
         implicit pos: Position): WithGlobals[js.Function] = {
 
-      /* TODO The identifier `$thiz` cannot be produced by 0.6.x compilers due
-       * to their name mangling, which guarantees that it is unique. We should
-       * find a better way to do this in the future, though.
-       */
-      val thisIdent = js.Ident("$thiz", Some("this"))
-      val env = env0.withThisIdent(Some(thisIdent))
-      val js.Function(jsParams, jsBody) =
-        desugarToFunctionInternal(params, body, isStat, env)
-      val result =
+      performOptimisticThenPessimisticRuns {
+        /* TODO The identifier `$thiz` cannot be produced by 0.6.x compilers due
+         * to their name mangling, which guarantees that it is unique. We should
+         * find a better way to do this in the future, though.
+         * This is filed as #2972.
+         */
+        val thisIdent = js.Ident("$thiz", Some("this"))
+        val env = env0.withThisIdent(Some(thisIdent))
+        val js.Function(jsParams, jsBody) =
+          desugarToFunctionInternal(params, body, isStat, env)
         js.Function(js.ParamDef(thisIdent, rest = false) :: jsParams, jsBody)
-      WithGlobals(result)
+      }
     }
 
     /** Desugars parameters and body to a JS function.
@@ -302,9 +386,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     def desugarToFunction(
         params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
         implicit pos: Position): WithGlobals[js.Function] = {
-      val result =
+      performOptimisticThenPessimisticRuns {
         desugarToFunctionInternal(params, body, isStat, env0)
-      WithGlobals(result)
+      }
     }
 
     /** Desugars parameters and body to a JS function.
@@ -462,7 +546,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   transformExpr(rhs))
           }
 
-        case Assign(lhs @ (_:VarRef | _:SelectStatic), rhs) =>
+        case Assign(lhs @ (_:VarRef | _:SelectStatic | _:JSGlobalRef), rhs) =>
           pushLhsInto(Lhs.Assign(lhs), rhs, tailPosLabels)
 
         case Assign(_, _) =>
@@ -608,10 +692,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
               def makeObjectMethodApply(methodName: String,
                   args: List[js.Tree]): js.Tree = {
+                referenceGlobalName("Object")
                 js.Apply(
-                  genIdentBracketSelect(genIdentBracketSelect(
-                      envField("g"),
-                      "Object"),
+                  genIdentBracketSelect(
+                      js.VarRef(js.Ident("Object", Some("Object"))),
                       methodName),
                   args)
               }
@@ -1077,6 +1161,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSSuperBracketSelect(_, qualifier, item) =>
           allowSideEffects && test(qualifier) && test(item)
         case LoadJSModule(_) =>
+          allowSideEffects
+        case JSGlobalRef(_) =>
           allowSideEffects
 
         /* LoadJSConstructor is pure only for Scala.js-defined JS classes,
@@ -2025,18 +2111,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         // JavaScript expressions
 
-        case JSBracketSelect(
-            JSBracketSelect(JSLinkingInfo(), StringLiteral("envInfo")),
-            StringLiteral("global")) =>
-          // Shortcut for this field which is heavily used
-          envField("g")
-
-        case JSBracketSelect(JSLinkingInfo(), StringLiteral("envInfo")) =>
-          /* environmentInfo is not used that often, but it makes sense to
-           * short-cut it too anyway.
-           */
-          envField("env")
-
         case JSNew(constr, args) =>
           js.New(transformExpr(constr), args map transformExpr)
 
@@ -2056,10 +2130,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
            * If we emit the latter, then `this` will be bound to `path` in
            * `f`, which is sometimes extremely harmful (e.g., for builtin
            * methods of `window`).
+           *
+           * A bare identifier `eval` also need to be protected in the same
+           * way, because calling a bare `eval` executes the code in the
+           * current lexical scope, as opposed to the global scope.
            */
           val transformedFun = transformExpr(fun)
           val protectedFun = transformedFun match {
-            case _:js.DotSelect | _:js.BracketSelect =>
+            case _:js.DotSelect | _:js.BracketSelect |
+                js.VarRef(js.Ident("eval", _)) =>
               js.Block(js.IntLiteral(0), transformedFun)
             case _ =>
               transformedFun
@@ -2091,7 +2170,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               genLoadModule(className)
 
             case Some(spec) =>
-              extractWithGlobals(genLoadJSFromSpec(spec))
+              extractWithGlobals(
+                  genLoadJSFromSpec(spec, keepOnlyDangerousVarNames = false))
           }
 
         case JSSpread(items) =>
@@ -2153,6 +2233,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           } { ident =>
             js.VarRef(ident)
           }
+
+        case JSGlobalRef(name) =>
+          js.VarRef(transformGlobalVarIdent(name))
 
         case Closure(captureParams, params, body, captureValues) =>
           val innerFunction =
@@ -2248,7 +2331,12 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       js.Ident(ident.name, ident.originalName)(ident.pos)
 
     private def transformLocalVarIdent(ident: Ident): js.Ident =
+      js.Ident(transformLocalName(ident.name), ident.originalName)(ident.pos)
+
+    private def transformGlobalVarIdent(ident: Ident): js.Ident = {
+      referenceGlobalName(ident.name)
       js.Ident(ident.name, ident.originalName)(ident.pos)
+    }
 
     def genClassDataOf(cls: ReferenceType)(implicit pos: Position): js.Tree = {
       cls match {
@@ -2259,6 +2347,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             js.Apply(js.DotSelect(prev, js.Ident("getArrayOf")), Nil)
           }
       }
+    }
+
+    /* In FunctionEmitter, we must always keep all global var names, not only
+     * dangerous ones. This helper makes it less annoying.
+     */
+    private def genRawJSClassConstructor(className: String)(
+        implicit pos: Position): WithGlobals[js.Tree] = {
+      jsGen.genRawJSClassConstructor(className,
+          keepOnlyDangerousVarNames = false)
     }
 
     private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree = {

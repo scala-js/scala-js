@@ -40,7 +40,7 @@ class SystemJSTest {
   }
 
   @Test def identityHashCode_for_JS_objects(): Unit = {
-    if (assumingES6 || !js.isUndefined(js.Dynamic.global.WeakMap)) {
+    if (assumingES6 || js.typeOf(js.Dynamic.global.WeakMap) != "undefined") {
       /* This test is more restrictive than the spec, but we know our
        * implementation will always pass the test.
        */
@@ -107,15 +107,13 @@ class SystemJSTest {
     val inNode = get("scalajs.nodejs") == "true"
     val inNodeWithJSDOM = get("scalajs.nodejs.jsdom") == "true"
     if (inBrowser) {
-      assertFalse(js.isUndefined(js.Dynamic.global.window))
+      assertNotEquals("undefined", js.typeOf(js.Dynamic.global.window))
       assertFalse(inNode || inNodeWithJSDOM)
     } else if (inNode) {
-      val process = js.Dynamic.global.process
-      assertFalse(js.isUndefined(process))
+      assertNotEquals("undefined", js.typeOf(js.Dynamic.global.process))
       assertFalse(inBrowser || inNodeWithJSDOM)
     } else if (inNodeWithJSDOM) {
-      val window = js.Dynamic.global.window
-      assertFalse(js.isUndefined(window))
+      assertNotEquals("undefined", js.typeOf(js.Dynamic.global.window))
       assertFalse(inBrowser || inNode)
     } else {
       fail("No known platform tag found.")

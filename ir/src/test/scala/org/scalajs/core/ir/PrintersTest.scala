@@ -753,6 +753,10 @@ class PrintersTest {
     assertPrintEquals("this", This()(AnyType))
   }
 
+  @Test def printGlobalRef(): Unit = {
+    assertPrintEquals("global:Foo", JSGlobalRef("Foo"))
+  }
+
   @Test def printClosure(): Unit = {
     assertPrintEquals(
         """
@@ -880,16 +884,16 @@ class PrintersTest {
   @Test def printClassDefJSNativeLoadSpec(): Unit = {
     assertPrintEquals(
         """
-          |native js class LTest extends O loadfrom <global>.Foo {
+          |native js class LTest extends O loadfrom global:Foo["Bar"] {
           |}
         """,
         ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
-            Some(JSNativeLoadSpec.Global(List("Foo"))), Nil)(
+            Some(JSNativeLoadSpec.Global("Foo", List("Bar"))), Nil)(
             NoOptHints))
 
     assertPrintEquals(
         """
-          |native js class LTest extends O loadfrom import(foo).Bar {
+          |native js class LTest extends O loadfrom import(foo)["Bar"] {
           |}
         """,
         ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
@@ -898,13 +902,13 @@ class PrintersTest {
 
     assertPrintEquals(
         """
-          |native js class LTest extends O loadfrom import(foo).Bar fallback <global>.Foo {
+          |native js class LTest extends O loadfrom import(foo)["Bar"] fallback global:Baz["Foobar"] {
           |}
         """,
         ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
             Some(JSNativeLoadSpec.ImportWithGlobalFallback(
                 JSNativeLoadSpec.Import("foo", List("Bar")),
-                JSNativeLoadSpec.Global(List("Foo")))), Nil)(
+                JSNativeLoadSpec.Global("Baz", List("Foobar")))), Nil)(
             NoOptHints))
   }
 

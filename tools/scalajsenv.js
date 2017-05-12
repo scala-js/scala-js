@@ -10,25 +10,20 @@
 // Get the environment info
 const $env = (typeof __ScalaJSEnv === "object" && __ScalaJSEnv) ? __ScalaJSEnv : {};
 
-// Global scope
-const $g =
-  (typeof $env["global"] === "object" && $env["global"])
-    ? $env["global"]
-    : ((typeof global === "object" && global && global["Object"] === Object) ? global : this);
-$env["global"] = $g;
-
 // Where to send exports
 //!if moduleKind == CommonJSModule
 const $e = exports;
 //!else
+// TODO Do not use global object detection, and rather export with actual `var` declarations
 const $e =
   (typeof $env["exportsNamespace"] === "object" && $env["exportsNamespace"])
-    ? $env["exportsNamespace"] : $g;
+    ? $env["exportsNamespace"]
+    : ((typeof global === "object" && global && global["Object"] === Object) ? global : this);
 //!endif
 $env["exportsNamespace"] = $e;
 
 // Freeze the environment info
-$g["Object"]["freeze"]($env);
+Object["freeze"]($env);
 
 // Linking info - must be in sync with scala.scalajs.runtime.LinkingInfo
 const $linkingInfo = {
@@ -80,17 +75,17 @@ const $linkingInfo = {
   "linkerVersion": "{{LINKER_VERSION}}",
   "globalThis": this
 };
-$g["Object"]["freeze"]($linkingInfo);
-$g["Object"]["freeze"]($linkingInfo["semantics"]);
+Object["freeze"]($linkingInfo);
+Object["freeze"]($linkingInfo["semantics"]);
 
 // Snapshots of builtins and polyfills
 
 //!if outputMode == ECMAScript6
-const $imul = $g["Math"]["imul"];
-const $fround = $g["Math"]["fround"];
-const $clz32 = $g["Math"]["clz32"];
+const $imul = Math["imul"];
+const $fround = Math["fround"];
+const $clz32 = Math["clz32"];
 //!else
-const $imul = $g["Math"]["imul"] || (function(a, b) {
+const $imul = Math["imul"] || (function(a, b) {
   // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
   const ah = (a >>> 16) & 0xffff;
   const al = a & 0xffff;
@@ -101,10 +96,10 @@ const $imul = $g["Math"]["imul"] || (function(a, b) {
   return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0);
 });
 
-const $fround = $g["Math"]["fround"] ||
+const $fround = Math["fround"] ||
 //!if floats == Strict
-  ($g["Float32Array"] ? (function(v) {
-    const array = new $g["Float32Array"](1);
+  (typeof Float32Array !== "undefined" ? (function(v) {
+    const array = new Float32Array(1);
     array[0] = v;
     return array[0];
   }) : (function(v) {
@@ -116,7 +111,7 @@ const $fround = $g["Math"]["fround"] ||
   });
 //!endif
 
-const $clz32 = $g["Math"]["clz32"] || (function(i) {
+const $clz32 = Math["clz32"] || (function(i) {
   // See Hacker's Delight, Section 5-3
   if (i === 0) return 32;
   let r = 1;
@@ -131,9 +126,9 @@ const $clz32 = $g["Math"]["clz32"] || (function(i) {
 // identityHashCode support
 let $lastIDHash = 0; // last value attributed to an id hash code
 //!if outputMode == ECMAScript6
-const $idHashCodeMap = new $g["WeakMap"]();
+const $idHashCodeMap = new WeakMap();
 //!else
-const $idHashCodeMap = $g["WeakMap"] ? new $g["WeakMap"]() : null;
+const $idHashCodeMap = typeof WeakMap !== "undefined" ? new WeakMap() : null;
 //!endif
 
 // Core mechanism
@@ -209,7 +204,7 @@ function $throwArrayIndexOutOfBoundsException(i) {
 //!endif
 
 function $noIsInstance(instance) {
-  throw new $g["TypeError"](
+  throw new TypeError(
     "Cannot call isInstance() on a Class representing a raw JS trait/object");
 };
 
@@ -438,7 +433,7 @@ function $isNaN(instance) {
 };
 
 function $isInfinite(instance) {
-  return !$g["isFinite"](instance) && !$isNaN(instance);
+  return !isFinite(instance) && !$isNaN(instance);
 };
 
 function $doubleToInt(x) {
@@ -448,7 +443,7 @@ function $doubleToInt(x) {
 /** Instantiates a JS object with variadic arguments to the constructor. */
 function $newJSObjectWithVarargs(ctor, args) {
   // This basically emulates the ECMAScript specification for 'new'.
-  const instance = $g["Object"]["create"](ctor.prototype);
+  const instance = Object["create"](ctor.prototype);
   const result = ctor["apply"](instance, args);
   switch (typeof result) {
     case "string": case "number": case "boolean": case "undefined": case "symbol":
@@ -459,8 +454,8 @@ function $newJSObjectWithVarargs(ctor, args) {
 };
 
 function $resolveSuperRef(initialProto, propName) {
-  const getPrototypeOf = $g["Object"]["getPrototypeOf"];
-  const getOwnPropertyDescriptor = $g["Object"]["getOwnPropertyDescriptor"];
+  const getPrototypeOf = Object["getPrototypeOf"];
+  const getOwnPropertyDescriptor = Object["getOwnPropertyDescriptor"];
 
   let superProto = getPrototypeOf(initialProto);
   while (superProto !== null) {
@@ -494,7 +489,7 @@ function $superSet(initialProto, self, propName, value) {
       return void 0;
     }
   }
-  throw new $g["TypeError"]("super has no setter '" + propName + "'.");
+  throw new TypeError("super has no setter '" + propName + "'.");
 };
 
 //!if moduleKind == CommonJSModule
@@ -559,7 +554,7 @@ const $systemIdentityHashCode =
       let hash = obj["$idHashCode$0"];
       if (hash !== void 0) {
         return hash;
-      } else if (!$g["Object"]["isSealed"](obj)) {
+      } else if (!Object["isSealed"](obj)) {
         hash = ($lastIDHash + 1) | 0;
         $lastIDHash = hash;
         obj["$idHashCode$0"] = hash;
@@ -684,36 +679,36 @@ function $uJ(value) {
 
 // TypeArray conversions
 
-function $byteArray2TypedArray(value) { return new $g["Int8Array"](value.u); };
-function $shortArray2TypedArray(value) { return new $g["Int16Array"](value.u); };
-function $charArray2TypedArray(value) { return new $g["Uint16Array"](value.u); };
-function $intArray2TypedArray(value) { return new $g["Int32Array"](value.u); };
-function $floatArray2TypedArray(value) { return new $g["Float32Array"](value.u); };
-function $doubleArray2TypedArray(value) { return new $g["Float64Array"](value.u); };
+function $byteArray2TypedArray(value) { return new Int8Array(value.u); };
+function $shortArray2TypedArray(value) { return new Int16Array(value.u); };
+function $charArray2TypedArray(value) { return new Uint16Array(value.u); };
+function $intArray2TypedArray(value) { return new Int32Array(value.u); };
+function $floatArray2TypedArray(value) { return new Float32Array(value.u); };
+function $doubleArray2TypedArray(value) { return new Float64Array(value.u); };
 
 function $typedArray2ByteArray(value) {
   const arrayClassData = $d_B.getArrayOf();
-  return new arrayClassData.constr(new $g["Int8Array"](value));
+  return new arrayClassData.constr(new Int8Array(value));
 };
 function $typedArray2ShortArray(value) {
   const arrayClassData = $d_S.getArrayOf();
-  return new arrayClassData.constr(new $g["Int16Array"](value));
+  return new arrayClassData.constr(new Int16Array(value));
 };
 function $typedArray2CharArray(value) {
   const arrayClassData = $d_C.getArrayOf();
-  return new arrayClassData.constr(new $g["Uint16Array"](value));
+  return new arrayClassData.constr(new Uint16Array(value));
 };
 function $typedArray2IntArray(value) {
   const arrayClassData = $d_I.getArrayOf();
-  return new arrayClassData.constr(new $g["Int32Array"](value));
+  return new arrayClassData.constr(new Int32Array(value));
 };
 function $typedArray2FloatArray(value) {
   const arrayClassData = $d_F.getArrayOf();
-  return new arrayClassData.constr(new $g["Float32Array"](value));
+  return new arrayClassData.constr(new Float32Array(value));
 };
 function $typedArray2DoubleArray(value) {
   const arrayClassData = $d_D.getArrayOf();
-  return new arrayClassData.constr(new $g["Float64Array"](value));
+  return new arrayClassData.constr(new Float64Array(value));
 };
 
 // TypeData class

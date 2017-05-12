@@ -20,10 +20,7 @@ import org.scalajs.core.tools.linker.backend.{ModuleKind, OutputMode}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 
-/* The only reason this is not private[emitter] is that Closure needs it.
- * TODO We should try and get rid of this coupling.
- */
-private[backend] object CoreJSLibs {
+private[emitter] object CoreJSLibs {
 
   private type Config = (Semantics, OutputMode, ModuleKind)
 

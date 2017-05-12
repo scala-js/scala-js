@@ -93,8 +93,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
                       entireClassDef ::
                       createStaticFields :::
                       (classValueVar := envField("c", className)) ::
-                      genStaticInitialization(tree) ::
-                      Nil
+                      genStaticInitialization(tree)
                   )
                 }, {
                   js.Skip()
@@ -126,7 +125,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       if (!tree.kind.isJSClass) {
         WithGlobals(encodeClassVar(parentIdent.name))
       } else {
-        genRawJSClassConstructor(parentIdent.name)
+        genRawJSClassConstructor(parentIdent.name,
+            keepOnlyDangerousVarNames = true)
       }
     }
 
@@ -190,7 +190,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       val (inheritedCtorDefWithGlobals, inheritedCtorRef) = if (!isJSClass) {
         (WithGlobals(js.Skip()), envField("h", parentIdent.name))
       } else {
-        val superCtor = genRawJSClassConstructor(parentIdent.name)
+        val superCtor = genRawJSClassConstructor(parentIdent.name,
+            keepOnlyDangerousVarNames = true)
         (superCtor.map(makeInheritableCtorDef(_)), envField("h", className))
       }
 
@@ -278,16 +279,14 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
   /** Generates the creation of the static fields for a Scala class. */
   def genCreateStaticFieldsOfScalaClass(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
-    val className = tree.encodedName
-    val stats = for {
+      implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
+    for {
       field @ FieldDef(true, Ident(name, origName), ftpe, mutable) <- tree.fields
     } yield {
       implicit val pos = field.pos
-      val fullName = className + "__" + name
+      val fullName = tree.encodedName + "__" + name
       envFieldDef("t", fullName, genZeroOf(ftpe), origName, mutable)
     }
-    js.Block(stats)(tree.pos)
   }
 
   /** Generates the creation of the static fields for a JavaScript class. */
@@ -308,14 +307,14 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   /** Generates the static initializer invocation of a JavaScript class. */
-  def genStaticInitialization(tree: LinkedClass): js.Tree = {
+  def genStaticInitialization(tree: LinkedClass): List[js.Tree] = {
     import Definitions.StaticInitializerName
     implicit val pos = tree.pos
     if (tree.staticMethods.exists(_.tree.name.encodedName == StaticInitializerName)) {
       val fullName = tree.encodedName + "__" + StaticInitializerName
-      js.Apply(envField("s", fullName, Some("<clinit>")), Nil)
+      js.Apply(envField("s", fullName, Some("<clinit>")), Nil) :: Nil
     } else {
-      js.Skip()
+      Nil
     }
   }
 
@@ -791,7 +790,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
           WithGlobals(envField("noIsInstance"))
         } else {
           for {
-            jsCtor <- genRawJSClassConstructor(className, tree.jsNativeLoadSpec)
+            jsCtor <- genRawJSClassConstructor(className, tree.jsNativeLoadSpec,
+                keepOnlyDangerousVarNames = true)
           } yield {
             js.Function(List(js.ParamDef(js.Ident("x"), rest = false)), js.Return {
               js.BinaryOp(JSBinaryOp.instanceof, js.VarRef(js.Ident("x")), jsCtor)
@@ -937,7 +937,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   def genClassExports(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     val exportsWithGlobals = tree.classExports map {
       case e: ConstructorExportDef =>
         genConstructorExportDef(tree, e)
@@ -956,7 +956,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             "Illegal class export " + tree.getClass.getName)
     }
 
-    WithGlobals.list(exportsWithGlobals).map(js.Block(_)(tree.pos))
+    WithGlobals.list(exportsWithGlobals)
   }
 
   def genConstructorExportDef(cd: LinkedClass, tree: ConstructorExportDef)(

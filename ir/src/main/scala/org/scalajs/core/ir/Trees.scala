@@ -53,10 +53,12 @@ object Trees {
   }
 
   final def isValidIdentifier(name: String): Boolean = {
-    val c = name.head
-    (c == '$' || c == '_' || c.isUnicodeIdentifierStart) &&
-    name.tail.forall(c => (c == '$') || c.isUnicodeIdentifierPart) &&
-    !isKeyword(name)
+    name.nonEmpty && {
+      val c = name.head
+      (c == '$' || c == '_' || c.isUnicodeIdentifierStart) &&
+      name.tail.forall(c => (c == '$') || c.isUnicodeIdentifierPart) &&
+      !isKeyword(name)
+    }
   }
 
   @inline final def requireValidIdent(name: String): Unit = {
@@ -149,8 +151,11 @@ object Trees {
       implicit val pos: Position) extends Tree {
     require(lhs match {
       case _:VarRef | _:Select | _:SelectStatic | _:ArraySelect |
-           _:JSDotSelect | _:JSBracketSelect | _:JSSuperBracketSelect => true
-      case _ => false
+           _:JSDotSelect | _:JSBracketSelect | _:JSSuperBracketSelect |
+           _:JSGlobalRef =>
+        true
+      case _ =>
+        false
     }, s"Invalid lhs for Assign: $lhs")
 
     val tpe = NoType // cannot be in expression position
@@ -773,6 +778,11 @@ object Trees {
 
   case class This()(val tpe: Type)(implicit val pos: Position) extends Tree
 
+  case class JSGlobalRef(ident: Ident)(
+      implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+  }
+
   /** Closure with explicit captures.
    *  The n captures map to the n first formal arguments.
    */
@@ -890,28 +900,26 @@ object Trees {
 
     /** Load from the global scope.
      *
-     *  The `path` is a series of nested property names starting from the
-     *  global object.
+     *  The `globalRef` is the name of a global variable (found in the global
+     *  scope).
      *
-     *  The path can be empty, in which case this denotes the global object
-     *  itself.
+     *  The `path` is a series of nested property names starting from that
+     *  variable.
      *
-     *  Any element in the path is a property selection from there. A global
-     *  scope loading spec with one path element is therefore a global variable.
+     *  The path can be empty, in which case this denotes the specified global
+     *  variable itself.
      *
      *  Examples:
      *  {{{
-     *  // <global>
-     *  Global(None, Nil)
+     *  // Foo
+     *  Global("Foo", Nil)
      *
-     *  // <global>.Date
-     *  Global(None, List("Date"))
-     *
-     *  // <global>.cp.Vect
-     *  Global(None, List("cp", "Vect"))
+     *  // cp.Vect
+     *  Global("cp", List("Vect"))
      *  }}}
      */
-    final case class Global(path: List[String]) extends JSNativeLoadSpec
+    final case class Global(globalRef: String, path: List[String])
+        extends JSNativeLoadSpec
 
     /** Load from a module import.
      *
