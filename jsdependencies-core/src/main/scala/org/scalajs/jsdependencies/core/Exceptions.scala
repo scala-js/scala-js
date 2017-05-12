@@ -1,4 +1,4 @@
-package org.scalajs.core.tools.jsdep
+package org.scalajs.jsdependencies.core
 
 abstract class DependencyException(msg: String) extends Exception(msg)
 

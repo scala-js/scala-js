@@ -14,7 +14,6 @@ import java.net._
 
 import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.logging.NullLogger
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.Utils.OptDeadline

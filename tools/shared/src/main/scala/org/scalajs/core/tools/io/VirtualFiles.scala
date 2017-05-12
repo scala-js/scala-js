@@ -6,9 +6,6 @@ import java.util.zip.{ZipInputStream, ZipEntry}
 
 import org.scalajs.core.ir
 
-import org.scalajs.core.tools.jsdep.JSDependencyManifest
-import org.scalajs.core.tools.json._
-
 /** A virtual input file.
  */
 trait VirtualFile {
@@ -237,13 +234,6 @@ trait VirtualFileContainer extends ScalaJSIRContainer {
       file.content = IO.readInputStreamToString(stream)
       file.version = version
       file
-    }
-  }
-
-  def jsDependencyManifests: List[JSDependencyManifest] = {
-    listEntries(_ == JSDependencyManifest.ManifestFileName) { (_, stream) =>
-      val json = readJSON(new InputStreamReader(stream, "UTF-8"))
-      fromJSON[JSDependencyManifest](json)
     }
   }
 }

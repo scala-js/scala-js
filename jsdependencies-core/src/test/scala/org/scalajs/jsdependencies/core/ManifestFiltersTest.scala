@@ -1,4 +1,4 @@
-package org.scalajs.core.tools.jsdep
+package org.scalajs.jsdependencies.core
 
 import org.junit.Test
 import org.junit.Assert._

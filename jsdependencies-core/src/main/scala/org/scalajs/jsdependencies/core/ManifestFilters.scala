@@ -1,4 +1,4 @@
-package org.scalajs.core.tools.jsdep
+package org.scalajs.jsdependencies.core
 
 /** Holds useful JSDependencyManifest filters */
 object ManifestFilters {

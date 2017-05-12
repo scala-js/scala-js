@@ -23,13 +23,15 @@ import org.scalajs.sbtplugin._
 import org.scalajs.jsenv.JSEnv
 import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
 
+import org.scalajs.jsdependencies.sbtplugin.JSDependenciesPlugin
+import org.scalajs.jsdependencies.sbtplugin.JSDependenciesPlugin.autoImport._
+
 import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
 import org.scalajs.core.tools.io.MemVirtualJSFile
 import org.scalajs.core.tools.sem._
-import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.linker.ModuleInitializer
 import org.scalajs.core.tools.linker.backend.OutputMode
@@ -615,7 +617,8 @@ object Build {
   ).dependsOn(irProject)
 
   lazy val toolsJS: Project = (project in file("tools/js")).enablePlugins(
-      MyScalaJSPlugin
+      MyScalaJSPlugin,
+      JSDependenciesPlugin
   ).settings(
       commonToolsSettings,
       crossVersion := ScalaJSCrossVersion.binary,
@@ -1167,6 +1170,39 @@ object Build {
       exportJars := true
   )
 
+  // jsDependencies support - to be moved out of the core repository
+
+  lazy val jsDependenciesCore: Project = (project in file("jsdependencies-core")).settings(
+      commonSettings,
+      publishSettings,
+      fatalWarningsSettings,
+      name := "scalajs-jsdependencies-core",
+      libraryDependencies +=
+        "com.novocode" % "junit-interface" % "0.11" % "test"
+  ).dependsOn(tools)
+
+  lazy val jsDependenciesPlugin: Project = (project in file("jsdependencies-sbt-plugin")).settings(
+      commonSettings,
+      publishIvySettings,
+      fatalWarningsSettings,
+      name := "sbt-scalajs-jsdependencies",
+      sbtPlugin := true,
+      scalaBinaryVersion :=
+        CrossVersion.binaryScalaVersion(scalaVersion.value),
+
+      // Add API mappings for sbt (seems they don't export their API URL)
+      apiMappings ++= {
+        val deps = (externalDependencyClasspath in Compile).value
+        val sbtJars = deps filter { attributed =>
+          val p = attributed.data.getPath
+          p.contains("/org.scala-sbt/") && p.endsWith(".jar")
+        }
+        val docUrl =
+          url(s"http://www.scala-sbt.org/${sbtVersion.value}/api/")
+        sbtJars.map(_.data -> docUrl).toMap
+      }
+  ).dependsOn(plugin, jsDependenciesCore)
+
   // Examples
 
   lazy val examples: Project = project.settings(
@@ -1391,7 +1427,8 @@ object Build {
   )
 
   lazy val testSuite: Project = (project in file("test-suite/js")).enablePlugins(
-      MyScalaJSPlugin
+      MyScalaJSPlugin,
+      JSDependenciesPlugin
   ).settings(
       commonSettings,
       testTagSettings,

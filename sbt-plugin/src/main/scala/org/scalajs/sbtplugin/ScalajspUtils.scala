@@ -15,7 +15,6 @@ import sbt._
 import sbt.complete._
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.jsdep.JSDependencyManifest
 
 private[sbtplugin] object ScalajspUtils {
 

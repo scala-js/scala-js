@@ -22,39 +22,6 @@ trait DependencyBuilders {
     nonEmpty(groupID, "Group ID")
     new ScalaJSGroupID(groupID)
   }
-
-  /**
-   *  Dummy builder to allow declaractions like:
-   *
-   *  {{{
-   *  RuntimeDOM % "test"
-   *  }}}
-   */
-  val RuntimeDOM = org.scalajs.sbtplugin.RuntimeDOMDep(None)
-
-  /**
-   *  Builder to allow declarations like:
-   *
-   *  {{{
-   *  ProvidedJS / "foo.js"
-   *  ProvidedJS / "foo.js" % "test"
-   *  }}}
-   */
-  object ProvidedJS {
-    def /(name: String): ProvidedJSModuleID = ProvidedJSModuleID(name, None)
-  }
-
-  /**
-   *  Builder to allow declarations like:
-   *
-   *  {{{
-   *  "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
-   *  "org.webjars" % "jquery" % "1.10.2" / "jquery.js" % "test"
-   *  }}}
-   */
-  implicit class JSModuleIDBuilder(module: ModuleID) {
-    def /(name: String): JarJSModuleID = JarJSModuleID(module, name)
-  }
 }
 
 final class ScalaJSGroupID private[sbtplugin] (private val groupID: String) {

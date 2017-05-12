@@ -1,4 +1,4 @@
-package org.scalajs.core.tools.jsdep
+package org.scalajs.jsdependencies.core
 
 import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.io._
@@ -47,8 +47,8 @@ final class JSDependencyManifest(
 
 object JSDependencyManifest {
 
-  // "org.scalajs.core.tools.jsdep.JSDependencyManifest".##
-  private final val HashSeed = 943487940
+  // "org.scalajs.jsdependencies.core.JSDependencyManifest".##
+  private final val HashSeed = -902988673
 
   final val ManifestFileName = "JS_DEPENDENCIES"
 

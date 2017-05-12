@@ -5,7 +5,6 @@ package scala.tools.nsc
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.linker.{Linker, ModuleInitializer}
 import org.scalajs.core.tools.linker.backend.{OutputMode, ModuleKind}
 

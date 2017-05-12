@@ -1,4 +1,4 @@
-package org.scalajs.core.tools.jsdep
+package org.scalajs.jsdependencies.core
 
 import org.scalajs.core.tools.json._
 
@@ -26,8 +26,8 @@ final class Origin(val moduleName: String, val configuration: String) {
 }
 
 object Origin {
-  // "org.scalajs.core.tools.jsdep.Origin".##
-  private final val HashSeed = -2085327609
+  // "org.scalajs.jsdependencies.core.Origin".##
+  private final val HashSeed = -1520336638
 
   implicit object OriginJSONSerializer extends JSONSerializer[Origin] {
     def serialize(x: Origin): JSON = {
