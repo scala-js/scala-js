@@ -624,25 +624,25 @@ object Build {
   ).settings(
       commonToolsSettings,
       crossVersion := ScalaJSCrossVersion.binary,
-      resourceGenerators in Test += Def.task {
-        val base = (resourceManaged in Compile).value
-        IO.createDirectory(base)
-        val outFile = base / "js-test-definitions.js"
 
+      jsExecutionFiles in Test := {
         val testDefinitions = {
           org.scalajs.build.HTMLRunnerTemplateAccess.renderTestDefinitions(
               (loadedTestFrameworks in testSuite in Test).value,
               (definedTests in testSuite in Test).value)
         }
 
-        IO.write(outFile, testDefinitions)
-        Seq(outFile)
-      }.taskValue,
+        val testDefinitionsFile = {
+          new MemVirtualJSFile("js-test-definitions.js")
+            .withContent(testDefinitions)
+        }
+
+        testDefinitionsFile +: (jsExecutionFiles in Test).value
+      },
 
       // Give more memory to Node.js, and deactivate source maps
       jsEnv := new NodeJSEnv(args = Seq("--max_old_space_size=3072")).withSourceMap(false),
 
-      jsDependencies += ProvidedJS / "js-test-definitions.js" % "test",
       jsDependencies +=
         "org.webjars" % "jszip" % "2.4.0" % "test" / "jszip.min.js" commonJSName "JSZip",
 
