@@ -30,7 +30,7 @@ import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
-import org.scalajs.core.tools.io.MemVirtualJSFile
+import org.scalajs.core.tools.io.{FileVirtualJSFile, MemVirtualJSFile}
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.linker.ModuleInitializer
@@ -639,6 +639,8 @@ object Build {
 
         testDefinitionsFile +: (jsExecutionFiles in Test).value
       },
+
+      testSuiteJSExecutionFilesSetting,
 
       // Give more memory to Node.js, and deactivate source maps
       jsEnv := new NodeJSEnv(args = Seq("--max_old_space_size=3072")).withSourceMap(false),
@@ -1438,9 +1440,17 @@ object Build {
       }).value
   )
 
+  def testSuiteJSExecutionFilesSetting: Setting[_] = {
+    jsExecutionFiles in Test := {
+      val resourceDir =
+        (resourceDirectory in (LocalProject("testSuite"), Test)).value
+      val f = FileVirtualJSFile(resourceDir / "ScalaJSDefinedTestNatives.js")
+      f +: (jsExecutionFiles in Test).value
+    }
+  }
+
   lazy val testSuite: Project = (project in file("test-suite/js")).enablePlugins(
-      MyScalaJSPlugin,
-      JSDependenciesPlugin
+      MyScalaJSPlugin
   ).settings(
       commonSettings,
       testTagSettings,
@@ -1456,8 +1466,7 @@ object Build {
             scalaJSModuleKind.value != ModuleKind.NoModule)
       },
 
-      jsDependencies += ProvidedJS / "ScalaJSDefinedTestNatives.js" % "test",
-      skip in packageJSDependencies in Test := false,
+      testSuiteJSExecutionFilesSetting,
 
       scalaJSSemantics ~= (_.withRuntimeClassName(_.fullName match {
         case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
