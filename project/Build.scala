@@ -639,6 +639,9 @@ object Build {
         Seq(outFile)
       }.taskValue,
 
+      // Give more memory to Node.js, and deactivate source maps
+      jsEnv := new NodeJSEnv(args = Seq("--max_old_space_size=3072")).withSourceMap(false),
+
       jsDependencies += ProvidedJS / "js-test-definitions.js" % "test",
       jsDependencies +=
         "org.webjars" % "jszip" % "2.4.0" % "test" / "jszip.min.js" commonJSName "JSZip",
