@@ -11,8 +11,7 @@ object JUnitUtil {
   def loadBootstrapper(classFullName: String): JUnitTestBootstrapper = {
     val fullName = s"$classFullName$BootstrapperSuffix"
     try {
-      val loader = new ScalaJSClassLoader(
-          scala.scalajs.runtime.environmentInfo.exportsNamespace)
+      val loader = new ScalaJSClassLoader()
       TestUtils.loadModule(fullName, loader).asInstanceOf[JUnitTestBootstrapper]
     } catch {
       case ex: Throwable =>
