@@ -1043,7 +1043,7 @@ object ScalaJSPluginInternal {
       // you will need the Scala.js compiler plugin
       autoCompilerPlugins := true,
       addCompilerPlugin(
-          "org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
+          "org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.patch),
 
       libraryDependencies ++= Seq(
           // and of course the Scala.js library
