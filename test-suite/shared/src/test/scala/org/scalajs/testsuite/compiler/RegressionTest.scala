@@ -384,6 +384,33 @@ class RegressionTest {
     assertThrows(classOf[MatchError], bug.bug(2, false))
   }
 
+  @Test def return_x_match_issue_2928(): Unit = {
+    def testNonUnit(x: String): Boolean = {
+      return x match {
+        case "True" => true
+        case _      => false
+      }
+    }
+
+    var r: Option[Boolean] = None
+
+    def testUnit(x: String): Unit = {
+      return x match {
+        case "True" => r = Some(true)
+        case _      => r = Some(false)
+      }
+    }
+
+    assertEquals(true, testNonUnit("True"))
+    assertEquals(false, testNonUnit("not true"))
+
+    testUnit("True")
+    assertEquals(Some(true), r)
+    r = None
+    testUnit("not true")
+    assertEquals(Some(false), r)
+  }
+
   @Test def null_asInstanceOf_Unit_should_succeed_issue_1691(): Unit = {
     /* Avoid scalac's special treatment of `<literal null>.asInstanceOf[X]`.
      * It does have the benefit to test our constant-folder of that pattern,
