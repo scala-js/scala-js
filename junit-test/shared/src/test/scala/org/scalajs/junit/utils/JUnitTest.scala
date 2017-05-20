@@ -81,7 +81,7 @@ abstract class JUnitTest {
   }
 
   protected final class OutputBuilder private (val argInfo: ArgInfo,
-      total: Int, ignored: Int, failed: Int, output: List[Output]) {
+      total: Int, ignored: Int, failed: Int, output: List[List[Output]]) {
     import argInfo._
 
     private[JUnitTest] def this(argInfo: ArgInfo) = this(argInfo, 0, 0, 0, Nil)
@@ -130,53 +130,93 @@ abstract class JUnitTest {
     }
 
     private def append(t: Int, i: Int, f: Int)(out: Output*) = {
-      new OutputBuilder(argInfo, total + t, ignored + i, failed + f, output ++ out)
+      new OutputBuilder(argInfo, total + t, ignored + i, failed + f,
+          output :+ out.toList)
     }
 
     // Test method.
 
-    private[JUnitTest] def checkOutput(actual: List[Output]): Unit = {
-      val expected = (
-          testRunStartedOutput :: output :::
-          List(testRunFinishedOutput(total, ignored, failed), done)
-      )
+    private class Matcher private (matched: List[Output], remaining: List[Output]) {
+      def this(remaining: List[Output]) = this(Nil, remaining)
 
-      @tailrec def minimizeDiff(list1: List[Output], list2: List[Output],
-          dropped: Int): (List[Output], List[Output], Int) = {
-        (list1, list2) match {
-          case (x :: xs, y :: ys) if x == y => minimizeDiff(xs, ys, dropped + 1)
-          case _                            => (list1, list2, dropped)
+      def matchOne(prefix: List[Output]): Matcher = {
+        tryMatch(prefix).getOrElse(fail(List(prefix)))
+      }
+
+      @tailrec
+      final def matchUnordered(prefixes: List[List[Output]]): Matcher = {
+        matchOneOf(prefixes) match {
+          case (newMatcher, Nil)       => newMatcher
+          case (newMatcher, remaining) => newMatcher.matchUnordered(remaining)
         }
       }
-  
-      val (expected1, actual1, droppedFront) =
-        minimizeDiff(expected, actual, 0)
-      val (expected2, actual2, droppedBack) =
-        minimizeDiff(expected1.reverse, actual1.reverse, 0)
-      val expectedMinimized = expected2.reverse
-      val actualMinimized = actual2.reverse
-  
-      if (expectedMinimized != actualMinimized) {
-        val msg = new StringBuilder
-        def appendElems(original: List[Output], minimized: List[Output]): Unit = {
-          def appendGreyLine(out: Output): Unit = {
-            msg.append(GREY + "  " + withoutColor(out.toString) + NORMAL + "\n")
-          }
-          original.slice(droppedFront - 3, droppedFront).foreach(appendGreyLine)
-          minimized.foreach(out => msg.append("  " + out + "\n"))
-          val backIndex = original.size - droppedBack
-          original.slice(backIndex, backIndex + 3).foreach(appendGreyLine)
+
+      def assertEmpty(): Unit = assert(remaining.isEmpty)
+
+      /** Tries to match the prefix. If succeeds, returns a new matcher. */
+      private def tryMatch(prefix: List[Output]): Option[Matcher] = {
+        if (remaining.startsWith(prefix)) {
+          val (justMatched, newRemaining) = remaining.splitAt(prefix.length)
+          Some(new Matcher(matched ++ justMatched, newRemaining))
+        } else {
+          None
         }
-  
+      }
+
+      private def matchOneOf(
+          prefixes: List[List[Output]]): (Matcher, List[List[Output]]) = {
+        @tailrec
+        def loop(matcher: Matcher, toSearch: List[List[Output]],
+            tried: List[List[Output]]): (Matcher, List[List[Output]]) = {
+          toSearch match {
+            case x :: xs =>
+              matcher.tryMatch(x) match {
+                case Some(m) => (m, xs ::: tried)
+                case None    => loop(matcher, xs, x :: tried)
+              }
+
+            case Nil =>
+              matcher.fail(tried)
+          }
+        }
+
+        loop(this, prefixes, Nil)
+      }
+
+      private def fail(expecteds: List[List[Output]]): Nothing = {
+        val msg = new StringBuilder
         msg.append(s"JUnit output mismatch with $argInfo:\n")
-        msg.append(s"Expected: List(\n")
-        appendElems(expected, expectedMinimized)
-        msg.append(")\nbut got: List(\n")
-        appendElems(actual, actualMinimized)
+        msg.append("Expected next, one of:\n")
+
+        def appendOut(out: Output) =
+          msg.append("  " + out + "\n")
+
+        for (expected <- expecteds) {
+          msg.append("List(\n")
+          expected.foreach(appendOut)
+          msg.append(")\n\n")
+        }
+
+        msg.append("but got: List(\n")
+
+        val maxLen = expecteds.map(_.size).max
+
+        for (out <- matched.takeRight(3))
+          msg.append(GREY + "  " + withoutColor(out.toString) + NORMAL + "\n")
+
+        remaining.take(maxLen).foreach(appendOut)
         msg.append(")")
   
         throw new Exception(msg.result())
       }
+    }
+
+    private[JUnitTest] def checkOutput(actual: List[Output]): Unit = {
+      new Matcher(actual)
+        .matchOne(List(testRunStartedOutput))
+        .matchUnordered(output)
+        .matchOne(List(testRunFinishedOutput(total, ignored, failed), done))
+        .assertEmpty()
     }
 
     // Text builders.
