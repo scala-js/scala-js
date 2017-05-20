@@ -40,7 +40,7 @@ class SystemJSTest {
   }
 
   @Test def identityHashCode_for_JS_objects(): Unit = {
-    if (assumingES6 || !js.isUndefined(js.Dynamic.global.WeakMap)) {
+    if (assumingES6 || js.typeOf(js.Dynamic.global.WeakMap) != "undefined") {
       /* This test is more restrictive than the spec, but we know our
        * implementation will always pass the test.
        */
@@ -109,21 +109,19 @@ class SystemJSTest {
     val inPhantomJS = get("scalajs.phantomjs") == "true"
     val inRhino = get("scalajs.rhino") == "true"
     if (inBrowser) {
-      assertFalse(js.isUndefined(js.Dynamic.global.window))
+      assertNotEquals("undefined", js.typeOf(js.Dynamic.global.window))
       assertFalse(inNode || inNodeWithJSDOM || inPhantomJS || inRhino)
     } else if (inNode) {
-      val process = js.Dynamic.global.process
-      assertFalse(js.isUndefined(process))
+      assertNotEquals("undefined", js.typeOf(js.Dynamic.global.process))
       assertFalse(inBrowser || inNodeWithJSDOM || inPhantomJS || inRhino)
     } else if (inNodeWithJSDOM) {
-      val window = js.Dynamic.global.window
-      assertFalse(js.isUndefined(window))
+      assertNotEquals("undefined", js.typeOf(js.Dynamic.global.window))
       assertFalse(inBrowser || inNode || inPhantomJS || inRhino)
     } else if (inPhantomJS) {
-      assertFalse(js.isUndefined(js.Dynamic.global.callPhantom))
+      assertNotEquals("undefined", js.typeOf(js.Dynamic.global.callPhantom))
       assertFalse(inBrowser || inNode || inNodeWithJSDOM || inRhino)
     } else if (inRhino) {
-      assertFalse(js.isUndefined(js.Dynamic.global.Packages))
+      assertNotEquals("undefined", js.typeOf(js.Dynamic.global.Packages))
       assertFalse(inBrowser || inNode || inNodeWithJSDOM || inPhantomJS)
     } else {
       fail("No known platform tag found.")

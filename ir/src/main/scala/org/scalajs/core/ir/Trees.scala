@@ -149,8 +149,11 @@ object Trees {
       implicit val pos: Position) extends Tree {
     require(lhs match {
       case _:VarRef | _:Select | _:SelectStatic | _:ArraySelect |
-           _:JSDotSelect | _:JSBracketSelect | _:JSSuperBracketSelect => true
-      case _ => false
+           _:JSDotSelect | _:JSBracketSelect | _:JSSuperBracketSelect |
+           _:JSGlobalRef =>
+        true
+      case _ =>
+        false
     }, s"Invalid lhs for Assign: $lhs")
 
     val tpe = NoType // cannot be in expression position
@@ -773,6 +776,11 @@ object Trees {
       implicit val pos: Position) extends Tree
 
   case class This()(val tpe: Type)(implicit val pos: Position) extends Tree
+
+  case class JSGlobalRef(ident: Ident)(
+      implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+  }
 
   /** Closure with explicit captures.
    *  The n captures map to the n first formal arguments.

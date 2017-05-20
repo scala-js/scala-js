@@ -11,6 +11,8 @@ package org.scalajs.core.tools.linker.backend.emitter
 
 import scala.language.implicitConversions
 
+import scala.annotation.tailrec
+
 import org.scalajs.core.ir
 import ir._
 import ir.Types._
@@ -26,11 +28,10 @@ import org.scalajs.core.tools.javascript.Trees._
  *  Also carries around config (semantics and outputMode).
  */
 private[emitter] final class JSGen(val semantics: Semantics,
-    val outputMode: OutputMode, internalOptions: InternalOptions) {
-  import JSGen._
+    val outputMode: OutputMode, internalOptions: InternalOptions,
+    mentionedDangerousGlobalRefs: Set[String]) {
 
-  implicit def transformIdent(ident: irt.Ident): Ident =
-    Ident(ident.name, ident.originalName)(ident.pos)
+  import JSGen._
 
   def genZeroOf(tpe: Type)(implicit pos: Position): Tree = {
     tpe match {
@@ -231,7 +232,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
       if (containsOnlyValidChars()) "$i_" + module
       else buildValidName()
 
-    VarRef(Ident(varName, Some(module)))
+    VarRef(Ident(avoidClashWithGlobalRef(varName), Some(module)))
   }
 
   def envField(field: String, subField: String, origName: Option[String] = None)(
@@ -243,7 +244,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
         envField(field) DOT Ident(subField, origName)
 
       case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
-        VarRef(Ident("$" + field + "_" + subField, origName))
+        VarRef(Ident(avoidClashWithGlobalRef("$" + field + "_" + subField),
+            origName))
     }
   }
 
@@ -255,8 +257,27 @@ private[emitter] final class JSGen(val semantics: Semantics,
         VarRef(Ident(ScalaJSEnvironmentName)) DOT field
 
       case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
-        VarRef(Ident("$" + field))
+        VarRef(Ident(avoidClashWithGlobalRef("$" + field)))
     }
+  }
+
+  def avoidClashWithGlobalRef(envFieldName: String): String = {
+    @tailrec
+    def slowPath(lastNameTried: String): String = {
+      val nextNameToTry = "$" + lastNameTried
+      if (mentionedDangerousGlobalRefs.contains(nextNameToTry))
+        slowPath(nextNameToTry)
+      else
+        nextNameToTry
+    }
+
+    /* Hopefully this is JIT'ed away as `false` because `envFieldNamesToAvoid`
+     * is in fact `Set.EmptySet`.
+     */
+    if (mentionedDangerousGlobalRefs.contains(envFieldName))
+      slowPath(envFieldName)
+    else
+      envFieldName
   }
 
   def genPropSelect(qual: Tree, item: PropertyName)(

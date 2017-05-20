@@ -389,6 +389,10 @@ object Serializers {
           writeByte(TagThis)
           writeType(tree.tpe)
 
+        case JSGlobalRef(ident) =>
+          writeByte(TagJSGlobalRef)
+          writeIdent(ident)
+
         case Closure(captureParams, params, body, captureValues) =>
           writeByte(TagClosure)
           writeTrees(captureParams)
@@ -804,7 +808,9 @@ object Serializers {
             foundArguments = true
           result
 
-        case TagThis    => This()(readType())
+        case TagThis        => This()(readType())
+        case TagJSGlobalRef => JSGlobalRef(readIdent())
+
         case TagClosure =>
           Closure(readParamDefs(), readParamDefs(), readTree(), readTrees())
 

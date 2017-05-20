@@ -753,6 +753,10 @@ class PrintersTest {
     assertPrintEquals("this", This()(AnyType))
   }
 
+  @Test def printGlobalRef(): Unit = {
+    assertPrintEquals("global:Foo", JSGlobalRef("Foo"))
+  }
+
   @Test def printClosure(): Unit = {
     assertPrintEquals(
         """

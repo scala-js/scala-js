@@ -52,36 +52,34 @@ class JSNativeInPackage {
 
   @Test def testObjectDefaultJSGlobal(): Unit = {
     val gJSNativeObjectInPackageFoo = global.JSNativeObjectInPackageFoo
-    assertFalse(js.isUndefined(gJSNativeObjectInPackageFoo))
+    assertNotEquals("undefined", js.typeOf(gJSNativeObjectInPackageFoo))
     assertSame(JSNativeObjectInPackageFoo, gJSNativeObjectInPackageFoo)
   }
 
   @Test def testObjectDefaultJSName(): Unit = {
     val gJSNativeObjectInPackageFoo = global.JSNativeObjectInPackageFoo
-    assertFalse(js.isUndefined(gJSNativeObjectInPackageFoo))
+    assertNotEquals("undefined", js.typeOf(gJSNativeObjectInPackageFoo))
     assertSame(JSNativeObjectInPackageFooJSNameOmitted,
         gJSNativeObjectInPackageFoo)
   }
 
   @Test def testObjectJSGlobal(): Unit = {
     val gJSNativeObjectInPackageBar = global.JSNativeObjectInPackageBar
-    val gJSNativeObjectInPackageBaz = global.JSNativeObjectInPackageBaz
-    assertFalse(js.isUndefined(gJSNativeObjectInPackageBar))
-    assertTrue(js.isUndefined(gJSNativeObjectInPackageBaz))
+    assertNotEquals("undefined", js.typeOf(gJSNativeObjectInPackageBar))
+    assertEquals("undefined", js.typeOf(global.JSNativeObjectInPackageBaz))
     assertSame(JSNativeObjectInPackageBaz, gJSNativeObjectInPackageBar)
   }
 
   @Test def testObjectJSName(): Unit = {
     val gJSNativeObjectInPackageBar = global.JSNativeObjectInPackageBar
-    val gJSNativeObjectInPackageBaz = global.JSNativeObjectInPackageBaz
-    assertFalse(js.isUndefined(gJSNativeObjectInPackageBar))
-    assertTrue(js.isUndefined(gJSNativeObjectInPackageBaz))
+    assertNotEquals("undefined", js.typeOf(gJSNativeObjectInPackageBar))
+    assertEquals("undefined", js.typeOf(global.JSNativeObjectInPackageBaz))
     assertSame(JSNativeObjectInPackageBazJSName, gJSNativeObjectInPackageBar)
   }
 
   @Test def testClassDefaultJSGlobal(): Unit = {
     val gJSNativeClassInPackageFooCtr = global.JSNativeClassInPackageFoo
-    assertFalse(js.isUndefined(gJSNativeClassInPackageFooCtr))
+    assertNotEquals("undefined", js.typeOf(gJSNativeClassInPackageFooCtr))
     assertEquals(js.constructorOf[JSNativeClassInPackageFoo],
         gJSNativeClassInPackageFooCtr)
 
@@ -93,7 +91,7 @@ class JSNativeInPackage {
 
   @Test def testClassDefaultJSName(): Unit = {
     val gJSNativeClassInPackageFooCtr = global.JSNativeClassInPackageFoo
-    assertFalse(js.isUndefined(gJSNativeClassInPackageFooCtr))
+    assertNotEquals("undefined", js.typeOf(gJSNativeClassInPackageFooCtr))
     assertEquals(js.constructorOf[JSNativeClassInPackageFooJSNameOmitted],
         gJSNativeClassInPackageFooCtr)
 
@@ -105,11 +103,10 @@ class JSNativeInPackage {
 
   @Test def testClassJSGlobal(): Unit = {
     val gJSNativeClassInPackageBarCtr = global.JSNativeClassInPackageBar
-    val gJSNativeClassInPackageBazCtr = global.JSNativeClassInPackageBaz
-    assertFalse(js.isUndefined(gJSNativeClassInPackageBarCtr))
+    assertNotEquals("undefined", js.typeOf(gJSNativeClassInPackageBarCtr))
     assertSame(js.constructorOf[JSNativeClassInPackageBaz],
         gJSNativeClassInPackageBarCtr)
-    assertTrue(js.isUndefined(gJSNativeClassInPackageBazCtr))
+    assertEquals("undefined", js.typeOf(global.JSNativeClassInPackageBaz))
 
     val gJSNativeClassInPackageBar =
       js.Dynamic.newInstance(gJSNativeClassInPackageBarCtr)()
@@ -119,11 +116,10 @@ class JSNativeInPackage {
 
   @Test def testClassJSName(): Unit = {
     val gJSNativeClassInPackageBarCtr = global.JSNativeClassInPackageBar
-    val gJSNativeClassInPackageBazCtr = global.JSNativeClassInPackageBaz
-    assertFalse(js.isUndefined(gJSNativeClassInPackageBarCtr))
+    assertNotEquals("undefined", js.typeOf(gJSNativeClassInPackageBarCtr))
     assertSame(js.constructorOf[JSNativeClassInPackageBazJSName],
         gJSNativeClassInPackageBarCtr)
-    assertTrue(js.isUndefined(gJSNativeClassInPackageBazCtr))
+    assertEquals("undefined", js.typeOf(global.JSNativeClassInPackageBaz))
 
     val gJSNativeClassInPackageBar =
       js.Dynamic.newInstance(gJSNativeClassInPackageBarCtr)()

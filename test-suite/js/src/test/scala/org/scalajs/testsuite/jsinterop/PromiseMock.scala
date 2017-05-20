@@ -7,12 +7,12 @@ import scala.scalajs.js.|
 import js.Thenable
 
 object PromiseMock {
-  import js.Dynamic.global
-
   MockPromise.initMockPromiseStaticMethods()
 
   @noinline
   def withMockedPromise[A](body: (() => Unit) => A): A = {
+    val global = scala.scalajs.runtime.environmentInfo.global
+
     val oldPromise =
       if (global.hasOwnProperty("Promise").asInstanceOf[Boolean]) Some(global.Promise)
       else None
@@ -31,6 +31,8 @@ object PromiseMock {
 
   @noinline
   def withMockedPromiseIfExists[A](body: (Option[() => Unit]) => A): A = {
+    val global = scala.scalajs.runtime.environmentInfo.global
+
     val oldPromise = global.Promise
 
     if (js.isUndefined(oldPromise)) {

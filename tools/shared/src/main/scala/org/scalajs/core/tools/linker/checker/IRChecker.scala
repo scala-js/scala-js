@@ -543,13 +543,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           case _ =>
         }
         val lhsTpe = typecheckExpr(select, env)
-        val expectedRhsTpe = select match {
-          case _:JSDotSelect | _:JSBracketSelect | _:JSSuperBracketSelect =>
-            AnyType
-          case _ =>
-            lhsTpe
-        }
-        typecheckExpect(rhs, env, expectedRhsTpe)
+        typecheckExpect(rhs, env, lhsTpe)
         env
 
       case StoreModule(cls, value) =>
@@ -981,6 +975,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case This() =>
         if (!isSubtype(env.thisTpe, tree.tpe))
           reportError(s"this of type ${env.thisTpe} typed as ${tree.tpe}")
+
+      case JSGlobalRef(_) =>
 
       case Closure(captureParams, params, body, captureValues) =>
         /* Check compliance of captureValues wrt. captureParams in the current

@@ -6,8 +6,10 @@ import scala.scalajs.js
 
 object JUnitTestPlatformImpl {
 
-  def getClassLoader: ClassLoader =
-    new org.scalajs.testinterface.ScalaJSClassLoader(js.Dynamic.global)
+  def getClassLoader: ClassLoader = {
+    new org.scalajs.testinterface.ScalaJSClassLoader(
+        scala.scalajs.runtime.environmentInfo.exportsNamespace)
+  }
 
   def executeLoop(tasks: Array[Task], recorder: Logger with EventHandler): Unit = {
     if (tasks.nonEmpty) {

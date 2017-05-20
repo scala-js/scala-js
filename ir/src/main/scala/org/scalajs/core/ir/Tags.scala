@@ -108,6 +108,7 @@ private[ir] object Tags {
   final val TagSelectStatic = TagTopLevelMethodExportDef + 1
   final val TagTopLevelFieldExportDef = TagSelectStatic + 1
   final val TagTopLevelModuleExportDef = TagTopLevelFieldExportDef + 1
+  final val TagJSGlobalRef = TagTopLevelModuleExportDef + 1
 
   // Tags for Types
 

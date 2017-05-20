@@ -682,8 +682,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         case pdef: js.PropertyDef =>
           implicit val pos = pdef.pos
           val name = pdef.name.asInstanceOf[js.StringLiteral]
-          val jsObject =
-            js.JSBracketSelect(genLoadGlobal(), js.StringLiteral("Object"))
+          val jsObject = js.JSGlobalRef(js.Ident("Object"))
 
           def field(name: String, value: js.Tree) =
             List(js.StringLiteral(name) -> value)
@@ -1741,6 +1740,45 @@ abstract class GenJSCode extends plugins.PluginComponent
       assert(result.tpe != jstpe.NoType,
           s"genExpr($tree) returned a tree with type NoType at pos ${tree.pos}")
       result
+    }
+
+    /** Gen JS code for a tree in expression position (in the IR) or the
+     *  global scope.
+     *
+     *  Since the result could be the encoding of the global scope
+     *  (`CallHelper("global")`), it must be processed through
+     *  `genJSBracketSelectOrGlobalRef` or
+     *  `genJSBracketMethodApplyOrGlobalRefApply`.
+     */
+    def genExprOrGlobalScope(tree: Tree): js.Tree = {
+      implicit def pos: Position = tree.pos
+
+      tree match {
+        case _: This =>
+          val sym = tree.symbol
+          if (sym != currentClassSym.get && sym.isModule)
+            genLoadModuleOrGlobalScope(sym)
+          else
+            genExpr(tree)
+
+        case _:Ident | _:Select =>
+          val sym = tree.symbol
+          if (sym.isModule) {
+            assert(!sym.isPackageClass, "Cannot use package as value: " + tree)
+            genLoadModuleOrGlobalScope(sym)
+          } else {
+            genExpr(tree)
+          }
+
+        case Apply(fun, _) =>
+          if (fun.symbol == JSDynamic_global)
+            genGlobalScope()
+          else
+            genExpr(tree)
+
+        case _ =>
+          genExpr(tree)
+      }
     }
 
     /** Gen JS code for a tree in statement or expression position (in the IR).
@@ -4048,6 +4086,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else (genArgs match {
         case Nil =>
           code match {
+            case DYNGLOBAL    => genLoadGlobalObject()
             case LINKING_INFO => js.JSLinkingInfo()
             case DEBUGGER     => js.Debugger()
             case UNITVAL      => js.Undefined()
@@ -4166,7 +4205,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = tree.symbol
       val Apply(fun @ Select(receiver0, _), args0) = tree
 
-      val receiver = genExpr(receiver0)
+      val receiver = genExprOrGlobalScope(receiver0)
       val args = genPrimitiveJSArgs(sym, args0)
 
       genJSCallGeneric(sym, receiver, args, isStat)
@@ -4219,30 +4258,31 @@ abstract class GenJSCode extends plugins.PluginComponent
       val boxedResult = sym.name match {
         case JSUnaryOpMethodName(code) if argc == 0 =>
           requireNotSuper()
-          js.JSUnaryOp(code, receiver)
+          js.JSUnaryOp(code, forceLoadGlobalObject(receiver))
 
         case JSBinaryOpMethodName(code) if argc == 1 =>
           requireNotSuper()
-          js.JSBinaryOp(code, receiver, args.head)
+          js.JSBinaryOp(code, forceLoadGlobalObject(receiver), args.head)
 
         case nme.apply if sym.owner.isSubClass(JSThisFunctionClass) =>
           requireNotSuper()
-          js.JSBracketMethodApply(receiver, js.StringLiteral("call"), args)
+          genJSBracketMethodApplyOrGlobalRefApply(receiver,
+              js.StringLiteral("call"), args)
 
         case nme.apply if !hasExplicitJSEncoding =>
           requireNotSuper()
-          js.JSFunctionApply(receiver, args)
+          js.JSFunctionApply(forceLoadGlobalObject(receiver), args)
 
         case _ =>
           def jsFunName: js.Tree = genExpr(jsNameOf(sym))
 
           def genSuperReference(propName: js.Tree): js.Tree = {
             superIn.fold[js.Tree] {
-              js.JSBracketSelect(receiver, propName)
+              genJSBracketSelectOrGlobalRef(receiver, propName)
             } { superInSym =>
               js.JSSuperBracketSelect(
                   jstpe.ClassType(encodeClassFullName(superInSym)),
-                  receiver, propName)
+                  forceLoadGlobalObject(receiver), propName)
             }
           }
 
@@ -4254,12 +4294,12 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           def genCall(methodName: js.Tree, args: List[js.Tree]): js.Tree = {
             superIn.fold[js.Tree] {
-              js.JSBracketMethodApply(
+              genJSBracketMethodApplyOrGlobalRefApply(
                   receiver, methodName, args)
             } { superInSym =>
               js.JSSuperBracketCall(
                   jstpe.ClassType(encodeClassFullName(superInSym)),
-                  receiver, methodName, args)
+                  forceLoadGlobalObject(receiver), methodName, args)
             }
           }
 
@@ -5226,47 +5266,186 @@ abstract class GenJSCode extends plugins.PluginComponent
       case _          => js.Null()
     }
 
-    /** Generate loading of a module value
-     *  Can be given either the module symbol, or its module class symbol.
+    /** Generate loading of a module value or the global scope.
+     *
+     *  Can be given either the module symbol of its module class symbol.
+     *
+     *  Unlike `genLoadModule`, this method does not produce a deprecation
+     *  warning if the module we load refers to the global scope. In that case,
+     *  the marker `js.CallHelper("global")` is returned, which should later
+     *  be transformed by the caller into a `JSGlobalRef`.
      */
-    def genLoadModule(sym0: Symbol)(implicit pos: Position): js.Tree = {
+    def genLoadModuleOrGlobalScope(sym: Symbol)(
+        implicit pos: Position): js.Tree = {
+      genLoadModuleInternal(sym, globalScopeAllowed = true)
+    }
+
+    /** Generate loading of a module value.
+     *
+     *  Can be given either the module symbol or its module class symbol.
+     *
+     *  If the module we load refers to the global scope (i.e., it is
+     *  annotated with `@JSGlobalScope`), this generates a deprecation warning,
+     *  specifying that a global scope object should only be used as the
+     *  qualifier of a `.`-selection.
+     */
+    def genLoadModule(sym: Symbol)(implicit pos: Position): js.Tree =
+      genLoadModuleInternal(sym, globalScopeAllowed = false)
+
+    private def genLoadModuleInternal(sym0: Symbol,
+        globalScopeAllowed: Boolean)(
+        implicit pos: Position): js.Tree = {
+
       require(sym0.isModuleOrModuleClass,
-          "genLoadModule called with non-module symbol: " + sym0)
+          "genLoadModuleInternal called with non-module symbol: " + sym0)
       val sym1 = if (sym0.isModule) sym0.moduleClass else sym0
       val sym = // redirect all static methods of String to RuntimeString
         if (sym1 == StringModule) RuntimeStringModule.moduleClass
         else sym1
 
-      if (isJSNativeClass(sym) &&
-          !sym.hasAnnotation(HasJSNativeLoadSpecAnnotation)) {
-        /* Compatibility for native JS modules compiled with Scala.js 0.6.12
-         * and earlier. Since they did not store their loading spec in the IR,
-         * the js.LoadJSModule() IR node cannot be used to load them. We must
-         * "desugar" it early in the compiler.
-         *
-         * Moreover, before 0.6.13, these objects would not have the
-         * annotation @JSGlobalScope. Instead, they would inherit from the
-         * magical trait js.GlobalScope.
-         */
-        if (sym.isSubClass(JSGlobalScopeClass)) {
-          genLoadGlobal()
-        } else {
-          compat068FullJSNameOf(sym).split('.').foldLeft(genLoadGlobal()) {
-            (memo, chunk) =>
-              js.JSBracketSelect(memo, js.StringLiteral(chunk))
-          }
-        }
+      /* Does that module refer to the global scope? Starting from Scala.js
+       * 0.6.13, such objects will be annotated with `@JSGlobalScope`. Before
+       * that, they would extend the magical trait `js.GlobalScope`.
+       */
+      if (sym.hasAnnotation(JSGlobalScopeAnnotation) ||
+          sym.isSubClass(JSGlobalScopeClass)) {
+        if (globalScopeAllowed)
+          genGlobalScope()
+        else
+          genLoadGlobalObject()
       } else {
-        val moduleClassName = encodeClassFullName(sym)
+        if (isJSNativeClass(sym) &&
+            !sym.hasAnnotation(HasJSNativeLoadSpecAnnotation)) {
+          /* Compatibility for native JS modules compiled with Scala.js 0.6.12
+           * and earlier. Since they did not store their loading spec in the IR,
+           * the js.LoadJSModule() IR node cannot be used to load them. We must
+           * "desugar" it early in the compiler.
+           */
+          compat068FullJSNameOf(sym).split('.').foldLeft(genGlobalScope()) {
+            (memo, chunk) =>
+              genJSBracketSelectOrGlobalRef(memo, js.StringLiteral(chunk))
+          }
+        } else {
+          val moduleClassName = encodeClassFullName(sym)
 
-        val cls = jstpe.ClassType(moduleClassName)
-        if (isRawJSType(sym.tpe)) js.LoadJSModule(cls)
-        else js.LoadModule(cls)
+          val cls = jstpe.ClassType(moduleClassName)
+          if (isRawJSType(sym.tpe)) js.LoadJSModule(cls)
+          else js.LoadModule(cls)
+        }
       }
     }
 
-    /** Gen JS code to load the global scope. */
-    private def genLoadGlobal()(implicit pos: ir.Position): js.Tree = {
+    /** Gen an encoding for the global scope (not the global object).
+     *
+     *  That encoding must be later processed through
+     *  `genJSBracketSelectOrGlobalRef` to be transformed into a `GlobalRef`,
+     *  or a reference to the global *object* (in the latter case, with a
+     *  deprecation warning).
+     */
+    private def genGlobalScope()(implicit pos: Position): js.Tree =
+      js.CallHelper("global")(jstpe.AnyType)
+
+    private final val GenericGlobalObjectInformationMsg = {
+      "\nUse your own discovery of the global object to do so." +
+      "\nSee the release notes of Scala.js 0.6.16 for further information."
+    }
+
+    /** Gen JS code to load the global object as a value.
+     *
+     *  This will use `LinkingInfo.envInfo.global`. It will also report a
+     *  deprecation warning, as this will not be supported in 1.0 anymore.
+     */
+    private def genLoadGlobalObject()(
+        implicit pos: Position): js.Tree = {
+      reporter.warning(pos,
+          "Loading the global object as a value (anywhere but as the " +
+          "left-hand-side of a `.`-selection) is deprecated." +
+          GenericGlobalObjectInformationMsg)
+      genLoadGlobalObjectInternal()
+    }
+
+    /** Forces loading the global object as a value instead of the global scope.
+     *
+     *  If `tree` represents the global scope (encoded as
+     *  `CallHelper("global")`), this calls `genLoadGlobalObject` to load the
+     *  global object and emit a warning.
+     *
+     *  Otherwise, returns `tree`.
+     */
+    private def forceLoadGlobalObject(tree: js.Tree)(
+        implicit pos: Position): js.Tree = {
+      tree match {
+        case js.CallHelper("global", _) =>
+          genLoadGlobalObject()
+        case _ =>
+          tree
+      }
+    }
+
+    /** Gen a JS bracket select or a `JSGlobalRef`.
+     *
+     *  If the qualifier represents the global scope (encoded as
+     *  `CallHelper("global")`), this emits a `JSGlobalRef`, unless the item is
+     *  not a constant string that is a valid identifier (in which case a
+     *  deprecation warning is emitted).
+     *
+     *  Otherwise, emits a `JSBracketSelect`.
+     */
+    private def genJSBracketSelectOrGlobalRef(qual: js.Tree,
+        item: js.Tree)(implicit pos: Position): js.Tree = {
+      qual match {
+        case js.CallHelper("global", _) =>
+          item match {
+            case js.StringLiteral(value) if js.isValidIdentifier(value) =>
+              js.JSGlobalRef(js.Ident(value))
+            case _ =>
+              reporter.warning(pos,
+                  "Selecting a member of the global scope with a dynamic " +
+                  "name (or an invalid JavaScript identifier) is deprecated. " +
+                  GenericGlobalObjectInformationMsg)
+              js.JSBracketSelect(genLoadGlobalObjectInternal(), item)
+          }
+        case _ =>
+          js.JSBracketSelect(qual, item)
+      }
+    }
+
+    /** Gen a JS bracket method apply or an apply of a `GlobalRef`.
+     *
+     *  If the receiver represents the global scope (encoded as
+     *  `CallHelper("global")`), this emits a
+     *  `JSFunctionApply(JSGlobalRef(...), ...)`, unless the method is not a
+     *  constant string that is a valid identifier (in which case a deprecation
+     *  warning is emitted).
+     *
+     *  Otherwise, emits a `JSBracketMethodApply`.
+     */
+    private def genJSBracketMethodApplyOrGlobalRefApply(receiver: js.Tree,
+        method: js.Tree, args: List[js.Tree])(
+        implicit pos: Position): js.Tree = {
+      receiver match {
+        case js.CallHelper("global", _) =>
+          method match {
+            case js.StringLiteral(value) if js.isValidIdentifier(value) =>
+              js.JSFunctionApply(js.JSGlobalRef(js.Ident(value)), args)
+            case _ =>
+              reporter.warning(pos,
+                  "Calling a member of the global scope with a dynamic " +
+                  "name (or an invalid JavaScript identifier) is deprecated. " +
+                  GenericGlobalObjectInformationMsg)
+              js.JSBracketMethodApply(genLoadGlobalObjectInternal(), method,
+                  args)
+          }
+        case _ =>
+          js.JSBracketMethodApply(receiver, method, args)
+      }
+    }
+
+    /** Same as `genLoadGlobalObject()` but without deprecation message, for
+     *  internal use.
+     */
+    private def genLoadGlobalObjectInternal()(
+        implicit pos: ir.Position): js.Tree = {
       js.JSBracketSelect(
           js.JSBracketSelect(js.JSLinkingInfo(), js.StringLiteral("envInfo")),
           js.StringLiteral("global"))
