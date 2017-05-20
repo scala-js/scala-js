@@ -535,6 +535,28 @@ class RegressionTest {
     assertTrue(f3A != f4B)
   }
 
+  @Test def isInstanceOf_must_not_call_toString_issue_2953(): Unit = {
+    class C {
+      override def toString(): String =
+        throw new AssertionError("C.toString must not be called by isInstanceOf")
+    }
+
+    @noinline def makeC(): Any = new C
+
+    val c = makeC()
+
+    assertFalse("Boolean", c.isInstanceOf[Boolean])
+    assertFalse("Char", c.isInstanceOf[Char])
+    assertFalse("Byte", c.isInstanceOf[Byte])
+    assertFalse("Short", c.isInstanceOf[Short])
+    assertFalse("Int", c.isInstanceOf[Int])
+    assertFalse("Long", c.isInstanceOf[Long])
+    assertFalse("Float", c.isInstanceOf[Float])
+    assertFalse("Double", c.isInstanceOf[Double])
+    assertFalse("Unit", c.isInstanceOf[Unit])
+    assertFalse("String", c.isInstanceOf[String])
+  }
+
 }
 
 object RegressionTest {

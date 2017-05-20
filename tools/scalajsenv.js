@@ -602,20 +602,20 @@ ScalaJS.systemIdentityHashCode =
 // is/as for hijacked boxed classes (the non-trivial ones)
 
 ScalaJS.isByte = function(v) {
-  return (v << 24 >> 24) === v && 1/v !== 1/-0;
+  return typeof v === "number" && (v << 24 >> 24) === v && 1/v !== 1/-0;
 };
 
 ScalaJS.isShort = function(v) {
-  return (v << 16 >> 16) === v && 1/v !== 1/-0;
+  return typeof v === "number" && (v << 16 >> 16) === v && 1/v !== 1/-0;
 };
 
 ScalaJS.isInt = function(v) {
-  return (v | 0) === v && 1/v !== 1/-0;
+  return typeof v === "number" && (v | 0) === v && 1/v !== 1/-0;
 };
 
 ScalaJS.isFloat = function(v) {
 //!if floats == Strict
-  return v !== v || ScalaJS.fround(v) === v;
+  return typeof v === "number" && (v !== v || ScalaJS.fround(v) === v);
 //!else
   return typeof v === "number";
 //!endif
