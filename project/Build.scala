@@ -1016,8 +1016,6 @@ object Build {
       exportJars := !isGeneratingEclipse,
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
-      libraryDependencies +=
-        "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
 
       scalaJSExternalCompileSettings,
       inConfig(Compile)(Seq(
