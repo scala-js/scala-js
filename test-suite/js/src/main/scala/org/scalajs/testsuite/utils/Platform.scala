@@ -54,6 +54,9 @@ object Platform {
   def hasCompliantModule: Boolean = sysProp("compliant-moduleinit")
   def hasStrictFloats: Boolean = sysProp("strict-floats")
 
+  def isNoModule: Boolean = sysProp("modulekind-nomodule")
+  def isCommonJSModule: Boolean = sysProp("modulekind-commonjs")
+
   private def sysProp(key: String): Boolean =
     System.getProperty("scalajs." + key, "false") == "true"
 }

@@ -708,6 +708,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
     private def checkAndComputeJSNativeLoadSpecOf(pos: Position,
         sym: Symbol): JSNativeLoadSpec = {
+      import JSNativeLoadSpec._
+
       if (enclosingOwner is OwnerKind.JSNativeMod) {
         for {
           annot <- sym.annotations
@@ -732,10 +734,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         val ownerLoadSpec = jsInterop.jsNativeLoadSpecOf(sym.owner)
         ownerLoadSpec match {
-          case JSNativeLoadSpec.Global(path) =>
-            JSNativeLoadSpec.Global(path :+ jsName)
-          case JSNativeLoadSpec.Import(module, path) =>
-            JSNativeLoadSpec.Import(module, path :+ jsName)
+          case Global(path) =>
+            Global(path :+ jsName)
+          case Import(module, path) =>
+            Import(module, path :+ jsName)
+          case ImportWithGlobalFallback(
+              Import(module, modulePath), Global(globalPath)) =>
+            ImportWithGlobalFallback(
+                Import(module, modulePath :+ jsName),
+                Global(globalPath :+ jsName))
         }
       } else {
         def parsePath(pathName: String): List[String] =
@@ -782,7 +789,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               "" // do not care because it does not compile anyway
             }
             val path = annot.stringArg(1).fold[List[String]](Nil)(parsePath)
-            JSNativeLoadSpec.Import(module, path)
+            val importSpec = Import(module, path)
+            annot.stringArg(2).fold[JSNativeLoadSpec] {
+              importSpec
+            } { globalPathName =>
+              val globalSpec = Global(parsePath(globalPathName))
+              ImportWithGlobalFallback(importSpec, globalSpec)
+            }
 
           case Some(annot) if annot.symbol == JSNameAnnotation =>
             if (!scalaJSOpts.suppressMissingJSGlobalDeprecations) {
@@ -1280,8 +1293,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     for {
       annot <- sym.getAnnotation(JSImportAnnotation)
     } {
-      assert(annot.args.size == 2,
-          s"@JSImport annotation $annot does not have exactly 2 arguments")
+      assert(annot.args.size == 2 || annot.args.size == 3,
+          s"@JSImport annotation $annot does not have exactly 2 or 3 arguments")
 
       val firstArgIsValid = annot.stringArg(0).isDefined
       if (!firstArgIsValid) {
@@ -1297,6 +1310,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         reporter.error(annot.args(1).pos,
             "The second argument to @JSImport must be literal string or the " +
             "JSImport.Namespace object.")
+      }
+
+      val thirdArgIsValid = annot.args.size < 3 || annot.stringArg(2).isDefined
+      if (!thirdArgIsValid) {
+        reporter.error(annot.args(2).pos,
+            "The third argument to @JSImport, when present, must be a " +
+            "literal string.")
       }
     }
   }

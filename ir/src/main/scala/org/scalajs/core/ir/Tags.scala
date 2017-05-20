@@ -137,5 +137,6 @@ private[ir] object Tags {
   final val TagJSNativeLoadSpecNone = 0
   final val TagJSNativeLoadSpecGlobal = TagJSNativeLoadSpecNone + 1
   final val TagJSNativeLoadSpecImport = TagJSNativeLoadSpecGlobal + 1
+  final val TagJSNativeLoadSpecImportWithGlobalFallback = TagJSNativeLoadSpecImport + 1
 
 }

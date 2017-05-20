@@ -20,6 +20,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       "JSGlobal" -> "@JSGlobal",
       "JSGlobal" -> "@JSGlobal(\"foo\")",
       "JSImport" -> "@JSImport(\"foo\", \"bar\")",
+      "JSImport" -> "@JSImport(\"foo\", \"bar\", globalFallback = \"baz\")",
       "JSGlobalScope" -> "@JSGlobalScope"
   )
 
@@ -260,6 +261,35 @@ class JSInteropTest extends DirectTest with TestHelpers {
       """
     }
 
+    for {
+      obj <- Seq("class", "trait", "object")
+    } yield {
+      s"""
+      @ScalaJSDefined
+      @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
+      $obj A extends js.Object
+      """ hasErrors
+      s"""
+        |newSource1.scala:6: error: Non JS-native classes, traits and objects may not have an @JSImport annotation.
+        |      @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
+        |       ^
+      """
+    }
+
+    for {
+      obj <- Seq("class", "trait", "object")
+    } yield {
+      s"""
+      @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
+      $obj A
+      """ hasErrors
+      s"""
+        |newSource1.scala:5: error: Non JS-native classes, traits and objects may not have an @JSImport annotation.
+        |      @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
+        |       ^
+      """
+    }
+
   }
 
   @Test
@@ -327,6 +357,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
     s"""
       |newSource1.scala:6: error: Traits may not have an @JSImport annotation.
       |    @JSImport("foo", JSImport.Namespace)
+      |     ^
+    """
+
+    s"""
+    @js.native
+    @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
+    trait A extends js.Object
+    """ hasErrors
+    s"""
+      |newSource1.scala:6: error: Traits may not have an @JSImport annotation.
+      |    @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
       |     ^
     """
 
@@ -877,6 +918,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |     ^
     """
 
+    """
+    @js.native
+    @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
+    object Bar extends js.GlobalScope
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Native JS classes and objects can only have one annotation among JSName, JSGlobal, JSImport and JSGlobalScope (extending js.GlobalScope is treated as having @JSGlobalScope).
+      |    @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
+      |     ^
+    """
+
   }
 
   @Test
@@ -1260,6 +1312,18 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
     """
     object A {
+      @JSImport("InnerB", JSImport.Namespace, globalFallback = "Foo")
+      @js.native
+      class B extends js.Object
+
+      @JSImport("InnerC", JSImport.Namespace, globalFallback = "Foo")
+      @js.native
+      object C extends js.Object
+    }
+    """.hasNoWarns
+
+    """
+    object A {
       @js.native
       trait B extends js.Object
     }
@@ -1570,23 +1634,26 @@ class JSInteropTest extends DirectTest with TestHelpers {
   @Test
   def noJSImportOnMembersOfClassesAndTraits: Unit = {
 
-    for (outer <- Seq("class", "trait")) {
+    for {
+      outer <- Seq("class", "trait")
+      fallbackStr <- Seq("", ", globalFallback = \"Foo\"")
+    } {
       s"""
       @js.native ${if (outer == "trait") "" else "@JSGlobal"}
       $outer Foo extends js.Object {
-        @JSImport("bar1", JSImport.Namespace)
+        @JSImport("bar1", JSImport.Namespace$fallbackStr)
         val bar1: Int = js.native
-        @JSImport("bar2", JSImport.Namespace)
+        @JSImport("bar2", JSImport.Namespace$fallbackStr)
         var bar2: Int = js.native
-        @JSImport("bar3", JSImport.Namespace)
+        @JSImport("bar3", JSImport.Namespace$fallbackStr)
         def bar3: Int = js.native
 
         @js.native
-        @JSImport("Inner", JSImport.Namespace)
+        @JSImport("Inner", JSImport.Namespace$fallbackStr)
         class Inner extends js.Object
 
         @js.native
-        @JSImport("Inner", JSImport.Namespace)
+        @JSImport("Inner", JSImport.Namespace$fallbackStr)
         object Inner extends js.Object
       }
       """ hasErrors
@@ -1614,42 +1681,46 @@ class JSInteropTest extends DirectTest with TestHelpers {
   @Test
   def noJSImportOnMembersOfObjects: Unit = {
 
-    """
-    @js.native @JSGlobal
-    object Foo extends js.Object {
-      @JSImport("bar1", JSImport.Namespace)
-      val bar1: Int = js.native
-      @JSImport("bar2", JSImport.Namespace)
-      var bar2: Int = js.native
-      @JSImport("bar3", JSImport.Namespace)
-      def bar3: Int = js.native
+    for {
+      fallbackStr <- Seq("", ", globalFallback = \"Foo\"")
+    } {
+      s"""
+      @js.native @JSGlobal
+      object Foo extends js.Object {
+        @JSImport("bar1", JSImport.Namespace$fallbackStr)
+        val bar1: Int = js.native
+        @JSImport("bar2", JSImport.Namespace$fallbackStr)
+        var bar2: Int = js.native
+        @JSImport("bar3", JSImport.Namespace$fallbackStr)
+        def bar3: Int = js.native
 
-      @js.native
-      @JSImport("Inner", JSImport.Namespace)
-      class Inner extends js.Object
+        @js.native
+        @JSImport("Inner", JSImport.Namespace$fallbackStr)
+        class Inner extends js.Object
 
-      @js.native
-      @JSImport("Inner", JSImport.Namespace)
-      object Inner extends js.Object
+        @js.native
+        @JSImport("Inner", JSImport.Namespace$fallbackStr)
+        object Inner extends js.Object
+      }
+      """ hasErrors
+      s"""
+        |newSource1.scala:8: error: Methods and fields cannot be annotated with @JSImport.
+        |        val bar1: Int = js.native
+        |            ^
+        |newSource1.scala:10: error: Methods and fields cannot be annotated with @JSImport.
+        |        var bar2: Int = js.native
+        |            ^
+        |newSource1.scala:12: error: Methods and fields cannot be annotated with @JSImport.
+        |        def bar3: Int = js.native
+        |            ^
+        |newSource1.scala:15: error: Classes and objects nested in a JS native object cannot have an @JSImport annotation.
+        |        @JSImport("Inner", JSImport.Namespace$fallbackStr)
+        |         ^
+        |newSource1.scala:19: error: Classes and objects nested in a JS native object cannot have an @JSImport annotation.
+        |        @JSImport("Inner", JSImport.Namespace$fallbackStr)
+        |         ^
+      """
     }
-    """ hasErrors
-    """
-      |newSource1.scala:8: error: Methods and fields cannot be annotated with @JSImport.
-      |      val bar1: Int = js.native
-      |          ^
-      |newSource1.scala:10: error: Methods and fields cannot be annotated with @JSImport.
-      |      var bar2: Int = js.native
-      |          ^
-      |newSource1.scala:12: error: Methods and fields cannot be annotated with @JSImport.
-      |      def bar3: Int = js.native
-      |          ^
-      |newSource1.scala:15: error: Classes and objects nested in a JS native object cannot have an @JSImport annotation.
-      |      @JSImport("Inner", JSImport.Namespace)
-      |       ^
-      |newSource1.scala:19: error: Classes and objects nested in a JS native object cannot have an @JSImport annotation.
-      |      @JSImport("Inner", JSImport.Namespace)
-      |       ^
-    """
 
   }
 
@@ -1682,6 +1753,8 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
   @Test
   def noNonLiteralJSImport: Unit = {
+
+    // Without global fallback
 
     """
     object A {
@@ -1741,6 +1814,151 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:33: error: The second argument to @JSImport must be literal string or the JSImport.Namespace object.
       |    @JSImport(A.a, A.a)
       |                     ^
+    """
+
+    // With constant (valid) global fallback
+
+    """
+    object A {
+      val a = "Hello"
+    }
+
+    @JSImport(A.a, JSImport.Namespace, globalFallback = "GlobB1")
+    @js.native
+    object B1 extends js.Object
+
+    @JSImport(A.a, "B2", globalFallback = "GlobB2")
+    @js.native
+    object B2 extends js.Object
+
+    @JSImport("B3", A.a, globalFallback = "GlobB3")
+    @js.native
+    object B3 extends js.Object
+
+    @JSImport(A.a, JSImport.Namespace, globalFallback = "GlobC1")
+    @js.native
+    object C1 extends js.Object
+
+    @JSImport(A.a, "C2", globalFallback = "GlobC2")
+    @js.native
+    object C2 extends js.Object
+
+    @JSImport("C3", A.a, globalFallback = "GlobC3")
+    @js.native
+    object C3 extends js.Object
+
+    @JSImport(A.a, A.a, globalFallback = "GlobD")
+    @js.native
+    object D extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: The first argument to @JSImport must be a literal string.
+      |    @JSImport(A.a, JSImport.Namespace, globalFallback = "GlobB1")
+      |                ^
+      |newSource1.scala:13: error: The first argument to @JSImport must be a literal string.
+      |    @JSImport(A.a, "B2", globalFallback = "GlobB2")
+      |                ^
+      |newSource1.scala:17: error: The second argument to @JSImport must be literal string or the JSImport.Namespace object.
+      |    @JSImport("B3", A.a, globalFallback = "GlobB3")
+      |                      ^
+      |newSource1.scala:21: error: The first argument to @JSImport must be a literal string.
+      |    @JSImport(A.a, JSImport.Namespace, globalFallback = "GlobC1")
+      |                ^
+      |newSource1.scala:25: error: The first argument to @JSImport must be a literal string.
+      |    @JSImport(A.a, "C2", globalFallback = "GlobC2")
+      |                ^
+      |newSource1.scala:29: error: The second argument to @JSImport must be literal string or the JSImport.Namespace object.
+      |    @JSImport("C3", A.a, globalFallback = "GlobC3")
+      |                      ^
+      |newSource1.scala:33: error: The first argument to @JSImport must be a literal string.
+      |    @JSImport(A.a, A.a, globalFallback = "GlobD")
+      |                ^
+      |newSource1.scala:33: error: The second argument to @JSImport must be literal string or the JSImport.Namespace object.
+      |    @JSImport(A.a, A.a, globalFallback = "GlobD")
+      |                     ^
+    """
+
+    // With variable (invalid) global fallback
+
+    """
+    object A {
+      val a = "Hello"
+    }
+
+    @JSImport(A.a, JSImport.Namespace, globalFallback = A.a)
+    @js.native
+    object B1 extends js.Object
+
+    @JSImport(A.a, "B2", globalFallback = A.a)
+    @js.native
+    object B2 extends js.Object
+
+    @JSImport("B3", A.a, globalFallback = A.a)
+    @js.native
+    object B3 extends js.Object
+
+    @JSImport(A.a, JSImport.Namespace, globalFallback = A.a)
+    @js.native
+    object C1 extends js.Object
+
+    @JSImport(A.a, "C2", globalFallback = A.a)
+    @js.native
+    object C2 extends js.Object
+
+    @JSImport("C3", A.a, globalFallback = A.a)
+    @js.native
+    object C3 extends js.Object
+
+    @JSImport(A.a, A.a, globalFallback = A.a)
+    @js.native
+    object D extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: The first argument to @JSImport must be a literal string.
+      |    @JSImport(A.a, JSImport.Namespace, globalFallback = A.a)
+      |                ^
+      |newSource1.scala:9: error: The third argument to @JSImport, when present, must be a literal string.
+      |    @JSImport(A.a, JSImport.Namespace, globalFallback = A.a)
+      |                                                          ^
+      |newSource1.scala:13: error: The first argument to @JSImport must be a literal string.
+      |    @JSImport(A.a, "B2", globalFallback = A.a)
+      |                ^
+      |newSource1.scala:13: error: The third argument to @JSImport, when present, must be a literal string.
+      |    @JSImport(A.a, "B2", globalFallback = A.a)
+      |                                            ^
+      |newSource1.scala:17: error: The second argument to @JSImport must be literal string or the JSImport.Namespace object.
+      |    @JSImport("B3", A.a, globalFallback = A.a)
+      |                      ^
+      |newSource1.scala:17: error: The third argument to @JSImport, when present, must be a literal string.
+      |    @JSImport("B3", A.a, globalFallback = A.a)
+      |                                            ^
+      |newSource1.scala:21: error: The first argument to @JSImport must be a literal string.
+      |    @JSImport(A.a, JSImport.Namespace, globalFallback = A.a)
+      |                ^
+      |newSource1.scala:21: error: The third argument to @JSImport, when present, must be a literal string.
+      |    @JSImport(A.a, JSImport.Namespace, globalFallback = A.a)
+      |                                                          ^
+      |newSource1.scala:25: error: The first argument to @JSImport must be a literal string.
+      |    @JSImport(A.a, "C2", globalFallback = A.a)
+      |                ^
+      |newSource1.scala:25: error: The third argument to @JSImport, when present, must be a literal string.
+      |    @JSImport(A.a, "C2", globalFallback = A.a)
+      |                                            ^
+      |newSource1.scala:29: error: The second argument to @JSImport must be literal string or the JSImport.Namespace object.
+      |    @JSImport("C3", A.a, globalFallback = A.a)
+      |                      ^
+      |newSource1.scala:29: error: The third argument to @JSImport, when present, must be a literal string.
+      |    @JSImport("C3", A.a, globalFallback = A.a)
+      |                                            ^
+      |newSource1.scala:33: error: The first argument to @JSImport must be a literal string.
+      |    @JSImport(A.a, A.a, globalFallback = A.a)
+      |                ^
+      |newSource1.scala:33: error: The second argument to @JSImport must be literal string or the JSImport.Namespace object.
+      |    @JSImport(A.a, A.a, globalFallback = A.a)
+      |                     ^
+      |newSource1.scala:33: error: The third argument to @JSImport, when present, must be a literal string.
+      |    @JSImport(A.a, A.a, globalFallback = A.a)
+      |                                           ^
     """
 
   }

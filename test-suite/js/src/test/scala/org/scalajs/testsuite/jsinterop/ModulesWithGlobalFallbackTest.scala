@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___      __ ____  Scala.js Test Suite        **
-**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2013-2016, LAMP/EPFL   **
+**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2013-2017, LAMP/EPFL   **
 **  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-js.org/       **
 ** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
 **                          |/____/                                     **
@@ -9,20 +9,22 @@ package org.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
+import scala.scalajs.js.typedarray._
+
+import java.nio.{ByteBuffer, CharBuffer}
 
 import org.junit.Assert._
+import org.junit.Assume._
+import org.junit.BeforeClass
 import org.junit.Test
 
-/* This is currently hard-coded for Node.js modules in particular.
- * We are importing built-in Node.js modules, because we do not have any
- * infrastructure to load non-built-in modules. In the future, we should use
- * our own user-defined ES6 modules written in JavaScript.
- *
- * !!! This is mostly copy-pasted in `ModulesWithGlobalFallbackTest.scala` in
- * `src/test/scala/`, with a version with global fallbacks.
+import org.scalajs.testsuite.utils.Platform._
+
+/* !!! This is mostly copy-pasted from `ModulesTest.scala` in
+ * `src/test/require-modules/`. This is the version with global fallbacks.
  */
-class ModulesTest {
-  import ModulesTest._
+class ModulesWithGlobalFallbackTest {
+  import ModulesWithGlobalFallbackTest._
 
   @Test def testImportModuleItself(): Unit = {
     val qs = QueryString
@@ -82,23 +84,103 @@ class ModulesTest {
 
 }
 
-object ModulesTest {
+object ModulesWithGlobalFallbackTest {
+  @ScalaJSDefined
+  private object QueryStringFallbackImpl extends js.Object {
+    def stringify(obj: js.Dictionary[String], sep: String = "&",
+        eq: String = "="): String = {
+      var result = ""
+      for ((key, value) <- obj) {
+        if (result != "")
+          result += sep
+        result += key + eq + value
+      }
+      result
+    }
+  }
+
+  @ScalaJSDefined
+  private class StringDecoderFallbackImpl(charsetName: String = "utf8")
+      extends js.Object {
+    import java.nio.charset._
+
+    private val charset = Charset.forName(charsetName)
+    private val decoder = charset.newDecoder()
+
+    private def writeInternal(buffer: Uint8Array,
+        endOfInput: Boolean): String = {
+      val in = TypedArrayBuffer.wrap(buffer.buffer, buffer.byteOffset,
+          buffer.byteLength)
+
+      // +2 so that a pending incomplete character has some space
+      val out = CharBuffer.allocate(
+          Math.ceil(decoder.maxCharsPerByte().toDouble * in.remaining()).toInt + 2)
+
+      val result = decoder.decode(in, out, endOfInput)
+      if (!result.isUnderflow())
+        result.throwException()
+
+      if (endOfInput) {
+        val flushResult = decoder.flush(out)
+        if (!flushResult.isUnderflow())
+          flushResult.throwException()
+      }
+
+      out.flip()
+      out.toString()
+    }
+
+    def write(buffer: Uint8Array): String =
+      writeInternal(buffer, endOfInput = false)
+
+    def end(buffer: Uint8Array): String =
+      writeInternal(buffer, endOfInput = true)
+
+    def end(): String =
+      writeInternal(new Uint8Array(0), endOfInput = true)
+  }
+
+  @ScalaJSDefined
+  object BufferStaticFallbackImpl extends js.Object {
+    def isBuffer(x: Any): Boolean = x.isInstanceOf[Uint8Array]
+  }
+
+  @BeforeClass
+  def beforeClass(): Unit = {
+    assumeTrue("Assuming that Typed Arrays are supported",
+        areTypedArraysSupported)
+
+    if (isNoModule) {
+      js.Dynamic.global.ModulesWithGlobalFallbackTest_QueryString =
+        QueryStringFallbackImpl
+      js.Dynamic.global.ModulesWithGlobalFallbackTest_StringDecoder =
+        js.constructorOf[StringDecoderFallbackImpl]
+      js.Dynamic.global.ModulesWithGlobalFallbackTest_Buffer =
+        js.constructorOf[Uint8Array]
+      js.Dynamic.global.ModulesWithGlobalFallbackTest_BufferStatic =
+        BufferStaticFallbackImpl
+    }
+  }
+
   @js.native
-  @JSImport("querystring", JSImport.Namespace)
+  @JSImport("querystring", JSImport.Namespace,
+      globalFallback = "ModulesWithGlobalFallbackTest_QueryString")
   object QueryString extends js.Object {
     def stringify(obj: js.Dictionary[String], sep: String = "&",
         eq: String = "="): String = js.native
   }
 
   @js.native
-  @JSImport("querystring", JSImport.Default)
+  @JSImport("querystring", JSImport.Default,
+      globalFallback = "ModulesWithGlobalFallbackTest_QueryString")
   object QueryStringAsDefault extends js.Object {
     def stringify(obj: js.Dictionary[String], sep: String = "&",
         eq: String = "="): String = js.native
   }
 
   @js.native
-  @JSImport("string_decoder", "StringDecoder")
+  @JSImport("string_decoder", "StringDecoder",
+      globalFallback = "ModulesWithGlobalFallbackTest_StringDecoder")
   class StringDecoder(encoding: String = "utf8") extends js.Object {
     def write(buffer: Buffer): String = js.native
     def end(buffer: Buffer): String = js.native
@@ -109,14 +191,16 @@ object ModulesTest {
    * APIs.
    */
   @js.native
-  @JSImport("buffer", "Buffer")
+  @JSImport("buffer", "Buffer",
+      globalFallback = "ModulesWithGlobalFallbackTest_Buffer")
   class Buffer private[this] () extends js.typedarray.Uint8Array(0) {
     def this(size: Int) = this()
     def this(array: js.Array[Short]) = this()
   }
 
   @js.native
-  @JSImport("buffer", "Buffer")
+  @JSImport("buffer", "Buffer",
+      globalFallback = "ModulesWithGlobalFallbackTest_BufferStatic")
   object Buffer extends js.Object {
     def isBuffer(x: Any): Boolean = js.native
   }
