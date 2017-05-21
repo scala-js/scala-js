@@ -966,6 +966,11 @@ object Printers {
           print(module)
           print(')')
           printPath(path)
+
+        case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, globalSpec) =>
+          print(importSpec)
+          print(" fallback ")
+          print(globalSpec)
       }
     }
 
