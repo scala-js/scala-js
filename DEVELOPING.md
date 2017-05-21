@@ -48,10 +48,6 @@ source map tests locally with this setting:
 
     > set jsEnv in testSuite := NodeJSEnv().value.withSourceMap(false)
 
-To test with PhantomJS, use this setting:
-
-    > set inScope(ThisScope in testSuite)(Seq(jsEnv := PhantomJSEnv().value))
-
 There are also a few additional tests in a separate testing project:
 
     > testSuiteEx/test
@@ -111,7 +107,7 @@ of `library/package`.
 
 Note that the sbt plugin depends on the IR and the tools.
 
-* `js-envs/` The JavaScript environments and runners (Node.js and PhantomJS)
+* `js-envs/` The JavaScript environments and runners (generic definitions + Node.js)
 * `sbt-plugin/` The sbt plugin itself
 
 ### Testing projects
@@ -124,7 +120,7 @@ Note that the sbt plugin depends on the IR and the tools.
 
 * `examples/helloworld/` A simple Hello World, typically used as sandbox for quick testing
 * `examples/reversi/` The historical Reversi demo - we use it to track the impact of changes on the emitted code size
-* `examples/testing/` A simple project with tests using the DOM, mostly used to test the support for the DOM with jsdom and PhantomJS
+* `examples/testing/` A simple project with tests using the DOM, mostly used to test the support for the DOM with jsdom
 
 These example projects also have HTML pages to run them in real browsers.
 

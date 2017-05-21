@@ -23,9 +23,6 @@ import org.scalajs.sbtplugin._
 import org.scalajs.jsenv.JSEnv
 import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
 
-import org.scalajs.jsenv.phantomjs.sbtplugin.PhantomJSEnvPlugin
-import org.scalajs.jsenv.phantomjs.{PhantomJSEnv, RetryingComJSEnv}
-
 import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
@@ -49,7 +46,7 @@ object ExposedValues extends AutoPlugin {
 }
 
 object MyScalaJSPlugin extends AutoPlugin {
-  override def requires: Plugins = ScalaJSPlugin && PhantomJSEnvPlugin
+  override def requires: Plugins = ScalaJSPlugin
 
   val isGeneratingEclipse =
     Properties.envOrElse("GENERATING_ECLIPSE", "false").toBoolean
@@ -1170,41 +1167,6 @@ object Build {
       exportJars := true
   )
 
-  // PhantomJS support - to be moved out of the core repository
-
-  lazy val phantomJSEnv: Project = (project in file("phantomjs-env")).settings(
-      commonSettings,
-      publishSettings,
-      fatalWarningsSettings,
-      name := "scalajs-env-phantomjs",
-      libraryDependencies ++=
-        PhantomJSEnvPlugin.phantomJSJettyModules.map(_ % "provided"),
-      libraryDependencies +=
-        "com.novocode" % "junit-interface" % "0.9" % "test"
-  ).dependsOn(jsEnvs, jsEnvsTestKit % "test")
-
-  lazy val phantomJSEnvPlugin: Project = (project in file("phantomjs-sbt-plugin")).settings(
-      commonSettings,
-      publishIvySettings,
-      fatalWarningsSettings,
-      name := "sbt-scalajs-env-phantomjs",
-      sbtPlugin := true,
-      scalaBinaryVersion :=
-        CrossVersion.binaryScalaVersion(scalaVersion.value),
-
-      // Add API mappings for sbt (seems they don't export their API URL)
-      apiMappings ++= {
-        val deps = (externalDependencyClasspath in Compile).value
-        val sbtJars = deps filter { attributed =>
-          val p = attributed.data.getPath
-          p.contains("/org.scala-sbt/") && p.endsWith(".jar")
-        }
-        val docUrl =
-          url(s"http://www.scala-sbt.org/${sbtVersion.value}/api/")
-        sbtJars.map(_.data -> docUrl).toMap
-      }
-  ).dependsOn(plugin, phantomJSEnv)
-
   // Examples
 
   lazy val examples: Project = project.settings(
@@ -1251,7 +1213,6 @@ object Build {
 
     Seq(
       testOptionTags := {
-        @tailrec
         def envTagsFor(env: JSEnv): Seq[String] = env match {
           case env: NodeJSEnv =>
             val baseArgs = Seq("nodejs", "typedarray")
@@ -1270,12 +1231,6 @@ object Build {
 
           case env: JSDOMNodeJSEnv =>
             Seq("nodejs.jsdom", "typedarray")
-
-          case _: PhantomJSEnv =>
-            Seq("phantomjs")
-
-          case env: RetryingComJSEnv =>
-            envTagsFor(env.baseEnv)
 
           case _ =>
             throw new AssertionError(
@@ -1392,7 +1347,7 @@ object Build {
       // We need to patch the system properties.
       scalaJSJavaSystemProperties in Test in testHtmlKey ~= { base =>
         val unsupported =
-          Seq("nodejs", "nodejs.jsdom", "phantomjs", "source-maps")
+          Seq("nodejs", "nodejs.jsdom", "source-maps")
         val supported =
           Seq("typedarray", "browser")
 
@@ -1521,37 +1476,6 @@ object Build {
         }
 
         sourceFiles1
-      },
-
-      /* Reduce the amount of tests on PhantomJS to avoid a crash.
-       * It seems we reached the limits of what PhantomJS can handle in terms
-       * of code mass. Since PhantomJS support is due to be moved to a
-       * separate repository in 1.0.0, the easiest way to fix this is to
-       * reduce the pressure on PhantomJS. We therefore remove the tests of
-       * java.math (BigInteger and BigDecimal) when running with PhantomJS.
-       * These tests are well isolated, and the less likely to have
-       * environmental differences.
-       *
-       * Note that `jsEnv` is never set from this Build, but it is set via
-       * the command-line in the CI matrix.
-       */
-      sources in Test := {
-        def isPhantomJS(env: JSEnv): Boolean = env match {
-          case _: PhantomJSEnv       => true
-          case env: RetryingComJSEnv => isPhantomJS(env.baseEnv)
-          case _                     => false
-        }
-
-        val sourceFiles = (sources in Test).value
-        if ((jsEnv in Test).?.value.exists(isPhantomJS)) {
-          sourceFiles.filter { f =>
-            !f.getAbsolutePath
-              .replace('\\', '/')
-              .contains("/org/scalajs/testsuite/javalib/math/")
-          }
-        } else {
-          sourceFiles
-        }
       },
 
       // Module initializers. Duplicated in toolsJS/test

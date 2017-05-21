@@ -106,28 +106,23 @@ class SystemJSTest {
     val inBrowser = get("scalajs.browser") == "true"
     val inNode = get("scalajs.nodejs") == "true"
     val inNodeWithJSDOM = get("scalajs.nodejs.jsdom") == "true"
-    val inPhantomJS = get("scalajs.phantomjs") == "true"
     if (inBrowser) {
       assertFalse(js.isUndefined(js.Dynamic.global.window))
-      assertFalse(inNode || inNodeWithJSDOM || inPhantomJS)
+      assertFalse(inNode || inNodeWithJSDOM)
     } else if (inNode) {
       val process = js.Dynamic.global.process
       assertFalse(js.isUndefined(process))
-      assertFalse(inBrowser || inNodeWithJSDOM || inPhantomJS)
+      assertFalse(inBrowser || inNodeWithJSDOM)
     } else if (inNodeWithJSDOM) {
       val window = js.Dynamic.global.window
       assertFalse(js.isUndefined(window))
-      assertFalse(inBrowser || inNode || inPhantomJS)
-    } else if (inPhantomJS) {
-      assertFalse(js.isUndefined(js.Dynamic.global.callPhantom))
-      assertFalse(inBrowser || inNode || inNodeWithJSDOM)
+      assertFalse(inBrowser || inNode)
     } else {
       fail("No known platform tag found.")
     }
     assertEquals(inBrowser, Platform.executingInBrowser)
     assertEquals(inNode, Platform.executingInNodeJS)
     assertEquals(inNodeWithJSDOM, Platform.executingInNodeJSOnJSDOM)
-    assertEquals(inPhantomJS, Platform.executingInPhantomJS)
 
     val typedArrays = get("scalajs.typedarray") == "true"
     assertEquals(typedArrays, Platform.typedArrays)

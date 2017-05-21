@@ -356,34 +356,28 @@ class InteroperabilityTest {
     val keys = js.Dynamic.global.Object.keys
     val undef = js.undefined
 
-    if (!executingInPhantomJS)
-      assertEquals(1, keys(obj.simple(1)).length)
+    assertEquals(1, keys(obj.simple(1)).length)
     assertEquals(1, obj.simple(1)("0"))
 
-    if (!executingInPhantomJS)
-      assertEquals(2, keys(obj.simple(1, 5)).length)
+    assertEquals(2, keys(obj.simple(1, 5)).length)
     assertEquals(1, obj.simple(1, 5)("0"))
     assertEquals(5, obj.simple(1, 5)("1"))
 
-    if (!executingInPhantomJS)
-      assertEquals(2, keys(obj.named(y = 5)).length)
+    assertEquals(2, keys(obj.named(y = 5)).length)
     assertEquals(undef, obj.named(y = 5)("0"))
     assertEquals(5, obj.named(y = 5)("1"))
 
-    if (!executingInPhantomJS)
-      assertEquals(1, keys(obj.named(x = 5)).length)
+    assertEquals(1, keys(obj.named(x = 5)).length)
     assertEquals(5, obj.named(x = 5)("0"))
 
-    if (!executingInPhantomJS)
-      assertEquals(5, keys(obj.multi()(1,2,3,4)()).length)
+    assertEquals(5, keys(obj.multi()(1,2,3,4)()).length)
     assertEquals(undef, obj.multi()(1,2,3,4)()("0"))
     assertEquals(1, obj.multi()(1,2,3,4)()("1"))
     assertEquals(2, obj.multi()(1,2,3,4)()("2"))
     assertEquals(3, obj.multi()(1,2,3,4)()("3"))
     assertEquals(4, obj.multi()(1,2,3,4)()("4"))
 
-    if (!executingInPhantomJS)
-      assertEquals(2, keys(obj.multi(2)()(5)).length)
+    assertEquals(2, keys(obj.multi(2)()(5)).length)
     assertEquals(2, obj.multi(2)()(5)("0"))
     assertEquals(5, obj.multi(2)()(5)("1"))
   }
