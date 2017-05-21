@@ -210,10 +210,11 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
 
   private[this] def logAssertionWarning(methodName: String, ex: Throwable,
       timeInSeconds: Double): Unit = {
-    val msg = {
-      "failed: org.junit.internal." + c("AssumptionViolatedException", ERRMSG) +
-      ": " + ex.getMessage + ", took " + timeInSeconds + " sec"
-    }
+    val exName =
+      if (runner.runSettings.notLogExceptionClass) ""
+      else "org.junit.internal." + c("AssumptionViolatedException", ERRMSG) + ": "
+
+    val msg = s"failed: $exName${ex.getMessage}, took $timeInSeconds sec"
     logFormattedWarn("Test assumption in test ", methodName, msg)
   }
 

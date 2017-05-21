@@ -11,20 +11,7 @@ class AssumeTest {
   }
 }
 
-class AssumeTestAssertions extends JUnitTest with SuccessFrameworkArgs {
-
-  override val expectedTotal: Int = 1
-
-  protected def expectedOutput(context: OutputContext): List[Output] = {
-    import context._
-    List(
-        testRunStartedOutput,
-        testStartedOutput("assumeFail"),
-        testAssumptionViolatedOutput("assumeFail"),
-        skippedEvent,
-        testFinishedOutput("assumeFail"),
-        testRunFinishedOutput,
-        done
-    )
-  }
+class AssumeTestAssertions extends JUnitTest {
+  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
+    builder.assumptionViolated("assumeFail")
 }

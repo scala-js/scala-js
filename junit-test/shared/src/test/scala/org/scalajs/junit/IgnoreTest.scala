@@ -1,24 +1,13 @@
 package org.scalajs.junit
 
 import org.junit._
-import org.scalajs.junit.utils.{JUnitTest, SuccessFrameworkArgs}
+import org.scalajs.junit.utils.JUnitTest
 
 class IgnoreTest {
   @Ignore @Test def onlyTest(): Unit = ()
 }
 
-class IgnoreTestAssertions extends JUnitTest with SuccessFrameworkArgs {
-
-  override val expectedIgnored: Int = 1
-
-  protected def expectedOutput(context: OutputContext): List[Output] = {
-    import context._
-    List(
-        testRunStartedOutput,
-        testIgnoredOutput("onlyTest"),
-        skippedEvent,
-        testRunFinishedOutput,
-        done
-    )
-  }
+class IgnoreTestAssertions extends JUnitTest {
+  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
+    builder.ignored("onlyTest")
 }

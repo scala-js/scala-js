@@ -12,31 +12,13 @@ class Multi2Test {
   @Test def multiTest5(): Unit = ()
 }
 
-class Multi2TestAssertions extends JUnitTest with SuccessFrameworkArgs {
-
-  override val expectedTotal: Int = 5
-
-  protected def expectedOutput(context: OutputContext): List[Output] = {
-    import context._
-    List(
-        testRunStartedOutput,
-        testStartedOutput("multiTest1"),
-        testFinishedOutput("multiTest1"),
-        successEvent,
-        testStartedOutput("multiTest2"),
-        testFinishedOutput("multiTest2"),
-        successEvent,
-        testStartedOutput("multiTest3"),
-        testFinishedOutput("multiTest3"),
-        successEvent,
-        testStartedOutput("multiTest4"),
-        testFinishedOutput("multiTest4"),
-        successEvent,
-        testStartedOutput("multiTest5"),
-        testFinishedOutput("multiTest5"),
-        successEvent,
-        testRunFinishedOutput,
-        done
-    )
+class Multi2TestAssertions extends JUnitTest {
+  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
+    builder
+      .success("multiTest1")
+      .success("multiTest2")
+      .success("multiTest3")
+      .success("multiTest4")
+      .success("multiTest5")
   }
 }

@@ -11,21 +11,7 @@ class AssertEqualsTest {
   }
 }
 
-class AssertEqualsTestAssertions extends JUnitTest with FailureFrameworkArgs {
-
-  override val expectedFail: Int = 1
-  override val expectedTotal: Int = 1
-
-  protected def expectedOutput(context: OutputContext): List[Output] = {
-    import context._
-    List(
-        testRunStartedOutput,
-        testStartedOutput("test"),
-        testAssertionErrorMsgOutput("test", "expected:<false> but was:<true>"),
-        failureEvent,
-        testFinishedOutput("test"),
-        testRunFinishedOutput,
-        done
-    )
-  }
+class AssertEqualsTestAssertions extends JUnitTest {
+  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
+    builder.assertion("test", "expected:<false> but was:<true>")
 }
