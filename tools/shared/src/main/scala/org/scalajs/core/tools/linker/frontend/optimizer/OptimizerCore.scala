@@ -80,20 +80,22 @@ private[optimizer] abstract class OptimizerCore(
 
   private val labelNameAllocator: FreshNameAllocator = new FreshNameAllocator
 
-  /** A list of the States that have been allocated so far, and must be saved.
+  /** A list of backups for all updates done to States so far (excluding
+   *  those done in rolled back optimistic branches).
    *
-   *  This list only ever grows, even though, in theory, it will keep
-   *  references to states that are not used anymore.
-   *  This creates a "temporary memory leak", but the list is discarded when
-   *  `optimize` terminates anyway because the whole OptimizerCore is discarded.
-   *  It also means that RollbackException will save more state than strictly
-   *  necessary, but it is not incorrect to do so.
+   *  This list grows (from the head) every time the value of a `State` changes.
+   *  Each time, a `StateBackup` is prepended with the previous value.
    *
-   *  Manual "memory management" of this list has caused issues such as #1515
-   *  and #1843 in the past. So now we just let it grow in a "region-allocated"
-   *  style of memory management.
+   *  When starting an optimistic branch in `tryOrRollback`, we take a snapshot
+   *  of the current chain of backups. When doing a rollback, we restore all
+   *  the backups that have been added to the chain since the snapshot. We can
+   *  do this by comparing the nodes of the chain with `eq`.
+   *
+   *  Manipulations of this list are amortized O(1). The act of modifying the
+   *  value of a `State` "pays for" a) making the backup and b) restoring the
+   *  backup. Indeed, a backup is restored at most once.
    */
-  private var statesInUse: List[State] = Nil
+  private var stateBackupChain: List[StateBackup] = Nil
 
   private var disableOptimisticOptimizations: Boolean = false
   private var rollbacksCount: Int = 0
@@ -140,7 +142,7 @@ private[optimizer] abstract class OptimizerCore(
           localNameAllocator.clear()
           mutableLocalNames = Set.empty
           labelNameAllocator.clear()
-          statesInUse = Nil
+          stateBackupChain = Nil
           disableOptimisticOptimizations = true
           transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       }
@@ -191,11 +193,11 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def newSimpleState[A](initialValue: A): SimpleState[A] = {
-    val state = new SimpleState[A](initialValue)
-    statesInUse ::= state
-    state
-  }
+  private def newSimpleState[A](initialValue: A): SimpleState[A] =
+    new SimpleState[A](this, initialValue)
+
+  private def addStateBackup(backup: StateBackup): Unit =
+    stateBackupChain ::= backup
 
   private def freshLocalName(base: String, mutable: Boolean): String = {
     val result = localNameAllocator.freshName(base)
@@ -219,13 +221,12 @@ private[optimizer] abstract class OptimizerCore(
       val localNameAllocatorSnapshot = localNameAllocator.snapshot()
       val savedMutableLocalNames = mutableLocalNames
       val labelNameAllocatorSnapshot = labelNameAllocator.snapshot()
-      val savedStatesInUse = statesInUse
-      val stateBackups = statesInUse.map(_.makeBackup())
+      val savedStateBackupChain = stateBackupChain
 
       body { () =>
         throw new RollbackException(trampolineId, localNameAllocatorSnapshot,
-            savedMutableLocalNames, labelNameAllocatorSnapshot, savedStatesInUse,
-            stateBackups, fallbackFun)
+            savedMutableLocalNames, labelNameAllocatorSnapshot,
+            savedStateBackupChain, fallbackFun)
       }
     }
   }
@@ -4141,8 +4142,14 @@ private[optimizer] abstract class OptimizerCore(
             localNameAllocator.restore(e.localNameAllocatorSnapshot)
             mutableLocalNames = e.savedMutableLocalNames
             labelNameAllocator.restore(e.labelNameAllocatorSnapshot)
-            statesInUse = e.savedStatesInUse
-            e.stateBackups.foreach(_.restore())
+
+            val savedStateBackupChain = e.savedStateBackupChain
+            var stateBackupsToRestore = stateBackupChain
+            while (stateBackupsToRestore ne savedStateBackupChain) {
+              stateBackupsToRestore.head.restore()
+              stateBackupsToRestore = stateBackupsToRestore.tail
+            }
+            stateBackupChain = savedStateBackupChain
 
             rec = e.cont
         }
@@ -4778,16 +4785,19 @@ private[optimizer] object OptimizerCore {
     def restore(): Unit
   }
 
-  private trait State {
-    def makeBackup(): StateBackup
-  }
+  private class SimpleState[A](owner: OptimizerCore, private var _value: A) {
+    def value: A = _value
 
-  private class SimpleState[A](var value: A) extends State {
+    def value_=(v: A): Unit = {
+      if (v.asInstanceOf[AnyRef] ne _value.asInstanceOf[AnyRef]) {
+        owner.addStateBackup(new Backup(_value))
+        _value = v
+      }
+    }
+
     private class Backup(savedValue: A) extends StateBackup {
       override def restore(): Unit = value = savedValue
     }
-
-    def makeBackup(): StateBackup = new Backup(value)
   }
 
   trait AbstractMethodID {
@@ -4983,8 +4993,7 @@ private[optimizer] object OptimizerCore {
       val localNameAllocatorSnapshot: FreshNameAllocator.Snapshot,
       val savedMutableLocalNames: Set[String],
       val labelNameAllocatorSnapshot: FreshNameAllocator.Snapshot,
-      val savedStatesInUse: List[State],
-      val stateBackups: List[StateBackup],
+      val savedStateBackupChain: List[StateBackup],
       val cont: () => TailRec[Tree]) extends ControlThrowable
 
   class OptimizeException(val myself: AbstractMethodID,
