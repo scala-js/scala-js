@@ -845,7 +845,11 @@ private[optimizer] abstract class OptimizerCore(
             usePreTransform = true)(cont)
 
       case JSArrayConstr(items) =>
-        if (items.exists(_.isInstanceOf[JSSpread])) {
+        /* Trying to virtualize more than 64 items in a JS array is probably
+         * a bad idea, and will slow down the optimizer for no good reason.
+         * See for example #2943.
+         */
+        if (items.size > 64 || items.exists(_.isInstanceOf[JSSpread])) {
           /* TODO This means spread in array constr does not compose under
            * this optimization. We could improve this with a
            * pretransformExprsOrSpreads() or something like that.
