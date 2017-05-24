@@ -895,6 +895,17 @@ class PrintersTest {
         ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
             Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil)(
             NoOptHints))
+
+    assertPrintEquals(
+        """
+          |native js class LTest extends O loadfrom import(foo).Bar fallback <global>.Foo {
+          |}
+        """,
+        ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
+            Some(JSNativeLoadSpec.ImportWithGlobalFallback(
+                JSNativeLoadSpec.Import("foo", List("Bar")),
+                JSNativeLoadSpec.Global(List("Foo")))), Nil)(
+            NoOptHints))
   }
 
   @Test def printClassDefOptimizerHints(): Unit = {

@@ -11,21 +11,28 @@ package scala.scalajs.js.annotation
 
 /** Marks the annotated class or object as imported from another JS module.
  *
- *  Intuitively, this corresponds to the following ECMAScript import
- *  directive:
- *  {{{
- *  import { <name> as AnnotatedClassOrObject } from <module>
- *  }}}
- *
- *  To import the default export of a module, use `JSImport.Default` as `name`.
+ *  Intuitively, this corresponds to ECMAScript import directives. See the
+ *  documentation of the various constructors.
  *
  *  `@JSImport` is not compatible with the `jsDependencies` mechanism offered
  *  by the Scala.js sbt plugin. You are responsible for resolving and/or
  *  bundling the JavaScript modules that you are importing using other
  *  mechanisms.
  */
-class JSImport(module: String, name: String)
-    extends scala.annotation.StaticAnnotation {
+class JSImport private () extends scala.annotation.StaticAnnotation {
+
+  /** Named import of a member of the module.
+   *
+   *  Intuitively, this corresponds to the following ECMAScript import
+   *  directive:
+   *  {{{
+   *  import { <name> as AnnotatedClassOrObject } from <module>
+   *  }}}
+   *
+   *  To import the default export of a module, use `JSImport.Default` as
+   *  `name`.
+   */
+  def this(module: String, name: String) = this()
 
   /** Namespace import (import the module itself).
    *
@@ -36,8 +43,30 @@ class JSImport(module: String, name: String)
    *  import * as AnnotatedObject from <module>
    *  }}}
    */
-  def this(module: String, name: JSImport.Namespace.type) =
-    this(module, null: String)
+  def this(module: String, name: JSImport.Namespace.type) = this()
+
+  /** Named import of a member of the module, with a fallback on a global
+   *  variable.
+   *
+   *  When linking with module support, this is equivalent to
+   *  `@JSImport(module, name)`.
+   *
+   *  When linking without module support, this is equivalent to
+   *  `@JSGlobal(globalFallback)`.
+   */
+  def this(module: String, name: String, globalFallback: String) = this()
+
+  /** Namespace import (import the module itself), with a fallback on a global
+   *  variable.
+   *
+   *  When linking with module support, this is equivalent to
+   *  `@JSImport(module, name)`.
+   *
+   *  When linking without module support, this is equivalent to
+   *  `@JSGlobal(globalFallback)`.
+   */
+  def this(module: String, name: JSImport.Namespace.type,
+      globalFallback: String) = this()
 }
 
 object JSImport {

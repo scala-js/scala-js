@@ -132,5 +132,10 @@ class SystemJSTest {
     assertEquals(isInFastOpt, Platform.isInFastOpt)
     assertEquals(isInFullOpt, Platform.isInFullOpt)
 
+    val isNoModule = get("scalajs.modulekind-nomodule") == "true"
+    val isCommonJSModule = get("scalajs.modulekind-commonjs") == "true"
+    assertEquals(isNoModule, Platform.isNoModule)
+    assertEquals(isCommonJSModule, Platform.isCommonJSModule)
+    assertTrue(isNoModule ^ isCommonJSModule)
   }
 }

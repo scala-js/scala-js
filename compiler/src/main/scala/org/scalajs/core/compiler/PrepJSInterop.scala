@@ -332,7 +332,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case Select(Select(trg, jsnme.x), nme.apply) if isJSDynamic(trg) =>
           val newTree = atPos(tree.pos) {
             Apply(
-                Select(super.transform(trg), newTermName("applyDynamic")),
+                Select(transform(trg), newTermName("applyDynamic")),
                 List(Literal(Constant("x")))
             )
           }
@@ -344,7 +344,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         case Select(trg, jsnme.x) if isJSDynamic(trg) =>
           val newTree = atPos(tree.pos) {
             Apply(
-                Select(super.transform(trg), newTermName("selectDynamic")),
+                Select(transform(trg), newTermName("selectDynamic")),
                 List(Literal(Constant("x")))
             )
           }
@@ -636,6 +636,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
     private def checkAndComputeJSNativeLoadSpecOf(pos: Position,
         sym: Symbol): JSNativeLoadSpec = {
+      import JSNativeLoadSpec._
+
       if (enclosingOwner is OwnerKind.JSNativeMod) {
         for (annot <- sym.annotations) {
           val annotSym = annot.symbol
@@ -659,10 +661,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         val ownerLoadSpec = jsInterop.jsNativeLoadSpecOf(sym.owner)
         ownerLoadSpec match {
-          case JSNativeLoadSpec.Global(path) =>
-            JSNativeLoadSpec.Global(path :+ jsName)
-          case JSNativeLoadSpec.Import(module, path) =>
-            JSNativeLoadSpec.Import(module, path :+ jsName)
+          case Global(path) =>
+            Global(path :+ jsName)
+          case Import(module, path) =>
+            Import(module, path :+ jsName)
+          case ImportWithGlobalFallback(
+              Import(module, modulePath), Global(globalPath)) =>
+            ImportWithGlobalFallback(
+                Import(module, modulePath :+ jsName),
+                Global(globalPath :+ jsName))
         }
       } else {
         def parsePath(pathName: String): List[String] =
@@ -697,7 +704,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               "" // do not care because it does not compile anyway
             }
             val path = annot.stringArg(1).fold[List[String]](Nil)(parsePath)
-            JSNativeLoadSpec.Import(module, path)
+            val importSpec = Import(module, path)
+            annot.stringArg(2).fold[JSNativeLoadSpec] {
+              importSpec
+            } { globalPathName =>
+              val globalSpec = Global(parsePath(globalPathName))
+              ImportWithGlobalFallback(importSpec, globalSpec)
+            }
 
           case None =>
             // We already emitted an error. Just propagate something.
@@ -1133,8 +1146,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     for {
       annot <- sym.getAnnotation(JSImportAnnotation)
     } {
-      assert(annot.args.size == 2,
-          s"@JSImport annotation $annot does not have exactly 2 arguments")
+      assert(annot.args.size == 2 || annot.args.size == 3,
+          s"@JSImport annotation $annot does not have exactly 2 or 3 arguments")
 
       val firstArgIsValid = annot.stringArg(0).isDefined
       if (!firstArgIsValid) {
@@ -1150,6 +1163,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         reporter.error(annot.args(1).pos,
             "The second argument to @JSImport must be literal string or the " +
             "JSImport.Namespace object.")
+      }
+
+      val thirdArgIsValid = annot.args.size < 3 || annot.stringArg(2).isDefined
+      if (!thirdArgIsValid) {
+        reporter.error(annot.args(2).pos,
+            "The third argument to @JSImport, when present, must be a " +
+            "literal string.")
       }
     }
   }

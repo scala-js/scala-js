@@ -220,7 +220,16 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
                 else precision
               // between 1e-4 and 10e(p): display as fixed
               if (m >= 1e-4 && m < Math.pow(10, p)) {
-                val sig = Math.ceil(Math.log10(m)).toInt
+                /* First approximation of the smallest power of 10 that is >= m.
+                 * Due to rounding errors in the event of an imprecise `log10`
+                 * function, sig0 could actually be the smallest power of 10
+                 * that is > m.
+                 */
+                val sig0 = Math.ceil(Math.log10(m)).toInt
+                /* Increment sig0 so that it is always the first power of 10
+                 * that is > m.
+                 */
+                val sig = if (Math.pow(10, sig0) <= m) sig0 + 1 else sig0
                 with_+(numberArg.toFixed(Math.max(p - sig, 0)))
               } else sciNotation(p - 1)
             case 'f' =>

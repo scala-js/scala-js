@@ -43,7 +43,8 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
   private val knowledgeGuardian = new KnowledgeGuardian
 
-  private val jsGen = new JSGen(semantics, outputMode, internalOptions)
+  private val jsGen =
+    new JSGen(semantics, outputMode, moduleKind, internalOptions)
   private val classEmitter = new ClassEmitter(jsGen)
 
   private val classCaches = mutable.Map.empty[List[String], ClassCache]
@@ -150,27 +151,38 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
         }
 
         if (importsFound) {
-          sys.error("There were module imports, but module support is " +
-              "disabled.\nTo enable module support, set scalaJSModuleKind := " +
+          sys.error(
+              "There were module imports without fallback to global " +
+              "variables, but module support is disabled.\n" +
+              "To enable module support, set scalaJSModuleKind := " +
               "ModuleKind.CommonJSModule.")
         }
 
       case ModuleKind.CommonJSModule =>
         val encounteredModuleNames = mutable.Set.empty[String]
+
         for (classDef <- orderedClasses) {
+          def addModuleRef(module: String): Unit = {
+            if (encounteredModuleNames.add(module)) {
+              implicit val pos = classDef.pos
+              val rhs = js.Apply(js.VarRef(js.Ident("require")),
+                  List(js.StringLiteral(module)))
+              val lhs = jsGen.envModuleField(module)
+              val decl = jsGen.genLet(lhs.ident, mutable = false, rhs)
+              builder.addJSTree(decl)
+            }
+          }
+
           classDef.jsNativeLoadSpec match {
             case None =>
             case Some(JSNativeLoadSpec.Global(_)) =>
 
             case Some(JSNativeLoadSpec.Import(module, _)) =>
-              if (encounteredModuleNames.add(module)) {
-                implicit val pos = classDef.pos
-                val rhs = js.Apply(js.VarRef(js.Ident("require")),
-                    List(js.StringLiteral(module)))
-                val lhs = jsGen.envModuleField(module)
-                val decl = jsGen.genLet(lhs.ident, mutable = false, rhs)
-                builder.addJSTree(decl)
-              }
+              addModuleRef(module)
+
+            case Some(JSNativeLoadSpec.ImportWithGlobalFallback(
+                JSNativeLoadSpec.Import(module, _), _)) =>
+              addModuleRef(module)
           }
         }
     }

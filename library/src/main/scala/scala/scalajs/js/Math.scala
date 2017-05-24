@@ -278,4 +278,79 @@ object Math extends Object {
    * MDN
    */
   def tan(x: Double): Double = native
+
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   * The Math.log1p() function returns the natural logarithm (base e) of
+   * 1 + a number
+   *
+   * @return The natural logarithm (base e) of 1 plus the given number.
+   *         If the number is less than -1, NaN is returned.
+   * MDN
+   */
+  def log1p(x: Double): Double = native
+
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   * The Math.log10() function returns the base 10 logarithm of a number
+   *
+   * @return The base 10 logarithm of the given number. If the number is
+   *         negative, NaN is returned.
+   *
+   * MDN
+   */
+  def log10(x: Double): Double = native
+
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   * The Math.sinh() function returns the hyperbolic sine of a number
+   *
+   * @return The hyperbolic sine of the given number
+   *
+   * MDN
+   */
+  def sinh(x: Double): Double = native
+
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   * The Math.cosh() function returns the hyperbolic cosine of a number
+   *
+   * @return The hyperbolic cosine of the given number
+   *
+   * MDN
+   */
+  def cosh(x: Double): Double = native
+
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   * The Math.tanh() function returns the hyperbolic tangent of a number
+   *
+   * @return The hyperbolic tangent of the given number
+   *
+   * MDN
+   */
+  def tanh(x: Double): Double = native
+
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   * The Math.cbrt() function returns the cube root of a number
+   *
+   * @return The cube root of the given number.
+   *
+   * MDN
+   */
+  def cbrt(x: Double): Double = native
+
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   * The Math.hypot() function returns the square root of the sum of squares
+   * of its arguments
+   *
+   * @return The square root of the sum of squares of the given arguments.
+   *
+   * MDN
+   */
+  def hypot(x: Double*): Double = native
+
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   * The Math.expm1() function returns e^x - 1, where x is the argument,
+   * and e the base of the natural logarithms.
+   *
+   * @return A number representing e^x - 1, where e is Euler's number and
+   *         x is the argument.
+   */
+  def expm1(x: Double): Double = native
 }

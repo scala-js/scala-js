@@ -17,7 +17,7 @@ import ir.Types._
 import ir.{Trees => irt}
 
 import org.scalajs.core.tools.sem._
-import org.scalajs.core.tools.linker.backend.OutputMode
+import org.scalajs.core.tools.linker.backend.{ModuleKind, OutputMode}
 import org.scalajs.core.tools.javascript.Trees._
 
 /** Collection of tree generators that are used accross the board.
@@ -26,7 +26,8 @@ import org.scalajs.core.tools.javascript.Trees._
  *  Also carries around config (semantics and outputMode).
  */
 private[emitter] final class JSGen(val semantics: Semantics,
-    val outputMode: OutputMode, internalOptions: InternalOptions) {
+    val outputMode: OutputMode, val moduleKind: ModuleKind,
+    internalOptions: InternalOptions) {
   import JSGen._
 
   implicit def transformIdent(ident: irt.Ident): Ident =
@@ -189,6 +190,14 @@ private[emitter] final class JSGen(val semantics: Semantics,
             pathSelection(defaultField, rest)
           case _ =>
             pathSelection(moduleValue, path)
+        }
+
+      case irt.JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, globalSpec) =>
+        moduleKind match {
+          case ModuleKind.NoModule =>
+            genLoadJSFromSpec(globalSpec)
+          case ModuleKind.CommonJSModule =>
+            genLoadJSFromSpec(importSpec)
         }
     }
   }

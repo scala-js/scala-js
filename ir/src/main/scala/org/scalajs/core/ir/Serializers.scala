@@ -609,18 +609,31 @@ object Serializers {
     def writeJSNativeLoadSpec(jsNativeLoadSpec: Option[JSNativeLoadSpec]): Unit = {
       import buffer._
 
+      def writeGlobalSpec(spec: JSNativeLoadSpec.Global): Unit = {
+        writeStrings(spec.path)
+      }
+
+      def writeImportSpec(spec: JSNativeLoadSpec.Import): Unit = {
+        writeString(spec.module)
+        writeStrings(spec.path)
+      }
+
       jsNativeLoadSpec.fold {
         writeByte(TagJSNativeLoadSpecNone)
       } { spec =>
         spec match {
-          case JSNativeLoadSpec.Global(path) =>
+          case spec: JSNativeLoadSpec.Global =>
             writeByte(TagJSNativeLoadSpecGlobal)
-            writeStrings(path)
+            writeGlobalSpec(spec)
 
-          case JSNativeLoadSpec.Import(module, path) =>
+          case spec: JSNativeLoadSpec.Import =>
             writeByte(TagJSNativeLoadSpecImport)
-            writeString(module)
-            writeStrings(path)
+            writeImportSpec(spec)
+
+          case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, globalSpec) =>
+            writeByte(TagJSNativeLoadSpecImportWithGlobalFallback)
+            writeImportSpec(importSpec)
+            writeGlobalSpec(globalSpec)
         }
       }
     }
@@ -931,13 +944,22 @@ object Serializers {
     }
 
     def readJSNativeLoadSpec(): Option[JSNativeLoadSpec] = {
+      def readGlobalSpec(): JSNativeLoadSpec.Global =
+        JSNativeLoadSpec.Global(readStrings())
+
+      def readImportSpec(): JSNativeLoadSpec.Import =
+        JSNativeLoadSpec.Import(readString(), readStrings())
+
       (input.readByte(): @switch) match {
         case TagJSNativeLoadSpecNone =>
           None
         case TagJSNativeLoadSpecGlobal =>
-          Some(JSNativeLoadSpec.Global(readStrings()))
+          Some(readGlobalSpec())
         case TagJSNativeLoadSpecImport =>
-          Some(JSNativeLoadSpec.Import(readString(), readStrings()))
+          Some(readImportSpec())
+        case TagJSNativeLoadSpecImportWithGlobalFallback =>
+          Some(JSNativeLoadSpec.ImportWithGlobalFallback(
+              readImportSpec(), readGlobalSpec()))
       }
     }
 

@@ -384,6 +384,33 @@ class RegressionTest {
     assertThrows(classOf[MatchError], bug.bug(2, false))
   }
 
+  @Test def return_x_match_issue_2928(): Unit = {
+    def testNonUnit(x: String): Boolean = {
+      return x match {
+        case "True" => true
+        case _      => false
+      }
+    }
+
+    var r: Option[Boolean] = None
+
+    def testUnit(x: String): Unit = {
+      return x match {
+        case "True" => r = Some(true)
+        case _      => r = Some(false)
+      }
+    }
+
+    assertEquals(true, testNonUnit("True"))
+    assertEquals(false, testNonUnit("not true"))
+
+    testUnit("True")
+    assertEquals(Some(true), r)
+    r = None
+    testUnit("not true")
+    assertEquals(Some(false), r)
+  }
+
   @Test def null_asInstanceOf_Unit_should_succeed_issue_1691(): Unit = {
     /* Avoid scalac's special treatment of `<literal null>.asInstanceOf[X]`.
      * It does have the benefit to test our constant-folder of that pattern,
@@ -533,6 +560,28 @@ class RegressionTest {
     assertTrue(f3A != f4)
     assertTrue(f3B != f4A)
     assertTrue(f3A != f4B)
+  }
+
+  @Test def isInstanceOf_must_not_call_toString_issue_2953(): Unit = {
+    class C {
+      override def toString(): String =
+        throw new AssertionError("C.toString must not be called by isInstanceOf")
+    }
+
+    @noinline def makeC(): Any = new C
+
+    val c = makeC()
+
+    assertFalse("Boolean", c.isInstanceOf[Boolean])
+    assertFalse("Char", c.isInstanceOf[Char])
+    assertFalse("Byte", c.isInstanceOf[Byte])
+    assertFalse("Short", c.isInstanceOf[Short])
+    assertFalse("Int", c.isInstanceOf[Int])
+    assertFalse("Long", c.isInstanceOf[Long])
+    assertFalse("Float", c.isInstanceOf[Float])
+    assertFalse("Double", c.isInstanceOf[Double])
+    assertFalse("Unit", c.isInstanceOf[Unit])
+    assertFalse("String", c.isInstanceOf[String])
   }
 
 }

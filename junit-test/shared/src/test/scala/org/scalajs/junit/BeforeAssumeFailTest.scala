@@ -15,18 +15,7 @@ class BeforeAssumeFailTest {
   @Test def test(): Unit = ()
 }
 
-class BeforeAssumeFailTestAssertions extends JUnitTest with SuccessFrameworkArgs {
-
-  override val expectedIgnored: Int = 1
-
-  protected def expectedOutput(context: OutputContext): List[Output] = {
-    import context._
-    List(
-        testRunStartedOutput,
-        testIgnoredClassOutput,
-        skippedEvent,
-        testRunFinishedOutput,
-        done
-    )
-  }
+class BeforeAssumeFailTestAssertions extends JUnitTest {
+  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
+    builder.ignoredClass()
 }

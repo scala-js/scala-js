@@ -1311,7 +1311,12 @@ object Build {
           case FullOptStage => "fullopt-stage"
         }
 
-        envTags ++ (semTags :+ stageTag)
+        val moduleKindTag = scalaJSModuleKind.value match {
+          case ModuleKind.NoModule       => "modulekind-nomodule"
+          case ModuleKind.CommonJSModule => "modulekind-commonjs"
+        }
+
+        envTags ++ (semTags :+ stageTag :+ moduleKindTag)
       },
       javaOptions in Test ++= {
         def scalaJSProp(name: String): String =

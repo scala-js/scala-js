@@ -1,7 +1,7 @@
 package org.scalajs.junit
 
 import org.junit._
-import org.scalajs.junit.utils.{JUnitTest, SuccessFrameworkArgs}
+import org.scalajs.junit.utils.JUnitTest
 
 class MultiIgnoreAllTest {
   @Ignore @Test def multiTest1(): Unit = ()
@@ -11,26 +11,13 @@ class MultiIgnoreAllTest {
   @Ignore @Test def multiTest5(): Unit = ()
 }
 
-class MultiIgnoreAllTestAssertions extends JUnitTest with SuccessFrameworkArgs {
-
-  override val expectedIgnored: Int = 5
-
-  protected def expectedOutput(context: OutputContext): List[Output] = {
-    import context._
-    List(
-        testRunStartedOutput,
-        testIgnoredOutput("multiTest1"),
-        skippedEvent,
-        testIgnoredOutput("multiTest2"),
-        skippedEvent,
-        testIgnoredOutput("multiTest3"),
-        skippedEvent,
-        testIgnoredOutput("multiTest4"),
-        skippedEvent,
-        testIgnoredOutput("multiTest5"),
-        skippedEvent,
-        testRunFinishedOutput,
-        done
-    )
+class MultiIgnoreAllTestAssertions extends JUnitTest {
+  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
+    builder
+      .ignored("multiTest1")
+      .ignored("multiTest2")
+      .ignored("multiTest3")
+      .ignored("multiTest4")
+      .ignored("multiTest5")
   }
 }

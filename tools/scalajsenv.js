@@ -577,20 +577,20 @@ const $systemIdentityHashCode =
 // is/as for hijacked boxed classes (the non-trivial ones)
 
 function $isByte(v) {
-  return (v << 24 >> 24) === v && 1/v !== 1/-0;
+  return typeof v === "number" && (v << 24 >> 24) === v && 1/v !== 1/-0;
 };
 
 function $isShort(v) {
-  return (v << 16 >> 16) === v && 1/v !== 1/-0;
+  return typeof v === "number" && (v << 16 >> 16) === v && 1/v !== 1/-0;
 };
 
 function $isInt(v) {
-  return (v | 0) === v && 1/v !== 1/-0;
+  return typeof v === "number" && (v | 0) === v && 1/v !== 1/-0;
 };
 
 function $isFloat(v) {
 //!if floats == Strict
-  return v !== v || $fround(v) === v;
+  return typeof v === "number" && (v !== v || $fround(v) === v);
 //!else
   return typeof v === "number";
 //!endif

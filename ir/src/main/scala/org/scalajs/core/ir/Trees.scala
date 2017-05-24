@@ -945,6 +945,16 @@ object Trees {
     final case class Import(module: String, path: List[String])
         extends JSNativeLoadSpec
 
+    /** Like [[Import]], but with a [[Global]] fallback when linking without
+     *  modules.
+     *
+     *  When linking with a module kind that supports modules, the `importSpec`
+     *  is used. When modules are not supported, use the fallback `globalSpec`.
+     */
+    final case class ImportWithGlobalFallback(importSpec: Import,
+        globalSpec: Global)
+        extends JSNativeLoadSpec
+
   }
 
   /** A hash of a tree (usually a MethodDef). Contains two SHA-1 hashes */

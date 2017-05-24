@@ -199,6 +199,8 @@ class FormatterTest {
     assertF("5.00000e-05", "%g", new JDouble(.5e-4))
     assertF("0.000300000", "%g", new JDouble(3e-4))
     assertF("0.000300", "%.3g", new JDouble(3e-4))
+    assertF("10.0000", "%g", new JDouble(10.0))
+    assertF("10.00", "%.4g", new JDouble(10.0))
     assertF("0.0010", "%.2g", new JDouble(1e-3))
     assertF("300000", "%g", new JDouble(3e5))
     assertF("3.00e+05", "%.3g", new JDouble(3e5))

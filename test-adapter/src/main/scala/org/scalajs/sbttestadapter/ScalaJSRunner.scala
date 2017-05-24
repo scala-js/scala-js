@@ -193,7 +193,7 @@ final class ScalaJSRunner private[testadapter] (
     val prefix = framework.optionalExportsNamespacePrefix
     val frameworkJS = jsonToString(framework.frameworkName.toJSON)
     val argsJS = jsonToString(args.toList.toJSON)
-    val remoteArgsJS = jsonToString(args.toList.toJSON)
+    val remoteArgsJS = jsonToString(remoteArgs.toList.toJSON)
     val code = s"""
       new ${prefix}org.scalajs.testinterface.internal.Slave($frameworkJS,
         $argsJS, $remoteArgsJS).init();

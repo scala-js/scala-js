@@ -73,25 +73,29 @@ private[optimizer] abstract class OptimizerCore(
    */
   protected def tryNewInlineableClass(className: String): Option[RecordValue]
 
-  /** Used local names and whether they are mutable */
-  private val usedLocalNames = mutable.Map.empty[String, Boolean]
+  private val localNameAllocator: FreshNameAllocator = new FreshNameAllocator
 
-  private val usedLabelNames = mutable.Set.empty[String]
+  /** An allocated local variable name is mutable iff it belongs to this set. */
+  private var mutableLocalNames: Set[String] = Set.empty
 
-  /** A list of the States that have been allocated so far, and must be saved.
+  private val labelNameAllocator: FreshNameAllocator = new FreshNameAllocator
+
+  /** A list of backups for all updates done to States so far (excluding
+   *  those done in rolled back optimistic branches).
    *
-   *  This list only ever grows, even though, in theory, it will keep
-   *  references to states that are not used anymore.
-   *  This creates a "temporary memory leak", but the list is discarded when
-   *  `optimize` terminates anyway because the whole OptimizerCore is discarded.
-   *  It also means that RollbackException will save more state than strictly
-   *  necessary, but it is not incorrect to do so.
+   *  This list grows (from the head) every time the value of a `State` changes.
+   *  Each time, a `StateBackup` is prepended with the previous value.
    *
-   *  Manual "memory management" of this list has caused issues such as #1515
-   *  and #1843 in the past. So now we just let it grow in a "region-allocated"
-   *  style of memory management.
+   *  When starting an optimistic branch in `tryOrRollback`, we take a snapshot
+   *  of the current chain of backups. When doing a rollback, we restore all
+   *  the backups that have been added to the chain since the snapshot. We can
+   *  do this by comparing the nodes of the chain with `eq`.
+   *
+   *  Manipulations of this list are amortized O(1). The act of modifying the
+   *  value of a `State` "pays for" a) making the backup and b) restoring the
+   *  backup. Indeed, a backup is restored at most once.
    */
-  private var statesInUse: List[State] = Nil
+  private var stateBackupChain: List[StateBackup] = Nil
 
   private var disableOptimisticOptimizations: Boolean = false
   private var rollbacksCount: Int = 0
@@ -135,9 +139,10 @@ private[optimizer] abstract class OptimizerCore(
         transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       } catch {
         case _: TooManyRollbacksException =>
-          usedLocalNames.clear()
-          usedLabelNames.clear()
-          statesInUse = Nil
+          localNameAllocator.clear()
+          mutableLocalNames = Set.empty
+          labelNameAllocator.clear()
+          stateBackupChain = Nil
           disableOptimisticOptimizations = true
           transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       }
@@ -188,40 +193,24 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def newSimpleState[A](initialValue: A): SimpleState[A] = {
-    val state = new SimpleState[A](initialValue)
-    statesInUse ::= state
-    state
-  }
+  private def newSimpleState[A](initialValue: A): SimpleState[A] =
+    new SimpleState[A](this, initialValue)
+
+  private def addStateBackup(backup: StateBackup): Unit =
+    stateBackupChain ::= backup
 
   private def freshLocalName(base: String, mutable: Boolean): String = {
-    val result = freshNameGeneric(usedLocalNames.contains, base)
-    usedLocalNames += result -> mutable
+    val result = localNameAllocator.freshName(base)
+    if (mutable)
+      mutableLocalNames += result
     result
   }
 
-  private def freshLabelName(base: String): String = {
-    val result = freshNameGeneric(usedLabelNames, base)
-    usedLabelNames += result
-    result
-  }
-
-  private val isReserved = isKeyword ++ Seq("arguments", "eval", "ScalaJS")
-
-  private def freshNameGeneric(nameUsed: String => Boolean,
-      base: String): String = {
-    if (!nameUsed(base) && !isReserved(base)) {
-      base
-    } else {
-      var i = 1
-      while (nameUsed(base + "$" + i))
-        i += 1
-      base + "$" + i
-    }
-  }
+  private def freshLabelName(base: String): String =
+    labelNameAllocator.freshName(base)
 
   // Just a helper to make the callsites more understandable
-  private def localIsMutable(name: String): Boolean = usedLocalNames(name)
+  private def localIsMutable(name: String): Boolean = mutableLocalNames(name)
 
   private def tryOrRollback(body: CancelFun => TailRec[Tree])(
       fallbackFun: () => TailRec[Tree]): TailRec[Tree] = {
@@ -229,14 +218,15 @@ private[optimizer] abstract class OptimizerCore(
       fallbackFun()
     } else {
       val trampolineId = curTrampolineId
-      val savedUsedLocalNames = usedLocalNames.toMap
-      val savedUsedLabelNames = usedLabelNames.toSet
-      val savedStatesInUse = statesInUse
-      val stateBackups = statesInUse.map(_.makeBackup())
+      val localNameAllocatorSnapshot = localNameAllocator.snapshot()
+      val savedMutableLocalNames = mutableLocalNames
+      val labelNameAllocatorSnapshot = labelNameAllocator.snapshot()
+      val savedStateBackupChain = stateBackupChain
 
       body { () =>
-        throw new RollbackException(trampolineId, savedUsedLocalNames,
-            savedUsedLabelNames, savedStatesInUse, stateBackups, fallbackFun)
+        throw new RollbackException(trampolineId, localNameAllocatorSnapshot,
+            savedMutableLocalNames, labelNameAllocatorSnapshot,
+            savedStateBackupChain, fallbackFun)
       }
     }
   }
@@ -651,11 +641,7 @@ private[optimizer] abstract class OptimizerCore(
       case JSObjectConstr(fields) =>
         JSObjectConstr(fields map {
           case (name, value) =>
-            /* #2773 - The ascription `: PropertyName` side-steps the issue by
-             * pushing down an appropriate expected type.
-             * TODO We need to minimize and fix the root cause.
-             */
-            val newName: PropertyName = name match {
+            val newName = name match {
               case _:StringLiteral | _:Ident =>
                 name
               case ComputedName(nameExpr, logicalName) =>
@@ -859,7 +845,11 @@ private[optimizer] abstract class OptimizerCore(
             usePreTransform = true)(cont)
 
       case JSArrayConstr(items) =>
-        if (items.exists(_.isInstanceOf[JSSpread])) {
+        /* Trying to virtualize more than 64 items in a JS array is probably
+         * a bad idea, and will slow down the optimizer for no good reason.
+         * See for example #2943.
+         */
+        if (items.size > 64 || items.exists(_.isInstanceOf[JSSpread])) {
           /* TODO This means spread in array constr does not compose under
            * this optimization. We could improve this with a
            * pretransformExprsOrSpreads() or something like that.
@@ -4153,12 +4143,17 @@ private[optimizer] abstract class OptimizerCore(
             if (rollbacksCount > MaxRollbacksPerMethod)
               throw new TooManyRollbacksException
 
-            usedLocalNames.clear()
-            usedLocalNames ++= e.savedUsedLocalNames
-            usedLabelNames.clear()
-            usedLabelNames ++= e.savedUsedLabelNames
-            statesInUse = e.savedStatesInUse
-            e.stateBackups.foreach(_.restore())
+            localNameAllocator.restore(e.localNameAllocatorSnapshot)
+            mutableLocalNames = e.savedMutableLocalNames
+            labelNameAllocator.restore(e.labelNameAllocatorSnapshot)
+
+            val savedStateBackupChain = e.savedStateBackupChain
+            var stateBackupsToRestore = stateBackupChain
+            while (stateBackupsToRestore ne savedStateBackupChain) {
+              stateBackupsToRestore.head.restore()
+              stateBackupsToRestore = stateBackupsToRestore.tail
+            }
+            stateBackupChain = savedStateBackupChain
 
             rec = e.cont
         }
@@ -4794,16 +4789,19 @@ private[optimizer] object OptimizerCore {
     def restore(): Unit
   }
 
-  private trait State {
-    def makeBackup(): StateBackup
-  }
+  private class SimpleState[A](owner: OptimizerCore, private var _value: A) {
+    def value: A = _value
 
-  private class SimpleState[A](var value: A) extends State {
+    def value_=(v: A): Unit = {
+      if (v.asInstanceOf[AnyRef] ne _value.asInstanceOf[AnyRef]) {
+        owner.addStateBackup(new Backup(_value))
+        _value = v
+      }
+    }
+
     private class Backup(savedValue: A) extends StateBackup {
       override def restore(): Unit = value = savedValue
     }
-
-    def makeBackup(): StateBackup = new Backup(value)
   }
 
   trait AbstractMethodID {
@@ -4996,14 +4994,55 @@ private[optimizer] object OptimizerCore {
   }
 
   private class RollbackException(val trampolineId: Int,
-      val savedUsedLocalNames: Map[String, Boolean],
-      val savedUsedLabelNames: Set[String],
-      val savedStatesInUse: List[State],
-      val stateBackups: List[StateBackup],
+      val localNameAllocatorSnapshot: FreshNameAllocator.Snapshot,
+      val savedMutableLocalNames: Set[String],
+      val labelNameAllocatorSnapshot: FreshNameAllocator.Snapshot,
+      val savedStateBackupChain: List[StateBackup],
       val cont: () => TailRec[Tree]) extends ControlThrowable
 
   class OptimizeException(val myself: AbstractMethodID,
       val attemptedInlining: List[AbstractMethodID], cause: Throwable
   ) extends Exception(exceptionMsg(myself, attemptedInlining, cause), cause)
+
+  final class FreshNameAllocator private (
+      private var usedNamesToNextCounter: Map[String, Int]) {
+    import FreshNameAllocator._
+
+    def this() = this(FreshNameAllocator.InitialMap)
+
+    def clear(): Unit = usedNamesToNextCounter = InitialMap
+
+    def freshName(base: String): String = {
+      if (!usedNamesToNextCounter.contains(base)) {
+        usedNamesToNextCounter = usedNamesToNextCounter.updated(base, 1)
+        base
+      } else {
+        var i = usedNamesToNextCounter(base)
+        var result = base + "$" + i
+        while (usedNamesToNextCounter.contains(result)) {
+          i += 1
+          result = base + "$" + i
+        }
+        usedNamesToNextCounter =
+          usedNamesToNextCounter.updated(base, i + 1).updated(result, 1)
+        result
+      }
+    }
+
+    def snapshot(): Snapshot = new Snapshot(usedNamesToNextCounter)
+
+    def restore(snapshot: Snapshot): Unit =
+      usedNamesToNextCounter = snapshot.usedNamesToNextCounter
+  }
+
+  object FreshNameAllocator {
+    private val InitialMap = {
+      val isReserved = isKeyword ++ Seq("arguments", "eval", "ScalaJS")
+      isReserved.map(_ -> 1).toMap
+    }
+
+    final class Snapshot private[FreshNameAllocator] (
+        private[FreshNameAllocator] val usedNamesToNextCounter: Map[String, Int])
+  }
 
 }

@@ -56,7 +56,8 @@ class FileVirtualTextFile(f: File) extends FileVirtualFile(f)
   import FileVirtualTextFile._
 
   override def content: String = readFileToString(file)
-  override def reader: Reader = new BufferedReader(new FileReader(f))
+  override def reader: Reader = new InputStreamReader(
+      new BufferedInputStream(new FileInputStream(f)), "UTF-8")
 }
 
 object FileVirtualTextFile extends (File => FileVirtualTextFile) {
