@@ -32,7 +32,6 @@ object Scalajsld {
     cp: Seq[File] = Seq.empty,
     moduleInitializers: Seq[ModuleInitializer] = Seq.empty,
     output: File = null,
-    jsoutput: Boolean = false,
     semantics: Semantics = Semantics.Defaults,
     outputMode: OutputMode = OutputMode.ECMAScript51Isolated,
     moduleKind: ModuleKind = ModuleKind.NoModule,
@@ -90,12 +89,6 @@ object Scalajsld {
         .required()
         .action { (x, c) => c.copy(output = x) }
         .text("Output file of linker (required)")
-      opt[File]("jsoutput")
-        .hidden()
-        .valueName("<file>")
-        .abbr("jo")
-        .action { (_, c) => c.copy(jsoutput = true) }
-        .text("Deprecated: Does nothing but printing a warning")
       opt[Unit]('f', "fastOpt")
         .action { (_, c) => c.copy(noOpt = false, fullOpt = false) }
         .text("Optimize code (this is the default)")
@@ -163,15 +156,6 @@ object Scalajsld {
       val classpath = options.stdLib.toList ++ options.cp
       val irContainers = FileScalaJSIRContainer.fromClasspath(classpath)
       val moduleInitializers = options.moduleInitializers
-
-      // Warn if writing JS dependencies was requested.
-      if (options.jsoutput) {
-        Console.err.println(
-            "Support for the --jsoutput flag has been dropped. " +
-            "JS dependencies will not be written to disk. " +
-            "Comment on https://github.com/scala-js/scala-js/issues/2163 " +
-            "if you rely on this feature.")
-      }
 
       val semantics =
         if (options.fullOpt) options.semantics.optimized

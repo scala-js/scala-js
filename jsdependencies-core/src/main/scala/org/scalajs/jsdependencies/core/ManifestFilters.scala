@@ -1,4 +1,4 @@
-package org.scalajs.core.tools.jsdep
+package org.scalajs.jsdependencies.core
 
 /** Holds useful JSDependencyManifest filters */
 object ManifestFilters {
@@ -42,7 +42,7 @@ object ManifestFilters {
             jsDependency.commonJSName,
             jsDependency.minifiedResourceName.map(mapping))
       new JSDependencyManifest(manifest.origin, filteredJSDeps,
-          manifest.requiresDOM, manifest.compliantSemantics)
+          manifest.requiresDOM)
     }
   }
 }

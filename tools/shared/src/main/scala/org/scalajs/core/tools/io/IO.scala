@@ -124,24 +124,6 @@ object IO {
     loop()
   }
 
-  /** Concatenates a bunch of VirtualTextFiles to a WritableVirtualTextFile.
-   *  Adds a '\n' after each file.
-   */
-  def concatFiles(output: WritableVirtualTextFile,
-      files: Seq[VirtualTextFile]): Unit = {
-    val out = output.contentWriter
-
-    try {
-      for (file <- files) {
-        writeTo(file, out)
-        // New line after each file
-        out.write('\n')
-      }
-    } finally {
-      out.close()
-    }
-  }
-
   @inline
   private def newBuffer[T : ClassTag] = new Array[T](4096)
 }

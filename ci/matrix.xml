@@ -151,7 +151,7 @@
   <task id="tools-cli-stubs"><![CDATA[
     setJavaVersion $java
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package jsEnvsTestSuite/test \
+        stubs/package jsEnvsTestSuite/test jsDependenciesCore/test \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
@@ -164,8 +164,8 @@
   <task id="tools-cli-stubs-sbtplugin"><![CDATA[
     setJavaVersion $java
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package jsEnvsTestSuite/test \
-        sbtPlugin/package \
+        stubs/package jsEnvsTestSuite/test jsDependenciesCore/test \
+        sbtPlugin/package jsDependenciesPlugin/package \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
@@ -203,7 +203,8 @@
                   testInterface/publishLocal stubs/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++2.10.6 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
-                 testAdapter/publishLocal sbtPlugin/publishLocal &&
+                 testAdapter/publishLocal sbtPlugin/publishLocal \
+                 jsDependenciesCore/publishLocal jsDependenciesPlugin/publishLocal &&
     cd sbt-plugin-test &&
     sbt noDOM/run noDOM/testHtmlFastOpt noDOM/testHtmlFullOpt \
         withDOM/run withDOM/testHtmlFastOpt withDOM/testHtmlFullOpt \

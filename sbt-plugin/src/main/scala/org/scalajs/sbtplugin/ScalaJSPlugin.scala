@@ -15,9 +15,6 @@ import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.linker.{ModuleInitializer, LinkingUnit}
 import org.scalajs.core.tools.linker.backend.{ModuleKind, OutputMode}
-import org.scalajs.core.tools.jsdep.{JSDependencyManifest, ResolvedJSDependency}
-import org.scalajs.core.tools.jsdep.ManifestFilters.ManifestFilter
-import org.scalajs.core.tools.jsdep.DependencyResolver.DependencyFilter
 
 import org.scalajs.core.ir.ScalaJSVersions
 
@@ -153,24 +150,8 @@ object ScalaJSPlugin extends AutoPlugin {
         "`scalaJSUseMainModuleInitializer` is true",
         CTask)
 
-    val scalaJSNativeLibraries = TaskKey[Attributed[Seq[VirtualJSFile with RelativeVirtualFile]]](
-        "scalaJSNativeLibraries", "All the *.js files on the classpath", CTask)
-
     val scalaJSStage = SettingKey[Stage]("scalaJSStage",
         "The optimization stage at which run and test are executed", APlusSetting)
-
-    val packageJSDependencies = TaskKey[File]("packageJSDependencies",
-        "Packages all dependencies of the preLink classpath in a single file.", AMinusTask)
-
-    val packageMinifiedJSDependencies = TaskKey[File]("packageMinifiedJSDependencies",
-        "Packages minified version (if available) of dependencies of the preLink " +
-        "classpath in a single file.", AMinusTask)
-
-    val jsDependencyManifest = TaskKey[File]("jsDependencyManifest",
-        "Writes the JS_DEPENDENCIES file.", DTask)
-
-    val jsDependencyManifests = TaskKey[Attributed[Traversable[JSDependencyManifest]]](
-        "jsDependencyManifests", "All the JS_DEPENDENCIES on the classpath", DTask)
 
     val scalaJSLinkedFile = TaskKey[VirtualJSFile]("scalaJSLinkedFile",
         "Linked Scala.js file. This is the result of fastOptJS or fullOptJS, " +
@@ -182,9 +163,6 @@ object ScalaJSPlugin extends AutoPlugin {
     val jsEnv = TaskKey[JSEnv]("jsEnv",
         "The JavaScript environment in which to run and test Scala.js applications.",
         AMinusTask)
-
-    val requiresDOM = SettingKey[Boolean]("requiresDOM",
-        "Whether this projects needs the DOM. Overrides anything inherited through dependencies.", AMinusSetting)
 
     val relativeSourceMaps = SettingKey[Boolean]("relativeSourceMaps",
         "Make the referenced paths on source maps relative to target path", BPlusSetting)
@@ -206,9 +184,6 @@ object ScalaJSPlugin extends AutoPlugin {
         "0.6.15")
     val scalaJSOutputWrapper = scalaJSOutputWrapperInternal
 
-    val jsDependencies = SettingKey[Seq[AbstractJSDep]]("jsDependencies",
-        "JavaScript libraries this project depends upon. Also used to depend on the DOM.", APlusSetting)
-
     val scalaJSSemantics = SettingKey[Semantics]("scalaJSSemantics",
         "Configurable semantics of Scala.js.", BPlusSetting)
 
@@ -217,19 +192,6 @@ object ScalaJSPlugin extends AutoPlugin {
 
     val scalaJSModuleKind = SettingKey[ModuleKind]("scalaJSModuleKind",
         "Kind of JavaScript modules emitted by Scala.js.", BPlusSetting)
-
-    val jsDependencyFilter = SettingKey[DependencyFilter]("jsDependencyFilter",
-        "The filter applied to the raw JavaScript dependencies before execution", CSetting)
-
-    val jsManifestFilter = SettingKey[ManifestFilter]("jsManifestFilter",
-        "The filter applied to JS dependency manifests before resolution", CSetting)
-
-    val resolvedJSDependencies = TaskKey[Attributed[Seq[ResolvedJSDependency]]]("resolvedJSDependencies",
-        "JS dependencies after resolution.", DTask)
-
-    val checkScalaJSSemantics = SettingKey[Boolean]("checkScalaJSSemantics",
-        "Whether to check that the current semantics meet compliance " +
-        "requirements of dependencies.", CSetting)
 
     val scalaJSOptimizerOptions = SettingKey[OptimizerOptions]("scalaJSOptimizerOptions",
         "All kinds of options for the Scala.js optimizer stages", DSetting)

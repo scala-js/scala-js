@@ -1,4 +1,4 @@
-package org.scalajs.core.tools.jsdep
+package org.scalajs.jsdependencies.core
 
 import org.scalajs.core.tools.json._
 
@@ -83,8 +83,8 @@ final class JSDependency(
 }
 
 object JSDependency {
-  // "org.scalajs.core.tools.jsdep.JSDependency".##
-  private final val HashSeed = 2103455349
+  // "org.scalajs.jsdependencies.core.JSDependency".##
+  private final val HashSeed = -579921360
 
   implicit object JSDepJSONSerializer extends JSONSerializer[JSDependency] {
     def serialize(x: JSDependency): JSON = {

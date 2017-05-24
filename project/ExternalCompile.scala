@@ -2,7 +2,6 @@ import sbt._
 import Keys._
 
 import org.scalajs.sbtplugin.ScalaJSPlugin
-import ScalaJSPlugin.autoImport.jsDependencyManifest
 
 object ExternalCompile {
 
@@ -101,11 +100,7 @@ object ExternalCompile {
 
         // We do not have dependency analysis when compiling externally
         sbt.inc.Analysis.Empty
-      },
-
-      // Make sure jsDependencyManifest runs after compile, otherwise compile
-      // might remove the entire directory afterwards.
-      jsDependencyManifest := jsDependencyManifest.dependsOn(compile).value
+      }
   )
 
   val scalaJSExternalCompileSettings = (

@@ -1,4 +1,4 @@
-package org.scalajs.core.tools.jsdep
+package org.scalajs.jsdependencies.core
 
 import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.io._
@@ -11,8 +11,7 @@ import java.io.{Reader, Writer}
 final class JSDependencyManifest(
     val origin: Origin,
     val libDeps: List[JSDependency],
-    val requiresDOM: Boolean,
-    val compliantSemantics: List[String]) {
+    val requiresDOM: Boolean) {
 
   import JSDependencyManifest._
 
@@ -20,8 +19,7 @@ final class JSDependencyManifest(
     case that: JSDependencyManifest =>
       this.origin == that.origin &&
       this.libDeps == that.libDeps &&
-      this.requiresDOM == that.requiresDOM &&
-      this.compliantSemantics == that.compliantSemantics
+      this.requiresDOM == that.requiresDOM
     case _ =>
       false
   }
@@ -31,9 +29,8 @@ final class JSDependencyManifest(
     var acc = HashSeed
     acc = mix(acc, origin.##)
     acc = mix(acc, libDeps.##)
-    acc = mix(acc, requiresDOM.##)
-    acc = mixLast(acc, compliantSemantics.##)
-    finalizeHash(acc, 4)
+    acc = mixLast(acc, requiresDOM.##)
+    finalizeHash(acc, 3)
   }
 
   override def toString(): String = {
@@ -43,8 +40,6 @@ final class JSDependencyManifest(
       b ++= s", libDeps=$libDeps"
     if (requiresDOM)
       b ++= s", requiresDOM=$requiresDOM"
-    if (compliantSemantics.nonEmpty)
-      b ++= s", compliantSemantics=$compliantSemantics"
     b ++= ")"
     b.result()
   }
@@ -52,8 +47,8 @@ final class JSDependencyManifest(
 
 object JSDependencyManifest {
 
-  // "org.scalajs.core.tools.jsdep.JSDependencyManifest".##
-  private final val HashSeed = 943487940
+  // "org.scalajs.jsdependencies.core.JSDependencyManifest".##
+  private final val HashSeed = -902988673
 
   final val ManifestFileName = "JS_DEPENDENCIES"
 
@@ -63,10 +58,9 @@ object JSDependencyManifest {
 
     def serialize(x: JSDependencyManifest): JSON = {
       new JSONObjBuilder()
-        .fld("origin",  x.origin)
+        .fld("origin", x.origin)
         .opt("libDeps", optList(x.libDeps))
         .opt("requiresDOM", if (x.requiresDOM) Some(true) else None)
-        .opt("compliantSemantics", optList(x.compliantSemantics))
         .toJSON
     }
   }
@@ -75,10 +69,9 @@ object JSDependencyManifest {
     def deserialize(x: JSON): JSDependencyManifest = {
       val obj = new JSONObjExtractor(x)
       new JSDependencyManifest(
-          obj.fld[Origin]            ("origin"),
+          obj.fld[Origin]("origin"),
           obj.opt[List[JSDependency]]("libDeps").getOrElse(Nil),
-          obj.opt[Boolean]           ("requiresDOM").getOrElse(false),
-          obj.opt[List[String]]      ("compliantSemantics").getOrElse(Nil))
+          obj.opt[Boolean]("requiresDOM").getOrElse(false))
     }
   }
 

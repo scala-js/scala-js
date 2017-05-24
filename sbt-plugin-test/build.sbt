@@ -1,8 +1,8 @@
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.jsdep.ManifestFilters
 import org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv
 import org.scalajs.sbtplugin.ScalaJSPluginInternal._
 import org.scalajs.sbtplugin.Loggers.sbtLogger2ToolsLogger
+import org.scalajs.jsdependencies.core.ManifestFilters
 
 lazy val concurrentFakeFullOptJS = taskKey[Any]("")
 lazy val concurrentUseOfLinkerTest = taskKey[Any]("")
@@ -129,8 +129,13 @@ lazy val multiTest = crossProject.
   jsSettings(baseSettings: _*).
   jsSettings(
     name := "Multi test framework test JS",
+
     // Make FrameworkDetector resilient to other output - #1572
-    jsDependencies in Test += ProvidedJS / "consoleWriter.js",
+    jsExecutionFiles in Test := {
+      val consoleWriter = FileVirtualJSFile(
+          (resourceDirectory in Test).value / "consoleWriter.js")
+      consoleWriter +: (jsExecutionFiles in Test).value
+    },
 
     // Test isScalaJSProject (as a setting, it's evaluated when loading the build)
     isScalaJSProject ~= { value =>
@@ -181,7 +186,7 @@ lazy val multiTestJVM = multiTest.jvm
 
 lazy val jsDependenciesTestDependee = project.
   settings(versionSettings: _*).
-  enablePlugins(ScalaJSPlugin).
+  enablePlugins(ScalaJSPlugin, JSDependenciesPlugin).
   settings(
     // This project contains some jsDependencies to test in jsDependenciesTest
     jsDependencies ++= Seq(
@@ -194,7 +199,7 @@ lazy val jsDependenciesTestDependee = project.
 
 lazy val jsDependenciesTest = withRegretionTestForIssue2243(
   project.settings(versionSettings: _*).
-  enablePlugins(ScalaJSPlugin).
+  enablePlugins(ScalaJSPlugin, JSDependenciesPlugin).
   settings(
     jsDependencies ++= Seq(
         "org.webjars" % "historyjs" % "1.8.0" / "uncompressed/history.js",
@@ -264,7 +269,7 @@ lazy val jsDependenciesTest = withRegretionTestForIssue2243(
 
 lazy val jsNoDependenciesTest = withRegretionTestForIssue2243(
   project.settings(versionSettings: _*).
-  enablePlugins(ScalaJSPlugin)
+  enablePlugins(ScalaJSPlugin, JSDependenciesPlugin)
 )
 
 // Test %%% macro - #1331
