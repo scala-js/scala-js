@@ -35,7 +35,6 @@ object Platform {
 
   def executingInNodeJS: Boolean = sysProp("nodejs")
   def executingInNodeJSOnJSDOM: Boolean = sysProp("nodejs.jsdom")
-  def executingInPhantomJS: Boolean = sysProp("phantomjs")
   def executingInBrowser: Boolean = sysProp("browser")
   def typedArrays: Boolean = sysProp("typedarray")
   def sourceMaps: Boolean = sysProp("source-maps")

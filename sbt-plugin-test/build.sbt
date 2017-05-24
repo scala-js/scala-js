@@ -101,15 +101,6 @@ lazy val withDOM = project.settings(baseSettings: _*).
     scalaJSUseMainModuleInitializer := true
   )
 
-lazy val jetty9 = project.settings(baseSettings: _*).
-  enablePlugins(ScalaJSPlugin).
-  settings(
-    name := "Scala.js sbt test with jetty9 on classpath",
-    // Use PhantomJS, allow cross domain requests
-    jsEnv := PhantomJSEnv(args = Seq("--web-security=no")).value,
-    Jetty9Test.runSetting
-  )
-
 lazy val testFramework = crossProject.crossType(CrossType.Pure).
   settings(versionSettings: _*).
   settings(name := "Dummy cross JS/JVM test framework").

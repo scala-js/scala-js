@@ -31,12 +31,6 @@
     sbtretry 'set scalaJSSemantics in helloworld ~= (_.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Unchecked))' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbtretry 'set inScope(ThisScope in helloworld)(jsEnv := new org.scalajs.jsenv.phantomjs.RetryingComJSEnv(PhantomJSEnv().value))' \
-        ++$scala helloworld/run &&
-    sbtretry 'set inScope(ThisScope in helloworld)(jsEnv := new org.scalajs.jsenv.phantomjs.RetryingComJSEnv(PhantomJSEnv().value))' \
-        'set scalaJSStage in Global := FullOptStage' \
-        ++$scala helloworld/run \
-        helloworld/clean &&
     sbtretry ++$scala \
         'set scalaJSModuleKind in helloworld := ModuleKind.CommonJSModule' \
         helloworld/run \
@@ -45,16 +39,7 @@
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala testingExample/test \
         testingExample/clean &&
-    sbtretry 'set inScope(ThisScope in testingExample)(jsEnv := new org.scalajs.jsenv.phantomjs.RetryingComJSEnv(PhantomJSEnv().value))' \
-        ++$scala testingExample/test &&
-    sbtretry 'set inScope(ThisScope in testingExample)(jsEnv := new org.scalajs.jsenv.phantomjs.RetryingComJSEnv(PhantomJSEnv().value))' \
-        'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testingExample/test \
-        testingExample/clean &&
     sbtretry 'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
-        ++$scala testingExample/test &&
-    sbtretry 'set inScope(ThisScope in testingExample)(jsEnv := new org.scalajs.jsenv.phantomjs.RetryingComJSEnv(PhantomJSEnv().value))' \
-        'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
         ++$scala testingExample/test &&
     sbtretry ++$scala library/test &&
     sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
@@ -96,14 +81,6 @@
         $testSuite/clean &&
     sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set inScope(ThisScope in $testSuite)(jsEnv := new org.scalajs.jsenv.phantomjs.RetryingComJSEnv(PhantomJSEnv().value))' \
-        'set parallelExecution in ($testSuite, Test) := false' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set inScope(ThisScope in $testSuite)(jsEnv := new org.scalajs.jsenv.phantomjs.RetryingComJSEnv(PhantomJSEnv().value))' \
-        'set parallelExecution in ($testSuite, Test) := false' \
-        'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
@@ -226,13 +203,12 @@
                   testInterface/publishLocal stubs/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++2.10.6 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
-                 testAdapter/publishLocal sbtPlugin/publishLocal \
-                 phantomJSEnv/publishLocal phantomJSEnvPlugin/publishLocal &&
+                 testAdapter/publishLocal sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&
     sbt noDOM/run noDOM/testHtmlFastOpt noDOM/testHtmlFullOpt \
         withDOM/run withDOM/testHtmlFastOpt withDOM/testHtmlFullOpt \
         multiTestJS/testHtmlFastOpt multiTestJS/testHtmlFullOpt \
-        jetty9/run test \
+        test \
         noDOM/clean noDOM/concurrentUseOfLinkerTest \
         jsDependenciesTest/packageJSDependencies \
         jsDependenciesTest/packageMinifiedJSDependencies \

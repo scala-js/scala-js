@@ -5,7 +5,6 @@ import org.junit.Assert._
 import org.junit.Test
 
 import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.Platform._
 
 class MathTestOnJDK8 {
 
@@ -257,9 +256,7 @@ class MathTestOnJDK8 {
       expectThrows(classOf[ArithmeticException], Math.floorDiv(n, 0))
   }
 
-  @Test def floorMod() = {
-    assumeFalse("Assumed not executing in PhantomJS", executingInPhantomJS) // crashes otherwise, see #593
-
+  @Test def floorMod(): Unit = {
     assertEquals(0, Math.floorMod(0, 1))
     assertEquals(0, Math.floorMod(0, -1))
     assertEquals(0, Math.floorMod(1, 1))
