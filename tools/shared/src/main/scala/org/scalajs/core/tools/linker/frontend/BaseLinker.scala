@@ -118,8 +118,10 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
         val infoAndTrees =
           infoInput.map(info => (info, getTree(info.encodedName)._1))
         val errorCount = InfoChecker.check(infoAndTrees, logger)
-        if (errorCount != 0)
-          sys.error(s"There were $errorCount Info checking errors.")
+        if (errorCount != 0) {
+          throw new LinkingException(
+              s"There were $errorCount Info checking errors.")
+        }
       }
     }
 
@@ -155,7 +157,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
         logger.log(linkingErrLevel, s"Not showing $skipped more linking errors")
 
       if (fatal)
-        sys.error("There were linking errors")
+        throw new LinkingException("There were linking errors")
     }
 
     val linkResult = logger.time("Linker: Assemble LinkedClasses") {
@@ -169,10 +171,13 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
       logger.time("Linker: Check IR") {
         if (linkResult.isComplete) {
           val errorCount = IRChecker.check(linkResult, logger)
-          if (errorCount != 0)
-            sys.error(s"There were $errorCount IR checking errors.")
+          if (errorCount != 0) {
+            throw new LinkingException(
+                s"There were $errorCount IR checking errors.")
+          }
         } else {
-          sys.error("Could not check IR because there were linking errors.")
+          throw new LinkingException(
+              "Could not check IR because there were linking errors.")
         }
       }
     }
@@ -502,8 +507,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
       ()
     }
 
-    if (errors.nonEmpty && !bypassLinkingErrors) {
-      sys.error("There were conflicting exports.")
-    }
+    if (errors.nonEmpty && !bypassLinkingErrors)
+      throw new LinkingException("There were conflicting exports.")
   }
 }
