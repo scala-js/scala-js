@@ -246,6 +246,20 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           }
           super.transform(tree)
 
+        /* Anonymous function, need to check that it is not used as a SAM for a
+         * JS type, unless it is js.FunctionN or js.ThisFunctionN.
+         * See #2921.
+         */
+        case tree: Function =>
+          val tpeSym = tree.tpe.typeSymbol
+          if (isJSAny(tpeSym) && !AllJSFunctionClasses.contains(tpeSym)) {
+            reporter.error(tree.pos,
+                "Using an anonymous function as a SAM for the JavaScript " +
+                "type " + tpeSym.fullNameString + " is not allowed. " +
+                "Use an anonymous class instead.")
+          }
+          super.transform(tree)
+
         // Catch Select on Enumeration.Value we couldn't transform but need to
         // we ignore the implementation of scala.Enumeration itself
         case ScalaEnumValue.NoName(_) if noEnclosingOwner is OwnerKind.EnumImpl =>
