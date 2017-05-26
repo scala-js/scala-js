@@ -88,15 +88,20 @@ abstract class DirectTest {
   def defaultGlobal: Global = newScalaJSCompiler()
 
   def testOutputPath: String = {
-    val baseDir = sys.props("scala.scalajs.compiler.test.output")
+    val baseDir = System.getProperty("scala.scalajs.compiler.test.output")
     val outDir = new File(baseDir, getClass.getName)
     outDir.mkdirs()
     outDir.getAbsolutePath
   }
 
-  def scalaJSLibPath: String = sys.props("scala.scalajs.compiler.test.scalajslib")
-  def scalaLibPath: String   = sys.props("scala.scalajs.compiler.test.scalalib")
-  def scalaReflectPath: String = sys.props("scala.scalajs.compiler.test.scalareflect")
+  def scalaJSLibPath: String =
+    System.getProperty("scala.scalajs.compiler.test.scalajslib")
+
+  def scalaLibPath: String =
+    System.getProperty("scala.scalajs.compiler.test.scalalib")
+
+  def scalaReflectPath: String =
+    System.getProperty("scala.scalajs.compiler.test.scalareflect")
 
   def classpath: List[String] = List(scalaJSLibPath)
 }

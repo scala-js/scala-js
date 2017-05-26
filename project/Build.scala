@@ -536,10 +536,10 @@ object Build {
           testOptions += Tests.Setup { () =>
             val testOutDir = (streams.value.cacheDirectory / "scalajs-compiler-test")
             IO.createDirectory(testOutDir)
-            sys.props("scala.scalajs.compiler.test.output") =
-              testOutDir.getAbsolutePath
-            sys.props("scala.scalajs.compiler.test.scalajslib") =
-              (packageBin in (library, Compile)).value.getAbsolutePath
+            System.setProperty("scala.scalajs.compiler.test.output",
+                testOutDir.getAbsolutePath)
+            System.setProperty("scala.scalajs.compiler.test.scalajslib",
+                (packageBin in (library, Compile)).value.getAbsolutePath)
 
             def scalaArtifact(name: String): String = {
               def isTarget(att: Attributed[File]) = {
@@ -558,11 +558,11 @@ object Build {
               }
             }
 
-            sys.props("scala.scalajs.compiler.test.scalalib") =
-              scalaArtifact("scala-library")
+            System.setProperty("scala.scalajs.compiler.test.scalalib",
+                scalaArtifact("scala-library"))
 
-            sys.props("scala.scalajs.compiler.test.scalareflect") =
-              scalaArtifact("scala-reflect")
+            System.setProperty("scala.scalajs.compiler.test.scalareflect",
+                scalaArtifact("scala-reflect"))
           },
           exportJars := true
       )

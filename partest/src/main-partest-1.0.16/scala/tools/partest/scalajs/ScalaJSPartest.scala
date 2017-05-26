@@ -187,10 +187,10 @@ class ScalaJSSBTRunner(
 
   // The test root for partest is read out through the system properties,
   // not passed as an argument
-  sys.props("partest.root") = testRoot.getAbsolutePath()
+  System.setProperty("partest.root", testRoot.getAbsolutePath())
 
   // Partests take at least 5h. We double, just to be sure. (default is 4 hours)
-  sys.props("partest.timeout") = "10 hours"
+  System.setProperty("partest.timeout", "10 hours")
 
   override val suiteRunner = new SuiteRunner(
       testSourcePath = config.optSourcePath orElse Option("test/files") getOrElse PartestDefaults.sourcePath,
