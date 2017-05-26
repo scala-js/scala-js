@@ -29,6 +29,11 @@ trait ScalaJSOptions {
    *  should they be mapped to)? */
   def sourceURIMaps: List[URIMap]
 
+  /** Switch the default for JS types from `@js.native` to `@ScalaJSDefined`.
+   *  This is intended as a transition option between 0.6.x and 1.x.
+   */
+  def sjsDefinedByDefault: Boolean
+
 }
 
 object ScalaJSOptions {

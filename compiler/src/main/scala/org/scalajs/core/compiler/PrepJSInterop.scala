@@ -483,7 +483,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       def isNativeJSTraitType(tpe: Type): Boolean = {
         val sym = tpe.typeSymbol
-        sym.isTrait && !sym.hasAnnotation(ScalaJSDefinedAnnotation)
+        sym.isTrait && !isScalaJSDefinedAcrossRuns(sym)
       }
 
       val isJSAnonFun = isJSLambda(sym)
@@ -492,6 +492,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       if (sym.isAnonymousClass && !isJSAnonFun) {
         sym.addAnnotation(ScalaJSDefinedAnnotation)
         sym.addAnnotation(SJSDefinedAnonymousClassAnnotation)
+      }
+
+      // Honor -P:scalajs:sjsDefinedByDefault
+      if (scalaJSOpts.sjsDefinedByDefault) {
+        if (!isJSAnonFun && !sym.hasAnnotation(JSNativeAnnotation) &&
+            !sym.hasAnnotation(ScalaJSDefinedAnnotation)) {
+          sym.addAnnotation(ScalaJSDefinedAnnotation)
+        }
       }
 
       /* Convert `extends js.GlobalScope` to `@JSGlobalScope`.
@@ -697,7 +705,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         if (!isJSNative) {
           def isJSOptional(sym: Symbol): Boolean = {
             sym.owner.isTrait && !sym.isDeferred && !sym.isConstructor &&
-            sym.owner.hasAnnotation(ScalaJSDefinedAnnotation)
+            isScalaJSDefinedAcrossRuns(sym.owner)
           }
 
           if (isJSOptional(low) && !(high.isDeferred || isJSOptional(high))) {
@@ -1501,6 +1509,17 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   private def shouldModuleBeExposed(sym: Symbol) = {
     assert(sym.isModuleOrModuleClass)
     !sym.isLocalToBlock && !sym.isSynthetic && !isPrivateMaybeWithin(sym)
+  }
+
+  protected def isScalaJSDefinedAcrossRuns(sym: Symbol): Boolean = {
+    val sjsDefinedByDefaultAppliesToSym = {
+      scalaJSOpts.sjsDefinedByDefault &&
+      (sym.sourceFile ne null) // it is compiled from source, i.e., not loaded from .class
+    }
+    if (sjsDefinedByDefaultAppliesToSym)
+      !sym.hasAnnotation(JSNativeAnnotation)
+    else
+      sym.hasAnnotation(ScalaJSDefinedAnnotation)
   }
 
   private def wasPublicBeforeTyper(sym: Symbol): Boolean =
