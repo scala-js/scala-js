@@ -42,7 +42,7 @@ object Scalajsp {
         .action { (_, c) => c.copy(infos = true) }
         .text("Show DCE infos instead of trees")
       opt[Unit]('s', "supported")
-        .action { (_,_) => printSupported(); sys.exit() }
+        .action { (_,_) => printSupported(); exit(0) }
         .text("Show supported Scala.js IR versions")
       version("version")
         .abbr("v")
@@ -85,9 +85,14 @@ object Scalajsp {
     stdout.flush()
   }
 
-  private def fail(msg: String) = {
+  private def fail(msg: String): Nothing = {
     Console.err.println(msg)
-    sys.exit(1)
+    exit(1)
+  }
+
+  private def exit(code: Int): Nothing = {
+    System.exit(code)
+    throw new AssertionError("unreachable")
   }
 
   private def readFromFile(fileName: String) = {

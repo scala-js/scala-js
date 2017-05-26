@@ -165,8 +165,8 @@ class MainGenericRunner {
 }
 
 object MainGenericRunner extends MainGenericRunner {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     if (!process(args))
-      sys.exit(1)
+      System.exit(1)
   }
 }
