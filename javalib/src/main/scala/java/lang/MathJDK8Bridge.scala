@@ -21,54 +21,54 @@
 package java.lang
 
 private[java] object MathJDK8Bridge {
-  def addExact(a: scala.Int, b: scala.Int): scala.Int = sys.error("stub")
+  def addExact(a: scala.Int, b: scala.Int): scala.Int = stub()
 
-  def addExact(a: scala.Long, b: scala.Long): scala.Long = sys.error("stub")
+  def addExact(a: scala.Long, b: scala.Long): scala.Long = stub()
 
-  def subtractExact(a: scala.Int, b: scala.Int): scala.Int = sys.error("stub")
+  def subtractExact(a: scala.Int, b: scala.Int): scala.Int = stub()
 
-  def subtractExact(a: scala.Long, b: scala.Long): scala.Long =
-    sys.error("stub")
+  def subtractExact(a: scala.Long, b: scala.Long): scala.Long = stub()
 
-  def multiplyExact(a: scala.Int, b: scala.Int): scala.Int = sys.error("stub")
+  def multiplyExact(a: scala.Int, b: scala.Int): scala.Int = stub()
 
-  def multiplyExact(a: scala.Long, b: scala.Long): scala.Long =
-    sys.error("stub")
+  def multiplyExact(a: scala.Long, b: scala.Long): scala.Long = stub()
 
-  def incrementExact(a: scala.Int): scala.Int = sys.error("stub")
+  def incrementExact(a: scala.Int): scala.Int = stub()
 
-  def incrementExact(a: scala.Long): scala.Long = sys.error("stub")
+  def incrementExact(a: scala.Long): scala.Long = stub()
 
-  def decrementExact(a: scala.Int): scala.Int = sys.error("stub")
+  def decrementExact(a: scala.Int): scala.Int = stub()
 
-  def decrementExact(a: scala.Long): scala.Long = sys.error("stub")
+  def decrementExact(a: scala.Long): scala.Long = stub()
 
-  def negateExact(a: scala.Int): scala.Int = sys.error("stub")
+  def negateExact(a: scala.Int): scala.Int = stub()
 
-  def negateExact(a: scala.Long): scala.Long = sys.error("stub")
+  def negateExact(a: scala.Long): scala.Long = stub()
 
-  def toIntExact(a: scala.Long): scala.Int = sys.error("stub")
+  def toIntExact(a: scala.Long): scala.Int = stub()
 
-  def floorDiv(a: scala.Int, b: scala.Int): scala.Int = sys.error("stub")
+  def floorDiv(a: scala.Int, b: scala.Int): scala.Int = stub()
 
-  def floorDiv(a: scala.Long, b: scala.Long): scala.Long = sys.error("stub")
+  def floorDiv(a: scala.Long, b: scala.Long): scala.Long = stub()
 
-  def floorMod(a: scala.Int, b: scala.Int): scala.Int = sys.error("stub")
+  def floorMod(a: scala.Int, b: scala.Int): scala.Int = stub()
 
-  def floorMod(a: scala.Long, b: scala.Long): scala.Long = sys.error("stub")
+  def floorMod(a: scala.Long, b: scala.Long): scala.Long = stub()
 
   // A few other Math-related methods that are not really in Math
 
-  def toUnsignedString(i: scala.Int): String = sys.error("stub")
+  def toUnsignedString(i: scala.Int): String = stub()
 
-  def toUnsignedString(i: scala.Long): String = sys.error("stub")
+  def toUnsignedString(i: scala.Long): String = stub()
 
-  def divideUnsigned(a: scala.Int, b: scala.Int): scala.Int = sys.error("stub")
+  def divideUnsigned(a: scala.Int, b: scala.Int): scala.Int = stub()
 
-  def divideUnsigned(a: scala.Long, b: scala.Long): scala.Long = sys.error("stub")
+  def divideUnsigned(a: scala.Long, b: scala.Long): scala.Long = stub()
 
-  def remainderUnsigned(a: scala.Int, b: scala.Int): scala.Int = sys.error("stub")
+  def remainderUnsigned(a: scala.Int, b: scala.Int): scala.Int = stub()
 
-  def remainderUnsigned(a: scala.Long, b: scala.Long): scala.Long = sys.error("stub")
+  def remainderUnsigned(a: scala.Long, b: scala.Long): scala.Long = stub()
 
+  private def stub(): Nothing =
+    throw new Error("stub")
 }

@@ -298,7 +298,8 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
         classExports += e
 
       case tree =>
-        sys.error(s"Illegal tree in ClassDef of class ${tree.getClass}")
+        throw new IllegalArgumentException(
+            s"Illegal tree in ClassDef of class ${tree.getClass}")
     }
 
     // Synthetic members

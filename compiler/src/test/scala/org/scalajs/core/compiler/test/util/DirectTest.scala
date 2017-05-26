@@ -47,7 +47,8 @@ abstract class DirectTest {
 
       override lazy val plugins = {
         val scalaJSPlugin = newScalaJSPlugin(global)
-        scalaJSPlugin.processOptions(scalaJSPlugin.options, sys.error(_))
+        scalaJSPlugin.processOptions(scalaJSPlugin.options,
+            msg => throw new IllegalArgumentException(msg))
         scalaJSPlugin :: Nil
       }
     }

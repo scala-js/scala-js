@@ -200,7 +200,8 @@ object Transformers {
           tree
 
         case _ =>
-          sys.error(s"Invalid tree in transform() of class ${tree.getClass}")
+          throw new IllegalArgumentException(
+              s"Invalid tree in transform() of class ${tree.getClass}")
       }
     }
   }
@@ -245,7 +246,8 @@ object Transformers {
               transformDef(methodDef).asInstanceOf[MethodDef])
 
         case _ =>
-          sys.error(s"Invalid tree in transformDef() of class ${tree.getClass}")
+          throw new IllegalArgumentException(
+              s"Invalid tree in transformDef() of class ${tree.getClass}")
       }
     }
   }

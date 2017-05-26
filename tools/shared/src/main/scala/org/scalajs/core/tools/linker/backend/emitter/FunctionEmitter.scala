@@ -448,7 +448,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           pushLhsInto(Lhs.Assign(lhs), rhs, tailPosLabels)
 
         case Assign(_, _) =>
-          sys.error(s"Illegal Assign in transformStat: $tree")
+          throw new IllegalArgumentException(
+              s"Illegal Assign in transformStat: $tree")
 
         case StoreModule(cls, value) =>
           unnest(value) { (newValue, env0) =>
@@ -516,7 +517,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             implicit val env = env0
 
             val enclosingClassName = env.enclosingClassName.getOrElse {
-              sys.error("Need enclosing class for super constructor call.")
+              throw new AssertionError(
+                  "Need enclosing class for super constructor call.")
             }
 
             val superCtorCall = {
@@ -1624,14 +1626,16 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   _:StoreModule | _:ClassDef =>
                 transformStat(rhs, tailPosLabels)
               case _ =>
-                sys.error("Illegal tree in JSDesugar.pushLhsInto():\n" +
-                    "lhs = " + lhs + "\n" + "rhs = " + rhs +
-                    " of class " + rhs.getClass)
+                throw new IllegalArgumentException(
+                    "Illegal tree in JSDesugar.pushLhsInto():\n" +
+                    "lhs = " + lhs + "\n" +
+                    "rhs = " + rhs + " of class " + rhs.getClass)
             }
           } else {
-            sys.error("Illegal tree in JSDesugar.pushLhsInto():\n" +
-                "lhs = " + lhs + "\n" + "rhs = " + rhs +
-                " of class " + rhs.getClass)
+            throw new IllegalArgumentException(
+                "Illegal tree in JSDesugar.pushLhsInto():\n" +
+                "lhs = " + lhs + "\n" +
+                "rhs = " + rhs + " of class " + rhs.getClass)
           }
       })
     }
@@ -2143,8 +2147,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // Invalid trees
 
         case _ =>
-          sys.error("Invalid tree in JSDesugar.transformExpr() "+
-              s"of class ${tree.getClass}")
+          throw new IllegalArgumentException(
+              "Invalid tree in JSDesugar.transformExpr() of class " +
+              tree.getClass)
       }
     }
 

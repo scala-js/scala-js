@@ -211,7 +211,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       optDef.getOrElse {
-        sys.error("Couldn't find tree for lazily generated anonymous class " +
+        abort("Couldn't find tree for lazily generated anonymous class " +
             s"${sym.fullName} at ${sym.pos}")
       }
     }
@@ -635,7 +635,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           classMembers += property
 
         case tree =>
-          sys.error("Unexpected tree: " + tree)
+          abort("Unexpected tree: " + tree)
       }
 
       // Make new class def with static members only
@@ -706,7 +706,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               List(selfRef, name, descriptor))
 
         case tree =>
-          sys.error("Unexpected tree: " + tree)
+          abort("Unexpected tree: " + tree)
       }
 
       // Transform the constructor body.
@@ -718,7 +718,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val newTree = {
               val ident =
-                origJsClass.superClass.getOrElse(sys.error("No superclass"))
+                origJsClass.superClass.getOrElse(abort("No superclass"))
               if (args.isEmpty && ident.name == "sjs_js_Object") {
                 js.JSObjectConstr(Nil)
               } else {
@@ -1869,7 +1869,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.VarRef(encodeLocalSym(sym))(toIRType(sym.tpe))
             }
           } else {
-            sys.error("Cannot use package as value: " + tree)
+            abort("Cannot use package as value: " + tree)
           }
 
         case Literal(value) =>

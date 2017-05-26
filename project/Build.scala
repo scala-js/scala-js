@@ -242,8 +242,10 @@ object Build {
           }
         } (docPaths.keySet + additionalStylesFile)
 
-        if (errorsSeen.size > 0) sys.error("ScalaDoc patching had errors")
-        else outDir
+        if (errorsSeen.size > 0)
+          throw new MessageOnlyException("ScalaDoc patching had errors")
+
+        outDir
       }
   )
 
@@ -628,7 +630,7 @@ object Build {
         test := {
           val jsEnv = resolvedJSEnv.value
           if (!jsEnv.isInstanceOf[NodeJSEnv])
-            sys.error("toolsJS/test must be run with Node.js")
+            throw new MessageOnlyException("toolsJS/test must be run with Node.js")
 
           /* Collect IR relevant files from the classpath
            * We assume here that the classpath is valid. This is checked by the
@@ -906,7 +908,8 @@ object Build {
                 configuration = Set("compile"),
                 module = moduleFilter(name = "scala-library"),
                 artifact = artifactFilter(classifier = "sources")).headOption.getOrElse {
-              sys.error(s"Could not fetch scala-library sources for version $ver")
+              throw new Exception(
+                  s"Could not fetch scala-library sources for version $ver")
             }
 
             FileFunction.cached(cacheDir / s"fetchScalaSource-$ver",
@@ -1279,7 +1282,8 @@ object Build {
             val baseArgs = Seq("nodejs", "typedarray")
             if (env.sourceMap) {
               if (!env.hasSourceMapSupport) {
-                sys.error("You must install Node.js source map support to " +
+                throw new MessageOnlyException(
+                    "You must install Node.js source map support to " +
                     "run the full Scala.js test suite (npm install " +
                     "source-map-support). To deactivate source map " +
                     "tests, do: set jsEnv in " + thisProject.value.id +
@@ -1430,7 +1434,8 @@ object Build {
       // Fail if we are not in the right stage.
       testHtmlKey in Test := (testHtmlKey in Test).dependsOn(Def.task {
         if (scalaJSStage.value != targetStage) {
-          sys.error("In the Scala.js test-suite, the testHtml* tasks need " +
+          throw new MessageOnlyException(
+              "In the Scala.js test-suite, the testHtml* tasks need " +
               "scalaJSStage to be set to their respecitve stage. Stage is: " +
               scalaJSStage.value)
         }
@@ -1511,7 +1516,7 @@ object Build {
           val unitTests =
             (0 until i).map(i => s"@Test def workTest$i(): Unit = test($i)").mkString("; ")
           IO.write(outFile,
-              replaced.replace("@Test def workTest(): Unit = sys.error(\"stubs\")", unitTests))
+              replaced.replace("@Test def workTest(): Unit = ???", unitTests))
           Seq(outFile)
         }.taskValue,
 

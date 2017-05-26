@@ -13,7 +13,7 @@ class BoxedUnit private () extends AnyRef with java.io.Serializable {
 }
 
 object BoxedUnit {
-  def UNIT: BoxedUnit = sys.error("stub")
+  def UNIT: BoxedUnit = throw new Error("stub")
 
   final val TYPE = classOf[Unit]
 }

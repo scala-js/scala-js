@@ -223,7 +223,8 @@ object Traversers {
           _:TopLevelFieldExportDef =>
 
       case _ =>
-        sys.error(s"Invalid tree in traverse() of class ${tree.getClass}")
+        throw new IllegalArgumentException(
+            s"Invalid tree in traverse() of class ${tree.getClass}")
     }
   }
 

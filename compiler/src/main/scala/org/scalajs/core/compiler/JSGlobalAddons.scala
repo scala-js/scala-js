@@ -124,9 +124,12 @@ trait JSGlobalAddons extends JSDefinitions
         } else None
       }
 
-      dropPrefix(methodExportPrefix).map((_,false)) orElse
-      dropPrefix(propExportPrefix).map((_,true)) getOrElse
-      sys.error("non-exported name passed to jsInfoSpec")
+      dropPrefix(methodExportPrefix).map((_,false)).orElse {
+        dropPrefix(propExportPrefix).map((_,true))
+      }.getOrElse {
+        throw new IllegalArgumentException(
+            "non-exported name passed to jsExportInfo")
+      }
     }
 
     def isJSProperty(sym: Symbol): Boolean = isJSGetter(sym) || isJSSetter(sym)
