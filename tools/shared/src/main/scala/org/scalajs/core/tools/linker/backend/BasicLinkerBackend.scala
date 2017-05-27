@@ -25,10 +25,8 @@ final class BasicLinkerBackend(
     semantics: Semantics,
     outputMode: OutputMode,
     moduleKind: ModuleKind,
-    withSourceMap: Boolean,
     config: LinkerBackend.Config
-) extends LinkerBackend(semantics, outputMode.esLevel, moduleKind,
-    withSourceMap, config) {
+) extends LinkerBackend(semantics, outputMode.esLevel, moduleKind, config) {
 
   private[this] val emitter =
     new Emitter(semantics, outputMode, moduleKind)
@@ -58,7 +56,7 @@ final class BasicLinkerBackend(
   }
 
   private def newBuilder(output: WritableVirtualJSFile): JSFileBuilder = {
-    if (withSourceMap) {
+    if (config.sourceMap) {
       new JSFileBuilderWithSourceMap(output.name, output.contentWriter,
           output.sourceMapWriter, config.relativizeSourceMapBase)
     } else {

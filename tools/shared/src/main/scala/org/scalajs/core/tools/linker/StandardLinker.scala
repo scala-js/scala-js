@@ -23,11 +23,11 @@ object StandardLinker {
       .withCheckIR(config.checkIR)
 
     val backendConfig = LinkerBackend.Config()
+      .withSourceMap(config.sourceMap)
       .withRelativizeSourceMapBase(config.relativizeSourceMapBase)
       .withPrettyPrint(config.prettyPrint)
 
     val oldAPIConfig = Linker.Config()
-      .withSourceMap(config.sourceMap)
       .withOptimizer(config.optimizer)
       .withParallel(config.parallel)
       .withClosureCompilerIfAvailable(config.closureCompilerIfAvailable)

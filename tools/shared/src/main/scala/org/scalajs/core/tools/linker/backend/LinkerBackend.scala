@@ -29,7 +29,6 @@ abstract class LinkerBackend(
     val semantics: Semantics,
     val esLevel: ESLevel,
     val moduleKind: ModuleKind,
-    val withSourceMap: Boolean,
     protected val config: LinkerBackend.Config) {
 
   /** Symbols this backend needs to be present in the linking unit. */
@@ -61,11 +60,16 @@ abstract class LinkerBackend(
 object LinkerBackend {
   /** Configurations relevant to the backend */
   final class Config private (
+      /** Whether to emit a source map. */
+      val sourceMap: Boolean = true,
       /** Base path to relativize paths in the source map. */
       val relativizeSourceMapBase: Option[URI] = None,
       /** Pretty-print the output. */
       val prettyPrint: Boolean = false
   ) {
+    def withSourceMap(sourceMap: Boolean): Config =
+      copy(sourceMap = sourceMap)
+
     def withRelativizeSourceMapBase(relativizeSourceMapBase: Option[URI]): Config =
       copy(relativizeSourceMapBase = relativizeSourceMapBase)
 
@@ -73,9 +77,10 @@ object LinkerBackend {
       copy(prettyPrint = prettyPrint)
 
     private def copy(
+        sourceMap: Boolean = sourceMap,
         relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
         prettyPrint: Boolean = prettyPrint): Config = {
-      new Config(relativizeSourceMapBase, prettyPrint)
+      new Config(sourceMap, relativizeSourceMapBase, prettyPrint)
     }
   }
 
