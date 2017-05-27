@@ -79,17 +79,17 @@ final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
 object Linker extends LinkerPlatformExtensions {
   /** Configuration to be passed to the `apply()` method. */
   final class Config private (
-      /** Whether to use the Scala.js optimizer. */
-      val optimizer: Boolean,
-      /** Whether things that can be parallelized should be parallelized.
-       *  On the JavaScript platform, this does not have any effect.
-       */
-      val parallel: Boolean,
       /** Additional configuration for the linker frontend. */
       val frontendConfig: LinkerFrontend.Config,
       /** Additional configuration for the linker backend. */
       val backendConfig: LinkerBackend.Config
   ) {
+    @deprecated("Use config.frontendConfig.optimizer.", "0.6.17")
+    val optimizer: Boolean = frontendConfig.optimizer
+
+    @deprecated("Use config.frontendConfig.parallel.", "0.6.17")
+    val parallel: Boolean = frontendConfig.parallel
+
     @deprecated("Use config.backendConfig.sourceMap.", "0.6.17")
     val sourceMap: Boolean = backendConfig.sourceMap
 
@@ -102,11 +102,15 @@ object Linker extends LinkerPlatformExtensions {
     def withSourceMap(sourceMap: Boolean): Config =
       withBackendConfig(_.withSourceMap(sourceMap))
 
+    @deprecated("Use config.withFrontendConfig(_.withOptimizer(optimizer)).",
+        "0.6.17")
     def withOptimizer(optimizer: Boolean): Config =
-      copy(optimizer = optimizer)
+      withFrontendConfig(_.withOptimizer(optimizer))
 
+    @deprecated("Use config.withFrontendConfig(_.withParallel(parallel)).",
+        "0.6.17")
     def withParallel(parallel: Boolean): Config =
-      copy(parallel = parallel)
+      withFrontendConfig(_.withParallel(parallel))
 
     @deprecated(
         "Use config.withBackendConfig(_.withClosureCompilerIfAvailable(...)).",
@@ -127,13 +131,9 @@ object Linker extends LinkerPlatformExtensions {
       copy(backendConfig = f(backendConfig))
 
     private def copy(
-        optimizer: Boolean = optimizer,
-        parallel: Boolean = parallel,
         frontendConfig: LinkerFrontend.Config = frontendConfig,
         backendConfig: LinkerBackend.Config = backendConfig): Config = {
       new Config(
-          optimizer = optimizer,
-          parallel = parallel,
           frontendConfig = frontendConfig,
           backendConfig = backendConfig)
     }
@@ -147,8 +147,6 @@ object Linker extends LinkerPlatformExtensions {
 
     /** Default configuration.
      *
-     *  - `optimizer`: true
-     *  - `parallel`: true
      *  - `frontendConfig`: default frontend configuration as returned by
      *    [[org.scalajs.core.tools.linker.frontend.LinkerFrontend.Config.apply]]
      *  - `backendConfig`: default backend configuration as returned by
@@ -156,8 +154,6 @@ object Linker extends LinkerPlatformExtensions {
      */
     def apply(): Config = {
       new Config(
-          optimizer = true,
-          parallel = true,
           frontendConfig = LinkerFrontend.Config(),
           backendConfig = LinkerBackend.Config())
     }

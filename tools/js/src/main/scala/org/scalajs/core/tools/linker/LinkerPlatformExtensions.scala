@@ -19,13 +19,8 @@ trait LinkerPlatformExtensions { this: Linker.type =>
   def apply(semantics: Semantics, outputMode: OutputMode,
       moduleKind: ModuleKind, config: Config): Linker = {
 
-    val optOptimizerFactory = {
-      if (!config.optimizer) None
-      else Some(IncOptimizer.factory)
-    }
-
-    val frontend = new LinkerFrontend(semantics, outputMode.esLevel,
-        config.frontendConfig, optOptimizerFactory)
+    val frontend = LinkerFrontend(semantics, outputMode.esLevel,
+        config.frontendConfig)
 
     val backend = LinkerBackend(semantics, outputMode, moduleKind,
         config.backendConfig)

@@ -191,6 +191,8 @@ object Scalajsld {
       val frontendConfig = LinkerFrontend.Config()
         .withBypassLinkingErrorsInternal(options.bypassLinkingErrors)
         .withCheckIR(options.checkIR)
+        .withOptimizer(!options.noOpt)
+        .withParallel(true)
 
       val backendConfig = LinkerBackend.Config()
         .withSourceMap(options.sourceMap)
@@ -199,8 +201,6 @@ object Scalajsld {
         .withPrettyPrint(options.prettyPrint)
 
       val config = Linker.Config()
-        .withOptimizer(!options.noOpt)
-        .withParallel(true)
         .withFrontendConfig(frontendConfig)
         .withBackendConfig(backendConfig)
 

@@ -27,7 +27,7 @@ import org.scalajs.core.tools.linker.frontend.optimizer.{GenIncOptimizer, IncOpt
  *  Attention: [[LinkerFrontend]] does not cache the IR input. It is advisable to do
  *  so, unless all IR is already in memory.
  */
-final class LinkerFrontend(
+final class LinkerFrontend private[frontend] (
     val semantics: Semantics,
     val esLevel: ESLevel,
     config: LinkerFrontend.Config,
@@ -35,7 +35,7 @@ final class LinkerFrontend(
 
   @deprecated(
       "The withSourceMap parameter is ignored. " +
-      "Use the overload without it.",
+      "Use LinkerFrontend.apply().",
       "0.6.17")
   def this(semantics: Semantics, esLevel: ESLevel, withSourceMap: Boolean,
       config: LinkerFrontend.Config,
@@ -97,13 +97,19 @@ final class LinkerFrontend(
   }
 }
 
-object LinkerFrontend {
+object LinkerFrontend extends LinkerFrontendPlatformExtensions {
   /** Configurations relevant to the frontend */
   final class Config private (
       /** Whether to only warn if the linker has errors. */
       val bypassLinkingErrors: Boolean = false,
       /** If true, performs expensive checks of the IR for the used parts. */
-      val checkIR: Boolean = false
+      val checkIR: Boolean = false,
+      /** Whether to use the Scala.js optimizer. */
+      val optimizer: Boolean = true,
+      /** Whether things that can be parallelized should be parallelized.
+       *  On the JavaScript platform, this does not have any effect.
+       */
+      val parallel: Boolean = true
   ) {
     @deprecated(
         "Bypassing linking errors will not be possible in the next major version.",
@@ -120,10 +126,18 @@ object LinkerFrontend {
     def withCheckIR(checkIR: Boolean): Config =
       copy(checkIR = checkIR)
 
+    def withOptimizer(optimizer: Boolean): Config =
+      copy(optimizer = optimizer)
+
+    def withParallel(parallel: Boolean): Config =
+      copy(parallel = parallel)
+
     private def copy(
         bypassLinkingErrors: Boolean = bypassLinkingErrors,
-        checkIR: Boolean = checkIR): Config = {
-      new Config(bypassLinkingErrors, checkIR)
+        checkIR: Boolean = checkIR,
+        optimizer: Boolean = optimizer,
+        parallel: Boolean = parallel): Config = {
+      new Config(bypassLinkingErrors, checkIR, optimizer, parallel)
     }
   }
 

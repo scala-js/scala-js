@@ -12,6 +12,10 @@ object BinaryIncompatibilities {
 
       // private, not an issue
       ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.frontend.LinkerFrontend#Config.this"),
+
+      // private, not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.LinkerBackend#Config.this"),
 
       // private[optimizer], not an issue

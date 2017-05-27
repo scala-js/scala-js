@@ -189,6 +189,8 @@ object ScalaJSPluginInternal {
         val frontendConfig = LinkerFrontend.Config()
           .withBypassLinkingErrorsInternal(opts.bypassLinkingErrors)
           .withCheckIR(opts.checkScalaJSIR)
+          .withOptimizer(!opts.disableOptimizer)
+          .withParallel(opts.parallel)
 
         val backendConfig = LinkerBackend.Config()
           .withSourceMap(withSourceMap)
@@ -198,8 +200,6 @@ object ScalaJSPluginInternal {
           .withPrettyPrint(opts.prettyPrintFullOptJS)
 
         val config = Linker.Config()
-          .withOptimizer(!opts.disableOptimizer)
-          .withParallel(opts.parallel)
           .withFrontendConfig(frontendConfig)
           .withBackendConfig(backendConfig)
 
