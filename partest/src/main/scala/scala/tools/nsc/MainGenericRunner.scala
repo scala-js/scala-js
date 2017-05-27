@@ -71,7 +71,7 @@ class MainGenericRunner {
 
     val linkerConfig = Linker.Config()
       .withBackendConfig(_.withSourceMap(false))
-      .withClosureCompiler(optMode == FullOpt)
+      .withBackendConfig(_.withClosureCompiler(optMode == FullOpt))
 
     val linker = Linker(semantics, OutputMode.ECMAScript51Isolated,
         ModuleKind.NoModule, linkerConfig)

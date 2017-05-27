@@ -194,12 +194,12 @@ object ScalaJSPluginInternal {
           .withSourceMap(withSourceMap)
           .withRelativizeSourceMapBase(relSourceMapBase)
           .withCustomOutputWrapperInternal(scalaJSOutputWrapperInternal.value)
+          .withClosureCompiler(opts.useClosureCompiler)
           .withPrettyPrint(opts.prettyPrintFullOptJS)
 
         val config = Linker.Config()
           .withOptimizer(!opts.disableOptimizer)
           .withParallel(opts.parallel)
-          .withClosureCompiler(opts.useClosureCompiler)
           .withFrontendConfig(frontendConfig)
           .withBackendConfig(backendConfig)
 

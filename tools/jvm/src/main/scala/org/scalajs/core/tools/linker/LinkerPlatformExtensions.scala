@@ -29,16 +29,8 @@ trait LinkerPlatformExtensions { this: Linker.type =>
     val frontend = new LinkerFrontend(semantics, outputMode.esLevel,
         config.frontendConfig, optOptimizerFactory)
 
-    val backend = {
-      if (config.closureCompiler) {
-        require(outputMode == OutputMode.ECMAScript51Isolated,
-            s"Cannot use output mode $outputMode with the Closure Compiler")
-        new ClosureLinkerBackend(semantics, moduleKind, config.backendConfig)
-      } else {
-        new BasicLinkerBackend(semantics, outputMode, moduleKind,
-            config.backendConfig)
-      }
-    }
+    val backend = LinkerBackend(semantics, outputMode, moduleKind,
+        config.backendConfig)
 
     new Linker(frontend, backend)
   }
@@ -71,9 +63,13 @@ object LinkerPlatformExtensions {
 
   final class ConfigExt(val config: Config) extends AnyVal {
     /** Whether to actually use the Google Closure Compiler pass. */
-    def closureCompiler: Boolean = config.closureCompilerIfAvailable
+    @deprecated("Use config.backendConfig.closureCompiler.", "0.6.17")
+    def closureCompiler: Boolean = config.backendConfig.closureCompiler
 
+    @deprecated(
+        "Use config.withBackendConfig(_.withClosureCompiler(...)).",
+        "0.6.17")
     def withClosureCompiler(closureCompiler: Boolean): Config =
-      config.withClosureCompilerIfAvailable(closureCompiler)
+      config.withBackendConfig(_.withClosureCompiler(closureCompiler))
   }
 }

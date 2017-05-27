@@ -195,12 +195,12 @@ object Scalajsld {
       val backendConfig = LinkerBackend.Config()
         .withSourceMap(options.sourceMap)
         .withRelativizeSourceMapBase(options.relativizeSourceMap)
+        .withClosureCompiler(options.fullOpt)
         .withPrettyPrint(options.prettyPrint)
 
       val config = Linker.Config()
         .withOptimizer(!options.noOpt)
         .withParallel(true)
-        .withClosureCompiler(options.fullOpt)
         .withFrontendConfig(frontendConfig)
         .withBackendConfig(backendConfig)
 

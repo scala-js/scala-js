@@ -9,6 +9,8 @@
 
 package org.scalajs.core.tools.linker.backend
 
+import scala.language.implicitConversions
+
 import java.net.URI
 
 import org.scalajs.core.tools.io.WritableVirtualJSFile
@@ -75,7 +77,7 @@ abstract class LinkerBackend(
   }
 }
 
-object LinkerBackend {
+object LinkerBackend extends LinkerBackendPlatformExtensions {
   /** Configurations relevant to the backend */
   final class Config private (
       /** Whether to emit a source map. */
@@ -84,6 +86,10 @@ object LinkerBackend {
       val relativizeSourceMapBase: Option[URI] = None,
       /** Custom js code that wraps the output */
       val customOutputWrapper: (String, String) = ("", ""),
+      /** Whether to use the Google Closure Compiler pass, if it is available.
+       *  On the JavaScript platform, this does not have any effect.
+       */
+      val closureCompilerIfAvailable: Boolean = false,
       /** Pretty-print the output. */
       val prettyPrint: Boolean = false
   ) {
@@ -107,6 +113,9 @@ object LinkerBackend {
       copy(customOutputWrapper = customOutputWrapper)
     }
 
+    def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): Config =
+      copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
+
     def withPrettyPrint(prettyPrint: Boolean): Config =
       copy(prettyPrint = prettyPrint)
 
@@ -114,13 +123,19 @@ object LinkerBackend {
         sourceMap: Boolean = sourceMap,
         relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
         customOutputWrapper: (String, String) = customOutputWrapper,
+        closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         prettyPrint: Boolean = prettyPrint): Config = {
       new Config(sourceMap, relativizeSourceMapBase, customOutputWrapper,
-          prettyPrint)
+          closureCompilerIfAvailable, prettyPrint)
     }
   }
 
   object Config {
+    import LinkerBackendPlatformExtensions._
+
+    implicit def toPlatformExtensions(config: Config): ConfigExt =
+      new ConfigExt(config)
+
     def apply(): Config = new Config()
   }
 }

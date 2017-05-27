@@ -85,10 +85,6 @@ object Linker extends LinkerPlatformExtensions {
        *  On the JavaScript platform, this does not have any effect.
        */
       val parallel: Boolean,
-      /** Whether to use the Google Closure Compiler pass, if it is available.
-       *  On the JavaScript platform, this does not have any effect.
-       */
-      val closureCompilerIfAvailable: Boolean,
       /** Additional configuration for the linker frontend. */
       val frontendConfig: LinkerFrontend.Config,
       /** Additional configuration for the linker backend. */
@@ -96,6 +92,10 @@ object Linker extends LinkerPlatformExtensions {
   ) {
     @deprecated("Use config.backendConfig.sourceMap.", "0.6.17")
     val sourceMap: Boolean = backendConfig.sourceMap
+
+    @deprecated("Use config.backendConfig.closureCompilerIfAvailable.",
+        "0.6.17")
+    val closureCompilerIfAvailable = backendConfig.closureCompilerIfAvailable
 
     @deprecated("Use config.withBackendConfig(_.withSourceMap(sourceMap)).",
         "0.6.17")
@@ -108,8 +108,11 @@ object Linker extends LinkerPlatformExtensions {
     def withParallel(parallel: Boolean): Config =
       copy(parallel = parallel)
 
+    @deprecated(
+        "Use config.withBackendConfig(_.withClosureCompilerIfAvailable(...)).",
+        "0.6.17")
     def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): Config =
-      copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
+      withBackendConfig(_.withClosureCompilerIfAvailable(closureCompilerIfAvailable))
 
     def withFrontendConfig(frontendConfig: LinkerFrontend.Config): Config =
       copy(frontendConfig = frontendConfig)
@@ -126,13 +129,11 @@ object Linker extends LinkerPlatformExtensions {
     private def copy(
         optimizer: Boolean = optimizer,
         parallel: Boolean = parallel,
-        closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         frontendConfig: LinkerFrontend.Config = frontendConfig,
         backendConfig: LinkerBackend.Config = backendConfig): Config = {
       new Config(
           optimizer = optimizer,
           parallel = parallel,
-          closureCompilerIfAvailable = closureCompilerIfAvailable,
           frontendConfig = frontendConfig,
           backendConfig = backendConfig)
     }
@@ -148,7 +149,6 @@ object Linker extends LinkerPlatformExtensions {
      *
      *  - `optimizer`: true
      *  - `parallel`: true
-     *  - `closureCompilerIfAvailable`: false
      *  - `frontendConfig`: default frontend configuration as returned by
      *    [[org.scalajs.core.tools.linker.frontend.LinkerFrontend.Config.apply]]
      *  - `backendConfig`: default backend configuration as returned by
@@ -158,7 +158,6 @@ object Linker extends LinkerPlatformExtensions {
       new Config(
           optimizer = true,
           parallel = true,
-          closureCompilerIfAvailable = false,
           frontendConfig = LinkerFrontend.Config(),
           backendConfig = LinkerBackend.Config())
     }

@@ -27,7 +27,7 @@ trait LinkerPlatformExtensions { this: Linker.type =>
     val frontend = new LinkerFrontend(semantics, outputMode.esLevel,
         config.frontendConfig, optOptimizerFactory)
 
-    val backend = new BasicLinkerBackend(semantics, outputMode, moduleKind,
+    val backend = LinkerBackend(semantics, outputMode, moduleKind,
         config.backendConfig)
 
     new Linker(frontend, backend)
@@ -61,6 +61,7 @@ object LinkerPlatformExtensions {
      *  On the JavaScript platform, this always returns `false`, as GCC is not
      *  available.
      */
+    @deprecated("Use config.backendConfig.closureCompiler.", "0.6.17")
     def closureCompiler: Boolean = false
   }
 }
