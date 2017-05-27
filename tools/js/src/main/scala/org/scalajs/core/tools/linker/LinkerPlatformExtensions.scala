@@ -16,6 +16,8 @@ import org.scalajs.core.tools.linker.frontend.optimizer.IncOptimizer
 import org.scalajs.core.tools.linker.backend._
 
 trait LinkerPlatformExtensions { this: Linker.type =>
+  @deprecated("Use the overload with frontendConfig and backendConfig.",
+      "0.6.17")
   def apply(semantics: Semantics, outputMode: OutputMode,
       moduleKind: ModuleKind, config: Config): Linker = {
 
@@ -50,6 +52,7 @@ trait LinkerPlatformExtensions { this: Linker.type =>
 object LinkerPlatformExtensions {
   import Linker.Config
 
+  @deprecated("Use LinkerFrontend.Config and LinkerBackend.Config.", "0.6.17")
   final class ConfigExt(val config: Config) extends AnyVal {
     /** Whether to actually use the Google Closure Compiler pass.
      *

@@ -199,12 +199,9 @@ object ScalaJSPluginInternal {
           .withClosureCompiler(opts.useClosureCompiler)
           .withPrettyPrint(opts.prettyPrintFullOptJS)
 
-        val config = Linker.Config()
-          .withFrontendConfig(frontendConfig)
-          .withBackendConfig(backendConfig)
-
         val newLinker = { () =>
-          Linker(semantics, outputMode, moduleKind, config)
+          Linker(semantics, outputMode, moduleKind, frontendConfig,
+              backendConfig)
         }
 
         new ClearableLinker(newLinker, opts.batchMode)

@@ -200,12 +200,8 @@ object Scalajsld {
         .withClosureCompiler(options.fullOpt)
         .withPrettyPrint(options.prettyPrint)
 
-      val config = Linker.Config()
-        .withFrontendConfig(frontendConfig)
-        .withBackendConfig(backendConfig)
-
       val linker = Linker(semantics, options.outputMode, options.moduleKind,
-          config)
+          frontendConfig, backendConfig)
 
       val logger = new ScalaConsoleLogger(options.logLevel)
       val outFile = WritableFileVirtualJSFile(options.output)

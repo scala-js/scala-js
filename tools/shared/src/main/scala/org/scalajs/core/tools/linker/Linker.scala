@@ -21,7 +21,7 @@ import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.frontend.optimizer.IncOptimizer
-import org.scalajs.core.tools.linker.backend.{LinkerBackend, BasicLinkerBackend}
+import org.scalajs.core.tools.linker.backend._
 
 /** The Scala.js linker */
 final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
@@ -77,7 +77,19 @@ final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
 }
 
 object Linker extends LinkerPlatformExtensions {
+  def apply(semantics: Semantics, outputMode: OutputMode,
+      moduleKind: ModuleKind, frontendConfig: LinkerFrontend.Config,
+      backendConfig: LinkerBackend.Config): Linker = {
+
+    val frontend = LinkerFrontend(semantics, outputMode.esLevel,
+        frontendConfig)
+    val backend = LinkerBackend(semantics, outputMode, moduleKind,
+        backendConfig)
+    new Linker(frontend, backend)
+  }
+
   /** Configuration to be passed to the `apply()` method. */
+  @deprecated("Use LinkerFrontend.Config and LinkerBackend.Config.", "0.6.17")
   final class Config private (
       /** Additional configuration for the linker frontend. */
       val frontendConfig: LinkerFrontend.Config,
@@ -139,6 +151,7 @@ object Linker extends LinkerPlatformExtensions {
     }
   }
 
+  @deprecated("Use LinkerFrontend.Config and LinkerBackend.Config.", "0.6.17")
   object Config {
     import LinkerPlatformExtensions._
 
