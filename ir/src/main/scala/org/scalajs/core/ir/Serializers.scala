@@ -699,7 +699,7 @@ object Serializers {
       import input._
       val result = (tag: @switch) match {
         case TagEmptyTree =>
-          sys.error("Found invalid TagEmptyTree")
+          throw new IOException("Found invalid TagEmptyTree")
 
         case TagVarDef   => VarDef(readIdent(), readType(), readBoolean(), readTree())
         case TagParamDef =>
@@ -716,9 +716,8 @@ object Serializers {
         case TagDoWhile  => DoWhile(readTree(), readTree(), readOptIdent())
 
         case TagTry =>
-          if (!useHacks068) {
-            sys.error("Invalid tag TagTry")
-          }
+          if (!useHacks068)
+            throw new IOException("Invalid tag TagTry")
 
           val block = readTree()
           val errVar = readIdent()

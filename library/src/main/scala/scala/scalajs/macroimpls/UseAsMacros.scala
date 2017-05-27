@@ -95,7 +95,8 @@ private[scalajs] object UseAsMacros {
                 "likely caused by an abstract type in the method signature"
 
               case _ =>
-                sys.error("Unknown type in unsupported member. " +
+                throw new NotImplementedError(
+                    "Unknown type in unsupported member. " +
                     "Report this as a bug.\n" +
                      s"Offending method: ${sym.fullName}\n" +
                      s"Offending type: ${showRaw(tpe)}")

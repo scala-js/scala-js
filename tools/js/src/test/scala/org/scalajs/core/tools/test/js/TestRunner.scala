@@ -37,7 +37,7 @@ object TestRunner {
     }
 
     if (eventHandler.hasFailed)
-      sys.error("Some tests have failed")
+      throw new AssertionError("Some tests have failed")
   }
 
   private class SimpleEventHandler extends EventHandler {

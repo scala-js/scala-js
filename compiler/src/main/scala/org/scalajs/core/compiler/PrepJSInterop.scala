@@ -1100,17 +1100,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
          * JS class/trait.
          */
       } else if (jsPrimitives.isJavaScriptPrimitive(sym)) {
-        // Force rhs of a primitive to be `sys.error("stub")` except for the
-        // js.native primitive which displays an elaborate error message
-        if (sym != JSPackage_native) {
-          tree.rhs match {
-            case Apply(trg, Literal(Constant("stub")) :: Nil)
-                if trg.symbol == jsDefinitions.Sys_error =>
-            case _ =>
-              reporter.error(tree.pos,
-                  "The body of a primitive must be `sys.error(\"stub\")`.")
-          }
-        }
+        // No check for primitives. We trust our own standard library.
       } else if (sym.isConstructor) {
         // Force secondary ctor to have only a call to the primary ctor inside
         tree.rhs match {

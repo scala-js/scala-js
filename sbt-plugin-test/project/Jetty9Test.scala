@@ -55,7 +55,7 @@ object Jetty9Test {
           val msg = runner.receive()
           val expected = "It works!"
           if (msg != expected)
-            sys.error(s"""received "$msg" instead of "$expected"""")
+            throw new AssertionError(s"""received "$msg" instead of "$expected"""")
         } finally {
           runner.close()
           jetty.stop()

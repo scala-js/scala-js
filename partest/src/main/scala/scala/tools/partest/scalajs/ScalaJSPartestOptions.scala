@@ -35,10 +35,10 @@ object ScalaJSPartestOptions {
   }
   object OptMode {
     def fromId(id: String): OptMode = id match {
-      case "none"  => NoOpt
-      case "fast"  => FastOpt
-      case "full"  => FullOpt
-      case _       => sys.error(s"Unknown optimization mode: $id")
+      case "none" => NoOpt
+      case "fast" => FastOpt
+      case "full" => FullOpt
+      case _      => throw new IllegalArgumentException(s"Unknown optimization mode: $id")
     }
   }
   case object NoOpt extends OptMode {

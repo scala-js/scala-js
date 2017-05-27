@@ -440,8 +440,8 @@ object Hashers {
           mixTrees(captureValues)
 
         case _ =>
-          sys.error(s"Unable to hash tree of class ${tree.getClass}")
-
+          throw new IllegalArgumentException(
+              s"Unable to hash tree of class ${tree.getClass}")
       }
     }
 

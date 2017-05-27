@@ -11,7 +11,7 @@ package scala
 import scala.collection.generic._
 import scala.collection.{ mutable, immutable }
 import mutable.{ ArrayBuilder, ArraySeq }
-import scala.compat.Platform.arraycopy
+import java.lang.System.arraycopy
 import scala.reflect.ClassTag
 import scala.runtime.ScalaRunTime.{ array_apply, array_update }
 

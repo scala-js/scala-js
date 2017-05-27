@@ -73,7 +73,8 @@ package object runtime {
    *  The `clazz` parameter must be a literal `classOf[T]` constant such that
    *  `T` represents a class extending `js.Any` (not a trait nor an object).
    */
-  def constructorOf(clazz: Class[_ <: js.Any]): js.Dynamic = sys.error("stub")
+  def constructorOf(clazz: Class[_ <: js.Any]): js.Dynamic =
+    throw new Error("stub")
 
   /** Public access to `new ConstructorTag` for the codegen of
    *  `js.ConstructorTag.materialize`.
@@ -140,7 +141,7 @@ package object runtime {
    *
    *  See [[LinkingInfo]] for details.
    */
-  def linkingInfo: LinkingInfo = sys.error("stub")
+  def linkingInfo: LinkingInfo = throw new Error("stub")
 
   /** Polyfill for fround in case we use strict Floats and even Typed Arrays
    *  are not available.

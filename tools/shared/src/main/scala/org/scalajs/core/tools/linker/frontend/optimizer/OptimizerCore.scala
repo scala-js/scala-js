@@ -673,7 +673,8 @@ private[optimizer] abstract class OptimizerCore(
         tree
 
       case _ =>
-        sys.error(s"Invalid tree in transform of class ${tree.getClass.getName}: $tree")
+        throw new IllegalArgumentException(
+            s"Invalid tree in transform of class ${tree.getClass.getName}: $tree")
     }
 
     if (isStat) keepOnlySideEffects(result)
@@ -778,17 +779,23 @@ private[optimizer] abstract class OptimizerCore(
         pretransformBlock(tree)(cont)
 
       case VarRef(Ident(name, _)) =>
-        val localDef = scope.env.localDefs.getOrElse(name,
-            sys.error(s"Cannot find local def '$name' at $pos\n" +
-                s"While optimizing $myself\n" +
-                s"Env is ${scope.env}\nInlining ${scope.implsBeingInlined}"))
+        val localDef = scope.env.localDefs.getOrElse(name, {
+          throw new AssertionError(
+              s"Cannot find local def '$name' at $pos\n" +
+              s"While optimizing $myself\n" +
+              s"Env is ${scope.env}\n" +
+              s"Inlining ${scope.implsBeingInlined}")
+        })
         cont(localDef.toPreTransform)
 
       case This() =>
-        val localDef = scope.env.localDefs.getOrElse("this",
-            sys.error(s"Found invalid 'this' at $pos\n" +
-                s"While optimizing $myself\n" +
-                s"Env is ${scope.env}\nInlining ${scope.implsBeingInlined}"))
+        val localDef = scope.env.localDefs.getOrElse("this", {
+          throw new AssertionError(
+              s"Found invalid 'this' at $pos\n" +
+              s"While optimizing $myself\n" +
+              s"Env is ${scope.env}\n" +
+              s"Inlining ${scope.implsBeingInlined}")
+        })
         cont(localDef.toPreTransform)
 
       case tree: If =>
@@ -4159,7 +4166,7 @@ private[optimizer] abstract class OptimizerCore(
         }
       }
 
-      sys.error("Reached end of infinite loop")
+      throw new AssertionError("Reached end of infinite loop")
     } finally {
       curTrampolineId -= 1
     }

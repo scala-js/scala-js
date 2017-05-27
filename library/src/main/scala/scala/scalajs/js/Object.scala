@@ -57,7 +57,8 @@ object Object extends Object {
   /** Tests whether the object has a property on itself or in its prototype
    *  chain. This method is the equivalent of `p in o` in JavaScript.
    */
-  def hasProperty(o: Object, p: String): Boolean = sys.error("stub")
+  def hasProperty(o: Object, p: String): Boolean =
+    throw new java.lang.Error("stub")
 
   /**
    * The Object.getPrototypeOf() method returns the prototype (i.e. the
@@ -220,5 +221,5 @@ object Object extends Object {
    *  that the list returned by [[keys]] is a sublist of the list returned by
    *  this method (not just a subset).
    */
-  def properties(o: Any): Array[String] = sys.error("stub")
+  def properties(o: Any): Array[String] = throw new java.lang.Error("stub")
 }

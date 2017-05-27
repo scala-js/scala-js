@@ -238,7 +238,8 @@ final class RhinoJSEnv private (
         case e: RhinoException =>
           // Trace here, since we want to be in the context to trace.
           logger.trace(e)
-          sys.error(s"Exception while running JS code: ${e.getMessage}")
+          throw new Exception(
+              s"Exception while running JS code: ${e.getMessage}")
       }
     } finally {
       // Ensure the channel is closed to release JVM side
@@ -292,9 +293,9 @@ final class RhinoJSEnv private (
     val ordering = Ordering.by[TimedTask, Deadline](_.deadline).reverse
     val taskQ = mutable.PriorityQueue.empty(ordering)
 
-    def ensure[T: ClassTag](v: AnyRef, errMsg: String) = v match {
+    def ensure[T: ClassTag](v: AnyRef, errMsg: String): T = v match {
       case v: T => v
-      case _    => sys.error(errMsg)
+      case _    => throw new IllegalArgumentException(errMsg)
     }
 
     scope.addFunction("setTimeout", args => {
@@ -356,7 +357,8 @@ final class RhinoJSEnv private (
           msg => f.call(context, scope, scope, Array(msg))
         setCallback(cb)
       case _ =>
-        sys.error("First argument to init must be a function")
+        throw new IllegalArgumentException(
+            "First argument to init must be a function")
     })
 
     comObj.addFunction("close", _ => {

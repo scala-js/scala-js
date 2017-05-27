@@ -52,7 +52,7 @@ object QuickLinker {
         }
         IRContainer.File(vf)
       } else {
-        sys.error("Illegal IR file / Jar: " + file)
+        throw new IllegalArgumentException("Illegal IR file / Jar: " + file)
       }
     }
 

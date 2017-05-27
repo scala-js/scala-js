@@ -163,7 +163,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
         }
 
         if (importsFound) {
-          sys.error(
+          throw new LinkingException(
               "There were module imports without fallback to global " +
               "variables, but module support is disabled.\n" +
               "To enable module support, set scalaJSModuleKind := " +

@@ -89,7 +89,7 @@ class RetryingComJSEnvTest extends JSEnvTest with ComTests {
 
       private def fail() = {
         fails += 1
-        sys.error("Dummy fail for testing purposes")
+        throw new Exception("Dummy fail for testing purposes")
       }
     }
   }

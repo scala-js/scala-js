@@ -7,6 +7,7 @@ import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import java.io.{ Console => _, _ }
 import scala.io.Source
 
+import scala.collection.JavaConverters._
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
@@ -67,10 +68,11 @@ abstract class ExternalJSEnv(
 
     /** VM environment. Override to adapt.
      *
-     *  The default value in `ExternalJSEnv` is `sys.env ++ env`.
+     *  The default value in `ExternalJSEnv` is
+     *  `System.getenv().asScala.toMap ++ env`.
      */
     protected def getVMEnv(): Map[String, String] =
-      sys.env ++ env
+      System.getenv().asScala.toMap ++ env
 
     /** Get files that are a library (i.e. that do not run anything) */
     protected def getLibJSFiles(): Seq[VirtualJSFile] =

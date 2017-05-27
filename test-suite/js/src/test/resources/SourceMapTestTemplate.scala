@@ -40,14 +40,14 @@ object SourceMapTest {
 
 class SourceMapTest {
 
-  @Test def workTest(): Unit = sys.error("stubs")
+  @Test def workTest(): Unit = ???
 
   def test(i: Int): Unit = {
     TC.testNum = i
 
     try {
       run()
-      sys.error("No exception thrown")
+      throw new AssertionError("No exception thrown")
     } catch {
       case e @ TestException(lineNo) =>
         def normFileName(e: StackTraceElement): String =

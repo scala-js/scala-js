@@ -363,7 +363,8 @@ object ScalaJSPluginInternal {
           results += collectFile(file, relPath)
         }
       } else {
-        sys.error("Illegal classpath entry: " + cpEntry.getPath)
+        throw new IllegalArgumentException(
+            "Illegal classpath entry: " + cpEntry.getPath)
       }
     }
 
@@ -459,7 +460,9 @@ object ScalaJSPluginInternal {
               // Attach the name of the main class used, (ab?)using the name key
               Attributed(file)(AttributeMap.empty.put(name.key, mainCl))
             } getOrElse {
-              sys.error("Cannot write launcher file, since there is no or multiple mainClasses")
+              throw new MessageOnlyException(
+                  "Cannot write launcher file, since there is no or multiple " +
+                  "mainClasses")
             }
           }
         }
@@ -591,7 +594,7 @@ object ScalaJSPluginInternal {
       // Give tasks ability to check we are not forking at build reading time
       scalaJSEnsureUnforked := {
         if (fork.value)
-          sys.error("Scala.js cannot be run in a forked JVM")
+          throw new MessageOnlyException("Scala.js cannot be run in a forked JVM")
         else
           true
       },
@@ -616,7 +619,8 @@ object ScalaJSPluginInternal {
         javaOptions.value.map {
           case javaSysPropsPattern(propName, propValue) => (propName, propValue)
           case opt =>
-            sys.error("Scala.js javaOptions can only be \"-D<key>=<value>\"," +
+            throw new MessageOnlyException(
+                "Scala.js javaOptions can only be \"-D<key>=<value>\"," +
                 " but received: " + opt)
         }.toMap
       },
@@ -789,7 +793,7 @@ object ScalaJSPluginInternal {
         } else {
           Def.task {
             (mainClass in scalaJSLauncherInternal).value.fold {
-              sys.error("No main class detected.")
+              throw new MessageOnlyException("No main class detected.")
             } { mainClass =>
               val moduleKind = scalaJSModuleKind.value
               val moduleIdentifier = scalaJSModuleIdentifier.value
@@ -855,7 +859,8 @@ object ScalaJSPluginInternal {
           case jsEnv: ComJSEnv => jsEnv
 
           case jsEnv =>
-            sys.error(s"You need a ComJSEnv to test (found ${jsEnv.name})")
+            throw new MessageOnlyException(
+                s"You need a ComJSEnv to test (found ${jsEnv.name})")
         }
 
         val moduleKind = scalaJSModuleKind.value
