@@ -21,9 +21,15 @@ import org.scalajs.core.tools.javascript.ESLevel
 
 import ConcurrencyUtils._
 
-final class ParIncOptimizer(semantics: Semantics, esLevel: ESLevel,
-    considerPositions: Boolean)
-    extends GenIncOptimizer(semantics, esLevel, considerPositions) {
+final class ParIncOptimizer(semantics: Semantics, esLevel: ESLevel)
+    extends GenIncOptimizer(semantics, esLevel) {
+
+  @deprecated(
+      "The considerPositions parameter is ignored." +
+      "Use the overload without it.",
+      "0.6.17")
+  def this(semantics: Semantics, esLevel: ESLevel, considerPositions: Boolean) =
+    this(semantics, esLevel)
 
   private[optimizer] object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = TrieMap[K, V]
@@ -202,5 +208,6 @@ final class ParIncOptimizer(semantics: Semantics, esLevel: ESLevel,
 }
 
 object ParIncOptimizer {
-  val factory: GenIncOptimizer.OptimizerFactory = new ParIncOptimizer(_, _, _)
+  val factory: GenIncOptimizer.OptimizerFactory =
+    (semantics, esLevel, _) => new ParIncOptimizer(semantics, esLevel)
 }

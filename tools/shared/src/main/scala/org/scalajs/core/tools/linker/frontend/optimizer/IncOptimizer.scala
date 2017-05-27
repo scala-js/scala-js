@@ -15,9 +15,15 @@ import scala.collection.mutable
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.javascript.ESLevel
 
-final class IncOptimizer(semantics: Semantics, esLevel: ESLevel,
-    considerPositions: Boolean)
-    extends GenIncOptimizer(semantics, esLevel, considerPositions) {
+final class IncOptimizer(semantics: Semantics, esLevel: ESLevel)
+    extends GenIncOptimizer(semantics, esLevel) {
+
+  @deprecated(
+      "The considerPositions parameter is ignored." +
+      "Use the overload without it.",
+      "0.6.17")
+  def this(semantics: Semantics, esLevel: ESLevel, considerPositions: Boolean) =
+    this(semantics, esLevel)
 
   private[optimizer] object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = mutable.Map[K, V]
@@ -169,5 +175,6 @@ final class IncOptimizer(semantics: Semantics, esLevel: ESLevel,
 }
 
 object IncOptimizer {
-  val factory: GenIncOptimizer.OptimizerFactory = new IncOptimizer(_, _, _)
+  val factory: GenIncOptimizer.OptimizerFactory =
+    (semantics, esLevel, _) => new IncOptimizer(semantics, esLevel)
 }

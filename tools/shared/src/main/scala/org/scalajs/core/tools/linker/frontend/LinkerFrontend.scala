@@ -30,15 +30,27 @@ import org.scalajs.core.tools.linker.frontend.optimizer.{GenIncOptimizer, IncOpt
 final class LinkerFrontend(
     val semantics: Semantics,
     val esLevel: ESLevel,
-    val withSourceMap: Boolean,
     config: LinkerFrontend.Config,
     optimizerFactory: Option[GenIncOptimizer.OptimizerFactory]) {
 
+  @deprecated(
+      "The withSourceMap parameter is ignored. " +
+      "Use the overload without it.",
+      "0.6.17")
+  def this(semantics: Semantics, esLevel: ESLevel, withSourceMap: Boolean,
+      config: LinkerFrontend.Config,
+      optimizerFactory: Option[GenIncOptimizer.OptimizerFactory]) = {
+    this(semantics, esLevel, config, optimizerFactory)
+  }
+
+  @deprecated("withSourceMap is always true", "0.6.17")
+  val withSourceMap: Boolean = true
+
   private[this] val linker: BaseLinker =
-    new BaseLinker(semantics, esLevel, withSourceMap)
+    new BaseLinker(semantics, esLevel)
 
   private[this] val optOptimizer: Option[GenIncOptimizer] =
-    optimizerFactory.map(_(semantics, esLevel, withSourceMap))
+    optimizerFactory.map(_(semantics, esLevel, true))
 
   private[this] val refiner: Refiner = new Refiner
 
