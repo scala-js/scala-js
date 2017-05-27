@@ -193,11 +193,11 @@ object Scalajsld {
         .withCheckIR(options.checkIR)
 
       val backendConfig = LinkerBackend.Config()
+        .withSourceMap(options.sourceMap)
         .withRelativizeSourceMapBase(options.relativizeSourceMap)
         .withPrettyPrint(options.prettyPrint)
 
       val config = Linker.Config()
-        .withSourceMap(options.sourceMap)
         .withOptimizer(!options.noOpt)
         .withParallel(true)
         .withClosureCompiler(options.fullOpt)

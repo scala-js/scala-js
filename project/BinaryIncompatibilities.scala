@@ -6,6 +6,17 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // private, not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.Linker#Config.this"),
+
+      // private, not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.LinkerBackend#Config.this"),
+
+      // private[optimizer], not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.GenIncOptimizer.this")
   )
 
   val JSEnvs = Seq(

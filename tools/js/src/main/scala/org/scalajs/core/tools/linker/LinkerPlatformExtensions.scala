@@ -28,7 +28,7 @@ trait LinkerPlatformExtensions { this: Linker.type =>
         config.frontendConfig, optOptimizerFactory)
 
     val backend = new BasicLinkerBackend(semantics, outputMode, moduleKind,
-        config.sourceMap, config.backendConfig)
+        config.backendConfig)
 
     new Linker(frontend, backend)
   }

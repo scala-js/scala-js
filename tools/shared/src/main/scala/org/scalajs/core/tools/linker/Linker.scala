@@ -79,8 +79,6 @@ final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
 object Linker extends LinkerPlatformExtensions {
   /** Configuration to be passed to the `apply()` method. */
   final class Config private (
-      /** Whether to generate source maps. */
-      val sourceMap: Boolean,
       /** Whether to use the Scala.js optimizer. */
       val optimizer: Boolean,
       /** Whether things that can be parallelized should be parallelized.
@@ -96,8 +94,13 @@ object Linker extends LinkerPlatformExtensions {
       /** Additional configuration for the linker backend. */
       val backendConfig: LinkerBackend.Config
   ) {
+    @deprecated("Use config.backendConfig.sourceMap.", "0.6.17")
+    val sourceMap: Boolean = backendConfig.sourceMap
+
+    @deprecated("Use config.withBackendConfig(_.withSourceMap(sourceMap)).",
+        "0.6.17")
     def withSourceMap(sourceMap: Boolean): Config =
-      copy(sourceMap = sourceMap)
+      withBackendConfig(_.withSourceMap(sourceMap))
 
     def withOptimizer(optimizer: Boolean): Config =
       copy(optimizer = optimizer)
@@ -111,18 +114,22 @@ object Linker extends LinkerPlatformExtensions {
     def withFrontendConfig(frontendConfig: LinkerFrontend.Config): Config =
       copy(frontendConfig = frontendConfig)
 
+    def withFrontendConfig(f: LinkerFrontend.Config => LinkerFrontend.Config): Config =
+      copy(frontendConfig = f(frontendConfig))
+
     def withBackendConfig(backendConfig: LinkerBackend.Config): Config =
       copy(backendConfig = backendConfig)
 
+    def withBackendConfig(f: LinkerBackend.Config => LinkerBackend.Config): Config =
+      copy(backendConfig = f(backendConfig))
+
     private def copy(
-        sourceMap: Boolean = sourceMap,
         optimizer: Boolean = optimizer,
         parallel: Boolean = parallel,
         closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         frontendConfig: LinkerFrontend.Config = frontendConfig,
         backendConfig: LinkerBackend.Config = backendConfig): Config = {
       new Config(
-          sourceMap = sourceMap,
           optimizer = optimizer,
           parallel = parallel,
           closureCompilerIfAvailable = closureCompilerIfAvailable,
@@ -139,7 +146,6 @@ object Linker extends LinkerPlatformExtensions {
 
     /** Default configuration.
      *
-     *  - `sourceMap`: true
      *  - `optimizer`: true
      *  - `parallel`: true
      *  - `closureCompilerIfAvailable`: false
@@ -150,7 +156,6 @@ object Linker extends LinkerPlatformExtensions {
      */
     def apply(): Config = {
       new Config(
-          sourceMap = true,
           optimizer = true,
           parallel = true,
           closureCompilerIfAvailable = false,

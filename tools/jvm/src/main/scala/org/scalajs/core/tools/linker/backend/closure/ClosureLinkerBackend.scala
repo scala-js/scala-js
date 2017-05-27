@@ -36,10 +36,17 @@ import org.scalajs.core.tools.linker.backend.emitter.{Emitter, CoreJSLibs}
 final class ClosureLinkerBackend(
     semantics: Semantics,
     moduleKind: ModuleKind,
-    withSourceMap: Boolean,
     config: LinkerBackend.Config
-) extends LinkerBackend(semantics, ESLevel.ES5, moduleKind, withSourceMap,
-    config) {
+) extends LinkerBackend(semantics, ESLevel.ES5, moduleKind, config) {
+
+  @deprecated(
+      "Use the overload without 'withSourceMap'. " +
+      "The parameter can be configured in the 'config'.",
+      "0.6.17")
+  def this(semantics: Semantics, moduleKind: ModuleKind,
+      withSourceMap: Boolean, config: LinkerBackend.Config) = {
+    this(semantics, moduleKind, config.withSourceMap(withSourceMap))
+  }
 
   @deprecated("Use the overload with an explicit ModuleKind", "0.6.13")
   def this(semantics: Semantics, withSourceMap: Boolean,
@@ -182,7 +189,7 @@ final class ClosureLinkerBackend(
     options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
     options.setCheckGlobalThisLevel(CheckLevel.OFF)
 
-    if (withSourceMap) {
+    if (config.sourceMap) {
       options.setSourceMapOutputPath(outputName + ".map")
       options.setSourceMapDetailLevel(SourceMap.DetailLevel.ALL)
     }

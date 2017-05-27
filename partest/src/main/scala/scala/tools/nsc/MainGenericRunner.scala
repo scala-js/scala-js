@@ -70,7 +70,7 @@ class MainGenericRunner {
       Seq(ModuleInitializer.mainMethod("PartestLauncher", "main"))
 
     val linkerConfig = Linker.Config()
-      .withSourceMap(false)
+      .withBackendConfig(_.withSourceMap(false))
       .withClosureCompiler(optMode == FullOpt)
 
     val linker = Linker(semantics, OutputMode.ECMAScript51Isolated,
