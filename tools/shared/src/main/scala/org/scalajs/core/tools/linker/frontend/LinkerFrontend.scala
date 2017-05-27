@@ -30,15 +30,14 @@ import org.scalajs.core.tools.linker.frontend.optimizer.{GenIncOptimizer, IncOpt
 final class LinkerFrontend(
     val semantics: Semantics,
     val esLevel: ESLevel,
-    val withSourceMap: Boolean,
     config: LinkerFrontend.Config,
     optimizerFactory: Option[GenIncOptimizer.OptimizerFactory]) {
 
   private[this] val linker: BaseLinker =
-    new BaseLinker(semantics, esLevel, withSourceMap)
+    new BaseLinker(semantics, esLevel)
 
   private[this] val optOptimizer: Option[GenIncOptimizer] =
-    optimizerFactory.map(_(semantics, esLevel, withSourceMap))
+    optimizerFactory.map(_(semantics, esLevel))
 
   private[this] val refiner: Refiner = new Refiner
 

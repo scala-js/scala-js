@@ -38,11 +38,9 @@ import org.scalajs.core.tools.linker.backend.emitter.LongImpl
  *
  *  @param semantics Required Scala.js Semantics
  *  @param esLevel ECMAScript level
- *  @param considerPositions Should positions be considered when comparing tree
- *                           hashes
  */
 abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
-    esLevel: ESLevel, considerPositions: Boolean) {
+    esLevel: ESLevel) {
 
   import GenIncOptimizer._
 
@@ -903,7 +901,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
         val changed = {
           originalDef == null ||
           (methodDef.hash zip originalDef.hash).forall {
-            case (h1, h2) => !Hashers.hashesEqual(h1, h2, considerPositions)
+            case (h1, h2) => !Hashers.hashesEqual(h1, h2, considerPos = true)
           }
         }
 
@@ -1014,7 +1012,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
 
 object GenIncOptimizer {
 
-  type OptimizerFactory = (Semantics, ESLevel, Boolean) => GenIncOptimizer
+  type OptimizerFactory = (Semantics, ESLevel) => GenIncOptimizer
 
   private val isAdHocElidableModuleAccessor =
     Set("s_Predef$")

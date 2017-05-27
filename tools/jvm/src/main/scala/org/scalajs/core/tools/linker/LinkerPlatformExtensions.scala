@@ -26,7 +26,7 @@ trait LinkerPlatformExtensions { this: Linker.type =>
     }
 
     val frontend = new LinkerFrontend(semantics, outputMode.esLevel,
-        config.sourceMap, config.frontendConfig, optOptimizerFactory)
+        config.frontendConfig, optOptimizerFactory)
 
     val backend = {
       if (config.closureCompiler) {
