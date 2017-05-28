@@ -55,6 +55,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     var _sourceURIMaps: List[URIMap] = Nil
     var relSourceMap: Option[URI] = None
     var absSourceMap: Option[URI] = None
+    var sjsDefinedByDefault: Boolean = false
   }
 
   /** Checks and registers module exports on the symbol.
@@ -131,6 +132,8 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
         catch {
           case e: URISyntaxException => error(s"$uriStr is not a valid URI")
         }
+      } else if (option == "sjsDefinedByDefault") {
+        sjsDefinedByDefault = true
       } else {
         error("Option not understood: " + option)
       }

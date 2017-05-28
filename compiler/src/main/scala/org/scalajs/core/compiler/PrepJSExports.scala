@@ -416,7 +416,7 @@ trait PrepJSExports { this: PrepJSInterop =>
             companion != NoSymbol &&
             !companion.isTrait &&
             isJSAny(companion) &&
-            companion.hasAnnotation(ScalaJSDefinedAnnotation)
+            isScalaJSDefinedAcrossRuns(companion)
           }
 
           if (!symOwner.isStatic || !symOwner.isModuleClass ||
