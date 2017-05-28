@@ -56,14 +56,14 @@ class JSSymbolTest {
 
   @Test def native_with_vars(): Unit = {
     val obj0 = mkObject(sym1 -> 0.1).asInstanceOf[PropVarClass]
-    assertEquals(0.1, obj0.internalVar)
+    assertEquals(0.1, obj0.internalVar, 0.0)
     obj0.internalVar = 0.2
-    assertEquals(0.2, obj0.internalVar)
+    assertEquals(0.2, obj0.internalVar, 0.0)
 
     val obj1 = mkObject(sym1 -> 8.0).asInstanceOf[PropVarTrait]
-    assertEquals(8.0, obj1.internalVar)
+    assertEquals(8.0, obj1.internalVar, 0.0)
     obj1.internalVar = 8.2
-    assertEquals(8.2, obj1.internalVar)
+    assertEquals(8.2, obj1.internalVar, 0.0)
 
     val obj2 = mkObject(sym1 -> 8.0)
     assertEquals(8.0, selectSymbol(obj2, sym1))
@@ -73,14 +73,14 @@ class JSSymbolTest {
 
   @Test def sjsdefined_with_vars(): Unit = {
     val obj0 = new SJSDefinedPropVar
-    assertEquals(1511.1989, obj0.internalVar)
+    assertEquals(1511.1989, obj0.internalVar, 0.0)
     obj0.internalVar = 0.2
-    assertEquals(0.2, obj0.internalVar)
+    assertEquals(0.2, obj0.internalVar, 0.0)
 
     val obj1: PropVarTrait = new SJSDefinedPropVar
-    assertEquals(1511.1989, obj1.internalVar)
+    assertEquals(1511.1989, obj1.internalVar, 0.0)
     obj1.internalVar = 8.2
-    assertEquals(8.2, obj1.internalVar)
+    assertEquals(8.2, obj1.internalVar, 0.0)
 
     val obj2 = new SJSDefinedPropVar
     assertEquals(1511.1989, selectSymbol(obj2, sym1))

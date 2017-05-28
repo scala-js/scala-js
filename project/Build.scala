@@ -1170,7 +1170,7 @@ object Build {
       fatalWarningsSettings ++ Seq(name := "Scala.js JUnit test runtime")
   ).withScalaJSCompiler.dependsOn(testInterface)
 
-  val commonJUnitTestOutputsSettings = commonSettings ++ fatalWarningsSettings ++ Seq(
+  val commonJUnitTestOutputsSettings = commonSettings ++ Seq(
       publishArtifact in Compile := false,
       parallelExecution in Test := false,
       unmanagedSourceDirectories in Test +=

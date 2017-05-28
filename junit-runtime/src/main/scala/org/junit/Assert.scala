@@ -91,6 +91,26 @@ object Assert {
   def assertNotEquals(unexpected: Float, actual: Float, delta: Float): Unit =
     assertNotEquals(null, unexpected, actual, delta)
 
+  @deprecated("Use assertEquals(double expected, double actual, double " +
+      "epsilon) instead", "")
+  def assertEquals(expected: Double, actual: Double): Unit = {
+    fail("Use assertEquals(expected, actual, delta) to compare " +
+        "floating-point numbers")
+  }
+
+  @deprecated("Use assertEquals(String message, double expected, double " +
+      "actual, double epsilon) instead", "")
+  def assertEquals(message: String, expected: Double, actual: Double): Unit = {
+    fail("Use assertEquals(expected, actual, delta) to compare " +
+        "floating-point numbers")
+  }
+
+  def assertEquals(expected: Long, actual: Long): Unit =
+    assertEquals(null, expected, actual)
+
+  def assertEquals(message: String, expected: Long, actual: Long): Unit =
+    assertEquals(message, expected: Any, actual: Any)
+
   def assertArrayEquals(message: String, expecteds: Array[AnyRef],
       actuals: Array[AnyRef]): Unit = {
     internalArrayEquals(message, expecteds, actuals)

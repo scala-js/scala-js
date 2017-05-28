@@ -108,7 +108,7 @@ class InstanceTestsHijackedBoxedClassesTest {
 
   @Test def asInstanceOf_Float_with_non_strict_floats(): Unit = {
     assumeFalse("Assumed strict floats", hasStrictFloats)
-    assertEquals(1.2, (1.2: Any).asInstanceOf[Float])
+    assertEquals(1.2, (1.2: Any).asInstanceOf[Float], 0.0)
   }
 
   @Test def should_support_isInstanceOf_via_java_lang_Class_positive(): Unit = {

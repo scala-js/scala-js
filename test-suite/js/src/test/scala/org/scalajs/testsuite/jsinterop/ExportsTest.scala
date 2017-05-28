@@ -1081,8 +1081,8 @@ class ExportsTest {
       def doShort(x: Short): Unit = assertEquals(0, x)
       def doInt(x: Int): Unit = assertEquals(0, x)
       def doLong(x: Long): Unit = assertTrue(x.equals(0L))
-      def doFloat(x: Float): Unit = assertEquals(0.0f, x)
-      def doDouble(x: Double): Unit = assertEquals(0.0, x)
+      def doFloat(x: Float): Unit = assertEquals(0.0f, x, 0.0)
+      def doDouble(x: Double): Unit = assertEquals(0.0, x, 0.0)
       def doUnit(x: Unit): Unit = assertTrue((x: Any) == null)
     }
 

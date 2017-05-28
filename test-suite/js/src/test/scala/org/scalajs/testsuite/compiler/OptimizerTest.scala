@@ -49,11 +49,11 @@ class OptimizerTest {
   @Test def `must_not_break_*_(-1)_for_Float_and_Double_issue_1478`(): Unit = {
     @noinline
     def a: Float = (() => 5.0f) ()
-    assertEquals(-5.0f, a * -1.0f)
+    assertEquals(-5.0f, a * -1.0f, 0.0)
 
     @noinline
     def b: Double = (() => 7.0) ()
-    assertEquals(-7.0, b * -1.0)
+    assertEquals(-7.0, b * -1.0, 0.0)
   }
 
   @Test def must_not_break_foreach_on_downward_Range_issue_1453(): Unit = {
