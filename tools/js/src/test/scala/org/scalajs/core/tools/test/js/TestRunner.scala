@@ -1,5 +1,7 @@
 package org.scalajs.core.tools.test.js
 
+import scala.collection.mutable
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
@@ -12,35 +14,49 @@ object TestRunner {
 
   @JSExport
   def runTests(): Unit = {
-    val eventHandler = new SimpleEventHandler
-    val loggers = Array[Logger](new SimpleLogger)
+    try {
+      val eventHandler = new SimpleEventHandler
+      val loggers = Array[Logger](new SimpleLogger)
 
-    def taskLoop(tasks: Iterable[Task]): Unit = {
-      if (tasks.nonEmpty)
-        tasks.head.execute(eventHandler, loggers,
-            newTasks => taskLoop(tasks.tail ++ newTasks))
+      def taskLoop(tasks: Iterable[Task]): Unit = {
+        if (tasks.nonEmpty)
+          tasks.head.execute(eventHandler, loggers,
+              newTasks => taskLoop(tasks.tail ++ newTasks))
+      }
+
+      for {
+        (framework, taskDefs) <- TestDetector.detectTests()
+      } {
+        val runner = framework.runner(Array(), Array(), new ScalaJSClassLoader())
+        val tasks = runner.tasks(taskDefs.toArray)
+        taskLoop(tasks)
+      }
+
+      val failedEvents = eventHandler.failedEvents
+      if (failedEvents.nonEmpty) {
+        System.err.println("The following tests failed:")
+        for (event <- failedEvents) {
+          System.err.println("* " + event.fullyQualifiedName())
+          if (event.throwable().isDefined())
+            event.throwable().get().printStackTrace()
+        }
+        throw new AssertionError("Some tests have failed")
+      }
+    } catch {
+      case th: Throwable =>
+        th.printStackTrace()
+        throw th
     }
-
-    for {
-      (framework, taskDefs) <- TestDetector.detectTests()
-    } {
-      val runner = framework.runner(Array(), Array(), new ScalaJSClassLoader())
-      val tasks = runner.tasks(taskDefs.toArray)
-      taskLoop(tasks)
-    }
-
-    if (eventHandler.hasFailed)
-      throw new AssertionError("Some tests have failed")
   }
 
   private class SimpleEventHandler extends EventHandler {
-    private[this] var failed = false
+    private[this] val _failedEvents = new mutable.ListBuffer[Event]
 
-    def hasFailed: Boolean = failed
+    def failedEvents: List[Event] = _failedEvents.toList
 
     def handle(ev: Event) = {
       if (ev.status == Status.Error || ev.status == Status.Failure)
-        failed = true
+        _failedEvents += ev
     }
   }
 
