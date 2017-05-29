@@ -38,7 +38,7 @@ trait Thenable[+A] extends js.Object {
 }
 
 object Thenable {
-  implicit class ThenableOps[+A](val p: Thenable[A]) extends AnyVal {
+  implicit class ThenableOps[+A](private val p: Thenable[A]) extends AnyVal {
     /** Converts the [[Thenable]] into a Scala [[scala.concurrent.Future Future]].
      *
      *  Unlike when calling the `then` methods of [[Thenable]], the resulting
