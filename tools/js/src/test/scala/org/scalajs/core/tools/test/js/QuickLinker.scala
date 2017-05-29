@@ -118,7 +118,7 @@ object QuickLinker {
   }
 
   @js.native
-  @JSGlobal("JSZip")
+  @JSImport("jszip", JSImport.Default)
   private class JSZip(data: Uint8Array) extends js.Object {
     def files: js.Dictionary[JSZipEntry] = js.native
   }

@@ -23,9 +23,6 @@ import org.scalajs.sbtplugin._
 import org.scalajs.jsenv.JSEnv
 import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
 
-import org.scalajs.jsdependencies.sbtplugin.JSDependenciesPlugin
-import org.scalajs.jsdependencies.sbtplugin.JSDependenciesPlugin.autoImport._
-
 import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
@@ -619,11 +616,13 @@ object Build {
   ).dependsOn(irProject)
 
   lazy val toolsJS: Project = (project in file("tools/js")).enablePlugins(
-      MyScalaJSPlugin,
-      JSDependenciesPlugin
+      MyScalaJSPlugin
   ).settings(
       commonToolsSettings,
       crossVersion := ScalaJSCrossVersion.binary,
+
+      scalaJSModuleKind in Test :=
+        org.scalajs.core.tools.linker.backend.ModuleKind.CommonJSModule,
 
       jsExecutionFiles in Test := {
         val testDefinitions = {
@@ -645,14 +644,18 @@ object Build {
       // Give more memory to Node.js, and deactivate source maps
       jsEnv := new NodeJSEnv(args = Seq("--max_old_space_size=3072")).withSourceMap(false),
 
-      jsDependencies +=
-        "org.webjars" % "jszip" % "2.4.0" % "test" / "jszip.min.js" commonJSName "JSZip",
-
       inConfig(Test) {
         // Redefine test to perform the bootstrap test
         test := {
           if (!jsEnv.value.isInstanceOf[NodeJSEnv])
             throw new MessageOnlyException("toolsJS/test must be run with Node.js")
+
+          /* We'll explicitly `require` our linked file. Find its module, and
+           * remove it from the `jsExecutionFiles` to give to the runner.
+           */
+          val toolsTestModule = scalaJSLinkedFile.value
+          val executionFiles =
+            jsExecutionFiles.value.filter(_ ne toolsTestModule)
 
           /* Collect relevant IR files from the classpath of the test suite.
            * We assume here that the classpath is valid. This is checked by the
@@ -701,7 +704,8 @@ object Build {
 
           val code = {
             s"""
-            var linker = scalajs.QuickLinker;
+            var toolsTestModule = require("${escapeJS(toolsTestModule.path)}");
+            var linker = toolsTestModule.scalajs.QuickLinker;
             var lib = linker.linkTestSuiteNode($irPaths, $mainMethods);
 
             var __ScalaJSEnv = $scalaJSEnvForTestSuite;
@@ -715,7 +719,7 @@ object Build {
           val launcher = new MemVirtualJSFile("Generated launcher file")
             .withContent(code)
 
-          val runner = jsEnv.value.jsRunner(jsExecutionFiles.value :+ launcher)
+          val runner = jsEnv.value.jsRunner(executionFiles :+ launcher)
 
           runner.run(sbtLogger2ToolsLogger(streams.value.log), scalaJSConsole.value)
         }
