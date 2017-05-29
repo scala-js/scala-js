@@ -22,8 +22,8 @@ import scala.scalajs.runtime.genTraversableOnce2jsArray
 sealed abstract class JSConvertersLowPrioImplicits { this: JSConverters.type =>
 
   @inline
-  implicit def JSRichFutureNonThenable[A](f: Future[A]): JSRichFuture[A] =
-    new JSRichFuture[A](f.asInstanceOf[Future[A | Thenable[A]]])
+  implicit def JSRichFutureNonThenable[A, A1](f: A1)(implicit ev: A1 => Future[A]): JSRichFuture[A] =
+    new JSRichFuture[A](ev(f).asInstanceOf[Future[A | Thenable[A]]])
 
 }
 
