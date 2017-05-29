@@ -12,12 +12,6 @@ object TestRunner {
 
   @JSExport
   def runTests(): Unit = {
-    System.setProperty("scalajs.testsuite.testtag", "testtag.value")
-    System.setProperty("scalajs.nodejs", "true")
-    System.setProperty("scalajs.typedarray", "true")
-    System.setProperty("scalajs.fastopt-stage", "true")
-    System.setProperty("scalajs.modulekind-nomodule", "true")
-
     val eventHandler = new SimpleEventHandler
     val loggers = Array[Logger](new SimpleLogger)
 

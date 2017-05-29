@@ -689,7 +689,12 @@ object Build {
           val scalaJSEnv = {
             s"""
             {"javaSystemProperties": {
-              "scalajs.scalaVersion": "${scalaVersion.value}"
+              "scalajs.scalaVersion": "${scalaVersion.value}",
+              "scalajs.testsuite.testtag": "testtag.value",
+              "scalajs.nodejs": "true",
+              "scalajs.typedarray": "true",
+              "scalajs.fastopt-stage": "true",
+              "scalajs.modulekind-nomodule": "true"
             }}
             """
           }
