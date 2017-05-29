@@ -1133,7 +1133,6 @@ object Build {
 
   val commonJUnitTestOutputsSettings = Def.settings(
       commonSettings,
-      fatalWarningsSettings,
       publishArtifact in Compile := false,
       parallelExecution in Test := false,
       unmanagedSourceDirectories in Test +=

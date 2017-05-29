@@ -28,9 +28,9 @@ class JSNameTest {
 
   @Test def should_work_with_vars(): Unit = {
     val obj = js.Dynamic.literal(jsVar = 0.1).asInstanceOf[PropVarFacade]
-    assertEquals(0.1, obj.internalVar)
+    assertEquals(0.1, obj.internalVar, 0.0)
     obj.internalVar = 0.2
-    assertEquals(0.2, obj.internalVar)
+    assertEquals(0.2, obj.internalVar, 0.0)
   }
 
   @Test def should_work_with_defs_that_are_properties_in_Scala_js_defined_trait_issue_2197(): Unit = {
@@ -45,9 +45,9 @@ class JSNameTest {
 
   @Test def should_work_with_vars_in_Scala_js_defined_trait_issue_2197(): Unit = {
     val obj = js.Dynamic.literal(jsVar = 0.1).asInstanceOf[PropVarSJSDefined]
-    assertEquals(0.1, obj.internalVar)
+    assertEquals(0.1, obj.internalVar, 0.0)
     obj.internalVar = 0.2
-    assertEquals(0.2, obj.internalVar)
+    assertEquals(0.2, obj.internalVar, 0.0)
   }
 
   @Test def should_allow_names_ending_in__=(): Unit = {

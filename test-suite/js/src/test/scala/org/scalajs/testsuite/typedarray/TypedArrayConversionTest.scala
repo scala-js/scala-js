@@ -28,11 +28,11 @@ class TypedArrayConversionTest {
     val y = x.toArray
 
     assertTrue(y.getClass == classOf[scala.Array[Byte]])
-    assertEquals(sum(1), y.sum)
+    assertEquals(sum(1), y.sum, 0.0)
 
     // Ensure its a copy
     x(0) = 0
-    assertEquals(sum(1), y.sum)
+    assertEquals(sum(1), y.sum, 0.0)
   }
 
   @Test def convert_an_Int16Array_to_a_scala_Array_Short(): Unit = {
@@ -40,11 +40,11 @@ class TypedArrayConversionTest {
     val y = x.toArray
 
     assertTrue(y.getClass == classOf[scala.Array[Short]])
-    assertEquals(sum(100), y.sum)
+    assertEquals(sum(100), y.sum, 0.0)
 
     // Ensure its a copy
     x(0) = 0
-    assertEquals(sum(100), y.sum)
+    assertEquals(sum(100), y.sum, 0.0)
   }
 
   @Test def convert_an_Uint16Array_to_a_scala_Array_Char(): Unit = {
@@ -67,11 +67,11 @@ class TypedArrayConversionTest {
     val y = x.toArray
 
     assertTrue(y.getClass == classOf[scala.Array[Int]])
-    assertEquals(sum(10000), y.sum)
+    assertEquals(sum(10000), y.sum, 0.0)
 
     // Ensure its a copy
     x(0) = 0
-    assertEquals(sum(10000), y.sum)
+    assertEquals(sum(10000), y.sum, 0.0)
   }
 
   @Test def convert_a_Float32Array_to_a_scala_Array_Float(): Unit = {
@@ -91,11 +91,11 @@ class TypedArrayConversionTest {
     val y = x.toArray
 
     assertTrue(y.getClass == classOf[scala.Array[Double]])
-    assertEquals(sum(0.2), y.sum)
+    assertEquals(sum(0.2), y.sum, 0.0)
 
     // Ensure its a copy
     x(0) = 0
-    assertEquals(sum(0.2), y.sum)
+    assertEquals(sum(0.2), y.sum, 0.0)
   }
 
   @Test def convert_a_scala_Array_Byte__to_an_Int8Array(): Unit = {
@@ -168,11 +168,11 @@ class TypedArrayConversionTest {
     assertEquals(x.length, y.length)
 
     for (i <- 0 until y.length)
-      assertEquals(x(i), y(i))
+      assertEquals(x(i), y(i), 0.0)
 
     // Ensure its a copy
     x(0) = 0
-    assertEquals(1.0f, y(0))
+    assertEquals(1.0f, y(0), 0.0)
   }
 
   @Test def convert_a_scala_Array_Double__to_a_Float64Array(): Unit = {
@@ -180,13 +180,13 @@ class TypedArrayConversionTest {
     val y = x.toTypedArray
 
     assertTrue(y.isInstanceOf[Float64Array])
-    assertEquals(x.length, y.length)
+    assertEquals(x.length, y.length, 0.0)
 
     for (i <- 0 until y.length)
-      assertEquals(x(i), y(i))
+      assertEquals(x(i), y(i), 0.0)
 
     // Ensure its a copy
     x(0) = 0
-    assertEquals(1.0, y(0))
+    assertEquals(1.0, y(0), 0.0)
   }
 }

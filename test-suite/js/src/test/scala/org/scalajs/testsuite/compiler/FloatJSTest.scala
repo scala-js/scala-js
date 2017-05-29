@@ -21,25 +21,25 @@ class FloatJSTest {
 
   @Test def fround_for_special_values(): Unit = {
     assertTrue(froundNotInlined(Double.NaN).isNaN)
-    assertEquals(Double.PositiveInfinity, 1 / froundNotInlined(0.0).toDouble)
-    assertEquals(Double.NegativeInfinity, 1 / froundNotInlined(-0.0).toDouble)
-    assertEquals(Float.PositiveInfinity, froundNotInlined(Double.PositiveInfinity))
-    assertEquals(Float.NegativeInfinity, froundNotInlined(Double.NegativeInfinity))
+    assertEquals(Double.PositiveInfinity, 1 / froundNotInlined(0.0).toDouble, 0.0)
+    assertEquals(Double.NegativeInfinity, 1 / froundNotInlined(-0.0).toDouble, 0.0)
+    assertEquals(Float.PositiveInfinity, froundNotInlined(Double.PositiveInfinity), 0.0)
+    assertEquals(Float.NegativeInfinity, froundNotInlined(Double.NegativeInfinity), 0.0)
   }
 
   @Test def fround_overflows(): Unit = {
-    assertEquals(Double.PositiveInfinity, froundNotInlined(1e200))
-    assertEquals(Double.NegativeInfinity, froundNotInlined(-1e200))
+    assertEquals(Double.PositiveInfinity, froundNotInlined(1e200), 0.0)
+    assertEquals(Double.NegativeInfinity, froundNotInlined(-1e200), 0.0)
   }
 
   @Test def fround_underflows(): Unit = {
-    assertEquals(Double.PositiveInfinity, 1 / froundNotInlined(1e-300).toDouble)
-    assertEquals(Double.NegativeInfinity, 1 / froundNotInlined(-1e-300).toDouble)
+    assertEquals(Double.PositiveInfinity, 1 / froundNotInlined(1e-300).toDouble, 0.0)
+    assertEquals(Double.NegativeInfinity, 1 / froundNotInlined(-1e-300).toDouble, 0.0)
   }
 
   @Test def fround_normal_cases(): Unit = {
     def test(input: Double, expected: Double): Unit =
-      assertEquals(expected, input.toFloat.toDouble)
+      assertEquals(expected, input.toFloat.toDouble, 0.0)
 
     // From MDN documentation
     test(0.0, 0.0)

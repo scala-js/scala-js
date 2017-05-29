@@ -408,73 +408,65 @@ class RuntimeLongTest {
 
   @Test def toFloat_strict(): Unit = {
     assumeTrue("Assumed strict floats", hasStrictFloats)
-    assertEquals(0, lg(0).toFloat)
-    assertEquals(-1, lg(-1).toFloat)
+    assertEquals(0, lg(0).toFloat, 0.0)
+    assertEquals(-1, lg(-1).toFloat, 0.0)
 
-    if (!isInFullOpt) {
-      assertEquals(9.223372E18f, MaxVal.toFloat)
-      assertEquals(-9.223372E18f, MinVal.toFloat)
-    } else {
-      // Closure seems to incorrectly rewrite the constant on the right :-(
-      assertEquals(9.223372E18f, MaxVal.toFloat, 1E4f)
-      assertEquals(-9.223372E18f, MinVal.toFloat, 1E4f)
-    }
+    // Closure seems to incorrectly rewrite the constant on the right :-(
+    val epsilon = if (isInFullOpt) 1E4f else 0.0f
+    assertEquals(9.223372E18f, MaxVal.toFloat, epsilon)
+    assertEquals(-9.223372E18f, MinVal.toFloat, epsilon)
 
-    assertEquals(4.7971489E18f, lg(-1026388143, 1116923232).toFloat)
-    assertEquals(-2.24047663E18f, lg(-1288678667, -521651607).toFloat)
-    assertEquals(4.59211416E18f, lg(1192262605, 1069184891).toFloat)
-    assertEquals(3.38942079E18f, lg(-180353617, 789161022).toFloat)
-    assertEquals(-6.8076878E18f, lg(-1158443188, -1585038363).toFloat)
-    assertEquals(7.4159717E18f, lg(906981906, 1726665521).toFloat)
-    assertEquals(-1.85275997E18f, lg(2042933575, -431379283).toFloat)
-    assertEquals(5.7344188E18f, lg(599900903, 1335148382).toFloat)
-    assertEquals(3.20410168E18f, lg(1458166084, 746013039).toFloat)
-    assertEquals(-7.2310311E18f, lg(1956524672, -1683605603).toFloat)
-    assertEquals(7.7151362E18f, lg(478583639, 1796320118).toFloat)
-    assertEquals(1.41365268E18f, lg(-1645816617, 329141676).toFloat)
-    assertEquals(-3.03197918E18f, lg(184187116, -705937657).toFloat)
-    assertEquals(-4.04287594E18f, lg(659513335, -941305424).toFloat)
-    assertEquals(-7.8204678E18f, lg(770505156, -1820844549).toFloat)
-    assertEquals(-5.9733025E18f, lg(929928858, -1390767911).toFloat)
-    assertEquals(1.1261721E18f, lg(-1475096259, 262207373).toFloat)
-    assertEquals(4.00884963E18f, lg(787691795, 933383012).toFloat)
-    assertEquals(-1.43511611E18f, lg(1189057493, -334139018).toFloat)
-    assertEquals(3.81415059E18f, lg(-618946450, 888051141).toFloat)
+    assertEquals(4.7971489E18f, lg(-1026388143, 1116923232).toFloat, 0.0)
+    assertEquals(-2.24047663E18f, lg(-1288678667, -521651607).toFloat, 0.0)
+    assertEquals(4.59211416E18f, lg(1192262605, 1069184891).toFloat, 0.0)
+    assertEquals(3.38942079E18f, lg(-180353617, 789161022).toFloat, 0.0)
+    assertEquals(-6.8076878E18f, lg(-1158443188, -1585038363).toFloat, 0.0)
+    assertEquals(7.4159717E18f, lg(906981906, 1726665521).toFloat, 0.0)
+    assertEquals(-1.85275997E18f, lg(2042933575, -431379283).toFloat, 0.0)
+    assertEquals(5.7344188E18f, lg(599900903, 1335148382).toFloat, 0.0)
+    assertEquals(3.20410168E18f, lg(1458166084, 746013039).toFloat, 0.0)
+    assertEquals(-7.2310311E18f, lg(1956524672, -1683605603).toFloat, 0.0)
+    assertEquals(7.7151362E18f, lg(478583639, 1796320118).toFloat, 0.0)
+    assertEquals(1.41365268E18f, lg(-1645816617, 329141676).toFloat, 0.0)
+    assertEquals(-3.03197918E18f, lg(184187116, -705937657).toFloat, 0.0)
+    assertEquals(-4.04287594E18f, lg(659513335, -941305424).toFloat, 0.0)
+    assertEquals(-7.8204678E18f, lg(770505156, -1820844549).toFloat, 0.0)
+    assertEquals(-5.9733025E18f, lg(929928858, -1390767911).toFloat, 0.0)
+    assertEquals(1.1261721E18f, lg(-1475096259, 262207373).toFloat, 0.0)
+    assertEquals(4.00884963E18f, lg(787691795, 933383012).toFloat, 0.0)
+    assertEquals(-1.43511611E18f, lg(1189057493, -334139018).toFloat, 0.0)
+    assertEquals(3.81415059E18f, lg(-618946450, 888051141).toFloat, 0.0)
   }
 
   @Test def toDouble(): Unit = {
-    assertEquals(0, lg(0).toDouble)
-    assertEquals(-1, lg(-1).toDouble)
+    assertEquals(0, lg(0).toDouble, 0.0)
+    assertEquals(-1, lg(-1).toDouble, 0.0)
 
-    if (!isInFullOpt) {
-      assertEquals(9.223372036854776E18, MaxVal.toDouble)
-      assertEquals(-9.223372036854776E18, MinVal.toDouble)
-    } else {
-      // Closure seems to incorrectly rewrite the constant on the right :-(
-      assertEquals(9.223372036854776E18, MaxVal.toDouble, 1E4)
-      assertEquals(-9.223372036854776E18, MinVal.toDouble, 1E4)
-    }
+    // Closure seems to incorrectly rewrite the constant on the right :-(
+    val epsilon = if (isInFullOpt) 1E4 else 0.0
+    assertEquals(9.223372036854776E18, MaxVal.toDouble, epsilon)
+    assertEquals(-9.223372036854776E18, MinVal.toDouble, epsilon)
 
-    assertEquals(3.4240179834317537E18, lg(-151011088, 797216310).toDouble)
-    assertEquals(8.5596043411285968E16, lg(-508205099, 19929381).toDouble)
-    assertEquals(-3.1630346897289943E18, lg(1249322201, -736451403).toDouble)
-    assertEquals(-4.4847682439933604E18, lg(483575860, -1044191477).toDouble)
-    assertEquals(-6.4014772289576371E17, lg(-1526343930, -149046007).toDouble)
-    assertEquals(-1.76968119148756736E18, lg(531728928, -412036011).toDouble)
-    assertEquals(-8.5606671350959739E18, lg(-734111585, -1993185640).toDouble)
-    assertEquals(-9.0403963253949932E18, lg(-1407864332, -2104881296).toDouble)
-    assertEquals(-6.4988752582247977E18, lg(-1712351423, -1513137310).toDouble)
-    assertEquals(-7.7788492399114394E17, lg(1969244733, -181115448).toDouble)
-    assertEquals(7.6357174849871442E18, lg(-907683842, 1777829016).toDouble)
-    assertEquals(1.25338659134517658E18, lg(-815927209, 291826806).toDouble)
-    assertEquals(-3.1910241505692349E18, lg(463523496, -742968207).toDouble)
-    assertEquals(7.4216510087652332E18, lg(1482622807, 1727987781).toDouble)
-    assertEquals(-8.189046896086654E18, lg(1170040143, -1906661060).toDouble)
-    assertEquals(6.8316272807487539E18, lg(-85609173, 1590612176).toDouble)
-    assertEquals(-8.0611115909320561E18, lg(-1212811257, -1876873801).toDouble)
-    assertEquals(1.7127521901359959E18, lg(-648802816, 398781194).toDouble)
-    assertEquals(-6.4442523492577423E18, lg(-1484519186, -1500419423).toDouble)
-    assertEquals(-1.71264450938175027E18, lg(-2016996893, -398756124).toDouble)
+    assertEquals(3.4240179834317537E18, lg(-151011088, 797216310).toDouble, 0.0)
+    assertEquals(8.5596043411285968E16, lg(-508205099, 19929381).toDouble, 0.0)
+    assertEquals(-3.1630346897289943E18, lg(1249322201, -736451403).toDouble, 0.0)
+    assertEquals(-4.4847682439933604E18, lg(483575860, -1044191477).toDouble, 0.0)
+    assertEquals(-6.4014772289576371E17, lg(-1526343930, -149046007).toDouble, 0.0)
+    assertEquals(-1.76968119148756736E18, lg(531728928, -412036011).toDouble, 0.0)
+    assertEquals(-8.5606671350959739E18, lg(-734111585, -1993185640).toDouble, 0.0)
+    assertEquals(-9.0403963253949932E18, lg(-1407864332, -2104881296).toDouble, 0.0)
+    assertEquals(-6.4988752582247977E18, lg(-1712351423, -1513137310).toDouble, 0.0)
+    assertEquals(-7.7788492399114394E17, lg(1969244733, -181115448).toDouble, 0.0)
+    assertEquals(7.6357174849871442E18, lg(-907683842, 1777829016).toDouble, 0.0)
+    assertEquals(1.25338659134517658E18, lg(-815927209, 291826806).toDouble, 0.0)
+    assertEquals(-3.1910241505692349E18, lg(463523496, -742968207).toDouble, 0.0)
+    assertEquals(7.4216510087652332E18, lg(1482622807, 1727987781).toDouble, 0.0)
+    assertEquals(-8.189046896086654E18, lg(1170040143, -1906661060).toDouble, 0.0)
+    assertEquals(6.8316272807487539E18, lg(-85609173, 1590612176).toDouble, 0.0)
+    assertEquals(-8.0611115909320561E18, lg(-1212811257, -1876873801).toDouble, 0.0)
+    assertEquals(1.7127521901359959E18, lg(-648802816, 398781194).toDouble, 0.0)
+    assertEquals(-6.4442523492577423E18, lg(-1484519186, -1500419423).toDouble, 0.0)
+    assertEquals(-1.71264450938175027E18, lg(-2016996893, -398756124).toDouble, 0.0)
   }
 
   @Test def fromDouble(): Unit = {
@@ -2226,8 +2218,8 @@ class RuntimeLongOldTest {
   }
 
   @Test def should_correctly_implement_toDouble(): Unit = {
-    assertEquals(5.0, fromInt(5).toDouble)
-    assertEquals(2147483648.0, (maxInt+one).toDouble)
+    assertEquals(5.0, fromInt(5).toDouble, 0.0)
+    assertEquals(2147483648.0, (maxInt+one).toDouble, 0.0)
   }
 
   @Test def should_correctly_implement_numberOfLeadingZeros(): Unit = {
