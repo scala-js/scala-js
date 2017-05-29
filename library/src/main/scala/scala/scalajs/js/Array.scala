@@ -176,7 +176,7 @@ object Array extends Object {
   // def apply[A](arrayLength: Int): Array[A] = native
 
   /** Creates a new array with the given items. */
-  def apply[A](items: A*): Array[A] = sys.error("stub")
+  def apply[A](items: A*): Array[A] = throw new java.lang.Error("stub")
 
   /** Returns true if the given value is an array. */
   def isArray(arg: Any): Boolean = native

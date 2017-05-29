@@ -78,7 +78,8 @@ object Dynamic {
   @inline def global: Dynamic = scala.scalajs.runtime.environmentInfo.global
 
   /** Instantiates a new object of a JavaScript class. */
-  def newInstance(clazz: Dynamic)(args: Any*): Object with Dynamic = sys.error("stub")
+  def newInstance(clazz: Dynamic)(args: Any*): Object with Dynamic =
+    throw new java.lang.Error("stub")
 
   /** Creates a new object with a literal syntax.
    *
@@ -91,8 +92,8 @@ object Dynamic {
     /** literal creation like this:
      *  js.Dynamic.literal(name1 = "value", name2 = "value")
      */
-    def applyDynamicNamed(name: String)(
-        fields: (String, Any)*): Object with Dynamic = sys.error("stub")
+    def applyDynamicNamed(name: String)(fields: (String, Any)*): Object with Dynamic =
+      throw new java.lang.Error("stub")
 
     /** literal creation like this:
      *  js.Dynamic.literal("name1" -> "value", "name2" -> "value")
@@ -101,8 +102,7 @@ object Dynamic {
      *  applyDynamicNamed fail, since a call with named arguments would
      *  be routed to the `def apply`, rather than def dynamic version.
      */
-    def applyDynamic(name: String)(
-        fields: (String, Any)*): Object with Dynamic = sys.error("stub")
-
+    def applyDynamic(name: String)(fields: (String, Any)*): Object with Dynamic =
+      throw new java.lang.Error("stub")
   }
 }

@@ -253,7 +253,7 @@ class RegressionTest {
     assertThrows(classOf[Exception], (giveMeANull(): StringBuilder).append(5))
     assertThrows(classOf[Exception], (giveMeANull(): scala.runtime.IntRef).elem)
 
-    def giveMeANothing(): Nothing = sys.error("boom")
+    def giveMeANothing(): Nothing = throw new Exception("boom")
     assertThrows(classOf[Exception], (giveMeANothing(): StringBuilder).append(5))
     assertThrows(classOf[Exception], (giveMeANothing(): scala.runtime.IntRef).elem)
   }

@@ -340,7 +340,7 @@ object ScalaRunTime {
     nl + s + "\n"
   }
   private[scala] def checkZip(what: String, coll1: TraversableOnce[_], coll2: TraversableOnce[_]) {
-    if (sys.props contains "scala.debug.zip") {
+    if (System.getProperty("scala.debug.zip") != null) {
       val xs = coll1.toIndexedSeq
       val ys = coll2.toIndexedSeq
       if (xs.length != ys.length) {

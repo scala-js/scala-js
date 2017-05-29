@@ -34,45 +34,34 @@ package scala.scalajs.js.typedarray
 import java.nio._
 
 private[typedarray] object TypedArrayBufferBridge {
-  def wrap(array: ArrayBuffer): ByteBuffer =
-    sys.error("stub")
+  def wrap(array: ArrayBuffer): ByteBuffer = stub()
 
-  def wrap(array: ArrayBuffer, byteOffset: Int, length: Int): ByteBuffer =
-    sys.error("stub")
+  def wrap(array: ArrayBuffer, byteOffset: Int, length: Int): ByteBuffer = stub()
 
-  def wrap(array: Int8Array): ByteBuffer =
-    sys.error("stub")
+  def wrap(array: Int8Array): ByteBuffer = stub()
 
-  def wrap(array: Uint16Array): CharBuffer =
-    sys.error("stub")
+  def wrap(array: Uint16Array): CharBuffer = stub()
 
-  def wrap(array: Int16Array): ShortBuffer =
-    sys.error("stub")
+  def wrap(array: Int16Array): ShortBuffer = stub()
 
-  def wrap(array: Int32Array): IntBuffer =
-    sys.error("stub")
+  def wrap(array: Int32Array): IntBuffer = stub()
 
-  def wrap(array: Float32Array): FloatBuffer =
-    sys.error("stub")
+  def wrap(array: Float32Array): FloatBuffer = stub()
 
-  def wrap(array: Float64Array): DoubleBuffer =
-    sys.error("stub")
+  def wrap(array: Float64Array): DoubleBuffer = stub()
 
-  def Buffer_hasArrayBuffer(buffer: Buffer): Boolean =
-    sys.error("stub")
+  def Buffer_hasArrayBuffer(buffer: Buffer): Boolean = stub()
 
-  def Buffer_arrayBuffer(buffer: Buffer): ArrayBuffer =
-    sys.error("stub")
+  def Buffer_arrayBuffer(buffer: Buffer): ArrayBuffer = stub()
 
-  def Buffer_arrayBufferOffset(buffer: Buffer): Int =
-    sys.error("stub")
+  def Buffer_arrayBufferOffset(buffer: Buffer): Int = stub()
 
-  def Buffer_dataView(buffer: Buffer): DataView =
-    sys.error("stub")
+  def Buffer_dataView(buffer: Buffer): DataView = stub()
 
-  def Buffer_hasTypedArray(buffer: Buffer): Boolean =
-    sys.error("stub")
+  def Buffer_hasTypedArray(buffer: Buffer): Boolean = stub()
 
-  def Buffer_typedArray(buffer: Buffer): TypedArray[_, _] =
-    sys.error("stub")
+  def Buffer_typedArray(buffer: Buffer): TypedArray[_, _] = stub()
+
+  private def stub(): Nothing =
+    throw new Error("stub")
 }

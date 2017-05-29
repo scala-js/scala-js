@@ -131,7 +131,8 @@ object JSDependenciesPlugin extends AutoPlugin {
           results += collectFile(file, relPath)
         }
       } else {
-        sys.error("Illegal classpath entry: " + cpEntry.getPath)
+        throw new IllegalArgumentException(
+            "Illegal classpath entry: " + cpEntry.getPath)
       }
     }
 

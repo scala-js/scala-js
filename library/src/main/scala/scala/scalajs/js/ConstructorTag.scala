@@ -35,5 +35,6 @@ object ConstructorTag {
    *  This method has the same preconditions as
    *  [[constructorOf js.constructorOf]].
    */
-  implicit def materialize[T <: Any]: ConstructorTag[T] = sys.error("stub")
+  implicit def materialize[T <: Any]: ConstructorTag[T] =
+    throw new java.lang.Error("stub")
 }

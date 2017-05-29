@@ -16,6 +16,7 @@ import scala.tools.nsc._
  *  @author Sébastien Doeraene
  */
 trait Compat210Component {
+  import Compat210Component.{infiniteLoop, noImplClasses}
 
   val global: Global
 
@@ -25,7 +26,7 @@ trait Compat210Component {
 
   implicit final class SymbolCompat(self: Symbol) {
     def unexpandedName: Name = self.originalName
-    def originalName: Name = sys.error("infinite loop in Compat")
+    def originalName: Name = infiniteLoop()
 
     def isPrivateThis: Boolean = self.hasAllFlags(PRIVATE | LOCAL)
     def isLocalToBlock: Boolean = self.isLocal
@@ -49,18 +50,20 @@ trait Compat210Component {
       self: Compat210Component.this.global.type) {
 
     def enteringPhase[T](ph: Phase)(op: => T): T = self.beforePhase(ph)(op)
-    def beforePhase[T](ph: Phase)(op: => T): T = sys.error("infinite loop in Compat")
+    def beforePhase[T](ph: Phase)(op: => T): T = infiniteLoop()
 
     def exitingPhase[T](ph: Phase)(op: => T): T = self.afterPhase(ph)(op)
-    def afterPhase[T](ph: Phase)(op: => T): T = sys.error("infinite loop in Compat")
+    def afterPhase[T](ph: Phase)(op: => T): T = infiniteLoop()
 
     def delambdafy: DelambdafyCompat.type = DelambdafyCompat
   }
 
   object DelambdafyCompat {
     object FreeVarTraverser {
-      def freeVarsOf(function: Function): mutable.LinkedHashSet[Symbol] =
-        sys.error("FreeVarTraverser should not be called on 2.10")
+      def freeVarsOf(function: Function): mutable.LinkedHashSet[Symbol] = {
+        throw new AssertionError(
+            "FreeVarTraverser should not be called on 2.10")
+      }
     }
   }
 
@@ -70,16 +73,15 @@ trait Compat210Component {
     definitions.SeqClass.implClass != NoSymbol // a trait we know has an impl class
 
   implicit final class StdTermNamesCompat(self: global.nme.type) {
-    def IMPL_CLASS_SUFFIX: String = sys.error("No impl classes in this version")
+    def IMPL_CLASS_SUFFIX: String = noImplClasses()
 
     def isImplClassName(name: Name): Boolean = false
   }
 
   implicit final class StdTypeNamesCompat(self: global.tpnme.type) {
-    def IMPL_CLASS_SUFFIX: String = sys.error("No impl classes in this version")
+    def IMPL_CLASS_SUFFIX: String = noImplClasses()
 
-    def interfaceName(implname: Name): TypeName =
-      sys.error("No impl classes in this version")
+    def interfaceName(implname: Name): TypeName = noImplClasses()
   }
 
   // SAMFunction was introduced in 2.12.0-M4 for LMF-capable SAM types
@@ -181,8 +183,8 @@ trait Compat210Component {
      *  `overridden` are only present in 2.10.
      */
     private implicit class Cursor210toCursor211(cursor: overridingPairs.Cursor) {
-      def overriding: Symbol = sys.error("infinite loop in Compat")
-      def overridden: Symbol = sys.error("infinite loop in Compat")
+      def overriding: Symbol = infiniteLoop()
+      def overridden: Symbol = infiniteLoop()
     }
   }
 
@@ -193,7 +195,7 @@ trait Compat210Component {
     def erasedUnderlying: Type =
       enteringPhase(currentRun.erasurePhase)(
           erasure.erasedValueClassArg(self.original))
-    def original: TypeRef = sys.error("infinite loop in Compat")
+    def original: TypeRef = infiniteLoop()
   }
 
   // Definitions
@@ -237,7 +239,7 @@ trait Compat210Component {
 object Compat210Component {
   private object LowPriorityMode {
     object Mode {
-      def FUNmode: Nothing = sys.error("infinite loop in Compat")
+      def FUNmode: Nothing = infiniteLoop()
     }
   }
 
@@ -250,6 +252,12 @@ object Compat210Component {
       }
     }
   }
+
+  private def infiniteLoop(): Nothing =
+    throw new AssertionError("Infinite loop in Compat")
+
+  private def noImplClasses(): Nothing =
+    throw new AssertionError("No impl classes in this version")
 }
 
 trait PluginComponent210Compat extends Compat210Component {

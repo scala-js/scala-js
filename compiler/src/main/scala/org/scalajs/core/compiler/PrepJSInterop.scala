@@ -241,6 +241,20 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           }
           super.transform(tree)
 
+        /* Anonymous function, need to check that it is not used as a SAM for a
+         * JS type, unless it is js.FunctionN or js.ThisFunctionN.
+         * See #2921.
+         */
+        case tree: Function =>
+          val tpeSym = tree.tpe.typeSymbol
+          if (isJSAny(tpeSym) && !AllJSFunctionClasses.contains(tpeSym)) {
+            reporter.error(tree.pos,
+                "Using an anonymous function as a SAM for the JavaScript " +
+                "type " + tpeSym.fullNameString + " is not allowed. " +
+                "Use an anonymous class instead.")
+          }
+          super.transform(tree)
+
         // Catch Select on Enumeration.Value we couldn't transform but need to
         // we ignore the implementation of scala.Enumeration itself
         case ScalaEnumValue.NoName(_) if noEnclosingOwner is OwnerKind.EnumImpl =>
@@ -952,17 +966,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
          * JS class/trait.
          */
       } else if (jsPrimitives.isJavaScriptPrimitive(sym)) {
-        // Force rhs of a primitive to be `sys.error("stub")` except for the
-        // js.native primitive which displays an elaborate error message
-        if (sym != JSPackage_native) {
-          tree.rhs match {
-            case Apply(trg, Literal(Constant("stub")) :: Nil)
-                if trg.symbol == jsDefinitions.Sys_error =>
-            case _ =>
-              reporter.error(tree.pos,
-                  "The body of a primitive must be `sys.error(\"stub\")`.")
-          }
-        }
+        // No check for primitives. We trust our own standard library.
       } else if (sym.isConstructor) {
         // Force secondary ctor to have only a call to the primary ctor inside
         tree.rhs match {

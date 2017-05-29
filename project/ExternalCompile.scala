@@ -71,12 +71,13 @@ object ExternalCompile {
 
           def doCompile(sourcesArgs: List[String]): Unit = {
             val run = (runner in compile).value
-            run.run("scala.tools.nsc.Main", compilerCp,
+            val optErrorMsg = run.run("scala.tools.nsc.Main", compilerCp,
                 "-cp" :: cpStr ::
                 "-d" :: classesDirectory.getAbsolutePath() ::
                 options ++:
                 sourcesArgs,
-                patchedLogger) foreach sys.error
+                patchedLogger)
+            optErrorMsg.foreach(errorMsg => throw new Exception(errorMsg))
           }
 
           /* Crude way of overcoming the Windows limitation on command line

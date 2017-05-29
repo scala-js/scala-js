@@ -18,6 +18,7 @@ import org.scalajs.core.tools.logging.NullLogger
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.Utils.OptDeadline
 
+import scala.collection.JavaConverters._
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
 
@@ -138,14 +139,14 @@ abstract class AbstractNodeJSEnv(
 
     // Node.js specific (system) environment
     override protected def getVMEnv(): Map[String, String] = {
-      val baseNodePath = sys.env.get("NODE_PATH").filter(_.nonEmpty)
+      val baseNodePath = Option(System.getenv("NODE_PATH")).filter(_.nonEmpty)
       val nodePath = libCache.cacheDir.getAbsolutePath +
           baseNodePath.fold("")(p => File.pathSeparator + p)
 
-      sys.env ++ Seq(
+      System.getenv().asScala.toMap ++ Seq(
         "NODE_MODULE_CONTEXTS" -> "0",
         "NODE_PATH" -> nodePath
-      ) ++ additionalEnv
+      ) ++ env
     }
   }
 

@@ -322,7 +322,8 @@ object ScalaJSPluginInternal {
           results += collectFile(file, relPath)
         }
       } else {
-        sys.error("Illegal classpath entry: " + cpEntry.getPath)
+        throw new IllegalArgumentException(
+            "Illegal classpath entry: " + cpEntry.getPath)
       }
     }
 
@@ -379,7 +380,7 @@ object ScalaJSPluginInternal {
       // Give tasks ability to check we are not forking at build reading time
       scalaJSEnsureUnforked := {
         if (fork.value)
-          sys.error("Scala.js cannot be run in a forked JVM")
+          throw new MessageOnlyException("Scala.js cannot be run in a forked JVM")
         else
           true
       },
@@ -389,7 +390,8 @@ object ScalaJSPluginInternal {
         javaOptions.value.map {
           case javaSysPropsPattern(propName, propValue) => (propName, propValue)
           case opt =>
-            sys.error("Scala.js javaOptions can only be \"-D<key>=<value>\"," +
+            throw new MessageOnlyException(
+                "Scala.js javaOptions can only be \"-D<key>=<value>\"," +
                 " but received: " + opt)
         }.toMap
       },
@@ -536,7 +538,8 @@ object ScalaJSPluginInternal {
           case env: ComJSEnv => env
 
           case env =>
-            sys.error(s"You need a ComJSEnv to test (found ${env.name})")
+            throw new MessageOnlyException(
+                s"You need a ComJSEnv to test (found ${env.name})")
         }
 
         val files = jsExecutionFiles.value

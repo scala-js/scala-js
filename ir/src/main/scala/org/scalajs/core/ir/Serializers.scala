@@ -687,7 +687,7 @@ object Serializers {
       import input._
       val result = (tag: @switch) match {
         case TagEmptyTree =>
-          sys.error("Found invalid TagEmptyTree")
+          throw new IOException("Found invalid TagEmptyTree")
 
         case TagVarDef   => VarDef(readIdent(), readType(), readBoolean(), readTree())
         case TagParamDef => ParamDef(readIdent(), readType(), readBoolean(), readBoolean())

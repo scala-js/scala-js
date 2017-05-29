@@ -52,7 +52,7 @@ object QuickLinker {
           def relativePath: String = s"<dummy relative path from $getClass>"
         }
       } else {
-        sys.error("Illegal IR file / Jar: " + file)
+        throw new IllegalArgumentException("Illegal IR file / Jar: " + file)
       }
     }
 

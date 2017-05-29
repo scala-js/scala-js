@@ -168,7 +168,7 @@ object RedBlackTree {
     }
     def subl(t: Tree[A, B]) =
       if (t.isInstanceOf[BlackTree[_, _]]) t.red
-      else sys.error("Defect: invariance violation; expected black, got "+t)
+      else throw new IllegalStateException("Defect: invariance violation; expected black, got "+t)
 
     def balLeft(x: A, xv: B, tl: Tree[A, B], tr: Tree[A, B]) = if (isRedTree(tl)) {
       RedTree(x, xv, tl.black, tr)
@@ -177,7 +177,7 @@ object RedBlackTree {
     } else if (isRedTree(tr) && isBlackTree(tr.left)) {
       RedTree(tr.left.key, tr.left.value, BlackTree(x, xv, tl, tr.left.left), balance(tr.key, tr.value, tr.left.right, subl(tr.right)))
     } else {
-      sys.error("Defect: invariance violation")
+      throw new IllegalStateException("Defect: invariance violation")
     }
     def balRight(x: A, xv: B, tl: Tree[A, B], tr: Tree[A, B]) = if (isRedTree(tr)) {
       RedTree(x, xv, tl, tr.black)
@@ -186,7 +186,7 @@ object RedBlackTree {
     } else if (isRedTree(tl) && isBlackTree(tl.right)) {
       RedTree(tl.right.key, tl.right.value, balance(tl.key, tl.value, subl(tl.left), tl.right.left), BlackTree(x, xv, tl.right.right, tr))
     } else {
-      sys.error("Defect: invariance violation")
+      throw new IllegalStateException("Defect: invariance violation")
     }
     def delLeft = if (isBlackTree(tree.left)) balLeft(tree.key, tree.value, del(tree.left, k), tree.right) else RedTree(tree.key, tree.value, del(tree.left, k), tree.right)
     def delRight = if (isBlackTree(tree.right)) balRight(tree.key, tree.value, tree.left, del(tree.right, k)) else RedTree(tree.key, tree.value, tree.left, del(tree.right, k))
@@ -213,7 +213,7 @@ object RedBlackTree {
     } else if (isRedTree(tl)) {
       RedTree(tl.key, tl.value, tl.left, append(tl.right, tr))
     } else {
-      sys.error("unmatched tree on append: " + tl + ", " + tr)
+      throw new IllegalStateException("unmatched tree on append: " + tl + ", " + tr)
     }
 
     val cmp = ordering.compare(k, tree.key)
@@ -334,7 +334,7 @@ object RedBlackTree {
         val leftMost = false
         (unzip(left :: leftZipper, leftMost), false, leftMost, smallerDepth)
       } else {
-        sys.error("unmatched trees in unzip: " + left + ", " + right)
+        throw new IllegalStateException("unmatched trees in unzip: " + left + ", " + right)
       }
     }
     unzipBoth(left, right, Nil, Nil, 0)
@@ -346,7 +346,7 @@ object RedBlackTree {
       case head :: tail if isBlackTree(head) =>
         if (depth == 1) zipper else findDepth(tail, depth - 1)
       case _ :: tail => findDepth(tail, depth)
-      case Nil => sys.error("Defect: unexpected empty zipper while computing range")
+      case Nil => throw new IllegalStateException("Defect: unexpected empty zipper while computing range")
     }
 
     // Blackening the smaller tree avoids balancing problems on union;

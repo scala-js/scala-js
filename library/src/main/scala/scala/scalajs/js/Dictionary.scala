@@ -62,7 +62,7 @@ sealed trait Dictionary[A] extends Any {
    *  Since we are using strict mode, this throws an exception, if the property
    *  isn't configurable.
    */
-  def delete(key: String): Unit = sys.error("stub")
+  def delete(key: String): Unit = throw new java.lang.Error("stub")
 }
 
 /** Factory for [[Dictionary]] instances. */

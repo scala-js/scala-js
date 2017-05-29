@@ -36,12 +36,12 @@ class MainGenericRunner {
     false
   }
 
-  val optMode = OptMode.fromId(sys.props("scalajs.partest.optMode"))
+  val optMode = OptMode.fromId(System.getProperty("scalajs.partest.optMode"))
 
   def readSemantics() = {
     import org.scalajs.core.tools.sem.CheckedBehavior.Compliant
 
-    val opt = sys.props.get("scalajs.partest.compliantSems")
+    val opt = Option(System.getProperty("scalajs.partest.compliantSems"))
     val compliantSems =
       opt.fold[List[String]](Nil)(_.split(',').toList.filter(_.nonEmpty))
 
@@ -172,8 +172,8 @@ class MainGenericRunner {
 }
 
 object MainGenericRunner extends MainGenericRunner {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     if (!process(args))
-      sys.exit(1)
+      System.exit(1)
   }
 }

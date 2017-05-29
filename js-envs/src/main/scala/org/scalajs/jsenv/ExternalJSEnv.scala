@@ -6,6 +6,7 @@ import org.scalajs.core.tools.logging.Logger
 import java.io.{ Console => _, _ }
 import scala.io.Source
 
+import scala.collection.JavaConverters._
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
@@ -65,10 +66,11 @@ abstract class ExternalJSEnv(
 
     /** VM environment. Override to adapt.
      *
-     *  The default value in `ExternalJSEnv` is `sys.env ++ env`.
+     *  The default value in `ExternalJSEnv` is
+     *  `System.getenv().asScala.toMap ++ env`.
      */
     protected def getVMEnv(): Map[String, String] =
-      sys.env ++ env
+      System.getenv().asScala.toMap ++ env
 
     /** All the JS files that are passed to the VM.
      *

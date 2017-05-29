@@ -86,8 +86,10 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
         val infoAndTrees =
           infoInput.map(info => (info, getTree(info.encodedName)._1))
         val errorCount = InfoChecker.check(infoAndTrees, logger)
-        if (errorCount != 0)
-          sys.error(s"There were $errorCount Info checking errors.")
+        if (errorCount != 0) {
+          throw new LinkingException(
+              s"There were $errorCount Info checking errors.")
+        }
       }
     }
 
@@ -114,7 +116,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
       if (skipped > 0)
         logger.log(Level.Error, s"Not showing $skipped more linking errors")
 
-      sys.error("There were linking errors")
+      throw new LinkingException("There were linking errors")
     }
 
     val linkResult = logger.time("Linker: Assemble LinkedClasses") {
@@ -127,8 +129,10 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
     if (checkIR) {
       logger.time("Linker: Check IR") {
         val errorCount = IRChecker.check(linkResult, logger)
-        if (errorCount != 0)
-          sys.error(s"There were $errorCount IR checking errors.")
+        if (errorCount != 0) {
+          throw new LinkingException(
+              s"There were $errorCount IR checking errors.")
+        }
       }
     }
 
@@ -238,7 +242,8 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
         classExports += e
 
       case tree =>
-        sys.error(s"Illegal tree in ClassDef of class ${tree.getClass}")
+        throw new IllegalArgumentException(
+            s"Illegal tree in ClassDef of class ${tree.getClass}")
     }
 
     // Synthetic members
@@ -418,8 +423,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
       ()
     }
 
-    if (errors.nonEmpty) {
-      sys.error("There were conflicting exports.")
-    }
+    if (errors.nonEmpty)
+      throw new LinkingException("There were conflicting exports.")
   }
 }

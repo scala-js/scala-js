@@ -72,7 +72,7 @@ package object js {
     v.asInstanceOf[scala.AnyRef] eq undefined
 
   /** Returns the type of `x` as identified by `typeof x` in JavaScript. */
-  def typeOf(x: Any): String = sys.error("stub")
+  def typeOf(x: Any): String = throw new java.lang.Error("stub")
 
   /** Returns the constructor function of a JavaScript class.
    *
@@ -80,7 +80,7 @@ package object js {
    *  `classOf[T]`) and represent a class extending `js.Any` (not a trait nor
    *  an object).
    */
-  def constructorOf[T <: js.Any]: js.Dynamic = sys.error("stub")
+  def constructorOf[T <: js.Any]: js.Dynamic = throw new java.lang.Error("stub")
 
   /** Makes explicit an implicitly available `ConstructorTag[T]`. */
   def constructorTag[T <: js.Any](implicit tag: ConstructorTag[T]): ConstructorTag[T] =
@@ -96,7 +96,7 @@ package object js {
    *  - In Chrome, it has no effect unless the developer tools are opened
    *    beforehand.
    */
-  def debugger(): Unit = sys.error("stub")
+  def debugger(): Unit = throw new java.lang.Error("stub")
 
   /** Evaluates JavaScript code and returns the result. */
   @inline def eval(x: String): Any =
@@ -125,9 +125,12 @@ package object js {
    *  }
    *  }}}
    */
-  def native: Nothing = sys.error("A method defined in a JavaScript raw " +
-      "type of a Scala.js library has been called. This is most likely " +
-      "because you tried to run Scala.js binaries on the JVM. Make sure you " +
-      "are using the JVM version of the libraries.")
+  def native: Nothing = {
+    throw new java.lang.Error(
+        "A method defined in a JavaScript raw type of a Scala.js library has " +
+        "been called. This is most likely because you tried to run Scala.js " +
+        "binaries on the JVM. Make sure you are using the JVM version of the " +
+        "libraries.")
+  }
 
 }

@@ -184,7 +184,8 @@ object LinkedClass {
         classExports += e
 
       case tree =>
-        sys.error(s"Illegal tree in ClassDef of class ${tree.getClass}")
+        throw new IllegalArgumentException(
+            s"Illegal tree in ClassDef of class ${tree.getClass}")
     }
 
     val classExportInfo = memberInfoByName.get(Definitions.ClassExportsName)
