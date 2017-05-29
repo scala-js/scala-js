@@ -649,16 +649,16 @@ object Build {
         "org.webjars" % "jszip" % "2.4.0" % "test" / "jszip.min.js" commonJSName "JSZip",
 
       inConfig(Test) {
-        // Redefine test to run Node.js and link HelloWorld
+        // Redefine test to perform the bootstrap test
         test := {
           if (!jsEnv.value.isInstanceOf[NodeJSEnv])
             throw new MessageOnlyException("toolsJS/test must be run with Node.js")
 
-          /* Collect IR relevant files from the classpath
+          /* Collect relevant IR files from the classpath of the test suite.
            * We assume here that the classpath is valid. This is checked by the
            * the scalaJSIR task.
            */
-          val cp = Attributed.data(fullClasspath.value)
+          val cp = Attributed.data((fullClasspath in (testSuite, Test)).value)
 
           // Files must be Jars, non-files must be dirs
           val (jars, dirs) = cp.filter(_.exists).partition(_.isFile)
@@ -686,7 +686,7 @@ object Build {
             seqOfStringsToJSArrayCode(unescapedMainMethods)
           }
 
-          val scalaJSEnv = {
+          val scalaJSEnvForTestSuite = {
             s"""
             {"javaSystemProperties": {
               "scalajs.scalaVersion": "${scalaVersion.value}",
@@ -704,11 +704,10 @@ object Build {
             var linker = scalajs.QuickLinker;
             var lib = linker.linkTestSuiteNode($irPaths, $mainMethods);
 
-            var __ScalaJSEnv = $scalaJSEnv;
-
+            var __ScalaJSEnv = $scalaJSEnvForTestSuite;
             eval("(function() { 'use strict'; " +
               lib + ";" +
-              "scalajs.TestRunner.runTests();" +
+              "scalajs.ConsoleTestRunner.runTests();" +
             "}).call(this);");
             """
           }
@@ -722,7 +721,7 @@ object Build {
         }
       }
   ).withScalaJSCompiler.dependsOn(
-      library, irProjectJS, testSuite % "test->test"
+      library, irProjectJS, jUnitRuntime % "test"
   )
 
   lazy val jsEnvs: Project = (project in file("js-envs")).settings(

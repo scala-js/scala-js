@@ -1,4 +1,4 @@
-package org.scalajs.core.tools.test.js
+package org.scalajs.testsuite.utils
 
 import scala.collection.mutable
 
@@ -9,8 +9,8 @@ import org.scalajs.testinterface.{ScalaJSClassLoader, TestDetector}
 
 import sbt.testing._
 
-@JSExportTopLevel("scalajs.TestRunner")
-object TestRunner {
+@JSExportTopLevel("scalajs.ConsoleTestRunner")
+object ConsoleTestRunner {
 
   @JSExport
   def runTests(): Unit = {
