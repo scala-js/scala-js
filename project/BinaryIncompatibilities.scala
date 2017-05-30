@@ -47,6 +47,11 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+      // New members of an @js.native trait in `runtime`, not an issue
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "scala.scalajs.runtime.LinkingInfo.globalThis"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "scala.scalajs.runtime.LinkingInfo.scala$scalajs$runtime$LinkingInfo$_setter_$globalThis_=")
   )
 
   val TestInterface = Seq(

@@ -16,6 +16,9 @@ trait LinkingInfo extends js.Object {
 
   /** Version of the linker */
   val linkerVersion: js.UndefOr[String] = js.native
+
+  /** The value of the global JavaScript `this`. */
+  val globalThis: Any = js.native
 }
 
 object LinkingInfo {

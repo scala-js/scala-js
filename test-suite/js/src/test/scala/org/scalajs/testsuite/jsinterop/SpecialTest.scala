@@ -55,6 +55,25 @@ class SpecialTest {
     js.special.delete(a[js.Object]("foo"), kh.key)
   }
 
+  // js.special.globalThis
+
+  @Test def globalThis_can_be_used_to_detect_the_global_object(): Unit = {
+    val globalObject = {
+      import js.Dynamic.{global => g}
+      // We've got to use selectDynamic explicitly not to crash Scala 2.10
+      if (js.typeOf(g.selectDynamic("global")) != "undefined" &&
+          (g.selectDynamic("global").selectDynamic("Object") eq g.selectDynamic("Object"))) {
+        // Node.js environment detected
+        g.selectDynamic("global")
+      } else {
+        // In all other well-known environment, we can use the global `this`
+        js.special.globalThis
+      }
+    }
+
+    assertSame(js.Dynamic.global, globalObject)
+  }
+
   // js.special.debugger
 
   @Test def should_support_debugger_statements_through_the_whole_pipeline_issue_1402(): Unit = {
