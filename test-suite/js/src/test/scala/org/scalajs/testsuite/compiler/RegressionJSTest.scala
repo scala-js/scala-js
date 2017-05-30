@@ -45,34 +45,6 @@ class RegressionJSTest {
     assertEquals(2, b)
   }
 
-  @Test def should_support_debugger_statements_through_the_whole_pipeline_issue_1402(): Unit = {
-    /* A function that hopefully persuades the optimizer not to optimize
-     * we need a debugger statement that is unreachable, but not eliminated.
-     */
-    @noinline
-    class A(var z: Int = 4) {
-      var x: Int = _
-      var y: Int = _
-
-      @noinline
-      def plus(x0: Int, y0: Int): Int = {
-        x = x0
-        y = y0
-        var res = 0
-        while (x > 0 || y > 0 || z > 0) {
-          if (x > 0) x -= 1
-          else if (y > 0) y -= 1
-          else z -= 1
-          res += 1
-        }
-        res
-      }
-    }
-
-    if (new A().plus(5, 10) < 3)
-      js.debugger()
-  }
-
   @Test def should_transform_js_dynamic_x_receiver_issue_2804(): Unit = {
     @ScalaJSDefined
     class Foo extends js.Object

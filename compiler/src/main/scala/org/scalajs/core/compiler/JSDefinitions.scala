@@ -26,7 +26,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val ScalaJSJSPackage = getPackage(newTermNameCached("scala.scalajs.js")) // compat 2.10/2.11
       lazy val JSPackage_typeOf        = getMemberMethod(ScalaJSJSPackage, newTermName("typeOf"))
       lazy val JSPackage_constructorOf = getMemberMethod(ScalaJSJSPackage, newTermName("constructorOf"))
-      lazy val JSPackage_debugger      = getMemberMethod(ScalaJSJSPackage, newTermName("debugger"))
       lazy val JSPackage_native        = getMemberMethod(ScalaJSJSPackage, newTermName("native"))
       lazy val JSPackage_undefined     = getMemberMethod(ScalaJSJSPackage, newTermName("undefined"))
 
@@ -109,6 +108,10 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val RawJSTypeAnnot = getRequiredClass("scala.scalajs.js.annotation.RawJSType")
     lazy val ExposedJSMemberAnnot = getRequiredClass("scala.scalajs.js.annotation.ExposedJSMember")
+
+    lazy val SpecialPackageModule = getPackageObject("scala.scalajs.js.special")
+      lazy val Special_delete = getMemberMethod(SpecialPackageModule, newTermName("delete"))
+      lazy val Special_debugger = getMemberMethod(SpecialPackageModule, newTermName("debugger"))
 
     lazy val RuntimeStringModule = getRequiredModule("scala.scalajs.runtime.RuntimeString")
     lazy val RuntimeStringModuleClass = RuntimeStringModule.moduleClass

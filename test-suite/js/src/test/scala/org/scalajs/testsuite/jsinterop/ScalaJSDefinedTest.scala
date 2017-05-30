@@ -650,7 +650,7 @@ class ScalaJSDefinedTest {
 
     // Delete property from prototype.
     val prototype = js.constructorOf[Foo].prototype
-    prototype.asInstanceOf[js.Dictionary[js.Any]].delete("myProp")
+    js.special.delete(prototype, "myProp")
 
     // Check it is actually gone.
     assertTrue(js.isUndefined((new Foo()).asInstanceOf[js.Dynamic].myProp))
@@ -662,7 +662,7 @@ class ScalaJSDefinedTest {
 
     // The property should be on the instance itself.
     assertTrue(y.hasOwnProperty("myProp"))
-    y.asInstanceOf[js.Dictionary[js.Any]].delete("myProp")
+    js.special.delete(y, "myProp")
     assertTrue(js.isUndefined(y.asInstanceOf[js.Dynamic].myProp))
     assertFalse(y.hasOwnProperty("myProp"))
   }

@@ -41,7 +41,6 @@ abstract class JSPrimitives {
   val ARR_CREATE = 337 // js.Array.apply (array literal syntax)
 
   val TYPEOF = 344    // typeof x
-  val DEBUGGER = 345  // js.debugger()
   val HASPROP = 346   // js.Object.hasProperty(o, p), equiv to `p in o` in JS
   val OBJPROPS = 347  // js.Object.properties(o), equiv to `for (p in o)` in JS
   val JS_NATIVE = 348 // js.native. Marker method. Fails if tried to be emitted.
@@ -50,6 +49,9 @@ abstract class JSPrimitives {
 
   val CONSTRUCTOROF = 352 // runtime.constructorOf(clazz)
   val LINKING_INFO = 354  // $linkingInfo
+
+  val DELETE = 355   // js.special.delete
+  val DEBUGGER = 356 // js.special.debugger
 
   /** Initialize the map of primitive methods (for GenJSCode) */
   def init(): Unit = initWithPrimitives(addPrimitive)
@@ -95,7 +97,6 @@ abstract class JSPrimitives {
     addPrimitive(JSArray_create, ARR_CREATE)
 
     addPrimitive(JSPackage_typeOf, TYPEOF)
-    addPrimitive(JSPackage_debugger, DEBUGGER)
     addPrimitive(JSPackage_native, JS_NATIVE)
 
     addPrimitive(JSObject_hasProperty, HASPROP)
@@ -105,6 +106,9 @@ abstract class JSPrimitives {
 
     addPrimitive(Runtime_constructorOf, CONSTRUCTOROF)
     addPrimitive(Runtime_linkingInfo, LINKING_INFO)
+
+    addPrimitive(Special_delete, DELETE)
+    addPrimitive(Special_debugger, DEBUGGER)
   }
 
   def isJavaScriptPrimitive(code: Int): Boolean =

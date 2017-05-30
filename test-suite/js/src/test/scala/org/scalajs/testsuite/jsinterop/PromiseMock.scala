@@ -22,7 +22,7 @@ object PromiseMock {
       body(MockPromise.processQueue _)
     } finally {
       oldPromise.fold {
-        global.asInstanceOf[js.Dictionary[Any]].delete("Promise")
+        js.special.delete(global, "Promise")
       } { old =>
         global.Promise = old
       }
