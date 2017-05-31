@@ -196,7 +196,8 @@ private object ClosureLinkerBackend {
   private val ScalaJSExterns = """
     /** @constructor */
     function Object() {}
-    Object.protoype.toString = function() {};
+    Object.prototype.toString = function() {};
+    Object.prototype.$classData = {};
     /** @constructor */
     function Array() {}
     Array.prototype.length = 0;
