@@ -120,6 +120,31 @@ class InteroperabilityTest {
     assertEquals("Scala.js", obj.getConstructorParam)
   }
 
+  @Test def should_understand_js_constructor_methods(): Unit = {
+    js.eval("""
+      var ConstructorMethodTest = {
+        Class: function(x) {
+          this.field = 42;
+          this.method = function() {
+            return '42';
+          };
+          this.getConstructorParam = function() {
+            return x;
+          };
+        }
+      }
+    """)
+
+    val value    = "ASD"
+    val instance = ConstructorMethodTest.magicConstructor(value)
+    assertEquals(value, instance.getConstructorParam())
+
+    /* we don't have a scala.js class to `asInstanceOf` with, so we have to do it on the javascript side */
+    js.eval("var ConstructorMethodTestTemp = undefined;")
+    js.Dynamic.global.ConstructorMethodTestTemp = instance
+    assertEquals(true, js.eval("ConstructorMethodTestTemp instanceof ConstructorMethodTest.Class"))
+  }
+
   @Test def should_acces_top_level_JS_objects_via_Scala_objects_inheriting_from_js_Object(): Unit = {
     js.eval("""
       var InteroperabilityTestTopLevelObject = function(value) {
@@ -520,6 +545,21 @@ class InteroperabilityTest {
 }
 
 object InteroperabilityTest {
+
+  @js.native
+  @JSGlobal("ConstructorMethodTest")
+  object ConstructorMethodTest extends js.Any {
+    @JSConstructorMethod
+    @JSName("Class")
+    def magicConstructor(s: String): ConstructorMethodTestTrait = js.native
+  }
+
+  @js.native
+  trait ConstructorMethodTestTrait extends js.Object {
+    val field: Int = js.native
+    def method(): String = js.native
+    def getConstructorParam(): String = js.native
+  }
 
   @js.native
   trait InteroperabilityTestFieldEscape extends js.Object {

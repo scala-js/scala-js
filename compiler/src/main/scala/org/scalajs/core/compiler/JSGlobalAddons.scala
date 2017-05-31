@@ -182,6 +182,10 @@ trait JSGlobalAddons extends JSDefinitions
     def isJSBracketAccess(sym: Symbol): Boolean =
       sym.hasAnnotation(JSBracketAccessAnnotation)
 
+    /** has this symbol to be translated into a JS constructor method (JS to Scala) */
+    def isJSConstructorMethod(sym: Symbol): Boolean =
+      sym.hasAnnotation(JSConstructorMethodAnnotation)
+
     /** has this symbol to be translated into a JS bracket call (JS to Scala) */
     def isJSBracketCall(sym: Symbol): Boolean =
       sym.hasAnnotation(JSBracketCallAnnotation)
