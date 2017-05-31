@@ -81,7 +81,8 @@ ScalaJS.linkingInfo = {
 //!else
   "assumingES6": false,
 //!endif
-  "linkerVersion": "{{LINKER_VERSION}}"
+  "linkerVersion": "{{LINKER_VERSION}}",
+  "globalThis": this
 };
 ScalaJS.g["Object"]["freeze"](ScalaJS.linkingInfo);
 ScalaJS.g["Object"]["freeze"](ScalaJS.linkingInfo["semantics"]);

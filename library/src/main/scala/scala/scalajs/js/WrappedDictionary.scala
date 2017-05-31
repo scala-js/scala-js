@@ -52,7 +52,7 @@ class WrappedDictionary[A](val dict: Dictionary[A])
 
   def -=(key: String): this.type = {
     if (contains(key))
-      dict.delete(key)
+      js.special.delete(dict, key)
     this
   }
 

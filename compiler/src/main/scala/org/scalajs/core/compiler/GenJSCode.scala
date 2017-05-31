@@ -4163,6 +4163,10 @@ abstract class GenJSCode extends plugins.PluginComponent
                   js.VarDef(temp, jstpe.AnyType, mutable = false, arg1),
                   js.Unbox(js.JSBinaryOp(js.JSBinaryOp.in, arg2,
                       js.VarRef(temp)(jstpe.AnyType)), 'Z'))
+
+            case DELETE =>
+              // js.special.delete(arg1, arg2)
+              js.JSDelete(js.JSBracketSelect(arg1, arg2))
           }
       })
     }
