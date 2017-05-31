@@ -15,6 +15,7 @@
 
   <task id="main"><![CDATA[
     setJavaVersion $java
+    npm install &&
     sbtretry ++$scala helloworld/run &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run \
@@ -58,6 +59,7 @@
 
   <task id="test-suite-ecma-script5"><![CDATA[
     setJavaVersion $java
+    npm install &&
     sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test \
         'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test &&
     sbtretry ++$scala $testSuite/test &&
@@ -97,6 +99,7 @@
 
   <task id="test-suite-ecma-script6"><![CDATA[
     setJavaVersion $java
+    npm install &&
     sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv().withSourceMap(false)' \
         ++$scala $testSuite/test \
@@ -141,15 +144,15 @@
 
   <task id="bootstrap"><![CDATA[
     setJavaVersion $java
-    sbt 'set jsEnv in toolsJS := new org.scalajs.jsenv.nodejs.NodeJSEnv(args = Seq("--max_old_space_size=3072")).withSourceMap(false)' \
-        ++$scala irJS/test toolsJS/test &&
-    sbt 'set jsEnv in toolsJS := new org.scalajs.jsenv.nodejs.NodeJSEnv(args = Seq("--max_old_space_size=3072")).withSourceMap(false)' \
-        'set scalaJSStage in Global := FullOptStage' \
+    npm install &&
+    sbt ++$scala irJS/test toolsJS/test &&
+    sbt 'set scalaJSStage in Global := FullOptStage' \
         ++$scala irJS/test toolsJS/test
   ]]></task>
 
   <task id="tools-cli-stubs"><![CDATA[
     setJavaVersion $java
+    npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
         stubs/package jsEnvsTestSuite/test jsDependenciesCore/test \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
@@ -163,6 +166,7 @@
 
   <task id="tools-cli-stubs-sbtplugin"><![CDATA[
     setJavaVersion $java
+    npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
         stubs/package jsEnvsTestSuite/test jsDependenciesCore/test \
         sbtPlugin/package jsDependenciesPlugin/package \
@@ -193,12 +197,14 @@
 
   <task id="partestc"><![CDATA[
     setJavaVersion $java
+    npm install &&
     sbt ++$scala partest/compile
   ]]></task>
 
   <task id="sbtplugin-test"><![CDATA[
     # Publish Scala.js artifacts locally
     # Then go into standalone project and test
+    npm install &&
     sbt ++2.11.11 compiler/publishLocal library/publishLocal \
                   testInterface/publishLocal stubs/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
@@ -220,16 +226,19 @@
 
   <task id="partest-noopt"><![CDATA[
     setJavaVersion $java
+    npm install &&
     sbt ++$scala package "partestSuite/testOnly -- --showDiff"
   ]]></task>
 
   <task id="partest-fastopt"><![CDATA[
     setJavaVersion $java
+    npm install &&
     sbt ++$scala package "partestSuite/testOnly -- --fastOpt --showDiff"
   ]]></task>
 
   <task id="partest-fullopt"><![CDATA[
     setJavaVersion $java
+    npm install &&
     sbt ++$scala package "partestSuite/testOnly -- --fullOpt --showDiff"
   ]]></task>
 

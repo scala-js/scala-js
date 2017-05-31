@@ -37,6 +37,12 @@ trait VirtualFile {
         null           // Fragment
     )
   }
+
+  override def toString(): String = {
+    val className = getClass.getName
+    val shortClassName = className.substring(className.lastIndexOf('.') + 1)
+    shortClassName + "(" + path + ")"
+  }
 }
 
 object VirtualFile {

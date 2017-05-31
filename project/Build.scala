@@ -23,14 +23,11 @@ import org.scalajs.sbtplugin._
 import org.scalajs.jsenv.JSEnv
 import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
 
-import org.scalajs.jsdependencies.sbtplugin.JSDependenciesPlugin
-import org.scalajs.jsdependencies.sbtplugin.JSDependenciesPlugin.autoImport._
-
 import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
-import org.scalajs.core.tools.io.MemVirtualJSFile
+import org.scalajs.core.tools.io.{FileVirtualJSFile, MemVirtualJSFile}
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.linker.ModuleInitializer
@@ -619,41 +616,52 @@ object Build {
   ).dependsOn(irProject)
 
   lazy val toolsJS: Project = (project in file("tools/js")).enablePlugins(
-      MyScalaJSPlugin,
-      JSDependenciesPlugin
+      MyScalaJSPlugin
   ).settings(
       commonToolsSettings,
       crossVersion := ScalaJSCrossVersion.binary,
-      resourceGenerators in Test += Def.task {
-        val base = (resourceManaged in Compile).value
-        IO.createDirectory(base)
-        val outFile = base / "js-test-definitions.js"
 
+      scalaJSModuleKind in Test :=
+        org.scalajs.core.tools.linker.backend.ModuleKind.CommonJSModule,
+
+      jsExecutionFiles in Test := {
         val testDefinitions = {
           org.scalajs.build.HTMLRunnerTemplateAccess.renderTestDefinitions(
               (loadedTestFrameworks in testSuite in Test).value,
               (definedTests in testSuite in Test).value)
         }
 
-        IO.write(outFile, testDefinitions)
-        Seq(outFile)
-      }.taskValue,
+        val testDefinitionsFile = {
+          new MemVirtualJSFile("js-test-definitions.js")
+            .withContent(testDefinitions)
+        }
 
-      jsDependencies += ProvidedJS / "js-test-definitions.js" % "test",
-      jsDependencies +=
-        "org.webjars" % "jszip" % "2.4.0" % "test" / "jszip.min.js" commonJSName "JSZip",
+        testDefinitionsFile +: (jsExecutionFiles in Test).value
+      },
+
+      testSuiteJSExecutionFilesSetting,
+
+      // Give more memory to Node.js, and deactivate source maps
+      jsEnv := new NodeJSEnv(args = Seq("--max_old_space_size=3072")).withSourceMap(false),
 
       inConfig(Test) {
-        // Redefine test to run Node.js and link HelloWorld
+        // Redefine test to perform the bootstrap test
         test := {
           if (!jsEnv.value.isInstanceOf[NodeJSEnv])
             throw new MessageOnlyException("toolsJS/test must be run with Node.js")
 
-          /* Collect IR relevant files from the classpath
+          /* We'll explicitly `require` our linked file. Find its module, and
+           * remove it from the `jsExecutionFiles` to give to the runner.
+           */
+          val toolsTestModule = scalaJSLinkedFile.value
+          val executionFiles =
+            jsExecutionFiles.value.filter(_ ne toolsTestModule)
+
+          /* Collect relevant IR files from the classpath of the test suite.
            * We assume here that the classpath is valid. This is checked by the
            * the scalaJSIR task.
            */
-          val cp = Attributed.data(fullClasspath.value)
+          val cp = Attributed.data((fullClasspath in (testSuite, Test)).value)
 
           // Files must be Jars, non-files must be dirs
           val (jars, dirs) = cp.filter(_.exists).partition(_.isFile)
@@ -681,24 +689,29 @@ object Build {
             seqOfStringsToJSArrayCode(unescapedMainMethods)
           }
 
-          val scalaJSEnv = {
+          val scalaJSEnvForTestSuite = {
             s"""
             {"javaSystemProperties": {
-              "scalajs.scalaVersion": "${scalaVersion.value}"
+              "scalajs.scalaVersion": "${scalaVersion.value}",
+              "scalajs.testsuite.testtag": "testtag.value",
+              "scalajs.nodejs": "true",
+              "scalajs.typedarray": "true",
+              "scalajs.fastopt-stage": "true",
+              "scalajs.modulekind-nomodule": "true"
             }}
             """
           }
 
           val code = {
             s"""
-            var linker = scalajs.QuickLinker;
+            var toolsTestModule = require("${escapeJS(toolsTestModule.path)}");
+            var linker = toolsTestModule.scalajs.QuickLinker;
             var lib = linker.linkTestSuiteNode($irPaths, $mainMethods);
 
-            var __ScalaJSEnv = $scalaJSEnv;
-
+            var __ScalaJSEnv = $scalaJSEnvForTestSuite;
             eval("(function() { 'use strict'; " +
               lib + ";" +
-              "scalajs.TestRunner.runTests();" +
+              "scalajs.ConsoleTestRunner.runTests();" +
             "}).call(this);");
             """
           }
@@ -706,13 +719,13 @@ object Build {
           val launcher = new MemVirtualJSFile("Generated launcher file")
             .withContent(code)
 
-          val runner = jsEnv.value.jsRunner(jsExecutionFiles.value :+ launcher)
+          val runner = jsEnv.value.jsRunner(executionFiles :+ launcher)
 
           runner.run(sbtLogger2ToolsLogger(streams.value.log), scalaJSConsole.value)
         }
       }
   ).withScalaJSCompiler.dependsOn(
-      library, irProjectJS, testSuite % "test->test"
+      library, irProjectJS, jUnitRuntime % "test"
   )
 
   lazy val jsEnvs: Project = (project in file("js-envs")).settings(
@@ -1435,9 +1448,17 @@ object Build {
       }).value
   )
 
+  def testSuiteJSExecutionFilesSetting: Setting[_] = {
+    jsExecutionFiles in Test := {
+      val resourceDir =
+        (resourceDirectory in (LocalProject("testSuite"), Test)).value
+      val f = FileVirtualJSFile(resourceDir / "ScalaJSDefinedTestNatives.js")
+      f +: (jsExecutionFiles in Test).value
+    }
+  }
+
   lazy val testSuite: Project = (project in file("test-suite/js")).enablePlugins(
-      MyScalaJSPlugin,
-      JSDependenciesPlugin
+      MyScalaJSPlugin
   ).settings(
       commonSettings,
       testTagSettings,
@@ -1453,8 +1474,7 @@ object Build {
             scalaJSModuleKind.value != ModuleKind.NoModule)
       },
 
-      jsDependencies += ProvidedJS / "ScalaJSDefinedTestNatives.js" % "test",
-      skip in packageJSDependencies in Test := false,
+      testSuiteJSExecutionFilesSetting,
 
       scalaJSSemantics ~= (_.withRuntimeClassName(_.fullName match {
         case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
