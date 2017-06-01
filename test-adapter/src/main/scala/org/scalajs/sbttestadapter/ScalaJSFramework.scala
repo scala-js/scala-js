@@ -26,14 +26,12 @@ final class ScalaJSFramework(
     private val jsFiles: Seq[VirtualJSFile],
     private[testadapter] val moduleKind: ModuleKind,
     private[testadapter] val moduleIdentifier: Option[String],
-    private[testadapter] val logger: Logger,
-    private[testadapter] val jsConsole: JSConsole
+    private[testadapter] val logger: Logger
 ) extends Framework {
 
   def this(frameworkName: String, jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
-      logger: Logger, jsConsole: JSConsole) = {
-    this(frameworkName, jsEnv, jsFiles, ModuleKind.NoModule, None, logger,
-        jsConsole)
+      logger: Logger) = {
+    this(frameworkName, jsEnv, jsFiles, ModuleKind.NoModule, None, logger)
   }
 
   private[this] val frameworkInfo = fetchFrameworkInfo()
@@ -64,7 +62,7 @@ final class ScalaJSFramework(
 
   private def fetchFrameworkInfo() = {
     val runner = newComRunner(frameworkInfoLauncher :: Nil)
-    runner.start(logger, jsConsole)
+    runner.start(logger, ConsoleJSConsole)
 
     try {
       val msg = readJSON(runner.receive())

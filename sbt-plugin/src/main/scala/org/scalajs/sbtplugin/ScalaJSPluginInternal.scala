@@ -550,7 +550,7 @@ object ScalaJSPluginInternal {
 
         detector.detect(frameworks, toolsLogger) map { case (tf, name) =>
           (tf, new ScalaJSFramework(name, env, files, moduleKind,
-              moduleIdentifier, toolsLogger, ConsoleJSConsole))
+              moduleIdentifier, toolsLogger))
         }
       },
       // Override default to avoid triggering a test:fastOptJS in a test:compile
