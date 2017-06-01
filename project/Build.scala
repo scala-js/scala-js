@@ -20,7 +20,7 @@ import org.scalajs.core.ir
 import org.scalajs.core.ir.Utils.escapeJS
 
 import org.scalajs.sbtplugin._
-import org.scalajs.jsenv.JSEnv
+import org.scalajs.jsenv.{ConsoleJSConsole, JSEnv}
 import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
 
 import ScalaJSPlugin.autoImport._
@@ -721,7 +721,7 @@ object Build {
 
           val runner = jsEnv.value.jsRunner(executionFiles :+ launcher)
 
-          runner.run(sbtLogger2ToolsLogger(streams.value.log), scalaJSConsole.value)
+          runner.run(sbtLogger2ToolsLogger(streams.value.log), ConsoleJSConsole)
         }
       }
   ).withScalaJSCompiler.dependsOn(

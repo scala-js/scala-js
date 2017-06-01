@@ -157,9 +157,6 @@ object ScalaJSPlugin extends AutoPlugin {
         "Linked Scala.js file. This is the result of fastOptJS or fullOptJS, " +
         "depending on the stage.", DTask)
 
-    val scalaJSConsole = TaskKey[JSConsole]("scalaJSConsole",
-        "The JS console used by the Scala.js runner/tester", DTask)
-
     val jsEnv = TaskKey[JSEnv]("jsEnv",
         "The JavaScript environment in which to run and test Scala.js applications.",
         AMinusTask)
