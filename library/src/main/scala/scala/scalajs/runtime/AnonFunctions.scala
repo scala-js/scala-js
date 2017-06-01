@@ -11,7 +11,7 @@ final class AnonFunction0[+R](f: js.Function0[R]) extends AbstractFunction0[R] {
 }
 
 @inline
-final class AnonFunction1[-T1, +R](f: js.Function1[T1, R]) extends AbstractFunction1[T1, R] {
+final class AnonFunction1[-T1, +R](private[scalajs] val f: js.Function1[T1, R]) extends AbstractFunction1[T1, R] {
   override def apply(arg1: T1): R = f(arg1)
 }
 
