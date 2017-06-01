@@ -392,8 +392,7 @@ object ScalaJSPlugin extends AutoPlugin {
   import ScalaJSPluginInternal._
 
   override def globalSettings: Seq[Setting[_]] = {
-    super.globalSettings ++ Seq(
-        isScalaJSProject := false,
+    Seq(
         scalaJSStage := Stage.FastOpt,
         scalaJSUseRhinoInternal := false,
         scalaJSClearCacheStats := globalIRCache.clearStats()
