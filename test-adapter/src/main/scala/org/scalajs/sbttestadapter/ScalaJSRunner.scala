@@ -178,7 +178,7 @@ final class ScalaJSRunner private[testadapter] (
 
     // Launch the slave
     val slave = framework.newComRunner(slaveLauncher :: Nil)
-    slave.start(framework.logger, framework.jsConsole)
+    slave.start(framework.logger, ConsoleJSConsole)
 
     // Create a runner on the slave
     slave.send("newRunner")
@@ -219,7 +219,7 @@ final class ScalaJSRunner private[testadapter] (
     assert(master == null)
 
     master = framework.newComRunner(masterLauncher :: Nil)
-    master.start(framework.logger, framework.jsConsole)
+    master.start(framework.logger, ConsoleJSConsole)
 
     val data = {
       val bld = new JSONObjBuilder

@@ -510,8 +510,7 @@ object ScalaJSPluginInternal {
         log.info("Running " + mainClass.value.getOrElse("<unknown class>"))
         log.debug(s"with JSEnv ${env.name}")
 
-        env.jsRunner(files).run(
-            sbtLogger2ToolsLogger(log), scalaJSConsole.value)
+        env.jsRunner(files).run(sbtLogger2ToolsLogger(log), ConsoleJSConsole)
       },
 
       runMain := {
@@ -529,7 +528,6 @@ object ScalaJSPluginInternal {
         // use assert to prevent warning about pure expr in stat pos
         assert(scalaJSEnsureUnforked.value)
 
-        val console = scalaJSConsole.value
         val logger = streams.value.log
         val toolsLogger = sbtLogger2ToolsLogger(logger)
         val frameworks = testFrameworks.value
@@ -552,7 +550,7 @@ object ScalaJSPluginInternal {
 
         detector.detect(frameworks, toolsLogger) map { case (tf, name) =>
           (tf, new ScalaJSFramework(name, env, files, moduleKind,
-              moduleIdentifier, toolsLogger, console))
+              moduleIdentifier, toolsLogger))
         }
       },
       // Override default to avoid triggering a test:fastOptJS in a test:compile
@@ -690,8 +688,6 @@ object ScalaJSPluginInternal {
       jsExecutionFiles in Compile := jsExecutionFiles.value,
       // Do not inherit jsExecutionFiles in Test from Compile
       jsExecutionFiles in Test := jsExecutionFiles.value,
-
-      scalaJSConsole := ConsoleJSConsole,
 
       clean := {
         // have clean reset incremental linker state
