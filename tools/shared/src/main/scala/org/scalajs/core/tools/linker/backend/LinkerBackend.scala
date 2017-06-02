@@ -53,7 +53,7 @@ abstract class LinkerBackend(
   /** Verify that a [[LinkingUnit]] corresponds to this [[LinkerBackend]]'s
    *  [[org.scalajs.core.tools.sem.Semantics Semantics]] and
    *  [[org.scalajs.core.tools.javascript.ESLevel ESLevel]] (specified via the
-   *  [[org.scalajs.core.tools.javascript.OutputMode OutputMode]]).
+   *  [[OutputMode]]).
    *  @throws java.lang.IllegalArgumentException if there is a mismatch
    */
   protected def verifyUnit(unit: LinkingUnit): Unit = {
