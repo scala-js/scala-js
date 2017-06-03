@@ -6,29 +6,6 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
-      // private[emitter], not an issue
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.core.tools.linker.backend.emitter.JSGen.this"),
-
-      // private[optimizer], not an issue
-      ProblemFilters.exclude[IncompatibleMethTypeProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RollbackException.this"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RollbackException.savedStatesInUse"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RollbackException.savedUsedLabelNames"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RollbackException.savedUsedLocalNames"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RollbackException.stateBackups"),
-      ProblemFilters.exclude[MissingTypesProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore$SimpleState"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#SimpleState.this"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#SimpleState.makeBackup"),
-      ProblemFilters.exclude[MissingClassProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore$State")
   )
 
   val JSEnvs = Seq(
@@ -47,11 +24,6 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
-      // New members of an @js.native trait in `runtime`, not an issue
-      ProblemFilters.exclude[ReversedMissingMethodProblem](
-          "scala.scalajs.runtime.LinkingInfo.globalThis"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem](
-          "scala.scalajs.runtime.LinkingInfo.scala$scalajs$runtime$LinkingInfo$_setter_$globalThis_=")
   )
 
   val TestInterface = Seq(
