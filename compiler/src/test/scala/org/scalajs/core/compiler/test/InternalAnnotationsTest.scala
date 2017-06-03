@@ -22,8 +22,8 @@ class InternalAnnotationsTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def sjsDefinedAnonymousClass: Unit = {
-    test("SJSDefinedAnonymousClass")
+  def anonymousJSClass: Unit = {
+    test("AnonymousJSClass")
   }
 
   @Test

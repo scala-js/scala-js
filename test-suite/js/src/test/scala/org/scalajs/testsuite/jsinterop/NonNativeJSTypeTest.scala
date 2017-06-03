@@ -18,9 +18,9 @@ import org.scalajs.testsuite.utils.JSAssert._
 import org.scalajs.testsuite.utils.Platform
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
-class ScalaJSDefinedTest {
-  import org.scalajs.testsuite.jsinterop.{ScalaJSDefinedTestSeparateRun => SepRun}
-  import ScalaJSDefinedTest._
+class NonNativeJSTypeTest {
+  import org.scalajs.testsuite.jsinterop.{NonNativeJSTypeTestSeparateRun => SepRun}
+  import NonNativeJSTypeTest._
 
   @Test def minimal_definition(): Unit = {
     val obj = new Minimal
@@ -962,25 +962,25 @@ class ScalaJSDefinedTest {
     assertEquals(-1, dyn.dependent(8))
   }
 
-  @Test def `constructors_with_default_parameters_(ScalaJSDefined/-)`(): Unit = {
+  @Test def `constructors_with_default_parameters_(NonNative/-)`(): Unit = {
     assertEquals(-1, new ConstructorDefaultParamJSNonNativeNone().foo)
     assertEquals(1, new ConstructorDefaultParamJSNonNativeNone(1).foo)
     assertEquals(5, new ConstructorDefaultParamJSNonNativeNone(5).foo)
   }
 
-  @Test def `constructors_with_default_parameters_(ScalaJSDefined/ScalaJSDefined)`(): Unit = {
+  @Test def `constructors_with_default_parameters_(NonNative/NonNative)`(): Unit = {
     assertEquals(-1, new ConstructorDefaultParamJSNonNativeJSNonNative().foo)
     assertEquals(1, new ConstructorDefaultParamJSNonNativeJSNonNative(1).foo)
     assertEquals(5, new ConstructorDefaultParamJSNonNativeJSNonNative(5).foo)
   }
 
-  @Test def `constructors_with_default_parameters_(ScalaJSDefined/Scala)`(): Unit = {
+  @Test def `constructors_with_default_parameters_(NonNative/Scala)`(): Unit = {
     assertEquals(-1, new ConstructorDefaultParamJSNonNativeScala().foo)
     assertEquals(1, new ConstructorDefaultParamJSNonNativeScala(1).foo)
     assertEquals(5, new ConstructorDefaultParamJSNonNativeScala(5).foo)
   }
 
-  @Test def `constructors_with_default_parameters_(Scala/ScalaJSDefined)`(): Unit = {
+  @Test def `constructors_with_default_parameters_(Scala/NonNative)`(): Unit = {
     assertEquals(-1, new ConstructorDefaultParamScalaJSNonNative().foo)
     assertEquals(1, new ConstructorDefaultParamScalaJSNonNative(1).foo)
     assertEquals(5, new ConstructorDefaultParamScalaJSNonNative(5).foo)
@@ -998,7 +998,7 @@ class ScalaJSDefinedTest {
     assertEquals(5, new ConstructorDefaultParamJSNativeScala(5).foo)
   }
 
-  @Test def `constructors_with_default_parameters_(Native/ScalaJSDefined)`(): Unit = {
+  @Test def `constructors_with_default_parameters_(Native/NonNative)`(): Unit = {
     assertEquals(-1, new ConstructorDefaultParamJSNativeJSNonNative().foo)
     assertEquals(1, new ConstructorDefaultParamJSNativeJSNonNative(1).foo)
     assertEquals(5, new ConstructorDefaultParamJSNativeJSNonNative(5).foo)
@@ -1495,10 +1495,10 @@ class ScalaJSDefinedTest {
   }
 }
 
-object ScalaJSDefinedTest {
+object NonNativeJSTypeTest {
 
-  // Defined in test-suite/src/test/resources/ScalaJSDefinedTestNatives.js
-  @JSGlobal("ScalaJSDefinedTestNativeParentClass")
+  // Defined in test-suite/src/test/resources/NonNativeJSTypeTestNatives.js
+  @JSGlobal("NonNativeJSTypeTestNativeParentClass")
   @js.native
   class NativeParentClass(val x: Int) extends js.Object {
     def foo(s: String): String = js.native
@@ -1519,8 +1519,8 @@ object ScalaJSDefinedTest {
     val x: Int
   }
 
-  // Defined in test-suite/src/test/resources/ScalaJSDefinedTestNatives.js
-  @JSGlobal("ScalaJSDefinedTestNativeParentClassWithDeferred")
+  // Defined in test-suite/src/test/resources/NonNativeJSTypeTestNatives.js
+  @JSGlobal("NonNativeJSTypeTestNativeParentClassWithDeferred")
   @js.native
   abstract class NativeParentClassWithDeferred extends NativeTraitWithDeferred {
     def foo(y: Int): Int = js.native // = bar(y + 4) + x
@@ -1528,8 +1528,8 @@ object ScalaJSDefinedTest {
     def bar(y: Int): Int
   }
 
-  // Defined in test-suite/src/test/resources/ScalaJSDefinedTestNatives.js
-  @JSGlobal("ScalaJSDefinedTestNativeParentClassWithVarargs")
+  // Defined in test-suite/src/test/resources/NonNativeJSTypeTestNatives.js
+  @JSGlobal("NonNativeJSTypeTestNativeParentClassWithVarargs")
   @js.native
   class NativeParentClassWithVarargs(
       _x: Int, _args: Int*) extends js.Object {

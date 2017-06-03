@@ -441,7 +441,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           assert(exports.isEmpty, "Generated exports for local definition.")
         }
 
-        // Expose objects (modules) members of Scala.js-defined JS classes
+        // Expose objects (modules) members of non-native JS classes
         if (sym.isModule && (enclosingOwner is OwnerKind.JSNonNative)) {
           if (shouldModuleBeExposed(sym))
             sym.addAnnotation(ExposedJSMemberAnnot)
@@ -478,7 +478,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       sym.addAnnotation(RawJSTypeAnnot)
       if (sym.isAnonymousClass && !isJSAnonFun) {
-        sym.addAnnotation(SJSDefinedAnonymousClassAnnotation)
+        sym.addAnnotation(AnonymousJSClassAnnotation)
       }
 
       /* Anonymous functions are considered native, since they are handled
@@ -515,26 +515,26 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             "which does not extend js.Any.")
       }
 
-      // Checks for Scala.js-defined JS stuff
+      // Checks for non-native JS stuff
       if (!isJSNative) {
         // Unless it is a trait, it cannot be in a native JS object
         if (!sym.isTrait && (enclosingOwner is OwnerKind.JSNativeMod)) {
           reporter.error(implDef.pos,
-              "Native JS objects cannot contain inner Scala.js-defined JS " +
+              "Native JS objects cannot contain inner non-native JS " +
               "classes or objects")
         }
 
         // Unless it is a trait, it cannot inherit directly from AnyRef
         if (!sym.isTrait && sym.info.parents.exists(_ =:= AnyRefClass.tpe)) {
           reporter.error(implDef.pos,
-              s"A Scala.js-defined JS $strKind cannot directly extend AnyRef. " +
+              s"A non-native JS $strKind cannot directly extend AnyRef. " +
               "It must extend a JS class (native or not).")
         }
 
         // Check that we do not inherit directly from a native JS trait
         if (sym.info.parents.exists(isNativeJSTraitType)) {
           reporter.error(implDef.pos,
-              s"A Scala.js-defined JS $strKind cannot directly extend a "+
+              s"A non-native JS $strKind cannot directly extend a "+
               "native JS trait.")
         }
 
@@ -558,7 +558,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           reporter.error(implDef.pos, "Traits and classes " +
               "may not have inner native JS traits, classes or objects")
         } else if (enclosingOwner is OwnerKind.JSMod) {
-          reporter.error(implDef.pos, "Scala.js-defined JS objects " +
+          reporter.error(implDef.pos, "non-native JS objects " +
               "may not have inner native JS classes or objects")
         } else if (!sym.isTrait) {
           /* Compute the loading spec now, before `flatten` destroys the name
@@ -628,7 +628,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           if (isJSOptional(low) && !(high.isDeferred || isJSOptional(high))) {
             reporter.error(errorPos,
                 s"Cannot override concrete ${memberDefString(high)} from " +
-                s"${high.owner.fullName} in a Scala.js-defined JS trait.")
+                s"${high.owner.fullName} in a non-native JS trait.")
           }
         }
       }
@@ -755,7 +755,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         assert(exports.isEmpty, "Generated exports for member JS type.")
 
         /* Add the @ExposedJSMember annotation to exposed symbols in
-         * Scala.js-defined classes.
+         * non-native JS classes.
          */
         if (enclosingOwner is OwnerKind.JSNonNative) {
           def shouldBeExposed: Boolean = {
@@ -795,7 +795,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               "exported as a property. You must add @JSName(\"apply\")")
         } else if (enclosingOwner is OwnerKind.JSNonNative) {
           reporter.error(sym.pos,
-              "A Scala.js-defined JavaScript class cannot declare a method " +
+              "A non-native JS class cannot declare a method " +
               "named `apply` without `@JSName`")
         }
       }
@@ -806,7 +806,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       if (jsInterop.isJSBracketAccess(sym)) {
         if (enclosingOwner is OwnerKind.JSNonNative) {
           reporter.error(tree.pos,
-              "@JSBracketAccess is not allowed in Scala.js-defined JS classes")
+              "@JSBracketAccess is not allowed in non-native JS classes")
         } else {
           val paramCount = sym.paramss.map(_.size).sum
           if (paramCount != 1 && paramCount != 2) {
@@ -833,7 +833,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       if (jsInterop.isJSBracketCall(sym)) {
         if (enclosingOwner is OwnerKind.JSNonNative) {
           reporter.error(tree.pos,
-              "@JSBracketCall is not allowed in Scala.js-defined JS classes")
+              "@JSBracketCall is not allowed in non-native JS classes")
         } else {
           // JS bracket calls must have at least one non-repeated parameter
           sym.tpe.paramss match {
@@ -899,7 +899,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           val alts = sym.owner.info.member(sym.name).filter(_.isMethod)
           if (alts.isOverloaded) {
             reporter.error(tree.pos,
-                "Private methods in Scala.js-defined JS classes cannot be " +
+                "Private methods in non-native JS classes cannot be " +
                 "overloaded. Use different names instead.")
           }
         }
@@ -908,7 +908,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         if (sym.isMethod && (sym.hasAccessBoundary && !sym.isProtected) &&
             !sym.isFinal && !sym.isClassConstructor) {
           reporter.error(tree.pos,
-              "Qualified private members in Scala.js-defined JS classes " +
+              "Qualified private members in non-native JS classes " +
               "must be final")
         }
 
@@ -916,7 +916,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         if (sym.owner.isTrait && sym.isTerm && !sym.isConstructor) {
           if (sym.isMethod && isPrivateMaybeWithin(sym)) {
             reporter.error(tree.pos,
-                "A Scala.js-defined JS trait cannot contain private members")
+                "A non-native JS trait cannot contain private members")
           } else if (!sym.isDeferred) {
             /* Tell the back-end not emit this thing. In fact, this only
              * matters for mixed-in members created from this member.
@@ -932,7 +932,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
                   // ok
                 case _ =>
                   reporter.error(tree.rhs.pos,
-                      "In Scala.js-defined JS traits, defs with parentheses " +
+                      "In non-native JS traits, defs with parentheses " +
                       "must be abstract.")
               }
             }
@@ -953,7 +953,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
                   // ok
                 case _ =>
                   reporter.error(tree.rhs.pos,
-                      "Members of Scala.js-defined JS traits must either be " +
+                      "Members of non-native JS traits must either be " +
                       "abstract, or their right-hand-side must be " +
                       "`js.undefined`.")
               }
@@ -971,8 +971,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
          * getters, accessors, param accessors, abstract members, synthetic
          * methods (to avoid double errors with case classes, e.g. generated
          * copy method), js.Functions and js.ThisFunctions (they need abstract
-         * methods for SAM treatment), and any member of a Scala.js-defined
-         * JS class/trait.
+         * methods for SAM treatment), and any member of a non-native JS
+         * class/trait.
          */
       } else if (jsPrimitives.isJavaScriptPrimitive(sym)) {
         // No check for primitives. We trust our own standard library.
@@ -1367,7 +1367,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     def isCompilerAnnotation(annotation: AnnotationInfo): Boolean = {
       annotation.symbol == ExposedJSMemberAnnot ||
       annotation.symbol == RawJSTypeAnnot ||
-      annotation.symbol == SJSDefinedAnonymousClassAnnotation ||
+      annotation.symbol == AnonymousJSClassAnnotation ||
       annotation.symbol == JSOptionalAnnotation
     }
 
@@ -1413,9 +1413,9 @@ object PrepJSInterop {
     val JSNativeClass = new OwnerKind(0x04)
     /** A native JS object, which extends js.Any. */
     val JSNativeMod = new OwnerKind(0x08)
-    /** A Scala.js-defined JS class/trait. */
+    /** A non-native JS class/trait. */
     val JSClass = new OwnerKind(0x10)
-    /** A Scala.js-defined JS oobject. */
+    /** A non-native JS object. */
     val JSMod = new OwnerKind(0x20)
     /** A Scala class/trait that extends Enumeration. */
     val EnumClass = new OwnerKind(0x40)
@@ -1443,8 +1443,6 @@ object PrepJSInterop {
     /** A raw JS type, i.e., something extending js.Any. */
     val RawJSType = JSNative | JSNonNative
 
-    /** Anything defined in Scala.js, i.e., anything but a native JS declaration. */
-    val ScalaJSDefined = ScalaThing | JSNonNative
     /** Any kind of class/trait, i.e., a Scala or raw JS class/trait. */
     val AnyClass = ScalaClass | JSNativeClass | JSClass
   }

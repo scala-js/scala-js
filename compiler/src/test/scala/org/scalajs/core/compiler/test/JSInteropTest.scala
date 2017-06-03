@@ -470,13 +470,13 @@ class JSInteropTest extends DirectTest with TestHelpers {
     for {
       outer <- Seq("class", "trait")
       inner <- Seq("class", "trait", "object")
-      innerSJSDefined <- Seq(false, true)
+      innerIsJSType <- Seq(false, true)
     } yield {
       val jsGlobalAnnot =
         if (outer == "trait") ""
         else "@JSGlobal"
       val innerLine =
-        if (innerSJSDefined) s"$inner A extends js.Object"
+        if (innerIsJSType) s"$inner A extends js.Object"
         else s"$inner A"
       s"""
       @js.native $jsGlobalAnnot
@@ -542,7 +542,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noScalaJSDefinedClassObjectInsideNativeJSObject: Unit = {
+  def noNonNativeJSTypesInsideNativeJSObject: Unit = {
 
     for {
       inner <- Seq("class", "object")
@@ -555,7 +555,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       s"""
-        |newSource1.scala:8: error: Native JS objects cannot contain inner Scala.js-defined JS classes or objects
+        |newSource1.scala:8: error: Native JS objects cannot contain inner non-native JS classes or objects
         |        $inner A extends js.Object
         |        ${" " * inner.length} ^
       """
@@ -762,10 +762,10 @@ class JSInteropTest extends DirectTest with TestHelpers {
     for {
       outer <- outers
       inner <- inners
-      outerSJSDefined <- Seq(false, true)
+      outerIsJSType <- Seq(false, true)
     } yield {
       val outerLine =
-        if (outerSJSDefined) s"$outer A extends js.Object"
+        if (outerIsJSType) s"$outer A extends js.Object"
         else s"$outer A"
 
       val jsGlobalAnnot =
@@ -1249,7 +1249,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noNativeClassObjectInsideScalaJSDefinedObject: Unit = {
+  def noNativeClassObjectInsideNonNativeJSObject: Unit = {
 
     for {
       inner <- Seq("class", "object")
@@ -1262,7 +1262,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       s"""
-        |newSource1.scala:8: error: Scala.js-defined JS objects may not have inner native JS classes or objects
+        |newSource1.scala:8: error: non-native JS objects may not have inner native JS classes or objects
         |        $inner B extends js.Object
         |        ${" " * inner.length} ^
       """
@@ -2032,7 +2032,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def scalaJSDefinedJSNameOverrideErrors: Unit = {
+  def nonNativeJSTypesNameOverrideErrors: Unit = {
     """
     abstract class A extends js.Object {
       def bar(): Int
@@ -2355,7 +2355,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def scalaJSDefinedJSNameWithSymbolOverrideErrors: Unit = {
+  def nonNativeJSTypesJSNameWithSymbolOverrideErrors: Unit = {
     """
     object Syms {
       val sym1 = js.Symbol()
@@ -2785,7 +2785,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     object A extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:5: error: Implementation restriction: constructors of Scala.js-defined JS classes cannot have default parameters if their companion module is JS native.
+      |newSource1.scala:5: error: Implementation restriction: constructors of non-native JS classes cannot have default parameters if their companion module is JS native.
       |    class A(x: Int = 1) extends js.Object
       |          ^
     """

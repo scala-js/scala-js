@@ -1421,7 +1421,7 @@ object Build {
     jsExecutionFiles in Test := {
       val resourceDir =
         (resourceDirectory in (LocalProject("testSuite"), Test)).value
-      val f = FileVirtualJSFile(resourceDir / "ScalaJSDefinedTestNatives.js")
+      val f = FileVirtualJSFile(resourceDir / "NonNativeJSTypeTestNatives.js")
       f +: (jsExecutionFiles in Test).value
     }
   }

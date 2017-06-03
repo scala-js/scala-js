@@ -240,11 +240,11 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  function in the method that instantiates it.
      *
      *  Other ClassDefs are emitted according to their nature:
-     *  * Scala.js-defined JS class     -> `genScalaJSDefinedJSClass()`
-     *  * Other raw JS type (<: js.Any) -> `genRawJSClassData()`
-     *  * Interface                     -> `genInterface()`
-     *  * Implementation class          -> `genImplClass()`
-     *  * Normal class                  -> `genClass()`
+     *  * Non-native JS class       -> `genNonNativeJSClass()`
+     *  * Other JS type (<: js.Any) -> `genRawJSClassData()`
+     *  * Interface                 -> `genInterface()`
+     *  * Implementation class      -> `genImplClass()`
+     *  * Normal class              -> `genClass()`
      */
     override def apply(cunit: CompilationUnit): Unit = {
       try {
@@ -271,9 +271,8 @@ abstract class GenJSCode extends plugins.PluginComponent
          *
          * - lambdas for js.FunctionN and js.ThisFunctionN (SAMs). (We may not
          *   generate actual Scala classes for these).
-         * - anonymous Scala.js defined JS classes. These classes may not have
-         *   their own prototype. Therefore, their constructor *must* be
-         *   inlined.
+         * - anonymous (non-lambda) JS classes. These classes may not have their
+         *   own prototype. Therefore, their constructor *must* be inlined.
          * - lambdas for scala.FunctionN. This is only an optimization and may
          *   fail. In the case of failure, we fall back to generating a
          *   fully-fledged Scala class.
@@ -284,7 +283,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val (lazyAnons, fullClassDefs) = allClassDefs.partition { cd =>
           val sym = cd.symbol
           isRawJSFunctionDef(sym) || sym.isAnonymousFunction ||
-          isScalaJSDefinedAnonJSClass(sym)
+          isAnonJSClass(sym)
         }
 
         lazilyGeneratedAnonClasses ++= lazyAnons.map(cd => cd.symbol -> cd)
@@ -307,8 +306,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               val tree = if (isRawJSType(sym.tpe)) {
                 assert(!isRawJSFunctionDef(sym),
                     s"Raw JS function def should have been recorded: $cd")
-                if (!sym.isTraitOrInterface && isScalaJSDefinedJSClass(sym))
-                  genScalaJSDefinedJSClass(cd)
+                if (!sym.isTraitOrInterface && isNonNativeJSClass(sym))
+                  genNonNativeJSClass(cd)
                 else
                   genRawJSClassData(cd)
               } else if (sym.isTraitOrInterface) {
@@ -472,14 +471,14 @@ abstract class GenJSCode extends plugins.PluginComponent
       classDefinition
     }
 
-    /** Gen the IR ClassDef for a Scala.js-defined JS class. */
-    def genScalaJSDefinedJSClass(cd: ClassDef): js.ClassDef = {
+    /** Gen the IR ClassDef for a non-native JS class. */
+    def genNonNativeJSClass(cd: ClassDef): js.ClassDef = {
       val sym = cd.symbol
       implicit val pos = sym.pos
 
-      assert(isScalaJSDefinedJSClass(sym),
-          "genScalaJSDefinedJSClass() must be called only for " +
-          s"Scala.js-defined JS classes: $sym")
+      assert(isNonNativeJSClass(sym),
+          "genNonNativeJSClass() must be called only for " +
+          s"non-native JS classes: $sym")
       assert(sym.superClass != NoSymbol, sym)
 
       val classIdent = encodeClassFullNameIdent(sym)
@@ -585,23 +584,23 @@ abstract class GenJSCode extends plugins.PluginComponent
       classDefinition
     }
 
-    /** Generate an instance of an anonymous Scala.js defined class inline
+    /** Generate an instance of an anonymous (non-lambda) JS class inline
      *
      *  @param sym Class to generate the instance of
      *  @param args Arguments to the constructor
      *  @param pos Position of the original New tree
      */
-    def genAnonSJSDefinedNew(sym: Symbol, args: List[js.Tree],
+    def genAnonJSClassNew(sym: Symbol, args: List[js.Tree],
         pos: Position): js.Tree = {
-      assert(isScalaJSDefinedAnonJSClass(sym),
-          "Generating AnonSJSDefinedNew of non anonymous SJSDefined JS class")
+      assert(isAnonJSClass(sym),
+          "Generating AnonJSClassNew of non anonymous JS class")
 
       // Find the ClassDef for this anonymous class
       val classDef = consumeLazilyGeneratedAnonClass(sym)
 
-      // Generate a normal SJSDefinedJSClass
+      // Generate a normal, non-native JS class
       val origJsClass =
-        nestedGenerateClass(sym)(genScalaJSDefinedJSClass(classDef))
+        nestedGenerateClass(sym)(genNonNativeJSClass(classDef))
 
       // Partition class members.
       val staticMembers = ListBuffer.empty[js.Tree]
@@ -615,7 +614,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         case mdef: js.MethodDef =>
           mdef.name match {
             case _: js.Ident =>
-              assert(mdef.static, "Non-static method in SJS defined JS class")
+              assert(mdef.static,
+                  "Non-static, unexported method in non-native JS class")
               staticMembers += mdef
 
             case js.StringLiteral("constructor") =>
@@ -895,7 +895,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           else encodeFieldSym(f)
 
         val irTpe = {
-          if (isScalaJSDefinedJSClass(classSym)) genExposedFieldIRType(f)
+          if (isNonNativeJSClass(classSym)) genExposedFieldIRType(f)
           else if (static) jstpe.AnyType
           else toIRType(f.tpe)
         }
@@ -1033,7 +1033,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    // Constructor of a Scala.js-defined JS class ------------------------------
+    // Constructor of a non-native JS class ------------------------------
 
     def genJSClassConstructor(classSym: Symbol,
         constructorTrees: List[DefDef]): js.Tree = {
@@ -1042,7 +1042,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       if (hasDefaultCtorArgsAndRawJSModule(classSym)) {
         reporter.error(pos,
             "Implementation restriction: constructors of " +
-            "Scala.js-defined JS classes cannot have default parameters " +
+            "non-native JS classes cannot have default parameters " +
             "if their companion module is JS native.")
         js.Skip()
       } else {
@@ -1419,7 +1419,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val params = if (vparamss.isEmpty) Nil else vparamss.head map (_.symbol)
 
         val isJSClassConstructor =
-          sym.isClassConstructor && isScalaJSDefinedJSClass(currentClassSym)
+          sym.isClassConstructor && isNonNativeJSClass(currentClassSym)
 
         val methodName: js.PropertyName = encodeMethodSym(sym)
 
@@ -1591,7 +1591,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     /** Moves all statements after the super constructor call.
      *
-     *  This is used for the primary constructor of a Scala.js-defined JS
+     *  This is used for the primary constructor of a non-native JS
      *  class, because those cannot access `this` before the super constructor
      *  call.
      *
@@ -1612,7 +1612,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       assert(!beforeSuper.exists(_.isInstanceOf[js.VarDef]),
           "Trying to move a local VarDef after the super constructor call " +
-          "of a Scala.js-defined JS class at ${body.pos}")
+          "of a non-native JS class at ${body.pos}")
 
       js.Block(
           superCall ::
@@ -1691,7 +1691,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           else            genExpr(tree)
       }
 
-      if (!isScalaJSDefinedJSClass(currentClassSym) ||
+      if (!isNonNativeJSClass(currentClassSym) ||
           isRawJSFunctionDef(currentClassSym)) {
         js.MethodDef(static, methodName, jsParams, resultIRType,
             Some(genBody()))(optimizerHints, None)
@@ -1871,7 +1871,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             genStaticMember(sym)
           } else if (paramAccessorLocals contains sym) {
             paramAccessorLocals(sym).ref
-          } else if (isScalaJSDefinedJSClass(sym.owner)) {
+          } else if (isNonNativeJSClass(sym.owner)) {
             val genQual = genExpr(qualifier)
             val boxed = if (isExposed(sym))
               js.JSBracketSelect(genQual, genExpr(jsNameOf(sym)))
@@ -1957,7 +1957,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                     enteringPhase(currentRun.posterasurePhase)(rhs.tpe))
               }
 
-              if (isScalaJSDefinedJSClass(sym.owner)) {
+              if (isNonNativeJSClass(sym.owner)) {
                 val genLhs = if (isExposed(sym))
                   js.JSBracketSelect(genQual, genExpr(jsNameOf(sym)))
                 else
@@ -2247,7 +2247,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
           isRawJSType(sym.owner.tpe) && {
             /* If this is a default parameter accessor on a
-             * ScalaJSDefinedJSClass, we need to know if the method for which we
+             * non-native JS class, we need to know if the method for which we
              * are the default parameter is exposed or not.
              * We do this by removing the $default suffix from the method name,
              * and looking up a member with that name in the owner.
@@ -2262,7 +2262,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               ownerMethod.filter(isExposed).exists
             }
 
-            !isScalaJSDefinedJSClass(sym.owner) || isAttachedMethodExposed
+            !isNonNativeJSClass(sym.owner) || isAttachedMethodExposed
           }
         }
       }
@@ -2375,7 +2375,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Apply(fun @ Select(sup @ Super(_, mix), _), args) = tree
       val sym = fun.symbol
 
-      if (isScalaJSDefinedJSClass(currentClassSym)) {
+      if (isNonNativeJSClass(currentClassSym)) {
         if (sym.isMixinConstructor) {
           /* Do not emit a call to the $init$ method of JS traits.
            * This exception is necessary because @JSOptional fields cause the
@@ -2569,7 +2569,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       if (sym.owner == StringClass && !isStringMethodFromObject) {
         genStringCall(tree)
       } else if (isRawJSType(receiver.tpe) && sym.owner != ObjectClass) {
-        if (!isScalaJSDefinedJSClass(sym.owner) || isExposed(sym))
+        if (!isNonNativeJSClass(sym.owner) || isExposed(sym))
           genPrimitiveJSCall(tree, isStat)
         else
           genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
@@ -4239,11 +4239,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         // Normal call anyway
         assert(!sym.isClassConstructor,
             "Trying to call the super constructor of Object in a " +
-            s"Scala.js-defined JS class at $pos")
+            s"non-native JS class at $pos")
         genApplyMethod(genReceiver, sym, genScalaArgs)
       } else if (sym.isClassConstructor) {
         js.JSSuperConstructorCall(genJSArgs)
-      } else if (isScalaJSDefinedJSClass(sym.owner) && !isExposed(sym)) {
+      } else if (isNonNativeJSClass(sym.owner) && !isExposed(sym)) {
         // Reroute to the static method
         genApplyJSClassMethod(genReceiver, sym, genScalaArgs)
       } else {
@@ -4261,7 +4261,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       def requireNotSuper(): Unit = {
         if (superIn.isDefined) {
           reporter.error(pos,
-              "Illegal super call in Scala.js-defined JS class")
+              "Illegal super call in non-native JS class")
         }
       }
 
@@ -4479,8 +4479,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         js.JSObjectConstr(Nil)
       else if (cls == JSArrayClass && args.isEmpty)
         js.JSArrayConstr(Nil)
-      else if (isScalaJSDefinedAnonJSClass(cls))
-        genAnonSJSDefinedNew(cls, args, fun.pos)
+      else if (isAnonJSClass(cls))
+        genAnonJSClassNew(cls, args, fun.pos)
       else
         js.JSNew(genPrimitiveJSClass(cls), args)
     }
@@ -4546,7 +4546,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): List[js.Tree] = {
 
       /* lambdalift might have to introduce some parameters when transforming
-       * nested Scala.js-defined JS classes. Hence, the list of parameters
+       * nested non-native JS classes. Hence, the list of parameters
        * exiting typer and entering posterasure might not be compatible with
        * the list of actual arguments we receive now.
        *
@@ -5056,7 +5056,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val thisCaptureArg = thisFormalCapture.ref
 
         val body = if (isRawJSType(receiver.tpe) && target.owner != ObjectClass) {
-          assert(isScalaJSDefinedJSClass(target.owner) && !isExposed(target),
+          assert(isNonNativeJSClass(target.owner) && !isExposed(target),
               s"A Function lambda is trying to call an exposed JS method ${target.fullName}")
           genApplyJSClassMethod(thisCaptureArg, target, allArgs)
         } else {
@@ -5260,7 +5260,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       def module = genLoadModule(sym.owner)
 
       if (isRawJSType(sym.owner.tpe)) {
-        if (!isScalaJSDefinedJSClass(sym.owner) || isExposed(sym))
+        if (!isNonNativeJSClass(sym.owner) || isExposed(sym))
           genJSCallGeneric(sym, moduleOrGlobalScope, args = Nil, isStat = false)
         else
           genApplyJSClassMethod(module, sym, arguments = Nil)
@@ -5476,12 +5476,12 @@ abstract class GenJSCode extends plugins.PluginComponent
   def isRawJSType(tpe: Type): Boolean =
     tpe.typeSymbol.annotations.find(_.tpe =:= RawJSTypeAnnot.tpe).isDefined
 
-  /** Tests whether the given class is a Scala.js-defined JS class. */
-  def isScalaJSDefinedJSClass(sym: Symbol): Boolean =
+  /** Tests whether the given class is a non-native JS class. */
+  def isNonNativeJSClass(sym: Symbol): Boolean =
     !sym.isTrait && isRawJSType(sym.tpe) && !sym.hasAnnotation(JSNativeAnnotation)
 
-  def isScalaJSDefinedAnonJSClass(sym: Symbol): Boolean =
-    sym.hasAnnotation(SJSDefinedAnonymousClassAnnotation)
+  def isAnonJSClass(sym: Symbol): Boolean =
+    sym.hasAnnotation(AnonymousJSClassAnnotation)
 
   /** Tests whether the given class is a JS native class. */
   private def isJSNativeClass(sym: Symbol): Boolean =
@@ -5494,7 +5494,7 @@ abstract class GenJSCode extends plugins.PluginComponent
   }
 
   /** Tests whether the given member is exposed, i.e., whether it was
-   *  originally a public or protected member of a Scala.js-defined JS class.
+   *  originally a public or protected member of a non-native JS class.
    */
   private def isExposed(sym: Symbol): Boolean =
     sym.hasAnnotation(ExposedJSMemberAnnot)

@@ -1532,7 +1532,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: Only a static object whose companion class is a Scala.js-defined JS class may export its members as static.
+      |newSource1.scala:7: error: Only a static object whose companion class is a non-native JS class may export its members as static.
       |        @JSExportStatic
       |         ^
     """
@@ -1582,7 +1582,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: Only a static object whose companion class is a Scala.js-defined JS class may export its members as static.
+      |newSource1.scala:6: error: Only a static object whose companion class is a non-native JS class may export its members as static.
       |      @JSExportStatic
       |       ^
     """
@@ -1596,7 +1596,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: Only a static object whose companion class is a Scala.js-defined JS class may export its members as static.
+      |newSource1.scala:6: error: Only a static object whose companion class is a non-native JS class may export its members as static.
       |      @JSExportStatic
       |       ^
     """
@@ -1612,7 +1612,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:8: error: Only a static object whose companion class is a Scala.js-defined JS class may export its members as static.
+      |newSource1.scala:8: error: Only a static object whose companion class is a non-native JS class may export its members as static.
       |      @JSExportStatic
       |       ^
     """

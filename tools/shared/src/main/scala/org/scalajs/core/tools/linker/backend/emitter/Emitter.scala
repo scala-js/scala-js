@@ -351,7 +351,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     }
 
     // Class definition
-    if (linkedClass.hasInstances && kind.isAnyScalaJSDefinedClass) {
+    if (linkedClass.hasInstances && kind.isAnyNonNativeClass) {
       val ctor = classTreeCache.constructor.getOrElseUpdate(
           classEmitter.genConstructor(linkedClass)(classCache))
 
