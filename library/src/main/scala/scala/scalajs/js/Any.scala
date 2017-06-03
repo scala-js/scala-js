@@ -28,21 +28,22 @@ import annotation.ScalaJSDefined
  *  [[AnyVal]]). Operations on JavaScript types behave as the corresponding
  *  operations in the JavaScript language.
  *
- *  By default, JavaScript types are native: they are facade types to APIs
- *  implemented in JavaScript code. Their implementation is irrelevant and
- *  never emitted. As such, all members must be defined with their
- *  right-hand-side being [[native js.native]]. For forward source
- *  compatibility with the next major version, the class/trait/object itself
- *  should be annotated with [[native @js.native]].
+ *  You can implement JavaScript types in Scala.js. The implementation
+ *  (i.e., the method and constructor bodies) will follow Scala semantics, but
+ *  the constructor and methods will be called using JavaScript semantics
+ *  (e.g., runtime dispatch).
+ *
+ *  A JavaScript type that is annotated with [[native @js.native]] is a facade
+ *  type to APIs implemented in JavaScript code. Its implementation is
+ *  irrelevant and never emitted. As such, all members must be defined with
+ *  their right-hand-side being [[native js.native]].
+ *  Further, native JavaScript types must be annotated with one of
+ *  [[annotation.JSGlobal @JSGlobal]], [[annotation.JSImport @JSImport]],
+ *  [[annotation.JSGlobalScope @JSGlobalScope]] to specify where to fetch it
+ *  from.
  *
  *  In most cases, you should not directly extend this trait, but rather extend
  *  [[Object js.Object]].
- *
- *  To implement a JavaScript type in Scala.js (therefore non-native), its
- *  declaration must be annotated with
- *  [[annotation.ScalaJSDefined @ScalaJSDefined]]. Scala.js-defined JS types
- *  cannot directly extend native JS traits; and Scala.js-defined JS traits
- *  cannot declare concrete term members.
  *
  *  It is not possible to define traits or classes that inherit both from this
  *  trait and a strict subtype of [[AnyRef]]. In fact, you should think of
