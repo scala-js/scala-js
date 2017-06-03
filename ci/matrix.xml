@@ -154,7 +154,7 @@
     setJavaVersion $java
     npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package jsEnvsTestSuite/test jsDependenciesCore/test \
+        stubs/package jsEnvsTestSuite/test \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
@@ -168,8 +168,8 @@
     setJavaVersion $java
     npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package jsEnvsTestSuite/test jsDependenciesCore/test \
-        sbtPlugin/package jsDependenciesPlugin/package \
+        stubs/package jsEnvsTestSuite/test \
+        sbtPlugin/package \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
@@ -209,18 +209,13 @@
                   testInterface/publishLocal stubs/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++2.10.6 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
-                 testAdapter/publishLocal sbtPlugin/publishLocal \
-                 jsDependenciesCore/publishLocal jsDependenciesPlugin/publishLocal &&
+                 testAdapter/publishLocal sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&
     sbt noDOM/run noDOM/testHtmlFastOpt noDOM/testHtmlFullOpt \
         withDOM/run withDOM/testHtmlFastOpt withDOM/testHtmlFullOpt \
         multiTestJS/testHtmlFastOpt multiTestJS/testHtmlFullOpt \
         test \
         noDOM/clean noDOM/concurrentUseOfLinkerTest \
-        jsDependenciesTest/packageJSDependencies \
-        jsDependenciesTest/packageMinifiedJSDependencies \
-        jsDependenciesTest/regressionTestForIssue2243 \
-        jsNoDependenciesTest/regressionTestForIssue2243 \
         multiTestJS/test:testScalaJSSourceMapAttribute
   ]]></task>
 
