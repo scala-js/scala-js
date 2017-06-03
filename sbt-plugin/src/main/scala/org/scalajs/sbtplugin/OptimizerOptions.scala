@@ -20,8 +20,8 @@ import OptimizerOptions._
  *  instance.
  */
 final class OptimizerOptions private (
-    /** Whether to parallelize the optimizer (currently fastOptJS only) **/
-    val parallel: Boolean = true,
+    /** Whether to parallelize the optimizer **/
+    val parallel: Boolean = OptimizerOptions.DefaultParallel,
     /** Whether to run the optimizer in batch (i.e. non-incremental) mode */
     val batchMode: Boolean = false,
     /** Whether to run the Scala.js optimizer */
@@ -76,5 +76,25 @@ final class OptimizerOptions private (
 }
 
 object OptimizerOptions {
+  /* #2798 -- On Java 9+, the parallel collections on 2.10 die with a
+   * `NumberFormatException` and prevent the linker from working.
+   *
+   * By default, we therefore pre-emptively disable the parallel optimizer in
+   * case the parallel collections cannot deal with the current version of
+   * Java.
+   *
+   * TODO This will automatically "fix itself" once we upgrade to sbt 1.x,
+   * which uses Scala 2.12. We should get rid of that workaround at that point
+   * for tidiness, though.
+   */
+  private val DefaultParallel: Boolean = {
+    try {
+      scala.util.Properties.isJavaAtLeast("1.8")
+      true
+    } catch {
+      case _: NumberFormatException => false
+    }
+  }
+
   def apply(): OptimizerOptions = new OptimizerOptions()
 }

@@ -96,7 +96,9 @@ package object js {
    *  - In Chrome, it has no effect unless the developer tools are opened
    *    beforehand.
    */
-  def debugger(): Unit = throw new java.lang.Error("stub")
+  @deprecated("Use scala.scalajs.js.sepcial.debugger instead", "0.6.17")
+  @inline
+  def debugger(): Unit = js.special.debugger()
 
   /** Evaluates JavaScript code and returns the result. */
   @inline def eval(x: String): Any =

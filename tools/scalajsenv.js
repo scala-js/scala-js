@@ -77,7 +77,8 @@ const $linkingInfo = {
 //!else
   "assumingES6": false,
 //!endif
-  "linkerVersion": "{{LINKER_VERSION}}"
+  "linkerVersion": "{{LINKER_VERSION}}",
+  "globalThis": this
 };
 $g["Object"]["freeze"]($linkingInfo);
 $g["Object"]["freeze"]($linkingInfo["semantics"]);
