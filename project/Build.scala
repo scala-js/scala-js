@@ -1550,7 +1550,9 @@ object Build {
       publishArtifact in Compile := false,
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
       scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
-  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(library, jUnitRuntime)
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
+      library, jUnitRuntime, testSuite
+  )
 
   lazy val partest: Project = project.settings(
       commonSettings,
