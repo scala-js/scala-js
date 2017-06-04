@@ -203,12 +203,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       obj <- Seq("class", "trait", "object")
     } yield {
       s"""
-      @ScalaJSDefined
       @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
       $obj A extends js.Object
       """ hasErrors
       s"""
-        |newSource1.scala:6: error: Non JS-native classes, traits and objects may not have an @JSImport annotation.
+        |newSource1.scala:5: error: Non JS-native classes, traits and objects may not have an @JSImport annotation.
         |      @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
         |       ^
       """
