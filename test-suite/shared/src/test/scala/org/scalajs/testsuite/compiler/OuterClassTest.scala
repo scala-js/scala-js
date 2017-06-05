@@ -3,9 +3,6 @@ package org.scalajs.testsuite.compiler
 import org.junit.Test
 import org.junit.Assert._
 
-/* This test only works with 2.12.0-RC2 onwards. With previous versions of
- * Scala, it suffers from #2382.
- */
 class OuterClassTest {
 
   @Test def `Test code variant 1 from #2382`(): Unit = {
