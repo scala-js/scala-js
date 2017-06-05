@@ -264,7 +264,7 @@ object UndefOrOps {
    *  collection" contract even though it seems unlikely to matter much in a
    *  collection with max size 1.
    */
-  class WithFilter[A](self: UndefOr[A], p: A => Boolean) {
+  final class WithFilter[A](self: UndefOr[A], p: A => Boolean) {
     def map[B](f: A => B): UndefOr[B] = self filter p map f
     def flatMap[B](f: A => UndefOr[B]): UndefOr[B] = self filter p flatMap f
     def foreach[U](f: A => U): Unit = self filter p foreach f
