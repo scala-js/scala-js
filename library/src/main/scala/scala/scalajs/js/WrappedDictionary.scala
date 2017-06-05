@@ -127,15 +127,19 @@ object WrappedDictionary {
     }
   }
 
-  class WrappedDictionaryBuilder[A]
+  private final class WrappedDictionaryBuilder[A]
       extends Builder[(String, A), WrappedDictionary[A]] {
+
     private[this] var dict: Dictionary[A] = Dictionary.empty
+
     def +=(elem: (String, A)): this.type = {
       dict(elem._1) = elem._2
       this
     }
+
     def clear(): Unit =
       dict = Dictionary.empty
+
     def result(): WrappedDictionary[A] =
       new WrappedDictionary(dict)
   }
