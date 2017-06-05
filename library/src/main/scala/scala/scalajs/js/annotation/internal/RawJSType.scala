@@ -8,7 +8,7 @@
 
 
 
-package scala.scalajs.js.annotation
+package scala.scalajs.js.annotation.internal
 
 /** Marks the annotated class, trait or object as a raw JavaScript type.
  *

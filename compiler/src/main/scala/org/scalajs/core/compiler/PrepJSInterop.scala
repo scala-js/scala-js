@@ -1324,8 +1324,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   }
 
   private lazy val ScalaEnumClass = getRequiredClass("scala.Enumeration")
-  private lazy val WasPublicBeforeTyperClass =
-    getRequiredClass("scala.scalajs.js.annotation.WasPublicBeforeTyper")
 
   /** checks if the primary constructor of the ClassDef `cldef` does not
    *  take any arguments

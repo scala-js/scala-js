@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package scala.scalajs.js.annotation
+package scala.scalajs.js.annotation.internal
 
 /** IMPLEMENTATION DETAIL: Marks the annotated member as exposed as a JS member.
  *

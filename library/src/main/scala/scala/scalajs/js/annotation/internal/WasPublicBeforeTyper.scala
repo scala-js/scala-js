@@ -1,4 +1,4 @@
-package scala.scalajs.js.annotation
+package scala.scalajs.js.annotation.internal
 
 /** IMPLEMENTATION DETAIL: Marks public members of anonymous classes before typer.
  *

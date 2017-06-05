@@ -60,13 +60,17 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSImportAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSImport")
     lazy val JSGlobalAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSGlobal")
     lazy val JSGlobalScopeAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSGlobalScope")
-    lazy val SJSDefinedAnonymousClassAnnotation = getRequiredClass("scala.scalajs.js.annotation.SJSDefinedAnonymousClass")
-    lazy val HasJSNativeLoadSpecAnnotation = getRequiredClass("scala.scalajs.js.annotation.internal.HasJSNativeLoadSpec")
-    lazy val JSOptionalAnnotation      = getRequiredClass("scala.scalajs.js.annotation.internal.JSOptional")
 
     lazy val JavaDefaultMethodAnnotation = getRequiredClass("scala.scalajs.js.annotation.JavaDefaultMethod")
 
     lazy val JSImportNamespaceObject = getRequiredModule("scala.scalajs.js.annotation.JSImport.Namespace")
+
+    lazy val ExposedJSMemberAnnot = getRequiredClass("scala.scalajs.js.annotation.internal.ExposedJSMember")
+    lazy val HasJSNativeLoadSpecAnnotation = getRequiredClass("scala.scalajs.js.annotation.internal.HasJSNativeLoadSpec")
+    lazy val JSOptionalAnnotation = getRequiredClass("scala.scalajs.js.annotation.internal.JSOptional")
+    lazy val RawJSTypeAnnot = getRequiredClass("scala.scalajs.js.annotation.internal.RawJSType")
+    lazy val SJSDefinedAnonymousClassAnnotation = getRequiredClass("scala.scalajs.js.annotation.internal.SJSDefinedAnonymousClass")
+    lazy val WasPublicBeforeTyperClass = getRequiredClass("scala.scalajs.js.annotation.internal.WasPublicBeforeTyper")
 
     lazy val JSAnyTpe    = JSAnyClass.toTypeConstructor
     lazy val JSObjectTpe = JSObjectClass.toTypeConstructor
@@ -95,9 +99,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSConstructorTagModule = getRequiredModule("scala.scalajs.js.ConstructorTag")
       lazy val JSConstructorTag_materialize = getMemberMethod(JSConstructorTagModule, newTermName("materialize"))
-
-    lazy val RawJSTypeAnnot = getRequiredClass("scala.scalajs.js.annotation.RawJSType")
-    lazy val ExposedJSMemberAnnot = getRequiredClass("scala.scalajs.js.annotation.ExposedJSMember")
 
     lazy val SpecialPackageModule = getPackageObject("scala.scalajs.js.special")
       lazy val Special_delete = getMemberMethod(SpecialPackageModule, newTermName("delete"))
