@@ -11,16 +11,16 @@ For each major Scala version on a *NIX distro and a Windows distro:
 5. Create a temporary directory and do:
 
         mkdir bin
-        echo 'import scala.scalajs.js.JSApp
-          object Foo extends JSApp {
-
-            def main() = {
+        echo '
+          object Foo {
+            def main(): Unit = {
               println(s"asdf ${1 + 1}")
               new A
             }
 
             class A
-          }' > foo.scala
+          }
+        ' > foo.scala
         scalajsc -d bin foo.scala
 
         scalajsp bin/Foo$.sjsir
@@ -28,10 +28,9 @@ For each major Scala version on a *NIX distro and a Windows distro:
         scalajsp bin/Foo\$A.sjsir
         # Verify output
 
-        scalajsld -o test.js bin
+        scalajsld -o test.js -mm Foo.main bin
         # Verify output
 
-        echo "Foo().main()" >> test.js
         node test.js # Or your favorite thing to run JS
 
         # Expect "asdf 2"
