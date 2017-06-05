@@ -93,13 +93,13 @@ object JSNumberOps {
 
   @deprecated("A Long is converted to Double to perform JavaScript "+
       "operations. This is almost certainly not what you want. "+
-      "Use `.toDouble` explicitly if you need it.", "0.6.0")
+      "Use `.toDouble` explicitly if you need it.", "forever")
   implicit def enableJSNumberOps(x: Long): JSNumberOps =
     x.toDouble.asInstanceOf[JSNumberOps]
 
   @deprecated("A Long is converted to Double to perform JavaScript "+
       "operations. This is almost certainly not what you want. "+
-      "Use `.toDouble` explicitly if you need it.", "0.6.0")
+      "Use `.toDouble` explicitly if you need it.", "forever")
   implicit def enableJSNumberExtOps(x: Long): ExtOps =
     new ExtOps(x.toDouble.asInstanceOf[Dynamic])
 }

@@ -67,14 +67,24 @@ object Any extends LowPrioAnyImplicits {
     value.asInstanceOf[Any]
   @inline implicit def fromInt(value: Int): Any =
     value.asInstanceOf[Any]
-  @inline implicit def fromLong(value: Long): Any =
-    value.toDouble.asInstanceOf[Any]
   @inline implicit def fromFloat(value: Float): Any =
     value.asInstanceOf[Any]
   @inline implicit def fromDouble(value: Double): Any =
     value.asInstanceOf[Any]
   @inline implicit def fromString(s: String): Any =
     s.asInstanceOf[Any]
+
+  /* The following overload makes sure that the developer does not
+   * inadvertently convert a Long to a Double to fit it in a js.Any.
+   */
+  @deprecated(
+      "A Long is converted to Double to be cast to js.Any. " +
+      "This is almost certainly not what you want. " +
+      "Use `.toDouble` explicitly if you need it.",
+      "forever")
+  @inline
+  implicit def fromLong(value: Long): Any =
+    value.toDouble.asInstanceOf[Any]
 
   implicit def jsArrayOps[A](array: Array[A]): ArrayOps[A] =
     new ArrayOps(array)
@@ -166,7 +176,16 @@ object Any extends LowPrioAnyImplicits {
   @inline implicit def fromJInteger(value: java.lang.Integer): Any =
     value.asInstanceOf[Any]
 
-  @inline implicit def fromJLong(value: java.lang.Long): Any =
+  /* The following overload makes sure that the developer does not
+   * inadvertently convert a Long to a Double to fit it in a js.Any.
+   */
+  @deprecated(
+      "A Long is converted to Double to be cast to js.Any. " +
+      "This is almost certainly not what you want. " +
+      "Use `.toDouble` explicitly if you need it.",
+      "forever")
+  @inline
+  implicit def fromJLong(value: java.lang.Long): Any =
     if (value eq null) null
     else value.doubleValue.asInstanceOf[Any]
 
