@@ -2,13 +2,28 @@ package scala.scalajs.js
 
 /** Base class for top-level, entry point main objects.
  *
- *  [[JSApp]] is typically used to mark the entry point of a Scala.js
- *  application. As such, the sbt plugin also recognizes top-level objects
- *  extending [[JSApp]]. It allows to run their [[main]] method with `sbt run`.
+ *  In Scala.js 0.6.x, an top-level object had to extend `js.JSApp` to be
+ *  recognized by the sbt plugin as a "main" object, to be executed with `run`.
+ *  Starting with Scala.js 1.0.0, any object with a standard main method of the
+ *  form
+ *  {{{
+ *  def main(args: Array[String]): Unit = ???
+ *  }}}
+ *  will be recognized by the sbt plugin, just like for a JVM project.
  *
- *  To execute the [[main]] method immediately when your Scala.js file is
- *  loaded, use the `scalaJSUseMainModuleInitializer` setting in the sbt plugin.
+ *  [[JSApp]] is therefore deprecated, and should not be used anymore.
  */
+@deprecated(
+    "Extending js.JSApp is not necessary anymore for an object to be " +
+    "recognized by the Scala.js sbt plugin. " +
+    "Use a normal object with a `def main(args: Array[String]): Unit` " +
+    "instead, which will also be cross-platform. " +
+    "Note that js.JSApp objects and their main() method are not " +
+    "automatically exported to JavaScript either; explicitly export your " +
+    "object if you relied on this behavior.",
+    "1.0.0")
 trait JSApp {
+  def main(args: scala.Array[String]): Unit = main()
+
   def main(): Unit
 }
