@@ -20,7 +20,6 @@ import scala.language.implicitConversions
  *
  *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
-@native
 trait ThisFunction extends Function
 
 object ThisFunction {

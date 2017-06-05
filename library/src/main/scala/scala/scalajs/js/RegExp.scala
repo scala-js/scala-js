@@ -110,9 +110,8 @@ class RegExp(pattern: String, flags: String = "") extends Object {
 object RegExp extends Object {
   def apply(pattern: String, flags: String = ""): RegExp = native
 
-  @native
   trait ExecResult extends Array[UndefOr[String]] {
-    var index: Int = native
-    var input: String = native
+    var index: Int
+    var input: String
   }
 }

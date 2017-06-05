@@ -17,8 +17,7 @@ import scala.scalajs.js
  *
  *  May only be used to pass to [[clearTimeout]].
  */
-@js.native
-trait SetTimeoutHandle extends js.Any
+sealed trait SetTimeoutHandle extends js.Any
 
 /** <span class="badge badge-non-std" style="float: right;">Non-Standard</span>
  *  A handle returned from a call to
@@ -26,5 +25,4 @@ trait SetTimeoutHandle extends js.Any
  *
  *  May only be used to pass to [[clearInterval]].
  */
-@js.native
-trait SetIntervalHandle extends js.Any
+sealed trait SetIntervalHandle extends js.Any

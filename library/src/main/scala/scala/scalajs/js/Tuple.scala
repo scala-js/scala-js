@@ -40,10 +40,9 @@ import scala.language.implicitConversions
  *  val obj: js.Tuple2[Int, String] = (42, "foobar")
  *  }}}
  */
-@native
 sealed trait Tuple2[+T1, +T2] extends Object {
-  @JSName("0") val _1: T1 = native
-  @JSName("1") val _2: T2 = native
+  @JSName("0") val _1: T1
+  @JSName("1") val _2: T2
 }
 
 object Tuple2 {
@@ -65,11 +64,10 @@ object Tuple2 {
  *
  *  @see [[Tuple2]]
  */
-@native
 sealed trait Tuple3[+T1, +T2, +T3] extends Object {
-  @JSName("0") val _1: T1 = native
-  @JSName("1") val _2: T2 = native
-  @JSName("2") val _3: T3 = native
+  @JSName("0") val _1: T1
+  @JSName("1") val _2: T2
+  @JSName("2") val _3: T3
 }
 
 object Tuple3 {

@@ -3,42 +3,40 @@ package scala.scalajs.runtime
 import scala.scalajs.js
 
 /** Information about link-time configuration of Scala.js. */
-@js.native
-trait LinkingInfo extends js.Object {
+sealed trait LinkingInfo extends js.Object {
   /** Environment info. */
-  val envInfo: EnvironmentInfo = js.native
+  val envInfo: EnvironmentInfo
 
   /** Semantics configuration. */
-  val semantics: LinkingInfo.Semantics = js.native
+  val semantics: LinkingInfo.Semantics
 
   /** Whether we are assuming ECMAScript 6 support or not. */
-  val assumingES6: Boolean = js.native
+  val assumingES6: Boolean
 
   /** Version of the linker */
-  val linkerVersion: js.UndefOr[String] = js.native
+  val linkerVersion: js.UndefOr[String]
 
   /** The value of the global JavaScript `this`. */
-  val globalThis: Any = js.native
+  val globalThis: Any
 }
 
 object LinkingInfo {
   /** Semantics configuration. */
-  @js.native
-  trait Semantics extends js.Object {
+  sealed trait Semantics extends js.Object {
     /** Compliance level of asInstanceOfs. */
-    val asInstanceOfs: Int = js.native
+    val asInstanceOfs: Int
 
     /** Compliance level of arrayIndexOutOfBounds. */
-    val arrayIndexOutOfBounds: Int = js.native
+    val arrayIndexOutOfBounds: Int
 
     /** Compliance level of moduleInit. */
-    val moduleInit: Int = js.native
+    val moduleInit: Int
 
     /** Whether floats have strict semantics. */
-    val strictFloats: Boolean = js.native
+    val strictFloats: Boolean
 
     /** Whether we are linking in production mode. */
-    val productionMode: Boolean = js.native
+    val productionMode: Boolean
   }
 
   object Semantics {

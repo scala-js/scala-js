@@ -16,10 +16,9 @@ package scala.scalajs.js
 
 /** A Unicode Normalization Form.
  *
- *  @see [[JSStringOps.normalize]]
+ *  @see [[JSStringOps JSStringOps.normalize]]
  *  @see [[http://www.unicode.org/reports/tr15/ Unicode Normalization Forms]]
  */
-@native
 sealed trait UnicodeNormalizationForm extends Any
 
 object UnicodeNormalizationForm {

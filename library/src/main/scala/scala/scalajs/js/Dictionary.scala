@@ -48,7 +48,6 @@ import annotation.JSBracketAccess
  *  call methods of [[Object js.Object]] on it, given that the name of these
  *  methods could be used as keys in the dictionary.
  */
-@native
 sealed trait Dictionary[A] extends Any
 
 /** Factory for [[Dictionary]] instances. */
