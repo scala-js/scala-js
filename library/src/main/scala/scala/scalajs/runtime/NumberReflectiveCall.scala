@@ -6,7 +6,7 @@ import java.lang.{Double => JDouble, Integer => JInteger}
  *  This class and its methods are only here to properly support reflective
  *  calls on numbers.
  */
-class NumberReflectiveCall(value: Double) {
+final class NumberReflectiveCall(value: Double) {
 
   // Methods of java.lang.Double and java.lang.Integer
 
