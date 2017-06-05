@@ -21,13 +21,9 @@ private[emitter] final class KnowledgeGuardian {
 
   private var firstRun: Boolean = true
 
-  private var hasNewRuntimeLong: Boolean = _
   private var isParentDataAccessed: Boolean = _
 
   private val classes = mutable.Map.empty[String, Class]
-
-  private def askHasNewRuntimeLong(invalidatable: Invalidatable): Boolean =
-    hasNewRuntimeLong
 
   private def askIsParentDataAccessed(invalidatable: Invalidatable): Boolean =
     isParentDataAccessed
@@ -42,7 +38,6 @@ private[emitter] final class KnowledgeGuardian {
    */
   def update(linkingUnit: LinkingUnit): Boolean = {
     var newIsParentDataAccessed = false
-    var newHasNewRuntimeLong: Boolean = false
 
     // Update classes
     for (linkedClass <- linkingUnit.classDefs) {
@@ -59,8 +54,6 @@ private[emitter] final class KnowledgeGuardian {
       linkedClass.encodedName match {
         case Definitions.ClassClass =>
           newIsParentDataAccessed = methodExists("getSuperclass__jl_Class")
-        case LongImpl.RuntimeLongClass =>
-          newHasNewRuntimeLong = methodExists(LongImpl.initFromParts)
         case _ =>
       }
     }
@@ -69,13 +62,11 @@ private[emitter] final class KnowledgeGuardian {
     classes.retain((_, cls) => cls.testAndResetIsAlive())
 
     val invalidateAll = !firstRun && {
-      newIsParentDataAccessed != isParentDataAccessed ||
-      newHasNewRuntimeLong != hasNewRuntimeLong
+      newIsParentDataAccessed != isParentDataAccessed
     }
     firstRun = false
 
     isParentDataAccessed = newIsParentDataAccessed
-    hasNewRuntimeLong = newHasNewRuntimeLong
 
     if (invalidateAll)
       classes.valuesIterator.foreach(_.unregisterAll())
@@ -87,9 +78,6 @@ private[emitter] final class KnowledgeGuardian {
      * *be* a GlobalKnowledge. We organize it that way to reduce memory
      * footprint and pointer indirections.
      */
-
-    def hasNewRuntimeLong: Boolean =
-      askHasNewRuntimeLong(this)
 
     def isParentDataAccessed: Boolean =
       askIsParentDataAccessed(this)

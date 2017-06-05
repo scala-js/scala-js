@@ -15,12 +15,6 @@ private[emitter] trait GlobalKnowledge {
   /** Tests whether the parent class data is accessed in the linking unit. */
   def isParentDataAccessed: Boolean
 
-  // TODO Get rid of this when we break backward binary compatibility
-  /** Whether the standard library we're using has the new `RuntimeLong`
-   *  implementation, with `lo` and `hi`.
-   */
-  def hasNewRuntimeLong: Boolean
-
   /** Tests whether the specified class name refers to an `Interface`. */
   def isInterface(className: String): Boolean
 

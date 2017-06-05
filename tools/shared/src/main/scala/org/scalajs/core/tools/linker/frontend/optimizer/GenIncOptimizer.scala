@@ -51,7 +51,6 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
     import factory._
 
     callMethods(LongImpl.RuntimeLongClass, LongImpl.AllIntrinsicMethods) ++
-    optional(callMethods(LongImpl.RuntimeLongClass, LongImpl.OptionalIntrinsicMethods)) ++
     /* #2184 + #2780: we need to keep all methods of j.l.Integer, in case
      * the corresponding methods are called on j.l.Byte or j.l.Short, and
      * through optimizations become calls on j.l.Integer.

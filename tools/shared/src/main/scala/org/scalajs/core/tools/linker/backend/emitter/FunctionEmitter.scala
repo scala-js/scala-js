@@ -2208,15 +2208,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case LongLiteral(0L) =>
           genLongZero()
         case LongLiteral(value) =>
-          if (globalKnowledge.hasNewRuntimeLong) {
-            val (lo, hi) = LongImpl.extractParts(value)
-            genNewLong(LongImpl.initFromParts,
-                js.IntLiteral(lo), js.IntLiteral(hi))
-          } else {
-            val (l, m, h) = LongImpl.extractPartsOld(value)
-            genNewLong(LongImpl.initFromPartsOld,
-                js.IntLiteral(l), js.IntLiteral(m), js.IntLiteral(h))
-          }
+          val (lo, hi) = LongImpl.extractParts(value)
+          genNewLong(LongImpl.initFromParts,
+              js.IntLiteral(lo), js.IntLiteral(hi))
 
         case ClassOf(cls) =>
           js.Apply(js.DotSelect(genClassDataOf(cls), js.Ident("getClassOf")),
