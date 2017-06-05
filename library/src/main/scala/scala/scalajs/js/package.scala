@@ -86,20 +86,6 @@ package object js {
   def constructorTag[T <: js.Any](implicit tag: ConstructorTag[T]): ConstructorTag[T] =
     tag
 
-  /** Invokes any available debugging functionality.
-   *  If no debugging functionality is available, this statement has no effect.
-   *
-   *  MDN
-   *
-   *  Browser support:
-   *  - Has no effect in Firefox, apparently
-   *  - In Chrome, it has no effect unless the developer tools are opened
-   *    beforehand.
-   */
-  @deprecated("Use scala.scalajs.js.sepcial.debugger instead", "0.6.17")
-  @inline
-  def debugger(): Unit = js.special.debugger()
-
   /** Evaluates JavaScript code and returns the result. */
   @inline def eval(x: String): Any =
     js.Dynamic.global.eval(x)

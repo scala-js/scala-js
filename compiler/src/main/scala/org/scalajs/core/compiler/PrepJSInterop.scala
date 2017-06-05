@@ -1372,7 +1372,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
      */
     def isCompilerAnnotation(annotation: AnnotationInfo): Boolean = {
       annotation.symbol == ExposedJSMemberAnnot ||
-      annotation.symbol == JSFullNameAnnotation ||
       annotation.symbol == RawJSTypeAnnot ||
       annotation.symbol == SJSDefinedAnonymousClassAnnotation ||
       annotation.symbol == JSOptionalAnnotation

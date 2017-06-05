@@ -33,8 +33,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSAnyClass       = getRequiredClass("scala.scalajs.js.Any")
     lazy val JSDynamicClass   = getRequiredClass("scala.scalajs.js.Dynamic")
-    lazy val JSDictionaryClass = getRequiredClass("scala.scalajs.js.Dictionary")
-      lazy val JSDictionary_delete = getMemberMethod(JSDictionaryClass, newTermName("delete"))
     lazy val JSObjectClass    = getRequiredClass("scala.scalajs.js.Object")
     lazy val JSThisFunctionClass = getRequiredClass("scala.scalajs.js.ThisFunction")
 
@@ -53,7 +51,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JavaScriptExceptionClass = getClassIfDefined("scala.scalajs.js.JavaScriptException")
 
     lazy val JSNameAnnotation          = getRequiredClass("scala.scalajs.js.annotation.JSName")
-    lazy val JSFullNameAnnotation      = getRequiredClass("scala.scalajs.js.annotation.JSFullName")
     lazy val JSBracketAccessAnnotation = getRequiredClass("scala.scalajs.js.annotation.JSBracketAccess")
     lazy val JSBracketCallAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSBracketCall")
     lazy val JSExportAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSExport")

@@ -6,11 +6,6 @@ import scala.collection.GenTraversableOnce
 
 package object runtime {
 
-  @deprecated("Use scala.scalajs.LinkingInfo.assumingES6 instead.", "0.6.6")
-  @inline
-  def assumingES6: Boolean =
-    scala.scalajs.LinkingInfo.assumingES6
-
   def wrapJavaScriptException(e: Any): Throwable = e match {
     case e: Throwable => e
     case _            => js.JavaScriptException(e)
@@ -50,19 +45,6 @@ package object runtime {
       result.updateDynamic(name)(value)
     result
   }
-
-  /** Instantiates a JS object with variadic arguments to the constructor.
-   *
-   *  This method was needed by the codegen of 0.6.0 through 0.6.2. It is not
-   *  needed anymore, and should not be used directly.
-   *
-   *  It is kept for backward binary compatibility with 0.6.{0,1,2}, but will
-   *  be removed in the next major version.
-   */
-  @deprecated("Use js.Dynamic.newInstance instead.", "0.6.3")
-  @inline
-  def newJSObjectWithVarargs(ctor: js.Dynamic, args: js.Array[_]): js.Any =
-    js.Dynamic.newInstance(ctor)(args.asInstanceOf[js.Array[js.Any]]: _*)
 
   /** Dummy method used to preserve the type parameter of
    *  `js.constructorOf[T]` through erasure.

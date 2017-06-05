@@ -21,28 +21,6 @@ class DictionaryTest {
 
   // scala.scalajs.js.Dictionary
 
-  @Test def should_provide_an_equivalent_of_the_JS_delete_keyword_issue_255(): Unit = {
-    val obj = js.Dictionary.empty[js.Any]
-    obj("foo") = 42
-    obj("bar") = "foobar"
-
-    assertEquals(42, obj("foo"))
-    assertEquals("foobar", obj("bar"))
-    obj.delete("foo")
-    assertFalse(obj.contains("foo"))
-    assertFalse(obj.asInstanceOf[js.Object].hasOwnProperty("foo"))
-    assertEquals("foobar", obj("bar"))
-  }
-
-  @Test def should_behave_as_specified_when_deleting_a_non_configurable_property_issue_461_issue_679(): Unit = {
-    val obj = js.Dictionary.empty[js.Any]
-    js.Object.defineProperty(obj.asInstanceOf[js.Object], "nonconfig",
-        js.Dynamic.literal(value = 4, writable = false).asInstanceOf[js.PropertyDescriptor])
-    assertEquals(4, obj("nonconfig"))
-    assertThrows(classOf[Exception], obj.delete("nonconfig"))
-    assertEquals(4, obj("nonconfig"))
-  }
-
   @Test def apply_should_throw_when_not_found(): Unit = {
     val obj = js.Dictionary("foo" -> "bar")
     assertThrows(classOf[NoSuchElementException], obj("bar"))
@@ -61,11 +39,6 @@ class DictionaryTest {
     obj -= "b"
   }
 
-  @Test def should_treat_delete_as_a_statement_issue_907(): Unit = {
-    val obj = js.Dictionary("a" -> "A")
-    obj.delete("a")
-  }
-
   @Test def should_provide_keys(): Unit = {
     val obj = js.Dictionary("a" -> "A", "b" -> "B")
     val keys = obj.keys.toList
@@ -79,7 +52,7 @@ class DictionaryTest {
     assertFalse(obj.contains("hasOwnProperty"))
     obj("hasOwnProperty") = 5
     assertTrue(obj.contains("hasOwnProperty"))
-    obj.delete("hasOwnProperty")
+    obj -= "hasOwnProperty"
     assertFalse(obj.contains("hasOwnProperty"))
   }
 
@@ -93,13 +66,6 @@ class DictionaryTest {
     assertTrue(elems.contains(("foo", 5)))
     assertTrue(elems.contains(("bar", 42)))
     assertTrue(elems.contains(("babar", 0)))
-  }
-
-  @Test def should_desugar_arguments_to_delete_statements_issue_908(): Unit = {
-    val kh = js.Dynamic.literal(key = "a").asInstanceOf[KeyHolder]
-    val dict = js.Dictionary[String]("a" -> "A")
-    def a[T](foo: String): T = dict.asInstanceOf[T]
-    a[js.Dictionary[String]]("foo").delete(kh.key)
   }
 
   // scala.scalajs.js.JSConverters.JSRichGenMap

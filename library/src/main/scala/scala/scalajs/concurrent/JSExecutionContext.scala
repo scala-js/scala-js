@@ -10,13 +10,6 @@ import scala.concurrent.ExecutionContextExecutor
  */
 object JSExecutionContext {
 
-  /** Execution context that runs immediately.
-   *
-   *  Beware of stack growth!
-   */
-  @deprecated("Not asynchronous. Use JSExecutionContext.queue instead.", "0.6.6")
-  val runNow: ExecutionContextExecutor = RunNowExecutionContext
-
   /** Execution context that submits into the JavaScript runtime's task queue.
    *
    *  It uses JavaScript [[scala.scalajs.js.Promise Promises]] if available,
@@ -25,8 +18,6 @@ object JSExecutionContext {
   val queue: ExecutionContextExecutor = QueueExecutionContext()
 
   object Implicits {
-    @deprecated("Not asynchronous. Use JSExecutionContext.Implicits.queue instead.", "0.6.6")
-    implicit val runNow: ExecutionContextExecutor = RunNowExecutionContext
     implicit val queue: ExecutionContextExecutor = JSExecutionContext.queue
   }
 

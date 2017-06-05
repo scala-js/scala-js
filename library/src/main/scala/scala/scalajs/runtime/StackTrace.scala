@@ -535,15 +535,6 @@ object StackTrace {
     }
   }
 
-  /**
-   *  Implicit class to access magic column element created in STE
-   */
-  @deprecated("Use Implicits.StackTraceElementOps instead.", "0.6.3")
-  implicit class ColumnStackTraceElement(ste: StackTraceElement) {
-    def getColumnNumber: Int =
-      new Implicits.StackTraceElementOps(ste).getColumnNumber()
-  }
-
   object Implicits {
     /** Access to the additional methods `getColumnNumber` and `setColumnNumber`
      *  of [[java.lang.StackTraceElement StackTraceElement]].

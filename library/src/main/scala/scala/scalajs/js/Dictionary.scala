@@ -53,24 +53,6 @@ sealed trait Dictionary[A] extends Any {
   /** Writes a field of this object by its name. */
   @JSBracketAccess
   def update(key: String, value: A): Unit = native
-
-  /* Note: `delete` cannot be replaced by a user-land implementation in
-   * WrappedDictionary, because it would break forward compiler-library
-   * compatibility. If someone uses an 0.6.16 compiler with an 0.6.17 library
-   * (which can easily happen if depending on a third-party library compiled
-   * with 0.6.17), the compiler will look for this symbol and crash.
-   */
-
-  /** Deletes a property of this object by its name.
-   *
-   *  The property must be configurable.
-   *  This method is equivalent to the "delete" keyword in JavaScript.
-   *
-   *  Since we are using strict mode, this throws an exception, if the property
-   *  isn't configurable.
-   */
-  @deprecated("Use -= instead.", "0.6.17")
-  def delete(key: String): Unit = throw new java.lang.Error("stub")
 }
 
 /** Factory for [[Dictionary]] instances. */

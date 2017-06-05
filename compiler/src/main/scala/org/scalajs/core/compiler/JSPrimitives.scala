@@ -37,8 +37,6 @@ abstract class JSPrimitives {
 
   val DYNLIT = 334    // js.Dynamic.literal.applyDynamic{,Named}
 
-  val DICT_DEL = 335   // js.Dictionary.delete
-
   val ARR_CREATE = 337 // js.Array.apply (array literal syntax)
 
   val TYPEOF = 344    // typeof x
@@ -93,8 +91,6 @@ abstract class JSPrimitives {
 
     addPrimitive(JSDynamicLiteral_applyDynamicNamed, DYNLIT)
     addPrimitive(JSDynamicLiteral_applyDynamic, DYNLIT)
-
-    addPrimitive(JSDictionary_delete, DICT_DEL)
 
     addPrimitive(JSArray_create, ARR_CREATE)
 
