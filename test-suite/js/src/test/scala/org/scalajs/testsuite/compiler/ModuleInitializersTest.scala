@@ -15,7 +15,13 @@ class ModuleInitializersTest {
 
   @Test def correctInitializers(): Unit = {
     assertArrayEquals(
-        Array[AnyRef](NoConfigMain, TestConfigMain2, TestConfigMain1),
+        Array[AnyRef](
+            NoConfigMain,
+            TestConfigMain2,
+            TestConfigMain1,
+            TestConfigMainArgs1 + "()",
+            TestConfigMainArgs2 + "(foo, bar)"
+        ),
         moduleInitializersEffects.toArray[AnyRef])
   }
 
@@ -26,6 +32,8 @@ object ModuleInitializersTest {
   final val CompileConfigMain = "ModuleInitializerInCompileConfiguration.main"
   final val TestConfigMain1 = "ModuleInitializerInTestConfiguration.main1"
   final val TestConfigMain2 = "ModuleInitializerInTestConfiguration.main2"
+  final val TestConfigMainArgs1 = "ModuleInitializerInTestConfiguration.mainArgs1"
+  final val TestConfigMainArgs2 = "ModuleInitializerInTestConfiguration.mainArgs2"
 
   val moduleInitializersEffects =
     new scala.collection.mutable.ListBuffer[String]
@@ -57,5 +65,15 @@ object ModuleInitializerInTestConfiguration {
 
   def main2(): Unit = {
     moduleInitializersEffects += TestConfigMain2
+  }
+
+  def mainArgs1(args: Array[String]): Unit = {
+    moduleInitializersEffects +=
+      TestConfigMainArgs1 + args.mkString("(", ", ", ")")
+  }
+
+  def mainArgs2(args: Array[String]): Unit = {
+    moduleInitializersEffects +=
+      TestConfigMainArgs2 + args.mkString("(", ", ", ")")
   }
 }

@@ -1932,8 +1932,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               genClassDataOf(tpe), js.ArrayConstr(lengths map transformExpr))
 
         case ArrayValue(tpe, elems) =>
-          genCallHelper("makeNativeArrayWrapper",
-              genClassDataOf(tpe), js.ArrayConstr(elems map transformExpr))
+          genArrayValue(tpe, elems.map(transformExpr))
 
         case ArrayLength(array) =>
           genIdentBracketSelect(js.DotSelect(transformExpr(array),
@@ -2208,17 +2207,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case name: Ident           => transformIdent(name)
         case StringLiteral(s)      => js.StringLiteral(s)
         case ComputedName(tree, _) => js.ComputedName(transformExpr(tree))
-      }
-    }
-
-    def genClassDataOf(cls: ReferenceType)(implicit pos: Position): js.Tree = {
-      cls match {
-        case ClassType(className) =>
-          envField("d", className)
-        case ArrayType(base, dims) =>
-          (1 to dims).foldLeft[js.Tree](envField("d", base)) { (prev, _) =>
-            js.Apply(js.DotSelect(prev, js.Ident("getArrayOf")), Nil)
-          }
       }
     }
 
