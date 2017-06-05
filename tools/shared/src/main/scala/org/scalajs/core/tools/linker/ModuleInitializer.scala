@@ -33,6 +33,10 @@ object ModuleInitializer {
       encodedMainMethodName: String)
       extends ModuleInitializer
 
+  private[linker] final case class MainMethodWithArgs(moduleClassName: String,
+      encodedMainMethodName: String, args: List[String])
+      extends ModuleInitializer
+
   /** Makes an [[ModuleInitializer]] that calls a zero-argument method returning
    *  `Unit` in a top-level `object`.
    *
@@ -48,6 +52,41 @@ object ModuleInitializer {
         mainMethodName + "__V")
   }
 
+  /** Makes an [[ModuleInitializer]] that calls a method of a top-level
+   *  `object`, taking an `Array[String]` and returning `Unit`.
+   *
+   *  An empty array is passed as argument.
+   *
+   *  @param moduleClassName
+   *    The fully-qualified name of the module class, e.g., `"foo.bar.Babar"`.
+   *    Note that it does not end with `$`.
+   *  @param mainMethodName
+   *    The name of the main method to invoke, e.g., `"main"`.
+   */
+  def mainMethodWithArgs(moduleClassName: String,
+      mainMethodName: String): ModuleInitializer = {
+    mainMethodWithArgs(moduleClassName, mainMethodName, Nil)
+  }
+
+  /** Makes an [[ModuleInitializer]] that calls a method of a top-level
+   *  `object`, taking an `Array[String]` and returning `Unit`.
+   *
+   *  An array containing the specified `args` is passed as argument.
+   *
+   *  @param moduleClassName
+   *    The fully-qualified name of the module class, e.g., `"foo.bar.Babar"`.
+   *    Note that it does not end with `$`.
+   *  @param mainMethodName
+   *    The name of the main method to invoke, e.g., `"main"`.
+   *  @param args
+   *    The arguments to pass as an array.
+   */
+  def mainMethodWithArgs(moduleClassName: String, mainMethodName: String,
+      args: List[String]): ModuleInitializer = {
+    MainMethodWithArgs(encodeClassName(moduleClassName + "$"),
+        mainMethodName + "__AT__V", args)
+  }
+
   def toSymbolRequirement(
       entryPoints: Seq[ModuleInitializer]): SymbolRequirement = {
     val factory = SymbolRequirement.factory("module initializers")
@@ -55,6 +94,10 @@ object ModuleInitializer {
       entryPoint match {
         case VoidMainMethod(moduleClassName, mainMethodName) =>
           factory.callOnModule(moduleClassName, mainMethodName)
+
+        case MainMethodWithArgs(moduleClassName, mainMethodName, _) =>
+          factory.callOnModule(moduleClassName, mainMethodName) ++
+          factory.classData("T")
       }
     }
     factory.multiple(requirements: _*)

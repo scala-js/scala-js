@@ -6,6 +6,9 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // private[emitter], not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.FunctionEmitter#JSDesugar.genClassDataOf")
   )
 
   val JSEnvs = Seq(
