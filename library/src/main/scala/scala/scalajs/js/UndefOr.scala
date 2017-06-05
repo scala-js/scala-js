@@ -23,7 +23,7 @@ import scala.scalajs.js.|.Evidence
  */
 sealed trait UndefOr[+A]
 
-sealed abstract class UndefOrLowPrioImplicits {
+sealed abstract class UndefOrLowPrioImplicits { this: UndefOr.type =>
   /** Upcast `A` to `UndefOr[B1 | B2]`.
    *
    *  This needs evidence that `A <: B1 | B2`.

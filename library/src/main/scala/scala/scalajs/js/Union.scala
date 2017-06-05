@@ -29,7 +29,7 @@ object | { // scalastyle:ignore
    */
   private object ReusableEvidence extends Evidence[scala.Any, scala.Any]
 
-  abstract sealed class EvidenceLowestPrioImplicits {
+  abstract sealed class EvidenceLowestPrioImplicits { this: Evidence.type =>
     /** If `A <: B2`, then `A <: B1 | B2`. */
     implicit def right[A, B1, B2](implicit ev: Evidence[A, B2]): Evidence[A, B1 | B2] =
       ReusableEvidence.asInstanceOf[Evidence[A, B1 | B2]]
@@ -47,7 +47,10 @@ object | { // scalastyle:ignore
       ReusableEvidence.asInstanceOf[Evidence[F[A], F[B]]]
   }
 
-  abstract sealed class EvidenceLowPrioImplicits extends EvidenceLowestPrioImplicits {
+  abstract sealed class EvidenceLowPrioImplicits
+      extends EvidenceLowestPrioImplicits {
+    this: Evidence.type =>
+
     /** `Int <: Double`, because that's true in Scala.js. */
     implicit def intDouble: Evidence[Int, Double] =
       ReusableEvidence.asInstanceOf[Evidence[Int, Double]]
