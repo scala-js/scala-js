@@ -568,10 +568,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           val optLoadSpec = checkAndComputeJSNativeLoadSpecOf(implDef.pos, sym)
           for (loadSpec <- optLoadSpec)
             jsInterop.storeJSNativeLoadSpec(sym, loadSpec)
-
-          // Mark module classes as having the new format
-          if (sym.isModuleClass)
-            sym.addAnnotation(HasJSNativeLoadSpecAnnotation)
         } else {
           assert(sym.isTrait) // just tested in the previous `if`
           for (annot <- sym.annotations) {
