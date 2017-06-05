@@ -57,7 +57,7 @@ class WrappedDictionary[A](val dict: Dictionary[A])
   }
 
   override def update(key: String, value: A): Unit =
-    dict.update(key, value)
+    dict.asInstanceOf[DictionaryRawApply[A]].rawUpdate(key, value)
 
   def +=(kv: (String, A)): this.type = {
     dict(kv._1) = kv._2
@@ -98,6 +98,10 @@ object WrappedDictionary {
      */
     @JSBracketAccess
     def rawApply(key: String): A = native
+
+    /** Writes a field of this object. */
+    @JSBracketAccess
+    def rawUpdate(key: String, value: A): Unit = native
   }
 
   private final class DictionaryIterator[+A](

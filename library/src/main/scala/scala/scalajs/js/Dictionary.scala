@@ -49,11 +49,7 @@ import annotation.JSBracketAccess
  *  methods could be used as keys in the dictionary.
  */
 @native
-sealed trait Dictionary[A] extends Any {
-  /** Writes a field of this object by its name. */
-  @JSBracketAccess
-  def update(key: String, value: A): Unit = native
-}
+sealed trait Dictionary[A] extends Any
 
 /** Factory for [[Dictionary]] instances. */
 object Dictionary {
