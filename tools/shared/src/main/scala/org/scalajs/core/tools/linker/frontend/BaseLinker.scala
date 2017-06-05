@@ -37,8 +37,14 @@ import Analysis._
 /** Links the information from [[io.VirtualScalaJSIRFile]]s into
  *  [[LinkedClass]]es. Does a dead code elimination pass.
  */
-final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
-    considerPositions: Boolean) {
+final class BaseLinker(semantics: Semantics, esLevel: ESLevel) {
+
+  @deprecated(
+      "The considerPositions parameter is ignored. " +
+      "Use the overload without it.",
+      "0.6.17")
+  def this(semantics: Semantics, esLevel: ESLevel, considerPositions: Boolean) =
+    this(semantics, esLevel)
 
   private type TreeProvider = String => (ClassDef, Option[String])
 
@@ -232,7 +238,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
 
     def linkedMethod(m: MethodDef) = {
       val info = memberInfoByStaticAndName((m.static, m.name.encodedName))
-      val version = m.hash.map(Hashers.hashAsVersion(_, considerPositions))
+      val version = m.hash.map(Hashers.hashAsVersion(_, considerPos = true))
       new LinkedMember(info, m, version)
     }
 
@@ -243,7 +249,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
 
     def linkedSyntheticMethod(m: MethodDef) = {
       val info = Infos.generateMethodInfo(m)
-      val version = m.hash.map(Hashers.hashAsVersion(_, considerPositions))
+      val version = m.hash.map(Hashers.hashAsVersion(_, considerPos = true))
       new LinkedMember(info, m, version)
     }
 

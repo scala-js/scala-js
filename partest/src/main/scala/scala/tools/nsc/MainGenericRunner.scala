@@ -8,7 +8,8 @@ import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.io.IRFileCache.IRContainer
 import org.scalajs.core.tools.linker.{Linker, ModuleInitializer}
-import org.scalajs.core.tools.linker.backend.{OutputMode, ModuleKind}
+import org.scalajs.core.tools.linker.frontend.LinkerFrontend
+import org.scalajs.core.tools.linker.backend._
 
 import org.scalajs.core.ir
 
@@ -69,12 +70,14 @@ class MainGenericRunner {
     val moduleInitializers =
       Seq(ModuleInitializer.mainMethod("PartestLauncher", "main"))
 
-    val linkerConfig = Linker.Config()
+    val frontendConfig = LinkerFrontend.Config()
+
+    val backendConfig = LinkerBackend.Config()
       .withSourceMap(false)
       .withClosureCompiler(optMode == FullOpt)
 
     val linker = Linker(semantics, OutputMode.ECMAScript51Isolated,
-        ModuleKind.NoModule, linkerConfig)
+        ModuleKind.NoModule, frontendConfig, backendConfig)
 
     val sjsCode = {
       val output = WritableMemVirtualJSFile("partest.js")

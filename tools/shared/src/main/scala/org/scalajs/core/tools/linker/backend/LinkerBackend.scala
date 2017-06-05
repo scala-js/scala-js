@@ -9,6 +9,8 @@
 
 package org.scalajs.core.tools.linker.backend
 
+import scala.language.implicitConversions
+
 import java.net.URI
 
 import org.scalajs.core.tools.io.WritableVirtualJSFile
@@ -29,14 +31,25 @@ abstract class LinkerBackend(
     val semantics: Semantics,
     val esLevel: ESLevel,
     val moduleKind: ModuleKind,
-    val withSourceMap: Boolean,
     protected val config: LinkerBackend.Config) {
+
+  @deprecated(
+      "Use the overload without 'withSourceMap'. " +
+      "The parameter can be configured in the 'config'.",
+      "0.6.17")
+  def this(semantics: Semantics, esLevel: ESLevel, moduleKind: ModuleKind,
+      withSourceMap: Boolean, config: LinkerBackend.Config) = {
+    this(semantics, esLevel, moduleKind, config.withSourceMap(withSourceMap))
+  }
 
   @deprecated("Use the overload with an explicit ModuleKind", "0.6.13")
   def this(semantics: Semantics, esLevel: ESLevel, withSourceMap: Boolean,
       config: LinkerBackend.Config) {
     this(semantics, esLevel, ModuleKind.NoModule, withSourceMap, config)
   }
+
+  @deprecated("Use config.sourceMap.", "0.6.17")
+  val withSourceMap: Boolean = config.sourceMap
 
   /** Symbols this backend needs to be present in the linking unit. */
   val symbolRequirements: SymbolRequirement
@@ -64,16 +77,25 @@ abstract class LinkerBackend(
   }
 }
 
-object LinkerBackend {
+object LinkerBackend extends LinkerBackendPlatformExtensions {
   /** Configurations relevant to the backend */
   final class Config private (
+      /** Whether to emit a source map. */
+      val sourceMap: Boolean = true,
       /** Base path to relativize paths in the source map. */
       val relativizeSourceMapBase: Option[URI] = None,
       /** Custom js code that wraps the output */
       val customOutputWrapper: (String, String) = ("", ""),
+      /** Whether to use the Google Closure Compiler pass, if it is available.
+       *  On the JavaScript platform, this does not have any effect.
+       */
+      val closureCompilerIfAvailable: Boolean = false,
       /** Pretty-print the output. */
       val prettyPrint: Boolean = false
   ) {
+    def withSourceMap(sourceMap: Boolean): Config =
+      copy(sourceMap = sourceMap)
+
     def withRelativizeSourceMapBase(relativizeSourceMapBase: Option[URI]): Config =
       copy(relativizeSourceMapBase = relativizeSourceMapBase)
 
@@ -91,18 +113,29 @@ object LinkerBackend {
       copy(customOutputWrapper = customOutputWrapper)
     }
 
+    def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): Config =
+      copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
+
     def withPrettyPrint(prettyPrint: Boolean): Config =
       copy(prettyPrint = prettyPrint)
 
     private def copy(
+        sourceMap: Boolean = sourceMap,
         relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
         customOutputWrapper: (String, String) = customOutputWrapper,
+        closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         prettyPrint: Boolean = prettyPrint): Config = {
-      new Config(relativizeSourceMapBase, customOutputWrapper, prettyPrint)
+      new Config(sourceMap, relativizeSourceMapBase, customOutputWrapper,
+          closureCompilerIfAvailable, prettyPrint)
     }
   }
 
   object Config {
+    import LinkerBackendPlatformExtensions._
+
+    implicit def toPlatformExtensions(config: Config): ConfigExt =
+      new ConfigExt(config)
+
     def apply(): Config = new Config()
   }
 }

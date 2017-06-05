@@ -16,19 +16,16 @@ import org.scalajs.core.tools.linker.frontend.optimizer.IncOptimizer
 import org.scalajs.core.tools.linker.backend._
 
 trait LinkerPlatformExtensions { this: Linker.type =>
+  @deprecated("Use the overload with frontendConfig and backendConfig.",
+      "0.6.17")
   def apply(semantics: Semantics, outputMode: OutputMode,
       moduleKind: ModuleKind, config: Config): Linker = {
 
-    val optOptimizerFactory = {
-      if (!config.optimizer) None
-      else Some(IncOptimizer.factory)
-    }
+    val frontend = LinkerFrontend(semantics, outputMode.esLevel,
+        config.frontendConfig)
 
-    val frontend = new LinkerFrontend(semantics, outputMode.esLevel,
-        config.sourceMap, config.frontendConfig, optOptimizerFactory)
-
-    val backend = new BasicLinkerBackend(semantics, outputMode, moduleKind,
-        config.sourceMap, config.backendConfig)
+    val backend = LinkerBackend(semantics, outputMode, moduleKind,
+        config.backendConfig)
 
     new Linker(frontend, backend)
   }
@@ -55,12 +52,14 @@ trait LinkerPlatformExtensions { this: Linker.type =>
 object LinkerPlatformExtensions {
   import Linker.Config
 
+  @deprecated("Use LinkerFrontend.Config and LinkerBackend.Config.", "0.6.17")
   final class ConfigExt(val config: Config) extends AnyVal {
     /** Whether to actually use the Google Closure Compiler pass.
      *
      *  On the JavaScript platform, this always returns `false`, as GCC is not
      *  available.
      */
+    @deprecated("Use config.backendConfig.closureCompiler.", "0.6.17")
     def closureCompiler: Boolean = false
   }
 }

@@ -189,22 +189,19 @@ object ScalaJSPluginInternal {
         val frontendConfig = LinkerFrontend.Config()
           .withBypassLinkingErrorsInternal(opts.bypassLinkingErrors)
           .withCheckIR(opts.checkScalaJSIR)
-
-        val backendConfig = LinkerBackend.Config()
-          .withRelativizeSourceMapBase(relSourceMapBase)
-          .withCustomOutputWrapperInternal(scalaJSOutputWrapperInternal.value)
-          .withPrettyPrint(opts.prettyPrintFullOptJS)
-
-        val config = Linker.Config()
-          .withSourceMap(withSourceMap)
           .withOptimizer(!opts.disableOptimizer)
           .withParallel(opts.parallel)
+
+        val backendConfig = LinkerBackend.Config()
+          .withSourceMap(withSourceMap)
+          .withRelativizeSourceMapBase(relSourceMapBase)
+          .withCustomOutputWrapperInternal(scalaJSOutputWrapperInternal.value)
           .withClosureCompiler(opts.useClosureCompiler)
-          .withFrontendConfig(frontendConfig)
-          .withBackendConfig(backendConfig)
+          .withPrettyPrint(opts.prettyPrintFullOptJS)
 
         val newLinker = { () =>
-          Linker(semantics, outputMode, moduleKind, config)
+          Linker(semantics, outputMode, moduleKind, frontendConfig,
+              backendConfig)
         }
 
         new ClearableLinker(newLinker, opts.batchMode)

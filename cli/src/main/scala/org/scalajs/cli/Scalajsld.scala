@@ -191,21 +191,17 @@ object Scalajsld {
       val frontendConfig = LinkerFrontend.Config()
         .withBypassLinkingErrorsInternal(options.bypassLinkingErrors)
         .withCheckIR(options.checkIR)
-
-      val backendConfig = LinkerBackend.Config()
-        .withRelativizeSourceMapBase(options.relativizeSourceMap)
-        .withPrettyPrint(options.prettyPrint)
-
-      val config = Linker.Config()
-        .withSourceMap(options.sourceMap)
         .withOptimizer(!options.noOpt)
         .withParallel(true)
+
+      val backendConfig = LinkerBackend.Config()
+        .withSourceMap(options.sourceMap)
+        .withRelativizeSourceMapBase(options.relativizeSourceMap)
         .withClosureCompiler(options.fullOpt)
-        .withFrontendConfig(frontendConfig)
-        .withBackendConfig(backendConfig)
+        .withPrettyPrint(options.prettyPrint)
 
       val linker = Linker(semantics, options.outputMode, options.moduleKind,
-          config)
+          frontendConfig, backendConfig)
 
       val logger = new ScalaConsoleLogger(options.logLevel)
       val outFile = WritableFileVirtualJSFile(options.output)

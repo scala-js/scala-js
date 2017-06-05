@@ -25,10 +25,17 @@ final class BasicLinkerBackend(
     semantics: Semantics,
     outputMode: OutputMode,
     moduleKind: ModuleKind,
-    withSourceMap: Boolean,
     config: LinkerBackend.Config
-) extends LinkerBackend(semantics, outputMode.esLevel, moduleKind,
-    withSourceMap, config) {
+) extends LinkerBackend(semantics, outputMode.esLevel, moduleKind, config) {
+
+  @deprecated(
+      "Use the overload without 'withSourceMap'. " +
+      "The parameter can be configured in the 'config'.",
+      "0.6.17")
+  def this(semantics: Semantics, outputMode: OutputMode, moduleKind: ModuleKind,
+      withSourceMap: Boolean, config: LinkerBackend.Config) = {
+    this(semantics, outputMode, moduleKind, config.withSourceMap(withSourceMap))
+  }
 
   @deprecated("Use the overload with an explicit ModuleKind", "0.6.13")
   def this(semantics: Semantics, outputMode: OutputMode, withSourceMap: Boolean,
@@ -66,7 +73,7 @@ final class BasicLinkerBackend(
   }
 
   private def newBuilder(output: WritableVirtualJSFile): JSFileBuilder = {
-    if (withSourceMap) {
+    if (config.sourceMap) {
       new JSFileBuilderWithSourceMap(output.name, output.contentWriter,
           output.sourceMapWriter, config.relativizeSourceMapBase)
     } else {

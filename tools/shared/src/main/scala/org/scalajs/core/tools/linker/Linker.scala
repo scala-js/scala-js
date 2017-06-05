@@ -21,14 +21,12 @@ import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.frontend.optimizer.IncOptimizer
-import org.scalajs.core.tools.linker.backend.{LinkerBackend, BasicLinkerBackend}
+import org.scalajs.core.tools.linker.backend._
 
 /** The Scala.js linker */
 final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
     extends GenLinker {
 
-  require(!backend.withSourceMap || frontend.withSourceMap,
-      "Frontend must have source maps enabled if backend has them enabled")
   require(frontend.semantics == backend.semantics,
       "Frontend and backend must agree on semantics")
   require(frontend.esLevel == backend.esLevel,
@@ -79,60 +77,81 @@ final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
 }
 
 object Linker extends LinkerPlatformExtensions {
+  def apply(semantics: Semantics, outputMode: OutputMode,
+      moduleKind: ModuleKind, frontendConfig: LinkerFrontend.Config,
+      backendConfig: LinkerBackend.Config): Linker = {
+
+    val frontend = LinkerFrontend(semantics, outputMode.esLevel,
+        frontendConfig)
+    val backend = LinkerBackend(semantics, outputMode, moduleKind,
+        backendConfig)
+    new Linker(frontend, backend)
+  }
+
   /** Configuration to be passed to the `apply()` method. */
+  @deprecated("Use LinkerFrontend.Config and LinkerBackend.Config.", "0.6.17")
   final class Config private (
-      /** Whether to generate source maps. */
-      val sourceMap: Boolean,
-      /** Whether to use the Scala.js optimizer. */
-      val optimizer: Boolean,
-      /** Whether things that can be parallelized should be parallelized.
-       *  On the JavaScript platform, this does not have any effect.
-       */
-      val parallel: Boolean,
-      /** Whether to use the Google Closure Compiler pass, if it is available.
-       *  On the JavaScript platform, this does not have any effect.
-       */
-      val closureCompilerIfAvailable: Boolean,
       /** Additional configuration for the linker frontend. */
       val frontendConfig: LinkerFrontend.Config,
       /** Additional configuration for the linker backend. */
       val backendConfig: LinkerBackend.Config
   ) {
+    @deprecated("Use config.frontendConfig.optimizer.", "0.6.17")
+    val optimizer: Boolean = frontendConfig.optimizer
+
+    @deprecated("Use config.frontendConfig.parallel.", "0.6.17")
+    val parallel: Boolean = frontendConfig.parallel
+
+    @deprecated("Use config.backendConfig.sourceMap.", "0.6.17")
+    val sourceMap: Boolean = backendConfig.sourceMap
+
+    @deprecated("Use config.backendConfig.closureCompilerIfAvailable.",
+        "0.6.17")
+    val closureCompilerIfAvailable = backendConfig.closureCompilerIfAvailable
+
+    @deprecated("Use config.withBackendConfig(_.withSourceMap(sourceMap)).",
+        "0.6.17")
     def withSourceMap(sourceMap: Boolean): Config =
-      copy(sourceMap = sourceMap)
+      withBackendConfig(_.withSourceMap(sourceMap))
 
+    @deprecated("Use config.withFrontendConfig(_.withOptimizer(optimizer)).",
+        "0.6.17")
     def withOptimizer(optimizer: Boolean): Config =
-      copy(optimizer = optimizer)
+      withFrontendConfig(_.withOptimizer(optimizer))
 
+    @deprecated("Use config.withFrontendConfig(_.withParallel(parallel)).",
+        "0.6.17")
     def withParallel(parallel: Boolean): Config =
-      copy(parallel = parallel)
+      withFrontendConfig(_.withParallel(parallel))
 
+    @deprecated(
+        "Use config.withBackendConfig(_.withClosureCompilerIfAvailable(...)).",
+        "0.6.17")
     def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): Config =
-      copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
+      withBackendConfig(_.withClosureCompilerIfAvailable(closureCompilerIfAvailable))
 
     def withFrontendConfig(frontendConfig: LinkerFrontend.Config): Config =
       copy(frontendConfig = frontendConfig)
 
+    def withFrontendConfig(f: LinkerFrontend.Config => LinkerFrontend.Config): Config =
+      copy(frontendConfig = f(frontendConfig))
+
     def withBackendConfig(backendConfig: LinkerBackend.Config): Config =
       copy(backendConfig = backendConfig)
 
+    def withBackendConfig(f: LinkerBackend.Config => LinkerBackend.Config): Config =
+      copy(backendConfig = f(backendConfig))
+
     private def copy(
-        sourceMap: Boolean = sourceMap,
-        optimizer: Boolean = optimizer,
-        parallel: Boolean = parallel,
-        closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         frontendConfig: LinkerFrontend.Config = frontendConfig,
         backendConfig: LinkerBackend.Config = backendConfig): Config = {
       new Config(
-          sourceMap = sourceMap,
-          optimizer = optimizer,
-          parallel = parallel,
-          closureCompilerIfAvailable = closureCompilerIfAvailable,
           frontendConfig = frontendConfig,
           backendConfig = backendConfig)
     }
   }
 
+  @deprecated("Use LinkerFrontend.Config and LinkerBackend.Config.", "0.6.17")
   object Config {
     import LinkerPlatformExtensions._
 
@@ -141,10 +160,6 @@ object Linker extends LinkerPlatformExtensions {
 
     /** Default configuration.
      *
-     *  - `sourceMap`: true
-     *  - `optimizer`: true
-     *  - `parallel`: true
-     *  - `closureCompilerIfAvailable`: false
      *  - `frontendConfig`: default frontend configuration as returned by
      *    [[org.scalajs.core.tools.linker.frontend.LinkerFrontend.Config.apply]]
      *  - `backendConfig`: default backend configuration as returned by
@@ -152,10 +167,6 @@ object Linker extends LinkerPlatformExtensions {
      */
     def apply(): Config = {
       new Config(
-          sourceMap = true,
-          optimizer = true,
-          parallel = true,
-          closureCompilerIfAvailable = false,
           frontendConfig = LinkerFrontend.Config(),
           backendConfig = LinkerBackend.Config())
     }
