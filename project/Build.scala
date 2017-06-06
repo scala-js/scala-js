@@ -1495,22 +1495,6 @@ object Build {
         Seq(outFile)
       }.taskValue,
 
-      // Exclude tests based on version-dependent bugs
-      sources in Test := {
-        val sourceFiles = (sources in Test).value
-        val v = scalaVersion.value
-
-        val hasBug2382 = v.startsWith("2.10.") || v.startsWith("2.11.")
-        val sourceFiles1 = {
-          if (hasBug2382)
-            sourceFiles.filterNot(_.getName == "OuterClassTest.scala")
-          else
-            sourceFiles
-        }
-
-        sourceFiles1
-      },
-
       // Module initializers. Duplicated in toolsJS/test
       scalaJSModuleInitializers += {
         ModuleInitializer.mainMethod(
