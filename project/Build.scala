@@ -1185,39 +1185,6 @@ object Build {
       exportJars := true
   )
 
-  // jsDependencies support - to be moved out of the core repository
-
-  lazy val jsDependenciesCore: Project = (project in file("jsdependencies-core")).settings(
-      commonSettings,
-      publishSettings,
-      fatalWarningsSettings,
-      name := "scalajs-jsdependencies-core",
-      libraryDependencies +=
-        "com.novocode" % "junit-interface" % "0.11" % "test"
-  ).dependsOn(tools)
-
-  lazy val jsDependenciesPlugin: Project = (project in file("jsdependencies-sbt-plugin")).settings(
-      commonSettings,
-      publishIvySettings,
-      fatalWarningsSettings,
-      name := "sbt-scalajs-jsdependencies",
-      sbtPlugin := true,
-      scalaBinaryVersion :=
-        CrossVersion.binaryScalaVersion(scalaVersion.value),
-
-      // Add API mappings for sbt (seems they don't export their API URL)
-      apiMappings ++= {
-        val deps = (externalDependencyClasspath in Compile).value
-        val sbtJars = deps filter { attributed =>
-          val p = attributed.data.getPath
-          p.contains("/org.scala-sbt/") && p.endsWith(".jar")
-        }
-        val docUrl =
-          url(s"http://www.scala-sbt.org/${sbtVersion.value}/api/")
-        sbtJars.map(_.data -> docUrl).toMap
-      }
-  ).dependsOn(plugin, jsDependenciesCore)
-
   // Examples
 
   lazy val examples: Project = project.settings(
