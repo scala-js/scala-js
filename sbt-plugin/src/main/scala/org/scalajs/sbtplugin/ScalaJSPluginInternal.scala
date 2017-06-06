@@ -450,31 +450,10 @@ object ScalaJSPluginInternal {
     }
   }
 
-  def discoverJSApps(analysis: inc.Analysis): Seq[String] = {
-    import xsbt.api.{Discovered, Discovery}
-
-    val jsApp = "scala.scalajs.js.JSApp"
-
-    def isJSApp(discovered: Discovered) =
-      discovered.isModule && discovered.baseClasses.contains(jsApp)
-
-    Discovery(Set(jsApp), Set.empty)(Tests.allDefs(analysis)) collect {
-      case (definition, discovered) if isJSApp(discovered) =>
-        definition.name
-    }
-  }
-
-  private val runMainParser = {
-    Defaults.loadForParser(discoveredMainClasses) { (_, names) =>
-      val mainClasses = names.getOrElse(Nil).toSet
-      Space ~> token(NotSpace examples mainClasses)
-    }
-  }
-
   // These settings will be filtered by the stage dummy tasks
   val scalaJSRunSettings = Seq(
       scalaJSMainModuleInitializer := {
-        mainClass.value.map(ModuleInitializer.mainMethod(_, "main"))
+        mainClass.value.map(ModuleInitializer.mainMethodWithArgs(_, "main"))
       },
 
       scalaJSModuleInitializers ++= {
@@ -492,9 +471,6 @@ object ScalaJSPluginInternal {
           Seq.empty
         }
       },
-
-      discoveredMainClasses := compile.map(discoverJSApps).
-        storeAs(discoveredMainClasses).triggeredBy(compile).value,
 
       run := {
         // use assert to prevent warning about pure expr in stat pos

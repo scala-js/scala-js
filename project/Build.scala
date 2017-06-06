@@ -684,7 +684,9 @@ object Build {
             val unescapedMainMethods = List(
                 "org.scalajs.testsuite.compiler.ModuleInitializerInNoConfiguration.main",
                 "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.main2",
-                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.main1"
+                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.main1",
+                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.mainArgs1()",
+                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.mainArgs2(foo,bar)"
             )
             seqOfStringsToJSArrayCode(unescapedMainMethods)
           }
@@ -1517,6 +1519,16 @@ object Build {
         ModuleInitializer.mainMethod(
             "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
             "main1")
+      },
+      scalaJSModuleInitializers in Test += {
+        ModuleInitializer.mainMethodWithArgs(
+            "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
+            "mainArgs1")
+      },
+      scalaJSModuleInitializers in Test += {
+        ModuleInitializer.mainMethodWithArgs(
+            "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
+            "mainArgs2", List("foo", "bar"))
       }
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime

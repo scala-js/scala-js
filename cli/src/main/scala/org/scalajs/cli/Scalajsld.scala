@@ -50,7 +50,7 @@ object Scalajsld {
       val lastDot = s.lastIndexOf('.')
       if (lastDot < 0)
         throw new IllegalArgumentException(s"$s is not a valid main method")
-      ModuleInitializer.mainMethod(s.substring(0, lastDot),
+      ModuleInitializer.mainMethodWithArgs(s.substring(0, lastDot),
           s.substring(lastDot + 1))
     }
   }
@@ -83,7 +83,7 @@ object Scalajsld {
         .abbr("mm")
         .unbounded()
         .action { (x, c) => c.copy(moduleInitializers = c.moduleInitializers :+ x) }
-        .text("Execute the specified main method on startup")
+        .text("Execute the specified main(Array[String]) method on startup")
       opt[File]('o', "output")
         .valueName("<file>")
         .required()
