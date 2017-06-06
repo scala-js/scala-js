@@ -779,6 +779,8 @@ object Build {
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
+      addSbtPlugin("org.scala-native" % "sbt-crossproject" % "0.2.0"),
+
       // Add API mappings for sbt (seems they don't export their API URL)
       apiMappings ++= {
         val deps = (externalDependencyClasspath in Compile).value

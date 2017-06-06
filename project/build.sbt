@@ -11,6 +11,8 @@ addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.13")
 
 addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "0.8.0")
 
+addSbtPlugin("org.scala-native" % "sbt-crossproject" % "0.2.0")
+
 libraryDependencies += "org.scala-js" % "closure-compiler-java-6" % "v20160517"
 
 libraryDependencies += "org.eclipse.jgit" % "org.eclipse.jgit.pgm" % "3.2.0.201312181205-r"

@@ -10,6 +10,8 @@ import Cache.seqFormat
 import complete.Parser
 import complete.DefaultParsers._
 
+import sbtcrossproject.CrossPlugin.autoImport._
+
 import Loggers._
 
 import org.scalajs.core.tools.sem.Semantics
@@ -660,6 +662,7 @@ object ScalaJSPluginInternal {
   )
 
   val scalaJSProjectBaseSettings = Seq(
+      crossPlatform := JSPlatform,
       isScalaJSProject := true,
 
       relativeSourceMaps := false,
