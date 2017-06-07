@@ -229,7 +229,12 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
   private def emitLinkedClass(
       linkedClass: LinkedClass, builder: JSTreeBuilder): Unit = {
 
-    def addTree(tree: js.Tree): Unit = builder.addJSTree(tree)
+    def addTreeBase(tree: js.Tree): Unit = builder.addJSTree(tree)
+
+    def addTree(treeWithGlobals: WithGlobals[js.Tree]): Unit = {
+      // Disregard treeWithGlobals.globalVarNames for now
+      addTreeBase(treeWithGlobals.value)
+    }
 
     val className = linkedClass.encodedName
     val classCache = getClassCache(linkedClass.ancestors)
@@ -272,7 +277,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     }
 
     if (classEmitter.needInstanceTests(linkedClass)) {
-      addTree(classTreeCache.instanceTests.getOrElseUpdate(js.Block(
+      addTreeBase(classTreeCache.instanceTests.getOrElseUpdate(js.Block(
           classEmitter.genInstanceTests(linkedClass),
           classEmitter.genArrayInstanceTests(linkedClass)
       )(linkedClass.pos)))
@@ -284,11 +289,11 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     }
 
     if (linkedClass.hasInstances && kind.isClass && linkedClass.hasRuntimeTypeInfo)
-      addTree(classTreeCache.setTypeData.getOrElseUpdate(
+      addTreeBase(classTreeCache.setTypeData.getOrElseUpdate(
           classEmitter.genSetTypeData(linkedClass)))
 
     if (linkedClass.kind.hasModuleAccessor)
-      addTree(classTreeCache.moduleAccessor.getOrElseUpdate(
+      addTreeBase(classTreeCache.moduleAccessor.getOrElseUpdate(
           classEmitter.genModuleAccessor(linkedClass)))
   }
 
@@ -334,7 +339,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       val classTreeCache = classCache.getCache(linkedClass.version)
 
       builder.addJSTree(classTreeCache.classExports.getOrElseUpdate(
-          classEmitter.genClassExports(linkedClass)(classCache)))
+          classEmitter.genClassExports(linkedClass)(classCache)).value)
     }
   }
 
@@ -425,7 +430,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
   }
 
   private final class MethodCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _tree: js.Tree = null
+    private[this] var _tree: WithGlobals[js.Tree] = null
     private[this] var _lastVersion: Option[String] = None
     private[this] var _cacheUsed = false
 
@@ -437,7 +442,8 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
     def startRun(): Unit = _cacheUsed = false
 
-    def getOrElseUpdate(version: Option[String], v: => js.Tree): js.Tree = {
+    def getOrElseUpdate(version: Option[String],
+        v: => WithGlobals[js.Tree]): WithGlobals[js.Tree] = {
       if (_tree == null || _lastVersion.isEmpty || _lastVersion != version) {
         invalidate()
         statsMethodsInvalidated += 1
@@ -461,14 +467,14 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
 private object Emitter {
   private final class DesugaredClassCache {
-    val constructor = new OneTimeCache[js.Tree]
-    val exportedMembers = new OneTimeCache[js.Tree]
+    val constructor = new OneTimeCache[WithGlobals[js.Tree]]
+    val exportedMembers = new OneTimeCache[WithGlobals[js.Tree]]
     val instanceTests = new OneTimeCache[js.Tree]
-    val typeData = new OneTimeCache[js.Tree]
+    val typeData = new OneTimeCache[WithGlobals[js.Tree]]
     val setTypeData = new OneTimeCache[js.Tree]
     val moduleAccessor = new OneTimeCache[js.Tree]
     val staticFields = new OneTimeCache[js.Tree]
-    val classExports = new OneTimeCache[js.Tree]
+    val classExports = new OneTimeCache[WithGlobals[js.Tree]]
   }
 
   private final class OneTimeCache[A >: Null] {

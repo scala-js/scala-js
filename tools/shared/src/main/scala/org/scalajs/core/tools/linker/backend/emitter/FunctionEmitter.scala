@@ -199,10 +199,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
   /** Desugars parameters and body to a JS function.
    */
-  def desugarToFunction(
-      enclosingClassName: String,
-      params: List[ParamDef], body: Tree, isStat: Boolean)(
-      implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
+  def desugarToFunction(enclosingClassName: String, params: List[ParamDef],
+      body: Tree, isStat: Boolean)(
+      implicit globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[js.Function] = {
     new JSDesugar().desugarToFunction(params, body, isStat,
         Env.empty.withEnclosingClassName(Some(enclosingClassName)))
   }
@@ -210,24 +210,28 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
   /** Desugars parameters and body to a JS function where `this` is given as
    *  an explicit normal parameter.
    */
-  def desugarToFunctionWithExplicitThis(
-      enclosingClassName: String, params: List[ParamDef],
-      body: Tree, isStat: Boolean)(
-      implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
+  def desugarToFunctionWithExplicitThis(enclosingClassName: String,
+      params: List[ParamDef], body: Tree, isStat: Boolean)(
+      implicit globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[js.Function] = {
     new JSDesugar().desugarToFunctionWithExplicitThis(params, body, isStat,
         Env.empty.withEnclosingClassName(Some(enclosingClassName)))
   }
 
   /** Desugars parameters and body to a JS function.
    */
-  def desugarToFunction(
-      params: List[ParamDef],
-      body: Tree, isStat: Boolean)(
-      implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Function = {
+  def desugarToFunction(params: List[ParamDef], body: Tree, isStat: Boolean)(
+      implicit globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[js.Function] = {
     new JSDesugar().desugarToFunction(params, body, isStat, Env.empty)
   }
 
   private class JSDesugar()(implicit globalKnowledge: GlobalKnowledge) {
+
+    private def extractWithGlobals[A](withGlobals: WithGlobals[A]): A = {
+      // Disregard withGlobals.globalVarNames for now
+      withGlobals.value
+    }
 
     // Synthetic variables
 
@@ -278,7 +282,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
      */
     def desugarToFunctionWithExplicitThis(
         params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
-        implicit pos: Position): js.Function = {
+        implicit pos: Position): WithGlobals[js.Function] = {
 
       /* TODO The identifier `$thiz` cannot be produced by 0.6.x compilers due
        * to their name mangling, which guarantees that it is unique. We should
@@ -287,13 +291,25 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       val thisIdent = js.Ident("$thiz", Some("this"))
       val env = env0.withThisIdent(Some(thisIdent))
       val js.Function(jsParams, jsBody) =
-        desugarToFunction(params, body, isStat, env)
-      js.Function(js.ParamDef(thisIdent, rest = false) :: jsParams, jsBody)
+        desugarToFunctionInternal(params, body, isStat, env)
+      val result =
+        js.Function(js.ParamDef(thisIdent, rest = false) :: jsParams, jsBody)
+      WithGlobals(result)
     }
 
     /** Desugars parameters and body to a JS function.
      */
     def desugarToFunction(
+        params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
+        implicit pos: Position): WithGlobals[js.Function] = {
+      val result =
+        desugarToFunctionInternal(params, body, isStat, env0)
+      WithGlobals(result)
+    }
+
+    /** Desugars parameters and body to a JS function.
+     */
+    private def desugarToFunctionInternal(
         params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
         implicit pos: Position): js.Function = {
 
@@ -439,7 +455,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           unnest(List(qualifier, item, rhs)) {
             case (List(newQualifier, newItem, newRhs), env0) =>
               implicit val env = env0
-              val ctor = genRawJSClassConstructor(cls.className)
+              val ctor =
+                extractWithGlobals(genRawJSClassConstructor(cls.className))
               genCallHelper("superSet", ctor DOT "prototype",
                   transformExpr(newQualifier), transformExpr(item),
                   transformExpr(rhs))
@@ -525,8 +542,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             val superCtorCall = {
               outputMode match {
                 case OutputMode.ECMAScript51Isolated =>
-                  val superCtor = genRawJSClassConstructor(
-                      globalKnowledge.getSuperClassOfJSClass(enclosingClassName))
+                  val superCtor = extractWithGlobals(genRawJSClassConstructor(
+                      globalKnowledge.getSuperClassOfJSClass(enclosingClassName)))
 
                   if (containsAnySpread(newArgs)) {
                     val argArray = spreadToArgArray(newArgs)
@@ -2059,12 +2076,12 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               transformExpr(method)), args map transformExpr)
 
         case JSSuperBracketSelect(cls, qualifier, item) =>
-          val ctor = genRawJSClassConstructor(cls.className)
+          val ctor = extractWithGlobals(genRawJSClassConstructor(cls.className))
           genCallHelper("superGet", ctor DOT "prototype",
               transformExpr(qualifier), transformExpr(item))
 
         case LoadJSConstructor(cls) =>
-          genRawJSClassConstructor(cls.className)
+          extractWithGlobals(genRawJSClassConstructor(cls.className))
 
         case LoadJSModule(cls) =>
           val className = cls.className
@@ -2074,7 +2091,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               genLoadModule(className)
 
             case Some(spec) =>
-              genLoadJSFromSpec(spec)
+              extractWithGlobals(genLoadJSFromSpec(spec))
           }
 
         case JSSpread(items) =>
@@ -2139,7 +2156,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case Closure(captureParams, params, body, captureValues) =>
           val innerFunction =
-            desugarToFunction(params, body, isStat = false,
+            desugarToFunctionInternal(params, body, isStat = false,
                 Env.empty.withParams(captureParams ++ params))
 
           if (captureParams.isEmpty) {
