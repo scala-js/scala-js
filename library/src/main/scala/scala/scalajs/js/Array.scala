@@ -179,5 +179,5 @@ object Array extends Object {
   def apply[A](items: A*): Array[A] = throw new java.lang.Error("stub")
 
   /** Returns true if the given value is an array. */
-  def isArray(arg: Any): Boolean = native
+  def isArray(arg: scala.Any): Boolean = native
 }

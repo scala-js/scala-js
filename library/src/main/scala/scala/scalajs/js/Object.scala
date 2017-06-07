@@ -20,7 +20,7 @@ import scala.scalajs.js.annotation._
 @native
 @JSGlobal
 class Object extends Any {
-  def this(value: Any) = this()
+  def this(value: scala.Any) = this()
 
   def toLocaleString(): String = native
   def valueOf(): scala.Any = native
@@ -52,7 +52,7 @@ class Object extends Any {
 @JSGlobal
 object Object extends Object {
   def apply(): Object = native
-  def apply(value: Any): Object = native
+  def apply(value: scala.Any): Object = native
 
   /** Tests whether the object has a property on itself or in its prototype
    *  chain. This method is the equivalent of `p in o` in JavaScript.

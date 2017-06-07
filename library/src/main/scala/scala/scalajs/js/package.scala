@@ -72,7 +72,7 @@ package object js {
     v.asInstanceOf[scala.AnyRef] eq undefined
 
   /** Returns the type of `x` as identified by `typeof x` in JavaScript. */
-  def typeOf(x: Any): String = throw new java.lang.Error("stub")
+  def typeOf(x: scala.Any): String = throw new java.lang.Error("stub")
 
   /** Returns the constructor function of a JavaScript class.
    *
@@ -87,7 +87,7 @@ package object js {
     tag
 
   /** Evaluates JavaScript code and returns the result. */
-  @inline def eval(x: String): Any =
+  @inline def eval(x: String): scala.Any =
     js.Dynamic.global.eval(x)
 
   /** Marks the annotated class, trait or object as a native JS entity.

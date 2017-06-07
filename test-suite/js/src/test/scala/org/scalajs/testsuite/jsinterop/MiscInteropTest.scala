@@ -30,7 +30,7 @@ class MiscInteropTest {
     assertEquals("object", typeOf(null))
     assertEquals("object", typeOf(new js.Object))
     assertEquals("undefined", typeOf(()))
-    assertEquals("function", typeOf(() => 42))
+    assertEquals("function", typeOf((() => 42): js.Function))
   }
 
   @Test def js_constructorOf_T_for_native_classes(): Unit = {
