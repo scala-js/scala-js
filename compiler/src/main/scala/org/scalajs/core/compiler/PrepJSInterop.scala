@@ -11,7 +11,7 @@ import nsc._
 import scala.collection.immutable.ListMap
 import scala.collection.mutable
 
-import org.scalajs.core.ir.Trees.JSNativeLoadSpec
+import org.scalajs.core.ir.Trees.{isValidIdentifier, JSNativeLoadSpec}
 
 /** Prepares classes extending js.Any for JavaScript interop
  *
@@ -565,8 +565,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
            * and (in 2.10) the original owner chain. We store it in a global
            * map.
            */
-          val loadSpec = checkAndComputeJSNativeLoadSpecOf(implDef.pos, sym)
-          jsInterop.storeJSNativeLoadSpec(sym, loadSpec)
+          val optLoadSpec = checkAndComputeJSNativeLoadSpecOf(implDef.pos, sym)
+          for (loadSpec <- optLoadSpec)
+            jsInterop.storeJSNativeLoadSpec(sym, loadSpec)
 
           // Mark module classes as having the new format
           if (sym.isModuleClass)
@@ -649,7 +650,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
 
     private def checkAndComputeJSNativeLoadSpecOf(pos: Position,
-        sym: Symbol): JSNativeLoadSpec = {
+        sym: Symbol): Option[JSNativeLoadSpec] = {
       import JSNativeLoadSpec._
 
       if (enclosingOwner is OwnerKind.JSNativeMod) {
@@ -674,20 +675,31 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         }
 
         val ownerLoadSpec = jsInterop.jsNativeLoadSpecOf(sym.owner)
-        ownerLoadSpec match {
-          case Global(path) =>
-            Global(path :+ jsName)
+        val loadSpec = ownerLoadSpec match {
+          case Global(globalRef, path) =>
+            Global(globalRef, path :+ jsName)
           case Import(module, path) =>
             Import(module, path :+ jsName)
           case ImportWithGlobalFallback(
-              Import(module, modulePath), Global(globalPath)) =>
+              Import(module, modulePath), Global(globalRef, globalPath)) =>
             ImportWithGlobalFallback(
                 Import(module, modulePath :+ jsName),
-                Global(globalPath :+ jsName))
+                Global(globalRef, globalPath :+ jsName))
         }
+        Some(loadSpec)
       } else {
         def parsePath(pathName: String): List[String] =
           pathName.split('.').toList
+
+        def parseGlobalPath(pathName: String): Global = {
+          val globalRef :: path = parsePath(pathName)
+          if (!isValidIdentifier(globalRef)) {
+            reporter.error(pos,
+                "The name of a JS global variable must be a valid JS " +
+                s"identifier (got '$globalRef')")
+          }
+          JSNativeLoadSpec.Global(globalRef, path)
+        }
 
         checkAndGetJSNativeLoadingSpecAnnotOf(pos, sym) match {
           case Some(annot) if annot.symbol == JSGlobalScopeAnnotation =>
@@ -695,7 +707,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               reporter.error(annot.pos,
                   "Only native JS objects can have an @JSGlobalScope annotation.")
             }
-            JSNativeLoadSpec.Global(Nil)
+            None
 
           case Some(annot) if annot.symbol == JSGlobalAnnotation =>
             val pathName = annot.stringArg(0).getOrElse {
@@ -711,7 +723,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               }
               jsInterop.defaultJSNameOf(sym)
             }
-            JSNativeLoadSpec.Global(parsePath(pathName))
+            Some(parseGlobalPath(pathName))
 
           case Some(annot) if annot.symbol == JSImportAnnotation =>
             val module = annot.stringArg(0).getOrElse {
@@ -719,16 +731,17 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             }
             val path = annot.stringArg(1).fold[List[String]](Nil)(parsePath)
             val importSpec = Import(module, path)
-            annot.stringArg(2).fold[JSNativeLoadSpec] {
+            val loadSpec = annot.stringArg(2).fold[JSNativeLoadSpec] {
               importSpec
             } { globalPathName =>
-              val globalSpec = Global(parsePath(globalPathName))
-              ImportWithGlobalFallback(importSpec, globalSpec)
+              ImportWithGlobalFallback(importSpec,
+                  parseGlobalPath(globalPathName))
             }
+            Some(loadSpec)
 
           case None =>
             // We already emitted an error. Just propagate something.
-            JSNativeLoadSpec.Global(Nil)
+            None
         }
       }
     }
@@ -1302,6 +1315,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
   }
 
+  /* Note that we consider @JSGlobalScope as a JS native loading spec because
+   * it's convenient for the purposes of PrepJSInterop. Actually @JSGlobalScope
+   * objects do not receive a JS loading spec in their IR.
+   */
   private lazy val JSNativeLoadingSpecAnnots: Set[Symbol] = {
     Set(JSGlobalAnnotation, JSImportAnnotation, JSGlobalScopeAnnotation)
   }

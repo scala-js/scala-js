@@ -62,11 +62,11 @@ class SpecialTest {
         g.selectDynamic("global")
       } else {
         // In all other well-known environment, we can use the global `this`
-        js.special.globalThis
+        js.special.globalThis.asInstanceOf[js.Dynamic]
       }
     }
 
-    assertSame(js.Dynamic.global, globalObject)
+    assertSame(js.Math, globalObject.Math)
   }
 
   // js.special.debugger

@@ -12,7 +12,8 @@ object HelloWorld extends js.JSApp {
   def main() {
     import js.DynamicImplicits.truthValue
 
-    if (js.Dynamic.global.document &&
+    if (js.typeOf(js.Dynamic.global.document) != "undefined" &&
+        js.Dynamic.global.document &&
         js.Dynamic.global.document.getElementById("playground")) {
       sayHelloFromDOM()
       sayHelloFromTypedDOM()

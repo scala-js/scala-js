@@ -389,6 +389,10 @@ object Serializers {
           writeByte(TagThis)
           writeType(tree.tpe)
 
+        case JSGlobalRef(ident) =>
+          writeByte(TagJSGlobalRef)
+          writeIdent(ident)
+
         case Closure(captureParams, params, body, captureValues) =>
           writeByte(TagClosure)
           writeTrees(captureParams)
@@ -610,6 +614,7 @@ object Serializers {
       import buffer._
 
       def writeGlobalSpec(spec: JSNativeLoadSpec.Global): Unit = {
+        writeString(spec.globalRef)
         writeStrings(spec.path)
       }
 
@@ -767,9 +772,10 @@ object Serializers {
         case TagClassOf        => ClassOf(readReferenceType())
         case TagUndefinedParam => UndefinedParam()(readType())
 
-        case TagVarRef  => VarRef(readIdent())(readType())
-        case TagThis    => This()(readType())
-        case TagClosure => Closure(readParamDefs(), readParamDefs(), readTree(), readTrees())
+        case TagVarRef      => VarRef(readIdent())(readType())
+        case TagThis        => This()(readType())
+        case TagJSGlobalRef => JSGlobalRef(readIdent())
+        case TagClosure     => Closure(readParamDefs(), readParamDefs(), readTree(), readTrees())
 
         case TagClassDef =>
           val name = readIdent()
@@ -945,7 +951,7 @@ object Serializers {
 
     def readJSNativeLoadSpec(): Option[JSNativeLoadSpec] = {
       def readGlobalSpec(): JSNativeLoadSpec.Global =
-        JSNativeLoadSpec.Global(readStrings())
+        JSNativeLoadSpec.Global(readString(), readStrings())
 
       def readImportSpec(): JSNativeLoadSpec.Import =
         JSNativeLoadSpec.Import(readString(), readStrings())

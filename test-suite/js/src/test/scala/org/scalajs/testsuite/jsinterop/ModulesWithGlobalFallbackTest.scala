@@ -151,13 +151,14 @@ object ModulesWithGlobalFallbackTest {
         areTypedArraysSupported)
 
     if (isNoModule) {
-      js.Dynamic.global.ModulesWithGlobalFallbackTest_QueryString =
+      val global = org.scalajs.testsuite.utils.JSUtils.globalObject
+      global.ModulesWithGlobalFallbackTest_QueryString =
         QueryStringFallbackImpl
-      js.Dynamic.global.ModulesWithGlobalFallbackTest_StringDecoder =
+      global.ModulesWithGlobalFallbackTest_StringDecoder =
         js.constructorOf[StringDecoderFallbackImpl]
-      js.Dynamic.global.ModulesWithGlobalFallbackTest_Buffer =
+      global.ModulesWithGlobalFallbackTest_Buffer =
         js.constructorOf[Uint8Array]
-      js.Dynamic.global.ModulesWithGlobalFallbackTest_BufferStatic =
+      global.ModulesWithGlobalFallbackTest_BufferStatic =
         BufferStaticFallbackImpl
     }
   }

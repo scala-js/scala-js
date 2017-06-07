@@ -1608,6 +1608,90 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noNonJSIdentifierJSGlobal: Unit = {
+
+    """
+    @js.native
+    @JSGlobal
+    class `not-a-valid-JS-identifier` extends js.Object
+
+    @js.native
+    @JSGlobal("not-a-valid-JS-identifier")
+    object A extends js.Object
+
+    @js.native
+    @JSGlobal("not-a-valid-JS-identifier.further")
+    object B extends js.Object
+
+    @js.native
+    @JSGlobal("TopLevel.not-a-valid-JS-identifier") // valid
+    object C extends js.Object
+
+    @js.native
+    @JSGlobal("")
+    object D extends js.Object
+
+    @js.native
+    @JSGlobal(".tricky")
+    object E extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
+      |    class `not-a-valid-JS-identifier` extends js.Object
+      |          ^
+      |newSource1.scala:11: error: The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
+      |    object A extends js.Object
+      |           ^
+      |newSource1.scala:15: error: The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
+      |    object B extends js.Object
+      |           ^
+      |newSource1.scala:23: error: The name of a JS global variable must be a valid JS identifier (got '')
+      |    object D extends js.Object
+      |           ^
+      |newSource1.scala:27: error: The name of a JS global variable must be a valid JS identifier (got '')
+      |    object E extends js.Object
+      |           ^
+    """
+
+    """
+    @js.native
+    @JSImport("foo.js", "foo", globalFallback = "not-a-valid-JS-identifier")
+    object A extends js.Object
+
+    @js.native
+    @JSImport("foo.js", "foo", globalFallback = "not-a-valid-JS-identifier.further")
+    object B extends js.Object
+
+    @js.native
+    @JSImport("foo.js", "foo", globalFallback = "TopLevel.not-a-valid-JS-identifier") // valid
+    object C extends js.Object
+
+    @js.native
+    @JSImport("foo.js", "foo", globalFallback = "")
+    object D extends js.Object
+
+    @js.native
+    @JSImport("foo.js", "foo", globalFallback = ".tricky")
+    object E extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
+      |    object A extends js.Object
+      |           ^
+      |newSource1.scala:11: error: The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
+      |    object B extends js.Object
+      |           ^
+      |newSource1.scala:19: error: The name of a JS global variable must be a valid JS identifier (got '')
+      |    object D extends js.Object
+      |           ^
+      |newSource1.scala:23: error: The name of a JS global variable must be a valid JS identifier (got '')
+      |    object E extends js.Object
+      |           ^
+    """
+
+  }
+
+  @Test
   def noNonLiteralJSImport: Unit = {
 
     // Without global fallback

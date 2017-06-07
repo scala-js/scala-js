@@ -218,7 +218,7 @@ object Traversers {
 
       case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:SelectStatic |
           _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo | _:Literal |
-          _:UndefinedParam | _:VarRef | _:This | _:FieldDef |
+          _:UndefinedParam | _:VarRef | _:This | _:JSGlobalRef | _:FieldDef |
           _:JSClassExportDef | _:ModuleExportDef | _:TopLevelModuleExportDef |
           _:TopLevelFieldExportDef =>
 

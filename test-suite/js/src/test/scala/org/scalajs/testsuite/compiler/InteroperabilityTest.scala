@@ -313,7 +313,7 @@ class InteroperabilityTest {
     """)
 
     // Use alias for convenience: see end of file for definition
-    val Global = InteroperabilityTestGlobalScope
+    import org.scalajs.testsuite.compiler.{InteroperabilityTestGlobalScope => Global}
 
     assertEquals("7357", Global.interoperabilityTestGlobalScopeValue)
     assertEquals(7357, Global.interoperabilityTestGlobalScopeValueAsInt)
@@ -515,6 +515,60 @@ class InteroperabilityTest {
     assertThrows(classOf[Exception], obj.testValueClass())
     assertThrows(classOf[Exception], obj.testNormalClass())
     obj.testAny() // should not throw
+  }
+
+  @Test def should_access_global_scope_for_object(): Unit = {
+    assumeTrue("Assuming execution in Node.js", executingInNodeJS)
+
+    nodejs_runInThisContext("""
+      const InteroperabilityTestConstObject = {
+        x: 42
+      };
+    """)
+
+    assertEquals("object", js.typeOf(InteroperabilityTestConstObject))
+    assertEquals(42, InteroperabilityTestConstObject.x)
+  }
+
+  @Test def should_access_global_scope_for_class(): Unit = {
+    assumeTrue("Assuming execution in Node.js", executingInNodeJS)
+
+    nodejs_runInThisContext("""
+      class InteroperabilityTestConstClass {
+        constructor(x) {
+          this.x = x;
+        }
+      };
+    """)
+
+    assertEquals("function",
+        js.typeOf(js.constructorOf[InteroperabilityTestConstClass]))
+    val obj = new InteroperabilityTestConstClass(5)
+    assertEquals(5, obj.x)
+  }
+
+  @Test def should_access_global_scope_for_JSGlobalScope_members(): Unit = {
+    assumeTrue("Assuming execution in Node.js", executingInNodeJS)
+
+    nodejs_runInThisContext("""
+      const InteroperabilityTestLetConstGlobals_value = 456;
+      let InteroperabilityTestLetConstGlobals_variable = "hello";
+      const InteroperabilityTestLetConstGlobals_method = (function(x) {
+        return x + 1;
+      });
+    """)
+
+    import InteroperabilityTestLetConstGlobals._
+
+    assertEquals("number", js.typeOf(InteroperabilityTestLetConstGlobals_value))
+    assertEquals(456, InteroperabilityTestLetConstGlobals_value)
+
+    assertEquals("string", js.typeOf(InteroperabilityTestLetConstGlobals_variable))
+    assertEquals("hello", InteroperabilityTestLetConstGlobals_variable)
+    InteroperabilityTestLetConstGlobals_variable = "world"
+    assertEquals("world", InteroperabilityTestLetConstGlobals_variable)
+
+    assertEquals(6, InteroperabilityTestLetConstGlobals_method(5))
   }
 
 }
@@ -744,3 +798,21 @@ class InteroperabilityTestCtor(x: Int = 5, y: Int = ???) extends js.Object {
 @js.native
 @JSGlobal
 class InteroparabilityCtorInlineValue(val x: Int, var y: Int) extends js.Object
+
+@js.native
+@JSGlobal
+object InteroperabilityTestConstObject extends js.Object {
+  val x: Int = js.native
+}
+
+@js.native
+@JSGlobal
+class InteroperabilityTestConstClass(val x: Int) extends js.Object
+
+@js.native
+@JSGlobalScope
+object InteroperabilityTestLetConstGlobals extends js.Any {
+  val InteroperabilityTestLetConstGlobals_value: Int = js.native
+  var InteroperabilityTestLetConstGlobals_variable: String = js.native
+  def InteroperabilityTestLetConstGlobals_method(x: Int): Int = js.native
+}

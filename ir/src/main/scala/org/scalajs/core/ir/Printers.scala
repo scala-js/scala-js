@@ -747,6 +747,10 @@ object Printers {
         case This() =>
           print("this")
 
+        case JSGlobalRef(ident) =>
+          print("global:")
+          print(ident)
+
         case Closure(captureParams, params, body, captureValues) =>
           print("(lambda<")
           var first = true
@@ -945,20 +949,16 @@ object Printers {
     private def print(spec: JSNativeLoadSpec): Unit = {
       def printPath(path: List[String]): Unit = {
         for (propName <- path) {
-          if (isValidIdentifier(propName)) {
-            print('.')
-            print(propName)
-          } else {
-            print('[')
-            print(propName)
-            print(']')
-          }
+          print("[\"")
+          printEscapeJS(propName, out)
+          print("\"]")
         }
       }
 
       spec match {
-        case JSNativeLoadSpec.Global(path) =>
-          print("<global>")
+        case JSNativeLoadSpec.Global(globalRef, path) =>
+          print("global:")
+          print(globalRef)
           printPath(path)
 
         case JSNativeLoadSpec.Import(module, path) =>
