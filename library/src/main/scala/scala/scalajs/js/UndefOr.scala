@@ -10,6 +10,8 @@
 package scala.scalajs.js
 
 import scala.language.implicitConversions
+
+import scala.scalajs.js
 import scala.scalajs.js.|.Evidence
 
 /** Value of type A or the JS undefined value.
@@ -23,37 +25,39 @@ import scala.scalajs.js.|.Evidence
  */
 sealed trait UndefOr[+A]
 
-sealed abstract class UndefOrLowPrioImplicits {
+sealed abstract class UndefOrLowPrioImplicits { this: js.UndefOr.type =>
   /** Upcast `A` to `UndefOr[B1 | B2]`.
    *
    *  This needs evidence that `A <: B1 | B2`.
    */
   implicit def any2undefOrUnion[A, B1, B2](a: A)(
-      implicit ev: Evidence[A, B1 | B2]): UndefOr[B1 | B2] = {
-    a.asInstanceOf[UndefOr[B1 | B2]]
+      implicit ev: Evidence[A, B1 | B2]): js.UndefOr[B1 | B2] = {
+    a.asInstanceOf[js.UndefOr[B1 | B2]]
   }
 }
 
-object UndefOr extends UndefOrLowPrioImplicits {
-  implicit def any2undefOrA[A](value: A): UndefOr[A] =
-    value.asInstanceOf[UndefOr[A]]
+object UndefOr extends js.UndefOrLowPrioImplicits {
+  implicit def any2undefOrA[A](value: A): js.UndefOr[A] =
+    value.asInstanceOf[js.UndefOr[A]]
 
-  implicit def undefOr2ops[A](value: UndefOr[A]): UndefOrOps[A] =
-    new UndefOrOps(value)
+  implicit def undefOr2ops[A](value: js.UndefOr[A]): js.UndefOrOps[A] =
+    new js.UndefOrOps(value)
 
-  implicit def undefOr2jsAny[A](value: UndefOr[A])(implicit ev: A => Any): Any =
-    value.map(ev).asInstanceOf[Any]
+  implicit def undefOr2jsAny[A](value: js.UndefOr[A])(
+      implicit ev: A => js.Any): js.Any = {
+    value.map(ev).asInstanceOf[js.Any]
+  }
 }
 
-/** @define option [[UndefOr]]
- *  @define none [[undefined]]
+/** @define option [[js.UndefOr]]
+ *  @define none [[js.undefined]]
  */
-final class UndefOrOps[A](val self: UndefOr[A]) extends AnyVal {
+final class UndefOrOps[A](val self: js.UndefOr[A]) extends AnyVal {
   import UndefOrOps._
 
   /** Returns true if the option is `undefined`, false otherwise.
    */
-  @inline final def isEmpty: Boolean = isUndefined(self)
+  @inline final def isEmpty: Boolean = js.isUndefined(self)
 
   /** Returns true if the option is not `undefined`, false otherwise.
    */
@@ -100,8 +104,8 @@ final class UndefOrOps[A](val self: UndefOr[A]) extends AnyVal {
    *  @see flatMap
    *  @see foreach
    */
-  @inline final def map[B](f: A => B): UndefOr[B] =
-    if (isEmpty) undefined else f(this.forceGet)
+  @inline final def map[B](f: A => B): js.UndefOr[B] =
+    if (isEmpty) js.undefined else f(this.forceGet)
 
   /** Returns the result of applying `f` to this $option's
    *  value if the $option is nonempty.  Otherwise, evaluates
@@ -125,27 +129,27 @@ final class UndefOrOps[A](val self: UndefOr[A]) extends AnyVal {
    *  @see map
    *  @see foreach
    */
-  @inline final def flatMap[B](f: A => UndefOr[B]): UndefOr[B] =
-    if (isEmpty) undefined else f(this.forceGet)
+  @inline final def flatMap[B](f: A => js.UndefOr[B]): js.UndefOr[B] =
+    if (isEmpty) js.undefined else f(this.forceGet)
 
-  def flatten[B](implicit ev: A <:< UndefOr[B]): UndefOr[B] =
-    if (isEmpty) undefined else ev(this.forceGet)
+  def flatten[B](implicit ev: A <:< js.UndefOr[B]): js.UndefOr[B] =
+    if (isEmpty) js.undefined else ev(this.forceGet)
 
   /** Returns this $option if it is nonempty '''and''' applying the predicate `p` to
    *  this $option's value returns true. Otherwise, return $none.
    *
    *  @param  p   the predicate used for testing.
    */
-  @inline final def filter(p: A => Boolean): UndefOr[A] =
-    if (isEmpty || p(this.forceGet)) self else undefined
+  @inline final def filter(p: A => Boolean): js.UndefOr[A] =
+    if (isEmpty || p(this.forceGet)) self else js.undefined
 
   /** Returns this $option if it is nonempty '''and''' applying the predicate `p` to
    *  this $option's value returns false. Otherwise, return $none.
    *
    *  @param  p   the predicate used for testing.
    */
-  @inline final def filterNot(p: A => Boolean): UndefOr[A] =
-    if (isEmpty || !p(this.forceGet)) self else undefined
+  @inline final def filterNot(p: A => Boolean): js.UndefOr[A] =
+    if (isEmpty || !p(this.forceGet)) self else js.undefined
 
   /** Returns false if the option is $none, true otherwise.
    *  @note   Implemented here to avoid the implicit conversion to Iterable.
@@ -206,15 +210,15 @@ final class UndefOrOps[A](val self: UndefOr[A]) extends AnyVal {
    *  @return the result of applying `pf` to this $option's
    *  value (if possible), or $none.
    */
-  @inline final def collect[B](pf: PartialFunction[A, B]): UndefOr[B] =
-    if (isEmpty) undefined
-    else pf.applyOrElse(this.forceGet, (_: A) => undefined).asInstanceOf[UndefOr[B]]
+  @inline final def collect[B](pf: PartialFunction[A, B]): js.UndefOr[B] =
+    if (isEmpty) js.undefined
+    else pf.applyOrElse(this.forceGet, (_: A) => js.undefined).asInstanceOf[js.UndefOr[B]]
 
   /** Returns this $option if it is nonempty,
    *  otherwise return the result of evaluating `alternative`.
    *  @param alternative the alternative expression.
    */
-  @inline final def orElse[B >: A](alternative: => UndefOr[B]): UndefOr[B] =
+  @inline final def orElse[B >: A](alternative: => js.UndefOr[B]): js.UndefOr[B] =
     if (isEmpty) alternative else self
 
   /** Returns a singleton iterator returning the $option's value
@@ -264,9 +268,9 @@ object UndefOrOps {
    *  collection" contract even though it seems unlikely to matter much in a
    *  collection with max size 1.
    */
-  class WithFilter[A](self: UndefOr[A], p: A => Boolean) {
-    def map[B](f: A => B): UndefOr[B] = self filter p map f
-    def flatMap[B](f: A => UndefOr[B]): UndefOr[B] = self filter p flatMap f
+  final class WithFilter[A](self: js.UndefOr[A], p: A => Boolean) {
+    def map[B](f: A => B): js.UndefOr[B] = self filter p map f
+    def flatMap[B](f: A => js.UndefOr[B]): js.UndefOr[B] = self filter p flatMap f
     def foreach[U](f: A => U): Unit = self filter p foreach f
     def withFilter(q: A => Boolean): WithFilter[A] =
       new WithFilter[A](self, x => p(x) && q(x))

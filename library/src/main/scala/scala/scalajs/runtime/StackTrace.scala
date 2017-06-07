@@ -509,15 +509,14 @@ object StackTrace {
    * ---------------------------------------------------------------------------
    */
 
-  @js.native
   trait JSStackTraceElem extends js.Object {
-    var declaringClass: String = js.native
-    var methodName: String = js.native
-    var fileName: String = js.native
+    var declaringClass: String
+    var methodName: String
+    var fileName: String
     /** 1-based line number */
-    var lineNumber: Int = js.native
+    var lineNumber: Int
     /** 1-based optional columnNumber */
-    var columnNumber: js.UndefOr[Int] = js.native
+    var columnNumber: js.UndefOr[Int] = js.undefined
   }
 
   object JSStackTraceElem {
@@ -533,15 +532,6 @@ object StackTrace {
           columnNumber = columnNumber
       ).asInstanceOf[JSStackTraceElem]
     }
-  }
-
-  /**
-   *  Implicit class to access magic column element created in STE
-   */
-  @deprecated("Use Implicits.StackTraceElementOps instead.", "0.6.3")
-  implicit class ColumnStackTraceElement(ste: StackTraceElement) {
-    def getColumnNumber: Int =
-      new Implicits.StackTraceElementOps(ste).getColumnNumber()
   }
 
   object Implicits {

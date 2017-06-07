@@ -14,16 +14,17 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
 /** Base class of all JavaScript objects. */
-@native
+@js.native
 @JSGlobal
-class Object extends Any {
-  def this(value: Any) = this()
+class Object extends js.Any {
+  def this(value: scala.Any) = this()
 
-  def toLocaleString(): String = native
-  def valueOf(): scala.Any = native
+  def toLocaleString(): String = js.native
+  def valueOf(): scala.Any = js.native
 
   /** Tests whether this object has the specified property as a direct property.
    *
@@ -32,10 +33,10 @@ class Object extends Any {
    *
    * MDN
    */
-  def hasOwnProperty(v: String): Boolean = native
+  def hasOwnProperty(v: String): Boolean = js.native
 
   /** Tests whether this object is in the prototype chain of another object. */
-  def isPrototypeOf(v: Object): Boolean = native
+  def isPrototypeOf(v: Object): Boolean = js.native
 
   /** Tests whether the specified property in an object can be enumerated by a
    *  call to [[js.Object.properties]], with the exception of properties
@@ -44,20 +45,20 @@ class Object extends Any {
    *
    *  MDN
    */
-  def propertyIsEnumerable(v: String): Boolean = native
+  def propertyIsEnumerable(v: String): Boolean = js.native
 }
 
 /** The top-level `Object` JavaScript object. */
-@native
+@js.native
 @JSGlobal
-object Object extends Object {
-  def apply(): Object = native
-  def apply(value: Any): Object = native
+object Object extends js.Object {
+  def apply(): js.Object = js.native
+  def apply(value: scala.Any): js.Object = js.native
 
   /** Tests whether the object has a property on itself or in its prototype
    *  chain. This method is the equivalent of `p in o` in JavaScript.
    */
-  def hasProperty(o: Object, p: String): Boolean =
+  def hasProperty(o: js.Object, p: String): Boolean =
     throw new java.lang.Error("stub")
 
   /**
@@ -66,7 +67,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def getPrototypeOf(o: Object): Object = native
+  def getPrototypeOf(o: js.Object): js.Object = js.native
 
   /**
    * The Object.getOwnPropertyDescriptor() method returns a property descriptor
@@ -75,7 +76,8 @@ object Object extends Object {
    *
    * MDN
    */
-  def getOwnPropertyDescriptor(o: Object, p: String): PropertyDescriptor = native
+  def getOwnPropertyDescriptor(o: js.Object,
+      p: String): js.PropertyDescriptor = js.native
 
   /**
    * Object.getOwnPropertyNames returns an array whose elements are strings
@@ -87,7 +89,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def getOwnPropertyNames(o: Object): Array[String] = native
+  def getOwnPropertyNames(o: js.Object): js.Array[String] = js.native
 
   /**
    * The Object.create() method creates a new object with the specified
@@ -95,8 +97,8 @@ object Object extends Object {
    *
    * MDN
    */
-  def create(o: Object, properties: Any): Object = native
-  def create(o: Object): Object = native
+  def create(o: js.Object, properties: js.Any): js.Object = js.native
+  def create(o: js.Object): js.Object = native
 
   /**
    * The Object.defineProperty() method defines a new property directly on an
@@ -117,7 +119,8 @@ object Object extends Object {
    *
    * MDN
    */
-  def defineProperty(o: Object, p: String, attributes: PropertyDescriptor): o.type = native
+  def defineProperty(o: js.Object, p: String,
+      attributes: js.PropertyDescriptor): o.type = js.native
 
   /**
    * The Object.defineProperties() method defines new or modifies existing
@@ -125,7 +128,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def defineProperties(o: Object, properties: Any): o.type = native
+  def defineProperties(o: js.Object, properties: js.Any): o.type = js.native
 
   /**
    * The Object.seal() method seals an object, preventing new properties from
@@ -135,7 +138,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def seal(o: Object): o.type = native
+  def seal(o: js.Object): o.type = js.native
 
   /**
    * The Object.freeze() method freezes an object: that is, prevents new properties
@@ -146,7 +149,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def freeze(o: Object): o.type = native
+  def freeze(o: js.Object): o.type = js.native
 
   /**
    * The Object.preventExtensions() method prevents new properties from ever
@@ -166,7 +169,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def preventExtensions(o: Object): o.type = native
+  def preventExtensions(o: js.Object): o.type = js.native
 
   /**
    * Returns true if the object is sealed, otherwise false. An object is sealed
@@ -175,7 +178,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def isSealed(o: Object): Boolean = native
+  def isSealed(o: js.Object): Boolean = js.native
 
   /**
    * The Object.isFrozen() determines if an object is frozen.
@@ -186,7 +189,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def isFrozen(o: Object): Boolean = native
+  def isFrozen(o: js.Object): Boolean = js.native
 
   /**
    * Determines if extending of an object is allowed
@@ -198,7 +201,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def isExtensible(o: Object): Boolean = native
+  def isExtensible(o: js.Object): Boolean = js.native
 
   /**
    * The Object.keys() method returns an array of a given object's own enumerable
@@ -208,7 +211,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def keys(o: Object): Array[String] = native
+  def keys(o: js.Object): js.Array[String] = js.native
 
   /** Returns the names of all the enumerable properties of this object,
    *  including properties in its prototype chain.
@@ -221,5 +224,6 @@ object Object extends Object {
    *  that the list returned by [[keys]] is a sublist of the list returned by
    *  this method (not just a subset).
    */
-  def properties(o: Any): Array[String] = throw new java.lang.Error("stub")
+  def properties(o: js.Any): js.Array[String] =
+    throw new java.lang.Error("stub")
 }

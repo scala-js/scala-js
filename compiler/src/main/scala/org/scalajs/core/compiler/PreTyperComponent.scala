@@ -123,12 +123,13 @@ abstract class PreTyperComponent extends plugins.PluginComponent
 
   private val scalajs = newTermName("scalajs")
   private val js = newTermName("js")
+  private val internal_ = newTermName("internal")
   private val wasPublicBeforeTyper = newTypeName("WasPublicBeforeTyper")
 
   private def anonymousClassMethodWasPublicAnnotation: Tree = {
-    val runtimePackage = Select(Select(Select(Select(Ident(nme.ROOTPKG),
-        nme.scala_), scalajs), js), nme.annotation)
-    val cls = Select(runtimePackage, wasPublicBeforeTyper)
+    val cls = Select(Select(Select(Select(Select(Select(Ident(nme.ROOTPKG),
+        nme.scala_), scalajs), js), nme.annotation), internal_),
+        wasPublicBeforeTyper)
     Apply(Select(New(cls), nme.CONSTRUCTOR), Nil)
   }
 }

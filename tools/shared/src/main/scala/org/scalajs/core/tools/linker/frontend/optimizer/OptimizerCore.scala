@@ -104,29 +104,17 @@ private[optimizer] abstract class OptimizerCore(
 
   private var curTrampolineId = 0
 
-  /** The record type for inlined `RuntimeLong`, if the `RuntimeLong` in the
-   *  library is inlineable, otherwise `None`
-   */
+  /** The record type for inlined `RuntimeLong`. */
   private lazy val inlinedRTLongRecordType =
-    tryNewInlineableClass(LongImpl.RuntimeLongClass).map(_.tpe)
+    tryNewInlineableClass(LongImpl.RuntimeLongClass).map(_.tpe).get
 
-  /** Tests whether the RuntimeLong in the library is inlineable. */
-  private lazy val hasInlineableRTLongImplementation =
-    inlinedRTLongRecordType.isDefined
-
-  /** The name of the `lo` field of in the record type of `RuntimeLong`.
-   *  Using this val is only valid when `hasInlineableRTLongImplementation` is
-   *  true.
-   */
+  /** The name of the `lo` field of in the record type of `RuntimeLong`. */
   private lazy val inlinedRTLongLoField =
-    inlinedRTLongRecordType.get.fields(0).name
+    inlinedRTLongRecordType.fields(0).name
 
-  /** The name of the `lo` field of in the record type of `RuntimeLong`.
-   *  Using this val is only valid when `hasInlineableRTLongImplementation` is
-   *  true.
-   */
+  /** The name of the `lo` field of in the record type of `RuntimeLong`. */
   private lazy val inlinedRTLongHiField =
-    inlinedRTLongRecordType.get.fields(1).name
+    inlinedRTLongRecordType.fields(1).name
 
   def optimize(thisType: Type, originalDef: MethodDef): LinkedMember[MethodDef] = {
     try {
@@ -1087,8 +1075,7 @@ private[optimizer] abstract class OptimizerCore(
         }
 
       // Select the lo or hi "field" of a Long literal
-      case PreTransLit(LongLiteral(value))
-          if hasInlineableRTLongImplementation =>
+      case PreTransLit(LongLiteral(value)) =>
         val itemName = item.name
         assert(itemName == inlinedRTLongLoField ||
             itemName == inlinedRTLongHiField)
@@ -2442,9 +2429,6 @@ private[optimizer] abstract class OptimizerCore(
   private def expandLongValue(value: PreTransform)(cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
-    assert(hasInlineableRTLongImplementation,
-        "Cannot call expandLongValue if RuntimeLong is not @inline")
-
     /* To force the expansion, we first store the `value` in a temporary
      * variable of type `RuntimeLong` (not `Long`, otherwise we would go into
      * infinite recursion), then we create a `new RuntimeLong` with its lo and
@@ -2489,77 +2473,73 @@ private[optimizer] abstract class OptimizerCore(
           cont)
     }
 
-    if (!hasInlineableRTLongImplementation) {
-      cont(pretrans)
-    } else {
-      pretrans match {
-        case PreTransUnaryOp(op, arg) =>
-          import UnaryOp._
+    pretrans match {
+      case PreTransUnaryOp(op, arg) =>
+        import UnaryOp._
 
-          (op: @switch) match {
-            case IntToLong =>
-              pretransformNew(AllocationSite.Anonymous, rtLongClassType,
-                  Ident(LongImpl.initFromInt),
-                  arg :: Nil)(
-                  cont)
+        (op: @switch) match {
+          case IntToLong =>
+            pretransformNew(AllocationSite.Anonymous, rtLongClassType,
+                Ident(LongImpl.initFromInt),
+                arg :: Nil)(
+                cont)
 
-            case LongToInt =>
-              expandUnaryOp(LongImpl.toInt, arg, IntType)
+          case LongToInt =>
+            expandUnaryOp(LongImpl.toInt, arg, IntType)
 
-            case LongToDouble =>
-              expandUnaryOp(LongImpl.toDouble, arg, DoubleType)
+          case LongToDouble =>
+            expandUnaryOp(LongImpl.toDouble, arg, DoubleType)
 
-            case DoubleToLong =>
-              val receiver = LoadModule(rtLongModuleClassType).toPreTransform
-              pretransformApply(receiver, Ident(LongImpl.fromDouble),
-                  arg :: Nil, rtLongClassType, isStat = false,
-                  usePreTransform = true)(
-                  cont)
+          case DoubleToLong =>
+            val receiver = LoadModule(rtLongModuleClassType).toPreTransform
+            pretransformApply(receiver, Ident(LongImpl.fromDouble),
+                arg :: Nil, rtLongClassType, isStat = false,
+                usePreTransform = true)(
+                cont)
 
-            case _ =>
-              cont(pretrans)
-          }
+          case _ =>
+            cont(pretrans)
+        }
 
-        case PreTransBinaryOp(op, lhs, rhs) =>
-          import BinaryOp._
+      case PreTransBinaryOp(op, lhs, rhs) =>
+        import BinaryOp._
 
-          (op: @switch) match {
-            case Long_+ => expandBinaryOp(LongImpl.+, lhs, rhs)
+        (op: @switch) match {
+          case Long_+ => expandBinaryOp(LongImpl.+, lhs, rhs)
 
-            case Long_- =>
-              lhs match {
-                case PreTransLit(LongLiteral(0L)) =>
-                  expandUnaryOp(LongImpl.UNARY_-, rhs)
-                case _ =>
-                  expandBinaryOp(LongImpl.-, lhs, rhs)
-              }
+          case Long_- =>
+            lhs match {
+              case PreTransLit(LongLiteral(0L)) =>
+                expandUnaryOp(LongImpl.UNARY_-, rhs)
+              case _ =>
+                expandBinaryOp(LongImpl.-, lhs, rhs)
+            }
 
-            case Long_* => expandBinaryOp(LongImpl.*, lhs, rhs)
-            case Long_/ => expandBinaryOp(LongImpl./, lhs, rhs)
-            case Long_% => expandBinaryOp(LongImpl.%, lhs, rhs)
+          case Long_* => expandBinaryOp(LongImpl.*, lhs, rhs)
+          case Long_/ => expandBinaryOp(LongImpl./, lhs, rhs)
+          case Long_% => expandBinaryOp(LongImpl.%, lhs, rhs)
 
-            case Long_& => expandBinaryOp(LongImpl.&, lhs, rhs)
-            case Long_| => expandBinaryOp(LongImpl.|, lhs, rhs)
-            case Long_^ => expandBinaryOp(LongImpl.^, lhs, rhs)
+          case Long_& => expandBinaryOp(LongImpl.&, lhs, rhs)
+          case Long_| => expandBinaryOp(LongImpl.|, lhs, rhs)
+          case Long_^ => expandBinaryOp(LongImpl.^, lhs, rhs)
 
-            case Long_<<  => expandBinaryOp(LongImpl.<<, lhs, rhs)
-            case Long_>>> => expandBinaryOp(LongImpl.>>>, lhs, rhs)
-            case Long_>>  => expandBinaryOp(LongImpl.>>, lhs, rhs)
+          case Long_<<  => expandBinaryOp(LongImpl.<<, lhs, rhs)
+          case Long_>>> => expandBinaryOp(LongImpl.>>>, lhs, rhs)
+          case Long_>>  => expandBinaryOp(LongImpl.>>, lhs, rhs)
 
-            case Long_== => expandBinaryOp(LongImpl.===, lhs, rhs)
-            case Long_!= => expandBinaryOp(LongImpl.!==, lhs, rhs)
-            case Long_<  => expandBinaryOp(LongImpl.<, lhs, rhs)
-            case Long_<= => expandBinaryOp(LongImpl.<=, lhs, rhs)
-            case Long_>  => expandBinaryOp(LongImpl.>, lhs, rhs)
-            case Long_>= => expandBinaryOp(LongImpl.>=, lhs, rhs)
+          case Long_== => expandBinaryOp(LongImpl.===, lhs, rhs)
+          case Long_!= => expandBinaryOp(LongImpl.!==, lhs, rhs)
+          case Long_<  => expandBinaryOp(LongImpl.<, lhs, rhs)
+          case Long_<= => expandBinaryOp(LongImpl.<=, lhs, rhs)
+          case Long_>  => expandBinaryOp(LongImpl.>, lhs, rhs)
+          case Long_>= => expandBinaryOp(LongImpl.>=, lhs, rhs)
 
-            case _ =>
-              cont(pretrans)
-          }
+          case _ =>
+            cont(pretrans)
+        }
 
-        case _ =>
-          cont(pretrans)
-      }
+      case _ =>
+        cont(pretrans)
     }
   }
 
@@ -3982,8 +3962,7 @@ private[optimizer] abstract class OptimizerCore(
     def withDedicatedVar(tpe: RefinedType): TailRec[Tree] = {
       val rtLongClassType = ClassType(LongImpl.RuntimeLongClass)
 
-      if (tpe.base == LongType && declaredType != rtLongClassType &&
-          hasInlineableRTLongImplementation) {
+      if (tpe.base == LongType && declaredType != rtLongClassType) {
         /* If the value's type is a primitive Long, and the declared type is
          * not RuntimeLong, we want to force the expansion of the primitive
          * Long (which we know is in fact a RuntimeLong) into a local variable,

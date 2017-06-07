@@ -4162,10 +4162,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             case F2JSTHIS =>
               genFunctionToJSFunction(isThisFunction = true)
 
-            case DICT_DEL =>
-              // js.Dictionary.delete(arg)
-              js.JSDelete(js.JSBracketSelect(receiver, arg))
-
             case TYPEOF =>
               // js.typeOf(arg)
               genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg),

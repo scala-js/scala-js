@@ -75,27 +75,16 @@ private[linker] object LongImpl {
   final val divideUnsigned    = "divideUnsigned__sjsr_RuntimeLong__sjsr_RuntimeLong"
   final val remainderUnsigned = "remainderUnsigned__sjsr_RuntimeLong__sjsr_RuntimeLong"
 
-  val AllIntrinsicMethods = Set.empty[String]
-
-  // TODO Move these to AllIntrinsicMethods when we can break binary compatibility
-  val OptionalIntrinsicMethods = Set(
+  val AllIntrinsicMethods = Set(
       divideUnsigned, remainderUnsigned)
 
   // Constructors
 
-  final val initFromParts    = "init___I__I"
-  final val initFromPartsOld = "init___I__I__I"
-  final val initFromInt      = "init___I"
+  final val initFromParts = "init___I__I"
+  final val initFromInt   = "init___I"
 
-  /* Note that initFromPartsOld depends on initFromParts in the new
-   * implementation of RuntimeLong, so this ensures that the new one is
-   * reachable.
-   * We do not directly refer to the new one, other we would crash on earlier
-   * versions of RuntimeLong that do not yet have the new constructor.
-   * TODO Get rid of this when we break backward binary compatibility
-   */
   val AllConstructors = Set(
-      initFromPartsOld, initFromInt)
+      initFromParts, initFromInt)
 
   // Methods on the companion
 
@@ -110,22 +99,4 @@ private[linker] object LongImpl {
 
   def extractParts(value: Long): (Int, Int) =
     (value.toInt, (value >>> 32).toInt)
-
-  /* Boldly copied from the old version of library/scala.scalajs.runtime.RuntimeLong
-   * TODO Get rid of this when we break backward binary compatibility
-   */
-
-  /** Number of relevant bits in l and m each. */
-  private final val BITS = 22
-  /** Number of relevant bits in l and m together. */
-  private final val BITS01 = 2 * BITS
-  /** Number of relevant bits in h. */
-  private final val BITS2 = 64 - BITS01
-  /** Bitmask for l and m. */
-  private final val MASK = (1 << BITS) - 1
-  /** Bitmask for h. */
-  private final val MASK_2 = (1 << BITS2) - 1
-
-  def extractPartsOld(value: Long): (Int, Int, Int) =
-    (value.toInt & MASK, (value >> BITS).toInt & MASK, (value >> BITS01).toInt & MASK_2)
 }

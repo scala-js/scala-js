@@ -72,7 +72,7 @@ package object js {
     v.asInstanceOf[scala.AnyRef] eq undefined
 
   /** Returns the type of `x` as identified by `typeof x` in JavaScript. */
-  def typeOf(x: Any): String = throw new java.lang.Error("stub")
+  def typeOf(x: scala.Any): String = throw new java.lang.Error("stub")
 
   /** Returns the constructor function of a JavaScript class.
    *
@@ -82,26 +82,14 @@ package object js {
    */
   def constructorOf[T <: js.Any]: js.Dynamic = throw new java.lang.Error("stub")
 
-  /** Makes explicit an implicitly available `ConstructorTag[T]`. */
-  def constructorTag[T <: js.Any](implicit tag: ConstructorTag[T]): ConstructorTag[T] =
+  /** Makes explicit an implicitly available [[js.ConstructorTag]]. */
+  def constructorTag[T <: js.Any](
+      implicit tag: js.ConstructorTag[T]): js.ConstructorTag[T] = {
     tag
-
-  /** Invokes any available debugging functionality.
-   *  If no debugging functionality is available, this statement has no effect.
-   *
-   *  MDN
-   *
-   *  Browser support:
-   *  - Has no effect in Firefox, apparently
-   *  - In Chrome, it has no effect unless the developer tools are opened
-   *    beforehand.
-   */
-  @deprecated("Use scala.scalajs.js.sepcial.debugger instead", "0.6.17")
-  @inline
-  def debugger(): Unit = js.special.debugger()
+  }
 
   /** Evaluates JavaScript code and returns the result. */
-  @inline def eval(x: String): Any =
+  @inline def eval(x: String): scala.Any =
     js.Dynamic.global.eval(x)
 
   /** Marks the annotated class, trait or object as a native JS entity.

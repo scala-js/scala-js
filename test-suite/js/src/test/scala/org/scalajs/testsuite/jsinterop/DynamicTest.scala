@@ -109,18 +109,6 @@ class DynamicTest {
     assertEquals(42, obj3_elem1)
     val obj3_elem2 = obj3.elem2
     assertTrue(obj3_elem2)
-
-    // Check backward binary compatibility with the 0.6.{0,1,2} codegen output
-    val obj4 = scala.scalajs.runtime.newJSObjectWithVarargs(
-        DynamicTestClassVarArgs, obj3Args.toJSArray).asInstanceOf[js.Dynamic]
-    val obj4_count = obj4.count
-    assertEquals(3, obj4_count)
-    val obj4_elem0 = obj4.elem0
-    assertEquals("Scala.js", obj4_elem0)
-    val obj4_elem1 = obj4.elem1
-    assertEquals(42, obj4_elem1)
-    val obj4_elem2 = obj4.elem2
-    assertTrue(obj4_elem2)
   }
 
   @Test def should_provide_an_object_literal_construction(): Unit = {

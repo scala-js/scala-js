@@ -22,28 +22,27 @@ import StackTrace.JSStackTraceElem
  *  @groupname envInfo Scala.js environment configuration
  *  @groupprio envInfo 1
  */
-@js.native
-trait EnvironmentInfo extends js.Object {
+sealed trait EnvironmentInfo extends js.Object {
 
   /** The scope for Scala.js exports (i.e. objects and classes)
    *
    *  @group envInfo
    */
-  def exportsNamespace: js.Dynamic = js.native
+  def exportsNamespace: js.Dynamic
 
   // Can't link to java.lang.Runtime.exit - #1969
   /** The function that is called by `java.lang.Runtime.exit`
    *
    *  @group envInfo
    */
-  def exitFunction: js.UndefOr[js.Function1[Int, Nothing]] = js.native
+  def exitFunction: js.UndefOr[js.Function1[Int, Nothing]]
 
   /** Method used to source map JavaScript stack traces
    *
    *  @group envInfo
    */
   def sourceMapper: js.UndefOr[js.Function1[ // scalastyle:ignore
-    js.Array[JSStackTraceElem], js.Array[JSStackTraceElem]]] = js.native
+    js.Array[JSStackTraceElem], js.Array[JSStackTraceElem]]]
 
   /** Dictionary of system properties to add to java.lang.System.getProperties()
    *

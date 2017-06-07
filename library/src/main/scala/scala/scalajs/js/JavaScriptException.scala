@@ -10,7 +10,9 @@
 
 package scala.scalajs.js
 
-case class JavaScriptException(exception: scala.Any) extends RuntimeException {
+final case class JavaScriptException(exception: scala.Any)
+    extends RuntimeException {
+
   override def getMessage(): String = exception.toString()
 
   override def fillInStackTrace(): Throwable = {

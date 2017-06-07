@@ -14,6 +14,7 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
 /**
@@ -41,9 +42,9 @@ import scala.scalajs.js.annotation._
  *
  * MDN
  */
-@native
+@js.native
 @JSGlobal
-class Function(args: String*) extends Object {
+class Function(args: String*) extends js.Object {
   /**
    * length is a property of a function object, and indicates how many arguments
    * the function expects, i.e. the number of formal parameters. This number
@@ -85,7 +86,7 @@ class Function(args: String*) extends Object {
    * }}}
    *
    */
-  def call(thisArg: Any, argArray: Any*): Dynamic = native
+  def call(thisArg: js.Any, argArray: js.Any*): js.Dynamic = js.native
 
   // Do not expose apply: use call(thisArg, argArray: _*) instead.
   // def apply[A](thisArg: Any, argArray: Array[A]): Dynamic = native
@@ -98,26 +99,26 @@ class Function(args: String*) extends Object {
    *
    * MDN
    */
-  def bind(thisArg: Any, argArray: Any*): Dynamic = native
+  def bind(thisArg: js.Any, argArray: js.Any*): js.Dynamic = js.native
 }
 
-@native
+@js.native
 @JSGlobal
-object Function extends Object {
-  def apply(args: String*): Function = native
+object Function extends js.Object {
+  def apply(args: String*): js.Function = js.native
 }
 
-@native
-trait Function0[+R] extends Function {
+@js.native
+trait Function0[+R] extends js.Function {
   def apply(): R
 }
 
-@native
-trait Function1[-T1, +R] extends Function {
+@js.native
+trait Function1[-T1, +R] extends js.Function {
   def apply(arg1: T1): R
 }
 
-@native
-trait Function2[-T1, -T2, +R] extends Function {
+@js.native
+trait Function2[-T1, -T2, +R] extends js.Function {
   def apply(arg1: T1, arg2: T2): R
 }

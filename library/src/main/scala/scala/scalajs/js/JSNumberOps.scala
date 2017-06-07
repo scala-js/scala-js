@@ -16,13 +16,13 @@ package scala.scalajs.js
 
 import scala.language.implicitConversions
 
+import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
 /** Operations on JavaScript numbers. */
-@native
-trait JSNumberOps extends Any {
+trait JSNumberOps extends js.Any {
 
-  def toString(radix: Int): String = native
+  def toString(radix: Int): String
 
   /**
    * Returns a string representation of number that does not use exponential
@@ -34,8 +34,8 @@ trait JSNumberOps extends Any {
    *
    * MDN
    */
-  def toFixed(fractionDigits: Int): String = native
-  def toFixed(): String = native
+  def toFixed(fractionDigits: Int): String
+  def toFixed(): String
 
   /**
    * Returns a string representing a Number object in exponential notation with one
@@ -51,8 +51,8 @@ trait JSNumberOps extends Any {
    *
    * MDN
    */
-  def toExponential(fractionDigits: Int): String = native
-  def toExponential(): String = native
+  def toExponential(fractionDigits: Int): String
+  def toExponential(): String
 
   /**
    * Returns a string representing a Number object in fixed-point or exponential
@@ -65,26 +65,26 @@ trait JSNumberOps extends Any {
    *
    * MDN
    */
-  def toPrecision(precision: Int): String = native
-  def toPrecision(): String = native
+  def toPrecision(precision: Int): String
+  def toPrecision(): String
 }
 
 object JSNumberOps {
-  implicit def enableJSNumberOps(x: Int): JSNumberOps =
-    x.asInstanceOf[JSNumberOps]
+  implicit def enableJSNumberOps(x: Int): js.JSNumberOps =
+    x.asInstanceOf[js.JSNumberOps]
 
-  implicit def enableJSNumberOps(x: Double): JSNumberOps =
-    x.asInstanceOf[JSNumberOps]
+  implicit def enableJSNumberOps(x: Double): js.JSNumberOps =
+    x.asInstanceOf[js.JSNumberOps]
 
   implicit def enableJSNumberExtOps(x: Int): ExtOps =
-    new ExtOps(x.asInstanceOf[Dynamic])
+    new ExtOps(x.asInstanceOf[js.Dynamic])
 
   implicit def enableJSNumberExtOps(x: Double): ExtOps =
-    new ExtOps(x.asInstanceOf[Dynamic])
+    new ExtOps(x.asInstanceOf[js.Dynamic])
 
-  final class ExtOps(val self: Dynamic) extends AnyVal {
+  final class ExtOps(val self: js.Dynamic) extends AnyVal {
     @inline def toUint: Double =
-      (self >>> 0.asInstanceOf[Dynamic]).asInstanceOf[Double]
+      (self >>> 0.asInstanceOf[js.Dynamic]).asInstanceOf[Double]
   }
 
   /* The following overloads make sure that the developer does not use JS
@@ -93,13 +93,13 @@ object JSNumberOps {
 
   @deprecated("A Long is converted to Double to perform JavaScript "+
       "operations. This is almost certainly not what you want. "+
-      "Use `.toDouble` explicitly if you need it.", "0.6.0")
-  implicit def enableJSNumberOps(x: Long): JSNumberOps =
-    x.toDouble.asInstanceOf[JSNumberOps]
+      "Use `.toDouble` explicitly if you need it.", "forever")
+  implicit def enableJSNumberOps(x: Long): js.JSNumberOps =
+    x.toDouble.asInstanceOf[js.JSNumberOps]
 
   @deprecated("A Long is converted to Double to perform JavaScript "+
       "operations. This is almost certainly not what you want. "+
-      "Use `.toDouble` explicitly if you need it.", "0.6.0")
+      "Use `.toDouble` explicitly if you need it.", "forever")
   implicit def enableJSNumberExtOps(x: Long): ExtOps =
-    new ExtOps(x.toDouble.asInstanceOf[Dynamic])
+    new ExtOps(x.toDouble.asInstanceOf[js.Dynamic])
 }

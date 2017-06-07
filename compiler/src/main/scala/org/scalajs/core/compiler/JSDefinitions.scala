@@ -33,8 +33,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSAnyClass       = getRequiredClass("scala.scalajs.js.Any")
     lazy val JSDynamicClass   = getRequiredClass("scala.scalajs.js.Dynamic")
-    lazy val JSDictionaryClass = getRequiredClass("scala.scalajs.js.Dictionary")
-      lazy val JSDictionary_delete = getMemberMethod(JSDictionaryClass, newTermName("delete"))
     lazy val JSObjectClass    = getRequiredClass("scala.scalajs.js.Object")
     lazy val JSThisFunctionClass = getRequiredClass("scala.scalajs.js.ThisFunction")
 
@@ -53,7 +51,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JavaScriptExceptionClass = getClassIfDefined("scala.scalajs.js.JavaScriptException")
 
     lazy val JSNameAnnotation          = getRequiredClass("scala.scalajs.js.annotation.JSName")
-    lazy val JSFullNameAnnotation      = getRequiredClass("scala.scalajs.js.annotation.JSFullName")
     lazy val JSBracketAccessAnnotation = getRequiredClass("scala.scalajs.js.annotation.JSBracketAccess")
     lazy val JSBracketCallAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSBracketCall")
     lazy val JSExportAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSExport")
@@ -63,13 +60,16 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSImportAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSImport")
     lazy val JSGlobalAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSGlobal")
     lazy val JSGlobalScopeAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSGlobalScope")
-    lazy val SJSDefinedAnonymousClassAnnotation = getRequiredClass("scala.scalajs.js.annotation.SJSDefinedAnonymousClass")
-    lazy val HasJSNativeLoadSpecAnnotation = getRequiredClass("scala.scalajs.js.annotation.internal.HasJSNativeLoadSpec")
-    lazy val JSOptionalAnnotation      = getRequiredClass("scala.scalajs.js.annotation.internal.JSOptional")
 
     lazy val JavaDefaultMethodAnnotation = getRequiredClass("scala.scalajs.js.annotation.JavaDefaultMethod")
 
     lazy val JSImportNamespaceObject = getRequiredModule("scala.scalajs.js.annotation.JSImport.Namespace")
+
+    lazy val ExposedJSMemberAnnot = getRequiredClass("scala.scalajs.js.annotation.internal.ExposedJSMember")
+    lazy val JSOptionalAnnotation = getRequiredClass("scala.scalajs.js.annotation.internal.JSOptional")
+    lazy val RawJSTypeAnnot = getRequiredClass("scala.scalajs.js.annotation.internal.RawJSType")
+    lazy val SJSDefinedAnonymousClassAnnotation = getRequiredClass("scala.scalajs.js.annotation.internal.SJSDefinedAnonymousClass")
+    lazy val WasPublicBeforeTyperClass = getRequiredClass("scala.scalajs.js.annotation.internal.WasPublicBeforeTyper")
 
     lazy val JSAnyTpe    = JSAnyClass.toTypeConstructor
     lazy val JSObjectTpe = JSObjectClass.toTypeConstructor
@@ -98,9 +98,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSConstructorTagModule = getRequiredModule("scala.scalajs.js.ConstructorTag")
       lazy val JSConstructorTag_materialize = getMemberMethod(JSConstructorTagModule, newTermName("materialize"))
-
-    lazy val RawJSTypeAnnot = getRequiredClass("scala.scalajs.js.annotation.RawJSType")
-    lazy val ExposedJSMemberAnnot = getRequiredClass("scala.scalajs.js.annotation.ExposedJSMember")
 
     lazy val SpecialPackageModule = getPackageObject("scala.scalajs.js.special")
       lazy val Special_delete = getMemberMethod(SpecialPackageModule, newTermName("delete"))

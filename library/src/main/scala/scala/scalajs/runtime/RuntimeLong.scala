@@ -42,21 +42,6 @@ final class RuntimeLong(val lo: Int, val hi: Int)
   /** Constructs a Long from an Int. */
   def this(value: Int) = this(value, value >> 31)
 
-  // Binary compatibility for the old (l, m, h) encoding
-
-  @deprecated("Use the constructor with (lo, hi) instead.", "0.6.6")
-  def this(l: Int, m: Int, h: Int) =
-    this(l | (m << 22), (m >> 10) | (h << 12))
-
-  @deprecated("Use lo and hi instead.", "0.6.6")
-  def l: Int = lo & ((1 << 22) - 1)
-
-  @deprecated("Use lo and hi instead.", "0.6.6")
-  def m: Int = (lo >>> 22) & ((hi & ((1 << 12) - 1)) << 10)
-
-  @deprecated("Use lo and hi instead.", "0.6.6")
-  def h: Int = hi >>> 12
-
   // Universal equality
 
   @inline
@@ -545,92 +530,6 @@ final class RuntimeLong(val lo: Int, val hi: Int)
   def remainderUnsigned(b: RuntimeLong): RuntimeLong =
     RuntimeLong.remainderUnsigned(a, b)
 
-  // TODO Remove these. They were support for intrinsics before 0.6.6.
-
-  @deprecated("Use java.lang.Long.toBinaryString instead.", "0.6.6")
-  def toBinaryString: String = {
-    val zeros = "00000000000000000000000000000000" // 32 zeros
-    @inline def padBinary32(i: Int) = {
-      val s = Integer.toBinaryString(i)
-      zeros.substring(s.length) + s
-    }
-
-    val lo = this.lo
-    val hi = this.hi
-
-    if (hi != 0) Integer.toBinaryString(hi) + padBinary32(lo)
-    else Integer.toBinaryString(lo)
-  }
-
-  @deprecated("Use java.lang.Long.toHexString instead.", "0.6.6")
-  def toHexString: String = {
-    val zeros = "00000000" // 8 zeros
-    @inline def padHex8(i: Int) = {
-      val s = Integer.toHexString(i)
-      zeros.substring(s.length) + s
-    }
-
-    val lo = this.lo
-    val hi = this.hi
-
-    if (hi != 0) Integer.toHexString(hi) + padHex8(lo)
-    else Integer.toHexString(lo)
-  }
-
-  @deprecated("Use java.lang.Long.toOctalString instead.", "0.6.6")
-  def toOctalString: String = {
-    val zeros = "0000000000" // 10 zeros
-    @inline def padOctal10(i: Int) = {
-      val s = Integer.toOctalString(i)
-      zeros.substring(s.length) + s
-    }
-
-    val lo = this.lo
-    val hi = this.hi
-
-    val lp = lo & 0x3fffffff
-    val mp = ((lo >>> 30) + (hi << 2)) & 0x3fffffff
-    val hp = hi >>> 28
-
-    if (hp != 0) Integer.toOctalString(hp) + padOctal10(mp) + padOctal10(lp)
-    else if (mp != 0) Integer.toOctalString(mp) + padOctal10(lp)
-    else Integer.toOctalString(lp)
-  }
-
-  @deprecated("Use java.lang.Long.bitCount instead.", "0.6.6")
-  def bitCount: Int =
-    Integer.bitCount(lo) + Integer.bitCount(hi)
-
-  @deprecated("Use java.lang.Long.signum instead.", "0.6.6")
-  def signum: RuntimeLong = {
-    val hi = this.hi
-    if (hi < 0) MinusOne
-    else if (isZero(lo, hi)) Zero
-    else One
-  }
-
-  @deprecated("Use java.lang.Long.numberOfLeadingZeros instead.", "0.6.6")
-  def numberOfLeadingZeros: Int = {
-    val hi = this.hi
-    if (hi != 0) Integer.numberOfLeadingZeros(hi)
-    else Integer.numberOfLeadingZeros(lo) + 32
-  }
-
-  @deprecated("Use java.lang.Long.numberOfTrailingZeros instead.", "0.6.6")
-  def numberOfTrailingZeros: Int = {
-    val lo = this.lo
-    if (lo != 0) Integer.numberOfTrailingZeros(lo)
-    else Integer.numberOfTrailingZeros(hi) + 32
-  }
-
-  // TODO Remove those. There are remnant of before we had LongReflectiveCall
-
-  @deprecated("Just use `this` instead.", "0.6.6")
-  def unary_+ : RuntimeLong = this // scalastyle:ignore
-
-  @deprecated("Use `this.toString + y` instead.", "0.6.6")
-  def +(y: String): String = this.toString + y
-
 }
 
 object RuntimeLong {
@@ -654,18 +553,6 @@ object RuntimeLong {
 
   /** The instance of 0L, which is used by the `Emitter` in various places. */
   val Zero = new RuntimeLong(0, 0)
-
-  @deprecated("Use new RuntimeLong(1, 0) instead.", "0.6.11")
-  def One: RuntimeLong = new RuntimeLong(1, 0)
-
-  @deprecated("Use new RuntimeLong(-1, -1) instead.", "0.6.11")
-  def MinusOne: RuntimeLong = new RuntimeLong(-1, -1)
-
-  @deprecated("Use new RuntimeLong(0, 0x80000000) instead.", "0.6.11")
-  def MinValue: RuntimeLong = new RuntimeLong(0, 0x80000000)
-
-  @deprecated("Use new RuntimeLong(0xffffffff, 0x7fffffff) instead.", "0.6.11")
-  def MaxValue: RuntimeLong = new RuntimeLong(0xffffffff, 0x7fffffff)
 
   private def toString(lo: Int, hi: Int): String = {
     if (isInt32(lo, hi)) {

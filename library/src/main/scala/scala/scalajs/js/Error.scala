@@ -14,40 +14,42 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
-@native
+@js.native
 @JSGlobal
-class Error(message0: String = "") extends Object {
-  val name: String = native
+class Error(message0: String = "") extends js.Object {
+  val name: String = js.native
+
   /**
    * Human-readable description of the error
    *
    * MDN
    */
-  val message: String = native
+  val message: String = js.native
 }
 
-@native
+@js.native
 @JSGlobal
-object Error extends Object {
-  def apply(message: String = ""): Error = native
+object Error extends js.Object {
+  def apply(message: String = ""): js.Error = js.native
 }
 
 /**
  * An instance representing an error that occurs regarding the global function
- * eval()
+ * `eval()`.
  *
  * MDN
  */
-@native
+@js.native
 @JSGlobal
-class EvalError(message: String = "") extends Error
+class EvalError(message: String = "") extends js.Error
 
-@native
+@js.native
 @JSGlobal
-object EvalError extends Object {
-  def apply(message: String = ""): EvalError = native
+object EvalError extends js.Object {
+  def apply(message: String = ""): js.EvalError = js.native
 }
 
 /**
@@ -62,14 +64,14 @@ object EvalError extends Object {
  *
  * MDN
  */
-@native
+@js.native
 @JSGlobal
-class RangeError(message: String = "") extends Error
+class RangeError(message: String = "") extends js.Error
 
-@native
+@js.native
 @JSGlobal
-object RangeError extends Object {
-  def apply(message: String = ""): RangeError = native
+object RangeError extends js.Object {
+  def apply(message: String = ""): js.RangeError = js.native
 }
 
 /**
@@ -80,14 +82,14 @@ object RangeError extends Object {
  *
  * MDN
  */
-@native
+@js.native
 @JSGlobal
-class ReferenceError(message: String = "") extends Error
+class ReferenceError(message: String = "") extends js.Error
 
-@native
+@js.native
 @JSGlobal
-object ReferenceError extends Object {
-  def apply(message: String = ""): ReferenceError = native
+object ReferenceError extends js.Object {
+  def apply(message: String = ""): js.ReferenceError = js.native
 }
 
 /**
@@ -98,14 +100,14 @@ object ReferenceError extends Object {
  *
  * MDN
  */
-@native
+@js.native
 @JSGlobal
-class SyntaxError(message: String = "") extends Error
+class SyntaxError(message: String = "") extends js.Error
 
-@native
+@js.native
 @JSGlobal
-object SyntaxError extends Object {
-  def apply(message: String = ""): SyntaxError = native
+object SyntaxError extends js.Object {
+  def apply(message: String = ""): js.SyntaxError = js.native
 }
 
 /**
@@ -116,14 +118,14 @@ object SyntaxError extends Object {
  *
  * MDN
  */
-@native
+@js.native
 @JSGlobal
-class TypeError(message: String = "") extends Error
+class TypeError(message: String = "") extends js.Error
 
-@native
+@js.native
 @JSGlobal
-object TypeError extends Object {
-  def apply(message: String = ""): TypeError = native
+object TypeError extends js.Object {
+  def apply(message: String = ""): js.TypeError = js.native
 }
 
 /**
@@ -133,12 +135,12 @@ object TypeError extends Object {
  *
  * MDN
  */
-@native
+@js.native
 @JSGlobal
-class URIError(message: String = "") extends Error
+class URIError(message: String = "") extends js.Error
 
-@native
+@js.native
 @JSGlobal
-object URIError extends Object {
-  def apply(message: String = ""): URIError = native
+object URIError extends js.Object {
+  def apply(message: String = ""): js.URIError = js.native
 }

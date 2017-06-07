@@ -14,24 +14,25 @@
 
 package scala.scalajs.js
 
+import scala.scalajs.js
+
 /** A Unicode Normalization Form.
  *
- *  @see [[JSStringOps.normalize]]
+ *  @see [[JSStringOps js.JSStringOps.normalize]]
  *  @see [[http://www.unicode.org/reports/tr15/ Unicode Normalization Forms]]
  */
-@native
-sealed trait UnicodeNormalizationForm extends Any
+sealed trait UnicodeNormalizationForm extends js.Any
 
 object UnicodeNormalizationForm {
   /** Normalization Form Canonical Composition. */
-  final val NFC = "NFC".asInstanceOf[UnicodeNormalizationForm]
+  final val NFC = "NFC".asInstanceOf[js.UnicodeNormalizationForm]
 
   /** Normalization Form Canonical Decomposition. */
-  final val NFD = "NFD".asInstanceOf[UnicodeNormalizationForm]
+  final val NFD = "NFD".asInstanceOf[js.UnicodeNormalizationForm]
 
   /** Normalization Form Compatibility Composition. */
-  final val NFKC = "NFKC".asInstanceOf[UnicodeNormalizationForm]
+  final val NFKC = "NFKC".asInstanceOf[js.UnicodeNormalizationForm]
 
   /** Normalization Form Compatibility Decomposition. */
-  final val NFKD = "NFKD".asInstanceOf[UnicodeNormalizationForm]
+  final val NFKD = "NFKD".asInstanceOf[js.UnicodeNormalizationForm]
 }

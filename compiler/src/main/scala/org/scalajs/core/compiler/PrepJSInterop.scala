@@ -568,10 +568,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           val optLoadSpec = checkAndComputeJSNativeLoadSpecOf(implDef.pos, sym)
           for (loadSpec <- optLoadSpec)
             jsInterop.storeJSNativeLoadSpec(sym, loadSpec)
-
-          // Mark module classes as having the new format
-          if (sym.isModuleClass)
-            sym.addAnnotation(HasJSNativeLoadSpecAnnotation)
         } else {
           assert(sym.isTrait) // just tested in the previous `if`
           for (annot <- sym.annotations) {
@@ -1324,8 +1320,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   }
 
   private lazy val ScalaEnumClass = getRequiredClass("scala.Enumeration")
-  private lazy val WasPublicBeforeTyperClass =
-    getRequiredClass("scala.scalajs.js.annotation.WasPublicBeforeTyper")
 
   /** checks if the primary constructor of the ClassDef `cldef` does not
    *  take any arguments
@@ -1372,7 +1366,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
      */
     def isCompilerAnnotation(annotation: AnnotationInfo): Boolean = {
       annotation.symbol == ExposedJSMemberAnnot ||
-      annotation.symbol == JSFullNameAnnotation ||
       annotation.symbol == RawJSTypeAnnot ||
       annotation.symbol == SJSDefinedAnonymousClassAnnotation ||
       annotation.symbol == JSOptionalAnnotation

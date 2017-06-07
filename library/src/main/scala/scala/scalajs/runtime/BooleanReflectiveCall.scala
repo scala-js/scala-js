@@ -6,7 +6,7 @@ import java.lang.{Boolean => JBoolean}
  *  This class and its methods are only here to properly support reflective
  *  calls on booleans.
  */
-class BooleanReflectiveCall(value: Boolean) {
+final class BooleanReflectiveCall(value: Boolean) {
 
   // Methods of java.lang.Boolean
 

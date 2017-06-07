@@ -16,7 +16,7 @@ import js.annotation._
  *  JavaScript Iterator.
  */
 trait Iterator[+A] extends js.Object {
-  def next(): Iterator.Entry[A]
+  def next(): js.Iterator.Entry[A]
 }
 
 object Iterator {
@@ -30,7 +30,7 @@ object Iterator {
   }
 
   @inline
-  private final class WrappedIterator[+A](self: Iterator[A])
+  private final class WrappedIterator[+A](self: js.Iterator[A])
       extends scala.collection.Iterator[A] {
     private[this] var lastEntry = self.next()
 
@@ -45,7 +45,7 @@ object Iterator {
     }
   }
 
-  final implicit class IteratorOps[A](val __self: Iterator[A]) extends AnyVal {
+  final implicit class IteratorOps[A](val __self: js.Iterator[A]) extends AnyVal {
     @inline
     def toIterator: scala.collection.Iterator[A] = new WrappedIterator(__self)
   }

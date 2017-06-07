@@ -12,6 +12,8 @@ package scala.scalajs.js
 import scala.language.implicitConversions
 import scala.language.higherKinds
 
+import scala.scalajs.js
+
 /** Value of type A or B (union type).
  *
  *  Scala does not have union types, but they are important to many
@@ -29,7 +31,7 @@ object | { // scalastyle:ignore
    */
   private object ReusableEvidence extends Evidence[scala.Any, scala.Any]
 
-  abstract sealed class EvidenceLowestPrioImplicits {
+  abstract sealed class EvidenceLowestPrioImplicits { this: Evidence.type =>
     /** If `A <: B2`, then `A <: B1 | B2`. */
     implicit def right[A, B1, B2](implicit ev: Evidence[A, B2]): Evidence[A, B1 | B2] =
       ReusableEvidence.asInstanceOf[Evidence[A, B1 | B2]]
@@ -47,7 +49,10 @@ object | { // scalastyle:ignore
       ReusableEvidence.asInstanceOf[Evidence[F[A], F[B]]]
   }
 
-  abstract sealed class EvidenceLowPrioImplicits extends EvidenceLowestPrioImplicits {
+  abstract sealed class EvidenceLowPrioImplicits
+      extends EvidenceLowestPrioImplicits {
+    this: Evidence.type =>
+
     /** `Int <: Double`, because that's true in Scala.js. */
     implicit def intDouble: Evidence[Int, Double] =
       ReusableEvidence.asInstanceOf[Evidence[Int, Double]]
@@ -57,8 +62,8 @@ object | { // scalastyle:ignore
       ReusableEvidence.asInstanceOf[Evidence[A, B1 | B2]]
 
     /** If `A <: B`, then `A <: js.UndefOr[B]`. */
-    implicit def undefOr[A, B](implicit ev: Evidence[A, B]): Evidence[A, UndefOr[B]] =
-      ReusableEvidence.asInstanceOf[Evidence[A, UndefOr[B]]]
+    implicit def undefOr[A, B](implicit ev: Evidence[A, B]): Evidence[A, js.UndefOr[B]] =
+      ReusableEvidence.asInstanceOf[Evidence[A, js.UndefOr[B]]]
   }
 
   object Evidence extends EvidenceLowPrioImplicits {

@@ -40,31 +40,31 @@ import scala.concurrent.Future
 @js.native
 @JSGlobal
 class Promise[+A](
-    executor: js.Function2[js.Function1[A | Thenable[A], _], js.Function1[scala.Any, _], _])
+    executor: js.Function2[js.Function1[A | js.Thenable[A], _], js.Function1[scala.Any, _], _])
     extends js.Object with js.Thenable[A] {
 
   def `then`[B](
-      onFulfilled: js.Function1[A, B | Thenable[B]],
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]] = js.undefined): Thenable[B] = js.native
+      onFulfilled: js.Function1[A, B | js.Thenable[B]],
+      onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]] = js.undefined): js.Thenable[B] = js.native
 
   def `then`[B >: A](
       onFulfilled: Unit,
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): Thenable[B] = js.native
+      onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]]): js.Thenable[B] = js.native
 
   def `catch`[B >: A](
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]] = js.undefined): Promise[B] = js.native
+      onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]] = js.undefined): js.Promise[B] = js.native
 }
 
 @js.native
 @JSGlobal
 object Promise extends js.Object {
   /** Returns a new [[Promise]] completed with the specified `value`. */
-  def resolve[A](value: A | Thenable[A]): Promise[A] = js.native
+  def resolve[A](value: A | js.Thenable[A]): js.Promise[A] = js.native
 
   /** Returns a new [[Promise]] failed with the specified `reason`. */
-  def reject(reason: scala.Any): Promise[Nothing] = js.native
+  def reject(reason: scala.Any): js.Promise[Nothing] = js.native
 
-  def all[A](promises: js.Iterable[Promise[A]]): Promise[js.Array[A]] = js.native
+  def all[A](promises: js.Iterable[js.Promise[A]]): js.Promise[js.Array[A]] = js.native
 
-  def race[A](promises: js.Iterable[Promise[A]]): Promise[A] = js.native
+  def race[A](promises: js.Iterable[js.Promise[A]]): js.Promise[A] = js.native
 }

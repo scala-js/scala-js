@@ -30,7 +30,7 @@ class MiscInteropTest {
     assertEquals("object", typeOf(null))
     assertEquals("object", typeOf(new js.Object))
     assertEquals("undefined", typeOf(()))
-    assertEquals("function", typeOf(() => 42))
+    assertEquals("function", typeOf((() => 42): js.Function))
   }
 
   @Test def js_constructorOf_T_for_native_classes(): Unit = {
@@ -83,7 +83,7 @@ class MiscInteropTest {
      * This will be fixed when we can use ...spread calls with `new`, which
      * we can't yet do because the latest io.js does not support them yet.
      */
-    import scala.scalajs.runtime.assumingES6
+    import scala.scalajs.LinkingInfo.assumingES6
 
     val concreteInstance = {
       val tag = js.constructorTag[ConcreteJSClass]

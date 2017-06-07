@@ -10,25 +10,27 @@ package scala.scalajs.js
 
 import scala.language.implicitConversions
 
+import scala.scalajs.js
+
 import scala.collection.mutable
 import mutable.Builder
 
 import scala.collection.generic.{CanBuildFrom, GenericCompanion, SeqFactory}
 
-/** Equivalent of scm.WrappedArray for js.Array */
+/** Equivalent of `scm.WrappedArray` for [[js.Array]]. */
 @inline
-final class WrappedArray[A](val array: Array[A])
+final class WrappedArray[A](val array: js.Array[A])
     extends mutable.AbstractBuffer[A]
-       with scala.collection.generic.GenericTraversableTemplate[A, WrappedArray]
+       with scala.collection.generic.GenericTraversableTemplate[A, js.WrappedArray]
        with mutable.IndexedSeq[A]
-       with mutable.BufferLike[A, WrappedArray[A]]
-       with mutable.ArrayLike[A, WrappedArray[A]]
-       with Builder[A, WrappedArray[A]] {
+       with mutable.BufferLike[A, js.WrappedArray[A]]
+       with mutable.ArrayLike[A, js.WrappedArray[A]]
+       with Builder[A, js.WrappedArray[A]] {
 
-  /** Creates a new empty [[WrappedArray]]. */
-  def this() = this(Array())
+  /** Creates a new empty [[js.WrappedArray]]. */
+  def this() = this(js.Array())
 
-  override def companion: GenericCompanion[WrappedArray] = WrappedArray
+  override def companion: GenericCompanion[js.WrappedArray] = js.WrappedArray
 
   // IndexedSeq interface
 
@@ -46,7 +48,7 @@ final class WrappedArray[A](val array: Array[A])
   @inline def clear(): Unit =
     array.length = 0
 
-  @inline def result(): WrappedArray[A] = this
+  @inline def result(): js.WrappedArray[A] = this
 
   // Rest of BufferLike interface
 
@@ -75,18 +77,18 @@ final class WrappedArray[A](val array: Array[A])
 
 }
 
-/** Factory for [[WrappedArray]]. Mainly provides the relevant
+/** Factory for [[js.WrappedArray]]. Mainly provides the relevant
  *  [[scala.collection.generic.CanBuildFrom CanBuildFroms]]s and implicit
  *  conversions.
  */
-object WrappedArray extends SeqFactory[WrappedArray] {
+object WrappedArray extends SeqFactory[js.WrappedArray] {
   /** Standard CBF for [[WrappedArray]] */
-  implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, WrappedArray[A]] =
+  implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, js.WrappedArray[A]] =
     ReusableCBF.asInstanceOf[GenericCanBuildFrom[A]]
 
-  def newBuilder[A]: Builder[A, WrappedArray[A]] = new WrappedArray[A]
+  def newBuilder[A]: Builder[A, js.WrappedArray[A]] = new js.WrappedArray[A]
 
-  implicit def toJSArray[A](wrappedArray: WrappedArray[A]): Array[A] =
+  implicit def toJSArray[A](wrappedArray: js.WrappedArray[A]): js.Array[A] =
     wrappedArray.array
 
 }

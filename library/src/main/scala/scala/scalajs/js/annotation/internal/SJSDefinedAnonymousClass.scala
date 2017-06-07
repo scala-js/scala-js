@@ -1,4 +1,4 @@
-package scala.scalajs.js.annotation
+package scala.scalajs.js.annotation.internal
 
 /** IMPLEMENTATION DETAIL: Marks anonymous Scala.js-defined JS classes.
  *

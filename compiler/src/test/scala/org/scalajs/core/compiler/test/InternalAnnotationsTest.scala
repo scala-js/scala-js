@@ -17,11 +17,6 @@ class InternalAnnotationsTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def jsFullName: Unit = {
-    test("JSFullName(\"abc\")")
-  }
-
-  @Test
   def rawJSType: Unit = {
     test("RawJSType")
   }
@@ -33,11 +28,11 @@ class InternalAnnotationsTest extends DirectTest with TestHelpers {
 
   @Test
   def jsOptional: Unit = {
-    test("JSOptional", "scala.scalajs.js.annotation.internal.JSOptional")
+    test("JSOptional")
   }
 
   private def test(annotation: String): Unit =
-    test(annotation, s"scala.scalajs.js.annotation.$annotation")
+    test(annotation, s"scala.scalajs.js.annotation.internal.$annotation")
 
   private def test(annotation: String, annotFullName: String): Unit = {
     s"""

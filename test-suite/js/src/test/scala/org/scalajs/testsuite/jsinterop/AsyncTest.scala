@@ -23,6 +23,7 @@ import org.junit.Assume._
 import org.junit.Test
 
 class AsyncTest {
+  import AsyncTest._
 
   implicit def eraseArray[T](a: Array[T]): Array[AnyRef] =
     a.map(_.asInstanceOf[AnyRef])
@@ -86,19 +87,6 @@ class AsyncTest {
     }
   }
 
-  @Test def scala_scalajs_concurrent_JSExecutionContext_runNow(): Unit = {
-    val res = asyncTest(JSExecutionContext.runNow)
-
-    assertArrayEquals(Array(
-      "prep-future",
-      "future",
-      "prep-map",
-      "map",
-      "prep-foreach",
-      "foreach",
-      "done"), res.toArray)
-  }
-
   @Test def scala_scala_concurrent_ExecutionContext_global(): Unit = {
     assumeTrue("Assumed js.Dynamic.global.Promise is undefined",
         js.typeOf(js.Dynamic.global.Promise) == "undefined")
@@ -142,19 +130,19 @@ class AsyncTest {
   }
 
   @Test def scala_concurrent_future_should_support_map(): Unit = {
-      implicit val ec = JSExecutionContext.runNow
+      implicit val ec = RunNowExecutionContext
       val f = Future(3).map(x => x*2)
       assertEquals(6, f.value.get.get)
     }
 
   @Test def scala_concurrent_future_should_support_flatMap(): Unit = {
-    implicit val ec = JSExecutionContext.runNow
+    implicit val ec = RunNowExecutionContext
     val f = Future(Future(3)).flatMap(x => x)
     assertEquals(3, f.value.get.get)
   }
 
   @Test def scala_concurrent_future_should_support_sequence(): Unit = {
-    implicit val ec = JSExecutionContext.runNow
+    implicit val ec = RunNowExecutionContext
     val f = Future.sequence(Seq(Future(3), Future(5)))
     assertEquals(Seq(3, 5), f.value.get.get)
   }
@@ -231,5 +219,29 @@ class AsyncTest {
 
       assertTrue(callbackDone)
     }
+  }
+}
+
+object AsyncTest {
+  /** A super hacky `ExecutionContext` that is synchronous.
+   *
+   *  This should not be used in normal code. It should not even be used in
+   *  testing code. We need it here to test some basic `Future` methods,
+   *  because we are stuck with JUnit, which obviously does not support
+   *  asynchronous test suites.
+   */
+  private object RunNowExecutionContext
+      extends scala.concurrent.ExecutionContextExecutor {
+
+    def execute(runnable: Runnable): Unit = {
+      try {
+        runnable.run()
+      } catch {
+        case t: Throwable => reportFailure(t)
+      }
+    }
+
+    def reportFailure(t: Throwable): Unit =
+      t.printStackTrace()
   }
 }

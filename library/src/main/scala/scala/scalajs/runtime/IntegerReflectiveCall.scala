@@ -8,7 +8,7 @@ import java.lang.{Double => JDouble, Integer => JInteger}
  *  This class and its methods are only here to properly support reflective
  *  calls on numbers.
  */
-class IntegerReflectiveCall(value: Int) {
+final class IntegerReflectiveCall(value: Int) {
 
   // Methods of scala.Int whose result type is different than in scala.Double
 

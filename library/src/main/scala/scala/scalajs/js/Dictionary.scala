@@ -14,7 +14,7 @@
  */
 package scala.scalajs.js
 
-import annotation.JSBracketAccess
+import scala.scalajs.js
 
 /** Dictionary "view" of a JavaScript value.
  *
@@ -48,38 +48,15 @@ import annotation.JSBracketAccess
  *  call methods of [[Object js.Object]] on it, given that the name of these
  *  methods could be used as keys in the dictionary.
  */
-@native
-sealed trait Dictionary[A] extends Any {
-  /** Writes a field of this object by its name. */
-  @JSBracketAccess
-  def update(key: String, value: A): Unit = native
+sealed trait Dictionary[A] extends js.Any
 
-  /* Note: `delete` cannot be replaced by a user-land implementation in
-   * WrappedDictionary, because it would break forward compiler-library
-   * compatibility. If someone uses an 0.6.16 compiler with an 0.6.17 library
-   * (which can easily happen if depending on a third-party library compiled
-   * with 0.6.17), the compiler will look for this symbol and crash.
-   */
-
-  /** Deletes a property of this object by its name.
-   *
-   *  The property must be configurable.
-   *  This method is equivalent to the "delete" keyword in JavaScript.
-   *
-   *  Since we are using strict mode, this throws an exception, if the property
-   *  isn't configurable.
-   */
-  @deprecated("Use -= instead.", "0.6.17")
-  def delete(key: String): Unit = throw new java.lang.Error("stub")
-}
-
-/** Factory for [[Dictionary]] instances. */
+/** Factory for [[js.Dictionary]] instances. */
 object Dictionary {
   /** Returns a new empty dictionary */
-  @inline def empty[A]: Dictionary[A] =
-    (new Object).asInstanceOf[Dictionary[A]]
+  @inline def empty[A]: js.Dictionary[A] =
+    (new js.Object).asInstanceOf[js.Dictionary[A]]
 
-  def apply[A](properties: (String, A)*): Dictionary[A] = {
+  def apply[A](properties: (String, A)*): js.Dictionary[A] = {
     val result = empty[A]
     for ((key, value) <- properties)
       result(key) = value

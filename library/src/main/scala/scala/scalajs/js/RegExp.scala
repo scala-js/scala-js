@@ -14,6 +14,7 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
 /**
@@ -22,11 +23,11 @@ import scala.scalajs.js.annotation._
  *
  * MDN
  */
-@native
+@js.native
 @JSGlobal
-class RegExp(pattern: String, flags: String = "") extends Object {
+class RegExp(pattern: String, flags: String = "") extends js.Object {
   /** Creates a new RegExp with the same pattern and flags as the given one. */
-  def this(pattern: RegExp) = this("", "")
+  def this(pattern: js.RegExp) = this("", "")
 
   /**
    * The source property returns a String containing the text of the pattern,
@@ -36,7 +37,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
    *
    * MDN
    */
-  val source: String = native
+  val source: String = js.native
   /**
    * The value of global is a Boolean and true if the "g" flag was used;
    * otherwise, false. The "g" flag indicates that the regular expression
@@ -44,7 +45,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
    *
    * MDN
    */
-  val global: Boolean = native
+  val global: Boolean = js.native
   /**
    * The value of ignoreCase is a Boolean and true if the "i" flag was used;
    * otherwise, false. The "i" flag indicates that case should be ignored while
@@ -52,7 +53,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
    *
    * MDN
    */
-  val ignoreCase: Boolean = native
+  val ignoreCase: Boolean = js.native
   /**
    * The value of multiline is a Boolean and is true if the "m" flag was used;
    * otherwise, false. The "m" flag indicates that a multiline input string
@@ -62,7 +63,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
 
    * MDN
    */
-  val multiline: Boolean = native
+  val multiline: Boolean = js.native
 
   /**
    * The lastIndex is a read/write integer property of regular expressions that
@@ -70,7 +71,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
    *
    * MDN
    */
-  var lastIndex: Int = native
+  var lastIndex: Int = js.native
 
   /**
    * The exec() method executes a search for a match in a specified string.
@@ -88,7 +89,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
    *
    * MDN
    */
-  def exec(string: String): RegExp.ExecResult = native
+  def exec(string: String): js.RegExp.ExecResult = js.native
 
   /**
    * The test() method executes a search for a match between a regular expression
@@ -102,17 +103,16 @@ class RegExp(pattern: String, flags: String = "") extends Object {
    *
    * MDN
    */
-  def test(string: String): Boolean = native
+  def test(string: String): Boolean = js.native
 }
 
-@native
+@js.native
 @JSGlobal
-object RegExp extends Object {
-  def apply(pattern: String, flags: String = ""): RegExp = native
+object RegExp extends js.Object {
+  def apply(pattern: String, flags: String = ""): js.RegExp = js.native
 
-  @native
-  trait ExecResult extends Array[UndefOr[String]] {
-    var index: Int = native
-    var input: String = native
+  trait ExecResult extends js.Array[js.UndefOr[String]] {
+    var index: Int
+    var input: String
   }
 }

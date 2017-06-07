@@ -6,7 +6,7 @@ import java.lang.{Long => JLong}
  *  This class and its methods are only here to properly support reflective
  *  calls on longs.
  */
-class LongReflectiveCall(value: Long) {
+final class LongReflectiveCall(value: Long) {
 
   // Methods of java.lang.Long
 
