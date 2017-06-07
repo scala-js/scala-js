@@ -9,6 +9,8 @@
 
 package scala.scalajs.js
 
+import scala.scalajs.js
+
 /** Stores the JS constructor function of a JS class.
  *
  *  A `ConstructorTag[T]` holds the constructor function of a JS class, as
@@ -17,24 +19,26 @@ package scala.scalajs.js
  *  materialized when `T` is statically known to be a JS class, i.e., a valid
  *  type argument to `js.constructorOf`.
  */
-final class ConstructorTag[T <: Any] private[scalajs] (
-    val constructor: Dynamic) extends AnyVal {
+final class ConstructorTag[T <: js.Any] private[scalajs] (
+    val constructor: js.Dynamic)
+    extends AnyVal {
 
   /** Instantiates the class `T` with the specified arguments.
    *
-   *  Note that, unlike [[Dynamic.newInstance js.Dynamic.newInstance]], this
-   *  method accepts `scala.Any`s as parameters.
+   *  Note that, unlike [[js.Dynamic.newInstance]], this method accepts
+   *  `scala.Any`s as parameters.
    */
-  def newInstance(args: scala.Any*): T =
-    Dynamic.newInstance(constructor)(args.asInstanceOf[Seq[Any]]: _*).asInstanceOf[T]
+  def newInstance(args: scala.Any*): T = {
+    js.Dynamic.newInstance(constructor)(
+        args.asInstanceOf[Seq[js.Any]]: _*).asInstanceOf[T]
+  }
 }
 
 object ConstructorTag {
-  /** Implicitly materializes a [[ConstructorTag]].
+  /** Implicitly materializes a [[js.ConstructorTag]].
    *
-   *  This method has the same preconditions as
-   *  [[constructorOf js.constructorOf]].
+   *  This method has the same preconditions as [[js.constructorOf]].
    */
-  implicit def materialize[T <: Any]: ConstructorTag[T] =
+  implicit def materialize[T <: js.Any]: js.ConstructorTag[T] =
     throw new java.lang.Error("stub")
 }

@@ -37,13 +37,13 @@ object Symbol extends js.Object {
    *
    *  @group factories
    */
-  def apply(): Symbol = js.native
+  def apply(): js.Symbol = js.native
 
   /** Creates a new unique symbol with the specified description.
    *
    *  @group factories
    */
-  def apply(description: String): Symbol = js.native
+  def apply(description: String): js.Symbol = js.native
 
   /** Retrieves the symbol with the specified key in the global symbol registry.
    *
@@ -55,78 +55,78 @@ object Symbol extends js.Object {
    *  @group registry
    */
   @JSName("for")
-  def forKey(key: String): Symbol = js.native
+  def forKey(key: String): js.Symbol = js.native
 
   /** Retrieves the key under which the specified symbol is registered in the
    *  global symbol registry, or `undefined` if it is not registered.
    *
    *  @group registry
    */
-  def keyFor(sym: Symbol): js.UndefOr[String] = js.native
+  def keyFor(sym: js.Symbol): js.UndefOr[String] = js.native
 
   /** The well-known symbol `@@hasInstance`.
    *
    *  @group wellknownsyms
    */
-  val hasInstance: Symbol = js.native
+  val hasInstance: js.Symbol = js.native
 
   /** The well-known symbol `@@isConcatSpreadable`.
    *
    *  @group wellknownsyms
    */
-  val isConcatSpreadable: Symbol = js.native
+  val isConcatSpreadable: js.Symbol = js.native
 
   /** The well-known symbol `@@iterator`.
    *
    *  @group wellknownsyms
    */
-  val iterator: Symbol = js.native
+  val iterator: js.Symbol = js.native
 
   /** The well-known symbol `@@match`.
    *
    *  @group wellknownsyms
    */
-  val `match`: Symbol = js.native
+  val `match`: js.Symbol = js.native
 
   /** The well-known symbol `@@replace`.
    *
    *  @group wellknownsyms
    */
-  val replace: Symbol = js.native
+  val replace: js.Symbol = js.native
 
   /** The well-known symbol `@@search`.
    *
    *  @group wellknownsyms
    */
-  val search: Symbol = js.native
+  val search: js.Symbol = js.native
 
   /** The well-known symbol `@@species`.
    *
    *  @group wellknownsyms
    */
-  val species: Symbol = js.native
+  val species: js.Symbol = js.native
 
   /** The well-known symbol `@@split`.
    *
    *  @group wellknownsyms
    */
-  val split: Symbol = js.native
+  val split: js.Symbol = js.native
 
   /** The well-known symbol `@@toPrimitive`.
    *
    *  @group wellknownsyms
    */
-  val toPrimitive: Symbol = js.native
+  val toPrimitive: js.Symbol = js.native
 
   /** The well-known symbol `@@toStringTag`.
    *
    *  @group wellknownsyms
    */
-  val toStringTag: Symbol = js.native
+  val toStringTag: js.Symbol = js.native
 
   /** The well-known symbol `@@unscopables`.
    *
    *  @group wellknownsyms
    */
-  val unscopables: Symbol = js.native
+  val unscopables: js.Symbol = js.native
 }

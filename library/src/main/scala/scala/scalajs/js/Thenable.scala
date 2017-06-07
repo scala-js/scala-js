@@ -12,7 +12,7 @@ package scala.scalajs.js
 import scala.language.implicitConversions
 
 import scala.scalajs.js
-import js.annotation._
+import scala.scalajs.js.annotation._
 
 import scala.concurrent.Future
 
@@ -29,16 +29,16 @@ import scala.concurrent.Future
  */
 trait Thenable[+A] extends js.Object {
   def `then`[B](
-      onFulfilled: js.Function1[A, B | Thenable[B]],
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): Thenable[B]
+      onFulfilled: js.Function1[A, B | js.Thenable[B]],
+      onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]]): js.Thenable[B]
 
   def `then`[B >: A](
       onFulfilled: Unit,
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): Thenable[B]
+      onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]]): js.Thenable[B]
 }
 
 object Thenable {
-  implicit class ThenableOps[+A](val p: Thenable[A]) extends AnyVal {
+  implicit class ThenableOps[+A](val p: js.Thenable[A]) extends AnyVal {
     /** Converts the [[Thenable]] into a Scala [[scala.concurrent.Future Future]].
      *
      *  Unlike when calling the `then` methods of [[Thenable]], the resulting
@@ -50,30 +50,30 @@ object Thenable {
       p.`then`[Unit](
           { (v: A) =>
             p2.success(v)
-            (): Unit | Thenable[Unit]
+            (): Unit | js.Thenable[Unit]
           },
           js.defined { (e: scala.Any) =>
             p2.failure(e match {
               case th: Throwable => th
-              case _             => JavaScriptException(e)
+              case _             => js.JavaScriptException(e)
             })
-            (): Unit | Thenable[Unit]
+            (): Unit | js.Thenable[Unit]
           })
       p2.future
     }
   }
 
-  /** Implicits for [[Thenable]]s.
+  /** Implicits for [[js.Thenable]]s.
    *
    *  Import `Implicits._` to enable [[scala.concurrent.Future Future]]'s
-   *  operations directly on [[Thenable]]s, without needing to convert them
+   *  operations directly on [[js.Thenable]]s, without needing to convert them
    *  with [[ThenableOps.toFuture toFuture]].
    *
    *  Unlike the `then` methods in [[Thenable]],
    *  [[scala.concurrent.Future Future]]'s operations are always well-typed.
    */
   object Implicits {
-    implicit def thenable2future[A](p: Thenable[A]): Future[A] =
+    implicit def thenable2future[A](p: js.Thenable[A]): Future[A] =
       p.toFuture
   }
 }

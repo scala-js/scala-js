@@ -14,6 +14,7 @@
  */
 package scala.scalajs.js
 
+import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
 /**
@@ -22,9 +23,9 @@ import scala.scalajs.js.annotation._
  *
  * MDN
  */
-@native
+@js.native
 @JSGlobal
-object JSON extends Object {
+object JSON extends js.Object {
   /**
    * Parse a string as JSON, optionally transforming the value produced by parsing.
    * @param text The string to parse as JSON.  See the JSON object for a
@@ -34,7 +35,8 @@ object JSON extends Object {
    *
    * MDN
    */
-  def parse(text: String, reviver: Function2[Any, Any, Any] = ???): Dynamic = native
+  def parse(text: String,
+      reviver: js.Function2[js.Any, js.Any, js.Any] = ???): js.Dynamic = js.native
 
   /**
    * Convert a value to JSON, optionally replacing values if a replacer function
@@ -49,7 +51,10 @@ object JSON extends Object {
    *
    * MDN
    */
-  def stringify(value: Any, replacer: Function2[String, Any, Any] = ???, space: Any = ???): String = native
-  def stringify(value: Any, replacer: Array[Any]): String = native
-  def stringify(value: Any, replacer: Array[Any], space: Any): String = native
+  def stringify(value: js.Any,
+      replacer: js.Function2[String, js.Any, js.Any] = ???,
+      space: js.Any = ???): String = js.native
+  def stringify(value: js.Any, replacer: js.Array[Any]): String = js.native
+  def stringify(value: js.Any, replacer: js.Array[Any],
+      space: js.Any): String = js.native
 }

@@ -12,6 +12,8 @@ package scala.scalajs.js
 import scala.language.implicitConversions
 import scala.language.higherKinds
 
+import scala.scalajs.js
+
 /** Value of type A or B (union type).
  *
  *  Scala does not have union types, but they are important to many
@@ -60,8 +62,8 @@ object | { // scalastyle:ignore
       ReusableEvidence.asInstanceOf[Evidence[A, B1 | B2]]
 
     /** If `A <: B`, then `A <: js.UndefOr[B]`. */
-    implicit def undefOr[A, B](implicit ev: Evidence[A, B]): Evidence[A, UndefOr[B]] =
-      ReusableEvidence.asInstanceOf[Evidence[A, UndefOr[B]]]
+    implicit def undefOr[A, B](implicit ev: Evidence[A, B]): Evidence[A, js.UndefOr[B]] =
+      ReusableEvidence.asInstanceOf[Evidence[A, js.UndefOr[B]]]
   }
 
   object Evidence extends EvidenceLowPrioImplicits {

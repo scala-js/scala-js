@@ -14,7 +14,7 @@
  */
 package scala.scalajs.js
 
-import annotation.JSBracketAccess
+import scala.scalajs.js
 
 /** Dictionary "view" of a JavaScript value.
  *
@@ -48,15 +48,15 @@ import annotation.JSBracketAccess
  *  call methods of [[Object js.Object]] on it, given that the name of these
  *  methods could be used as keys in the dictionary.
  */
-sealed trait Dictionary[A] extends Any
+sealed trait Dictionary[A] extends js.Any
 
-/** Factory for [[Dictionary]] instances. */
+/** Factory for [[js.Dictionary]] instances. */
 object Dictionary {
   /** Returns a new empty dictionary */
-  @inline def empty[A]: Dictionary[A] =
-    (new Object).asInstanceOf[Dictionary[A]]
+  @inline def empty[A]: js.Dictionary[A] =
+    (new js.Object).asInstanceOf[js.Dictionary[A]]
 
-  def apply[A](properties: (String, A)*): Dictionary[A] = {
+  def apply[A](properties: (String, A)*): js.Dictionary[A] = {
     val result = empty[A]
     for ((key, value) <- properties)
       result(key) = value

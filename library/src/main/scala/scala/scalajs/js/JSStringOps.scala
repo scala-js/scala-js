@@ -16,6 +16,7 @@ package scala.scalajs.js
 
 import scala.language.implicitConversions
 
+import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
 /** Operations on JavaScript strings.
@@ -23,7 +24,7 @@ import scala.scalajs.js.annotation._
  *  The methods with an equivalent signature in [[java.lang.String String]] but
  *  with a different meaning are prefixed by `js` in this trait.
  */
-trait JSStringOps extends Any {
+trait JSStringOps extends js.Any {
 
   /**
    * Returns the index within the calling String object of the first occurrence
@@ -77,8 +78,8 @@ trait JSStringOps extends Any {
    *
    * MDN
    */
-  def `match`(regexp: String): Array[String]
-  def `match`(regexp: RegExp): Array[String]
+  def `match`(regexp: String): js.Array[String]
+  def `match`(regexp: js.RegExp): js.Array[String]
 
   /**
    * Returns a new string with some or all matches of a pattern replaced by a
@@ -97,11 +98,11 @@ trait JSStringOps extends Any {
   @JSName("replace")
   def jsReplace(searchValue: String, replaceValue: String): String
   @JSName("replace")
-  def jsReplace(searchValue: String, replaceValue: Any): String
+  def jsReplace(searchValue: String, replaceValue: js.Any): String
   @JSName("replace")
-  def jsReplace(searchValue: RegExp, replaceValue: String): String
+  def jsReplace(searchValue: js.RegExp, replaceValue: String): String
   @JSName("replace")
-  def jsReplace(searchValue: RegExp, replaceValue: Any): String
+  def jsReplace(searchValue: js.RegExp, replaceValue: js.Any): String
 
   /**
    * If successful, search returns the index of the regular expression inside
@@ -115,7 +116,7 @@ trait JSStringOps extends Any {
    * MDN
    */
   def search(regexp: String): Int
-  def search(regexp: RegExp): Int
+  def search(regexp: js.RegExp): Int
 
   /**
    * slice extracts the text from one string and returns a new string. Changes
@@ -155,13 +156,13 @@ trait JSStringOps extends Any {
    * MDN
    */
   @JSName("split")
-  def jsSplit(separator: String, limit: Int): Array[String]
+  def jsSplit(separator: String, limit: Int): js.Array[String]
   @JSName("split")
-  def jsSplit(separator: String): Array[String]
+  def jsSplit(separator: String): js.Array[String]
   @JSName("split")
-  def jsSplit(separator: RegExp, limit: Int): Array[String]
+  def jsSplit(separator: js.RegExp, limit: Int): js.Array[String]
   @JSName("split")
-  def jsSplit(separator: RegExp): Array[String]
+  def jsSplit(separator: js.RegExp): js.Array[String]
 
   /**
    * Returns a subset of a string between one index and another, or through
@@ -201,7 +202,7 @@ trait JSStringOps extends Any {
   /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
    *  Returns the Unicode Normalization Form of this string.
    */
-  def normalize(form: UnicodeNormalizationForm): String
+  def normalize(form: js.UnicodeNormalizationForm): String
 
   /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
    *  Returns the Unicode Normalization Form of this string, with the NFC form.
@@ -210,6 +211,6 @@ trait JSStringOps extends Any {
 }
 
 object JSStringOps {
-  implicit def enableJSStringOps(x: String): JSStringOps =
-    x.asInstanceOf[JSStringOps]
+  implicit def enableJSStringOps(x: String): js.JSStringOps =
+    x.asInstanceOf[js.JSStringOps]
 }

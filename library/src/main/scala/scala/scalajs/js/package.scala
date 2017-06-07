@@ -82,9 +82,11 @@ package object js {
    */
   def constructorOf[T <: js.Any]: js.Dynamic = throw new java.lang.Error("stub")
 
-  /** Makes explicit an implicitly available `ConstructorTag[T]`. */
-  def constructorTag[T <: js.Any](implicit tag: ConstructorTag[T]): ConstructorTag[T] =
+  /** Makes explicit an implicitly available [[js.ConstructorTag]]. */
+  def constructorTag[T <: js.Any](
+      implicit tag: js.ConstructorTag[T]): js.ConstructorTag[T] = {
     tag
+  }
 
   /** Evaluates JavaScript code and returns the result. */
   @inline def eval(x: String): scala.Any =

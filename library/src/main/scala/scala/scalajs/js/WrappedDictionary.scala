@@ -18,10 +18,10 @@ import scala.collection.generic.CanBuildFrom
 
 /** Wrapper to use a js.Dictionary as a scala.mutable.Map */
 @inline
-class WrappedDictionary[A](val dict: Dictionary[A])
+class WrappedDictionary[A](val dict: js.Dictionary[A])
     extends mutable.AbstractMap[String, A]
        with mutable.Map[String, A]
-       with mutable.MapLike[String, A, WrappedDictionary[A]] {
+       with mutable.MapLike[String, A, js.WrappedDictionary[A]] {
 
   import WrappedDictionary._
 
@@ -69,10 +69,10 @@ class WrappedDictionary[A](val dict: Dictionary[A])
 
   @inline
   override def keys: scala.collection.Iterable[String] =
-    Object.keys(dict.asInstanceOf[Object])
+    js.Object.keys(dict.asInstanceOf[js.Object])
 
-  override def empty: WrappedDictionary[A] =
-    new WrappedDictionary(Dictionary.empty)
+  override def empty: js.WrappedDictionary[A] =
+    new js.WrappedDictionary(Dictionary.empty)
 
 }
 
@@ -82,12 +82,12 @@ object WrappedDictionary {
 
   private object Cache {
     val safeHasOwnProperty =
-      Dynamic.global.Object.prototype.hasOwnProperty
-        .asInstanceOf[ThisFunction1[Dictionary[_], String, Boolean]]
+      js.Dynamic.global.Object.prototype.hasOwnProperty
+        .asInstanceOf[js.ThisFunction1[js.Dictionary[_], String, Boolean]]
   }
 
   @inline
-  private def safeHasOwnProperty(dict: Dictionary[_], key: String): Boolean =
+  private def safeHasOwnProperty(dict: js.Dictionary[_], key: String): Boolean =
     Cache.safeHasOwnProperty(dict, key)
 
   @js.native
@@ -97,18 +97,21 @@ object WrappedDictionary {
      *  This must not be called if the dictionary does not contain the key.
      */
     @JSBracketAccess
-    def rawApply(key: String): A = native
+    def rawApply(key: String): A = js.native
 
     /** Writes a field of this object. */
     @JSBracketAccess
-    def rawUpdate(key: String, value: A): Unit = native
+    def rawUpdate(key: String, value: A): Unit = js.native
   }
 
   private final class DictionaryIterator[+A](
-      dict: Dictionary[A]) extends scala.collection.Iterator[(String, A)] {
-    private[this] val keys = Object.keys(dict.asInstanceOf[Object])
+      dict: js.Dictionary[A]) extends scala.collection.Iterator[(String, A)] {
+
+    private[this] val keys = js.Object.keys(dict.asInstanceOf[js.Object])
     private[this] var index: Int = 0
+
     def hasNext(): Boolean = index < keys.length
+
     def next(): (String, A) = {
       val key = keys(index)
       index += 1
@@ -116,21 +119,22 @@ object WrappedDictionary {
     }
   }
 
-  def empty[A]: WrappedDictionary[A] = new WrappedDictionary(Dictionary.empty)
+  def empty[A]: js.WrappedDictionary[A] =
+    new js.WrappedDictionary(js.Dictionary.empty)
 
-  implicit def canBuildFrom[A]: CanBuildFrom[WrappedDictionary[_], (String, A), WrappedDictionary[A]] = {
-    new CanBuildFrom[WrappedDictionary[_], (String, A), WrappedDictionary[A]] {
-      def apply(from: WrappedDictionary[_]): Builder[(String, A), WrappedDictionary[A]] =
+  implicit def canBuildFrom[A]: CanBuildFrom[js.WrappedDictionary[_], (String, A), js.WrappedDictionary[A]] = {
+    new CanBuildFrom[js.WrappedDictionary[_], (String, A), js.WrappedDictionary[A]] {
+      def apply(from: js.WrappedDictionary[_]): Builder[(String, A), js.WrappedDictionary[A]] =
         new WrappedDictionaryBuilder[A]
-      def apply(): Builder[(String, A), WrappedDictionary[A]] =
+      def apply(): Builder[(String, A), js.WrappedDictionary[A]] =
         new WrappedDictionaryBuilder[A]
     }
   }
 
   private final class WrappedDictionaryBuilder[A]
-      extends Builder[(String, A), WrappedDictionary[A]] {
+      extends Builder[(String, A), js.WrappedDictionary[A]] {
 
-    private[this] var dict: Dictionary[A] = Dictionary.empty
+    private[this] var dict: js.Dictionary[A] = js.Dictionary.empty
 
     def +=(elem: (String, A)): this.type = {
       dict(elem._1) = elem._2
@@ -138,10 +142,10 @@ object WrappedDictionary {
     }
 
     def clear(): Unit =
-      dict = Dictionary.empty
+      dict = js.Dictionary.empty
 
-    def result(): WrappedDictionary[A] =
-      new WrappedDictionary(dict)
+    def result(): js.WrappedDictionary[A] =
+      new js.WrappedDictionary(dict)
   }
 
 }

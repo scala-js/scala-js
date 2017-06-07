@@ -12,7 +12,7 @@ package scala.scalajs.js
 
 import scala.scalajs.js
 
-trait PropertyDescriptor extends Object {
+trait PropertyDescriptor extends js.Object {
   // All kinds of property descriptors
 
   var configurable: js.UndefOr[Boolean] = js.undefined
