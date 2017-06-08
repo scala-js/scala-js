@@ -6,6 +6,10 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // New method in a trait sealed via self-type, not an issue
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "org.scalajs.core.tools.linker.LinkerPlatformExtensions.applyInternal"),
+
       // private[emitter], not an issue
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.FunctionEmitter#JSDesugar.genClassDataOf")

@@ -13,8 +13,8 @@ import sbt._
 
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.linker.{ModuleInitializer, LinkingUnit}
-import org.scalajs.core.tools.linker.backend.{ModuleKind, OutputMode}
+import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.jsdep.{JSDependencyManifest, ResolvedJSDependency}
 import org.scalajs.core.tools.jsdep.ManifestFilters.ManifestFilter
 import org.scalajs.core.tools.jsdep.DependencyResolver.DependencyFilter

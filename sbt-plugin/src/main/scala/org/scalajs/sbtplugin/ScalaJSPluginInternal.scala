@@ -16,9 +16,8 @@ import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io.{IO => toolsIO, _}
 import org.scalajs.core.tools.jsdep._
 import org.scalajs.core.tools.json._
-import org.scalajs.core.tools.linker.{ClearableLinker, ModuleInitializer, Linker}
-import org.scalajs.core.tools.linker.frontend.LinkerFrontend
-import org.scalajs.core.tools.linker.backend.{LinkerBackend, ModuleKind, OutputMode}
+import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.phantomjs.PhantomJettyClassLoader
@@ -195,28 +194,22 @@ object ScalaJSPluginInternal {
             None
         }
 
-        val frontendConfig = LinkerFrontend.Config()
+        val config = StandardLinker.Config()
+          .withSemantics(semantics)
+          .withModuleKind(moduleKind)
+          .withOutputMode(outputMode)
           .withBypassLinkingErrorsInternal(opts.bypassLinkingErrors)
           .withCheckIR(opts.checkScalaJSIR)
-
-        val backendConfig = LinkerBackend.Config()
-          .withRelativizeSourceMapBase(relSourceMapBase)
-          .withCustomOutputWrapperInternal(scalaJSOutputWrapperInternal.value)
-          .withPrettyPrint(opts.prettyPrintFullOptJS)
-
-        val config = Linker.Config()
-          .withSourceMap(withSourceMap)
           .withOptimizer(!opts.disableOptimizer)
           .withParallel(opts.parallel)
+          .withSourceMap(withSourceMap)
+          .withRelativizeSourceMapBase(relSourceMapBase)
           .withClosureCompiler(opts.useClosureCompiler)
-          .withFrontendConfig(frontendConfig)
-          .withBackendConfig(backendConfig)
+          .withCustomOutputWrapperInternal(scalaJSOutputWrapperInternal.value)
+          .withPrettyPrint(opts.prettyPrintFullOptJS)
+          .withBatchMode(opts.batchMode)
 
-        val newLinker = { () =>
-          Linker(semantics, outputMode, moduleKind, config)
-        }
-
-        new ClearableLinker(newLinker, opts.batchMode)
+        new ClearableLinker(() => StandardLinker(config), config.batchMode)
       },
 
       usesScalaJSLinkerTag in key := {

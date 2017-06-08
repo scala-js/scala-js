@@ -2,13 +2,10 @@ package scala.tools.nsc
 
 /* Super hacky overriding of the MainGenericRunner used by partest */
 
-import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.io.IRFileCache.IRContainer
-import org.scalajs.core.tools.linker.{Linker, ModuleInitializer}
-import org.scalajs.core.tools.linker.backend.{OutputMode, ModuleKind}
+import org.scalajs.core.tools.linker._
 
 import org.scalajs.core.ir
 
@@ -66,12 +63,12 @@ class MainGenericRunner {
     val moduleInitializers = Seq(ModuleInitializer.mainMethodWithArgs(
         command.thingToRun, "main", command.arguments))
 
-    val linkerConfig = Linker.Config()
+    val linkerConfig = StandardLinker.Config()
+      .withSemantics(semantics)
       .withSourceMap(false)
       .withClosureCompiler(optMode == FullOpt)
 
-    val linker = Linker(semantics, OutputMode.ECMAScript51Isolated,
-        ModuleKind.NoModule, linkerConfig)
+    val linker = StandardLinker(linkerConfig)
 
     val sjsCode = {
       val output = WritableMemVirtualJSFile("partest.js")

@@ -1,10 +1,8 @@
 package org.scalajs.core.tools.test.js
 
-import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.io.IRFileCache.IRContainer
-import org.scalajs.core.tools.linker.{ModuleInitializer, Linker}
-import org.scalajs.core.tools.linker.backend.{OutputMode, ModuleKind}
+import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.logging._
 
 import scala.scalajs.js
@@ -38,8 +36,8 @@ object QuickLinker {
       irFilesAndJars: Seq[String], moduleInitializers: Seq[String]): String = {
     val cache = (new IRFileCache).newCache
 
-    val linker = Linker(semantics, OutputMode.ECMAScript51Isolated,
-        ModuleKind.NoModule, Linker.Config())
+    val linker =
+      StandardLinker(StandardLinker.Config().withSemantics(semantics))
 
     val irContainers = irFilesAndJars.map { file =>
       if (file.endsWith(".jar")) {

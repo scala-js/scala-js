@@ -12,7 +12,6 @@ package org.scalajs.core.tools.linker
 import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.io._
 
-import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 
