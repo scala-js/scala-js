@@ -1174,6 +1174,11 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     moduleInitializer match {
       case ModuleInitializer.VoidMainMethod(moduleClassName, mainMethodName) =>
         js.Apply(genLoadModule(moduleClassName) DOT mainMethodName, Nil)
+
+      case ModuleInitializer.MainMethodWithArgs(moduleClassName, mainMethodName,
+          args) =>
+        js.Apply(genLoadModule(moduleClassName) DOT mainMethodName,
+            genArrayValue(ArrayType("T", 1), args.map(js.StringLiteral(_))) :: Nil)
     }
   }
 

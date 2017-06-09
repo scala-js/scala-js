@@ -1,10 +1,8 @@
 package sbttest.noDOM
 
-import scala.scalajs.js
+object TestApp {
 
-object TestApp extends js.JSApp {
-
-  def main(): Unit = {
+  def main(args: Array[String]): Unit = {
     println(Lib.foo("Hello World"))
     println(Lib.sq(10))
   }

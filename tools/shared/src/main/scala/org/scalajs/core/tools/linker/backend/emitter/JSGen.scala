@@ -202,6 +202,23 @@ private[emitter] final class JSGen(val semantics: Semantics,
     }
   }
 
+  def genArrayValue(tpe: ArrayType, elems: List[Tree])(
+      implicit pos: Position): Tree = {
+    genCallHelper("makeNativeArrayWrapper", genClassDataOf(tpe),
+        ArrayConstr(elems))
+  }
+
+  def genClassDataOf(cls: ReferenceType)(implicit pos: Position): Tree = {
+    cls match {
+      case ClassType(className) =>
+        envField("d", className)
+      case ArrayType(base, dims) =>
+        (1 to dims).foldLeft[Tree](envField("d", base)) { (prev, _) =>
+          Apply(DotSelect(prev, Ident("getArrayOf")), Nil)
+        }
+    }
+  }
+
   def envModuleField(module: String)(implicit pos: Position): VarRef = {
     /* This is written so that the happy path, when `module` contains only
      * valid characters, is fast.
