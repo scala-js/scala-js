@@ -17,14 +17,24 @@ import org.scalajs.jsenv._
 
 import org.scalajs.core.ir.Utils.escapeJS
 
-class JSDOMNodeJSEnv(
-    @deprecatedName('nodejsPath)
-    executable: String = "node",
-    @deprecatedName('addArgs)
-    args: Seq[String] = Seq.empty,
-    @deprecatedName('addEnv)
-    env: Map[String, String] = Map.empty)
-    extends AbstractNodeJSEnv(executable, args, env, sourceMap = false) {
+class JSDOMNodeJSEnv private[jsenv] (
+    executable: String,
+    args: Seq[String],
+    env: Map[String, String],
+    internal: Unit
+) extends AbstractNodeJSEnv(executable, args, env, sourceMap = false) {
+
+  @deprecated("Use org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv.", "0.6.18")
+  def this(
+      @deprecatedName('nodejsPath)
+      executable: String = "node",
+      @deprecatedName('addArgs)
+      args: Seq[String] = Seq.empty,
+      @deprecatedName('addEnv)
+      env: Map[String, String] = Map.empty
+  ) = {
+    this(executable, args, env, internal = ())
+  }
 
   protected def vmName: String = "Node.js with JSDOM"
 

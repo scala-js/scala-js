@@ -28,20 +28,38 @@ import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, TimeoutException, Future}
 import scala.concurrent.duration.Duration
 
-class PhantomJSEnv(
-    @deprecatedName('phantomjsPath)
-    protected val executable: String = "phantomjs",
-    @deprecatedName('addArgs)
-    args: Seq[String] = Seq.empty,
-    @deprecatedName('addEnv)
-    env: Map[String, String] = Map.empty,
-    val autoExit: Boolean = true,
-    jettyClassLoader: ClassLoader = null
-) extends ExternalJSEnv(args, env) with ComJSEnv {
+class PhantomJSEnv(config: PhantomJSEnv.Config)
+    extends ExternalJSEnv(config.args, config.env) with ComJSEnv {
 
   import PhantomJSEnv._
 
+  def this() = this(PhantomJSEnv.Config())
+
+  @deprecated("Use the overload with a PhantomJSEnv.Config.", "0.6.18")
+  def this(
+      @deprecatedName('phantomjsPath)
+      executable: String = "phantomjs",
+      @deprecatedName('addArgs)
+      args: Seq[String] = Seq.empty,
+      @deprecatedName('addEnv)
+      env: Map[String, String] = Map.empty,
+      autoExit: Boolean = true,
+      jettyClassLoader: ClassLoader = null
+  ) = {
+    this(
+        PhantomJSEnv.Config()
+          .withExecutable(executable)
+          .withArgs(args.toList)
+          .withEnv(env)
+          .withAutoExit(autoExit)
+          .withJettyClassLoader(jettyClassLoader))
+  }
+
   protected def vmName: String = "PhantomJS"
+
+  protected val executable: String = config.executable
+
+  val autoExit: Boolean = config.autoExit
 
   override def jsRunner(libs: Seq[ResolvedJSDependency],
       code: VirtualJSFile): JSRunner = {
@@ -96,7 +114,7 @@ class PhantomJSEnv(
 
     private def loadMgr() = {
       val loader =
-        if (jettyClassLoader != null) jettyClassLoader
+        if (config.jettyClassLoader != null) config.jettyClassLoader
         else getClass().getClassLoader()
 
       val clazz = loader.loadClass(
@@ -511,10 +529,67 @@ class PhantomJSEnv(
 
 }
 
-private object PhantomJSEnv {
+object PhantomJSEnv {
   private final val MaxByteMessageSize = 32768 // 32 KB
   private final val MaxCharMessageSize = MaxByteMessageSize / 2 // 2B per char
   private final val MaxCharPayloadSize = MaxCharMessageSize - 1 // frag flag
 
   private final val launcherName = "scalaJSPhantomJSEnvLauncher"
+
+  final class Config private (
+      val executable: String,
+      val args: List[String],
+      val env: Map[String, String],
+      val autoExit: Boolean,
+      val jettyClassLoader: ClassLoader
+  ) {
+    private def this() = {
+      this(
+          executable = "phantomjs",
+          args = Nil,
+          env = Map.empty,
+          autoExit = true,
+          jettyClassLoader = null
+      )
+    }
+
+    def withExecutable(executable: String): Config =
+      copy(executable = executable)
+
+    def withArgs(args: List[String]): Config =
+      copy(args = args)
+
+    def withEnv(env: Map[String, String]): Config =
+      copy(env = env)
+
+    def withAutoExit(autoExit: Boolean): Config =
+      copy(autoExit = autoExit)
+
+    def withJettyClassLoader(jettyClassLoader: ClassLoader): Config =
+      copy(jettyClassLoader = jettyClassLoader)
+
+    private def copy(
+        executable: String = executable,
+        args: List[String] = args,
+        env: Map[String, String] = env,
+        autoExit: Boolean = autoExit,
+        jettyClassLoader: ClassLoader = jettyClassLoader
+    ): Config = {
+      new Config(executable, args, env, autoExit, jettyClassLoader)
+    }
+  }
+
+  object Config {
+    /** Returns a default configuration for a [[PhantomJSEnv]].
+     *
+     *  The defaults are:
+     *
+     *  - `executable`: `"phantomjs"`
+     *  - `args`: `Nil`
+     *  - `env`: `Map.empty`
+     *  - `autoExit`: `true`
+     *  - `jettyClassLoader`: `null` (will use the current class loader)
+     */
+    def apply(): Config = new Config()
+  }
 }

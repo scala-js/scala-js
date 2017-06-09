@@ -19,16 +19,13 @@ import org.scalajs.core.tools.logging._
 
 import java.io.{ Console => _, _ }
 
-class NodeJSEnv private (
-    @deprecatedName('nodejsPath)
-    override protected val executable: String, // override val for bin compat
-    @deprecatedName('addArgs)
-    args: Seq[String],
-    @deprecatedName('addEnv)
-    env: Map[String, String],
-    sourceMap: Boolean)
-    extends AbstractNodeJSEnv(executable, args, env, sourceMap) {
+class NodeJSEnv(config: NodeJSEnv.Config)
+    extends AbstractNodeJSEnv(config.executable, config.args, config.env,
+        config.sourceMap) {
 
+  def this() = this(NodeJSEnv.Config())
+
+  @deprecated("Use the overload with a NodeJSEnv.Config.", "0.6.18")
   def this(
       @deprecatedName('nodejsPath)
       executable: String = "node",
@@ -36,13 +33,18 @@ class NodeJSEnv private (
       args: Seq[String] = Seq.empty,
       @deprecatedName('addEnv)
       env: Map[String, String] = Map.empty) = {
-    this(executable, args, env, sourceMap = true)
+    this(NodeJSEnv.Config().withExecutable(executable).withArgs(args.toList).withEnv(env))
   }
 
+  @deprecated("Use the overloaded constructor with a NodeJSEnv.Config.",
+      "0.6.18")
   def withSourceMap(sourceMap: Boolean): NodeJSEnv =
-    new NodeJSEnv(executable, args, env, sourceMap)
+    new NodeJSEnv(config.withSourceMap(sourceMap))
 
   protected def vmName: String = "Node.js"
+
+  // For binary compatibility
+  override protected val executable: String = config.executable
 
   override def jsRunner(libs: Seq[ResolvedJSDependency],
       code: VirtualJSFile): JSRunner = {
@@ -98,4 +100,56 @@ class NodeJSEnv private (
     }
   }
 
+}
+
+object NodeJSEnv {
+  final class Config private (
+      val executable: String,
+      val args: List[String],
+      val env: Map[String, String],
+      val sourceMap: Boolean
+  ) {
+    private def this() = {
+      this(
+          executable = "node",
+          args = Nil,
+          env = Map.empty,
+          sourceMap = true
+      )
+    }
+
+    def withExecutable(executable: String): Config =
+      copy(executable = executable)
+
+    def withArgs(args: List[String]): Config =
+      copy(args = args)
+
+    def withEnv(env: Map[String, String]): Config =
+      copy(env = env)
+
+    def withSourceMap(sourceMap: Boolean): Config =
+      copy(sourceMap = sourceMap)
+
+    private def copy(
+        executable: String = executable,
+        args: List[String] = args,
+        env: Map[String, String] = env,
+        sourceMap: Boolean = sourceMap
+    ): Config = {
+      new Config(executable, args, env, sourceMap)
+    }
+  }
+
+  object Config {
+    /** Returns a default configuration for a [[NodeJSEnv]].
+     *
+     *  The defaults are:
+     *
+     *  - `executable`: `"node"`
+     *  - `args`: `Nil`
+     *  - `env`: `Map.empty`
+     *  - `sourceMap`: `true`
+     */
+    def apply(): Config = new Config()
+  }
 }
