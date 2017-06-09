@@ -179,7 +179,8 @@ object ScalaJSPluginInternal {
   /** Settings for the production key (e.g. fastOptJS) of a given stage */
   private def scalaJSStageSettings(stage: Stage,
       key: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
-      scalaJSLinker in key := {
+
+      scalaJSLinkerConfig in key := {
         val opts = (scalaJSOptimizerOptions in key).value
 
         val semantics = (scalaJSSemantics in key).value
@@ -187,14 +188,21 @@ object ScalaJSPluginInternal {
         val moduleKind = scalaJSModuleKind.value // intentionally not 'in key'
         val withSourceMap = (emitSourceMaps in key).value
 
-        val relSourceMapBase = {
+        /* For `relativizeSourceMapBase`, preserve the one in the new config
+         * if it is set, otherwise fall back on the old config.
+         */
+        val oldConfigRelSourceMapBase = {
           if ((relativeSourceMaps in key).value)
             Some((artifactPath in key).value.getParentFile.toURI())
           else
             None
         }
+        val newConfigRelSourceMapBase =
+          (scalaJSLinkerConfig in key).value.relativizeSourceMapBase
+        val relSourceMapBase =
+          newConfigRelSourceMapBase.orElse(oldConfigRelSourceMapBase)
 
-        val config = StandardLinker.Config()
+        StandardLinker.Config()
           .withSemantics(semantics)
           .withModuleKind(moduleKind)
           .withOutputMode(outputMode)
@@ -208,6 +216,21 @@ object ScalaJSPluginInternal {
           .withCustomOutputWrapperInternal(scalaJSOutputWrapperInternal.value)
           .withPrettyPrint(opts.prettyPrintFullOptJS)
           .withBatchMode(opts.batchMode)
+      },
+
+      scalaJSLinker in key := {
+        val config = (scalaJSLinkerConfig in key).value
+
+        if (config.moduleKind != scalaJSModuleKind.value) {
+          val projectID = thisProject.value.id
+          val configName = configuration.value.name
+          val keyName = key.key.label
+          sLog.value.warn(
+              s"The module kind in `scalaJSLinkerConfig in ($projectID, " +
+              s"$configName, $keyName)` is different than the value of " +
+              s"`scalaJSModuleKind in ($projectID, $configName)`. " +
+              "Some things will go wrong.")
+        }
 
         new ClearableLinker(() => StandardLinker(config), config.batchMode)
       },
@@ -1012,23 +1035,66 @@ object ScalaJSPluginInternal {
   val scalaJSProjectBaseSettings = Seq(
       isScalaJSProject := true,
 
+      /* We first define scalaJSLinkerConfig in the project scope, with all
+       * the defaults. Later, we derive all the old config options in the
+       * project scope from scalaJSLinkerConfig.
+       *
+       * At the end of the day, in the fully qualified scope
+       * (project, config, linkKey), we re-derive scalaJSLinkerConfig from all
+       * the old config keys.
+       *
+       * This effectively gives meaning to scalaJSLinkerConfig in the project
+       * scope and in the fully qualified scope, but not in-between. Changes
+       * to `scalaJSLinkerConfig in (project, config)` will not have any
+       * effect.
+       *
+       * This is a compromise to ensure backward compatibility of using the old
+       * options in all cases, and a reasonable way to use the new options
+       * for typical use cases.
+       *
+       * `relativeSourceMaps`/`scalaJSLinkerConfig.relativizeSourceMapBase` is
+       * an exception. We cannot derive `relativizeSourceMapBase` only from
+       * `relativeSourceMaps`, and deriving `relativeSourceMaps` from
+       * `relativizeSourceMapBase` would lose information. Instead, we keep
+       * `relativeSourceMaps` to its default `false` in the project scope,
+       * irrespective of `scalaJSLinkerConfig`. And in the fully qualified
+       * scope, *if* `relativeSourceMaps` is true, we set
+       * `relativeSourceMapBase`, otherwise we leave it untouched. This
+       * provides the same compatibility/usability features.
+       */
+      scalaJSLinkerConfig := {
+        StandardLinker.Config()
+          .withParallel(OptimizerOptions.DefaultParallel)
+      },
+
       relativeSourceMaps := false,
       persistLauncherInternal := false,
       persistLauncherInternal in Test := false,
 
-      emitSourceMaps := true,
+      emitSourceMaps := scalaJSLinkerConfig.value.sourceMap,
 
-      scalaJSOutputWrapperInternal := ("", ""),
+      scalaJSOutputWrapperInternal :=
+        scalaJSLinkerConfig.value.customOutputWrapper,
 
-      scalaJSOptimizerOptions := OptimizerOptions(),
+      scalaJSOptimizerOptions := {
+        val config = scalaJSLinkerConfig.value
+        OptimizerOptions()
+          .withBypassLinkingErrorsInternal(config.bypassLinkingErrors)
+          .withParallel(config.parallel)
+          .withBatchMode(config.batchMode)
+          .withDisableOptimizer(!config.optimizer)
+          .withPrettyPrintFullOptJS(config.prettyPrint)
+          .withCheckScalaJSIR(config.checkIR)
+          .withUseClosureCompiler(config.closureCompiler)
+      },
 
       jsDependencies := Seq(),
       jsDependencyFilter := identity,
       jsManifestFilter := identity,
 
-      scalaJSSemantics := Semantics.Defaults,
-      scalaJSOutputMode := OutputMode.ECMAScript51Isolated,
-      scalaJSModuleKind := ModuleKind.NoModule,
+      scalaJSSemantics := scalaJSLinkerConfig.value.semantics,
+      scalaJSOutputMode := scalaJSLinkerConfig.value.outputMode,
+      scalaJSModuleKind := scalaJSLinkerConfig.value.moduleKind,
       checkScalaJSSemantics := true,
 
       scalaJSModuleInitializers := Seq(),

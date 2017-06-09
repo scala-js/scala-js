@@ -232,6 +232,11 @@ object ScalaJSPlugin extends AutoPlugin {
         "`scalaJSUseMainModuleInitializer` is true",
         CTask)
 
+    val scalaJSLinkerConfig = SettingKey[StandardLinker.Config](
+        "scalaJSLinkerConfig",
+        "Configuration of the Scala.js linker",
+        BPlusSetting)
+
     val scalaJSNativeLibraries = TaskKey[Attributed[Seq[VirtualJSFile with RelativeVirtualFile]]](
         "scalaJSNativeLibraries", "All the *.js files on the classpath", CTask)
 
