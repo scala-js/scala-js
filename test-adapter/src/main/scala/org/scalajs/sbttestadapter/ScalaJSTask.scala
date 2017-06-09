@@ -14,6 +14,7 @@ import org.scalajs.core.tools.json._
 import org.scalajs.jsenv._
 
 import scala.collection.mutable
+import scala.util.Try
 
 import sbt.testing._
 
@@ -45,7 +46,17 @@ final class ScalaJSTask private (
     slave.send("execute:" + jsonToString(data))
 
     // Prepare result handler
+    // TODO rip this out once we know it doesn't garble the logs.
+    val shouldBufferLog = {
+      val propName = "org.scalajs.testadapter.bufferlog"
+      Try(System.getProperty(propName, "false").toBoolean).getOrElse(false)
+    }
+
     val logBuffer = mutable.Buffer.empty[LogElement[_]]
+
+    val logger: LogElement[_] => Unit =
+      if (shouldBufferLog) logBuffer += _
+      else _.call(loggers)
 
     val doneHandler: LoopHandler[List[TaskInfo]] = {
       case ("ok", msg) => Some(fromJSON[List[TaskInfo]](readJSON(msg)))
@@ -53,7 +64,7 @@ final class ScalaJSTask private (
 
     val handlerChain = (
         eventHandler(handler) orElse
-        loggerHandler(logBuffer) orElse
+        loggerHandler(logger) orElse
         runner.msgHandler(slave) orElse
         doneHandler)
 
@@ -61,8 +72,10 @@ final class ScalaJSTask private (
     val taskInfos = ComUtils.receiveLoop(slave)(handlerChain)
 
     // Flush log buffer
-    runner.loggerLock.synchronized {
-      logBuffer.foreach(_.call(loggers))
+    if (shouldBufferLog) {
+      runner.loggerLock.synchronized {
+        logBuffer.foreach(_.call(loggers))
+      }
     }
 
     taskInfos.map(ScalaJSTask.fromInfo(runner, _)).toArray
@@ -76,7 +89,7 @@ final class ScalaJSTask private (
   }
 
   private def loggerHandler(
-      buf: mutable.Buffer[LogElement[_]]): LoopHandler[Nothing] = {
+      logger: LogElement[_] => Unit): LoopHandler[Nothing] = {
 
     def processData(data: String) = {
       val pos = data.indexOf(':')
@@ -89,7 +102,7 @@ final class ScalaJSTask private (
 
     def log(level: Logger => (String => Unit), data: String) = {
       val (index, msg) = processData(data)
-      buf += new LogElement(index, level, msg)
+      logger(new LogElement(index, level, msg))
       None
     }
 
@@ -101,7 +114,7 @@ final class ScalaJSTask private (
       case ("trace", data) =>
         val (index, innerData) = processData(data)
         val throwable = fromJSON[RemoteException](readJSON(innerData))
-        buf += new LogElement(index, _.trace, throwable)
+        logger(new LogElement(index, _.trace, throwable))
         None
     }
 
