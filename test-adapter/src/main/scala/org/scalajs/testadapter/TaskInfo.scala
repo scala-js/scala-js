@@ -11,7 +11,7 @@ package org.scalajs.testadapter
 
 import sbt.testing._
 
-import org.scalajs.core.tools.json._
+import org.scalajs.testadapter.json._
 
 import TaskDefSerializers._
 

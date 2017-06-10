@@ -1,4 +1,4 @@
-package org.scalajs.core.tools
+package org.scalajs.testadapter
 
 import java.io.{Reader, Writer}
 

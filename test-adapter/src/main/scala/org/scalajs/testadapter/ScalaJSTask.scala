@@ -9,14 +9,14 @@
 
 package org.scalajs.testadapter
 
-import org.scalajs.core.tools.json._
-
-import org.scalajs.jsenv._
-
 import scala.collection.mutable
 import scala.util.Try
 
 import sbt.testing._
+
+import org.scalajs.jsenv._
+
+import org.scalajs.testadapter.json._
 
 import TaskDefSerializers._
 import EventSerializers._

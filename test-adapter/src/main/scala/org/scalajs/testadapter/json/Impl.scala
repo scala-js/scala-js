@@ -1,4 +1,4 @@
-package org.scalajs.core.tools.json
+package org.scalajs.testadapter.json
 
 import org.json.simple.JSONValue
 

@@ -1,9 +1,10 @@
 package org.scalajs.testadapter
 
-import org.scalajs.core.tools.json._
+import scala.annotation.tailrec
+
 import org.scalajs.jsenv._
 
-import scala.annotation.tailrec
+import org.scalajs.testadapter.json._
 
 import scala.concurrent.duration._
 

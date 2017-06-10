@@ -1,4 +1,4 @@
-package org.scalajs.core.tools.json
+package org.scalajs.testadapter.json
 
 trait JSONSerializer[T] {
   def serialize(x: T): JSON
