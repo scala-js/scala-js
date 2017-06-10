@@ -25,9 +25,7 @@ object ModuleKind {
 
   /** No module structure.
    *
-   *  With this module kind, exports are stored on the global object by
-   *  default, or to a separate object specified with
-   *  `__ScalaJSEnv.exportsNamespace`.
+   *  With this module kind, exports are stored on the global object.
    *
    *  Imports are not supported.
    */

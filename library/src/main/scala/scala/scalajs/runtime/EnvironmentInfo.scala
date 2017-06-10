@@ -24,12 +24,6 @@ import StackTrace.JSStackTraceElem
  */
 sealed trait EnvironmentInfo extends js.Object {
 
-  /** The scope for Scala.js exports (i.e. objects and classes)
-   *
-   *  @group envInfo
-   */
-  def exportsNamespace: js.Dynamic
-
   // Can't link to java.lang.Runtime.exit - #1969
   /** The function that is called by `java.lang.Runtime.exit`
    *

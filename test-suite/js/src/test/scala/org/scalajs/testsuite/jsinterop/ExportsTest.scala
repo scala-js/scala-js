@@ -25,8 +25,27 @@ import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class ExportsTest {
 
-  /** The namespace in which top-level exports are stored. */
-  val exportsNamespace = scala.scalajs.runtime.environmentInfo.exportsNamespace
+  /** The namespace in which top-level exports are stored.
+   *
+   *  If we are linking the test suite in `NoModule`, then exports are in the
+   *  global object (technically they're in the global scope, but at least so
+   *  far we can find them in the global object too).
+   *
+   *  If we are linking in `CommonJSModule`, then exports are in the `exports`
+   *  module-global variable, which we can retrieve as if it were in the global
+   *  scope.
+   */
+  val exportsNamespace: js.Dynamic = {
+    if (Platform.isNoModule) {
+      org.scalajs.testsuite.utils.JSUtils.globalObject
+    } else if (Platform.isCommonJSModule) {
+      js.Dynamic.global.exports
+    } else {
+      throw new NotImplementedError(
+          "Don't know how to fetch the exports namespace in an unknown " +
+          "module kind.")
+    }
+  }
 
   /** This package in the JS (export) namespace */
   val jsPackage = exportsNamespace.org.scalajs.testsuite.jsinterop

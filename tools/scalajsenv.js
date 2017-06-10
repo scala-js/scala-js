@@ -15,12 +15,8 @@ const $env = (typeof __ScalaJSEnv === "object" && __ScalaJSEnv) ? __ScalaJSEnv :
 const $e = exports;
 //!else
 // TODO Do not use global object detection, and rather export with actual `var` declarations
-const $e =
-  (typeof $env["exportsNamespace"] === "object" && $env["exportsNamespace"])
-    ? $env["exportsNamespace"]
-    : ((typeof global === "object" && global && global["Object"] === Object) ? global : this);
+const $e = (typeof global === "object" && global && global["Object"] === Object) ? global : this;
 //!endif
-$env["exportsNamespace"] = $e;
 
 // Freeze the environment info
 Object["freeze"]($env);
