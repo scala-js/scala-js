@@ -2,7 +2,7 @@ package org.scalajs.testadapter.json
 
 import scala.collection.mutable
 
-class JSONObjBuilder {
+private[testadapter] class JSONObjBuilder {
 
   private val flds = mutable.Map.empty[String, JSON]
 

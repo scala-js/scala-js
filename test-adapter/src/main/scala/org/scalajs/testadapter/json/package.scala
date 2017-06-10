@@ -9,18 +9,25 @@ import java.io.{Reader, Writer}
  *  object back.
  */
 package object json {
-  type JSON = Impl.Repr
+  private[testadapter] type JSON = Impl.Repr
 
-  implicit class JSONPimp[T: JSONSerializer](x: T) {
+  private[testadapter] implicit class JSONPimp[T: JSONSerializer](x: T) {
     def toJSON: JSON = implicitly[JSONSerializer[T]].serialize(x)
   }
 
-  def fromJSON[T](x: JSON)(implicit d: JSONDeserializer[T]): T =
+  private[testadapter] def fromJSON[T](x: JSON)(implicit d: JSONDeserializer[T]): T =
     d.deserialize(x)
 
-  def writeJSON(x: JSON, writer: Writer): Unit = Impl.serialize(x, writer)
-  def jsonToString(x: JSON): String = Impl.serialize(x)
-  def readJSON(str: String): JSON = Impl.deserialize(str)
-  def readJSON(reader: Reader): JSON = Impl.deserialize(reader)
+  private[testadapter] def writeJSON(x: JSON, writer: Writer): Unit =
+    Impl.serialize(x, writer)
+
+  private[testadapter] def jsonToString(x: JSON): String =
+    Impl.serialize(x)
+
+  private[testadapter] def readJSON(str: String): JSON =
+    Impl.deserialize(str)
+
+  private[testadapter] def readJSON(reader: Reader): JSON =
+    Impl.deserialize(reader)
 
 }

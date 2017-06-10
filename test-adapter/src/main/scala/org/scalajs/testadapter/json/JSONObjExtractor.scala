@@ -2,7 +2,7 @@ package org.scalajs.testadapter.json
 
 import scala.collection.mutable
 
-class JSONObjExtractor(rawData: JSON) {
+private[testadapter] class JSONObjExtractor(rawData: JSON) {
   private val data = Impl.toMap(rawData)
 
   def fld[T: JSONDeserializer](name: String): T =

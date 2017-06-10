@@ -123,7 +123,7 @@ final class ScalaJSTask private (
 
 }
 
-object ScalaJSTask {
+private[testadapter] object ScalaJSTask {
   private final class LogElement[T](index: Int,
       log: Logger => (T => Unit), data: T) {
     def call(arr: Array[Logger]): Unit = log(arr(index))(data)

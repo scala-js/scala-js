@@ -20,7 +20,7 @@ final class RemoteException private (msg: String, _toString: String,
   override def toString(): String = _toString
 }
 
-object RemoteException {
+private[testadapter] object RemoteException {
   implicit object StackTraceDeserializer extends JSONDeserializer[StackTraceElement] {
     def deserialize(x: JSON): StackTraceElement = {
       val obj = new JSONObjExtractor(x)
