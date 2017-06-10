@@ -83,7 +83,14 @@ final class ScalaJSFramework(
   }
 
   private[testadapter] def optionalExportsNamespacePrefix: String = {
-    // !!! DUPLICATE code with ScalaJSPlugin.makeExportsNamespaceExpr
+    ScalaJSFramework.optionalExportsNamespacePrefix(moduleKind,
+        moduleIdentifier)
+  }
+}
+
+private[testadapter] object ScalaJSFramework {
+  private[testadapter] def optionalExportsNamespacePrefix(
+      moduleKind: ModuleKind, moduleIdentifier: Option[String]): String = {
     moduleKind match {
       case ModuleKind.NoModule =>
         ""

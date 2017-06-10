@@ -26,7 +26,7 @@ import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.core.ir.ScalaJSVersions
 import org.scalajs.core.ir.Printers.{InfoPrinter, IRTreePrinter}
 
-import org.scalajs.testadapter.ScalaJSFramework
+import org.scalajs.testadapter.{FrameworkDetector, HTMLRunnerBuilder}
 
 import scala.util.Try
 import scala.collection.mutable
@@ -467,22 +467,6 @@ object ScalaJSPluginInternal {
       }.value
   )
 
-  private[sbtplugin] def makeExportsNamespaceExpr(moduleKind: ModuleKind,
-      moduleIdentifier: Option[String]): String = {
-    // !!! DUPLICATE code with ScalaJSFramework.optionalExportsNamespacePrefix
-    moduleKind match {
-      case ModuleKind.NoModule =>
-        jsGlobalExpr
-
-      case ModuleKind.CommonJSModule =>
-        val moduleIdent = moduleIdentifier.getOrElse {
-          throw new IllegalArgumentException(
-              "The module identifier must be specified for CommonJS modules")
-        }
-        s"""require("${escapeJS(moduleIdent)}")"""
-    }
-  }
-
   @deprecated("js.JSApps are going away, and this method with them.", "0.6.18")
   def discoverJSApps(analysis: inc.Analysis): Seq[String] = {
     discoverScalaJSMainClasses(analysis).collect {
@@ -587,10 +571,6 @@ object ScalaJSPluginInternal {
         // use assert to prevent warning about pure expr in stat pos
         assert(scalaJSEnsureUnforked.value)
 
-        val logger = streams.value.log
-        val toolsLogger = sbtLogger2ToolsLogger(logger)
-        val frameworks = testFrameworks.value
-
         val env = jsEnv.value match {
           case env: ComJSEnv => env
 
@@ -604,14 +584,15 @@ object ScalaJSPluginInternal {
         val moduleKind = scalaJSModuleKind.value
         val moduleIdentifier = scalaJSModuleIdentifier.value
 
-        val detector =
-          new FrameworkDetector(env, files, moduleKind, moduleIdentifier)
+        val frameworksAndTheirImplNames =
+          testFrameworks.value.map(f => f -> f.implClassNames.toList)
 
-        detector.detect(frameworks, toolsLogger) map { case (tf, name) =>
-          (tf, new ScalaJSFramework(name, env, files, moduleKind,
-              moduleIdentifier, toolsLogger))
-        }
+        val logger = sbtLogger2ToolsLogger(streams.value.log)
+
+        FrameworkDetector.detectFrameworks(env, files, moduleKind,
+            moduleIdentifier, frameworksAndTheirImplNames, logger)
       },
+
       // Override default to avoid triggering a test:fastOptJS in a test:compile
       // without loosing autocompletion.
       definedTestNames := {
@@ -641,29 +622,20 @@ object ScalaJSPluginInternal {
       testHtml := {
         val log = streams.value.log
         val output = (artifactPath in testHtml).value
+        val title = name.value + " - tests"
+        val jsFiles = (jsExecutionFiles in testHtml).value
 
-        val jsFileCache = new VirtualFileMaterializer(true)
-        val jsFileURIs = (jsExecutionFiles in testHtml).value.map {
-          case file: FileVirtualFile => file.toURI
-          case file                  => jsFileCache.materialize(file).toURI
+        val frameworks = (loadedTestFrameworks in testHtml).value.toList
+        val frameworkImplClassNames =
+          frameworks.map(_._1.implClassNames.toList)
+
+        val taskDefs = for (td <- (definedTests in testHtml).value) yield {
+          new sbt.testing.TaskDef(td.name, td.fingerprint,
+              td.explicitlySpecified, td.selectors)
         }
 
-        val css: java.io.File = {
-          val name = "test-runner.css"
-          val inputStream = getClass.getResourceAsStream(name)
-          try {
-            val outFile = (resourceManaged in testHtml).value / name
-            IO.transfer(inputStream, outFile)
-            outFile
-          } finally {
-            inputStream.close()
-          }
-        }
-
-        IO.write(output, HTMLRunnerTemplate.render(output.toURI,
-            name.value + " - tests", jsFileURIs, css.toURI,
-            (loadedTestFrameworks in testHtml).value,
-            (definedTests in testHtml).value))
+        HTMLRunnerBuilder.writeToFile(output, title, jsFiles,
+            frameworkImplClassNames, taskDefs.toList)
 
         log.info(s"Wrote HTML test runner. Point your browser to ${output.toURI}")
 

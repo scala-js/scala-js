@@ -641,10 +641,18 @@ object Build {
         org.scalajs.core.tools.linker.backend.ModuleKind.CommonJSModule,
 
       jsExecutionFiles in Test := {
+        val frameworks = (loadedTestFrameworks in testSuite in Test).value
+        val frameworkImplClassNames =
+          frameworks.toList.map(_._1.implClassNames.toList)
+
+        val taskDefs = for (td <- (definedTests in testSuite in Test).value) yield {
+          new sbt.testing.TaskDef(td.name, td.fingerprint,
+                td.explicitlySpecified, td.selectors)
+        }
+
         val testDefinitions = {
-          org.scalajs.build.HTMLRunnerTemplateAccess.renderTestDefinitions(
-              (loadedTestFrameworks in testSuite in Test).value,
-              (definedTests in testSuite in Test).value)
+          org.scalajs.build.HTMLRunnerBuilderAccess.renderTestDefinitions(
+              frameworkImplClassNames, taskDefs.toList)
         }
 
         val testDefinitionsFile = {
