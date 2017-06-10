@@ -29,7 +29,6 @@ import Loggers._
 
 import org.scalajs.core.tools.io.{FileVirtualJSFile, MemVirtualJSFile}
 import org.scalajs.core.tools.sem._
-import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.linker.ModuleInitializer
 import org.scalajs.core.tools.linker.backend.OutputMode
 
@@ -1412,9 +1411,13 @@ object Build {
         val patchedSystemProperties =
           (scalaJSJavaSystemProperties in (Test, testHtml)).value
 
+        val formattedProps = patchedSystemProperties.map {
+          case (propName, propValue) =>
+            "\"" + escapeJS(propName) + "\": \"" + escapeJS(propValue) + "\""
+        }.mkString("{ ", ", ", " }")
         val code = s"""
           var __ScalaJSEnv = {
-            javaSystemProperties: ${jsonToString(patchedSystemProperties.toJSON)}
+            javaSystemProperties: $formattedProps
           };
         """
 
