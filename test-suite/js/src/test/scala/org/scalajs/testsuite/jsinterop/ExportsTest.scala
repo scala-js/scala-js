@@ -1043,16 +1043,6 @@ class ExportsTest {
     assertThrows(classOf[Exception], foo.doA("a"))
   }
 
-  @Test def `exports_for_classes_ending_in__=_issue_1090`(): Unit = {
-    val constr = exportsNamespace.ExportClassSetterNamed_=
-    val obj = js.Dynamic.newInstance(constr)()
-    assertEquals(obj.x, 1)
-  }
-
-  @Test def `exports_for_objects_ending_in__=_issue_1090`(): Unit = {
-    assertEquals(exportsNamespace.ExportObjSetterNamed_=.x, 1)
-  }
-
   @Test def should_expose_public_members_of_new_js_Object_issue_1899(): Unit = {
 
     // Test that the bug is fixed for js.Any classes.
@@ -1345,18 +1335,6 @@ class ExportedDefaultArgClass(x: Int, y: Int, z: Int) {
 object ExportedUnderOrgObject
 
 class SomeValueClass(val i: Int) extends AnyVal
-
-@JSExportTopLevel("ExportClassSetterNamed_=")
-class ExportClassSetterNamed_= { // scalastyle:ignore
-  @JSExport
-  val x = 1
-}
-
-@JSExportTopLevel("ExportObjSetterNamed_=")
-object ExportObjSetterNamed_= { // scalastyle:ignore
-  @JSExport
-  val x = 1
-}
 
 object ExportHolder {
   @JSExportTopLevel("qualified.nested.ExportedClass")

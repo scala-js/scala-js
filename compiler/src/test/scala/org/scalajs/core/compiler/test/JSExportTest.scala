@@ -931,6 +931,66 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noExportTopLevelInvalidJSIdentifier: Unit = {
+    """
+    @JSExportTopLevel("not-a-valid-JS-identifier-1")
+    object A
+
+    @JSExportTopLevel("not-a-valid-JS-identifier-2")
+    class B
+
+    object C {
+      @JSExportTopLevel("not-a-valid-JS-identifier-3")
+      val a: Int = 1
+
+      @JSExportTopLevel("not-a-valid-JS-identifier-4")
+      var b: Int = 1
+
+      @JSExportTopLevel("not-a-valid-JS-identifier-5")
+      def c(): Int = 1
+    }
+
+    @JSExportTopLevel("")
+    object D
+
+    @JSExportTopLevel("not-a-valid-JS-identifier-6.foo")
+    object E
+
+    @JSExportTopLevel("foo.not-a-valid-JS-identifier-7") // valid
+    object F
+
+    @JSExportTopLevel(".tricky")
+    object G
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: The top-level export name must be a valid JavaScript identifier
+      |    @JSExportTopLevel("not-a-valid-JS-identifier-1")
+      |     ^
+      |newSource1.scala:6: error: The top-level export name must be a valid JavaScript identifier
+      |    @JSExportTopLevel("not-a-valid-JS-identifier-2")
+      |     ^
+      |newSource1.scala:10: error: The top-level export name must be a valid JavaScript identifier
+      |      @JSExportTopLevel("not-a-valid-JS-identifier-3")
+      |       ^
+      |newSource1.scala:13: error: The top-level export name must be a valid JavaScript identifier
+      |      @JSExportTopLevel("not-a-valid-JS-identifier-4")
+      |       ^
+      |newSource1.scala:16: error: The top-level export name must be a valid JavaScript identifier
+      |      @JSExportTopLevel("not-a-valid-JS-identifier-5")
+      |       ^
+      |newSource1.scala:20: error: The top-level export name must be a valid JavaScript identifier
+      |    @JSExportTopLevel("")
+      |     ^
+      |newSource1.scala:23: error: The top-level export name must be a valid JavaScript identifier
+      |    @JSExportTopLevel("not-a-valid-JS-identifier-6.foo")
+      |     ^
+      |newSource1.scala:29: error: The top-level export name must be a valid JavaScript identifier
+      |    @JSExportTopLevel(".tricky")
+      |     ^
+    """
+  }
+
+  @Test
   def noExportTopLevelGetter: Unit = {
     """
     object A {
