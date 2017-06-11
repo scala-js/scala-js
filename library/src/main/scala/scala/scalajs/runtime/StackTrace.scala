@@ -18,6 +18,15 @@ object StackTrace {
 
   import Implicits._
 
+  private type SourceMapper =
+    js.Function1[js.Array[JSStackTraceElem], js.Array[JSStackTraceElem]]
+
+  private lazy val sourceMapper: SourceMapper = {
+    EnvironmentInfo.envInfo.flatMap(_.sourceMapper).getOrElse {
+      (s: js.Array[JSStackTraceElem]) => s
+    }
+  }
+
   /** Returns the current stack trace.
    *  If the stack trace cannot be analyzed in meaningful way (because we don't
    *  know the browser), an empty array is returned.
@@ -136,8 +145,7 @@ object StackTrace {
     }
 
     // Map stack trace through environment (if supported)
-    val mappedTrace =
-      environmentInfo.sourceMapper.fold(trace)(mapper => mapper(trace))
+    val mappedTrace = sourceMapper(trace)
 
     // Convert JS objects to java.lang.StackTraceElements
     // While loop due to space concerns

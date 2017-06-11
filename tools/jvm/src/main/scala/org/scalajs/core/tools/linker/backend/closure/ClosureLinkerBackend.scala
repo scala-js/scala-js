@@ -208,7 +208,6 @@ private object ClosureLinkerBackend {
     function require() {}
     var global = {};
     var exports = {};
-    var __ScalaJSEnv = {};
     var NaN = 0.0/0.0, Infinity = 1.0/0.0, undefined = void 0;
     """
 

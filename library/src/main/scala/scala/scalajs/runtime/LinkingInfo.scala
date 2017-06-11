@@ -4,9 +4,6 @@ import scala.scalajs.js
 
 /** Information about link-time configuration of Scala.js. */
 sealed trait LinkingInfo extends js.Object {
-  /** Environment info. */
-  val envInfo: EnvironmentInfo
-
   /** Semantics configuration. */
   val semantics: LinkingInfo.Semantics
 

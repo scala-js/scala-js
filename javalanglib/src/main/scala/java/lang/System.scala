@@ -5,7 +5,7 @@ import java.io._
 import scala.scalajs.js
 import scala.scalajs.js.Dynamic.global
 import scala.scalajs.LinkingInfo.assumingES6
-import scala.scalajs.runtime.{environmentInfo, linkingInfo, SemanticsUtils}
+import scala.scalajs.runtime.{linkingInfo, SemanticsUtils}
 
 import java.{util => ju}
 
@@ -233,11 +233,13 @@ object System {
       sysProp.setProperty("line.separator", "\n")
 
       for {
-        jsEnvProperties <- environmentInfo.javaSystemProperties
+        envInfo <- scala.scalajs.runtime.EnvironmentInfo.envInfo
+        jsEnvProperties <- envInfo.javaSystemProperties
         (key, value) <- jsEnvProperties
       } {
         sysProp.setProperty(key, value)
       }
+
       sysProp
     }
   }
