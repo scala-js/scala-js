@@ -663,7 +663,6 @@ object ScalaJSPluginInternal {
 
   val scalaJSProjectBaseSettings = Seq(
       crossPlatform := JSPlatform,
-      isScalaJSProject := true,
 
       relativeSourceMaps := false,
 
