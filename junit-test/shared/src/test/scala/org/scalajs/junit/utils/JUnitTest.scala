@@ -206,7 +206,7 @@ abstract class JUnitTest {
 
         remaining.take(maxLen).foreach(appendOut)
         msg.append(")")
-  
+
         throw new Exception(msg.result())
       }
     }

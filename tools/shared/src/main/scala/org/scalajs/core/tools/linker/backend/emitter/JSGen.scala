@@ -228,6 +228,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
       (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
 
     def containsOnlyValidChars(): Boolean = {
+      // scalastyle:off return
       val len = module.length
       var i = 0
       while (i != len) {
@@ -236,6 +237,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
         i += 1
       }
       true
+      // scalastyle:on return
     }
 
     def buildValidName(): String = {

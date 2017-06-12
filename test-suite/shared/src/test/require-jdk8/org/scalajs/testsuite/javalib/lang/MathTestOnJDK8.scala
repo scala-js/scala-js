@@ -257,7 +257,7 @@ class MathTestOnJDK8 {
       expectThrows(classOf[ArithmeticException], Math.floorDiv(n, 0))
   }
 
-  @Test def floorMod() = {
+  @Test def floorMod(): Unit = {
     assumeFalse("Assumed not executing in PhantomJS", executingInPhantomJS) // crashes otherwise, see #593
 
     assertEquals(0, Math.floorMod(0, 1))

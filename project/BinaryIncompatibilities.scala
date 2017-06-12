@@ -10,6 +10,10 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[ReversedMissingMethodProblem](
           "org.scalajs.core.tools.linker.LinkerPlatformExtensions.applyInternal"),
 
+      // private[optimizer], not an issue
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.GenIncOptimizer#MethodContainer.optimizedDefs"),
+
       // private[emitter], not an issue
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.backend.emitter.FunctionEmitter#JSDesugar.genClassDataOf")

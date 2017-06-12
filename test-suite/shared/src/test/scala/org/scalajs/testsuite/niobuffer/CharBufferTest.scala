@@ -61,7 +61,7 @@ class AllocCharSlicedBufferTest extends CharBufferTest {
 }
 
 class CharBufferWrappingACharSequenceTest extends CharBufferTest {
-  
+
   val factory: CharBufferFactory = new CharBufferWrappingACharSequenceFactory
 
   class CharBufferWrappingACharSequenceFactory extends Factory {

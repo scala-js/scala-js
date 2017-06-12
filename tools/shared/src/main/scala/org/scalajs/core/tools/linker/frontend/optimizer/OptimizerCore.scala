@@ -2815,7 +2815,7 @@ private[optimizer] abstract class OptimizerCore(
 
   /** Translate literals to their Scala.js String representation. */
   private def foldToStringForString_+(preTrans: PreTransform)(
-      implicit pos : Position): PreTransform = preTrans match {
+      implicit pos: Position): PreTransform = preTrans match {
     case PreTransLit(literal) =>
       literal match {
         case LongLiteral(value)    => PreTransLit(StringLiteral(value.toString))
@@ -4134,6 +4134,8 @@ private[optimizer] abstract class OptimizerCore(
 
   /** Trampolines a pretransform */
   private def trampoline(tailrec: => TailRec[Tree]): Tree = {
+    // scalastyle:off return
+
     curTrampolineId += 1
 
     val myTrampolineId = curTrampolineId
@@ -4170,6 +4172,8 @@ private[optimizer] abstract class OptimizerCore(
     } finally {
       curTrampolineId -= 1
     }
+
+    // scalastyle:on return
   }
 }
 
@@ -4475,7 +4479,7 @@ private[optimizer] object OptimizerCore {
   private final class PreTransBlock private (
       val bindingsAndStats: List[BindingOrStat],
       val result: PreTransResult) extends PreTransform {
-    def pos = result.pos
+    def pos: Position = result.pos
     val tpe = result.tpe
 
     assert(bindingsAndStats.nonEmpty)
@@ -4585,7 +4589,7 @@ private[optimizer] object OptimizerCore {
    */
   private final case class PreTransRecordTree(tree: Tree,
       tpe: RefinedType, cancelFun: CancelFun) extends PreTransGenTree {
-    def pos = tree.pos
+    def pos: Position = tree.pos
 
     assert(tree.tpe.isInstanceOf[RecordType],
         s"Cannot create a PreTransRecordTree with non-record type ${tree.tpe}")
@@ -4749,6 +4753,7 @@ private[optimizer] object OptimizerCore {
     final val Float32ArrayToFloatArray  = Int32ArrayToIntArray      + 1
     final val Float64ArrayToDoubleArray = Float32ArrayToFloatArray  + 1
 
+    // scalastyle:off line.size.limit
     val intrinsics: Map[String, Int] = Map(
       "jl_System$.arraycopy__O__I__O__I__I__V" -> ArrayCopy,
       "jl_System$.identityHashCode__O__I"      -> IdentityHashCode,
@@ -4787,6 +4792,7 @@ private[optimizer] object OptimizerCore {
       "sjs_js_typedarray_package$.float32Array2FloatArray__sjs_js_typedarray_Float32Array__AF"  -> Float32ArrayToFloatArray,
       "sjs_js_typedarray_package$.float64Array2DoubleArray__sjs_js_typedarray_Float64Array__AD" -> Float64ArrayToDoubleArray
     ).withDefaultValue(-1)
+    // scalastyle:on line.size.limit
   }
 
   private def getIntrinsicCode(target: AbstractMethodID): Int =

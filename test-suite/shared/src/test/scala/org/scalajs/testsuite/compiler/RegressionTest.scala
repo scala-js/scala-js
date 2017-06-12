@@ -385,6 +385,8 @@ class RegressionTest {
   }
 
   @Test def return_x_match_issue_2928(): Unit = {
+    // scalastyle:off return
+
     def testNonUnit(x: String): Boolean = {
       return x match {
         case "True" => true
@@ -409,6 +411,8 @@ class RegressionTest {
     r = None
     testUnit("not true")
     assertEquals(Some(false), r)
+
+    // scalastyle:on return
   }
 
   @Test def null_asInstanceOf_Unit_should_succeed_issue_1691(): Unit = {
