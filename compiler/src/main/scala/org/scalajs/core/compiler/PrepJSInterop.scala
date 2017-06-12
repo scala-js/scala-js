@@ -62,7 +62,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   override protected def newTransformer(unit: CompilationUnit): Transformer =
     new JSInteropTransformer(unit)
 
-  private object jsnme { // scalastyle:ignore
+  private object jsnme {
     val hasNext  = newTermName("hasNext")
     val next     = newTermName("next")
     val nextName = newTermName("nextName")
@@ -71,7 +71,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     val Val      = newTermName("Val")
   }
 
-  private object jstpnme { // scalastyle:ignore
+  private object jstpnme {
     val scala_ = newTypeName("scala") // not defined in 2.10's tpnme
   }
 
@@ -98,7 +98,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     private def anyEnclosingOwner: OwnerKind = allEnclosingOwners
 
     /** Nicer syntax for `allEnclosingOwners isnt kind`. */
-    private object noEnclosingOwner { // scalastyle:ignore
+    private object noEnclosingOwner {
       @inline def is(kind: OwnerKind): Boolean =
         allEnclosingOwners isnt kind
     }

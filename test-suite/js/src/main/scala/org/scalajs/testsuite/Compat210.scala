@@ -8,7 +8,7 @@
 package org.scalajs.testsuite
 
 private[testsuite] object Compat210 {
-  object blackbox { // scalastyle:ignore
+  object blackbox {
     type Context = scala.reflect.macros.Context
   }
 }

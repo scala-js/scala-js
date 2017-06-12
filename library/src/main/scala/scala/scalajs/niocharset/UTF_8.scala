@@ -14,7 +14,7 @@ import scala.annotation.{switch, tailrec}
 import java.nio._
 import java.nio.charset._
 
-private[niocharset] object UTF_8 extends Charset("UTF-8", Array( // scalastyle:ignore
+private[niocharset] object UTF_8 extends Charset("UTF-8", Array(
     "UTF8", "unicode-1-1-utf-8")) {
 
   import java.lang.Character._

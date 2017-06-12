@@ -13,7 +13,7 @@ import org.scalajs.core.ir.Types._
 /** Useful extractors for JavaScript trees */
 object JSTreeExtractors {
 
-  object jse { // scalastyle:ignore
+  object jse {
 
     object BlockOrAlone {
       def unapply(tree: Tree): Some[(List[Tree], Tree)] = Some(tree match {

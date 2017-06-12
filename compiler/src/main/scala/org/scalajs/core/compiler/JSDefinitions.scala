@@ -16,7 +16,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
   // scalastyle:off line.size.limit
 
-  object jsDefinitions extends JSDefinitionsClass // scalastyle:ignore
+  object jsDefinitions extends JSDefinitionsClass
 
   import definitions._
   import rootMirror._
