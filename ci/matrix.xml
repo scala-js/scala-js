@@ -211,12 +211,13 @@
     sbt ++2.10.6 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
                  testAdapter/publishLocal sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&
-    sbt noDOM/run noDOM/testHtmlFastOpt noDOM/testHtmlFullOpt \
-        withDOM/run withDOM/testHtmlFastOpt withDOM/testHtmlFullOpt \
-        multiTestJS/testHtmlFastOpt multiTestJS/testHtmlFullOpt \
+    sbt noDOM/run withDOM/run \
+        noDOM/testHtml withDOM/testHtml multiTestJS/testHtml \
         test \
         noDOM/clean noDOM/concurrentUseOfLinkerTest \
-        multiTestJS/test:testScalaJSSourceMapAttribute
+        multiTestJS/test:testScalaJSSourceMapAttribute &&
+    sbt 'set scalaJSStage in Global := FullOptStage' \
+        noDOM/testHtml withDOM/testHtml multiTestJS/testHtml
   ]]></task>
 
   <task id="partest-noopt"><![CDATA[

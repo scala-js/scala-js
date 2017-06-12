@@ -1369,9 +1369,9 @@ object Build {
       }
   )
 
-  def testHtmlSettings[T](testHtmlKey: TaskKey[T], targetStage: Stage) = Seq(
+  def testSuiteTestHtmlSetting = Def.settings(
       // We need to patch the system properties.
-      scalaJSJavaSystemProperties in Test in testHtmlKey ~= { base =>
+      scalaJSJavaSystemProperties in Test in testHtml ~= { base =>
         val unsupported =
           Seq("nodejs", "nodejs.jsdom", "source-maps")
         val supported =
@@ -1382,11 +1382,11 @@ object Build {
       },
 
       // And we need to actually use those patched system properties.
-      jsExecutionFiles in (Test, testHtmlKey) := {
-        val previousFiles = (jsExecutionFiles in (Test, testHtmlKey)).value
+      jsExecutionFiles in (Test, testHtml) := {
+        val previousFiles = (jsExecutionFiles in (Test, testHtml)).value
 
         val patchedSystemProperties =
-          (scalaJSJavaSystemProperties in (Test, testHtmlKey)).value
+          (scalaJSJavaSystemProperties in (Test, testHtml)).value
 
         val code = s"""
           var __ScalaJSEnv = {
@@ -1404,17 +1404,7 @@ object Build {
           else
             file
         }
-      },
-
-      // Fail if we are not in the right stage.
-      testHtmlKey in Test := (testHtmlKey in Test).dependsOn(Def.task {
-        if (scalaJSStage.value != targetStage) {
-          throw new MessageOnlyException(
-              "In the Scala.js test-suite, the testHtml* tasks need " +
-              "scalaJSStage to be set to their respecitve stage. Stage is: " +
-              scalaJSStage.value)
-        }
-      }).value
+      }
   )
 
   def testSuiteJSExecutionFilesSetting: Setting[_] = {
@@ -1432,8 +1422,6 @@ object Build {
       commonSettings,
       testTagSettings,
       testSuiteCommonSettings(isJSTest = true),
-      testHtmlSettings(testHtmlFastOpt, FastOptStage),
-      testHtmlSettings(testHtmlFullOpt, FullOptStage),
       name := "Scala.js test suite",
 
       unmanagedSourceDirectories in Test ++= {
@@ -1517,7 +1505,9 @@ object Build {
         ModuleInitializer.mainMethod(
             "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
             "main1")
-      }
+      },
+
+      testSuiteTestHtmlSetting
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime
   )
