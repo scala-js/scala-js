@@ -121,9 +121,10 @@ lazy val multiTest = crossProject.
       consoleWriter +: (jsExecutionFiles in Test).value
     },
 
-    // Test isScalaJSProject (as a setting, it's evaluated when loading the build)
-    isScalaJSProject ~= { value =>
-      assert(value, "isScalaJSProject should be true in multiTestJS")
+    // Test crossPlatform (as a setting, it's evaluated when loading the build)
+    crossPlatform ~= { value =>
+      assert(value == JSPlatform,
+          "crossPlatform should be JSPlatform in multiTestJS")
       value
     },
 
@@ -146,9 +147,10 @@ lazy val multiTest = crossProject.
     libraryDependencies +=
       "com.novocode" % "junit-interface" % "0.9" % "test",
 
-    // Test isScalaJSProject (as a setting, it's evaluated when loading the build)
-    isScalaJSProject ~= { value =>
-      assert(!value, "isScalaJSProject should be true in multiTestJVM")
+    // Test crossPlatform (as a setting, it's evaluated when loading the build)
+    crossPlatform ~= { value =>
+      assert(value == JVMPlatform,
+          "crossPlatform should be JVMPlatform in multiTestJVM")
       value
     }
   ).
