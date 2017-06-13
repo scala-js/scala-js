@@ -60,10 +60,6 @@ object | { // scalastyle:ignore
     /** If `A <: B1`, then `A <: B1 | B2`. */
     implicit def left[A, B1, B2](implicit ev: Evidence[A, B1]): Evidence[A, B1 | B2] =
       ReusableEvidence.asInstanceOf[Evidence[A, B1 | B2]]
-
-    /** If `A <: B`, then `A <: js.UndefOr[B]`. */
-    implicit def undefOr[A, B](implicit ev: Evidence[A, B]): Evidence[A, js.UndefOr[B]] =
-      ReusableEvidence.asInstanceOf[Evidence[A, js.UndefOr[B]]]
   }
 
   object Evidence extends EvidenceLowPrioImplicits {
@@ -101,5 +97,19 @@ object | { // scalastyle:ignore
      */
     def merge[B](implicit ev: |.Evidence[A, B]): B =
       self.asInstanceOf[B]
+  }
+
+  /** Provides an [[Option]]-like API to [[js.UndefOr]]. */
+  implicit def undefOr2ops[A](value: js.UndefOr[A]): js.UndefOrOps[A] =
+    new js.UndefOrOps(value)
+
+  /* This one is not very "in the spirit" of the union type, but it used to be
+   * available for `js.UndefOr[A]`, so we keep it for backward source
+   * compatibility. It is not really harmful, and has some perks in certain
+   * interoperability scenarios.
+   */
+  implicit def undefOr2jsAny[A](value: js.UndefOr[A])(
+      implicit ev: A => js.Any): js.Any = {
+    value.map(ev).asInstanceOf[js.Any]
   }
 }

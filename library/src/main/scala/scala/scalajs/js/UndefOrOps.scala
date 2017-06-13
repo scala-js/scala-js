@@ -14,41 +14,6 @@ import scala.language.implicitConversions
 import scala.scalajs.js
 import scala.scalajs.js.|.Evidence
 
-/** Value of type A or the JS undefined value.
- *
- *  `js.UndefOr[A]` is the type of a value that can be either `undefined` or
- *  an `A`. It provides an API similar to that of [[scala.Option]] through the
- *  [[UndefOrOps]] implicit class, where `undefined` take the role of [[None]].
- *
- *  By extension, this type is also suited to typing optional fields in native
- *  JS types, i.e., fields that may not exist on the object.
- */
-sealed trait UndefOr[+A]
-
-sealed abstract class UndefOrLowPrioImplicits { this: js.UndefOr.type =>
-  /** Upcast `A` to `UndefOr[B1 | B2]`.
-   *
-   *  This needs evidence that `A <: B1 | B2`.
-   */
-  implicit def any2undefOrUnion[A, B1, B2](a: A)(
-      implicit ev: Evidence[A, B1 | B2]): js.UndefOr[B1 | B2] = {
-    a.asInstanceOf[js.UndefOr[B1 | B2]]
-  }
-}
-
-object UndefOr extends js.UndefOrLowPrioImplicits {
-  implicit def any2undefOrA[A](value: A): js.UndefOr[A] =
-    value.asInstanceOf[js.UndefOr[A]]
-
-  implicit def undefOr2ops[A](value: js.UndefOr[A]): js.UndefOrOps[A] =
-    new js.UndefOrOps(value)
-
-  implicit def undefOr2jsAny[A](value: js.UndefOr[A])(
-      implicit ev: A => js.Any): js.Any = {
-    value.map(ev).asInstanceOf[js.Any]
-  }
-}
-
 /** @define option [[js.UndefOr]]
  *  @define none [[js.undefined]]
  */

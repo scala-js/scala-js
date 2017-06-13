@@ -171,9 +171,11 @@ class UndefOrTest {
     assertEquals("yes", none orElse some("yes"))
     assertJSUndefined(none orElse none)
 
-    // #2095
-    assertEquals("ok", some("ok") orElse "yes")
-    assertEquals("yes", none orElse "yes")
+    /* #2095
+     * Scala 2.10 requires the type ascriptions (see also UndefOrTestRequire211)
+     */
+    assertEquals("ok", some("ok") orElse ("yes": js.UndefOr[String]))
+    assertEquals("yes", none orElse ("yes": js.UndefOr[String]))
   }
 
   @Test def toList(): Unit = {
