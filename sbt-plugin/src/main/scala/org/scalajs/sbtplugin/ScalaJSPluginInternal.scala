@@ -295,7 +295,7 @@ object ScalaJSPluginInternal {
   )
 
   private def dispatchTaskKeySettings[T](key: TaskKey[T]) = Seq(
-      key := Def.taskDyn {
+      key := Def.settingDyn {
         val stageKey = stageKeys(scalaJSStage.value)
         Def.task { (key in stageKey).value }
       }.value
@@ -694,7 +694,7 @@ object ScalaJSPluginInternal {
         }
       }.value,
 
-      scalaJSModuleIdentifier := Def.taskDyn[Option[String]] {
+      scalaJSModuleIdentifier := Def.settingDyn[Task[Option[String]]] {
         scalaJSModuleKind.value match {
           case ModuleKind.NoModule =>
             Def.task {
@@ -821,7 +821,7 @@ object ScalaJSPluginInternal {
       },
 
       mainClass in scalaJSLauncherInternal := (mainClass in run).value,
-      scalaJSLauncherInternal := Def.taskDyn[Attributed[VirtualJSFile]] {
+      scalaJSLauncherInternal := Def.settingDyn[Task[Attributed[VirtualJSFile]]] {
         if (persistLauncherInternal.value) {
           Def.task {
             packageScalaJSLauncherInternal.value.map(FileVirtualJSFile)
