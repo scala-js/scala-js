@@ -76,7 +76,35 @@ sealed trait Dynamic extends js.Any with scala.Dynamic {
 /** Factory for dynamically typed JavaScript values. */
 object Dynamic {
   /** Dynamic view of the global scope. */
-  def global: js.Dynamic = throw new java.lang.Error("stub")
+  @js.native
+  @JSGlobalScope
+  object global extends js.Any with scala.Dynamic { // scalastyle:ignore
+    /** Calls a top-level method (in the global scope). */
+    @JSBracketCall
+    def applyDynamic(name: String)(args: js.Any*): js.Dynamic = js.native
+
+    /** Reads a top-level variable (in the global scope). */
+    @JSBracketAccess
+    def selectDynamic(name: String): js.Dynamic = js.native
+
+    /** Writes to a top-level variable (in the global scope). */
+    @JSBracketAccess
+    def updateDynamic(name: String)(value: js.Any): Unit = js.native
+
+    /* The following method is a protection against someone writing
+     * `js.Dynamic.global(args)`. It that method were not there, that call
+     * would silently desugar into
+     * `js.Dynamic.global.applyDynamic("apply")(args)`, which is very
+     * unexpected and will produce confusing run-time errors. Better to have
+     * a straightforward compile-time error.
+     */
+
+    /** Cannot be called--provides a compile-time error instead of a silent
+     *  run-time error if one tries to do `js.Dynamic.global(something)`.
+     */
+    @deprecated("The global scope cannot be called as function.", "forever")
+    def apply(args: js.Any*): js.Dynamic = js.native
+  }
 
   /** Instantiates a new object of a JavaScript class. */
   def newInstance(clazz: js.Dynamic)(args: js.Any*): js.Object with js.Dynamic =

@@ -32,8 +32,7 @@ abstract class JSPrimitives {
   val F2JS = 305     // FunctionN to js.FunctionN
   val F2JSTHIS = 306 // FunctionN to js.ThisFunction{N-1}
 
-  val DYNGLOBAL = 320 // js.Dynamic.global
-  val DYNNEW = 321    // Instantiate a new JavaScript object
+  val DYNNEW = 321 // Instantiate a new JavaScript object
 
   val DYNLIT = 334    // js.Dynamic.literal.applyDynamic{,Named}
 
@@ -86,7 +85,6 @@ abstract class JSPrimitives {
     for (i <- 1 to 22)
       addPrimitive(JSThisFunction_fromFunction(i), F2JSTHIS)
 
-    addPrimitive(JSDynamic_global, DYNGLOBAL)
     addPrimitive(JSDynamic_newInstance, DYNNEW)
 
     addPrimitive(JSDynamicLiteral_applyDynamicNamed, DYNLIT)
