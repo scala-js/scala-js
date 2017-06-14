@@ -10,6 +10,8 @@
 
 package scala.scalajs
 
+import scala.annotation.unchecked.uncheckedVariance
+
 // Can't link to Null - #1969
 /** Types, methods and values for interoperability with JavaScript libraries.
  *
@@ -63,6 +65,22 @@ package scala.scalajs
  *  admit several unrelated types in facade types.
  */
 package object js {
+
+  /** Value of type A or the JS undefined value.
+   *
+   *  This type is actually strictly equivalent to `A | Unit`, since `Unit` is
+   *  the type of the `undefined` value.
+   *
+   *  `js.UndefOr[A]` is the type of a value that can be either `undefined` or
+   *  an `A`. It provides an API similar to that of [[scala.Option]] through
+   *  the [[UndefOrOps]] implicit class, where `undefined` take the role of
+   *  [[None]].
+   *
+   *  By extension, this type is also suited to typing optional fields in
+   *  native JS types, i.e., fields that may not exist on the object.
+   */
+  type UndefOr[+A] = (A @uncheckedVariance) | Unit
+
   /** The undefined value. */
   @inline def undefined: js.UndefOr[Nothing] =
     ().asInstanceOf[js.UndefOr[Nothing]]

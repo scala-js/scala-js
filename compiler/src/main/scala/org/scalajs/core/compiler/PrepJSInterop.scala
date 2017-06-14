@@ -194,7 +194,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
           checkJSAnySpecificAnnotsOnNonJSAny(cldef)
 
-          if (sym == UndefOrClass || sym == UnionClass)
+          if (sym == UnionClass)
             sym.addAnnotation(RawJSTypeAnnot)
 
           if (shouldPrepareExports)

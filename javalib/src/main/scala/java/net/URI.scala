@@ -49,7 +49,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   private val _path = {
     val useNetPath = fld(AbsAuthority, RelAuthority).isDefined
     if (useNetPath)
-      fld(AbsNetPath, RelNetPath) orElse ""
+      fld(AbsNetPath, RelNetPath) orElse ("": js.UndefOr[String]) // 2.10 wants the type ascription
     else if (_isAbsolute)
       fld(AbsAbsPath)
     else

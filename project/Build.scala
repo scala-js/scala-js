@@ -1497,6 +1497,21 @@ object Build {
         Seq(outFile)
       }.taskValue,
 
+      // Exclude tests based on version-dependent limitations
+      sources in Test := {
+        val sourceFiles = (sources in Test).value
+        val v = scalaVersion.value
+
+        val sourceFiles1 = {
+          if (v.startsWith("2.10."))
+            sourceFiles.filterNot(_.getName.endsWith("Require211.scala"))
+          else
+            sourceFiles
+        }
+
+        sourceFiles1
+      },
+
       // Module initializers. Duplicated in toolsJS/test
       scalaJSModuleInitializers += {
         ModuleInitializer.mainMethod(
