@@ -732,6 +732,15 @@ class ExportsTest {
     assertTrue((obj: Any).isInstanceOf[ExportHolder.SJSDefinedExportedClass])
   }
 
+  @Test def toplevel_exports_under_nested_invalid_js_identifier(): Unit = {
+    val constr = exportsNamespace.qualified.selectDynamic("not-a-JS-identifier")
+    assertJSNotUndefined(constr)
+    assertEquals("function", js.typeOf(constr))
+    val obj = js.Dynamic.newInstance(constr)()
+    assertTrue(
+        (obj: Any).isInstanceOf[ExportHolder.ClassExportedUnderNestedInvalidJSIdentifier])
+  }
+
   @Test def exports_for_classes_with_constant_folded_name(): Unit = {
     val constr = exportsNamespace.ConstantFoldedClassExport
     assertJSNotUndefined(constr)
@@ -1189,6 +1198,11 @@ class ExportsTest {
     assertEquals(10, jsPackage.toplevel.overload(1, 2, 3, 4))
   }
 
+  @Test def method_top_level_export_under_invalid_js_identifier(): Unit = {
+    assertEquals("not an identifier",
+        jsPackage.toplevel.applyDynamic("not-a-JS-identifier")())
+  }
+
   @Test def top_level_export_uses_unique_object(): Unit = {
     jsPackage.toplevel.set(3)
     assertEquals(3, TopLevelExports.myVar)
@@ -1345,6 +1359,9 @@ object ExportHolder {
 
   @JSExportTopLevel("qualified.nested.SJSDefinedExportedClass")
   class SJSDefinedExportedClass extends js.Object
+
+  @JSExportTopLevel("qualified.not-a-JS-identifier")
+  class ClassExportedUnderNestedInvalidJSIdentifier
 }
 
 object TopLevelExports {
@@ -1356,6 +1373,9 @@ object TopLevelExports {
 
   @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.overload")
   def overload(x: Int, y: Int*): Int = x + y.sum
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.not-a-JS-identifier")
+  def methodExportedUnderNestedInvalidJSIdentifier(): String = "not an identifier"
 
   var myVar: Int = _
 
