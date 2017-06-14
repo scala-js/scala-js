@@ -36,8 +36,10 @@ object QuickLinker {
       irFilesAndJars: Seq[String], moduleInitializers: Seq[String]): String = {
     val cache = (new IRFileCache).newCache
 
-    val linker =
-      StandardLinker(StandardLinker.Config().withSemantics(semantics))
+    val config = StandardLinker.Config()
+      .withSemantics(semantics)
+      .withBatchMode(true)
+    val linker = StandardLinker(config)
 
     val irContainers = irFilesAndJars.map { file =>
       if (file.endsWith(".jar")) {

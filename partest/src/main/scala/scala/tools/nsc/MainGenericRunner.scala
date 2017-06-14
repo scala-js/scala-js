@@ -67,6 +67,7 @@ class MainGenericRunner {
       .withSemantics(semantics)
       .withSourceMap(false)
       .withClosureCompiler(optMode == FullOpt)
+      .withBatchMode(true)
 
     val linker = StandardLinker(linkerConfig)
 
