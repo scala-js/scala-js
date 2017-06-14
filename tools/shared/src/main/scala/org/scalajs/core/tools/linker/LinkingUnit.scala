@@ -1,6 +1,5 @@
 package org.scalajs.core.tools.linker
 
-import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.javascript.ESLevel
 
 import org.scalajs.core.ir

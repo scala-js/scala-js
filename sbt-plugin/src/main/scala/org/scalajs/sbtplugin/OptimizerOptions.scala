@@ -42,6 +42,12 @@ final class OptimizerOptions private (
   def withBypassLinkingErrors(bypassLinkingErrors: Boolean): OptimizerOptions =
     copy(bypassLinkingErrors = bypassLinkingErrors)
 
+  // Non-deprecated version to call from the sbt plugin
+  private[sbtplugin] def withBypassLinkingErrorsInternal(
+      bypassLinkingErrors: Boolean): OptimizerOptions = {
+    copy(bypassLinkingErrors = bypassLinkingErrors)
+  }
+
   def withParallel(parallel: Boolean): OptimizerOptions =
     copy(parallel = parallel)
 
@@ -97,7 +103,7 @@ object OptimizerOptions {
    * which uses Scala 2.12. We should get rid of that workaround at that point
    * for tidiness, though.
    */
-  private val DefaultParallel: Boolean = {
+  private[sbtplugin] val DefaultParallel: Boolean = {
     try {
       scala.util.Properties.isJavaAtLeast("1.8")
       true

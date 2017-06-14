@@ -11,15 +11,13 @@ package org.scalajs.cli
 
 import org.scalajs.core.ir.ScalaJSVersions
 
-import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.logging._
 
-import CheckedBehavior.Compliant
+import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 
-import org.scalajs.core.tools.linker.{ModuleInitializer, Linker}
-import org.scalajs.core.tools.linker.frontend.LinkerFrontend
-import org.scalajs.core.tools.linker.backend.{LinkerBackend, OutputMode, ModuleKind}
+import CheckedBehavior.Compliant
 
 import scala.collection.immutable.Seq
 
@@ -188,25 +186,20 @@ object Scalajsld {
         if (options.fullOpt) options.semantics.optimized
         else options.semantics
 
-      val frontendConfig = LinkerFrontend.Config()
+      val config = StandardLinker.Config()
+        .withSemantics(semantics)
+        .withModuleKind(options.moduleKind)
+        .withOutputMode(options.outputMode)
         .withBypassLinkingErrorsInternal(options.bypassLinkingErrors)
         .withCheckIR(options.checkIR)
-
-      val backendConfig = LinkerBackend.Config()
-        .withRelativizeSourceMapBase(options.relativizeSourceMap)
-        .withPrettyPrint(options.prettyPrint)
-
-      val config = Linker.Config()
-        .withSourceMap(options.sourceMap)
         .withOptimizer(!options.noOpt)
         .withParallel(true)
+        .withSourceMap(options.sourceMap)
+        .withRelativizeSourceMapBase(options.relativizeSourceMap)
         .withClosureCompiler(options.fullOpt)
-        .withFrontendConfig(frontendConfig)
-        .withBackendConfig(backendConfig)
+        .withPrettyPrint(options.prettyPrint)
 
-      val linker = Linker(semantics, options.outputMode, options.moduleKind,
-          config)
-
+      val linker = StandardLinker(config)
       val logger = new ScalaConsoleLogger(options.logLevel)
       val outFile = WritableFileVirtualJSFile(options.output)
       val cache = (new IRFileCache).newCache
