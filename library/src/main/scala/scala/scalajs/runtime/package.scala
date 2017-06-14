@@ -112,13 +112,6 @@ package object runtime {
     }
   }
 
-  /** Information about the environment Scala.js runs in
-   *
-   *  See [[EnvironmentInfo]] for details.
-   */
-  @inline def environmentInfo: EnvironmentInfo =
-    linkingInfo.envInfo
-
   /** Information known at link-time, given the output configuration.
    *
    *  See [[LinkingInfo]] for details.

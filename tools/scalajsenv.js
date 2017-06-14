@@ -7,27 +7,16 @@
  * The top-level Scala.js environment *
  * ---------------------------------- */
 
-// Get the environment info
-const $env = (typeof __ScalaJSEnv === "object" && __ScalaJSEnv) ? __ScalaJSEnv : {};
-
 // Where to send exports
 //!if moduleKind == CommonJSModule
 const $e = exports;
 //!else
 // TODO Do not use global object detection, and rather export with actual `var` declarations
-const $e =
-  (typeof $env["exportsNamespace"] === "object" && $env["exportsNamespace"])
-    ? $env["exportsNamespace"]
-    : ((typeof global === "object" && global && global["Object"] === Object) ? global : this);
+const $e = (typeof global === "object" && global && global["Object"] === Object) ? global : this;
 //!endif
-$env["exportsNamespace"] = $e;
-
-// Freeze the environment info
-Object["freeze"]($env);
 
 // Linking info - must be in sync with scala.scalajs.runtime.LinkingInfo
 const $linkingInfo = {
-  "envInfo": $env,
   "semantics": {
 //!if asInstanceOfs == Compliant
     "asInstanceOfs": 0,

@@ -1136,15 +1136,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case Unbox(expr, _) =>
           (allowSideEffects || semantics.asInstanceOfs == Unchecked) && test(expr)
 
-        // Because the linking info is a frozen object, linkingInfo["envInfo"] is pure
-        case JSBracketSelect(JSLinkingInfo(), StringLiteral("envInfo")) => true
-
-        // And because the env is a frozen object too, linkingInfo["envInfo"]["global"] is pure
-        case JSBracketSelect(
-            JSBracketSelect(JSLinkingInfo(), StringLiteral("envInfo")),
-            StringLiteral("global")) =>
-          true
-
         // JavaScript expressions that can always have side-effects
         case JSNew(fun, args) =>
           allowSideEffects && test(fun) && (args forall test)

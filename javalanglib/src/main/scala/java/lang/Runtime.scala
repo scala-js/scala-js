@@ -10,9 +10,9 @@ class Runtime private {
   //def removeShutdownHook(hook: Thread): Unit
 
   def halt(status: Int): Unit = {
-    val envInfo = scala.scalajs.runtime.environmentInfo
+    val envInfo = scala.scalajs.runtime.EnvironmentInfo.envInfo
 
-    envInfo.exitFunction.fold {
+    envInfo.flatMap(_.exitFunction).fold {
       // We don't have an exit function. Fail
       throw new SecurityException("Cannot terminate a JavaScript program. " +
           "Define a JavaScript function `__ScalaJSEnv.exitFunction` to " +
