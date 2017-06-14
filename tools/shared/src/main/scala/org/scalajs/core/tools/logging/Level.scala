@@ -13,7 +13,7 @@ import scala.math.Ordered
 
 abstract sealed class Level extends Ordered[Level] { x =>
   protected val order: Int
-  def compare(y: Level) = x.order - y.order
+  def compare(y: Level): Int = x.order - y.order
 }
 
 object Level {

@@ -1890,9 +1890,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             case Double_/ => js.BinaryOp(JSBinaryOp./, newLhs, newRhs)
             case Double_% => js.BinaryOp(JSBinaryOp.%, newLhs, newRhs)
 
-            case Num_<  => js.BinaryOp(JSBinaryOp.< , newLhs, newRhs)
+            case Num_<  => js.BinaryOp(JSBinaryOp.<, newLhs, newRhs)
             case Num_<= => js.BinaryOp(JSBinaryOp.<=, newLhs, newRhs)
-            case Num_>  => js.BinaryOp(JSBinaryOp.> , newLhs, newRhs)
+            case Num_>  => js.BinaryOp(JSBinaryOp.>, newLhs, newRhs)
             case Num_>= => js.BinaryOp(JSBinaryOp.>=, newLhs, newRhs)
 
             case Long_+ => genLongMethodApply(newLhs, LongImpl.+, newRhs)
@@ -1905,23 +1905,23 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             case Long_/ => genLongMethodApply(newLhs, LongImpl./, newRhs)
             case Long_% => genLongMethodApply(newLhs, LongImpl.%, newRhs)
 
-            case Long_|   => genLongMethodApply(newLhs, LongImpl.|,   newRhs)
-            case Long_&   => genLongMethodApply(newLhs, LongImpl.&,   newRhs)
+            case Long_|   => genLongMethodApply(newLhs, LongImpl.|, newRhs)
+            case Long_&   => genLongMethodApply(newLhs, LongImpl.&, newRhs)
             case Long_^   =>
               lhs match {
                 case LongLiteral(-1L) => genLongMethodApply(newRhs, LongImpl.UNARY_~)
                 case _                => genLongMethodApply(newLhs, LongImpl.^, newRhs)
               }
-            case Long_<<  => genLongMethodApply(newLhs, LongImpl.<<,  newRhs)
+            case Long_<<  => genLongMethodApply(newLhs, LongImpl.<<, newRhs)
             case Long_>>> => genLongMethodApply(newLhs, LongImpl.>>>, newRhs)
-            case Long_>>  => genLongMethodApply(newLhs, LongImpl.>>,  newRhs)
+            case Long_>>  => genLongMethodApply(newLhs, LongImpl.>>, newRhs)
 
             case Long_== => genLongMethodApply(newLhs, LongImpl.===, newRhs)
             case Long_!= => genLongMethodApply(newLhs, LongImpl.!==, newRhs)
-            case Long_<  => genLongMethodApply(newLhs, LongImpl.<,   newRhs)
-            case Long_<= => genLongMethodApply(newLhs, LongImpl.<=,  newRhs)
-            case Long_>  => genLongMethodApply(newLhs, LongImpl.>,   newRhs)
-            case Long_>= => genLongMethodApply(newLhs, LongImpl.>=,  newRhs)
+            case Long_<  => genLongMethodApply(newLhs, LongImpl.<, newRhs)
+            case Long_<= => genLongMethodApply(newLhs, LongImpl.<=, newRhs)
+            case Long_>  => genLongMethodApply(newLhs, LongImpl.>, newRhs)
+            case Long_>= => genLongMethodApply(newLhs, LongImpl.>=, newRhs)
 
             case Boolean_| => !(!js.BinaryOp(JSBinaryOp.|, newLhs, newRhs))
             case Boolean_& => !(!js.BinaryOp(JSBinaryOp.&, newLhs, newRhs))

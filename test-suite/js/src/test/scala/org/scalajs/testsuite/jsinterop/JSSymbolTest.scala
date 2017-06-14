@@ -400,7 +400,7 @@ object JSSymbolTest {
   @ScalaJSDefined
   class SJSDefinedInnerObject extends js.Object with InnerObjectTrait {
     @JSName(sym1)
-    object innerObject { // scalastyle:ignore
+    object innerObject {
       override def toString(): String = "SJSDefinedInnerObject.innerObject"
     }
   }

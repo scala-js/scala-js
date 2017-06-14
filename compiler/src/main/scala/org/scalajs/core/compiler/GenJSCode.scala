@@ -69,7 +69,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
   }
 
-  private[this] object pos2irPosCache { // scalastyle:ignore
+  private[this] object pos2irPosCache {
     import scala.reflect.internal.util._
 
     private[this] var lastNscSource: SourceFile = null
@@ -114,7 +114,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   override def newPhase(p: Phase): StdPhase = new JSCodePhase(p)
 
-  private object jsnme { // scalastyle:ignore
+  private object jsnme {
     val anyHash = newTermName("anyHash")
     val arg_outer = newTermName("arg$outer")
     val newString = newTermName("newString")

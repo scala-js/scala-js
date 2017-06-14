@@ -11,7 +11,7 @@ import java.io.{Reader, Writer}
 package object json {
   type JSON = Impl.Repr
 
-  implicit class JSONPimp[T : JSONSerializer](x: T) {
+  implicit class JSONPimp[T: JSONSerializer](x: T) {
     def toJSON: JSON = implicitly[JSONSerializer[T]].serialize(x)
   }
 

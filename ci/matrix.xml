@@ -238,7 +238,7 @@
         jsEnvs/scalastyle jsEnvsTestKit/scalastyle \
         jsEnvsTestSuite/test:scalastyle testAdapter/scalastyle \
         sbtPlugin/scalastyle testInterface/scalastyle \
-        testSuite/test:scalastyle \
+        testSuite/scalastyle testSuite/test:scalastyle \
         testSuiteJVM/test:scalastyle \
         javalibExTestSuite/test:scalastyle helloworld/scalastyle \
         reversi/scalastyle testingExample/scalastyle \

@@ -250,7 +250,7 @@ private final class Analyzer(semantics: Semantics,
 
     val delayedCalls = mutable.Map.empty[String, From]
 
-    def isNeededAtAll =
+    def isNeededAtAll: Boolean =
       areInstanceTestsUsed ||
       isDataAccessed ||
       isAnySubclassInstantiated ||
@@ -259,7 +259,7 @@ private final class Analyzer(semantics: Semantics,
       isAnyStaticMethodReachable ||
       isAnyDefaultMethodReachable
 
-    def isAnyStaticMethodReachable =
+    def isAnyStaticMethodReachable: Boolean =
       staticMethodInfos.values.exists(_.isReachable)
 
     private def isAnyDefaultMethodReachable =
@@ -726,7 +726,7 @@ private final class Analyzer(semantics: Semantics,
 
     var syntheticKind: MethodSyntheticKind = MethodSyntheticKind.None
 
-    def isDefaultBridge =
+    def isDefaultBridge: Boolean =
       syntheticKind.isInstanceOf[MethodSyntheticKind.DefaultBridge]
 
     /** Throws MatchError if `!isDefaultBridge`. */

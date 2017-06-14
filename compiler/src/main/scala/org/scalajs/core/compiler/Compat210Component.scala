@@ -120,8 +120,8 @@ trait Compat210Component {
    */
 
   object LowPrioGenBCodeCompat {
-    object genBCode { // scalastyle:ignore
-      object bTypes { // scalastyle:ignore
+    object genBCode {
+      object bTypes {
         def initializeCoreBTypes(): Unit = ()
       }
     }

@@ -51,7 +51,7 @@ object Trees {
   }
 
   case class ComputedName(tree: Tree) extends PropertyName {
-    def pos = tree.pos
+    def pos: Position = tree.pos
   }
 
   // Definitions

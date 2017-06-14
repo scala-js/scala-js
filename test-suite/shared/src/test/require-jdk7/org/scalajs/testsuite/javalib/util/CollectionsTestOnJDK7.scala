@@ -26,7 +26,7 @@ class CollectionsTestOnJDK7 {
   }
 
   @Test def should_implement_emptyListIterator(): Unit = {
-    def test[E : ClassTag](toElem: Int => E): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
       def freshIter: ju.ListIterator[E] = ju.Collections.emptyListIterator[E]
 
       assertFalse(freshIter.hasNext)

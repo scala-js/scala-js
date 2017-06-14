@@ -9,6 +9,9 @@
 
 package org.scalajs.core.tools.linker.checker
 
+// In the IR checker, we allow early returns for improved readability
+// scalastyle:off return
+
 import scala.language.implicitConversions
 
 import scala.annotation.switch

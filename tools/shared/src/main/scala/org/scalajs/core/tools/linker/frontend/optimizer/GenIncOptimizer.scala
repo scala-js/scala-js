@@ -138,9 +138,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
 
       val newLinkedClasses = for (linkedClass <- unit.classDefs) yield {
         def defs(container: Option[MethodContainer]) =
-          container.fold[List[LinkedMember[MethodDef]]](Nil) {
-            _.optimizedDefs.toList
-          }
+          container.fold[List[LinkedMember[MethodDef]]](Nil)(_.optimizedDefs)
 
         val encodedName = linkedClass.encodedName
         val memberNamespace =
@@ -316,10 +314,14 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
 
     val methods = mutable.Map.empty[String, MethodImpl]
 
-    def optimizedDefs = for {
-      method <- methods.values
-      if !method.deleted
-    } yield method.optimizedMethodDef
+    def optimizedDefs: List[LinkedMember[MethodDef]] = {
+      (for {
+        method <- methods.values
+        if !method.deleted
+      } yield {
+        method.optimizedMethodDef
+      }).toList
+    }
 
     /** UPDATE PASS ONLY. Global concurrency safe but not on same instance */
     def updateWith(linkedClass: LinkedClass):
