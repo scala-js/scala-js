@@ -57,7 +57,8 @@ class MainGenericRunner {
 
     val logger = new ScalaConsoleLogger(Level.Warn)
     val jsConsole = new ScalaConsoleJSConsole
-    val semantics = readSemantics()
+    val semantics0 = readSemantics()
+    val semantics = if (optMode == FullOpt) semantics0.optimized else semantics0
     val ir = loadIR(command.settings.classpathURLs)
 
     val moduleInitializers = Seq(ModuleInitializer.mainMethodWithArgs(
@@ -66,6 +67,7 @@ class MainGenericRunner {
     val linkerConfig = StandardLinker.Config()
       .withSemantics(semantics)
       .withSourceMap(false)
+      .withOptimizer(optMode != NoOpt)
       .withClosureCompiler(optMode == FullOpt)
       .withBatchMode(true)
 
