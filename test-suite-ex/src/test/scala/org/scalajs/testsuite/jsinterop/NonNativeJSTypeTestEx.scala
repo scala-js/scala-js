@@ -7,24 +7,26 @@
 \*                                                                      */
 package org.scalajs.testsuite.jsinterop
 
+import org.junit.Test
+import org.junit.Assert._
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
-/** Elements of ScalaJSDefinedTest in `src/test/` to be compiled in a
- *  separate compiler run, to test separate compilation.
+/** Additional tests for non-native JS classes that have to be in a
+ *  separate codebase than testSuite to be meaningful.
+ *
+ *  If moved to testSuite, those tests "fail to fail" due to mass effects
+ *  produced by the immensity of the testSuite codebase.
  */
-object ScalaJSDefinedTestSeparateRun {
+class NonNativeJSTypeTestEx {
 
-  class SimpleParentClass extends js.Object {
-    def foo(x: Int): Int = x + 1
+  @Test def constructor_property_on_the_prototype_issue_1963(): Unit = {
+    class ParentClass extends js.Object
+
+    class ChildClass extends ParentClass
+
+    val child = new ChildClass().asInstanceOf[js.Dynamic]
+    assertSame(js.constructorOf[ChildClass], child.constructor)
   }
-
-  class SimpleChildClass extends SimpleParentClass {
-    override def foo(x: Int): Int = x + 3
-  }
-
-  trait SimpleTrait extends js.Any {
-    def foo(x: Int): Int
-  }
-
 }

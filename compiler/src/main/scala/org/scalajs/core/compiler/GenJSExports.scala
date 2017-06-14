@@ -608,7 +608,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
      */
     private def genApplyForSym(minArgc: Int, hasRestParam: Boolean,
         sym: Symbol, static: Boolean): js.Tree = {
-      if (isScalaJSDefinedJSClass(currentClassSym) &&
+      if (isNonNativeJSClass(currentClassSym) &&
           sym.owner != currentClassSym.get) {
         assert(!static)
         genApplyForSymJSSuperCall(minArgc, hasRestParam, sym)
@@ -737,7 +737,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
               result.take(defaultGetter.tpe.params.size).toList.map(_.ref)
 
             if (isRawJSType(trgSym.toTypeConstructor)) {
-              if (isScalaJSDefinedJSClass(defaultGetter.owner)) {
+              if (isNonNativeJSClass(defaultGetter.owner)) {
                 genApplyJSClassMethod(trgTree, defaultGetter, defaultGetterArgs)
               } else {
                 reporter.error(param.pos, "When overriding a native method " +
@@ -778,7 +778,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         if (static) genLoadModule(sym.owner)
         else js.This()(thisType)
       val call = {
-        if (isScalaJSDefinedJSClass(currentClassSym)) {
+        if (isNonNativeJSClass(currentClassSym)) {
           assert(sym.owner == currentClassSym.get, sym.fullName)
           genApplyJSClassMethod(receiver, sym, args)
         } else {

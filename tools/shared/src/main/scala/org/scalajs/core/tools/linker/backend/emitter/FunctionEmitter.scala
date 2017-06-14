@@ -1156,7 +1156,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSGlobalRef(_) =>
           allowSideEffects
 
-        /* LoadJSConstructor is pure only for Scala.js-defined JS classes,
+        /* LoadJSConstructor is pure only for non-native JS classes,
          * which do not have a native load spec. Note that this test makes
          * sense per se, as the actual desugaring of `LoadJSConstructor` is
          * based on the jsNativeLoadSpec of the class.
@@ -2157,7 +2157,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           val className = cls.className
           globalKnowledge.getJSNativeLoadSpec(className) match {
             case None =>
-              // this is a Scala.js-defined JS module class
+              // this is a non-native JS module class
               genLoadModule(className)
 
             case Some(spec) =>

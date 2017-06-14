@@ -8,7 +8,7 @@
 package org.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.{JSName, ScalaJSDefined}
+import scala.scalajs.js.annotation.JSName
 
 import org.junit.Assert._
 import org.junit.Assume._

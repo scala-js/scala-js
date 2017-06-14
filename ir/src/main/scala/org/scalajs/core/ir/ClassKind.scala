@@ -37,7 +37,7 @@ sealed abstract class ClassKind {
     case _                           => false
   }
 
-  def isAnyScalaJSDefinedClass: Boolean = this match {
+  def isAnyNonNativeClass: Boolean = this match {
     case Class | ModuleClass | JSClass | JSModuleClass => true
     case _                                             => false
   }

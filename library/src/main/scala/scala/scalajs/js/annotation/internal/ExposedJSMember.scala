@@ -12,7 +12,7 @@ package scala.scalajs.js.annotation.internal
 /** IMPLEMENTATION DETAIL: Marks the annotated member as exposed as a JS member.
  *
  *  This annotation is added automatically by the compiler to all public and
- *  protected members of a Scala.js-defined JS class. It marks the annotated
+ *  protected members of a non-native JS class. It marks the annotated
  *  member as being exposed as a JS member.
  *
  *  Do not use this annotation yourself.

@@ -245,7 +245,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     val paramTypeNames0 = tpe.params map (p => internalName(p.tpe))
 
     val hasExplicitThisParameter =
-      inRTClass || isScalaJSDefinedJSClass(sym.owner)
+      inRTClass || isNonNativeJSClass(sym.owner)
     val paramTypeNames =
       if (!hasExplicitThisParameter) paramTypeNames0
       else internalName(sym.owner.toTypeConstructor) :: paramTypeNames0

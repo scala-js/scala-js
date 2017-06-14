@@ -318,7 +318,7 @@ trait PrepJSExports { this: PrepJSInterop =>
           }
 
         case ExportDestination.Static =>
-          def companionIsScalaJSDefinedJSClass: Boolean = {
+          def companionIsNonNativeJSClass: Boolean = {
             val companion = symOwner.companionClass
             companion != NoSymbol &&
             !companion.isTrait &&
@@ -327,10 +327,10 @@ trait PrepJSExports { this: PrepJSInterop =>
           }
 
           if (!symOwner.isStatic || !symOwner.isModuleClass ||
-              !companionIsScalaJSDefinedJSClass) {
+              !companionIsNonNativeJSClass) {
             reporter.error(annot.pos,
                 "Only a static object whose companion class is a " +
-                "Scala.js-defined JS class may export its members as static.")
+                "non-native JS class may export its members as static.")
           }
 
           if (isMember) {

@@ -68,7 +68,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val ExposedJSMemberAnnot = getRequiredClass("scala.scalajs.js.annotation.internal.ExposedJSMember")
     lazy val JSOptionalAnnotation = getRequiredClass("scala.scalajs.js.annotation.internal.JSOptional")
     lazy val RawJSTypeAnnot = getRequiredClass("scala.scalajs.js.annotation.internal.RawJSType")
-    lazy val SJSDefinedAnonymousClassAnnotation = getRequiredClass("scala.scalajs.js.annotation.internal.SJSDefinedAnonymousClass")
+    lazy val AnonymousJSClassAnnotation = getRequiredClass("scala.scalajs.js.annotation.internal.AnonymousJSClass")
     lazy val WasPublicBeforeTyperClass = getRequiredClass("scala.scalajs.js.annotation.internal.WasPublicBeforeTyper")
 
     lazy val JSAnyTpe    = JSAnyClass.toTypeConstructor

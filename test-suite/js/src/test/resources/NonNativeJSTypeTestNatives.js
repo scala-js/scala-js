@@ -2,47 +2,47 @@
   var $g = (typeof global !== "undefined" && global.Object === Object)
     ? global
     : this;
-  var ScalaJSDefinedTestNativeParentClass = function(x) {
+  var NonNativeJSTypeTestNativeParentClass = function(x) {
     $g.Object.call(this);
     this.x = x;
   };
-  ScalaJSDefinedTestNativeParentClass.prototype.foo = function(s) {
+  NonNativeJSTypeTestNativeParentClass.prototype.foo = function(s) {
     return s + this.x;
   };
-  ScalaJSDefinedTestNativeParentClass.prototype.methodWithDefault = function (x) {
+  NonNativeJSTypeTestNativeParentClass.prototype.methodWithDefault = function (x) {
     return x || 5;
   }
-  $g.Object.defineProperty(ScalaJSDefinedTestNativeParentClass.prototype, "bar", {
+  $g.Object.defineProperty(NonNativeJSTypeTestNativeParentClass.prototype, "bar", {
     "configurable": false,
     "enumerable": false,
     "get": function() {
       return this.x << 1; // x * 2 would not return an Int, technically
     }
   });
-  $g.ScalaJSDefinedTestNativeParentClass = ScalaJSDefinedTestNativeParentClass;
+  $g.NonNativeJSTypeTestNativeParentClass = NonNativeJSTypeTestNativeParentClass;
 
   /* Deferred members:
    * val x: Int
    * def bar(y: Int): Int
    */
-  var ScalaJSDefinedTestNativeParentClassWithDeferred = function() {
+  var NonNativeJSTypeTestNativeParentClassWithDeferred = function() {
     $g.Object.call(this);
   };
-  ScalaJSDefinedTestNativeParentClassWithDeferred.prototype.foo = function(y) {
+  NonNativeJSTypeTestNativeParentClassWithDeferred.prototype.foo = function(y) {
     return (this.bar((y + 4) | 0) + this.x) | 0;
   };
-  $g.ScalaJSDefinedTestNativeParentClassWithDeferred =
-    ScalaJSDefinedTestNativeParentClassWithDeferred;
+  $g.NonNativeJSTypeTestNativeParentClassWithDeferred =
+    NonNativeJSTypeTestNativeParentClassWithDeferred;
 
-  var ScalaJSDefinedTestNativeParentClassWithVarargs = function(x) {
+  var NonNativeJSTypeTestNativeParentClassWithVarargs = function(x) {
     $g.Object.call(this);
     this.x = x;
     this.args = [];
     for (var i = 1; i != arguments.length; ++i)
       this.args.push(arguments[i]);
   };
-  $g.ScalaJSDefinedTestNativeParentClassWithVarargs =
-    ScalaJSDefinedTestNativeParentClassWithVarargs;
+  $g.NonNativeJSTypeTestNativeParentClassWithVarargs =
+    NonNativeJSTypeTestNativeParentClassWithVarargs;
 
   var ConstructorDefaultParam = function(foo) {
     $g.Object.call(this);

@@ -292,7 +292,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     val MethodDef(static, pName, params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
-    if (!isTopLevel && !classDef.kind.isAnyScalaJSDefinedClass) {
+    if (!isTopLevel && !classDef.kind.isAnyNonNativeClass) {
       reportError(s"Exported method def can only appear in a class")
       return
     }
@@ -401,7 +401,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     val PropertyDef(static, pName, getterBody, setterArgAndBody) = propDef
     implicit val ctx = ErrorContext(propDef)
 
-    if (!classDef.kind.isAnyScalaJSDefinedClass) {
+    if (!classDef.kind.isAnyNonNativeClass) {
       reportError(s"Exported property def can only appear in a class")
       return
     }

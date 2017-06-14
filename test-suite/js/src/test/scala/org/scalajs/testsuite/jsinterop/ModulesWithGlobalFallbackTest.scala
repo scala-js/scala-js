@@ -85,7 +85,6 @@ class ModulesWithGlobalFallbackTest {
 }
 
 object ModulesWithGlobalFallbackTest {
-  @ScalaJSDefined
   private object QueryStringFallbackImpl extends js.Object {
     def stringify(obj: js.Dictionary[String], sep: String = "&",
         eq: String = "="): String = {
@@ -99,7 +98,6 @@ object ModulesWithGlobalFallbackTest {
     }
   }
 
-  @ScalaJSDefined
   private class StringDecoderFallbackImpl(charsetName: String = "utf8")
       extends js.Object {
     import java.nio.charset._
@@ -140,7 +138,6 @@ object ModulesWithGlobalFallbackTest {
       writeInternal(new Uint8Array(0), endOfInput = true)
   }
 
-  @ScalaJSDefined
   object BufferStaticFallbackImpl extends js.Object {
     def isBuffer(x: Any): Boolean = x.isInstanceOf[Uint8Array]
   }

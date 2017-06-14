@@ -463,9 +463,9 @@ object Trees {
 
   /** Selects a property inherited from the parent class of `cls` on `receiver`.
    *
-   *  `cls` must be a Scala.js-defined JS class.
+   *  `cls` must be a non-native JS class.
    *
-   *  Given the Scala.js-defined JS classes
+   *  Given the non-native JS classes
    *
    *  {{{
    *  class Bar extends js.Object
@@ -500,9 +500,9 @@ object Trees {
 
   /** Calls a method inherited from the parent class of `cls` on `receiver`.
    *
-   *  `cls` must be a Scala.js-defined JS class.
+   *  `cls` must be a non-native JS class.
    *
-   *  Given the Scala.js-defined JS classes
+   *  Given the non-native JS classes
    *
    *  {{{
    *  class Bar extends js.Object
@@ -540,10 +540,10 @@ object Trees {
     val tpe = AnyType
   }
 
-  /** Super constructor call in the constructor of a Scala.js-defined JS class.
+  /** Super constructor call in the constructor of a non-native JS class.
    *
    *  Exactly one such node must appear in the constructor of a
-   *  Scala.js-defined JS class, at the top-level (possibly as a direct child
+   *  non-native JS class, at the top-level (possibly as a direct child
    *  of a top-level `Block`). Any other use of this node is invalid.
    *
    *  Statements before this node, as well as the `args`, cannot contain any
@@ -587,7 +587,7 @@ object Trees {
    *  `cls` must represent a non-trait JS class (native or not).
    *
    *  This is used typically to instantiate a JS class, and most importantly
-   *  if it is a Scala.js-defined JS class. Given the class
+   *  if it is a non-native JS class. Given the class
    *
    *  {{{
    *  class Foo(x: Int) extends js.Object
@@ -605,8 +605,8 @@ object Trees {
    *  JSBinaryOp(instanceof, o, LoadJSConstructor(ClassType("Foo")))
    *  }}}
    *
-   *  If `Foo` is Scala.js-defined, the presence of this node makes it
-   *  instantiable, and therefore reachable.
+   *  If `Foo` is non-native, the presence of this node makes it instantiable,
+   *  and therefore reachable.
    */
   case class LoadJSConstructor(cls: ClassType)(
       implicit val pos: Position) extends Tree {

@@ -10,7 +10,7 @@ package scala.scalajs.js.annotation.internal
 
 import scala.annotation.meta._
 
-/** IMPLEMENTATION DETAIL: Marks concrete members of Scala.js-defined JS
+/** IMPLEMENTATION DETAIL: Marks concrete members of non-native JS
  *  traits, so that they can be identified by the back-end not to emit them.
  *
  *  Internally, such members are known as "optional", in reference to their

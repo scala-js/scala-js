@@ -138,7 +138,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def genConstructor(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
 
-    assert(tree.kind.isAnyScalaJSDefinedClass)
+    assert(tree.kind.isAnyNonNativeClass)
     assert(tree.superClass.isDefined || tree.name.name == Definitions.ObjectClass,
         s"Class ${tree.name.name} is missing a parent class")
 

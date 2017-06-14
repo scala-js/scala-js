@@ -24,7 +24,6 @@ class JSSAMTest extends DirectTest with TestHelpers {
       def foo(x: Int): Int
     }
 
-    @ScalaJSDefined
     trait Bar extends js.Object {
       def bar(x: Int): Int
     }
@@ -49,7 +48,6 @@ class JSSAMTest extends DirectTest with TestHelpers {
       def foo(x: Int): Int
     }
 
-    @ScalaJSDefined
     trait Bar extends js.Object {
       def bar(x: Int): Int
     }
@@ -60,10 +58,10 @@ class JSSAMTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:16: error: Using an anonymous function as a SAM for the JavaScript type Foo is not allowed. Use an anonymous class instead.
+      |newSource1.scala:15: error: Using an anonymous function as a SAM for the JavaScript type Foo is not allowed. Use an anonymous class instead.
       |      val foo: Foo = x => x + 1
       |                       ^
-      |newSource1.scala:17: error: Using an anonymous function as a SAM for the JavaScript type Bar is not allowed. Use an anonymous class instead.
+      |newSource1.scala:16: error: Using an anonymous function as a SAM for the JavaScript type Bar is not allowed. Use an anonymous class instead.
       |      val Bar: Bar = x => x + 1
       |                       ^
     """

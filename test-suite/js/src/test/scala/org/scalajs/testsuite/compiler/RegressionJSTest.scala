@@ -46,7 +46,6 @@ class RegressionJSTest {
   }
 
   @Test def should_transform_js_dynamic_x_receiver_issue_2804(): Unit = {
-    @ScalaJSDefined
     class Foo extends js.Object
 
     assertTrue(js.isUndefined(js.constructorOf[Foo].x))
