@@ -624,6 +624,15 @@ object Build {
             IO.write(outFile, testDefinitions)
             Seq(outFile)
           }.taskValue,
+
+          // Give more memory to Node.js, and deactivate source maps
+          jsEnv := {
+            new NodeJSEnv(
+                NodeJSEnv.Config()
+                  .withArgs(List("--max_old_space_size=3072"))
+                  .withSourceMap(false))
+          },
+
           jsDependencies += ProvidedJS / "js-test-definitions.js" % "test"
       ) ++ inConfig(Test) {
         // Redefine test to run Node.js and link HelloWorld

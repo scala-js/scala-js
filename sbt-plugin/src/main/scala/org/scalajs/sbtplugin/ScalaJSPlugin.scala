@@ -23,7 +23,8 @@ import org.scalajs.core.ir.ScalaJSVersions
 
 import org.scalajs.jsenv.{JSEnv, JSConsole}
 import org.scalajs.jsenv.rhino.RhinoJSEnv
-import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
+import org.scalajs.jsenv.nodejs.NodeJSEnv
+import org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv
 import org.scalajs.jsenv.phantomjs.PhantomJSEnv
 
 object ScalaJSPlugin extends AutoPlugin {
@@ -121,7 +122,11 @@ object ScalaJSPlugin extends AutoPlugin {
         args: Seq[String] = Seq.empty,
         env: Map[String, String] = Map.empty
     ): Def.Initialize[Task[NodeJSEnv]] = Def.task {
-      new NodeJSEnv(executable, args, env)
+      new NodeJSEnv(
+          org.scalajs.jsenv.nodejs.NodeJSEnv.Config()
+            .withExecutable(executable)
+            .withArgs(args.toList)
+            .withEnv(env))
     }
 
     /**
@@ -141,7 +146,7 @@ object ScalaJSPlugin extends AutoPlugin {
      *  [[sbt.ProjectExtra.inScope[* Project.inScope]].
      */
     @deprecated(
-        "Use `jsEnv := new org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv(...)` " +
+        "Use `jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(...)` " +
         "instead.",
         "0.6.16")
     def JSDOMNodeJSEnv(
@@ -149,7 +154,11 @@ object ScalaJSPlugin extends AutoPlugin {
         args: Seq[String] = Seq.empty,
         env: Map[String, String] = Map.empty
     ): Def.Initialize[Task[JSDOMNodeJSEnv]] = Def.task {
-      new JSDOMNodeJSEnv(executable, args, env)
+      new JSDOMNodeJSEnv(
+          org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv.Config()
+            .withExecutable(executable)
+            .withArgs(args.toList)
+            .withEnv(env))
     }
 
     /**
@@ -175,7 +184,13 @@ object ScalaJSPlugin extends AutoPlugin {
         autoExit: Boolean = true
     ): Def.Initialize[Task[PhantomJSEnv]] = Def.task {
       val loader = scalaJSPhantomJSClassLoader.value
-      new PhantomJSEnv(executable, args, env, autoExit, loader)
+      new PhantomJSEnv(
+          org.scalajs.jsenv.phantomjs.PhantomJSEnv.Config()
+            .withExecutable(executable)
+            .withArgs(args.toList)
+            .withEnv(env)
+            .withAutoExit(autoExit)
+            .withJettyClassLoader(loader))
     }
 
     // ModuleKind

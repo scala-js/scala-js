@@ -156,46 +156,46 @@
   <task id="test-suite-ecma-script6"><![CDATA[
     setJavaVersion $java
     sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv().withSourceMap(false)' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSOutputMode in noIrCheckTest := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in noIrCheckTest := new org.scalajs.jsenv.nodejs.NodeJSEnv().withSourceMap(false)' \
+        'set jsEnv in noIrCheckTest := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         ++$scala noIrCheckTest/test \
         noIrCheckTest/clean &&
     sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv().withSourceMap(false)' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv().withSourceMap(false)' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv().withSourceMap(false)' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv().withSourceMap(false)' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv().withSourceMap(false)' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv().withSourceMap(false)' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSModuleKind in $testSuite := ModuleKind.CommonJSModule' \
         ++$scala $testSuite/test &&
     sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv().withSourceMap(false)' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSModuleKind in $testSuite := ModuleKind.CommonJSModule' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test
@@ -203,10 +203,8 @@
 
   <task id="bootstrap"><![CDATA[
     setJavaVersion $java
-    sbt 'set jsEnv in toolsJS := new org.scalajs.jsenv.nodejs.NodeJSEnv(args = Seq("--max_old_space_size=3072")).withSourceMap(false)' \
-        ++$scala irJS/test toolsJS/test &&
-    sbt 'set jsEnv in toolsJS := new org.scalajs.jsenv.nodejs.NodeJSEnv(args = Seq("--max_old_space_size=3072")).withSourceMap(false)' \
-        'set scalaJSStage in Global := FullOptStage' \
+    sbt ++$scala irJS/test toolsJS/test &&
+    sbt 'set scalaJSStage in Global := FullOptStage' \
         ++$scala irJS/test toolsJS/test
   ]]></task>
 
