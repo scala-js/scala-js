@@ -236,15 +236,26 @@ object ScalaJSPluginInternal {
         Tags.limit((usesScalaJSLinkerTag in key).value, 1),
 
       key := Def.taskDyn {
-        val s = (streams in key).value
-        val log = s.log
+        /* It is very important that we evaluate all of those `.value`s from
+         * here, and not from within the `Def.task { ... }`, otherwise the
+         * relevant dependencies will not show up in `inspect tree`. We use a
+         * `Def.taskDyn` only to be able to tag the inner task with a tag that
+         * is setting-dependent. But otherwise, the task does not have actually
+         * dynamic dependencies, so `inspect tree` is happy with it.
+         */
+        val s = streams.value
         val irInfo = (scalaJSIR in key).value
-        val realFiles = irInfo.get(scalaJSSourceFiles).get
-        val ir = irInfo.data
         val moduleInitializers = scalaJSModuleInitializers.value
         val output = (artifactPath in key).value
+        val linker = (scalaJSLinker in key).value
+        val usesLinkerTag = (usesScalaJSLinkerTag in key).value
 
         Def.task {
+          val log = s.log
+          val realFiles = irInfo.get(scalaJSSourceFiles).get
+          val ir = irInfo.data
+          log.warn(s.cacheDirectory.toString)
+
           FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
               FilesInfo.exists) { _ => // We don't need the files
 
@@ -257,7 +268,6 @@ object ScalaJSPluginInternal {
 
             IO.createDirectory(output.getParentFile)
 
-            val linker = (scalaJSLinker in key).value
             linker.link(ir, moduleInitializers,
                 AtomicWritableFileVirtualJSFile(output),
                 sbtLogger2ToolsLogger(log))
@@ -269,7 +279,7 @@ object ScalaJSPluginInternal {
 
           val sourceMapFile = FileVirtualJSFile(output).sourceMapFile
           Attributed.blank(output).put(scalaJSSourceMap, sourceMapFile)
-        } tag((usesScalaJSLinkerTag in key).value)
+        }.tag(usesLinkerTag)
       }.value,
 
       key := key.dependsOn(packageJSDependencies, packageScalaJSLauncherInternal).value,
@@ -285,7 +295,7 @@ object ScalaJSPluginInternal {
   )
 
   private def dispatchTaskKeySettings[T](key: TaskKey[T]) = Seq(
-      key := Def.taskDyn {
+      key := Def.settingDyn {
         val stageKey = stageKeys(scalaJSStage.value)
         Def.task { (key in stageKey).value }
       }.value
@@ -684,7 +694,7 @@ object ScalaJSPluginInternal {
         }
       }.value,
 
-      scalaJSModuleIdentifier := Def.taskDyn[Option[String]] {
+      scalaJSModuleIdentifier := Def.settingDyn[Task[Option[String]]] {
         scalaJSModuleKind.value match {
           case ModuleKind.NoModule =>
             Def.task {
@@ -811,7 +821,7 @@ object ScalaJSPluginInternal {
       },
 
       mainClass in scalaJSLauncherInternal := (mainClass in run).value,
-      scalaJSLauncherInternal := Def.taskDyn[Attributed[VirtualJSFile]] {
+      scalaJSLauncherInternal := Def.settingDyn[Task[Attributed[VirtualJSFile]]] {
         if (persistLauncherInternal.value) {
           Def.task {
             packageScalaJSLauncherInternal.value.map(FileVirtualJSFile)
