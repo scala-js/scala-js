@@ -78,7 +78,7 @@ object Dynamic {
   /** Dynamic view of the global scope. */
   @js.native
   @JSGlobalScope
-  object global extends js.Any with scala.Dynamic { // scalastyle:ignore
+  object global extends js.Any with scala.Dynamic {
     /** Calls a top-level method (in the global scope). */
     @JSBracketCall
     def applyDynamic(name: String)(args: js.Any*): js.Dynamic = js.native
@@ -121,7 +121,7 @@ object Dynamic {
    *  {foo: 3, bar: "foobar"}
    *  }}}
    */
-  object literal extends scala.Dynamic { // scalastyle:ignore
+  object literal extends scala.Dynamic {
     /** Literal creation with named arguments.
      *
      *  Example:

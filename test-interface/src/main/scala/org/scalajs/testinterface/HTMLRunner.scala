@@ -432,10 +432,10 @@ protected[testinterface] object HTMLRunner {
   }
 
   // Mini dom facade.
-  private object dom { // scalastyle:ignore
+  private object dom {
     @JSGlobal("document")
     @js.native
-    object document extends js.Object { // scalastyle:ignore
+    object document extends js.Object {
       def body: Element = js.native
       def createElement(tag: String): Element = js.native
       def createTextNode(tag: String): Node = js.native

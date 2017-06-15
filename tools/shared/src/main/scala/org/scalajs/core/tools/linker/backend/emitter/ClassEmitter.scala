@@ -15,12 +15,11 @@ import Transformers._
 import org.scalajs.core.ir.Trees._
 import Types._
 
-import org.scalajs.core.tools.sem._
-import CheckedBehavior.Unchecked
-
 import org.scalajs.core.tools.javascript.{Trees => js}
 import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.backend.OutputMode
+
+import CheckedBehavior.Unchecked
 
 /** Emitter for the skeleton of classes. */
 private[emitter] final class ClassEmitter(jsGen: JSGen) {
@@ -1185,6 +1184,11 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     moduleInitializer match {
       case ModuleInitializer.VoidMainMethod(moduleClassName, mainMethodName) =>
         js.Apply(genLoadModule(moduleClassName) DOT mainMethodName, Nil)
+
+      case ModuleInitializer.MainMethodWithArgs(moduleClassName, mainMethodName,
+          args) =>
+        js.Apply(genLoadModule(moduleClassName) DOT mainMethodName,
+            genArrayValue(ArrayType("T", 1), args.map(js.StringLiteral(_))) :: Nil)
     }
   }
 

@@ -96,6 +96,6 @@ object MatchTest {
   }
 
   class ValueClass(val x: Int) extends AnyVal with ValueClassBase[Int] {
-    def f() = x * 2
+    def f(): Int = x * 2
   }
 }

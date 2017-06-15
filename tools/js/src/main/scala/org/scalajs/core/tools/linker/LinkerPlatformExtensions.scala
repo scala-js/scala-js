@@ -9,15 +9,20 @@
 
 package org.scalajs.core.tools.linker
 
-import org.scalajs.core.tools.sem.Semantics
-
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.frontend.optimizer.IncOptimizer
 import org.scalajs.core.tools.linker.backend._
 
 trait LinkerPlatformExtensions { this: Linker.type =>
+  @deprecated("Use StandardLinker.apply() instead.", "0.6.18")
   def apply(semantics: Semantics, outputMode: OutputMode,
       moduleKind: ModuleKind, config: Config): Linker = {
+    applyInternal(semantics, outputMode, moduleKind, config)
+  }
+
+  private[linker] def applyInternal(semantics: Semantics,
+      outputMode: OutputMode, moduleKind: ModuleKind,
+      config: Config): Linker = {
 
     val optOptimizerFactory = {
       if (!config.optimizer) None
@@ -33,7 +38,7 @@ trait LinkerPlatformExtensions { this: Linker.type =>
     new Linker(frontend, backend)
   }
 
-  @deprecated("Use the overload with a Config object.", "0.6.13")
+  @deprecated("Use StandardLinker.apply() instead.", "0.6.13")
   def apply(
       semantics: Semantics = Semantics.Defaults,
       outputMode: OutputMode = OutputMode.Default,

@@ -17,18 +17,19 @@ import sbtcrossproject._
 
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.linker.{ModuleInitializer, LinkingUnit}
-import org.scalajs.core.tools.linker.backend.{ModuleKind, OutputMode}
+import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 
 import org.scalajs.core.ir.ScalaJSVersions
 
 import org.scalajs.jsenv.{JSEnv, JSConsole}
-import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
+import org.scalajs.jsenv.nodejs.NodeJSEnv
+import org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv
 
 object ScalaJSPlugin extends AutoPlugin {
   override def requires: Plugins = plugins.JvmPlugin
 
-  object autoImport { // scalastyle:ignore
+  object autoImport {
     import KeyRanks._
 
     // Some constants
@@ -85,7 +86,11 @@ object ScalaJSPlugin extends AutoPlugin {
         args: Seq[String] = Seq.empty,
         env: Map[String, String] = Map.empty
     ): Def.Initialize[Task[NodeJSEnv]] = Def.task {
-      new NodeJSEnv(executable, args, env)
+      new NodeJSEnv(
+          org.scalajs.jsenv.nodejs.NodeJSEnv.Config()
+            .withExecutable(executable)
+            .withArgs(args.toList)
+            .withEnv(env))
     }
 
     /**
@@ -105,7 +110,7 @@ object ScalaJSPlugin extends AutoPlugin {
      *  [[sbt.ProjectExtra.inScope[* Project.inScope]].
      */
     @deprecated(
-        "Use `jsEnv := new org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv(...)` " +
+        "Use `jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(...)` " +
         "instead.",
         "0.6.16")
     def JSDOMNodeJSEnv(
@@ -113,7 +118,11 @@ object ScalaJSPlugin extends AutoPlugin {
         args: Seq[String] = Seq.empty,
         env: Map[String, String] = Map.empty
     ): Def.Initialize[Task[JSDOMNodeJSEnv]] = Def.task {
-      new JSDOMNodeJSEnv(executable, args, env)
+      new JSDOMNodeJSEnv(
+          org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv.Config()
+            .withExecutable(executable)
+            .withArgs(args.toList)
+            .withEnv(env))
     }
 
     // ModuleKind
@@ -146,6 +155,11 @@ object ScalaJSPlugin extends AutoPlugin {
         "The main module initializer, used if " +
         "`scalaJSUseMainModuleInitializer` is true",
         CTask)
+
+    val scalaJSLinkerConfig = SettingKey[StandardLinker.Config](
+        "scalaJSLinkerConfig",
+        "Configuration of the Scala.js linker",
+        BPlusSetting)
 
     val scalaJSStage = SettingKey[Stage]("scalaJSStage",
         "The optimization stage at which run and test are executed", APlusSetting)

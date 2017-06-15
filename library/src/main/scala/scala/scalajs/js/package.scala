@@ -119,7 +119,7 @@ package object js {
    *  The body of all concrete members in a native JS class, trait or object
    *  must be `= js.native`.
    */
-  class native extends scala.annotation.StaticAnnotation // scalastyle:ignore
+  class native extends scala.annotation.StaticAnnotation
 
   /** Denotes a method body as native JavaScript. For use in facade types:
    *

@@ -437,6 +437,23 @@ object Build {
         )
       }
     }
+
+    def enableScalastyleInSharedSources: Project = {
+      import AddSettings._
+      import org.scalastyle.sbt.ScalastylePlugin.scalastyleSources
+
+      project.settings(
+          scalastyleSources := (unmanagedSourceDirectories in Compile).value,
+          scalastyleSources in Test := (unmanagedSourceDirectories in Test).value,
+          SettingKey[String]("foobabar") := scalastyleSources.value.toString
+      ).settingSets(
+          /* We need to force our settings to be applied *after* settings
+           * coming from non-Auto plugins. Because guess what, that's not the
+           * default O_o!
+           */
+          seq(autoPlugins, nonAutoPlugins, buildScalaFiles, userSettings, defaultSbtFiles)
+      )
+    }
   }
 
   val thisBuildSettings = Def.settings(
@@ -520,7 +537,7 @@ object Build {
       commonIrProjectSettings,
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.9" % "test"
-  )
+  ).enableScalastyleInSharedSources
 
   lazy val irProjectJS: Project = Project(
       id = "irJS", base = file("ir/.js")
@@ -535,7 +552,7 @@ object Build {
         (scalaSource in Test in irProject).value
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime % "test"
-  )
+  ).enableScalastyleInSharedSources
 
   lazy val compiler: Project = project.settings(
       commonSettings,
@@ -613,7 +630,7 @@ object Build {
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
       )
-  ).dependsOn(irProject)
+  ).dependsOn(irProject).enableScalastyleInSharedSources
 
   lazy val toolsJS: Project = (project in file("tools/js")).enablePlugins(
       MyScalaJSPlugin
@@ -642,7 +659,12 @@ object Build {
       testSuiteJSExecutionFilesSetting,
 
       // Give more memory to Node.js, and deactivate source maps
-      jsEnv := new NodeJSEnv(args = Seq("--max_old_space_size=3072")).withSourceMap(false),
+      jsEnv := {
+        new NodeJSEnv(
+            NodeJSEnv.Config()
+              .withArgs(List("--max_old_space_size=3072"))
+              .withSourceMap(false))
+      },
 
       inConfig(Test) {
         // Redefine test to perform the bootstrap test
@@ -684,7 +706,9 @@ object Build {
             val unescapedMainMethods = List(
                 "org.scalajs.testsuite.compiler.ModuleInitializerInNoConfiguration.main",
                 "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.main2",
-                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.main1"
+                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.main1",
+                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.mainArgs1()",
+                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.mainArgs2(foo,bar)"
             )
             seqOfStringsToJSArrayCode(unescapedMainMethods)
           }
@@ -726,7 +750,7 @@ object Build {
       }
   ).withScalaJSCompiler.dependsOn(
       library, irProjectJS, jUnitRuntime % "test"
-  )
+  ).enableScalastyleInSharedSources
 
   lazy val jsEnvs: Project = (project in file("js-envs")).settings(
       commonSettings,
@@ -1165,7 +1189,7 @@ object Build {
       name := "Tests for Scala.js JUnit output in JS."
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       jUnitRuntime % "test", testInterface % "test"
-  )
+  ).enableScalastyleInSharedSources
 
 
   lazy val jUnitTestOutputsJVM = (project in file("junit-test/output-jvm")).settings(
@@ -1175,7 +1199,7 @@ object Build {
           "org.scala-sbt" % "test-interface" % "1.0" % "test",
           "com.novocode" % "junit-interface" % "0.11" % "test"
       )
-  )
+  ).enableScalastyleInSharedSources
 
   lazy val jUnitPlugin = (project in file("junit-plugin")).settings(
       commonSettings,
@@ -1521,11 +1545,21 @@ object Build {
             "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
             "main1")
       },
+      scalaJSModuleInitializers in Test += {
+        ModuleInitializer.mainMethodWithArgs(
+            "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
+            "mainArgs1")
+      },
+      scalaJSModuleInitializers in Test += {
+        ModuleInitializer.mainMethodWithArgs(
+            "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
+            "mainArgs2", List("foo", "bar"))
+      },
 
       testSuiteTestHtmlSetting
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime
-  )
+  ).enableScalastyleInSharedSources
 
   lazy val testSuiteJVM: Project = (project in file("test-suite/jvm")).settings(
       commonSettings,
@@ -1534,7 +1568,7 @@ object Build {
 
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.11" % "test"
-  )
+  ).enableScalastyleInSharedSources
 
   /* Additional test suite, for tests that should not be part of the normal
    * test suite for various reasons. The most common reason is that the tests

@@ -54,7 +54,7 @@ object ConsoleTestRunner {
 
     def failedEvents: List[Event] = _failedEvents.toList
 
-    def handle(ev: Event) = {
+    def handle(ev: Event): Unit = {
       if (ev.status == Status.Error || ev.status == Status.Failure)
         _failedEvents += ev
     }

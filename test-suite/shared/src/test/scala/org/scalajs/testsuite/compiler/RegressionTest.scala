@@ -385,6 +385,8 @@ class RegressionTest {
   }
 
   @Test def return_x_match_issue_2928(): Unit = {
+    // scalastyle:off return
+
     def testNonUnit(x: String): Boolean = {
       return x match {
         case "True" => true
@@ -409,6 +411,8 @@ class RegressionTest {
     r = None
     testUnit("not true")
     assertEquals(Some(false), r)
+
+    // scalastyle:on return
   }
 
   @Test def null_asInstanceOf_Unit_should_succeed_issue_1691(): Unit = {
@@ -584,6 +588,21 @@ class RegressionTest {
     assertFalse("String", c.isInstanceOf[String])
   }
 
+  @Test def super_mixin_call_in_2_12_issue_3013(): Unit = {
+    assumeTrue(
+        "Super mixin calls are broken in Scala/JVM 2.12.{0-2} and 2.13.0-M1",
+        !Platform.executingInJVM ||
+        !Set("2.12.0", "2.12.1", "2.12.2", "2.13.0-M1").contains(Platform.scalaVersion))
+
+    import Bug3013._
+
+    val b = new B
+    val c = new b.C
+    assertEquals("A1", c.t1)
+    assertEquals("A2", c.t2)
+    assertEquals("B", c.t3)
+  }
+
 }
 
 object RegressionTest {
@@ -610,6 +629,28 @@ object RegressionTest {
       }
 
       if (false) ()
+    }
+  }
+
+  object Bug3013 {
+    trait A1 {
+      private val s = "A1"
+      def f: String = s
+    }
+
+    trait A2 {
+      private val s = "A2"
+      def f: String = s
+    }
+
+    class B extends A1 with A2 {
+      override def f: String = "B"
+
+      class C {
+        def t1: String = B.super[A1].f
+        def t2: String = B.super[A2].f
+        def t3: String = B.this.f
+      }
     }
   }
 }

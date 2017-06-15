@@ -33,7 +33,7 @@ class JSUndefinedParamTest extends DirectTest with TestHelpers {
 
     /** Dummy object to get the right shadowing for cross compilation */
     private object Compat210 {
-      object blackbox { // scalastyle:ignore
+      object blackbox {
         type Context = scala.reflect.macros.Context
       }
     }

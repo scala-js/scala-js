@@ -14,7 +14,7 @@ class `1_TestName` { // scalastyle:ignore
   @Test def `a test with name 1_TestName`(): Unit = ()
 }
 
-class eval { // scalastyle:ignore
+class eval {
   @Test def `a test with name eval`(): Unit = ()
 }
 

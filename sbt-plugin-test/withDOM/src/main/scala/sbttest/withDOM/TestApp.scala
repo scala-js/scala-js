@@ -1,10 +1,8 @@
 package sbttest.withDOM
 
-import scala.scalajs.js
+object TestApp {
 
-object TestApp extends js.JSApp {
-
-  def main(): Unit = {
+  def main(args: Array[String]): Unit = {
     Lib.appendDocument("Hello World")
     Lib.appendDocument("Still Here!")
 

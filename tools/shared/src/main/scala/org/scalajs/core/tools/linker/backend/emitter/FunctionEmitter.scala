@@ -1990,9 +1990,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             case Double_/ => js.BinaryOp(JSBinaryOp./, newLhs, newRhs)
             case Double_% => js.BinaryOp(JSBinaryOp.%, newLhs, newRhs)
 
-            case Num_<  => js.BinaryOp(JSBinaryOp.< , newLhs, newRhs)
+            case Num_<  => js.BinaryOp(JSBinaryOp.<, newLhs, newRhs)
             case Num_<= => js.BinaryOp(JSBinaryOp.<=, newLhs, newRhs)
-            case Num_>  => js.BinaryOp(JSBinaryOp.> , newLhs, newRhs)
+            case Num_>  => js.BinaryOp(JSBinaryOp.>, newLhs, newRhs)
             case Num_>= => js.BinaryOp(JSBinaryOp.>=, newLhs, newRhs)
 
             case Long_+ => genLongMethodApply(newLhs, LongImpl.+, newRhs)
@@ -2005,23 +2005,23 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             case Long_/ => genLongMethodApply(newLhs, LongImpl./, newRhs)
             case Long_% => genLongMethodApply(newLhs, LongImpl.%, newRhs)
 
-            case Long_|   => genLongMethodApply(newLhs, LongImpl.|,   newRhs)
-            case Long_&   => genLongMethodApply(newLhs, LongImpl.&,   newRhs)
+            case Long_|   => genLongMethodApply(newLhs, LongImpl.|, newRhs)
+            case Long_&   => genLongMethodApply(newLhs, LongImpl.&, newRhs)
             case Long_^   =>
               lhs match {
                 case LongLiteral(-1L) => genLongMethodApply(newRhs, LongImpl.UNARY_~)
                 case _                => genLongMethodApply(newLhs, LongImpl.^, newRhs)
               }
-            case Long_<<  => genLongMethodApply(newLhs, LongImpl.<<,  newRhs)
+            case Long_<<  => genLongMethodApply(newLhs, LongImpl.<<, newRhs)
             case Long_>>> => genLongMethodApply(newLhs, LongImpl.>>>, newRhs)
-            case Long_>>  => genLongMethodApply(newLhs, LongImpl.>>,  newRhs)
+            case Long_>>  => genLongMethodApply(newLhs, LongImpl.>>, newRhs)
 
             case Long_== => genLongMethodApply(newLhs, LongImpl.===, newRhs)
             case Long_!= => genLongMethodApply(newLhs, LongImpl.!==, newRhs)
-            case Long_<  => genLongMethodApply(newLhs, LongImpl.<,   newRhs)
-            case Long_<= => genLongMethodApply(newLhs, LongImpl.<=,  newRhs)
-            case Long_>  => genLongMethodApply(newLhs, LongImpl.>,   newRhs)
-            case Long_>= => genLongMethodApply(newLhs, LongImpl.>=,  newRhs)
+            case Long_<  => genLongMethodApply(newLhs, LongImpl.<, newRhs)
+            case Long_<= => genLongMethodApply(newLhs, LongImpl.<=, newRhs)
+            case Long_>  => genLongMethodApply(newLhs, LongImpl.>, newRhs)
+            case Long_>= => genLongMethodApply(newLhs, LongImpl.>=, newRhs)
 
             case Boolean_| => !(!js.BinaryOp(JSBinaryOp.|, newLhs, newRhs))
             case Boolean_& => !(!js.BinaryOp(JSBinaryOp.&, newLhs, newRhs))
@@ -2032,8 +2032,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               genClassDataOf(tpe), js.ArrayConstr(lengths map transformExpr))
 
         case ArrayValue(tpe, elems) =>
-          genCallHelper("makeNativeArrayWrapper",
-              genClassDataOf(tpe), js.ArrayConstr(elems map transformExpr))
+          genArrayValue(tpe, elems.map(transformExpr))
 
         case ArrayLength(array) =>
           genIdentBracketSelect(js.DotSelect(transformExpr(array),
@@ -2321,17 +2320,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     private def transformGlobalVarIdent(ident: Ident): js.Ident = {
       referenceGlobalName(ident.name)
       js.Ident(ident.name, ident.originalName)(ident.pos)
-    }
-
-    def genClassDataOf(cls: ReferenceType)(implicit pos: Position): js.Tree = {
-      cls match {
-        case ClassType(className) =>
-          envField("d", className)
-        case ArrayType(base, dims) =>
-          (1 to dims).foldLeft[js.Tree](envField("d", base)) { (prev, _) =>
-            js.Apply(js.DotSelect(prev, js.Ident("getArrayOf")), Nil)
-          }
-      }
     }
 
     /* In FunctionEmitter, we must always keep all global var names, not only

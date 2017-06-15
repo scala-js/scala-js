@@ -18,13 +18,17 @@ object JSONDeserializer {
     def deserialize(x: JSON): Boolean = Impl.toBoolean(x)
   }
 
-  implicit def listJSON[T : JSONDeserializer] = new JSONDeserializer[List[T]] {
-    def deserialize(x: JSON): List[T] = Impl.toList(x).map(fromJSON[T] _)
+  implicit def listJSON[T: JSONDeserializer]: JSONDeserializer[List[T]] = {
+    new JSONDeserializer[List[T]] {
+      def deserialize(x: JSON): List[T] = Impl.toList(x).map(fromJSON[T] _)
+    }
   }
 
-  implicit def mapJSON[V : JSONDeserializer] = new JSONDeserializer[Map[String, V]] {
-    def deserialize(x: JSON): Map[String, V] =
-      Impl.toMap(x).mapValues(fromJSON[V] _)
+  implicit def mapJSON[V: JSONDeserializer]: JSONDeserializer[Map[String, V]] = {
+    new JSONDeserializer[Map[String, V]] {
+      def deserialize(x: JSON): Map[String, V] =
+        Impl.toMap(x).mapValues(fromJSON[V] _)
+    }
   }
 
 }

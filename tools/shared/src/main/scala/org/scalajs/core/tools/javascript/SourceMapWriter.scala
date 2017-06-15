@@ -171,6 +171,8 @@ class SourceMapWriter(
 
   private def startSegment(startColumn: Int, originalPos: Position,
       originalName: String): Unit = {
+    // scalastyle:off return
+
     // There is no point in outputting a segment with the same information
     if ((originalPos == pendingPos) && (originalName == pendingName))
       return
@@ -183,9 +185,13 @@ class SourceMapWriter(
     pendingColumnInGenerated = startColumn
     pendingPos = originalPos
     pendingName = originalName
+
+    // scalastyle:on return
   }
 
-  private def writePendingSegment() {
+  private def writePendingSegment(): Unit = {
+    // scalastyle:off return
+
     if (pendingColumnInGenerated < 0)
       return
 
@@ -231,6 +237,8 @@ class SourceMapWriter(
       writeBase64VLQ(nameIndex-lastNameIndex)
       lastNameIndex = nameIndex
     }
+
+    // scalastyle:on return
   }
 
   def complete(): Unit = {
@@ -263,6 +271,8 @@ class SourceMapWriter(
    *  http://code.google.com/p/closure-compiler/source/browse/src/com/google/debugging/sourcemap/Base64VLQ.java
    */
   private def writeBase64VLQ(value0: Int): Unit = {
+    // scalastyle:off return
+
     /* The sign is encoded in the least significant bit, while the
      * absolute value is shifted one bit to the left.
      * So in theory the "definition" of `value` is:
@@ -303,6 +313,8 @@ class SourceMapWriter(
       }
       writeBase64VLQSlowPath(value)
     }
+
+    // scalastyle:on return
   }
 
   private def writeBase64VLQ0(): Unit =

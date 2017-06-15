@@ -24,7 +24,7 @@ trait JSGlobalAddons extends JSDefinitions
   import definitions._
 
   /** JavaScript primitives, used in jscode */
-  object jsPrimitives extends JSPrimitives { // scalastyle:ignore
+  object jsPrimitives extends JSPrimitives {
     val global: JSGlobalAddons.this.global.type = JSGlobalAddons.this.global
     val jsAddons: ThisJSGlobalAddons =
       JSGlobalAddons.this.asInstanceOf[ThisJSGlobalAddons]
@@ -46,7 +46,7 @@ trait JSGlobalAddons extends JSDefinitions
   }
 
   /** global javascript interop related helpers */
-  object jsInterop { // scalastyle:ignore
+  object jsInterop {
     import scala.reflect.NameTransformer
     import scala.reflect.internal.Flags
 

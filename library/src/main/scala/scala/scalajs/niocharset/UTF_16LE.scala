@@ -11,7 +11,7 @@ package scala.scalajs.niocharset
 
 import java.nio.charset._
 
-private[niocharset] object UTF_16LE extends UTF_16_Common( // scalastyle:ignore
+private[niocharset] object UTF_16LE extends UTF_16_Common(
     "UTF-16LE", Array(
     "UnicodeLittleUnmarked", "UTF_16LE", "X-UTF-16LE"),
     endianness = UTF_16_Common.LittleEndian)

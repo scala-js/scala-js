@@ -599,7 +599,7 @@ trait MapTest {
     assertTrue(mp.containsKey("TWO"))
     assertFalse(mp.containsKey("THREE"))
   }
-  
+
 }
 
 object MapFactory {

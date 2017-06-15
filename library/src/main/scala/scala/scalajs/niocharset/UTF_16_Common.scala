@@ -16,7 +16,7 @@ import java.nio.charset._
 
 /** This is a very specific common implementation for UTF_16BE and UTF_16LE.
  */
-private[niocharset] abstract class UTF_16_Common protected ( // scalastyle:ignore
+private[niocharset] abstract class UTF_16_Common protected (
     name: String, aliases: Array[String],
     private val endianness: Int) extends Charset(name, aliases) {
 
@@ -198,7 +198,7 @@ private[niocharset] abstract class UTF_16_Common protected ( // scalastyle:ignor
   }
 }
 
-private[niocharset] object UTF_16_Common { // scalastyle:ignore
+private[niocharset] object UTF_16_Common {
   final val AutoEndian = 0
   final val BigEndian = 1
   final val LittleEndian = 2

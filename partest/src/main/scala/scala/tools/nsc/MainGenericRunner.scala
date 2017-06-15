@@ -2,11 +2,9 @@ package scala.tools.nsc
 
 /* Super hacky overriding of the MainGenericRunner used by partest */
 
-import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.linker.{Linker, ModuleInitializer}
-import org.scalajs.core.tools.linker.backend.{OutputMode, ModuleKind}
+import org.scalajs.core.tools.linker._
 
 import org.scalajs.core.ir
 
@@ -67,21 +65,21 @@ class MainGenericRunner {
 
     val logger = new ScalaConsoleLogger(Level.Warn)
     val jsConsole = new ScalaConsoleJSConsole
-    val semantics = readSemantics()
-    val ir = (
-        loadIR(command.settings.classpathURLs) :+
-        runnerIR(command.thingToRun, command.arguments)
-    )
+    val semantics0 = readSemantics()
+    val semantics = if (optMode == FullOpt) semantics0.optimized else semantics0
+    val ir = loadIR(command.settings.classpathURLs)
 
-    val moduleInitializers =
-      Seq(ModuleInitializer.mainMethod("PartestLauncher", "main"))
+    val moduleInitializers = Seq(ModuleInitializer.mainMethodWithArgs(
+        command.thingToRun, "main", command.arguments))
 
-    val linkerConfig = Linker.Config()
+    val linkerConfig = StandardLinker.Config()
+      .withSemantics(semantics)
       .withSourceMap(false)
+      .withOptimizer(optMode != NoOpt)
       .withClosureCompiler(optMode == FullOpt)
+      .withBatchMode(true)
 
-    val linker = Linker(semantics, OutputMode.ECMAScript51Isolated,
-        ModuleKind.NoModule, linkerConfig)
+    val linker = StandardLinker(linkerConfig)
 
     val sjsCode = {
       val output = WritableMemVirtualJSFile("partest.js")
@@ -99,67 +97,6 @@ class MainGenericRunner {
       FileScalaJSIRContainer.fromClasspath(classpathURLs.map(urlToFile))
     val cache = (new IRFileCache).newCache
     cache.cached(irContainers)
-  }
-
-  private def runnerIR(mainObj: String, args: List[String]) = {
-    import ir.Infos._
-    import ir.ClassKind
-    import ir.Trees._
-    import ir.Types._
-
-    val mainModuleClassName = ir.Definitions.encodeClassName(mainObj + "$")
-    val className = "PartestLauncher$"
-    val encodedClassName = ir.Definitions.encodeClassName(className)
-
-    val definition = {
-      implicit val DummyPos = ir.Position.NoPosition
-      ClassDef(
-        Ident(encodedClassName, Some(className)),
-        ClassKind.ModuleClass,
-        Some(Ident("O", Some("java.lang.Object"))),
-        Nil,
-        None,
-        List(
-          MethodDef(
-            static = false,
-            Ident("init___", Some("<init>")),
-            Nil,
-            NoType,
-            Some(
-              ApplyStatically(This()(ClassType(encodedClassName)),
-                ClassType(ir.Definitions.ObjectClass),
-                Ident("init___"),
-                Nil
-              )(NoType)
-            )
-          )(OptimizerHints.empty, None),
-          MethodDef(
-            static = false,
-            Ident("main__V", Some("main")),
-            Nil,
-            NoType,
-            Some(
-              Apply(LoadModule(ClassType(mainModuleClassName)),
-                Ident("main__AT__V"),
-                List(
-                  ArrayValue(ArrayType("T", 1), args.map(StringLiteral(_)))
-                )
-              )(NoType)
-            )
-          )(OptimizerHints.empty, None)
-        )
-      )(OptimizerHints.empty)
-    }
-
-    val info = generateClassInfo(definition)
-
-    val infoAndDefinition = (info, definition)
-
-    new VirtualScalaJSIRFile {
-      def exists: Boolean = true
-      def path: String = "PartestLauncher$.sjsir"
-      def infoAndTree: (ClassInfo, ClassDef) = infoAndDefinition
-    }
   }
 
   private def urlToFile(url: java.net.URL) = {

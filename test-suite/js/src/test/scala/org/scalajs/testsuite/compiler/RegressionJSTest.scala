@@ -14,6 +14,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 class RegressionJSTest {
+  import RegressionJSTest._
 
   @Test def should_not_swallow_Unit_expressions_when_converting_to_js_Any_issue_83(): Unit = {
     var effectHappened = false
@@ -50,6 +51,49 @@ class RegressionJSTest {
 
     assertTrue(js.isUndefined(js.constructorOf[Foo].x))
     assertTrue(js.isUndefined(js.constructorOf[Foo].y))
+  }
+
+  @Test def super_mixin_call_in_2_12_issue_3013_ScalaOuter_JSInner(): Unit = {
+    import Bug3013_ScalaOuter_JSInner._
+
+    val b = new B
+    val c = new b.C
+    assertEquals("A1", c.t1())
+    assertEquals("A2", c.t2())
+    assertEquals("B", c.t3())
+  }
+
+}
+
+object RegressionJSTest {
+
+  /* The combination Scala/Scala is done in the cross-platform RegressionTest.
+   *
+   * The combinations where the outer class is a JS type cannot happen by
+   * construction, because they would require a non-native JS trait with a
+   * concrete method, which is prohibited.
+   */
+  object Bug3013_ScalaOuter_JSInner {
+    trait A1 {
+      private val s = "A1"
+      def f(): String = s
+    }
+
+    trait A2 {
+      private val s = "A2"
+      def f(): String = s
+    }
+
+    class B extends A1 with A2 {
+      override def f(): String = "B"
+
+      @ScalaJSDefined
+      class C extends js.Object {
+        def t1(): String = B.super[A1].f()
+        def t2(): String = B.super[A2].f()
+        def t3(): String = B.this.f()
+      }
+    }
   }
 
 }

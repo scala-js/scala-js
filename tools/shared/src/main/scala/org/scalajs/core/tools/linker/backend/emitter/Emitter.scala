@@ -18,7 +18,6 @@ import org.scalajs.core.ir.Trees.JSNativeLoadSpec
 import org.scalajs.core.ir.Definitions.decodeClassName
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.logging._
 
 import org.scalajs.core.tools.javascript.{Trees => js, _}

@@ -1,6 +1,6 @@
 package org.scalajs.jsenv.test
 
-import org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv
+import org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv
 
 import org.junit.Test
 import org.junit.Assert._

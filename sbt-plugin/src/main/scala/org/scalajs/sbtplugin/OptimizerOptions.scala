@@ -87,7 +87,7 @@ object OptimizerOptions {
    * which uses Scala 2.12. We should get rid of that workaround at that point
    * for tidiness, though.
    */
-  private val DefaultParallel: Boolean = {
+  private[sbtplugin] val DefaultParallel: Boolean = {
     try {
       scala.util.Properties.isJavaAtLeast("1.8")
       true

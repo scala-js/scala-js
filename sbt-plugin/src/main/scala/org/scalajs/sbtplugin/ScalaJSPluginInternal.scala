@@ -14,11 +14,9 @@ import sbtcrossproject.CrossPlugin.autoImport._
 
 import Loggers._
 
-import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io.{IO => _, _}
-import org.scalajs.core.tools.linker.{ClearableLinker, ModuleInitializer, Linker}
-import org.scalajs.core.tools.linker.frontend.LinkerFrontend
-import org.scalajs.core.tools.linker.backend.{LinkerBackend, ModuleKind, OutputMode}
+import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
@@ -79,6 +77,15 @@ object ScalaJSPluginInternal {
       "All .sjsir files on the fullClasspath, used by scalajsp",
       KeyRanks.Invisible)
 
+  /** Internal task to map discovered main classes to whether they are in the
+   *  "new" style (true, standard main method) or the "old" style (false,
+   *  `js.JSApp` or `main(): Unit` method).
+   */
+  val scalaJSDiscoveredMainClasses = TaskKey[Map[String, Boolean]](
+      "scalaJSDiscoveredMainClasses",
+      "Discovered main classes and whether they use the \"new\" style",
+      KeyRanks.Invisible)
+
   val scalaJSModuleIdentifier = TaskKey[Option[String]](
       "scalaJSModuleIdentifier",
       "An identifier for the module which contains the exports of Scala.js",
@@ -135,7 +142,8 @@ object ScalaJSPluginInternal {
   /** Settings for the production key (e.g. fastOptJS) of a given stage */
   private def scalaJSStageSettings(stage: Stage,
       key: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
-      scalaJSLinker in key := {
+
+      scalaJSLinkerConfig in key := {
         val opts = (scalaJSOptimizerOptions in key).value
 
         val semantics = (scalaJSSemantics in key).value
@@ -143,34 +151,50 @@ object ScalaJSPluginInternal {
         val moduleKind = scalaJSModuleKind.value // intentionally not 'in key'
         val withSourceMap = (emitSourceMaps in key).value
 
-        val relSourceMapBase = {
+        /* For `relativizeSourceMapBase`, preserve the one in the new config
+         * if it is set, otherwise fall back on the old config.
+         */
+        val oldConfigRelSourceMapBase = {
           if ((relativeSourceMaps in key).value)
             Some((artifactPath in key).value.getParentFile.toURI())
           else
             None
         }
+        val newConfigRelSourceMapBase =
+          (scalaJSLinkerConfig in key).value.relativizeSourceMapBase
+        val relSourceMapBase =
+          newConfigRelSourceMapBase.orElse(oldConfigRelSourceMapBase)
 
-        val frontendConfig = LinkerFrontend.Config()
+        StandardLinker.Config()
+          .withSemantics(semantics)
+          .withModuleKind(moduleKind)
+          .withOutputMode(outputMode)
           .withCheckIR(opts.checkScalaJSIR)
-
-        val backendConfig = LinkerBackend.Config()
-          .withRelativizeSourceMapBase(relSourceMapBase)
-          .withCustomOutputWrapperInternal(scalaJSOutputWrapperInternal.value)
-          .withPrettyPrint(opts.prettyPrintFullOptJS)
-
-        val config = Linker.Config()
-          .withSourceMap(withSourceMap)
           .withOptimizer(!opts.disableOptimizer)
           .withParallel(opts.parallel)
+          .withSourceMap(withSourceMap)
+          .withRelativizeSourceMapBase(relSourceMapBase)
           .withClosureCompiler(opts.useClosureCompiler)
-          .withFrontendConfig(frontendConfig)
-          .withBackendConfig(backendConfig)
+          .withCustomOutputWrapperInternal(scalaJSOutputWrapperInternal.value)
+          .withPrettyPrint(opts.prettyPrintFullOptJS)
+          .withBatchMode(opts.batchMode)
+      },
 
-        val newLinker = { () =>
-          Linker(semantics, outputMode, moduleKind, config)
+      scalaJSLinker in key := {
+        val config = (scalaJSLinkerConfig in key).value
+
+        if (config.moduleKind != scalaJSModuleKind.value) {
+          val projectID = thisProject.value.id
+          val configName = configuration.value.name
+          val keyName = key.key.label
+          sLog.value.warn(
+              s"The module kind in `scalaJSLinkerConfig in ($projectID, " +
+              s"$configName, $keyName)` is different than the value of " +
+              s"`scalaJSModuleKind in ($projectID, $configName)`. " +
+              "Some things will go wrong.")
         }
 
-        new ClearableLinker(newLinker, opts.batchMode)
+        new ClearableLinker(() => StandardLinker(config), config.batchMode)
       },
 
       usesScalaJSLinkerTag in key := {
@@ -190,15 +214,25 @@ object ScalaJSPluginInternal {
         Tags.limit((usesScalaJSLinkerTag in key).value, 1),
 
       key := Def.taskDyn {
-        val s = (streams in key).value
-        val log = s.log
+        /* It is very important that we evaluate all of those `.value`s from
+         * here, and not from within the `Def.task { ... }`, otherwise the
+         * relevant dependencies will not show up in `inspect tree`. We use a
+         * `Def.taskDyn` only to be able to tag the inner task with a tag that
+         * is setting-dependent. But otherwise, the task does not have actually
+         * dynamic dependencies, so `inspect tree` is happy with it.
+         */
+        val s = streams.value
         val irInfo = (scalaJSIR in key).value
-        val realFiles = irInfo.get(scalaJSSourceFiles).get
-        val ir = irInfo.data
         val moduleInitializers = scalaJSModuleInitializers.value
         val output = (artifactPath in key).value
+        val linker = (scalaJSLinker in key).value
+        val usesLinkerTag = (usesScalaJSLinkerTag in key).value
 
         Def.task {
+          val log = s.log
+          val realFiles = irInfo.get(scalaJSSourceFiles).get
+          val ir = irInfo.data
+
           FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
               FilesInfo.exists) { _ => // We don't need the files
 
@@ -211,7 +245,6 @@ object ScalaJSPluginInternal {
 
             IO.createDirectory(output.getParentFile)
 
-            val linker = (scalaJSLinker in key).value
             linker.link(ir, moduleInitializers,
                 AtomicWritableFileVirtualJSFile(output),
                 sbtLogger2ToolsLogger(log))
@@ -223,7 +256,7 @@ object ScalaJSPluginInternal {
 
           val sourceMapFile = FileVirtualJSFile(output).sourceMapFile
           Attributed.blank(output).put(scalaJSSourceMap, sourceMapFile)
-        } tag((usesScalaJSLinkerTag in key).value)
+        }.tag(usesLinkerTag)
       }.value,
 
       scalaJSLinkedFile in key := new FileVirtualJSFile(key.value.data)
@@ -237,7 +270,7 @@ object ScalaJSPluginInternal {
   )
 
   private def dispatchTaskKeySettings[T](key: TaskKey[T]) = Seq(
-      key := Def.taskDyn {
+      key := Def.settingDyn {
         val stageKey = stageKeys(scalaJSStage.value)
         Def.task { (key in stageKey).value }
       }.value
@@ -419,7 +452,7 @@ object ScalaJSPluginInternal {
       // Crucially, add the Scala.js linked file to the JS files
       jsExecutionFiles += scalaJSLinkedFile.value,
 
-      scalaJSModuleIdentifier := Def.taskDyn[Option[String]] {
+      scalaJSModuleIdentifier := Def.settingDyn[Task[Option[String]]] {
         scalaJSModuleKind.value match {
           case ModuleKind.NoModule =>
             Def.task {
@@ -450,7 +483,15 @@ object ScalaJSPluginInternal {
     }
   }
 
+  @deprecated("js.JSApps are going away, and this method with them.", "0.6.18")
   def discoverJSApps(analysis: inc.Analysis): Seq[String] = {
+    discoverScalaJSMainClasses(analysis).collect {
+      case (name, false) => name
+    }.toList
+  }
+
+  private def discoverScalaJSMainClasses(
+      analysis: inc.Analysis): Map[String, Boolean] = {
     import xsbt.api.{Discovered, Discovery}
 
     val jsApp = "scala.scalajs.js.JSApp"
@@ -458,10 +499,13 @@ object ScalaJSPluginInternal {
     def isJSApp(discovered: Discovered) =
       discovered.isModule && discovered.baseClasses.contains(jsApp)
 
-    Discovery(Set(jsApp), Set.empty)(Tests.allDefs(analysis)) collect {
+    Map(Discovery(Set(jsApp), Set.empty)(Tests.allDefs(analysis)).collect {
+      // Old-style first, so that in case of ambiguity, we keep backward compat
       case (definition, discovered) if isJSApp(discovered) =>
-        definition.name
-    }
+        definition.name -> false
+      case (definition, discovered) if discovered.hasMain =>
+        definition.name -> true
+    }: _*)
   }
 
   private val runMainParser = {
@@ -473,8 +517,24 @@ object ScalaJSPluginInternal {
 
   // These settings will be filtered by the stage dummy tasks
   val scalaJSRunSettings = Seq(
+      scalaJSDiscoveredMainClasses := {
+        discoverScalaJSMainClasses(compile.value)
+      },
+
+      discoveredMainClasses := {
+        scalaJSDiscoveredMainClasses.map(_.keys.toList.sorted: Seq[String])
+          .storeAs(discoveredMainClasses).triggeredBy(compile).value
+      },
+
       scalaJSMainModuleInitializer := {
-        mainClass.value.map(ModuleInitializer.mainMethod(_, "main"))
+        val allDiscoveredMainClasses = scalaJSDiscoveredMainClasses.value
+        mainClass.value.map { mainCl =>
+          val newStyleMain = allDiscoveredMainClasses.getOrElse(mainCl, false)
+          if (newStyleMain)
+            ModuleInitializer.mainMethodWithArgs(mainCl, "main")
+          else
+            ModuleInitializer.mainMethod(mainCl, "main")
+        }
       },
 
       scalaJSModuleInitializers ++= {
@@ -492,9 +552,6 @@ object ScalaJSPluginInternal {
           Seq.empty
         }
       },
-
-      discoveredMainClasses := compile.map(discoverJSApps).
-        storeAs(discoveredMainClasses).triggeredBy(compile).value,
 
       run := {
         // use assert to prevent warning about pure expr in stat pos
@@ -634,17 +691,59 @@ object ScalaJSPluginInternal {
   val scalaJSProjectBaseSettings = Seq(
       crossPlatform := JSPlatform,
 
+      /* We first define scalaJSLinkerConfig in the project scope, with all
+       * the defaults. Later, we derive all the old config options in the
+       * project scope from scalaJSLinkerConfig.
+       *
+       * At the end of the day, in the fully qualified scope
+       * (project, config, linkKey), we re-derive scalaJSLinkerConfig from all
+       * the old config keys.
+       *
+       * This effectively gives meaning to scalaJSLinkerConfig in the project
+       * scope and in the fully qualified scope, but not in-between. Changes
+       * to `scalaJSLinkerConfig in (project, config)` will not have any
+       * effect.
+       *
+       * This is a compromise to ensure backward compatibility of using the old
+       * options in all cases, and a reasonable way to use the new options
+       * for typical use cases.
+       *
+       * `relativeSourceMaps`/`scalaJSLinkerConfig.relativizeSourceMapBase` is
+       * an exception. We cannot derive `relativizeSourceMapBase` only from
+       * `relativeSourceMaps`, and deriving `relativeSourceMaps` from
+       * `relativizeSourceMapBase` would lose information. Instead, we keep
+       * `relativeSourceMaps` to its default `false` in the project scope,
+       * irrespective of `scalaJSLinkerConfig`. And in the fully qualified
+       * scope, *if* `relativeSourceMaps` is true, we set
+       * `relativeSourceMapBase`, otherwise we leave it untouched. This
+       * provides the same compatibility/usability features.
+       */
+      scalaJSLinkerConfig := {
+        StandardLinker.Config()
+          .withParallel(OptimizerOptions.DefaultParallel)
+      },
+
       relativeSourceMaps := false,
 
-      emitSourceMaps := true,
+      emitSourceMaps := scalaJSLinkerConfig.value.sourceMap,
 
-      scalaJSOutputWrapperInternal := ("", ""),
+      scalaJSOutputWrapperInternal :=
+        scalaJSLinkerConfig.value.customOutputWrapper,
 
-      scalaJSOptimizerOptions := OptimizerOptions(),
+      scalaJSOptimizerOptions := {
+        val config = scalaJSLinkerConfig.value
+        OptimizerOptions()
+          .withParallel(config.parallel)
+          .withBatchMode(config.batchMode)
+          .withDisableOptimizer(!config.optimizer)
+          .withPrettyPrintFullOptJS(config.prettyPrint)
+          .withCheckScalaJSIR(config.checkIR)
+          .withUseClosureCompiler(config.closureCompiler)
+      },
 
-      scalaJSSemantics := Semantics.Defaults,
-      scalaJSOutputMode := OutputMode.ECMAScript51Isolated,
-      scalaJSModuleKind := ModuleKind.NoModule,
+      scalaJSSemantics := scalaJSLinkerConfig.value.semantics,
+      scalaJSOutputMode := scalaJSLinkerConfig.value.outputMode,
+      scalaJSModuleKind := scalaJSLinkerConfig.value.moduleKind,
 
       scalaJSModuleInitializers := Seq(),
       scalaJSModuleInitializers in Compile := scalaJSModuleInitializers.value,
