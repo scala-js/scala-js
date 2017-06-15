@@ -7,6 +7,8 @@ package org.scalajs.core.compiler
 
 import scala.collection.mutable
 
+import org.scalajs.core.ir.Trees.isValidIdentifier
+
 /**
  *  Prepare export generation
  *
@@ -315,6 +317,13 @@ trait PrepJSExports { this: PrepJSInterop =>
           if (sym.isMethod && (!symOwner.isStatic || !symOwner.isModuleClass)) {
             reporter.error(annot.pos,
                 "Only static objects may export their members to the top level")
+          }
+
+          // The top-level name must be a valid JS identifier
+          if (!isValidIdentifier(name.split('.').head)) {
+            reporter.error(annot.pos,
+                "The top-level export name must be a valid JavaScript " +
+                "identifier")
           }
 
         case ExportDestination.Static =>

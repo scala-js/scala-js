@@ -732,6 +732,15 @@ class ExportsTest {
     assertTrue((obj: Any).isInstanceOf[ExportHolder.SJSDefinedExportedClass])
   }
 
+  @Test def toplevel_exports_under_nested_invalid_js_identifier(): Unit = {
+    val constr = exportsNamespace.qualified.selectDynamic("not-a-JS-identifier")
+    assertJSNotUndefined(constr)
+    assertEquals("function", js.typeOf(constr))
+    val obj = js.Dynamic.newInstance(constr)()
+    assertTrue(
+        (obj: Any).isInstanceOf[ExportHolder.ClassExportedUnderNestedInvalidJSIdentifier])
+  }
+
   @Test def exports_for_classes_with_constant_folded_name(): Unit = {
     val constr = exportsNamespace.ConstantFoldedClassExport
     assertJSNotUndefined(constr)
@@ -1043,16 +1052,6 @@ class ExportsTest {
     assertThrows(classOf[Exception], foo.doA("a"))
   }
 
-  @Test def `exports_for_classes_ending_in__=_issue_1090`(): Unit = {
-    val constr = exportsNamespace.ExportClassSetterNamed_=
-    val obj = js.Dynamic.newInstance(constr)()
-    assertEquals(obj.x, 1)
-  }
-
-  @Test def `exports_for_objects_ending_in__=_issue_1090`(): Unit = {
-    assertEquals(exportsNamespace.ExportObjSetterNamed_=.x, 1)
-  }
-
   @Test def should_expose_public_members_of_new_js_Object_issue_1899(): Unit = {
 
     // Test that the bug is fixed for js.Any classes.
@@ -1197,6 +1196,11 @@ class ExportsTest {
     assertEquals(2, jsPackage.toplevel.overload(2))
     assertEquals(9, jsPackage.toplevel.overload(2, 7))
     assertEquals(10, jsPackage.toplevel.overload(1, 2, 3, 4))
+  }
+
+  @Test def method_top_level_export_under_invalid_js_identifier(): Unit = {
+    assertEquals("not an identifier",
+        jsPackage.toplevel.applyDynamic("not-a-JS-identifier")())
   }
 
   @Test def top_level_export_uses_unique_object(): Unit = {
@@ -1346,18 +1350,6 @@ object ExportedUnderOrgObject
 
 class SomeValueClass(val i: Int) extends AnyVal
 
-@JSExportTopLevel("ExportClassSetterNamed_=")
-class ExportClassSetterNamed_= { // scalastyle:ignore
-  @JSExport
-  val x = 1
-}
-
-@JSExportTopLevel("ExportObjSetterNamed_=")
-object ExportObjSetterNamed_= { // scalastyle:ignore
-  @JSExport
-  val x = 1
-}
-
 object ExportHolder {
   @JSExportTopLevel("qualified.nested.ExportedClass")
   class ExportedClass
@@ -1367,6 +1359,9 @@ object ExportHolder {
 
   @JSExportTopLevel("qualified.nested.SJSDefinedExportedClass")
   class SJSDefinedExportedClass extends js.Object
+
+  @JSExportTopLevel("qualified.not-a-JS-identifier")
+  class ClassExportedUnderNestedInvalidJSIdentifier
 }
 
 object TopLevelExports {
@@ -1378,6 +1373,9 @@ object TopLevelExports {
 
   @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.overload")
   def overload(x: Int, y: Int*): Int = x + y.sum
+
+  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.not-a-JS-identifier")
+  def methodExportedUnderNestedInvalidJSIdentifier(): String = "not an identifier"
 
   var myVar: Int = _
 
