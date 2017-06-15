@@ -1762,12 +1762,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             MaybeGlobalScope.NotGlobalScope(genExpr(tree))
           }
 
-        case Apply(fun, _) =>
-          if (fun.symbol == JSDynamic_global)
-            MaybeGlobalScope.GlobalScope(pos)
-          else
-            MaybeGlobalScope.NotGlobalScope(genExpr(tree))
-
         case _ =>
           MaybeGlobalScope.NotGlobalScope(genExpr(tree))
       }
@@ -4095,7 +4089,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else (genArgs match {
         case Nil =>
           code match {
-            case DYNGLOBAL    => reportErrorLoadGlobalScope()
             case LINKING_INFO => js.JSLinkingInfo()
             case DEBUGGER     => js.Debugger()
             case UNITVAL      => js.Undefined()
