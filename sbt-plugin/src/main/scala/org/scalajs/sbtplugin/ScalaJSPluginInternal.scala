@@ -270,7 +270,6 @@ object ScalaJSPluginInternal {
           val log = s.log
           val realFiles = irInfo.get(scalaJSSourceFiles).get
           val ir = irInfo.data
-          log.warn(s.cacheDirectory.toString)
 
           FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
               FilesInfo.exists) { _ => // We don't need the files

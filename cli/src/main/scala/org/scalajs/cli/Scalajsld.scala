@@ -198,6 +198,7 @@ object Scalajsld {
         .withRelativizeSourceMapBase(options.relativizeSourceMap)
         .withClosureCompiler(options.fullOpt)
         .withPrettyPrint(options.prettyPrint)
+        .withBatchMode(true)
 
       val linker = StandardLinker(config)
       val logger = new ScalaConsoleLogger(options.logLevel)
