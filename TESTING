@@ -43,11 +43,11 @@ The following HTML-runners must be manually tested:
     examples/helloworld/helloworld-{2.10|2.11}{|-fastopt}.html
     examples/reversi/reversi-{2.10|2.11}{|-fastopt}.html
 
-The following sbt-plugin generated test runners must be manually tested (in both
-2.10 and 2.11):
+The following sbt-plugin generated test runners must be manually tested (with
+Scala 2.10, 2.11 and 2.12, and in `FastOptStage` and `FullOptStage`):
 
-    testingExample/testHtml{Fast,Full}Opt
-    testSuite/testHtml{Fast,Full}Opt
+    testingExample/testHtml
+    testSuite/testHtml
 
 ## Sourcemaps
 
