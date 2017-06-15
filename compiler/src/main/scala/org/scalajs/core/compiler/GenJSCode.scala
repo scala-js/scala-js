@@ -2342,10 +2342,10 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     private def genSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
-      val Apply(fun @ Select(sup @ Super(_, mix), _), args) = tree
+      val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree
       val sym = fun.symbol
 
-      if (isScalaJSDefinedJSClass(currentClassSym)) {
+      if (isRawJSType(qual.tpe)) {
         if (sym.isMixinConstructor) {
           /* Do not emit a call to the $init$ method of JS traits.
            * This exception is necessary because @JSOptional fields cause the
@@ -2356,8 +2356,11 @@ abstract class GenJSCode extends plugins.PluginComponent
           genJSSuperCall(tree, isStat)
         }
       } else {
+        /* #3013 `qual` can be `this.$outer()` in some cases since Scala 2.12,
+         * so we call `genExpr(qual)`, not just `genThis()`.
+         */
         val superCall = genApplyMethodStatically(
-            genThis()(sup.pos), sym, genActualArgs(sym, args))
+            genExpr(qual), sym, genActualArgs(sym, args))
 
         // Initialize the module instance just after the super constructor call.
         if (isStaticModule(currentClassSym) && !isModuleInitialized.value &&
@@ -4195,10 +4198,13 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     private def genJSSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
-      val Apply(fun @ Select(sup @ Super(_, _), _), args) = tree
+      val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree
       val sym = fun.symbol
 
-      val genReceiver = genThis()(sup.pos)
+      /* #3013 `qual` can be `this.$outer()` in some cases since Scala 2.12,
+       * so we call `genExpr(qual)`, not just `genThis()`.
+       */
+      val genReceiver = genExpr(qual)
       lazy val genScalaArgs = genActualArgs(sym, args)
       lazy val genJSArgs = genPrimitiveJSArgs(sym, args)
 
@@ -4209,6 +4215,9 @@ abstract class GenJSCode extends plugins.PluginComponent
             s"Scala.js-defined JS class at $pos")
         genApplyMethod(genReceiver, sym, genScalaArgs)
       } else if (sym.isClassConstructor) {
+        assert(genReceiver.isInstanceOf[js.This],
+            "Trying to call a JS super constructor with a non-`this` " +
+            "receiver at " + pos)
         js.JSSuperConstructorCall(genJSArgs)
       } else if (isScalaJSDefinedJSClass(sym.owner) && !isExposed(sym)) {
         // Reroute to the static method
