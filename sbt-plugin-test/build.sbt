@@ -38,9 +38,6 @@ lazy val noDOM = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSJUnitPlugin).
   settings(
     name := "Scala.js sbt test w/o DOM",
-    scalaJSOutputWrapper := (
-        "// Scala.js - noDOM sbt test\n//\n// Compiled with Scala.js\n",
-        "// End of Scala.js generated script"),
     scalaJSUseMainModuleInitializer := true
   ).
   /* This hopefully exposes concurrent uses of the linker. If it fails/gets
@@ -79,9 +76,6 @@ lazy val withDOM = project.settings(baseSettings: _*).
   settings(
     name := "Scala.js sbt test w/ DOM",
     jsEnv := new JSDOMNodeJSEnv(),
-    scalaJSOutputWrapper := (
-        "// Scala.js - withDOM sbt test\n//\n// Compiled with Scala.js\n",
-        "// End of Scala.js generated script"),
     scalaJSUseMainModuleInitializer := true
   )
 

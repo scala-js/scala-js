@@ -125,9 +125,6 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     }
   }
 
-  def emitCustomHeader(customHeader: String, builder: JSFileBuilder): Unit =
-    emitLines(customHeader, builder)
-
   /** Emits everything but the core JS lib to the builder, and returns the
    *  core JS lib.
    *
@@ -249,9 +246,6 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
         }
     }
   }
-
-  def emitCustomFooter(customFooter: String, builder: JSFileBuilder): Unit =
-    emitLines(customFooter, builder)
 
   private def compareClasses(lhs: LinkedClass, rhs: LinkedClass) = {
     val lhsAC = lhs.ancestors.size

@@ -175,7 +175,6 @@ object ScalaJSPluginInternal {
           .withSourceMap(withSourceMap)
           .withRelativizeSourceMapBase(relSourceMapBase)
           .withClosureCompiler(opts.useClosureCompiler)
-          .withCustomOutputWrapperInternal(scalaJSOutputWrapperInternal.value)
           .withPrettyPrint(opts.prettyPrintFullOptJS)
           .withBatchMode(opts.batchMode)
       },
@@ -698,9 +697,6 @@ object ScalaJSPluginInternal {
       relativeSourceMaps := false,
 
       emitSourceMaps := scalaJSLinkerConfig.value.sourceMap,
-
-      scalaJSOutputWrapperInternal :=
-        scalaJSLinkerConfig.value.customOutputWrapper,
 
       scalaJSOptimizerOptions := {
         val config = scalaJSLinkerConfig.value

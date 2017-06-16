@@ -24,7 +24,6 @@ object StandardLinker {
 
     val backendConfig = LinkerBackend.Config()
       .withRelativizeSourceMapBase(config.relativizeSourceMapBase)
-      .withCustomOutputWrapperInternal(config.customOutputWrapper)
       .withPrettyPrint(config.prettyPrint)
 
     val oldAPIConfig = Linker.Config()
@@ -60,8 +59,6 @@ object StandardLinker {
       val sourceMap: Boolean,
       /** Base path to relativize paths in the source map. */
       val relativizeSourceMapBase: Option[URI],
-      /** Custom js code that wraps the output */
-      val customOutputWrapper: (String, String),
       /** Whether to use the Google Closure Compiler pass, if it is available.
        *  On the JavaScript platform, this does not have any effect.
        */
@@ -92,7 +89,6 @@ object StandardLinker {
           parallel = true,
           sourceMap = true,
           relativizeSourceMapBase = None,
-          customOutputWrapper = ("", ""),
           closureCompilerIfAvailable = false,
           prettyPrint = false,
           batchMode = false,
@@ -124,20 +120,6 @@ object StandardLinker {
     def withRelativizeSourceMapBase(relativizeSourceMapBase: Option[URI]): Config =
       copy(relativizeSourceMapBase = relativizeSourceMapBase)
 
-    @deprecated(
-        "The functionality of custom output wrappers has been superseded " +
-        "by the support for CommonJS modules, module initializers, and " +
-        "top-level exports.",
-        "0.6.15")
-    def withCustomOutputWrapper(customOutputWrapper: (String, String)): Config =
-      copy(customOutputWrapper = customOutputWrapper)
-
-    // Non-deprecated version to call from the sbt plugin
-    private[scalajs] def withCustomOutputWrapperInternal(
-        customOutputWrapper: (String, String)): Config = {
-      copy(customOutputWrapper = customOutputWrapper)
-    }
-
     def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): Config =
       copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
 
@@ -159,7 +141,6 @@ object StandardLinker {
          |  parallel                   = $parallel,
          |  sourceMap                  = $sourceMap,
          |  relativizeSourceMapBase    = $relativizeSourceMapBase,
-         |  customOutputWrapper        = $customOutputWrapper,
          |  closureCompilerIfAvailable = $closureCompilerIfAvailable,
          |  prettyPrint                = $prettyPrint,
          |  batchMode                  = $batchMode,
@@ -175,7 +156,6 @@ object StandardLinker {
         parallel: Boolean = parallel,
         sourceMap: Boolean = sourceMap,
         relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
-        customOutputWrapper: (String, String) = customOutputWrapper,
         closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         prettyPrint: Boolean = prettyPrint,
         batchMode: Boolean = batchMode,
@@ -189,7 +169,6 @@ object StandardLinker {
           parallel,
           sourceMap,
           relativizeSourceMapBase,
-          customOutputWrapper,
           closureCompilerIfAvailable,
           prettyPrint,
           batchMode,
@@ -210,7 +189,6 @@ object StandardLinker {
      *  - `parallel`: `true`
      *  - `sourceMap`: `true`
      *  - `relativizeSourceMapBase`: `None`
-     *  - `customOutputWrapper`: `("", "")` (deprecated)
      *  - `closureCompilerIfAvailable`: `false`
      *  - `prettyPrint`: `false`
      *  - `batchMode`: `false`

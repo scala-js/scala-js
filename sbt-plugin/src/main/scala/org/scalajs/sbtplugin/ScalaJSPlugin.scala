@@ -178,20 +178,6 @@ object ScalaJSPlugin extends AutoPlugin {
     val emitSourceMaps = SettingKey[Boolean]("emitSourceMaps",
         "Whether package and optimize stages should emit source maps at all", BPlusSetting)
 
-    /** Non-deprecated alias of `scalaJSOutputWrapper` for internal use. */
-    private[sbtplugin] val scalaJSOutputWrapperInternal = SettingKey[(String, String)](
-        "scalaJSOutputWrapper",
-        "Custom wrapper for the generated .js files. Formatted as tuple (header, footer).",
-        BPlusSetting)
-
-    @deprecated(
-        "The functionality of `scalaJSOutputWrapper` has been superseded by " +
-        "a combination of more direct and more reliable features. Depending " +
-        "on your use case, use `scalaJSUseMainModuleInitializer`, " +
-        "`scalaJSModuleKind` and/or `@JSExportTopLevel` instead.",
-        "0.6.15")
-    val scalaJSOutputWrapper = scalaJSOutputWrapperInternal
-
     val scalaJSSemantics = SettingKey[Semantics]("scalaJSSemantics",
         "Configurable semantics of Scala.js.", BPlusSetting)
 
