@@ -133,8 +133,5 @@ object ScalaJSPlugin extends AutoPlugin {
     )
   }
 
-  override def projectSettings: Seq[Setting[_]] = (
-      scalaJSAbstractSettings ++
-      scalaJSEcosystemSettings
-  )
+  override def projectSettings: Seq[Setting[_]] = scalaJSProjectSettings
 }

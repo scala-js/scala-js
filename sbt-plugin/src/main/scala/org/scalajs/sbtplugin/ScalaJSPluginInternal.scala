@@ -400,11 +400,8 @@ object ScalaJSPluginInternal {
       },
 
       // Crucially, add the Scala.js linked file to the JS files
-      jsExecutionFiles += scalaJSLinkedFile.value
-  )
+      jsExecutionFiles += scalaJSLinkedFile.value,
 
-  // These settings will be filtered by the stage dummy tasks
-  val scalaJSRunSettings = Seq(
       scalaJSMainModuleInitializer := {
         mainClass.value.map { mainCl =>
           ModuleInitializer.mainMethodWithArgs(mainCl, "main")
@@ -448,12 +445,11 @@ object ScalaJSPluginInternal {
       }
   )
 
-  val scalaJSCompileSettings = (
-      scalaJSConfigSettings ++
-      scalaJSRunSettings
+  val scalaJSCompileSettings: Seq[Setting[_]] = (
+      scalaJSConfigSettings
   )
 
-  val scalaJSTestFrameworkSettings = Seq(
+  private val scalaJSTestFrameworkSettings = Seq(
       loadedTestFrameworks := {
         if (fork.value) {
           throw new MessageOnlyException(
@@ -494,7 +490,7 @@ object ScalaJSPluginInternal {
       }
   )
 
-  val scalaJSTestBuildSettings = (
+  private val scalaJSTestBuildSettings = (
       scalaJSConfigSettings
   ) ++ (
       Seq(fastOptJS, fullOptJS) map { packageJSTask =>
@@ -502,7 +498,7 @@ object ScalaJSPluginInternal {
       }
   )
 
-  val scalaJSTestHtmlSettings = Seq(
+  private val scalaJSTestHtmlSettings = Seq(
       artifactPath in testHtml := {
         val stageSuffix = scalaJSStage.value match {
           case Stage.FastOpt => "fastopt"
@@ -536,24 +532,13 @@ object ScalaJSPluginInternal {
       }
   )
 
-  val scalaJSTestSettings = (
+  val scalaJSTestSettings: Seq[Setting[_]] = (
       scalaJSTestBuildSettings ++
-      scalaJSRunSettings ++
       scalaJSTestFrameworkSettings ++
       scalaJSTestHtmlSettings
   )
 
-  val scalaJSDefaultBuildConfigs = (
-      inConfig(Compile)(scalaJSConfigSettings) ++ // build settings for Compile
-      inConfig(Test)(scalaJSTestBuildSettings)
-  )
-
-  val scalaJSDefaultConfigs = (
-      inConfig(Compile)(scalaJSCompileSettings) ++
-      inConfig(Test)(scalaJSTestSettings)
-  )
-
-  val scalaJSProjectBaseSettings = Seq(
+  private val scalaJSProjectBaseSettings = Seq(
       crossPlatform := JSPlatform,
 
       scalaJSLinkerConfig := {
@@ -586,20 +571,8 @@ object ScalaJSPluginInternal {
         ()
       },
 
-      scalaJSJavaSystemProperties := Map.empty
-  )
+      scalaJSJavaSystemProperties := Map.empty,
 
-  val scalaJSAbstractSettings: Seq[Setting[_]] = (
-      scalaJSProjectBaseSettings ++
-      scalaJSDefaultConfigs
-  )
-
-  val scalaJSAbstractBuildSettings: Seq[Setting[_]] = (
-      scalaJSProjectBaseSettings ++
-      scalaJSDefaultBuildConfigs
-  )
-
-  val scalaJSEcosystemSettings = Seq(
       // you will need the Scala.js compiler plugin
       autoCompilerPlugins := true,
       addCompilerPlugin(
@@ -616,4 +589,9 @@ object ScalaJSPluginInternal {
       crossVersion := ScalaJSCrossVersion.binary
   )
 
+  val scalaJSProjectSettings: Seq[Setting[_]] = (
+      scalaJSProjectBaseSettings ++
+      inConfig(Compile)(scalaJSCompileSettings) ++
+      inConfig(Test)(scalaJSTestSettings)
+  )
 }
