@@ -77,15 +77,6 @@ object ScalaJSPluginInternal {
       "All .sjsir files on the fullClasspath, used by scalajsp",
       KeyRanks.Invisible)
 
-  /** Internal task to map discovered main classes to whether they are in the
-   *  "new" style (true, standard main method) or the "old" style (false,
-   *  `js.JSApp` or `main(): Unit` method).
-   */
-  val scalaJSDiscoveredMainClasses = TaskKey[Map[String, Boolean]](
-      "scalaJSDiscoveredMainClasses",
-      "Discovered main classes and whether they use the \"new\" style",
-      KeyRanks.Invisible)
-
   val scalaJSModuleIdentifier = TaskKey[Option[String]](
       "scalaJSModuleIdentifier",
       "An identifier for the module which contains the exports of Scala.js",
@@ -466,57 +457,11 @@ object ScalaJSPluginInternal {
       }.value
   )
 
-  @deprecated("js.JSApps are going away, and this method with them.", "0.6.18")
-  def discoverJSApps(analysis: inc.Analysis): Seq[String] = {
-    discoverScalaJSMainClasses(analysis).collect {
-      case (name, false) => name
-    }.toList
-  }
-
-  private def discoverScalaJSMainClasses(
-      analysis: inc.Analysis): Map[String, Boolean] = {
-    import xsbt.api.{Discovered, Discovery}
-
-    val jsApp = "scala.scalajs.js.JSApp"
-
-    def isJSApp(discovered: Discovered) =
-      discovered.isModule && discovered.baseClasses.contains(jsApp)
-
-    Map(Discovery(Set(jsApp), Set.empty)(Tests.allDefs(analysis)).collect {
-      // Old-style first, so that in case of ambiguity, we keep backward compat
-      case (definition, discovered) if isJSApp(discovered) =>
-        definition.name -> false
-      case (definition, discovered) if discovered.hasMain =>
-        definition.name -> true
-    }: _*)
-  }
-
-  private val runMainParser = {
-    Defaults.loadForParser(discoveredMainClasses) { (_, names) =>
-      val mainClasses = names.getOrElse(Nil).toSet
-      Space ~> token(NotSpace examples mainClasses)
-    }
-  }
-
   // These settings will be filtered by the stage dummy tasks
   val scalaJSRunSettings = Seq(
-      scalaJSDiscoveredMainClasses := {
-        discoverScalaJSMainClasses(compile.value)
-      },
-
-      discoveredMainClasses := {
-        scalaJSDiscoveredMainClasses.map(_.keys.toList.sorted: Seq[String])
-          .storeAs(discoveredMainClasses).triggeredBy(compile).value
-      },
-
       scalaJSMainModuleInitializer := {
-        val allDiscoveredMainClasses = scalaJSDiscoveredMainClasses.value
         mainClass.value.map { mainCl =>
-          val newStyleMain = allDiscoveredMainClasses.getOrElse(mainCl, false)
-          if (newStyleMain)
-            ModuleInitializer.mainMethodWithArgs(mainCl, "main")
-          else
-            ModuleInitializer.mainMethod(mainCl, "main")
+          ModuleInitializer.mainMethodWithArgs(mainCl, "main")
         }
       },
 

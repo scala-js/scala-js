@@ -1,27 +1,40 @@
 package scala.scalajs.js
 
-/** Base class for top-level, entry point main objects (softly deprecated).
+/** Base class for top-level, entry point main objects.
  *
- *  In Scala.js 1.x, `js.JSApp` will disappear. It is currently "softly"
- *  deprecated: it is not recommended to use it in new code, but it does not
- *  cause a deprecation warning (yet). Prefer using a standard main method (see
- *  below).
- *
- *  [[JSApp]] is typically used to mark the entry point of a Scala.js
- *  application. As such, the sbt plugin also recognizes top-level objects
- *  extending [[JSApp]]. It allows to run their [[main]] method with `sbt run`.
- *
- *  To execute the [[main]] method immediately when your Scala.js file is
- *  loaded, use the `scalaJSUseMainModuleInitializer` setting in the sbt plugin.
- *
- *  Starting with Scala.js 0.6.18, the sbt plugin can also recognize "standard"
- *  `main` methods of the form
+ *  Before Scala.js 0.6.18, a top-level object had to extend `js.JSApp` to be
+ *  recognized by the sbt plugin as a "main" object, to be executed with `run`.
+ *  Starting with Scala.js 0.6.18, any object with a standard main method of
+ *  the form
  *  {{{
- *  def main(args: Array[String]): Unit = ...
+ *  def main(args: Array[String]): Unit = ???
  *  }}}
- *  in objects, even if they do not extend `JSApp`. Such main methods are
- *  cross-platform, and should be preferred over extending `JSApp` in new code.
+ *  will be recognized by the sbt plugin, just like for a JVM project.
+ *
+ *  In order for the `main` method to be considered by the sbt plugin, set
+ *  {{{
+ *  scalaJSUseMainModuleInitializer := true
+ *  }}}
+ *  in your build.
+ *
+ *  [[JSApp]] is therefore deprecated, and should not be used anymore. It will
+ *  disappear before 1.0.0 final.
+ *
+ *  Also note that an object extending [[JSApp]] is not exported to JavaScript
+ *  anymore, nor is its `main()` method. Explicitly export the object and/or
+ *  its main method if necessary.
  */
+@deprecated(
+    "Extending js.JSApp is not necessary anymore for an object to be " +
+    "recognized by the Scala.js sbt plugin. " +
+    "Use a normal object with a `def main(args: Array[String]): Unit` " +
+    "instead, which will also be cross-platform. " +
+    "Note that js.JSApp objects and their main() method are not " +
+    "automatically exported to JavaScript anymore either; explicitly export " +
+    "your object if you relied on this behavior.",
+    "1.0.0-M1")
 trait JSApp {
+  def main(args: scala.Array[String]): Unit = main()
+
   def main(): Unit
 }
