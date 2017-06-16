@@ -9,6 +9,8 @@
 
 package org.scalajs.jsenv.nodejs
 
+import scala.collection.immutable
+
 import org.scalajs.jsenv._
 
 import org.scalajs.core.tools.io._
@@ -16,13 +18,20 @@ import org.scalajs.core.tools.logging._
 
 import java.io.{ Console => _, _ }
 
-class NodeJSEnv(config: NodeJSEnv.Config)
-    extends AbstractNodeJSEnv(config.executable, config.args, config.env,
-        config.sourceMap) {
+class NodeJSEnv(config: NodeJSEnv.Config) extends AbstractNodeJSEnv {
 
   def this() = this(NodeJSEnv.Config())
 
   protected def vmName: String = "Node.js"
+
+  protected def executable: String = config.executable
+
+  override protected def args: immutable.Seq[String] = config.args
+
+  override protected def env: Map[String, String] = config.env
+
+  // TODO Our Build wants this to be public, but it does not seem clean
+  override def wantSourceMap: Boolean = config.sourceMap
 
   override def jsRunner(files: Seq[VirtualJSFile]): JSRunner =
     new NodeRunner(files)

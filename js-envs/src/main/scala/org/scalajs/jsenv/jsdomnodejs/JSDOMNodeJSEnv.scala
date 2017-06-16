@@ -8,6 +8,8 @@
 
 package org.scalajs.jsenv.jsdomnodejs
 
+import scala.collection.immutable
+
 import java.io.OutputStream
 
 import org.scalajs.core.tools.io._
@@ -16,13 +18,20 @@ import org.scalajs.jsenv.nodejs.AbstractNodeJSEnv
 
 import org.scalajs.core.ir.Utils.escapeJS
 
-class JSDOMNodeJSEnv(config: JSDOMNodeJSEnv.Config)
-    extends AbstractNodeJSEnv(config.executable, config.args, config.env,
-        sourceMap = false) {
+class JSDOMNodeJSEnv(config: JSDOMNodeJSEnv.Config) extends AbstractNodeJSEnv {
 
   def this() = this(JSDOMNodeJSEnv.Config())
 
   protected def vmName: String = "Node.js with JSDOM"
+
+  protected def executable: String = config.executable
+
+  override protected def args: immutable.Seq[String] = config.args
+
+  override protected def env: Map[String, String] = config.env
+
+  // TODO We might want to make this configurable - not sure why it isn't
+  override protected def wantSourceMap: Boolean = false
 
   override def jsRunner(files: Seq[VirtualJSFile]): JSRunner =
     new DOMNodeRunner(files)

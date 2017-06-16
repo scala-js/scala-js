@@ -1268,7 +1268,7 @@ object Build {
         def envTagsFor(env: JSEnv): Seq[String] = env match {
           case env: NodeJSEnv =>
             val baseArgs = Seq("nodejs", "typedarray")
-            if (env.sourceMap) {
+            if (env.wantSourceMap) {
               if (!env.hasSourceMapSupport) {
                 throw new MessageOnlyException(
                     "You must install Node.js source map support to " +
