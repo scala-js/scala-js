@@ -1,10 +1,10 @@
-package org.scalajs.core.tools.json
+package org.scalajs.testadapter.json
 
-trait JSONDeserializer[T] {
+private[testadapter] trait JSONDeserializer[T] {
   def deserialize(x: JSON): T
 }
 
-object JSONDeserializer {
+private[testadapter] object JSONDeserializer {
 
   implicit object stringJSON extends JSONDeserializer[String] {
     def deserialize(x: JSON): String = Impl.toString(x)

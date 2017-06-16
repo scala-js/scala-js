@@ -1,4 +1,4 @@
-package org.scalajs.core.tools.json
+package org.scalajs.testadapter.json
 
 import org.json.simple.JSONValue
 
@@ -6,7 +6,7 @@ import scala.collection.JavaConverters._
 
 import java.io.{Writer, Reader}
 
-private[json] object Impl extends AbstractJSONImpl {
+private[json] object Impl {
 
   type Repr = Object
 

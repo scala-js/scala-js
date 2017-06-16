@@ -12,10 +12,10 @@ package org.scalajs.testadapter
 import org.scalajs.core.ir.Utils.escapeJS
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.linker.backend.ModuleKind
 
+import org.scalajs.testadapter.json._
 import org.scalajs.jsenv._
 
 import sbt.testing.{Logger => _, _}
@@ -83,7 +83,14 @@ final class ScalaJSFramework(
   }
 
   private[testadapter] def optionalExportsNamespacePrefix: String = {
-    // !!! DUPLICATE code with ScalaJSPlugin.makeExportsNamespaceExpr
+    ScalaJSFramework.optionalExportsNamespacePrefix(moduleKind,
+        moduleIdentifier)
+  }
+}
+
+private[testadapter] object ScalaJSFramework {
+  private[testadapter] def optionalExportsNamespacePrefix(
+      moduleKind: ModuleKind, moduleIdentifier: Option[String]): String = {
     moduleKind match {
       case ModuleKind.NoModule =>
         ""

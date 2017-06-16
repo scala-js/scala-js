@@ -11,23 +11,20 @@ package org.scalajs.testadapter
 
 import sbt.testing._
 
-import org.scalajs.core.tools.json._
+import org.scalajs.testadapter.json._
 
-import TaskDefSerializers._
+import FingerprintSerializers._
 
-private[testadapter] final class TaskInfo private (
-    val serializedTask: String,
-    val taskDef: TaskDef,
-    val tags: Array[String])
+private[testadapter] final class FrameworkInfo private (
+    val name: String, val fingerprints: List[Fingerprint])
 
-private[testadapter] object TaskInfo {
-  implicit object Deserializer extends JSONDeserializer[TaskInfo] {
-    def deserialize(x: JSON): TaskInfo = {
+private[testadapter] object FrameworkInfo {
+  implicit object Deserializer extends JSONDeserializer[FrameworkInfo] {
+    def deserialize(x: JSON): FrameworkInfo = {
       val obj = new JSONObjExtractor(x)
-      new TaskInfo(
-          obj.fld[String]      ("serializedTask"),
-          obj.fld[TaskDef]     ("taskDef"),
-          obj.fld[List[String]]("tags").toArray)
+      new FrameworkInfo(
+          obj.fld[String]           ("name"),
+          obj.fld[List[Fingerprint]]("fingerprints"))
     }
   }
 }

@@ -11,7 +11,7 @@ package org.scalajs.testadapter
 
 import sbt.testing._
 
-import org.scalajs.core.tools.json._
+import org.scalajs.testadapter.json._
 
 import FingerprintSerializers._
 
@@ -20,7 +20,7 @@ final class RemoteException private (msg: String, _toString: String,
   override def toString(): String = _toString
 }
 
-object RemoteException {
+private[testadapter] object RemoteException {
   implicit object StackTraceDeserializer extends JSONDeserializer[StackTraceElement] {
     def deserialize(x: JSON): StackTraceElement = {
       val obj = new JSONObjExtractor(x)

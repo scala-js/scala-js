@@ -11,12 +11,12 @@ package org.scalajs.testadapter
 
 import sbt.testing._
 
-import org.scalajs.core.tools.json._
+import org.scalajs.testadapter.json._
 
 import FingerprintSerializers._
 import SelectorSerializers._
 
-private[scalajs] object TaskDefSerializers {
+private[testadapter] object TaskDefSerializers {
 
   implicit object TaskDefSerializer extends JSONSerializer[TaskDef] {
     def serialize(td: TaskDef): JSON = {
