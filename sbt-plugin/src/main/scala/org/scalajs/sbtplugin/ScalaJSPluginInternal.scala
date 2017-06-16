@@ -82,12 +82,6 @@ object ScalaJSPluginInternal {
     Stage.FullOpt -> fullOptJS
   )
 
-  /** A JS expression that detects the global scope just like Scala.js */
-  val jsGlobalExpr: String = {
-    """((typeof global === "object" && global &&
-         global["Object"] === Object) ? global : this)"""
-  }
-
   /* #2798 -- On Java 9+, the parallel collections on 2.10 die with a
    * `NumberFormatException` and prevent the linker from working.
    *
