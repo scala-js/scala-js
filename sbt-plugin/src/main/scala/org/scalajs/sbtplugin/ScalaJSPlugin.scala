@@ -103,24 +103,6 @@ object ScalaJSPlugin extends AutoPlugin {
         "The JavaScript environment in which to run and test Scala.js applications.",
         AMinusTask)
 
-    val relativeSourceMaps = SettingKey[Boolean]("relativeSourceMaps",
-        "Make the referenced paths on source maps relative to target path", BPlusSetting)
-
-    val emitSourceMaps = SettingKey[Boolean]("emitSourceMaps",
-        "Whether package and optimize stages should emit source maps at all", BPlusSetting)
-
-    val scalaJSSemantics = SettingKey[Semantics]("scalaJSSemantics",
-        "Configurable semantics of Scala.js.", BPlusSetting)
-
-    val scalaJSOutputMode = SettingKey[OutputMode]("scalaJSOutputMode",
-        "Output mode of Scala.js.", BPlusSetting)
-
-    val scalaJSModuleKind = SettingKey[ModuleKind]("scalaJSModuleKind",
-        "Kind of JavaScript modules emitted by Scala.js.", BPlusSetting)
-
-    val scalaJSOptimizerOptions = SettingKey[OptimizerOptions]("scalaJSOptimizerOptions",
-        "All kinds of options for the Scala.js optimizer stages", DSetting)
-
     /** Prints the content of a .sjsir file in human readable form. */
     val scalajsp = InputKey[Unit]("scalajsp",
         "Prints the content of a .sjsir file in human readable form.",

@@ -213,8 +213,8 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
           throw new LinkingException(
               "There were module imports without fallback to global " +
               "variables, but module support is disabled.\n" +
-              "To enable module support, set scalaJSModuleKind := " +
-              "ModuleKind.CommonJSModule.")
+              "To enable module support, set `scalaJSLinkerConfig ~= " +
+              "(_.withModuleKind(ModuleKind.CommonJSModule))`.")
         }
 
       case ModuleKind.CommonJSModule =>

@@ -97,6 +97,26 @@ object ScalaJSPluginInternal {
          global["Object"] === Object) ? global : this)"""
   }
 
+  /* #2798 -- On Java 9+, the parallel collections on 2.10 die with a
+   * `NumberFormatException` and prevent the linker from working.
+   *
+   * By default, we therefore pre-emptively disable the parallel optimizer in
+   * case the parallel collections cannot deal with the current version of
+   * Java.
+   *
+   * TODO This will automatically "fix itself" once we upgrade to sbt 1.x,
+   * which uses Scala 2.12. We should get rid of that workaround at that point
+   * for tidiness, though.
+   */
+  private val DefaultParallelLinker: Boolean = {
+    try {
+      scala.util.Properties.isJavaAtLeast("1.8")
+      true
+    } catch {
+      case _: NumberFormatException => false
+    }
+  }
+
   def logIRCacheStats(logger: Logger): Unit = {
     logger.debug("Global IR cache stats: " + globalIRCache.stats.logLine)
   }
@@ -134,53 +154,17 @@ object ScalaJSPluginInternal {
   private def scalaJSStageSettings(stage: Stage,
       key: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
 
-      scalaJSLinkerConfig in key := {
-        val opts = (scalaJSOptimizerOptions in key).value
-
-        val semantics = (scalaJSSemantics in key).value
-        val outputMode = (scalaJSOutputMode in key).value
-        val moduleKind = scalaJSModuleKind.value // intentionally not 'in key'
-        val withSourceMap = (emitSourceMaps in key).value
-
-        /* For `relativizeSourceMapBase`, preserve the one in the new config
-         * if it is set, otherwise fall back on the old config.
-         */
-        val oldConfigRelSourceMapBase = {
-          if ((relativeSourceMaps in key).value)
-            Some((artifactPath in key).value.getParentFile.toURI())
-          else
-            None
-        }
-        val newConfigRelSourceMapBase =
-          (scalaJSLinkerConfig in key).value.relativizeSourceMapBase
-        val relSourceMapBase =
-          newConfigRelSourceMapBase.orElse(oldConfigRelSourceMapBase)
-
-        StandardLinker.Config()
-          .withSemantics(semantics)
-          .withModuleKind(moduleKind)
-          .withOutputMode(outputMode)
-          .withCheckIR(opts.checkScalaJSIR)
-          .withOptimizer(!opts.disableOptimizer)
-          .withParallel(opts.parallel)
-          .withSourceMap(withSourceMap)
-          .withRelativizeSourceMapBase(relSourceMapBase)
-          .withClosureCompiler(opts.useClosureCompiler)
-          .withPrettyPrint(opts.prettyPrintFullOptJS)
-          .withBatchMode(opts.batchMode)
-      },
-
       scalaJSLinker in key := {
         val config = (scalaJSLinkerConfig in key).value
 
-        if (config.moduleKind != scalaJSModuleKind.value) {
+        if (config.moduleKind != scalaJSLinkerConfig.value.moduleKind) {
           val projectID = thisProject.value.id
           val configName = configuration.value.name
           val keyName = key.key.label
           sLog.value.warn(
               s"The module kind in `scalaJSLinkerConfig in ($projectID, " +
-              s"$configName, $keyName)` is different than the value of " +
-              s"`scalaJSModuleKind in ($projectID, $configName)`. " +
+              s"$configName, $keyName)` is different than the one `in " +
+              s"`($projectID, $configName)`. " +
               "Some things will go wrong.")
         }
 
@@ -390,11 +374,10 @@ object ScalaJSPluginInternal {
         ((crossTarget in fullOptJS).value /
             ((moduleName in fullOptJS).value + "-opt.js")),
 
-      scalaJSSemantics in fullOptJS ~= (_.optimized),
-      scalaJSOptimizerOptions in fullOptJS := {
-        val prev = (scalaJSOptimizerOptions in fullOptJS).value
-        val outputMode = (scalaJSOutputMode in fullOptJS).value
-        prev.withUseClosureCompiler(outputMode == OutputMode.ECMAScript51Isolated)
+      scalaJSLinkerConfig in fullOptJS ~= { prevConfig =>
+        prevConfig
+          .withSemantics(_.optimized)
+          .withClosureCompiler(prevConfig.outputMode == OutputMode.ECMAScript51Isolated)
       },
 
       console := console.dependsOn(Def.task {
@@ -443,7 +426,7 @@ object ScalaJSPluginInternal {
       jsExecutionFiles += scalaJSLinkedFile.value,
 
       scalaJSModuleIdentifier := Def.settingDyn[Task[Option[String]]] {
-        scalaJSModuleKind.value match {
+        scalaJSLinkerConfig.value.moduleKind match {
           case ModuleKind.NoModule =>
             Def.task {
               None
@@ -525,7 +508,7 @@ object ScalaJSPluginInternal {
 
         val files = jsExecutionFiles.value
 
-        val moduleKind = scalaJSModuleKind.value
+        val moduleKind = scalaJSLinkerConfig.value.moduleKind
         val moduleIdentifier = scalaJSModuleIdentifier.value
 
         val frameworksAndTheirImplNames =
@@ -607,56 +590,10 @@ object ScalaJSPluginInternal {
   val scalaJSProjectBaseSettings = Seq(
       crossPlatform := JSPlatform,
 
-      /* We first define scalaJSLinkerConfig in the project scope, with all
-       * the defaults. Later, we derive all the old config options in the
-       * project scope from scalaJSLinkerConfig.
-       *
-       * At the end of the day, in the fully qualified scope
-       * (project, config, linkKey), we re-derive scalaJSLinkerConfig from all
-       * the old config keys.
-       *
-       * This effectively gives meaning to scalaJSLinkerConfig in the project
-       * scope and in the fully qualified scope, but not in-between. Changes
-       * to `scalaJSLinkerConfig in (project, config)` will not have any
-       * effect.
-       *
-       * This is a compromise to ensure backward compatibility of using the old
-       * options in all cases, and a reasonable way to use the new options
-       * for typical use cases.
-       *
-       * `relativeSourceMaps`/`scalaJSLinkerConfig.relativizeSourceMapBase` is
-       * an exception. We cannot derive `relativizeSourceMapBase` only from
-       * `relativeSourceMaps`, and deriving `relativeSourceMaps` from
-       * `relativizeSourceMapBase` would lose information. Instead, we keep
-       * `relativeSourceMaps` to its default `false` in the project scope,
-       * irrespective of `scalaJSLinkerConfig`. And in the fully qualified
-       * scope, *if* `relativeSourceMaps` is true, we set
-       * `relativeSourceMapBase`, otherwise we leave it untouched. This
-       * provides the same compatibility/usability features.
-       */
       scalaJSLinkerConfig := {
         StandardLinker.Config()
-          .withParallel(OptimizerOptions.DefaultParallel)
+          .withParallel(DefaultParallelLinker)
       },
-
-      relativeSourceMaps := false,
-
-      emitSourceMaps := scalaJSLinkerConfig.value.sourceMap,
-
-      scalaJSOptimizerOptions := {
-        val config = scalaJSLinkerConfig.value
-        OptimizerOptions()
-          .withParallel(config.parallel)
-          .withBatchMode(config.batchMode)
-          .withDisableOptimizer(!config.optimizer)
-          .withPrettyPrintFullOptJS(config.prettyPrint)
-          .withCheckScalaJSIR(config.checkIR)
-          .withUseClosureCompiler(config.closureCompiler)
-      },
-
-      scalaJSSemantics := scalaJSLinkerConfig.value.semantics,
-      scalaJSOutputMode := scalaJSLinkerConfig.value.outputMode,
-      scalaJSModuleKind := scalaJSLinkerConfig.value.moduleKind,
 
       scalaJSModuleInitializers := Seq(),
       scalaJSModuleInitializers in Compile := scalaJSModuleInitializers.value,

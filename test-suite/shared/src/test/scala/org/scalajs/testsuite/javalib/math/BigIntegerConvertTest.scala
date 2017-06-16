@@ -553,8 +553,6 @@ class BigIntegerConvertTest {
   }
 
   @Test def testFloatValueBug2482(): Unit = {
-    // To test that it works with strict floats, do:
-    //   > set scalaJSSemantics in testSuite ~= { _.withStrictFloats(true) }
     assumeTrue("Assumed strict floats", hasStrictFloats)
 
     val a = "2147483649"

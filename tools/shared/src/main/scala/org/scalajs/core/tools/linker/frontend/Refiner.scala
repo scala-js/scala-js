@@ -41,7 +41,7 @@ final class Refiner {
           "This is a bug, please report it. " +
           "You can work around the bug by disabling the optimizer. " +
           "In the sbt plugin, this can be done with " +
-          "`scalaJSOptimizerOptions ~= { _.withDisableOptimizer(true) }`.")
+          "`scalaJSLinkerConfig ~= { _.withOptimizer(false) }`.")
     }
 
     logger.time("Refiner: Assemble LinkedClasses") {
