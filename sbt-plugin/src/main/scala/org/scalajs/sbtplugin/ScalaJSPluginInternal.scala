@@ -48,10 +48,6 @@ object ScalaJSPluginInternal {
       "Scala.js internal: Clear the global IR cache's statistics. Used to " +
       "implement cache statistics.", KeyRanks.Invisible)
 
-  /** Dummy setting to ensure we do not fork in Scala.js run & test. */
-  val scalaJSEnsureUnforked = SettingKey[Boolean]("ensureUnforked",
-      "Scala.js internal: Fails if fork is true.", KeyRanks.Invisible)
-
   /** Dummy setting to persist a Scala.js linker. */
   val scalaJSLinker = SettingKey[ClearableLinker]("scalaJSLinker",
       "Scala.js internal: Setting to persist a linker", KeyRanks.Invisible)
@@ -385,14 +381,6 @@ object ScalaJSPluginInternal {
             "are running a JVM REPL. JavaScript things won't work.")
       }).value,
 
-      // Give tasks ability to check we are not forking at build reading time
-      scalaJSEnsureUnforked := {
-        if (fork.value)
-          throw new MessageOnlyException("Scala.js cannot be run in a forked JVM")
-        else
-          true
-      },
-
       scalaJSJavaSystemProperties ++= {
         val javaSysPropsPattern = "-D([^=]*)=(.*)".r
         javaOptions.value.map {
@@ -465,9 +453,6 @@ object ScalaJSPluginInternal {
       },
 
       run := {
-        // use assert to prevent warning about pure expr in stat pos
-        assert(scalaJSEnsureUnforked.value)
-
         if (!scalaJSUseMainModuleInitializer.value) {
           throw new MessageOnlyException("`run` is only supported with " +
               "scalaJSUseMainModuleInitializer := true")
@@ -495,8 +480,11 @@ object ScalaJSPluginInternal {
 
   val scalaJSTestFrameworkSettings = Seq(
       loadedTestFrameworks := {
-        // use assert to prevent warning about pure expr in stat pos
-        assert(scalaJSEnsureUnforked.value)
+        if (fork.value) {
+          throw new MessageOnlyException(
+              "`test` tasks in a Scala.js project require " +
+              "`fork in Test := false`.")
+        }
 
         val env = jsEnv.value match {
           case env: ComJSEnv => env
