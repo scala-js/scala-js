@@ -8,8 +8,8 @@ package helloworld
 import scala.scalajs.js
 import js.annotation._
 
-object HelloWorld extends js.JSApp {
-  def main() {
+object HelloWorld {
+  def main(args: Array[String]): Unit = {
     import js.DynamicImplicits.truthValue
 
     if (js.typeOf(js.Dynamic.global.document) != "undefined" &&
