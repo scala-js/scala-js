@@ -73,11 +73,6 @@ object ScalaJSPluginInternal {
       "All .sjsir files on the fullClasspath, used by scalajsp",
       KeyRanks.Invisible)
 
-  val scalaJSModuleIdentifier = TaskKey[Option[String]](
-      "scalaJSModuleIdentifier",
-      "An identifier for the module which contains the exports of Scala.js",
-      KeyRanks.Invisible)
-
   val scalaJSSourceFiles = AttributeKey[Seq[File]]("scalaJSSourceFiles",
       "Files used to compute this value (can be used in FileFunctions later).",
       KeyRanks.Invisible)
@@ -411,21 +406,7 @@ object ScalaJSPluginInternal {
       },
 
       // Crucially, add the Scala.js linked file to the JS files
-      jsExecutionFiles += scalaJSLinkedFile.value,
-
-      scalaJSModuleIdentifier := Def.settingDyn[Task[Option[String]]] {
-        scalaJSLinkerConfig.value.moduleKind match {
-          case ModuleKind.NoModule =>
-            Def.task {
-              None
-            }
-
-          case ModuleKind.CommonJSModule =>
-            Def.task {
-              Some(scalaJSLinkedFile.value.path)
-            }
-        }
-      }.value
+      jsExecutionFiles += scalaJSLinkedFile.value
   )
 
   // These settings will be filtered by the stage dummy tasks
@@ -497,7 +478,10 @@ object ScalaJSPluginInternal {
         val files = jsExecutionFiles.value
 
         val moduleKind = scalaJSLinkerConfig.value.moduleKind
-        val moduleIdentifier = scalaJSModuleIdentifier.value
+        val moduleIdentifier = moduleKind match {
+          case ModuleKind.NoModule       => None
+          case ModuleKind.CommonJSModule => Some(scalaJSLinkedFile.value.path)
+        }
 
         val frameworksAndTheirImplNames =
           testFrameworks.value.map(f => f -> f.implClassNames.toList)
