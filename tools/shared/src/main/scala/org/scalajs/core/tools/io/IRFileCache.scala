@@ -62,7 +62,6 @@ final class IRFileCache {
 
   /** A cache to use for individual runs. Not threadsafe */
   final class Cache private[IRFileCache] {
-    private[this] var readyToUse: Boolean = false
     private[this] var localCache: Seq[PersistedFiles] = _
 
     /** Extract and cache IR.
