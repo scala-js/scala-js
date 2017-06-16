@@ -21,7 +21,8 @@ import org.scalajs.core.ir.Utils.escapeJS
 
 import org.scalajs.sbtplugin._
 import org.scalajs.jsenv.{ConsoleJSConsole, JSEnv}
-import org.scalajs.jsenv.nodejs.{NodeJSEnv, JSDOMNodeJSEnv}
+import org.scalajs.jsenv.nodejs.NodeJSEnv
+import org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv
 
 import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings

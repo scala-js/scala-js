@@ -1,5 +1,5 @@
 import org.scalajs.core.tools.io._
-import org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv
+import org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv
 import org.scalajs.sbtplugin.ScalaJSPluginInternal._
 import org.scalajs.sbtplugin.Loggers.sbtLogger2ToolsLogger
 

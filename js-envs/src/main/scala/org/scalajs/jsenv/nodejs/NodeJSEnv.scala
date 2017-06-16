@@ -22,22 +22,6 @@ class NodeJSEnv(config: NodeJSEnv.Config)
 
   def this() = this(NodeJSEnv.Config())
 
-  @deprecated("Use the overload with a NodeJSEnv.Config.", "0.6.18")
-  def this(
-      @deprecatedName('nodejsPath)
-      executable: String = "node",
-      @deprecatedName('addArgs)
-      args: Seq[String] = Seq.empty,
-      @deprecatedName('addEnv)
-      env: Map[String, String] = Map.empty) = {
-    this(NodeJSEnv.Config().withExecutable(executable).withArgs(args.toList).withEnv(env))
-  }
-
-  @deprecated("Use the overloaded constructor with a NodeJSEnv.Config.",
-      "0.6.18")
-  def withSourceMap(sourceMap: Boolean): NodeJSEnv =
-    new NodeJSEnv(config.withSourceMap(sourceMap))
-
   protected def vmName: String = "Node.js"
 
   override def jsRunner(files: Seq[VirtualJSFile]): JSRunner =

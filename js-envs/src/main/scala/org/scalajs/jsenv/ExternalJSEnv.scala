@@ -11,9 +11,7 @@ import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
 abstract class ExternalJSEnv(
-    @deprecatedName('additionalArgs)
     final protected val args: Seq[String],
-    @deprecatedName('additionalEnv)
     final protected val env: Map[String, String])
     extends AsyncJSEnv {
 
@@ -26,12 +24,6 @@ abstract class ExternalJSEnv(
 
   /** Command to execute (on shell) for this VM */
   protected def executable: String
-
-  @deprecated("Use `args` instead.", "0.6.16")
-  final protected def additionalArgs: Seq[String] = args
-
-  @deprecated("Use `env` instead.", "0.6.16")
-  final protected def additionalEnv: Map[String, String] = env
 
   /** Custom initialization scripts. */
   protected def customInitFiles(): Seq[VirtualJSFile] = Nil
