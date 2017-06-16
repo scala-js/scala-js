@@ -142,12 +142,11 @@ final class ClosureLinkerBackend(
 
   private def writeResult(result: Result, compiler: ClosureCompiler,
       output: WritableVirtualJSFile): Unit = {
-    def withNewLine(str: String): String = if (str == "") "" else str + "\n"
+
     def ifIIFE(str: String): String = if (needsIIFEWrapper) str else ""
 
-    val (header0, footer0) = config.customOutputWrapper
-    val header = withNewLine(header0) + ifIIFE("(function(){") + "'use strict';\n"
-    val footer = ifIIFE("}).call(this);\n") + withNewLine(footer0)
+    val header = ifIIFE("(function(){") + "'use strict';\n"
+    val footer = ifIIFE("}).call(this);\n")
 
     val outputContent =
       if (result.errors.nonEmpty) "// errors while producing source\n"

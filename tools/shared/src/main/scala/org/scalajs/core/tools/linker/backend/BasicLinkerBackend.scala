@@ -54,9 +54,7 @@ final class BasicLinkerBackend(
 
     try {
       logger.time("Emitter (write output)") {
-        emitter.emitCustomHeader(config.customOutputWrapper._1, builder)
         emitter.emitAll(unit, builder, logger)
-        emitter.emitCustomFooter(config.customOutputWrapper._2, builder)
       }
 
       builder.complete()
