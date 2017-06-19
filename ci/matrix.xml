@@ -20,9 +20,9 @@
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbtretry 'set jsEnv in helloworld := new org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv' \
+    sbtretry 'set jsEnv in helloworld := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv' \
         ++$scala helloworld/run &&
-    sbtretry 'set jsEnv in helloworld := new org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv' \
+    sbtretry 'set jsEnv in helloworld := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
@@ -66,9 +66,9 @@
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv' \
+    sbtretry 'set jsEnv in $testSuite := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv' \
         ++$scala $testSuite/test &&
-    sbtretry 'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.JSDOMNodeJSEnv' \
+    sbtretry 'set jsEnv in $testSuite := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&

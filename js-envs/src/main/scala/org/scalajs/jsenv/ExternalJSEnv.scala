@@ -1,5 +1,7 @@
 package org.scalajs.jsenv
 
+import scala.collection.immutable
+
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.logging.Logger
 
@@ -10,12 +12,7 @@ import scala.collection.JavaConverters._
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
-abstract class ExternalJSEnv(
-    @deprecatedName('additionalArgs)
-    final protected val args: Seq[String],
-    @deprecatedName('additionalEnv)
-    final protected val env: Map[String, String])
-    extends AsyncJSEnv {
+abstract class ExternalJSEnv extends AsyncJSEnv {
 
   import ExternalJSEnv._
 
@@ -27,11 +24,11 @@ abstract class ExternalJSEnv(
   /** Command to execute (on shell) for this VM */
   protected def executable: String
 
-  @deprecated("Use `args` instead.", "0.6.16")
-  final protected def additionalArgs: Seq[String] = args
+  /** Command-line arguments to give to the external process. */
+  protected def args: immutable.Seq[String] = Nil
 
-  @deprecated("Use `env` instead.", "0.6.16")
-  final protected def additionalEnv: Map[String, String] = env
+  /** Environment in which to run the external process. */
+  protected def env: Map[String, String] = Map.empty
 
   /** Custom initialization scripts. */
   protected def customInitFiles(): Seq[VirtualJSFile] = Nil

@@ -9,6 +9,8 @@
 
 package org.scalajs.jsenv.nodejs
 
+import scala.collection.immutable
+
 import org.scalajs.jsenv._
 
 import org.scalajs.core.tools.io._
@@ -16,29 +18,20 @@ import org.scalajs.core.tools.logging._
 
 import java.io.{ Console => _, _ }
 
-class NodeJSEnv(config: NodeJSEnv.Config)
-    extends AbstractNodeJSEnv(config.executable, config.args, config.env,
-        config.sourceMap) {
+class NodeJSEnv(config: NodeJSEnv.Config) extends AbstractNodeJSEnv {
 
   def this() = this(NodeJSEnv.Config())
 
-  @deprecated("Use the overload with a NodeJSEnv.Config.", "0.6.18")
-  def this(
-      @deprecatedName('nodejsPath)
-      executable: String = "node",
-      @deprecatedName('addArgs)
-      args: Seq[String] = Seq.empty,
-      @deprecatedName('addEnv)
-      env: Map[String, String] = Map.empty) = {
-    this(NodeJSEnv.Config().withExecutable(executable).withArgs(args.toList).withEnv(env))
-  }
-
-  @deprecated("Use the overloaded constructor with a NodeJSEnv.Config.",
-      "0.6.18")
-  def withSourceMap(sourceMap: Boolean): NodeJSEnv =
-    new NodeJSEnv(config.withSourceMap(sourceMap))
-
   protected def vmName: String = "Node.js"
+
+  protected def executable: String = config.executable
+
+  override protected def args: immutable.Seq[String] = config.args
+
+  override protected def env: Map[String, String] = config.env
+
+  // TODO Our Build wants this to be public, but it does not seem clean
+  override def wantSourceMap: Boolean = config.sourceMap
 
   override def jsRunner(files: Seq[VirtualJSFile]): JSRunner =
     new NodeRunner(files)

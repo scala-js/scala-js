@@ -22,15 +22,9 @@ import scala.collection.JavaConverters._
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
 
-abstract class AbstractNodeJSEnv(
-    @deprecatedName('nodejsPath)
-    protected val executable: String,
-    @deprecatedName('addArgs)
-    args: Seq[String],
-    @deprecatedName('addEnv)
-    env: Map[String, String],
-    val sourceMap: Boolean)
-    extends ExternalJSEnv(args, env) with ComJSEnv {
+abstract class AbstractNodeJSEnv extends ExternalJSEnv with ComJSEnv {
+
+  protected def wantSourceMap: Boolean = true
 
   /** True, if the installed node executable supports source mapping.
    *
@@ -60,15 +54,17 @@ abstract class AbstractNodeJSEnv(
      *  Is used by [[initFiles]], override to change/disable.
      */
     protected def installSourceMap(): Seq[VirtualJSFile] = {
-      if (sourceMap) Seq(
-        new MemVirtualJSFile("sourceMapSupport.js").withContent(
+      if (wantSourceMap) {
+        val content =
           """
             |try {
             |  require('source-map-support').install();
             |} catch (e) {}
           """.stripMargin
-        )
-      ) else Seq()
+        Seq(new MemVirtualJSFile("sourceMapSupport.js").withContent(content))
+      } else {
+        Seq()
+      }
     }
 
     /** File(s) to hack console.log to prevent if from changing `%%` to `%`.
