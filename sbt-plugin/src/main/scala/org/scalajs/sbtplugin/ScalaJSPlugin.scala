@@ -29,10 +29,8 @@ object ScalaJSPlugin extends AutoPlugin {
   object autoImport {
     import KeyRanks._
 
-    // Some constants
+    /** The current version of the Scala.js sbt plugin and tool chain. */
     val scalaJSVersion = ScalaJSVersions.current
-    val scalaJSIsSnapshotVersion = ScalaJSVersions.currentIsSnapshot
-    val scalaJSBinaryVersion = ScalaJSCrossVersion.currentBinaryVersion
 
     // The JS platform for sbt-crossproject
     val JSPlatform = org.scalajs.sbtplugin.JSPlatform

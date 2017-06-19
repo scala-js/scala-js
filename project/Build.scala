@@ -88,7 +88,7 @@ object MyScalaJSPlugin extends AutoPlugin {
       scalacOptions ++= {
         val base = (baseDirectory in LocalProject("scalajs")).value
         if (isGeneratingEclipse) Seq()
-        else if (scalaJSIsSnapshotVersion) Seq()
+        else if (isSnapshot.value) Seq()
         else Seq(
           // Link source maps to github sources
           "-P:scalajs:mapSourceURI:" + base.toURI +
@@ -359,23 +359,6 @@ object Build {
       }
   )
 
-  private def publishToScalaJSRepoSettings = Seq(
-      publishTo := {
-        Seq("PUBLISH_USER", "PUBLISH_PASS").map(Properties.envOrNone) match {
-          case Seq(Some(user), Some(pass)) =>
-            val snapshotsOrReleases =
-              if (scalaJSIsSnapshotVersion) "snapshots" else "releases"
-            Some(Resolver.sftp(
-                s"scala-js-$snapshotsOrReleases",
-                "repo.scala-js.org",
-                s"/home/scalajsrepo/www/repo/$snapshotsOrReleases")(
-                Resolver.ivyStylePatterns) as (user, pass))
-          case _ =>
-            None
-        }
-      }
-  )
-
   private def publishToBintraySettings = Def.settings(
       bintrayPublishSettings,
       repository in bintray := "scala-js-releases",
@@ -386,7 +369,7 @@ object Build {
       if (Properties.envOrNone("PUBLISH_TO_BINTRAY") == Some("true"))
         publishToBintraySettings
       else
-        publishToScalaJSRepoSettings,
+        Nil,
       publishMavenStyle := false
   )
 
