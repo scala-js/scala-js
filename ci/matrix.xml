@@ -26,21 +26,21 @@
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbtretry 'set scalaJSOptimizerOptions in helloworld ~= (_.withDisableOptimizer(true))' \
+    sbtretry 'set scalaJSLinkerConfig in helloworld ~= (_.withOptimizer(false))' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbtretry 'set scalaJSSemantics in helloworld ~= (_.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Unchecked))' \
+    sbtretry 'set scalaJSLinkerConfig in helloworld ~= (_.withSemantics(_.withAsInstanceOfs(CheckedBehavior.Unchecked)))' \
         ++$scala helloworld/run \
         helloworld/clean &&
     sbtretry ++$scala \
-        'set scalaJSModuleKind in helloworld := ModuleKind.CommonJSModule' \
+        'set scalaJSLinkerConfig in helloworld ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         helloworld/run \
         helloworld/clean &&
     sbtretry ++$scala testingExample/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala testingExample/test \
         testingExample/clean &&
-    sbtretry 'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
+    sbtretry 'set scalaJSLinkerConfig in testingExample ~= (_.withOptimizer(false))' \
         ++$scala testingExample/test &&
     sbtretry ++$scala library/test &&
     sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
@@ -72,17 +72,17 @@
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
-        'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
@@ -90,9 +90,9 @@
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSModuleKind in $testSuite := ModuleKind.CommonJSModule' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSModuleKind in $testSuite := ModuleKind.CommonJSModule' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test
   ]]></task>
@@ -100,44 +100,44 @@
   <task id="test-suite-ecma-script6"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
-        'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
-        'set scalaJSSemantics in $testSuite ~= makeCompliant' \
+        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
-        'set scalaJSSemantics in $testSuite ~= makeCompliant' \
-        'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
+        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSStage in Global := FullOptStage' \
-        'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
-        'set scalaJSModuleKind in $testSuite := ModuleKind.CommonJSModule' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
-        'set scalaJSModuleKind in $testSuite := ModuleKind.CommonJSModule' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test
   ]]></task>

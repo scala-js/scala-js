@@ -105,7 +105,7 @@ scala/util/matching/RegexTest.scala
 scala/math/BigDecimalTest.scala
 
 # Test fails only some times with
-#   'set scalaJSOptimizerOptions in scalaTestSuite ~= (_.withDisableOptimizer(true))'
+#   'set scalaJSLinkerConfig in scalaTestSuite ~= (_.withOptimizer(false))'
 scala/collection/immutable/PagedSeqTest.scala
 
 # Bugs

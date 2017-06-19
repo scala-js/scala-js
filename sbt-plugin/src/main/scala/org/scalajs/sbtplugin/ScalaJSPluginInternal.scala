@@ -48,10 +48,6 @@ object ScalaJSPluginInternal {
       "Scala.js internal: Clear the global IR cache's statistics. Used to " +
       "implement cache statistics.", KeyRanks.Invisible)
 
-  /** Dummy setting to ensure we do not fork in Scala.js run & test. */
-  val scalaJSEnsureUnforked = SettingKey[Boolean]("ensureUnforked",
-      "Scala.js internal: Fails if fork is true.", KeyRanks.Invisible)
-
   /** Dummy setting to persist a Scala.js linker. */
   val scalaJSLinker = SettingKey[ClearableLinker]("scalaJSLinker",
       "Scala.js internal: Setting to persist a linker", KeyRanks.Invisible)
@@ -77,11 +73,6 @@ object ScalaJSPluginInternal {
       "All .sjsir files on the fullClasspath, used by scalajsp",
       KeyRanks.Invisible)
 
-  val scalaJSModuleIdentifier = TaskKey[Option[String]](
-      "scalaJSModuleIdentifier",
-      "An identifier for the module which contains the exports of Scala.js",
-      KeyRanks.Invisible)
-
   val scalaJSSourceFiles = AttributeKey[Seq[File]]("scalaJSSourceFiles",
       "Files used to compute this value (can be used in FileFunctions later).",
       KeyRanks.Invisible)
@@ -91,10 +82,24 @@ object ScalaJSPluginInternal {
     Stage.FullOpt -> fullOptJS
   )
 
-  /** A JS expression that detects the global scope just like Scala.js */
-  val jsGlobalExpr: String = {
-    """((typeof global === "object" && global &&
-         global["Object"] === Object) ? global : this)"""
+  /* #2798 -- On Java 9+, the parallel collections on 2.10 die with a
+   * `NumberFormatException` and prevent the linker from working.
+   *
+   * By default, we therefore pre-emptively disable the parallel optimizer in
+   * case the parallel collections cannot deal with the current version of
+   * Java.
+   *
+   * TODO This will automatically "fix itself" once we upgrade to sbt 1.x,
+   * which uses Scala 2.12. We should get rid of that workaround at that point
+   * for tidiness, though.
+   */
+  private val DefaultParallelLinker: Boolean = {
+    try {
+      scala.util.Properties.isJavaAtLeast("1.8")
+      true
+    } catch {
+      case _: NumberFormatException => false
+    }
   }
 
   def logIRCacheStats(logger: Logger): Unit = {
@@ -134,53 +139,17 @@ object ScalaJSPluginInternal {
   private def scalaJSStageSettings(stage: Stage,
       key: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
 
-      scalaJSLinkerConfig in key := {
-        val opts = (scalaJSOptimizerOptions in key).value
-
-        val semantics = (scalaJSSemantics in key).value
-        val outputMode = (scalaJSOutputMode in key).value
-        val moduleKind = scalaJSModuleKind.value // intentionally not 'in key'
-        val withSourceMap = (emitSourceMaps in key).value
-
-        /* For `relativizeSourceMapBase`, preserve the one in the new config
-         * if it is set, otherwise fall back on the old config.
-         */
-        val oldConfigRelSourceMapBase = {
-          if ((relativeSourceMaps in key).value)
-            Some((artifactPath in key).value.getParentFile.toURI())
-          else
-            None
-        }
-        val newConfigRelSourceMapBase =
-          (scalaJSLinkerConfig in key).value.relativizeSourceMapBase
-        val relSourceMapBase =
-          newConfigRelSourceMapBase.orElse(oldConfigRelSourceMapBase)
-
-        StandardLinker.Config()
-          .withSemantics(semantics)
-          .withModuleKind(moduleKind)
-          .withOutputMode(outputMode)
-          .withCheckIR(opts.checkScalaJSIR)
-          .withOptimizer(!opts.disableOptimizer)
-          .withParallel(opts.parallel)
-          .withSourceMap(withSourceMap)
-          .withRelativizeSourceMapBase(relSourceMapBase)
-          .withClosureCompiler(opts.useClosureCompiler)
-          .withPrettyPrint(opts.prettyPrintFullOptJS)
-          .withBatchMode(opts.batchMode)
-      },
-
       scalaJSLinker in key := {
         val config = (scalaJSLinkerConfig in key).value
 
-        if (config.moduleKind != scalaJSModuleKind.value) {
+        if (config.moduleKind != scalaJSLinkerConfig.value.moduleKind) {
           val projectID = thisProject.value.id
           val configName = configuration.value.name
           val keyName = key.key.label
           sLog.value.warn(
               s"The module kind in `scalaJSLinkerConfig in ($projectID, " +
-              s"$configName, $keyName)` is different than the value of " +
-              s"`scalaJSModuleKind in ($projectID, $configName)`. " +
+              s"$configName, $keyName)` is different than the one `in " +
+              s"`($projectID, $configName)`. " +
               "Some things will go wrong.")
         }
 
@@ -390,25 +359,16 @@ object ScalaJSPluginInternal {
         ((crossTarget in fullOptJS).value /
             ((moduleName in fullOptJS).value + "-opt.js")),
 
-      scalaJSSemantics in fullOptJS ~= (_.optimized),
-      scalaJSOptimizerOptions in fullOptJS := {
-        val prev = (scalaJSOptimizerOptions in fullOptJS).value
-        val outputMode = (scalaJSOutputMode in fullOptJS).value
-        prev.withUseClosureCompiler(outputMode == OutputMode.ECMAScript51Isolated)
+      scalaJSLinkerConfig in fullOptJS ~= { prevConfig =>
+        prevConfig
+          .withSemantics(_.optimized)
+          .withClosureCompiler(prevConfig.outputMode == OutputMode.ECMAScript51Isolated)
       },
 
       console := console.dependsOn(Def.task {
         streams.value.log.warn("Scala REPL doesn't work with Scala.js. You " +
             "are running a JVM REPL. JavaScript things won't work.")
       }).value,
-
-      // Give tasks ability to check we are not forking at build reading time
-      scalaJSEnsureUnforked := {
-        if (fork.value)
-          throw new MessageOnlyException("Scala.js cannot be run in a forked JVM")
-        else
-          true
-      },
 
       scalaJSJavaSystemProperties ++= {
         val javaSysPropsPattern = "-D([^=]*)=(.*)".r
@@ -442,23 +402,6 @@ object ScalaJSPluginInternal {
       // Crucially, add the Scala.js linked file to the JS files
       jsExecutionFiles += scalaJSLinkedFile.value,
 
-      scalaJSModuleIdentifier := Def.settingDyn[Task[Option[String]]] {
-        scalaJSModuleKind.value match {
-          case ModuleKind.NoModule =>
-            Def.task {
-              None
-            }
-
-          case ModuleKind.CommonJSModule =>
-            Def.task {
-              Some(scalaJSLinkedFile.value.path)
-            }
-        }
-      }.value
-  )
-
-  // These settings will be filtered by the stage dummy tasks
-  val scalaJSRunSettings = Seq(
       scalaJSMainModuleInitializer := {
         mainClass.value.map { mainCl =>
           ModuleInitializer.mainMethodWithArgs(mainCl, "main")
@@ -482,9 +425,6 @@ object ScalaJSPluginInternal {
       },
 
       run := {
-        // use assert to prevent warning about pure expr in stat pos
-        assert(scalaJSEnsureUnforked.value)
-
         if (!scalaJSUseMainModuleInitializer.value) {
           throw new MessageOnlyException("`run` is only supported with " +
               "scalaJSUseMainModuleInitializer := true")
@@ -505,15 +445,17 @@ object ScalaJSPluginInternal {
       }
   )
 
-  val scalaJSCompileSettings = (
-      scalaJSConfigSettings ++
-      scalaJSRunSettings
+  val scalaJSCompileSettings: Seq[Setting[_]] = (
+      scalaJSConfigSettings
   )
 
-  val scalaJSTestFrameworkSettings = Seq(
+  private val scalaJSTestFrameworkSettings = Seq(
       loadedTestFrameworks := {
-        // use assert to prevent warning about pure expr in stat pos
-        assert(scalaJSEnsureUnforked.value)
+        if (fork.value) {
+          throw new MessageOnlyException(
+              "`test` tasks in a Scala.js project require " +
+              "`fork in Test := false`.")
+        }
 
         val env = jsEnv.value match {
           case env: ComJSEnv => env
@@ -525,8 +467,11 @@ object ScalaJSPluginInternal {
 
         val files = jsExecutionFiles.value
 
-        val moduleKind = scalaJSModuleKind.value
-        val moduleIdentifier = scalaJSModuleIdentifier.value
+        val moduleKind = scalaJSLinkerConfig.value.moduleKind
+        val moduleIdentifier = moduleKind match {
+          case ModuleKind.NoModule       => None
+          case ModuleKind.CommonJSModule => Some(scalaJSLinkedFile.value.path)
+        }
 
         val frameworksAndTheirImplNames =
           testFrameworks.value.map(f => f -> f.implClassNames.toList)
@@ -545,7 +490,7 @@ object ScalaJSPluginInternal {
       }
   )
 
-  val scalaJSTestBuildSettings = (
+  private val scalaJSTestBuildSettings = (
       scalaJSConfigSettings
   ) ++ (
       Seq(fastOptJS, fullOptJS) map { packageJSTask =>
@@ -553,7 +498,7 @@ object ScalaJSPluginInternal {
       }
   )
 
-  val scalaJSTestHtmlSettings = Seq(
+  private val scalaJSTestHtmlSettings = Seq(
       artifactPath in testHtml := {
         val stageSuffix = scalaJSStage.value match {
           case Stage.FastOpt => "fastopt"
@@ -587,76 +532,19 @@ object ScalaJSPluginInternal {
       }
   )
 
-  val scalaJSTestSettings = (
+  val scalaJSTestSettings: Seq[Setting[_]] = (
       scalaJSTestBuildSettings ++
-      scalaJSRunSettings ++
       scalaJSTestFrameworkSettings ++
       scalaJSTestHtmlSettings
   )
 
-  val scalaJSDefaultBuildConfigs = (
-      inConfig(Compile)(scalaJSConfigSettings) ++ // build settings for Compile
-      inConfig(Test)(scalaJSTestBuildSettings)
-  )
-
-  val scalaJSDefaultConfigs = (
-      inConfig(Compile)(scalaJSCompileSettings) ++
-      inConfig(Test)(scalaJSTestSettings)
-  )
-
-  val scalaJSProjectBaseSettings = Seq(
+  private val scalaJSProjectBaseSettings = Seq(
       crossPlatform := JSPlatform,
 
-      /* We first define scalaJSLinkerConfig in the project scope, with all
-       * the defaults. Later, we derive all the old config options in the
-       * project scope from scalaJSLinkerConfig.
-       *
-       * At the end of the day, in the fully qualified scope
-       * (project, config, linkKey), we re-derive scalaJSLinkerConfig from all
-       * the old config keys.
-       *
-       * This effectively gives meaning to scalaJSLinkerConfig in the project
-       * scope and in the fully qualified scope, but not in-between. Changes
-       * to `scalaJSLinkerConfig in (project, config)` will not have any
-       * effect.
-       *
-       * This is a compromise to ensure backward compatibility of using the old
-       * options in all cases, and a reasonable way to use the new options
-       * for typical use cases.
-       *
-       * `relativeSourceMaps`/`scalaJSLinkerConfig.relativizeSourceMapBase` is
-       * an exception. We cannot derive `relativizeSourceMapBase` only from
-       * `relativeSourceMaps`, and deriving `relativeSourceMaps` from
-       * `relativizeSourceMapBase` would lose information. Instead, we keep
-       * `relativeSourceMaps` to its default `false` in the project scope,
-       * irrespective of `scalaJSLinkerConfig`. And in the fully qualified
-       * scope, *if* `relativeSourceMaps` is true, we set
-       * `relativeSourceMapBase`, otherwise we leave it untouched. This
-       * provides the same compatibility/usability features.
-       */
       scalaJSLinkerConfig := {
         StandardLinker.Config()
-          .withParallel(OptimizerOptions.DefaultParallel)
+          .withParallel(DefaultParallelLinker)
       },
-
-      relativeSourceMaps := false,
-
-      emitSourceMaps := scalaJSLinkerConfig.value.sourceMap,
-
-      scalaJSOptimizerOptions := {
-        val config = scalaJSLinkerConfig.value
-        OptimizerOptions()
-          .withParallel(config.parallel)
-          .withBatchMode(config.batchMode)
-          .withDisableOptimizer(!config.optimizer)
-          .withPrettyPrintFullOptJS(config.prettyPrint)
-          .withCheckScalaJSIR(config.checkIR)
-          .withUseClosureCompiler(config.closureCompiler)
-      },
-
-      scalaJSSemantics := scalaJSLinkerConfig.value.semantics,
-      scalaJSOutputMode := scalaJSLinkerConfig.value.outputMode,
-      scalaJSModuleKind := scalaJSLinkerConfig.value.moduleKind,
 
       scalaJSModuleInitializers := Seq(),
       scalaJSModuleInitializers in Compile := scalaJSModuleInitializers.value,
@@ -683,20 +571,8 @@ object ScalaJSPluginInternal {
         ()
       },
 
-      scalaJSJavaSystemProperties := Map.empty
-  )
+      scalaJSJavaSystemProperties := Map.empty,
 
-  val scalaJSAbstractSettings: Seq[Setting[_]] = (
-      scalaJSProjectBaseSettings ++
-      scalaJSDefaultConfigs
-  )
-
-  val scalaJSAbstractBuildSettings: Seq[Setting[_]] = (
-      scalaJSProjectBaseSettings ++
-      scalaJSDefaultBuildConfigs
-  )
-
-  val scalaJSEcosystemSettings = Seq(
       // you will need the Scala.js compiler plugin
       autoCompilerPlugins := true,
       addCompilerPlugin(
@@ -713,4 +589,9 @@ object ScalaJSPluginInternal {
       crossVersion := ScalaJSCrossVersion.binary
   )
 
+  val scalaJSProjectSettings: Seq[Setting[_]] = (
+      scalaJSProjectBaseSettings ++
+      inConfig(Compile)(scalaJSCompileSettings) ++
+      inConfig(Test)(scalaJSTestSettings)
+  )
 }

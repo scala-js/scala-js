@@ -1,7 +1,9 @@
-import sbt._
-import Keys._
+import scala.language.implicitConversions
 
 import scala.annotation.tailrec
+
+import sbt._
+import Keys._
 
 import bintray.Plugin.bintrayPublishSettings
 import bintray.Keys.{repository, bintrayOrganization, bintray}
@@ -24,23 +26,39 @@ import org.scalajs.jsenv.{ConsoleJSConsole, JSEnv}
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv
 
-import ScalaJSPlugin.autoImport._
+import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
 import org.scalajs.core.tools.io.{FileVirtualJSFile, MemVirtualJSFile}
-import org.scalajs.core.tools.sem._
-import org.scalajs.core.tools.linker.ModuleInitializer
-import org.scalajs.core.tools.linker.backend.OutputMode
+import org.scalajs.core.tools.linker._
 
 import sbtassembly.AssemblyPlugin.autoImport._
 
-/* In sbt 0.13 the Build trait would expose all vals to the shell, where you
- * can use them in "set a := b" like expressions. This re-exposes them.
+/* Things that we want to expose in the sbt command line (and hence also in
+ * `ci/matrix.xml`).
  */
 object ExposedValues extends AutoPlugin {
   object autoImport {
-    val makeCompliant = Build.makeCompliant
+    // set scalaJSLinkerConfig in someProject ~= makeCompliant
+    val makeCompliant: StandardLinker.Config => StandardLinker.Config = {
+      _.withSemantics { semantics =>
+        semantics
+          .withAsInstanceOfs(CheckedBehavior.Compliant)
+          .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
+          .withModuleInit(CheckedBehavior.Compliant)
+          .withStrictFloats(true)
+      }
+    }
+
+    val CheckedBehavior = org.scalajs.core.tools.linker.CheckedBehavior
+
+    val OutputMode = org.scalajs.core.tools.linker.standard.OutputMode
+
+    implicit def StandardLinkerConfigStandardOps(
+        config: StandardLinker.Config): standard.StandardLinkerConfigStandardOps = {
+      standard.StandardLinkerConfigStandardOps(config)
+    }
   }
 }
 
@@ -65,13 +83,13 @@ object MyScalaJSPlugin extends AutoPlugin {
        */
       crossVersion := CrossVersion.binary,
 
-      scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(true)),
+      scalaJSLinkerConfig ~= (_.withCheckIR(true)),
 
       // Link source maps
       scalacOptions ++= {
         val base = (baseDirectory in LocalProject("scalajs")).value
         if (isGeneratingEclipse) Seq()
-        else if (scalaJSIsSnapshotVersion) Seq()
+        else if (isSnapshot.value) Seq()
         else Seq(
           // Link source maps to github sources
           "-P:scalajs:mapSourceURI:" + base.toURI +
@@ -108,15 +126,6 @@ object Build {
     "Defaults to what sbt is running with.")
 
   val javaDocBaseURL: String = "http://docs.oracle.com/javase/8/docs/api/"
-
-  // set scalaJSSemantics in someProject ~= makeCompliant
-  val makeCompliant: Semantics => Semantics = { semantics =>
-    semantics
-      .withAsInstanceOfs(CheckedBehavior.Compliant)
-      .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
-      .withModuleInit(CheckedBehavior.Compliant)
-      .withStrictFloats(true)
-  }
 
   private def includeIf(testDir: File, condition: Boolean): List[File] =
     if (condition) List(testDir)
@@ -351,23 +360,6 @@ object Build {
       }
   )
 
-  private def publishToScalaJSRepoSettings = Seq(
-      publishTo := {
-        Seq("PUBLISH_USER", "PUBLISH_PASS").map(Properties.envOrNone) match {
-          case Seq(Some(user), Some(pass)) =>
-            val snapshotsOrReleases =
-              if (scalaJSIsSnapshotVersion) "snapshots" else "releases"
-            Some(Resolver.sftp(
-                s"scala-js-$snapshotsOrReleases",
-                "repo.scala-js.org",
-                s"/home/scalajsrepo/www/repo/$snapshotsOrReleases")(
-                Resolver.ivyStylePatterns) as (user, pass))
-          case _ =>
-            None
-        }
-      }
-  )
-
   private def publishToBintraySettings = Def.settings(
       bintrayPublishSettings,
       repository in bintray := "scala-js-releases",
@@ -378,7 +370,7 @@ object Build {
       if (Properties.envOrNone("PUBLISH_TO_BINTRAY") == Some("true"))
         publishToBintraySettings
       else
-        publishToScalaJSRepoSettings,
+        Nil,
       publishMavenStyle := false
   )
 
@@ -638,8 +630,7 @@ object Build {
       commonToolsSettings,
       crossVersion := ScalaJSCrossVersion.binary,
 
-      scalaJSModuleKind in Test :=
-        org.scalajs.core.tools.linker.backend.ModuleKind.CommonJSModule,
+      scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
 
       jsExecutionFiles in Test := {
         val frameworks = (loadedTestFrameworks in testSuite in Test).value
@@ -1295,10 +1286,11 @@ object Build {
 
         val stage = (scalaJSStage in Test).value
 
-        val sems = stage match {
-          case FastOptStage => (scalaJSSemantics in (Test, fastOptJS)).value
-          case FullOptStage => (scalaJSSemantics in (Test, fullOptJS)).value
+        val linkerConfig = stage match {
+          case FastOptStage => (scalaJSLinkerConfig in (Test, fastOptJS)).value
+          case FullOptStage => (scalaJSLinkerConfig in (Test, fullOptJS)).value
         }
+        val sems = linkerConfig.semantics
 
         val semTags = (
             if (sems.asInstanceOfs == CheckedBehavior.Compliant)
@@ -1328,7 +1320,7 @@ object Build {
           case FullOptStage => "fullopt-stage"
         }
 
-        val moduleKindTag = scalaJSModuleKind.value match {
+        val moduleKindTag = linkerConfig.moduleKind match {
           case ModuleKind.NoModule       => "modulekind-nomodule"
           case ModuleKind.CommonJSModule => "modulekind-commonjs"
         }
@@ -1464,17 +1456,19 @@ object Build {
         val testDir = (sourceDirectory in Test).value
 
         includeIf(testDir / "require-modules",
-            scalaJSModuleKind.value != ModuleKind.NoModule)
+            scalaJSLinkerConfig.value.moduleKind != ModuleKind.NoModule)
       },
 
       testSuiteJSExecutionFilesSetting,
 
-      scalaJSSemantics ~= (_.withRuntimeClassName(_.fullName match {
-        case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
-          "renamed.test.Class"
-        case fullName =>
-          fullName
-      })),
+      scalaJSLinkerConfig ~= { prevConfig =>
+        prevConfig.withSemantics(_.withRuntimeClassName(_.fullName match {
+          case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
+            "renamed.test.Class"
+          case fullName =>
+            fullName
+        }))
+      },
 
       javaOptions in Test += "-Dscalajs.scalaVersion=" + scalaVersion.value,
 

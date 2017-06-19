@@ -15,16 +15,13 @@ import sbt._
 
 import sbtcrossproject._
 
-import org.scalajs.core.tools.sem.Semantics
+import org.scalajs.core.ir.ScalaJSVersions
+
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.standard._
 
-import org.scalajs.core.ir.ScalaJSVersions
-
-import org.scalajs.jsenv.{JSEnv, JSConsole}
-import org.scalajs.jsenv.nodejs.NodeJSEnv
-import org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv
+import org.scalajs.jsenv.JSEnv
 
 object ScalaJSPlugin extends AutoPlugin {
   override def requires: Plugins = plugins.JvmPlugin
@@ -32,10 +29,8 @@ object ScalaJSPlugin extends AutoPlugin {
   object autoImport {
     import KeyRanks._
 
-    // Some constants
+    /** The current version of the Scala.js sbt plugin and tool chain. */
     val scalaJSVersion = ScalaJSVersions.current
-    val scalaJSIsSnapshotVersion = ScalaJSVersions.currentIsSnapshot
-    val scalaJSBinaryVersion = ScalaJSCrossVersion.currentBinaryVersion
 
     // The JS platform for sbt-crossproject
     val JSPlatform = org.scalajs.sbtplugin.JSPlatform
@@ -56,74 +51,8 @@ object ScalaJSPlugin extends AutoPlugin {
     }
 
     // Stage values
-    @deprecated("Use FastOptStage instead", "0.6.6")
-    val PreLinkStage = Stage.FastOpt
     val FastOptStage = Stage.FastOpt
     val FullOptStage = Stage.FullOpt
-
-    // Factory methods for JSEnvs
-
-    /**
-     *  Creates a [[sbt.Def.Initialize Def.Initialize]] for a NodeJSEnv. Use
-     *  this to explicitly specify in your build that you would like to run with Node.js:
-     *
-     *  {{{
-     *  jsEnv := NodeJSEnv().value
-     *  }}}
-     *
-     *  Note that the resulting [[sbt.Def.Setting Setting]] is not scoped at
-     *  all, but must be scoped in a project that has the ScalaJSPlugin enabled
-     *  to work properly.
-     *  Therefore, either put the upper line in your project settings (common
-     *  case) or scope it manually, using
-     *  [[sbt.ProjectExtra.inScope[* Project.inScope]].
-     */
-    @deprecated(
-        "Use `jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv(...)` instead.",
-        "0.6.16")
-    def NodeJSEnv(
-        executable: String = "node",
-        args: Seq[String] = Seq.empty,
-        env: Map[String, String] = Map.empty
-    ): Def.Initialize[Task[NodeJSEnv]] = Def.task {
-      new NodeJSEnv(
-          org.scalajs.jsenv.nodejs.NodeJSEnv.Config()
-            .withExecutable(executable)
-            .withArgs(args.toList)
-            .withEnv(env))
-    }
-
-    /**
-     *  Creates a [[sbt.Def.Initialize Def.Initialize]] for a JSDOMNodeJSEnv. Use
-     *  this to explicitly specify in your build that you would like to run with
-     *  Node.js on a JSDOM window:
-     *
-     *  {{{
-     *  jsEnv := JSDOMNodeJSEnv().value
-     *  }}}
-     *
-     *  Note that the resulting [[sbt.Def.Setting Setting]] is not scoped at
-     *  all, but must be scoped in a project that has the ScalaJSPlugin enabled
-     *  to work properly.
-     *  Therefore, either put the upper line in your project settings (common
-     *  case) or scope it manually, using
-     *  [[sbt.ProjectExtra.inScope[* Project.inScope]].
-     */
-    @deprecated(
-        "Use `jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(...)` " +
-        "instead.",
-        "0.6.16")
-    def JSDOMNodeJSEnv(
-        executable: String = "node",
-        args: Seq[String] = Seq.empty,
-        env: Map[String, String] = Map.empty
-    ): Def.Initialize[Task[JSDOMNodeJSEnv]] = Def.task {
-      new JSDOMNodeJSEnv(
-          org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv.Config()
-            .withExecutable(executable)
-            .withArgs(args.toList)
-            .withEnv(env))
-    }
 
     // ModuleKind
     val ModuleKind = org.scalajs.core.tools.linker.backend.ModuleKind
@@ -172,24 +101,6 @@ object ScalaJSPlugin extends AutoPlugin {
         "The JavaScript environment in which to run and test Scala.js applications.",
         AMinusTask)
 
-    val relativeSourceMaps = SettingKey[Boolean]("relativeSourceMaps",
-        "Make the referenced paths on source maps relative to target path", BPlusSetting)
-
-    val emitSourceMaps = SettingKey[Boolean]("emitSourceMaps",
-        "Whether package and optimize stages should emit source maps at all", BPlusSetting)
-
-    val scalaJSSemantics = SettingKey[Semantics]("scalaJSSemantics",
-        "Configurable semantics of Scala.js.", BPlusSetting)
-
-    val scalaJSOutputMode = SettingKey[OutputMode]("scalaJSOutputMode",
-        "Output mode of Scala.js.", BPlusSetting)
-
-    val scalaJSModuleKind = SettingKey[ModuleKind]("scalaJSModuleKind",
-        "Kind of JavaScript modules emitted by Scala.js.", BPlusSetting)
-
-    val scalaJSOptimizerOptions = SettingKey[OptimizerOptions]("scalaJSOptimizerOptions",
-        "All kinds of options for the Scala.js optimizer stages", DSetting)
-
     /** Prints the content of a .sjsir file in human readable form. */
     val scalajsp = InputKey[Unit]("scalajsp",
         "Prints the content of a .sjsir file in human readable form.",
@@ -220,8 +131,5 @@ object ScalaJSPlugin extends AutoPlugin {
     )
   }
 
-  override def projectSettings: Seq[Setting[_]] = (
-      scalaJSAbstractSettings ++
-      scalaJSEcosystemSettings
-  )
+  override def projectSettings: Seq[Setting[_]] = scalaJSProjectSettings
 }
