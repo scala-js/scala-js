@@ -494,7 +494,8 @@ object Build {
           clean in compiler,
           clean in irProject, clean in irProjectJS,
           clean in tools, clean in toolsJS,
-          clean in jsEnvs, clean in jsEnvsTestKit, clean in jsEnvsTestSuite,
+          clean in jsEnvs, clean in jsEnvsTestKit, clean in nodeJSEnv,
+          clean in jsdomNodeJSEnv,
           clean in testAdapter, clean in plugin,
           clean in javalanglib, clean in javalib, clean in scalalib,
           clean in libraryAux, clean in library,
@@ -771,13 +772,25 @@ object Build {
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvsTestKit
   ).dependsOn(tools, jsEnvs)
 
-  lazy val jsEnvsTestSuite: Project = (project in file("js-envs-test-suite")).settings(
+  lazy val nodeJSEnv: Project = (project in file("nodejs-env")).settings(
       commonSettings,
       fatalWarningsSettings,
-      name := "Scala.js JS Envs Test Suite",
+      name := "Scala.js Node.js env",
+      normalizedName := "scalajs-nodejs-env",
+      libraryDependencies +=
+        "com.novocode" % "junit-interface" % "0.9" % "test",
+      previousArtifactSetting
+  ).dependsOn(jsEnvs, jsEnvsTestKit % "test")
+
+  // Node.js with jsdom - to be moved in a separate repository
+  lazy val jsdomNodeJSEnv: Project = (project in file("jsdom-nodejs-env")).settings(
+      commonSettings,
+      fatalWarningsSettings,
+      name := "Scala.js JSDOM Node.js env",
+      normalizedName := "scalajs-jsdom-nodejs-env",
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.9" % "test"
-  ).dependsOn(tools, jsEnvs, jsEnvsTestKit % "test")
+  ).dependsOn(jsEnvs, nodeJSEnv, jsEnvsTestKit % "test")
 
   lazy val testAdapter = (project in file("test-adapter")).settings(
       commonSettings,
@@ -818,7 +831,7 @@ object Build {
 
         sbtJars.map(_.data -> docUrl).toMap
       }
-  ).dependsOn(tools, jsEnvs, testAdapter)
+  ).dependsOn(tools, jsEnvs, nodeJSEnv, testAdapter)
 
   lazy val delambdafySetting = {
     scalacOptions ++= (
@@ -1673,7 +1686,7 @@ object Build {
         else
           Nil
       }
-  ).dependsOn(compiler, tools, jsEnvs)
+  ).dependsOn(compiler, tools, nodeJSEnv)
 
   lazy val partestSuite: Project = (project in file("partest-suite")).settings(
       commonSettings,

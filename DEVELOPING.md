@@ -107,7 +107,8 @@ of `library/package`.
 
 Note that the sbt plugin depends on the IR and the tools.
 
-* `js-envs/` The JavaScript environments and runners (generic definitions + Node.js)
+* `js-envs/` The generic definitions of JavaScript environments and runners
+* `nodejs-env/` The Node.js environment
 * `sbt-plugin/` The sbt plugin itself
 
 ### Testing projects
@@ -140,4 +141,4 @@ following incantations.
     > ++SCALA_VERSION
     > ;compiler/publishLocal;library/publishLocal;testInterface/publishLocal;stubs/publishLocal;jUnitRuntime/publishLocal;jUnitPlugin/publishLocal
     > ++2.10.6
-    > ;ir/publishLocal;tools/publishLocal;jsEnvs/publishLocal;jsEnvsTestKit/publishLocal;testAdapter/publishLocal;sbtPlugin/publishLocal
+    > ;ir/publishLocal;tools/publishLocal;jsEnvs/publishLocal;jsEnvsTestKit/publishLocal;nodeJSEnv/publishLocal;testAdapter/publishLocal;sbtPlugin/publishLocal
