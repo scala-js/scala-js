@@ -1466,7 +1466,7 @@ private[optimizer] abstract class OptimizerCore(
 
   private def canMultiInline(impls: List[MethodID]): Boolean = {
     // TODO? Inline multiple non-forwarders with the exact same body?
-    impls.forall(_.isForwarder) &&
+    impls.forall(impl => impl.isForwarder && impl.inlineable) &&
     (getMethodBody(impls.head).body.get match {
       // Trait impl forwarder
       case ApplyStatic(ClassType(staticCls), Ident(methodName, _), _) =>
