@@ -1651,12 +1651,7 @@ object Build {
                   "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
                 else
                   "org.scala-lang.modules" %% "scala-partest" % "1.1.1"
-              },
-              "org.scala-js" % "closure-compiler-java-6" % "v20160517",
-              "io.apigee" % "rhino" % "1.7R5pre4",
-              "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit")
-          ) ++ (
-              parallelCollectionsDependencies(scalaVersion.value)
+              }
           )
         } else {
           Seq()
@@ -1673,27 +1668,12 @@ object Build {
       },
 
       sources in Compile := {
-        if (shouldPartest.value) {
-          // Partest sources and some sources of sbtplugin (see above)
-          val baseSrcs = (sources in Compile).value
-          // Sources for tools (and hence IR)
-          val toolSrcs = (sources in (tools, Compile)).value
-          // Sources for js-envs
-          val jsenvSrcs = {
-            val jsenvBase = ((scalaSource in (jsEnvs, Compile)).value /
-              "org/scalajs/jsenv")
-
-            val scalaFilter: FileFilter = "*.scala"
-            val files = (
-                (jsenvBase * scalaFilter) +++
-                (jsenvBase / "nodejs" ** scalaFilter))
-
-            files.get
-          }
-          toolSrcs ++ baseSrcs ++ jsenvSrcs
-        } else Seq()
+        if (shouldPartest.value)
+          (sources in Compile).value
+        else
+          Nil
       }
-  ).dependsOn(compiler)
+  ).dependsOn(compiler, tools, jsEnvs)
 
   lazy val partestSuite: Project = (project in file("partest-suite")).settings(
       commonSettings,
