@@ -20,7 +20,7 @@ case $BINVER in
         BASEVER="2.11.11"
         ;;
     2.12)
-        FULLVERS="2.12.0 2.12.1 2.12.2"
+        FULLVERS="2.12.1 2.12.2"
         BASEVER="2.12.2"
         ;;
     *)
