@@ -493,7 +493,8 @@ object Build {
           clean in compiler,
           clean in irProject, clean in irProjectJS,
           clean in tools, clean in toolsJS,
-          clean in jsEnvs, clean in jsEnvsTestKit, clean in jsEnvsTestSuite,
+          clean in jsEnvs, clean in jsEnvsTestKit, clean in nodeJSEnv,
+          clean in jsdomNodeJSEnv,
           clean in testAdapter, clean in plugin,
           clean in javalanglib, clean in javalib, clean in scalalib,
           clean in libraryAux, clean in library,
@@ -770,13 +771,25 @@ object Build {
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvsTestKit
   ).dependsOn(tools, jsEnvs)
 
-  lazy val jsEnvsTestSuite: Project = (project in file("js-envs-test-suite")).settings(
+  lazy val nodeJSEnv: Project = (project in file("nodejs-env")).settings(
       commonSettings,
       fatalWarningsSettings,
-      name := "Scala.js JS Envs Test Suite",
+      name := "Scala.js Node.js env",
+      normalizedName := "scalajs-nodejs-env",
+      libraryDependencies +=
+        "com.novocode" % "junit-interface" % "0.9" % "test",
+      previousArtifactSetting
+  ).dependsOn(jsEnvs, jsEnvsTestKit % "test")
+
+  // Node.js with jsdom - to be moved in a separate repository
+  lazy val jsdomNodeJSEnv: Project = (project in file("jsdom-nodejs-env")).settings(
+      commonSettings,
+      fatalWarningsSettings,
+      name := "Scala.js JSDOM Node.js env",
+      normalizedName := "scalajs-jsdom-nodejs-env",
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.9" % "test"
-  ).dependsOn(tools, jsEnvs, jsEnvsTestKit % "test")
+  ).dependsOn(jsEnvs, nodeJSEnv, jsEnvsTestKit % "test")
 
   lazy val testAdapter = (project in file("test-adapter")).settings(
       commonSettings,
@@ -817,7 +830,7 @@ object Build {
 
         sbtJars.map(_.data -> docUrl).toMap
       }
-  ).dependsOn(tools, jsEnvs, testAdapter)
+  ).dependsOn(tools, jsEnvs, nodeJSEnv, testAdapter)
 
   lazy val delambdafySetting = {
     scalacOptions ++= (
@@ -1650,12 +1663,7 @@ object Build {
                   "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
                 else
                   "org.scala-lang.modules" %% "scala-partest" % "1.1.1"
-              },
-              "org.scala-js" % "closure-compiler-java-6" % "v20160517",
-              "io.apigee" % "rhino" % "1.7R5pre4",
-              "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit")
-          ) ++ (
-              parallelCollectionsDependencies(scalaVersion.value)
+              }
           )
         } else {
           Seq()
@@ -1672,27 +1680,12 @@ object Build {
       },
 
       sources in Compile := {
-        if (shouldPartest.value) {
-          // Partest sources and some sources of sbtplugin (see above)
-          val baseSrcs = (sources in Compile).value
-          // Sources for tools (and hence IR)
-          val toolSrcs = (sources in (tools, Compile)).value
-          // Sources for js-envs
-          val jsenvSrcs = {
-            val jsenvBase = ((scalaSource in (jsEnvs, Compile)).value /
-              "org/scalajs/jsenv")
-
-            val scalaFilter: FileFilter = "*.scala"
-            val files = (
-                (jsenvBase * scalaFilter) +++
-                (jsenvBase / "nodejs" ** scalaFilter))
-
-            files.get
-          }
-          toolSrcs ++ baseSrcs ++ jsenvSrcs
-        } else Seq()
+        if (shouldPartest.value)
+          (sources in Compile).value
+        else
+          Nil
       }
-  ).dependsOn(compiler)
+  ).dependsOn(compiler, tools, nodeJSEnv)
 
   lazy val partestSuite: Project = (project in file("partest-suite")).settings(
       commonSettings,

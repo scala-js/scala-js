@@ -1,6 +1,6 @@
-package org.scalajs.jsenv.test
+package org.scalajs.jsenv.nodejs
 
-import org.scalajs.jsenv.nodejs.NodeJSEnv
+import org.scalajs.jsenv.test._
 
 class NodeJSWithCustomInitFilesTest extends CustomInitFilesTest {
   protected def newJSEnv: NodeJSEnv = new NodeJSEnv {

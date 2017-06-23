@@ -154,24 +154,27 @@
     setJavaVersion $java
     npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package jsEnvsTestSuite/test \
+        stubs/package nodeJSEnv/test jsdomNodeJSEnv/test \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
+        nodeJSEnv/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
         stubs/mimaReportBinaryIssues cli/mimaReportBinaryIssues \
         irJS/mimaReportBinaryIssues toolsJS/mimaReportBinaryIssues &&
     sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
-        jsEnvsTestKit/compile:doc testAdapter/compile:doc stubs/compile:doc
+        jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
+        jsdomNodeJSEnv/compile:doc testAdapter/compile:doc stubs/compile:doc
   ]]></task>
 
   <task id="tools-cli-stubs-sbtplugin"><![CDATA[
     setJavaVersion $java
     npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package jsEnvsTestSuite/test \
+        stubs/package nodeJSEnv/test jsdomNodeJSEnv/test \
         sbtPlugin/package \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
+        nodeJSEnv/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
         stubs/mimaReportBinaryIssues cli/mimaReportBinaryIssues \
         sbtPlugin/mimaReportBinaryIssues \
@@ -179,8 +182,9 @@
     sbt ++$scala library/scalastyle javalanglib/scalastyle javalib/scalastyle \
         ir/scalastyle compiler/scalastyle \
         compiler/test:scalastyle tools/scalastyle tools/test:scalastyle \
-        jsEnvs/scalastyle jsEnvsTestKit/scalastyle \
-        jsEnvsTestSuite/test:scalastyle testAdapter/scalastyle \
+        jsEnvs/scalastyle jsEnvsTestKit/scalastyle nodeJSEnv/scalastyle \
+        nodeJSEnv/test:scalastyle jsdomNodeJSEnv/scalastyle \
+        jsdomNodeJSEnv/test:scalastyle testAdapter/scalastyle \
         sbtPlugin/scalastyle testInterface/scalastyle \
         testSuite/scalastyle testSuite/test:scalastyle \
         testSuiteJVM/test:scalastyle \
@@ -191,7 +195,8 @@
         jUnitTestOutputsJVM/scalastyle jUnitTestOutputsJVM/test:scalastyle \
         jUnitTestOutputsJS/scalastyle jUnitTestOutputsJS/test:scalastyle &&
     sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
-        jsEnvsTestKit/compile:doc testAdapter/compile:doc stubs/compile:doc \
+        jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
+        jsdomNodeJSEnv/compile:doc testAdapter/compile:doc stubs/compile:doc \
         sbtPlugin/compile:doc
   ]]></task>
 
@@ -209,6 +214,7 @@
                   testInterface/publishLocal stubs/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++2.10.6 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
+                 nodeJSEnv/publishLocal jsdomNodeJSEnv/publishLocal \
                  testAdapter/publishLocal sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&
     sbt noDOM/run withDOM/run \
