@@ -3410,7 +3410,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       {
         v.startsWith("2.10.") ||
         v.startsWith("2.11.") ||
-        v == "2.12.0" ||
         v == "2.12.1"
       }
     }

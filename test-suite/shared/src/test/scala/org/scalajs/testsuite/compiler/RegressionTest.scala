@@ -472,7 +472,6 @@ class RegressionTest {
     {
       v.startsWith("2.10.") ||
       v.startsWith("2.11.") ||
-      v == "2.12.0" ||
       v == "2.12.1"
     }
   }
@@ -592,7 +591,7 @@ class RegressionTest {
     assumeTrue(
         "Super mixin calls are broken in Scala/JVM 2.12.{0-2} and 2.13.0-M1",
         !Platform.executingInJVM ||
-        !Set("2.12.0", "2.12.1", "2.12.2", "2.13.0-M1").contains(Platform.scalaVersion))
+        !Set("2.12.1", "2.12.2", "2.13.0-M1").contains(Platform.scalaVersion))
 
     import Bug3013._
 
