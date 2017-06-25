@@ -266,6 +266,8 @@ abstract class AbstractNodeJSEnv(
           js2jvm.readChar()
         }
 
+        comSocket.setSoTimeout(savedSoTimeout)
+
         js2jvm.mark(0)
         String.valueOf(carr)
       } catch {
@@ -274,8 +276,8 @@ abstract class AbstractNodeJSEnv(
         case e: SocketTimeoutException =>
           js2jvm.reset()
           throw new TimeoutException("Timeout expired")
-      } finally {
-        comSocket.setSoTimeout(savedSoTimeout)
+        case e: SocketException if comSocket.isClosed() =>
+          throw new ComJSEnv.ComClosedException(e)
       }
     }
 
@@ -294,9 +296,10 @@ abstract class AbstractNodeJSEnv(
      *  @return true if the connection was established
      */
     private def awaitConnection(): Boolean = {
-      serverSocket.setSoTimeout(acceptTimeout)
+
       while (comSocket == null && isRunning) {
         try {
+          serverSocket.setSoTimeout(acceptTimeout)
           comSocket = serverSocket.accept()
           jvm2js = new DataOutputStream(
             new BufferedOutputStream(comSocket.getOutputStream()))
@@ -304,6 +307,8 @@ abstract class AbstractNodeJSEnv(
             new BufferedInputStream(comSocket.getInputStream()))
         } catch {
           case to: SocketTimeoutException =>
+          case e: SocketException if serverSocket.isClosed() =>
+            throw new ComJSEnv.ComClosedException(e)
         }
       }
 

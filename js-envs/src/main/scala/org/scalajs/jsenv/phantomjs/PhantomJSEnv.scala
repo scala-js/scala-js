@@ -211,8 +211,7 @@ class PhantomJSEnv(config: PhantomJSEnv.Config)
         |      };
         |      websocket.onclose = function(evt) {
         |        websocket = null;
-        |        if (outMsgBuf !== null)
-        |          throw new Error("WebSocket closed before being opened: " + evt);
+        |        outMsgBuf = null;
         |        ${maybeExit(0)}
         |      };
         |      websocket.onmessage = recvImpl(recvCB);
