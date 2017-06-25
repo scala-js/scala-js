@@ -214,7 +214,7 @@
   <task id="tools-cli-stubs"><![CDATA[
     setJavaVersion $java
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package jsEnvsTestSuite/test \
+        stubs/package jsEnvsTestSuite/test testAdapter/test \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
@@ -227,7 +227,7 @@
   <task id="tools-cli-stubs-sbtplugin"><![CDATA[
     setJavaVersion $java
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package jsEnvsTestSuite/test \
+        stubs/package jsEnvsTestSuite/test testAdapter/test \
         sbtPlugin/package \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \

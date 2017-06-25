@@ -17,6 +17,7 @@ import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.linker.backend.ModuleKind
 
 import org.scalajs.jsenv._
+import org.scalajs.testcommon._
 
 import sbt.testing.{Logger => _, _}
 
@@ -62,8 +63,7 @@ final class ScalaJSFramework(
     runner.start(logger, jsConsole)
 
     try {
-      val msg = readJSON(runner.receive())
-      fromJSON[FrameworkInfo](msg)
+      Serializer.deserialize[FrameworkInfo](runner.receive())
     } finally {
       runner.close()
       runner.await(VMTermTimeout)

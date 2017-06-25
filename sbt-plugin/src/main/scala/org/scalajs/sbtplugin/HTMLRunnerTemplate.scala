@@ -15,7 +15,7 @@ import sbt.testing.{Framework, TaskDef}
 
 import org.scalajs.core.ir.Utils
 import org.scalajs.core.tools.json._
-import org.scalajs.testadapter.TaskDefSerializers._
+import org.scalajs.testcommon.Serializer
 
 /** Template for the HTML runner. */
 private[scalajs] object HTMLRunnerTemplate {
@@ -58,8 +58,10 @@ private[scalajs] object HTMLRunnerTemplate {
       new TaskDef(t.name, t.fingerprint, t.explicitlySpecified, t.selectors)
     }.toList
 
+    val testsString = Serializer.serialize(tests)
+
     s"""
-      var definedTests = ${jsonToString(tests.toJSON)};
+      var definedTests = ${jsonToString(testsString.toJSON)};
       var testFrameworkNames = ${jsonToString(frameworks.toJSON)};
     """
   }
