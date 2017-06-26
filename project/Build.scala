@@ -776,6 +776,7 @@ object Build {
       fatalWarningsSettings,
       name := "Scala.js Node.js env",
       normalizedName := "scalajs-nodejs-env",
+      moduleName := "scalajs-env-nodejs",
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.9" % "test",
       previousArtifactSetting
