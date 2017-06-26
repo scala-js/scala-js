@@ -34,7 +34,6 @@ object Platform {
     js.typeOf(js.Dynamic.global.Symbol) != "undefined"
 
   def executingInNodeJS: Boolean = sysProp("nodejs")
-  def executingInNodeJSOnJSDOM: Boolean = sysProp("nodejs.jsdom")
   def executingInBrowser: Boolean = sysProp("browser")
   def typedArrays: Boolean = sysProp("typedarray")
   def sourceMaps: Boolean = sysProp("source-maps")

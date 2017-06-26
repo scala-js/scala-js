@@ -24,7 +24,6 @@ import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.sbtplugin._
 import org.scalajs.jsenv.{ConsoleJSConsole, JSEnv}
 import org.scalajs.jsenv.nodejs.NodeJSEnv
-import org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv
 
 import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 import ExternalCompile.scalaJSExternalCompileSettings
@@ -494,7 +493,6 @@ object Build {
           clean in irProject, clean in irProjectJS,
           clean in tools, clean in toolsJS,
           clean in jsEnvs, clean in jsEnvsTestKit, clean in nodeJSEnv,
-          clean in jsdomNodeJSEnv,
           clean in testAdapter, clean in plugin,
           clean in javalanglib, clean in javalib, clean in scalalib,
           clean in libraryAux, clean in library,
@@ -780,16 +778,6 @@ object Build {
         "com.novocode" % "junit-interface" % "0.9" % "test",
       previousArtifactSetting
   ).dependsOn(jsEnvs, jsEnvsTestKit % "test")
-
-  // Node.js with jsdom - to be moved in a separate repository
-  lazy val jsdomNodeJSEnv: Project = (project in file("jsdom-nodejs-env")).settings(
-      commonSettings,
-      fatalWarningsSettings,
-      name := "Scala.js JSDOM Node.js env",
-      normalizedName := "scalajs-jsdom-nodejs-env",
-      libraryDependencies +=
-        "com.novocode" % "junit-interface" % "0.9" % "test"
-  ).dependsOn(jsEnvs, nodeJSEnv, jsEnvsTestKit % "test")
 
   lazy val testAdapter = (project in file("test-adapter")).settings(
       commonSettings,
@@ -1254,7 +1242,12 @@ object Build {
       exampleSettings,
       name := "Testing - Scala.js example",
       moduleName := "testing",
-      jsEnv := new JSDOMNodeJSEnv()
+
+      test in Test := {
+        throw new MessageOnlyException(
+            "testingExample/test is not supported because it requires DOM " +
+            "support. Use testingExample/testHtml instead.")
+      }
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime % "test"
   )
@@ -1284,9 +1277,6 @@ object Build {
             } else {
               baseArgs
             }
-
-          case env: JSDOMNodeJSEnv =>
-            Seq("nodejs.jsdom", "typedarray")
 
           case _ =>
             throw new AssertionError(
@@ -1409,7 +1399,7 @@ object Build {
       // We need to patch the system properties.
       scalaJSJavaSystemProperties in Test in testHtml ~= { base =>
         val unsupported =
-          Seq("nodejs", "nodejs.jsdom", "source-maps")
+          Seq("nodejs", "source-maps")
         val supported =
           Seq("typedarray", "browser")
 

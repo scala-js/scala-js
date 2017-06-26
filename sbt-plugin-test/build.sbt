@@ -1,5 +1,4 @@
 import org.scalajs.core.tools.io._
-import org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv
 import org.scalajs.sbtplugin.ScalaJSPluginInternal._
 import org.scalajs.sbtplugin.Loggers.sbtLogger2ToolsLogger
 
@@ -31,7 +30,7 @@ lazy val referencedCrossProjectJS = ProjectRef(file("referencedCrossProject"), "
 lazy val referencedCrossProjectJVM = ProjectRef(file("referencedCrossProject"), "referencedCrossProjectJVM")
 
 lazy val root = project.in(file(".")).
-  aggregate(noDOM, withDOM, multiTestJS, multiTestJVM, referencedCrossProjectJS, referencedCrossProjectJVM)
+  aggregate(noDOM, multiTestJS, multiTestJVM, referencedCrossProjectJS, referencedCrossProjectJVM)
 
 lazy val noDOM = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSPlugin).
@@ -69,15 +68,6 @@ lazy val noDOM = project.settings(baseSettings: _*).
         (fullOptJS.value, concurrentFakeFullOptJS.value)
       }
   )))
-
-lazy val withDOM = project.settings(baseSettings: _*).
-  enablePlugins(ScalaJSPlugin).
-  enablePlugins(ScalaJSJUnitPlugin).
-  settings(
-    name := "Scala.js sbt test w/ DOM",
-    jsEnv := new JSDOMNodeJSEnv(),
-    scalaJSUseMainModuleInitializer := true
-  )
 
 lazy val testFramework = crossProject.crossType(CrossType.Pure).
   settings(versionSettings: _*).

@@ -20,12 +20,6 @@
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbtretry 'set jsEnv in helloworld := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv' \
-        ++$scala helloworld/run &&
-    sbtretry 'set jsEnv in helloworld := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv' \
-        'set scalaJSStage in Global := FullOptStage' \
-        ++$scala helloworld/run \
-        helloworld/clean &&
     sbtretry 'set scalaJSLinkerConfig in helloworld ~= (_.withOptimizer(false))' \
         ++$scala helloworld/run \
         helloworld/clean &&
@@ -36,12 +30,10 @@
         'set scalaJSLinkerConfig in helloworld ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         helloworld/run \
         helloworld/clean &&
-    sbtretry ++$scala testingExample/test &&
+    sbtretry ++$scala testingExample/testHtml &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testingExample/test \
+        ++$scala testingExample/testHtml \
         testingExample/clean &&
-    sbtretry 'set scalaJSLinkerConfig in testingExample ~= (_.withOptimizer(false))' \
-        ++$scala testingExample/test &&
     sbtretry ++$scala library/test &&
     sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
     sbtretry ++$scala testSuite/test &&
@@ -64,12 +56,6 @@
         'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test &&
     sbtretry ++$scala $testSuite/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set jsEnv in $testSuite := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set jsEnv in $testSuite := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv' \
-        'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
@@ -154,7 +140,7 @@
     setJavaVersion $java
     npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package nodeJSEnv/test jsdomNodeJSEnv/test \
+        stubs/package nodeJSEnv/test \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         nodeJSEnv/mimaReportBinaryIssues \
@@ -163,14 +149,14 @@
         irJS/mimaReportBinaryIssues toolsJS/mimaReportBinaryIssues &&
     sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
-        jsdomNodeJSEnv/compile:doc testAdapter/compile:doc stubs/compile:doc
+        testAdapter/compile:doc stubs/compile:doc
   ]]></task>
 
   <task id="tools-cli-stubs-sbtplugin"><![CDATA[
     setJavaVersion $java
     npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package nodeJSEnv/test jsdomNodeJSEnv/test \
+        stubs/package nodeJSEnv/test \
         sbtPlugin/package \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
@@ -183,8 +169,7 @@
         ir/scalastyle compiler/scalastyle \
         compiler/test:scalastyle tools/scalastyle tools/test:scalastyle \
         jsEnvs/scalastyle jsEnvsTestKit/scalastyle nodeJSEnv/scalastyle \
-        nodeJSEnv/test:scalastyle jsdomNodeJSEnv/scalastyle \
-        jsdomNodeJSEnv/test:scalastyle testAdapter/scalastyle \
+        nodeJSEnv/test:scalastyle testAdapter/scalastyle \
         sbtPlugin/scalastyle testInterface/scalastyle \
         testSuite/scalastyle testSuite/test:scalastyle \
         testSuiteJVM/test:scalastyle \
@@ -196,7 +181,7 @@
         jUnitTestOutputsJS/scalastyle jUnitTestOutputsJS/test:scalastyle &&
     sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
-        jsdomNodeJSEnv/compile:doc testAdapter/compile:doc stubs/compile:doc \
+        testAdapter/compile:doc stubs/compile:doc \
         sbtPlugin/compile:doc
   ]]></task>
 
@@ -214,16 +199,16 @@
                   testInterface/publishLocal stubs/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++2.10.6 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
-                 nodeJSEnv/publishLocal jsdomNodeJSEnv/publishLocal \
-                 testAdapter/publishLocal sbtPlugin/publishLocal &&
+                 nodeJSEnv/publishLocal testAdapter/publishLocal \
+                 sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&
-    sbt noDOM/run withDOM/run \
-        noDOM/testHtml withDOM/testHtml multiTestJS/testHtml \
+    sbt noDOM/run \
+        noDOM/testHtml multiTestJS/testHtml \
         test \
         noDOM/clean noDOM/concurrentUseOfLinkerTest \
         multiTestJS/test:testScalaJSSourceMapAttribute &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
-        noDOM/testHtml withDOM/testHtml multiTestJS/testHtml
+        noDOM/testHtml multiTestJS/testHtml
   ]]></task>
 
   <task id="partest-noopt"><![CDATA[
