@@ -108,7 +108,7 @@ object Build {
     "Whether we should partest the current scala version (and fail if we can't)")
 
   /* MiMa configuration -- irrelevant while in 1.0.0-SNAPSHOT.
-  val previousVersion = "0.6.17"
+  val previousVersion = "0.6.18"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
