@@ -53,6 +53,51 @@ trait ComTests extends AsyncTests {
     com.stop() // should do nothing, and not fail
   }
 
+  @Test
+  def comCloseJVMDuringRecieve: Unit = {
+    val com = comRunner(s"""scalajsCom.init(function(msg) {});""")
+
+    start(com)
+
+    class Reader extends Thread {
+      var ok = false
+
+      override def run(): Unit = {
+        try {
+          com.receive()
+        } catch {
+          case _: ComJSEnv.ComClosedException => ok = true
+          case _: Throwable =>
+        }
+      }
+    }
+
+    val reader = new Reader
+
+    reader.start()
+
+    Thread.sleep(1000)
+
+    com.close()
+    reader.join(DefaultTimeout.toMillis)
+
+    assertTrue(reader.ok)
+
+    com.await(DefaultTimeout)
+  }
+
+  @Test
+  def comCloseJVMBeforeRecieve: Unit = {
+    val com = comRunner(s"""scalajsCom.init(function(msg) {});""")
+
+    start(com)
+    com.close()
+    assertThrowClosed("Expect receive to throw after closing of channel",
+        com.receive())
+
+    com.await(DefaultTimeout)
+  }
+
   def comCloseJSTestCommon(timeout: Long): Unit = {
     val com = comRunner(s"""
       scalajsCom.init(function(msg) {});
