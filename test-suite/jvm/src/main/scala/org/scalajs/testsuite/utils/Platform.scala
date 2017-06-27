@@ -21,7 +21,6 @@ object Platform {
   }
 
   def executingInNodeJS: Boolean = false
-  def executingInNodeJSOnJSDOM: Boolean = false
   def typedArrays: Boolean = false
   def sourceMaps: Boolean = false
 

@@ -121,7 +121,7 @@ Note that the sbt plugin depends on the IR and the tools.
 
 * `examples/helloworld/` A simple Hello World, typically used as sandbox for quick testing
 * `examples/reversi/` The historical Reversi demo - we use it to track the impact of changes on the emitted code size
-* `examples/testing/` A simple project with tests using the DOM, mostly used to test the support for the DOM with jsdom
+* `examples/testing/` A simple project with tests using the DOM, mostly used to test `testHtml` with DOM interaction
 
 These example projects also have HTML pages to run them in real browsers.
 

@@ -105,22 +105,17 @@ class SystemJSTest {
 
     val inBrowser = get("scalajs.browser") == "true"
     val inNode = get("scalajs.nodejs") == "true"
-    val inNodeWithJSDOM = get("scalajs.nodejs.jsdom") == "true"
     if (inBrowser) {
       assertNotEquals("undefined", js.typeOf(js.Dynamic.global.window))
-      assertFalse(inNode || inNodeWithJSDOM)
+      assertFalse(inNode)
     } else if (inNode) {
       assertNotEquals("undefined", js.typeOf(js.Dynamic.global.process))
-      assertFalse(inBrowser || inNodeWithJSDOM)
-    } else if (inNodeWithJSDOM) {
-      assertNotEquals("undefined", js.typeOf(js.Dynamic.global.window))
-      assertFalse(inBrowser || inNode)
+      assertFalse(inBrowser)
     } else {
       fail("No known platform tag found.")
     }
     assertEquals(inBrowser, Platform.executingInBrowser)
     assertEquals(inNode, Platform.executingInNodeJS)
-    assertEquals(inNodeWithJSDOM, Platform.executingInNodeJSOnJSDOM)
 
     val typedArrays = get("scalajs.typedarray") == "true"
     assertEquals(typedArrays, Platform.typedArrays)

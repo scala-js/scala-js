@@ -7,7 +7,6 @@ val toolsJS = Build.toolsJS
 val jsEnvs = Build.jsEnvs
 val jsEnvsTestKit = Build.jsEnvsTestKit
 val nodeJSEnv = Build.nodeJSEnv
-val jsdomNodeJSEnv = Build.jsdomNodeJSEnv
 val testAdapter = Build.testAdapter
 val sbtPlugin = Build.plugin
 val javalanglib = Build.javalanglib
