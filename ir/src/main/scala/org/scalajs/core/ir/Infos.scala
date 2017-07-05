@@ -59,27 +59,6 @@ object Infos {
   )
 
   object MethodInfo {
-    @deprecated("Use the overload with all the fields and no defaults",
-        "0.6.15")
-    def apply(
-        encodedName: String,
-        isStatic: Boolean = false,
-        isAbstract: Boolean = false,
-        isExported: Boolean = false,
-        methodsCalled: Map[String, List[String]] = Map.empty,
-        methodsCalledStatically: Map[String, List[String]] = Map.empty,
-        staticMethodsCalled: Map[String, List[String]] = Map.empty,
-        instantiatedClasses: List[String] = Nil,
-        accessedModules: List[String] = Nil,
-        usedInstanceTests: List[String] = Nil,
-        accessedClassData: List[String] = Nil): MethodInfo = {
-      apply(encodedName, isStatic, isAbstract, isExported,
-          staticFieldsRead = Map.empty, staticFieldsWritten = Map.empty,
-          methodsCalled, methodsCalledStatically, staticMethodsCalled,
-          instantiatedClasses, accessedModules, usedInstanceTests,
-          accessedClassData)
-    }
-
     def apply(
         encodedName: String,
         isStatic: Boolean,
