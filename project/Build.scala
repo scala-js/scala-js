@@ -771,6 +771,7 @@ object Build {
 
   lazy val nodeJSEnv: Project = (project in file("nodejs-env")).settings(
       commonSettings,
+      publishSettings,
       fatalWarningsSettings,
       name := "Scala.js Node.js env",
       normalizedName := "scalajs-nodejs-env",
