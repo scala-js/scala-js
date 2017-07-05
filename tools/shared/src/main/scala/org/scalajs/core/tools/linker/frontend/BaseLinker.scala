@@ -169,7 +169,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel) {
 
     def linkedMethod(m: MethodDef) = {
       val info = memberInfoByStaticAndName((m.static, m.name.encodedName))
-      val version = m.hash.map(Hashers.hashAsVersion(_, considerPos = true))
+      val version = m.hash.map(Hashers.hashAsVersion(_))
       new LinkedMember(info, m, version)
     }
 
@@ -180,7 +180,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel) {
 
     def linkedSyntheticMethod(m: MethodDef) = {
       val info = Infos.generateMethodInfo(m)
-      val version = m.hash.map(Hashers.hashAsVersion(_, considerPos = true))
+      val version = m.hash.map(Hashers.hashAsVersion(_))
       new LinkedMember(info, m, version)
     }
 

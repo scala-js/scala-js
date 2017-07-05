@@ -955,9 +955,11 @@ object Trees {
 
   }
 
-  /** A hash of a tree (usually a MethodDef). Contains two SHA-1 hashes */
-  final class TreeHash(val treeHash: Array[Byte], val posHash: Array[Byte]) {
-    assert(treeHash.length == 20)
-    assert(posHash.length == 20)
+  /** A hash of a tree (usually a MethodDef).
+   *
+   *  Contains a SHA-1 hash.
+   */
+  final class TreeHash(val hash: Array[Byte]) {
+    assert(hash.length == 20)
   }
 }

@@ -43,26 +43,18 @@ object Hashers {
         classDef.optimizerHints)(classDef.pos)
   }
 
-  def hashesEqual(x: TreeHash, y: TreeHash, considerPos: Boolean): Boolean = {
-    Arrays.equals(x.treeHash, y.treeHash) &&
-      (!considerPos || Arrays.equals(x.posHash, y.posHash))
-  }
+  def hashesEqual(x: TreeHash, y: TreeHash): Boolean =
+    Arrays.equals(x.hash, y.hash)
 
-  def hashAsVersion(hash: TreeHash, considerPos: Boolean): String = {
-    // 2 chars per byte, 20 bytes per hash
-    val size = 2 * (if (considerPos) 2 else 1) * 20
+  def hashAsVersion(hash: TreeHash): String = {
+    // 2 chars per byte, 20 bytes in a hash
+    val size = 2 * 20
     val builder = new StringBuilder(size)
 
     def hexDigit(digit: Int): Char = Character.forDigit(digit, 16)
 
-    def append(hash: Array[Byte]): Unit = {
-      for (b <- hash)
-        builder.append(hexDigit(b >> 4)).append(hexDigit(b & 0xF))
-    }
-    append(hash.treeHash)
-
-    if (considerPos)
-      append(hash.posHash)
+    for (b <- hash.hash)
+      builder.append(hexDigit(b >> 4)).append(hexDigit(b & 0xF))
 
     builder.toString
   }
@@ -77,14 +69,11 @@ object Hashers {
       new DataOutputStream(digOut)
     }
 
-    private[this] val treeDigest = newDigest
-    private[this] val treeStream = newDigestStream(treeDigest)
-
-    private[this] val posDigest = newDigest
-    private[this] val posStream = newDigestStream(posDigest)
+    private[this] val digest = newDigest
+    private[this] val digestStream = newDigestStream(digest)
 
     def finalizeHash(): TreeHash =
-      new TreeHash(treeDigest.digest(), posDigest.digest())
+      new TreeHash(digest.digest())
 
     def mixParamDef(paramDef: ParamDef): Unit = {
       mixPos(paramDef.pos)
@@ -516,31 +505,31 @@ object Hashers {
     }
 
     def mixPos(pos: Position): Unit = {
-      posStream.writeUTF(pos.source.toString)
-      posStream.writeInt(pos.line)
-      posStream.writeInt(pos.column)
+      digestStream.writeUTF(pos.source.toString)
+      digestStream.writeInt(pos.line)
+      digestStream.writeInt(pos.column)
     }
 
     @inline
     final def mixTag(tag: Int): Unit = mixInt(tag)
 
     @inline
-    final def mixString(str: String): Unit = treeStream.writeUTF(str)
+    final def mixString(str: String): Unit = digestStream.writeUTF(str)
 
     @inline
-    final def mixInt(i: Int): Unit = treeStream.writeInt(i)
+    final def mixInt(i: Int): Unit = digestStream.writeInt(i)
 
     @inline
-    final def mixLong(l: Long): Unit = treeStream.writeLong(l)
+    final def mixLong(l: Long): Unit = digestStream.writeLong(l)
 
     @inline
-    final def mixBoolean(b: Boolean): Unit = treeStream.writeBoolean(b)
+    final def mixBoolean(b: Boolean): Unit = digestStream.writeBoolean(b)
 
     @inline
-    final def mixFloat(f: Float): Unit = treeStream.writeFloat(f)
+    final def mixFloat(f: Float): Unit = digestStream.writeFloat(f)
 
     @inline
-    final def mixDouble(d: Double): Unit = treeStream.writeDouble(d)
+    final def mixDouble(d: Double): Unit = digestStream.writeDouble(d)
 
   }
 
