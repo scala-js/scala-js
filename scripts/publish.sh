@@ -14,7 +14,7 @@ CLI_VERSIONS="2.10.6 2.11.11 2.12.2"
 SBT_VERSION="2.10.6"
 
 COMPILER="compiler jUnitPlugin"
-LIBS="library ir irJS tools toolsJS jsEnvs jsEnvsTestKit testAdapter stubs testInterface jUnitRuntime"
+LIBS="library ir irJS tools toolsJS jsEnvs jsEnvsTestKit nodeJSEnv testAdapter stubs testInterface jUnitRuntime"
 
 # Publish compiler
 for v in $FULL_VERSIONS; do
