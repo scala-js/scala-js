@@ -42,12 +42,6 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
 
   private type TreeProvider = String => (ClassDef, Option[String])
 
-  @deprecated("Use the overload with explicit module initializers.", "0.6.15")
-  def link(irInput: Seq[VirtualScalaJSIRFile], logger: Logger,
-      symbolRequirements: SymbolRequirement, checkIR: Boolean): LinkingUnit = {
-    link(irInput, Nil, logger, symbolRequirements, checkIR)
-  }
-
   def link(irInput: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer], logger: Logger,
       symbolRequirements: SymbolRequirement, checkIR: Boolean): LinkingUnit = {

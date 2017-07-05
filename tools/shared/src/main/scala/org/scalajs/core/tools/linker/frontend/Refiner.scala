@@ -28,7 +28,7 @@ final class Refiner {
         ModuleInitializer.toSymbolRequirement(unit.moduleInitializers)
       }
       Analyzer.computeReachability(unit.semantics, allSymbolRequirements,
-          unit.infosInternal.values.toList, allowAddingSyntheticMethods = false)
+          unit.infos.values.toList, allowAddingSyntheticMethods = false)
     }
 
     /* There must not be linking errors at this point. If there are, it is a

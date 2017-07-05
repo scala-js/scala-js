@@ -41,12 +41,6 @@ final class ClosureLinkerBackend(
 ) extends LinkerBackend(semantics, ESLevel.ES5, moduleKind, withSourceMap,
     config) {
 
-  @deprecated("Use the overload with an explicit ModuleKind", "0.6.13")
-  def this(semantics: Semantics, withSourceMap: Boolean,
-      config: LinkerBackend.Config) {
-    this(semantics, ModuleKind.NoModule, withSourceMap, config)
-  }
-
   private[this] val emitter = {
     new Emitter(semantics, OutputMode.ECMAScript51Isolated, moduleKind)
       .withOptimizeBracketSelects(false)

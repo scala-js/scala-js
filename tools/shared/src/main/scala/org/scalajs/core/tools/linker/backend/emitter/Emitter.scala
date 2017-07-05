@@ -39,10 +39,6 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     this(semantics, outputMode, moduleKind, InternalOptions())
   }
 
-  @deprecated("Use the overload with an explicit ModuleKind.", "0.6.13")
-  def this(semantics: Semantics, outputMode: OutputMode) =
-    this(semantics, outputMode, ModuleKind.NoModule, InternalOptions())
-
   private val knowledgeGuardian = new KnowledgeGuardian
 
   private val baseCoreJSLib = CoreJSLibs.lib(semantics, outputMode, moduleKind)

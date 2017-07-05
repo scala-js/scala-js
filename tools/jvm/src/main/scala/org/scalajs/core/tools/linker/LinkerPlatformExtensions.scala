@@ -15,12 +15,6 @@ import org.scalajs.core.tools.linker.backend._
 import org.scalajs.core.tools.linker.backend.closure.ClosureLinkerBackend
 
 trait LinkerPlatformExtensions { this: Linker.type =>
-  @deprecated("Use StandardLinker.apply() instead.", "0.6.18")
-  def apply(semantics: Semantics, outputMode: OutputMode,
-      moduleKind: ModuleKind, config: Config): Linker = {
-    applyInternal(semantics, outputMode, moduleKind, config)
-  }
-
   private[linker] def applyInternal(semantics: Semantics,
       outputMode: OutputMode, moduleKind: ModuleKind,
       config: Config): Linker = {
@@ -47,28 +41,6 @@ trait LinkerPlatformExtensions { this: Linker.type =>
     }
 
     new Linker(frontend, backend)
-  }
-
-  @deprecated("Use StandardLinker.apply() instead.", "0.6.13")
-  def apply(
-      semantics: Semantics = Semantics.Defaults,
-      outputMode: OutputMode = OutputMode.Default,
-      withSourceMap: Boolean = true,
-      disableOptimizer: Boolean = false,
-      parallel: Boolean = true,
-      useClosureCompiler: Boolean = false,
-      frontendConfig: LinkerFrontend.Config = LinkerFrontend.Config(),
-      backendConfig: LinkerBackend.Config = LinkerBackend.Config()): Linker = {
-
-    val config = Config()
-      .withSourceMap(withSourceMap)
-      .withOptimizer(!disableOptimizer)
-      .withParallel(parallel)
-      .withClosureCompiler(useClosureCompiler)
-      .withFrontendConfig(frontendConfig)
-      .withBackendConfig(backendConfig)
-
-    apply(semantics, outputMode, ModuleKind.NoModule, config)
   }
 }
 

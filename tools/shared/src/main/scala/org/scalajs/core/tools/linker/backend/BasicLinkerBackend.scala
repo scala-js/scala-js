@@ -30,12 +30,6 @@ final class BasicLinkerBackend(
 ) extends LinkerBackend(semantics, outputMode.esLevel, moduleKind,
     withSourceMap, config) {
 
-  @deprecated("Use the overload with an explicit ModuleKind", "0.6.13")
-  def this(semantics: Semantics, outputMode: OutputMode, withSourceMap: Boolean,
-      config: LinkerBackend.Config) {
-    this(semantics, outputMode, ModuleKind.NoModule, withSourceMap, config)
-  }
-
   private[this] val emitter =
     new Emitter(semantics, outputMode, moduleKind)
 
