@@ -9,12 +9,8 @@
 
 package org.scalajs.core.tools.linker.backend
 
-import org.scalajs.core.tools.javascript.ESLevel
-
 /** JavaScript output mode. */
-sealed abstract class OutputMode {
-  def esLevel: ESLevel
-}
+sealed abstract class OutputMode
 
 object OutputMode {
   /** All the available output modes.
@@ -33,9 +29,7 @@ object OutputMode {
    *  The output must be enclosed in an anonymous function isolating the code
    *  in a dedicated scope.
    */
-  case object ECMAScript51Isolated extends OutputMode {
-    val esLevel: ESLevel = ESLevel.ES5
-  }
+  case object ECMAScript51Isolated extends OutputMode
 
   /** Experimental output mode compliant with ECMAScript 6 in a function scope.
    *
@@ -51,7 +45,5 @@ object OutputMode {
    *  The output must be enclosed in an anonymous function isolating the code
    *  in a dedicated scope.
    */
-  case object ECMAScript6 extends OutputMode {
-    val esLevel: ESLevel = ESLevel.ES6
-  }
+  case object ECMAScript6 extends OutputMode
 }

@@ -23,10 +23,9 @@ import Definitions.{ObjectClass, isConstructorName, isReflProxyName}
 import Trees._
 import Types._
 
-import org.scalajs.core.tools.sem.{CheckedBehavior, Semantics}
-import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.backend.emitter.LongImpl
 
 /** Optimizer core.
@@ -35,8 +34,7 @@ import org.scalajs.core.tools.linker.backend.emitter.LongImpl
  *  optimizer does. To perform inlining, it relies on abstract protected
  *  methods to identify the target of calls.
  */
-private[optimizer] abstract class OptimizerCore(
-    semantics: Semantics, esLevel: ESLevel) {
+private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   import OptimizerCore._
 
   type MethodID <: AbstractMethodID
@@ -3699,6 +3697,8 @@ private[optimizer] abstract class OptimizerCore(
       implicit pos: Position): Tree = {
     // !!! Must be in sync with scala.scalajs.runtime.LinkingInfo
 
+    import config.coreSpec._
+
     @inline def default =
       JSBracketSelect(qualifier, item)
 
@@ -3728,9 +3728,9 @@ private[optimizer] abstract class OptimizerCore(
         }
 
       case (JSLinkingInfo(), StringLiteral("assumingES6")) =>
-        BooleanLiteral(esLevel match {
-          case ESLevel.ES5 => false
-          case ESLevel.ES6 => true
+        BooleanLiteral(outputMode match {
+          case OutputMode.ECMAScript51Isolated => false
+          case OutputMode.ECMAScript6          => true
         })
 
       case (JSLinkingInfo(), StringLiteral("version")) =>

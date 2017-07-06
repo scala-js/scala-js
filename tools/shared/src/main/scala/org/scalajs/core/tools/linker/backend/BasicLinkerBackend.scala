@@ -11,7 +11,7 @@ package org.scalajs.core.tools.linker.backend
 
 import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.io.WritableVirtualJSFile
-import org.scalajs.core.tools.sem.Semantics
+
 import org.scalajs.core.tools.linker.LinkingUnit
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.backend.emitter.Emitter
@@ -21,15 +21,10 @@ import org.scalajs.core.tools.javascript.{JSFileBuilder, JSFileBuilderWithSource
  *
  *  Simply emits the JavaScript without applying any further optimizations.
  */
-final class BasicLinkerBackend(
-    semantics: Semantics,
-    outputMode: OutputMode,
-    moduleKind: ModuleKind,
-    config: LinkerBackend.Config
-) extends LinkerBackend(semantics, outputMode.esLevel, moduleKind, config) {
+final class BasicLinkerBackend(config: LinkerBackend.Config)
+    extends LinkerBackend(config) {
 
-  private[this] val emitter =
-    new Emitter(semantics, outputMode, moduleKind)
+  private[this] val emitter = new Emitter(config.commonConfig)
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
 

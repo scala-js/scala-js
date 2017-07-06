@@ -1,13 +1,12 @@
 package org.scalajs.core.tools.linker
 
-import org.scalajs.core.tools.javascript.ESLevel
-
 import org.scalajs.core.ir
 import ir.{Definitions, Infos}
 
+import org.scalajs.core.tools.linker.standard._
+
 final class LinkingUnit private[linker] (
-    val semantics: Semantics,
-    val esLevel: ESLevel,
+    val coreSpec: CoreSpec,
     val classDefs: List[LinkedClass],
     private[linker] val infos: Map[String, Infos.ClassInfo],
     val moduleInitializers: List[ModuleInitializer]
@@ -15,6 +14,6 @@ final class LinkingUnit private[linker] (
   private[linker] def updated(classDefs: List[LinkedClass]): LinkingUnit = {
     val newInfos =
       infos ++ classDefs.map(cd => cd.encodedName -> cd.toInfo)
-    new LinkingUnit(semantics, esLevel, classDefs, newInfos, moduleInitializers)
+    new LinkingUnit(coreSpec, classDefs, newInfos, moduleInitializers)
   }
 }

@@ -14,12 +14,11 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.util.Try
 
-import org.scalajs.core.tools.sem._
-import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.io._
 
 import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.checker._
 import org.scalajs.core.tools.linker.analyzer._
 
@@ -37,7 +36,7 @@ import Analysis._
 /** Links the information from [[io.VirtualScalaJSIRFile]]s into
  *  [[LinkedClass]]es. Does a dead code elimination pass.
  */
-final class BaseLinker(semantics: Semantics, esLevel: ESLevel) {
+final class BaseLinker(config: CommonPhaseConfig) {
 
   private type TreeProvider = String => (ClassDef, Option[String])
 
@@ -91,7 +90,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel) {
         symbolRequirements ++
         ModuleInitializer.toSymbolRequirement(moduleInitializers)
       }
-      Analyzer.computeReachability(semantics, allSymbolRequirements, infoInput,
+      Analyzer.computeReachability(config, allSymbolRequirements, infoInput,
           allowAddingSyntheticMethods = true)
     }
 
@@ -146,7 +145,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel) {
           getTree, analysis)
     }
 
-    new LinkingUnit(semantics, esLevel, linkedClassDefs.toList, infoByName,
+    new LinkingUnit(config.coreSpec, linkedClassDefs.toList, infoByName,
         moduleInitializers.toList)
   }
 

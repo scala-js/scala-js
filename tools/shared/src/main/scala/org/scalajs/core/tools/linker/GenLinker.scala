@@ -12,7 +12,6 @@ package org.scalajs.core.tools.linker
 import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.io._
 
-import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 
 /** Common supertrait of [[Linker]] and [[ClearableLinker]].
@@ -20,9 +19,6 @@ import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
  *  Essentially anything that has the `link` and `linkUnit` methods.
  */
 trait GenLinker {
-  def semantics: Semantics
-  def esLevel: ESLevel
-
   def linkUnit(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit

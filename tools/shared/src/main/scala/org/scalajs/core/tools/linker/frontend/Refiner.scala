@@ -9,16 +9,16 @@
 
 package org.scalajs.core.tools.linker.frontend
 
-import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.logging._
 
 import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.analyzer._
 
 import org.scalajs.core.ir.ClassKind
 
 /** Does a dead code elimination pass on [[LinkedClass]]es */
-final class Refiner {
+final class Refiner(config: CommonPhaseConfig) {
 
   def refine(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
       logger: Logger): LinkingUnit = {
@@ -27,7 +27,7 @@ final class Refiner {
         symbolRequirements ++
         ModuleInitializer.toSymbolRequirement(unit.moduleInitializers)
       }
-      Analyzer.computeReachability(unit.semantics, allSymbolRequirements,
+      Analyzer.computeReachability(config, allSymbolRequirements,
           unit.infos.values.toList, allowAddingSyntheticMethods = false)
     }
 

@@ -19,28 +19,28 @@ import com.google.javascript.jscomp.{
 }
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging.Logger
-import org.scalajs.core.tools.sem.Semantics
 
 import org.scalajs.core.tools.linker.LinkingUnit
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.backend._
-import org.scalajs.core.tools.linker.backend.emitter.{Emitter, CoreJSLibs}
+import org.scalajs.core.tools.linker.backend.emitter.Emitter
 
 /** The Closure backend of the Scala.js linker.
  *
  *  Runs a the Google Closure Compiler in advanced mode on the emitted code.
  *  Use this for production builds.
  */
-final class ClosureLinkerBackend(
-    semantics: Semantics,
-    moduleKind: ModuleKind,
-    config: LinkerBackend.Config
-) extends LinkerBackend(semantics, ESLevel.ES5, moduleKind, config) {
+final class ClosureLinkerBackend(config: LinkerBackend.Config)
+    extends LinkerBackend(config) {
+
+  import config.commonConfig.coreSpec._
+
+  require(outputMode == OutputMode.ECMAScript51Isolated,
+      s"Cannot use output mode $outputMode with the Closure Compiler")
 
   private[this] val emitter = {
-    new Emitter(semantics, OutputMode.ECMAScript51Isolated, moduleKind)
+    new Emitter(config.commonConfig)
       .withOptimizeBracketSelects(false)
   }
 

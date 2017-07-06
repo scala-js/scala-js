@@ -9,14 +9,15 @@
 
 package org.scalajs.core.tools.linker.backend
 
+import scala.language.implicitConversions
+
 import java.net.URI
 
 import org.scalajs.core.tools.io.WritableVirtualJSFile
-import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging.Logger
-import org.scalajs.core.tools.sem.Semantics
 
-import org.scalajs.core.tools.linker.LinkingUnit
+import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 
 /** A backend of the Scala.js linker. Produces a
@@ -25,16 +26,19 @@ import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
  *  You probably want to use an instance of [[linker.Linker]], rather than this
  *  low-level class.
  */
-abstract class LinkerBackend(
-    val semantics: Semantics,
-    val esLevel: ESLevel,
-    val moduleKind: ModuleKind,
-    protected val config: LinkerBackend.Config) {
+abstract class LinkerBackend(protected val config: LinkerBackend.Config) {
+  /** Core specification that this linker backend implements. */
+  val coreSpec = config.commonConfig.coreSpec
 
   /** Symbols this backend needs to be present in the linking unit. */
   val symbolRequirements: SymbolRequirement
 
-  /** Emit the given [[LinkingUnit]] to the target output
+  /** Emit the given [[LinkingUnit]] to the target output.
+   *
+   *  The linking unit given to `emit` must:
+   *
+   *  - have the same `coreSpec` as this linker backend, and
+   *  - contain the symbols listed in [[symbolRequirements]].
    *
    *  @param unit [[LinkingUnit]] to emit
    *  @param output File to write to
@@ -43,48 +47,82 @@ abstract class LinkerBackend(
   def emit(unit: LinkingUnit, output: WritableVirtualJSFile,
       logger: Logger): Unit
 
-  /** Verify that a [[LinkingUnit]] corresponds to this [[LinkerBackend]]'s
-   *  [[org.scalajs.core.tools.sem.Semantics Semantics]] and
-   *  [[org.scalajs.core.tools.javascript.ESLevel ESLevel]] (specified via the
-   *  [[OutputMode]]).
+  /** Verify that a [[LinkingUnit]] can be processed by this [[LinkerBackend]].
+   *
+   *  Currently, this only tests that the linking unit core specification
+   *  matches [[coreSpec]].
+   *
+   *  In the future, this test could be extended to test [[symbolRequirements]]
+   *  too.
+   *
    *  @throws java.lang.IllegalArgumentException if there is a mismatch
    */
   protected def verifyUnit(unit: LinkingUnit): Unit = {
-    require(unit.semantics == semantics,
-        "LinkingUnit and LinkerBackend must agree on semantics")
-    require(unit.esLevel == esLevel,
-        "LinkingUnit and LinkerBackend must agree on esLevel")
+    require(unit.coreSpec == coreSpec,
+        "LinkingUnit and LinkerBackend must agree on their core specification")
   }
 }
 
 object LinkerBackend {
+  def apply(config: Config): LinkerBackend =
+    LinkerBackendPlatform.createLinkerBackend(config)
+
   /** Configurations relevant to the backend */
   final class Config private (
+      /** Common phase config. */
+      val commonConfig: CommonPhaseConfig,
       /** Whether to emit a source map. */
-      val sourceMap: Boolean = true,
+      val sourceMap: Boolean,
       /** Base path to relativize paths in the source map. */
-      val relativizeSourceMapBase: Option[URI] = None,
+      val relativizeSourceMapBase: Option[URI],
+      /** Whether to use the Google Closure Compiler pass, if it is available.
+       *  On the JavaScript platform, this does not have any effect.
+       */
+      val closureCompilerIfAvailable: Boolean,
       /** Pretty-print the output. */
-      val prettyPrint: Boolean = false
+      val prettyPrint: Boolean
   ) {
+    private def this() = {
+      this(
+          commonConfig = CommonPhaseConfig(),
+          sourceMap = true,
+          relativizeSourceMapBase = None,
+          closureCompilerIfAvailable = false,
+          prettyPrint = false)
+    }
+
+    def withCommonConfig(commonConfig: CommonPhaseConfig): Config =
+      copy(commonConfig = commonConfig)
+
     def withSourceMap(sourceMap: Boolean): Config =
       copy(sourceMap = sourceMap)
 
     def withRelativizeSourceMapBase(relativizeSourceMapBase: Option[URI]): Config =
       copy(relativizeSourceMapBase = relativizeSourceMapBase)
 
+    def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): Config =
+      copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
+
     def withPrettyPrint(prettyPrint: Boolean): Config =
       copy(prettyPrint = prettyPrint)
 
     private def copy(
+        commonConfig: CommonPhaseConfig = commonConfig,
         sourceMap: Boolean = sourceMap,
         relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
+        closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         prettyPrint: Boolean = prettyPrint): Config = {
-      new Config(sourceMap, relativizeSourceMapBase, prettyPrint)
+      new Config(commonConfig, sourceMap, relativizeSourceMapBase,
+          closureCompilerIfAvailable, prettyPrint)
     }
   }
 
   object Config {
+    import LinkerBackendPlatformExtensions._
+
+    implicit def toPlatformExtensions(config: Config): ConfigExt =
+      new ConfigExt(config)
+
     def apply(): Config = new Config()
   }
 }

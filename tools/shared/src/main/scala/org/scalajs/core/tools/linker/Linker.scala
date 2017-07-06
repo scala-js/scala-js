@@ -16,23 +16,18 @@ import java.util.concurrent.atomic.AtomicBoolean
 import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.io._
 
-import org.scalajs.core.tools.javascript.ESLevel
+import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.frontend.optimizer.IncOptimizer
 import org.scalajs.core.tools.linker.backend.{LinkerBackend, BasicLinkerBackend}
 
 /** The Scala.js linker */
-final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
+final class Linker private (frontend: LinkerFrontend, backend: LinkerBackend)
     extends GenLinker {
 
-  require(frontend.semantics == backend.semantics,
-      "Frontend and backend must agree on semantics")
-  require(frontend.esLevel == backend.esLevel,
-      "Frontend and backend must agree on ESLevel")
-
-  val semantics: Semantics = frontend.semantics
-  val esLevel: ESLevel = backend.esLevel
+  require(frontend.coreSpec == backend.coreSpec,
+      "Frontend and backend must implement the same core specification")
 
   private[this] var _valid = true
   private[this] val _linking = new AtomicBoolean(false)
@@ -75,83 +70,7 @@ final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
   }
 }
 
-object Linker extends LinkerPlatformExtensions {
-  /** Configuration to be passed to the `apply()` method. */
-  final class Config private (
-      /** Whether to use the Scala.js optimizer. */
-      val optimizer: Boolean,
-      /** Whether things that can be parallelized should be parallelized.
-       *  On the JavaScript platform, this does not have any effect.
-       */
-      val parallel: Boolean,
-      /** Whether to use the Google Closure Compiler pass, if it is available.
-       *  On the JavaScript platform, this does not have any effect.
-       */
-      val closureCompilerIfAvailable: Boolean,
-      /** Additional configuration for the linker frontend. */
-      val frontendConfig: LinkerFrontend.Config,
-      /** Additional configuration for the linker backend. */
-      val backendConfig: LinkerBackend.Config
-  ) {
-    def withOptimizer(optimizer: Boolean): Config =
-      copy(optimizer = optimizer)
-
-    def withParallel(parallel: Boolean): Config =
-      copy(parallel = parallel)
-
-    def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): Config =
-      copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
-
-    def withFrontendConfig(frontendConfig: LinkerFrontend.Config): Config =
-      copy(frontendConfig = frontendConfig)
-
-    def withFrontendConfig(f: LinkerFrontend.Config => LinkerFrontend.Config): Config =
-      copy(frontendConfig = f(frontendConfig))
-
-    def withBackendConfig(backendConfig: LinkerBackend.Config): Config =
-      copy(backendConfig = backendConfig)
-
-    def withBackendConfig(f: LinkerBackend.Config => LinkerBackend.Config): Config =
-      copy(backendConfig = f(backendConfig))
-
-    private def copy(
-        optimizer: Boolean = optimizer,
-        parallel: Boolean = parallel,
-        closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
-        frontendConfig: LinkerFrontend.Config = frontendConfig,
-        backendConfig: LinkerBackend.Config = backendConfig): Config = {
-      new Config(
-          optimizer = optimizer,
-          parallel = parallel,
-          closureCompilerIfAvailable = closureCompilerIfAvailable,
-          frontendConfig = frontendConfig,
-          backendConfig = backendConfig)
-    }
-  }
-
-  object Config {
-    import LinkerPlatformExtensions._
-
-    implicit def toPlatformExtensions(config: Config): ConfigExt =
-      new ConfigExt(config)
-
-    /** Default configuration.
-     *
-     *  - `optimizer`: true
-     *  - `parallel`: true
-     *  - `closureCompilerIfAvailable`: false
-     *  - `frontendConfig`: default frontend configuration as returned by
-     *    [[org.scalajs.core.tools.linker.frontend.LinkerFrontend.Config.apply]]
-     *  - `backendConfig`: default backend configuration as returned by
-     *    [[org.scalajs.core.tools.linker.backend.LinkerBackend.Config.apply]]
-     */
-    def apply(): Config = {
-      new Config(
-          optimizer = true,
-          parallel = true,
-          closureCompilerIfAvailable = false,
-          frontendConfig = LinkerFrontend.Config(),
-          backendConfig = LinkerBackend.Config())
-    }
-  }
+object Linker {
+  def apply(frontend: LinkerFrontend, backend: LinkerBackend): Linker =
+    new Linker(frontend, backend)
 }
