@@ -8,7 +8,7 @@
 
 package org.scalajs.core.tools.linker.backend.emitter
 
-import org.scalajs.core.tools.linker.backend.OutputMode
+import org.scalajs.core.tools.linker.standard.OutputMode
 
 /** Utilities related to global refs mentioned in the program.
  *

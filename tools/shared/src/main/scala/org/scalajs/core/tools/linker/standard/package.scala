@@ -9,11 +9,6 @@
 package org.scalajs.core.tools.linker
 
 package object standard {
-  type OutputMode = org.scalajs.core.tools.linker.backend.OutputMode
-
-  val OutputMode: org.scalajs.core.tools.linker.backend.OutputMode.type =
-    org.scalajs.core.tools.linker.backend.OutputMode
-
   implicit class StandardLinkerConfigStandardOps(
       val __self: StandardLinker.Config) extends AnyVal {
 

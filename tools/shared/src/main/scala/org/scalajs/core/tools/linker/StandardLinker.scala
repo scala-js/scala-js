@@ -205,7 +205,7 @@ object StandardLinker {
      *  import org.scalajs.core.tools.linker.standard._
      *  }}}
      *
-     *  - `outputMode`: [[org.scalajs.core.tools.linker.backend.OutputMode.Default OutputMode.Default]]
+     *  - `outputMode`: [[org.scalajs.core.tools.linker.standard.OutputMode.Default OutputMode.Default]]
      */
     def apply(): Config = new Config()
   }

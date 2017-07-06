@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.linker.backend
+package org.scalajs.core.tools.linker.standard
 
 /** JavaScript output mode. */
 sealed abstract class OutputMode
