@@ -20,11 +20,10 @@ import org.scalajs.core.ir.Definitions.decodeClassName
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.logging._
 
-import org.scalajs.core.tools.javascript.{Trees => js, _}
-
 import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
+import org.scalajs.core.tools.linker.backend.javascript.{Trees => js, _}
 
 import GlobalRefUtils._
 

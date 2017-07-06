@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.javascript
+package org.scalajs.core.tools.linker.backend.javascript
 
 import java.io.Writer
 import java.net.URI

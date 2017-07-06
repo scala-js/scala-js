@@ -18,9 +18,9 @@ import ir._
 import ir.Types._
 import ir.{Trees => irt}
 
-import org.scalajs.core.tools.sem._
-import org.scalajs.core.tools.linker.backend.{ModuleKind, OutputMode}
-import org.scalajs.core.tools.javascript.Trees._
+import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard.OutputMode
+import org.scalajs.core.tools.linker.backend.javascript.Trees._
 
 /** Collection of tree generators that are used accross the board.
  *  This class is fully stateless.

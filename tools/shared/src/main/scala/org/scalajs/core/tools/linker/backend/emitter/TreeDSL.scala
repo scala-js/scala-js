@@ -14,7 +14,7 @@ import scala.language.implicitConversions
 import org.scalajs.core.ir
 import org.scalajs.core.ir.Position
 
-import org.scalajs.core.tools.javascript.Trees._
+import org.scalajs.core.tools.linker.backend.javascript.Trees._
 
 private[emitter] object TreeDSL {
   implicit class TreeOps(val self: Tree) extends AnyVal {

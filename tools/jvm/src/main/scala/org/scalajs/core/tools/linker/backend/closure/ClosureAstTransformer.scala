@@ -6,7 +6,7 @@ import org.scalajs.core.ir
 import ir.Position
 import ir.Position.NoPosition
 
-import org.scalajs.core.tools.javascript.Trees._
+import org.scalajs.core.tools.linker.backend.javascript.Trees._
 
 import com.google.javascript.rhino._
 import com.google.javascript.jscomp._

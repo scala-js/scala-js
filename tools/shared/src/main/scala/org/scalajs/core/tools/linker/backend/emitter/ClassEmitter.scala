@@ -15,9 +15,9 @@ import Transformers._
 import org.scalajs.core.ir.Trees._
 import Types._
 
-import org.scalajs.core.tools.javascript.{Trees => js}
 import org.scalajs.core.tools.linker._
-import org.scalajs.core.tools.linker.backend.OutputMode
+import org.scalajs.core.tools.linker.standard.OutputMode
+import org.scalajs.core.tools.linker.backend.javascript.{Trees => js}
 
 import CheckedBehavior.Unchecked
 
