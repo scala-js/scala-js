@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.sem
+package org.scalajs.core.tools.linker
 
 sealed abstract class CheckedBehavior {
   import CheckedBehavior._

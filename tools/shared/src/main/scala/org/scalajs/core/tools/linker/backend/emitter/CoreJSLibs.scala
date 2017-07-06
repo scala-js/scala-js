@@ -14,8 +14,8 @@ import java.net.URI
 import org.scalajs.core.ir.ScalaJSVersions
 import org.scalajs.core.tools.io._
 
-import org.scalajs.core.tools.sem._
-import org.scalajs.core.tools.linker.backend.{ModuleKind, OutputMode}
+import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 
 import scala.collection.immutable.Seq
 import scala.collection.mutable

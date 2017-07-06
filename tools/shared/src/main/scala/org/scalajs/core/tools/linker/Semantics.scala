@@ -7,11 +7,9 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.sem
+package org.scalajs.core.tools.linker
 
 import scala.collection.immutable.Traversable
-
-import org.scalajs.core.tools.linker.LinkedClass
 
 import CheckedBehavior._
 

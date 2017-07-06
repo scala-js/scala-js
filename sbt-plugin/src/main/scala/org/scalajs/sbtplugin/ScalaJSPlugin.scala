@@ -55,7 +55,7 @@ object ScalaJSPlugin extends AutoPlugin {
     val FullOptStage = Stage.FullOpt
 
     // ModuleKind
-    val ModuleKind = org.scalajs.core.tools.linker.backend.ModuleKind
+    val ModuleKind = org.scalajs.core.tools.linker.ModuleKind
 
     // All our public-facing keys
 

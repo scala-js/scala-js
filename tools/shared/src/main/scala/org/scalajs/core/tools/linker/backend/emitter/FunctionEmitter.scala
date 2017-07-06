@@ -20,10 +20,8 @@ import ir.Transformers._
 import ir.Trees._
 import ir.Types._
 
-import org.scalajs.core.tools.sem._
-import CheckedBehavior._
-
-import org.scalajs.core.tools.linker.LinkedClass
+import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.CheckedBehavior._
 import org.scalajs.core.tools.linker.standard.OutputMode
 import org.scalajs.core.tools.linker.backend.javascript.{Trees => js}
 

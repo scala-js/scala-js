@@ -21,7 +21,7 @@ import com.google.javascript.jscomp.{
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.logging.Logger
 
-import org.scalajs.core.tools.linker.LinkingUnit
+import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.backend._
 import org.scalajs.core.tools.linker.backend.emitter.Emitter

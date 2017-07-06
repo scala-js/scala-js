@@ -189,7 +189,7 @@ object StandardLinker {
      *
      *  The defaults are:
      *
-     *  - `semantics`: [[org.scalajs.core.tools.sem.Semantics.Defaults Semantics.Defaults]]
+     *  - `semantics`: [[Semantics.Defaults]]
      *  - `moduleKind`: [[ModuleKind.NoModule]]
      *  - `checkIR`: `false`
      *  - `optimizer`: `true`
