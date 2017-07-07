@@ -869,18 +869,6 @@ class ExportsTest {
     assertEquals(7, bar.y)
   }
 
-  @Test def exporting_constructor_parameter_fields_issue_970_old(): Unit = {
-    class Foo(@(JSExport @meta.field) val x: Int)
-    val foo = (new Foo(1)).asInstanceOf[js.Dynamic]
-    assertEquals(1, foo.x)
-  }
-
-  @Test def exporting_case_class_fields_issue_970_old(): Unit = {
-    case class Foo(@(JSExport @meta.field) x: Int)
-    val foo = (new Foo(1)).asInstanceOf[js.Dynamic]
-    assertEquals(1, foo.x)
-  }
-
   @Test def exporting_lazy_values_issue_977(): Unit = {
     class Foo {
       @JSExport

@@ -23,6 +23,7 @@ import scala.annotation.meta._
  *
  *  @see [[https://www.scala-js.org/doc/interoperability/sjs-defined-js-classes.html Write JavaScript classes in Scala.js]]
  */
+@field @getter @setter
 class JSExportStatic extends scala.annotation.StaticAnnotation {
   def this(name: String) = this()
 }

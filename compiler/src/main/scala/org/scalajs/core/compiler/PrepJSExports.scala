@@ -171,14 +171,8 @@ trait PrepJSExports { this: PrepJSInterop =>
     val trgSym = {
       def isOwnerScalaClass = !sym.owner.isModuleClass && !isJSAny(sym.owner)
 
-      /* For accessors, look on the val/var def, if there is one.
-       * TODO Get rid of this when we can break binary compatibility, as
-       * @JSExport and @JSExportNamed are now annotated with
-       * @field @getter @setter
-       */
-      if (sym.isAccessor && sym.accessed != NoSymbol) sym.accessed
       // For primary Scala class constructors, look on the class itself
-      else if (sym.isPrimaryConstructor && isOwnerScalaClass) sym.owner
+      if (sym.isPrimaryConstructor && isOwnerScalaClass) sym.owner
       else sym
     }
 
