@@ -68,7 +68,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
               classDef.memberMethods.nonEmpty ||
               classDef.abstractMethods.nonEmpty ||
               classDef.exportedMembers.nonEmpty ||
-              classDef.classExports.nonEmpty) {
+              classDef.topLevelExports.nonEmpty) {
             reportError(s"Raw JS type ${classDef.name} cannot "+
                 "have instance members")
           }
@@ -156,8 +156,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         }
       }
 
-      // Check classExports
-      for (tree <- classDef.classExports) {
+      // Check top-level exports
+      for (tree <- classDef.topLevelExports) {
         implicit val ctx = ErrorContext(tree)
 
         tree match {
@@ -187,7 +187,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
           // Anything else is illegal
           case _ =>
-            reportError("Illegal class export of type " +
+            reportError("Illegal top-level export of type " +
                 tree.getClass.getName)
         }
       }
@@ -201,7 +201,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       if (classDef.fields.nonEmpty)
         reportError(s"$kindStr may not have fields")
 
-      if (classDef.exportedMembers.nonEmpty || classDef.classExports.nonEmpty)
+      if (classDef.exportedMembers.nonEmpty || classDef.topLevelExports.nonEmpty)
         reportError(s"$kindStr may not have exports")
     }
 
@@ -441,7 +441,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         throw new AssertionError("Exported method may not have Ident as name")
 
       case StringLiteral(name) =>
-        if (name.contains("__") && name != Definitions.ClassExportsName)
+        if (name.contains("__") && name != Definitions.TopLevelExportsName)
           reportError("Exported method def name cannot contain __")
 
       case ComputedName(tree, _) =>

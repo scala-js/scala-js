@@ -533,8 +533,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      // Generate class-level exporters
-      val classExports =
+      // Generate top-level exporters
+      val topLevelExports =
         if (isStaticModule(sym)) genModuleAccessorExports(sym)
         else genJSClassExports(sym)
 
@@ -545,7 +545,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         genJSClassDispatchers(sym, dispatchMethodNames.result().distinct) :::
         generatedMethods.toList :::
         staticMembers :::
-        classExports
+        topLevelExports
       }
 
       // Hashed definitions of the class

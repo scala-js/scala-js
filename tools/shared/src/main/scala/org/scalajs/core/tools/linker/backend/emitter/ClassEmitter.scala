@@ -935,9 +935,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       yield js.Block(exports)(tree.pos)
   }
 
-  def genClassExports(tree: LinkedClass)(
+  def genTopLevelExports(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
-    val exportsWithGlobals = tree.classExports map {
+    val exportsWithGlobals = tree.topLevelExports map {
       case e: ConstructorExportDef =>
         genConstructorExportDef(tree, e)
       case e: JSClassExportDef =>
@@ -952,7 +952,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         WithGlobals(genTopLevelFieldExportDef(tree, e))
       case tree =>
         throw new AssertionError(
-            "Illegal class export " + tree.getClass.getName)
+            "Illegal top-level export " + tree.getClass.getName)
     }
 
     WithGlobals.list(exportsWithGlobals)

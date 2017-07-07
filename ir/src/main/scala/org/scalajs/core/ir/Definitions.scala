@@ -69,16 +69,8 @@ object Definitions {
   /** Name of the static initializer method. */
   final val StaticInitializerName = "clinit___"
 
-  /** Name used for infos of class exports
-   *
-   *  These currently are exported constructors and top level exports)
-   *
-   *  TODO give this a better name once we can break backwards compat.
-   */
-  val ClassExportsName = "__exportedInits"
-
-  @deprecated("Use ClassExportsName instead", "0.6.14")
-  def ExportedConstructorsName: String = "__exportedInits"
+  /** Name used for infos of top-level exports. */
+  val TopLevelExportsName = "__topLevelExports"
 
   /** Encodes a class name. */
   def encodeClassName(fullName: String): String = {

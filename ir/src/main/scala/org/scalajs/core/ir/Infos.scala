@@ -327,7 +327,7 @@ object Infos {
 
     if (exportedConstructors.nonEmpty || topLevelMethodExports.nonEmpty ||
         topLevelFieldExports.nonEmpty) {
-      builder.addMethod(generateClassExportsInfo(classDef.name.name,
+      builder.addMethod(generateTopLevelExportsInfo(classDef.name.name,
           exportedConstructors, topLevelMethodExports, topLevelFieldExports))
     }
 
@@ -342,29 +342,12 @@ object Infos {
   def generatePropertyInfo(propertyDef: PropertyDef): MethodInfo =
     new GenInfoTraverser().generatePropertyInfo(propertyDef)
 
-  /** Generates the [[MethodInfo]] of a list of [[Trees.ConstructorExportDef]]s. */
-  @deprecated("Use generateClassExportsInfo instead", "0.6.14")
-  def generateExportedConstructorsInfo(
-      constructorDefs: List[ConstructorExportDef]): MethodInfo = {
-    generateClassExportsInfo(constructorDefs, Nil)
-  }
-
-  /** Generates the [[MethodInfo]] for the class exports. */
-  @deprecated(
-      "Use the overload with an enclosingClass and topLevelFieldExports.",
-      "0.6.15")
-  def generateClassExportsInfo(constructorDefs: List[ConstructorExportDef],
-      topLevelMethodExports: List[TopLevelMethodExportDef]): MethodInfo = {
-    // enclosingClass won't be used when topLevelFieldExports is empty
-    generateClassExportsInfo("", constructorDefs, topLevelMethodExports, Nil)
-  }
-
-  /** Generates the [[MethodInfo]] for the class exports. */
-  def generateClassExportsInfo(enclosingClass: String,
+  /** Generates the [[MethodInfo]] for the top-level exports. */
+  def generateTopLevelExportsInfo(enclosingClass: String,
       constructorDefs: List[ConstructorExportDef],
       topLevelMethodExports: List[TopLevelMethodExportDef],
       topLevelFieldExports: List[TopLevelFieldExportDef]): MethodInfo = {
-    new GenInfoTraverser().generateClassExportsInfo(enclosingClass,
+    new GenInfoTraverser().generateTopLevelExportsInfo(enclosingClass,
         constructorDefs, topLevelMethodExports, topLevelFieldExports)
   }
 
@@ -409,12 +392,12 @@ object Infos {
       builder.result()
     }
 
-    def generateClassExportsInfo(enclosingClass: String,
+    def generateTopLevelExportsInfo(enclosingClass: String,
         constructorDefs: List[ConstructorExportDef],
         topLevelMethodExports: List[TopLevelMethodExportDef],
         topLevelFieldExports: List[TopLevelFieldExportDef]): MethodInfo = {
       builder
-        .setEncodedName(ClassExportsName)
+        .setEncodedName(TopLevelExportsName)
         .setIsExported(true)
 
       for (constructorDef <- constructorDefs)

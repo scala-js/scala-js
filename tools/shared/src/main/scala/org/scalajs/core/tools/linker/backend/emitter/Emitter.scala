@@ -177,7 +177,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
         emitJSTrees(generatedClass.staticInitialization)
 
       for (generatedClass <- generatedClasses)
-        emitJSTrees(generatedClass.classExports)
+        emitJSTrees(generatedClass.topLevelExports)
 
       // Emit the module initializers
 
@@ -411,13 +411,13 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       classEmitter.genStaticInitialization(linkedClass)
     }
 
-    // Class exports
+    // Top-level exports
 
-    val classExports = if (linkedClass.classExports.isEmpty) {
+    val topLevelExports = if (linkedClass.topLevelExports.isEmpty) {
       Nil
     } else {
-      val treeWithGlobals = classTreeCache.classExports.getOrElseUpdate(
-          classEmitter.genClassExports(linkedClass)(classCache))
+      val treeWithGlobals = classTreeCache.topLevelExports.getOrElseUpdate(
+          classEmitter.genTopLevelExports(linkedClass)(classCache))
       addGlobalRefs(treeWithGlobals.globalVarNames)
       treeWithGlobals.value
     }
@@ -428,7 +428,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
         main.reverse,
         staticFields,
         staticInitialization,
-        classExports,
+        topLevelExports,
         mentionedDangerousGlobalRefs
     )
   }
@@ -564,14 +564,14 @@ private object Emitter {
     val setTypeData = new OneTimeCache[js.Tree]
     val moduleAccessor = new OneTimeCache[js.Tree]
     val staticFields = new OneTimeCache[List[js.Tree]]
-    val classExports = new OneTimeCache[WithGlobals[List[js.Tree]]]
+    val topLevelExports = new OneTimeCache[WithGlobals[List[js.Tree]]]
   }
 
   private final class GeneratedClass(
       val main: List[js.Tree],
       val staticFields: List[js.Tree],
       val staticInitialization: List[js.Tree],
-      val classExports: List[js.Tree],
+      val topLevelExports: List[js.Tree],
       val mentionedDangerousGlobalRefs: Set[String]
   )
 

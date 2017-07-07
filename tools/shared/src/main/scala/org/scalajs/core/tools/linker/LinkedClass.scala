@@ -45,8 +45,8 @@ final class LinkedClass(
     val memberMethods: List[LinkedMember[MethodDef]],
     val abstractMethods: List[LinkedMember[MethodDef]],
     val exportedMembers: List[LinkedMember[Tree]],
-    val classExports: List[Tree],
-    val classExportInfo: Option[Infos.MethodInfo],
+    val topLevelExports: List[Tree],
+    val topLevelExportsInfo: Option[Infos.MethodInfo],
     val optimizerHints: OptimizerHints,
     val pos: Position,
 
@@ -59,10 +59,10 @@ final class LinkedClass(
 
   // Helpers to give Info-Like access
   def encodedName: String = name.name
-  def isExported: Boolean = classExports.nonEmpty
+  def isExported: Boolean = topLevelExports.nonEmpty
 
-  /** Names this class / module is exported under */
-  def topLevelExportNames: List[String] = classExports.map { export =>
+  /** Names of all top-level exports in this class. */
+  def topLevelExportNames: List[String] = topLevelExports.map { export =>
     (export: @unchecked) match {
       case ConstructorExportDef(name, _, _) => name
       case ModuleExportDef(name)            => name
@@ -84,7 +84,7 @@ final class LinkedClass(
         memberMethods.map(_.info) ++
         abstractMethods.map(_.info) ++
         exportedMembers.map(_.info) ++
-        classExportInfo
+        topLevelExportsInfo
     )
 
     Infos.ClassInfo(encodedName, isExported, kind, superClass.map(_.name),
@@ -102,8 +102,8 @@ final class LinkedClass(
       memberMethods: List[LinkedMember[MethodDef]] = this.memberMethods,
       abstractMethods: List[LinkedMember[MethodDef]] = this.abstractMethods,
       exportedMembers: List[LinkedMember[Tree]] = this.exportedMembers,
-      classExports: List[Tree] = this.classExports,
-      classExportInfo: Option[Infos.MethodInfo] = this.classExportInfo,
+      topLevelExports: List[Tree] = this.topLevelExports,
+      topLevelExportsInfo: Option[Infos.MethodInfo] = this.topLevelExportsInfo,
       optimizerHints: OptimizerHints = this.optimizerHints,
       pos: Position = this.pos,
       ancestors: List[String] = this.ancestors,
@@ -122,8 +122,8 @@ final class LinkedClass(
         memberMethods,
         abstractMethods,
         exportedMembers,
-        classExports,
-        classExportInfo,
+        topLevelExports,
+        topLevelExportsInfo,
         optimizerHints,
         pos,
         ancestors,

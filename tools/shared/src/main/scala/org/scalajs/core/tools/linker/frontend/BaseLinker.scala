@@ -172,7 +172,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
     val memberMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
     val abstractMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
     val exportedMembers = mutable.Buffer.empty[LinkedMember[Tree]]
-    val classExports = mutable.Buffer.empty[Tree]
+    val topLevelExports = mutable.Buffer.empty[Tree]
 
     def linkedMethod(m: MethodDef) = {
       val info = memberInfoByStaticAndName((m.static, m.name.encodedName))
@@ -224,22 +224,22 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
           exportedMembers += linkedProperty(m)
 
       case e: ConstructorExportDef =>
-        classExports += e
+        topLevelExports += e
 
       case e: JSClassExportDef =>
-        classExports += e
+        topLevelExports += e
 
       case e: ModuleExportDef =>
-        classExports += e
+        topLevelExports += e
 
       case e: TopLevelModuleExportDef =>
-        classExports += e
+        topLevelExports += e
 
       case e: TopLevelMethodExportDef =>
-        classExports += e
+        topLevelExports += e
 
       case e: TopLevelFieldExportDef =>
-        classExports += e
+        topLevelExports += e
 
       case tree =>
         throw new IllegalArgumentException(
@@ -267,8 +267,8 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
       }
     }
 
-    val classExportInfo =
-      memberInfoByStaticAndName.get((false, Definitions.ClassExportsName))
+    val topLevelExportInfo =
+      memberInfoByStaticAndName.get((false, Definitions.TopLevelExportsName))
 
     val kind =
       if (analyzerInfo.isModuleAccessed) classDef.kind
@@ -287,8 +287,8 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
         memberMethods.toList,
         abstractMethods.toList,
         exportedMembers.toList,
-        classExports.toList,
-        classExportInfo,
+        topLevelExports.toList,
+        topLevelExportInfo,
         classDef.optimizerHints,
         classDef.pos,
         ancestors.toList,
