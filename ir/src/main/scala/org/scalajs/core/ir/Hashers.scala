@@ -101,13 +101,7 @@ object Hashers {
           mixIdent(ident)
           mixType(ptpe)
           mixBoolean(mutable)
-          /* TODO Remove this test in the next major release.
-           * In 0.6.x we need this test so that the hash of a non-rest ParamDef
-           * emitted in 0.6.3 format is the same as an (implicitly non-rest)
-           * ParamDef emitted in 0.6.0 format.
-           */
-          if (rest)
-            mixBoolean(rest)
+          mixBoolean(rest)
 
         case Skip() =>
           mixTag(TagSkip)
