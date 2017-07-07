@@ -713,6 +713,11 @@ object Trees {
     val tpe = AnyType
   }
 
+  case class JSGlobalRef(ident: Ident)(
+      implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+  }
+
   case class JSLinkingInfo()(implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
@@ -777,11 +782,6 @@ object Trees {
       implicit val pos: Position) extends Tree
 
   case class This()(val tpe: Type)(implicit val pos: Position) extends Tree
-
-  case class JSGlobalRef(ident: Ident)(
-      implicit val pos: Position) extends Tree {
-    val tpe = AnyType
-  }
 
   /** Closure with explicit captures.
    *  The n captures map to the n first formal arguments.

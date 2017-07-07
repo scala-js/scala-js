@@ -657,8 +657,8 @@ private[optimizer] abstract class OptimizerCore(
       // Trees that need not be transformed
 
       case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic |
-          _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo | _:Literal |
-          _:JSGlobalRef =>
+          _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo | _:JSGlobalRef |
+          _:Literal =>
         tree
 
       case _ =>

@@ -977,6 +977,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         for ((_, value) <- fields)
           typecheckExpr(value, env)
 
+      case JSGlobalRef(_) =>
+
       case JSLinkingInfo() =>
 
       // Literals
@@ -997,8 +999,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case This() =>
         if (!isSubtype(env.thisTpe, tree.tpe))
           reportError(s"this of type ${env.thisTpe} typed as ${tree.tpe}")
-
-      case JSGlobalRef(_) =>
 
       case Closure(captureParams, params, body, captureValues) =>
         /* Check compliance of captureValues wrt. captureParams in the current

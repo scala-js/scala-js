@@ -2182,6 +2182,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             (transformPropertyName(name), transformExpr(value))
           })
 
+        case JSGlobalRef(name) =>
+          js.VarRef(transformGlobalVarIdent(name))
+
         case JSLinkingInfo() =>
           envField("linkingInfo")
 
@@ -2217,9 +2220,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           } { ident =>
             js.VarRef(ident)
           }
-
-        case JSGlobalRef(name) =>
-          js.VarRef(transformGlobalVarIdent(name))
 
         case Closure(captureParams, params, body, captureValues) =>
           val innerFunction =

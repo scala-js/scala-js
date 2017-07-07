@@ -339,6 +339,10 @@ object Serializers {
             writePropertyName(field._1); writeTree(field._2)
           }
 
+        case JSGlobalRef(ident) =>
+          writeByte(TagJSGlobalRef)
+          writeIdent(ident)
+
         case JSLinkingInfo() =>
           writeByte(TagJSLinkingInfo)
 
@@ -388,10 +392,6 @@ object Serializers {
         case This() =>
           writeByte(TagThis)
           writeType(tree.tpe)
-
-        case JSGlobalRef(ident) =>
-          writeByte(TagJSGlobalRef)
-          writeIdent(ident)
 
         case Closure(captureParams, params, body, captureValues) =>
           writeByte(TagClosure)
@@ -759,6 +759,7 @@ object Serializers {
         case TagJSArrayConstr        => JSArrayConstr(readTrees())
         case TagJSObjectConstr       =>
           JSObjectConstr(List.fill(readInt())((readPropertyName(), readTree())))
+        case TagJSGlobalRef          => JSGlobalRef(readIdent())
         case TagJSLinkingInfo        => JSLinkingInfo()
 
         case TagUndefined      => Undefined()
@@ -772,10 +773,9 @@ object Serializers {
         case TagClassOf        => ClassOf(readReferenceType())
         case TagUndefinedParam => UndefinedParam()(readType())
 
-        case TagVarRef      => VarRef(readIdent())(readType())
-        case TagThis        => This()(readType())
-        case TagJSGlobalRef => JSGlobalRef(readIdent())
-        case TagClosure     => Closure(readParamDefs(), readParamDefs(), readTree(), readTrees())
+        case TagVarRef  => VarRef(readIdent())(readType())
+        case TagThis    => This()(readType())
+        case TagClosure => Closure(readParamDefs(), readParamDefs(), readTree(), readTrees())
 
         case TagClassDef =>
           val name = readIdent()

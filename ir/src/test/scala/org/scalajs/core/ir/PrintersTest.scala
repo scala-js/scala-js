@@ -679,6 +679,10 @@ class PrintersTest {
         JSObjectConstr(List(Ident("f") -> i(5), StringLiteral("g") -> i(6))))
   }
 
+  @Test def printGlobalRef(): Unit = {
+    assertPrintEquals("global:Foo", JSGlobalRef("Foo"))
+  }
+
   @Test def printJSLinkingInfo(): Unit = {
     assertPrintEquals("<linkinginfo>", JSLinkingInfo())
   }
@@ -751,10 +755,6 @@ class PrintersTest {
 
   @Test def printThis(): Unit = {
     assertPrintEquals("this", This()(AnyType))
-  }
-
-  @Test def printGlobalRef(): Unit = {
-    assertPrintEquals("global:Foo", JSGlobalRef("Foo"))
   }
 
   @Test def printClosure(): Unit = {

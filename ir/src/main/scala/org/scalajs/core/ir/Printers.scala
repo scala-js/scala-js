@@ -669,6 +669,10 @@ object Printers {
           }
           undent; println(); print('}')
 
+        case JSGlobalRef(ident) =>
+          print("global:")
+          print(ident)
+
         case JSLinkingInfo() =>
           print("<linkinginfo>")
 
@@ -746,10 +750,6 @@ object Printers {
 
         case This() =>
           print("this")
-
-        case JSGlobalRef(ident) =>
-          print("global:")
-          print(ident)
 
         case Closure(captureParams, params, body, captureValues) =>
           print("(lambda<")
