@@ -573,15 +573,7 @@ private final class Analyzer(semantics: Semantics,
     def instantiated()(implicit from: From): Unit = {
       instantiatedFrom ::= from
 
-      /* TODO Get rid of this when we break binary compatibility.
-       * Due to the deserialization hacks for the 0.6.8 binary format, we
-       * might reach this point with `kind == ClassKind.AbstractJSType`, where
-       * in fact the ClassDef has `kind == ClassKind.NativeJSClass`. If an
-       * AbstractJSType is `instantiated()` here, we have to assume it is in
-       * fact a NativeJSClass.
-       */
-      val isNativeJSClass =
-        kind == ClassKind.NativeJSClass || kind == ClassKind.AbstractJSType
+      val isNativeJSClass = kind == ClassKind.NativeJSClass
 
       /* TODO? When the second line is false, shouldn't this be a linking error
        * instead?
