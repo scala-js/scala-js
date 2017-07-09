@@ -64,9 +64,9 @@ final class LinkedClass(
   /** Names of all top-level exports in this class. */
   def topLevelExportNames: List[String] = topLevelExports.map { export =>
     (export: @unchecked) match {
-      case ConstructorExportDef(name, _, _) => name
-      case TopLevelModuleExportDef(name)    => name
-      case JSClassExportDef(name)           => name
+      case TopLevelConstructorExportDef(name, _, _) => name
+      case TopLevelModuleExportDef(name)            => name
+      case TopLevelJSClassExportDef(name)           => name
 
       case TopLevelMethodExportDef(MethodDef(_, StringLiteral(name), _, _, _)) =>
         name

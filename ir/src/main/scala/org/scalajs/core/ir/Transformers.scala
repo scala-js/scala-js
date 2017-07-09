@@ -234,10 +234,10 @@ object Transformers {
                 (arg, transformStat(body))
               })
 
-        case ConstructorExportDef(fullName, args, body) =>
-          ConstructorExportDef(fullName, args, transformStat(body))
+        case TopLevelConstructorExportDef(fullName, args, body) =>
+          TopLevelConstructorExportDef(fullName, args, transformStat(body))
 
-        case _:JSClassExportDef | _:TopLevelModuleExportDef |
+        case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
             _:TopLevelFieldExportDef =>
           tree
 

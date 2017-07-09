@@ -302,7 +302,7 @@ object Infos {
       .setSuperClass(classDef.superClass.map(_.name))
       .addInterfaces(classDef.interfaces.map(_.name))
 
-    var exportedConstructors: List[ConstructorExportDef] = Nil
+    var exportedConstructors: List[TopLevelConstructorExportDef] = Nil
     var topLevelMethodExports: List[TopLevelMethodExportDef] = Nil
     var topLevelFieldExports: List[TopLevelFieldExportDef] = Nil
 
@@ -311,10 +311,10 @@ object Infos {
         builder.addMethod(generateMethodInfo(methodDef))
       case propertyDef: PropertyDef =>
         builder.addMethod(generatePropertyInfo(propertyDef))
-      case constructorDef: ConstructorExportDef =>
+      case constructorDef: TopLevelConstructorExportDef =>
         builder.setIsExported(true)
         exportedConstructors ::= constructorDef
-      case _:JSClassExportDef | _:TopLevelModuleExportDef =>
+      case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef =>
         builder.setIsExported(true)
       case topLevelMethodExport: TopLevelMethodExportDef =>
         builder.setIsExported(true)
@@ -344,11 +344,11 @@ object Infos {
 
   /** Generates the [[MethodInfo]] for the top-level exports. */
   def generateTopLevelExportsInfo(enclosingClass: String,
-      constructorDefs: List[ConstructorExportDef],
+      topLevelConstructorDefs: List[TopLevelConstructorExportDef],
       topLevelMethodExports: List[TopLevelMethodExportDef],
       topLevelFieldExports: List[TopLevelFieldExportDef]): MethodInfo = {
     new GenInfoTraverser().generateTopLevelExportsInfo(enclosingClass,
-        constructorDefs, topLevelMethodExports, topLevelFieldExports)
+        topLevelConstructorDefs, topLevelMethodExports, topLevelFieldExports)
   }
 
   private final class GenInfoTraverser extends Traversers.Traverser {
@@ -393,15 +393,15 @@ object Infos {
     }
 
     def generateTopLevelExportsInfo(enclosingClass: String,
-        constructorDefs: List[ConstructorExportDef],
+        topLevelConstructorDefs: List[TopLevelConstructorExportDef],
         topLevelMethodExports: List[TopLevelMethodExportDef],
         topLevelFieldExports: List[TopLevelFieldExportDef]): MethodInfo = {
       builder
         .setEncodedName(TopLevelExportsName)
         .setIsExported(true)
 
-      for (constructorDef <- constructorDefs)
-        traverse(constructorDef.body)
+      for (topLevelConstructorDef <- topLevelConstructorDefs)
+        traverse(topLevelConstructorDef.body)
 
       for (topLevelMethodExport <- topLevelMethodExports)
         traverse(topLevelMethodExport.methodDef)

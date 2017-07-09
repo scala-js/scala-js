@@ -161,11 +161,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         implicit val ctx = ErrorContext(tree)
 
         tree match {
-          case tree: ConstructorExportDef =>
-            checkConstructorExportDef(tree, classDef)
+          case tree: TopLevelConstructorExportDef =>
+            checkTopLevelConstructorExportDef(tree, classDef)
 
-          case tree: JSClassExportDef =>
-            checkJSClassExportDef(tree, classDef)
+          case tree: TopLevelJSClassExportDef =>
+            checkTopLevelJSClassExportDef(tree, classDef)
 
           case tree: TopLevelModuleExportDef =>
             checkTopLevelModuleExportDef(tree, classDef)
@@ -448,9 +448,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  private def checkConstructorExportDef(ctorDef: ConstructorExportDef,
+  private def checkTopLevelConstructorExportDef(
+      ctorDef: TopLevelConstructorExportDef,
       classDef: LinkedClass): Unit = withPerMethodState {
-    val ConstructorExportDef(_, params, body) = ctorDef
+    val TopLevelConstructorExportDef(_, params, body) = ctorDef
     implicit val ctx = ErrorContext(ctorDef)
 
     if (!classDef.kind.isClass) {
@@ -478,8 +479,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     typecheckStat(body, bodyEnv)
   }
 
-  private def checkJSClassExportDef(classExportDef: JSClassExportDef,
-      classDef: LinkedClass): Unit = {
+  private def checkTopLevelJSClassExportDef(
+      classExportDef: TopLevelJSClassExportDef, classDef: LinkedClass): Unit = {
     implicit val ctx = ErrorContext(classExportDef)
 
     if (classDef.kind != ClassKind.JSClass)

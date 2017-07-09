@@ -821,12 +821,12 @@ object Trees {
     val tpe = NoType
   }
 
-  case class ConstructorExportDef(name: String, args: List[ParamDef],
+  case class TopLevelConstructorExportDef(name: String, args: List[ParamDef],
       body: Tree)(implicit val pos: Position) extends Tree {
     val tpe = NoType
   }
 
-  case class JSClassExportDef(fullName: String)(
+  case class TopLevelJSClassExportDef(fullName: String)(
       implicit val pos: Position) extends Tree {
     val tpe = NoType
   }

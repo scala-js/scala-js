@@ -59,7 +59,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         .map(genJSClassDispatcher(classSym, _))
     }
 
-    def genConstructorExports(classSym: Symbol): List[js.ConstructorExportDef] = {
+    def genConstructorExports(
+        classSym: Symbol): List[js.TopLevelConstructorExportDef] = {
+
       val constructors = classSym.tpe.member(nme.CONSTRUCTOR).alternatives
 
       // Generate exports from constructors and their annotations
@@ -82,14 +84,15 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             withNewLocalNameScope(genExportMethod(ctors, JSName.Literal(jsName),
                 static = false))
 
-          js.ConstructorExportDef(jsName, args, body.get)
+          js.TopLevelConstructorExportDef(jsName, args, body.get)
         }
 
         exports.toList
       }
     }
 
-    def genJSClassExports(classSym: Symbol): List[js.JSClassExportDef] = {
+    def genJSClassExports(
+        classSym: Symbol): List[js.TopLevelJSClassExportDef] = {
       for {
         exp <- jsInterop.registeredExportsOf(classSym)
       } yield {
@@ -97,7 +100,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         exp.destination match {
           case ExportDestination.Normal | ExportDestination.TopLevel =>
-            js.JSClassExportDef(exp.jsName)
+            js.TopLevelJSClassExportDef(exp.jsName)
           case ExportDestination.Static =>
             throw new AssertionError(
                 "Found a class export static for " + classSym.fullName)

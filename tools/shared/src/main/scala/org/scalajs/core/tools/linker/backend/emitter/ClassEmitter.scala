@@ -938,10 +938,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def genTopLevelExports(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     val exportsWithGlobals = tree.topLevelExports map {
-      case e: ConstructorExportDef =>
-        genConstructorExportDef(tree, e)
-      case e: JSClassExportDef =>
-        WithGlobals(genJSClassExportDef(tree, e))
+      case e: TopLevelConstructorExportDef =>
+        genTopLevelConstructorExportDef(tree, e)
+      case e: TopLevelJSClassExportDef =>
+        WithGlobals(genTopLevelJSClassExportDef(tree, e))
       case e: TopLevelModuleExportDef =>
         WithGlobals(genTopLevelModuleExportDef(tree, e))
       case e: TopLevelMethodExportDef =>
@@ -956,13 +956,14 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     WithGlobals.list(exportsWithGlobals)
   }
 
-  def genConstructorExportDef(cd: LinkedClass, tree: ConstructorExportDef)(
+  def genTopLevelConstructorExportDef(cd: LinkedClass,
+      tree: TopLevelConstructorExportDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
     implicit val pos = tree.pos
     val classType = ClassType(cd.name.name)
-    val ConstructorExportDef(fullName, args, body) = tree
+    val TopLevelConstructorExportDef(fullName, args, body) = tree
 
     val baseCtor = envField("c", cd.name.name, cd.name.originalName)
 
@@ -990,7 +991,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
   }
 
-  def genJSClassExportDef(cd: LinkedClass, tree: JSClassExportDef): js.Tree = {
+  def genTopLevelJSClassExportDef(cd: LinkedClass,
+      tree: TopLevelJSClassExportDef): js.Tree = {
     import TreeDSL._
 
     implicit val pos = tree.pos

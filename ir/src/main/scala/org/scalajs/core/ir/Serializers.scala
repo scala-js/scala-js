@@ -449,12 +449,12 @@ object Serializers {
             writeTree(arg); writeTree(body)
           }
 
-        case ConstructorExportDef(fullName, args, body) =>
-          writeByte(TagConstructorExportDef)
+        case TopLevelConstructorExportDef(fullName, args, body) =>
+          writeByte(TagTopLevelConstructorExportDef)
           writeString(fullName); writeTrees(args); writeTree(body)
 
-        case JSClassExportDef(fullName) =>
-          writeByte(TagJSClassExportDef)
+        case TopLevelJSClassExportDef(fullName) =>
+          writeByte(TagTopLevelJSClassExportDef)
           writeString(fullName)
 
         case TopLevelModuleExportDef(fullName) =>
@@ -808,13 +808,14 @@ object Serializers {
           }
           PropertyDef(static, name, getterBody, setterArgAndBody)
 
-        case TagConstructorExportDef =>
-          ConstructorExportDef(readString(), readParamDefs(), readTree())
+        case TagTopLevelConstructorExportDef =>
+          TopLevelConstructorExportDef(readString(), readParamDefs(),
+              readTree())
 
-        case TagJSClassExportDef        => JSClassExportDef(readString())
-        case TagTopLevelModuleExportDef => TopLevelModuleExportDef(readString())
-        case TagTopLevelMethodExportDef => TopLevelMethodExportDef(readTree().asInstanceOf[MethodDef])
-        case TagTopLevelFieldExportDef  => TopLevelFieldExportDef(readString(), readIdent())
+        case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readString())
+        case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readString())
+        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readTree().asInstanceOf[MethodDef])
+        case TagTopLevelFieldExportDef   => TopLevelFieldExportDef(readString(), readIdent())
       }
       if (UseDebugMagic) {
         val magic = readInt()

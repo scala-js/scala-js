@@ -208,7 +208,7 @@ object Traversers {
           traverse(body)
         }
 
-      case ConstructorExportDef(fullName, args, body) =>
+      case TopLevelConstructorExportDef(fullName, args, body) =>
         traverse(body)
 
       case TopLevelMethodExportDef(methodDef) =>
@@ -219,7 +219,7 @@ object Traversers {
       case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:SelectStatic |
           _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo | _:Literal |
           _:UndefinedParam | _:VarRef | _:This | _:JSGlobalRef | _:FieldDef |
-          _:JSClassExportDef | _:TopLevelModuleExportDef |
+          _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
           _:TopLevelFieldExportDef =>
 
       case _ =>

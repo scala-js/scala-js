@@ -223,10 +223,10 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
         if (analyzerInfo.isAnySubclassInstantiated)
           exportedMembers += linkedProperty(m)
 
-      case e: ConstructorExportDef =>
+      case e: TopLevelConstructorExportDef =>
         topLevelExports += e
 
-      case e: JSClassExportDef =>
+      case e: TopLevelJSClassExportDef =>
         topLevelExports += e
 
       case e: TopLevelModuleExportDef =>

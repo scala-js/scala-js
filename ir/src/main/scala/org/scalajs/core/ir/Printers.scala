@@ -854,15 +854,15 @@ object Printers {
             printBlock(body)
           }
 
-        case ConstructorExportDef(fullName, args, body) =>
-          print("export \"")
+        case TopLevelConstructorExportDef(fullName, args, body) =>
+          print("export top constructor \"")
           printEscapeJS(fullName, out)
           print('\"')
           printSig(args, NoType) // NoType as trick not to display a type
           printBlock(body)
 
-        case JSClassExportDef(fullName) =>
-          print("export class \"")
+        case TopLevelJSClassExportDef(fullName) =>
+          print("export top class \"")
           printEscapeJS(fullName, out)
           print('\"')
 
