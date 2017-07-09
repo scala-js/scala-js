@@ -194,37 +194,42 @@ object Traversers {
         traverse(body)
         captureValues.foreach(traverse)
 
-      // Classes
-
-      case ClassDef(name, kind, superClass, parents, jsName, defs) =>
-        defs foreach traverse
-
-      case MethodDef(static, name, args, resultType, body) =>
-        body.foreach(traverse)
-
-      case PropertyDef(static, name, getterBody, setterArgAndBody) =>
-        getterBody.foreach(traverse)
-        setterArgAndBody foreach { case (_, body) =>
-          traverse(body)
-        }
-
-      case TopLevelConstructorExportDef(fullName, args, body) =>
-        traverse(body)
-
-      case TopLevelMethodExportDef(methodDef) =>
-        traverse(methodDef)
-
       // Trees that need not be traversed
 
       case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:SelectStatic |
           _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo | _:Literal |
-          _:UndefinedParam | _:VarRef | _:This | _:JSGlobalRef | _:FieldDef |
-          _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
-          _:TopLevelFieldExportDef =>
+          _:UndefinedParam | _:VarRef | _:This | _:JSGlobalRef =>
+    }
 
-      case _ =>
-        throw new IllegalArgumentException(
-            s"Invalid tree in traverse() of class ${tree.getClass}")
+    def traverseClassDef(tree: ClassDef): Unit = {
+      tree.memberDefs.foreach(traverseMemberDef)
+      tree.topLevelExportDefs.foreach(traverseTopLevelExportDef)
+    }
+
+    def traverseMemberDef(memberDef: MemberDef): Unit = {
+      memberDef match {
+        case FieldDef(_, _, _, _) =>
+
+        case MethodDef(_, _, _, _, body) =>
+          body.foreach(traverse)
+
+        case PropertyDef(_, _, getterBody, setterArgAndBody) =>
+          getterBody.foreach(traverse)
+          setterArgAndBody.foreach(argAndBody => traverse(argAndBody._2))
+      }
+    }
+
+    def traverseTopLevelExportDef(exportDef: TopLevelExportDef): Unit = {
+      exportDef match {
+        case TopLevelConstructorExportDef(fullName, args, body) =>
+          traverse(body)
+
+        case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
+            _:TopLevelFieldExportDef =>
+
+        case TopLevelMethodExportDef(methodDef) =>
+          traverseMemberDef(methodDef)
+      }
     }
   }
 

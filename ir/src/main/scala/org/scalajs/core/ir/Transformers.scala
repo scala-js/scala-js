@@ -198,32 +198,31 @@ object Transformers {
             _:LoadJSConstructor | _:LoadJSModule  | _:JSLinkingInfo |
             _:Literal | _:UndefinedParam | _:VarRef | _:This | _:JSGlobalRef  =>
           tree
-
-        case _ =>
-          throw new IllegalArgumentException(
-              s"Invalid tree in transform() of class ${tree.getClass}")
       }
     }
   }
 
   abstract class ClassTransformer extends Transformer {
     def transformClassDef(tree: ClassDef): ClassDef = {
-      val ClassDef(name, kind, superClass, parents, jsName, defs) = tree
-      ClassDef(name, kind, superClass, parents, jsName, defs.map(transformDef))(
+      val ClassDef(name, kind, superClass, parents, jsName, memberDefs,
+          topLevelExportDefs) = tree
+      ClassDef(name, kind, superClass, parents, jsName,
+          memberDefs.map(transformMemberDef),
+          topLevelExportDefs.map(transformTopLevelExportDef))(
           tree.optimizerHints)(tree.pos)
     }
 
-    def transformDef(tree: Tree): Tree = {
-      implicit val pos = tree.pos
+    def transformMemberDef(memberDef: MemberDef): MemberDef = {
+      implicit val pos = memberDef.pos
 
-      tree match {
+      memberDef match {
         case FieldDef(_, _, _, _) =>
-          tree
+          memberDef
 
-        case tree: MethodDef =>
-          val MethodDef(static, name, args, resultType, body) = tree
+        case memberDef: MethodDef =>
+          val MethodDef(static, name, args, resultType, body) = memberDef
           MethodDef(static, name, args, resultType, body.map(transformStat))(
-              tree.optimizerHints, None)
+              memberDef.optimizerHints, None)
 
         case PropertyDef(static, name, getterBody, setterArgAndBody) =>
           PropertyDef(
@@ -233,21 +232,25 @@ object Transformers {
               setterArgAndBody map { case (arg, body) =>
                 (arg, transformStat(body))
               })
+      }
+    }
 
+    def transformTopLevelExportDef(
+        exportDef: TopLevelExportDef): TopLevelExportDef = {
+
+      implicit val pos = exportDef.pos
+
+      exportDef match {
         case TopLevelConstructorExportDef(fullName, args, body) =>
           TopLevelConstructorExportDef(fullName, args, transformStat(body))
 
         case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
             _:TopLevelFieldExportDef =>
-          tree
+          exportDef
 
         case TopLevelMethodExportDef(methodDef) =>
           TopLevelMethodExportDef(
-              transformDef(methodDef).asInstanceOf[MethodDef])
-
-        case _ =>
-          throw new IllegalArgumentException(
-              s"Invalid tree in transformDef() of class ${tree.getClass}")
+              transformMemberDef(methodDef).asInstanceOf[MethodDef])
       }
     }
   }

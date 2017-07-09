@@ -15,35 +15,43 @@ import Position.NoPosition
 import Types._
 
 object Trees {
-  /** AST node of the IR. */
-  abstract sealed class Tree {
-    val pos: Position
-    val tpe: Type
+  /** Base class for all nodes in the IR.
+   *
+   *  Usually, one of the direct subclasses of `IRNode` should be used instead.
+   */
+  abstract sealed class IRNode {
+    def pos: Position
 
     def show: String = {
       val writer = new java.io.StringWriter
       val printer = new Printers.IRTreePrinter(writer)
-      printer.print(this)
+      printer.printAnyNode(this)
       writer.toString()
     }
   }
 
+  /** Node for a statement or expression in the IR. */
+  abstract sealed class Tree extends IRNode {
+    val tpe: Type
+  }
+
   // Identifiers and properties
 
-  sealed trait PropertyName {
+  sealed trait PropertyName extends IRNode {
     /** Encoded name of this PropertyName within its owner's scope.
      *
      *  For [[ComputedName]]s, the value of `encodedName` cannot be relied on
      *  beyond equality tests, and the fact that it starts with `"__computed_"`.
      */
     def encodedName: String
-
-    def pos: Position
   }
 
   case class Ident(name: String, originalName: Option[String])(
-      implicit val pos: Position) extends PropertyName {
+      implicit val pos: Position)
+      extends IRNode with PropertyName {
+
     requireValidIdent(name)
+
     def encodedName: String = name
   }
 
@@ -88,9 +96,13 @@ object Trees {
       "transient", "volatile"
   )
 
-  case class ComputedName(tree: Tree, logicalName: String) extends PropertyName {
+  case class ComputedName(tree: Tree, logicalName: String)
+      extends IRNode with PropertyName {
+
     requireValidIdent(logicalName)
+
     def pos: Position = tree.pos
+
     override def encodedName: String = "__computed_" + logicalName
   }
 
@@ -104,9 +116,7 @@ object Trees {
   }
 
   case class ParamDef(name: Ident, ptpe: Type, mutable: Boolean, rest: Boolean)(
-      implicit val pos: Position) extends Tree {
-    val tpe = NoType
-
+      implicit val pos: Position) extends IRNode {
     def ref(implicit pos: Position): VarRef = VarRef(name)(ptpe)
   }
 
@@ -796,40 +806,36 @@ object Trees {
 
   case class ClassDef(name: Ident, kind: ClassKind, superClass: Option[Ident],
       interfaces: List[Ident], jsNativeLoadSpec: Option[JSNativeLoadSpec],
-      defs: List[Tree])(
+      memberDefs: List[MemberDef], topLevelExportDefs: List[TopLevelExportDef])(
       val optimizerHints: OptimizerHints)(
-      implicit val pos: Position) extends Tree {
-    val tpe = NoType
-  }
+      implicit val pos: Position) extends IRNode
+
+  // Class members
+
+  sealed abstract class MemberDef extends IRNode
 
   case class FieldDef(static: Boolean, name: PropertyName, ftpe: Type,
       mutable: Boolean)(
-      implicit val pos: Position) extends Tree {
-    val tpe = NoType
-  }
+      implicit val pos: Position) extends MemberDef
 
   case class MethodDef(static: Boolean, name: PropertyName,
       args: List[ParamDef], resultType: Type, body: Option[Tree])(
       val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
-      implicit val pos: Position) extends Tree {
-    val tpe = NoType
-  }
+      implicit val pos: Position) extends MemberDef
 
   case class PropertyDef(static: Boolean, name: PropertyName,
       getterBody: Option[Tree], setterArgAndBody: Option[(ParamDef, Tree)])(
-      implicit val pos: Position) extends Tree {
-    val tpe = NoType
-  }
+      implicit val pos: Position) extends MemberDef
+
+  // Top-level export defs
+
+  sealed abstract class TopLevelExportDef extends IRNode
 
   case class TopLevelConstructorExportDef(name: String, args: List[ParamDef],
-      body: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = NoType
-  }
+      body: Tree)(implicit val pos: Position) extends TopLevelExportDef
 
   case class TopLevelJSClassExportDef(fullName: String)(
-      implicit val pos: Position) extends Tree {
-    val tpe = NoType
-  }
+      implicit val pos: Position) extends TopLevelExportDef
 
   /** Export for a top-level object.
    *
@@ -837,19 +843,15 @@ object Trees {
    *  The instance is initialized during ES module instantiation.
    */
   case class TopLevelModuleExportDef(fullName: String)(
-      implicit val pos: Position) extends Tree {
-    val tpe = NoType
-  }
+      implicit val pos: Position) extends TopLevelExportDef
 
   case class TopLevelMethodExportDef(methodDef: MethodDef)(
-      implicit val pos: Position) extends Tree {
-    val tpe = NoType
-  }
+      implicit val pos: Position) extends TopLevelExportDef
 
   case class TopLevelFieldExportDef(fullName: String, field: Ident)(
-      implicit val pos: Position) extends Tree {
-    val tpe = NoType
-  }
+      implicit val pos: Position) extends TopLevelExportDef
+
+  // Miscellaneous
 
   final class OptimizerHints(val bits: Int) extends AnyVal {
     import OptimizerHints._

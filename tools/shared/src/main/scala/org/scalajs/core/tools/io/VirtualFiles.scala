@@ -183,8 +183,7 @@ trait VirtualSerializedScalaJSIRFile extends VirtualBinaryFile with VirtualScala
     val stream = inputStream
     try {
       val (version, info) = ir.InfoSerializers.deserializeWithVersion(stream)
-      val tree = ir.Serializers.deserialize(
-          stream, version).asInstanceOf[ir.Trees.ClassDef]
+      val tree = ir.Serializers.deserialize(stream, version)
       (info, tree)
     } catch {
       case e: IOException =>

@@ -171,8 +171,8 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
     val staticMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
     val memberMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
     val abstractMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
-    val exportedMembers = mutable.Buffer.empty[LinkedMember[Tree]]
-    val topLevelExports = mutable.Buffer.empty[Tree]
+    val exportedMembers = mutable.Buffer.empty[LinkedMember[MemberDef]]
+    val topLevelExports = mutable.Buffer.empty[TopLevelExportDef]
 
     def linkedMethod(m: MethodDef) = {
       val info = memberInfoByStaticAndName((m.static, m.name.encodedName))
@@ -191,7 +191,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
       new LinkedMember(info, m, version)
     }
 
-    classDef.defs.foreach {
+    classDef.memberDefs.foreach {
       // Static methods
       case m: MethodDef if m.static =>
         if (analyzerInfo.staticMethodInfos(m.name.encodedName).isReachable) {
@@ -222,25 +222,6 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
       case m: PropertyDef =>
         if (analyzerInfo.isAnySubclassInstantiated)
           exportedMembers += linkedProperty(m)
-
-      case e: TopLevelConstructorExportDef =>
-        topLevelExports += e
-
-      case e: TopLevelJSClassExportDef =>
-        topLevelExports += e
-
-      case e: TopLevelModuleExportDef =>
-        topLevelExports += e
-
-      case e: TopLevelMethodExportDef =>
-        topLevelExports += e
-
-      case e: TopLevelFieldExportDef =>
-        topLevelExports += e
-
-      case tree =>
-        throw new IllegalArgumentException(
-            s"Illegal tree in ClassDef of class ${tree.getClass}")
     }
 
     // Synthetic members
@@ -284,7 +265,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
         memberMethods.toList,
         abstractMethods.toList,
         exportedMembers.toList,
-        topLevelExports.toList,
+        classDef.topLevelExportDefs,
         topLevelExportInfo,
         classDef.optimizerHints,
         classDef.pos,
@@ -389,7 +370,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
   private def findMethodDef(classInfo: Analysis.ClassInfo,
       methodName: String, getTree: TreeProvider): MethodDef = {
     val (classDef, _) = getTree(classInfo.encodedName)
-    classDef.defs.collectFirst {
+    classDef.memberDefs.collectFirst {
       case mDef: MethodDef
           if !mDef.static && mDef.name.encodedName == methodName => mDef
     }.getOrElse {

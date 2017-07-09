@@ -25,11 +25,11 @@ import Tags._
 import Utils.JumpBackByteArrayOutputStream
 
 object Serializers {
-  def serialize(stream: OutputStream, tree: Tree): Unit = {
-    new Serializer().serialize(stream, tree)
+  def serialize(stream: OutputStream, classDef: ClassDef): Unit = {
+    new Serializer().serialize(stream, classDef)
   }
 
-  def deserialize(stream: InputStream, version: String): Tree = {
+  def deserialize(stream: InputStream, version: String): ClassDef = {
     new Deserializer(stream, version).deserialize()
   }
 
@@ -87,9 +87,9 @@ object Serializers {
 
     private[this] var lastPosition: Position = Position.NoPosition
 
-    def serialize(stream: OutputStream, tree: Tree): Unit = {
+    def serialize(stream: OutputStream, classDef: ClassDef): Unit = {
       // Write tree to buffer and record files and strings
-      writeTree(tree)
+      writeClassDef(classDef)
 
       val s = new DataOutputStream(stream)
 
@@ -114,10 +114,6 @@ object Serializers {
         case VarDef(ident, vtpe, mutable, rhs) =>
           writeByte(TagVarDef)
           writeIdent(ident); writeType(vtpe); writeBoolean(mutable); writeTree(rhs)
-
-        case ParamDef(ident, ptpe, mutable, rest) =>
-          writeByte(TagParamDef)
-          writeIdent(ident); writeType(ptpe); writeBoolean(mutable); writeBoolean(rest)
 
         case Skip() =>
           writeByte(TagSkip)
@@ -395,79 +391,10 @@ object Serializers {
 
         case Closure(captureParams, params, body, captureValues) =>
           writeByte(TagClosure)
-          writeTrees(captureParams)
-          writeTrees(params)
+          writeParamDefs(captureParams)
+          writeParamDefs(params)
           writeTree(body)
           writeTrees(captureValues)
-
-        case tree: ClassDef =>
-          val ClassDef(name, kind, superClass, parents, jsNativeLoadSpec,
-              defs) = tree
-          writeByte(TagClassDef)
-          writeIdent(name)
-          writeByte(ClassKind.toByte(kind))
-          writeOptIdent(superClass)
-          writeIdents(parents)
-          writeJSNativeLoadSpec(jsNativeLoadSpec)
-          writeTrees(defs)
-          writeInt(tree.optimizerHints.bits)
-
-        case FieldDef(static, name, ftpe, mutable) =>
-          writeByte(TagFieldDef)
-          writeBoolean(static)
-          writePropertyName(name)
-          writeType(ftpe)
-          writeBoolean(mutable)
-
-        case methodDef: MethodDef =>
-          val MethodDef(static, name, args, resultType, body) = methodDef
-
-          writeByte(TagMethodDef)
-          writeOptHash(methodDef.hash)
-
-          // Prepare for back-jump and write dummy length
-          bufferUnderlying.markJump()
-          writeInt(-1)
-
-          // Write out method def
-          writeBoolean(static); writePropertyName(name)
-          writeTrees(args); writeType(resultType); writeOptTree(body)
-          writeInt(methodDef.optimizerHints.bits)
-
-          // Jump back and write true length
-          val length = bufferUnderlying.jumpBack()
-          writeInt(length)
-          bufferUnderlying.continue()
-
-        case PropertyDef(static, name, getter, setterArgAndBody) =>
-          writeByte(TagPropertyDef)
-          writeBoolean(static)
-          writePropertyName(name)
-          writeOptTree(getter)
-          writeBoolean(setterArgAndBody.isDefined)
-          setterArgAndBody foreach { case (arg, body) =>
-            writeTree(arg); writeTree(body)
-          }
-
-        case TopLevelConstructorExportDef(fullName, args, body) =>
-          writeByte(TagTopLevelConstructorExportDef)
-          writeString(fullName); writeTrees(args); writeTree(body)
-
-        case TopLevelJSClassExportDef(fullName) =>
-          writeByte(TagTopLevelJSClassExportDef)
-          writeString(fullName)
-
-        case TopLevelModuleExportDef(fullName) =>
-          writeByte(TagTopLevelModuleExportDef)
-          writeString(fullName)
-
-        case TopLevelMethodExportDef(methodDef) =>
-          writeByte(TagTopLevelMethodExportDef)
-          writeTree(methodDef)
-
-        case TopLevelFieldExportDef(fullName, field) =>
-          writeByte(TagTopLevelFieldExportDef)
-          writeString(fullName); writeIdent(field)
       }
       if (UseDebugMagic)
         writeInt(DebugMagic)
@@ -487,6 +414,102 @@ object Serializers {
       }
     }
 
+    def writeClassDef(classDef: ClassDef): Unit = {
+      import buffer._
+
+      val ClassDef(name, kind, superClass, parents, jsNativeLoadSpec,
+          memberDefs, topLevelExportDefs) = classDef
+      writePosition(classDef.pos)
+      writeIdent(name)
+      writeByte(ClassKind.toByte(kind))
+      writeOptIdent(superClass)
+      writeIdents(parents)
+      writeJSNativeLoadSpec(jsNativeLoadSpec)
+      writeMemberDefs(memberDefs)
+      writeTopLevelExportDefs(topLevelExportDefs)
+      writeInt(classDef.optimizerHints.bits)
+    }
+
+    def writeMemberDef(memberDef: MemberDef): Unit = {
+      import buffer._
+      writePosition(memberDef.pos)
+      memberDef match {
+        case FieldDef(static, name, ftpe, mutable) =>
+          writeByte(TagFieldDef)
+          writeBoolean(static)
+          writePropertyName(name)
+          writeType(ftpe)
+          writeBoolean(mutable)
+
+        case methodDef: MethodDef =>
+          val MethodDef(static, name, args, resultType, body) = methodDef
+
+          writeByte(TagMethodDef)
+          writeOptHash(methodDef.hash)
+
+          // Prepare for back-jump and write dummy length
+          bufferUnderlying.markJump()
+          writeInt(-1)
+
+          // Write out method def
+          writeBoolean(static); writePropertyName(name)
+          writeParamDefs(args); writeType(resultType); writeOptTree(body)
+          writeInt(methodDef.optimizerHints.bits)
+
+          // Jump back and write true length
+          val length = bufferUnderlying.jumpBack()
+          writeInt(length)
+          bufferUnderlying.continue()
+
+        case PropertyDef(static, name, getter, setterArgAndBody) =>
+          writeByte(TagPropertyDef)
+          writeBoolean(static)
+          writePropertyName(name)
+          writeOptTree(getter)
+          writeBoolean(setterArgAndBody.isDefined)
+          setterArgAndBody foreach { case (arg, body) =>
+            writeParamDef(arg); writeTree(body)
+          }
+      }
+    }
+
+    def writeMemberDefs(memberDefs: List[MemberDef]): Unit = {
+      buffer.writeInt(memberDefs.size)
+      memberDefs.foreach(writeMemberDef)
+    }
+
+    def writeTopLevelExportDef(topLevelExportDef: TopLevelExportDef): Unit = {
+      import buffer._
+      writePosition(topLevelExportDef.pos)
+      topLevelExportDef match {
+        case TopLevelConstructorExportDef(fullName, args, body) =>
+          writeByte(TagTopLevelConstructorExportDef)
+          writeString(fullName); writeParamDefs(args); writeTree(body)
+
+        case TopLevelJSClassExportDef(fullName) =>
+          writeByte(TagTopLevelJSClassExportDef)
+          writeString(fullName)
+
+        case TopLevelModuleExportDef(fullName) =>
+          writeByte(TagTopLevelModuleExportDef)
+          writeString(fullName)
+
+        case TopLevelMethodExportDef(methodDef) =>
+          writeByte(TagTopLevelMethodExportDef)
+          writeMemberDef(methodDef)
+
+        case TopLevelFieldExportDef(fullName, field) =>
+          writeByte(TagTopLevelFieldExportDef)
+          writeString(fullName); writeIdent(field)
+      }
+    }
+
+    def writeTopLevelExportDefs(
+        topLevelExportDefs: List[TopLevelExportDef]): Unit = {
+      buffer.writeInt(topLevelExportDefs.size)
+      topLevelExportDefs.foreach(writeTopLevelExportDef)
+    }
+
     def writeIdent(ident: Ident): Unit = {
       writePosition(ident.pos)
       writeString(ident.name); writeString(ident.originalName.getOrElse(""))
@@ -500,6 +523,19 @@ object Serializers {
     def writeOptIdent(optIdent: Option[Ident]): Unit = {
       buffer.writeBoolean(optIdent.isDefined)
       optIdent.foreach(writeIdent)
+    }
+
+    def writeParamDef(paramDef: ParamDef): Unit = {
+      writePosition(paramDef.pos)
+      writeIdent(paramDef.name)
+      writeType(paramDef.ptpe)
+      buffer.writeBoolean(paramDef.mutable)
+      buffer.writeBoolean(paramDef.rest)
+    }
+
+    def writeParamDefs(paramDefs: List[ParamDef]): Unit = {
+      buffer.writeInt(paramDefs.size)
+      paramDefs.foreach(writeParamDef)
     }
 
     def writeType(tpe: Type): Unit = {
@@ -667,8 +703,8 @@ object Serializers {
 
     private[this] var lastPosition: Position = Position.NoPosition
 
-    def deserialize(): Tree = {
-      readTree()
+    def deserialize(): ClassDef = {
+      readClassDef()
     }
 
     def readTree(): Tree = {
@@ -690,16 +726,15 @@ object Serializers {
         case TagEmptyTree =>
           throw new IOException("Found invalid TagEmptyTree")
 
-        case TagVarDef   => VarDef(readIdent(), readType(), readBoolean(), readTree())
-        case TagParamDef => ParamDef(readIdent(), readType(), readBoolean(), readBoolean())
-        case TagSkip     => Skip()
-        case TagBlock    => Block(readTrees())
-        case TagLabeled  => Labeled(readIdent(), readType(), readTree())
-        case TagAssign   => Assign(readTree(), readTree())
-        case TagReturn   => Return(readTree(), readOptIdent())
-        case TagIf       => If(readTree(), readTree(), readTree())(readType())
-        case TagWhile    => While(readTree(), readTree(), readOptIdent())
-        case TagDoWhile  => DoWhile(readTree(), readTree(), readOptIdent())
+        case TagVarDef  => VarDef(readIdent(), readType(), readBoolean(), readTree())
+        case TagSkip    => Skip()
+        case TagBlock   => Block(readTrees())
+        case TagLabeled => Labeled(readIdent(), readType(), readTree())
+        case TagAssign  => Assign(readTree(), readTree())
+        case TagReturn  => Return(readTree(), readOptIdent())
+        case TagIf      => If(readTree(), readTree(), readTree())(readType())
+        case TagWhile   => While(readTree(), readTree(), readOptIdent())
+        case TagDoWhile => DoWhile(readTree(), readTree(), readOptIdent())
 
         case TagTryCatch =>
           TryCatch(readTree(), readIdent(), readTree())(readType())
@@ -772,18 +807,42 @@ object Serializers {
         case TagVarRef  => VarRef(readIdent())(readType())
         case TagThis    => This()(readType())
         case TagClosure => Closure(readParamDefs(), readParamDefs(), readTree(), readTrees())
+      }
+      if (UseDebugMagic) {
+        val magic = readInt()
+        assert(magic == DebugMagic,
+            s"Bad magic after reading a ${result.getClass}!")
+      }
+      result
+    }
 
-        case TagClassDef =>
-          val name = readIdent()
-          val kind = ClassKind.fromByte(readByte())
-          val superClass = readOptIdent()
-          val parents = readIdents()
-          val jsNativeLoadSpec = readJSNativeLoadSpec()
-          val defs = readTrees()
-          val optimizerHints = new OptimizerHints(readInt())
-          ClassDef(name, kind, superClass, parents, jsNativeLoadSpec, defs)(
-              optimizerHints)
+    def readTrees(): List[Tree] =
+      List.fill(input.readInt())(readTree())
 
+    def readClassDef(): ClassDef = {
+      import input._
+
+      implicit val pos = readPosition()
+      val name = readIdent()
+      val kind = ClassKind.fromByte(readByte())
+      val superClass = readOptIdent()
+      val parents = readIdents()
+      val jsNativeLoadSpec = readJSNativeLoadSpec()
+      val memberDefs = readMemberDefs()
+      val topLevelExportDefs = readTopLevelExportDefs()
+      val optimizerHints = new OptimizerHints(readInt())
+      ClassDef(name, kind, superClass, parents, jsNativeLoadSpec, memberDefs,
+          topLevelExportDefs)(
+          optimizerHints)
+    }
+
+    def readMemberDef(): MemberDef = {
+      import input._
+
+      implicit val pos = readPosition()
+      val tag = input.readByte()
+
+      (tag: @switch) match {
         case TagFieldDef =>
           FieldDef(readBoolean(), readPropertyName(), readType(), readBoolean())
 
@@ -802,34 +861,35 @@ object Serializers {
           val getterBody = readOptTree()
           val setterArgAndBody = {
             if (readBoolean())
-              Some((readTree().asInstanceOf[ParamDef], readTree()))
+              Some((readParamDef(), readTree()))
             else
               None
           }
           PropertyDef(static, name, getterBody, setterArgAndBody)
+      }
+    }
 
+    def readMemberDefs(): List[MemberDef] =
+      List.fill(input.readInt())(readMemberDef())
+
+    def readTopLevelExportDef(): TopLevelExportDef = {
+      implicit val pos = readPosition()
+      val tag = input.readByte()
+
+      (tag: @switch) match {
         case TagTopLevelConstructorExportDef =>
           TopLevelConstructorExportDef(readString(), readParamDefs(),
               readTree())
 
         case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readString())
         case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readString())
-        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readTree().asInstanceOf[MethodDef])
+        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readMemberDef().asInstanceOf[MethodDef])
         case TagTopLevelFieldExportDef   => TopLevelFieldExportDef(readString(), readIdent())
       }
-      if (UseDebugMagic) {
-        val magic = readInt()
-        assert(magic == DebugMagic,
-            s"Bad magic after reading a ${result.getClass}!")
-      }
-      result
     }
 
-    def readTrees(): List[Tree] =
-      List.fill(input.readInt())(readTree())
-
-    def readParamDefs(): List[ParamDef] =
-      readTrees().map(_.asInstanceOf[ParamDef])
+    def readTopLevelExportDefs(): List[TopLevelExportDef] =
+      List.fill(input.readInt())(readTopLevelExportDef())
 
     def readIdent(): Ident = {
       implicit val pos = readPosition()
@@ -845,6 +905,16 @@ object Serializers {
       if (input.readBoolean()) Some(readIdent())
       else None
     }
+
+    def readParamDef(): ParamDef = {
+      import input._
+
+      implicit val pos = readPosition()
+      ParamDef(readIdent(), readType(), readBoolean(), readBoolean())
+    }
+
+    def readParamDefs(): List[ParamDef] =
+      List.fill(input.readInt())(readParamDef())
 
     def readType(): Type = {
       val tag = input.readByte()

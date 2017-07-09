@@ -44,8 +44,8 @@ final class LinkedClass(
     val staticMethods: List[LinkedMember[MethodDef]],
     val memberMethods: List[LinkedMember[MethodDef]],
     val abstractMethods: List[LinkedMember[MethodDef]],
-    val exportedMembers: List[LinkedMember[Tree]],
-    val topLevelExports: List[Tree],
+    val exportedMembers: List[LinkedMember[MemberDef]],
+    val topLevelExports: List[TopLevelExportDef],
     val topLevelExportsInfo: Option[Infos.MethodInfo],
     val optimizerHints: OptimizerHints,
     val pos: Position,
@@ -62,17 +62,16 @@ final class LinkedClass(
   def isExported: Boolean = topLevelExports.nonEmpty
 
   /** Names of all top-level exports in this class. */
-  def topLevelExportNames: List[String] = topLevelExports.map { export =>
-    (export: @unchecked) match {
-      case TopLevelConstructorExportDef(name, _, _) => name
-      case TopLevelModuleExportDef(name)            => name
-      case TopLevelJSClassExportDef(name)           => name
+  def topLevelExportNames: List[String] = topLevelExports.map {
+    case TopLevelConstructorExportDef(name, _, _) => name
+    case TopLevelModuleExportDef(name)            => name
+    case TopLevelJSClassExportDef(name)           => name
 
-      case TopLevelMethodExportDef(MethodDef(_, StringLiteral(name), _, _, _)) =>
-        name
+    case TopLevelMethodExportDef(MethodDef(_, propName, _, _, _)) =>
+      val StringLiteral(name) = propName
+      name
 
-      case TopLevelFieldExportDef(name, _) => name
-    }
+    case TopLevelFieldExportDef(name, _) => name
   }
 
   def fullName: String = Definitions.decodeClassName(encodedName)
@@ -100,8 +99,8 @@ final class LinkedClass(
       staticMethods: List[LinkedMember[MethodDef]] = this.staticMethods,
       memberMethods: List[LinkedMember[MethodDef]] = this.memberMethods,
       abstractMethods: List[LinkedMember[MethodDef]] = this.abstractMethods,
-      exportedMembers: List[LinkedMember[Tree]] = this.exportedMembers,
-      topLevelExports: List[Tree] = this.topLevelExports,
+      exportedMembers: List[LinkedMember[MemberDef]] = this.exportedMembers,
+      topLevelExports: List[TopLevelExportDef] = this.topLevelExports,
       topLevelExportsInfo: Option[Infos.MethodInfo] = this.topLevelExportsInfo,
       optimizerHints: OptimizerHints = this.optimizerHints,
       pos: Position = this.pos,

@@ -18,9 +18,8 @@ private[ir] object Tags {
   final val TagEmptyTree = 1
 
   final val TagVarDef = TagEmptyTree + 1
-  final val TagParamDef = TagVarDef + 1
 
-  final val TagSkip = TagParamDef + 1
+  final val TagSkip = TagVarDef + 1
   final val TagBlock = TagSkip + 1
   final val TagLabeled = TagBlock + 1
   final val TagAssign = TagLabeled + 1
@@ -92,11 +91,15 @@ private[ir] object Tags {
   final val TagThis = TagVarRef + 1
   final val TagClosure = TagThis + 1
 
-  final val TagClassDef = TagClosure + 1
-  final val TagFieldDef = TagClassDef + 1
+  // Tags for member defs
+
+  final val TagFieldDef = 1
   final val TagMethodDef = TagFieldDef + 1
   final val TagPropertyDef = TagMethodDef + 1
-  final val TagTopLevelConstructorExportDef = TagPropertyDef + 1
+
+  // Tags for top-level export defs
+
+  final val TagTopLevelConstructorExportDef = 1
   final val TagTopLevelJSClassExportDef = TagTopLevelConstructorExportDef + 1
   final val TagTopLevelModuleExportDef = TagTopLevelJSClassExportDef + 1
   final val TagTopLevelMethodExportDef = TagTopLevelModuleExportDef + 1

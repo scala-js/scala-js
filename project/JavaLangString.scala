@@ -155,7 +155,8 @@ object JavaLangString {
                 VarRef(Ident("end", Some("end")))(IntType)))(
               ClassType("jl_CharSequence"))
           })(OptimizerHints.empty.withInline(true), None)
-      ))(OptimizerHints.empty)
+      ),
+      Nil)(OptimizerHints.empty)
 
     val hashedClassDef = Hashers.hashClassDef(classDef)
     val info = generateClassInfo(hashedClassDef)

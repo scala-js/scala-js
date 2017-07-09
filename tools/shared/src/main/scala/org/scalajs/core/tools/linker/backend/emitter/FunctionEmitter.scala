@@ -1719,7 +1719,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             rhs match {
               case _:Skip | _:VarDef | _:Assign | _:While | _:DoWhile |
                   _:Debugger | _:JSSuperConstructorCall | _:JSDelete |
-                  _:StoreModule | _:ClassDef =>
+                  _:StoreModule =>
                 transformStat(rhs, tailPosLabels)
               case _ =>
                 throw new IllegalArgumentException(

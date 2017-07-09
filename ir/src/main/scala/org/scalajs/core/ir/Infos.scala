@@ -302,15 +302,19 @@ object Infos {
       .setSuperClass(classDef.superClass.map(_.name))
       .addInterfaces(classDef.interfaces.map(_.name))
 
-    var exportedConstructors: List[TopLevelConstructorExportDef] = Nil
-    var topLevelMethodExports: List[TopLevelMethodExportDef] = Nil
-    var topLevelFieldExports: List[TopLevelFieldExportDef] = Nil
-
-    classDef.defs foreach {
+    classDef.memberDefs foreach {
+      case fieldDef: FieldDef =>
       case methodDef: MethodDef =>
         builder.addMethod(generateMethodInfo(methodDef))
       case propertyDef: PropertyDef =>
         builder.addMethod(generatePropertyInfo(propertyDef))
+    }
+
+    var exportedConstructors: List[TopLevelConstructorExportDef] = Nil
+    var topLevelMethodExports: List[TopLevelMethodExportDef] = Nil
+    var topLevelFieldExports: List[TopLevelFieldExportDef] = Nil
+
+    classDef.topLevelExportDefs foreach {
       case constructorDef: TopLevelConstructorExportDef =>
         builder.setIsExported(true)
         exportedConstructors ::= constructorDef
@@ -322,7 +326,6 @@ object Infos {
       case topLevelFieldExport: TopLevelFieldExportDef =>
         builder.setIsExported(true)
         topLevelFieldExports ::= topLevelFieldExport
-      case _ =>
     }
 
     if (exportedConstructors.nonEmpty || topLevelMethodExports.nonEmpty ||
@@ -404,7 +407,7 @@ object Infos {
         traverse(topLevelConstructorDef.body)
 
       for (topLevelMethodExport <- topLevelMethodExports)
-        traverse(topLevelMethodExport.methodDef)
+        topLevelMethodExport.methodDef.body.foreach(traverse(_))
 
       for (topLevelFieldExport <- topLevelFieldExports) {
         val field = topLevelFieldExport.field.name

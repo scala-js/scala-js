@@ -19,7 +19,7 @@ object Hashers {
       hasher.mixPos(methodDef.pos)
       hasher.mixBoolean(static)
       hasher.mixPropertyName(name)
-      hasher.mixTrees(args)
+      hasher.mixParamDefs(args)
       hasher.mixType(resultType)
       body.foreach(hasher.mixTree)
       hasher.mixInt(methodDef.optimizerHints.bits)
@@ -32,14 +32,14 @@ object Hashers {
   }
 
   /** Hash definitions from a ClassDef where applicable */
-  def hashDefs(defs: List[Tree]): List[Tree] = defs map {
+  def hashMemberDefs(memberDefs: List[MemberDef]): List[MemberDef] = memberDefs.map {
     case methodDef: MethodDef => hashMethodDef(methodDef)
     case otherDef             => otherDef
   }
 
   /** Hash the definitions in a ClassDef (where applicable) */
   def hashClassDef(classDef: ClassDef): ClassDef = {
-    classDef.copy(defs = hashDefs(classDef.defs))(
+    classDef.copy(memberDefs = hashMemberDefs(classDef.memberDefs))(
         classDef.optimizerHints)(classDef.pos)
   }
 
@@ -86,6 +86,17 @@ object Hashers {
     def finalizeHash(): TreeHash =
       new TreeHash(treeDigest.digest(), posDigest.digest())
 
+    def mixParamDef(paramDef: ParamDef): Unit = {
+      mixPos(paramDef.pos)
+      mixIdent(paramDef.name)
+      mixType(paramDef.ptpe)
+      mixBoolean(paramDef.mutable)
+      mixBoolean(paramDef.rest)
+    }
+
+    def mixParamDefs(paramDefs: List[ParamDef]): Unit =
+      paramDefs.foreach(mixParamDef)
+
     def mixTree(tree: Tree): Unit = {
       mixPos(tree.pos)
       tree match {
@@ -95,13 +106,6 @@ object Hashers {
           mixType(vtpe)
           mixBoolean(mutable)
           mixTree(rhs)
-
-        case ParamDef(ident, ptpe, mutable, rest) =>
-          mixTag(TagParamDef)
-          mixIdent(ident)
-          mixType(ptpe)
-          mixBoolean(mutable)
-          mixBoolean(rest)
 
         case Skip() =>
           mixTag(TagSkip)
@@ -432,8 +436,8 @@ object Hashers {
 
         case Closure(captureParams, params, body, captureValues) =>
           mixTag(TagClosure)
-          mixTrees(captureParams)
-          mixTrees(params)
+          mixParamDefs(captureParams)
+          mixParamDefs(params)
           mixTree(body)
           mixTrees(captureValues)
 

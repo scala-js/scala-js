@@ -277,7 +277,7 @@ object ScalaJSPluginInternal {
           if (options.infos)
             new InfoPrinter(stdout).print(vfile.info)
           else
-            new IRTreePrinter(stdout).printTopLevelTree(vfile.tree)
+            new IRTreePrinter(stdout).print(vfile.tree)
           stdout.flush()
 
           logIRCacheStats(streams.value.log)

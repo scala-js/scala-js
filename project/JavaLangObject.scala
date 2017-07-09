@@ -161,7 +161,8 @@ object JavaLangObject {
                 Ident("toString__T", Some("toString__T")),
                 Nil)(ClassType(StringClass))
           })(OptimizerHints.empty, None)
-      ))(OptimizerHints.empty)
+      ),
+      Nil)(OptimizerHints.empty)
 
     val hashedClassedDef = Hashers.hashClassDef(classDef)
     val info = generateClassInfo(hashedClassedDef)

@@ -15,8 +15,8 @@ import OptimizerHints.{empty => NoOptHints}
 class PrintersTest {
   private implicit val dummyPos = Position.NoPosition
 
-  private def assertPrintEquals(expected: String, tree: Tree): Unit =
-    assertPrintEqualsImpl(expected, _.print(tree))
+  private def assertPrintEquals(expected: String, node: IRNode): Unit =
+    assertPrintEqualsImpl(expected, _.printAnyNode(node))
 
   private def assertPrintEquals(expected: String, tpe: Type): Unit =
     assertPrintEqualsImpl(expected, _.print(tpe))
@@ -785,7 +785,7 @@ class PrintersTest {
     import ClassKind._
 
     def makeForKind(kind: ClassKind): ClassDef = {
-      ClassDef("LTest", kind, Some(ObjectClass), Nil, None, Nil)(NoOptHints)
+      ClassDef("LTest", kind, Some(ObjectClass), Nil, None, Nil, Nil)(NoOptHints)
     }
 
     assertPrintEquals(
@@ -855,7 +855,7 @@ class PrintersTest {
   @Test def printClassDefParents(): Unit = {
     def makeForParents(superClass: Option[Ident],
         interfaces: List[Ident]): ClassDef = {
-      ClassDef("LTest", ClassKind.Class, superClass, interfaces, None, Nil)(
+      ClassDef("LTest", ClassKind.Class, superClass, interfaces, None, Nil, Nil)(
           NoOptHints)
     }
 
@@ -888,7 +888,7 @@ class PrintersTest {
           |}
         """,
         ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
-            Some(JSNativeLoadSpec.Global("Foo", List("Bar"))), Nil)(
+            Some(JSNativeLoadSpec.Global("Foo", List("Bar"))), Nil, Nil)(
             NoOptHints))
 
     assertPrintEquals(
@@ -897,7 +897,7 @@ class PrintersTest {
           |}
         """,
         ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
-            Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil)(
+            Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil, Nil)(
             NoOptHints))
 
     assertPrintEquals(
@@ -908,7 +908,7 @@ class PrintersTest {
         ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
             Some(JSNativeLoadSpec.ImportWithGlobalFallback(
                 JSNativeLoadSpec.Import("foo", List("Bar")),
-                JSNativeLoadSpec.Global("Baz", List("Foobar")))), Nil)(
+                JSNativeLoadSpec.Global("Baz", List("Foobar")))), Nil, Nil)(
             NoOptHints))
   }
 
@@ -918,22 +918,26 @@ class PrintersTest {
           |@hints(1) class LTest extends O {
           |}
         """,
-        ClassDef("LTest", ClassKind.Class, Some(ObjectClass), Nil, None, Nil)(
+        ClassDef("LTest", ClassKind.Class, Some(ObjectClass), Nil, None, Nil,
+            Nil)(
             NoOptHints.withInline(true)))
   }
 
   @Test def printClassDefDefs(): Unit = {
     assertPrintEquals(
         """
-          |class LTest extends O {
+          |module class LTest extends O {
           |  val x$1: int
           |  var y$1: int
+          |  export top module "pkg.Foo"
           |}
         """,
-        ClassDef("LTest", ClassKind.Class, Some(ObjectClass), Nil, None,
+        ClassDef("LTest", ClassKind.ModuleClass, Some(ObjectClass), Nil, None,
             List(
                 FieldDef(static = false, "x$1", IntType, mutable = false),
-                FieldDef(static = false, "y$1", IntType, mutable = true)))(
+                FieldDef(static = false, "y$1", IntType, mutable = true)),
+            List(
+                TopLevelModuleExportDef("pkg.Foo")))(
             NoOptHints))
   }
 

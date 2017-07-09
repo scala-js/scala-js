@@ -1268,21 +1268,21 @@ object IRChecker {
    *  any kind of allocation.
    *
    *  The parameter is an `Any` for that reason. It should be an
-   *  `Either[Tree, LinkedClass]`, but that would also require an allocation of
-   *  the `Left` or `Right` (in fact, we'd love to type it as
-   *  `Tree | LinkedClass`). `ErrorContext` is also made an `AnyVal` for the
+   *  `Either[IRNode, LinkedClass]`, but that would also require an allocation
+   *  of the `Left` or `Right` (in fact, we'd love to type it as
+   *  `IRNode | LinkedClass`). `ErrorContext` is also made an `AnyVal` for the
    *  same reasons, again.
    *
    *  If `toString()` is called, we're in a bad situation anyway, because the
    *  IR is invalid, so all bets are off and we can be slow and allocate stuff;
    *  we don't care.
    */
-  private final class ErrorContext private (val treeOrLinkedClass: Any)
+  private final class ErrorContext private (val nodeOrLinkedClass: Any)
       extends AnyVal {
 
     override def toString(): String = {
-      val (pos, name) = treeOrLinkedClass match {
-        case tree: Tree               => (tree.pos, tree.getClass.getSimpleName)
+      val (pos, name) = nodeOrLinkedClass match {
+        case tree: IRNode             => (tree.pos, tree.getClass.getSimpleName)
         case linkedClass: LinkedClass => (linkedClass.pos, "ClassDef")
       }
       s"${pos.source}(${pos.line+1}:${pos.column+1}:$name)"
@@ -1290,11 +1290,11 @@ object IRChecker {
   }
 
   private object ErrorContext {
-    implicit def tree2errorContext(tree: Tree): ErrorContext =
-      ErrorContext(tree)
+    implicit def node2errorContext(node: IRNode): ErrorContext =
+      ErrorContext(node)
 
-    def apply(tree: Tree): ErrorContext =
-      new ErrorContext(tree)
+    def apply(node: IRNode): ErrorContext =
+      new ErrorContext(node)
 
     def apply(linkedClass: LinkedClass): ErrorContext =
       new ErrorContext(linkedClass)
