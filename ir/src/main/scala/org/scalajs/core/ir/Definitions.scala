@@ -155,7 +155,7 @@ object Definitions {
    *  information from `encodedName.indexOf("__p") >= 0`.
    */
   def decodeMethodName(
-      encodedName: String): (String, List[ReferenceType], Option[ReferenceType]) = {
+      encodedName: String): (String, List[TypeRef], Option[TypeRef]) = {
     val (simpleName, privateAndSigString) = if (isConstructorName(encodedName)) {
       val privateAndSigString =
         if (encodedName == "init___") ""
@@ -179,22 +179,22 @@ object Definitions {
 
     val paramStrings :+ resultString = paramsAndResultStrings
 
-    val paramTypes = paramStrings.map(decodeReferenceType).toList
+    val paramTypes = paramStrings.map(decodeTypeRef).toList
     val resultType =
       if (resultString == "") None // constructor or reflective proxy
-      else Some(decodeReferenceType(resultString))
+      else Some(decodeTypeRef(resultString))
 
     (simpleName, paramTypes, resultType)
   }
 
-  /** Decodes a [[Types.ReferenceType]], such as in an encoded method signature.
+  /** Decodes a [[Types.TypeRef]], such as in an encoded method signature.
    */
-  def decodeReferenceType(encodedName: String): ReferenceType = {
+  def decodeTypeRef(encodedName: String): TypeRef = {
     val arrayDepth = encodedName.indexWhere(_ != 'A')
     if (arrayDepth == 0)
-      ClassType(encodedName)
+      ClassRef(encodedName)
     else
-      ArrayType(encodedName.substring(arrayDepth), arrayDepth)
+      ArrayTypeRef(encodedName.substring(arrayDepth), arrayDepth)
   }
 
   /* Common predicates on encoded names */

@@ -384,7 +384,7 @@ object Trees {
 
   case class NewArray(tpe: ArrayType, lengths: List[Tree])(
       implicit val pos: Position) extends Tree {
-    require(lengths.nonEmpty && lengths.size <= tpe.dimensions)
+    require(lengths.nonEmpty && lengths.size <= tpe.arrayTypeRef.dimensions)
   }
 
   case class ArrayValue(tpe: ArrayType, elems: List[Tree])(
@@ -400,17 +400,18 @@ object Trees {
   case class RecordValue(tpe: RecordType, elems: List[Tree])(
       implicit val pos: Position) extends Tree
 
-  case class IsInstanceOf(expr: Tree, cls: ReferenceType)(
+  case class IsInstanceOf(expr: Tree, typeRef: TypeRef)(
       implicit val pos: Position) extends Tree {
     val tpe = BooleanType
   }
 
-  case class AsInstanceOf(expr: Tree, cls: ReferenceType)(
+  case class AsInstanceOf(expr: Tree, typeRef: TypeRef)(
       implicit val pos: Position) extends Tree {
-    val tpe = cls match {
-      case ClassType(Definitions.RuntimeNullClass)    => NullType
-      case ClassType(Definitions.RuntimeNothingClass) => NothingType
-      case _                                          => cls.asInstanceOf[Type]
+    val tpe = typeRef match {
+      case ClassRef(Definitions.RuntimeNullClass)    => NullType
+      case ClassRef(Definitions.RuntimeNothingClass) => NothingType
+      case ClassRef(className)                       => ClassType(className)
+      case typeRef: ArrayTypeRef                     => ArrayType(typeRef)
     }
   }
 
@@ -776,7 +777,7 @@ object Trees {
     override def encodedName: String = value
   }
 
-  case class ClassOf(cls: ReferenceType)(
+  case class ClassOf(typeRef: TypeRef)(
       implicit val pos: Position) extends Literal {
     val tpe = ClassType(Definitions.ClassClass)
   }

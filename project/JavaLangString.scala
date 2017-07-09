@@ -88,7 +88,7 @@ object JavaLangString {
               Ident("compareTo__T__I", Some("compareTo__T__I")),
               List(AsInstanceOf(
                 VarRef(Ident("that", Some("that")))(AnyType),
-                ThisType)))(IntType)
+                ClassRef(StringClass))))(IntType)
           })(OptimizerHints.empty.withInline(true), None),
 
         /* def toString(): String = this */

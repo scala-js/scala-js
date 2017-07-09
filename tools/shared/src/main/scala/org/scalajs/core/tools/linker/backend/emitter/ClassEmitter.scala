@@ -769,7 +769,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         /* Hijacked boxed classes have a special isInstanceOf test. */
         val xParam = js.ParamDef(js.Ident("x"), rest = false)
         WithGlobals(js.Function(List(xParam), js.Return {
-          genIsInstanceOf(xParam.ref, ClassType(className))
+          genIsInstanceOf(xParam.ref, ClassRef(className))
         }))
       } else if (isAncestorOfHijackedClass || className == StringClass) {
         /* java.lang.String and ancestors of hijacked classes, including
@@ -1169,8 +1169,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
       case ModuleInitializer.MainMethodWithArgs(moduleClassName, mainMethodName,
           args) =>
+        val stringArrayTpe = ArrayType(ArrayTypeRef("T", 1))
         js.Apply(genLoadModule(moduleClassName) DOT mainMethodName,
-            genArrayValue(ArrayType("T", 1), args.map(js.StringLiteral(_))) :: Nil)
+            genArrayValue(stringArrayTpe, args.map(js.StringLiteral(_))) :: Nil)
     }
   }
 

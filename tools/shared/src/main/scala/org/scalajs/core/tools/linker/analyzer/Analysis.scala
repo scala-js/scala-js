@@ -94,9 +94,9 @@ object Analysis {
       } else {
         import ir.Types._
 
-        def typeDisplayName(tpe: ReferenceType): String = tpe match {
-          case ClassType(encodedName)      => decodeClassName(encodedName)
-          case ArrayType(base, dimensions) => "[" * dimensions + decodeClassName(base)
+        def typeDisplayName(tpe: TypeRef): String = tpe match {
+          case ClassRef(encodedName)          => decodeClassName(encodedName)
+          case ArrayTypeRef(base, dimensions) => "[" * dimensions + decodeClassName(base)
         }
 
         val (simpleName, paramTypes, resultType) =

@@ -15,16 +15,16 @@ import Trees._
 
 object Types {
 
-  /** Type of an term (expression or statement) in the IR.
+  /** Type of a term (expression or statement) in the IR.
    *
-   *  There is a many-to-one relationship from [[ReferenceType]]s to types,
+   *  There is a many-to-one relationship from [[TypeRef]]s to `Type`s,
    *  because:
    *
    *  - `scala.Byte`, `scala.Short` and `scala.Int` collapse to [[IntType]]
    *  - `java.lang.Object` and raw JS types all collapse to [[AnyType]]
    *
    *  In fact, there are two `Type`s that do not have any real equivalent in
-   *  reference types: [[StringType]] and [[UndefType]], as they refer to the
+   *  type refs: [[StringType]] and [[UndefType]], as they refer to the
    *  non-null variants of `java.lang.String` and `scala.runtime.BoxedUnit`,
    *  respectively.
    */
@@ -95,36 +95,11 @@ object Types {
    */
   case object NullType extends Type
 
-  /** Reference types (allowed for classOf[], is/asInstanceOf[]).
-   *
-   *  A `ReferenceType` has exactly the same level of precision as a JVM type.
-   *  There is a one-to-one relationship between a `ReferenceType` and an
-   *  instance of `java.lang.Class` at run-time. This means that:
-   *
-   *  - All primitive types have their reference type (including `scala.Byte`
-   *    and `scala.Short`), and they are different from their boxed versions.
-   *  - Raw JS types are not erased to `any`
-   *  - Array types are like on the JVM
-   *
-   *  A `ReferenceType` therefore uniquely identifies a `classOf[T]`. It is
-   *  also the reference types that are used in method signatures, and which
-   *  therefore dictate JVM/IR overloading.
-   */
-  sealed trait ReferenceType
-
   /** Class (or interface) type. */
-  final case class ClassType(className: String) extends Type with ReferenceType
+  final case class ClassType(className: String) extends Type
 
   /** Array type. */
-  final case class ArrayType(baseClassName: String, dimensions: Int)
-      extends Type with ReferenceType
-
-  object ArrayType {
-    def apply(innerType: ReferenceType): ArrayType = innerType match {
-      case ClassType(className)      => ArrayType(className, 1)
-      case ArrayType(className, dim) => ArrayType(className, dim + 1)
-    }
-  }
+  final case class ArrayType(arrayTypeRef: ArrayTypeRef) extends Type
 
   /** Record type.
    *  Used by the optimizer to inline classes as records with multiple fields.
@@ -145,6 +120,44 @@ object Types {
 
   /** No type. */
   case object NoType extends Type
+
+  /** Type reference (allowed for classOf[], is/asInstanceOf[]).
+   *
+   *  A `TypeRef` has exactly the same level of precision as a JVM type.
+   *  There is a one-to-one relationship between a `TypeRef` and an instance of
+   *  `java.lang.Class` at run-time. This means that:
+   *
+   *  - All primitive types have their `TypeRef` (including `scala.Byte` and
+   *    `scala.Short`), and they are different from their boxed versions.
+   *  - Raw JS types are not erased to `any`
+   *  - Array types are like on the JVM
+   *
+   *  A `TypeRef` therefore uniquely identifies a `classOf[T]`. It is also the
+   *  type refs that are used in method signatures, and which therefore dictate
+   *  JVM/IR overloading.
+   */
+  sealed abstract class TypeRef {
+    def show(): String = {
+      val writer = new java.io.StringWriter
+      val printer = new Printers.IRTreePrinter(writer)
+      printer.print(this)
+      writer.toString()
+    }
+  }
+
+  /** Class (or interface) type. */
+  final case class ClassRef(className: String) extends TypeRef
+
+  /** Array type. */
+  final case class ArrayTypeRef(baseClassName: String, dimensions: Int)
+      extends TypeRef
+
+  object ArrayTypeRef {
+    def of(innerType: TypeRef): ArrayTypeRef = innerType match {
+      case ClassRef(className)          => ArrayTypeRef(className, 1)
+      case ArrayTypeRef(className, dim) => ArrayTypeRef(className, dim + 1)
+    }
+  }
 
   /** Generates a literal zero of the given type. */
   def zeroOf(tpe: Type)(implicit pos: Position): Literal = tpe match {
@@ -177,8 +190,8 @@ object Types {
         case (ClassType(lhsClass), ClassType(rhsClass)) =>
           isSubclass(lhsClass, rhsClass)
 
-        case (NullType, ClassType(_))    => true
-        case (NullType, ArrayType(_, _)) => true
+        case (NullType, ClassType(_)) => true
+        case (NullType, ArrayType(_)) => true
 
         case (UndefType, ClassType(cls)) =>
           isSubclass(BoxedUnitClass, cls)
@@ -202,7 +215,8 @@ object Types {
         case (IntType, DoubleType)   => true
         case (FloatType, DoubleType) => true
 
-        case (ArrayType(lhsBase, lhsDims), ArrayType(rhsBase, rhsDims)) =>
+        case (ArrayType(ArrayTypeRef(lhsBase, lhsDims)),
+            ArrayType(ArrayTypeRef(rhsBase, rhsDims))) =>
           if (lhsDims < rhsDims) {
             false // because Array[A] </: Array[Array[A]]
           } else if (lhsDims > rhsDims) {
@@ -220,7 +234,7 @@ object Types {
             }
           }
 
-        case (ArrayType(_, _), ClassType(cls)) =>
+        case (ArrayType(_), ClassType(cls)) =>
           AncestorsOfPseudoArrayClass.contains(cls)
 
         case _ =>

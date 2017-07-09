@@ -21,6 +21,9 @@ class PrintersTest {
   private def assertPrintEquals(expected: String, tpe: Type): Unit =
     assertPrintEqualsImpl(expected, _.print(tpe))
 
+  private def assertPrintEquals(expected: String, typeRef: TypeRef): Unit =
+    assertPrintEqualsImpl(expected, _.print(typeRef))
+
   private def assertPrintEqualsImpl(expected: String,
       print: IRTreePrinter => Unit): Unit = {
     val sw = new java.io.StringWriter
@@ -31,6 +34,7 @@ class PrintersTest {
 
   private implicit def string2ident(name: String): Ident = Ident(name)
   private implicit def string2classType(cls: String): ClassType = ClassType(cls)
+  private implicit def string2classRef(cls: String): ClassRef = ClassRef(cls)
 
   private def b(value: Boolean): BooleanLiteral = BooleanLiteral(value)
   private def i(value: Int): IntLiteral = IntLiteral(value)
@@ -39,6 +43,9 @@ class PrintersTest {
   private def d(value: Double): DoubleLiteral = DoubleLiteral(value)
 
   private def ref(ident: Ident, tpe: Type): VarRef = VarRef(ident)(tpe)
+
+  private def arrayType(baseClassName: String, dimensions: Int): ArrayType =
+    ArrayType(ArrayTypeRef(baseClassName, dimensions))
 
   @Test def printType(): Unit = {
     assertPrintEquals("any", AnyType)
@@ -55,13 +62,20 @@ class PrintersTest {
 
     assertPrintEquals("O", ClassType(ObjectClass))
 
-    assertPrintEquals("O[]", ArrayType(ObjectClass, 1))
-    assertPrintEquals("I[][]", ArrayType("I", 2))
+    assertPrintEquals("O[]", arrayType(ObjectClass, 1))
+    assertPrintEquals("I[][]", arrayType("I", 2))
 
     assertPrintEquals("(x: int, var y: any)",
         RecordType(List(
             RecordType.Field("x", None, IntType, mutable = false),
             RecordType.Field("y", None, AnyType, mutable = true))))
+  }
+
+  @Test def printTypeRef(): Unit = {
+    assertPrintEquals("O", ClassRef(ObjectClass))
+
+    assertPrintEquals("O[]", ArrayTypeRef(ObjectClass, 1))
+    assertPrintEquals("I[][]", ArrayTypeRef("I", 2))
   }
 
   @Test def printVarDef(): Unit = {
@@ -460,29 +474,29 @@ class PrintersTest {
   }
 
   @Test def printNewArray(): Unit = {
-    assertPrintEquals("new I[3]", NewArray(ArrayType("I", 1), List(i(3))))
-    assertPrintEquals("new I[3][]", NewArray(ArrayType("I", 2), List(i(3))))
+    assertPrintEquals("new I[3]", NewArray(arrayType("I", 1), List(i(3))))
+    assertPrintEquals("new I[3][]", NewArray(arrayType("I", 2), List(i(3))))
     assertPrintEquals("new O[3][4][][]",
-        NewArray(ArrayType("O", 4), List(i(3), i(4))))
+        NewArray(arrayType("O", 4), List(i(3), i(4))))
   }
 
   @Test def printArrayValue(): Unit = {
     assertPrintEquals("I[]()",
-        ArrayValue(ArrayType("I", 1), List()))
+        ArrayValue(arrayType("I", 1), List()))
     assertPrintEquals("I[](5, 6)",
-        ArrayValue(ArrayType("I", 1), List(i(5), i(6))))
+        ArrayValue(arrayType("I", 1), List(i(5), i(6))))
 
     assertPrintEquals("I[][](null)",
-        ArrayValue(ArrayType("I", 2), List(Null())))
+        ArrayValue(arrayType("I", 2), List(Null())))
   }
 
   @Test def printArrayLength(): Unit = {
-    assertPrintEquals("x.length", ArrayLength(ref("x", ArrayType("I", 1))))
+    assertPrintEquals("x.length", ArrayLength(ref("x", arrayType("I", 1))))
   }
 
   @Test def printArraySelect(): Unit = {
     assertPrintEquals("x[3]",
-        ArraySelect(ref("x", ArrayType("I", 1)), i(3))(IntType))
+        ArraySelect(ref("x", arrayType("I", 1)), i(3))(IntType))
   }
 
   @Test def printRecordValue(): Unit = {

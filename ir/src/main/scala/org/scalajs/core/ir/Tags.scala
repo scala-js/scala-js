@@ -122,6 +122,11 @@ private[ir] object Tags {
   final val TagRecordType = TagArrayType + 1
   final val TagNoType = TagRecordType + 1
 
+  // Tags for TypeRefs
+
+  final val TagClassRef = 1
+  final val TagArrayTypeRef = TagClassRef + 1
+
   // Tags for PropertyNames
 
   final val TagPropertyNameIdent = 1

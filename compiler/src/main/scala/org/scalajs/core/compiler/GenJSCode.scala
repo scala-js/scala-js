@@ -946,7 +946,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     private def genRegisterReflectiveInstantiationForModuleClass(sym: Symbol)(
         implicit pos: Position): Option[js.Tree] = {
       val fqcnArg = js.StringLiteral(sym.fullName + "$")
-      val runtimeClassArg = js.ClassOf(toReferenceType(sym.info))
+      val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
       val loadModuleFunArg = js.Closure(Nil, Nil, genLoadModule(sym), Nil)
 
       val stat = genApplyMethod(
@@ -989,7 +989,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                * parameter types is `List(classOf[Int])`, and when invoked
                * reflectively, it must be given an `Int` (or `Integer`).
                */
-              val paramType = js.ClassOf(toReferenceType(param.tpe))
+              val paramType = js.ClassOf(toTypeRef(param.tpe))
               val paramDef = js.ParamDef(encodeLocalSym(param), jstpe.AnyType,
                   mutable = false, rest = false)
               val actualParam = fromAny(paramDef.ref, param.tpe)
@@ -1007,7 +1007,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
 
         val fqcnArg = js.StringLiteral(sym.fullName)
-        val runtimeClassArg = js.ClassOf(toReferenceType(sym.info))
+        val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
         val ctorsInfosArg = js.JSArrayConstr(constructorsInfos)
 
         val stat = genApplyMethod(
@@ -1906,7 +1906,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             case NullTag =>
               js.Null()
             case ClazzTag =>
-              js.ClassOf(toReferenceType(value.typeValue))
+              js.ClassOf(toTypeRef(value.typeValue))
             case EnumTag =>
               genStaticMember(value.symbolValue)
           }
@@ -2660,7 +2660,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.JSBinaryOp.instanceof, value, genPrimitiveJSClass(sym)), 'Z')
         }
       } else {
-        js.IsInstanceOf(value, toReferenceType(to))
+        js.IsInstanceOf(value, toTypeRef(to))
       }
     }
 
@@ -2669,7 +2669,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): js.Tree = {
 
       def default: js.Tree =
-        js.AsInstanceOf(value, toReferenceType(to))
+        js.AsInstanceOf(value, toTypeRef(to))
 
       val sym = to.typeSymbol
 
@@ -2756,9 +2756,10 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     def genNewArray(arrayType: jstpe.ArrayType, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      assert(arguments.length <= arrayType.dimensions,
+      assert(arguments.length <= arrayType.arrayTypeRef.dimensions,
           "too many arguments for array constructor: found " + arguments.length +
-          " but array has only " + arrayType.dimensions + " dimension(s)")
+          " but array has only " + arrayType.arrayTypeRef.dimensions +
+          " dimension(s)")
 
       js.NewArray(arrayType, arguments)
     }
@@ -2769,8 +2770,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = tree.pos
       val ArrayValue(tpt @ TypeTree(), elems) = tree
 
-      val arrType = toReferenceType(tree.tpe).asInstanceOf[jstpe.ArrayType]
-      js.ArrayValue(arrType, elems map genExpr)
+      val arrayTypeRef = toTypeRef(tree.tpe).asInstanceOf[jstpe.ArrayTypeRef]
+      js.ArrayValue(jstpe.ArrayType(arrayTypeRef), elems map genExpr)
     }
 
     /** Gen JS code for a Match, i.e., a switch-able pattern match.

@@ -243,13 +243,13 @@ object Serializers {
           writeByte(TagRecordValue)
           writeType(tpe); writeTrees(elems)
 
-        case IsInstanceOf(expr, cls) =>
+        case IsInstanceOf(expr, typeRef) =>
           writeByte(TagIsInstanceOf)
-          writeTree(expr); writeReferenceType(cls)
+          writeTree(expr); writeTypeRef(typeRef)
 
-        case AsInstanceOf(expr, cls) =>
+        case AsInstanceOf(expr, typeRef) =>
           writeByte(TagAsInstanceOf)
-          writeTree(expr); writeReferenceType(cls)
+          writeTree(expr); writeTypeRef(typeRef)
 
         case Unbox(expr, charCode) =>
           writeByte(TagUnbox)
@@ -372,9 +372,9 @@ object Serializers {
           writeByte(TagStringLiteral)
           writeString(value)
 
-        case ClassOf(cls) =>
+        case ClassOf(typeRef) =>
           writeByte(TagClassOf)
-          writeReferenceType(cls)
+          writeTypeRef(typeRef)
 
         case UndefinedParam() =>
           writeByte(TagUndefinedParam)
@@ -576,12 +576,19 @@ object Serializers {
       writeString(tpe.className)
 
     def writeArrayType(tpe: ArrayType): Unit = {
-      writeString(tpe.baseClassName)
-      buffer.writeInt(tpe.dimensions)
+      writeString(tpe.arrayTypeRef.baseClassName)
+      buffer.writeInt(tpe.arrayTypeRef.dimensions)
     }
 
-    def writeReferenceType(tpe: ReferenceType): Unit =
-      writeType(tpe.asInstanceOf[Type])
+    def writeTypeRef(tpe: TypeRef): Unit = tpe match {
+      case ClassRef(className) =>
+        buffer.writeByte(TagClassRef)
+        writeString(className)
+      case ArrayTypeRef(baseClassName, dimensions) =>
+        buffer.writeByte(TagArrayTypeRef)
+        writeString(baseClassName)
+        buffer.writeInt(dimensions)
+    }
 
     def writePropertyName(name: PropertyName): Unit = name match {
       case name: Ident =>
@@ -765,8 +772,8 @@ object Serializers {
         case TagArrayLength     => ArrayLength(readTree())
         case TagArraySelect     => ArraySelect(readTree(), readTree())(readType())
         case TagRecordValue     => RecordValue(readType().asInstanceOf[RecordType], readTrees())
-        case TagIsInstanceOf    => IsInstanceOf(readTree(), readReferenceType())
-        case TagAsInstanceOf    => AsInstanceOf(readTree(), readReferenceType())
+        case TagIsInstanceOf    => IsInstanceOf(readTree(), readTypeRef())
+        case TagAsInstanceOf    => AsInstanceOf(readTree(), readTypeRef())
         case TagUnbox           => Unbox(readTree(), readByte().toChar)
         case TagGetClass        => GetClass(readTree())
         case TagCallHelper      => CallHelper(readString(), readTrees())(readType())
@@ -801,7 +808,7 @@ object Serializers {
         case TagFloatLiteral   => FloatLiteral(readFloat())
         case TagDoubleLiteral  => DoubleLiteral(readDouble())
         case TagStringLiteral  => StringLiteral(readString())
-        case TagClassOf        => ClassOf(readReferenceType())
+        case TagClassOf        => ClassOf(readTypeRef())
         case TagUndefinedParam => UndefinedParam()(readType())
 
         case TagVarRef  => VarRef(readIdent())(readType())
@@ -951,10 +958,16 @@ object Serializers {
       ClassType(readString())
 
     def readArrayType(): ArrayType =
-      ArrayType(readString(), input.readInt())
+      ArrayType(ArrayTypeRef(readString(), input.readInt()))
 
-    def readReferenceType(): ReferenceType =
-      readType().asInstanceOf[ReferenceType]
+    def readTypeRef(): TypeRef = {
+      input.readByte() match {
+        case TagClassRef =>
+          ClassRef(readString())
+        case TagArrayTypeRef =>
+          ArrayTypeRef(readString(), input.readInt())
+      }
+    }
 
     def readPropertyName(): PropertyName = {
       input.readByte() match {

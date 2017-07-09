@@ -2029,7 +2029,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case NewArray(tpe, lengths) =>
           genCallHelper("newArrayObject",
-              genClassDataOf(tpe), js.ArrayConstr(lengths map transformExpr))
+              genClassDataOf(tpe.arrayTypeRef),
+              js.ArrayConstr(lengths.map(transformExpr)))
 
         case ArrayValue(tpe, elems) =>
           genArrayValue(tpe, elems.map(transformExpr))

@@ -199,16 +199,16 @@ object Infos {
 
     def addMethodCalled(receiverTpe: Type, method: String): this.type = {
       receiverTpe match {
-        case ClassType(cls)  => addMethodCalled(cls, method)
-        case AnyType         => addMethodCalled(ObjectClass, method)
-        case UndefType       => addMethodCalled(BoxedUnitClass, method)
-        case BooleanType     => addMethodCalled(BoxedBooleanClass, method)
-        case IntType         => addMethodCalled(BoxedIntegerClass, method)
-        case LongType        => addMethodCalled(BoxedLongClass, method)
-        case FloatType       => addMethodCalled(BoxedFloatClass, method)
-        case DoubleType      => addMethodCalled(BoxedDoubleClass, method)
-        case StringType      => addMethodCalled(StringClass, method)
-        case ArrayType(_, _) => addMethodCalled(PseudoArrayClass, method)
+        case ClassType(cls) => addMethodCalled(cls, method)
+        case AnyType        => addMethodCalled(ObjectClass, method)
+        case UndefType      => addMethodCalled(BoxedUnitClass, method)
+        case BooleanType    => addMethodCalled(BoxedBooleanClass, method)
+        case IntType        => addMethodCalled(BoxedIntegerClass, method)
+        case LongType       => addMethodCalled(BoxedLongClass, method)
+        case FloatType      => addMethodCalled(BoxedFloatClass, method)
+        case DoubleType     => addMethodCalled(BoxedDoubleClass, method)
+        case StringType     => addMethodCalled(StringClass, method)
+        case ArrayType(_)   => addMethodCalled(PseudoArrayClass, method)
 
         case NullType | NothingType =>
           // Nothing to do
@@ -249,7 +249,7 @@ object Infos {
       this
     }
 
-    def addUsedInstanceTest(tpe: ReferenceType): this.type =
+    def addUsedInstanceTest(tpe: TypeRef): this.type =
       addUsedInstanceTest(baseNameOf(tpe))
 
     def addUsedInstanceTest(cls: String): this.type = {
@@ -257,7 +257,7 @@ object Infos {
       this
     }
 
-    def addAccessedClassData(tpe: ReferenceType): this.type =
+    def addAccessedClassData(tpe: TypeRef): this.type =
       addAccessedClassData(baseNameOf(tpe))
 
     def addAccessedClassData(cls: String): this.type = {
@@ -265,9 +265,9 @@ object Infos {
       this
     }
 
-    private def baseNameOf(tpe: ReferenceType): String = tpe match {
-      case ClassType(name)    => name
-      case ArrayType(base, _) => base
+    private def baseNameOf(tpe: TypeRef): String = tpe match {
+      case ClassRef(name)        => name
+      case ArrayTypeRef(base, _) => base
     }
 
     def result(): MethodInfo = {
@@ -452,9 +452,9 @@ object Infos {
               builder.addUsedInstanceTest(tpe)
 
             case NewArray(tpe, _) =>
-              builder.addAccessedClassData(tpe)
+              builder.addAccessedClassData(tpe.arrayTypeRef)
             case ArrayValue(tpe, _) =>
-              builder.addAccessedClassData(tpe)
+              builder.addAccessedClassData(tpe.arrayTypeRef)
             case ClassOf(cls) =>
               builder.addAccessedClassData(cls)
 

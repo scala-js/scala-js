@@ -444,13 +444,13 @@ object Printers {
 
         case NewArray(tpe, lengths) =>
           print("new ")
-          print(tpe.baseClassName)
+          print(tpe.arrayTypeRef.baseClassName)
           for (length <- lengths) {
             print('[')
             print(length)
             print(']')
           }
-          for (dim <- lengths.size until tpe.dimensions)
+          for (dim <- lengths.size until tpe.arrayTypeRef.dimensions)
             print("[]")
 
         case ArrayValue(tpe, elems) =>
@@ -479,16 +479,16 @@ object Printers {
           }
           print(')')
 
-        case IsInstanceOf(expr, cls) =>
+        case IsInstanceOf(expr, typeRef) =>
           print(expr)
           print(".isInstanceOf[")
-          printRefType(cls)
+          print(typeRef)
           print(']')
 
-        case AsInstanceOf(expr, cls) =>
+        case AsInstanceOf(expr, typeRef) =>
           print(expr)
           print(".asInstanceOf[")
-          printRefType(cls)
+          print(typeRef)
           print(']')
 
         case Unbox(expr, charCode) =>
@@ -735,9 +735,9 @@ object Printers {
           printEscapeJS(value, out)
           print('\"')
 
-        case ClassOf(cls) =>
+        case ClassOf(typeRef) =>
           print("classOf[")
-          printRefType(cls)
+          print(typeRef)
           print(']')
 
         // Specials
@@ -893,8 +893,14 @@ object Printers {
       }
     }
 
-    def printRefType(tpe: ReferenceType): Unit =
-      print(tpe.asInstanceOf[Type])
+    def print(tpe: TypeRef): Unit = tpe match {
+      case ClassRef(className) =>
+        print(className)
+      case ArrayTypeRef(base, dims) =>
+        print(base)
+        for (i <- 1 to dims)
+          print("[]")
+    }
 
     def print(tpe: Type): Unit = tpe match {
       case AnyType              => print("any")
@@ -910,10 +916,8 @@ object Printers {
       case ClassType(className) => print(className)
       case NoType               => print("<notype>")
 
-      case ArrayType(base, dims) =>
-        print(base)
-        for (i <- 1 to dims)
-          print("[]")
+      case ArrayType(arrayTypeRef) =>
+        print(arrayTypeRef)
 
       case RecordType(fields) =>
         print('(')

@@ -1048,25 +1048,25 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   private def inferMethodType(encodedName: String, isStatic: Boolean)(
       implicit ctx: ErrorContext): (List[Type], Type) = {
 
-    val (_, paramRefTypes, resultRefType) = decodeMethodName(encodedName)
-    val paramTypes = paramRefTypes.map(refTypeToType)
+    val (_, paramTypeRefs, resultTypeRef) = decodeMethodName(encodedName)
+    val paramTypes = paramTypeRefs.map(typeRefToType)
 
-    val resultType = resultRefType.fold[Type] {
+    val resultType = resultTypeRef.fold[Type] {
       if (isConstructorName(encodedName)) NoType
       else if (encodedName == StaticInitializerName) NoType
       else AnyType // reflective proxy
-    } { refType =>
-      refTypeToType(refType)
+    } { typeRef =>
+      typeRefToType(typeRef)
     }
 
     (paramTypes, resultType)
   }
 
-  private def refTypeToType(refType: ReferenceType)(
+  private def typeRefToType(typeRef: TypeRef)(
       implicit ctx: ErrorContext): Type = {
-    refType match {
-      case arrayType: ArrayType   => arrayType
-      case ClassType(encodedName) => classNameToType(encodedName)
+    typeRef match {
+      case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef)
+      case ClassRef(encodedName)      => classNameToType(encodedName)
     }
   }
 
@@ -1096,8 +1096,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def arrayElemType(arrayType: ArrayType)(
       implicit ctx: ErrorContext): Type = {
-    if (arrayType.dimensions == 1) classNameToType(arrayType.baseClassName)
-    else ArrayType(arrayType.baseClassName, arrayType.dimensions-1)
+    val ArrayType(ArrayTypeRef(baseClassName, dimensions)) = arrayType
+    if (dimensions == 1) classNameToType(baseClassName)
+    else ArrayType(ArrayTypeRef(baseClassName, dimensions - 1))
   }
 
   private def reportError(msg: String)(implicit ctx: ErrorContext): Unit = {

@@ -514,15 +514,16 @@ private[optimizer] abstract class OptimizerCore(
       case RecordValue(tpe, elems) =>
         RecordValue(tpe, elems map transformExpr)
 
-      case IsInstanceOf(expr, ClassType(ObjectClass)) =>
+      case IsInstanceOf(expr, ClassRef(ObjectClass)) =>
         transformExpr(BinaryOp(BinaryOp.!==, expr, Null()))
 
-      case IsInstanceOf(expr, tpe) =>
+      case IsInstanceOf(expr, typeRef) =>
         trampoline {
           pretransformExpr(expr) { texpr =>
             val result = {
-              // TODO This cast is suspicious
-              if (isSubtype(texpr.tpe.base, tpe.asInstanceOf[Type])) {
+              val typeRefTpe = isAsInstanceOfTypeRefToType(typeRef)
+
+              if (isSubtype(texpr.tpe.base, typeRefTpe)) {
                 if (texpr.tpe.isNullable)
                   BinaryOp(BinaryOp.!==, finishTransformExpr(texpr), Null())
                 else
@@ -531,17 +532,17 @@ private[optimizer] abstract class OptimizerCore(
                 if (texpr.tpe.isExact)
                   Block(finishTransformStat(texpr), BooleanLiteral(false))
                 else
-                  IsInstanceOf(finishTransformExpr(texpr), tpe)
+                  IsInstanceOf(finishTransformExpr(texpr), typeRef)
               }
             }
             TailCalls.done(result)
           }
         }
 
-      case AsInstanceOf(expr, ClassType(ObjectClass)) =>
+      case AsInstanceOf(expr, ClassRef(ObjectClass)) =>
         transformExpr(expr)
 
-      case AsInstanceOf(expr, cls) =>
+      case AsInstanceOf(_, _) =>
         trampoline {
           pretransformExpr(tree)(finishTransform(isStat))
         }
@@ -556,17 +557,16 @@ private[optimizer] abstract class OptimizerCore(
       case GetClass(expr) =>
         trampoline {
           pretransformExpr(expr) { texpr =>
+            def constant(typeRef: TypeRef): TailRec[Tree] =
+              TailCalls.done(Block(finishTransformStat(texpr), ClassOf(typeRef)))
+
             texpr.tpe match {
-              case RefinedType(base: ReferenceType, true, false) =>
-                val actualBase = base match {
-                  case ClassType(LongImpl.RuntimeLongClass) =>
-                    ClassType(Definitions.BoxedLongClass)
-                  case _ =>
-                    base
-                }
-                TailCalls.done(Block(
-                    finishTransformStat(texpr),
-                    ClassOf(actualBase)))
+              case RefinedType(ClassType(LongImpl.RuntimeLongClass), true, false) =>
+                constant(ClassRef(Definitions.BoxedLongClass))
+              case RefinedType(ClassType(className), true, false) =>
+                constant(ClassRef(className))
+              case RefinedType(ArrayType(arrayTypeRef), true, false) =>
+                constant(arrayTypeRef)
               case _ =>
                 TailCalls.done(GetClass(finishTransformExpr(texpr)))
             }
@@ -875,17 +875,17 @@ private[optimizer] abstract class OptimizerCore(
           }
         }
 
-      case AsInstanceOf(expr, tpe) =>
+      case AsInstanceOf(expr, typeRef) =>
         pretransformExpr(expr) { texpr =>
-          tpe match {
-            case ClassType(ObjectClass) =>
+          typeRef match {
+            case ClassRef(ObjectClass) =>
               cont(texpr)
             case _ =>
-              // TODO This cast is suspicious
-              if (isSubtype(texpr.tpe.base, tpe.asInstanceOf[Type])) {
+              val typeRefTpe = isAsInstanceOfTypeRefToType(typeRef)
+              if (isSubtype(texpr.tpe.base, typeRefTpe)) {
                 cont(texpr)
               } else {
-                cont(AsInstanceOf(finishTransformExpr(texpr), tpe).toPreTransform)
+                cont(AsInstanceOf(finishTransformExpr(texpr), typeRef).toPreTransform)
               }
           }
         }
@@ -1508,15 +1508,15 @@ private[optimizer] abstract class OptimizerCore(
       if (cls == Definitions.BoxedLongClass) LongImpl.RuntimeLongClass
       else cls
 
-    case AnyType         => Definitions.ObjectClass
-    case UndefType       => Definitions.BoxedUnitClass
-    case BooleanType     => Definitions.BoxedBooleanClass
-    case IntType         => Definitions.BoxedIntegerClass
-    case LongType        => LongImpl.RuntimeLongClass
-    case FloatType       => Definitions.BoxedFloatClass
-    case DoubleType      => Definitions.BoxedDoubleClass
-    case StringType      => Definitions.StringClass
-    case ArrayType(_, _) => Definitions.ObjectClass
+    case AnyType      => Definitions.ObjectClass
+    case UndefType    => Definitions.BoxedUnitClass
+    case BooleanType  => Definitions.BoxedBooleanClass
+    case IntType      => Definitions.BoxedIntegerClass
+    case LongType     => LongImpl.RuntimeLongClass
+    case FloatType    => Definitions.BoxedFloatClass
+    case DoubleType   => Definitions.BoxedDoubleClass
+    case StringType   => Definitions.StringClass
+    case ArrayType(_) => Definitions.ObjectClass
   }
 
   private def pretransformStaticApply(tree: ApplyStatically, isStat: Boolean,
@@ -1933,8 +1933,8 @@ private[optimizer] abstract class OptimizerCore(
       contTree(Apply(newReceiver, Ident(methodName), newArgs)(resultType))
 
     def cursoryArrayElemType(tpe: ArrayType): Type = {
-      if (tpe.dimensions != 1) AnyType
-      else (tpe.baseClassName match {
+      if (tpe.arrayTypeRef.dimensions != 1) AnyType
+      else (tpe.arrayTypeRef.baseClassName match {
         case "Z"                   => BooleanType
         case "B" | "C" | "S" | "I" => IntType
         case "F"                   => FloatType
@@ -1957,7 +1957,7 @@ private[optimizer] abstract class OptimizerCore(
       case ArrayApply =>
         val List(array, index) = newArgs
         array.tpe match {
-          case arrayTpe @ ArrayType(base, depth) =>
+          case arrayTpe @ ArrayType(ArrayTypeRef(base, _)) =>
             val elemType = cursoryArrayElemType(arrayTpe)
             val select = ArraySelect(array, index)(elemType)
             if (base == "C")
@@ -1972,7 +1972,7 @@ private[optimizer] abstract class OptimizerCore(
       case ArrayUpdate =>
         val List(tarray, tindex, tvalue) = targs
         tarray.tpe.base match {
-          case arrayTpe @ ArrayType(base, depth) =>
+          case arrayTpe @ ArrayType(ArrayTypeRef(base, depth)) =>
             val array = finishTransformExpr(tarray)
             val index = finishTransformExpr(tindex)
             val elemType = cursoryArrayElemType(arrayTpe)
@@ -2039,8 +2039,8 @@ private[optimizer] abstract class OptimizerCore(
       case GenericArrayBuilderResult =>
         val List(runtimeClass, array) = newArgs
         val (resultType, isExact) = runtimeClass match {
-          case ClassOf(elemType) => (ArrayType(elemType), true)
-          case _                 => (AnyType, false)
+          case ClassOf(elemTypeRef) => (ArrayType(ArrayTypeRef.of(elemTypeRef)), true)
+          case _                    => (AnyType, false)
         }
         cont(PreTransTree(CallHelper("makeNativeArrayWrapper",
             CallHelper("arrayDataOf",
@@ -2050,7 +2050,7 @@ private[optimizer] abstract class OptimizerCore(
 
       case ArrayBuilderZeroOf =>
         contTree(finishTransformExpr(targs.head) match {
-          case ClassOf(ClassType(cls)) =>
+          case ClassOf(ClassRef(cls)) =>
             cls match {
               case "B" | "S" | "C" | "I" | "D" => IntLiteral(0)
               case "L"                         => LongLiteral(0L)
@@ -2069,11 +2069,11 @@ private[optimizer] abstract class OptimizerCore(
 
       case ClassGetComponentType =>
         newReceiver match {
-          case ClassOf(ArrayType(base, depth)) =>
+          case ClassOf(ArrayTypeRef(base, depth)) =>
             contTree(ClassOf(
-                if (depth == 1) ClassType(base)
-                else ArrayType(base, depth - 1)))
-          case ClassOf(ClassType(_)) =>
+                if (depth == 1) ClassRef(base)
+                else ArrayTypeRef(base, depth - 1)))
+          case ClassOf(ClassRef(_)) =>
             contTree(Null())
           case receiver =>
             defaultApply("getComponentType__jl_Class",
@@ -2084,8 +2084,9 @@ private[optimizer] abstract class OptimizerCore(
 
       case ArrayNewInstance =>
         newArgs.head match {
-          case ClassOf(elementTpe) =>
-            contTree(NewArray(ArrayType(elementTpe), List(newArgs.tail.head)))
+          case ClassOf(elementTypeRef) =>
+            val arrayTypeRef = ArrayTypeRef.of(elementTypeRef)
+            contTree(NewArray(ArrayType(arrayTypeRef), List(newArgs.tail.head)))
           case _ =>
             defaultApply("newInstance__jl_Class__I__O", AnyType)
         }
@@ -4122,6 +4123,24 @@ private[optimizer] abstract class OptimizerCore(
     else if (lhs == NothingType) rhs
     else if (rhs == NothingType) lhs
     else upperBound
+  }
+
+  /** Converts a `TypeRef` on the rhs of an `In/AsInstanceOf` to the
+   *  corresponding `Type`.
+   */
+  private def isAsInstanceOfTypeRefToType(typeRef: TypeRef): Type = {
+    /* Since ClassRefs of primitive types and JS types are not admissible
+     * in an Is- or AsInstanceOf node, we can translate all of them to
+     * their corresponding ClassType (with the exception of j.l.Object).
+     *
+     * TODO Investigate whether Null and Nothing should be handled specially
+     * here.
+     */
+    typeRef match {
+      case ClassRef(ObjectClass) => AnyType
+      case ClassRef(className)   => ClassType(className)
+      case typeRef: ArrayTypeRef => ArrayType(typeRef)
+    }
   }
 
   /** Trampolines a pretransform */
