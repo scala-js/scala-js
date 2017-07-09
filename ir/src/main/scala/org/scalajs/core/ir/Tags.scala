@@ -98,8 +98,7 @@ private[ir] object Tags {
   final val TagPropertyDef = TagMethodDef + 1
   final val TagConstructorExportDef = TagPropertyDef + 1
   final val TagJSClassExportDef = TagConstructorExportDef + 1
-  final val TagModuleExportDef = TagJSClassExportDef + 1
-  final val TagTopLevelModuleExportDef = TagModuleExportDef + 1
+  final val TagTopLevelModuleExportDef = TagJSClassExportDef + 1
   final val TagTopLevelMethodExportDef = TagTopLevelModuleExportDef + 1
   final val TagTopLevelFieldExportDef = TagTopLevelMethodExportDef + 1
 

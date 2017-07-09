@@ -167,9 +167,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           case tree: JSClassExportDef =>
             checkJSClassExportDef(tree, classDef)
 
-          case tree: ModuleExportDef =>
-            checkModuleExportDef(tree, classDef)
-
           case tree: TopLevelModuleExportDef =>
             checkTopLevelModuleExportDef(tree, classDef)
 
@@ -487,14 +484,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
     if (classDef.kind != ClassKind.JSClass)
       reportError(s"Exported JS class def can only appear in a JS class")
-  }
-
-  private def checkModuleExportDef(moduleDef: ModuleExportDef,
-      classDef: LinkedClass): Unit = {
-    implicit val ctx = ErrorContext(moduleDef)
-
-    if (!classDef.kind.hasModuleAccessor)
-      reportError(s"Exported module def can only appear in a module class")
   }
 
   private def checkTopLevelModuleExportDef(

@@ -113,7 +113,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         exp.destination match {
           case ExportDestination.Normal =>
-            js.ModuleExportDef(exp.jsName)
+            throw new AssertionError(
+                "Found a non-top-level module export for " + classSym.fullName)
           case ExportDestination.TopLevel =>
             js.TopLevelModuleExportDef(exp.jsName)
           case ExportDestination.Static =>

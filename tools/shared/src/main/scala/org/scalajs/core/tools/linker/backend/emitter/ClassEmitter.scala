@@ -942,8 +942,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         genConstructorExportDef(tree, e)
       case e: JSClassExportDef =>
         WithGlobals(genJSClassExportDef(tree, e))
-      case e: ModuleExportDef =>
-        WithGlobals(genModuleExportDef(tree, e))
       case e: TopLevelModuleExportDef =>
         WithGlobals(genTopLevelModuleExportDef(tree, e))
       case e: TopLevelMethodExportDef =>
@@ -1001,28 +999,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     genClassOrModuleExportDef(cd, tree.fullName, classVar)
   }
 
-  /** Generates an exporter for a module as a 0-arg function.
+  /** Generates an exporter for a module at the top-level.
    *
-   *  This corresponds to the old-style `@JSExport` of modules. Basically this
-   *  exports the module accessor. The object will be initialized lazily on
-   *  the first call of the accessor, exactly like the accesses to objects from
-   *  Scala code.
-   */
-  def genModuleExportDef(cd: LinkedClass, tree: ModuleExportDef): js.Tree = {
-    import TreeDSL._
-
-    implicit val pos = tree.pos
-
-    val baseAccessor = envField("m", cd.name.name)
-    genClassOrModuleExportDef(cd, tree.fullName, baseAccessor)
-  }
-
-  /** Generates an exporter for a module at the "top-level", which is directly
-   *  as a variable holding the module instance.
-   *
-   *  This corresponds the the new-style `@JSExportTopLevel` of modules. In
-   *  this case, the module instance is initialized during ES moduleµ
-   *  instantiation.
+   *  This corresponds to an `@JSExportTopLevel` on a module class. The module
+   *  instance is initialized during ES module instantiation.
    */
   def genTopLevelModuleExportDef(cd: LinkedClass,
       tree: TopLevelModuleExportDef): js.Tree = {

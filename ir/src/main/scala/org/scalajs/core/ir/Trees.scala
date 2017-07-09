@@ -831,22 +831,9 @@ object Trees {
     val tpe = NoType
   }
 
-  /** Traditional `@JSExport` for top-level objects, as a 0-arg function.
+  /** Export for a top-level object.
    *
-   *  This exports a module as a 0-arg function that returns the module
-   *  instance. It is initialized lazily in that case.
-   *
-   *  This alternative should eventually disappear.
-   */
-  case class ModuleExportDef(fullName: String)(
-      implicit val pos: Position) extends Tree {
-    val tpe = NoType
-  }
-
-  /** New-style `@JSExportTopLevel` for top-level objects, directly as the
-   *  object.
-   *
-   *  This exports a module directly as a variable holding the module instance.
+   *  This exports the singleton instance of the containing module class.
    *  The instance is initialized during ES module instantiation.
    */
   case class TopLevelModuleExportDef(fullName: String)(

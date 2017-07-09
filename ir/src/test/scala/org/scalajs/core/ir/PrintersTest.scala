@@ -1082,12 +1082,6 @@ class PrintersTest {
         JSClassExportDef("pkg.Foo"))
   }
 
-  @Test def printModuleExportDef(): Unit = {
-    assertPrintEquals(
-        """export module "pkg.Foo"""",
-        ModuleExportDef("pkg.Foo"))
-  }
-
   @Test def printTopLevelModuleExportDef(): Unit = {
     assertPrintEquals(
         """export top module "pkg.Foo"""",
