@@ -143,6 +143,107 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noCollapseOverloadsOnJSName: Unit = {
+    """
+    @ScalaJSDefined
+    class A extends js.Object {
+      @JSName("bar")
+      def foo(): Int = 42
+
+      def bar(): Int = 24
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:10: error: Cannot disambiguate overloads for method bar with types
+      |  ()Int
+      |  ()Int
+      |      def bar(): Int = 24
+      |          ^
+    """
+
+    """
+    @ScalaJSDefined
+    class A extends js.Object {
+      def bar(): Int = 24
+
+      @JSName("bar")
+      def foo(): Int = 42
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:10: error: Cannot disambiguate overloads for method bar with types
+      |  ()Int
+      |  ()Int
+      |      def foo(): Int = 42
+      |          ^
+    """
+
+    """
+    @ScalaJSDefined
+    class A extends js.Object {
+      @JSName("bar")
+      def foo(): Int = 42
+    }
+
+    @ScalaJSDefined
+    class B extends A {
+      def bar(): Int = 24
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:13: error: Cannot disambiguate overloads for method bar with types
+      |  ()Int
+      |  ()Int
+      |      def bar(): Int = 24
+      |          ^
+    """
+
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      @JSName("bar")
+      def foo(): Int = js.native
+    }
+
+    @ScalaJSDefined
+    class B extends A {
+      def bar(): Int = 24
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:14: error: Cannot disambiguate overloads for method bar with types
+      |  ()Int
+      |  ()Int
+      |      def bar(): Int = 24
+      |          ^
+    """
+
+    """
+    @js.native
+    @JSGlobal
+    class Foo extends js.Object {
+      def foo(x: Int): Int = js.native
+
+      @JSName("foo")
+      def bar(x: Int): Int = js.native
+    }
+
+    @ScalaJSDefined
+    class Bar extends Foo {
+      def foo(): Int = 42
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:15: error: Cannot disambiguate overloads for method bar with types
+      |  (x: Int)Int
+      |  (x: Int)Int
+      |    class Bar extends Foo {
+      |          ^
+    """
+  }
+
+  @Test
   def noOverloadedPrivate: Unit = {
     """
     @ScalaJSDefined
