@@ -183,14 +183,6 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Global class generation state -------------------------------------------
 
-    /** Map a class from this compilation unit to its companion module class.
-     *  This should be accessible through `sym.linkedClassOfClass`, but is
-     *  broken for nested classes. The reverse link is not broken, though,
-     *  which allows us to build this map in [[apply]] for the whole
-     *  compilation unit before processing it.
-     */
-    private var companionModuleClasses: Map[Symbol, Symbol] = Map.empty
-
     private val lazilyGeneratedAnonClasses = mutable.Map.empty[Symbol, ClassDef]
     private val generatedClasses =
       ListBuffer.empty[(Symbol, Option[String], js.ClassDef)]
@@ -256,15 +248,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
         }
         val allClassDefs = collectClassDefs(cunit.body)
-
-        // Build up companionModuleClasses
-        companionModuleClasses = (for {
-          classDef <- allClassDefs
-          sym = classDef.symbol
-          if sym.isModuleClass
-        } yield {
-          patchedLinkedClassOfClass(sym) -> sym
-        }).toMap
 
         /* There are three types of anonymous classes we want to generate
          * only once we need them so we can inline them at construction site:
@@ -333,7 +316,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       } finally {
         lazilyGeneratedAnonClasses.clear()
         generatedClasses.clear()
-        companionModuleClasses = Map.empty
         pos2irPosCache.clear()
       }
     }
@@ -533,12 +515,15 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // Static members (exported from the companion object)
       val staticMembers = {
-        /* This should be `sym.linkedClassOfClass`, but it does not work for
-         * classes and objects nested inside objects.
+        /* Phase travel is necessary for non-top-level classes, because flatten
+         * breaks their companionModule. This is tracked upstream at
+         * https://github.com/scala/scala-dev/issues/403
          */
-        companionModuleClasses.get(sym).fold[List[js.Tree]] {
+        val companionModuleClass =
+          exitingPhase(currentRun.picklerPhase)(sym.linkedClassOfClass)
+        if (companionModuleClass == NoSymbol) {
           Nil
-        } { companionModuleClass =>
+        } else {
           val exports = withScopedVars(currentClassSym := companionModuleClass) {
             genStaticExports(companionModuleClass)
           }
