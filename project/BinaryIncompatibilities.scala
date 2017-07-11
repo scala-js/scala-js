@@ -6,6 +6,9 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // private, not an issue
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.sem.Semantics.this")
   )
 
   val JSEnvs = Seq(

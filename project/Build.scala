@@ -627,6 +627,12 @@ object Build {
       base = file("tools/js"),
       settings = myScalaJSSettings ++ commonToolsSettings ++ Seq(
           crossVersion := ScalaJSCrossVersion.binary,
+
+          /* We need RuntimeClassNameMapper.custom() in QuickLinker
+           * TODO Remove this in 1.x.
+           */
+          scalacOptions in Test -= "-Xfatal-warnings",
+
           resourceGenerators in Test += Def.task {
             val base = (resourceManaged in Compile).value
             IO.createDirectory(base)
@@ -1498,12 +1504,26 @@ object Build {
         jsDependencies += ProvidedJS / "ScalaJSDefinedTestNatives.js" % "test",
         skip in packageJSDependencies in Test := false,
 
-        scalaJSSemantics ~= (_.withRuntimeClassName(_.fullName match {
-          case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
-            "renamed.test.Class"
-          case fullName =>
-            fullName
-        })),
+        scalaJSSemantics ~= { sems =>
+          import Semantics.RuntimeClassNameMapper
+
+          sems.withRuntimeClassNameMapper(
+              RuntimeClassNameMapper.custom(_.fullName match {
+                case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
+                  "renamed.test.Class"
+                case fullName =>
+                  fullName
+              }).andThen(
+                  RuntimeClassNameMapper.regexReplace(
+                      raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$Prefix""".r,
+                      "renamed.test.byprefix.")
+              ).andThen(
+                  RuntimeClassNameMapper.regexReplace(
+                      raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$OtherPrefix""".r,
+                      "renamed.test.byotherprefix.")
+              )
+          )
+        },
 
         javaOptions in Test += "-Dscalajs.scalaVersion=" + scalaVersion.value,
 
