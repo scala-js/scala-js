@@ -323,14 +323,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     }
 
     private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.Tree = {
-      var alts: List[Symbol] = Nil
-      for {
-        sym <- classSym.info.members
-        if !sym.isBridge && jsNameOf(sym) == name
-      } {
-        val tpe = sym.tpe
-        if (!alts.exists(alt => tpe.matches(alt.tpe)))
-          alts ::= sym
+      val alts = classSym.info.members.toList.filter { sym =>
+        !sym.isBridge && jsNameOf(sym) == name
       }
 
       assert(!alts.isEmpty,
@@ -559,12 +553,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         // 2. The optional argument count restriction has triggered
         // 3. We only have (more than once) repeated parameters left
         // Therefore, we should fail
-        reporter.error(pos,
-            s"""Cannot disambiguate overloads for exported method ${alts.head.name} with types
-               |  ${alts.map(_.typeInfo).mkString("\n  ")}""".stripMargin)
+        reportCannotDisambiguateError(alts)
         js.Undefined()
       } else {
-
         val altsByTypeTest = groupByWithoutHashCode(alts) {
           case ExportedSymbol(alt) =>
             typeTestForTpe(computeExportArgType(alt, paramIndex))
@@ -625,6 +616,29 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           }
         }
       }
+    }
+
+    private def reportCannotDisambiguateError(alts: List[Exported]): Unit = {
+      val currentClass = currentClassSym.get
+
+      // Find a position that is in the current class for decent error reporting
+      val pos = alts.collectFirst {
+        case ExportedSymbol(sym) if sym.owner == currentClass => sym.pos
+        case alt: ExportedBody                                => alt.pos
+      }.getOrElse {
+        currentClass.pos
+      }
+
+      val kind =
+        if (isScalaJSDefinedJSClass(currentClass)) "method"
+        else "exported method"
+
+      val name = alts.head.name
+      val altsTypesInfo = alts.map(_.typeInfo).mkString("\n  ")
+
+      reporter.error(pos,
+          s"Cannot disambiguate overloads for $kind $name with types\n" +
+          s"  $altsTypesInfo")
     }
 
     private def computeExportArgType(alt: Symbol, paramIndex: Int): Type = {
@@ -878,9 +892,14 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     private case class ExportedSymbol(sym: Symbol) extends Exported {
       def pos: Position = sym.pos
       def params: List[Type] = sym.tpe.params.map(_.tpe)
+
       def genBody(minArgc: Int, hasRestParam: Boolean, static: Boolean): js.Tree =
         genApplyForSym(minArgc, hasRestParam, sym, static)
-      def name: String = sym.name.toString
+
+      def name: String =
+        if (isScalaJSDefinedJSClass(sym.owner)) jsNameOf(sym).displayName
+        else sym.name.toString
+
       def typeInfo: String = sym.tpe.toString
       def hasRepeatedParam: Boolean = GenJSExports.this.hasRepeatedParam(sym)
     }
