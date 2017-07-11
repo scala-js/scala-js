@@ -383,9 +383,11 @@ class ScalaJSDefinedTest {
   @Test def anonymous_class_uninitialized_fields(): Unit = {
     val obj = new js.Object {
       var x: String = _
+      var y: Int = _
     }
 
     assertNull(obj.asInstanceOf[js.Dynamic].x)
+    assertEquals(0, obj.asInstanceOf[js.Dynamic].y)
   }
 
   @Test def anonymous_class_field_init_order(): Unit = {
