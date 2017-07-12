@@ -903,30 +903,42 @@ private[optimizer] abstract class OptimizerCore(
 
       case Closure(captureParams, params, body, captureValues) =>
         pretransformExprs(captureValues) { tcaptureValues =>
-          tryOrRollback { cancelFun =>
-            val captureBindings = for {
-              (ParamDef(Ident(name, origName), tpe, mutable, rest), value) <-
-                captureParams zip tcaptureValues
-            } yield {
-              assert(!rest, s"Found a rest capture parameter at $pos")
-              Binding(name, origName, tpe, mutable, value)
-            }
-            withNewLocalDefs(captureBindings) { (captureLocalDefs, cont1) =>
-              val replacement = TentativeClosureReplacement(
-                  captureParams, params, body, captureLocalDefs,
-                  alreadyUsed = newSimpleState(false), cancelFun)
-              val localDef = LocalDef(
-                  RefinedType(AnyType, isExact = false, isNullable = false),
-                  mutable = false,
-                  replacement)
-              cont1(localDef.toPreTransform)
-            } (cont)
-          } { () =>
+          def default(): TailRec[Tree] = {
             val newClosure = transformClosureCommon(captureParams, params, body,
                 tcaptureValues.map(finishTransformExpr))
             cont(PreTransTree(
                 newClosure,
                 RefinedType(AnyType, isExact = false, isNullable = false)))
+          }
+
+          if (params.exists(_.rest)) {
+            /* TentativeClosureReplacement assumes there are no rest
+             * parameters, because that would not be inlineable anyway.
+             * So we never try to inline a Closure with a rest parameter.
+             */
+            default()
+          } else {
+            tryOrRollback { cancelFun =>
+              val captureBindings = for {
+                (ParamDef(Ident(name, origName), tpe, mutable, rest), value) <-
+                  captureParams zip tcaptureValues
+              } yield {
+                assert(!rest, s"Found a rest capture parameter at $pos")
+                Binding(name, origName, tpe, mutable, value)
+              }
+              withNewLocalDefs(captureBindings) { (captureLocalDefs, cont1) =>
+                val replacement = TentativeClosureReplacement(
+                    captureParams, params, body, captureLocalDefs,
+                    alreadyUsed = newSimpleState(false), cancelFun)
+                val localDef = LocalDef(
+                    RefinedType(AnyType, isExact = false, isNullable = false),
+                    mutable = false,
+                    replacement)
+                cont1(localDef.toPreTransform)
+              } (cont)
+            } { () =>
+              default()
+            }
           }
         }
 

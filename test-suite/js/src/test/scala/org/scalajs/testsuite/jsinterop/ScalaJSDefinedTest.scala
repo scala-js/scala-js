@@ -742,6 +742,26 @@ class ScalaJSDefinedTest {
     assertEquals(6, dyn.foo(3))
   }
 
+  @Test def simple_overloaded_methods_anon_js_class_issue_3054(): Unit = {
+    @ScalaJSDefined
+    trait SimpleOverloadedMethodsAnonJSClass extends js.Object {
+      def foo(): Int
+      def foo(x: Int): Int
+    }
+
+    val foo = new SimpleOverloadedMethodsAnonJSClass {
+      def foo(): Int = 42
+      def foo(x: Int): Int = x * 2
+    }
+    assertEquals(42, foo.foo())
+    assertEquals(6, foo.foo(3))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(js.typeOf(dyn.foo), "function")
+    assertEquals(42, dyn.foo())
+    assertEquals(6, dyn.foo(3))
+  }
+
   @Test def renamed_overloaded_methods(): Unit = {
     @ScalaJSDefined
     class RenamedOverloadedMethods extends js.Object {
@@ -759,6 +779,51 @@ class ScalaJSDefinedTest {
     assertEquals(js.typeOf(dyn.foobar), "function")
     assertEquals(42, dyn.foobar())
     assertEquals(6, dyn.foobar(3))
+  }
+
+  @Test def overloaded_methods_with_varargs(): Unit = {
+    @ScalaJSDefined
+    class OverloadedMethodsWithVarargs extends js.Object {
+      def foo(x: Int): Int = x * 2
+      def foo(strs: String*): Int = strs.foldLeft(0)(_ + _.length)
+    }
+
+    val foo = new OverloadedMethodsWithVarargs
+    assertEquals(42, foo.foo(21))
+    assertEquals(0, foo.foo())
+    assertEquals(3, foo.foo("bar"))
+    assertEquals(8, foo.foo("bar", "babar"))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(js.typeOf(dyn.foo), "function")
+    assertEquals(42, dyn.foo(21))
+    assertEquals(0, dyn.foo())
+    assertEquals(3, dyn.foo("bar"))
+    assertEquals(8, dyn.foo("bar", "babar"))
+  }
+
+  @Test def overloaded_methods_with_varargs_anon_js_class_issue_3054(): Unit = {
+    @ScalaJSDefined
+    trait OverloadedMethodsWithVarargsAnonJSClass extends js.Object {
+      def foo(x: Int): Int
+      def foo(strs: String*): Int
+    }
+
+    val foo = new OverloadedMethodsWithVarargsAnonJSClass {
+      def foo(x: Int): Int = x * 2
+      def foo(strs: String*): Int = strs.foldLeft(0)(_ + _.length)
+    }
+    assertEquals(42, foo.foo(21))
+    assertEquals(0, foo.foo())
+    assertEquals(3, foo.foo("bar"))
+    assertEquals(8, foo.foo("bar", "babar"))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(js.typeOf(dyn.foo), "function")
+    assertEquals(42, dyn.foo(21))
+    assertEquals(0, dyn.foo())
+    assertEquals(3, dyn.foo("bar"))
+    assertEquals(8, dyn.foo("bar", "babar"))
   }
 
   @Test def overloaded_constructors_num_parameters_resolution(): Unit = {
