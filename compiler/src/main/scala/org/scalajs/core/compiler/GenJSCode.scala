@@ -655,7 +655,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             case lit: js.StringLiteral    => js.JSBracketSelect(selfRef, lit)
             case js.ComputedName(tree, _) => js.JSBracketSelect(selfRef, tree)
           }
-          js.Assign(select, jstpe.zeroOf(fdef.tpe))
+          js.Assign(select, jstpe.zeroOf(fdef.ftpe))
 
         case mdef: js.MethodDef =>
           implicit val pos = mdef.pos
