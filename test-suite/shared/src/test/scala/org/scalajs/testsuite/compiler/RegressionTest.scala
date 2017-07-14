@@ -258,6 +258,51 @@ class RegressionTest {
     assertThrows(classOf[Exception], (giveMeANothing(): scala.runtime.IntRef).elem)
   }
 
+  @Test def IR_checker_must_not_check_field_existence_on_non_existent_classes(): Unit = {
+    // In this test, Outer is not "needed at all"
+
+    class Outer(x: Int) {
+      class Inner {
+        def get(): Int = x
+      }
+    }
+
+    def test(outer: Outer): Int = {
+      if (outer == null) {
+        3
+      } else {
+        val inner = new outer.Inner
+        inner.get()
+      }
+    }
+
+    assertEquals(3, test(null))
+  }
+
+  @Test def IR_checker_must_not_check_field_existence_on_classes_with_no_instance_issue_3060(): Unit = {
+    // In this test, Outer is "needed at all", but does not have any instance
+
+    class Outer(x: Int) {
+      class Inner {
+        def get(): Int = x
+      }
+    }
+
+    def test(outer: Outer): Int = {
+      if (outer == null) {
+        3
+      } else {
+        val inner = new outer.Inner
+        inner.get()
+      }
+    }
+
+    // make sure Outer is "needed at all"
+    assertFalse(classOf[Outer].isInterface)
+
+    assertEquals(3, test(null))
+  }
+
   @Test def should_properly_order_ctor_statements_when_inlining_issue_1369(): Unit = {
     trait Bar {
       def x: Int
