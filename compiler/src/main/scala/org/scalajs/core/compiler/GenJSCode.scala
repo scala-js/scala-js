@@ -136,7 +136,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Per method body
     private val currentMethodSym = new ScopedVar[Symbol]
-    private val thisLocalVarIdent = new ScopedVar[Option[js.Ident]]
+    private val thisLocalVarInfo = new ScopedVar[Option[(js.Ident, jstpe.Type)]]
     private val fakeTailJumpParamRepl = new ScopedVar[(Symbol, Symbol)]
     private val enclosingLabelDefParams = new ScopedVar[Map[Symbol, List[Symbol]]]
     private val isModuleInitialized = new ScopedVar[VarBox[Boolean]]
@@ -168,7 +168,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           unexpectedMutatedFields := mutable.Set.empty,
           generatedSAMWrapperCount := null,
           currentMethodSym := null,
-          thisLocalVarIdent := null,
+          thisLocalVarInfo := null,
           fakeTailJumpParamRepl := null,
           enclosingLabelDefParams := null,
           isModuleInitialized := null,
@@ -1397,7 +1397,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       withScopedVars(
           currentMethodSym          := sym,
-          thisLocalVarIdent         := None,
+          thisLocalVarInfo          := None,
           fakeTailJumpParamRepl     := (NoSymbol, NoSymbol),
           enclosingLabelDefParams   := Map.empty,
           isModuleInitialized       := new VarBox(false),
@@ -1661,13 +1661,15 @@ abstract class GenJSCode extends plugins.PluginComponent
                 mutableLocalVars += thisSym
 
               val thisLocalIdent = encodeLocalSym(thisSym)
+              val thisLocalType = toIRType(thisSym.tpe)
+
               val genRhs = genExpr(initialThis)
               val thisLocalVarDef = js.VarDef(thisLocalIdent,
-                  currentClassType, thisSym.isMutable, genRhs)
+                  thisLocalType, thisSym.isMutable, genRhs)
 
               val innerBody = {
                 withScopedVars(
-                  thisLocalVarIdent := Some(thisLocalIdent)
+                  thisLocalVarInfo := Some((thisLocalIdent, thisLocalType))
                 ) {
                   genInnerBody()
                 }
@@ -1687,10 +1689,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else {
         assert(!static, tree.pos)
 
+        val thisLocalIdent = freshLocalIdent("this")
         withScopedVars(
-          thisLocalVarIdent := Some(freshLocalIdent("this"))
+          thisLocalVarInfo := Some((thisLocalIdent, jstpe.AnyType))
         ) {
-          val thisParamDef = js.ParamDef(thisLocalVarIdent.get.get,
+          val thisParamDef = js.ParamDef(thisLocalIdent,
               jstpe.AnyType, mutable = false, rest = false)
 
           js.MethodDef(static = true, methodName, thisParamDef :: jsParams,
@@ -1959,14 +1962,15 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  is one.
      */
     private def genThis()(implicit pos: Position): js.Tree = {
-      thisLocalVarIdent.fold[js.Tree] {
+      thisLocalVarInfo.fold[js.Tree] {
         if (tryingToGenMethodAsJSFunction) {
           throw new CancelGenMethodAsJSFunction(
               "Trying to generate `this` inside the body")
         }
         js.This()(currentClassType)
-      } { thisLocalIdent =>
-        js.VarRef(thisLocalIdent)(currentClassType)
+      } { case (thisLocalVarIdent, thisLocalVarTpe) =>
+        // .copy() to get the correct position
+        js.VarRef(thisLocalVarIdent.copy())(thisLocalVarTpe)
       }
     }
 

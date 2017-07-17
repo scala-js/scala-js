@@ -603,6 +603,42 @@ class RegressionTest {
     assertEquals("B", c.t3)
   }
 
+  @Test def tailrec_in_trait_with_self_type_scala_2_12_issue_3058(): Unit = {
+    trait Parent { this: Child =>
+      @tailrec final def bar(i: Int, acc: Int): Int = {
+        println(s"bar($i, $acc)")
+        if (i <= count)
+          bar(i + 1, acc + i)
+        else
+          acc
+      }
+    }
+
+    class Child extends Parent {
+      def count: Int = 5
+    }
+
+    assertEquals(15, new Child().bar(1, 0))
+  }
+
+  @Test def tailrec_in_class_with_self_type_scala_2_12_issue_3058(): Unit = {
+    class Parent { this: Child =>
+      @tailrec final def bar(i: Int, acc: Int): Int = {
+        println(s"bar($i, $acc)")
+        if (i <= count)
+          bar(i + 1, acc + i)
+        else
+          acc
+      }
+    }
+
+    class Child extends Parent {
+      def count: Int = 5
+    }
+
+    assertEquals(15, new Child().bar(1, 0))
+  }
+
 }
 
 object RegressionTest {
