@@ -1013,8 +1013,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
               reportError(s"Parameter $name has type NoType")
             else if (ptpe != AnyType)
               reportError(s"Closure parameter $name has type $ptpe instead of any")
-            if (rest)
-              reportError(s"Closure parameter $name cannot be a rest parameter")
+          }
+
+          if (params.nonEmpty) {
+            for (ParamDef(name, _, _, rest) <- params.init) {
+              if (rest)
+                reportError(s"Non-last rest parameter $name is illegal")
+            }
           }
 
           val bodyEnv = Env.fromSignature(
