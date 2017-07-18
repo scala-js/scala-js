@@ -1719,7 +1719,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             rhs match {
               case _:Skip | _:VarDef | _:Assign | _:While | _:DoWhile |
                   _:Debugger | _:JSSuperConstructorCall | _:JSDelete |
-                  _:StoreModule | _:ClassDef =>
+                  _:StoreModule =>
                 transformStat(rhs, tailPosLabels)
               case _ =>
                 throw new IllegalArgumentException(
@@ -2029,7 +2029,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case NewArray(tpe, lengths) =>
           genCallHelper("newArrayObject",
-              genClassDataOf(tpe), js.ArrayConstr(lengths map transformExpr))
+              genClassDataOf(tpe.arrayTypeRef),
+              js.ArrayConstr(lengths.map(transformExpr)))
 
         case ArrayValue(tpe, elems) =>
           genArrayValue(tpe, elems.map(transformExpr))
@@ -2182,6 +2183,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             (transformPropertyName(name), transformExpr(value))
           })
 
+        case JSGlobalRef(name) =>
+          js.VarRef(transformGlobalVarIdent(name))
+
         case JSLinkingInfo() =>
           envField("linkingInfo")
 
@@ -2217,9 +2221,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           } { ident =>
             js.VarRef(ident)
           }
-
-        case JSGlobalRef(name) =>
-          js.VarRef(transformGlobalVarIdent(name))
 
         case Closure(captureParams, params, body, captureValues) =>
           val innerFunction =

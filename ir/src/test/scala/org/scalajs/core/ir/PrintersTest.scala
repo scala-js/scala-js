@@ -15,11 +15,14 @@ import OptimizerHints.{empty => NoOptHints}
 class PrintersTest {
   private implicit val dummyPos = Position.NoPosition
 
-  private def assertPrintEquals(expected: String, tree: Tree): Unit =
-    assertPrintEqualsImpl(expected, _.print(tree))
+  private def assertPrintEquals(expected: String, node: IRNode): Unit =
+    assertPrintEqualsImpl(expected, _.printAnyNode(node))
 
   private def assertPrintEquals(expected: String, tpe: Type): Unit =
     assertPrintEqualsImpl(expected, _.print(tpe))
+
+  private def assertPrintEquals(expected: String, typeRef: TypeRef): Unit =
+    assertPrintEqualsImpl(expected, _.print(typeRef))
 
   private def assertPrintEqualsImpl(expected: String,
       print: IRTreePrinter => Unit): Unit = {
@@ -31,6 +34,7 @@ class PrintersTest {
 
   private implicit def string2ident(name: String): Ident = Ident(name)
   private implicit def string2classType(cls: String): ClassType = ClassType(cls)
+  private implicit def string2classRef(cls: String): ClassRef = ClassRef(cls)
 
   private def b(value: Boolean): BooleanLiteral = BooleanLiteral(value)
   private def i(value: Int): IntLiteral = IntLiteral(value)
@@ -39,6 +43,9 @@ class PrintersTest {
   private def d(value: Double): DoubleLiteral = DoubleLiteral(value)
 
   private def ref(ident: Ident, tpe: Type): VarRef = VarRef(ident)(tpe)
+
+  private def arrayType(baseClassName: String, dimensions: Int): ArrayType =
+    ArrayType(ArrayTypeRef(baseClassName, dimensions))
 
   @Test def printType(): Unit = {
     assertPrintEquals("any", AnyType)
@@ -55,13 +62,20 @@ class PrintersTest {
 
     assertPrintEquals("O", ClassType(ObjectClass))
 
-    assertPrintEquals("O[]", ArrayType(ObjectClass, 1))
-    assertPrintEquals("I[][]", ArrayType("I", 2))
+    assertPrintEquals("O[]", arrayType(ObjectClass, 1))
+    assertPrintEquals("I[][]", arrayType("I", 2))
 
     assertPrintEquals("(x: int, var y: any)",
         RecordType(List(
             RecordType.Field("x", None, IntType, mutable = false),
             RecordType.Field("y", None, AnyType, mutable = true))))
+  }
+
+  @Test def printTypeRef(): Unit = {
+    assertPrintEquals("O", ClassRef(ObjectClass))
+
+    assertPrintEquals("O[]", ArrayTypeRef(ObjectClass, 1))
+    assertPrintEquals("I[][]", ArrayTypeRef("I", 2))
   }
 
   @Test def printVarDef(): Unit = {
@@ -460,29 +474,29 @@ class PrintersTest {
   }
 
   @Test def printNewArray(): Unit = {
-    assertPrintEquals("new I[3]", NewArray(ArrayType("I", 1), List(i(3))))
-    assertPrintEquals("new I[3][]", NewArray(ArrayType("I", 2), List(i(3))))
+    assertPrintEquals("new I[3]", NewArray(arrayType("I", 1), List(i(3))))
+    assertPrintEquals("new I[3][]", NewArray(arrayType("I", 2), List(i(3))))
     assertPrintEquals("new O[3][4][][]",
-        NewArray(ArrayType("O", 4), List(i(3), i(4))))
+        NewArray(arrayType("O", 4), List(i(3), i(4))))
   }
 
   @Test def printArrayValue(): Unit = {
     assertPrintEquals("I[]()",
-        ArrayValue(ArrayType("I", 1), List()))
+        ArrayValue(arrayType("I", 1), List()))
     assertPrintEquals("I[](5, 6)",
-        ArrayValue(ArrayType("I", 1), List(i(5), i(6))))
+        ArrayValue(arrayType("I", 1), List(i(5), i(6))))
 
     assertPrintEquals("I[][](null)",
-        ArrayValue(ArrayType("I", 2), List(Null())))
+        ArrayValue(arrayType("I", 2), List(Null())))
   }
 
   @Test def printArrayLength(): Unit = {
-    assertPrintEquals("x.length", ArrayLength(ref("x", ArrayType("I", 1))))
+    assertPrintEquals("x.length", ArrayLength(ref("x", arrayType("I", 1))))
   }
 
   @Test def printArraySelect(): Unit = {
     assertPrintEquals("x[3]",
-        ArraySelect(ref("x", ArrayType("I", 1)), i(3))(IntType))
+        ArraySelect(ref("x", arrayType("I", 1)), i(3))(IntType))
   }
 
   @Test def printRecordValue(): Unit = {
@@ -679,6 +693,10 @@ class PrintersTest {
         JSObjectConstr(List(Ident("f") -> i(5), StringLiteral("g") -> i(6))))
   }
 
+  @Test def printGlobalRef(): Unit = {
+    assertPrintEquals("global:Foo", JSGlobalRef("Foo"))
+  }
+
   @Test def printJSLinkingInfo(): Unit = {
     assertPrintEquals("<linkinginfo>", JSLinkingInfo())
   }
@@ -753,10 +771,6 @@ class PrintersTest {
     assertPrintEquals("this", This()(AnyType))
   }
 
-  @Test def printGlobalRef(): Unit = {
-    assertPrintEquals("global:Foo", JSGlobalRef("Foo"))
-  }
-
   @Test def printClosure(): Unit = {
     assertPrintEquals(
         """
@@ -785,7 +799,7 @@ class PrintersTest {
     import ClassKind._
 
     def makeForKind(kind: ClassKind): ClassDef = {
-      ClassDef("LTest", kind, Some(ObjectClass), Nil, None, Nil)(NoOptHints)
+      ClassDef("LTest", kind, Some(ObjectClass), Nil, None, Nil, Nil)(NoOptHints)
     }
 
     assertPrintEquals(
@@ -855,7 +869,7 @@ class PrintersTest {
   @Test def printClassDefParents(): Unit = {
     def makeForParents(superClass: Option[Ident],
         interfaces: List[Ident]): ClassDef = {
-      ClassDef("LTest", ClassKind.Class, superClass, interfaces, None, Nil)(
+      ClassDef("LTest", ClassKind.Class, superClass, interfaces, None, Nil, Nil)(
           NoOptHints)
     }
 
@@ -888,7 +902,7 @@ class PrintersTest {
           |}
         """,
         ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
-            Some(JSNativeLoadSpec.Global("Foo", List("Bar"))), Nil)(
+            Some(JSNativeLoadSpec.Global("Foo", List("Bar"))), Nil, Nil)(
             NoOptHints))
 
     assertPrintEquals(
@@ -897,7 +911,7 @@ class PrintersTest {
           |}
         """,
         ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
-            Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil)(
+            Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil, Nil)(
             NoOptHints))
 
     assertPrintEquals(
@@ -908,7 +922,7 @@ class PrintersTest {
         ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
             Some(JSNativeLoadSpec.ImportWithGlobalFallback(
                 JSNativeLoadSpec.Import("foo", List("Bar")),
-                JSNativeLoadSpec.Global("Baz", List("Foobar")))), Nil)(
+                JSNativeLoadSpec.Global("Baz", List("Foobar")))), Nil, Nil)(
             NoOptHints))
   }
 
@@ -918,22 +932,26 @@ class PrintersTest {
           |@hints(1) class LTest extends O {
           |}
         """,
-        ClassDef("LTest", ClassKind.Class, Some(ObjectClass), Nil, None, Nil)(
+        ClassDef("LTest", ClassKind.Class, Some(ObjectClass), Nil, None, Nil,
+            Nil)(
             NoOptHints.withInline(true)))
   }
 
   @Test def printClassDefDefs(): Unit = {
     assertPrintEquals(
         """
-          |class LTest extends O {
+          |module class LTest extends O {
           |  val x$1: int
           |  var y$1: int
+          |  export top module "pkg.Foo"
           |}
         """,
-        ClassDef("LTest", ClassKind.Class, Some(ObjectClass), Nil, None,
+        ClassDef("LTest", ClassKind.ModuleClass, Some(ObjectClass), Nil, None,
             List(
                 FieldDef(static = false, "x$1", IntType, mutable = false),
-                FieldDef(static = false, "y$1", IntType, mutable = true)))(
+                FieldDef(static = false, "y$1", IntType, mutable = true)),
+            List(
+                TopLevelModuleExportDef("pkg.Foo")))(
             NoOptHints))
   }
 
@@ -1067,25 +1085,19 @@ class PrintersTest {
   @Test def printConstructorExportDef(): Unit = {
     assertPrintEquals(
         """
-          |export "pkg.Foo"(x: any) {
+          |export top constructor "pkg.Foo"(x: any) {
           |  5
           |}
         """,
-        ConstructorExportDef("pkg.Foo",
+        TopLevelConstructorExportDef("pkg.Foo",
             List(ParamDef("x", AnyType, mutable = false, rest = false)),
             i(5)))
   }
 
   @Test def printJSClassExportDef(): Unit = {
     assertPrintEquals(
-        """export class "pkg.Foo"""",
-        JSClassExportDef("pkg.Foo"))
-  }
-
-  @Test def printModuleExportDef(): Unit = {
-    assertPrintEquals(
-        """export module "pkg.Foo"""",
-        ModuleExportDef("pkg.Foo"))
+        """export top class "pkg.Foo"""",
+        TopLevelJSClassExportDef("pkg.Foo"))
   }
 
   @Test def printTopLevelModuleExportDef(): Unit = {

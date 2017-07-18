@@ -34,7 +34,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   }
 
   /** Called when the JS ASTs are generated. Override for testing */
-  def generatedJSAST(clDefs: List[Trees.Tree]): Unit = {}
+  def generatedJSAST(clDefs: List[Trees.ClassDef]): Unit = {}
 
   /** Addons for JavaScript platform */
   object jsAddons extends {
@@ -85,7 +85,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     override val runsAfter = List("mixin")
     override val runsBefore = List("delambdafy", "cleanup", "terminal")
   } with GenJSCode {
-    def generatedJSAST(clDefs: List[Trees.Tree]): Unit =
+    def generatedJSAST(clDefs: List[Trees.ClassDef]): Unit =
       ScalaJSPlugin.this.generatedJSAST(clDefs)
   }
 

@@ -57,14 +57,14 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
     def isValueType: Boolean = false
 
     def toIRType: Types.Type
-    def toReferenceType: Types.ReferenceType
+    def toTypeRef: Types.TypeRef
   }
 
   sealed abstract class TypeKindButArray extends TypeKind {
     protected def typeSymbol: Symbol
 
-    override def toReferenceType: Types.ClassType =
-      Types.ClassType(encodeClassFullName(typeSymbol))
+    override def toTypeRef: Types.ClassRef =
+      Types.ClassRef(encodeClassFullName(typeSymbol))
   }
 
   /** The void, for trees that can only appear in statement position. */
@@ -117,16 +117,16 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   case object NOTHING extends TypeKindButArray {
     protected def typeSymbol: Symbol = definitions.NothingClass
     def toIRType: Types.NothingType.type = Types.NothingType
-    override def toReferenceType: Types.ClassType =
-      Types.ClassType(Definitions.RuntimeNothingClass)
+    override def toTypeRef: Types.ClassRef =
+      Types.ClassRef(Definitions.RuntimeNothingClass)
   }
 
   /** Null */
   case object NULL extends TypeKindButArray {
     protected def typeSymbol: Symbol = definitions.NullClass
     def toIRType: Types.NullType.type = Types.NullType
-    override def toReferenceType: Types.ClassType =
-      Types.ClassType(Definitions.RuntimeNullClass)
+    override def toTypeRef: Types.ClassRef =
+      Types.ClassRef(Definitions.RuntimeNullClass)
   }
 
   /** An object */
@@ -147,11 +147,11 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
       case _        => 1
     }
 
-    override def toIRType: Types.ArrayType = toReferenceType
+    override def toIRType: Types.ArrayType = Types.ArrayType(toTypeRef)
 
-    override def toReferenceType: Types.ArrayType = {
-      Types.ArrayType(
-          elementKind.toReferenceType.className,
+    override def toTypeRef: Types.ArrayTypeRef = {
+      Types.ArrayTypeRef(
+          elementKind.toTypeRef.className,
           dimensions)
     }
 
@@ -167,8 +167,8 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   def toIRType(t: Type): Types.Type =
     toTypeKind(t).toIRType
 
-  def toReferenceType(t: Type): Types.ReferenceType =
-    toTypeKind(t).toReferenceType
+  def toTypeRef(t: Type): Types.TypeRef =
+    toTypeKind(t).toTypeRef
 
   // The following code is a hard copy-and-paste from backend.icode.TypeKinds
 

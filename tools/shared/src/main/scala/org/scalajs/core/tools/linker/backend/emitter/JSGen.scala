@@ -83,21 +83,21 @@ private[emitter] final class JSGen(val semantics: Semantics,
     envField("t", className + "__" + item.name)
   }
 
-  def genIsInstanceOf(expr: Tree, cls: ReferenceType)(
+  def genIsInstanceOf(expr: Tree, typeRef: TypeRef)(
       implicit pos: Position): Tree =
-    genIsAsInstanceOf(expr, cls, test = true)
+    genIsAsInstanceOf(expr, typeRef, test = true)
 
-  def genAsInstanceOf(expr: Tree, cls: ReferenceType)(
+  def genAsInstanceOf(expr: Tree, typeRef: TypeRef)(
       implicit pos: Position): Tree =
-    genIsAsInstanceOf(expr, cls, test = false)
+    genIsAsInstanceOf(expr, typeRef, test = false)
 
-  private def genIsAsInstanceOf(expr: Tree, cls: ReferenceType, test: Boolean)(
+  private def genIsAsInstanceOf(expr: Tree, typeRef: TypeRef, test: Boolean)(
       implicit pos: Position): Tree = {
     import Definitions._
     import TreeDSL._
 
-    cls match {
-      case ClassType(className0) =>
+    typeRef match {
+      case ClassRef(className0) =>
         val className =
           if (className0 == BoxedLongClass) LongImpl.RuntimeLongClass
           else className0
@@ -130,7 +130,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
               List(expr))
         }
 
-      case ArrayType(base, depth) =>
+      case ArrayTypeRef(base, depth) =>
         Apply(
             envField(if (test) "isArrayOf" else "asArrayOf", base),
             List(expr, IntLiteral(depth)))
@@ -222,15 +222,15 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genArrayValue(tpe: ArrayType, elems: List[Tree])(
       implicit pos: Position): Tree = {
-    genCallHelper("makeNativeArrayWrapper", genClassDataOf(tpe),
+    genCallHelper("makeNativeArrayWrapper", genClassDataOf(tpe.arrayTypeRef),
         ArrayConstr(elems))
   }
 
-  def genClassDataOf(cls: ReferenceType)(implicit pos: Position): Tree = {
-    cls match {
-      case ClassType(className) =>
+  def genClassDataOf(typeRef: TypeRef)(implicit pos: Position): Tree = {
+    typeRef match {
+      case ClassRef(className) =>
         envField("d", className)
-      case ArrayType(base, dims) =>
+      case ArrayTypeRef(base, dims) =>
         (1 to dims).foldLeft[Tree](envField("d", base)) { (prev, _) =>
           Apply(DotSelect(prev, Ident("getArrayOf")), Nil)
         }

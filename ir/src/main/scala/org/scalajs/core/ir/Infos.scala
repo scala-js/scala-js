@@ -199,16 +199,16 @@ object Infos {
 
     def addMethodCalled(receiverTpe: Type, method: String): this.type = {
       receiverTpe match {
-        case ClassType(cls)  => addMethodCalled(cls, method)
-        case AnyType         => addMethodCalled(ObjectClass, method)
-        case UndefType       => addMethodCalled(BoxedUnitClass, method)
-        case BooleanType     => addMethodCalled(BoxedBooleanClass, method)
-        case IntType         => addMethodCalled(BoxedIntegerClass, method)
-        case LongType        => addMethodCalled(BoxedLongClass, method)
-        case FloatType       => addMethodCalled(BoxedFloatClass, method)
-        case DoubleType      => addMethodCalled(BoxedDoubleClass, method)
-        case StringType      => addMethodCalled(StringClass, method)
-        case ArrayType(_, _) => addMethodCalled(PseudoArrayClass, method)
+        case ClassType(cls) => addMethodCalled(cls, method)
+        case AnyType        => addMethodCalled(ObjectClass, method)
+        case UndefType      => addMethodCalled(BoxedUnitClass, method)
+        case BooleanType    => addMethodCalled(BoxedBooleanClass, method)
+        case IntType        => addMethodCalled(BoxedIntegerClass, method)
+        case LongType       => addMethodCalled(BoxedLongClass, method)
+        case FloatType      => addMethodCalled(BoxedFloatClass, method)
+        case DoubleType     => addMethodCalled(BoxedDoubleClass, method)
+        case StringType     => addMethodCalled(StringClass, method)
+        case ArrayType(_)   => addMethodCalled(PseudoArrayClass, method)
 
         case NullType | NothingType =>
           // Nothing to do
@@ -249,7 +249,7 @@ object Infos {
       this
     }
 
-    def addUsedInstanceTest(tpe: ReferenceType): this.type =
+    def addUsedInstanceTest(tpe: TypeRef): this.type =
       addUsedInstanceTest(baseNameOf(tpe))
 
     def addUsedInstanceTest(cls: String): this.type = {
@@ -257,7 +257,7 @@ object Infos {
       this
     }
 
-    def addAccessedClassData(tpe: ReferenceType): this.type =
+    def addAccessedClassData(tpe: TypeRef): this.type =
       addAccessedClassData(baseNameOf(tpe))
 
     def addAccessedClassData(cls: String): this.type = {
@@ -265,9 +265,9 @@ object Infos {
       this
     }
 
-    private def baseNameOf(tpe: ReferenceType): String = tpe match {
-      case ClassType(name)    => name
-      case ArrayType(base, _) => base
+    private def baseNameOf(tpe: TypeRef): String = tpe match {
+      case ClassRef(name)        => name
+      case ArrayTypeRef(base, _) => base
     }
 
     def result(): MethodInfo = {
@@ -302,19 +302,23 @@ object Infos {
       .setSuperClass(classDef.superClass.map(_.name))
       .addInterfaces(classDef.interfaces.map(_.name))
 
-    var exportedConstructors: List[ConstructorExportDef] = Nil
-    var topLevelMethodExports: List[TopLevelMethodExportDef] = Nil
-    var topLevelFieldExports: List[TopLevelFieldExportDef] = Nil
-
-    classDef.defs foreach {
+    classDef.memberDefs foreach {
+      case fieldDef: FieldDef =>
       case methodDef: MethodDef =>
         builder.addMethod(generateMethodInfo(methodDef))
       case propertyDef: PropertyDef =>
         builder.addMethod(generatePropertyInfo(propertyDef))
-      case constructorDef: ConstructorExportDef =>
+    }
+
+    var exportedConstructors: List[TopLevelConstructorExportDef] = Nil
+    var topLevelMethodExports: List[TopLevelMethodExportDef] = Nil
+    var topLevelFieldExports: List[TopLevelFieldExportDef] = Nil
+
+    classDef.topLevelExportDefs foreach {
+      case constructorDef: TopLevelConstructorExportDef =>
         builder.setIsExported(true)
         exportedConstructors ::= constructorDef
-      case _:JSClassExportDef | _:ModuleExportDef | _:TopLevelModuleExportDef =>
+      case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef =>
         builder.setIsExported(true)
       case topLevelMethodExport: TopLevelMethodExportDef =>
         builder.setIsExported(true)
@@ -322,12 +326,11 @@ object Infos {
       case topLevelFieldExport: TopLevelFieldExportDef =>
         builder.setIsExported(true)
         topLevelFieldExports ::= topLevelFieldExport
-      case _ =>
     }
 
     if (exportedConstructors.nonEmpty || topLevelMethodExports.nonEmpty ||
         topLevelFieldExports.nonEmpty) {
-      builder.addMethod(generateClassExportsInfo(classDef.name.name,
+      builder.addMethod(generateTopLevelExportsInfo(classDef.name.name,
           exportedConstructors, topLevelMethodExports, topLevelFieldExports))
     }
 
@@ -342,30 +345,13 @@ object Infos {
   def generatePropertyInfo(propertyDef: PropertyDef): MethodInfo =
     new GenInfoTraverser().generatePropertyInfo(propertyDef)
 
-  /** Generates the [[MethodInfo]] of a list of [[Trees.ConstructorExportDef]]s. */
-  @deprecated("Use generateClassExportsInfo instead", "0.6.14")
-  def generateExportedConstructorsInfo(
-      constructorDefs: List[ConstructorExportDef]): MethodInfo = {
-    generateClassExportsInfo(constructorDefs, Nil)
-  }
-
-  /** Generates the [[MethodInfo]] for the class exports. */
-  @deprecated(
-      "Use the overload with an enclosingClass and topLevelFieldExports.",
-      "0.6.15")
-  def generateClassExportsInfo(constructorDefs: List[ConstructorExportDef],
-      topLevelMethodExports: List[TopLevelMethodExportDef]): MethodInfo = {
-    // enclosingClass won't be used when topLevelFieldExports is empty
-    generateClassExportsInfo("", constructorDefs, topLevelMethodExports, Nil)
-  }
-
-  /** Generates the [[MethodInfo]] for the class exports. */
-  def generateClassExportsInfo(enclosingClass: String,
-      constructorDefs: List[ConstructorExportDef],
+  /** Generates the [[MethodInfo]] for the top-level exports. */
+  def generateTopLevelExportsInfo(enclosingClass: String,
+      topLevelConstructorDefs: List[TopLevelConstructorExportDef],
       topLevelMethodExports: List[TopLevelMethodExportDef],
       topLevelFieldExports: List[TopLevelFieldExportDef]): MethodInfo = {
-    new GenInfoTraverser().generateClassExportsInfo(enclosingClass,
-        constructorDefs, topLevelMethodExports, topLevelFieldExports)
+    new GenInfoTraverser().generateTopLevelExportsInfo(enclosingClass,
+        topLevelConstructorDefs, topLevelMethodExports, topLevelFieldExports)
   }
 
   private final class GenInfoTraverser extends Traversers.Traverser {
@@ -409,19 +395,19 @@ object Infos {
       builder.result()
     }
 
-    def generateClassExportsInfo(enclosingClass: String,
-        constructorDefs: List[ConstructorExportDef],
+    def generateTopLevelExportsInfo(enclosingClass: String,
+        topLevelConstructorDefs: List[TopLevelConstructorExportDef],
         topLevelMethodExports: List[TopLevelMethodExportDef],
         topLevelFieldExports: List[TopLevelFieldExportDef]): MethodInfo = {
       builder
-        .setEncodedName(ClassExportsName)
+        .setEncodedName(TopLevelExportsName)
         .setIsExported(true)
 
-      for (constructorDef <- constructorDefs)
-        traverse(constructorDef.body)
+      for (topLevelConstructorDef <- topLevelConstructorDefs)
+        traverse(topLevelConstructorDef.body)
 
       for (topLevelMethodExport <- topLevelMethodExports)
-        traverse(topLevelMethodExport.methodDef)
+        topLevelMethodExport.methodDef.body.foreach(traverse(_))
 
       for (topLevelFieldExport <- topLevelFieldExports) {
         val field = topLevelFieldExport.field.name
@@ -466,9 +452,9 @@ object Infos {
               builder.addUsedInstanceTest(tpe)
 
             case NewArray(tpe, _) =>
-              builder.addAccessedClassData(tpe)
+              builder.addAccessedClassData(tpe.arrayTypeRef)
             case ArrayValue(tpe, _) =>
-              builder.addAccessedClassData(tpe)
+              builder.addAccessedClassData(tpe.arrayTypeRef)
             case ClassOf(cls) =>
               builder.addAccessedClassData(cls)
 

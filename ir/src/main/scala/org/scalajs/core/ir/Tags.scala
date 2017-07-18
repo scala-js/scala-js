@@ -18,9 +18,8 @@ private[ir] object Tags {
   final val TagEmptyTree = 1
 
   final val TagVarDef = TagEmptyTree + 1
-  final val TagParamDef = TagVarDef + 1
 
-  final val TagSkip = TagParamDef + 1
+  final val TagSkip = TagVarDef + 1
   final val TagBlock = TagSkip + 1
   final val TagLabeled = TagBlock + 1
   final val TagAssign = TagLabeled + 1
@@ -28,8 +27,9 @@ private[ir] object Tags {
   final val TagIf = TagReturn + 1
   final val TagWhile = TagIf + 1
   final val TagDoWhile = TagWhile + 1
-
-  final val TagThrow = TagDoWhile + 1
+  final val TagTryCatch = TagDoWhile + 1
+  final val TagTryFinally = TagTryCatch + 1
+  final val TagThrow = TagTryFinally + 1
   final val TagContinue = TagThrow + 1
   final val TagMatch = TagContinue + 1
   final val TagDebugger = TagMatch + 1
@@ -38,7 +38,8 @@ private[ir] object Tags {
   final val TagLoadModule = TagNew + 1
   final val TagStoreModule = TagLoadModule + 1
   final val TagSelect = TagStoreModule + 1
-  final val TagApply = TagSelect + 1
+  final val TagSelectStatic = TagSelect + 1
+  final val TagApply = TagSelectStatic + 1
   final val TagApplyStatically = TagApply + 1
   final val TagApplyStatic = TagApplyStatically + 1
   final val TagUnaryOp = TagApplyStatic + 1
@@ -60,15 +61,22 @@ private[ir] object Tags {
   final val TagJSFunctionApply = TagJSBracketSelect + 1
   final val TagJSDotMethodApply = TagJSFunctionApply + 1
   final val TagJSBracketMethodApply = TagJSDotMethodApply + 1
-  final val TagJSDelete = TagJSBracketMethodApply + 1
+  final val TagJSSuperBracketSelect = TagJSBracketMethodApply + 1
+  final val TagJSSuperBracketCall = TagJSSuperBracketSelect + 1
+  final val TagJSSuperConstructorCall = TagJSSuperBracketCall + 1
+  final val TagLoadJSConstructor = TagJSSuperConstructorCall + 1
+  final val TagLoadJSModule = TagLoadJSConstructor + 1
+  final val TagJSSpread = TagLoadJSModule + 1
+  final val TagJSDelete = TagJSSpread + 1
   final val TagJSUnaryOp = TagJSDelete + 1
   final val TagJSBinaryOp = TagJSUnaryOp + 1
   final val TagJSArrayConstr = TagJSBinaryOp + 1
   final val TagJSObjectConstr = TagJSArrayConstr + 1
+  final val TagJSGlobalRef = TagJSObjectConstr + 1
+  final val TagJSLinkingInfo = TagJSGlobalRef + 1
 
-  final val TagUndefined = TagJSObjectConstr + 1
-  final val TagUndefinedParam = TagUndefined + 1 // TODO Move this
-  final val TagNull = TagUndefinedParam + 1
+  final val TagUndefined = TagJSLinkingInfo + 1
+  final val TagNull = TagUndefined + 1
   final val TagBooleanLiteral = TagNull + 1
   final val TagIntLiteral = TagBooleanLiteral + 1
   final val TagLongLiteral = TagIntLiteral + 1
@@ -77,33 +85,25 @@ private[ir] object Tags {
   final val TagStringLiteral = TagDoubleLiteral + 1
   final val TagClassOf = TagStringLiteral + 1
 
-  final val TagVarRef = TagClassOf + 1
+  final val TagUndefinedParam = TagClassOf + 1
+
+  final val TagVarRef = TagUndefinedParam + 1
   final val TagThis = TagVarRef + 1
   final val TagClosure = TagThis + 1
 
-  final val TagClassDef = TagClosure + 1
-  final val TagFieldDef = TagClassDef + 1
+  // Tags for member defs
+
+  final val TagFieldDef = 1
   final val TagMethodDef = TagFieldDef + 1
   final val TagPropertyDef = TagMethodDef + 1
-  final val TagConstructorExportDef = TagPropertyDef + 1
-  final val TagModuleExportDef = TagConstructorExportDef + 1
 
-  // TODO Reorganize these when we can break binary compatibility
-  final val TagJSSpread = TagModuleExportDef + 1
-  final val TagJSLinkingInfo = TagJSSpread + 1
-  final val TagJSSuperBracketSelect = TagJSLinkingInfo + 1
-  final val TagJSSuperBracketCall = TagJSSuperBracketSelect + 1
-  final val TagJSSuperConstructorCall = TagJSSuperBracketCall + 1
-  final val TagLoadJSConstructor = TagJSSuperConstructorCall + 1
-  final val TagLoadJSModule = TagLoadJSConstructor + 1
-  final val TagJSClassExportDef = TagLoadJSModule + 1
-  final val TagTryCatch = TagJSClassExportDef + 1
-  final val TagTryFinally = TagTryCatch + 1
-  final val TagTopLevelMethodExportDef = TagTryFinally + 1
-  final val TagSelectStatic = TagTopLevelMethodExportDef + 1
-  final val TagTopLevelFieldExportDef = TagSelectStatic + 1
-  final val TagTopLevelModuleExportDef = TagTopLevelFieldExportDef + 1
-  final val TagJSGlobalRef = TagTopLevelModuleExportDef + 1
+  // Tags for top-level export defs
+
+  final val TagTopLevelConstructorExportDef = 1
+  final val TagTopLevelJSClassExportDef = TagTopLevelConstructorExportDef + 1
+  final val TagTopLevelModuleExportDef = TagTopLevelJSClassExportDef + 1
+  final val TagTopLevelMethodExportDef = TagTopLevelModuleExportDef + 1
+  final val TagTopLevelFieldExportDef = TagTopLevelMethodExportDef + 1
 
   // Tags for Types
 
@@ -121,6 +121,11 @@ private[ir] object Tags {
   final val TagArrayType = TagClassType + 1
   final val TagRecordType = TagArrayType + 1
   final val TagNoType = TagRecordType + 1
+
+  // Tags for TypeRefs
+
+  final val TagClassRef = 1
+  final val TagArrayTypeRef = TagClassRef + 1
 
   // Tags for PropertyNames
 

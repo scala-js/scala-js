@@ -80,7 +80,7 @@ object Scalajsp {
     if (opts.infos)
       new InfoPrinter(stdout).print(vfile.info)
     else
-      new IRTreePrinter(stdout).printTopLevelTree(vfile.tree)
+      new IRTreePrinter(stdout).print(vfile.tree)
 
     stdout.flush()
   }

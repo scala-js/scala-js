@@ -57,7 +57,7 @@ abstract class GenJSCode extends plugins.PluginComponent
   override val description: String = "generate JavaScript code from ASTs"
 
   /** testing: this will be called when ASTs are generated */
-  def generatedJSAST(clDefs: List[js.Tree]): Unit
+  def generatedJSAST(clDefs: List[js.ClassDef]): Unit
 
   /** Implicit conversion from nsc Position to ir.Position. */
   implicit def pos2irPos(pos: Position): ir.Position = {
@@ -386,11 +386,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         if (!isHijacked) genClassFields(cd) ++ generatedMethods.toList
         else generatedMethods.toList // No fields needed
 
-      // Generate the exported members, constructors and accessors
-      val exports = {
-        // Generate the exported members
-        val memberExports = genMemberExports(sym)
+      // Generate member exports
+      val memberExports = genMemberExports(sym)
 
+      // Generate the exported members, constructors and accessors
+      val topLevelExportDefs = {
         // Generate exported constructors or accessors
         val exportedConstructorsOrAccessors =
           if (isStaticModule(sym)) genModuleAccessorExports(sym)
@@ -398,7 +398,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         val topLevelExports = genTopLevelExports(sym)
 
-        memberExports ++ exportedConstructorsOrAccessors ++ topLevelExports
+        exportedConstructorsOrAccessors ++ topLevelExports
       }
 
       // Static initializer
@@ -418,7 +418,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         // Initialization of the module because of field exports
         val needsStaticModuleInit =
-          exports.exists(_.isInstanceOf[js.TopLevelFieldExportDef])
+          topLevelExportDefs.exists(_.isInstanceOf[js.TopLevelFieldExportDef])
         val staticModuleInit =
           if (!needsStaticModuleInit) None
           else Some(genLoadModule(sym))
@@ -432,8 +432,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       // Hashed definitions of the class
-      val hashedDefs =
-        Hashers.hashDefs(generatedMembers ++ exports ++ optStaticInitializer)
+      val hashedMemberDefs =
+        Hashers.hashMemberDefs(generatedMembers ++ memberExports ++ optStaticInitializer)
 
       // The complete class definition
       val kind =
@@ -447,7 +447,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           Some(encodeClassFullNameIdent(sym.superClass)),
           genClassInterfaces(sym),
           None,
-          hashedDefs)(
+          hashedMemberDefs,
+          topLevelExportDefs)(
           optimizerHints)
 
       classDefinition
@@ -533,8 +534,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      // Generate class-level exporters
-      val classExports =
+      // Generate top-level exporters
+      val topLevelExports =
         if (isStaticModule(sym)) genModuleAccessorExports(sym)
         else genJSClassExports(sym)
 
@@ -544,13 +545,12 @@ abstract class GenJSCode extends plugins.PluginComponent
         genJSClassConstructor(sym, constructorTrees.toList) ::
         genJSClassDispatchers(sym, dispatchMethodNames.result().distinct) :::
         generatedMethods.toList :::
-        staticMembers :::
-        classExports
+        staticMembers
       }
 
       // Hashed definitions of the class
-      val hashedDefs =
-        Hashers.hashDefs(generatedMembers)
+      val hashedMemberDefs =
+        Hashers.hashMemberDefs(generatedMembers)
 
       // The complete class definition
       val kind =
@@ -563,7 +563,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           Some(encodeClassFullNameIdent(sym.superClass)),
           genClassInterfaces(sym),
           None,
-          hashedDefs)(
+          hashedMemberDefs,
+          topLevelExports)(
           OptimizerHints.empty)
 
       classDefinition
@@ -588,11 +589,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         nestedGenerateClass(sym)(genNonNativeJSClass(classDef))
 
       // Partition class members.
-      val staticMembers = ListBuffer.empty[js.Tree]
-      val classMembers = ListBuffer.empty[js.Tree]
+      val staticMembers = ListBuffer.empty[js.MemberDef]
+      val classMembers = ListBuffer.empty[js.MemberDef]
       var constructor: Option[js.MethodDef] = None
 
-      origJsClass.defs.foreach {
+      origJsClass.memberDefs.foreach {
         case fdef: js.FieldDef =>
           classMembers += fdef
 
@@ -615,10 +616,10 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case property: js.PropertyDef =>
           classMembers += property
-
-        case tree =>
-          abort("Unexpected tree: " + tree)
       }
+
+      assert(origJsClass.topLevelExportDefs.isEmpty,
+          "Found top-level exports in anonymous JS class at " + pos)
 
       // Make new class def with static members only
       val newClassDef = {
@@ -626,7 +627,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val parent = js.Ident(ir.Definitions.ObjectClass)
         js.ClassDef(origJsClass.name, ClassKind.AbstractJSType,
             Some(parent), interfaces = Nil, jsNativeLoadSpec = None,
-            staticMembers.toList)(origJsClass.optimizerHints)
+            staticMembers.toList, Nil)(origJsClass.optimizerHints)
       }
 
       generatedClasses += ((sym, None, newClassDef))
@@ -760,7 +761,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       js.ClassDef(classIdent, kind, superClass, genClassInterfaces(sym),
-          jsNativeLoadSpec, Nil)(
+          jsNativeLoadSpec, Nil, Nil)(
           OptimizerHints.empty)
     }
 
@@ -791,11 +792,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       val interfaces = genClassInterfaces(sym)
 
       // Hashed definitions of the interface
-      val hashedDefs =
-        Hashers.hashDefs(generatedMethods)
+      val hashedMemberDefs =
+        Hashers.hashMemberDefs(generatedMethods)
 
       js.ClassDef(classIdent, ClassKind.Interface, None, interfaces, None,
-          hashedDefs)(OptimizerHints.empty)
+          hashedMemberDefs, Nil)(OptimizerHints.empty)
     }
 
     // Generate an implementation class of a trait -----------------------------
@@ -827,12 +828,12 @@ abstract class GenJSCode extends plugins.PluginComponent
       val objectClassIdent = encodeClassFullNameIdent(ObjectClass)
 
       // Hashed definitions of the impl class
-      val hashedDefs =
-        Hashers.hashDefs(generatedMethods)
+      val hashedMemberDefs =
+        Hashers.hashMemberDefs(generatedMethods)
 
       js.ClassDef(classIdent, ClassKind.Class,
           Some(objectClassIdent), Nil, None,
-          hashedDefs)(OptimizerHints.empty)
+          hashedMemberDefs, Nil)(OptimizerHints.empty)
     }
 
     private def genClassInterfaces(sym: Symbol)(
@@ -945,7 +946,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     private def genRegisterReflectiveInstantiationForModuleClass(sym: Symbol)(
         implicit pos: Position): Option[js.Tree] = {
       val fqcnArg = js.StringLiteral(sym.fullName + "$")
-      val runtimeClassArg = js.ClassOf(toReferenceType(sym.info))
+      val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
       val loadModuleFunArg = js.Closure(Nil, Nil, genLoadModule(sym), Nil)
 
       val stat = genApplyMethod(
@@ -988,7 +989,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                * parameter types is `List(classOf[Int])`, and when invoked
                * reflectively, it must be given an `Int` (or `Integer`).
                */
-              val paramType = js.ClassOf(toReferenceType(param.tpe))
+              val paramType = js.ClassOf(toTypeRef(param.tpe))
               val paramDef = js.ParamDef(encodeLocalSym(param), jstpe.AnyType,
                   mutable = false, rest = false)
               val actualParam = fromAny(paramDef.ref, param.tpe)
@@ -1006,7 +1007,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
 
         val fqcnArg = js.StringLiteral(sym.fullName)
-        val runtimeClassArg = js.ClassOf(toReferenceType(sym.info))
+        val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
         val ctorsInfosArg = js.JSArrayConstr(constructorsInfos)
 
         val stat = genApplyMethod(
@@ -1021,7 +1022,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     // Constructor of a non-native JS class ------------------------------
 
     def genJSClassConstructor(classSym: Symbol,
-        constructorTrees: List[DefDef]): js.Tree = {
+        constructorTrees: List[DefDef]): js.MethodDef = {
       implicit val pos = classSym.pos
 
       if (hasDefaultCtorArgsAndRawJSModule(classSym)) {
@@ -1029,7 +1030,9 @@ abstract class GenJSCode extends plugins.PluginComponent
             "Implementation restriction: constructors of " +
             "non-native JS classes cannot have default parameters " +
             "if their companion module is JS native.")
-        js.Skip()
+        js.MethodDef(static = false, js.StringLiteral("constructor"), Nil,
+            jstpe.AnyType, Some(js.Skip()))(
+            OptimizerHints.empty, None)
       } else {
         withNewLocalNameScope {
           val ctors: List[js.MethodDef] = constructorTrees.flatMap { tree =>
@@ -1903,7 +1906,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             case NullTag =>
               js.Null()
             case ClazzTag =>
-              js.ClassOf(toReferenceType(value.typeValue))
+              js.ClassOf(toTypeRef(value.typeValue))
             case EnumTag =>
               genStaticMember(value.symbolValue)
           }
@@ -2657,7 +2660,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.JSBinaryOp.instanceof, value, genPrimitiveJSClass(sym)), 'Z')
         }
       } else {
-        js.IsInstanceOf(value, toReferenceType(to))
+        js.IsInstanceOf(value, toTypeRef(to))
       }
     }
 
@@ -2666,7 +2669,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): js.Tree = {
 
       def default: js.Tree =
-        js.AsInstanceOf(value, toReferenceType(to))
+        js.AsInstanceOf(value, toTypeRef(to))
 
       val sym = to.typeSymbol
 
@@ -2753,9 +2756,10 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     def genNewArray(arrayType: jstpe.ArrayType, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      assert(arguments.length <= arrayType.dimensions,
+      assert(arguments.length <= arrayType.arrayTypeRef.dimensions,
           "too many arguments for array constructor: found " + arguments.length +
-          " but array has only " + arrayType.dimensions + " dimension(s)")
+          " but array has only " + arrayType.arrayTypeRef.dimensions +
+          " dimension(s)")
 
       js.NewArray(arrayType, arguments)
     }
@@ -2766,8 +2770,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = tree.pos
       val ArrayValue(tpt @ TypeTree(), elems) = tree
 
-      val arrType = toReferenceType(tree.tpe).asInstanceOf[jstpe.ArrayType]
-      js.ArrayValue(arrType, elems map genExpr)
+      val arrayTypeRef = toTypeRef(tree.tpe).asInstanceOf[jstpe.ArrayTypeRef]
+      js.ArrayValue(jstpe.ArrayType(arrayTypeRef), elems map genExpr)
     }
 
     /** Gen JS code for a Match, i.e., a switch-able pattern match.
@@ -5197,7 +5201,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           Some(js.Ident(ir.Definitions.ObjectClass)),
           List(js.Ident(intfName)),
           None,
-          List(fFieldDef, ctorDef, samMethodDef))(
+          List(fFieldDef, ctorDef, samMethodDef),
+          Nil)(
           js.OptimizerHints.empty.withInline(true))
 
       generatedClasses += ((currentClassSym.get, Some(suffix), classDef))

@@ -111,7 +111,7 @@ final class ClosureLinkerBackend(
   private def makeExternsForExports(linkingUnit: LinkingUnit): VirtualJSFile = {
     import org.scalajs.core.ir.Trees._
 
-    def exportName(tree: Tree): Option[String] = (tree: @unchecked) match {
+    def exportName(memberDef: MemberDef): Option[String] = memberDef match {
       case MethodDef(_, StringLiteral(name), _, _, _) => Some(name)
       case PropertyDef(_, StringLiteral(name), _, _)  => Some(name)
       case _                                          => None

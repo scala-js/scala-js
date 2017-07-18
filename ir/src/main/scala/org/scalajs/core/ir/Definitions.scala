@@ -69,16 +69,8 @@ object Definitions {
   /** Name of the static initializer method. */
   final val StaticInitializerName = "clinit___"
 
-  /** Name used for infos of class exports
-   *
-   *  These currently are exported constructors and top level exports)
-   *
-   *  TODO give this a better name once we can break backwards compat.
-   */
-  val ClassExportsName = "__exportedInits"
-
-  @deprecated("Use ClassExportsName instead", "0.6.14")
-  def ExportedConstructorsName: String = "__exportedInits"
+  /** Name used for infos of top-level exports. */
+  val TopLevelExportsName = "__topLevelExports"
 
   /** Encodes a class name. */
   def encodeClassName(fullName: String): String = {
@@ -163,7 +155,7 @@ object Definitions {
    *  information from `encodedName.indexOf("__p") >= 0`.
    */
   def decodeMethodName(
-      encodedName: String): (String, List[ReferenceType], Option[ReferenceType]) = {
+      encodedName: String): (String, List[TypeRef], Option[TypeRef]) = {
     val (simpleName, privateAndSigString) = if (isConstructorName(encodedName)) {
       val privateAndSigString =
         if (encodedName == "init___") ""
@@ -187,22 +179,22 @@ object Definitions {
 
     val paramStrings :+ resultString = paramsAndResultStrings
 
-    val paramTypes = paramStrings.map(decodeReferenceType).toList
+    val paramTypes = paramStrings.map(decodeTypeRef).toList
     val resultType =
       if (resultString == "") None // constructor or reflective proxy
-      else Some(decodeReferenceType(resultString))
+      else Some(decodeTypeRef(resultString))
 
     (simpleName, paramTypes, resultType)
   }
 
-  /** Decodes a [[Types.ReferenceType]], such as in an encoded method signature.
+  /** Decodes a [[Types.TypeRef]], such as in an encoded method signature.
    */
-  def decodeReferenceType(encodedName: String): ReferenceType = {
+  def decodeTypeRef(encodedName: String): TypeRef = {
     val arrayDepth = encodedName.indexWhere(_ != 'A')
     if (arrayDepth == 0)
-      ClassType(encodedName)
+      ClassRef(encodedName)
     else
-      ArrayType(encodedName.substring(arrayDepth), arrayDepth)
+      ArrayTypeRef(encodedName.substring(arrayDepth), arrayDepth)
   }
 
   /* Common predicates on encoded names */

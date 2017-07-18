@@ -47,26 +47,13 @@ object Printers {
   }
 
   class IRTreePrinter(protected val out: Writer) extends IndentationManager {
-    def printTopLevelTree(tree: Tree): Unit = {
-      tree match {
-        case Skip() =>
-          // do not print anything
-        case Block(stats) =>
-          for (stat <- stats)
-            printTopLevelTree(stat)
-        case _ =>
-          print(tree)
-          println()
-      }
-    }
-
-    protected final def printColumn(ts: List[Tree], start: String, sep: String,
-        end: String): Unit = {
+    protected final def printColumn(ts: List[IRNode], start: String,
+        sep: String, end: String): Unit = {
       print(start); indent()
       var rest = ts
       while (rest.nonEmpty) {
         println()
-        print(rest.head)
+        printAnyNode(rest.head)
         rest = rest.tail
         if (rest.nonEmpty)
           print(sep)
@@ -74,12 +61,12 @@ object Printers {
       undent(); println(); print(end)
     }
 
-    protected final def printRow(ts: List[Tree], start: String, sep: String,
+    protected final def printRow(ts: List[IRNode], start: String, sep: String,
         end: String): Unit = {
       print(start)
       var rest = ts
       while (rest.nonEmpty) {
-        print(rest.head)
+        printAnyNode(rest.head)
         rest = rest.tail
         if (rest.nonEmpty)
           print(sep)
@@ -114,6 +101,30 @@ object Printers {
       printRow(args, "(", ", ", ")")
     }
 
+    def printAnyNode(node: IRNode): Unit = {
+      node match {
+        case node: Ident             => print(node)
+        case node: ComputedName      => print(node)
+        case node: ParamDef          => print(node)
+        case node: Tree              => print(node)
+        case node: ClassDef          => print(node)
+        case node: MemberDef         => print(node)
+        case node: TopLevelExportDef => print(node)
+      }
+    }
+
+    def print(paramDef: ParamDef): Unit = {
+      val ParamDef(ident, ptpe, mutable, rest) = paramDef
+
+      if (mutable)
+        print("var ")
+      if (rest)
+        print("...")
+      print(ident)
+      print(": ")
+      print(ptpe)
+    }
+
     def print(tree: Tree): Unit = {
       tree match {
         // Definitions
@@ -128,15 +139,6 @@ object Printers {
           print(vtpe)
           print(" = ")
           print(rhs)
-
-        case ParamDef(ident, ptpe, mutable, rest) =>
-          if (mutable)
-            print("var ")
-          if (rest)
-            print("...")
-          print(ident)
-          print(": ")
-          print(ptpe)
 
         // Control flow constructs
 
@@ -442,13 +444,13 @@ object Printers {
 
         case NewArray(tpe, lengths) =>
           print("new ")
-          print(tpe.baseClassName)
+          print(tpe.arrayTypeRef.baseClassName)
           for (length <- lengths) {
             print('[')
             print(length)
             print(']')
           }
-          for (dim <- lengths.size until tpe.dimensions)
+          for (dim <- lengths.size until tpe.arrayTypeRef.dimensions)
             print("[]")
 
         case ArrayValue(tpe, elems) =>
@@ -477,16 +479,16 @@ object Printers {
           }
           print(')')
 
-        case IsInstanceOf(expr, cls) =>
+        case IsInstanceOf(expr, typeRef) =>
           print(expr)
           print(".isInstanceOf[")
-          printRefType(cls)
+          print(typeRef)
           print(']')
 
-        case AsInstanceOf(expr, cls) =>
+        case AsInstanceOf(expr, typeRef) =>
           print(expr)
           print(".asInstanceOf[")
-          printRefType(cls)
+          print(typeRef)
           print(']')
 
         case Unbox(expr, charCode) =>
@@ -669,6 +671,10 @@ object Printers {
           }
           undent; println(); print('}')
 
+        case JSGlobalRef(ident) =>
+          print("global:")
+          print(ident)
+
         case JSLinkingInfo() =>
           print("<linkinginfo>")
 
@@ -729,9 +735,9 @@ object Printers {
           printEscapeJS(value, out)
           print('\"')
 
-        case ClassOf(cls) =>
+        case ClassOf(typeRef) =>
           print("classOf[")
-          printRefType(cls)
+          print(typeRef)
           print(']')
 
         // Specials
@@ -746,10 +752,6 @@ object Printers {
 
         case This() =>
           print("this")
-
-        case JSGlobalRef(ident) =>
-          print("global:")
-          print(ident)
 
         case Closure(captureParams, params, body, captureValues) =>
           print("(lambda<")
@@ -766,46 +768,49 @@ object Printers {
           printRow(params, ">(", ", ", ") = ")
           printBlock(body)
           print(')')
+      }
+    }
 
-        // Classes
+    def print(classDef: ClassDef): Unit = {
+      val ClassDef(name, kind, superClass, interfaces, jsNativeLoadSpec,
+          memberDefs, topLevelExportDefs) = classDef
+      print(classDef.optimizerHints)
+      kind match {
+        case ClassKind.Class               => print("class ")
+        case ClassKind.ModuleClass         => print("module class ")
+        case ClassKind.Interface           => print("interface ")
+        case ClassKind.AbstractJSType      => print("abstract js type ")
+        case ClassKind.HijackedClass       => print("hijacked class ")
+        case ClassKind.JSClass             => print("js class ")
+        case ClassKind.JSModuleClass       => print("js module class ")
+        case ClassKind.NativeJSClass       => print("native js class ")
+        case ClassKind.NativeJSModuleClass => print("native js module class ")
+      }
+      print(name)
+      superClass.foreach { cls =>
+        print(" extends ")
+        print(cls)
+      }
+      if (interfaces.nonEmpty) {
+        print(" implements ")
+        var rest = interfaces
+        while (rest.nonEmpty) {
+          print(rest.head)
+          rest = rest.tail
+          if (rest.nonEmpty)
+            print(", ")
+        }
+      }
+      jsNativeLoadSpec.foreach { spec =>
+        print(" loadfrom ")
+        print(spec)
+      }
+      print(" ")
+      printColumn(memberDefs ::: topLevelExportDefs, "{", "", "}")
+    }
 
-        case tree: ClassDef =>
-          val ClassDef(name, kind, superClass, interfaces, jsNativeLoadSpec,
-              defs) = tree
-          print(tree.optimizerHints)
-          kind match {
-            case ClassKind.Class               => print("class ")
-            case ClassKind.ModuleClass         => print("module class ")
-            case ClassKind.Interface           => print("interface ")
-            case ClassKind.AbstractJSType      => print("abstract js type ")
-            case ClassKind.HijackedClass       => print("hijacked class ")
-            case ClassKind.JSClass             => print("js class ")
-            case ClassKind.JSModuleClass       => print("js module class ")
-            case ClassKind.NativeJSClass       => print("native js class ")
-            case ClassKind.NativeJSModuleClass => print("native js module class ")
-          }
-          print(name)
-          superClass.foreach { cls =>
-            print(" extends ")
-            print(cls)
-          }
-          if (interfaces.nonEmpty) {
-            print(" implements ")
-            var rest = interfaces
-            while (rest.nonEmpty) {
-              print(rest.head)
-              rest = rest.tail
-              if (rest.nonEmpty)
-                print(", ")
-            }
-          }
-          jsNativeLoadSpec.foreach { spec =>
-            print(" loadfrom ")
-            print(spec)
-          }
-          print(" ")
-          printColumn(defs, "{", "", "}")
-
+    def print(memberDef: MemberDef): Unit = {
+      memberDef match {
         case FieldDef(static, name, vtpe, mutable) =>
           if (static)
             print("static ")
@@ -853,21 +858,20 @@ object Printers {
             printSig(arg :: Nil, NoType)
             printBlock(body)
           }
+      }
+    }
 
-        case ConstructorExportDef(fullName, args, body) =>
-          print("export \"")
+    def print(topLevelExportDef: TopLevelExportDef): Unit = {
+      topLevelExportDef match {
+        case TopLevelConstructorExportDef(fullName, args, body) =>
+          print("export top constructor \"")
           printEscapeJS(fullName, out)
           print('\"')
           printSig(args, NoType) // NoType as trick not to display a type
           printBlock(body)
 
-        case JSClassExportDef(fullName) =>
-          print("export class \"")
-          printEscapeJS(fullName, out)
-          print('\"')
-
-        case ModuleExportDef(fullName) =>
-          print("export module \"")
+        case TopLevelJSClassExportDef(fullName) =>
+          print("export top class \"")
           printEscapeJS(fullName, out)
           print('\"')
 
@@ -886,14 +890,17 @@ object Printers {
           print(" as \"")
           printEscapeJS(fullName, out)
           print('\"')
-
-        case _ =>
-          print(s"<error, elem of class ${tree.getClass()}>")
       }
     }
 
-    def printRefType(tpe: ReferenceType): Unit =
-      print(tpe.asInstanceOf[Type])
+    def print(tpe: TypeRef): Unit = tpe match {
+      case ClassRef(className) =>
+        print(className)
+      case ArrayTypeRef(base, dims) =>
+        print(base)
+        for (i <- 1 to dims)
+          print("[]")
+    }
 
     def print(tpe: Type): Unit = tpe match {
       case AnyType              => print("any")
@@ -909,10 +916,8 @@ object Printers {
       case ClassType(className) => print(className)
       case NoType               => print("<notype>")
 
-      case ArrayType(base, dims) =>
-        print(base)
-        for (i <- 1 to dims)
-          print("[]")
+      case ArrayType(arrayTypeRef) =>
+        print(arrayTypeRef)
 
       case RecordType(fields) =>
         print('(')

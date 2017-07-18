@@ -23,7 +23,7 @@ import ir.Infos
  *  reliably to determine at phase P+1 whether a linked member coming from
  *  phase P must be reprocessed.
  */
-final class LinkedMember[+T <: Tree](
+final class LinkedMember[+T <: MemberDef](
     val info: Infos.MethodInfo,
     val tree: T,
     val version: Option[String]

@@ -18,8 +18,8 @@ abstract class JSASTTest extends DirectTest {
 
   private var lastAST: JSAST = _
 
-  class JSAST(val clDefs: List[js.Tree]) {
-    type Pat = PartialFunction[js.Tree, Unit]
+  class JSAST(val clDefs: List[js.ClassDef]) {
+    type Pat = PartialFunction[js.IRNode, Unit]
 
     class PFTraverser(pf: Pat) extends ir.Traversers.Traverser {
       private case object Found extends ControlThrowable
@@ -29,7 +29,7 @@ abstract class JSASTTest extends DirectTest {
       def find: Boolean = {
         finding = true
         try {
-          clDefs.map(traverse)
+          clDefs.map(traverseClassDef)
           false
         } catch {
           case Found => true
@@ -38,17 +38,37 @@ abstract class JSASTTest extends DirectTest {
 
       def traverse(): Unit = {
         finding = false
-        clDefs.map(traverse)
+        clDefs.map(traverseClassDef)
       }
 
       override def traverse(tree: js.Tree): Unit = {
-        if (finding && pf.isDefinedAt(tree))
-          throw Found
-
-        if (!finding)
-          pf.lift(tree)
-
+        handle(tree)
         super.traverse(tree)
+      }
+
+      override def traverseClassDef(classDef: js.ClassDef): Unit = {
+        handle(classDef)
+        super.traverseClassDef(classDef)
+      }
+
+      override def traverseMemberDef(memberDef: js.MemberDef): Unit = {
+        handle(memberDef)
+        super.traverseMemberDef(memberDef)
+      }
+
+      override def traverseTopLevelExportDef(
+          exportDef: js.TopLevelExportDef): Unit = {
+        handle(exportDef)
+        super.traverseTopLevelExportDef(exportDef)
+      }
+
+      private def handle(node: js.IRNode): Unit = {
+        if (finding) {
+          if (pf.isDefinedAt(node))
+            throw Found
+        } else {
+          pf.lift(node)
+        }
       }
     }
 
@@ -89,7 +109,7 @@ abstract class JSASTTest extends DirectTest {
 
   override def newScalaJSPlugin(global: Global): ScalaJSPlugin = {
     new ScalaJSPlugin(global) {
-      override def generatedJSAST(cld: List[js.Tree]): Unit = {
+      override def generatedJSAST(cld: List[js.ClassDef]): Unit = {
         lastAST = new JSAST(cld)
       }
     }

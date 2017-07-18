@@ -68,7 +68,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
               classDef.memberMethods.nonEmpty ||
               classDef.abstractMethods.nonEmpty ||
               classDef.exportedMembers.nonEmpty ||
-              classDef.classExports.nonEmpty) {
+              classDef.topLevelExports.nonEmpty) {
             reportError(s"Raw JS type ${classDef.name} cannot "+
                 "have instance members")
           }
@@ -156,19 +156,16 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         }
       }
 
-      // Check classExports
-      for (tree <- classDef.classExports) {
+      // Check top-level exports
+      for (tree <- classDef.topLevelExports) {
         implicit val ctx = ErrorContext(tree)
 
         tree match {
-          case tree: ConstructorExportDef =>
-            checkConstructorExportDef(tree, classDef)
+          case tree: TopLevelConstructorExportDef =>
+            checkTopLevelConstructorExportDef(tree, classDef)
 
-          case tree: JSClassExportDef =>
-            checkJSClassExportDef(tree, classDef)
-
-          case tree: ModuleExportDef =>
-            checkModuleExportDef(tree, classDef)
+          case tree: TopLevelJSClassExportDef =>
+            checkTopLevelJSClassExportDef(tree, classDef)
 
           case tree: TopLevelModuleExportDef =>
             checkTopLevelModuleExportDef(tree, classDef)
@@ -187,7 +184,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
           // Anything else is illegal
           case _ =>
-            reportError("Illegal class export of type " +
+            reportError("Illegal top-level export of type " +
                 tree.getClass.getName)
         }
       }
@@ -201,7 +198,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       if (classDef.fields.nonEmpty)
         reportError(s"$kindStr may not have fields")
 
-      if (classDef.exportedMembers.nonEmpty || classDef.classExports.nonEmpty)
+      if (classDef.exportedMembers.nonEmpty || classDef.topLevelExports.nonEmpty)
         reportError(s"$kindStr may not have exports")
     }
 
@@ -441,7 +438,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         throw new AssertionError("Exported method may not have Ident as name")
 
       case StringLiteral(name) =>
-        if (name.contains("__") && name != Definitions.ClassExportsName)
+        if (name.contains("__") && name != Definitions.TopLevelExportsName)
           reportError("Exported method def name cannot contain __")
 
       case ComputedName(tree, _) =>
@@ -451,9 +448,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  private def checkConstructorExportDef(ctorDef: ConstructorExportDef,
+  private def checkTopLevelConstructorExportDef(
+      ctorDef: TopLevelConstructorExportDef,
       classDef: LinkedClass): Unit = withPerMethodState {
-    val ConstructorExportDef(_, params, body) = ctorDef
+    val TopLevelConstructorExportDef(_, params, body) = ctorDef
     implicit val ctx = ErrorContext(ctorDef)
 
     if (!classDef.kind.isClass) {
@@ -481,20 +479,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     typecheckStat(body, bodyEnv)
   }
 
-  private def checkJSClassExportDef(classExportDef: JSClassExportDef,
-      classDef: LinkedClass): Unit = {
+  private def checkTopLevelJSClassExportDef(
+      classExportDef: TopLevelJSClassExportDef, classDef: LinkedClass): Unit = {
     implicit val ctx = ErrorContext(classExportDef)
 
     if (classDef.kind != ClassKind.JSClass)
       reportError(s"Exported JS class def can only appear in a JS class")
-  }
-
-  private def checkModuleExportDef(moduleDef: ModuleExportDef,
-      classDef: LinkedClass): Unit = {
-    implicit val ctx = ErrorContext(moduleDef)
-
-    if (!classDef.kind.hasModuleAccessor)
-      reportError(s"Exported module def can only appear in a module class")
   }
 
   private def checkTopLevelModuleExportDef(
@@ -977,6 +967,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         for ((_, value) <- fields)
           typecheckExpr(value, env)
 
+      case JSGlobalRef(_) =>
+
       case JSLinkingInfo() =>
 
       // Literals
@@ -997,8 +989,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case This() =>
         if (!isSubtype(env.thisTpe, tree.tpe))
           reportError(s"this of type ${env.thisTpe} typed as ${tree.tpe}")
-
-      case JSGlobalRef(_) =>
 
       case Closure(captureParams, params, body, captureValues) =>
         /* Check compliance of captureValues wrt. captureParams in the current
@@ -1058,25 +1048,25 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   private def inferMethodType(encodedName: String, isStatic: Boolean)(
       implicit ctx: ErrorContext): (List[Type], Type) = {
 
-    val (_, paramRefTypes, resultRefType) = decodeMethodName(encodedName)
-    val paramTypes = paramRefTypes.map(refTypeToType)
+    val (_, paramTypeRefs, resultTypeRef) = decodeMethodName(encodedName)
+    val paramTypes = paramTypeRefs.map(typeRefToType)
 
-    val resultType = resultRefType.fold[Type] {
+    val resultType = resultTypeRef.fold[Type] {
       if (isConstructorName(encodedName)) NoType
       else if (encodedName == StaticInitializerName) NoType
       else AnyType // reflective proxy
-    } { refType =>
-      refTypeToType(refType)
+    } { typeRef =>
+      typeRefToType(typeRef)
     }
 
     (paramTypes, resultType)
   }
 
-  private def refTypeToType(refType: ReferenceType)(
+  private def typeRefToType(typeRef: TypeRef)(
       implicit ctx: ErrorContext): Type = {
-    refType match {
-      case arrayType: ArrayType   => arrayType
-      case ClassType(encodedName) => classNameToType(encodedName)
+    typeRef match {
+      case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef)
+      case ClassRef(encodedName)      => classNameToType(encodedName)
     }
   }
 
@@ -1106,8 +1096,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def arrayElemType(arrayType: ArrayType)(
       implicit ctx: ErrorContext): Type = {
-    if (arrayType.dimensions == 1) classNameToType(arrayType.baseClassName)
-    else ArrayType(arrayType.baseClassName, arrayType.dimensions-1)
+    val ArrayType(ArrayTypeRef(baseClassName, dimensions)) = arrayType
+    if (dimensions == 1) classNameToType(baseClassName)
+    else ArrayType(ArrayTypeRef(baseClassName, dimensions - 1))
   }
 
   private def reportError(msg: String)(implicit ctx: ErrorContext): Unit = {
@@ -1278,21 +1269,21 @@ object IRChecker {
    *  any kind of allocation.
    *
    *  The parameter is an `Any` for that reason. It should be an
-   *  `Either[Tree, LinkedClass]`, but that would also require an allocation of
-   *  the `Left` or `Right` (in fact, we'd love to type it as
-   *  `Tree | LinkedClass`). `ErrorContext` is also made an `AnyVal` for the
+   *  `Either[IRNode, LinkedClass]`, but that would also require an allocation
+   *  of the `Left` or `Right` (in fact, we'd love to type it as
+   *  `IRNode | LinkedClass`). `ErrorContext` is also made an `AnyVal` for the
    *  same reasons, again.
    *
    *  If `toString()` is called, we're in a bad situation anyway, because the
    *  IR is invalid, so all bets are off and we can be slow and allocate stuff;
    *  we don't care.
    */
-  private final class ErrorContext private (val treeOrLinkedClass: Any)
+  private final class ErrorContext private (val nodeOrLinkedClass: Any)
       extends AnyVal {
 
     override def toString(): String = {
-      val (pos, name) = treeOrLinkedClass match {
-        case tree: Tree               => (tree.pos, tree.getClass.getSimpleName)
+      val (pos, name) = nodeOrLinkedClass match {
+        case tree: IRNode             => (tree.pos, tree.getClass.getSimpleName)
         case linkedClass: LinkedClass => (linkedClass.pos, "ClassDef")
       }
       s"${pos.source}(${pos.line+1}:${pos.column+1}:$name)"
@@ -1300,11 +1291,11 @@ object IRChecker {
   }
 
   private object ErrorContext {
-    implicit def tree2errorContext(tree: Tree): ErrorContext =
-      ErrorContext(tree)
+    implicit def node2errorContext(node: IRNode): ErrorContext =
+      ErrorContext(node)
 
-    def apply(tree: Tree): ErrorContext =
-      new ErrorContext(tree)
+    def apply(node: IRNode): ErrorContext =
+      new ErrorContext(node)
 
     def apply(linkedClass: LinkedClass): ErrorContext =
       new ErrorContext(linkedClass)

@@ -85,7 +85,7 @@ object JavaLangObject {
           Nil,
           AnyType,
           Some {
-            If(IsInstanceOf(This()(ThisType), ClassType("jl_Cloneable")), {
+            If(IsInstanceOf(This()(ThisType), ClassRef("jl_Cloneable")), {
               Apply(LoadModule(ClassType("sjsr_package$")),
                   Ident("cloneObject__sjs_js_Object__sjs_js_Object", Some("cloneObject")),
                   List(This()(ThisType)))(AnyType)
@@ -161,7 +161,8 @@ object JavaLangObject {
                 Ident("toString__T", Some("toString__T")),
                 Nil)(ClassType(StringClass))
           })(OptimizerHints.empty, None)
-      ))(OptimizerHints.empty)
+      ),
+      Nil)(OptimizerHints.empty)
 
     val hashedClassedDef = Hashers.hashClassDef(classDef)
     val info = generateClassInfo(hashedClassedDef)

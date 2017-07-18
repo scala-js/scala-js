@@ -44,9 +44,9 @@ final class LinkedClass(
     val staticMethods: List[LinkedMember[MethodDef]],
     val memberMethods: List[LinkedMember[MethodDef]],
     val abstractMethods: List[LinkedMember[MethodDef]],
-    val exportedMembers: List[LinkedMember[Tree]],
-    val classExports: List[Tree],
-    val classExportInfo: Option[Infos.MethodInfo],
+    val exportedMembers: List[LinkedMember[MemberDef]],
+    val topLevelExports: List[TopLevelExportDef],
+    val topLevelExportsInfo: Option[Infos.MethodInfo],
     val optimizerHints: OptimizerHints,
     val pos: Position,
 
@@ -59,21 +59,19 @@ final class LinkedClass(
 
   // Helpers to give Info-Like access
   def encodedName: String = name.name
-  def isExported: Boolean = classExports.nonEmpty
+  def isExported: Boolean = topLevelExports.nonEmpty
 
-  /** Names this class / module is exported under */
-  def topLevelExportNames: List[String] = classExports.map { export =>
-    (export: @unchecked) match {
-      case ConstructorExportDef(name, _, _) => name
-      case ModuleExportDef(name)            => name
-      case TopLevelModuleExportDef(name)    => name
-      case JSClassExportDef(name)           => name
+  /** Names of all top-level exports in this class. */
+  def topLevelExportNames: List[String] = topLevelExports.map {
+    case TopLevelConstructorExportDef(name, _, _) => name
+    case TopLevelModuleExportDef(name)            => name
+    case TopLevelJSClassExportDef(name)           => name
 
-      case TopLevelMethodExportDef(MethodDef(_, StringLiteral(name), _, _, _)) =>
-        name
+    case TopLevelMethodExportDef(MethodDef(_, propName, _, _, _)) =>
+      val StringLiteral(name) = propName
+      name
 
-      case TopLevelFieldExportDef(name, _) => name
-    }
+    case TopLevelFieldExportDef(name, _) => name
   }
 
   def fullName: String = Definitions.decodeClassName(encodedName)
@@ -84,7 +82,7 @@ final class LinkedClass(
         memberMethods.map(_.info) ++
         abstractMethods.map(_.info) ++
         exportedMembers.map(_.info) ++
-        classExportInfo
+        topLevelExportsInfo
     )
 
     Infos.ClassInfo(encodedName, isExported, kind, superClass.map(_.name),
@@ -101,9 +99,9 @@ final class LinkedClass(
       staticMethods: List[LinkedMember[MethodDef]] = this.staticMethods,
       memberMethods: List[LinkedMember[MethodDef]] = this.memberMethods,
       abstractMethods: List[LinkedMember[MethodDef]] = this.abstractMethods,
-      exportedMembers: List[LinkedMember[Tree]] = this.exportedMembers,
-      classExports: List[Tree] = this.classExports,
-      classExportInfo: Option[Infos.MethodInfo] = this.classExportInfo,
+      exportedMembers: List[LinkedMember[MemberDef]] = this.exportedMembers,
+      topLevelExports: List[TopLevelExportDef] = this.topLevelExports,
+      topLevelExportsInfo: Option[Infos.MethodInfo] = this.topLevelExportsInfo,
       optimizerHints: OptimizerHints = this.optimizerHints,
       pos: Position = this.pos,
       ancestors: List[String] = this.ancestors,
@@ -122,8 +120,8 @@ final class LinkedClass(
         memberMethods,
         abstractMethods,
         exportedMembers,
-        classExports,
-        classExportInfo,
+        topLevelExports,
+        topLevelExportsInfo,
         optimizerHints,
         pos,
         ancestors,
@@ -132,87 +130,4 @@ final class LinkedClass(
         hasRuntimeTypeInfo,
         version)
   }
-}
-
-object LinkedClass {
-
-  def apply(info: Infos.ClassInfo, classDef: ClassDef,
-      ancestors: List[String]): LinkedClass = {
-
-    val memberInfoByName = Map(info.methods.map(m => m.encodedName -> m): _*)
-
-    val fields = mutable.Buffer.empty[FieldDef]
-    val staticMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
-    val memberMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
-    val abstractMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
-    val exportedMembers = mutable.Buffer.empty[LinkedMember[Tree]]
-    val classExports = mutable.Buffer.empty[Tree]
-
-    def linkedMethod(m: MethodDef) = {
-      val info = memberInfoByName(m.name.encodedName)
-      new LinkedMember(info, m, None)
-    }
-
-    def linkedProperty(p: PropertyDef) = {
-      val info = memberInfoByName(p.name.encodedName)
-      new LinkedMember(info, p, None)
-    }
-
-    classDef.defs.foreach {
-      // Static methods
-      case m: MethodDef if m.static =>
-        staticMethods += linkedMethod(m)
-
-      // Fields
-      case field @ FieldDef(_, _, _, _) =>
-        fields += field
-
-      // Normal methods
-      case m: MethodDef if m.name.isInstanceOf[Ident] =>
-        if (m.body.isDefined)
-          memberMethods += linkedMethod(m)
-        else
-          abstractMethods += linkedMethod(m)
-
-      case m: MethodDef if m.name.isInstanceOf[StringLiteral] =>
-        exportedMembers += linkedMethod(m)
-
-      case m: PropertyDef =>
-        exportedMembers += linkedProperty(m)
-
-      case e: ConstructorExportDef =>
-        classExports += e
-
-      case e: ModuleExportDef =>
-        classExports += e
-
-      case tree =>
-        throw new IllegalArgumentException(
-            s"Illegal tree in ClassDef of class ${tree.getClass}")
-    }
-
-    val classExportInfo = memberInfoByName.get(Definitions.ClassExportsName)
-
-    new LinkedClass(
-        classDef.name,
-        classDef.kind,
-        classDef.superClass,
-        classDef.interfaces,
-        classDef.jsNativeLoadSpec,
-        fields.toList,
-        staticMethods.toList,
-        memberMethods.toList,
-        abstractMethods.toList,
-        exportedMembers.toList,
-        classExports.toList,
-        classExportInfo,
-        classDef.optimizerHints,
-        classDef.pos,
-        ancestors,
-        hasInstances = true,
-        hasInstanceTests = true,
-        hasRuntimeTypeInfo = true,
-        version = None)
-  }
-
 }

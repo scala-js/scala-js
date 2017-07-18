@@ -9,6 +9,7 @@ import scala.collection.mutable
 
 import scala.tools.nsc._
 import scala.math.PartialOrdering
+import scala.reflect.{ClassTag, classTag}
 import scala.reflect.internal.Flags
 
 import org.scalajs.core.ir
@@ -35,7 +36,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
      *
      *  @param classSym symbol of the class we export for
      */
-    def genMemberExports(classSym: Symbol): List[js.Tree] = {
+    def genMemberExports(classSym: Symbol): List[js.MemberDef] = {
       val allExports = classSym.info.members.filter(jsInterop.isExport(_))
 
       val newlyDecldExports = if (classSym.superClass == NoSymbol) {
@@ -54,12 +55,14 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     }
 
     def genJSClassDispatchers(classSym: Symbol,
-        dispatchMethodsNames: List[JSName]): List[js.Tree] = {
+        dispatchMethodsNames: List[JSName]): List[js.MemberDef] = {
       dispatchMethodsNames
         .map(genJSClassDispatcher(classSym, _))
     }
 
-    def genConstructorExports(classSym: Symbol): List[js.ConstructorExportDef] = {
+    def genConstructorExports(
+        classSym: Symbol): List[js.TopLevelConstructorExportDef] = {
+
       val constructors = classSym.tpe.member(nme.CONSTRUCTOR).alternatives
 
       // Generate exports from constructors and their annotations
@@ -82,14 +85,15 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             withNewLocalNameScope(genExportMethod(ctors, JSName.Literal(jsName),
                 static = false))
 
-          js.ConstructorExportDef(jsName, args, body.get)
+          js.TopLevelConstructorExportDef(jsName, args, body.get)
         }
 
         exports.toList
       }
     }
 
-    def genJSClassExports(classSym: Symbol): List[js.JSClassExportDef] = {
+    def genJSClassExports(
+        classSym: Symbol): List[js.TopLevelJSClassExportDef] = {
       for {
         exp <- jsInterop.registeredExportsOf(classSym)
       } yield {
@@ -97,7 +101,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         exp.destination match {
           case ExportDestination.Normal | ExportDestination.TopLevel =>
-            js.JSClassExportDef(exp.jsName)
+            js.TopLevelJSClassExportDef(exp.jsName)
           case ExportDestination.Static =>
             throw new AssertionError(
                 "Found a class export static for " + classSym.fullName)
@@ -105,7 +109,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
     }
 
-    def genModuleAccessorExports(classSym: Symbol): List[js.Tree] = {
+    def genModuleAccessorExports(
+        classSym: Symbol): List[js.TopLevelExportDef] = {
+
       for {
         exp <- jsInterop.registeredExportsOf(classSym)
       } yield {
@@ -113,7 +119,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         exp.destination match {
           case ExportDestination.Normal =>
-            js.ModuleExportDef(exp.jsName)
+            throw new AssertionError(
+                "Found a non-top-level module export for " + classSym.fullName)
           case ExportDestination.TopLevel =>
             js.TopLevelModuleExportDef(exp.jsName)
           case ExportDestination.Static =>
@@ -123,14 +130,14 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
     }
 
-    def genTopLevelExports(classSym: Symbol): List[js.Tree] =
-      genTopLevelOrStaticExports(classSym, ExportDestination.TopLevel)
+    def genTopLevelExports(classSym: Symbol): List[js.TopLevelExportDef] =
+      genTopLevelOrStaticExports[js.TopLevelExportDef](classSym, ExportDestination.TopLevel)
 
-    def genStaticExports(classSym: Symbol): List[js.Tree] =
-      genTopLevelOrStaticExports(classSym, ExportDestination.Static)
+    def genStaticExports(classSym: Symbol): List[js.MemberDef] =
+      genTopLevelOrStaticExports[js.MemberDef](classSym, ExportDestination.Static)
 
-    private def genTopLevelOrStaticExports(classSym: Symbol,
-        destination: ExportDestination): List[js.Tree] = {
+    private def genTopLevelOrStaticExports[A <: js.IRNode: ClassTag](
+        classSym: Symbol, destination: ExportDestination): List[A] = {
       require(
           destination == ExportDestination.TopLevel ||
           destination == ExportDestination.Static)
@@ -156,8 +163,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       exportsNamesAndPositions.map(_._1)
     }
 
-    private def genTopLevelOrStaticFieldExports(classSym: Symbol,
-        destination: ExportDestination): List[(js.Tree, String, Position)] = {
+    private def genTopLevelOrStaticFieldExports[A <: js.IRNode: ClassTag](
+        classSym: Symbol,
+        destination: ExportDestination): List[(A, String, Position)] = {
       (for {
         fieldSym <- classSym.info.members
         if !fieldSym.isMethod && fieldSym.isTerm && !fieldSym.isModule
@@ -170,17 +178,19 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           val mutable = true // static fields must always be mutable
           val name = js.StringLiteral(export.jsName)
           val irTpe = genExposedFieldIRType(fieldSym)
-          js.FieldDef(static = true, name, irTpe, mutable)
+          checkedCast[A](js.FieldDef(static = true, name, irTpe, mutable))
         } else {
-          js.TopLevelFieldExportDef(export.jsName, encodeFieldSym(fieldSym))
+          checkedCast[A](
+              js.TopLevelFieldExportDef(export.jsName, encodeFieldSym(fieldSym)))
         }
 
         (tree, export.jsName, pos)
       }).toList
     }
 
-    private def genTopLevelOrStaticMethodExports(classSym: Symbol,
-        destination: ExportDestination): List[(js.Tree, String, Position)] = {
+    private def genTopLevelOrStaticMethodExports[A <: js.IRNode: ClassTag](
+        classSym: Symbol,
+        destination: ExportDestination): List[(A, String, Position)] = {
       val allRelevantExports = for {
         methodSym <- classSym.info.members
         if methodSym.isMethod && !methodSym.isConstructor
@@ -215,15 +225,21 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         val exportedMember = genMemberExportOrDispatcher(classSym,
             JSName.Literal(jsName), isProp, alts, static = true)
 
-        val exportDef =
-          if (destination == ExportDestination.Static) exportedMember
-          else js.TopLevelMethodExportDef(exportedMember.asInstanceOf[js.MethodDef])
+        val exportDef = {
+          if (destination == ExportDestination.Static)
+            checkedCast[A](exportedMember)
+          else
+            checkedCast[A](js.TopLevelMethodExportDef(exportedMember.asInstanceOf[js.MethodDef]))
+        }
 
         (exportDef, jsName, pos)
       }
     }
 
-    private def genMemberExport(classSym: Symbol, name: TermName): js.Tree = {
+    private def checkedCast[A: ClassTag](x: js.IRNode): A =
+      classTag[A].runtimeClass.asInstanceOf[Class[A]].cast(x)
+
+    private def genMemberExport(classSym: Symbol, name: TermName): js.MemberDef = {
       val alts = classSym.info.member(name).alternatives
 
       assert(!alts.isEmpty,
@@ -248,7 +264,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           alts, static = false)
     }
 
-    private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.Tree = {
+    private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.MemberDef = {
       val alts = classSym.info.members.toList.filter { sym =>
         !sym.isBridge && jsNameOf(sym) == name
       }
@@ -262,7 +278,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       if (isProp && methodSyms.nonEmpty) {
         reporter.error(alts.head.pos,
             s"Conflicting properties and methods for ${classSym.fullName}::$name.")
-        js.Skip()(ir.Position.NoPosition)
+        implicit val pos = alts.head.pos
+        js.PropertyDef(static = false, genPropertyName(name), None, None)
       } else {
         genMemberExportOrDispatcher(classSym, name, isProp, alts,
             static = false)
@@ -270,7 +287,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     }
 
     def genMemberExportOrDispatcher(classSym: Symbol, jsName: JSName,
-        isProp: Boolean, alts: List[Symbol], static: Boolean): js.Tree = {
+        isProp: Boolean, alts: List[Symbol], static: Boolean): js.MemberDef = {
       withNewLocalNameScope {
         if (isProp)
           genExportProperty(alts, jsName, static)
@@ -520,7 +537,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
             val optCond = typeTest match {
               case HijackedTypeTest(boxedClassName, _) =>
-                Some(js.IsInstanceOf(paramRef, jstpe.ClassType(boxedClassName)))
+                Some(js.IsInstanceOf(paramRef, jstpe.ClassRef(boxedClassName)))
 
               case InstanceOfTypeTest(tpe) =>
                 Some(genIsInstanceOf(paramRef, tpe))

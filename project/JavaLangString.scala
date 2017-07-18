@@ -88,7 +88,7 @@ object JavaLangString {
               Ident("compareTo__T__I", Some("compareTo__T__I")),
               List(AsInstanceOf(
                 VarRef(Ident("that", Some("that")))(AnyType),
-                ThisType)))(IntType)
+                ClassRef(StringClass))))(IntType)
           })(OptimizerHints.empty.withInline(true), None),
 
         /* def toString(): String = this */
@@ -155,7 +155,8 @@ object JavaLangString {
                 VarRef(Ident("end", Some("end")))(IntType)))(
               ClassType("jl_CharSequence"))
           })(OptimizerHints.empty.withInline(true), None)
-      ))(OptimizerHints.empty)
+      ),
+      Nil)(OptimizerHints.empty)
 
     val hashedClassDef = Hashers.hashClassDef(classDef)
     val info = generateClassInfo(hashedClassDef)

@@ -769,7 +769,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         /* Hijacked boxed classes have a special isInstanceOf test. */
         val xParam = js.ParamDef(js.Ident("x"), rest = false)
         WithGlobals(js.Function(List(xParam), js.Return {
-          genIsInstanceOf(xParam.ref, ClassType(className))
+          genIsInstanceOf(xParam.ref, ClassRef(className))
         }))
       } else if (isAncestorOfHijackedClass || className == StringClass) {
         /* java.lang.String and ancestors of hijacked classes, including
@@ -935,15 +935,13 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       yield js.Block(exports)(tree.pos)
   }
 
-  def genClassExports(tree: LinkedClass)(
+  def genTopLevelExports(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
-    val exportsWithGlobals = tree.classExports map {
-      case e: ConstructorExportDef =>
-        genConstructorExportDef(tree, e)
-      case e: JSClassExportDef =>
-        WithGlobals(genJSClassExportDef(tree, e))
-      case e: ModuleExportDef =>
-        WithGlobals(genModuleExportDef(tree, e))
+    val exportsWithGlobals = tree.topLevelExports map {
+      case e: TopLevelConstructorExportDef =>
+        genTopLevelConstructorExportDef(tree, e)
+      case e: TopLevelJSClassExportDef =>
+        WithGlobals(genTopLevelJSClassExportDef(tree, e))
       case e: TopLevelModuleExportDef =>
         WithGlobals(genTopLevelModuleExportDef(tree, e))
       case e: TopLevelMethodExportDef =>
@@ -952,19 +950,20 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         WithGlobals(genTopLevelFieldExportDef(tree, e))
       case tree =>
         throw new AssertionError(
-            "Illegal class export " + tree.getClass.getName)
+            "Illegal top-level export " + tree.getClass.getName)
     }
 
     WithGlobals.list(exportsWithGlobals)
   }
 
-  def genConstructorExportDef(cd: LinkedClass, tree: ConstructorExportDef)(
+  def genTopLevelConstructorExportDef(cd: LinkedClass,
+      tree: TopLevelConstructorExportDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
     implicit val pos = tree.pos
     val classType = ClassType(cd.name.name)
-    val ConstructorExportDef(fullName, args, body) = tree
+    val TopLevelConstructorExportDef(fullName, args, body) = tree
 
     val baseCtor = envField("c", cd.name.name, cd.name.originalName)
 
@@ -992,7 +991,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
   }
 
-  def genJSClassExportDef(cd: LinkedClass, tree: JSClassExportDef): js.Tree = {
+  def genTopLevelJSClassExportDef(cd: LinkedClass,
+      tree: TopLevelJSClassExportDef): js.Tree = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -1001,28 +1001,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     genClassOrModuleExportDef(cd, tree.fullName, classVar)
   }
 
-  /** Generates an exporter for a module as a 0-arg function.
+  /** Generates an exporter for a module at the top-level.
    *
-   *  This corresponds to the old-style `@JSExport` of modules. Basically this
-   *  exports the module accessor. The object will be initialized lazily on
-   *  the first call of the accessor, exactly like the accesses to objects from
-   *  Scala code.
-   */
-  def genModuleExportDef(cd: LinkedClass, tree: ModuleExportDef): js.Tree = {
-    import TreeDSL._
-
-    implicit val pos = tree.pos
-
-    val baseAccessor = envField("m", cd.name.name)
-    genClassOrModuleExportDef(cd, tree.fullName, baseAccessor)
-  }
-
-  /** Generates an exporter for a module at the "top-level", which is directly
-   *  as a variable holding the module instance.
-   *
-   *  This corresponds the the new-style `@JSExportTopLevel` of modules. In
-   *  this case, the module instance is initialized during ES moduleµ
-   *  instantiation.
+   *  This corresponds to an `@JSExportTopLevel` on a module class. The module
+   *  instance is initialized during ES module instantiation.
    */
   def genTopLevelModuleExportDef(cd: LinkedClass,
       tree: TopLevelModuleExportDef): js.Tree = {
@@ -1187,8 +1169,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
       case ModuleInitializer.MainMethodWithArgs(moduleClassName, mainMethodName,
           args) =>
+        val stringArrayTpe = ArrayType(ArrayTypeRef("T", 1))
         js.Apply(genLoadModule(moduleClassName) DOT mainMethodName,
-            genArrayValue(ArrayType("T", 1), args.map(js.StringLiteral(_))) :: Nil)
+            genArrayValue(stringArrayTpe, args.map(js.StringLiteral(_))) :: Nil)
     }
   }
 

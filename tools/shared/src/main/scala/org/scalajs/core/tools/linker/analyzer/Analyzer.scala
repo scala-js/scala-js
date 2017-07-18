@@ -462,11 +462,11 @@ private final class Analyzer(semantics: Semantics,
       sepPos >= 0 && methodName.substring(0, sepPos + 2) == proxyName
     }
 
-    private def methodResultType(methodName: String): ir.Types.ReferenceType =
-      decodeReferenceType(methodName.substring(methodName.lastIndexOf("__") + 2))
+    private def methodResultType(methodName: String): ir.Types.TypeRef =
+      decodeTypeRef(methodName.substring(methodName.lastIndexOf("__") + 2))
 
-    private def isMoreSpecific(left: ir.Types.ReferenceType,
-        right: ir.Types.ReferenceType): Boolean = {
+    private def isMoreSpecific(left: ir.Types.TypeRef,
+        right: ir.Types.TypeRef): Boolean = {
       import ir.Types._
 
       def classIsMoreSpecific(leftCls: String, rightCls: String): Boolean = {
@@ -480,11 +480,11 @@ private final class Analyzer(semantics: Semantics,
       }
 
       (left, right) match {
-        case (ClassType(leftCls), ClassType(rightCls)) =>
+        case (ClassRef(leftCls), ClassRef(rightCls)) =>
           classIsMoreSpecific(leftCls, rightCls)
-        case (ArrayType(leftBase, leftDepth), ArrayType(rightBase, rightDepth)) =>
+        case (ArrayTypeRef(leftBase, leftDepth), ArrayTypeRef(rightBase, rightDepth)) =>
           leftDepth == rightDepth && classIsMoreSpecific(leftBase, rightBase)
-        case (ArrayType(_, _), ClassType(ObjectClass)) =>
+        case (ArrayTypeRef(_, _), ClassRef(ObjectClass)) =>
           true
         case _ =>
           false
@@ -573,15 +573,7 @@ private final class Analyzer(semantics: Semantics,
     def instantiated()(implicit from: From): Unit = {
       instantiatedFrom ::= from
 
-      /* TODO Get rid of this when we break binary compatibility.
-       * Due to the deserialization hacks for the 0.6.8 binary format, we
-       * might reach this point with `kind == ClassKind.AbstractJSType`, where
-       * in fact the ClassDef has `kind == ClassKind.NativeJSClass`. If an
-       * AbstractJSType is `instantiated()` here, we have to assume it is in
-       * fact a NativeJSClass.
-       */
-      val isNativeJSClass =
-        kind == ClassKind.NativeJSClass || kind == ClassKind.AbstractJSType
+      val isNativeJSClass = kind == ClassKind.NativeJSClass
 
       /* TODO? When the second line is false, shouldn't this be a linking error
        * instead?

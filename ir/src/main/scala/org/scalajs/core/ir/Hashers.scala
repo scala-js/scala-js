@@ -19,7 +19,7 @@ object Hashers {
       hasher.mixPos(methodDef.pos)
       hasher.mixBoolean(static)
       hasher.mixPropertyName(name)
-      hasher.mixTrees(args)
+      hasher.mixParamDefs(args)
       hasher.mixType(resultType)
       body.foreach(hasher.mixTree)
       hasher.mixInt(methodDef.optimizerHints.bits)
@@ -32,14 +32,14 @@ object Hashers {
   }
 
   /** Hash definitions from a ClassDef where applicable */
-  def hashDefs(defs: List[Tree]): List[Tree] = defs map {
+  def hashMemberDefs(memberDefs: List[MemberDef]): List[MemberDef] = memberDefs.map {
     case methodDef: MethodDef => hashMethodDef(methodDef)
     case otherDef             => otherDef
   }
 
   /** Hash the definitions in a ClassDef (where applicable) */
   def hashClassDef(classDef: ClassDef): ClassDef = {
-    classDef.copy(defs = hashDefs(classDef.defs))(
+    classDef.copy(memberDefs = hashMemberDefs(classDef.memberDefs))(
         classDef.optimizerHints)(classDef.pos)
   }
 
@@ -86,6 +86,17 @@ object Hashers {
     def finalizeHash(): TreeHash =
       new TreeHash(treeDigest.digest(), posDigest.digest())
 
+    def mixParamDef(paramDef: ParamDef): Unit = {
+      mixPos(paramDef.pos)
+      mixIdent(paramDef.name)
+      mixType(paramDef.ptpe)
+      mixBoolean(paramDef.mutable)
+      mixBoolean(paramDef.rest)
+    }
+
+    def mixParamDefs(paramDefs: List[ParamDef]): Unit =
+      paramDefs.foreach(mixParamDef)
+
     def mixTree(tree: Tree): Unit = {
       mixPos(tree.pos)
       tree match {
@@ -95,19 +106,6 @@ object Hashers {
           mixType(vtpe)
           mixBoolean(mutable)
           mixTree(rhs)
-
-        case ParamDef(ident, ptpe, mutable, rest) =>
-          mixTag(TagParamDef)
-          mixIdent(ident)
-          mixType(ptpe)
-          mixBoolean(mutable)
-          /* TODO Remove this test in the next major release.
-           * In 0.6.x we need this test so that the hash of a non-rest ParamDef
-           * emitted in 0.6.3 format is the same as an (implicitly non-rest)
-           * ParamDef emitted in 0.6.0 format.
-           */
-          if (rest)
-            mixBoolean(rest)
 
         case Skip() =>
           mixTag(TagSkip)
@@ -273,12 +271,12 @@ object Hashers {
         case IsInstanceOf(expr, cls) =>
           mixTag(TagIsInstanceOf)
           mixTree(expr)
-          mixRefType(cls)
+          mixTypeRef(cls)
 
         case AsInstanceOf(expr, cls) =>
           mixTag(TagAsInstanceOf)
           mixTree(expr)
-          mixRefType(cls)
+          mixTypeRef(cls)
 
         case Unbox(expr, charCode) =>
           mixTag(TagUnbox)
@@ -382,6 +380,10 @@ object Hashers {
             mixTree(value)
           }
 
+        case JSGlobalRef(ident) =>
+          mixTag(TagJSGlobalRef)
+          mixIdent(ident)
+
         case JSLinkingInfo() =>
           mixTag(TagJSLinkingInfo)
 
@@ -421,7 +423,7 @@ object Hashers {
 
         case ClassOf(cls) =>
           mixTag(TagClassOf)
-          mixRefType(cls)
+          mixTypeRef(cls)
 
         case VarRef(ident) =>
           mixTag(TagVarRef)
@@ -432,14 +434,10 @@ object Hashers {
           mixTag(TagThis)
           mixType(tree.tpe)
 
-        case JSGlobalRef(ident) =>
-          mixTag(TagJSGlobalRef)
-          mixIdent(ident)
-
         case Closure(captureParams, params, body, captureValues) =>
           mixTag(TagClosure)
-          mixTrees(captureParams)
-          mixTrees(params)
+          mixParamDefs(captureParams)
+          mixParamDefs(params)
           mixTree(body)
           mixTrees(captureValues)
 
@@ -452,8 +450,15 @@ object Hashers {
     def mixTrees(trees: List[Tree]): Unit =
       trees.foreach(mixTree)
 
-    def mixRefType(tpe: ReferenceType): Unit =
-      mixType(tpe.asInstanceOf[Type])
+    def mixTypeRef(typeRef: TypeRef): Unit = typeRef match {
+      case ClassRef(className) =>
+        mixTag(TagClassRef)
+        mixString(className)
+      case ArrayTypeRef(baseClassName, dimensions) =>
+        mixTag(TagArrayTypeRef)
+        mixString(baseClassName)
+        mixInt(dimensions)
+    }
 
     def mixType(tpe: Type): Unit = tpe match {
       case AnyType     => mixTag(TagAnyType)
@@ -468,14 +473,14 @@ object Hashers {
       case NullType    => mixTag(TagNullType)
       case NoType      => mixTag(TagNoType)
 
-      case tpe: ClassType =>
+      case ClassType(className) =>
         mixTag(TagClassType)
-        mixString(tpe.className)
+        mixString(className)
 
-      case tpe: ArrayType =>
+      case ArrayType(ArrayTypeRef(baseClassName, dimensions)) =>
         mixTag(TagArrayType)
-        mixString(tpe.baseClassName)
-        mixInt(tpe.dimensions)
+        mixString(baseClassName)
+        mixInt(dimensions)
 
       case RecordType(fields) =>
         mixTag(TagRecordType)
