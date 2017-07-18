@@ -1232,6 +1232,19 @@ class ScalaJSDefinedTest {
     assertEquals("bar3hello", dyn.foo("hello"))
   }
 
+  @Test def super_method_call_in_anon_JS_class_issue_3055(): Unit = {
+    @ScalaJSDefined
+    class Foo extends js.Object {
+      def bar(msg: String): String = "super: " + msg
+    }
+
+    val foo = new Foo {
+      override def bar(msg: String): String = super.bar("foo: " + msg)
+    }
+
+    assertEquals("super: foo: foobar", foo.bar("foobar"))
+  }
+
   @Test def override_native_val(): Unit = {
     @ScalaJSDefined
     class OverrideNativeVal extends NativeParentClass(3) {
@@ -1394,6 +1407,31 @@ class ScalaJSDefinedTest {
     val dyn = foo.asInstanceOf[js.Dynamic]
     dyn.bar = 6
     assertEquals(18, dyn.x)
+  }
+
+  @Test def super_property_get_set_in_anon_JS_class_issue_3055(): Unit = {
+    @ScalaJSDefined
+    class Foo extends js.Object {
+      var x: Int = 1
+      var lastSetValue: Int = 0
+
+      def bar: Int = x
+      def bar_=(v: Int): Unit = x = v
+    }
+
+    val foo = new Foo {
+      override def bar: Int = super.bar * 2
+      override def bar_=(v: Int): Unit = {
+        lastSetValue = v
+        super.bar = v + 3
+      }
+    }
+
+    assertEquals(2, foo.bar)
+    foo.bar = 6
+    assertEquals(6, foo.lastSetValue)
+    assertEquals(9, foo.x)
+    assertEquals(18, foo.bar)
   }
 
   @Test def add_setter_in_subclass(): Unit = {

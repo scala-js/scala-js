@@ -4265,20 +4265,53 @@ abstract class GenJSCode extends plugins.PluginComponent
             }
           }
 
-          def genSelectGet(propName: js.Tree): js.Tree =
-            genSuperReference(propName)
+          def genSelectGet(propName: js.Tree): js.Tree = {
+            if (superIn.exists(isScalaJSDefinedAnonJSClass(_))) {
+              // #3055
+              genApplyMethod(
+                  genLoadModule(RuntimePackageModule),
+                  Runtime_jsObjectSuperGet,
+                  List(receiver, propName))
+            } else {
+              genSuperReference(propName)
+            }
+          }
 
-          def genSelectSet(propName: js.Tree, value: js.Tree): js.Tree =
-            js.Assign(genSuperReference(propName), value)
+          def genSelectSet(propName: js.Tree, value: js.Tree): js.Tree = {
+            if (superIn.exists(isScalaJSDefinedAnonJSClass(_))) {
+              // #3055
+              genApplyMethod(
+                  genLoadModule(RuntimePackageModule),
+                  Runtime_jsObjectSuperSet,
+                  List(receiver, propName, value))
+            } else {
+              js.Assign(genSuperReference(propName), value)
+            }
+          }
 
           def genCall(methodName: js.Tree, args: List[js.Tree]): js.Tree = {
             superIn.fold[js.Tree] {
               js.JSBracketMethodApply(
                   receiver, methodName, args)
             } { superInSym =>
-              js.JSSuperBracketCall(
-                  jstpe.ClassType(encodeClassFullName(superInSym)),
-                  receiver, methodName, args)
+              if (isScalaJSDefinedAnonJSClass(superInSym)) {
+                // #3055
+                val superClassType =
+                  jstpe.ClassType(encodeClassFullName(superInSym.superClass))
+                val superProto = js.JSBracketSelect(
+                    js.LoadJSConstructor(superClassType),
+                    js.StringLiteral("prototype"))
+                val superMethod =
+                  js.JSBracketSelect(superProto, methodName)
+                js.JSBracketMethodApply(
+                    superMethod,
+                    js.StringLiteral("call"),
+                    receiver :: args)
+              } else {
+                js.JSSuperBracketCall(
+                    jstpe.ClassType(encodeClassFullName(superInSym)),
+                    receiver, methodName, args)
+              }
             }
           }
 
