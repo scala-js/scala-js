@@ -375,9 +375,11 @@ class NonNativeJSTypeTest {
   @Test def anonymous_class_uninitialized_fields(): Unit = {
     val obj = new js.Object {
       var x: String = _
+      var y: Int = _
     }
 
     assertNull(obj.asInstanceOf[js.Dynamic].x)
+    assertEquals(0, obj.asInstanceOf[js.Dynamic].y)
   }
 
   @Test def anonymous_class_field_init_order(): Unit = {
@@ -712,6 +714,25 @@ class NonNativeJSTypeTest {
     assertEquals(6, dyn.foo(3))
   }
 
+  @Test def simple_overloaded_methods_anon_js_class_issue_3054(): Unit = {
+    trait SimpleOverloadedMethodsAnonJSClass extends js.Object {
+      def foo(): Int
+      def foo(x: Int): Int
+    }
+
+    val foo = new SimpleOverloadedMethodsAnonJSClass {
+      def foo(): Int = 42
+      def foo(x: Int): Int = x * 2
+    }
+    assertEquals(42, foo.foo())
+    assertEquals(6, foo.foo(3))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(js.typeOf(dyn.foo), "function")
+    assertEquals(42, dyn.foo())
+    assertEquals(6, dyn.foo(3))
+  }
+
   @Test def renamed_overloaded_methods(): Unit = {
     class RenamedOverloadedMethods extends js.Object {
       @JSName("foobar")
@@ -728,6 +749,49 @@ class NonNativeJSTypeTest {
     assertEquals(js.typeOf(dyn.foobar), "function")
     assertEquals(42, dyn.foobar())
     assertEquals(6, dyn.foobar(3))
+  }
+
+  @Test def overloaded_methods_with_varargs(): Unit = {
+    class OverloadedMethodsWithVarargs extends js.Object {
+      def foo(x: Int): Int = x * 2
+      def foo(strs: String*): Int = strs.foldLeft(0)(_ + _.length)
+    }
+
+    val foo = new OverloadedMethodsWithVarargs
+    assertEquals(42, foo.foo(21))
+    assertEquals(0, foo.foo())
+    assertEquals(3, foo.foo("bar"))
+    assertEquals(8, foo.foo("bar", "babar"))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(js.typeOf(dyn.foo), "function")
+    assertEquals(42, dyn.foo(21))
+    assertEquals(0, dyn.foo())
+    assertEquals(3, dyn.foo("bar"))
+    assertEquals(8, dyn.foo("bar", "babar"))
+  }
+
+  @Test def overloaded_methods_with_varargs_anon_js_class_issue_3054(): Unit = {
+    trait OverloadedMethodsWithVarargsAnonJSClass extends js.Object {
+      def foo(x: Int): Int
+      def foo(strs: String*): Int
+    }
+
+    val foo = new OverloadedMethodsWithVarargsAnonJSClass {
+      def foo(x: Int): Int = x * 2
+      def foo(strs: String*): Int = strs.foldLeft(0)(_ + _.length)
+    }
+    assertEquals(42, foo.foo(21))
+    assertEquals(0, foo.foo())
+    assertEquals(3, foo.foo("bar"))
+    assertEquals(8, foo.foo("bar", "babar"))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(js.typeOf(dyn.foo), "function")
+    assertEquals(42, dyn.foo(21))
+    assertEquals(0, dyn.foo())
+    assertEquals(3, dyn.foo("bar"))
+    assertEquals(8, dyn.foo("bar", "babar"))
   }
 
   @Test def overloaded_constructors_num_parameters_resolution(): Unit = {
@@ -1119,6 +1183,18 @@ class NonNativeJSTypeTest {
     assertEquals("bar3hello", dyn.foo("hello"))
   }
 
+  @Test def super_method_call_in_anon_JS_class_issue_3055(): Unit = {
+    class Foo extends js.Object {
+      def bar(msg: String): String = "super: " + msg
+    }
+
+    val foo = new Foo {
+      override def bar(msg: String): String = super.bar("foo: " + msg)
+    }
+
+    assertEquals("super: foo: foobar", foo.bar("foobar"))
+  }
+
   @Test def override_native_val(): Unit = {
     class OverrideNativeVal extends NativeParentClass(3) {
       override val x: Int = 42
@@ -1271,6 +1347,30 @@ class NonNativeJSTypeTest {
     val dyn = foo.asInstanceOf[js.Dynamic]
     dyn.bar = 6
     assertEquals(18, dyn.x)
+  }
+
+  @Test def super_property_get_set_in_anon_JS_class_issue_3055(): Unit = {
+    class Foo extends js.Object {
+      var x: Int = 1
+      var lastSetValue: Int = 0
+
+      def bar: Int = x
+      def bar_=(v: Int): Unit = x = v
+    }
+
+    val foo = new Foo {
+      override def bar: Int = super.bar * 2
+      override def bar_=(v: Int): Unit = {
+        lastSetValue = v
+        super.bar = v + 3
+      }
+    }
+
+    assertEquals(2, foo.bar)
+    foo.bar = 6
+    assertEquals(6, foo.lastSetValue)
+    assertEquals(9, foo.x)
+    assertEquals(18, foo.bar)
   }
 
   @Test def add_setter_in_subclass(): Unit = {

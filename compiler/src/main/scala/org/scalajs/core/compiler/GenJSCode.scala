@@ -136,7 +136,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Per method body
     private val currentMethodSym = new ScopedVar[Symbol]
-    private val thisLocalVarIdent = new ScopedVar[Option[js.Ident]]
+    private val thisLocalVarInfo = new ScopedVar[Option[(js.Ident, jstpe.Type)]]
     private val fakeTailJumpParamRepl = new ScopedVar[(Symbol, Symbol)]
     private val enclosingLabelDefParams = new ScopedVar[Map[Symbol, List[Symbol]]]
     private val isModuleInitialized = new ScopedVar[VarBox[Boolean]]
@@ -168,7 +168,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           unexpectedMutatedFields := mutable.Set.empty,
           generatedSAMWrapperCount := null,
           currentMethodSym := null,
-          thisLocalVarIdent := null,
+          thisLocalVarInfo := null,
           fakeTailJumpParamRepl := null,
           enclosingLabelDefParams := null,
           isModuleInitialized := null,
@@ -182,14 +182,6 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     // Global class generation state -------------------------------------------
-
-    /** Map a class from this compilation unit to its companion module class.
-     *  This should be accessible through `sym.linkedClassOfClass`, but is
-     *  broken for nested classes. The reverse link is not broken, though,
-     *  which allows us to build this map in [[apply]] for the whole
-     *  compilation unit before processing it.
-     */
-    private var companionModuleClasses: Map[Symbol, Symbol] = Map.empty
 
     private val lazilyGeneratedAnonClasses = mutable.Map.empty[Symbol, ClassDef]
     private val generatedClasses =
@@ -257,15 +249,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
         val allClassDefs = collectClassDefs(cunit.body)
 
-        // Build up companionModuleClasses
-        companionModuleClasses = (for {
-          classDef <- allClassDefs
-          sym = classDef.symbol
-          if sym.isModuleClass
-        } yield {
-          patchedLinkedClassOfClass(sym) -> sym
-        }).toMap
-
         /* There are three types of anonymous classes we want to generate
          * only once we need them so we can inline them at construction site:
          *
@@ -332,7 +315,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       } finally {
         lazilyGeneratedAnonClasses.clear()
         generatedClasses.clear()
-        companionModuleClasses = Map.empty
         pos2irPosCache.clear()
       }
     }
@@ -529,12 +511,15 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // Static members (exported from the companion object)
       val staticMembers = {
-        /* This should be `sym.linkedClassOfClass`, but it does not work for
-         * classes and objects nested inside objects.
+        /* Phase travel is necessary for non-top-level classes, because flatten
+         * breaks their companionModule. This is tracked upstream at
+         * https://github.com/scala/scala-dev/issues/403
          */
-        companionModuleClasses.get(sym).fold[List[js.Tree]] {
+        val companionModuleClass =
+          exitingPhase(currentRun.picklerPhase)(sym.linkedClassOfClass)
+        if (companionModuleClass == NoSymbol) {
           Nil
-        } { companionModuleClass =>
+        } else {
           val exports = withScopedVars(currentClassSym := companionModuleClass) {
             genStaticExports(companionModuleClass)
           }
@@ -667,7 +652,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             case lit: js.StringLiteral    => js.JSBracketSelect(selfRef, lit)
             case js.ComputedName(tree, _) => js.JSBracketSelect(selfRef, tree)
           }
-          js.Assign(select, jstpe.zeroOf(fdef.tpe))
+          js.Assign(select, jstpe.zeroOf(fdef.ftpe))
 
         case mdef: js.MethodDef =>
           implicit val pos = mdef.pos
@@ -1407,7 +1392,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       withScopedVars(
           currentMethodSym          := sym,
-          thisLocalVarIdent         := None,
+          thisLocalVarInfo          := None,
           fakeTailJumpParamRepl     := (NoSymbol, NoSymbol),
           enclosingLabelDefParams   := Map.empty,
           isModuleInitialized       := new VarBox(false),
@@ -1671,13 +1656,15 @@ abstract class GenJSCode extends plugins.PluginComponent
                 mutableLocalVars += thisSym
 
               val thisLocalIdent = encodeLocalSym(thisSym)
+              val thisLocalType = toIRType(thisSym.tpe)
+
               val genRhs = genExpr(initialThis)
               val thisLocalVarDef = js.VarDef(thisLocalIdent,
-                  currentClassType, thisSym.isMutable, genRhs)
+                  thisLocalType, thisSym.isMutable, genRhs)
 
               val innerBody = {
                 withScopedVars(
-                  thisLocalVarIdent := Some(thisLocalIdent)
+                  thisLocalVarInfo := Some((thisLocalIdent, thisLocalType))
                 ) {
                   genInnerBody()
                 }
@@ -1698,10 +1685,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else {
         assert(!static, tree.pos)
 
+        val thisLocalIdent = freshLocalIdent("this")
         withScopedVars(
-          thisLocalVarIdent := Some(freshLocalIdent("this"))
+          thisLocalVarInfo := Some((thisLocalIdent, jstpe.AnyType))
         ) {
-          val thisParamDef = js.ParamDef(thisLocalVarIdent.get.get,
+          val thisParamDef = js.ParamDef(thisLocalIdent,
               jstpe.AnyType, mutable = false, rest = false)
 
           js.MethodDef(static = true, methodName, thisParamDef :: jsParams,
@@ -1998,14 +1986,15 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  is one.
      */
     private def genThis()(implicit pos: Position): js.Tree = {
-      thisLocalVarIdent.fold[js.Tree] {
+      thisLocalVarInfo.fold[js.Tree] {
         if (tryingToGenMethodAsJSFunction) {
           throw new CancelGenMethodAsJSFunction(
               "Trying to generate `this` inside the body")
         }
         js.This()(currentClassType)
-      } { thisLocalIdent =>
-        js.VarRef(thisLocalIdent)(currentClassType)
+      } { case (thisLocalVarIdent, thisLocalVarTpe) =>
+        // .copy() to get the correct position
+        js.VarRef(thisLocalVarIdent.copy())(thisLocalVarTpe)
       }
     }
 
@@ -4302,20 +4291,53 @@ abstract class GenJSCode extends plugins.PluginComponent
             }
           }
 
-          def genSelectGet(propName: js.Tree): js.Tree =
-            genSuperReference(propName)
+          def genSelectGet(propName: js.Tree): js.Tree = {
+            if (superIn.exists(isAnonJSClass(_))) {
+              // #3055
+              genApplyMethod(
+                  genLoadModule(RuntimePackageModule),
+                  Runtime_jsObjectSuperGet,
+                  List(ruleOutGlobalScope(receiver), propName))
+            } else {
+              genSuperReference(propName)
+            }
+          }
 
-          def genSelectSet(propName: js.Tree, value: js.Tree): js.Tree =
-            js.Assign(genSuperReference(propName), value)
+          def genSelectSet(propName: js.Tree, value: js.Tree): js.Tree = {
+            if (superIn.exists(isAnonJSClass(_))) {
+              // #3055
+              genApplyMethod(
+                  genLoadModule(RuntimePackageModule),
+                  Runtime_jsObjectSuperSet,
+                  List(ruleOutGlobalScope(receiver), propName, value))
+            } else {
+              js.Assign(genSuperReference(propName), value)
+            }
+          }
 
           def genCall(methodName: js.Tree, args: List[js.Tree]): js.Tree = {
             superIn.fold[js.Tree] {
               genJSBracketMethodApplyOrGlobalRefApply(
                   receiver, methodName, args)
             } { superInSym =>
-              js.JSSuperBracketCall(
-                  jstpe.ClassType(encodeClassFullName(superInSym)),
-                  ruleOutGlobalScope(receiver), methodName, args)
+              if (isAnonJSClass(superInSym)) {
+                // #3055
+                val superClassType =
+                  jstpe.ClassType(encodeClassFullName(superInSym.superClass))
+                val superProto = js.JSBracketSelect(
+                    js.LoadJSConstructor(superClassType),
+                    js.StringLiteral("prototype"))
+                val superMethod =
+                  js.JSBracketSelect(superProto, methodName)
+                js.JSBracketMethodApply(
+                    superMethod,
+                    js.StringLiteral("call"),
+                    ruleOutGlobalScope(receiver) :: args)
+              } else {
+                js.JSSuperBracketCall(
+                    jstpe.ClassType(encodeClassFullName(superInSym)),
+                    ruleOutGlobalScope(receiver), methodName, args)
+              }
             }
           }
 

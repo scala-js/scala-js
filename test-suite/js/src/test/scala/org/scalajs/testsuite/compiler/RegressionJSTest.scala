@@ -87,7 +87,6 @@ object RegressionJSTest {
     class B extends A1 with A2 {
       override def f(): String = "B"
 
-      @ScalaJSDefined
       class C extends js.Object {
         def t1(): String = B.super[A1].f()
         def t2(): String = B.super[A2].f()

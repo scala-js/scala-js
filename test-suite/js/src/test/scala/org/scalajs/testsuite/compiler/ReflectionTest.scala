@@ -44,6 +44,12 @@ class ReflectionTest {
 
   @Test def java_lang_Class_getName_renamed_through_semantics(): Unit = {
     assertEquals("renamed.test.Class", classOf[RenamedTestClass].getName)
+    assertEquals("renamed.test.byprefix.RenamedTestClass1",
+        classOf[PrefixRenamedTestClass1].getName)
+    assertEquals("renamed.test.byprefix.RenamedTestClass2",
+        classOf[PrefixRenamedTestClass2].getName)
+    assertEquals("renamed.test.byotherprefix.RenamedTestClass",
+        classOf[OtherPrefixRenamedTestClass].getName)
   }
 
   @Test def should_support_isInstance(): Unit = {
@@ -159,6 +165,11 @@ object ReflectionTest {
   object TestObject
 
   class RenamedTestClass
+
+  class PrefixRenamedTestClass1
+  class PrefixRenamedTestClass2
+
+  class OtherPrefixRenamedTestClass
 
   @JSGlobal("ReflectionTestRawJSClass")
   @js.native

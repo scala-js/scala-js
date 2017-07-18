@@ -24,12 +24,25 @@ object QuickLinker {
   @JSExport
   def linkTestSuiteNode(irFilesAndJars: js.Array[String],
       moduleInitializers: js.Array[String]): String = {
-    val semantics = Semantics.Defaults.withRuntimeClassName(_.fullName match {
-      case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
-        "renamed.test.Class"
-      case fullName =>
-        fullName
-    })
+    import Semantics.RuntimeClassNameMapper
+
+    val semantics = Semantics.Defaults.withRuntimeClassNameMapper(
+        RuntimeClassNameMapper.custom(_.fullName match {
+          case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
+            "renamed.test.Class"
+          case fullName =>
+            fullName
+        }).andThen(
+            RuntimeClassNameMapper.regexReplace(
+                raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$Prefix""".r,
+                "renamed.test.byprefix.")
+        ).andThen(
+            RuntimeClassNameMapper.regexReplace(
+                raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$OtherPrefix""".r,
+                "renamed.test.byotherprefix.")
+        )
+    )
+
     linkNodeInternal(semantics, irFilesAndJars, moduleInitializers)
   }
 

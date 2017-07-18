@@ -754,13 +754,32 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             if (!kind.isClass) {
               reportError(s"Cannot select $item of non-class $cls")
             } else {
-              maybeClass.foreach {
-                _.lookupField(item).fold[Unit] {
-                  reportError(s"Class $cls does not have a field $item")
-                } { fieldDef =>
-                  if (fieldDef.tpe != tree.tpe)
-                    reportError(s"Select $cls.$item of type "+
-                      s"${fieldDef.tpe} typed as ${tree.tpe}")
+              /* Actually checking the field is done only if
+               *
+               * * the class exists, and
+               * * it has instances (including instances of subclasses).
+               *
+               * The latter test is necessary because the BaseLinker can
+               * completely get rid of all the fields of a class that has no
+               * instance. Obviously in such cases, the only value that
+               * `qualifier` can assume is `null`, and the `Select` will fail
+               * with an NPE. But the IR is still valid per se.
+               *
+               * The former case is necessary too because, if the class is not
+               * even "needed at all", the BaseLinker will simply remove the
+               * class entirely.
+               *
+               * See #3060.
+               */
+              maybeClass.foreach { c =>
+                if (c.hasInstances) {
+                  c.lookupField(item).fold[Unit] {
+                    reportError(s"Class $cls does not have a field $item")
+                  } { fieldDef =>
+                    if (fieldDef.tpe != tree.tpe)
+                      reportError(s"Select $cls.$item of type "+
+                        s"${fieldDef.tpe} typed as ${tree.tpe}")
+                  }
                 }
               }
             }
@@ -1009,8 +1028,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
               reportError(s"Parameter $name has type NoType")
             else if (ptpe != AnyType)
               reportError(s"Closure parameter $name has type $ptpe instead of any")
-            if (rest)
-              reportError(s"Closure parameter $name cannot be a rest parameter")
+          }
+
+          if (params.nonEmpty) {
+            for (ParamDef(name, _, _, rest) <- params.init) {
+              if (rest)
+                reportError(s"Non-last rest parameter $name is illegal")
+            }
           }
 
           val bodyEnv = Env.fromSignature(
@@ -1110,7 +1134,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     classes.getOrElseUpdate(className, {
       reportError(s"Cannot find class $className")
       new CheckedClass(className, ClassKind.Class,
-          Some(ObjectClass), Set(ObjectClass), None, Nil)
+          Some(ObjectClass), Set(ObjectClass), hasInstances = true, None, Nil)
     })
   }
 
@@ -1197,6 +1221,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       val kind: ClassKind,
       val superClassName: Option[String],
       val ancestors: Set[String],
+      val hasInstances: Boolean,
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
       _fields: TraversableOnce[CheckedField])(
       implicit ctx: ErrorContext) {
@@ -1210,6 +1235,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       this(classDef.name.name, classDef.kind,
           classDef.superClass.map(_.name),
           classDef.ancestors.toSet,
+          classDef.hasInstances,
           classDef.jsNativeLoadSpec,
           if (classDef.kind.isJSClass) Nil
           else classDef.fields.map(CheckedClass.checkedField))

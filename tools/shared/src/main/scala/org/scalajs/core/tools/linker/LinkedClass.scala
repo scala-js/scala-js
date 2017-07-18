@@ -62,15 +62,18 @@ final class LinkedClass(
   def isExported: Boolean = classExports.nonEmpty
 
   /** Names this class / module is exported under */
-  def topLevelExportNames: List[String] = classExports.collect {
-    case ConstructorExportDef(name, _, _) => name
-    case ModuleExportDef(name)            => name
-    case JSClassExportDef(name)           => name
+  def topLevelExportNames: List[String] = classExports.map { export =>
+    (export: @unchecked) match {
+      case ConstructorExportDef(name, _, _) => name
+      case ModuleExportDef(name)            => name
+      case TopLevelModuleExportDef(name)    => name
+      case JSClassExportDef(name)           => name
 
-    case TopLevelMethodExportDef(MethodDef(_, StringLiteral(name), _, _, _)) =>
-      name
+      case TopLevelMethodExportDef(MethodDef(_, StringLiteral(name), _, _, _)) =>
+        name
 
-    case TopLevelFieldExportDef(name, _) => name
+      case TopLevelFieldExportDef(name, _) => name
+    }
   }
 
   def fullName: String = Definitions.decodeClassName(encodedName)

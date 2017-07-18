@@ -113,6 +113,101 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noCollapseOverloadsOnJSName: Unit = {
+    """
+    class A extends js.Object {
+      @JSName("bar")
+      def foo(): Int = 42
+
+      def bar(): Int = 24
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: Cannot disambiguate overloads for method bar with types
+      |  ()Int
+      |  ()Int
+      |      def bar(): Int = 24
+      |          ^
+    """
+
+    """
+    class A extends js.Object {
+      def bar(): Int = 24
+
+      @JSName("bar")
+      def foo(): Int = 42
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: Cannot disambiguate overloads for method bar with types
+      |  ()Int
+      |  ()Int
+      |      def foo(): Int = 42
+      |          ^
+    """
+
+    """
+    class A extends js.Object {
+      @JSName("bar")
+      def foo(): Int = 42
+    }
+
+    class B extends A {
+      def bar(): Int = 24
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:11: error: Cannot disambiguate overloads for method bar with types
+      |  ()Int
+      |  ()Int
+      |      def bar(): Int = 24
+      |          ^
+    """
+
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      @JSName("bar")
+      def foo(): Int = js.native
+    }
+
+    class B extends A {
+      def bar(): Int = 24
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:13: error: Cannot disambiguate overloads for method bar with types
+      |  ()Int
+      |  ()Int
+      |      def bar(): Int = 24
+      |          ^
+    """
+
+    """
+    @js.native
+    @JSGlobal
+    class Foo extends js.Object {
+      def foo(x: Int): Int = js.native
+
+      @JSName("foo")
+      def bar(x: Int): Int = js.native
+    }
+
+    class Bar extends Foo {
+      def foo(): Int = 42
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:14: error: Cannot disambiguate overloads for method bar with types
+      |  (x: Int)Int
+      |  (x: Int)Int
+      |    class Bar extends Foo {
+      |          ^
+    """
+  }
+
+  @Test
   def noOverloadedPrivate: Unit = {
     """
     class A extends js.Object {

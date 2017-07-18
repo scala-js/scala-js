@@ -628,6 +628,11 @@ object Build {
       commonToolsSettings,
       crossVersion := ScalaJSCrossVersion.binary,
 
+      /* We need RuntimeClassNameMapper.custom() in QuickLinker
+       * TODO Remove this in 1.x.
+       */
+      scalacOptions in Test -= "-Xfatal-warnings",
+
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
 
       jsExecutionFiles in Test := {
@@ -1466,12 +1471,26 @@ object Build {
       testSuiteJSExecutionFilesSetting,
 
       scalaJSLinkerConfig ~= { prevConfig =>
-        prevConfig.withSemantics(_.withRuntimeClassName(_.fullName match {
-          case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
-            "renamed.test.Class"
-          case fullName =>
-            fullName
-        }))
+        import Semantics.RuntimeClassNameMapper
+
+        prevConfig.withSemantics { sems =>
+          sems.withRuntimeClassNameMapper(
+              RuntimeClassNameMapper.custom(_.fullName match {
+                case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
+                  "renamed.test.Class"
+                case fullName =>
+                  fullName
+              }).andThen(
+                  RuntimeClassNameMapper.regexReplace(
+                      raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$Prefix""".r,
+                      "renamed.test.byprefix.")
+              ).andThen(
+                  RuntimeClassNameMapper.regexReplace(
+                      raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$OtherPrefix""".r,
+                      "renamed.test.byotherprefix.")
+              )
+          )
+        }
       },
 
       javaOptions in Test += "-Dscalajs.scalaVersion=" + scalaVersion.value,
