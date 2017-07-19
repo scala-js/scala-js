@@ -15,11 +15,9 @@ import scala.language.experimental.macros
 
 import sbt._
 
-import StringUtilities.nonEmpty
-
 trait DependencyBuilders {
   final implicit def toScalaJSGroupID(groupID: String): ScalaJSGroupID = {
-    nonEmpty(groupID, "Group ID")
+    require(groupID.trim.nonEmpty, "Group ID cannot be empty.")
     new ScalaJSGroupID(groupID)
   }
 
@@ -76,7 +74,7 @@ object ScalaJSGroupID {
    */
   def withCross(groupID: ScalaJSGroupID, artifactID: String,
       cross: CrossVersion): CrossGroupArtifactID = {
-    nonEmpty(artifactID, "Artifact ID")
+    require(artifactID.trim.nonEmpty, "Artifact ID cannot be empty.")
     new CrossGroupArtifactID(groupID.groupID, artifactID, cross)
   }
 
@@ -106,7 +104,7 @@ object ScalaJSGroupID {
 final class CrossGroupArtifactID(groupID: String,
     artifactID: String, crossVersion: CrossVersion) {
   def %(revision: String): ModuleID = {
-    nonEmpty(revision, "Revision")
+    require(revision.trim.nonEmpty, "Revision cannot be empty.")
     ModuleID(groupID, artifactID, revision).cross(crossVersion)
   }
 }

@@ -2,8 +2,6 @@ package org.scalajs.sbtplugin
 
 import sbt._
 
-import StringUtilities.nonEmpty
-
 import org.scalajs.core.tools.jsdep.JSDependency
 
 /** Something JavaScript related a project may depend on. Either a JavaScript
@@ -17,7 +15,7 @@ sealed trait AbstractJSDep {
   def %(configurations: String): AbstractJSDep = {
     require(this.configurations.isEmpty,
         "Configurations already specified for jsModule " + this)
-    nonEmpty(configurations, "Configurations")
+    require(configurations.trim.nonEmpty, "Configurations cannot be empty.")
     withConfigs(Some(configurations))
   }
 
