@@ -638,13 +638,19 @@ object ScalaJSPluginInternal {
             jsDependencyManifests.value.data.exists(_.requiresDOM))
       },
 
-      resolvedJSEnv := jsEnv.?.value.getOrElse {
-        if (scalaJSUseRhinoInternal.value) {
-          RhinoJSEnvInternal().value
-        } else if (scalaJSRequestsDOM.value) {
-          new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv()
-        } else {
-          new org.scalajs.jsenv.nodejs.NodeJSEnv()
+      resolvedJSEnv := {
+        val useRhino = scalaJSUseRhinoInternal.value
+        val rhinoJSEnv = RhinoJSEnvInternal().value
+        val requestsDOM = scalaJSRequestsDOM.value
+
+        jsEnv.?.value.getOrElse {
+          if (useRhino) {
+            rhinoJSEnv
+          } else if (requestsDOM) {
+            new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv()
+          } else {
+            new org.scalajs.jsenv.nodejs.NodeJSEnv()
+          }
         }
       },
 
@@ -853,11 +859,12 @@ object ScalaJSPluginInternal {
           }
         } else {
           Def.task {
+            val moduleKind = scalaJSModuleKind.value
+            val moduleIdentifier = scalaJSModuleIdentifier.value
+
             (mainClass in scalaJSLauncherInternal).value.fold {
               throw new MessageOnlyException("No main class detected.")
             } { mainClass =>
-              val moduleKind = scalaJSModuleKind.value
-              val moduleIdentifier = scalaJSModuleIdentifier.value
               val memLaunch =
                 memLauncher(mainClass, moduleKind, moduleIdentifier)
               Attributed[VirtualJSFile](memLaunch)(
