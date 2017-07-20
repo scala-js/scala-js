@@ -25,10 +25,6 @@ final class Semantics private (
 
   import Semantics._
 
-  @deprecated("Use runtimeClassNameMapper instead.", "0.6.19")
-  def runtimeClassName: Semantics.RuntimeClassNameFunction =
-    runtimeClassNameMapper(_)
-
   def withAsInstanceOfs(behavior: CheckedBehavior): Semantics =
     copy(asInstanceOfs = behavior)
 
@@ -48,10 +44,6 @@ final class Semantics private (
       runtimeClassNameMapper: RuntimeClassNameMapper): Semantics = {
     copy(runtimeClassNameMapper = runtimeClassNameMapper)
   }
-
-  @deprecated("Use withRuntimeClassNameMapper instead.", "0.6.19")
-  def withRuntimeClassName(runtimeClassName: RuntimeClassNameFunction): Semantics =
-    withRuntimeClassNameMapper(RuntimeClassNameMapper.custom(runtimeClassName))
 
   def optimized: Semantics = {
     copy(asInstanceOfs = this.asInstanceOfs.optimized,
@@ -119,13 +111,8 @@ object Semantics {
   sealed abstract class RuntimeClassNameMapper {
     import RuntimeClassNameMapper._
 
-    def andThen(that: RuntimeClassNameMapper): RuntimeClassNameMapper = {
-      require(!that.isInstanceOf[Custom],
-          "RuntimeClassNameMapper.custom(...) is not a valid argument to " +
-          "RuntimeClassNameMapper#andThen(), because it takes a LinkedClass " +
-          "as input instead of a String.")
+    def andThen(that: RuntimeClassNameMapper): RuntimeClassNameMapper =
       AndThen(this, that)
-    }
 
     private[tools] def apply(linkedClass: LinkedClass): String = {
       def rec(mapper: RuntimeClassNameMapper, className: String): String = {
@@ -138,11 +125,6 @@ object Semantics {
             mapper.compiledPattern.matcher(className).replaceAll(replacement)
           case AndThen(first, second) =>
             rec(second, rec(first, className))
-          case Custom(mapper) =>
-            /* Discards `className`, but that's fine because we cannot
-             * construct an AndThen(_, Custom()).
-             */
-            mapper(linkedClass)
         }
       }
 
@@ -167,20 +149,6 @@ object Semantics {
     private case class AndThen(first: RuntimeClassNameMapper,
         second: RuntimeClassNameMapper)
         extends RuntimeClassNameMapper
-
-    /** For compatibility with `RuntimeClassNameFunction`s only. */
-    private case class Custom(mapper: LinkedClass => String)
-        extends RuntimeClassNameMapper {
-      /* For compatibility of `Semantics.==` of previous versions, we need to
-       * consider all `Custom` instances as being equal, even though this
-       * definitely breaks the case class contract.
-       * Since this is deprecated, this issue will eventually go away.
-       */
-
-      override def equals(that: Any): Boolean = that.isInstanceOf[Custom]
-
-      override def hashCode(): Int = 369581025 // generated at random
-    }
 
     def keepAll(): RuntimeClassNameMapper = KeepAll
 
@@ -211,14 +179,7 @@ object Semantics {
         replacement: String): RuntimeClassNameMapper = {
       regexReplace(regex.pattern, replacement)
     }
-
-    @deprecated("Will be removed in Scala.js 1.x.", "0.6.19")
-    def custom(mapper: LinkedClass => String): RuntimeClassNameMapper =
-      Custom(mapper)
   }
-
-  @deprecated("Use RuntimeClassNameMapper instead.", "0.6.19")
-  type RuntimeClassNameFunction = LinkedClass => String
 
   val Defaults: Semantics = new Semantics(
       asInstanceOfs = Fatal,

@@ -27,12 +27,11 @@ object QuickLinker {
     import Semantics.RuntimeClassNameMapper
 
     val semantics = Semantics.Defaults.withRuntimeClassNameMapper(
-        RuntimeClassNameMapper.custom(_.fullName match {
-          case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
-            "renamed.test.Class"
-          case fullName =>
-            fullName
-        }).andThen(
+        RuntimeClassNameMapper.keepAll().andThen(
+            RuntimeClassNameMapper.regexReplace(
+                raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$RenamedTestClass$$""".r,
+                "renamed.test.Class")
+        ).andThen(
             RuntimeClassNameMapper.regexReplace(
                 raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$Prefix""".r,
                 "renamed.test.byprefix.")
