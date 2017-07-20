@@ -14,7 +14,7 @@ val baseSettings = versionSettings ++ Seq(
     TestFramework("com.novocode.junit.JUnitFramework"), "-v", "-a", "-s"),
 
   // Test that non-existent classpath entries are allowed - #2198
-  fullClasspath in Compile += (baseDirectory in "root").value /
+  fullClasspath in Compile += (baseDirectory in LocalProject("root")).value /
     "non-existent-directory-please-dont-ever-create-this"
 )
 
@@ -55,7 +55,9 @@ lazy val noDOM = project.settings(baseSettings: _*).
   /* This hopefully exposes concurrent uses of the linker. If it fails/gets
    * flaky, there is a bug somewhere - #2202
    */
-  settings(inConfig(Compile)(run <<= run.dependsOn(fastOptJS, loadedJSEnv)): _*)
+  settings(
+    inConfig(Compile)(run := run.dependsOn(fastOptJS, loadedJSEnv).evaluated)
+  )
 
 lazy val withDOM = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSPlugin).
@@ -83,7 +85,7 @@ lazy val jetty9 = project.settings(baseSettings: _*).
         "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
     ),
     // Use PhantomJS, allow cross domain requests
-    postLinkJSEnv := PhantomJSEnv(args = Seq("--web-security=no")).value,
+    jsEnv := PhantomJSEnv(args = Seq("--web-security=no")).value,
     Jetty9Test.runSetting
   )
 
@@ -191,7 +193,7 @@ lazy val jsDependenciesTest = withRegretionTestForIssue2243(
         "jquery.js" -> "1.10.2/jquery.js")
   ).
   settings(inConfig(Compile)(Seq(
-    packageJSDependencies <<= packageJSDependencies.dependsOn(Def.task {
+    packageJSDependencies := packageJSDependencies.dependsOn(Def.task {
       // perform verifications on the ordering and deduplications
       val resolvedDeps = resolvedJSDependencies.value.data
       val relPaths = resolvedDeps.map(_.info.relPath)
@@ -227,7 +229,7 @@ lazy val jsDependenciesTest = withRegretionTestForIssue2243(
           "compressed/history.js appears before foo.js")
 
       streams.value.log.info("jsDependencies resolution test passed")
-    })
+    }).value
   )): _*).
   dependsOn(jetty9) // depends on jQuery
 )
