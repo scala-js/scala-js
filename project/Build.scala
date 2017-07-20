@@ -806,6 +806,11 @@ object Build {
           previousArtifactSetting,
           mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
+          /* TODO Remove this in 1.x, since there are no macros in sbt-plugin
+           * anymore.
+           */
+          scalacOptions -= "-Xfatal-warnings",
+
           // Add API mappings for sbt (seems they don't export their API URL)
           apiMappings ++= {
             val deps = (externalDependencyClasspath in Compile).value
@@ -821,7 +826,7 @@ object Build {
             sbtJars.map(_.data -> docUrl).toMap
           }
       )
-  ).dependsOn(tools, jsEnvs, testAdapter)
+  ).dependsOn(tools, jsEnvs, testAdapter).enableScalastyleInSharedSources
 
   lazy val delambdafySetting = {
     scalacOptions ++= (

@@ -12,6 +12,8 @@ FULL_VERSIONS="2.10.2 2.10.3 2.10.4 2.10.5 2.10.6 2.11.0 2.11.1 2.11.2 2.11.4 2.
 BIN_VERSIONS="2.10.6 2.11.11 2.12.2 2.13.0-M1"
 CLI_VERSIONS="2.10.6 2.11.11 2.12.2"
 SBT_VERSION="2.10.6"
+SBT1_VERSION="2.12.2"
+SBT1_SBTVERSION="1.0.0-RC2"
 
 COMPILER="compiler jUnitPlugin"
 LIBS="library javalibEx ir irJS tools toolsJS jsEnvs jsEnvsTestKit testAdapter stubs testInterface jUnitRuntime"
@@ -41,3 +43,4 @@ done
 
 # Publish sbt-plugin
 $CMD "++$SBT_VERSION" "sbtPlugin/publishSigned"
+$CMD "++$SBT1_VERSION" "^^$SBT1_SBTVERSION" "sbtPlugin/publishSigned"

@@ -260,14 +260,18 @@
   ]]></task>
 
   <task id="sbtplugin-test"><![CDATA[
+    setJavaVersion $java
+    SBT_VER_OVERRIDE=$sbt_version_override
     # Publish Scala.js artifacts locally
     # Then go into standalone project and test
     sbt ++2.11.11 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
                   testInterface/publishLocal stubs/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
-    sbt ++2.10.6 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
-                 testAdapter/publishLocal sbtPlugin/publishLocal &&
+    sbt ++$toolsscala ${SBT_VER_OVERRIDE:+^^$SBT_VER_OVERRIDE} \
+        ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
+        testAdapter/publishLocal sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&
+    if [ -n "$SBT_VER_OVERRIDE" ]; then echo "sbt.version=$SBT_VER_OVERRIDE" > ./project/build.properties; fi &&
     sbt noDOM/run noDOM/testHtmlFastOpt noDOM/testHtmlFullOpt \
         withDOM/run withDOM/testHtmlFastOpt withDOM/testHtmlFullOpt \
         multiTestJS/test:run multiTestJS/testHtmlFastOpt multiTestJS/testHtmlFullOpt \
@@ -473,7 +477,17 @@
       <v n="java">1.8</v>
     </run>
 
-    <run task="sbtplugin-test" />
+    <!-- The PhantomJS tests require Java 7 for jetty. -->
+    <run task="sbtplugin-test">
+      <v n="java">1.7</v>
+      <v n="toolsscala">2.10.6</v>
+      <v n="sbt_version_override"></v>
+    </run>
+    <run task="sbtplugin-test">
+      <v n="java">1.8</v>
+      <v n="toolsscala">2.12.2</v>
+      <v n="sbt_version_override">1.0.0-RC2</v>
+    </run>
   </matrix>
 
   <matrix id="nightly">
