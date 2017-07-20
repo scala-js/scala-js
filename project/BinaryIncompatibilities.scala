@@ -22,6 +22,9 @@ object BinaryIncompatibilities {
   )
 
   val SbtPlugin = Seq(
+      // Breaking! Removal of `CrossProject.settingSets`, deprecated since 0.6.16
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.sbtplugin.cross.CrossProject.settingSets")
   )
 
   val TestAdapter = Seq(
