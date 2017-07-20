@@ -270,19 +270,6 @@ final class CrossProject private (
   def overrideConfigs(cs: Configuration*): CrossProject =
     copy(jvm.overrideConfigs(cs: _*), js.overrideConfigs(cs: _*))
 
-  /** Configures how settings from other sources, such as .sbt files, are
-   *  appended to the explicitly specified settings for this project.
-   *
-   *  Note: If you disable AutoPlugins here, Scala.js will not work
-   */
-  @deprecated(
-      "Project#settingSets will be removed from sbt 1.0, hence " +
-      "CrossProject#settingSets will be removed from Scala.js 1.0. " +
-      "As a temporary measure, use `.configureAll(_.settingSets(select))`.",
-      "0.6.16")
-  def settingSets(select: AddSettings*): CrossProject =
-    copy(jvm.settingSets(select: _*), js.settingSets(select: _*))
-
   def settings(ss: Def.SettingsDefinition*): CrossProject =
     copy(jvm.settings(ss: _*), js.settings(ss: _*))
 
