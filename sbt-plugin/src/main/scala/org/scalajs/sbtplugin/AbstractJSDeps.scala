@@ -4,6 +4,8 @@ import sbt._
 
 import org.scalajs.core.tools.jsdep.JSDependency
 
+import SBTCompat._
+
 /** Something JavaScript related a project may depend on. Either a JavaScript
  *  module/library, or the DOM at runtime. */
 sealed trait AbstractJSDep {
@@ -45,7 +47,8 @@ final case class JarJSModuleID(
   def configurations: Option[String] = module.configurations
 
   protected def withConfigs(configs: Option[String]): JSModuleID =
-    copy(module = module.copy(configurations = configs))
+    copy(module = moduleIDWithConfigurations(module, configs))
+
   protected def withJSDep(jsDep: JSDependency): JSModuleID =
     copy(jsDep = jsDep)
 }
