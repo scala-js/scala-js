@@ -129,6 +129,7 @@ class RangesTest {
       def toFloat(x: A): Float = x.v.toFloat
       def toInt(x: A): Int = x.v
       def toLong(x: A): Long = x.v.toLong
+      def parseString(str: String): Option[A] = Some(A(str.toInt))
     }
 
     val r = NumericRange(A(1), A(10), A(1))
