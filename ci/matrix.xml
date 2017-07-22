@@ -205,7 +205,10 @@
     setJavaVersion $java
     sbt ++$scala irJS/test toolsJS/test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala irJS/test toolsJS/test
+        ++$scala irJS/test &&
+    sbt ++$scala testSuite/test:fullOptJS &&
+    sbt 'set scalaJSStage in Global := FullOptStage' \
+        ++$scala toolsJS/test
   ]]></task>
 
   <task id="tools-cli-stubs"><![CDATA[
