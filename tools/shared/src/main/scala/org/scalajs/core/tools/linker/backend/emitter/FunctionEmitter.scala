@@ -1842,11 +1842,17 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // Scala expressions
 
         case New(cls, ctor, args) =>
-          js.Apply(
-              js.DotSelect(
-                  js.New(encodeClassVar(cls.className), Nil),
-                  transformPropIdent(ctor)),
-              args map transformExpr)
+          val encodedClassVar = encodeClassVar(cls.className)
+          val newArgs = args.map(transformExpr)
+          if (globalKnowledge.hasInlineableInit(cls.className)) {
+            js.New(encodedClassVar, newArgs)
+          } else {
+            js.Apply(
+                js.DotSelect(
+                    js.New(encodedClassVar, Nil),
+                    transformPropIdent(ctor)),
+                newArgs)
+          }
 
         case LoadModule(cls) =>
           genLoadModule(cls.className)

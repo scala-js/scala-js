@@ -12,7 +12,7 @@ package org.scalajs.core.tools.linker.backend.emitter
 import scala.collection.mutable
 
 import org.scalajs.core.ir.{ClassKind, Definitions}
-import org.scalajs.core.ir.Trees.{FieldDef, JSNativeLoadSpec}
+import org.scalajs.core.ir.Trees._
 
 import org.scalajs.core.tools.linker._
 
@@ -37,15 +37,20 @@ private[emitter] final class KnowledgeGuardian {
    *  the rare events where they do change.
    */
   def update(linkingUnit: LinkingUnit): Boolean = {
+    val hasInlineableInit = computeHasInlineableInit(linkingUnit)
+
     var newIsParentDataAccessed = false
 
     // Update classes
     for (linkedClass <- linkingUnit.classDefs) {
-      classes.get(linkedClass.encodedName).fold[Unit] {
+      val encodedName = linkedClass.encodedName
+      val thisClassHasInlineableInit = hasInlineableInit(encodedName)
+      classes.get(encodedName).fold[Unit] {
         // new class
-        classes.put(linkedClass.encodedName, new Class(linkedClass))
+        classes.put(encodedName,
+            new Class(linkedClass, thisClassHasInlineableInit))
       } { existingCls =>
-        existingCls.update(linkedClass)
+        existingCls.update(linkedClass, thisClassHasInlineableInit)
       }
 
       def methodExists(encodedName: String): Boolean =
@@ -73,6 +78,57 @@ private[emitter] final class KnowledgeGuardian {
     invalidateAll
   }
 
+  private def computeHasInlineableInit(linkingUnit: LinkingUnit): Set[String] = {
+    /* Those classes are instantiated in scalajsenv.js. Since they have
+     * multiple constructors and/or are not final, scalajsenv.js is written
+     * with the assumption that they will not have an inlineable init. We
+     * therefore blacklist them here so that this is always true.
+     *
+     * Note that j.l.Class is not in this list, because it has only one
+     * constructor and is final, so even scalajsenv.js can assume it always
+     * has an inlineable init.
+     */
+    val blackList = Set(
+        "jl_ClassCastException",
+        "jl_ArrayIndexOutOfBoundsException",
+        "sjsr_UndefinedBehaviorError",
+        "js_CloneNotSupportedException"
+    )
+
+    val scalaClassDefs = linkingUnit.classDefs.filter(_.kind.isClass)
+
+    val classesWithInstantiatedSubclasses = scalaClassDefs
+      .withFilter(_.hasInstances)
+      .flatMap(_.superClass)
+      .map(_.name)
+      .toSet
+
+    def enableInlineableInitFor(classDef: LinkedClass): Boolean = {
+      /* We can enable inlined init if all of the following apply:
+       * - The class is not blacklisted
+       * - It does not have any instantiated subclass
+       * - It has exactly one (regular) constructor
+       * - It does not have any exported constructor (since they are
+       *   effectively secondary constructors)
+       *
+       * By construction, this is always true for module classes.
+       */
+      !blackList(classDef.encodedName) &&
+      !classesWithInstantiatedSubclasses(classDef.encodedName) && {
+        classDef.memberMethods.count(
+            x => Definitions.isConstructorName(x.info.encodedName)) == 1
+      } && {
+        !classDef.topLevelExports.exists(
+            _.isInstanceOf[TopLevelConstructorExportDef])
+      }
+    }
+
+    scalaClassDefs
+      .withFilter(enableInlineableInitFor(_))
+      .map(_.encodedName)
+      .toSet
+  }
+
   abstract class KnowledgeAccessor extends GlobalKnowledge with Invalidatable {
     /* In theory, a KnowledgeAccessor should *contain* a GlobalKnowledge, not
      * *be* a GlobalKnowledge. We organize it that way to reduce memory
@@ -84,6 +140,9 @@ private[emitter] final class KnowledgeGuardian {
 
     def isInterface(className: String): Boolean =
       classes(className).askIsInterface(this)
+
+    def hasInlineableInit(className: String): Boolean =
+      classes(className).askHasInlineableInit(this)
 
     def getJSNativeLoadSpec(className: String): Option[JSNativeLoadSpec] =
       classes(className).askJSNativeLoadSpec(this)
@@ -120,26 +179,36 @@ private[emitter] object KnowledgeGuardian {
     }
   }
 
-  private class Class(initClass: LinkedClass) extends Unregisterable {
+  private class Class(initClass: LinkedClass,
+      initHasInlineableInit: Boolean)
+      extends Unregisterable {
+
     private var isAlive: Boolean = true
 
     private var isInterface = computeIsInterface(initClass)
+    private var hasInlineableInit = initHasInlineableInit
     private var jsNativeLoadSpec = computeJSNativeLoadSpec(initClass)
     private var jsSuperClass = computeJSSuperClass(initClass)
     private var jsClassFieldDefs = computeJSClassFieldDefs(initClass)
 
     private val isInterfaceAskers = mutable.Set.empty[Invalidatable]
+    private val hasInlineableInitAskers = mutable.Set.empty[Invalidatable]
     private val jsNativeLoadSpecAskers = mutable.Set.empty[Invalidatable]
     private val jsSuperClassAskers = mutable.Set.empty[Invalidatable]
     private val jsClassFieldDefsAskers = mutable.Set.empty[Invalidatable]
 
-    def update(linkedClass: LinkedClass): Unit = {
+    def update(linkedClass: LinkedClass, newHasInlineableInit: Boolean): Unit = {
       isAlive = true
 
       val newIsInterface = computeIsInterface(linkedClass)
       if (newIsInterface != isInterface) {
         isInterface = newIsInterface
         invalidateAskers(isInterfaceAskers)
+      }
+
+      if (newHasInlineableInit != hasInlineableInit) {
+        hasInlineableInit = newHasInlineableInit
+        invalidateAskers(hasInlineableInitAskers)
       }
 
       val newJSNativeLoadSpec = computeJSNativeLoadSpec(linkedClass)
@@ -207,6 +276,12 @@ private[emitter] object KnowledgeGuardian {
       isInterface
     }
 
+    def askHasInlineableInit(invalidatable: Invalidatable): Boolean = {
+      invalidatable.registeredTo(this)
+      hasInlineableInitAskers += invalidatable
+      hasInlineableInit
+    }
+
     def askJSNativeLoadSpec(invalidatable: Invalidatable): Option[JSNativeLoadSpec] = {
       invalidatable.registeredTo(this)
       jsNativeLoadSpecAskers += invalidatable
@@ -227,6 +302,7 @@ private[emitter] object KnowledgeGuardian {
 
     def unregister(invalidatable: Invalidatable): Unit = {
       isInterfaceAskers -= invalidatable
+      hasInlineableInitAskers -= invalidatable
       jsNativeLoadSpecAskers -= invalidatable
       jsSuperClassAskers -= invalidatable
       jsClassFieldDefsAskers -= invalidatable
@@ -235,6 +311,7 @@ private[emitter] object KnowledgeGuardian {
     /** Call this when we invalidate all caches. */
     def unregisterAll(): Unit = {
       isInterfaceAskers.clear()
+      hasInlineableInitAskers.clear()
       jsNativeLoadSpecAskers.clear()
       jsSuperClassAskers.clear()
       jsClassFieldDefsAskers.clear()

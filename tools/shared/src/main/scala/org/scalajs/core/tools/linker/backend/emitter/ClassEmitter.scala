@@ -133,8 +133,27 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       yield js.ClassDef(Some(classIdent), parentVar, members)(tree.pos)
   }
 
+  /** Extracts the inlineable init method, if there is one. */
+  def extractInlineableInit(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): (Option[LinkedMember[MethodDef]], List[LinkedMember[MethodDef]]) = {
+
+    val memberMethods = tree.memberMethods
+
+    if (globalKnowledge.hasInlineableInit(tree.encodedName)) {
+      val (constructors, otherMethods) = memberMethods.partition { method =>
+        Definitions.isConstructorName(method.info.encodedName)
+      }
+      assert(constructors.size == 1,
+          s"Found ${constructors.size} constructors in class " +
+          s"${tree.encodedName} which has an inlined init.")
+      (Some(constructors.head), otherMethods)
+    } else {
+      (None, memberMethods)
+    }
+  }
+
   /** Generates the JS constructor for a class. */
-  def genConstructor(tree: LinkedClass)(
+  def genConstructor(tree: LinkedClass, initToInline: Option[MethodDef])(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
 
     assert(tree.kind.isAnyNonNativeClass)
@@ -143,15 +162,16 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     outputMode match {
       case OutputMode.ECMAScript51Isolated =>
-        genES5Constructor(tree)
+        genES5Constructor(tree, initToInline)
 
       case OutputMode.ECMAScript6 =>
-        genES6Constructor(tree)
+        genES6Constructor(tree, initToInline)
     }
   }
 
   /** Generates the JS constructor for a class, ES5 style. */
-  private def genES5Constructor(tree: LinkedClass)(
+  private def genES5Constructor(tree: LinkedClass,
+      initToInline: Option[MethodDef])(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
     implicit val pos = tree.pos
@@ -177,8 +197,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             js.DotSelect(encodeClassVar(parentIdent.name), js.Ident("call")),
             List(js.This()))
       }
-      val fieldDefs = genFieldDefsOfScalaClass(tree)
-      WithGlobals(js.Function(Nil, js.Block(superCtorCall :: fieldDefs)))
+      genJSConstructorFun(tree, superCtorCall, initToInline)
     } else {
       genConstructorFunForJSClass(tree)
     }
@@ -220,7 +239,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   /** Generates the JS constructor for a class, ES6 style. */
-  private def genES6Constructor(tree: LinkedClass)(
+  private def genES6Constructor(tree: LinkedClass,
+      initToInline: Option[MethodDef])(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = tree.pos
 
@@ -230,18 +250,73 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             fun.body)
       }
     } else {
-      val fieldDefs = genFieldDefsOfScalaClass(tree)
-      if (fieldDefs.isEmpty && outputMode == OutputMode.ECMAScript6) {
-        WithGlobals(js.Skip())
-      } else {
-        val superCtorCall = tree.superClass.fold[js.Tree] {
-          js.Skip()(tree.pos)
-        } { parentIdent =>
-          js.Apply(js.Super(), Nil)
+      val superCtorCall = tree.superClass.fold[js.Tree] {
+        js.Skip()(tree.pos)
+      } { parentIdent =>
+        js.Apply(js.Super(), Nil)
+      }
+
+      val jsConstructorFunWithGlobals =
+        genJSConstructorFun(tree, superCtorCall, initToInline)
+
+      for (jsConstructorFun <- jsConstructorFunWithGlobals) yield {
+        val js.Function(args, body) = jsConstructorFun
+        if (args.isEmpty && (body eq superCtorCall))
+          js.Skip()
+        else
+          js.MethodDef(static = false, js.Ident("constructor"), args, body)
+      }
+    }
+  }
+
+  /** Generates the JavaScript constructor of a class, as a `js.Function`.
+   *
+   *  For ECMAScript 2015, that `js.Function` must be decomposed and reformed
+   *  into a `js.MethodDef` afterwards.
+   *
+   *  The generated function performs the following steps:
+   *
+   *  - Call the super constructor, as specified by `superCtorCall`
+   *  - Create the fields of the current class, initialized to the zero of
+   *    their respective types
+   *  - Executes the body of the `init` method to inline, if any
+   *
+   *  @param tree
+   *    The `LinkedClass` for which we generate a JS constructor.
+   *
+   *  @param superCtorCall
+   *    The call to the super JS constructor. This will be different depending
+   *    on the output mode.
+   *
+   *  @param initToInline
+   *    The `init` method to inline in the JS constructor, if any.
+   */
+  private def genJSConstructorFun(tree: LinkedClass, superCtorCall: js.Tree,
+      initToInline: Option[MethodDef])(
+      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Function] = {
+
+    implicit val pos = tree.pos
+
+    val fieldDefs = genFieldDefsOfScalaClass(tree)
+
+    initToInline.fold {
+      WithGlobals(js.Function(Nil, js.Block(superCtorCall :: fieldDefs)))
+    } { initMethodDef =>
+      val generatedInitMethodFunWithGlobals = {
+        implicit val pos = initMethodDef.pos
+        val initMethodBody = initMethodDef.body.getOrElse {
+          throw new AssertionError("Cannot generate an abstract constructor")
         }
-        val methodDef = js.MethodDef(static = false, js.Ident("constructor"),
-            Nil, js.Block(superCtorCall :: fieldDefs))
-        WithGlobals(methodDef)
+        assert(initMethodDef.resultType == NoType,
+            s"Found a constructor with type ${initMethodDef.resultType} at $pos")
+        desugarToFunction(tree.encodedName, initMethodDef.args, initMethodBody,
+            isStat = true)
+      }
+
+      for (generatedInitMethodFun <- generatedInitMethodFunWithGlobals) yield {
+        val js.Function(args, initMethodFunBody) = generatedInitMethodFun
+        js.Function(args,
+            js.Block(superCtorCall :: fieldDefs ::: initMethodFunBody :: Nil))
       }
     }
   }
@@ -870,9 +945,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
                 genNonNativeJSClassConstructor(className),
                 Nil)
           } else {
-            js.Apply(
-                js.New(encodeClassVar(className), Nil) DOT js.Ident("init___"),
-                Nil)
+            js.New(encodeClassVar(className), Nil)
           }
         }
       }

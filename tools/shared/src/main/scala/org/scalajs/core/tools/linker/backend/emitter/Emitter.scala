@@ -345,11 +345,27 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
     // Class definition
     if (linkedClass.hasInstances && kind.isAnyNonNativeClass) {
-      val ctor = classTreeCache.constructor.getOrElseUpdate(
-          classEmitter.genConstructor(linkedClass)(classCache))
+      val (linkedInlineableInit, linkedMemberMethods) =
+        classEmitter.extractInlineableInit(linkedClass)(classCache)
+
+      // JS constructor
+      val ctor = {
+        /* The constructor depends both on the class version, and the version
+         * of the inlineable init, if there is one.
+         */
+        val ctorCache = classCache.getConstructorCache()
+        val ctorVersion = linkedInlineableInit.fold[Option[String]] {
+          linkedClass.version.map("1-" + _)
+        } { linkedInit =>
+          mergeVersions(linkedClass.version, linkedInit.version).map("2-" + _)
+        }
+        val initToInline = linkedInlineableInit.map(_.tree)
+        ctorCache.getOrElseUpdate(ctorVersion,
+            classEmitter.genConstructor(linkedClass, initToInline)(ctorCache))
+      }
 
       // Normal methods
-      val memberMethods = for (m <- linkedClass.memberMethods) yield {
+      val memberMethods = for (m <- linkedMemberMethods) yield {
         val methodCache = classCache.getMethodCache(m.info.encodedName)
 
         methodCache.getOrElseUpdate(m.version,
@@ -444,6 +460,11 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
   // Helpers
 
+  private def mergeVersions(v1: Option[String],
+      v2: Option[String]): Option[String] = {
+    v1.flatMap(s1 => v2.map(s2 => s1.length + "-" + s1 + s2))
+  }
+
   private def getClassTreeCache(linkedClass: LinkedClass): DesugaredClassCache =
     getClassCache(linkedClass.ancestors).getCache(linkedClass.version)
 
@@ -474,6 +495,8 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     private[this] val _staticCaches = mutable.Map.empty[String, MethodCache]
     private[this] val _methodCaches = mutable.Map.empty[String, MethodCache]
 
+    private[this] var _constructorCache: Option[MethodCache] = None
+
     override def invalidate(): Unit = {
       /* Do not invalidate contained methods, as they have their own
        * invalidation logic.
@@ -487,6 +510,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       _cacheUsed = false
       _staticCaches.valuesIterator.foreach(_.startRun())
       _methodCaches.valuesIterator.foreach(_.startRun())
+      _constructorCache.foreach(_.startRun())
     }
 
     def getCache(version: Option[String]): DesugaredClassCache = {
@@ -508,9 +532,20 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     def getMethodCache(encodedName: String): MethodCache =
       _methodCaches.getOrElseUpdate(encodedName, new MethodCache)
 
+    def getConstructorCache(): MethodCache = {
+      _constructorCache.getOrElse {
+        val cache = new MethodCache
+        _constructorCache = Some(cache)
+        cache
+      }
+    }
+
     def cleanAfterRun(): Boolean = {
       _staticCaches.retain((_, c) => c.cleanAfterRun())
       _methodCaches.retain((_, c) => c.cleanAfterRun())
+
+      if (_constructorCache.exists(!_.cleanAfterRun()))
+        _constructorCache = None
 
       if (!_cacheUsed)
         invalidate()
@@ -557,7 +592,6 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
 private object Emitter {
   private final class DesugaredClassCache {
-    val constructor = new OneTimeCache[WithGlobals[js.Tree]]
     val exportedMembers = new OneTimeCache[WithGlobals[js.Tree]]
     val instanceTests = new OneTimeCache[js.Tree]
     val typeData = new OneTimeCache[WithGlobals[js.Tree]]
