@@ -922,7 +922,7 @@ $TypeData.prototype.getClassOf = function() {
 getClassOf() {
 //!endif
   if (!this._classOf)
-    this._classOf = new $c_jl_Class().init___jl_ScalaJSClassData(this);
+    this._classOf = new $c_jl_Class(this);
   return this._classOf;
 };
 

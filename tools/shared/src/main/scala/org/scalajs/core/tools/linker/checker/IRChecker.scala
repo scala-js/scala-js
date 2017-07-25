@@ -138,6 +138,16 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         reportError(s"Duplicate static field with name '${duplicate.name}'")
       }
 
+      // Module classes must have exactly one constructor, without parameter
+      if (classDef.kind == ClassKind.ModuleClass) {
+        implicit val ctx = ErrorContext(classDef)
+        val methods = classDef.memberMethods
+        if (methods.count(m => isConstructorName(m.info.encodedName)) != 1)
+          reportError(s"Module class must have exactly 1 constructor")
+        if (!methods.exists(_.info.encodedName == "init___"))
+          reportError(s"Module class must have a parameterless constructor")
+      }
+
       // Check exported members
       for (member <- classDef.exportedMembers) {
         implicit val ctx = ErrorContext(member.tree)

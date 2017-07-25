@@ -168,6 +168,7 @@ object StackTrace {
    *
    *  The recognized patterns are
    *  {{{
+   *    new \$c_<encoded class name>
    *    \$c_<encoded class name>.prototype.<encoded method name>
    *    \$c_<encoded class name>.<encoded method name>
    *    \$s_<encoded class name>__<encoded method name>
@@ -175,6 +176,7 @@ object StackTrace {
    *    \$m_<encoded module name>
    *  }}}
    *  all of them optionally prefixed by `Object.` or `[object Object].`.
+   *  (it comes after the "new " for the patterns where it start with a "new ")
    *
    *  When the function name is none of those, the pair
    *    `("<jscode>", functionName)`
@@ -184,27 +186,25 @@ object StackTrace {
   private def extractClassMethod(functionName: String): (String, String) = {
     val PatC = """^(?:Object\.|\[object Object\]\.)?\$c_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
     val PatS = """^(?:Object\.|\[object Object\]\.)?\$[sf]_((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatN = """^new (?:Object\.|\[object Object\]\.)?\$c_([^\.]+)$""".re
     val PatM = """^(?:Object\.|\[object Object\]\.)?\$m_([^\.]+)$""".re
 
-    var isModule = false
-    var mtch = PatC.exec(functionName)
-    if (mtch eq null) {
-      mtch = PatS.exec(functionName)
-      if (mtch eq null) {
-        mtch = PatM.exec(functionName)
-        isModule = true
-      }
-    }
-
-    if (mtch ne null) {
-      val className = decodeClassName(mtch(1).get)
-      val methodName = if (isModule)
-        "<clinit>" // that's how it would be reported on the JVM
-      else
-        decodeMethodName(mtch(2).get)
-      (className, methodName)
+    val matchC = PatC.exec(functionName)
+    val matchCOrS = if (matchC ne null) matchC else PatS.exec(functionName)
+    if (matchCOrS ne null) {
+      (decodeClassName(matchCOrS(1).get), decodeMethodName(matchCOrS(2).get))
     } else {
-      ("<jscode>", functionName)
+      val matchN = PatN.exec(functionName)
+      if (matchN ne null) {
+        (decodeClassName(matchN(1).get), "<init>")
+      } else {
+        val matchM = PatM.exec(functionName)
+        if (matchM ne null) {
+          (decodeClassName(matchM(1).get), "<clinit>")
+        } else {
+          ("<jscode>", functionName)
+        }
+      }
     }
   }
 

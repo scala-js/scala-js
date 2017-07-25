@@ -18,6 +18,20 @@ private[emitter] trait GlobalKnowledge {
   /** Tests whether the specified class name refers to an `Interface`. */
   def isInterface(className: String): Boolean
 
+  /** Tests whether the specified class uses an inlineable init.
+   *
+   *  When it does, its (only) `init___` method is inlined inside the JS
+   *  constructor. This means that instantiation should look like
+   *  {{{
+   *  new \$c_Foo(args)
+   *  }}}
+   *  instead of
+   *  {{{
+   *  new \$c_Foo().init___XY(args)
+   *  }}}
+   */
+  def hasInlineableInit(className: String): Boolean
+
   /** `None` for non-native JS classes/objects; `Some(spec)` for native JS
    *  classes/objects.
    *
