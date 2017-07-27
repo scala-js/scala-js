@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.linker.backend
+package org.scalajs.core.tools.linker
 
 /** Kind of module structure emitted for the Scala.js output. */
 sealed abstract class ModuleKind

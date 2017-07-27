@@ -6,18 +6,18 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-package org.scalajs.core.tools.linker
+package org.scalajs.core.tools.linker.backend
 
-package object standard {
-  implicit class StandardLinkerConfigStandardOps(
-      val __self: StandardLinker.Config) extends AnyVal {
+import org.scalajs.core.tools.linker.backend.closure.ClosureLinkerBackend
 
-    import StandardLinker.Config
+object LinkerBackendPlatformExtensions {
+  import LinkerBackend.Config
 
-    /** Standard output mode. */
-    def outputMode: OutputMode = __self.outputMode
+  final class ConfigExt(val config: Config) extends AnyVal {
+    /** Whether to actually use the Google Closure Compiler pass. */
+    def closureCompiler: Boolean = config.closureCompilerIfAvailable
 
-    def withOutputMode(outputMode: OutputMode): Config =
-      __self.withOutputMode(outputMode)
+    def withClosureCompiler(closureCompiler: Boolean): Config =
+      config.withClosureCompilerIfAvailable(closureCompiler)
   }
 }

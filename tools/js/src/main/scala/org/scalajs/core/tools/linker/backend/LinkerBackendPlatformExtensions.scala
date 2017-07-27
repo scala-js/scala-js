@@ -6,18 +6,17 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-package org.scalajs.core.tools.linker
+package org.scalajs.core.tools.linker.backend
 
-package object standard {
-  implicit class StandardLinkerConfigStandardOps(
-      val __self: StandardLinker.Config) extends AnyVal {
+object LinkerBackendPlatformExtensions {
+  import LinkerBackend.Config
 
-    import StandardLinker.Config
-
-    /** Standard output mode. */
-    def outputMode: OutputMode = __self.outputMode
-
-    def withOutputMode(outputMode: OutputMode): Config =
-      __self.withOutputMode(outputMode)
+  final class ConfigExt(val config: Config) extends AnyVal {
+    /** Whether to actually use the Google Closure Compiler pass.
+     *
+     *  On the JavaScript platform, this always returns `false`, as GCC is not
+     *  available.
+     */
+    def closureCompiler: Boolean = false
   }
 }

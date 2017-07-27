@@ -17,9 +17,10 @@ import org.scalajs.core.ir
 import ir.{ClassKind, Definitions, Infos}
 import Definitions._
 
-import org.scalajs.core.tools.sem._
+import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 
-private final class Analyzer(semantics: Semantics,
+private final class Analyzer(config: CommonPhaseConfig,
     symbolRequirements: SymbolRequirement,
     allowAddingSyntheticMethods: Boolean) extends Analysis {
   import Analyzer._
@@ -871,11 +872,11 @@ private final class Analyzer(semantics: Semantics,
 }
 
 object Analyzer {
-  def computeReachability(semantics: Semantics,
+  def computeReachability(config: CommonPhaseConfig,
       symbolRequirements: SymbolRequirement,
       allData: Seq[Infos.ClassInfo],
       allowAddingSyntheticMethods: Boolean): Analysis = {
-    val analyzer = new Analyzer(semantics, symbolRequirements,
+    val analyzer = new Analyzer(config, symbolRequirements,
         allowAddingSyntheticMethods)
     analyzer.computeReachability(allData)
     analyzer

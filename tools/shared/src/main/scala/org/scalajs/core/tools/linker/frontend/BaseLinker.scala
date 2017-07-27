@@ -14,12 +14,11 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.util.Try
 
-import org.scalajs.core.tools.sem._
-import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.io._
 
 import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.checker._
 import org.scalajs.core.tools.linker.analyzer._
 
@@ -37,16 +36,9 @@ import Analysis._
 /** Links the information from [[io.VirtualScalaJSIRFile]]s into
  *  [[LinkedClass]]es. Does a dead code elimination pass.
  */
-final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
-    considerPositions: Boolean) {
+final class BaseLinker(config: CommonPhaseConfig) {
 
   private type TreeProvider = String => (ClassDef, Option[String])
-
-  @deprecated("Use the overload with explicit module initializers.", "0.6.15")
-  def link(irInput: Seq[VirtualScalaJSIRFile], logger: Logger,
-      symbolRequirements: SymbolRequirement, checkIR: Boolean): LinkingUnit = {
-    link(irInput, Nil, logger, symbolRequirements, checkIR)
-  }
 
   def link(irInput: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer], logger: Logger,
@@ -98,7 +90,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
         symbolRequirements ++
         ModuleInitializer.toSymbolRequirement(moduleInitializers)
       }
-      Analyzer.computeReachability(semantics, allSymbolRequirements, infoInput,
+      Analyzer.computeReachability(config, allSymbolRequirements, infoInput,
           allowAddingSyntheticMethods = true)
     }
 
@@ -153,7 +145,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
           getTree, analysis)
     }
 
-    new LinkingUnit(semantics, esLevel, linkedClassDefs.toList, infoByName,
+    new LinkingUnit(config.coreSpec, linkedClassDefs.toList, infoByName,
         moduleInitializers.toList)
   }
 
@@ -176,7 +168,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
 
     def linkedMethod(m: MethodDef) = {
       val info = memberInfoByStaticAndName((m.static, m.name.encodedName))
-      val version = m.hash.map(Hashers.hashAsVersion(_, considerPositions))
+      val version = m.hash.map(Hashers.hashAsVersion(_))
       new LinkedMember(info, m, version)
     }
 
@@ -187,7 +179,7 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel,
 
     def linkedSyntheticMethod(m: MethodDef) = {
       val info = Infos.generateMethodInfo(m)
-      val version = m.hash.map(Hashers.hashAsVersion(_, considerPositions))
+      val version = m.hash.map(Hashers.hashAsVersion(_))
       new LinkedMember(info, m, version)
     }
 

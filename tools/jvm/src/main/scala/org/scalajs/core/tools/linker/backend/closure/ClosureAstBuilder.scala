@@ -3,8 +3,8 @@ package org.scalajs.core.tools.linker.backend.closure
 import org.scalajs.core.ir
 import ir.Position.NoPosition
 
-import org.scalajs.core.tools.javascript.Trees.Tree
-import org.scalajs.core.tools.javascript.JSTreeBuilder
+import org.scalajs.core.tools.linker.backend.javascript.Trees.Tree
+import org.scalajs.core.tools.linker.backend.javascript.JSTreeBuilder
 
 import com.google.javascript.rhino._
 import com.google.javascript.jscomp._

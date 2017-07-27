@@ -6,18 +6,21 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-package org.scalajs.core.tools.linker
+package org.scalajs.core.tools.linker.frontend
 
-package object standard {
-  implicit class StandardLinkerConfigStandardOps(
-      val __self: StandardLinker.Config) extends AnyVal {
+import org.scalajs.core.tools.linker.frontend.optimizer._
 
-    import StandardLinker.Config
+private[frontend] object LinkerFrontendPlatform {
+  import LinkerFrontend.Config
 
-    /** Standard output mode. */
-    def outputMode: OutputMode = __self.outputMode
+  def createOptimizer(config: Config): Option[GenIncOptimizer] = {
+    import config.commonConfig
 
-    def withOutputMode(outputMode: OutputMode): Config =
-      __self.withOutputMode(outputMode)
+    if (!config.optimizer)
+      None
+    else if (commonConfig.parallel)
+      Some(new ParIncOptimizer(commonConfig))
+    else
+      Some(new IncOptimizer(commonConfig))
   }
 }

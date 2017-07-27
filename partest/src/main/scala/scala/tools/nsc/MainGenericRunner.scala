@@ -37,7 +37,7 @@ class MainGenericRunner {
   val optMode = OptMode.fromId(System.getProperty("scalajs.partest.optMode"))
 
   def readSemantics() = {
-    import org.scalajs.core.tools.sem.CheckedBehavior.Compliant
+    import org.scalajs.core.tools.linker.CheckedBehavior.Compliant
 
     val opt = Option(System.getProperty("scalajs.partest.compliantSems"))
     val compliantSems =

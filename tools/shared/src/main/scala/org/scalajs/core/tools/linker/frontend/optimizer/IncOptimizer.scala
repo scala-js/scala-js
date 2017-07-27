@@ -12,12 +12,10 @@ package org.scalajs.core.tools.linker.frontend.optimizer
 import scala.collection.{GenTraversableOnce, GenIterable}
 import scala.collection.mutable
 
-import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.javascript.ESLevel
+import org.scalajs.core.tools.linker.standard._
 
-final class IncOptimizer(semantics: Semantics, esLevel: ESLevel,
-    considerPositions: Boolean)
-    extends GenIncOptimizer(semantics, esLevel, considerPositions) {
+final class IncOptimizer(config: CommonPhaseConfig)
+    extends GenIncOptimizer(config) {
 
   private[optimizer] object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = mutable.Map[K, V]
@@ -166,8 +164,4 @@ final class IncOptimizer(semantics: Semantics, esLevel: ESLevel,
 
   }
 
-}
-
-object IncOptimizer {
-  val factory: GenIncOptimizer.OptimizerFactory = new IncOptimizer(_, _, _)
 }

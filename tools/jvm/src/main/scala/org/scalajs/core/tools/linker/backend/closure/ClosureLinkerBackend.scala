@@ -19,36 +19,29 @@ import com.google.javascript.jscomp.{
 }
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging.Logger
-import org.scalajs.core.tools.sem.Semantics
 
-import org.scalajs.core.tools.linker.LinkingUnit
+import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.backend._
-import org.scalajs.core.tools.linker.backend.emitter.{Emitter, CoreJSLibs}
+import org.scalajs.core.tools.linker.backend.emitter.Emitter
 
 /** The Closure backend of the Scala.js linker.
  *
  *  Runs a the Google Closure Compiler in advanced mode on the emitted code.
  *  Use this for production builds.
  */
-final class ClosureLinkerBackend(
-    semantics: Semantics,
-    moduleKind: ModuleKind,
-    withSourceMap: Boolean,
-    config: LinkerBackend.Config
-) extends LinkerBackend(semantics, ESLevel.ES5, moduleKind, withSourceMap,
-    config) {
+final class ClosureLinkerBackend(config: LinkerBackend.Config)
+    extends LinkerBackend(config) {
 
-  @deprecated("Use the overload with an explicit ModuleKind", "0.6.13")
-  def this(semantics: Semantics, withSourceMap: Boolean,
-      config: LinkerBackend.Config) {
-    this(semantics, ModuleKind.NoModule, withSourceMap, config)
-  }
+  import config.commonConfig.coreSpec._
+
+  require(outputMode == OutputMode.ECMAScript51Isolated,
+      s"Cannot use output mode $outputMode with the Closure Compiler")
 
   private[this] val emitter = {
-    new Emitter(semantics, OutputMode.ECMAScript51Isolated, moduleKind)
+    new Emitter(config.commonConfig)
       .withOptimizeBracketSelects(false)
   }
 
@@ -180,7 +173,7 @@ final class ClosureLinkerBackend(
     options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
     options.setCheckGlobalThisLevel(CheckLevel.OFF)
 
-    if (withSourceMap) {
+    if (config.sourceMap) {
       options.setSourceMapOutputPath(outputName + ".map")
       options.setSourceMapDetailLevel(SourceMap.DetailLevel.ALL)
     }

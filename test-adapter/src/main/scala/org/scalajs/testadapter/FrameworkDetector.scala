@@ -4,7 +4,7 @@ import sbt.testing._
 
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.logging.Logger
-import org.scalajs.core.tools.linker.backend.ModuleKind
+import org.scalajs.core.tools.linker.ModuleKind
 
 import org.scalajs.jsenv._
 

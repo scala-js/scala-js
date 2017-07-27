@@ -684,10 +684,8 @@ object Serializers {
 
     def writeOptHash(optHash: Option[TreeHash]): Unit = {
       buffer.writeBoolean(optHash.isDefined)
-      for (hash <- optHash) {
-        buffer.write(hash.treeHash)
-        buffer.write(hash.posHash)
-      }
+      for (hash <- optHash)
+        buffer.write(hash.hash)
     }
 
     def writeString(s: String): Unit =
@@ -1050,11 +1048,9 @@ object Serializers {
 
     def readOptHash(): Option[TreeHash] = {
       if (input.readBoolean()) {
-        val treeHash = new Array[Byte](20)
-        val posHash = new Array[Byte](20)
-        input.readFully(treeHash)
-        input.readFully(posHash)
-        Some(new TreeHash(treeHash, posHash))
+        val hash = new Array[Byte](20)
+        input.readFully(hash)
+        Some(new TreeHash(hash))
       } else None
     }
 

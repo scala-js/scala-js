@@ -20,28 +20,23 @@ import org.scalajs.core.ir.Definitions.decodeClassName
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.logging._
 
-import org.scalajs.core.tools.javascript.{Trees => js, _}
-
 import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
-import org.scalajs.core.tools.linker.backend.{OutputMode, ModuleKind}
+import org.scalajs.core.tools.linker.backend.javascript.{Trees => js, _}
 
 import GlobalRefUtils._
 
 /** Emits a desugared JS tree to a builder */
-final class Emitter private (semantics: Semantics, outputMode: OutputMode,
-    moduleKind: ModuleKind, internalOptions: InternalOptions) {
+final class Emitter private (config: CommonPhaseConfig,
+    internalOptions: InternalOptions) {
 
   import Emitter._
+  import config.coreSpec._
 
-  def this(semantics: Semantics, outputMode: OutputMode,
-      moduleKind: ModuleKind) = {
-    this(semantics, outputMode, moduleKind, InternalOptions())
+  def this(config: CommonPhaseConfig) = {
+    this(config, InternalOptions())
   }
-
-  @deprecated("Use the overload with an explicit ModuleKind.", "0.6.13")
-  def this(semantics: Semantics, outputMode: OutputMode) =
-    this(semantics, outputMode, ModuleKind.NoModule, InternalOptions())
 
   private val knowledgeGuardian = new KnowledgeGuardian
 
@@ -95,7 +90,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
   private[this] var statsMethodsInvalidated: Int = 0
 
   val symbolRequirements: SymbolRequirement =
-    Emitter.symbolRequirements(semantics, outputMode.esLevel)
+    Emitter.symbolRequirements(config.coreSpec)
 
   private val needsIIFEWrapper = {
     moduleKind match {
@@ -107,7 +102,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
   // Private API for the Closure backend (could be opened if necessary)
   private[backend] def withOptimizeBracketSelects(
       optimizeBracketSelects: Boolean): Emitter = {
-    new Emitter(semantics, outputMode, moduleKind,
+    new Emitter(config,
         internalOptions.withOptimizeBracketSelects(optimizeBracketSelects))
   }
 
@@ -618,9 +613,8 @@ private object Emitter {
     }
   }
 
-  private def symbolRequirements(semantics: Semantics,
-      esLevel: ESLevel): SymbolRequirement = {
-    import semantics._
+  private def symbolRequirements(coreSpec: CoreSpec): SymbolRequirement = {
+    import coreSpec.semantics._
     import CheckedBehavior._
 
     val factory = SymbolRequirement.factory("emitter")
@@ -628,6 +622,11 @@ private object Emitter {
 
     def cond(p: Boolean)(v: => SymbolRequirement): SymbolRequirement =
       if (p) v else none()
+
+    def assumingES6: Boolean = coreSpec.outputMode match {
+      case OutputMode.ECMAScript51Isolated => false
+      case OutputMode.ECMAScript6          => true
+    }
 
     multiple(
         instantiateClass("O", "init___"),
@@ -662,7 +661,7 @@ private object Emitter {
 
         callOnModule(LongImpl.RuntimeLongModuleClass, LongImpl.AllModuleMethods),
 
-        cond(semantics.strictFloats && esLevel == ESLevel.ES5) {
+        cond(strictFloats && !assumingES6) {
           callOnModule("sjsr_package$", "froundPolyfill__D__D")
         },
         callOnModule("sjsr_Bits$", "numberHashCode__D__I")

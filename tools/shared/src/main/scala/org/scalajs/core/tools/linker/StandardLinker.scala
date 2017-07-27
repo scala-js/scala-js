@@ -12,30 +12,37 @@ import scala.language.implicitConversions
 
 import java.net.URI
 
+import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
-import org.scalajs.core.tools.linker.backend.{LinkerBackend, OutputMode}
+import org.scalajs.core.tools.linker.backend.LinkerBackend
 
 object StandardLinker {
   import StandardLinkerPlatformExtensions._
 
   def apply(config: Config): Linker = {
+    val coreSpec = CoreSpec(
+        config.semantics,
+        config.moduleKind,
+        config.outputMode)
+
+    val commonConfig = CommonPhaseConfig()
+      .withCoreSpec(coreSpec)
+      .withParallel(config.parallel)
+      .withBatchMode(config.batchMode)
+
     val frontendConfig = LinkerFrontend.Config()
+      .withCommonConfig(commonConfig)
       .withCheckIR(config.checkIR)
+      .withOptimizer(config.optimizer)
 
     val backendConfig = LinkerBackend.Config()
+      .withCommonConfig(commonConfig)
+      .withSourceMap(config.sourceMap)
       .withRelativizeSourceMapBase(config.relativizeSourceMapBase)
+      .withClosureCompilerIfAvailable(config.closureCompilerIfAvailable)
       .withPrettyPrint(config.prettyPrint)
 
-    val oldAPIConfig = Linker.Config()
-      .withSourceMap(config.sourceMap)
-      .withOptimizer(config.optimizer)
-      .withParallel(config.parallel)
-      .withClosureCompilerIfAvailable(config.closureCompilerIfAvailable)
-      .withFrontendConfig(frontendConfig)
-      .withBackendConfig(backendConfig)
-
-    Linker.applyInternal(config.semantics, config.outputMode, config.moduleKind,
-        oldAPIConfig)
+    Linker(LinkerFrontend(frontendConfig), LinkerBackend(backendConfig))
   }
 
   implicit def configExt(config: Config): ConfigExt =
@@ -182,7 +189,7 @@ object StandardLinker {
      *
      *  The defaults are:
      *
-     *  - `semantics`: [[org.scalajs.core.tools.sem.Semantics.Defaults Semantics.Defaults]]
+     *  - `semantics`: [[Semantics.Defaults]]
      *  - `moduleKind`: [[ModuleKind.NoModule]]
      *  - `checkIR`: `false`
      *  - `optimizer`: `true`
@@ -198,7 +205,7 @@ object StandardLinker {
      *  import org.scalajs.core.tools.linker.standard._
      *  }}}
      *
-     *  - `outputMode`: [[org.scalajs.core.tools.linker.backend.OutputMode.Default OutputMode.Default]]
+     *  - `outputMode`: [[org.scalajs.core.tools.linker.standard.OutputMode.Default OutputMode.Default]]
      */
     def apply(): Config = new Config()
   }

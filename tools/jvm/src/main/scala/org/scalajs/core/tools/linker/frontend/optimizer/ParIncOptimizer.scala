@@ -16,14 +16,12 @@ import scala.collection.parallel._
 
 import java.util.concurrent.atomic._
 
-import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.javascript.ESLevel
+import org.scalajs.core.tools.linker.standard._
 
 import ConcurrencyUtils._
 
-final class ParIncOptimizer(semantics: Semantics, esLevel: ESLevel,
-    considerPositions: Boolean)
-    extends GenIncOptimizer(semantics, esLevel, considerPositions) {
+final class ParIncOptimizer(config: CommonPhaseConfig)
+    extends GenIncOptimizer(config) {
 
   private[optimizer] object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = TrieMap[K, V]
@@ -199,8 +197,4 @@ final class ParIncOptimizer(semantics: Semantics, esLevel: ESLevel,
 
   }
 
-}
-
-object ParIncOptimizer {
-  val factory: GenIncOptimizer.OptimizerFactory = new ParIncOptimizer(_, _, _)
 }

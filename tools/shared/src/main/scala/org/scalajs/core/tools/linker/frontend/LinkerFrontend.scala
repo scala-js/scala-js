@@ -12,10 +12,8 @@ package org.scalajs.core.tools.linker.frontend
 import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.io.VirtualScalaJSIRFile
 
-import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.javascript.ESLevel
-
 import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.frontend.optimizer.{GenIncOptimizer, IncOptimizer}
 
@@ -27,27 +25,18 @@ import org.scalajs.core.tools.linker.frontend.optimizer.{GenIncOptimizer, IncOpt
  *  Attention: [[LinkerFrontend]] does not cache the IR input. It is advisable to do
  *  so, unless all IR is already in memory.
  */
-final class LinkerFrontend(
-    val semantics: Semantics,
-    val esLevel: ESLevel,
-    val withSourceMap: Boolean,
-    config: LinkerFrontend.Config,
-    optimizerFactory: Option[GenIncOptimizer.OptimizerFactory]) {
+final class LinkerFrontend private (config: LinkerFrontend.Config) {
+
+  /** Core specification that this linker frontend implements. */
+  val coreSpec = config.commonConfig.coreSpec
 
   private[this] val linker: BaseLinker =
-    new BaseLinker(semantics, esLevel, withSourceMap)
+    new BaseLinker(config.commonConfig)
 
   private[this] val optOptimizer: Option[GenIncOptimizer] =
-    optimizerFactory.map(_(semantics, esLevel, withSourceMap))
+    LinkerFrontendPlatform.createOptimizer(config)
 
-  private[this] val refiner: Refiner = new Refiner
-
-  /** Link and optionally optimize the given IR to a [[LinkingUnit]]. */
-  @deprecated("Use the overload with explicit module initializers.", "0.6.15")
-  def link(irFiles: Seq[VirtualScalaJSIRFile],
-      symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit = {
-    link(irFiles, Nil, symbolRequirements, logger)
-  }
+  private[this] val refiner: Refiner = new Refiner(config.commonConfig)
 
   /** Link and optionally optimize the given IR to a [[LinkingUnit]]. */
   def link(irFiles: Seq[VirtualScalaJSIRFile],
@@ -81,17 +70,39 @@ final class LinkerFrontend(
 }
 
 object LinkerFrontend {
+  def apply(config: Config): LinkerFrontend =
+    new LinkerFrontend(config)
+
   /** Configurations relevant to the frontend */
   final class Config private (
+      /** Common phase config. */
+      val commonConfig: CommonPhaseConfig,
       /** If true, performs expensive checks of the IR for the used parts. */
-      val checkIR: Boolean = false
+      val checkIR: Boolean,
+      /** Whether to use the Scala.js optimizer. */
+      val optimizer: Boolean
   ) {
+    private def this() = {
+      this(
+          commonConfig = CommonPhaseConfig(),
+          checkIR = false,
+          optimizer = true)
+    }
+
+    def withCommonConfig(commonConfig: CommonPhaseConfig): Config =
+      copy(commonConfig = commonConfig)
+
     def withCheckIR(checkIR: Boolean): Config =
       copy(checkIR = checkIR)
 
+    def withOptimizer(optimizer: Boolean): Config =
+      copy(optimizer = optimizer)
+
     private def copy(
-        checkIR: Boolean = checkIR): Config = {
-      new Config(checkIR)
+        commonConfig: CommonPhaseConfig = commonConfig,
+        checkIR: Boolean = checkIR,
+        optimizer: Boolean = optimizer): Config = {
+      new Config(commonConfig, checkIR, optimizer)
     }
   }
 

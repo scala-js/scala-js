@@ -21,13 +21,12 @@ import Definitions.isConstructorName
 import Trees._
 import Types._
 
-import org.scalajs.core.tools.sem._
-import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging._
 
 import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.backend.emitter.LongImpl
+import org.scalajs.core.tools.linker.standard._
 
 /** Incremental optimizer.
  *  An incremental optimizer optimizes a [[LinkingUnit]] in an incremental way.
@@ -38,11 +37,8 @@ import org.scalajs.core.tools.linker.backend.emitter.LongImpl
  *
  *  @param semantics Required Scala.js Semantics
  *  @param esLevel ECMAScript level
- *  @param considerPositions Should positions be considered when comparing tree
- *                           hashes
  */
-abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
-    esLevel: ESLevel, considerPositions: Boolean) {
+abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
   import GenIncOptimizer._
 
@@ -903,7 +899,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
         val changed = {
           originalDef == null ||
           (methodDef.hash zip originalDef.hash).forall {
-            case (h1, h2) => !Hashers.hashesEqual(h1, h2, considerPositions)
+            case (h1, h2) => !Hashers.hashesEqual(h1, h2)
           }
         }
 
@@ -956,7 +952,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
     }
 
     /** All methods are PROCESS PASS ONLY */
-    private class Optimizer extends OptimizerCore(semantics, esLevel) {
+    private class Optimizer extends OptimizerCore(config) {
       type MethodID = MethodImpl
 
       val myself: MethodImpl.this.type = MethodImpl.this
@@ -1013,8 +1009,6 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
 }
 
 object GenIncOptimizer {
-
-  type OptimizerFactory = (Semantics, ESLevel, Boolean) => GenIncOptimizer
 
   private val isAdHocElidableModuleAccessor =
     Set("s_Predef$")
