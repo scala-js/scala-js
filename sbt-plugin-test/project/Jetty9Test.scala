@@ -3,7 +3,7 @@ import Keys._
 
 import org.scalajs.sbtplugin._
 import ScalaJSPlugin.autoImport._
-import Implicits._
+import Loggers._
 
 import org.scalajs.jsenv._
 import org.scalajs.core.tools.io._
@@ -20,7 +20,7 @@ object Jetty9Test {
 
   private val jettyPort = 23548
 
-  val runSetting = run <<= Def.inputTask {
+  val runSetting = run := Def.inputTask {
     val jsEnv = (loadedJSEnv in Compile).value.asInstanceOf[ComJSEnv]
     val jsConsole = scalaJSConsole.value
 
@@ -44,7 +44,7 @@ object Jetty9Test {
 
     val runner = jsEnv.comRunner(code)
 
-    runner.start(streams.value.log, jsConsole)
+    runner.start(sbtLogger2ToolsLogger(streams.value.log), jsConsole)
 
     val jetty = setupJetty((resourceDirectory in Compile).value)
 
@@ -66,7 +66,7 @@ object Jetty9Test {
     jetty.start()
     runner.await(30.seconds)
     jetty.join()
-  }
+  }.evaluated
 
   private def setupJetty(dir: File): Server = {
     val server = new Server(jettyPort)

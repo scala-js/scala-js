@@ -3,14 +3,14 @@ package org.scalajs.sbtplugin
 import java.util.IllegalFormatException
 
 import sbt._
-import sbt.inc.{IncOptions, ClassfileManager}
 import Keys._
-import sbinary.DefaultProtocol._
-import Cache.seqFormat
 import complete.Parser
 import complete.DefaultParsers._
 
 import Loggers._
+import SBTCompat._
+import SBTCompat.formatImplicits._
+import SBTCompat.formatImplicits.seqFormat
 
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io.{IO => toolsIO, _}
@@ -118,34 +118,9 @@ object ScalaJSPluginInternal {
     logger.debug("Global IR cache stats: " + globalIRCache.stats.logLine)
   }
 
-  /** Patches the IncOptions so that .sjsir files are pruned as needed.
-   *
-   *  This complicated logic patches the ClassfileManager factory of the given
-   *  IncOptions with one that is aware of .sjsir files emitted by the Scala.js
-   *  compiler. This makes sure that, when a .class file must be deleted, the
-   *  corresponding .sjsir file are also deleted.
-   */
-  def scalaJSPatchIncOptions(incOptions: IncOptions): IncOptions = {
-    val inheritedNewClassfileManager = incOptions.newClassfileManager
-    val newClassfileManager = () => new ClassfileManager {
-      private[this] val inherited = inheritedNewClassfileManager()
-
-      def delete(classes: Iterable[File]): Unit = {
-        inherited.delete(classes flatMap { classFile =>
-          val scalaJSFiles = if (classFile.getPath endsWith ".class") {
-            val f = FileVirtualFile.withExtension(classFile, ".class", ".sjsir")
-            if (f.exists) List(f)
-            else Nil
-          } else Nil
-          classFile :: scalaJSFiles
-        })
-      }
-
-      def generated(classes: Iterable[File]): Unit = inherited.generated(classes)
-      def complete(success: Boolean): Unit = inherited.complete(success)
-    }
-    incOptions.withNewClassfileManager(newClassfileManager)
-  }
+  /** Patches the IncOptions so that .sjsir files are pruned as needed. */
+  def scalaJSPatchIncOptions(incOptions: IncOptions): IncOptions =
+    SBTCompat.scalaJSPatchIncOptions(incOptions)
 
   private def packageJSDependenciesSetting(taskKey: TaskKey[File], cacheName: String,
       getLib: ResolvedJSDependency => VirtualJSFile): Setting[Task[File]] = {
@@ -458,15 +433,16 @@ object ScalaJSPluginInternal {
             ((moduleName in packageScalaJSLauncherInternal).value + "-launcher.js")),
 
       skip in packageScalaJSLauncherInternal := {
+        // @sbtUnchecked because of https://github.com/sbt/sbt/issues/3299
         val value = !persistLauncherInternal.value
         if (!value) {
-          if (scalaJSUseMainModuleInitializer.value) {
+          if (scalaJSUseMainModuleInitializer.value: @sbtUnchecked) {
             throw new MessageOnlyException(
                 "persistLauncher := true is not compatible with using a main " +
                 "module initializer (scalaJSUseMainModuleInitializer := " +
                 "true), nor is it necessary, since fastOptJS/fullOptJS " +
                 "includes the call to the main method")
-          } else if (scalaJSModuleKind.value != ModuleKind.NoModule) {
+          } else if ((scalaJSModuleKind.value: @sbtUnchecked) != ModuleKind.NoModule) {
             throw new MessageOnlyException(
                 "persistLauncher := true is not compatible with emitting " +
                 "JavaScript modules")
@@ -600,7 +576,8 @@ object ScalaJSPluginInternal {
            * unreasonably overridden values for the fastOptJS and fullOptJS
            * tasks. Otherwise, this check is bogus.
            */
-          checkCompliance(requirements, scalaJSSemantics.value)
+          // @sbtUnchecked because of https://github.com/sbt/sbt/issues/3299
+          checkCompliance(requirements, scalaJSSemantics.value: @sbtUnchecked)
         }
 
         // Collect originating files
@@ -638,13 +615,19 @@ object ScalaJSPluginInternal {
             jsDependencyManifests.value.data.exists(_.requiresDOM))
       },
 
-      resolvedJSEnv := jsEnv.?.value.getOrElse {
-        if (scalaJSUseRhinoInternal.value) {
-          RhinoJSEnvInternal().value
-        } else if (scalaJSRequestsDOM.value) {
-          new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv()
-        } else {
-          new org.scalajs.jsenv.nodejs.NodeJSEnv()
+      resolvedJSEnv := {
+        val useRhino = scalaJSUseRhinoInternal.value
+        val rhinoJSEnv = RhinoJSEnvInternal().value
+        val requestsDOM = scalaJSRequestsDOM.value
+
+        jsEnv.?.value.getOrElse {
+          if (useRhino) {
+            rhinoJSEnv
+          } else if (requestsDOM) {
+            new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv()
+          } else {
+            new org.scalajs.jsenv.nodejs.NodeJSEnv()
+          }
         }
       },
 
@@ -766,14 +749,14 @@ object ScalaJSPluginInternal {
   }
 
   @deprecated("js.JSApps are going away, and this method with them.", "0.6.18")
-  def discoverJSApps(analysis: inc.Analysis): Seq[String] = {
+  def discoverJSApps(analysis: CompileAnalysis): Seq[String] = {
     discoverScalaJSMainClasses(analysis).collect {
       case (name, false) => name
     }.toList
   }
 
   private def discoverScalaJSMainClasses(
-      analysis: inc.Analysis): Map[String, Boolean] = {
+      analysis: CompileAnalysis): Map[String, Boolean] = {
     import xsbt.api.{Discovered, Discovery}
 
     val jsApp = "scala.scalajs.js.JSApp"
@@ -853,11 +836,12 @@ object ScalaJSPluginInternal {
           }
         } else {
           Def.task {
+            val moduleKind = scalaJSModuleKind.value
+            val moduleIdentifier = scalaJSModuleIdentifier.value
+
             (mainClass in scalaJSLauncherInternal).value.fold {
               throw new MessageOnlyException("No main class detected.")
             } { mainClass =>
-              val moduleKind = scalaJSModuleKind.value
-              val moduleIdentifier = scalaJSModuleIdentifier.value
               val memLaunch =
                 memLauncher(mainClass, moduleKind, moduleIdentifier)
               Attributed[VirtualJSFile](memLaunch)(
@@ -1031,6 +1015,11 @@ object ScalaJSPluginInternal {
       "org.eclipse.jetty" % "jetty-server" % "8.1.16.v20140903"
   )
 
+  /* As of sbt 1, a `config()` must be assigned to a `val` starting with an
+   * uppercase letter, which will become the "id" of the configuration.
+   */
+  val PhantomJSJetty = config("phantom-js-jetty").hide
+
   val scalaJSProjectBaseSettings = Seq(
       isScalaJSProject := true,
 
@@ -1120,7 +1109,7 @@ object ScalaJSPluginInternal {
        * them into the PhantomJS runner if necessary.
        * See scalaJSPhantomJSClassLoader
        */
-      ivyConfigurations += config("phantom-js-jetty").hide,
+      ivyConfigurations += PhantomJSJetty,
       libraryDependencies ++= phantomJSJettyModules.map(_ % "phantom-js-jetty"),
       scalaJSPhantomJSClassLoader := {
         val report = update.value

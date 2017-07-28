@@ -1732,8 +1732,16 @@ private[optimizer] abstract class OptimizerCore(
   private def transformExprsOrSpreads(trees: List[Tree])(
       implicit scope: Scope): List[Tree] = {
 
-    trees match {
-      case (spread: JSSpread) :: rest =>
+    /* This is basically a flatMap, but we do it manually because flatMap would
+     * generate many garbage intermediate lists, when in fact the case JSSpread
+     * should be fairly rare. In general, we avoid flatMaps over collections in
+     * OptimizerCore.
+     */
+
+    val builder = List.newBuilder[Tree]
+
+    trees.foreach {
+      case spread: JSSpread =>
         implicit val pos = spread.pos
 
         val newSpreadItems = trampoline {
@@ -1752,19 +1760,16 @@ private[optimizer] abstract class OptimizerCore(
           }
         }
 
-        val newRest = transformExprsOrSpreads(rest)
-
         newSpreadItems match {
-          case JSArrayConstr(newFirsts) => newFirsts ::: newRest
-          case _                        => JSSpread(newSpreadItems) :: newRest
+          case JSArrayConstr(newFirsts) => builder ++= newFirsts
+          case _                        => builder += JSSpread(newSpreadItems)
         }
 
-      case first :: rest =>
-        transformExpr(first) :: transformExprsOrSpreads(rest)
-
-      case Nil =>
-        Nil
+      case tree =>
+        builder += transformExpr(tree)
     }
+
+    builder.result()
   }
 
   private val ClassNamesThatShouldBeInlined = Set(

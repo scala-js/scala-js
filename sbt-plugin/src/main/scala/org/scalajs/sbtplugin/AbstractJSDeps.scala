@@ -2,9 +2,9 @@ package org.scalajs.sbtplugin
 
 import sbt._
 
-import StringUtilities.nonEmpty
-
 import org.scalajs.core.tools.jsdep.JSDependency
+
+import SBTCompat._
 
 /** Something JavaScript related a project may depend on. Either a JavaScript
  *  module/library, or the DOM at runtime. */
@@ -17,7 +17,7 @@ sealed trait AbstractJSDep {
   def %(configurations: String): AbstractJSDep = {
     require(this.configurations.isEmpty,
         "Configurations already specified for jsModule " + this)
-    nonEmpty(configurations, "Configurations")
+    require(configurations.trim.nonEmpty, "Configurations cannot be empty.")
     withConfigs(Some(configurations))
   }
 
@@ -47,7 +47,8 @@ final case class JarJSModuleID(
   def configurations: Option[String] = module.configurations
 
   protected def withConfigs(configs: Option[String]): JSModuleID =
-    copy(module = module.copy(configurations = configs))
+    copy(module = moduleIDWithConfigurations(module, configs))
+
   protected def withJSDep(jsDep: JSDependency): JSModuleID =
     copy(jsDep = jsDep)
 }
