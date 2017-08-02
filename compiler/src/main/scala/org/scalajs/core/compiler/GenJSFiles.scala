@@ -29,20 +29,6 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
     try {
       ir.InfoSerializers.serialize(output, Infos.generateClassInfo(tree))
       ir.Serializers.serialize(output, tree)
-    } catch {
-      case e: ir.InvalidIRException =>
-        e.tree match {
-          case ir.Trees.UndefinedParam() =>
-            reporter.error(sym.pos, "Found a dangling UndefinedParam at " +
-                s"${e.tree.pos}. This is likely due to a bad interaction " +
-                "between a macro or a compiler plugin and the Scala.js " +
-                "compiler plugin. If you hit this, please let us know.")
-
-          case _ =>
-            reporter.error(sym.pos, "The Scala.js compiler generated " +
-                "invalid IR for this class. Please report this as a bug. IR: " +
-                e.tree)
-        }
     } finally {
       output.close()
     }

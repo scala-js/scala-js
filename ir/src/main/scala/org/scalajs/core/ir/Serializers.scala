@@ -377,8 +377,13 @@ object Serializers {
           writeTypeRef(typeRef)
 
         case UndefinedParam() =>
-          writeByte(TagUndefinedParam)
-          writeType(tree.tpe)
+          /* UndefinedParam is a "transient" IR node, and cannot be serialized.
+           * TODO At the moment, this is quite ad hoc to support dangling
+           * UndefinedParam detection in the compiler back-end. This should be
+           * generalized for custom transient nodes.
+           */
+          throw new InvalidIRException(tree,
+              "Cannot serialize a transient IR node of type UndefinedParam")
 
         case VarRef(ident) =>
           writeByte(TagVarRef)
@@ -807,7 +812,6 @@ object Serializers {
         case TagDoubleLiteral  => DoubleLiteral(readDouble())
         case TagStringLiteral  => StringLiteral(readString())
         case TagClassOf        => ClassOf(readTypeRef())
-        case TagUndefinedParam => UndefinedParam()(readType())
 
         case TagVarRef  => VarRef(readIdent())(readType())
         case TagThis    => This()(readType())

@@ -286,22 +286,41 @@ abstract class GenJSCode extends plugins.PluginComponent
                 unexpectedMutatedFields  := mutable.Set.empty,
                 generatedSAMWrapperCount := new VarBox(0)
             ) {
-              val tree = if (isRawJSType(sym.tpe)) {
-                assert(!isRawJSFunctionDef(sym),
-                    s"Raw JS function def should have been recorded: $cd")
-                if (!sym.isTraitOrInterface && isNonNativeJSClass(sym))
-                  genNonNativeJSClass(cd)
-                else
-                  genRawJSClassData(cd)
-              } else if (sym.isTraitOrInterface) {
-                genInterface(cd)
-              } else if (sym.isImplClass) {
-                genImplClass(cd)
-              } else {
-                genClass(cd)
-              }
+              try {
+                val tree = if (isRawJSType(sym.tpe)) {
+                  assert(!isRawJSFunctionDef(sym),
+                      s"Raw JS function def should have been recorded: $cd")
+                  if (!sym.isTraitOrInterface && isNonNativeJSClass(sym))
+                    genNonNativeJSClass(cd)
+                  else
+                    genRawJSClassData(cd)
+                } else if (sym.isTraitOrInterface) {
+                  genInterface(cd)
+                } else if (sym.isImplClass) {
+                  genImplClass(cd)
+                } else {
+                  genClass(cd)
+                }
 
-              generatedClasses += ((sym, None, tree))
+                generatedClasses += ((sym, None, tree))
+              } catch {
+                case e: ir.InvalidIRException =>
+                  e.tree match {
+                    case ir.Trees.UndefinedParam() =>
+                      reporter.error(sym.pos,
+                          "Found a dangling UndefinedParam at " +
+                          s"${e.tree.pos}. This is likely due to a bad " +
+                          "interaction between a macro or a compiler plugin " +
+                          "and the Scala.js compiler plugin. If you hit " +
+                          "this, please let us know.")
+
+                    case _ =>
+                      reporter.error(sym.pos,
+                          "The Scala.js compiler generated invalid IR for " +
+                          "this class. Please report this as a bug. IR: " +
+                          e.tree)
+                  }
+              }
             }
           }
         }

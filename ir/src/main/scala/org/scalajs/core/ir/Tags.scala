@@ -85,9 +85,7 @@ private[ir] object Tags {
   final val TagStringLiteral = TagDoubleLiteral + 1
   final val TagClassOf = TagStringLiteral + 1
 
-  final val TagUndefinedParam = TagClassOf + 1
-
-  final val TagVarRef = TagUndefinedParam + 1
+  final val TagVarRef = TagClassOf + 1
   final val TagThis = TagVarRef + 1
   final val TagClosure = TagThis + 1
 
