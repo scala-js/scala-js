@@ -118,7 +118,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         withMethod(className, constructor) { clazz =>
           implicit val from = FromCore(origin)
           clazz.instantiated()
-          clazz.callMethod(constructor, statically = true)
+          clazz.callMethodStatically(constructor)
         }
 
       case InstanceTests(origin, className) =>
@@ -128,8 +128,13 @@ private final class Analyzer(config: CommonPhaseConfig,
         withClass(className)(_.accessData()(FromCore(origin)))
 
       case CallMethod(origin, className, methodName, statically) =>
-        withMethod(className, methodName)(
-            _.callMethod(methodName, statically)(FromCore(origin)))
+        withMethod(className, methodName) { classInfo =>
+          implicit val from = FromCore(origin)
+          if (statically)
+            classInfo.callMethodStatically(methodName)
+          else
+            classInfo.callMethod(methodName)
+        }
 
       case CallStaticMethod(origin, className, methodName) =>
         withMethod(className, methodName)(
@@ -566,7 +571,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         if (kind != ClassKind.NativeJSModuleClass) {
           instantiated()
           if (isScalaClass)
-            callMethod("init___", statically = true)
+            callMethodStatically("init___")
         }
       }
     }
@@ -588,7 +593,7 @@ private final class Analyzer(config: CommonPhaseConfig,
           ancestors.foreach(_.subclassInstantiated())
 
           for ((methodName, from) <- delayedCalls)
-            delayedCallMethod(methodName)(from)
+            callMethodResolved(methodName)(from)
         } else {
           assert(isJSClass || isNativeJSClass)
 
@@ -639,32 +644,35 @@ private final class Analyzer(config: CommonPhaseConfig,
         _errors += MissingClass(this, from)
     }
 
-    def callMethod(methodName: String, statically: Boolean = false)(
-        implicit from: From): Unit = {
-      if (isConstructorName(methodName)) {
-        // constructors must always be called statically
-        assert(statically,
-            s"Trying to call dynamically the constructor $this.$methodName from $from")
-        lookupConstructor(methodName).reachStatic()
-      } else if (statically) {
-        assert(!isReflProxyName(methodName),
-            s"Trying to call statically refl proxy $this.$methodName")
-        lookupMethod(methodName).reachStatic()
-      } else {
-        for (descendentClass <- descendentClasses) {
-          if (descendentClass.isInstantiated)
-            descendentClass.delayedCallMethod(methodName)
-          else
-            descendentClass.delayedCalls += ((methodName, from))
-        }
+    def callMethod(methodName: String)(implicit from: From): Unit = {
+      // Constructors must always be called statically
+      assert(!isConstructorName(methodName),
+          s"Trying to dynamically call the constructor $this.$methodName from $from")
+
+      for (descendentClass <- descendentClasses) {
+        if (descendentClass.isInstantiated)
+          descendentClass.callMethodResolved(methodName)
+        else
+          descendentClass.delayedCalls += ((methodName, from))
       }
     }
 
-    private def delayedCallMethod(methodName: String)(implicit from: From): Unit = {
+    private def callMethodResolved(methodName: String)(
+        implicit from: From): Unit = {
       if (isReflProxyName(methodName)) {
         tryLookupReflProxyMethod(methodName).foreach(_.reach(this))
       } else {
         lookupMethod(methodName).reach(this)
+      }
+    }
+
+    def callMethodStatically(methodName: String)(implicit from: From): Unit = {
+      if (isConstructorName(methodName)) {
+        lookupConstructor(methodName).reachStatic()
+      } else {
+        assert(!isReflProxyName(methodName),
+            s"Trying to call statically refl proxy $this.$methodName")
+        lookupMethod(methodName).reachStatic()
       }
     }
 
@@ -795,7 +803,7 @@ private final class Analyzer(config: CommonPhaseConfig,
           val objectClass = lookupClass(Definitions.ObjectClass)
           for (methodName <- methods) {
             if (methodName != "clone__O")
-              objectClass.callMethod(methodName, statically = true)
+              objectClass.callMethodStatically(methodName)
           }
         } else {
           val classInfo = lookupClass(className)
@@ -809,7 +817,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         val (className, methods) = methodsCalledStaticallyIterator.next()
         val classInfo = lookupClass(className)
         for (methodName <- methods)
-          classInfo.callMethod(methodName, statically = true)
+          classInfo.callMethodStatically(methodName)
       }
 
       val staticMethodsCalledIterator = data.staticMethodsCalled.iterator
