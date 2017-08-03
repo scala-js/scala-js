@@ -237,10 +237,6 @@ private final class Analyzer(config: CommonPhaseConfig,
         ancestor.descendants += this
     }
 
-    lazy val ancestorCount: Int =
-      if (superClass == null) 0
-      else superClass.ancestorCount + 1
-
     lazy val descendentClasses = descendants.filter(_.isScalaClass)
 
     var isInstantiated: Boolean = false
@@ -263,7 +259,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       isAnyStaticMethodReachable ||
       isAnyDefaultMethodReachable
 
-    def isAnyStaticMethodReachable: Boolean =
+    private def isAnyStaticMethodReachable: Boolean =
       staticMethodInfos.values.exists(_.isReachable)
 
     private def isAnyDefaultMethodReachable =

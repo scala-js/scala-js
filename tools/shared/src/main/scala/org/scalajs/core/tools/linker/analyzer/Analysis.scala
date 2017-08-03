@@ -44,13 +44,9 @@ object Analysis {
   trait ClassInfo {
     def encodedName: String
     def kind: ClassKind
-    def isExported: Boolean
     def superClass: ClassInfo
     def ancestors: Seq[ClassInfo]
-    def descendants: Seq[ClassInfo]
     def nonExistent: Boolean
-    def ancestorCount: Int
-    def descendentClasses: Seq[ClassInfo]
     /** For a Scala class, it is instantiated with a `New`; for a JS class,
      *  its constructor is accessed with a `JSLoadConstructor` or because it
      *  is needed for a subclass.
@@ -62,7 +58,6 @@ object Analysis {
     def isDataAccessed: Boolean
     def instantiatedFrom: Seq[From]
     def isNeededAtAll: Boolean
-    def isAnyStaticMethodReachable: Boolean
     def methodInfos: scala.collection.Map[String, MethodInfo]
     def staticMethodInfos: scala.collection.Map[String, MethodInfo]
 
