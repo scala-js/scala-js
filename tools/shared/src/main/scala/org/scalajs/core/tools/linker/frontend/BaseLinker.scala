@@ -331,9 +331,6 @@ final class BaseLinker(config: CommonPhaseConfig) {
       p: Analysis.MethodInfo => Boolean = _ => true): MethodDef = {
     @tailrec
     def loop(ancestorInfo: Analysis.ClassInfo): MethodDef = {
-      assert(ancestorInfo != null,
-          s"Could not find $methodName anywhere in ${classInfo.encodedName}")
-
       val inherited = ancestorInfo.methodInfos.get(methodName)
       inherited.find(p) match {
         case Some(m) =>
@@ -352,7 +349,9 @@ final class BaseLinker(config: CommonPhaseConfig) {
           }
 
         case None =>
-          loop(ancestorInfo.superClass)
+          assert(ancestorInfo.superClass.isDefined,
+              s"Could not find $methodName anywhere in ${classInfo.encodedName}")
+          loop(ancestorInfo.superClass.get)
       }
     }
 

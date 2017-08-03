@@ -169,9 +169,10 @@ private final class Analyzer(config: CommonPhaseConfig,
       for (classInfo <- _classInfos.values.filter(_.isDataAccessed).toList) {
         @tailrec
         def loop(classInfo: ClassInfo): Unit = {
-          if (classInfo != null) {
-            classInfo.accessData()
-            loop(classInfo.superClass)
+          classInfo.accessData()
+          classInfo.superClass match {
+            case Some(superClass) => loop(superClass)
+            case None             =>
           }
         }
         loop(classInfo)
@@ -194,7 +195,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     val isAnyClass = isScalaClass || isJSClass
     val isExported = data.isExported
 
-    var superClass: ClassInfo = _
+    var superClass: Option[ClassInfo] = _
     var ancestors: List[ClassInfo] = _
     val descendants = mutable.ListBuffer.empty[ClassInfo]
 
@@ -222,8 +223,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     private[this] def linkClassesImpl(): Unit = {
-      for (superCls <- data.superClass)
-        superClass = lookupClass(superCls)
+      superClass = data.superClass.map(lookupClass)
 
       val parents = data.superClass ++: data.interfaces
 
@@ -298,13 +298,14 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       @tailrec
       def tryLookupInherited(ancestorInfo: ClassInfo): Option[MethodInfo] = {
-        if (ancestorInfo ne null) {
-          ancestorInfo.methodInfos.get(methodName) match {
-            case Some(m) if !m.isAbstract => Some(m)
-            case _ => tryLookupInherited(ancestorInfo.superClass)
-          }
-        } else {
-          None
+        ancestorInfo.methodInfos.get(methodName) match {
+          case Some(m) if !m.isAbstract =>
+            Some(m)
+          case _ =>
+            ancestorInfo.superClass match {
+              case Some(superClass) => tryLookupInherited(superClass)
+              case None             => None
+            }
         }
       }
       val existing =
@@ -421,7 +422,7 @@ private final class Analyzer(config: CommonPhaseConfig,
        */
 
       val superClasses =
-        Iterator.iterate(this)(_.superClass).takeWhile(_ ne null)
+        Iterator.iterate(this)(_.superClass.orNull).takeWhile(_ ne null)
       val superClassesThenAncestors = superClasses ++ ancestors.iterator
 
       superClassesThenAncestors.map(_.findProxyMatch(proxyName)).collectFirst {
@@ -596,7 +597,7 @@ private final class Analyzer(config: CommonPhaseConfig,
           subclassInstantiated()
 
           if (isJSClass) {
-            superClass.instantiated()
+            superClass.foreach(_.instantiated())
             tryLookupStaticMethod(Definitions.StaticInitializerName).foreach {
               staticInit => staticInit.reachStatic()
             }

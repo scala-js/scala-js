@@ -44,7 +44,7 @@ object Analysis {
   trait ClassInfo {
     def encodedName: String
     def kind: ClassKind
-    def superClass: ClassInfo
+    def superClass: Option[ClassInfo]
     def ancestors: Seq[ClassInfo]
     def nonExistent: Boolean
     /** For a Scala class, it is instantiated with a `New`; for a JS class,
