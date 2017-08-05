@@ -113,7 +113,7 @@ final class ClosureLinkerBackend(config: LinkerBackend.Config)
     val exportedPropertyNames = for {
       classDef <- linkingUnit.classDefs
       member <- classDef.exportedMembers
-      name <- exportName(member.tree)
+      name <- exportName(member.value)
       if isValidIdentifier(name)
     } yield {
       name

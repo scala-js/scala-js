@@ -25,12 +25,24 @@ import Tags._
 import Utils.JumpBackByteArrayOutputStream
 
 object Serializers {
+  /** Scala.js IR File Magic Number
+   *
+   *    CA FE : first part of magic number of Java class files
+   *    4A 53 : "JS" in ASCII
+   *
+   */
+  final val IRMagicNumber = 0xCAFE4A53
+
   def serialize(stream: OutputStream, classDef: ClassDef): Unit = {
     new Serializer().serialize(stream, classDef)
   }
 
-  def deserialize(stream: InputStream, version: String): ClassDef = {
-    new Deserializer(stream, version).deserialize()
+  def deserializeEntryPointsInfo(stream: InputStream): EntryPointsInfo = {
+    new Deserializer(stream).deserializeEntryPointsInfo()
+  }
+
+  def deserialize(stream: InputStream): ClassDef = {
+    new Deserializer(stream).deserialize()
   }
 
   // true for easier debugging (not for "production", it adds 8 bytes per node)
@@ -92,6 +104,17 @@ object Serializers {
       writeClassDef(classDef)
 
       val s = new DataOutputStream(stream)
+
+      // Write the Scala.js IR magic number
+      s.writeInt(IRMagicNumber)
+
+      // Write the Scala.js Version
+      s.writeUTF(ScalaJSVersions.binaryEmitted)
+
+      // Write the entry points info
+      val entryPointsInfo = EntryPointsInfo.forClassDef(classDef)
+      s.writeUTF(entryPointsInfo.encodedName)
+      s.writeBoolean(entryPointsInfo.hasEntryPoint)
 
       // Emit the files
       s.writeInt(files.size)
@@ -702,19 +725,53 @@ object Serializers {
     }
   }
 
-  private final class Deserializer(stream: InputStream, sourceVersion: String) {
+  private final class Deserializer(stream: InputStream) {
     private[this] val input = new DataInputStream(stream)
 
-    private[this] val files =
-      Array.fill(input.readInt())(new URI(input.readUTF()))
-
-    private[this] val strings =
-      Array.fill(input.readInt())(input.readUTF())
+    private[this] var sourceVersion: String = _
+    private[this] var files: Array[URI] = _
+    private[this] var strings: Array[String] = _
 
     private[this] var lastPosition: Position = Position.NoPosition
 
+    def deserializeEntryPointsInfo(): EntryPointsInfo = {
+      sourceVersion = readHeader()
+      readEntryPointsInfo()
+    }
+
     def deserialize(): ClassDef = {
+      sourceVersion = readHeader()
+      readEntryPointsInfo() // discarded
+      files = Array.fill(input.readInt())(new URI(input.readUTF()))
+      strings = Array.fill(input.readInt())(input.readUTF())
       readClassDef()
+    }
+
+    /** Reads the Scala.js IR header and verifies the version compatibility.
+     *
+     *  @return the binary version that was read
+     */
+    private def readHeader(): String = {
+      // Check magic number
+      if (input.readInt() != IRMagicNumber)
+        throw new IOException("Not a Scala.js IR file")
+
+      // Check that we support this version of the IR
+      val version = input.readUTF()
+      val supported = ScalaJSVersions.binarySupported
+      if (!supported.contains(version)) {
+        throw new IRVersionNotSupportedException(version, supported,
+            s"This version ($version) of Scala.js IR is not supported. " +
+            s"Supported versions are: ${supported.mkString(", ")}")
+      }
+
+      version
+    }
+
+    private def readEntryPointsInfo(): EntryPointsInfo = {
+      val encodedName = input.readUTF()
+      val hasEntryPoint = input.readBoolean()
+      new EntryPointsInfo(encodedName, hasEntryPoint)
     }
 
     def readTree(): Tree = {

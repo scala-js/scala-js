@@ -34,7 +34,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     val className = tree.name.name
     val staticMemberDefsWithGlobals =
-      tree.staticMethods.map(m => genMethod(className, m.tree))
+      tree.staticMethods.map(m => genMethod(className, m.value))
     for (staticMemberDefs <- WithGlobals.list(staticMemberDefsWithGlobals))
       yield js.Block(staticMemberDefs)(tree.pos)
   }
@@ -43,7 +43,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     val className = tree.name.name
     val defaultMethodDefsWithGlobals =
-      tree.memberMethods.map(m => genDefaultMethod(className, m.tree))
+      tree.memberMethods.map(m => genDefaultMethod(className, m.value))
     for (defaultMethodDefs <- WithGlobals.list(defaultMethodDefsWithGlobals))
       yield js.Block(defaultMethodDefs)(tree.pos)
   }
@@ -135,13 +135,13 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
   /** Extracts the inlineable init method, if there is one. */
   def extractInlineableInit(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): (Option[LinkedMember[MethodDef]], List[LinkedMember[MethodDef]]) = {
+      implicit globalKnowledge: GlobalKnowledge): (Option[Versioned[MethodDef]], List[Versioned[MethodDef]]) = {
 
     val memberMethods = tree.memberMethods
 
     if (globalKnowledge.hasInlineableInit(tree.encodedName)) {
       val (constructors, otherMethods) = memberMethods.partition { method =>
-        Definitions.isConstructorName(method.info.encodedName)
+        Definitions.isConstructorName(method.value.encodedName)
       }
       assert(constructors.size == 1,
           s"Found ${constructors.size} constructors in class " +
@@ -327,7 +327,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     require(tree.kind.isJSClass)
 
-    tree.exportedMembers.map(_.tree) collectFirst {
+    tree.exportedMembers.map(_.value) collectFirst {
       case MethodDef(false, StringLiteral("constructor"), params, _, body) =>
         desugarToFunction(tree.encodedName, params, body.get, isStat = true)
     } getOrElse {
@@ -384,7 +384,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def genStaticInitialization(tree: LinkedClass): List[js.Tree] = {
     import Definitions.StaticInitializerName
     implicit val pos = tree.pos
-    if (tree.staticMethods.exists(_.tree.name.encodedName == StaticInitializerName)) {
+    if (tree.staticMethods.exists(_.value.encodedName == StaticInitializerName)) {
       val fullName = tree.encodedName + "__" + StaticInitializerName
       js.Apply(envField("s", fullName, Some("<clinit>")), Nil) :: Nil
     } else {
@@ -404,7 +404,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         method.args, methodBody, method.resultType == NoType)
 
     methodFun0WithGlobals.flatMap { methodFun0 =>
-      val methodFun = if (Definitions.isConstructorName(method.name.encodedName)) {
+      val methodFun = if (Definitions.isConstructorName(method.encodedName)) {
         // init methods have to return `this` so that we can chain them to `new`
         js.Function(methodFun0.args, {
           implicit val pos = methodFun0.body.pos
@@ -990,10 +990,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def genExportedMembers(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     val exportsWithGlobals = tree.exportedMembers map { member =>
-      member.tree match {
+      member.value match {
         case MethodDef(false, StringLiteral("constructor"), _, _, _)
             if tree.kind.isJSClass =>
-          WithGlobals(js.Skip()(member.tree.pos))
+          WithGlobals(js.Skip()(member.value.pos))
         case m: MethodDef =>
           genMethod(tree.encodedName, m)
         case p: PropertyDef =>
@@ -1010,20 +1010,19 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
   def genTopLevelExports(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
-    val exportsWithGlobals = tree.topLevelExports map {
-      case e: TopLevelConstructorExportDef =>
-        genTopLevelConstructorExportDef(tree, e)
-      case e: TopLevelJSClassExportDef =>
-        WithGlobals(genTopLevelJSClassExportDef(tree, e))
-      case e: TopLevelModuleExportDef =>
-        WithGlobals(genTopLevelModuleExportDef(tree, e))
-      case e: TopLevelMethodExportDef =>
-        genTopLevelMethodExportDef(tree, e)
-      case e: TopLevelFieldExportDef =>
-        WithGlobals(genTopLevelFieldExportDef(tree, e))
-      case tree =>
-        throw new AssertionError(
-            "Illegal top-level export " + tree.getClass.getName)
+    val exportsWithGlobals = tree.topLevelExports.map { topLevelExport =>
+      topLevelExport.value match {
+        case e: TopLevelConstructorExportDef =>
+          genTopLevelConstructorExportDef(tree, e)
+        case e: TopLevelJSClassExportDef =>
+          WithGlobals(genTopLevelJSClassExportDef(tree, e))
+        case e: TopLevelModuleExportDef =>
+          WithGlobals(genTopLevelModuleExportDef(tree, e))
+        case e: TopLevelMethodExportDef =>
+          genTopLevelMethodExportDef(tree, e)
+        case e: TopLevelFieldExportDef =>
+          WithGlobals(genTopLevelFieldExportDef(tree, e))
+      }
     }
 
     WithGlobals.list(exportsWithGlobals)

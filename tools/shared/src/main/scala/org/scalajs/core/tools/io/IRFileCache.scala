@@ -16,7 +16,8 @@ import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-import org.scalajs.core.ir
+import org.scalajs.core.ir.EntryPointsInfo
+import org.scalajs.core.ir.Trees.ClassDef
 
 /** Centralized Scala.js IR cache.
  *
@@ -227,15 +228,12 @@ final class IRFileCache {
       private[this] var _irFile: VirtualRelativeScalaJSIRFile)
       extends VirtualRelativeScalaJSIRFile {
 
-    import ir.Trees._
-    import ir.Infos
-
     @volatile
     private[this] var _tree: ClassDef = null
 
     override val path: String = _irFile.path
     override val version: Option[String] = _irFile.version
-    override val info: Infos.ClassInfo = _irFile.info
+    override val entryPointsInfo: EntryPointsInfo = _irFile.entryPointsInfo
     override val relativePath: String = _irFile.relativePath
 
     override def exists: Boolean = {
@@ -253,8 +251,6 @@ final class IRFileCache {
 
       _tree
     }
-
-    def infoAndTree: (Infos.ClassInfo, ClassDef) = (info, tree)
 
     /** Must be called under synchronization only */
     private def loadTree(): Unit = clearOnThrow {

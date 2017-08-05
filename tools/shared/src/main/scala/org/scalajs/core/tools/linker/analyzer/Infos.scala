@@ -1,5 +1,5 @@
 /*                     __                                               *\
-**     ________ ___   / /  ___      __ ____  Scala.js IR                **
+**     ________ ___   / /  ___      __ ____  Scala.js tools             **
 **    / __/ __// _ | / /  / _ | __ / // __/  (c) 2014, LAMP/EPFL        **
 **  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-js.org/       **
 ** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
@@ -7,13 +7,17 @@
 \*                                                                      */
 
 
-package org.scalajs.core.ir
+package org.scalajs.core.tools.linker.analyzer
 
 import scala.collection.mutable
 
-import Definitions._
-import Trees._
-import Types._
+import org.scalajs.core.ir.ClassKind
+import org.scalajs.core.ir.Definitions._
+import org.scalajs.core.ir.Traversers._
+import org.scalajs.core.ir.Trees._
+import org.scalajs.core.ir.Types._
+
+import org.scalajs.core.tools.linker.LinkedClass
 
 object Infos {
 
@@ -273,7 +277,9 @@ object Infos {
     }
   }
 
-  /** Generates the [[ClassInfo]] of a [[Trees.ClassDef]]. */
+  /** Generates the [[ClassInfo]] of a
+   *  [[org.scalajs.core.ir.Trees.ClassDef Trees.ClassDef]].
+   */
   def generateClassInfo(classDef: ClassDef): ClassInfo = {
     val builder = new ClassInfoBuilder()
       .setEncodedName(classDef.name.name)
@@ -289,51 +295,57 @@ object Infos {
         builder.addMethod(generatePropertyInfo(propertyDef))
     }
 
-    var exportedConstructors: List[TopLevelConstructorExportDef] = Nil
-    var topLevelMethodExports: List[TopLevelMethodExportDef] = Nil
-    var topLevelFieldExports: List[TopLevelFieldExportDef] = Nil
+    if (classDef.topLevelExportDefs.nonEmpty) {
+      builder.setIsExported(true)
 
-    classDef.topLevelExportDefs foreach {
-      case constructorDef: TopLevelConstructorExportDef =>
-        builder.setIsExported(true)
-        exportedConstructors ::= constructorDef
-      case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef =>
-        builder.setIsExported(true)
-      case topLevelMethodExport: TopLevelMethodExportDef =>
-        builder.setIsExported(true)
-        topLevelMethodExports ::= topLevelMethodExport
-      case topLevelFieldExport: TopLevelFieldExportDef =>
-        builder.setIsExported(true)
-        topLevelFieldExports ::= topLevelFieldExport
-    }
-
-    if (exportedConstructors.nonEmpty || topLevelMethodExports.nonEmpty ||
-        topLevelFieldExports.nonEmpty) {
-      builder.addMethod(generateTopLevelExportsInfo(classDef.name.name,
-          exportedConstructors, topLevelMethodExports, topLevelFieldExports))
+      val optInfo = generateTopLevelExportsInfo(classDef.name.name,
+          classDef.topLevelExportDefs)
+      optInfo.foreach(builder.addMethod(_))
     }
 
     builder.result()
   }
 
-  /** Generates the [[MethodInfo]] of a [[Trees.MethodDef]]. */
+  /** Generates the [[MethodInfo]] of a
+   *  [[org.scalajs.core.ir.Trees.MethodDef Trees.MethodDef]].
+   */
   def generateMethodInfo(methodDef: MethodDef): MethodInfo =
     new GenInfoTraverser().generateMethodInfo(methodDef)
 
-  /** Generates the [[MethodInfo]] of a [[Trees.PropertyDef]]. */
+  /** Generates the [[MethodInfo]] of a
+   *  [[org.scalajs.core.ir.Trees.PropertyDef Trees.PropertyDef]].
+   */
   def generatePropertyInfo(propertyDef: PropertyDef): MethodInfo =
     new GenInfoTraverser().generatePropertyInfo(propertyDef)
 
   /** Generates the [[MethodInfo]] for the top-level exports. */
   def generateTopLevelExportsInfo(enclosingClass: String,
-      topLevelConstructorDefs: List[TopLevelConstructorExportDef],
-      topLevelMethodExports: List[TopLevelMethodExportDef],
-      topLevelFieldExports: List[TopLevelFieldExportDef]): MethodInfo = {
-    new GenInfoTraverser().generateTopLevelExportsInfo(enclosingClass,
-        topLevelConstructorDefs, topLevelMethodExports, topLevelFieldExports)
+      topLevelExportDefs: List[TopLevelExportDef]): Option[MethodInfo] = {
+
+    var exportedConstructors: List[TopLevelConstructorExportDef] = Nil
+    var topLevelMethodExports: List[TopLevelMethodExportDef] = Nil
+    var topLevelFieldExports: List[TopLevelFieldExportDef] = Nil
+
+    topLevelExportDefs.foreach {
+      case constructorDef: TopLevelConstructorExportDef =>
+        exportedConstructors ::= constructorDef
+      case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef =>
+      case topLevelMethodExport: TopLevelMethodExportDef =>
+        topLevelMethodExports ::= topLevelMethodExport
+      case topLevelFieldExport: TopLevelFieldExportDef =>
+        topLevelFieldExports ::= topLevelFieldExport
+    }
+
+    if (exportedConstructors.nonEmpty || topLevelMethodExports.nonEmpty ||
+        topLevelFieldExports.nonEmpty) {
+      Some(new GenInfoTraverser().generateTopLevelExportsInfo(enclosingClass,
+          exportedConstructors, topLevelMethodExports, topLevelFieldExports))
+    } else {
+      None
+    }
   }
 
-  private final class GenInfoTraverser extends Traversers.Traverser {
+  private final class GenInfoTraverser extends Traverser {
     private val builder = new MethodInfoBuilder
 
     def generateMethodInfo(methodDef: MethodDef): MethodInfo = {

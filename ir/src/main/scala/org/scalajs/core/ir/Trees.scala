@@ -813,7 +813,12 @@ object Trees {
 
   // Class members
 
-  sealed abstract class MemberDef extends IRNode
+  sealed abstract class MemberDef extends IRNode {
+    val static: Boolean
+    val name: PropertyName
+
+    def encodedName: String = name.encodedName
+  }
 
   case class FieldDef(static: Boolean, name: PropertyName, ftpe: Type,
       mutable: Boolean)(
@@ -830,7 +835,19 @@ object Trees {
 
   // Top-level export defs
 
-  sealed abstract class TopLevelExportDef extends IRNode
+  sealed abstract class TopLevelExportDef extends IRNode {
+    final def topLevelExportName: String = this match {
+      case TopLevelConstructorExportDef(name, _, _) => name
+      case TopLevelModuleExportDef(name)            => name
+      case TopLevelJSClassExportDef(name)           => name
+
+      case TopLevelMethodExportDef(MethodDef(_, propName, _, _, _)) =>
+        val StringLiteral(name) = propName
+        name
+
+      case TopLevelFieldExportDef(name, _) => name
+    }
+  }
 
   case class TopLevelConstructorExportDef(name: String, args: List[ParamDef],
       body: Tree)(implicit val pos: Position) extends TopLevelExportDef

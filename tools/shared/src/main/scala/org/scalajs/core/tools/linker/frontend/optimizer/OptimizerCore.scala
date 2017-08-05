@@ -114,7 +114,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   private lazy val inlinedRTLongHiField =
     inlinedRTLongRecordType.fields(1).name
 
-  def optimize(thisType: Type, originalDef: MethodDef): LinkedMember[MethodDef] = {
+  def optimize(thisType: Type, originalDef: MethodDef): MethodDef = {
     try {
       val MethodDef(static, name, params, resultType, optBody) = originalDef
       val body = optBody getOrElse {
@@ -135,11 +135,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       val newBody =
         if (name.encodedName == "init___") tryElimStoreModule(newBody1)
         else newBody1
-      val m = MethodDef(static, name, newParams, resultType,
+      MethodDef(static, name, newParams, resultType,
           Some(newBody))(originalDef.optimizerHints, None)(originalDef.pos)
-      val info = Infos.generateMethodInfo(m)
-
-      new LinkedMember(info, m, None)
     } catch {
       case NonFatal(cause) =>
         throw new OptimizeException(myself, attemptedInlining.distinct.toList, cause)

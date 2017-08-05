@@ -9,26 +9,37 @@
 
 package org.scalajs.core.tools.linker.frontend
 
+import scala.collection.mutable
+
+import org.scalajs.core.ir.Trees._
+
 import org.scalajs.core.tools.logging._
 
 import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.analyzer._
 
-import org.scalajs.core.ir.ClassKind
-
 /** Does a dead code elimination pass on [[LinkedClass]]es */
 final class Refiner(config: CommonPhaseConfig) {
+  import Refiner._
+
+  private val inputProvider = new InputProvider
 
   def refine(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
       logger: Logger): LinkingUnit = {
+
+    val linkedClassesByName =
+      Map(unit.classDefs.map(c => c.encodedName -> c): _*)
+    inputProvider.update(linkedClassesByName)
+
     val analysis = logger.time("Refiner: Compute reachability") {
       val allSymbolRequirements = {
         symbolRequirements ++
         ModuleInitializer.toSymbolRequirement(unit.moduleInitializers)
       }
-      Analyzer.computeReachability(config, allSymbolRequirements,
-          unit.infos.values.toList, allowAddingSyntheticMethods = false)
+      Analyzer.computeReachability(config,
+          allSymbolRequirements, allowAddingSyntheticMethods = false,
+          inputProvider)
     }
 
     /* There must not be linking errors at this point. If there are, it is a
@@ -44,20 +55,21 @@ final class Refiner(config: CommonPhaseConfig) {
           "`scalaJSLinkerConfig ~= { _.withOptimizer(false) }`.")
     }
 
-    logger.time("Refiner: Assemble LinkedClasses") {
-      val linkedClassesByName =
-        Map(unit.classDefs.map(c => c.encodedName -> c): _*)
-
+    val result = logger.time("Refiner: Assemble LinkedClasses") {
       val linkedClassDefs = for {
         analyzerInfo <- analysis.classInfos.values
-        if analyzerInfo.isNeededAtAll
       } yield {
         refineClassDef(linkedClassesByName(analyzerInfo.encodedName),
             analyzerInfo)
       }
 
-      unit.updated(classDefs = linkedClassDefs.toList)
+      new LinkingUnit(unit.coreSpec, linkedClassDefs.toList,
+          unit.moduleInitializers)
     }
+
+    inputProvider.cleanAfterRun()
+
+    result
   }
 
   private def refineClassDef(classDef: LinkedClass,
@@ -68,15 +80,15 @@ final class Refiner(config: CommonPhaseConfig) {
       else Nil
 
     val staticMethods = classDef.staticMethods filter { m =>
-      info.staticMethodInfos(m.info.encodedName).isReachable
+      info.staticMethodInfos(m.value.encodedName).isReachable
     }
 
     val memberMethods = classDef.memberMethods filter { m =>
-      info.methodInfos(m.info.encodedName).isReachable
+      info.methodInfos(m.value.encodedName).isReachable
     }
 
     val abstractMethods = classDef.abstractMethods filter { m =>
-      info.methodInfos(m.info.encodedName).isReachable
+      info.methodInfos(m.value.encodedName).isReachable
     }
 
     val kind =
@@ -94,4 +106,168 @@ final class Refiner(config: CommonPhaseConfig) {
         hasRuntimeTypeInfo = info.isDataAccessed)
   }
 
+}
+
+private object Refiner {
+  private class InputProvider extends Analyzer.InputProvider {
+    private var linkedClassesByName: Map[String, LinkedClass] = _
+    private val cache = mutable.Map.empty[String, LinkedClassInfoCache]
+
+    def update(linkedClassesByName: Map[String, LinkedClass]): Unit = {
+      this.linkedClassesByName = linkedClassesByName
+    }
+
+    def classesWithEntryPoints(): TraversableOnce[String] = {
+      for {
+        linkedClass <- linkedClassesByName.valuesIterator
+        if linkedClass.hasEntryPoint
+      } yield {
+        linkedClass.encodedName
+      }
+    }
+
+    def loadInfo(encodedName: String): Option[Infos.ClassInfo] =
+      getCache(encodedName).map(_.loadInfo(linkedClassesByName(encodedName)))
+
+    private def getCache(encodedName: String): Option[LinkedClassInfoCache] = {
+      cache.get(encodedName).orElse {
+        if (linkedClassesByName.contains(encodedName)) {
+          val fileCache = new LinkedClassInfoCache
+          cache += encodedName -> fileCache
+          Some(fileCache)
+        } else {
+          None
+        }
+      }
+    }
+
+    def cleanAfterRun(): Unit = {
+      linkedClassesByName = null
+      cache.retain((_, linkedClassCache) => linkedClassCache.cleanAfterRun())
+    }
+  }
+
+  private class LinkedClassInfoCache {
+    private var cacheUsed: Boolean = false
+    private val staticMethodsInfoCaches = LinkedMembersInfosCache()
+    private val memberMethodsInfoCaches = LinkedMembersInfosCache()
+    private val abstractMethodsInfoCaches = LinkedMembersInfosCache()
+    private val exportedMembersInfoCaches = LinkedMembersInfosCache()
+    private var info: Infos.ClassInfo = _
+
+    def loadInfo(linkedClass: LinkedClass): Infos.ClassInfo = {
+      update(linkedClass)
+      info
+    }
+
+    private def update(linkedClass: LinkedClass): Unit = {
+      if (!cacheUsed) {
+        cacheUsed = true
+
+        val builder = new Infos.ClassInfoBuilder()
+          .setEncodedName(linkedClass.encodedName)
+          .setKind(linkedClass.kind)
+          .setSuperClass(linkedClass.superClass.map(_.name))
+          .addInterfaces(linkedClass.interfaces.map(_.name))
+
+        for (linkedMethod <- linkedClass.staticMethods)
+          builder.addMethod(staticMethodsInfoCaches.getInfo(linkedMethod))
+        for (linkedMethod <- linkedClass.memberMethods)
+          builder.addMethod(memberMethodsInfoCaches.getInfo(linkedMethod))
+        for (linkedMethod <- linkedClass.abstractMethods)
+          builder.addMethod(abstractMethodsInfoCaches.getInfo(linkedMethod))
+        for (linkedMember <- linkedClass.exportedMembers)
+          builder.addMethod(exportedMembersInfoCaches.getInfo(linkedMember))
+
+        if (linkedClass.topLevelExports.nonEmpty) {
+          /* We do not cache top-level exports, because they're quite rare,
+           * and usually quite small when they exist.
+           */
+          builder.setIsExported(true)
+
+          val optInfo = Infos.generateTopLevelExportsInfo(
+              linkedClass.encodedName, linkedClass.topLevelExports.map(_.value))
+          optInfo.foreach(builder.addMethod(_))
+        }
+
+        info = builder.result()
+      }
+    }
+
+    /** Returns true if the cache has been used and should be kept. */
+    def cleanAfterRun(): Boolean = {
+      val result = cacheUsed
+      cacheUsed = false
+      if (result) {
+        // No point in cleaning the inner caches if the whole class disappears
+        staticMethodsInfoCaches.cleanAfterRun()
+        memberMethodsInfoCaches.cleanAfterRun()
+        abstractMethodsInfoCaches.cleanAfterRun()
+        exportedMembersInfoCaches.cleanAfterRun()
+      }
+      result
+    }
+  }
+
+  private final class LinkedMembersInfosCache(
+      val caches: mutable.Map[(Boolean, String), LinkedMemberInfoCache])
+      extends AnyVal {
+
+    def getInfo(member: Versioned[MemberDef]): Infos.MethodInfo = {
+      val memberDef = member.value
+      val cache = caches.getOrElseUpdate(
+          (memberDef.static, memberDef.encodedName), new LinkedMemberInfoCache)
+      cache.getInfo(member)
+    }
+
+    def cleanAfterRun(): Unit = {
+      caches.retain((_, cache) => cache.cleanAfterRun())
+    }
+  }
+
+  private object LinkedMembersInfosCache {
+    def apply(): LinkedMembersInfosCache =
+      new LinkedMembersInfosCache(mutable.Map.empty)
+  }
+
+  private final class LinkedMemberInfoCache {
+    private var cacheUsed: Boolean = false
+    private var lastVersion: Option[String] = None
+    private var info: Infos.MethodInfo = _
+
+    def getInfo(member: Versioned[MemberDef]): Infos.MethodInfo = {
+      update(member)
+      info
+    }
+
+    def update(member: Versioned[MemberDef]): Unit = {
+      if (!cacheUsed) {
+        cacheUsed = true
+
+        val newVersion = member.version
+        if (!versionsMatch(newVersion, lastVersion)) {
+          info = member.value match {
+            case _: FieldDef =>
+              throw new AssertionError(
+                  "A LinkedMemberInfoCache cannot be used for a FieldDef")
+            case methodDef: MethodDef =>
+              Infos.generateMethodInfo(methodDef)
+            case propertyDef: PropertyDef =>
+              Infos.generatePropertyInfo(propertyDef)
+          }
+          lastVersion = newVersion
+        }
+      }
+    }
+
+    /** Returns true if the cache has been used and should be kept. */
+    def cleanAfterRun(): Boolean = {
+      val result = cacheUsed
+      cacheUsed = false
+      result
+    }
+  }
+
+  private def versionsMatch(a: Option[String], b: Option[String]): Boolean =
+    a.isDefined && b.isDefined && a.get == b.get
 }

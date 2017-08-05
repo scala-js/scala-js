@@ -830,20 +830,16 @@ object Build {
   }
 
   private def serializeHardcodedIR(base: File,
-      infoAndTree: (ir.Infos.ClassInfo, ir.Trees.ClassDef)): File = {
+      classDef: ir.Trees.ClassDef): File = {
     // We assume that there are no weird characters in the full name
-    val fullName = ir.Definitions.decodeClassName(infoAndTree._1.encodedName)
+    val fullName = ir.Definitions.decodeClassName(classDef.name.name)
     val output = base / (fullName.replace('.', '/') + ".sjsir")
 
     if (!output.exists()) {
       IO.createDirectory(output.getParentFile)
       val stream = new BufferedOutputStream(new FileOutputStream(output))
-      try {
-        ir.InfoSerializers.serialize(stream, infoAndTree._1)
-        ir.Serializers.serialize(stream, infoAndTree._2)
-      } finally {
-        stream.close()
-      }
+      try ir.Serializers.serialize(stream, classDef)
+      finally stream.close()
     }
     output
   }
@@ -861,8 +857,8 @@ object Build {
       resourceGenerators in Compile += Def.task {
         val base = (resourceManaged in Compile).value
         Seq(
-            serializeHardcodedIR(base, JavaLangObject.InfoAndTree),
-            serializeHardcodedIR(base, JavaLangString.InfoAndTree)
+            serializeHardcodedIR(base, JavaLangObject.TheClassDef),
+            serializeHardcodedIR(base, JavaLangString.TheClassDef)
         )
       }.taskValue,
       scalaJSExternalCompileSettings
