@@ -2,6 +2,8 @@ package sbttest.framework
 
 import sbt.testing._
 
+import scala.concurrent._
+
 abstract class BaseRunner(
     val args: Array[String],
     val remoteArgs: Array[String],
@@ -13,6 +15,12 @@ abstract class BaseRunner(
 
   /** Called by task when it has finished executing */
   private[framework] def taskDone(): Unit
+
+  /** Tasks need to wait for this future to complete if they get called with a
+   *  continuation. This is used to ensure that the master/slave message channel
+   *  eventually delivers messages.
+   */
+  private[framework] val taskBlock: Future[Unit]
 
   def serializeTask(task: Task, serializer: TaskDef => String): String =
     serializer(task.taskDef)

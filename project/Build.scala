@@ -786,10 +786,17 @@ object Build {
       ) ++ Seq(
           name := "Scala.js sbt test adapter",
           libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0",
+          libraryDependencies +=
+            "com.novocode" % "junit-interface" % "0.11" % "test",
+
           previousArtifactSetting,
-          mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestAdapter
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestAdapter,
+          unmanagedSourceDirectories in Compile +=
+            baseDirectory.value.getParentFile / "test-common/src/main/scala",
+          unmanagedSourceDirectories in Test +=
+            baseDirectory.value.getParentFile / "test-common/src/test/scala"
       )
-  ).dependsOn(jsEnvs)
+  ).dependsOn(jsEnvs).enableScalastyleInSharedSources
 
   lazy val plugin: Project = Project(
       id = "sbtPlugin",
@@ -1200,9 +1207,15 @@ object Build {
           name := "Scala.js test interface",
           delambdafySetting,
           previousArtifactSetting,
-          mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestInterface
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestInterface,
+          unmanagedSourceDirectories in Compile +=
+            baseDirectory.value.getParentFile / "test-common/src/main/scala"
+          /* Note: We cannot add the test-common tests, since they test async
+           * stuff and JUnit does not support async tests. Therefore we need to
+           * block, so we cannot run on JS.
+           */
       )
-  ).withScalaJSCompiler.dependsOn(library)
+  ).withScalaJSCompiler.dependsOn(library).enableScalastyleInSharedSources
 
   lazy val jUnitRuntime = Project(
     id = "jUnitRuntime",

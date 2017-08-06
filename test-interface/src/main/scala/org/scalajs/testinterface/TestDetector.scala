@@ -1,10 +1,12 @@
 package org.scalajs.testinterface
 
+import java.io._
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSGlobalScope
 import scala.scalajs.reflect.Reflect
 
-import org.scalajs.testinterface.internal.TaskDefSerializer
+import org.scalajs.testcommon.Serializer
 
 import sbt.testing._
 
@@ -13,7 +15,7 @@ private[scalajs] object TestDetector {
   def detectTests(): Seq[(Framework, Seq[TaskDef])] = {
     import RawDefinitions._
 
-    val taskDefs = definedTests.map(TaskDefSerializer.deserialize _)
+    val taskDefs = Serializer.deserialize[List[TaskDef]](definedTests)
     val frameworks = testFrameworkNames.flatMap(tryLoadFramework).toList
 
     for {
@@ -70,7 +72,7 @@ private[scalajs] object TestDetector {
   @js.native
   @JSGlobalScope
   private object RawDefinitions extends js.Object {
-    val definedTests: js.Array[js.Dynamic] = js.native
+    val definedTests: String = js.native
     val testFrameworkNames: js.Array[js.Array[String]] = js.native
   }
 }

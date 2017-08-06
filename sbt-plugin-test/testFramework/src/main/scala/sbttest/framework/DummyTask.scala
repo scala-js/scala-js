@@ -4,6 +4,8 @@ import sbt.testing._
 
 import org.scalajs.testinterface.TestUtils
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 final class DummyTask(
     val taskDef: TaskDef,
     runner: BaseRunner
@@ -34,7 +36,8 @@ final class DummyTask(
 
   def execute(eventHandler: EventHandler, loggers: Array[Logger],
       continuation: Array[Task] => Unit): Unit = {
-    continuation(execute(eventHandler, loggers))
+    val tasks = execute(eventHandler, loggers)
+    runner.taskBlock.foreach(_ => continuation(tasks))
   }
 
   private class DummyEvent(taskDef: TaskDef, t: Option[Throwable]) extends Event {
