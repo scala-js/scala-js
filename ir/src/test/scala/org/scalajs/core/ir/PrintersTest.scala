@@ -52,6 +52,9 @@ class PrintersTest {
     assertPrintEquals("nothing", NothingType)
     assertPrintEquals("void", UndefType)
     assertPrintEquals("boolean", BooleanType)
+    assertPrintEquals("char", CharType)
+    assertPrintEquals("byte", ByteType)
+    assertPrintEquals("short", ShortType)
     assertPrintEquals("int", IntType)
     assertPrintEquals("long", LongType)
     assertPrintEquals("float", FloatType)
@@ -349,11 +352,22 @@ class PrintersTest {
     import UnaryOp._
 
     assertPrintEquals("(!x)", UnaryOp(Boolean_!, ref("x", BooleanType)))
+
+    assertPrintEquals("((int)x)", UnaryOp(CharToInt, ref("x", CharType)))
+    assertPrintEquals("((int)x)", UnaryOp(ByteToInt, ref("x", ByteType)))
+    assertPrintEquals("((int)x)", UnaryOp(ShortToInt, ref("x", ShortType)))
     assertPrintEquals("((long)x)", UnaryOp(IntToLong, ref("x", IntType)))
+    assertPrintEquals("((double)x)", UnaryOp(IntToDouble, ref("x", IntType)))
+    assertPrintEquals("((double)x)", UnaryOp(FloatToDouble, ref("x", FloatType)))
+
+    assertPrintEquals("((char)x)", UnaryOp(IntToChar, ref("x", IntType)))
+    assertPrintEquals("((byte)x)", UnaryOp(IntToByte, ref("x", IntType)))
+    assertPrintEquals("((short)x)", UnaryOp(IntToShort, ref("x", IntType)))
     assertPrintEquals("((int)x)", UnaryOp(LongToInt, ref("x", LongType)))
-    assertPrintEquals("((double)x)", UnaryOp(LongToDouble, ref("x", LongType)))
     assertPrintEquals("((int)x)", UnaryOp(DoubleToInt, ref("x", DoubleType)))
     assertPrintEquals("((float)x)", UnaryOp(DoubleToFloat, ref("x", DoubleType)))
+
+    assertPrintEquals("((double)x)", UnaryOp(LongToDouble, ref("x", LongType)))
     assertPrintEquals("((long)x)", UnaryOp(DoubleToLong, ref("x", DoubleType)))
   }
 
@@ -380,6 +394,15 @@ class PrintersTest {
     assertPrintEquals("(x +[string] y)",
         BinaryOp(String_+, ref("x", AnyType), ref("y", AnyType)))
 
+    assertPrintEquals("(x ==[bool] y)",
+        BinaryOp(Boolean_==, ref("x", BooleanType), ref("y", BooleanType)))
+    assertPrintEquals("(x !=[bool] y)",
+        BinaryOp(Boolean_!=, ref("x", BooleanType), ref("y", BooleanType)))
+    assertPrintEquals("(x |[bool] y)",
+        BinaryOp(Boolean_|, ref("x", BooleanType), ref("y", BooleanType)))
+    assertPrintEquals("(x &[bool] y)",
+        BinaryOp(Boolean_&, ref("x", BooleanType), ref("y", BooleanType)))
+
     assertPrintEquals("(x +[int] y)",
         BinaryOp(Int_+, ref("x", IntType), ref("y", IntType)))
     assertPrintEquals("(x -[int] y)",
@@ -404,40 +427,18 @@ class PrintersTest {
     assertPrintEquals("(x >>[int] y)",
         BinaryOp(Int_>>, ref("x", IntType), ref("y", IntType)))
 
-    assertPrintEquals("(x +[float] y)",
-        BinaryOp(Float_+, ref("x", FloatType), ref("y", FloatType)))
-    assertPrintEquals("(x -[float] y)",
-        BinaryOp(Float_-, ref("x", FloatType), ref("y", FloatType)))
-    assertPrintEquals("(x *[float] y)",
-        BinaryOp(Float_*, ref("x", FloatType), ref("y", FloatType)))
-    assertPrintEquals("(x /[float] y)",
-        BinaryOp(Float_/, ref("x", FloatType), ref("y", FloatType)))
-    assertPrintEquals("(x %[float] y)",
-        BinaryOp(Float_%, ref("x", FloatType), ref("y", FloatType)))
-
-    assertPrintEquals("(x +[double] y)",
-        BinaryOp(Double_+, ref("x", DoubleType), ref("y", DoubleType)))
-    assertPrintEquals("(x -[double] y)",
-        BinaryOp(Double_-, ref("x", DoubleType), ref("y", DoubleType)))
-    assertPrintEquals("(x *[double] y)",
-        BinaryOp(Double_*, ref("x", DoubleType), ref("y", DoubleType)))
-    assertPrintEquals("(x /[double] y)",
-        BinaryOp(Double_/, ref("x", DoubleType), ref("y", DoubleType)))
-    assertPrintEquals("(x %[double] y)",
-        BinaryOp(Double_%, ref("x", DoubleType), ref("y", DoubleType)))
-
-    assertPrintEquals("(x == y)",
-        BinaryOp(Num_==, ref("x", DoubleType), ref("y", DoubleType)))
-    assertPrintEquals("(x != y)",
-        BinaryOp(Num_!=, ref("x", DoubleType), ref("y", DoubleType)))
-    assertPrintEquals("(x < y)",
-        BinaryOp(Num_<, ref("x", DoubleType), ref("y", DoubleType)))
-    assertPrintEquals("(x <= y)",
-        BinaryOp(Num_<=, ref("x", DoubleType), ref("y", DoubleType)))
-    assertPrintEquals("(x > y)",
-        BinaryOp(Num_>, ref("x", DoubleType), ref("y", DoubleType)))
-    assertPrintEquals("(x >= y)",
-        BinaryOp(Num_>=, ref("x", DoubleType), ref("y", DoubleType)))
+    assertPrintEquals("(x ==[int] y)",
+        BinaryOp(Int_==, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x !=[int] y)",
+        BinaryOp(Int_!=, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x <[int] y)",
+        BinaryOp(Int_<, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x <=[int] y)",
+        BinaryOp(Int_<=, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x >[int] y)",
+        BinaryOp(Int_>, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x >=[int] y)",
+        BinaryOp(Int_>=, ref("x", IntType), ref("y", IntType)))
 
     assertPrintEquals("(x +[long] y)",
         BinaryOp(Long_+, ref("x", LongType), ref("y", LongType)))
@@ -463,14 +464,53 @@ class PrintersTest {
     assertPrintEquals("(x >>[long] y)",
         BinaryOp(Long_>>, ref("x", LongType), ref("y", IntType)))
 
-    assertPrintEquals("(x ==[bool] y)",
-        BinaryOp(Boolean_==, ref("x", BooleanType), ref("y", BooleanType)))
-    assertPrintEquals("(x !=[bool] y)",
-        BinaryOp(Boolean_!=, ref("x", BooleanType), ref("y", BooleanType)))
-    assertPrintEquals("(x |[bool] y)",
-        BinaryOp(Boolean_|, ref("x", BooleanType), ref("y", BooleanType)))
-    assertPrintEquals("(x &[bool] y)",
-        BinaryOp(Boolean_&, ref("x", BooleanType), ref("y", BooleanType)))
+    assertPrintEquals("(x ==[long] y)",
+        BinaryOp(Long_==, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x !=[long] y)",
+        BinaryOp(Long_!=, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x <[long] y)",
+        BinaryOp(Long_<, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x <=[long] y)",
+        BinaryOp(Long_<=, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x >[long] y)",
+        BinaryOp(Long_>, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x >=[long] y)",
+        BinaryOp(Long_>=, ref("x", LongType), ref("y", LongType)))
+
+    assertPrintEquals("(x +[float] y)",
+        BinaryOp(Float_+, ref("x", FloatType), ref("y", FloatType)))
+    assertPrintEquals("(x -[float] y)",
+        BinaryOp(Float_-, ref("x", FloatType), ref("y", FloatType)))
+    assertPrintEquals("(x *[float] y)",
+        BinaryOp(Float_*, ref("x", FloatType), ref("y", FloatType)))
+    assertPrintEquals("(x /[float] y)",
+        BinaryOp(Float_/, ref("x", FloatType), ref("y", FloatType)))
+    assertPrintEquals("(x %[float] y)",
+        BinaryOp(Float_%, ref("x", FloatType), ref("y", FloatType)))
+
+    assertPrintEquals("(x +[double] y)",
+        BinaryOp(Double_+, ref("x", DoubleType), ref("y", DoubleType)))
+    assertPrintEquals("(x -[double] y)",
+        BinaryOp(Double_-, ref("x", DoubleType), ref("y", DoubleType)))
+    assertPrintEquals("(x *[double] y)",
+        BinaryOp(Double_*, ref("x", DoubleType), ref("y", DoubleType)))
+    assertPrintEquals("(x /[double] y)",
+        BinaryOp(Double_/, ref("x", DoubleType), ref("y", DoubleType)))
+    assertPrintEquals("(x %[double] y)",
+        BinaryOp(Double_%, ref("x", DoubleType), ref("y", DoubleType)))
+
+    assertPrintEquals("(x ==[double] y)",
+        BinaryOp(Double_==, ref("x", DoubleType), ref("y", DoubleType)))
+    assertPrintEquals("(x !=[double] y)",
+        BinaryOp(Double_!=, ref("x", DoubleType), ref("y", DoubleType)))
+    assertPrintEquals("(x <[double] y)",
+        BinaryOp(Double_<, ref("x", DoubleType), ref("y", DoubleType)))
+    assertPrintEquals("(x <=[double] y)",
+        BinaryOp(Double_<=, ref("x", DoubleType), ref("y", DoubleType)))
+    assertPrintEquals("(x >[double] y)",
+        BinaryOp(Double_>, ref("x", DoubleType), ref("y", DoubleType)))
+    assertPrintEquals("(x >=[double] y)",
+        BinaryOp(Double_>=, ref("x", DoubleType), ref("y", DoubleType)))
   }
 
   @Test def printNewArray(): Unit = {
@@ -712,6 +752,22 @@ class PrintersTest {
   @Test def printBoolean(): Unit = {
     assertPrintEquals("true", BooleanLiteral(true))
     assertPrintEquals("false", BooleanLiteral(false))
+  }
+
+  @Test def printCharLiteral(): Unit = {
+    assertPrintEquals("'A'", CharLiteral('A'))
+    assertPrintEquals("'\\u0005'", CharLiteral('\u0005'))
+    assertPrintEquals("'\\ufffb'", CharLiteral('\ufffb'))
+  }
+
+  @Test def printByteLiteral(): Unit = {
+    assertPrintEquals("5_b", ByteLiteral(5))
+    assertPrintEquals("(-5_b)", ByteLiteral(-5))
+  }
+
+  @Test def printShortLiteral(): Unit = {
+    assertPrintEquals("5_s", ShortLiteral(5))
+    assertPrintEquals("(-5_s)", ShortLiteral(-5))
   }
 
   @Test def printIntLiteral(): Unit = {

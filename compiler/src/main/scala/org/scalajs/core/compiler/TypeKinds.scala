@@ -91,7 +91,12 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
 
   /** Integer number (Byte, Short, Char or Int). */
   case class INT private[TypeKinds] (typeSymbol: Symbol) extends ValueTypeKind {
-    def toIRType: Types.IntType.type = Types.IntType
+    val toIRType: Types.Type = typeSymbol match {
+      case CharClass  => Types.CharType
+      case ByteClass  => Types.ByteType
+      case ShortClass => Types.ShortType
+      case IntClass   => Types.IntType
+    }
   }
 
   /** Long */
@@ -102,9 +107,10 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
 
   /** Floating-point number (Float or Double). */
   case class FLOAT private[TypeKinds] (typeSymbol: Symbol) extends ValueTypeKind {
-    def toIRType: Types.Type =
-      if (typeSymbol == FloatClass) Types.FloatType
-      else Types.DoubleType
+    val toIRType: Types.Type = typeSymbol match {
+      case FloatClass  => Types.FloatType
+      case DoubleClass => Types.DoubleType
+    }
   }
 
   /** Boolean */

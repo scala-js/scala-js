@@ -329,11 +329,22 @@ object Printers {
           import UnaryOp._
           print('(')
           print((op: @switch) match {
-            case Boolean_!                 => "!"
-            case IntToLong | DoubleToLong  => "(long)"
-            case DoubleToInt | LongToInt   => "(int)"
-            case DoubleToFloat             => "(float)"
-            case LongToDouble              => "(double)"
+            case Boolean_! =>
+              "!"
+            case IntToChar =>
+              "(char)"
+            case IntToByte =>
+              "(byte)"
+            case IntToShort =>
+              "(short)"
+            case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt =>
+              "(int)"
+            case IntToLong | DoubleToLong =>
+              "(long)"
+            case DoubleToFloat =>
+              "(float)"
+            case IntToDouble | LongToDouble | FloatToDouble =>
+              "(double)"
           })
           print(lhs)
           print(')')
@@ -380,6 +391,11 @@ object Printers {
 
             case String_+ => "+[string]"
 
+            case Boolean_== => "==[bool]"
+            case Boolean_!= => "!=[bool]"
+            case Boolean_|  => "|[bool]"
+            case Boolean_&  => "&[bool]"
+
             case Int_+ => "+[int]"
             case Int_- => "-[int]"
             case Int_* => "*[int]"
@@ -393,24 +409,12 @@ object Printers {
             case Int_>>> => ">>>[int]"
             case Int_>>  => ">>[int]"
 
-            case Float_+ => "+[float]"
-            case Float_- => "-[float]"
-            case Float_* => "*[float]"
-            case Float_/ => "/[float]"
-            case Float_% => "%[float]"
-
-            case Double_+ => "+[double]"
-            case Double_- => "-[double]"
-            case Double_* => "*[double]"
-            case Double_/ => "/[double]"
-            case Double_% => "%[double]"
-
-            case Num_== => "=="
-            case Num_!= => "!="
-            case Num_<  => "<"
-            case Num_<= => "<="
-            case Num_>  => ">"
-            case Num_>= => ">="
+            case Int_== => "==[int]"
+            case Int_!= => "!=[int]"
+            case Int_<  => "<[int]"
+            case Int_<= => "<=[int]"
+            case Int_>  => ">[int]"
+            case Int_>= => ">=[int]"
 
             case Long_+ => "+[long]"
             case Long_- => "-[long]"
@@ -432,10 +436,24 @@ object Printers {
             case Long_>  => ">[long]"
             case Long_>= => ">=[long]"
 
-            case Boolean_== => "==[bool]"
-            case Boolean_!= => "!=[bool]"
-            case Boolean_|  => "|[bool]"
-            case Boolean_&  => "&[bool]"
+            case Float_+ => "+[float]"
+            case Float_- => "-[float]"
+            case Float_* => "*[float]"
+            case Float_/ => "/[float]"
+            case Float_% => "%[float]"
+
+            case Double_+ => "+[double]"
+            case Double_- => "-[double]"
+            case Double_* => "*[double]"
+            case Double_/ => "/[double]"
+            case Double_% => "%[double]"
+
+            case Double_== => "==[double]"
+            case Double_!= => "!=[double]"
+            case Double_<  => "<[double]"
+            case Double_<= => "<=[double]"
+            case Double_>  => ">[double]"
+            case Double_>= => ">=[double]"
           })
           print(' ')
           print(rhs)
@@ -688,6 +706,31 @@ object Printers {
         case BooleanLiteral(value) =>
           print(if (value) "true" else "false")
 
+        case CharLiteral(value) =>
+          print('\'')
+          printEscapeJS(value.toString(), out)
+          print('\'')
+
+        case ByteLiteral(value) =>
+          if (value >= 0) {
+            print(value.toString)
+            print("_b")
+          } else {
+            print('(')
+            print(value.toString)
+            print("_b)")
+          }
+
+        case ShortLiteral(value) =>
+          if (value >= 0) {
+            print(value.toString)
+            print("_s")
+          } else {
+            print('(')
+            print(value.toString)
+            print("_s)")
+          }
+
         case IntLiteral(value) =>
           if (value >= 0) {
             print(value.toString)
@@ -906,6 +949,9 @@ object Printers {
       case NothingType          => print("nothing")
       case UndefType            => print("void")
       case BooleanType          => print("boolean")
+      case CharType             => print("char")
+      case ByteType             => print("byte")
+      case ShortType            => print("short")
       case IntType              => print("int")
       case LongType             => print("long")
       case FloatType            => print("float")

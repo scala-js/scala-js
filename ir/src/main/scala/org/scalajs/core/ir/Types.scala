@@ -18,10 +18,7 @@ object Types {
   /** Type of a term (expression or statement) in the IR.
    *
    *  There is a many-to-one relationship from [[TypeRef]]s to `Type`s,
-   *  because:
-   *
-   *  - `scala.Byte`, `scala.Short` and `scala.Int` collapse to [[IntType]]
-   *  - `java.lang.Object` and raw JS types all collapse to [[AnyType]]
+   *  because `java.lang.Object` and raw JS types all collapse to [[AnyType]].
    *
    *  In fact, there are two `Type`s that do not have any real equivalent in
    *  type refs: [[StringType]] and [[UndefType]], as they refer to the
@@ -63,6 +60,26 @@ object Types {
    *  It does not accept `null` nor `undefined`.
    */
   case object BooleanType extends Type
+
+  /** `Char` type, a 16-bit UTF-16 code unit.
+   *  It does not accept `null` nor `undefined`.
+   *
+   *  `CharType` has the peculiarity that it is *not* a subtype of [[AnyType]].
+   *  As such, no method can be called on a `CharType` either. In fact, very
+   *  few operations manipulate `CharType`s. It is usually necessary to convert
+   *  to/from [[IntType]]s using the appropriate `UnaryOp` conversions.
+   */
+  case object CharType extends Type
+
+  /** 8-bit signed integer type.
+   *  It does not accept `null` nor `undefined`.
+   */
+  case object ByteType extends Type
+
+  /** 16-bit signed integer type.
+   *  It does not accept `null` nor `undefined`.
+   */
+  case object ShortType extends Type
 
   /** 32-bit signed integer type.
    *  It does not accept `null` nor `undefined`.
@@ -162,6 +179,9 @@ object Types {
   /** Generates a literal zero of the given type. */
   def zeroOf(tpe: Type)(implicit pos: Position): Literal = tpe match {
     case BooleanType => BooleanLiteral(false)
+    case CharType    => CharLiteral('\u0000')
+    case ByteType    => ByteLiteral(0)
+    case ShortType   => ShortLiteral(0)
     case IntType     => IntLiteral(0)
     case LongType    => LongLiteral(0L)
     case FloatType   => FloatLiteral(0.0f)
@@ -184,6 +204,7 @@ object Types {
     (lhs != NoType && rhs != NoType) && {
       (lhs == rhs) ||
       ((lhs, rhs) match {
+        case (CharType, _)    => false
         case (_, AnyType)     => true
         case (NothingType, _) => true
 
@@ -197,23 +218,20 @@ object Types {
           isSubclass(BoxedUnitClass, cls)
         case (BooleanType, ClassType(cls)) =>
           isSubclass(BoxedBooleanClass, cls)
+        case (ByteType, ClassType(cls)) =>
+          isSubclass(BoxedByteClass, cls)
+        case (ShortType, ClassType(cls)) =>
+          isSubclass(BoxedShortClass, cls)
         case (IntType, ClassType(cls)) =>
-          isSubclass(BoxedIntegerClass, cls) ||
-          cls == BoxedByteClass ||
-          cls == BoxedShortClass ||
-          cls == BoxedDoubleClass
+          isSubclass(BoxedIntegerClass, cls)
         case (LongType, ClassType(cls)) =>
           isSubclass(BoxedLongClass, cls)
         case (FloatType, ClassType(cls)) =>
-          isSubclass(BoxedFloatClass, cls) ||
-          cls == BoxedDoubleClass
+          isSubclass(BoxedFloatClass, cls)
         case (DoubleType, ClassType(cls)) =>
           isSubclass(BoxedDoubleClass, cls)
         case (StringType, ClassType(cls)) =>
           isSubclass(StringClass, cls)
-
-        case (IntType, DoubleType)   => true
-        case (FloatType, DoubleType) => true
 
         case (ArrayType(ArrayTypeRef(lhsBase, lhsDims)),
             ArrayType(ArrayTypeRef(rhsBase, rhsDims))) =>

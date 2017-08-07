@@ -272,19 +272,43 @@ object Trees {
 
     final val Boolean_! = 1
 
-    final val IntToLong     = 2
-    final val LongToInt     = 3
-    final val LongToDouble  = 4
-    final val DoubleToInt   = 5
-    final val DoubleToFloat = 6
-    final val DoubleToLong  = 7
+    // Widening conversions
+    final val CharToInt = 2
+    final val ByteToInt = 3
+    final val ShortToInt = 4
+    final val IntToLong = 5
+    final val IntToDouble = 6
+    final val FloatToDouble = 7
+
+    // Narrowing conversions
+    final val IntToChar = 8
+    final val IntToByte = 9
+    final val IntToShort = 10
+    final val LongToInt = 11
+    final val DoubleToInt = 12
+    final val DoubleToFloat = 13
+
+    // Long <-> Double (neither widening nor narrowing)
+    final val LongToDouble = 14
+    final val DoubleToLong = 15
 
     def resultTypeOf(op: Code): Type = (op: @switch) match {
-      case LongToInt | DoubleToInt  => IntType
-      case IntToLong | DoubleToLong => LongType
-      case DoubleToFloat            => FloatType
-      case LongToDouble             => DoubleType
-      case Boolean_!                => BooleanType
+      case Boolean_! =>
+        BooleanType
+      case IntToChar =>
+        CharType
+      case IntToByte =>
+        ByteType
+      case IntToShort =>
+        ShortType
+      case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt =>
+        IntType
+      case IntToLong | DoubleToLong =>
+        LongType
+      case DoubleToFloat =>
+        FloatType
+      case IntToDouble | LongToDouble | FloatToDouble =>
+        DoubleType
     }
   }
 
@@ -304,81 +328,89 @@ object Trees {
 
     final val String_+ = 3
 
-    final val Int_+ = 4
-    final val Int_- = 5
-    final val Int_* = 6
-    final val Int_/ = 7
-    final val Int_% = 8
+    final val Boolean_== = 4
+    final val Boolean_!= = 5
+    final val Boolean_|  = 6
+    final val Boolean_&  = 7
 
-    final val Int_|   = 9
-    final val Int_&   = 10
-    final val Int_^   = 11
-    final val Int_<<  = 12
-    final val Int_>>> = 13
-    final val Int_>>  = 14
+    final val Int_+ = 8
+    final val Int_- = 9
+    final val Int_* = 10
+    final val Int_/ = 11
+    final val Int_% = 12
 
-    final val Float_+ = 15
-    final val Float_- = 16
-    final val Float_* = 17
-    final val Float_/ = 18
-    final val Float_% = 19
+    final val Int_|   = 13
+    final val Int_&   = 14
+    final val Int_^   = 15
+    final val Int_<<  = 16
+    final val Int_>>> = 17
+    final val Int_>>  = 18
 
-    final val Double_+ = 20
-    final val Double_- = 21
-    final val Double_* = 22
-    final val Double_/ = 23
-    final val Double_% = 24
+    final val Int_== = 19
+    final val Int_!= = 20
+    final val Int_<  = 21
+    final val Int_<= = 22
+    final val Int_>  = 23
+    final val Int_>= = 24
 
-    final val Num_== = 25
-    final val Num_!= = 26
-    final val Num_<  = 27
-    final val Num_<= = 28
-    final val Num_>  = 29
-    final val Num_>= = 30
+    final val Long_+ = 25
+    final val Long_- = 26
+    final val Long_* = 27
+    final val Long_/ = 28
+    final val Long_% = 29
 
-    final val Long_+ = 31
-    final val Long_- = 32
-    final val Long_* = 33
-    final val Long_/ = 34
-    final val Long_% = 35
+    final val Long_|   = 30
+    final val Long_&   = 31
+    final val Long_^   = 32
+    final val Long_<<  = 33
+    final val Long_>>> = 34
+    final val Long_>>  = 35
 
-    final val Long_|   = 36
-    final val Long_&   = 37
-    final val Long_^   = 38
-    final val Long_<<  = 39
-    final val Long_>>> = 40
-    final val Long_>>  = 41
+    final val Long_== = 36
+    final val Long_!= = 37
+    final val Long_<  = 38
+    final val Long_<= = 39
+    final val Long_>  = 40
+    final val Long_>= = 41
 
-    final val Long_== = 42
-    final val Long_!= = 43
-    final val Long_<  = 44
-    final val Long_<= = 45
-    final val Long_>  = 46
-    final val Long_>= = 47
+    final val Float_+ = 42
+    final val Float_- = 43
+    final val Float_* = 44
+    final val Float_/ = 45
+    final val Float_% = 46
 
-    final val Boolean_== = 48
-    final val Boolean_!= = 49
-    final val Boolean_|  = 50
-    final val Boolean_&  = 51
+    final val Double_+ = 47
+    final val Double_- = 48
+    final val Double_* = 49
+    final val Double_/ = 50
+    final val Double_% = 51
+
+    final val Double_== = 52
+    final val Double_!= = 53
+    final val Double_<  = 54
+    final val Double_<= = 55
+    final val Double_>  = 56
+    final val Double_>= = 57
 
     def resultTypeOf(op: Code): Type = (op: @switch) match {
       case === | !== |
-          Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>= |
+          Boolean_== | Boolean_!= | Boolean_| | Boolean_& |
+          Int_== | Int_!= | Int_< | Int_<= | Int_> | Int_>= |
           Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= |
-          Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
+          Double_== | Double_!= | Double_< | Double_<= | Double_> | Double_>= =>
         BooleanType
       case String_+ =>
         StringType
       case Int_+ | Int_- | Int_* | Int_/ | Int_% |
           Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> =>
         IntType
+      case Long_+ | Long_- | Long_* | Long_/ | Long_% |
+          Long_| | Long_& | Long_^ | Long_<< | Long_>>> | Long_>> =>
+        LongType
       case Float_+ | Float_- | Float_* | Float_/ | Float_% =>
         FloatType
       case Double_+ | Double_- | Double_* | Double_/ | Double_% =>
         DoubleType
-      case Long_+ | Long_- | Long_* | Long_/ | Long_% |
-          Long_| | Long_& | Long_^ | Long_<< | Long_>>> | Long_>> =>
-        LongType
     }
   }
 
@@ -418,11 +450,13 @@ object Trees {
   case class Unbox(expr: Tree, charCode: Char)(
       implicit val pos: Position) extends Tree {
     val tpe = (charCode: @switch) match {
-      case 'Z'             => BooleanType
-      case 'B' | 'S' | 'I' => IntType
-      case 'J'             => LongType
-      case 'F'             => FloatType
-      case 'D'             => DoubleType
+      case 'Z' => BooleanType
+      case 'B' => ByteType
+      case 'S' => ShortType
+      case 'I' => IntType
+      case 'J' => LongType
+      case 'F' => FloatType
+      case 'D' => DoubleType
     }
   }
 
@@ -749,6 +783,21 @@ object Trees {
   case class BooleanLiteral(value: Boolean)(
       implicit val pos: Position) extends Literal {
     val tpe = BooleanType
+  }
+
+  case class CharLiteral(value: Char)(
+      implicit val pos: Position) extends Literal {
+    val tpe = CharType
+  }
+
+  case class ByteLiteral(value: Byte)(
+      implicit val pos: Position) extends Literal {
+    val tpe = ByteType
+  }
+
+  case class ShortLiteral(value: Short)(
+      implicit val pos: Position) extends Literal {
+    val tpe = ShortType
   }
 
   case class IntLiteral(value: Int)(

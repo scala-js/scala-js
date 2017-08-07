@@ -106,14 +106,14 @@ object JavaLangString {
           Ident("charAt__I__C", Some("charAt__I__C")),
           List(ParamDef(Ident("i", Some("i")), IntType,
             mutable = false, rest = false)),
-          IntType,
+          CharType,
           Some {
             Apply(
               LoadModule(ClassType("sjsr_RuntimeString$")),
               Ident("charAt__T__I__C", Some("charAt__T__I__C")),
               List(
                 This()(ThisType),
-                VarRef(Ident("i", Some("i")))(IntType)))(IntType)
+                VarRef(Ident("i", Some("i")))(IntType)))(CharType)
           })(OptimizerHints.empty.withInline(true), None),
 
         /* def length(): Int = RuntimeString.length(this) */

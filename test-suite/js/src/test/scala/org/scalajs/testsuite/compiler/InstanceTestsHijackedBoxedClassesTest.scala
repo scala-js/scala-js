@@ -34,6 +34,10 @@ class InstanceTestsHijackedBoxedClassesTest {
     assertTrue((5.0: Any).isInstanceOf[Int])
     assertTrue((5.0: Any).isInstanceOf[Float])
 
+    assertTrue((5.toByte: Any).isInstanceOf[Int])
+    assertTrue((5.toShort: Any).isInstanceOf[Int])
+    assertTrue((5: Any).isInstanceOf[Byte])
+    assertTrue((5: Any).isInstanceOf[Short])
     assertTrue((0.0: Any).isInstanceOf[Int])
     assertTrue((0.0: Any).isInstanceOf[Float])
     assertTrue((-0.0: Any).isInstanceOf[Float])

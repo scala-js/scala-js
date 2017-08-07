@@ -47,25 +47,6 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     import factory._
 
     callMethods(LongImpl.RuntimeLongClass, LongImpl.AllIntrinsicMethods) ++
-    /* #2184 + #2780: we need to keep all methods of j.l.Integer, in case
-     * the corresponding methods are called on j.l.Byte or j.l.Short, and
-     * through optimizations become calls on j.l.Integer.
-     */
-    callMethods(Definitions.BoxedIntegerClass, Seq(
-        "byteValue__B",
-        "shortValue__S",
-        "intValue__I",
-        "longValue__J",
-        "floatValue__F",
-        "doubleValue__D",
-        "equals__O__Z",
-        "hashCode__I",
-        "compareTo__jl_Integer__I",
-        "toString__T",
-        "compareTo__jl_Byte__I",
-        "compareTo__jl_Short__I",
-        "compareTo__O__I"
-    )) ++
     instantiateClass("jl_NullPointerException", "init___")
   }
 

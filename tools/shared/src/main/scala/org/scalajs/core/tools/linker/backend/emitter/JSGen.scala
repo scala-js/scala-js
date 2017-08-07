@@ -37,6 +37,9 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genZeroOf(tpe: Type)(implicit pos: Position): Tree = {
     tpe match {
       case BooleanType => BooleanLiteral(false)
+      case CharType    => IntLiteral(0)
+      case ByteType    => IntLiteral(0)
+      case ShortType   => IntLiteral(0)
       case IntType     => IntLiteral(0)
       case LongType    => genLongZero()
       case FloatType   => DoubleLiteral(0.0)

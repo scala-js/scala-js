@@ -819,46 +819,54 @@ private final class IRChecker(unit: LinkingUnit,
 
       case UnaryOp(op, lhs) =>
         import UnaryOp._
-        (op: @switch) match {
-          case IntToLong =>
-            typecheckExpect(lhs, env, IntType)
-          case LongToInt | LongToDouble =>
-            typecheckExpect(lhs, env, LongType)
-          case DoubleToInt | DoubleToFloat | DoubleToLong =>
-            typecheckExpect(lhs, env, DoubleType)
+        val expectedArgType = (op: @switch) match {
           case Boolean_! =>
-            typecheckExpect(lhs, env, BooleanType)
+            BooleanType
+          case CharToInt =>
+            CharType
+          case ByteToInt =>
+            ByteType
+          case ShortToInt =>
+            ShortType
+          case IntToLong | IntToDouble | IntToChar | IntToByte | IntToShort =>
+            IntType
+          case LongToInt | LongToDouble =>
+            LongType
+          case FloatToDouble =>
+            FloatType
+          case DoubleToInt | DoubleToFloat | DoubleToLong =>
+            DoubleType
         }
+        typecheckExpect(lhs, env, expectedArgType)
 
       case BinaryOp(op, lhs, rhs) =>
         import BinaryOp._
-        (op: @switch) match {
+        val expectedLhsType = (op: @switch) match {
           case === | !== | String_+ =>
-            typecheckExpr(lhs, env)
-            typecheckExpr(rhs, env)
-          case Int_+ | Int_- | Int_* | Int_/ | Int_% |
-              Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> =>
-            typecheckExpect(lhs, env, IntType)
-            typecheckExpect(rhs, env, IntType)
-          case Float_+ | Float_- | Float_* | Float_/ | Float_% =>
-            typecheckExpect(lhs, env, FloatType)
-            typecheckExpect(rhs, env, FloatType)
-          case Long_+ | Long_- | Long_* | Long_/ | Long_% |
-              Long_| | Long_& | Long_^ |
-              Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= =>
-            typecheckExpect(lhs, env, LongType)
-            typecheckExpect(rhs, env, LongType)
-          case Long_<< | Long_>>> | Long_>> =>
-            typecheckExpect(lhs, env, LongType)
-            typecheckExpect(rhs, env, IntType)
-          case Double_+ | Double_- | Double_* | Double_/ | Double_% |
-              Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>= =>
-            typecheckExpect(lhs, env, DoubleType)
-            typecheckExpect(rhs, env, DoubleType)
+            AnyType
           case Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
-            typecheckExpect(lhs, env, BooleanType)
-            typecheckExpect(rhs, env, BooleanType)
+            BooleanType
+          case Int_+ | Int_- | Int_* | Int_/ | Int_% |
+              Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> |
+              Int_== | Int_!= | Int_< | Int_<= | Int_> | Int_>= =>
+            IntType
+          case Long_+ | Long_- | Long_* | Long_/ | Long_% |
+              Long_| | Long_& | Long_^ | Long_<< | Long_>>> | Long_>> |
+              Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= =>
+            LongType
+          case Float_+ | Float_- | Float_* | Float_/ | Float_% =>
+            FloatType
+          case Double_+ | Double_- | Double_* | Double_/ | Double_% |
+              Double_== | Double_!= |
+              Double_< | Double_<= | Double_> | Double_>= =>
+            DoubleType
         }
+        val expectedRhsType = (op: @switch) match {
+          case Long_<< | Long_>>> | Long_>> => IntType
+          case _                            => expectedLhsType
+        }
+        typecheckExpect(lhs, env, expectedLhsType)
+        typecheckExpect(rhs, env, expectedRhsType)
 
       case NewArray(tpe, lengths) =>
         for (length <- lengths)
@@ -1083,14 +1091,17 @@ private final class IRChecker(unit: LinkingUnit,
       implicit ctx: ErrorContext): Type = {
     if (encodedName.length == 1) {
       (encodedName.charAt(0): @switch) match {
-        case 'V'                   => NoType
-        case 'Z'                   => BooleanType
-        case 'C' | 'B' | 'S' | 'I' => IntType
-        case 'J'                   => LongType
-        case 'F'                   => FloatType
-        case 'D'                   => DoubleType
-        case 'O'                   => AnyType
-        case 'T'                   => ClassType(StringClass) // NOT StringType
+        case 'V' => NoType
+        case 'Z' => BooleanType
+        case 'C' => CharType
+        case 'B' => ByteType
+        case 'S' => ShortType
+        case 'I' => IntType
+        case 'J' => LongType
+        case 'F' => FloatType
+        case 'D' => DoubleType
+        case 'O' => AnyType
+        case 'T' => ClassType(StringClass) // NOT StringType
       }
     } else if (encodedName == "sr_Nothing$") {
       NothingType

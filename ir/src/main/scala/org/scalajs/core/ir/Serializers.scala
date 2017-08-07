@@ -375,6 +375,18 @@ object Serializers {
           writeByte(TagBooleanLiteral)
           writeBoolean(value)
 
+        case CharLiteral(value) =>
+          writeByte(TagCharLiteral)
+          writeChar(value)
+
+        case ByteLiteral(value) =>
+          writeByte(TagByteLiteral)
+          writeByte(value)
+
+        case ShortLiteral(value) =>
+          writeByte(TagShortLiteral)
+          writeShort(value)
+
         case IntLiteral(value) =>
           writeByte(TagIntLiteral)
           writeInt(value)
@@ -572,6 +584,9 @@ object Serializers {
         case NothingType => buffer.write(TagNothingType)
         case UndefType   => buffer.write(TagUndefType)
         case BooleanType => buffer.write(TagBooleanType)
+        case CharType    => buffer.write(TagCharType)
+        case ByteType    => buffer.write(TagByteType)
+        case ShortType   => buffer.write(TagShortType)
         case IntType     => buffer.write(TagIntType)
         case LongType    => buffer.write(TagLongType)
         case FloatType   => buffer.write(TagFloatType)
@@ -863,6 +878,9 @@ object Serializers {
         case TagUndefined      => Undefined()
         case TagNull           => Null()
         case TagBooleanLiteral => BooleanLiteral(readBoolean())
+        case TagCharLiteral    => CharLiteral(readChar())
+        case TagByteLiteral    => ByteLiteral(readByte())
+        case TagShortLiteral   => ShortLiteral(readShort())
         case TagIntLiteral     => IntLiteral(readInt())
         case TagLongLiteral    => LongLiteral(readLong())
         case TagFloatLiteral   => FloatLiteral(readFloat())
@@ -989,6 +1007,9 @@ object Serializers {
         case TagNothingType => NothingType
         case TagUndefType   => UndefType
         case TagBooleanType => BooleanType
+        case TagCharType    => CharType
+        case TagByteType    => ByteType
+        case TagShortType   => ShortType
         case TagIntType     => IntType
         case TagLongType    => LongType
         case TagFloatType   => FloatType

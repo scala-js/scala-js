@@ -1906,43 +1906,47 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           import UnaryOp._
           val newLhs = transformExpr(lhs)
           (op: @switch) match {
-            case Boolean_!   => js.UnaryOp(JSUnaryOp.!, newLhs)
-            case DoubleToInt => genCallHelper("doubleToInt", newLhs)
+            case Boolean_! => js.UnaryOp(JSUnaryOp.!, newLhs)
 
-            case LongToInt    => genLongMethodApply(newLhs, LongImpl.toInt)
-            case LongToDouble => genLongMethodApply(newLhs, LongImpl.toDouble)
-
-            case DoubleToFloat => genFround(newLhs)
-
+            // Widening conversions
+            case CharToInt | ByteToInt | ShortToInt | IntToDouble |
+                FloatToDouble =>
+              newLhs
             case IntToLong =>
               genNewLong(LongImpl.initFromInt, newLhs)
-            case DoubleToLong =>
-              genLongModuleApply(LongImpl.fromDouble, newLhs)
+
+            // Narrowing conversions
+            case IntToChar =>
+              js.BinaryOp(JSBinaryOp.&, js.IntLiteral(0xffff), newLhs)
+            case IntToByte =>
+              js.BinaryOp(JSBinaryOp.>>,
+                  js.BinaryOp(JSBinaryOp.<<, newLhs, js.IntLiteral(24)),
+                  js.IntLiteral(24))
+            case IntToShort =>
+              js.BinaryOp(JSBinaryOp.>>,
+                  js.BinaryOp(JSBinaryOp.<<, newLhs, js.IntLiteral(16)),
+                  js.IntLiteral(16))
+            case LongToInt =>
+              genLongMethodApply(newLhs, LongImpl.toInt)
+            case DoubleToInt =>
+              genCallHelper("doubleToInt", newLhs)
+            case DoubleToFloat =>
+              genFround(newLhs)
+
+            // Long <-> Double (neither widening nor narrowing)
+            case LongToDouble => genLongMethodApply(newLhs, LongImpl.toDouble)
+            case DoubleToLong => genLongModuleApply(LongImpl.fromDouble, newLhs)
           }
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._
-          val lhs1 = lhs match {
-            case UnaryOp(UnaryOp.DoubleToInt, inner)
-                if op == Int_& || op == Int_<< =>
-              /* This case is emitted typically by conversions from
-               * Float/Double to Char/Byte/Short. We have to introduce an
-               * (int) cast in the IR so that it typechecks, but in JavaScript
-               * this is redundant because & and << already convert both their
-               * operands to ints. So we get rid of the conversion here.
-               */
-              inner
-            case _ =>
-              lhs
-          }
-
-          val newLhs = transformExpr(lhs1)
+          val newLhs = transformExpr(lhs)
           val newRhs = transformExpr(rhs)
 
           (op: @switch) match {
-            case === | Num_== | Boolean_== =>
+            case === | Int_== | Double_== | Boolean_== =>
               js.BinaryOp(JSBinaryOp.===, newLhs, newRhs)
-            case !== | Num_!= | Boolean_!= =>
+            case !== | Int_!= | Double_!= | Boolean_!= =>
               js.BinaryOp(JSBinaryOp.!==, newLhs, newRhs)
 
             case String_+ =>
@@ -1974,30 +1978,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             case Int_>>> => or0(js.BinaryOp(JSBinaryOp.>>>, newLhs, newRhs))
             case Int_>>  => js.BinaryOp(JSBinaryOp.>>, newLhs, newRhs)
 
-            case Float_+ => genFround(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
-            case Float_- =>
-              genFround(lhs match {
-                case DoubleLiteral(0.0) => js.UnaryOp(JSUnaryOp.-, newRhs)
-                case _                  => js.BinaryOp(JSBinaryOp.-, newLhs, newRhs)
-              })
-            case Float_* => genFround(js.BinaryOp(JSBinaryOp.*, newLhs, newRhs))
-            case Float_/ => genFround(js.BinaryOp(JSBinaryOp./, newLhs, newRhs))
-            case Float_% => genFround(js.BinaryOp(JSBinaryOp.%, newLhs, newRhs))
-
-            case Double_+ => js.BinaryOp(JSBinaryOp.+, newLhs, newRhs)
-            case Double_- =>
-              lhs match {
-                case DoubleLiteral(0.0) => js.UnaryOp(JSUnaryOp.-, newRhs)
-                case _                  => js.BinaryOp(JSBinaryOp.-, newLhs, newRhs)
-              }
-            case Double_* => js.BinaryOp(JSBinaryOp.*, newLhs, newRhs)
-            case Double_/ => js.BinaryOp(JSBinaryOp./, newLhs, newRhs)
-            case Double_% => js.BinaryOp(JSBinaryOp.%, newLhs, newRhs)
-
-            case Num_<  => js.BinaryOp(JSBinaryOp.<, newLhs, newRhs)
-            case Num_<= => js.BinaryOp(JSBinaryOp.<=, newLhs, newRhs)
-            case Num_>  => js.BinaryOp(JSBinaryOp.>, newLhs, newRhs)
-            case Num_>= => js.BinaryOp(JSBinaryOp.>=, newLhs, newRhs)
+            case Int_<  => js.BinaryOp(JSBinaryOp.<, newLhs, newRhs)
+            case Int_<= => js.BinaryOp(JSBinaryOp.<=, newLhs, newRhs)
+            case Int_>  => js.BinaryOp(JSBinaryOp.>, newLhs, newRhs)
+            case Int_>= => js.BinaryOp(JSBinaryOp.>=, newLhs, newRhs)
 
             case Long_+ => genLongMethodApply(newLhs, LongImpl.+, newRhs)
             case Long_- =>
@@ -2026,6 +2010,31 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             case Long_<= => genLongMethodApply(newLhs, LongImpl.<=, newRhs)
             case Long_>  => genLongMethodApply(newLhs, LongImpl.>, newRhs)
             case Long_>= => genLongMethodApply(newLhs, LongImpl.>=, newRhs)
+
+            case Float_+ => genFround(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
+            case Float_- =>
+              genFround(lhs match {
+                case DoubleLiteral(0.0) => js.UnaryOp(JSUnaryOp.-, newRhs)
+                case _                  => js.BinaryOp(JSBinaryOp.-, newLhs, newRhs)
+              })
+            case Float_* => genFround(js.BinaryOp(JSBinaryOp.*, newLhs, newRhs))
+            case Float_/ => genFround(js.BinaryOp(JSBinaryOp./, newLhs, newRhs))
+            case Float_% => genFround(js.BinaryOp(JSBinaryOp.%, newLhs, newRhs))
+
+            case Double_+ => js.BinaryOp(JSBinaryOp.+, newLhs, newRhs)
+            case Double_- =>
+              lhs match {
+                case DoubleLiteral(0.0) => js.UnaryOp(JSUnaryOp.-, newRhs)
+                case _                  => js.BinaryOp(JSBinaryOp.-, newLhs, newRhs)
+              }
+            case Double_* => js.BinaryOp(JSBinaryOp.*, newLhs, newRhs)
+            case Double_/ => js.BinaryOp(JSBinaryOp./, newLhs, newRhs)
+            case Double_% => js.BinaryOp(JSBinaryOp.%, newLhs, newRhs)
+
+            case Double_<  => js.BinaryOp(JSBinaryOp.<, newLhs, newRhs)
+            case Double_<= => js.BinaryOp(JSBinaryOp.<=, newLhs, newRhs)
+            case Double_>  => js.BinaryOp(JSBinaryOp.>, newLhs, newRhs)
+            case Double_>= => js.BinaryOp(JSBinaryOp.>=, newLhs, newRhs)
 
             case Boolean_| => !(!js.BinaryOp(JSBinaryOp.|, newLhs, newRhs))
             case Boolean_& => !(!js.BinaryOp(JSBinaryOp.&, newLhs, newRhs))
@@ -2198,6 +2207,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case Undefined()            => js.Undefined()
         case Null()                 => js.Null()
         case BooleanLiteral(value)  => js.BooleanLiteral(value)
+        case CharLiteral(value)     => js.IntLiteral(value.toInt)
+        case ByteLiteral(value)     => js.IntLiteral(value.toInt)
+        case ShortLiteral(value)    => js.IntLiteral(value.toInt)
         case IntLiteral(value)      => js.IntLiteral(value)
         case FloatLiteral(value)    => js.DoubleLiteral(value.toDouble)
         case DoubleLiteral(value)   => js.DoubleLiteral(value)
@@ -2254,8 +2266,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       case ClassType(cls) =>
         Definitions.HijackedClasses.contains(cls) ||
         Definitions.AncestorsOfHijackedClasses.contains(cls)
-      case AnyType | UndefType | BooleanType | IntType | LongType |
-          FloatType | DoubleType | StringType =>
+      case AnyType | UndefType | BooleanType | ByteType | ShortType | IntType |
+          LongType | FloatType | DoubleType | StringType =>
         true
       case _ =>
         false
