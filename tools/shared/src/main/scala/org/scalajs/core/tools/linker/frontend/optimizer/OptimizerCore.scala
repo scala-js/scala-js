@@ -1482,9 +1482,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         })
 
       // Bridge method
-      case MaybeBox(Apply(This(), Ident(methodName, _), referenceArgs), boxID) =>
+      case Apply(This(), Ident(methodName, _), referenceArgs) =>
         impls.tail.forall(getMethodBody(_).body.get match {
-          case MaybeBox(Apply(This(), Ident(`methodName`, _), implArgs), `boxID`) =>
+          case Apply(This(), Ident(`methodName`, _), implArgs) =>
             referenceArgs.zip(implArgs) forall {
               case (MaybeUnbox(_, unboxID1), MaybeUnbox(_, unboxID2)) =>
                 unboxID1 == unboxID2
@@ -1506,6 +1506,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     case AnyType      => Definitions.ObjectClass
     case UndefType    => Definitions.BoxedUnitClass
     case BooleanType  => Definitions.BoxedBooleanClass
+    case CharType     => Definitions.BoxedCharacterClass
     case ByteType     => Definitions.BoxedByteClass
     case ShortType    => Definitions.BoxedShortClass
     case IntType      => Definitions.BoxedIntegerClass
@@ -1782,13 +1783,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
 
     def isLocalOnlyInlineType(tpe: RefinedType): Boolean = {
-      /* java.lang.Character and RuntimeLong are @inline so that *local*
-       * box/unbox pairs and instances can be eliminated. But we don't want
-       * that to force inlining of a method only because we pass it a boxed
-       * Char or an instance of RuntimeLong.
+      /* RuntimeLong is @inline so that *local* box/unbox pairs and instances
+       * can be eliminated. But we don't want that to force inlining of a
+       * method only because we pass it an instance of RuntimeLong.
        */
       tpe.base match {
-        case ClassType(Definitions.BoxedCharacterClass) => true
         case ClassType(LongImpl.RuntimeLongClass)       => true
         case _                                          => false
       }
@@ -1959,11 +1958,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         array.tpe match {
           case arrayTpe @ ArrayType(ArrayTypeRef(base, _)) =>
             val elemType = cursoryArrayElemType(arrayTpe)
-            val select = ArraySelect(array, index)(elemType)
-            if (base == "C")
-              boxChar(select)(cont)
-            else
-              contTree(select)
+            contTree(ArraySelect(array, index)(elemType))
 
           case _ =>
             defaultApply("array$undapply__O__I__O", AnyType)
@@ -1981,10 +1976,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               contTree(Assign(select, finishTransformExpr(tunboxedValue)))
             }
             base match {
-              case "Z" | "B" | "S" | "I" | "L" | "F" | "D" if depth == 1 =>
+              case "Z" | "C" | "B" | "S" | "I" | "L" | "F" | "D" if depth == 1 =>
                 foldUnbox(tvalue, base.charAt(0))(cont1)
-              case "C" if depth == 1 =>
-                unboxChar(tvalue)(cont1)
               case _ =>
                 cont1(tvalue)
             }
@@ -2130,28 +2123,6 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case Float64ArrayToDoubleArray =>
         contTree(CallHelper("typedArray2DoubleArray", newArgs)(AnyType))
     }
-  }
-
-  private def boxChar(value: Tree)(
-      cont: PreTransCont)(
-      implicit scope: Scope, pos: Position): TailRec[Tree] = {
-    pretransformNew(AllocationSite.Tree(value),
-        ClassType(Definitions.BoxedCharacterClass), Ident("init___C"),
-        List(value.toPreTransform))(cont)
-  }
-
-  private def unboxChar(tvalue: PreTransform)(
-      cont: PreTransCont)(
-      implicit scope: Scope, pos: Position): TailRec[Tree] = {
-    val BoxesRunTimeModuleClassName = "sr_BoxesRunTime$"
-    val treceiver = LoadModule(
-        ClassType(BoxesRunTimeModuleClassName)).toPreTransform
-    val target = staticCall(BoxesRunTimeModuleClassName, "unboxToChar__O__C").getOrElse {
-      throw new AssertionError("Cannot find method sr_BoxesRunTime$.unboxToChar__O__C")
-    }
-    val allocationSites = List(treceiver, tvalue).map(_.tpe.allocationSite)
-    inline(allocationSites, Some(treceiver), List(tvalue), target,
-        isStat = false, usePreTransform = true)(cont)
   }
 
   private def inlineClassConstructor(allocationSite: AllocationSite,
@@ -3794,6 +3765,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       cont: PreTransCont): TailRec[Tree] = {
     (charCode: @switch) match {
       case 'Z' if arg.tpe.base == BooleanType => cont(arg)
+      case 'C' if arg.tpe.base == CharType    => cont(arg)
       case 'B' if arg.tpe.base == ByteType    => cont(arg)
       case 'S' if arg.tpe.base == ShortType   => cont(arg)
       case 'I' if arg.tpe.base == IntType     => cont(arg)
@@ -4981,7 +4953,7 @@ private[optimizer] object OptimizerCore {
           }
 
         // Shape of bridges for generic methods
-        case MaybeBox(Apply(This(), method, args), _) =>
+        case Apply(This(), method, args) =>
           (args.size == params.size) &&
           args.zip(params).forall {
             case (MaybeUnbox(VarRef(Ident(aname, _)), _),
@@ -5018,25 +4990,12 @@ private[optimizer] object OptimizerCore {
     }
   }
 
-  private object MaybeBox {
-    def unapply(tree: Tree): Some[(Tree, Any)] = tree match {
-      case Apply(LoadModule(ClassType("sr_BoxesRunTime$")),
-          Ident("boxToCharacter__C__jl_Character", _), List(arg)) =>
-        Some((arg, "C"))
-      case _ =>
-        Some((tree, ()))
-    }
-  }
-
   private object MaybeUnbox {
     def unapply(tree: Tree): Some[(Tree, Any)] = tree match {
       case AsInstanceOf(arg, tpe) =>
         Some((arg, tpe))
       case Unbox(arg, charCode) =>
         Some((arg, charCode))
-      case Apply(LoadModule(ClassType("sr_BoxesRunTime$")),
-          Ident("unboxToChar__O__C", _), List(arg)) =>
-        Some((arg, "C"))
       case _ =>
         Some((tree, ()))
     }

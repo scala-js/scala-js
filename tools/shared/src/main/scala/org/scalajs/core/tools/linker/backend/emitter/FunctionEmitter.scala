@@ -198,30 +198,33 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
   /** Desugars parameters and body to a JS function.
    */
   def desugarToFunction(enclosingClassName: String, params: List[ParamDef],
-      body: Tree, isStat: Boolean)(
+      body: Tree, resultType: Type)(
       implicit globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunction(params, body, isStat,
-        Env.empty.withEnclosingClassName(Some(enclosingClassName)))
+    new JSDesugar().desugarToFunction(params, body,
+        isStat = resultType == NoType,
+        Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
   /** Desugars parameters and body to a JS function where `this` is given as
    *  an explicit normal parameter.
    */
   def desugarToFunctionWithExplicitThis(enclosingClassName: String,
-      params: List[ParamDef], body: Tree, isStat: Boolean)(
+      params: List[ParamDef], body: Tree, resultType: Type)(
       implicit globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunctionWithExplicitThis(params, body, isStat,
-        Env.empty.withEnclosingClassName(Some(enclosingClassName)))
+    new JSDesugar().desugarToFunctionWithExplicitThis(params, body,
+        isStat = resultType == NoType,
+        Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
   /** Desugars parameters and body to a JS function.
    */
-  def desugarToFunction(params: List[ParamDef], body: Tree, isStat: Boolean)(
+  def desugarToFunction(params: List[ParamDef], body: Tree, resultType: Type)(
       implicit globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunction(params, body, isStat, Env.empty)
+    new JSDesugar().desugarToFunction(params, body,
+        isStat = resultType == NoType, Env.empty(resultType))
   }
 
   private class JSDesugar()(implicit globalKnowledge: GlobalKnowledge) {
@@ -489,18 +492,18 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
             js.Assign(
-                js.DotSelect(transformExpr(newQualifier),
+                js.DotSelect(transformExprNoChar(newQualifier),
                     transformPropIdent(item))(select.pos),
-                transformExpr(newRhs))
+                transformExpr(newRhs, select.tpe))
           }
 
         case Assign(select @ ArraySelect(array, index), rhs) =>
           unnest(List(array, index, rhs)) {
             case (List(newArray, newIndex, newRhs), env0) =>
               implicit val env = env0
-              val genArray = transformExpr(newArray)
-              val genIndex = transformExpr(newIndex)
-              val genRhs = transformExpr(newRhs)
+              val genArray = transformExprNoChar(newArray)
+              val genIndex = transformExprNoChar(newIndex)
+              val genRhs = transformExpr(newRhs, select.tpe)
               semantics.arrayIndexOutOfBounds match {
                 case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
                   js.Apply(js.DotSelect(genArray, js.Ident("set")),
@@ -518,9 +521,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
             js.Assign(
-                js.DotSelect(transformExpr(newQualifier),
+                js.DotSelect(transformExprNoChar(newQualifier),
                     transformPropIdent(item))(select.pos),
-                transformExpr(newRhs))
+                transformExprNoChar(newRhs))
           }
 
         case Assign(select @ JSBracketSelect(qualifier, item), rhs) =>
@@ -528,9 +531,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             case (List(newQualifier, newItem, newRhs), env0) =>
               implicit val env = env0
               js.Assign(
-                  genBracketSelect(transformExpr(newQualifier),
-                      transformExpr(newItem))(select.pos),
-                  transformExpr(newRhs))
+                  genBracketSelect(transformExprNoChar(newQualifier),
+                      transformExprNoChar(newItem))(select.pos),
+                  transformExprNoChar(newRhs))
           }
 
         case Assign(select @ JSSuperBracketSelect(cls, qualifier, item), rhs) =>
@@ -540,8 +543,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               val ctor =
                 extractWithGlobals(genRawJSClassConstructor(cls.className))
               genCallHelper("superSet", ctor DOT "prototype",
-                  transformExpr(newQualifier), transformExpr(item),
-                  transformExpr(rhs))
+                  transformExprNoChar(newQualifier), transformExprNoChar(item),
+                  transformExprNoChar(rhs))
           }
 
         case Assign(lhs @ (_:VarRef | _:SelectStatic | _:JSGlobalRef), rhs) =>
@@ -556,7 +559,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             implicit val env = env0
             js.Assign(
                 envField("n", cls.className),
-                transformExpr(newValue))
+                transformExprNoChar(newValue))
           }
 
         case While(cond, body, label) =>
@@ -566,7 +569,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           val newLabel = label.map(transformLabelIdent)
           val bodyBreakTargets = tailPosLabels ++ label.map(_.name)
           if (isExpression(cond)) {
-            js.While(transformExpr(cond),
+            js.While(transformExprNoChar(cond),
                 transformStat(body, Set.empty)(
                     env.withDefaultBreakTargets(bodyBreakTargets)),
                 newLabel)
@@ -574,7 +577,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             js.While(js.BooleanLiteral(true), {
               unnest(cond) { (newCond, env0) =>
                 implicit val env = env0
-                js.If(transformExpr(newCond),
+                js.If(transformExprNoChar(newCond),
                     transformStat(body, Set.empty)(
                         env.withDefaultBreakTargets(bodyBreakTargets)),
                     js.Break())
@@ -592,7 +595,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             js.DoWhile(
                 transformStat(body, Set.empty)(
                     env.withDefaultBreakTargets(bodyBreakTargets)),
-                transformExpr(cond), newLabel)
+                transformExprNoChar(cond), newLabel)
           } else {
             /* This breaks 'continue' statements for this loop, but we don't
              * care because we never emit continue statements for do..while
@@ -604,7 +607,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                       env.withDefaultBreakTargets(bodyBreakTargets)),
                   unnest(cond) { (newCond, env0) =>
                     implicit val env = env0
-                    js.If(transformExpr(newCond), js.Skip(), js.Break())
+                    js.If(transformExprNoChar(newCond), js.Skip(), js.Break())
                   })
             }, newLabel)
           }
@@ -631,15 +634,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                     val argArray = spreadToArgArray(newArgs)
                     js.Apply(
                         genIdentBracketSelect(superCtor, "apply"),
-                        List(js.This(), transformExpr(argArray)))
+                        List(js.This(), transformExprNoChar(argArray)))
                   } else {
                     js.Apply(
                         genIdentBracketSelect(superCtor, "call"),
-                        js.This() :: newArgs.map(transformExpr))
+                        js.This() :: newArgs.map(transformExprNoChar))
                   }
 
                 case OutputMode.ECMAScript6 =>
-                  js.Apply(js.Super(), newArgs.map(transformExpr))
+                  js.Apply(js.Super(), newArgs.map(transformExprNoChar))
               }
             }
 
@@ -698,11 +701,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   args)
               }
 
+              val zero =
+                if (ftpe == CharType) js.VarRef(js.Ident("$bC0"))
+                else genZeroOf(ftpe)
+
               val descriptor = js.ObjectConstr(List(
                   js.StringLiteral("configurable") -> js.BooleanLiteral(true),
                   js.StringLiteral("enumerable") -> js.BooleanLiteral(true),
                   js.StringLiteral("writable") -> js.BooleanLiteral(true),
-                  js.StringLiteral("value") -> genZeroOf(ftpe)
+                  js.StringLiteral("value") -> zero
               ))
 
               unnestPropertyName(name) { (newName, env0) =>
@@ -716,11 +723,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
                   case newName: StringLiteral =>
                     makeObjectMethodApply("defineProperty",
-                        List(js.This(), transformExpr(newName), descriptor))
+                        List(js.This(), transformExprNoChar(newName), descriptor))
 
                   case ComputedName(nameTree, _) =>
                     makeObjectMethodApply("defineProperty",
-                        List(js.This(), transformExpr(nameTree), descriptor))
+                        List(js.This(), transformExprNoChar(nameTree), descriptor))
                 }
               }
             }
@@ -731,7 +738,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSDelete(JSDotSelect(obj, prop)) =>
           unnest(obj) { (newObj, env0) =>
             implicit val env = env0
-            js.Delete(js.DotSelect(transformExpr(newObj),
+            js.Delete(js.DotSelect(transformExprNoChar(newObj),
                 transformPropIdent(prop)))
           }
 
@@ -739,7 +746,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           unnest(obj, prop) { (newObj, newProp, env0) =>
             implicit val env = env0
             js.Delete(genBracketSelect(
-                transformExpr(newObj), transformExpr(newProp)))
+                transformExprNoChar(newObj), transformExprNoChar(newProp)))
           }
 
         // Treat 'return' as an LHS
@@ -1206,7 +1213,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           })
 
         case _ =>
-          genLet(transformLocalVarIdent(ident), mutable, transformExpr(rhs))
+          genLet(transformLocalVarIdent(ident), mutable,
+              transformExpr(rhs, tpe))
       }
     }
 
@@ -1243,7 +1251,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           })
 
         case _ =>
-          js.Assign(transformExpr(lhs), transformExpr(rhs))
+          js.Assign(transformExpr(lhs, preserveChar = true),
+              transformExpr(rhs, lhs.tpe))
       }
     }
 
@@ -1325,13 +1334,13 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           lhs match {
             case Lhs.Discard =>
               if (isSideEffectFreeExpression(rhs)) js.Skip()
-              else transformExpr(rhs)
+              else transformExpr(rhs, preserveChar = true)
             case Lhs.VarDef(name, tpe, mutable) =>
               doVarDef(name, tpe, mutable, rhs)
             case Lhs.Assign(lhs) =>
               doAssign(lhs, rhs)
             case Lhs.Return(None) =>
-              js.Return(transformExpr(rhs))
+              js.Return(transformExpr(rhs, env.expectedReturnType))
             case Lhs.Return(Some(l)) =>
               doReturnToLabel(l)
           }
@@ -1389,7 +1398,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           unnest(cond) { (newCond, env0) =>
             implicit val env = env0
             extractLet { newLhs =>
-              js.If(transformExpr(newCond),
+              js.If(transformExprNoChar(newCond),
                   pushLhsInto(newLhs, thenp, tailPosLabels),
                   pushLhsInto(newLhs, elsep, tailPosLabels))
             }
@@ -1412,7 +1421,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // TODO Treat throw as an LHS?
         case Throw(expr) =>
           unnest(expr) { (newExpr, env) =>
-            js.Throw(transformExpr(newExpr)(env))
+            js.Throw(transformExprNoChar(newExpr)(env))
           }
 
         /** Matches are desugared into switches
@@ -1433,7 +1442,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               val newCases = {
                 for {
                   (values, body) <- cases
-                  newValues = (values map transformExpr)
+                  newValues = values.map(transformExpr(_, preserveChar = true))
                   // add the break statement
                   newBody = js.Block(
                       pushLhsInto(newLhs, body, tailPosLabels),
@@ -1445,7 +1454,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 }
               }
               val newDefault = pushLhsInto(newLhs, default, tailPosLabels)
-              js.Switch(transformExpr(newSelector), newCases, newDefault)
+              js.Switch(transformExpr(newSelector, preserveChar = true),
+                  newCases, newDefault)
             }
           }
 
@@ -1810,10 +1820,36 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       }
     }
 
-    // Desugar Scala operations to JavaScript operations -----------------------
+    def transformExprNoChar(tree: Tree)(implicit env: Env): js.Tree =
+      transformExpr(tree, preserveChar = false)
 
-    /** Desugar an expression of the IR into ES5 JS */
-    def transformExpr(tree: Tree)(implicit env: Env): js.Tree = {
+    def transformExpr(tree: Tree, expectedType: Type)(
+        implicit env: Env): js.Tree = {
+      transformExpr(tree, preserveChar = expectedType == CharType)
+    }
+
+    def transformTypedArgs(methodName: String, args: List[Tree])(
+        implicit env: Env): List[js.Tree] = {
+      if (args.forall(_.tpe != CharType)) {
+        // Fast path
+        args.map(transformExpr(_, preserveChar = true))
+      } else {
+        /* TODO Optimize this. We don't really need to decode the full
+         * signature. We can simply walk the string and look for "__C__"'s,
+         * without allocating anything.
+         */
+        val (_, paramTypeRefs, _) = Definitions.decodeMethodName(methodName)
+        args.zip(paramTypeRefs).map {
+          case (arg, ClassRef("C")) => transformExpr(arg, preserveChar = true)
+          case (arg, _)             => transformExpr(arg, preserveChar = false)
+        }
+      }
+    }
+
+    /** Desugar an expression of the IR into JavaScript. */
+    def transformExpr(tree: Tree, preserveChar: Boolean)(
+        implicit env: Env): js.Tree = {
+
       import TreeDSL._
 
       implicit val pos = tree.pos
@@ -1821,27 +1857,30 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       def or0(tree: js.Tree): js.Tree =
         js.BinaryOp(JSBinaryOp.|, tree, js.IntLiteral(0))
 
-      tree match {
+      val baseResult = tree match {
         // Control flow constructs
 
         case Block(stats :+ expr) =>
           val (newStats, newEnv) = transformBlockStats(stats)
-          js.Block(newStats :+ transformExpr(expr)(newEnv))
+          js.Block(newStats :+ transformExpr(expr, tree.tpe)(newEnv))
 
         // Note that these work even if thenp/elsep is not a BooleanType
         case If(cond, BooleanLiteral(true), elsep) =>
-          js.BinaryOp(JSBinaryOp.||, transformExpr(cond), transformExpr(elsep))
+          js.BinaryOp(JSBinaryOp.||, transformExprNoChar(cond),
+              transformExpr(elsep, tree.tpe))
         case If(cond, thenp, BooleanLiteral(false)) =>
-          js.BinaryOp(JSBinaryOp.&&, transformExpr(cond), transformExpr(thenp))
+          js.BinaryOp(JSBinaryOp.&&, transformExprNoChar(cond),
+              transformExpr(thenp, tree.tpe))
 
         case If(cond, thenp, elsep) =>
-          js.If(transformExpr(cond), transformExpr(thenp), transformExpr(elsep))
+          js.If(transformExprNoChar(cond), transformExpr(thenp, tree.tpe),
+              transformExpr(elsep, tree.tpe))
 
         // Scala expressions
 
         case New(cls, ctor, args) =>
           val encodedClassVar = encodeClassVar(cls.className)
-          val newArgs = args.map(transformExpr)
+          val newArgs = transformTypedArgs(ctor.name, args)
           if (globalKnowledge.hasInlineableInit(cls.className)) {
             js.New(encodedClassVar, newArgs)
           } else {
@@ -1859,14 +1898,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           js.VarRef(transformLocalVarIdent(name))
 
         case Select(qualifier, item) =>
-          transformExpr(qualifier) DOT transformPropIdent(item)
+          transformExprNoChar(qualifier) DOT transformPropIdent(item)
 
         case SelectStatic(cls, item) =>
           genSelectStatic(cls.className, item)
 
         case Apply(receiver, method, args) =>
-          val newReceiver = transformExpr(receiver)
-          val newArgs = args map transformExpr
+          val newReceiver = transformExprNoChar(receiver)
+          val newArgs = transformTypedArgs(method.name, args)
 
           /* If the receiver is maybe a hijacked class instance, and there
            * exists a hijacked method helper for the method, use it. Methods
@@ -1884,7 +1923,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case ApplyStatically(receiver, cls, method, args) =>
           val className = cls.className
-          val transformedArgs = (receiver :: args) map transformExpr
+          val newReceiver = transformExprNoChar(receiver)
+          val newArgs = transformTypedArgs(method.name, args)
+          val transformedArgs = newReceiver :: newArgs
 
           if (globalKnowledge.isInterface(className)) {
             val Ident(methodName, origName) = method
@@ -1900,11 +1941,12 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case ApplyStatic(cls, method, args) =>
           val Ident(methodName, origName) = method
           val fullName = cls.className + "__" + methodName
-          js.Apply(envField("s", fullName, origName), args map transformExpr)
+          js.Apply(envField("s", fullName, origName),
+              transformTypedArgs(method.name, args))
 
         case UnaryOp(op, lhs) =>
           import UnaryOp._
-          val newLhs = transformExpr(lhs)
+          val newLhs = transformExpr(lhs, preserveChar = op == CharToInt)
           (op: @switch) match {
             case Boolean_! => js.UnaryOp(JSUnaryOp.!, newLhs)
 
@@ -1940,8 +1982,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._
-          val newLhs = transformExpr(lhs)
-          val newRhs = transformExpr(rhs)
+          val newLhs = transformExprNoChar(lhs)
+          val newRhs = transformExprNoChar(rhs)
 
           (op: @switch) match {
             case === | Int_== | Double_== | Boolean_== =>
@@ -2043,18 +2085,20 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case NewArray(tpe, lengths) =>
           genCallHelper("newArrayObject",
               genClassDataOf(tpe.arrayTypeRef),
-              js.ArrayConstr(lengths.map(transformExpr)))
+              js.ArrayConstr(lengths.map(transformExprNoChar)))
 
         case ArrayValue(tpe, elems) =>
-          genArrayValue(tpe, elems.map(transformExpr))
+          val ArrayTypeRef(baseClassName, dimensions) = tpe.arrayTypeRef
+          val preserveChar = baseClassName == "C" && dimensions == 1
+          genArrayValue(tpe, elems.map(transformExpr(_, preserveChar)))
 
         case ArrayLength(array) =>
-          genIdentBracketSelect(js.DotSelect(transformExpr(array),
+          genIdentBracketSelect(js.DotSelect(transformExprNoChar(array),
               js.Ident("u")), "length")
 
         case ArraySelect(array, index) =>
-          val newArray = transformExpr(array)
-          val newIndex = transformExpr(index)
+          val newArray = transformExprNoChar(array)
+          val newIndex = transformExprNoChar(index)
           semantics.arrayIndexOutOfBounds match {
             case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
               js.Apply(js.DotSelect(newArray, js.Ident("get")), List(newIndex))
@@ -2063,19 +2107,20 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           }
 
         case IsInstanceOf(expr, cls) =>
-          genIsInstanceOf(transformExpr(expr), cls)
+          genIsInstanceOf(transformExprNoChar(expr), cls)
 
         case AsInstanceOf(expr, cls) =>
-          val newExpr = transformExpr(expr)
+          val newExpr = transformExprNoChar(expr)
           if (semantics.asInstanceOfs == Unchecked) newExpr
           else genAsInstanceOf(newExpr, cls)
 
         case Unbox(expr, charCode) =>
-          val newExpr = transformExpr(expr)
+          val newExpr = transformExprNoChar(expr)
 
           if (semantics.asInstanceOfs == Unchecked) {
             (charCode: @switch) match {
               case 'Z'             => !(!newExpr)
+              case 'C'             => genCallHelper("uC", newExpr)
               case 'B' | 'S' | 'I' => or0(newExpr)
               case 'J'             => genCallHelper("uJ", newExpr)
               case 'D'             => js.UnaryOp(JSUnaryOp.+, newExpr)
@@ -2091,7 +2136,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           }
 
         case GetClass(expr) =>
-          genCallHelper("objectGetClass", transformExpr(expr))
+          genCallHelper("objectGetClass", transformExprNoChar(expr))
 
         case CallHelper(helper, args) =>
           helper match {
@@ -2100,29 +2145,31 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 case ClassOf(tpe) =>
                   genClassDataOf(tpe)
                 case jlClass =>
-                  js.DotSelect(transformExpr(jlClass), js.Ident("data$1"))
+                  js.DotSelect(transformExprNoChar(jlClass), js.Ident("data$1"))
               }
             case "arrayDataOf" =>
-              js.Apply(js.DotSelect(transformExpr(args.head),
+              js.Apply(js.DotSelect(transformExprNoChar(args.head),
                   js.Ident("getArrayOf")), Nil)
             case "zeroOf" =>
               js.DotSelect(
-                  js.DotSelect(transformExpr(args.head), js.Ident("data$1")),
+                  js.DotSelect(transformExprNoChar(args.head), js.Ident("data$1")),
                   js.Ident("zero"))
             case _ =>
-              genCallHelper(helper, args map transformExpr: _*)
+              genCallHelper(helper,
+                  args.map(transformExpr(_, preserveChar = true)): _*)
           }
 
         // JavaScript expressions
 
         case JSNew(constr, args) =>
-          js.New(transformExpr(constr), args map transformExpr)
+          js.New(transformExprNoChar(constr), args.map(transformExprNoChar))
 
         case JSDotSelect(qualifier, item) =>
-          js.DotSelect(transformExpr(qualifier), transformPropIdent(item))
+          js.DotSelect(transformExprNoChar(qualifier), transformPropIdent(item))
 
         case JSBracketSelect(qualifier, item) =>
-          genBracketSelect(transformExpr(qualifier), transformExpr(item))
+          genBracketSelect(transformExprNoChar(qualifier),
+              transformExprNoChar(item))
 
         case JSFunctionApply(fun, args) =>
           /* Protect the fun so that if it is, e.g.,
@@ -2139,7 +2186,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
            * way, because calling a bare `eval` executes the code in the
            * current lexical scope, as opposed to the global scope.
            */
-          val transformedFun = transformExpr(fun)
+          val transformedFun = transformExprNoChar(fun)
           val protectedFun = transformedFun match {
             case _:js.DotSelect | _:js.BracketSelect |
                 js.VarRef(js.Ident("eval", _)) =>
@@ -2147,21 +2194,22 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             case _ =>
               transformedFun
           }
-          js.Apply(protectedFun, args map transformExpr)
+          js.Apply(protectedFun, args.map(transformExprNoChar))
 
         case JSDotMethodApply(receiver, method, args) =>
           js.Apply(
-              js.DotSelect(transformExpr(receiver), transformPropIdent(method)),
-              args map transformExpr)
+              js.DotSelect(transformExprNoChar(receiver),
+                  transformPropIdent(method)),
+              args.map(transformExprNoChar))
 
         case JSBracketMethodApply(receiver, method, args) =>
-          js.Apply(genBracketSelect(transformExpr(receiver),
-              transformExpr(method)), args map transformExpr)
+          js.Apply(genBracketSelect(transformExprNoChar(receiver),
+              transformExprNoChar(method)), args.map(transformExprNoChar))
 
         case JSSuperBracketSelect(cls, qualifier, item) =>
           val ctor = extractWithGlobals(genRawJSClassConstructor(cls.className))
           genCallHelper("superGet", ctor DOT "prototype",
-              transformExpr(qualifier), transformExpr(item))
+              transformExprNoChar(qualifier), transformExprNoChar(item))
 
         case LoadJSConstructor(cls) =>
           extractWithGlobals(genRawJSClassConstructor(cls.className))
@@ -2180,20 +2228,20 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case JSSpread(items) =>
           assert(outputMode == OutputMode.ECMAScript6)
-          js.Spread(transformExpr(items))
+          js.Spread(transformExprNoChar(items))
 
         case JSUnaryOp(op, lhs) =>
-          js.UnaryOp(op, transformExpr(lhs))
+          js.UnaryOp(op, transformExprNoChar(lhs))
 
         case JSBinaryOp(op, lhs, rhs) =>
-          js.BinaryOp(op, transformExpr(lhs), transformExpr(rhs))
+          js.BinaryOp(op, transformExprNoChar(lhs), transformExprNoChar(rhs))
 
         case JSArrayConstr(items) =>
-          js.ArrayConstr(items map transformExpr)
+          js.ArrayConstr(items.map(transformExprNoChar))
 
         case JSObjectConstr(fields) =>
           js.ObjectConstr(fields map { case (name, value) =>
-            (transformPropertyName(name), transformExpr(value))
+            (transformPropertyName(name), transformExprNoChar(value))
           })
 
         case JSGlobalRef(name) =>
@@ -2241,7 +2289,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case Closure(captureParams, params, body, captureValues) =>
           val innerFunction =
             desugarToFunctionInternal(params, body, isStat = false,
-                Env.empty.withParams(captureParams ++ params))
+                Env.empty(AnyType).withParams(captureParams ++ params))
 
           if (captureParams.isEmpty) {
             innerFunction
@@ -2250,7 +2298,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 js.Function(captureParams.map(transformParamDef), {
                   js.Return(innerFunction)
                 }),
-                captureValues.map(transformExpr))
+                captureValues.zip(captureParams).map {
+                  case (value, param) => transformExpr(value, param.ptpe)
+                })
           }
 
         // Invalid trees
@@ -2260,14 +2310,19 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               "Invalid tree in JSDesugar.transformExpr() of class " +
               tree.getClass)
       }
+
+      if (preserveChar || tree.tpe != CharType)
+        baseResult
+      else
+        genCallHelper("bC", baseResult)
     }
 
     def isMaybeHijackedClass(tpe: Type): Boolean = tpe match {
       case ClassType(cls) =>
         Definitions.HijackedClasses.contains(cls) ||
         Definitions.AncestorsOfHijackedClasses.contains(cls)
-      case AnyType | UndefType | BooleanType | ByteType | ShortType | IntType |
-          LongType | FloatType | DoubleType | StringType =>
+      case AnyType | UndefType | BooleanType | CharType | ByteType | ShortType |
+          IntType | LongType | FloatType | DoubleType | StringType =>
         true
       case _ =>
         false
@@ -2287,17 +2342,20 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         "charAt__I__C"                       -> "charSequenceCharAt",
         "subSequence__I__I__jl_CharSequence" -> "charSequenceSubSequence",
 
-        "compareTo__O__I"          -> "comparableCompareTo",
-        "compareTo__jl_Boolean__I" -> "comparableCompareTo",
-        "compareTo__jl_Byte__I"    -> "comparableCompareTo",
-        "compareTo__jl_Short__I"   -> "comparableCompareTo",
-        "compareTo__jl_Integer__I" -> "comparableCompareTo",
-        "compareTo__jl_Long__I"    -> "comparableCompareTo",
-        "compareTo__jl_Float__I"   -> "comparableCompareTo",
-        "compareTo__jl_Double__I"  -> "comparableCompareTo",
-        "compareTo__jl_String__I"  -> "comparableCompareTo",
+        "compareTo__O__I"            -> "comparableCompareTo",
+        "compareTo__jl_Boolean__I"   -> "comparableCompareTo",
+        "compareTo__jl_Character__I" -> "comparableCompareTo",
+        "compareTo__jl_Byte__I"      -> "comparableCompareTo",
+        "compareTo__jl_Short__I"     -> "comparableCompareTo",
+        "compareTo__jl_Integer__I"   -> "comparableCompareTo",
+        "compareTo__jl_Long__I"      -> "comparableCompareTo",
+        "compareTo__jl_Float__I"     -> "comparableCompareTo",
+        "compareTo__jl_Double__I"    -> "comparableCompareTo",
+        "compareTo__jl_String__I"    -> "comparableCompareTo",
 
         "booleanValue__Z" -> "booleanBooleanValue",
+
+        "charValue__C" -> "characterCharValue",
 
         "byteValue__B"   -> "numberByteValue",
         "shortValue__S"  -> "numberShortValue",
@@ -2321,7 +2379,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       pName match {
         case name: Ident           => transformPropIdent(name)
         case StringLiteral(s)      => js.StringLiteral(s)
-        case ComputedName(tree, _) => js.ComputedName(transformExpr(tree))
+        case ComputedName(tree, _) => js.ComputedName(transformExprNoChar(tree))
       }
     }
 
@@ -2408,6 +2466,7 @@ private object FunctionEmitter {
 
   final class Env private (
       val thisIdent: Option[js.Ident],
+      val expectedReturnType: Type,
       val enclosingClassName: Option[String],
       vars: Map[String, Boolean],
       labeledExprLHSes: Map[String, Lhs],
@@ -2445,16 +2504,18 @@ private object FunctionEmitter {
 
     private def copy(
         thisIdent: Option[js.Ident] = this.thisIdent,
+        expectedReturnType: Type = this.expectedReturnType,
         enclosingClassName: Option[String] = this.enclosingClassName,
         vars: Map[String, Boolean] = this.vars,
         labeledExprLHSes: Map[String, Lhs] = this.labeledExprLHSes,
         defaultBreakTargets: Set[String] = this.defaultBreakTargets): Env = {
-      new Env(thisIdent, enclosingClassName, vars, labeledExprLHSes,
-          defaultBreakTargets)
+      new Env(thisIdent, expectedReturnType, enclosingClassName, vars,
+          labeledExprLHSes, defaultBreakTargets)
     }
   }
 
   object Env {
-    def empty: Env = new Env(None, None, Map.empty, Map.empty, Set.empty)
+    def empty(expectedReturnType: Type): Env =
+      new Env(None, expectedReturnType, None, Map.empty, Map.empty, Set.empty)
   }
 }

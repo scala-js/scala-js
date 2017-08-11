@@ -186,6 +186,7 @@ object Infos {
         case AnyType        => addMethodCalled(ObjectClass, method)
         case UndefType      => addMethodCalled(BoxedUnitClass, method)
         case BooleanType    => addMethodCalled(BoxedBooleanClass, method)
+        case CharType       => addMethodCalled(BoxedCharacterClass, method)
         case ByteType       => addMethodCalled(BoxedByteClass, method)
         case ShortType      => addMethodCalled(BoxedShortClass, method)
         case IntType        => addMethodCalled(BoxedIntegerClass, method)
@@ -198,7 +199,7 @@ object Infos {
         case NullType | NothingType =>
           // Nothing to do
 
-        case NoType | CharType | RecordType(_) =>
+        case NoType | RecordType(_) =>
           throw new IllegalArgumentException(
               s"Illegal receiver type: $receiverTpe")
       }

@@ -237,11 +237,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
     val call = Apply(This()(currentClassType),
         targetIdent, params.map(_.ref))(targetMDef.resultType)
 
-    val body = if (targetName.endsWith("__C")) {
-      // A Char needs to be boxed
-      New(ClassType(Definitions.BoxedCharacterClass),
-          Ident("init___C"), List(call))
-    } else if (targetName.endsWith("__V")) {
+    val body = if (targetName.endsWith("__V")) {
       // Materialize an `undefined` result for void methods
       Block(call, Undefined())
     } else {

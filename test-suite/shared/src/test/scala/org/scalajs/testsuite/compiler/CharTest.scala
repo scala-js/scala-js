@@ -35,4 +35,25 @@ class CharTest {
     // note: expected values are constant-folded by the compiler on the JVM
     test(Char.MaxValue, Char.MaxValue, Char.MaxValue * Char.MaxValue)
   }
+
+  @Test
+  def do_not_box_several_times_in_a_block(): Unit = {
+    @noinline def test(x: Any): Unit =
+      assertEquals('A', x)
+
+    test({
+      test('A')
+      'A'
+    }: Char)
+  }
+
+  @Test
+  def do_not_box_several_times_in_an_if(): Unit = {
+    @noinline def test(x: Any): Unit =
+      assertEquals('A', x)
+
+    @noinline def cond: Boolean = true
+
+    test((if (cond) 'A' else 'B'): Char)
+  }
 }

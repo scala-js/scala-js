@@ -927,12 +927,6 @@ abstract class GenJSCode extends plugins.PluginComponent
            */
           jstpe.ClassType(encodeClassFullName(tpe.valueClazz))
 
-        case _ if f.tpe.typeSymbol == CharClass =>
-          /* Will be initialized to null, which will unbox to '\0' when
-           * read.
-           */
-          jstpe.ClassType(ir.Definitions.BoxedCharacterClass)
-
         case _ =>
           /* Other types are not boxed, so we can initialize them to
            * their true zero.
@@ -3777,6 +3771,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               (StringClass, StringClass),
               (BoxedDoubleClass, NumberReflectiveCallClass),
               (BoxedBooleanClass, BooleanReflectiveCallClass),
+              (BoxedCharacterClass, CharacterReflectiveCallClass),
               (BoxedLongClass, LongReflectiveCallClass)
           )
           implMethodSym = matchingSymIn(reflBoxClass)
@@ -3805,6 +3800,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               } else {
                 val reflBoxClassPatched = {
                   def isIntOrLongKind(kind: TypeKind) = kind match {
+                    case CharKind     => false
                     case _:INT | LONG => true
                     case _            => false
                   }
@@ -3894,14 +3890,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         case VOID => // must be handled at least for JS interop
           js.Block(expr, js.Undefined())
         case kind: ValueTypeKind =>
-          if (kind == CharKind) {
-            genApplyMethod(
-                genLoadModule(BoxesRunTimeClass),
-                BoxesRunTime_boxToCharacter,
-                List(expr))
-          } else {
-            expr // box is identity for all non-Char types
-          }
+          expr // box is identity for all primitive types
         case _ =>
           abort(s"makePrimitiveBox requires a primitive type, found $tpe at $pos")
       }
@@ -3914,14 +3903,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         case VOID => // must be handled at least for JS interop
           expr
         case kind: ValueTypeKind =>
-          if (kind == CharKind) {
-            genApplyMethod(
-                genLoadModule(BoxesRunTimeClass),
-                BoxesRunTime_unboxToChar,
-                List(expr))
-          } else {
-            js.Unbox(expr, kind.primitiveCharCode)
-          }
+          js.Unbox(expr, kind.primitiveCharCode)
         case _ =>
           abort(s"makePrimitiveUnbox requires a primitive type, found $tpe at $pos")
       }
@@ -5586,27 +5568,14 @@ abstract class GenJSCode extends plugins.PluginComponent
   private def isStringType(tpe: Type): Boolean =
     tpe.typeSymbol == StringClass
 
-  private def isLongType(tpe: Type): Boolean =
-    tpe.typeSymbol == LongClass
-
-  private lazy val BoxedBooleanClass = boxedClass(BooleanClass)
-  private lazy val BoxedByteClass = boxedClass(ByteClass)
-  private lazy val BoxedShortClass = boxedClass(ShortClass)
-  private lazy val BoxedIntClass = boxedClass(IntClass)
-  private lazy val BoxedLongClass = boxedClass(LongClass)
-  private lazy val BoxedFloatClass = boxedClass(FloatClass)
-  private lazy val BoxedDoubleClass = boxedClass(DoubleClass)
-
-  private lazy val NumberClass = requiredClass[java.lang.Number]
-
-  private lazy val HijackedNumberClasses =
-    Seq(BoxedByteClass, BoxedShortClass, BoxedIntClass, BoxedLongClass,
-        BoxedFloatClass, BoxedDoubleClass)
-  private lazy val HijackedBoxedClasses =
-    Seq(BoxedUnitClass, BoxedBooleanClass) ++ HijackedNumberClasses
-
-  protected lazy val isHijackedBoxedClass: Set[Symbol] =
-    HijackedBoxedClasses.toSet
+  protected lazy val isHijackedBoxedClass: Set[Symbol] = {
+    /* This list is a duplicate of ir.Definitions.HijackedBoxedClasses, but
+     * with global.Symbol's instead of IR encoded names as Strings.
+     */
+    Set(BoxedUnitClass, BoxedBooleanClass, BoxedCharacterClass, BoxedByteClass,
+        BoxedShortClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass,
+        BoxedDoubleClass)
+  }
 
   private lazy val InlineAnnotationClass = requiredClass[scala.inline]
   private lazy val NoinlineAnnotationClass = requiredClass[scala.noinline]

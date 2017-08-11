@@ -3,14 +3,6 @@ package scala.runtime
 import scala.math.ScalaNumber
 
 object BoxesRunTime {
-  def boxToCharacter(c: Char): java.lang.Character =
-    java.lang.Character.valueOf(c)
-
-  @inline
-  def unboxToChar(c: Object): Char =
-    if (c eq null) 0
-    else c.asInstanceOf[java.lang.Character].charValue()
-
   def equals(x: Object, y: Object): Boolean =
     if (x eq y) true
     else equals2(x, y)

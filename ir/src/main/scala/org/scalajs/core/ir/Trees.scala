@@ -451,6 +451,7 @@ object Trees {
       implicit val pos: Position) extends Tree {
     val tpe = (charCode: @switch) match {
       case 'Z' => BooleanType
+      case 'C' => CharType
       case 'B' => ByteType
       case 'S' => ShortType
       case 'I' => IntType
