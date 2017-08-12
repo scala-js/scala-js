@@ -9,16 +9,20 @@
 
 package org.scalajs.testadapter
 
+import org.scalajs.testcommon._
 import sbt.testing._
 
-/** Binary compat only. */
-@deprecated("Unused, use TestAdapter instead", "0.6.22")
-final class ScalaJSTask private () extends Task {
-  def execute(x: EventHandler,y: Array[Logger]): Array[Task] = ???
-  def tags(): Array[String] = ???
-  def taskDef(): TaskDef = ???
-}
+private[testadapter] final class FrameworkAdapter(info: FrameworkInfo,
+    testAdapter: TestAdapter) extends Framework {
 
-/** Binary compat only. */
-@deprecated("Unused, use TestAdapter instead", "0.6.22")
-object ScalaJSTask
+  val name: String = info.displayName
+
+  def fingerprints: Array[Fingerprint] = info.fingerprints.toArray
+
+  def runner(args: Array[String], remoteArgs: Array[String],
+      testClassLoader: ClassLoader): Runner = {
+    RunnerAdapter(testAdapter, info.implName, args, remoteArgs)
+  }
+
+  override def toString(): String = s"FrameworkAdapter($name)"
+}

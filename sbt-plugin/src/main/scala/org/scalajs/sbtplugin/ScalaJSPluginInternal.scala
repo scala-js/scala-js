@@ -30,7 +30,7 @@ import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.core.ir.ScalaJSVersions
 import org.scalajs.core.ir.Printers.{InfoPrinter, IRTreePrinter}
 
-import org.scalajs.testadapter.ScalaJSFramework
+import org.scalajs.testadapter.TestAdapter
 
 import scala.util.Try
 import scala.collection.mutable
@@ -49,6 +49,14 @@ object ScalaJSPluginInternal {
   /** The global Scala.js IR cache */
   val globalIRCache: IRFileCache = new IRFileCache()
 
+  @tailrec
+  final private def registerResource[T <: AnyRef](
+      l: AtomicReference[List[T]], r: T): r.type = {
+    val prev = l.get()
+    if (l.compareAndSet(prev, r :: prev)) r
+    else registerResource(l, r)
+  }
+
   private val allocatedIRCaches =
     new AtomicReference[List[globalIRCache.Cache]](Nil)
 
@@ -57,25 +65,20 @@ object ScalaJSPluginInternal {
    *  The allocated IR cache will automatically be freed when the build is
    *  unloaded.
    */
-  private def newIRCache: globalIRCache.Cache = {
-    val cache = globalIRCache.newCache
+  private def newIRCache: globalIRCache.Cache =
+    registerResource(allocatedIRCaches, globalIRCache.newCache)
 
-    @tailrec
-    def registerLoop(): Unit = {
-      val prevValue = allocatedIRCaches.get()
-      if (!allocatedIRCaches.compareAndSet(prevValue, cache :: prevValue))
-        registerLoop()
-    }
-    registerLoop()
+  private[sbtplugin] def freeAllIRCaches(): Unit =
+    allocatedIRCaches.getAndSet(Nil).foreach(_.free())
 
-    cache
-  }
+  private val createdTestAdapters =
+    new AtomicReference[List[TestAdapter]](Nil)
 
-  private[sbtplugin] def freeAllIRCaches(): Unit = {
-    val allCaches = allocatedIRCaches.getAndSet(Nil)
-    for (cache <- allCaches)
-      cache.free()
-  }
+  private def newTestAdapter(jsEnv: ComJSEnv, config: TestAdapter.Config): TestAdapter =
+    registerResource(createdTestAdapters, new TestAdapter(jsEnv, config))
+
+  private[sbtplugin] def closeAllTestAdapters(): Unit =
+    createdTestAdapters.getAndSet(Nil).foreach(_.close())
 
   /** Non-deprecated alias of `scalaJSClearCacheStats` for internal use. */
   private[sbtplugin] val scalaJSClearCacheStatsInternal = TaskKey[Unit](
@@ -797,7 +800,7 @@ object ScalaJSPluginInternal {
 
   private[sbtplugin] def makeExportsNamespaceExpr(moduleKind: ModuleKind,
       moduleIdentifier: Option[String]): String = {
-    // !!! DUPLICATE code with ScalaJSFramework.optionalExportsNamespacePrefix
+    // !!! DUPLICATE code with TestAdpater.startManagedRunner
     moduleKind match {
       case ModuleKind.NoModule =>
         jsGlobalExpr
@@ -984,7 +987,6 @@ object ScalaJSPluginInternal {
 
         val console = scalaJSConsole.value
         val logger = streams.value.log
-        val toolsLogger = sbtLogger2ToolsLogger(logger)
         val frameworks = testFrameworks.value
 
         val jsEnv = loadedJSEnv.value match {
@@ -997,14 +999,19 @@ object ScalaJSPluginInternal {
 
         val moduleKind = scalaJSModuleKind.value
         val moduleIdentifier = scalaJSModuleIdentifier.value
+        val frameworkNames = frameworks.map(_.implClassNames.toList).toList
 
-        val detector =
-          new FrameworkDetector(jsEnv, moduleKind, moduleIdentifier)
+        val config = TestAdapter.Config()
+          .withLogger(sbtLogger2ToolsLogger(logger))
+          .withJSConsole(console)
+          .withModuleSettings(moduleKind, moduleIdentifier)
 
-        detector.detect(frameworks, toolsLogger) map { case (tf, name) =>
-          (tf, new ScalaJSFramework(name, jsEnv, moduleKind, moduleIdentifier,
-              toolsLogger, console))
-        }
+        val adapter = newTestAdapter(jsEnv, config)
+        val frameworkAdapters = adapter.loadFrameworks(frameworkNames)
+
+        frameworks.zip(frameworkAdapters).collect {
+          case (tf, Some(adapter)) => (tf, adapter)
+        }.toMap
       },
       // Override default to avoid triggering a test:fastOptJS in a test:compile
       // without loosing autocompletion.

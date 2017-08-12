@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 import Serializer.{serialize, deserialize}
+import FutureUtil._
 
 private[scalajs] abstract class RPCCore {
   import RPCCore._
@@ -185,13 +186,6 @@ private[scalajs] abstract class RPCCore {
       out.writeByte(opCode)
       serialize(payload, out)
     }
-  }
-
-  /** Same as Future.fromTry(x) but works in 2.10 */
-  private def futureFromTry[T](x: Try[T]): Future[T] = {
-    val promise = Promise[T]
-    promise.complete(x)
-    promise.future
   }
 }
 
