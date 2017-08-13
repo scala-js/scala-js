@@ -25,9 +25,12 @@ import Types._
 
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.linker.{LinkingUnit, LinkedClass}
+import org.scalajs.core.tools.linker.analyzer.{Analyzer, Infos}
 
 /** Checker for the validity of the IR. */
-private final class IRChecker(unit: LinkingUnit, logger: Logger) {
+private final class IRChecker(unit: LinkingUnit,
+    inputProvider: Analyzer.InputProvider, logger: Logger) {
+
   import IRChecker._
 
   private var errorCount: Int = 0
@@ -99,7 +102,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def checkStaticMembers(classDef: LinkedClass): Unit = {
     for (member <- classDef.staticMethods) {
-      val methodDef = member.tree
+      val methodDef = member.value
       implicit val ctx = ErrorContext(methodDef)
 
       assert(methodDef.static, "Found non-static member in static defs")
@@ -131,7 +134,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
        */
       val staticFieldDefs = classDef.fields.filter(_.static)
       for {
-        fieldsWithSameName <- staticFieldDefs.groupBy(_.name.encodedName).values
+        fieldsWithSameName <- staticFieldDefs.groupBy(_.encodedName).values
         duplicate <- fieldsWithSameName.tail
       } {
         implicit val ctx = ErrorContext(duplicate)
@@ -142,17 +145,17 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       if (classDef.kind == ClassKind.ModuleClass) {
         implicit val ctx = ErrorContext(classDef)
         val methods = classDef.memberMethods
-        if (methods.count(m => isConstructorName(m.info.encodedName)) != 1)
+        if (methods.count(m => isConstructorName(m.value.encodedName)) != 1)
           reportError(s"Module class must have exactly 1 constructor")
-        if (!methods.exists(_.info.encodedName == "init___"))
+        if (!methods.exists(_.value.encodedName == "init___"))
           reportError(s"Module class must have a parameterless constructor")
       }
 
       // Check exported members
       for (member <- classDef.exportedMembers) {
-        implicit val ctx = ErrorContext(member.tree)
+        implicit val ctx = ErrorContext(member.value)
 
-        member.tree match {
+        member.value match {
           case m: MethodDef =>
             checkExportedMethodDef(m, classDef, isTopLevel = false)
 
@@ -162,12 +165,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           // Anything else is illegal
           case _ =>
             reportError("Illegal exported class member of type " +
-                member.tree.getClass.getName)
+                member.value.getClass.getName)
         }
       }
 
       // Check top-level exports
-      for (tree <- classDef.topLevelExports) {
+      for (topLevelExport <- classDef.topLevelExports) {
+        val tree = topLevelExport.value
         implicit val ctx = ErrorContext(tree)
 
         tree match {
@@ -191,11 +195,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
               if (tpe != AnyType)
                 reportError(s"Cannot export field '$field' of type $tpe")
             }
-
-          // Anything else is illegal
-          case _ =>
-            reportError("Illegal top-level export of type " +
-                tree.getClass.getName)
         }
       }
     } else {
@@ -214,7 +213,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
     // Check methods
     for (method <- classDef.memberMethods ++ classDef.abstractMethods) {
-      val tree = method.tree
+      val tree = method.value
       implicit val ctx = ErrorContext(tree)
 
       assert(!tree.static, "Member or abstract method may not be static")
@@ -1118,10 +1117,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def lookupInfo(className: String)(
       implicit ctx: ErrorContext): Infos.ClassInfo = {
-    unit.infos.getOrElse(className, {
+    inputProvider.loadInfo(className).getOrElse {
       reportError(s"Cannot find info for class $className")
       Infos.ClassInfo(className)
-    })
+    }
   }
 
   private def tryLookupClass(className: String)(
@@ -1268,8 +1267,9 @@ object IRChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(unit: LinkingUnit, logger: Logger): Int = {
-    new IRChecker(unit, logger).check()
+  def check(unit: LinkingUnit, inputProvider: Analyzer.InputProvider,
+      logger: Logger): Int = {
+    new IRChecker(unit, inputProvider, logger).check()
   }
 
   /** The context in which to report IR check errors.

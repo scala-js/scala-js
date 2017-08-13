@@ -332,10 +332,10 @@ final class Emitter private (config: CommonPhaseConfig,
 
     // Static methods
     for (m <- linkedClass.staticMethods) {
-      val methodCache = classCache.getStaticCache(m.info.encodedName)
+      val methodCache = classCache.getStaticCache(m.value.encodedName)
 
       addToMain(methodCache.getOrElseUpdate(m.version,
-          classEmitter.genMethod(className, m.tree)(methodCache)))
+          classEmitter.genMethod(className, m.value)(methodCache)))
     }
 
     // Class definition
@@ -354,17 +354,17 @@ final class Emitter private (config: CommonPhaseConfig,
         } { linkedInit =>
           mergeVersions(linkedClass.version, linkedInit.version).map("2-" + _)
         }
-        val initToInline = linkedInlineableInit.map(_.tree)
+        val initToInline = linkedInlineableInit.map(_.value)
         ctorCache.getOrElseUpdate(ctorVersion,
             classEmitter.genConstructor(linkedClass, initToInline)(ctorCache))
       }
 
       // Normal methods
       val memberMethods = for (m <- linkedMemberMethods) yield {
-        val methodCache = classCache.getMethodCache(m.info.encodedName)
+        val methodCache = classCache.getMethodCache(m.value.encodedName)
 
         methodCache.getOrElseUpdate(m.version,
-            classEmitter.genMethod(className, m.tree)(methodCache))
+            classEmitter.genMethod(className, m.value)(methodCache))
       }
 
       // Exported Members
@@ -376,9 +376,9 @@ final class Emitter private (config: CommonPhaseConfig,
     } else if (kind == ClassKind.Interface) {
       // Default methods
       for (m <- linkedClass.memberMethods) yield {
-        val methodCache = classCache.getMethodCache(m.info.encodedName)
+        val methodCache = classCache.getMethodCache(m.value.encodedName)
         addToMain(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genDefaultMethod(className, m.tree)(methodCache)))
+            classEmitter.genDefaultMethod(className, m.value)(methodCache)))
       }
     }
 

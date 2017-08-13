@@ -17,7 +17,6 @@ import org.scalajs.core.tools.logging._
 
 import org.scalajs.core.ir
 import ir.ClassKind
-import ir.Infos
 import ir.Definitions.{decodeClassName, decodeMethodName}
 
 /** Reachability graph produced by the [[Analyzer]].
@@ -44,13 +43,10 @@ object Analysis {
   trait ClassInfo {
     def encodedName: String
     def kind: ClassKind
-    def isExported: Boolean
-    def superClass: ClassInfo
+    def superClass: Option[ClassInfo]
+    def interfaces: Seq[ClassInfo]
     def ancestors: Seq[ClassInfo]
-    def descendants: Seq[ClassInfo]
     def nonExistent: Boolean
-    def ancestorCount: Int
-    def descendentClasses: Seq[ClassInfo]
     /** For a Scala class, it is instantiated with a `New`; for a JS class,
      *  its constructor is accessed with a `JSLoadConstructor` or because it
      *  is needed for a subclass.
@@ -60,9 +56,8 @@ object Analysis {
     def isModuleAccessed: Boolean
     def areInstanceTestsUsed: Boolean
     def isDataAccessed: Boolean
+    def linkedFrom: Seq[From]
     def instantiatedFrom: Seq[From]
-    def isNeededAtAll: Boolean
-    def isAnyStaticMethodReachable: Boolean
     def methodInfos: scala.collection.Map[String, MethodInfo]
     def staticMethodInfos: scala.collection.Map[String, MethodInfo]
 
@@ -159,6 +154,7 @@ object Analysis {
   }
 
   final case class MissingJavaLangObjectClass(from: From) extends Error
+  final case class InvalidJavaLangObjectClass(from: From) extends Error
   final case class CycleInInheritanceChain(cycle: List[ClassInfo], from: From) extends Error
   final case class MissingClass(info: ClassInfo, from: From) extends Error
   final case class NotAModule(info: ClassInfo, from: From) extends Error
@@ -167,6 +163,7 @@ object Analysis {
 
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
+  final case class FromClass(classInfo: ClassInfo) extends From
   final case class FromCore(moduleName: String) extends From
   case object FromExports extends From
 
@@ -174,6 +171,9 @@ object Analysis {
     val headMsg = error match {
       case MissingJavaLangObjectClass(_) =>
         "Fatal error: java.lang.Object is missing"
+      case InvalidJavaLangObjectClass(_) =>
+        "Fatal error: java.lang.Object is invalid (it must be a Scala class " +
+        "without superclass nor any implemented interface)"
       case CycleInInheritanceChain(cycle, _) =>
         ("Fatal error: cycle in inheritance chain involving " +
             cycle.map(_.displayName).mkString(", "))
@@ -236,6 +236,9 @@ object Analysis {
                   involvedClasses ++= methodInfo.instantiatedSubclasses
                   loopTrace(methodInfo.calledFrom.lastOption)
                 }
+              case FromClass(classInfo) =>
+                log(level, s"$verb from ${classInfo.displayName}")
+                loopTrace(classInfo.linkedFrom.lastOption)
               case FromCore(moduleName) =>
                 log(level, s"$verb from core module $moduleName")
               case FromExports =>

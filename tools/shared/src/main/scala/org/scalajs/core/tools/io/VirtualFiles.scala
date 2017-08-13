@@ -139,16 +139,12 @@ trait ScalaJSIRContainer extends VirtualFile {
  *  It contains the class info and the IR tree.
  */
 trait VirtualScalaJSIRFile extends VirtualFile {
-  /** Class info of this file. */
-  def info: ir.Infos.ClassInfo =
-    infoAndTree._1
+  /** Entry points information for this file. */
+  def entryPointsInfo: ir.EntryPointsInfo =
+    ir.EntryPointsInfo.forClassDef(tree)
 
   /** IR Tree of this file. */
-  def tree: ir.Trees.ClassDef =
-    infoAndTree._2
-
-  /** Class info and IR tree of this file. */
-  def infoAndTree: (ir.Infos.ClassInfo, ir.Trees.ClassDef)
+  def tree: ir.Trees.ClassDef
 }
 
 trait VirtualRelativeScalaJSIRFile extends VirtualScalaJSIRFile
@@ -158,34 +154,28 @@ trait VirtualRelativeScalaJSIRFile extends VirtualScalaJSIRFile
 
 /** Base trait for virtual Scala.js IR files that are serialized as binary file.
  */
-trait VirtualSerializedScalaJSIRFile extends VirtualBinaryFile with VirtualScalaJSIRFile {
-  /** Class info of this file. */
-  override def info: ir.Infos.ClassInfo = {
+trait VirtualSerializedScalaJSIRFile
+    extends VirtualBinaryFile with VirtualScalaJSIRFile {
+
+  override def entryPointsInfo: ir.EntryPointsInfo = {
     // Overridden to read only the necessary parts
+    withInputStream(ir.Serializers.deserializeEntryPointsInfo)
+  }
+
+  override def tree: ir.Trees.ClassDef =
+    withInputStream(ir.Serializers.deserialize)
+
+  @inline
+  private def withInputStream[A](f: InputStream => A): A = {
     val stream = inputStream
     try {
-      ir.InfoSerializers.deserialize(stream)
+      f(stream)
     } catch {
       case e: ir.IRVersionNotSupportedException =>
         throw new ir.IRVersionNotSupportedException(e.version, e.supported,
-            s"Failed to deserialize info of file compiled with Scala.js ${e.version}" +
+            "Failed to deserialize a file compiled with Scala.js ${e.version}" +
             s" (supported: ${e.supported.mkString(", ")}): $path", e)
 
-      case e: IOException =>
-        throw new IOException(s"Failed to deserialize info of $path", e)
-    } finally {
-      stream.close()
-    }
-  }
-
-  /** Class info and IR tree of this file. */
-  override def infoAndTree: (ir.Infos.ClassInfo, ir.Trees.ClassDef) = {
-    val stream = inputStream
-    try {
-      val (version, info) = ir.InfoSerializers.deserializeWithVersion(stream)
-      val tree = ir.Serializers.deserialize(stream, version)
-      (info, tree)
-    } catch {
       case e: IOException =>
         throw new IOException(s"Failed to deserialize $path", e)
     } finally {

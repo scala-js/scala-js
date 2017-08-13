@@ -12,7 +12,7 @@ package org.scalajs.cli
 import org.scalajs.core.ir
 import ir.ScalaJSVersions
 import ir.Trees.{Tree, ClassDef}
-import ir.Printers.{InfoPrinter, IRTreePrinter}
+import ir.Printers.IRTreePrinter
 
 import org.scalajs.core.tools.io._
 import scala.collection.immutable.Seq
@@ -23,7 +23,6 @@ import java.util.zip.{ZipFile, ZipEntry}
 object Scalajsp {
 
   private case class Options(
-    infos: Boolean = false,
     jar: Option[File] = None,
     fileNames: Seq[String] = Seq.empty)
 
@@ -38,9 +37,6 @@ object Scalajsp {
         .valueName("<jar>")
         .action { (x, c) => c.copy(jar = Some(x)) }
         .text("Read *.sjsir file(s) from the given JAR.")
-      opt[Unit]('i', "infos")
-        .action { (_, c) => c.copy(infos = true) }
-        .text("Show DCE infos instead of trees")
       opt[Unit]('s', "supported")
         .action { (_,_) => printSupported(); exit(0) }
         .text("Show supported Scala.js IR versions")
@@ -77,11 +73,7 @@ object Scalajsp {
 
   private def displayFileContent(vfile: VirtualScalaJSIRFile,
       opts: Options): Unit = {
-    if (opts.infos)
-      new InfoPrinter(stdout).print(vfile.info)
-    else
-      new IRTreePrinter(stdout).print(vfile.tree)
-
+    new IRTreePrinter(stdout).print(vfile.tree)
     stdout.flush()
   }
 

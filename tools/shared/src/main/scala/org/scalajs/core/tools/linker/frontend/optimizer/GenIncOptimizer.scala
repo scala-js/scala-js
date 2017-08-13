@@ -131,7 +131,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
       val newLinkedClasses = for (linkedClass <- unit.classDefs) yield {
         def defs(container: Option[MethodContainer]) =
-          container.fold[List[LinkedMember[MethodDef]]](Nil)(_.optimizedDefs)
+          container.fold[List[Versioned[MethodDef]]](Nil)(_.optimizedDefs)
 
         val encodedName = linkedClass.encodedName
         val memberNamespace =
@@ -143,7 +143,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
             memberMethods = defs(memberNamespace))
       }
 
-      unit.updated(classDefs = newLinkedClasses)
+      new LinkingUnit(unit.coreSpec, newLinkedClasses, unit.moduleInitializers)
     }
   }
 
@@ -307,7 +307,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
     val methods = mutable.Map.empty[String, MethodImpl]
 
-    def optimizedDefs: List[LinkedMember[MethodDef]] = {
+    def optimizedDefs: List[Versioned[MethodDef]] = {
       (for {
         method <- methods.values
         if !method.deleted
@@ -328,7 +328,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         if (isStatic) linkedClass.staticMethods
         else linkedClass.memberMethods
 
-      val newMethodNames = linkedMethodDefs.map(_.info.encodedName).toSet
+      val newMethodNames = linkedMethodDefs.map(_.value.encodedName).toSet
       val methodSetChanged = methods.keySet != newMethodNames
       if (methodSetChanged) {
         // Remove deleted methods
@@ -351,8 +351,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       }
 
       for (linkedMethodDef <- linkedMethodDefs) {
-        val methodInfo = linkedMethodDef.info
-        val methodName = methodInfo.encodedName
+        val methodName = linkedMethodDef.value.encodedName
 
         methods.get(methodName).fold {
           addedMethods += methodName
@@ -811,7 +810,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
     var optimizerHints: OptimizerHints = OptimizerHints.empty
     var originalDef: MethodDef = _
-    var optimizedMethodDef: LinkedMember[MethodDef] = _
+    var optimizedMethodDef: Versioned[MethodDef] = _
 
     def thisType: Type = owner.thisType
     def deleted: Boolean = _deleted
@@ -886,7 +885,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
      *  In the process, tags all the body askers if the body changes.
      *  UPDATE PASS ONLY. Not concurrency safe on same instance.
      */
-    def updateWith(linkedMethod: LinkedMember[MethodDef]): Boolean = {
+    def updateWith(linkedMethod: Versioned[MethodDef]): Boolean = {
       assert(!_deleted, "updateWith() called on a deleted method")
 
       if (lastInVersion.isDefined && lastInVersion == linkedMethod.version) {
@@ -894,7 +893,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       } else {
         lastInVersion = linkedMethod.version
 
-        val methodDef = linkedMethod.tree
+        val methodDef = linkedMethod.value
 
         val changed = {
           originalDef == null ||
@@ -944,10 +943,10 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
     /** PROCESS PASS ONLY. */
     def process(): Unit = if (!_deleted) {
-      val rawOptimizedDef = new Optimizer().optimize(thisType, originalDef)
+      val optimizedDef = new Optimizer().optimize(thisType, originalDef)
       lastOutVersion += 1
-      optimizedMethodDef = new LinkedMember(rawOptimizedDef.info,
-          rawOptimizedDef.tree, Some(lastOutVersion.toString))
+      optimizedMethodDef =
+        new Versioned(optimizedDef, Some(lastOutVersion.toString))
       resetTag()
     }
 

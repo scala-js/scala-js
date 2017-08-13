@@ -380,8 +380,13 @@ object Hashers {
           mixTag(TagUndefined)
 
         case UndefinedParam() =>
-          mixTag(TagUndefinedParam)
-          mixType(tree.tpe)
+          /* UndefinedParam is a "transient" IR node, and cannot be hashed.
+           * TODO At the moment, this is quite ad hoc to support dangling
+           * UndefinedParam detection in the compiler back-end. This should be
+           * generalized for custom transient nodes.
+           */
+          throw new InvalidIRException(tree,
+              "Cannot hash a transient IR node of type UndefinedParam")
 
         case Null() =>
           mixTag(TagNull)

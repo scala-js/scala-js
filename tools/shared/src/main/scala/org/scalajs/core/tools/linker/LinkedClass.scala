@@ -14,7 +14,6 @@ import scala.collection.mutable
 import org.scalajs.core.ir
 import ir.Trees._
 import ir.Position
-import ir.Infos
 import ir.ClassKind
 import ir.Definitions
 
@@ -41,12 +40,11 @@ final class LinkedClass(
     val interfaces: List[Ident],
     val jsNativeLoadSpec: Option[JSNativeLoadSpec],
     val fields: List[FieldDef],
-    val staticMethods: List[LinkedMember[MethodDef]],
-    val memberMethods: List[LinkedMember[MethodDef]],
-    val abstractMethods: List[LinkedMember[MethodDef]],
-    val exportedMembers: List[LinkedMember[MemberDef]],
-    val topLevelExports: List[TopLevelExportDef],
-    val topLevelExportsInfo: Option[Infos.MethodInfo],
+    val staticMethods: List[Versioned[MethodDef]],
+    val memberMethods: List[Versioned[MethodDef]],
+    val abstractMethods: List[Versioned[MethodDef]],
+    val exportedMembers: List[Versioned[MemberDef]],
+    val topLevelExports: List[Versioned[TopLevelExportDef]],
     val optimizerHints: OptimizerHints,
     val pos: Position,
 
@@ -57,37 +55,20 @@ final class LinkedClass(
     val hasRuntimeTypeInfo: Boolean,
     val version: Option[String]) {
 
-  // Helpers to give Info-Like access
   def encodedName: String = name.name
-  def isExported: Boolean = topLevelExports.nonEmpty
+
+  val hasEntryPoint: Boolean = {
+    topLevelExports.nonEmpty ||
+    staticMethods.exists { m =>
+      m.value.encodedName == Definitions.StaticInitializerName
+    }
+  }
 
   /** Names of all top-level exports in this class. */
-  def topLevelExportNames: List[String] = topLevelExports.map {
-    case TopLevelConstructorExportDef(name, _, _) => name
-    case TopLevelModuleExportDef(name)            => name
-    case TopLevelJSClassExportDef(name)           => name
-
-    case TopLevelMethodExportDef(MethodDef(_, propName, _, _, _)) =>
-      val StringLiteral(name) = propName
-      name
-
-    case TopLevelFieldExportDef(name, _) => name
-  }
+  def topLevelExportNames: List[String] =
+    topLevelExports.map(_.value.topLevelExportName)
 
   def fullName: String = Definitions.decodeClassName(encodedName)
-
-  def toInfo: Infos.ClassInfo = {
-    val methodInfos = (
-        staticMethods.map(_.info) ++
-        memberMethods.map(_.info) ++
-        abstractMethods.map(_.info) ++
-        exportedMembers.map(_.info) ++
-        topLevelExportsInfo
-    )
-
-    Infos.ClassInfo(encodedName, isExported, kind, superClass.map(_.name),
-      interfaces.map(_.name), methodInfos)
-  }
 
   def copy(
       name: Ident = this.name,
@@ -96,12 +77,11 @@ final class LinkedClass(
       interfaces: List[Ident] = this.interfaces,
       jsNativeLoadSpec: Option[JSNativeLoadSpec] = this.jsNativeLoadSpec,
       fields: List[FieldDef] = this.fields,
-      staticMethods: List[LinkedMember[MethodDef]] = this.staticMethods,
-      memberMethods: List[LinkedMember[MethodDef]] = this.memberMethods,
-      abstractMethods: List[LinkedMember[MethodDef]] = this.abstractMethods,
-      exportedMembers: List[LinkedMember[MemberDef]] = this.exportedMembers,
-      topLevelExports: List[TopLevelExportDef] = this.topLevelExports,
-      topLevelExportsInfo: Option[Infos.MethodInfo] = this.topLevelExportsInfo,
+      staticMethods: List[Versioned[MethodDef]] = this.staticMethods,
+      memberMethods: List[Versioned[MethodDef]] = this.memberMethods,
+      abstractMethods: List[Versioned[MethodDef]] = this.abstractMethods,
+      exportedMembers: List[Versioned[MemberDef]] = this.exportedMembers,
+      topLevelExports: List[Versioned[TopLevelExportDef]] = this.topLevelExports,
       optimizerHints: OptimizerHints = this.optimizerHints,
       pos: Position = this.pos,
       ancestors: List[String] = this.ancestors,
@@ -121,7 +101,6 @@ final class LinkedClass(
         abstractMethods,
         exportedMembers,
         topLevelExports,
-        topLevelExportsInfo,
         optimizerHints,
         pos,
         ancestors,

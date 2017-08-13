@@ -24,7 +24,7 @@ import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.core.ir
 import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.core.ir.ScalaJSVersions
-import org.scalajs.core.ir.Printers.{InfoPrinter, IRTreePrinter}
+import org.scalajs.core.ir.Printers.IRTreePrinter
 
 import org.scalajs.testadapter.{FrameworkDetector, HTMLRunnerBuilder}
 
@@ -236,26 +236,14 @@ object ScalaJSPluginInternal {
   )
 
   private def scalajspSettings: Seq[Setting[_]] = {
-    case class Options(
-        infos: Boolean = false
-    )
-
-    val optionsParser: Parser[Options] = {
-      token(OptSpace ~> (
-          (literal("-i") | "--infos") ^^^ ((_: Options).copy(infos = true))
-      )).* map {
-        fns => Function.chain(fns)(Options())
-      }
-    }
-
     def sjsirFileOnClasspathParser(
         relPaths: Seq[String]): Parser[String] = {
       OptSpace ~> StringBasic
         .examples(ScalajspUtils.relPathsExamples(relPaths))
     }
 
-    def scalajspParser(state: State, relPaths: Seq[String]) =
-      optionsParser ~ sjsirFileOnClasspathParser(relPaths)
+    def scalajspParser(state: State, relPaths: Seq[String]): Parser[String] =
+      sjsirFileOnClasspathParser(relPaths)
 
     val parser = loadForParser(sjsirFilesOnClasspath) { (state, relPaths) =>
       scalajspParser(state, relPaths.getOrElse(Nil))
@@ -267,17 +255,14 @@ object ScalaJSPluginInternal {
         }.storeAs(sjsirFilesOnClasspath).triggeredBy(scalaJSIR).value,
 
         scalajsp := {
-          val (options, relPath) = parser.parsed
+          val relPath = parser.parsed
 
           val vfile = scalaJSIR.value.data
               .find(_.relativePath == relPath)
               .getOrElse(throw new FileNotFoundException(relPath))
 
           val stdout = new java.io.PrintWriter(System.out)
-          if (options.infos)
-            new InfoPrinter(stdout).print(vfile.info)
-          else
-            new IRTreePrinter(stdout).print(vfile.tree)
+          new IRTreePrinter(stdout).print(vfile.tree)
           stdout.flush()
 
           logIRCacheStats(streams.value.log)

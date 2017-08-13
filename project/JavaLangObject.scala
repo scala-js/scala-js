@@ -5,7 +5,6 @@
 import org.scalajs.core.ir
 import ir._
 import ir.Definitions._
-import ir.Infos._
 import ir.Trees._
 import ir.Types._
 import ir.Position.NoPosition
@@ -18,7 +17,7 @@ import ir.Position.NoPosition
  */
 object JavaLangObject {
 
-  val InfoAndTree = {
+  val TheClassDef = {
     implicit val DummyPos = NoPosition
 
     // ClassType(Object) is normally invalid, but not in this class def
@@ -164,10 +163,7 @@ object JavaLangObject {
       ),
       Nil)(OptimizerHints.empty)
 
-    val hashedClassedDef = Hashers.hashClassDef(classDef)
-    val info = generateClassInfo(hashedClassedDef)
-
-    (info, hashedClassedDef)
+    Hashers.hashClassDef(classDef)
   }
 
 }

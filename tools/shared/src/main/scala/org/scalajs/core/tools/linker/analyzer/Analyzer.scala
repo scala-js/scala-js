@@ -14,17 +14,22 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 import org.scalajs.core.ir
-import ir.{ClassKind, Definitions, Infos}
+import ir.{ClassKind, Definitions}
 import Definitions._
 
 import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.standard._
 
+import Analysis._
+
 private final class Analyzer(config: CommonPhaseConfig,
     symbolRequirements: SymbolRequirement,
-    allowAddingSyntheticMethods: Boolean) extends Analysis {
+    allowAddingSyntheticMethods: Boolean,
+    inputProvider: Analyzer.InputProvider)
+    extends Analysis {
+
   import Analyzer._
-  import Analysis._
+  import ClassInfo.newClassInfo
 
   private[this] val _classInfos = mutable.Map.empty[String, ClassInfo]
   private[this] val _errors = mutable.Buffer.empty[Error]
@@ -34,59 +39,48 @@ private final class Analyzer(config: CommonPhaseConfig,
   def classInfos: scala.collection.Map[String, Analysis.ClassInfo] = _classInfos
   def errors: Seq[Error] = _errors
 
-  private def lookupClass(encodedName: String): ClassInfo = {
-    _classInfos.get(encodedName) match {
-      case Some(info) => info
-      case None =>
-        val c = new ClassInfo(createMissingClassInfo(encodedName))
-        _classInfos += encodedName -> c
-        c.nonExistent = true
-        c.linkClasses()
-        c
-    }
-  }
-
-  def computeReachability(allData: Seq[Infos.ClassInfo]): Unit = {
+  def computeReachability(): Unit = {
     require(_classInfos.isEmpty, "Cannot run the same Analyzer multiple times")
 
-    // Load data
-    for (classData <- allData)
-      _classInfos += classData.encodedName -> new ClassInfo(classData)
+    implicit val from = fromAnalyzer
 
-    linkClasses()
-
-    if (errors.nonEmpty) {
-      /* If we have errors after linkClasses(), we're in deep trouble, and
-       * we cannot continue.
-       */
-    } else {
-      /* Hijacked classes are always instantiated, because values of primitive
-       * types are their instances.
-       */
-      for (hijacked <- HijackedClasses)
-        lookupClass(hijacked).instantiated()(fromAnalyzer)
-
-      reachSymbolRequirement(symbolRequirements)
-
-      // Reach all user stuff
-      for (classInfo <- _classInfos.values)
-        classInfo.reachExports()
-
-      // Reach additional data, based on reflection methods used
-      reachDataThroughReflection()
+    // Load the java.lang.Object class, and validate it
+    inputProvider.loadInfo(Definitions.ObjectClass) match {
+      case None =>
+        _errors += MissingJavaLangObjectClass(fromAnalyzer)
+      case Some(data) =>
+        if (data.kind != ClassKind.Class || data.superClass.isDefined ||
+            data.interfaces.nonEmpty) {
+          _errors += InvalidJavaLangObjectClass(fromAnalyzer)
+        } else {
+          newClassInfo(data, nonExistent = false)
+        }
     }
-  }
 
-  private def linkClasses(): Unit = {
-    if (!_classInfos.contains(ir.Definitions.ObjectClass)) {
-      _errors += MissingJavaLangObjectClass(fromAnalyzer)
+    if (_errors.nonEmpty) {
+      /* If java.lang.Object was missing or invalid, we're in deep trouble, and
+       * cannot continue.
+       */
     } else {
       try {
-        for (classInfo <- _classInfos.values.toList)
-          classInfo.linkClasses()
+        /* Hijacked classes are always instantiated, because values of primitive
+         * types are their instances.
+         */
+        for (hijacked <- HijackedClasses)
+          lookupClass(hijacked).instantiated()
+
+        // External symbol requirements, including module initializers
+        reachSymbolRequirement(symbolRequirements)
+
+        // Entry points (top-level exports and static initializers)
+        for (encodedName <- inputProvider.classesWithEntryPoints())
+          lookupClass(encodedName).reachEntryPoints()
+
+        // Reach additional data, based on reflection methods used
+        reachDataThroughReflection()
       } catch {
-        case CyclicDependencyException(chain) =>
-          _errors += CycleInInheritanceChain(chain, fromAnalyzer)
+        case CyclicDependencyException(chain, from) =>
+          _errors += CycleInInheritanceChain(chain, from)
       }
     }
   }
@@ -94,13 +88,17 @@ private final class Analyzer(config: CommonPhaseConfig,
   private def reachSymbolRequirement(requirement: SymbolRequirement,
       optional: Boolean = false): Unit = {
 
-    def withClass(className: String)(body: ClassInfo => Unit) = {
-      val clazz = lookupClass(className)
-      if (!clazz.nonExistent || !optional)
-        body(clazz)
+    def withClass(className: String)(body: ClassInfo => Unit)(
+        implicit from: From): Unit = {
+      if (optional)
+        tryLookupClass(className).foreach(body)
+      else
+        body(lookupClass(className))
     }
 
-    def withMethod(className: String, methodName: String)(body: ClassInfo => Unit) = {
+    def withMethod(className: String, methodName: String)(
+        body: ClassInfo => Unit)(
+        implicit from: From): Unit = {
       withClass(className) { clazz =>
         val doReach = !optional || clazz.tryLookupMethod(methodName).isDefined
         if (doReach)
@@ -112,28 +110,36 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     requirement match {
       case AccessModule(origin, moduleName) =>
-        withClass(moduleName)(_.accessModule()(FromCore(origin)))
+        implicit val from = FromCore(origin)
+        withClass(moduleName)(_.accessModule())
 
       case InstantiateClass(origin, className, constructor) =>
+        implicit val from = FromCore(origin)
         withMethod(className, constructor) { clazz =>
-          implicit val from = FromCore(origin)
           clazz.instantiated()
-          clazz.callMethod(constructor, statically = true)
+          clazz.callMethodStatically(constructor)
         }
 
       case InstanceTests(origin, className) =>
-        withClass(className)(_.useInstanceTests()(FromCore(origin)))
+        implicit val from = FromCore(origin)
+        withClass(className)(_.useInstanceTests())
 
       case ClassData(origin, className) =>
-        withClass(className)(_.accessData()(FromCore(origin)))
+        implicit val from = FromCore(origin)
+        withClass(className)(_.accessData())
 
       case CallMethod(origin, className, methodName, statically) =>
-        withMethod(className, methodName)(
-            _.callMethod(methodName, statically)(FromCore(origin)))
+        implicit val from = FromCore(origin)
+        withMethod(className, methodName) { classInfo =>
+          if (statically)
+            classInfo.callMethodStatically(methodName)
+          else
+            classInfo.callMethod(methodName)
+        }
 
       case CallStaticMethod(origin, className, methodName) =>
-        withMethod(className, methodName)(
-            _.callStaticMethod(methodName)(FromCore(origin)))
+        implicit val from = FromCore(origin)
+        withMethod(className, methodName)(_.callStaticMethod(methodName))
 
       case Optional(requirement) =>
         reachSymbolRequirement(requirement, optional = true)
@@ -164,9 +170,10 @@ private final class Analyzer(config: CommonPhaseConfig,
       for (classInfo <- _classInfos.values.filter(_.isDataAccessed).toList) {
         @tailrec
         def loop(classInfo: ClassInfo): Unit = {
-          if (classInfo != null) {
-            classInfo.accessData()
-            loop(classInfo.superClass)
+          classInfo.accessData()
+          classInfo.superClass match {
+            case Some(superClass) => loop(superClass)
+            case None             =>
           }
         }
         loop(classInfo)
@@ -174,9 +181,62 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private class ClassInfo(data: Infos.ClassInfo) extends Analysis.ClassInfo {
-    private[this] var _linking = false
-    private[this] var _linked = false
+  private def tryLookupClass(encodedName: String)(
+      implicit from: From): Option[ClassInfo] = {
+    /* There is a significant amount of duplication with lookupClass, but it
+     * is unclear how to factor that out without hurting the performance of
+     * lookupClass, which is the common case.
+     */
+    _classInfos.get(encodedName) match {
+      case Some(info) =>
+        Some(info)
+      case None =>
+        inputProvider.loadInfo(encodedName) match {
+          case Some(data) =>
+            Some(newClassInfo(data, nonExistent = false))
+          case None =>
+            None
+        }
+    }
+  }
+
+  private def lookupClass(encodedName: String)(
+      implicit from: From): ClassInfo = {
+    // See the comment in tryLookupClass about the code duplication
+    _classInfos.get(encodedName) match {
+      case Some(info) =>
+        if (info.nonExistent)
+          _errors += MissingClass(info, from)
+        info
+      case None =>
+        inputProvider.loadInfo(encodedName) match {
+          case Some(data) =>
+            newClassInfo(data, nonExistent = false)
+          case None =>
+            val data = createMissingClassInfo(encodedName)
+            val info = newClassInfo(data, nonExistent = true)
+            _errors += MissingClass(info, from)
+            info
+        }
+    }
+  }
+
+  private object ClassInfo {
+    def newClassInfo(data: Infos.ClassInfo, nonExistent: Boolean)(
+        implicit from: From): ClassInfo = {
+      val info = new ClassInfo(data, nonExistent)
+      _classInfos += data.encodedName -> info
+      info.linkClasses()
+      info
+    }
+  }
+
+  private class ClassInfo private (data: Infos.ClassInfo,
+      val nonExistent: Boolean)
+      extends Analysis.ClassInfo {
+
+    var linked: Boolean = false
+    var linkedFrom: List[From] = Nil
 
     val encodedName = data.encodedName
     val kind = data.kind
@@ -189,54 +249,41 @@ private final class Analyzer(config: CommonPhaseConfig,
     val isAnyClass = isScalaClass || isJSClass
     val isExported = data.isExported
 
-    var superClass: ClassInfo = _
+    var superClass: Option[ClassInfo] = _
+    var interfaces: List[ClassInfo] = _
     var ancestors: List[ClassInfo] = _
-    val descendants = mutable.ListBuffer.empty[ClassInfo]
 
-    var nonExistent: Boolean = false
-
-    /** Ensures that this class and its dependencies are linked.
-     *
-     *  @throws CyclicDependencyException if this class is already linking
-     */
-    def linkClasses(): Unit = {
-      if (_linking)
-        throw CyclicDependencyException(this :: Nil)
-
-      if (!_linked) {
-        _linking = true
-        try {
-          linkClassesImpl()
-        } catch {
-          case CyclicDependencyException(chain) =>
-            throw CyclicDependencyException(this :: chain)
-        }
-        _linking = false
-        _linked = true
+    /** Links this class to its superclass and implemented interfaces. */
+    def linkClasses()(implicit from: From): Unit = {
+      assert(!linked)
+      linkedFrom ::= from
+      try {
+        linkClassesImpl()
+      } catch {
+        case CyclicDependencyException(chain, _) =>
+          throw CyclicDependencyException(this :: chain, from)
       }
+      linked = true
     }
 
     private[this] def linkClassesImpl(): Unit = {
-      for (superCls <- data.superClass)
-        superClass = lookupClass(superCls)
+      implicit val from = FromClass(this)
 
-      val parents = data.superClass ++: data.interfaces
+      def lookupClassAndCheckCycles(encodedName: String): ClassInfo = {
+        val info = lookupClass(encodedName)
+        if (!info.linked)
+          throw CyclicDependencyException(Nil, from)
+        info
+      }
 
-      ancestors = this +: parents.flatMap { parent =>
-        val cls = lookupClass(parent)
-        cls.linkClasses()
-        cls.ancestors
-      }.distinct
+      superClass = data.superClass.map(lookupClassAndCheckCycles)
+      interfaces = data.interfaces.map(lookupClassAndCheckCycles)
 
-      for (ancestor <- ancestors)
-        ancestor.descendants += this
+      // TODO #3076: Validate the super class and implemented interfaces
+
+      val parents = superClass ++: interfaces
+      ancestors = this +: parents.flatMap(_.ancestors).distinct
     }
-
-    lazy val ancestorCount: Int =
-      if (superClass == null) 0
-      else superClass.ancestorCount + 1
-
-    lazy val descendentClasses = descendants.filter(_.isScalaClass)
 
     var isInstantiated: Boolean = false
     var isAnySubclassInstantiated: Boolean = false
@@ -247,22 +294,11 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     var instantiatedFrom: List[From] = Nil
 
-    val delayedCalls = mutable.Map.empty[String, From]
-
-    def isNeededAtAll: Boolean =
-      areInstanceTestsUsed ||
-      isDataAccessed ||
-      isAnySubclassInstantiated ||
-      isModuleAccessed ||
-      isAnyStaticFieldReachable ||
-      isAnyStaticMethodReachable ||
-      isAnyDefaultMethodReachable
-
-    def isAnyStaticMethodReachable: Boolean =
-      staticMethodInfos.values.exists(_.isReachable)
-
-    private def isAnyDefaultMethodReachable =
-      isInterface && methodInfos.values.exists(_.isReachable)
+    /** List of all instantiated (Scala) subclasses of this Scala class/trait.
+     *  For JS types, this always remains empty.
+     */
+    var instantiatedSubclasses: List[ClassInfo] = Nil
+    var methodsCalledLog: List[(String, From)] = Nil
 
     lazy val (methodInfos, staticMethodInfos) = {
       val allInfos = for (methodData <- data.methods)
@@ -297,13 +333,14 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       @tailrec
       def tryLookupInherited(ancestorInfo: ClassInfo): Option[MethodInfo] = {
-        if (ancestorInfo ne null) {
-          ancestorInfo.methodInfos.get(methodName) match {
-            case Some(m) if !m.isAbstract => Some(m)
-            case _ => tryLookupInherited(ancestorInfo.superClass)
-          }
-        } else {
-          None
+        ancestorInfo.methodInfos.get(methodName) match {
+          case Some(m) if !m.isAbstract =>
+            Some(m)
+          case _ =>
+            ancestorInfo.superClass match {
+              case Some(superClass) => tryLookupInherited(superClass)
+              case None             => None
+            }
         }
       }
       val existing =
@@ -420,7 +457,7 @@ private final class Analyzer(config: CommonPhaseConfig,
        */
 
       val superClasses =
-        Iterator.iterate(this)(_.superClass).takeWhile(_ ne null)
+        Iterator.iterate(this)(_.superClass.orNull).takeWhile(_ ne null)
       val superClassesThenAncestors = superClasses ++ ancestors.iterator
 
       superClassesThenAncestors.map(_.findProxyMatch(proxyName)).collectFirst {
@@ -529,27 +566,19 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     override def toString(): String = encodedName
 
-    /** Start reachability algorithm with the exports for that class. */
-    def reachExports(): Unit = {
+    /** Start the reachability algorithm with the entry points of this class. */
+    def reachEntryPoints(): Unit = {
       implicit val from = FromExports
 
       // Myself
       if (isExported) {
-        if (isAnyModuleClass) accessModule()
-        else instantiated()
+        if (isAnyModuleClass)
+          accessModule()
+        else
+          instantiated()
       }
 
-      // My methods
-      if (!isJSClass) {
-        for (methodInfo <- methodInfos.values) {
-          if (methodInfo.isExported)
-            callMethod(methodInfo.encodedName)
-        }
-      }
-
-      /* My static initializer.
-       * Not technically an export, but also reachable out of thin air.
-       */
+      // Static initializer
       if (!isJSType) {
         staticMethodInfos.get(StaticInitializerName).foreach {
           _.reachStatic()(fromAnalyzer)
@@ -566,7 +595,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         if (kind != ClassKind.NativeJSModuleClass) {
           instantiated()
           if (isScalaClass)
-            callMethod("init___", statically = true)
+            callMethodStatically("init___")
         }
       }
     }
@@ -585,17 +614,28 @@ private final class Analyzer(config: CommonPhaseConfig,
 
         if (isScalaClass) {
           accessData()
-          ancestors.foreach(_.subclassInstantiated())
 
-          for ((methodName, from) <- delayedCalls)
-            delayedCallMethod(methodName)(from)
+          val allMethodsCalledLogs = for (ancestor <- ancestors) yield {
+            ancestor.subclassInstantiated()
+            ancestor.instantiatedSubclasses ::= this
+            ancestor.methodsCalledLog
+          }
+
+          for {
+            log <- allMethodsCalledLogs
+            logEntry <- log
+          } {
+            val methodName = logEntry._1
+            implicit val from = logEntry._2
+            callMethodResolved(methodName)
+          }
         } else {
           assert(isJSClass || isNativeJSClass)
 
           subclassInstantiated()
 
           if (isJSClass) {
-            superClass.instantiated()
+            superClass.foreach(_.instantiated())
             tryLookupStaticMethod(Definitions.StaticInitializerName).foreach {
               staticInit => staticInit.reachStatic()
             }
@@ -617,54 +657,61 @@ private final class Analyzer(config: CommonPhaseConfig,
       instantiatedFrom ::= from
       if (!isAnySubclassInstantiated && (isScalaClass || isJSType)) {
         isAnySubclassInstantiated = true
-      }
-    }
 
-    def useInstanceTests()(implicit from: From): Unit = {
-      if (!areInstanceTestsUsed) {
-        checkExistent()
-        areInstanceTestsUsed = true
-      }
-    }
-
-    def accessData()(implicit from: From): Unit = {
-      if (!isDataAccessed) {
-        checkExistent()
-        isDataAccessed = true
-      }
-    }
-
-    def checkExistent()(implicit from: From): Unit = {
-      if (nonExistent)
-        _errors += MissingClass(this, from)
-    }
-
-    def callMethod(methodName: String, statically: Boolean = false)(
-        implicit from: From): Unit = {
-      if (isConstructorName(methodName)) {
-        // constructors must always be called statically
-        assert(statically,
-            s"Trying to call dynamically the constructor $this.$methodName from $from")
-        lookupConstructor(methodName).reachStatic()
-      } else if (statically) {
-        assert(!isReflProxyName(methodName),
-            s"Trying to call statically refl proxy $this.$methodName")
-        lookupMethod(methodName).reachStatic()
-      } else {
-        for (descendentClass <- descendentClasses) {
-          if (descendentClass.isInstantiated)
-            descendentClass.delayedCallMethod(methodName)
-          else
-            descendentClass.delayedCalls += ((methodName, from))
+        // Reach exported members
+        if (!isJSClass) {
+          implicit val from = FromExports
+          for (methodInfo <- methodInfos.values) {
+            if (methodInfo.isExported)
+              callMethod(methodInfo.encodedName)
+          }
         }
       }
     }
 
-    private def delayedCallMethod(methodName: String)(implicit from: From): Unit = {
+    def useInstanceTests()(implicit from: From): Unit = {
+      if (!areInstanceTestsUsed)
+        areInstanceTestsUsed = true
+    }
+
+    def accessData()(implicit from: From): Unit = {
+      if (!isDataAccessed)
+        isDataAccessed = true
+    }
+
+    def callMethod(methodName: String)(implicit from: From): Unit = {
+      // Constructors must always be called statically
+      assert(!isConstructorName(methodName),
+          s"Trying to dynamically call the constructor $this.$methodName from $from")
+
+      /* First add the call to the log, then fetch the instantiated subclasses,
+       * then perform the resolved call. This order is important because,
+       * during the resolved calls, new instantiated subclasses could be
+       * detected, and those need to see the updated log, since the loop in
+       * this method won't see them.
+       */
+      methodsCalledLog ::= ((methodName, from))
+      val subclasses = instantiatedSubclasses
+      for (subclass <- subclasses)
+        subclass.callMethodResolved(methodName)
+    }
+
+    private def callMethodResolved(methodName: String)(
+        implicit from: From): Unit = {
       if (isReflProxyName(methodName)) {
         tryLookupReflProxyMethod(methodName).foreach(_.reach(this))
       } else {
         lookupMethod(methodName).reach(this)
+      }
+    }
+
+    def callMethodStatically(methodName: String)(implicit from: From): Unit = {
+      if (isConstructorName(methodName)) {
+        lookupConstructor(methodName).reachStatic()
+      } else {
+        assert(!isReflProxyName(methodName),
+            s"Trying to call statically refl proxy $this.$methodName")
+        lookupMethod(methodName).reachStatic()
       }
     }
 
@@ -795,7 +842,7 @@ private final class Analyzer(config: CommonPhaseConfig,
           val objectClass = lookupClass(Definitions.ObjectClass)
           for (methodName <- methods) {
             if (methodName != "clone__O")
-              objectClass.callMethod(methodName, statically = true)
+              objectClass.callMethodStatically(methodName)
           }
         } else {
           val classInfo = lookupClass(className)
@@ -809,7 +856,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         val (className, methods) = methodsCalledStaticallyIterator.next()
         val classInfo = lookupClass(className)
         for (methodName <- methods)
-          classInfo.callMethod(methodName, statically = true)
+          classInfo.callMethodStatically(methodName)
       }
 
       val staticMethodsCalledIterator = data.staticMethodsCalled.iterator
@@ -823,15 +870,13 @@ private final class Analyzer(config: CommonPhaseConfig,
   }
 
   private def createMissingClassInfo(encodedName: String): Infos.ClassInfo = {
-    // We create a module class to avoid cascading errors
     Infos.ClassInfo(
         encodedName = encodedName,
         isExported = false,
-        kind = ClassKind.ModuleClass,
+        kind = ClassKind.Class,
         superClass = Some("O"),
         interfaces = Nil,
-        methods = List(
-            createMissingMethodInfo("init___"))
+        methods = List(createMissingMethodInfo("init___"))
     )
   }
 
@@ -874,15 +919,21 @@ private final class Analyzer(config: CommonPhaseConfig,
 object Analyzer {
   def computeReachability(config: CommonPhaseConfig,
       symbolRequirements: SymbolRequirement,
-      allData: Seq[Infos.ClassInfo],
-      allowAddingSyntheticMethods: Boolean): Analysis = {
+      allowAddingSyntheticMethods: Boolean,
+      inputProvider: InputProvider): Analysis = {
     val analyzer = new Analyzer(config, symbolRequirements,
-        allowAddingSyntheticMethods)
-    analyzer.computeReachability(allData)
+        allowAddingSyntheticMethods, inputProvider)
+    analyzer.computeReachability()
     analyzer
   }
 
+  trait InputProvider {
+    def classesWithEntryPoints(): TraversableOnce[String]
+
+    def loadInfo(encodedName: String): Option[Infos.ClassInfo]
+  }
+
   private final case class CyclicDependencyException(
-      chain: List[Analysis.ClassInfo])
+      chain: List[Analysis.ClassInfo], from: From)
       extends Exception(s"Cyclic dependency: $chain")
 }

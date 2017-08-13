@@ -54,7 +54,7 @@ private[emitter] final class KnowledgeGuardian {
       }
 
       def methodExists(encodedName: String): Boolean =
-        linkedClass.memberMethods.exists(_.tree.name.encodedName == encodedName)
+        linkedClass.memberMethods.exists(_.value.encodedName == encodedName)
 
       linkedClass.encodedName match {
         case Definitions.ClassClass =>
@@ -116,10 +116,10 @@ private[emitter] final class KnowledgeGuardian {
       !blackList(classDef.encodedName) &&
       !classesWithInstantiatedSubclasses(classDef.encodedName) && {
         classDef.memberMethods.count(
-            x => Definitions.isConstructorName(x.info.encodedName)) == 1
+            x => Definitions.isConstructorName(x.value.encodedName)) == 1
       } && {
         !classDef.topLevelExports.exists(
-            _.isInstanceOf[TopLevelConstructorExportDef])
+            _.value.isInstanceOf[TopLevelConstructorExportDef])
       }
     }
 
