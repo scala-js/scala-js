@@ -2,6 +2,8 @@ package sbttest.framework
 
 import sbt.testing._
 
+import scala.concurrent._
+
 final class SlaveRunner(
     args: Array[String],
     remoteArgs: Array[String],
@@ -13,21 +15,20 @@ final class SlaveRunner(
   private[this] var doneCount = 0
 
   /** Whether we have seen a Hello message from the master yet */
-  private[this] var seenHello = false
+  private[this] val seenHello = Promise[Unit]()
+
+  private[framework] override val taskBlock = seenHello.future
 
   // Notify master of our existence
   send("s")
 
   def tasks(taskDefs: Array[TaskDef]): Array[Task] = {
-    ensureSeenHello()
-
     // Notify master of new tasks
     send("t" + taskDefs.length)
     taskDefs.map(newTask)
   }
 
   def done(): String = {
-    ensureSeenHello()
     send("d" + doneCount)
     "" // <- ignored
   }
@@ -36,25 +37,7 @@ final class SlaveRunner(
 
   def receiveMessage(msg: String): Option[String] = {
     assert(msg == "Hello")
-    seenHello = true
+    seenHello.success(())
     None // <- ignored
   }
-
-  override def serializeTask(task: Task,
-      serializer: TaskDef => String): String = {
-    ensureSeenHello()
-    super.serializeTask(task, serializer)
-  }
-
-  override def deserializeTask(task: String,
-      deserializer: String => TaskDef): Task = {
-    ensureSeenHello()
-    super.deserializeTask(task, deserializer)
-  }
-
-  private def ensureSeenHello(): Unit = {
-    if (!seenHello)
-      throw new IllegalStateException("Have not seen the master yet")
-  }
-
 }

@@ -6,64 +6,50 @@ import js.annotation._
 
 import sbt.testing._
 
+import scala.concurrent.Future
 import scala.util.Try
 
+import org.scalajs.testcommon._
 import org.scalajs.testinterface.ScalaJSClassLoader
 
 @JSExportTopLevel("org.scalajs.testinterface.internal.Master")
-final class Master(frameworkName: String) extends BridgeBase(frameworkName) {
+final class Master(frameworkName: String) {
 
   private[this] var runner: Runner = _
 
-  protected def handleMsgImpl(cmd: String, strArg: => String): Unit = {
-    def jsonArg = js.JSON.parse(strArg)
-    cmd match {
-      case "newRunner" =>
-        reply(newRunner(jsonArg))
-      case "runnerDone" =>
-        reply(runnerDone())
-      case "tasks" =>
-        reply(tasks(jsonArg))
-      case "msg" =>
-        reply(inboundMessage(strArg))
-      case cmd =>
-        throw new IllegalArgumentException(s"Unknown command: $cmd")
-    }
-  }
+  JSRPC.attach(JSMasterEndpoints.newRunner)(newRunner _)
+  JSRPC.attach(JSMasterEndpoints.runnerDone)(runnerDone _)
+  JSRPC.attach(JSMasterEndpoints.tasks)(tasks _)
+  JSRPC.attach(JSMasterEndpoints.msg)(inboundMessage _)
 
   // Message handler methods
 
-  private def newRunner(data: js.Dynamic): Try[Unit] = {
-    val args = data.args.asInstanceOf[js.Array[String]].toArray
-    val remoteArgs = data.remoteArgs.asInstanceOf[js.Array[String]].toArray
+  private def newRunner(req: RunnerArgs): Unit = {
+    val framework = FrameworkLoader.loadFramework(frameworkName)
     val loader = new ScalaJSClassLoader()
-
-    Try(runner = framework.runner(args, remoteArgs, loader))
+    runner = framework.runner(req.args.toArray, req.remoteArgs.toArray, loader)
   }
 
-  private def runnerDone(): Try[String] = {
+  private def runnerDone(req: Unit): String = {
     ensureRunnerExists()
 
-    val result = Try(runner.done())
-    runner = null
-    result
+    try runner.done()
+    finally runner = null
   }
 
-  private def tasks(data: js.Dynamic): Try[String] = {
+  private def tasks(taskDefs: List[TaskDef]): List[TaskInfo] = {
     ensureRunnerExists()
 
-    val taskDefs = data.asInstanceOf[js.Array[js.Dynamic]]
-      .map(TaskDefSerializer.deserialize).toArray
+    val tasks = runner.tasks(taskDefs.toArray)
+    tasks.map(TaskInfoBuilder.detachTask(_, runner)).toList
+  }
 
-    Try {
-      val tasks = runner.tasks(taskDefs)
-      js.JSON.stringify(tasks2TaskInfos(tasks, runner))
+  private def inboundMessage(msg: FrameworkMessage): Unit = {
+    ensureRunnerExists()
+    for (reply <- runner.receiveMessage(msg.msg)) {
+      JSRPC.send(JVMMasterEndpoints.msg)(
+          new FrameworkMessage(msg.slaveId, reply))
     }
-  }
-
-  private def inboundMessage(msg: String): Try[String] = {
-    ensureRunnerExists()
-    Try(runner.receiveMessage(msg).fold(":n")(":s:" + _))
   }
 
   // Utility methods

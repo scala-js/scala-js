@@ -108,7 +108,7 @@ object Build {
     "Whether we should partest the current scala version (and fail if we can't)")
 
   /* MiMa configuration -- irrelevant while in 1.0.0-SNAPSHOT.
-  val previousVersion = "0.6.18"
+  val previousVersion = "0.6.19"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
@@ -787,9 +787,15 @@ object Build {
       fatalWarningsSettings,
       name := "Scala.js sbt test adapter",
       libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0",
+      libraryDependencies +=
+        "com.novocode" % "junit-interface" % "0.11" % "test",
       previousArtifactSetting,
-      mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestAdapter
-  ).dependsOn(jsEnvs)
+      mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestAdapter,
+      unmanagedSourceDirectories in Compile +=
+        baseDirectory.value.getParentFile / "test-common/src/main/scala",
+      unmanagedSourceDirectories in Test +=
+        baseDirectory.value.getParentFile / "test-common/src/test/scala"
+  ).dependsOn(jsEnvs).enableScalastyleInSharedSources
 
   lazy val plugin: Project = Project(id = "sbtPlugin", base = file("sbt-plugin")).settings(
       commonSettings,
@@ -804,7 +810,17 @@ object Build {
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
-      addSbtPlugin("org.scala-native" % "sbt-crossproject" % "0.2.1"),
+      /* This works around a bug in ^^ from sbt (should be just addSbtPlugin).
+       * We inline the definition of addSbtPlugin and fix the sbt binary version.
+       */
+      libraryDependencies += {
+        val sbtV =
+          if ((sbtVersion in pluginCrossBuild).value.startsWith("1.0.")) "1.0"
+          else (sbtBinaryVersion in update).value
+        val scalaV = (scalaBinaryVersion in update).value
+        Defaults.sbtPluginExtra(
+            "org.scala-native" % "sbt-crossproject" % "0.2.1", sbtV, scalaV)
+      },
 
       // Add API mappings for sbt (seems they don't export their API URL)
       apiMappings ++= {
@@ -820,7 +836,7 @@ object Build {
 
         sbtJars.map(_.data -> docUrl).toMap
       }
-  ).dependsOn(tools, jsEnvs, nodeJSEnv, testAdapter)
+  ).dependsOn(tools, jsEnvs, nodeJSEnv, testAdapter).enableScalastyleInSharedSources
 
   lazy val delambdafySetting = {
     scalacOptions ++= (
@@ -1155,8 +1171,14 @@ object Build {
       name := "Scala.js test interface",
       delambdafySetting,
       previousArtifactSetting,
-      mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestInterface
-  ).withScalaJSCompiler.dependsOn(library)
+      mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestInterface,
+      unmanagedSourceDirectories in Compile +=
+        baseDirectory.value.getParentFile / "test-common/src/main/scala"
+      /* Note: We cannot add the test-common tests, since they test async
+       * stuff and JUnit does not support async tests. Therefore we need to
+       * block, so we cannot run on JS.
+       */
+  ).withScalaJSCompiler.dependsOn(library).enableScalastyleInSharedSources
 
   lazy val jUnitRuntime = (project in file("junit-runtime")).enablePlugins(
       MyScalaJSPlugin

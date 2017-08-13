@@ -13,13 +13,9 @@ import sbt._
 
 import org.scalajs.core.ir.ScalaJSVersions
 
+import SBTCompat._
+
 object ScalaJSCrossVersion {
-  private val scalaJSVersionUnmapped: String => String =
-    _ => s"sjs$currentBinaryVersion"
-
-  private val scalaJSVersionMap: String => String =
-    version => s"sjs${currentBinaryVersion}_$version"
-
   private final val ReleaseVersion =
     raw"""(\d+)\.(\d+)\.(\d+)""".r
   private final val MinorSnapshotVersion =
@@ -33,14 +29,8 @@ object ScalaJSCrossVersion {
     case _                                 => full
   }
 
-  def scalaJSMapped(cross: CrossVersion): CrossVersion = cross match {
-    case CrossVersion.Disabled =>
-      CrossVersion.binaryMapped(scalaJSVersionUnmapped)
-    case cross: CrossVersion.Binary =>
-      CrossVersion.binaryMapped(cross.remapVersion andThen scalaJSVersionMap)
-    case cross: CrossVersion.Full =>
-      CrossVersion.fullMapped(cross.remapVersion andThen scalaJSVersionMap)
-  }
+  def scalaJSMapped(cross: CrossVersion): CrossVersion =
+    crossVersionAddScalaJSPart(cross, "sjs" + currentBinaryVersion)
 
   val binary: CrossVersion = scalaJSMapped(CrossVersion.binary)
 

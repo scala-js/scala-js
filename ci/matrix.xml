@@ -133,14 +133,17 @@
     npm install &&
     sbt ++$scala irJS/test toolsJS/test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala irJS/test toolsJS/test
+        ++$scala irJS/test &&
+    sbt ++$scala testSuite/test:fullOptJS &&
+    sbt 'set scalaJSStage in Global := FullOptStage' \
+        ++$scala toolsJS/test
   ]]></task>
 
   <task id="tools-cli-stubs"><![CDATA[
     setJavaVersion $java
     npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package nodeJSEnv/test \
+        stubs/package nodeJSEnv/test testAdapter/test \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         nodeJSEnv/mimaReportBinaryIssues \
@@ -156,7 +159,7 @@
     setJavaVersion $java
     npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
-        stubs/package nodeJSEnv/test \
+        stubs/package nodeJSEnv/test testAdapter/test \
         sbtPlugin/package \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
@@ -192,16 +195,20 @@
   ]]></task>
 
   <task id="sbtplugin-test"><![CDATA[
+    setJavaVersion $java
+    SBT_VER_OVERRIDE=$sbt_version_override
     # Publish Scala.js artifacts locally
     # Then go into standalone project and test
     npm install &&
     sbt ++2.11.11 compiler/publishLocal library/publishLocal \
                   testInterface/publishLocal stubs/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
-    sbt ++2.10.6 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
-                 nodeJSEnv/publishLocal testAdapter/publishLocal \
-                 sbtPlugin/publishLocal &&
+    sbt ++$toolsscala ${SBT_VER_OVERRIDE:+^^$SBT_VER_OVERRIDE} \
+        ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
+        nodeJSEnv/publishLocal testAdapter/publishLocal \
+        sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&
+    if [ -n "$SBT_VER_OVERRIDE" ]; then echo "sbt.version=$SBT_VER_OVERRIDE" > ./project/build.properties; fi &&
     sbt noDOM/run \
         noDOM/testHtml multiTestJS/testHtml \
         test \
@@ -407,7 +414,17 @@
       <v n="java">1.8</v>
     </run>
 
-    <run task="sbtplugin-test" />
+    <!-- The PhantomJS tests require Java 7 for jetty. -->
+    <run task="sbtplugin-test">
+      <v n="java">1.7</v>
+      <v n="toolsscala">2.10.6</v>
+      <v n="sbt_version_override"></v>
+    </run>
+    <run task="sbtplugin-test">
+      <v n="java">1.8</v>
+      <v n="toolsscala">2.12.2</v>
+      <v n="sbt_version_override">1.0.0-RC2</v>
+    </run>
   </matrix>
 
   <matrix id="nightly">

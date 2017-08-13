@@ -5,118 +5,72 @@ import js.annotation._
 
 import sbt.testing._
 
-import scala.collection.mutable
+import scala.concurrent.{Future, Promise}
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.util.control.NonFatal
-import scala.util.{Try, Success, Failure}
+import scala.util.Try
 
+import org.scalajs.testcommon._
 import org.scalajs.testinterface.ScalaJSClassLoader
 
 @JSExportTopLevel("org.scalajs.testinterface.internal.Slave")
 final class Slave(frameworkName: String, args: js.Array[String],
-    remoteArgs: js.Array[String]) extends BridgeBase(frameworkName) {
-
-  // State
-
-  private[this] var canSendRunnerMessage = false
-
-  /** Queue for messages from the slave runner to the master runner */
-  private[this] val messageQueue = mutable.Queue.empty[String]
+    remoteArgs: js.Array[String]) {
 
   private[this] var runner: Runner = _
 
-  protected def handleMsgImpl(cmd: String, strArg: => String): Unit = {
-    def jsonArg = js.JSON.parse(strArg)
-    allowSendRunnerMessage {
-      cmd match {
-        case "newRunner" =>
-          reply(newRunner())
-        case "execute" =>
-          // No reply here. execute is async
-          execute(jsonArg)
-        case "stopSlave" =>
-          reply(stopSlave())
-        case "msg" =>
-          val res = incomingRunnerMessage(strArg)
-          // Only reply if something failed
-          if (res.isFailure)
-            reply(res)
-        case cmd =>
-          throw new IllegalArgumentException(s"Unknown command: $cmd")
-      }
-    }
-  }
-
-  // Runner message handler methods
-
-  private def outboundRunnerMessage(msg: String): Unit =
-    if (canSendRunnerMessage) sendOutboundRunnerMessage(msg)
-    else messageQueue.enqueue(msg)
-
-  private def sendOutboundRunnerMessage(msg: String): Unit = {
-    assert(canSendRunnerMessage)
-    Com.send(s"msg:$msg")
-  }
-
-  private def allowSendRunnerMessage[T](body: => T): T = {
-    try {
-      canSendRunnerMessage = true
-
-      // Flush the queue
-      while (!messageQueue.isEmpty)
-        sendOutboundRunnerMessage(messageQueue.dequeue)
-
-      body
-    } finally {
-      canSendRunnerMessage = false
-    }
-  }
+  JSRPC.attach(JSSlaveEndpoints.newRunner)(newRunner _)
+  JSRPC.attachAsync(JSSlaveEndpoints.execute)(execute _)
+  JSRPC.attach(JSSlaveEndpoints.stopSlave)(stopSlave _)
+  JSRPC.attach(JSSlaveEndpoints.msg)(receiveMessage _)
 
   // Message handler methods
 
-  private def newRunner(): Try[Unit] = {
-    Try(runner = framework.slaveRunner(args.toArray, remoteArgs.toArray,
-        new ScalaJSClassLoader(), outboundRunnerMessage))
+  private def newRunner(req: Unit): Unit = {
+    val framework = FrameworkLoader.loadFramework(frameworkName)
+    runner = framework.slaveRunner(args.toArray, remoteArgs.toArray,
+        new ScalaJSClassLoader(), JSRPC.send(JVMSlaveEndpoints.msg))
   }
 
-  private def execute(data: js.Dynamic): Unit = {
+  private def execute(req: ExecuteRequest): Future[List[TaskInfo]] = {
     ensureRunnerExists()
 
-    val sTask = data.serializedTask.asInstanceOf[String]
-    val task = runner.deserializeTask(sTask, str =>
-      TaskDefSerializer.deserialize(js.JSON.parse(str)))
-
+    val task = TaskInfoBuilder.attachTask(req.taskInfo, runner)
     val eventHandler = new RemoteEventHandler
 
-    val colorSupport = data.loggerColorSupport.asInstanceOf[js.Array[Boolean]]
     val loggers = for {
-      (withColor, i) <- colorSupport.zipWithIndex
+      (withColor, i) <- req.loggerColorSupport.zipWithIndex
     } yield new RemoteLogger(i, withColor)
 
+    val promise = Promise[List[TaskInfo]]
+
     def cont(tasks: Array[Task]) = {
-      val result = Try(js.JSON.stringify(tasks2TaskInfos(tasks, runner)))
+      val result = Try(tasks.map(TaskInfoBuilder.detachTask(_, runner)).toList)
       eventHandler.invalidate()
       loggers.foreach(_.invalidate())
-      reply(result)
+      promise.complete(result)
     }
 
-    val launched = Try(task.execute(eventHandler, loggers.toArray, cont))
+    try {
+      task.execute(eventHandler, loggers.toArray, cont)
+    } catch {
+      case NonFatal(t) =>
+        promise.tryFailure(t)
+    }
 
-    if (launched.isFailure)
-      reply(launched)
+    promise.future
   }
 
-  private def stopSlave(): Try[Unit] = {
+  private def stopSlave(req: Unit): Unit = {
     ensureRunnerExists()
-    val res = Try { runner.done(); () }
-    runner = null
-    res
+    try runner.done()
+    finally runner = null
   }
 
-  private def incomingRunnerMessage(msg: String): Try[Unit] = {
-    ensureRunnerExists()
-    Try { runner.receiveMessage(msg); () }
-  }
+  private def receiveMessage(msg: String): Unit =
+    runner.receiveMessage(msg)
 
   // Private helper classes
 
@@ -132,26 +86,22 @@ final class Slave(frameworkName: String, args: js.Array[String],
   private class RemoteEventHandler extends Invalidatable with EventHandler {
     def handle(event: Event): Unit = {
       ensureValid()
-      val serEvent = EventSerializer.serialize(event)
-      Com.send("event:" + js.JSON.stringify(serEvent))
+      JSRPC.send(JVMSlaveEndpoints.event)(event)
     }
   }
 
   private class RemoteLogger(index: Int,
       val ansiCodesSupported: Boolean) extends Invalidatable with Logger {
 
-    def error(msg: String): Unit = send("error", msg)
-    def warn(msg: String): Unit = send("warn", msg)
-    def info(msg: String): Unit = send("info", msg)
-    def debug(msg: String): Unit = send("debug", msg)
+    import JVMSlaveEndpoints._
 
-    def trace(t: Throwable): Unit =
-      send("trace", js.JSON.stringify(ThrowableSerializer.serialize(t)))
+    private def l[T](x: T) = new LogElement(index, x)
 
-    private def send(cmd: String, data: String): Unit = {
-      ensureValid()
-      Com.send(s"$cmd:$index:$data")
-    }
+    def error(msg: String): Unit = JSRPC.send(logError)(l(msg))
+    def warn(msg: String): Unit = JSRPC.send(logWarn)(l(msg))
+    def info(msg: String): Unit = JSRPC.send(logInfo)(l(msg))
+    def debug(msg: String): Unit = JSRPC.send(logDebug)(l(msg))
+    def trace(t: Throwable): Unit = JSRPC.send(logTrace)(l(t))
   }
 
   // Utility methods

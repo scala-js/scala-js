@@ -29,9 +29,9 @@ unmanagedSourceDirectories in Compile ++= {
     root / "js-envs/src/main/scala",
     root / "nodejs-env/src/main/scala",
     root / "test-adapter/src/main/scala",
+    root / "test-common/src/main/scala",
     root / "sbt-plugin/src/main/scala",
-    root / "jsdependencies-core/src/main/scala",
-    root / "jsdependencies-sbt-plugin/src/main/scala"
+    root / "sbt-plugin/src/main/scala-sbt-0.13"
   )
 }
 

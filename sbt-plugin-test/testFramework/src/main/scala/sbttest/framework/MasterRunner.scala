@@ -2,6 +2,8 @@ package sbttest.framework
 
 import sbt.testing._
 
+import scala.concurrent._
+
 import java.util.concurrent.atomic.AtomicInteger
 
 final class MasterRunner(
@@ -18,6 +20,11 @@ final class MasterRunner(
 
   /** Number of running slaves in the whole system */
   private[this] val slaveCount = new AtomicInteger(0)
+
+  /** If a task gets called in the master, there is no point waiting for
+   *  messages.
+   */
+  private[framework] override val taskBlock = Future.successful(())
 
   def tasks(taskDefs: Array[TaskDef]): Array[Task] = {
     registeredCount.addAndGet(taskDefs.length)

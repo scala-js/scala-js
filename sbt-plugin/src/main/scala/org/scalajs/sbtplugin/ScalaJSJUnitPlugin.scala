@@ -16,12 +16,17 @@ object ScalaJSJUnitPlugin extends AutoPlugin {
 
   import ScalaJSPlugin.autoImport._
 
+  /* As of sbt 1, a `config()` must be assigned to a `val` starting with an
+   * uppercase letter, which will become the "id" of the configuration.
+   */
+  val ScalaJSTestPlugin = config("scala-js-test-plugin").hide
+
   override def projectSettings: Seq[Setting[_]] = Seq(
     /* The `scala-js-test-plugin` configuration adds a plugin only to the `test`
      * configuration. It is a refinement of the `plugin` configuration which adds
      * it to both `compile` and `test`.
      */
-    ivyConfigurations += config("scala-js-test-plugin").hide,
+    ivyConfigurations += ScalaJSTestPlugin,
     libraryDependencies ++= Seq(
         "org.scala-js" % "scalajs-junit-test-plugin" % scalaJSVersion %
         "scala-js-test-plugin" cross CrossVersion.full,

@@ -13,13 +13,13 @@ import sbt.testing._
 
 import org.scalajs.testadapter.json._
 
-import FingerprintSerializers._
-
+@deprecated("Unused. Is going to be removed.", "0.6.20.")
 final class RemoteException private (msg: String, _toString: String,
     cause: Throwable, val originalClass: String) extends Exception(msg, cause) {
   override def toString(): String = _toString
 }
 
+@deprecated("Unused. Is going to be removed.", "0.6.20.")
 private[testadapter] object RemoteException {
   implicit object StackTraceDeserializer extends JSONDeserializer[StackTraceElement] {
     def deserialize(x: JSON): StackTraceElement = {

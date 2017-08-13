@@ -20,8 +20,7 @@ import org.scalajs.core.tools.io._
 import org.scalajs.jsenv.VirtualFileMaterializer
 
 import org.scalajs.testadapter.json._
-
-import TaskDefSerializers._
+import org.scalajs.testcommon.Serializer
 
 /** Template for the HTML runner. */
 object HTMLRunnerBuilder {
@@ -89,8 +88,11 @@ object HTMLRunnerBuilder {
   private[scalajs] def renderTestDefinitions(
       frameworkImplClassNames: List[List[String]],
       taskDefs: List[TaskDef]): String = {
+
+    val taskDefsString = Serializer.serialize(taskDefs)
+
     s"""
-      var definedTests = ${jsonToString(taskDefs.toJSON)};
+      var definedTests = ${jsonToString(taskDefsString.toJSON)};
       var testFrameworkNames = ${jsonToString(frameworkImplClassNames.toJSON)};
     """
   }

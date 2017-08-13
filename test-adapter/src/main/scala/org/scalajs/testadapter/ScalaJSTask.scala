@@ -9,41 +9,26 @@
 
 package org.scalajs.testadapter
 
+import org.scalajs.jsenv._
+import org.scalajs.testcommon._
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 import scala.collection.mutable
 import scala.util.Try
 
 import sbt.testing._
 
-import org.scalajs.jsenv._
-
-import org.scalajs.testadapter.json._
-
-import TaskDefSerializers._
-import EventSerializers._
-import ComUtils.LoopHandler
-import ScalaJSTask.LogElement
-
-final class ScalaJSTask private (
+final class ScalaJSTask private[testadapter] (
     runner: ScalaJSRunner,
-    val taskDef: TaskDef,
-    val tags: Array[String],
-    serializedTask: String
+    taskInfo: TaskInfo
 ) extends Task {
+
+  def taskDef: TaskDef = taskInfo.taskDef
+  def tags: Array[String] = taskInfo.tags.toArray
 
   def execute(handler: EventHandler, loggers: Array[Logger]): Array[Task] = {
     val slave = runner.getSlave()
-
-    // Prepare data to send to Slave VM
-    val colorSupport = loggers.map(_.ansiCodesSupported).toList
-    val data = {
-      val bld = new JSONObjBuilder
-      bld.fld("serializedTask", serializedTask)
-      bld.fld("loggerColorSupport", colorSupport)
-      bld.toJSON
-    }
-
-    // Send command to VM
-    slave.send("execute:" + jsonToString(data))
 
     // Prepare result handler
     // TODO rip this out once we know it doesn't garble the logs.
@@ -52,75 +37,47 @@ final class ScalaJSTask private (
       Try(System.getProperty(propName, "false").toBoolean).getOrElse(false)
     }
 
-    val logBuffer = mutable.Buffer.empty[LogElement[_]]
+    val logBuffer = mutable.Buffer.empty[ScalaJSTask.LogElement[_]]
 
-    val logger: LogElement[_] => Unit =
-      if (shouldBufferLog) logBuffer += _
-      else _.call(loggers)
-
-    val doneHandler: LoopHandler[List[TaskInfo]] = {
-      case ("ok", msg) => Some(fromJSON[List[TaskInfo]](readJSON(msg)))
-    }
-
-    val handlerChain = (
-        eventHandler(handler) orElse
-        loggerHandler(logger) orElse
-        runner.msgHandler(slave) orElse
-        doneHandler)
-
-    // Wait for result
-    val taskInfos = ComUtils.receiveLoop(slave)(handlerChain)
-
-    // Flush log buffer
-    if (shouldBufferLog) {
-      runner.loggerLock.synchronized {
-        logBuffer.foreach(_.call(loggers))
+    def log[T](level: Logger => (T => Unit))(log: LogElement[T]): Unit = {
+      if (shouldBufferLog) {
+        logBuffer += new ScalaJSTask.LogElement(log.index, level, log.x)
+      } else {
+        level(loggers(log.index))(log.x)
       }
     }
 
-    taskInfos.map(ScalaJSTask.fromInfo(runner, _)).toArray
-  }
+    slave.attach(JVMSlaveEndpoints.event)(handler.handle _)
+    slave.attach(JVMSlaveEndpoints.logError)(log(_.error))
+    slave.attach(JVMSlaveEndpoints.logWarn)(log(_.warn))
+    slave.attach(JVMSlaveEndpoints.logInfo)(log(_.info))
+    slave.attach(JVMSlaveEndpoints.logDebug)(log(_.debug))
+    slave.attach(JVMSlaveEndpoints.logTrace)(log(_.trace))
 
-  private def eventHandler(handler: EventHandler): LoopHandler[Nothing] = {
-    case ("event", data) =>
-      val event = fromJSON[Event](readJSON(data))
-      handler.handle(event)
-      None
-  }
+    try {
+      // Execute task. No (!) timeout.
+      val req =
+        new ExecuteRequest(taskInfo, loggers.map(_.ansiCodesSupported).toList)
+      val taskInfos = Await.result(
+          slave.call(JSSlaveEndpoints.execute)(req), Duration.Inf)
 
-  private def loggerHandler(
-      logger: LogElement[_] => Unit): LoopHandler[Nothing] = {
+      // Flush log buffer
+      if (shouldBufferLog) {
+        runner.loggerLock.synchronized {
+          logBuffer.foreach(_.call(loggers))
+        }
+      }
 
-    def processData(data: String) = {
-      val pos = data.indexOf(':')
-      assert(pos != -1, "Log command needs logger index")
-      val index = data.substring(0, pos).toInt
-      val innerData = data.substring(pos + 1)
-
-      (index, innerData)
+      taskInfos.map(new ScalaJSTask(runner, _)).toArray
+    } finally {
+      slave.detach(JVMSlaveEndpoints.event)
+      slave.detach(JVMSlaveEndpoints.logError)
+      slave.detach(JVMSlaveEndpoints.logWarn)
+      slave.detach(JVMSlaveEndpoints.logInfo)
+      slave.detach(JVMSlaveEndpoints.logDebug)
+      slave.detach(JVMSlaveEndpoints.logTrace)
     }
-
-    def log(level: Logger => (String => Unit), data: String) = {
-      val (index, msg) = processData(data)
-      logger(new LogElement(index, level, msg))
-      None
-    }
-
-    val pf: LoopHandler[Nothing] = {
-      case ("error", data) => log(_.error, data)
-      case ("warn",  data) => log(_.warn,  data)
-      case ("info",  data) => log(_.info,  data)
-      case ("debug", data) => log(_.debug, data)
-      case ("trace", data) =>
-        val (index, innerData) = processData(data)
-        val throwable = fromJSON[RemoteException](readJSON(innerData))
-        logger(new LogElement(index, _.trace, throwable))
-        None
-    }
-
-    pf
   }
-
 }
 
 private[testadapter] object ScalaJSTask {
@@ -128,8 +85,4 @@ private[testadapter] object ScalaJSTask {
       log: Logger => (T => Unit), data: T) {
     def call(arr: Array[Logger]): Unit = log(arr(index))(data)
   }
-
-  private[testadapter] def fromInfo(runner: ScalaJSRunner,
-      info: TaskInfo): ScalaJSTask =
-    new ScalaJSTask(runner, info.taskDef, info.tags, info.serializedTask)
 }

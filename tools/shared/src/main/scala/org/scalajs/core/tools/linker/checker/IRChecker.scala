@@ -894,9 +894,11 @@ private final class IRChecker(unit: LinkingUnit,
 
       case IsInstanceOf(expr, cls) =>
         typecheckExpr(expr, env)
+        checkIsAsInstanceTargetType(cls)
 
       case AsInstanceOf(expr, cls) =>
         typecheckExpr(expr, env)
+        checkIsAsInstanceTargetType(cls)
 
       case Unbox(expr, _) =>
         typecheckExpr(expr, env)
@@ -1060,6 +1062,28 @@ private final class IRChecker(unit: LinkingUnit,
       implicit ctx: ErrorContext): Unit = {
     if (!declaredLabelNamesPerMethod.add(label.name))
       reportError(s"Duplicate label named ${label.name}.")
+  }
+
+  private def checkIsAsInstanceTargetType(typeRef: TypeRef)(
+      implicit ctx: ErrorContext): Unit = {
+    typeRef match {
+      case ClassRef(encodedName) =>
+        if (Definitions.isPrimitiveClass(encodedName)) {
+          reportError(
+              s"Primitive type $encodedName is not a valid target type for " +
+              "Is/AsInstanceOf")
+        } else {
+          val kind = lookupClass(encodedName).kind
+          if (kind.isJSType) {
+            reportError(
+                s"JS type $encodedName is not a valid target type for " +
+                "Is/AsInstanceOf")
+          }
+        }
+
+      case ArrayTypeRef(_, _) =>
+        // Nothing to check
+    }
   }
 
   private def inferMethodType(encodedName: String, isStatic: Boolean)(

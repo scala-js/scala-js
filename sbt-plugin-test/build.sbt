@@ -19,7 +19,7 @@ val baseSettings = versionSettings ++ Seq(
     TestFramework("com.novocode.junit.JUnitFramework"), "-v", "-a", "-s"),
 
   // Test that non-existent classpath entries are allowed - #2198
-  fullClasspath in Compile += (baseDirectory in "root").value /
+  fullClasspath in Compile += (baseDirectory in LocalProject("root")).value /
     "non-existent-directory-please-dont-ever-create-this"
 )
 
