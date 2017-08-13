@@ -1233,13 +1233,13 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.BinaryOp(js.BinaryOp.===, js.IntLiteral(lo), numRef)
 
         case (lo, hi) if lo == hi - 1 =>
-          val lhs = js.BinaryOp(js.BinaryOp.===, numRef, js.IntLiteral(lo))
-          val rhs = js.BinaryOp(js.BinaryOp.===, numRef, js.IntLiteral(hi))
+          val lhs = js.BinaryOp(js.BinaryOp.Int_==, numRef, js.IntLiteral(lo))
+          val rhs = js.BinaryOp(js.BinaryOp.Int_==, numRef, js.IntLiteral(hi))
           js.If(lhs, js.BooleanLiteral(true), rhs)(jstpe.BooleanType)
 
         case (lo, hi) =>
-          val lhs = js.BinaryOp(js.BinaryOp.Num_<=, js.IntLiteral(lo), numRef)
-          val rhs = js.BinaryOp(js.BinaryOp.Num_<=, numRef, js.IntLiteral(hi))
+          val lhs = js.BinaryOp(js.BinaryOp.Int_<=, js.IntLiteral(lo), numRef)
+          val rhs = js.BinaryOp(js.BinaryOp.Int_<=, numRef, js.IntLiteral(hi))
           js.BinaryOp(js.BinaryOp.Boolean_&, lhs, rhs)
           js.If(lhs, rhs, js.BooleanLiteral(false))(jstpe.BooleanType)
       }
@@ -1799,7 +1799,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           val sym = tree.symbol
           val rhsTree =
-            if (rhs == EmptyTree) genZeroOf(sym.tpe)
+            if (rhs == EmptyTree) jstpe.zeroOf(toIRType(sym.tpe))
             else genExpr(rhs)
 
           rhsTree match {
@@ -1912,7 +1912,13 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.Skip()
             case BooleanTag =>
               js.BooleanLiteral(value.booleanValue)
-            case ByteTag | ShortTag | CharTag | IntTag =>
+            case ByteTag =>
+              js.ByteLiteral(value.byteValue)
+            case ShortTag =>
+              js.ShortLiteral(value.shortValue)
+            case CharTag =>
+              js.CharLiteral(value.charValue)
+            case IntTag =>
               js.IntLiteral(value.intValue)
             case LongTag =>
               js.LongLiteral(value.longValue)
@@ -2342,10 +2348,17 @@ abstract class GenJSCode extends plugins.PluginComponent
       val r = toTypeKind(to)
 
       if (l.isValueType && r.isValueType) {
-        if (cast)
-          genConversion(l, r, expr)
-        else
+        if (cast) {
+          /* It is unclear whether this case can be reached for all type
+           * conversions, but scalac handles all cases, so we do too.
+           * Three known user code patterns that become code handled by this
+           * case are `byte.##`, `short.##` and `char.##`, which become, e.g.,
+           * `char.toChar().$asInstanceOf[Int]`.
+           */
+          genConversion(l.toIRType, r.toIRType, expr)
+        } else {
           js.BooleanLiteral(l == r)
+        }
       } else if (l.isValueType) {
         val result = if (cast) {
           val ctor = ClassCastExceptionClass.info.member(
@@ -2636,29 +2649,63 @@ abstract class GenJSCode extends plugins.PluginComponent
           arguments)(resultType)
     }
 
-    /** Gen JS code for a conversion between primitive value types */
-    def genConversion(from: TypeKind, to: TypeKind, value: js.Tree)(
+    private def adaptPrimitive(value: js.Tree, to: jstpe.Type)(
         implicit pos: Position): js.Tree = {
-      def int0 = js.IntLiteral(0)
-      def int1 = js.IntLiteral(1)
-      def long0 = js.LongLiteral(0L)
-      def long1 = js.LongLiteral(1L)
-      def float0 = js.FloatLiteral(0.0f)
-      def float1 = js.FloatLiteral(1.0f)
+      genConversion(value.tpe, to, value)
+    }
 
-      // scalastyle:off disallow.space.before.token
-      (from, to) match {
-        case (INT(_),   BOOL) => js.BinaryOp(js.BinaryOp.Num_!=,  value, int0)
-        case (LONG,     BOOL) => js.BinaryOp(js.BinaryOp.Long_!=, value, long0)
-        case (FLOAT(_), BOOL) => js.BinaryOp(js.BinaryOp.Num_!=,  value, float0)
+    /* This method corresponds to the method of the same name in
+     * BCodeBodyBuilder of the JVM back-end. It ends up calling the method
+     * BCodeIdiomatic.emitT2T, whose logic we replicate here.
+     */
+    private def genConversion(from: jstpe.Type, to: jstpe.Type, value: js.Tree)(
+        implicit pos: Position): js.Tree = {
+      import js.UnaryOp._
 
-        case (BOOL, INT(_))   => js.If(value, int1,   int0  )(jstpe.IntType)
-        case (BOOL, LONG)     => js.If(value, long1,  long0 )(jstpe.LongType)
-        case (BOOL, FLOAT(_)) => js.If(value, float1, float0)(jstpe.FloatType)
+      if (from == to || from == jstpe.NothingType) {
+        value
+      } else if (from == jstpe.BooleanType || to == jstpe.BooleanType) {
+        throw new AssertionError(s"Invalid genConversion from $from to $to")
+      } else {
+        def intValue = (from: @unchecked) match {
+          case jstpe.IntType    => value
+          case jstpe.CharType   => js.UnaryOp(CharToInt, value)
+          case jstpe.ByteType   => js.UnaryOp(ByteToInt, value)
+          case jstpe.ShortType  => js.UnaryOp(ShortToInt, value)
+          case jstpe.LongType   => js.UnaryOp(LongToInt, value)
+          case jstpe.FloatType  => js.UnaryOp(DoubleToInt, js.UnaryOp(FloatToDouble, value))
+          case jstpe.DoubleType => js.UnaryOp(DoubleToInt, value)
+        }
 
-        case _ => value
+        def doubleValue = from match {
+          case jstpe.DoubleType => value
+          case jstpe.FloatType  => js.UnaryOp(FloatToDouble, value)
+          case jstpe.LongType   => js.UnaryOp(LongToDouble, value)
+          case _                => js.UnaryOp(IntToDouble, intValue)
+        }
+
+        (to: @unchecked) match {
+          case jstpe.CharType =>
+            js.UnaryOp(IntToChar, intValue)
+          case jstpe.ByteType =>
+            js.UnaryOp(IntToByte, intValue)
+          case jstpe.ShortType =>
+            js.UnaryOp(IntToShort, intValue)
+          case jstpe.IntType =>
+            intValue
+          case jstpe.LongType =>
+            from match {
+              case jstpe.FloatType | jstpe.DoubleType =>
+                js.UnaryOp(DoubleToLong, doubleValue)
+              case _ =>
+                js.UnaryOp(IntToLong, intValue)
+            }
+          case jstpe.FloatType =>
+            js.UnaryOp(js.UnaryOp.DoubleToFloat, doubleValue)
+          case jstpe.DoubleType =>
+            doubleValue
+        }
       }
-      // scalastyle:on disallow.space.before.token
     }
 
     /** Gen JS code for an isInstanceOf test (for reference types only) */
@@ -3209,135 +3256,176 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       implicit val pos = tree.pos
 
-      val isShift = isShiftOp(code)
-
-      def isLongOp(ltpe: Type, rtpe: Type) = {
-        if (isShift) {
-          isLongType(ltpe)
-        } else {
-          (isLongType(ltpe) || isLongType(rtpe)) &&
-          !(toTypeKind(ltpe).isInstanceOf[FLOAT] ||
-            toTypeKind(rtpe).isInstanceOf[FLOAT] ||
-            isStringType(ltpe) || isStringType(rtpe))
-        }
-      }
-
-      val sources = args map genExpr
-
-      val resultType = toIRType(tree.tpe)
+      val sources = args.map(genExpr)
 
       sources match {
         // Unary operation
-        case List(source) =>
+        case List(src_in) =>
+          val opType = toIRType(tree.tpe)
+          val src = adaptPrimitive(src_in, opType)
+
           (code match {
             case POS =>
-              source
+              src
             case NEG =>
-              (resultType: @unchecked) match {
+              (opType: @unchecked) match {
                 case jstpe.IntType =>
-                  js.BinaryOp(js.BinaryOp.Int_-, js.IntLiteral(0), source)
+                  js.BinaryOp(js.BinaryOp.Int_-, js.IntLiteral(0), src)
                 case jstpe.LongType =>
-                  js.BinaryOp(js.BinaryOp.Long_-, js.LongLiteral(0), source)
+                  js.BinaryOp(js.BinaryOp.Long_-, js.LongLiteral(0), src)
                 case jstpe.FloatType =>
-                  js.BinaryOp(js.BinaryOp.Float_-, js.FloatLiteral(0.0f), source)
+                  js.BinaryOp(js.BinaryOp.Float_-, js.FloatLiteral(0.0f), src)
                 case jstpe.DoubleType =>
-                  js.BinaryOp(js.BinaryOp.Double_-, js.DoubleLiteral(0), source)
+                  js.BinaryOp(js.BinaryOp.Double_-, js.DoubleLiteral(0), src)
               }
             case NOT =>
-              (resultType: @unchecked) match {
+              (opType: @unchecked) match {
                 case jstpe.IntType =>
-                  js.BinaryOp(js.BinaryOp.Int_^, js.IntLiteral(-1), source)
+                  js.BinaryOp(js.BinaryOp.Int_^, js.IntLiteral(-1), src)
                 case jstpe.LongType =>
-                  js.BinaryOp(js.BinaryOp.Long_^, js.LongLiteral(-1), source)
+                  js.BinaryOp(js.BinaryOp.Long_^, js.LongLiteral(-1), src)
               }
             case ZNOT =>
-              js.UnaryOp(js.UnaryOp.Boolean_!, source)
+              js.UnaryOp(js.UnaryOp.Boolean_!, src)
             case _ =>
               abort("Unknown unary operation code: " + code)
           })
 
-        // Binary operation on Longs
-        case List(lsrc, rsrc) if isLongOp(args(0).tpe, args(1).tpe) =>
-          def toLong(tree: js.Tree, tpe: Type) =
-            if (isLongType(tpe)) tree
-            else js.UnaryOp(js.UnaryOp.IntToLong, tree)
-
-          def toInt(tree: js.Tree, tpe: Type) =
-            if (isLongType(tpe)) js.UnaryOp(js.UnaryOp.LongToInt, rsrc)
-            else tree
-
-          val ltree = toLong(lsrc, args(0).tpe)
-          def rtree = toLong(rsrc, args(1).tpe)
-          def rtreeInt = toInt(rsrc, args(1).tpe)
-
-          import js.BinaryOp._
-          (code: @switch) match {
-            case ADD => js.BinaryOp(Long_+,   ltree, rtree)
-            case SUB => js.BinaryOp(Long_-,   ltree, rtree)
-            case MUL => js.BinaryOp(Long_*,   ltree, rtree)
-            case DIV => js.BinaryOp(Long_/,   ltree, rtree)
-            case MOD => js.BinaryOp(Long_%,   ltree, rtree)
-            case OR  => js.BinaryOp(Long_|,   ltree, rtree)
-            case XOR => js.BinaryOp(Long_^,   ltree, rtree)
-            case AND => js.BinaryOp(Long_&,   ltree, rtree)
-            case LSL => js.BinaryOp(Long_<<,  ltree, rtreeInt)
-            case LSR => js.BinaryOp(Long_>>>, ltree, rtreeInt)
-            case ASR => js.BinaryOp(Long_>>,  ltree, rtreeInt)
-            case EQ  => js.BinaryOp(Long_==,  ltree, rtree)
-            case NE  => js.BinaryOp(Long_!=,  ltree, rtree)
-            case LT  => js.BinaryOp(Long_<,   ltree, rtree)
-            case LE  => js.BinaryOp(Long_<=,  ltree, rtree)
-            case GT  => js.BinaryOp(Long_>,   ltree, rtree)
-            case GE  => js.BinaryOp(Long_>=,  ltree, rtree)
-            case _ =>
-              abort("Unknown binary operation code: " + code)
-          }
-
         // Binary operation
         case List(lsrc_in, rsrc_in) =>
+          import js.BinaryOp._
+
+          val isShift = isShiftOp(code)
           val leftKind = toTypeKind(args(0).tpe)
           val rightKind = toTypeKind(args(1).tpe)
 
-          val opType = (leftKind, rightKind) match {
-            case (DoubleKind, _) | (_, DoubleKind) => jstpe.DoubleType
-            case (FloatKind, _) | (_, FloatKind)   => jstpe.FloatType
-            case (INT(_), _) | (_, INT(_))         => jstpe.IntType
-            case (BooleanKind, BooleanKind)        => jstpe.BooleanType
-            case _                                 => jstpe.AnyType
-          }
-
-          def convertArg(tree: js.Tree, kind: TypeKind) = {
-            /* If we end up with a long, the op type must be float or double,
-             * so we can first eliminate the Long case by converting to Double.
-             *
-             * Unless it is a shift operation, in which case the op type would
-             * be int.
-             */
-            val notLong = {
-              if (kind != LongKind) tree
-              else if (isShift) js.UnaryOp(js.UnaryOp.LongToInt, tree)
-              else js.UnaryOp(js.UnaryOp.LongToDouble, tree)
+          val opType = {
+            if (isShift) {
+              if (leftKind == LongKind) jstpe.LongType
+              else jstpe.IntType
+            } else {
+              (leftKind, rightKind) match {
+                case (DoubleKind, _) | (_, DoubleKind) => jstpe.DoubleType
+                case (FloatKind, _) | (_, FloatKind)   => jstpe.FloatType
+                case (LONG, _) | (_, LONG)             => jstpe.LongType
+                case (INT(_), _) | (_, INT(_))         => jstpe.IntType
+                case (BOOL, _) | (_, BOOL)             => jstpe.BooleanType
+                case _                                 => jstpe.AnyType
+              }
             }
-
-            if (opType != jstpe.FloatType) notLong
-            else if (kind == FloatKind) notLong
-            else js.UnaryOp(js.UnaryOp.DoubleToFloat, notLong)
           }
 
-          val lsrc = convertArg(lsrc_in, leftKind)
-          val rsrc = convertArg(rsrc_in, rightKind)
+          val lsrc =
+            if (opType == jstpe.AnyType) lsrc_in
+            else adaptPrimitive(lsrc_in, opType)
+          val rsrc =
+            if (opType == jstpe.AnyType) rsrc_in
+            else adaptPrimitive(rsrc_in, if (isShift) jstpe.IntType else opType)
 
-          def genEquality(eqeq: Boolean, not: Boolean) = {
-            opType match {
-              case jstpe.IntType | jstpe.DoubleType | jstpe.FloatType =>
-                js.BinaryOp(
-                    if (not) js.BinaryOp.Num_!= else js.BinaryOp.Num_==,
-                    lsrc, rsrc)
-              case jstpe.BooleanType =>
-                js.BinaryOp(
-                    if (not) js.BinaryOp.Boolean_!= else js.BinaryOp.Boolean_==,
-                    lsrc, rsrc)
-              case _ =>
+          (opType: @unchecked) match {
+            case jstpe.IntType =>
+              val op = (code: @switch) match {
+                case ADD => Int_+
+                case SUB => Int_-
+                case MUL => Int_*
+                case DIV => Int_/
+                case MOD => Int_%
+                case OR  => Int_|
+                case AND => Int_&
+                case XOR => Int_^
+                case LSL => Int_<<
+                case LSR => Int_>>>
+                case ASR => Int_>>
+                case EQ  => Int_==
+                case NE  => Int_!=
+                case LT  => Int_<
+                case LE  => Int_<=
+                case GT  => Int_>
+                case GE  => Int_>=
+              }
+              js.BinaryOp(op, lsrc, rsrc)
+
+            case jstpe.LongType =>
+              val op = (code: @switch) match {
+                case ADD => Long_+
+                case SUB => Long_-
+                case MUL => Long_*
+                case DIV => Long_/
+                case MOD => Long_%
+                case OR  => Long_|
+                case XOR => Long_^
+                case AND => Long_&
+                case LSL => Long_<<
+                case LSR => Long_>>>
+                case ASR => Long_>>
+                case EQ  => Long_==
+                case NE  => Long_!=
+                case LT  => Long_<
+                case LE  => Long_<=
+                case GT  => Long_>
+                case GE  => Long_>=
+              }
+              js.BinaryOp(op, lsrc, rsrc)
+
+            case jstpe.FloatType =>
+              def withFloats(op: Int): js.Tree =
+                js.BinaryOp(op, lsrc, rsrc)
+
+              def toDouble(value: js.Tree): js.Tree =
+                js.UnaryOp(js.UnaryOp.FloatToDouble, value)
+
+              def withDoubles(op: Int): js.Tree =
+                js.BinaryOp(op, toDouble(lsrc), toDouble(rsrc))
+
+              (code: @switch) match {
+                case ADD => withFloats(Float_+)
+                case SUB => withFloats(Float_-)
+                case MUL => withFloats(Float_*)
+                case DIV => withFloats(Float_/)
+                case MOD => withFloats(Float_%)
+
+                case EQ  => withDoubles(Double_==)
+                case NE  => withDoubles(Double_!=)
+                case LT  => withDoubles(Double_<)
+                case LE  => withDoubles(Double_<=)
+                case GT  => withDoubles(Double_>)
+                case GE  => withDoubles(Double_>=)
+              }
+
+            case jstpe.DoubleType =>
+              val op = (code: @switch) match {
+                case ADD => Double_+
+                case SUB => Double_-
+                case MUL => Double_*
+                case DIV => Double_/
+                case MOD => Double_%
+                case EQ  => Double_==
+                case NE  => Double_!=
+                case LT  => Double_<
+                case LE  => Double_<=
+                case GT  => Double_>
+                case GE  => Double_>=
+              }
+              js.BinaryOp(op, lsrc, rsrc)
+
+            case jstpe.BooleanType =>
+              (code: @switch) match {
+                case OR =>
+                  js.BinaryOp(Boolean_|, lsrc, rsrc)
+                case AND =>
+                  js.BinaryOp(Boolean_&, lsrc, rsrc)
+                case EQ =>
+                  js.BinaryOp(Boolean_==, lsrc, rsrc)
+                case XOR | NE =>
+                  js.BinaryOp(Boolean_!=, lsrc, rsrc)
+                case ZOR =>
+                  js.If(lsrc, js.BooleanLiteral(true), rsrc)(jstpe.BooleanType)
+                case ZAND =>
+                  js.If(lsrc, rsrc, js.BooleanLiteral(false))(jstpe.BooleanType)
+              }
+
+            case jstpe.AnyType =>
+              def genAnyEquality(eqeq: Boolean, not: Boolean): js.Tree = {
                 if (eqeq &&
                     // don't call equals if we have a literal null at either side
                     !lsrc.isInstanceOf[js.Null] &&
@@ -3351,63 +3439,14 @@ abstract class GenJSCode extends plugins.PluginComponent
                       if (not) js.BinaryOp.!== else js.BinaryOp.===,
                       lsrc, rsrc)
                 }
-            }
-          }
-
-          (code: @switch) match {
-            case EQ => genEquality(eqeq = true, not = false)
-            case NE => genEquality(eqeq = true, not = true)
-            case ID => genEquality(eqeq = false, not = false)
-            case NI => genEquality(eqeq = false, not = true)
-
-            case ZOR  => js.If(lsrc, js.BooleanLiteral(true), rsrc)(jstpe.BooleanType)
-            case ZAND => js.If(lsrc, rsrc, js.BooleanLiteral(false))(jstpe.BooleanType)
-
-            case _ =>
-              import js.BinaryOp._
-              val op = (resultType: @unchecked) match {
-                case jstpe.IntType =>
-                  (code: @switch) match {
-                    case ADD => Int_+
-                    case SUB => Int_-
-                    case MUL => Int_*
-                    case DIV => Int_/
-                    case MOD => Int_%
-                    case OR  => Int_|
-                    case AND => Int_&
-                    case XOR => Int_^
-                    case LSL => Int_<<
-                    case LSR => Int_>>>
-                    case ASR => Int_>>
-                  }
-                case jstpe.FloatType =>
-                  (code: @switch) match {
-                    case ADD => Float_+
-                    case SUB => Float_-
-                    case MUL => Float_*
-                    case DIV => Float_/
-                    case MOD => Float_%
-                  }
-                case jstpe.DoubleType =>
-                  (code: @switch) match {
-                    case ADD => Double_+
-                    case SUB => Double_-
-                    case MUL => Double_*
-                    case DIV => Double_/
-                    case MOD => Double_%
-                  }
-                case jstpe.BooleanType =>
-                  (code: @switch) match {
-                    case LT   => Num_<
-                    case LE   => Num_<=
-                    case GT   => Num_>
-                    case GE   => Num_>=
-                    case OR   => Boolean_|
-                    case AND  => Boolean_&
-                    case XOR  => Boolean_!=
-                  }
               }
-              js.BinaryOp(op, lsrc, rsrc)
+
+              (code: @switch) match {
+                case EQ => genAnyEquality(eqeq = true, not = false)
+                case NE => genAnyEquality(eqeq = true, not = true)
+                case ID => genAnyEquality(eqeq = false, not = false)
+                case NI => genAnyEquality(eqeq = false, not = true)
+              }
           }
 
         case _ =>
@@ -3598,74 +3637,11 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     /** Gen JS code for a coercion */
     private def genCoercion(tree: Apply, receiver: Tree, code: Int): js.Tree = {
-      import scalaPrimitives._
-
       implicit val pos = tree.pos
 
       val source = genExpr(receiver)
-
-      def source2int = (code: @switch) match {
-        case F2C | D2C | F2B | D2B | F2S | D2S | F2I | D2I =>
-          js.UnaryOp(js.UnaryOp.DoubleToInt, source)
-        case L2C | L2B | L2S | L2I =>
-          js.UnaryOp(js.UnaryOp.LongToInt, source)
-        case _ =>
-          source
-      }
-
-      (code: @switch) match {
-        // To Char, need to crop at unsigned 16-bit
-        case B2C | S2C | I2C | L2C | F2C | D2C =>
-          js.BinaryOp(js.BinaryOp.Int_&, source2int, js.IntLiteral(0xffff))
-
-        // To Byte, need to crop at signed 8-bit
-        case C2B | S2B | I2B | L2B | F2B | D2B =>
-          // note: & 0xff would not work because of negative values
-          js.BinaryOp(js.BinaryOp.Int_>>,
-              js.BinaryOp(js.BinaryOp.Int_<<, source2int, js.IntLiteral(24)),
-              js.IntLiteral(24))
-
-        // To Short, need to crop at signed 16-bit
-        case C2S | I2S | L2S | F2S | D2S =>
-          // note: & 0xffff would not work because of negative values
-          js.BinaryOp(js.BinaryOp.Int_>>,
-              js.BinaryOp(js.BinaryOp.Int_<<, source2int, js.IntLiteral(16)),
-              js.IntLiteral(16))
-
-        // To Int, need to crop at signed 32-bit
-        case L2I | F2I | D2I =>
-          source2int
-
-        // Any int to Long
-        case C2L | B2L | S2L | I2L =>
-          js.UnaryOp(js.UnaryOp.IntToLong, source)
-
-        // Any double to Long
-        case F2L | D2L =>
-          js.UnaryOp(js.UnaryOp.DoubleToLong, source)
-
-        // Long to Double
-        case L2D =>
-          js.UnaryOp(js.UnaryOp.LongToDouble, source)
-
-        // Any int, or Double, to Float
-        case C2F | B2F | S2F | I2F | D2F =>
-          js.UnaryOp(js.UnaryOp.DoubleToFloat, source)
-
-        // Long to Float === Long to Double to Float
-        case L2F =>
-          js.UnaryOp(js.UnaryOp.DoubleToFloat,
-              js.UnaryOp(js.UnaryOp.LongToDouble, source))
-
-        // Identities and IR upcasts
-        case C2C | B2B | S2S | I2I | L2L | F2F | D2D |
-             C2I | C2D |
-             B2S | B2I | B2D |
-             S2I | S2D |
-             I2D |
-             F2D =>
-          source
-      }
+      val resultType = toIRType(tree.tpe)
+      adaptPrimitive(source, resultType)
     }
 
     /** Gen JS code for an ApplyDynamic
@@ -5317,17 +5293,6 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     // Utilities ---------------------------------------------------------------
-
-    /** Generate a literal "zero" for the requested type */
-    def genZeroOf(tpe: Type)(implicit pos: Position): js.Tree = toTypeKind(tpe) match {
-      case VOID       => abort("Cannot call genZeroOf(VOID)")
-      case BOOL       => js.BooleanLiteral(false)
-      case LONG       => js.LongLiteral(0L)
-      case INT(_)     => js.IntLiteral(0)
-      case FloatKind  => js.FloatLiteral(0.0f)
-      case DoubleKind => js.DoubleLiteral(0.0)
-      case _          => js.Null()
-    }
 
     /** Generate loading of a module value.
      *

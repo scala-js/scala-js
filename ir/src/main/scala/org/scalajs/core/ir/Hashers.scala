@@ -395,6 +395,18 @@ object Hashers {
           mixTag(TagBooleanLiteral)
           mixBoolean(value)
 
+        case CharLiteral(value) =>
+          mixTag(TagCharLiteral)
+          mixChar(value)
+
+        case ByteLiteral(value) =>
+          mixTag(TagByteLiteral)
+          mixByte(value)
+
+        case ShortLiteral(value) =>
+          mixTag(TagShortLiteral)
+          mixShort(value)
+
         case IntLiteral(value) =>
           mixTag(TagIntLiteral)
           mixInt(value)
@@ -459,6 +471,9 @@ object Hashers {
       case NothingType => mixTag(TagNothingType)
       case UndefType   => mixTag(TagUndefType)
       case BooleanType => mixTag(TagBooleanType)
+      case CharType    => mixTag(TagCharType)
+      case ByteType    => mixTag(TagByteType)
+      case ShortType   => mixTag(TagShortType)
       case IntType     => mixTag(TagIntType)
       case LongType    => mixTag(TagLongType)
       case FloatType   => mixTag(TagFloatType)
@@ -520,6 +535,15 @@ object Hashers {
 
     @inline
     final def mixString(str: String): Unit = digestStream.writeUTF(str)
+
+    @inline
+    final def mixChar(c: Char): Unit = digestStream.writeChar(c)
+
+    @inline
+    final def mixByte(b: Byte): Unit = digestStream.writeByte(b)
+
+    @inline
+    final def mixShort(s: Short): Unit = digestStream.writeShort(s)
 
     @inline
     final def mixInt(i: Int): Unit = digestStream.writeInt(i)

@@ -148,6 +148,24 @@ class DoubleTest {
     assertTrue(compare(0.0, -0.0) > 0)
   }
 
+  @Test def compareToConvertedFromInt_issue_3085(): Unit = {
+    @noinline
+    def foo(x: Int): Unit =
+      bar(x.toDouble)
+
+    @inline
+    def bar(x: Double): Unit = {
+      assertTrue(x.compareTo(5.5) < 0)
+      foobar(x)
+    }
+
+    @inline
+    def foobar(x: Comparable[java.lang.Double]): Unit =
+      assertTrue(x.compareTo(5.5) < 0)
+
+    foo(5)
+  }
+
   @Test def should_be_a_Comparable(): Unit = {
     def compare(x: Any, y: Any): Int =
       x.asInstanceOf[Comparable[Any]].compareTo(y)

@@ -78,7 +78,10 @@ private[ir] object Tags {
   final val TagUndefined = TagJSLinkingInfo + 1
   final val TagNull = TagUndefined + 1
   final val TagBooleanLiteral = TagNull + 1
-  final val TagIntLiteral = TagBooleanLiteral + 1
+  final val TagCharLiteral = TagBooleanLiteral + 1
+  final val TagByteLiteral = TagCharLiteral + 1
+  final val TagShortLiteral = TagByteLiteral + 1
+  final val TagIntLiteral = TagShortLiteral + 1
   final val TagLongLiteral = TagIntLiteral + 1
   final val TagFloatLiteral = TagLongLiteral + 1
   final val TagDoubleLiteral = TagFloatLiteral + 1
@@ -109,7 +112,10 @@ private[ir] object Tags {
   final val TagNothingType = TagAnyType + 1
   final val TagUndefType = TagNothingType + 1
   final val TagBooleanType = TagUndefType + 1
-  final val TagIntType = TagBooleanType + 1
+  final val TagCharType = TagBooleanType + 1
+  final val TagByteType = TagCharType + 1
+  final val TagShortType = TagByteType + 1
+  final val TagIntType = TagShortType + 1
   final val TagLongType = TagIntType + 1
   final val TagFloatType = TagLongType + 1
   final val TagDoubleType = TagFloatType + 1

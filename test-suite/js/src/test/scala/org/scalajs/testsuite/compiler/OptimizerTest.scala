@@ -151,6 +151,73 @@ class OptimizerTest {
     // scalastyle:on return
   }
 
+  // === constant folding
+
+  @Test def constant_folding_===(): Unit = {
+    @inline def test(expectEq: Boolean, lhs: Any, rhs: Any): Unit = {
+      assertEquals(expectEq,
+          lhs.asInstanceOf[AnyRef] eq rhs.asInstanceOf[AnyRef])
+      assertEquals(!expectEq,
+          lhs.asInstanceOf[AnyRef] ne rhs.asInstanceOf[AnyRef])
+    }
+
+    test(true, false, false)
+    test(true, 5, 5)
+    test(true, 5.toByte, 5.toByte)
+    test(true, 5.toByte, 5)
+    test(true, 5.0, 5)
+    test(true, 5.0f, 5.toShort)
+    test(true, classOf[String], classOf[String])
+    test(true, "hello", "hello")
+
+    test(false, false, true)
+    test(false, 'A', 'A') // they're boxed, so not ===
+    test(false, 5, 6)
+    test(false, 5.toByte, 6.toByte)
+    test(false, 5.toByte, 5L)
+    test(false, 5, 5L)
+    test(false, 5L, 6L)
+    test(false, 5L, 5L) // they're instances of RuntimeLong, so not ===
+    test(false, false, 0)
+    test(false, 65, 'A')
+    test(false, classOf[String], classOf[Boolean])
+    test(false, "hello", "world")
+  }
+
+  @Test def constant_folding_==(): Unit = {
+    @inline def testChar(expectEq: Boolean, lhs: Char, rhs: Char): Unit = {
+      assertEquals(expectEq, lhs == rhs)
+      assertEquals(!expectEq, lhs != rhs)
+    }
+
+    testChar(true, 'A', 'A')
+    testChar(false, 'A', 'B')
+
+    @inline def testInt(expectEq: Boolean, lhs: Int, rhs: Int): Unit = {
+      assertEquals(expectEq, lhs == rhs)
+      assertEquals(!expectEq, lhs != rhs)
+    }
+
+    testInt(true, 5, 5)
+    testInt(false, 5, 6)
+
+    @inline def testLong(expectEq: Boolean, lhs: Long, rhs: Long): Unit = {
+      assertEquals(expectEq, lhs == rhs)
+      assertEquals(!expectEq, lhs != rhs)
+    }
+
+    testLong(true, 5L, 5L)
+    testLong(false, 5L, 6L)
+
+    @inline def testDouble(expectEq: Boolean, lhs: Double, rhs: Double): Unit = {
+      assertEquals(expectEq, lhs == rhs)
+      assertEquals(!expectEq, lhs != rhs)
+    }
+
+    testDouble(true, 5.5, 5.5)
+    testDouble(false, 5.5, 6.5)
+  }
+
   // +[string] constant folding
 
   @Test def must_not_break_when_folding_two_constant_strings(): Unit = {
