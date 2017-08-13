@@ -534,17 +534,10 @@ private final class Analyzer(config: CommonPhaseConfig,
       assert(this.isScalaClass,
           s"Cannot create reflective proxy in non-Scala class $this")
 
-      val returnsChar = targetName.endsWith("__C")
       val syntheticInfo = makeSyntheticMethodInfo(
           encodedName = proxyName,
           methodsCalled = Map(
-              this.encodedName -> List(targetName)),
-          methodsCalledStatically = (
-              if (returnsChar) Map(BoxedCharacterClass -> List("init___C"))
-              else Map.empty),
-          instantiatedClasses = (
-              if (returnsChar) List(BoxedCharacterClass)
-              else Nil))
+              this.encodedName -> List(targetName)))
       val m = new MethodInfo(this, syntheticInfo)
       m.syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName)
       methodInfos += proxyName -> m

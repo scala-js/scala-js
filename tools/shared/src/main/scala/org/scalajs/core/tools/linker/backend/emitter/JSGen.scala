@@ -108,23 +108,25 @@ private[emitter] final class JSGen(val semantics: Semantics,
         if (HijackedBoxedClasses.contains(className)) {
           if (test) {
             className match {
-              case BoxedUnitClass    => expr === Undefined()
-              case BoxedBooleanClass => typeof(expr) === "boolean"
-              case BoxedByteClass    => genCallHelper("isByte", expr)
-              case BoxedShortClass   => genCallHelper("isShort", expr)
-              case BoxedIntegerClass => genCallHelper("isInt", expr)
-              case BoxedFloatClass   => genCallHelper("isFloat", expr)
-              case BoxedDoubleClass  => typeof(expr) === "number"
+              case BoxedUnitClass      => expr === Undefined()
+              case BoxedBooleanClass   => typeof(expr) === "boolean"
+              case BoxedCharacterClass => genCallHelper("isChar", expr)
+              case BoxedByteClass      => genCallHelper("isByte", expr)
+              case BoxedShortClass     => genCallHelper("isShort", expr)
+              case BoxedIntegerClass   => genCallHelper("isInt", expr)
+              case BoxedFloatClass     => genCallHelper("isFloat", expr)
+              case BoxedDoubleClass    => typeof(expr) === "number"
             }
           } else {
             className match {
-              case BoxedUnitClass    => genCallHelper("asUnit", expr)
-              case BoxedBooleanClass => genCallHelper("asBoolean", expr)
-              case BoxedByteClass    => genCallHelper("asByte", expr)
-              case BoxedShortClass   => genCallHelper("asShort", expr)
-              case BoxedIntegerClass => genCallHelper("asInt", expr)
-              case BoxedFloatClass   => genCallHelper("asFloat", expr)
-              case BoxedDoubleClass  => genCallHelper("asDouble", expr)
+              case BoxedUnitClass      => genCallHelper("asUnit", expr)
+              case BoxedBooleanClass   => genCallHelper("asBoolean", expr)
+              case BoxedCharacterClass => genCallHelper("asChar", expr)
+              case BoxedByteClass      => genCallHelper("asByte", expr)
+              case BoxedShortClass     => genCallHelper("asShort", expr)
+              case BoxedIntegerClass   => genCallHelper("asInt", expr)
+              case BoxedFloatClass     => genCallHelper("asFloat", expr)
+              case BoxedDoubleClass    => genCallHelper("asDouble", expr)
             }
           }
         } else {

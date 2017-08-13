@@ -157,6 +157,26 @@ function $propertyName(obj) {
     return prop;
 };
 
+// Boxed Char
+
+//!if outputMode == ECMAScript6
+class $Char {
+  constructor(c) {
+    this.c = c;
+  }
+  toString() {
+    return String["fromCharCode"](this.c);
+  }
+}
+//!else
+function $Char(c) {
+  this.c = c;
+};
+$Char.prototype.toString = (function() {
+  return String["fromCharCode"](this.c);
+});
+//!endif
+
 // Runtime functions
 
 function $isScalaJSObject(obj) {
@@ -259,6 +279,8 @@ function $objectGetClass(instance) {
         return instance.getClass__jl_Class();
       else if ($is_sjsr_RuntimeLong(instance))
         return $d_jl_Long.getClassOf();
+      else if ($isChar(instance))
+        return $d_jl_Character.getClassOf();
       else if ($isScalaJSObject(instance))
         return instance.$classData.getClassOf();
       else
@@ -296,6 +318,8 @@ function $objectEquals(instance, rhs) {
     return instance.equals__O__Z(rhs);
   else if (typeof instance === "number")
     return typeof rhs === "number" && $numberEquals(instance, rhs);
+  else if ($isChar(instance))
+    return $isChar(rhs) && instance.c === rhs.c;
   else
     return instance === rhs;
 };
@@ -323,6 +347,8 @@ function $objectHashCode(instance) {
     default:
       if ($isScalaJSObject(instance) || instance === null)
         return instance.hashCode__I();
+      else if ($isChar(instance))
+        return instance.c;
 //!if outputMode != ECMAScript6
       else if ($idHashCodeMap === null)
         return 42;
@@ -350,7 +376,14 @@ function $comparableCompareTo(instance, rhs) {
 //!endif
       return instance - rhs; // yes, this gives the right result
     default:
-      return instance.compareTo__O__I(rhs);
+      if ($isChar(instance)) {
+//!if asInstanceOfs != Unchecked
+        $asChar(rhs);
+//!endif
+        return instance.c - rhs.c;
+      } else {
+        return instance.compareTo__O__I(rhs);
+      }
   }
 };
 
@@ -391,6 +424,10 @@ function $booleanBooleanValue(instance) {
   if (typeof instance === "boolean") return instance;
   else                               return instance.booleanValue__Z();
 };
+
+function $characterCharValue(instance) {
+  return instance.c;
+}
 
 function $numberByteValue(instance) {
   if (typeof instance === "number") return (instance << 24) >> 24;
@@ -563,6 +600,10 @@ const $systemIdentityHashCode =
 
 // is/as for hijacked boxed classes (the non-trivial ones)
 
+function $isChar(v) {
+  return v instanceof $Char;
+};
+
 function $isByte(v) {
   return typeof v === "number" && (v << 24 >> 24) === v && 1/v !== 1/-0;
 };
@@ -596,6 +637,13 @@ function $asBoolean(v) {
     return v;
   else
     $throwClassCastException(v, "java.lang.Boolean");
+};
+
+function $asChar(v) {
+  if (v instanceof $Char || v === null)
+    return v;
+  else
+    $throwClassCastException(v, "java.lang.Character");
 };
 
 function $asByte(v) {
@@ -634,11 +682,21 @@ function $asDouble(v) {
 };
 //!endif
 
+// Boxes
+
+function $bC(c) {
+  return new $Char(c);
+}
+const $bC0 = $bC(0);
+
 // Unboxes
 
 //!if asInstanceOfs != Unchecked
 function $uZ(value) {
   return !!$asBoolean(value);
+};
+function $uC(value) {
+  return null === value ? 0 : $asChar(value).c;
 };
 function $uB(value) {
   return $asByte(value) | 0;
@@ -663,6 +721,9 @@ function $uD(value) {
   return +$asDouble(value);
 };
 //!else
+function $uC(value) {
+  return null === value ? 0 : value.c;
+}
 function $uJ(value) {
   return null === value ? $m_sjsr_RuntimeLong$().Zero$1 : value;
 };

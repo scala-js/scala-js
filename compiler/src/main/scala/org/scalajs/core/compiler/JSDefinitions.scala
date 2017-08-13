@@ -105,6 +105,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val RuntimeStringModuleClass = RuntimeStringModule.moduleClass
 
     lazy val BooleanReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.BooleanReflectiveCall")
+    lazy val CharacterReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.CharacterReflectiveCall")
     lazy val NumberReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.NumberReflectiveCall")
     lazy val IntegerReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.IntegerReflectiveCall")
     lazy val LongReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.LongReflectiveCall")

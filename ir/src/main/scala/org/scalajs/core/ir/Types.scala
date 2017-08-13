@@ -63,11 +63,6 @@ object Types {
 
   /** `Char` type, a 16-bit UTF-16 code unit.
    *  It does not accept `null` nor `undefined`.
-   *
-   *  `CharType` has the peculiarity that it is *not* a subtype of [[AnyType]].
-   *  As such, no method can be called on a `CharType` either. In fact, very
-   *  few operations manipulate `CharType`s. It is usually necessary to convert
-   *  to/from [[IntType]]s using the appropriate `UnaryOp` conversions.
    */
   case object CharType extends Type
 
@@ -204,7 +199,6 @@ object Types {
     (lhs != NoType && rhs != NoType) && {
       (lhs == rhs) ||
       ((lhs, rhs) match {
-        case (CharType, _)    => false
         case (_, AnyType)     => true
         case (NothingType, _) => true
 
@@ -218,6 +212,8 @@ object Types {
           isSubclass(BoxedUnitClass, cls)
         case (BooleanType, ClassType(cls)) =>
           isSubclass(BoxedBooleanClass, cls)
+        case (CharType, ClassType(cls)) =>
+          isSubclass(BoxedCharacterClass, cls)
         case (ByteType, ClassType(cls)) =>
           isSubclass(BoxedByteClass, cls)
         case (ShortType, ClassType(cls)) =>

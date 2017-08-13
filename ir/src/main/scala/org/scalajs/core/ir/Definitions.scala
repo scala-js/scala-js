@@ -39,13 +39,16 @@ object Definitions {
   val NumberClass       = "jl_Number"
 
   val HijackedBoxedClasses = Set(
-      BoxedUnitClass, BoxedBooleanClass, BoxedByteClass, BoxedShortClass,
-      BoxedIntegerClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass)
+      BoxedUnitClass, BoxedBooleanClass, BoxedCharacterClass, BoxedByteClass,
+      BoxedShortClass, BoxedIntegerClass, BoxedLongClass, BoxedFloatClass,
+      BoxedDoubleClass)
   val HijackedClasses =
     HijackedBoxedClasses + StringClass
 
   val AncestorsOfStringClass = Set(
       CharSequenceClass, ComparableClass, SerializableClass)
+  val AncestorsOfBoxedCharacterClass = Set(
+      ComparableClass, SerializableClass)
   val AncestorsOfHijackedNumberClasses = Set(
       NumberClass, ComparableClass, SerializableClass)
   val AncestorsOfBoxedBooleanClass = Set(

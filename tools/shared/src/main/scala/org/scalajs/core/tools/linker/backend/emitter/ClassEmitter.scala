@@ -310,7 +310,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         assert(initMethodDef.resultType == NoType,
             s"Found a constructor with type ${initMethodDef.resultType} at $pos")
         desugarToFunction(tree.encodedName, initMethodDef.args, initMethodBody,
-            isStat = true)
+            resultType = NoType)
       }
 
       for (generatedInitMethodFun <- generatedInitMethodFunWithGlobals) yield {
@@ -329,7 +329,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     tree.exportedMembers.map(_.value) collectFirst {
       case MethodDef(false, StringLiteral("constructor"), params, _, body) =>
-        desugarToFunction(tree.encodedName, params, body.get, isStat = true)
+        desugarToFunction(tree.encodedName, params, body.get, resultType = NoType)
     } getOrElse {
       throw new IllegalArgumentException(
           s"${tree.encodedName} does not have an exported constructor")
@@ -374,7 +374,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       val classVar = envField("c", className)
       for (propName <- genPropertyName(name)) yield {
         val select = genPropSelect(classVar, propName)
-        js.Assign(select, genZeroOf(ftpe))
+        val zero =
+          if (ftpe == CharType) js.VarRef(js.Ident("$bC0"))
+          else genZeroOf(ftpe)
+        js.Assign(select, zero)
       }
     }
     WithGlobals.list(statsWithGlobals)
@@ -401,7 +404,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     implicit val pos = method.pos
 
     val methodFun0WithGlobals = desugarToFunction(className,
-        method.args, methodBody, method.resultType == NoType)
+        method.args, methodBody, method.resultType)
 
     methodFun0WithGlobals.flatMap { methodFun0 =>
       val methodFun = if (Definitions.isConstructorName(method.encodedName)) {
@@ -456,7 +459,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     implicit val pos = method.pos
 
     val methodFunWithGlobals = desugarToFunctionWithExplicitThis(
-        className, method.args, method.body.get, method.resultType == NoType)
+        className, method.args, method.body.get, method.resultType)
 
     for (methodFun <- methodFunWithGlobals) yield {
       val Ident(methodName, origName) = method.name
@@ -495,13 +498,13 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     // optional getter definition
     val optGetterWithGlobals = property.getterBody map { body =>
-      desugarToFunction(className, Nil, body, isStat = false)
+      desugarToFunction(className, Nil, body, resultType = AnyType)
     }
 
     // optional setter definition
     val optSetterWithGlobals = property.setterArgAndBody map {
       case (arg, body) =>
-        desugarToFunction(className, arg :: Nil, body, isStat = true)
+        desugarToFunction(className, arg :: Nil, body, resultType = NoType)
     }
 
     for {
@@ -542,14 +545,14 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       val getterWithGlobals = property.getterBody.fold {
         WithGlobals[js.Tree](js.Skip())
       } { body =>
-        for (fun <- desugarToFunction(className, Nil, body, isStat = false))
+        for (fun <- desugarToFunction(className, Nil, body, resultType = AnyType))
           yield js.GetterDef(static, propName, fun.body)
       }
 
       val setterWithGlobals = property.setterArgAndBody.fold {
         WithGlobals[js.Tree](js.Skip())
       } { case (arg, body) =>
-        for (fun <- desugarToFunction(className, arg :: Nil, body, isStat = true))
+        for (fun <- desugarToFunction(className, arg :: Nil, body, resultType = NoType))
           yield js.SetterDef(static, propName, fun.args.head, fun.body)
       }
 
@@ -605,7 +608,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       case ComputedName(tree, _) =>
         implicit val pos = name.pos
         for {
-          fun <- desugarToFunction(params = Nil, body = tree, isStat = false)
+          fun <- desugarToFunction(params = Nil, body = tree, resultType = AnyType)
         } yield {
           val nameTree = fun match {
             case js.Function(Nil, js.Return(expr)) =>
@@ -643,6 +646,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         AncestorsOfHijackedNumberClasses.contains(className)
       val isAncestorOfBoxedBooleanClass =
         AncestorsOfBoxedBooleanClass.contains(className)
+      val isAncestorOfBoxedCharacterClass =
+        AncestorsOfBoxedCharacterClass.contains(className)
       val isAncestorOfBoxedUnitClass =
         AncestorsOfBoxedUnitClass.contains(className)
 
@@ -678,6 +683,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
               if (isAncestorOfBoxedBooleanClass)
                 test = test || (
                     js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("boolean"))
+              if (isAncestorOfBoxedCharacterClass)
+                test = test || genCallHelper("isChar", obj)
               if (isAncestorOfBoxedUnitClass)
                 test = test || (obj === js.Undefined())
 
@@ -1040,7 +1047,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val baseCtor = envField("c", cd.name.name, cd.name.originalName)
 
     val generatedFunWithGlobals = desugarToFunctionWithExplicitThis(
-        cd.encodedName, args, body, isStat = true)
+        cd.encodedName, args, body, resultType = NoType)
 
     for (generatedFun <- generatedFunWithGlobals) yield {
       val js.Function(thisParam :: ctorParams, ctorBody) = generatedFun
@@ -1114,7 +1121,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       genCreateNamespaceInExports(fullName)
 
     val methodDefWithGlobals = desugarToFunction(cd.encodedName, args, body,
-        isStat = resultType == NoType)
+        resultType)
 
     for (methodDef <- methodDefWithGlobals) yield {
       js.Block(

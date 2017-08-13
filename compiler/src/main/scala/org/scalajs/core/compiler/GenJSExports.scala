@@ -930,21 +930,20 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       case _ =>
         import ir.{Definitions => Defs}
         (toTypeKind(tpe): @unchecked) match {
-          case VoidKind    => HijackedTypeTest(Defs.BoxedUnitClass,    0)
+          case VoidKind    => HijackedTypeTest(Defs.BoxedUnitClass, 0)
           case BooleanKind => HijackedTypeTest(Defs.BoxedBooleanClass, 1)
-          case ByteKind    => HijackedTypeTest(Defs.BoxedByteClass,    2)
-          case ShortKind   => HijackedTypeTest(Defs.BoxedShortClass,   3)
-          case IntKind     => HijackedTypeTest(Defs.BoxedIntegerClass, 4)
-          case FloatKind   => HijackedTypeTest(Defs.BoxedFloatClass,   5)
-          case DoubleKind  => HijackedTypeTest(Defs.BoxedDoubleClass,  6)
-
-          case CharKind => InstanceOfTypeTest(boxedClass(CharClass).tpe)
-          case LongKind => InstanceOfTypeTest(boxedClass(LongClass).tpe)
+          case CharKind    => HijackedTypeTest(Defs.BoxedCharacterClass, 2)
+          case ByteKind    => HijackedTypeTest(Defs.BoxedByteClass, 3)
+          case ShortKind   => HijackedTypeTest(Defs.BoxedShortClass, 4)
+          case IntKind     => HijackedTypeTest(Defs.BoxedIntegerClass, 5)
+          case LongKind    => HijackedTypeTest(Defs.BoxedLongClass, 6)
+          case FloatKind   => HijackedTypeTest(Defs.BoxedFloatClass, 7)
+          case DoubleKind  => HijackedTypeTest(Defs.BoxedDoubleClass, 8)
 
           case REFERENCE(cls) =>
             cls match {
               case BoxedUnitClass => HijackedTypeTest(Defs.BoxedUnitClass, 0)
-              case StringClass    => HijackedTypeTest(Defs.StringClass, 7)
+              case StringClass    => HijackedTypeTest(Defs.StringClass, 9)
               case ObjectClass    => NoTypeTest
               case _              =>
                 if (isRawJSType(tpe)) NoTypeTest
