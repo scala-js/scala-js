@@ -158,6 +158,57 @@ class ReflectiveCallTest {
     assertFalse(fBoolN(false))
   }
 
+  @Test def should_work_with_compareTo_for_primitives(): Unit = {
+    def fCompareToBoolean(x: { def compareTo(y: java.lang.Boolean): Int }, y: Boolean): Int =
+      x.compareTo(y)
+    assertTrue(fCompareToBoolean(false, true) < 0)
+
+    def fCompareToChar(x: { def compareTo(y: java.lang.Character): Int }, y: Char): Int =
+      x.compareTo(y)
+    assertTrue(fCompareToChar('A', 'C') < 0)
+
+    def fCompareToByte(x: { def compareTo(y: java.lang.Byte): Int }, y: Byte): Int =
+      x.compareTo(y)
+    assertTrue(fCompareToByte(5.toByte, 6.toByte) < 0)
+
+    def fCompareToShort(x: { def compareTo(y: java.lang.Short): Int }, y: Short): Int =
+      x.compareTo(y)
+    assertTrue(fCompareToShort(5.toShort, 6.toShort) < 0)
+
+    def fCompareToInt(x: { def compareTo(y: java.lang.Integer): Int }, y: Int): Int =
+      x.compareTo(y)
+    assertTrue(fCompareToInt(5, 6) < 0)
+
+    def fCompareToLong(x: { def compareTo(y: java.lang.Long): Int }, y: Long): Int =
+      x.compareTo(y)
+    assertTrue(fCompareToLong(5L, 6L) < 0)
+
+    def fCompareToFloat(x: { def compareTo(y: java.lang.Float): Int }, y: Float): Int =
+      x.compareTo(y)
+    assertTrue(fCompareToFloat(5.5f, 6.5f) < 0)
+
+    def fCompareToDouble(x: { def compareTo(y: java.lang.Double): Int }, y: Double): Int =
+      x.compareTo(y)
+    assertTrue(fCompareToDouble(5.5, 6.5) < 0)
+  }
+
+  @Test def should_work_with_concat_for_primitives(): Unit = {
+    // See https://github.com/scala/bug/issues/10469
+    assumeFalse("Reflective call prim.+(String) broken on the JVM",
+        Platform.executingInJVM)
+
+    def concat(x: Any { def +(y: String): String }, y: String): String = x + y
+
+    assertEquals("truefoo", concat(true, "foo"))
+    assertEquals("Afoo", concat('A', "foo"))
+    assertEquals("5foo", concat(5.toByte, "foo"))
+    assertEquals("5foo", concat(5.toShort, "foo"))
+    assertEquals("5foo", concat(5, "foo"))
+    assertEquals("5foo", concat(5L, "foo"))
+    assertEquals("5.5foo", concat(5.5f, "foo"))
+    assertEquals("5.5foo", concat(5.5, "foo"))
+  }
+
   @Test def should_work_with_Arrays(): Unit = {
     type UPD = { def update(i: Int, x: String): Unit }
     type APL = { def apply(i: Int): String }
@@ -211,6 +262,10 @@ class ReflectiveCallTest {
     type LEN_A = { def length: Any }
     def lenA(x: LEN_A): Any = x.length
     assertEquals(4, lenA("asdf"))
+
+    def compareToString(x: { def compareTo(y: String): Int }, y: String): Int =
+      x.compareTo(y)
+    assertTrue(compareToString("hello", "world") < 0)
   }
 
   @Test def should_properly_generate_forwarders_for_inherited_methods(): Unit = {
