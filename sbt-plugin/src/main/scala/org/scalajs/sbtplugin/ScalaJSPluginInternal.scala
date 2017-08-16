@@ -380,6 +380,18 @@ object ScalaJSPluginInternal {
     Attributed.blank(results.result()).put(scalaJSSourceFiles, realFiles.result())
   }
 
+  private def ensureOldStyleMainClass(mainClass: String,
+      scalaJSDiscoveredMainClassesValue: Map[String, Boolean]): Unit = {
+    val newStyle = scalaJSDiscoveredMainClassesValue.getOrElse(mainClass, false)
+    if (newStyle) {
+      throw new MessageOnlyException(
+          s"The main class $mainClass uses the new style with an " +
+          "Array[String] argument, but scalaJSUseMainModuleInitializer is " +
+          "false. Did you forget to specify `scalaJSUseMainModuleInitializer " +
+          ":= true` in your project settings?")
+    }
+  }
+
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
@@ -458,7 +470,11 @@ object ScalaJSPluginInternal {
           }
         } else {
           Def.task {
+            val scalaJSDiscoveredMainClassesValue =
+              scalaJSDiscoveredMainClasses.value
             mainClass.value map { mainCl =>
+              ensureOldStyleMainClass(mainCl, scalaJSDiscoveredMainClassesValue)
+
               val file = (artifactPath in packageScalaJSLauncherInternal).value
               assert(scalaJSModuleKind.value == ModuleKind.NoModule,
                   "Cannot produce a launcher file when scalaJSModuleKind " +
@@ -838,10 +854,13 @@ object ScalaJSPluginInternal {
           Def.task {
             val moduleKind = scalaJSModuleKind.value
             val moduleIdentifier = scalaJSModuleIdentifier.value
+            val scalaJSDiscoveredMainClassesValue =
+              scalaJSDiscoveredMainClasses.value
 
             (mainClass in scalaJSLauncherInternal).value.fold {
               throw new MessageOnlyException("No main class detected.")
             } { mainClass =>
+              ensureOldStyleMainClass(mainClass, scalaJSDiscoveredMainClassesValue)
               val memLaunch =
                 memLauncher(mainClass, moduleKind, moduleIdentifier)
               Attributed[VirtualJSFile](memLaunch)(
@@ -872,6 +891,17 @@ object ScalaJSPluginInternal {
               "`runMain` is not supported when using a main module " +
               "initializer (scalaJSUseMainModuleInitializer := true) since " +
               "the (unique) entry point is burned in the fastOptJS/fullOptJS.")
+        }
+
+        val scalaJSDiscoveredMainClassesValue =
+          scalaJSDiscoveredMainClasses.value
+        val newStyleMain = scalaJSDiscoveredMainClassesValue.getOrElse(
+            mainClass, false)
+        if (newStyleMain) {
+          throw new MessageOnlyException(
+              "`runMain` is not supported when using a main class with an " +
+              "Array[String] argument. It is only supported for objects that " +
+              "extend js.JSApp.")
         }
 
         val moduleKind = scalaJSModuleKind.value
