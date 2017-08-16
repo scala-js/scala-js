@@ -1677,6 +1677,17 @@ object Build {
     settings = commonSettings ++ testSuiteCommonSettings(isJSTest = false) ++ Seq(
       name := "Scala.js test suite on JVM",
 
+      /* Scala.js always assumes en-US, UTF-8 and NL as line separator by
+       * default. Since some of our tests rely on these defaults (notably to
+       * test them), we have to force the same values on the JVM.
+       */
+      fork in Test := true,
+      javaOptions in Test ++= Seq(
+          "-Dfile.encoding=UTF-8",
+          "-Duser.country=US", "-Duser.language=en",
+          "-Dline.separator=\n"
+      ),
+
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.11" % "test"
     )
