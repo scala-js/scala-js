@@ -3244,18 +3244,51 @@ abstract class GenJSCode extends plugins.PluginComponent
             fun.symbol.simpleName + ") " + " at: " + (tree.pos))
     }
 
-    /** Gen JS code for a simple operation (arithmetic, logical, or comparison) */
-    private def genSimpleOp(tree: Apply, args: List[Tree], code: Int): js.Tree = {
+    private def genPrimitiveOpForReflectiveCall(sym: Symbol, receiver: js.Tree,
+        args: List[js.Tree])(
+        implicit pos: Position): js.Tree = {
+
       import scalaPrimitives._
 
+      if (!isPrimitive(sym)) {
+        abort(
+            "Trying to reflectively call a method of a primitive type that " +
+            "is not itself a primitive method: " + sym.fullName + " at " + pos)
+      }
+      val code = getPrimitive(sym)
+
+      if (isArithmeticOp(code) || isLogicalOp(code) || isComparisonOp(code)) {
+        genSimpleOp(sym.owner.tpe :: sym.tpe.paramTypes, sym.tpe.resultType,
+            receiver :: args, code)
+      } else if (code == CONCAT) {
+        js.BinaryOp(js.BinaryOp.String_+, receiver, args.head)
+      } else if (isCoercion(code)) {
+        adaptPrimitive(receiver, toIRType(sym.tpe.resultType))
+      } else {
+        abort(
+            "Unknown primitive operation for reflective call: " + sym.fullName +
+            " at " + pos)
+      }
+    }
+
+    /** Gen JS code for a simple operation (arithmetic, logical, or comparison) */
+    private def genSimpleOp(tree: Apply, args: List[Tree], code: Int): js.Tree = {
       implicit val pos = tree.pos
 
-      val sources = args.map(genExpr)
+      genSimpleOp(args.map(_.tpe), tree.tpe, args.map(genExpr), code)
+    }
+
+    /** Gen JS code for a simple operation (arithmetic, logical, or comparison) */
+    private def genSimpleOp(argTpes: List[Type], resultTpe: Type,
+        sources: List[js.Tree], code: Int)(
+        implicit pos: Position): js.Tree = {
+
+      import scalaPrimitives._
 
       sources match {
         // Unary operation
         case List(src_in) =>
-          val opType = toIRType(tree.tpe)
+          val opType = toIRType(resultTpe)
           val src = adaptPrimitive(src_in, opType)
 
           (code match {
@@ -3290,8 +3323,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           import js.BinaryOp._
 
           val isShift = isShiftOp(code)
-          val leftKind = toTypeKind(args(0).tpe)
-          val rightKind = toTypeKind(args(1).tpe)
+          val leftKind = toTypeKind(argTpes(0))
+          val rightKind = toTypeKind(argTpes(1))
 
           val opType = {
             if (isShift) {
@@ -3426,7 +3459,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                     !rsrc.isInstanceOf[js.Null] &&
                     // Arrays, Null, Nothing do not have an equals() method
                     leftKind.isInstanceOf[REFERENCE]) {
-                  val body = genEqEqPrimitive(args(0).tpe, args(1).tpe, lsrc, rsrc)
+                  val body = genEqEqPrimitive(argTpes(0), argTpes(1), lsrc, rsrc)
                   if (not) js.UnaryOp(js.UnaryOp.Boolean_!, body) else body
                 } else {
                   js.BinaryOp(
@@ -3444,7 +3477,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
         case _ =>
-          abort("Too many arguments for primitive function: " + tree)
+          abort("Too many arguments for primitive function at " + pos)
       }
     }
 
@@ -3740,6 +3773,13 @@ abstract class GenJSCode extends plugins.PluginComponent
         genApplyMethod(callTrg, proxyIdent, arguments, jstpe.AnyType)
 
       if (!isAnyRefPrimitive) {
+        def boxIfNeeded(call: js.Tree, returnType: Type): js.Tree = {
+          if (isPrimitiveValueType(returnType))
+            makePrimitiveBox(call, returnType)
+          else
+            call
+        }
+
         if (isArrayLikeOp) {
           def genRTCall(method: Symbol, args: js.Tree*) =
             genApplyMethod(genLoadModule(ScalaRunTimeModule),
@@ -3766,69 +3806,100 @@ abstract class GenJSCode extends plugins.PluginComponent
           })(jstpe.AnyType)
         }
 
-        for {
-          (rtClass, reflBoxClass) <- Seq(
-              (StringClass, StringClass),
-              (BoxedDoubleClass, NumberReflectiveCallClass),
-              (BoxedBooleanClass, BooleanReflectiveCallClass),
-              (BoxedCharacterClass, CharacterReflectiveCallClass),
-              (BoxedLongClass, LongReflectiveCallClass)
-          )
-          implMethodSym = matchingSymIn(reflBoxClass)
-          if implMethodSym != NoSymbol && implMethodSym.isPublic
-        } {
-          callStatement = js.If(genIsInstanceOf(callTrg, rtClass.tpe), {
-            if (implMethodSym.owner == ObjectClass) {
+        /* Look for a matching method in String. If we find one, we must
+         * redirect it to RuntimeString.
+         */
+        val methodInStringClass = matchingSymIn(StringClass)
+        if (methodInStringClass != NoSymbol && methodInStringClass.isPublic) {
+          callStatement = js.If(genIsInstanceOf(callTrg, StringClass.tpe), {
+            if (methodInStringClass.owner == ObjectClass) {
               // If the method is defined on Object, we can call it normally.
-              genApplyMethod(callTrg, implMethodSym, arguments)
+              genApplyMethod(callTrg, methodInStringClass, arguments)
             } else {
-              if (rtClass == StringClass) {
-                val (rtModuleClass, methodIdent) =
-                  encodeRTStringMethodSym(implMethodSym)
-                val retTpe = implMethodSym.tpe.resultType
-                val castCallTrg = fromAny(callTrg, StringClass.toTypeConstructor)
-                val rawApply = genApplyMethod(
-                    genLoadModule(rtModuleClass),
-                    methodIdent,
-                    castCallTrg :: arguments,
-                    toIRType(retTpe))
-                // Box the result of the implementing method if required
-                if (isPrimitiveValueType(retTpe))
-                  makePrimitiveBox(rawApply, retTpe)
-                else
-                  rawApply
-              } else {
-                val reflBoxClassPatched = {
-                  def isIntOrLongKind(kind: TypeKind) = kind match {
-                    case CharKind     => false
-                    case _:INT | LONG => true
-                    case _            => false
-                  }
-                  if (rtClass == BoxedDoubleClass &&
-                      toTypeKind(implMethodSym.tpe.resultType) == DoubleKind &&
-                      isIntOrLongKind(toTypeKind(sym.tpe.resultType))) {
-                    // This must be an Int, and not a Double
-                    IntegerReflectiveCallClass
-                  } else {
-                    reflBoxClass
-                  }
-                }
-                val castCallTrg =
-                  fromAny(callTrg,
-                      reflBoxClassPatched.primaryConstructor.tpe.params.head.tpe)
-                val reflBox = genNew(reflBoxClassPatched,
-                    reflBoxClassPatched.primaryConstructor, List(castCallTrg))
-                genApplyMethod(
-                    reflBox,
-                    proxyIdent,
-                    arguments,
-                    jstpe.AnyType)
-              }
+              // Otherwise, we need to call it on RuntimeString
+              val (rtModuleClass, methodIdent) =
+                encodeRTStringMethodSym(methodInStringClass)
+              val retTpe = methodInStringClass.tpe.resultType
+              val castCallTrg = fromAny(callTrg, StringClass.toTypeConstructor)
+              boxIfNeeded(
+                  genApplyMethod(
+                      genLoadModule(rtModuleClass),
+                      methodIdent,
+                      castCallTrg :: arguments,
+                      toIRType(retTpe)),
+                  retTpe)
             }
           }, { // else
             callStatement
           })(jstpe.AnyType)
         }
+
+        /* For primitive types, we need to handle two cases. The method could
+         * either be defined in the boxed class of the primitive type, or it
+         * could be defined in the primitive class itself. In the former case,
+         * we generate a direct call to the actual (hijacked) method. In the
+         * latter case, we directly generate the primitive operation.
+         */
+
+        def addCallForPrimitive(primitiveClass: Symbol): Boolean = {
+          val boxedClass = definitions.boxedClass(primitiveClass)
+          val boxedTpe = boxedClass.tpe
+          val methodInBoxedClass = matchingSymIn(boxedClass)
+          if (methodInBoxedClass != NoSymbol && methodInBoxedClass.isPublic) {
+            callStatement = js.If(genIsInstanceOf(callTrg, boxedTpe), {
+              boxIfNeeded(
+                  genApplyMethod(
+                      genAsInstanceOf(callTrg, boxedTpe),
+                      methodInBoxedClass,
+                      arguments),
+                  methodInBoxedClass.tpe.resultType)
+            }, { // else
+              callStatement
+            })(jstpe.AnyType)
+            true
+          } else {
+            val methodInPrimClass = matchingSymIn(primitiveClass)
+            if (methodInPrimClass != NoSymbol && methodInPrimClass.isPublic) {
+              def isIntOrLongKind(kind: TypeKind) = kind match {
+                case CharKind     => false
+                case _:INT | LONG => true
+                case _            => false
+              }
+              val ignoreBecauseItMustBeAnInt = {
+                primitiveClass == DoubleClass &&
+                toTypeKind(methodInPrimClass.tpe.resultType) == DoubleKind &&
+                isIntOrLongKind(toTypeKind(sym.tpe.resultType))
+              }
+              if (ignoreBecauseItMustBeAnInt) {
+                // Fall through to the Int case that will come next
+                false
+              } else {
+                callStatement = js.If(genIsInstanceOf(callTrg, boxedTpe), {
+                  val castCallTrg =
+                    makePrimitiveUnbox(callTrg, primitiveClass.tpe)
+                  val call = genPrimitiveOpForReflectiveCall(methodInPrimClass,
+                      castCallTrg, arguments)
+                  boxIfNeeded(call, methodInPrimClass.tpe.resultType)
+                }, { // else
+                  callStatement
+                })(jstpe.AnyType)
+                true
+              }
+            } else {
+              false
+            }
+          }
+        }
+
+        addCallForPrimitive(BooleanClass)
+        addCallForPrimitive(LongClass)
+        addCallForPrimitive(CharClass)
+
+        /* For primitive numeric types that box as JS numbers, find the first
+         * one that matches. It will be able to handle the subsequent cases.
+         */
+        Seq(DoubleClass, IntClass, FloatClass, ShortClass, ByteClass).find(
+            addCallForPrimitive)
       }
 
       js.Block(callTrgVarDef, callStatement)
