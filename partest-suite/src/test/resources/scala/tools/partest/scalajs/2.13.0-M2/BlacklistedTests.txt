@@ -60,6 +60,7 @@ run/lambda-serialization-gc.scala
 run/t9390.scala
 run/t9390b.scala
 run/t9390c.scala
+run/trait-defaults-super.scala
 
 run/t2849.scala
 run/t1360.scala
@@ -134,6 +135,9 @@ run/t9365.scala
 run/inlineAddDeserializeLambda.scala
 run/sammy_seriazable.scala
 run/lambda-serialization-security.scala
+run/t10232.scala
+run/t10233.scala
+run/t10244.scala
 
 # Using System.getProperties
 
@@ -612,6 +616,9 @@ run/inferred-type-constructors-hou.scala
 run/trait-static-forwarder
 run/SD-235.scala
 run/t10026.scala
+run/checkinit.scala
+run/reflection-clinit
+run/reflection-clinit-nested
 
 # Uses refletction indirectly through
 # scala.runtime.ScalaRunTime.replStringOf
@@ -653,6 +660,9 @@ run/inlineHandlers.scala
 run/optimizer-array-load.scala
 run/t6827.scala
 run/t8601.scala
+
+# Expecting exceptions that are linking errors in Scala.js (e.g. NoSuchMethodException)
+run/t10334.scala
 
 # Playing with classfile format
 
@@ -697,7 +707,6 @@ run/repl-paste-2.scala
 run/t5655.scala
 run/t5072.scala
 run/repl-colon-type.scala
-run/kind-repl-command.scala
 run/repl-trim-stack-trace.scala
 run/t4594-repl-settings.scala
 run/repl-save.scala
@@ -779,6 +788,9 @@ run/t9689
 run/trailing-commas.scala
 run/t4700.scala
 run/t9880-9881.scala
+run/repl-kind.scala
+run/t10284.scala
+run/t9016.scala
 
 # Using Scala Script (partest.ScriptTest)
 
@@ -914,6 +926,8 @@ run/t9206.scala
 run/t9170.scala
 run/t8918-unary-ids.scala
 run/t1931.scala
+run/t8935-class.scala
+run/t8935-object.scala
 
 # partest.JavapTest
 run/t8608-no-format.scala
@@ -967,6 +981,14 @@ run/t3236
 run/t9013
 run/t10231
 run/t10067
+run/t10249
+run/sd143
+run/t4283b
+run/t7936
+run/t7936b
+run/t9937
+run/t10368
+run/t10334b
 
 # Using scala-script
 run/t7791-script-linenums.scala

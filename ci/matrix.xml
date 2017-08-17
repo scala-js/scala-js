@@ -330,7 +330,7 @@
       <v n="java">1.8</v>
     </run>
     <run task="main">
-      <v n="scala">2.13.0-M1</v>
+      <v n="scala">2.13.0-M2</v>
       <v n="java">1.8</v>
     </run>
 
@@ -351,7 +351,7 @@
       <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
-      <v n="scala">2.13.0-M1</v>
+      <v n="scala">2.13.0-M2</v>
       <v n="java">1.8</v>
       <v n="testSuite">testSuite</v>
     </run>
@@ -368,7 +368,7 @@
       <v n="testSuite">scalaTestSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
-      <v n="scala">2.13.0-M1</v>
+      <v n="scala">2.13.0-M2</v>
       <v n="java">1.8</v>
       <v n="testSuite">scalaTestSuite</v>
     </run>
@@ -390,7 +390,7 @@
       <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
-      <v n="scala">2.13.0-M1</v>
+      <v n="scala">2.13.0-M2</v>
       <v n="java">1.8</v>
       <v n="testSuite">testSuite</v>
     </run>
@@ -407,7 +407,7 @@
       <v n="testSuite">scalaTestSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
-      <v n="scala">2.13.0-M1</v>
+      <v n="scala">2.13.0-M2</v>
       <v n="java">1.8</v>
       <v n="testSuite">scalaTestSuite</v>
     </run>
@@ -426,7 +426,7 @@
       <v n="java">1.8</v>
     </run>
     <run task="bootstrap">
-      <v n="scala">2.13.0-M1</v>
+      <v n="scala">2.13.0-M2</v>
       <v n="java">1.8</v>
     </run>
 
@@ -473,7 +473,7 @@
       <v n="java">1.8</v>
     </run>
     <run task="partest-fastopt">
-      <v n="scala">2.13.0-M1</v>
+      <v n="scala">2.13.0-M2</v>
       <v n="java">1.8</v>
     </run>
 
@@ -617,11 +617,11 @@
       <v n="java">1.8</v>
     </run>
     <run task="partest-noopt">
-      <v n="scala">2.13.0-M1</v>
+      <v n="scala">2.13.0-M2</v>
       <v n="java">1.8</v>
     </run>
     <run task="partest-fullopt">
-      <v n="scala">2.13.0-M1</v>
+      <v n="scala">2.13.0-M2</v>
       <v n="java">1.8</v>
     </run>
   </matrix>

@@ -635,9 +635,9 @@ class RegressionTest {
 
   @Test def super_mixin_call_in_2_12_issue_3013(): Unit = {
     assumeTrue(
-        "Super mixin calls are broken in Scala/JVM 2.12.{0-2} and 2.13.0-M1",
+        "Super mixin calls are broken in Scala/JVM 2.12.{0-2}",
         !Platform.executingInJVM ||
-        !Set("2.12.0", "2.12.1", "2.12.2", "2.13.0-M1").contains(Platform.scalaVersion))
+        !Set("2.12.0", "2.12.1", "2.12.2").contains(Platform.scalaVersion))
 
     import Bug3013._
 
