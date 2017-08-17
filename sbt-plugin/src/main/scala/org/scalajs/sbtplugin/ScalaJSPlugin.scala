@@ -161,14 +161,17 @@ object ScalaJSPlugin extends AutoPlugin {
             .withEnv(env))
     }
 
-    /**
-     *  Creates a [[sbt.Def.Initialize Def.Initialize]] for a PhantomJSEnv. Use
-     *  this to explicitly specify in your build that you would like to run with
-     *  PhantomJS:
+    /** Creates a [[sbt.Def.Initialize Def.Initialize]] for a PhantomJSEnv.
+     *
+     *  Use this to explicitly specify in your build that you would like to run
+     *  with PhantomJS:
      *
      *  {{{
-     *  jsEnv := PhantomJSEnv().value
+     *  jsEnv := PhantomJSEnv(...).value
      *  }}}
+     *
+     *  The specified `Config` is augmented with an appropriate Jetty class
+     *  loader (through `withJettyClassLoader`).
      *
      *  Note that the resulting [[sbt.Def.Setting Setting]] is not scoped at
      *  all, but must be scoped in a project that has the ScalaJSPlugin enabled
@@ -178,19 +181,37 @@ object ScalaJSPlugin extends AutoPlugin {
      *  [[sbt.ProjectExtra.inScope[* Project.inScope]].
      */
     def PhantomJSEnv(
+        config: org.scalajs.jsenv.phantomjs.PhantomJSEnv.Config
+    ): Def.Initialize[Task[PhantomJSEnv]] = Def.task {
+      val loader = scalaJSPhantomJSClassLoader.value
+      new PhantomJSEnv(config.withJettyClassLoader(loader))
+    }
+
+    /** Creates a [[sbt.Def.Initialize Def.Initialize]] for a PhantomJSEnv
+     *  with the default configuration.
+     *
+     *  This is equivalent to
+     *  {{{
+     *  PhantomJSEnv(org.scalajs.jsenv.phantomjs.PhantomJSEnv.Config())
+     *  }}}
+     */
+    def PhantomJSEnv(): Def.Initialize[Task[PhantomJSEnv]] =
+      PhantomJSEnv(org.scalajs.jsenv.phantomjs.PhantomJSEnv.Config())
+
+    /** Creates a [[sbt.Def.Initialize Def.Initialize]] for a PhantomJSEnv. */
+    @deprecated("Use the overload with a PhantomJSEnv.Config.", "0.6.20")
+    def PhantomJSEnv(
         executable: String = "phantomjs",
         args: Seq[String] = Seq.empty,
         env: Map[String, String] = Map.empty,
         autoExit: Boolean = true
-    ): Def.Initialize[Task[PhantomJSEnv]] = Def.task {
-      val loader = scalaJSPhantomJSClassLoader.value
-      new PhantomJSEnv(
+    ): Def.Initialize[Task[PhantomJSEnv]] = {
+      PhantomJSEnv(
           org.scalajs.jsenv.phantomjs.PhantomJSEnv.Config()
             .withExecutable(executable)
             .withArgs(args.toList)
             .withEnv(env)
-            .withAutoExit(autoExit)
-            .withJettyClassLoader(loader))
+            .withAutoExit(autoExit))
     }
 
     // ModuleKind
