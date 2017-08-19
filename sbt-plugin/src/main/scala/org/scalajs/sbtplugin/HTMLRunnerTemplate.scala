@@ -45,7 +45,7 @@ private[scalajs] object HTMLRunnerTemplate {
         ${renderTestDefinitions(loadedFrameworks, definedTests)}
         </script>
       </head>
-      <body onload="org.scalajs.testinterface.HTMLRunner().main()" />
+      <body onload="org.scalajs.testinterface.HTMLRunner.main()" />
     </html>"""
   }
 

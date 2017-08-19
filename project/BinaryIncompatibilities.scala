@@ -96,6 +96,10 @@ object BinaryIncompatibilities {
   )
 
   val TestInterface = Seq(
+      // protected[testinterface], not an issue.
+      ProblemFilters.exclude[MissingTypesProblem](
+          "org.scalajs.testinterface.HTMLRunner$"),
+
       // internal, not an issue.
       ProblemFilters.exclude[MissingClassProblem](
           "org.scalajs.testinterface.internal.BridgeBase"),

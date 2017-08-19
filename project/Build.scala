@@ -1288,7 +1288,12 @@ object Build {
       settings = exampleSettings ++ Seq(
           name := "Hello World - Scala.js example",
           moduleName := "helloworld",
-          scalaJSUseMainModuleInitializer := true
+          scalaJSUseMainModuleInitializer := true,
+
+          /* We have to test js.JSApp somewhere, so we avoid the fatal
+           * deprecation warning here.
+           */
+          scalacOptions -= "-Xfatal-warnings"
       )
   ).withScalaJSCompiler.dependsOn(library)
 
@@ -1307,6 +1312,11 @@ object Build {
       settings = exampleSettings ++ Seq(
           name := "Testing - Scala.js example",
           moduleName := "testing",
+
+          /* We have a test for test:run which runs a js.JSApp in the Test
+           * config. We avoid the fatal deprecation warning here.
+           */
+          scalacOptions -= "-Xfatal-warnings",
 
           jsDependencies ++= Seq(
             RuntimeDOMDep(None) % "test",
