@@ -8,19 +8,36 @@ import scala.collection.immutable.{Seq, Traversable}
 import java.io.{Reader, Writer}
 
 /** The information written to a "JS_DEPENDENCIES" manifest file. */
-final class JSDependencyManifest(
+final class JSDependencyManifest private[scalajs] (
     val origin: Origin,
     val libDeps: List[JSDependency],
-    val requiresDOM: Boolean,
-    val compliantSemantics: List[String]) {
+    private[scalajs] val requiresDOMInternal: Boolean,
+    val compliantSemantics: List[String],
+    internal: Unit) {
 
   import JSDependencyManifest._
+
+  def this(origin: Origin, libDeps: List[JSDependency],
+      compliantSemantics: List[String]) = {
+    this(origin, libDeps, false, compliantSemantics, internal = ())
+  }
+
+  @deprecated(
+      "requiresDOM will be removed in 1.x, use the overload without it.",
+      "0.6.20")
+  def this(origin: Origin, libDeps: List[JSDependency], requiresDOM: Boolean,
+      compliantSemantics: List[String]) = {
+    this(origin, libDeps, requiresDOM, compliantSemantics, internal = ())
+  }
+
+  @deprecated("requiresDOM will be removed in 1.x", "0.6.20")
+  val requiresDOM: Boolean = requiresDOMInternal
 
   override def equals(that: Any): Boolean = that match {
     case that: JSDependencyManifest =>
       this.origin == that.origin &&
       this.libDeps == that.libDeps &&
-      this.requiresDOM == that.requiresDOM &&
+      this.requiresDOMInternal == that.requiresDOMInternal &&
       this.compliantSemantics == that.compliantSemantics
     case _ =>
       false
@@ -31,7 +48,7 @@ final class JSDependencyManifest(
     var acc = HashSeed
     acc = mix(acc, origin.##)
     acc = mix(acc, libDeps.##)
-    acc = mix(acc, requiresDOM.##)
+    acc = mix(acc, requiresDOMInternal.##)
     acc = mixLast(acc, compliantSemantics.##)
     finalizeHash(acc, 4)
   }
@@ -41,8 +58,8 @@ final class JSDependencyManifest(
     b ++= s"JSDependencyManifest(origin=$origin"
     if (libDeps.nonEmpty)
       b ++= s", libDeps=$libDeps"
-    if (requiresDOM)
-      b ++= s", requiresDOM=$requiresDOM"
+    if (requiresDOMInternal)
+      b ++= s", requiresDOM=$requiresDOMInternal"
     if (compliantSemantics.nonEmpty)
       b ++= s", compliantSemantics=$compliantSemantics"
     b ++= ")"
@@ -65,7 +82,7 @@ object JSDependencyManifest {
       new JSONObjBuilder()
         .fld("origin",  x.origin)
         .opt("libDeps", optList(x.libDeps))
-        .opt("requiresDOM", if (x.requiresDOM) Some(true) else None)
+        .opt("requiresDOM", if (x.requiresDOMInternal) Some(true) else None)
         .opt("compliantSemantics", optList(x.compliantSemantics))
         .toJSON
     }
@@ -78,7 +95,8 @@ object JSDependencyManifest {
           obj.fld[Origin]            ("origin"),
           obj.opt[List[JSDependency]]("libDeps").getOrElse(Nil),
           obj.opt[Boolean]           ("requiresDOM").getOrElse(false),
-          obj.opt[List[String]]      ("compliantSemantics").getOrElse(Nil))
+          obj.opt[List[String]]      ("compliantSemantics").getOrElse(Nil),
+          internal = ())
     }
   }
 

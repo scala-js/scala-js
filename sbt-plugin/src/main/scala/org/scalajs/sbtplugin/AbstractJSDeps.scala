@@ -75,6 +75,18 @@ object ProvidedJSModuleID {
     ProvidedJSModuleID(new JSDependency(name, Nil), configurations)
 }
 
+/* If we mark RuntimeDOMDep as @deprecated, we cannot pattern-match on it in
+ * our own implementation to implement its behavior. Therefore it is only
+ * deprecated in the documentation. This shouldn't be an issue because it is
+ * not advertised as a public API anyway. Instead, it is typically constructed
+ * using the RuntimeDOM DSL in sbtplugin.impl.DependencyBuilders (which is
+ * actually @deprecated).
+ */
+/** Deprecated.
+ *
+ *  For internal reasons, this class is not marked as `@deprecated`, but should
+ *  be considered as such.
+ */
 final case class RuntimeDOMDep(
     configurations: Option[String]) extends AbstractJSDep {
 

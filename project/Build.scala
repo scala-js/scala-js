@@ -1309,7 +1309,7 @@ object Build {
           moduleName := "testing",
 
           jsDependencies ++= Seq(
-            RuntimeDOM % "test",
+            RuntimeDOMDep(None) % "test",
             "org.webjars" % "jquery" % "1.10.2" / "jquery.js" % "test"
           )
       )

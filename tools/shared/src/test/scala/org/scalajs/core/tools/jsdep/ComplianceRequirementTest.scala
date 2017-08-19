@@ -48,7 +48,7 @@ class ComplianceRequirementTest {
     val origins = Array("a", "b", "c").map(new Origin(_, "compile"))
 
     def mkManifest(o: Int, semantics: String*) =
-      new JSDependencyManifest(origins(o), Nil, false, semantics.toList)
+      new JSDependencyManifest(origins(o), Nil, semantics.toList)
 
     val manifests = Seq(
         mkManifest(0, "isInstanceOfs"),

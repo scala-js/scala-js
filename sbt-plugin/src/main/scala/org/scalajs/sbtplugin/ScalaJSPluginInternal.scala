@@ -74,11 +74,22 @@ object ScalaJSPluginInternal {
   val scalaJSIRCache = TaskKey[globalIRCache.Cache]("scalaJSIRCache",
       "Scala.js internal: Task to access a cache.", KeyRanks.Invisible)
 
-  /** Internal task to calculate whether a project requests the DOM
-   *  (through jsDependencies or requiresDOM) */
-  val scalaJSRequestsDOM = TaskKey[Boolean]("scalaJSRequestsDOM",
+  /** Non-deprecated alias of `scalaJSRequestsDOM` for internal use. */
+  private[sbtplugin] val scalaJSRequestsDOMInternal = TaskKey[Boolean](
+      "scalaJSRequestsDOM",
       "Scala.js internal: Whether a project really wants the DOM. " +
       "Calculated using requiresDOM and jsDependencies", KeyRanks.Invisible)
+
+  /** Internal task to calculate whether a project requests the DOM
+   *  (through jsDependencies or requiresDOM) */
+  @deprecated(
+      "`scalaJSRequestsDOM` will always be false in new builds, because " +
+      "`jsDependencies += RuntimeDOM` and `requiresDOM := true` are " +
+      "deprecated. A better alternative to reading `scalaJSRequestsDOM` is " +
+      "to detect whether `resolvedJSEnv` is a DOM-enabled JS env, or to use " +
+      "your own setting key.",
+      "0.6.20")
+  val scalaJSRequestsDOM = scalaJSRequestsDOMInternal
 
   /** All .sjsir files on the fullClasspath, used by scalajsp. */
   val sjsirFilesOnClasspath = TaskKey[Seq[String]]("sjsirFilesOnClasspath",
@@ -548,7 +559,7 @@ object ScalaJSPluginInternal {
         val compliantSemantics = scalaJSSemantics.value.compliants
 
         val manifest = new JSDependencyManifest(new Origin(myModule, config),
-            jsDeps.toList, requiresDOM, compliantSemantics)
+            jsDeps.toList, requiresDOM, compliantSemantics, internal = ())
 
         // Write dependency file to class directory
         val targetDir = classDirectory.value
@@ -644,15 +655,15 @@ object ScalaJSPluginInternal {
           true
       },
 
-      scalaJSRequestsDOM := {
-        requiresDOM.?.value.getOrElse(
-            jsDependencyManifests.value.data.exists(_.requiresDOM))
+      scalaJSRequestsDOMInternal := {
+        requiresDOMInternal.?.value.getOrElse(
+            jsDependencyManifests.value.data.exists(_.requiresDOMInternal))
       },
 
       resolvedJSEnv := {
         val useRhino = scalaJSUseRhinoInternal.value
         val rhinoJSEnv = RhinoJSEnvInternal().value
-        val requestsDOM = scalaJSRequestsDOM.value
+        val requestsDOM = scalaJSRequestsDOMInternal.value
 
         jsEnv.?.value.getOrElse {
           if (useRhino) {
