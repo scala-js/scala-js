@@ -87,6 +87,12 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+      /* RuntimeLong lost its `with java.io.Serializable`, but that is not a
+       * problem because it also extends `java.lang.Number`, which itself
+       * implements `java.io.Serializable` anyway.
+       */
+      ProblemFilters.exclude[MissingTypesProblem](
+          "scala.scalajs.runtime.RuntimeLong")
   )
 
   val TestInterface = Seq(

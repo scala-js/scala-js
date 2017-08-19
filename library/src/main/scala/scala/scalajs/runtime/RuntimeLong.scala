@@ -33,8 +33,8 @@ import js.JSStringOps._
 /** Emulates a Long on the JavaScript platform. */
 @inline
 final class RuntimeLong(val lo: Int, val hi: Int)
-    extends java.lang.Number with java.io.Serializable
-    with java.lang.Comparable[java.lang.Long] { a =>
+    extends java.lang.Number with java.lang.Comparable[java.lang.Long] {
+  a =>
 
   import RuntimeLong._
   import Utils._
