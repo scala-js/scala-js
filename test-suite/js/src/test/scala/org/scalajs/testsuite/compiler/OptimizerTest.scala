@@ -402,7 +402,6 @@ class OptimizerTest {
   }
 
   @Test def must_not_break_virtualized_jsarrayconstr_in_spread(): Unit = {
-    @ScalaJSDefined
     class Foo extends js.Object {
       def check(a: Int, b: String, rest: Any*): Unit = {
         assertEquals(5, a)

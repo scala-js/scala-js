@@ -359,7 +359,9 @@ object Build {
           "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
           scalaJSVersion + "/"
         )
-      }
+      },
+
+      scalacOptions += "-P:scalajs:sjsDefinedByDefault"
   )
 
   private def parallelCollectionsDependencies(

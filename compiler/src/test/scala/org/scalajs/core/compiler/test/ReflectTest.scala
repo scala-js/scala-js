@@ -16,15 +16,12 @@ class ReflectTest extends DirectTest with TestHelpers {
   def noEnableReflectiveInstantiationOnJSType: Unit = {
     """
     @EnableReflectiveInstantiation
-    @ScalaJSDefined
     class A extends js.Object
 
     @EnableReflectiveInstantiation
-    @ScalaJSDefined
     trait B extends js.Object
 
     @EnableReflectiveInstantiation
-    @ScalaJSDefined
     object C extends js.Object
 
     @EnableReflectiveInstantiation
@@ -45,19 +42,19 @@ class ReflectTest extends DirectTest with TestHelpers {
       |newSource1.scala:4: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
       |    @EnableReflectiveInstantiation
       |     ^
-      |newSource1.scala:8: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
+      |newSource1.scala:7: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
       |    @EnableReflectiveInstantiation
       |     ^
-      |newSource1.scala:12: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
+      |newSource1.scala:10: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
       |    @EnableReflectiveInstantiation
       |     ^
-      |newSource1.scala:16: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
+      |newSource1.scala:13: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
       |    @EnableReflectiveInstantiation
       |     ^
-      |newSource1.scala:21: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
+      |newSource1.scala:18: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
       |    @EnableReflectiveInstantiation
       |     ^
-      |newSource1.scala:25: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
+      |newSource1.scala:22: error: @EnableReflectiveInstantiation cannot be used on types extending js.Any.
       |    @EnableReflectiveInstantiation
       |     ^
     """

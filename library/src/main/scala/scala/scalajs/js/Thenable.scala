@@ -27,7 +27,6 @@ import scala.concurrent.Future
  *  The signature of the `then` method is only valid <i>provided that</i> the
  *  values of `B` do not have a `then` method.
  */
-@ScalaJSDefined
 trait Thenable[+A] extends js.Object {
   def `then`[B](
       onFulfilled: js.Function1[A, B | Thenable[B]],

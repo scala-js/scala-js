@@ -214,7 +214,6 @@ class OptimizationTest extends JSASTTest {
     import scala.scalajs.js
     import scala.scalajs.js.annotation._
 
-    @ScalaJSDefined
     trait Point extends js.Object {
       val x: Double
       val y: Double
@@ -238,7 +237,6 @@ class OptimizationTest extends JSASTTest {
     import scala.scalajs.js
     import scala.scalajs.js.annotation._
 
-    @ScalaJSDefined
     trait Point extends js.Object {
       var x: js.UndefOr[Double] = js.undefined
       var y: js.UndefOr[Double] = js.undefined

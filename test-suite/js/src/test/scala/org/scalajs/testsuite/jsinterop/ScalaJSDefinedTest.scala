@@ -216,7 +216,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def lambda_inside_a_method_issue_2220(): Unit = {
-    @ScalaJSDefined
     class LambdaInsideMethod extends js.Object {
       def foo(): Int = {
         List(1, 2, 3).map(_ * 2).sum
@@ -228,7 +227,6 @@ class ScalaJSDefinedTest {
 
   @Test def nested_inside_a_Scala_class(): Unit = {
     class OuterScalaClass(val x: Int) {
-      @ScalaJSDefined
       class InnerJSClass(val y: Int) extends js.Object {
         def sum(z: Int): Int = x + y + z
       }
@@ -241,9 +239,7 @@ class ScalaJSDefinedTest {
   }
 
   @Test def nested_inside_a_Scala_js_defined_JS_class(): Unit = {
-    @ScalaJSDefined
     class OuterJSClass(val x: Int) extends js.Object {
-      @ScalaJSDefined
       class InnerJSClass(val y: Int) extends js.Object {
         def sum(z: Int): Int = x + y + z
       }
@@ -256,7 +252,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def Scala_class_nested_inside_a_Scala_js_defined_JS_class(): Unit = {
-    @ScalaJSDefined
     class OuterJSClass(val x: Int) extends js.Object {
       class InnerScalaClass(val y: Int) {
         def sum(z: Int): Int = x + y + z
@@ -270,7 +265,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def Scala_object_nested_inside_a_Scala_js_defined_JS_class(): Unit = {
-    @ScalaJSDefined
     class Foo extends js.Object {
       var innerInitCount: Int = _
 
@@ -298,7 +292,6 @@ class ScalaJSDefinedTest {
 
   // #2772
   @Test def Scala_object_nested_inside_a_Scala_js_defined_JS_class_JSName(): Unit = {
-    @ScalaJSDefined
     class Foo extends js.Object {
       var innerInitCount: Int = _
 
@@ -348,7 +341,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def local_class_has_own_prototype(): Unit = {
-    @ScalaJSDefined
     class Local extends js.Object {
       val x = 1
     }
@@ -448,7 +440,6 @@ class ScalaJSDefinedTest {
   @Test def local_object_is_lazy(): Unit = {
     var initCount: Int = 0
 
-    @ScalaJSDefined
     object Obj extends js.Object {
       initCount += 1
     }
@@ -465,7 +456,6 @@ class ScalaJSDefinedTest {
   @Test def local_object_with_captures(): Unit = {
     val x = (() => 5)()
 
-    @ScalaJSDefined
     object Obj extends js.Object {
       val y = 10
       def sum(z: Int): Int = x + y + z
@@ -480,11 +470,9 @@ class ScalaJSDefinedTest {
   }
 
   @Test def object_in_Scala_js_defined_JS_class(): Unit = {
-    @ScalaJSDefined
     class Foo extends js.Object {
       var innerInitCount: Int = _
 
-      @ScalaJSDefined
       object Inner extends js.Object {
         innerInitCount += 1
       }
@@ -508,7 +496,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def local_defs_must_not_be_exposed(): Unit = {
-    @ScalaJSDefined
     class LocalDefsMustNotBeExposed extends js.Object {
       def foo(): String = {
         def bar(): String = "hello"
@@ -521,7 +508,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def local_objects_must_not_be_exposed(): Unit = {
-    @ScalaJSDefined
     class LocalObjectsMustNotBeExposed extends js.Object {
       def foo(): String = {
         object Bar
@@ -534,7 +520,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def local_defs_with_captures_issue_1975(): Unit = {
-    @ScalaJSDefined
     class LocalDefsWithCaptures extends js.Object {
       def foo(suffix: String): String = {
         def bar(): String = "hello " + suffix
@@ -547,7 +532,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def methods_with_explicit_name(): Unit = {
-    @ScalaJSDefined
     class MethodsWithExplicitName extends js.Object {
       @JSName("theAnswer")
       def bar(): Int = 42
@@ -567,7 +551,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def methods_with_constant_folded_name(): Unit = {
-    @ScalaJSDefined
     class MethodsWithConstantFoldedName extends js.Object {
       @JSName(JSNameHolder.MethodName)
       def bar(): Int = 42
@@ -582,7 +565,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def protected_methods(): Unit = {
-    @ScalaJSDefined
     class ProtectedMethods extends js.Object {
       protected def bar(): Int = 42
 
@@ -605,7 +587,6 @@ class ScalaJSDefinedTest {
         Platform.executingInRhino)
 
     // Named classes
-    @ScalaJSDefined
     class Foo extends js.Object {
       def bar: Int = 1
     }
@@ -627,7 +608,6 @@ class ScalaJSDefinedTest {
 
   @Test def properties_are_not_enumerable(): Unit = {
     // Named classes
-    @ScalaJSDefined
     class Foo extends js.Object {
       def myProp: Int = 1
     }
@@ -645,7 +625,6 @@ class ScalaJSDefinedTest {
 
   @Test def properties_are_configurable(): Unit = {
     // Named classes
-    @ScalaJSDefined
     class Foo extends js.Object {
       def myProp: Int = 1
     }
@@ -670,7 +649,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def properties_with_explicit_name(): Unit = {
-    @ScalaJSDefined
     class PropertiesWithExplicitName extends js.Object {
       private[this] var myY: String = "hello"
       @JSName("answer")
@@ -711,7 +689,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def protected_properties(): Unit = {
-    @ScalaJSDefined
     class ProtectedProperties extends js.Object {
       protected val x: Int = 42
       protected[testsuite] val y: Int = 43
@@ -726,7 +703,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def simple_overloaded_methods(): Unit = {
-    @ScalaJSDefined
     class SimpleOverloadedMethods extends js.Object {
       def foo(): Int = 42
       def foo(x: Int): Int = x*2
@@ -743,7 +719,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def simple_overloaded_methods_anon_js_class_issue_3054(): Unit = {
-    @ScalaJSDefined
     trait SimpleOverloadedMethodsAnonJSClass extends js.Object {
       def foo(): Int
       def foo(x: Int): Int
@@ -763,7 +738,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def renamed_overloaded_methods(): Unit = {
-    @ScalaJSDefined
     class RenamedOverloadedMethods extends js.Object {
       @JSName("foobar")
       def foo(): Int = 42
@@ -782,7 +756,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def overloaded_methods_with_varargs(): Unit = {
-    @ScalaJSDefined
     class OverloadedMethodsWithVarargs extends js.Object {
       def foo(x: Int): Int = x * 2
       def foo(strs: String*): Int = strs.foldLeft(0)(_ + _.length)
@@ -803,7 +776,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def overloaded_methods_with_varargs_anon_js_class_issue_3054(): Unit = {
-    @ScalaJSDefined
     trait OverloadedMethodsWithVarargsAnonJSClass extends js.Object {
       def foo(x: Int): Int
       def foo(strs: String*): Int
@@ -837,13 +809,11 @@ class ScalaJSDefinedTest {
   }
 
   @Test def overloaded_constructors_with_captured_parameters(): Unit = {
-    @ScalaJSDefined
     class OverloadedConstructorWithOuterContextOnly(val x: Int) extends js.Object {
       def this(y: String) = this(y.length)
     }
 
     val z = (() => 5)()
-    @ScalaJSDefined
     class OverloadedConstructorWithValCapture(val x: Int) extends js.Object {
       def this(y: String) = this(z)
     }
@@ -856,11 +826,9 @@ class ScalaJSDefinedTest {
   }
 
   @Test def overloaded_constructors_with_super_class(): Unit = {
-    @ScalaJSDefined
     class OverloadedConstructorSup(val x: Int) extends js.Object {
       def this(y: String) = this(y.length)
     }
-    @ScalaJSDefined
     class OverloadedConstructorSub(x: Int)
         extends OverloadedConstructorSup(3 * x) {
       def this(y: String) = this(2 * y.length)
@@ -873,7 +841,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def overloaded_constructors_with_repeated_parameters(): Unit = {
-    @ScalaJSDefined
     class OverloadedConstructorWithRepeatedParameters(xs: Int*)
         extends js.Object {
       def this(y: String, ys: String*) = this(y.length +: ys.map(_.length): _*)
@@ -937,7 +904,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def polytype_nullary_method_issue_2445(): Unit = {
-    @ScalaJSDefined
     class PolyTypeNullaryMethod extends js.Object {
       def emptyArray[T]: js.Array[T] = js.Array()
     }
@@ -954,7 +920,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def default_parameters(): Unit = {
-    @ScalaJSDefined
     class DefaultParameters extends js.Object {
       def bar(x: Int, y: Int = 1): Int = x + y
       def dependent(x: Int)(y: Int = x + 1): Int = x + y
@@ -962,7 +927,6 @@ class ScalaJSDefinedTest {
       def foobar(x: Int): Int = bar(x)
     }
 
-    @ScalaJSDefined
     object DefaultParametersMod extends js.Object {
       def bar(x: Int, y: Int = 1): Int = x + y
       def dependent(x: Int)(y: Int = x + 1): Int = x + y
@@ -995,7 +959,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_default_parameters(): Unit = {
-    @ScalaJSDefined
     class OverrideDefaultParametersParent extends js.Object {
       def bar(x: Int, y: Int = 1): Int = x + y
       def dependent(x: Int)(y: Int = x + 1): Int = x + y
@@ -1003,7 +966,6 @@ class ScalaJSDefinedTest {
       def foobar(x: Int): Int = bar(x)
     }
 
-    @ScalaJSDefined
     class OverrideDefaultParametersChild
         extends OverrideDefaultParametersParent {
       override def bar(x: Int, y: Int = 10): Int = super.bar(x, y)
@@ -1033,7 +995,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_method_with_default_parameters_without_new_default(): Unit = {
-    @ScalaJSDefined
     class OverrideDefaultParametersWithoutDefaultParent extends js.Object {
       def bar(x: Int, y: Int = 1): Int = x + y
       def dependent(x: Int)(y: Int = x + 1): Int = x + y
@@ -1041,7 +1002,6 @@ class ScalaJSDefinedTest {
       def foobar(x: Int): Int = bar(x)
     }
 
-    @ScalaJSDefined
     class OverrideDefaultParametersWithoutDefaultChild
         extends OverrideDefaultParametersWithoutDefaultParent {
       override def bar(x: Int, y: Int): Int = x - y
@@ -1131,7 +1091,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def `call_super_constructor_with_:__*`(): Unit = {
-    @ScalaJSDefined
     class CallSuperCtorWithSpread(x: Int, y: Int, z: Int)
         extends NativeParentClassWithVarargs(x, Seq(y, z): _*)
 
@@ -1146,7 +1105,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_native_method(): Unit = {
-    @ScalaJSDefined
     class OverrideNativeMethod extends NativeParentClass(3) {
       override def foo(s: String): String = s + s + x
     }
@@ -1165,7 +1123,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_non_native_method(): Unit = {
-    @ScalaJSDefined
     class OverrideNonNativeMethod extends NonNativeParentClass(3) {
       override def foo(s: String): String = s + s + x
     }
@@ -1195,7 +1152,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_native_method_and_call_super(): Unit = {
-    @ScalaJSDefined
     class OverrideNativeMethodSuperCall extends NativeParentClass(3) {
       override def foo(s: String): String = super.foo("bar") + s
     }
@@ -1214,7 +1170,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_non_native_method_and_call_super(): Unit = {
-    @ScalaJSDefined
     class OverrideNonNativeMethodSuperCall extends NonNativeParentClass(3) {
       override def foo(s: String): String = super.foo("bar") + s
     }
@@ -1233,7 +1188,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def super_method_call_in_anon_JS_class_issue_3055(): Unit = {
-    @ScalaJSDefined
     class Foo extends js.Object {
       def bar(msg: String): String = "super: " + msg
     }
@@ -1246,7 +1200,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_native_val(): Unit = {
-    @ScalaJSDefined
     class OverrideNativeVal extends NativeParentClass(3) {
       override val x: Int = 42
     }
@@ -1268,7 +1221,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_non_native_val(): Unit = {
-    @ScalaJSDefined
     class OverrideNonNativeVal extends NonNativeParentClass(3) {
       override val x: Int = 42
     }
@@ -1290,7 +1242,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_native_getter(): Unit = {
-    @ScalaJSDefined
     class OverrideNativeGetter extends NativeParentClass(3) {
       override def bar: Int = x * 3
     }
@@ -1309,7 +1260,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_non_native_getter(): Unit = {
-    @ScalaJSDefined
     class OverrideNonNativeGetter extends NonNativeParentClass(3) {
       override def bar: Int = x * 3
     }
@@ -1328,7 +1278,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_native_getter_with_val(): Unit = {
-    @ScalaJSDefined
     class OverrideNativeGetterWithVal extends NativeParentClass(3) {
       override val bar: Int = 1
     }
@@ -1347,7 +1296,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_non_native_getter_with_val(): Unit = {
-    @ScalaJSDefined
     class OverrideNonNativeGetterWithVal extends NonNativeParentClass(3) {
       override val bar: Int = 1
     }
@@ -1366,11 +1314,9 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_getter_with_super(): Unit = {
-    @ScalaJSDefined
     class OverrideGetterSuperParent extends js.Object {
       def bar: Int = 43
     }
-    @ScalaJSDefined
     class OverrideGetterSuperChild extends OverrideGetterSuperParent {
       override def bar: Int = super.bar * 3
     }
@@ -1386,12 +1332,10 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_setter_with_super(): Unit = {
-    @ScalaJSDefined
     class OverrideSetterSuperParent extends js.Object {
       var x: Int = 43
       def bar_=(v: Int): Unit = x = v
     }
-    @ScalaJSDefined
     class OverrideSetterSuperChild extends OverrideSetterSuperParent {
       override def bar_=(v: Int): Unit = super.bar_=(v * 3)
     }
@@ -1410,7 +1354,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def super_property_get_set_in_anon_JS_class_issue_3055(): Unit = {
-    @ScalaJSDefined
     class Foo extends js.Object {
       var x: Int = 1
       var lastSetValue: Int = 0
@@ -1435,12 +1378,10 @@ class ScalaJSDefinedTest {
   }
 
   @Test def add_setter_in_subclass(): Unit = {
-    @ScalaJSDefined
     class AddSetterInSubclassParent extends js.Object {
       var x: Int = 43
       def bar: Int = x
     }
-    @ScalaJSDefined
     class AddSetterInSubclassChild extends AddSetterInSubclassParent {
       def bar_=(v: Int): Unit = x = v
     }
@@ -1457,12 +1398,10 @@ class ScalaJSDefinedTest {
   }
 
   @Test def add_getter_in_subclass(): Unit = {
-    @ScalaJSDefined
     class AddGetterInSubclassParent extends js.Object {
       var x: Int = 43
       def bar_=(v: Int): Unit = x = v
     }
-    @ScalaJSDefined
     class AddGetterInSubclassChild extends AddGetterInSubclassParent {
       def bar: Int = x
     }
@@ -1479,7 +1418,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def overload_native_method(): Unit = {
-    @ScalaJSDefined
     class OverloadNativeMethod extends NativeParentClass(3) {
       def foo(s: String, y: Int): String = foo(s) + " " + y
     }
@@ -1497,7 +1435,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def overload_non_native_method(): Unit = {
-    @ScalaJSDefined
     class OverloadNonNativeMethod extends NonNativeParentClass(3) {
       def foo(s: String, y: Int): String = foo(s) + " " + y
     }
@@ -1515,7 +1452,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def overload_with_default_parameter(): Unit = {
-    @ScalaJSDefined
     class OverloadDefaultParameter extends js.Object {
       def foo(x: Int): Int = x
       def foo(x: String = ""): String = x
@@ -1528,7 +1464,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def implement_a_simple_trait(): Unit = {
-    @ScalaJSDefined
     class ImplementSimpleTrait extends js.Object with SimpleTrait {
       def foo(x: Int): Int = x + 1
     }
@@ -1541,7 +1476,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def implement_a_simple_trait_under_separate_compilation(): Unit = {
-    @ScalaJSDefined
     class ImplementSimpleTraitSepRun extends js.Object with SepRun.SimpleTrait {
       def foo(x: Int): Int = x + 1
     }
@@ -1554,12 +1488,10 @@ class ScalaJSDefinedTest {
   }
 
   @Test def implement_a_trait_with_a_val(): Unit = {
-    @ScalaJSDefined
     trait TraitWithVal extends js.Object {
       val x: Int
     }
 
-    @ScalaJSDefined
     class ImplWithVal extends TraitWithVal {
       val x: Int = 3
     }
@@ -1572,12 +1504,10 @@ class ScalaJSDefinedTest {
   }
 
   @Test def implement_a_trait_with_a_var(): Unit = {
-    @ScalaJSDefined
     trait TraitWithVar extends js.Object {
       var x: Int
     }
 
-    @ScalaJSDefined
     class ImplWithVar extends TraitWithVar {
       var x: Int = 3
     }
@@ -1595,12 +1525,10 @@ class ScalaJSDefinedTest {
   }
 
   @Test def implement_a_trait_extending_a_native_JS_class(): Unit = {
-    @ScalaJSDefined
     trait TraitExtendsJSClass extends NativeParentClass {
       def foobar(x: Int): Int
     }
 
-    @ScalaJSDefined
     class ImplExtendsJSClassAndTrait
         extends NativeParentClass(5) with TraitExtendsJSClass {
       def foobar(x: Int): Int = x * 3
@@ -1611,7 +1539,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def implement_abstract_members_coming_from_a_native_JS_class(): Unit = {
-    @ScalaJSDefined
     class ImplDeferredMembersFromJSParent
         extends NativeParentClassWithDeferred {
       val x: Int = 43
@@ -1638,7 +1565,6 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_a_method_with_default_values_from_a_native_JS_class(): Unit = {
-    @ScalaJSDefined
     class OverrideDefault extends NativeParentClass(7) {
       override def methodWithDefault(x: Int = 9): Int = x * 2
     }
@@ -1654,7 +1580,6 @@ class ScalaJSDefinedTest {
 
   // #2603
   @Test def default_values_in_non_exposed_methods(): Unit = {
-    @ScalaJSDefined
     class DefaultParameterss(val default: Int) extends js.Object {
       /* We don't use a constant default value to make sure it actually comes
        * from the default parameter accessors.
@@ -1687,7 +1612,6 @@ object ScalaJSDefinedTest {
     def methodWithDefault(x: Int = 5): Int = js.native
   }
 
-  @ScalaJSDefined
   class NonNativeParentClass(val x: Int) extends js.Object {
     def foo(s: String): String = s + x
 
@@ -1717,34 +1641,28 @@ object ScalaJSDefinedTest {
     val args: js.Array[Int] = js.native
   }
 
-  @ScalaJSDefined
   trait SimpleTrait extends js.Any {
     def foo(x: Int): Int
   }
 
-  @ScalaJSDefined
   class Minimal extends js.Object
 
   private var staticNonNativeObjectInitCount: Int = _
 
-  @ScalaJSDefined
   object StaticNonNativeObject extends js.Object {
     staticNonNativeObjectInitCount += 1
   }
 
-  @ScalaJSDefined
   class SimpleMethod extends js.Object {
     def foo(x: Int): Int = x + 3
     def bar(s: String, i: Int): String = s + i
   }
 
-  @ScalaJSDefined
   object StaticObjectSimpleMethod extends js.Object {
     def foo(x: Int): Int = x + 3
     def bar(s: String, i: Int): String = s + i
   }
 
-  @ScalaJSDefined
   class SimpleField extends js.Object {
     val x = 5
     var y = 10
@@ -1752,7 +1670,6 @@ object ScalaJSDefinedTest {
     def sum(): Int = x + y
   }
 
-  @ScalaJSDefined
   object StaticObjectSimpleField extends js.Object {
     val x = 5
     var y = 10
@@ -1760,7 +1677,6 @@ object ScalaJSDefinedTest {
     def sum(): Int = x + y
   }
 
-  @ScalaJSDefined
   class SimpleAccessors extends js.Object {
     var x = 1
     def readPlus1: Int = x + 1
@@ -1769,7 +1685,6 @@ object ScalaJSDefinedTest {
     def neg_=(v: Int): Unit = x = -v
   }
 
-  @ScalaJSDefined
   class SimpleConstructor(_x: Int, _y: Int) extends js.Object {
     val x = _x
     var y = _y
@@ -1777,20 +1692,15 @@ object ScalaJSDefinedTest {
     def sum(): Int = x + y
   }
 
-  @ScalaJSDefined
   class ConstructorDefaultParamJSNonNativeNone(val foo: Int = -1) extends js.Object
 
-  @ScalaJSDefined
   class ConstructorDefaultParamJSNonNativeJSNonNative(val foo: Int = -1) extends js.Object
-  @ScalaJSDefined
   object ConstructorDefaultParamJSNonNativeJSNonNative extends js.Object
 
-  @ScalaJSDefined
   class ConstructorDefaultParamJSNonNativeScala(val foo: Int = -1) extends js.Object
   object ConstructorDefaultParamJSNonNativeScala
 
   class ConstructorDefaultParamScalaJSNonNative(val foo: Int = -1)
-  @ScalaJSDefined
   object ConstructorDefaultParamScalaJSNonNative extends js.Object
 
   @js.native
@@ -1805,7 +1715,6 @@ object ScalaJSDefinedTest {
   @js.native
   @JSGlobal("ConstructorDefaultParam")
   class ConstructorDefaultParamJSNativeJSNonNative(val foo: Int = -1) extends js.Object
-  @ScalaJSDefined
   object ConstructorDefaultParamJSNativeJSNonNative extends js.Object
 
   @js.native
@@ -1822,19 +1731,16 @@ object ScalaJSDefinedTest {
   // sanity check
   class ConstructorDefaultParamScalaNone(val foo: Int = -1)
 
-  @ScalaJSDefined
   class OverloadedConstructorParamNumber(val foo: Int) extends js.Object {
     def this(x: Int, y: Int) = this(x + y)
     def this(x: Int, y: Int, z: Int) = this(x + y, z)
   }
 
-  @ScalaJSDefined
   class OverloadedConstructorParamType(val foo: Int) extends js.Object {
     def this(x: String) = this(x.length)
     def this(x: Option[String]) = this(x.get)
   }
 
-  @ScalaJSDefined
   class OverloadedConstructorComplex(val foo: Int, var bar: Int) extends js.Object {
     def this() = this(5, 6)
     def this(x: Int) = this(x, x)
@@ -1853,17 +1759,14 @@ object ScalaJSDefinedTest {
       this((a + b).length, (x + y).length)
   }
 
-  @ScalaJSDefined
   class SimpleConstructorAutoFields(val x: Int, var y: Int) extends js.Object {
     def sum(): Int = x + y
   }
 
-  @ScalaJSDefined
   class SimpleConstructorParamAccessors(x: Int, y: Int) extends js.Object {
     def sum(): Int = x + y
   }
 
-  @ScalaJSDefined
   class DefaultFieldValues extends js.Object {
     var int: Int = _
     var bool: Boolean = _
@@ -1873,7 +1776,6 @@ object ScalaJSDefinedTest {
     var valueClass: SomeValueClass = _
   }
 
-  @ScalaJSDefined
   class SimpleInheritedFromNative(
       x: Int, val y: Int) extends NativeParentClass(x)
 

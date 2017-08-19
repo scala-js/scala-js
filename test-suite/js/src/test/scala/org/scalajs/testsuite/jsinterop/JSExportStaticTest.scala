@@ -273,7 +273,6 @@ class JSExportStaticTest {
 
 }
 
-@ScalaJSDefined
 class TopLevelStaticExportMethods extends js.Object {
   def alsoExistsAsMember(x: Int): Int = x * 2
 }
@@ -310,7 +309,6 @@ object TopLevelStaticExportMethods {
 }
 
 object JSExportStaticTest {
-  @ScalaJSDefined
   class StaticExportMethods extends js.Object {
     def alsoExistsAsMember(x: Int): Int = x * 2
   }
@@ -346,7 +344,6 @@ object JSExportStaticTest {
     def alsoExistsAsMember(x: Int): Int = x * 5
   }
 
-  @ScalaJSDefined
   class StaticExportProperties extends js.Object {
     def alsoExistsAsMember: Int = 54
   }
@@ -392,7 +389,6 @@ object JSExportStaticTest {
     def alsoExistsAsMember: String = "also a member"
   }
 
-  @ScalaJSDefined
   class StaticExportFields extends js.Object {
     val alsoExistsAsMember: Int = 5
   }
