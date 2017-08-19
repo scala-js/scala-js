@@ -170,6 +170,7 @@ lazy val multiTestJVM = multiTest.jvm
 lazy val jsDependenciesTest = withRegretionTestForIssue2243(
   project.settings(versionSettings: _*).
   enablePlugins(ScalaJSPlugin).
+  enablePlugins(JSDependenciesPlugin).
   settings(
     jsDependencies ++= Seq(
         "org.webjars" % "historyjs" % "1.8.0" / "uncompressed/history.js",
