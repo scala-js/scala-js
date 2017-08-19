@@ -1,5 +1,4 @@
 ## Do not compile
-scala/SerializationStabilityTest.scala
 scala/lang/annotations/BytecodeTest.scala
 scala/lang/annotations/RunTest.scala
 scala/lang/traits/BytecodeTest.scala
@@ -23,8 +22,11 @@ scala/tools/nsc/backend/jvm/BTypesTest.scala
 scala/tools/nsc/backend/jvm/BytecodeTest.scala
 scala/tools/nsc/backend/jvm/DefaultMethodTest.scala
 scala/tools/nsc/backend/jvm/DirectCompileTest.scala
+scala/tools/nsc/backend/jvm/GenericSignaturesTest.scala
 scala/tools/nsc/backend/jvm/IndyLambdaTest.scala
 scala/tools/nsc/backend/jvm/IndySammyTest.scala
+scala/tools/nsc/backend/jvm/InnerClassAttributeTest.scala
+scala/tools/nsc/backend/jvm/NestedClassesCollectorTest.scala
 scala/tools/nsc/backend/jvm/OptimizedBytecodeTest.scala
 scala/tools/nsc/backend/jvm/StringConcatTest.scala
 scala/tools/nsc/backend/jvm/analysis/NullnessAnalyzerTest.scala
@@ -40,6 +42,7 @@ scala/tools/nsc/backend/jvm/opt/InlineInfoTest.scala
 scala/tools/nsc/backend/jvm/opt/InlinerIllegalAccessTest.scala
 scala/tools/nsc/backend/jvm/opt/InlinerSeparateCompilationTest.scala
 scala/tools/nsc/backend/jvm/opt/InlinerTest.scala
+scala/tools/nsc/backend/jvm/opt/InlineSourceMatcherTest.scala
 scala/tools/nsc/backend/jvm/opt/InlineWarningTest.scala
 scala/tools/nsc/backend/jvm/opt/MethodLevelOptsTest.scala
 scala/tools/nsc/backend/jvm/opt/ScalaInlineInfoTest.scala
@@ -73,11 +76,12 @@ scala/tools/testing/BytecodeTesting.scala
 scala/tools/testing/RunTesting.scala
 
 ## Do not link
-scala/CollectTest.scala
+scala/MatchErrorSerializationTest.scala
 scala/PartialFunctionSerializationTest.scala
 scala/lang/stringinterpol/StringContextTest.scala
 scala/collection/IteratorTest.scala
 scala/collection/NewBuilderTest.scala
+scala/collection/ParallelConsistencyTest.scala
 scala/collection/SeqViewTest.scala
 scala/collection/SetMapConsistencyTest.scala
 scala/collection/concurrent/TrieMapTest.scala
@@ -89,6 +93,7 @@ scala/collection/mutable/ArrayBufferTest.scala
 scala/collection/mutable/MutableListTest.scala
 scala/collection/mutable/OpenHashMapTest.scala
 scala/collection/mutable/PriorityQueueTest.scala
+scala/collection/parallel/immutable/ParRangeTest.scala
 scala/concurrent/duration/SerializationTest.scala
 scala/concurrent/impl/DefaultPromiseTest.scala
 scala/io/SourceTest.scala

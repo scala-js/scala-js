@@ -28,6 +28,7 @@ neg/patmatexhaust-huge.scala
 # Uses .java files
 run/t9200
 run/noInlineUnknownIndy
+
 #
 # RUN
 #
@@ -53,6 +54,7 @@ run/shutdownhooks.scala
 run/t5590.scala
 run/t3895b.scala
 run/t5974.scala
+run/hashset.scala
 run/t5262.scala
 run/serialize-stream.scala
 run/sysprops.scala
@@ -60,6 +62,7 @@ run/lambda-serialization-gc.scala
 run/t9390.scala
 run/t9390b.scala
 run/t9390c.scala
+run/trait-defaults-super.scala
 
 run/t2849.scala
 run/t1360.scala
@@ -134,6 +137,9 @@ run/t9365.scala
 run/inlineAddDeserializeLambda.scala
 run/sammy_seriazable.scala
 run/lambda-serialization-security.scala
+run/t10232.scala
+run/t10233.scala
+run/t10244.scala
 
 # Using System.getProperties
 
@@ -461,6 +467,7 @@ run/mirror_symbolof_x.scala
 run/t8196.scala
 run/t8549b.scala
 run/t8574.scala
+run/t8549.scala
 run/t8637.scala
 run/t8253.scala
 run/t9027.scala
@@ -612,6 +619,9 @@ run/inferred-type-constructors-hou.scala
 run/trait-static-forwarder
 run/SD-235.scala
 run/t10026.scala
+run/checkinit.scala
+run/reflection-clinit
+run/reflection-clinit-nested
 
 # Uses refletction indirectly through
 # scala.runtime.ScalaRunTime.replStringOf
@@ -654,6 +664,9 @@ run/optimizer-array-load.scala
 run/t6827.scala
 run/t8601.scala
 
+# Expecting exceptions that are linking errors in Scala.js (e.g. NoSuchMethodException)
+run/t10334.scala
+
 # Playing with classfile format
 
 run/classfile-format-51.scala
@@ -665,8 +678,27 @@ run/triemap-hash.scala
 
 # Using parallel collections
 
+run/t5375.scala
+run/t4894.scala
+run/ctries-new
+run/collection-conversions.scala
 run/concurrent-map-conversions.scala
+run/t4761.scala
+run/t7498.scala
+run/t6448.scala
+run/ctries-old
 run/map_java_conversions.scala
+run/parmap-ops.scala
+run/pc-conversions.scala
+run/t4459.scala
+run/t4608.scala
+run/t4723.scala
+run/t4895.scala
+run/t6052.scala
+run/t6410.scala
+run/t6467.scala
+run/t6908.scala
+run/t8955.scala
 
 # Using scala.xml
 
@@ -697,7 +729,6 @@ run/repl-paste-2.scala
 run/t5655.scala
 run/t5072.scala
 run/repl-colon-type.scala
-run/kind-repl-command.scala
 run/repl-trim-stack-trace.scala
 run/t4594-repl-settings.scala
 run/repl-save.scala
@@ -779,6 +810,9 @@ run/t9689
 run/trailing-commas.scala
 run/t4700.scala
 run/t9880-9881.scala
+run/repl-kind.scala
+run/t10284.scala
+run/t9016.scala
 
 # Using Scala Script (partest.ScriptTest)
 
@@ -914,6 +948,8 @@ run/t9206.scala
 run/t9170.scala
 run/t8918-unary-ids.scala
 run/t1931.scala
+run/t8935-class.scala
+run/t8935-object.scala
 
 # partest.JavapTest
 run/t8608-no-format.scala
@@ -967,6 +1003,14 @@ run/t3236
 run/t9013
 run/t10231
 run/t10067
+run/t10249
+run/sd143
+run/t4283b
+run/t7936
+run/t7936b
+run/t9937
+run/t10368
+run/t10334b
 
 # Using scala-script
 run/t7791-script-linenums.scala
