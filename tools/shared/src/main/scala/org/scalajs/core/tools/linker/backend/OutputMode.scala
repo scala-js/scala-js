@@ -36,32 +36,37 @@ object OutputMode {
     val esLevel: ESLevel = ESLevel.ES5
   }
 
-  /** Modern output mode compliant with ECMAScript 5.1 in a function scope.
-   *  This is the default output mode used by fastOpt and fullOpt.
-   *  The output must be enclosed in an anonymous function isolating the code
-   *  in a dedicated scope.
+  /** Output mode compliant with ECMAScript 5.1 (deprecated alias).
+   *
+   *  This value is not annotated with `@deprecated` for technical reasons, but
+   *  it should be considered as such. Use [[ECMAScript51]] instead.
    */
   case object ECMAScript51Isolated extends OutputMode {
     val esLevel: ESLevel = ESLevel.ES5
   }
 
-  /** Experimental output mode compliant with ECMAScript 6 in a function scope.
+  /** Output mode compliant with ECMAScript 5.1.
    *
-   *  This output mode assumes that the target platform supports ECMAScript 6,
-   *  at least for the following aspects:
+   *  This is the default output mode. It assumes that the target platform
+   *  supports ECMAScript 5.1, ideally with correct handling of strict mode.
+   */
+  val ECMAScript51: ECMAScript51Isolated.type = ECMAScript51Isolated
+
+  /** Output mode compliant with ECMAScript 2015 (deprecated alias).
    *
-   *  * Classes
-   *  * let and const
-   *  * Rest parameters and the spread operator (...args)
-   *  * New methods in Math
-   *  * Symbols and the "well-known symbol" Symbol.iterator
-   *
-   *  The output must be enclosed in an anonymous function isolating the code
-   *  in a dedicated scope.
+   *  This value is not annotated with `@deprecated` for technical reasons, but
+   *  it should be considered as such. Use [[ECMAScript2015]] instead.
    */
   case object ECMAScript6 extends OutputMode {
     val esLevel: ESLevel = ESLevel.ES6
   }
+
+  /** Output mode compliant with ECMAScript 2015.
+   *
+   *  This output mode assumes that the target platform supports ECMAScript
+   *  2015 (aka ES 6).
+   */
+  val ECMAScript2015: ECMAScript6.type = ECMAScript6
 
   // Not binary compatible, but source compatible with deprecation
   @deprecated("Support for ES6 Strong Mode was removed. Use ECMAScript6 instead.", "0.6.8")
