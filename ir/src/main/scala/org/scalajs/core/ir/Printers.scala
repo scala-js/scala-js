@@ -814,8 +814,7 @@ object Printers {
     }
 
     def print(classDef: ClassDef): Unit = {
-      val ClassDef(name, kind, superClass, interfaces, jsNativeLoadSpec,
-          memberDefs, topLevelExportDefs) = classDef
+      import classDef._
       print(classDef.optimizerHints)
       kind match {
         case ClassKind.Class               => print("class ")

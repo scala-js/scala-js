@@ -855,11 +855,34 @@ object Trees {
 
   // Classes
 
-  case class ClassDef(name: Ident, kind: ClassKind, superClass: Option[Ident],
-      interfaces: List[Ident], jsNativeLoadSpec: Option[JSNativeLoadSpec],
-      memberDefs: List[MemberDef], topLevelExportDefs: List[TopLevelExportDef])(
-      val optimizerHints: OptimizerHints)(
-      implicit val pos: Position) extends IRNode
+  final class ClassDef(
+      val name: Ident,
+      val kind: ClassKind,
+      val superClass: Option[Ident],
+      val interfaces: List[Ident],
+      val jsNativeLoadSpec: Option[JSNativeLoadSpec],
+      val memberDefs: List[MemberDef],
+      val topLevelExportDefs: List[TopLevelExportDef]
+  )(
+      val optimizerHints: OptimizerHints
+  )(implicit val pos: Position) extends IRNode
+
+  object ClassDef {
+    def apply(
+        name: Ident,
+        kind: ClassKind,
+        superClass: Option[Ident],
+        interfaces: List[Ident],
+        jsNativeLoadSpec: Option[JSNativeLoadSpec],
+        memberDefs: List[MemberDef],
+        topLevelExportDefs: List[TopLevelExportDef])(
+        optimizerHints: OptimizerHints)(
+        implicit pos: Position): ClassDef = {
+      new ClassDef(name, kind, superClass, interfaces, jsNativeLoadSpec,
+          memberDefs, topLevelExportDefs)(
+          optimizerHints)
+    }
+  }
 
   // Class members
 

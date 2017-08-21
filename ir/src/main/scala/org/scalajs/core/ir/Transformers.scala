@@ -204,9 +204,8 @@ object Transformers {
 
   abstract class ClassTransformer extends Transformer {
     def transformClassDef(tree: ClassDef): ClassDef = {
-      val ClassDef(name, kind, superClass, parents, jsName, memberDefs,
-          topLevelExportDefs) = tree
-      ClassDef(name, kind, superClass, parents, jsName,
+      import tree._
+      ClassDef(name, kind, superClass, interfaces, jsNativeLoadSpec,
           memberDefs.map(transformMemberDef),
           topLevelExportDefs.map(transformTopLevelExportDef))(
           tree.optimizerHints)(tree.pos)

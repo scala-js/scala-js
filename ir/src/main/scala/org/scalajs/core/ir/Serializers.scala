@@ -456,18 +456,17 @@ object Serializers {
 
     def writeClassDef(classDef: ClassDef): Unit = {
       import buffer._
+      import classDef._
 
-      val ClassDef(name, kind, superClass, parents, jsNativeLoadSpec,
-          memberDefs, topLevelExportDefs) = classDef
       writePosition(classDef.pos)
       writeIdent(name)
       writeByte(ClassKind.toByte(kind))
       writeOptIdent(superClass)
-      writeIdents(parents)
+      writeIdents(interfaces)
       writeJSNativeLoadSpec(jsNativeLoadSpec)
       writeMemberDefs(memberDefs)
       writeTopLevelExportDefs(topLevelExportDefs)
-      writeInt(classDef.optimizerHints.bits)
+      writeInt(optimizerHints.bits)
     }
 
     def writeMemberDef(memberDef: MemberDef): Unit = {

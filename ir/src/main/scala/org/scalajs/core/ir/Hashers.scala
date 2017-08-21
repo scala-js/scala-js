@@ -39,8 +39,11 @@ object Hashers {
 
   /** Hash the definitions in a ClassDef (where applicable) */
   def hashClassDef(classDef: ClassDef): ClassDef = {
-    classDef.copy(memberDefs = hashMemberDefs(classDef.memberDefs))(
-        classDef.optimizerHints)(classDef.pos)
+    import classDef._
+    val newMemberDefs = hashMemberDefs(memberDefs)
+    ClassDef(name, kind, superClass, interfaces, jsNativeLoadSpec,
+        newMemberDefs, topLevelExportDefs)(
+        optimizerHints)
   }
 
   def hashesEqual(x: TreeHash, y: TreeHash): Boolean =
