@@ -383,8 +383,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           val dParam = params.indexWhere { _.hasFlag(Flags.DEFAULTPARAM) }
           if (dParam == -1) Seq(params.size)
           else dParam to params.size
-        case ex: ExportedBody =>
-          List(ex.params.size)
       }
 
       // Generate tuples (argc, method)
@@ -502,9 +500,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         val altsByTypeTest = groupByWithoutHashCode(alts) {
           case ExportedSymbol(alt) =>
             typeTestForTpe(computeExportArgType(alt, paramIndex))
-
-          case ex: ExportedBody =>
-            typeTestForTpe(ex.params(paramIndex))
         }
 
         if (altsByTypeTest.size == 1) {
@@ -532,7 +527,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
                 val params = p.tpe.params
                 params.size > paramIndex &&
                 params(paramIndex).hasFlag(Flags.DEFAULTPARAM)
-              case _: ExportedBody => false
             }
 
             val optCond = typeTest match {
@@ -567,7 +561,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       // Find a position that is in the current class for decent error reporting
       val pos = alts.collectFirst {
         case ExportedSymbol(sym) if sym.owner == currentClass => sym.pos
-        case alt: ExportedBody                                => alt.pos
       }.getOrElse {
         currentClass.pos
       }
@@ -845,13 +838,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       def typeInfo: String = sym.tpe.toString
       def hasRepeatedParam: Boolean = GenJSExports.this.hasRepeatedParam(sym)
-    }
-
-    private case class ExportedBody(params: List[Type], body: js.Tree,
-        name: String, pos: Position) extends Exported {
-      def genBody(minArgc: Int, hasRestParam: Boolean, static: Boolean): js.Tree = body
-      def typeInfo: String = params.mkString("(", ", ", ")")
-      val hasRepeatedParam: Boolean = false
     }
   }
 
