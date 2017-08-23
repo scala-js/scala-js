@@ -25,38 +25,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
   )
 
   @Test
-  def warnNoJSNativeAnnotation: Unit = {
-
-    """
-    class A extends js.Object
-    """ containsWarns
-    """
-      |newSource1.scala:5: warning: Classes, traits and objects inheriting from js.Any should be annotated with @js.native, unless they have @ScalaJSDefined. The default will switch to Scala.js-defined in the next major version of Scala.js.
-      |    class A extends js.Object
-      |          ^
-    """
-
-    """
-    object A extends js.Object
-    """ containsWarns
-    """
-      |newSource1.scala:5: warning: Classes, traits and objects inheriting from js.Any should be annotated with @js.native, unless they have @ScalaJSDefined. The default will switch to Scala.js-defined in the next major version of Scala.js.
-      |    object A extends js.Object
-      |           ^
-    """
-
-    """
-    trait A extends js.Object
-    """ hasWarns
-    """
-      |newSource1.scala:5: warning: Classes, traits and objects inheriting from js.Any should be annotated with @js.native, unless they have @ScalaJSDefined. The default will switch to Scala.js-defined in the next major version of Scala.js.
-      |    trait A extends js.Object
-      |          ^
-    """
-
-  }
-
-  @Test
   def warnJSPackageObjectDeprecated: Unit = {
 
     s"""
@@ -82,6 +50,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       $obj A extends js.Object
       """ hasErrors
       s"""
+        |newSource1.scala:5: warning: @ScalaJSDefined is deprecated: add `-P:scalajs:sjsDefinedByDefault` to your scalac options and simply remove `@ScalaJSDefined`
+        |      @ScalaJSDefined
+        |       ^
         |newSource1.scala:7: error: @ScalaJSDefined and @js.native cannot be used together
         |      $obj A extends js.Object
         |      ${" " * obj.length} ^
@@ -97,7 +68,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
       obj <- Seq("class", "trait", "object")
     } yield {
       s"""
-      @ScalaJSDefined
       @JSName("foo")
       $obj A extends js.Object
 
@@ -105,15 +75,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
         val sym = js.Symbol()
       }
 
-      @ScalaJSDefined
       @JSName(Sym.sym)
       $obj B extends js.Object
       """ hasWarns
       s"""
-        |newSource1.scala:6: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+        |newSource1.scala:5: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
         |      @JSName("foo")
         |       ^
-        |newSource1.scala:14: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+        |newSource1.scala:12: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
         |      @JSName(Sym.sym)
         |       ^
       """
@@ -149,33 +118,29 @@ class JSInteropTest extends DirectTest with TestHelpers {
   def okJSNameOnNestedObjects: Unit = {
 
     """
-    @ScalaJSDefined
     class A extends js.Object {
       @JSName("foo")
       object toto
 
       @JSName("bar")
-      @ScalaJSDefined
       object tata extends js.Object
     }
     """.hasNoWarns
 
     """
-    @ScalaJSDefined
     class A extends js.Object {
       @JSName("foo")
       private object toto
 
       @JSName("bar")
-      @ScalaJSDefined
       private object tata extends js.Object
     }
     """ hasWarns
     """
-      |newSource1.scala:7: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+      |newSource1.scala:6: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
       |      @JSName("foo")
       |       ^
-      |newSource1.scala:10: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
+      |newSource1.scala:9: warning: Non JS-native classes, traits and objects should not have an @JSName annotation, as it does not have any effect. This will be enforced in 1.0.
       |      @JSName("bar")
       |       ^
     """
@@ -189,19 +154,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
       obj <- Seq("class", "trait", "object")
     } yield {
       s"""
-      @ScalaJSDefined
       @JSGlobal
       $obj A extends js.Object
 
-      @ScalaJSDefined
       @JSGlobal("Foo")
       $obj B extends js.Object
       """ hasErrors
       s"""
-        |newSource1.scala:6: error: Non JS-native classes, traits and objects may not have an @JSGlobal annotation.
+        |newSource1.scala:5: error: Non JS-native classes, traits and objects may not have an @JSGlobal annotation.
         |      @JSGlobal
         |       ^
-        |newSource1.scala:10: error: Non JS-native classes, traits and objects may not have an @JSGlobal annotation.
+        |newSource1.scala:8: error: Non JS-native classes, traits and objects may not have an @JSGlobal annotation.
         |      @JSGlobal("Foo")
         |       ^
       """
@@ -236,12 +199,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       obj <- Seq("class", "trait", "object")
     } yield {
       s"""
-      @ScalaJSDefined
       @JSImport("foo", JSImport.Namespace)
       $obj A extends js.Object
       """ hasErrors
       s"""
-        |newSource1.scala:6: error: Non JS-native classes, traits and objects may not have an @JSImport annotation.
+        |newSource1.scala:5: error: Non JS-native classes, traits and objects may not have an @JSImport annotation.
         |      @JSImport("foo", JSImport.Namespace)
         |       ^
       """
@@ -265,12 +227,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       obj <- Seq("class", "trait", "object")
     } yield {
       s"""
-      @ScalaJSDefined
       @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
       $obj A extends js.Object
       """ hasErrors
       s"""
-        |newSource1.scala:6: error: Non JS-native classes, traits and objects may not have an @JSImport annotation.
+        |newSource1.scala:5: error: Non JS-native classes, traits and objects may not have an @JSImport annotation.
         |      @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
         |       ^
       """
@@ -502,8 +463,8 @@ class JSInteropTest extends DirectTest with TestHelpers {
         if (outer == "trait") ""
         else "@JSGlobal"
       val innerLine =
-        if (innerSJSDefined) s"@ScalaJSDefined $inner A extends js.Object"
-        else s"$inner A"
+        if (innerSJSDefined) s"$inner A extends js.Object"
+        else s"@js.native $inner A"
       s"""
       @js.native $jsGlobalAnnot
       $outer A extends js.Object {
@@ -577,13 +538,13 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native
       @JSGlobal
       object A extends js.Object {
-        @ScalaJSDefined $inner A extends js.Object
+        $inner A extends js.Object
       }
       """ hasErrors
       s"""
         |newSource1.scala:8: error: Native JS objects cannot contain inner Scala.js-defined JS classes or objects
-        |        @ScalaJSDefined $inner A extends js.Object
-        |                        ${" " * inner.length} ^
+        |        $inner A extends js.Object
+        |        ${" " * inner.length} ^
       """
     }
 
@@ -760,21 +721,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
-    @ScalaJSDefined
     case class A(x: Int) extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:6: error: Classes and objects extending js.Any may not have a case modifier
+      |newSource1.scala:5: error: Classes and objects extending js.Any may not have a case modifier
       |    case class A(x: Int) extends js.Object
       |               ^
     """
 
     """
-    @ScalaJSDefined
     case object B extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:6: error: Classes and objects extending js.Any may not have a case modifier
+      |newSource1.scala:5: error: Classes and objects extending js.Any may not have a case modifier
       |    case object B extends js.Object
       |                ^
     """
@@ -793,7 +752,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       outerSJSDefined <- Seq(false, true)
     } yield {
       val outerLine =
-        if (outerSJSDefined) s"@ScalaJSDefined $outer A extends js.Object"
+        if (outerSJSDefined) s"$outer A extends js.Object"
         else s"$outer A"
 
       val jsGlobalAnnot =
@@ -841,31 +800,28 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
-    @ScalaJSDefined
     class A extends js.Object with js.GlobalScope
     """ hasErrors
     """
-      |newSource1.scala:6: error: A Scala.js-defined JS class cannot directly extend a native JS trait.
+      |newSource1.scala:5: error: A Scala.js-defined JS class cannot directly extend a native JS trait.
       |    class A extends js.Object with js.GlobalScope
       |          ^
     """
 
     """
-    @ScalaJSDefined
     trait A extends js.Object with js.GlobalScope
     """ hasErrors
     """
-      |newSource1.scala:6: error: A Scala.js-defined JS trait cannot directly extend a native JS trait.
+      |newSource1.scala:5: error: A Scala.js-defined JS trait cannot directly extend a native JS trait.
       |    trait A extends js.Object with js.GlobalScope
       |          ^
     """
 
     """
-    @ScalaJSDefined
     object A extends js.Object with js.GlobalScope
     """ hasErrors
     """
-      |newSource1.scala:6: error: A Scala.js-defined JS object cannot directly extend a native JS trait.
+      |newSource1.scala:5: error: A Scala.js-defined JS object cannot directly extend a native JS trait.
       |    object A extends js.Object with js.GlobalScope
       |           ^
     """
@@ -1365,7 +1321,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
       inner <- Seq("class", "object")
     } {
       s"""
-      @ScalaJSDefined
       object A extends js.Object {
         @js.native
         @JSGlobal
@@ -1373,7 +1328,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       s"""
-        |newSource1.scala:9: error: Scala.js-defined JS objects may not have inner native JS classes or objects
+        |newSource1.scala:8: error: Scala.js-defined JS objects may not have inner native JS classes or objects
         |        $inner B extends js.Object
         |        ${" " * inner.length} ^
       """
@@ -1461,7 +1416,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def bar: Int = js.native
     }
 
-    @ScalaJSDefined
     class C extends js.Object {
       @JSName(js.Symbol())
       def foo: Int = js.native
@@ -1476,10 +1430,10 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:16: error: A js.Symbol argument to JSName must be a static, stable identifier
       |      @JSName(new A().a)
       |                      ^
-      |newSource1.scala:22: error: A js.Symbol argument to JSName must be a static, stable identifier
+      |newSource1.scala:21: error: A js.Symbol argument to JSName must be a static, stable identifier
       |      @JSName(js.Symbol())
       |                       ^
-      |newSource1.scala:24: error: A js.Symbol argument to JSName must be a static, stable identifier
+      |newSource1.scala:23: error: A js.Symbol argument to JSName must be a static, stable identifier
       |      @JSName(new A().a)
       |                      ^
     """
@@ -1490,7 +1444,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
   def noSelfReferenceJSNameSymbol: Unit = {
 
     """
-    @ScalaJSDefined
     object A extends js.Object {
       val a = js.Symbol("foo")
 
@@ -1499,7 +1452,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasWarns
     """
-      |newSource1.scala:9: warning: This symbol is defined in the same object as the annotation's target. This will cause a stackoverflow at runtime
+      |newSource1.scala:8: warning: This symbol is defined in the same object as the annotation's target. This will cause a stackoverflow at runtime
       |      @JSName(a)
       |              ^
     """
@@ -2122,23 +2075,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
   @Test
   def scalaJSDefinedJSNameOverrideWarnings: Unit = {
     """
-    @ScalaJSDefined
     abstract class A extends js.Object {
       def bar(): Int
     }
-    @ScalaJSDefined
     class B extends A {
       override def bar() = 1
     }
     """.hasNoWarns
 
     """
-    @ScalaJSDefined
     trait A extends js.Object {
       @JSName("foo")
       def bar(): Int
     }
-    @ScalaJSDefined
     class B extends A {
       @JSName("foo")
       override def bar() = 1
@@ -2146,12 +2095,10 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """.hasNoWarns
 
     """
-    @ScalaJSDefined
     abstract class A extends js.Object {
       @JSName("foo")
       def bar(): Int
     }
-    @ScalaJSDefined
     class B extends A {
       @JSName("foo")
       override def bar() = 1
@@ -2159,19 +2106,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """.hasNoWarns
 
     """
-    @ScalaJSDefined
     abstract class A extends js.Object {
       @JSName("foo")
       def bar(): Int
     }
-    @ScalaJSDefined
     class B extends A {
       @JSName("baz")
       override def bar() = 1
     }
     """ hasWarns
     """
-      |newSource1.scala:13: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:11: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'baz'
       |    is conflicting with
@@ -2182,18 +2127,16 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
-    @ScalaJSDefined
     abstract class A extends js.Object {
       @JSName("foo")
       def bar(): Int
     }
-    @ScalaJSDefined
     class B extends A {
       override def bar() = 1
     }
     """ hasWarns
     """
-      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'bar'
       |    is conflicting with
@@ -2204,22 +2147,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
-    @ScalaJSDefined
     abstract class A extends js.Object {
       @JSName("foo")
       def bar(): Object
     }
-    @ScalaJSDefined
     abstract class B extends A {
       override def bar(): String
     }
-    @ScalaJSDefined
     class C extends B {
       override def bar() = "1"
     }
     """ hasWarns
     """
-      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class B with JSName 'bar'
       |    is conflicting with
@@ -2227,7 +2167,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar(): String
       |                   ^
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:13: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class C with JSName 'bar'
       |    is conflicting with
@@ -2238,22 +2178,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
-    @ScalaJSDefined
     abstract class A extends js.Object {
       def bar(): Object
     }
-    @ScalaJSDefined
     abstract class B extends A {
       @JSName("foo")
       override def bar(): String
     }
-    @ScalaJSDefined
     class C extends B {
       override def bar() = "1"
     }
     """ hasWarns
     """
-      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class B with JSName 'foo'
       |    is conflicting with
@@ -2261,7 +2198,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar(): String
       |                   ^
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:13: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class C with JSName 'bar'
       |    is conflicting with
@@ -2272,20 +2209,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
-    @ScalaJSDefined
     class A extends js.Object {
       def foo: Int = 5
     }
-    @ScalaJSDefined
     trait B extends A {
       @JSName("bar")
       def foo: Int
     }
-    @ScalaJSDefined
     class C extends B
     """ hasWarns
     """
-      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in class A with JSName 'foo'
       |    is conflicting with
@@ -2296,20 +2230,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
-    @ScalaJSDefined
     class A extends js.Object {
       @JSName("bar")
       def foo: Int = 5
     }
-    @ScalaJSDefined
     trait B extends A {
       def foo: Int
     }
-    @ScalaJSDefined
     class C extends B
     """ hasWarns
     """
-      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in class A with JSName 'bar'
       |    is conflicting with
@@ -2320,18 +2251,16 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
-    @ScalaJSDefined
     class A[T] extends js.Object {
       @JSName("bar")
       def foo(x: T): T = x
     }
-    @ScalaJSDefined
     class B extends A[Int] {
       override def foo(x: Int): Int = x
     }
     """ hasWarns
     """
-      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class B with JSName 'foo'
       |    is conflicting with
@@ -2342,18 +2271,16 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
-    @ScalaJSDefined
     trait A[T] extends js.Object {
       @JSName("bar")
       def foo(x: T): T
     }
-    @ScalaJSDefined
     class B extends A[Int] {
       override def foo(x: Int): Int = x
     }
     """ hasWarns
     """
-      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class B with JSName 'foo'
       |    is conflicting with
@@ -2364,22 +2291,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
-    @ScalaJSDefined
     class A[T] extends js.Object {
       @JSName("bar")
       def foo(x: T): T = x
     }
-    @ScalaJSDefined
     trait B extends A[Int] {
       def foo(x: Int): Int
     }
-    @ScalaJSDefined
     class C extends B {
       override def foo(x: Int): Int = x
     }
     """ hasWarns
     """
-      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo(x: Int): Int in class A with JSName 'bar'
       |    is conflicting with
@@ -2387,7 +2311,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      def foo(x: Int): Int
       |          ^
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:13: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class C with JSName 'foo'
       |    is conflicting with
@@ -2398,22 +2322,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
-    @ScalaJSDefined
     class A[T] extends js.Object {
       def foo(x: T): T = x
     }
-    @ScalaJSDefined
     trait B extends A[Int] {
       @JSName("bar")
       def foo(x: Int): Int
     }
-    @ScalaJSDefined
     class C extends B {
       override def foo(x: Int): Int = x
     }
     """ hasWarns
     """
-      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo(x: Int): Int in class A with JSName 'foo'
       |    is conflicting with
@@ -2421,7 +2342,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      def foo(x: Int): Int
       |          ^
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:13: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class C with JSName 'foo'
       |    is conflicting with
@@ -2432,20 +2353,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
-    @ScalaJSDefined
     trait A extends js.Object {
       def foo: Int
     }
-    @ScalaJSDefined
     trait B extends js.Object {
       @JSName("bar")
       def foo: Int
     }
-    @ScalaJSDefined
     trait C extends A with B
     """ hasWarns
     """
-      |newSource1.scala:15: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in trait B with JSName 'bar'
       |    is conflicting with
@@ -2456,20 +2374,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
-    @ScalaJSDefined
     trait A extends js.Object {
       def foo: Int
     }
-    @ScalaJSDefined
     trait B extends js.Object {
       @JSName("bar")
       def foo: Int
     }
-    @ScalaJSDefined
     abstract class C extends A with B
     """ hasWarns
     """
-      |newSource1.scala:15: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in trait B with JSName 'bar'
       |    is conflicting with
@@ -2487,12 +2402,10 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     trait A extends js.Object {
       @JSName(Syms.sym1)
       def bar(): Int
     }
-    @ScalaJSDefined
     class B extends A {
       @JSName(Syms.sym1)
       override def bar() = 1
@@ -2504,12 +2417,10 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     abstract class A extends js.Object {
       @JSName(Syms.sym1)
       def bar(): Int
     }
-    @ScalaJSDefined
     class B extends A {
       @JSName(Syms.sym1)
       override def bar() = 1
@@ -2522,19 +2433,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym2 = js.Symbol()
     }
 
-    @ScalaJSDefined
     abstract class A extends js.Object {
       @JSName(Syms.sym1)
       def bar(): Int
     }
-    @ScalaJSDefined
     class B extends A {
       @JSName(Syms.sym2)
       override def bar() = 1
     }
     """ hasWarns
     """
-      |newSource1.scala:18: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'Syms.sym2'
       |    is conflicting with
@@ -2549,19 +2458,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     abstract class A extends js.Object {
       @JSName(Syms.sym1)
       def bar(): Int
     }
-    @ScalaJSDefined
     class B extends A {
       @JSName("baz")
       override def bar() = 1
     }
     """ hasWarns
     """
-      |newSource1.scala:17: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:15: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'baz'
       |    is conflicting with
@@ -2576,19 +2483,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     abstract class A extends js.Object {
       @JSName("foo")
       def bar(): Int
     }
-    @ScalaJSDefined
     class B extends A {
       @JSName(Syms.sym1)
       override def bar() = 1
     }
     """ hasWarns
     """
-      |newSource1.scala:17: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:15: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'Syms.sym1'
       |    is conflicting with
@@ -2603,18 +2508,16 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     abstract class A extends js.Object {
       @JSName(Syms.sym1)
       def bar(): Int
     }
-    @ScalaJSDefined
     class B extends A {
       override def bar() = 1
     }
     """ hasWarns
     """
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'bar'
       |    is conflicting with
@@ -2629,22 +2532,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     abstract class A extends js.Object {
       @JSName(Syms.sym1)
       def bar(): Object
     }
-    @ScalaJSDefined
     abstract class B extends A {
       override def bar(): String
     }
-    @ScalaJSDefined
     class C extends B {
       override def bar() = "1"
     }
     """ hasWarns
     """
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class B with JSName 'bar'
       |    is conflicting with
@@ -2652,7 +2552,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar(): String
       |                   ^
-      |newSource1.scala:20: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:17: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class C with JSName 'bar'
       |    is conflicting with
@@ -2667,22 +2567,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     abstract class A extends js.Object {
       def bar(): Object
     }
-    @ScalaJSDefined
     abstract class B extends A {
       @JSName(Syms.sym1)
       override def bar(): String
     }
-    @ScalaJSDefined
     class C extends B {
       override def bar() = "1"
     }
     """ hasWarns
     """
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class B with JSName 'Syms.sym1'
       |    is conflicting with
@@ -2690,7 +2587,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar(): String
       |                   ^
-      |newSource1.scala:20: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:17: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class C with JSName 'bar'
       |    is conflicting with
@@ -2705,20 +2602,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     class A extends js.Object {
       def foo: Int = 5
     }
-    @ScalaJSDefined
     trait B extends A {
       @JSName(Syms.sym1)
       def foo: Int
     }
-    @ScalaJSDefined
     class C extends B
     """ hasWarns
     """
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in class A with JSName 'foo'
       |    is conflicting with
@@ -2733,20 +2627,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     class A extends js.Object {
       @JSName(Syms.sym1)
       def foo: Int = 5
     }
-    @ScalaJSDefined
     trait B extends A {
       def foo: Int
     }
-    @ScalaJSDefined
     class C extends B
     """ hasWarns
     """
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in class A with JSName 'Syms.sym1'
       |    is conflicting with
@@ -2761,18 +2652,16 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     class A[T] extends js.Object {
       @JSName(Syms.sym1)
       def foo(x: T): T = x
     }
-    @ScalaJSDefined
     class B extends A[Int] {
       override def foo(x: Int): Int = x
     }
     """ hasWarns
     """
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class B with JSName 'foo'
       |    is conflicting with
@@ -2787,18 +2676,16 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     trait A[T] extends js.Object {
       @JSName(Syms.sym1)
       def foo(x: T): T
     }
-    @ScalaJSDefined
     class B extends A[Int] {
       override def foo(x: Int): Int = x
     }
     """ hasWarns
     """
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class B with JSName 'foo'
       |    is conflicting with
@@ -2813,22 +2700,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     class A[T] extends js.Object {
       @JSName(Syms.sym1)
       def foo(x: T): T = x
     }
-    @ScalaJSDefined
     trait B extends A[Int] {
       def foo(x: Int): Int
     }
-    @ScalaJSDefined
     class C extends B {
       override def foo(x: Int): Int = x
     }
     """ hasWarns
     """
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo(x: Int): Int in class A with JSName 'Syms.sym1'
       |    is conflicting with
@@ -2836,7 +2720,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      def foo(x: Int): Int
       |          ^
-      |newSource1.scala:20: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:17: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class C with JSName 'foo'
       |    is conflicting with
@@ -2851,22 +2735,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     class A[T] extends js.Object {
       def foo(x: T): T = x
     }
-    @ScalaJSDefined
     trait B extends A[Int] {
       @JSName(Syms.sym1)
       def foo(x: Int): Int
     }
-    @ScalaJSDefined
     class C extends B {
       override def foo(x: Int): Int = x
     }
     """ hasWarns
     """
-      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo(x: Int): Int in class A with JSName 'foo'
       |    is conflicting with
@@ -2874,7 +2755,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      def foo(x: Int): Int
       |          ^
-      |newSource1.scala:20: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:17: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class C with JSName 'foo'
       |    is conflicting with
@@ -2889,20 +2770,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     trait A extends js.Object {
       def foo: Int
     }
-    @ScalaJSDefined
     trait B extends js.Object {
       @JSName(Syms.sym1)
       def foo: Int
     }
-    @ScalaJSDefined
     trait C extends A with B
     """ hasWarns
     """
-      |newSource1.scala:19: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in trait B with JSName 'Syms.sym1'
       |    is conflicting with
@@ -2917,20 +2795,17 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val sym1 = js.Symbol()
     }
 
-    @ScalaJSDefined
     trait A extends js.Object {
       def foo: Int
     }
-    @ScalaJSDefined
     trait B extends js.Object {
       @JSName(Syms.sym1)
       def foo: Int
     }
-    @ScalaJSDefined
     abstract class C extends A with B
     """ hasWarns
     """
-      |newSource1.scala:19: warning: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in trait B with JSName 'Syms.sym1'
       |    is conflicting with
@@ -2944,7 +2819,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
   @Test
   def noDefaultConstructorArgsIfModuleIsJSNative: Unit = {
     """
-    @ScalaJSDefined
     class A(x: Int = 1) extends js.Object
 
     @js.native
@@ -2952,7 +2826,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     object A extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:6: error: Implementation restriction: constructors of Scala.js-defined JS classes cannot have default parameters if their companion module is JS native.
+      |newSource1.scala:5: error: Implementation restriction: constructors of Scala.js-defined JS classes cannot have default parameters if their companion module is JS native.
       |    class A(x: Int = 1) extends js.Object
       |          ^
     """
@@ -2979,13 +2853,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class NativeBase extends js.Object {
       def add(option: js.Any = js.native): js.Any = js.native
     }
-    @ScalaJSDefined
     class Derived extends NativeBase {
       override def add(option: js.Any): js.Any = super.add(option)
     }
     """ hasErrors
     """
-      |newSource1.scala:12: error: When overriding a native method with default arguments, the overriding method must explicitly repeat the default arguments.
+      |newSource1.scala:11: error: When overriding a native method with default arguments, the overriding method must explicitly repeat the default arguments.
       |      override def add(option: js.Any): js.Any = super.add(option)
       |                       ^
     """
@@ -3000,13 +2873,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @JSGlobal
     class NativeBase extends NativeTrait
 
-    @ScalaJSDefined
     class Derived extends NativeBase {
       override def add(option: js.Any): js.Any = super.add(option)
     }
     """ hasErrors
     """
-      |newSource1.scala:16: error: When overriding a native method with default arguments, the overriding method must explicitly repeat the default arguments.
+      |newSource1.scala:15: error: When overriding a native method with default arguments, the overriding method must explicitly repeat the default arguments.
       |      override def add(option: js.Any): js.Any = super.add(option)
       |                       ^
     """

@@ -488,6 +488,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       val isJSAnonFun = isJSLambda(sym)
 
+      for (annot <- sym.getAnnotation(ScalaJSDefinedAnnotation)) {
+        reporter.warning(annot.pos,
+            "@ScalaJSDefined is deprecated: " +
+            "add `-P:scalajs:sjsDefinedByDefault` to your scalac options and " +
+            "simply remove `@ScalaJSDefined`")
+      }
+
       sym.addAnnotation(RawJSTypeAnnot)
       if (sym.isAnonymousClass && !isJSAnonFun) {
         sym.addAnnotation(ScalaJSDefinedAnnotation)

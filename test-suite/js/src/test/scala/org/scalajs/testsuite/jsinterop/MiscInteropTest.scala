@@ -198,16 +198,12 @@ class MiscInteropTest {
 
 object MiscInteropTest {
 
-  @ScalaJSDefined
   abstract class AbstractJSClass extends js.Object
 
-  @ScalaJSDefined
   class ConcreteJSClass extends AbstractJSClass
 
-  @ScalaJSDefined
   class OtherwiseUnreferencedJSClass(val x: Int) extends js.Object
 
-  @ScalaJSDefined
   class OtherwiseUnreferencedJSClassForTag(val x: Int) extends js.Object
 
   @js.native
@@ -223,7 +219,6 @@ object MiscInteropTest {
 
   class SomeScalaClass
 
-  @ScalaJSDefined
   class SomeJSClass extends js.Object
 
 }

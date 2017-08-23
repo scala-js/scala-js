@@ -15,7 +15,6 @@ import js.annotation._
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
  *  JavaScript Iterable.
  */
-@ScalaJSDefined
 trait Iterable[+A] extends js.Object {
   /** JavaScript Iterator for this Iterable. */
   @JSName(Symbol.iterator)

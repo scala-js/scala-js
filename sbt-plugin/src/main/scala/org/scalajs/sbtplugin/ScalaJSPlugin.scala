@@ -69,9 +69,9 @@ object ScalaJSPlugin extends AutoPlugin {
       /* We take the semantics from the linker, since they depend on the stage.
        * This way we are sure we agree on the semantics with the linker.
        */
-      import ScalaJSPluginInternal.{scalaJSLinker, scalaJSRequestsDOM}
+      import ScalaJSPluginInternal.{scalaJSLinker, scalaJSRequestsDOMInternal}
       val semantics = scalaJSLinker.value.semantics
-      val withDOM = scalaJSRequestsDOM.value
+      val withDOM = scalaJSRequestsDOMInternal.value
       new RhinoJSEnv(semantics, withDOM, internal = ())
     }
 
@@ -337,8 +337,17 @@ object ScalaJSPlugin extends AutoPlugin {
     @deprecated("Use jsEnv instead.", "0.6.6")
     val postLinkJSEnv = jsEnv
 
-    val requiresDOM = SettingKey[Boolean]("requiresDOM",
+    /** Non-deprecated alias of `requiresDOM` for internal use. */
+    private[sbtplugin] val requiresDOMInternal = SettingKey[Boolean]("requiresDOM",
         "Whether this projects needs the DOM. Overrides anything inherited through dependencies.", AMinusSetting)
+
+    @deprecated(
+        "Requesting a DOM-enabled JS env with `jsDependencies += RuntimeDOM` " +
+        "or `requiresDOM := true` will not be supported in Scala.js 1.x. " +
+        "Instead, explicitly select a suitable JS with `jsEnv`, e.g., " +
+        "`jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv`.",
+        "0.6.20")
+    val requiresDOM = requiresDOMInternal
 
     val relativeSourceMaps = SettingKey[Boolean]("relativeSourceMaps",
         "Make the referenced paths on source maps relative to target path", BPlusSetting)

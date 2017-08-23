@@ -28,6 +28,12 @@ trait DependencyBuilders {
    *  RuntimeDOM % "test"
    *  }}}
    */
+  @deprecated(
+      "Requesting a DOM-enabled JS env with `jsDependencies += RuntimeDOM` " +
+      "or `requiresDOM := true` will not be supported in Scala.js 1.x. " +
+      "Instead, explicitly select a suitable JS with `jsEnv`, e.g., " +
+      "`jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv`.",
+      "0.6.20")
   val RuntimeDOM = org.scalajs.sbtplugin.RuntimeDOMDep(None)
 
   /**

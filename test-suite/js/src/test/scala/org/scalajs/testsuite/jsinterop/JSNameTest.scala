@@ -81,19 +81,16 @@ object JSNameTest {
     var internalVar: Double = js.native
   }
 
-  @ScalaJSDefined
   trait PropDefSJSDefined extends js.Any {
     @JSName("jsDef")
     def internalDef: Int
   }
 
-  @ScalaJSDefined
   trait PropValSJSDefined extends js.Any {
     @JSName("jsVal")
     val internalVal: String
   }
 
-  @ScalaJSDefined
   trait PropVarSJSDefined extends js.Any {
     @JSName("jsVar")
     var internalVar: Double

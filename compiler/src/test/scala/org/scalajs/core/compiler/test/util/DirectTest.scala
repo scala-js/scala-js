@@ -15,7 +15,7 @@ import java.io.File
 abstract class DirectTest {
 
   /** these arguments are always added to the args passed to newSettings */
-  def extraArgs: List[String] = Nil
+  def extraArgs: List[String] = List("-P:scalajs:sjsDefinedByDefault")
 
   /** create settings objects for test from arg string */
   def newSettings(args: List[String]): Settings = {

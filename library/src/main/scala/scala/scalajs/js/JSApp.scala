@@ -2,34 +2,72 @@ package scala.scalajs.js
 
 import annotation.{JSExport, JSExportDescendentObjects}
 
-/** Base class for top-level, entry point main objects (softly deprecated).
+/** Old-style base class for top-level, entry point main objects.
  *
- *  In Scala.js 1.x, `js.JSApp` will disappear. It is currently "softly"
- *  deprecated: it is not recommended to use it in new code, but it does not
- *  cause a deprecation warning (yet). Prefer using a standard main method (see
- *  below).
+ *  [[JSApp]] provides two services to an `object Foo` that extends it. These
+ *  two services are replaced by two different features, starting with Scala.js
+ *  0.6.18.
  *
- *  Objects inheriting from [[JSApp]] are automatically exported to JavaScript
- *  under their fully qualified name, and their [[main]] method as well.
+ *  == Discoverability by sbt as main object ==
  *
- *  [[JSApp]] is typically used to mark the entry point of a Scala.js
- *  application. As such, the sbt plugin also recognizes top-level objects
- *  extending [[JSApp]]. It allows to run their [[main]] method with `sbt run`,
- *  and can also generate a tiny JavaScript launcher snippet executing the
- *  [[main]] method of one specific [[JSApp]] object.
- *
- *  Starting with Scala.js 0.6.18, the sbt plugin can also recognize "standard"
- *  `main` methods of the form
+ *  Since Scala.js 0.6.18, the sbt plugin can recognize "standard" `main`
+ *  methods of the form
  *  {{{
  *  def main(args: Array[String]): Unit = ...
  *  }}}
- *  in objects, even if they do not extend `JSApp`. Such main methods are
- *  cross-platform, and should be preferred over extending `JSApp` in new code.
- *  Note however that:
+ *  in objects, even if they do not extend `JSApp`. Use such a main method to
+ *  replace [[JSApp]] in the context of discoverability by sbt.
  *
- *  - the sbt plugin cannot create a launcher snippet for such objects, and
- *  - these objects are not automatically exported to JavaScript.
+ *  To enable it as main method, make sure you also set
+ *  {{{
+ *  scalaJSUseMainModuleInitializer := true
+ *  }}}
+ *  in your project settings.
+ *
+ *  == Automatic export to JavaScript ==
+ *
+ *  Given
+ *  {{{
+ *  package bar
+ *
+ *  object Foo extends js.JSApp {
+ *    def main(): Unit = println("Hello world!")
+ *  }
+ *  }}}
+ *  the object `Foo` and its `main` method are automatically exported such that
+ *  JavaScript code can call
+ *  {{{
+ *  bar.Foo().main();
+ *  }}}
+ *
+ *  To achieve exactly the same behavior without [[JSApp]], define `Foo` as
+ *  {{{
+ *  package bar
+ *
+ *  object Foo {
+ *    @JSExportTopLevel("bar.Foo")
+ *    protected def getInstance(): this.type = this
+ *
+ *    @JSExport
+ *    def main(): Unit = println("Hello world!")
+ *  }
+ *  }}}
+ *
+ *  Alternatively, you can define it as
+ *  {{{
+ *  package bar
+ *
+ *  object Foo {
+ *    @JSExportTopLevel("bar.Foo.main")
+ *    def main(): Unit = println("Hello world!")
+ *  }
+ *  }}}
+ *  but in that case, the JavaScript code will have to be changed to
+ *  {{{
+ *  bar.Foo.main()
+ *  }}}
  */
+@deprecated("Consult the Scaladoc of js.JSApp for migration tips.", "0.6.20")
 @JSExportDescendentObjects
 trait JSApp {
   @JSExport

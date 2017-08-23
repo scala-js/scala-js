@@ -862,7 +862,6 @@ trait InteroperabilityTestPolyTypeNullaryMethodNative extends js.Object {
   def emptyArray[T]: js.Array[T] = js.native
 }
 
-@ScalaJSDefined
 trait InteroperabilityTestPolyTypeNullaryMethodNonNative extends js.Object {
   def emptyArray[T]: js.Array[T]
 }
