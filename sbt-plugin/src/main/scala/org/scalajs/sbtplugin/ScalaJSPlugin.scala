@@ -28,6 +28,9 @@ import org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv
 import org.scalajs.jsenv.phantomjs.PhantomJSEnv
 
 object ScalaJSPlugin extends AutoPlugin {
+  /** The global Scala.js IR cache */
+  val globalIRCache: IRFileCache = new IRFileCache()
+
   override def requires: Plugins = plugins.JvmPlugin
 
   /* The following module-case double definition is a workaround for a bug
@@ -69,7 +72,7 @@ object ScalaJSPlugin extends AutoPlugin {
       /* We take the semantics from the linker, since they depend on the stage.
        * This way we are sure we agree on the semantics with the linker.
        */
-      import ScalaJSPluginInternal.{scalaJSLinker, scalaJSRequestsDOMInternal}
+      import ScalaJSPluginInternal.scalaJSRequestsDOMInternal
       val semantics = scalaJSLinker.value.semantics
       val withDOM = scalaJSRequestsDOMInternal.value
       new RhinoJSEnv(semantics, withDOM, internal = ())
@@ -223,6 +226,47 @@ object ScalaJSPlugin extends AutoPlugin {
         "Tests whether the current project is a Scala.js project. " +
         "Do not set the value of this setting (only use it as read-only).",
         BSetting)
+
+    val scalaJSIRCache = TaskKey[globalIRCache.Cache]("scalaJSIRCache",
+        "Scala.js internal: Task to access a cache.", KeyRanks.Invisible)
+
+    /** Persisted instance of the Scala.js linker.
+     *
+     *  This setting must be scoped per project, configuration, and stage task
+     *  (`fastOptJS` or `fullOptJS`).
+     *
+     *  If a task uses the `link` method of the `ClearableLinker`, it must be
+     *  protected from running in parallel with any other task doing the same
+     *  thing, by tagging the task with the value of [[usesScalaJSLinkerTag]]
+     *  in the same scope. The typical shape of such a task will be:
+     *  {{{
+     *  myTask in (Compile, fastOptJS) := Def.taskDyn {
+     *    val linker = (scalaJSLinker in (Compile, fastOptJS)).value
+     *    val usesLinkerTag = (usesScalaJSLinkerTag in (Compile, fastOptJS)).value
+     *    // Read the `.value` of other settings and tasks here
+     *
+     *    Def.task {
+     *      // Do the actual work of the task here, in particular calling
+     *      linker.link(...)
+     *    }.tag(usesLinkerTag)
+     *  }.value,
+     *  }}}
+     */
+    val scalaJSLinker = SettingKey[ClearableLinker]("scalaJSLinker",
+        "Persisted instance of the Scala.js linker", KeyRanks.Invisible)
+
+    /** A tag to indicate that a task is using the value of [[scalaJSLinker]]
+     *  and its `link` method.
+     *
+     *  This setting's value should always be retrieved from the same scope
+     *  than [[scalaJSLinker]] was retrieved from.
+     *
+     *  @see [[scalaJSLinker]]
+     */
+    val usesScalaJSLinkerTag = SettingKey[Tags.Tag]("usesScalaJSLinkerTag",
+        "Tag to indicate that a task uses the link method of the value of " +
+        "scalaJSLinker",
+        KeyRanks.Invisible)
 
     val fastOptJS = TaskKey[Attributed[File]]("fastOptJS",
         "Quickly link all compiled JavaScript into a single file", APlusTask)
@@ -419,6 +463,11 @@ object ScalaJSPlugin extends AutoPlugin {
         "as the `jettyClassLoader` argument of the PhantomJSEnv",
         KeyRanks.Invisible)
 
+    /** All .sjsir files on the fullClasspath, used by scalajsp. */
+    val sjsirFilesOnClasspath = TaskKey[Seq[String]]("sjsirFilesOnClasspath",
+        "All .sjsir files on the fullClasspath, used by scalajsp",
+        KeyRanks.Invisible)
+
     /** Prints the content of a .sjsir file in human readable form. */
     val scalajsp = InputKey[Unit]("scalajsp",
         "Prints the content of a .sjsir file in human readable form.",
@@ -433,24 +482,74 @@ object ScalaJSPlugin extends AutoPlugin {
         "List of arguments to pass to the Scala.js Java System.properties.",
         CTask)
 
+    val scalaJSSourceFiles = AttributeKey[Seq[File]]("scalaJSSourceFiles",
+        "Files used to compute this value (can be used in FileFunctions later).",
+        KeyRanks.Invisible)
+
     val scalaJSSourceMap = AttributeKey[File]("scalaJSSourceMap",
         "Source map file attached to an Attributed .js file.",
         BSetting)
   }
 
   import autoImport._
-  import ScalaJSPluginInternal._
+
+  /** Maps a [[Stage]] to the corresponding [[sbt.Def.TaskKey TaskKey]].
+   *
+   *  For example, [[Stage.FastOpt]] (aka `FastOptStage`) is mapped to
+   *  [[fastOptJS]].
+   */
+  val stageKeys: Map[Stage, TaskKey[Attributed[File]]] = Map(
+      Stage.FastOpt -> fastOptJS,
+      Stage.FullOpt -> fullOptJS
+  )
+
+  /** Logs the current statistics about the global IR cache. */
+  def logIRCacheStats(logger: Logger): Unit =
+    logger.debug("Global IR cache stats: " + globalIRCache.stats.logLine)
 
   override def globalSettings: Seq[Setting[_]] = {
     Seq(
         scalaJSStage := Stage.FastOpt,
         scalaJSUseRhinoInternal := false,
-        scalaJSClearCacheStats := globalIRCache.clearStats()
+        ScalaJSPluginInternal.scalaJSClearCacheStats := globalIRCache.clearStats()
     )
   }
 
   override def projectSettings: Seq[Setting[_]] = (
-      scalaJSAbstractSettings ++
-      scalaJSEcosystemSettings
+      ScalaJSPluginInternal.scalaJSAbstractSettings ++
+      ScalaJSPluginInternal.scalaJSEcosystemSettings
   )
+
+  /** Basic set of settings enabling Scala.js for a configuration.
+   *
+   *  The `Compile` and `Test` configurations of sbt are already equipped with
+   *  these settings. Directly using this method is only necessary if you want
+   *  to configure a custom configuration.
+   *
+   *  Moreover, if your custom configuration is similar in spirit to `Compile`
+   *  (resp. `Test`), you should use [[compileConfigSettings]] (resp.
+   *  [[testConfigSettings]]) instead.
+   */
+  def baseConfigSettings: Seq[Setting[_]] =
+    ScalaJSPluginInternal.scalaJSConfigSettings
+
+  /** Complete set of settings enabling Scala.js for a `Compile`-like
+   *  configuration.
+   *
+   *  The `Compile` configuration of sbt is already equipped with these
+   *  settings. Directly using this method is only necessary if you want to
+   *  configure a custom `Compile`-like configuration.
+   */
+  def compileConfigSettings: Seq[Setting[_]] =
+    ScalaJSPluginInternal.scalaJSCompileSettings
+
+  /** Complete set of settings enabling Scala.js for a `Test`-like
+   *  configuration.
+   *
+   *  The `Test` configuration of sbt is already equipped with these settings.
+   *  Directly using this method is only necessary if you want to configure a
+   *  custom `Test`-like configuration, e.g., `IntegrationTest`.
+   */
+  def testConfigSettings: Seq[Setting[_]] =
+    ScalaJSPluginInternal.scalaJSTestSettings
 }
