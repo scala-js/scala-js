@@ -131,6 +131,13 @@ object ScalaJSPluginInternal {
         new ClearableLinker(() => StandardLinker(config), config.batchMode)
       },
 
+      // Have `clean` reset the state of the incremental linker
+      clean in (This, Zero, This) := {
+        val _ = (clean in (This, Zero, This)).value
+        (scalaJSLinker in key).value.clear()
+        ()
+      },
+
       usesScalaJSLinkerTag in key := {
         val projectPart = thisProject.value.id
         val configPart = configuration.value.name
@@ -292,6 +299,16 @@ object ScalaJSPluginInternal {
       dispatchTaskKeySettings(scalaJSLinkedFile) ++
       dispatchSettingKeySettings(scalaJSLinker) ++
       dispatchSettingKeySettings(usesScalaJSLinkerTag)
+  ) ++ (
+      Seq(fastOptJS, fullOptJS).map { key =>
+        moduleName in key := {
+          val configSuffix = configuration.value match {
+            case Compile => ""
+            case config  => "-" + config.name
+          }
+          moduleName.value + configSuffix
+        }
+      }
   ) ++ Seq(
       /* Note: This cache only gets freed by its finalizer. Otherwise we'd need
        * to intercept reloads in sbt (see #2171).
@@ -367,6 +384,13 @@ object ScalaJSPluginInternal {
           ModuleInitializer.mainMethodWithArgs(mainCl, "main")
         }
       },
+
+      /* Do not inherit scalaJSModuleInitializers from the parent configuration.
+       * Instead, always derive them straight from the Zero configuration
+       * scope.
+       */
+      scalaJSModuleInitializers :=
+        (scalaJSModuleInitializers in (This, Zero, This)).value,
 
       scalaJSModuleInitializers ++= {
         if (scalaJSUseMainModuleInitializer.value) {
@@ -452,10 +476,6 @@ object ScalaJSPluginInternal {
 
   private val scalaJSTestBuildSettings = (
       scalaJSConfigSettings
-  ) ++ (
-      Seq(fastOptJS, fullOptJS) map { packageJSTask =>
-        moduleName in packageJSTask := moduleName.value + "-test"
-      }
   )
 
   private val scalaJSTestHtmlSettings = Seq(
@@ -464,8 +484,9 @@ object ScalaJSPluginInternal {
           case Stage.FastOpt => "fastopt"
           case Stage.FullOpt => "opt"
         }
+        val config = configuration.value.name
         ((crossTarget in testHtml).value /
-            ((moduleName in testHtml).value + s"-$stageSuffix-test.html"))
+            ((moduleName in testHtml).value + s"-$stageSuffix-$config.html"))
       },
 
       testHtml := {
@@ -496,6 +517,11 @@ object ScalaJSPluginInternal {
       scalaJSTestBuildSettings ++
       scalaJSTestFrameworkSettings ++
       scalaJSTestHtmlSettings
+  ) ++ Seq(
+      /* Always default to false for scalaJSUseMainModuleInitializer in testing
+       * configurations, even if it is true in the Global configuration scope.
+       */
+      scalaJSUseMainModuleInitializer := false
   )
 
   private val scalaJSProjectBaseSettings = Seq(
@@ -507,12 +533,7 @@ object ScalaJSPluginInternal {
       },
 
       scalaJSModuleInitializers := Seq(),
-      scalaJSModuleInitializers in Compile := scalaJSModuleInitializers.value,
-      // Do not inherit scalaJSModuleInitializers in Test from Compile
-      scalaJSModuleInitializers in Test := scalaJSModuleInitializers.value,
-
       scalaJSUseMainModuleInitializer := false,
-      scalaJSUseMainModuleInitializer in Test := false,
 
       jsEnv := new NodeJSEnv(),
 
@@ -520,16 +541,6 @@ object ScalaJSPluginInternal {
       jsExecutionFiles in Compile := jsExecutionFiles.value,
       // Do not inherit jsExecutionFiles in Test from Compile
       jsExecutionFiles in Test := jsExecutionFiles.value,
-
-      clean := {
-        // have clean reset incremental linker state
-        val _ = clean.value
-        (scalaJSLinker in (Compile, fastOptJS)).value.clear()
-        (scalaJSLinker in (Test, fastOptJS)).value.clear()
-        (scalaJSLinker in (Compile, fullOptJS)).value.clear()
-        (scalaJSLinker in (Test, fullOptJS)).value.clear()
-        ()
-      },
 
       scalaJSJavaSystemProperties := Map.empty,
 
