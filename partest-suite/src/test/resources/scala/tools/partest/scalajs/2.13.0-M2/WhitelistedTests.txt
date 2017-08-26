@@ -193,7 +193,6 @@ pos/t5639
 pos/t2667.scala
 pos/t2405.scala
 pos/t1438.scala
-pos/SI-7100.scala
 pos/t1659.scala
 pos/unchecked-a.scala
 pos/t3636.scala
@@ -210,7 +209,6 @@ pos/virtpatmat_anonfun_for.scala
 pos/listpattern.scala
 pos/t5742.scala
 pos/test5refine.scala
-pos/t5604
 pos/return_thistype.scala
 pos/t348plus.scala
 pos/t3420.scala
@@ -1687,7 +1685,6 @@ pos/t4269.scala
 pos/lookupswitch.scala
 pos/t3642
 pos/t5706.scala
-pos/SI-5788.scala
 pos/t7264
 pos/t0031.scala
 pos/macro-deprecate-dont-touch-backquotedidents.scala
@@ -2225,7 +2222,6 @@ neg/lazy-override.scala
 neg/abstract-explaintypes.scala
 neg/nested-annotation.scala
 neg/t5753
-neg/t4283b
 neg/t3691.scala
 neg/infix-op-positions.scala
 neg/t3403.scala
@@ -2565,7 +2561,6 @@ pos/private-types-after-typer.scala
 pos/delambdafy-lambdalift.scala
 pos/sammy_poly.scala
 pos/sammy_single.scala
-pos/SI-4012-b.scala
 pos/sammy_twice.scala
 pos/t3160.scala
 pos/t1014.scala
@@ -2916,8 +2911,6 @@ run/t1505.scala
 run/streams.scala
 run/t2111.scala
 run/t4601.scala
-pos/SI-4012-a.scala
-pos/SI-7638.scala
 neg/t3692-new.scala
 run/t7015.scala
 run/t7992b.scala
@@ -3144,7 +3137,6 @@ pos/hkgadt.scala
 pos/t2712-7.scala
 pos/t9245.scala
 pos/t7088.scala
-pos/trait-defaults-super.scala
 pos/t8044.scala
 pos/t9665.scala
 pos/t9397.scala
@@ -3264,6 +3256,27 @@ run/t10261
 run/t9114.scala
 run/InferOverloadedPartialFunction.scala
 run/t10069b.scala
+pos/t5788.scala
+pos/t10205.scala
+pos/t7100.scala
+pos/t4012-b.scala
+pos/t7638.scala
+pos/leibniz_liskov.scala
+pos/t4012-a.scala
+pos/dotless-targs-ranged.scala
+neg/badtok-1-212.scala
+neg/moduleClassReference.scala
+neg/t5355.scala
+neg/t10081.scala
+neg/t6714.scala
+neg/t10249
+run/macro-implicit-decorator
+run/t10290.scala
+run/t10298.scala
+run/t10389.scala
+run/t6714.scala
+run/t9146.scala
+run/wacky-value-classes.scala
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala
