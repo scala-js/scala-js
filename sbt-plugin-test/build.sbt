@@ -1,5 +1,4 @@
 import org.scalajs.core.tools.io._
-import org.scalajs.sbtplugin.ScalaJSPluginInternal._
 import org.scalajs.sbtplugin.Loggers.sbtLogger2ToolsLogger
 
 lazy val concurrentFakeFullOptJS = taskKey[Any]("")

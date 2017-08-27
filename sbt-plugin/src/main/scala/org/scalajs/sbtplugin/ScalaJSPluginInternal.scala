@@ -42,45 +42,35 @@ object ScalaJSPluginInternal {
   import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 
   /** The global Scala.js IR cache */
-  val globalIRCache: IRFileCache = new IRFileCache()
+  val globalIRCache: ScalaJSPlugin.globalIRCache.type =
+    ScalaJSPlugin.globalIRCache
 
   val scalaJSClearCacheStats = TaskKey[Unit]("scalaJSClearCacheStats",
       "Scala.js internal: Clear the global IR cache's statistics. Used to " +
       "implement cache statistics.", KeyRanks.Invisible)
 
-  /** Dummy setting to persist a Scala.js linker. */
-  val scalaJSLinker = SettingKey[ClearableLinker]("scalaJSLinker",
-      "Scala.js internal: Setting to persist a linker", KeyRanks.Invisible)
+  val scalaJSLinker: SettingKey[ClearableLinker] =
+    ScalaJSPlugin.autoImport.scalaJSLinker
 
-  /** A tag to indicate that a task is using the value of [[scalaJSLinker]]
-   *
-   *  This setting's value should always be retrieved from the same scope than
-   *  [[scalaJSLinker]] was retrieved from.
-   */
-  val usesScalaJSLinkerTag = SettingKey[Tags.Tag]("usesScalaJSLinkerTag",
-      "Scala.js internal: Tag to indicate that a task uses the link or " +
-      "linkUnit method of the value of scalaJSLinker", KeyRanks.Invisible)
+  val usesScalaJSLinkerTag: SettingKey[Tags.Tag] =
+    ScalaJSPlugin.autoImport.usesScalaJSLinkerTag
 
   val scalaJSIRCacheHolder = SettingKey[globalIRCache.Cache]("scalaJSIRCacheHolder",
       "Scala.js internal: Setting to persist a cache. Do NOT use this directly. " +
       "Use scalaJSIRCache instead.", KeyRanks.Invisible)
 
-  val scalaJSIRCache = TaskKey[globalIRCache.Cache]("scalaJSIRCache",
-      "Scala.js internal: Task to access a cache.", KeyRanks.Invisible)
+  val scalaJSIRCache: TaskKey[globalIRCache.Cache] =
+    ScalaJSPlugin.autoImport.scalaJSIRCache
 
   /** All .sjsir files on the fullClasspath, used by scalajsp. */
-  val sjsirFilesOnClasspath = TaskKey[Seq[String]]("sjsirFilesOnClasspath",
-      "All .sjsir files on the fullClasspath, used by scalajsp",
-      KeyRanks.Invisible)
+  val sjsirFilesOnClasspath: TaskKey[Seq[String]] =
+    ScalaJSPlugin.autoImport.sjsirFilesOnClasspath
 
-  val scalaJSSourceFiles = AttributeKey[Seq[File]]("scalaJSSourceFiles",
-      "Files used to compute this value (can be used in FileFunctions later).",
-      KeyRanks.Invisible)
+  val scalaJSSourceFiles: AttributeKey[Seq[File]] =
+    ScalaJSPlugin.autoImport.scalaJSSourceFiles
 
-  val stageKeys: Map[Stage, TaskKey[Attributed[File]]] = Map(
-    Stage.FastOpt -> fastOptJS,
-    Stage.FullOpt -> fullOptJS
-  )
+  val stageKeys: Map[Stage, TaskKey[Attributed[File]]] =
+    ScalaJSPlugin.stageKeys
 
   /* #2798 -- On Java 9+, the parallel collections on 2.10 die with a
    * `NumberFormatException` and prevent the linker from working.
@@ -102,9 +92,8 @@ object ScalaJSPluginInternal {
     }
   }
 
-  def logIRCacheStats(logger: Logger): Unit = {
-    logger.debug("Global IR cache stats: " + globalIRCache.stats.logLine)
-  }
+  def logIRCacheStats(logger: Logger): Unit =
+    ScalaJSPlugin.logIRCacheStats(logger)
 
   /** Patches the IncOptions so that .sjsir files are pruned as needed. */
   def scalaJSPatchIncOptions(incOptions: IncOptions): IncOptions =
