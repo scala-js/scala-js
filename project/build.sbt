@@ -1,6 +1,6 @@
 addSbtPlugin("me.lessis" % "bintray-sbt" % "0.1.2")
 
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.4")
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.5")
 
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.13")
 
