@@ -419,23 +419,6 @@ object Build {
         )
       }
     }
-
-    def enableScalastyleInSharedSources: Project = {
-      import AddSettings._
-      import org.scalastyle.sbt.ScalastylePlugin.scalastyleSources
-
-      project.settings(
-          scalastyleSources := (unmanagedSourceDirectories in Compile).value,
-          scalastyleSources in Test := (unmanagedSourceDirectories in Test).value,
-          SettingKey[String]("foobabar") := scalastyleSources.value.toString
-      ).settingSets(
-          /* We need to force our settings to be applied *after* settings
-           * coming from non-Auto plugins. Because guess what, that's not the
-           * default O_o!
-           */
-          seq(autoPlugins, nonAutoPlugins, buildScalaFiles, userSettings, defaultSbtFiles)
-      )
-    }
   }
 
   val thisBuildSettings = (
@@ -527,7 +510,7 @@ object Build {
           libraryDependencies +=
             "com.novocode" % "junit-interface" % "0.9" % "test"
       )
-  ).enableScalastyleInSharedSources
+  )
 
   lazy val irProjectJS: Project = Project(
       id = "irJS",
@@ -541,7 +524,7 @@ object Build {
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       javalibEx, jUnitRuntime % "test"
-  ).enableScalastyleInSharedSources
+  )
 
   lazy val compiler: Project = Project(
       id = "compiler",
@@ -623,7 +606,7 @@ object Build {
               parallelCollectionsDependencies(scalaVersion.value)
           )
       )
-  ).dependsOn(irProject).enableScalastyleInSharedSources
+  ).dependsOn(irProject)
 
   lazy val toolsJS: Project = Project(
       id = "toolsJS",
@@ -736,7 +719,7 @@ object Build {
       }
   ).withScalaJSCompiler.dependsOn(
       javalibEx, testSuite % "test->test", irProjectJS
-  ).enableScalastyleInSharedSources
+  )
 
   lazy val jsEnvs: Project = Project(
       id = "jsEnvs",
@@ -799,7 +782,7 @@ object Build {
           unmanagedSourceDirectories in Test +=
             baseDirectory.value.getParentFile / "test-common/src/test/scala"
       )
-  ).dependsOn(jsEnvs).enableScalastyleInSharedSources
+  ).dependsOn(jsEnvs)
 
   lazy val plugin: Project = Project(
       id = "sbtPlugin",
@@ -836,7 +819,7 @@ object Build {
             sbtJars.map(_.data -> docUrl).toMap
           }
       )
-  ).dependsOn(tools, jsEnvs, testAdapter).enableScalastyleInSharedSources
+  ).dependsOn(tools, jsEnvs, testAdapter)
 
   lazy val delambdafySetting = {
     scalacOptions ++= (
@@ -1218,7 +1201,7 @@ object Build {
            * block, so we cannot run on JS.
            */
       )
-  ).withScalaJSCompiler.dependsOn(library).enableScalastyleInSharedSources
+  ).withScalaJSCompiler.dependsOn(library)
 
   lazy val jUnitRuntime = Project(
     id = "jUnitRuntime",
@@ -1246,7 +1229,7 @@ object Build {
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       jUnitRuntime % "test", testInterface % "test"
-  ).enableScalastyleInSharedSources
+  )
 
 
   lazy val jUnitTestOutputsJVM = Project(
@@ -1259,7 +1242,7 @@ object Build {
             "com.novocode" % "junit-interface" % "0.11" % "test"
         )
       )
-  ).enableScalastyleInSharedSources
+  )
 
   lazy val jUnitPlugin = Project(
     id = "jUnitPlugin",
@@ -1682,7 +1665,7 @@ object Build {
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
     library, jUnitRuntime
-  ).enableScalastyleInSharedSources
+  )
 
   lazy val testSuiteJVM: Project = Project(
     id = "testSuiteJVM",
@@ -1704,7 +1687,7 @@ object Build {
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.11" % "test"
     )
-  ).enableScalastyleInSharedSources
+  )
 
   lazy val noIrCheckTest: Project = Project(
       id = "noIrCheckTest",
