@@ -10,6 +10,7 @@
 package org.scalajs.sbtplugin
 
 import sbt._
+import sbt.Keys._
 
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
@@ -513,8 +514,29 @@ object ScalaJSPlugin extends AutoPlugin {
         scalaJSStage := Stage.FastOpt,
         scalaJSUseRhinoInternal := false,
 
-        ScalaJSPluginInternal.scalaJSClearCacheStats :=
-          ScalaJSPluginInternal.globalIRCache.clearStats()
+        ScalaJSPluginInternal.scalaJSClearCacheStatsInternal := {},
+
+        // Clear the IR cache stats every time a sequence of tasks ends
+        onComplete := {
+          val prev = onComplete.value
+
+          { () =>
+            prev()
+            ScalaJSPluginInternal.globalIRCache.clearStats()
+          }
+        },
+
+        /* When unloading the build, free all the IR caches.
+         * Note that this runs on `reload`s, for example, but not when we
+         * *exit* sbt. That is fine, though, since in that case the process
+         * is killed altogether.
+         */
+        onUnload := {
+          onUnload.value.andThen { state =>
+            ScalaJSPluginInternal.freeAllIRCaches()
+            state
+          }
+        }
     )
   }
 
