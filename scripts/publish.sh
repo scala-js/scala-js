@@ -1,7 +1,6 @@
 #! /bin/sh
 
 if [ $# -eq 1 -a "$1" = "-x" ]; then
-    export PUBLISH_TO_BINTRAY=true
     CMD="sbt"
 else
     echo "Showing commands that would be executed. Use -x to run."

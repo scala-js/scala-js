@@ -3,9 +3,6 @@ import Keys._
 
 import scala.annotation.tailrec
 
-import bintray.Plugin.bintrayPublishSettings
-import bintray.Keys.{repository, bintrayOrganization, bintray}
-
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
 
 import java.io.{
@@ -50,6 +47,9 @@ object Build {
 
   val isGeneratingEclipse =
     Properties.envOrElse("GENERATING_ECLIPSE", "false").toBoolean
+
+  val bintrayProjectName = settingKey[String](
+      "Project name on Bintray")
 
   val fetchScalaSource = taskKey[File](
     "Fetches the scala source for the current scala version")
@@ -312,35 +312,23 @@ object Build {
       }
   )
 
-  private def publishToScalaJSRepoSettings = Seq(
+  private def publishToBintraySettings = Seq(
       publishTo := {
-        Seq("PUBLISH_USER", "PUBLISH_PASS").map(Properties.envOrNone) match {
-          case Seq(Some(user), Some(pass)) =>
-            val snapshotsOrReleases =
-              if (scalaJSIsSnapshotVersion) "snapshots" else "releases"
-            Some(Resolver.sftp(
-                s"scala-js-$snapshotsOrReleases",
-                "repo.scala-js.org",
-                s"/home/scalajsrepo/www/repo/$snapshotsOrReleases")(
-                Resolver.ivyStylePatterns) as (user, pass))
-          case _ =>
-            None
+        val proj = bintrayProjectName.value
+        val ver = version.value
+        if (isSnapshot.value) {
+          None // Bintray does not support snapshots
+        } else {
+          val url = new java.net.URL(
+              s"https://api.bintray.com/content/scala-js/scala-js-releases/$proj/$ver")
+          val patterns = Resolver.ivyStylePatterns
+          Some(Resolver.url("bintray", url)(patterns))
         }
       }
   )
 
-  private def publishToBintraySettings = (
-      bintrayPublishSettings
-  ) ++ Seq(
-      repository in bintray := "scala-js-releases",
-      bintrayOrganization in bintray := Some("scala-js")
-  )
-
   val publishIvySettings = (
-      if (Properties.envOrNone("PUBLISH_TO_BINTRAY") == Some("true"))
-        publishToBintraySettings
-      else
-        publishToScalaJSRepoSettings
+      publishToBintraySettings
   ) ++ Seq(
       publishMavenStyle := false
   )
@@ -792,7 +780,7 @@ object Build {
       ) ++ Seq(
           name := "Scala.js sbt plugin",
           normalizedName := "sbt-scalajs",
-          name in bintray := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
+          bintrayProjectName := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
           sbtPlugin := true,
           scalaBinaryVersion :=
             CrossVersion.binaryScalaVersion(scalaVersion.value),
