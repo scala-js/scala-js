@@ -138,6 +138,129 @@ class AnalyzerTest {
   }
 
   @Test
+  def missingSuperClass(): Unit = {
+    val kinds = Seq(
+        ClassKind.Class,
+        ClassKind.ModuleClass,
+        ClassKind.HijackedClass,
+        ClassKind.JSClass,
+        ClassKind.JSModuleClass,
+        ClassKind.NativeJSClass,
+        ClassKind.NativeJSModuleClass
+    )
+
+    for (kind <- kinds) {
+      val classDefs = Seq(
+          classDef("LA", kind = kind, memberDefs = List(trivialCtor("LA")))
+      )
+
+      val analysis = computeAnalysis(classDefs,
+          reqsFactory.instantiateClass("LA", "init___"))
+
+      assertContainsError("MissingSuperClass(LA)", analysis) {
+        case MissingSuperClass(ClsInfo("LA"), FromClass(ClsInfo("LA"))) => true
+      }
+    }
+  }
+
+  @Test
+  def invalidSuperClass(): Unit = {
+    val kindsSub = Seq(
+        ClassKind.Class,
+        ClassKind.ModuleClass,
+        ClassKind.HijackedClass,
+        ClassKind.Interface,
+        ClassKind.JSClass,
+        ClassKind.JSModuleClass,
+        ClassKind.NativeJSClass,
+        ClassKind.NativeJSModuleClass,
+        ClassKind.AbstractJSType
+    )
+
+    def kindsBaseFor(kindSub: ClassKind): Seq[ClassKind] = {
+      import ClassKind._
+      kindSub match {
+        case Class | ModuleClass | HijackedClass =>
+          Seq(Interface, ModuleClass, JSClass, NativeJSClass)
+        case Interface =>
+          Seq(Class, Interface)
+        case JSClass | JSModuleClass | NativeJSClass | NativeJSModuleClass |
+            AbstractJSType =>
+          Seq(Class, Interface, AbstractJSType, JSModuleClass)
+      }
+    }
+
+    for {
+      kindSub <- kindsSub
+      kindBase <- kindsBaseFor(kindSub)
+    } {
+      val classDefs = Seq(
+          classDef("LA", kind = kindSub, superClass = Some("LB")),
+          classDef("LB", kind = kindBase,
+              superClass = validParentForKind(kindBase))
+      )
+
+      val analysis = computeAnalysis(classDefs,
+          reqsFactory.instantiateClass("LA", "init___"))
+
+      assertContainsError("InvalidSuperClass(LB, LA)", analysis) {
+        case InvalidSuperClass(ClsInfo("LB"), ClsInfo("LA"),
+            FromClass(ClsInfo("LA"))) =>
+          true
+      }
+    }
+  }
+
+  @Test
+  def invalidImplementedInterface(): Unit = {
+    val kindsCls = Seq(
+        ClassKind.Class,
+        ClassKind.ModuleClass,
+        ClassKind.HijackedClass,
+        ClassKind.Interface,
+        ClassKind.JSClass,
+        ClassKind.JSModuleClass,
+        ClassKind.NativeJSClass,
+        ClassKind.NativeJSModuleClass,
+        ClassKind.AbstractJSType
+    )
+
+    def kindsIntfFor(kindCls: ClassKind): Seq[ClassKind] = {
+      import ClassKind._
+      kindCls match {
+        case Class | ModuleClass | HijackedClass | Interface =>
+          Seq(Class, ModuleClass, JSClass, NativeJSClass, AbstractJSType)
+        case JSClass | JSModuleClass | NativeJSClass | NativeJSModuleClass |
+            AbstractJSType =>
+          Seq(Class, ModuleClass, HijackedClass, Interface, JSClass,
+              JSModuleClass, NativeJSClass, NativeJSModuleClass)
+      }
+    }
+
+    for {
+      kindCls <- kindsCls
+      kindIntf <- kindsIntfFor(kindCls)
+    } {
+      val classDefs = Seq(
+          classDef("LA", kind = kindCls,
+              superClass = validParentForKind(kindCls),
+              interfaces = List("LB")),
+          classDef("LB", kind = kindIntf,
+              superClass = validParentForKind(kindIntf))
+      )
+
+      val analysis = computeAnalysis(classDefs,
+          reqsFactory.instantiateClass("LA", "init___"))
+
+      assertContainsError("InvalidImplementedInterface(LB, LA)", analysis) {
+        case InvalidImplementedInterface(ClsInfo("LB"), ClsInfo("LA"),
+            FromClass(ClsInfo("LA"))) =>
+          true
+      }
+    }
+  }
+
+  @Test
   def notAModule(): Unit = {
     val classDefs = Seq(
         classDef("LA", superClass = Some(ObjectClass),
@@ -195,6 +318,19 @@ class AnalyzerTest {
           List(MethInfo("LI2", "foo__V"), MethInfo("LI1", "foo__V")),
           `fromAnalyzer`) =>
         true
+    }
+  }
+
+  private def validParentForKind(kind: ClassKind): Option[String] = {
+    import ClassKind._
+    kind match {
+      case Class | ModuleClass | HijackedClass | NativeJSClass |
+          NativeJSModuleClass =>
+        Some(ObjectClass)
+      case JSClass | JSModuleClass =>
+        Some("sjs_js_Object")
+      case Interface | AbstractJSType =>
+        None
     }
   }
 
