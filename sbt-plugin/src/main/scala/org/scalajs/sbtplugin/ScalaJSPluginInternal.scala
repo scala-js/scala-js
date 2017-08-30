@@ -336,6 +336,12 @@ object ScalaJSPluginInternal {
             "are running a JVM REPL. JavaScript things won't work.")
       }).value,
 
+      /* Do not inherit jsExecutionFiles from the parent configuration.
+       * Instead, always derive them straight from the Zero configuration
+       * scope.
+       */
+      jsExecutionFiles := (jsExecutionFiles in (This, Zero, This)).value,
+
       scalaJSJavaSystemProperties ++= {
         val javaSysPropsPattern = "-D([^=]*)=(.*)".r
         javaOptions.value.map {
@@ -527,9 +533,6 @@ object ScalaJSPluginInternal {
       jsEnv := new NodeJSEnv(),
 
       jsExecutionFiles := Nil,
-      jsExecutionFiles in Compile := jsExecutionFiles.value,
-      // Do not inherit jsExecutionFiles in Test from Compile
-      jsExecutionFiles in Test := jsExecutionFiles.value,
 
       scalaJSJavaSystemProperties := Map.empty,
 
