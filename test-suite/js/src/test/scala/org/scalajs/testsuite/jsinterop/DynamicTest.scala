@@ -321,6 +321,14 @@ class DynamicTest {
     val b: js.Object = obj("theValue" -> 2)
     assertTrue(b.hasOwnProperty("theValue"))
     assertFalse(b.hasOwnProperty("noValue"))
+  }
 
+  @Test def shouldNotListScalaDynamicAsSuperIntf(): Unit = {
+    /* We test the arrays of the classes, as it is the only reliable way to
+     * ensure that interfaces listed in the IR are what they should be.
+     */
+    assertFalse(
+        "scala.Dynamic must not be a super interface of js.Dynamic",
+        classOf[Array[scala.Dynamic]].isAssignableFrom(classOf[Array[js.Dynamic]]))
   }
 }

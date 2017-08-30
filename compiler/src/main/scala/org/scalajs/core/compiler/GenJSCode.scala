@@ -464,7 +464,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           classIdent,
           kind,
           Some(encodeClassFullNameIdent(sym.superClass)),
-          genClassInterfaces(sym),
+          genClassInterfaces(sym, forJSClass = false),
           None,
           hashedMemberDefs,
           topLevelExportDefs)(
@@ -580,7 +580,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           classIdent,
           kind,
           Some(encodeClassFullNameIdent(sym.superClass)),
-          genClassInterfaces(sym),
+          genClassInterfaces(sym, forJSClass = true),
           None,
           hashedMemberDefs,
           topLevelExports)(
@@ -779,8 +779,9 @@ abstract class GenJSCode extends plugins.PluginComponent
         else Some(jsNativeLoadSpecOf(sym))
       }
 
-      js.ClassDef(classIdent, kind, superClass, genClassInterfaces(sym),
-          jsNativeLoadSpec, Nil, Nil)(
+      js.ClassDef(classIdent, kind, superClass,
+          genClassInterfaces(sym, forJSClass = true), jsNativeLoadSpec, Nil,
+          Nil)(
           OptimizerHints.empty)
     }
 
@@ -808,7 +809,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
       val generatedMethods = gen(cd.impl)
-      val interfaces = genClassInterfaces(sym)
+      val interfaces = genClassInterfaces(sym, forJSClass = false)
 
       // Hashed definitions of the interface
       val hashedMemberDefs =
@@ -855,13 +856,14 @@ abstract class GenJSCode extends plugins.PluginComponent
           hashedMemberDefs, Nil)(OptimizerHints.empty)
     }
 
-    private def genClassInterfaces(sym: Symbol)(
+    private def genClassInterfaces(sym: Symbol, forJSClass: Boolean)(
         implicit pos: Position): List[js.Ident] = {
       for {
         parent <- sym.info.parents
         typeSym = parent.typeSymbol
         _ = assert(typeSym != NoSymbol, "parent needs symbol")
         if typeSym.isTraitOrInterface
+        if !forJSClass || typeSym != definitions.DynamicClass
       } yield {
         encodeClassFullNameIdent(typeSym)
       }
