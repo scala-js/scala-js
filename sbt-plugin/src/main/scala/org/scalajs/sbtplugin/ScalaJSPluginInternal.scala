@@ -44,8 +44,7 @@ object ScalaJSPluginInternal {
   import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 
   /** The global Scala.js IR cache */
-  val globalIRCache: ScalaJSPlugin.globalIRCache.type =
-    ScalaJSPlugin.globalIRCache
+  val globalIRCache: IRFileCache = new IRFileCache()
 
   val scalaJSClearCacheStats = TaskKey[Unit]("scalaJSClearCacheStats",
       "Scala.js internal: Clear the global IR cache's statistics. Used to " +

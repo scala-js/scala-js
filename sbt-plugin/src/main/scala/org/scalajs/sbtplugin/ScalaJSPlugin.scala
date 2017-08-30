@@ -28,9 +28,6 @@ import org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv
 import org.scalajs.jsenv.phantomjs.PhantomJSEnv
 
 object ScalaJSPlugin extends AutoPlugin {
-  /** The global Scala.js IR cache */
-  val globalIRCache: IRFileCache = new IRFileCache()
-
   override def requires: Plugins = plugins.JvmPlugin
 
   /* The following module-case double definition is a workaround for a bug
@@ -227,7 +224,9 @@ object ScalaJSPlugin extends AutoPlugin {
         "Do not set the value of this setting (only use it as read-only).",
         BSetting)
 
-    val scalaJSIRCache = TaskKey[globalIRCache.Cache]("scalaJSIRCache",
+    // This is lazy to avoid initialization order issues
+    lazy val scalaJSIRCache = TaskKey[ScalaJSPluginInternal.globalIRCache.Cache](
+        "scalaJSIRCache",
         "Scala.js internal: Task to access a cache.", KeyRanks.Invisible)
 
     /** Persisted instance of the Scala.js linker.
@@ -504,14 +503,18 @@ object ScalaJSPlugin extends AutoPlugin {
   )
 
   /** Logs the current statistics about the global IR cache. */
-  def logIRCacheStats(logger: Logger): Unit =
+  def logIRCacheStats(logger: Logger): Unit = {
+    import ScalaJSPluginInternal.globalIRCache
     logger.debug("Global IR cache stats: " + globalIRCache.stats.logLine)
+  }
 
   override def globalSettings: Seq[Setting[_]] = {
     Seq(
         scalaJSStage := Stage.FastOpt,
         scalaJSUseRhinoInternal := false,
-        ScalaJSPluginInternal.scalaJSClearCacheStats := globalIRCache.clearStats()
+
+        ScalaJSPluginInternal.scalaJSClearCacheStats :=
+          ScalaJSPluginInternal.globalIRCache.clearStats()
     )
   }
 
