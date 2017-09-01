@@ -37,12 +37,11 @@ import scala.collection.mutable
 import java.io.FileNotFoundException
 import java.nio.charset.Charset
 
-/** Contains settings used by ScalaJSPlugin that should not be automatically
- *  be in the *.sbt file's scope.
- */
-object ScalaJSPluginInternal {
+/** Implementation details of `ScalaJSPlugin`. */
+private[sbtplugin] object ScalaJSPluginInternal {
 
   import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
+  import ScalaJSPlugin.{logIRCacheStats, stageKeys}
 
   /** The global Scala.js IR cache */
   val globalIRCache: IRFileCache = new IRFileCache()
@@ -75,25 +74,6 @@ object ScalaJSPluginInternal {
       cache.free()
   }
 
-  val scalaJSLinker: SettingKey[ClearableLinker] =
-    ScalaJSPlugin.autoImport.scalaJSLinker
-
-  val usesScalaJSLinkerTag: SettingKey[Tags.Tag] =
-    ScalaJSPlugin.autoImport.usesScalaJSLinkerTag
-
-  val scalaJSIRCache: SettingKey[IRFileCache#Cache] =
-    ScalaJSPlugin.autoImport.scalaJSIRCache
-
-  /** All .sjsir files on the fullClasspath, used by scalajsp. */
-  val sjsirFilesOnClasspath: TaskKey[Seq[String]] =
-    ScalaJSPlugin.autoImport.sjsirFilesOnClasspath
-
-  val scalaJSSourceFiles: AttributeKey[Seq[File]] =
-    ScalaJSPlugin.autoImport.scalaJSSourceFiles
-
-  val stageKeys: Map[Stage, TaskKey[Attributed[File]]] =
-    ScalaJSPlugin.stageKeys
-
   /* #2798 -- On Java 9+, the parallel collections on 2.10 die with a
    * `NumberFormatException` and prevent the linker from working.
    *
@@ -113,9 +93,6 @@ object ScalaJSPluginInternal {
       case _: NumberFormatException => false
     }
   }
-
-  def logIRCacheStats(logger: Logger): Unit =
-    ScalaJSPlugin.logIRCacheStats(logger)
 
   /** Patches the IncOptions so that .sjsir files are pruned as needed. */
   def scalaJSPatchIncOptions(incOptions: IncOptions): IncOptions =
