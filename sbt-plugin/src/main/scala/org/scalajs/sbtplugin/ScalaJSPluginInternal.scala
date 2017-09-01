@@ -1,6 +1,9 @@
 package org.scalajs.sbtplugin
 
+import scala.annotation.tailrec
+
 import java.util.IllegalFormatException
+import java.util.concurrent.atomic.AtomicReference
 
 import sbt._
 import Keys._
@@ -42,12 +45,44 @@ object ScalaJSPluginInternal {
   import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 
   /** The global Scala.js IR cache */
-  val globalIRCache: ScalaJSPlugin.globalIRCache.type =
-    ScalaJSPlugin.globalIRCache
+  val globalIRCache: IRFileCache = new IRFileCache()
 
-  val scalaJSClearCacheStats = TaskKey[Unit]("scalaJSClearCacheStats",
+  private val allocatedIRCaches =
+    new AtomicReference[List[globalIRCache.Cache]](Nil)
+
+  /** Allocates a new IR cache linked to the [[globalIRCache]].
+   *
+   *  The allocated IR cache will automatically be freed when the build is
+   *  unloaded.
+   */
+  private def newIRCache: globalIRCache.Cache = {
+    val cache = globalIRCache.newCache
+
+    @tailrec
+    def registerLoop(): Unit = {
+      val prevValue = allocatedIRCaches.get()
+      if (!allocatedIRCaches.compareAndSet(prevValue, cache :: prevValue))
+        registerLoop()
+    }
+    registerLoop()
+
+    cache
+  }
+
+  private[sbtplugin] def freeAllIRCaches(): Unit = {
+    val allCaches = allocatedIRCaches.getAndSet(Nil)
+    for (cache <- allCaches)
+      cache.free()
+  }
+
+  /** Non-deprecated alias of `scalaJSClearCacheStats` for internal use. */
+  private[sbtplugin] val scalaJSClearCacheStatsInternal = TaskKey[Unit](
+      "scalaJSClearCacheStats",
       "Scala.js internal: Clear the global IR cache's statistics. Used to " +
       "implement cache statistics.", KeyRanks.Invisible)
+
+  @deprecated("Not used anymore.", "0.6.20")
+  val scalaJSClearCacheStats = scalaJSClearCacheStatsInternal
 
   val scalaJSLinker: SettingKey[ClearableLinker] =
     ScalaJSPlugin.autoImport.scalaJSLinker
@@ -55,9 +90,14 @@ object ScalaJSPluginInternal {
   val usesScalaJSLinkerTag: SettingKey[Tags.Tag] =
     ScalaJSPlugin.autoImport.usesScalaJSLinkerTag
 
-  val scalaJSIRCacheHolder = SettingKey[globalIRCache.Cache]("scalaJSIRCacheHolder",
+  /** Non-deprecated alias of `scalaJSIRCacheHolder` for internal use. */
+  private[sbtplugin] val scalaJSIRCacheHolderInternal = SettingKey[globalIRCache.Cache](
+      "scalaJSIRCacheHolder",
       "Scala.js internal: Setting to persist a cache. Do NOT use this directly. " +
       "Use scalaJSIRCache instead.", KeyRanks.Invisible)
+
+  @deprecated("Use scalaJSIRCache instead", "0.6.20")
+  val scalaJSIRCacheHolder = scalaJSIRCacheHolderInternal
 
   val scalaJSIRCache: TaskKey[globalIRCache.Cache] =
     ScalaJSPlugin.autoImport.scalaJSIRCache
@@ -299,14 +339,9 @@ object ScalaJSPluginInternal {
         }
       }
   ) ++ Seq(
-      /* Note: This cache only gets freed by its finalizer. Otherwise we'd need
-       * to intercept reloads in sbt (see #2171).
-       * Also note that it doesn't get cleared by the sbt's clean task.
-       */
-      scalaJSIRCacheHolder := globalIRCache.newCache,
-      scalaJSIRCache := Def.task {
-        scalaJSIRCacheHolder.value
-      }.dependsOn(scalaJSClearCacheStats).value,
+      // Note: this cache is not cleared by the sbt's clean task.
+      scalaJSIRCacheHolderInternal := newIRCache,
+      scalaJSIRCache := scalaJSIRCacheHolderInternal.value,
 
       scalaJSIR := {
         val rawIR = collectFromClasspath(fullClasspath.value, "*.sjsir",

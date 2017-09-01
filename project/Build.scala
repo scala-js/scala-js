@@ -5,9 +5,6 @@ import scala.annotation.tailrec
 import sbt._
 import Keys._
 
-import bintray.Plugin.bintrayPublishSettings
-import bintray.Keys.{repository, bintrayOrganization, bintray}
-
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
 
 import java.io.{
@@ -102,13 +99,16 @@ object MyScalaJSPlugin extends AutoPlugin {
 object Build {
   import MyScalaJSPlugin.isGeneratingEclipse
 
+  val bintrayProjectName = settingKey[String](
+      "Project name on Bintray")
+
   val fetchScalaSource = taskKey[File](
     "Fetches the scala source for the current scala version")
   val shouldPartest = settingKey[Boolean](
     "Whether we should partest the current scala version (and fail if we can't)")
 
   /* MiMa configuration -- irrelevant while in 1.0.0-SNAPSHOT.
-  val previousVersion = "0.6.19"
+  val previousVersion = "0.6.20"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
@@ -360,16 +360,22 @@ object Build {
   )
 
   private def publishToBintraySettings = Def.settings(
-      bintrayPublishSettings,
-      repository in bintray := "scala-js-releases",
-      bintrayOrganization in bintray := Some("scala-js")
+      publishTo := {
+        val proj = bintrayProjectName.value
+        val ver = version.value
+        if (isSnapshot.value) {
+          None // Bintray does not support snapshots
+        } else {
+          val url = new java.net.URL(
+              s"https://api.bintray.com/content/scala-js/scala-js-releases/$proj/$ver")
+          val patterns = Resolver.ivyStylePatterns
+          Some(Resolver.url("bintray", url)(patterns))
+        }
+      }
   )
 
   val publishIvySettings = Def.settings(
-      if (Properties.envOrNone("PUBLISH_TO_BINTRAY") == Some("true"))
-        publishToBintraySettings
-      else
-        Nil,
+      publishToBintraySettings,
       publishMavenStyle := false
   )
 
@@ -427,23 +433,6 @@ object Build {
               (scalaSource in (dependency, Compile)).value
         )
       }
-    }
-
-    def enableScalastyleInSharedSources: Project = {
-      import AddSettings._
-      import org.scalastyle.sbt.ScalastylePlugin.scalastyleSources
-
-      project.settings(
-          scalastyleSources := (unmanagedSourceDirectories in Compile).value,
-          scalastyleSources in Test := (unmanagedSourceDirectories in Test).value,
-          SettingKey[String]("foobabar") := scalastyleSources.value.toString
-      ).settingSets(
-          /* We need to force our settings to be applied *after* settings
-           * coming from non-Auto plugins. Because guess what, that's not the
-           * default O_o!
-           */
-          seq(autoPlugins, nonAutoPlugins, buildScalaFiles, userSettings, defaultSbtFiles)
-      )
     }
   }
 
@@ -528,7 +517,7 @@ object Build {
       commonIrProjectSettings,
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.9" % "test"
-  ).enableScalastyleInSharedSources
+  )
 
   lazy val irProjectJS: Project = Project(
       id = "irJS", base = file("ir/.js")
@@ -543,7 +532,7 @@ object Build {
         (scalaSource in Test in irProject).value
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime % "test"
-  ).enableScalastyleInSharedSources
+  )
 
   lazy val compiler: Project = project.settings(
       commonSettings,
@@ -621,7 +610,7 @@ object Build {
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
       )
-  ).dependsOn(irProject).enableScalastyleInSharedSources
+  ).dependsOn(irProject)
 
   lazy val toolsJS: Project = (project in file("tools/js")).enablePlugins(
       MyScalaJSPlugin
@@ -748,7 +737,7 @@ object Build {
       }
   ).withScalaJSCompiler.dependsOn(
       library, irProjectJS, jUnitRuntime % "test"
-  ).enableScalastyleInSharedSources
+  )
 
   lazy val jsEnvs: Project = (project in file("js-envs")).settings(
       commonSettings,
@@ -796,7 +785,7 @@ object Build {
         baseDirectory.value.getParentFile / "test-common/src/main/scala",
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile / "test-common/src/test/scala"
-  ).dependsOn(jsEnvs).enableScalastyleInSharedSources
+  ).dependsOn(jsEnvs)
 
   lazy val plugin: Project = Project(id = "sbtPlugin", base = file("sbt-plugin")).settings(
       commonSettings,
@@ -804,7 +793,7 @@ object Build {
       fatalWarningsSettings,
       name := "Scala.js sbt plugin",
       normalizedName := "sbt-scalajs",
-      name in bintray := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
+      bintrayProjectName := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
       sbtPlugin := true,
       scalaBinaryVersion :=
         CrossVersion.binaryScalaVersion(scalaVersion.value),
@@ -837,7 +826,7 @@ object Build {
 
         sbtJars.map(_.data -> docUrl).toMap
       }
-  ).dependsOn(tools, jsEnvs, nodeJSEnv, testAdapter).enableScalastyleInSharedSources
+  ).dependsOn(tools, jsEnvs, nodeJSEnv, testAdapter)
 
   lazy val delambdafySetting = {
     scalacOptions ++= (
@@ -1179,7 +1168,7 @@ object Build {
        * stuff and JUnit does not support async tests. Therefore we need to
        * block, so we cannot run on JS.
        */
-  ).withScalaJSCompiler.dependsOn(library).enableScalastyleInSharedSources
+  ).withScalaJSCompiler.dependsOn(library)
 
   lazy val jUnitRuntime = (project in file("junit-runtime")).enablePlugins(
       MyScalaJSPlugin
@@ -1209,7 +1198,7 @@ object Build {
       name := "Tests for Scala.js JUnit output in JS."
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       jUnitRuntime % "test", testInterface % "test"
-  ).enableScalastyleInSharedSources
+  )
 
 
   lazy val jUnitTestOutputsJVM = (project in file("junit-test/output-jvm")).settings(
@@ -1219,7 +1208,7 @@ object Build {
           "org.scala-sbt" % "test-interface" % "1.0" % "test",
           "com.novocode" % "junit-interface" % "0.11" % "test"
       )
-  ).enableScalastyleInSharedSources
+  )
 
   lazy val jUnitPlugin = (project in file("junit-plugin")).settings(
       commonSettings,
@@ -1601,7 +1590,7 @@ object Build {
       testSuiteTestHtmlSetting
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime
-  ).enableScalastyleInSharedSources
+  )
 
   lazy val testSuiteJVM: Project = (project in file("test-suite/jvm")).settings(
       commonSettings,
@@ -1621,7 +1610,7 @@ object Build {
 
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.11" % "test"
-  ).enableScalastyleInSharedSources
+  )
 
   /* Additional test suite, for tests that should not be part of the normal
    * test suite for various reasons. The most common reason is that the tests
