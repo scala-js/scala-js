@@ -75,31 +75,13 @@ object ScalaJSPluginInternal {
       cache.free()
   }
 
-  /** Non-deprecated alias of `scalaJSClearCacheStats` for internal use. */
-  private[sbtplugin] val scalaJSClearCacheStatsInternal = TaskKey[Unit](
-      "scalaJSClearCacheStats",
-      "Scala.js internal: Clear the global IR cache's statistics. Used to " +
-      "implement cache statistics.", KeyRanks.Invisible)
-
-  @deprecated("Not used anymore.", "0.6.20")
-  val scalaJSClearCacheStats = scalaJSClearCacheStatsInternal
-
   val scalaJSLinker: SettingKey[ClearableLinker] =
     ScalaJSPlugin.autoImport.scalaJSLinker
 
   val usesScalaJSLinkerTag: SettingKey[Tags.Tag] =
     ScalaJSPlugin.autoImport.usesScalaJSLinkerTag
 
-  /** Non-deprecated alias of `scalaJSIRCacheHolder` for internal use. */
-  private[sbtplugin] val scalaJSIRCacheHolderInternal = SettingKey[globalIRCache.Cache](
-      "scalaJSIRCacheHolder",
-      "Scala.js internal: Setting to persist a cache. Do NOT use this directly. " +
-      "Use scalaJSIRCache instead.", KeyRanks.Invisible)
-
-  @deprecated("Use scalaJSIRCache instead", "0.6.20")
-  val scalaJSIRCacheHolder = scalaJSIRCacheHolderInternal
-
-  val scalaJSIRCache: TaskKey[globalIRCache.Cache] =
+  val scalaJSIRCache: SettingKey[globalIRCache.Cache] =
     ScalaJSPlugin.autoImport.scalaJSIRCache
 
   /** All .sjsir files on the fullClasspath, used by scalajsp. */
@@ -340,8 +322,7 @@ object ScalaJSPluginInternal {
       }
   ) ++ Seq(
       // Note: this cache is not cleared by the sbt's clean task.
-      scalaJSIRCacheHolderInternal := newIRCache,
-      scalaJSIRCache := scalaJSIRCacheHolderInternal.value,
+      scalaJSIRCache := newIRCache,
 
       scalaJSIR := {
         val rawIR = collectFromClasspath(fullClasspath.value, "*.sjsir",
