@@ -65,8 +65,7 @@ object ScalaJSPlugin extends AutoPlugin {
         "Do not set the value of this setting (only use it as read-only).",
         BSetting)
 
-    // This is lazy to avoid initialization order issues
-    lazy val scalaJSIRCache = SettingKey[ScalaJSPluginInternal.globalIRCache.Cache](
+    val scalaJSIRCache = SettingKey[IRFileCache#Cache](
         "scalaJSIRCache",
         "Scala.js internal: Task to access a cache.", KeyRanks.Invisible)
 

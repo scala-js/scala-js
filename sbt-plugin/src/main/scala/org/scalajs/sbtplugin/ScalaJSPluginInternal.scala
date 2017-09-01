@@ -81,7 +81,7 @@ object ScalaJSPluginInternal {
   val usesScalaJSLinkerTag: SettingKey[Tags.Tag] =
     ScalaJSPlugin.autoImport.usesScalaJSLinkerTag
 
-  val scalaJSIRCache: SettingKey[globalIRCache.Cache] =
+  val scalaJSIRCache: SettingKey[IRFileCache#Cache] =
     ScalaJSPlugin.autoImport.scalaJSIRCache
 
   /** All .sjsir files on the fullClasspath, used by scalajsp. */
