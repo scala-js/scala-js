@@ -65,8 +65,7 @@ object ScalaJSPlugin extends AutoPlugin {
         "Do not set the value of this setting (only use it as read-only).",
         BSetting)
 
-    // This is lazy to avoid initialization order issues
-    lazy val scalaJSIRCache = TaskKey[ScalaJSPluginInternal.globalIRCache.Cache](
+    val scalaJSIRCache = SettingKey[IRFileCache#Cache](
         "scalaJSIRCache",
         "Scala.js internal: Task to access a cache.", KeyRanks.Invisible)
 
@@ -200,8 +199,6 @@ object ScalaJSPlugin extends AutoPlugin {
   override def globalSettings: Seq[Setting[_]] = {
     Seq(
         scalaJSStage := Stage.FastOpt,
-
-        ScalaJSPluginInternal.scalaJSClearCacheStatsInternal := {},
 
         // Clear the IR cache stats every time a sequence of tasks ends
         onComplete := {
