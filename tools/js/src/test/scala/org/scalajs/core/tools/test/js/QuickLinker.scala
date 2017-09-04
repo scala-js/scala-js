@@ -1,14 +1,13 @@
 package org.scalajs.core.tools.test.js
 
-import java.io.InputStream
-
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.logging._
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
-import scala.scalajs.js.typedarray._
+
+import org.scalajs.core.tools.linker.testutils.Platform
 
 @JSExportTopLevel("scalajs.QuickLinker")
 object QuickLinker {
@@ -57,7 +56,7 @@ object QuickLinker {
 
     val irContainers = irFilesAndJars.map { file =>
       if (file.endsWith(".jar")) {
-        new NodeVirtualJarFile(file)
+        Platform.loadJar(file)
       } else if (file.endsWith(".sjsir")) {
         new NodeVirtualScalaJSIRFile(file) with VirtualRelativeScalaJSIRFile {
           // The compiler should not use this (only scalajsp does)
@@ -105,61 +104,6 @@ object QuickLinker {
         spec.substring(parenPos + 1, spec.length - 1).split(",", -1).toList
       ModuleInitializer.mainMethodWithArgs(objectName, mainMethodName, args)
     }
-  }
-
-  private class NodeVirtualJarFile(file: String)
-      extends NodeVirtualBinaryFile(file) with VirtualFileContainer {
-
-    def listEntries[T](p: String => Boolean)(
-        makeResult: (String, InputStream) => T): List[T] = {
-      import js.Dynamic.{global => g}
-
-      val stream = inputStream
-      try {
-        /* Build a Uint8Array with the content of this jar file.
-         * We know that in practice, NodeVirtualBinaryFile#inputStream returns
-         * an ArrayBufferInputStream, so we just fetch its internal ArrayBuffer
-         * rather than copying.
-         *
-         * Since we have NodeVirtualBinaryFile under our control, in the same
-         * repository, we can make this assumption. Should we change
-         * NodeVirtualBinaryFile, this test will immediately fail, and we can
-         * adapt it.
-         */
-        val data = stream match {
-          case stream: ArrayBufferInputStream =>
-            // Simulate reading all the data
-            while (stream.skip(stream.available()) > 0) {}
-            new Uint8Array(stream.buffer, stream.offset, stream.length)
-          case _ =>
-            throw new AssertionError(
-                s"Uh! '$file' was not read as an ArrayBufferInputStream")
-        }
-
-        val zip = new JSZip(data)
-
-        for ((name, entry) <- zip.files.toList if p(name)) yield {
-          val entryStream = new ArrayBufferInputStream(entry.asArrayBuffer())
-          try {
-            makeResult(name, entryStream)
-          } finally {
-            entryStream.close()
-          }
-        }
-      } finally {
-        stream.close()
-      }
-    }
-  }
-
-  @js.native
-  @JSImport("jszip", JSImport.Default)
-  private class JSZip(data: Uint8Array) extends js.Object {
-    def files: js.Dictionary[JSZipEntry] = js.native
-  }
-
-  private trait JSZipEntry extends js.Object {
-    def asArrayBuffer(): ArrayBuffer
   }
 
 }

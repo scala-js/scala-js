@@ -602,7 +602,11 @@ object Build {
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Tools,
       exportJars := true, // required so ScalaDoc linking works
 
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+      javaOptions in Test += {
+        val libJar = (packageBin in (LocalProject("library"), Compile)).value
+        "-Dorg.scalajs.core.tools.linker.stdlibjar=" + libJar.getAbsolutePath
+      }
   )
 
   lazy val tools: Project = (project in file("tools/jvm")).settings(
@@ -613,7 +617,8 @@ object Build {
           "com.novocode" % "junit-interface" % "0.9" % "test"
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
-      )
+      ),
+      fork in Test := true
   ).dependsOn(irProject)
 
   lazy val toolsJS: Project = (project in file("tools/js")).enablePlugins(
