@@ -133,10 +133,12 @@
     npm install &&
     sbt ++$scala irJS/test toolsJS/test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala irJS/test &&
+        ++$scala irJS/test toolsJS/test &&
+    sbt ++$scala testSuite/test:fastOptJS &&
+    sbt ++$scala toolsJS/bootstrapTest &&
     sbt ++$scala testSuite/test:fullOptJS &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala toolsJS/test
+        ++$scala toolsJS/bootstrapTest
   ]]></task>
 
   <task id="tools-cli-stubs"><![CDATA[

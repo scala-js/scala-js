@@ -124,6 +124,8 @@ object Build {
     "The major Java SDK version that should be assumed for compatibility. " +
     "Defaults to what sbt is running with.")
 
+  val bootstrapTest = taskKey[Unit]("Performs the bootstrap test")
+
   val javaDocBaseURL: String = "http://docs.oracle.com/javase/8/docs/api/"
 
   private def includeIf(testDir: File, condition: Boolean): List[File] =
@@ -598,7 +600,9 @@ object Build {
 
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Tools,
-      exportJars := true // required so ScalaDoc linking works
+      exportJars := true, // required so ScalaDoc linking works
+
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
   )
 
   lazy val tools: Project = (project in file("tools/jvm")).settings(
@@ -654,11 +658,8 @@ object Build {
       },
 
       inConfig(Test) {
-        // Redefine test to perform the bootstrap test
-        test := {
-          if (!jsEnv.value.isInstanceOf[NodeJSEnv])
-            throw new MessageOnlyException("toolsJS/test must be run with Node.js")
-
+        // Definition of the bootstrap test
+        bootstrapTest := {
           /* We'll explicitly `require` our linked file. Find its module, and
            * remove it from the `jsExecutionFiles` to give to the runner.
            */
@@ -735,7 +736,7 @@ object Build {
           runner.run(sbtLogger2ToolsLogger(streams.value.log), ConsoleJSConsole)
         }
       }
-  ).withScalaJSCompiler.dependsOn(
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, irProjectJS, jUnitRuntime % "test"
   )
 
