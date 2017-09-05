@@ -151,8 +151,13 @@ private[scalajs] abstract class RPCCore {
 
   /** Close the communication channel. */
   def close(): Unit = {
+    /* Fix for #3128: explicitly upcast to java.util.Map so that the keySet()
+     * method is binary compatible on JDK7.
+     */
+    val pendingCallIDs = (pending: java.util.Map[Long, _]).keySet()
+
     for {
-      callID <- pending.keySet().asScala
+      callID <- pendingCallIDs.asScala
       failing <- Option(pending.remove(callID))
     } {
       failing.promise.failure(new IOException("Channel got closed"))
