@@ -16,7 +16,7 @@ import scala.annotation.switch
 
 object Utils {
 
-  private final val EscapeJSChars = "\\a\\b\\t\\n\\v\\f\\r\\\"\\\\"
+  private final val EscapeJSChars = "\\b\\t\\n\\v\\f\\r\\\"\\\\"
 
   /** Relativize target URI w.r.t. base URI */
   def relativize(base0: URI, trgt0: URI): URI = {
@@ -104,15 +104,15 @@ object Utils {
       // Print next non ASCII printable character
       if (i != end) {
         def escapeJSEncoded(c: Int): Unit = {
-          if (6 < c && c < 14) {
-            val i = 2 * (c - 7)
+          if (7 < c && c < 14) {
+            val i = 2 * (c - 8)
             out.append(EscapeJSChars, i, i + 2)
             writtenChars += 2
           } else if (c == 34) {
-            out.append(EscapeJSChars, 14, 16)
+            out.append(EscapeJSChars, 12, 14)
             writtenChars += 2
           } else if (c == 92) {
-            out.append(EscapeJSChars, 16, 18)
+            out.append(EscapeJSChars, 14, 16)
             writtenChars += 2
           } else {
             out.append(f"\\u$c%04x")
