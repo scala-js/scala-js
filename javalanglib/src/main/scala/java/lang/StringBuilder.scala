@@ -1,59 +1,132 @@
 package java.lang
 
-class StringBuilder(private var content: String) extends CharSequence
-                                                    with Appendable
-                                                    with java.io.Serializable {
-  def this() = this("")
-  def this(initialCapacity: Int) = this("")
-  def this(csq: CharSequence) = this(csq.toString)
+class StringBuilder
+    extends AnyRef with CharSequence with Appendable with java.io.Serializable {
 
-  def append(s: String): StringBuilder = {
-    content += { if (s == null) "null" else s }
+  private[this] var content: String = ""
+
+  def this(str: String) = {
+    this()
+    if (str eq null)
+      throw new NullPointerException
+    content = str
+  }
+
+  def this(initialCapacity: Int) = {
+    this()
+    if (initialCapacity < 0)
+      throw new NegativeArraySizeException()
+  }
+
+  def this(seq: CharSequence) = this(seq.toString)
+
+  @inline
+  def append(obj: AnyRef): StringBuilder = {
+    // If (obj eq null), this appends "null", otherwise obj.toString()
+    content += obj
     this
   }
+
+  @inline
+  def append(str: String): StringBuilder = {
+    content += str // if (str eq null), this appends "null"
+    this
+  }
+
+  def append(sb: StringBuffer): StringBuilder = append(sb: AnyRef)
+
+  def append(s: CharSequence): StringBuilder = append(s: AnyRef)
+
+  def append(s: CharSequence, start: Int, end: Int): StringBuilder =
+    append((if (s == null) "null" else s).subSequence(start, end))
+
+  def append(str: Array[scala.Char]): StringBuilder =
+    append(String.valueOf(str))
+
+  def append(str: Array[scala.Char], offset: Int, len: Int): StringBuilder =
+    append(String.valueOf(str, offset, len))
 
   def append(b: scala.Boolean): StringBuilder = append(b.toString())
   def append(c: scala.Char): StringBuilder = append(c.toString())
-
-  def append(str: Array[scala.Char]): StringBuilder =
-    append(str, 0, str.length)
-
-  def append(str: Array[scala.Char], offset: Int, len: Int): StringBuilder = {
-    var i = 0
-    while (i < len) {
-      content += str(i + offset)
-      i += 1
-    }
-    this
-  }
-
-  def append(b: scala.Byte): StringBuilder = append(b.toString())
-  def append(s: scala.Short): StringBuilder = append(s.toString())
   def append(i: scala.Int): StringBuilder = append(i.toString())
   def append(lng: scala.Long): StringBuilder = append(lng.toString())
   def append(f: scala.Float): StringBuilder = append(f.toString())
   def append(d: scala.Double): StringBuilder = append(d.toString())
 
-  def append(obj: AnyRef): StringBuilder = {
-    if (obj == null) append(null: String)
-    else             append(obj.toString())
-  }
-
-  def append(csq: CharSequence): StringBuilder = append(csq: AnyRef)
-  def append(csq: CharSequence, start: Int, end: Int): StringBuilder = {
-    if (csq == null) append("null", start, end)
-    else append(csq.subSequence(start, end).toString())
-  }
-
   def appendCodePoint(codePoint: Int): StringBuilder =
-    append(Character.toChars(codePoint))
+    append(Character.codePointToString(codePoint))
 
-  override def toString(): String = content
+  def delete(start: Int, end: Int): StringBuilder =
+    replace(start, end, "")
 
-  def length(): Int = content.length()
+  def deleteCharAt(index: Int): StringBuilder = {
+    /* This is not equivalent to `delete(index, index + 1)` when
+     * `index == length`.
+     */
+    val oldContent = content
+    if (index < 0 || index >= oldContent.length)
+      throw new StringIndexOutOfBoundsException(index)
+    content = oldContent.substring(0, index) + oldContent.substring(index + 1)
+    this
+  }
 
-  def charAt(index: Int): Char = content.charAt(index)
-  def codePointAt(index: Int): Int = content.codePointAt(index)
+  def replace(start: Int, end: Int, str: String): StringBuilder = {
+    val oldContent = content
+    val length = oldContent.length
+    if (start < 0 || start > length || start > end)
+      throw new StringIndexOutOfBoundsException(start)
+    val firstPart = oldContent.substring(0, start) + str
+    content =
+      if (end >= length) firstPart
+      else firstPart + oldContent.substring(end)
+    this
+  }
+
+  def insert(index: Int, str: Array[scala.Char], offset: Int,
+      len: Int): StringBuilder = {
+    insert(index, String.valueOf(str, offset, len))
+  }
+
+  @inline def insert(offset: Int, obj: AnyRef): StringBuilder =
+    insert(offset, String.valueOf(obj))
+
+  def insert(offset: Int, str: String): StringBuilder = {
+    val oldContent = content
+    if (offset < 0 || offset > oldContent.length)
+      throw new StringIndexOutOfBoundsException(offset)
+    content =
+      oldContent.substring(0, offset) + str + oldContent.substring(offset)
+    this
+  }
+
+  def insert(offset: Int, str: Array[scala.Char]): StringBuilder =
+    insert(offset, String.valueOf(str))
+
+  def insert(dstOffset: Int, s: CharSequence): StringBuilder =
+    insert(dstOffset, s: AnyRef)
+
+  def insert(dstOffset: Int, s: CharSequence, start: Int,
+      end: Int): StringBuilder = {
+    insert(dstOffset, (if (s == null) "null" else s).subSequence(start, end))
+  }
+
+  def insert(offset: Int, b: scala.Boolean): StringBuilder =
+    insert(offset, b.toString)
+
+  def insert(offset: Int, c: scala.Char): StringBuilder =
+    insert(offset, c.toString)
+
+  def insert(offset: Int, i: scala.Int): StringBuilder =
+    insert(offset, i.toString)
+
+  def insert(offset: Int, l: scala.Long): StringBuilder =
+    insert(offset, l.toString)
+
+  def insert(offset: Int, f: scala.Float): StringBuilder =
+    insert(offset, f.toString)
+
+  def insert(offset: Int, d: scala.Double): StringBuilder =
+    insert(offset, d.toString)
 
   def indexOf(str: String): Int = content.indexOf(str)
 
@@ -65,132 +138,87 @@ class StringBuilder(private var content: String) extends CharSequence
   def lastIndexOf(str: String, fromIndex: Int): Int =
     content.lastIndexOf(str, fromIndex)
 
-  def subSequence(start: Int, end: Int): CharSequence = substring(start, end)
-  def substring(start: Int): String = content.substring(start)
-  def substring(start: Int, end: Int): String = content.substring(start, end)
-
   def reverse(): StringBuilder = {
     val original = content
     var result = ""
-    var i = 0
-    while (i < original.length) {
+    var i = original.length - 1
+    while (i > 0) {
       val c = original.charAt(i)
-      if (Character.isHighSurrogate(c) && (i+1 < original.length)) {
-        val c2 = original.charAt(i+1)
-        if (Character.isLowSurrogate(c2)) {
-          result = c.toString + c2.toString + result
-          i += 2
+      if (Character.isLowSurrogate(c)) {
+        val c2 = original.charAt(i - 1)
+        if (Character.isHighSurrogate(c2)) {
+          result = result + c2.toString + c.toString
+          i -= 2
         } else {
-          result = c.toString + result
-          i += 1
+          result += c.toString
+          i -= 1
         }
       } else {
-        result = c.toString + result
-        i += 1
+        result += c.toString
+        i -= 1
       }
     }
+    if (i == 0)
+      result += original.charAt(0).toString
     content = result
     this
   }
 
-  def deleteCharAt(index: Int): StringBuilder = {
-    if (index < 0 || index >= content.length)
-      throw new StringIndexOutOfBoundsException("String index out of range: " + index)
-    content = content.substring(0, index) + content.substring(index+1)
-    this
-  }
+  override def toString(): String = content
 
-  def ensureCapacity(minimumCapacity: Int): Unit = {
-    // Do nothing
-  }
+  def length(): Int = content.length()
 
-  /**
-   * @param start The beginning index, inclusive.
-   * @param end The ending index, exclusive.
-   * @param str String that will replace previous contents.
-   * @return This StringBuilder.
-   */
-  def replace(start: Int, end: Int, str: String): StringBuilder = {
-    val length = content.length
-    if (start < 0 || start > end || start > length) {
-      throw new StringIndexOutOfBoundsException(
-          s"Illegal to replace substring at [$start - $end] in string of length $length")
+  def capacity(): Int = length()
+
+  def ensureCapacity(minimumCapacity: Int): Unit = ()
+
+  def trimToSize(): Unit = ()
+
+  def setLength(newLength: Int): Unit = {
+    if (newLength < 0)
+      throw new StringIndexOutOfBoundsException(newLength)
+    var newContent = content
+    val additional = newLength - newContent.length // cannot overflow
+    if (additional < 0) {
+      newContent = newContent.substring(0, newLength)
+    } else {
+      var i = 0
+      while (i != additional) {
+        newContent += "\u0000"
+        i += 1
+      }
     }
+    content = newContent
+  }
 
-    val realEnd = if (end > length) length else end // java api convention
-    content = content.substring(0, start) + str + content.substring(realEnd)
-    this
+  def charAt(index: Int): Char = content.charAt(index)
+
+  def codePointAt(index: Int): Int = content.codePointAt(index)
+
+  def codePointBefore(index: Int): Int = content.codePointBefore(index)
+
+  def codePointCount(beginIndex: Int, endIndex: Int): Int =
+    content.codePointCount(beginIndex, endIndex)
+
+  def offsetByCodePoints(index: Int, codePointOffset: Int): Int =
+    content.offsetByCodePoints(index, codePointOffset)
+
+  def getChars(srcBegin: Int, srcEnd: Int, dst: Array[scala.Char],
+      dstBegin: Int): Unit = {
+    content.getChars(srcBegin, srcEnd, dst, dstBegin)
   }
 
   def setCharAt(index: Int, ch: scala.Char): Unit = {
-    if (index < 0 || index >= content.length) {
-      throw new StringIndexOutOfBoundsException(
-          "String index out of range: " + index)
-    }
-    content = content.substring(0, index) + ch + content.substring(index + 1)
-  }
-
-  def setLength(newLength: Int): Unit = {
-    if (newLength < 0) {
-      throw new StringIndexOutOfBoundsException(
-          "String index out of range: " + newLength)
-    }
-
-    val len = length()
-    if (len == newLength) {
-    } else if (len < newLength) {
-      var index = len
-      while (index < newLength) {
-        append("\u0000")
-        index += 1
-      }
-    } else {
-      content = substring(0, newLength)
-    }
-  }
-
-  def insert(index: Int, b: scala.Boolean): StringBuilder       = insert(index, b.toString)
-  def insert(index: Int, b: scala.Byte): StringBuilder          = insert(index, b.toString)
-  def insert(index: Int, s: scala.Short): StringBuilder         = insert(index, s.toString)
-  def insert(index: Int, i: scala.Int): StringBuilder           = insert(index, i.toString)
-  def insert(index: Int, l: scala.Long): StringBuilder          = insert(index, l.toString)
-  def insert(index: Int, f: scala.Float): StringBuilder         = insert(index, f.toString)
-  def insert(index: Int, d: scala.Double): StringBuilder        = insert(index, d.toString)
-  def insert(index: Int, c: scala.Char): StringBuilder          = insert(index, c.toString)
-  def insert(index: Int, csq: CharSequence): StringBuilder      = insert(index: Int, csq: AnyRef)
-  def insert(index: Int, arr: Array[scala.Char]): StringBuilder = insert(index, arr, 0, arr.length)
-
-  def insert(index: Int, ref: AnyRef): StringBuilder =
-    if (ref == null)
-      insert(index, null: String)
-    else
-      insert(index, ref.toString)
-
-  def insert(index: Int, csq: CharSequence, start: Int, end: Int): StringBuilder =
-    if (csq == null)
-      insert(index, "null", start, end)
-    else
-      insert(index, csq.subSequence(start, end).toString)
-
-
-  def insert(index: Int, arr: Array[scala.Char], offset: Int, len: Int): StringBuilder = {
-    var str = ""
-    var i = 0
-    while (i < len) {
-      str += arr(i + offset)
-      i += 1
-    }
-    insert(index, str)
-  }
-
-  def insert(index: Int, str: String): StringBuilder = {
-    val thisLength = length()
-    if (index < 0 || index > thisLength)
+    val oldContent = content
+    if (index < 0 || index >= oldContent.length)
       throw new StringIndexOutOfBoundsException(index)
-    else if (index == thisLength)
-      append(str)
-    else
-      content = content.substring(0, index) + Option(str).getOrElse("null") + content.substring(index)
-    this
+    content =
+      oldContent.substring(0, index) + ch + oldContent.substring(index + 1)
   }
+
+  def substring(start: Int): String = content.substring(start)
+
+  def subSequence(start: Int, end: Int): CharSequence = substring(start, end)
+
+  def substring(start: Int, end: Int): String = content.substring(start, end)
 }

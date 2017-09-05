@@ -7,6 +7,8 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib.lang
 
+import java.lang.StringBuilder
+
 import org.junit.Test
 import org.junit.Assert._
 
@@ -15,45 +17,45 @@ import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 import WrappedStringCharSequence.charSequence
 
-/* !!! This test class is basically a copy-paste of StringBuilderTest.
+/* !!! This test class is basically copy-pasted in StringBufferTest.
  * Make sure to always update them in sync.
  */
-class StringBufferTest {
+class StringBuilderTest {
 
-  def newBuffer: StringBuffer =
-    new StringBuffer
+  private def newBuilder: StringBuilder =
+    new StringBuilder
 
-  def initBuffer(str: String): StringBuffer =
-    new StringBuffer(str)
+  private def initBuilder(str: String): StringBuilder =
+    new StringBuilder(str)
 
   @Test def init(): Unit = {
-    assertEquals("", new StringBuffer().toString())
+    assertEquals("", new StringBuilder().toString())
   }
 
   @Test def initInt(): Unit = {
-    assertEquals("", new StringBuffer(5).toString())
+    assertEquals("", new StringBuilder(5).toString())
   }
 
   @Test def initString(): Unit = {
-    assertEquals("hello", new StringBuffer("hello").toString())
+    assertEquals("hello", new StringBuilder("hello").toString())
 
     if (executingInJVM) {
       expectThrows(classOf[NullPointerException],
-          new StringBuffer(null: String))
+          new StringBuilder(null: String))
     }
   }
 
   @Test def initCharSequence(): Unit = {
-    assertEquals("hello", new StringBuffer(charSequence("hello")).toString())
+    assertEquals("hello", new StringBuilder(charSequence("hello")).toString())
 
     if (executingInJVM) {
       expectThrows(classOf[NullPointerException],
-          new StringBuffer(null: CharSequence))
+          new StringBuilder(null: CharSequence))
     }
   }
 
   @Test def appendAnyRef(): Unit = {
-    def resultFor(x: AnyRef): String = newBuffer.append(x).toString()
+    def resultFor(x: AnyRef): String = newBuilder.append(x).toString()
 
     assertEquals("null", resultFor(null))
     assertEquals("None", resultFor(None))
@@ -62,14 +64,14 @@ class StringBufferTest {
   }
 
   @Test def appendString(): Unit = {
-    def resultFor(x: String): String = newBuffer.append(x).toString()
+    def resultFor(x: String): String = newBuilder.append(x).toString()
 
     assertEquals("null", resultFor(null))
     assertEquals("hello", resultFor("hello"))
   }
 
   @Test def appendStringBuffer(): Unit = {
-    def resultFor(x: StringBuffer): String = newBuffer.append(x).toString()
+    def resultFor(x: StringBuffer): String = newBuilder.append(x).toString()
 
     assertEquals("null", resultFor(null))
     assertEquals("", resultFor(new StringBuffer()))
@@ -77,7 +79,7 @@ class StringBufferTest {
   }
 
   @Test def appendCharSequence(): Unit = {
-    def resultFor(x: CharSequence): String = newBuffer.append(x).toString()
+    def resultFor(x: CharSequence): String = newBuilder.append(x).toString()
 
     assertEquals("null", resultFor(null))
     assertEquals("hello", resultFor("hello"))
@@ -87,7 +89,7 @@ class StringBufferTest {
 
   @Test def appendCharSequenceStartEnd(): Unit = {
     def resultFor(x: CharSequence, start: Int, end: Int): String =
-      newBuffer.append(x, start, end).toString()
+      newBuilder.append(x, start, end).toString()
 
     assertEquals("ul", resultFor(null, 1, 3))
     assertEquals("null", resultFor(null, 0, 4))
@@ -103,7 +105,7 @@ class StringBufferTest {
   }
 
   @Test def appendCharArray(): Unit = {
-    def resultFor(x: Array[Char]): String = newBuffer.append(x).toString()
+    def resultFor(x: Array[Char]): String = newBuilder.append(x).toString()
 
     assertEquals("hello", resultFor(Array('h', 'e', 'l', 'l', 'o')))
 
@@ -113,7 +115,7 @@ class StringBufferTest {
 
   @Test def appendCharArrayOffsetLen(): Unit = {
     def resultFor(x: Array[Char], offset: Int, len: Int): String =
-      newBuffer.append(x, offset, len).toString()
+      newBuilder.append(x, offset, len).toString()
 
     val arr = Array('h', 'e', 'l', 'l', 'o')
     assertEquals("hello", resultFor(arr, 0, 5))
@@ -128,21 +130,21 @@ class StringBufferTest {
   }
 
   @Test def appendPrimitive(): Unit = {
-    assertEquals("true", newBuffer.append(true).toString)
-    assertEquals("a", newBuffer.append('a').toString)
-    assertEquals("100000", newBuffer.append(100000).toString)
-    assertEquals("12345678910", newBuffer.append(12345678910L).toString)
-    assertEquals("2.5", newBuffer.append(2.5f).toString)
-    assertEquals("3.5", newBuffer.append(3.5).toString)
+    assertEquals("true", newBuilder.append(true).toString)
+    assertEquals("a", newBuilder.append('a').toString)
+    assertEquals("100000", newBuilder.append(100000).toString)
+    assertEquals("12345678910", newBuilder.append(12345678910L).toString)
+    assertEquals("2.5", newBuilder.append(2.5f).toString)
+    assertEquals("3.5", newBuilder.append(3.5).toString)
 
     // There is no overload for Byte nor Short; these call the Int version
-    assertEquals("4", newBuffer.append(4.toByte).toString)
-    assertEquals("304", newBuffer.append(304.toShort).toString)
+    assertEquals("4", newBuilder.append(4.toByte).toString)
+    assertEquals("304", newBuilder.append(304.toShort).toString)
   }
 
   @Test def appendCodePoint(): Unit = {
     def resultFor(codePoint: Int): String =
-      newBuffer.appendCodePoint(codePoint).toString()
+      newBuilder.appendCodePoint(codePoint).toString()
 
     assertEquals("a", resultFor(0x61))
     assertEquals("\ud800\udc00", resultFor(0x10000))
@@ -156,7 +158,7 @@ class StringBufferTest {
 
   @Test def delete(): Unit = {
     def resultFor(input: String, start: Int, end: Int): String =
-      initBuffer(input).delete(start, end).toString()
+      initBuilder(input).delete(start, end).toString()
 
     assertEquals("heo", resultFor("hello", 2, 4))
     assertEquals("foo\ud800r", resultFor("foo\ud800\udc00bar", 4, 7))
@@ -172,7 +174,7 @@ class StringBufferTest {
 
   @Test def deleteCharAt(): Unit = {
     def resultFor(input: String, index: Int): String =
-      initBuffer(input).deleteCharAt(index).toString()
+      initBuilder(input).deleteCharAt(index).toString()
 
     assertEquals("023", resultFor("0123", 1))
     assertEquals("123", resultFor("0123", 0))
@@ -186,7 +188,7 @@ class StringBufferTest {
 
   @Test def replace(): Unit = {
     def resultFor(input: String, start: Int, end: Int, str: String): String =
-      initBuffer(input).replace(start, end, str).toString()
+      initBuilder(input).replace(start, end, str).toString()
 
     assertEquals("0bc3", resultFor("0123", 1, 3, "bc"))
     assertEquals("abcd", resultFor("0123", 0, 4, "abcd"))
@@ -210,7 +212,7 @@ class StringBufferTest {
   @Test def insertCharArrayOffsetLen(): Unit = {
     def resultFor(input: String, index: Int, str: Array[Char], offset: Int,
         len: Int): String = {
-      initBuffer(input).insert(index, str, offset, len).toString()
+      initBuilder(input).insert(index, str, offset, len).toString()
     }
 
     val arr = Array('a', 'b', 'c', 'd', 'e')
@@ -237,7 +239,7 @@ class StringBufferTest {
 
   @Test def insertAnyRef(): Unit = {
     def resultFor(input: String, index: Int, x: AnyRef): String =
-      initBuffer(input).insert(index, x).toString()
+      initBuilder(input).insert(index, x).toString()
 
     assertEquals("01null234", resultFor("01234", 2, null))
     assertEquals("01None234", resultFor("01234", 2, None))
@@ -252,7 +254,7 @@ class StringBufferTest {
 
   @Test def insertString(): Unit = {
     def resultFor(input: String, index: Int, x: String): String =
-      initBuffer(input).insert(index, x).toString()
+      initBuilder(input).insert(index, x).toString()
 
     assertEquals("01null234", resultFor("01234", 2, null))
     assertEquals("01hello234", resultFor("01234", 2, "hello"))
@@ -265,7 +267,7 @@ class StringBufferTest {
 
   @Test def insertCharArray(): Unit = {
     def resultFor(input: String, index: Int, str: Array[Char]): String =
-      initBuffer(input).insert(index, str).toString()
+      initBuilder(input).insert(index, str).toString()
 
     val arr = Array('a', 'b', 'c', 'd', 'e')
 
@@ -283,7 +285,7 @@ class StringBufferTest {
 
   @Test def insertCharSequence(): Unit = {
     def resultFor(input: String, index: Int, x: CharSequence): String =
-      initBuffer(input).insert(index, x).toString()
+      initBuilder(input).insert(index, x).toString()
 
     assertEquals("01null234", resultFor("01234", 2, null))
     assertEquals("01hello234", resultFor("01234", 2, "hello"))
@@ -298,7 +300,7 @@ class StringBufferTest {
   @Test def insertCharSequenceStartEnd(): Unit = {
     def resultFor(input: String, index: Int, x: CharSequence, start: Int,
         end: Int): String = {
-      initBuffer(input).insert(index, x, start, end).toString()
+      initBuilder(input).insert(index, x, start, end).toString()
     }
 
     assertEquals("01ul234", resultFor("01234", 2, null, 1, 3))
@@ -322,27 +324,27 @@ class StringBufferTest {
   }
 
   @Test def insertPrimitive(): Unit = {
-    assertEquals("atruebcd", initBuffer("abcd").insert(1, true).toString)
-    assertEquals("axbcd", initBuffer("abcd").insert(1, 'x').toString)
-    assertEquals("a100000bcd", initBuffer("abcd").insert(1, 100000).toString)
+    assertEquals("atruebcd", initBuilder("abcd").insert(1, true).toString)
+    assertEquals("axbcd", initBuilder("abcd").insert(1, 'x').toString)
+    assertEquals("a100000bcd", initBuilder("abcd").insert(1, 100000).toString)
     assertEquals("a12345678910bcd",
-        initBuffer("abcd").insert(1, 12345678910L).toString)
-    assertEquals("a2.5bcd", initBuffer("abcd").insert(1, 2.5f).toString)
-    assertEquals("a3.5bcd", initBuffer("abcd").insert(1, 3.5).toString)
+        initBuilder("abcd").insert(1, 12345678910L).toString)
+    assertEquals("a2.5bcd", initBuilder("abcd").insert(1, 2.5f).toString)
+    assertEquals("a3.5bcd", initBuilder("abcd").insert(1, 3.5).toString)
 
     // There is no overload for Byte nor Short; these call the Int version
-    assertEquals("a4bcd", initBuffer("abcd").insert(1, 4.toByte).toString)
-    assertEquals("a304bcd", initBuffer("abcd").insert(1, 304.toShort).toString)
+    assertEquals("a4bcd", initBuilder("abcd").insert(1, 4.toByte).toString)
+    assertEquals("a304bcd", initBuilder("abcd").insert(1, 304.toShort).toString)
 
     expectThrows(classOf[StringIndexOutOfBoundsException],
-        initBuffer("abcd").insert(5, 56))
+        initBuilder("abcd").insert(5, 56))
     expectThrows(classOf[StringIndexOutOfBoundsException],
-        initBuffer("abcd").insert(-1, 56))
+        initBuilder("abcd").insert(-1, 56))
   }
 
   @Test def indexOfString(): Unit = {
     def resultFor(input: String, str: String): Int =
-      initBuffer(input).indexOf(str)
+      initBuilder(input).indexOf(str)
 
     assertEquals(2, resultFor("ababcdeabcf", "abc"))
     assertEquals(-1, resultFor("ababcdeabcf", "acb"))
@@ -350,7 +352,7 @@ class StringBufferTest {
 
   @Test def indexOfStringInt(): Unit = {
     def resultFor(input: String, str: String, fromIndex: Int): Int =
-      initBuffer(input).indexOf(str, fromIndex)
+      initBuilder(input).indexOf(str, fromIndex)
 
     assertEquals(7, resultFor("ababcdeabcf", "abc", 4))
     assertEquals(2, resultFor("ababcdeabcf", "abc", 2))
@@ -362,7 +364,7 @@ class StringBufferTest {
 
   @Test def lastIndexOfString(): Unit = {
     def resultFor(input: String, str: String): Int =
-      initBuffer(input).lastIndexOf(str)
+      initBuilder(input).lastIndexOf(str)
 
     assertEquals(7, resultFor("ababcdeabcf", "abc"))
     assertEquals(-1, resultFor("ababcdeabcf", "acb"))
@@ -370,7 +372,7 @@ class StringBufferTest {
 
   @Test def lastIndexOfStringInt(): Unit = {
     def resultFor(input: String, str: String, fromIndex: Int): Int =
-      initBuffer(input).lastIndexOf(str, fromIndex)
+      initBuilder(input).lastIndexOf(str, fromIndex)
 
     assertEquals(2, resultFor("ababcdeabcf", "abc", 2))
     assertEquals(2, resultFor("ababcdeabcf", "abc", 6))
@@ -383,7 +385,7 @@ class StringBufferTest {
 
   @Test def reverse(): Unit = {
     def resultFor(input: String): String =
-      initBuffer(input).reverse().toString()
+      initBuilder(input).reverse().toString()
 
     assertEquals("987654321", resultFor("123456789"))
     assertEquals("dc\ud801\udc02ba", resultFor("ab\ud801\udc02cd"))
@@ -394,27 +396,27 @@ class StringBufferTest {
   }
 
   @Test def length(): Unit = {
-    assertEquals(5, initBuffer("hello").length())
-    assertEquals(6, initBuffer("ab\ud801\udc02cd").length())
+    assertEquals(5, initBuilder("hello").length())
+    assertEquals(6, initBuilder("ab\ud801\udc02cd").length())
   }
 
   @Test def capacity(): Unit = {
-    assertTrue(initBuffer("hello").capacity() >= 5)
-    assertTrue(initBuffer("ab\ud801\udc02cd").capacity() >= 6)
+    assertTrue(initBuilder("hello").capacity() >= 5)
+    assertTrue(initBuilder("ab\ud801\udc02cd").capacity() >= 6)
   }
 
   @Test def ensureCapacity(): Unit = {
     // Just make sure it links
-    newBuffer.ensureCapacity(10)
+    newBuilder.ensureCapacity(10)
   }
 
   @Test def trimToSize(): Unit = {
     // Just make sure it links
-    initBuffer("hello").trimToSize()
+    initBuilder("hello").trimToSize()
   }
 
   @Test def setLength(): Unit = {
-    val b = initBuffer("foobar")
+    val b = initBuilder("foobar")
 
     expectThrows(classOf[StringIndexOutOfBoundsException], b.setLength(-3))
 
@@ -426,7 +428,7 @@ class StringBufferTest {
 
   @Test def charAt(): Unit = {
     def resultFor(input: String, index: Int): Char =
-      initBuffer(input).charAt(index)
+      initBuilder(input).charAt(index)
 
     assertEquals('e', resultFor("hello", 1))
     assertEquals('\ud801', resultFor("ab\ud801\udc02cd", 2))
@@ -441,7 +443,7 @@ class StringBufferTest {
 
   @Test def codePointAt(): Unit = {
     def resultFor(input: String, index: Int): Int =
-      initBuffer(input).codePointAt(index)
+      initBuilder(input).codePointAt(index)
 
     assertEquals(0x61, resultFor("abc\ud834\udf06def", 0))
     assertEquals(0x1d306, resultFor("abc\ud834\udf06def", 3))
@@ -463,7 +465,7 @@ class StringBufferTest {
 
   @Test def codePointBefore(): Unit = {
     def resultFor(input: String, index: Int): Int =
-      initBuffer(input).codePointBefore(index)
+      initBuilder(input).codePointBefore(index)
 
     assertEquals(0x61, resultFor("abc\ud834\udf06def", 1))
     assertEquals(0x1d306, resultFor("abc\ud834\udf06def", 5))
@@ -483,7 +485,7 @@ class StringBufferTest {
   }
 
   @Test def codePointCount(): Unit = {
-    val sb = initBuffer(
+    val sb = initBuilder(
         "abc\uD834\uDF06de\uD834\uDF06fgh\uD834ij\uDF06\uD834kl\uDF06")
 
     assertEquals(18, sb.codePointCount(0, sb.length))
@@ -506,7 +508,7 @@ class StringBufferTest {
   }
 
   @Test def offsetByCodePoints(): Unit = {
-    val sb = initBuffer(
+    val sb = initBuilder(
         "abc\uD834\uDF06de\uD834\uDF06fgh\uD834ij\uDF06\uD834kl\uDF06")
 
     assertEquals(sb.length, sb.offsetByCodePoints(0, 18))
@@ -528,7 +530,7 @@ class StringBufferTest {
   }
 
   @Test def offsetByCodePointsBackwards(): Unit = {
-    val sb = initBuffer(
+    val sb = initBuilder(
         "abc\uD834\uDF06de\uD834\uDF06fgh\uD834ij\uDF06\uD834kl\uDF06")
 
     assertEquals(0, sb.offsetByCodePoints(sb.length, -18))
@@ -551,13 +553,13 @@ class StringBufferTest {
 
   @Test def getChars(): Unit = {
     val dst = new Array[Char](10)
-    initBuffer("asdf_foo").getChars(2, 6, dst, 3)
+    initBuilder("asdf_foo").getChars(2, 6, dst, 3)
     assertArrayEquals(Array[Char](0, 0, 0, 'd', 'f', '_', 'f', 0, 0, 0), dst)
   }
 
   @Test def setCharAt(): Unit = {
     def resultFor(input: String, index: Int, ch: Char): String = {
-      val sb = initBuffer(input)
+      val sb = initBuilder(input)
       sb.setCharAt(index, ch)
       sb.toString()
     }
@@ -573,7 +575,7 @@ class StringBufferTest {
 
   @Test def substringStart(): Unit = {
     def resultFor(input: String, start: Int): String =
-      initBuffer(input).substring(start)
+      initBuilder(input).substring(start)
 
     assertEquals("llo", resultFor("hello", 2))
     assertEquals("", resultFor("hello", 5))
@@ -588,7 +590,7 @@ class StringBufferTest {
 
   @Test def subSequence(): Unit = {
     def resultFor(input: String, start: Int, end: Int): CharSequence =
-      initBuffer(input).subSequence(start, end)
+      initBuilder(input).subSequence(start, end)
 
     /* Note that the spec of subSequence says that it behaves exactly like
      * substring. Therefore, the returned CharSequence must necessarily be a
@@ -612,7 +614,7 @@ class StringBufferTest {
 
   @Test def substringStartEnd(): Unit = {
     def resultFor(input: String, start: Int, end: Int): String =
-      initBuffer(input).substring(start, end)
+      initBuilder(input).substring(start, end)
 
     assertEquals("ll", resultFor("hello", 2, 4))
     assertEquals("", resultFor("hello", 5, 5))
@@ -628,5 +630,14 @@ class StringBufferTest {
       expectThrows(classOf[StringIndexOutOfBoundsException],
           resultFor("hello", 3, 8))
     }
+  }
+
+  @Test def should_allow_string_interpolation_to_survive_null_and_undefined(): Unit = {
+    assertEquals("anullb", s"a${null}b")
+
+    if (executingInJVM)
+      assertEquals("a()b", s"a${()}b")
+    else
+      assertEquals("aundefinedb", s"a${()}b")
   }
 }

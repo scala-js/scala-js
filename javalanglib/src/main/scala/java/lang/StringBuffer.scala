@@ -1,177 +1,166 @@
 package java.lang
 
-class StringBuffer(private var content: String) extends CharSequence
-                                                   with Appendable
-                                                   with java.io.Serializable {
-  def this() = this("")
-  def this(initialCapacity: Int) = this("")
-  def this(csq: CharSequence) = this(csq.toString)
+/* Given the rare usefulness of StringBuffer in the context of Scala.js, and
+ * its general bad reputation, we do not make any effort towards performance.
+ * We simply delegate all operations to an underlying j.l.StringBuilder, which
+ * shares the specifications of StringBuffer except for the synchronization
+ * part, which is irrelevant in Scala.js anyway.
+ */
+class StringBuffer private (builder: StringBuilder)
+    extends AnyRef with CharSequence with Appendable with java.io.Serializable {
 
-  def append(s: String): StringBuffer = {
-    content += { if (s == null) "null" else s }
-    this
+  def this() = this(new StringBuilder())
+  def this(str: String) = this(new StringBuilder(str))
+  def this(capacity: Int) = this(new StringBuilder(capacity))
+  def this(seq: CharSequence) = this(seq.toString)
+
+  /** A helper so that we can write stuff like `withThisResult(append(obj))`. */
+  @inline
+  private def withThisResult(op: StringBuilder): StringBuffer = this
+
+  def length(): Int = builder.length()
+
+  def capacity(): Int = builder.capacity()
+
+  def ensureCapacity(minimumCapacity: Int): Unit =
+    builder.ensureCapacity(minimumCapacity)
+
+  def trimToSize(): Unit = builder.trimToSize()
+
+  def setLength(newLength: Int): Unit = builder.setLength(newLength)
+
+  def charAt(index: Int): Char = builder.charAt(index)
+
+  def codePointAt(index: Int): Int = builder.codePointAt(index)
+
+  def codePointBefore(index: Int): Int = builder.codePointBefore(index)
+
+  def codePointCount(beginIndex: Int, endIndex: Int): Int =
+    builder.codePointCount(beginIndex, endIndex)
+
+  def offsetByCodePoints(index: Int, codePointOffset: Int): Int =
+    builder.offsetByCodePoints(index, codePointOffset)
+
+  def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Char],
+      dstBegin: Int): Unit = {
+    builder.getChars(srcBegin, srcEnd, dst, dstBegin)
   }
 
-  def append(b: scala.Boolean): StringBuffer = append(b.toString())
-  def append(c: scala.Char): StringBuffer = append(c.toString())
+  def setCharAt(index: Int, ch: Char): Unit =
+    builder.setCharAt(index, ch)
 
-  def append(str: Array[scala.Char]): StringBuffer =
-    append(str, 0, str.length)
+  def append(obj: AnyRef): StringBuffer =
+    withThisResult(builder.append(obj))
 
-  def append(str: Array[scala.Char], offset: Int, len: Int): StringBuffer = {
-    var i = 0
-    while (i < len) {
-      content += str(i + offset)
-      i += 1
-    }
-    this
-  }
+  def append(str: String): StringBuffer =
+    withThisResult(builder.append(str))
 
-  def append(b: scala.Byte): StringBuffer = append(b.toString())
-  def append(s: scala.Short): StringBuffer = append(s.toString())
-  def append(i: scala.Int): StringBuffer = append(i.toString())
-  def append(lng: scala.Long): StringBuffer = append(lng.toString())
-  def append(f: scala.Float): StringBuffer = append(f.toString())
-  def append(d: scala.Double): StringBuffer = append(d.toString())
+  def append(sb: StringBuffer): StringBuffer =
+    withThisResult(builder.append(sb))
 
-  def append(obj: AnyRef): StringBuffer = {
-    if (obj == null) append(null: String)
-    else             append(obj.toString())
-  }
+  def append(s: CharSequence): StringBuffer =
+    withThisResult(builder.append(s))
 
-  def append(csq: CharSequence): StringBuffer = append(csq: AnyRef)
-  def append(csq: CharSequence, start: Int, end: Int): StringBuffer = {
-    if (csq == null) append("null", start, end)
-    else append(csq.subSequence(start, end).toString())
-  }
+  def append(s: CharSequence, start: Int, end: Int): StringBuffer =
+    withThisResult(builder.append(s, start, end))
+
+  def append(str: Array[Char]): StringBuffer =
+    withThisResult(builder.append(str))
+
+  def append(str: Array[Char], offset: Int, len: Int): StringBuffer =
+    withThisResult(builder.append(str, offset, len))
+
+  def append(b: scala.Boolean): StringBuffer =
+    withThisResult(builder.append(b))
+
+  def append(c: Char): StringBuffer =
+    withThisResult(builder.append(c))
+
+  def append(i: Int): StringBuffer =
+    withThisResult(builder.append(i))
 
   def appendCodePoint(codePoint: Int): StringBuffer =
-    append(Character.toChars(codePoint))
+    withThisResult(builder.appendCodePoint(codePoint))
 
-  override def toString(): String = content
+  def append(lng: scala.Long): StringBuffer =
+    withThisResult(builder.append(lng))
 
-  def length(): Int = content.length()
+  def append(f: scala.Float): StringBuffer =
+    withThisResult(builder.append(f))
 
-  def charAt(index: Int): Char = content.charAt(index)
-  def codePointAt(index: Int): Int = content.codePointAt(index)
+  def append(d: scala.Double): StringBuffer =
+    withThisResult(builder.append(d))
 
-  def indexOf(str: String): Int = content.indexOf(str)
+  def delete(start: Int, end: Int): StringBuffer =
+    withThisResult(builder.delete(start, end))
+
+  def deleteCharAt(index: Int): StringBuffer =
+    withThisResult(builder.deleteCharAt(index))
+
+  def replace(start: Int, end: Int, str: String): StringBuffer =
+    withThisResult(builder.replace(start, end, str))
+
+  def substring(start: Int): String =
+    builder.substring(start)
+
+  def subSequence(start: Int, end: Int): CharSequence =
+    builder.subSequence(start, end)
+
+  def substring(start: Int, end: Int): String = builder.substring(start, end)
+
+  def insert(index: Int, str: Array[Char], offset: Int, len: Int): StringBuffer =
+    withThisResult(builder.insert(index, str, offset, len))
+
+  def insert(offset: Int, obj: AnyRef): StringBuffer =
+    withThisResult(builder.insert(offset, obj))
+
+  def insert(offset: Int, str: String): StringBuffer =
+    withThisResult(builder.insert(offset, str))
+
+  def insert(offset: Int, str: Array[Char]): StringBuffer =
+    withThisResult(builder.insert(offset, str))
+
+  def insert(dstOffset: Int, s: CharSequence): StringBuffer =
+    withThisResult(builder.insert(dstOffset, s))
+
+  def insert(dstOffset: Int, s: CharSequence, start: Int,
+      end: Int): StringBuffer = {
+    withThisResult(builder.insert(dstOffset, s, start, end))
+  }
+
+  def insert(offset: Int, b: scala.Boolean): StringBuffer =
+    withThisResult(builder.insert(offset, b))
+
+  def insert(offset: Int, c: Char): StringBuffer =
+    withThisResult(builder.insert(offset, c))
+
+  def insert(offset: Int, i: Int): StringBuffer =
+    withThisResult(builder.insert(offset, i))
+
+  def insert(offset: Int, l: scala.Long): StringBuffer =
+    withThisResult(builder.insert(offset, l))
+
+  def insert(offset: Int, f: scala.Float): StringBuffer =
+    withThisResult(builder.insert(offset, f))
+
+  def insert(offset: Int, d: scala.Double): StringBuffer =
+    withThisResult(builder.insert(offset, d))
+
+  def indexOf(str: String): Int =
+    builder.indexOf(str)
 
   def indexOf(str: String, fromIndex: Int): Int =
-    content.indexOf(str, fromIndex)
+    builder.indexOf(str, fromIndex)
 
-  def lastIndexOf(str: String): Int = content.lastIndexOf(str)
+  def lastIndexOf(str: String): Int =
+    builder.lastIndexOf(str)
 
   def lastIndexOf(str: String, fromIndex: Int): Int =
-    content.lastIndexOf(str, fromIndex)
+    builder.lastIndexOf(str, fromIndex)
 
-  def subSequence(start: Int, end: Int): CharSequence = substring(start, end)
-  def substring(start: Int): String = content.substring(start)
-  def substring(start: Int, end: Int): String = content.substring(start, end)
+  def reverse(): StringBuffer =
+    withThisResult(builder.reverse())
 
-  def reverse(): StringBuffer = {
-    content = new StringBuilder(content).reverse().toString()
-    this
-  }
-
-  def deleteCharAt(index: Int): StringBuffer = {
-    if (index < 0 || index >= content.length)
-      throw new StringIndexOutOfBoundsException("String index out of range: " + index)
-    content = content.substring(0, index) + content.substring(index+1)
-    this
-  }
-
-  def ensureCapacity(minimumCapacity: Int): Unit = {
-    // Do nothing
-  }
-
-  /**
-   * @param start The beginning index, inclusive.
-   * @param end The ending index, exclusive.
-   * @param str String that will replace previous contents.
-   * @return This StringBuilder.
-   */
-  def replace(start: Int, end: Int, str: String): StringBuffer = {
-    val length = content.length
-    if (start < 0 || start > end || start > length) {
-      throw new StringIndexOutOfBoundsException(
-          s"Illegal to replace substring at [$start - $end] in string of length $length")
-    }
-
-    val realEnd = if (end > length) length else end // java api convention
-    content = content.substring(0, start) + str + content.substring(realEnd)
-    this
-  }
-
-  def setCharAt(index: Int, ch: scala.Char): Unit = {
-    if (index < 0 || index >= content.length) {
-      throw new StringIndexOutOfBoundsException(
-          "String index out of range: " + index)
-    }
-    content = content.substring(0, index) + ch + content.substring(index + 1)
-  }
-
-  def setLength(newLength: Int): Unit = {
-    if (newLength < 0) {
-      throw new StringIndexOutOfBoundsException(
-          "String index out of range: " + newLength)
-    }
-
-    val len = length()
-    if (len == newLength) {
-    } else if (len < newLength) {
-      var index = len
-      while (index < newLength) {
-        append("\u0000")
-        index += 1
-      }
-    } else {
-      content = substring(0, newLength)
-    }
-  }
-
-  def insert(index: Int, b: scala.Boolean): StringBuffer        = insert(index, b.toString)
-  def insert(index: Int, b: scala.Byte): StringBuffer           = insert(index, b.toString)
-  def insert(index: Int, s: scala.Short): StringBuffer          = insert(index, s.toString)
-  def insert(index: Int, i: scala.Int): StringBuffer            = insert(index, i.toString)
-  def insert(index: Int, l: scala.Long): StringBuffer           = insert(index, l.toString)
-  def insert(index: Int, f: scala.Float): StringBuffer          = insert(index, f.toString)
-  def insert(index: Int, d: scala.Double): StringBuffer         = insert(index, d.toString)
-  def insert(index: Int, c: scala.Char): StringBuffer           = insert(index, c.toString)
-  def insert(index: Int, csq: CharSequence): StringBuffer       = insert(index: Int, csq: AnyRef)
-  def insert(index: Int, arr: Array[scala.Char]): StringBuffer  = insert(index, arr, 0, arr.length)
-
-  def insert(index: Int, ref: AnyRef): StringBuffer =
-    if (ref == null)
-      insert(index, null: String)
-    else
-      insert(index, ref.toString)
-
-  def insert(index: Int, csq: CharSequence, start: Int, end: Int): StringBuffer =
-    if (csq == null)
-      insert(index, "null", start, end)
-    else
-      insert(index, csq.subSequence(start, end).toString)
-
-
-  def insert(index: Int, arr: Array[scala.Char], offset: Int, len: Int): StringBuffer = {
-    var str = ""
-    var i = 0
-    while (i < len) {
-      str += arr(i + offset)
-      i += 1
-    }
-    insert(index, str)
-  }
-
-  def insert(index: Int, str: String): StringBuffer = {
-    val thisLength = length()
-    if (index < 0 || index > thisLength)
-      throw new StringIndexOutOfBoundsException(index)
-    else if (index == thisLength)
-      append(str)
-    else
-      content = content.substring(0, index) + Option(str).getOrElse("null") + content.substring(index)
-    this
-  }
+  override def toString(): String =
+    builder.toString()
 }

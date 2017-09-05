@@ -140,6 +140,32 @@ class StringTest {
 
     // Lone low surrogates
     assertEquals(0xDF06, "\uDF06abc".codePointAt(0))
+    assertEquals(0xD834, "abc\uD834".codePointAt(3))
+
+    if (executingInJVM) {
+      expectThrows(classOf[IndexOutOfBoundsException],
+          "abc\ud834\udf06def".codePointAt(-1))
+      expectThrows(classOf[IndexOutOfBoundsException],
+          "abc\ud834\udf06def".codePointAt(15))
+    }
+  }
+
+  @Test def codePointBefore(): Unit = {
+    assertEquals(0x61, "abc\ud834\udf06def".codePointBefore(1))
+    assertEquals(0x1d306, "abc\ud834\udf06def".codePointBefore(5))
+    assertEquals(0xd834, "abc\ud834\udf06def".codePointBefore(4))
+    assertEquals(0x64, "abc\ud834\udf06def".codePointBefore(6))
+    assertEquals(0x1d306, "\ud834\udf06def".codePointBefore(2))
+    assertEquals(0xd834, "\ud834\udf06def".codePointBefore(1))
+    assertEquals(0xd834, "\ud834abc".codePointBefore(1))
+    assertEquals(0xdf06, "\udf06abc".codePointBefore(1))
+
+    if (executingInJVM) {
+      expectThrows(classOf[IndexOutOfBoundsException],
+          "abc\ud834\udf06def".codePointBefore(0))
+      expectThrows(classOf[IndexOutOfBoundsException],
+          "abc\ud834\udf06def".codePointBefore(15))
+    }
   }
 
   @Test def codePointCount(): Unit = {
@@ -161,6 +187,48 @@ class StringTest {
     expectThrows(classOf[IndexOutOfBoundsException], s.codePointCount(-3, 4))
     expectThrows(classOf[IndexOutOfBoundsException], s.codePointCount(6, 2))
     expectThrows(classOf[IndexOutOfBoundsException], s.codePointCount(10, 30))
+  }
+
+  @Test def offsetByCodePoints(): Unit = {
+    val s = "abc\uD834\uDF06de\uD834\uDF06fgh\uD834ij\uDF06\uD834kl\uDF06"
+
+    assertEquals(s.length, s.offsetByCodePoints(0, 18))
+    assertEquals(5, s.offsetByCodePoints(3, 1))
+    assertEquals(3, s.offsetByCodePoints(2, 1))
+    assertEquals(5, s.offsetByCodePoints(2, 2))
+    assertEquals(6, s.offsetByCodePoints(2, 3))
+    assertEquals(17, s.offsetByCodePoints(12, 5))
+    assertEquals(10, s.offsetByCodePoints(8, 2))
+    assertEquals(10, s.offsetByCodePoints(7, 2))
+    assertEquals(7, s.offsetByCodePoints(7, 0))
+    assertEquals(s.length, s.offsetByCodePoints(s.length - 1, 1))
+    assertEquals(s.length - 1, s.offsetByCodePoints(s.length - 1, 0))
+    assertEquals(s.length, s.offsetByCodePoints(s.length, 0))
+
+    expectThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(-3, 4))
+    expectThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(6, 18))
+    expectThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(30, 2))
+  }
+
+  @Test def offsetByCodePointsBackwards(): Unit = {
+    val s = "abc\uD834\uDF06de\uD834\uDF06fgh\uD834ij\uDF06\uD834kl\uDF06"
+
+    assertEquals(0, s.offsetByCodePoints(s.length, -18))
+    assertEquals(3, s.offsetByCodePoints(5, -1))
+    assertEquals(2, s.offsetByCodePoints(3, -1))
+    assertEquals(2, s.offsetByCodePoints(4, -2))
+    assertEquals(2, s.offsetByCodePoints(5, -2))
+    assertEquals(2, s.offsetByCodePoints(6, -3))
+    assertEquals(12, s.offsetByCodePoints(17, -5))
+    assertEquals(7, s.offsetByCodePoints(10, -2))
+    assertEquals(7, s.offsetByCodePoints(7, -0))
+    assertEquals(s.length - 1, s.offsetByCodePoints(s.length, -1))
+    assertEquals(s.length - 1, s.offsetByCodePoints(s.length - 1, -0))
+    assertEquals(s.length, s.offsetByCodePoints(s.length, -0))
+
+    expectThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(-3, 4))
+    expectThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(6, 18))
+    expectThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(30, 2))
   }
 
   @Test def subSequence(): Unit = {
