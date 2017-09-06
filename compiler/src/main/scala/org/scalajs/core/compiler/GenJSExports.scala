@@ -760,7 +760,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             val defaultGetterArgs =
               result.take(defaultGetter.tpe.params.size).toList.map(_.ref)
 
-            if (isRawJSType(trgSym.toTypeConstructor)) {
+            if (isJSType(trgSym)) {
               if (isNonNativeJSClass(defaultGetter.owner)) {
                 genApplyJSClassMethod(trgTree, defaultGetter, defaultGetterArgs)
               } else {
@@ -932,7 +932,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
               case StringClass    => HijackedTypeTest(Defs.StringClass, 9)
               case ObjectClass    => NoTypeTest
               case _              =>
-                if (isRawJSType(tpe)) NoTypeTest
+                if (isJSType(cls)) NoTypeTest
                 else InstanceOfTypeTest(tpe)
             }
 
