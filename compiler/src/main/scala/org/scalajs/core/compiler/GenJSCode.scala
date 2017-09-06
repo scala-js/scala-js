@@ -287,7 +287,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 generatedSAMWrapperCount := new VarBox(0)
             ) {
               try {
-                val tree = if (isRawJSType(sym.tpe)) {
+                val tree = if (isJSType(sym)) {
                   assert(!isRawJSFunctionDef(sym),
                       s"Raw JS function def should have been recorded: $cd")
                   if (!sym.isTraitOrInterface && isNonNativeJSClass(sym))
@@ -2250,7 +2250,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           isRawJSCtorDefaultParam(sym)
         } else {
           sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
-          isRawJSType(sym.owner.tpe) && {
+          isJSType(sym.owner) && {
             /* If this is a default parameter accessor on a
              * non-native JS class, we need to know if the method for which we
              * are the default parameter is exposed or not.
@@ -2387,7 +2387,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree
       val sym = fun.symbol
 
-      if (isRawJSType(qual.tpe)) {
+      if (isJSType(qual.tpe)) {
         if (sym.isMixinConstructor) {
           /* Do not emit a call to the $init$ method of JS traits.
            * This exception is necessary because @JSOptional fields cause the
@@ -2451,7 +2451,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             ((clsSym, None, nestedGenerateClass(clsSym)(genClass(classDef))))
           genNew(clsSym, ctor, genActualArgs(ctor, args))
         }
-      } else if (isRawJSType(tpe)) {
+      } else if (isJSType(clsSym)) {
         genPrimitiveJSNew(tree)
       } else {
         toTypeKind(tpe) match {
@@ -2583,7 +2583,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       if (sym.owner == StringClass && !isStringMethodFromObject) {
         genStringCall(tree)
-      } else if (isRawJSType(receiver.tpe) && sym.owner != ObjectClass) {
+      } else if (isJSType(receiver.tpe) && sym.owner != ObjectClass) {
         if (!isNonNativeJSClass(sym.owner) || isExposed(sym))
           genPrimitiveJSCall(tree, isStat)
         else
@@ -2710,7 +2710,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       if (sym == ObjectClass) {
         js.BinaryOp(js.BinaryOp.!==, value, js.Null())
-      } else if (isRawJSType(to)) {
+      } else if (isJSType(sym)) {
         if (sym.isTrait) {
           reporter.error(pos,
               s"isInstanceOf[${sym.fullName}] not supported because it is a raw JS trait")
@@ -2733,7 +2733,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val sym = to.typeSymbol
 
-      if (sym == ObjectClass || isRawJSType(to)) {
+      if (sym == ObjectClass || isJSType(sym)) {
         /* asInstanceOf[Object] always succeeds, and
          * asInstanceOf to a raw JS type is completely erased.
          */
@@ -3512,13 +3512,14 @@ abstract class GenJSCode extends plugins.PluginComponent
        * with the Scala/JVM compiler.
        */
       val mustUseAnyComparator: Boolean = {
-        isRawJSType(ltpe) || isRawJSType(rtpe) || {
-          isMaybeBoxed(ltpe.typeSymbol) && isMaybeBoxed(rtpe.typeSymbol) && {
+        val lsym = ltpe.typeSymbol
+        val rsym = rtpe.typeSymbol
+        isJSType(lsym) || isJSType(rsym) || {
+          isMaybeBoxed(lsym) && isMaybeBoxed(rsym) && {
             val areSameFinals =
-              ltpe.isFinalType && rtpe.isFinalType && (ltpe =:= rtpe)
+              ltpe.isFinalType && rtpe.isFinalType && lsym == rsym
             !areSameFinals || {
-              val sym = ltpe.typeSymbol
-              (sym == BoxedFloatClass || sym == BoxedDoubleClass) && {
+              (lsym == BoxedFloatClass || lsym == BoxedDoubleClass) && {
                 // Bug-compatibility for Scala < 2.12.2
                 !shouldPreserveEqEqBugWithJLFloatDouble
               }
@@ -4120,7 +4121,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           case List(Literal(value)) if value.tag == ClazzTag =>
             val kind = toTypeKind(value.typeValue)
             kind match {
-              case REFERENCE(classSym) if isRawJSType(classSym.tpe) &&
+              case REFERENCE(classSym) if isJSType(classSym) &&
                   !classSym.isTrait && !classSym.isModuleClass =>
                 genPrimitiveJSClass(classSym)
               case _ =>
@@ -5130,7 +5131,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             thisActualCapture.tpe, mutable = false, rest = false)(receiver.pos)
         val thisCaptureArg = thisFormalCapture.ref
 
-        val body = if (isRawJSType(receiver.tpe) && target.owner != ObjectClass) {
+        val body = if (isJSType(receiver.tpe) && target.owner != ObjectClass) {
           assert(isNonNativeJSClass(target.owner) && !isExposed(target),
               s"A Function lambda is trying to call an exposed JS method ${target.fullName}")
           genApplyJSClassMethod(thisCaptureArg, target, allArgs)
@@ -5335,7 +5336,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       def moduleOrGlobalScope = genLoadModuleOrGlobalScope(sym.owner)
       def module = genLoadModule(sym.owner)
 
-      if (isRawJSType(sym.owner.tpe)) {
+      if (isJSType(sym.owner)) {
         if (!isNonNativeJSClass(sym.owner) || isExposed(sym))
           genJSCallGeneric(sym, moduleOrGlobalScope, args = Nil, isStat = false)
         else
@@ -5382,7 +5383,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else {
         val cls = jstpe.ClassType(encodeClassFullName(sym))
         val tree =
-          if (isRawJSType(sym.tpe)) js.LoadJSModule(cls)
+          if (isJSType(sym)) js.LoadJSModule(cls)
           else js.LoadModule(cls)
         MaybeGlobalScope.NotGlobalScope(tree)
       }
@@ -5538,12 +5539,18 @@ abstract class GenJSCode extends plugins.PluginComponent
   /** Tests whether the given type represents a raw JavaScript type,
    *  i.e., whether it extends scala.scalajs.js.Any.
    */
-  def isRawJSType(tpe: Type): Boolean =
-    tpe.typeSymbol.annotations.find(_.tpe =:= RawJSTypeAnnot.tpe).isDefined
+  def isJSType(tpe: Type): Boolean =
+    isJSType(tpe.typeSymbol)
+
+  /** Tests whether the given type symbol represents a raw JavaScript type,
+   *  i.e., whether it extends scala.scalajs.js.Any.
+   */
+  def isJSType(sym: Symbol): Boolean =
+    sym.hasAnnotation(RawJSTypeAnnot)
 
   /** Tests whether the given class is a non-native JS class. */
   def isNonNativeJSClass(sym: Symbol): Boolean =
-    !sym.isTrait && isRawJSType(sym.tpe) && !sym.hasAnnotation(JSNativeAnnotation)
+    !sym.isTrait && isJSType(sym) && !sym.hasAnnotation(JSNativeAnnotation)
 
   def isAnonJSClass(sym: Symbol): Boolean =
     sym.hasAnnotation(AnonymousJSClassAnnotation)
@@ -5554,8 +5561,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   /** Tests whether the given class is the impl class of a raw JS trait. */
   private def isRawJSImplClass(sym: Symbol): Boolean = {
-    sym.isImplClass && isRawJSType(
-        sym.owner.info.decl(sym.name.dropRight(nme.IMPL_CLASS_SUFFIX.length)).tpe)
+    sym.isImplClass &&
+    isJSType(sym.owner.info.decl(sym.name.dropRight(nme.IMPL_CLASS_SUFFIX.length)))
   }
 
   /** Tests whether the given member is exposed, i.e., whether it was
@@ -5570,7 +5577,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   private def isRawJSCtorDefaultParam(sym: Symbol) = {
     isCtorDefaultParam(sym) &&
-    isRawJSType(patchedLinkedClassOfClass(sym.owner).tpe)
+    isJSType(patchedLinkedClassOfClass(sym.owner))
   }
 
   private def isJSNativeCtorDefaultParam(sym: Symbol) = {
