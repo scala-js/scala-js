@@ -157,6 +157,18 @@ object Analysis {
   final case class InvalidJavaLangObjectClass(from: From) extends Error
   final case class CycleInInheritanceChain(cycle: List[ClassInfo], from: From) extends Error
   final case class MissingClass(info: ClassInfo, from: From) extends Error
+
+  final case class MissingSuperClass(subClassInfo: ClassInfo, from: From)
+      extends Error
+
+  final case class InvalidSuperClass(superClassInfo: ClassInfo,
+      subClassInfo: ClassInfo, from: From)
+      extends Error
+
+  final case class InvalidImplementedInterface(superIntfInfo: ClassInfo,
+      subClassInfo: ClassInfo, from: From)
+      extends Error
+
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
   final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From) extends Error
@@ -179,6 +191,17 @@ object Analysis {
             cycle.map(_.displayName).mkString(", "))
       case MissingClass(info, _) =>
         s"Referring to non-existent class ${info.displayName}"
+      case MissingSuperClass(subClassInfo, _) =>
+        s"${subClassInfo.displayName} (of kind ${subClassInfo.kind}) is " +
+        "missing a super class"
+      case InvalidSuperClass(superClassInfo, subClassInfo, _) =>
+        s"${superClassInfo.displayName} (of kind ${superClassInfo.kind}) is " +
+        s"not a valid super class of ${subClassInfo.displayName} (of kind " +
+        s"${subClassInfo.kind})"
+      case InvalidImplementedInterface(superIntfInfo, subClassInfo, _) =>
+        s"${superIntfInfo.displayName} (of kind ${superIntfInfo.kind}) is " +
+        s"not a valid interface implemented by ${subClassInfo.displayName} " +
+        s"(of kind ${subClassInfo.kind})"
       case NotAModule(info, _) =>
         s"Cannot access module for non-module ${info.displayName}"
       case MissingMethod(info, _) =>

@@ -31,6 +31,7 @@ private final class Analyzer(config: CommonPhaseConfig,
   import Analyzer._
   import ClassInfo.newClassInfo
 
+  private var objectClassInfo: ClassInfo = _
   private[this] val _classInfos = mutable.Map.empty[String, ClassInfo]
   private[this] val _errors = mutable.Buffer.empty[Error]
 
@@ -53,7 +54,7 @@ private final class Analyzer(config: CommonPhaseConfig,
             data.interfaces.nonEmpty) {
           _errors += InvalidJavaLangObjectClass(fromAnalyzer)
         } else {
-          newClassInfo(data, nonExistent = false)
+          objectClassInfo = newClassInfo(data, nonExistent = false)
         }
     }
 
@@ -62,6 +63,8 @@ private final class Analyzer(config: CommonPhaseConfig,
        * cannot continue.
        */
     } else {
+      assert(objectClassInfo != null)
+
       try {
         /* Hijacked classes are always instantiated, because values of primitive
          * types are their instances.
@@ -279,10 +282,111 @@ private final class Analyzer(config: CommonPhaseConfig,
       superClass = data.superClass.map(lookupClassAndCheckCycles)
       interfaces = data.interfaces.map(lookupClassAndCheckCycles)
 
-      // TODO #3076: Validate the super class and implemented interfaces
+      // j.l.Object is special and is validated upfront
+      if (encodedName != ObjectClass) {
+        validateSuperClass()
+        validateInterfaces()
+      }
 
       val parents = superClass ++: interfaces
       ancestors = this +: parents.flatMap(_.ancestors).distinct
+    }
+
+    private[this] def validateSuperClass(): Unit = {
+      implicit def from = FromClass(this)
+
+      kind match {
+        case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass =>
+          superClass.fold[Unit] {
+            _errors += MissingSuperClass(this, from)
+            superClass = Some(objectClassInfo)
+          } { superCl =>
+            if (superCl.kind != ClassKind.Class) {
+              _errors += InvalidSuperClass(superCl, this, from)
+              superClass = Some(objectClassInfo)
+            }
+          }
+
+        case ClassKind.Interface =>
+          superClass.foreach { superCl =>
+            _errors += InvalidSuperClass(superCl, this, from)
+            superClass = None
+          }
+
+        case ClassKind.JSClass | ClassKind.JSModuleClass =>
+          /* There is no correct fallback in case of error, here. The logical
+           * thing to do would be to pick `js.Object`, but we cannot be sure
+           * that `js.Object` and its inheritance chain are valid themselves.
+           * So we just say superClass = None in invalid cases, and make sure
+           * this does not blow up the rest of the analysis.
+           */
+          superClass.fold[Unit] {
+            _errors += MissingSuperClass(this, from)
+          } { superCl =>
+            superCl.kind match {
+              case ClassKind.JSClass | ClassKind.NativeJSClass =>
+                // ok
+              case _ =>
+                _errors += InvalidSuperClass(superCl, this, from)
+                superClass = None
+            }
+          }
+
+        case ClassKind.NativeJSClass | ClassKind.NativeJSModuleClass =>
+          superClass.fold[Unit] {
+            _errors += MissingSuperClass(this, from)
+            superClass = Some(objectClassInfo)
+          } { superCl =>
+            superCl.kind match {
+              case ClassKind.JSClass | ClassKind.NativeJSClass =>
+                // ok
+              case _ if superCl eq objectClassInfo =>
+                // ok
+              case _ =>
+                _errors += InvalidSuperClass(superCl, this, from)
+                superClass = Some(objectClassInfo)
+            }
+          }
+
+        case ClassKind.AbstractJSType =>
+          superClass.foreach { superCl =>
+            superCl.kind match {
+              case ClassKind.JSClass | ClassKind.NativeJSClass =>
+                // ok
+              case _ if superCl eq objectClassInfo =>
+                // ok
+              case _ =>
+                _errors += InvalidSuperClass(superCl, this, from)
+                superClass = None
+            }
+          }
+      }
+    }
+
+    private[this] def validateInterfaces(): Unit = {
+      implicit def from = FromClass(this)
+
+      val validSuperIntfKind = kind match {
+        case ClassKind.Class | ClassKind.ModuleClass |
+            ClassKind.HijackedClass | ClassKind.Interface =>
+          ClassKind.Interface
+        case ClassKind.JSClass | ClassKind.JSModuleClass |
+            ClassKind.NativeJSClass | ClassKind.NativeJSModuleClass |
+            ClassKind.AbstractJSType =>
+          ClassKind.AbstractJSType
+      }
+
+      interfaces = interfaces.filter { superIntf =>
+        if (superIntf.nonExistent) {
+          // Remove it but do not report an additional error message
+          false
+        } else if (superIntf.kind != validSuperIntfKind) {
+          _errors += InvalidImplementedInterface(superIntf, this, from)
+          false
+        } else {
+          true
+        }
+      }
     }
 
     var isInstantiated: Boolean = false
