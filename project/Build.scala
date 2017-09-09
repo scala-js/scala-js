@@ -1610,9 +1610,13 @@ object Build {
           val sourceFiles = (sources in Test).value
           if ((jsEnv in Test).?.value.exists(isPhantomJS)) {
             sourceFiles.filter { f =>
-              !f.getAbsolutePath
-                .replace('\\', '/')
-                .contains("/org/scalajs/testsuite/javalib/math/")
+              val path = f.getAbsolutePath.replace('\\', '/')
+
+              {
+                !path.contains("/org/scalajs/testsuite/javalib/math/") &&
+                !path.contains("/org/scalajs/testsuite/niocharset/") &&
+                !path.contains("/src/test/require-")
+              }
             }
           } else {
             sourceFiles
