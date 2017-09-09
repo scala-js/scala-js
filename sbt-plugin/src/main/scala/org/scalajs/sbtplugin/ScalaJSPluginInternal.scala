@@ -208,7 +208,7 @@ object ScalaJSPluginInternal {
          */
         val oldConfigRelSourceMapBase = {
           if ((relativeSourceMaps in key).value)
-            Some((artifactPath in key).value.getParentFile.toURI())
+            Some((artifactPath in key).value.toURI())
           else
             None
         }
