@@ -28,7 +28,7 @@ class RuntimeLongTest {
 
   // Short builders
   def lg(lo: Int, hi: Int): RuntimeLong = new RuntimeLong(lo, hi)
-  def lg(i: Int): RuntimeLong = new RuntimeLong(i)
+  def lg(i: Int): RuntimeLong = RuntimeLong.fromInt(i)
 
   // Common values
   val MaxVal = lg(0xffffffff, 0x7fffffff)

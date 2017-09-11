@@ -1955,7 +1955,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 FloatToDouble =>
               newLhs
             case IntToLong =>
-              genNewLong(LongImpl.initFromInt, newLhs)
+              genLongModuleApply(LongImpl.fromInt, newLhs)
 
             // Narrowing conversions
             case IntToChar =>
@@ -2267,8 +2267,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           genLongZero()
         case LongLiteral(value) =>
           val (lo, hi) = LongImpl.extractParts(value)
-          genNewLong(LongImpl.initFromParts,
-              js.IntLiteral(lo), js.IntLiteral(hi))
+          js.New(encodeClassVar(LongImpl.RuntimeLongClass),
+              List(js.IntLiteral(lo), js.IntLiteral(hi)))
 
         case ClassOf(cls) =>
           js.Apply(js.DotSelect(genClassDataOf(cls), js.Ident("getClassOf")),
@@ -2408,14 +2408,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree = {
       genCallHelper("fround", arg)
-    }
-
-    private def genNewLong(ctor: String, args: js.Tree*)(
-        implicit pos: Position): js.Tree = {
-      import TreeDSL._
-      js.Apply(
-          js.New(encodeClassVar(LongImpl.RuntimeLongClass), Nil) DOT ctor,
-          args.toList)
     }
 
     private def genLongMethodApply(receiver: js.Tree, methodName: String,

@@ -39,9 +39,6 @@ final class RuntimeLong(val lo: Int, val hi: Int)
   import RuntimeLong._
   import Utils._
 
-  /** Constructs a Long from an Int. */
-  def this(value: Int) = this(value, value >> 31)
-
   // Universal equality
 
   @inline
@@ -595,6 +592,10 @@ object RuntimeLong {
       hi * TwoPow32 + lo.toUint
     }
   }
+
+  @inline
+  def fromInt(value: Int): RuntimeLong =
+    new RuntimeLong(value, value >> 31)
 
   @inline
   def fromDouble(value: Double): RuntimeLong = {
