@@ -551,9 +551,6 @@ object RuntimeLong {
   /** The hi part of a (lo, hi) return value. */
   private[this] var hiReturn: Int = _
 
-  /** The instance of 0L, which is used by the `Emitter` in various places. */
-  val Zero = new RuntimeLong(0, 0)
-
   private def toString(lo: Int, hi: Int): String = {
     if (isInt32(lo, hi)) {
       lo.toString()
