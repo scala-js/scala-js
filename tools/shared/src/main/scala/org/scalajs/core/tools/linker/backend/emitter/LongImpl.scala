@@ -90,10 +90,8 @@ private[linker] object LongImpl {
 
   final val fromDouble = "fromDouble__D__sjsr_RuntimeLong"
 
-  final val Zero = "Zero__sjsr_RuntimeLong"
-
   val AllModuleMethods = Set(
-      fromDouble, Zero)
+      fromDouble)
 
   // Extract the parts to give to the initFromParts constructor
 

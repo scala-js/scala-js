@@ -114,6 +114,9 @@ const $clz32 = Math["clz32"] || (function(i) {
 });
 //!endif
 
+// Cached instance of RuntimeLong for 0L
+let $L0;
+
 // identityHashCode support
 let $lastIDHash = 0; // last value attributed to an id hash code
 //!if outputMode == ECMAScript6
@@ -708,8 +711,7 @@ function $uI(value) {
   return $asInt(value) | 0;
 };
 function $uJ(value) {
-  return null === value ? $m_sjsr_RuntimeLong$().Zero$1
-                        : $as_sjsr_RuntimeLong(value);
+  return null === value ? $L0 : $as_sjsr_RuntimeLong(value);
 };
 function $uF(value) {
   /* Here, it is fine to use + instead of fround, because asFloat already
@@ -725,7 +727,7 @@ function $uC(value) {
   return null === value ? 0 : value.c;
 }
 function $uJ(value) {
-  return null === value ? $m_sjsr_RuntimeLong$().Zero$1 : value;
+  return null === value ? $L0 : value;
 };
 //!endif
 
@@ -860,10 +862,8 @@ initArray(
 
   // The zero for the Long runtime representation
   // is a special case here, since the class has not
-  // been defined yet, when this file is read
-  const componentZero = (componentZero0 == "longZero")
-    ? $m_sjsr_RuntimeLong$().Zero$1
-    : componentZero0;
+  // been defined yet when this constructor is called.
+  const componentZero = (componentZero0 == "longZero") ? $L0 : componentZero0;
 
 //!if outputMode != ECMAScript6
   /** @constructor */
@@ -1015,7 +1015,7 @@ $TypeData.prototype["getFakeInstance"] = function() {
            this === $d_jl_Double)
     return 0;
   else if (this === $d_jl_Long)
-    return $m_sjsr_RuntimeLong$().Zero$1;
+    return $L0;
   else if (this === $d_sr_BoxedUnit)
     return void 0;
   else

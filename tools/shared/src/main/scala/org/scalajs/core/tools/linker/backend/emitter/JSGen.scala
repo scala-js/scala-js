@@ -50,9 +50,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
     }
   }
 
-  def genLongZero()(implicit pos: Position): Tree = {
-    genLongModuleApply(LongImpl.Zero)
-  }
+  def genLongZero()(implicit pos: Position): Tree =
+    envField("L0")
 
   def genLongModuleApply(methodName: String, args: Tree*)(
       implicit pos: Position): Tree = {
