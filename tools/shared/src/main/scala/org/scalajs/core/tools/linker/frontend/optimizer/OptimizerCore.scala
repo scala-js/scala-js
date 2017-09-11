@@ -2458,6 +2458,15 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     def rtLongModuleClassType = ClassType(LongImpl.RuntimeLongModuleClass)
 
+    def expandLongModuleOp(methodName: String,
+        arg: PreTransform): TailRec[Tree] = {
+      val receiver = LoadModule(rtLongModuleClassType).toPreTransform
+      pretransformApply(receiver, Ident(methodName),
+          arg :: Nil, rtLongClassType, isStat = false,
+          usePreTransform = true)(
+          cont)
+    }
+
     def expandUnaryOp(methodName: String, arg: PreTransform,
         resultType: Type = rtLongClassType): TailRec[Tree] = {
       pretransformApply(arg, Ident(methodName), Nil,
@@ -2479,10 +2488,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
         (op: @switch) match {
           case IntToLong =>
-            pretransformNew(AllocationSite.Anonymous, rtLongClassType,
-                Ident(LongImpl.initFromInt),
-                arg :: Nil)(
-                cont)
+            expandLongModuleOp(LongImpl.fromInt, arg)
 
           case LongToInt =>
             expandUnaryOp(LongImpl.toInt, arg, IntType)
@@ -2491,11 +2497,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             expandUnaryOp(LongImpl.toDouble, arg, DoubleType)
 
           case DoubleToLong =>
-            val receiver = LoadModule(rtLongModuleClassType).toPreTransform
-            pretransformApply(receiver, Ident(LongImpl.fromDouble),
-                arg :: Nil, rtLongClassType, isStat = false,
-                usePreTransform = true)(
-                cont)
+            expandLongModuleOp(LongImpl.fromDouble, arg)
 
           case _ =>
             cont(pretrans)

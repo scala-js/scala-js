@@ -81,17 +81,17 @@ private[linker] object LongImpl {
   // Constructors
 
   final val initFromParts = "init___I__I"
-  final val initFromInt   = "init___I"
 
   val AllConstructors = Set(
-      initFromParts, initFromInt)
+      initFromParts)
 
   // Methods on the companion
 
+  final val fromInt    = "fromInt__I__sjsr_RuntimeLong"
   final val fromDouble = "fromDouble__D__sjsr_RuntimeLong"
 
   val AllModuleMethods = Set(
-      fromDouble)
+      fromInt, fromDouble)
 
   // Extract the parts to give to the initFromParts constructor
 

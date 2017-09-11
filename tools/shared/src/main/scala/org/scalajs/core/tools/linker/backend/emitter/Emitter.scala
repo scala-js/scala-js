@@ -167,12 +167,10 @@ final class Emitter private (config: CommonPhaseConfig,
 
       // $L0 = new RuntimeLong(0, 0)
       builder.addJSTree({
-        import TreeDSL._
         implicit val pos = Position.NoPosition
         js.Assign(
             jsGen.envField("L0"),
-            js.Apply(
-                js.New(jsGen.encodeClassVar(LongImpl.RuntimeLongClass), Nil) DOT LongImpl.initFromParts,
+            js.New(jsGen.encodeClassVar(LongImpl.RuntimeLongClass),
                 List(js.IntLiteral(0), js.IntLiteral(0)))
         )
       })
