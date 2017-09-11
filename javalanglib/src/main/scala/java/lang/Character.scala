@@ -529,13 +529,10 @@ object Character {
     if (!isValidCodePoint(codePoint))
       throw new IllegalArgumentException()
 
-    if (isSupplementaryCodePoint(codePoint)) {
-      val dst = new Array[Char](2)
-      toSurrogate(codePoint, dst, 0)
-      dst
-    } else {
+    if (isSupplementaryCodePoint(codePoint))
+      Array(highSurrogateOf(codePoint), lowSurrogateOf(codePoint))
+    else
       Array(codePoint.toChar)
-    }
   }
 
   def toChars(codePoint: Int, dst: Array[Char], dstIndex: Int): Int = {
@@ -543,7 +540,8 @@ object Character {
       throw new IllegalArgumentException()
 
     if (isSupplementaryCodePoint(codePoint)) {
-      toSurrogate(codePoint, dst, dstIndex)
+      dst(dstIndex) = highSurrogateOf(codePoint)
+      dst(dstIndex + 1) = lowSurrogateOf(codePoint)
       2
     } else {
       dst(dstIndex) = codePoint.toChar
@@ -551,13 +549,21 @@ object Character {
     }
   }
 
-  @inline private[this] def toSurrogate(codePoint: Int, dst: Array[Char], dstIndex: Int): Unit = {
-    val cpPrime = codePoint - 0x10000
-    val high = 0xD800 | ((cpPrime >> 10) & 0x3FF)
-    val low = 0xDC00 | (cpPrime & 0x3FF)
-    dst(dstIndex) = high.toChar
-    dst(dstIndex + 1) = low.toChar
+  private[lang] def codePointToString(codePoint: Int): String = {
+    if (!isValidCodePoint(codePoint))
+      throw new IllegalArgumentException()
+
+    if (isSupplementaryCodePoint(codePoint))
+      highSurrogateOf(codePoint).toString + lowSurrogateOf(codePoint).toString
+    else
+      codePoint.toChar.toString
   }
+
+  @inline private def highSurrogateOf(codePoint: Int): Char =
+    (0xd800 | ((codePoint >> 10) - (0x10000 >> 10))).toChar
+
+  @inline private def lowSurrogateOf(codePoint: Int): Char =
+    (0xdc00 | (codePoint & 0x3ff)).toChar
 
   @inline def toString(c: scala.Char): String =
     js.Dynamic.global.String.fromCharCode(c.toInt).asInstanceOf[String]
