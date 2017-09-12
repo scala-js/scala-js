@@ -18,6 +18,13 @@ private[emitter] trait GlobalKnowledge {
   /** Tests whether the specified class name refers to an `Interface`. */
   def isInterface(className: String): Boolean
 
+  /** All the `FieldDef`s, included inherited ones, of a Scala class.
+   *
+   *  It is invalid to call this method with anything but a `Class` or
+   *  `ModuleClass`.
+   */
+  def getAllScalaClassFieldDefs(className: String): List[FieldDef]
+
   /** Tests whether the specified class uses an inlineable init.
    *
    *  When it does, its (only) `init___` method is inlined inside the JS

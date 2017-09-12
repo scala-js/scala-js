@@ -141,6 +141,9 @@ private[emitter] final class KnowledgeGuardian {
     def isInterface(className: String): Boolean =
       classes(className).askIsInterface(this)
 
+    def getAllScalaClassFieldDefs(className: String): List[FieldDef] =
+      classes(className).askAllScalaClassFieldDefs(this)
+
     def hasInlineableInit(className: String): Boolean =
       classes(className).askHasInlineableInit(this)
 
@@ -153,31 +156,6 @@ private[emitter] final class KnowledgeGuardian {
     def getJSClassFieldDefs(className: String): List[FieldDef] =
       classes(className).askJSClassFieldDefs(this)
   }
-}
-
-private[emitter] object KnowledgeGuardian {
-  private[KnowledgeGuardian] trait Unregisterable {
-    def unregister(invalidatable: Invalidatable): Unit
-  }
-
-  trait Invalidatable {
-    private val _registeredTo = mutable.Set.empty[Unregisterable]
-
-    private[KnowledgeGuardian] def registeredTo(
-        unregisterable: Unregisterable): Unit = {
-      _registeredTo += unregisterable
-    }
-
-    /** To be overridden to perform subclass-specific invalidation.
-     *
-     *  All overrides should call the default implementation with `super` so
-     *  that this `Invalidatable` is unregistered from the dependency graph.
-     */
-    def invalidate(): Unit = {
-      _registeredTo.foreach(_.unregister(this))
-      _registeredTo.clear()
-    }
-  }
 
   private class Class(initClass: LinkedClass,
       initHasInlineableInit: Boolean)
@@ -188,14 +166,14 @@ private[emitter] object KnowledgeGuardian {
     private var isInterface = computeIsInterface(initClass)
     private var hasInlineableInit = initHasInlineableInit
     private var jsNativeLoadSpec = computeJSNativeLoadSpec(initClass)
-    private var jsSuperClass = computeJSSuperClass(initClass)
-    private var jsClassFieldDefs = computeJSClassFieldDefs(initClass)
+    private var superClass = computeSuperClass(initClass)
+    private var fieldDefs = computeFieldDefs(initClass)
 
     private val isInterfaceAskers = mutable.Set.empty[Invalidatable]
     private val hasInlineableInitAskers = mutable.Set.empty[Invalidatable]
     private val jsNativeLoadSpecAskers = mutable.Set.empty[Invalidatable]
-    private val jsSuperClassAskers = mutable.Set.empty[Invalidatable]
-    private val jsClassFieldDefsAskers = mutable.Set.empty[Invalidatable]
+    private val superClassAskers = mutable.Set.empty[Invalidatable]
+    private val fieldDefsAskers = mutable.Set.empty[Invalidatable]
 
     def update(linkedClass: LinkedClass, newHasInlineableInit: Boolean): Unit = {
       isAlive = true
@@ -217,16 +195,16 @@ private[emitter] object KnowledgeGuardian {
         invalidateAskers(jsNativeLoadSpecAskers)
       }
 
-      val newJSSuperClass = computeJSSuperClass(linkedClass)
-      if (newJSSuperClass != jsSuperClass) {
-        jsSuperClass = newJSSuperClass
-        invalidateAskers(jsSuperClassAskers)
+      val newSuperClass = computeSuperClass(linkedClass)
+      if (newSuperClass != superClass) {
+        superClass = newSuperClass
+        invalidateAskers(superClassAskers)
       }
 
-      val newJSClassFieldDefs = computeJSClassFieldDefs(linkedClass)
-      if (newJSClassFieldDefs != jsClassFieldDefs) {
-        jsClassFieldDefs = newJSClassFieldDefs
-        invalidateAskers(jsClassFieldDefsAskers)
+      val newFieldDefs = computeFieldDefs(linkedClass)
+      if (newFieldDefs != fieldDefs) {
+        fieldDefs = newFieldDefs
+        invalidateAskers(fieldDefsAskers)
       }
     }
 
@@ -236,22 +214,11 @@ private[emitter] object KnowledgeGuardian {
     private def computeJSNativeLoadSpec(linkedClass: LinkedClass): Option[JSNativeLoadSpec] =
       linkedClass.jsNativeLoadSpec
 
-    private def computeJSSuperClass(linkedClass: LinkedClass): String = {
-      linkedClass.kind match {
-        case ClassKind.JSClass | ClassKind.JSModuleClass =>
-          linkedClass.superClass.get.name
-        case _ =>
-          null
-      }
-    }
+    private def computeSuperClass(linkedClass: LinkedClass): String =
+      linkedClass.superClass.fold[String](null)(_.name)
 
-    private def computeJSClassFieldDefs(
-        linkedClass: LinkedClass): List[FieldDef] = {
-      if (linkedClass.kind == ClassKind.JSClass)
-        linkedClass.fields
-      else
-        Nil
-    }
+    private def computeFieldDefs(linkedClass: LinkedClass): List[FieldDef] =
+      linkedClass.fields
 
     private def invalidateAskers(askers: mutable.Set[Invalidatable]): Unit = {
       /* Calling `invalidateAndUnregisterFromAll()` will cause the
@@ -276,6 +243,16 @@ private[emitter] object KnowledgeGuardian {
       isInterface
     }
 
+    def askAllScalaClassFieldDefs(invalidatable: Invalidatable): List[FieldDef] = {
+      invalidatable.registeredTo(this)
+      superClassAskers += invalidatable
+      fieldDefsAskers += invalidatable
+      val inheritedFieldDefs =
+        if (superClass == null) Nil
+        else classes(superClass).askAllScalaClassFieldDefs(invalidatable)
+      inheritedFieldDefs ::: fieldDefs
+    }
+
     def askHasInlineableInit(invalidatable: Invalidatable): Boolean = {
       invalidatable.registeredTo(this)
       hasInlineableInitAskers += invalidatable
@@ -290,22 +267,22 @@ private[emitter] object KnowledgeGuardian {
 
     def askJSSuperClass(invalidatable: Invalidatable): String = {
       invalidatable.registeredTo(this)
-      jsSuperClassAskers += invalidatable
-      jsSuperClass
+      superClassAskers += invalidatable
+      superClass
     }
 
     def askJSClassFieldDefs(invalidatable: Invalidatable): List[FieldDef] = {
       invalidatable.registeredTo(this)
-      jsClassFieldDefsAskers += invalidatable
-      jsClassFieldDefs
+      fieldDefsAskers += invalidatable
+      fieldDefs
     }
 
     def unregister(invalidatable: Invalidatable): Unit = {
       isInterfaceAskers -= invalidatable
       hasInlineableInitAskers -= invalidatable
       jsNativeLoadSpecAskers -= invalidatable
-      jsSuperClassAskers -= invalidatable
-      jsClassFieldDefsAskers -= invalidatable
+      superClassAskers -= invalidatable
+      fieldDefsAskers -= invalidatable
     }
 
     /** Call this when we invalidate all caches. */
@@ -313,8 +290,33 @@ private[emitter] object KnowledgeGuardian {
       isInterfaceAskers.clear()
       hasInlineableInitAskers.clear()
       jsNativeLoadSpecAskers.clear()
-      jsSuperClassAskers.clear()
-      jsClassFieldDefsAskers.clear()
+      superClassAskers.clear()
+      fieldDefsAskers.clear()
+    }
+  }
+}
+
+private[emitter] object KnowledgeGuardian {
+  private trait Unregisterable {
+    def unregister(invalidatable: Invalidatable): Unit
+  }
+
+  trait Invalidatable {
+    private val _registeredTo = mutable.Set.empty[Unregisterable]
+
+    private[KnowledgeGuardian] def registeredTo(
+        unregisterable: Unregisterable): Unit = {
+      _registeredTo += unregisterable
+    }
+
+    /** To be overridden to perform subclass-specific invalidation.
+     *
+     *  All overrides should call the default implementation with `super` so
+     *  that this `Invalidatable` is unregistered from the dependency graph.
+     */
+    def invalidate(): Unit = {
+      _registeredTo.foreach(_.unregister(this))
+      _registeredTo.clear()
     }
   }
 }
