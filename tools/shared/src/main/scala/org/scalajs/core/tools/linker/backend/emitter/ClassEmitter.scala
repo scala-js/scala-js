@@ -313,10 +313,33 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             resultType = NoType)
       }
 
-      for (generatedInitMethodFun <- generatedInitMethodFunWithGlobals) yield {
-        val js.Function(args, initMethodFunBody) = generatedInitMethodFun
-        js.Function(args,
-            js.Block(superCtorCall :: fieldDefs ::: initMethodFunBody :: Nil))
+      if (tree.name.name == "sjsr_RuntimeLong" &&
+          outputMode == OutputMode.ECMAScript51Isolated) {
+        /* This is a hack to improve the performance of Longs.
+         *
+         * We avoid generating the super constructor call and creating the
+         * fields with the zero of their types. This leaves only the content of
+         * the init method (which we know is inlined for RuntimeLong), which
+         * directly assigns `this.lo` and `this.hi`.
+         *
+         * We can do this because the superclasses of RuntimeLong do not
+         * declare any fields (hence the super constructor call is unnecessary)
+         * and because the init method is known to "behave well" wrt. the
+         * initialization of its fields (which means there is no need to
+         * initialize them first to their zero).
+         *
+         * This optimization brings a 17% improvement on the SHA-512 benchmark.
+         *
+         * We cannot apply this trick in ECMAScript 2015, because calling the
+         * `super()` constructor is mandatory for non-root classes.
+         */
+        generatedInitMethodFunWithGlobals
+      } else {
+        for (generatedInitMethodFun <- generatedInitMethodFunWithGlobals) yield {
+          val js.Function(args, initMethodFunBody) = generatedInitMethodFun
+          js.Function(args,
+              js.Block(superCtorCall :: fieldDefs ::: initMethodFunBody :: Nil))
+        }
       }
     }
   }
