@@ -147,16 +147,18 @@ final class Emitter private (config: CommonPhaseConfig,
 
       /* Emit all the classes, in the appropriate order:
        *
-       * - First, all class definitions, which depend on nothing but their
-       *   superclasses.
-       * - Second, all static field definitions, which depend on nothing,
-       *   except those of type Long which need to instantiate RuntimeLong.
-       * - Third, all static initializers, which in the worst case can observe
-       *   some "zero" state of other static field definitions, but must not
-       *   observe a *non-initialized* (undefined) state.
-       * - Finally, all the exports, during which some JS class creation can
-       *   happen, causing JS static initializers to run. Those also must not
-       *   observe a non-initialized state of other static fields.
+       * 1. All class definitions, which depend on nothing but their
+       *    superclasses.
+       * 2. The initialization of $L0, the Long zero, which depends on the
+       *    definition of the RuntimeLong class.
+       * 3. All static field definitions, which depend on nothing, except those
+       *    of type Long which need $L0.
+       * 4. All static initializers, which in the worst case can observe some
+       *    "zero" state of other static field definitions, but must not
+       *    observe a *non-initialized* (undefined) state.
+       * 5. All the exports, during which some JS class creation can happen,
+       *    causing JS static initializers to run. Those also must not observe
+       *    a non-initialized state of other static fields.
        */
 
       def emitJSTrees(trees: List[js.Tree]): Unit =
@@ -164,6 +166,8 @@ final class Emitter private (config: CommonPhaseConfig,
 
       for (generatedClass <- generatedClasses)
         emitJSTrees(generatedClass.main)
+
+      builder.addJSTree(emitInitializeL0())
 
       for (generatedClass <- generatedClasses)
         emitJSTrees(generatedClass.staticFields)
@@ -240,6 +244,20 @@ final class Emitter private (config: CommonPhaseConfig,
           }
         }
     }
+  }
+
+  /** Emits the initialization of the global variable `$L0`, which holds the
+   *  zero of type `Long`.
+   */
+  private def emitInitializeL0(): js.Tree = {
+    implicit val pos = Position.NoPosition
+
+    // $L0 = new RuntimeLong(0, 0)
+    js.Assign(
+        jsGen.envField("L0"),
+        js.New(jsGen.encodeClassVar(LongImpl.RuntimeLongClass),
+            List(js.IntLiteral(0), js.IntLiteral(0)))
+    )
   }
 
   private def compareClasses(lhs: LinkedClass, rhs: LinkedClass) = {
