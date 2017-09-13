@@ -189,18 +189,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       )
     }
 
-    val ctorFunWithGlobals = if (!isJSClass) {
-      val superCtorCall = tree.superClass.fold[js.Tree] {
-        js.Skip()
-      } { parentIdent =>
-        js.Apply(
-            js.DotSelect(encodeClassVar(parentIdent.name), js.Ident("call")),
-            List(js.This()))
-      }
-      genJSConstructorFun(tree, superCtorCall, initToInline)
-    } else {
-      genConstructorFunForJSClass(tree)
-    }
+    val ctorFunWithGlobals =
+      if (!isJSClass) genJSConstructorFun(tree, initToInline)
+      else genConstructorFunForJSClass(tree)
 
     val chainProtoWithGlobals = tree.superClass.fold[WithGlobals[js.Tree]] {
       WithGlobals(js.Skip())
@@ -250,18 +241,19 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             fun.body)
       }
     } else {
-      val superCtorCall = tree.superClass.fold[js.Tree] {
-        js.Skip()(tree.pos)
-      } { parentIdent =>
-        js.Apply(js.Super(), Nil)
-      }
-
       val jsConstructorFunWithGlobals =
-        genJSConstructorFun(tree, superCtorCall, initToInline)
+        genJSConstructorFun(tree, initToInline)
 
       for (jsConstructorFun <- jsConstructorFunWithGlobals) yield {
         val js.Function(args, body) = jsConstructorFun
-        if (args.isEmpty && (body eq superCtorCall))
+
+        def isTrivialCtorBody: Boolean = body match {
+          case js.Skip()                 => true
+          case js.Apply(js.Super(), Nil) => true
+          case _                         => false
+        }
+
+        if (args.isEmpty && isTrivialCtorBody)
           js.Skip()
         else
           js.MethodDef(static = false, js.Ident("constructor"), args, body)
@@ -276,31 +268,47 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
    *
    *  The generated function performs the following steps:
    *
-   *  - Call the super constructor, as specified by `superCtorCall`
    *  - Create the fields of the current class, initialized to the zero of
    *    their respective types
+   *    - In ECMAScript 5.1, all the fields in the parent chain are directly
+   *      created, avoiding expensive super calls
+   *    - In ECMAScript 2015, calling the super constructor is mandatory, so we
+   *      first call it then create the fields directly declared in this class
    *  - Executes the body of the `init` method to inline, if any
+   *
+   *  Note that we know that a super JS constructor never contains an inlined
+   *  init (which the above ES 5.1 treatment would throw away), because classes
+   *  that have instantiated subclasses are not eligible for the inlined init
+   *  optimization.
    *
    *  @param tree
    *    The `LinkedClass` for which we generate a JS constructor.
    *
-   *  @param superCtorCall
-   *    The call to the super JS constructor. This will be different depending
-   *    on the output mode.
-   *
    *  @param initToInline
    *    The `init` method to inline in the JS constructor, if any.
    */
-  private def genJSConstructorFun(tree: LinkedClass, superCtorCall: js.Tree,
+  private def genJSConstructorFun(tree: LinkedClass,
       initToInline: Option[MethodDef])(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Function] = {
 
     implicit val pos = tree.pos
 
-    val fieldDefs = genFieldDefsOfScalaClass(tree)
+    val superCtorCallAndFieldDefs = outputMode match {
+      case OutputMode.ECMAScript51Isolated =>
+        val allFields =
+          globalKnowledge.getAllScalaClassFieldDefs(tree.encodedName)
+        genFieldDefsOfScalaClass(allFields)
+
+      case OutputMode.ECMAScript2015 =>
+        val fieldDefs = genFieldDefsOfScalaClass(tree.fields)
+        if (tree.superClass.isEmpty)
+          fieldDefs
+        else
+          js.Apply(js.Super(), Nil) :: fieldDefs
+    }
 
     initToInline.fold {
-      WithGlobals(js.Function(Nil, js.Block(superCtorCall :: fieldDefs)))
+      WithGlobals(js.Function(Nil, js.Block(superCtorCallAndFieldDefs)))
     } { initMethodDef =>
       val generatedInitMethodFunWithGlobals = {
         implicit val pos = initMethodDef.pos
@@ -316,7 +324,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       for (generatedInitMethodFun <- generatedInitMethodFunWithGlobals) yield {
         val js.Function(args, initMethodFunBody) = generatedInitMethodFun
         js.Function(args,
-            js.Block(superCtorCall :: fieldDefs ::: initMethodFunBody :: Nil))
+            js.Block(superCtorCallAndFieldDefs ::: initMethodFunBody :: Nil))
       }
     }
   }
@@ -337,11 +345,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   /** Generates the creation of fields for a Scala class. */
-  private def genFieldDefsOfScalaClass(tree: LinkedClass)(
+  private def genFieldDefsOfScalaClass(fields: List[FieldDef])(
       implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
-    val tpe = ClassType(tree.encodedName)
     for {
-      field @ FieldDef(false, name, ftpe, mutable) <- tree.fields
+      field @ FieldDef(false, name, ftpe, mutable) <- fields
     } yield {
       implicit val pos = field.pos
       val jsIdent = (name: @unchecked) match {
