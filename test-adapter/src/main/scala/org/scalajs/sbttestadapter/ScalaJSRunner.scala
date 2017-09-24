@@ -16,7 +16,6 @@ import org.scalajs.testcommon._
 
 import scala.collection.concurrent.TrieMap
 
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -31,7 +30,6 @@ final class ScalaJSRunner private[testadapter] (
     val args: Array[String],
     val remoteArgs: Array[String]
 ) extends Runner {
-  import ScalaJSRunner._
 
   // State and simple vals
 
@@ -54,10 +52,8 @@ final class ScalaJSRunner private[testadapter] (
   def tasks(taskDefs: Array[TaskDef]): Array[Task] = synchronized {
     ensureNotDone()
 
-    val taskInfos = Await.result(
-        master.call(JSMasterEndpoints.tasks)(taskDefs.toList), 1.minutes)
-
-    taskInfos.map(new ScalaJSTask(this, _)).toArray
+    master.call(JSMasterEndpoints.tasks)(taskDefs.toList).await()
+      .map(new ScalaJSTask(this, _)).toArray
   }
 
   def done(): String = synchronized {
@@ -65,38 +61,9 @@ final class ScalaJSRunner private[testadapter] (
 
     val slaves = this.slaves.values.toList // .toList to make it strict.
 
-    def waitAndClose[T](v: Future[T], r: ComJSEnvRPC): Future[Try[T]] =
-      v.liftToTry.map { x => r.close(); x }.liftToTry.map(_.flatten)
-
-    def stopSlave(slave: ComJSEnvRPC): Future[Try[Unit]] =
-      waitAndClose(slave.call(JSSlaveEndpoints.stopSlave)(()), slave)
-
-    def stopMaster(): Future[Try[String]] =
-      waitAndClose(master.call(JSMasterEndpoints.runnerDone)(()), master)
-
-    val futureSummary = for {
-      // First we run the stopping sequence of the slaves
-      slaveTries <- Future.sequence(slaves.map(stopSlave))
-
-      // Once all slaves are closing, we can schedule termination of the master.
-      summaryTry <- stopMaster()
-
-      // Now wait for termination of the VMs
-      doneTries <- Future.sequence(master.runner.future.liftToTry ::
-          slaves.map(_.runner.future.liftToTry))
-    } yield {
-      // Now that everything is done, we can throw any exception.
-      (slaveTries ::: summaryTry :: doneTries).foreach(_.get)
-
-      // Get the summary.
-      summaryTry.get
-    }
-
     try {
-      /* We need to double the VMTermTimeout since we wait for the slaves and
-       * the master in sequence.
-       */
-      Await.result(futureSummary, VMTermTimeout * 2)
+      slaves.map(_.call(JSSlaveEndpoints.stopSlave)(())).foreach(_.await())
+      master.call(JSMasterEndpoints.runnerDone)(()).await()
     } finally {
       // Do the best we can to stop the VMs.
       master.runner.stop()
@@ -137,7 +104,7 @@ final class ScalaJSRunner private[testadapter] (
     slaves.put(threadId, com)
 
     // Create a runner on the slave
-    Await.result(com.call(JSSlaveEndpoints.newRunner)(()), 1.minutes)
+    com.call(JSSlaveEndpoints.newRunner)(()).await()
 
     com
   }
@@ -183,13 +150,6 @@ final class ScalaJSRunner private[testadapter] (
     }
 
     val req = new RunnerArgs(args.toList, remoteArgs.toList)
-    Await.result(master.call(JSMasterEndpoints.newRunner)(req), 1.minute)
-  }
-}
-
-private object ScalaJSRunner {
-  implicit class RichFuture[T](val __self: Future[T]) extends AnyVal {
-    def liftToTry: Future[Try[T]] =
-      __self.map(Success(_)).recover(PartialFunction(Failure(_)))
+    master.call(JSMasterEndpoints.newRunner)(req).await()
   }
 }

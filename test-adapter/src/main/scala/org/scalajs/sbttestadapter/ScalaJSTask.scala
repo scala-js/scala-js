@@ -12,7 +12,6 @@ package org.scalajs.testadapter
 import org.scalajs.jsenv._
 import org.scalajs.testcommon._
 
-import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.collection.mutable
 import scala.util.Try
@@ -58,8 +57,7 @@ final class ScalaJSTask private[testadapter] (
       // Execute task. No (!) timeout.
       val req =
         new ExecuteRequest(taskInfo, loggers.map(_.ansiCodesSupported).toList)
-      val taskInfos = Await.result(
-          slave.call(JSSlaveEndpoints.execute)(req), Duration.Inf)
+      val taskInfos = slave.call(JSSlaveEndpoints.execute)(req).await()
 
       // Flush log buffer
       if (shouldBufferLog) {

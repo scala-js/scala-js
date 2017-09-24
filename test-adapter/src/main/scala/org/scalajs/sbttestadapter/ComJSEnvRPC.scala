@@ -9,59 +9,73 @@
 
 package org.scalajs.testadapter
 
-import scala.concurrent.TimeoutException
+import scala.concurrent.Promise
 
 import org.scalajs.jsenv.{ComJSEnv, ComJSRunner}
 import org.scalajs.testcommon._
 
 /** RPC Core for use with a [[ComJSRunner]].
  *
- *  @note You may only create one instance of this per [[ComJSRunner]]
+ *  You may only create one instance of this per [[ComJSRunner]].
+ *
+ *  Caution: [[RPCCore]] claims that it is a fully duplex, asynchronous two-way
+ *  RPC interface. [[ComJSEnvRPC]] does **not** satisfy this. In fact, calls and
+ *  messages to a [[ComJSEnvRPC]] are only handled while a
+ *  [[ComJSEnvRPC.Future]] for a pending call is awaited. This is necessary to
+ *  minimize context switches during test runs (see #3123).
  */
 private[testadapter] final class ComJSEnvRPC(
-    val runner: ComJSRunner) extends RPCCore {
+    val runner: ComJSRunner) extends RPCCore[ComJSEnvRPC.Future] {
 
-  @volatile
-  private[this] var closed = false
+  private[this] var hasReceiver = false
 
-  private val receiverThread = new Thread {
-    setName("ComJSEnvRPC receiver")
+  override protected def send(msg: String): Unit = runner.send(msg)
 
-    override def run(): Unit = {
+  override protected def toFuture[T](p: Promise[T]): ComJSEnvRPC.Future[T] =
+    new ComJSEnvRPC.Future(p, this)
+
+  override def close(): Unit = {
+    super.close()
+    runner.close()
+  }
+
+  private def await(p: Promise[_]): Unit = {
+    if (tryBecomeReceiver(p)) {
       try {
-        while (true) {
-          try {
-            handleMessage(runner.receive())
-          } catch {
-            case _: TimeoutException =>
-          }
+        while (!p.isCompleted) {
+          handleMessage(runner.receive())
+          synchronized(notifyAll())
         }
-      } catch {
-        case _: ComJSEnv.ComClosedException =>
-        case _: InterruptedException        =>
-        case _: Exception if closed         =>
-          // Some JSEnvs might throw something else if they got closed.
-          // We are graceful in the 0.6.x branch.
+      } finally {
+        unbecomeReceiver()
       }
     }
   }
 
-  receiverThread.start()
+  private def tryBecomeReceiver(p: Promise[_]): Boolean = synchronized {
+    while (!p.isCompleted && hasReceiver)
+      wait()
 
-  override protected def send(msg: String): Unit = synchronized {
-    if (!closed)
-      runner.send(msg)
+    if (!hasReceiver) {
+      hasReceiver = true
+      true
+    } else {
+      false
+    }
   }
 
-  override def close(): Unit = synchronized {
-    closed = true
+  private def unbecomeReceiver(): Unit = synchronized {
+    hasReceiver = false
+    notifyAll()
+  }
+}
 
-    super.close()
-
-    // Close the com first so the receiver thread terminates.
-    runner.close()
-
-    receiverThread.interrupt()
-    receiverThread.join()
+private[testadapter] object ComJSEnvRPC {
+  /** A future that can only block. Used to help receiver thread. */
+  class Future[T] private[ComJSEnvRPC] (p: Promise[T], com: ComJSEnvRPC) {
+    def await(): T = {
+      com.await(p)
+      p.future.value.get.get
+    }
   }
 }
