@@ -136,7 +136,7 @@ object ScalaJSPlugin extends AutoPlugin {
     val scalaJSStage = SettingKey[Stage]("scalaJSStage",
         "The optimization stage at which run and test are executed", APlusSetting)
 
-    val scalaJSLinkedFile = TaskKey[VirtualJSFile]("scalaJSLinkedFile",
+    val scalaJSLinkedFile = TaskKey[Attributed[File]]("scalaJSLinkedFile",
         "Linked Scala.js file. This is the result of fastOptJS or fullOptJS, " +
         "depending on the stage.", DTask)
 

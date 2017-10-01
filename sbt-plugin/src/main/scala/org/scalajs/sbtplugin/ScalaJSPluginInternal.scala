@@ -186,15 +186,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
           val sourceMapFile = FileVirtualJSFile(output).sourceMapFile
           Attributed.blank(output).put(scalaJSSourceMap, sourceMapFile)
         }.tag(usesLinkerTag)
-      }.value,
-
-      scalaJSLinkedFile in key := new FileVirtualJSFile(key.value.data)
-  )
-
-  private def dispatchTaskKeySettings[T](key: TaskKey[T]) = Seq(
-      key := Def.settingDyn {
-        val stageKey = stageKeys(scalaJSStage.value)
-        Def.task { (key in stageKey).value }
       }.value
   )
 
@@ -276,8 +267,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
       scalajspSettings ++
-      stageKeys.flatMap((scalaJSStageSettings _).tupled) ++
-      dispatchTaskKeySettings(scalaJSLinkedFile)
+      stageKeys.flatMap((scalaJSStageSettings _).tupled)
   ) ++ (
       Seq(fastOptJS, fullOptJS).map { key =>
         moduleName in key := {
@@ -314,6 +304,10 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .withSemantics(_.optimized)
           .withClosureCompiler(prevConfig.outputMode == OutputMode.ECMAScript51Isolated)
       },
+
+      scalaJSLinkedFile := Def.settingDyn {
+        stageKeys(scalaJSStage.value)
+      }.value,
 
       console := console.dependsOn(Def.task {
         streams.value.log.warn("Scala REPL doesn't work with Scala.js. You " +
@@ -356,7 +350,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
       },
 
       // Crucially, add the Scala.js linked file to the JS files
-      jsExecutionFiles += scalaJSLinkedFile.value,
+      jsExecutionFiles +=
+        new FileVirtualJSFile(scalaJSLinkedFile.value.data),
 
       scalaJSMainModuleInitializer := {
         mainClass.value.map { mainCl =>
@@ -433,7 +428,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val moduleKind = scalaJSLinkerConfig.value.moduleKind
         val moduleIdentifier = moduleKind match {
           case ModuleKind.NoModule       => None
-          case ModuleKind.CommonJSModule => Some(scalaJSLinkedFile.value.path)
+          case ModuleKind.CommonJSModule => Some(scalaJSLinkedFile.value.data.getPath)
         }
 
         val frameworksAndTheirImplNames =

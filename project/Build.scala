@@ -668,9 +668,9 @@ object Build {
           /* We'll explicitly `require` our linked file. Find its module, and
            * remove it from the `jsExecutionFiles` to give to the runner.
            */
-          val toolsTestModule = scalaJSLinkedFile.value
+          val toolsTestModulePath = scalaJSLinkedFile.value.data.getPath
           val executionFiles =
-            jsExecutionFiles.value.filter(_ ne toolsTestModule)
+            jsExecutionFiles.value.filter(_.path != toolsTestModulePath)
 
           /* Collect relevant IR files from the classpath of the test suite.
            * We assume here that the classpath is valid. This is checked by the
@@ -721,7 +721,7 @@ object Build {
 
           val code = {
             s"""
-            var toolsTestModule = require("${escapeJS(toolsTestModule.path)}");
+            var toolsTestModule = require("${escapeJS(toolsTestModulePath)}");
             var linker = toolsTestModule.scalajs.QuickLinker;
             var lib = linker.linkTestSuiteNode($irPaths, $mainMethods);
 
