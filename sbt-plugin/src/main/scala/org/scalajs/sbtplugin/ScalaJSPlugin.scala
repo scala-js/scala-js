@@ -159,11 +159,6 @@ object ScalaJSPlugin extends AutoPlugin {
         "All the JS files given to JS environments on `run`, `test`, etc.",
         BTask)
 
-    val scalaJSJavaSystemProperties = TaskKey[Map[String, String]](
-        "scalaJSJavaSystemProperties",
-        "List of arguments to pass to the Scala.js Java System.properties.",
-        CTask)
-
     val scalaJSSourceFiles = AttributeKey[Seq[File]]("scalaJSSourceFiles",
         "Files used to compute this value (can be used in FileFunctions later).",
         KeyRanks.Invisible)

@@ -324,16 +324,13 @@ private[sbtplugin] object ScalaJSPluginInternal {
        */
       jsExecutionFiles := (jsExecutionFiles in (This, Zero, This)).value,
 
-      scalaJSJavaSystemProperties ++= {
-        val javaSysPropsPattern = "-D([^=]*)=(.*)".r
-        javaOptions.value.collect {
-          case javaSysPropsPattern(propName, propValue) => (propName, propValue)
-        }.toMap
-      },
-
       // Optionally add a JS file defining Java system properties
       jsExecutionFiles ++= {
-        val javaSystemProperties = scalaJSJavaSystemProperties.value
+        val javaSysPropsPattern = "-D([^=]*)=(.*)".r
+        val javaSystemProperties = javaOptions.value.collect {
+          case javaSysPropsPattern(propName, propValue) => (propName, propValue)
+        }.toMap
+
         if (javaSystemProperties.isEmpty) {
           Nil
         } else {
@@ -512,8 +509,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
       jsEnv := new NodeJSEnv(),
 
       jsExecutionFiles := Nil,
-
-      scalaJSJavaSystemProperties := Map.empty,
 
       // you will need the Scala.js compiler plugin
       autoCompilerPlugins := true,

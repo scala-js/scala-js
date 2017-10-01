@@ -1413,22 +1413,22 @@ object Build {
 
   def testSuiteTestHtmlSetting = Def.settings(
       // We need to patch the system properties.
-      scalaJSJavaSystemProperties in Test in testHtml ~= { base =>
-        val unsupported =
-          Seq("nodejs", "source-maps")
-        val supported =
-          Seq("typedarray", "browser")
-
-        base -- unsupported.map("scalajs." + _) ++
-            supported.map("scalajs." + _ -> "true")
-      },
-
-      // And we need to actually use those patched system properties.
       jsExecutionFiles in (Test, testHtml) := {
         val previousFiles = (jsExecutionFiles in (Test, testHtml)).value
 
-        val patchedSystemProperties =
-          (scalaJSJavaSystemProperties in (Test, testHtml)).value
+        val patchedSystemProperties = {
+          // Fetch the defaults
+          val javaSysPropsPattern = "-D([^=]*)=(.*)".r
+          val base = (javaOptions in Test).value.collect {
+            case javaSysPropsPattern(propName, propValue) => (propName, propValue)
+          }.toMap
+
+          // Patch
+          val unsupported = Seq("nodejs", "source-maps")
+          val supported = Seq("typedarray", "browser")
+          base -- unsupported.map("scalajs." + _) ++
+              supported.map("scalajs." + _ -> "true")
+        }
 
         val formattedProps = patchedSystemProperties.map {
           case (propName, propValue) =>
