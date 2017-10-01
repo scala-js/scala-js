@@ -60,11 +60,6 @@ object ScalaJSPlugin extends AutoPlugin {
 
     // All our public-facing keys
 
-    val isScalaJSProject = SettingKey[Boolean]("isScalaJSProject",
-        "Tests whether the current project is a Scala.js project. " +
-        "Do not set the value of this setting (only use it as read-only).",
-        BSetting)
-
     val scalaJSIRCache = SettingKey[IRFileCache#Cache](
         "scalaJSIRCache",
         "Scala.js internal: Task to access a cache.", KeyRanks.Invisible)
