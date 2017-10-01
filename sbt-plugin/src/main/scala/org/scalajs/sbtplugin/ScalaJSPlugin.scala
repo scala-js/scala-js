@@ -175,16 +175,6 @@ object ScalaJSPlugin extends AutoPlugin {
 
   import autoImport._
 
-  /** Maps a [[Stage]] to the corresponding `TaskKey`.
-   *
-   *  For example, [[Stage.FastOpt]] (aka `FastOptStage`) is mapped to
-   *  [[autoImport.fastOptJS fastOptJS]].
-   */
-  val stageKeys: Map[Stage, TaskKey[Attributed[File]]] = Map(
-      Stage.FastOpt -> fastOptJS,
-      Stage.FullOpt -> fullOptJS
-  )
-
   /** Logs the current statistics about the global IR cache. */
   def logIRCacheStats(logger: Logger): Unit = {
     import ScalaJSPluginInternal.globalIRCache

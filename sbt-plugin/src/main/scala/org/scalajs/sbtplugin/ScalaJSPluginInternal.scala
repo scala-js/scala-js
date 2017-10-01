@@ -41,7 +41,7 @@ import java.nio.charset.Charset
 private[sbtplugin] object ScalaJSPluginInternal {
 
   import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
-  import ScalaJSPlugin.{logIRCacheStats, stageKeys}
+  import ScalaJSPlugin.logIRCacheStats
 
   /** The global Scala.js IR cache */
   val globalIRCache: IRFileCache = new IRFileCache()
@@ -267,7 +267,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
       scalajspSettings ++
-      stageKeys.flatMap((scalaJSStageSettings _).tupled)
+      scalaJSStageSettings(Stage.FastOpt, fastOptJS) ++
+      scalaJSStageSettings(Stage.FullOpt, fullOptJS)
   ) ++ (
       Seq(fastOptJS, fullOptJS).map { key =>
         moduleName in key := {
@@ -306,7 +307,10 @@ private[sbtplugin] object ScalaJSPluginInternal {
       },
 
       scalaJSLinkedFile := Def.settingDyn {
-        stageKeys(scalaJSStage.value)
+        scalaJSStage.value match {
+          case Stage.FastOpt => fastOptJS
+          case Stage.FullOpt => fullOptJS
+        }
       }.value,
 
       console := console.dependsOn(Def.task {
