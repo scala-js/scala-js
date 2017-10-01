@@ -445,10 +445,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
       }
   )
 
-  private val scalaJSTestBuildSettings = (
-      scalaJSConfigSettings
-  )
-
   private val scalaJSTestHtmlSettings = Seq(
       artifactPath in testHtml := {
         val stageSuffix = scalaJSStage.value match {
@@ -485,7 +481,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
   )
 
   val scalaJSTestSettings: Seq[Setting[_]] = (
-      scalaJSTestBuildSettings ++
+      scalaJSConfigSettings ++
       scalaJSTestFrameworkSettings ++
       scalaJSTestHtmlSettings
   ) ++ Seq(
