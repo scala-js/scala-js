@@ -188,45 +188,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
       }.value
   )
 
-  /** Collect certain file types from a classpath.
-   *
-   *  @param cp Classpath to collect from
-   *  @param filter Filter for (real) files of interest (not in jars)
-   *  @param collectJar Collect elements from a jar (called for all jars)
-   *  @param collectFile Collect a single file. Params are the file and the
-   *      relative path of the file (to its classpath entry root).
-   *  @return Collected elements attributed with physical files they originated
-   *      from (key: scalaJSSourceFiles).
-   */
-  private def collectFromClasspath[T](cp: Def.Classpath, filter: FileFilter,
-      collectJar: VirtualJarFile => Seq[T],
-      collectFile: (File, String) => T): Attributed[Seq[T]] = {
-
-    val realFiles = Seq.newBuilder[File]
-    val results = Seq.newBuilder[T]
-
-    for (cpEntry <- Attributed.data(cp) if cpEntry.exists) {
-      if (cpEntry.isFile && cpEntry.getName.endsWith(".jar")) {
-        realFiles += cpEntry
-        val vf = new FileVirtualBinaryFile(cpEntry) with VirtualJarFile
-        results ++= collectJar(vf)
-      } else if (cpEntry.isDirectory) {
-        for {
-          (file, relPath0) <- Path.selectSubpaths(cpEntry, filter)
-        } {
-          val relPath = relPath0.replace(java.io.File.separatorChar, '/')
-          realFiles += file
-          results += collectFile(file, relPath)
-        }
-      } else {
-        throw new IllegalArgumentException(
-            "Illegal classpath entry: " + cpEntry.getPath)
-      }
-    }
-
-    Attributed.blank(results.result()).put(scalaJSSourceFiles, realFiles.result())
-  }
-
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
@@ -247,12 +208,13 @@ private[sbtplugin] object ScalaJSPluginInternal {
       scalaJSIRCache := newIRCache,
 
       scalaJSIR := {
-        val rawIR = collectFromClasspath(fullClasspath.value, "*.sjsir",
-            collectJar = Seq(_),
-            collectFile = FileVirtualScalaJSIRFile.relative)
-
         val cache = scalaJSIRCache.value
-        rawIR.map(cache.cached)
+        val classpath = Attributed.data(fullClasspath.value)
+        val irContainers = FileScalaJSIRContainer.fromClasspath(classpath)
+        val irFiles = cache.cached(irContainers)
+        Attributed
+          .blank[Seq[VirtualScalaJSIRFile with RelativeVirtualFile]](irFiles)
+          .put(scalaJSSourceFiles, irContainers.map(_.file))
       },
 
       sjsirFilesOnClasspath := Def.task {

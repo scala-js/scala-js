@@ -181,7 +181,8 @@ object FileVirtualScalaJSIRFile extends (File => FileVirtualScalaJSIRFile) {
 }
 
 object FileScalaJSIRContainer {
-  def fromClasspath(classpath: Seq[File]): Seq[ScalaJSIRContainer] = {
+  def fromClasspath(
+      classpath: Seq[File]): Seq[ScalaJSIRContainer with FileVirtualFile] = {
     classpath flatMap { entry =>
       if (!entry.exists)
         Nil
@@ -194,7 +195,8 @@ object FileScalaJSIRContainer {
     }
   }
 
-  private def fromDirectory(dir: File): Seq[ScalaJSIRContainer] = {
+  private def fromDirectory(
+      dir: File): Seq[ScalaJSIRContainer with FileVirtualFile] = {
     require(dir.isDirectory)
 
     val baseDir = dir.getAbsoluteFile
@@ -205,8 +207,11 @@ object FileScalaJSIRContainer {
     }
 
     for (ir <- walkForIR(baseDir)) yield {
-      val relDir = ir.getPath.stripPrefix(baseDir.getPath)
-      FileVirtualScalaJSIRFile.relative(ir, relDir)
+      val relPath = ir.getPath
+        .stripPrefix(baseDir.getPath)
+        .replace(java.io.File.separatorChar, '/')
+        .stripPrefix("/")
+      FileVirtualScalaJSIRFile.relative(ir, relPath)
     }
   }
 }
