@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicReference
 
 import sbt._
 import Keys._
-import complete.Parser
 import complete.DefaultParsers._
 
 import sbtcrossproject.CrossPlugin.autoImport._
@@ -91,6 +90,13 @@ private[sbtplugin] object ScalaJSPluginInternal {
       true
     } catch {
       case _: NumberFormatException => false
+    }
+  }
+
+  private val scalajspParser = {
+    loadForParser(sjsirFilesOnClasspath) { (_, relPaths) =>
+      val examples = ScalajspUtils.relPathsExamples(relPaths.getOrElse(Nil))
+      OptSpace ~> StringBasic.examples(examples)
     }
   }
 
@@ -189,41 +195,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
       }.value
   )
 
-  private def scalajspSettings: Seq[Setting[_]] = {
-    def sjsirFileOnClasspathParser(
-        relPaths: Seq[String]): Parser[String] = {
-      OptSpace ~> StringBasic
-        .examples(ScalajspUtils.relPathsExamples(relPaths))
-    }
-
-    def scalajspParser(state: State, relPaths: Seq[String]): Parser[String] =
-      sjsirFileOnClasspathParser(relPaths)
-
-    val parser = loadForParser(sjsirFilesOnClasspath) { (state, relPaths) =>
-      scalajspParser(state, relPaths.getOrElse(Nil))
-    }
-
-    Seq(
-        sjsirFilesOnClasspath := Def.task {
-          scalaJSIR.value.data.map(_.relativePath).toSeq
-        }.storeAs(sjsirFilesOnClasspath).triggeredBy(scalaJSIR).value,
-
-        scalajsp := {
-          val relPath = parser.parsed
-
-          val vfile = scalaJSIR.value.data
-              .find(_.relativePath == relPath)
-              .getOrElse(throw new FileNotFoundException(relPath))
-
-          val stdout = new java.io.PrintWriter(System.out)
-          new IRTreePrinter(stdout).print(vfile.tree)
-          stdout.flush()
-
-          logIRCacheStats(streams.value.log)
-        }
-    )
-  }
-
   /** Collect certain file types from a classpath.
    *
    *  @param cp Classpath to collect from
@@ -266,7 +237,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
-      scalajspSettings ++
       scalaJSStageSettings(Stage.FastOpt, fastOptJS) ++
       scalaJSStageSettings(Stage.FullOpt, fullOptJS)
   ) ++ (
@@ -290,6 +260,24 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         val cache = scalaJSIRCache.value
         rawIR.map(cache.cached)
+      },
+
+      sjsirFilesOnClasspath := Def.task {
+        scalaJSIR.value.data.map(_.relativePath).toSeq
+      }.storeAs(sjsirFilesOnClasspath).triggeredBy(scalaJSIR).value,
+
+      scalajsp := {
+        val relPath = scalajspParser.parsed
+
+        val vfile = scalaJSIR.value.data
+          .find(_.relativePath == relPath)
+          .getOrElse(throw new FileNotFoundException(relPath))
+
+        val stdout = new java.io.PrintWriter(System.out)
+        new IRTreePrinter(stdout).print(vfile.tree)
+        stdout.flush()
+
+        logIRCacheStats(streams.value.log)
       },
 
       artifactPath in fastOptJS :=
