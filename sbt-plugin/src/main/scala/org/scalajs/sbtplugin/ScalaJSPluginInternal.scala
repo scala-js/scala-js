@@ -191,13 +191,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
       scalaJSLinkedFile in key := new FileVirtualJSFile(key.value.data)
   )
 
-  private def dispatchSettingKeySettings[T](key: SettingKey[T]) = Seq(
-      key := Def.settingDyn {
-        val stageKey = stageKeys(scalaJSStage.value)
-        Def.setting { (key in stageKey).value }
-      }.value
-  )
-
   private def dispatchTaskKeySettings[T](key: TaskKey[T]) = Seq(
       key := Def.settingDyn {
         val stageKey = stageKeys(scalaJSStage.value)
@@ -284,9 +277,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
   ) ++ (
       scalajspSettings ++
       stageKeys.flatMap((scalaJSStageSettings _).tupled) ++
-      dispatchTaskKeySettings(scalaJSLinkedFile) ++
-      dispatchSettingKeySettings(scalaJSLinker) ++
-      dispatchSettingKeySettings(usesScalaJSLinkerTag)
+      dispatchTaskKeySettings(scalaJSLinkedFile)
   ) ++ (
       Seq(fastOptJS, fullOptJS).map { key =>
         moduleName in key := {
