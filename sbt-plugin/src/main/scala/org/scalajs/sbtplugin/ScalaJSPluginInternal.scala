@@ -511,7 +511,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
       jsExecutionFiles := Nil,
 
       // you will need the Scala.js compiler plugin
-      autoCompilerPlugins := true,
       addCompilerPlugin(
           "org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
 
