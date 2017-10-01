@@ -2,19 +2,15 @@ package org.scalajs.sbtplugin
 
 import scala.annotation.tailrec
 
-import java.util.IllegalFormatException
+import java.io.FileNotFoundException
+
 import java.util.concurrent.atomic.AtomicReference
 
 import sbt._
-import Keys._
-import complete.DefaultParsers._
+import sbt.Keys._
+import sbt.complete.DefaultParsers._
 
 import sbtcrossproject.CrossPlugin.autoImport._
-
-import Loggers._
-import SBTCompat._
-import SBTCompat.formatImplicits._
-import SBTCompat.formatImplicits.seqFormat
 
 import org.scalajs.core.tools.io.{IO => _, _}
 import org.scalajs.core.tools.linker._
@@ -23,18 +19,15 @@ import org.scalajs.core.tools.linker.standard._
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
-import org.scalajs.core.ir
 import org.scalajs.core.ir.Utils.escapeJS
-import org.scalajs.core.ir.ScalaJSVersions
 import org.scalajs.core.ir.Printers.IRTreePrinter
 
 import org.scalajs.testadapter.{FrameworkDetector, HTMLRunnerBuilder}
 
-import scala.util.Try
-import scala.collection.mutable
-
-import java.io.FileNotFoundException
-import java.nio.charset.Charset
+import Loggers._
+import SBTCompat._
+import SBTCompat.formatImplicits._
+import SBTCompat.formatImplicits.seqFormat
 
 /** Implementation details of `ScalaJSPlugin`. */
 private[sbtplugin] object ScalaJSPluginInternal {
