@@ -36,7 +36,8 @@ lazy val noDOM = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSJUnitPlugin).
   settings(
     name := "Scala.js sbt test w/o DOM",
-    scalaJSUseMainModuleInitializer := true
+    scalaJSUseMainModuleInitializer := true,
+    javaOptions += "-Xmx512M" // test that this is ignored without error
   ).
   /* This hopefully exposes concurrent uses of the linker. If it fails/gets
    * flaky, there is a bug somewhere - #2202

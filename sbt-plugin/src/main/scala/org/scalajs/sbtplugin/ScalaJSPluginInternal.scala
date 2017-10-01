@@ -326,12 +326,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       scalaJSJavaSystemProperties ++= {
         val javaSysPropsPattern = "-D([^=]*)=(.*)".r
-        javaOptions.value.map {
+        javaOptions.value.collect {
           case javaSysPropsPattern(propName, propValue) => (propName, propValue)
-          case opt =>
-            throw new MessageOnlyException(
-                "Scala.js javaOptions can only be \"-D<key>=<value>\"," +
-                " but received: " + opt)
         }.toMap
       },
 
