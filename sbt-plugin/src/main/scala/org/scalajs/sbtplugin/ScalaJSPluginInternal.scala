@@ -2,20 +2,15 @@ package org.scalajs.sbtplugin
 
 import scala.annotation.tailrec
 
-import java.util.IllegalFormatException
+import java.io.FileNotFoundException
+
 import java.util.concurrent.atomic.AtomicReference
 
 import sbt._
-import Keys._
-import complete.Parser
-import complete.DefaultParsers._
+import sbt.Keys._
+import sbt.complete.DefaultParsers._
 
 import sbtcrossproject.CrossPlugin.autoImport._
-
-import Loggers._
-import SBTCompat._
-import SBTCompat.formatImplicits._
-import SBTCompat.formatImplicits.seqFormat
 
 import org.scalajs.core.tools.io.{IO => _, _}
 import org.scalajs.core.tools.linker._
@@ -24,24 +19,21 @@ import org.scalajs.core.tools.linker.standard._
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
-import org.scalajs.core.ir
 import org.scalajs.core.ir.Utils.escapeJS
-import org.scalajs.core.ir.ScalaJSVersions
 import org.scalajs.core.ir.Printers.IRTreePrinter
 
 import org.scalajs.testadapter.{FrameworkDetector, HTMLRunnerBuilder}
 
-import scala.util.Try
-import scala.collection.mutable
-
-import java.io.FileNotFoundException
-import java.nio.charset.Charset
+import Loggers._
+import SBTCompat._
+import SBTCompat.formatImplicits._
+import SBTCompat.formatImplicits.seqFormat
 
 /** Implementation details of `ScalaJSPlugin`. */
 private[sbtplugin] object ScalaJSPluginInternal {
 
   import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
-  import ScalaJSPlugin.{logIRCacheStats, stageKeys}
+  import ScalaJSPlugin.logIRCacheStats
 
   /** The global Scala.js IR cache */
   val globalIRCache: IRFileCache = new IRFileCache()
@@ -91,6 +83,13 @@ private[sbtplugin] object ScalaJSPluginInternal {
       true
     } catch {
       case _: NumberFormatException => false
+    }
+  }
+
+  private val scalajspParser = {
+    loadForParser(sjsirFilesOnClasspath) { (_, relPaths) =>
+      val examples = ScalajspUtils.relPathsExamples(relPaths.getOrElse(Nil))
+      OptSpace ~> StringBasic.examples(examples)
     }
   }
 
@@ -186,107 +185,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
           val sourceMapFile = FileVirtualJSFile(output).sourceMapFile
           Attributed.blank(output).put(scalaJSSourceMap, sourceMapFile)
         }.tag(usesLinkerTag)
-      }.value,
-
-      scalaJSLinkedFile in key := new FileVirtualJSFile(key.value.data)
-  )
-
-  private def dispatchSettingKeySettings[T](key: SettingKey[T]) = Seq(
-      key := Def.settingDyn {
-        val stageKey = stageKeys(scalaJSStage.value)
-        Def.setting { (key in stageKey).value }
       }.value
   )
-
-  private def dispatchTaskKeySettings[T](key: TaskKey[T]) = Seq(
-      key := Def.settingDyn {
-        val stageKey = stageKeys(scalaJSStage.value)
-        Def.task { (key in stageKey).value }
-      }.value
-  )
-
-  private def scalajspSettings: Seq[Setting[_]] = {
-    def sjsirFileOnClasspathParser(
-        relPaths: Seq[String]): Parser[String] = {
-      OptSpace ~> StringBasic
-        .examples(ScalajspUtils.relPathsExamples(relPaths))
-    }
-
-    def scalajspParser(state: State, relPaths: Seq[String]): Parser[String] =
-      sjsirFileOnClasspathParser(relPaths)
-
-    val parser = loadForParser(sjsirFilesOnClasspath) { (state, relPaths) =>
-      scalajspParser(state, relPaths.getOrElse(Nil))
-    }
-
-    Seq(
-        sjsirFilesOnClasspath := Def.task {
-          scalaJSIR.value.data.map(_.relativePath).toSeq
-        }.storeAs(sjsirFilesOnClasspath).triggeredBy(scalaJSIR).value,
-
-        scalajsp := {
-          val relPath = parser.parsed
-
-          val vfile = scalaJSIR.value.data
-              .find(_.relativePath == relPath)
-              .getOrElse(throw new FileNotFoundException(relPath))
-
-          val stdout = new java.io.PrintWriter(System.out)
-          new IRTreePrinter(stdout).print(vfile.tree)
-          stdout.flush()
-
-          logIRCacheStats(streams.value.log)
-        }
-    )
-  }
-
-  /** Collect certain file types from a classpath.
-   *
-   *  @param cp Classpath to collect from
-   *  @param filter Filter for (real) files of interest (not in jars)
-   *  @param collectJar Collect elements from a jar (called for all jars)
-   *  @param collectFile Collect a single file. Params are the file and the
-   *      relative path of the file (to its classpath entry root).
-   *  @return Collected elements attributed with physical files they originated
-   *      from (key: scalaJSSourceFiles).
-   */
-  private def collectFromClasspath[T](cp: Def.Classpath, filter: FileFilter,
-      collectJar: VirtualJarFile => Seq[T],
-      collectFile: (File, String) => T): Attributed[Seq[T]] = {
-
-    val realFiles = Seq.newBuilder[File]
-    val results = Seq.newBuilder[T]
-
-    for (cpEntry <- Attributed.data(cp) if cpEntry.exists) {
-      if (cpEntry.isFile && cpEntry.getName.endsWith(".jar")) {
-        realFiles += cpEntry
-        val vf = new FileVirtualBinaryFile(cpEntry) with VirtualJarFile
-        results ++= collectJar(vf)
-      } else if (cpEntry.isDirectory) {
-        for {
-          (file, relPath0) <- Path.selectSubpaths(cpEntry, filter)
-        } {
-          val relPath = relPath0.replace(java.io.File.separatorChar, '/')
-          realFiles += file
-          results += collectFile(file, relPath)
-        }
-      } else {
-        throw new IllegalArgumentException(
-            "Illegal classpath entry: " + cpEntry.getPath)
-      }
-    }
-
-    Attributed.blank(results.result()).put(scalaJSSourceFiles, realFiles.result())
-  }
 
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
-      scalajspSettings ++
-      stageKeys.flatMap((scalaJSStageSettings _).tupled) ++
-      dispatchTaskKeySettings(scalaJSLinkedFile) ++
-      dispatchSettingKeySettings(scalaJSLinker) ++
-      dispatchSettingKeySettings(usesScalaJSLinkerTag)
+      scalaJSStageSettings(Stage.FastOpt, fastOptJS) ++
+      scalaJSStageSettings(Stage.FullOpt, fullOptJS)
   ) ++ (
       Seq(fastOptJS, fullOptJS).map { key =>
         moduleName in key := {
@@ -302,12 +208,31 @@ private[sbtplugin] object ScalaJSPluginInternal {
       scalaJSIRCache := newIRCache,
 
       scalaJSIR := {
-        val rawIR = collectFromClasspath(fullClasspath.value, "*.sjsir",
-            collectJar = Seq(_),
-            collectFile = FileVirtualScalaJSIRFile.relative)
-
         val cache = scalaJSIRCache.value
-        rawIR.map(cache.cached)
+        val classpath = Attributed.data(fullClasspath.value)
+        val irContainers = FileScalaJSIRContainer.fromClasspath(classpath)
+        val irFiles = cache.cached(irContainers)
+        Attributed
+          .blank[Seq[VirtualScalaJSIRFile with RelativeVirtualFile]](irFiles)
+          .put(scalaJSSourceFiles, irContainers.map(_.file))
+      },
+
+      sjsirFilesOnClasspath := Def.task {
+        scalaJSIR.value.data.map(_.relativePath).toSeq
+      }.storeAs(sjsirFilesOnClasspath).triggeredBy(scalaJSIR).value,
+
+      scalajsp := {
+        val relPath = scalajspParser.parsed
+
+        val vfile = scalaJSIR.value.data
+          .find(_.relativePath == relPath)
+          .getOrElse(throw new FileNotFoundException(relPath))
+
+        val stdout = new java.io.PrintWriter(System.out)
+        new IRTreePrinter(stdout).print(vfile.tree)
+        stdout.flush()
+
+        logIRCacheStats(streams.value.log)
       },
 
       artifactPath in fastOptJS :=
@@ -324,6 +249,13 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .withClosureCompiler(prevConfig.outputMode == OutputMode.ECMAScript51Isolated)
       },
 
+      scalaJSLinkedFile := Def.settingDyn {
+        scalaJSStage.value match {
+          case Stage.FastOpt => fastOptJS
+          case Stage.FullOpt => fullOptJS
+        }
+      }.value,
+
       console := console.dependsOn(Def.task {
         streams.value.log.warn("Scala REPL doesn't work with Scala.js. You " +
             "are running a JVM REPL. JavaScript things won't work.")
@@ -335,20 +267,13 @@ private[sbtplugin] object ScalaJSPluginInternal {
        */
       jsExecutionFiles := (jsExecutionFiles in (This, Zero, This)).value,
 
-      scalaJSJavaSystemProperties ++= {
-        val javaSysPropsPattern = "-D([^=]*)=(.*)".r
-        javaOptions.value.map {
-          case javaSysPropsPattern(propName, propValue) => (propName, propValue)
-          case opt =>
-            throw new MessageOnlyException(
-                "Scala.js javaOptions can only be \"-D<key>=<value>\"," +
-                " but received: " + opt)
-        }.toMap
-      },
-
       // Optionally add a JS file defining Java system properties
       jsExecutionFiles ++= {
-        val javaSystemProperties = scalaJSJavaSystemProperties.value
+        val javaSysPropsPattern = "-D([^=]*)=(.*)".r
+        val javaSystemProperties = javaOptions.value.collect {
+          case javaSysPropsPattern(propName, propValue) => (propName, propValue)
+        }.toMap
+
         if (javaSystemProperties.isEmpty) {
           Nil
         } else {
@@ -365,7 +290,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
       },
 
       // Crucially, add the Scala.js linked file to the JS files
-      jsExecutionFiles += scalaJSLinkedFile.value,
+      jsExecutionFiles +=
+        new FileVirtualJSFile(scalaJSLinkedFile.value.data),
 
       scalaJSMainModuleInitializer := {
         mainClass.value.map { mainCl =>
@@ -442,7 +368,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val moduleKind = scalaJSLinkerConfig.value.moduleKind
         val moduleIdentifier = moduleKind match {
           case ModuleKind.NoModule       => None
-          case ModuleKind.CommonJSModule => Some(scalaJSLinkedFile.value.path)
+          case ModuleKind.CommonJSModule => Some(scalaJSLinkedFile.value.data.getPath)
         }
 
         val frameworksAndTheirImplNames =
@@ -460,10 +386,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
         definedTests.map(_.map(_.name).distinct)
           .storeAs(definedTestNames).triggeredBy(loadedTestFrameworks).value
       }
-  )
-
-  private val scalaJSTestBuildSettings = (
-      scalaJSConfigSettings
   )
 
   private val scalaJSTestHtmlSettings = Seq(
@@ -502,7 +424,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
   )
 
   val scalaJSTestSettings: Seq[Setting[_]] = (
-      scalaJSTestBuildSettings ++
+      scalaJSConfigSettings ++
       scalaJSTestFrameworkSettings ++
       scalaJSTestHtmlSettings
   ) ++ Seq(
@@ -527,10 +449,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       jsExecutionFiles := Nil,
 
-      scalaJSJavaSystemProperties := Map.empty,
-
       // you will need the Scala.js compiler plugin
-      autoCompilerPlugins := true,
       addCompilerPlugin(
           "org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
 

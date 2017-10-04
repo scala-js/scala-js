@@ -20,7 +20,6 @@ import org.scalajs.core.ir.ScalaJSVersions
 
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.linker._
-import org.scalajs.core.tools.linker.standard._
 
 import org.scalajs.jsenv.JSEnv
 
@@ -59,11 +58,6 @@ object ScalaJSPlugin extends AutoPlugin {
     val ModuleKind = org.scalajs.core.tools.linker.ModuleKind
 
     // All our public-facing keys
-
-    val isScalaJSProject = SettingKey[Boolean]("isScalaJSProject",
-        "Tests whether the current project is a Scala.js project. " +
-        "Do not set the value of this setting (only use it as read-only).",
-        BSetting)
 
     val scalaJSIRCache = SettingKey[IRFileCache#Cache](
         "scalaJSIRCache",
@@ -141,7 +135,7 @@ object ScalaJSPlugin extends AutoPlugin {
     val scalaJSStage = SettingKey[Stage]("scalaJSStage",
         "The optimization stage at which run and test are executed", APlusSetting)
 
-    val scalaJSLinkedFile = TaskKey[VirtualJSFile]("scalaJSLinkedFile",
+    val scalaJSLinkedFile = TaskKey[Attributed[File]]("scalaJSLinkedFile",
         "Linked Scala.js file. This is the result of fastOptJS or fullOptJS, " +
         "depending on the stage.", DTask)
 
@@ -164,11 +158,6 @@ object ScalaJSPlugin extends AutoPlugin {
         "All the JS files given to JS environments on `run`, `test`, etc.",
         BTask)
 
-    val scalaJSJavaSystemProperties = TaskKey[Map[String, String]](
-        "scalaJSJavaSystemProperties",
-        "List of arguments to pass to the Scala.js Java System.properties.",
-        CTask)
-
     val scalaJSSourceFiles = AttributeKey[Seq[File]]("scalaJSSourceFiles",
         "Files used to compute this value (can be used in FileFunctions later).",
         KeyRanks.Invisible)
@@ -179,16 +168,6 @@ object ScalaJSPlugin extends AutoPlugin {
   }
 
   import autoImport._
-
-  /** Maps a [[Stage]] to the corresponding `TaskKey`.
-   *
-   *  For example, [[Stage.FastOpt]] (aka `FastOptStage`) is mapped to
-   *  [[autoImport.fastOptJS fastOptJS]].
-   */
-  val stageKeys: Map[Stage, TaskKey[Attributed[File]]] = Map(
-      Stage.FastOpt -> fastOptJS,
-      Stage.FullOpt -> fullOptJS
-  )
 
   /** Logs the current statistics about the global IR cache. */
   def logIRCacheStats(logger: Logger): Unit = {

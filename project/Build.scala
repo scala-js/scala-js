@@ -668,9 +668,9 @@ object Build {
           /* We'll explicitly `require` our linked file. Find its module, and
            * remove it from the `jsExecutionFiles` to give to the runner.
            */
-          val toolsTestModule = scalaJSLinkedFile.value
+          val toolsTestModulePath = scalaJSLinkedFile.value.data.getPath
           val executionFiles =
-            jsExecutionFiles.value.filter(_ ne toolsTestModule)
+            jsExecutionFiles.value.filter(_.path != toolsTestModulePath)
 
           /* Collect relevant IR files from the classpath of the test suite.
            * We assume here that the classpath is valid. This is checked by the
@@ -721,7 +721,7 @@ object Build {
 
           val code = {
             s"""
-            var toolsTestModule = require("${escapeJS(toolsTestModule.path)}");
+            var toolsTestModule = require("${escapeJS(toolsTestModulePath)}");
             var linker = toolsTestModule.scalajs.QuickLinker;
             var lib = linker.linkTestSuiteNode($irPaths, $mainMethods);
 
@@ -1413,22 +1413,22 @@ object Build {
 
   def testSuiteTestHtmlSetting = Def.settings(
       // We need to patch the system properties.
-      scalaJSJavaSystemProperties in Test in testHtml ~= { base =>
-        val unsupported =
-          Seq("nodejs", "source-maps")
-        val supported =
-          Seq("typedarray", "browser")
-
-        base -- unsupported.map("scalajs." + _) ++
-            supported.map("scalajs." + _ -> "true")
-      },
-
-      // And we need to actually use those patched system properties.
       jsExecutionFiles in (Test, testHtml) := {
         val previousFiles = (jsExecutionFiles in (Test, testHtml)).value
 
-        val patchedSystemProperties =
-          (scalaJSJavaSystemProperties in (Test, testHtml)).value
+        val patchedSystemProperties = {
+          // Fetch the defaults
+          val javaSysPropsPattern = "-D([^=]*)=(.*)".r
+          val base = (javaOptions in Test).value.collect {
+            case javaSysPropsPattern(propName, propValue) => (propName, propValue)
+          }.toMap
+
+          // Patch
+          val unsupported = Seq("nodejs", "source-maps")
+          val supported = Seq("typedarray", "browser")
+          base -- unsupported.map("scalajs." + _) ++
+              supported.map("scalajs." + _ -> "true")
+        }
 
         val formattedProps = patchedSystemProperties.map {
           case (propName, propValue) =>
