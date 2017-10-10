@@ -16,9 +16,9 @@ private[nio] object GenHeapBufferView {
   def generic_fromHeapByteBuffer[BufferType <: Buffer](
       byteBuffer: HeapByteBuffer)(
       implicit newHeapBufferView: NewHeapBufferView[BufferType]): BufferType = {
-    val byteBufferPos = byteBuffer.position
+    val byteBufferPos = byteBuffer.position()
     val viewCapacity =
-      (byteBuffer.limit - byteBufferPos) / newHeapBufferView.bytesPerElem
+      (byteBuffer.limit() - byteBufferPos) / newHeapBufferView.bytesPerElem
     newHeapBufferView(viewCapacity, byteBuffer._array,
         byteBuffer._arrayOffset + byteBufferPos,
         0, viewCapacity, byteBuffer.isReadOnly, byteBuffer.isBigEndian)

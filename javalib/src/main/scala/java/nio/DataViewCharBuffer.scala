@@ -34,7 +34,7 @@ private[nio] final class DataViewCharBuffer private (
     if (start < 0 || end < start || end > remaining)
       throw new IndexOutOfBoundsException
     new DataViewCharBuffer(_dataView,
-        position + start, position + end, isReadOnly, isBigEndian)
+        position() + start, position() + end, isReadOnly, isBigEndian)
   }
 
   @noinline

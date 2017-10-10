@@ -14,7 +14,7 @@ private[nio] final class StringCharBuffer private (
 
   def slice(): CharBuffer = {
     val cap = remaining
-    new StringCharBuffer(cap, _csq, _csqOffset + position, 0, cap)
+    new StringCharBuffer(cap, _csq, _csqOffset + position(), 0, cap)
   }
 
   def duplicate(): CharBuffer = {
@@ -30,7 +30,7 @@ private[nio] final class StringCharBuffer private (
     if (start < 0 || end < start || end > remaining)
       throw new IndexOutOfBoundsException
     new StringCharBuffer(capacity, _csq, _csqOffset,
-        position + start, position + end)
+        position() + start, position() + end)
   }
 
   @noinline
@@ -59,7 +59,7 @@ private[nio] final class StringCharBuffer private (
 
   override def toString(): String = {
     val offset = _csqOffset
-    _csq.subSequence(position + offset, limit + offset).toString()
+    _csq.subSequence(position() + offset, limit() + offset).toString()
   }
 
   def order(): ByteOrder = ByteOrder.nativeOrder()

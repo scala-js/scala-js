@@ -72,6 +72,41 @@ abstract class ShortBuffer private[nio] (
   @inline final def arrayOffset(): Int =
     GenBuffer(this).generic_arrayOffset()
 
+  @inline override def position(newPosition: Int): ShortBuffer = {
+    super.position(newPosition)
+    this
+  }
+
+  @inline override def limit(newLimit: Int): ShortBuffer = {
+    super.limit(newLimit)
+    this
+  }
+
+  @inline override def mark(): ShortBuffer = {
+    super.mark()
+    this
+  }
+
+  @inline override def reset(): ShortBuffer = {
+    super.reset()
+    this
+  }
+
+  @inline override def clear(): ShortBuffer = {
+    super.clear()
+    this
+  }
+
+  @inline override def flip(): ShortBuffer = {
+    super.flip()
+    this
+  }
+
+  @inline override def rewind(): ShortBuffer = {
+    super.rewind()
+    this
+  }
+
   def compact(): ShortBuffer
 
   def isDirect(): Boolean

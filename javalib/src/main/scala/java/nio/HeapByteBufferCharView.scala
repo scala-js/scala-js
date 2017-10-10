@@ -34,7 +34,7 @@ private[nio] final class HeapByteBufferCharView private (
     if (start < 0 || end < start || end > remaining)
       throw new IndexOutOfBoundsException
     new HeapByteBufferCharView(capacity, _byteArray, _byteArrayOffset,
-        position + start, position + end, isReadOnly, isBigEndian)
+        position() + start, position() + end, isReadOnly, isBigEndian)
   }
 
   @noinline
