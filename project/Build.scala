@@ -1,3 +1,5 @@
+package build
+
 import sbt._
 import Keys._
 
@@ -436,16 +438,10 @@ object Build {
       ),
       // JDK version we are running with
       javaVersion in Global := {
-        val v = System.getProperty("java.version")
-        v.substring(0, 3) match {
-          case "1.8" => 8
-          case "1.7" => 7
-          case "1.6" => 6
-
-          case _ =>
-            sLog.value.warn(s"Unknown JDK version $v. Assuming max compat.")
-            Int.MaxValue
-        }
+        val fullVersion = System.getProperty("java.version")
+        val v = fullVersion.stripPrefix("1.").takeWhile(_.isDigit).toInt
+        sLog.value.info(s"Detected JDK version $v")
+        v
       }
   )
 
