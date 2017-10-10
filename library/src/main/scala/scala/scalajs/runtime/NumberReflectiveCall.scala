@@ -18,14 +18,14 @@ class NumberReflectiveCall(value: Double) {
   def doubleValue(): Double = value
 
   def compareTo(that: JDouble): Int =
-    new JDouble(value).compareTo(that)
+    JDouble.valueOf(value).compareTo(that)
   def compareTo(that: JInteger): Int =
-    new JDouble(value).compareTo(new JDouble(that.doubleValue()))
+    JDouble.valueOf(value).compareTo(JDouble.valueOf(that.doubleValue()))
   def compareTo(that: AnyRef): Int =
-    new JDouble(value).compareTo(that.asInstanceOf[JDouble])
+    JDouble.valueOf(value).compareTo(that.asInstanceOf[JDouble])
 
-  def isNaN(): scala.Boolean = new JDouble(value).isNaN()
-  def isInfinite(): scala.Boolean = new JDouble(value).isInfinite()
+  def isNaN(): scala.Boolean = JDouble.valueOf(value).isNaN()
+  def isInfinite(): scala.Boolean = JDouble.valueOf(value).isInfinite()
 
   // Methods of scala.Double
 
