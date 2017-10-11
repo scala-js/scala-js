@@ -1076,21 +1076,31 @@ object Build {
 
           // Filter doc sources to remove implementation details from doc.
           sources in doc := {
-            def containsFileFilter(s: String): FileFilter = new FileFilter {
-              override def accept(f: File): Boolean = {
-                val path = f.getAbsolutePath.replace('\\', '/')
-                path.contains(s)
+            val prev = (sources in doc).value
+
+            if (javaVersion.value < 9) {
+              def containsFileFilter(s: String): FileFilter = new FileFilter {
+                override def accept(f: File): Boolean = {
+                  val path = f.getAbsolutePath.replace('\\', '/')
+                  path.contains(s)
+                }
               }
+
+              val filter: FileFilter = (
+                  AllPassFilter
+                    -- containsFileFilter("/scala/scalajs/runtime/")
+                    -- containsFileFilter("/scala/scalajs/js/annotation/internal/")
+                    -- "*.nodoc.scala"
+              )
+
+              (sources in doc).value.filter(filter.accept)
+            } else {
+              /* Work around #3152: library/doc crashes with
+               *   <Cannot read source file>
+               * on JDK 9.
+               */
+              Nil
             }
-
-            val filter: FileFilter = (
-                AllPassFilter
-                  -- containsFileFilter("/scala/scalajs/runtime/")
-                  -- containsFileFilter("/scala/scalajs/js/annotation/internal/")
-                  -- "*.nodoc.scala"
-            )
-
-            (sources in doc).value.filter(filter.accept)
           },
 
           /* Add compiled .class files to doc dependencyClasspath, so we can
