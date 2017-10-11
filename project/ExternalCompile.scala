@@ -18,6 +18,14 @@ object ExternalCompile {
       trapExit in compile := true,
       javaOptions in compile += "-Xmx512M",
 
+      javaOptions in compile ++= {
+        val scalaExtDirs = System.getProperty("scala.ext.dirs")
+        if (scalaExtDirs != null && (fork in compile).value)
+          Seq("-Dscala.ext.dirs=" + scalaExtDirs)
+        else
+          Nil
+      },
+
       compile := {
         val inputs = (compileInputs in compile).value
         import inputs.config._
