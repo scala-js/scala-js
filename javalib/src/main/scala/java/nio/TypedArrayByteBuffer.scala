@@ -77,7 +77,7 @@ private[nio] final class TypedArrayByteBuffer private (
     { ensureNotReadOnly(); _dataView.setUint16(validateIndex(index, 2), value, !isBigEndian); this }
 
   def asCharBuffer(): CharBuffer = {
-    if (hasNativeOrder && (_arrayBufferOffset + position) % 2 == 0)
+    if (hasNativeOrder && (_arrayBufferOffset + position()) % 2 == 0)
       TypedArrayCharBuffer.fromTypedArrayByteBuffer(this)
     else
       DataViewCharBuffer.fromTypedArrayByteBuffer(this)
@@ -93,7 +93,7 @@ private[nio] final class TypedArrayByteBuffer private (
     { ensureNotReadOnly(); _dataView.setInt16(validateIndex(index, 2), value, !isBigEndian); this }
 
   def asShortBuffer(): ShortBuffer = {
-    if (hasNativeOrder && (_arrayBufferOffset + position) % 2 == 0)
+    if (hasNativeOrder && (_arrayBufferOffset + position()) % 2 == 0)
       TypedArrayShortBuffer.fromTypedArrayByteBuffer(this)
     else
       DataViewShortBuffer.fromTypedArrayByteBuffer(this)
@@ -109,7 +109,7 @@ private[nio] final class TypedArrayByteBuffer private (
     { ensureNotReadOnly(); _dataView.setInt32(validateIndex(index, 4), value, !isBigEndian); this }
 
   def asIntBuffer(): IntBuffer = {
-    if (hasNativeOrder && (_arrayBufferOffset + position) % 4 == 0)
+    if (hasNativeOrder && (_arrayBufferOffset + position()) % 4 == 0)
       TypedArrayIntBuffer.fromTypedArrayByteBuffer(this)
     else
       DataViewIntBuffer.fromTypedArrayByteBuffer(this)
@@ -137,7 +137,7 @@ private[nio] final class TypedArrayByteBuffer private (
     { ensureNotReadOnly(); _dataView.setFloat32(validateIndex(index, 4), value, !isBigEndian); this }
 
   def asFloatBuffer(): FloatBuffer = {
-    if (hasNativeOrder && (_arrayBufferOffset + position) % 4 == 0)
+    if (hasNativeOrder && (_arrayBufferOffset + position()) % 4 == 0)
       TypedArrayFloatBuffer.fromTypedArrayByteBuffer(this)
     else
       DataViewFloatBuffer.fromTypedArrayByteBuffer(this)
@@ -153,7 +153,7 @@ private[nio] final class TypedArrayByteBuffer private (
     { ensureNotReadOnly(); _dataView.setFloat64(validateIndex(index, 8), value, !isBigEndian); this }
 
   def asDoubleBuffer(): DoubleBuffer = {
-    if (hasNativeOrder && (_arrayBufferOffset + position) % 8 == 0)
+    if (hasNativeOrder && (_arrayBufferOffset + position()) % 8 == 0)
       TypedArrayDoubleBuffer.fromTypedArrayByteBuffer(this)
     else
       DataViewDoubleBuffer.fromTypedArrayByteBuffer(this)

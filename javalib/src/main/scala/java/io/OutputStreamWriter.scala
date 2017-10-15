@@ -134,7 +134,7 @@ class OutputStreamWriter(private[this] var out: OutputStream,
   }
 
   private def makeRoomInOutBuf(): Unit = {
-    if (outBuf.position != 0) {
+    if (outBuf.position() != 0) {
       flushBuffer()
     } else {
       // Very unlikely (outBuf.capacity is not enough to encode a single code point)
@@ -153,7 +153,7 @@ class OutputStreamWriter(private[this] var out: OutputStream,
 
     // Don't use outBuf.flip() first, in case out.write() throws
     // Hence, use 0 instead of position, and position instead of limit
-    out.write(outBuf.array, outBuf.arrayOffset, outBuf.position)
+    out.write(outBuf.array, outBuf.arrayOffset, outBuf.position())
     outBuf.clear()
   }
 

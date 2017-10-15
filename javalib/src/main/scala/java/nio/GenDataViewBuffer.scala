@@ -20,8 +20,8 @@ private[nio] object GenDataViewBuffer {
       byteBuffer: TypedArrayByteBuffer)(
       implicit newDataViewBuffer: NewDataViewBuffer[BufferType]): BufferType = {
     val byteArray = byteBuffer._typedArray
-    val byteBufferPos = byteBuffer.position
-    val byteBufferLimit = byteBuffer.limit
+    val byteBufferPos = byteBuffer.position()
+    val byteBufferLimit = byteBuffer.limit()
     val viewCapacity =
       (byteBufferLimit - byteBufferPos) / newDataViewBuffer.bytesPerElem
     val byteLength = viewCapacity * newDataViewBuffer.bytesPerElem

@@ -30,7 +30,7 @@ private[nio] final class HeapCharBuffer private (
     if (start < 0 || end < start || end > remaining)
       throw new IndexOutOfBoundsException
     new HeapCharBuffer(capacity, _array, _arrayOffset,
-        position + start, position + end, isReadOnly)
+        position() + start, position() + end, isReadOnly)
   }
 
   @noinline

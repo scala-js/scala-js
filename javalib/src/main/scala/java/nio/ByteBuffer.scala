@@ -83,6 +83,41 @@ abstract class ByteBuffer private[nio] (
   @inline final def arrayOffset(): Int =
     GenBuffer(this).generic_arrayOffset()
 
+  @inline override def position(newPosition: Int): ByteBuffer = {
+    super.position(newPosition)
+    this
+  }
+
+  @inline override def limit(newLimit: Int): ByteBuffer = {
+    super.limit(newLimit)
+    this
+  }
+
+  @inline override def mark(): ByteBuffer = {
+    super.mark()
+    this
+  }
+
+  @inline override def reset(): ByteBuffer = {
+    super.reset()
+    this
+  }
+
+  @inline override def clear(): ByteBuffer = {
+    super.clear()
+    this
+  }
+
+  @inline override def flip(): ByteBuffer = {
+    super.flip()
+    this
+  }
+
+  @inline override def rewind(): ByteBuffer = {
+    super.rewind()
+    this
+  }
+
   def compact(): ByteBuffer
 
   def isDirect(): Boolean

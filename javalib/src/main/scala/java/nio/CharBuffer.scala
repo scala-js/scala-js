@@ -46,7 +46,7 @@ abstract class CharBuffer private[nio] (
       target.put(_array, _arrayOffset, n)
       n
     } else {
-      val savedPos = position
+      val savedPos = position()
       target.put(this)
       position(savedPos)
       n
@@ -100,6 +100,41 @@ abstract class CharBuffer private[nio] (
   @inline final def arrayOffset(): Int =
     GenBuffer(this).generic_arrayOffset()
 
+  @inline override def position(newPosition: Int): CharBuffer = {
+    super.position(newPosition)
+    this
+  }
+
+  @inline override def limit(newLimit: Int): CharBuffer = {
+    super.limit(newLimit)
+    this
+  }
+
+  @inline override def mark(): CharBuffer = {
+    super.mark()
+    this
+  }
+
+  @inline override def reset(): CharBuffer = {
+    super.reset()
+    this
+  }
+
+  @inline override def clear(): CharBuffer = {
+    super.clear()
+    this
+  }
+
+  @inline override def flip(): CharBuffer = {
+    super.flip()
+    this
+  }
+
+  @inline override def rewind(): CharBuffer = {
+    super.rewind()
+    this
+  }
+
   def compact(): CharBuffer
 
   def isDirect(): Boolean
@@ -119,10 +154,10 @@ abstract class CharBuffer private[nio] (
 
   override def toString(): String = {
     if (_array != null) { // even if read-only
-      new String(_array, position + _arrayOffset, remaining)
+      new String(_array, position() + _arrayOffset, remaining)
     } else {
       val chars = new Array[Char](remaining)
-      val savedPos = position
+      val savedPos = position()
       get(chars)
       position(savedPos)
       new String(chars)
@@ -131,7 +166,7 @@ abstract class CharBuffer private[nio] (
 
   final def length(): Int = remaining
 
-  final def charAt(index: Int): Char = get(position + index)
+  final def charAt(index: Int): Char = get(position() + index)
 
   def subSequence(start: Int, end: Int): CharSequence
 

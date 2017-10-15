@@ -117,7 +117,6 @@ final class IRFileCache {
 
     protected override def finalize(): Unit = {
       free()
-      super.finalize()
     }
   }
 

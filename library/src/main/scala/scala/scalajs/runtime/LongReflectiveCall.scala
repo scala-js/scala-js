@@ -18,9 +18,9 @@ class LongReflectiveCall(value: Long) {
   def doubleValue(): Double = value.toDouble
 
   def compareTo(that: JLong): Int =
-    new JLong(value).compareTo(that)
+    JLong.valueOf(value).compareTo(that)
   def compareTo(that: AnyRef): Int =
-    new JLong(value).compareTo(that.asInstanceOf[JLong])
+    JLong.valueOf(value).compareTo(that.asInstanceOf[JLong])
 
   // Methods of scala.Long
 

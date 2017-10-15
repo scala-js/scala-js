@@ -72,6 +72,41 @@ abstract class FloatBuffer private[nio] (
   @inline final def arrayOffset(): Int =
     GenBuffer(this).generic_arrayOffset()
 
+  @inline override def position(newPosition: Int): FloatBuffer = {
+    super.position(newPosition)
+    this
+  }
+
+  @inline override def limit(newLimit: Int): FloatBuffer = {
+    super.limit(newLimit)
+    this
+  }
+
+  @inline override def mark(): FloatBuffer = {
+    super.mark()
+    this
+  }
+
+  @inline override def reset(): FloatBuffer = {
+    super.reset()
+    this
+  }
+
+  @inline override def clear(): FloatBuffer = {
+    super.clear()
+    this
+  }
+
+  @inline override def flip(): FloatBuffer = {
+    super.flip()
+    this
+  }
+
+  @inline override def rewind(): FloatBuffer = {
+    super.rewind()
+    this
+  }
+
   def compact(): FloatBuffer
 
   def isDirect(): Boolean

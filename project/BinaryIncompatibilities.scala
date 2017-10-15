@@ -1,3 +1,5 @@
+package build
+
 import com.typesafe.tools.mima.core._
 import com.typesafe.tools.mima.core.ProblemFilters._
 

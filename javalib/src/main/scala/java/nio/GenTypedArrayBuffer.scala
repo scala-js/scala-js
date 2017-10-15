@@ -21,8 +21,8 @@ private[nio] object GenTypedArrayBuffer {
       byteBuffer: TypedArrayByteBuffer)(
       implicit newTypedArrayBuffer: NewTypedArrayBuffer[BufferType]): BufferType = {
     val byteArray = byteBuffer._typedArray
-    val byteBufferPos = byteBuffer.position
-    val byteBufferLimit = byteBuffer.limit
+    val byteBufferPos = byteBuffer.position()
+    val byteBufferLimit = byteBuffer.limit()
     val viewCapacity =
       (byteBufferLimit - byteBufferPos) / newTypedArrayBuffer.bytesPerElem
     val viewTypedArray = newTypedArrayBuffer.newTypedArray(

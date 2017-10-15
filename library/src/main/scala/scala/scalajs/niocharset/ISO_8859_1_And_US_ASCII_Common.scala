@@ -48,12 +48,12 @@ private[niocharset] abstract class ISO_8859_1_And_US_ASCII_Common protected (
         if (in.hasArray && out.hasArray) {
           val inArr = in.array
           val inOffset = in.arrayOffset
-          val inStart = in.position + inOffset
+          val inStart = in.position() + inOffset
           val inEnd = inStart + rem
 
           val outArr = out.array
           val outOffset = out.arrayOffset
-          val outStart = out.position + outOffset
+          val outStart = out.position() + outOffset
 
           var inPos = inStart
           var outPos = outStart
@@ -114,12 +114,12 @@ private[niocharset] abstract class ISO_8859_1_And_US_ASCII_Common protected (
 
           val inArr = in.array
           val inOffset = in.arrayOffset
-          val inStart = in.position + inOffset
+          val inStart = in.position() + inOffset
           val inEnd = inStart + rem
 
           val outArr = out.array
           val outOffset = out.arrayOffset
-          val outStart = out.position + outOffset
+          val outStart = out.position() + outOffset
 
           @inline
           @tailrec
@@ -146,7 +146,7 @@ private[niocharset] abstract class ISO_8859_1_And_US_ASCII_Common protected (
                   if (Character.isLowSurrogate(c)) {
                     CoderResult.malformedForLength(1)
                   } else if (Character.isHighSurrogate(c)) {
-                    if (inPos + 1 < in.limit) {
+                    if (inPos + 1 < in.limit()) {
                       val c2 = inArr(inPos+1)
                       if (Character.isLowSurrogate(c2))
                         CoderResult.unmappableForLength(2)
@@ -180,23 +180,23 @@ private[niocharset] abstract class ISO_8859_1_And_US_ASCII_Common protected (
                 loop()
               } else {
                 if (Character.isLowSurrogate(c)) {
-                  in.position(in.position - 1)
+                  in.position(in.position() - 1)
                   CoderResult.malformedForLength(1)
                 } else if (Character.isHighSurrogate(c)) {
                   if (in.hasRemaining) {
                     val c2 = in.get()
-                    in.position(in.position - 2)
+                    in.position(in.position() - 2)
                     if (Character.isLowSurrogate(c2)) {
                       CoderResult.unmappableForLength(2)
                     } else {
                       CoderResult.malformedForLength(1)
                     }
                   } else {
-                    in.position(in.position - 1)
+                    in.position(in.position() - 1)
                     CoderResult.UNDERFLOW
                   }
                 } else {
-                  in.position(in.position - 1)
+                  in.position(in.position() - 1)
                   CoderResult.unmappableForLength(1)
                 }
               }

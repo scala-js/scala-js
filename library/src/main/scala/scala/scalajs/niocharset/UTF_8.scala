@@ -80,13 +80,13 @@ private[niocharset] object UTF_8 extends Charset("UTF-8", Array(
     private def decodeLoopArray(in: ByteBuffer, out: CharBuffer): CoderResult = {
       val inArray = in.array
       val inOffset = in.arrayOffset
-      val inStart = in.position + inOffset
-      val inEnd = in.limit + inOffset
+      val inStart = in.position() + inOffset
+      val inEnd = in.limit() + inOffset
 
       val outArray = out.array
       val outOffset = out.arrayOffset
-      val outStart = out.position + outOffset
-      val outEnd = out.limit + outOffset
+      val outStart = out.position() + outOffset
+      val outEnd = out.limit() + outOffset
 
       @inline
       @tailrec
@@ -162,7 +162,7 @@ private[niocharset] object UTF_8 extends Charset("UTF-8", Array(
       def loop(): CoderResult = {
         @inline
         def finalize(read: Int, result: CoderResult): CoderResult = {
-          in.position(in.position - read)
+          in.position(in.position() - read)
           result
         }
 
@@ -300,13 +300,13 @@ private[niocharset] object UTF_8 extends Charset("UTF-8", Array(
     private def encodeLoopArray(in: CharBuffer, out: ByteBuffer): CoderResult = {
       val inArray = in.array
       val inOffset = in.arrayOffset
-      val inStart = in.position + inOffset
-      val inEnd = in.limit + inOffset
+      val inStart = in.position() + inOffset
+      val inEnd = in.limit() + inOffset
 
       val outArray = out.array
       val outOffset = out.arrayOffset
-      val outStart = out.position + outOffset
-      val outEnd = out.limit + outOffset
+      val outStart = out.position() + outOffset
+      val outEnd = out.limit() + outOffset
 
       @inline
       @tailrec
@@ -387,7 +387,7 @@ private[niocharset] object UTF_8 extends Charset("UTF-8", Array(
       def loop(): CoderResult = {
         @inline
         def finalize(read: Int, result: CoderResult): CoderResult = {
-          in.position(in.position - read)
+          in.position(in.position() - read)
           result
         }
 
