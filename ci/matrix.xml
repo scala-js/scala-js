@@ -197,7 +197,7 @@
   ]]></task>
 
   <task id="sbtplugin-test"><![CDATA[
-    setJavaVersion $java
+    setJavaVersion 1.8
     SBT_VER_OVERRIDE=$sbt_version_override
     # Publish Scala.js artifacts locally
     # Then go into standalone project and test
@@ -210,6 +210,7 @@
         nodeJSEnv/publishLocal testAdapter/publishLocal \
         sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&
+    setJavaVersion $java &&
     if [ -n "$SBT_VER_OVERRIDE" ]; then echo "sbt.version=$SBT_VER_OVERRIDE" > ./project/build.properties; fi &&
     sbt noDOM/run \
         noDOM/testHtml multiTestJS/testHtml \
