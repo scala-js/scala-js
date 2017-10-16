@@ -143,4 +143,30 @@ class ThrowablesTest {
     test2(new ExecutionException(_))
     test3(new ExecutionException(_, _))
   }
+
+  @Test def assertionErrorsPeculiarConstructors(): Unit = {
+    def assertMessageNoCause(expectedMessage: String, e: AssertionError): Unit = {
+      assertEquals(expectedMessage, e.getMessage)
+      assertNull(e.getCause)
+    }
+
+    assertMessageNoCause(null, new AssertionError())
+
+    assertMessageNoCause("boom", new AssertionError("boom"))
+    assertMessageNoCause("Some(5)", new AssertionError(Some(5)))
+    assertMessageNoCause("null", new AssertionError(null: Object))
+
+    assertMessageNoCause("true", new AssertionError(true))
+    assertMessageNoCause("5", new AssertionError(5.toByte))
+    assertMessageNoCause("6", new AssertionError(6.toShort))
+    assertMessageNoCause("7", new AssertionError(7))
+    assertMessageNoCause("8", new AssertionError(8L))
+    assertMessageNoCause("1.5", new AssertionError(1.5f))
+    assertMessageNoCause("2.5", new AssertionError(2.5))
+
+    val th = new RuntimeException("kaboom")
+    val e = new AssertionError(th)
+    assertEquals(th.toString, e.getMessage)
+    assertSame(th, e.getCause)
+  }
 }

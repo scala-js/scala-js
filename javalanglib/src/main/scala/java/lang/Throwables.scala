@@ -128,15 +128,27 @@ class AbstractMethodError(s: String) extends IncompatibleClassChangeError(s) {
   def this() = this(null)
 }
 
-class AssertionError private (s: String) extends Error(s) {
-  def this() = this(null)
-  def this(o: Object) = this(o.toString)
-  def this(b: scala.Boolean) = this(b.toString)
-  def this(c: scala.Char) = this(c.toString)
-  def this(i: scala.Int) = this(i.toString)
-  def this(l: scala.Long) = this(l.toString)
-  def this(f: scala.Float) = this(f.toString)
-  def this(d: scala.Double) = this(d.toString)
+class AssertionError(message: String, cause: Throwable)
+    extends Error(message, cause) {
+
+  def this() = this(null, null)
+
+  def this(detailMessage: Object) = {
+    this(
+        String.valueOf(detailMessage),
+        detailMessage match {
+          case cause: Throwable => cause
+          case _                => null
+        }
+    )
+  }
+
+  def this(detailMessage: scala.Boolean) = this(String.valueOf(detailMessage), null)
+  def this(detailMessage: scala.Char) = this(String.valueOf(detailMessage), null)
+  def this(detailMessage: scala.Int) = this(String.valueOf(detailMessage), null)
+  def this(detailMessage: scala.Long) = this(String.valueOf(detailMessage), null)
+  def this(detailMessage: scala.Float) = this(String.valueOf(detailMessage), null)
+  def this(detailMessage: scala.Double) = this(String.valueOf(detailMessage), null)
 }
 
 class BootstrapMethodError(s: String, e: Throwable) extends LinkageError(s) {

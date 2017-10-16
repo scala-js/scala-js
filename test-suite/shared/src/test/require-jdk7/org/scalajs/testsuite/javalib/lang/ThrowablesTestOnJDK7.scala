@@ -47,6 +47,12 @@ class ThrowablesTestOnJDK7 {
     test1(new ReflectiveOperationException(_))
     test2(new ReflectiveOperationException(_))
     test3(new ReflectiveOperationException(_, _))
+  }
 
+  @Test def assertionErrorCtorWithStringThrowable(): Unit = {
+    val th = new RuntimeException("kaboom")
+    val e = new AssertionError("boom", th)
+    assertEquals("boom", e.getMessage)
+    assertSame(th, e.getCause)
   }
 }
