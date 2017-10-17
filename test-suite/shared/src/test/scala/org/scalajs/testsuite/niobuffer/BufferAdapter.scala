@@ -6,8 +6,15 @@ sealed abstract class BufferAdapter[BT <: Buffer, ET] {
   type BufferType = BT
   type ElementType = ET
 
-  def slice(): BufferType
-  def duplicate(): BufferType
+  /* Some methods have a Chain suffix because they are declared as abstract in
+   * java.nio.Buffer since Java 9, but with a result type of `Buffer` instead
+   * of the more specific `BufferType`. We use the `Chain` variant to be able
+   * to chain their application with further operations on the specific
+   * `BufferType`.
+   */
+
+  def sliceChain(): BufferType
+  def duplicateChain(): BufferType
   def asReadOnlyBuffer(): BufferType
   def get(): ElementType
   def put(e: ElementType): BufferType
@@ -28,8 +35,8 @@ sealed abstract class BufferAdapter[BT <: Buffer, ET] {
 object BufferAdapter {
   class ByteBufferAdapater(val buffer: ByteBuffer)
       extends BufferAdapter[ByteBuffer, Byte] {
-    def slice(): BufferType = buffer.slice()
-    def duplicate(): BufferType = buffer.duplicate()
+    def sliceChain(): BufferType = buffer.slice()
+    def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
     def get(): ElementType = buffer.get()
     def put(e: ElementType): BufferType = buffer.put(e)
@@ -52,8 +59,8 @@ object BufferAdapter {
 
   class CharBufferAdapater(val buffer: CharBuffer)
       extends BufferAdapter[CharBuffer, Char] {
-    def slice(): BufferType = buffer.slice()
-    def duplicate(): BufferType = buffer.duplicate()
+    def sliceChain(): BufferType = buffer.slice()
+    def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
     def get(): ElementType = buffer.get()
     def put(e: ElementType): BufferType = buffer.put(e)
@@ -76,8 +83,8 @@ object BufferAdapter {
 
   class ShortBufferAdapater(val buffer: ShortBuffer)
       extends BufferAdapter[ShortBuffer, Short] {
-    def slice(): BufferType = buffer.slice()
-    def duplicate(): BufferType = buffer.duplicate()
+    def sliceChain(): BufferType = buffer.slice()
+    def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
     def get(): ElementType = buffer.get()
     def put(e: ElementType): BufferType = buffer.put(e)
@@ -100,8 +107,8 @@ object BufferAdapter {
 
   class IntBufferAdapater(val buffer: IntBuffer)
       extends BufferAdapter[IntBuffer, Int] {
-    def slice(): BufferType = buffer.slice()
-    def duplicate(): BufferType = buffer.duplicate()
+    def sliceChain(): BufferType = buffer.slice()
+    def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
     def get(): ElementType = buffer.get()
     def put(e: ElementType): BufferType = buffer.put(e)
@@ -124,8 +131,8 @@ object BufferAdapter {
 
   class LongBufferAdapater(val buffer: LongBuffer)
       extends BufferAdapter[LongBuffer, Long] {
-    def slice(): BufferType = buffer.slice()
-    def duplicate(): BufferType = buffer.duplicate()
+    def sliceChain(): BufferType = buffer.slice()
+    def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
     def get(): ElementType = buffer.get()
     def put(e: ElementType): BufferType = buffer.put(e)
@@ -148,8 +155,8 @@ object BufferAdapter {
 
   class FloatBufferAdapater(val buffer: FloatBuffer)
       extends BufferAdapter[FloatBuffer, Float] {
-    def slice(): BufferType = buffer.slice()
-    def duplicate(): BufferType = buffer.duplicate()
+    def sliceChain(): BufferType = buffer.slice()
+    def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
     def get(): ElementType = buffer.get()
     def put(e: ElementType): BufferType = buffer.put(e)
@@ -172,8 +179,8 @@ object BufferAdapter {
 
   class DoubleBufferAdapater(val buffer: DoubleBuffer)
       extends BufferAdapter[DoubleBuffer, Double] {
-    def slice(): BufferType = buffer.slice()
-    def duplicate(): BufferType = buffer.duplicate()
+    def sliceChain(): BufferType = buffer.slice()
+    def duplicateChain(): BufferType = buffer.duplicate()
     def asReadOnlyBuffer(): BufferType = buffer.asReadOnlyBuffer()
     def get(): ElementType = buffer.get()
     def put(e: ElementType): BufferType = buffer.put(e)

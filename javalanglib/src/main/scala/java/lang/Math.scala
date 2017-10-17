@@ -323,6 +323,10 @@ object Math {
     else throw new ArithmeticException("Integer overflow")
   }
 
+  @inline
+  def multiplyExact(a: scala.Long, b: scala.Int): scala.Long =
+    multiplyExact(a, b.toLong)
+
   def multiplyExact(a: scala.Long, b: scala.Long): scala.Long = {
     val overflow = {
       if (b > 0)
@@ -372,6 +376,10 @@ object Math {
     else quot - 1
   }
 
+  @inline
+  def floorDiv(a: scala.Long, b: scala.Int): scala.Long =
+    floorDiv(a, b.toLong)
+
   def floorDiv(a: scala.Long, b: scala.Long): scala.Long = {
     val quot = a / b
     if ((a < 0) == (b < 0) || quot * b == a) quot
@@ -383,6 +391,10 @@ object Math {
     if ((a < 0) == (b < 0) || rem == 0) rem
     else rem + b
   }
+
+  @inline
+  def floorMod(a: scala.Long, b: scala.Int): scala.Int =
+    floorMod(a, b.toLong).toInt
 
   def floorMod(a: scala.Long, b: scala.Long): scala.Long = {
     val rem = a % b

@@ -208,7 +208,7 @@ object BufferFactory {
       val buf = super.allocBuffer(capacity+25)
       buf.position(17)
       buf.limit(17+capacity)
-      buf.slice()
+      buf.sliceChain()
     }
 
     override def withContent(pos: Int, limit: Int, capacity: Int,
@@ -220,7 +220,7 @@ object BufferFactory {
       buf.put(content.toArray)
       buf.position(9)
       buf.limit(9+capacity)
-      val buf2 = buf.slice()
+      val buf2 = buf.sliceChain()
       buf2.position(pos)
       buf2.limit(limit)
       buf2

@@ -1,3 +1,5 @@
+package build
+
 import scala.language.implicitConversions
 
 import scala.annotation.tailrec
@@ -207,18 +209,32 @@ object Build {
       // Add Java Scaladoc mapping
       apiMappings += {
         val rtJar = {
-          val jars =
-            System.getProperty("sun.boot.class.path")
-              .split(java.io.File.pathSeparator)
-          def matches(path: String, name: String): Boolean =
-            path.endsWith(s"${java.io.File.separator}$name.jar")
-          jars.find(matches(_, "rt")) // most JREs
-            .orElse(jars.find(matches(_, "classes"))) // Java 6 on Mac OS X
-            .get
+          val bootClasspath = System.getProperty("sun.boot.class.path")
+          if (bootClasspath != null) {
+            // JDK <= 8, there is an rt.jar (or classes.jar) on the boot classpath
+            val jars = bootClasspath.split(java.io.File.pathSeparator)
+            def matches(path: String, name: String): Boolean =
+              path.endsWith(s"${java.io.File.separator}$name.jar")
+            val jar = jars.find(matches(_, "rt")) // most JREs
+              .orElse(jars.find(matches(_, "classes"))) // Java 6 on Mac OS X
+              .get
+            file(jar)
+          } else {
+            // JDK >= 9, sbt gives us a fake rt.jar in `scala.ext.dirs`
+            val scalaExtDirs = System.getProperty("scala.ext.dirs")
+            file(scalaExtDirs) / "rt.jar"
+          }
         }
 
-        file(rtJar) -> url(javaDocBaseURL)
+        assert(rtJar.exists, s"$rtJar does not exist")
+        rtJar -> url(javaDocBaseURL)
       },
+
+      /* Add a second Java Scaladoc mapping for cases where Scala actually
+       * understands the jrt:/ filesystem of Java 9.
+       */
+      apiMappings +=
+        file("/modules/java.base") -> url(javaDocBaseURL),
 
       /* Patch the ScalaDoc we generate.
        *
@@ -462,16 +478,10 @@ object Build {
       ),
       // JDK version we are running with
       javaVersion in Global := {
-        val v = System.getProperty("java.version")
-        v.substring(0, 3) match {
-          case "1.8" => 8
-          case "1.7" => 7
-          case "1.6" => 6
-
-          case _ =>
-            sLog.value.warn(s"Unknown JDK version $v. Assuming max compat.")
-            Int.MaxValue
-        }
+        val fullVersion = System.getProperty("java.version")
+        val v = fullVersion.stripPrefix("1.").takeWhile(_.isDigit).toInt
+        sLog.value.info(s"Detected JDK version $v")
+        v
       }
   )
 
@@ -1074,21 +1084,31 @@ object Build {
 
           // Filter doc sources to remove implementation details from doc.
           sources in doc := {
-            def containsFileFilter(s: String): FileFilter = new FileFilter {
-              override def accept(f: File): Boolean = {
-                val path = f.getAbsolutePath.replace('\\', '/')
-                path.contains(s)
+            val prev = (sources in doc).value
+
+            if (javaVersion.value < 9) {
+              def containsFileFilter(s: String): FileFilter = new FileFilter {
+                override def accept(f: File): Boolean = {
+                  val path = f.getAbsolutePath.replace('\\', '/')
+                  path.contains(s)
+                }
               }
+
+              val filter: FileFilter = (
+                  AllPassFilter
+                    -- containsFileFilter("/scala/scalajs/runtime/")
+                    -- containsFileFilter("/scala/scalajs/js/annotation/internal/")
+                    -- "*.nodoc.scala"
+              )
+
+              (sources in doc).value.filter(filter.accept)
+            } else {
+              /* Work around #3152: library/doc crashes with
+               *   <Cannot read source file>
+               * on JDK 9.
+               */
+              Nil
             }
-
-            val filter: FileFilter = (
-                AllPassFilter
-                  -- containsFileFilter("/scala/scalajs/runtime/")
-                  -- containsFileFilter("/scala/scalajs/js/annotation/internal/")
-                  -- "*.nodoc.scala"
-            )
-
-            (sources in doc).value.filter(filter.accept)
           },
 
           /* Add compiled .class files to doc dependencyClasspath, so we can

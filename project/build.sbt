@@ -33,7 +33,7 @@ sources in Compile +=
   baseDirectory.value / "project" / "ScalaJSEnvGenerator.scala"
 
 sourceGenerators in Compile += Def.task {
-  ScalaJSEnvGenerator.generateEnvHolder(
+  build.ScalaJSEnvGenerator.generateEnvHolder(
     baseDirectory.value.getParentFile / "tools",
     (sourceManaged in Compile).value)
 }.taskValue

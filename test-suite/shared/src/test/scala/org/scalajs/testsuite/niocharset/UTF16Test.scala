@@ -127,7 +127,7 @@ object UTF16LETest {
     while (buf.remaining() >= 2) {
       val high = buf.get()
       val low = buf.get()
-      buf.position(buf.position - 2)
+      buf.position(buf.position() - 2)
       buf.put(low)
       buf.put(high)
     }

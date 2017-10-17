@@ -1,3 +1,5 @@
+package build
+
 import sbt._
 
 object ScalaJSEnvGenerator {

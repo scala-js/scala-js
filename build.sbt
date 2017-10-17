@@ -1,3 +1,5 @@
+import build.Build
+
 val scalajs = Build.root
 val ir = Build.irProject
 val irJS = Build.irProjectJS

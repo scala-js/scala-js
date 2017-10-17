@@ -42,16 +42,15 @@ class IllegalFormatCodePointException(private val c: Int) extends IllegalFormatE
   override def getMessage(): String = s"Code point = $c"
 }
 
-class IllegalFormatConversionException private(private val c: Char) extends IllegalFormatException {
-  private var arg: Class[_] = null
-  def this(c: Char, arg: Class[_]) = {
-    this(c)
-    if (arg == null)
-      throw new NullPointerException()
-    this.arg = arg
-  }
+class IllegalFormatConversionException(c: Char, arg: Class[_])
+    extends IllegalFormatException {
+
+  if (arg == null)
+    throw new NullPointerException()
+
   def getConversion(): Char = c
   def getArgumentClass(): Class[_] = arg
+
   override def getMessage(): String = s"$c != ${arg.getName()}"
 }
 

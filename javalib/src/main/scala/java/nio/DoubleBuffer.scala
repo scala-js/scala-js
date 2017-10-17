@@ -72,6 +72,41 @@ abstract class DoubleBuffer private[nio] (
   @inline final def arrayOffset(): Int =
     GenBuffer(this).generic_arrayOffset()
 
+  @inline override def position(newPosition: Int): DoubleBuffer = {
+    super.position(newPosition)
+    this
+  }
+
+  @inline override def limit(newLimit: Int): DoubleBuffer = {
+    super.limit(newLimit)
+    this
+  }
+
+  @inline override def mark(): DoubleBuffer = {
+    super.mark()
+    this
+  }
+
+  @inline override def reset(): DoubleBuffer = {
+    super.reset()
+    this
+  }
+
+  @inline override def clear(): DoubleBuffer = {
+    super.clear()
+    this
+  }
+
+  @inline override def flip(): DoubleBuffer = {
+    super.flip()
+    this
+  }
+
+  @inline override def rewind(): DoubleBuffer = {
+    super.rewind()
+    this
+  }
+
   def compact(): DoubleBuffer
 
   def isDirect(): Boolean

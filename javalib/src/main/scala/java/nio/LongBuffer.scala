@@ -65,6 +65,41 @@ abstract class LongBuffer private[nio] (
   @inline final def arrayOffset(): Int =
     GenBuffer(this).generic_arrayOffset()
 
+  @inline override def position(newPosition: Int): LongBuffer = {
+    super.position(newPosition)
+    this
+  }
+
+  @inline override def limit(newLimit: Int): LongBuffer = {
+    super.limit(newLimit)
+    this
+  }
+
+  @inline override def mark(): LongBuffer = {
+    super.mark()
+    this
+  }
+
+  @inline override def reset(): LongBuffer = {
+    super.reset()
+    this
+  }
+
+  @inline override def clear(): LongBuffer = {
+    super.clear()
+    this
+  }
+
+  @inline override def flip(): LongBuffer = {
+    super.flip()
+    this
+  }
+
+  @inline override def rewind(): LongBuffer = {
+    super.rewind()
+    this
+  }
+
   def compact(): LongBuffer
 
   def isDirect(): Boolean

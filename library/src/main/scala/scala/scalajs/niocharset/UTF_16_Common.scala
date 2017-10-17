@@ -71,11 +71,11 @@ private[niocharset] abstract class UTF_16_Common protected (
             val c1 = bytes2char(b1, b2)
 
             if (Character.isLowSurrogate(c1)) {
-              in.position(in.position - 2)
+              in.position(in.position() - 2)
               CoderResult.malformedForLength(2)
             } else if (!Character.isHighSurrogate(c1)) {
               if (out.remaining == 0) {
-                in.position(in.position - 2)
+                in.position(in.position() - 2)
                 CoderResult.OVERFLOW
               } else {
                 out.put(c1)
@@ -83,7 +83,7 @@ private[niocharset] abstract class UTF_16_Common protected (
               }
             } else {
               if (in.remaining < 2) {
-                in.position(in.position - 2)
+                in.position(in.position() - 2)
                 CoderResult.UNDERFLOW
               } else {
                 val b3 = in.get() & 0xff
@@ -91,11 +91,11 @@ private[niocharset] abstract class UTF_16_Common protected (
                 val c2 = bytes2char(b3, b4)
 
                 if (!Character.isLowSurrogate(c2)) {
-                  in.position(in.position - 4)
+                  in.position(in.position() - 4)
                   CoderResult.malformedForLength(2)
                 } else {
                   if (out.remaining < 2) {
-                    in.position(in.position - 4)
+                    in.position(in.position() - 4)
                     CoderResult.OVERFLOW
                   } else {
                     out.put(c1)
@@ -158,11 +158,11 @@ private[niocharset] abstract class UTF_16_Common protected (
           val c1 = in.get()
 
           if (Character.isLowSurrogate(c1)) {
-            in.position(in.position - 1)
+            in.position(in.position() - 1)
             CoderResult.malformedForLength(1)
           } else if (!Character.isHighSurrogate(c1)) {
             if (out.remaining < 2) {
-              in.position(in.position - 1)
+              in.position(in.position() - 1)
               CoderResult.OVERFLOW
             } else {
               putChar(c1)
@@ -170,17 +170,17 @@ private[niocharset] abstract class UTF_16_Common protected (
             }
           } else {
             if (in.remaining < 1) {
-              in.position(in.position - 1)
+              in.position(in.position() - 1)
               CoderResult.UNDERFLOW
             } else {
               val c2 = in.get()
 
               if (!Character.isLowSurrogate(c2)) {
-                in.position(in.position - 2)
+                in.position(in.position() - 2)
                 CoderResult.malformedForLength(1)
               } else {
                 if (out.remaining < 4) {
-                  in.position(in.position - 2)
+                  in.position(in.position() - 2)
                   CoderResult.OVERFLOW
                 } else {
                   putChar(c1)

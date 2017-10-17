@@ -58,6 +58,7 @@ final class Matcher private[regex] (
     } else {
       canStillFind = false
     }
+    startOfGroupCache = None
     lastMatch ne null
   } else false
 
@@ -141,6 +142,7 @@ final class Matcher private[regex] (
     lastMatchIsValid = false
     canStillFind = true
     appendPos = 0
+    startOfGroupCache = None
     this
   }
 
@@ -158,6 +160,7 @@ final class Matcher private[regex] (
     regexp = pattern.newJSRegExp()
     regexp.lastIndex = prevLastIndex
     lastMatch = null
+    startOfGroupCache = None
     this
   }
 
@@ -177,14 +180,7 @@ final class Matcher private[regex] (
 
   def start(group: Int): Int = {
     if (group == 0) start()
-    else {
-      val last = ensureLastMatch
-      // not provided by JS RegExp, so we make up something that at least
-      // will have some sound behavior from scala.util.matching.Regex
-      last(group).fold(-1) {
-        groupStr => inputstr.indexOf(groupStr, last.index)
-      }
-    }
+    else startOfGroup(group)
   }
 
   def end(group: Int): Int = {
@@ -202,7 +198,7 @@ final class Matcher private[regex] (
 
   // Seal the state
 
-  def toMatchResult(): MatchResult = new SealedResult(inputstr, lastMatch)
+  def toMatchResult(): MatchResult = new SealedResult(inputstr, lastMatch, pattern())
 
   // Other query state methods
 
@@ -223,6 +219,18 @@ final class Matcher private[regex] (
 
   def hasAnchoringBounds(): Boolean = true
   //def useAnchoringBounds(b: Boolean): Matcher
+
+  // Lazily computed by `startOfGroup`, reset every time `lastMatch` changes
+  private var startOfGroupCache: Option[Int => Int] = None
+
+  /** Returns a mapping from the group number to the respective start position. */
+  private def startOfGroup: Int => Int = {
+    startOfGroupCache.getOrElse {
+      val mapping = GroupStartMap(inputstr, start, pattern0)
+      startOfGroupCache = Some(mapping)
+      mapping
+    }
+  }
 }
 
 object Matcher {
@@ -241,7 +249,8 @@ object Matcher {
   }
 
   private final class SealedResult(inputstr: String,
-      lastMatch: js.RegExp.ExecResult) extends MatchResult {
+      lastMatch: js.RegExp.ExecResult, pattern: Pattern)
+      extends MatchResult {
 
     def groupCount(): Int = ensureLastMatch.length-1
 
@@ -249,17 +258,12 @@ object Matcher {
     def end(): Int = start() + group().length
     def group(): String = ensureLastMatch(0).get
 
+    private lazy val startOfGroup =
+      GroupStartMap(inputstr, ensureLastMatch.index, pattern)
+
     def start(group: Int): Int = {
       if (group == 0) start()
-      else {
-        val last = ensureLastMatch
-
-        // not provided by JS RegExp, so we make up something that at least
-        // will have some sound behavior from scala.util.matching.Regex
-        last(group).fold(-1) {
-          groupStr => inputstr.indexOf(groupStr, last.index)
-        }
-      }
+      else startOfGroup(group)
     }
 
     def end(group: Int): Int = {

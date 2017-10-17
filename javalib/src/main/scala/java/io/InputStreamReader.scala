@@ -127,10 +127,10 @@ class InputStreamReader(private[this] var in: InputStream,
 
   @tailrec
   private def readImpl(out: CharBuffer): Int = {
-    val initPos = out.position
+    val initPos = out.position()
     val result = decoder.decode(inBuf, out, endOfInput)
 
-    if (out.position != initPos) {
+    if (out.position() != initPos) {
       /* Good, we made progress, so we can return.
        * Note that the `result` does not matter. Whether it's an underflow,
        * an overflow, or even an error, if we read *something*, we can return
@@ -139,7 +139,7 @@ class InputStreamReader(private[this] var in: InputStream,
        * which will necessarily return the same result (but without advancing
        * at all), which will cause one of the following cases to be handled.
        */
-      out.position - initPos
+      out.position() - initPos
     } else if (result.isUnderflow) {
       if (endOfInput) {
         assert(!inBuf.hasRemaining,
@@ -151,12 +151,12 @@ class InputStreamReader(private[this] var in: InputStream,
           InputStreamReader.Overflow
         } else {
           // Done
-          if (out.position == initPos) -1
-          else out.position - initPos
+          if (out.position() == initPos) -1
+          else out.position() - initPos
         }
       } else {
         // We need to read more from the underlying input stream
-        if (inBuf.limit == inBuf.capacity) {
+        if (inBuf.limit() == inBuf.capacity) {
           inBuf.compact()
           if (!inBuf.hasRemaining) {
             throw new AssertionError(
@@ -165,7 +165,7 @@ class InputStreamReader(private[this] var in: InputStream,
                 getEncoding + " to decode a single code point. " +
                 "Please report this as a bug.")
           }
-          inBuf.limit(inBuf.position)
+          inBuf.limit(inBuf.position())
           inBuf.position(0)
         }
 
@@ -174,12 +174,12 @@ class InputStreamReader(private[this] var in: InputStream,
          * according to the specification of InputStreamReader.
          */
         val bytesRead =
-          in.read(inBuf.array, inBuf.limit, inBuf.capacity - inBuf.limit)
+          in.read(inBuf.array, inBuf.limit, inBuf.capacity - inBuf.limit())
 
         if (bytesRead == -1)
           endOfInput = true
         else
-          inBuf.limit(inBuf.limit + bytesRead)
+          inBuf.limit(inBuf.limit() + bytesRead)
 
         readImpl(out)
       }

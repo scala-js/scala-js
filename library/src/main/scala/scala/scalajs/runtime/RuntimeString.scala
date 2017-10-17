@@ -57,6 +57,19 @@ private[runtime] object RuntimeString {
     }
   }
 
+  def codePointBefore(thiz: String, index: Int): Int = {
+    val low = thiz.charAt(index - 1)
+    if (index > 1) {
+      val high = thiz.charAt(index - 2)
+      if (Character.isSurrogatePair(high, low))
+        Character.toCodePoint(high, low)
+      else
+        low.toInt
+    } else {
+      low.toInt
+    }
+  }
+
   def codePointCount(thiz: String, beginIndex: Int, endIndex: Int): Int = {
     if (endIndex > thiz.length || beginIndex < 0 || endIndex < beginIndex)
       throw new IndexOutOfBoundsException
@@ -69,6 +82,46 @@ private[runtime] object RuntimeString {
       i += 1
     }
     res
+  }
+
+  def offsetByCodePoints(thiz: String, index: Int,
+      codePointOffset: Int): Int = {
+    val len = thiz.length
+    if (index < 0 || index > len)
+      throw new StringIndexOutOfBoundsException(index)
+
+    if (codePointOffset >= 0) {
+      var i = 0
+      var result = index
+      while (i != codePointOffset) {
+        if (result >= len)
+          throw new StringIndexOutOfBoundsException
+        if ((result < len - 1) &&
+            Character.isHighSurrogate(thiz.charAt(result)) &&
+            Character.isLowSurrogate(thiz.charAt(result + 1))) {
+          result += 2
+        } else {
+          result += 1
+        }
+        i += 1
+      }
+      result
+    } else {
+      var i = 0
+      var result = index
+      while (i != codePointOffset) {
+        if (result <= 0)
+          throw new StringIndexOutOfBoundsException
+        if ((result > 1) && Character.isLowSurrogate(thiz.charAt(result - 1)) &&
+            Character.isHighSurrogate(thiz.charAt(result - 2))) {
+          result -= 2
+        } else {
+          result -= 1
+        }
+        i -= 1
+      }
+      result
+    }
   }
 
   def hashCode(thiz: String): Int = {
@@ -354,17 +407,21 @@ private[runtime] object RuntimeString {
 
   // Static methods (aka methods on the companion object)
 
-  def valueOf(value: Boolean): String = value.toString()
-  def valueOf(value: Char): String    = value.toString()
-  def valueOf(value: Byte): String    = value.toString()
-  def valueOf(value: Short): String   = value.toString()
-  def valueOf(value: Int): String     = value.toString()
-  def valueOf(value: Long): String    = value.toString()
-  def valueOf(value: Float): String   = value.toString()
-  def valueOf(value: Double): String  = value.toString()
+  @deprecated("Not part of the JDK API", "0.6.21")
+  def valueOf(b: Byte): String = b.toString()
 
-  def valueOf(value: Object): String =
-    if (value eq null) "null" else value.toString()
+  @deprecated("Not part of the JDK API", "0.6.21")
+  def valueOf(s: Short): String = s.toString()
+
+  def valueOf(b: Boolean): String = b.toString()
+  def valueOf(c: Char): String = c.toString()
+  def valueOf(i: Int): String = i.toString()
+  def valueOf(l: Long): String = l.toString()
+  def valueOf(f: Float): String = f.toString()
+  def valueOf(d: Double): String = d.toString()
+
+  @inline def valueOf(obj: Object): String =
+    "" + obj // if (obj eq null), returns "null"
 
   def valueOf(data: Array[Char]): String =
     valueOf(data, 0, data.length)

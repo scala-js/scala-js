@@ -1,3 +1,5 @@
+package build
+
 /*
  * Hard-coded IR for java.lang.Object.
  */

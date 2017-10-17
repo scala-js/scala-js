@@ -132,13 +132,13 @@ abstract class CharsetEncoder protected (cs: Charset,
               CoderResult.OVERFLOW
             } else {
               out.put(replacement)
-              in.position(in.position + result2.length)
+              in.position(in.position() + result2.length)
               loop()
             }
           case CodingErrorAction.REPORT =>
             result2
           case CodingErrorAction.IGNORE =>
-            in.position(in.position + result2.length)
+            in.position(in.position() + result2.length)
             loop()
         }
       }

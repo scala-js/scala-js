@@ -21,7 +21,7 @@ abstract class Buffer private[nio] (val _capacity: Int) {
 
   final def position(): Int = _position
 
-  final def position(newPosition: Int): Buffer = {
+  def position(newPosition: Int): Buffer = {
     if (newPosition < 0 || newPosition > limit())
       throw new IllegalArgumentException
     _position = newPosition
@@ -32,7 +32,7 @@ abstract class Buffer private[nio] (val _capacity: Int) {
 
   final def limit(): Int = _limit
 
-  final def limit(newLimit: Int): Buffer = {
+  def limit(newLimit: Int): Buffer = {
     if (newLimit < 0 || newLimit > capacity())
       throw new IllegalArgumentException
     _limit = newLimit
@@ -44,33 +44,33 @@ abstract class Buffer private[nio] (val _capacity: Int) {
     this
   }
 
-  final def mark(): Buffer = {
+  def mark(): Buffer = {
     _mark = _position
     this
   }
 
-  final def reset(): Buffer = {
+  def reset(): Buffer = {
     if (_mark == -1)
       throw new InvalidMarkException
     _position = _mark
     this
   }
 
-  final def clear(): Buffer = {
+  def clear(): Buffer = {
     _mark = -1
     _position = 0
     _limit = capacity
     this
   }
 
-  final def flip(): Buffer = {
+  def flip(): Buffer = {
     _mark = -1
     _limit = _position
     _position = 0
     this
   }
 
-  final def rewind(): Buffer = {
+  def rewind(): Buffer = {
     _mark = -1
     _position = 0
     this

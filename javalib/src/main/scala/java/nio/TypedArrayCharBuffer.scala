@@ -33,7 +33,7 @@ private[nio] final class TypedArrayCharBuffer private (
     if (start < 0 || end < start || end > remaining)
       throw new IndexOutOfBoundsException
     new TypedArrayCharBuffer(_typedArray,
-        position + start, position + end, isReadOnly)
+        position() + start, position() + end, isReadOnly)
   }
 
   @noinline

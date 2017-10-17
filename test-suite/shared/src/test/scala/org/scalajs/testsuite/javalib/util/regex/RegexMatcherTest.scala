@@ -33,42 +33,139 @@ class RegexMatcherTest  {
   }
 
   @Test def start_end_group_and_toMatchResult(): Unit = {
-    val matcher = Pattern.compile("\\s(([A-Za-z]{5}(hum)?).js)\\s").matcher("Write Scala.js everyday!")
+    val matcher = Pattern
+      .compile("\\s(([A-Za-z]{5}(hum)?).js)\\s")
+      .matcher("Write Scala.js everyday!")
+    checkGroups(matcher,
+        (5, 15, " Scala.js "),
+        (6, 14, "Scala.js"),
+        (6, 11, "Scala"),
+        (-1, -1, null)
+    )
+  }
 
-    def checkGroup0(start: Int, end: Int, group: String): Unit =
-      checkGroup(start, 5, end, 15, group, " Scala.js ")
+  @Test def start_end_group_tricky_and_toMatchResult(): Unit = {
+    val matcher = Pattern
+      .compile("(Scala\\.js).*(Scala)$")
+      .matcher("Scala.js is a Scalable javascript compiler based on Scala")
+    checkGroups(matcher,
+        (0, 57, "Scala.js is a Scalable javascript compiler based on Scala"),
+        (0, 8, "Scala.js"),
+        (52, 57, "Scala")
+    )
+  }
 
-    def checkGroup1(start: Int, end: Int, group: String): Unit =
-      checkGroup(start, 6, end, 14, group, "Scala.js")
+  @Test def start_end_group_matchnot_and_toMatchResult(): Unit = {
+    val matcher = Pattern
+      .compile("(?!Scala\\.js)(Scala)")
+      .matcher("There is a difference between Scala.js and Scala, but both are Scalable")
+    checkGroups(matcher,
+        (43, 48, "Scala"),
+        (43, 48, "Scala")
+    )
+    checkGroups(matcher,
+        (63, 68, "Scala"),
+        (63, 68, "Scala")
+    )
+  }
 
-    def checkGroup2(start: Int, end: Int, group: String): Unit =
-      checkGroup(start, 6, end, 11, group, "Scala")
+  @Test def start_end_group_multiple_and_toMatchResult(): Unit = {
+    val matcher = Pattern
+      .compile("(?=Scala\\.js is (nice|awesome))(Scala)\\.js")
+      .matcher("Scala.js is nice, Scala.js is awesome")
+    checkGroups(matcher,
+        (0,  8,  "Scala.js"),
+        (12, 16, "nice"),
+        (0,  5,  "Scala")
+    )
+    checkGroups(matcher,
+        (18, 26, "Scala.js"),
+        (30, 37, "awesome"),
+        (18, 23, "Scala")
+    )
+  }
 
-    def checkGroup3(start: Int, end: Int, group: String): Unit =
-      checkGroup(start, -1, end, -1, group, null)
+  def parseExpect(regex: String, str: String, pos: (Int, Int)*): Unit = {
+    val matcher = Pattern.compile(regex).matcher(str)
+    assertTrue(matcher.find())
+    assertEquals(pos.length - 1, matcher.groupCount)
+    var i = 0
+    val tmp = pos.iterator
+    while (tmp.hasNext) {
+      assertEquals(tmp.next, (matcher.start(i), matcher.end(i)))
+      i += 1
+    }
+  }
 
-    def checkGroup(start: Int, startExpected: Int, end: Int, endExpected: Int,
-                   group: String, groupExpected: String): Unit = {
-      assertEquals(startExpected, start)
-      assertEquals(endExpected, end)
-      assertEquals(groupExpected, group)
+  @Test def parseRegex_test(): Unit = {
+    parseExpect("aa", "aa", 0 -> 2)
+    parseExpect("a(a)", "aa", 0 -> 2, 1 -> 2)
+    parseExpect("ABC(A(B))(C)", "ABCABC", 0 -> 6, 3 -> 5, 4 -> 5, 5 -> 6)
+    parseExpect("A(?:A)", "AA", 0 -> 2)
+    parseExpect("A(?:(\\d))", "A1", 0 -> 2, 1 -> 2)
+    parseExpect("A((?:A))", "AA", 0 -> 2, 1 -> 2)
+    parseExpect("ab((ab))", "abab", 0 -> 4, 2 -> 4,  2 -> 4)
+    parseExpect("hum(hum)?", "humhum", 0 -> 6, 3 -> 6)
+    parseExpect("hum(hum)?", "hum", 0 -> 3, -1 -> -1)
+    parseExpect("hum(?=hum)", "humhum", 0 -> 3)
+    parseExpect("hum(?!hum)", "humhumhuf", 3 -> 6)
+    parseExpect("hum(?=h(um))", "humhum", 0 -> 3, 4 -> 6)
+    parseExpect("abab(ab){1,2}", "abababab", 0 -> 8, 6 -> 8)
+    parseExpect("abab(ab){1,2}(abc){1,2}", "abababababcabc", 0 -> 14, 6 -> 8, 11 -> 14)
+    parseExpect("ab(ab)?ab(?=aba)(ab)*", "abababababa", 0 -> 10, 2 -> 4, 8 -> 10)
+    parseExpect("ab(?=aba)ab(aba)?(ab)*", "abababababa", 0 -> 7, 4 -> 7, -1 -> -1)
+    parseExpect("ab(?=aba)ab(aba)??(ab)*","abababababa", 0 -> 10, -1 -> -1, 8 -> 10)
+    parseExpect("abab(ab){1,2}?", "abababab", 0 -> 6, 4 -> 6)
+    parseExpect("ab(?:ab)*", "abababab", 0 -> 8)
+    if (!executingInJVM) {
+      parseExpect("ab(?:a(c))*ac", "abacacac", 0 -> 8, 5 -> 6)
+      parseExpect("ab(?:a(c))+ac", "abacacac", 0 -> 8, 5 -> 6)
+    }
+    parseExpect("ab(?:ac)*?ac", "abacacac", 0 -> 4)
+    parseExpect("ab(?:ac)+?ac", "abacacac", 0 -> 6)
+    parseExpect("ab((?=abab(ab))a(b))*a", "abababab", 0 -> 5, 2 -> 4, 6 -> 8, 3 -> 4)
+  }
+
+  @Test def parseRegex_backgroups_test(): Unit = {
+    parseExpect("bc(.c).c(\\1)", "bczcxczc", 0 -> 8, 2 -> 4, 6 -> 8)
+    parseExpect("(bc(.c).c)(\\2)", "bczcxczc", 0 -> 8, 0 -> 6, 2 -> 4, 6 -> 8)
+  }
+
+  @Test def parseRegex_disjunctions_test(): Unit = {
+    parseExpect("a(b)|b(c)", "ab", 0 -> 2, 1 -> 2, -1 -> -1)
+    parseExpect("a(b)|b(c)", "bc", 0 -> 2, -1 -> -1, 1 -> 2)
+    if (!executingInJVM) {
+      parseExpect("az(a(.)|b(.))+aw", "aza1b2b3aw",
+          0 -> 10, 6 -> 8, -1 -> -1, 7 -> 8)
+    } else {
+      parseExpect("az(a(.)|b(.))+aw", "aza1b2b3aw",
+          0 -> 10, 6 -> 8, 3 -> 4, 7 -> 8)
+    }
+  }
+
+  def checkGroups(matcher: Matcher, startEndMatch: (Int, Int, String)*): Unit = {
+    assertTrue(matcher.find())
+
+    assertEquals(startEndMatch(0)._1, matcher.start)
+    assertEquals(startEndMatch(0)._2, matcher.end)
+    assertEquals(startEndMatch(0)._3, matcher.group)
+    assertEquals(startEndMatch.size - 1, matcher.groupCount)
+    for (((start, end, mtch), i) <- startEndMatch.zipWithIndex) {
+      assertEquals(start, matcher.start(i))
+      assertEquals(end, matcher.end(i))
+      assertEquals(mtch, matcher.group(i))
     }
 
-    assertTrue(matcher.find())
-    assertEquals(3, matcher.groupCount)
-    checkGroup0(matcher.start, matcher.end, matcher.group)
-    checkGroup0(matcher.start(0), matcher.end(0), matcher.group(0))
-    checkGroup1(matcher.start(1), matcher.end(1), matcher.group(1))
-    checkGroup2(matcher.start(2), matcher.end(2), matcher.group(2))
-    checkGroup3(matcher.start(3), matcher.end(3), matcher.group(3))
-
     val matchResult = matcher.toMatchResult
-    assertEquals(3, matchResult.groupCount)
-    checkGroup0(matchResult.start, matchResult.end, matchResult.group)
-    checkGroup0(matchResult.start(0), matchResult.end(0), matchResult.group(0))
-    checkGroup1(matchResult.start(1), matchResult.end(1), matchResult.group(1))
-    checkGroup2(matchResult.start(2), matchResult.end(2), matchResult.group(2))
-    checkGroup3(matchResult.start(3), matchResult.end(3), matchResult.group(3))
+    assertEquals(startEndMatch.size - 1, matchResult.groupCount)
+    assertEquals(startEndMatch(0)._1, matchResult.start)
+    assertEquals(startEndMatch(0)._2, matchResult.end)
+    assertEquals(startEndMatch(0)._3, matchResult.group)
+    for (((start, end, mtch), i) <- startEndMatch.zipWithIndex) {
+      assertEquals(start, matchResult.start(i))
+      assertEquals(end, matchResult.end(i))
+      assertEquals(mtch, matchResult.group(i))
+    }
   }
 
   @Test def matches(): Unit = {
