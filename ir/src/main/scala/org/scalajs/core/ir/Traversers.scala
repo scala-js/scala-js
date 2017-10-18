@@ -150,11 +150,13 @@ object Traversers {
         traverse(method)
         args foreach traverse
 
-      case JSSuperBracketSelect(cls, qualifier, item) =>
+      case JSSuperBracketSelect(superClass, qualifier, item) =>
+        traverse(superClass)
         traverse(qualifier)
         traverse(item)
 
-      case JSSuperBracketCall(cls, receiver, method, args) =>
+      case JSSuperBracketCall(superClass, receiver, method, args) =>
+        traverse(superClass)
         traverse(receiver)
         traverse(method)
         args foreach traverse

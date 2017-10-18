@@ -317,15 +317,15 @@ object Hashers {
           mixTree(method)
           mixTrees(args)
 
-        case JSSuperBracketSelect(cls, qualifier, item) =>
+        case JSSuperBracketSelect(superClass, qualifier, item) =>
           mixTag(TagJSSuperBracketSelect)
-          mixType(cls)
+          mixTree(superClass)
           mixTree(qualifier)
           mixTree(item)
 
-        case JSSuperBracketCall(cls, receiver, method, args) =>
+        case JSSuperBracketCall(superClass, receiver, method, args) =>
           mixTag(TagJSSuperBracketCall)
-          mixType(cls)
+          mixTree(superClass)
           mixTree(receiver)
           mixTree(method)
           mixTrees(args)

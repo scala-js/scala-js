@@ -148,12 +148,12 @@ object Transformers {
           JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
               args map transformExpr)
 
-        case JSSuperBracketSelect(cls, qualifier, item) =>
-          JSSuperBracketSelect(cls, transformExpr(qualifier),
+        case JSSuperBracketSelect(superClass, qualifier, item) =>
+          JSSuperBracketSelect(superClass, transformExpr(qualifier),
               transformExpr(item))
 
-        case JSSuperBracketCall(cls, receiver, method, args) =>
-          JSSuperBracketCall(cls, transformExpr(receiver),
+        case JSSuperBracketCall(superClass, receiver, method, args) =>
+          JSSuperBracketCall(superClass, transformExpr(receiver),
               transformExpr(method), args map transformExpr)
 
         case JSSuperConstructorCall(args) =>
