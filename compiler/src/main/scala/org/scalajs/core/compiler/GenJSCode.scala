@@ -4341,58 +4341,25 @@ abstract class GenJSCode extends plugins.PluginComponent
               genJSBracketSelectOrGlobalRef(receiver, propName)
             } { superInSym =>
               js.JSSuperBracketSelect(
-                  jstpe.ClassType(encodeClassFullName(superInSym)),
+                  genPrimitiveJSClass(superInSym.superClass),
                   ruleOutGlobalScope(receiver), propName)
             }
           }
 
-          def genSelectGet(propName: js.Tree): js.Tree = {
-            if (superIn.exists(isAnonJSClass(_))) {
-              // #3055
-              genApplyMethod(
-                  genLoadModule(RuntimePackageModule),
-                  Runtime_jsObjectSuperGet,
-                  List(ruleOutGlobalScope(receiver), propName))
-            } else {
-              genSuperReference(propName)
-            }
-          }
+          def genSelectGet(propName: js.Tree): js.Tree =
+            genSuperReference(propName)
 
-          def genSelectSet(propName: js.Tree, value: js.Tree): js.Tree = {
-            if (superIn.exists(isAnonJSClass(_))) {
-              // #3055
-              genApplyMethod(
-                  genLoadModule(RuntimePackageModule),
-                  Runtime_jsObjectSuperSet,
-                  List(ruleOutGlobalScope(receiver), propName, value))
-            } else {
-              js.Assign(genSuperReference(propName), value)
-            }
-          }
+          def genSelectSet(propName: js.Tree, value: js.Tree): js.Tree =
+            js.Assign(genSuperReference(propName), value)
 
           def genCall(methodName: js.Tree, args: List[js.Tree]): js.Tree = {
             superIn.fold[js.Tree] {
               genJSBracketMethodApplyOrGlobalRefApply(
                   receiver, methodName, args)
             } { superInSym =>
-              if (isAnonJSClass(superInSym)) {
-                // #3055
-                val superClassType =
-                  jstpe.ClassType(encodeClassFullName(superInSym.superClass))
-                val superProto = js.JSBracketSelect(
-                    js.LoadJSConstructor(superClassType),
-                    js.StringLiteral("prototype"))
-                val superMethod =
-                  js.JSBracketSelect(superProto, methodName)
-                js.JSBracketMethodApply(
-                    superMethod,
-                    js.StringLiteral("call"),
-                    ruleOutGlobalScope(receiver) :: args)
-              } else {
-                js.JSSuperBracketCall(
-                    jstpe.ClassType(encodeClassFullName(superInSym)),
-                    ruleOutGlobalScope(receiver), methodName, args)
-              }
+              js.JSSuperBracketCall(
+                  genPrimitiveJSClass(superInSym.superClass),
+                  ruleOutGlobalScope(receiver), methodName, args)
             }
           }
 

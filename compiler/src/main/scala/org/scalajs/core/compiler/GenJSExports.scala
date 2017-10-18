@@ -652,19 +652,20 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val allArgs =
         (1 to minArgc).map(genFormalArgRef(_, minArgc)) ++: restArg
 
-      val cls = jstpe.ClassType(encodeClassFullName(currentClassSym))
+      val superClass = js.LoadJSConstructor(
+          jstpe.ClassType(encodeClassFullName(currentClassSym.superClass)))
       val receiver = js.This()(jstpe.AnyType)
       val nameString = genExpr(jsNameOf(sym))
 
       if (jsInterop.isJSGetter(sym)) {
         assert(allArgs.isEmpty)
-        js.JSSuperBracketSelect(cls, receiver, nameString)
+        js.JSSuperBracketSelect(superClass, receiver, nameString)
       } else if (jsInterop.isJSSetter(sym)) {
         assert(allArgs.size == 1 && !allArgs.head.isInstanceOf[js.JSSpread])
-        js.Assign(js.JSSuperBracketSelect(cls, receiver, nameString),
+        js.Assign(js.JSSuperBracketSelect(superClass, receiver, nameString),
             allArgs.head)
       } else {
-        js.JSSuperBracketCall(cls, receiver, nameString, allArgs)
+        js.JSSuperBracketCall(superClass, receiver, nameString, allArgs)
       }
     }
 

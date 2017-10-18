@@ -148,12 +148,12 @@ object Transformers {
           JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
               args map transformExpr)
 
-        case JSSuperBracketSelect(cls, qualifier, item) =>
-          JSSuperBracketSelect(cls, transformExpr(qualifier),
+        case JSSuperBracketSelect(superClass, qualifier, item) =>
+          JSSuperBracketSelect(superClass, transformExpr(qualifier),
               transformExpr(item))
 
-        case JSSuperBracketCall(cls, receiver, method, args) =>
-          JSSuperBracketCall(cls, transformExpr(receiver),
+        case JSSuperBracketCall(superClass, receiver, method, args) =>
+          JSSuperBracketCall(superClass, transformExpr(receiver),
               transformExpr(method), args map transformExpr)
 
         case JSSuperConstructorCall(args) =>
@@ -204,9 +204,8 @@ object Transformers {
 
   abstract class ClassTransformer extends Transformer {
     def transformClassDef(tree: ClassDef): ClassDef = {
-      val ClassDef(name, kind, superClass, parents, jsName, memberDefs,
-          topLevelExportDefs) = tree
-      ClassDef(name, kind, superClass, parents, jsName,
+      import tree._
+      ClassDef(name, kind, superClass, interfaces, jsNativeLoadSpec,
           memberDefs.map(transformMemberDef),
           topLevelExportDefs.map(transformTopLevelExportDef))(
           tree.optimizerHints)(tree.pos)

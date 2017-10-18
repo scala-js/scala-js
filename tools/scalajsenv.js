@@ -484,11 +484,11 @@ function $newJSObjectWithVarargs(ctor, args) {
   }
 };
 
-function $resolveSuperRef(initialProto, propName) {
+function $resolveSuperRef(superClass, propName) {
   const getPrototypeOf = Object["getPrototypeOf"];
   const getOwnPropertyDescriptor = Object["getOwnPropertyDescriptor"];
 
-  let superProto = getPrototypeOf(initialProto);
+  let superProto = superClass.prototype;
   while (superProto !== null) {
     const desc = getOwnPropertyDescriptor(superProto, propName);
     if (desc !== void 0)
@@ -499,8 +499,8 @@ function $resolveSuperRef(initialProto, propName) {
   return void 0;
 };
 
-function $superGet(initialProto, self, propName) {
-  const desc = $resolveSuperRef(initialProto, propName);
+function $superGet(superClass, self, propName) {
+  const desc = $resolveSuperRef(superClass, propName);
   if (desc !== void 0) {
     const getter = desc["get"];
     if (getter !== void 0)
@@ -511,8 +511,8 @@ function $superGet(initialProto, self, propName) {
   return void 0;
 };
 
-function $superSet(initialProto, self, propName, value) {
-  const desc = $resolveSuperRef(initialProto, propName);
+function $superSet(superClass, self, propName, value) {
+  const desc = $resolveSuperRef(superClass, propName);
   if (desc !== void 0) {
     const setter = desc["set"];
     if (setter !== void 0) {

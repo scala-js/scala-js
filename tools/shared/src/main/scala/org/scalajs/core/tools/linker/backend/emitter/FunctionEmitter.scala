@@ -536,13 +536,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   transformExprNoChar(newRhs))
           }
 
-        case Assign(select @ JSSuperBracketSelect(cls, qualifier, item), rhs) =>
-          unnest(List(qualifier, item, rhs)) {
-            case (List(newQualifier, newItem, newRhs), env0) =>
+        case Assign(select @ JSSuperBracketSelect(superClass, qualifier, item), rhs) =>
+          unnest(List(superClass, qualifier, item, rhs)) {
+            case (List(newSuperClass, newQualifier, newItem, newRhs), env0) =>
               implicit val env = env0
-              val ctor =
-                extractWithGlobals(genRawJSClassConstructor(cls.className))
-              genCallHelper("superSet", ctor DOT "prototype",
+              genCallHelper("superSet", transformExprNoChar(newSuperClass),
                   transformExprNoChar(newQualifier), transformExprNoChar(item),
                   transformExprNoChar(rhs))
           }
@@ -1154,8 +1152,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           allowSideEffects && test(receiver) && (args forall test)
         case JSBracketMethodApply(receiver, method, args) =>
           allowSideEffects && test(receiver) && test(method) && (args forall test)
-        case JSSuperBracketSelect(_, qualifier, item) =>
-          allowSideEffects && test(qualifier) && test(item)
+        case JSSuperBracketSelect(superClass, qualifier, item) =>
+          allowSideEffects && test(superClass) && test(qualifier) && test(item)
         case LoadJSModule(_) =>
           allowSideEffects
         case JSGlobalRef(_) =>
@@ -1609,19 +1607,17 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             }
           }
 
-        case JSSuperBracketSelect(cls, qualifier, item) =>
-          unnest(qualifier, item) { (newQualifier, newItem, env) =>
-            redo(JSSuperBracketSelect(cls, newQualifier, newItem))(env)
+        case JSSuperBracketSelect(superClass, qualifier, item) =>
+          unnest(List(superClass, qualifier, item)) {
+            case (List(newSuperClass, newQualifier, newItem), env) =>
+              redo(JSSuperBracketSelect(newSuperClass, newQualifier, newItem))(env)
           }
 
-        case JSSuperBracketCall(cls, receiver, method, args) =>
-          val superClass = globalKnowledge.getSuperClassOfJSClass(cls.className)
-          val superCtor = LoadJSConstructor(ClassType(superClass))
-
+        case JSSuperBracketCall(superClass, receiver, method, args) =>
           redo {
             JSBracketMethodApply(
                 JSBracketSelect(
-                    JSBracketSelect(superCtor, StringLiteral("prototype")),
+                    JSBracketSelect(superClass, StringLiteral("prototype")),
                     method),
                 StringLiteral("call"),
                 receiver :: args)
@@ -2206,9 +2202,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           js.Apply(genBracketSelect(transformExprNoChar(receiver),
               transformExprNoChar(method)), args.map(transformExprNoChar))
 
-        case JSSuperBracketSelect(cls, qualifier, item) =>
-          val ctor = extractWithGlobals(genRawJSClassConstructor(cls.className))
-          genCallHelper("superGet", ctor DOT "prototype",
+        case JSSuperBracketSelect(superClass, qualifier, item) =>
+          genCallHelper("superGet", transformExprNoChar(superClass),
               transformExprNoChar(qualifier), transformExprNoChar(item))
 
         case LoadJSConstructor(cls) =>

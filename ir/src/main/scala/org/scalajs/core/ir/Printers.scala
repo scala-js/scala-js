@@ -578,19 +578,21 @@ object Printers {
           print(']')
           printArgs(args)
 
-        case JSSuperBracketSelect(cls, qualifier, item) =>
+        case JSSuperBracketSelect(superClass, qualifier, item) =>
+          print("super(")
+          print(superClass)
+          print(")::")
           print(qualifier)
-          print('.')
-          print(cls)
-          print("::super[")
+          print('[')
           print(item)
           print(']')
 
-        case JSSuperBracketCall(cls, receiver, method, args) =>
+        case JSSuperBracketCall(superClass, receiver, method, args) =>
+          print("super(")
+          print(superClass)
+          print(")::")
           print(receiver)
-          print('.')
-          print(cls)
-          print("::super[")
+          print('[')
           print(method)
           print(']')
           printArgs(args)
@@ -814,8 +816,7 @@ object Printers {
     }
 
     def print(classDef: ClassDef): Unit = {
-      val ClassDef(name, kind, superClass, interfaces, jsNativeLoadSpec,
-          memberDefs, topLevelExportDefs) = classDef
+      import classDef._
       print(classDef.optimizerHints)
       kind match {
         case ClassKind.Class               => print("class ")

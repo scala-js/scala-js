@@ -507,9 +507,7 @@ object Trees {
     val tpe = AnyType
   }
 
-  /** Selects a property inherited from the parent class of `cls` on `receiver`.
-   *
-   *  `cls` must be a non-native JS class.
+  /** Selects a property inherited from the given `superClass` on `receiver`.
    *
    *  Given the non-native JS classes
    *
@@ -521,13 +519,13 @@ object Trees {
    *  The node
    *
    *  {{{
-   *  JSSuperBrackerSelect(ClassType(Foo), qualifier, item)
+   *  JSSuperBrackerSelect(LoadJSConstructor(ClassType(Bar)), qualifier, item)
    *  }}}
    *
    *  which is printed as
    *
    *  {{{
-   *  qualifier.Foo::super[item]
+   *  super(constructorOf[Bar])::qualifier[item]
    *  }}}
    *
    *  has the semantics of an ES6 super reference
@@ -539,14 +537,21 @@ object Trees {
    *  as if it were in an instance method of `Foo` with `qualifier` as the
    *  `this` value.
    */
-  case class JSSuperBracketSelect(cls: ClassType, receiver: Tree, item: Tree)(
+  case class JSSuperBracketSelect(superClass: Tree, receiver: Tree, item: Tree)(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
 
-  /** Calls a method inherited from the parent class of `cls` on `receiver`.
+  /** Calls a method inherited from the given `superClass` on `receiver`.
    *
-   *  `cls` must be a non-native JS class.
+   *  Intuitively, this corresponds to
+   *
+   *  {{{
+   *  superClass.prototype[method].call(receiver, ...args)
+   *  }}}
+   *
+   *  but retains more structure at the IR level than using an explicit
+   *  encoding of the above expression.
    *
    *  Given the non-native JS classes
    *
@@ -558,13 +563,13 @@ object Trees {
    *  The node
    *
    *  {{{
-   *  JSSuperBrackerCall(ClassType(Foo), receiver, method, args)
+   *  JSSuperBrackerCall(LoadJSConstructor(ClassType(Bar)), receiver, method, args)
    *  }}}
    *
    *  which is printed as
    *
    *  {{{
-   *  receiver.Foo::super[method](...args)
+   *  super(constructorOf[Bar])::receiver[method](...args)
    *  }}}
    *
    *  has the following semantics:
@@ -581,7 +586,7 @@ object Trees {
    *  super[method](...args)
    *  }}}
    */
-  case class JSSuperBracketCall(cls: ClassType, receiver: Tree, method: Tree,
+  case class JSSuperBracketCall(superClass: Tree, receiver: Tree, method: Tree,
       args: List[Tree])(implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
@@ -855,11 +860,34 @@ object Trees {
 
   // Classes
 
-  case class ClassDef(name: Ident, kind: ClassKind, superClass: Option[Ident],
-      interfaces: List[Ident], jsNativeLoadSpec: Option[JSNativeLoadSpec],
-      memberDefs: List[MemberDef], topLevelExportDefs: List[TopLevelExportDef])(
-      val optimizerHints: OptimizerHints)(
-      implicit val pos: Position) extends IRNode
+  final class ClassDef(
+      val name: Ident,
+      val kind: ClassKind,
+      val superClass: Option[Ident],
+      val interfaces: List[Ident],
+      val jsNativeLoadSpec: Option[JSNativeLoadSpec],
+      val memberDefs: List[MemberDef],
+      val topLevelExportDefs: List[TopLevelExportDef]
+  )(
+      val optimizerHints: OptimizerHints
+  )(implicit val pos: Position) extends IRNode
+
+  object ClassDef {
+    def apply(
+        name: Ident,
+        kind: ClassKind,
+        superClass: Option[Ident],
+        interfaces: List[Ident],
+        jsNativeLoadSpec: Option[JSNativeLoadSpec],
+        memberDefs: List[MemberDef],
+        topLevelExportDefs: List[TopLevelExportDef])(
+        optimizerHints: OptimizerHints)(
+        implicit pos: Position): ClassDef = {
+      new ClassDef(name, kind, superClass, interfaces, jsNativeLoadSpec,
+          memberDefs, topLevelExportDefs)(
+          optimizerHints)
+    }
+  }
 
   // Class members
 

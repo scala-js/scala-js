@@ -311,13 +311,13 @@ object Serializers {
           writeByte(TagJSBracketMethodApply)
           writeTree(receiver); writeTree(method); writeTrees(args)
 
-        case JSSuperBracketSelect(cls, qualifier, item) =>
+        case JSSuperBracketSelect(superClass, qualifier, item) =>
           writeByte(TagJSSuperBracketSelect)
-          writeClassType(cls); writeTree(qualifier); writeTree(item)
+          writeTree(superClass); writeTree(qualifier); writeTree(item)
 
-        case JSSuperBracketCall(cls, receiver, method, args) =>
+        case JSSuperBracketCall(superClass, receiver, method, args) =>
           writeByte(TagJSSuperBracketCall)
-          writeClassType(cls); writeTree(receiver); writeTree(method); writeTrees(args)
+          writeTree(superClass); writeTree(receiver); writeTree(method); writeTrees(args)
 
         case JSSuperConstructorCall(args) =>
           writeByte(TagJSSuperConstructorCall)
@@ -456,18 +456,17 @@ object Serializers {
 
     def writeClassDef(classDef: ClassDef): Unit = {
       import buffer._
+      import classDef._
 
-      val ClassDef(name, kind, superClass, parents, jsNativeLoadSpec,
-          memberDefs, topLevelExportDefs) = classDef
       writePosition(classDef.pos)
       writeIdent(name)
       writeByte(ClassKind.toByte(kind))
       writeOptIdent(superClass)
-      writeIdents(parents)
+      writeIdents(interfaces)
       writeJSNativeLoadSpec(jsNativeLoadSpec)
       writeMemberDefs(memberDefs)
       writeTopLevelExportDefs(topLevelExportDefs)
-      writeInt(classDef.optimizerHints.bits)
+      writeInt(optimizerHints.bits)
     }
 
     def writeMemberDef(memberDef: MemberDef): Unit = {
@@ -859,9 +858,9 @@ object Serializers {
         case TagJSFunctionApply      => JSFunctionApply(readTree(), readTrees())
         case TagJSDotMethodApply     => JSDotMethodApply(readTree(), readIdent(), readTrees())
         case TagJSBracketMethodApply => JSBracketMethodApply(readTree(), readTree(), readTrees())
-        case TagJSSuperBracketSelect => JSSuperBracketSelect(readClassType(), readTree(), readTree())
+        case TagJSSuperBracketSelect => JSSuperBracketSelect(readTree(), readTree(), readTree())
         case TagJSSuperBracketCall   =>
-          JSSuperBracketCall(readClassType(), readTree(), readTree(), readTrees())
+          JSSuperBracketCall(readTree(), readTree(), readTree(), readTrees())
         case TagJSSuperConstructorCall => JSSuperConstructorCall(readTrees())
         case TagLoadJSConstructor    => LoadJSConstructor(readClassType())
         case TagLoadJSModule         => LoadJSModule(readClassType())

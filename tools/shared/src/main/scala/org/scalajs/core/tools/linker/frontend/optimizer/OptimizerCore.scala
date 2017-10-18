@@ -596,12 +596,13 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
             transformExprsOrSpreads(args))
 
-      case JSSuperBracketSelect(cls, qualifier, item) =>
-        JSSuperBracketSelect(cls, transformExpr(qualifier), transformExpr(item))
+      case JSSuperBracketSelect(superClass, qualifier, item) =>
+        JSSuperBracketSelect(transformExpr(superClass), transformExpr(qualifier),
+            transformExpr(item))
 
-      case JSSuperBracketCall(cls, receiver, method, args) =>
-        JSSuperBracketCall(cls, transformExpr(receiver), transformExpr(method),
-            transformExprsOrSpreads(args))
+      case JSSuperBracketCall(superClass, receiver, method, args) =>
+        JSSuperBracketCall(transformExpr(superClass), transformExpr(receiver),
+            transformExpr(method), transformExprsOrSpreads(args))
 
       case JSSuperConstructorCall(args) =>
         JSSuperConstructorCall(transformExprsOrSpreads(args))

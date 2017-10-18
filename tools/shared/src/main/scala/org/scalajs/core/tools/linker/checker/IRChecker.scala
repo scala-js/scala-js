@@ -936,15 +936,13 @@ private final class IRChecker(unit: LinkingUnit,
         for (arg <- args)
           typecheckExprOrSpread(arg, env)
 
-      case JSSuperBracketSelect(cls, qualifier, item) =>
-        if (!lookupClass(cls).kind.isJSClass)
-          reportError(s"JS class type expected but $cls found")
+      case JSSuperBracketSelect(superClass, qualifier, item) =>
+        typecheckExpr(superClass, env)
         typecheckExpr(qualifier, env)
         typecheckExpr(item, env)
 
-      case JSSuperBracketCall(cls, receiver, method, args) =>
-        if (!lookupClass(cls).kind.isJSClass)
-          reportError(s"JS class type expected but $cls found")
+      case JSSuperBracketCall(superClass, receiver, method, args) =>
+        typecheckExpr(superClass, env)
         typecheckExpr(receiver, env)
         typecheckExpr(method, env)
         for (arg <- args)

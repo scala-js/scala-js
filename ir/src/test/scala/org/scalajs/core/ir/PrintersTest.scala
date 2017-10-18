@@ -625,13 +625,13 @@ class PrintersTest {
   }
 
   @Test def printJSSuperBracketSelect(): Unit = {
-    assertPrintEquals("""x.LTest::super["f"]""",
-        JSSuperBracketSelect("LTest", ref("x", AnyType), StringLiteral("f")))
+    assertPrintEquals("""super(sc)::x["f"]""",
+        JSSuperBracketSelect(ref("sc", AnyType), ref("x", AnyType), StringLiteral("f")))
   }
 
   @Test def printJSSuperBracketCall(): Unit = {
-    assertPrintEquals("""x.LTest::super["f"]()""",
-        JSSuperBracketCall("LTest", ref("x", AnyType), StringLiteral("f"), Nil))
+    assertPrintEquals("""super(sc)::x["f"]()""",
+        JSSuperBracketCall(ref("sc", AnyType), ref("x", AnyType), StringLiteral("f"), Nil))
   }
 
   @Test def printJSSuperConstructorCall(): Unit = {

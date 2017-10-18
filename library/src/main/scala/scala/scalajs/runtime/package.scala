@@ -26,55 +26,6 @@ package object runtime {
     result
   }
 
-  private final def resolveSuperRef(self: Any,
-      propName: Any): js.Dynamic = {
-    // !!! Duplicate code with the $resolveSuperRef helper
-    // scalastyle:off return
-    val getPrototypeOf = js.constructorOf[js.Object].getPrototypeOf
-    val getOwnPropertyDescriptor = js.constructorOf[js.Object].getOwnPropertyDescriptor
-
-    var superProto = getPrototypeOf(self.asInstanceOf[js.Any])
-    while (superProto != null) {
-      val desc = getOwnPropertyDescriptor(superProto, propName.asInstanceOf[js.Any])
-      if (!js.isUndefined(desc))
-        return desc
-      superProto = getPrototypeOf(superProto)
-    }
-
-    js.undefined.asInstanceOf[js.Dynamic]
-    // scalastyle:on return
-  }
-
-  final def jsObjectSuperGet(self: Any, propName: Any): Any = {
-    // !!! Duplicate code with the $superGet helper
-    val desc = resolveSuperRef(self, propName)
-    if (!js.isUndefined(desc)) {
-      val getter = desc.get
-      if (!js.isUndefined(getter))
-        getter.call(self.asInstanceOf[js.Any])
-      else
-        desc.value
-    } else {
-      js.undefined
-    }
-  }
-
-  final def jsObjectSuperSet(self: Any, propName: Any, value: Any): Unit = {
-    // !!! Duplicate code with the $superSet helper
-    // scalastyle:off return
-    val desc = resolveSuperRef(self, propName)
-    if (!js.isUndefined(desc)) {
-      val setter = desc.set
-      if (!js.isUndefined(setter)) {
-        setter.call(self.asInstanceOf[js.Any], value.asInstanceOf[js.Any])
-        return
-      }
-    }
-    throw js.JavaScriptException(
-        new js.TypeError("super has no setter '" + propName + "'."))
-    // scalastyle:on return
-  }
-
   @inline final def genTraversableOnce2jsArray[A](
       col: GenTraversableOnce[A]): js.Array[A] = {
     col match {
