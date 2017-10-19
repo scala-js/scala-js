@@ -98,6 +98,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSConstructorTag_materialize = getMemberMethod(JSConstructorTagModule, newTermName("materialize"))
 
     lazy val SpecialPackageModule = getPackageObject("scala.scalajs.js.special")
+      lazy val Special_instanceof = getMemberMethod(SpecialPackageModule, newTermName("instanceof"))
       lazy val Special_delete = getMemberMethod(SpecialPackageModule, newTermName("delete"))
       lazy val Special_debugger = getMemberMethod(SpecialPackageModule, newTermName("debugger"))
 

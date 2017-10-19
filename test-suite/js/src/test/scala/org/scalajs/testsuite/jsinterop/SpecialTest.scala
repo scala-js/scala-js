@@ -17,6 +17,31 @@ import org.scalajs.testsuite.utils.AssertThrows._
 class SpecialTest {
   import SpecialTest._
 
+  // scala.scalajs.js.special.instanceof
+
+  @Test def instanceofTest(): Unit = {
+    import js.special.instanceof
+
+    val ObjectCtor = js.constructorOf[js.Object]
+    val DateCtor = js.constructorOf[js.Date]
+
+    val obj = new js.Object
+    assertTrue(instanceof(obj, ObjectCtor))
+    assertFalse(instanceof(obj, DateCtor))
+
+    val date = new js.Date
+    assertTrue(instanceof(date, ObjectCtor))
+    assertTrue(instanceof(date, DateCtor))
+
+    val functionCtor: js.ThisFunction0[js.Dynamic, Unit] = {
+      (thiz: js.Dynamic) =>
+        thiz.foo = 5
+    }
+    assertFalse(instanceof(obj, functionCtor))
+    val bar = js.Dynamic.newInstance(functionCtor.asInstanceOf[js.Dynamic])()
+    assertTrue(instanceof(bar, functionCtor))
+  }
+
   // scala.scalajs.js.special.delete
 
   @Test def should_provide_an_equivalent_of_the_JS_delete_keyword_issue_255(): Unit = {

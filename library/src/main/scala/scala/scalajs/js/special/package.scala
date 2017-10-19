@@ -22,6 +22,25 @@ package scala.scalajs.js
  */
 package object special {
 
+  /** Dynamically tests whether a value is an instance of a JavaScript class.
+   *
+   *  This method is the exact equivalent of `x instanceof clazz` in
+   *  JavaScript.
+   *
+   *  Using this method is only necessary when `clazz` is only known at
+   *  run-time. In most cases, you should use
+   *  {{{
+   *  x.isInstanceOf[C]
+   *  }}}
+   *  instead, where `C` is the statically defined class corresponding to
+   *  `clazz`. In particular, the following identity holds for all `x` and `C`:
+   *  {{{
+   *  x.isInstanceOf[C] == js.special.instanceof(x, js.constructorOf[C])
+   *  }}}
+   */
+  def instanceof(x: scala.Any, clazz: scala.Any): Boolean =
+    throw new java.lang.Error("stub")
+
   /** Deletes a property of an object.
    *
    *  This method is the exact equivalent of the `delete obj[key]` statement
