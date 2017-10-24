@@ -48,8 +48,9 @@ abstract class JSPrimitives {
   val CONSTRUCTOROF = 352 // runtime.constructorOf(clazz)
   val LINKING_INFO = 354  // $linkingInfo
 
-  val DELETE = 355   // js.special.delete
-  val DEBUGGER = 356 // js.special.debugger
+  val INSTANCEOF = 355 // js.special.instanceof
+  val DELETE = 356     // js.special.delete
+  val DEBUGGER = 357   // js.special.debugger
 
   /** Initialize the map of primitive methods (for GenJSCode) */
   def init(): Unit = initWithPrimitives(addPrimitive)
@@ -103,6 +104,7 @@ abstract class JSPrimitives {
     addPrimitive(Runtime_constructorOf, CONSTRUCTOROF)
     addPrimitive(Runtime_linkingInfo, LINKING_INFO)
 
+    addPrimitive(Special_instanceof, INSTANCEOF)
     addPrimitive(Special_delete, DELETE)
     addPrimitive(Special_debugger, DEBUGGER)
   }
