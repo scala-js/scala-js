@@ -879,10 +879,17 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             arg match {
               case Block(stats :+ expr) =>
                 val (jsStats, newEnv) = transformBlockStats(stats)
-                innerEnv = newEnv
-                val result = rec(expr)(newEnv) // right-to-left, remember?
+                val result = rec(expr)(newEnv)
                 // Put the stats in a Block because ++=: is not smart
                 js.Block(jsStats) +=: extractedStatements
+                innerEnv = stats.foldLeft(innerEnv) { (prev, stat) =>
+                  stat match {
+                    case VarDef(name, tpe, mutable, _) =>
+                      prev.withDef(name, tpe, mutable)
+                    case _ =>
+                      prev
+                  }
+                }
                 result
 
               case UnaryOp(op, lhs) =>
@@ -957,12 +964,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
               case _ =>
                 val temp = newSyntheticVar()
-                val newEnv = env.withDef(temp, arg.tpe, false)
-                innerEnv = newEnv
                 val computeTemp = pushLhsInto(
                     Lhs.VarDef(temp, arg.tpe, mutable = false), arg,
                     Set.empty)
                 computeTemp +=: extractedStatements
+                innerEnv = innerEnv.withDef(temp, arg.tpe, false)
                 VarRef(temp)(arg.tpe)
             }
           }
@@ -1267,18 +1273,20 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
        *  its scope.
        *  This only matters in ECMAScript 6, because we emit Lets.
        */
-      def extractLet(inner: Lhs => js.Tree): js.Tree = {
+      def extractLet(inner: (Lhs, Env) => js.Tree)(
+          implicit env: Env): js.Tree = {
         outputMode match {
           case OutputMode.ECMAScript51Isolated =>
-            inner(lhs)
+            inner(lhs, env)
           case OutputMode.ECMAScript6 =>
             lhs match {
               case Lhs.VarDef(name, tpe, mutable) =>
+                val innerEnv = env.withDef(name, tpe, true)
                 js.Block(
                     doEmptyVarDef(name, tpe),
-                    inner(Lhs.Assign(VarRef(name)(tpe))))
+                    inner(Lhs.Assign(VarRef(name)(tpe)), innerEnv))
               case _ =>
-                inner(lhs)
+                inner(lhs, env)
             }
         }
       }
@@ -1360,10 +1368,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               unnest(elems) { (newElems, env0) =>
                 implicit val env = env0
                 val temp = newSyntheticVar()
-                js.Block(
-                    doVarDef(temp, recTpe, mutable = false,
-                        RecordValue(recTpe, newElems)),
-                    doAssign(lhs, VarRef(temp)(recTpe)))
+                val varDef = doVarDef(temp, recTpe, mutable = false,
+                    RecordValue(recTpe, newElems))
+                val assign = doAssign(lhs, VarRef(temp)(recTpe))(
+                    env.withDef(temp, recTpe, false))
+                js.Block(varDef, assign)
               }
 
             case Lhs.Return(None) =>
@@ -1376,7 +1385,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // Control flow constructs
 
         case Labeled(label, tpe, body) =>
-          extractLet { newLhs =>
+          extractLet { (newLhs, env) =>
             val bodyEnv = env.withLabeledExprLHS(label, newLhs)
             val newBody =
               pushLhsInto(newLhs, body, tailPosLabels + label.name)(bodyEnv)
@@ -1395,23 +1404,24 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case If(cond, thenp, elsep) =>
           unnest(cond) { (newCond, env0) =>
             implicit val env = env0
-            extractLet { newLhs =>
+            extractLet { (newLhs, branchesEnv) =>
               js.If(transformExprNoChar(newCond),
-                  pushLhsInto(newLhs, thenp, tailPosLabels),
-                  pushLhsInto(newLhs, elsep, tailPosLabels))
+                  pushLhsInto(newLhs, thenp, tailPosLabels)(branchesEnv),
+                  pushLhsInto(newLhs, elsep, tailPosLabels)(branchesEnv))
             }
           }
 
         case TryCatch(block, errVar, handler) =>
-          extractLet { newLhs =>
-            val newBlock = pushLhsInto(newLhs, block, tailPosLabels)
-            val newHandler = pushLhsInto(newLhs, handler, tailPosLabels)
+          extractLet { (newLhs, env) =>
+            val newBlock = pushLhsInto(newLhs, block, tailPosLabels)(env)
+            val newHandler = pushLhsInto(newLhs, handler, tailPosLabels)(
+                env.withDef(errVar, mutable = false))
             js.TryCatch(newBlock, transformLocalVarIdent(errVar), newHandler)
           }
 
         case TryFinally(block, finalizer) =>
-          extractLet { newLhs =>
-            val newBlock = pushLhsInto(newLhs, block, tailPosLabels)
+          extractLet { (newLhs, blockEnv) =>
+            val newBlock = pushLhsInto(newLhs, block, tailPosLabels)(blockEnv)
             val newFinalizer = transformStat(finalizer, Set.empty)
             js.TryFinally(newBlock, newFinalizer)
           }
@@ -1436,14 +1446,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case Match(selector, cases, default) =>
           unnest(selector) { (newSelector, env0) =>
             implicit val env = env0.withDefaultBreakTargets(tailPosLabels)
-            extractLet { newLhs =>
+            extractLet { (newLhs, branchesEnv) =>
               val newCases = {
                 for {
                   (values, body) <- cases
                   newValues = values.map(transformExpr(_, preserveChar = true))
                   // add the break statement
                   newBody = js.Block(
-                      pushLhsInto(newLhs, body, tailPosLabels),
+                      pushLhsInto(newLhs, body, tailPosLabels)(branchesEnv),
                       js.Break())
                   // desugar alternatives into several cases falling through
                   caze <- (newValues.init map (v => (v, js.Skip()))) :+ (newValues.last, newBody)
@@ -1451,7 +1461,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   caze
                 }
               }
-              val newDefault = pushLhsInto(newLhs, default, tailPosLabels)
+              val newDefault = pushLhsInto(newLhs, default, tailPosLabels)(
+                  branchesEnv)
               js.Switch(transformExpr(newSelector, preserveChar = true),
                   newCases, newDefault)
             }
@@ -1891,6 +1902,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           genLoadModule(cls.className)
 
         case RecordFieldVarRef(VarRef(name)) =>
+          assert(env.isLocalVar(name), name.name)
           js.VarRef(transformLocalVarIdent(name))
 
         case Select(qualifier, item) =>
@@ -2272,6 +2284,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // Atomic expressions
 
         case VarRef(name) =>
+          assert(env.isLocalVar(name), name.name)
           js.VarRef(transformLocalVarIdent(name))
 
         case This() =>
@@ -2459,6 +2472,8 @@ private object FunctionEmitter {
       labeledExprLHSes: Map[String, Lhs],
       defaultBreakTargets: Set[String]
   ) {
+    def isLocalVar(ident: Ident): Boolean = vars.contains(ident.name)
+
     def isLocalMutable(ident: Ident): Boolean = vars(ident.name)
 
     def lhsForLabeledExpr(label: Ident): Lhs = labeledExprLHSes(label.name)
