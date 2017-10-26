@@ -1260,28 +1260,32 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     private def mkOverloadSelection(jsConstructorBuilder: JSConstructorBuilder,
         overloadIdent: js.Ident, dispatchResolution: js.Tree)(
-        implicit pos: Position): List[js.Tree]= {
-      if (!jsConstructorBuilder.hasSubConstructors) {
-        dispatchResolution match {
-          /* Dispatch to constructor with no arguments.
-           * Contains trivial parameterless call to the constructor.
-           */
-          case js.ApplyStatic(_, mtd, js.This() :: Nil)
-              if ir.Definitions.isConstructorName(mtd.name) =>
-            Nil
+        implicit pos: Position): List[js.Tree] = {
 
-          /* Dispatch to constructor with at least one argument.
-           * Where js.Block's stats.init corresponds to the parameter casts and
-           * js.Block's stats.last contains the call to the constructor.
-           */
-          case js.Block(stats) =>
-            val js.ApplyStatic(_, method, _) = stats.last
-            val refs = jsConstructorBuilder.getParamRefsFor(method.name)
-            val paramCasts = stats.init.map(_.asInstanceOf[js.VarDef])
-            zipMap(refs, paramCasts) { (ref, paramCast) =>
-              js.VarDef(ref.ident, ref.tpe, mutable = false, paramCast.rhs)
-            }
+      def deconstructApplyCtor(body: js.Tree): (List[js.Tree], String, List[js.Tree]) = {
+        val (prepStats, applyCtor) = body match {
+          case applyCtor: js.ApplyStatic =>
+            (Nil, applyCtor)
+          case js.Block(prepStats :+ (applyCtor: js.ApplyStatic)) =>
+            (prepStats, applyCtor)
         }
+        val js.ApplyStatic(_, js.Ident(ctorName, _), js.This() :: ctorArgs) =
+          applyCtor
+        assert(ir.Definitions.isConstructorName(ctorName))
+        (prepStats, ctorName, ctorArgs)
+      }
+
+      if (!jsConstructorBuilder.hasSubConstructors) {
+        val (prepStats, ctorName, ctorArgs) =
+          deconstructApplyCtor(dispatchResolution)
+
+        val refs = jsConstructorBuilder.getParamRefsFor(ctorName)
+        assert(refs.size == ctorArgs.size, currentClassSym.fullName)
+        val assignCtorParams = zipMap(refs, ctorArgs) { (ref, ctorArg) =>
+          js.VarDef(ref.ident, ref.tpe, mutable = false, ctorArg)
+        }
+
+        prepStats ::: assignCtorParams
       } else {
         val overloadRef = js.VarRef(overloadIdent)(jstpe.IntType)
 
@@ -1289,30 +1293,6 @@ abstract class GenJSCode extends plugins.PluginComponent
          * `genJSConstructorExport` and transform it recursively.
          */
         def transformDispatch(tree: js.Tree): js.Tree = tree match {
-          /* Dispatch to constructor with no arguments.
-           * Contains trivial parameterless call to the constructor.
-           */
-          case js.ApplyStatic(_, method, js.This() :: Nil)
-              if ir.Definitions.isConstructorName(method.name) =>
-            js.Assign(overloadRef,
-              js.IntLiteral(jsConstructorBuilder.getOverrideNum(method.name)))
-
-          /* Dispatch to constructor with at least one argument.
-           * Where js.Block's stats.init corresponds to the parameter casts and
-           * js.Block's stats.last contains the call to the constructor.
-           */
-          case js.Block(stats) =>
-            val js.ApplyStatic(_, method, _) = stats.last
-
-            val num = jsConstructorBuilder.getOverrideNum(method.name)
-            val overloadAssign = js.Assign(overloadRef, js.IntLiteral(num))
-
-            val refs = jsConstructorBuilder.getParamRefsFor(method.name)
-            val paramCasts = stats.init.map(_.asInstanceOf[js.VarDef].rhs)
-            val parameterAssigns = zipMap(refs, paramCasts)(js.Assign(_, _))
-
-            js.Block(overloadAssign :: parameterAssigns)
-
           // Parameter count resolution
           case js.Match(selector, cases, default) =>
             val newCases = cases.map {
@@ -1329,6 +1309,19 @@ abstract class GenJSCode extends plugins.PluginComponent
           // Throw(StringLiteral(No matching overload))
           case tree: js.Throw =>
             tree
+
+          // Overload resolution done, apply the constructor
+          case _ =>
+            val (prepStats, ctorName, ctorArgs) = deconstructApplyCtor(tree)
+
+            val num = jsConstructorBuilder.getOverrideNum(ctorName)
+            val overloadAssign = js.Assign(overloadRef, js.IntLiteral(num))
+
+            val refs = jsConstructorBuilder.getParamRefsFor(ctorName)
+            assert(refs.size == ctorArgs.size, currentClassSym.fullName)
+            val assignCtorParams = zipMap(refs, ctorArgs)(js.Assign(_, _))
+
+            js.Block(overloadAssign :: prepStats ::: assignCtorParams)
         }
 
         val newDispatchResolution = transformDispatch(dispatchResolution)
