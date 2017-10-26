@@ -262,25 +262,25 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     }
     """ hasErrors
     """
-      |newSource1.scala:17: error: runtime.constructorOf() must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
+      |newSource1.scala:17: error: constructorOf must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
       |      val a = runtime.constructorOf(classOf[ScalaClass].asInstanceOf[Class[_ <: js.Any]])
       |                                   ^
-      |newSource1.scala:18: error: runtime.constructorOf() must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
+      |newSource1.scala:18: error: constructorOf must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
       |      val b = runtime.constructorOf(classOf[ScalaTrait].asInstanceOf[Class[_ <: js.Any]])
       |                                   ^
-      |newSource1.scala:20: error: runtime.constructorOf() must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
+      |newSource1.scala:20: error: constructorOf must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
       |      val c = runtime.constructorOf(classOf[NativeJSTrait])
       |                                   ^
-      |newSource1.scala:21: error: runtime.constructorOf() must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
+      |newSource1.scala:21: error: constructorOf must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
       |      val d = runtime.constructorOf(classOf[JSTrait])
       |                                   ^
-      |newSource1.scala:24: error: runtime.constructorOf() must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
+      |newSource1.scala:24: error: constructorOf must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
       |      val e = runtime.constructorOf(jsClassClass)
       |                                   ^
-      |newSource1.scala:26: error: runtime.constructorOf() must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
+      |newSource1.scala:26: error: constructorOf must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
       |      val f = runtime.constructorOf(NativeJSObject.getClass)
       |                                   ^
-      |newSource1.scala:27: error: runtime.constructorOf() must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
+      |newSource1.scala:27: error: constructorOf must be called with a constant classOf[T] representing a class extending js.Any (not a trait nor an object)
       |      val g = runtime.constructorOf(JSObject.getClass)
       |                                   ^
     """

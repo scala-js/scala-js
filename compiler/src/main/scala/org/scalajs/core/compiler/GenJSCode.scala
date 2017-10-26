@@ -4003,6 +4003,29 @@ abstract class GenJSCode extends plugins.PluginComponent
       def receiver = genExpr(receiver0)
       def genArgs = genPrimitiveJSArgs(tree.symbol, args)
 
+      def resolveReifiedJSClassSym(arg: Tree): Symbol = {
+        def fail(): Symbol = {
+          reporter.error(pos,
+              tree.symbol.nameString + " must be called with a constant " +
+              "classOf[T] representing a class extending js.Any " +
+              "(not a trait nor an object)")
+          NoSymbol
+        }
+        arg match {
+          case Literal(value) if value.tag == ClazzTag =>
+            val kind = toTypeKind(value.typeValue)
+            kind match {
+              case REFERENCE(classSym) if isJSType(classSym) &&
+                  !classSym.isTrait && !classSym.isModuleClass =>
+                classSym
+              case _ =>
+                fail()
+            }
+          case _ =>
+            fail()
+        }
+      }
+
       if (code == DYNNEW) {
         // js.Dynamic.newInstance(clazz)(actualArgs:_*)
         val (jsClass, actualArgs) = extractFirstArg(genArgs)
@@ -4113,26 +4136,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         // js.Array.create(elements: _*)
         js.JSArrayConstr(genArgs)
       } else if (code == CONSTRUCTOROF) {
-        def fail() = {
-          reporter.error(pos,
-              "runtime.constructorOf() must be called with a constant " +
-              "classOf[T] representing a class extending js.Any " +
-              "(not a trait nor an object)")
+        val classSym = resolveReifiedJSClassSym(args.head)
+        if (classSym == NoSymbol)
           js.Undefined()
-        }
-        args match {
-          case List(Literal(value)) if value.tag == ClazzTag =>
-            val kind = toTypeKind(value.typeValue)
-            kind match {
-              case REFERENCE(classSym) if isJSType(classSym) &&
-                  !classSym.isTrait && !classSym.isModuleClass =>
-                genPrimitiveJSClass(classSym)
-              case _ =>
-                fail()
-            }
-          case _ =>
-            fail()
-        }
+        else
+          genPrimitiveJSClass(classSym)
       } else (genArgs match {
         case Nil =>
           code match {
