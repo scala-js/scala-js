@@ -114,7 +114,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   override def newPhase(p: Phase): StdPhase = new JSCodePhase(p)
 
-  private object jsnme {
+  object jsnme {
     val anyHash = newTermName("anyHash")
     val arg_outer = newTermName("arg$outer")
     val newString = newTermName("newString")
