@@ -1056,38 +1056,46 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           val dispatch =
             genJSConstructorExport(constructorTrees.map(_.symbol))
-          val js.MethodDef(_, dispatchName, dispatchArgs, dispatchResultType,
-              Some(dispatchResolution)) = dispatch
-
-          val jsConstructorBuilder = mkJSConstructorBuilder(ctors)
-
-          val overloadIdent = freshLocalIdent("overload")
-
-          // Section containing the overload resolution and casts of parameters
-          val overloadSelection = mkOverloadSelection(jsConstructorBuilder,
-            overloadIdent, dispatchResolution)
-
-          /* Section containing all the code executed before the call to `this`
-           * for every secondary constructor.
-           */
-          val prePrimaryCtorBody =
-            jsConstructorBuilder.mkPrePrimaryCtorBody(overloadIdent)
-
-          val primaryCtorBody = jsConstructorBuilder.primaryCtorBody
-
-          /* Section containing all the code executed after the call to this for
-           * every secondary constructor.
-           */
-          val postPrimaryCtorBody =
-            jsConstructorBuilder.mkPostPrimaryCtorBody(overloadIdent)
-
-          val newBody = js.Block(overloadSelection ::: prePrimaryCtorBody ::
-              primaryCtorBody :: postPrimaryCtorBody :: Nil)
-
-          js.MethodDef(static = false, dispatchName, dispatchArgs, jstpe.NoType,
-              Some(newBody))(dispatch.optimizerHints, None)
+          buildJSConstructorDef(dispatch, ctors)
         }
       }
+    }
+
+    private def buildJSConstructorDef(dispatch: js.MethodDef,
+        ctors: List[js.MethodDef])(
+        implicit pos: Position): js.MethodDef = {
+
+      val js.MethodDef(_, dispatchName, dispatchArgs, dispatchResultType,
+          Some(dispatchResolution)) = dispatch
+
+      val jsConstructorBuilder = mkJSConstructorBuilder(ctors)
+
+      val overloadIdent = freshLocalIdent("overload")
+
+      // Section containing the overload resolution and casts of parameters
+      val overloadSelection = mkOverloadSelection(jsConstructorBuilder,
+        overloadIdent, dispatchResolution)
+
+      /* Section containing all the code executed before the call to `this`
+       * for every secondary constructor.
+       */
+      val prePrimaryCtorBody =
+        jsConstructorBuilder.mkPrePrimaryCtorBody(overloadIdent)
+
+      val primaryCtorBody = jsConstructorBuilder.primaryCtorBody
+
+      /* Section containing all the code executed after the call to this for
+       * every secondary constructor.
+       */
+      val postPrimaryCtorBody =
+        jsConstructorBuilder.mkPostPrimaryCtorBody(overloadIdent)
+
+      val newBody = js.Block(overloadSelection ::: prePrimaryCtorBody ::
+          primaryCtorBody :: postPrimaryCtorBody :: Nil)
+
+      js.MethodDef(static = false, dispatchName, dispatchArgs,
+          jstpe.NoType, Some(newBody))(
+          dispatch.optimizerHints, None)
     }
 
     private class ConstructorTree(val overrideNum: Int, val method: js.MethodDef,
