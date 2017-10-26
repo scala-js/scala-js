@@ -731,47 +731,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         // If argument is undefined and there is a default getter, call it
         val verifiedOrDefault = if (param.hasFlag(Flags.DEFAULTPARAM)) {
           js.If(js.BinaryOp(js.BinaryOp.===, jsArg, js.Undefined()), {
-            val trgSym = {
-              if (sym.isClassConstructor) {
-                /* Get the companion module class.
-                 * For inner classes the sym.owner.companionModule can be broken,
-                 * therefore companionModule is fetched at uncurryPhase.
-                 */
-                val companionModule = enteringPhase(currentRun.namerPhase) {
-                  sym.owner.companionModule
-                }
-                companionModule.moduleClass
-              } else {
-                sym.owner
-              }
-            }
-            val defaultGetter = trgSym.tpe.member(
-                nme.defaultGetterName(sym.name, i+1))
-
-            assert(defaultGetter.exists,
-                s"need default getter for method ${sym.fullName}")
-            assert(!defaultGetter.isOverloaded)
-
-            val trgTree = {
-              if (sym.isClassConstructor) genLoadModule(trgSym)
-              else js.This()(encodeClassType(trgSym))
-            }
-
-            // Pass previous arguments to defaultGetter
-            val defaultGetterArgs =
-              result.take(defaultGetter.tpe.params.size).toList.map(_.ref)
-
-            if (isJSType(trgSym)) {
-              if (isNonNativeJSClass(defaultGetter.owner)) {
-                genApplyJSClassMethod(trgTree, defaultGetter, defaultGetterArgs)
-              } else {
-                reporter.error(param.pos, "When overriding a native method " +
-                    "with default arguments, the overriding method must " +
-                    "explicitly repeat the default arguments.")
-                js.Undefined()
-              }
-            } else {
-              genApplyMethod(trgTree, defaultGetter, defaultGetterArgs)
+            genCallDefaultGetter(sym, i, param.pos) {
+              prevArgsCount => result.take(prevArgsCount).toList.map(_.ref)
             }
           }, {
             // Otherwise, unbox the argument
@@ -788,6 +749,54 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
 
       result.toList
+    }
+
+    private def genCallDefaultGetter(sym: Symbol, paramIndex: Int,
+        paramPos: Position)(
+        previousArgsValues: Int => List[js.Tree])(
+        implicit pos: Position): js.Tree = {
+
+      val trgSym = {
+        if (sym.isClassConstructor) {
+          /* Get the companion module class.
+           * For inner classes the sym.owner.companionModule can be broken,
+           * therefore companionModule is fetched at uncurryPhase.
+           */
+          val companionModule = enteringPhase(currentRun.namerPhase) {
+            sym.owner.companionModule
+          }
+          companionModule.moduleClass
+        } else {
+          sym.owner
+        }
+      }
+      val defaultGetter = trgSym.tpe.member(
+          nme.defaultGetterName(sym.name, paramIndex + 1))
+
+      assert(defaultGetter.exists,
+          s"need default getter for method ${sym.fullName}")
+      assert(!defaultGetter.isOverloaded)
+
+      val trgTree = {
+        if (sym.isClassConstructor) genLoadModule(trgSym)
+        else js.This()(encodeClassType(trgSym))
+      }
+
+      // Pass previous arguments to defaultGetter
+      val defaultGetterArgs = previousArgsValues(defaultGetter.tpe.params.size)
+
+      if (isJSType(trgSym)) {
+        if (isNonNativeJSClass(defaultGetter.owner)) {
+          genApplyJSClassMethod(trgTree, defaultGetter, defaultGetterArgs)
+        } else {
+          reporter.error(paramPos, "When overriding a native method " +
+              "with default arguments, the overriding method must " +
+              "explicitly repeat the default arguments.")
+          js.Undefined()
+        }
+      } else {
+        genApplyMethod(trgTree, defaultGetter, defaultGetterArgs)
+      }
     }
 
     /** Generate the final forwarding call to the exported method.
