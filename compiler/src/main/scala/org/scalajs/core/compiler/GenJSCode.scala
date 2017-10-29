@@ -114,7 +114,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   override def newPhase(p: Phase): StdPhase = new JSCodePhase(p)
 
-  private object jsnme {
+  object jsnme {
     val anyHash = newTermName("anyHash")
     val arg_outer = newTermName("arg$outer")
     val newString = newTermName("newString")
@@ -1056,38 +1056,46 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           val dispatch =
             genJSConstructorExport(constructorTrees.map(_.symbol))
-          val js.MethodDef(_, dispatchName, dispatchArgs, dispatchResultType,
-              Some(dispatchResolution)) = dispatch
-
-          val jsConstructorBuilder = mkJSConstructorBuilder(ctors)
-
-          val overloadIdent = freshLocalIdent("overload")
-
-          // Section containing the overload resolution and casts of parameters
-          val overloadSelection = mkOverloadSelection(jsConstructorBuilder,
-            overloadIdent, dispatchResolution)
-
-          /* Section containing all the code executed before the call to `this`
-           * for every secondary constructor.
-           */
-          val prePrimaryCtorBody =
-            jsConstructorBuilder.mkPrePrimaryCtorBody(overloadIdent)
-
-          val primaryCtorBody = jsConstructorBuilder.primaryCtorBody
-
-          /* Section containing all the code executed after the call to this for
-           * every secondary constructor.
-           */
-          val postPrimaryCtorBody =
-            jsConstructorBuilder.mkPostPrimaryCtorBody(overloadIdent)
-
-          val newBody = js.Block(overloadSelection ::: prePrimaryCtorBody ::
-              primaryCtorBody :: postPrimaryCtorBody :: Nil)
-
-          js.MethodDef(static = false, dispatchName, dispatchArgs, jstpe.NoType,
-              Some(newBody))(dispatch.optimizerHints, None)
+          buildJSConstructorDef(dispatch, ctors)
         }
       }
+    }
+
+    private def buildJSConstructorDef(dispatch: js.MethodDef,
+        ctors: List[js.MethodDef])(
+        implicit pos: Position): js.MethodDef = {
+
+      val js.MethodDef(_, dispatchName, dispatchArgs, dispatchResultType,
+          Some(dispatchResolution)) = dispatch
+
+      val jsConstructorBuilder = mkJSConstructorBuilder(ctors)
+
+      val overloadIdent = freshLocalIdent("overload")
+
+      // Section containing the overload resolution and casts of parameters
+      val overloadSelection = mkOverloadSelection(jsConstructorBuilder,
+        overloadIdent, dispatchResolution)
+
+      /* Section containing all the code executed before the call to `this`
+       * for every secondary constructor.
+       */
+      val prePrimaryCtorBody =
+        jsConstructorBuilder.mkPrePrimaryCtorBody(overloadIdent)
+
+      val primaryCtorBody = jsConstructorBuilder.primaryCtorBody
+
+      /* Section containing all the code executed after the call to this for
+       * every secondary constructor.
+       */
+      val postPrimaryCtorBody =
+        jsConstructorBuilder.mkPostPrimaryCtorBody(overloadIdent)
+
+      val newBody = js.Block(overloadSelection ::: prePrimaryCtorBody ::
+          primaryCtorBody :: postPrimaryCtorBody :: Nil)
+
+      js.MethodDef(static = false, dispatchName, dispatchArgs,
+          jstpe.NoType, Some(newBody))(
+          dispatch.optimizerHints, None)
     }
 
     private class ConstructorTree(val overrideNum: Int, val method: js.MethodDef,
@@ -1257,28 +1265,32 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     private def mkOverloadSelection(jsConstructorBuilder: JSConstructorBuilder,
         overloadIdent: js.Ident, dispatchResolution: js.Tree)(
-        implicit pos: Position): List[js.Tree]= {
-      if (!jsConstructorBuilder.hasSubConstructors) {
-        dispatchResolution match {
-          /* Dispatch to constructor with no arguments.
-           * Contains trivial parameterless call to the constructor.
-           */
-          case js.ApplyStatic(_, mtd, js.This() :: Nil)
-              if ir.Definitions.isConstructorName(mtd.name) =>
-            Nil
+        implicit pos: Position): List[js.Tree] = {
 
-          /* Dispatch to constructor with at least one argument.
-           * Where js.Block's stats.init corresponds to the parameter casts and
-           * js.Block's stats.last contains the call to the constructor.
-           */
-          case js.Block(stats) =>
-            val js.ApplyStatic(_, method, _) = stats.last
-            val refs = jsConstructorBuilder.getParamRefsFor(method.name)
-            val paramCasts = stats.init.map(_.asInstanceOf[js.VarDef])
-            zipMap(refs, paramCasts) { (ref, paramCast) =>
-              js.VarDef(ref.ident, ref.tpe, mutable = false, paramCast.rhs)
-            }
+      def deconstructApplyCtor(body: js.Tree): (List[js.Tree], String, List[js.Tree]) = {
+        val (prepStats, applyCtor) = body match {
+          case applyCtor: js.ApplyStatic =>
+            (Nil, applyCtor)
+          case js.Block(prepStats :+ (applyCtor: js.ApplyStatic)) =>
+            (prepStats, applyCtor)
         }
+        val js.ApplyStatic(_, js.Ident(ctorName, _), js.This() :: ctorArgs) =
+          applyCtor
+        assert(ir.Definitions.isConstructorName(ctorName))
+        (prepStats, ctorName, ctorArgs)
+      }
+
+      if (!jsConstructorBuilder.hasSubConstructors) {
+        val (prepStats, ctorName, ctorArgs) =
+          deconstructApplyCtor(dispatchResolution)
+
+        val refs = jsConstructorBuilder.getParamRefsFor(ctorName)
+        assert(refs.size == ctorArgs.size, currentClassSym.fullName)
+        val assignCtorParams = zipMap(refs, ctorArgs) { (ref, ctorArg) =>
+          js.VarDef(ref.ident, ref.tpe, mutable = false, ctorArg)
+        }
+
+        prepStats ::: assignCtorParams
       } else {
         val overloadRef = js.VarRef(overloadIdent)(jstpe.IntType)
 
@@ -1286,30 +1298,6 @@ abstract class GenJSCode extends plugins.PluginComponent
          * `genJSConstructorExport` and transform it recursively.
          */
         def transformDispatch(tree: js.Tree): js.Tree = tree match {
-          /* Dispatch to constructor with no arguments.
-           * Contains trivial parameterless call to the constructor.
-           */
-          case js.ApplyStatic(_, method, js.This() :: Nil)
-              if ir.Definitions.isConstructorName(method.name) =>
-            js.Assign(overloadRef,
-              js.IntLiteral(jsConstructorBuilder.getOverrideNum(method.name)))
-
-          /* Dispatch to constructor with at least one argument.
-           * Where js.Block's stats.init corresponds to the parameter casts and
-           * js.Block's stats.last contains the call to the constructor.
-           */
-          case js.Block(stats) =>
-            val js.ApplyStatic(_, method, _) = stats.last
-
-            val num = jsConstructorBuilder.getOverrideNum(method.name)
-            val overloadAssign = js.Assign(overloadRef, js.IntLiteral(num))
-
-            val refs = jsConstructorBuilder.getParamRefsFor(method.name)
-            val paramCasts = stats.init.map(_.asInstanceOf[js.VarDef].rhs)
-            val parameterAssigns = zipMap(refs, paramCasts)(js.Assign(_, _))
-
-            js.Block(overloadAssign :: parameterAssigns)
-
           // Parameter count resolution
           case js.Match(selector, cases, default) =>
             val newCases = cases.map {
@@ -1326,6 +1314,19 @@ abstract class GenJSCode extends plugins.PluginComponent
           // Throw(StringLiteral(No matching overload))
           case tree: js.Throw =>
             tree
+
+          // Overload resolution done, apply the constructor
+          case _ =>
+            val (prepStats, ctorName, ctorArgs) = deconstructApplyCtor(tree)
+
+            val num = jsConstructorBuilder.getOverrideNum(ctorName)
+            val overloadAssign = js.Assign(overloadRef, js.IntLiteral(num))
+
+            val refs = jsConstructorBuilder.getParamRefsFor(ctorName)
+            assert(refs.size == ctorArgs.size, currentClassSym.fullName)
+            val assignCtorParams = zipMap(refs, ctorArgs)(js.Assign(_, _))
+
+            js.Block(overloadAssign :: prepStats ::: assignCtorParams)
         }
 
         val newDispatchResolution = transformDispatch(dispatchResolution)
@@ -4002,6 +4003,29 @@ abstract class GenJSCode extends plugins.PluginComponent
       def receiver = genExpr(receiver0)
       def genArgs = genPrimitiveJSArgs(tree.symbol, args)
 
+      def resolveReifiedJSClassSym(arg: Tree): Symbol = {
+        def fail(): Symbol = {
+          reporter.error(pos,
+              tree.symbol.nameString + " must be called with a constant " +
+              "classOf[T] representing a class extending js.Any " +
+              "(not a trait nor an object)")
+          NoSymbol
+        }
+        arg match {
+          case Literal(value) if value.tag == ClazzTag =>
+            val kind = toTypeKind(value.typeValue)
+            kind match {
+              case REFERENCE(classSym) if isJSType(classSym) &&
+                  !classSym.isTrait && !classSym.isModuleClass =>
+                classSym
+              case _ =>
+                fail()
+            }
+          case _ =>
+            fail()
+        }
+      }
+
       if (code == DYNNEW) {
         // js.Dynamic.newInstance(clazz)(actualArgs:_*)
         val (jsClass, actualArgs) = extractFirstArg(genArgs)
@@ -4112,26 +4136,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         // js.Array.create(elements: _*)
         js.JSArrayConstr(genArgs)
       } else if (code == CONSTRUCTOROF) {
-        def fail() = {
-          reporter.error(pos,
-              "runtime.constructorOf() must be called with a constant " +
-              "classOf[T] representing a class extending js.Any " +
-              "(not a trait nor an object)")
+        val classSym = resolveReifiedJSClassSym(args.head)
+        if (classSym == NoSymbol)
           js.Undefined()
-        }
-        args match {
-          case List(Literal(value)) if value.tag == ClazzTag =>
-            val kind = toTypeKind(value.typeValue)
-            kind match {
-              case REFERENCE(classSym) if isJSType(classSym) &&
-                  !classSym.isTrait && !classSym.isModuleClass =>
-                genPrimitiveJSClass(classSym)
-              case _ =>
-                fail()
-            }
-          case _ =>
-            fail()
-        }
+        else
+          genPrimitiveJSClass(classSym)
       } else (genArgs match {
         case Nil =>
           code match {
