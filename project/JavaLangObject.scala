@@ -29,7 +29,9 @@ object JavaLangObject {
       Ident("O", Some("java.lang.Object")),
       ClassKind.Class,
       None,
+      None,
       Nil,
+      None,
       None,
       List(
         /* def this() = () */

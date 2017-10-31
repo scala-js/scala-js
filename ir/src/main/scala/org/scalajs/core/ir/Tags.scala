@@ -91,6 +91,7 @@ private[ir] object Tags {
   final val TagVarRef = TagClassOf + 1
   final val TagThis = TagVarRef + 1
   final val TagClosure = TagThis + 1
+  final val TagCreateJSClass = TagClosure + 1
 
   // Tags for member defs
 

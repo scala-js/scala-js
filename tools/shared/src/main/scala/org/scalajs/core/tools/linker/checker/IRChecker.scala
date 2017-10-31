@@ -24,7 +24,7 @@ import Trees._
 import Types._
 
 import org.scalajs.core.tools.logging._
-import org.scalajs.core.tools.linker.{LinkingUnit, LinkedClass}
+import org.scalajs.core.tools.linker.{LinkingUnit, LinkedClass, Versioned}
 import org.scalajs.core.tools.linker.analyzer.{Analyzer, Infos}
 
 /** Checker for the validity of the IR. */
@@ -66,8 +66,11 @@ private final class IRChecker(unit: LinkingUnit,
   def check(): Int = {
     for (classDef <- unit.classDefs) {
       implicit val ctx = ErrorContext(classDef)
+
+      checkJSClassCaptures(classDef)
       checkJSNativeLoadSpec(classDef)
       checkStaticMembers(classDef)
+
       classDef.kind match {
         case ClassKind.AbstractJSType | ClassKind.NativeJSClass |
             ClassKind.NativeJSModuleClass =>
@@ -84,6 +87,43 @@ private final class IRChecker(unit: LinkingUnit,
       }
     }
     errorCount
+  }
+
+  private def checkJSClassCaptures(classDef: LinkedClass): Unit = {
+    implicit val ctx = ErrorContext(classDef)
+
+    for (classCaptures <- classDef.jsClassCaptures) {
+      if (classDef.kind != ClassKind.JSClass) {
+        reportError(
+            s"Class ${classDef.name} which is not a non-native JS class " +
+            "cannot have class captures")
+      }
+
+      classCaptures.foldLeft(Set.empty[String]) {
+        case (alreadyDeclared, p @ ParamDef(ident, tpe, mutable, rest)) =>
+          implicit val ctx = ErrorContext(p)
+          val name = ident.name
+          if (alreadyDeclared(name))
+            reportError(s"Duplicate JS class capture '$name'")
+          if (tpe == NoType)
+            reportError(s"The JS class capture $name cannot have type NoType")
+          if (mutable)
+            reportError(s"The JS class capture $name cannot be mutable")
+          if (rest)
+            reportError(s"The JS class capture $name cannot be a rest param")
+          alreadyDeclared + name
+      }
+
+      def isStaticInit(methodDef: Versioned[MethodDef]): Boolean =
+        methodDef.value.name.encodedName == StaticInitializerName
+
+      for (staticInit <- classDef.staticMethods.find(isStaticInit)) {
+        implicit val ctx = ErrorContext(staticInit.value)
+        reportError(
+            s"The non-top-level JS class ${classDef.name} cannot have a " +
+            "static initializer")
+      }
+    }
   }
 
   private def checkJSNativeLoadSpec(classDef: LinkedClass): Unit = {
@@ -284,7 +324,8 @@ private final class IRChecker(unit: LinkingUnit,
     val thisType =
       if (static) NoType
       else ClassType(classDef.name.name)
-    val bodyEnv = Env.fromSignature(thisType, params, resultType, isConstructor)
+    val bodyEnv = Env.fromSignature(thisType, None, params, resultType,
+        isConstructor)
 
     body.fold {
       // Abstract
@@ -344,7 +385,8 @@ private final class IRChecker(unit: LinkingUnit,
       body.fold {
         reportError("Exported method cannot be abstract")
       } { body =>
-        val bodyEnv = Env.fromSignature(thisType, params, resultType)
+        val bodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures,
+            params, resultType)
         typecheckExpect(body, bodyEnv, resultType)
       }
     }
@@ -381,8 +423,8 @@ private final class IRChecker(unit: LinkingUnit,
           (JSSuperConstructorCall(Nil)(methodDef.pos), Nil)
       }
 
-      val initialEnv = Env.fromSignature(NoType, params, NoType,
-          isConstructor = true)
+      val initialEnv = Env.fromSignature(NoType, classDef.jsClassCaptures,
+          params, NoType, isConstructor = true)
 
       val preparedEnv = (initialEnv /: prepStats) { (prevEnv, stat) =>
         typecheckStat(stat, prevEnv)
@@ -414,7 +456,8 @@ private final class IRChecker(unit: LinkingUnit,
       else ClassType(classDef.name.name)
 
     getterBody.foreach { getterBody =>
-      val getterBodyEnv = Env.fromSignature(thisType, Nil, AnyType)
+      val getterBodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures,
+          Nil, AnyType)
       typecheckExpect(getterBody, getterBodyEnv, AnyType)
     }
 
@@ -426,7 +469,8 @@ private final class IRChecker(unit: LinkingUnit,
       if (setterArg.rest)
         reportError(s"Rest parameter ${setterArg.name} is illegal in setter")
 
-      val setterBodyEnv = Env.fromSignature(thisType, List(setterArg), NoType)
+      val setterBodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures,
+          List(setterArg), NoType)
       typecheckStat(setterBody, setterBodyEnv)
     }
   }
@@ -463,7 +507,7 @@ private final class IRChecker(unit: LinkingUnit,
     checkJSParamDefs(params)
 
     val thisType = ClassType(classDef.name.name)
-    val bodyEnv = Env.fromSignature(thisType, params, NoType)
+    val bodyEnv = Env.fromSignature(thisType, None, params, NoType)
     typecheckStat(body, bodyEnv)
   }
 
@@ -938,6 +982,8 @@ private final class IRChecker(unit: LinkingUnit,
         }
         if (!valid)
           reportError(s"JS class type expected but $cls found")
+        else if (clazz.jsClassCaptures.nonEmpty)
+          reportError(s"Cannot load JS constructor of non-top-level class $cls")
 
       case LoadJSModule(cls) =>
         val clazz = lookupClass(cls)
@@ -1014,8 +1060,22 @@ private final class IRChecker(unit: LinkingUnit,
           checkJSParamDefs(params)
 
           val bodyEnv = Env.fromSignature(
-              AnyType, captureParams ++ params, AnyType)
+              AnyType, None, captureParams ++ params, AnyType)
           typecheckExpect(body, bodyEnv, AnyType)
+        }
+
+      case CreateJSClass(cls, captureValues) =>
+        val clazz = lookupClass(cls)
+        clazz.jsClassCaptures.fold {
+          reportError(s"Invalid CreateJSClass of top-level class $cls")
+        } { captureParams =>
+          if (captureParams.size != captureValues.size) {
+            reportError("Mismatched size for class captures: " +
+                s"${captureParams.size} params vs ${captureValues.size} values")
+          }
+
+          for ((ParamDef(_, ctpe, _, _), value) <- captureParams.zip(captureValues))
+            typecheckExpect(value, env, ctpe)
         }
 
       case _ =>
@@ -1160,7 +1220,7 @@ private final class IRChecker(unit: LinkingUnit,
       implicit ctx: ErrorContext): CheckedClass = {
     classes.getOrElseUpdate(className, {
       reportError(s"Cannot find class $className")
-      new CheckedClass(className, ClassKind.Class,
+      new CheckedClass(className, ClassKind.Class, None,
           Some(ObjectClass), Set(ObjectClass), hasInstances = true, None, Nil)
     })
   }
@@ -1168,6 +1228,11 @@ private final class IRChecker(unit: LinkingUnit,
   private def lookupClass(classType: ClassType)(
       implicit ctx: ErrorContext): CheckedClass = {
     lookupClass(classType.className)
+  }
+
+  private def lookupClass(classRef: ClassRef)(
+      implicit ctx: ErrorContext): CheckedClass = {
+    lookupClass(classRef.className)
   }
 
   private def isSubclass(lhs: String, rhs: String)(
@@ -1220,10 +1285,12 @@ private final class IRChecker(unit: LinkingUnit,
   private object Env {
     val empty: Env = new Env(NoType, Map.empty, Map.empty, false)
 
-    def fromSignature(thisType: Type, params: List[ParamDef],
-        resultType: Type, isConstructor: Boolean = false): Env = {
+    def fromSignature(thisType: Type, jsClassCaptures: Option[List[ParamDef]],
+        params: List[ParamDef], resultType: Type,
+        isConstructor: Boolean = false): Env = {
+      val allParams = jsClassCaptures.getOrElse(Nil) ::: params
       val paramLocalDefs =
-        for (p @ ParamDef(ident, tpe, mutable, _) <- params)
+        for (p @ ParamDef(ident, tpe, mutable, _) <- allParams)
           yield ident.name -> LocalDef(ident.name, tpe, mutable)(p.pos)
       new Env(thisType, paramLocalDefs.toMap,
           Map(None -> (if (resultType == NoType) AnyType else resultType)),
@@ -1234,6 +1301,7 @@ private final class IRChecker(unit: LinkingUnit,
   private class CheckedClass(
       val name: String,
       val kind: ClassKind,
+      val jsClassCaptures: Option[List[ParamDef]],
       val superClassName: Option[String],
       val ancestors: Set[String],
       val hasInstances: Boolean,
@@ -1248,6 +1316,7 @@ private final class IRChecker(unit: LinkingUnit,
 
     def this(classDef: LinkedClass)(implicit ctx: ErrorContext) = {
       this(classDef.name.name, classDef.kind,
+          classDef.jsClassCaptures,
           classDef.superClass.map(_.name),
           classDef.ancestors.toSet,
           classDef.hasInstances,

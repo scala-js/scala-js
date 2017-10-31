@@ -12,20 +12,22 @@ superaccessors   8  add super accessors in traits and nested classes
     extmethods   9  add extension methods for inline classes
        pickler  10  serialize symbol tables
      refchecks  11  reference/override checking, translate nested objects
-       uncurry  12  uncurry, translate function values to anonymous classes
-     tailcalls  13  replace tail calls by jumps
-    specialize  14  @specialized-driven class and method specialization
- explicitouter  15  this refs to outer pointers
-       erasure  16  erase types, add interfaces for traits
-   posterasure  17  clean up erased inline classes
-      lazyvals  18  allocate bitmaps, translate lazy vals into lazified defs
-    lambdalift  19  move nested functions to top level
-  constructors  20  move field definitions into constructors
-       flatten  21  eliminate inner classes
-         mixin  22  mixin composition
-        jscode  23  generate JavaScript code from ASTs
-       cleanup  24  platform-specific cleanups, generate reflective calls
-    delambdafy  25  remove lambdas
-         icode  26  generate portable intermediate code
-           jvm  27  generate JVM bytecode
-      terminal  28  the last phase during a compilation run
+xplicitinnerjs  12  make references to inner JS classes explicit
+       uncurry  13  uncurry, translate function values to anonymous classes
+     tailcalls  14  replace tail calls by jumps
+    specialize  15  @specialized-driven class and method specialization
+xplicitlocaljs  16  make references to local JS classes explicit
+ explicitouter  17  this refs to outer pointers
+       erasure  18  erase types, add interfaces for traits
+   posterasure  19  clean up erased inline classes
+      lazyvals  20  allocate bitmaps, translate lazy vals into lazified defs
+    lambdalift  21  move nested functions to top level
+  constructors  22  move field definitions into constructors
+       flatten  23  eliminate inner classes
+         mixin  24  mixin composition
+        jscode  25  generate JavaScript code from ASTs
+       cleanup  26  platform-specific cleanups, generate reflective calls
+    delambdafy  27  remove lambdas
+         icode  28  generate portable intermediate code
+           jvm  29  generate JVM bytecode
+      terminal  30  the last phase during a compilation run

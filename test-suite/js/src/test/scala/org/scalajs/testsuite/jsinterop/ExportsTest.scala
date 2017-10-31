@@ -1040,6 +1040,8 @@ class ExportsTest {
     assertThrows(classOf[Exception], foo.doA("a"))
   }
 
+  private abstract class JSAbstractClass extends js.Object
+
   @Test def should_expose_public_members_of_new_js_Object_issue_1899(): Unit = {
 
     // Test that the bug is fixed for js.Any classes.
@@ -1110,8 +1112,6 @@ class ExportsTest {
       def checkOriginalY3() = y3
     }
 
-    abstract class JSAbstractClass extends js.Object
-
     def getJSObj3(): js.Object = new JSAbstractClass {
       val x1 = "x1"
       var y1 = "y1"
@@ -1127,7 +1127,7 @@ class ExportsTest {
       def checkOriginalY3() = y3
     }
 
-    abstract class JSTrait extends js.Object
+    trait JSTrait extends js.Object
 
     def getJSObj4(): js.Object = new JSTrait {
       val x1 = "x1"

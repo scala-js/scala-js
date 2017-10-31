@@ -36,8 +36,10 @@ final class LinkedClass(
     // Stuff from Tree
     val name: Ident,
     val kind: ClassKind,
+    val jsClassCaptures: Option[List[ParamDef]],
     val superClass: Option[Ident],
     val interfaces: List[Ident],
+    val jsSuperClass: Option[Tree],
     val jsNativeLoadSpec: Option[JSNativeLoadSpec],
     val fields: List[FieldDef],
     val staticMethods: List[Versioned[MethodDef]],
@@ -69,8 +71,10 @@ final class LinkedClass(
   def copy(
       name: Ident = this.name,
       kind: ClassKind = this.kind,
+      jsClassCaptures: Option[List[ParamDef]] = this.jsClassCaptures,
       superClass: Option[Ident] = this.superClass,
       interfaces: List[Ident] = this.interfaces,
+      jsSuperClass: Option[Tree] = this.jsSuperClass,
       jsNativeLoadSpec: Option[JSNativeLoadSpec] = this.jsNativeLoadSpec,
       fields: List[FieldDef] = this.fields,
       staticMethods: List[Versioned[MethodDef]] = this.staticMethods,
@@ -88,8 +92,10 @@ final class LinkedClass(
     new LinkedClass(
         name,
         kind,
+        jsClassCaptures,
         superClass,
         interfaces,
+        jsSuperClass,
         jsNativeLoadSpec,
         fields,
         staticMethods,

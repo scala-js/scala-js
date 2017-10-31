@@ -34,14 +34,16 @@ class AnalyzerTest {
   private def classDef(
       encodedName: String,
       kind: ClassKind = ClassKind.Class,
+      jsClassCaptures: Option[List[ParamDef]] = None,
       superClass: Option[String] = None,
       interfaces: List[String] = Nil,
+      jsSuperClass: Option[Tree] = None,
       jsNativeLoadSpec: Option[JSNativeLoadSpec] = None,
       memberDefs: List[MemberDef] = Nil,
       topLevelExportDefs: List[TopLevelExportDef] = Nil): ClassDef = {
-    ClassDef(Ident(encodedName), kind, superClass.map(Ident(_)),
-        interfaces.map(Ident(_)), jsNativeLoadSpec, memberDefs,
-        topLevelExportDefs)(
+    ClassDef(Ident(encodedName), kind, jsClassCaptures,
+        superClass.map(Ident(_)), interfaces.map(Ident(_)), jsSuperClass,
+        jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
         emptyOptHints)
   }
 

@@ -157,29 +157,21 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       checkInternalAnnotations(tree)
 
       val preTransformedTree = tree match {
-        // Nothing is allowed in native JS classes and traits
-        case idef: ImplDef if enclosingOwner is OwnerKind.JSNativeClass =>
-          reporter.error(idef.pos, "Native JS traits and classes " +
-              "may not have inner traits, classes or objects")
-          super.transform(tree)
-
         // Handle js.Anys
         case idef: ImplDef if isJSAny(idef) =>
           transformJSAny(idef)
 
-        /* In native JS objects, only js.Any stuff is allowed. However, synthetic
-         * companion objects need to be allowed as they get generated, when a
-         * native class inside a native JS object has default arguments in its
-         * constructor (see #1891).
-         */
-        case modDef: ModuleDef if (enclosingOwner is OwnerKind.JSNativeMod) &&
-            modDef.symbol.isSynthetic =>
-          super.transform(tree)
-
-        // In native JS objects, only js.Any stuff is allowed
-        case idef: ImplDef if enclosingOwner is OwnerKind.JSNativeMod =>
-          reporter.error(idef.pos, "Native JS objects cannot contain inner " +
-              "Scala traits, classes or objects (i.e., not extending js.Any)")
+        // In native JS things, only js.Any stuff is allowed
+        case idef: ImplDef if enclosingOwner is OwnerKind.JSNative =>
+          /* We have to allow synthetic companion objects here, as they get
+           * generated when a nested native JS class has default arguments in
+           * its constructor (see #1891).
+           */
+          if (!idef.symbol.isSynthetic) {
+            reporter.error(idef.pos,
+                "Native JS traits, classes and objects cannot contain inner " +
+                "Scala traits, classes or objects (i.e., not extending js.Any)")
+          }
           super.transform(tree)
 
         // Catch the definition of scala.Enumeration itself
@@ -294,19 +286,22 @@ abstract class PrepJSInterop extends plugins.PluginComponent
                 |program is unlikely to function properly.""".stripMargin)
           super.transform(tree)
 
-        // Rewrite js.constructorOf[T] into runtime.constructorOf(classOf[T])
+        // Validate js.constructorOf[T]
         case TypeApply(ctorOfTree, List(tpeArg))
             if ctorOfTree.symbol == JSPackage_constructorOf =>
-          genConstructorOf(tree, tpeArg)
+          validateJSConstructorOf(tree, tpeArg)
+          super.transform(tree)
 
         /* Rewrite js.ConstructorTag.materialize[T] into
-         * runtime.newConstructorTag[T](runtime.constructorOf(classOf[T]))
+         * runtime.newConstructorTag[T](js.constructorOf[T])
          */
         case TypeApply(ctorOfTree, List(tpeArg))
             if ctorOfTree.symbol == JSConstructorTag_materialize =>
-          val ctorOf = genConstructorOf(tree, tpeArg)
+          validateJSConstructorOf(tree, tpeArg)
           typer.typed {
             atPos(tree.pos) {
+              val ctorOf = gen.mkTypeApply(
+                  gen.mkAttributedRef(JSPackage_constructorOf), List(tpeArg))
               gen.mkMethodCall(Runtime_newConstructorTag,
                   List(tpeArg.tpe), List(ctorOf))
             }
@@ -435,7 +430,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       postTransform(preTransformedTree)
     }
 
-    private def genConstructorOf(tree: Tree, tpeArg: Tree): Tree = {
+    private def validateJSConstructorOf(tree: Tree, tpeArg: Tree): Unit = {
       val classValue = try {
         typer.typedClassOf(tree, tpeArg)
       } catch {
@@ -448,21 +443,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         val Literal(classConstant) = classValue
         val tpe = classConstant.typeValue.dealiasWiden
         val typeSym = tpe.typeSymbol
-        if (!typeSym.isTrait && !typeSym.isModuleClass) {
-          typer.typed {
-            atPos(tree.pos) {
-              Apply(
-                  Select(Ident(RuntimePackageModule), newTermName("constructorOf")),
-                  List(classValue))
-            }
-          }
-        } else {
+        if (typeSym.isTrait || typeSym.isModuleClass) {
           reporter.error(tpeArg.pos,
               s"non-trait class type required but $tpe found")
-          EmptyTree
         }
-      } else {
-        EmptyTree
       }
     }
 
@@ -582,6 +566,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       // Checks for non-native JS stuff
       if (!isJSNative) {
+        // It cannot be in a native JS class or trait
+        if (enclosingOwner is OwnerKind.JSNativeClass) {
+          reporter.error(implDef.pos,
+              "Native JS classes and traits cannot contain non-native JS " +
+              "classes, traits or objects")
+        }
+
         // Unless it is a trait, it cannot be in a native JS object
         if (!sym.isTrait && (enclosingOwner is OwnerKind.JSNativeMod)) {
           reporter.error(implDef.pos,
@@ -603,6 +594,12 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               "native JS trait.")
         }
 
+        // Local JS classes cannot be abstract (implementation restriction)
+        if (!sym.isTrait && sym.isAbstractClass && sym.isLocalToBlock) {
+          reporter.error(implDef.pos,
+              "Implementation restriction: local JS classes cannot be abstract")
+        }
+
         // Check that there is no JS-native-specific annotation
         checkJSNativeSpecificAnnotsOnNonJSNative(implDef)
       }
@@ -619,12 +616,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         if (sym.isLocalToBlock) {
           reporter.error(implDef.pos,
               "Local native JS classes and objects are not allowed")
-        } else if (anyEnclosingOwner is OwnerKind.AnyClass) {
-          reporter.error(implDef.pos, "Traits and classes " +
-              "may not have inner native JS traits, classes or objects")
-        } else if (enclosingOwner is OwnerKind.JSMod) {
-          reporter.error(implDef.pos, "non-native JS objects " +
-              "may not have inner native JS classes or objects")
+        } else if (anyEnclosingOwner is OwnerKind.ScalaClass) {
+          reporter.error(implDef.pos,
+              "Scala traits and classes may not have inner native JS " +
+              "traits, classes or objects")
+        } else if (enclosingOwner is OwnerKind.JSNonNative) {
+          reporter.error(implDef.pos, "non-native JS classes, traits and " +
+              "objects may not have inner native JS classes, traits or objects")
         } else if (!sym.isTrait) {
           /* Compute the loading spec now, before `flatten` destroys the name
            * and (in 2.10) the original owner chain. We store it in a global
@@ -714,40 +712,48 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         sym: Symbol): Option[JSNativeLoadSpec] = {
       import JSNativeLoadSpec._
 
-      if (enclosingOwner is OwnerKind.JSNativeMod) {
+      if (enclosingOwner is OwnerKind.JSNative) {
         for (annot <- sym.annotations) {
           val annotSym = annot.symbol
 
           if (JSNativeLoadingSpecAnnots.contains(annotSym)) {
             reporter.error(annot.pos,
-                "Classes and objects nested in a JS native object cannot " +
+                "Nested JS classes and objects cannot " +
                 s"have an @${annotSym.nameString} annotation.")
-          } else if (annotSym == JSNameAnnotation &&
-              annot.args.head.tpe.typeSymbol != StringClass) {
-            reporter.error(annot.pos,
-                "Implementation restriction: @JSName with a js.Symbol is not " +
-                "supported on nested native classes and objects")
           }
         }
 
-        val jsName = jsInterop.jsNameOf(sym) match {
-          case JSName.Literal(jsName) => jsName
-          case JSName.Computed(_)     => "<erroneous>" // compile error above
-        }
+        if (sym.owner.isStaticOwner) {
+          for (annot <- sym.annotations) {
+            if (annot.symbol == JSNameAnnotation &&
+                annot.args.head.tpe.typeSymbol != StringClass) {
+              reporter.error(annot.pos,
+                  "Implementation restriction: @JSName with a js.Symbol is " +
+                  "not supported on nested native classes and objects")
+            }
+          }
 
-        val ownerLoadSpec = jsInterop.jsNativeLoadSpecOf(sym.owner)
-        val loadSpec = ownerLoadSpec match {
-          case Global(globalRef, path) =>
-            Global(globalRef, path :+ jsName)
-          case Import(module, path) =>
-            Import(module, path :+ jsName)
-          case ImportWithGlobalFallback(
-              Import(module, modulePath), Global(globalRef, globalPath)) =>
-            ImportWithGlobalFallback(
-                Import(module, modulePath :+ jsName),
-                Global(globalRef, globalPath :+ jsName))
+          val jsName = jsInterop.jsNameOf(sym) match {
+            case JSName.Literal(jsName) => jsName
+            case JSName.Computed(_)     => "<erroneous>" // compile error above
+          }
+
+          val ownerLoadSpec = jsInterop.jsNativeLoadSpecOf(sym.owner)
+          val loadSpec = ownerLoadSpec match {
+            case Global(globalRef, path) =>
+              Global(globalRef, path :+ jsName)
+            case Import(module, path) =>
+              Import(module, path :+ jsName)
+            case ImportWithGlobalFallback(
+                Import(module, modulePath), Global(globalRef, globalPath)) =>
+              ImportWithGlobalFallback(
+                  Import(module, modulePath :+ jsName),
+                  Global(globalRef, globalPath :+ jsName))
+          }
+          Some(loadSpec)
+        } else {
+          None
         }
-        Some(loadSpec)
       } else {
         def parsePath(pathName: String): List[String] =
           pathName.split('.').toList

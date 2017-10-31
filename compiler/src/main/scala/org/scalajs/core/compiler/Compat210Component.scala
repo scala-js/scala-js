@@ -28,12 +28,17 @@ trait Compat210Component {
     def unexpandedName: Name = self.originalName
     def originalName: Name = infiniteLoop()
 
+    def originalOwner: Symbol =
+      global.originalOwner.getOrElse(self, self.rawowner)
+
     def isPrivateThis: Boolean = self.hasAllFlags(PRIVATE | LOCAL)
     def isLocalToBlock: Boolean = self.isLocal
 
     def implClass: Symbol = NoSymbol
 
     def isTraitOrInterface: Boolean = self.isTrait || self.isInterface
+
+    def tpe_* : Type = self.tpe // scalastyle:ignore
   }
 
   // enteringPhase/exitingPhase replace beforePhase/afterPhase
@@ -56,6 +61,18 @@ trait Compat210Component {
     def afterPhase[T](ph: Phase)(op: => T): T = infiniteLoop()
 
     def delambdafy: DelambdafyCompat.type = DelambdafyCompat
+
+    // Copied from internal/Trees.scala
+    def NewFromConstructor(constructor: Symbol, args: Tree*): Apply = {
+      assert(constructor.isConstructor, constructor)
+      val instance = New(TypeTree(constructor.owner.tpe))
+      val init = Select(instance, nme.CONSTRUCTOR).setSymbol(constructor)
+      Apply(init, args.toList)
+    }
+
+    object originalOwner {
+      def getOrElse(sym: Symbol, orElse: => Symbol): Symbol = infiniteLoop()
+    }
   }
 
   object DelambdafyCompat {

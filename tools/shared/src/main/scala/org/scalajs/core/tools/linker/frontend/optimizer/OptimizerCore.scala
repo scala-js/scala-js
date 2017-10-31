@@ -650,6 +650,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         transformClosureCommon(captureParams, params, body,
             captureValues.map(transformExpr))
 
+      case CreateJSClass(cls, captureValues) =>
+        CreateJSClass(cls, captureValues.map(transformExpr))
+
       // Trees that need not be transformed
 
       case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic |

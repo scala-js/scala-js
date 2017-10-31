@@ -858,13 +858,58 @@ object Trees {
     val tpe = AnyType
   }
 
+  /** Creates a JavaScript class value.
+   *
+   *  @param cls
+   *    Reference to the `ClassDef` for the class definition, which must have
+   *    `jsClassCaptures.nonEmpty`
+   *
+   *  @param captureValues
+   *    Actual values for the captured parameters (in the `ClassDef`'s
+   *    `jsClassCaptures.get`)
+   */
+  case class CreateJSClass(cls: ClassRef, captureValues: List[Tree])(
+      implicit val pos: Position)
+      extends Tree {
+    val tpe = AnyType
+  }
+
   // Classes
 
   final class ClassDef(
       val name: Ident,
       val kind: ClassKind,
+      /** JS class captures.
+       *
+       *  - If `kind != ClassKind.JSClass`, must be `None`.
+       *  - Otherwise, if `None`, this is a top-level class, whose JS class
+       *    value is unique in the world and can be loaded with
+       *    `LoadJSConstructor`.
+       *  - If `Some(params)`, this is a nested JS class. New class values for
+       *    this class def can be created with `CreateJSClass`.
+       *    `LoadJSConstructor` is not valid for such a class def, since it
+       *    does not have a unique JS class value to load.
+       *
+       *  Note that `Some(Nil)` is valid and is a nested JS class that happens
+       *  to have no captures. It will still have zero to many JS class values
+       *  created with `CreateJSClass`.
+       */
+      val jsClassCaptures: Option[List[ParamDef]],
       val superClass: Option[Ident],
       val interfaces: List[Ident],
+      /** If defined, an expression returning the JS class value of the super
+       *  class.
+       *
+       *  If `kind` is neither `ClassKind.JSClass` nor `ClassKind.JSModule`,
+       *  this field must be `None`.
+       *
+       *  The expression can depend on JS class captures.
+       *
+       *  If empty for a non-native JS class, the JS super class value is
+       *  implicitly `LoadJSConstructor(superClass.get)`. In that case the
+       *  class def for `superClass` must have `jsClassCaptures.isEmpty`.
+       */
+      val jsSuperClass: Option[Tree],
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
       val memberDefs: List[MemberDef],
       val topLevelExportDefs: List[TopLevelExportDef]
@@ -876,15 +921,17 @@ object Trees {
     def apply(
         name: Ident,
         kind: ClassKind,
+        jsClassCaptures: Option[List[ParamDef]],
         superClass: Option[Ident],
         interfaces: List[Ident],
+        jsSuperClass: Option[Tree],
         jsNativeLoadSpec: Option[JSNativeLoadSpec],
         memberDefs: List[MemberDef],
         topLevelExportDefs: List[TopLevelExportDef])(
         optimizerHints: OptimizerHints)(
         implicit pos: Position): ClassDef = {
-      new ClassDef(name, kind, superClass, interfaces, jsNativeLoadSpec,
-          memberDefs, topLevelExportDefs)(
+      new ClassDef(name, kind, jsClassCaptures, superClass, interfaces,
+          jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
           optimizerHints)
     }
   }

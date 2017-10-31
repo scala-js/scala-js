@@ -29,7 +29,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
       List[NscPluginComponent](PrepInteropComponent)
     } else {
       List[NscPluginComponent](PreTyperComponentComponent, PrepInteropComponent,
-          GenCodeComponent)
+          ExplicitInnerJSComponent, ExplicitLocalJSComponent, GenCodeComponent)
     }
   }
 
@@ -77,6 +77,20 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     override val runsAfter = List("typer")
     override val runsBefore = List("pickle")
   } with PrepJSInterop
+
+  object ExplicitInnerJSComponent extends {
+    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
+    val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons
+    override val runsAfter = List("refchecks")
+    override val runsBefore = List("uncurry")
+  } with ExplicitInnerJS
+
+  object ExplicitLocalJSComponent extends {
+    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
+    val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons
+    override val runsAfter = List("specialize")
+    override val runsBefore = List("explicitouter")
+  } with ExplicitLocalJS
 
   object GenCodeComponent extends {
     val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global

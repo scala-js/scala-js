@@ -192,6 +192,9 @@ object Transformers {
           Closure(captureParams, params, transformExpr(body),
               captureValues.map(transformExpr))
 
+        case CreateJSClass(cls, captureValues) =>
+          CreateJSClass(cls, captureValues.map(transformExpr))
+
         // Trees that need not be transformed
 
         case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:SelectStatic |
@@ -205,7 +208,8 @@ object Transformers {
   abstract class ClassTransformer extends Transformer {
     def transformClassDef(tree: ClassDef): ClassDef = {
       import tree._
-      ClassDef(name, kind, superClass, interfaces, jsNativeLoadSpec,
+      ClassDef(name, kind, jsClassCaptures, superClass, interfaces,
+          jsSuperClass.map(transformExpr), jsNativeLoadSpec,
           memberDefs.map(transformMemberDef),
           topLevelExportDefs.map(transformTopLevelExportDef))(
           tree.optimizerHints)(tree.pos)

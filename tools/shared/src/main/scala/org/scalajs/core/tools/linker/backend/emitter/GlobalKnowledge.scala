@@ -10,6 +10,7 @@
 package org.scalajs.core.tools.linker.backend.emitter
 
 import org.scalajs.core.ir.Trees.{FieldDef, JSNativeLoadSpec}
+import org.scalajs.core.ir.Types.Type
 
 private[emitter] trait GlobalKnowledge {
   /** Tests whether the parent class data is accessed in the linking unit. */
@@ -39,11 +40,17 @@ private[emitter] trait GlobalKnowledge {
    */
   def hasInlineableInit(className: String): Boolean
 
+  /** Tests whether the specified class locally stores its super class. */
+  def hasStoredSuperClass(className: String): Boolean
+
+  /** Gets the types of the `jsClassCaptures` of the given class. */
+  def getJSClassCaptureTypes(className: String): Option[List[Type]]
+
   /** `None` for non-native JS classes/objects; `Some(spec)` for native JS
    *  classes/objects.
    *
    *  It is invalid to call this method with a class that is not a JS class
-   *  or object (native or not).
+   *  or object (native or not), or one that has JS class captures.
    */
   def getJSNativeLoadSpec(className: String): Option[JSNativeLoadSpec]
 

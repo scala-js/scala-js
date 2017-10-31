@@ -296,9 +296,29 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
     }
 
-    def genJSConstructorExport(alts: List[Symbol]): js.MethodDef = {
-      genExportMethod(alts.map(ExportedSymbol), JSName.Literal("constructor"),
+    def genJSConstructorExport(
+        alts: List[Symbol]): (Option[List[js.ParamDef]], js.MethodDef) = {
+      val exporteds = alts.map(ExportedSymbol)
+
+      val isLiftedJSCtor = exporteds.head.isLiftedJSConstructor
+      assert(exporteds.tail.forall(_.isLiftedJSConstructor == isLiftedJSCtor))
+      val captureParams = if (!isLiftedJSCtor) {
+        None
+      } else {
+        Some(for {
+          exported <- exporteds
+          param <- exported.captureParamsFront ::: exported.captureParamsBack
+        } yield {
+          implicit val pos = param.sym.pos
+          js.ParamDef(encodeLocalSym(param.sym), toIRType(param.tpe),
+              mutable = false, rest = false)
+        })
+      }
+
+      val ctorDef = genExportMethod(exporteds, JSName.Literal("constructor"),
           static = false)
+
+      (captureParams, ctorDef)
     }
 
     private def genExportProperty(alts: List[Symbol], jsName: JSName,
@@ -605,8 +625,15 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val allArgs =
         (1 to minArgc).map(genFormalArgRef(_, minArgc)) ++: restArg
 
-      val superClass = js.LoadJSConstructor(
-          jstpe.ClassType(encodeClassFullName(currentClassSym.superClass)))
+      val superClass = {
+        val superClassSym = currentClassSym.superClass
+        if (isNestedJSClass(superClassSym)) {
+          js.VarRef(js.Ident(JSSuperClassParamName))(jstpe.AnyType)
+        } else {
+          js.LoadJSConstructor(jstpe.ClassType(encodeClassFullName(superClassSym)))
+        }
+      }
+
       val receiver = js.This()(jstpe.AnyType)
       val nameString = genExpr(jsNameOf(sym))
 
@@ -648,7 +675,18 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       // Generate JS code to prepare arguments (default getters and unboxes)
       val jsArgPrep = genPrepareArgs(jsArgRefs, exported) ++ jsVarArgPrep
-      val jsResult = genResult(exported, jsArgPrep.map(_.ref), static)
+      val jsArgPrepRefs = jsArgPrep.map(_.ref)
+
+      // Combine prep'ed formal arguments with captures
+      def varRefForCaptureParam(param: ParamSpec): js.Tree =
+        js.VarRef(encodeLocalSym(param.sym))(toIRType(param.sym.tpe))
+      val allJSArgs = {
+        exported.captureParamsFront.map(varRefForCaptureParam) :::
+        jsArgPrepRefs :::
+        exported.captureParamsBack.map(varRefForCaptureParam)
+      }
+
+      val jsResult = genResult(exported, allJSArgs, static)
 
       js.Block(jsArgPrep :+ jsResult)
     }
@@ -780,7 +818,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     private sealed abstract class Exported {
       def sym: Symbol
       def pos: Position
+      def isLiftedJSConstructor: Boolean
       def params: immutable.IndexedSeq[ParamSpec]
+      def captureParamsFront: List[ParamSpec]
+      def captureParamsBack: List[ParamSpec]
       def exportArgTypeAt(paramIndex: Int): Type
       def genBody(minArgc: Int, hasRestParam: Boolean, static: Boolean): js.Tree
       def name: String
@@ -789,7 +830,13 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     }
 
     private case class ExportedSymbol(sym: Symbol) extends Exported {
-      val params = {
+      private val isAnonJSClassConstructor =
+        sym.isClassConstructor && isAnonJSClass(sym.owner)
+
+      val isLiftedJSConstructor =
+        sym.isClassConstructor && isNestedJSClass(sym.owner)
+
+      val (params, captureParamsFront, captureParamsBack) = {
         val allParamsUncurry =
           enteringPhase(currentRun.uncurryPhase)(sym.paramss.flatten.map(ParamSpec))
         val allParamsPosterasure =
@@ -806,7 +853,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           }
         }
 
-        if (!sym.isClassConstructor) {
+        if (!isLiftedJSConstructor && !isAnonJSClassConstructor) {
           /* Easy case: all params are formal params, and we only need to
            * travel back before uncurry to handle repeated params, or before
            * posterasure for other params.
@@ -817,7 +864,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
               s"non-lifted symbol ${sym.fullName}")
           val formalParams =
             mergeUncurryPosterasure(allParamsUncurry, allParamsPosterasure)
-          formalParams.toIndexedSeq
+          (formalParams.toIndexedSeq, Nil, Nil)
         } else {
           /* The `arg$outer` param is added by explicitouter (between uncurry
            * and posterasure) while the other capture params are added by
@@ -851,9 +898,16 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             allParamsNow.splitAt(startOfRealParams)
           val captureParamsBack = restOfParamsNow.drop(formalParams.size)
 
-          val allFormalParams =
-            captureParamsFront ::: formalParams ::: captureParamsBack
-          allFormalParams.toIndexedSeq
+          if (isAnonJSClassConstructor) {
+            /* For an anonymous JS class constructor, we put the capture
+             * parameters back as formal parameters.
+             */
+            val allFormalParams =
+              captureParamsFront ::: formalParams ::: captureParamsBack
+            (allFormalParams.toIndexedSeq, Nil, Nil)
+          } else {
+            (formalParams.toIndexedSeq, captureParamsFront, captureParamsBack)
+          }
         }
       }
 

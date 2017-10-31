@@ -227,6 +227,21 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         isStat = resultType == NoType, Env.empty(resultType))
   }
 
+  /** Desugars a class-level expression. */
+  def desugarExpr(expr: Tree, resultType: Type)(
+      implicit globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[js.Tree] = {
+    for (fun <- desugarToFunction(Nil, expr, resultType)) yield {
+      fun match {
+        case js.Function(Nil, js.Return(newExpr)) =>
+          // no need for an IIFE, we can just use `newExpr` directly
+          newExpr
+        case _ =>
+          js.Apply(fun, Nil)
+      }
+    }
+  }
+
   private class JSDesugar()(implicit globalKnowledge: GlobalKnowledge) {
 
     // Name management
@@ -625,8 +640,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             val superCtorCall = {
               outputMode match {
                 case OutputMode.ECMAScript51Isolated =>
-                  val superCtor = extractWithGlobals(genRawJSClassConstructor(
-                      globalKnowledge.getSuperClassOfJSClass(enclosingClassName)))
+                  val superCtor = {
+                    if (globalKnowledge.hasStoredSuperClass(enclosingClassName)) {
+                      envField("superClass")
+                    } else {
+                      val superClass =
+                        globalKnowledge.getSuperClassOfJSClass(enclosingClassName)
+                      extractWithGlobals(genRawJSClassConstructor(superClass))
+                    }
+                  }
 
                   if (containsAnySpread(newArgs)) {
                     val argArray = spreadToArgArray(newArgs)
@@ -1164,6 +1186,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           allowSideEffects
         case JSGlobalRef(_) =>
           allowSideEffects
+        case CreateJSClass(_, captureValues) =>
+          allowSideEffects && captureValues.forall(test)
 
         /* LoadJSConstructor is pure only for non-native JS classes,
          * which do not have a native load spec. Note that this test makes
@@ -1723,6 +1747,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case Closure(captureParams, params, body, captureValues) =>
           unnest(captureValues) { (newCaptureValues, env) =>
             redo(Closure(captureParams, params, body, newCaptureValues))(env)
+          }
+
+        case CreateJSClass(cls, captureValues) =>
+          unnest(captureValues) { (newCaptureValues, env) =>
+            redo(CreateJSClass(cls, newCaptureValues))(env)
           }
 
         case _ =>
@@ -2349,8 +2378,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // Atomic expressions
 
         case VarRef(name) =>
-          assert(env.isLocalVar(name), name.name)
-          js.VarRef(transformLocalVarIdent(name))
+          if (env.isLocalVar(name))
+            js.VarRef(transformLocalVarIdent(name))
+          else
+            envField("cc", name.name, name.originalName)
 
         case This() =>
           env.thisIdent.fold[js.Tree] {
@@ -2375,6 +2406,18 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   case (value, param) => transformExpr(value, param.ptpe)
                 })
           }
+
+        case CreateJSClass(cls, captureValues) =>
+          val transformedArgs = if (captureValues.forall(_.tpe != CharType)) {
+            // Fast path
+            captureValues.map(transformExpr(_, preserveChar = true))
+          } else {
+            val expectedTypes =
+              globalKnowledge.getJSClassCaptureTypes(cls.className).get
+            for ((value, expectedType) <- captureValues.zip(expectedTypes))
+              yield transformExpr(value, expectedType)
+          }
+          js.Apply(envField("a", cls.className), transformedArgs)
 
         // Invalid trees
 
@@ -2539,7 +2582,12 @@ private object FunctionEmitter {
   ) {
     def isLocalVar(ident: Ident): Boolean = vars.contains(ident.name)
 
-    def isLocalMutable(ident: Ident): Boolean = vars(ident.name)
+    def isLocalMutable(ident: Ident): Boolean = {
+      /* If we do not know the var, it must be a JS class capture, which must
+       * be immutable.
+       */
+      vars.getOrElse(ident.name, false)
+    }
 
     def lhsForLabeledExpr(label: Ident): Lhs = labeledExprLHSes(label.name)
 

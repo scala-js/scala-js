@@ -13,6 +13,7 @@ import scala.collection.mutable
 
 import org.scalajs.core.ir.{ClassKind, Definitions}
 import org.scalajs.core.ir.Trees._
+import org.scalajs.core.ir.Types.Type
 
 import org.scalajs.core.tools.linker._
 
@@ -147,6 +148,12 @@ private[emitter] final class KnowledgeGuardian {
     def hasInlineableInit(className: String): Boolean =
       classes(className).askHasInlineableInit(this)
 
+    def hasStoredSuperClass(className: String): Boolean =
+      classes(className).askHasStoredSuperClass(this)
+
+    def getJSClassCaptureTypes(className: String): Option[List[Type]] =
+      classes(className).askJSClassCaptureTypes(this)
+
     def getJSNativeLoadSpec(className: String): Option[JSNativeLoadSpec] =
       classes(className).askJSNativeLoadSpec(this)
 
@@ -165,12 +172,16 @@ private[emitter] final class KnowledgeGuardian {
 
     private var isInterface = computeIsInterface(initClass)
     private var hasInlineableInit = initHasInlineableInit
+    private var hasStoredSuperClass = computeHasStoredSuperClass(initClass)
+    private var jsClassCaptureTypes = computeJSClassCaptureTypes(initClass)
     private var jsNativeLoadSpec = computeJSNativeLoadSpec(initClass)
     private var superClass = computeSuperClass(initClass)
     private var fieldDefs = computeFieldDefs(initClass)
 
     private val isInterfaceAskers = mutable.Set.empty[Invalidatable]
     private val hasInlineableInitAskers = mutable.Set.empty[Invalidatable]
+    private val hasStoredSuperClassAskers = mutable.Set.empty[Invalidatable]
+    private val jsClassCaptureTypesAskers = mutable.Set.empty[Invalidatable]
     private val jsNativeLoadSpecAskers = mutable.Set.empty[Invalidatable]
     private val superClassAskers = mutable.Set.empty[Invalidatable]
     private val fieldDefsAskers = mutable.Set.empty[Invalidatable]
@@ -187,6 +198,18 @@ private[emitter] final class KnowledgeGuardian {
       if (newHasInlineableInit != hasInlineableInit) {
         hasInlineableInit = newHasInlineableInit
         invalidateAskers(hasInlineableInitAskers)
+      }
+
+      val newHasStoredSuperClass = computeHasStoredSuperClass(linkedClass)
+      if (newHasStoredSuperClass != hasStoredSuperClass) {
+        hasStoredSuperClass = newHasStoredSuperClass
+        invalidateAskers(hasStoredSuperClassAskers)
+      }
+
+      val newJSClassCaptureTypes = computeJSClassCaptureTypes(linkedClass)
+      if (newJSClassCaptureTypes != jsClassCaptureTypes) {
+        jsClassCaptureTypes = newJSClassCaptureTypes
+        invalidateAskers(jsClassCaptureTypesAskers)
       }
 
       val newJSNativeLoadSpec = computeJSNativeLoadSpec(linkedClass)
@@ -210,6 +233,12 @@ private[emitter] final class KnowledgeGuardian {
 
     private def computeIsInterface(linkedClass: LinkedClass): Boolean =
       linkedClass.kind == ClassKind.Interface
+
+    private def computeHasStoredSuperClass(linkedClass: LinkedClass): Boolean =
+      linkedClass.jsSuperClass.isDefined
+
+    private def computeJSClassCaptureTypes(linkedClass: LinkedClass): Option[List[Type]] =
+      linkedClass.jsClassCaptures.map(_.map(_.ptpe))
 
     private def computeJSNativeLoadSpec(linkedClass: LinkedClass): Option[JSNativeLoadSpec] =
       linkedClass.jsNativeLoadSpec
@@ -259,6 +288,18 @@ private[emitter] final class KnowledgeGuardian {
       hasInlineableInit
     }
 
+    def askHasStoredSuperClass(invalidatable: Invalidatable): Boolean = {
+      invalidatable.registeredTo(this)
+      hasStoredSuperClassAskers += invalidatable
+      hasStoredSuperClass
+    }
+
+    def askJSClassCaptureTypes(invalidatable: Invalidatable): Option[List[Type]] = {
+      invalidatable.registeredTo(this)
+      jsClassCaptureTypesAskers += invalidatable
+      jsClassCaptureTypes
+    }
+
     def askJSNativeLoadSpec(invalidatable: Invalidatable): Option[JSNativeLoadSpec] = {
       invalidatable.registeredTo(this)
       jsNativeLoadSpecAskers += invalidatable
@@ -280,6 +321,8 @@ private[emitter] final class KnowledgeGuardian {
     def unregister(invalidatable: Invalidatable): Unit = {
       isInterfaceAskers -= invalidatable
       hasInlineableInitAskers -= invalidatable
+      hasStoredSuperClassAskers -= invalidatable
+      jsClassCaptureTypesAskers -= invalidatable
       jsNativeLoadSpecAskers -= invalidatable
       superClassAskers -= invalidatable
       fieldDefsAskers -= invalidatable
@@ -289,6 +332,8 @@ private[emitter] final class KnowledgeGuardian {
     def unregisterAll(): Unit = {
       isInterfaceAskers.clear()
       hasInlineableInitAskers.clear()
+      hasStoredSuperClassAskers.clear()
+      jsClassCaptureTypesAskers.clear()
       jsNativeLoadSpecAskers.clear()
       superClassAskers.clear()
       fieldDefsAskers.clear()

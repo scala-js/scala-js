@@ -812,11 +812,23 @@ object Printers {
           printRow(params, ">(", ", ", ") = ")
           printBlock(body)
           print(')')
+
+        case CreateJSClass(cls, captureValues) =>
+          print("createjsclass[")
+          print(cls)
+          printRow(captureValues, "](", ", ", ")")
       }
     }
 
     def print(classDef: ClassDef): Unit = {
       import classDef._
+      for (jsClassCaptures <- classDef.jsClassCaptures) {
+        if (jsClassCaptures.isEmpty)
+          print("captures: none")
+        else
+          printRow(jsClassCaptures, "captures: ", ", ", "")
+        println()
+      }
       print(classDef.optimizerHints)
       kind match {
         case ClassKind.Class               => print("class ")
@@ -833,6 +845,11 @@ object Printers {
       superClass.foreach { cls =>
         print(" extends ")
         print(cls)
+        jsSuperClass.foreach { tree =>
+          print(" (via ")
+          print(tree)
+          print(")")
+        }
       }
       if (interfaces.nonEmpty) {
         print(" implements ")

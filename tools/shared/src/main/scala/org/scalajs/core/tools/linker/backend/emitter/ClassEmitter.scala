@@ -70,40 +70,71 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       }
 
       if (!tree.kind.isJSClass) {
+        assert(tree.jsSuperClass.isEmpty, className)
         entireClassDefWithGlobals
       } else {
         // Wrap the entire class def in an accessor function
         import TreeDSL._
         implicit val pos = tree.pos
 
-        val createClassValueVar =
-          envFieldDef("b", className, js.Undefined(), mutable = true)
+        val genStoreJSSuperClass = tree.jsSuperClass.map { jsSuperClass =>
+          for (rhs <- desugarExpr(jsSuperClass, resultType = AnyType)) yield {
+            js.VarDef(envField("superClass").ident, Some(rhs))
+          }
+        }
 
         for {
+          optStoreJSSuperClass <- WithGlobals.option(genStoreJSSuperClass)
           entireClassDef <- entireClassDefWithGlobals
           createStaticFields <- genCreateStaticFieldsOfJSClass(tree)
         } yield {
-          val createAccessor = {
-            val classValueVar = envField("b", className)
+          tree.jsClassCaptures.fold {
+            val createClassValueVar =
+              envFieldDef("b", className, js.Undefined(), mutable = true)
+
+            val createAccessor = {
+              val classValueVar = envField("b", className)
+
+              val body = js.Block(
+                  js.If(!classValueVar, {
+                    js.Block(
+                        optStoreJSSuperClass.toList :::
+                        entireClassDef ::
+                        createStaticFields :::
+                        (classValueVar := envField("c", className)) ::
+                        genStaticInitialization(tree)
+                    )
+                  }, {
+                    js.Skip()
+                  }),
+                  js.Return(classValueVar)
+              )
+
+              envFieldDef("a", className, js.Function(Nil, body))
+            }
+
+            js.Block(createClassValueVar, createAccessor)
+          } { jsClassCaptures =>
+            val captureParamDefs = for (param <- jsClassCaptures) yield {
+              implicit val pos = param.pos
+              val ident =
+                envFieldIdent("cc", param.name.name, param.name.originalName)
+              js.ParamDef(ident, rest = false)
+            }
+
+            assert(!hasStaticInitializer(tree),
+                s"Found a static initializer in the non-top-level class $className")
 
             val body = js.Block(
-                js.If(!classValueVar, {
-                  js.Block(
-                      entireClassDef ::
-                      createStaticFields :::
-                      (classValueVar := envField("c", className)) ::
-                      genStaticInitialization(tree)
-                  )
-                }, {
-                  js.Skip()
-                }),
-                js.Return(classValueVar)
+                optStoreJSSuperClass.toList :::
+                entireClassDef ::
+                createStaticFields :::
+                js.Return(envField("c", className)) ::
+                Nil
             )
 
-            envFieldDef("a", className, js.Function(Nil, body))
+            envFieldDef("a", className, js.Function(captureParamDefs, body))
           }
-
-          js.Block(createClassValueVar, createAccessor)
         }
       }
     }
@@ -123,6 +154,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit val pos = parentIdent.pos
       if (!tree.kind.isJSClass) {
         WithGlobals(encodeClassVar(parentIdent.name))
+      } else if (tree.jsSuperClass.isDefined) {
+        WithGlobals(envField("superClass"))
       } else {
         genRawJSClassConstructor(parentIdent.name,
             keepOnlyDangerousVarNames = true)
@@ -199,8 +232,12 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       val (inheritedCtorDefWithGlobals, inheritedCtorRef) = if (!isJSClass) {
         (WithGlobals(js.Skip()), envField("h", parentIdent.name))
       } else {
-        val superCtor = genRawJSClassConstructor(parentIdent.name,
-            keepOnlyDangerousVarNames = true)
+        val superCtor = if (tree.jsSuperClass.isDefined) {
+          WithGlobals(envField("superClass"))
+        } else {
+          genRawJSClassConstructor(parentIdent.name,
+              keepOnlyDangerousVarNames = true)
+        }
         (superCtor.map(makeInheritableCtorDef(_)), envField("h", className))
       }
 
@@ -390,16 +427,21 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     WithGlobals.list(statsWithGlobals)
   }
 
-  /** Generates the static initializer invocation of a JavaScript class. */
+  /** Generates the static initializer invocation of a class. */
   def genStaticInitialization(tree: LinkedClass): List[js.Tree] = {
     import Definitions.StaticInitializerName
     implicit val pos = tree.pos
-    if (tree.staticMethods.exists(_.value.encodedName == StaticInitializerName)) {
+    if (hasStaticInitializer(tree)) {
       val fullName = tree.encodedName + "__" + StaticInitializerName
       js.Apply(envField("s", fullName, Some("<clinit>")), Nil) :: Nil
     } else {
       Nil
     }
+  }
+
+  private def hasStaticInitializer(tree: LinkedClass): Boolean = {
+    import Definitions.StaticInitializerName
+    tree.staticMethods.exists(_.value.encodedName == StaticInitializerName)
   }
 
   /** Generates a method. */
@@ -621,18 +663,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
       case ComputedName(tree, _) =>
         implicit val pos = name.pos
-        for {
-          fun <- desugarToFunction(params = Nil, body = tree, resultType = AnyType)
-        } yield {
-          val nameTree = fun match {
-            case js.Function(Nil, js.Return(expr)) =>
-              // no need for an IIFE, we can just use `expr` directly
-              expr
-            case _ =>
-              js.Apply(fun, Nil)
-          }
-          js.ComputedName(nameTree)
-        }
+        desugarExpr(tree, resultType = AnyType).map(js.ComputedName(_))
     }
   }
 
