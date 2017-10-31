@@ -16,7 +16,11 @@ import scala.language.experimental.macros
 import sbt._
 
 trait DependencyBuilders {
-  final implicit def toScalaJSGroupID(groupID: String): ScalaJSGroupID = {
+  @deprecated(
+      "Use org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport." +
+      "toPlatformDepsGroupID",
+      "0.6.23")
+  final def toScalaJSGroupID(groupID: String): ScalaJSGroupID = {
     require(groupID.trim.nonEmpty, "Group ID cannot be empty.")
     new ScalaJSGroupID(groupID)
   }
@@ -58,6 +62,13 @@ trait DependencyBuilders {
    */
   implicit class JSModuleIDBuilder(module: ModuleID) {
     def /(name: String): JarJSModuleID = JarJSModuleID(module, name)
+  }
+}
+
+final class ScalaJSGroupIDForce private[sbtplugin] (private val groupID: String) {
+  def %%%!(artifactID: String): CrossGroupArtifactID = {
+    require(artifactID.trim.nonEmpty, "Artifact ID cannot be empty.")
+    new CrossGroupArtifactID(groupID, artifactID, ScalaJSCrossVersion.binary)
   }
 }
 

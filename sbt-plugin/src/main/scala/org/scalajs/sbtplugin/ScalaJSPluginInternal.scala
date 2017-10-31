@@ -15,6 +15,8 @@ import SBTCompat._
 import SBTCompat.formatImplicits._
 import SBTCompat.formatImplicits.seqFormat
 
+import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
+
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io.{IO => toolsIO, _}
 import org.scalajs.core.tools.jsdep._
@@ -1124,6 +1126,7 @@ object ScalaJSPluginInternal {
   val PhantomJSJetty = config("phantom-js-jetty").hide
 
   val scalaJSProjectBaseSettings = Seq(
+      platformDepsCrossVersion := ScalaJSCrossVersion.binary,
       isScalaJSProject := true,
 
       /* We first define scalaJSLinkerConfig in the project scope, with all

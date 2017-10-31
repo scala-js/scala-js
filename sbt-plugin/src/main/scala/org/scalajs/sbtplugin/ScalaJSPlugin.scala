@@ -9,6 +9,8 @@
 
 package org.scalajs.sbtplugin
 
+import scala.language.implicitConversions
+
 import sbt._
 import sbt.Keys._
 
@@ -489,6 +491,19 @@ object ScalaJSPlugin extends AutoPlugin {
     val scalaJSSourceMap = AttributeKey[File]("scalaJSSourceMap",
         "Source map file attached to an Attributed .js file.",
         BSetting)
+
+    /* This is here instead of in impl.DependencyBuilders for binary
+     * compatibility reasons (impl.DependencyBuilders is a non-sealed trait).
+     */
+    @deprecated(
+        """Use %%% if possible, or '"com.example" % "foo" % "1.0.0" cross """ +
+        """ScalaJSCrossVersion.binary"'""",
+        "0.6.23")
+    final implicit def toScalaJSGroupeIDForce(
+        groupID: String): impl.ScalaJSGroupIDForce = {
+      require(groupID.trim.nonEmpty, "Group ID cannot be empty.")
+      new impl.ScalaJSGroupIDForce(groupID)
+    }
   }
 
   import autoImport._
