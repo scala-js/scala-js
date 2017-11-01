@@ -56,7 +56,9 @@ final class ScalaJSFramework(
     new ScalaJSRunner(this, args, remoteArgs)
   }
 
-  private[testadapter] def runDone(): Unit = synchronized(_isRunning = false)
+  private[testadapter] def runDone(): Unit = synchronized {
+    _isRunning = false
+  }
 
   private def fetchFrameworkInfo() = {
     val runner = libEnv.comRunner(frameworkInfoLauncher)

@@ -20,8 +20,8 @@ case $BINVER in
         BASEVER="2.11.11"
         ;;
     2.12)
-        FULLVERS="2.12.0 2.12.1 2.12.2 2.12.3"
-        BASEVER="2.12.3"
+        FULLVERS="2.12.0 2.12.1 2.12.2 2.12.3 2.12.4"
+        BASEVER="2.12.4"
         ;;
     *)
         echo "Invalid Scala version $BINVER" >&2
