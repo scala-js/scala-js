@@ -66,13 +66,13 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
   def createResetButton() = {
     jQuery("<input>", js.Dynamic.literal(
         `type` = "button", value = "Reset"
-    )).click(reset _)
+    )).click(() => reset())
   }
 
   def createPassButton() = {
     jQuery("<input>", js.Dynamic.literal(
         `type` = "button", value = "Pass"
-    )).click(pass _)
+    )).click(() => pass())
   }
 
   def createStatus() = {
