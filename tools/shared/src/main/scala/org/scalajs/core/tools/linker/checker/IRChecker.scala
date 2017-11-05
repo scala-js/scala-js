@@ -38,14 +38,18 @@ private final class IRChecker(unit: LinkingUnit,
   /* Per-method state (setup with withPerMethodState).
    * This state is reset per-Closure as well.
    */
+  private var declaredLocalVarNamesPerMethod: mutable.Set[String] = _
   private var declaredLabelNamesPerMethod: mutable.Set[String] = _
 
   private def withPerMethodState[A](body: => A): A = {
+    val savedDeclaredLocalVarNamesPerMethod = declaredLocalVarNamesPerMethod
     val savedDeclaredLabelNamesPerMethod = declaredLabelNamesPerMethod
     try {
+      declaredLocalVarNamesPerMethod = mutable.Set.empty
       declaredLabelNamesPerMethod = mutable.Set.empty
       body
     } finally {
+      declaredLocalVarNamesPerMethod = savedDeclaredLocalVarNamesPerMethod
       declaredLabelNamesPerMethod = savedDeclaredLabelNamesPerMethod
     }
   }
@@ -256,6 +260,7 @@ private final class IRChecker(unit: LinkingUnit,
     }
 
     for (ParamDef(name, tpe, _, rest) <- params) {
+      checkDeclareLocalVar(name)
       if (tpe == NoType)
         reportError(s"Parameter $name has type NoType")
       if (rest)
@@ -414,6 +419,7 @@ private final class IRChecker(unit: LinkingUnit,
     }
 
     setterArgAndBody.foreach { case (setterArg, setterBody) =>
+      checkDeclareLocalVar(setterArg.name)
       if (setterArg.ptpe != AnyType)
         reportError("Setter argument of exported property def has type "+
             s"${setterArg.ptpe}, but must be Any")
@@ -485,6 +491,7 @@ private final class IRChecker(unit: LinkingUnit,
 
     tree match {
       case VarDef(ident, vtpe, mutable, rhs) =>
+        checkDeclareLocalVar(ident)
         typecheckExpect(rhs, env, vtpe)
         env.withLocal(LocalDef(ident.name, vtpe, mutable)(tree.pos))
 
@@ -995,6 +1002,7 @@ private final class IRChecker(unit: LinkingUnit,
         // Then check the closure params and body in its own per-method state
         withPerMethodState {
           for (ParamDef(name, ctpe, mutable, rest) <- captureParams) {
+            checkDeclareLocalVar(name)
             if (mutable)
               reportError(s"Capture parameter $name cannot be mutable")
             if (rest)
@@ -1020,7 +1028,8 @@ private final class IRChecker(unit: LinkingUnit,
   /** Check the parameters for a method with JS calling conventions. */
   private def checkJSParamDefs(params: List[ParamDef])(
       implicit ctx: ErrorContext): Unit = {
-    for (ParamDef(name, ptpe, mutable, rest) <- params) {
+    for (ParamDef(name, ptpe, _, _) <- params) {
+      checkDeclareLocalVar(name)
       if (ptpe == NoType)
         reportError(s"Parameter $name has type NoType")
       else if (ptpe != AnyType)
@@ -1033,6 +1042,12 @@ private final class IRChecker(unit: LinkingUnit,
           reportError(s"Non-last rest parameter $name is illegal")
       }
     }
+  }
+
+  private def checkDeclareLocalVar(ident: Ident)(
+      implicit ctx: ErrorContext): Unit = {
+    if (!declaredLocalVarNamesPerMethod.add(ident.name))
+      reportError(s"Duplicate local variable name ${ident.name}.")
   }
 
   private def checkDeclareLabel(label: Ident)(
@@ -1186,8 +1201,6 @@ private final class IRChecker(unit: LinkingUnit,
       new Env(thisTpe, this.locals, this.returnTypes, this.inConstructor)
 
     def withLocal(localDef: LocalDef)(implicit ctx: ErrorContext): Env = {
-      if (locals.contains(localDef.name))
-        reportDuplicateLocalVarName(localDef.name)
       new Env(thisTpe, locals + (localDef.name -> localDef), returnTypes,
           this.inConstructor)
     }
@@ -1209,22 +1222,12 @@ private final class IRChecker(unit: LinkingUnit,
 
     def fromSignature(thisType: Type, params: List[ParamDef],
         resultType: Type, isConstructor: Boolean = false): Env = {
-      val paramLocalDefs = params.foldLeft(Map.empty[String, LocalDef]) {
-        case (prevParams, p @ ParamDef(ident, tpe, mutable, _)) =>
-          implicit val ctx = ErrorContext(p)
-          val name = ident.name
-          if (prevParams.contains(name))
-            reportDuplicateLocalVarName(name)
-          prevParams + (name -> LocalDef(name, tpe, mutable)(p.pos))
-      }
-      new Env(thisType, paramLocalDefs,
+      val paramLocalDefs =
+        for (p @ ParamDef(ident, tpe, mutable, _) <- params)
+          yield ident.name -> LocalDef(ident.name, tpe, mutable)(p.pos)
+      new Env(thisType, paramLocalDefs.toMap,
           Map(None -> (if (resultType == NoType) AnyType else resultType)),
           isConstructor)
-    }
-
-    private def reportDuplicateLocalVarName(name: String)(
-        implicit ctx: ErrorContext): Unit = {
-      reportError(s"Duplicate local variable name $name.")
     }
   }
 
