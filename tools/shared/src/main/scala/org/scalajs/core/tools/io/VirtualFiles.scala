@@ -173,7 +173,7 @@ trait VirtualSerializedScalaJSIRFile
     } catch {
       case e: ir.IRVersionNotSupportedException =>
         throw new ir.IRVersionNotSupportedException(e.version, e.supported,
-            "Failed to deserialize a file compiled with Scala.js ${e.version}" +
+            s"Failed to deserialize a file compiled with Scala.js ${e.version}" +
             s" (supported: ${e.supported.mkString(", ")}): $path", e)
 
       case e: IOException =>
