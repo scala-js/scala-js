@@ -638,7 +638,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         // new WrappedArray(varargs)
         val rhs = genNew(WrappedArrayClass, WrappedArray_ctor, List(
             genVarargRef(normalArgc, minArgc)))
-        js.VarDef(js.Ident("prep" + normalArgc), rhs.tpe, mutable = false, rhs)
+        val ident = freshLocalIdent("prep" + normalArgc)
+        js.VarDef(ident, rhs.tpe, mutable = false, rhs)
       }
 
       // normal arguments
@@ -681,7 +682,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           unboxedArg
         }
 
-        result += js.VarDef(js.Ident("prep" + i),
+        result += js.VarDef(freshLocalIdent("prep" + i),
             verifiedOrDefault.tpe, mutable = false, verifiedOrDefault)
       }
 
