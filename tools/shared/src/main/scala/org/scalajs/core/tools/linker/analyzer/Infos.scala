@@ -27,7 +27,8 @@ object Infos {
       val kind: ClassKind,
       val superClass: Option[String], // always None for interfaces
       val interfaces: List[String], // direct parent interfaces only
-      val methods: List[MethodInfo]
+      val methods: List[MethodInfo],
+      val topLevelExportNames: List[String]
   )
 
   object ClassInfo {
@@ -37,9 +38,10 @@ object Infos {
         kind: ClassKind = ClassKind.Class,
         superClass: Option[String] = None,
         interfaces: List[String] = Nil,
-        methods: List[MethodInfo] = Nil): ClassInfo = {
+        methods: List[MethodInfo] = Nil,
+        topLevelExportNames: List[String] = Nil): ClassInfo = {
       new ClassInfo(encodedName, isExported, kind, superClass,
-          interfaces, methods)
+          interfaces, methods, topLevelExportNames)
     }
   }
 
@@ -92,6 +94,7 @@ object Infos {
     private var superClass: Option[String] = None
     private val interfaces = mutable.ListBuffer.empty[String]
     private val methods = mutable.ListBuffer.empty[MethodInfo]
+    private var topLevelExportNames: List[String] = Nil
 
     def setEncodedName(encodedName: String): this.type = {
       this.encodedName = encodedName
@@ -128,9 +131,14 @@ object Infos {
       this
     }
 
+    def setTopLevelExportNames(names: List[String]): this.type = {
+      topLevelExportNames = names
+      this
+    }
+
     def result(): ClassInfo = {
       ClassInfo(encodedName, isExported, kind, superClass,
-          interfaces.toList, methods.toList)
+          interfaces.toList, methods.toList, topLevelExportNames)
     }
   }
 
@@ -304,6 +312,9 @@ object Infos {
       val optInfo = generateTopLevelExportsInfo(classDef.name.name,
           classDef.topLevelExportDefs)
       optInfo.foreach(builder.addMethod(_))
+
+      val names = classDef.topLevelExportDefs.map(_.topLevelExportName)
+      builder.setTopLevelExportNames(names)
     }
 
     builder.result()

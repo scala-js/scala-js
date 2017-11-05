@@ -172,6 +172,9 @@ object Analysis {
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
   final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From) extends Error
+  final case class ConflictingTopLevelExport(name: String, infos: List[ClassInfo]) extends Error {
+    def from: From = FromExports
+  }
 
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
@@ -208,6 +211,9 @@ object Analysis {
         s"Referring to non-existent method ${info.fullDisplayName}"
       case ConflictingDefaultMethods(infos, _) =>
         s"Conflicting default methods: ${infos.map(_.fullDisplayName).mkString(" ")}"
+      case ConflictingTopLevelExport(name, infos) =>
+        s"Conflicting top level export for name $name involving " +
+        infos.map(_.displayName).mkString(", ")
     }
 
     logger.log(level, headMsg)

@@ -321,6 +321,40 @@ class AnalyzerTest {
     }
   }
 
+  @Test
+  def conflictingTopLevelExports(): Unit = {
+    def singleDef(name: String) = {
+      classDef(name,
+          kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+          memberDefs = List(trivialCtor(name)),
+          topLevelExportDefs = List(TopLevelModuleExportDef("foo")))
+    }
+
+    val classDefs = Seq(singleDef("LA"), singleDef("LB"))
+    val analysis = computeAnalysis(classDefs)
+    assertContainsError("ConflictingTopLevelExport(foo, LA, LB)", analysis) {
+      case ConflictingTopLevelExport("foo", List(ClsInfo("LA"), ClsInfo("LB"))) =>
+        true
+      case ConflictingTopLevelExport("foo", List(ClsInfo("LB"), ClsInfo("LA"))) =>
+        true
+    }
+  }
+
+  @Test
+  def degenerateConflictingTopLevelExports(): Unit = {
+    val classDefs = Seq(classDef("LA",
+        kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+        memberDefs = List(trivialCtor("LA")),
+        topLevelExportDefs = List(
+            TopLevelModuleExportDef("foo"),
+            TopLevelModuleExportDef("foo"))))
+
+    val analysis = computeAnalysis(classDefs)
+    assertContainsError("ConflictingTopLevelExport(foo, <degenerate>)", analysis) {
+      case ConflictingTopLevelExport("foo", _) => true
+    }
+  }
+
   private def validParentForKind(kind: ClassKind): Option[String] = {
     import ClassKind._
     kind match {
