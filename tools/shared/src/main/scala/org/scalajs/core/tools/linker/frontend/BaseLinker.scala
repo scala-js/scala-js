@@ -77,9 +77,6 @@ final class BaseLinker(config: CommonPhaseConfig) {
       assemble(moduleInitializers, analysis)
     }
 
-    // Make sure we don't export to the same name twice.
-    checkConflictingExports(linkResult, logger)
-
     if (checkIR) {
       logger.time("Linker: Check IR") {
         val errorCount = IRChecker.check(linkResult, inputProvider, logger)
@@ -313,32 +310,6 @@ final class BaseLinker(config: CommonPhaseConfig) {
       throw new AssertionError(
           s"Cannot find $methodName in ${classInfo.encodedName}")
     }
-  }
-
-  private def checkConflictingExports(unit: LinkingUnit,
-      logger: Logger): Unit = {
-    val namesAndClasses = for {
-      classDef <- unit.classDefs
-      name <- classDef.topLevelExportNames
-    } yield {
-      name -> classDef
-    }
-
-    val errors = for {
-      (name, namesAndClasses) <- namesAndClasses.groupBy(_._1)
-      if namesAndClasses.size > 1
-    } yield {
-      logger.log(Level.Error,
-          s"Conflicting top-level exports to $name from the following classes:")
-      for ((_, linkedClass) <- namesAndClasses) {
-        logger.log(Level.Error, s"- ${linkedClass.fullName}")
-      }
-
-      ()
-    }
-
-    if (errors.nonEmpty)
-      throw new LinkingException("There were conflicting exports.")
   }
 }
 

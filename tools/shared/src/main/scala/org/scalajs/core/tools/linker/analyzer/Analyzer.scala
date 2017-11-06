@@ -81,6 +81,9 @@ private final class Analyzer(config: CommonPhaseConfig,
 
         // Reach additional data, based on reflection methods used
         reachDataThroughReflection()
+
+        // Make sure top-level export names do not conflict
+        checkConflictingExports()
       } catch {
         case CyclicDependencyException(chain, from) =>
           _errors += CycleInInheritanceChain(chain, from)
@@ -184,6 +187,22 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
+  private def checkConflictingExports(): Unit = {
+    val namesAndInfos = for {
+      info <- _classInfos.values
+      name <- info.topLevelExportNames
+    } yield {
+      name -> info
+    }
+
+    for {
+      (name, targets) <- namesAndInfos.groupBy(_._1)
+      if targets.size > 1
+    } {
+      _errors += ConflictingTopLevelExport(name, targets.map(_._2).toList)
+    }
+  }
+
   private def tryLookupClass(encodedName: String)(
       implicit from: From): Option[ClassInfo] = {
     /* There is a significant amount of duplication with lookupClass, but it
@@ -251,6 +270,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     val isJSType = data.kind.isJSType
     val isAnyClass = isScalaClass || isJSClass
     val isExported = data.isExported
+    val topLevelExportNames = data.topLevelExportNames
 
     var superClass: Option[ClassInfo] = _
     var interfaces: List[ClassInfo] = _

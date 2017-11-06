@@ -64,10 +64,6 @@ final class LinkedClass(
     }
   }
 
-  /** Names of all top-level exports in this class. */
-  def topLevelExportNames: List[String] =
-    topLevelExports.map(_.value.topLevelExportName)
-
   def fullName: String = Definitions.decodeClassName(encodedName)
 
   def copy(
