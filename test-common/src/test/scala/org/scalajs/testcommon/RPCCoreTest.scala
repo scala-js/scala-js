@@ -162,8 +162,9 @@ class RPCCoreTest {
 }
 
 object RPCCoreTest {
-  class TestRPC(otherThunk: => TestRPC) extends RPCCore {
+  class TestRPC(otherThunk: => TestRPC) extends RPCCore[Future] {
     private lazy val other = otherThunk
     protected def send(msg: String): Unit = other.handleMessage(msg)
+    protected def toFuture[T](p: Promise[T]): Future[T] = p.future
   }
 }

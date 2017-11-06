@@ -19,7 +19,22 @@ object BinaryIncompatibilities {
   val SbtPlugin = Seq(
   )
 
-  val TestAdapter = Seq(
+  val TestCommon = Seq(
+      // private[scalajs], not an issue.
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.testcommon.RPCCore.call"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "org.scalajs.testcommon.RPCCore.toFuture")
+  )
+
+  val TestAdapter = TestCommon ++ Seq(
+      // private, not an issue.
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.testadapter.ScalaJSRunner$"),
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.testadapter.ScalaJSRunner$RichFuture"),
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.testadapter.ScalaJSRunner$RichFuture$")
   )
 
   val CLI = Seq(
@@ -28,6 +43,6 @@ object BinaryIncompatibilities {
   val Library = Seq(
   )
 
-  val TestInterface = Seq(
+  val TestInterface = TestCommon ++ Seq(
   )
 }

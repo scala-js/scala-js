@@ -1,5 +1,7 @@
 package org.scalajs.testcommon
 
+import scala.language.higherKinds
+
 import scala.util.{Try, Failure, Success}
 
 import scala.collection.JavaConverters._
@@ -12,7 +14,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import Serializer.{serialize, deserialize}
 
-private[scalajs] abstract class RPCCore {
+private[scalajs] abstract class RPCCore[F[_]] {
   import RPCCore._
 
   /** Pending calls.
@@ -88,6 +90,9 @@ private[scalajs] abstract class RPCCore {
   /** Subclass needs to implement message sending. */
   protected def send(msg: String): Unit
 
+  /** Sublcass needs to implement its type of future. */
+  protected def toFuture[T](p: Promise[T]): F[T]
+
   /** Used to send a message to the other end. */
   final def send(ep: MsgEndpoint)(msg: ep.Msg): Unit = {
     import ep._
@@ -95,7 +100,7 @@ private[scalajs] abstract class RPCCore {
   }
 
   /** Used to make an actual call to the other end. */
-  final def call(ep: RPCEndpoint)(req: ep.Req): Future[ep.Resp] = {
+  final def call(ep: RPCEndpoint)(req: ep.Req): F[ep.Resp] = {
     import ep._
 
     // Reserve an id for this call.
@@ -115,7 +120,7 @@ private[scalajs] abstract class RPCCore {
     // Actually send message.
     send(msg)
 
-    promise.future
+    toFuture(promise)
   }
 
   final def attach(ep: MsgEndpoint)(ex: ep.Msg => Unit): Unit = {
