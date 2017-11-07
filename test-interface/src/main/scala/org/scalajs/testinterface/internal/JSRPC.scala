@@ -17,4 +17,12 @@ private[internal] final object JSRPC extends RPCCore {
     super.close()
     Com.close()
   }
+
+  @js.native
+  @JSGlobal("scalajsCom")
+  private object Com extends js.Object {
+    def init(onReceive: js.Function1[String, Unit]): Unit = js.native
+    def send(msg: String): Unit = js.native
+    def close(): Unit = js.native
+  }
 }

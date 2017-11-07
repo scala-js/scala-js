@@ -9,8 +9,11 @@
 
 package org.scalajs
 
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 
 package object testadapter {
-  private[testadapter] final val VMTermTimeout = 1.minute
+  private[testadapter] implicit class AwaitFuture[T](val t: Future[T]) extends AnyVal {
+    def await(): T = Await.result(t, Duration.Inf)
+  }
 }
