@@ -313,21 +313,7 @@ private final class IRChecker(unit: LinkingUnit,
       reportError("Top level export must be static")
 
     checkExportedPropertyName(pName, classDef, isTopLevel)
-
-    for (ParamDef(name, tpe, _, _) <- params) {
-      if (tpe == NoType)
-        reportError(s"Parameter $name has type NoType")
-      else if (tpe != AnyType)
-        reportError(s"Parameter $name of exported method def has type $tpe, "+
-            "but must be Any")
-    }
-
-    if (params.nonEmpty) {
-      for (ParamDef(name, _, _, rest) <- params.init) {
-        if (rest)
-          reportError(s"Non-last rest parameter $name is illegal")
-      }
-    }
+    checkJSParamDefs(params)
 
     def isJSConstructor = {
       !static && (pName match {
@@ -468,20 +454,7 @@ private final class IRChecker(unit: LinkingUnit,
       return
     }
 
-    for (ParamDef(name, tpe, _, _) <- params) {
-      if (tpe == NoType)
-        reportError(s"Parameter $name has type NoType")
-      else if (tpe != AnyType)
-        reportError(s"Parameter $name of exported constructor def has type "+
-            s"$tpe, but must be Any")
-    }
-
-    if (params.nonEmpty) {
-      for (ParamDef(name, _, _, rest) <- params.init) {
-        if (rest)
-          reportError(s"Non-last rest parameter $name is illegal")
-      }
-    }
+    checkJSParamDefs(params)
 
     val thisType = ClassType(classDef.name.name)
     val bodyEnv = Env.fromSignature(thisType, params, NoType)
@@ -1030,19 +1003,7 @@ private final class IRChecker(unit: LinkingUnit,
               reportError(s"Parameter $name has type NoType")
           }
 
-          for (ParamDef(name, ptpe, mutable, rest) <- params) {
-            if (ptpe == NoType)
-              reportError(s"Parameter $name has type NoType")
-            else if (ptpe != AnyType)
-              reportError(s"Closure parameter $name has type $ptpe instead of any")
-          }
-
-          if (params.nonEmpty) {
-            for (ParamDef(name, _, _, rest) <- params.init) {
-              if (rest)
-                reportError(s"Non-last rest parameter $name is illegal")
-            }
-          }
+          checkJSParamDefs(params)
 
           val bodyEnv = Env.fromSignature(
               AnyType, captureParams ++ params, AnyType)
@@ -1054,6 +1015,24 @@ private final class IRChecker(unit: LinkingUnit,
     }
 
     tree.tpe
+  }
+
+  /** Check the parameters for a method with JS calling conventions. */
+  private def checkJSParamDefs(params: List[ParamDef])(
+      implicit ctx: ErrorContext): Unit = {
+    for (ParamDef(name, ptpe, mutable, rest) <- params) {
+      if (ptpe == NoType)
+        reportError(s"Parameter $name has type NoType")
+      else if (ptpe != AnyType)
+        reportError(s"Parameter $name has type $ptpe but must be any")
+    }
+
+    if (params.nonEmpty) {
+      for (ParamDef(name, _, _, rest) <- params.init) {
+        if (rest)
+          reportError(s"Non-last rest parameter $name is illegal")
+      }
+    }
   }
 
   private def checkDeclareLabel(label: Ident)(
