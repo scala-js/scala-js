@@ -245,6 +245,13 @@ class JSSymbolTest {
     iterateIterable(obj)(content += _)
     assertArrayEquals(Array(532), content.result())
   }
+
+  @Test def inOperatorWithSymbols(): Unit = {
+    val obj = mkObject(sym1 -> "foo")
+
+    assertTrue(js.special.in(sym1, obj))
+    assertFalse(js.special.in(sym2, obj))
+  }
 }
 
 object JSSymbolTest {

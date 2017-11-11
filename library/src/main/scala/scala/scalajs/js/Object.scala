@@ -28,8 +28,8 @@ class Object extends js.Any {
 
   /** Tests whether this object has the specified property as a direct property.
    *
-   *  Unlike [[js.Object.hasProperty]], this method does not check down the
-   *  object's prototype chain.
+   *  Unlike [[js.Any.ObjectCompanionOps.hasProperty js.Object.hasProperty]],
+   *  this method does not check down the object's prototype chain.
    *
    * MDN
    */
@@ -39,9 +39,11 @@ class Object extends js.Any {
   def isPrototypeOf(v: Object): Boolean = js.native
 
   /** Tests whether the specified property in an object can be enumerated by a
-   *  call to [[js.Object.properties]], with the exception of properties
-   *  inherited through the prototype chain. If the object does not have the
-   *  specified property, this method returns false.
+   *  call to [[js.Any.ObjectCompanionOps.properties js.Object.properties]],
+   *  with the exception of properties inherited through the prototype chain.
+   *
+   *  If the object does not have the specified property, this method returns
+   *  false.
    *
    *  MDN
    */
@@ -54,12 +56,6 @@ class Object extends js.Any {
 object Object extends js.Object {
   def apply(): js.Object = js.native
   def apply(value: scala.Any): js.Object = js.native
-
-  /** Tests whether the object has a property on itself or in its prototype
-   *  chain. This method is the equivalent of `p in o` in JavaScript.
-   */
-  def hasProperty(o: js.Object, p: String): Boolean =
-    throw new java.lang.Error("stub")
 
   /**
    * The Object.getPrototypeOf() method returns the prototype (i.e. the
@@ -212,18 +208,4 @@ object Object extends js.Object {
    * MDN
    */
   def keys(o: js.Object): js.Array[String] = js.native
-
-  /** Returns the names of all the enumerable properties of this object,
-   *  including properties in its prototype chain.
-   *
-   *  This method returns the same set of names that would be enumerated by
-   *  a for-in loop in JavaScript, but not necessarily in the same order.
-   *
-   *  If the underlying implementation guarantees an order for for-in loops,
-   *  then this is guaranteed to be consistent with [[keys]], in the sense
-   *  that the list returned by [[keys]] is a sublist of the list returned by
-   *  this method (not just a subset).
-   */
-  def properties(o: js.Any): js.Array[String] =
-    throw new java.lang.Error("stub")
 }

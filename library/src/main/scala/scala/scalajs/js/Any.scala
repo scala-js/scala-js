@@ -193,6 +193,30 @@ object Any extends js.LowPrioAnyImplicits {
     value.asInstanceOf[js.Any]
   @inline implicit def fromJDouble(value: java.lang.Double): js.Any =
     value.asInstanceOf[js.Any]
+
+  implicit class ObjectCompanionOps(val __self: js.Object.type) extends AnyVal {
+    /** Tests whether the specified object `o` has a property `p` on itself or
+     *  in its prototype chain.
+     *
+     *  This method is the equivalent of `p in o` in JavaScript.
+     */
+    def hasProperty(o: js.Object, p: String): Boolean =
+      js.special.in(p, o)
+
+    /** Returns the names of all the enumerable properties of the specified
+     *  object `o`, including properties in its prototype chain.
+     *
+     *  This method returns the same set of names that would be enumerated by
+     *  a for-in loop in JavaScript, but not necessarily in the same order.
+     *
+     *  If the underlying implementation guarantees an order for for-in loops,
+     *  then this is guaranteed to be consistent with [[js.Object.keys]], in
+     *  the sense that the list returned by [[js.Object.keys]] is a sublist of
+     *  the list returned by this method (not just a subset).
+     */
+    def properties(o: js.Any): js.Array[String] =
+      scala.scalajs.runtime.propertiesOf(o)
+  }
 }
 
 sealed trait LowPrioAnyImplicits extends js.LowestPrioAnyImplicits {

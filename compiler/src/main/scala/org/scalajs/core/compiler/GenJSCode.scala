@@ -4214,30 +4214,13 @@ abstract class GenJSCode extends plugins.PluginComponent
               // js.typeOf(arg)
               genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg),
                   StringClass.tpe)
-
-            case OBJPROPS =>
-              // js.Object.properties(arg)
-              genApplyMethod(
-                  genLoadModule(RuntimePackageModule),
-                  Runtime_propertiesOf,
-                  List(arg))
           }
 
         case List(arg1, arg2) =>
           code match {
-            case HASPROP =>
-              // js.Object.hasProperty(arg1, arg2)
-              /* Here we have an issue with evaluation order of arg1 and arg2,
-               * since the obvious translation is `arg2 in arg1`, but then
-               * arg2 is evaluated before arg1. Since this is not a commonly
-               * used operator, we don't try to avoid unnecessary temp vars, and
-               * simply always evaluate arg1 in a temp before doing the `in`.
-               */
-              val temp = freshLocalIdent()
-              js.Block(
-                  js.VarDef(temp, jstpe.AnyType, mutable = false, arg1),
-                  js.Unbox(js.JSBinaryOp(js.JSBinaryOp.in, arg2,
-                      js.VarRef(temp)(jstpe.AnyType)), 'Z'))
+            case IN =>
+              // js.special.in(arg1, arg2)
+              js.Unbox(js.JSBinaryOp(js.JSBinaryOp.in, arg1, arg2), 'Z')
 
             case INSTANCEOF =>
               // js.special.instanceof(arg1, arg2)

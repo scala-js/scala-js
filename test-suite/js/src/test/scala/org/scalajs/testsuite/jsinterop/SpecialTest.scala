@@ -17,6 +17,15 @@ import org.scalajs.testsuite.utils.AssertThrows._
 class SpecialTest {
   import SpecialTest._
 
+  // scala.scalajs.js.special.in
+
+  @Test def inTest(): Unit = {
+    val o = js.Dynamic.literal(foo = 5, bar = "foobar")
+    assertTrue(js.special.in("foo", o))
+    assertFalse(js.special.in("foobar", o))
+    assertTrue(js.special.in("toString", o)) // in prototype
+  }
+
   // scala.scalajs.js.special.instanceof
 
   @Test def instanceofTest(): Unit = {
