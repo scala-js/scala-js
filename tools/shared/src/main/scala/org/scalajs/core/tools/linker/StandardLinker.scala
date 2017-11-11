@@ -91,7 +91,7 @@ object StandardLinker {
       this(
           semantics = Semantics.Defaults,
           moduleKind = ModuleKind.NoModule,
-          checkIR = false,
+          checkIR = true,
           optimizer = true,
           parallel = true,
           sourceMap = true,
@@ -191,7 +191,7 @@ object StandardLinker {
      *
      *  - `semantics`: [[Semantics.Defaults]]
      *  - `moduleKind`: [[ModuleKind.NoModule]]
-     *  - `checkIR`: `false`
+     *  - `checkIR`: `true`
      *  - `optimizer`: `true`
      *  - `parallel`: `true`
      *  - `sourceMap`: `true`
