@@ -86,7 +86,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSObjectModule = JSObjectClass.companionModule
       lazy val JSObject_hasProperty = getMemberMethod(JSObjectModule, newTermName("hasProperty"))
-      lazy val JSObject_properties  = getMemberMethod(JSObjectModule, newTermName("properties"))
 
     lazy val JSArrayModule = JSArrayClass.companionModule
       lazy val JSArray_create = getMemberMethod(JSArrayModule, newTermName("apply"))

@@ -40,7 +40,6 @@ abstract class JSPrimitives {
 
   val TYPEOF = 344    // typeof x
   val HASPROP = 346   // js.Object.hasProperty(o, p), equiv to `p in o` in JS
-  val OBJPROPS = 347  // js.Object.properties(o), equiv to `for (p in o)` in JS
   val JS_NATIVE = 348 // js.native. Marker method. Fails if tried to be emitted.
 
   val UNITVAL = 349 // () value, which is undefined
@@ -97,7 +96,6 @@ abstract class JSPrimitives {
     addPrimitive(JSPackage_native, JS_NATIVE)
 
     addPrimitive(JSObject_hasProperty, HASPROP)
-    addPrimitive(JSObject_properties, OBJPROPS)
 
     addPrimitive(BoxedUnit_UNIT, UNITVAL)
 

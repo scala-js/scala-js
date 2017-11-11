@@ -4214,13 +4214,6 @@ abstract class GenJSCode extends plugins.PluginComponent
               // js.typeOf(arg)
               genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg),
                   StringClass.tpe)
-
-            case OBJPROPS =>
-              // js.Object.properties(arg)
-              genApplyMethod(
-                  genLoadModule(RuntimePackageModule),
-                  Runtime_propertiesOf,
-                  List(arg))
           }
 
         case List(arg1, arg2) =>
