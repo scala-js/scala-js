@@ -170,15 +170,17 @@ class Array[A] extends js.Object with js.Iterable[A] {
 }
 
 /** Factory for [[js.Array]] objects. */
-@js.native
-@JSGlobal
-object Array extends js.Object {
-  // Do not expose this one - use new js.Array(len) instead
-  // def apply[A](arrayLength: Int): js.Array[A] = js.native
+object Array {
+  @js.native
+  @JSGlobal("Array")
+  private object NativeArray extends js.Object {
+    def isArray(arg: scala.Any): Boolean = js.native
+  }
 
   /** Creates a new array with the given items. */
   def apply[A](items: A*): js.Array[A] = throw new java.lang.Error("stub")
 
   /** Returns true if the given value is an array. */
-  def isArray(arg: scala.Any): Boolean = js.native
+  @inline
+  def isArray(arg: scala.Any): Boolean = NativeArray.isArray(arg)
 }
