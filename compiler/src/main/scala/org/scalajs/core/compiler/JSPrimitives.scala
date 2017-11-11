@@ -39,14 +39,14 @@ abstract class JSPrimitives {
   val ARR_CREATE = 337 // js.Array.apply (array literal syntax)
 
   val TYPEOF = 344    // typeof x
-  val HASPROP = 346   // js.Object.hasProperty(o, p), equiv to `p in o` in JS
   val JS_NATIVE = 348 // js.native. Marker method. Fails if tried to be emitted.
 
   val UNITVAL = 349 // () value, which is undefined
 
   val CONSTRUCTOROF = 352 // runtime.constructorOf(clazz)
-  val LINKING_INFO = 354  // $linkingInfo
+  val LINKING_INFO = 353  // $linkingInfo
 
+  val IN = 354         // js.special.in
   val INSTANCEOF = 355 // js.special.instanceof
   val DELETE = 356     // js.special.delete
   val DEBUGGER = 357   // js.special.debugger
@@ -95,13 +95,12 @@ abstract class JSPrimitives {
     addPrimitive(JSPackage_typeOf, TYPEOF)
     addPrimitive(JSPackage_native, JS_NATIVE)
 
-    addPrimitive(JSObject_hasProperty, HASPROP)
-
     addPrimitive(BoxedUnit_UNIT, UNITVAL)
 
     addPrimitive(Runtime_constructorOf, CONSTRUCTOROF)
     addPrimitive(Runtime_linkingInfo, LINKING_INFO)
 
+    addPrimitive(Special_in, IN)
     addPrimitive(Special_instanceof, INSTANCEOF)
     addPrimitive(Special_delete, DELETE)
     addPrimitive(Special_debugger, DEBUGGER)

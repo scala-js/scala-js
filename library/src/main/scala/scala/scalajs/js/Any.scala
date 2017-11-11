@@ -195,6 +195,14 @@ object Any extends js.LowPrioAnyImplicits {
     value.asInstanceOf[js.Any]
 
   implicit class ObjectCompanionOps(val __self: js.Object.type) extends AnyVal {
+    /** Tests whether the specified object `o` has a property `p` on itself or
+     *  in its prototype chain.
+     *
+     *  This method is the equivalent of `p in o` in JavaScript.
+     */
+    def hasProperty(o: js.Object, p: String): Boolean =
+      js.special.in(p, o)
+
     /** Returns the names of all the enumerable properties of the specified
      *  object `o`, including properties in its prototype chain.
      *

@@ -109,25 +109,23 @@ class MiscInteropTest {
   // scala.scalajs.js.Object
 
   @Test def should_provide_an_equivalent_to_p_in_o(): Unit = {
-    import js.Object.{hasProperty => hasProp}
-    val o = js.Dynamic.literal(foo = 5, bar = "foobar").asInstanceOf[js.Object]
-    assertTrue(hasProp(o, "foo"))
-    assertFalse(hasProp(o, "foobar"))
-    assertTrue(hasProp(o, "toString")) // in prototype
+    val o = js.Dynamic.literal(foo = 5, bar = "foobar")
+    assertTrue(js.Object.hasProperty(o, "foo"))
+    assertFalse(js.Object.hasProperty(o, "foobar"))
+    assertTrue(js.Object.hasProperty(o, "toString")) // in prototype
   }
 
   @Test def should_respect_evaluation_order_for_hasProperty(): Unit = {
-    import js.Object.{hasProperty => hasProp}
     var indicator = 3
     def o(): js.Object = {
       indicator += 4
-      js.Dynamic.literal(x = 5).asInstanceOf[js.Object]
+      js.Dynamic.literal(x = 5)
     }
     def p(): String = {
       indicator *= 2
       "x"
     }
-    assertTrue(hasProp(o(), p()))
+    assertTrue(js.Object.hasProperty(o(), p()))
     assertEquals(14, indicator)
   }
 

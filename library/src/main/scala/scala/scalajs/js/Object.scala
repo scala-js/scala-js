@@ -28,8 +28,8 @@ class Object extends js.Any {
 
   /** Tests whether this object has the specified property as a direct property.
    *
-   *  Unlike [[js.Object.hasProperty]], this method does not check down the
-   *  object's prototype chain.
+   *  Unlike [[js.Any.ObjectCompanionOps.hasProperty js.Object.hasProperty]],
+   *  this method does not check down the object's prototype chain.
    *
    * MDN
    */
@@ -56,12 +56,6 @@ class Object extends js.Any {
 object Object extends js.Object {
   def apply(): js.Object = js.native
   def apply(value: scala.Any): js.Object = js.native
-
-  /** Tests whether the object has a property on itself or in its prototype
-   *  chain. This method is the equivalent of `p in o` in JavaScript.
-   */
-  def hasProperty(o: js.Object, p: String): Boolean =
-    throw new java.lang.Error("stub")
 
   /**
    * The Object.getPrototypeOf() method returns the prototype (i.e. the

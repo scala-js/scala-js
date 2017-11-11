@@ -22,6 +22,17 @@ package scala.scalajs.js
  */
 package object special {
 
+  /** Tests whether an object has a given enumerable property in its prototype
+   *  chain.
+   *
+   *  This method is the exact equivalent of `p in o` in JavaScript.
+   *
+   *  The recommended surface syntax to perform `p in o` is to use
+   *  `js.Object.hasProperty(o, p)`.
+   */
+  def in(p: scala.Any, o: scala.Any): Boolean =
+    throw new java.lang.Error("stub")
+
   /** Dynamically tests whether a value is an instance of a JavaScript class.
    *
    *  This method is the exact equivalent of `x instanceof clazz` in

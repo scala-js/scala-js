@@ -84,9 +84,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSDynamicLiteral_applyDynamicNamed = getMemberMethod(JSDynamicLiteral, newTermName("applyDynamicNamed"))
       lazy val JSDynamicLiteral_applyDynamic = getMemberMethod(JSDynamicLiteral, newTermName("applyDynamic"))
 
-    lazy val JSObjectModule = JSObjectClass.companionModule
-      lazy val JSObject_hasProperty = getMemberMethod(JSObjectModule, newTermName("hasProperty"))
-
     lazy val JSArrayModule = JSArrayClass.companionModule
       lazy val JSArray_create = getMemberMethod(JSArrayModule, newTermName("apply"))
 
@@ -97,6 +94,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSConstructorTag_materialize = getMemberMethod(JSConstructorTagModule, newTermName("materialize"))
 
     lazy val SpecialPackageModule = getPackageObject("scala.scalajs.js.special")
+      lazy val Special_in = getMemberMethod(SpecialPackageModule, newTermName("in"))
       lazy val Special_instanceof = getMemberMethod(SpecialPackageModule, newTermName("instanceof"))
       lazy val Special_delete = getMemberMethod(SpecialPackageModule, newTermName("delete"))
       lazy val Special_debugger = getMemberMethod(SpecialPackageModule, newTermName("debugger"))
