@@ -22,17 +22,6 @@ object JSTreeExtractors {
       })
     }
 
-    /** Extracts the literal strings in "key" position of a sequence of Tuple2.
-     *
-     *  Non-Tuple2 constructors are silently ignored, as well as non-literal
-     *  keys.
-     */
-    def extractLiteralKeysFrom(exprs: List[Tree]): List[StringLiteral] = {
-      exprs.collect {
-        case Tuple2(key: StringLiteral, _) => key
-      }
-    }
-
     /** A list of Tuple2, for example used as a list of key/value pairs
      *  (like in a call to applyDynamicNamed).
      *

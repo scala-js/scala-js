@@ -4048,34 +4048,17 @@ abstract class GenJSCode extends plugins.PluginComponent
          *   {name1: arg1, name2: arg2, ... }
          */
 
-        def warnIfDuplicatedKey(keys: List[js.StringLiteral]): Unit = {
-          val keyNames = keys.map(_.value)
-          val keyCounts =
-            keyNames.distinct.map(key => key -> keyNames.count(_ == key))
-          val duplicateKeyCounts = keyCounts.filter(1 < _._2)
-          if (duplicateKeyCounts.nonEmpty) {
-            reporter.warning(pos,
-                "Duplicate keys in object literal: " +
-                duplicateKeyCounts.map {
-                  case (keyName, count) => s""""$keyName" defined $count times"""
-                }.mkString(", ") +
-                ". Only the last occurrence is assigned."
-            )
-          }
-        }
-
         def keyToPropName(key: js.Tree, index: Int): js.PropertyName = key match {
           case key: js.StringLiteral => key
           case _                     => js.ComputedName(key, "local" + index)
         }
 
-        // Extract first arg to future proof against varargs
-        extractFirstArg(genArgs) match {
+        /* Extract the first arg and discard it, since it has been checked by
+         * the front-end to be a constant string "apply".
+         */
+        extractFirstArg(genArgs)._2 match {
           // case js.Dynamic.literal("name1" -> ..., nameExpr2 -> ...)
-          case (js.StringLiteral("apply"), jse.Tuple2List(pairs)) =>
-            warnIfDuplicatedKey(pairs.collect {
-              case (key: js.StringLiteral, _) => key
-            })
+          case jse.Tuple2List(pairs) =>
             js.JSObjectConstr(pairs.zipWithIndex.map {
               case ((key, value), index) => (keyToPropName(key, index), value)
             })
@@ -4085,8 +4068,7 @@ abstract class GenJSCode extends plugins.PluginComponent
            * possible to write its expansion by hand:
            * js.Dynamic.literal.applyDynamic("apply")(x: _*)
            */
-          case (js.StringLiteral("apply"), tups)
-              if tups.exists(_.isInstanceOf[js.JSSpread]) =>
+          case tups if tups.exists(_.isInstanceOf[js.JSSpread]) =>
             // Delegate to a runtime method
             val tupsArray = tups match {
               case List(js.JSSpread(tupsArray)) => tupsArray
@@ -4098,10 +4080,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 List(tupsArray))
 
           // case js.Dynamic.literal(x, y)
-          case (js.StringLiteral("apply"), tups) =>
-            // Check for duplicated explicit keys
-            warnIfDuplicatedKey(jse.extractLiteralKeysFrom(tups))
-
+          case tups =>
             // Evaluate all tuples first
             val tuple2Type = encodeClassType(TupleClass(2))
             val evalTuples = tups.map { tup =>
@@ -4121,16 +4100,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             })
 
             js.Block(evalTuples :+ result)
-
-          // case where another method is called
-          case (js.StringLiteral(name), _) if name != "apply" =>
-            reporter.error(pos,
-                s"js.Dynamic.literal does not have a method named $name")
-            js.Undefined()
-          case _ =>
-            reporter.error(pos,
-                s"js.Dynamic.literal.${tree.symbol.name} may not be called directly")
-            js.Undefined()
         }
       } else if (code == ARR_CREATE) {
         // js.Array.create(elements: _*)
