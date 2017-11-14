@@ -264,7 +264,7 @@
     SBT_VER_OVERRIDE=$sbt_version_override
     # Publish Scala.js artifacts locally
     # Then go into standalone project and test
-    sbt ++2.11.11 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
+    sbt ++2.11.12 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
                   testInterface/publishLocal stubs/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++$toolsscala ${SBT_VER_OVERRIDE:+^^$SBT_VER_OVERRIDE} \
@@ -315,15 +315,15 @@
       <v n="java">1.8</v>
     </run>
     <run task="main">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.6</v>
     </run>
     <run task="main">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.7</v>
     </run>
     <run task="main">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.8</v>
     </run>
     <run task="main">
@@ -342,7 +342,7 @@
       <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.8</v>
       <v n="testSuite">testSuite</v>
     </run>
@@ -359,7 +359,7 @@
 
     <!-- scala/scala test suite on ECMAScript5 tasks, only on JDK8 -->
     <run task="test-suite-ecma-script5">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.8</v>
       <v n="testSuite">scalaTestSuite</v>
     </run>
@@ -381,7 +381,7 @@
       <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.8</v>
       <v n="testSuite">testSuite</v>
     </run>
@@ -398,7 +398,7 @@
 
     <!-- scala/scala test suite on ECMAScript6 tasks, only on JDK8 -->
     <run task="test-suite-ecma-script6">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.8</v>
       <v n="testSuite">scalaTestSuite</v>
     </run>
@@ -419,7 +419,7 @@
       <v n="java">1.8</v>
     </run>
     <run task="bootstrap">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.8</v>
     </run>
     <run task="bootstrap">
@@ -446,11 +446,11 @@
     </run>
     <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
     <run task="tools-cli-stubs">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.7</v>
     </run>
     <run task="tools-cli-stubs">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.8</v>
     </run>
     <run task="tools-cli-stubs">
@@ -466,7 +466,7 @@
 
     <!-- Partest fastOpt -->
     <run task="partest-fastopt">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.7</v>
     </run>
     <run task="partest-fastopt">
@@ -548,6 +548,10 @@
       <v n="java">1.8</v>
     </run>
     <run task="main">
+      <v n="scala">2.11.11</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="main">
       <v n="scala">2.12.0</v>
       <v n="java">1.8</v>
     </run>
@@ -576,12 +580,12 @@
       <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.6</v>
       <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script5">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.7</v>
       <v n="testSuite">testSuite</v>
     </run>
@@ -598,23 +602,23 @@
       <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.6</v>
       <v n="testSuite">testSuite</v>
     </run>
     <run task="test-suite-ecma-script6">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.7</v>
       <v n="testSuite">testSuite</v>
     </run>
 
     <!-- Partest noOpt and fullOpt -->
     <run task="partest-noopt">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.7</v>
     </run>
     <run task="partest-fullopt">
-      <v n="scala">2.11.11</v>
+      <v n="scala">2.11.12</v>
       <v n="java">1.7</v>
     </run>
     <run task="partest-noopt">
@@ -745,6 +749,18 @@
     </run>
     <run task="partest-fullopt">
       <v n="scala">2.11.11</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-noopt">
+      <v n="scala">2.11.12</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-fastopt">
+      <v n="scala">2.11.12</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-fullopt">
+      <v n="scala">2.11.12</v>
       <v n="java">1.8</v>
     </run>
     <run task="partest-noopt">
