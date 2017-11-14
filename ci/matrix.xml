@@ -433,15 +433,15 @@
 
     <!-- Tools / CLI / Stubs / sbtPlugin test tasks, on all JDKs -->
     <run task="tools-cli-stubs-sbtplugin">
-      <v n="scala">2.10.6</v>
+      <v n="scala">2.10.7</v>
       <v n="java">1.6</v>
     </run>
     <run task="tools-cli-stubs-sbtplugin">
-      <v n="scala">2.10.6</v>
+      <v n="scala">2.10.7</v>
       <v n="java">1.7</v>
     </run>
     <run task="tools-cli-stubs-sbtplugin">
-      <v n="scala">2.10.6</v>
+      <v n="scala">2.10.7</v>
       <v n="java">1.8</v>
     </run>
     <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
@@ -481,7 +481,7 @@
     <!-- The PhantomJS tests require Java 7 for jetty. -->
     <run task="sbtplugin-test">
       <v n="java">1.7</v>
-      <v n="toolsscala">2.10.6</v>
+      <v n="toolsscala">2.10.7</v>
       <v n="sbt_version_override"></v>
     </run>
     <run task="sbtplugin-test">
@@ -509,6 +509,10 @@
     </run>
     <run task="main">
       <v n="scala">2.10.6</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.10.7</v>
       <v n="java">1.8</v>
     </run>
     <run task="main">
