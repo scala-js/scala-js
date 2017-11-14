@@ -274,13 +274,9 @@ object JSSymbolTest {
 
   import SJSDefinedWithSyms._
 
-  def mkObject(members: (js.Symbol, js.Any)*): js.Object = {
-    val obj = (new js.Object).asInstanceOf[ObjectCreator]
-    for ((sym, member) <- members) {
-      obj(sym) = member
-    }
-    obj
-  }
+  @inline
+  def mkObject(members: (js.Symbol, js.Any)*): js.Object =
+    js.special.objectLiteral(members: _*)
 
   private def selectSymbol(obj: js.Any, sym: js.Symbol): Any =
     obj.asInstanceOf[SymDynamic].selectSymbol(sym)
@@ -332,12 +328,6 @@ object JSSymbolTest {
       }
     }
     loop()
-  }
-
-  @js.native
-  private trait ObjectCreator extends js.Object {
-    @JSBracketAccess
-    def update(s: js.Symbol, v: js.Any): Unit = js.native
   }
 
   trait PropDefTrait extends js.Any {
