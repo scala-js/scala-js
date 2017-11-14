@@ -56,10 +56,7 @@ object Dictionary {
   @inline def empty[A]: js.Dictionary[A] =
     (new js.Object).asInstanceOf[js.Dictionary[A]]
 
-  def apply[A](properties: (String, A)*): js.Dictionary[A] = {
-    val result = empty[A]
-    for ((key, value) <- properties)
-      result(key) = value
-    result
-  }
+  @inline
+  def apply[A](properties: (String, A)*): js.Dictionary[A] =
+    js.special.objectLiteral(properties: _*).asInstanceOf[js.Dictionary[A]]
 }

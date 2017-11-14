@@ -38,14 +38,6 @@ package object runtime {
     }
   }
 
-  final def jsTupleArray2jsObject(
-      tuples: js.Array[(String, js.Any)]): js.Object with js.Dynamic = {
-    val result = js.Dynamic.literal()
-    for ((name, value) <- tuples)
-      result.updateDynamic(name)(value)
-    result
-  }
-
   /** Dummy method used to preserve the type parameter of
    *  `js.constructorOf[T]` through erasure.
    *

@@ -34,8 +34,6 @@ abstract class JSPrimitives {
 
   val DYNNEW = 321 // Instantiate a new JavaScript object
 
-  val DYNLIT = 334    // js.Dynamic.literal.applyDynamic{,Named}
-
   val ARR_CREATE = 337 // js.Array.apply (array literal syntax)
 
   val TYPEOF = 344    // typeof x
@@ -86,9 +84,6 @@ abstract class JSPrimitives {
       addPrimitive(JSThisFunction_fromFunction(i), F2JSTHIS)
 
     addPrimitive(JSDynamic_newInstance, DYNNEW)
-
-    addPrimitive(JSDynamicLiteral_applyDynamicNamed, DYNLIT)
-    addPrimitive(JSDynamicLiteral_applyDynamic, DYNLIT)
 
     addPrimitive(JSArray_create, ARR_CREATE)
 

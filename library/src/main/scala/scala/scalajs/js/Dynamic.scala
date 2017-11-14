@@ -131,7 +131,7 @@ object Dynamic {
      */
     def applyDynamicNamed(name: String)(
         fields: (String, js.Any)*): js.Object with js.Dynamic = {
-      throw new java.lang.Error("stub")
+      js.special.objectLiteral(fields: _*).asInstanceOf[js.Object with js.Dynamic]
     }
 
     /* Note that the `def applyDynamic` could simply be `def apply`, but this
@@ -149,7 +149,7 @@ object Dynamic {
      */
     def applyDynamic(name: String)(
         fields: (String, js.Any)*): js.Object with js.Dynamic = {
-      throw new java.lang.Error("stub")
+      js.special.objectLiteral(fields: _*).asInstanceOf[js.Object with js.Dynamic]
     }
   }
 }

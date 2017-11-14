@@ -2101,6 +2101,65 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             defaultApply("newInstance__jl_Class__I__O", AnyType)
         }
 
+      // js.special
+
+      case ObjectLiteral =>
+        def default =
+          defaultApply("objectLiteral__sc_Seq__sjs_js_Object", AnyType)
+
+        val List(tprops) = targs
+        tprops match {
+          case PreTransMaybeBlock(bindingsAndStats,
+              PreTransLocalDef(LocalDef(
+                  RefinedType(ClassType("sjs_js_WrappedArray"), _, _),
+                  false,
+                  InlineClassInstanceReplacement(_, wrappedArrayFields, _)))) =>
+            assert(wrappedArrayFields.size == 1)
+            val jsArray = wrappedArrayFields.head._2
+            jsArray.replacement match {
+              case InlineJSArrayReplacement(elemLocalDefs, _)
+                  if elemLocalDefs.forall(e => isSubtype(e.tpe.base, ClassType("T2"))) =>
+                val fields: List[(PropertyName, Tree)] = for {
+                  (elemLocalDef, idx) <- elemLocalDefs.toList.zipWithIndex
+                } yield {
+                  elemLocalDef match {
+                    case LocalDef(RefinedType(ClassType("T2"), _, _), false,
+                        InlineClassInstanceReplacement(recType, tupleFields, _)) =>
+                      val List(key, value) =
+                        recType.fields.map(f => tupleFields(f.name))
+                      val keyProp = key.newReplacement match {
+                        case keyProp: StringLiteral =>
+                          keyProp
+                        case keyTree =>
+                          ComputedName(keyTree, "local" + idx)
+                      }
+                      (keyProp, value.newReplacement)
+
+                    case _ =>
+                      val key = Apply(elemLocalDef.newReplacement, "$$und1__O", Nil)(AnyType)
+                      val value = Apply(elemLocalDef.newReplacement, "$$und2__O", Nil)(AnyType)
+                      (ComputedName(key, "local" + idx), value)
+                  }
+                }
+
+                val resultTree = JSObjectConstr(fields)
+
+                contTree(Block(finishTransformStat(optTReceiver.get),
+                    finishTransformBindings(bindingsAndStats, resultTree)))
+
+              case _ =>
+                default
+            }
+
+          case _ =>
+            tprops.tpe match {
+              case RefinedType(ClassType("sci_Nil$"), _, false) =>
+                contTree(Block(finishTransformStat(tprops), JSObjectConstr(Nil)))
+              case _ =>
+                default
+            }
+        }
+
       // TypedArray conversions
 
       case ByteArrayToInt8Array =>
@@ -4651,6 +4710,17 @@ private[optimizer] object OptimizerCore {
       Some(preTrans.bindingsAndStats, preTrans.result)
   }
 
+  private object PreTransMaybeBlock {
+    def unapply(preTrans: PreTransform): Some[(List[BindingOrStat], PreTransform)] = {
+      preTrans match {
+        case PreTransBlock(bindingsAndStats, result) =>
+          Some((bindingsAndStats, result))
+        case _ =>
+          Some((Nil, preTrans))
+      }
+    }
+  }
+
   /** A `PreTransform` that can be the result of a `PreTransBlock`.
    *
    *  This is basically any `PreTransform` except:
@@ -4838,7 +4908,9 @@ private[optimizer] object OptimizerCore {
 
     final val ArrayNewInstance = ClassGetComponentType + 1
 
-    final val ByteArrayToInt8Array      = ArrayNewInstance         + 1
+    final val ObjectLiteral = ArrayNewInstance + 1
+
+    final val ByteArrayToInt8Array      = ObjectLiteral            + 1
     final val ShortArrayToInt16Array    = ByteArrayToInt8Array     + 1
     final val CharArrayToUint16Array    = ShortArrayToInt16Array   + 1
     final val IntArrayToInt32Array      = CharArrayToUint16Array   + 1
@@ -4876,6 +4948,8 @@ private[optimizer] object OptimizerCore {
       "jl_Class.getComponentType__jl_Class" -> ClassGetComponentType,
 
       "jl_reflect_Array$.newInstance__jl_Class__I__O" -> ArrayNewInstance,
+
+      "sjs_js_special_package$.objectLiteral__sc_Seq__sjs_js_Object" -> ObjectLiteral,
 
       "sjs_js_typedarray_package$.byteArray2Int8Array__AB__sjs_js_typedarray_Int8Array"         -> ByteArrayToInt8Array,
       "sjs_js_typedarray_package$.shortArray2Int16Array__AS__sjs_js_typedarray_Int16Array"      -> ShortArrayToInt16Array,
