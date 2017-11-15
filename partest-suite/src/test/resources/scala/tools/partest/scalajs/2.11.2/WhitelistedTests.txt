@@ -1025,7 +1025,6 @@ run/t6337a.scala
 run/exoticnames.scala
 run/t0936.scala
 run/runtime-richChar.scala
-run/t6272.scala
 run/t7215.scala
 run/t1939.scala
 run/ReverseSeqView.scala
@@ -1278,7 +1277,6 @@ run/t0042.scala
 run/t3050.scala
 run/t4536.scala
 run/NestedClasses.scala
-run/t3877.scala
 run/seqlike-kmp.scala
 run/t5907.scala
 run/t266.scala

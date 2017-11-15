@@ -73,6 +73,7 @@ class MainGenericRunner {
         command.thingToRun, "main", command.arguments))
 
     val linkerConfig = StandardLinker.Config()
+      .withCheckIR(true)
       .withSemantics(semantics)
       .withSourceMap(false)
       .withOptimizer(optMode != NoOpt)

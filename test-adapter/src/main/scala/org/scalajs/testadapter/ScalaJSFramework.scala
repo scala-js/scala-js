@@ -21,13 +21,15 @@ import org.scalajs.testcommon._
 
 import sbt.testing.{Logger => _, _}
 
+/** A shim over [[TestAdapter]] for compatiblity. */
+@deprecated("Use TestAdapter instead.", "0.6.22")
 final class ScalaJSFramework(
-    private[testadapter] val frameworkName: String,
-    private val jsEnv: ComJSEnv,
-    private val jsFiles: Seq[VirtualJSFile],
-    private[testadapter] val moduleKind: ModuleKind,
-    private[testadapter] val moduleIdentifier: Option[String],
-    private[testadapter] val logger: Logger
+    frameworkName: String,
+    jsEnv: ComJSEnv,
+    jsFiles: Seq[VirtualJSFile],
+    moduleKind: ModuleKind,
+    moduleIdentifier: Option[String],
+    logger: Logger
 ) extends Framework {
 
   def this(frameworkName: String, jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
@@ -35,72 +37,25 @@ final class ScalaJSFramework(
     this(frameworkName, jsEnv, jsFiles, ModuleKind.NoModule, None, logger)
   }
 
-  private[this] val frameworkInfo = fetchFrameworkInfo()
+  private[this] val adapter = {
+    val config = TestAdapter.Config()
+      .withLogger(logger)
+      .withModuleSettings(moduleKind, moduleIdentifier)
 
-  private[this] var _isRunning = false
+    new TestAdapter(jsEnv, jsFiles, config)
+  }
 
-  val name: String = frameworkInfo.name
+  private[this] val realFramework =
+    adapter.loadFrameworks(List(List(frameworkName))).head.get
 
-  def fingerprints: Array[Fingerprint] = frameworkInfo.fingerprints.toArray
+  def name: String = realFramework.name
+
+  def fingerprints: Array[Fingerprint] = realFramework.fingerprints
 
   def runner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader): Runner = synchronized {
-
-    if (_isRunning) {
-      throw new IllegalStateException(
-        "Scala.js test frameworks do not support concurrent runs")
-    }
-
-    _isRunning = true
-
-    new ScalaJSRunner(this, args, remoteArgs)
+      testClassLoader: ClassLoader): Runner = {
+    realFramework.runner(args, remoteArgs, testClassLoader)
   }
 
-  private[testadapter] def runDone(): Unit = synchronized(_isRunning = false)
-
-  private[testadapter] def newComRunner(files: Seq[VirtualJSFile]): ComJSRunner =
-    jsEnv.comRunner(jsFiles ++ files)
-
-  private def fetchFrameworkInfo() = {
-    val runner = newComRunner(frameworkInfoLauncher :: Nil)
-    runner.start(logger, ConsoleJSConsole)
-
-    try {
-      Serializer.deserialize[FrameworkInfo](runner.receive())
-    } finally {
-      runner.close()
-      runner.await(VMTermTimeout)
-    }
-  }
-
-  private def frameworkInfoLauncher = {
-    val prefix = optionalExportsNamespacePrefix
-    val name = jsonToString(frameworkName.toJSON)
-    val code = s"""
-      new ${prefix}org.scalajs.testinterface.internal.InfoSender($name).initAndSend();
-    """
-    new MemVirtualJSFile(s"testFrameworkInfo.js").withContent(code)
-  }
-
-  private[testadapter] def optionalExportsNamespacePrefix: String = {
-    ScalaJSFramework.optionalExportsNamespacePrefix(moduleKind,
-        moduleIdentifier)
-  }
-}
-
-private[testadapter] object ScalaJSFramework {
-  private[testadapter] def optionalExportsNamespacePrefix(
-      moduleKind: ModuleKind, moduleIdentifier: Option[String]): String = {
-    moduleKind match {
-      case ModuleKind.NoModule =>
-        ""
-
-      case ModuleKind.CommonJSModule =>
-        val moduleIdent = moduleIdentifier.getOrElse {
-          throw new IllegalArgumentException(
-              "The module identifier must be specified for CommonJS modules")
-        }
-        s"""require("${escapeJS(moduleIdent)}").""" // note the final '.'
-    }
-  }
+  override protected def finalize(): Unit = adapter.close()
 }

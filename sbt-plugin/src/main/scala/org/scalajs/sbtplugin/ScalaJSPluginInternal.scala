@@ -22,7 +22,7 @@ import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.core.ir.Printers.IRTreePrinter
 
-import org.scalajs.testadapter.{FrameworkDetector, HTMLRunnerBuilder}
+import org.scalajs.testadapter.{TestAdapter, HTMLRunnerBuilder}
 
 import Loggers._
 import SBTCompat._
@@ -38,6 +38,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
   /** The global Scala.js IR cache */
   val globalIRCache: IRFileCache = new IRFileCache()
 
+  @tailrec
+  final private def registerResource[T <: AnyRef](
+      l: AtomicReference[List[T]], r: T): r.type = {
+    val prev = l.get()
+    if (l.compareAndSet(prev, r :: prev)) r
+    else registerResource(l, r)
+  }
+
   private val allocatedIRCaches =
     new AtomicReference[List[globalIRCache.Cache]](Nil)
 
@@ -46,25 +54,23 @@ private[sbtplugin] object ScalaJSPluginInternal {
    *  The allocated IR cache will automatically be freed when the build is
    *  unloaded.
    */
-  private def newIRCache: globalIRCache.Cache = {
-    val cache = globalIRCache.newCache
+  private def newIRCache: globalIRCache.Cache =
+    registerResource(allocatedIRCaches, globalIRCache.newCache)
 
-    @tailrec
-    def registerLoop(): Unit = {
-      val prevValue = allocatedIRCaches.get()
-      if (!allocatedIRCaches.compareAndSet(prevValue, cache :: prevValue))
-        registerLoop()
-    }
-    registerLoop()
+  private[sbtplugin] def freeAllIRCaches(): Unit =
+    allocatedIRCaches.getAndSet(Nil).foreach(_.free())
 
-    cache
+  private val createdTestAdapters =
+    new AtomicReference[List[TestAdapter]](Nil)
+
+  private def newTestAdapter(jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
+      config: TestAdapter.Config): TestAdapter = {
+    registerResource(createdTestAdapters,
+        new TestAdapter(jsEnv, jsFiles, config))
   }
 
-  private[sbtplugin] def freeAllIRCaches(): Unit = {
-    val allCaches = allocatedIRCaches.getAndSet(Nil)
-    for (cache <- allCaches)
-      cache.free()
-  }
+  private[sbtplugin] def closeAllTestAdapters(): Unit =
+    createdTestAdapters.getAndSet(Nil).foreach(_.close())
 
   /* #2798 -- On Java 9+, the parallel collections on 2.10 die with a
    * `NumberFormatException` and prevent the linker from working.
@@ -355,6 +361,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
               "`fork in Test := false`.")
         }
 
+        val frameworks = testFrameworks.value
+
         val env = jsEnv.value match {
           case env: ComJSEnv => env
 
@@ -371,13 +379,19 @@ private[sbtplugin] object ScalaJSPluginInternal {
           case ModuleKind.CommonJSModule => Some(scalaJSLinkedFile.value.data.getPath)
         }
 
-        val frameworksAndTheirImplNames =
-          testFrameworks.value.map(f => f -> f.implClassNames.toList)
+        val frameworkNames = frameworks.map(_.implClassNames.toList).toList
 
         val logger = sbtLogger2ToolsLogger(streams.value.log)
+        val config = TestAdapter.Config()
+          .withLogger(logger)
+          .withModuleSettings(moduleKind, moduleIdentifier)
 
-        FrameworkDetector.detectFrameworks(env, files, moduleKind,
-            moduleIdentifier, frameworksAndTheirImplNames, logger)
+        val adapter = newTestAdapter(env, files, config)
+        val frameworkAdapters = adapter.loadFrameworks(frameworkNames)
+
+        frameworks.zip(frameworkAdapters).collect {
+          case (tf, Some(adapter)) => (tf, adapter)
+        }.toMap
       },
 
       // Override default to avoid triggering a test:fastOptJS in a test:compile

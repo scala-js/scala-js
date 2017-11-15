@@ -888,6 +888,10 @@ run/t3493.scala
 # Using Class.forName
 run/private-inline.scala
 
+# Suffers from #3180
+run/t3877.scala
+run/t6272.scala
+
 ###  Incorrect partests  ###
 # Badly uses constract of Console.print (no flush)
 run/t429.scala

@@ -185,6 +185,7 @@ object ScalaJSPlugin extends AutoPlugin {
 
           { () =>
             prev()
+            ScalaJSPluginInternal.closeAllTestAdapters()
             ScalaJSPluginInternal.globalIRCache.clearStats()
           }
         },
