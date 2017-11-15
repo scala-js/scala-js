@@ -162,7 +162,15 @@ object System {
       case _ =>
         import IDHashCode._
         if (x.getClass == null) {
-          // This is not a Scala.js object: delegate to x.hashCode()
+          /* x is not a Scala.js object: we have delegate to x.hashCode().
+           * This is very important, as we really need to go through
+           * `$objectHashCode()` in `scalajsenv.js` instead of using our own
+           * `idHashCodeMap`. That's because `$objectHashCode()` uses the
+           * intrinsic `$systemIdentityHashCode` for JS objects, regardless of
+           * whether the optimizer is enabled or not. If we use our own
+           * `idHashCodeMap`, we will get different hash codes when obtained
+           * through `System.identityHashCode(x)` than with `x.hashCode()`.
+           */
           x.hashCode()
         } else if (assumingES6 || idHashCodeMap != null) {
           // Use the global WeakMap of attributed id hash codes

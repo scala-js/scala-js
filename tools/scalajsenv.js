@@ -352,10 +352,6 @@ function $objectHashCode(instance) {
         return instance.hashCode__I();
       else if ($isChar(instance))
         return instance.c;
-//!if outputMode != ECMAScript6
-      else if ($idHashCodeMap === null)
-        return 42;
-//!endif
       else
         return $systemIdentityHashCode(instance);
   }
@@ -581,22 +577,27 @@ const $systemIdentityHashCode =
 //!if outputMode != ECMAScript6
   }) :
   (function(obj) {
-    if ($isScalaJSObject(obj)) {
-      let hash = obj["$idHashCode$0"];
-      if (hash !== void 0) {
-        return hash;
-      } else if (!Object["isSealed"](obj)) {
-        hash = ($lastIDHash + 1) | 0;
-        $lastIDHash = hash;
-        obj["$idHashCode$0"] = hash;
-        return hash;
-      } else {
-        return 42;
-      }
-    } else if (obj === null) {
-      return 0;
-    } else {
-      return $objectHashCode(obj);
+    switch (typeof obj) {
+      case "string": case "number": case "boolean": case "undefined":
+        return $objectHashCode(obj);
+      default:
+        if ($isScalaJSObject(obj)) {
+          let hash = obj["$idHashCode$0"];
+          if (hash !== void 0) {
+            return hash;
+          } else if (!Object["isSealed"](obj)) {
+            hash = ($lastIDHash + 1) | 0;
+            $lastIDHash = hash;
+            obj["$idHashCode$0"] = hash;
+            return hash;
+          } else {
+            return 42;
+          }
+        } else if (obj === null) {
+          return 0;
+        } else {
+          return 42;
+        }
     }
 //!endif
   });
