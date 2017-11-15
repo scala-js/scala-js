@@ -9,12 +9,18 @@ package org.scalajs.testsuite.compiler
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import java.{util => ju}
+
+import org.scalajs.testsuite.utils.Platform._
 
 class DefaultMethodsTest {
 
   @Test def canOverrideDefaultMethod(): Unit = {
+    assumeFalse("Affected by https://github.com/scala/bug/issues/10609",
+        executingInJVM && (scalaVersion == "2.10.7" || scalaVersion == "2.11.12"))
+
     var counter = 0
 
     class SpecialIntComparator extends ju.Comparator[Int] {
