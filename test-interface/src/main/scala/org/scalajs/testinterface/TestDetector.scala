@@ -13,13 +13,15 @@ import sbt.testing._
 /** Fetches test definitions and frameworks. */
 private[scalajs] object TestDetector {
   def detectTests(): Seq[(Framework, Seq[TaskDef])] = {
-    import RawDefinitions._
+    val taskDefs = Serializer.deserialize[List[TaskDef]](
+        RawDefinitions.definedTests)
 
-    val taskDefs = Serializer.deserialize[List[TaskDef]](definedTests)
-    val frameworks = testFrameworkNames.flatMap(tryLoadFramework).toList
+    val frameworkNames = Serializer.deserialize[List[List[String]]](
+        RawDefinitions.testFrameworkNames)
 
     for {
-      framework <- frameworks
+      nameAlternatives <- frameworkNames
+      framework <- tryLoadFramework(nameAlternatives).toList
     } yield {
       val fingerprints = framework.fingerprints()
       val eligibleTaskDefs = taskDefs.filter(taskDef =>
@@ -28,7 +30,7 @@ private[scalajs] object TestDetector {
     }
   }
 
-  private def tryLoadFramework(names: js.Array[String]): Option[Framework] = {
+  private def tryLoadFramework(names: List[String]): Option[Framework] = {
     def tryLoad(name: String): Option[Framework] = {
       Reflect.lookupInstantiatableClass(name).collect {
         case clazz if classOf[Framework].isAssignableFrom(clazz.runtimeClass) =>
@@ -56,6 +58,6 @@ private[scalajs] object TestDetector {
   @JSGlobalScope
   private object RawDefinitions extends js.Object {
     val definedTests: String = js.native
-    val testFrameworkNames: js.Array[js.Array[String]] = js.native
+    val testFrameworkNames: String = js.native
   }
 }
