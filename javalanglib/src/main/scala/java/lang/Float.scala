@@ -17,14 +17,8 @@ final class Float private () extends Number with Comparable[Float] {
   @inline def longValue(): scala.Long = floatValue.toLong
   @inline def doubleValue(): scala.Double = floatValue.toDouble
 
-  override def equals(that: Any): scala.Boolean = that match {
-    case that: Double => // yes, Double
-      val a = doubleValue
-      val b = that.doubleValue
-      (a == b) || (Double.isNaN(a) && Double.isNaN(b))
-    case _ =>
-      false
-  }
+  @inline override def equals(that: Any): scala.Boolean =
+    doubleValue.equals(that)
 
   @inline override def hashCode(): Int =
     Float.hashCode(floatValue)
