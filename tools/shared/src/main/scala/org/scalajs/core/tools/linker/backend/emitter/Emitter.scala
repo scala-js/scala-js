@@ -398,6 +398,13 @@ final class Emitter private (config: CommonPhaseConfig,
         addToMain(methodCache.getOrElseUpdate(m.version,
             classEmitter.genDefaultMethod(className, m.value)(methodCache)))
       }
+    } else if (kind == ClassKind.HijackedClass) {
+      // Hijacked methods
+      for (m <- linkedClass.memberMethods) yield {
+        val methodCache = classCache.getMethodCache(m.value.encodedName)
+        addToMain(methodCache.getOrElseUpdate(m.version,
+            classEmitter.genHijackedMethod(className, m.value)(methodCache)))
+      }
     }
 
     if (classEmitter.needInstanceTests(linkedClass)) {
@@ -670,9 +677,6 @@ private object Emitter {
 
         instantiateClass("jl_Class", "init___jl_ScalaJSClassData"),
 
-        callOnModule("jl_Double$", "compare__D__D__I"),
-        callOnModule("sjsr_RuntimeString$", "hashCode__T__I"),
-
         instanceTests(LongImpl.RuntimeLongClass),
         instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors),
         callMethods(LongImpl.RuntimeLongClass, LongImpl.AllMethods),
@@ -681,8 +685,7 @@ private object Emitter {
 
         cond(strictFloats && !assumingES6) {
           callOnModule("sjsr_package$", "froundPolyfill__D__D")
-        },
-        callOnModule("sjsr_Bits$", "numberHashCode__D__I")
+        }
     )
   }
 

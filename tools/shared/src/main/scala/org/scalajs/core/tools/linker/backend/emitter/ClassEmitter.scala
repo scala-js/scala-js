@@ -474,6 +474,13 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
   }
 
+  /** Generates an instance method of a hijacked class. */
+  def genHijackedMethod(className: String, method: MethodDef)(
+      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+    // We abuse `genDefaultMethod` as it does everything the way we want
+    genDefaultMethod(className, method)
+  }
+
   /** Generates a property. */
   def genProperty(className: String, property: PropertyDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
