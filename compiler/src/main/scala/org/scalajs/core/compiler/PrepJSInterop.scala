@@ -69,6 +69,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     val x        = newTermName("x")
     val Value    = newTermName("Value")
     val Val      = newTermName("Val")
+
+    val ArrowAssoc = {
+      if (scala.util.Properties.versionNumberString.startsWith("2.10."))
+        newTermName("any2ArrowAssoc")
+      else
+        newTermName("ArrowAssoc")
+    }
+
+    val MINGT = encode("->") // not defined in nme in 2.10
   }
 
   private object jstpnme {
@@ -363,6 +372,62 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             )
           }
           typer.typed(newTree, Mode.FUNmode, tree.tpe)
+
+        // Compile-time errors and warnings for js.Dynamic.literal
+        case Apply(Apply(fun, nameArgs), args)
+            if fun.symbol == JSDynamicLiteral_applyDynamic ||
+              fun.symbol == JSDynamicLiteral_applyDynamicNamed =>
+          // Check that the first argument list is a constant string "apply"
+          nameArgs match {
+            case List(Literal(Constant(s: String))) =>
+              if (s != "apply") {
+                reporter.error(tree.pos,
+                    s"js.Dynamic.literal does not have a method named $s")
+              }
+            case _ =>
+              reporter.error(tree.pos,
+                  s"js.Dynamic.literal.${tree.symbol.name} may not be " +
+                  "called directly")
+          }
+
+          // Warn for known duplicate property names
+          val knownPropNames = mutable.Set.empty[String]
+          for (arg <- args) {
+            def processPropName(propNameTree: Tree): Unit = {
+              propNameTree match {
+                case Literal(Constant(propName: String)) =>
+                  if (!knownPropNames.add(propName)) {
+                    val pos =
+                      if (propNameTree.pos.isDefined) propNameTree.pos
+                      else tree.pos // this happens in 2.10
+                    reporter.warning(pos,
+                        s"""Duplicate property "$propName" shadows a """ +
+                        "previously defined one")
+                  }
+                case _ =>
+                  // ignore
+              }
+            }
+            arg match {
+              case Apply(fun, List(propNameTree, _))
+                  if fun.symbol == Tuple2_apply =>
+                processPropName(propNameTree)
+              case Apply(fun @ TypeApply(Select(receiver, jsnme.MINGT), _), _)
+                  if currentRun.runDefinitions.isArrowAssoc(fun.symbol) =>
+                receiver match {
+                  case Apply(TypeApply(Select(predef, jsnme.ArrowAssoc), _),
+                      List(propNameTree))
+                      if predef.symbol == PredefModule =>
+                    processPropName(propNameTree)
+                  case _ =>
+                    // ignore
+                }
+              case _ =>
+                // ignore
+            }
+          }
+
+          super.transform(tree)
 
         case _ => super.transform(tree)
       }

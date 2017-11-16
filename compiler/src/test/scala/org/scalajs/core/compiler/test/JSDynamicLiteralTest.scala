@@ -103,69 +103,92 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
 
   @Test
   def keyDuplicationWarning: Unit = {
+    val version = scala.util.Properties.versionNumberString
+    val hasSuboptimalPositions = version.startsWith("2.10.")
+
+    implicit class MyHasWarnsOps(val code: CompileTests) {
+      def hasWarnsForByName(expected: String): Unit = {
+        if (hasSuboptimalPositions)
+          code.warns()
+        else
+          code.hasWarns(expected)
+      }
+    }
 
     // detects duplicate named keys
     expr"""
     lit(a = "1", b = "2", a = "3")
-    """ hasWarns
+    """ hasWarnsForByName
     """
-      |newSource1.scala:3: warning: Duplicate keys in object literal: "a" defined 2 times. Only the last occurrence is assigned.
+      |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit(a = "1", b = "2", a = "3")
-      |       ^
+      |                          ^
     """
 
-    // detects duplicate named keys (check the arrow indentation)
+    // detects duplicate named keys
     expr"""
     lit(aaa = "1", b = "2", aaa = "3")
-    """ hasWarns
+    """ hasWarnsForByName
     """
-      |newSource1.scala:3: warning: Duplicate keys in object literal: "aaa" defined 2 times. Only the last occurrence is assigned.
+      |newSource1.scala:3: warning: Duplicate property "aaa" shadows a previously defined one
       |    lit(aaa = "1", b = "2", aaa = "3")
-      |       ^
+      |                            ^
     """
 
-    // detects duplicate named keys (check the arrow indentation)
+    // detects duplicate named keys
     expr"""
     lit(aaa = "1",
         bb = "2",
         bb = "3")
-    """ hasWarns
+    """ hasWarnsForByName
     """
-      |newSource1.scala:3: warning: Duplicate keys in object literal: "bb" defined 2 times. Only the last occurrence is assigned.
-      |    lit(aaa = "1",
-      |       ^
+      |newSource1.scala:5: warning: Duplicate property "bb" shadows a previously defined one
+      |        bb = "3")
+      |        ^
     """
 
-    // detects duplicate named keys (check the arrow indentation)
+    // detects duplicate named keys
     expr"""
     lit(aaa = "1",
         b = "2",
         aaa = "3")
-    """ hasWarns
+    """ hasWarnsForByName
     """
-      |newSource1.scala:3: warning: Duplicate keys in object literal: "aaa" defined 2 times. Only the last occurrence is assigned.
-      |    lit(aaa = "1",
-      |       ^
+      |newSource1.scala:5: warning: Duplicate property "aaa" shadows a previously defined one
+      |        aaa = "3")
+      |        ^
     """
 
     // detects triplicated named keys
     expr"""
     lit(a = "1", a = "2", a = "3")
-    """ hasWarns
+    """ hasWarnsForByName
     """
-      |newSource1.scala:3: warning: Duplicate keys in object literal: "a" defined 3 times. Only the last occurrence is assigned.
+      |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit(a = "1", a = "2", a = "3")
-      |       ^
+      |                 ^
+      |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
+      |    lit(a = "1", a = "2", a = "3")
+      |                          ^
     """
 
     // detects two different duplicates named keys
     expr"""
     lit(a = "1", b = "2", a = "3", b = "4", c = "5", c = "6", c = "7")
-    """ hasWarns
+    """ hasWarnsForByName
     """
-      |newSource1.scala:3: warning: Duplicate keys in object literal: "a" defined 2 times, "b" defined 2 times, "c" defined 3 times. Only the last occurrence is assigned.
+      |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit(a = "1", b = "2", a = "3", b = "4", c = "5", c = "6", c = "7")
-      |       ^
+      |                          ^
+      |newSource1.scala:3: warning: Duplicate property "b" shadows a previously defined one
+      |    lit(a = "1", b = "2", a = "3", b = "4", c = "5", c = "6", c = "7")
+      |                                   ^
+      |newSource1.scala:3: warning: Duplicate property "c" shadows a previously defined one
+      |    lit(a = "1", b = "2", a = "3", b = "4", c = "5", c = "6", c = "7")
+      |                                                     ^
+      |newSource1.scala:3: warning: Duplicate property "c" shadows a previously defined one
+      |    lit(a = "1", b = "2", a = "3", b = "4", c = "5", c = "6", c = "7")
+      |                                                              ^
     """
 
     // detects duplicate keys when represented with arrows
@@ -173,9 +196,9 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     lit("a" -> "1", "b" -> "2", "a" -> "3")
     """ hasWarns
     """
-      |newSource1.scala:3: warning: Duplicate keys in object literal: "a" defined 2 times. Only the last occurrence is assigned.
+      |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit("a" -> "1", "b" -> "2", "a" -> "3")
-      |       ^
+      |                                ^
     """
 
     // detects duplicate keys when represented with tuples
@@ -183,9 +206,9 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     lit(("a", "1"), ("b", "2"), ("a", "3"))
     """ hasWarns
     """
-      |newSource1.scala:3: warning: Duplicate keys in object literal: "a" defined 2 times. Only the last occurrence is assigned.
+      |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit(("a", "1"), ("b", "2"), ("a", "3"))
-      |       ^
+      |                                 ^
     """
 
     // detects duplicate keys when represented with mixed tuples and arrows
@@ -193,18 +216,16 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     lit("a" -> "1", ("b", "2"), ("a", "3"))
     """ hasWarns
     """
-      |newSource1.scala:3: warning: Duplicate keys in object literal: "a" defined 2 times. Only the last occurrence is assigned.
+      |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit("a" -> "1", ("b", "2"), ("a", "3"))
-      |       ^
+      |                                 ^
     """
 
     // should not warn if the key is not literal
     expr"""
     val a = "x"
     lit("a" -> "1", a -> "2", a -> "3")
-    """ hasWarns
-    """
-    """
+    """.hasNoWarns
 
     // should not warn if the key/value pairs are not literal
     """
@@ -212,9 +233,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
       val tup = "x" -> lit()
       def foo = lit(tup, tup)
     }
-    """ hasWarns
-    """
-    """
+    """.hasNoWarns
 
     // should warn only for the literal keys when in
     // the presence of non literal keys
@@ -226,9 +245,9 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     }
     """ hasWarns
     """
-      |newSource1.scala:6: warning: Duplicate keys in object literal: "a" defined 2 times. Only the last occurrence is assigned.
+      |newSource1.scala:6: warning: Duplicate property "a" shadows a previously defined one
       |      lit("a" -> "2", tup, ("a", "3"), b -> "5", tup, b -> "6")
-      |         ^
+      |                            ^
     """
   }
 

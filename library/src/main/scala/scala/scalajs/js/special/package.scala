@@ -8,6 +8,9 @@
 
 package scala.scalajs.js
 
+import scala.scalajs.js
+import scala.scalajs.js.annotation._
+
 /** Contains special primitives of interoperability with JavaScript which are
  *  of limited importance or rare usefulness.
  *
@@ -21,6 +24,28 @@ package scala.scalajs.js
  *  requirements.
  */
 package object special {
+
+  @js.native
+  private trait FullyDynamicProps extends js.Object {
+    @JSBracketAccess
+    def update(prop: scala.Any, value: scala.Any): Unit = js.native
+  }
+
+  /** Constructs a new object with the specified properties.
+   *
+   *  This method is the exact equivalent of an object initializer in
+   *  JavaScript (aka an object literal).
+   *
+   *  In most cases, you should use a new anonymous JS class if you have a
+   *  typed API, or [[js.Dynamic.literal]] in a dynamically typed setting.
+   */
+  // intrinsic
+  def objectLiteral(properties: (scala.Any, scala.Any)*): js.Object = {
+    val result = new js.Object().asInstanceOf[FullyDynamicProps]
+    for (pair <- properties)
+      result(pair._1) = pair._2
+    result
+  }
 
   /** Tests whether an object has a given enumerable property in its prototype
    *  chain.
