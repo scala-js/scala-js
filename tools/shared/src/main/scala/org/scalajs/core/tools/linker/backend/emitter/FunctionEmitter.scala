@@ -1954,6 +1954,28 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                  */
                 genDispatchApply()
 
+              case ClassType(CharSequenceClass)
+                  if !hijackedMethodsOfStringWithDispatcher.contains(methodName) =>
+                /* This case is required as a hack around a peculiar behavior
+                 * of the optimizer. In theory, it should never happen, because
+                 * we should always have a dispatcher when the receiver is not
+                 * a concrete hijacked class. However, if the optimizer inlines
+                 * a method of CharSequence from String (because there is no
+                 * other CharSequence in the whole program), we can end up with
+                 * the inlined code calling another method of String although
+                 * its receiver is still declared as a CharSequence.
+                 *
+                 * TODO The proper fix for this would be to improve how the
+                 * optimizer handles inlinings such as those: it should refine
+                 * the type of `this` within the inlined body.
+                 *
+                 * This cannot happen with other ancestors of hijacked classes
+                 * because all the other ones have several hijacked classes
+                 * implementing them, which prevents that form of inlining from
+                 * happening.
+                 */
+                genHijackedMethodApply(StringClass)
+
               case ClassType(cls) if !HijackedClasses.contains(cls) =>
                 /* This is a strict ancestor of a hijacked class. We need to
                  * use the dispatcher available in the helper method.
@@ -2402,6 +2424,21 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     val hijackedMethodsInheritedFromObject: Set[String] = Set(
         "getClass__jl_Class", "clone__O", "finalize__V", "notify__V",
         "notifyAll__V"
+    )
+
+    val hijackedMethodsOfStringWithDispatcher: Set[String] = Set(
+        "getClass__jl_Class",
+        "clone__O",
+        "finalize__V",
+        "notify__V",
+        "notifyAll__V",
+        "toString__T",
+        "equals__O__Z",
+        "hashCode__I",
+        "compareTo__O__I",
+        "length__I",
+        "charAt__I__C",
+        "subSequence__I__I__jl_CharSequence"
     )
 
     private def transformParamDef(paramDef: ParamDef): js.ParamDef = {

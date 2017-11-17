@@ -359,7 +359,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       val classIdent = encodeClassFullNameIdent(sym)
-      val isHijacked = isHijackedBoxedClass(sym)
+      val isHijacked = sym == HackedStringClass || isHijackedBoxedClass(sym)
 
       // Optimizer hints
 
@@ -1462,7 +1462,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               OptimizerHints.empty, None))
         } else if (isJSNativeCtorDefaultParam(sym)) {
           None
-        } else if (sym.isClassConstructor && isHijackedBoxedClass(sym.owner)) {
+        } else if (sym.isClassConstructor &&
+            (sym.owner == HackedStringClass || isHijackedBoxedClass(sym.owner))) {
           None
         } else if (scalaUsesImplClasses && !sym.owner.isImplClass &&
             sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
@@ -2439,7 +2440,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       assert(ctor.isClassConstructor,
           "'new' call to non-constructor: " + ctor.name)
 
-      if (isStringType(tpe)) {
+      if (clsSym == StringClass) {
         genNewString(tree)
       } else if (isHijackedBoxedClass(clsSym)) {
         genNewHijackedBoxedClass(clsSym, ctor, args map genExpr)
@@ -2579,14 +2580,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Apply(fun @ Select(receiver, _), args) = tree
       val sym = fun.symbol
 
-      def isStringMethodFromObject: Boolean = sym.name match {
-        case nme.toString_ | nme.equals_ | nme.hashCode_ => true
-        case _                                           => false
-      }
-
-      if (sym.owner == StringClass && !isStringMethodFromObject) {
-        genStringCall(tree)
-      } else if (isJSType(receiver.tpe) && sym.owner != ObjectClass) {
+      if (isJSType(receiver.tpe) && sym.owner != ObjectClass) {
         if (!isNonNativeJSClass(sym.owner) || isExposed(sym))
           genPrimitiveJSCall(tree, isStat)
         else
@@ -3810,56 +3804,45 @@ abstract class GenJSCode extends plugins.PluginComponent
           })(jstpe.AnyType)
         }
 
-        /* Look for a matching method in String. If we find one, we must
-         * redirect it to RuntimeString.
+        /* Add an explicit type test for a hijacked class with a call to a
+         * hijacked method, if applicable (i.e., if there is a matching method
+         * in the given hijacked class). This is necessary because hijacked
+         * classes of the IR do not support reflective proxy calls.
+         *
+         * Returns true if this treatment was applicable.
          */
-        val methodInStringClass = matchingSymIn(StringClass)
-        if (methodInStringClass != NoSymbol && methodInStringClass.isPublic) {
-          callStatement = js.If(genIsInstanceOf(callTrg, StringClass.tpe), {
-            if (methodInStringClass.owner == ObjectClass) {
-              // If the method is defined on Object, we can call it normally.
-              genApplyMethod(callTrg, methodInStringClass, arguments)
-            } else {
-              // Otherwise, we need to call it on RuntimeString
-              val (rtModuleClass, methodIdent) =
-                encodeRTStringMethodSym(methodInStringClass)
-              val retTpe = methodInStringClass.tpe.resultType
-              val castCallTrg = fromAny(callTrg, StringClass.toTypeConstructor)
+        def addCallToHijackedMethodIfApplicable(hijackedClass: Symbol): Boolean = {
+          val hijackedMethod = matchingSymIn(hijackedClass)
+          val isApplicable =
+            hijackedMethod != NoSymbol && hijackedMethod.isPublic
+          if (isApplicable) {
+            val hijackedClassTpe = hijackedClass.tpe
+            callStatement = js.If(genIsInstanceOf(callTrg, hijackedClassTpe), {
               boxIfNeeded(
-                  genApplyMethod(
-                      genLoadModule(rtModuleClass),
-                      methodIdent,
-                      castCallTrg :: arguments,
-                      toIRType(retTpe)),
-                  retTpe)
-            }
-          }, { // else
-            callStatement
-          })(jstpe.AnyType)
+                  genApplyMethod(genAsInstanceOf(callTrg, hijackedClassTpe),
+                      hijackedMethod, arguments),
+                  hijackedMethod.tpe.resultType)
+            }, { // else
+              callStatement
+            })(jstpe.AnyType)
+          }
+          isApplicable
         }
 
+        // String is a hijacked class
+        addCallToHijackedMethodIfApplicable(StringClass)
+
         /* For primitive types, we need to handle two cases. The method could
-         * either be defined in the boxed class of the primitive type, or it
-         * could be defined in the primitive class itself. In the former case,
-         * we generate a direct call to the actual (hijacked) method. In the
-         * latter case, we directly generate the primitive operation.
+         * either be defined in the boxed class of the primitive type (which is
+         * hijacked), or it could be defined in the primitive class itself.
+         * If the hijacked class treatment is not applicable, we also try the
+         * primitive treatment, in which case we directly generate the
+         * primitive operation.
          */
 
         def addCallForPrimitive(primitiveClass: Symbol): Boolean = {
           val boxedClass = definitions.boxedClass(primitiveClass)
-          val boxedTpe = boxedClass.tpe
-          val methodInBoxedClass = matchingSymIn(boxedClass)
-          if (methodInBoxedClass != NoSymbol && methodInBoxedClass.isPublic) {
-            callStatement = js.If(genIsInstanceOf(callTrg, boxedTpe), {
-              boxIfNeeded(
-                  genApplyMethod(
-                      genAsInstanceOf(callTrg, boxedTpe),
-                      methodInBoxedClass,
-                      arguments),
-                  methodInBoxedClass.tpe.resultType)
-            }, { // else
-              callStatement
-            })(jstpe.AnyType)
+          if (addCallToHijackedMethodIfApplicable(boxedClass)) {
             true
           } else {
             val methodInPrimClass = matchingSymIn(primitiveClass)
@@ -3878,6 +3861,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 // Fall through to the Int case that will come next
                 false
               } else {
+                val boxedTpe = boxedClass.tpe
                 callStatement = js.If(genIsInstanceOf(callTrg, boxedTpe), {
                   val castCallTrg =
                     makePrimitiveUnbox(callTrg, primitiveClass.tpe)
@@ -4356,52 +4340,15 @@ abstract class GenJSCode extends plugins.PluginComponent
       val ctor = fun.symbol
       val args = args0 map genExpr
 
-      // Filter members of target module for matching member
-      val compMembers = for {
-        mem <- RuntimeStringModule.tpe.members
-        if mem.name == jsnme.newString && ctor.tpe.matches(mem.tpe)
-      } yield mem
-
-      if (compMembers.isEmpty) {
-        reporter.error(pos,
-            s"""Could not find implementation for constructor of java.lang.String
-               |with type ${ctor.tpe}. Constructors on java.lang.String
-               |are forwarded to the companion object of
-               |scala.scalajs.runtime.RuntimeString""".stripMargin)
-        js.Undefined()
-      } else {
-        assert(compMembers.size == 1,
-            s"""For constructor with type ${ctor.tpe} on java.lang.String,
-               |found multiple companion module members.""".stripMargin)
-
-        // Emit call to companion object
-        genApplyMethod(
-            genLoadModule(RuntimeStringModule), compMembers.head, args)
+      val js.Ident(initName, origName) = encodeMethodSym(ctor)
+      val newStringMethodName = initName match {
+        case "init___" => "newString__T"
+        case _         => "newString" + initName.stripPrefix("init_") + "__T"
       }
-    }
+      val newStringMethodIdent = js.Ident(newStringMethodName, origName)
 
-    /** Gen JS code for calling a method on java.lang.String.
-     *
-     *  Forwards call on java.lang.String to the module
-     *  scala.scalajs.runtime.RuntimeString.
-     */
-    private def genStringCall(tree: Apply): js.Tree = {
-      implicit val pos = tree.pos
-
-      val sym = tree.symbol
-
-      // Deconstruct tree and create receiver and argument JS expressions
-      val Apply(Select(receiver0, _), args0) = tree
-      val receiver = genExpr(receiver0)
-      val args = args0 map genExpr
-
-      // Emit call to the RuntimeString module
-      val (rtModuleClass, methodIdent) = encodeRTStringMethodSym(sym)
-      genApplyMethod(
-          genLoadModule(rtModuleClass),
-          methodIdent,
-          receiver :: args,
-          toIRType(tree.tpe))
+      genApplyMethod(genLoadModule(StringModule), newStringMethodIdent, args,
+          jstpe.ClassType(ir.Definitions.StringClass))
     }
 
     /** Gen JS code for a new of a raw JS class (subclass of js.Any) */
@@ -5235,10 +5182,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       require(sym0.isModuleOrModuleClass,
           "genLoadModule called with non-module symbol: " + sym0)
-      val sym1 = if (sym0.isModule) sym0.moduleClass else sym0
-      val sym = // redirect all static methods of String to RuntimeString
-        if (sym1 == StringModule) RuntimeStringModule.moduleClass
-        else sym1
+      val sym = if (sym0.isModule) sym0.moduleClass else sym0
 
       // Does that module refer to the global scope?
       if (sym.hasAnnotation(JSGlobalScopeAnnotation)) {

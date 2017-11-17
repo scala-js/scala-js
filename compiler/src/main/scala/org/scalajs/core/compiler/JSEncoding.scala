@@ -137,28 +137,8 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     encodedName + paramsString
   }
 
-  /** Encodes a method symbol of java.lang.String for use in RuntimeString.
-   *
-   *  This basically means adding an initial parameter of type
-   *  java.lang.String, which is the `this` parameter.
-   */
-  def encodeRTStringMethodSym(sym: Symbol)(
-      implicit pos: Position): (Symbol, js.Ident) = {
-    require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
-    require(sym.owner == definitions.StringClass)
-    require(!sym.isClassConstructor && !sym.isPrivate)
-
-    val (encodedName, paramsString) =
-      encodeMethodNameInternal(sym, inRTClass = true)
-    val methodIdent = js.Ident(encodedName + paramsString,
-        Some(sym.unexpandedName.decoded + paramsString))
-
-    (jsDefinitions.RuntimeStringModuleClass, methodIdent)
-  }
-
   private def encodeMethodNameInternal(sym: Symbol,
-      reflProxy: Boolean = false,
-      inRTClass: Boolean = false): (String, String) = {
+      reflProxy: Boolean): (String, String) = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
 
     def name = encodeMemberNameInternal(sym)
@@ -176,7 +156,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
         mangleJSName(name)
     }
 
-    val paramsString = makeParamsString(sym, reflProxy, inRTClass)
+    val paramsString = makeParamsString(sym, reflProxy)
 
     (encodedName, paramsString)
   }
@@ -221,8 +201,14 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   def encodeClassFullName(sym: Symbol): String = {
-    ir.Definitions.encodeClassName(
-        sym.fullName + (if (needsModuleClassSuffix(sym)) "$" else ""))
+    if (sym == jsDefinitions.HackedStringClass) {
+      ir.Definitions.StringClass
+    } else if (sym == jsDefinitions.HackedStringModClass) {
+      "jl_String$"
+    } else {
+      ir.Definitions.encodeClassName(
+          sym.fullName + (if (needsModuleClassSuffix(sym)) "$" else ""))
+    }
   }
 
   def needsModuleClassSuffix(sym: Symbol): Boolean =
@@ -238,14 +224,12 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   // Encoding of method signatures
 
-  private def makeParamsString(sym: Symbol, reflProxy: Boolean,
-      inRTClass: Boolean): String = {
+  private def makeParamsString(sym: Symbol, reflProxy: Boolean): String = {
     val tpe = sym.tpe
 
     val paramTypeNames0 = tpe.params map (p => internalName(p.tpe))
 
-    val hasExplicitThisParameter =
-      inRTClass || isNonNativeJSClass(sym.owner)
+    val hasExplicitThisParameter = isNonNativeJSClass(sym.owner)
     val paramTypeNames =
       if (!hasExplicitThisParameter) paramTypeNames0
       else internalName(sym.owner.toTypeConstructor) :: paramTypeNames0
