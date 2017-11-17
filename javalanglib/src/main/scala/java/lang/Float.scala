@@ -50,7 +50,13 @@ object Float {
   final val SIZE = 32
   final val BYTES = 4
 
-  @inline def valueOf(floatValue: scala.Float): Float = new Float(floatValue)
+  @inline def `new`(value: scala.Float): Float = valueOf(value)
+
+  @inline def `new`(value: scala.Double): Float = valueOf(value.toFloat)
+
+  @inline def `new`(s: String): Float = valueOf(s)
+
+  @inline def valueOf(f: scala.Float): Float = f.asInstanceOf[Float]
 
   @inline def valueOf(s: String): Float = valueOf(parseFloat(s))
 

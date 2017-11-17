@@ -39,7 +39,12 @@ object Integer {
   final val SIZE = 32
   final val BYTES = 4
 
-  @inline def valueOf(intValue: scala.Int): Integer = new Integer(intValue)
+  @inline def `new`(value: scala.Int): Integer = valueOf(value)
+
+  @inline def `new`(s: String): Integer = valueOf(s)
+
+  @inline def valueOf(i: scala.Int): Integer = i.asInstanceOf[Integer]
+
   @inline def valueOf(s: String): Integer = valueOf(parseInt(s))
 
   @inline def valueOf(s: String, radix: Int): Integer =

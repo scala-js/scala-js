@@ -296,7 +296,12 @@ object Long {
   private def parseLongError(s: String): Nothing =
     throw new NumberFormatException(s"""For input string: "$s"""")
 
-  @inline def valueOf(longValue: scala.Long): Long = new Long(longValue)
+  @inline def `new`(value: scala.Long): Long = valueOf(value)
+
+  @inline def `new`(s: String): Long = valueOf(s)
+
+  @inline def valueOf(l: scala.Long): Long = l.asInstanceOf[Long]
+
   @inline def valueOf(s: String): Long = valueOf(parseLong(s))
 
   @inline def valueOf(s: String, radix: Int): Long =

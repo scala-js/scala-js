@@ -41,13 +41,14 @@ object Boolean {
    * Moreover, preserving the identity of TRUE and FALSE is not an issue
    * either, since they are primitive booleans in the end.
    */
-  def TRUE: Boolean = new Boolean(true)
-  def FALSE: Boolean = new Boolean(false)
+  @inline def TRUE: Boolean = valueOf(true)
+  @inline def FALSE: Boolean = valueOf(false)
 
-  @inline def valueOf(booleanValue: scala.Boolean): Boolean = {
-    // We don't care about identity, since they end up as primitive booleans
-    new Boolean(booleanValue)
-  }
+  @inline def `new`(value: scala.Boolean): Boolean = valueOf(value)
+
+  @inline def `new`(s: String): Boolean = valueOf(s)
+
+  @inline def valueOf(b: scala.Boolean): Boolean = b.asInstanceOf[Boolean]
 
   @inline def valueOf(s: String): Boolean = valueOf(parseBoolean(s))
 

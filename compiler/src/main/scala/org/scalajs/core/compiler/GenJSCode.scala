@@ -359,7 +359,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       val classIdent = encodeClassFullNameIdent(sym)
-      val isHijacked = sym == HackedStringClass || isHijackedBoxedClass(sym)
+      val isHijacked = isHijackedClass(sym)
 
       // Optimizer hints
 
@@ -1462,8 +1462,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               OptimizerHints.empty, None))
         } else if (isJSNativeCtorDefaultParam(sym)) {
           None
-        } else if (sym.isClassConstructor &&
-            (sym.owner == HackedStringClass || isHijackedBoxedClass(sym.owner))) {
+        } else if (sym.isClassConstructor && isHijackedClass(sym.owner)) {
           None
         } else if (scalaUsesImplClasses && !sym.owner.isImplClass &&
             sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
@@ -2440,10 +2439,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       assert(ctor.isClassConstructor,
           "'new' call to non-constructor: " + ctor.name)
 
-      if (clsSym == StringClass) {
-        genNewString(tree)
-      } else if (isHijackedBoxedClass(clsSym)) {
-        genNewHijackedBoxedClass(clsSym, ctor, args map genExpr)
+      if (isHijackedClass(clsSym)) {
+        genNewHijackedClass(clsSym, ctor, args.map(genExpr))
       } else if (isRawJSFunctionDef(clsSym)) {
         val classDef = consumeLazilyGeneratedAnonClass(clsSym)
         genRawJSFunction(classDef, args.map(genExpr))
@@ -2785,25 +2782,27 @@ abstract class GenJSCode extends plugins.PluginComponent
       js.New(jstpe.ClassType(className), ctorIdent, arguments)
     }
 
-    /** Gen JS code for a call to a constructor of a hijacked boxed class.
-     *  All of these have 2 constructors: one with the primitive
-     *  value, which is erased, and one with a String, which is
-     *  equivalent to BoxedClass.valueOf(arg).
+    /** Gen JS code for a call to a constructor of a hijacked class.
+     *  Reroute them to the `new` method with the same signature in the
+     *  companion object.
      */
-    private def genNewHijackedBoxedClass(clazz: Symbol, ctor: Symbol,
-        arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
-      assert(arguments.size == 1)
-      if (isStringType(ctor.tpe.params.head.tpe)) {
-        // BoxedClass.valueOf(arg)
-        val companion = clazz.companionModule.moduleClass
-        val valueOf = getMemberMethod(companion, nme.valueOf) suchThat { s =>
-          s.tpe.params.size == 1 && isStringType(s.tpe.params.head.tpe)
-        }
-        genApplyMethod(genLoadModule(companion), valueOf, arguments)
-      } else {
-        // erased
-        arguments.head
+    private def genNewHijackedClass(clazz: Symbol, ctor: Symbol,
+        args: List[js.Tree])(implicit pos: Position): js.Tree = {
+
+      val encodedName = encodeClassFullName(clazz)
+      val moduleClass = clazz.companionModule.moduleClass
+
+      val js.Ident(initName, origName) = encodeMethodSym(ctor)
+      val newMethodName = initName match {
+        case "init___" =>
+          "$new__" + encodedName
+        case _ =>
+          "$new" + initName.stripPrefix("init_") + "__" + encodedName
       }
+      val newMethodIdent = js.Ident(newMethodName, origName)
+
+      genApplyMethod(genLoadModule(moduleClass), newMethodIdent, args,
+          jstpe.ClassType(encodedName))
     }
 
     /** Gen JS code for creating a new Array: new Array[T](length)
@@ -4329,28 +4328,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       (firstArg, args.tail)
     }
 
-    /** Gen JS code for new java.lang.String(...)
-     *  Proxies calls to method newString on object
-     *  scala.scalajs.runtime.RuntimeString with proper arguments
-     */
-    private def genNewString(tree: Apply): js.Tree = {
-      implicit val pos = tree.pos
-      val Apply(fun @ Select(_, _), args0) = tree
-
-      val ctor = fun.symbol
-      val args = args0 map genExpr
-
-      val js.Ident(initName, origName) = encodeMethodSym(ctor)
-      val newStringMethodName = initName match {
-        case "init___" => "newString__T"
-        case _         => "newString" + initName.stripPrefix("init_") + "__T"
-      }
-      val newStringMethodIdent = js.Ident(newStringMethodName, origName)
-
-      genApplyMethod(genLoadModule(StringModule), newStringMethodIdent, args,
-          jstpe.ClassType(ir.Definitions.StringClass))
-    }
-
     /** Gen JS code for a new of a raw JS class (subclass of js.Any) */
     private def genPrimitiveJSNew(tree: Apply): js.Tree = {
       implicit val pos = tree.pos
@@ -5453,13 +5430,18 @@ abstract class GenJSCode extends plugins.PluginComponent
   private def isStringType(tpe: Type): Boolean =
     tpe.typeSymbol == StringClass
 
-  protected lazy val isHijackedBoxedClass: Set[Symbol] = {
-    /* This list is a duplicate of ir.Definitions.HijackedBoxedClasses, but
+  protected lazy val isHijackedClass: Set[Symbol] = {
+    /* This list is a duplicate of ir.Definitions.HijackedClasses, but
      * with global.Symbol's instead of IR encoded names as Strings.
+     * We also add HackedStringClass if it is defined.
      */
-    Set(BoxedUnitClass, BoxedBooleanClass, BoxedCharacterClass, BoxedByteClass,
+    val s = Set[Symbol](
+        BoxedUnitClass, BoxedBooleanClass, BoxedCharacterClass, BoxedByteClass,
         BoxedShortClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass,
-        BoxedDoubleClass)
+        BoxedDoubleClass, StringClass
+    )
+    if (HackedStringClass == NoSymbol) s
+    else s + HackedStringClass
   }
 
   private lazy val InlineAnnotationClass = requiredClass[scala.inline]

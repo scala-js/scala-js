@@ -41,7 +41,9 @@ object Character {
   final val SIZE = 16
   final val BYTES = 2
 
-  def valueOf(charValue: scala.Char): Character = new Character(charValue)
+  @inline def `new`(value: scala.Char): Character = valueOf(value)
+
+  @inline def valueOf(c: scala.Char): Character = c.asInstanceOf[Character]
 
   /* These are supposed to be final vals of type Byte, but that's not possible.
    * So we implement them as def's, which are binary compatible with final vals.

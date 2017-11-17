@@ -348,12 +348,12 @@ object _String { // scalastyle:ignore
 
   // Constructors
 
-  def newString(): String = ""
+  def `new`(): String = ""
 
-  def newString(value: Array[Char]): String =
-    newString(value, 0, value.length)
+  def `new`(value: Array[Char]): String =
+    `new`(value, 0, value.length)
 
-  def newString(value: Array[Char], offset: Int, count: Int): String = {
+  def `new`(value: Array[Char], offset: Int, count: Int): String = {
     val end = offset + count
     if (offset < 0 || end < offset || end > value.length)
       throw new StringIndexOutOfBoundsException
@@ -367,27 +367,27 @@ object _String { // scalastyle:ignore
     result
   }
 
-  def newString(bytes: Array[scala.Byte]): String =
-    newString(bytes, Charset.defaultCharset)
+  def `new`(bytes: Array[scala.Byte]): String =
+    `new`(bytes, Charset.defaultCharset)
 
-  def newString(bytes: Array[scala.Byte], charsetName: String): String =
-    newString(bytes, Charset.forName(charsetName))
+  def `new`(bytes: Array[scala.Byte], charsetName: String): String =
+    `new`(bytes, Charset.forName(charsetName))
 
-  def newString(bytes: Array[scala.Byte], charset: Charset): String =
+  def `new`(bytes: Array[scala.Byte], charset: Charset): String =
     charset.decode(ByteBuffer.wrap(bytes)).toString()
 
-  def newString(bytes: Array[scala.Byte], offset: Int, length: Int): String =
-    newString(bytes, offset, length, Charset.defaultCharset)
+  def `new`(bytes: Array[scala.Byte], offset: Int, length: Int): String =
+    `new`(bytes, offset, length, Charset.defaultCharset)
 
-  def newString(bytes: Array[scala.Byte], offset: Int, length: Int,
+  def `new`(bytes: Array[scala.Byte], offset: Int, length: Int,
       charsetName: String): String =
-    newString(bytes, offset, length, Charset.forName(charsetName))
+    `new`(bytes, offset, length, Charset.forName(charsetName))
 
-  def newString(bytes: Array[scala.Byte], offset: Int, length: Int,
+  def `new`(bytes: Array[scala.Byte], offset: Int, length: Int,
       charset: Charset): String =
     charset.decode(ByteBuffer.wrap(bytes, offset, length)).toString()
 
-  def newString(codePoints: Array[Int], offset: Int, count: Int): String = {
+  def `new`(codePoints: Array[Int], offset: Int, count: Int): String = {
     val end = offset + count
     if (offset < 0 || end < offset || end > codePoints.length)
       throw new StringIndexOutOfBoundsException
@@ -401,16 +401,16 @@ object _String { // scalastyle:ignore
     result
   }
 
-  def newString(original: String): String = {
+  def `new`(original: String): String = {
     if (original == null)
       throw new NullPointerException
     original
   }
 
-  def newString(buffer: java.lang.StringBuffer): String =
+  def `new`(buffer: java.lang.StringBuffer): String =
     buffer.toString
 
-  def newString(builder: java.lang.StringBuilder): String =
+  def `new`(builder: java.lang.StringBuilder): String =
     builder.toString
 
   // Static methods (aka methods on the companion object)
@@ -429,7 +429,7 @@ object _String { // scalastyle:ignore
     valueOf(data, 0, data.length)
 
   def valueOf(data: Array[Char], offset: Int, count: Int): String =
-    newString(data, offset, count)
+    `new`(data, offset, count)
 
   def format(format: String, args: Array[AnyRef]): String = {
     val frm = new java.util.Formatter()

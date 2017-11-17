@@ -66,8 +66,11 @@ object Double {
   final val SIZE = 64
   final val BYTES = 8
 
-  @inline def valueOf(doubleValue: scala.Double): Double =
-    new Double(doubleValue)
+  @inline def `new`(value: scala.Double): Double = valueOf(value)
+
+  @inline def `new`(s: String): Double = valueOf(s)
+
+  @inline def valueOf(d: scala.Double): Double = d.asInstanceOf[Double]
 
   @inline def valueOf(s: String): Double = valueOf(parseDouble(s))
 
