@@ -681,11 +681,7 @@ private object Emitter {
         instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors),
         callMethods(LongImpl.RuntimeLongClass, LongImpl.AllMethods),
 
-        callOnModule(LongImpl.RuntimeLongModuleClass, LongImpl.AllModuleMethods),
-
-        cond(strictFloats && !assumingES6) {
-          callOnModule("sjsr_package$", "froundPolyfill__D__D")
-        }
+        callOnModule(LongImpl.RuntimeLongModuleClass, LongImpl.AllModuleMethods)
     )
   }
 
