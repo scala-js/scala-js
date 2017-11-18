@@ -55,7 +55,11 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingClassProblem](
           "org.scalajs.testcommon.JVMSlaveEndpoints$"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.testcommon.RPCCore#lambda#@tach#1.this")
+          "org.scalajs.testcommon.RPCCore#lambda#@tach#1.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.testcommon.RPCCore.close"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.testcommon.RPCCore.this")
   )
 
   val TestAdapter = TestCommon ++ Seq(
@@ -92,6 +96,10 @@ object BinaryIncompatibilities {
           "org.scalajs.testadapter.ScalaJSRunner.getSlave"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.testadapter.ScalaJSRunner.loggerLock"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.testadapter.ComJSEnvRPC.close"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.testadapter.ComJSEnvRPC.this"),
 
       // private, not an issue.
       ProblemFilters.exclude[MissingClassProblem](
@@ -147,6 +155,10 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingClassProblem](
           "org.scalajs.testinterface.internal.Slave$lambda$3"),
       ProblemFilters.exclude[MissingClassProblem](
-          "org.scalajs.testinterface.internal.Slave$lambda$4")
+          "org.scalajs.testinterface.internal.Slave$lambda$4"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.testinterface.internal.JSRPC.close"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.testinterface.internal.JSRPC#Com.close")
   )
 }

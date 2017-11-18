@@ -11,10 +11,7 @@ package org.scalajs.testadapter
 
 import scala.concurrent._
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.concurrent.TrieMap
-
-import java.util.concurrent.atomic.{AtomicInteger, AtomicBoolean}
 
 import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.core.tools.io._
@@ -33,10 +30,16 @@ final class TestAdapter(jsEnv: ComJSEnv, config: TestAdapter.Config) {
   /** Map of ThreadId -> ManagedRunner */
   private[this] val runners = TrieMap.empty[Long, ManagedRunner]
 
-  private[this] val closing = new AtomicBoolean(false)
+  /** State management. May only be accessed under synchronization. */
+  private[this] var closed = false
+  private[this] var nextRunID = 0
+  private[this] var runs = Set.empty[RunMux.RunID]
 
-  private[this] val nextRunID = new AtomicInteger(0)
-  private[this] val runs = TrieMap.empty[RunMux.RunID, Unit]
+  /** A custom execution context that delegates to the global one for execution,
+   *  but handles failures internally.
+   */
+  private implicit val executionContext =
+    ExecutionContext.fromExecutor(ExecutionContext.global, reportFailure)
 
   /** Creates an `sbt.testing.Framework` for each framework that can be found.
    *
@@ -50,49 +53,71 @@ final class TestAdapter(jsEnv: ComJSEnv, config: TestAdapter.Config) {
       .call(JSEndpoints.detectFrameworks)(frameworkNames)
       .map(_.map(_.map(info => new FrameworkAdapter(info, this))))
 
-    // If there is no testing framework loaded, nothing will reply.
-    val fallback: Future[List[Option[Framework]]] =
-      runner.runner.future.map(_ => frameworkNames.map(_ => None))
+    val recovered = frameworks.recoverWith {
+      // If there is no testing framework loaded, nothing will reply.
+      case _: RPCCore.ClosedException =>
+        // We reply with no framework at all.
+        runner.runner.future.map(_ => frameworkNames.map(_ => None))
+    }
 
-    Future.firstCompletedOf(List(frameworks, fallback)).await()
+    recovered.await()
   }
 
   /** Releases all resources. All associated runs must be done. */
-  def close(): Unit = {
-    if (!closing.getAndSet(true)) {
-      // Snapshot runs.
-      val seenRuns = runs.keySet
+  def close(): Unit = synchronized {
+    val runInfo =
+      if (runs.isEmpty) "All runs have completed."
+      else s"Incomplete runs: $runs"
 
-      runners.values.foreach(_.com.close())
+    val msg = "TestAdapter.close() was called. " + runInfo
+
+    if (runs.nonEmpty)
+      config.logger.warn(msg)
+
+    /* This is the exception callers will see if they are still pending.
+     * That's why it is an IllegalStateException.
+     */
+    val cause = new IllegalStateException(msg)
+    stopEverything(cause)
+  }
+
+  /** Called when a throwable bubbles up the execution stack.
+   *
+   *  We terminate everyting if this happens to make sure nothing hangs waiting
+   *  on an async operation to complete.
+   */
+  private def reportFailure(cause: Throwable): Unit = {
+    val msg = "Failure in async execution. Aborting all test runs."
+    val error = new AssertionError(msg, cause)
+    config.logger.error(msg)
+    config.logger.trace(error)
+    stopEverything(error)
+  }
+
+  private def stopEverything(cause: Throwable): Unit = synchronized {
+    if (!closed) {
+      closed = true
+      runners.values.foreach(_.com.close(cause))
       runners.values.foreach(_.runner.stop())
       runners.clear()
-
-      runs.clear()
-      if (seenRuns.nonEmpty) {
-        throw new IllegalStateException(
-            s"close() called with incomplete runs: $seenRuns")
-      }
     }
   }
 
-  private[testadapter] def runStarting(): RunMux.RunID = {
-    require(!closing.get(), "We are closing. Cannot create new run.")
-    val runID = nextRunID.getAndIncrement()
-    runs.put(runID, ())
+  private[testadapter] def runStarting(): RunMux.RunID = synchronized {
+    require(!closed, "We are closed. Cannot create new run.")
+    val runID = nextRunID
+    nextRunID += 1
+    runs += runID
     runID
   }
 
   /** Called by [[RunnerAdapter]] when the run is completed. */
-  private[testadapter] def runDone(runID: RunMux.RunID): Unit = {
-    val old = runs.remove(runID)
-    require(old.nonEmpty, s"Tried to remove nonexistent run $runID")
+  private[testadapter] def runDone(runID: RunMux.RunID): Unit = synchronized {
+    require(runs.contains(runID), s"Tried to remove nonexistent run $runID")
+    runs -= runID
   }
 
   private[testadapter] def getRunnerForThread(): ManagedRunner = {
-    // Prevent runners from being started after closing started.
-    // Otherwise we might leak runners.
-    require(!closing.get(), "We are closing. Cannot create new runner.")
-
     val threadId = Thread.currentThread().getId()
 
     // Note that this is thread safe, since each thread can only operate on
@@ -100,7 +125,11 @@ final class TestAdapter(jsEnv: ComJSEnv, config: TestAdapter.Config) {
     runners.getOrElseUpdate(threadId, startManagedRunner(threadId))
   }
 
-  private def startManagedRunner(threadId: Long): ManagedRunner = {
+  private def startManagedRunner(threadId: Long): ManagedRunner = synchronized {
+    // Prevent runners from being started after we are closed.
+    // Otherwise we might leak runners.
+    require(!closed, "We are closed. Cannot create new runner.")
+
     // !!! DUPLICATE code with ScalaJSPlugin.makeExportsNamespaceExpr
     val orgExpr = config.moduleKind match {
       case ModuleKind.NoModule =>
@@ -135,8 +164,12 @@ final class TestAdapter(jsEnv: ComJSEnv, config: TestAdapter.Config) {
 
     val launcher = new MemVirtualJSFile("startTestBridge.js").withContent(code)
     val runner = jsEnv.comRunner(launcher)
+    val com = new ComJSEnvRPC(runner)
+    val mux = new RunMuxRPC(com)
+
     runner.start(config.logger, config.console)
-    new ManagedRunner(threadId, runner)
+
+    new ManagedRunner(threadId, runner, com, mux)
   }
 }
 
@@ -184,8 +217,9 @@ object TestAdapter {
   }
 
   private[testadapter] final class ManagedRunner(
-      val id: Long, val runner: ComJSRunner) {
-    val com = new ComJSEnvRPC(runner)
-    val mux = new RunMuxRPC(com)
-  }
+      val id: Long,
+      val runner: ComJSRunner,
+      val com: RPCCore,
+      val mux: RunMuxRPC
+  )
 }
