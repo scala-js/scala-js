@@ -19,7 +19,6 @@ import org.scalajs.core.tools.io._
 
 import org.scalajs.jsenv.VirtualFileMaterializer
 
-import org.scalajs.testadapter.json._
 import org.scalajs.testcommon.Serializer
 
 /** Template for the HTML runner. */
@@ -89,12 +88,11 @@ object HTMLRunnerBuilder {
       frameworkImplClassNames: List[List[String]],
       taskDefs: List[TaskDef]): String = {
 
-    val taskDefsString = Serializer.serialize(taskDefs)
+    def mkVar[T: Serializer](name: String, value: T) =
+      s"""var $name = "${Utils.escapeJS(Serializer.serialize(value))}";\n"""
 
-    s"""
-      var definedTests = ${jsonToString(taskDefsString.toJSON)};
-      var testFrameworkNames = ${jsonToString(frameworkImplClassNames.toJSON)};
-    """
+    mkVar("definedTests", taskDefs) +
+    mkVar("testFrameworkNames", frameworkImplClassNames)
   }
 
   private def htmlEscaped(str: String): String = str.flatMap {

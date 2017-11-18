@@ -602,7 +602,6 @@ object Build {
       commonToolsSettings,
       libraryDependencies ++= Seq(
           "org.scala-js" % "closure-compiler-java-6" % "v20160517",
-          "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit"),
           "com.novocode" % "junit-interface" % "0.9" % "test"
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
