@@ -32,9 +32,13 @@ package object runtime {
       case col: js.ArrayOps[A]     => col.result()
       case col: js.WrappedArray[A] => col.array
       case _ =>
-        val result = new js.Array[A]
-        col.foreach(x => result.push(x))
-        result
+        @noinline
+        def unhappyPath() = {
+          val result = new js.Array[A]
+          col.foreach(x => result.push(x))
+          result
+        }
+        unhappyPath()
     }
   }
 
