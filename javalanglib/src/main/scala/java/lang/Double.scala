@@ -185,13 +185,13 @@ object Double {
     !isNaN(d) && !isInfinite(d)
 
   @inline def hashCode(value: scala.Double): Int =
-    scala.scalajs.runtime.Bits.numberHashCode(value)
+    FloatingPointBits.numberHashCode(value)
 
   @inline def longBitsToDouble(bits: scala.Long): scala.Double =
-    scala.scalajs.runtime.Bits.longBitsToDouble(bits)
+    FloatingPointBits.longBitsToDouble(bits)
 
   @inline def doubleToLongBits(value: scala.Double): scala.Long =
-    scala.scalajs.runtime.Bits.doubleToLongBits(value)
+    FloatingPointBits.doubleToLongBits(value)
 
   @inline def sum(a: scala.Double, b: scala.Double): scala.Double =
     a + b

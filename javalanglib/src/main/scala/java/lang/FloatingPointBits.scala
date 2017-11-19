@@ -1,20 +1,11 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___      __ ____  Scala.js API               **
-**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2013, LAMP/EPFL        **
-**  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-lang.org/     **
-** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
-**                          |/____/                                     **
-\*                                                                      */
-
-
-package scala.scalajs.runtime
+package java.lang
 
 import scala.scalajs.js
 import js.Dynamic.global
 import js.typedarray
 
-/** Low-level stuff. */
-object Bits {
+/** Manipulating the bits of floating point numbers. */
+private[lang] object FloatingPointBits {
 
   import scala.scalajs.LinkingInfo.assumingES6
 
@@ -29,7 +20,7 @@ object Bits {
   }
 
   @inline
-  def areTypedArraysSupported: Boolean = {
+  private def areTypedArraysSupported: scala.Boolean = {
     /* We have a forwarder to the internal `val _areTypedArraysSupported` to
      * be able to inline it. This achieves the following:
      * * If we emit ES6, dce `|| _areTypedArraysSupported` and replace
@@ -57,7 +48,7 @@ object Bits {
     if (areTypedArraysSupported) new typedarray.Float64Array(arrayBuffer, 0, 1)
     else null
 
-  val areTypedArraysBigEndian = {
+  private val areTypedArraysBigEndian = {
     if (areTypedArraysSupported) {
       int32Array(0) = 0x01020304
       (new typedarray.Int8Array(arrayBuffer, 0, 8))(0) == 0x01
@@ -82,13 +73,13 @@ object Bits {
    *  the Double version should typically be faster on VMs without fround
    *  support because we avoid several fround operations.
    */
-  def numberHashCode(value: Double): Int = {
+  def numberHashCode(value: scala.Double): Int = {
     val iv = rawToInt(value)
-    if (iv == value && 1.0/value != Double.NegativeInfinity) iv
+    if (iv == value && 1.0/value != scala.Double.NegativeInfinity) iv
     else doubleToLongBits(value).hashCode()
   }
 
-  def intBitsToFloat(bits: Int): Float = {
+  def intBitsToFloat(bits: Int): scala.Float = {
     if (areTypedArraysSupported) {
       int32Array(0) = bits
       float32Array(0)
@@ -97,7 +88,7 @@ object Bits {
     }
   }
 
-  def floatToIntBits(value: Float): Int = {
+  def floatToIntBits(value: scala.Float): Int = {
     if (areTypedArraysSupported) {
       float32Array(0) = value
       int32Array(0)
@@ -106,7 +97,7 @@ object Bits {
     }
   }
 
-  def longBitsToDouble(bits: Long): Double = {
+  def longBitsToDouble(bits: scala.Long): scala.Double = {
     if (areTypedArraysSupported) {
       int32Array(highOffset) = (bits >>> 32).toInt
       int32Array(lowOffset) = bits.toInt
@@ -116,7 +107,7 @@ object Bits {
     }
   }
 
-  def doubleToLongBits(value: Double): Long = {
+  def doubleToLongBits(value: scala.Double): scala.Long = {
     if (areTypedArraysSupported) {
       float64Array(0) = value
       ((int32Array(highOffset).toLong << 32) |
@@ -138,7 +129,7 @@ object Bits {
    * predictable, since the results do not depend on strict floats semantics.
    */
 
-  private def intBitsToFloatPolyfill(bits: Int): Double = {
+  private def intBitsToFloatPolyfill(bits: Int): scala.Double = {
     val ebits = 8
     val fbits = 23
     val s = bits < 0
@@ -147,14 +138,14 @@ object Bits {
     decodeIEEE754(ebits, fbits, s, e, f)
   }
 
-  private def floatToIntBitsPolyfill(value: Double): Int = {
+  private def floatToIntBitsPolyfill(value: scala.Double): Int = {
     val ebits = 8
     val fbits = 23
     val (s, e, f) = encodeIEEE754(ebits, fbits, value)
     (if (s) 0x80000000 else 0) | (e << fbits) | rawToInt(f)
   }
 
-  private def longBitsToDoublePolyfill(bits: Long): Double = {
+  private def longBitsToDoublePolyfill(bits: scala.Long): scala.Double = {
     import js.JSNumberOps._
 
     val ebits = 11
@@ -168,7 +159,7 @@ object Bits {
     decodeIEEE754(ebits, fbits, s, e, f)
   }
 
-  private def doubleToLongBitsPolyfill(value: Double): Long = {
+  private def doubleToLongBitsPolyfill(value: scala.Double): scala.Long = {
     val ebits = 11
     val fbits = 52
     val hifbits = fbits-32
@@ -180,7 +171,7 @@ object Bits {
   }
 
   @inline private def decodeIEEE754(ebits: Int, fbits: Int,
-      s: Boolean, e: Int, f: Double): Double = {
+      s: scala.Boolean, e: Int, f: scala.Double): scala.Double = {
 
     import Math.pow
 
@@ -188,9 +179,9 @@ object Bits {
 
     if (e == (1 << ebits) - 1) {
       // Special
-      if (f != 0.0) Double.NaN
-      else if (s) Double.NegativeInfinity
-      else Double.PositiveInfinity
+      if (f != 0.0) scala.Double.NaN
+      else if (s) scala.Double.NegativeInfinity
+      else scala.Double.PositiveInfinity
     } else if (e > 0) {
       // Normalized
       val x = pow(2, e-bias) * (1 + f / pow(2, fbits))
@@ -206,7 +197,7 @@ object Bits {
   }
 
   @inline private def encodeIEEE754(ebits: Int, fbits: Int,
-      v: Double): (Boolean, Int, Double) = {
+      v: scala.Double): (scala.Boolean, Int, scala.Double) = {
 
     import Math._
 
@@ -218,7 +209,7 @@ object Bits {
     } else if (v.isInfinite) {
       (v < 0, (1 << ebits) - 1, 0.0)
     } else if (v == 0.0) {
-      (1 / v == Double.NegativeInfinity, 0, 0.0)
+      (1 / v == scala.Double.NegativeInfinity, 0, 0.0)
     } else {
       val LN2 = 0.6931471805599453
 
@@ -264,10 +255,10 @@ object Bits {
     }
   }
 
-  @inline private def rawToInt(x: Double): Int =
+  @inline private def rawToInt(x: scala.Double): Int =
     (x.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
 
-  @inline private[runtime] def roundToEven(n: Double): Double = {
+  @inline private def roundToEven(n: scala.Double): scala.Double = {
     val w = Math.floor(n)
     val f = n - w
     if (f < 0.5) w
