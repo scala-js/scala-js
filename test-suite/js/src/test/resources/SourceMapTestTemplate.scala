@@ -55,7 +55,7 @@ class SourceMapTest {
 
         val trace0 = e.getStackTrace.toList
         val trace1 = trace0.dropWhile(
-          normFileName(_).endsWith("/scala/scalajs/runtime/StackTrace.scala"))
+          normFileName(_).endsWith("/java/lang/StackTrace.scala"))
         val trace2 = trace1.dropWhile(
           normFileName(_).endsWith("/java/lang/Throwables.scala"))
 

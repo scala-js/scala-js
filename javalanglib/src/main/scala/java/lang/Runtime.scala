@@ -10,7 +10,7 @@ class Runtime private {
   //def removeShutdownHook(hook: Thread): Unit
 
   def halt(status: Int): Unit = {
-    val envInfo = scala.scalajs.runtime.EnvironmentInfo.envInfo
+    val envInfo = EnvironmentInfo.envInfo
 
     envInfo.flatMap(_.exitFunction).fold {
       // We don't have an exit function. Fail
