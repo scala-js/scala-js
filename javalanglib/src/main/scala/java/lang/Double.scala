@@ -19,13 +19,21 @@ final class Double private () extends Number with Comparable[Double] {
   @inline def longValue(): scala.Long = doubleValue.toLong
   @inline def floatValue(): scala.Float = doubleValue.toFloat
 
-  override def equals(that: Any): scala.Boolean = that match {
-    case that: Double =>
-      val a = doubleValue
-      val b = that.doubleValue
-      (a == b) || (Double.isNaN(a) && Double.isNaN(b))
-    case _ =>
-      false
+  override def equals(that: Any): scala.Boolean = {
+    /* Since Double is hijacked as primitive numbers, reference equality (eq)
+     * is equivalent to value equality (==). We use `eq` here as an
+     * optimization to avoid the type test on the right-hand-side: since we
+     * know that `this` is a number, if `this eq that`, then so is `that`. And
+     * in the else branch, `that ne that` is true if and only if `that` is
+     * `NaN` (hence `false` if it is not a number to begin with).
+     */
+    if (this eq that.asInstanceOf[AnyRef]) {
+      // 0.0.equals(-0.0) must be false
+      doubleValue != 0.0 || (1/doubleValue == 1/that.asInstanceOf[scala.Double])
+    } else {
+      // NaN.equals(NaN) must be true
+      (this ne this) && (that.asInstanceOf[AnyRef] ne that.asInstanceOf[AnyRef])
+    }
   }
 
   @inline override def hashCode(): Int =
@@ -58,8 +66,11 @@ object Double {
   final val SIZE = 64
   final val BYTES = 8
 
-  @inline def valueOf(doubleValue: scala.Double): Double =
-    new Double(doubleValue)
+  @inline def `new`(value: scala.Double): Double = valueOf(value)
+
+  @inline def `new`(s: String): Double = valueOf(s)
+
+  @inline def valueOf(d: scala.Double): Double = d.asInstanceOf[Double]
 
   @inline def valueOf(s: String): Double = valueOf(parseDouble(s))
 

@@ -23,6 +23,9 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
   class JSDefinitionsClass {
 
+    lazy val HackedStringClass = getClassIfDefined("java.lang._String")
+    lazy val HackedStringModClass = getModuleIfDefined("java.lang._String").moduleClass
+
     lazy val ScalaJSJSPackage = getPackage(newTermNameCached("scala.scalajs.js")) // compat 2.10/2.11
       lazy val JSPackage_typeOf        = getMemberMethod(ScalaJSJSPackage, newTermName("typeOf"))
       lazy val JSPackage_constructorOf = getMemberMethod(ScalaJSJSPackage, newTermName("constructorOf"))
@@ -98,9 +101,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val Special_instanceof = getMemberMethod(SpecialPackageModule, newTermName("instanceof"))
       lazy val Special_delete = getMemberMethod(SpecialPackageModule, newTermName("delete"))
       lazy val Special_debugger = getMemberMethod(SpecialPackageModule, newTermName("debugger"))
-
-    lazy val RuntimeStringModule = getRequiredModule("scala.scalajs.runtime.RuntimeString")
-    lazy val RuntimeStringModuleClass = RuntimeStringModule.moduleClass
 
     lazy val BooleanReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.BooleanReflectiveCall")
     lazy val CharacterReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.CharacterReflectiveCall")

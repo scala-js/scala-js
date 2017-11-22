@@ -246,13 +246,6 @@ function $newArrayObjectInternal(arrayClassData, lengths, lengthIndex) {
   return result;
 };
 
-function $objectToString(instance) {
-  if (instance === void 0)
-    return "undefined";
-  else
-    return instance.toString();
-};
-
 function $objectGetClass(instance) {
   switch (typeof instance) {
     case "string":
@@ -291,180 +284,145 @@ function $objectGetClass(instance) {
   }
 };
 
-function $objectClone(instance) {
+function $dp_toString__T(instance) {
+  if (instance === void 0)
+    return "undefined";
+  else
+    return instance.toString();
+};
+
+function $dp_getClass__jl_Class(instance) {
+  return $objectGetClass(instance);
+};
+
+function $dp_clone__O(instance) {
   if ($isScalaJSObject(instance) || (instance === null))
     return instance.clone__O();
   else
     throw new $c_jl_CloneNotSupportedException().init___();
 };
 
-function $objectNotify(instance) {
+function $dp_notify__V(instance) {
   // final and no-op in java.lang.Object
   if (instance === null)
     instance.notify__V();
 };
 
-function $objectNotifyAll(instance) {
+function $dp_notifyAll__V(instance) {
   // final and no-op in java.lang.Object
   if (instance === null)
     instance.notifyAll__V();
 };
 
-function $objectFinalize(instance) {
+function $dp_finalize__V(instance) {
   if ($isScalaJSObject(instance) || (instance === null))
     instance.finalize__V();
   // else no-op
 };
 
-function $objectEquals(instance, rhs) {
+function $dp_equals__O__Z(instance, rhs) {
   if ($isScalaJSObject(instance) || (instance === null))
     return instance.equals__O__Z(rhs);
   else if (typeof instance === "number")
-    return typeof rhs === "number" && $numberEquals(instance, rhs);
+    return $f_jl_Double__equals__O__Z(instance, rhs);
   else if ($isChar(instance))
-    return $isChar(rhs) && instance.c === rhs.c;
+    return $f_jl_Character__equals__O__Z(instance, rhs);
   else
     return instance === rhs;
 };
 
-function $numberEquals(lhs, rhs) {
-  return (lhs === rhs) ? (
-    // 0.0.equals(-0.0) must be false
-    lhs !== 0 || 1/lhs === 1/rhs
-  ) : (
-    // are they both NaN?
-    (lhs !== lhs) && (rhs !== rhs)
-  );
-};
-
-function $objectHashCode(instance) {
+function $dp_hashCode__I(instance) {
   switch (typeof instance) {
     case "string":
-      return $m_sjsr_RuntimeString$().hashCode__T__I(instance);
+      return $f_T__hashCode__I(instance);
     case "number":
-      return $m_sjsr_Bits$().numberHashCode__D__I(instance);
+      return $f_jl_Double__hashCode__I(instance);
     case "boolean":
-      return instance ? 1231 : 1237;
+      return $f_jl_Boolean__hashCode__I(instance);
     case "undefined":
-      return 0;
+      return $f_sr_BoxedUnit__hashCode__I(instance);
     default:
       if ($isScalaJSObject(instance) || instance === null)
         return instance.hashCode__I();
       else if ($isChar(instance))
-        return instance.c;
-//!if outputMode != ECMAScript6
-      else if ($idHashCodeMap === null)
-        return 42;
-//!endif
+        return $f_jl_Character__hashCode__I(instance);
       else
         return $systemIdentityHashCode(instance);
   }
 };
 
-function $comparableCompareTo(instance, rhs) {
+function $dp_compareTo__O__I(instance, rhs) {
   switch (typeof instance) {
     case "string":
-//!if asInstanceOfs != Unchecked
-      $as_T(rhs);
-//!endif
-      return instance === rhs ? 0 : (instance < rhs ? -1 : 1);
+      return $f_T__compareTo__O__I(instance, rhs);
     case "number":
-//!if asInstanceOfs != Unchecked
-      $as_jl_Number(rhs);
-//!endif
-      return $m_jl_Double$().compare__D__D__I(instance, rhs);
+      return $f_jl_Double__compareTo__O__I(instance, rhs);
     case "boolean":
-//!if asInstanceOfs != Unchecked
-      $asBoolean(rhs);
-//!endif
-      return instance - rhs; // yes, this gives the right result
+      return $f_jl_Boolean__compareTo__O__I(instance, rhs);
     default:
-      if ($isChar(instance)) {
-//!if asInstanceOfs != Unchecked
-        $asChar(rhs);
-//!endif
-        return instance.c - rhs.c;
-      } else {
+      if ($isChar(instance))
+        return $f_jl_Character__compareTo__O__I(instance, rhs);
+      else
         return instance.compareTo__O__I(rhs);
-      }
   }
 };
 
-function $charSequenceLength(instance) {
+function $dp_length__I(instance) {
   if (typeof(instance) === "string")
-//!if asInstanceOfs != Unchecked
-    return $uI(instance["length"]);
-//!else
-    return instance["length"] | 0;
-//!endif
+    return $f_T__length__I(instance);
   else
     return instance.length__I();
 };
 
-function $charSequenceCharAt(instance, index) {
+function $dp_charAt__I__C(instance, index) {
   if (typeof(instance) === "string")
-//!if asInstanceOfs != Unchecked
-    return $uI(instance["charCodeAt"](index)) & 0xffff;
-//!else
-    return instance["charCodeAt"](index) & 0xffff;
-//!endif
+    return $f_T__charAt__I__C(instance, index);
   else
     return instance.charAt__I__C(index);
 };
 
-function $charSequenceSubSequence(instance, start, end) {
+function $dp_subSequence__I__I__jl_CharSequence(instance, start, end) {
   if (typeof(instance) === "string")
-//!if asInstanceOfs != Unchecked
-    return $as_T(instance["substring"](start, end));
-//!else
-    return instance["substring"](start, end);
-//!endif
+    return $f_T__subSequence__I__I__jl_CharSequence(instance, start, end);
   else
     return instance.subSequence__I__I__jl_CharSequence(start, end);
 };
 
-function $booleanBooleanValue(instance) {
-  if (typeof instance === "boolean") return instance;
-  else                               return instance.booleanValue__Z();
-};
-
-function $characterCharValue(instance) {
-  return instance.c;
-}
-
-function $numberByteValue(instance) {
-  if (typeof instance === "number") return (instance << 24) >> 24;
-  else                              return instance.byteValue__B();
-};
-function $numberShortValue(instance) {
-  if (typeof instance === "number") return (instance << 16) >> 16;
-  else                              return instance.shortValue__S();
-};
-function $numberIntValue(instance) {
-  if (typeof instance === "number") return instance | 0;
-  else                              return instance.intValue__I();
-};
-function $numberLongValue(instance) {
+function $dp_byteValue__B(instance) {
   if (typeof instance === "number")
-    return $m_sjsr_RuntimeLong$().fromDouble__D__sjsr_RuntimeLong(instance);
+    return $f_jl_Double__byteValue__B(instance);
+  else
+    return instance.byteValue__B();
+};
+function $dp_shortValue__S(instance) {
+  if (typeof instance === "number")
+    return $f_jl_Double__shortValue__S(instance);
+  else
+    return instance.shortValue__S();
+};
+function $dp_intValue__I(instance) {
+  if (typeof instance === "number")
+    return $f_jl_Double__intValue__I(instance);
+  else
+    return instance.intValue__I();
+};
+function $dp_longValue__J(instance) {
+  if (typeof instance === "number")
+    return $f_jl_Double__longValue__J(instance);
   else
     return instance.longValue__J();
 };
-function $numberFloatValue(instance) {
-  if (typeof instance === "number") return $fround(instance);
-  else                              return instance.floatValue__F();
+function $dp_floatValue__F(instance) {
+  if (typeof instance === "number")
+    return $f_jl_Double__floatValue__F(instance);
+  else
+    return instance.floatValue__F();
 };
-function $numberDoubleValue(instance) {
-  if (typeof instance === "number") return instance;
-  else                              return instance.doubleValue__D();
-};
-
-function $isNaN(instance) {
-  return instance !== instance;
-};
-
-function $isInfinite(instance) {
-  return !isFinite(instance) && !$isNaN(instance);
+function $dp_doubleValue__D(instance) {
+  if (typeof instance === "number")
+    return $f_jl_Double__doubleValue__D(instance);
+  else
+    return instance.doubleValue__D();
 };
 
 function $doubleToInt(x) {
@@ -564,7 +522,7 @@ const $systemIdentityHashCode =
   (function(obj) {
     switch (typeof obj) {
       case "string": case "number": case "boolean": case "undefined":
-        return $objectHashCode(obj);
+        return $dp_hashCode__I(obj);
       default:
         if (obj === null) {
           return 0;
@@ -581,22 +539,27 @@ const $systemIdentityHashCode =
 //!if outputMode != ECMAScript6
   }) :
   (function(obj) {
-    if ($isScalaJSObject(obj)) {
-      let hash = obj["$idHashCode$0"];
-      if (hash !== void 0) {
-        return hash;
-      } else if (!Object["isSealed"](obj)) {
-        hash = ($lastIDHash + 1) | 0;
-        $lastIDHash = hash;
-        obj["$idHashCode$0"] = hash;
-        return hash;
-      } else {
-        return 42;
-      }
-    } else if (obj === null) {
-      return 0;
-    } else {
-      return $objectHashCode(obj);
+    switch (typeof obj) {
+      case "string": case "number": case "boolean": case "undefined":
+        return $dp_hashCode__I(obj);
+      default:
+        if ($isScalaJSObject(obj)) {
+          let hash = obj["$idHashCode$0"];
+          if (hash !== void 0) {
+            return hash;
+          } else if (!Object["isSealed"](obj)) {
+            hash = ($lastIDHash + 1) | 0;
+            $lastIDHash = hash;
+            obj["$idHashCode$0"] = hash;
+            return hash;
+          } else {
+            return 42;
+          }
+        } else if (obj === null) {
+          return 0;
+        } else {
+          return 42;
+        }
     }
 //!endif
   });

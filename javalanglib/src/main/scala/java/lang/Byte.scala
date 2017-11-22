@@ -48,7 +48,12 @@ object Byte {
   def MIN_VALUE: scala.Byte = -128
   def MAX_VALUE: scala.Byte = 127
 
-  @inline def valueOf(byteValue: scala.Byte): Byte = new Byte(byteValue)
+  @inline def `new`(value: scala.Byte): Byte = valueOf(value)
+
+  @inline def `new`(s: String): Byte = valueOf(s)
+
+  @inline def valueOf(b: scala.Byte): Byte = b.asInstanceOf[Byte]
+
   @inline def valueOf(s: String): Byte = valueOf(parseByte(s))
 
   @inline def valueOf(s: String, radix: Int): Byte =

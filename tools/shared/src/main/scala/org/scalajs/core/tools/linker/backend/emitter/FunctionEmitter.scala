@@ -1912,21 +1912,86 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           genSelectStatic(cls.className, item)
 
         case Apply(receiver, method, args) =>
+          import Definitions._
+
+          val methodName = method.name
           val newReceiver = transformExprNoChar(receiver)
           val newArgs = transformTypedArgs(method.name, args)
 
-          /* If the receiver is maybe a hijacked class instance, and there
-           * exists a hijacked method helper for the method, use it. Methods
-           * that do not have helpers are
-           * - Reflective proxies
-           * - Methods of RuntimeLong that are not also in java.lang.Long
-           */
-          if (isMaybeHijackedClass(receiver.tpe) &&
-              hijackedClassMethodToHelperName.contains(method.name)) {
-            val helperName = hijackedClassMethodToHelperName(method.name)
-            genCallHelper(helperName, newReceiver :: newArgs: _*)
-          } else {
+          def genNormalApply(): js.Tree =
             js.Apply(newReceiver DOT transformPropIdent(method), newArgs)
+
+          def genDispatchApply(): js.Tree =
+            genCallHelper("dp_" + methodName, newReceiver :: newArgs: _*)
+
+          def genHijackedMethodApply(className: String): js.Tree = {
+            val fullName = className + "__" + methodName
+            js.Apply(envField("f", fullName, method.originalName),
+                newReceiver :: newArgs)
+          }
+
+          if (isMaybeHijackedClass(receiver.tpe) &&
+              !isReflProxyName(methodName)) {
+            receiver.tpe match {
+              case AnyType =>
+                genDispatchApply()
+
+              case LongType | ClassType(BoxedLongClass) =>
+                // All methods of java.lang.Long are also in RuntimeLong
+                genNormalApply()
+
+              case _ if hijackedMethodsInheritedFromObject.contains(methodName) =>
+                /* Methods inherited from j.l.Object do not have a dedicated
+                 * hijacked method that we can call, even when we know the
+                 * precise type of the receiver. Therefore, we always have to
+                 * go through the dispatcher in those cases.
+                 *
+                 * Note that when the optimizer is enabled, if the receiver
+                 * had a precise type, the method would have been inlined
+                 * anyway (because all the affected methods are @inline).
+                 * Therefore this roundabout of dealing with this does not
+                 * prevent any optimization.
+                 */
+                genDispatchApply()
+
+              case ClassType(CharSequenceClass)
+                  if !hijackedMethodsOfStringWithDispatcher.contains(methodName) =>
+                /* This case is required as a hack around a peculiar behavior
+                 * of the optimizer. In theory, it should never happen, because
+                 * we should always have a dispatcher when the receiver is not
+                 * a concrete hijacked class. However, if the optimizer inlines
+                 * a method of CharSequence from String (because there is no
+                 * other CharSequence in the whole program), we can end up with
+                 * the inlined code calling another method of String although
+                 * its receiver is still declared as a CharSequence.
+                 *
+                 * TODO The proper fix for this would be to improve how the
+                 * optimizer handles inlinings such as those: it should refine
+                 * the type of `this` within the inlined body.
+                 *
+                 * This cannot happen with other ancestors of hijacked classes
+                 * because all the other ones have several hijacked classes
+                 * implementing them, which prevents that form of inlining from
+                 * happening.
+                 */
+                genHijackedMethodApply(StringClass)
+
+              case ClassType(cls) if !HijackedClasses.contains(cls) =>
+                /* This is a strict ancestor of a hijacked class. We need to
+                 * use the dispatcher available in the helper method.
+                 */
+                genDispatchApply()
+
+              case tpe =>
+                /* This is a concrete hijacked class or its corresponding
+                 * primitive type. Directly call the hijacked method. Note that
+                 * there might not even be a dispatcher for this method, so
+                 * this is important.
+                 */
+                genHijackedMethodApply(typeToBoxedHijackedClass(tpe))
+            }
+          } else {
+            genNormalApply()
           }
 
         case ApplyStatically(receiver, cls, method, args) =>
@@ -2336,44 +2401,44 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         false
     }
 
-    val hijackedClassMethodToHelperName: Map[String, String] = Map(
-        "getClass__jl_Class" -> "objectGetClass",
-        "toString__T"        -> "objectToString",
-        "clone__O"           -> "objectClone",
-        "finalize__V"        -> "objectFinalize",
-        "notify__V"          -> "objectNotify",
-        "notifyAll__V"       -> "objectNotifyAll",
-        "equals__O__Z"       -> "objectEquals",
-        "hashCode__I"        -> "objectHashCode",
+    def typeToBoxedHijackedClass(tpe: Type): String = (tpe: @unchecked) match {
+      case ClassType(cls) => cls
+      case AnyType        => Definitions.ObjectClass
+      case UndefType      => Definitions.BoxedUnitClass
+      case BooleanType    => Definitions.BoxedBooleanClass
+      case CharType       => Definitions.BoxedCharacterClass
+      case ByteType       => Definitions.BoxedByteClass
+      case ShortType      => Definitions.BoxedShortClass
+      case IntType        => Definitions.BoxedIntegerClass
+      case LongType       => Definitions.BoxedLongClass
+      case FloatType      => Definitions.BoxedFloatClass
+      case DoubleType     => Definitions.BoxedDoubleClass
+      case StringType     => Definitions.StringClass
+    }
 
-        "length__I"                          -> "charSequenceLength",
-        "charAt__I__C"                       -> "charSequenceCharAt",
-        "subSequence__I__I__jl_CharSequence" -> "charSequenceSubSequence",
+    /* Ideally, we should dynamically figure out this set. We should test
+     * whether a particular method is defined in the receiver's hijacked
+     * class: if not, it must be inherited. However, this would require
+     * additional global knowledge for no practical reason.
+     */
+    val hijackedMethodsInheritedFromObject: Set[String] = Set(
+        "getClass__jl_Class", "clone__O", "finalize__V", "notify__V",
+        "notifyAll__V"
+    )
 
-        "compareTo__O__I"            -> "comparableCompareTo",
-        "compareTo__jl_Boolean__I"   -> "comparableCompareTo",
-        "compareTo__jl_Character__I" -> "comparableCompareTo",
-        "compareTo__jl_Byte__I"      -> "comparableCompareTo",
-        "compareTo__jl_Short__I"     -> "comparableCompareTo",
-        "compareTo__jl_Integer__I"   -> "comparableCompareTo",
-        "compareTo__jl_Long__I"      -> "comparableCompareTo",
-        "compareTo__jl_Float__I"     -> "comparableCompareTo",
-        "compareTo__jl_Double__I"    -> "comparableCompareTo",
-        "compareTo__jl_String__I"    -> "comparableCompareTo",
-
-        "booleanValue__Z" -> "booleanBooleanValue",
-
-        "charValue__C" -> "characterCharValue",
-
-        "byteValue__B"   -> "numberByteValue",
-        "shortValue__S"  -> "numberShortValue",
-        "intValue__I"    -> "numberIntValue",
-        "longValue__J"   -> "numberLongValue",
-        "floatValue__F"  -> "numberFloatValue",
-        "doubleValue__D" -> "numberDoubleValue",
-
-        "isNaN__Z"      -> "isNaN",
-        "isInfinite__Z" -> "isInfinite"
+    val hijackedMethodsOfStringWithDispatcher: Set[String] = Set(
+        "getClass__jl_Class",
+        "clone__O",
+        "finalize__V",
+        "notify__V",
+        "notifyAll__V",
+        "toString__T",
+        "equals__O__Z",
+        "hashCode__I",
+        "compareTo__O__I",
+        "length__I",
+        "charAt__I__C",
+        "subSequence__I__I__jl_CharSequence"
     )
 
     private def transformParamDef(paramDef: ParamDef): js.ParamDef = {

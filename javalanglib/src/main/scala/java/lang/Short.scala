@@ -47,7 +47,12 @@ object Short {
   def MIN_VALUE: scala.Short = -32768
   def MAX_VALUE: scala.Short = 32767
 
-  @inline def valueOf(shortValue: scala.Short): Short = new Short(shortValue)
+  @inline def `new`(value: scala.Short): Short = valueOf(value)
+
+  @inline def `new`(s: String): Short = valueOf(s)
+
+  @inline def valueOf(s: scala.Short): Short = s.asInstanceOf[Short]
+
   @inline def valueOf(s: String): Short = valueOf(parseShort(s))
 
   @inline def valueOf(s: String, radix: Int): Short =

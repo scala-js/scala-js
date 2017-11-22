@@ -856,10 +856,7 @@ object Build {
 
       resourceGenerators in Compile += Def.task {
         val base = (resourceManaged in Compile).value
-        Seq(
-            serializeHardcodedIR(base, JavaLangObject.TheClassDef),
-            serializeHardcodedIR(base, JavaLangString.TheClassDef)
-        )
+        Seq(serializeHardcodedIR(base, JavaLangObject.TheClassDef))
       }.taskValue,
       scalaJSExternalCompileSettings
   ).withScalaJSCompiler.dependsOnLibraryNoJar
