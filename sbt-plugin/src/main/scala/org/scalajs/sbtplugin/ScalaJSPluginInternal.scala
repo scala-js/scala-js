@@ -10,7 +10,7 @@ import sbt._
 import sbt.Keys._
 import sbt.complete.DefaultParsers._
 
-import sbtcrossproject.CrossPlugin.autoImport._
+import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
 import org.scalajs.core.tools.io.{IO => _, _}
 import org.scalajs.core.tools.linker._
@@ -449,7 +449,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
   )
 
   private val scalaJSProjectBaseSettings = Seq(
-      crossPlatform := JSPlatform,
+      platformDepsCrossVersion := ScalaJSCrossVersion.binary,
 
       scalaJSLinkerConfig := {
         StandardLinker.Config()

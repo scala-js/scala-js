@@ -803,7 +803,7 @@ object Build {
           else (sbtBinaryVersion in update).value
         val scalaV = (scalaBinaryVersion in update).value
         Defaults.sbtPluginExtra(
-            "org.scala-native" % "sbt-crossproject" % "0.2.1", sbtV, scalaV)
+            "org.portable-scala" % "sbt-platform-deps" % "1.0.0-M2", sbtV, scalaV)
       },
 
       // Add API mappings for sbt (seems they don't export their API URL)
