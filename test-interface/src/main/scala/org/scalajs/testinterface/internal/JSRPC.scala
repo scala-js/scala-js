@@ -4,6 +4,7 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 import org.scalajs.testcommon.RPCCore
 
@@ -13,16 +14,12 @@ private[internal] final object JSRPC extends RPCCore {
 
   override protected def send(msg: String): Unit = Com.send(msg)
 
-  override def close(): Unit = {
-    super.close()
-    Com.close()
-  }
-
   @js.native
   @JSGlobal("scalajsCom")
   private object Com extends js.Object {
     def init(onReceive: js.Function1[String, Unit]): Unit = js.native
     def send(msg: String): Unit = js.native
-    def close(): Unit = js.native
+    // We support close, but do not use it. The JS side just terminates.
+    // def close(): Unit = js.native
   }
 }

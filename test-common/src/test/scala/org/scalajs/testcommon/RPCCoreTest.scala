@@ -149,14 +149,15 @@ class RPCCoreTest {
 
     val future = y.call(eps.number)(())
 
-    y.close()
+    val cause = new Throwable("blah")
+    y.close(cause)
 
     try {
       Await.result(future, atMost = 1.second)
       fail("Expected exception")
     } catch {
-      case e: java.io.IOException =>
-        assertEquals("Channel got closed", e.getMessage())
+      case e: RPCCore.ClosedException =>
+        assertSame(cause, e.getCause())
     }
   }
 }

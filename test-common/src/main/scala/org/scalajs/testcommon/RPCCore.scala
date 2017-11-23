@@ -13,19 +13,33 @@ import java.util.concurrent.atomic.AtomicLong
 import Serializer.{serialize, deserialize}
 import FutureUtil._
 
-private[scalajs] abstract class RPCCore {
+
+/** Core RPC dispatcher.
+ *
+ *  Tracks and assigns call identities on top of a message passing interface.
+ *
+ *  Note that it does not have timeout handling for calls. Users are expected to
+ *  manage call teardown by calling [[close]] in case of failure. This typically
+ *  means that subclasses need to put an explicit call to [[close]] once they
+ *  are sure to not call [[handleMessage]] anymore.
+ *
+ *  This class guarantees that dispatch handles synchronously when
+ *  [[handleMessage]] is called, so closing can be performed race-free.
+ */
+private[scalajs] abstract class RPCCore()(implicit ex: ExecutionContext) {
   import RPCCore._
 
-  /** Pending calls.
-   *
-   *  @note We do deliberately not timeout calls in here since there will be
-   *      timeouts on a higher level and a test run is relatively short lived
-   *      (< 10h) and we expect failure ratio to be extremely low.
-   */
+  /** Pending calls. */
   private[this] val pending = new ConcurrentHashMap[Long, PendingCall]
 
+  /** Reason why we are closing this RPCCore. If non-null, we are closing. */
+  @volatile
+  private[this] var closeReason: Throwable = _
+
+  /** Next call ID we'll assign. */
   private[this] val nextID = new AtomicLong(0L)
 
+  /** Currently registered enpoints. */
   private[this] val endpoints = new ConcurrentHashMap[OpCode, BoundEndpoint]
 
   /** Subclass should call this whenever a new message arrives */
@@ -76,8 +90,6 @@ private[scalajs] abstract class RPCCore {
               val ep: bep.endpoint.type = bep.endpoint
               import ep._
 
-              import scala.concurrent.ExecutionContext.Implicits.global
-
               futureFromTry(Try(deserialize[Req](in)))
                 .flatMap(bep.exec)
                 .onComplete(repl => send(makeReply(callID, repl)))
@@ -102,7 +114,7 @@ private[scalajs] abstract class RPCCore {
     // Reserve an id for this call.
     val id = nextID.incrementAndGet()
 
-    // Prepare message.
+    // Prepare message. We do this early in case it throws.
     val msg = makeRPCMsg(opCode, id, req)
 
     // Register pending call.
@@ -110,11 +122,20 @@ private[scalajs] abstract class RPCCore {
     val oldCall = pending.put(id, PendingCall(promise))
 
     if (oldCall != null) {
-      throw new AssertionError("Ran out of call ids!")
+      val error = new AssertionError("Ran out of call ids!")
+      close(error)
+      throw error
     }
 
-    // Actually send message.
-    send(msg)
+    if (closeReason != null) {
+      /* In the meantime, someone closed the channel. Help closing.
+       * We need this check to guard against a race between `call` and `close`.
+       */
+      helpClose()
+    } else {
+      // Actually send message.
+      send(msg)
+    }
 
     promise.future
   }
@@ -150,18 +171,32 @@ private[scalajs] abstract class RPCCore {
     require(old != null, "Endpoint was not attached.")
   }
 
-  /** Close the communication channel. */
-  def close(): Unit = {
+  /** Close the communication channel.
+   *
+   *  This only affects the current calls (i.e. the client part of the
+   *  interface). Endpoint attachment is unaffected.
+   *
+   *  It is permitted to call `close` multiple times. However, if the calls are
+   *  concurrent and have different reasons, which pending calls get cancelled
+   *  with which reasons is unspecified (but all of them will get cancelled).
+   */
+  def close(reason: Throwable): Unit = {
+    closeReason = reason
+    helpClose()
+  }
+
+  private def helpClose(): Unit = {
     /* Fix for #3128: explicitly upcast to java.util.Map so that the keySet()
      * method is binary compatible on JDK7.
      */
     val pendingCallIDs = (pending: java.util.Map[Long, _]).keySet()
+    val exception = new ClosedException(closeReason)
 
     for {
       callID <- pendingCallIDs.asScala
       failing <- Option(pending.remove(callID))
     } {
-      failing.promise.failure(new IOException("Channel got closed"))
+      failing.promise.failure(exception)
     }
   }
 
@@ -194,6 +229,9 @@ private[scalajs] object RPCCore {
 
   /** Exception thrown if a remote invocation fails. */
   class RPCException(c: Throwable) extends Exception(null, c)
+
+  /** Exception thrown if the channel got closed. */
+  class ClosedException(c: Throwable) extends Exception(null, c)
 
   private val ReplyOK: Byte = 0.toByte
   private val ReplyErr: Byte = 1.toByte

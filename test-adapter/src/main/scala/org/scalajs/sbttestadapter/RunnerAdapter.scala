@@ -12,7 +12,6 @@ package org.scalajs.testadapter
 import scala.collection.concurrent.TrieMap
 
 import scala.concurrent._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 import scala.util._
