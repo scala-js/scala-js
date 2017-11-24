@@ -16,35 +16,35 @@
   <task id="main"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbtretry ++$scala helloworld/run &&
+    sbtretry ++$scala! helloworld/run &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala helloworld/run \
+        ++$scala! helloworld/run \
         helloworld/clean &&
     sbtretry 'set scalaJSLinkerConfig in helloworld ~= (_.withOptimizer(false))' \
-        ++$scala helloworld/run \
+        ++$scala! helloworld/run \
         helloworld/clean &&
     sbtretry 'set scalaJSLinkerConfig in helloworld ~= (_.withSemantics(_.withAsInstanceOfs(CheckedBehavior.Unchecked)))' \
-        ++$scala helloworld/run \
+        ++$scala! helloworld/run \
         helloworld/clean &&
-    sbtretry ++$scala \
+    sbtretry ++$scala! \
         'set scalaJSLinkerConfig in helloworld ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         helloworld/run \
         helloworld/clean &&
-    sbtretry ++$scala testingExample/testHtml &&
+    sbtretry ++$scala! testingExample/testHtml &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testingExample/testHtml \
+        ++$scala! testingExample/testHtml \
         testingExample/clean &&
-    sbtretry ++$scala library/test &&
-    sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
-    sbtretry ++$scala testSuite/test &&
-    sbtretry ++$scala testSuiteEx/test &&
+    sbtretry ++$scala! library/test &&
+    sbtretry ++$scala! testSuiteJVM/test testSuiteJVM/clean &&
+    sbtretry ++$scala! testSuite/test &&
+    sbtretry ++$scala! testSuiteEx/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testSuiteEx/test &&
-    sbtretry ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
-    sbtretry ++$scala compiler/compile:doc library/compile:doc \
+        ++$scala! testSuiteEx/test &&
+    sbtretry ++$scala! testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
+    sbtretry ++$scala! compiler/compile:doc library/compile:doc \
         testInterface/compile:doc &&
-    sbtretry ++$scala partest/fetchScalaSource &&
-    sbtretry ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
+    sbtretry ++$scala! partest/fetchScalaSource &&
+    sbtretry ++$scala! library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
     sh ci/checksizes.sh $scala &&
     sh ci/check-partest-coverage.sh $scala
   ]]></task>
@@ -52,62 +52,62 @@
   <task id="test-suite-ecma-script5"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test \
+    sbtretry ++$scala! jUnitTestOutputsJVM/test jUnitTestOutputsJS/test \
         'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test &&
-    sbtretry ++$scala $testSuite/test &&
+    sbtretry ++$scala! $testSuite/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
-        ++$scala $testSuite/test &&
+        ++$scala! $testSuite/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
-        ++$scala $testSuite/test &&
+        ++$scala! $testSuite/test &&
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test &&
+        ++$scala! $testSuite/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
-        ++$scala $testSuite/test &&
+        ++$scala! $testSuite/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test
+        ++$scala! $testSuite/test
   ]]></task>
 
   <task id="test-suite-ecma-script5-force-polyfills"><![CDATA[
     setJavaVersion $java
     npm install &&
     sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
-        ++$scala $testSuite/test &&
+        ++$scala! $testSuite/test &&
     sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
         'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
-        ++$scala $testSuite/test &&
+        ++$scala! $testSuite/test &&
     sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
         'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
         'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean
   ]]></task>
 
@@ -116,66 +116,66 @@
     npm install &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test \
+        ++$scala! $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
-        ++$scala $testSuite/test &&
+        ++$scala! $testSuite/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOutputMode(OutputMode.ECMAScript6))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test
+        ++$scala! $testSuite/test
   ]]></task>
 
   <task id="bootstrap"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbt ++$scala linker/test &&
-    sbt ++$scala irJS/test ioJS/test linkerJS/test &&
+    sbt ++$scala! linker/test &&
+    sbt ++$scala! irJS/test ioJS/test linkerJS/test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala irJS/test ioJS/test linkerJS/test &&
-    sbt ++$scala testSuite/test:fastOptJS &&
-    sbt ++$scala linkerJS/bootstrapTest &&
-    sbt ++$scala testSuite/test:fullOptJS &&
+        ++$scala! irJS/test ioJS/test linkerJS/test &&
+    sbt ++$scala! testSuite/test:fastOptJS &&
+    sbt ++$scala! linkerJS/bootstrapTest &&
+    sbt ++$scala! testSuite/test:fullOptJS &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala linkerJS/bootstrapTest &&
-    sbt ++$scala irJS/mimaReportBinaryIssues ioJS/mimaReportBinaryIssues \
+        ++$scala! linkerJS/bootstrapTest &&
+    sbt ++$scala! irJS/mimaReportBinaryIssues ioJS/mimaReportBinaryIssues \
         loggingJS/mimaReportBinaryIssues linkerJS/mimaReportBinaryIssues
   ]]></task>
 
   <task id="tools-stubs"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbt ++$scala ir/test io/test logging/compile linker/compile \
+    sbt ++$scala! ir/test io/test logging/compile linker/compile \
         stubs/package nodeJSEnv/test testAdapter/test \
         ir/mimaReportBinaryIssues io/mimaReportBinaryIssues \
         logging/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
@@ -183,7 +183,7 @@
         nodeJSEnv/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
         stubs/mimaReportBinaryIssues &&
-    sbt ++$scala ir/compile:doc io/compile:doc logging/compile:doc \
+    sbt ++$scala! ir/compile:doc io/compile:doc logging/compile:doc \
         linker/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
         testAdapter/compile:doc stubs/compile:doc
@@ -192,7 +192,7 @@
   <task id="tools-stubs-sbtplugin"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbt ++$scala ir/test io/test logging/compile linker/compile \
+    sbt ++$scala! ir/test io/test logging/compile linker/compile \
         stubs/package nodeJSEnv/test testAdapter/test \
         sbtPlugin/package \
         ir/mimaReportBinaryIssues io/mimaReportBinaryIssues \
@@ -202,7 +202,7 @@
         testAdapter/mimaReportBinaryIssues \
         stubs/mimaReportBinaryIssues \
         sbtPlugin/mimaReportBinaryIssues &&
-    sbt ++$scala library/scalastyle javalanglib/scalastyle javalib/scalastyle \
+    sbt ++$scala! library/scalastyle javalanglib/scalastyle javalib/scalastyle \
         ir/scalastyle compiler/scalastyle \
         compiler/test:scalastyle io/scalastyle io/test:scalastyle \
         logging/scalastyle logging/test:scalastyle \
@@ -218,7 +218,7 @@
         jUnitPlugin/scalastyle jUnitRuntime/scalastyle \
         jUnitTestOutputsJVM/scalastyle jUnitTestOutputsJVM/test:scalastyle \
         jUnitTestOutputsJS/scalastyle jUnitTestOutputsJS/test:scalastyle &&
-    sbt ++$scala ir/compile:doc io/compile:doc logging/compile:doc \
+    sbt ++$scala! ir/compile:doc io/compile:doc logging/compile:doc \
         linker/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
         testAdapter/compile:doc stubs/compile:doc \
@@ -228,7 +228,7 @@
   <task id="partestc"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbt ++$scala partest/compile
+    sbt ++$scala! partest/compile
   ]]></task>
 
   <task id="sbtplugin-test"><![CDATA[
@@ -237,10 +237,11 @@
     # Publish Scala.js artifacts locally
     # Then go into standalone project and test
     npm install &&
-    sbt ++2.11.12 compiler/publishLocal library/publishLocal \
-                  testInterface/publishLocal stubs/publishLocal \
-                  jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
-    sbt ++$toolsscala ${SBT_VER_OVERRIDE:+^^$SBT_VER_OVERRIDE} \
+    sbt ++2.11.12! \
+        compiler/publishLocal library/publishLocal \
+        testInterface/publishLocal stubs/publishLocal \
+        jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
+    sbt ++$toolsscala! ${SBT_VER_OVERRIDE:+^^$SBT_VER_OVERRIDE} \
         ir/publishLocal io/publishLocal logging/publishLocal \
         linker/publishLocal jsEnvs/publishLocal \
         nodeJSEnv/publishLocal testAdapter/publishLocal \
@@ -260,19 +261,19 @@
   <task id="partest-noopt"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbt ++$scala package "partestSuite/testOnly -- --showDiff"
+    sbt ++$scala! package "partestSuite/testOnly -- --showDiff"
   ]]></task>
 
   <task id="partest-fastopt"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbt ++$scala package "partestSuite/testOnly -- --fastOpt --showDiff"
+    sbt ++$scala! package "partestSuite/testOnly -- --fastOpt --showDiff"
   ]]></task>
 
   <task id="partest-fullopt"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbt ++$scala package "partestSuite/testOnly -- --fullOpt --showDiff"
+    sbt ++$scala! package "partestSuite/testOnly -- --fullOpt --showDiff"
   ]]></task>
 
   <matrix id="pr">
@@ -381,15 +382,15 @@
 
     <!-- Tools / CLI / Stubs / sbtPlugin test tasks -->
     <run task="tools-stubs-sbtplugin">
+      <v n="scala">2.12.4</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="tools-stubs">
       <v n="scala">2.10.7</v>
       <v n="java">1.8</v>
     </run>
     <run task="tools-stubs">
       <v n="scala">2.11.12</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="tools-stubs">
-      <v n="scala">2.12.4</v>
       <v n="java">1.8</v>
     </run>
 
@@ -417,12 +418,12 @@
     <run task="sbtplugin-test">
       <v n="java">1.8</v>
       <v n="toolsscala">2.10.7</v>
-      <v n="sbt_version_override"></v>
+      <v n="sbt_version_override">0.13.16</v>
     </run>
     <run task="sbtplugin-test">
       <v n="java">1.8</v>
       <v n="toolsscala">2.12.4</v>
-      <v n="sbt_version_override">1.0.0</v>
+      <v n="sbt_version_override"></v>
     </run>
   </matrix>
 

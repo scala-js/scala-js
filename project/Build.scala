@@ -413,12 +413,11 @@ object Build {
     def withScalaJSJUnitPlugin: Project = {
       project.settings(
           scalacOptions in Test ++= {
-            if (isGeneratingEclipse) {
+            val jar = (packageBin in (jUnitPlugin, Compile)).value
+            if (isGeneratingEclipse)
               Seq.empty
-            } else {
-              val jar = (packageBin in (jUnitPlugin, Compile)).value
+            else
               Seq(s"-Xplugin:$jar")
-            }
           }
       )
     }
@@ -536,36 +535,44 @@ object Build {
           "com.novocode" % "junit-interface" % "0.9" % "test"
       ),
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
-      testOptions += Tests.Setup { () =>
-        val testOutDir = (streams.value.cacheDirectory / "scalajs-compiler-test")
-        IO.createDirectory(testOutDir)
-        System.setProperty("scala.scalajs.compiler.test.output",
-            testOutDir.getAbsolutePath)
-        System.setProperty("scala.scalajs.compiler.test.scalajslib",
-            (packageBin in (LocalProject("library"), Compile)).value.getAbsolutePath)
+      testOptions += {
+        val s = streams.value
+        val scalaV = scalaVersion.value
+        val testOutDir = streams.value.cacheDirectory / "scalajs-compiler-test"
+        val scalaJSLibFile =
+          (packageBin in (LocalProject("library"), Compile)).value
+        val managedClasspathValue = (managedClasspath in Test).value
 
-        def scalaArtifact(name: String): String = {
-          def isTarget(att: Attributed[File]) = {
-            att.metadata.get(moduleID.key).exists { mId =>
-              mId.organization == "org.scala-lang" &&
-              mId.name == name &&
-              mId.revision == scalaVersion.value
+        Tests.Setup { () =>
+          IO.createDirectory(testOutDir)
+          System.setProperty("scala.scalajs.compiler.test.output",
+              testOutDir.getAbsolutePath)
+          System.setProperty("scala.scalajs.compiler.test.scalajslib",
+              scalaJSLibFile.getAbsolutePath)
+
+          def scalaArtifact(name: String): String = {
+            def isTarget(att: Attributed[File]) = {
+              att.metadata.get(moduleID.key).exists { mId =>
+                mId.organization == "org.scala-lang" &&
+                mId.name == name &&
+                mId.revision == scalaV
+              }
+            }
+
+            managedClasspathValue.find(isTarget).fold {
+              s.log.error(s"Couldn't find $name on the classpath")
+              ""
+            } { lib =>
+              lib.data.getAbsolutePath
             }
           }
 
-          (managedClasspath in Test).value.find(isTarget).fold {
-            streams.value.log.error(s"Couldn't find $name on the classpath")
-            ""
-          } { lib =>
-            lib.data.getAbsolutePath
-          }
+          System.setProperty("scala.scalajs.compiler.test.scalalib",
+              scalaArtifact("scala-library"))
+
+          System.setProperty("scala.scalajs.compiler.test.scalareflect",
+              scalaArtifact("scala-reflect"))
         }
-
-        System.setProperty("scala.scalajs.compiler.test.scalalib",
-            scalaArtifact("scala-library"))
-
-        System.setProperty("scala.scalajs.compiler.test.scalareflect",
-            scalaArtifact("scala-reflect"))
       },
       exportJars := true
   ).dependsOnSource(irProject)
@@ -852,17 +859,7 @@ object Build {
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
-      /* This works around a bug in ^^ from sbt (should be just addSbtPlugin).
-       * We inline the definition of addSbtPlugin and fix the sbt binary version.
-       */
-      libraryDependencies += {
-        val sbtV =
-          if ((sbtVersion in pluginCrossBuild).value.startsWith("1.0.")) "1.0"
-          else (sbtBinaryVersion in update).value
-        val scalaV = (scalaBinaryVersion in update).value
-        Defaults.sbtPluginExtra(
-            "org.portable-scala" % "sbt-platform-deps" % "1.0.0-M2", sbtV, scalaV)
-      },
+      addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.0-M2"),
 
       // Add API mappings for sbt (seems they don't export their API URL)
       apiMappings ++= {
@@ -920,6 +917,13 @@ object Build {
       noClassFilesSettings,
 
       resourceGenerators in Compile += Def.task {
+        /* We need to run after `compile`, because the latter uses our
+         * ExternalCompile hack, which nukes the classesDirectory before
+         * recreating it. If our resource is emitted before `compile` gets to
+         * run, it will wipe our `Object.sjsir` from the directory.
+         */
+        val _ = (compile in Compile).value
+
         val base = (resourceManaged in Compile).value
         Seq(serializeHardcodedIR(base, JavaLangObject.TheClassDef))
       }.taskValue,
@@ -996,7 +1000,7 @@ object Build {
 
         val report = (update in fetchScalaSource).value
         val scalaLibSourcesJar = report.select(
-            configuration = Set("compile"),
+            configuration = configurationFilter("compile"),
             module = moduleFilter(name = "scala-library"),
             artifact = artifactFilter(classifier = "sources")).headOption.getOrElse {
           throw new Exception(
@@ -1042,6 +1046,7 @@ object Build {
       // Compute sources
       // Files in earlier src dirs shadow files in later dirs
       sources in Compile := {
+        val s = streams.value
         // Sources coming from the sources of Scala
         val scalaSrcDir = fetchScalaSource.value
 
@@ -1070,7 +1075,7 @@ object Build {
             if (paths.add(path))
               sources += src
             else
-              streams.value.log.debug(s"not including $src")
+              s.log.debug(s"not including $src")
           }
         }
 
@@ -1128,7 +1133,7 @@ object Build {
                     -- "*.nodoc.scala"
               )
 
-              (sources in doc).value.filter(filter.accept)
+              prev.filter(filter.accept)
             } else {
               /* Work around #3152: library/doc crashes with
                *   <Cannot read source file>
@@ -1716,18 +1721,15 @@ object Build {
 
       libraryDependencies ++= {
         if (shouldPartest.value) {
-          Seq(
-              "org.scala-sbt" % "sbt" % sbtVersion.value,
-              {
-                val v = scalaVersion.value
-                if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
-                  "org.scala-lang.modules" %% "scala-partest" % "1.0.13"
-                else if (v.startsWith("2.11."))
-                  "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
-                else
-                  "org.scala-lang.modules" %% "scala-partest" % "1.1.1"
-              }
-          )
+          Seq({
+            val v = scalaVersion.value
+            if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
+              "org.scala-lang.modules" %% "scala-partest" % "1.0.13"
+            else if (v.startsWith("2.11."))
+              "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
+            else
+              "org.scala-lang.modules" %% "scala-partest" % "1.1.1"
+          })
         } else {
           Seq()
         }
@@ -1743,8 +1745,9 @@ object Build {
       },
 
       sources in Compile := {
+        val prev = (sources in Compile).value
         if (shouldPartest.value)
-          (sources in Compile).value
+          prev
         else
           Nil
       }

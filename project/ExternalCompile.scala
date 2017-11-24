@@ -26,8 +26,12 @@ object ExternalCompile {
       },
 
       compile := {
+        val runnerInCompileValue = (runner in compile).value
+        val forkInCompileValue = (fork in compile).value
+
         val inputs = (compileInputs in compile).value
-        import inputs.config._
+        val inputsOptions = inputs.options()
+        import inputsOptions._
 
         val s = streams.value
         val logger = s.log
@@ -72,7 +76,7 @@ object ExternalCompile {
             def log(level: Level.Value, message: => String) = {
               val msg = message
               if (level != Level.Info ||
-                  !msg.startsWith("Running scala.tools.nsc.Main"))
+                  !msg.startsWith("Running (fork) scala.tools.nsc.Main"))
                 logger.log(level, msg)
             }
             def success(message: => String) = logger.success(message)
@@ -80,20 +84,20 @@ object ExternalCompile {
           }
 
           def doCompile(sourcesArgs: List[String]): Unit = {
-            val run = (runner in compile).value
-            val optErrorMsg = run.run("scala.tools.nsc.Main", compilerCp,
+            val runResult = runnerInCompileValue.run("scala.tools.nsc.Main",
+                compilerCp,
                 "-cp" :: cpStr ::
                 "-d" :: classesDirectory.getAbsolutePath() ::
-                options ++:
+                scalacOptions ++:
                 sourcesArgs,
                 patchedLogger)
-            optErrorMsg.foreach(errorMsg => throw new Exception(errorMsg))
+            runResult.get
           }
 
           /* Crude way of overcoming the Windows limitation on command line
            * length.
            */
-          if ((fork in compile).value && isWindows &&
+          if (forkInCompileValue && isWindows &&
               (sourcesArgs.map(_.length).sum > 1536)) {
             IO.withTemporaryFile("sourcesargs", ".txt") { sourceListFile =>
               IO.writeLines(sourceListFile, sourcesArgs)
@@ -110,7 +114,7 @@ object ExternalCompile {
         cachedCompile((sources ++ allMyDependencies).toSet)
 
         // We do not have dependency analysis when compiling externally
-        sbt.inc.Analysis.Empty
+        sbt.internal.inc.Analysis.Empty
       }
   )
 
