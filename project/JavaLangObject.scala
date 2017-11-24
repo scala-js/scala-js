@@ -87,8 +87,8 @@ object JavaLangObject {
           AnyType,
           Some {
             If(IsInstanceOf(This()(ThisType), ClassRef("jl_Cloneable")), {
-              Apply(LoadModule(ClassType("sjsr_package$")),
-                  Ident("cloneObject__sjs_js_Object__sjs_js_Object", Some("cloneObject")),
+              Apply(LoadModule(ClassType("jl_ObjectClone$")),
+                  Ident("clone__O__O", Some("clone")),
                   List(This()(ThisType)))(AnyType)
             }, {
               Throw(New(ClassType("jl_CloneNotSupportedException"),
