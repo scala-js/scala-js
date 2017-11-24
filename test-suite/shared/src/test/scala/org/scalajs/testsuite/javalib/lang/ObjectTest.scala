@@ -74,4 +74,24 @@ class ObjectTest {
     (Array(Nil)     : Any).asInstanceOf[Object]
     (null           : Any).asInstanceOf[Object]
   }
+
+  @Test def cloneCtorSideEffects_issue_3192(): Unit = {
+    var ctorInvokeCount = 0
+
+    // This class has an inlineable init
+    class CloneCtorSideEffectsBug(val x: Int) extends java.lang.Cloneable {
+      ctorInvokeCount += 1
+
+      override def clone(): CloneCtorSideEffectsBug =
+        super.clone().asInstanceOf[CloneCtorSideEffectsBug]
+    }
+
+    val o = new CloneCtorSideEffectsBug(54)
+    assertEquals(54, o.x)
+    assertEquals(1, ctorInvokeCount)
+
+    val o2 = o.clone()
+    assertEquals(54, o2.x)
+    assertEquals(1, ctorInvokeCount)
+  }
 }
