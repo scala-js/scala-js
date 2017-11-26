@@ -4,7 +4,7 @@ addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.18")
 
 addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "1.0.0")
 
-addSbtPlugin("org.scala-native" % "sbt-crossproject" % "0.2.1")
+addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.0-M2")
 
 libraryDependencies += "org.scala-js" % "closure-compiler-java-6" % "v20160517"
 

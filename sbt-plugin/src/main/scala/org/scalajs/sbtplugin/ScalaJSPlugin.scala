@@ -14,8 +14,6 @@ import scala.language.implicitConversions
 import sbt._
 import sbt.Keys._
 
-import sbtcrossproject._
-
 import org.scalajs.core.ir.ScalaJSVersions
 
 import org.scalajs.core.tools.io._
@@ -31,24 +29,6 @@ object ScalaJSPlugin extends AutoPlugin {
 
     /** The current version of the Scala.js sbt plugin and tool chain. */
     val scalaJSVersion = ScalaJSVersions.current
-
-    // The JS platform for sbt-crossproject
-    val JSPlatform = org.scalajs.sbtplugin.JSPlatform
-
-    implicit def JSCrossProjectBuilderOps(
-        builder: CrossProject.Builder): JSCrossProjectOps = {
-      new JSCrossProjectOps(builder.crossType(CrossType.Full))
-    }
-
-    implicit class JSCrossProjectOps(project: CrossProject) {
-      def js: Project = project.projects(JSPlatform)
-
-      def jsSettings(ss: Def.SettingsDefinition*): CrossProject =
-        jsConfigure(_.settings(ss: _*))
-
-      def jsConfigure(transformer: Project => Project): CrossProject =
-        project.configurePlatform(JSPlatform)(transformer)
-    }
 
     // Stage values
     val FastOptStage = Stage.FastOpt

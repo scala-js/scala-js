@@ -1,5 +1,6 @@
 import org.scalajs.core.tools.io._
 import org.scalajs.sbtplugin.Loggers.sbtLogger2ToolsLogger
+import org.scalajs.sbtplugin.ScalaJSCrossVersion
 
 lazy val concurrentFakeFullOptJS = taskKey[Any]("")
 lazy val concurrentUseOfLinkerTest = taskKey[Any]("")
@@ -25,11 +26,8 @@ val baseSettings = versionSettings ++ Seq(
 val testScalaJSSourceMapAttribute = TaskKey[Unit](
   "testScalaJSSourceMapAttribute", "", KeyRanks.BTask)
 
-lazy val referencedCrossProjectJS = ProjectRef(file("referencedCrossProject"), "referencedCrossProjectJS")
-lazy val referencedCrossProjectJVM = ProjectRef(file("referencedCrossProject"), "referencedCrossProjectJVM")
-
 lazy val root = project.in(file(".")).
-  aggregate(noDOM, multiTestJS, multiTestJVM, referencedCrossProjectJS, referencedCrossProjectJVM)
+  aggregate(noDOM, multiTestJS, multiTestJVM)
 
 lazy val noDOM = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSPlugin).
@@ -69,33 +67,46 @@ lazy val noDOM = project.settings(baseSettings: _*).
       }
   )))
 
-lazy val testFramework = crossProject.crossType(CrossType.Pure).
-  settings(versionSettings: _*).
-  settings(name := "Dummy cross JS/JVM test framework").
-  jsSettings(
+lazy val testFrameworkCommonSettings = Def.settings(
+  versionSettings,
+  name := "Dummy cross JS/JVM test framework",
+  scalaSource in Compile := baseDirectory.value.getParentFile / "src/main/scala"
+)
+
+lazy val testFrameworkJS = project.in(file("testFramework/.js")).
+  enablePlugins(ScalaJSPlugin).
+  settings(
+    testFrameworkCommonSettings,
     libraryDependencies +=
       "org.scala-js" %% "scalajs-test-interface" % scalaJSVersion
-  ).
-  jvmSettings(
+  )
+
+lazy val testFrameworkJVM = project.in(file("testFramework/.jvm")).
+  settings(
+    testFrameworkCommonSettings,
     libraryDependencies ++= Seq(
         "org.scala-sbt" % "test-interface" % "1.0",
         "org.scala-js" %% "scalajs-stubs" % scalaJSVersion % "provided"
     )
   )
 
-lazy val testFrameworkJS = testFramework.js
-lazy val testFrameworkJVM = testFramework.jvm
+lazy val multiTestCommonSettings = Def.settings(
+  unmanagedSourceDirectories in Compile +=
+    baseDirectory.value.getParentFile / "shared/src/main/scala",
+  unmanagedSourceDirectories in Test +=
+    baseDirectory.value.getParentFile / "shared/src/test/scala",
 
-lazy val multiTest = crossProject.
-  jsConfigure(_.enablePlugins(ScalaJSJUnitPlugin)).
+  testFrameworks ++= Seq(
+      TestFramework("sbttest.framework.DummyFramework"),
+      TestFramework("inexistent.Foo", "another.strange.Bar")
+  )
+)
+
+lazy val multiTestJS = project.in(file("multiTest/js")).
+  enablePlugins(ScalaJSJUnitPlugin).
+  settings(multiTestCommonSettings).
+  settings(baseSettings: _*).
   settings(
-    testFrameworks ++= Seq(
-        TestFramework("sbttest.framework.DummyFramework"),
-        TestFramework("inexistent.Foo", "another.strange.Bar")
-    )
-  ).
-  jsSettings(baseSettings: _*).
-  jsSettings(
     name := "Multi test framework test JS",
 
     // Make FrameworkDetector resilient to other output - #1572
@@ -105,10 +116,10 @@ lazy val multiTest = crossProject.
       consoleWriter +: (jsExecutionFiles in Test).value
     },
 
-    // Test crossPlatform (as a setting, it's evaluated when loading the build)
-    crossPlatform ~= { value =>
-      assert(value == JSPlatform,
-          "crossPlatform should be JSPlatform in multiTestJS")
+    // Test platformDepsCrossVersion (as a setting, it's evaluated when loading the build)
+    platformDepsCrossVersion ~= { value =>
+      assert(value eq ScalaJSCrossVersion.binary,
+          "platformDepsCrossVersion should be ScalaJSCrossVersion.binary in multiTestJS")
       value
     },
 
@@ -125,36 +136,25 @@ lazy val multiTest = crossProject.
       }, "fullOptJS does not have the correct scalaJSSourceMap attribute")
     }
   ).
-  jvmSettings(versionSettings: _*).
-  jvmSettings(
+  dependsOn(testFrameworkJS % "test")
+
+lazy val multiTestJVM = project.in(file("multiTest/jvm")).
+  settings(multiTestCommonSettings).
+  settings(versionSettings: _*).
+  settings(
     name := "Multi test framework test JVM",
     libraryDependencies +=
       "com.novocode" % "junit-interface" % "0.9" % "test",
 
-    // Test crossPlatform (as a setting, it's evaluated when loading the build)
-    crossPlatform ~= { value =>
-      assert(value == JVMPlatform,
-          "crossPlatform should be JVMPlatform in multiTestJVM")
+    // Test platformDepsCrossVersion (as a setting, it's evaluated when loading the build)
+    platformDepsCrossVersion := {
+      val value = platformDepsCrossVersion.value
+      if (!sbtVersion.value.startsWith("0.")) {
+        // In 0.13, CrossVersions do not have a meaningful ==, but they do in 1.0
+        assert(value == CrossVersion.binary,
+            "platformDepsCrossVersion should be CrossVersion.binary in multiTestJVM")
+      }
       value
     }
   ).
-  settings(
-    // Scala cross-version support for shared source directory - #2005
-    unmanagedSourceDirectories in Compile := {
-      val srcDirs = (unmanagedSourceDirectories in Compile).value
-      val version = scalaBinaryVersion.value
-      val expected =
-        (baseDirectory.value.getParentFile / "shared" / "src" / "main" / s"scala-$version").getPath
-      assert(srcDirs.exists(_.getPath == expected))
-      srcDirs
-    }
-  ).
-  dependsOn(testFramework % "test")
-
-lazy val multiTestJS = multiTest.js
-lazy val multiTestJVM = multiTest.jvm
-
-// Test %%% macro - #1331
-val unusedSettings = Seq(
-  libraryDependencies += "org.example" %%% "dummy" % "0.1"
-)
+  dependsOn(testFrameworkJVM % "test")
