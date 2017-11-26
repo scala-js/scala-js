@@ -100,6 +100,10 @@ object BinaryIncompatibilities {
           "org.scalajs.testadapter.ComJSEnvRPC.close"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.testadapter.ComJSEnvRPC.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.testadapter.TestAdapter#ManagedRunner.this"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.testadapter.TestAdapter#ManagedRunner.com"),
 
       // private, not an issue.
       ProblemFilters.exclude[MissingClassProblem](
