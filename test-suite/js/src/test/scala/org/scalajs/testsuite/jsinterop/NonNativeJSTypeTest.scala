@@ -1373,6 +1373,23 @@ class NonNativeJSTypeTest {
     assertEquals(18, foo.bar)
   }
 
+  @Test def add_overload_in_subclass(): Unit = {
+    class AddOverloadInSubclassParent extends js.Object {
+      def bar(): Int = 53
+    }
+    class AddOverloadInSubclassChild extends AddOverloadInSubclassParent {
+      def bar(x: Int): Int = x + 2
+    }
+
+    val foo = new AddOverloadInSubclassChild
+    assertEquals(53, foo.bar())
+    assertEquals(7, foo.bar(5))
+
+    val dyn = foo.asInstanceOf[js.Dynamic]
+    assertEquals(53, dyn.bar())
+    assertEquals(7, dyn.bar(5))
+  }
+
   @Test def add_setter_in_subclass(): Unit = {
     class AddSetterInSubclassParent extends js.Object {
       var x: Int = 43

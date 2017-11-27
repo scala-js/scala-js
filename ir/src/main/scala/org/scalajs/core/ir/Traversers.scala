@@ -196,6 +196,9 @@ object Traversers {
         traverse(body)
         captureValues.foreach(traverse)
 
+      case CreateJSClass(_, captureValues) =>
+        captureValues.foreach(traverse)
+
       // Trees that need not be traversed
 
       case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:SelectStatic |
@@ -204,6 +207,7 @@ object Traversers {
     }
 
     def traverseClassDef(tree: ClassDef): Unit = {
+      tree.jsSuperClass.foreach(traverse)
       tree.memberDefs.foreach(traverseMemberDef)
       tree.topLevelExportDefs.foreach(traverseTopLevelExportDef)
     }

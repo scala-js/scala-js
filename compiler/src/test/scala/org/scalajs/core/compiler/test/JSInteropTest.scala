@@ -465,29 +465,50 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noInnerClassTraitObject: Unit = {
+  def noInnerScalaClassTraitObjectInJSNative: Unit = {
 
     for {
       outer <- Seq("class", "trait")
       inner <- Seq("class", "trait", "object")
-      innerIsJSType <- Seq(false, true)
     } yield {
       val jsGlobalAnnot =
         if (outer == "trait") ""
         else "@JSGlobal"
-      val innerLine =
-        if (innerIsJSType) s"$inner A extends js.Object"
-        else s"$inner A"
       s"""
       @js.native $jsGlobalAnnot
       $outer A extends js.Object {
-        $innerLine
+        $inner A
       }
       """ hasErrors
       s"""
-        |newSource1.scala:7: error: Native JS traits and classes may not have inner traits, classes or objects
-        |        $innerLine
-        |        ${" " * innerLine.indexOf('A')}^
+        |newSource1.scala:7: error: Native JS traits, classes and objects cannot contain inner Scala traits, classes or objects (i.e., not extending js.Any)
+        |        $inner A
+        |        ${" " * inner.length} ^
+      """
+    }
+
+  }
+
+  @Test
+  def noInnerNonNativeJSClassTraitObjectInJSNative: Unit = {
+
+    for {
+      outer <- Seq("class", "trait")
+      inner <- Seq("class", "trait", "object")
+    } yield {
+      val jsGlobalAnnot =
+        if (outer == "trait") ""
+        else "@JSGlobal"
+      s"""
+      @js.native $jsGlobalAnnot
+      $outer A extends js.Object {
+        $inner A extends js.Object
+      }
+      """ hasErrors
+      s"""
+        |newSource1.scala:7: error: Native JS classes and traits cannot contain non-native JS classes, traits or objects
+        |        $inner A extends js.Object
+        |        ${" " * inner.length} ^
       """
     }
 
@@ -507,7 +528,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       s"""
-        |newSource1.scala:8: error: Native JS objects cannot contain inner Scala traits, classes or objects (i.e., not extending js.Any)
+        |newSource1.scala:8: error: Native JS traits, classes and objects cannot contain inner Scala traits, classes or objects (i.e., not extending js.Any)
         |        $inner A
         |        ${" " * inner.length} ^
       """
@@ -528,7 +549,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: Native JS objects cannot contain inner Scala traits, classes or objects (i.e., not extending js.Any)
+      |newSource1.scala:7: error: Native JS traits, classes and objects cannot contain inner Scala traits, classes or objects (i.e., not extending js.Any)
       |      object B
       |             ^
     """
@@ -754,7 +775,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def notNested: Unit = {
+  def noNativeJSNestedInScalaClassTrait: Unit = {
 
     val outers = List("class", "trait")
     val inners = List("trait", "class", "object")
@@ -762,12 +783,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     for {
       outer <- outers
       inner <- inners
-      outerIsJSType <- Seq(false, true)
     } yield {
-      val outerLine =
-        if (outerIsJSType) s"$outer A extends js.Object"
-        else s"$outer A"
-
       val jsGlobalAnnot =
         if (inner == "trait") ""
         else "@JSGlobal"
@@ -775,13 +791,44 @@ class JSInteropTest extends DirectTest with TestHelpers {
       val errTrg = if (inner == "object") "objects" else "classes"
 
       s"""
-      $outerLine {
+      $outer A {
         @js.native $jsGlobalAnnot
         $inner Inner extends js.Object
       }
       """ hasErrors
       s"""
-        |newSource1.scala:7: error: Traits and classes may not have inner native JS traits, classes or objects
+        |newSource1.scala:7: error: Scala traits and classes may not have inner native JS traits, classes or objects
+        |        $inner Inner extends js.Object
+        |         ${" " * inner.length}^
+      """
+    }
+
+  }
+
+  @Test
+  def noNativeJSNestedInNonNativeJS: Unit = {
+
+    val outers = List("class", "trait", "object")
+    val inners = List("class", "trait", "object")
+
+    for {
+      outer <- outers
+      inner <- inners
+    } yield {
+      val jsGlobalAnnot =
+        if (inner == "trait") ""
+        else "@JSGlobal"
+
+      val errTrg = if (inner == "object") "objects" else "classes"
+
+      s"""
+      $outer A extends js.Object {
+        @js.native $jsGlobalAnnot
+        $inner Inner extends js.Object
+      }
+      """ hasErrors
+      s"""
+        |newSource1.scala:7: error: non-native JS classes, traits and objects may not have inner native JS classes, traits or objects
         |        $inner Inner extends js.Object
         |         ${" " * inner.length}^
       """
@@ -1249,28 +1296,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noNativeClassObjectInsideNonNativeJSObject: Unit = {
-
-    for {
-      inner <- Seq("class", "object")
-    } {
-      s"""
-      object A extends js.Object {
-        @js.native
-        @JSGlobal
-        $inner B extends js.Object
-      }
-      """ hasErrors
-      s"""
-        |newSource1.scala:8: error: non-native JS objects may not have inner native JS classes or objects
-        |        $inner B extends js.Object
-        |        ${" " * inner.length} ^
-      """
-    }
-
-  }
-
-  @Test
   def noNonLiteralJSName: Unit = {
 
     """
@@ -1413,18 +1438,18 @@ class JSInteropTest extends DirectTest with TestHelpers {
         |newSource1.scala:12: error: Methods and fields cannot be annotated with @JSGlobal.
         |        def bar3: Int = js.native
         |            ^
-        |newSource1.scala:16: error: Native JS traits and classes may not have inner traits, classes or objects
-        |        class Inner extends js.Object
-        |              ^
-        |newSource1.scala:20: error: Native JS traits and classes may not have inner traits, classes or objects
-        |        object Inner extends js.Object
-        |               ^
-        |newSource1.scala:24: error: Native JS traits and classes may not have inner traits, classes or objects
-        |        class InnerImplied extends js.Object
-        |              ^
-        |newSource1.scala:28: error: Native JS traits and classes may not have inner traits, classes or objects
-        |        object InnerImplied extends js.Object
-        |               ^
+        |newSource1.scala:15: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
+        |        @JSGlobal("Inner")
+        |         ^
+        |newSource1.scala:19: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
+        |        @JSGlobal("Inner")
+        |         ^
+        |newSource1.scala:23: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
+        |        @JSGlobal
+        |         ^
+        |newSource1.scala:27: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
+        |        @JSGlobal
+        |         ^
       """
     }
 
@@ -1470,16 +1495,16 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:12: error: Methods and fields cannot be annotated with @JSGlobal.
       |      def bar3: Int = js.native
       |          ^
-      |newSource1.scala:15: error: Classes and objects nested in a JS native object cannot have an @JSGlobal annotation.
+      |newSource1.scala:15: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
       |      @JSGlobal("Inner")
       |       ^
-      |newSource1.scala:19: error: Classes and objects nested in a JS native object cannot have an @JSGlobal annotation.
+      |newSource1.scala:19: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
       |      @JSGlobal("Inner")
       |       ^
-      |newSource1.scala:23: error: Classes and objects nested in a JS native object cannot have an @JSGlobal annotation.
+      |newSource1.scala:23: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
       |      @JSGlobal
       |       ^
-      |newSource1.scala:27: error: Classes and objects nested in a JS native object cannot have an @JSGlobal annotation.
+      |newSource1.scala:27: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
       |      @JSGlobal
       |       ^
     """
@@ -1512,7 +1537,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
         object Inner extends js.Object
       }
       """ hasErrors
-      """
+      s"""
         |newSource1.scala:8: error: Methods and fields cannot be annotated with @JSImport.
         |        val bar1: Int = js.native
         |            ^
@@ -1522,12 +1547,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
         |newSource1.scala:12: error: Methods and fields cannot be annotated with @JSImport.
         |        def bar3: Int = js.native
         |            ^
-        |newSource1.scala:16: error: Native JS traits and classes may not have inner traits, classes or objects
-        |        class Inner extends js.Object
-        |              ^
-        |newSource1.scala:20: error: Native JS traits and classes may not have inner traits, classes or objects
-        |        object Inner extends js.Object
-        |               ^
+        |newSource1.scala:15: error: Nested JS classes and objects cannot have an @JSImport annotation.
+        |        @JSImport("Inner", JSImport.Namespace$fallbackStr)
+        |         ^
+        |newSource1.scala:19: error: Nested JS classes and objects cannot have an @JSImport annotation.
+        |        @JSImport("Inner", JSImport.Namespace$fallbackStr)
+        |         ^
       """
     }
 
@@ -1568,10 +1593,10 @@ class JSInteropTest extends DirectTest with TestHelpers {
         |newSource1.scala:12: error: Methods and fields cannot be annotated with @JSImport.
         |        def bar3: Int = js.native
         |            ^
-        |newSource1.scala:15: error: Classes and objects nested in a JS native object cannot have an @JSImport annotation.
+        |newSource1.scala:15: error: Nested JS classes and objects cannot have an @JSImport annotation.
         |        @JSImport("Inner", JSImport.Namespace$fallbackStr)
         |         ^
-        |newSource1.scala:19: error: Classes and objects nested in a JS native object cannot have an @JSImport annotation.
+        |newSource1.scala:19: error: Nested JS classes and objects cannot have an @JSImport annotation.
         |        @JSImport("Inner", JSImport.Namespace$fallbackStr)
         |         ^
       """
@@ -1977,6 +2002,85 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """.succeeds
 
+  }
+
+  @Test
+  def noAbstractLocalJSClass: Unit = {
+    """
+    object Enclosing {
+      def method(): Unit = {
+        abstract class AbstractLocalJSClass extends js.Object
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Implementation restriction: local JS classes cannot be abstract
+      |        abstract class AbstractLocalJSClass extends js.Object
+      |                       ^
+    """
+  }
+
+  @Test
+  def noLoadJSConstructorOfUnstableRef: Unit = {
+    """
+    class Enclosing {
+      class InnerJSClass extends js.Object
+    }
+
+    object A {
+      def method(): Any =
+        js.constructorOf[Enclosing#InnerJSClass]
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:11: error: stable reference to a JS class required but Enclosing#InnerJSClass found
+      |        js.constructorOf[Enclosing#InnerJSClass]
+      |                        ^
+    """
+
+    // version-dependent error message due to https://github.com/scala/bug/issues/10619
+    """
+    class Enclosing {
+      class InnerJSClass extends js.Object
+    }
+
+    object A {
+      def newEnclosing: Enclosing = new Enclosing
+
+      def method(): Any =
+        js.constructorOf[newEnclosing.InnerJSClass]
+    }
+    """.fails()
+
+    """
+    class Enclosing {
+      class InnerJSClass extends js.Object
+    }
+
+    object A {
+      def method(a: Any): Boolean =
+        a.isInstanceOf[Enclosing#InnerJSClass]
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:11: error: stable reference to a JS class required but Enclosing#InnerJSClass found
+      |        a.isInstanceOf[Enclosing#InnerJSClass]
+      |                      ^
+    """
+
+    // version-dependent error message due to https://github.com/scala/bug/issues/10619
+    """
+    class Enclosing {
+      class InnerJSClass extends js.Object
+    }
+
+    object A {
+      def newEnclosing: Enclosing = new Enclosing
+
+      def method(a: Any): Boolean =
+        a.isInstanceOf[newEnclosing.InnerJSClass]
+    }
+    """.fails()
   }
 
   @Test

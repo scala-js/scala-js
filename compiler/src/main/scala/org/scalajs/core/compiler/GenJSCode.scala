@@ -46,7 +46,7 @@ abstract class GenJSCode extends plugins.PluginComponent
   import rootMirror._
   import definitions._
   import jsDefinitions._
-  import jsInterop.{jsNameOf, jsNativeLoadSpecOf, JSName}
+  import jsInterop.{jsNameOf, jsNativeLoadSpecOfOption, JSName}
   import JSTreeExtractors._
 
   import treeInfo.hasSynthCaseSymbol
@@ -151,6 +151,21 @@ abstract class GenJSCode extends plugins.PluginComponent
     // These have a default, since we always read them.
     private val tryingToGenMethodAsJSFunction = new ScopedVar[Boolean](false)
     private val paramAccessorLocals = new ScopedVar(Map.empty[Symbol, js.ParamDef])
+
+    /* Contextual JS class value for some operations of nested JS classes that
+     * need one.
+     */
+    private val contextualJSClassValue =
+      new ScopedVar[Option[js.Tree]](None)
+
+    private def acquireContextualJSClassValue[A](f: Option[js.Tree] => A): A = {
+      val jsClassValue = contextualJSClassValue.get
+      withScopedVars(
+          contextualJSClassValue := None
+      ) {
+        f(jsClassValue)
+      }
+    }
 
     private class CancelGenMethodAsJSFunction(message: String)
         extends Throwable(message) with scala.util.control.ControlThrowable
@@ -463,8 +478,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       val classDefinition = js.ClassDef(
           classIdent,
           kind,
+          None,
           Some(encodeClassFullNameIdent(sym.superClass)),
           genClassInterfaces(sym, forJSClass = false),
+          None,
           None,
           hashedMemberDefs,
           topLevelExportDefs)(
@@ -558,10 +575,19 @@ abstract class GenJSCode extends plugins.PluginComponent
         if (isStaticModule(sym)) genModuleAccessorExports(sym)
         else genJSClassExports(sym)
 
+      val (jsClassCaptures, generatedConstructor) =
+        genJSClassCapturesAndConstructor(sym, constructorTrees.toList)
+
+      /* If there is one, the JS super class value is always the first JS class
+       * capture. This is a GenJSCode-specific invariant (the IR does not rely
+       * on this) enforced in genJSClassCapturesAndConstructor.
+       */
+      val jsSuperClass = jsClassCaptures.map(_.head.ref)
+
       // Generate fields (and add to methods + ctors)
       val generatedMembers = {
         genClassFields(cd) :::
-        genJSClassConstructor(sym, constructorTrees.toList) ::
+        generatedConstructor ::
         genJSClassDispatchers(sym, dispatchMethodNames.result().distinct) :::
         generatedMethods.toList :::
         staticMembers
@@ -579,8 +605,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       val classDefinition = js.ClassDef(
           classIdent,
           kind,
+          jsClassCaptures,
           Some(encodeClassFullNameIdent(sym.superClass)),
           genClassInterfaces(sym, forJSClass = true),
+          jsSuperClass,
           None,
           hashedMemberDefs,
           topLevelExports)(
@@ -592,11 +620,12 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Generate an instance of an anonymous (non-lambda) JS class inline
      *
      *  @param sym Class to generate the instance of
+     *  @param jsSuperClassValue JS class value of the super class
      *  @param args Arguments to the constructor
      *  @param pos Position of the original New tree
      */
-    def genAnonJSClassNew(sym: Symbol, args: List[js.Tree],
-        pos: Position): js.Tree = {
+    def genAnonJSClassNew(sym: Symbol, jsSuperClassValue: js.Tree,
+        args: List[js.Tree], pos: Position): js.Tree = {
       assert(isAnonJSClass(sym),
           "Generating AnonJSClassNew of non anonymous JS class")
 
@@ -644,9 +673,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       val newClassDef = {
         implicit val pos = origJsClass.pos
         val parent = js.Ident(ir.Definitions.ObjectClass)
-        js.ClassDef(origJsClass.name, ClassKind.AbstractJSType,
-            Some(parent), interfaces = Nil, jsNativeLoadSpec = None,
-            staticMembers.toList, Nil)(origJsClass.optimizerHints)
+        js.ClassDef(origJsClass.name, ClassKind.AbstractJSType, None,
+            Some(parent), interfaces = Nil, jsSuperClass = None,
+            jsNativeLoadSpec = None, staticMembers.toList, Nil)(
+            origJsClass.optimizerHints)
       }
 
       generatedClasses += ((sym, None, newClassDef))
@@ -654,6 +684,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Construct inline class definition
       val js.MethodDef(_, _, ctorParams, _, Some(ctorBody)) =
         constructor.getOrElse(throw new AssertionError("No ctor found"))
+
+      val jsSuperClassParam = js.ParamDef(freshLocalIdent("super")(pos),
+          jstpe.AnyType, mutable = false, rest = false)(pos)
+      def jsSuperClassRef(implicit pos: ir.Position) =
+        jsSuperClassParam.ref
 
       val selfName = freshLocalIdent("this")(pos)
       def selfRef(implicit pos: ir.Position) =
@@ -720,12 +755,10 @@ abstract class GenJSCode extends plugins.PluginComponent
             val newTree = {
               val ident =
                 origJsClass.superClass.getOrElse(abort("No superclass"))
-              if (args.isEmpty && ident.name == "sjs_js_Object") {
+              if (args.isEmpty && ident.name == "sjs_js_Object")
                 js.JSObjectConstr(Nil)
-              } else {
-                val superTpe = jstpe.ClassType(ident.name)
-                js.JSNew(js.LoadJSConstructor(superTpe), args)
-              }
+              else
+                js.JSNew(jsSuperClassRef, args)
             }
 
             js.Block(
@@ -747,10 +780,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       val invocation = {
         implicit val invocationPosition = pos
 
-        val closure =
-          js.Closure(Nil, ctorParams, js.Block(inlinedCtorStats, selfRef), Nil)
+        val closure = js.Closure(Nil, jsSuperClassParam :: ctorParams,
+            js.Block(inlinedCtorStats, selfRef), Nil)
 
-        js.JSFunctionApply(closure, args)
+        js.JSFunctionApply(closure, jsSuperClassValue :: args)
       }
 
       invocation
@@ -773,15 +806,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       val superClass =
         if (sym.isTraitOrInterface) None
         else Some(encodeClassFullNameIdent(sym.superClass))
-      val jsNativeLoadSpec = {
-        if (sym.isTraitOrInterface) None
-        else if (sym.hasAnnotation(JSGlobalScopeAnnotation)) None
-        else Some(jsNativeLoadSpecOf(sym))
-      }
+      val jsNativeLoadSpec = jsNativeLoadSpecOfOption(sym)
 
-      js.ClassDef(classIdent, kind, superClass,
-          genClassInterfaces(sym, forJSClass = true), jsNativeLoadSpec, Nil,
-          Nil)(
+      js.ClassDef(classIdent, kind, None, superClass,
+          genClassInterfaces(sym, forJSClass = true), None, jsNativeLoadSpec,
+          Nil, Nil)(
           OptimizerHints.empty)
     }
 
@@ -815,8 +844,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       val hashedMemberDefs =
         Hashers.hashMemberDefs(generatedMethods)
 
-      js.ClassDef(classIdent, ClassKind.Interface, None, interfaces, None,
-          hashedMemberDefs, Nil)(OptimizerHints.empty)
+      js.ClassDef(classIdent, ClassKind.Interface, None, None, interfaces, None,
+          None, hashedMemberDefs, Nil)(OptimizerHints.empty)
     }
 
     // Generate an implementation class of a trait -----------------------------
@@ -851,8 +880,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       val hashedMemberDefs =
         Hashers.hashMemberDefs(generatedMethods)
 
-      js.ClassDef(classIdent, ClassKind.Class,
-          Some(objectClassIdent), Nil, None,
+      js.ClassDef(classIdent, ClassKind.Class, None,
+          Some(objectClassIdent), Nil, None, None,
           hashedMemberDefs, Nil)(OptimizerHints.empty)
     }
 
@@ -879,6 +908,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       assert(currentClassSym.get == classSym,
           "genClassFields called with a ClassDef other than the current one")
 
+      val isJSClass = isNonNativeJSClass(classSym)
+
       def isStaticBecauseOfTopLevelExport(f: Symbol): Boolean =
         jsInterop.registeredExportsOf(f).head.destination == ExportDestination.TopLevel
 
@@ -898,11 +929,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
 
         val name =
-          if (isExposed(f)) genPropertyName(jsNameOf(f))
+          if (isJSClass && isExposed(f)) genPropertyName(jsNameOf(f))
           else encodeFieldSym(f)
 
         val irTpe = {
-          if (isNonNativeJSClass(classSym)) genExposedFieldIRType(f)
+          if (isJSClass) genExposedFieldIRType(f)
           else if (static) jstpe.AnyType
           else toIRType(f.tpe)
         }
@@ -1036,8 +1067,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Constructor of a non-native JS class ------------------------------
 
-    def genJSClassConstructor(classSym: Symbol,
-        constructorTrees: List[DefDef]): js.MethodDef = {
+    def genJSClassCapturesAndConstructor(classSym: Symbol,
+        constructorTrees: List[DefDef]): (Option[List[js.ParamDef]], js.MethodDef) = {
       implicit val pos = classSym.pos
 
       if (hasDefaultCtorArgsAndRawJSModule(classSym)) {
@@ -1045,18 +1076,34 @@ abstract class GenJSCode extends plugins.PluginComponent
             "Implementation restriction: constructors of " +
             "non-native JS classes cannot have default parameters " +
             "if their companion module is JS native.")
-        js.MethodDef(static = false, js.StringLiteral("constructor"), Nil,
-            jstpe.AnyType, Some(js.Skip()))(
+        val ctorDef = js.MethodDef(static = false,
+            js.StringLiteral("constructor"), Nil, jstpe.AnyType,
+            Some(js.Skip()))(
             OptimizerHints.empty, None)
+        (None, ctorDef)
       } else {
         withNewLocalNameScope {
+          reserveLocalName(JSSuperClassParamName)
+
           val ctors: List[js.MethodDef] = constructorTrees.flatMap { tree =>
             genMethodWithCurrentLocalNameScope(tree)
           }
 
-          val dispatch =
+          val (captureParams, dispatch) =
             genJSConstructorExport(constructorTrees.map(_.symbol))
-          buildJSConstructorDef(dispatch, ctors)
+
+          /* Ensure that the first JS class capture is a reference to the JS
+           * super class value. genNonNativeJSClass relies on this.
+           */
+          val captureParamsWithJSSuperClass = captureParams.map { params =>
+            val jsSuperClassParam = js.ParamDef(js.Ident(JSSuperClassParamName),
+                jstpe.AnyType, mutable = false, rest = false)
+            jsSuperClassParam :: params
+          }
+
+          val ctorDef = buildJSConstructorDef(dispatch, ctors)
+
+          (captureParamsWithJSSuperClass, ctorDef)
         }
       }
     }
@@ -1699,8 +1746,20 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       if (!isNonNativeJSClass(currentClassSym) ||
           isRawJSFunctionDef(currentClassSym)) {
-        js.MethodDef(static, methodName, jsParams, resultIRType,
-            Some(genBody()))(optimizerHints, None)
+        val body = {
+          if (currentClassSym.isImplClass) {
+            val thisParam = jsParams.head
+            withScopedVars(
+                thisLocalVarInfo := Some((thisParam.name, thisParam.ptpe))
+            ) {
+              genBody()
+            }
+          } else {
+            genBody()
+          }
+        }
+        js.MethodDef(static, methodName, jsParams, resultIRType, Some(body))(
+            optimizerHints, None)
       } else {
         assert(!static, tree.pos)
 
@@ -3234,7 +3293,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       else if (isCoercion(code))
         genCoercion(tree, receiver, code)
       else if (jsPrimitives.isJavaScriptPrimitive(code))
-        genJSPrimitive(tree, receiver, args, code)
+        genJSPrimitive(tree, receiver, args, code, isStat)
       else
         abort("Unknown primitive operation: " + sym.fullName + "(" +
             fun.symbol.simpleName + ") " + " at: " + (tree.pos))
@@ -3978,7 +4037,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     /** Gen JS code for a Scala.js-specific primitive method */
     private def genJSPrimitive(tree: Apply, receiver0: Tree,
-        args: List[Tree], code: Int): js.Tree = {
+        args: List[Tree], code: Int, isStat: Boolean): js.Tree = {
       import jsPrimitives._
 
       implicit val pos = tree.pos
@@ -4019,9 +4078,34 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (code == CONSTRUCTOROF) {
         val classSym = resolveReifiedJSClassSym(args.head)
         if (classSym == NoSymbol)
-          js.Undefined()
+          js.Undefined() // compile error emitted by resolveReifiedJSClassSym
         else
           genPrimitiveJSClass(classSym)
+      } else if (code == CREATE_INNER_JS_CLASS || code == CREATE_LOCAL_JS_CLASS) {
+        val classSym = resolveReifiedJSClassSym(args(0))
+        val superClassValue = genExpr(args(1))
+        if (classSym == NoSymbol) {
+          js.Undefined() // compile error emitted by resolveReifiedJSClassSym
+        } else {
+          val captureValues = {
+            if (code == CREATE_INNER_JS_CLASS) {
+              val outer = genThis()
+              List.fill(classSym.info.decls.count(_.isClassConstructor))(outer)
+            } else {
+              val ArrayValue(_, fakeNewInstances) = args(2)
+              fakeNewInstances.flatMap(genCaptureValuesFromFakeNewInstance(_))
+            }
+          }
+          js.CreateJSClass(jstpe.ClassRef(encodeClassFullName(classSym)),
+              superClassValue :: captureValues)
+        }
+      } else if (code == WITH_CONTEXTUAL_JS_CLASS_VALUE) {
+        val jsClassValue = genExpr(args(0))
+        withScopedVars(
+            contextualJSClassValue := Some(jsClassValue)
+        ) {
+          genStatOrExpr(args(1), isStat)
+        }
       } else (genArgs match {
         case Nil =>
           code match {
@@ -4143,45 +4227,51 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     private def genJSSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
-      implicit val pos = tree.pos
-      val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree
-      val sym = fun.symbol
+      acquireContextualJSClassValue { explicitJSSuperClassValue =>
+        implicit val pos = tree.pos
+        val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree
+        val sym = fun.symbol
 
-      /* #3013 `qual` can be `this.$outer()` in some cases since Scala 2.12,
-       * so we call `genExpr(qual)`, not just `genThis()`.
-       */
-      val genReceiver = genExpr(qual)
-      lazy val genScalaArgs = genActualArgs(sym, args)
-      lazy val genJSArgs = genPrimitiveJSArgs(sym, args)
+        /* #3013 `qual` can be `this.$outer()` in some cases since Scala 2.12,
+         * so we call `genExpr(qual)`, not just `genThis()`.
+         */
+        val genReceiver = genExpr(qual)
+        lazy val genScalaArgs = genActualArgs(sym, args)
+        lazy val genJSArgs = genPrimitiveJSArgs(sym, args)
 
-      if (sym.owner == ObjectClass) {
-        // Normal call anyway
-        assert(!sym.isClassConstructor,
-            "Trying to call the super constructor of Object in a " +
-            s"non-native JS class at $pos")
-        genApplyMethod(genReceiver, sym, genScalaArgs)
-      } else if (sym.isClassConstructor) {
-        assert(genReceiver.isInstanceOf[js.This],
-            "Trying to call a JS super constructor with a non-`this` " +
-            "receiver at " + pos)
-        js.JSSuperConstructorCall(genJSArgs)
-      } else if (isNonNativeJSClass(sym.owner) && !isExposed(sym)) {
-        // Reroute to the static method
-        genApplyJSClassMethod(genReceiver, sym, genScalaArgs)
-      } else {
-        genJSCallGeneric(sym, MaybeGlobalScope.NotGlobalScope(genReceiver),
-            genJSArgs, isStat, superIn = Some(currentClassSym))
+        if (sym.owner == ObjectClass) {
+          // Normal call anyway
+          assert(!sym.isClassConstructor,
+              "Trying to call the super constructor of Object in a " +
+              s"non-native JS class at $pos")
+          genApplyMethod(genReceiver, sym, genScalaArgs)
+        } else if (sym.isClassConstructor) {
+          assert(genReceiver.isInstanceOf[js.This],
+              "Trying to call a JS super constructor with a non-`this` " +
+              "receiver at " + pos)
+          js.JSSuperConstructorCall(genJSArgs)
+        } else if (isNonNativeJSClass(sym.owner) && !isExposed(sym)) {
+          // Reroute to the static method
+          genApplyJSClassMethod(genReceiver, sym, genScalaArgs)
+        } else {
+          val jsSuperClassValue = explicitJSSuperClassValue.orElse {
+            Some(genPrimitiveJSClass(currentClassSym.superClass))
+          }
+          genJSCallGeneric(sym, MaybeGlobalScope.NotGlobalScope(genReceiver),
+              genJSArgs, isStat, jsSuperClassValue)
+        }
       }
     }
 
     private def genJSCallGeneric(sym: Symbol, receiver: MaybeGlobalScope,
-        args: List[js.Tree], isStat: Boolean, superIn: Option[Symbol] = None)(
+        args: List[js.Tree], isStat: Boolean,
+        jsSuperClassValue: Option[js.Tree] = None)(
         implicit pos: Position): js.Tree = {
       def noSpread = !args.exists(_.isInstanceOf[js.JSSpread])
       val argc = args.size // meaningful only for methods that don't have varargs
 
       def requireNotSuper(): Unit = {
-        if (superIn.isDefined) {
+        if (jsSuperClassValue.isDefined) {
           reporter.error(pos,
               "Illegal super call in non-native JS class")
         }
@@ -4214,11 +4304,10 @@ abstract class GenJSCode extends plugins.PluginComponent
           def jsFunName: js.Tree = genExpr(jsNameOf(sym))
 
           def genSuperReference(propName: js.Tree): js.Tree = {
-            superIn.fold[js.Tree] {
+            jsSuperClassValue.fold[js.Tree] {
               genJSBracketSelectOrGlobalRef(receiver, propName)
-            } { superInSym =>
-              js.JSSuperBracketSelect(
-                  genPrimitiveJSClass(superInSym.superClass),
+            } { superClassValue =>
+              js.JSSuperBracketSelect(superClassValue,
                   ruleOutGlobalScope(receiver), propName)
             }
           }
@@ -4230,12 +4319,11 @@ abstract class GenJSCode extends plugins.PluginComponent
             js.Assign(genSuperReference(propName), value)
 
           def genCall(methodName: js.Tree, args: List[js.Tree]): js.Tree = {
-            superIn.fold[js.Tree] {
+            jsSuperClassValue.fold[js.Tree] {
               genJSBracketMethodApplyOrGlobalRefApply(
                   receiver, methodName, args)
-            } { superInSym =>
-              js.JSSuperBracketCall(
-                  genPrimitiveJSClass(superInSym.superClass),
+            } { superClassValue =>
+              js.JSSuperBracketCall(superClassValue,
                   ruleOutGlobalScope(receiver), methodName, args)
             }
           }
@@ -4330,22 +4418,33 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     /** Gen JS code for a new of a raw JS class (subclass of js.Any) */
     private def genPrimitiveJSNew(tree: Apply): js.Tree = {
-      implicit val pos = tree.pos
+      acquireContextualJSClassValue { jsClassValue =>
+        implicit val pos = tree.pos
 
-      val Apply(fun @ Select(New(tpt), _), args0) = tree
-      val cls = tpt.tpe.typeSymbol
-      val ctor = fun.symbol
+        val Apply(fun @ Select(New(tpt), _), args0) = tree
+        val cls = tpt.tpe.typeSymbol
+        val ctor = fun.symbol
 
-      val args = genPrimitiveJSArgs(ctor, args0)
+        val nestedJSClass = isNestedJSClass(cls)
+        assert(jsClassValue.isDefined == nestedJSClass,
+            s"$cls at $pos: jsClassValue.isDefined = ${jsClassValue.isDefined} " +
+            s"but isInnerNonNativeJSClass = $nestedJSClass")
 
-      if (cls == JSObjectClass && args.isEmpty)
-        js.JSObjectConstr(Nil)
-      else if (cls == JSArrayClass && args.isEmpty)
-        js.JSArrayConstr(Nil)
-      else if (isAnonJSClass(cls))
-        genAnonJSClassNew(cls, args, fun.pos)
-      else
-        js.JSNew(genPrimitiveJSClass(cls), args)
+        def args = genPrimitiveJSArgs(ctor, args0)
+
+        if (cls == JSObjectClass && args0.isEmpty)
+          js.JSObjectConstr(Nil)
+        else if (cls == JSArrayClass && args0.isEmpty)
+          js.JSArrayConstr(Nil)
+        else if (isAnonJSClass(cls))
+          genAnonJSClassNew(cls, jsClassValue.get, args, fun.pos)
+        else if (!nestedJSClass)
+          js.JSNew(genPrimitiveJSClass(cls), args)
+        else if (!cls.isModuleClass)
+          js.JSNew(jsClassValue.get, args)
+        else
+          genCreateInnerJSModule(cls, jsClassValue.get, args0.map(genExpr))
+      }
     }
 
     /** Gen JS code representing a JS class (subclass of js.Any) */
@@ -4354,6 +4453,14 @@ abstract class GenJSCode extends plugins.PluginComponent
       assert(!isStaticModule(sym) && !sym.isTraitOrInterface,
           s"genPrimitiveJSClass called with non-class $sym")
       js.LoadJSConstructor(jstpe.ClassType(encodeClassFullName(sym)))
+    }
+
+    /** Gen JS code to create the JS class of an inner JS module class. */
+    private def genCreateInnerJSModule(sym: Symbol,
+        jsSuperClassValue: js.Tree, args: List[js.Tree])(
+        implicit pos: Position): js.Tree = {
+      js.JSNew(js.CreateJSClass(jstpe.ClassRef(encodeClassFullName(sym)),
+          jsSuperClassValue :: args), Nil)
     }
 
     /** Gen actual actual arguments to Scala method call.
@@ -4408,26 +4515,36 @@ abstract class GenJSCode extends plugins.PluginComponent
     private def genPrimitiveJSArgs(sym: Symbol, args: List[Tree])(
         implicit pos: Position): List[js.Tree] = {
 
-      /* lambdalift might have to introduce some parameters when transforming
-       * nested non-native JS classes. Hence, the list of parameters
-       * exiting typer and entering posterasure might not be compatible with
-       * the list of actual arguments we receive now.
+      /* For constructors of nested JS classes (*), explicitouter and
+       * lambdalift have introduced some parameters for the outer parameter and
+       * captures. We must ignore those, as captures and outer pointers are
+       * taken care of by `explicitinerjs` for such classes.
        *
-       * We therefore need to establish of list of formal parameters based on
-       * the current signature of `sym`, but have to look back in time to see
-       * whether they were repeated and what was their type (for those that
-       * were already present at the time).
-       *
-       * Unfortunately, for some reason lambdalift creates new symbol *even
-       * for parameters originally in the signature* when doing so! That is
-       * why we use the *names* of the parameters as a link through time,
-       * rather than the symbols.
+       * Unfortunately, for some reason lambdalift creates new symbol *even for
+       * parameters originally in the signature* when doing so! That is why we
+       * use the *names* of the parameters as a link through time, rather than
+       * the symbols, to identify which ones already existed at the time of
+       * explicitinerjs.
        *
        * This is pretty fragile, but fortunately we have a huge test suite to
        * back us up should scalac alter its behavior.
+       *
+       * Anonymous JS classes are excluded for this treatment, since they are
+       * instantiated in a completely different way.
+       *
+       * In addition, for actual parameters that we keep, we have to look back
+       * in time to see whether they were repeated and what was their type.
+       *
+       * (*) Note that we are not supposed to receive in genPrimitiveJSArgs a
+       *     method symbol that would have such captures *and* would not be a
+       *     class constructors. Indeed, such methods would have started their
+       *     life as local defs, which are not exposed.
        */
 
-      val wereRepeated = exitingPhase(currentRun.typerPhase) {
+      val isAnonJSClassConstructor =
+        sym.isClassConstructor && isAnonJSClass(sym.owner)
+
+      val wereRepeated = enteringPhase(currentRun.uncurryPhase) {
         for {
           params <- sym.tpe.paramss
           param <- params
@@ -4444,20 +4561,33 @@ abstract class GenJSCode extends plugins.PluginComponent
       var reversedArgs: List[js.Tree] = Nil
 
       for ((arg, paramSym) <- args zip sym.tpe.params) {
-        val wasRepeated = wereRepeated.getOrElse(paramSym.name, false)
-        if (wasRepeated) {
-          reversedArgs =
-            genPrimitiveJSRepeatedParam(arg) reverse_::: reversedArgs
-        } else {
-          val unboxedArg = genExpr(arg)
-          val boxedArg = unboxedArg match {
-            case js.UndefinedParam() =>
-              unboxedArg
-            case _ =>
-              val tpe = paramTpes.getOrElse(paramSym.name, paramSym.tpe)
-              ensureBoxed(unboxedArg, tpe)
-          }
-          reversedArgs ::= boxedArg
+        val wasRepeated =
+          if (isAnonJSClassConstructor) Some(false)
+          else wereRepeated.get(paramSym.name)
+
+        wasRepeated match {
+          case Some(true) =>
+            reversedArgs =
+              genPrimitiveJSRepeatedParam(arg) reverse_::: reversedArgs
+
+          case Some(false) =>
+            val unboxedArg = genExpr(arg)
+            val boxedArg = unboxedArg match {
+              case js.UndefinedParam() =>
+                unboxedArg
+              case _ =>
+                val tpe = paramTpes.getOrElse(paramSym.name, paramSym.tpe)
+                ensureBoxed(unboxedArg, tpe)
+            }
+            reversedArgs ::= boxedArg
+
+          case None =>
+            /* This is a parameter introduced by explicitouter or lambdalift,
+             * which we ignore.
+             */
+            assert(sym.isClassConstructor,
+                s"Found an unknown param ${paramSym.name} in method " +
+                s"${sym.fullName}, which is not a class constructor, at $pos")
         }
       }
 
@@ -4562,6 +4692,39 @@ abstract class GenJSCode extends plugins.PluginComponent
           Some(wrapped)
         case _ =>
           None
+      }
+    }
+
+    /** Gen the actual capture values for a JS constructor based on its fake
+     *  `new` invocation.
+     */
+    private def genCaptureValuesFromFakeNewInstance(
+        tree: Tree): List[js.Tree] = {
+
+      implicit val pos = tree.pos
+
+      val Apply(fun @ Select(New(_), _), args) = tree
+      val sym = fun.symbol
+
+      /* We use the same strategy as genPrimitiveJSArgs to detect which
+       * parameters were introduced by explicitouter or lambdalift (but
+       * reversed, of course).
+       */
+
+      val existedBeforeUncurry = enteringPhase(currentRun.uncurryPhase) {
+        for {
+          params <- sym.tpe.paramss
+          param <- params
+        } yield {
+          param.name
+        }
+      }.toSet
+
+      for {
+        (arg, paramSym) <- args.zip(sym.tpe.params)
+        if !existedBeforeUncurry(paramSym.name)
+      } yield {
+        genExpr(arg)
       }
     }
 
@@ -5034,8 +5197,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       val classDef = js.ClassDef(
           js.Ident(generatedClassName),
           ClassKind.Class,
+          None,
           Some(js.Ident(ir.Definitions.ObjectClass)),
           List(js.Ident(intfName)),
+          None,
           None,
           List(fFieldDef, ctorDef, samMethodDef),
           Nil)(
@@ -5338,6 +5503,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   def isAnonJSClass(sym: Symbol): Boolean =
     sym.hasAnnotation(AnonymousJSClassAnnotation)
+
+  def isNestedJSClass(sym: Symbol): Boolean =
+    sym.isLifted && !sym.originalOwner.isModuleClass && isJSType(sym)
 
   /** Tests whether the given class is a JS native class. */
   private def isJSNativeClass(sym: Symbol): Boolean =

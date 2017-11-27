@@ -199,8 +199,10 @@ final class BaseLinker(config: CommonPhaseConfig) {
     new LinkedClass(
         classDef.name,
         kind,
+        classDef.jsClassCaptures,
         classDef.superClass,
         classDef.interfaces,
+        classDef.jsSuperClass,
         classDef.jsNativeLoadSpec,
         fields.toList,
         staticMethods.toList,

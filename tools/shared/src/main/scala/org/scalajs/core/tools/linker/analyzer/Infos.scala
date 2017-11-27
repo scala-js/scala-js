@@ -469,6 +469,9 @@ object Infos {
             case LoadJSModule(ClassType(cls)) =>
               builder.addAccessedModule(cls)
 
+            case CreateJSClass(cls, _) =>
+              builder.addInstantiatedClass(cls.className)
+
             case _ =>
           }
 

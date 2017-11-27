@@ -40,6 +40,22 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   /** Name given to all exported stuff of a class for DCE */
   final val dceExportName = "<exported>"
 
+  /** Name of the capture param storing the JS super class.
+   *
+   *  This is used by the dispatchers of exposed JS methods and properties of
+   *  nested JS classes when they need to perform a super call. Other super
+   *  calls (in the actual bodies of the methods, not in the dispatchers) do
+   *  not use this value, since they are implemented as static methods that do
+   *  not have access to it. Instead, they get the JS super class value through
+   *  the magic method inserted by `ExplicitLocalJS`, leveraging `lambdalift`
+   *  to ensure that it is properly captured.
+   *
+   *  Using this identifier is only allowed if the current local name scope was
+   *  created with [[withNewLocalNameScopeUsingJSSuperClassParamName]].
+   *  Otherwise, this name can clash with another local identifier.
+   */
+  final val JSSuperClassParamName = "$superClass"
+
   // Fresh local name generator ----------------------------------------------
 
   private val usedLocalNames = new ScopedVar[mutable.Set[String]]
@@ -47,11 +63,19 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   private val isReserved =
     Set("arguments", "eval", ScalaJSEnvironmentName)
 
-  def withNewLocalNameScope[A](body: => A): A =
+  def withNewLocalNameScope[A](body: => A): A = {
     withScopedVars(
         usedLocalNames := mutable.Set.empty,
         localSymbolNames := mutable.Map.empty
     )(body)
+  }
+
+  def reserveLocalName(name: String): Unit = {
+    require(usedLocalNames.isEmpty,
+        s"Trying to reserve the name '$name' but names have already been " +
+        "allocated")
+    usedLocalNames += name
+  }
 
   private def freshName(base: String = "x"): String = {
     var suffix = 1

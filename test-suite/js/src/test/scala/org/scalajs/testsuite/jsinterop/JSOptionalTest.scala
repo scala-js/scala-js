@@ -158,13 +158,6 @@ class JSOptionalTest {
   }
 
   @Test def overrideClassAbstractWithOptional(): Unit = {
-    abstract class ClassWithAbstracts extends js.Object {
-      val x: js.UndefOr[Int]
-      def y: js.UndefOr[String]
-      def y2: js.UndefOr[String]
-      var z: js.UndefOr[Option[Int]]
-    }
-
     trait OverrideClassAbstractWithOptional extends ClassWithAbstracts {
       val x: js.UndefOr[Int] = js.undefined
       def y: js.UndefOr[String] = js.undefined
@@ -293,6 +286,13 @@ object JSOptionalTest {
     override val x = js.undefined
     override val y = js.undefined
     override def y2 = js.undefined // scalastyle:ignore
+  }
+
+  abstract class ClassWithAbstracts extends js.Object {
+    val x: js.UndefOr[Int]
+    def y: js.UndefOr[String]
+    def y2: js.UndefOr[String]
+    var z: js.UndefOr[Option[Int]]
   }
 
   trait TraitWithOptionalFunction extends js.Object {

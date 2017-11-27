@@ -29,25 +29,32 @@ abstract class JSPrimitives {
   import jsDefinitions._
   import scalaPrimitives._
 
-  val F2JS = 305     // FunctionN to js.FunctionN
-  val F2JSTHIS = 306 // FunctionN to js.ThisFunction{N-1}
+  val FirstJSPrimitiveCode = 300
 
-  val DYNNEW = 321 // Instantiate a new JavaScript object
+  val F2JS = FirstJSPrimitiveCode + 1 // FunctionN to js.FunctionN
+  val F2JSTHIS = F2JS + 1             // FunctionN to js.ThisFunction{N-1}
 
-  val ARR_CREATE = 337 // js.Array.apply (array literal syntax)
+  val DYNNEW = F2JSTHIS + 1 // Instantiate a new JavaScript object
 
-  val TYPEOF = 344    // typeof x
-  val JS_NATIVE = 348 // js.native. Marker method. Fails if tried to be emitted.
+  val ARR_CREATE = DYNNEW + 1 // js.Array.apply (array literal syntax)
 
-  val UNITVAL = 349 // () value, which is undefined
+  val TYPEOF = ARR_CREATE + 1 // typeof x
+  val JS_NATIVE = TYPEOF + 1  // js.native. Marker method. Fails if tried to be emitted.
 
-  val CONSTRUCTOROF = 352 // runtime.constructorOf(clazz)
-  val LINKING_INFO = 353  // $linkingInfo
+  val UNITVAL = JS_NATIVE + 1 // () value, which is undefined
 
-  val IN = 354         // js.special.in
-  val INSTANCEOF = 355 // js.special.instanceof
-  val DELETE = 356     // js.special.delete
-  val DEBUGGER = 357   // js.special.debugger
+  val CONSTRUCTOROF = UNITVAL + 1                                // runtime.constructorOf(clazz)
+  val CREATE_INNER_JS_CLASS = CONSTRUCTOROF + 1                  // runtime.createInnerJSClass
+  val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
+  val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
+  val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
+
+  val IN = LINKING_INFO + 1   // js.special.in
+  val INSTANCEOF = IN + 1     // js.special.instanceof
+  val DELETE = INSTANCEOF + 1 // js.special.delete
+  val DEBUGGER = DELETE + 1   // js.special.debugger
+
+  val LastJSPrimitiveCode = DEBUGGER
 
   /** Initialize the map of primitive methods (for GenJSCode) */
   def init(): Unit = initWithPrimitives(addPrimitive)
@@ -93,6 +100,10 @@ abstract class JSPrimitives {
     addPrimitive(BoxedUnit_UNIT, UNITVAL)
 
     addPrimitive(Runtime_constructorOf, CONSTRUCTOROF)
+    addPrimitive(Runtime_createInnerJSClass, CREATE_INNER_JS_CLASS)
+    addPrimitive(Runtime_createLocalJSClass, CREATE_LOCAL_JS_CLASS)
+    addPrimitive(Runtime_withContextualJSClassValue,
+        WITH_CONTEXTUAL_JS_CLASS_VALUE)
     addPrimitive(Runtime_linkingInfo, LINKING_INFO)
 
     addPrimitive(Special_in, IN)
@@ -102,5 +113,5 @@ abstract class JSPrimitives {
   }
 
   def isJavaScriptPrimitive(code: Int): Boolean =
-    code >= 300 && code < 360
+    code >= FirstJSPrimitiveCode && code <= LastJSPrimitiveCode
 }

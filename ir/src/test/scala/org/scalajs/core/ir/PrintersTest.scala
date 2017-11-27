@@ -851,11 +851,21 @@ class PrintersTest {
             List(ref("a", IntType), i(6))))
   }
 
+  @Test def printCreateJSClass(): Unit = {
+    assertPrintEquals(
+        """
+          |createjsclass[LFoo](x, y)
+        """,
+        CreateJSClass("LFoo", List(ref("x", IntType), ref("y", AnyType))))
+  }
+
   @Test def printClassDefKinds(): Unit = {
     import ClassKind._
 
     def makeForKind(kind: ClassKind): ClassDef = {
-      ClassDef("LTest", kind, Some(ObjectClass), Nil, None, Nil, Nil)(NoOptHints)
+      ClassDef("LTest", kind, None, Some(ObjectClass), Nil, None, None, Nil,
+          Nil)(
+          NoOptHints)
     }
 
     assertPrintEquals(
@@ -925,7 +935,8 @@ class PrintersTest {
   @Test def printClassDefParents(): Unit = {
     def makeForParents(superClass: Option[Ident],
         interfaces: List[Ident]): ClassDef = {
-      ClassDef("LTest", ClassKind.Class, superClass, interfaces, None, Nil, Nil)(
+      ClassDef("LTest", ClassKind.Class, None, superClass, interfaces, None,
+          None, Nil, Nil)(
           NoOptHints)
     }
 
@@ -957,8 +968,8 @@ class PrintersTest {
           |native js class LTest extends O loadfrom global:Foo["Bar"] {
           |}
         """,
-        ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
-            Some(JSNativeLoadSpec.Global("Foo", List("Bar"))), Nil, Nil)(
+        ClassDef("LTest", ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
+            None, Some(JSNativeLoadSpec.Global("Foo", List("Bar"))), Nil, Nil)(
             NoOptHints))
 
     assertPrintEquals(
@@ -966,8 +977,8 @@ class PrintersTest {
           |native js class LTest extends O loadfrom import(foo)["Bar"] {
           |}
         """,
-        ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
-            Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil, Nil)(
+        ClassDef("LTest", ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
+            None, Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil, Nil)(
             NoOptHints))
 
     assertPrintEquals(
@@ -975,10 +986,50 @@ class PrintersTest {
           |native js class LTest extends O loadfrom import(foo)["Bar"] fallback global:Baz["Foobar"] {
           |}
         """,
-        ClassDef("LTest", ClassKind.NativeJSClass, Some(ObjectClass), Nil,
+        ClassDef("LTest", ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
+            None,
             Some(JSNativeLoadSpec.ImportWithGlobalFallback(
                 JSNativeLoadSpec.Import("foo", List("Bar")),
                 JSNativeLoadSpec.Global("Baz", List("Foobar")))), Nil, Nil)(
+            NoOptHints))
+  }
+
+  @Test def printClassDefJSClassCaptures(): Unit = {
+    assertPrintEquals(
+        """
+          |captures: none
+          |js class LTest extends O {
+          |}
+        """,
+        ClassDef("LTest", ClassKind.JSClass, Some(Nil), Some(ObjectClass), Nil,
+            None, None, Nil, Nil)(
+            NoOptHints))
+
+    assertPrintEquals(
+        """
+          |captures: x: int, y: string
+          |js class LTest extends O {
+          |}
+        """,
+        ClassDef("LTest", ClassKind.JSClass,
+            Some(List(
+                ParamDef("x", IntType, mutable = false, rest = false),
+                ParamDef("y", StringType, mutable = false, rest = false)
+            )),
+            Some(ObjectClass), Nil, None, None, Nil, Nil)(
+            NoOptHints))
+  }
+
+  @Test def printClassDefJSSuperClass(): Unit = {
+    assertPrintEquals(
+        """
+          |captures: sup: any
+          |js class LTest extends LBar (via sup) {
+          |}
+        """,
+        ClassDef("LTest", ClassKind.JSClass,
+            Some(List(ParamDef("sup", AnyType, mutable = false, rest = false))),
+            Some("LBar"), Nil, Some(ref("sup", AnyType)), None, Nil, Nil)(
             NoOptHints))
   }
 
@@ -988,8 +1039,8 @@ class PrintersTest {
           |@hints(1) class LTest extends O {
           |}
         """,
-        ClassDef("LTest", ClassKind.Class, Some(ObjectClass), Nil, None, Nil,
-            Nil)(
+        ClassDef("LTest", ClassKind.Class, None, Some(ObjectClass), Nil, None,
+            None, Nil, Nil)(
             NoOptHints.withInline(true)))
   }
 
@@ -1002,7 +1053,8 @@ class PrintersTest {
           |  export top module "pkg.Foo"
           |}
         """,
-        ClassDef("LTest", ClassKind.ModuleClass, Some(ObjectClass), Nil, None,
+        ClassDef("LTest", ClassKind.ModuleClass, None, Some(ObjectClass), Nil,
+            None, None,
             List(
                 FieldDef(static = false, "x$1", IntType, mutable = false),
                 FieldDef(static = false, "y$1", IntType, mutable = true)),

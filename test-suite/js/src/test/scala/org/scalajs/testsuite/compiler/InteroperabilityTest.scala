@@ -182,6 +182,59 @@ class InteroperabilityTest {
     assertEquals(10, obj6.x)
   }
 
+  @Test def nestedNativeJSClasses(): Unit = {
+    js.eval("""
+      var InteroperabilityTestContainerClass = (function(a) {
+        this.ContainedClass = function(x) {
+          this.x = x;
+          this.foo = function(s) { return a + s + this.x; };
+        };
+        this.ContainedObject = {
+          x: 42,
+          foo: function(s) { return a + s + this.x; }
+        };
+        this.ContainedClassRenamed = function(x) {
+          this.x = x * 2;
+          this.foo = function(s) { return a + s + this.x; };
+        };
+        this.ContainedObjectRenamed = {
+          x: 4242,
+          foo: function(s) { return a + s + this.x; }
+        };
+        this.ContainedClassWithDefaultParam = function(x) {
+          this.x = x || 42;
+          this.foo = function(s) { return a + s + this.x; };
+        };
+      });
+    """)
+
+    val enclosing = new InteroperabilityTestContainerClass("abc ")
+
+    val obj1 = new enclosing.ContainedClass(34)
+    assertEquals(34, obj1.x)
+    assertEquals("abc def 34", obj1.foo("def "))
+
+    val obj2 = enclosing.ContainedObject
+    assertEquals(42, obj2.x)
+    assertEquals("abc def 42", obj2.foo("def "))
+
+    val obj3 = new enclosing.ContainedClassWithJSName(65)
+    assertEquals(130, obj3.x)
+    assertEquals("abc def 130", obj3.foo("def "))
+
+    val obj4 = enclosing.ContainedObjectWithJSName
+    assertEquals(4242, obj4.x)
+    assertEquals("abc def 4242", obj4.foo("def "))
+
+    val obj5 = new enclosing.ContainedClassWithDefaultParam()
+    assertEquals(42, obj5.x)
+    assertEquals("abc def 42", obj5.foo("def "))
+
+    val obj6 = new enclosing.ContainedClassWithDefaultParam(10)
+    assertEquals(10, obj6.x)
+    assertEquals("abc def 10", obj6.foo("def "))
+  }
+
   @Test def should_access_native_JS_classes_and_objects_nested_in_atJSNamed_JS_objects(): Unit = {
     js.eval("""
       var InteroperabilityTestContainerObjectRenamed = {
@@ -724,6 +777,42 @@ object InteroperabilityTestContainerObject extends js.Object {
   @js.native
   class ContainedClassWithDefaultParam(_x: Int = ???) extends js.Object {
     val x: Int = js.native
+  }
+}
+
+@js.native
+@JSGlobal
+class InteroperabilityTestContainerClass(a: String) extends js.Object {
+  @js.native
+  class ContainedClass(_x: Int) extends js.Object {
+    val x: Int = js.native
+    def foo(s: String): String = js.native
+  }
+
+  @js.native
+  object ContainedObject extends js.Object {
+    val x: Int = js.native
+    def foo(s: String): String = js.native
+  }
+
+  @JSName("ContainedClassRenamed")
+  @js.native
+  class ContainedClassWithJSName(_x: Int) extends js.Object {
+    val x: Int = js.native
+    def foo(s: String): String = js.native
+  }
+
+  @JSName("ContainedObjectRenamed")
+  @js.native
+  object ContainedObjectWithJSName extends js.Object {
+    val x: Int = js.native
+    def foo(s: String): String = js.native
+  }
+
+  @js.native
+  class ContainedClassWithDefaultParam(_x: Int = ???) extends js.Object {
+    val x: Int = js.native
+    def foo(s: String): String = js.native
   }
 }
 

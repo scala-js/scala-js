@@ -286,8 +286,13 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def envField(field: String, subField: String, origName: Option[String] = None)(
       implicit pos: Position): VarRef = {
-    VarRef(Ident(avoidClashWithGlobalRef("$" + field + "_" + subField),
-        origName))
+    VarRef(envFieldIdent(field, subField, origName))
+  }
+
+  def envFieldIdent(field: String, subField: String,
+      origName: Option[String] = None)(
+      implicit pos: Position): Ident = {
+    Ident(avoidClashWithGlobalRef("$" + field + "_" + subField), origName)
   }
 
   def envField(field: String)(implicit pos: Position): VarRef =

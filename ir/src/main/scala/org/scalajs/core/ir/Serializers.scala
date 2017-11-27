@@ -435,6 +435,11 @@ object Serializers {
           writeParamDefs(params)
           writeTree(body)
           writeTrees(captureValues)
+
+        case CreateJSClass(cls, captureValues) =>
+          writeByte(TagCreateJSClass)
+          writeClassRef(cls)
+          writeTrees(captureValues)
       }
       if (UseDebugMagic)
         writeInt(DebugMagic)
@@ -461,8 +466,11 @@ object Serializers {
       writePosition(classDef.pos)
       writeIdent(name)
       writeByte(ClassKind.toByte(kind))
+      writeBoolean(jsClassCaptures.isDefined)
+      jsClassCaptures.foreach(writeParamDefs(_))
       writeOptIdent(superClass)
       writeIdents(interfaces)
+      writeOptTree(jsSuperClass)
       writeJSNativeLoadSpec(jsNativeLoadSpec)
       writeMemberDefs(memberDefs)
       writeTopLevelExportDefs(topLevelExportDefs)
@@ -631,6 +639,9 @@ object Serializers {
         writeString(baseClassName)
         buffer.writeInt(dimensions)
     }
+
+    def writeClassRef(cls: ClassRef): Unit =
+      writeString(cls.className)
 
     def writePropertyName(name: PropertyName): Unit = name match {
       case name: Ident =>
@@ -887,9 +898,14 @@ object Serializers {
         case TagStringLiteral  => StringLiteral(readString())
         case TagClassOf        => ClassOf(readTypeRef())
 
-        case TagVarRef  => VarRef(readIdent())(readType())
-        case TagThis    => This()(readType())
-        case TagClosure => Closure(readParamDefs(), readParamDefs(), readTree(), readTrees())
+        case TagVarRef =>
+          VarRef(readIdent())(readType())
+        case TagThis =>
+          This()(readType())
+        case TagClosure =>
+          Closure(readParamDefs(), readParamDefs(), readTree(), readTrees())
+        case TagCreateJSClass =>
+          CreateJSClass(readClassRef(), readTrees())
       }
       if (UseDebugMagic) {
         val magic = readInt()
@@ -908,14 +924,19 @@ object Serializers {
       implicit val pos = readPosition()
       val name = readIdent()
       val kind = ClassKind.fromByte(readByte())
+      val hasJSClassCaptures = readBoolean()
+      val jsClassCaptures =
+        if (!hasJSClassCaptures) None
+        else Some(readParamDefs())
       val superClass = readOptIdent()
       val parents = readIdents()
+      val jsSuperClass = readOptTree()
       val jsNativeLoadSpec = readJSNativeLoadSpec()
       val memberDefs = readMemberDefs()
       val topLevelExportDefs = readTopLevelExportDefs()
       val optimizerHints = new OptimizerHints(readInt())
-      ClassDef(name, kind, superClass, parents, jsNativeLoadSpec, memberDefs,
-          topLevelExportDefs)(
+      ClassDef(name, kind, jsClassCaptures, superClass, parents, jsSuperClass,
+          jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
           optimizerHints)
     }
 
@@ -1047,6 +1068,9 @@ object Serializers {
           ArrayTypeRef(readString(), input.readInt())
       }
     }
+
+    def readClassRef(): ClassRef =
+      ClassRef(readString())
 
     def readPropertyName(): PropertyName = {
       input.readByte() match {

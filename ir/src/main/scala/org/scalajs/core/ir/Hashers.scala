@@ -41,8 +41,8 @@ object Hashers {
   def hashClassDef(classDef: ClassDef): ClassDef = {
     import classDef._
     val newMemberDefs = hashMemberDefs(memberDefs)
-    ClassDef(name, kind, superClass, interfaces, jsNativeLoadSpec,
-        newMemberDefs, topLevelExportDefs)(
+    ClassDef(name, kind, jsClassCaptures, superClass, interfaces, jsSuperClass,
+        jsNativeLoadSpec, newMemberDefs, topLevelExportDefs)(
         optimizerHints)
   }
 
@@ -450,11 +450,19 @@ object Hashers {
           mixTree(body)
           mixTrees(captureValues)
 
+        case CreateJSClass(cls, captureValues) =>
+          mixTag(TagCreateJSClass)
+          mixClassRef(cls)
+          mixTrees(captureValues)
+
         case _ =>
           throw new IllegalArgumentException(
               s"Unable to hash tree of class ${tree.getClass}")
       }
     }
+
+    def mixOptTree(optTree: Option[Tree]): Unit =
+      optTree.foreach(mixTree)
 
     def mixTrees(trees: List[Tree]): Unit =
       trees.foreach(mixTree)
@@ -468,6 +476,9 @@ object Hashers {
         mixString(baseClassName)
         mixInt(dimensions)
     }
+
+    def mixClassRef(classRef: ClassRef): Unit =
+      mixString(classRef.className)
 
     def mixType(tpe: Type): Unit = tpe match {
       case AnyType     => mixTag(TagAnyType)

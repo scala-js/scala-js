@@ -45,6 +45,50 @@ trait JSGlobalAddons extends JSDefinitions
     case object Static extends ExportDestination
   }
 
+  /** Extracts the super type of a `Template`, with type parameters reinvented
+   *  so that the type is well-formed outside of the `Template`, i.e., at the
+   *  same level where the corresponding `ImplDef` is defined.
+   */
+  def extractSuperTpeFromImpl(impl: Template): Type =
+    reinventTypeParams(impl.parents.head.tpe)
+
+  /** Reinvents all the type parameters of a `TypeRef`.
+   *
+   *  This is done by existentially quantifying over all type parameters of
+   *  the class type referenced by the `TypeRef`.
+   *
+   *  As a simple example, given the definition
+   *  {{{
+   *  class C[A, B <: AnyVal]
+   *  }}}
+   *  this transforms
+   *  {{{
+   *  path.C[A, Int]
+   *  }}}
+   *  into
+   *  {{{
+   *  path.C[_, _ <: AnyVal]
+   *  }}}
+   *
+   *  As a complex example, given the definition
+   *  {{{
+   *  class D[A, B <: List[Seq[A]]]
+   *  }}}
+   *  this method transforms
+   *  {{{
+   *  path.D[?0, ?1] forSome { type ?0; type ?1 <: List[Seq[?0]] }
+   *  }}}
+   */
+  private def reinventTypeParams(tp: Type): Type = {
+    tp match {
+      case TypeRef(pre, sym, _) if sym.isClass && sym.typeParams.nonEmpty =>
+        val eparams = typeParamsToExistentials(sym)
+        existentialAbstraction(eparams, typeRef(pre, sym, eparams.map(_.tpe)))
+      case _ =>
+        tp
+    }
+  }
+
   /** global javascript interop related helpers */
   object jsInterop {
     import scala.reflect.NameTransformer
@@ -130,6 +174,9 @@ trait JSGlobalAddons extends JSDefinitions
             "non-exported name passed to jsExportInfo")
       }
     }
+
+    def jsclassAccessorFor(clazz: Symbol): Symbol =
+      clazz.owner.info.member(clazz.name.append("$jsclass").toTermName)
 
     def isJSProperty(sym: Symbol): Boolean = isJSGetter(sym) || isJSSetter(sym)
 
@@ -225,6 +272,16 @@ trait JSGlobalAddons extends JSDefinitions
           s"jsNativeLoadSpecOf called for non-class symbol $sym")
 
       jsNativeLoadSpecs(sym)
+    }
+
+    /** Gets the JS native load spec of a symbol in the current compilation run,
+     *  if it has one.
+     */
+    def jsNativeLoadSpecOfOption(sym: Symbol): Option[JSNativeLoadSpec] = {
+      assert(sym.isClass,
+          s"jsNativeLoadSpecOfOption called for non-class symbol $sym")
+
+      jsNativeLoadSpecs.get(sym)
     }
 
   }
