@@ -240,26 +240,10 @@
   ]]></task>
 
   <matrix id="pr">
-    <!-- Main test tasks, on all JDKs -->
-    <run task="main">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.7</v>
-    </run>
+    <!-- Main test tasks -->
     <run task="main">
       <v n="scala">2.10.2</v>
       <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
     </run>
     <run task="main">
       <v n="scala">2.11.12</v>
@@ -274,7 +258,7 @@
       <v n="java">1.8</v>
     </run>
 
-    <!-- Test suite on ECMAScript5 tasks, only on JDK8 -->
+    <!-- Test suite on ECMAScript5 tasks -->
     <run task="test-suite-ecma-script5">
       <v n="scala">2.10.2</v>
       <v n="java">1.8</v>
@@ -296,7 +280,7 @@
       <v n="testSuite">testSuite</v>
     </run>
 
-    <!-- scala/scala test suite on ECMAScript5 tasks, only on JDK8 -->
+    <!-- scala/scala test suite on ECMAScript5 tasks -->
     <run task="test-suite-ecma-script5">
       <v n="scala">2.11.12</v>
       <v n="java">1.8</v>
@@ -313,7 +297,7 @@
       <v n="testSuite">scalaTestSuite</v>
     </run>
 
-    <!-- Test suite on ECMAScript6 tasks, only on JDK8 -->
+    <!-- Test suite on ECMAScript6 tasks -->
     <run task="test-suite-ecma-script6">
       <v n="scala">2.10.2</v>
       <v n="java">1.8</v>
@@ -335,7 +319,7 @@
       <v n="testSuite">testSuite</v>
     </run>
 
-    <!-- scala/scala test suite on ECMAScript6 tasks, only on JDK8 -->
+    <!-- scala/scala test suite on ECMAScript6 tasks -->
     <run task="test-suite-ecma-script6">
       <v n="scala">2.11.12</v>
       <v n="java">1.8</v>
@@ -352,7 +336,7 @@
       <v n="testSuite">scalaTestSuite</v>
     </run>
 
-    <!-- Bootstrap test tasks, only on JDK8 -->
+    <!-- Bootstrap test tasks -->
     <run task="bootstrap">
       <v n="scala">2.10.2</v>
       <v n="java">1.8</v>
@@ -370,23 +354,10 @@
       <v n="java">1.8</v>
     </run>
 
-    <!-- Tools / CLI / Stubs / sbtPlugin test tasks, on all JDKs -->
-    <run task="tools-cli-stubs-sbtplugin">
-      <v n="scala">2.10.7</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="tools-cli-stubs-sbtplugin">
-      <v n="scala">2.10.7</v>
-      <v n="java">1.7</v>
-    </run>
+    <!-- Tools / CLI / Stubs / sbtPlugin test tasks -->
     <run task="tools-cli-stubs-sbtplugin">
       <v n="scala">2.10.7</v>
       <v n="java">1.8</v>
-    </run>
-    <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
-    <run task="tools-cli-stubs">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
     </run>
     <run task="tools-cli-stubs">
       <v n="scala">2.11.12</v>
@@ -400,13 +371,13 @@
     <!-- Partest compilation test tasks -->
     <run task="partestc">
       <v n="scala">2.11.0</v>
-      <v n="java">1.7</v>
+      <v n="java">1.8</v>
     </run>
 
     <!-- Partest fastOpt -->
     <run task="partest-fastopt">
       <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
+      <v n="java">1.8</v>
     </run>
     <run task="partest-fastopt">
       <v n="scala">2.12.4</v>
@@ -417,9 +388,9 @@
       <v n="java">1.8</v>
     </run>
 
-    <!-- The PhantomJS tests require Java 7 for jetty. -->
+    <!-- sbt plugin test tasks -->
     <run task="sbtplugin-test">
-      <v n="java">1.7</v>
+      <v n="java">1.8</v>
       <v n="toolsscala">2.10.7</v>
       <v n="sbt_version_override"></v>
     </run>
@@ -433,7 +404,7 @@
   <matrix id="nightly">
     <run matrix="pr" />
 
-    <!-- Main test tasks (all remaining Scala versions, only on JDK8) -->
+    <!-- Main test tasks (all remaining Scala versions) -->
     <run task="main">
       <v n="scala">2.10.3</v>
       <v n="java">1.8</v>
@@ -503,58 +474,14 @@
       <v n="java">1.8</v>
     </run>
 
-    <!-- Test suite on ECMAScript5 tasks on JDK6 and 7 -->
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.6</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.7</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.6</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-
-    <!-- Test suite on ECMAScript6 tasks on JDK6 and 7 -->
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.6</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.7</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.6</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-
     <!-- Partest noOpt and fullOpt -->
     <run task="partest-noopt">
       <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
+      <v n="java">1.8</v>
     </run>
     <run task="partest-fullopt">
       <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
+      <v n="java">1.8</v>
     </run>
     <run task="partest-noopt">
       <v n="scala">2.12.4</v>
