@@ -600,7 +600,7 @@ object Build {
   lazy val tools: Project = (project in file("tools/jvm")).settings(
       commonToolsSettings,
       libraryDependencies ++= Seq(
-          "org.scala-js" % "closure-compiler-java-6" % "v20160517",
+          "com.google.javascript" % "closure-compiler" % "v20160517",
           "com.novocode" % "junit-interface" % "0.9" % "test"
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
