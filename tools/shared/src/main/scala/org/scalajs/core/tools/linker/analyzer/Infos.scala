@@ -21,9 +21,6 @@ import org.scalajs.core.tools.linker.LinkedClass
 
 object Infos {
 
-  /** A pseudo class to reify arrays in Infos. */
-  val PseudoArrayClass = "s_Array"
-
   /** Name used for infos of top-level exports. */
   private val TopLevelExportsName = "__topLevelExports"
 
@@ -208,7 +205,19 @@ object Infos {
         case FloatType      => addMethodCalled(BoxedFloatClass, method)
         case DoubleType     => addMethodCalled(BoxedDoubleClass, method)
         case StringType     => addMethodCalled(StringClass, method)
-        case ArrayType(_)   => addMethodCalled(PseudoArrayClass, method)
+
+        case ArrayType(_) =>
+          /* The pseudo Array class is not reified in our analyzer/analysis,
+           * so we need to cheat here.
+           * In the Array[T] class family, only clone__O is defined and
+           * overrides j.l.Object.clone__O. Since this method is implemented
+           * in scalajsenv.js and always kept, we can ignore it.
+           * All other methods resolve to their definition in Object, so we
+           * can model their reachability by calling them statically in the
+           * Object class.
+           */
+          if (method != "clone__O")
+            addMethodCalledStatically(ObjectClass, method)
 
         case NullType | NothingType =>
           // Nothing to do

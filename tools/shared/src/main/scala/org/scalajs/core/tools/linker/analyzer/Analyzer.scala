@@ -946,26 +946,9 @@ private final class Analyzer(config: CommonPhaseConfig,
       val methodsCalledIterator = data.methodsCalled.iterator
       while (methodsCalledIterator.hasNext) {
         val (className, methods) = methodsCalledIterator.next()
-        if (className == Infos.PseudoArrayClass) {
-          /* The pseudo Array class is not reified in our analyzer/analysis,
-           * so we need to cheat here.
-           * In the Array[T] class family, only clone__O is defined and
-           * overrides j.l.Object.clone__O. Since this method is implemented
-           * in scalajsenv.js and always kept, we can ignore it.
-           * All other methods resolve to their definition in Object, so we
-           * can model their reachability by calling them statically in the
-           * Object class.
-           */
-          val objectClass = lookupClass(Definitions.ObjectClass)
-          for (methodName <- methods) {
-            if (methodName != "clone__O")
-              objectClass.callMethodStatically(methodName)
-          }
-        } else {
-          val classInfo = lookupClass(className)
-          for (methodName <- methods)
-            classInfo.callMethod(methodName)
-        }
+        val classInfo = lookupClass(className)
+        for (methodName <- methods)
+          classInfo.callMethod(methodName)
       }
 
       val methodsCalledStaticallyIterator = data.methodsCalledStatically.iterator
