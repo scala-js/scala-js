@@ -681,7 +681,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     implicit val pos = tree.pos
 
     if (tree.kind.isClass || tree.kind == ClassKind.Interface ||
-        tree.name.name == Definitions.StringClass) {
+        tree.name.name == Definitions.BoxedStringClass) {
       val className = tree.name.name
       val displayName = decodeClassName(className)
 
@@ -705,7 +705,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             case Definitions.ObjectClass =>
               js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
 
-            case Definitions.StringClass =>
+            case Definitions.BoxedStringClass =>
               js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
 
             case Definitions.RuntimeNothingClass =>
@@ -892,7 +892,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         tree.ancestors.map(ancestor => (js.Ident(ancestor), js.IntLiteral(1))))
 
     val isInstanceFunWithGlobals: WithGlobals[js.Tree] = {
-      if (isAncestorOfHijackedClass || className == StringClass) {
+      if (isAncestorOfHijackedClass || className == BoxedStringClass) {
         /* java.lang.String and ancestors of hijacked classes, including
          * java.lang.Object, have a normal $is_pack_Class test but with a
          * non-standard behavior.
@@ -1284,6 +1284,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   /** Gen JS code for an [[ModuleInitializer]]. */
   def genModuleInitializer(moduleInitializer: ModuleInitializer): js.Tree = {
     import TreeDSL._
+    import Definitions.BoxedStringClass
 
     implicit val pos = Position.NoPosition
 
@@ -1293,7 +1294,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
       case ModuleInitializer.MainMethodWithArgs(moduleClassName, mainMethodName,
           args) =>
-        val stringArrayTpe = ArrayType(ArrayTypeRef("T", 1))
+        val stringArrayTpe = ArrayType(ArrayTypeRef(BoxedStringClass, 1))
         js.Apply(genLoadModule(moduleClassName) DOT mainMethodName,
             genArrayValue(stringArrayTpe, args.map(js.StringLiteral(_))) :: Nil)
     }
@@ -1329,5 +1330,5 @@ private object ClassEmitter {
   )
 
   private val ClassesWhoseDataReferToTheirInstanceTests =
-    AncestorsOfHijackedClasses + Definitions.StringClass
+    AncestorsOfHijackedClasses + Definitions.BoxedStringClass
 }

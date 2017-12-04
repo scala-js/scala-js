@@ -1517,7 +1517,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     case LongType     => LongImpl.RuntimeLongClass
     case FloatType    => Definitions.BoxedFloatClass
     case DoubleType   => Definitions.BoxedDoubleClass
-    case StringType   => Definitions.StringClass
+    case StringType   => Definitions.BoxedStringClass
     case ArrayType(_) => Definitions.ObjectClass
   }
 
@@ -1932,7 +1932,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     @inline def contTree(result: Tree) = cont(result.toPreTransform)
 
-    @inline def StringClassType = ClassType(Definitions.StringClass)
+    @inline def StringClassType = ClassType(Definitions.BoxedStringClass)
 
     def defaultApply(methodName: String, resultType: Type): TailRec[Tree] =
       contTree(Apply(newReceiver, Ident(methodName), newArgs)(resultType))

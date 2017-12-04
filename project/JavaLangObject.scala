@@ -105,14 +105,14 @@ object JavaLangObject {
           static = false,
           Ident("toString__T", Some("toString__T")),
           Nil,
-          ClassType(StringClass),
+          ClassType(BoxedStringClass),
           Some {
             BinaryOp(BinaryOp.String_+, BinaryOp(BinaryOp.String_+,
               Apply(
                 Apply(This()(ThisType),
                   Ident("getClass__jl_Class", Some("getClass__jl_Class")), Nil)(
                   ClassType(ClassClass)),
-                Ident("getName__T"), Nil)(ClassType(StringClass)),
+                Ident("getName__T"), Nil)(ClassType(BoxedStringClass)),
               // +
               StringLiteral("@")),
               // +
@@ -120,7 +120,7 @@ object JavaLangObject {
                 LoadModule(ClassType("jl_Integer$")),
                 Ident("toHexString__I__T"),
                 List(Apply(This()(ThisType), Ident("hashCode__I"), Nil)(IntType)))(
-                ClassType(StringClass)))
+                ClassType(BoxedStringClass)))
           })(OptimizerHints.empty, None),
 
         /* Since wait() is not supported in any way, a correct implementation
@@ -162,7 +162,7 @@ object JavaLangObject {
           Some {
             Apply(This()(ThisType),
                 Ident("toString__T", Some("toString__T")),
-                Nil)(ClassType(StringClass))
+                Nil)(ClassType(BoxedStringClass))
           })(OptimizerHints.empty, None)
       ),
       Nil)(OptimizerHints.empty)

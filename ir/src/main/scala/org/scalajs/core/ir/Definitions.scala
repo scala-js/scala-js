@@ -49,7 +49,7 @@ object Definitions {
   val BoxedLongClass = "jl_Long"
   val BoxedFloatClass = "jl_Float"
   val BoxedDoubleClass = "jl_Double"
-  val StringClass = "T" // TODO This should probably be called BoxedStringClass
+  val BoxedStringClass = "T"
 
   /** The set of all hijacked classes. */
   val HijackedClasses: Set[String] = Set(
@@ -62,7 +62,7 @@ object Definitions {
       BoxedLongClass,
       BoxedFloatClass,
       BoxedDoubleClass,
-      StringClass
+      BoxedStringClass
   )
 
   // TODO Null and Nothing should have the same status as primitives, I think

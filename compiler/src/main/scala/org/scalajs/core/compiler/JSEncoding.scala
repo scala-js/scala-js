@@ -226,7 +226,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   def encodeClassFullName(sym: Symbol): String = {
     if (sym == jsDefinitions.HackedStringClass) {
-      ir.Definitions.StringClass
+      ir.Definitions.BoxedStringClass
     } else if (sym == jsDefinitions.HackedStringModClass) {
       "jl_String$"
     } else {

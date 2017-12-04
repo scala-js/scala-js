@@ -1177,7 +1177,7 @@ private final class IRChecker(unit: LinkingUnit,
         case 'F' => FloatType
         case 'D' => DoubleType
         case 'O' => AnyType
-        case 'T' => ClassType(StringClass) // NOT StringType
+        case 'T' => ClassType(BoxedStringClass) // NOT StringType
       }
     } else if (encodedName == "sr_Nothing$") {
       NothingType

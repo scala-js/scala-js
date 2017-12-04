@@ -2003,7 +2003,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                  * implementing them, which prevents that form of inlining from
                  * happening.
                  */
-                genHijackedMethodApply(StringClass)
+                genHijackedMethodApply(BoxedStringClass)
 
               case ClassType(cls) if !HijackedClasses.contains(cls) =>
                 /* This is a strict ancestor of a hijacked class. We need to
@@ -2455,7 +2455,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       case LongType       => Definitions.BoxedLongClass
       case FloatType      => Definitions.BoxedFloatClass
       case DoubleType     => Definitions.BoxedDoubleClass
-      case StringType     => Definitions.StringClass
+      case StringType     => Definitions.BoxedStringClass
     }
 
     /* Ideally, we should dynamically figure out this set. We should test

@@ -204,7 +204,7 @@ object Infos {
         case LongType       => addMethodCalled(BoxedLongClass, method)
         case FloatType      => addMethodCalled(BoxedFloatClass, method)
         case DoubleType     => addMethodCalled(BoxedDoubleClass, method)
-        case StringType     => addMethodCalled(StringClass, method)
+        case StringType     => addMethodCalled(BoxedStringClass, method)
 
         case ArrayType(_) =>
           /* The pseudo Array class is not reified in our analyzer/analysis,

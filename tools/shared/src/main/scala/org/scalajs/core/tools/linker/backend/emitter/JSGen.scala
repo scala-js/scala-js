@@ -104,7 +104,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
           if (className0 == BoxedLongClass) LongImpl.RuntimeLongClass
           else className0
 
-        if (HijackedClasses.contains(className) && className != StringClass) {
+        if (HijackedClasses.contains(className) && className != BoxedStringClass) {
           if (test) {
             className match {
               case BoxedUnitClass      => expr === Undefined()

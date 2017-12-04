@@ -230,7 +230,7 @@ object Types {
         case (DoubleType, ClassType(cls)) =>
           isSubclass(BoxedDoubleClass, cls)
         case (StringType, ClassType(cls)) =>
-          isSubclass(StringClass, cls)
+          isSubclass(BoxedStringClass, cls)
 
         case (ArrayType(ArrayTypeRef(lhsBase, lhsDims)),
             ArrayType(ArrayTypeRef(rhsBase, rhsDims))) =>
