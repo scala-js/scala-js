@@ -483,7 +483,7 @@ private final class IRChecker(unit: LinkingUnit,
         throw new AssertionError("Exported method may not have Ident as name")
 
       case StringLiteral(name) =>
-        if (name.contains("__") && name != Definitions.TopLevelExportsName)
+        if (name.contains("__"))
           reportError("Exported method def name cannot contain __")
 
       case ComputedName(tree, _) =>
@@ -1324,9 +1324,6 @@ private final class IRChecker(unit: LinkingUnit,
           if (classDef.kind.isJSClass) Nil
           else classDef.fields.map(CheckedClass.checkedField))
     }
-
-    def isAncestorOfHijackedClass: Boolean =
-      AncestorsOfHijackedClasses.contains(name)
 
     def lookupField(name: String): Option[CheckedField] =
       fields.get(name).orElse(superClass.flatMap(_.lookupField(name)))
