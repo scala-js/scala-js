@@ -12,68 +12,72 @@ package org.scalajs.core.ir
 import Types._
 
 object Definitions {
+  /** `java.lang.Object`, the root of the class hierarchy. */
   val ObjectClass = "O"
-  val ClassClass  = "jl_Class"
 
-  val StringClass = "T"
+  // Primitive "classes"
+  val VoidClass = "V"
+  val BooleanClass = "Z"
+  val CharClass = "C"
+  val ByteClass = "B"
+  val ShortClass = "S"
+  val IntClass = "I"
+  val LongClass = "J"
+  val FloatClass = "F"
+  val DoubleClass = "D"
 
-  val PrimitiveClasses = Set("V", "Z", "C", "B", "S", "I", "J", "F", "D")
+  /** The set of all primitive classes. */
+  val PrimitiveClasses: Set[String] = Set(
+      VoidClass,
+      BooleanClass,
+      CharClass,
+      ByteClass,
+      ShortClass,
+      IntClass,
+      LongClass,
+      FloatClass,
+      DoubleClass
+  )
 
-  def isPrimitiveClass(encodedName: String): Boolean =
-    PrimitiveClasses.contains(encodedName)
-
-  val BoxedUnitClass      = "sr_BoxedUnit"
-  val BoxedBooleanClass   = "jl_Boolean"
+  // Hijacked classes
+  val BoxedUnitClass = "sr_BoxedUnit"
+  val BoxedBooleanClass = "jl_Boolean"
   val BoxedCharacterClass = "jl_Character"
-  val BoxedByteClass      = "jl_Byte"
-  val BoxedShortClass     = "jl_Short"
-  val BoxedIntegerClass   = "jl_Integer"
-  val BoxedLongClass      = "jl_Long"
-  val BoxedFloatClass     = "jl_Float"
-  val BoxedDoubleClass    = "jl_Double"
+  val BoxedByteClass = "jl_Byte"
+  val BoxedShortClass = "jl_Short"
+  val BoxedIntegerClass = "jl_Integer"
+  val BoxedLongClass = "jl_Long"
+  val BoxedFloatClass = "jl_Float"
+  val BoxedDoubleClass = "jl_Double"
+  val StringClass = "T" // TODO This should probably be called BoxedStringClass
 
-  val CharSequenceClass = "jl_CharSequence"
-  val SerializableClass = "Ljava_io_Serializable"
-  val CloneableClass    = "jl_Cloneable"
-  val ComparableClass   = "jl_Comparable"
-  val NumberClass       = "jl_Number"
+  /** The set of all hijacked classes. */
+  val HijackedClasses: Set[String] = Set(
+      BoxedUnitClass,
+      BoxedBooleanClass,
+      BoxedCharacterClass,
+      BoxedByteClass,
+      BoxedShortClass,
+      BoxedIntegerClass,
+      BoxedLongClass,
+      BoxedFloatClass,
+      BoxedDoubleClass,
+      StringClass
+  )
 
-  val HijackedBoxedClasses = Set(
-      BoxedUnitClass, BoxedBooleanClass, BoxedCharacterClass, BoxedByteClass,
-      BoxedShortClass, BoxedIntegerClass, BoxedLongClass, BoxedFloatClass,
-      BoxedDoubleClass)
-  val HijackedClasses =
-    HijackedBoxedClasses + StringClass
+  // TODO Null and Nothing should have the same status as primitives, I think
 
-  val AncestorsOfStringClass = Set(
-      CharSequenceClass, ComparableClass, SerializableClass)
-  val AncestorsOfBoxedCharacterClass = Set(
-      ComparableClass, SerializableClass)
-  val AncestorsOfHijackedNumberClasses = Set(
-      NumberClass, ComparableClass, SerializableClass)
-  val AncestorsOfBoxedBooleanClass = Set(
-      ComparableClass, SerializableClass)
-  val AncestorsOfBoxedUnitClass = Set(
-      SerializableClass)
-
-  val AncestorsOfHijackedClasses =
-    AncestorsOfStringClass ++ AncestorsOfHijackedNumberClasses ++
-    AncestorsOfBoxedBooleanClass ++ AncestorsOfBoxedUnitClass
-
+  /** The class corresponding to `NullType`. */
   val RuntimeNullClass = "sr_Null$"
+
+  /** The class corresponding to `NothingType`. */
   val RuntimeNothingClass = "sr_Nothing$"
 
-  val ThrowableClass = "jl_Throwable"
-
-  val PseudoArrayClass = "s_Array"
-  val AncestorsOfPseudoArrayClass = Set(
-      ObjectClass, SerializableClass, CloneableClass)
+  /** The class of things returned by `ClassOf` and `GetClass`. */
+  val ClassClass = "jl_Class"
 
   /** Name of the static initializer method. */
   final val StaticInitializerName = "clinit___"
-
-  /** Name used for infos of top-level exports. */
-  val TopLevelExportsName = "__topLevelExports"
 
   /** Encodes a class name. */
   def encodeClassName(fullName: String): String = {

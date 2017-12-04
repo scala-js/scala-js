@@ -21,6 +21,12 @@ import org.scalajs.core.tools.linker.LinkedClass
 
 object Infos {
 
+  /** A pseudo class to reify arrays in Infos. */
+  val PseudoArrayClass = "s_Array"
+
+  /** Name used for infos of top-level exports. */
+  private val TopLevelExportsName = "__topLevelExports"
+
   final class ClassInfo private (
       val encodedName: String,
       val isExported: Boolean,

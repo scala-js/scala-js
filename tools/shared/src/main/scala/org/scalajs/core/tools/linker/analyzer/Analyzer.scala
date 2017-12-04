@@ -946,7 +946,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       val methodsCalledIterator = data.methodsCalled.iterator
       while (methodsCalledIterator.hasNext) {
         val (className, methods) = methodsCalledIterator.next()
-        if (className == Definitions.PseudoArrayClass) {
+        if (className == Infos.PseudoArrayClass) {
           /* The pseudo Array class is not reified in our analyzer/analysis,
            * so we need to cheat here.
            * In the Array[T] class family, only clone__O is defined and

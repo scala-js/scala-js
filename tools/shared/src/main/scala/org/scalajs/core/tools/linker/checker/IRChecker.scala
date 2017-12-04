@@ -1120,7 +1120,7 @@ private final class IRChecker(unit: LinkingUnit,
       implicit ctx: ErrorContext): Unit = {
     typeRef match {
       case ClassRef(encodedName) =>
-        if (Definitions.isPrimitiveClass(encodedName)) {
+        if (Definitions.PrimitiveClasses.contains(encodedName)) {
           reportError(
               s"Primitive type $encodedName is not a valid target type for " +
               "Is/AsInstanceOf")

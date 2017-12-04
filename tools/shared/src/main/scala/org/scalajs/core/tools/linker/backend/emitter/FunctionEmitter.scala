@@ -1983,7 +1983,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                  */
                 genDispatchApply()
 
-              case ClassType(CharSequenceClass)
+              case ClassType("jl_CharSequence")
                   if !hijackedMethodsOfStringWithDispatcher.contains(methodName) =>
                 /* This case is required as a hack around a peculiar behavior
                  * of the optimizer. In theory, it should never happen, because
@@ -2435,8 +2435,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     def isMaybeHijackedClass(tpe: Type): Boolean = tpe match {
       case ClassType(cls) =>
-        Definitions.HijackedClasses.contains(cls) ||
-        Definitions.AncestorsOfHijackedClasses.contains(cls)
+        MaybeHijackedClasses.contains(cls)
       case AnyType | UndefType | BooleanType | CharType | ByteType | ShortType |
           IntType | LongType | FloatType | DoubleType | StringType =>
         true
@@ -2553,6 +2552,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 }
 
 private object FunctionEmitter {
+  private val MaybeHijackedClasses = {
+    (Definitions.HijackedClasses ++ ClassEmitter.AncestorsOfHijackedClasses) -
+    Definitions.ObjectClass
+  }
+
   /** A left hand side that can be pushed into a right hand side tree. */
   sealed abstract class Lhs {
     def hasNothingType: Boolean = false
