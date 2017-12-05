@@ -440,10 +440,8 @@ object Trees {
   case class AsInstanceOf(expr: Tree, typeRef: TypeRef)(
       implicit val pos: Position) extends Tree {
     val tpe = typeRef match {
-      case ClassRef(Definitions.RuntimeNullClass)    => NullType
-      case ClassRef(Definitions.RuntimeNothingClass) => NothingType
-      case ClassRef(className)                       => ClassType(className)
-      case typeRef: ArrayTypeRef                     => ArrayType(typeRef)
+      case ClassRef(className)   => ClassType(className)
+      case typeRef: ArrayTypeRef => ArrayType(typeRef)
     }
   }
 

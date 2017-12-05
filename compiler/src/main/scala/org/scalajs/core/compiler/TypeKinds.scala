@@ -128,16 +128,18 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   case object NOTHING extends TypeKindButArray {
     protected def typeSymbol: Symbol = definitions.NothingClass
     def toIRType: Types.NothingType.type = Types.NothingType
+
     def toTypeRef: Types.ClassRef =
-      Types.ClassRef(Definitions.RuntimeNothingClass)
+      Types.ClassRef(encodeClassFullName(definitions.RuntimeNothingClass))
   }
 
   /** Null */
   case object NULL extends TypeKindButArray {
     protected def typeSymbol: Symbol = definitions.NullClass
     def toIRType: Types.NullType.type = Types.NullType
+
     def toTypeRef: Types.ClassRef =
-      Types.ClassRef(Definitions.RuntimeNullClass)
+      Types.ClassRef(encodeClassFullName(definitions.RuntimeNullClass))
   }
 
   /** An object */

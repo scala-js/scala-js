@@ -43,7 +43,9 @@ object Analysis {
       "I" -> "int",
       "J" -> "long",
       "F" -> "float",
-      "D" -> "double"
+      "D" -> "double",
+      "N" -> "null",
+      "E" -> "nothing"
   )
 
   /** Class node in a reachability graph produced by the [[Analyzer]].

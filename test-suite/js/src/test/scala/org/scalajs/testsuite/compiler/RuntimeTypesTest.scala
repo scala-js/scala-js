@@ -17,6 +17,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
+import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
 
 import scala.util.{ Try, Failure }
@@ -40,17 +41,10 @@ class RuntimeTypesTest {
 
   @Test def scala_Nothing_casts_to_scala_Nothing_should_fail(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
-    def test(x: Any): Unit = {
-      try {
-        x.asInstanceOf[Nothing]
-        fail("casting " + x + " to Nothing did not fail")
-      } catch {
-        case th: Throwable =>
-          assertTrue(th.isInstanceOf[ClassCastException])
-          assertEquals(x + " is not an instance of scala.runtime.Nothing$",
-              th.getMessage)
-      }
-    }
+
+    def test(x: Any): Unit =
+      assertThrows(classOf[ClassCastException], x.asInstanceOf[Nothing])
+
     test("a")
     test(null)
   }
@@ -86,11 +80,7 @@ class RuntimeTypesTest {
 
   @Test def scala_Null_casts_to_scala_Null_should_fail_for_everything_else_but_null(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
-    val msg = Try("a".asInstanceOf[Null]) match {
-      case Failure(thr: ClassCastException) => thr.getMessage
-      case _ => "not failed"
-    }
-    assertEquals("a is not an instance of scala.runtime.Null$", msg)
+    assertThrows(classOf[ClassCastException], "a".asInstanceOf[Null])
   }
 
   @Test def scala_Null_classTag_of_scala_Null_should_contain_proper_Class_issue_297(): Unit = {

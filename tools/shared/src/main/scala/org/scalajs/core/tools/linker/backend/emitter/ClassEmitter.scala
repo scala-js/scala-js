@@ -708,10 +708,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             case Definitions.BoxedStringClass =>
               js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
 
-            case Definitions.RuntimeNothingClass =>
-              // Even null is not an instance of Nothing
-              js.BooleanLiteral(false)
-
             case _ =>
               var test = {
                 genIsScalaJSObject(obj) &&
@@ -746,21 +742,13 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
               obj
 
             case _ =>
-              val throwError = {
+              js.If(js.Apply(envField("is", className), List(obj)) ||
+                  (obj === js.Null()), {
+                obj
+              }, {
                 genCallHelper("throwClassCastException",
                     obj, js.StringLiteral(displayName))
-              }
-              if (className == RuntimeNothingClass) {
-                // Always throw for .asInstanceOf[Nothing], even for null
-                throwError
-              } else {
-                js.If(js.Apply(envField("is", className), List(obj)) ||
-                    (obj === js.Null()), {
-                  obj
-                }, {
-                  throwError
-                })
-              }
+              })
         })))
       }
 

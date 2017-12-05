@@ -25,6 +25,8 @@ object Definitions {
   val LongClass = "J"
   val FloatClass = "F"
   val DoubleClass = "D"
+  val NullClass = "N"
+  val NothingClass = "E" // think "the Empty type", or "throws an Exception"
 
   /** The set of all primitive classes. */
   val PrimitiveClasses: Set[String] = Set(
@@ -36,7 +38,9 @@ object Definitions {
       IntClass,
       LongClass,
       FloatClass,
-      DoubleClass
+      DoubleClass,
+      NullClass,
+      NothingClass
   )
 
   // Hijacked classes
@@ -64,14 +68,6 @@ object Definitions {
       BoxedDoubleClass,
       BoxedStringClass
   )
-
-  // TODO Null and Nothing should have the same status as primitives, I think
-
-  /** The class corresponding to `NullType`. */
-  val RuntimeNullClass = "sr_Null$"
-
-  /** The class corresponding to `NothingType`. */
-  val RuntimeNothingClass = "sr_Nothing$"
 
   /** The class of things returned by `ClassOf` and `GetClass`. */
   val ClassClass = "jl_Class"

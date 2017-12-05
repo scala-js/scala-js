@@ -2416,13 +2416,9 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.BooleanLiteral(l == r)
         }
       } else if (l.isValueType) {
-        val result = if (cast) {
-          val ctor = ClassCastExceptionClass.info.member(
-              nme.CONSTRUCTOR).suchThat(_.tpe.params.isEmpty)
-          js.Throw(genNew(ClassCastExceptionClass, ctor, Nil))
-        } else {
-          js.BooleanLiteral(false)
-        }
+        val result =
+          if (cast) genThrowClassCastException()
+          else js.BooleanLiteral(false)
         js.Block(expr, result) // eval and discard source
       } else if (r.isValueType) {
         assert(!cast, s"Unexpected asInstanceOf from ref type to value type")
@@ -2433,6 +2429,12 @@ abstract class GenJSCode extends plugins.PluginComponent
         else
           genIsInstanceOf(expr, to)
       }
+    }
+
+    private def genThrowClassCastException()(implicit pos: Position): js.Tree = {
+      val ctor = ClassCastExceptionClass.info.member(
+          nme.CONSTRUCTOR).suchThat(_.tpe.params.isEmpty)
+      js.Throw(genNew(ClassCastExceptionClass, ctor, Nil))
     }
 
     /** Gen JS code for a super call, of the form Class.super[mix].fun(args).
@@ -2773,6 +2775,9 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.JSBinaryOp.instanceof, value, genPrimitiveJSClass(sym)), 'Z')
         }
       } else {
+        // The Scala type system prevents x.isInstanceOf[Null] and ...[Nothing]
+        assert(sym != NullClass && sym != NothingClass,
+            s"Found a .isInstanceOf[$sym] at $pos")
         js.IsInstanceOf(value, toTypeRef(to))
       }
     }
@@ -2800,6 +2805,14 @@ abstract class GenJSCode extends plugins.PluginComponent
           case JSFunctionToScala(fun, _) => value
           case _                         => default
         }
+      } else if (sym == NullClass) {
+        js.If(
+            js.BinaryOp(js.BinaryOp.===, value, js.Null()),
+            js.Null(),
+            genThrowClassCastException())(
+            jstpe.NullType)
+      } else if (sym == NothingClass) {
+        js.Block(value, genThrowClassCastException())
       } else {
         default
       }
