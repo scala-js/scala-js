@@ -238,16 +238,7 @@ object StackTrace {
   private lazy val decompressedClasses: js.Dictionary[String] = {
     val dict = js.Dynamic.literal(
         O = "java_lang_Object",
-        T = "java_lang_String",
-        V = "scala_Unit",
-        Z = "scala_Boolean",
-        C = "scala_Char",
-        B = "scala_Byte",
-        S = "scala_Short",
-        I = "scala_Int",
-        J = "scala_Long",
-        F = "scala_Float",
-        D = "scala_Double"
+        T = "java_lang_String"
     ).asInstanceOf[js.Dictionary[String]]
 
     var index = 0

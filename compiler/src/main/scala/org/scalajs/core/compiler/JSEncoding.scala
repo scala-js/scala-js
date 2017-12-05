@@ -225,6 +225,8 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   def encodeClassFullName(sym: Symbol): String = {
+    assert(!sym.isPrimitiveValueClass,
+        s"Illegal encodeClassFullName(${sym.fullName}")
     if (sym == jsDefinitions.HackedStringClass) {
       ir.Definitions.BoxedStringClass
     } else if (sym == jsDefinitions.HackedStringModClass) {

@@ -111,16 +111,7 @@ object Definitions {
 
   private val compressedClasses: Map[String, String] = Map(
       "java_lang_Object" -> "O",
-      "java_lang_String" -> "T",
-      "scala_Unit" -> "V",
-      "scala_Boolean" -> "Z",
-      "scala_Char" -> "C",
-      "scala_Byte" -> "B",
-      "scala_Short" -> "S",
-      "scala_Int" -> "I",
-      "scala_Long" -> "J",
-      "scala_Float" -> "F",
-      "scala_Double" -> "D"
+      "java_lang_String" -> "T"
   ) ++ (
       for (index <- 2 to 22)
         yield s"scala_Tuple$index" -> ("T"+index)
