@@ -96,13 +96,8 @@ abstract class ExternalJSEnv(
       try { sendVMStdin(out) }
       finally { out.close() }
 
-      // Pipe stdout to console
+      // Pipe stdout (and stderr which is merged into it) to console
       pipeToConsole(vmInst.getInputStream(), console)
-
-      // We are probably done (stdin is closed). Report any errors
-      val errSrc = Source.fromInputStream(vmInst.getErrorStream(), "UTF-8")
-      try { errSrc.getLines.foreach(err => logger.error(err)) }
-      finally { errSrc.close }
     }
 
     /** Wait for the VM to terminate, verify exit code
@@ -125,6 +120,7 @@ abstract class ExternalJSEnv(
 
       val allArgs = executable +: vmArgs
       val pBuilder = new ProcessBuilder(allArgs: _*)
+      pBuilder.redirectErrorStream(true) // merge stderr into stdout
 
       pBuilder.environment().clear()
       for ((name, value) <- vmEnv)
