@@ -156,7 +156,6 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def encodeRTStringMethodSym(sym: Symbol)(
       implicit pos: Position): (Symbol, js.Ident) = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
-    require(sym.owner == definitions.StringClass)
     require(!sym.isClassConstructor && !sym.isPrivate)
 
     val (encodedName, paramsString) =
