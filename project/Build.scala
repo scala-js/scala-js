@@ -57,6 +57,8 @@ object ExposedValues extends AutoPlugin {
         config: StandardLinker.Config): standard.StandardLinkerConfigStandardOps = {
       standard.StandardLinkerConfigStandardOps(config)
     }
+
+    type NodeJSEnvForcePolyfills = build.NodeJSEnvForcePolyfills
   }
 }
 
@@ -1273,8 +1275,8 @@ object Build {
       testOptionTags := {
         def envTagsFor(env: JSEnv): Seq[String] = env match {
           case env: NodeJSEnv =>
-            val baseArgs = Seq("nodejs", "typedarray")
-            if (env.wantSourceMap) {
+            val tags1 = Seq("nodejs")
+            val tags2 = if (env.wantSourceMap) {
               if (!env.hasSourceMapSupport) {
                 throw new MessageOnlyException(
                     "You must install Node.js source map support to " +
@@ -1283,9 +1285,15 @@ object Build {
                     "tests, do: set jsEnv in " + thisProject.value.id +
                     " := NodeJSEnv().value.withSourceMap(false)")
               }
-              baseArgs :+ "source-maps"
+              tags1 :+ "source-maps"
             } else {
-              baseArgs
+              tags1
+            }
+            env match {
+              case env: NodeJSEnvForcePolyfills =>
+                tags1
+              case _ =>
+                tags1 :+ "typedarray"
             }
 
           case _ =>
