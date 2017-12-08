@@ -13,6 +13,9 @@ import scala.reflect._
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
+
+import org.scalajs.testsuite.utils.Platform._
 
 class ClassTagTest {
 
@@ -96,5 +99,66 @@ class ClassTagTest {
     // These work as expected, though
     assertSame(classOf[Array[Nothing]], ClassTag(classOf[Array[Nothing]]).runtimeClass)
     assertSame(classOf[Array[Null]], ClassTag(classOf[Array[Null]]).runtimeClass)
+  }
+
+  @Test def classTagBasedPatternMatchingOfPrimitives(): Unit = {
+    assumeFalse(
+        "ClassTag.unapply only deals correctly with primitives since 2.11.2",
+        scalaVersion.startsWith("2.10.") ||
+        (scalaVersion == "2.11.0" || scalaVersion == "2.11.1"))
+
+    def test[A: ClassTag](x: Any): Boolean = x match {
+      case x: A => true
+      case _    => false
+    }
+
+    def testTrue[A: ClassTag](x: Any): Unit =
+      assertTrue(s"$x must be a ${classTag[A]}", test[A](x))
+
+    def testFalse[A: ClassTag](x: Any): Unit =
+      assertFalse(s"$x must not be a ${classTag[A]}", test[A](x))
+
+    def testTrueOnJS[A: ClassTag](x: Any): Unit = {
+      if (executingInJVM)
+        testFalse[A](x)
+      else
+        testTrue[A](x)
+    }
+
+    testTrue[Unit](())
+    testTrue[scala.runtime.BoxedUnit](())
+    testTrue[Boolean](false)
+    testTrue[java.lang.Boolean](false)
+    testTrue[Char]('A')
+    testTrue[Character]('A')
+    testTrue[Byte](5.toByte)
+    testTrue[java.lang.Byte](5.toByte)
+    testTrue[Int](5)
+    testTrue[Integer](5)
+    testTrue[Int](2000000000)
+    testTrue[Float](1.5f)
+    testTrue[Double](5.4)
+
+    testTrueOnJS[Byte](5)
+    testTrueOnJS[java.lang.Byte](5)
+    testTrueOnJS[Int](5.toByte)
+    testTrueOnJS[Integer](5.toByte)
+    testTrueOnJS[Double](5)
+    testTrueOnJS[Float](1.5)
+
+    testFalse[Unit](5)
+    testFalse[scala.runtime.BoxedUnit](5)
+    testFalse[Void](())
+    testFalse[Void](5)
+    testFalse[Boolean](5)
+    testFalse[java.lang.Boolean](5)
+    testFalse[Char](5)
+    testFalse[Character](5)
+    testFalse[Byte](300)
+    testFalse[java.lang.Byte](300)
+    testFalse[Int]('A')
+    testFalse[Integer]('A')
+    testFalse[Int](1.5)
+    testFalse[Double]('A')
   }
 }
