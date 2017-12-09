@@ -125,16 +125,6 @@ class ReflectionTest {
     assertEquals(classOf[scala.runtime.BoxedUnit], ((): Any).getClass)
   }
 
-  @Test def class_isAssignableFrom_should_mimic_runtime_type_tests_behavior_issue_879(): Unit = {
-    assertTrue(classOf[Short].isAssignableFrom(classOf[Byte]))
-    assertTrue(classOf[Byte].isAssignableFrom(classOf[Byte]))
-    assertFalse(classOf[Byte].isAssignableFrom(classOf[Short]))
-    assertTrue(classOf[Int].isAssignableFrom(classOf[Byte]))
-    assertTrue(classOf[Double].isAssignableFrom(classOf[Int]))
-    assertFalse(classOf[Int].isAssignableFrom(classOf[Double]))
-    assertFalse(classOf[Long].isAssignableFrom(classOf[Int]))
-  }
-
   @Test def getSuperclass_issue_1489(): Unit = {
     assertEquals(classOf[SomeParentClass], classOf[SomeChildClass].getSuperclass)
     assertNull(classOf[AnyRef].getSuperclass)
