@@ -11,7 +11,7 @@ private trait ScalaJSClassData[A] extends js.Object {
   val isRawJSType: scala.Boolean = js.native
 
   def isInstance(obj: Object): scala.Boolean = js.native
-  def getFakeInstance(): Object = js.native
+  def isAssignableFrom(that: ScalaJSClassData[_]): scala.Boolean = js.native
 
   def getSuperclass(): Class[_ >: A] = js.native
   def getComponentType(): Class[_] = js.native
@@ -19,7 +19,8 @@ private trait ScalaJSClassData[A] extends js.Object {
   def newArrayOfThisClass(dimensions: js.Array[Int]): AnyRef = js.native
 }
 
-final class Class[A] private (data: ScalaJSClassData[A]) extends Object {
+final class Class[A] private (private val data: ScalaJSClassData[A])
+    extends Object {
 
   override def toString(): String = {
     (if (isInterface()) "interface " else
@@ -30,11 +31,7 @@ final class Class[A] private (data: ScalaJSClassData[A]) extends Object {
     data.isInstance(obj)
 
   def isAssignableFrom(that: Class[_]): scala.Boolean =
-    if (this.isPrimitive || that.isPrimitive) this eq that
-    else this.isInstance(that.getFakeInstance())
-
-  private def getFakeInstance(): Object =
-    data.getFakeInstance()
+    this.data.isAssignableFrom(that.data)
 
   def isInterface(): scala.Boolean =
     data.isInterface

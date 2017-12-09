@@ -963,26 +963,32 @@ getArrayOf() {
 // java.lang.Class support
 
 //!if outputMode != ECMAScript6
-$TypeData.prototype["getFakeInstance"] = function() {
+$TypeData.prototype["isAssignableFrom"] = function(that) {
 //!else
-"getFakeInstance"() {
+"isAssignableFrom"(that) {
 //!endif
-  if (this === $d_T)
-    return "some string";
-  else if (this === $d_jl_Boolean)
-    return false;
-  else if (this === $d_jl_Byte ||
-           this === $d_jl_Short ||
-           this === $d_jl_Integer ||
-           this === $d_jl_Float ||
-           this === $d_jl_Double)
-    return 0;
-  else if (this === $d_jl_Long)
-    return $L0;
-  else if (this === $d_sr_BoxedUnit)
-    return void 0;
-  else
-    return {$classData: this};
+  if (this["isPrimitive"] || that["isPrimitive"]) {
+    return this === that;
+  } else {
+    let thatFakeInstance;
+    if (that === $d_T)
+      thatFakeInstance = "some string";
+    else if (that === $d_jl_Boolean)
+      thatFakeInstance = false;
+    else if (that === $d_jl_Byte ||
+             that === $d_jl_Short ||
+             that === $d_jl_Integer ||
+             that === $d_jl_Float ||
+             that === $d_jl_Double)
+      thatFakeInstance = 0;
+    else if (that === $d_jl_Long)
+      thatFakeInstance = $L0;
+    else if (that === $d_sr_BoxedUnit)
+      thatFakeInstance = void 0;
+    else
+      thatFakeInstance = {$classData: that};
+    return this["isInstance"](thatFakeInstance);
+  }
 };
 
 //!if outputMode != ECMAScript6
