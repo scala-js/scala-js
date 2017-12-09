@@ -19,8 +19,9 @@ private trait ScalaJSClassData[A] extends js.Object {
   def newArrayOfThisClass(dimensions: js.Array[Int]): AnyRef = js.native
 }
 
-final class Class[A] private (private val data: ScalaJSClassData[A])
-    extends Object {
+final class Class[A] private (data0: Object) extends Object {
+  private val data: ScalaJSClassData[A] =
+    data0.asInstanceOf[ScalaJSClassData[A]]
 
   override def toString(): String = {
     (if (isInterface()) "interface " else
