@@ -1023,7 +1023,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           case REFERENCE(cls) =>
             cls match {
               case BoxedUnitClass => HijackedTypeTest(Defs.BoxedUnitClass, 0)
-              case StringClass    => HijackedTypeTest(Defs.StringClass, 9)
+              case StringClass    => HijackedTypeTest(Defs.BoxedStringClass, 9)
               case ObjectClass    => NoTypeTest
               case _              =>
                 if (isJSType(cls)) NoTypeTest

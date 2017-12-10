@@ -550,12 +550,12 @@ class PrintersTest {
 
   @Test def printIsInstanceOf(): Unit = {
     assertPrintEquals("x.isInstanceOf[T]",
-        IsInstanceOf(ref("x", AnyType), StringClass))
+        IsInstanceOf(ref("x", AnyType), BoxedStringClass))
   }
 
   @Test def printAsInstanceOf(): Unit = {
     assertPrintEquals("x.asInstanceOf[T]",
-        AsInstanceOf(ref("x", AnyType), StringClass))
+        AsInstanceOf(ref("x", AnyType), BoxedStringClass))
   }
 
   @Test def printUnbox(): Unit = {

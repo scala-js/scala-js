@@ -34,6 +34,20 @@ trait Analysis {
 
 object Analysis {
 
+  private val PrimitiveClassesDisplayNames: Map[String, String] = Map(
+      "V" -> "void",
+      "Z" -> "boolean",
+      "C" -> "char",
+      "B" -> "byte",
+      "S" -> "short",
+      "I" -> "int",
+      "J" -> "long",
+      "F" -> "float",
+      "D" -> "double",
+      "N" -> "null",
+      "E" -> "nothing"
+  )
+
   /** Class node in a reachability graph produced by the [[Analyzer]].
    *
    *  Warning: this trait is not meant to be extended by third-party libraries
@@ -89,9 +103,12 @@ object Analysis {
       } else {
         import ir.Types._
 
+        def classDisplayName(cls: String): String =
+          PrimitiveClassesDisplayNames.getOrElse(cls, decodeClassName(cls))
+
         def typeDisplayName(tpe: TypeRef): String = tpe match {
-          case ClassRef(encodedName)          => decodeClassName(encodedName)
-          case ArrayTypeRef(base, dimensions) => "[" * dimensions + decodeClassName(base)
+          case ClassRef(encodedName)          => classDisplayName(encodedName)
+          case ArrayTypeRef(base, dimensions) => "[" * dimensions + classDisplayName(base)
         }
 
         val (simpleName, paramTypes, resultType) =

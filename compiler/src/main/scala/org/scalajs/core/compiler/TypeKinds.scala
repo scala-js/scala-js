@@ -63,14 +63,16 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   sealed abstract class TypeKindButArray extends TypeKind {
     protected def typeSymbol: Symbol
 
-    override def toTypeRef: Types.ClassRef =
-      Types.ClassRef(encodeClassFullName(typeSymbol))
+    def toTypeRef: Types.ClassRef
   }
 
   /** The void, for trees that can only appear in statement position. */
   case object VOID extends TypeKindButArray {
     protected def typeSymbol: Symbol = UnitClass
     def toIRType: Types.NoType.type = Types.NoType
+
+    val toTypeRef: Types.ClassRef =
+      Types.ClassRef(ir.Definitions.VoidClass)
   }
 
   sealed abstract class ValueTypeKind extends TypeKindButArray {
@@ -87,6 +89,9 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
       case DoubleClass   => 'D'
       case x => abort("Unknown primitive type: " + x.fullName)
     }
+
+    val toTypeRef: Types.ClassRef =
+      Types.ClassRef(primitiveCharCode.toString)
   }
 
   /** Integer number (Byte, Short, Char or Int). */
@@ -123,16 +128,18 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   case object NOTHING extends TypeKindButArray {
     protected def typeSymbol: Symbol = definitions.NothingClass
     def toIRType: Types.NothingType.type = Types.NothingType
-    override def toTypeRef: Types.ClassRef =
-      Types.ClassRef(Definitions.RuntimeNothingClass)
+
+    def toTypeRef: Types.ClassRef =
+      Types.ClassRef(encodeClassFullName(definitions.RuntimeNothingClass))
   }
 
   /** Null */
   case object NULL extends TypeKindButArray {
     protected def typeSymbol: Symbol = definitions.NullClass
     def toIRType: Types.NullType.type = Types.NullType
-    override def toTypeRef: Types.ClassRef =
-      Types.ClassRef(Definitions.RuntimeNullClass)
+
+    def toTypeRef: Types.ClassRef =
+      Types.ClassRef(encodeClassFullName(definitions.RuntimeNullClass))
   }
 
   /** An object */
@@ -141,6 +148,9 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
     override def isReferenceType: Boolean = true
 
     def toIRType: Types.Type = encodeClassType(typeSymbol)
+
+    def toTypeRef: Types.ClassRef =
+      Types.ClassRef(encodeClassFullName(typeSymbol))
   }
 
   /** An array */

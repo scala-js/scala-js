@@ -15,6 +15,9 @@ import Trees._
 
 object Types {
 
+  private val AncestorsOfPseudoArrayClass =
+    Set(Definitions.ObjectClass, "Ljava_io_Serializable", "jl_Cloneable")
+
   /** Type of a term (expression or statement) in the IR.
    *
    *  There is a many-to-one relationship from [[TypeRef]]s to `Type`s,
@@ -227,7 +230,7 @@ object Types {
         case (DoubleType, ClassType(cls)) =>
           isSubclass(BoxedDoubleClass, cls)
         case (StringType, ClassType(cls)) =>
-          isSubclass(StringClass, cls)
+          isSubclass(BoxedStringClass, cls)
 
         case (ArrayType(ArrayTypeRef(lhsBase, lhsDims)),
             ArrayType(ArrayTypeRef(rhsBase, rhsDims))) =>
@@ -237,7 +240,7 @@ object Types {
             rhsBase == ObjectClass // because Array[Array[A]] <: Array[Object]
           } else { // lhsDims == rhsDims
             // lhsBase must be <: rhsBase
-            if (isPrimitiveClass(lhsBase) || isPrimitiveClass(rhsBase)) {
+            if (PrimitiveClasses(lhsBase) || PrimitiveClasses(rhsBase)) {
               lhsBase == rhsBase
             } else {
               /* All things must be considered subclasses of Object for this

@@ -1983,7 +1983,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                  */
                 genDispatchApply()
 
-              case ClassType(CharSequenceClass)
+              case ClassType("jl_CharSequence")
                   if !hijackedMethodsOfStringWithDispatcher.contains(methodName) =>
                 /* This case is required as a hack around a peculiar behavior
                  * of the optimizer. In theory, it should never happen, because
@@ -2003,7 +2003,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                  * implementing them, which prevents that form of inlining from
                  * happening.
                  */
-                genHijackedMethodApply(StringClass)
+                genHijackedMethodApply(BoxedStringClass)
 
               case ClassType(cls) if !HijackedClasses.contains(cls) =>
                 /* This is a strict ancestor of a hijacked class. We need to
@@ -2435,8 +2435,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     def isMaybeHijackedClass(tpe: Type): Boolean = tpe match {
       case ClassType(cls) =>
-        Definitions.HijackedClasses.contains(cls) ||
-        Definitions.AncestorsOfHijackedClasses.contains(cls)
+        MaybeHijackedClasses.contains(cls)
       case AnyType | UndefType | BooleanType | CharType | ByteType | ShortType |
           IntType | LongType | FloatType | DoubleType | StringType =>
         true
@@ -2456,7 +2455,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       case LongType       => Definitions.BoxedLongClass
       case FloatType      => Definitions.BoxedFloatClass
       case DoubleType     => Definitions.BoxedDoubleClass
-      case StringType     => Definitions.StringClass
+      case StringType     => Definitions.BoxedStringClass
     }
 
     /* Ideally, we should dynamically figure out this set. We should test
@@ -2553,6 +2552,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 }
 
 private object FunctionEmitter {
+  private val MaybeHijackedClasses = {
+    (Definitions.HijackedClasses ++ ClassEmitter.AncestorsOfHijackedClasses) -
+    Definitions.ObjectClass
+  }
+
   /** A left hand side that can be pushed into a right hand side tree. */
   sealed abstract class Lhs {
     def hasNothingType: Boolean = false

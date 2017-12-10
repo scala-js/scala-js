@@ -213,24 +213,21 @@ object StackTrace {
   // !!! Duplicate logic: this code must be in sync with ir.Definitions
 
   private def decodeClassName(encodedName: String): String = {
-    val encoded =
-      if (encodedName.charAt(0) == '$') encodedName.substring(1)
-      else encodedName
-    val base = if (decompressedClasses.contains(encoded)) {
-      decompressedClasses(encoded)
+    val base = if (decompressedClasses.contains(encodedName)) {
+      decompressedClasses(encodedName)
     } else {
       @tailrec
       def loop(i: Int): String = {
         if (i < compressedPrefixes.length) {
           val prefix = compressedPrefixes(i)
-          if (encoded.startsWith(prefix))
-            decompressedPrefixes(prefix) + encoded.substring(prefix.length)
+          if (encodedName.startsWith(prefix))
+            decompressedPrefixes(prefix) + encodedName.substring(prefix.length)
           else
             loop(i+1)
         } else {
           // no prefix matches
-          if (encoded.startsWith("L")) encoded.substring(1)
-          else encoded // just in case
+          if (encodedName.startsWith("L")) encodedName.substring(1)
+          else encodedName // just in case
         }
       }
       loop(0)
@@ -241,16 +238,7 @@ object StackTrace {
   private lazy val decompressedClasses: js.Dictionary[String] = {
     val dict = js.Dynamic.literal(
         O = "java_lang_Object",
-        T = "java_lang_String",
-        V = "scala_Unit",
-        Z = "scala_Boolean",
-        C = "scala_Char",
-        B = "scala_Byte",
-        S = "scala_Short",
-        I = "scala_Int",
-        J = "scala_Long",
-        F = "scala_Float",
-        D = "scala_Double"
+        T = "java_lang_String"
     ).asInstanceOf[js.Dictionary[String]]
 
     var index = 0

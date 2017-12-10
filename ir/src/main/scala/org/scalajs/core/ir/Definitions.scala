@@ -12,101 +12,94 @@ package org.scalajs.core.ir
 import Types._
 
 object Definitions {
+  /** `java.lang.Object`, the root of the class hierarchy. */
   val ObjectClass = "O"
-  val ClassClass  = "jl_Class"
 
-  val StringClass = "T"
+  // Primitive "classes"
+  val VoidClass = "V"
+  val BooleanClass = "Z"
+  val CharClass = "C"
+  val ByteClass = "B"
+  val ShortClass = "S"
+  val IntClass = "I"
+  val LongClass = "J"
+  val FloatClass = "F"
+  val DoubleClass = "D"
+  val NullClass = "N"
+  val NothingClass = "E" // think "the Empty type", or "throws an Exception"
 
-  val PrimitiveClasses = Set("V", "Z", "C", "B", "S", "I", "J", "F", "D")
+  /** The set of all primitive classes. */
+  val PrimitiveClasses: Set[String] = Set(
+      VoidClass,
+      BooleanClass,
+      CharClass,
+      ByteClass,
+      ShortClass,
+      IntClass,
+      LongClass,
+      FloatClass,
+      DoubleClass,
+      NullClass,
+      NothingClass
+  )
 
-  def isPrimitiveClass(encodedName: String): Boolean =
-    PrimitiveClasses.contains(encodedName)
-
-  val BoxedUnitClass      = "sr_BoxedUnit"
-  val BoxedBooleanClass   = "jl_Boolean"
+  // Hijacked classes
+  val BoxedUnitClass = "sr_BoxedUnit"
+  val BoxedBooleanClass = "jl_Boolean"
   val BoxedCharacterClass = "jl_Character"
-  val BoxedByteClass      = "jl_Byte"
-  val BoxedShortClass     = "jl_Short"
-  val BoxedIntegerClass   = "jl_Integer"
-  val BoxedLongClass      = "jl_Long"
-  val BoxedFloatClass     = "jl_Float"
-  val BoxedDoubleClass    = "jl_Double"
+  val BoxedByteClass = "jl_Byte"
+  val BoxedShortClass = "jl_Short"
+  val BoxedIntegerClass = "jl_Integer"
+  val BoxedLongClass = "jl_Long"
+  val BoxedFloatClass = "jl_Float"
+  val BoxedDoubleClass = "jl_Double"
+  val BoxedStringClass = "T"
 
-  val CharSequenceClass = "jl_CharSequence"
-  val SerializableClass = "Ljava_io_Serializable"
-  val CloneableClass    = "jl_Cloneable"
-  val ComparableClass   = "jl_Comparable"
-  val NumberClass       = "jl_Number"
+  /** The set of all hijacked classes. */
+  val HijackedClasses: Set[String] = Set(
+      BoxedUnitClass,
+      BoxedBooleanClass,
+      BoxedCharacterClass,
+      BoxedByteClass,
+      BoxedShortClass,
+      BoxedIntegerClass,
+      BoxedLongClass,
+      BoxedFloatClass,
+      BoxedDoubleClass,
+      BoxedStringClass
+  )
 
-  val HijackedBoxedClasses = Set(
-      BoxedUnitClass, BoxedBooleanClass, BoxedCharacterClass, BoxedByteClass,
-      BoxedShortClass, BoxedIntegerClass, BoxedLongClass, BoxedFloatClass,
-      BoxedDoubleClass)
-  val HijackedClasses =
-    HijackedBoxedClasses + StringClass
-
-  val AncestorsOfStringClass = Set(
-      CharSequenceClass, ComparableClass, SerializableClass)
-  val AncestorsOfBoxedCharacterClass = Set(
-      ComparableClass, SerializableClass)
-  val AncestorsOfHijackedNumberClasses = Set(
-      NumberClass, ComparableClass, SerializableClass)
-  val AncestorsOfBoxedBooleanClass = Set(
-      ComparableClass, SerializableClass)
-  val AncestorsOfBoxedUnitClass = Set(
-      SerializableClass)
-
-  val AncestorsOfHijackedClasses =
-    AncestorsOfStringClass ++ AncestorsOfHijackedNumberClasses ++
-    AncestorsOfBoxedBooleanClass ++ AncestorsOfBoxedUnitClass
-
-  val RuntimeNullClass = "sr_Null$"
-  val RuntimeNothingClass = "sr_Nothing$"
-
-  val ThrowableClass = "jl_Throwable"
-
-  val PseudoArrayClass = "s_Array"
-  val AncestorsOfPseudoArrayClass = Set(
-      ObjectClass, SerializableClass, CloneableClass)
+  /** The class of things returned by `ClassOf` and `GetClass`. */
+  val ClassClass = "jl_Class"
 
   /** Name of the static initializer method. */
   final val StaticInitializerName = "clinit___"
 
-  /** Name used for infos of top-level exports. */
-  val TopLevelExportsName = "__topLevelExports"
-
   /** Encodes a class name. */
   def encodeClassName(fullName: String): String = {
     val base = fullName.replace("_", "$und").replace(".", "_")
-    val encoded = compressedClasses.getOrElse(base, {
-      compressedPrefixes collectFirst {
+    compressedClasses.getOrElse(base, {
+      compressedPrefixes.collectFirst {
         case (prefix, compressed) if base.startsWith(prefix) =>
           compressed + base.substring(prefix.length)
       } getOrElse {
-        "L"+base
+        "L" + base
       }
     })
-    if (Trees.isKeyword(encoded) || encoded.charAt(0).isDigit ||
-        encoded.charAt(0) == '$') {
-      "$" + encoded
-    } else encoded
   }
 
   // !!! Duplicate logic: this code must be in sync with runtime.StackTrace
 
   /** Decodes a class name encoded with [[encodeClassName]]. */
   def decodeClassName(encodedName: String): String = {
-    val encoded =
-      if (encodedName.charAt(0) == '$') encodedName.substring(1)
-      else encodedName
-    val base = decompressedClasses.getOrElse(encoded, {
-      decompressedPrefixes collectFirst {
-        case (prefix, decompressed) if encoded.startsWith(prefix) =>
-          decompressed + encoded.substring(prefix.length)
+    val base = decompressedClasses.getOrElse(encodedName, {
+      decompressedPrefixes.collectFirst {
+        case (prefix, decompressed) if encodedName.startsWith(prefix) =>
+          decompressed + encodedName.substring(prefix.length)
       } getOrElse {
-        assert(!encoded.isEmpty && encoded.charAt(0) == 'L',
+        assert(!encodedName.isEmpty && encodedName.charAt(0) == 'L',
             s"Cannot decode invalid encoded name '$encodedName'")
-        encoded.substring(1)
+        encodedName.substring(1)
       }
     })
     base.replace("_", ".").replace("$und", "_")
@@ -114,16 +107,7 @@ object Definitions {
 
   private val compressedClasses: Map[String, String] = Map(
       "java_lang_Object" -> "O",
-      "java_lang_String" -> "T",
-      "scala_Unit" -> "V",
-      "scala_Boolean" -> "Z",
-      "scala_Char" -> "C",
-      "scala_Byte" -> "B",
-      "scala_Short" -> "S",
-      "scala_Int" -> "I",
-      "scala_Long" -> "J",
-      "scala_Float" -> "F",
-      "scala_Double" -> "D"
+      "java_lang_String" -> "T"
   ) ++ (
       for (index <- 2 to 22)
         yield s"scala_Tuple$index" -> ("T"+index)

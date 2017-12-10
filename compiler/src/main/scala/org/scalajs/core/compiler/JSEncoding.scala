@@ -225,8 +225,10 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   def encodeClassFullName(sym: Symbol): String = {
+    assert(!sym.isPrimitiveValueClass,
+        s"Illegal encodeClassFullName(${sym.fullName}")
     if (sym == jsDefinitions.HackedStringClass) {
-      ir.Definitions.StringClass
+      ir.Definitions.BoxedStringClass
     } else if (sym == jsDefinitions.HackedStringModClass) {
       "jl_String$"
     } else {
@@ -278,10 +280,19 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   private def internalName(kind: TypeKind): String = kind match {
     case VOID                => "V"
     case kind: ValueTypeKind => kind.primitiveCharCode.toString()
-    case NOTHING             => ir.Definitions.RuntimeNothingClass
-    case NULL                => ir.Definitions.RuntimeNullClass
+    case NOTHING             => ir.Definitions.NothingClass
+    case NULL                => ir.Definitions.NullClass
     case REFERENCE(cls)      => encodeClassFullName(cls)
-    case ARRAY(elem)         => "A"+internalName(elem)
+    case ARRAY(elem)         => "A" + internalArrayElemName(elem)
+  }
+
+  private def internalArrayElemName(kind: TypeKind): String = kind match {
+    case VOID                => "V"
+    case kind: ValueTypeKind => kind.primitiveCharCode.toString()
+    case NOTHING             => encodeClassFullName(definitions.RuntimeNothingClass)
+    case NULL                => encodeClassFullName(definitions.RuntimeNullClass)
+    case REFERENCE(cls)      => encodeClassFullName(cls)
+    case ARRAY(elem)         => "A" + internalArrayElemName(elem)
   }
 
   /** mangles names that are illegal in JavaScript by prepending a $

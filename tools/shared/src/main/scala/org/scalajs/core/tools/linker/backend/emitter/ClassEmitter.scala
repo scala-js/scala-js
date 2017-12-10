@@ -681,20 +681,20 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     implicit val pos = tree.pos
 
     if (tree.kind.isClass || tree.kind == ClassKind.Interface ||
-        tree.name.name == Definitions.StringClass) {
+        tree.name.name == Definitions.BoxedStringClass) {
       val className = tree.name.name
       val displayName = decodeClassName(className)
 
       val isAncestorOfString =
-        AncestorsOfStringClass.contains(className)
+        NonObjectAncestorsOfStringClass.contains(className)
       val isAncestorOfHijackedNumberClass =
-        AncestorsOfHijackedNumberClasses.contains(className)
+        NonObjectAncestorsOfHijackedNumberClasses.contains(className)
       val isAncestorOfBoxedBooleanClass =
-        AncestorsOfBoxedBooleanClass.contains(className)
+        NonObjectAncestorsOfBoxedBooleanClass.contains(className)
       val isAncestorOfBoxedCharacterClass =
-        AncestorsOfBoxedCharacterClass.contains(className)
+        NonObjectAncestorsOfBoxedCharacterClass.contains(className)
       val isAncestorOfBoxedUnitClass =
-        AncestorsOfBoxedUnitClass.contains(className)
+        NonObjectAncestorsOfBoxedUnitClass.contains(className)
 
       val objParam = js.ParamDef(js.Ident("obj"), rest = false)
       val obj = objParam.ref
@@ -705,12 +705,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             case Definitions.ObjectClass =>
               js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
 
-            case Definitions.StringClass =>
+            case Definitions.BoxedStringClass =>
               js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
-
-            case Definitions.RuntimeNothingClass =>
-              // Even null is not an instance of Nothing
-              js.BooleanLiteral(false)
 
             case _ =>
               var test = {
@@ -746,21 +742,13 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
               obj
 
             case _ =>
-              val throwError = {
+              js.If(js.Apply(envField("is", className), List(obj)) ||
+                  (obj === js.Null()), {
+                obj
+              }, {
                 genCallHelper("throwClassCastException",
                     obj, js.StringLiteral(displayName))
-              }
-              if (className == RuntimeNothingClass) {
-                // Always throw for .asInstanceOf[Nothing], even for null
-                throwError
-              } else {
-                js.If(js.Apply(envField("is", className), List(obj)) ||
-                    (obj === js.Null()), {
-                  obj
-                }, {
-                  throwError
-                })
-              }
+              })
         })))
       }
 
@@ -866,8 +854,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     val isObjectClass =
       className == ObjectClass
-    val isHijackedBoxedClass =
-      HijackedBoxedClasses.contains(className)
+    val isHijackedClass =
+      HijackedClasses.contains(className)
     val isAncestorOfHijackedClass =
       isObjectClass || AncestorsOfHijackedClasses.contains(className)
     val isJSType =
@@ -892,18 +880,18 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         tree.ancestors.map(ancestor => (js.Ident(ancestor), js.IntLiteral(1))))
 
     val isInstanceFunWithGlobals: WithGlobals[js.Tree] = {
-      if (isHijackedBoxedClass) {
-        /* Hijacked boxed classes have a special isInstanceOf test. */
-        val xParam = js.ParamDef(js.Ident("x"), rest = false)
-        WithGlobals(js.Function(List(xParam), js.Return {
-          genIsInstanceOf(xParam.ref, ClassRef(className))
-        }))
-      } else if (isAncestorOfHijackedClass || className == StringClass) {
+      if (isAncestorOfHijackedClass || className == BoxedStringClass) {
         /* java.lang.String and ancestors of hijacked classes, including
          * java.lang.Object, have a normal $is_pack_Class test but with a
          * non-standard behavior.
          */
         WithGlobals(envField("is", className))
+      } else if (isHijackedClass) {
+        /* Other hijacked classes have a special isInstanceOf test. */
+        val xParam = js.ParamDef(js.Ident("x"), rest = false)
+        WithGlobals(js.Function(List(xParam), js.Return {
+          genIsInstanceOf(xParam.ref, ClassRef(className))
+        }))
       } else if (isJSType) {
         /* Native JS classes have an instanceof operator-based isInstanceOf
          * test dictated by their jsNativeLoadSpec.
@@ -1284,6 +1272,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   /** Gen JS code for an [[ModuleInitializer]]. */
   def genModuleInitializer(moduleInitializer: ModuleInitializer): js.Tree = {
     import TreeDSL._
+    import Definitions.BoxedStringClass
 
     implicit val pos = Position.NoPosition
 
@@ -1293,7 +1282,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
       case ModuleInitializer.MainMethodWithArgs(moduleClassName, mainMethodName,
           args) =>
-        val stringArrayTpe = ArrayType(ArrayTypeRef("T", 1))
+        val stringArrayTpe = ArrayType(ArrayTypeRef(BoxedStringClass, 1))
         js.Apply(genLoadModule(moduleClassName) DOT mainMethodName,
             genArrayValue(stringArrayTpe, args.map(js.StringLiteral(_))) :: Nil)
     }
@@ -1302,8 +1291,32 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 }
 
 private object ClassEmitter {
-  private val ClassesWhoseDataReferToTheirInstanceTests = {
-    Definitions.AncestorsOfHijackedClasses +
-    Definitions.ObjectClass + Definitions.StringClass
-  }
+  // TODO We should compute all of those from the Class Hierarchy
+
+  private val CharSequenceClass = "jl_CharSequence"
+  private val SerializableClass = "Ljava_io_Serializable"
+  private val ComparableClass = "jl_Comparable"
+  private val NumberClass = "jl_Number"
+
+  private val NonObjectAncestorsOfStringClass =
+    Set(CharSequenceClass, ComparableClass, SerializableClass)
+  private val NonObjectAncestorsOfBoxedCharacterClass =
+    Set(ComparableClass, SerializableClass)
+  private val NonObjectAncestorsOfHijackedNumberClasses =
+    Set(NumberClass, ComparableClass, SerializableClass)
+  private val NonObjectAncestorsOfBoxedBooleanClass =
+    Set(ComparableClass, SerializableClass)
+  private val NonObjectAncestorsOfBoxedUnitClass =
+    Set(SerializableClass)
+
+  private[emitter] val AncestorsOfHijackedClasses = Set(
+      Definitions.ObjectClass,
+      CharSequenceClass,
+      SerializableClass,
+      ComparableClass,
+      NumberClass
+  )
+
+  private val ClassesWhoseDataReferToTheirInstanceTests =
+    AncestorsOfHijackedClasses + Definitions.BoxedStringClass
 }

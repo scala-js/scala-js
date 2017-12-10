@@ -483,7 +483,7 @@ private final class IRChecker(unit: LinkingUnit,
         throw new AssertionError("Exported method may not have Ident as name")
 
       case StringLiteral(name) =>
-        if (name.contains("__") && name != Definitions.TopLevelExportsName)
+        if (name.contains("__"))
           reportError("Exported method def name cannot contain __")
 
       case ComputedName(tree, _) =>
@@ -893,10 +893,12 @@ private final class IRChecker(unit: LinkingUnit,
         typecheckExpect(rhs, env, expectedRhsType)
 
       case NewArray(tpe, lengths) =>
+        checkArrayType(tpe)
         for (length <- lengths)
           typecheckExpect(length, env, IntType)
 
       case ArrayValue(tpe, elems) =>
+        checkArrayType(tpe)
         val elemType = arrayElemType(tpe)
         for (elem <- elems)
           typecheckExpect(elem, env, elemType)
@@ -1016,6 +1018,16 @@ private final class IRChecker(unit: LinkingUnit,
 
       // Literals
 
+      case ClassOf(typeRef) =>
+        typeRef match {
+          case ClassRef(cls @ (NullClass | NothingClass)) =>
+            reportError(s"Invalid classOf[$cls]")
+          case typeRef: ArrayTypeRef =>
+            checkArrayTypeRef(typeRef)
+          case _ =>
+            // ok
+        }
+
       case _: Literal =>
 
       // Atomic expressions
@@ -1120,7 +1132,7 @@ private final class IRChecker(unit: LinkingUnit,
       implicit ctx: ErrorContext): Unit = {
     typeRef match {
       case ClassRef(encodedName) =>
-        if (Definitions.isPrimitiveClass(encodedName)) {
+        if (Definitions.PrimitiveClasses.contains(encodedName)) {
           reportError(
               s"Primitive type $encodedName is not a valid target type for " +
               "Is/AsInstanceOf")
@@ -1133,8 +1145,23 @@ private final class IRChecker(unit: LinkingUnit,
           }
         }
 
-      case ArrayTypeRef(_, _) =>
-        // Nothing to check
+      case typeRef: ArrayTypeRef =>
+        checkArrayTypeRef(typeRef)
+    }
+  }
+
+  private def checkArrayType(tpe: ArrayType)(
+      implicit ctx: ErrorContext): Unit = {
+    checkArrayTypeRef(tpe.arrayTypeRef)
+  }
+
+  private def checkArrayTypeRef(typeRef: ArrayTypeRef)(
+      implicit ctx: ErrorContext): Unit = {
+    typeRef.baseClassName match {
+      case VoidClass | NullClass | NothingClass =>
+        reportError(s"Invalid array type $typeRef")
+      case _ =>
+        // ok
     }
   }
 
@@ -1176,13 +1203,11 @@ private final class IRChecker(unit: LinkingUnit,
         case 'J' => LongType
         case 'F' => FloatType
         case 'D' => DoubleType
+        case 'N' => NullType
+        case 'E' => NothingType
         case 'O' => AnyType
-        case 'T' => ClassType(StringClass) // NOT StringType
+        case 'T' => ClassType(BoxedStringClass) // NOT StringType
       }
-    } else if (encodedName == "sr_Nothing$") {
-      NothingType
-    } else if (encodedName == "sr_Null$") {
-      NullType
     } else {
       val kind = tryLookupClass(encodedName).fold(_.kind, _.kind)
       if (kind.isJSType) AnyType
@@ -1324,9 +1349,6 @@ private final class IRChecker(unit: LinkingUnit,
           if (classDef.kind.isJSClass) Nil
           else classDef.fields.map(CheckedClass.checkedField))
     }
-
-    def isAncestorOfHijackedClass: Boolean =
-      AncestorsOfHijackedClasses.contains(name)
 
     def lookupField(name: String): Option[CheckedField] =
       fields.get(name).orElse(superClass.flatMap(_.lookupField(name)))
