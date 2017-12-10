@@ -1,6 +1,6 @@
 /*                     __                                               *\
-**     ________ ___   / /  ___      __ ____  Scala.js sbt plugin        **
-**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2013, LAMP/EPFL        **
+**     ________ ___   / /  ___      __ ____  Scala.js JS Envs           **
+**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2017, LAMP/EPFL        **
 **  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-js.org/       **
 ** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
 **                          |/____/                                     **
@@ -11,10 +11,72 @@ package org.scalajs.jsenv
 
 import org.scalajs.io.VirtualJSFile
 
+/** A JavaScript execution environment.
+ *
+ *  This can run and interact with JavaScript code.
+ *
+ *  Any implementation is expected to be fully thread-safe.
+ */
 trait JSEnv {
   /** Human-readable name for this [[JSEnv]] */
-  def name: String
+  val name: String
 
-  /** Prepare a runner with the specified JavaScript files. */
-  def jsRunner(files: Seq[VirtualJSFile]): JSRunner
+  /** Starts a new (asynchronous) JS run.
+   *
+   *  This may only throw if value of `input` is unknown or `config` cannot be
+   *  supported. To verify whether a [[RunConfig]] can be supported in a forward
+   *  compatible manner (i.e. when new options are added in later versions)
+   *  implementations of [[JSEnv]]s must use [[RunConfig.Validator]].
+   *
+   *  This must not throw if the run cannot be started or there is a problem
+   *  with the input's content (e.g. file does not exist, syntax error, etc.).
+   *  In this case, [[JSRun#future]] should be failed instead.
+   *
+   *  @throws java.lang.IllegalArgumentException if the value of `input` or
+   *      `config` cannot be supported.
+   */
+  def start(input: Input, config: RunConfig): JSRun
+
+  /** Like [[start]], but initializes a communication channel.
+   *
+   *  Inside the VM this is to provide a global JavaScript object named
+   *  `scalajsCom` that can be used to interact with the message channel. Its
+   *  operations are:
+   *  {{{
+   *  // initialize com (with callback). May only be called once.
+   *  scalajsCom.init(function(msg) { console.log("Received: " + msg); });
+   *
+   *  // send a message to host system
+   *  scalajsCom.send("my message");
+   *  }}}
+   *
+   *  We describe the expected message delivery guarantees by denoting the
+   *  transmitter as `t` and  the receiver as `r`. Both the JVM and the JS end
+   *  act once as a transmitter and once as a receiver. These two
+   *  transmitter/receiver pairs (JS/JVM and JVM/JS) are independent.
+   *
+   *  For a pair `(t,r)`:
+   *  <ul>
+   *  <li>If `t` calls [[JSComRun#send]] exactly in the sequence
+   *  {{{
+   *  send(m_1), ..., send(m_n)
+   *  }}}
+   *
+   *  and `r` observes `onMessage(m_k)` (k <= n) but not `onMessage(m_{k+1})`,
+   *  `r` must observe
+   *  {{{
+   *  onMessage(m_1), ..., onMessage(m_k)
+   *  }}}
+   *  exactly in this order.
+   *  <li>If `t` and `r` keep running indefinitely and `t` sends n messages,
+   *  `r` receives n messages.
+   *  </ul>
+   *
+   *  @param onMessage Callback invoked each time a message is received from the
+   *      JS VM. The implementation may not call this anymore once
+   *      [[JSRun#future]] of the returned [[JSComRun]] is completed. Further,
+   *      [[JSRun#future]] may only complete with no callback in-flight.
+   */
+  def startWithCom(input: Input, config: RunConfig,
+      onMessage: String => Unit): JSComRun
 }

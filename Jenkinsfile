@@ -249,7 +249,7 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbt ++$scala ir/test io/test logging/compile linker/compile \
-        stubs/package nodeJSEnv/test testAdapter/test \
+        stubs/package jsEnvs/test nodeJSEnv/test testAdapter/test \
         ir/mimaReportBinaryIssues io/mimaReportBinaryIssues \
         logging/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
@@ -266,7 +266,7 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbt ++$scala ir/test io/test logging/compile linker/compile \
-        stubs/package nodeJSEnv/test testAdapter/test \
+        stubs/package jsEnvs/test nodeJSEnv/test testAdapter/test \
         sbtPlugin/package \
         ir/mimaReportBinaryIssues io/mimaReportBinaryIssues \
         logging/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
@@ -281,7 +281,7 @@ def Tasks = [
         logging/scalastyle logging/test:scalastyle \
         linker/scalastyle linker/test:scalastyle \
         jsEnvs/scalastyle jsEnvsTestKit/scalastyle nodeJSEnv/scalastyle \
-        nodeJSEnv/test:scalastyle testAdapter/scalastyle \
+        jsEnvs/test:scalastyle nodeJSEnv/test:scalastyle testAdapter/scalastyle \
         sbtPlugin/scalastyle testInterface/scalastyle \
         testSuite/scalastyle testSuite/test:scalastyle \
         testSuiteJVM/test:scalastyle \

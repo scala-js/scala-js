@@ -2,134 +2,81 @@ package org.scalajs.jsenv.test
 
 import org.scalajs.jsenv._
 
-import org.scalajs.io._
-
-import org.junit.Test
+import org.junit.{Before, Test}
 import org.junit.Assert._
+import org.junit.Assume._
 
 import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
 
-/** A couple of tests that test communication for mix-in into a test suite */
-trait ComTests extends AsyncTests {
+private[test] class ComTests(config: JSEnvSuiteConfig) {
+  private val kit = new TestComKit(config)
 
-  protected def newJSEnv: ComJSEnv
-
-  protected def comRunner(code: String): ComJSRunner = {
-    val codeVF = new MemVirtualJSFile("testScript.js").withContent(code)
-    newJSEnv.comRunner(codeVF :: Nil)
-  }
-
-  private def assertThrowClosed(msg: String, body: => Unit): Unit = {
-    val thrown = try {
-      body
-      false
-    } catch {
-      case _: ComJSEnv.ComClosedException =>
-        true
-    }
-
-    assertTrue(msg, thrown)
+  @Before
+  def before: Unit = {
+    assumeTrue("JSEnv needs com support", config.supportsCom)
   }
 
   @Test
-  def comCloseJVMTest: Unit = {
-    val com = comRunner(s"""
+  def basicTest: Unit = {
+    val run = kit.start("""
       scalajsCom.init(function(msg) { scalajsCom.send("received: " + msg); });
       scalajsCom.send("Hello World");
-    """)
+    """, RunConfig())
 
-    start(com)
+    try {
+      assertEquals("Hello World", run.waitNextMessage())
 
-    assertEquals("Hello World", com.receive())
-
-    for (i <- 0 to 10) {
-      com.send(i.toString)
-      assertEquals(s"received: $i", com.receive())
+      for (i <- 0 to 10) {
+        run.run.send(i.toString)
+        assertEquals(s"received: $i", run.waitNextMessage())
+      }
+    } finally {
+      run.closeAndWait()
     }
-
-    com.close()
-    com.await(DefaultTimeout)
-
-    com.stop() // should do nothing, and not fail
   }
 
-  def comCloseJSTestCommon(timeout: Long): Unit = {
-    val com = comRunner(s"""
-      scalajsCom.init(function(msg) {});
+  @Test
+  def jsExitsOnMessageTest: Unit = {
+    assumeTrue(config.terminateVMJSCode.isDefined)
+
+    val run = kit.start(s"""
+      scalajsCom.init(function(msg) { ${config.terminateVMJSCode.get}; });
       for (var i = 0; i < 10; ++i)
         scalajsCom.send("msg: " + i);
-      scalajsCom.close();
-    """)
+      """, RunConfig())
 
-    start(com)
+    try {
+      for (i <- 0 until 10)
+        assertEquals(s"msg: $i", run.waitNextMessage())
 
-    Thread.sleep(timeout)
+      run.run.send("quit")
 
-    for (i <- 0 until 10)
-      assertEquals(s"msg: $i", com.receive())
-
-    assertThrowClosed("Expect receive to throw after closing of channel",
-        com.receive())
-
-    com.close()
-    com.await(DefaultTimeout)
-
-    com.stop() // should do nothing, and not fail
-  }
-
-  @Test
-  def comCloseJSTest: Unit = comCloseJSTestCommon(0)
-
-  @Test
-  def comCloseJSTestDelayed: Unit = comCloseJSTestCommon(1000)
-
-  @Test
-  def doubleCloseTest: Unit = {
-    val n = 10
-    val com = pingPongRunner(n)
-
-    start(com)
-
-    for (i <- 0 until n) {
-      com.send("ping")
-      assertEquals("pong", com.receive())
+      Await.result(run.run.future, config.awaitTimeout)
+    } finally {
+      run.run.close()
     }
-
-    com.close()
-    com.await(DefaultTimeout)
   }
 
   @Test
   def multiEnvTest: Unit = {
     val n = 10
-    val envs = List.fill(5)(pingPongRunner(10))
-
-    envs.foreach(start)
-
-    val ops = List[ComJSRunner => Unit](
-        _.send("ping"),
-        com => assertEquals("pong", com.receive())
-    )
-
-    for {
-      i   <- 0 until n
-      env <- envs
-      op  <- ops
-    } op(env)
-
-    envs.foreach(_.close())
-    envs.foreach(_.await(DefaultTimeout))
-  }
-
-  private def pingPongRunner(count: Int) = {
-    comRunner(s"""
-      var seen = 0;
+    val runs = List.fill(5) {
+      kit.start("""
       scalajsCom.init(function(msg) {
         scalajsCom.send("pong");
-        if (++seen >= $count)
-          scalajsCom.close();
       });
-    """)
+      """, RunConfig())
+    }
+
+    try {
+      for (_ <- 0 until n) {
+        runs.foreach(_.run.send("ping"))
+        runs.foreach(r => assertEquals("pong", r.waitNextMessage()))
+      }
+    } finally {
+      runs.foreach(_.closeAndWait())
+    }
   }
 
   @Test
@@ -141,107 +88,57 @@ trait ComTests extends AsyncTests {
     // Max message size: 1KB * 2^(2*iters+1) = 1MB
     val iters = 4
 
-    val com = comRunner("""
+    val run = kit.start("""
       scalajsCom.init(function(msg) {
         scalajsCom.send(msg + msg);
       });
-    """)
+    """, RunConfig())
 
-    start(com)
+    try {
+      run.run.send(baseMsg)
 
-    com.send(baseMsg)
+      def resultFactor(iters: Int) = Math.pow(2, 2 * iters + 1).toInt
 
-    def resultFactor(iters: Int) = Math.pow(2, 2 * iters + 1).toInt
+      for (i <- 0 until iters) {
+        val reply = run.waitNextMessage()
 
-    for (i <- 0 until iters) {
-      val reply = com.receive()
+        val factor = resultFactor(i)
 
-      val factor = resultFactor(i)
+        assertEquals(baseLen * factor, reply.length)
 
-      assertEquals(baseLen * factor, reply.length)
+        for (j <- 0 until factor)
+          assertEquals(baseMsg, reply.substring(j * baseLen, (j + 1) * baseLen))
 
-      for (j <- 0 until factor)
-        assertEquals(baseMsg, reply.substring(j * baseLen, (j + 1) * baseLen))
+        run.run.send(reply + reply)
+      }
 
-      com.send(reply + reply)
+      val lastLen = run.waitNextMessage().length
+      assertEquals(baseLen * resultFactor(iters), lastLen)
+    } finally {
+      run.closeAndWait()
     }
-
-    val lastLen = com.receive().length
-    assertEquals(baseLen * resultFactor(iters), lastLen)
-
-    com.close()
-    com.await(DefaultTimeout)
   }
 
   @Test
   def highCharTest: Unit = { // #1536
-    val com = comRunner("""
-      scalajsCom.init(scalajsCom.send);
-    """)
+    val run = kit.start("scalajsCom.init(scalajsCom.send);", RunConfig())
 
-    start(com)
-
-    val msg = "\uC421\u8F10\u0112\uFF32"
-
-    com.send(msg)
-    assertEquals(msg, com.receive())
-
-    com.close()
-    com.await(DefaultTimeout)
+    try {
+      val msg = "\uC421\u8F10\u0112\uFF32"
+      run.run.send(msg)
+      assertEquals(msg, run.waitNextMessage())
+    } finally {
+      run.closeAndWait()
+    }
   }
 
   @Test
   def noInitTest: Unit = {
-    val com = comRunner("")
-
-    start(com)
-    com.send("Dummy")
-    com.close()
-    com.await(DefaultTimeout)
-  }
-
-  @Test
-  def stopTestCom: Unit = {
-    val com = comRunner(s"""scalajsCom.init(function(msg) {});""")
-
-    start(com)
-
-    // Make sure the VM doesn't terminate.
-    Thread.sleep(1000)
-
-    assertTrue("VM should still be running", com.isRunning)
-
-    // Stop VM instead of closing channel
-    com.stop()
-
+    val run = kit.start("", RunConfig())
     try {
-      com.await(DefaultTimeout)
-      fail("Stopped VM should be in failure state")
-    } catch {
-      case _: Throwable =>
+      run.run.send("Dummy")
+    } finally {
+      run.closeAndWait()
     }
   }
-
-  @Test
-  def futureStopTest: Unit = {
-    val com = comRunner(s"""scalajsCom.init(function(msg) {});""")
-
-    val fut = start(com)
-
-    // Make sure the VM doesn't terminate.
-    Thread.sleep(1000)
-
-    assertTrue("VM should still be running", com.isRunning)
-
-    // Stop VM instead of closing channel
-    com.stop()
-
-    try {
-      Await.result(fut, DefaultTimeout)
-      fail("Stopped VM should be in failure state")
-    } catch {
-      case _: Throwable =>
-    }
-  }
-
 }

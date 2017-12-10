@@ -5,17 +5,30 @@ import org.scalajs.jsenv.nodejs._
 
 import org.scalajs.io._
 
-class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config)
-    extends NodeJSEnv(config) {
-
+final class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config) extends JSEnv {
   def this() = this(NodeJSEnv.Config())
 
-  override protected def vmName: String = "Node.js forcing polyfills"
+  val name: String = "Node.js forcing polyfills"
 
-  /** File(s) to force all our ES 2015 polyfills to be used, by deleting the
+  private val nodeJSEnv = new NodeJSEnv(config)
+
+  def start(input: Input, runConfig: RunConfig): JSRun =
+    nodeJSEnv.start(patchInput(input), runConfig)
+
+  def startWithCom(input: Input, runConfig: RunConfig,
+      onMessage: String => Unit): JSComRun = {
+    nodeJSEnv.startWithCom(patchInput(input), runConfig, onMessage)
+  }
+
+  private def patchInput(input: Input): Input = input match {
+    case Input.ScriptsToLoad(scripts) => Input.ScriptsToLoad(forcePolyfills +: scripts)
+    case _                            => throw new UnsupportedInputException(input)
+  }
+
+  /** File to force all our ES 2015 polyfills to be used, by deleting the
    *  native functions.
    */
-  protected def forcePolyfills(): Seq[VirtualJSFile] = {
+  private def forcePolyfills(): VirtualJSFile = {
     val f = new MemVirtualJSFile("scalaJSEnvInfo.js").withContent(
       """
         |delete Math.fround;
@@ -43,11 +56,6 @@ class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config)
         |delete global.Float64Array;
       """.stripMargin
     )
-    Seq(f)
+    f
   }
-
-  /** Custom initialization scripts. */
-  override protected def customInitFiles(): Seq[VirtualJSFile] =
-    super.customInitFiles() ++ forcePolyfills()
-
 }
