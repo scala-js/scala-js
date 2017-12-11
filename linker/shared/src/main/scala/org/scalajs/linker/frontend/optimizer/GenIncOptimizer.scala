@@ -556,10 +556,11 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       } else {
         val allFields = reverseParentChain.flatMap(_.fields)
         val (fieldValues, fieldTypes) = (for {
-          f @ FieldDef(false, Ident(name, originalName), tpe, mutable) <- allFields
+          f @ FieldDef(flags, Ident(name, originalName), tpe) <- allFields
+          if !flags.isStatic
         } yield {
           (zeroOf(tpe)(f.pos),
-              RecordType.Field(name, originalName, tpe, mutable))
+              RecordType.Field(name, originalName, tpe, flags.isMutable))
         }).unzip
         tryNewInlineable = Some(
             RecordValue(RecordType(fieldTypes), fieldValues)(Position.NoPosition))

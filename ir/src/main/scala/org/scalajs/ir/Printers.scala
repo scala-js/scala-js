@@ -863,10 +863,10 @@ object Printers {
 
     def print(memberDef: MemberDef): Unit = {
       memberDef match {
-        case FieldDef(static, name, vtpe, mutable) =>
-          if (static)
+        case FieldDef(flags, name, vtpe) =>
+          if (flags.isStatic)
             print("static ")
-          if (mutable)
+          if (flags.isMutable)
             print("var ")
           else
             print("val ")
@@ -875,9 +875,9 @@ object Printers {
           print(vtpe)
 
         case tree: MethodDef =>
-          val MethodDef(static, name, args, resultType, body) = tree
+          val MethodDef(flags, name, args, resultType, body) = tree
           print(tree.optimizerHints)
-          if (static)
+          if (flags.isStatic)
             print("static ")
           print("def ")
           print(name)
@@ -888,9 +888,9 @@ object Printers {
             printBlock(body)
           }
 
-        case PropertyDef(static, name, getterBody, setterArgAndBody) =>
+        case PropertyDef(flags, name, getterBody, setterArgAndBody) =>
           getterBody foreach { body =>
-            if (static)
+            if (flags.isStatic)
               print("static ")
             print("get ")
             print(name)
@@ -903,7 +903,7 @@ object Printers {
           }
 
           setterArgAndBody foreach { case (arg, body) =>
-            if (static)
+            if (flags.isStatic)
               print("static ")
             print("set ")
             print(name)

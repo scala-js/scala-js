@@ -158,7 +158,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
 
       case m: MethodDef =>
         val methodInfo =
-          if (m.static) analyzerInfo.staticMethodInfos(m.encodedName)
+          if (m.flags.isStatic) analyzerInfo.staticMethodInfos(m.encodedName)
           else analyzerInfo.methodInfos(m.encodedName)
 
         if (methodInfo.isReachable) {
@@ -167,7 +167,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
               "is reachable.")
           val linked = linkedMethod(m)
           if (m.name.isInstanceOf[Ident]) {
-            if (m.static)
+            if (m.flags.isStatic)
               staticMethods += linked
             else
               memberMethods += linked

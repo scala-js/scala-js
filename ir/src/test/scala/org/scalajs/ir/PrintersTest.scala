@@ -1061,8 +1061,8 @@ class PrintersTest {
         ClassDef("LTest", ClassKind.ModuleClass, None, Some(ObjectClass), Nil,
             None, None,
             List(
-                FieldDef(static = false, "x$1", IntType, mutable = false),
-                FieldDef(static = false, "y$1", IntType, mutable = true)),
+                FieldDef(MemberFlags.empty, "x$1", IntType),
+                FieldDef(MemberFlags.empty.withMutable(true), "y$1", IntType)),
             List(
                 TopLevelModuleExportDef("pkg.Foo")))(
             NoOptHints))
@@ -1070,19 +1070,19 @@ class PrintersTest {
 
   @Test def printFieldDef(): Unit = {
     assertPrintEquals("val x$1: int",
-        FieldDef(static = false, "x$1", IntType, mutable = false))
+        FieldDef(MemberFlags.empty, "x$1", IntType))
     assertPrintEquals("var y$1: any",
-        FieldDef(static = false, "y$1", AnyType, mutable = true))
+        FieldDef(MemberFlags.empty.withMutable(true), "y$1", AnyType))
 
     assertPrintEquals("""val "x": int""",
-        FieldDef(static = false, StringLiteral("x"), IntType, mutable = false))
+        FieldDef(MemberFlags.empty, StringLiteral("x"), IntType))
     assertPrintEquals("""var "y": any""",
-        FieldDef(static = false, StringLiteral("y"), AnyType, mutable = true))
+        FieldDef(MemberFlags.empty.withMutable(true), StringLiteral("y"), AnyType))
 
     assertPrintEquals("""static val "x": int""",
-        FieldDef(static = true, StringLiteral("x"), IntType, mutable = false))
+        FieldDef(MemberFlags.empty.withStatic(true), StringLiteral("x"), IntType))
     assertPrintEquals("""static var "y": any""",
-        FieldDef(static = true, StringLiteral("y"), AnyType, mutable = true))
+        FieldDef(MemberFlags.empty.withStatic(true).withMutable(true), StringLiteral("y"), AnyType))
   }
 
   @Test def printMethodDef(): Unit = {
@@ -1090,7 +1090,7 @@ class PrintersTest {
         """
           |def m__I__I(x: int): int = <abstract>
         """,
-        MethodDef(static = false, "m__I__I",
+        MethodDef(MemberFlags.empty, "m__I__I",
             List(ParamDef("x", IntType, mutable = false, rest = false)),
             IntType, None)(NoOptHints, None))
 
@@ -1100,7 +1100,7 @@ class PrintersTest {
           |  5
           |}
         """,
-        MethodDef(static = false, "m__I__I",
+        MethodDef(MemberFlags.empty, "m__I__I",
             List(ParamDef("x", IntType, mutable = false, rest = false)),
             IntType, Some(i(5)))(NoOptHints, None))
 
@@ -1110,7 +1110,7 @@ class PrintersTest {
           |  5
           |}
         """,
-        MethodDef(static = false, "m__I__I",
+        MethodDef(MemberFlags.empty, "m__I__I",
             List(ParamDef("x", IntType, mutable = false, rest = false)),
             IntType, Some(i(5)))(NoOptHints.withInline(true), None))
 
@@ -1120,7 +1120,7 @@ class PrintersTest {
           |  5
           |}
         """,
-        MethodDef(static = false, "m__I__V",
+        MethodDef(MemberFlags.empty, "m__I__V",
             List(ParamDef("x", IntType, mutable = false, rest = false)),
             NoType, Some(i(5)))(NoOptHints, None))
 
@@ -1130,7 +1130,7 @@ class PrintersTest {
           |  5
           |}
         """,
-        MethodDef(static = false, StringLiteral("m"),
+        MethodDef(MemberFlags.empty, StringLiteral("m"),
             List(ParamDef("x", AnyType, mutable = false, rest = false)),
             AnyType, Some(i(5)))(NoOptHints, None))
 
@@ -1140,7 +1140,7 @@ class PrintersTest {
           |  5
           |}
         """,
-        MethodDef(static = false, StringLiteral("m"),
+        MethodDef(MemberFlags.empty, StringLiteral("m"),
             List(ParamDef("x", AnyType, mutable = false, rest = true)),
             AnyType, Some(i(5)))(NoOptHints, None))
 
@@ -1150,7 +1150,7 @@ class PrintersTest {
           |  5
           |}
         """,
-        MethodDef(static = true, "m__I__I",
+        MethodDef(MemberFlags.empty.withStatic(true), "m__I__I",
             List(ParamDef("x", IntType, mutable = false, rest = false)),
             IntType, Some(i(5)))(NoOptHints, None))
   }
@@ -1160,6 +1160,7 @@ class PrintersTest {
       val staticStr =
         if (static) "static "
         else ""
+      val flags = MemberFlags.empty.withStatic(static)
 
       assertPrintEquals(
           s"""
@@ -1167,7 +1168,7 @@ class PrintersTest {
             |  5
             |}
           """,
-          PropertyDef(static, StringLiteral("prop"), Some(i(5)), None))
+          PropertyDef(flags, StringLiteral("prop"), Some(i(5)), None))
 
       assertPrintEquals(
           s"""
@@ -1175,7 +1176,7 @@ class PrintersTest {
             |  7
             |}
           """,
-          PropertyDef(static, StringLiteral("prop"),
+          PropertyDef(flags, StringLiteral("prop"),
               None,
               Some((ParamDef("x", AnyType, mutable = false, rest = false), i(7)))))
 
@@ -1188,7 +1189,7 @@ class PrintersTest {
             |  7
             |}
           """,
-          PropertyDef(static, StringLiteral("prop"),
+          PropertyDef(flags, StringLiteral("prop"),
               Some(i(5)),
               Some((ParamDef("x", AnyType, mutable = false, rest = false),
                   i(7)))))
@@ -1213,7 +1214,7 @@ class PrintersTest {
           |export top static def "pkg.foo"(x: any): any = {
           |  5
           |}""",
-        TopLevelMethodExportDef(MethodDef(static = true,
+        TopLevelMethodExportDef(MethodDef(MemberFlags.empty.withStatic(true),
             StringLiteral("pkg.foo"),
             List(ParamDef("x", AnyType, mutable = false, rest = false)),
             AnyType, Some(i(5)))(NoOptHints, None)))

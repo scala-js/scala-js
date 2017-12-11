@@ -154,7 +154,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       val methodDef = member.value
       implicit val ctx = ErrorContext(methodDef)
 
-      assert(methodDef.static, "Found non-static member in static defs")
+      assert(methodDef.flags.isStatic, "Found non-static member in static defs")
 
       if (!methodDef.name.isInstanceOf[Ident])
         reportError(s"Static method ${methodDef.name} cannot be exported")
@@ -181,7 +181,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
        * TODO #2627 We currently cannot check instance field collisions because
        * of #2382.
        */
-      val staticFieldDefs = classDef.fields.filter(_.static)
+      val staticFieldDefs = classDef.fields.filter(_.flags.isStatic)
       for {
         fieldsWithSameName <- staticFieldDefs.groupBy(_.encodedName).values
         duplicate <- fieldsWithSameName.tail
@@ -262,7 +262,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       val tree = method.value
       implicit val ctx = ErrorContext(tree)
 
-      assert(!tree.static, "Member or abstract method may not be static")
+      assert(!tree.flags.isStatic,
+          "Member or abstract method may not be static")
       assert(tree.name.isInstanceOf[Ident],
           "Normal method must have Ident as name")
 
@@ -271,7 +272,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private def checkFieldDef(fieldDef: FieldDef, classDef: LinkedClass): Unit = {
-    val FieldDef(static, name, tpe, mutable) = fieldDef
+    val FieldDef(flags, name, tpe) = fieldDef
     implicit val ctx = ErrorContext(fieldDef)
 
     name match {
@@ -293,8 +294,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   private def checkMethodDef(methodDef: MethodDef,
       classDef: LinkedClass): Unit = withPerMethodState {
 
-    val MethodDef(static, Ident(name, _), params, resultType, body) = methodDef
+    val MethodDef(flags, Ident(name, _), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
+
+    val static = flags.isStatic
+
+    if (flags.isMutable)
+      reportError("A method cannot have the flag Mutable")
 
     if (classDef.kind.isJSClass && !static) {
       reportError(s"Non exported instance method $name is illegal in JS class")
@@ -345,8 +351,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def checkExportedMethodDef(methodDef: MethodDef,
       classDef: LinkedClass, isTopLevel: Boolean): Unit = withPerMethodState {
-    val MethodDef(static, pName, params, resultType, body) = methodDef
+    val MethodDef(flags, pName, params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
+
+    val static = flags.isStatic
+
+    if (flags.isMutable)
+      reportError("An exported method cannot have the flag Mutable")
 
     if (!isTopLevel && !classDef.kind.isAnyNonNativeClass) {
       reportError(s"Exported method def can only appear in a class")
@@ -441,8 +452,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def checkExportedPropertyDef(propDef: PropertyDef,
       classDef: LinkedClass): Unit = withPerMethodState {
-    val PropertyDef(static, pName, getterBody, setterArgAndBody) = propDef
+    val PropertyDef(flags, pName, getterBody, setterArgAndBody) = propDef
     implicit val ctx = ErrorContext(propDef)
+
+    val static = flags.isStatic
+
+    if (flags.isMutable)
+      reportError("An exported property def cannot have the flag Mutable")
 
     if (!classDef.kind.isAnyNonNativeClass) {
       reportError(s"Exported property def can only appear in a class")
@@ -536,7 +552,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
                 for {
                   f <- c.lookupField(name)
-                  if !f.mutable
+                  if !f.flags.isMutable
                 } reportError(s"Assignment to immutable field $name.")
               case _ =>
             }
@@ -545,7 +561,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
             for {
               f <- c.lookupStaticField(name)
-              if !f.mutable
+              if !f.flags.isMutable
             } {
               reportError(s"Assignment to immutable static field $name.")
             }
@@ -1286,8 +1302,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       _fields: TraversableOnce[CheckedField])(
       implicit ctx: ErrorContext) {
 
-    val fields = _fields.filter(!_.static).map(f => f.name -> f).toMap
-    val staticFields = _fields.filter(_.static).map(f => f.name -> f).toMap
+    val fields = _fields.filter(!_.flags.isStatic).map(f => f.name -> f).toMap
+    val staticFields = _fields.filter(_.flags.isStatic).map(f => f.name -> f).toMap
 
     lazy val superClass = superClassName.map(classes)
 
@@ -1311,13 +1327,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private object CheckedClass {
     private def checkedField(fieldDef: FieldDef) = {
-      val FieldDef(static, Ident(name, _), tpe, mutable) = fieldDef
-      new CheckedField(static, name, tpe, mutable)
+      val FieldDef(flags, Ident(name, _), tpe) = fieldDef
+      new CheckedField(flags, name, tpe)
     }
   }
 
-  private class CheckedField(val static: Boolean, val name: String,
-      val tpe: Type, val mutable: Boolean)
+  private class CheckedField(val flags: MemberFlags, val name: String,
+      val tpe: Type)
 }
 
 object IRChecker {

@@ -488,15 +488,14 @@ object Serializers {
       import buffer._
       writePosition(memberDef.pos)
       memberDef match {
-        case FieldDef(static, name, ftpe, mutable) =>
+        case FieldDef(flags, name, ftpe) =>
           writeByte(TagFieldDef)
-          writeBoolean(static)
+          writeInt(MemberFlags.toBits(flags))
           writePropertyName(name)
           writeType(ftpe)
-          writeBoolean(mutable)
 
         case methodDef: MethodDef =>
-          val MethodDef(static, name, args, resultType, body) = methodDef
+          val MethodDef(flags, name, args, resultType, body) = methodDef
 
           writeByte(TagMethodDef)
           writeOptHash(methodDef.hash)
@@ -506,7 +505,7 @@ object Serializers {
           writeInt(-1)
 
           // Write out method def
-          writeBoolean(static); writePropertyName(name)
+          writeInt(MemberFlags.toBits(flags)); writePropertyName(name)
           writeParamDefs(args); writeType(resultType); writeOptTree(body)
           writeInt(OptimizerHints.toBits(methodDef.optimizerHints))
 
@@ -515,9 +514,9 @@ object Serializers {
           writeInt(length)
           bufferUnderlying.continue()
 
-        case PropertyDef(static, name, getter, setterArgAndBody) =>
+        case PropertyDef(flags, name, getter, setterArgAndBody) =>
           writeByte(TagPropertyDef)
-          writeBoolean(static)
+          writeInt(MemberFlags.toBits(flags))
           writePropertyName(name)
           writeOptTree(getter)
           writeBoolean(setterArgAndBody.isDefined)
@@ -958,19 +957,19 @@ object Serializers {
 
       (tag: @switch) match {
         case TagFieldDef =>
-          FieldDef(readBoolean(), readPropertyName(), readType(), readBoolean())
+          FieldDef(MemberFlags.fromBits(readInt()), readPropertyName(), readType())
 
         case TagMethodDef =>
           val optHash = readOptHash()
           // read and discard the length
           val len = readInt()
           assert(len >= 0)
-          MethodDef(readBoolean(), readPropertyName(),
+          MethodDef(MemberFlags.fromBits(readInt()), readPropertyName(),
               readParamDefs(), readType(), readOptTree())(
               OptimizerHints.fromBits(readInt()), optHash)
 
         case TagPropertyDef =>
-          val static = readBoolean()
+          val flags = MemberFlags.fromBits(readInt())
           val name = readPropertyName()
           val getterBody = readOptTree()
           val setterArgAndBody = {
@@ -979,7 +978,7 @@ object Serializers {
             else
               None
           }
-          PropertyDef(static, name, getterBody, setterArgAndBody)
+          PropertyDef(flags, name, getterBody, setterArgAndBody)
       }
     }
 

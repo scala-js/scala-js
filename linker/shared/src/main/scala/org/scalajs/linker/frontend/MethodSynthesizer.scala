@@ -71,7 +71,7 @@ private[frontend] final class MethodSynthesizer(
         call
       }
 
-      MethodDef(static = false, proxyIdent, params, AnyType, Some(body))(
+      MethodDef(MemberFlags.empty, proxyIdent, params, AnyType, Some(body))(
           OptimizerHints.empty, targetMDef.hash)
     }
   }
@@ -98,7 +98,8 @@ private[frontend] final class MethodSynthesizer(
           This()(currentClassType), ClassRef(targetInterface), targetIdent,
           params.map(_.ref))(targetMDef.resultType)
 
-      MethodDef(static = false, bridgeIdent, params, targetMDef.resultType, Some(body))(
+      MethodDef(MemberFlags.empty, bridgeIdent, params, targetMDef.resultType,
+          Some(body))(
           OptimizerHints.empty, targetMDef.hash)
     }
   }
@@ -143,7 +144,7 @@ private[frontend] final class MethodSynthesizer(
     } yield {
       classDef.memberDefs.collectFirst {
         case mDef: MethodDef
-            if !mDef.static && mDef.encodedName == methodName => mDef
+            if !mDef.flags.isStatic && mDef.encodedName == methodName => mDef
       }.getOrElse {
         throw new AssertionError(
             s"Cannot find $methodName in ${classInfo.encodedName}")

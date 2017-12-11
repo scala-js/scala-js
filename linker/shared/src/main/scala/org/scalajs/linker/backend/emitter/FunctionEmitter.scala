@@ -745,8 +745,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               globalKnowledge.getJSClassFieldDefs(enclosingClassName)
 
             val fieldDefs = for {
-              field @ FieldDef(false, name, ftpe, mutable) <-
-                enclosingClassFieldDefs
+              field @ FieldDef(flags, name, ftpe) <- enclosingClassFieldDefs
+              if !flags.isStatic
             } yield {
               implicit val pos = field.pos
               /* Here, a naive translation would emit something like this:

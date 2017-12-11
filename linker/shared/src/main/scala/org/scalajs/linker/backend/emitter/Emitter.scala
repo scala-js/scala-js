@@ -501,7 +501,7 @@ final class Emitter private (config: CommonPhaseConfig,
           val newBody = ApplyStatically(This()(ClassType(className)),
               ClassRef(ObjectClass), methodName, methodDef.args.map(_.ref))(
               methodDef.resultType)
-          val newMethodDef = MethodDef(static = false, methodName,
+          val newMethodDef = MethodDef(MemberFlags.empty, methodName,
               methodDef.args, methodDef.resultType, Some(newBody))(
               OptimizerHints.empty, None)
           new Versioned(newMethodDef, m.version)

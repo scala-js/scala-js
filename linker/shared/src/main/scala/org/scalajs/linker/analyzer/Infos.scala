@@ -418,7 +418,7 @@ object Infos {
     def generateMethodInfo(methodDef: MethodDef): MethodInfo = {
       builder
         .setEncodedName(methodDef.name.encodedName)
-        .setIsStatic(methodDef.static)
+        .setIsStatic(methodDef.flags.isStatic)
         .setIsAbstract(methodDef.body.isEmpty)
         .setIsExported(!methodDef.name.isInstanceOf[Ident])
 
@@ -442,7 +442,7 @@ object Infos {
     def generatePropertyInfo(propertyDef: PropertyDef): MethodInfo = {
       builder
         .setEncodedName(propertyDef.name.encodedName)
-        .setIsStatic(propertyDef.static)
+        .setIsStatic(propertyDef.flags.isStatic)
         .setIsExported(true)
 
       propertyDef.name match {

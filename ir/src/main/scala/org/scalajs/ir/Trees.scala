@@ -970,22 +970,21 @@ object Trees {
   // Class members
 
   sealed abstract class MemberDef extends IRNode {
-    val static: Boolean
+    val flags: MemberFlags
     val name: PropertyName
 
     def encodedName: String = name.encodedName
   }
 
-  case class FieldDef(static: Boolean, name: PropertyName, ftpe: Type,
-      mutable: Boolean)(
+  case class FieldDef(flags: MemberFlags, name: PropertyName, ftpe: Type)(
       implicit val pos: Position) extends MemberDef
 
-  case class MethodDef(static: Boolean, name: PropertyName,
+  case class MethodDef(flags: MemberFlags, name: PropertyName,
       args: List[ParamDef], resultType: Type, body: Option[Tree])(
       val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
       implicit val pos: Position) extends MemberDef
 
-  case class PropertyDef(static: Boolean, name: PropertyName,
+  case class PropertyDef(flags: MemberFlags, name: PropertyName,
       getterBody: Option[Tree], setterArgAndBody: Option[(ParamDef, Tree)])(
       implicit val pos: Position) extends MemberDef
 
@@ -1058,6 +1057,41 @@ object Trees {
 
     private[ir] def toBits(hints: OptimizerHints): Int =
       hints.bits
+  }
+
+  final class MemberFlags private (val __private_bits: Int) extends AnyVal {
+    import MemberFlags._
+
+    @inline private def bits: Int = __private_bits
+
+    def isStatic: Boolean = (bits & StaticBit) != 0
+
+    def isMutable: Boolean = (bits & MutableBit) != 0
+
+    def withStatic(value: Boolean): MemberFlags =
+      if (value) new MemberFlags(bits | StaticBit)
+      else new MemberFlags(bits & ~StaticBit)
+
+    def withMutable(value: Boolean): MemberFlags =
+      if (value) new MemberFlags(bits | MutableBit)
+      else new MemberFlags(bits & ~MutableBit)
+  }
+
+  object MemberFlags {
+    private final val StaticShift = 0
+    private final val StaticBit = 1 << StaticShift
+
+    private final val MutableShift = 1
+    private final val MutableBit = 1 << MutableShift
+
+    final val empty: MemberFlags =
+      new MemberFlags(0)
+
+    private[ir] def fromBits(bits: Int): MemberFlags =
+      new MemberFlags(bits)
+
+    private[ir] def toBits(flags: MemberFlags): Int =
+      flags.bits
   }
 
   /** Loading specification for a native JS class or object. */

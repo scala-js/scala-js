@@ -324,7 +324,7 @@ class AnalyzerTest {
 
   @Test
   def conflictingDefaultMethods(): AsyncResult = {
-    val defaultMethodDef = MethodDef(static = false, Ident("foo__V"), Nil,
+    val defaultMethodDef = MethodDef(MemberFlags.empty, Ident("foo__V"), Nil,
         NoType, Some(Skip()))(emptyOptHints, None)
     val classDefs = Seq(
         classDef("LI1", kind = ClassKind.Interface,
@@ -403,7 +403,7 @@ class AnalyzerTest {
     val classDefs = Seq(
         classDef("LA", superClass = Some(ObjectClass), memberDefs = List(
             trivialCtor("LA"),
-            MethodDef(static = false, Ident("test__V"), Nil, NoType, Some(Block(
+            MethodDef(MemberFlags.empty, Ident("test__V"), Nil, NoType, Some(Block(
                 Apply(systemMod, Ident("getProperty__T__T"), List(emptyStr))(StringType),
                 Apply(systemMod, Ident("getProperty__T__T__T"), List(emptyStr))(StringType),
                 Apply(systemMod, Ident("setProperty__T__T__T"), List(emptyStr))(StringType),

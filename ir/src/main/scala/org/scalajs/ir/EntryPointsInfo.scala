@@ -25,7 +25,7 @@ object EntryPointsInfo {
       classDef.topLevelExportDefs.nonEmpty ||
       classDef.memberDefs.exists {
         case m: MethodDef =>
-          m.static && m.encodedName == Definitions.StaticInitializerName
+          m.flags.isStatic && m.encodedName == Definitions.StaticInitializerName
         case _ =>
           false
       }

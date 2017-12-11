@@ -220,7 +220,7 @@ object Traversers {
 
     def traverseMemberDef(memberDef: MemberDef): Unit = {
       memberDef match {
-        case FieldDef(_, _, _, _) =>
+        case FieldDef(_, _, _) =>
 
         case MethodDef(_, _, _, _, body) =>
           body.foreach(traverse)

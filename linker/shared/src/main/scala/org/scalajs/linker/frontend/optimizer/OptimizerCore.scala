@@ -1882,8 +1882,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     attemptedInlining += target
 
-    val MethodDef(static, _, formals, resultType, optBody) = getMethodBody(target)
-    assert(static == optReceiver.isEmpty,
+    val MethodDef(flags, _, formals, resultType, optBody) = getMethodBody(target)
+    assert(flags.isStatic == optReceiver.isEmpty,
         "There must be receiver if and only if the method is not static")
     val body = optBody.getOrElse {
       throw new AssertionError("A method to inline must be conrete")

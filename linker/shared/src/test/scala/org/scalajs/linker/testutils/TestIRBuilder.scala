@@ -40,7 +40,7 @@ object TestIRBuilder {
   }
 
   def trivialCtor(enclosingClassName: String): MethodDef = {
-    MethodDef(static = false, Ident("init___"), Nil, NoType,
+    MethodDef(MemberFlags.empty, Ident("init___"), Nil, NoType,
         Some(ApplyStatically(This()(ClassType(enclosingClassName)),
             ClassRef(ObjectClass), Ident("init___"), Nil)(NoType)))(
         emptyOptHints, None)
@@ -50,7 +50,7 @@ object TestIRBuilder {
     val stringArrayType = ArrayType(ArrayTypeRef("T", 1))
     val argsParamDef = ParamDef(Ident("args", Some("args")), stringArrayType,
         mutable = false, rest = false)
-    MethodDef(static = false, Ident("main__AT__V"), List(argsParamDef),
+    MethodDef(MemberFlags.empty, Ident("main__AT__V"), List(argsParamDef),
         NoType, Some(body))(emptyOptHints, None)
   }
 }

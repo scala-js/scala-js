@@ -36,7 +36,7 @@ object JavaLangObject {
       List(
         /* def this() = () */
         MethodDef(
-          static = false,
+          MemberFlags.empty,
           Ident("init___", Some("<init>")),
           Nil,
           NoType,
@@ -44,7 +44,7 @@ object JavaLangObject {
 
         /* def getClass(): java.lang.Class[_] = <getclass>(this) */
         MethodDef(
-          static = false,
+          MemberFlags.empty,
           Ident("getClass__jl_Class", Some("getClass__jl_Class")),
           Nil,
           ClassType(ClassClass),
@@ -54,7 +54,7 @@ object JavaLangObject {
 
         /* def hashCode(): Int = System.identityHashCode(this) */
         MethodDef(
-          static = false,
+          MemberFlags.empty,
           Ident("hashCode__I", Some("hashCode__I")),
           Nil,
           IntType,
@@ -67,7 +67,7 @@ object JavaLangObject {
 
         /* def equals(that: Object): Boolean = this eq that */
         MethodDef(
-          static = false,
+          MemberFlags.empty,
           Ident("equals__O__Z", Some("equals__O__Z")),
           List(ParamDef(Ident("that", Some("that")), AnyType,
             mutable = false, rest = false)),
@@ -83,7 +83,7 @@ object JavaLangObject {
          *   else throw new CloneNotSupportedException()
          */
         MethodDef(
-          static = false,
+          MemberFlags.empty,
           Ident("clone__O", Some("clone__O")),
           Nil,
           AnyType,
@@ -102,7 +102,7 @@ object JavaLangObject {
          *   getClass().getName() + "@" + Integer.toHexString(hashCode())
          */
         MethodDef(
-          static = false,
+          MemberFlags.empty,
           Ident("toString__T", Some("toString__T")),
           Nil,
           ClassType(BoxedStringClass),
@@ -129,7 +129,7 @@ object JavaLangObject {
 
         /* def notify(): Unit = () */
         MethodDef(
-          static = false,
+          MemberFlags.empty,
           Ident("notify__V", Some("notify__V")),
           Nil,
           NoType,
@@ -137,7 +137,7 @@ object JavaLangObject {
 
         /* def notifyAll(): Unit = () */
         MethodDef(
-          static = false,
+          MemberFlags.empty,
           Ident("notifyAll__V", Some("notifyAll__V")),
           Nil,
           NoType,
@@ -145,7 +145,7 @@ object JavaLangObject {
 
         /* def finalize(): Unit = () */
         MethodDef(
-          static = false,
+          MemberFlags.empty,
           Ident("finalize__V", Some("finalize__V")),
           Nil,
           NoType,
@@ -155,7 +155,7 @@ object JavaLangObject {
 
         /* JSExport for toString(). */
         MethodDef(
-          static = false,
+          MemberFlags.empty,
           StringLiteral("toString"),
           Nil,
           AnyType,

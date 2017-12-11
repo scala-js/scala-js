@@ -228,17 +228,17 @@ object Transformers {
       implicit val pos = memberDef.pos
 
       memberDef match {
-        case FieldDef(_, _, _, _) =>
+        case FieldDef(_, _, _) =>
           memberDef
 
         case memberDef: MethodDef =>
-          val MethodDef(static, name, args, resultType, body) = memberDef
-          MethodDef(static, name, args, resultType, body.map(transformStat))(
+          val MethodDef(flags, name, args, resultType, body) = memberDef
+          MethodDef(flags, name, args, resultType, body.map(transformStat))(
               memberDef.optimizerHints, None)
 
-        case PropertyDef(static, name, getterBody, setterArgAndBody) =>
+        case PropertyDef(flags, name, getterBody, setterArgAndBody) =>
           PropertyDef(
-              static,
+              flags,
               name,
               getterBody.map(transformStat),
               setterArgAndBody map { case (arg, body) =>

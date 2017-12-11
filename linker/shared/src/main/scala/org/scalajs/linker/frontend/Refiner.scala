@@ -226,7 +226,8 @@ private object Refiner {
     def getInfo(member: Versioned[MemberDef]): Infos.MethodInfo = {
       val memberDef = member.value
       val cache = caches.getOrElseUpdate(
-          (memberDef.static, memberDef.encodedName), new LinkedMemberInfoCache)
+          (memberDef.flags.isStatic, memberDef.encodedName),
+          new LinkedMemberInfoCache)
       cache.getInfo(member)
     }
 

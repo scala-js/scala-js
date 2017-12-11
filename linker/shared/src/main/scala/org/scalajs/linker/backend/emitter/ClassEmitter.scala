@@ -378,7 +378,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     require(tree.kind.isJSClass)
 
     tree.exportedMembers.map(_.value) collectFirst {
-      case MethodDef(false, StringLiteral("constructor"), params, _, body) =>
+      case MethodDef(flags, StringLiteral("constructor"), params, _, body)
+          if !flags.isStatic =>
         desugarToFunction(tree.encodedName, params, body.get, resultType = NoType)
     } getOrElse {
       throw new IllegalArgumentException(
@@ -390,7 +391,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   private def genFieldDefsOfScalaClass(fields: List[FieldDef])(
       implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     for {
-      field @ FieldDef(false, name, ftpe, mutable) <- fields
+      field @ FieldDef(flags, name, ftpe) <- fields
+      if !flags.isStatic
     } yield {
       implicit val pos = field.pos
       val jsIdent = (name: @unchecked) match {
@@ -404,11 +406,12 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def genCreateStaticFieldsOfScalaClass(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     for {
-      field @ FieldDef(true, Ident(name, origName), ftpe, mutable) <- tree.fields
+      field @ FieldDef(flags, Ident(name, origName), ftpe) <- tree.fields
+      if flags.isStatic
     } yield {
       implicit val pos = field.pos
       val fullName = tree.encodedName + "__" + name
-      envFieldDef("t", fullName, genZeroOf(ftpe), origName, mutable)
+      envFieldDef("t", fullName, genZeroOf(ftpe), origName, flags.isMutable)
     }
   }
 
@@ -417,7 +420,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     val className = tree.encodedName
     val statsWithGlobals = for {
-      field @ FieldDef(true, name, ftpe, mutable) <- tree.fields
+      field @ FieldDef(flags, name, ftpe) <- tree.fields
+      if flags.isStatic
     } yield {
       implicit val pos = field.pos
       val classVar = envField("c", className)
@@ -473,7 +477,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         methodFun0
       }
 
-      if (method.static) {
+      if (method.flags.isStatic) {
         method.name match {
           case Ident(methodName, origName) =>
             WithGlobals(envFieldDef("s", className + "__" + methodName,
@@ -545,7 +549,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     // class prototype
     val classVar = encodeClassVar(className)
     val targetObject =
-      if (property.static) classVar
+      if (property.flags.isStatic) classVar
       else classVar.prototype
 
     // property name
@@ -594,7 +598,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = property.pos
 
-    val static = property.static
+    val static = property.flags.isStatic
 
     genPropertyName(property.name).flatMap { propName =>
       val getterWithGlobals = property.getterBody.fold {
@@ -1033,8 +1037,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     val exportsWithGlobals = tree.exportedMembers map { member =>
       member.value match {
-        case MethodDef(false, StringLiteral("constructor"), _, _, _)
-            if tree.kind.isJSClass =>
+        case MethodDef(flags, StringLiteral("constructor"), _, _, _)
+            if !flags.isStatic && tree.kind.isJSClass =>
           WithGlobals(js.Skip()(member.value.pos))
         case m: MethodDef =>
           genMethod(tree.encodedName, m)
@@ -1077,8 +1081,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
-    val MethodDef(true, StringLiteral(exportName), args, resultType, Some(body)) =
+    val MethodDef(flags, StringLiteral(exportName), args, resultType, Some(body)) =
       tree.methodDef
+
+    assert(flags.isStatic, exportName)
 
     implicit val pos = tree.pos
 

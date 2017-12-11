@@ -663,17 +663,17 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case mdef: js.MethodDef =>
           mdef.name match {
             case _: js.Ident =>
-              assert(mdef.static,
+              assert(mdef.flags.isStatic,
                   "Non-static, unexported method in non-native JS class")
               staticMembers += mdef
 
             case js.StringLiteral("constructor") =>
-              assert(!mdef.static, "Exported static method")
+              assert(!mdef.flags.isStatic, "Exported static method")
               assert(constructor.isEmpty, "two ctors in class")
               constructor = Some(mdef)
 
             case _ =>
-              assert(!mdef.static, "Exported static method")
+              assert(!mdef.flags.isStatic, "Exported static method")
               classMembers += mdef
           }
 
@@ -953,6 +953,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           suspectFieldMutable(f) || unexpectedMutatedFields.contains(f)
         }
 
+        val flags = js.MemberFlags.empty.withStatic(static).withMutable(mutable)
+
         val name =
           if (isJSClass && isExposed(f)) genPropertyName(jsNameOf(f))
           else encodeFieldSym(f)
@@ -963,7 +965,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           else toIRType(f.tpe)
         }
 
-        js.FieldDef(static, name, irTpe, mutable)
+        js.FieldDef(flags, name, irTpe)
       }).toList
     }
 
@@ -998,7 +1000,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private def genStaticInitializerWithStats(stats: js.Tree)(
         implicit pos: Position): js.MethodDef = {
       js.MethodDef(
-          static = true,
+          js.MemberFlags.empty.withStatic(true),
           js.Ident(ir.Definitions.StaticInitializerName),
           Nil,
           jstpe.NoType,
@@ -1106,7 +1108,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             "Implementation restriction: constructors of " +
             "non-native JS classes cannot have default parameters " +
             "if their companion module is JS native.")
-        val ctorDef = js.MethodDef(static = false,
+        val ctorDef = js.MethodDef(js.MemberFlags.empty,
             js.StringLiteral("constructor"), Nil, jstpe.AnyType,
             Some(js.Skip()))(
             OptimizerHints.empty, None)
@@ -1170,7 +1172,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val newBody = js.Block(overloadSelection ::: prePrimaryCtorBody ::
           primaryCtorBody :: postPrimaryCtorBody :: Nil)
 
-      js.MethodDef(static = false, dispatchName, dispatchArgs,
+      js.MethodDef(js.MemberFlags.empty, dispatchName, dispatchArgs,
           jstpe.NoType, Some(newBody))(
           dispatch.optimizerHints, None)
     }
@@ -1572,7 +1574,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           } else {
             None
           }
-          Some(js.MethodDef(static = false, methodName,
+          Some(js.MethodDef(js.MemberFlags.empty, methodName,
               jsParams, toIRType(sym.tpe.resultType), body)(
               OptimizerHints.empty, None))
         } else if (isJSNativeCtorDefaultParam(sym)) {
@@ -1616,10 +1618,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 val body1 =
                   if (!sym.isPrimaryConstructor) body0
                   else moveAllStatementsAfterSuperConstructorCall(body0)
-                js.MethodDef(static = false, methodName,
+                js.MethodDef(js.MemberFlags.empty, methodName,
                     jsParams, jstpe.NoType, Some(body1))(optimizerHints, None)
               } else if (sym.isClassConstructor) {
-                js.MethodDef(static = false, methodName,
+                js.MethodDef(js.MemberFlags.empty, methodName,
                     jsParams, jstpe.NoType,
                     Some(genStat(rhs)))(optimizerHints, None)
               } else {
@@ -1847,6 +1849,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       if (!isNonNativeJSClass(currentClassSym) ||
           isJSFunctionDef(currentClassSym)) {
+        val flags = js.MemberFlags.empty.withStatic(static)
         val body = {
           if (isImplClass(currentClassSym)) {
             val thisParam = jsParams.head
@@ -1859,7 +1862,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             genBody()
           }
         }
-        js.MethodDef(static, methodName, jsParams, resultIRType, Some(body))(
+        js.MethodDef(flags, methodName, jsParams, resultIRType, Some(body))(
             optimizerHints, None)
       } else {
         assert(!static, tree.pos)
@@ -1871,8 +1874,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val thisParamDef = js.ParamDef(thisLocalIdent,
               jstpe.AnyType, mutable = false, rest = false)
 
-          js.MethodDef(static = true, methodName, thisParamDef :: jsParams,
-              resultIRType, Some(genBody()))(
+          js.MethodDef(js.MemberFlags.empty.withStatic(true), methodName,
+              thisParamDef :: jsParams, resultIRType, Some(genBody()))(
               optimizerHints, None)
         }
       }
@@ -5367,14 +5370,17 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       // val f$1: Any
       val fFieldIdent = js.Ident("f$1", Some("f"))
-      val fFieldDef = js.FieldDef(static = false, fFieldIdent, jstpe.AnyType,
-          mutable = false)
+      val fFieldDef = js.FieldDef(js.MemberFlags.empty, fFieldIdent,
+          jstpe.AnyType)
 
       // def this(f: Any) = { this.f$1 = f; super() }
       val ctorDef = {
         val fParamDef = js.ParamDef(js.Ident("f"), jstpe.AnyType,
             mutable = false, rest = false)
-        js.MethodDef(static = false, js.Ident("init___O"), List(fParamDef),
+        js.MethodDef(
+            js.MemberFlags.empty,
+            js.Ident("init___O"),
+            List(fParamDef),
             jstpe.NoType,
             Some(js.Block(List(
                 js.Assign(
@@ -5438,7 +5444,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           sam.tpe.finalResultType
         })
 
-        js.MethodDef(static = false, encodeMethodSym(sam),
+        js.MethodDef(js.MemberFlags.empty, encodeMethodSym(sam),
             jsParams, resultType, Some(body))(
             js.OptimizerHints.empty, None)
       }

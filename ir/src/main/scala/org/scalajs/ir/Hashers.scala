@@ -26,10 +26,10 @@ object Hashers {
     if (methodDef.hash.isDefined) methodDef
     else {
       val hasher = new TreeHasher()
-      val MethodDef(static, name, args, resultType, body) = methodDef
+      val MethodDef(flags, name, args, resultType, body) = methodDef
 
       hasher.mixPos(methodDef.pos)
-      hasher.mixBoolean(static)
+      hasher.mixInt(MemberFlags.toBits(flags))
       hasher.mixPropertyName(name)
       hasher.mixParamDefs(args)
       hasher.mixType(resultType)
@@ -38,7 +38,7 @@ object Hashers {
 
       val hash = hasher.finalizeHash()
 
-      MethodDef(static, name, args, resultType, body)(
+      MethodDef(flags, name, args, resultType, body)(
           methodDef.optimizerHints, Some(hash))(methodDef.pos)
     }
   }
