@@ -61,7 +61,7 @@ import nsc._
  *  @author Nicolas Stucki
  */
 abstract class PreTyperComponent extends plugins.PluginComponent
-    with transform.Transform with PluginComponent210Compat {
+    with transform.Transform with PluginComponentCompat {
 
   import global._
 

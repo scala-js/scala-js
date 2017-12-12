@@ -33,7 +33,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                             with JSEncoding
                             with GenJSExports
                             with GenJSFiles
-                            with PluginComponent210Compat {
+                            with PluginComponentCompat {
 
   val jsAddons: JSGlobalAddons {
     val global: GenJSCode.this.global.type

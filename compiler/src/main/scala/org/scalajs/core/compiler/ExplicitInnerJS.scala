@@ -48,7 +48,7 @@ import scala.collection.mutable
  */
 abstract class ExplicitInnerJS
     extends plugins.PluginComponent with InfoTransform with TypingTransformers
-    with PluginComponent210Compat {
+    with PluginComponentCompat {
 
   val jsAddons: JSGlobalAddons {
     val global: ExplicitInnerJS.this.global.type

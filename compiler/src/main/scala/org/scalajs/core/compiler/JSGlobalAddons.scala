@@ -16,7 +16,7 @@ import org.scalajs.core.ir.Trees.JSNativeLoadSpec
  *  @author Sébastien Doeraene
  */
 trait JSGlobalAddons extends JSDefinitions
-                        with Compat210Component {
+                        with CompatComponent {
   val global: Global
 
   import global._

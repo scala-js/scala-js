@@ -10,13 +10,15 @@ import scala.collection.mutable
 import scala.reflect.internal.Flags.{LOCAL, PRIVATE}
 import scala.tools.nsc._
 
-/** Hacks to have our source code compatible with 2.10 and 2.11.
- *  It exposes 2.11 API in a 2.10 compiler.
+/** Hacks to have our source code compatible with the compiler internals of all
+ *  the versions of Scala that we support.
+ *
+ *  In general, it tries to provide the newer APIs on top of older APIs.
  *
  *  @author Sébastien Doeraene
  */
-trait Compat210Component {
-  import Compat210Component.{infiniteLoop, noImplClasses}
+trait CompatComponent {
+  import CompatComponent.{infiniteLoop, noImplClasses}
 
   val global: Global
 
@@ -52,7 +54,7 @@ trait Compat210Component {
   }
 
   implicit final class GlobalCompat(
-      self: Compat210Component.this.global.type) {
+      self: CompatComponent.this.global.type) {
 
     def enteringPhase[T](ph: Phase)(op: => T): T = self.beforePhase(ph)(op)
     def beforePhase[T](ph: Phase)(op: => T): T = infiniteLoop()
@@ -224,7 +226,7 @@ trait Compat210Component {
     global.definitions.isFunctionSymbol(sym)
 
   private implicit final class DefinitionsCompat(
-      self: Compat210Component.this.global.definitions.type) {
+      self: CompatComponent.this.global.definitions.type) {
 
     def repeatedToSingle(t: Type): Type = t match {
       case TypeRef(_, self.RepeatedParamClass, arg :: Nil) => arg
@@ -240,20 +242,20 @@ trait Compat210Component {
   // that were previously in definitions itself
 
   implicit final class RunCompat(self: Run) {
-    val runDefinitions: Compat210Component.this.global.definitions.type =
+    val runDefinitions: CompatComponent.this.global.definitions.type =
       global.definitions
   }
 
   // Mode.FUNmode replaces analyzer.FUNmode
 
   object Mode {
-    import Compat210Component.AnalyzerCompat
+    import CompatComponent.AnalyzerCompat
     // No type ascription! Type is different in 2.10 / 2.11
     val FUNmode = analyzer.FUNmode
   }
 }
 
-object Compat210Component {
+object CompatComponent {
   private object LowPriorityMode {
     object Mode {
       def FUNmode: Nothing = infiniteLoop()
@@ -262,7 +264,7 @@ object Compat210Component {
 
   private implicit final class AnalyzerCompat(self: scala.tools.nsc.typechecker.Analyzer) {
     def FUNmode = { // scalastyle:ignore
-      import Compat210Component.LowPriorityMode._
+      import CompatComponent.LowPriorityMode._
       {
         import scala.reflect.internal._
         Mode.FUNmode
@@ -277,7 +279,7 @@ object Compat210Component {
     throw new AssertionError("No impl classes in this version")
 }
 
-trait PluginComponent210Compat extends Compat210Component {
+trait PluginComponentCompat extends CompatComponent {
   // Starting 2.11.x, we need to override the default description.
   def description: String
 }

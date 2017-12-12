@@ -28,7 +28,7 @@ import org.scalajs.core.ir.Trees.{isValidIdentifier, JSNativeLoadSpec}
 abstract class PrepJSInterop extends plugins.PluginComponent
                                 with PrepJSExports
                                 with transform.Transform
-                                with PluginComponent210Compat {
+                                with PluginComponentCompat {
   import PrepJSInterop._
 
   val jsAddons: JSGlobalAddons {
