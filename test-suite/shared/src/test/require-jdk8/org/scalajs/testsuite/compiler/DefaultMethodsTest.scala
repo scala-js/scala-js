@@ -19,7 +19,7 @@ class DefaultMethodsTest {
 
   @Test def canOverrideDefaultMethod(): Unit = {
     assumeFalse("Affected by https://github.com/scala/bug/issues/10609",
-        executingInJVM && (scalaVersion == "2.10.7" || scalaVersion == "2.11.12"))
+        executingInJVM && scalaVersion == "2.11.12")
 
     var counter = 0
 

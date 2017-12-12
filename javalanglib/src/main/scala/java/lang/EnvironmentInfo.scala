@@ -48,12 +48,9 @@ private[lang] object EnvironmentInfo {
   val envInfo: js.UndefOr[EnvironmentInfo] = {
     import js.Dynamic.{global => g}
 
-    // We've got to use selectDynamic explicitly not to crash Scala 2.10
-    if (js.typeOf(g.selectDynamic("__ScalaJSEnv")) == "object" &&
-        g.selectDynamic("__ScalaJSEnv") != null) {
-      g.selectDynamic("__ScalaJSEnv").asInstanceOf[EnvironmentInfo]
-    } else {
+    if (js.typeOf(g.__ScalaJSEnv) == "object" && g.__ScalaJSEnv != null)
+      g.__ScalaJSEnv.asInstanceOf[EnvironmentInfo]
+    else
       js.undefined
-    }
   }
 }

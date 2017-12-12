@@ -33,7 +33,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                             with JSEncoding
                             with GenJSExports
                             with GenJSFiles
-                            with PluginComponentCompat {
+                            with CompatComponent {
 
   val jsAddons: JSGlobalAddons {
     val global: GenJSCode.this.global.type
@@ -3138,7 +3138,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen JS code for a translated match
      *
      *  This implementation relies heavily on the patterns of trees emitted
-     *  by the current pattern match phase (as of Scala 2.10).
+     *  by the pattern match phase, including its variants across versions of
+     *  scalac that we support.
      *
      *  The trees output by the pattern matcher are assumed to follow these
      *  rules:
@@ -3552,12 +3553,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** See comment in `genEqEqPrimitive()` about `mustUseAnyComparator`. */
     private lazy val shouldPreserveEqEqBugWithJLFloatDouble = {
       val v = scala.util.Properties.versionNumberString
-
-      {
-        v.startsWith("2.10.") ||
-        v.startsWith("2.11.") ||
-        v == "2.12.1"
-      }
+      v.startsWith("2.11.") || v == "2.12.1"
     }
 
     /** Gen JS code for a call to Any.== */
@@ -3599,12 +3595,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       if (mustUseAnyComparator) {
         val equalsMethod: Symbol = {
           // scalastyle:off line.size.limit
-          val ptfm = platform.asInstanceOf[backend.JavaPlatform with ThisPlatform] // 2.10 compat
           if (ltpe <:< BoxedNumberClass.tpe) {
-            if (rtpe <:< BoxedNumberClass.tpe) ptfm.externalEqualsNumNum
-            else if (rtpe <:< BoxedCharacterClass.tpe) ptfm.externalEqualsNumObject // will be externalEqualsNumChar in 2.12, SI-9030
-            else ptfm.externalEqualsNumObject
-          } else ptfm.externalEquals
+            if (rtpe <:< BoxedNumberClass.tpe) platform.externalEqualsNumNum
+            else if (rtpe <:< BoxedCharacterClass.tpe) platform.externalEqualsNumObject // will be externalEqualsNumChar in 2.12, SI-9030
+            else platform.externalEqualsNumObject
+          } else platform.externalEquals
           // scalastyle:on line.size.limit
         }
         val moduleClass = equalsMethod.owner
@@ -4225,13 +4220,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = tree.symbol
       val Apply(fun @ Select(receiver0, _), args0) = tree
 
-      /* In 2.10, scalac does not give a position to updateDynamic calls, and
-       * this causes significantly bad error messages for global scope
-       * selection. Therefore, we are a bit more careful here.
-       */
-      implicit val pos =
-        if (tree.pos.isDefined) tree.pos
-        else fun.pos
+      implicit val pos = tree.pos
 
       val receiver = genExprOrGlobalScope(receiver0)
       val args = genPrimitiveJSArgs(sym, args0)
@@ -5600,12 +5589,10 @@ abstract class GenJSCode extends plugins.PluginComponent
    *
    *  Mixed-in fields are always mutable, since they will be assigned to in
    *  a trait initializer (rather than a constructor).
-   *  Further, in 2.10.x fields used to implement lazy vals are not marked
-   *  mutable (but assigned to in the accessor).
    */
   private def suspectFieldMutable(sym: Symbol) = {
     import scala.reflect.internal.Flags
-    sym.hasFlag(Flags.MIXEDIN) || sym.isMutable || sym.isLazy
+    sym.hasFlag(Flags.MIXEDIN) || sym.isMutable
   }
 
   private def isStringType(tpe: Type): Boolean =

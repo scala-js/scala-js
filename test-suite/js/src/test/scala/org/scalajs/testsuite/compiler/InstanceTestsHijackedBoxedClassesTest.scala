@@ -84,13 +84,13 @@ class InstanceTestsHijackedBoxedClassesTest {
     swallow((684321L: Any).asInstanceOf[Long])
     swallow((3.14f: Any).asInstanceOf[Float])
     swallow((3.14: Any).asInstanceOf[Double])
-    if (!scalaVersion.startsWith("2.10.") && !scalaVersion.startsWith("2.11."))
+    if (!scalaVersion.startsWith("2.11."))
       (12345: Any).asInstanceOf[Unit]
   }
 
   @Test def should_support_asInstanceOf_negative(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
-    if (scalaVersion.startsWith("2.10.") || scalaVersion.startsWith("2.11."))
+    if (scalaVersion.startsWith("2.11."))
       assertThrows(classOf[Exception], (12345: Any).asInstanceOf[Unit])
     assertThrows(classOf[Exception], (12345: Any).asInstanceOf[Boolean])
     assertThrows(classOf[Exception], (12345: Any).asInstanceOf[Char])

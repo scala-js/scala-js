@@ -111,7 +111,7 @@ import scala.collection.mutable
  */
 abstract class ExplicitLocalJS
     extends plugins.PluginComponent with Transform with TypingTransformers
-    with PluginComponentCompat {
+    with CompatComponent {
 
   val jsAddons: JSGlobalAddons {
     val global: ExplicitLocalJS.this.global.type

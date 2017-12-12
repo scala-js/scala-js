@@ -266,9 +266,8 @@ class LongTest {
     assertEquals(1910653900, 9863155567412L.##)
     assertEquals(1735398658, 3632147899696541255L.##)
 
-    // These two (correctly) give different results on 2.10 and 2.11
-    //assertEquals(-825638905, 613354684553L.##)  // xx06 on 2.10
-    //assertEquals(-1689438124, 7632147899696541255L.##) // xx25 on 2.10
+    assertEquals(-825638905, 613354684553L.##)
+    assertEquals(-1689438124, 7632147899696541255L.##)
   }
 
   @Test def `should_have_correct_hash_in_case_classes`(): Unit = {

@@ -28,7 +28,7 @@ import org.scalajs.core.ir.Trees.{isValidIdentifier, JSNativeLoadSpec}
 abstract class PrepJSInterop extends plugins.PluginComponent
                                 with PrepJSExports
                                 with transform.Transform
-                                with PluginComponentCompat {
+                                with CompatComponent {
   import PrepJSInterop._
 
   val jsAddons: JSGlobalAddons {
@@ -70,18 +70,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     val Value    = newTermName("Value")
     val Val      = newTermName("Val")
 
-    val ArrowAssoc = {
-      if (scala.util.Properties.versionNumberString.startsWith("2.10."))
-        newTermName("any2ArrowAssoc")
-      else
-        newTermName("ArrowAssoc")
-    }
-
-    val MINGT = encode("->") // not defined in nme in 2.10
-  }
-
-  private object jstpnme {
-    val scala_ = newTypeName("scala") // not defined in 2.10's tpnme
+    val ArrowAssoc = newTermName("ArrowAssoc")
   }
 
   private final val SuppressMissingJSGlobalDeprecationsMsg = {
@@ -392,10 +381,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               propNameTree match {
                 case Literal(Constant(propName: String)) =>
                   if (!knownPropNames.add(propName)) {
-                    val pos =
-                      if (propNameTree.pos.isDefined) propNameTree.pos
-                      else tree.pos // this happens in 2.10
-                    reporter.warning(pos,
+                    reporter.warning(propNameTree.pos,
                         s"""Duplicate property "$propName" shadows a """ +
                         "previously defined one")
                   }
@@ -407,7 +393,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               case Apply(fun, List(propNameTree, _))
                   if fun.symbol == Tuple2_apply =>
                 processPropName(propNameTree)
-              case Apply(fun @ TypeApply(Select(receiver, jsnme.MINGT), _), _)
+              case Apply(fun @ TypeApply(Select(receiver, nme.MINGT), _), _)
                   if currentRun.runDefinitions.isArrowAssoc(fun.symbol) =>
                 receiver match {
                   case Apply(TypeApply(Select(predef, jsnme.ArrowAssoc), _),
@@ -624,9 +610,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           reporter.error(implDef.pos, "non-native JS classes, traits and " +
               "objects may not have inner native JS classes, traits or objects")
         } else if (!sym.isTrait) {
-          /* Compute the loading spec now, before `flatten` destroys the name
-           * and (in 2.10) the original owner chain. We store it in a global
-           * map.
+          /* Compute the loading spec now, before `flatten` destroys the name.
+           * We store it in a global map.
            */
           val optLoadSpec = checkAndComputeJSNativeLoadSpecOf(implDef.pos, sym)
           for (loadSpec <- optLoadSpec)

@@ -507,39 +507,6 @@ class OptimizerTest {
 
 object OptimizerTest {
 
-  import scala.collection.mutable.BitSet
-
-  implicit class BitSet210Compat(val self: BitSet) extends AnyVal {
-    private def assert210(): Unit =
-      assert(scalaVersion.startsWith("2.10."))
-
-    def |=(that: BitSet): BitSet = {
-      assert210()
-      self ++= that
-    }
-
-    def &=(that: BitSet): BitSet = {
-      assert210()
-      for (elem <- self) {
-        if (!that.contains(elem))
-          self -= elem
-      }
-      self
-    }
-
-    def ^=(that: BitSet): BitSet = {
-      assert210()
-      val result = self ^ that
-      self.clear()
-      self ++= result
-    }
-
-    def &~=(that: BitSet): BitSet = {
-      assert210()
-      self --= that
-    }
-  }
-
   @inline
   class InlineClassDependentFields(val x: Int) {
     val b = x > 3

@@ -89,11 +89,9 @@ class SpecialTest {
   @Test def globalThis_can_be_used_to_detect_the_global_object(): Unit = {
     val globalObject = {
       import js.Dynamic.{global => g}
-      // We've got to use selectDynamic explicitly not to crash Scala 2.10
-      if (js.typeOf(g.selectDynamic("global")) != "undefined" &&
-          (g.selectDynamic("global").selectDynamic("Object") eq g.selectDynamic("Object"))) {
+      if (js.typeOf(g.global) != "undefined" && (g.global.Object eq g.Object)) {
         // Node.js environment detected
-        g.selectDynamic("global")
+        g.global
       } else {
         // In all other well-known environment, we can use the global `this`
         js.special.globalThis.asInstanceOf[js.Dynamic]

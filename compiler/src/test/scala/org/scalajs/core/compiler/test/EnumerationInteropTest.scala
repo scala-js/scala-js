@@ -116,7 +116,19 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       protected class Val1 extends Val
       protected class Val2 extends Val(1)
     }
-    """ warns() // no message checking: position differs in 2.10 and 2.11
+    """ hasWarns
+    """
+      |newSource1.scala:3: warning: Calls to the non-string constructors of Enumeration.Val
+      |require reflection at runtime. The resulting
+      |program is unlikely to function properly.
+      |      protected class Val1 extends Val
+      |                                   ^
+      |newSource1.scala:4: warning: Calls to the non-string constructors of Enumeration.Val
+      |require reflection at runtime. The resulting
+      |program is unlikely to function properly.
+      |      protected class Val2 extends Val(1)
+      |                                   ^
+    """
 
   }
 
@@ -128,7 +140,19 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       protected class Val1 extends Val(null)
       protected class Val2 extends Val(1,null)
     }
-    """ warns() // no message checking: position differs in 2.10 and 2.11
+    """ hasWarns
+    """
+      |newSource1.scala:3: warning: Passing null as name to a constructor of Enumeration.Val
+      |requires reflection at runtime. The resulting
+      |program is unlikely to function properly.
+      |      protected class Val1 extends Val(null)
+      |                                   ^
+      |newSource1.scala:4: warning: Passing null as name to a constructor of Enumeration.Val
+      |requires reflection at runtime. The resulting
+      |program is unlikely to function properly.
+      |      protected class Val2 extends Val(1,null)
+      |                                   ^
+    """
 
   }
 

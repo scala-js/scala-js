@@ -485,8 +485,7 @@ class RegressionTest {
     def getNull(): Any = null
     val x = getNull().asInstanceOf[Unit]: Any
 
-    val scalaVersion = Platform.scalaVersion
-    if (scalaVersion.startsWith("2.10.") || scalaVersion.startsWith("2.11.")) {
+    if (Platform.scalaVersion.startsWith("2.11.")) {
       assertNull(x.asInstanceOf[AnyRef])
     } else {
       // As of Scala 2.12.0-M5, null.asInstanceOf[Unit] (correctly) returns ()
@@ -529,12 +528,7 @@ class RegressionTest {
 
   private val hasEqEqJLFloatDoubleBug: Boolean = {
     val v = Platform.scalaVersion
-
-    {
-      v.startsWith("2.10.") ||
-      v.startsWith("2.11.") ||
-      v == "2.12.1"
-    }
+    v.startsWith("2.11.") || v == "2.12.1"
   }
 
   def assertTrueUnlessEqEqJLFloatDoubleBug(actual: Boolean): Unit = {

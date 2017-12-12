@@ -276,7 +276,7 @@ object JSOptionalTest {
 
   trait OverrideOptionalWithOptionalImplicitType extends TraitWithOptional {
     /* Unlike cases where the rhs is an Int, String, etc., this compiles even
-     * in 2.10 and 2.11, because the inferred type is `js.UndefOr[Nothing]`
+     * in 2.11, because the inferred type is `js.UndefOr[Nothing]`
      * (the type of `js.undefined`) which is truly a subtype of the inherited
      * member's type `js.UndefOr[Int/String]`. Note that in this case, it
      * would be impossible to re-override these fields with a

@@ -7,13 +7,11 @@
 \*                                                                      */
 package org.scalajs.testsuite
 
-import Compat210._
+import scala.reflect.macros.TypecheckException
+import scala.reflect.macros.blackbox.Context
 
 object TypecheckingMacros {
-  import scala.reflect.macros._
-  import blackbox.Context
-
-  private class Macros[C <: Context](val c: C) extends Compat210Component {
+  private class Macros[C <: Context](val c: C) {
     import c.universe._
 
     def typeError(code: String, expectedMsg: Option[String]): c.Expr[Unit] = {

@@ -102,7 +102,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
   }
 
   object ScalaJSJUnitPluginComponent
-      extends plugins.PluginComponent with transform.Transform with Compat210Component {
+      extends plugins.PluginComponent with transform.Transform {
 
     val global: Global = ScalaJSJUnitPlugin.this.global
     import global._

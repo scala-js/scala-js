@@ -42,8 +42,6 @@ class RangesTest {
   }
 
   @Test def NumericRange_overflow_issue_2407(): Unit = {
-    assumeFalse("Assumed not on JVM for 2.10.X",
-        executingInJVM && scalaVersion.startsWith("2.10."))
     assumeFalse("Assumed not on JVM for 2.11.{0-7}",
         executingInJVM && (0 to 7).map("2.11." + _).contains(scalaVersion))
     val nr = NumericRange(Int.MinValue, Int.MaxValue, 1 << 23)
@@ -51,8 +49,6 @@ class RangesTest {
   }
 
   @Test def Range_foreach_issue_2409(): Unit = {
-    assumeFalse("Assumed not on JVM for 2.10.X",
-        executingInJVM && scalaVersion.startsWith("2.10."))
     assumeFalse("Assumed not on JVM for 2.11.{0-7}",
         executingInJVM && (0 to 7).map("2.11." + _).contains(scalaVersion))
     val r = Int.MinValue to Int.MaxValue by (1 << 23)
@@ -64,7 +60,7 @@ class RangesTest {
   }
 
   @Test def Range_toString_issue_2412(): Unit = {
-    if (scalaVersion.startsWith("2.10.") || scalaVersion.startsWith("2.11.")) {
+    if (scalaVersion.startsWith("2.11.")) {
       assertEquals("Range(1, 3, 5, 7, 9)", (1 to 10 by 2).toString)
       assertEquals("Range()", (1 until 1 by 2).toString)
       assertTrue((0.0 to 1.0).toString.startsWith("scala.collection.immutable.Range$Partial"))
@@ -78,7 +74,7 @@ class RangesTest {
   }
 
   @Test def NumericRange_toString_issue_2412(): Unit = {
-    if (scalaVersion.startsWith("2.10.") || scalaVersion.startsWith("2.11.")) {
+    if (scalaVersion.startsWith("2.11.")) {
       assertEquals("NumericRange(0.1, 0.2, 0.30000000000000004, 0.4, 0.5, 0.6, 0.7, " +
           "0.7999999999999999, 0.8999999999999999, 0.9999999999999999)",
           (0.1 to 1.0 by 0.1).toString())
@@ -106,8 +102,6 @@ class RangesTest {
 
   @Test def NumericRange_with_arbitrary_integral(): Unit = {
     // This is broken in Scala JVM up to (including) 2.11.8, 2.12.1 (SI-10086).
-    assumeFalse("Assumed not on JVM for 2.10.X",
-        executingInJVM && scalaVersion.startsWith("2.10."))
     assumeFalse("Assumed not on JVM for 2.11.{0-8}",
         executingInJVM && (0 to 8).map("2.11." + _).contains(scalaVersion))
     assumeFalse("Assumed not on JVM for 2.12.{0-1}",

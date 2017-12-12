@@ -320,9 +320,10 @@ object JSSymbolTest {
   def iterateIterable[A](iterable: JSIterable[A])(f: A => Any): Unit = {
     val iterator = iterable.iterator()
     def loop(): Unit = {
+      import js.DynamicImplicits.truthValue
+
       val entry = iterator.next()
-      // 2.10 didn't like the use of DynamicImplicits on the following line
-      if (!entry.done.asInstanceOf[Boolean]) {
+      if (!entry.done) {
         f(entry.value.asInstanceOf[A])
         loop()
       }

@@ -824,7 +824,6 @@ object Build {
   lazy val delambdafySetting = {
     scalacOptions ++= (
         if (isGeneratingEclipse) Seq()
-        else if (scalaBinaryVersion.value == "2.10") Seq()
         else Seq("-Ydelambdafy:method"))
   }
 
@@ -953,9 +952,9 @@ object Build {
         // Calculates all prefixes of the current Scala version
         // (including the empty prefix) to construct override
         // directories like the following:
-        // - override-2.10.2-RC1
-        // - override-2.10.2
-        // - override-2.10
+        // - override-2.11.0-RC1
+        // - override-2.11.0
+        // - override-2.11
         // - override-2
         // - override
         val ver = scalaVersion.value
@@ -1010,21 +1009,6 @@ object Build {
         sources.result()
       },
 
-      // Continuation plugin (when using 2.10.x)
-      autoCompilerPlugins := true,
-      libraryDependencies ++= {
-        val ver = scalaVersion.value
-        if (ver.startsWith("2.10."))
-          Seq(compilerPlugin("org.scala-lang.plugins" % "continuations" % ver))
-        else
-          Nil
-      },
-      scalacOptions ++= {
-        if (scalaVersion.value.startsWith("2.10."))
-          Seq("-P:continuations:enable")
-        else
-          Nil
-      },
       scalaJSExternalCompileSettings
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
@@ -1352,8 +1336,7 @@ object Build {
           testDir.getParentFile.getParentFile.getParentFile / "shared/src/test"
 
         val scalaV = scalaVersion.value
-        val isScalaAtLeast212 =
-          !scalaV.startsWith("2.10.") && !scalaV.startsWith("2.11.")
+        val isScalaAtLeast212 = !scalaV.startsWith("2.11.")
 
         List(sharedTestDir / "scala", sharedTestDir / "require-jdk7",
             sharedTestDir / "require-jdk8") ++
@@ -1362,7 +1345,6 @@ object Build {
 
       sources in Test ++= {
         val supportsSAM = scalaBinaryVersion.value match {
-          case "2.10" => false
           case "2.11" => scalacOptions.value.contains("-Xexperimental")
           case _      => true
         }
@@ -1519,21 +1501,6 @@ object Build {
             replaced.replace("@Test def workTest(): Unit = ???", unitTests))
         Seq(outFile)
       }.taskValue,
-
-      // Exclude tests based on version-dependent limitations
-      sources in Test := {
-        val sourceFiles = (sources in Test).value
-        val v = scalaVersion.value
-
-        val sourceFiles1 = {
-          if (v.startsWith("2.10."))
-            sourceFiles.filterNot(_.getName.endsWith("Require211.scala"))
-          else
-            sourceFiles
-        }
-
-        sourceFiles1
-      },
 
       // Module initializers. Duplicated in toolsJS/test
       scalaJSModuleInitializers += {
@@ -1737,9 +1704,6 @@ object Build {
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
 
       unmanagedSources in Test ++= {
-        assert(scalaBinaryVersion.value != "2.10",
-            "scalaTestSuite is not supported on Scala 2.10")
-
         def loadList(listName: String): Set[String] = {
           val listsDir = (resourceDirectory in Test).value / scalaVersion.value
           val buff = scala.io.Source.fromFile(listsDir / listName)

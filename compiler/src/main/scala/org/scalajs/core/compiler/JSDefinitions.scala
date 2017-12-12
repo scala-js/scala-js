@@ -26,7 +26,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val HackedStringClass = getClassIfDefined("java.lang._String")
     lazy val HackedStringModClass = getModuleIfDefined("java.lang._String").moduleClass
 
-    lazy val ScalaJSJSPackage = getPackage(newTermNameCached("scala.scalajs.js")) // compat 2.10/2.11
+    lazy val ScalaJSJSPackage = getPackage(newTermNameCached("scala.scalajs.js")) // compat 2.11
       lazy val JSPackage_typeOf        = getMemberMethod(ScalaJSJSPackage, newTermName("typeOf"))
       lazy val JSPackage_constructorOf = getMemberMethod(ScalaJSJSPackage, newTermName("constructorOf"))
       lazy val JSPackage_native        = getMemberMethod(ScalaJSJSPackage, newTermName("native"))

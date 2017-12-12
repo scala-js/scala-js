@@ -90,14 +90,6 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
       implicit ev: C => GenTraversableOnce[T]): JSRichGenTraversableOnce[T] =
     new JSRichGenTraversableOnce(coll)
 
-  /** Special case for scala.Array of [[genTravConvertible2JSRichGenTrav]].
-   *  Needed for the 2.10.x series.
-   */
-  @inline
-  implicit def array2JSRichGenTrav[T](
-      arr: scala.Array[T]): JSRichGenTraversableOnce[T] =
-    new JSRichGenTraversableOnce(arr)
-
   @inline
   implicit def JSRichFutureThenable[A](f: Future[js.Thenable[A]]): JSRichFuture[A] =
     new JSRichFuture[A](f)

@@ -30,11 +30,10 @@ object System {
   private[this] val getHighPrecisionTime: js.Function0[scala.Double] = {
     import js.DynamicImplicits.truthValue
 
-    // We've got to use selectDynamic explicitly not to crash Scala 2.10
-    if (js.typeOf(global.selectDynamic("performance")) != "undefined") {
-      if (global.performance.selectDynamic("now")) {
+    if (js.typeOf(global.performance) != "undefined") {
+      if (global.performance.now) {
         () => global.performance.now().asInstanceOf[scala.Double]
-      } else if (global.performance.selectDynamic("webkitNow")) {
+      } else if (global.performance.webkitNow) {
         () => global.performance.webkitNow().asInstanceOf[scala.Double]
       } else {
         () => new js.Date().getTime()
@@ -369,9 +368,8 @@ private[lang] final class JSConsoleBasedPrintStream(isErr: Boolean)
   private def doWriteLine(line: String): Unit = {
     import js.DynamicImplicits.truthValue
 
-    // We've got to use selectDynamic explicitly not to crash Scala 2.10
-    if (js.typeOf(global.selectDynamic("console")) != "undefined") {
-      if (isErr && global.console.selectDynamic("error"))
+    if (js.typeOf(global.console) != "undefined") {
+      if (isErr && global.console.error)
         global.console.error(line)
       else
         global.console.log(line)
