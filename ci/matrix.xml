@@ -141,33 +141,33 @@
         ++$scala toolsJS/bootstrapTest
   ]]></task>
 
-  <task id="tools-cli-stubs"><![CDATA[
+  <task id="tools-stubs"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
+    sbt ++$scala tools/package ir/test tools/test \
         stubs/package nodeJSEnv/test testAdapter/test \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         nodeJSEnv/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
-        stubs/mimaReportBinaryIssues cli/mimaReportBinaryIssues \
+        stubs/mimaReportBinaryIssues \
         irJS/mimaReportBinaryIssues toolsJS/mimaReportBinaryIssues &&
     sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
         testAdapter/compile:doc stubs/compile:doc
   ]]></task>
 
-  <task id="tools-cli-stubs-sbtplugin"><![CDATA[
+  <task id="tools-stubs-sbtplugin"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
+    sbt ++$scala tools/package ir/test tools/test \
         stubs/package nodeJSEnv/test testAdapter/test \
         sbtPlugin/package \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         nodeJSEnv/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
-        stubs/mimaReportBinaryIssues cli/mimaReportBinaryIssues \
+        stubs/mimaReportBinaryIssues \
         sbtPlugin/mimaReportBinaryIssues \
         irJS/mimaReportBinaryIssues toolsJS/mimaReportBinaryIssues &&
     sbt ++$scala library/scalastyle javalanglib/scalastyle javalib/scalastyle \
@@ -355,15 +355,15 @@
     </run>
 
     <!-- Tools / CLI / Stubs / sbtPlugin test tasks -->
-    <run task="tools-cli-stubs-sbtplugin">
+    <run task="tools-stubs-sbtplugin">
       <v n="scala">2.10.7</v>
       <v n="java">1.8</v>
     </run>
-    <run task="tools-cli-stubs">
+    <run task="tools-stubs">
       <v n="scala">2.11.12</v>
       <v n="java">1.8</v>
     </run>
-    <run task="tools-cli-stubs">
+    <run task="tools-stubs">
       <v n="scala">2.12.4</v>
       <v n="java">1.8</v>
     </run>

@@ -31,8 +31,6 @@ import Loggers._
 import org.scalajs.core.tools.io.{FileVirtualJSFile, MemVirtualJSFile}
 import org.scalajs.core.tools.linker._
 
-import sbtassembly.AssemblyPlugin.autoImport._
-
 /* Things that we want to expose in the sbt command line (and hence also in
  * `ci/matrix.xml`).
  */
@@ -476,7 +474,7 @@ object Build {
           clean in testAdapter, clean in plugin,
           clean in javalanglib, clean in javalib, clean in scalalib,
           clean in libraryAux, clean in library,
-          clean in stubs, clean in cli,
+          clean in stubs,
           clean in testInterface,
           clean in jUnitRuntime, clean in jUnitPlugin,
           clean in jUnitTestOutputsJS, clean in jUnitTestOutputsJVM,
@@ -1130,26 +1128,6 @@ object Build {
       libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       previousArtifactSetting
   )
-
-  // Scala.js command line interface
-  lazy val cli: Project = project.settings(
-      commonSettings,
-      publishSettings,
-      fatalWarningsSettings,
-      name := "Scala.js CLI",
-      libraryDependencies ++= Seq(
-          "com.github.scopt" %% "scopt" % "3.5.0"
-      ),
-
-      previousArtifactSetting,
-      mimaBinaryIssueFilters ++= BinaryIncompatibilities.CLI,
-
-      // assembly options
-      mainClass in assembly := None, // don't want an executable JAR
-      assemblyOption in assembly ~= { _.copy(includeScala = false) },
-      assemblyJarName in assembly :=
-        s"${normalizedName.value}-assembly_${scalaBinaryVersion.value}-${version.value}.jar"
-  ).dependsOn(tools)
 
   // Test framework
   lazy val testInterface = (project in file("test-interface")).enablePlugins(

@@ -17,7 +17,6 @@ val scalalib = Build.scalalib
 val libraryAux = Build.libraryAux
 val library = Build.library
 val stubs = Build.stubs
-val cli = Build.cli
 val testInterface = Build.testInterface
 val jUnitRuntime = Build.jUnitRuntime
 val jUnitTestOutputsJS = Build.jUnitTestOutputsJS
