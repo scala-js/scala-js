@@ -63,6 +63,16 @@ class RegressionJSTest {
     assertEquals("B", c.t3())
   }
 
+  @Test def emit_anon_JS_function_class_data_with_2_11_Xexperimental_issue_3222(): Unit = {
+    val initSourceMapper: Option[js.Function1[Int, Int]] = None
+    val sourceMapper: js.Function1[Int, Int] = {
+      initSourceMapper.getOrElse {
+        (s: Int) => s
+      }
+    }
+    assertEquals(4, sourceMapper(4))
+  }
+
 }
 
 object RegressionJSTest {
