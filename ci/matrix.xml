@@ -83,6 +83,34 @@
         ++$scala $testSuite/test
   ]]></task>
 
+  <task id="test-suite-ecma-script5-force-polyfills"><![CDATA[
+    setJavaVersion $java
+    npm install &&
+    sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
+        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
+        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
+        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
+        ++$scala $testSuite/test \
+        $testSuite/clean
+  ]]></task>
+
   <task id="test-suite-ecma-script6"><![CDATA[
     setJavaVersion $java
     npm install &&
@@ -276,6 +304,13 @@
     </run>
     <run task="test-suite-ecma-script5">
       <v n="scala">2.13.0-M2</v>
+      <v n="java">1.8</v>
+      <v n="testSuite">testSuite</v>
+    </run>
+
+    <!-- Test suite on ECMAScript5 with forced polyfills tasks -->
+    <run task="test-suite-ecma-script5-force-polyfills">
+      <v n="scala">2.12.4</v>
       <v n="java">1.8</v>
       <v n="testSuite">testSuite</v>
     </run>
