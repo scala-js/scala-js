@@ -1017,7 +1017,7 @@ object ScalaJSPluginInternal {
       // without loosing autocompletion.
       definedTestNames := {
         definedTests.map(_.map(_.name).distinct)
-          .storeAs(definedTestNames).triggeredBy(loadedJSEnv).value
+          .storeAs(definedTestNames).triggeredBy(loadedTestFrameworks).value
       }
   )
 
