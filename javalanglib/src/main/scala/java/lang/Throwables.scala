@@ -7,6 +7,7 @@ class Throwable(s: String, private var e: Throwable) extends Object with java.io
   def this(s: String) = this(s, null)
   def this(e: Throwable) = this(if (e == null) null else e.toString, e)
 
+  private[this] var stackTraceStateInternal: Any = _
   private[this] var stackTrace: Array[StackTraceElement] = _
 
   fillInStackTrace()
@@ -21,13 +22,25 @@ class Throwable(s: String, private var e: Throwable) extends Object with java.io
   def getLocalizedMessage(): String = getMessage()
 
   def fillInStackTrace(): Throwable = {
-    scala.scalajs.runtime.StackTrace.captureState(this)
+    StackTrace.captureState(this)
     this
   }
 
+  /* Not part of the JDK API, used internally in java.lang and accessible
+   * through reflection.
+   */
+  def getStackTraceStateInternal(): Any =
+    stackTraceStateInternal
+
+  /* Not part of the JDK API, used internally in java.lang and accessible
+   * through reflection.
+   */
+  def setStackTraceStateInternal(e: Any): Unit =
+    stackTraceStateInternal = e
+
   def getStackTrace(): Array[StackTraceElement] = {
     if (stackTrace eq null)
-      stackTrace = scala.scalajs.runtime.StackTrace.extract(this)
+      stackTrace = StackTrace.extract(this)
     stackTrace
   }
 

@@ -1,4 +1,4 @@
-package scala.scalajs.runtime
+package java.lang
 
 import scala.annotation.tailrec
 
@@ -7,7 +7,7 @@ import js.JSStringOps._
 
 /** Conversions of JavaScript stack traces to Java stack traces.
  */
-object StackTrace {
+private[lang] object StackTrace {
 
   /* !!! Note that in this unit, we go to great lengths *not* to use anything
    * from the Scala collections library.
@@ -15,8 +15,6 @@ object StackTrace {
    * This minimizes the risk of runtime errors during the process of decoding
    * errors, which would be very bad if it happened.
    */
-
-  import Implicits._
 
   private type SourceMapper =
     js.Function1[js.Array[JSStackTraceElem], js.Array[JSStackTraceElem]]
@@ -69,7 +67,7 @@ object StackTrace {
    *  by `extract()` to create an Array[StackTraceElement].
    */
   @inline def captureState(throwable: Throwable, e: Any): Unit =
-    throwable.asInstanceOf[js.Dynamic].stackdata = e.asInstanceOf[js.Any]
+    throwable.setStackTraceStateInternal(e)
 
   /** Tests whether we're running under Rhino (or Nashorn).
    *
@@ -93,15 +91,15 @@ object StackTrace {
    *  empty array is returned.
    */
   def extract(throwable: Throwable): Array[StackTraceElement] =
-    extract(throwable.asInstanceOf[js.Dynamic].stackdata)
+    extract(throwable.getStackTraceStateInternal())
 
   /** Extracts a stack trace from captured browser-specific stackdata.
    *  If no stack trace state has been recorded, or if the state cannot be
    *  analyzed in meaningful way (because we don't know the browser), an
    *  empty array is returned.
    */
-  def extract(stackdata: js.Dynamic): Array[StackTraceElement] = {
-    val lines = normalizeStackTraceLines(stackdata)
+  private def extract(stackdata: Any): Array[StackTraceElement] = {
+    val lines = normalizeStackTraceLines(stackdata.asInstanceOf[js.Dynamic])
     normalizedLinesToStackTrace(lines)
   }
 
@@ -527,22 +525,6 @@ object StackTrace {
           lineNumber = lineNumber,
           columnNumber = columnNumber
       ).asInstanceOf[JSStackTraceElem]
-    }
-  }
-
-  object Implicits {
-    /** Access to the additional methods `getColumnNumber` and `setColumnNumber`
-     *  of [[java.lang.StackTraceElement StackTraceElement]].
-     */
-    implicit class StackTraceElementOps(
-        val ste: StackTraceElement) extends AnyVal {
-      @inline
-      def getColumnNumber(): Int =
-        ste.asInstanceOf[js.Dynamic].getColumnNumber().asInstanceOf[Int]
-
-      @inline
-      def setColumnNumber(columnNumber: Int): Unit =
-        ste.asInstanceOf[js.Dynamic].setColumnNumber(columnNumber)
     }
   }
 

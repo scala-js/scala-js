@@ -94,7 +94,43 @@ const $fround = Math["fround"] ||
     array[0] = v;
     return array[0];
   }) : (function(v) {
-    return $m_sjsr_package$().froundPolyfill__D__D(+v);
+    /* Originally inspired by the Typed Array polyfills written by Joshua Bell:
+     * https://github.com/inexorabletash/polyfill/blob/a682f42c1092280bb01907c245979fb07219513d/typedarray.js#L150-L255
+     * Then simplified quite a lot because
+     * 1) we do not need to produce the actual bit string that serves as
+     *    storage of the floats, and
+     * 2) we are only interested in the float32 case.
+     */
+    if (v !== v || v === 0 || v === Infinity || v === -Infinity)
+      return v;
+    const isNegative = v < 0;
+    const av = isNegative ? -v : v;
+    let absResult;
+    if (av >= 1.1754943508222875e-38) { // subnormal threshold
+      const e0 = Math["floor"](Math["log"](av) / 0.6931471805599453); // LN2
+      if (e0 > 127) { // bias
+        absResult = Infinity;
+      } else {
+        const twoPowE0 = Math["pow"](2, e0);
+        const n1 = 8388608 * (av / twoPowE0); // 2 ** 23 (mantissa bits)
+        const w1 = Math["floor"](n1);
+        const d1 = n1 - w1;
+        const f0 = (d1 < 0.5) ? w1 : ((d1 > 0.5) ? (1 + w1) : (((w1 % 2) !== 0) ? (1 + w1) : w1));
+        if ((f0 / 8388608) < 2)
+          absResult = twoPowE0 * (1 + ((f0-8388608) / 8388608));
+        else if (e0 > 126)
+          absResult = Infinity;
+        else
+          absResult = (2 * twoPowE0) * 1.1920928955078125e-7; // (1 + ((1-8388608) / 8388608))
+      }
+    } else {
+      const rounder = 1.401298464324817e-45; // Float.MinPositiveValue
+      const n2 = av / rounder;
+      const w2 = Math["floor"](n2);
+      const d2 = n2 - w2;
+      absResult = rounder * ((d2 < 0.5) ? w2 : ((d2 > 0.5) ? (1 + w2) : (((w2 % 2) !== 0) ? (1 + w2) : w2)));
+    };
+    return isNegative ? -absResult : absResult;
   }));
 //!else
   (function(v) {

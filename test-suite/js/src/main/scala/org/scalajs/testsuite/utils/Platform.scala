@@ -28,7 +28,7 @@ object Platform {
   // (i.e. do no link on the JVM).
 
   def areTypedArraysSupported: Boolean =
-    runtime.Bits.areTypedArraysSupported
+    js.typeOf(js.Dynamic.global.Int32Array) != "undefined"
 
   def areJSSymbolsSupported: Boolean =
     js.typeOf(js.Dynamic.global.Symbol) != "undefined"

@@ -10,13 +10,20 @@
 
 package scala.scalajs.js
 
+import scala.language.reflectiveCalls
+
+import scala.scalajs.js
+
 final case class JavaScriptException(exception: scala.Any)
     extends RuntimeException {
 
   override def getMessage(): String = exception.toString()
 
   override def fillInStackTrace(): Throwable = {
-    scala.scalajs.runtime.StackTrace.captureState(this, exception)
+    type JSExceptionEx = JavaScriptException {
+      def setStackTraceStateInternal(e: scala.Any): Unit
+    }
+    this.asInstanceOf[JSExceptionEx].setStackTraceStateInternal(exception)
     this
   }
 }

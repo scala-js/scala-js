@@ -125,15 +125,14 @@ object Float {
   @inline def isFinite(f: scala.Float): scala.Boolean =
     !isNaN(f) && !isInfinite(f)
 
-  // Uses the hashCode of Doubles. See Bits.numberHashCode for the rationale.
   @inline def hashCode(value: scala.Float): Int =
-    scala.scalajs.runtime.Bits.numberHashCode(value)
+    FloatingPointBits.numberHashCode(value)
 
   @inline def intBitsToFloat(bits: scala.Int): scala.Float =
-    scala.scalajs.runtime.Bits.intBitsToFloat(bits)
+    FloatingPointBits.intBitsToFloat(bits)
 
   @inline def floatToIntBits(value: scala.Float): scala.Int =
-    scala.scalajs.runtime.Bits.floatToIntBits(value)
+    FloatingPointBits.floatToIntBits(value)
 
   @inline def sum(a: scala.Float, b: scala.Float): scala.Float =
     a + b

@@ -1,4 +1,4 @@
-package scala.scalajs.runtime
+package java.lang
 
 import scala.scalajs.js
 
@@ -10,7 +10,8 @@ import StackTrace.JSStackTraceElem
  *  directly (could be retrieved via [[EnvironmentInfo.envInfo]]).
  *
  *  This facade type serves as a documentation on what aspects of the Scala.js
- *  standard library can be influenced through environment options.
+ *  implementation of `java.lang` can be influenced through environment
+ *  options.
  *
  *  If there is a variable named `__ScalaJSEnv` in Scala.js' scope (and it
  *  references an object), it is used as the value of
@@ -19,7 +20,7 @@ import StackTrace.JSStackTraceElem
  *  @groupname envInfo Scala.js environment configuration
  *  @groupprio envInfo 1
  */
-sealed trait EnvironmentInfo extends js.Object {
+private[lang] sealed trait EnvironmentInfo extends js.Object {
 
   // Can't link to java.lang.Runtime.exit - #1969
   /** The function that is called by `java.lang.Runtime.exit`
@@ -42,7 +43,7 @@ sealed trait EnvironmentInfo extends js.Object {
   def javaSystemProperties: js.UndefOr[js.Dictionary[String]]
 }
 
-object EnvironmentInfo {
+private[lang] object EnvironmentInfo {
   /** The value of the `__ScalaJSEnv` variable, if it exists. */
   val envInfo: js.UndefOr[EnvironmentInfo] = {
     import js.Dynamic.{global => g}

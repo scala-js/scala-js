@@ -241,7 +241,7 @@ object System {
       sysProp.setProperty("line.separator", "\n")
 
       for {
-        envInfo <- scala.scalajs.runtime.EnvironmentInfo.envInfo
+        envInfo <- EnvironmentInfo.envInfo
         jsEnvProperties <- envInfo.javaSystemProperties
         (key, value) <- jsEnvProperties
       } {

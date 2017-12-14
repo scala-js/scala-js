@@ -65,7 +65,7 @@ private[nio] final class TypedArrayByteBuffer private (
 
   @inline
   def hasNativeOrder: Boolean =
-    isBigEndian == scala.scalajs.runtime.Bits.areTypedArraysBigEndian
+    isBigEndian == ByteOrder.areTypedArraysBigEndian
 
   @noinline def getChar(): Char =
     _dataView.getUint16(getPosAndAdvanceRead(2), !isBigEndian).toChar
@@ -221,7 +221,7 @@ private[nio] object TypedArrayByteBuffer {
 
   def wrap(typedArray: Int8Array): ByteBuffer = {
     val buf = new TypedArrayByteBuffer(typedArray, 0, typedArray.length, false)
-    buf._isBigEndian = scala.scalajs.runtime.Bits.areTypedArraysBigEndian
+    buf._isBigEndian = ByteOrder.areTypedArraysBigEndian
     buf
   }
 }

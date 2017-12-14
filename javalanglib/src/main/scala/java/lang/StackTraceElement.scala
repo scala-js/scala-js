@@ -14,10 +14,14 @@ final class StackTraceElement(declaringClass: String, methodName: String,
   def getMethodName(): String = methodName
   def isNativeMethod(): scala.Boolean = false
 
-  @JSExport
+  /* Not part of the JDK API, used internally in java.lang and accessible
+   * through reflection.
+   */
   def getColumnNumber(): Int = columnNumber
 
-  @JSExport
+  /* Not part of the JDK API, used internally in java.lang and accessible
+   * through reflection.
+   */
   def setColumnNumber(columnNumber: Int): Unit =
     this.columnNumber = columnNumber
 
