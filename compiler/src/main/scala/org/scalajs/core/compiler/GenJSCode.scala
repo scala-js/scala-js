@@ -952,8 +952,10 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     private def genRegisterReflectiveInstantiation(sym: Symbol)(
         implicit pos: Position): Option[js.Tree] = {
-      if (sym.isModuleClass)
+      if (isStaticModule(sym))
         genRegisterReflectiveInstantiationForModuleClass(sym)
+      else if (sym.isModuleClass)
+        None // #3228
       else
         genRegisterReflectiveInstantiationForNormalClass(sym)
     }
