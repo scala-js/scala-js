@@ -55,6 +55,11 @@ class ReflectTest {
   private final val NameTraitDisable =
     Prefix + "TraitDisable"
 
+  private final val NameInnerObject = {
+    Prefix + "ClassWithInnerObjectWithEnableReflectiveInstantiation$" +
+    "InnerObjectWithEnableReflectiveInstantiation"
+  }
+
   @Test def testClassRuntimeClass(): Unit = {
     for {
       name <- Seq(NameClassEnableDirect, NameClassEnableDirectNoZeroArgCtor,
@@ -187,6 +192,23 @@ class ReflectTest {
     }
   }
 
+  @Test def testInnerObjectWithEnableReflectiveInstantiation_issue_3228(): Unit = {
+    assertFalse(Reflect.lookupLoadableModuleClass(NameInnerObject).isDefined)
+
+    val optClassData = Reflect.lookupInstantiatableClass(NameInnerObject)
+    assertTrue(optClassData.isDefined)
+    val classData = optClassData.get
+
+    val optCtor = classData.getConstructor(
+        classOf[ReflectTest.ClassWithInnerObjectWithEnableReflectiveInstantiation])
+    assertTrue(optCtor.isDefined)
+
+    /* We do not actually instantiate that, because it would violate the
+     * uniqueness of the inner object wrt. its enclosing class, which is not
+     * well-defined at the Scala level.
+     */
+  }
+
 }
 
 object ReflectTest {
@@ -307,4 +329,11 @@ object ReflectTest {
   }
 
   trait TraitDisable extends Accessors
+
+  // Regression cases
+
+  class ClassWithInnerObjectWithEnableReflectiveInstantiation {
+    @EnableReflectiveInstantiation
+    object InnerObjectWithEnableReflectiveInstantiation
+  }
 }
