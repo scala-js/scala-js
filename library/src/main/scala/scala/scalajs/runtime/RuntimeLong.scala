@@ -851,8 +851,7 @@ object RuntimeLong {
     if (isUInt32(ahi)) {
       if (isUInt32(bhi)) {
         hiReturn = 0
-        // Integer.divideUnsigned(alo, blo), inaccessible when compiling on JDK < 8
-        rawToInt(alo.toUint / blo.toUint)
+        Integer.divideUnsigned(alo, blo)
       } else {
         // a < b
         hiReturn = 0
@@ -946,8 +945,7 @@ object RuntimeLong {
     if (isUInt32(ahi)) {
       if (isUInt32(bhi)) {
         hiReturn = 0
-        // Integer.remainderUnsigned(alo, blo), inaccessible when compiling on JDK < 8
-        rawToInt(alo.toUint % blo.toUint)
+        Integer.remainderUnsigned(alo, blo)
       } else {
         // a < b
         hiReturn = ahi
