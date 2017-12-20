@@ -1200,20 +1200,15 @@ object Build {
 
             val filter = ("*.sjsir": NameFilter)
 
-            val javalibProducts = (products in javalib).value
-            val javalibMappings =
-              javalibProducts.flatMap(base => Path.selectSubpaths(base, filter))
-            val javalibFilteredMappings = javalibMappings.filter(
-                _._2.replace('\\', '/') != "java/lang/MathJDK8Bridge$.sjsir")
-
             val otherProducts = (
                 (products in javalanglib).value ++
+                (products in javalib).value ++
                 (products in scalalib).value ++
                 (products in libraryAux).value)
             val otherMappings =
               otherProducts.flatMap(base => Path.selectSubpaths(base, filter))
 
-            libraryMappings ++ otherMappings ++ javalibFilteredMappings
+            libraryMappings ++ otherMappings
           }
       ))
   ).withScalaJSCompiler

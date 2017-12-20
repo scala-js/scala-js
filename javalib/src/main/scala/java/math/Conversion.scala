@@ -159,7 +159,7 @@ private[math] object Conversion {
     if (sign == 0) {
       "0"
     } else if (numberLength == 1) {
-      val absStr = MathJDK8Bridge.toUnsignedString(digits(0))
+      val absStr = Integer.toUnsignedString(digits(0))
       if (sign < 0) "-" + absStr
       else absStr
     } else {
@@ -175,7 +175,7 @@ private[math] object Conversion {
         var i: Int = tempLen - 1
         while (i >= 0) {
           val temp1 = (rem.toLong << 32) + (temp(i) & 0xFFFFFFFFL)
-          val quot = MathJDK8Bridge.divideUnsigned(temp1, 1000000000L).toInt
+          val quot = java.lang.Long.divideUnsigned(temp1, 1000000000L).toInt
           temp(i) = quot
           rem = (temp1 - quot * 1000000000L).toInt
           i -= 1
