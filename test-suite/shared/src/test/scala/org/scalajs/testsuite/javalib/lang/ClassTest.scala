@@ -14,6 +14,18 @@ import scala.runtime.BoxedUnit
 
 class ClassTest {
 
+  private val PrimitiveClassOfs = Seq(
+      classOf[Unit],
+      classOf[Boolean],
+      classOf[Char],
+      classOf[Byte],
+      classOf[Short],
+      classOf[Int],
+      classOf[Long],
+      classOf[Float],
+      classOf[Double]
+  )
+
   @Test def getPrimitiveTypeName(): Unit = {
     assertEquals("void", classOf[Unit].getName)
     assertEquals("boolean", classOf[Boolean].getName)
@@ -55,6 +67,38 @@ class ClassTest {
     assertEquals("Class", classOf[java.lang.Class[_]].getSimpleName())
     assertEquals("Map", classOf[scala.collection.Map[_, _]].getSimpleName())
     assertEquals("InnerClass", classOf[ClassTestClass#InnerClass].getSimpleName())
+  }
+
+  @Test def isAssignableFrom(): Unit = {
+    val SelectedClassOfs =
+      PrimitiveClassOfs ++ Seq(classOf[Object], classOf[String])
+
+    // All Classes are assignable from themselves
+    for (cls <- SelectedClassOfs) {
+      assertTrue(s"$cls should be assignable from itself",
+          cls.isAssignableFrom(cls))
+    }
+
+    // Otherwise, if one side is a primitive, the result must be false
+    for {
+      left <- SelectedClassOfs
+      right <- SelectedClassOfs
+      if (left ne right) && (left.isPrimitive || right.isPrimitive)
+    } {
+      assertFalse(
+          s"$left.isAssignableFrom($right) should be false",
+          left.isAssignableFrom(right))
+    }
+
+    assertTrue(classOf[Object].isAssignableFrom(classOf[String]))
+    assertTrue(classOf[Seq[_]].isAssignableFrom(classOf[List[_]]))
+    assertTrue(classOf[Object].isAssignableFrom(classOf[Array[String]]))
+    assertTrue(classOf[Array[Seq[_]]].isAssignableFrom(classOf[Array[List[_]]]))
+
+    assertFalse(classOf[String].isAssignableFrom(classOf[Object]))
+    assertFalse(classOf[List[_]].isAssignableFrom(classOf[Seq[_]]))
+    assertFalse(classOf[Array[String]].isAssignableFrom(classOf[Object]))
+    assertFalse(classOf[Array[List[_]]].isAssignableFrom(classOf[Array[Seq[_]]]))
   }
 
   @Test def getComponentType(): Unit = {

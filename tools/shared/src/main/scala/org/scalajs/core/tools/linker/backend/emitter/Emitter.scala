@@ -675,7 +675,7 @@ private object Emitter {
           instantiateClass("sjsr_UndefinedBehaviorError", "init___T")
         },
 
-        instantiateClass("jl_Class", "init___jl_ScalaJSClassData"),
+        instantiateClass("jl_Class", "init___O"),
 
         instanceTests(LongImpl.RuntimeLongClass),
         instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors),
