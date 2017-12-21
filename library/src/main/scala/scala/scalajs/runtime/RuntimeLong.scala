@@ -2,11 +2,6 @@ package scala.scalajs.runtime
 
 import scala.annotation.tailrec
 
-import scala.scalajs.js
-import js.|
-import js.JSNumberOps._
-import js.JSStringOps._
-
 /* IMPORTANT NOTICE about this file
  *
  * The code of RuntimeLong is code-size- and performance critical. The methods
@@ -586,10 +581,11 @@ object RuntimeLong {
 
   private def toDouble(lo: Int, hi: Int): Double = {
     if (hi < 0) {
-      // We do .toUint on the hi part specifically for MinValue
-      -(inline_hi_unary_-(lo, hi).toUint * TwoPow32 + inline_lo_unary_-(lo).toUint)
+      // We do asUint() on the hi part specifically for MinValue
+      -(asUint(inline_hi_unary_-(lo, hi)) * TwoPow32 +
+          asUint(inline_lo_unary_-(lo)))
     } else {
-      hi * TwoPow32 + lo.toUint
+      hi * TwoPow32 + asUint(lo)
     }
   }
 
@@ -703,10 +699,10 @@ object RuntimeLong {
         }
       }
     } else {
-      val (aNeg, aAbs) = inline_abs(alo, ahi)
-      val (bNeg, bAbs) = inline_abs(blo, bhi)
+      val aAbs = inline_abs(alo, ahi)
+      val bAbs = inline_abs(blo, bhi)
       val absRLo = unsigned_/(aAbs.lo, aAbs.hi, bAbs.lo, bAbs.hi)
-      if (aNeg == bNeg) absRLo
+      if ((ahi ^ bhi) >= 0) absRLo // a and b have the same sign bit
       else inline_hiReturn_unary_-(absRLo, hiReturn)
     }
   }
@@ -797,10 +793,10 @@ object RuntimeLong {
         }
       }
     } else {
-      val (aNeg, aAbs) = inline_abs(alo, ahi)
-      val (_, bAbs) = inline_abs(blo, bhi)
+      val aAbs = inline_abs(alo, ahi)
+      val bAbs = inline_abs(blo, bhi)
       val absRLo = unsigned_%(aAbs.lo, aAbs.hi, bAbs.lo, bAbs.hi)
-      if (aNeg) inline_hiReturn_unary_-(absRLo, hiReturn)
+      if (ahi < 0) inline_hiReturn_unary_-(absRLo, hiReturn)
       else absRLo
     }
   }
@@ -866,7 +862,7 @@ object RuntimeLong {
    *    In this case, `blo` must be 10^9 and `bhi` must be 0.
    */
   private def unsignedDivModHelper(alo: Int, ahi: Int, blo: Int, bhi: Int,
-      ask: Int): Int | String = {
+      ask: Int): Any = {
 
     var shift =
       inlineNumberOfLeadingZeros(blo, bhi) - inlineNumberOfLeadingZeros(alo, ahi)
@@ -937,7 +933,7 @@ object RuntimeLong {
       // AskToString (recall that b = 10^9 in this case)
       val quot = asUnsignedSafeDouble(quotLo, quotHi) // != 0
       val remStr = remLo.toString // remHi is always 0
-      quot.toString + "000000000".jsSubstring(remStr.length) + remStr
+      quot.toString + substring("000000000", remStr.length) + remStr
     }
   }
 
@@ -945,6 +941,14 @@ object RuntimeLong {
   private def inline_hiReturn_unary_-(lo: Int, hi: Int): Int = {
     hiReturn = inline_hi_unary_-(lo, hi)
     inline_lo_unary_-(lo)
+  }
+
+  @inline
+  private def substring(s: String, start: Int): String = {
+    import scala.scalajs.js
+    s.asInstanceOf[js.Dynamic]
+      .substring(start.asInstanceOf[js.Dynamic])
+      .asInstanceOf[String]
   }
 
   // In a different object so they can be inlined without cost
@@ -975,7 +979,7 @@ object RuntimeLong {
 
     /** Converts an unsigned safe double into its Double representation. */
     @inline def asUnsignedSafeDouble(lo: Int, hi: Int): Double =
-      hi * TwoPow32 + lo.toUint
+      hi * TwoPow32 + asUint(lo)
 
     /** Converts an unsigned safe double into its RuntimeLong representation. */
     @inline def fromUnsignedSafeDouble(x: Double): RuntimeLong =
@@ -989,9 +993,19 @@ object RuntimeLong {
     @inline def unsignedSafeDoubleHi(x: Double): Int =
       rawToInt(x / TwoPow32)
 
+    /** Interprets an `Int` as an unsigned integer and returns its value as a
+     *  `Double`.
+     */
+    @inline def asUint(x: Int): Double = {
+      import scala.scalajs.js
+      (x.asInstanceOf[js.Dynamic] >>> 0.asInstanceOf[js.Dynamic]).asInstanceOf[Double]
+    }
+
     /** Performs the JavaScript operation `(x | 0)`. */
-    @inline def rawToInt(x: Double): Int =
+    @inline def rawToInt(x: Double): Int = {
+      import scala.scalajs.js
       (x.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
+    }
 
     /** Tests whether the given non-zero unsigned Int is an exact power of 2. */
     @inline def isPowerOfTwo_IKnowItsNot0(i: Int): Boolean =
@@ -1033,12 +1047,11 @@ object RuntimeLong {
       if (lo != 0) ~hi else -hi
 
     @inline
-    def inline_abs(lo: Int, hi: Int): (Boolean, RuntimeLong) = {
-      val neg = hi < 0
-      val abs =
-        if (neg) new RuntimeLong(inline_lo_unary_-(lo), inline_hi_unary_-(lo, hi))
-        else new RuntimeLong(lo, hi)
-      (neg, abs)
+    def inline_abs(lo: Int, hi: Int): RuntimeLong = {
+      if (hi < 0)
+        new RuntimeLong(inline_lo_unary_-(lo), inline_hi_unary_-(lo, hi))
+      else
+        new RuntimeLong(lo, hi)
     }
   }
 
