@@ -1,7 +1,5 @@
 package scala.scalajs.runtime
 
-import scala.util.control.ControlThrowable
-
 /** Error thrown when an undefined behavior in Fatal mode has been detected.
  *  This error should never be caught. It indicates a severe programming bug.
  *  In Unchecked mode, the program may behave arbitrarily.
@@ -12,14 +10,12 @@ import scala.util.control.ControlThrowable
  *  Note that this will have (potentially major) performance impacts.
  */
 class UndefinedBehaviorError(message: String, cause: Throwable)
-    extends java.lang.Error(message, cause) with ControlThrowable {
+    extends java.lang.VirtualMachineError(message, cause) {
 
   def this(message: String) = this(message, null)
 
   def this(cause: Throwable) =
-    this("An undefined behavior was detected" +
-        (if (cause == null) "" else ": "+cause.getMessage), cause)
+    this(if (cause == null) null else cause.toString, cause)
 
-  override def fillInStackTrace(): Throwable =
-    super[Error].fillInStackTrace()
+  def this() = this(null, null)
 }

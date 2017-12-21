@@ -248,8 +248,15 @@ class VerifyError(s: String) extends LinkageError(s) {
   def this() = this(null)
 }
 
-abstract class VirtualMachineError(s: String) extends Error(s) {
-  def this() = this(null)
+abstract class VirtualMachineError(message: String, cause: Throwable)
+    extends Error(message, cause) {
+
+  def this() = this(null, null)
+
+  def this(message: String) = this(message, null)
+
+  def this(cause: Throwable) =
+    this(if (cause == null) null else cause.toString, cause)
 }
 
 
