@@ -110,7 +110,7 @@ private[math] object Division {
           ((normA(j) & UINT_MAX) << 32) + (normA(j - 1) & UINT_MAX)
         val firstDivisorDigitLong = firstDivisorDigit & UINT_MAX
         val quotient =
-          MathJDK8Bridge.divideUnsigned(product, firstDivisorDigitLong)
+          java.lang.Long.divideUnsigned(product, firstDivisorDigitLong)
         guessDigit = quotient.toInt
         var rem = (product - quotient * firstDivisorDigitLong).toInt
 
@@ -190,8 +190,8 @@ private[math] object Division {
     val valSign = bi.sign
     if (valLen == 1) {
       val valDigit = valDigits(0)
-      var quo = MathJDK8Bridge.divideUnsigned(valDigit, divisor) & UINT_MAX
-      var rem = MathJDK8Bridge.remainderUnsigned(valDigit, divisor) & UINT_MAX
+      var quo = Integer.divideUnsigned(valDigit, divisor) & UINT_MAX
+      var rem = Integer.remainderUnsigned(valDigit, divisor) & UINT_MAX
       if (valSign != divisorSign)
         quo = -quo
       if (valSign < 0)
@@ -229,7 +229,7 @@ private[math] object Division {
     var i = srcLength - 1
     while (i >= 0) {
       val temp: Long = (rem.toLong << 32) | (src(i) & UINT_MAX)
-      val quot = MathJDK8Bridge.divideUnsigned(temp, bLong)
+      val quot = java.lang.Long.divideUnsigned(temp, bLong)
       rem = (temp - quot * bLong).toInt
       dest(i) = quot.toInt
       i -= 1
@@ -743,7 +743,7 @@ private[math] object Division {
     var i = srcLength - 1
     while (i >= 0) {
       val temp = (result.toLong << 32) | (src(i).toLong & UINT_MAX)
-      result = MathJDK8Bridge.remainderUnsigned(temp, longDivisor).toInt
+      result = java.lang.Long.remainderUnsigned(temp, longDivisor).toInt
       i -= 1
     }
     result
