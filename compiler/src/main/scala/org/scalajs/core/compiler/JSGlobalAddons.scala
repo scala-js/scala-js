@@ -109,8 +109,7 @@ trait JSGlobalAddons extends JSDefinitions
 
     /** checks if the given symbol is a JSExport */
     def isExport(sym: Symbol): Boolean =
-      sym.unexpandedName.startsWith(exportPrefix) &&
-      !sym.hasFlag(Flags.DEFAULTPARAM)
+      sym.name.startsWith(exportPrefix) && !sym.hasFlag(Flags.DEFAULTPARAM)
 
     /** retrieves the originally assigned jsName of this export and whether it
      *  is a property
@@ -119,7 +118,7 @@ trait JSGlobalAddons extends JSDefinitions
       def dropPrefix(prefix: String) ={
         if (name.startsWith(prefix)) {
           // We can't decode right away due to $ separators
-          val enc = name.encoded.substring(prefix.length)
+          val enc = name.toString.substring(prefix.length)
           Some(NameTransformer.decode(enc))
         } else None
       }
