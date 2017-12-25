@@ -24,10 +24,6 @@ object DynamicImplicits {
   @inline implicit def truthValue(x: js.Dynamic): Boolean =
     (!(!x)).asInstanceOf[Boolean]
 
-  // Useful for Scala 2.10
-  implicit def number2dynamic(x: Int): js.Dynamic =
-    x.asInstanceOf[js.Dynamic]
-
   implicit def number2dynamic(x: Double): js.Dynamic =
     x.asInstanceOf[js.Dynamic]
 

@@ -142,7 +142,6 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
     val boxedFrom = Box(fromElement)
     val boxedTo = Box(toElement)
     val subSetFun = { () =>
-      // the creation of a new TreeSet is to avoid a mysterious bug with scala 2.10
       var base = new mutable.TreeSet[Box[E]]
       base ++= inner.range(boxedFrom, boxedTo)
       if (!fromInclusive)
@@ -162,7 +161,6 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
   def headSet(toElement: E, inclusive: Boolean): NavigableSet[E] = {
     val boxed = Box(toElement)
     val headSetFun = { () =>
-      // the creation of a new TreeSet is to avoid a mysterious bug with scala 2.10
       var base = new mutable.TreeSet[Box[E]]
       if (inclusive)
         base ++= inner.to(boxed)
@@ -180,7 +178,6 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
   def tailSet(fromElement: E, inclusive: Boolean): NavigableSet[E] = {
     val boxed = Box(fromElement)
     val tailSetFun = { () =>
-      // the creation of a new TreeSet is to avoid a mysterious bug with scala 2.10
       var base = new mutable.TreeSet[Box[E]]
       base ++= inner.from(boxed)
       if (!inclusive)

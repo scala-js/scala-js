@@ -302,55 +302,40 @@ private[lang] object StackTrace {
      * arguments or stack.
      */
 
-    /* Ideally we would write tests like
-     *   if (e.arguments && e.stack)
-     * but Scala 2.10 does not like that (too much Dynamic magic, I suppose).
-     * So we define inlineable defs for the fields we're interested in.
-     * This way we make the compiler happy
-     */
-    @inline def arguments = e.arguments
-    @inline def stack = e.stack
-    @inline def sourceURL = e.sourceURL
-    @inline def number = e.number
-    @inline def fileName = e.fileName
-    @inline def message = e.message
-    @inline def `opera#sourceloc` = e.`opera#sourceloc`
-    @inline def stacktrace = e.stacktrace
-
     if (!e) {
       js.Array[String]()
     } else if (isRhino) {
       extractRhino(e)
-    } else if (arguments && stack) {
+    } else if (e.arguments && e.stack) {
       extractChrome(e)
-    } else if (stack && sourceURL) {
+    } else if (e.stack && e.sourceURL) {
       extractSafari(e)
-    } else if (stack && number) {
+    } else if (e.stack && e.number) {
       extractIE(e)
-    } else if (stack && fileName) {
+    } else if (e.stack && e.fileName) {
       extractFirefox(e)
-    } else if (message && `opera#sourceloc`) {
+    } else if (e.message && e.`opera#sourceloc`) {
       // e.message.indexOf("Backtrace:") > -1 -> opera9
       // 'opera#sourceloc' in e -> opera9, opera10a
       // !e.stacktrace -> opera9
       @inline def messageIsLongerThanStacktrace =
-        message.split("\n").length > stacktrace.split("\n").length
-      if (!stacktrace) {
+        e.message.split("\n").length > e.stacktrace.split("\n").length
+      if (!e.stacktrace) {
         extractOpera9(e) // use e.message
-      } else if ((message.indexOf("\n") > -1) && messageIsLongerThanStacktrace) {
+      } else if ((e.message.indexOf("\n") > -1) && messageIsLongerThanStacktrace) {
         // e.message may have more stack entries than e.stacktrace
         extractOpera9(e) // use e.message
       } else {
         extractOpera10a(e) // use e.stacktrace
       }
-    } else if (message && stack && stacktrace) {
+    } else if (e.message && e.stack && e.stacktrace) {
       // stacktrace && stack -> opera10b
-      if (stacktrace.indexOf("called from line") < 0) {
+      if (e.stacktrace.indexOf("called from line") < 0) {
         extractOpera10b(e)
       } else {
         extractOpera11(e)
       }
-    } else if (stack && !fileName) {
+    } else if (e.stack && !e.fileName) {
       /* Chrome 27 does not have e.arguments as earlier versions,
        * but still does not have e.fileName as Firefox */
       extractChrome(e)

@@ -10,32 +10,26 @@ private[lang] object ObjectClone {
   private val getOwnPropertyDescriptors: js.Function1[js.Object, js.Object] = {
     import js.Dynamic.{global, literal}
 
-    // The val f = ...; f.asInstanceOf's are necessary for 2.10 not to crash
-
     // Fetch or polyfill Object.getOwnPropertyDescriptors
     if (js.typeOf(global.Object.getOwnPropertyDescriptors) == "function") {
-      val f = global.Object.getOwnPropertyDescriptors
-      f.asInstanceOf[js.Function1[js.Object, js.Object]]
+      global.Object.getOwnPropertyDescriptors
+        .asInstanceOf[js.Function1[js.Object, js.Object]]
     } else {
       // Fetch or polyfill Reflect.ownKeys
       type OwnKeysType = js.Function1[js.Object, js.Array[js.Any]]
       val ownKeysFun: OwnKeysType = {
         if (js.typeOf(global.Reflect) != "undefined" &&
             js.typeOf(global.Reflect.ownKeys) == "function") {
-          val f = global.Reflect.ownKeys
-          f.asInstanceOf[OwnKeysType]
+          global.Reflect.ownKeys.asInstanceOf[OwnKeysType]
         } else {
           // Fetch Object.getOwnPropertyNames
-          val getOwnPropertyNames = {
-            val f = global.Object.getOwnPropertyNames
-            f.asInstanceOf[OwnKeysType]
-          }
+          val getOwnPropertyNames =
+            global.Object.getOwnPropertyNames.asInstanceOf[OwnKeysType]
 
           // Fetch or polyfill Object.getOwnPropertySymbols
           val getOwnPropertySymbols: OwnKeysType = {
             if (js.typeOf(global.Object.getOwnPropertySymbols) == "function") {
-              val f = global.Object.getOwnPropertySymbols
-              f.asInstanceOf[OwnKeysType]
+              global.Object.getOwnPropertySymbols.asInstanceOf[OwnKeysType]
             } else {
               /* Polyfill for Object.getOwnPropertySymbols.
                * We assume that if that function does not exist, then symbols

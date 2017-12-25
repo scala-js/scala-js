@@ -40,7 +40,7 @@ class JSSAMTest extends DirectTest with TestHelpers {
   def noSAMAsJSType212: Unit = {
 
     val version = scala.util.Properties.versionNumberString
-    assumeTrue(!version.startsWith("2.10.") && !version.startsWith("2.11."))
+    assumeTrue(!version.startsWith("2.11."))
 
     """
     @js.native

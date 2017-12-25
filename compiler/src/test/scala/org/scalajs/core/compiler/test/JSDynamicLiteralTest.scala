@@ -103,22 +103,10 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
 
   @Test
   def keyDuplicationWarning: Unit = {
-    val version = scala.util.Properties.versionNumberString
-    val hasSuboptimalPositions = version.startsWith("2.10.")
-
-    implicit class MyHasWarnsOps(val code: CompileTests) {
-      def hasWarnsForByName(expected: String): Unit = {
-        if (hasSuboptimalPositions)
-          code.warns()
-        else
-          code.hasWarns(expected)
-      }
-    }
-
     // detects duplicate named keys
     expr"""
     lit(a = "1", b = "2", a = "3")
-    """ hasWarnsForByName
+    """ hasWarns
     """
       |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit(a = "1", b = "2", a = "3")
@@ -128,7 +116,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     // detects duplicate named keys
     expr"""
     lit(aaa = "1", b = "2", aaa = "3")
-    """ hasWarnsForByName
+    """ hasWarns
     """
       |newSource1.scala:3: warning: Duplicate property "aaa" shadows a previously defined one
       |    lit(aaa = "1", b = "2", aaa = "3")
@@ -140,7 +128,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     lit(aaa = "1",
         bb = "2",
         bb = "3")
-    """ hasWarnsForByName
+    """ hasWarns
     """
       |newSource1.scala:5: warning: Duplicate property "bb" shadows a previously defined one
       |        bb = "3")
@@ -152,7 +140,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     lit(aaa = "1",
         b = "2",
         aaa = "3")
-    """ hasWarnsForByName
+    """ hasWarns
     """
       |newSource1.scala:5: warning: Duplicate property "aaa" shadows a previously defined one
       |        aaa = "3")
@@ -162,7 +150,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     // detects triplicated named keys
     expr"""
     lit(a = "1", a = "2", a = "3")
-    """ hasWarnsForByName
+    """ hasWarns
     """
       |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit(a = "1", a = "2", a = "3")
@@ -175,7 +163,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     // detects two different duplicates named keys
     expr"""
     lit(a = "1", b = "2", a = "3", b = "4", c = "5", c = "6", c = "7")
-    """ hasWarnsForByName
+    """ hasWarns
     """
       |newSource1.scala:3: warning: Duplicate property "a" shadows a previously defined one
       |    lit(a = "1", b = "2", a = "3", b = "4", c = "5", c = "6", c = "7")

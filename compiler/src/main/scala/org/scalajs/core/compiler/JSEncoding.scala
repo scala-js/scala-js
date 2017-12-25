@@ -136,8 +136,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
       val usePerClassSuffix = {
         sym.isPrivate ||
         sym.isJavaDefined ||
-        sym.isOuterField || // Scala 2.11+
-        sym.isOuterAccessor // Scala 2.10 workaround
+        sym.isOuterField
       }
       if (usePerClassSuffix)
         sym.owner.ancestors.count(!_.isTraitOrInterface).toString

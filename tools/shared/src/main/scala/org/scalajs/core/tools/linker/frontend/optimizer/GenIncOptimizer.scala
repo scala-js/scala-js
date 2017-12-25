@@ -615,14 +615,14 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         case Block(stats)                   => stats.forall(isElidableStat)
         case Assign(Select(This(), _), rhs) => isTriviallySideEffectFree(rhs)
 
-        // Mixin constructor, 2.10/2.11
+        // Mixin constructor, 2.11
         case ApplyStatic(ClassType(cls), methodName, List(This())) =>
           statics(cls).methods(methodName.name).originalDef.body.exists {
             case Skip() => true
             case _      => false
           }
 
-        // Mixin constructor, 2.12
+        // Mixin constructor, 2.12+
         case ApplyStatically(This(), ClassType(cls), methodName, Nil)
             if !classes.contains(cls) =>
           // Since cls is not in classes, it must be a default method call.

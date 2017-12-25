@@ -48,7 +48,7 @@ import scala.collection.mutable
  */
 abstract class ExplicitInnerJS
     extends plugins.PluginComponent with InfoTransform with TypingTransformers
-    with PluginComponent210Compat {
+    with CompatComponent {
 
   val jsAddons: JSGlobalAddons {
     val global: ExplicitInnerJS.this.global.type
@@ -77,10 +77,8 @@ abstract class ExplicitInnerJS
    *  This is true in 2.12+, since the addition of the `fields` phase.
    *  @see https://github.com/scala/scala/pull/5141
    */
-  private lazy val traitValsHoldTheirGetterSymbol = {
-    val v = scala.util.Properties.versionNumberString
-    !v.startsWith("2.10.") && !v.startsWith("2.11.")
-  }
+  private lazy val traitValsHoldTheirGetterSymbol =
+    !scala.util.Properties.versionNumberString.startsWith("2.11.")
 
   protected def newTransformer(unit: CompilationUnit): Transformer =
     new ExplicitInnerJSTransformer(unit)

@@ -42,7 +42,7 @@ object Statics {
 
   def doubleHash(dv: Double): Int = {
     /* This implementation is based on what 2.12.0-M5+ does on the JVM.
-     * The 2.10/2.11 implementation on the JVM was not consistent with that of
+     * The 2.11 implementation on the JVM was not consistent with that of
      * BoxesRunTime, and most importantly was not consistent with the hash of
      * Long values.
      *

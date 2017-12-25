@@ -68,7 +68,7 @@ class MatchTest {
     val foo: Option[Int] = Some(42)
 
     /* This match generates a value class boxing operation in the matchEnd (in
-     * 2.10 and 2.11).
+     * 2.11).
      */
     val result =
       "foo = " ++ (foo match { case Some(0) => "zero" case _ => "unknown" })

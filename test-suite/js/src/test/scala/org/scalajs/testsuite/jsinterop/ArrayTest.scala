@@ -85,8 +85,7 @@ class ArrayTest {
     assertJSArrayEquals(js.Array(1, 2, 3), Iterator(1, 2, 3).toJSArray)
     assertJSArrayEquals(js.Array(0.3, 7.3, 8.9), Array(0.3, 7.3, 8.9).toJSArray)
     assertJSArrayEquals(js.Array(), None.toJSArray)
-    // The following fails on 2.10.x
-    //assertJSArrayEquals(js.Array("Hello World"), Some("Hello World").toJSArray)
+    assertJSArrayEquals(js.Array("Hello World"), Some("Hello World").toJSArray)
   }
 }
 

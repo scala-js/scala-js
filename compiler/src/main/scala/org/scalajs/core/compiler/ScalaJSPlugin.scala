@@ -39,7 +39,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   /** Addons for JavaScript platform */
   object jsAddons extends {
     val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
-  } with JSGlobalAddons with Compat210Component
+  } with JSGlobalAddons with CompatComponent
 
   object scalaJSOpts extends ScalaJSOptions {
     import ScalaJSOptions.URIMap

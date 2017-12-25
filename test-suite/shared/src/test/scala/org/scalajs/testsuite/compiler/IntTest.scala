@@ -336,10 +336,8 @@ class IntTest {
     test(MaxVal, 1, MaxVal >>> 1)
   }
 
-  private def scalacCorrectlyHandlesIntShiftLong: Boolean = {
-    import Platform.scalaVersion
-    !(scalaVersion.startsWith("2.10.") || scalaVersion.startsWith("2.11."))
-  }
+  private def scalacCorrectlyHandlesIntShiftLong: Boolean =
+    !Platform.scalaVersion.startsWith("2.11.")
 
   @Test def intShiftLeftLongConstantFolded(): Unit = {
     assumeTrue("scalac must correctly handle int shift long",
