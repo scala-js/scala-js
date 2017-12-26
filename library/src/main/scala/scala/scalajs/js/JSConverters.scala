@@ -40,7 +40,28 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
 
   implicit class JSRichGenTraversableOnce[T](
       val col: GenTraversableOnce[T]) extends AnyVal {
-    @inline final def toJSArray: js.Array[T] = genTraversableOnce2jsArray(col)
+    final def toJSArray: js.Array[T] = {
+      /* This is basically a duplicate of `runtime.genTraversableOnce2jsArray`,
+       * except it is not marked `@inline`. We do not want to inline this
+       * method every time someone does `.toJSArray`, for code size reasons
+       * (unlike `genTraversableOnce2jsArray`, which is used by the codegen for
+       * transferring Scala varargs to JS varargs).
+       *
+       * One would think that we could still delegate to
+       * `genTraversableOnce2jsArray` and mark `toJSArray` with `@noinline`
+       * instead, but that would prevent `toJSArray` to be inlined even when
+       * `col` is stack-allocated (and we do want that to happen as in that
+       * case the entire match disappears and `col` can stay stack-allocated).
+       */
+      col match {
+        case col: js.ArrayOps[T]     => col.repr
+        case col: js.WrappedArray[T] => col.array
+        case _ =>
+          val result = new js.Array[T]
+          col.foreach(x => result.push(x))
+          result
+      }
+    }
   }
 
   implicit class JSRichGenIterable[T](
