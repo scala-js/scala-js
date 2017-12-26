@@ -66,7 +66,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     val hasNext  = newTermName("hasNext")
     val next     = newTermName("next")
     val nextName = newTermName("nextName")
-    val x        = newTermName("x")
     val Value    = newTermName("Value")
     val Val      = newTermName("Val")
 
@@ -333,29 +332,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
                   |by passing the fixClassOf option to the plugin.""".stripMargin)
             EmptyTree
           }
-
-        // Fix for issue with calls to js.Dynamic.x()
-        // Rewrite (obj: js.Dynamic).x(...) to obj.applyDynamic("x")(...)
-        case Select(Select(trg, jsnme.x), nme.apply) if isJSDynamic(trg) =>
-          val newTree = atPos(tree.pos) {
-            Apply(
-                Select(transform(trg), newTermName("applyDynamic")),
-                List(Literal(Constant("x")))
-            )
-          }
-          typer.typed(newTree, Mode.FUNmode, tree.tpe)
-
-
-        // Fix for issue with calls to js.Dynamic.x()
-        // Rewrite (obj: js.Dynamic).x to obj.selectDynamic("x")
-        case Select(trg, jsnme.x) if isJSDynamic(trg) =>
-          val newTree = atPos(tree.pos) {
-            Apply(
-                Select(transform(trg), newTermName("selectDynamic")),
-                List(Literal(Constant("x")))
-            )
-          }
-          typer.typed(newTree, Mode.FUNmode, tree.tpe)
 
         // Compile-time errors and warnings for js.Dynamic.literal
         case Apply(Apply(fun, nameArgs), args)
@@ -1175,8 +1151,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
   private def isScalaEnum(implDef: ImplDef) =
     implDef.symbol.tpe.typeSymbol isSubClass ScalaEnumClass
-
-  private def isJSDynamic(tree: Tree) = tree.tpe.typeSymbol == JSDynamicClass
 
   /** Tests whether the symbol has `private` in any form, either `private`,
    *  `private[this]` or `private[Enclosing]`.

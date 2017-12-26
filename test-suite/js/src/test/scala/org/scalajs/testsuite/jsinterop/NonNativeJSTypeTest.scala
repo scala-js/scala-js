@@ -1095,7 +1095,17 @@ class NonNativeJSTypeTest {
     assertJSArrayEquals(js.Array(8, 23), foo.args)
 
     val dyn = foo.asInstanceOf[js.Dynamic]
-    assertEquals(4, dyn.x)
+    /* Dark magic is at play here: everywhere else in this compilation unit,
+     * it's fine to do `assertEquals(4, dyn.x)` (for example, in the test
+     * `override_native_method` below), but right here, it causes scalac to die
+     * with a completely nonsensical compile error:
+     *
+     * > applyDynamic does not support passing a vararg parameter
+     *
+     * Extracting it in a separate `val` works around it.
+     */
+    val dynx = dyn.x
+    assertEquals(4, dynx)
     val args = dyn.args.asInstanceOf[js.Array[Int]]
     assertJSArrayEquals(js.Array(8, 23), args)
   }
