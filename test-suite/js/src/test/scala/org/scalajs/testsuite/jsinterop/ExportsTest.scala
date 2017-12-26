@@ -92,6 +92,30 @@ class ExportsTest {
     assertEquals(42, foo.myMethod())
   }
 
+  @Test def exports_for_methods_whose_encodedName_starts_with_dollar_issue_3219(): Unit = {
+    class ExportsForMethodsWhoseEncodedNameStartsWithDollar {
+      @JSExport("$a")
+      def f(x: Int): Int = x + 1
+
+      @JSExport
+      def +(x: Int): Int = x + 2
+
+      @JSExport("-")
+      def plus(x: Int): Int = x + 3
+
+      @JSExport("plus")
+      def ++(x: Int): Int = x + 4
+    }
+
+    val fns = new ExportsForMethodsWhoseEncodedNameStartsWithDollar()
+      .asInstanceOf[js.Dynamic]
+
+    assertEquals(6, fns.applyDynamic("$a")(5))
+    assertEquals(7, fns.applyDynamic("+")(5))
+    assertEquals(8, fns.applyDynamic("-")(5))
+    assertEquals(9, fns.applyDynamic("plus")(5))
+  }
+
   @Test def exports_for_protected_methods(): Unit = {
     class Foo {
       @JSExport
@@ -163,6 +187,30 @@ class ExportsTest {
     assertEquals("hello get", foo.y)
     foo.y = "world"
     assertEquals("world set get", foo.y)
+  }
+
+  @Test def exports_for_properties_whose_encodedName_starts_with_dollar_issue_3219(): Unit = {
+    class ExportsForPropertiesWhoseEncodedNameStartsWithDollar {
+      @JSExport("$a")
+      def f: Int = 6
+
+      @JSExport
+      def + : Int = 7 // scalastyle:ignore
+
+      @JSExport("-")
+      def plus: Int = 8
+
+      @JSExport("plus")
+      def ++ : Int = 9 // scalastyle:ignore
+    }
+
+    val fns = new ExportsForPropertiesWhoseEncodedNameStartsWithDollar()
+      .asInstanceOf[js.Dynamic]
+
+    assertEquals(6, fns.selectDynamic("$a"))
+    assertEquals(7, fns.selectDynamic("+"))
+    assertEquals(8, fns.selectDynamic("-"))
+    assertEquals(9, fns.selectDynamic("plus"))
   }
 
   @Test def exports_for_protected_properties(): Unit = {

@@ -278,13 +278,23 @@ abstract class GenJSCode extends plugins.PluginComponent
          * Since for all these, we don't know how they inter-depend, we just
          * store them in a map at this point.
          */
-        val (lazyAnons, fullClassDefs) = allClassDefs.partition { cd =>
+        val (lazyAnons, fullClassDefs0) = allClassDefs.partition { cd =>
           val sym = cd.symbol
           isRawJSFunctionDef(sym) || sym.isAnonymousFunction ||
           isAnonJSClass(sym)
         }
 
         lazilyGeneratedAnonClasses ++= lazyAnons.map(cd => cd.symbol -> cd)
+
+        /* Under Scala 2.11 with -Xexperimental, anonymous JS function classes
+         * can be referred to in private method signatures, which means they
+         * must exist at the IR level, as `AbstractJSType`s.
+         */
+        val fullClassDefs = if (isScala211WithXexperimental) {
+          lazyAnons.filter(cd => isRawJSFunctionDef(cd.symbol)) ::: fullClassDefs0
+        } else {
+          fullClassDefs0
+        }
 
         /* Finally, we emit true code for the remaining class defs. */
         for (cd <- fullClassDefs) {
@@ -303,12 +313,12 @@ abstract class GenJSCode extends plugins.PluginComponent
             ) {
               try {
                 val tree = if (isJSType(sym)) {
-                  assert(!isRawJSFunctionDef(sym),
-                      s"Raw JS function def should have been recorded: $cd")
-                  if (!sym.isTraitOrInterface && isNonNativeJSClass(sym))
+                  if (!sym.isTraitOrInterface && isNonNativeJSClass(sym) &&
+                      !isRawJSFunctionDef(sym)) {
                     genNonNativeJSClass(cd)
-                  else
+                  } else {
                     genRawJSClassData(cd)
+                  }
                 } else if (sym.isTraitOrInterface) {
                   genInterface(cd)
                 } else if (sym.isImplClass) {
@@ -800,6 +810,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val classIdent = encodeClassFullNameIdent(sym)
       val kind = {
         if (sym.isTraitOrInterface) ClassKind.AbstractJSType
+        else if (isRawJSFunctionDef(sym)) ClassKind.AbstractJSType
         else if (sym.isModuleClass) ClassKind.NativeJSModuleClass
         else ClassKind.NativeJSClass
       }
@@ -5485,6 +5496,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         js.Apply(instance, method, Nil)(toIRType(sym.tpe))
       }
     }
+  }
+
+  private lazy val isScala211WithXexperimental = {
+    scala.util.Properties.versionNumberString.startsWith("2.11.") &&
+    settings.Xexperimental.value
   }
 
   /** Tests whether the given type represents a raw JavaScript type,

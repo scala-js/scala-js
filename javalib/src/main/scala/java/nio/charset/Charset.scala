@@ -1,12 +1,19 @@
 package java.nio.charset
 
 import java.nio.{ByteBuffer, CharBuffer}
+import java.util.{Collections, HashSet, Arrays}
 
 import scala.scalajs.js
 
 abstract class Charset protected (canonicalName: String,
-    aliases: Array[String]) extends AnyRef with Comparable[Charset] {
+    _aliases: Array[String]) extends AnyRef with Comparable[Charset] {
+
+  private lazy val aliasesSet =
+    Collections.unmodifiableSet(new HashSet(Arrays.asList(_aliases)))
+
   final def name(): String = canonicalName
+
+  final def aliases(): java.util.Set[String] = aliasesSet
 
   override final def equals(that: Any): Boolean = that match {
     case that: Charset => this.name == that.name
