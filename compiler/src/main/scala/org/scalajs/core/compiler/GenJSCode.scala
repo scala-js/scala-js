@@ -1491,8 +1491,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               mutable = false, rest = false)
         }
 
-        if (scalaPrimitives.isPrimitive(sym) &&
-            !jsPrimitives.shouldEmitPrimitiveBody(sym)) {
+        if (scalaPrimitives.isPrimitive(sym)) {
           None
         } else if (isAbstractMethod(dd)) {
           val body = if (scalaUsesImplClasses &&
@@ -2807,15 +2806,6 @@ abstract class GenJSCode extends plugins.PluginComponent
          * asInstanceOf to a raw JS type is completely erased.
          */
         value
-      } else if (FunctionClass.seq contains to.typeSymbol) {
-        /* Don't hide a JSFunctionToScala inside a useless cast, otherwise
-         * the optimization avoiding double-wrapping in genApply() will not
-         * be able to kick in.
-         */
-        value match {
-          case JSFunctionToScala(fun, _) => value
-          case _                         => default
-        }
       } else if (sym == NullClass) {
         js.If(
             js.BinaryOp(js.BinaryOp.===, value, js.Null()),
@@ -4137,63 +4127,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
         case List(arg) =>
-
-          /** Factorization of F2JS and F2JSTHIS. */
-          def genFunctionToJSFunction(isThisFunction: Boolean): js.Tree = {
-            val arity = {
-              val funName = tree.fun.symbol.name.encoded
-              assert(funName.startsWith("fromFunction"))
-              funName.stripPrefix("fromFunction").toInt
-            }
-            val inputClass = FunctionClass(arity)
-            val inputIRType = encodeClassType(inputClass)
-            val applyMeth = getMemberMethod(inputClass, nme.apply) suchThat { s =>
-              val ps = s.paramss
-              ps.size == 1 &&
-              ps.head.size == arity &&
-              ps.head.forall(_.tpe.typeSymbol == ObjectClass)
-            }
-            val fCaptureParam = js.ParamDef(js.Ident("f"), inputIRType,
-                mutable = false, rest = false)
-            val jsArity =
-              if (isThisFunction) arity - 1
-              else arity
-            val jsParams = (1 to jsArity).toList map {
-              x => js.ParamDef(js.Ident("arg"+x), jstpe.AnyType,
-                  mutable = false, rest = false)
-            }
-            js.Closure(
-                List(fCaptureParam),
-                jsParams,
-                genApplyMethod(
-                    fCaptureParam.ref,
-                    applyMeth,
-                    if (isThisFunction)
-                      js.This()(jstpe.AnyType) :: jsParams.map(_.ref)
-                    else
-                      jsParams.map(_.ref)),
-                List(arg))
-          }
-
           code match {
-            /** Convert a scala.FunctionN f to a js.FunctionN. */
-            case F2JS =>
-              arg match {
-                /* This case will happen every time we have a Scala lambda
-                 * in js.FunctionN position. We remove the JS function to
-                 * Scala function wrapper, instead of adding a Scala function
-                 * to JS function wrapper.
-                 */
-                case JSFunctionToScala(fun, arity) =>
-                  fun
-                case _ =>
-                  genFunctionToJSFunction(isThisFunction = false)
-              }
-
-            /** Convert a scala.FunctionN f to a js.ThisFunction{N-1}. */
-            case F2JSTHIS =>
-              genFunctionToJSFunction(isThisFunction = true)
-
             case TYPEOF =>
               // js.typeOf(arg)
               genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg),
@@ -4807,34 +4741,18 @@ abstract class GenJSCode extends plugins.PluginComponent
       // scalastyle:on return
     }
 
-    /** Constructor and extractor object for a tree that converts a JavaScript
-     *  function into a Scala function.
+    /** Constructor object for a tree that converts a JavaScript function into
+     *  a Scala function.
      */
     private object JSFunctionToScala {
       private val AnonFunPrefScala =
         "scala.scalajs.runtime.AnonFunction"
-      private val AnonFunPrefJS =
-        "sjsr_AnonFunction"
 
       def apply(jsFunction: js.Tree, arity: Int)(
           implicit pos: Position): js.Tree = {
         val clsSym = getRequiredClass(AnonFunPrefScala + arity)
         val ctor = clsSym.tpe.member(nme.CONSTRUCTOR)
         genNew(clsSym, ctor, List(jsFunction))
-      }
-
-      def unapply(tree: js.New): Option[(js.Tree, Int)] = tree match {
-        case js.New(jstpe.ClassType(wrapperName), _, List(fun))
-            if wrapperName.startsWith(AnonFunPrefJS) =>
-          val arityStr = wrapperName.substring(AnonFunPrefJS.length)
-          try {
-            Some((fun, arityStr.toInt))
-          } catch {
-            case e: NumberFormatException => None
-          }
-
-        case _ =>
-          None
       }
     }
 
