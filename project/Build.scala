@@ -475,7 +475,7 @@ object Build {
           clean in jsEnvs, clean in jsEnvsTestKit, clean in nodeJSEnv,
           clean in testAdapter, clean in plugin,
           clean in javalanglib, clean in javalib, clean in scalalib,
-          clean in libraryAux, clean in library,
+          clean in libraryAux, clean in library, clean in minilib,
           clean in stubs,
           clean in testInterface,
           clean in jUnitRuntime, clean in jUnitPlugin,
@@ -592,7 +592,7 @@ object Build {
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
       javaOptions in Test += {
-        val libJar = (packageBin in (LocalProject("library"), Compile)).value
+        val libJar = (packageBin in (LocalProject("minilib"), Compile)).value
         "-Dorg.scalajs.core.tools.linker.stdlibjar=" + libJar.getAbsolutePath
       }
   )
@@ -1111,6 +1111,29 @@ object Build {
           }
       ))
   ).withScalaJSCompiler
+
+  lazy val minilib: Project = project.enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
+      commonSettings,
+      fatalWarningsSettings,
+      name := "scalajs-minilib",
+
+      noClassFilesSettings,
+      scalaJSExternalCompileSettings,
+      inConfig(Compile)(Seq(
+          mappings in packageBin := {
+            val superMappings = (mappings in packageBin).value
+            val libraryMappings = (mappings in (library, packageBin)).value
+
+            val whitelisted = libraryMappings.filter { mapping =>
+              MiniLib.Whitelist.contains(mapping._2.replace('\\', '/'))
+            }
+
+            whitelisted ++ superMappings
+          }
+      ))
+  ).withScalaJSCompiler.dependsOn(library)
 
   lazy val stubs: Project = project.settings(
       commonSettings,

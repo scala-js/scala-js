@@ -33,8 +33,12 @@ final class _String private () // scalastyle:ignore
     this.asInstanceOf[SpecialJSStringOps]
 
   @inline
-  def charAt(index: Int): Char =
-    thisJSString.charCodeAt(index).toChar
+  def charAt(index: Int): Char = {
+    this.asInstanceOf[js.Dynamic]
+      .charCodeAt(index.asInstanceOf[js.Dynamic])
+      .asInstanceOf[Int]
+      .toChar
+  }
 
   def codePointAt(index: Int): Int = {
     val high = charAt(index)
@@ -225,7 +229,7 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def length(): Int =
-    thisJSString.length
+    this.asInstanceOf[js.Dynamic].length.asInstanceOf[Int]
 
   @inline
   def matches(regex: String): scala.Boolean =
@@ -296,8 +300,11 @@ final class _String private () // scalastyle:ignore
     thisString.jsSubstring(beginIndex)
 
   @inline
-  def substring(beginIndex: Int, endIndex: Int): String =
-    thisString.jsSubstring(beginIndex, endIndex)
+  def substring(beginIndex: Int, endIndex: Int): String = {
+    this.asInstanceOf[js.Dynamic]
+      .substring(beginIndex.asInstanceOf[js.Dynamic], endIndex.asInstanceOf[js.Dynamic])
+      .asInstanceOf[String]
+  }
 
   def toCharArray(): Array[Char] = {
     val len = length
@@ -332,9 +339,6 @@ object _String { // scalastyle:ignore
    *  and that we need to implement these very Scala methods.
    */
   private trait SpecialJSStringOps extends js.Any {
-    def length: Int
-    def charCodeAt(index: Int): Int
-
     def toLowerCase(): String
     def toUpperCase(): String
     def trim(): String

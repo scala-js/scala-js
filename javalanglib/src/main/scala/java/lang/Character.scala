@@ -442,8 +442,11 @@ object Character {
   @inline private def lowSurrogateOf(codePoint: Int): Char =
     (0xdc00 | (codePoint & 0x3ff)).toChar
 
-  @inline def toString(c: scala.Char): String =
-    js.Dynamic.global.String.fromCharCode(c.toInt).asInstanceOf[String]
+  @inline def toString(c: scala.Char): String = {
+    js.Dynamic.global.String
+      .fromCharCode(c.toInt.asInstanceOf[js.Dynamic])
+      .asInstanceOf[String]
+  }
 
   @inline def compare(x: scala.Char, y: scala.Char): Int =
     x - y
