@@ -209,7 +209,7 @@ private object Refiner {
     }
   }
 
-  private final class LinkedMembersInfosCache(
+  private final class LinkedMembersInfosCache private (
       val caches: mutable.Map[(Boolean, String), LinkedMemberInfoCache])
       extends AnyVal {
 

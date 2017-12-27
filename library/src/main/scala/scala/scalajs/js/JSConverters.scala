@@ -24,7 +24,7 @@ sealed abstract class JSConvertersLowPrioImplicits {
 
   @inline
   implicit def JSRichFutureNonThenable[A](f: Future[A]): JSRichFuture[A] =
-    new JSRichFuture[A](f)
+    newJSRichFuture[A](f)
 
 }
 
@@ -33,13 +33,18 @@ sealed abstract class JSConvertersLowPrioImplicits {
  */
 object JSConverters extends js.JSConvertersLowPrioImplicits {
 
-  implicit class JSRichOption[T](val opt: Option[T]) extends AnyVal {
+  implicit class JSRichOption[T] private[JSConverters] (
+      private val opt: Option[T])
+      extends AnyVal {
+
     @inline final def orUndefined: js.UndefOr[T] =
       opt.fold[js.UndefOr[T]](undefined)(v => v)
   }
 
-  implicit class JSRichGenTraversableOnce[T](
-      val col: GenTraversableOnce[T]) extends AnyVal {
+  implicit class JSRichGenTraversableOnce[T] private[JSConverters] (
+      private val col: GenTraversableOnce[T])
+      extends AnyVal {
+
     final def toJSArray: js.Array[T] = {
       /* This is basically a duplicate of `runtime.genTraversableOnce2jsArray`,
        * except it is not marked `@inline`. We do not want to inline this
@@ -64,14 +69,18 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
     }
   }
 
-  implicit class JSRichGenIterable[T](
-      val __self: GenIterable[T]) extends AnyVal {
-    @inline final def toJSIterable: js.Iterable[T] = new IterableAdapter(__self)
+  implicit class JSRichGenIterable[T] private[JSConverters] (
+      private val self: GenIterable[T])
+      extends AnyVal {
+
+    @inline final def toJSIterable: js.Iterable[T] = new IterableAdapter(self)
   }
 
-  implicit class JSRichIterator[T](
-      val __self: scala.collection.Iterator[T]) extends AnyVal {
-    @inline final def toJSIterator: js.Iterator[T] = new IteratorAdapter(__self)
+  implicit class JSRichIterator[T] private[JSConverters] (
+      private val self: scala.collection.Iterator[T])
+      extends AnyVal {
+
+    @inline final def toJSIterator: js.Iterator[T] = new IteratorAdapter(self)
   }
 
   private class IterableAdapter[+T](col: GenIterable[T]) extends js.Iterable[T] {
@@ -98,7 +107,10 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
     }
   }
 
-  implicit class JSRichGenMap[T](val map: GenMap[String, T]) extends AnyVal {
+  implicit class JSRichGenMap[T] private[JSConverters] (
+      private val map: GenMap[String, T])
+      extends AnyVal {
+
     @inline final def toJSDictionary: js.Dictionary[T] = {
       val result = js.Dictionary.empty[T]
       map.foreach { case (key, value) => result(key) = value }
@@ -115,7 +127,17 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
   implicit def JSRichFutureThenable[A](f: Future[js.Thenable[A]]): JSRichFuture[A] =
     new JSRichFuture[A](f)
 
-  final class JSRichFuture[A](val self: Future[A | js.Thenable[A]]) extends AnyVal {
+  // For access in JSConvertersLowPrioImplicits
+  @inline
+  protected[this] def newJSRichFuture[A](
+      f: Future[A | js.Thenable[A]]): JSRichFuture[A] = {
+    new JSRichFuture[A](f)
+  }
+
+  final class JSRichFuture[A] private[JSConverters] (
+      private val self: Future[A | js.Thenable[A]])
+      extends AnyVal {
+
     /** Converts the Future to a JavaScript [[Promise]].
      *
      *  Attention! The nature of the [[Promise]] class, from the ECMAScript

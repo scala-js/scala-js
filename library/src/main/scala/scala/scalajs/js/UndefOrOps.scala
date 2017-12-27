@@ -17,7 +17,9 @@ import scala.scalajs.js.|.Evidence
 /** @define option [[js.UndefOr]]
  *  @define none [[js.undefined]]
  */
-final class UndefOrOps[A](val self: js.UndefOr[A]) extends AnyVal {
+final class UndefOrOps[A] private[js] (private val self: js.UndefOr[A])
+    extends AnyVal {
+
   import UndefOrOps._
 
   /** Returns true if the option is `undefined`, false otherwise.

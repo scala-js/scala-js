@@ -13,7 +13,11 @@ import scala.concurrent.duration._
 
 private[jsenv] object Utils {
   final class OptDeadline private (
-      val deadline: Deadline /* nullable */) extends AnyVal { // scalastyle:ignore
+      val __private_deadline: Deadline /* nullable */) // scalastyle:ignore
+      extends AnyVal {
+
+    @inline private def deadline: Deadline = __private_deadline
+
     def millisLeft: Long =
       if (deadline == null) 0
       else (deadline.timeLeft.toMillis max 1L)

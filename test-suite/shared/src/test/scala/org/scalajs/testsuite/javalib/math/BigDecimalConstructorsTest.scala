@@ -479,7 +479,10 @@ class BigDecimalConstructorsTest {
 
 object BigDecimalConstructorsTest {
   // Helper for comparing values within a certain +/- delta
-  implicit class BigDecimalOps(val actual: BigDecimal) extends AnyVal {
+  implicit class BigDecimalOps private[BigDecimalConstructorsTest] (
+      private val actual: BigDecimal)
+      extends AnyVal {
+
     def minus(expected: BigDecimal): Double = {
       val actualDeltaDecimal:BigDecimal = actual.subtract(expected)
       val actualDelta = actualDeltaDecimal.abs().doubleValue()

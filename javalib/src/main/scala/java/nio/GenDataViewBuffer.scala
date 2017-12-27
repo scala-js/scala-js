@@ -44,7 +44,13 @@ private[nio] object GenDataViewBuffer {
   }
 }
 
-private[nio] final class GenDataViewBuffer[B <: Buffer](val self: B) extends AnyVal {
+/* The underlying `val self` is intentionally public because
+ * `self.BufferType` appears in signatures.
+ * It's tolerable because the class is `private[nio]` anyway.
+ */
+private[nio] final class GenDataViewBuffer[B <: Buffer] private (val self: B)
+    extends AnyVal {
+
   import self._
 
   import GenDataViewBuffer.newDataView

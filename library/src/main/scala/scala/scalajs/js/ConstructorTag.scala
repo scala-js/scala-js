@@ -20,7 +20,7 @@ import scala.scalajs.js
  *  type argument to `js.constructorOf`.
  */
 final class ConstructorTag[T <: js.Any] private[scalajs] (
-    val constructor: js.Dynamic)
+    val constructor: js.Dynamic) // intentionally public
     extends AnyVal {
 
   /** Instantiates the class `T` with the specified arguments.

@@ -82,7 +82,9 @@ object JSNumberOps {
   implicit def enableJSNumberExtOps(x: Double): ExtOps =
     new ExtOps(x.asInstanceOf[js.Dynamic])
 
-  final class ExtOps(val self: js.Dynamic) extends AnyVal {
+  final class ExtOps private[JSNumberOps] (private val self: js.Dynamic)
+      extends AnyVal {
+
     @inline def toUint: Double =
       (self >>> 0.asInstanceOf[js.Dynamic]).asInstanceOf[Double]
   }

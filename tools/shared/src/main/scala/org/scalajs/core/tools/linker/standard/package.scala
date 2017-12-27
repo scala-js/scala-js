@@ -9,15 +9,17 @@
 package org.scalajs.core.tools.linker
 
 package object standard {
-  implicit class StandardLinkerConfigStandardOps(
-      val __self: StandardLinker.Config) extends AnyVal {
+  implicit class StandardLinkerConfigStandardOps private[standard] (
+      val __private_self: StandardLinker.Config) extends AnyVal {
 
     import StandardLinker.Config
 
+    @inline private def self: Config = __private_self
+
     /** Standard output mode. */
-    def outputMode: OutputMode = __self.outputMode
+    def outputMode: OutputMode = self.outputMode
 
     def withOutputMode(outputMode: OutputMode): Config =
-      __self.withOutputMode(outputMode)
+      self.withOutputMode(outputMode)
   }
 }

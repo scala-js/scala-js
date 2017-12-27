@@ -1413,7 +1413,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 }
 
 object PrepJSInterop {
-  private final class OwnerKind(val baseKinds: Int) extends AnyVal {
+  private final class OwnerKind private (private val baseKinds: Int)
+      extends AnyVal {
+
     import OwnerKind._
 
     @inline def isBaseKind: Boolean =

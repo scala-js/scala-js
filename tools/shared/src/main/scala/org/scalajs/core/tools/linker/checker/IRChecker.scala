@@ -1394,8 +1394,11 @@ object IRChecker {
    *  IR is invalid, so all bets are off and we can be slow and allocate stuff;
    *  we don't care.
    */
-  private final class ErrorContext private (val nodeOrLinkedClass: Any)
+  private final class ErrorContext private (
+      val __private_nodeOrLinkedClass: Any)
       extends AnyVal {
+
+    @inline private def nodeOrLinkedClass: Any = __private_nodeOrLinkedClass
 
     override def toString(): String = {
       val (pos, name) = nodeOrLinkedClass match {
@@ -1421,8 +1424,11 @@ object IRChecker {
       val pos: Position)
 
   /** Enable the right-biased API of Either from 2.12 in earlier versions. */
-  private implicit class RightBiasedEither[A, B](val self: Either[A, B])
+  private implicit class RightBiasedEither[A, B](
+      val __private_self: Either[A, B])
       extends AnyVal {
+
+    @inline private def self: Either[A, B] = __private_self
 
     def foreach[U](f: B => U): Unit = self match {
       case Left(_)  =>

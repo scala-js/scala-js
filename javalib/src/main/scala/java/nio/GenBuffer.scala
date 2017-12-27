@@ -5,7 +5,13 @@ private[nio] object GenBuffer {
     new GenBuffer(self)
 }
 
-private[nio] final class GenBuffer[B <: Buffer](val self: B) extends AnyVal {
+/* The underlying `val self` is intentionally public because
+ * `self.ElementType` and `self.BufferType` appear in signatures.
+ * It's tolerable because the class is `private[nio]` anyway.
+ */
+private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
+    extends AnyVal {
+
   import self._
 
   @inline

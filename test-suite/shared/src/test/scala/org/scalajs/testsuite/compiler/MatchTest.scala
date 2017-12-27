@@ -95,7 +95,7 @@ object MatchTest {
     def f(): T
   }
 
-  class ValueClass(val x: Int) extends AnyVal with ValueClassBase[Int] {
+  class ValueClass(private val x: Int) extends AnyVal with ValueClassBase[Int] {
     def f(): Int = x * 2
   }
 }

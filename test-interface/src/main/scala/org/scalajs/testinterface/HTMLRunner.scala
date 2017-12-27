@@ -473,7 +473,9 @@ protected[testinterface] object HTMLRunner {
       var search: String = js.native
     }
 
-    implicit class RichElement(val element: Element) extends AnyVal {
+    implicit class RichElement private[dom] (private val element: Element)
+        extends AnyVal {
+
       def newElement(clss: String = "", text: String = "",
           tpe: String = "div"): dom.Element = {
         val el = document.createElement(tpe)

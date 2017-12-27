@@ -22,7 +22,7 @@ object Hashers {
       hasher.mixParamDefs(args)
       hasher.mixType(resultType)
       body.foreach(hasher.mixTree)
-      hasher.mixInt(methodDef.optimizerHints.bits)
+      hasher.mixInt(OptimizerHints.toBits(methodDef.optimizerHints))
 
       val hash = hasher.finalizeHash()
 

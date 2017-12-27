@@ -28,14 +28,19 @@ private[optimizer] object ConcurrencyUtils {
       new AtomicReference(l)
   }
 
-  implicit class AtomicAccOps[T](val acc: AtomicAcc[T]) extends AnyVal {
-    @inline final def size: Int = acc.get.size
+  implicit class AtomicAccOps[T] private[ConcurrencyUtils] (
+      val __private_self: AtomicAcc[T])
+      extends AnyVal {
+
+    @inline private def self: AtomicAcc[T] = __private_self
+
+    @inline final def size: Int = self.get.size
 
     @inline
-    final def +=(x: T): Unit = AtomicAccOps.append(acc, x)
+    final def +=(x: T): Unit = AtomicAccOps.append(self, x)
 
     @inline
-    final def removeAll(): List[T] = AtomicAccOps.removeAll(acc)
+    final def removeAll(): List[T] = AtomicAccOps.removeAll(self)
   }
 
   object AtomicAccOps {
@@ -54,19 +59,29 @@ private[optimizer] object ConcurrencyUtils {
 
   type TrieSet[T] = TrieMap[T, Null]
 
-  implicit class TrieSetOps[T](val set: TrieSet[T]) extends AnyVal {
-    @inline final def +=(x: T): Unit = set.put(x, null)
+  implicit class TrieSetOps[T] private[ConcurrencyUtils] (
+      val __private_self: TrieSet[T])
+      extends AnyVal {
+
+    @inline private def self: TrieSet[T] = __private_self
+
+    @inline final def +=(x: T): Unit = self.put(x, null)
   }
 
   object TrieSet {
     @inline final def empty[T]: TrieSet[T] = TrieMap.empty
   }
 
-  implicit class TrieMapOps[K,V](val map: TrieMap[K,V]) extends AnyVal {
+  implicit class TrieMapOps[K, V] private[ConcurrencyUtils] (
+      val __private_self: TrieMap[K, V])
+      extends AnyVal {
+
+    @inline private def self: TrieMap[K, V] = __private_self
+
     @inline final def getOrPut(k: K, default: => V): V = {
-      map.get(k).getOrElse {
+      self.get(k).getOrElse {
         val v = default
-        map.putIfAbsent(k, v).getOrElse(v)
+        self.putIfAbsent(k, v).getOrElse(v)
       }
     }
   }

@@ -11,7 +11,10 @@ package scala.scalajs.js.typedarray
 
 /** Extensions for [[DataView]]. */
 object DataViewExt {
-  implicit class DataViewExtOps(val dataView: DataView) extends AnyVal {
+  implicit class DataViewExtOps private[DataViewExt] (
+      private val dataView: DataView)
+      extends AnyVal {
+
     /** Reads a 2's complement signed 64-bit integers from the data view.
      *  @param index        Starting index
      *  @param littleEndian Whether the number is stored in little endian
