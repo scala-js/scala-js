@@ -67,10 +67,6 @@ sealed trait Dynamic extends js.Any with scala.Dynamic {
 
   def &&(that: js.Dynamic): js.Dynamic = js.native
   def ||(that: js.Dynamic): js.Dynamic = js.native
-
-  // Work around the annoying implicits in Predef in Scala 2.10.
-  def x: js.Dynamic = js.native
-  def x_=(value: js.Any): Unit = js.native
 }
 
 /** Factory for dynamically typed JavaScript values. */
