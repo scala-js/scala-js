@@ -78,9 +78,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSFunctionTpes = JSFunctionClasses.map(_.toTypeConstructor)
 
-    lazy val JSAnyModule = JSAnyClass.companionModule
-      def JSAny_fromFunction(arity: Int): TermSymbol = getMemberMethod(JSAnyModule, newTermName("fromFunction"+arity))
-
     lazy val JSDynamicModule = JSDynamicClass.companionModule
       lazy val JSDynamic_newInstance = getMemberMethod(JSDynamicModule, newTermName("newInstance"))
     lazy val JSDynamicLiteral = getMemberModule(JSDynamicModule, newTermName("literal"))
@@ -89,9 +86,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSArrayModule = JSArrayClass.companionModule
       lazy val JSArray_create = getMemberMethod(JSArrayModule, newTermName("apply"))
-
-    lazy val JSThisFunctionModule = JSThisFunctionClass.companionModule
-      def JSThisFunction_fromFunction(arity: Int): TermSymbol = getMemberMethod(JSThisFunctionModule, newTermName("fromFunction"+arity))
 
     lazy val JSConstructorTagModule = getRequiredModule("scala.scalajs.js.ConstructorTag")
       lazy val JSConstructorTag_materialize = getMemberMethod(JSConstructorTagModule, newTermName("materialize"))

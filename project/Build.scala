@@ -827,6 +827,13 @@ object Build {
         else Seq("-Ydelambdafy:method"))
   }
 
+  lazy val ensureSAMSupportSetting: Setting[_] = {
+    scalacOptions ++= {
+      if (scalaBinaryVersion.value == "2.11") Seq("-Xexperimental")
+      else Nil
+    }
+  }
+
   private def serializeHardcodedIR(base: File,
       classDef: ir.Trees.ClassDef): File = {
     // We assume that there are no weird characters in the full name
@@ -850,6 +857,7 @@ object Build {
       name := "java.lang library for Scala.js",
       publishArtifact in Compile := false,
       delambdafySetting,
+      ensureSAMSupportSetting,
       noClassFilesSettings,
 
       resourceGenerators in Compile += Def.task {
@@ -867,6 +875,7 @@ object Build {
       name := "Java library for Scala.js",
       publishArtifact in Compile := false,
       delambdafySetting,
+      ensureSAMSupportSetting,
       noClassFilesSettings,
       scalaJSExternalCompileSettings
   ).withScalaJSCompiler.dependsOnLibraryNoJar
@@ -1032,6 +1041,7 @@ object Build {
       fatalWarningsSettings,
       name := "Scala.js library",
       delambdafySetting,
+      ensureSAMSupportSetting,
       exportJars := !isGeneratingEclipse,
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,

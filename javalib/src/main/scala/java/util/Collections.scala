@@ -740,7 +740,7 @@ object Collections {
   private trait WrappedSortedMap[K, V]
       extends WrappedMap[K, V, SortedMap[K, V]] with SortedMap[K, V] {
     def comparator(): Comparator[_ >: K] =
-      inner.comparator
+      inner.comparator()
 
     def subMap(fromKey: K, toKey: K): SortedMap[K, V] =
       inner.subMap(fromKey, toKey)

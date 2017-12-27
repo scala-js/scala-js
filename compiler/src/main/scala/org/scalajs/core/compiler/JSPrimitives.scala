@@ -31,10 +31,7 @@ abstract class JSPrimitives {
 
   val FirstJSPrimitiveCode = 300
 
-  val F2JS = FirstJSPrimitiveCode + 1 // FunctionN to js.FunctionN
-  val F2JSTHIS = F2JS + 1             // FunctionN to js.ThisFunction{N-1}
-
-  val DYNNEW = F2JSTHIS + 1 // Instantiate a new JavaScript object
+  val DYNNEW = FirstJSPrimitiveCode + 1 // Instantiate a new JavaScript object
 
   val ARR_CREATE = DYNNEW + 1 // js.Array.apply (array literal syntax)
 
@@ -71,25 +68,9 @@ abstract class JSPrimitives {
   def isJavaScriptPrimitive(sym: Symbol): Boolean =
     scalaJSPrimitives.contains(sym)
 
-  /** For a primitive, is it one for which we should emit its body anyway? */
-  def shouldEmitPrimitiveBody(sym: Symbol): Boolean = {
-    /* No @switch because some Scala 2.11 versions erroneously report a
-     * warning for switch matches with less than 3 non-default cases.
-     */
-    scalaPrimitives.getPrimitive(sym) match {
-      case F2JS | F2JSTHIS => true
-      case _               => false
-    }
-  }
-
   private val scalaJSPrimitives = mutable.Map.empty[Symbol, Int]
 
   private def initWithPrimitives(addPrimitive: (Symbol, Int) => Unit): Unit = {
-    for (i <- 0 to 22)
-      addPrimitive(JSAny_fromFunction(i), F2JS)
-    for (i <- 1 to 22)
-      addPrimitive(JSThisFunction_fromFunction(i), F2JSTHIS)
-
     addPrimitive(JSDynamic_newInstance, DYNNEW)
 
     addPrimitive(JSArray_create, ARR_CREATE)
