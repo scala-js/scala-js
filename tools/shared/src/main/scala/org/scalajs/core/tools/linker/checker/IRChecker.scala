@@ -76,7 +76,6 @@ private final class IRChecker(unit: LinkingUnit,
             ClassKind.NativeJSModuleClass =>
           if (classDef.fields.nonEmpty ||
               classDef.memberMethods.nonEmpty ||
-              classDef.abstractMethods.nonEmpty ||
               classDef.exportedMembers.nonEmpty ||
               classDef.topLevelExports.nonEmpty) {
             reportError(s"Raw JS type ${classDef.name} cannot "+
@@ -256,7 +255,7 @@ private final class IRChecker(unit: LinkingUnit,
     }
 
     // Check methods
-    for (method <- classDef.memberMethods ++ classDef.abstractMethods) {
+    for (method <- classDef.memberMethods) {
       val tree = method.value
       implicit val ctx = ErrorContext(tree)
 
@@ -329,10 +328,9 @@ private final class IRChecker(unit: LinkingUnit,
 
     body.fold {
       // Abstract
-      if (static)
-        reportError(s"Static method ${classDef.name.name}.$name cannot be abstract")
-      else if (isConstructor)
-        reportError(s"Constructor ${classDef.name.name}.$name cannot be abstract")
+      reportError(
+          s"The abstract method ${classDef.name.name}.$name survived the " +
+          "Analyzer (this is a bug)")
     } { body =>
       // Concrete
       if (resultType == NoType)

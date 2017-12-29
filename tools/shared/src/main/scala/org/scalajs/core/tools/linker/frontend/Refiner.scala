@@ -87,10 +87,6 @@ final class Refiner(config: CommonPhaseConfig) {
       info.methodInfos(m.value.encodedName).isReachable
     }
 
-    val abstractMethods = classDef.abstractMethods filter { m =>
-      info.methodInfos(m.value.encodedName).isReachable
-    }
-
     val kind =
       if (info.isModuleAccessed) classDef.kind
       else classDef.kind.withoutModuleAccessor
@@ -100,7 +96,6 @@ final class Refiner(config: CommonPhaseConfig) {
         fields = fields,
         staticMethods = staticMethods,
         memberMethods = memberMethods,
-        abstractMethods = abstractMethods,
         hasInstances = info.isAnySubclassInstantiated,
         hasInstanceTests = info.areInstanceTestsUsed,
         hasRuntimeTypeInfo = info.isDataAccessed)
@@ -151,7 +146,6 @@ private object Refiner {
     private var cacheUsed: Boolean = false
     private val staticMethodsInfoCaches = LinkedMembersInfosCache()
     private val memberMethodsInfoCaches = LinkedMembersInfosCache()
-    private val abstractMethodsInfoCaches = LinkedMembersInfosCache()
     private val exportedMembersInfoCaches = LinkedMembersInfosCache()
     private var info: Infos.ClassInfo = _
 
@@ -174,8 +168,6 @@ private object Refiner {
           builder.addMethod(staticMethodsInfoCaches.getInfo(linkedMethod))
         for (linkedMethod <- linkedClass.memberMethods)
           builder.addMethod(memberMethodsInfoCaches.getInfo(linkedMethod))
-        for (linkedMethod <- linkedClass.abstractMethods)
-          builder.addMethod(abstractMethodsInfoCaches.getInfo(linkedMethod))
         for (linkedMember <- linkedClass.exportedMembers)
           builder.addMethod(exportedMembersInfoCaches.getInfo(linkedMember))
 
@@ -202,7 +194,6 @@ private object Refiner {
         // No point in cleaning the inner caches if the whole class disappears
         staticMethodsInfoCaches.cleanAfterRun()
         memberMethodsInfoCaches.cleanAfterRun()
-        abstractMethodsInfoCaches.cleanAfterRun()
         exportedMembersInfoCaches.cleanAfterRun()
       }
       result

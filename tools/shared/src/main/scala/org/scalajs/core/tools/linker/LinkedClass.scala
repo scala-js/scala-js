@@ -20,9 +20,8 @@ import ir.Definitions
 /** A ClassDef after linking.
  *
  *  Note that the [[version]] in the LinkedClass does not cover
- *  [[staticMethods]], [[memberMethods]], [[abstractMethods]] and
- *  [[exportedMembers]] as they have their individual versions. (The collections
- *  themselves are not versioned).
+ *  [[staticMethods]], [[memberMethods]] and [[exportedMembers]] as they have
+ *  their individual versions. (The collections themselves are not versioned).
  *
  *  Moreover, the [[version]] is relative to the identity of a LinkedClass.
  *  The definition of identity varies as linked classes progress through the
@@ -44,7 +43,6 @@ final class LinkedClass(
     val fields: List[FieldDef],
     val staticMethods: List[Versioned[MethodDef]],
     val memberMethods: List[Versioned[MethodDef]],
-    val abstractMethods: List[Versioned[MethodDef]],
     val exportedMembers: List[Versioned[MemberDef]],
     val topLevelExports: List[Versioned[TopLevelExportDef]],
     val optimizerHints: OptimizerHints,
@@ -79,7 +77,6 @@ final class LinkedClass(
       fields: List[FieldDef] = this.fields,
       staticMethods: List[Versioned[MethodDef]] = this.staticMethods,
       memberMethods: List[Versioned[MethodDef]] = this.memberMethods,
-      abstractMethods: List[Versioned[MethodDef]] = this.abstractMethods,
       exportedMembers: List[Versioned[MemberDef]] = this.exportedMembers,
       topLevelExports: List[Versioned[TopLevelExportDef]] = this.topLevelExports,
       optimizerHints: OptimizerHints = this.optimizerHints,
@@ -100,7 +97,6 @@ final class LinkedClass(
         fields,
         staticMethods,
         memberMethods,
-        abstractMethods,
         exportedMembers,
         topLevelExports,
         optimizerHints,
