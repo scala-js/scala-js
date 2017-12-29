@@ -9,7 +9,9 @@ package org.scalajs.testsuite.javalib
 
 package object util {
 
-  implicit private[util] class CompareNullablesOps(val self: Any) extends AnyVal {
+  implicit private[util] class CompareNullablesOps(private val self: Any)
+      extends AnyVal {
+
     @inline
     def ===(that: Any): Boolean =
       if (self.asInstanceOf[AnyRef] eq null) that.asInstanceOf[AnyRef] eq null

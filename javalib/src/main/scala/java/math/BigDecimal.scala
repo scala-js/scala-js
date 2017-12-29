@@ -281,7 +281,7 @@ object BigDecimal {
     insertString(s, pos, s2.substring(s2Start, s2Start + s2Len))
   }
 
-  private implicit class StringOps(val s: String) extends AnyVal {
+  private implicit class StringOps(private val s: String) extends AnyVal {
     @inline
     def insert(pos: Int, s2: String): String = insertString(s, pos, s2)
 

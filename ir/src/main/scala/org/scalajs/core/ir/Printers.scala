@@ -1052,7 +1052,7 @@ object Printers {
         implicit dummy: DummyImplicit): Unit = {
       if (optimizerHints != OptimizerHints.empty) {
         print("@hints(")
-        print(optimizerHints.bits.toString)
+        print(OptimizerHints.toBits(optimizerHints).toString)
         print(") ")
       }
     }

@@ -994,8 +994,10 @@ object Trees {
 
   // Miscellaneous
 
-  final class OptimizerHints(val bits: Int) extends AnyVal {
+  final class OptimizerHints private (val __private_bits: Int) extends AnyVal {
     import OptimizerHints._
+
+    @inline private def bits: Int = __private_bits
 
     def inline: Boolean = (bits & InlineMask) != 0
     def noinline: Boolean = (bits & NoinlineMask) != 0
@@ -1013,14 +1015,20 @@ object Trees {
   }
 
   object OptimizerHints {
-    final val InlineShift = 0
-    final val InlineMask = 1 << InlineShift
+    private final val InlineShift = 0
+    private final val InlineMask = 1 << InlineShift
 
-    final val NoinlineShift = 1
-    final val NoinlineMask = 1 << NoinlineShift
+    private final val NoinlineShift = 1
+    private final val NoinlineMask = 1 << NoinlineShift
 
     final val empty: OptimizerHints =
       new OptimizerHints(0)
+
+    private[ir] def fromBits(bits: Int): OptimizerHints =
+      new OptimizerHints(bits)
+
+    private[ir] def toBits(hints: OptimizerHints): Int =
+      hints.bits
   }
 
   /** Loading specification for a native JS class or object. */

@@ -13,11 +13,15 @@ import org.scalajs.core.tools.linker.backend.closure.ClosureLinkerBackend
 object LinkerBackendPlatformExtensions {
   import LinkerBackend.Config
 
-  final class ConfigExt(val config: Config) extends AnyVal {
+  final class ConfigExt private[backend] (val __private_self: Config)
+      extends AnyVal {
+
+    @inline private def self: Config = __private_self
+
     /** Whether to actually use the Google Closure Compiler pass. */
-    def closureCompiler: Boolean = config.closureCompilerIfAvailable
+    def closureCompiler: Boolean = self.closureCompilerIfAvailable
 
     def withClosureCompiler(closureCompiler: Boolean): Config =
-      config.withClosureCompilerIfAvailable(closureCompiler)
+      self.withClosureCompilerIfAvailable(closureCompiler)
   }
 }

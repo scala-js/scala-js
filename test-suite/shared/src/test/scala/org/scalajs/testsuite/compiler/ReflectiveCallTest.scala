@@ -463,7 +463,7 @@ class ReflectiveCallTest {
 }
 
 object ReflectiveCallTest {
-  class AnyValWithAnyRefPrimitiveMethods(val x: Int) extends AnyVal {
+  class AnyValWithAnyRefPrimitiveMethods(private val x: Int) extends AnyVal {
     def eq(that: AnyRef): Boolean = (x + 1) == that
     def ne(that: AnyRef): Boolean = (x + 1) != that
     def synchronized[T](f: T): Any = f + "there"

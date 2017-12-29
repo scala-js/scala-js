@@ -25,7 +25,12 @@ private[nio] object GenHeapBufferView {
   }
 }
 
-private[nio] final class GenHeapBufferView[B <: Buffer](val self: B) extends AnyVal {
+/* The underlying `val self` is intentionally public because
+ * `self.BufferType` appears in signatures.
+ * It's tolerable because the class is `private[nio]` anyway.
+ */
+private[nio] final class GenHeapBufferView[B <: Buffer] private (val self: B)
+    extends AnyVal {
   import self._
 
   type NewThisHeapBufferView = GenHeapBufferView.NewHeapBufferView[BufferType]

@@ -110,7 +110,10 @@ object SAMTest {
     def apply(x: Int): String
   }
 
-  implicit class ComparatorCompat[A](val c: Comparator[A]) extends AnyVal {
+  implicit class ComparatorCompat[A] private[SAMTest] (
+      private val c: Comparator[A])
+      extends AnyVal {
+
     def reversed(): Comparator[A] = {
       assumeTrue("Comparator.reversed() is not available on this JDK", false)
       ???

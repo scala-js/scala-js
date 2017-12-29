@@ -178,7 +178,10 @@ object Any extends js.LowPrioAnyImplicits {
   @inline implicit def fromJDouble(value: java.lang.Double): js.Any =
     value.asInstanceOf[js.Any]
 
-  implicit class ObjectCompanionOps(val __self: js.Object.type) extends AnyVal {
+  implicit class ObjectCompanionOps private[Any] (
+      private val self: js.Object.type)
+      extends AnyVal {
+
     /** Tests whether the specified object `o` has a property `p` on itself or
      *  in its prototype chain.
      *

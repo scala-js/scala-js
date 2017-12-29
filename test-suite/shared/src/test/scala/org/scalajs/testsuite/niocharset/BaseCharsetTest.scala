@@ -203,7 +203,10 @@ object BaseCharsetTest {
       BufferPart(buf)
   }
 
-  implicit class Interpolators(val sc: StringContext) extends AnyVal {
+  implicit class Interpolators private[BaseCharsetTest] (
+      private val sc: StringContext)
+      extends AnyVal {
+
     def bb(args: Any*): ByteBuffer = {
       val strings = sc.parts.iterator
       val expressions = args.iterator

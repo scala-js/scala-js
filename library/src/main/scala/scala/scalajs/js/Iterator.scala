@@ -45,8 +45,11 @@ object Iterator {
     }
   }
 
-  final implicit class IteratorOps[A](val __self: js.Iterator[A]) extends AnyVal {
+  final implicit class IteratorOps[A] private[Iterator] (
+      private val self: js.Iterator[A])
+      extends AnyVal {
+
     @inline
-    def toIterator: scala.collection.Iterator[A] = new WrappedIterator(__self)
+    def toIterator: scala.collection.Iterator[A] = new WrappedIterator(self)
   }
 }

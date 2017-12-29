@@ -91,7 +91,7 @@ class ArrayTest {
 
 object ArrayTest {
 
-  private class VC(val x: Int) extends AnyVal {
+  private class VC(private val x: Int) extends AnyVal {
     override def toString(): String = s"VC($x)"
   }
 

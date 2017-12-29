@@ -4803,15 +4803,20 @@ private[optimizer] object OptimizerCore {
     }
   }
 
-  private implicit class OptimizerTreeOps(val selfTree: Tree) extends AnyVal {
+  private implicit class OptimizerTreeOps private[OptimizerCore] (
+      val __private_self: Tree)
+      extends AnyVal {
+
+    @inline private def self: Tree = __private_self
+
     def toPreTransform: PreTransform = {
-      selfTree match {
+      self match {
         case UnaryOp(op, lhs) =>
-          PreTransUnaryOp(op, lhs.toPreTransform)(selfTree.pos)
+          PreTransUnaryOp(op, lhs.toPreTransform)(self.pos)
         case BinaryOp(op, lhs, rhs) =>
-          PreTransBinaryOp(op, lhs.toPreTransform, rhs.toPreTransform)(selfTree.pos)
+          PreTransBinaryOp(op, lhs.toPreTransform, rhs.toPreTransform)(self.pos)
         case _ =>
-          PreTransTree(selfTree)
+          PreTransTree(self)
       }
     }
   }

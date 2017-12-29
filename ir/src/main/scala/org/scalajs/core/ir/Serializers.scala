@@ -474,7 +474,7 @@ object Serializers {
       writeJSNativeLoadSpec(jsNativeLoadSpec)
       writeMemberDefs(memberDefs)
       writeTopLevelExportDefs(topLevelExportDefs)
-      writeInt(optimizerHints.bits)
+      writeInt(OptimizerHints.toBits(optimizerHints))
     }
 
     def writeMemberDef(memberDef: MemberDef): Unit = {
@@ -501,7 +501,7 @@ object Serializers {
           // Write out method def
           writeBoolean(static); writePropertyName(name)
           writeParamDefs(args); writeType(resultType); writeOptTree(body)
-          writeInt(methodDef.optimizerHints.bits)
+          writeInt(OptimizerHints.toBits(methodDef.optimizerHints))
 
           // Jump back and write true length
           val length = bufferUnderlying.jumpBack()
@@ -934,7 +934,7 @@ object Serializers {
       val jsNativeLoadSpec = readJSNativeLoadSpec()
       val memberDefs = readMemberDefs()
       val topLevelExportDefs = readTopLevelExportDefs()
-      val optimizerHints = new OptimizerHints(readInt())
+      val optimizerHints = OptimizerHints.fromBits(readInt())
       ClassDef(name, kind, jsClassCaptures, superClass, parents, jsSuperClass,
           jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
           optimizerHints)
@@ -957,7 +957,7 @@ object Serializers {
           assert(len >= 0)
           MethodDef(readBoolean(), readPropertyName(),
               readParamDefs(), readType(), readOptTree())(
-              new OptimizerHints(readInt()), optHash)
+              OptimizerHints.fromBits(readInt()), optHash)
 
         case TagPropertyDef =>
           val static = readBoolean()

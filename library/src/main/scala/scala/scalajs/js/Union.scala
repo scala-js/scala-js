@@ -89,7 +89,9 @@ object | { // scalastyle:ignore
     a.asInstanceOf[F[B]]
 
   /** Operations on union types. */
-  implicit class UnionOps[A <: _ | _](val self: A) extends AnyVal {
+  implicit class UnionOps[A <: _ | _] private[|] (private val self: A)
+      extends AnyVal {
+
     /** Explicitly merge a union type to a supertype (which might not be a
      *  union type itself).
      *

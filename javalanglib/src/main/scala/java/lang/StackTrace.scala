@@ -278,7 +278,7 @@ private[lang] object StackTrace {
     }
   }
 
-  private implicit class StringRE(val s: String) extends AnyVal {
+  private implicit class StringRE(private val s: String) extends AnyVal {
     def re: js.RegExp = new js.RegExp(s)
     def re(mods: String): js.RegExp = new js.RegExp(s, mods)
   }

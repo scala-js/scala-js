@@ -17,7 +17,11 @@ import org.scalajs.core.ir.Position
 import org.scalajs.core.tools.linker.backend.javascript.Trees._
 
 private[emitter] object TreeDSL {
-  implicit class TreeOps(val self: Tree) extends AnyVal {
+  implicit class TreeOps private[TreeDSL] (val __private_self: Tree)
+      extends AnyVal {
+
+    @inline private def self: Tree = __private_self
+
     /** Select a member */
     def DOT(field: Ident)(implicit pos: Position): DotSelect =
       DotSelect(self, field)
