@@ -116,7 +116,6 @@ final class BaseLinker(config: CommonPhaseConfig) {
     val fields = mutable.Buffer.empty[FieldDef]
     val staticMethods = mutable.Buffer.empty[Versioned[MethodDef]]
     val memberMethods = mutable.Buffer.empty[Versioned[MethodDef]]
-    val abstractMethods = mutable.Buffer.empty[Versioned[MethodDef]]
     val exportedMembers = mutable.Buffer.empty[Versioned[MemberDef]]
 
     def linkedMethod(m: MethodDef) = {
@@ -134,30 +133,27 @@ final class BaseLinker(config: CommonPhaseConfig) {
     }
 
     classDef.memberDefs.foreach {
-      // Static methods
-      case m: MethodDef if m.static =>
-        if (analyzerInfo.staticMethodInfos(m.encodedName).isReachable) {
-          if (m.name.isInstanceOf[Ident])
-            staticMethods += linkedMethod(m)
-          else
-            exportedMembers += linkedMethod(m)
-        }
-
-      // Fields
-      case field @ FieldDef(_, _, _, _) =>
+      case field: FieldDef =>
         if (analyzerInfo.isAnySubclassInstantiated)
           fields += field
 
-      // Normal methods
       case m: MethodDef =>
-        if (analyzerInfo.methodInfos(m.encodedName).isReachable) {
+        val methodInfo =
+          if (m.static) analyzerInfo.staticMethodInfos(m.encodedName)
+          else analyzerInfo.methodInfos(m.encodedName)
+
+        if (methodInfo.isReachable) {
+          assert(m.body.isDefined,
+              s"The abstract method ${classDef.name.name}.${m.encodedName} " +
+              "is reachable.")
+          val linked = linkedMethod(m)
           if (m.name.isInstanceOf[Ident]) {
-            if (m.body.isDefined)
-              memberMethods += linkedMethod(m)
+            if (m.static)
+              staticMethods += linked
             else
-              abstractMethods += linkedMethod(m)
+              memberMethods += linked
           } else {
-            exportedMembers += linkedMethod(m)
+            exportedMembers += linked
           }
         }
 
@@ -207,7 +203,6 @@ final class BaseLinker(config: CommonPhaseConfig) {
         fields.toList,
         staticMethods.toList,
         memberMethods.toList,
-        abstractMethods.toList,
         exportedMembers.toList,
         topLevelExports,
         classDef.optimizerHints,
