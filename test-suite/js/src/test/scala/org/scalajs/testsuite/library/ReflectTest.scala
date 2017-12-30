@@ -55,6 +55,11 @@ class ReflectTest {
   private final val NameTraitDisable =
     Prefix + "TraitDisable"
 
+  private final val NameInnerObject = {
+    Prefix + "ClassWithInnerObjectWithEnableReflectiveInstantiation$" +
+    "InnerObjectWithEnableReflectiveInstantiation"
+  }
+
   @Test def testClassRuntimeClass(): Unit = {
     for {
       name <- Seq(NameClassEnableDirect, NameClassEnableDirectNoZeroArgCtor,
@@ -187,6 +192,11 @@ class ReflectTest {
     }
   }
 
+  @Test def testInnerObjectWithEnableReflectiveInstantiation_issue_3228(): Unit = {
+    assertFalse(Reflect.lookupLoadableModuleClass(NameInnerObject).isDefined)
+    assertFalse(Reflect.lookupInstantiatableClass(NameInnerObject).isDefined)
+  }
+
 }
 
 object ReflectTest {
@@ -307,4 +317,11 @@ object ReflectTest {
   }
 
   trait TraitDisable extends Accessors
+
+  // Regression cases
+
+  class ClassWithInnerObjectWithEnableReflectiveInstantiation {
+    @EnableReflectiveInstantiation
+    object InnerObjectWithEnableReflectiveInstantiation
+  }
 }
