@@ -111,8 +111,7 @@ object Long {
   }
 
   // Intrinsic
-  @inline def toString(i: scala.Long): String =
-    toStringImpl(i, 10)
+  @inline def toString(i: scala.Long): String = "" + i
 
   @inline def toUnsignedString(i: scala.Long): String =
     toUnsignedStringImpl(i, 10)

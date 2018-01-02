@@ -18,41 +18,15 @@ import org.scalajs.core.tools.linker.standard._
 import Analysis._
 
 import org.scalajs.core.tools.linker.testutils._
+import org.scalajs.core.tools.linker.testutils.TestIRBuilder._
 
 class AnalyzerTest {
   import AnalyzerTest._
 
   private val reqsFactory = SymbolRequirement.factory("unit test")
 
-  private val emptyOptHints: OptimizerHints = OptimizerHints.empty
-
-  implicit private val noPosition: ir.Position = ir.Position.NoPosition
-
   private val fromAnalyzer = FromCore("analyzer")
   private val fromUnitTest = FromCore("unit test")
-
-  private def classDef(
-      encodedName: String,
-      kind: ClassKind = ClassKind.Class,
-      jsClassCaptures: Option[List[ParamDef]] = None,
-      superClass: Option[String] = None,
-      interfaces: List[String] = Nil,
-      jsSuperClass: Option[Tree] = None,
-      jsNativeLoadSpec: Option[JSNativeLoadSpec] = None,
-      memberDefs: List[MemberDef] = Nil,
-      topLevelExportDefs: List[TopLevelExportDef] = Nil): ClassDef = {
-    ClassDef(Ident(encodedName), kind, jsClassCaptures,
-        superClass.map(Ident(_)), interfaces.map(Ident(_)), jsSuperClass,
-        jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
-        emptyOptHints)
-  }
-
-  private def trivialCtor(enclosingClassName: String): MethodDef = {
-    MethodDef(static = false, Ident("init___"), Nil, NoType,
-        Some(ApplyStatically(This()(ClassType(enclosingClassName)),
-            ClassType(ObjectClass), Ident("init___"), Nil)(NoType)))(
-        emptyOptHints, None)
-  }
 
   @Test
   def trivialOK(): Unit = {
