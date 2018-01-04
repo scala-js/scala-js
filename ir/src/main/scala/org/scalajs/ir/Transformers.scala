@@ -94,16 +94,16 @@ object Transformers {
         case Select(qualifier, item) =>
           Select(transformExpr(qualifier), item)(tree.tpe)
 
-        case Apply(receiver, method, args) =>
-          Apply(transformExpr(receiver), method,
+        case Apply(flags, receiver, method, args) =>
+          Apply(flags, transformExpr(receiver), method,
               args map transformExpr)(tree.tpe)
 
-        case ApplyStatically(receiver, cls, method, args) =>
-          ApplyStatically(transformExpr(receiver), cls, method,
+        case ApplyStatically(flags, receiver, cls, method, args) =>
+          ApplyStatically(flags, transformExpr(receiver), cls, method,
               args map transformExpr)(tree.tpe)
 
-        case ApplyStatic(cls, method, args) =>
-          ApplyStatic(cls, method, args map transformExpr)(tree.tpe)
+        case ApplyStatic(flags, cls, method, args) =>
+          ApplyStatic(flags, cls, method, args map transformExpr)(tree.tpe)
 
         case UnaryOp(op, lhs) =>
           UnaryOp(op, transformExpr(lhs))

@@ -21,6 +21,8 @@ import org.scalajs.ir.Types._
 object TestIRBuilder {
   implicit val noPosition: ir.Position = ir.Position.NoPosition
 
+  private val EAF = ApplyFlags.empty
+
   val emptyOptHints: OptimizerHints = OptimizerHints.empty
 
   def classDef(
@@ -40,8 +42,10 @@ object TestIRBuilder {
   }
 
   def trivialCtor(enclosingClassName: String): MethodDef = {
-    MethodDef(MemberFlags.empty, Ident("init___"), Nil, NoType,
-        Some(ApplyStatically(This()(ClassType(enclosingClassName)),
+    val flags = MemberFlags.empty.withNamespace(MemberNamespace.Constructor)
+    MethodDef(flags, Ident("init___"), Nil, NoType,
+        Some(ApplyStatically(EAF.withConstructor(true),
+            This()(ClassType(enclosingClassName)),
             ClassRef(ObjectClass), Ident("init___"), Nil)(NoType)))(
         emptyOptHints, None)
   }

@@ -257,15 +257,21 @@ object Trees {
       implicit val pos: Position) extends Tree
 
   /** Apply an instance method with dynamic dispatch (the default). */
-  case class Apply(receiver: Tree, method: Ident, args: List[Tree])(
-      val tpe: Type)(implicit val pos: Position) extends Tree
+  case class Apply(flags: ApplyFlags, receiver: Tree, method: Ident,
+      args: List[Tree])(
+      val tpe: Type)(implicit val pos: Position) extends Tree {
+
+    require(!flags.isPrivate, "invalid flag Private for Apply")
+  }
 
   /** Apply an instance method with static dispatch (e.g., super calls). */
-  case class ApplyStatically(receiver: Tree, cls: ClassRef, method: Ident,
-      args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
+  case class ApplyStatically(flags: ApplyFlags, receiver: Tree, cls: ClassRef,
+      method: Ident, args: List[Tree])(
+      val tpe: Type)(implicit val pos: Position) extends Tree
 
   /** Apply a static method. */
-  case class ApplyStatic(cls: ClassRef, method: Ident, args: List[Tree])(
+  case class ApplyStatic(flags: ApplyFlags, cls: ClassRef, method: Ident,
+      args: List[Tree])(
       val tpe: Type)(implicit val pos: Position) extends Tree
 
   /** Unary operation (always preserves pureness). */
@@ -982,11 +988,17 @@ object Trees {
   case class MethodDef(flags: MemberFlags, name: PropertyName,
       args: List[ParamDef], resultType: Type, body: Option[Tree])(
       val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
-      implicit val pos: Position) extends MemberDef
+      implicit val pos: Position) extends MemberDef {
+
+    require(!flags.isMutable, "nonsensical mutable MethodDef")
+  }
 
   case class PropertyDef(flags: MemberFlags, name: PropertyName,
       getterBody: Option[Tree], setterArgAndBody: Option[(ParamDef, Tree)])(
-      implicit val pos: Position) extends MemberDef
+      implicit val pos: Position) extends MemberDef {
+
+    require(!flags.isMutable, "nonsensical mutable PropertyDef")
+  }
 
   // Top-level export defs
 
@@ -1059,18 +1071,124 @@ object Trees {
       hints.bits
   }
 
+  final class ApplyFlags private (val __private_bits: Int) extends AnyVal {
+    import ApplyFlags._
+
+    @inline private def bits: Int = __private_bits
+
+    def isPrivate: Boolean = (bits & PrivateBit) != 0
+
+    def isConstructor: Boolean = (bits & ConstructorBit) != 0
+
+    def withPrivate(value: Boolean): ApplyFlags =
+      if (value) new ApplyFlags((bits & ~ConstructorBit) | PrivateBit)
+      else new ApplyFlags(bits & ~PrivateBit)
+
+    def withConstructor(value: Boolean): ApplyFlags =
+      if (value) new ApplyFlags((bits & ~PrivateBit) | ConstructorBit)
+      else new ApplyFlags(bits & ~ConstructorBit)
+  }
+
+  object ApplyFlags {
+    private final val PrivateShift = 0
+    private final val PrivateBit = 1 << PrivateShift
+
+    private final val ConstructorShift = 1
+    private final val ConstructorBit = 1 << ConstructorShift
+
+    final val empty: ApplyFlags =
+      new ApplyFlags(0)
+
+    private[ir] def fromBits(bits: Int): ApplyFlags =
+      new ApplyFlags(bits)
+
+    private[ir] def toBits(flags: ApplyFlags): Int =
+      flags.bits
+  }
+
+  final class MemberNamespace private (
+      val ordinal: Int) // intentionally public
+      extends AnyVal {
+
+    import MemberNamespace._
+
+    def isStatic: Boolean = (ordinal & StaticFlag) != 0
+
+    def isPrivate: Boolean = (ordinal & PrivateFlag) != 0
+
+    def isConstructor: Boolean = (ordinal & ConstructorFlag) != 0
+
+    def prefixString: String = this match {
+      case Public            => ""
+      case Private           => "private "
+      case PublicStatic      => "static "
+      case PrivateStatic     => "private static "
+      case Constructor       => "constructor "
+      case StaticConstructor => "static constructor "
+    }
+  }
+
+  object MemberNamespace {
+    private final val StaticShift = 0
+    private final val StaticFlag = 1 << StaticShift
+
+    private final val PrivateShift = 1
+    private final val PrivateFlag = 1 << PrivateShift
+
+    private final val ConstructorShift = 2
+    private final val ConstructorFlag = 1 << ConstructorShift
+
+    final val Public: MemberNamespace =
+      new MemberNamespace(0)
+
+    final val PublicStatic: MemberNamespace =
+      new MemberNamespace(StaticFlag)
+
+    final val Private: MemberNamespace =
+      new MemberNamespace(PrivateFlag)
+
+    final val PrivateStatic: MemberNamespace =
+      new MemberNamespace(PrivateFlag | StaticFlag)
+
+    final val Constructor: MemberNamespace =
+      new MemberNamespace(ConstructorFlag)
+
+    final val StaticConstructor: MemberNamespace =
+      new MemberNamespace(ConstructorFlag | StaticFlag)
+
+    final val Count = 6
+
+    def fromOrdinal(ordinal: Int): MemberNamespace = {
+      require(0 <= ordinal && ordinal < Count,
+          s"Invalid namespace ordinal $ordinal")
+      new MemberNamespace(ordinal)
+    }
+
+    private[Trees] def fromOrdinalUnchecked(ordinal: Int): MemberNamespace =
+      new MemberNamespace(ordinal)
+
+    def forNonStaticCall(flags: ApplyFlags): MemberNamespace = {
+        if (flags.isPrivate) Private
+        else if (flags.isConstructor) Constructor
+        else Public
+      }
+
+    def forStaticCall(flags: ApplyFlags): MemberNamespace =
+      if (flags.isPrivate) PrivateStatic else PublicStatic
+  }
+
   final class MemberFlags private (val __private_bits: Int) extends AnyVal {
     import MemberFlags._
 
     @inline private def bits: Int = __private_bits
 
-    def isStatic: Boolean = (bits & StaticBit) != 0
+    def namespace: MemberNamespace =
+      MemberNamespace.fromOrdinalUnchecked(bits & NamespaceMask)
 
     def isMutable: Boolean = (bits & MutableBit) != 0
 
-    def withStatic(value: Boolean): MemberFlags =
-      if (value) new MemberFlags(bits | StaticBit)
-      else new MemberFlags(bits & ~StaticBit)
+    def withNamespace(namespace: MemberNamespace): MemberFlags =
+      new MemberFlags((bits & ~NamespaceMask) | namespace.ordinal)
 
     def withMutable(value: Boolean): MemberFlags =
       if (value) new MemberFlags(bits | MutableBit)
@@ -1078,10 +1196,12 @@ object Trees {
   }
 
   object MemberFlags {
-    private final val StaticShift = 0
-    private final val StaticBit = 1 << StaticShift
+    /* NamespaceMask must remain with no shift, for easy conversion between
+     * MemberFlags and MemberNamespace.
+     */
+    private final val NamespaceMask = 7
 
-    private final val MutableShift = 1
+    private final val MutableShift = 3
     private final val MutableBit = 1 << MutableShift
 
     final val empty: MemberFlags =

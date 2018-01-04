@@ -663,17 +663,17 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case mdef: js.MethodDef =>
           mdef.name match {
             case _: js.Ident =>
-              assert(mdef.flags.isStatic,
+              assert(mdef.flags.namespace.isStatic,
                   "Non-static, unexported method in non-native JS class")
               staticMembers += mdef
 
             case js.StringLiteral("constructor") =>
-              assert(!mdef.flags.isStatic, "Exported static method")
+              assert(!mdef.flags.namespace.isStatic, "Exported static method")
               assert(constructor.isEmpty, "two ctors in class")
               constructor = Some(mdef)
 
             case _ =>
-              assert(!mdef.flags.isStatic, "Exported static method")
+              assert(!mdef.flags.namespace.isStatic, "Exported static method")
               classMembers += mdef
           }
 
@@ -953,7 +953,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           suspectFieldMutable(f) || unexpectedMutatedFields.contains(f)
         }
 
-        val flags = js.MemberFlags.empty.withStatic(static).withMutable(mutable)
+        val namespace =
+          if (static) js.MemberNamespace.PublicStatic
+          else js.MemberNamespace.Public
+        val flags =
+          js.MemberFlags.empty.withNamespace(namespace).withMutable(mutable)
 
         val name =
           if (isJSClass && isExposed(f)) genPropertyName(jsNameOf(f))
@@ -1000,7 +1004,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private def genStaticInitializerWithStats(stats: js.Tree)(
         implicit pos: Position): js.MethodDef = {
       js.MethodDef(
-          js.MemberFlags.empty.withStatic(true),
+          js.MemberFlags.empty.withNamespace(js.MemberNamespace.StaticConstructor),
           js.Ident(ir.Definitions.StaticInitializerName),
           Nil,
           jstpe.NoType,
@@ -1293,11 +1297,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           constructorTree.method.body.get match {
             case js.Block(stats) =>
               val beforeSuperCall = stats.takeWhile {
-                case js.ApplyStatic(_, mtd, _) => !ir.Definitions.isConstructorName(mtd.name)
-                case _                         => true
+                case js.ApplyStatic(_, _, mtd, _) =>
+                  !ir.Definitions.isConstructorName(mtd.name)
+                case _ =>
+                  true
               }
               val superCallParams = stats.collectFirst {
-                case js.ApplyStatic(_, mtd, js.This() :: args)
+                case js.ApplyStatic(_, _, mtd, js.This() :: args)
                     if ir.Definitions.isConstructorName(mtd.name) =>
                   val checkedArgs = checkForUndefinedParams(args)
                   zipMap(outputParams, checkedArgs)(js.Assign(_, _))
@@ -1305,7 +1311,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
               beforeSuperCall ::: superCallParams
 
-            case js.ApplyStatic(_, mtd, js.This() :: args)
+            case js.ApplyStatic(_, _, mtd, js.This() :: args)
                 if ir.Definitions.isConstructorName(mtd.name) =>
               val checkedArgs = checkForUndefinedParams(args)
               zipMap(outputParams, checkedArgs)(js.Assign(_, _))
@@ -1338,8 +1344,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           constructorTree.method.body.get match {
             case js.Block(stats) =>
               stats.dropWhile {
-                case js.ApplyStatic(_, mtd, _) => !ir.Definitions.isConstructorName(mtd.name)
-                case _                         => true
+                case js.ApplyStatic(_, _, mtd, _) =>
+                  !ir.Definitions.isConstructorName(mtd.name)
+                case _ =>
+                  true
               }.tail
 
             case _ => Nil
@@ -1391,7 +1399,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           case js.Block(prepStats :+ (applyCtor: js.ApplyStatic)) =>
             (prepStats, applyCtor)
         }
-        val js.ApplyStatic(_, js.Ident(ctorName, _), js.This() :: ctorArgs) =
+        val js.ApplyStatic(_, _, js.Ident(ctorName, _), js.This() :: ctorArgs) =
           applyCtor
         assert(ir.Definitions.isConstructorName(ctorName),
             s"unexpected super constructor call to non-constructor $ctorName at ${applyCtor.pos}")
@@ -1459,13 +1467,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private def mkJSConstructorBuilder(ctors: List[js.MethodDef])(
         implicit pos: Position): JSConstructorBuilder = {
       def findCtorForwarderCall(tree: js.Tree): String = tree match {
-        case js.ApplyStatic(_, method, js.This() :: _)
+        case js.ApplyStatic(_, _, method, js.This() :: _)
             if ir.Definitions.isConstructorName(method.name) =>
           method.name
 
         case js.Block(stats) =>
           stats.collectFirst {
-            case js.ApplyStatic(_, method, js.This() :: _)
+            case js.ApplyStatic(_, _, method, js.This() :: _)
                 if ir.Definitions.isConstructorName(method.name) =>
               method.name
           }.get
@@ -1621,13 +1629,24 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 js.MethodDef(js.MemberFlags.empty, methodName,
                     jsParams, jstpe.NoType, Some(body1))(optimizerHints, None)
               } else if (sym.isClassConstructor) {
-                js.MethodDef(js.MemberFlags.empty, methodName,
-                    jsParams, jstpe.NoType,
-                    Some(genStat(rhs)))(optimizerHints, None)
+                val namespace = js.MemberNamespace.Constructor
+                js.MethodDef(
+                    js.MemberFlags.empty.withNamespace(namespace),
+                    methodName, jsParams, jstpe.NoType, Some(genStat(rhs)))(
+                    optimizerHints, None)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
-                genMethodDef(static = isImplClass(sym.owner), methodName,
-                    params, resultIRType, rhs, optimizerHints)
+                val namespace = {
+                  if (isImplClass(sym.owner)) {
+                    if (sym.isPrivate) js.MemberNamespace.PrivateStatic
+                    else js.MemberNamespace.PublicStatic
+                  } else {
+                    if (sym.isPrivate) js.MemberNamespace.Private
+                    else js.MemberNamespace.Public
+                  }
+                }
+                genMethodDef(namespace, methodName, params, resultIRType, rhs,
+                    optimizerHints)
               }
             }
 
@@ -1685,7 +1704,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       def newMutable(name: String, oldMutable: Boolean): Boolean =
         patches.getOrElse(name, oldMutable)
 
-      val js.MethodDef(static, methodName, params, resultType, body) = methodDef
+      val js.MethodDef(flags, methodName, params, resultType, body) = methodDef
       val newParams = for {
         p @ js.ParamDef(name, ptpe, mutable, rest) <- params
       } yield {
@@ -1706,7 +1725,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
       val newBody = body.map(
           b => transformer.transform(b, isStat = resultType == jstpe.NoType))
-      js.MethodDef(static, methodName, newParams, resultType,
+      js.MethodDef(flags, methodName, newParams, resultType,
           newBody)(methodDef.optimizerHints, None)(methodDef.pos)
     }
 
@@ -1751,7 +1770,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  a peculiarity of recursive tail calls: the local ValDef that replaces
      *  `this`.
      */
-    def genMethodDef(static: Boolean, methodName: js.PropertyName,
+    def genMethodDef(namespace: js.MemberNamespace, methodName: js.PropertyName,
         paramsSyms: List[Symbol], resultIRType: jstpe.Type,
         tree: Tree, optimizerHints: OptimizerHints): js.MethodDef = {
       implicit val pos = tree.pos
@@ -1849,7 +1868,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       if (!isNonNativeJSClass(currentClassSym) ||
           isJSFunctionDef(currentClassSym)) {
-        val flags = js.MemberFlags.empty.withStatic(static)
+        val flags = js.MemberFlags.empty.withNamespace(namespace)
         val body = {
           if (isImplClass(currentClassSym)) {
             val thisParam = jsParams.head
@@ -1865,17 +1884,22 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         js.MethodDef(flags, methodName, jsParams, resultIRType, Some(body))(
             optimizerHints, None)
       } else {
-        assert(!static, tree.pos)
+        assert(!namespace.isStatic, tree.pos)
 
         val thisLocalIdent = freshLocalIdent("this")
         withScopedVars(
           thisLocalVarIdent := Some(thisLocalIdent)
         ) {
+          val staticNamespace =
+            if (namespace.isPrivate) js.MemberNamespace.PrivateStatic
+            else js.MemberNamespace.PublicStatic
+          val flags =
+            js.MemberFlags.empty.withNamespace(staticNamespace)
           val thisParamDef = js.ParamDef(thisLocalIdent,
               jstpe.AnyType, mutable = false, rest = false)
 
-          js.MethodDef(js.MemberFlags.empty.withStatic(true), methodName,
-              thisParamDef :: jsParams, resultIRType, Some(genBody()))(
+          js.MethodDef(flags, methodName, thisParamDef :: jsParams,
+              resultIRType, Some(genBody()))(
               optimizerHints, None)
         }
       }
@@ -2835,30 +2859,41 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
       } else if (foreignIsImplClass(sym.owner)) {
         genTraitImplApply(sym, args map genExpr)
-      } else if (sym.isClassConstructor) {
-        /* See #66: we have to emit a statically linked call to avoid calling a
-         * constructor with the same signature in a subclass. */
-        genApplyMethodStatically(genExpr(receiver), sym, genActualArgs(sym, args))
       } else {
-        genApplyMethod(genExpr(receiver), sym, genActualArgs(sym, args))
+        genApplyMethodMaybeStatically(genExpr(receiver), sym,
+            genActualArgs(sym, args))
       }
+    }
+
+    def genApplyMethodMaybeStatically(receiver: js.Tree,
+        method: Symbol, arguments: List[js.Tree])(
+        implicit pos: Position): js.Tree = {
+      if (method.isPrivate || method.isClassConstructor)
+        genApplyMethodStatically(receiver, method, arguments)
+      else
+        genApplyMethod(receiver, method, arguments)
     }
 
     /** Gen JS code for a call to a Scala method. */
     def genApplyMethod(receiver: js.Tree,
-        methodSym: Symbol, arguments: List[js.Tree])(
+        method: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      js.Apply(receiver, encodeMethodSym(methodSym), arguments)(
-          toIRType(methodSym.tpe.resultType))
+      assert(!method.isPrivate,
+          s"Cannot generate a dynamic call to private method $method at $pos")
+      js.Apply(js.ApplyFlags.empty, receiver, encodeMethodSym(method), arguments)(
+          toIRType(method.tpe.resultType))
     }
 
     def genApplyMethodStatically(receiver: js.Tree, method: Symbol,
         arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
+      val flags = js.ApplyFlags.empty
+        .withPrivate(method.isPrivate && !method.isClassConstructor)
+        .withConstructor(method.isClassConstructor)
       val methodIdent = encodeMethodSym(method)
       val resultType =
         if (method.isClassConstructor) jstpe.NoType
         else toIRType(method.tpe.resultType)
-      js.ApplyStatically(receiver, encodeClassRef(method.owner),
+      js.ApplyStatically(flags, receiver, encodeClassRef(method.owner),
           methodIdent, arguments)(resultType)
     }
 
@@ -2882,8 +2917,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     def genApplyStatic(method: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      js.ApplyStatic(encodeClassRef(method.owner), encodeMethodSym(method),
-          arguments)(
+      js.ApplyStatic(js.ApplyFlags.empty.withPrivate(method.isPrivate),
+          encodeClassRef(method.owner), encodeMethodSym(method), arguments)(
           toIRType(method.tpe.resultType))
     }
 
@@ -3019,6 +3054,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private def genNewHijackedClass(clazz: Symbol, ctor: Symbol,
         args: List[js.Tree])(implicit pos: Position): js.Tree = {
 
+      val flags = js.ApplyFlags.empty
       val encodedName = encodeClassFullName(clazz)
       val moduleClass = clazz.companionModule.moduleClass
 
@@ -3031,7 +3067,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
       val newMethodIdent = js.Ident(newMethodName, origName)
 
-      js.Apply(genLoadModule(moduleClass), newMethodIdent, args)(
+      js.Apply(flags, genLoadModule(moduleClass), newMethodIdent, args)(
           jstpe.ClassType(encodedName))
     }
 
@@ -4045,9 +4081,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         fromAny(genExpr(arg), param.tpe)
       }
 
-      val proxyIdent = encodeMethodSym(sym, reflProxy = true)
-      var callStatement: js.Tree =
-        js.Apply(callTrg, proxyIdent, arguments)(jstpe.AnyType)
+      var callStatement: js.Tree = js.Apply(js.ApplyFlags.empty, callTrg,
+          encodeMethodSym(sym, reflProxy = true), arguments)(jstpe.AnyType)
 
       if (!isAnyRefPrimitive) {
         def boxIfNeeded(call: js.Tree, returnType: Type): js.Tree = {
@@ -5310,7 +5345,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               s"A Function lambda is trying to call an exposed JS method ${target.fullName}")
           genApplyJSClassMethod(thisCaptureArg, target, allArgs)
         } else {
-          genApplyMethod(thisCaptureArg, target, allArgs)
+          genApplyMethodMaybeStatically(thisCaptureArg, target, allArgs)
         }
 
         (thisFormalCapture :: formalCaptures,
@@ -5378,7 +5413,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val fParamDef = js.ParamDef(js.Ident("f"), jstpe.AnyType,
             mutable = false, rest = false)
         js.MethodDef(
-            js.MemberFlags.empty,
+            js.MemberFlags.empty.withNamespace(js.MemberNamespace.Constructor),
             js.Ident("init___O"),
             List(fParamDef),
             jstpe.NoType,
@@ -5386,7 +5421,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 js.Assign(
                     js.Select(js.This()(classType), fFieldIdent)(jstpe.AnyType),
                     fParamDef.ref),
-                js.ApplyStatically(js.This()(classType),
+                js.ApplyStatically(js.ApplyFlags.empty.withConstructor(true),
+                    js.This()(classType),
                     jstpe.ClassRef(ir.Definitions.ObjectClass),
                     js.Ident("init___"),
                     Nil)(jstpe.NoType)))))(
@@ -5737,7 +5773,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       } else {
         val instance = genLoadModule(sym.owner)
         val method = encodeStaticMemberSym(sym)
-        js.Apply(instance, method, Nil)(toIRType(sym.tpe))
+        js.Apply(js.ApplyFlags.empty, instance, method, Nil)(toIRType(sym.tpe))
       }
     }
   }

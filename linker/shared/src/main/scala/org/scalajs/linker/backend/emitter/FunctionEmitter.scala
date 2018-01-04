@@ -746,7 +746,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
             val fieldDefs = for {
               field @ FieldDef(flags, name, ftpe) <- enclosingClassFieldDefs
-              if !flags.isStatic
+              if !flags.namespace.isStatic
             } yield {
               implicit val pos = field.pos
               /* Here, a naive translation would emit something like this:
@@ -1040,14 +1040,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 New(cls, constr, recs(args))
               case Select(qualifier, item) if noExtractYet =>
                 Select(rec(qualifier), item)(arg.tpe)
-              case Apply(receiver, method, args) if noExtractYet =>
+              case Apply(flags, receiver, method, args) if noExtractYet =>
                 val newArgs = recs(args)
-                Apply(rec(receiver), method, newArgs)(arg.tpe)
-              case ApplyStatically(receiver, cls, method, args) if noExtractYet =>
+                Apply(flags, rec(receiver), method, newArgs)(arg.tpe)
+              case ApplyStatically(flags, receiver, cls, method, args) if noExtractYet =>
                 val newArgs = recs(args)
-                ApplyStatically(rec(receiver), cls, method, newArgs)(arg.tpe)
-              case ApplyStatic(cls, method, args) if noExtractYet =>
-                ApplyStatic(cls, method, recs(args))(arg.tpe)
+                ApplyStatically(flags, rec(receiver), cls, method, newArgs)(arg.tpe)
+              case ApplyStatic(flags, cls, method, args) if noExtractYet =>
+                ApplyStatic(flags, cls, method, recs(args))(arg.tpe)
               case ArrayLength(array) if noExtractYet =>
                 ArrayLength(rec(array))
               case ArraySelect(array, index) if noExtractYet =>
@@ -1243,11 +1243,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           allowSideEffects && (args forall test)
         case LoadModule(cls) => // unfortunately
           allowSideEffects
-        case Apply(receiver, method, args) =>
+        case Apply(_, receiver, method, args) =>
           allowSideEffects && test(receiver) && (args forall test)
-        case ApplyStatically(receiver, cls, method, args) =>
+        case ApplyStatically(_, receiver, cls, method, args) =>
           allowSideEffects && test(receiver) && (args forall test)
-        case ApplyStatic(cls, method, args) =>
+        case ApplyStatic(_, cls, method, args) =>
           allowSideEffects && (args forall test)
         case GetClass(arg) =>
           allowSideEffects && test(arg)
@@ -1611,19 +1611,19 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             redo(Select(newQualifier, item)(rhs.tpe))(env)
           }
 
-        case Apply(receiver, method, args) =>
+        case Apply(flags, receiver, method, args) =>
           unnest(receiver, args) { (newReceiver, newArgs, env) =>
-            redo(Apply(newReceiver, method, newArgs)(rhs.tpe))(env)
+            redo(Apply(flags, newReceiver, method, newArgs)(rhs.tpe))(env)
           }
 
-        case ApplyStatically(receiver, cls, method, args) =>
+        case ApplyStatically(flags, receiver, cls, method, args) =>
           unnest(receiver, args) { (newReceiver, newArgs, env) =>
-            redo(ApplyStatically(newReceiver, cls, method, newArgs)(rhs.tpe))(env)
+            redo(ApplyStatically(flags, newReceiver, cls, method, newArgs)(rhs.tpe))(env)
           }
 
-        case ApplyStatic(cls, method, args) =>
+        case ApplyStatic(flags, cls, method, args) =>
           unnest(args) { (newArgs, env) =>
-            redo(ApplyStatic(cls, method, newArgs)(rhs.tpe))(env)
+            redo(ApplyStatic(flags, cls, method, newArgs)(rhs.tpe))(env)
           }
 
         case UnaryOp(op, lhs) =>
@@ -2047,16 +2047,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // Scala expressions
 
         case New(cls, ctor, args) =>
-          val encodedClassVar = encodeClassVar(cls.className)
+          val className = cls.className
+          val encodedClassVar = encodeClassVar(className)
           val newArgs = transformTypedArgs(ctor.name, args)
-          if (globalKnowledge.hasInlineableInit(cls.className)) {
+          if (globalKnowledge.hasInlineableInit(className)) {
             js.New(encodedClassVar, newArgs)
           } else {
-            js.Apply(
-                js.DotSelect(
-                    js.New(encodedClassVar, Nil),
-                    transformPropIdent(ctor)),
-                newArgs)
+            genApplyStaticLike("ct", className, ctor,
+                js.New(encodedClassVar, Nil) :: newArgs)
           }
 
         case LoadModule(cls) =>
@@ -2072,7 +2070,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case SelectStatic(cls, item) =>
           genSelectStatic(cls.className, item)
 
-        case Apply(receiver, method, args) =>
+        case Apply(_, receiver, method, args) =>
           import Definitions._
 
           val methodName = method.name
@@ -2155,27 +2153,29 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             genNormalApply()
           }
 
-        case ApplyStatically(receiver, cls, method, args) =>
+        case ApplyStatically(flags, receiver, cls, method, args) =>
           val className = cls.className
           val newReceiver = transformExprNoChar(receiver)
           val newArgs = transformTypedArgs(method.name, args)
           val transformedArgs = newReceiver :: newArgs
 
-          if (globalKnowledge.isInterface(className)) {
-            val Ident(methodName, origName) = method
-            val fullName = className + "__" + methodName
-            js.Apply(envField("f", fullName, origName),
-                transformedArgs)
+          if (flags.isConstructor) {
+            genApplyStaticLike("ct", className, method, transformedArgs)
+          } else if (flags.isPrivate) {
+            genApplyStaticLike("p", className, method, transformedArgs)
+          } else if (globalKnowledge.isInterface(className)) {
+            genApplyStaticLike("f", className, method, transformedArgs)
           } else {
             val fun =
               encodeClassVar(className).prototype DOT transformPropIdent(method)
             js.Apply(fun DOT "call", transformedArgs)
           }
 
-        case ApplyStatic(cls, method, args) =>
-          val Ident(methodName, origName) = method
-          val fullName = cls.className + "__" + methodName
-          js.Apply(envField("s", fullName, origName),
+        case ApplyStatic(flags, cls, method, args) =>
+          genApplyStaticLike(
+              if (flags.isPrivate) "ps" else "s",
+              cls.className,
+              method,
               transformTypedArgs(method.name, args))
 
         case UnaryOp(op, lhs) =>
@@ -2771,6 +2771,13 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         implicit pos: Position): WithGlobals[js.Tree] = {
       jsGen.genJSClassConstructor(className,
           keepOnlyDangerousVarNames = false)
+    }
+
+    private def genApplyStaticLike(field: String, className: String,
+        method: Ident, args: List[js.Tree])(
+        implicit pos: Position): js.Tree = {
+      js.Apply(envField(field, className + "__" + method.name,
+          method.originalName), args)
     }
 
     private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree = {

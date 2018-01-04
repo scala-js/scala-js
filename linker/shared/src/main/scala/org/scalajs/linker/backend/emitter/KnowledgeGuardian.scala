@@ -58,8 +58,12 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
         existingCls.update(linkedClass, thisClassHasInlineableInit)
       }
 
-      def methodExists(encodedName: String): Boolean =
-        linkedClass.memberMethods.exists(_.value.encodedName == encodedName)
+      def methodExists(encodedName: String): Boolean = {
+        linkedClass.methods.exists { m =>
+          m.value.flags.namespace == MemberNamespace.Public &&
+          m.value.encodedName == encodedName
+        }
+      }
 
       linkedClass.encodedName match {
         case Definitions.ClassClass =>
@@ -119,8 +123,8 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
        */
       !blackList(classDef.encodedName) &&
       !classesWithInstantiatedSubclasses(classDef.encodedName) && {
-        classDef.memberMethods.count(
-            x => Definitions.isConstructorName(x.value.encodedName)) == 1
+        classDef.methods.count(
+            x => x.value.flags.namespace == MemberNamespace.Constructor) == 1
       }
     }
 

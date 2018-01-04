@@ -78,7 +78,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         case ClassKind.AbstractJSType | ClassKind.NativeJSClass |
             ClassKind.NativeJSModuleClass =>
           if (classDef.fields.nonEmpty ||
-              classDef.memberMethods.nonEmpty ||
+              classDef.methods.exists(!_.value.flags.namespace.isStatic) ||
               classDef.exportedMembers.nonEmpty ||
               classDef.topLevelExports.nonEmpty) {
             val kind =
@@ -119,10 +119,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           alreadyDeclared + name
       }
 
-      def isStaticInit(methodDef: Versioned[MethodDef]): Boolean =
-        methodDef.value.name.encodedName == StaticInitializerName
+      def isStaticInit(methodDef: Versioned[MethodDef]): Boolean = {
+        val m = methodDef.value
+        m.flags.namespace == MemberNamespace.PublicStatic &&
+        m.name.encodedName == StaticInitializerName
+      }
 
-      for (staticInit <- classDef.staticMethods.find(isStaticInit)) {
+      for (staticInit <- classDef.methods.find(isStaticInit)) {
         implicit val ctx = ErrorContext(staticInit.value)
         reportError(
             s"The non-top-level JS class ${classDef.name} cannot have a " +
@@ -150,11 +153,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private def checkStaticMembers(classDef: LinkedClass): Unit = {
-    for (member <- classDef.staticMethods) {
+    for {
+      member <- classDef.methods
+      if member.value.flags.namespace.isStatic
+    } {
       val methodDef = member.value
       implicit val ctx = ErrorContext(methodDef)
-
-      assert(methodDef.flags.isStatic, "Found non-static member in static defs")
 
       if (!methodDef.name.isInstanceOf[Ident])
         reportError(s"Static method ${methodDef.name} cannot be exported")
@@ -181,7 +185,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
        * TODO #2627 We currently cannot check instance field collisions because
        * of #2382.
        */
-      val staticFieldDefs = classDef.fields.filter(_.flags.isStatic)
+      val staticFieldDefs = classDef.fields.filter(_.flags.namespace.isStatic)
       for {
         fieldsWithSameName <- staticFieldDefs.groupBy(_.encodedName).values
         duplicate <- fieldsWithSameName.tail
@@ -193,8 +197,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       // Module classes must have exactly one constructor, without parameter
       if (classDef.kind == ClassKind.ModuleClass) {
         implicit val ctx = ErrorContext(classDef)
-        val methods = classDef.memberMethods
-        if (methods.count(m => isConstructorName(m.value.encodedName)) != 1)
+        val methods = classDef.methods
+        if (methods.count(m => m.value.flags.namespace == MemberNamespace.Constructor) != 1)
           reportError(s"Module class must have exactly 1 constructor")
         if (!methods.exists(_.value.encodedName == "init___"))
           reportError(s"Module class must have a parameterless constructor")
@@ -258,12 +262,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
 
     // Check methods
-    for (method <- classDef.memberMethods) {
+    for {
+      method <- classDef.methods
+      if !method.value.flags.namespace.isStatic
+    } {
       val tree = method.value
       implicit val ctx = ErrorContext(tree)
 
-      assert(!tree.flags.isStatic,
-          "Member or abstract method may not be static")
       assert(tree.name.isInstanceOf[Ident],
           "Normal method must have Ident as name")
 
@@ -274,6 +279,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   private def checkFieldDef(fieldDef: FieldDef, classDef: LinkedClass): Unit = {
     val FieldDef(flags, name, tpe) = fieldDef
     implicit val ctx = ErrorContext(fieldDef)
+
+    if (flags.namespace.isPrivate)
+      reportError("A field cannot be private")
 
     name match {
       case _: Ident =>
@@ -297,7 +305,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     val MethodDef(flags, Ident(name, _), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
-    val static = flags.isStatic
+    val namespace = flags.namespace
+    val static = namespace.isStatic
+    val isConstructor = namespace == MemberNamespace.Constructor
 
     if (flags.isMutable)
       reportError("A method cannot have the flag Mutable")
@@ -315,10 +325,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         reportError(s"Rest parameter $name is illegal in a Scala method")
     }
 
-    val isConstructor = isConstructorName(name)
-
     if (isConstructor && classDef.kind == ClassKind.Interface)
       reportError("Interfaces cannot declare constructors")
+    if (isConstructor != isConstructorName(name))
+      reportError("A method must have a constructor name iff it is a constructor")
+
+    if ((namespace == MemberNamespace.StaticConstructor) != (name == StaticInitializerName))
+      reportError("A method must have a static initializer name iff it is a static constructor")
 
     val advertizedSig = (params.map(_.ptpe), resultType)
     val sigFromName = inferMethodType(name, static)
@@ -354,10 +367,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     val MethodDef(flags, pName, params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
-    val static = flags.isStatic
+    val static = flags.namespace.isStatic
 
     if (flags.isMutable)
       reportError("An exported method cannot have the flag Mutable")
+    if (flags.namespace.isPrivate)
+      reportError("An exported method cannot be private")
 
     if (!isTopLevel && !classDef.kind.isAnyNonNativeClass) {
       reportError(s"Exported method def can only appear in a class")
@@ -455,10 +470,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     val PropertyDef(flags, pName, getterBody, setterArgAndBody) = propDef
     implicit val ctx = ErrorContext(propDef)
 
-    val static = flags.isStatic
+    val static = flags.namespace.isStatic
 
     if (flags.isMutable)
       reportError("An exported property def cannot have the flag Mutable")
+    if (flags.namespace.isPrivate)
+      reportError("An exported property def cannot be private")
 
     if (!classDef.kind.isAnyNonNativeClass) {
       reportError(s"Exported property def can only appear in a class")
@@ -813,17 +830,19 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           }
         }
 
-      case Apply(receiver, Ident(method, _), args) =>
+      case Apply(flags, receiver, Ident(method, _), args) =>
+        if (flags.isPrivate)
+          reportError(s"Illegal flag for Apply: Private")
         val receiverType = typecheckExpr(receiver, env)
         checkApplyGeneric(method, s"$receiverType.$method", args, tree.tpe,
             isStatic = false)
 
-      case ApplyStatically(receiver, cls, Ident(method, _), args) =>
+      case ApplyStatically(_, receiver, cls, Ident(method, _), args) =>
         typecheckExpect(receiver, env, ClassType(cls.className))
         checkApplyGeneric(method, s"$cls.$method", args, tree.tpe,
             isStatic = false)
 
-      case ApplyStatic(cls, Ident(method, _), args) =>
+      case ApplyStatic(_, cls, Ident(method, _), args) =>
         val clazz = lookupClass(cls)
         checkApplyGeneric(method, s"$cls.$method", args, tree.tpe,
             isStatic = true)
@@ -1302,8 +1321,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       _fields: TraversableOnce[CheckedField])(
       implicit ctx: ErrorContext) {
 
-    val fields = _fields.filter(!_.flags.isStatic).map(f => f.name -> f).toMap
-    val staticFields = _fields.filter(_.flags.isStatic).map(f => f.name -> f).toMap
+    val fields = _fields.filter(!_.flags.namespace.isStatic).map(f => f.name -> f).toMap
+    val staticFields = _fields.filter(_.flags.namespace.isStatic).map(f => f.name -> f).toMap
 
     lazy val superClass = superClassName.map(classes)
 

@@ -25,6 +25,8 @@ object JavaLangObject {
     // ClassType(Object) is normally invalid, but not in this class def
     val ThisType = ClassType(ObjectClass)
 
+    val EAF = ApplyFlags.empty
+
     val classDef = ClassDef(
       Ident("O", Some("java.lang.Object")),
       ClassKind.Class,
@@ -36,7 +38,7 @@ object JavaLangObject {
       List(
         /* def this() = () */
         MethodDef(
-          MemberFlags.empty,
+          MemberFlags.empty.withNamespace(MemberNamespace.Constructor),
           Ident("init___", Some("<init>")),
           Nil,
           NoType,
@@ -60,6 +62,7 @@ object JavaLangObject {
           IntType,
           Some {
             Apply(
+              EAF,
               LoadModule(ClassRef("jl_System$")),
               Ident("identityHashCode__O__I", Some("identityHashCode")),
               List(This()(ThisType)))(IntType)
@@ -89,7 +92,7 @@ object JavaLangObject {
           AnyType,
           Some {
             If(IsInstanceOf(This()(ThisType), ClassRef("jl_Cloneable")), {
-              Apply(LoadModule(ClassRef("jl_ObjectClone$")),
+              Apply(EAF, LoadModule(ClassRef("jl_ObjectClone$")),
                   Ident("clone__O__O", Some("clone")),
                   List(This()(ThisType)))(AnyType)
             }, {
@@ -109,7 +112,8 @@ object JavaLangObject {
           Some {
             BinaryOp(BinaryOp.String_+, BinaryOp(BinaryOp.String_+,
               Apply(
-                Apply(This()(ThisType),
+                EAF,
+                Apply(EAF, This()(ThisType),
                   Ident("getClass__jl_Class", Some("getClass__jl_Class")), Nil)(
                   ClassType(ClassClass)),
                 Ident("getName__T"), Nil)(ClassType(BoxedStringClass)),
@@ -117,9 +121,10 @@ object JavaLangObject {
               StringLiteral("@")),
               // +
               Apply(
+                EAF,
                 LoadModule(ClassRef("jl_Integer$")),
                 Ident("toHexString__I__T"),
-                List(Apply(This()(ThisType), Ident("hashCode__I"), Nil)(IntType)))(
+                List(Apply(EAF, This()(ThisType), Ident("hashCode__I"), Nil)(IntType)))(
                 ClassType(BoxedStringClass)))
           })(OptimizerHints.empty, None),
 
@@ -160,7 +165,7 @@ object JavaLangObject {
           Nil,
           AnyType,
           Some {
-            Apply(This()(ThisType),
+            Apply(EAF, This()(ThisType),
                 Ident("toString__T", Some("toString__T")),
                 Nil)(ClassType(BoxedStringClass))
           })(OptimizerHints.empty, None)

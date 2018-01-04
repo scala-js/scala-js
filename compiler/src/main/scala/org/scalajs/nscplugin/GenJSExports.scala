@@ -186,7 +186,9 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
         val tree = if (destination == ExportDestination.Static) {
           // static fields must always be mutable
-          val flags = js.MemberFlags.empty.withStatic(true).withMutable(true)
+          val flags = js.MemberFlags.empty
+            .withNamespace(js.MemberNamespace.PublicStatic)
+            .withMutable(true)
           val name = js.StringLiteral(export.jsName)
           val irTpe = genExposedFieldIRType(fieldSym)
           checkedCast[A](js.FieldDef(flags, name, irTpe))
@@ -341,7 +343,10 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
       implicit val pos = alts.head.pos
 
-      val flags = js.MemberFlags.empty.withStatic(static)
+      val namespace =
+        if (static) js.MemberNamespace.PublicStatic
+        else js.MemberNamespace.Public
+      val flags = js.MemberFlags.empty.withNamespace(namespace)
 
       // Separate getters and setters. Somehow isJSGetter doesn't work here. Hence
       // we just check the parameter list length.
@@ -390,7 +395,10 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
       implicit val pos = alts0.head.pos
 
-      val flags = js.MemberFlags.empty.withStatic(static)
+      val namespace =
+        if (static) js.MemberNamespace.PublicStatic
+        else js.MemberNamespace.Public
+      val flags = js.MemberFlags.empty.withNamespace(namespace)
 
       val alts = {
         // toString() is always exported. We might need to add it here
@@ -829,6 +837,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       } else {
         if (sym.isClassConstructor)
           genNew(currentClassSym, sym, args)
+        else if (sym.isPrivate)
+          boxIfNeeded(genApplyMethodStatically(receiver, sym, args))
         else
           boxIfNeeded(genApplyMethod(receiver, sym, args))
       }

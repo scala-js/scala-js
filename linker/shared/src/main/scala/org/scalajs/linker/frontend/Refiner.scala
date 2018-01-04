@@ -96,12 +96,10 @@ final class Refiner(config: CommonPhaseConfig) {
       if (info.isAnySubclassInstantiated) classDef.fields
       else Nil
 
-    val staticMethods = classDef.staticMethods filter { m =>
-      info.staticMethodInfos(m.value.encodedName).isReachable
-    }
-
-    val memberMethods = classDef.memberMethods filter { m =>
-      info.methodInfos(m.value.encodedName).isReachable
+    val methods = classDef.methods.filter { m =>
+      val methodDef = m.value
+      info.methodInfos(methodDef.flags.namespace)(
+          methodDef.encodedName).isReachable
     }
 
     val kind =
@@ -111,8 +109,7 @@ final class Refiner(config: CommonPhaseConfig) {
     classDef.refined(
         kind = kind,
         fields = fields,
-        staticMethods = staticMethods,
-        memberMethods = memberMethods,
+        methods = methods,
         hasInstances = info.isAnySubclassInstantiated,
         hasInstanceTests = info.areInstanceTestsUsed,
         hasRuntimeTypeInfo = info.isDataAccessed)
@@ -161,8 +158,7 @@ private object Refiner {
 
   private class LinkedClassInfoCache {
     private var cacheUsed: Boolean = false
-    private val staticMethodsInfoCaches = LinkedMembersInfosCache()
-    private val memberMethodsInfoCaches = LinkedMembersInfosCache()
+    private val methodsInfoCaches = LinkedMembersInfosCache()
     private val exportedMembersInfoCaches = LinkedMembersInfosCache()
     private var info: Infos.ClassInfo = _
 
@@ -183,10 +179,8 @@ private object Refiner {
 
         for (field <- linkedClass.fields)
           builder.maybeAddReferencedFieldClass(field.ftpe)
-        for (linkedMethod <- linkedClass.staticMethods)
-          builder.addMethod(staticMethodsInfoCaches.getInfo(linkedMethod))
-        for (linkedMethod <- linkedClass.memberMethods)
-          builder.addMethod(memberMethodsInfoCaches.getInfo(linkedMethod))
+        for (linkedMethod <- linkedClass.methods)
+          builder.addMethod(methodsInfoCaches.getInfo(linkedMethod))
         for (linkedMember <- linkedClass.exportedMembers)
           builder.addMethod(exportedMembersInfoCaches.getInfo(linkedMember))
 
@@ -211,8 +205,7 @@ private object Refiner {
       cacheUsed = false
       if (result) {
         // No point in cleaning the inner caches if the whole class disappears
-        staticMethodsInfoCaches.cleanAfterRun()
-        memberMethodsInfoCaches.cleanAfterRun()
+        methodsInfoCaches.cleanAfterRun()
         exportedMembersInfoCaches.cleanAfterRun()
       }
       result
@@ -220,25 +213,26 @@ private object Refiner {
   }
 
   private final class LinkedMembersInfosCache private (
-      val caches: mutable.Map[(Boolean, String), LinkedMemberInfoCache])
+      val caches: Array[mutable.Map[String, LinkedMemberInfoCache]])
       extends AnyVal {
 
     def getInfo(member: Versioned[MemberDef]): Infos.MethodInfo = {
       val memberDef = member.value
-      val cache = caches.getOrElseUpdate(
-          (memberDef.flags.isStatic, memberDef.encodedName),
-          new LinkedMemberInfoCache)
+      val cache = caches(memberDef.flags.namespace.ordinal)
+        .getOrElseUpdate(memberDef.encodedName, new LinkedMemberInfoCache)
       cache.getInfo(member)
     }
 
     def cleanAfterRun(): Unit = {
-      caches.retain((_, cache) => cache.cleanAfterRun())
+      caches.foreach(_.retain((_, cache) => cache.cleanAfterRun()))
     }
   }
 
   private object LinkedMembersInfosCache {
-    def apply(): LinkedMembersInfosCache =
-      new LinkedMembersInfosCache(mutable.Map.empty)
+    def apply(): LinkedMembersInfosCache = {
+      new LinkedMembersInfosCache(
+          Array.fill(MemberNamespace.Count)(mutable.Map.empty))
+    }
   }
 
   private final class LinkedMemberInfoCache {

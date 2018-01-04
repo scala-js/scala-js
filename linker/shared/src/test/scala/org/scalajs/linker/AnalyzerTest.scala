@@ -45,6 +45,8 @@ class AnalyzerTest {
   private val fromAnalyzer = FromCore("analyzer")
   private val fromUnitTest = FromCore("unit test")
 
+  private val EAF = ApplyFlags.empty
+
   @Test
   def trivialOK(): AsyncResult = {
     val analysis = computeAnalysis(Nil)
@@ -404,10 +406,10 @@ class AnalyzerTest {
         classDef("LA", superClass = Some(ObjectClass), memberDefs = List(
             trivialCtor("LA"),
             MethodDef(MemberFlags.empty, Ident("test__V"), Nil, NoType, Some(Block(
-                Apply(systemMod, Ident("getProperty__T__T"), List(emptyStr))(StringType),
-                Apply(systemMod, Ident("getProperty__T__T__T"), List(emptyStr))(StringType),
-                Apply(systemMod, Ident("setProperty__T__T__T"), List(emptyStr))(StringType),
-                Apply(systemMod, Ident("clearProperty__T__T"), List(emptyStr))(StringType)
+                Apply(EAF, systemMod, Ident("getProperty__T__T"), List(emptyStr))(StringType),
+                Apply(EAF, systemMod, Ident("getProperty__T__T__T"), List(emptyStr))(StringType),
+                Apply(EAF, systemMod, Ident("setProperty__T__T__T"), List(emptyStr))(StringType),
+                Apply(EAF, systemMod, Ident("clearProperty__T__T"), List(emptyStr))(StringType)
             )))(emptyOptHints, None)
         ))
     )

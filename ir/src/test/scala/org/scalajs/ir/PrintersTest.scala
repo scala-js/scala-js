@@ -25,7 +25,12 @@ import Types._
 import OptimizerHints.{empty => NoOptHints}
 
 class PrintersTest {
+  import MemberNamespace.{Private, PublicStatic => Static, PrivateStatic}
+
   private implicit val dummyPos = Position.NoPosition
+
+  /** Empty ApplyFlags, for short. */
+  private val EAF = ApplyFlags.empty
 
   private def assertPrintEquals(expected: String, node: IRNode): Unit =
     assertPrintEqualsImpl(expected, _.printAnyNode(node))
@@ -320,32 +325,39 @@ class PrintersTest {
 
   @Test def printApply(): Unit = {
     assertPrintEquals("x.m__V()",
-        Apply(ref("x", "Ltest_Test"), "m__V", Nil)(NoType))
+        Apply(EAF, ref("x", "Ltest_Test"), "m__V", Nil)(NoType))
     assertPrintEquals("x.m__I__I(5)",
-        Apply(ref("x", "Ltest_Test"), "m__I__I", List(i(5)))(IntType))
+        Apply(EAF, ref("x", "Ltest_Test"), "m__I__I", List(i(5)))(IntType))
     assertPrintEquals("x.m__I__I__I(5, 6)",
-        Apply(ref("x", "Ltest_Test"), "m__I__I__I", List(i(5), i(6)))(IntType))
+        Apply(EAF, ref("x", "Ltest_Test"), "m__I__I__I", List(i(5), i(6)))(IntType))
   }
 
   @Test def printApplyStatically(): Unit = {
     assertPrintEquals("x.Ltest_Test::m__V()",
-        ApplyStatically(ref("x", "Ltest_Test"), "Ltest_Test", "m__V",
+        ApplyStatically(EAF, ref("x", "Ltest_Test"), "Ltest_Test", "m__V",
             Nil)(NoType))
     assertPrintEquals("x.Ltest_Test::m__I__I(5)",
-        ApplyStatically(ref("x", "Ltest_Test"), "Ltest_Test", "m__I__I",
+        ApplyStatically(EAF, ref("x", "Ltest_Test"), "Ltest_Test", "m__I__I",
             List(i(5)))(IntType))
     assertPrintEquals("x.Ltest_Test::m__I__I__I(5, 6)",
-        ApplyStatically(ref("x", "Ltest_Test"), "Ltest_Test", "m__I__I__I",
+        ApplyStatically(EAF, ref("x", "Ltest_Test"), "Ltest_Test", "m__I__I__I",
             List(i(5), i(6)))(IntType))
+
+    assertPrintEquals("x.Ltest_Test::private::m__V()",
+        ApplyStatically(EAF.withPrivate(true), ref("x", "Ltest_Test"),
+            "Ltest_Test", "m__V", Nil)(NoType))
   }
 
   @Test def printApplyStatic(): Unit = {
     assertPrintEquals("Ltest_Test::m__V()",
-        ApplyStatic("Ltest_Test", "m__V", Nil)(NoType))
+        ApplyStatic(EAF, "Ltest_Test", "m__V", Nil)(NoType))
     assertPrintEquals("Ltest_Test::m__I__I(5)",
-        ApplyStatic("Ltest_Test", "m__I__I", List(i(5)))(IntType))
+        ApplyStatic(EAF, "Ltest_Test", "m__I__I", List(i(5)))(IntType))
     assertPrintEquals("Ltest_Test::m__I__I__I(5, 6)",
-        ApplyStatic("Ltest_Test", "m__I__I__I", List(i(5), i(6)))(IntType))
+        ApplyStatic(EAF, "Ltest_Test", "m__I__I__I", List(i(5), i(6)))(IntType))
+
+    assertPrintEquals("Ltest_Test::private::m__V()",
+        ApplyStatic(EAF.withPrivate(true), "Ltest_Test", "m__V", Nil)(NoType))
   }
 
   @Test def printUnaryOp(): Unit = {
@@ -1080,9 +1092,9 @@ class PrintersTest {
         FieldDef(MemberFlags.empty.withMutable(true), StringLiteral("y"), AnyType))
 
     assertPrintEquals("""static val "x": int""",
-        FieldDef(MemberFlags.empty.withStatic(true), StringLiteral("x"), IntType))
+        FieldDef(MemberFlags.empty.withNamespace(Static), StringLiteral("x"), IntType))
     assertPrintEquals("""static var "y": any""",
-        FieldDef(MemberFlags.empty.withStatic(true).withMutable(true), StringLiteral("y"), AnyType))
+        FieldDef(MemberFlags.empty.withNamespace(Static).withMutable(true), StringLiteral("y"), AnyType))
   }
 
   @Test def printMethodDef(): Unit = {
@@ -1150,7 +1162,27 @@ class PrintersTest {
           |  5
           |}
         """,
-        MethodDef(MemberFlags.empty.withStatic(true), "m__I__I",
+        MethodDef(MemberFlags.empty.withNamespace(Static), "m__I__I",
+            List(ParamDef("x", IntType, mutable = false, rest = false)),
+            IntType, Some(i(5)))(NoOptHints, None))
+
+    assertPrintEquals(
+        """
+          |private def m__I__I(x: int): int = {
+          |  5
+          |}
+        """,
+        MethodDef(MemberFlags.empty.withNamespace(Private), "m__I__I",
+            List(ParamDef("x", IntType, mutable = false, rest = false)),
+            IntType, Some(i(5)))(NoOptHints, None))
+
+    assertPrintEquals(
+        """
+          |private static def m__I__I(x: int): int = {
+          |  5
+          |}
+        """,
+        MethodDef(MemberFlags.empty.withNamespace(PrivateStatic), "m__I__I",
             List(ParamDef("x", IntType, mutable = false, rest = false)),
             IntType, Some(i(5)))(NoOptHints, None))
   }
@@ -1160,7 +1192,9 @@ class PrintersTest {
       val staticStr =
         if (static) "static "
         else ""
-      val flags = MemberFlags.empty.withStatic(static)
+      val flags =
+        if (static) MemberFlags.empty.withNamespace(Static)
+        else MemberFlags.empty
 
       assertPrintEquals(
           s"""
@@ -1214,8 +1248,8 @@ class PrintersTest {
           |export top static def "pkg.foo"(x: any): any = {
           |  5
           |}""",
-        TopLevelMethodExportDef(MethodDef(MemberFlags.empty.withStatic(true),
-            StringLiteral("pkg.foo"),
+        TopLevelMethodExportDef(MethodDef(
+            MemberFlags.empty.withNamespace(Static), StringLiteral("pkg.foo"),
             List(ParamDef("x", AnyType, mutable = false, rest = false)),
             AnyType, Some(i(5)))(NoOptHints, None)))
   }

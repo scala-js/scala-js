@@ -176,20 +176,9 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     require(sym.isMethod,
         "encodeMethodSym called with non-method symbol: " + sym)
 
-    def name = encodeMemberNameInternal(sym)
-
-    def privateSuffix(owner: Symbol): String =
-      if (owner.isTraitOrInterface && !isImplClass(owner)) encodeClassFullName(owner)
-      else owner.ancestors.count(!_.isTraitOrInterface).toString
-
-    val encodedName = {
-      if (sym.isClassConstructor)
-        "init_"
-      else if (sym.isPrivate)
-        mangleJSName(name) + "__p" + privateSuffix(sym.owner)
-      else
-        mangleJSName(name)
-    }
+    val encodedName =
+      if (sym.isClassConstructor) "init_"
+      else mangleJSName(encodeMemberNameInternal(sym))
 
     val paramsString = makeParamsString(sym, reflProxy)
 

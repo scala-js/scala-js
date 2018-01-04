@@ -19,6 +19,8 @@ import scala.collection.parallel._
 
 import java.util.concurrent.atomic._
 
+import org.scalajs.ir.Trees.MemberNamespace
+
 import org.scalajs.linker.standard._
 
 import ConcurrencyUtils._
@@ -92,8 +94,9 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
   private class ParInterfaceType(encName: String) extends InterfaceType(encName) {
     private val ancestorsAskers = TrieSet.empty[MethodImpl]
     private val dynamicCallers = TrieMap.empty[String, TrieSet[MethodImpl]]
-    private val staticCallers = TrieMap.empty[String, TrieSet[MethodImpl]]
-    private val callersOfStatic = TrieMap.empty[String, TrieSet[MethodImpl]]
+
+    private val staticCallers =
+      Array.fill(MemberNamespace.Count)(TrieMap.empty[String, TrieSet[MethodImpl]])
 
     private var _ancestors: List[String] = encodedName :: Nil
 
@@ -138,19 +141,17 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
       dynamicCallers.getOrPut(methodName, TrieSet.empty) += caller
 
     /** PROCESS PASS ONLY. */
-    def registerStaticCaller(methodName: String, caller: MethodImpl): Unit =
-      staticCallers.getOrPut(methodName, TrieSet.empty) += caller
-
-    /** PROCESS PASS ONLY. */
-    def registerCallerOfStatic(methodName: String, caller: MethodImpl): Unit =
-      callersOfStatic.getOrPut(methodName, TrieSet.empty) += caller
+    def registerStaticCaller(namespaceOrdinal: Int, methodName: String,
+        caller: MethodImpl): Unit = {
+      staticCallers(namespaceOrdinal)
+        .getOrPut(methodName, TrieSet.empty) += caller
+    }
 
     /** UPDATE PASS ONLY. */
     def unregisterDependee(dependee: MethodImpl): Unit = {
       ancestorsAskers -= dependee
       dynamicCallers.valuesIterator.foreach(_ -= dependee)
-      staticCallers.valuesIterator.foreach(_ -= dependee)
-      callersOfStatic.valuesIterator.foreach(_ -= dependee)
+      staticCallers.foreach(_.valuesIterator.foreach(_ -= dependee))
     }
 
     /** UPDATE PASS ONLY. */
@@ -158,12 +159,12 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
       dynamicCallers.remove(methodName).foreach(_.keysIterator.foreach(_.tag()))
 
     /** UPDATE PASS ONLY. */
-    def tagStaticCallersOf(methodName: String): Unit =
-      staticCallers.remove(methodName).foreach(_.keysIterator.foreach(_.tag()))
-
-    /** UPDATE PASS ONLY. */
-    def tagCallersOfStatic(methodName: String): Unit =
-      callersOfStatic.remove(methodName).foreach(_.keysIterator.foreach(_.tag()))
+    def tagStaticCallersOf(namespaceOrdinal: Int,
+        methodName: String): Unit = {
+      staticCallers(namespaceOrdinal)
+        .remove(methodName)
+        .foreach(_.keysIterator.foreach(_.tag()))
+    }
   }
 
   private class ParMethodImpl(owner: MethodContainer,

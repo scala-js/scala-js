@@ -29,7 +29,8 @@ private[frontend] final class MethodSynthesizer(
 
   def synthesizeMembers(classInfo: ClassInfo, analysis: Analysis)(
       implicit ec: ExecutionContext): Future[Iterator[MethodDef]] = {
-    val futures = classInfo.methodInfos.valuesIterator.filter(_.isReachable).flatMap { m =>
+    val publicMethodInfos = classInfo.methodInfos(MemberNamespace.Public)
+    val futures = publicMethodInfos.valuesIterator.filter(_.isReachable).flatMap { m =>
       m.syntheticKind match {
         case MethodSyntheticKind.None =>
           Nil
@@ -61,7 +62,7 @@ private[frontend] final class MethodSynthesizer(
       val params = targetMDef.args.map(_.copy()) // for the new pos
       val currentClassType = ClassType(classInfo.encodedName)
 
-      val call = Apply(This()(currentClassType),
+      val call = Apply(ApplyFlags.empty, This()(currentClassType),
           targetIdent, params.map(_.ref))(targetMDef.resultType)
 
       val body = if (targetName.endsWith("__V")) {
@@ -95,8 +96,8 @@ private[frontend] final class MethodSynthesizer(
       val currentClassType = ClassType(classInfo.encodedName)
 
       val body = ApplyStatically(
-          This()(currentClassType), ClassRef(targetInterface), targetIdent,
-          params.map(_.ref))(targetMDef.resultType)
+          ApplyFlags.empty, This()(currentClassType), ClassRef(targetInterface),
+          targetIdent, params.map(_.ref))(targetMDef.resultType)
 
       MethodDef(MemberFlags.empty, bridgeIdent, params, targetMDef.resultType,
           Some(body))(
@@ -110,8 +111,9 @@ private[frontend] final class MethodSynthesizer(
       implicit ec: ExecutionContext): Future[MethodDef] = {
     @tailrec
     def loop(ancestorInfo: ClassInfo): Future[MethodDef] = {
-      val inherited = ancestorInfo.methodInfos.get(methodName)
-      inherited.find(p) match {
+      val inherited =
+        ancestorInfo.methodInfos(MemberNamespace.Public).get(methodName)
+      inherited.filter(p) match {
         case Some(m) =>
           m.syntheticKind match {
             case MethodSyntheticKind.None =>
@@ -144,7 +146,9 @@ private[frontend] final class MethodSynthesizer(
     } yield {
       classDef.memberDefs.collectFirst {
         case mDef: MethodDef
-            if !mDef.flags.isStatic && mDef.encodedName == methodName => mDef
+            if mDef.flags.namespace == MemberNamespace.Public &&
+                mDef.encodedName == methodName =>
+          mDef
       }.getOrElse {
         throw new AssertionError(
             s"Cannot find $methodName in ${classInfo.encodedName}")

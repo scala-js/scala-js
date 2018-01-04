@@ -138,12 +138,7 @@ object Definitions {
   private val decompressedPrefixes: Seq[(String, String)] =
     compressedPrefixes map { case (a, b) => (b, a) }
 
-  /** Decodes a method name into its full signature.
-   *
-   *  This discards the information whether the method is private or not, and
-   *  at which class level it is private. If necessary, you can recover that
-   *  information from `encodedName.indexOf("__p") >= 0`.
-   */
+  /** Decodes a method name into its full signature. */
   def decodeMethodName(
       encodedName: String): (String, List[TypeRef], Option[TypeRef]) = {
     val (simpleName, privateAndSigString) = if (isConstructorName(encodedName)) {
@@ -155,10 +150,7 @@ object Definitions {
       ("<clinit>", "")
     } else {
       val pos = encodedName.indexOf("__")
-      val pos2 =
-        if (!encodedName.substring(pos + 2).startsWith("p")) pos
-        else encodedName.indexOf("__", pos + 2)
-      (encodedName.substring(0, pos), encodedName.substring(pos2 + 2))
+      (encodedName.substring(0, pos), encodedName.substring(pos + 2))
     }
 
     // -1 preserves trailing empty strings

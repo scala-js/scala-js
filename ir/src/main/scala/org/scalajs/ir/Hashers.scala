@@ -214,23 +214,26 @@ object Hashers {
           mixIdent(item)
           mixType(tree.tpe)
 
-        case Apply(receiver, method, args) =>
+        case Apply(flags, receiver, method, args) =>
           mixTag(TagApply)
+          mixInt(ApplyFlags.toBits(flags))
           mixTree(receiver)
           mixIdent(method)
           mixTrees(args)
           mixType(tree.tpe)
 
-        case ApplyStatically(receiver, cls, method, args) =>
+        case ApplyStatically(flags, receiver, cls, method, args) =>
           mixTag(TagApplyStatically)
+          mixInt(ApplyFlags.toBits(flags))
           mixTree(receiver)
           mixClassRef(cls)
           mixIdent(method)
           mixTrees(args)
           mixType(tree.tpe)
 
-        case ApplyStatic(cls, method, args) =>
+        case ApplyStatic(flags, cls, method, args) =>
           mixTag(TagApplyStatic)
+          mixInt(ApplyFlags.toBits(flags))
           mixClassRef(cls)
           mixIdent(method)
           mixTrees(args)
