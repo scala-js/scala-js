@@ -66,3 +66,10 @@ object NodeVirtualJarFile {
     def asArrayBuffer(): ArrayBuffer
   }
 }
+
+class NodeVirtualJarScalaJSIRContainer(file: String)
+    extends NodeVirtualJarFile(file) with ScalaJSIRContainer {
+
+  def sjsirFiles: List[VirtualRelativeScalaJSIRFile] =
+    ScalaJSIRContainer.sjsirFilesIn(this)
+}

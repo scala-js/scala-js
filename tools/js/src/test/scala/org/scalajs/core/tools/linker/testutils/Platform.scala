@@ -4,5 +4,5 @@ import org.scalajs.core.tools.io._
 
 object Platform {
   def loadJar(path: String): ScalaJSIRContainer =
-    new NodeVirtualJarFile(path)
+    new NodeVirtualJarScalaJSIRContainer(path)
 }

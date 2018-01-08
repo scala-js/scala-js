@@ -123,16 +123,33 @@ trait WritableVirtualJSFile extends WritableVirtualTextFile with VirtualJSFile {
 
 /** A virtual file containing Scala.js IR.
  *
- *  This can be a [[VirtualScalaJSIRFile]] (with [[RelativeVirtualFile]]) or a
- *  [[VirtualFileContainer]].
- *
  *  The main difference compared to using individual files
  *  (that are extracted beforehand) is that the fileset can be versioned at a
  *  higher level: the container needs to change its version when any of the
  *  files change. Therefore, the entire extraction process can be cached.
  */
 trait ScalaJSIRContainer extends VirtualFile {
+  /** All the `*.sjsir` files in this container.
+   *
+   *  It is up to the implementation whether these files are read lazily or not.
+   */
   def sjsirFiles: List[VirtualRelativeScalaJSIRFile]
+}
+
+object ScalaJSIRContainer {
+  def sjsirFilesIn(
+      container: VirtualFileContainer): List[VirtualRelativeScalaJSIRFile] = {
+    container.listEntries(_.endsWith(".sjsir")) { (relPath, stream) =>
+      val file = new EntryIRFile(container.path, relPath)
+      file.content = IO.readInputStreamToByteArray(stream)
+      file.version = container.version
+      file
+    }
+  }
+
+  private class EntryIRFile(outerPath: String, val relativePath: String)
+      extends MemVirtualSerializedScalaJSIRFile(s"$outerPath:$relativePath")
+      with VirtualRelativeScalaJSIRFile
 }
 
 /** A virtual Scala.js IR file.
@@ -187,11 +204,9 @@ trait VirtualSerializedScalaJSIRFile
 /** A virtual file container.
  *
  *  This is a generic virtual container for embedded virtual files, especially
- *  one found on a classpath such as a jar, and containing `.sjsir` files.
+ *  one found on a classpath such as a jar.
  */
-trait VirtualFileContainer extends ScalaJSIRContainer {
-  import VirtualFileContainer._
-
+trait VirtualFileContainer extends VirtualFile {
   /** Lists the entries of this container that satisfy a given predicate.
    *
    *  @param p
@@ -204,43 +219,6 @@ trait VirtualFileContainer extends ScalaJSIRContainer {
    */
   def listEntries[T](p: String => Boolean)(
       makeResult: (String, InputStream) => T): List[T]
-
-  /** All the `*.sjsir` files in this container.
-   *
-   *  It is up to the implementation whether these files are read lazily or not.
-   *  The default implementation reads them into memory.
-   *
-   *  Depending on the implementation, calling `sjsirFiles` might be more
-   *  efficient than using `listEntries` with a predicate
-   *  `_.endsWith(".sjsir")`.
-   */
-  def sjsirFiles: List[VirtualRelativeScalaJSIRFile] = {
-    listEntries(_.endsWith(".sjsir")) { (relPath, stream) =>
-      val file = new EntryIRFile(path, relPath)
-      file.content = IO.readInputStreamToByteArray(stream)
-      file.version = version
-      file
-    }
-  }
-
-  def jsFiles: List[VirtualJSFile with RelativeVirtualFile] = {
-    listEntries(_.endsWith(".js")) { (relPath, stream) =>
-      val file = new EntryJSFile(path, relPath)
-      file.content = IO.readInputStreamToString(stream)
-      file.version = version
-      file
-    }
-  }
-}
-
-private object VirtualFileContainer {
-  private class EntryIRFile(outerPath: String, val relativePath: String)
-      extends MemVirtualSerializedScalaJSIRFile(s"$outerPath:$relativePath")
-      with VirtualRelativeScalaJSIRFile
-
-  private class EntryJSFile(outerPath: String, val relativePath: String)
-      extends MemVirtualJSFile(s"$outerPath:$relativePath")
-      with RelativeVirtualFile
 }
 
 /** A virtual jar file. */

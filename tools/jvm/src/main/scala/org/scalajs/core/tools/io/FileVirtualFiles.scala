@@ -183,13 +183,13 @@ object FileVirtualScalaJSIRFile extends (File => FileVirtualScalaJSIRFile) {
 object FileScalaJSIRContainer {
   def fromClasspath(
       classpath: Seq[File]): Seq[ScalaJSIRContainer with FileVirtualFile] = {
-    classpath flatMap { entry =>
+    classpath.flatMap { entry =>
       if (!entry.exists)
         Nil
       else if (entry.isDirectory)
         fromDirectory(entry)
       else if (entry.getName.endsWith(".jar"))
-        List(new FileVirtualBinaryFile(entry) with VirtualJarFile)
+        List(new FileVirtualJarScalaJSIRContainer(entry))
       else
         throw new IllegalArgumentException("Illegal classpath entry " + entry)
     }
@@ -214,4 +214,14 @@ object FileScalaJSIRContainer {
       FileVirtualScalaJSIRFile.relative(ir, relPath)
     }
   }
+}
+
+class FileVirtualJarFile(file: File)
+    extends FileVirtualBinaryFile(file) with VirtualJarFile
+
+class FileVirtualJarScalaJSIRContainer(file: File)
+    extends FileVirtualJarFile(file) with ScalaJSIRContainer {
+
+  def sjsirFiles: List[VirtualRelativeScalaJSIRFile] =
+    ScalaJSIRContainer.sjsirFilesIn(this)
 }

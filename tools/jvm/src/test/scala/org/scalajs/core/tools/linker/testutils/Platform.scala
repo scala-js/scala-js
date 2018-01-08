@@ -6,5 +6,5 @@ import org.scalajs.core.tools.io._
 
 object Platform {
   def loadJar(path: String): ScalaJSIRContainer =
-    new FileVirtualBinaryFile(new File(path)) with VirtualJarFile
+    new FileVirtualJarScalaJSIRContainer(new File(path))
 }
