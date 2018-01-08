@@ -1,18 +1,8 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___      __ ____  Scala.js API               **
-**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2013, LAMP/EPFL        **
-**  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-lang.org/     **
-** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
-**                          |/____/                                     **
-\*                                                                      */
-
-
-package scala.scalajs.niocharset
+package java.nio.charset
 
 import scala.annotation.tailrec
 
 import java.nio._
-import java.nio.charset._
 
 /** This is a very specific common implementation for ISO_8859_1 and US_ASCII.
  *  Only a single constant changes between the two algorithms (`maxValue`).
@@ -20,7 +10,7 @@ import java.nio.charset._
  *
  *  `maxValue` is therefore either 0xff (ISO_8859_1) or 0x7f (US_ASCII).
  */
-private[niocharset] abstract class ISO_8859_1_And_US_ASCII_Common protected (
+private[charset] abstract class ISO_8859_1_And_US_ASCII_Common protected (
     name: String, aliases: Array[String],
     private val maxValue: Int) extends Charset(name, aliases) {
 
