@@ -17,8 +17,6 @@ import scala.scalajs.js.annotation._
 import scala.collection._
 import scala.concurrent.{ExecutionContext, Future}
 
-import scala.scalajs.runtime.genTraversableOnce2jsArray
-
 sealed abstract class JSConvertersLowPrioImplicits {
   this: js.JSConverters.type =>
 

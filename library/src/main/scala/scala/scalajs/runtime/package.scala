@@ -16,14 +16,13 @@ package object runtime {
     case _                         => th
   }
 
-  @inline final def genTraversableOnce2jsArray[A](
-      col: GenTraversableOnce[A]): js.Array[A] = {
-    col match {
-      case col: js.ArrayOps[A]     => col.result()
-      case col: js.WrappedArray[A] => col.array
+  def toJSVarArgs[A](seq: Seq[A]): js.Array[A] = {
+    seq match {
+      case seq: js.WrappedArray[A] =>
+        seq.array
       case _ =>
         val result = new js.Array[A]
-        col.foreach(x => result.push(x))
+        seq.foreach(x => result.push(x))
         result
     }
   }
