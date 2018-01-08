@@ -4,8 +4,6 @@ import java.io._
 import java.net.URI
 import java.util.zip.{ZipInputStream, ZipEntry}
 
-import org.scalajs.core.ir
-
 /** A virtual input file.
  */
 trait VirtualFile {
@@ -119,86 +117,6 @@ object VirtualJSFile {
 
 trait WritableVirtualJSFile extends WritableVirtualTextFile with VirtualJSFile {
   def sourceMapWriter: Writer
-}
-
-/** A virtual file containing Scala.js IR.
- *
- *  The main difference compared to using individual files
- *  (that are extracted beforehand) is that the fileset can be versioned at a
- *  higher level: the container needs to change its version when any of the
- *  files change. Therefore, the entire extraction process can be cached.
- */
-trait ScalaJSIRContainer extends VirtualFile {
-  /** All the `*.sjsir` files in this container.
-   *
-   *  It is up to the implementation whether these files are read lazily or not.
-   */
-  def sjsirFiles: List[VirtualRelativeScalaJSIRFile]
-}
-
-object ScalaJSIRContainer {
-  def sjsirFilesIn(
-      container: VirtualFileContainer): List[VirtualRelativeScalaJSIRFile] = {
-    container.listEntries(_.endsWith(".sjsir")) { (relPath, stream) =>
-      val file = new EntryIRFile(container.path, relPath)
-      file.content = IO.readInputStreamToByteArray(stream)
-      file.version = container.version
-      file
-    }
-  }
-
-  private class EntryIRFile(outerPath: String, val relativePath: String)
-      extends MemVirtualSerializedScalaJSIRFile(s"$outerPath:$relativePath")
-      with VirtualRelativeScalaJSIRFile
-}
-
-/** A virtual Scala.js IR file.
- *  It contains the class info and the IR tree.
- */
-trait VirtualScalaJSIRFile extends VirtualFile {
-  /** Entry points information for this file. */
-  def entryPointsInfo: ir.EntryPointsInfo =
-    ir.EntryPointsInfo.forClassDef(tree)
-
-  /** IR Tree of this file. */
-  def tree: ir.Trees.ClassDef
-}
-
-trait VirtualRelativeScalaJSIRFile extends VirtualScalaJSIRFile
-    with RelativeVirtualFile with ScalaJSIRContainer {
-  def sjsirFiles: List[VirtualRelativeScalaJSIRFile] = this :: Nil
-}
-
-/** Base trait for virtual Scala.js IR files that are serialized as binary file.
- */
-trait VirtualSerializedScalaJSIRFile
-    extends VirtualBinaryFile with VirtualScalaJSIRFile {
-
-  override def entryPointsInfo: ir.EntryPointsInfo = {
-    // Overridden to read only the necessary parts
-    withInputStream(ir.Serializers.deserializeEntryPointsInfo)
-  }
-
-  override def tree: ir.Trees.ClassDef =
-    withInputStream(ir.Serializers.deserialize)
-
-  @inline
-  private def withInputStream[A](f: InputStream => A): A = {
-    val stream = inputStream
-    try {
-      f(stream)
-    } catch {
-      case e: ir.IRVersionNotSupportedException =>
-        throw new ir.IRVersionNotSupportedException(e.version, e.supported,
-            s"Failed to deserialize a file compiled with Scala.js ${e.version}" +
-            s" (supported: ${e.supported.mkString(", ")}): $path", e)
-
-      case e: IOException =>
-        throw new IOException(s"Failed to deserialize $path", e)
-    } finally {
-      stream.close()
-    }
-  }
 }
 
 /** A virtual file container.

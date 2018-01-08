@@ -54,9 +54,6 @@ class NodeVirtualJSFile(p: String) extends NodeVirtualTextFile(p)
   override def sourceMap: Option[String] = None
 }
 
-class NodeVirtualScalaJSIRFile(p: String)
-    extends NodeVirtualBinaryFile(p) with VirtualSerializedScalaJSIRFile
-
 private[io] object NodeFS {
   val fs = js.Dynamic.global.require("fs")
 }

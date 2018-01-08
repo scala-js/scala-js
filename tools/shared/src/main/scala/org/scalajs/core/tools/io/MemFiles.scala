@@ -99,7 +99,3 @@ object WritableMemVirtualJSFile {
   def apply(path: String): WritableMemVirtualJSFile =
     new MemVirtualJSFile(path) with WritableMemVirtualJSFile
 }
-
-/** A simple in-memory mutable virtual serialized Scala.js IR file. */
-class MemVirtualSerializedScalaJSIRFile(p: String) extends MemVirtualBinaryFile(p)
-                                                      with VirtualSerializedScalaJSIRFile
