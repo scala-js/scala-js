@@ -6,7 +6,9 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-package org.scalajs.core.tools.io
+package org.scalajs.core.tools.linker.irio
+
+import org.scalajs.core.tools.io._
 
 class NodeVirtualScalaJSIRFile(p: String)
     extends NodeVirtualBinaryFile(p) with VirtualSerializedScalaJSIRFile

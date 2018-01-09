@@ -6,11 +6,13 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-package org.scalajs.core.tools.io
+package org.scalajs.core.tools.linker.irio
 
 import java.io._
 
 import org.scalajs.core.ir
+
+import org.scalajs.core.tools.io._
 
 /** A virtual file containing Scala.js IR.
  *

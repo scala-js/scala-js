@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.io
+package org.scalajs.core.tools.linker.irio
 
 import scala.annotation.tailrec
 
@@ -18,6 +18,8 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import org.scalajs.core.ir.EntryPointsInfo
 import org.scalajs.core.ir.Trees.ClassDef
+
+import org.scalajs.core.tools.io._
 
 /** Centralized Scala.js IR cache.
  *

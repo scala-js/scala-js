@@ -9,7 +9,9 @@ import org.scalajs.core.ir.Trees._
 
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.io._
+
 import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.irio._
 
 import org.scalajs.core.tools.linker.testutils._
 import org.scalajs.core.tools.linker.testutils.TestIRBuilder._

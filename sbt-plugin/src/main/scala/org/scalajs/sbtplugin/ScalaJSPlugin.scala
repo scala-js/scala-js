@@ -17,7 +17,9 @@ import sbt.Keys._
 import org.scalajs.core.ir.ScalaJSVersions
 
 import org.scalajs.core.tools.io._
+
 import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.irio._
 
 import org.scalajs.jsenv.JSEnv
 

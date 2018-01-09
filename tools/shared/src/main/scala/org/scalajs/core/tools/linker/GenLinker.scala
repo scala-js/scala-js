@@ -13,6 +13,7 @@ import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.io._
 
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
+import org.scalajs.core.tools.linker.irio._
 
 /** Common supertrait of [[Linker]] and [[ClearableLinker]].
  *

@@ -6,9 +6,11 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-package org.scalajs.core.tools.io
+package org.scalajs.core.tools.linker.irio
 
 import java.io._
+
+import org.scalajs.core.tools.io._
 
 class FileVirtualScalaJSIRFile(f: File)
     extends FileVirtualBinaryFile(f) with VirtualSerializedScalaJSIRFile

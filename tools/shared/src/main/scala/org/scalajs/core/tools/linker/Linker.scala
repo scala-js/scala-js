@@ -21,6 +21,7 @@ import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.frontend.optimizer.IncOptimizer
 import org.scalajs.core.tools.linker.backend.{LinkerBackend, BasicLinkerBackend}
+import org.scalajs.core.tools.linker.irio._
 
 /** The Scala.js linker */
 final class Linker private (frontend: LinkerFrontend, backend: LinkerBackend)

@@ -2,8 +2,10 @@ package org.scalajs.core.tools.linker.testutils
 
 import scala.collection.mutable
 
-import org.scalajs.core.tools.linker.analyzer.Infos._
 import org.scalajs.core.tools.io._
+
+import org.scalajs.core.tools.linker.analyzer.Infos._
+import org.scalajs.core.tools.linker.irio._
 
 object TestIRRepo {
   private val stdlibPath =

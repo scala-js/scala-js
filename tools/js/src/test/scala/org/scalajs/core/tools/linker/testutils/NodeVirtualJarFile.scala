@@ -8,6 +8,8 @@ import scala.scalajs.js.typedarray._
 
 import org.scalajs.core.tools.io._
 
+import org.scalajs.core.tools.linker.irio._
+
 class NodeVirtualJarFile(file: String)
     extends NodeVirtualBinaryFile(file) with VirtualFileContainer {
 

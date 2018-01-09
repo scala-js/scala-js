@@ -10,12 +10,12 @@
 package org.scalajs.core.tools.linker.frontend
 
 import org.scalajs.core.tools.logging.Logger
-import org.scalajs.core.tools.io.VirtualScalaJSIRFile
 
 import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.frontend.optimizer.{GenIncOptimizer, IncOptimizer}
+import org.scalajs.core.tools.linker.irio._
 
 /** The frontend of the Scala.js linker. Produces a [[LinkingUnit]]
  *

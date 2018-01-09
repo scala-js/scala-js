@@ -21,6 +21,7 @@ import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.standard._
 import org.scalajs.core.tools.linker.checker._
 import org.scalajs.core.tools.linker.analyzer._
+import org.scalajs.core.tools.linker.irio._
 
 import org.scalajs.core.ir
 import ir.Trees._
@@ -32,7 +33,7 @@ import ir.Definitions
 
 import Analysis._
 
-/** Links the information from [[io.VirtualScalaJSIRFile]]s into
+/** Links the information from [[irio.VirtualScalaJSIRFile]]s into
  *  [[LinkedClass]]es. Does a dead code elimination pass.
  */
 final class BaseLinker(config: CommonPhaseConfig) {

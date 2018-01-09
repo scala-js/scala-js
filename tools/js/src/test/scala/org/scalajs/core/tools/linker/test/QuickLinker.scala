@@ -1,11 +1,14 @@
-package org.scalajs.core.tools.test.js
-
-import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.linker._
-import org.scalajs.core.tools.logging._
+package org.scalajs.core.tools.linker.test
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
+
+import org.scalajs.core.tools.io._
+
+import org.scalajs.core.tools.logging._
+
+import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.irio._
 
 import org.scalajs.core.tools.linker.testutils.Platform
 
