@@ -471,7 +471,8 @@ object Build {
       clean := clean.dependsOn(
           clean in compiler,
           clean in irProject, clean in irProjectJS,
-          clean in tools, clean in toolsJS,
+          clean in io, clean in ioJS,
+          clean in linker, clean in linkerJS,
           clean in jsEnvs, clean in jsEnvsTestKit, clean in nodeJSEnv,
           clean in testAdapter, clean in plugin,
           clean in javalanglib, clean in javalib, clean in scalalib,
@@ -569,11 +570,69 @@ object Build {
       exportJars := true
   ).dependsOnSource(irProject)
 
-  val commonToolsSettings = Def.settings(
+  val commonIOSettings = Def.settings(
       commonSettings,
       publishSettings,
       fatalWarningsSettings,
-      name := "Scala.js tools",
+      name := "Scala.js IO",
+      previousArtifactSetting,
+      mimaBinaryIssueFilters ++= BinaryIncompatibilities.IO,
+      exportJars := true, // required so ScalaDoc linking works
+
+      unmanagedSourceDirectories in Compile +=
+        baseDirectory.value.getParentFile / "shared/src/main/scala",
+      unmanagedSourceDirectories in Test +=
+        baseDirectory.value.getParentFile / "shared/src/test/scala",
+
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s")
+  )
+
+  lazy val io: Project = (project in file("io/jvm")).settings(
+      commonIOSettings,
+      libraryDependencies +=
+        "com.novocode" % "junit-interface" % "0.9" % "test"
+  )
+
+  lazy val ioJS: Project = (project in file("io/js")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
+      commonIOSettings,
+      crossVersion := ScalaJSCrossVersion.binary
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
+      library, jUnitRuntime % "test"
+  )
+
+  val commonLoggingSettings = Def.settings(
+      commonSettings,
+      publishSettings,
+      fatalWarningsSettings,
+      name := "Scala.js Logging",
+      previousArtifactSetting,
+      mimaBinaryIssueFilters ++= BinaryIncompatibilities.Logging,
+      exportJars := true, // required so ScalaDoc linking works
+
+      unmanagedSourceDirectories in Compile +=
+        baseDirectory.value.getParentFile / "shared/src/main/scala"
+  )
+
+  lazy val logging: Project = (project in file("logging/jvm")).settings(
+      commonLoggingSettings
+  )
+
+  lazy val loggingJS: Project = (project in file("logging/js")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
+      commonLoggingSettings,
+      crossVersion := ScalaJSCrossVersion.binary
+  ).withScalaJSCompiler.dependsOn(
+      library
+  )
+
+  val commonLinkerSettings = Def.settings(
+      commonSettings,
+      publishSettings,
+      fatalWarningsSettings,
+      name := "Scala.js linker",
 
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value.getParentFile / "shared/src/main/scala",
@@ -587,7 +646,7 @@ object Build {
       }.taskValue,
 
       previousArtifactSetting,
-      mimaBinaryIssueFilters ++= BinaryIncompatibilities.Tools,
+      mimaBinaryIssueFilters ++= BinaryIncompatibilities.Linker,
       exportJars := true, // required so ScalaDoc linking works
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
@@ -597,8 +656,8 @@ object Build {
       }
   )
 
-  lazy val tools: Project = (project in file("tools/jvm")).settings(
-      commonToolsSettings,
+  lazy val linker: Project = (project in file("linker/jvm")).settings(
+      commonLinkerSettings,
       libraryDependencies ++= Seq(
           "com.google.javascript" % "closure-compiler" % "v20160517",
           "com.novocode" % "junit-interface" % "0.9" % "test"
@@ -606,12 +665,12 @@ object Build {
           parallelCollectionsDependencies(scalaVersion.value)
       ),
       fork in Test := true
-  ).dependsOn(irProject)
+  ).dependsOn(irProject, io, logging)
 
-  lazy val toolsJS: Project = (project in file("tools/js")).enablePlugins(
+  lazy val linkerJS: Project = (project in file("linker/js")).enablePlugins(
       MyScalaJSPlugin
   ).settings(
-      commonToolsSettings,
+      commonLinkerSettings,
       crossVersion := ScalaJSCrossVersion.binary,
 
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
@@ -729,7 +788,7 @@ object Build {
         }
       }
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, irProjectJS, jUnitRuntime % "test"
+      library, irProjectJS, ioJS, loggingJS, jUnitRuntime % "test"
   )
 
   lazy val jsEnvs: Project = (project in file("js-envs")).settings(
@@ -739,7 +798,7 @@ object Build {
       name := "Scala.js JS Envs",
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
-  ).dependsOn(tools)
+  ).dependsOn(io, logging)
 
   lazy val jsEnvsTestKit: Project = (project in file("js-envs-test-kit")).settings(
       commonSettings,
@@ -750,7 +809,7 @@ object Build {
         "junit" % "junit" % "4.8.2",
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvsTestKit
-  ).dependsOn(tools, jsEnvs)
+  ).dependsOn(jsEnvs)
 
   lazy val nodeJSEnv: Project = (project in file("nodejs-env")).settings(
       commonSettings,
@@ -819,7 +878,7 @@ object Build {
 
         sbtJars.map(_.data -> docUrl).toMap
       }
-  ).dependsOn(tools, jsEnvs, nodeJSEnv, testAdapter)
+  ).dependsOn(linker, jsEnvs, nodeJSEnv, testAdapter)
 
   lazy val delambdafySetting = {
     scalacOptions ++= (
@@ -1689,7 +1748,7 @@ object Build {
         else
           Nil
       }
-  ).dependsOn(compiler, tools, nodeJSEnv)
+  ).dependsOn(compiler, linker, nodeJSEnv)
 
   lazy val partestSuite: Project = (project in file("partest-suite")).settings(
       commonSettings,

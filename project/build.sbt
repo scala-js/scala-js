@@ -12,8 +12,12 @@ unmanagedSourceDirectories in Compile ++= {
   val root = baseDirectory.value.getParentFile
   Seq(
     root / "ir/src/main/scala",
-    root / "tools/shared/src/main/scala",
-    root / "tools/jvm/src/main/scala",
+    root / "io/shared/src/main/scala",
+    root / "io/jvm/src/main/scala",
+    root / "logging/shared/src/main/scala",
+    root / "logging/jvm/src/main/scala",
+    root / "linker/shared/src/main/scala",
+    root / "linker/jvm/src/main/scala",
     root / "js-envs/src/main/scala",
     root / "nodejs-env/src/main/scala",
     root / "test-adapter/src/main/scala",
@@ -29,7 +33,7 @@ sources in Compile +=
 
 sourceGenerators in Compile += Def.task {
   build.ScalaJSEnvGenerator.generateEnvHolder(
-    baseDirectory.value.getParentFile / "tools",
+    baseDirectory.value.getParentFile / "linker",
     (sourceManaged in Compile).value)
 }.taskValue
 

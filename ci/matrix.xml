@@ -159,29 +159,32 @@
   <task id="bootstrap"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbt ++$scala tools/test &&
-    sbt ++$scala irJS/test toolsJS/test &&
+    sbt ++$scala linker/test &&
+    sbt ++$scala irJS/test ioJS/test linkerJS/test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala irJS/test toolsJS/test &&
+        ++$scala irJS/test ioJS/test linkerJS/test &&
     sbt ++$scala testSuite/test:fastOptJS &&
-    sbt ++$scala toolsJS/bootstrapTest &&
+    sbt ++$scala linkerJS/bootstrapTest &&
     sbt ++$scala testSuite/test:fullOptJS &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala toolsJS/bootstrapTest &&
-    sbt ++$scala irJS/mimaReportBinaryIssues toolsJS/mimaReportBinaryIssues
+        ++$scala linkerJS/bootstrapTest &&
+    sbt ++$scala irJS/mimaReportBinaryIssues ioJS/mimaReportBinaryIssues \
+        loggingJS/mimaReportBinaryIssues linkerJS/mimaReportBinaryIssues
   ]]></task>
 
   <task id="tools-stubs"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbt ++$scala tools/package ir/test \
+    sbt ++$scala ir/test io/test logging/compile linker/compile \
         stubs/package nodeJSEnv/test testAdapter/test \
-        ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
+        ir/mimaReportBinaryIssues io/mimaReportBinaryIssues \
+        logging/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         nodeJSEnv/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
         stubs/mimaReportBinaryIssues &&
-    sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
+    sbt ++$scala ir/compile:doc io/compile:doc logging/compile:doc \
+        linker/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
         testAdapter/compile:doc stubs/compile:doc
   ]]></task>
@@ -189,10 +192,11 @@
   <task id="tools-stubs-sbtplugin"><![CDATA[
     setJavaVersion $java
     npm install &&
-    sbt ++$scala tools/package ir/test \
+    sbt ++$scala ir/test io/test logging/compile linker/compile \
         stubs/package nodeJSEnv/test testAdapter/test \
         sbtPlugin/package \
-        ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
+        ir/mimaReportBinaryIssues io/mimaReportBinaryIssues \
+        logging/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         nodeJSEnv/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
@@ -200,7 +204,9 @@
         sbtPlugin/mimaReportBinaryIssues &&
     sbt ++$scala library/scalastyle javalanglib/scalastyle javalib/scalastyle \
         ir/scalastyle compiler/scalastyle \
-        compiler/test:scalastyle tools/scalastyle tools/test:scalastyle \
+        compiler/test:scalastyle io/scalastyle io/test:scalastyle \
+        logging/scalastyle logging/test:scalastyle \
+        linker/scalastyle linker/test:scalastyle \
         jsEnvs/scalastyle jsEnvsTestKit/scalastyle nodeJSEnv/scalastyle \
         nodeJSEnv/test:scalastyle testAdapter/scalastyle \
         sbtPlugin/scalastyle testInterface/scalastyle \
@@ -212,7 +218,8 @@
         jUnitPlugin/scalastyle jUnitRuntime/scalastyle \
         jUnitTestOutputsJVM/scalastyle jUnitTestOutputsJVM/test:scalastyle \
         jUnitTestOutputsJS/scalastyle jUnitTestOutputsJS/test:scalastyle &&
-    sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
+    sbt ++$scala ir/compile:doc io/compile:doc logging/compile:doc \
+        linker/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
         testAdapter/compile:doc stubs/compile:doc \
         sbtPlugin/compile:doc
@@ -234,7 +241,8 @@
                   testInterface/publishLocal stubs/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++$toolsscala ${SBT_VER_OVERRIDE:+^^$SBT_VER_OVERRIDE} \
-        ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
+        ir/publishLocal io/publishLocal logging/publishLocal \
+        linker/publishLocal jsEnvs/publishLocal \
         nodeJSEnv/publishLocal testAdapter/publishLocal \
         sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&

@@ -7,7 +7,13 @@ object BinaryIncompatibilities {
   val IR = Seq(
   )
 
-  val Tools = Seq(
+  val IO = Seq(
+  )
+
+  val Logging = Seq(
+  )
+
+  val Linker = Seq(
   )
 
   val JSEnvs = Seq(
