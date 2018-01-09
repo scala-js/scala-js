@@ -14,7 +14,6 @@ import java.net.URI
 
 import sbt.testing.{Framework, TaskDef}
 
-import org.scalajs.core.ir.Utils
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.io.JSUtils.escapeJS
 
@@ -62,7 +61,7 @@ object HTMLRunnerBuilder {
       css: URI, frameworkImplClassNames: List[List[String]],
       taskDefs: List[TaskDef]): String = {
     def relURI(uri: URI) =
-      htmlEscaped(Utils.relativize(baseURI, uri).toASCIIString)
+      htmlEscaped(URIUtils.relativize(baseURI, uri).toASCIIString)
 
     s"""
     <!DOCTYPE html>

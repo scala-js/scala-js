@@ -343,8 +343,10 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
   }
 
   private def sourceUriToString(uri: URI): String = {
-    val relURI = relativizeBaseURI.fold(uri)(ir.Utils.relativize(_, uri))
-    ir.Utils.fixFileURI(relURI).toASCIIString
+    import org.scalajs.core.tools.io.URIUtils._
+
+    val relURI = relativizeBaseURI.fold(uri)(relativize(_, uri))
+    fixFileURI(relURI).toASCIIString
   }
 
   // Helpers for IR

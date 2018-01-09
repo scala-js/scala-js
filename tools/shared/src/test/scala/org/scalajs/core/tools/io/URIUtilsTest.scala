@@ -1,17 +1,17 @@
-package org.scalajs.core.ir
+package org.scalajs.core.tools.io
 
 import java.net.URI
 
 import org.junit.Test
 import org.junit.Assert._
 
-class UtilsTest {
+class URIUtilsTest {
 
   @Test def relativizeURI(): Unit = {
     def test(base: String, trgt: String, rel: String) = {
       val baseURI = new URI(base)
       val trgtURI = new URI(trgt)
-      val relURI = Utils.relativize(baseURI, trgtURI)
+      val relURI = URIUtils.relativize(baseURI, trgtURI)
       assertEquals(rel, relURI.toString)
       assertEquals(trgtURI, baseURI.resolve(relURI))
     }
