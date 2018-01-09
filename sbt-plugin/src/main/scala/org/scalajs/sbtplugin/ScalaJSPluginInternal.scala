@@ -25,6 +25,7 @@ import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.core.ir.Printers.IRTreePrinter
 
 import org.scalajs.testadapter.{TestAdapter, HTMLRunnerBuilder}
+import org.scalajs.testadapter.TestAdapter.ModuleIdentifier
 
 import Loggers._
 import SBTCompat._
@@ -375,10 +376,11 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         val files = jsExecutionFiles.value
 
-        val moduleKind = scalaJSLinkerConfig.value.moduleKind
-        val moduleIdentifier = moduleKind match {
-          case ModuleKind.NoModule       => None
-          case ModuleKind.CommonJSModule => Some(scalaJSLinkedFile.value.data.getPath)
+        val moduleIdentifier = scalaJSLinkerConfig.value.moduleKind match {
+          case ModuleKind.NoModule =>
+            ModuleIdentifier.NoModule
+          case ModuleKind.CommonJSModule =>
+            ModuleIdentifier.CommonJSModule(scalaJSLinkedFile.value.data.getPath)
         }
 
         val frameworkNames = frameworks.map(_.implClassNames.toList).toList
@@ -386,7 +388,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val logger = sbtLogger2ToolsLogger(streams.value.log)
         val config = TestAdapter.Config()
           .withLogger(logger)
-          .withModuleSettings(moduleKind, moduleIdentifier)
+          .withModuleIdentifier(moduleIdentifier)
 
         val adapter = newTestAdapter(env, files, config)
         val frameworkAdapters = adapter.loadFrameworks(frameworkNames)
