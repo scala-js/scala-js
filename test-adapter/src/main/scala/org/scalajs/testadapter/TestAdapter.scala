@@ -13,12 +13,13 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import scala.collection.concurrent.TrieMap
 
-import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.core.tools.io._
+import org.scalajs.core.tools.io.JSUtils.escapeJS
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.linker.ModuleKind
 
 import org.scalajs.jsenv._
+
 import org.scalajs.testcommon._
 
 import sbt.testing.Framework

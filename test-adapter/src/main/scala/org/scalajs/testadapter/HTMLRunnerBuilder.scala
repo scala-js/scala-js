@@ -16,6 +16,7 @@ import sbt.testing.{Framework, TaskDef}
 
 import org.scalajs.core.ir.Utils
 import org.scalajs.core.tools.io._
+import org.scalajs.core.tools.io.JSUtils.escapeJS
 
 import org.scalajs.jsenv.VirtualFileMaterializer
 
@@ -89,7 +90,7 @@ object HTMLRunnerBuilder {
       taskDefs: List[TaskDef]): String = {
 
     def mkVar[T: Serializer](name: String, value: T) =
-      s"""var $name = "${Utils.escapeJS(Serializer.serialize(value))}";\n"""
+      s"""var $name = "${escapeJS(Serializer.serialize(value))}";\n"""
 
     mkVar("definedTests", taskDefs) +
     mkVar("testFrameworkNames", frameworkImplClassNames)

@@ -23,6 +23,8 @@ import ir.Position
 import ir.Position.NoPosition
 import ir.Printers.IndentationManager
 
+import org.scalajs.core.tools.io.JSUtils
+
 import Trees._
 
 /* Printers code was hand-optimized with raw performance in mind.
@@ -576,7 +578,7 @@ object Printers {
     }
 
     protected def printEscapeJS(s: String): Unit =
-      ir.Utils.printEscapeJS(s, out)
+      JSUtils.printEscapeJS(s, out)
 
     protected def print(ident: Ident): Unit =
       printEscapeJS(ident.name)
@@ -620,7 +622,7 @@ object Printers {
     }
 
     override protected def printEscapeJS(s: String): Unit =
-      column += ir.Utils.printEscapeJS(s, out)
+      column += JSUtils.printEscapeJS(s, out)
 
     override protected def print(ident: Ident): Unit = {
       if (ident.pos.isDefined)

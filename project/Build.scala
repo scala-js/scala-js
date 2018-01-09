@@ -18,7 +18,6 @@ import scala.collection.mutable
 import scala.util.Properties
 
 import org.scalajs.core.ir
-import org.scalajs.core.ir.Utils.escapeJS
 
 import org.scalajs.sbtplugin._
 import org.scalajs.jsenv.{ConsoleJSConsole, JSEnv}
@@ -29,6 +28,7 @@ import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
 import org.scalajs.core.tools.io.{FileVirtualJSFile, MemVirtualJSFile}
+import org.scalajs.core.tools.io.JSUtils.escapeJS
 import org.scalajs.core.tools.linker._
 
 /* Things that we want to expose in the sbt command line (and hence also in

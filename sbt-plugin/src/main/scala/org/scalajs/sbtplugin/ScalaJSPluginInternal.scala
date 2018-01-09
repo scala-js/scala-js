@@ -13,6 +13,7 @@ import sbt.complete.DefaultParsers._
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
 import org.scalajs.core.tools.io.{IO => _, _}
+import org.scalajs.core.tools.io.JSUtils.escapeJS
 
 import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.irio._
@@ -21,7 +22,6 @@ import org.scalajs.core.tools.linker.standard._
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
-import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.core.ir.Printers.IRTreePrinter
 
 import org.scalajs.testadapter.{TestAdapter, HTMLRunnerBuilder}

@@ -20,6 +20,8 @@ import ir.Position
 import ir.Position._
 import ir.Utils
 
+import org.scalajs.core.tools.io.JSUtils
+
 private object SourceMapWriter {
   private val Base64Map =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
@@ -35,7 +37,7 @@ private object SourceMapWriter {
 
   private def printJSONString(s: String, out: Writer) = {
     out.write('\"')
-    Utils.printEscapeJS(s, out)
+    JSUtils.printEscapeJS(s, out)
     out.write('\"')
   }
 
