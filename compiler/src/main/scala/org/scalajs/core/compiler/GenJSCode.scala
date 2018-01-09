@@ -4565,14 +4565,13 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     private def genPrimitiveJSRepeatedParam(arg: Tree): List[js.Tree] = {
       tryGenRepeatedParamAsJSArray(arg, handleNil = true) getOrElse {
-        /* Fall back to calling runtime.genTraversableOnce2jsArray
-         * to perform the conversion to js.Array, then wrap in a Spread
-         * operator.
+        /* Fall back to calling runtime.toJSVarArgs to perform the conversion
+         * to js.Array, then wrap in a Spread operator.
          */
         implicit val pos = arg.pos
         val jsArrayArg = genApplyMethod(
             genLoadModule(RuntimePackageModule),
-            Runtime_genTraversableOnce2jsArray,
+            Runtime_toJSVarArgs,
             List(genExpr(arg)))
         List(js.JSSpread(jsArrayArg))
       }
