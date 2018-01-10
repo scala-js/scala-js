@@ -130,9 +130,6 @@ object Traversers {
       case GetClass(expr) =>
         traverse(expr)
 
-      case CallHelper(helper, args) =>
-        args foreach traverse
-
       // JavaScript expressions
 
       case JSNew(ctor, args) =>
@@ -209,7 +206,7 @@ object Traversers {
 
       case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:SelectStatic |
           _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo | _:Literal |
-          _:UndefinedParam | _:VarRef | _:This | _:JSGlobalRef =>
+          _:VarRef | _:This | _:JSGlobalRef | _:Transient =>
     }
 
     def traverseClassDef(tree: ClassDef): Unit = {

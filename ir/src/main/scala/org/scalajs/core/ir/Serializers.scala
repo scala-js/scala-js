@@ -286,11 +286,6 @@ object Serializers {
           writeByte(TagGetClass)
           writeTree(expr)
 
-        case CallHelper(helper, args) =>
-          writeByte(TagCallHelper)
-          writeString(helper); writeTrees(args)
-          writeType(tree.tpe)
-
         case JSNew(ctor, args) =>
           writeByte(TagJSNew)
           writeTree(ctor); writeTreeOrJSSpreads(args)
@@ -411,15 +406,6 @@ object Serializers {
           writeByte(TagClassOf)
           writeTypeRef(typeRef)
 
-        case UndefinedParam() =>
-          /* UndefinedParam is a "transient" IR node, and cannot be serialized.
-           * TODO At the moment, this is quite ad hoc to support dangling
-           * UndefinedParam detection in the compiler back-end. This should be
-           * generalized for custom transient nodes.
-           */
-          throw new InvalidIRException(tree,
-              "Cannot serialize a transient IR node of type UndefinedParam")
-
         case VarRef(ident) =>
           writeByte(TagVarRef)
           writeIdent(ident)
@@ -441,6 +427,11 @@ object Serializers {
           writeByte(TagCreateJSClass)
           writeClassRef(cls)
           writeTrees(captureValues)
+
+        case Transient(value) =>
+          throw new InvalidIRException(tree,
+              "Cannot serialize a transient IR node (its value is of class " +
+              s"${value.getClass})")
       }
       if (UseDebugMagic)
         writeInt(DebugMagic)
@@ -891,7 +882,6 @@ object Serializers {
         case TagAsInstanceOf    => AsInstanceOf(readTree(), readTypeRef())
         case TagUnbox           => Unbox(readTree(), readByte().toChar)
         case TagGetClass        => GetClass(readTree())
-        case TagCallHelper      => CallHelper(readString(), readTrees())(readType())
 
         case TagJSNew                => JSNew(readTree(), readTreeOrJSSpreads())
         case TagJSDotSelect          => JSDotSelect(readTree(), readIdent())

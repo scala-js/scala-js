@@ -527,10 +527,6 @@ object Printers {
           print(expr)
           print(".getClass()")
 
-        case CallHelper(helper, args) =>
-          print(helper)
-          printArgs(args)
-
         // JavaScript expressions
 
         case JSNew(ctor, args) =>
@@ -789,11 +785,6 @@ object Printers {
           print(typeRef)
           print(']')
 
-        // Specials
-
-        case UndefinedParam() =>
-          print("<undefined param>")
-
         // Atomic expressions
 
         case VarRef(ident) =>
@@ -825,6 +816,11 @@ object Printers {
           print("createjsclass[")
           print(cls)
           printRow(captureValues, "](", ", ", ")")
+
+        // Transient
+
+        case Transient(value) =>
+          value.printIR(this)
       }
     }
 
@@ -1012,10 +1008,10 @@ object Printers {
         print(')')
     }
 
-    protected def print(ident: Ident): Unit =
+    def print(ident: Ident): Unit =
       printEscapeJS(ident.name, out)
 
-    private final def print(propName: PropertyName): Unit = propName match {
+    def print(propName: PropertyName): Unit = propName match {
       case lit: StringLiteral => print(lit: Tree)
       case ident: Ident       => print(ident)
 
@@ -1027,7 +1023,7 @@ object Printers {
         print(")")
     }
 
-    private def print(spec: JSNativeLoadSpec): Unit = {
+    def print(spec: JSNativeLoadSpec): Unit = {
       def printPath(path: List[String]): Unit = {
         for (propName <- path) {
           print("[\"")
@@ -1055,13 +1051,13 @@ object Printers {
       }
     }
 
-    protected def print(s: String): Unit =
+    def print(s: String): Unit =
       out.write(s)
 
-    protected def print(c: Int): Unit =
+    def print(c: Int): Unit =
       out.write(c)
 
-    protected def print(optimizerHints: OptimizerHints)(
+    def print(optimizerHints: OptimizerHints)(
         implicit dummy: DummyImplicit): Unit = {
       if (optimizerHints != OptimizerHints.empty) {
         print("@hints(")

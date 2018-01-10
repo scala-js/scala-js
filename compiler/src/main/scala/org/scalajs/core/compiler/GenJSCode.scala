@@ -331,7 +331,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               } catch {
                 case e: ir.InvalidIRException =>
                   e.tree match {
-                    case ir.Trees.UndefinedParam() =>
+                    case ir.Trees.Transient(UndefinedParam) =>
                       reporter.error(sym.pos,
                           "Found a dangling UndefinedParam at " +
                           s"${e.tree.pos}. This is likely due to a bad " +
@@ -1879,7 +1879,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             else genExpr(rhs)
 
           rhsTree match {
-            case js.UndefinedParam() =>
+            case js.Transient(UndefinedParam) =>
               // This is an intermediate assignment for default params on a
               // js.Any. Add the symbol to the corresponding set to inform
               // the Ident resolver how to replace it and don't emit the symbol
@@ -1974,7 +1974,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             } else if (undefinedDefaultParams contains sym) {
               // This is a default parameter whose assignment was moved to
               // a local variable. Put a literal undefined param again
-              js.UndefinedParam()(toIRType(sym.tpe))
+              js.Transient(UndefinedParam)(toIRType(sym.tpe))
             } else {
               js.VarRef(encodeLocalSym(sym))(toIRType(sym.tpe))
             }
@@ -2359,7 +2359,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           genApplyTypeApply(tree, isStat)
 
         case _ if isRawJSDefaultParam =>
-          js.UndefinedParam()(toIRType(sym.tpe.resultType))
+          js.Transient(UndefinedParam)(toIRType(sym.tpe.resultType))
 
         case Select(Super(_, _), _) =>
           genSuperCall(tree, isStat)
@@ -4576,7 +4576,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           case Some(false) =>
             val unboxedArg = genExpr(arg)
             val boxedArg = unboxedArg match {
-              case js.UndefinedParam() =>
+              case js.Transient(UndefinedParam) =>
                 unboxedArg
               case _ =>
                 val tpe = paramTpes.getOrElse(paramSym.name, paramSym.tpe)
@@ -4594,17 +4594,20 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      /* Remove all consecutive js.UndefinedParam's at the end of the argument
+      /* Remove all consecutive UndefinedParam's at the end of the argument
        * list. No check is performed whether they may be there, since they will
        * only be placed where default arguments can be anyway.
        */
-      reversedArgs = reversedArgs.dropWhile(_.isInstanceOf[js.UndefinedParam])
+      reversedArgs = reversedArgs.dropWhile {
+        case js.Transient(UndefinedParam) => true
+        case _                            => false
+      }
 
-      // Find remaining js.UndefinedParam and replace by js.Undefined. This can
+      // Find remaining UndefinedParam's and replace by js.Undefined. This can
       // happen with named arguments or when multiple argument lists are present
       reversedArgs = reversedArgs map {
-        case js.UndefinedParam() => js.Undefined()
-        case arg                 => arg
+        case js.Transient(UndefinedParam) => js.Undefined()
+        case arg                          => arg
       }
 
       reversedArgs.reverse
@@ -5632,5 +5635,14 @@ abstract class GenJSCode extends plugins.PluginComponent
     case class NotGlobalScope(tree: js.Tree) extends MaybeGlobalScope
 
     case class GlobalScope(pos: Position) extends MaybeGlobalScope
+  }
+
+  /** Marker object for undefined parameters in JavaScript semantic calls.
+   *
+   *  To be used inside a `js.Transient` node.
+   */
+  case object UndefinedParam extends js.Transient.Value {
+    def printIR(out: ir.Printers.IRTreePrinter): Unit =
+      out.print("<undefined-param>")
   }
 }

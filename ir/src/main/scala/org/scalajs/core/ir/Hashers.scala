@@ -285,12 +285,6 @@ object Hashers {
           mixTag(TagGetClass)
           mixTree(expr)
 
-        case CallHelper(helper, args) =>
-          mixTag(TagCallHelper)
-          mixString(helper)
-          mixTrees(args)
-          mixType(tree.tpe)
-
         case JSNew(ctor, args) =>
           mixTag(TagJSNew)
           mixTree(ctor)
@@ -384,15 +378,6 @@ object Hashers {
         case Undefined() =>
           mixTag(TagUndefined)
 
-        case UndefinedParam() =>
-          /* UndefinedParam is a "transient" IR node, and cannot be hashed.
-           * TODO At the moment, this is quite ad hoc to support dangling
-           * UndefinedParam detection in the compiler back-end. This should be
-           * generalized for custom transient nodes.
-           */
-          throw new InvalidIRException(tree,
-              "Cannot hash a transient IR node of type UndefinedParam")
-
         case Null() =>
           mixTag(TagNull)
 
@@ -457,6 +442,11 @@ object Hashers {
           mixTag(TagCreateJSClass)
           mixClassRef(cls)
           mixTrees(captureValues)
+
+        case Transient(value) =>
+          throw new InvalidIRException(tree,
+              "Cannot hash a transient IR node (its value is of class " +
+              s"${value.getClass})")
 
         case _ =>
           throw new IllegalArgumentException(

@@ -576,11 +576,6 @@ class PrintersTest {
     assertPrintEquals("x.getClass()", GetClass(ref("x", AnyType)))
   }
 
-  @Test def printCallHelper(): Unit = {
-    assertPrintEquals("help(x, y)",
-        CallHelper("help", List(ref("x", AnyType), ref("y", AnyType)))(IntType))
-  }
-
   @Test def printJSNew(): Unit = {
     assertPrintEquals("new C()", JSNew(ref("C", AnyType), Nil))
     assertPrintEquals("new C(4, 5)", JSNew(ref("C", AnyType), List(i(4), i(5))))
@@ -825,10 +820,6 @@ class PrintersTest {
     assertPrintEquals("classOf[LTest]", ClassOf("LTest"))
   }
 
-  @Test def printUndefinedParam(): Unit = {
-    assertPrintEquals("<undefined param>", UndefinedParam()(IntType))
-  }
-
   @Test def printVarRef(): Unit = {
     assertPrintEquals("x", VarRef("x")(IntType))
   }
@@ -868,6 +859,19 @@ class PrintersTest {
           |createjsclass[LFoo](x, y)
         """,
         CreateJSClass("LFoo", List(ref("x", IntType), ref("y", AnyType))))
+  }
+
+  @Test def printTransient(): Unit = {
+    class MyTransient(expr: Tree) extends Transient.Value {
+      def printIR(out: Printers.IRTreePrinter): Unit = {
+        out.print("mytransient(")
+        out.print(expr)
+        out.print(")")
+      }
+    }
+
+    assertPrintEquals("mytransient(5)",
+        Transient(new MyTransient(i(5)))(AnyType))
   }
 
   @Test def printClassDefKinds(): Unit = {
