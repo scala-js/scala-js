@@ -30,8 +30,14 @@ object Trees {
     }
   }
 
+  /** Either a `Tree` or a `JSSpread`.
+   *
+   *  This is the type of actual arguments to JS applications.
+   */
+  sealed trait TreeOrJSSpread extends IRNode
+
   /** Node for a statement or expression in the IR. */
-  abstract sealed class Tree extends IRNode {
+  abstract sealed class Tree extends IRNode with TreeOrJSSpread {
     val tpe: Type
   }
 
@@ -475,7 +481,7 @@ object Trees {
 
   // JavaScript expressions
 
-  case class JSNew(ctor: Tree, args: List[Tree])(
+  case class JSNew(ctor: Tree, args: List[TreeOrJSSpread])(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
@@ -490,18 +496,18 @@ object Trees {
     val tpe = AnyType
   }
 
-  case class JSFunctionApply(fun: Tree, args: List[Tree])(
+  case class JSFunctionApply(fun: Tree, args: List[TreeOrJSSpread])(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
 
   case class JSDotMethodApply(receiver: Tree, method: Ident,
-      args: List[Tree])(implicit val pos: Position) extends Tree {
+      args: List[TreeOrJSSpread])(implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
 
   case class JSBracketMethodApply(receiver: Tree, method: Tree,
-      args: List[Tree])(implicit val pos: Position) extends Tree {
+      args: List[TreeOrJSSpread])(implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
 
@@ -585,7 +591,7 @@ object Trees {
    *  }}}
    */
   case class JSSuperBracketCall(superClass: Tree, receiver: Tree, method: Tree,
-      args: List[Tree])(implicit val pos: Position) extends Tree {
+      args: List[TreeOrJSSpread])(implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
 
@@ -626,7 +632,7 @@ object Trees {
    *  }
    *  }}}
    */
-  case class JSSuperConstructorCall(args: List[Tree])(
+  case class JSSuperConstructorCall(args: List[TreeOrJSSpread])(
       implicit val pos: Position) extends Tree {
     val tpe = NoType
   }
@@ -675,9 +681,8 @@ object Trees {
    *
    *  @param items An Array whose items will be spread (not an arbitrary iterable)
    */
-  case class JSSpread(items: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = NoType // there is no reasonable type for this tree
-  }
+  case class JSSpread(items: Tree)(implicit val pos: Position)
+      extends IRNode with TreeOrJSSpread
 
   case class JSDelete(prop: Tree)(implicit val pos: Position) extends Tree {
     require(prop match {
@@ -752,7 +757,7 @@ object Trees {
     final val instanceof = 21
   }
 
-  case class JSArrayConstr(items: List[Tree])(
+  case class JSArrayConstr(items: List[TreeOrJSSpread])(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }

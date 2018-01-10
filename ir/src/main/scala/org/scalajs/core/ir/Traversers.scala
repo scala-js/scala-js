@@ -14,6 +14,11 @@ import Trees._
 object Traversers {
 
   class Traverser {
+    def traverseTreeOrJSSpread(tree: TreeOrJSSpread): Unit = tree match {
+      case JSSpread(items) => traverse(items)
+      case tree: Tree      => traverse(tree)
+    }
+
     def traverse(tree: Tree): Unit = tree match {
       // Definitions
 
@@ -128,7 +133,7 @@ object Traversers {
 
       case JSNew(ctor, args) =>
         traverse(ctor)
-        args foreach traverse
+        args.foreach(traverseTreeOrJSSpread)
 
       case JSDotSelect(qualifier, item) =>
         traverse(qualifier)
@@ -139,16 +144,16 @@ object Traversers {
 
       case JSFunctionApply(fun, args) =>
         traverse(fun)
-        args foreach traverse
+        args.foreach(traverseTreeOrJSSpread)
 
       case JSDotMethodApply(receiver, method, args) =>
         traverse(receiver)
-        args foreach traverse
+        args.foreach(traverseTreeOrJSSpread)
 
       case JSBracketMethodApply(receiver, method, args) =>
         traverse(receiver)
         traverse(method)
-        args foreach traverse
+        args.foreach(traverseTreeOrJSSpread)
 
       case JSSuperBracketSelect(superClass, qualifier, item) =>
         traverse(superClass)
@@ -159,13 +164,10 @@ object Traversers {
         traverse(superClass)
         traverse(receiver)
         traverse(method)
-        args foreach traverse
+        args.foreach(traverseTreeOrJSSpread)
 
       case JSSuperConstructorCall(args) =>
-        args foreach traverse
-
-      case JSSpread(items) =>
-        traverse(items)
+        args.foreach(traverseTreeOrJSSpread)
 
       case JSDelete(prop) =>
         traverse(prop)
@@ -178,7 +180,7 @@ object Traversers {
         traverse(rhs)
 
       case JSArrayConstr(items) =>
-        items foreach traverse
+        items.foreach(traverseTreeOrJSSpread)
 
       case JSObjectConstr(fields) =>
         for ((key, value) <- fields) {

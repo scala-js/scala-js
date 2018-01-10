@@ -635,7 +635,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  @param pos Position of the original New tree
      */
     def genAnonJSClassNew(sym: Symbol, jsSuperClassValue: js.Tree,
-        args: List[js.Tree], pos: Position): js.Tree = {
+        args: List[js.TreeOrJSSpread], pos: Position): js.Tree = {
       assert(isAnonJSClass(sym),
           "Generating AnonJSClassNew of non anonymous JS class")
 
@@ -4051,8 +4051,15 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       implicit val pos = tree.pos
 
-      def receiver = genExpr(receiver0)
-      def genArgs = genPrimitiveJSArgs(tree.symbol, args)
+      def receiver: js.Tree = genExpr(receiver0)
+      def genArgs: List[js.TreeOrJSSpread] = genPrimitiveJSArgs(tree.symbol, args)
+
+      def genArgsNoSpread: List[js.Tree] = {
+        val genArgs1 = genArgs
+        assert(!genArgs1.exists(_.isInstanceOf[js.JSSpread]),
+            s"Unexpected spread at $pos")
+        genArgs1.asInstanceOf[List[js.Tree]]
+      }
 
       def resolveReifiedJSClassSym(arg: Tree): Symbol = {
         def fail(): Symbol = {
@@ -4115,7 +4122,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         ) {
           genStatOrExpr(args(1), isStat)
         }
-      } else (genArgs match {
+      } else (genArgsNoSpread match {
         case Nil =>
           code match {
             case LINKING_INFO => js.JSLinkingInfo()
@@ -4211,10 +4218,16 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     private def genJSCallGeneric(sym: Symbol, receiver: MaybeGlobalScope,
-        args: List[js.Tree], isStat: Boolean,
+        args: List[js.TreeOrJSSpread], isStat: Boolean,
         jsSuperClassValue: Option[js.Tree] = None)(
         implicit pos: Position): js.Tree = {
-      def noSpread = !args.exists(_.isInstanceOf[js.JSSpread])
+
+      def argsNoSpread: List[js.Tree] = {
+        assert(!args.exists(_.isInstanceOf[js.JSSpread]),
+            s"Unexpected spread at $pos")
+        args.asInstanceOf[List[js.Tree]]
+      }
+
       val argc = args.size // meaningful only for methods that don't have varargs
 
       def requireNotSuper(): Unit = {
@@ -4236,7 +4249,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case JSBinaryOpMethodName(code) if argc == 1 =>
           requireNotSuper()
-          js.JSBinaryOp(code, ruleOutGlobalScope(receiver), args.head)
+          js.JSBinaryOp(code, ruleOutGlobalScope(receiver), argsNoSpread.head)
 
         case nme.apply if sym.owner.isSubClass(JSThisFunctionClass) =>
           requireNotSuper()
@@ -4265,7 +4278,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           def genSelectSet(propName: js.Tree, value: js.Tree): js.Tree =
             js.Assign(genSuperReference(propName), value)
 
-          def genCall(methodName: js.Tree, args: List[js.Tree]): js.Tree = {
+          def genCall(methodName: js.Tree,
+              args: List[js.TreeOrJSSpread]): js.Tree = {
             jsSuperClassValue.fold[js.Tree] {
               genJSBracketMethodApplyOrGlobalRefApply(
                   receiver, methodName, args)
@@ -4276,15 +4290,15 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
           if (jsInterop.isJSGetter(sym)) {
-            assert(noSpread && argc == 0)
+            assert(argc == 0)
             genSelectGet(jsFunName)
           } else if (jsInterop.isJSSetter(sym)) {
-            assert(noSpread && argc == 1)
-            genSelectSet(jsFunName, args.head)
+            assert(argc == 1)
+            genSelectSet(jsFunName, argsNoSpread.head)
           } else if (jsInterop.isJSBracketAccess(sym)) {
-            assert(noSpread && (argc == 1 || argc == 2),
+            assert(argc == 1 || argc == 2,
                 s"@JSBracketAccess methods should have 1 or 2 non-varargs arguments")
-            args match {
+            argsNoSpread match {
               case List(keyArg) =>
                 genSelectGet(keyArg)
               case List(keyArg, valueArg) =>
@@ -4353,13 +4367,18 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  This is nothing else than decomposing into head and tail, except that
      *  we assert that the first element is not a JSSpread.
      */
-    private def extractFirstArg(args: List[js.Tree]): (js.Tree, List[js.Tree]) = {
+    private def extractFirstArg(
+        args: List[js.TreeOrJSSpread]): (js.Tree, List[js.TreeOrJSSpread]) = {
       assert(args.nonEmpty,
           "Trying to extract the first argument of an empty argument list")
-      val firstArg = args.head
-      assert(!firstArg.isInstanceOf[js.JSSpread],
-          "Trying to extract the first argument of an argument list starting " +
-          "with a Spread argument: " + firstArg)
+      val firstArg = args.head match {
+        case firstArg: js.Tree =>
+          firstArg
+        case firstArg: js.JSSpread =>
+          throw new AssertionError(
+              "Trying to extract the first argument of an argument list starting " +
+              "with a Spread argument: " + firstArg)
+      }
       (firstArg, args.tail)
     }
 
@@ -4460,7 +4479,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  wrapped in a [[js.JSSpread]] node to be expanded at runtime.
      */
     private def genPrimitiveJSArgs(sym: Symbol, args: List[Tree])(
-        implicit pos: Position): List[js.Tree] = {
+        implicit pos: Position): List[js.TreeOrJSSpread] = {
 
       /* For constructors of nested JS classes (*), explicitouter and
        * lambdalift have introduced some parameters for the outer parameter and
@@ -4505,7 +4524,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           yield param.name -> param.tpe
       }.toMap
 
-      var reversedArgs: List[js.Tree] = Nil
+      var reversedArgs: List[js.TreeOrJSSpread] = Nil
 
       for ((arg, paramSym) <- args zip sym.tpe.params) {
         val wasRepeated =
@@ -4563,7 +4582,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  compile-time.
      *  Otherwise, it returns a JSSpread with the Seq converted to a js.Array.
      */
-    private def genPrimitiveJSRepeatedParam(arg: Tree): List[js.Tree] = {
+    private def genPrimitiveJSRepeatedParam(arg: Tree): List[js.TreeOrJSSpread] = {
       tryGenRepeatedParamAsJSArray(arg, handleNil = true) getOrElse {
         /* Fall back to calling runtime.toJSVarArgs to perform the conversion
          * to js.Array, then wrap in a Spread operator.
@@ -5355,7 +5374,8 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  Otherwise, report a compile error.
      */
     private def genJSBracketMethodApplyOrGlobalRefApply(
-        receiver: MaybeGlobalScope, method: js.Tree, args: List[js.Tree])(
+        receiver: MaybeGlobalScope, method: js.Tree,
+        args: List[js.TreeOrJSSpread])(
         implicit pos: Position): js.Tree = {
       receiver match {
         case MaybeGlobalScope.NotGlobalScope(receiverTree) =>

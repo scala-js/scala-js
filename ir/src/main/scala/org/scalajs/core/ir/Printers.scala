@@ -96,7 +96,7 @@ object Printers {
       }
     }
 
-    protected def printArgs(args: List[Tree]): Unit = {
+    protected def printArgs(args: List[TreeOrJSSpread]): Unit = {
       printRow(args, "(", ", ", ")")
     }
 
@@ -106,6 +106,7 @@ object Printers {
         case node: ComputedName      => print(node)
         case node: ParamDef          => print(node)
         case node: Tree              => print(node)
+        case node: JSSpread          => print(node)
         case node: ClassDef          => print(node)
         case node: MemberDef         => print(node)
         case node: TopLevelExportDef => print(node)
@@ -610,10 +611,6 @@ object Printers {
           print("mod:")
           print(cls)
 
-        case JSSpread(items) =>
-          print("...")
-          print(items)
-
         case JSDelete(prop) =>
           print("delete ")
           print(prop)
@@ -818,6 +815,11 @@ object Printers {
           print(cls)
           printRow(captureValues, "](", ", ", ")")
       }
+    }
+
+    def print(spread: JSSpread): Unit = {
+      print("...")
+      print(spread.items)
     }
 
     def print(classDef: ClassDef): Unit = {
