@@ -853,10 +853,14 @@ object Trees {
   case class This()(val tpe: Type)(implicit val pos: Position) extends Tree
 
   /** Closure with explicit captures.
-   *  The n captures map to the n first formal arguments.
+   *
+   *  @param arrow
+   *    If `true`, the closure is an Arrow Function (`=>`), which does not have
+   *    an `this` parameter, and cannot be constructed (called with `new`).
+   *    If `false`, it is a regular Function (`function`).
    */
-  case class Closure(captureParams: List[ParamDef], params: List[ParamDef],
-      body: Tree, captureValues: List[Tree])(
+  case class Closure(arrow: Boolean, captureParams: List[ParamDef],
+      params: List[ParamDef], body: Tree, captureValues: List[Tree])(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }

@@ -202,7 +202,7 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
       case This() =>
         new Node(Token.THIS)
 
-      case Function(args, body) =>
+      case Function(false, args, body) =>
         genFunction("", args, body)
       case FunctionDef(name, args, body) =>
         genFunction(name.name, args, body)

@@ -794,8 +794,11 @@ object Printers {
         case This() =>
           print("this")
 
-        case Closure(captureParams, params, body, captureValues) =>
-          print("(lambda<")
+        case Closure(arrow, captureParams, params, body, captureValues) =>
+          if (arrow)
+            print("(arrow-lambda<")
+          else
+            print("(lambda<")
           var first = true
           for ((param, value) <- captureParams.zip(captureValues)) {
             if (first)

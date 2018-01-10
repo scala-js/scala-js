@@ -110,7 +110,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
                   js.Return(classValueVar)
               )
 
-              envFieldDef("a", className, js.Function(Nil, body))
+              envFunctionDef("a", className, Nil, body)
             }
 
             js.Block(createClassValueVar, createAccessor)
@@ -133,7 +133,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
                 Nil
             )
 
-            envFieldDef("a", className, js.Function(captureParamDefs, body))
+            envFunctionDef("a", className, captureParamDefs, body)
           }
         }
       }
@@ -216,7 +216,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     def makeInheritableCtorDef(ctorToMimic: js.Tree) = {
       js.Block(
         js.DocComment("@constructor"),
-        envFieldDef("h", className, js.Function(Nil, js.Skip()),
+        envFieldDef("h", className, js.Function(false, Nil, js.Skip()),
             keepFunctionExpression = isJSClass),
         envField("h", className).prototype := ctorToMimic.prototype
       )
@@ -282,7 +282,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         genJSConstructorFun(tree, initToInline)
 
       for (jsConstructorFun <- jsConstructorFunWithGlobals) yield {
-        val js.Function(args, body) = jsConstructorFun
+        val js.Function(_, args, body) = jsConstructorFun
 
         def isTrivialCtorBody: Boolean = body match {
           case js.Skip()                 => true
@@ -345,7 +345,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
 
     initToInline.fold {
-      WithGlobals(js.Function(Nil, js.Block(superCtorCallAndFieldDefs)))
+      WithGlobals(
+          js.Function(arrow = false, Nil, js.Block(superCtorCallAndFieldDefs)))
     } { initMethodDef =>
       val generatedInitMethodFunWithGlobals = {
         implicit val pos = initMethodDef.pos
@@ -359,8 +360,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       }
 
       for (generatedInitMethodFun <- generatedInitMethodFunWithGlobals) yield {
-        val js.Function(args, initMethodFunBody) = generatedInitMethodFun
-        js.Function(args,
+        val js.Function(arrow, args, initMethodFunBody) = generatedInitMethodFun
+        js.Function(arrow, args,
             js.Block(superCtorCallAndFieldDefs ::: initMethodFunBody :: Nil))
       }
     }
@@ -458,7 +459,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     methodFun0WithGlobals.flatMap { methodFun0 =>
       val methodFun = if (Definitions.isConstructorName(method.encodedName)) {
         // init methods have to return `this` so that we can chain them to `new`
-        js.Function(methodFun0.args, {
+        js.Function(arrow = false, methodFun0.args, {
           implicit val pos = methodFun0.body.pos
           js.Block(
               methodFun0.body,
@@ -700,8 +701,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       val obj = objParam.ref
 
       val createIsStat = {
-        envFieldDef("is", className,
-          js.Function(List(objParam), js.Return(className match {
+        envFunctionDef("is", className, List(objParam), js.Return {
+          className match {
             case Definitions.ObjectClass =>
               js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
 
@@ -730,14 +731,15 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
                 test = test || (obj === js.Undefined())
 
               !(!test)
-          })))
+          }
+        })
       }
 
       val createAsStat = if (semantics.asInstanceOfs == Unchecked) {
         js.Skip()
       } else {
-        envFieldDef("as", className,
-          js.Function(List(objParam), js.Return(className match {
+        envFunctionDef("as", className, List(objParam), js.Return {
+          className match {
             case Definitions.ObjectClass =>
               obj
 
@@ -749,7 +751,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
                 genCallHelper("throwClassCastException",
                     obj, js.StringLiteral(displayName))
               })
-        })))
+          }
+        })
       }
 
       js.Block(createIsStat, createAsStat)
@@ -774,8 +777,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val depth = depthParam.ref
 
     val createIsArrayOfStat = {
-      envFieldDef("isArrayOf", className,
-        js.Function(List(objParam, depthParam), className match {
+      envFunctionDef("isArrayOf", className, List(objParam, depthParam), {
+        className match {
           case Definitions.ObjectClass =>
             val dataVarDef = genLet(js.Ident("data"), mutable = false, {
               obj && (obj DOT "$classData")
@@ -810,14 +813,15 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
               genIsClassNameInAncestors(className,
                   obj DOT "$classData" DOT "arrayBase" DOT "ancestors")
             })))
-        }))
+        }
+      })
     }
 
     val createAsArrayOfStat = if (semantics.asInstanceOfs == Unchecked) {
       js.Skip()
     } else {
-      envFieldDef("asArrayOf", className,
-        js.Function(List(objParam, depthParam), js.Return {
+      envFunctionDef("asArrayOf", className, List(objParam, depthParam), {
+        js.Return {
           js.If(js.Apply(envField("isArrayOf", className), List(obj, depth)) ||
               (obj === js.Null()), {
             obj
@@ -825,7 +829,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             genCallHelper("throwArrayCastException",
                 obj, js.StringLiteral("L"+displayName+";"), depth)
           })
-        }))
+        }
+      })
     }
 
     js.Block(createIsArrayOfStat, createAsArrayOfStat)
@@ -889,7 +894,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       } else if (isHijackedClass) {
         /* Other hijacked classes have a special isInstanceOf test. */
         val xParam = js.ParamDef(js.Ident("x"), rest = false)
-        WithGlobals(js.Function(List(xParam), js.Return {
+        WithGlobals(genArrowFunction(List(xParam), js.Return {
           genIsInstanceOf(xParam.ref, ClassRef(className))
         }))
       } else if (isJSType) {
@@ -907,7 +912,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             jsCtor <- genRawJSClassConstructor(className, tree.jsNativeLoadSpec,
                 keepOnlyDangerousVarNames = true)
           } yield {
-            js.Function(List(js.ParamDef(js.Ident("x"), rest = false)), js.Return {
+            genArrowFunction(List(js.ParamDef(js.Ident("x"), rest = false)), js.Return {
               js.BinaryOp(JSBinaryOp.instanceof, js.VarRef(js.Ident("x")), jsCtor)
             })
           }
@@ -1021,7 +1026,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
       val body = js.Block(initBlock, js.Return(moduleInstanceVar))
 
-      envFieldDef("m", className, js.Function(Nil, body))
+      envFunctionDef("m", className, Nil, body)
     }
 
     js.Block(createModuleInstanceField, createAccessor)
@@ -1083,10 +1088,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         cd.encodedName, args, body, resultType = NoType)
 
     for (generatedFun <- generatedFunWithGlobals) yield {
-      val js.Function(thisParam :: ctorParams, ctorBody) = generatedFun
+      val js.Function(arrow, thisParam :: ctorParams, ctorBody) = generatedFun
       val thisIdent = thisParam.name
 
-      val exportedCtor = js.Function(ctorParams, js.Block(
+      val exportedCtor = js.Function(arrow, ctorParams, js.Block(
         genLet(thisIdent, mutable = false, js.New(baseCtor, Nil)),
         ctorBody,
         js.Return(js.VarRef(thisIdent))
@@ -1182,7 +1187,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     // optional getter definition
     val getterDef = {
-      js.StringLiteral("get") -> js.Function(Nil, {
+      js.StringLiteral("get") -> js.Function(arrow = false, Nil, {
         js.Return(genSelectStatic(cd.encodedName, field))
       })
     }
@@ -1202,6 +1207,15 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
   // Helpers
 
+  private def envFunctionDef(field: String, subField: String,
+      args: List[js.ParamDef], body: js.Tree, origName: Option[String] = None)(
+      implicit pos: Position): js.FunctionDef = {
+
+    val globalVar = envField(field, subField, origName)
+    val globalVarIdent = globalVar.ident
+    js.FunctionDef(globalVarIdent, args, body)
+  }
+
   private def envFieldDef(field: String, subField: String, value: js.Tree,
       origName: Option[String] = None, mutable: Boolean = false,
       keepFunctionExpression: Boolean = false)(
@@ -1212,7 +1226,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     outputMode match {
       case OutputMode.ECMAScript51Isolated =>
         value match {
-          case js.Function(args, body) =>
+          case js.Function(false, args, body) =>
             // Make sure the function has a meaningful `name` property
             val functionExpr = js.FunctionDef(globalVarIdent, args, body)
             if (keepFunctionExpression)

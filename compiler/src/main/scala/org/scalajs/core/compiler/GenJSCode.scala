@@ -704,9 +704,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       def selfRef(implicit pos: ir.Position) =
         js.VarRef(selfName)(jstpe.AnyType)
 
-      def lambda(params: List[js.ParamDef], body: js.Tree)(
+      def memberLambda(params: List[js.ParamDef], body: js.Tree)(
           implicit pos: ir.Position) = {
-        js.Closure(captureParams = Nil, params, body, captureValues = Nil)
+        js.Closure(arrow = false, captureParams = Nil, params, body,
+            captureValues = Nil)
       }
 
       val memberDefinitions = classMembers.toList.map {
@@ -722,7 +723,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         case mdef: js.MethodDef =>
           implicit val pos = mdef.pos
           val name = mdef.name.asInstanceOf[js.StringLiteral]
-          val impl = lambda(mdef.args, mdef.body.getOrElse(
+          val impl = memberLambda(mdef.args, mdef.body.getOrElse(
               throw new AssertionError("Got anon SJS class with abstract method")))
           js.Assign(js.JSBracketSelect(selfRef, name), impl)
 
@@ -735,11 +736,11 @@ abstract class GenJSCode extends plugins.PluginComponent
             List(js.StringLiteral(name) -> value)
 
           val optGetter = pdef.getterBody map { body =>
-            js.StringLiteral("get") -> lambda(params = Nil, body)
+            js.StringLiteral("get") -> memberLambda(params = Nil, body)
           }
 
           val optSetter = pdef.setterArgAndBody map { case (arg, body) =>
-            js.StringLiteral("set") -> lambda(params = arg :: Nil, body)
+            js.StringLiteral("set") -> memberLambda(params = arg :: Nil, body)
           }
 
           val descriptor = js.JSObjectConstr(
@@ -790,7 +791,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       val invocation = {
         implicit val invocationPosition = pos
 
-        val closure = js.Closure(Nil, jsSuperClassParam :: ctorParams,
+        val closure = js.Closure(arrow = true, Nil,
+            jsSuperClassParam :: ctorParams,
             js.Block(inlinedCtorStats, selfRef), Nil)
 
         js.JSFunctionApply(closure, jsSuperClassValue :: args)
@@ -1011,7 +1013,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): Option[js.Tree] = {
       val fqcnArg = js.StringLiteral(sym.fullName + "$")
       val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
-      val loadModuleFunArg = js.Closure(Nil, Nil, genLoadModule(sym), Nil)
+      val loadModuleFunArg =
+        js.Closure(arrow = true, Nil, Nil, genLoadModule(sym), Nil)
 
       val stat = genApplyMethod(
           genLoadModule(ReflectModule),
@@ -1062,7 +1065,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val paramTypesArray = js.JSArrayConstr(parameterTypes)
 
-            val newInstanceFun = js.Closure(Nil, formalParams, {
+            val newInstanceFun = js.Closure(arrow = true, Nil, formalParams, {
               genNew(sym, ctor, actualParams)
             }, Nil)
 
@@ -1644,8 +1647,8 @@ abstract class GenJSCode extends plugins.PluginComponent
             assert(isStat)
             super.transform(js.VarDef(
                 name, vtpe, newMutable(name.name, mutable), rhs)(tree.pos), isStat)
-          case js.Closure(captureParams, params, body, captureValues) =>
-            js.Closure(captureParams, params, body,
+          case js.Closure(arrow, captureParams, params, body, captureValues) =>
+            js.Closure(arrow, captureParams, params, body,
                 captureValues.map(transformExpr))(tree.pos)
           case _ =>
             super.transform(tree, isStat)
@@ -4942,6 +4945,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (isThisFunction) {
             val thisParam :: actualParams = patchedParams
             js.Closure(
+                arrow = false,
                 ctorParamDefs,
                 actualParams,
                 js.Block(
@@ -4950,7 +4954,8 @@ abstract class GenJSCode extends plugins.PluginComponent
                     patchedBody),
                 capturedArgs)
           } else {
-            js.Closure(ctorParamDefs, patchedParams, patchedBody, capturedArgs)
+            js.Closure(arrow = true, ctorParamDefs, patchedParams, patchedBody,
+                capturedArgs)
           }
         }
 
@@ -5059,6 +5064,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       val closure = js.Closure(
+          arrow = true,
           allFormalCaptures,
           patchedFormalArgs,
           patchedBody,

@@ -216,7 +216,8 @@ object Trees {
 
   case class This()(implicit val pos: Position) extends Tree
 
-  case class Function(args: List[ParamDef], body: Tree)(implicit val pos: Position) extends Tree
+  case class Function(arrow: Boolean, args: List[ParamDef], body: Tree)(
+      implicit val pos: Position) extends Tree
 
   // Named function definition
 

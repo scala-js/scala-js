@@ -439,8 +439,9 @@ object Hashers {
           mixTag(TagThis)
           mixType(tree.tpe)
 
-        case Closure(captureParams, params, body, captureValues) =>
+        case Closure(arrow, captureParams, params, body, captureValues) =>
           mixTag(TagClosure)
+          mixBoolean(arrow)
           mixParamDefs(captureParams)
           mixParamDefs(params)
           mixTree(body)
