@@ -141,6 +141,12 @@ object Hashers {
           mixTree(cond)
           mixOptIdent(label)
 
+        case ForIn(obj, keyVar, body) =>
+          mixTag(TagForIn)
+          mixTree(obj)
+          mixIdent(keyVar)
+          mixTree(body)
+
         case TryCatch(block, errVar, handler) =>
           mixTag(TagTryCatch)
           mixTree(block)

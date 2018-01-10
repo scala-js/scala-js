@@ -53,6 +53,10 @@ object Traversers {
         traverse(body)
         traverse(cond)
 
+      case ForIn(obj, keyVar, body) =>
+        traverse(obj)
+        traverse(body)
+
       case TryCatch(block, errVar, handler) =>
         traverse(block)
         traverse(handler)

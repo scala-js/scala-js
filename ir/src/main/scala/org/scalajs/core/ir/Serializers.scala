@@ -170,6 +170,10 @@ object Serializers {
           writeByte(TagDoWhile)
           writeTree(body); writeTree(cond); writeOptIdent(label)
 
+        case ForIn(obj, keyVar, body) =>
+          writeByte(TagForIn)
+          writeTree(obj); writeIdent(keyVar); writeTree(body)
+
         case TryCatch(block, errVar, handler) =>
           writeByte(TagTryCatch)
           writeTree(block); writeIdent(errVar); writeTree(handler)
@@ -851,6 +855,7 @@ object Serializers {
         case TagIf      => If(readTree(), readTree(), readTree())(readType())
         case TagWhile   => While(readTree(), readTree(), readOptIdent())
         case TagDoWhile => DoWhile(readTree(), readTree(), readOptIdent())
+        case TagForIn   => ForIn(readTree(), readIdent(), readTree())
 
         case TagTryCatch =>
           TryCatch(readTree(), readIdent(), readTree())(readType())

@@ -49,7 +49,8 @@ abstract class JSPrimitives {
   val IN = LINKING_INFO + 1   // js.special.in
   val INSTANCEOF = IN + 1     // js.special.instanceof
   val DELETE = INSTANCEOF + 1 // js.special.delete
-  val DEBUGGER = DELETE + 1   // js.special.debugger
+  val FORIN = DELETE + 1      // js.special.forin
+  val DEBUGGER = FORIN + 1    // js.special.debugger
 
   val LastJSPrimitiveCode = DEBUGGER
 
@@ -90,6 +91,7 @@ abstract class JSPrimitives {
     addPrimitive(Special_in, IN)
     addPrimitive(Special_instanceof, INSTANCEOF)
     addPrimitive(Special_delete, DELETE)
+    addPrimitive(Special_forin, FORIN)
     addPrimitive(Special_debugger, DEBUGGER)
   }
 

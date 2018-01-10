@@ -71,12 +71,19 @@ private[emitter] final class JSGen(val semantics: Semantics,
     }
   }
 
-  def genEmptyMutableLet(name: Ident)(implicit pos: Position): LocalDef = {
+  def genEmptyMutableLet(name: Ident)(implicit pos: Position): LocalDef =
+    genEmptyLet(name, mutable = true)
+
+  def genEmptyImmutableLet(name: Ident)(implicit pos: Position): LocalDef =
+    genEmptyLet(name, mutable = false)
+
+  private def genEmptyLet(name: Ident, mutable: Boolean)(
+      implicit pos: Position): LocalDef = {
     outputMode match {
       case OutputMode.ECMAScript51Isolated =>
         VarDef(name, rhs = None)
       case OutputMode.ECMAScript6 =>
-        Let(name, mutable = true, rhs = None)
+        Let(name, mutable, rhs = None)
     }
   }
 

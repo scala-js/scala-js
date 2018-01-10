@@ -625,6 +625,17 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             }, newLabel)
           }
 
+        case ForIn(obj, keyVar, body) =>
+          unnest(obj) { (newObj, env0) =>
+            implicit val env = env0
+
+            val lhs = genEmptyImmutableLet(transformLocalVarIdent(keyVar))
+            js.ForIn(lhs, transformExprNoChar(newObj), {
+              transformStat(body, Set.empty)(
+                  env.withDef(keyVar, mutable = false))
+            })
+          }
+
         case Debugger() =>
           js.Debugger()
 

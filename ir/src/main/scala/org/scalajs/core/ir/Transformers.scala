@@ -62,6 +62,9 @@ object Transformers {
         case DoWhile(body, cond, label) =>
           DoWhile(transformStat(body), transformExpr(cond), label)
 
+        case ForIn(obj, keyVar, body) =>
+          ForIn(transformExpr(obj), keyVar, transformStat(body))
+
         case TryCatch(block, errVar, handler) =>
           TryCatch(transform(block, isStat), errVar,
               transform(handler, isStat))(tree.tpe)

@@ -523,13 +523,6 @@ function $moduleDefault(m) {
 };
 //!endif
 
-function $propertiesOf(obj) {
-  const result = [];
-  for (const prop in obj)
-    result["push"](prop);
-  return result;
-};
-
 function $systemArraycopy(src, srcPos, dest, destPos, length) {
   const srcu = src.u;
   const destu = dest.u;

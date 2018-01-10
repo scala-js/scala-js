@@ -94,6 +94,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val Special_in = getMemberMethod(SpecialPackageModule, newTermName("in"))
       lazy val Special_instanceof = getMemberMethod(SpecialPackageModule, newTermName("instanceof"))
       lazy val Special_delete = getMemberMethod(SpecialPackageModule, newTermName("delete"))
+      lazy val Special_forin = getMemberMethod(SpecialPackageModule, newTermName("forin"))
       lazy val Special_debugger = getMemberMethod(SpecialPackageModule, newTermName("debugger"))
 
     lazy val BooleanReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.BooleanReflectiveCall")
@@ -111,7 +112,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val Runtime_createInnerJSClass         = getMemberMethod(RuntimePackageModule, newTermName("createInnerJSClass"))
       lazy val Runtime_createLocalJSClass         = getMemberMethod(RuntimePackageModule, newTermName("createLocalJSClass"))
       lazy val Runtime_withContextualJSClassValue = getMemberMethod(RuntimePackageModule, newTermName("withContextualJSClassValue"))
-      lazy val Runtime_propertiesOf               = getMemberMethod(RuntimePackageModule, newTermName("propertiesOf"))
       lazy val Runtime_linkingInfo                = getMemberMethod(RuntimePackageModule, newTermName("linkingInfo"))
 
     lazy val WrappedArrayClass = getRequiredClass("scala.scalajs.js.WrappedArray")

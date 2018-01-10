@@ -408,6 +408,18 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           case _                     => DoWhile(newBody, newCond, None)
         }
 
+      case ForIn(obj, keyVar @ Ident(name, originalName), body) =>
+        val newObj = transformExpr(obj)
+        val newName = freshLocalName(name, mutable = false)
+        val newOriginalName = originalName.orElse(Some(name))
+        val localDef = LocalDef(RefinedType(AnyType), mutable = false,
+            ReplaceWithVarRef(newName, newOriginalName, newSimpleState(true), None))
+        val newBody = {
+          val bodyScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
+          transformStat(body)(bodyScope)
+        }
+        ForIn(newObj, Ident(newName, newOriginalName)(keyVar.pos), newBody)
+
       case TryCatch(block, errVar @ Ident(name, originalName), handler) =>
         val newBlock = transform(block, isStat)
 
@@ -2005,11 +2017,6 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           case _ =>
             defaultApply("array$undlength__O__I", IntType)
         }
-
-      // scala.scalajs.runtime package object
-
-      case PropertiesOf =>
-        contTree(CallHelper("propertiesOf", newArgs)(AnyType))
 
       // java.lang.Integer
 
@@ -4904,9 +4911,7 @@ private[optimizer] object OptimizerCore {
     final val ArrayUpdate = ArrayApply       + 1
     final val ArrayLength = ArrayUpdate      + 1
 
-    final val PropertiesOf = ArrayLength + 1
-
-    final val IntegerNLZ = PropertiesOf + 1
+    final val IntegerNLZ = ArrayLength + 1
 
     final val LongToString = IntegerNLZ + 1
     final val LongCompare = LongToString + 1
@@ -4944,8 +4949,6 @@ private[optimizer] object OptimizerCore {
       "sr_ScalaRunTime$.array$undapply__O__I__O"     -> ArrayApply,
       "sr_ScalaRunTime$.array$undupdate__O__I__O__V" -> ArrayUpdate,
       "sr_ScalaRunTime$.array$undlength__O__I"       -> ArrayLength,
-
-      "sjsr_package$.propertiesOf__sjs_js_Any__sjs_js_Array" -> PropertiesOf,
 
       "jl_Integer$.numberOfLeadingZeros__I__I" -> IntegerNLZ,
 

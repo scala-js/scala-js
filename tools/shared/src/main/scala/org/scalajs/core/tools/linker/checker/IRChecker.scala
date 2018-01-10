@@ -609,6 +609,13 @@ private final class IRChecker(unit: LinkingUnit,
         typecheckExpect(cond, env, BooleanType)
         env
 
+      case ForIn(obj, keyVar, body) =>
+        typecheckExpr(obj, env)
+        val bodyEnv =
+          env.withLocal(LocalDef(keyVar.name, AnyType, false)(keyVar.pos))
+        typecheckStat(body, bodyEnv)
+        env
+
       case TryCatch(block, errVar, handler) =>
         typecheckStat(block, env)
         val handlerEnv =
