@@ -925,6 +925,11 @@ private final class Analyzer(config: CommonPhaseConfig,
           lookupClass(className).accessData()
       }
 
+      for (className <- data.additionalMentionedClasses) {
+        if (!Definitions.PrimitiveClasses.contains(className))
+          lookupClass(className) // just link it
+      }
+
       /* `for` loops on maps are written with `while` loops to help the JIT
        * compiler to inline and stack allocate tuples created by the iterators
        */
@@ -1010,7 +1015,8 @@ private final class Analyzer(config: CommonPhaseConfig,
         instantiatedClasses = instantiatedClasses,
         accessedModules = Nil,
         usedInstanceTests = Nil,
-        accessedClassData = Nil
+        accessedClassData = Nil,
+        additionalMentionedClasses = Nil // hack, should contain the signature
     )
   }
 

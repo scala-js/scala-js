@@ -1234,9 +1234,12 @@ private final class IRChecker(unit: LinkingUnit,
 
   private def lookupInfo(className: String)(
       implicit ctx: ErrorContext): Infos.ClassInfo = {
-    inputProvider.loadInfo(className).getOrElse {
+    inputProvider.loadInfo(className).fold {
       reportError(s"Cannot find info for class $className")
       Infos.ClassInfo(className)
+    } { info =>
+      reportError(s"Had to lookup $className from its info")
+      info
     }
   }
 

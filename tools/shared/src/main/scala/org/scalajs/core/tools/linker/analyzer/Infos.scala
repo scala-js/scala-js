@@ -65,7 +65,8 @@ object Infos {
       val instantiatedClasses: List[String],
       val accessedModules: List[String],
       val usedInstanceTests: List[String],
-      val accessedClassData: List[String]
+      val accessedClassData: List[String],
+      val additionalMentionedClasses: List[String]
   )
 
   object MethodInfo {
@@ -82,12 +83,13 @@ object Infos {
         instantiatedClasses: List[String],
         accessedModules: List[String],
         usedInstanceTests: List[String],
-        accessedClassData: List[String]): MethodInfo = {
+        accessedClassData: List[String],
+        additionalMentionedClasses: List[String]): MethodInfo = {
       new MethodInfo(encodedName, isStatic, isAbstract, isExported,
           staticFieldsRead, staticFieldsWritten,
           methodsCalled, methodsCalledStatically, staticMethodsCalled,
           instantiatedClasses, accessedModules, usedInstanceTests,
-          accessedClassData)
+          accessedClassData, additionalMentionedClasses)
     }
   }
 
@@ -161,6 +163,7 @@ object Infos {
     private val accessedModules = mutable.Set.empty[String]
     private val usedInstanceTests = mutable.Set.empty[String]
     private val accessedClassData = mutable.Set.empty[String]
+    private val additionalMentionedClasses = mutable.Set.empty[String]
 
     def setEncodedName(encodedName: String): this.type = {
       this.encodedName = encodedName
@@ -275,6 +278,22 @@ object Infos {
       this
     }
 
+    def addAdditionalMentionedClass(tpe: Type): this.type = {
+      tpe match {
+        case ClassType(cls)                  => addAdditionalMentionedClass(cls)
+        case ArrayType(ArrayTypeRef(cls, _)) => addAdditionalMentionedClass(cls)
+        case _                               => this
+      }
+    }
+
+    def addAdditionalMentionedClass(tpe: TypeRef): this.type =
+      addAdditionalMentionedClass(baseNameOf(tpe))
+
+    def addAdditionalMentionedClass(cls: String): this.type = {
+      additionalMentionedClasses += cls
+      this
+    }
+
     private def baseNameOf(tpe: TypeRef): String = tpe match {
       case ClassRef(name)        => name
       case ArrayTypeRef(base, _) => base
@@ -285,6 +304,16 @@ object Infos {
           m: mutable.Map[String, mutable.Set[String]]): Map[String, List[String]] = {
         m.mapValues(_.toList).toMap
       }
+
+      additionalMentionedClasses --= staticFieldsRead.keys
+      additionalMentionedClasses --= staticFieldsWritten.keys
+      additionalMentionedClasses --= methodsCalled.keys
+      additionalMentionedClasses --= methodsCalledStatically.keys
+      additionalMentionedClasses --= staticMethodsCalled.keys
+      additionalMentionedClasses --= instantiatedClasses
+      additionalMentionedClasses --= accessedModules
+      additionalMentionedClasses --= usedInstanceTests
+      additionalMentionedClasses --= accessedClassData
 
       MethodInfo(
           encodedName = encodedName,
@@ -299,7 +328,8 @@ object Infos {
           instantiatedClasses = instantiatedClasses.toList,
           accessedModules = accessedModules.toList,
           usedInstanceTests = usedInstanceTests.toList,
-          accessedClassData = accessedClassData.toList
+          accessedClassData = accessedClassData.toList,
+          additionalMentionedClasses = additionalMentionedClasses.toList
       )
     }
   }
@@ -386,10 +416,19 @@ object Infos {
         .setIsExported(!methodDef.name.isInstanceOf[Ident])
 
       methodDef.name match {
+        case Ident(encodedName, _) =>
+          val sig = decodeMethodName(encodedName)
+          for (paramTypeRef <- sig._2)
+            builder.addAdditionalMentionedClass(paramTypeRef)
+          for (resultTypeRef <- sig._3)
+            builder.addAdditionalMentionedClass(resultTypeRef)
         case ComputedName(tree, _) =>
           traverse(tree)
-        case _ =>
+        case StringLiteral(_) =>
       }
+
+      for (paramDef <- methodDef.args)
+        builder.addAdditionalMentionedClass(paramDef.ptpe)
 
       methodDef.body.foreach(traverse)
 
@@ -409,7 +448,8 @@ object Infos {
       }
 
       propertyDef.getterBody.foreach(traverse)
-      propertyDef.setterArgAndBody foreach { case (_, body) =>
+      propertyDef.setterArgAndBody.foreach { case (arg, body) =>
+        builder.addAdditionalMentionedClass(arg.ptpe)
         traverse(body)
       }
 
@@ -451,6 +491,15 @@ object Infos {
         // In all other cases, we'll have to call super.traverse()
         case _ =>
           tree match {
+            case VarDef(_, vtpe, _, _) =>
+              builder.addAdditionalMentionedClass(vtpe)
+            case Closure(_, captureParams, _, _, _) =>
+              for (paramDef <- captureParams)
+                builder.addAdditionalMentionedClass(paramDef.ptpe)
+            case _:Labeled | _:If | _:Match | _:TryCatch | _:TryFinally |
+                _:Select | _:ArraySelect | _:RecordValue =>
+              builder.addAdditionalMentionedClass(tree.tpe)
+
             case New(ClassType(cls), ctor, _) =>
               builder.addInstantiatedClass(cls, ctor.name)
 
@@ -490,6 +539,7 @@ object Infos {
 
             case Transient(CallHelper(_, args)) =>
               // This should only happen when called from the Refiner
+              builder.addAdditionalMentionedClass(tree.tpe)
               args.foreach(traverse)
 
             case _ =>
