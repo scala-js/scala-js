@@ -17,7 +17,14 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     // selectDynamic (with any name)
     expr"""
     lit.helloWorld
-    """.fails() // Scala error, no string checking due to versions
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: value selectDynamic is not a member of object scalajs.js.Dynamic.literal
+      |error after rewriting to scala.scalajs.js.Dynamic.literal.<selectDynamic: error>("helloWorld")
+      |possible cause: maybe a wrong Dynamic method signature?
+      |    lit.helloWorld
+      |    ^
+    """
 
     // applyDynamicNamed with wrong method name
     expr"""
@@ -50,7 +57,14 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
       val x = new Object()
       def foo = lit("a" -> x)
     }
-    """.fails()
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: type mismatch;
+      | found   : Object
+      | required: scala.scalajs.js.Any
+      |      def foo = lit("a" -> x)
+      |                           ^
+    """
 
     // Bad key type (applyDynamic)
     """
@@ -58,7 +72,14 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
       val x = Seq()
       def foo = lit(x -> "a")
     }
-    """.fails()
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: type mismatch;
+      | found   : (Seq[Nothing], String)
+      | required: (String, scala.scalajs.js.Any)
+      |      def foo = lit(x -> "a")
+      |                      ^
+    """
 
     // Bad value type (applyDynamicNamed)
     """
@@ -66,7 +87,16 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
       val x = new Object()
       def foo = lit(a = x)
     }
-    """.fails()
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: type mismatch;
+      | found   : Object
+      | required: scala.scalajs.js.Any
+      |error after rewriting to scala.scalajs.js.Dynamic.literal.applyDynamicNamed("apply")(scala.Tuple2("a", x))
+      |possible cause: maybe a wrong Dynamic method signature?
+      |      def foo = lit(a = x)
+      |                        ^
+    """
 
   }
 
