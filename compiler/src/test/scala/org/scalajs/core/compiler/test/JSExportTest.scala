@@ -98,7 +98,15 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport("value")
       def world = "bar"
     }
-    """ fails() // No error test, Scala version dependent error messages
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: double definition:
+      |def $js$exported$prop$value: Any at line 4 and
+      |def $js$exported$prop$value: Any at line 7
+      |have same type
+      |      @JSExport("value")
+      |       ^
+    """
 
     """
     class Confl {
@@ -109,17 +117,32 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport
       def ub(x: Box[Int]): Int = x.x
     }
-    """ fails() // No error test, Scala version dependent error messages
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: double definition:
+      |def $js$exported$meth$ub(x: Confl.this.Box[String]): Any at line 6 and
+      |def $js$exported$meth$ub(x: Confl.this.Box[Int]): Any at line 8
+      |have same type after erasure: (x: Confl#Box)Object
+      |      @JSExport
+      |       ^
+    """
 
     """
     class Confl {
       @JSExport
-      def rtType(x: scala.scalajs.js.prim.Number) = x
+      def rtType(x: js.Any) = x
 
       @JSExport
-      def rtType(x: Double) = x
+      def rtType(x: js.Dynamic) = x
     }
-    """ fails() // Error message depends on Scala version
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Cannot disambiguate overloads for exported method $js$exported$meth$rtType with types
+      |  (x: scala.scalajs.js.Dynamic)Object
+      |  (x: scala.scalajs.js.Any)Object
+      |      @JSExport
+      |       ^
+    """
 
     """
     class Confl {
@@ -157,11 +180,18 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
     class Confl {
       @JSExport
-      def foo(x: scala.scalajs.js.prim.Number, y: String)(z: Int = 1) = x
+      def foo(x: Double, y: String)(z: Int = 1) = x
       @JSExport
       def foo(x: Double, y: String)(z: String*) = x
     }
-    """ fails() // Error message depends on Scala version
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: Cannot disambiguate overloads for exported method $js$exported$meth$foo with types
+      |  (x: Double, y: String, z: Int)Object
+      |  (x: Double, y: String, z: Seq)Object
+      |      @JSExport
+      |       ^
+    """
 
     """
     class A {
@@ -171,7 +201,14 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport
       def a(x: Any) = 2
     }
-    """ fails() // Error message depends on Scala version
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Cannot disambiguate overloads for exported method $js$exported$meth$a with types
+      |  (x: Object)Object
+      |  (x: scala.scalajs.js.Any)Object
+      |      @JSExport
+      |       ^
+    """
 
   }
 
@@ -785,7 +822,12 @@ class JSExportTest extends DirectTest with TestHelpers {
       def foo(x: String, y: String = "hello") = x
       def foo(x: Int, y: String = "bar") = x
     }
-    """ fails()
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: in class A, multiple overloaded alternatives of method foo define default arguments.
+      |    class A {
+      |          ^
+    """
   }
 
   @Test
