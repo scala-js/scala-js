@@ -896,14 +896,21 @@ abstract class GenJSCode extends plugins.PluginComponent
           hashedMemberDefs, Nil)(OptimizerHints.empty)
     }
 
+    private lazy val jsTypeInterfacesBlacklist: Set[Symbol] =
+      Set(DynamicClass, SerializableClass) // #3118, #3252
+
     private def genClassInterfaces(sym: Symbol, forJSClass: Boolean)(
         implicit pos: Position): List[js.Ident] = {
+
+      val blacklist =
+        if (forJSClass) jsTypeInterfacesBlacklist
+        else Set.empty[Symbol]
+
       for {
         parent <- sym.info.parents
         typeSym = parent.typeSymbol
         _ = assert(typeSym != NoSymbol, "parent needs symbol")
-        if typeSym.isTraitOrInterface
-        if !forJSClass || typeSym != definitions.DynamicClass
+        if typeSym.isTraitOrInterface && !blacklist.contains(typeSym)
       } yield {
         encodeClassFullNameIdent(typeSym)
       }
