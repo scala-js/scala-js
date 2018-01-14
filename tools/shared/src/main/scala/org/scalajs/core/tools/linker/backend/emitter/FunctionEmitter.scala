@@ -658,11 +658,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   } else {
                     js.Apply(
                         genIdentBracketSelect(superCtor, "call"),
-                        js.This() :: newArgs.map(transformExprNoChar))
+                        js.This() :: newArgs.map(transformJSArg))
                   }
 
                 case OutputMode.ECMAScript6 =>
-                  js.Apply(js.Super(), newArgs.map(transformExprNoChar))
+                  js.Apply(js.Super(), newArgs.map(transformJSArg))
               }
             }
 
@@ -838,11 +838,12 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     /** Same as `unnest`, but allows (and preserves) [[JSSpread]]s at the
      *  top-level.
      */
-    def unnestOrSpread(args: List[Tree])(makeStat: (List[Tree], Env) => js.Tree)(
+    def unnestOrSpread(args: List[TreeOrJSSpread])(
+        makeStat: (List[TreeOrJSSpread], Env) => js.Tree)(
         implicit env: Env): js.Tree = {
       val (argsNoSpread, argsWereSpread) = args.map {
         case JSSpread(items) => (items, true)
-        case arg             => (arg, false)
+        case arg: Tree       => (arg, false)
       }.unzip
 
       unnest(argsNoSpread) { (newArgsNoSpread, env) =>
@@ -939,7 +940,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               case ArrayValue(tpe, elems) =>
                 ArrayValue(tpe, recs(elems))
               case JSArrayConstr(items) if !containsAnySpread(items) =>
-                JSArrayConstr(recs(items))
+                JSArrayConstr(recs(castNoSpread(items)))
 
               case arg @ JSObjectConstr(items)
                   if !doesObjectConstrRequireDesugaring(arg) =>
@@ -1096,6 +1097,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
       require(!allowSideEffects || allowUnpure)
 
+      def testJSArg(tree: TreeOrJSSpread): Boolean = tree match {
+        case JSSpread(_) => false
+        case tree: Tree  => test(tree)
+      }
+
       def test(tree: Tree): Boolean = tree match {
         // Atomic expressions
         case _: Literal       => true
@@ -1132,7 +1138,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case ArraySelect(array, index) =>
           allowUnpure && test(array) && test(index)
         case JSArrayConstr(items) =>
-          allowUnpure && (items forall test)
+          allowUnpure && (items.forall(testJSArg))
         case tree @ JSObjectConstr(items) =>
           allowUnpure &&
           !doesObjectConstrRequireDesugaring(tree) &&
@@ -1169,17 +1175,17 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         // JavaScript expressions that can always have side-effects
         case JSNew(fun, args) =>
-          allowSideEffects && test(fun) && (args forall test)
+          allowSideEffects && test(fun) && (args.forall(testJSArg))
         case JSDotSelect(qualifier, item) =>
           allowSideEffects && test(qualifier)
         case JSBracketSelect(qualifier, item) =>
           allowSideEffects && test(qualifier) && test(item)
         case JSFunctionApply(fun, args) =>
-          allowSideEffects && test(fun) && (args forall test)
+          allowSideEffects && test(fun) && (args.forall(testJSArg))
         case JSDotMethodApply(receiver, method, args) =>
-          allowSideEffects && test(receiver) && (args forall test)
+          allowSideEffects && test(receiver) && (args.forall(testJSArg))
         case JSBracketMethodApply(receiver, method, args) =>
-          allowSideEffects && test(receiver) && test(method) && (args forall test)
+          allowSideEffects && test(receiver) && test(method) && (args.forall(testJSArg))
         case JSSuperBracketSelect(superClass, qualifier, item) =>
           allowSideEffects && test(superClass) && test(qualifier) && test(item)
         case LoadJSModule(_) =>
@@ -1587,7 +1593,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   List(ctor, spreadToArgArray(args)))(AnyType)
             }
           } else {
-            unnest(ctor :: args) { (newCtorAndArgs, env) =>
+            unnest(ctor :: castNoSpread(args)) { (newCtorAndArgs, env) =>
               val newCtor :: newArgs = newCtorAndArgs
               redo(JSNew(newCtor, newArgs))(env)
             }
@@ -1600,7 +1606,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   List(Undefined(), spreadToArgArray(args)))
             }
           } else {
-            unnest(fun :: args) { (newFunAndArgs, env) =>
+            unnest(fun :: castNoSpread(args)) { (newFunAndArgs, env) =>
               val newFun :: newArgs = newFunAndArgs
               redo(JSFunctionApply(newFun, newArgs))(env)
             }
@@ -1618,7 +1624,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               }
             }
           } else {
-            unnest(receiver :: args) { (newReceiverAndArgs, env) =>
+            unnest(receiver :: castNoSpread(args)) { (newReceiverAndArgs, env) =>
               val newReceiver :: newArgs = newReceiverAndArgs
               redo(JSDotMethodApply(newReceiver, method, newArgs))(env)
             }
@@ -1636,7 +1642,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               }
             }
           } else {
-            unnest(receiver :: method :: args) { (newReceiverAndArgs, env) =>
+            unnest(receiver :: method :: castNoSpread(args)) { (newReceiverAndArgs, env) =>
               val newReceiver :: newMethod :: newArgs = newReceiverAndArgs
               redo(JSBracketMethodApply(newReceiver, newMethod, newArgs))(env)
             }
@@ -1702,7 +1708,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               spreadToArgArray(items)
             }
           } else {
-            unnest(items) { (newItems, env) =>
+            unnest(castNoSpread(items)) { (newItems, env) =>
               redo(JSArrayConstr(newItems))(env)
             }
           }
@@ -1780,10 +1786,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       })
     }
 
-    private def containsAnySpread(args: List[Tree]): Boolean =
+    private def containsAnySpread(args: List[TreeOrJSSpread]): Boolean =
       args.exists(_.isInstanceOf[JSSpread])
 
-    private def spreadToArgArray(args: List[Tree])(
+    /** Precondition: `!containsAnySpread(args)`. */
+    private def castNoSpread(args: List[TreeOrJSSpread]): List[Tree] =
+      args.asInstanceOf[List[Tree]]
+
+    private def spreadToArgArray(args: List[TreeOrJSSpread])(
         implicit env: Env, pos: Position): Tree = {
       var reversedParts: List[Tree] = Nil
       var reversedPartUnderConstruction: List[Tree] = Nil
@@ -1801,7 +1811,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           case JSSpread(spreadArray) =>
             closeReversedPartUnderConstruction()
             reversedParts ::= spreadArray
-          case _ =>
+          case arg: Tree =>
             reversedPartUnderConstruction ::= arg
         }
       }
@@ -1853,6 +1863,16 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               Lhs.VarDef(temp, expr.tpe, mutable = false), expr,
               Set.empty)
           js.Block(computeTemp, makeTree(VarRef(temp)(expr.tpe), newEnv))
+      }
+    }
+
+    def transformJSArg(tree: TreeOrJSSpread)(implicit env: Env): js.Tree = {
+      tree match {
+        case JSSpread(items) =>
+          assert(outputMode == OutputMode.ECMAScript6)
+          js.Spread(transformExprNoChar(items))(tree.pos)
+        case tree: Tree =>
+          transformExprNoChar(tree)
       }
     }
 
@@ -2264,7 +2284,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // JavaScript expressions
 
         case JSNew(constr, args) =>
-          js.New(transformExprNoChar(constr), args.map(transformExprNoChar))
+          js.New(transformExprNoChar(constr), args.map(transformJSArg))
 
         case JSDotSelect(qualifier, item) =>
           js.DotSelect(transformExprNoChar(qualifier), transformPropIdent(item))
@@ -2296,17 +2316,17 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             case _ =>
               transformedFun
           }
-          js.Apply(protectedFun, args.map(transformExprNoChar))
+          js.Apply(protectedFun, args.map(transformJSArg))
 
         case JSDotMethodApply(receiver, method, args) =>
           js.Apply(
               js.DotSelect(transformExprNoChar(receiver),
                   transformPropIdent(method)),
-              args.map(transformExprNoChar))
+              args.map(transformJSArg))
 
         case JSBracketMethodApply(receiver, method, args) =>
           js.Apply(genBracketSelect(transformExprNoChar(receiver),
-              transformExprNoChar(method)), args.map(transformExprNoChar))
+              transformExprNoChar(method)), args.map(transformJSArg))
 
         case JSSuperBracketSelect(superClass, qualifier, item) =>
           genCallHelper("superGet", transformExprNoChar(superClass),
@@ -2327,10 +2347,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   genLoadJSFromSpec(spec, keepOnlyDangerousVarNames = false))
           }
 
-        case JSSpread(items) =>
-          assert(outputMode == OutputMode.ECMAScript6)
-          js.Spread(transformExprNoChar(items))
-
         case JSUnaryOp(op, lhs) =>
           js.UnaryOp(op, transformExprNoChar(lhs))
 
@@ -2338,7 +2354,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           js.BinaryOp(op, transformExprNoChar(lhs), transformExprNoChar(rhs))
 
         case JSArrayConstr(items) =>
-          js.ArrayConstr(items.map(transformExprNoChar))
+          js.ArrayConstr(items.map(transformJSArg))
 
         case JSObjectConstr(fields) =>
           js.ObjectConstr(fields map { case (name, value) =>

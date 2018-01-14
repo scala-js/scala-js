@@ -20,6 +20,15 @@ object Transformers {
     final def transformExpr(tree: Tree): Tree =
       transform(tree, isStat = false)
 
+    def transformExprOrJSSpread(tree: TreeOrJSSpread): TreeOrJSSpread = {
+      implicit val pos = tree.pos
+
+      tree match {
+        case JSSpread(items) => JSSpread(transformExpr(items))
+        case tree: Tree      => transformExpr(tree)
+      }
+    }
+
     def transform(tree: Tree, isStat: Boolean): Tree = {
       implicit val pos = tree.pos
 
@@ -129,7 +138,7 @@ object Transformers {
         // JavaScript expressions
 
         case JSNew(ctor, args) =>
-          JSNew(transformExpr(ctor), args map transformExpr)
+          JSNew(transformExpr(ctor), args.map(transformExprOrJSSpread))
 
         case JSDotSelect(qualifier, item) =>
           JSDotSelect(transformExpr(qualifier), item)
@@ -138,15 +147,15 @@ object Transformers {
           JSBracketSelect(transformExpr(qualifier), transformExpr(item))
 
         case JSFunctionApply(fun, args) =>
-          JSFunctionApply(transformExpr(fun), args map transformExpr)
+          JSFunctionApply(transformExpr(fun), args.map(transformExprOrJSSpread))
 
         case JSDotMethodApply(receiver, method, args) =>
           JSDotMethodApply(transformExpr(receiver), method,
-              args map transformExpr)
+              args.map(transformExprOrJSSpread))
 
         case JSBracketMethodApply(receiver, method, args) =>
           JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
-              args map transformExpr)
+              args.map(transformExprOrJSSpread))
 
         case JSSuperBracketSelect(superClass, qualifier, item) =>
           JSSuperBracketSelect(superClass, transformExpr(qualifier),
@@ -154,13 +163,10 @@ object Transformers {
 
         case JSSuperBracketCall(superClass, receiver, method, args) =>
           JSSuperBracketCall(superClass, transformExpr(receiver),
-              transformExpr(method), args map transformExpr)
+              transformExpr(method), args.map(transformExprOrJSSpread))
 
         case JSSuperConstructorCall(args) =>
-          JSSuperConstructorCall(args map transformExpr)
-
-        case JSSpread(items) =>
-          JSSpread(transformExpr(items))
+          JSSuperConstructorCall(args.map(transformExprOrJSSpread))
 
         case JSDelete(prop) =>
           JSDelete(transformExpr(prop))
@@ -172,7 +178,7 @@ object Transformers {
           JSBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
 
         case JSArrayConstr(items) =>
-          JSArrayConstr(items map transformExpr)
+          JSArrayConstr(items.map(transformExprOrJSSpread))
 
         case JSObjectConstr(fields) =>
           JSObjectConstr(fields map {

@@ -851,7 +851,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
            */
           cont(JSArrayConstr(transformExprsOrSpreads(items)).toPreTransform)
         } else {
-          pretransformExprs(items) { titems =>
+          val itemsNoSpread = items.asInstanceOf[List[Tree]]
+
+          pretransformExprs(itemsNoSpread) { titems =>
             tryOrRollback { cancelFun =>
               val itemBindings = for {
                 (titem, index) <- titems.zipWithIndex
@@ -1696,6 +1698,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       cont(JSFunctionApply(transformExpr(fun),
           transformExprsOrSpreads(args)).toPreTransform)
     } else {
+      val argsNoSpread = args.asInstanceOf[List[Tree]]
+
       pretransformExpr(fun) { tfun =>
         tfun match {
           case PreTransLocalDef(LocalDef(_, false,
@@ -1703,7 +1707,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                   captureParams, params, body, captureLocalDefs,
                   alreadyUsed, cancelFun))) if !alreadyUsed.value =>
             alreadyUsed.value = true
-            pretransformExprs(args) { targs =>
+            pretransformExprs(argsNoSpread) { targs =>
               inlineBody(
                   Some(PreTransLit(Undefined())), // `this` is `undefined`
                   captureParams ++ params, AnyType, body,
@@ -1713,14 +1717,14 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
           case _ =>
             cont(JSFunctionApply(finishTransformExpr(tfun),
-                args.map(transformExpr)).toPreTransform)
+                argsNoSpread.map(transformExpr)).toPreTransform)
         }
       }
     }
   }
 
-  private def transformExprsOrSpreads(trees: List[Tree])(
-      implicit scope: Scope): List[Tree] = {
+  private def transformExprsOrSpreads(trees: List[TreeOrJSSpread])(
+      implicit scope: Scope): List[TreeOrJSSpread] = {
 
     /* This is basically a flatMap, but we do it manually because flatMap would
      * generate many garbage intermediate lists, when in fact the case JSSpread
@@ -1728,7 +1732,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
      * OptimizerCore.
      */
 
-    val builder = List.newBuilder[Tree]
+    val builder = List.newBuilder[TreeOrJSSpread]
 
     trees.foreach {
       case spread: JSSpread =>
@@ -1755,7 +1759,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           case _                        => builder += JSSpread(newSpreadItems)
         }
 
-      case tree =>
+      case tree: Tree =>
         builder += transformExpr(tree)
     }
 

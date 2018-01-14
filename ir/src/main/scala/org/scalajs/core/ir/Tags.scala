@@ -17,7 +17,9 @@ private[ir] object Tags {
   /** Use to denote optional trees. */
   final val TagEmptyTree = 1
 
-  final val TagVarDef = TagEmptyTree + 1
+  final val TagJSSpread = TagEmptyTree + 1
+
+  final val TagVarDef = TagJSSpread + 1
 
   final val TagSkip = TagVarDef + 1
   final val TagBlock = TagSkip + 1
@@ -66,8 +68,7 @@ private[ir] object Tags {
   final val TagJSSuperConstructorCall = TagJSSuperBracketCall + 1
   final val TagLoadJSConstructor = TagJSSuperConstructorCall + 1
   final val TagLoadJSModule = TagLoadJSConstructor + 1
-  final val TagJSSpread = TagLoadJSModule + 1
-  final val TagJSDelete = TagJSSpread + 1
+  final val TagJSDelete = TagLoadJSModule + 1
   final val TagJSUnaryOp = TagJSDelete + 1
   final val TagJSBinaryOp = TagJSUnaryOp + 1
   final val TagJSArrayConstr = TagJSBinaryOp + 1

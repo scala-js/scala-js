@@ -663,12 +663,11 @@ private final class IRChecker(unit: LinkingUnit,
     typecheck(tree, env)
   }
 
-  private def typecheckExprOrSpread(tree: Tree, env: Env): Type = {
+  private def typecheckExprOrSpread(tree: TreeOrJSSpread, env: Env): Unit = {
     tree match {
       case JSSpread(items) =>
         typecheckExpr(items, env)
-        AnyType
-      case _ =>
+      case tree: Tree =>
         typecheckExpr(tree, env)
     }
   }

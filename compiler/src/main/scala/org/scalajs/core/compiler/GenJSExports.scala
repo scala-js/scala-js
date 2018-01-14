@@ -641,9 +641,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         assert(allArgs.isEmpty)
         js.JSSuperBracketSelect(superClass, receiver, nameString)
       } else if (jsInterop.isJSSetter(sym)) {
-        assert(allArgs.size == 1 && !allArgs.head.isInstanceOf[js.JSSpread])
+        assert(allArgs.size == 1 && allArgs.head.isInstanceOf[js.Tree])
         js.Assign(js.JSSuperBracketSelect(superClass, receiver, nameString),
-            allArgs.head)
+            allArgs.head.asInstanceOf[js.Tree])
       } else {
         js.JSSuperBracketCall(superClass, receiver, nameString, allArgs)
       }

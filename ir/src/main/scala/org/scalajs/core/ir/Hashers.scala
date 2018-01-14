@@ -288,7 +288,7 @@ object Hashers {
         case JSNew(ctor, args) =>
           mixTag(TagJSNew)
           mixTree(ctor)
-          mixTrees(args)
+          mixTreeOrJSSpreads(args)
 
         case JSDotSelect(qualifier, item) =>
           mixTag(TagJSDotSelect)
@@ -303,19 +303,19 @@ object Hashers {
         case JSFunctionApply(fun, args) =>
           mixTag(TagJSFunctionApply)
           mixTree(fun)
-          mixTrees(args)
+          mixTreeOrJSSpreads(args)
 
         case JSDotMethodApply(receiver, method, args) =>
           mixTag(TagJSDotMethodApply)
           mixTree(receiver)
           mixIdent(method)
-          mixTrees(args)
+          mixTreeOrJSSpreads(args)
 
         case JSBracketMethodApply(receiver, method, args) =>
           mixTag(TagJSBracketMethodApply)
           mixTree(receiver)
           mixTree(method)
-          mixTrees(args)
+          mixTreeOrJSSpreads(args)
 
         case JSSuperBracketSelect(superClass, qualifier, item) =>
           mixTag(TagJSSuperBracketSelect)
@@ -328,11 +328,11 @@ object Hashers {
           mixTree(superClass)
           mixTree(receiver)
           mixTree(method)
-          mixTrees(args)
+          mixTreeOrJSSpreads(args)
 
         case JSSuperConstructorCall(args) =>
           mixTag(TagJSSuperConstructorCall)
-          mixTrees(args)
+          mixTreeOrJSSpreads(args)
 
         case LoadJSConstructor(cls) =>
           mixTag(TagLoadJSConstructor)
@@ -341,10 +341,6 @@ object Hashers {
         case LoadJSModule(cls) =>
           mixTag(TagLoadJSModule)
           mixType(cls)
-
-        case JSSpread(items) =>
-          mixTag(TagJSSpread)
-          mixTree(items)
 
         case JSDelete(prop) =>
           mixTag(TagJSDelete)
@@ -363,7 +359,7 @@ object Hashers {
 
         case JSArrayConstr(items) =>
           mixTag(TagJSArrayConstr)
-          mixTrees(items)
+          mixTreeOrJSSpreads(items)
 
         case JSObjectConstr(fields) =>
           mixTag(TagJSObjectConstr)
@@ -466,6 +462,19 @@ object Hashers {
 
     def mixTrees(trees: List[Tree]): Unit =
       trees.foreach(mixTree)
+
+    def mixTreeOrJSSpreads(trees: List[TreeOrJSSpread]): Unit =
+      trees.foreach(mixTreeOrJSSpread)
+
+    def mixTreeOrJSSpread(tree: TreeOrJSSpread): Unit = {
+      tree match {
+        case JSSpread(items) =>
+          mixTag(TagJSSpread)
+          mixTree(items)
+        case tree: Tree =>
+          mixTree(tree)
+      }
+    }
 
     def mixTypeRef(typeRef: TypeRef): Unit = typeRef match {
       case ClassRef(className) =>
