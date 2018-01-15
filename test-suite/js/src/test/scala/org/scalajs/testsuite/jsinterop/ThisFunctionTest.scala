@@ -98,4 +98,36 @@ class ThisFunctionTest {
     assertSame(thisValue, obj.foobar.call(thisValue))
   }
 
+  @Test def thisFunctionWithConversionCanBeConstructed(): Unit = {
+    val ctor: js.ThisFunction = {
+      (thiz: js.Dynamic, x: js.Any) =>
+        thiz.x = x
+        thiz.y = 42
+    }
+    val ctorDyn = ctor.asInstanceOf[js.Dynamic]
+
+    assertEquals("object", js.typeOf(ctorDyn.prototype))
+
+    val obj = js.Dynamic.newInstance(ctorDyn)("foo")
+    assertEquals("foo", obj.x)
+    assertEquals(42, obj.y)
+    assertSame(ctor, obj.constructor)
+  }
+
+  @Test def thisFunctionWithSAMCanBeConstructed(): Unit = {
+    val ctor: js.ThisFunction1[js.Dynamic, js.Any, Any] = {
+      (thiz: js.Dynamic, x: js.Any) =>
+        thiz.x = x
+        thiz.y = 42
+    }
+    val ctorDyn = ctor.asInstanceOf[js.Dynamic]
+
+    assertEquals("object", js.typeOf(ctorDyn.prototype))
+
+    val obj = js.Dynamic.newInstance(ctorDyn)("foo")
+    assertEquals("foo", obj.x)
+    assertEquals(42, obj.y)
+    assertSame(ctor, obj.constructor)
+  }
+
 }

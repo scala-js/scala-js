@@ -1049,7 +1049,7 @@ private final class IRChecker(unit: LinkingUnit,
         if (!isSubtype(env.thisTpe, tree.tpe))
           reportError(s"this of type ${env.thisTpe} typed as ${tree.tpe}")
 
-      case Closure(captureParams, params, body, captureValues) =>
+      case Closure(arrow, captureParams, params, body, captureValues) =>
         /* Check compliance of captureValues wrt. captureParams in the current
          * method state, i.e., outside `withPerMethodState`.
          */
@@ -1075,8 +1075,9 @@ private final class IRChecker(unit: LinkingUnit,
 
           checkJSParamDefs(params)
 
+          val thisType = if (arrow) NoType else AnyType
           val bodyEnv = Env.fromSignature(
-              AnyType, None, captureParams ++ params, AnyType)
+              thisType, None, captureParams ++ params, AnyType)
           typecheckExpect(body, bodyEnv, AnyType)
         }
 

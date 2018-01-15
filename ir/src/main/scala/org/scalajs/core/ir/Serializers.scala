@@ -429,8 +429,9 @@ object Serializers {
           writeByte(TagThis)
           writeType(tree.tpe)
 
-        case Closure(captureParams, params, body, captureValues) =>
+        case Closure(arrow, captureParams, params, body, captureValues) =>
           writeByte(TagClosure)
+          writeBoolean(arrow)
           writeParamDefs(captureParams)
           writeParamDefs(params)
           writeTree(body)
@@ -931,7 +932,8 @@ object Serializers {
         case TagThis =>
           This()(readType())
         case TagClosure =>
-          Closure(readParamDefs(), readParamDefs(), readTree(), readTrees())
+          Closure(readBoolean(), readParamDefs(), readParamDefs(), readTree(),
+              readTrees())
         case TagCreateJSClass =>
           CreateJSClass(readClassRef(), readTrees())
       }

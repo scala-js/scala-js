@@ -658,8 +658,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           pretransformExpr(tree)(finishTransform(isStat))
         }
 
-      case Closure(captureParams, params, body, captureValues) =>
-        transformClosureCommon(captureParams, params, body,
+      case Closure(arrow, captureParams, params, body, captureValues) =>
+        transformClosureCommon(arrow, captureParams, params, body,
             captureValues.map(transformExpr))
 
       case CreateJSClass(cls, captureValues) =>
@@ -681,16 +681,18 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     else result
   }
 
-  private def transformClosureCommon(captureParams: List[ParamDef],
-      params: List[ParamDef], body: Tree, newCaptureValues: List[Tree])(
+  private def transformClosureCommon(arrow: Boolean,
+      captureParams: List[ParamDef], params: List[ParamDef], body: Tree,
+      newCaptureValues: List[Tree])(
       implicit pos: Position): Closure = {
 
+    val thisType = if (arrow) NoType else AnyType
     val (allNewParams, newBody) =
-      transformIsolatedBody(None, AnyType, captureParams ++ params, AnyType, body)
+      transformIsolatedBody(None, thisType, captureParams ++ params, AnyType, body)
     val (newCaptureParams, newParams) =
       allNewParams.splitAt(captureParams.size)
 
-    Closure(newCaptureParams, newParams, newBody, newCaptureValues)
+    Closure(arrow, newCaptureParams, newParams, newBody, newCaptureValues)
   }
 
   private def transformBlock(tree: Block, isStat: Boolean)(
@@ -903,20 +905,23 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           }
         }
 
-      case Closure(captureParams, params, body, captureValues) =>
+      case Closure(arrow, captureParams, params, body, captureValues) =>
         pretransformExprs(captureValues) { tcaptureValues =>
           def default(): TailRec[Tree] = {
-            val newClosure = transformClosureCommon(captureParams, params, body,
-                tcaptureValues.map(finishTransformExpr))
+            val newClosure = transformClosureCommon(arrow, captureParams,
+                params, body, tcaptureValues.map(finishTransformExpr))
             cont(PreTransTree(
                 newClosure,
                 RefinedType(AnyType, isExact = false, isNullable = false)))
           }
 
-          if (params.exists(_.rest)) {
+          if (!arrow && params.exists(_.rest)) {
             /* TentativeClosureReplacement assumes there are no rest
              * parameters, because that would not be inlineable anyway.
-             * So we never try to inline a Closure with a rest parameter.
+             * Likewise, it assumes that there is no binding for `this`, which
+             * is only true for arrow functions.
+             * So we never try to inline non-arrow Closures, nor Closures with
+             * a rest parameter. There are few use cases for either anyway.
              */
             default()
           } else {
@@ -1385,7 +1390,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       Block(lengths.map(keepOnlySideEffects))(stat.pos)
     case Select(qualifier, _) =>
       keepOnlySideEffects(qualifier)
-    case Closure(_, _, _, captureValues) =>
+    case Closure(_, _, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
     case UnaryOp(_, arg) =>
       keepOnlySideEffects(arg)

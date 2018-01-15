@@ -8,8 +8,10 @@
 package org.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
+import scala.scalajs.LinkingInfo.assumingES6
 
 import org.junit.Assert._
+import org.junit.Assume._
 import org.junit.Test
 
 import org.scalajs.testsuite.utils.AssertThrows._
@@ -37,6 +39,30 @@ class FunctionTest {
     assertEquals(42, res("0"))
     assertEquals(true, res("1"))
     assertFalse(res.contains("2"))
+  }
+
+  @Test def functionWithConversionIsAnArrowFunction(): Unit = {
+    assumeTrue("In ES 5.1, arrow functions do not exist", assumingES6)
+
+    val ctor: js.Function = (x: js.Any) => x
+    val ctorDyn = ctor.asInstanceOf[js.Dynamic]
+
+    assertEquals(js.undefined, ctorDyn.prototype)
+
+    assertThrows(classOf[js.JavaScriptException],
+        js.Dynamic.newInstance(ctorDyn)("foo"))
+  }
+
+  @Test def functionWithSAMIsAnArrowFunction(): Unit = {
+    assumeTrue("In ES 5.1, arrow functions do not exist", assumingES6)
+
+    val ctor: js.Function1[js.Any, Any] = (x: js.Any) => x
+    val ctorDyn = ctor.asInstanceOf[js.Dynamic]
+
+    assertEquals(js.undefined, ctorDyn.prototype)
+
+    assertThrows(classOf[js.JavaScriptException],
+        js.Dynamic.newInstance(ctorDyn)("foo"))
   }
 
 }

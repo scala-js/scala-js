@@ -233,7 +233,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       pos: Position): WithGlobals[js.Tree] = {
     for (fun <- desugarToFunction(Nil, expr, resultType)) yield {
       fun match {
-        case js.Function(Nil, js.Return(newExpr)) =>
+        case js.Function(_, Nil, js.Return(newExpr)) =>
           // no need for an IIFE, we can just use `newExpr` directly
           newExpr
         case _ =>
@@ -391,9 +391,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
          */
         val thisIdent = js.Ident("$thiz", Some("this"))
         val env = env0.withThisIdent(Some(thisIdent))
-        val js.Function(jsParams, jsBody) =
-          desugarToFunctionInternal(params, body, isStat, env)
-        js.Function(js.ParamDef(thisIdent, rest = false) :: jsParams, jsBody)
+        val js.Function(jsArrow, jsParams, jsBody) =
+          desugarToFunctionInternal(arrow = false, params, body, isStat, env)
+        js.Function(jsArrow, js.ParamDef(thisIdent, rest = false) :: jsParams,
+            jsBody)
       }
     }
 
@@ -403,13 +404,13 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
         implicit pos: Position): WithGlobals[js.Function] = {
       performOptimisticThenPessimisticRuns {
-        desugarToFunctionInternal(params, body, isStat, env0)
+        desugarToFunctionInternal(arrow = false, params, body, isStat, env0)
       }
     }
 
     /** Desugars parameters and body to a JS function.
      */
-    private def desugarToFunctionInternal(
+    private def desugarToFunctionInternal(arrow: Boolean,
         params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
         implicit pos: Position): js.Function = {
 
@@ -438,7 +439,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case other                                        => other
       }
 
-      js.Function(newParams, js.Block(extractRestParam, newBody))
+      js.Function(arrow && useArrowFunctions, newParams,
+          js.Block(extractRestParam, newBody))
     }
 
     private def makeExtractRestParam(params: List[ParamDef])(
@@ -969,8 +971,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 }
                 JSObjectConstr(newItems)
 
-              case Closure(captureParams, params, body, captureValues) =>
-                Closure(captureParams, params, body, recs(captureValues))
+              case Closure(arrow, captureParams, params, body, captureValues) =>
+                Closure(arrow, captureParams, params, body, recs(captureValues))
 
               case New(cls, constr, args) if noExtractYet =>
                 New(cls, constr, recs(args))
@@ -1159,7 +1161,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               case _                     => true
             })
           }
-        case Closure(captureParams, params, body, captureValues) =>
+        case Closure(arrow, captureParams, params, body, captureValues) =>
           allowUnpure && (captureValues forall test)
 
         // Scala expressions that can always have side-effects
@@ -1761,9 +1763,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         // Closures
 
-        case Closure(captureParams, params, body, captureValues) =>
+        case Closure(arrow, captureParams, params, body, captureValues) =>
           unnest(captureValues) { (newCaptureValues, env) =>
-            redo(Closure(captureParams, params, body, newCaptureValues))(env)
+            redo(Closure(arrow, captureParams, params, body, newCaptureValues))(
+                env)
           }
 
         case CreateJSClass(cls, captureValues) =>
@@ -2417,16 +2420,17 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             js.VarRef(ident)
           }
 
-        case Closure(captureParams, params, body, captureValues) =>
-          val innerFunction =
-            desugarToFunctionInternal(params, body, isStat = false,
+        case Closure(arrow, captureParams, params, body, captureValues) =>
+          val innerFunction = {
+            desugarToFunctionInternal(arrow, params, body, isStat = false,
                 Env.empty(AnyType).withParams(captureParams ++ params))
+          }
 
           if (captureParams.isEmpty) {
             innerFunction
           } else {
             js.Apply(
-                js.Function(captureParams.map(transformParamDef), {
+                genArrowFunction(captureParams.map(transformParamDef), {
                   js.Return(innerFunction)
                 }),
                 captureValues.zip(captureParams).map {

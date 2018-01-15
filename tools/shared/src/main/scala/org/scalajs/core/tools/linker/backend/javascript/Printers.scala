@@ -489,11 +489,24 @@ object Printers {
         case This() =>
           print("this")
 
-        case Function(args, body) =>
-          print("(function")
-          printSig(args)
-          printBlock(body)
-          print(')')
+        case Function(arrow, args, body) =>
+          if (arrow) {
+            print('(')
+            printSig(args)
+            print("=> ")
+            body match {
+              case Return(expr) =>
+                print(expr)
+              case _ =>
+                printBlock(body)
+            }
+            print(')')
+          } else {
+            print("(function")
+            printSig(args)
+            printBlock(body)
+            print(')')
+          }
 
         // Named function definition
 

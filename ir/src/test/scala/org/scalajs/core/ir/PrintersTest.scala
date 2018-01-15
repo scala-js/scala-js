@@ -844,15 +844,16 @@ class PrintersTest {
           |  5
           |})
         """,
-        Closure(Nil, Nil, i(5), Nil))
+        Closure(false, Nil, Nil, i(5), Nil))
 
     assertPrintEquals(
         """
-          |(lambda<x: any = a, y: int = 6>(z: any) = {
+          |(arrow-lambda<x: any = a, y: int = 6>(z: any) = {
           |  z
           |})
         """,
         Closure(
+            true,
             List(
                 ParamDef("x", AnyType, mutable = false, rest = false),
                 ParamDef("y", IntType, mutable = false, rest = false)),

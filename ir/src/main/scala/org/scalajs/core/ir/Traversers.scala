@@ -198,7 +198,7 @@ object Traversers {
 
       // Atomic expressions
 
-      case Closure(captureParams, params, body, captureValues) =>
+      case Closure(arrow, captureParams, params, body, captureValues) =>
         traverse(body)
         captureValues.foreach(traverse)
 

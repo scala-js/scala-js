@@ -197,8 +197,8 @@ object Transformers {
 
         // Atomic expressions
 
-        case Closure(captureParams, params, body, captureValues) =>
-          Closure(captureParams, params, transformExpr(body),
+        case Closure(arrow, captureParams, params, body, captureValues) =>
+          Closure(arrow, captureParams, params, transformExpr(body),
               captureValues.map(transformExpr))
 
         case CreateJSClass(cls, captureValues) =>

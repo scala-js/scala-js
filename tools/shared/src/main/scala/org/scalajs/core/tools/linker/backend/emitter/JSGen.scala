@@ -34,6 +34,13 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   import JSGen._
 
+  val useArrowFunctions = {
+    outputMode match {
+      case OutputMode.ECMAScript51Isolated => false
+      case OutputMode.ECMAScript6          => true
+    }
+  }
+
   def genZeroOf(tpe: Type)(implicit pos: Position): Tree = {
     tpe match {
       case BooleanType => BooleanLiteral(false)
@@ -361,6 +368,11 @@ private[emitter] final class JSGen(val semantics: Semantics,
       DotSelect(qual, Ident(item))
     else
       BracketSelect(qual, StringLiteral(item))
+  }
+
+  def genArrowFunction(args: List[ParamDef], body: Tree)(
+      implicit pos: Position): Function = {
+    Function(useArrowFunctions, args, body)
   }
 }
 
