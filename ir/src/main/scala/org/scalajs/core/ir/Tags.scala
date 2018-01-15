@@ -56,9 +56,8 @@ private[ir] object Tags {
   final val TagAsInstanceOf = TagIsInstanceOf + 1
   final val TagUnbox = TagAsInstanceOf + 1
   final val TagGetClass = TagUnbox + 1
-  final val TagCallHelper = TagGetClass + 1
 
-  final val TagJSNew = TagCallHelper + 1
+  final val TagJSNew = TagGetClass + 1
   final val TagJSDotSelect = TagJSNew + 1
   final val TagJSBracketSelect = TagJSDotSelect + 1
   final val TagJSFunctionApply = TagJSBracketSelect + 1
@@ -94,6 +93,10 @@ private[ir] object Tags {
   final val TagThis = TagVarRef + 1
   final val TagClosure = TagThis + 1
   final val TagCreateJSClass = TagClosure + 1
+
+  /* Note that there is no TagTransient, since transient nodes are never
+   * serialized nor hashed.
+   */
 
   // Tags for member defs
 

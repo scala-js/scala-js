@@ -27,6 +27,8 @@ import org.scalajs.core.tools.linker.backend.javascript.{Trees => js}
 
 import java.io.StringWriter
 
+import Transients._
+
 /** Desugaring of the IR to JavaScript functions.
  *
  *  The general shape and compliance to standards is chosen with an
@@ -991,8 +993,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               case ArraySelect(array, index) if noExtractYet =>
                 val newIndex = rec(index)
                 ArraySelect(rec(array), newIndex)(arg.tpe)
-              case CallHelper(helper, args) if noExtractYet =>
-                CallHelper(helper, recs(args))(arg.tpe)
+              case Transient(CallHelper(helper, args)) if noExtractYet =>
+                Transient(CallHelper(helper, recs(args)))(arg.tpe)
 
               case If(cond, thenp, elsep)
                   if noExtractYet && isExpression(thenp) && isExpression(elsep) =>
@@ -1177,7 +1179,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           allowSideEffects && (args forall test)
         case GetClass(arg) =>
           allowSideEffects && test(arg)
-        case CallHelper(helper, args) =>
+        case Transient(CallHelper(helper, args)) =>
           allowSideEffects && (args forall test)
 
         // Casts
@@ -1592,9 +1594,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             redo(GetClass(newExpr))(env)
           }
 
-        case CallHelper(helper, args) =>
+        case Transient(CallHelper(helper, args)) =>
           unnest(args) { (newArgs, env) =>
-            redo(CallHelper(helper, newArgs)(rhs.tpe))(env)
+            redo(Transient(CallHelper(helper, newArgs))(rhs.tpe))(env)
           }
 
         // JavaScript expressions (if we reach here their arguments are not expressions)
@@ -1602,8 +1604,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSNew(ctor, args) =>
           if (containsAnySpread(args)) {
             redo {
-              CallHelper("newJSObjectWithVarargs",
-                  List(ctor, spreadToArgArray(args)))(AnyType)
+              Transient(CallHelper("newJSObjectWithVarargs",
+                  List(ctor, spreadToArgArray(args))))(AnyType)
             }
           } else {
             unnest(ctor :: castNoSpread(args)) { (newCtorAndArgs, env) =>
@@ -2274,7 +2276,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case GetClass(expr) =>
           genCallHelper("objectGetClass", transformExprNoChar(expr))
 
-        case CallHelper(helper, args) =>
+        case Transient(CallHelper(helper, args)) =>
           helper match {
             case "classDataOf" =>
               args.head match {

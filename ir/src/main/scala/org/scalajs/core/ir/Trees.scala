@@ -474,16 +474,6 @@ object Trees {
     val tpe = ClassType(Definitions.ClassClass)
   }
 
-  case class CallHelper(helper: String, args: List[Tree])(val tpe: Type)(
-      implicit val pos: Position) extends Tree
-
-  object CallHelper {
-    def apply(helper: String, args: Tree*)(tpe: Type)(
-        implicit pos: Position): CallHelper = {
-      CallHelper(helper, args.toList)(tpe)
-    }
-  }
-
   // JavaScript expressions
 
   case class JSNew(ctor: Tree, args: List[TreeOrJSSpread])(
@@ -845,11 +835,6 @@ object Trees {
     val tpe = ClassType(Definitions.ClassClass)
   }
 
-  // Specials
-
-  case class UndefinedParam()(val tpe: Type)(
-      implicit val pos: Position) extends Tree
-
   // Atomic expressions
 
   case class VarRef(ident: Ident)(val tpe: Type)(
@@ -884,6 +869,37 @@ object Trees {
       implicit val pos: Position)
       extends Tree {
     val tpe = AnyType
+  }
+
+  // Transient, a special one
+
+  /** A transient node for custom purposes.
+   *
+   *  A transient node is never a valid input to the [[Serializers]] nor to the
+   *  linker, but can be used in a transient state for internal purposes.
+   *
+   *  @param value
+   *    The payload of the transient node, without any specified meaning.
+   */
+  case class Transient(value: Transient.Value)(val tpe: Type)(
+      implicit val pos: Position)
+      extends Tree
+
+  object Transient {
+    /** Common interface for the values that can be stored in [[Transient]]
+     *  nodes.
+     */
+    trait Value {
+      /** Prints the IR representation of this transient node.
+       *  This method is called by the IR printers when encountering a
+       *  [[Transient]] node.
+       *
+       *  @param out
+       *    The [[Printers.IRTreePrinter]] to which the transient node must be
+       *    printed. It can be used to print raw strings or nested IR nodes.
+       */
+      def printIR(out: Printers.IRTreePrinter): Unit
+    }
   }
 
   // Classes

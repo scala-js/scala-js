@@ -135,9 +135,6 @@ object Transformers {
         case GetClass(expr) =>
           GetClass(transformExpr(expr))
 
-        case CallHelper(helper, args) =>
-          CallHelper(helper, args map transformExpr)(tree.tpe)
-
         // JavaScript expressions
 
         case JSNew(ctor, args) =>
@@ -208,7 +205,7 @@ object Transformers {
 
         case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:SelectStatic |
             _:LoadJSConstructor | _:LoadJSModule  | _:JSLinkingInfo |
-            _:Literal | _:UndefinedParam | _:VarRef | _:This | _:JSGlobalRef  =>
+            _:Literal | _:VarRef | _:This | _:JSGlobalRef | _:Transient  =>
           tree
       }
     }

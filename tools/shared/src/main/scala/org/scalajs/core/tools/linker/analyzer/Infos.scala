@@ -18,6 +18,7 @@ import org.scalajs.core.ir.Trees._
 import org.scalajs.core.ir.Types._
 
 import org.scalajs.core.tools.linker.LinkedClass
+import org.scalajs.core.tools.linker.backend.emitter.Transients._
 
 object Infos {
 
@@ -486,6 +487,10 @@ object Infos {
 
             case CreateJSClass(cls, _) =>
               builder.addInstantiatedClass(cls.className)
+
+            case Transient(CallHelper(_, args)) =>
+              // This should only happen when called from the Refiner
+              args.foreach(traverse)
 
             case _ =>
           }
