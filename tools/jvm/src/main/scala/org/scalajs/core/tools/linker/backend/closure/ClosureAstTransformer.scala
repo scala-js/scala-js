@@ -60,6 +60,9 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
           new Node(Token.DO, transformBlock(body), transformExpr(cond))
         new Node(Token.LABEL, transformLabel(label),
             setNodePosition(doNode, pos))
+      case ForIn(lhs, obj, body) =>
+        new Node(Token.FOR, transformStat(lhs), transformExpr(obj),
+            transformBlock(body))
       case TryFinally(TryCatch(block, errVar, handler), finalizer) =>
         val catchPos = handler.pos orElse pos
         val catchNode =

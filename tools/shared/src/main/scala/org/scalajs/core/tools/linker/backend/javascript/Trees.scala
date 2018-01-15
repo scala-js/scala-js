@@ -120,6 +120,8 @@ object Trees {
 
   case class DoWhile(body: Tree, cond: Tree, label: Option[Ident] = None)(implicit val pos: Position) extends Tree
 
+  case class ForIn(lhs: Tree, obj: Tree, body: Tree)(implicit val pos: Position) extends Tree
+
   case class TryCatch(block: Tree, errVar: Ident, handler: Tree)(implicit val pos: Position) extends Tree
 
   case class TryFinally(block: Tree, finalizer: Tree)(implicit val pos: Position) extends Tree

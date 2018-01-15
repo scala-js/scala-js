@@ -221,6 +221,14 @@ object Printers {
           print(cond)
           print(')')
 
+        case ForIn(obj, keyVar, body) =>
+          print("for (val ")
+          print(keyVar)
+          print(" in ")
+          print(obj)
+          print(") ")
+          printBlock(body)
+
         case TryFinally(TryCatch(block, errVar, handler), finalizer) =>
           print("try ")
           printBlock(block)

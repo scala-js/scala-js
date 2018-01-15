@@ -225,6 +225,16 @@ class PrintersTest {
         DoWhile(i(5), b(true), Some("lab")))
   }
 
+  @Test def printForIn(): Unit = {
+    assertPrintEquals(
+        """
+          |for (val x in o) {
+          |  5
+          |}
+        """,
+        ForIn(ref("o", AnyType), "x", i(5)))
+  }
+
   @Test def printTry(): Unit = {
     assertPrintEquals(
         """

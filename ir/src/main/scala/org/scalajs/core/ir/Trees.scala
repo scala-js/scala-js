@@ -199,6 +199,11 @@ object Trees {
     val tpe = NoType // cannot be in expression position
   }
 
+  case class ForIn(obj: Tree, keyVar: Ident, body: Tree)(
+      implicit val pos: Position) extends Tree {
+    val tpe = NoType
+  }
+
   case class TryCatch(block: Tree, errVar: Ident, handler: Tree)(
       val tpe: Type)(implicit val pos: Position) extends Tree
 

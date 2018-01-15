@@ -92,6 +92,31 @@ package object special {
   def delete(obj: scala.Any, key: scala.Any): Unit =
     throw new java.lang.Error("stub")
 
+  /** Enumerates the keys of an object.
+   *
+   *  This method is the exact equivalent of the `for (a in o) {}` statement of
+   *  JavaScript. A call of the form
+   *  {{{
+   *  forin(obj)(f)
+   *  }}}
+   *  corresponds to the JavaScript statement
+   *  {{{
+   *  const objTemp = obj;
+   *  const fTemp = f;
+   *  for (const x in objTemp) {
+   *    fTemp(x)
+   *  }
+   *  }}}
+   *
+   *  `for..in` loops exhibit performance cliffs in most JavaScript engines,
+   *  which means their performance is very dependent on their surroundings.
+   *  Therefore, it is recommended to avoid this method and use
+   *  [[js.Any.ObjectCompanionOps.properties js.Object.properties]] instead, if
+   *  possible.
+   */
+  def forin(obj: scala.Any)(f: js.Function1[scala.Any, scala.Any]): Unit =
+    throw new java.lang.Error("stub")
+
   /** The value of the global JavaScript `this`.
    *
    *  This returns the value that would be obtained by writing `this` at the

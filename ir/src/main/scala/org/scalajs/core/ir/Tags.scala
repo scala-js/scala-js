@@ -29,7 +29,8 @@ private[ir] object Tags {
   final val TagIf = TagReturn + 1
   final val TagWhile = TagIf + 1
   final val TagDoWhile = TagWhile + 1
-  final val TagTryCatch = TagDoWhile + 1
+  final val TagForIn = TagDoWhile + 1
+  final val TagTryCatch = TagForIn + 1
   final val TagTryFinally = TagTryCatch + 1
   final val TagThrow = TagTryFinally + 1
   final val TagContinue = TagThrow + 1

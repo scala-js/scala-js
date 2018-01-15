@@ -4161,6 +4161,33 @@ abstract class GenJSCode extends plugins.PluginComponent
             case DELETE =>
               // js.special.delete(arg1, arg2)
               js.JSDelete(js.JSBracketSelect(arg1, arg2))
+
+            case FORIN =>
+              /* js.special.forin(arg1, arg2)
+               *
+               * We must generate:
+               *
+               * val obj = arg1
+               * val f = arg2
+               * for (val key in obj) {
+               *   f(key)
+               * }
+               *
+               * with temporary vals, because `arg2` must be evaluated only
+               * once, and after `arg1`.
+               */
+              val objVarDef = js.VarDef(freshLocalIdent("obj"), jstpe.AnyType,
+                  mutable = false, arg1)
+              val fVarDef = js.VarDef(freshLocalIdent("f"), jstpe.AnyType,
+                  mutable = false, arg2)
+              val keyVarIdent = freshLocalIdent("key")
+              val keyVarRef = js.VarRef(keyVarIdent)(jstpe.AnyType)
+              js.Block(
+                  objVarDef,
+                  fVarDef,
+                  js.ForIn(objVarDef.ref, keyVarIdent, {
+                    js.JSFunctionApply(fVarDef.ref, List(keyVarRef))
+                  }))
           }
       })
     }

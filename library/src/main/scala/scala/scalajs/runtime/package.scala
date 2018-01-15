@@ -84,54 +84,6 @@ package object runtime {
   def withContextualJSClassValue[A](jsclass: AnyRef, inner: A): A =
     throw new Error("stub")
 
-  /** Returns an array of the enumerable properties in an object's prototype
-   *  chain.
-   *
-   *  This is the implementation of [[js.Object.properties]].
-   */
-  def propertiesOf(obj: js.Any): js.Array[String] = {
-    // See http://stackoverflow.com/questions/26445248/
-    if (obj == null || js.isUndefined(obj)) {
-      js.Array()
-    } else {
-      val result = new js.Array[String]
-      val alreadySeen = js.Dictionary.empty[Boolean]
-
-      @tailrec
-      def loop(obj: js.Object): Unit = {
-        if (obj != null) {
-          // Add own enumerable properties that have not been seen yet
-          val enumProps = js.Object.keys(obj)
-          val enumPropsLen = enumProps.length
-          var i = 0
-          while (i < enumPropsLen) {
-            val prop = enumProps(i)
-            if (!alreadySeen.get(prop).isDefined)
-              result.push(prop)
-            i += 1
-          }
-
-          /* Add all own properties to the alreadySeen set, including
-           * non-enumerable ones.
-           */
-          val allProps = js.Object.getOwnPropertyNames(obj)
-          val allPropsLen = allProps.length
-          var j = 0
-          while (j < allPropsLen) {
-            alreadySeen(allProps(j)) = true
-            j += 1
-          }
-
-          // Continue with the next object in the prototype chain
-          loop(js.Object.getPrototypeOf(obj))
-        }
-      }
-      loop(js.Object(obj))
-
-      result
-    }
-  }
-
   /** Information known at link-time, given the output configuration.
    *
    *  See [[LinkingInfo]] for details.

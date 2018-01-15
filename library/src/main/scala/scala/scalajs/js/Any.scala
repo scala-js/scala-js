@@ -194,15 +194,34 @@ object Any extends js.LowPrioAnyImplicits {
      *  object `o`, including properties in its prototype chain.
      *
      *  This method returns the same set of names that would be enumerated by
-     *  a for-in loop in JavaScript, but not necessarily in the same order.
+     *  a for-in loop in JavaScript, in the same order.
      *
-     *  If the underlying implementation guarantees an order for for-in loops,
-     *  then this is guaranteed to be consistent with [[js.Object.keys]], in
-     *  the sense that the list returned by [[js.Object.keys]] is a sublist of
-     *  the list returned by this method (not just a subset).
+     *  This method assumes that all keys enumerated by a for-in loop are
+     *  strings. If this is not the case, calling this method is an undefined
+     *  behavior of kind `ClassCastException`. Note that for all *ordinary*
+     *  objects, the ECMAScript 2015 guarantees that this is the case. It might
+     *  be false if `o` is a proxy object or another exotic object.
+     *
+     *  For ordinary objects, if the underlying implementation guarantees an
+     *  order for for-in loops, then this is guaranteed to be consistent with
+     *  [[js.Object.keys]], in the sense that the list returned by
+     *  [[js.Object.keys]] is a sublist of the list returned by this method
+     *  (not just a subset).
      */
-    def properties(o: js.Any): js.Array[String] =
-      scala.scalajs.runtime.propertiesOf(o)
+    @noinline
+    def properties(o: js.Any): js.Array[String] = {
+      /* DO NOT touch this code without double-checking the optimized code.
+       *
+       * This implementation is carefully crafted so that the optimizer turns
+       * the code into a pattern known not to fall off the performance cliffs.
+       */
+      val result = js.Array[scala.Any]()
+      @inline def appendProp(p: scala.Any): Unit = result.push(p)
+      js.special.forin(o) { p =>
+        appendProp(p)
+      }
+      result.asInstanceOf[js.Array[String]]
+    }
   }
 }
 
