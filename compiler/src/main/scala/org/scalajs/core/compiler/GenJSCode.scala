@@ -5397,7 +5397,7 @@ abstract class GenJSCode extends plugins.PluginComponent
    *  originally a public or protected member of a Scala.js-defined JS class.
    */
   private def isExposed(sym: Symbol): Boolean =
-    sym.hasAnnotation(ExposedJSMemberAnnot)
+    !sym.isBridge && sym.hasAnnotation(ExposedJSMemberAnnot)
 
   /** Test whether `sym` is the symbol of a raw JS function definition */
   private def isRawJSFunctionDef(sym: Symbol): Boolean =
