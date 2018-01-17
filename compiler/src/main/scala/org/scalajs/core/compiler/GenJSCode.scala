@@ -629,6 +629,9 @@ abstract class GenJSCode extends plugins.PluginComponent
         case property: js.PropertyDef =>
           classMembers += property
 
+        case _: js.Skip =>
+          // This can happen in cases of earlier errors. Don't crash.
+
         case tree =>
           abort("Unexpected tree: " + tree)
       }
