@@ -1437,6 +1437,8 @@ object Build {
         case _      => true
       }
 
+      val scalaV = scalaVersion.value
+
       /* Can't add require-sam as unmanagedSourceDirectories because of the use
        * of scalacOptions. Hence sources are added individually.
        * Note that a testSuite/test will not trigger a compile when sources are
@@ -1447,8 +1449,18 @@ object Build {
         val sharedTestDir =
           testDir.getParentFile.getParentFile.getParentFile / "shared/src/test"
 
-        ((sharedTestDir / "require-sam") ** "*.scala").get ++
-        (if (isJSTest) ((testDir / "require-sam") ** "*.scala").get else Nil)
+        val allSAMSources = {
+          ((sharedTestDir / "require-sam") ** "*.scala").get ++
+          (if (isJSTest) ((testDir / "require-sam") ** "*.scala").get else Nil)
+        }
+
+        val hasBugWithOverriddenMethods =
+          Set("2.12.0", "2.12.1", "2.12.2", "2.12.3", "2.12.4", "2.13.0-M2").contains(scalaV)
+
+        if (hasBugWithOverriddenMethods)
+          allSAMSources.filter(_.getName != "SAMWithOverridingBridgesTest.scala")
+        else
+          allSAMSources
       } else {
         Nil
       }

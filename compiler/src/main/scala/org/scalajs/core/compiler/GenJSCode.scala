@@ -5107,10 +5107,8 @@ abstract class GenJSCode extends plugins.PluginComponent
          * We have to synthesize a class like LambdaMetaFactory would do on
          * the JVM.
          */
-        val sam = originalFunction.attachments.get[SAMFunctionCompat].fold[Symbol] {
+        val sam = originalFunction.attachments.get[SAMFunctionCompat].getOrElse {
           abort(s"Cannot find the SAMFunction attachment on $originalFunction at $pos")
-        } {
-          _.sam
         }
 
         val samWrapperClassName = synthesizeSAMWrapper(funSym, sam)
@@ -5119,7 +5117,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    private def synthesizeSAMWrapper(funSym: Symbol, sam: Symbol)(
+    private def synthesizeSAMWrapper(funSym: Symbol, samInfo: SAMFunctionCompat)(
         implicit pos: Position): String = {
       val intfName = encodeClassFullName(funSym)
 
@@ -5154,8 +5152,38 @@ abstract class GenJSCode extends plugins.PluginComponent
             js.OptimizerHints.empty, None)
       }
 
+      // Compute the set of method symbols that we need to implement
+      val sams = {
+        val samsBuilder = List.newBuilder[Symbol]
+        val seenEncodedNames = mutable.Set.empty[String]
+
+        /* scala/bug#10512: any methods which `samInfo.sam` overrides need
+         * bridges made for them.
+         * On Scala < 2.12.5, `synthCls` is polyfilled to `NoSymbol` and hence
+         * `samBridges` will always be empty. This causes our compiler to be
+         * bug-compatible on these versions.
+         */
+        val synthCls = samInfo.synthCls
+        val samBridges = if (synthCls == NoSymbol) {
+          Nil
+        } else {
+          import scala.reflect.internal.Flags.BRIDGE
+          synthCls.info.findMembers(excludedFlags = 0L, requiredFlags = BRIDGE).toList
+        }
+
+        for (sam <- samInfo.sam :: samBridges) {
+          /* Remove duplicates, e.g., if we override the same method declared
+           * in two super traits.
+           */
+          if (seenEncodedNames.add(encodeMethodSym(sam).name))
+            samsBuilder += sam
+        }
+
+        samsBuilder.result()
+      }
+
       // def samMethod(...params): resultType = this.f$f(...params)
-      val samMethodDef = {
+      val samMethodDefs = for (sam <- sams) yield {
         val jsParams = for (param <- sam.tpe.params) yield {
           js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
               mutable = false, rest = false)
@@ -5187,7 +5215,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           Some(js.Ident(ir.Definitions.ObjectClass)),
           List(js.Ident(intfName)),
           None,
-          List(fFieldDef, ctorDef, samMethodDef))(
+          fFieldDef :: ctorDef :: samMethodDefs)(
           js.OptimizerHints.empty.withInline(true))
 
       generatedClasses += ((currentClassSym.get, Some(suffix), classDef))
