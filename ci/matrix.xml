@@ -418,7 +418,7 @@
     <run task="sbtplugin-test">
       <v n="java">1.8</v>
       <v n="toolsscala">2.10.7</v>
-      <v n="sbt_version_override">0.13.16</v>
+      <v n="sbt_version_override">0.13.17-RC2</v>
     </run>
     <run task="sbtplugin-test">
       <v n="java">1.8</v>
