@@ -13,12 +13,12 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import scala.collection.concurrent.TrieMap
 
-import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.core.tools.io._
+import org.scalajs.core.tools.io.JSUtils.escapeJS
 import org.scalajs.core.tools.logging._
-import org.scalajs.core.tools.linker.ModuleKind
 
 import org.scalajs.jsenv._
+
 import org.scalajs.testcommon._
 
 import sbt.testing.Framework
@@ -26,7 +26,7 @@ import sbt.testing.Framework
 final class TestAdapter(jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
     config: TestAdapter.Config) {
 
-  import TestAdapter.ManagedRunner
+  import TestAdapter._
 
   /** Map of ThreadId -> ManagedRunner */
   private[this] val runners = TrieMap.empty[Long, ManagedRunner]
@@ -131,17 +131,12 @@ final class TestAdapter(jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
     // Otherwise we might leak runners.
     require(!closed, "We are closed. Cannot create new runner.")
 
-    // !!! DUPLICATE code with ScalaJSPlugin.makeExportsNamespaceExpr
-    val orgExpr = config.moduleKind match {
-      case ModuleKind.NoModule =>
+    val orgExpr = config.moduleIdentifier match {
+      case ModuleIdentifier.NoModule =>
         "typeof(org) != 'undefined' ? org : {}"
 
-      case ModuleKind.CommonJSModule =>
-        val moduleIdent = config.moduleIdentifier.getOrElse {
-          throw new IllegalArgumentException(
-              "The module identifier must be specified for CommonJS modules")
-        }
-        s"""require("${escapeJS(moduleIdent)}").org || {}"""
+      case ModuleIdentifier.CommonJSModule(moduleName) =>
+        s"""require("${escapeJS(moduleName)}").org || {}"""
     }
 
     /* #2752: if there is no testing framework at all on the classpath,
@@ -175,18 +170,41 @@ final class TestAdapter(jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
 }
 
 object TestAdapter {
+  /** An identifier for the Scala.js module, which specifies where its exports
+   *  can be loaded from.
+   *
+   *  @note
+   *    Although this class looks like an ADT and is not extensible from the
+   *    outside, it is not `sealed`. Future versions may have more subclasses,
+   *    which means that `match`es covering all existing cases may fail with
+   *    `MatchError` in the future.
+   */
+  abstract class ModuleIdentifier private ()
+
+  object ModuleIdentifier {
+    /** The Scala.js code is not a module; its exports are in the global scope.
+     */
+    case object NoModule extends ModuleIdentifier
+
+    /** The Scala.js module is a CommonJS module.
+     *
+     *  @param moduleName
+     *    The module name such that `require(moduleName)` returns the exports
+     *    of the Scala.js module.
+     */
+    final case class CommonJSModule(moduleName: String) extends ModuleIdentifier
+  }
+
   final class Config private (
       val logger: Logger,
       val console: JSConsole,
-      val moduleKind: ModuleKind,
-      val moduleIdentifier: Option[String]
+      val moduleIdentifier: ModuleIdentifier
   ) {
     private def this() = {
       this(
           logger = NullLogger,
           console = ConsoleJSConsole,
-          moduleKind = ModuleKind.NoModule,
-          moduleIdentifier = None
+          moduleIdentifier = ModuleIdentifier.NoModule
       )
     }
 
@@ -196,20 +214,15 @@ object TestAdapter {
     def withJSConsole(console: JSConsole): Config =
       copy(console = console)
 
-    def withModuleSettings(moduleKind: ModuleKind,
-        moduleIdentifier: Option[String]): Config = {
-      require((moduleKind == ModuleKind.NoModule) != moduleIdentifier.nonEmpty,
-          "Need a module identifier with modules")
-      copy(moduleKind = moduleKind, moduleIdentifier = moduleIdentifier)
-    }
+    def withModuleIdentifier(moduleIdentifier: ModuleIdentifier): Config =
+      copy(moduleIdentifier = moduleIdentifier)
 
     private def copy(
         logger: Logger = logger,
         console: JSConsole = console,
-        moduleKind: ModuleKind = moduleKind,
-        moduleIdentifier: Option[String] = moduleIdentifier
+        moduleIdentifier: ModuleIdentifier = moduleIdentifier
     ): Config = {
-      new Config(logger, console, moduleKind, moduleIdentifier)
+      new Config(logger, console, moduleIdentifier)
     }
   }
 

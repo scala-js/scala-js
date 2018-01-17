@@ -2,11 +2,14 @@ package scala.tools.nsc
 
 /* Super hacky overriding of the MainGenericRunner used by partest */
 
-import org.scalajs.core.tools.logging._
-import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.linker._
-
 import org.scalajs.core.ir
+
+import org.scalajs.core.tools.io._
+
+import org.scalajs.core.tools.logging._
+
+import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.irio._
 
 import org.scalajs.jsenv.JSConsole
 import org.scalajs.jsenv.nodejs.NodeJSEnv
