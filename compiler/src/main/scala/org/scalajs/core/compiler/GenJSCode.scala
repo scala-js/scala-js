@@ -629,6 +629,9 @@ abstract class GenJSCode extends plugins.PluginComponent
         case property: js.PropertyDef =>
           classMembers += property
 
+        case _: js.Skip =>
+          // This can happen in cases of earlier errors. Don't crash.
+
         case tree =>
           abort("Unexpected tree: " + tree)
       }
@@ -5394,7 +5397,7 @@ abstract class GenJSCode extends plugins.PluginComponent
    *  originally a public or protected member of a Scala.js-defined JS class.
    */
   private def isExposed(sym: Symbol): Boolean =
-    sym.hasAnnotation(ExposedJSMemberAnnot)
+    !sym.isBridge && sym.hasAnnotation(ExposedJSMemberAnnot)
 
   /** Test whether `sym` is the symbol of a raw JS function definition */
   private def isRawJSFunctionDef(sym: Symbol): Boolean =
