@@ -1,4 +1,4 @@
-import org.scalajs.core.tools.io._
+import org.scalajs.io._
 import org.scalajs.sbtplugin.Loggers.sbtLogger2ToolsLogger
 import org.scalajs.sbtplugin.ScalaJSCrossVersion
 

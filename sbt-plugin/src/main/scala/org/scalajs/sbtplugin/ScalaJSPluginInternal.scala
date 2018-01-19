@@ -12,17 +12,17 @@ import sbt.complete.DefaultParsers._
 
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
-import org.scalajs.core.tools.io.{IO => _, _}
-import org.scalajs.core.tools.io.JSUtils.escapeJS
+import org.scalajs.io.{IO => _, _}
+import org.scalajs.io.JSUtils.escapeJS
 
-import org.scalajs.core.tools.linker._
-import org.scalajs.core.tools.linker.irio._
-import org.scalajs.core.tools.linker.standard._
+import org.scalajs.linker._
+import org.scalajs.linker.irio._
+import org.scalajs.linker.standard._
 
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
-import org.scalajs.core.ir.Printers.IRTreePrinter
+import org.scalajs.ir.Printers.IRTreePrinter
 
 import org.scalajs.testadapter.{TestAdapter, HTMLRunnerBuilder}
 import org.scalajs.testadapter.TestAdapter.ModuleIdentifier

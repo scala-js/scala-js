@@ -2,14 +2,14 @@ package scala.tools.nsc
 
 /* Super hacky overriding of the MainGenericRunner used by partest */
 
-import org.scalajs.core.ir
+import org.scalajs.ir
 
-import org.scalajs.core.tools.io._
+import org.scalajs.io._
 
-import org.scalajs.core.tools.logging._
+import org.scalajs.logging._
 
-import org.scalajs.core.tools.linker._
-import org.scalajs.core.tools.linker.irio._
+import org.scalajs.linker._
+import org.scalajs.linker.irio._
 
 import org.scalajs.jsenv.JSConsole
 import org.scalajs.jsenv.nodejs.NodeJSEnv
@@ -40,7 +40,7 @@ class MainGenericRunner {
   val optMode = OptMode.fromId(System.getProperty("scalajs.partest.optMode"))
 
   def readSemantics() = {
-    import org.scalajs.core.tools.linker.CheckedBehavior.Compliant
+    import org.scalajs.linker.CheckedBehavior.Compliant
 
     val opt = Option(System.getProperty("scalajs.partest.compliantSems"))
     val compliantSems =

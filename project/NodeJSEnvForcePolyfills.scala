@@ -3,7 +3,7 @@ package build
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.nodejs._
 
-import org.scalajs.core.tools.io._
+import org.scalajs.io._
 
 class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config)
     extends NodeJSEnv(config) {

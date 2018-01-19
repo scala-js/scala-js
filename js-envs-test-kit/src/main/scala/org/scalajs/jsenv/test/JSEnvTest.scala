@@ -2,8 +2,8 @@ package org.scalajs.jsenv.test
 
 import org.scalajs.jsenv._
 
-import org.scalajs.core.tools.io.MemVirtualJSFile
-import org.scalajs.core.tools.logging._
+import org.scalajs.io.MemVirtualJSFile
+import org.scalajs.logging._
 
 import org.junit.Assert._
 

@@ -268,8 +268,8 @@ import scala.collection.mutable
 
 import java.{util => ju}
 
-import org.scalajs.core.tools.linker._
-import org.scalajs.core.tools.linker.standard._
+import org.scalajs.linker._
+import org.scalajs.linker.standard._
 ```
 
 Language imports must always come first, and must always be at the top of the file (right after the `package` declaration).

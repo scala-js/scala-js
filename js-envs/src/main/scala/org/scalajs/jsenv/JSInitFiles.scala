@@ -1,6 +1,6 @@
 package org.scalajs.jsenv
 
-import org.scalajs.core.tools.io.VirtualJSFile
+import org.scalajs.io.VirtualJSFile
 
 trait JSInitFiles {
   /** JS files used to setup VM */

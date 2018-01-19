@@ -17,7 +17,7 @@ import java.io.{
 import scala.collection.mutable
 import scala.util.Properties
 
-import org.scalajs.core.ir
+import org.scalajs.ir
 
 import org.scalajs.sbtplugin._
 import org.scalajs.jsenv.{ConsoleJSConsole, JSEnv}
@@ -27,9 +27,9 @@ import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
-import org.scalajs.core.tools.io.{FileVirtualJSFile, MemVirtualJSFile}
-import org.scalajs.core.tools.io.JSUtils.escapeJS
-import org.scalajs.core.tools.linker._
+import org.scalajs.io.{FileVirtualJSFile, MemVirtualJSFile}
+import org.scalajs.io.JSUtils.escapeJS
+import org.scalajs.linker._
 
 /* Things that we want to expose in the sbt command line (and hence also in
  * `ci/matrix.xml`).
@@ -47,9 +47,9 @@ object ExposedValues extends AutoPlugin {
       }
     }
 
-    val CheckedBehavior = org.scalajs.core.tools.linker.CheckedBehavior
+    val CheckedBehavior = org.scalajs.linker.CheckedBehavior
 
-    val OutputMode = org.scalajs.core.tools.linker.standard.OutputMode
+    val OutputMode = org.scalajs.linker.standard.OutputMode
 
     implicit def StandardLinkerConfigStandardOps(
         config: StandardLinker.Config): standard.StandardLinkerConfigStandardOps = {
@@ -652,7 +652,7 @@ object Build {
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
       javaOptions in Test += {
         val libJar = (packageBin in (LocalProject("minilib"), Compile)).value
-        "-Dorg.scalajs.core.tools.linker.stdlibjar=" + libJar.getAbsolutePath
+        "-Dorg.scalajs.linker.stdlibjar=" + libJar.getAbsolutePath
       }
   )
 

@@ -14,8 +14,8 @@ import java.net.URI
 
 import sbt.testing.{Framework, TaskDef}
 
-import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.io.JSUtils.escapeJS
+import org.scalajs.io._
+import org.scalajs.io.JSUtils.escapeJS
 
 import org.scalajs.jsenv.VirtualFileMaterializer
 

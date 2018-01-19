@@ -1,6 +1,6 @@
 package org.scalajs.sbtplugin
 
-import org.scalajs.core.tools.logging._
+import org.scalajs.logging._
 import sbt.{Level => SbtLevel, Logger => SbtLogger}
 
 object Loggers {

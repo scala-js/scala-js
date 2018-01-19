@@ -2,7 +2,7 @@ package org.scalajs.jsenv
 
 import scala.annotation.tailrec
 
-import org.scalajs.core.tools.io._
+import org.scalajs.io._
 
 import java.io.File
 

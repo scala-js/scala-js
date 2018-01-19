@@ -14,7 +14,7 @@ import scala.collection.mutable
 import sbt._
 import sbt.complete._
 
-import org.scalajs.core.tools.io._
+import org.scalajs.io._
 
 private[sbtplugin] object ScalajspUtils {
 

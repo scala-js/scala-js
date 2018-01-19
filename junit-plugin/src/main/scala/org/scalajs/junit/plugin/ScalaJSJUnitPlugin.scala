@@ -93,7 +93,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
       def registerModuleExports(sym: ScalaJSJUnitPluginComponent.global.Symbol): Unit
     }
     global.plugins.collectFirst {
-      case pl if pl.getClass.getName == "org.scalajs.core.compiler.ScalaJSPlugin" =>
+      case pl if pl.getClass.getName == "org.scalajs.nscplugin.ScalaJSPlugin" =>
         pl.asInstanceOf[ScalaJSPlugin]
     }.getOrElse {
       throw new Exception(

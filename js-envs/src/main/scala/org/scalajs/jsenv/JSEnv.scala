@@ -9,7 +9,7 @@
 
 package org.scalajs.jsenv
 
-import org.scalajs.core.tools.io.VirtualJSFile
+import org.scalajs.io.VirtualJSFile
 
 trait JSEnv {
   /** Human-readable name for this [[JSEnv]] */

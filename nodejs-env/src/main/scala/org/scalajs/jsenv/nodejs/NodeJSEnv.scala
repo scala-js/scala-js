@@ -13,8 +13,8 @@ import scala.collection.immutable
 
 import org.scalajs.jsenv._
 
-import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.logging._
+import org.scalajs.io._
+import org.scalajs.logging._
 
 import java.io.{ Console => _, _ }
 

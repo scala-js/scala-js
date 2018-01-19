@@ -14,12 +14,12 @@ import scala.language.implicitConversions
 import sbt._
 import sbt.Keys._
 
-import org.scalajs.core.ir.ScalaJSVersions
+import org.scalajs.ir.ScalaJSVersions
 
-import org.scalajs.core.tools.io._
+import org.scalajs.io._
 
-import org.scalajs.core.tools.linker._
-import org.scalajs.core.tools.linker.irio._
+import org.scalajs.linker._
+import org.scalajs.linker.irio._
 
 import org.scalajs.jsenv.JSEnv
 
@@ -37,7 +37,7 @@ object ScalaJSPlugin extends AutoPlugin {
     val FullOptStage = Stage.FullOpt
 
     // ModuleKind
-    val ModuleKind = org.scalajs.core.tools.linker.ModuleKind
+    val ModuleKind = org.scalajs.linker.ModuleKind
 
     // All our public-facing keys
 
