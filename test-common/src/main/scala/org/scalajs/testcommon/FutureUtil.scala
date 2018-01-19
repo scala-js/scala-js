@@ -14,6 +14,10 @@ private[scalajs] object FutureUtil {
 
   implicit class RichFuture[T](val __self: Future[T]) extends AnyVal {
     def liftToTry: Future[Try[T]] =
-      __self.map(Success(_)).recover(PartialFunction(Failure(_)))
+      __self.map(Success(_)).recover(pf(Failure(_)))
+  }
+
+  private def pf[A, B](f: A => B): PartialFunction[A, B] = {
+    case x => f(x)
   }
 }

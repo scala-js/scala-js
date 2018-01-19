@@ -59,7 +59,8 @@ trait CompatComponent {
   // SAMFunction was introduced in 2.12.0-M4 for LMF-capable SAM types
 
   object SAMFunctionAttachCompatDef {
-    case class SAMFunction(samTp: Type, sam: Symbol) extends PlainAttachment
+    case class SAMFunction(samTp: Type, sam: Symbol, synthCls: Symbol)
+        extends PlainAttachment
   }
 
   object SAMFunctionAttachCompat {
@@ -75,6 +76,11 @@ trait CompatComponent {
 
   type SAMFunctionCompat = SAMFunctionAttachCompat.Inner.SAMFunctionAlias
   lazy val SAMFunctionCompat = SAMFunctionAttachCompat.Inner.SAMFunctionAlias
+
+  implicit final class SAMFunctionCompatOps(self: SAMFunctionCompat) {
+    // Introduced in 2.12.5 to synthesize bridges in LMF classes
+    def synthCls: Symbol = NoSymbol
+  }
 
   /* global.genBCode.bTypes.initializeCoreBTypes()
    *

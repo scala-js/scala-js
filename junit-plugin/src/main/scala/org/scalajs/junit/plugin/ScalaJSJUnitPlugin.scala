@@ -249,7 +249,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
       def jUnitAnnotatedMethods(sym: Symbol): List[MethodSymbol] = {
         sym.selfType.members.collect {
-          case m: MethodSymbol if hasJUnitMethodAnnotation(m) => m
+          case m: MethodSymbol if !m.isBridge && hasJUnitMethodAnnotation(m) => m
         }.toList
       }
 
