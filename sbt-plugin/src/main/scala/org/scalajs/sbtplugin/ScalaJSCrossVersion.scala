@@ -11,7 +11,7 @@ package org.scalajs.sbtplugin
 
 import sbt._
 
-import org.scalajs.core.ir.ScalaJSVersions
+import org.scalajs.ir.ScalaJSVersions
 
 import SBTCompat._
 

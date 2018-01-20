@@ -3,7 +3,7 @@ package org.scalajs.jsenv
 import scala.concurrent.{Future, Await}
 import scala.concurrent.duration.Duration
 
-import org.scalajs.core.tools.logging.Logger
+import org.scalajs.logging.Logger
 
 trait AsyncJSRunner {
 

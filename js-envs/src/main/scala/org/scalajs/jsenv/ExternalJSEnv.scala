@@ -2,8 +2,8 @@ package org.scalajs.jsenv
 
 import scala.collection.immutable
 
-import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.logging.Logger
+import org.scalajs.io._
+import org.scalajs.logging.Logger
 
 import java.io.{ Console => _, _ }
 import scala.io.Source

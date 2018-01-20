@@ -2,7 +2,7 @@ package org.scalajs.sbtplugin
 
 import sbt._
 
-import org.scalajs.core.tools.io.FileVirtualFile
+import org.scalajs.io.FileVirtualFile
 
 private[sbtplugin] object SBTCompat {
   type IncOptions = sbt.inc.IncOptions

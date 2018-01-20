@@ -12,9 +12,9 @@ package org.scalajs.jsenv.nodejs
 import java.io.{Console => _, _}
 import java.net._
 
-import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.io.JSUtils.escapeJS
-import org.scalajs.core.tools.logging.NullLogger
+import org.scalajs.io._
+import org.scalajs.io.JSUtils.escapeJS
+import org.scalajs.logging.NullLogger
 
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.Utils.OptDeadline

@@ -4,7 +4,7 @@ package build
  * Hard-coded IR for java.lang.Object.
  */
 
-import org.scalajs.core.ir
+import org.scalajs.ir
 import ir._
 import ir.Definitions._
 import ir.Trees._

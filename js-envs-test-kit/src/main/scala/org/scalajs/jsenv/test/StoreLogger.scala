@@ -1,6 +1,6 @@
 package org.scalajs.jsenv.test
 
-import org.scalajs.core.tools.logging._
+import org.scalajs.logging._
 
 import scala.collection.mutable.ListBuffer
 
