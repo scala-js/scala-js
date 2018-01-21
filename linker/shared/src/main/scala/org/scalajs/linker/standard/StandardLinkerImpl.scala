@@ -26,7 +26,7 @@ import org.scalajs.linker.irio._
 /** Standard implementation of a Scala.js linker. */
 private final class StandardLinkerImpl private (
     frontend: LinkerFrontend, backend: LinkerBackend)
-    extends GenLinker {
+    extends Linker {
 
   require(frontend.coreSpec == backend.coreSpec,
       "Frontend and backend must implement the same core specification")
@@ -68,6 +68,6 @@ private final class StandardLinkerImpl private (
 }
 
 object StandardLinkerImpl {
-  def apply(frontend: LinkerFrontend, backend: LinkerBackend): GenLinker =
+  def apply(frontend: LinkerFrontend, backend: LinkerBackend): Linker =
     new StandardLinkerImpl(frontend, backend)
 }

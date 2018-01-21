@@ -19,7 +19,7 @@ import org.scalajs.linker.backend.LinkerBackend
 object StandardLinker {
   import StandardLinkerPlatformExtensions._
 
-  def apply(config: Config): GenLinker = {
+  def apply(config: Config): Linker = {
     val coreSpec = CoreSpec(
         config.semantics,
         config.moduleKind,

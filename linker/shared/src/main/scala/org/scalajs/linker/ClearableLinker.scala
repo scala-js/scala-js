@@ -14,7 +14,7 @@ import org.scalajs.io._
 
 import org.scalajs.linker.irio._
 
-/** A box around a [[GenLinker]] to support clearing.
+/** A box around a [[Linker]] to support clearing.
  *
  *  This further supports:
  *  - batch mode (clearing after every operation)
@@ -22,10 +22,10 @@ import org.scalajs.linker.irio._
  *
  *  This class is not thread-safe.
  */
-final class ClearableLinker(newLinker: () => GenLinker, batchMode: Boolean)
-    extends GenLinker {
+final class ClearableLinker(newLinker: () => Linker, batchMode: Boolean)
+    extends Linker {
 
-  private[this] var _linker: GenLinker = _
+  private[this] var _linker: Linker = _
 
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
@@ -37,7 +37,7 @@ final class ClearableLinker(newLinker: () => GenLinker, batchMode: Boolean)
     _linker = null
 
   @inline
-  private[this] def linkerOp[T](op: GenLinker => T): T = {
+  private[this] def linkerOp[T](op: Linker => T): T = {
     ensureLinker()
 
     try {

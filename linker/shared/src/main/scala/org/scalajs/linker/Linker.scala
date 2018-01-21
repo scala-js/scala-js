@@ -20,7 +20,7 @@ import org.scalajs.linker.irio._
  *  module initializers, link them together, and write the output to a writable
  *  .js file.
  */
-trait GenLinker {
+abstract class Linker private[linker] () {
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
       output: WritableVirtualJSFile, logger: Logger): Unit
