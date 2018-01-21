@@ -87,7 +87,7 @@ object ModuleInitializer {
         mainMethodName + "__AT__V", args)
   }
 
-  def toSymbolRequirement(
+  private[linker] def toSymbolRequirement(
       entryPoints: Seq[ModuleInitializer]): SymbolRequirement = {
     val factory = SymbolRequirement.factory("module initializers")
     val requirements = for (entryPoint <- entryPoints) yield {
