@@ -24,7 +24,6 @@ import Types._
 import org.scalajs.logging._
 
 import org.scalajs.linker._
-import org.scalajs.linker.analyzer.SymbolRequirement
 import org.scalajs.linker.backend.emitter.LongImpl
 import org.scalajs.linker.standard._
 

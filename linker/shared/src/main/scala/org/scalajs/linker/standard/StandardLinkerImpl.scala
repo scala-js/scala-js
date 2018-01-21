@@ -17,7 +17,6 @@ import org.scalajs.logging.Logger
 import org.scalajs.io._
 
 import org.scalajs.linker._
-import org.scalajs.linker.analyzer.SymbolRequirement
 import org.scalajs.linker.frontend.LinkerFrontend
 import org.scalajs.linker.frontend.optimizer.IncOptimizer
 import org.scalajs.linker.backend.{LinkerBackend, BasicLinkerBackend}

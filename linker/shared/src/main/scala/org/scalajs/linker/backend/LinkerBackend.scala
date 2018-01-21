@@ -18,7 +18,6 @@ import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
-import org.scalajs.linker.analyzer.SymbolRequirement
 
 /** A backend of the Scala.js linker. Produces a
  *  [[org.scalajs.io.VirtualJSFile VirtualJSFile]].

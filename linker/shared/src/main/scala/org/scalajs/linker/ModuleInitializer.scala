@@ -11,8 +11,6 @@ package org.scalajs.linker
 import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Types.ClassType
 
-import org.scalajs.linker.analyzer.SymbolRequirement
-
 /** A module initializer for a Scala.js application.
  *
  *  When linking a Scala.js application, a sequence of `ModuleInitializer`s can
@@ -88,8 +86,8 @@ object ModuleInitializer {
   }
 
   private[linker] def toSymbolRequirement(
-      entryPoints: Seq[ModuleInitializer]): SymbolRequirement = {
-    val factory = SymbolRequirement.factory("module initializers")
+      entryPoints: Seq[ModuleInitializer]): standard.SymbolRequirement = {
+    val factory = standard.SymbolRequirement.factory("module initializers")
     val requirements = for (entryPoint <- entryPoints) yield {
       entryPoint match {
         case VoidMainMethod(moduleClassName, mainMethodName) =>

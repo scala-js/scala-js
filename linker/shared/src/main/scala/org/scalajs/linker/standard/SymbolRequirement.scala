@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package org.scalajs.linker.analyzer
+package org.scalajs.linker.standard
 
 sealed trait SymbolRequirement {
   final def ++(that: SymbolRequirement): SymbolRequirement =
@@ -91,7 +91,7 @@ object SymbolRequirement {
     }
   }
 
-  private[analyzer] object Nodes {
+  private[linker] object Nodes {
     case class AccessModule(origin: String, moduleName: String) extends SymbolRequirement
     case class InstantiateClass(origin: String, className: String,
         constructor: String) extends SymbolRequirement

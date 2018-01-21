@@ -12,8 +12,7 @@ package org.scalajs.linker.backend
 import org.scalajs.logging.Logger
 import org.scalajs.io.WritableVirtualJSFile
 
-import org.scalajs.linker.standard.LinkingUnit
-import org.scalajs.linker.analyzer.SymbolRequirement
+import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.emitter.Emitter
 
 import org.scalajs.linker.backend.javascript.{

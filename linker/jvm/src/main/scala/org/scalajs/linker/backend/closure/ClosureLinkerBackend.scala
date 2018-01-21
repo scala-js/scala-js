@@ -23,7 +23,6 @@ import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
-import org.scalajs.linker.analyzer.SymbolRequirement
 import org.scalajs.linker.backend._
 import org.scalajs.linker.backend.emitter.Emitter
 

@@ -13,7 +13,6 @@ import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
-import org.scalajs.linker.analyzer.SymbolRequirement
 import org.scalajs.linker.frontend.optimizer.{GenIncOptimizer, IncOptimizer}
 import org.scalajs.linker.irio._
 
