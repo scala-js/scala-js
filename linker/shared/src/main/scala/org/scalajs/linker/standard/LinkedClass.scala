@@ -66,7 +66,37 @@ final class LinkedClass(
 
   def fullName: String = Definitions.decodeClassName(encodedName)
 
-  def copy(
+  private[linker] def refined(
+      kind: ClassKind,
+      fields: List[FieldDef],
+      staticMethods: List[Versioned[MethodDef]],
+      memberMethods: List[Versioned[MethodDef]],
+      hasInstances: Boolean,
+      hasInstanceTests: Boolean,
+      hasRuntimeTypeInfo: Boolean
+  ): LinkedClass = {
+    copy(
+        kind = kind,
+        fields = fields,
+        staticMethods = staticMethods,
+        memberMethods = memberMethods,
+        hasInstances = hasInstances,
+        hasInstanceTests = hasInstanceTests,
+        hasRuntimeTypeInfo = hasRuntimeTypeInfo
+    )
+  }
+
+  private[linker] def optimized(
+      staticMethods: List[Versioned[MethodDef]],
+      memberMethods: List[Versioned[MethodDef]]
+  ): LinkedClass = {
+    copy(
+        staticMethods = staticMethods,
+        memberMethods = memberMethods
+    )
+  }
+
+  private def copy(
       name: Ident = this.name,
       kind: ClassKind = this.kind,
       jsClassCaptures: Option[List[ParamDef]] = this.jsClassCaptures,

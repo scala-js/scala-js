@@ -92,7 +92,7 @@ final class Refiner(config: CommonPhaseConfig) {
       if (info.isModuleAccessed) classDef.kind
       else classDef.kind.withoutModuleAccessor
 
-    classDef.copy(
+    classDef.refined(
         kind = kind,
         fields = fields,
         staticMethods = staticMethods,

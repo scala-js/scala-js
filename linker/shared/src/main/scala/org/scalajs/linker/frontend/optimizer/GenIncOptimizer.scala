@@ -120,7 +120,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
           if (linkedClass.kind == ClassKind.Interface) getDefaults(encodedName)
           else getClass(encodedName)
 
-        linkedClass.copy(
+        linkedClass.optimized(
             staticMethods = defs(getStaticsNamespace(encodedName)),
             memberMethods = defs(memberNamespace))
       }
