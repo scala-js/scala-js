@@ -926,7 +926,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       val allParams = List(
           js.ObjectConstr(List(js.Ident(className) -> js.IntLiteral(0))),
           js.BooleanLiteral(kind == ClassKind.Interface),
-          js.StringLiteral(semantics.runtimeClassNameMapper(tree)),
+          js.StringLiteral(semantics.runtimeClassNameMapper(tree.fullName)),
           ancestorsRecord,
           isRawJSTypeParam,
           parentData,
