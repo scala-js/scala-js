@@ -9,8 +9,6 @@
 
 package org.scalajs.linker
 
-import scala.collection.immutable.Traversable
-
 import CheckedBehavior._
 
 final class Semantics private (

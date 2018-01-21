@@ -16,6 +16,7 @@ import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types.Type
 
 import org.scalajs.linker._
+import org.scalajs.linker.standard._
 
 private[emitter] final class KnowledgeGuardian {
   import KnowledgeGuardian._

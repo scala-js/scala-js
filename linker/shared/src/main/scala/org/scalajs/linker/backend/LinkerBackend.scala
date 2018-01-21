@@ -33,21 +33,22 @@ abstract class LinkerBackend(protected val config: LinkerBackend.Config) {
   /** Symbols this backend needs to be present in the linking unit. */
   val symbolRequirements: SymbolRequirement
 
-  /** Emit the given [[LinkingUnit]] to the target output.
+  /** Emit the given [[standard.LinkingUnit LinkingUnit]] to the target output.
    *
    *  The linking unit given to `emit` must:
    *
    *  - have the same `coreSpec` as this linker backend, and
    *  - contain the symbols listed in [[symbolRequirements]].
    *
-   *  @param unit [[LinkingUnit]] to emit
+   *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
    *  @param output File to write to
    *  @param logger Logger to use
    */
   def emit(unit: LinkingUnit, output: WritableVirtualJSFile,
       logger: Logger): Unit
 
-  /** Verify that a [[LinkingUnit]] can be processed by this [[LinkerBackend]].
+  /** Verify that a [[standard.LinkingUnit LinkingUnit]] can be processed by
+   *  this [[LinkerBackend]].
    *
    *  Currently, this only tests that the linking unit core specification
    *  matches [[coreSpec]].

@@ -29,7 +29,9 @@ import org.scalajs.linker.backend.emitter.LongImpl
 import org.scalajs.linker.standard._
 
 /** Incremental optimizer.
- *  An incremental optimizer optimizes a [[LinkingUnit]] in an incremental way.
+ *
+ *  An incremental optimizer optimizes a [[standard.LinkingUnit LinkingUnit]]
+ *  in an incremental way.
  *
  *  It maintains state between runs to do a minimal amount of work on every
  *  run, based on detecting what parts of the program must be re-optimized,

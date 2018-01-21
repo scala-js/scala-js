@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package org.scalajs.linker
+package org.scalajs.linker.standard
 
 import scala.language.implicitConversions
 
@@ -16,14 +16,16 @@ import java.util.concurrent.atomic.AtomicBoolean
 import org.scalajs.logging.Logger
 import org.scalajs.io._
 
+import org.scalajs.linker._
 import org.scalajs.linker.analyzer.SymbolRequirement
 import org.scalajs.linker.frontend.LinkerFrontend
 import org.scalajs.linker.frontend.optimizer.IncOptimizer
 import org.scalajs.linker.backend.{LinkerBackend, BasicLinkerBackend}
 import org.scalajs.linker.irio._
 
-/** The Scala.js linker */
-final class Linker private (frontend: LinkerFrontend, backend: LinkerBackend)
+/** Standard implementation of a Scala.js linker. */
+private final class StandardLinkerImpl private (
+    frontend: LinkerFrontend, backend: LinkerBackend)
     extends GenLinker {
 
   require(frontend.coreSpec == backend.coreSpec,
@@ -65,7 +67,7 @@ final class Linker private (frontend: LinkerFrontend, backend: LinkerBackend)
   }
 }
 
-object Linker {
-  def apply(frontend: LinkerFrontend, backend: LinkerBackend): Linker =
-    new Linker(frontend, backend)
+object StandardLinkerImpl {
+  def apply(frontend: LinkerFrontend, backend: LinkerBackend): GenLinker =
+    new StandardLinkerImpl(frontend, backend)
 }

@@ -19,7 +19,7 @@ import org.scalajs.linker.backend.LinkerBackend
 object StandardLinker {
   import StandardLinkerPlatformExtensions._
 
-  def apply(config: Config): Linker = {
+  def apply(config: Config): GenLinker = {
     val coreSpec = CoreSpec(
         config.semantics,
         config.moduleKind,
@@ -42,7 +42,8 @@ object StandardLinker {
       .withClosureCompilerIfAvailable(config.closureCompilerIfAvailable)
       .withPrettyPrint(config.prettyPrint)
 
-    Linker(LinkerFrontend(frontendConfig), LinkerBackend(backendConfig))
+    StandardLinkerImpl(LinkerFrontend(frontendConfig),
+        LinkerBackend(backendConfig))
   }
 
   implicit def configExt(config: Config): ConfigExt =

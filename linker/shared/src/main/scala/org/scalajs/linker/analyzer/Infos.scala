@@ -17,7 +17,6 @@ import org.scalajs.ir.Traversers._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
-import org.scalajs.linker.LinkedClass
 import org.scalajs.linker.backend.emitter.Transients._
 
 object Infos {

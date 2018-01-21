@@ -17,13 +17,15 @@ import org.scalajs.linker.analyzer.SymbolRequirement
 import org.scalajs.linker.frontend.optimizer.{GenIncOptimizer, IncOptimizer}
 import org.scalajs.linker.irio._
 
-/** The frontend of the Scala.js linker. Produces a [[LinkingUnit]]
+/** The frontend of the Scala.js linker.
+ *
+ *  Produces a [[standard.LinkingUnit LinkingUnit]].
  *
  *  You probably want to use an instance of [[linker.Linker]], rather than this
  *  low-level class.
  *
- *  Attention: [[LinkerFrontend]] does not cache the IR input. It is advisable to do
- *  so, unless all IR is already in memory.
+ *  Attention: [[LinkerFrontend]] does not cache the IR input. It is advisable
+ *  to do so, unless all IR is already in memory.
  */
 final class LinkerFrontend private (config: LinkerFrontend.Config) {
 
@@ -38,7 +40,9 @@ final class LinkerFrontend private (config: LinkerFrontend.Config) {
 
   private[this] val refiner: Refiner = new Refiner(config.commonConfig)
 
-  /** Link and optionally optimize the given IR to a [[LinkingUnit]]. */
+  /** Link and optionally optimize the given IR to a
+   *  [[standard.LinkingUnit LinkingUnit]].
+   */
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit = {

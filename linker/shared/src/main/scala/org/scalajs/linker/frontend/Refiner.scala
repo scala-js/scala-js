@@ -19,7 +19,8 @@ import org.scalajs.linker._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.analyzer._
 
-/** Does a dead code elimination pass on [[LinkedClass]]es */
+/** Does a dead code elimination pass on a [[standard.LinkingUnit LinkingUnit]].
+ */
 final class Refiner(config: CommonPhaseConfig) {
   import Refiner._
 

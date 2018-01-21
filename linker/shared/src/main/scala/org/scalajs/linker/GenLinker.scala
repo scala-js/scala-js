@@ -12,7 +12,6 @@ package org.scalajs.linker
 import org.scalajs.logging.Logger
 import org.scalajs.io._
 
-import org.scalajs.linker.analyzer.SymbolRequirement
 import org.scalajs.linker.irio._
 
 /** A Scala.js linker, with its most abstract API.

@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package org.scalajs.linker
+package org.scalajs.linker.standard
 
 import scala.collection.mutable
 
