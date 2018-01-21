@@ -166,7 +166,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       withScopedVars(
           currentClassSym := clsSym,
           unexpectedMutatedFields := mutable.Set.empty,
-          generatedSAMWrapperCount := null,
+          generatedSAMWrapperCount := new VarBox(0),
           currentMethodSym := null,
           thisLocalVarInfo := null,
           fakeTailJumpParamRepl := null,
