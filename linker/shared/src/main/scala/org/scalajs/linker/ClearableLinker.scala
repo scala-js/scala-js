@@ -28,12 +28,6 @@ final class ClearableLinker(newLinker: () => GenLinker, batchMode: Boolean)
 
   private[this] var _linker: GenLinker = _
 
-  def linkUnit(irFiles: Seq[VirtualScalaJSIRFile],
-      moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit = {
-    linkerOp(_.linkUnit(irFiles, moduleInitializers, symbolRequirements, logger))
-  }
-
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
       output: WritableVirtualJSFile, logger: Logger): Unit = {

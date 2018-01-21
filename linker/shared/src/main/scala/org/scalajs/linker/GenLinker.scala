@@ -15,15 +15,13 @@ import org.scalajs.io._
 import org.scalajs.linker.analyzer.SymbolRequirement
 import org.scalajs.linker.irio._
 
-/** Common supertrait of [[Linker]] and [[ClearableLinker]].
+/** A Scala.js linker, with its most abstract API.
  *
- *  Essentially anything that has the `link` and `linkUnit` methods.
+ *  A linker can take a sequence of virtual .sjsir files and a sequence of
+ *  module initializers, link them together, and write the output to a writable
+ *  .js file.
  */
 trait GenLinker {
-  def linkUnit(irFiles: Seq[VirtualScalaJSIRFile],
-      moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit
-
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
       output: WritableVirtualJSFile, logger: Logger): Unit
