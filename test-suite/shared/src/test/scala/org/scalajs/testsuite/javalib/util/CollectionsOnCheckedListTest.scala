@@ -47,9 +47,9 @@ trait CollectionsCheckedListTest
   @Test def testCheckedList(): Unit = {
     superList().add(0, new C)
     assertTrue(superList().addAll(0, Seq(new C)))
-    testOnFirstPositionOfIterator[ju.ListIterator[A]](superList().listIterator,
+    testOnFirstPositionOfIterator[ju.ListIterator[A]](superList().listIterator _,
         _.add(new C), None)
-    testOnFirstPositionOfIterator[ju.ListIterator[A]](superList().listIterator,
+    testOnFirstPositionOfIterator[ju.ListIterator[A]](superList().listIterator _,
         _.set(new C), None)
   }
 
@@ -60,10 +60,10 @@ trait CollectionsCheckedListTest
     expectThrows(classOf[ClassCastException],
         superList().addAll(0, Seq(new A)))
     testOnFirstPositionOfIterator[ju.ListIterator[A]](
-        superList().listIterator,
+        superList().listIterator _,
         _.add(new A), Some(classOf[ClassCastException]))
     testOnFirstPositionOfIterator[ju.ListIterator[A]](
-        superList().listIterator,
+        superList().listIterator _,
         _.set(new A), Some(classOf[ClassCastException]))
   }
 
