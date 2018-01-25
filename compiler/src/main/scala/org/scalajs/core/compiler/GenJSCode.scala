@@ -1664,7 +1664,16 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           initialThis match {
             case Ident(_) =>
-              // TODO Is this special-case really needed?
+              /* This case happens in trait implementation classes, until
+               * Scala 2.11. In the method, all usages of `this` have been
+               * replaced by the method's formal parameter `$this`. However,
+               * there is still a declaration of the pseudo local variable
+               * `_$this`, which is used in the param list of the label. We
+               * need to remember it now, so that when we build the JS version
+               * of the formal params for the label, we can redirect the
+               * assignment to `$this` instead of the otherwise unused
+               * `_$this`.
+               */
               withScopedVars(
                 fakeTailJumpParamRepl := (thisDef.symbol, initialThis.symbol)
               ) {
