@@ -13,8 +13,8 @@ import scala.language.implicitConversions
 import java.net.URI
 
 import org.scalajs.linker.standard._
-import org.scalajs.linker.frontend.LinkerFrontend
-import org.scalajs.linker.backend.LinkerBackend
+import org.scalajs.linker.frontend.LinkerFrontendImpl
+import org.scalajs.linker.backend.LinkerBackendImpl
 
 object StandardLinker {
   import StandardLinkerPlatformExtensions._
@@ -30,20 +30,20 @@ object StandardLinker {
       .withParallel(config.parallel)
       .withBatchMode(config.batchMode)
 
-    val frontendConfig = LinkerFrontend.Config()
+    val frontendConfig = LinkerFrontendImpl.Config()
       .withCommonConfig(commonConfig)
       .withCheckIR(config.checkIR)
       .withOptimizer(config.optimizer)
 
-    val backendConfig = LinkerBackend.Config()
+    val backendConfig = LinkerBackendImpl.Config()
       .withCommonConfig(commonConfig)
       .withSourceMap(config.sourceMap)
       .withRelativizeSourceMapBase(config.relativizeSourceMapBase)
       .withClosureCompilerIfAvailable(config.closureCompilerIfAvailable)
       .withPrettyPrint(config.prettyPrint)
 
-    StandardLinkerImpl(LinkerFrontend(frontendConfig),
-        LinkerBackend(backendConfig))
+    StandardLinkerImpl(LinkerFrontendImpl(frontendConfig),
+        LinkerBackendImpl(backendConfig))
   }
 
   implicit def configExt(config: Config): ConfigExt =

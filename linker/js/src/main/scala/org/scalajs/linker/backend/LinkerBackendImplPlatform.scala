@@ -8,20 +8,9 @@
 
 package org.scalajs.linker.backend
 
-import org.scalajs.linker.backend.closure.ClosureLinkerBackend
+private[backend] object LinkerBackendImplPlatform {
+  import LinkerBackendImpl.Config
 
-object LinkerBackendPlatformExtensions {
-  import LinkerBackend.Config
-
-  final class ConfigExt private[backend] (val __private_self: Config)
-      extends AnyVal {
-
-    @inline private def self: Config = __private_self
-
-    /** Whether to actually use the Google Closure Compiler pass. */
-    def closureCompiler: Boolean = self.closureCompilerIfAvailable
-
-    def withClosureCompiler(closureCompiler: Boolean): Config =
-      self.withClosureCompilerIfAvailable(closureCompiler)
-  }
+  def createLinkerBackend(config: Config): LinkerBackendImpl =
+    new BasicLinkerBackend(config)
 }

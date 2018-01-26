@@ -6,19 +6,17 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-package org.scalajs.linker.backend
+package org.scalajs.linker.frontend
 
-object LinkerBackendPlatformExtensions {
-  import LinkerBackend.Config
+import org.scalajs.linker.frontend.optimizer._
 
-  final class ConfigExt private[backend] (private val self: Config)
-      extends AnyVal {
+private[frontend] object LinkerFrontendImplPlatform {
+  import LinkerFrontendImpl.Config
 
-    /** Whether to actually use the Google Closure Compiler pass.
-     *
-     *  On the JavaScript platform, this always returns `false`, as GCC is not
-     *  available.
-     */
-    def closureCompiler: Boolean = false
+  def createOptimizer(config: Config): Option[GenIncOptimizer] = {
+    if (!config.optimizer)
+      None
+    else
+      Some(new IncOptimizer(config.commonConfig))
   }
 }
