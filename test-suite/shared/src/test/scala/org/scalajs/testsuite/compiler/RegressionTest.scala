@@ -691,6 +691,56 @@ class RegressionTest {
     assertEquals(15, new Child().bar(1, 0))
   }
 
+  @Test def tailrec_in_trait_with_self_type_scala_2_12_issue_3267(): Unit = {
+    class Parser {
+      def c(): Int = 65
+    }
+
+    trait Helpers { this: Parser =>
+      @tailrec
+      final def rec(i: Int): Int = {
+        if (i == 0) b() + c()
+        else rec(i - 1)
+      }
+
+      def b(): Int = 42
+    }
+
+    class ParserWithoutHelpers extends Parser {
+      def foo(): Int = 5
+    }
+
+    class ParserWithHelpers extends Parser with Helpers
+
+    assertEquals(5, new ParserWithoutHelpers().foo())
+    assertEquals(107, new ParserWithHelpers().rec(3))
+  }
+
+  @Test def tailrec_in_class_with_self_type_scala_2_12_issue_3267(): Unit = {
+    trait Parser {
+      def c(): Int = 65
+    }
+
+    class Helpers { this: Parser =>
+      @tailrec
+      final def rec(i: Int): Int = {
+        if (i == 0) b() + c()
+        else rec(i - 1)
+      }
+
+      def b(): Int = 42
+    }
+
+    class ParserWithoutHelpers extends Parser {
+      def foo(): Int = 5
+    }
+
+    class ParserWithHelpers extends Helpers with Parser
+
+    assertEquals(5, new ParserWithoutHelpers().foo())
+    assertEquals(107, new ParserWithHelpers().rec(3))
+  }
+
 }
 
 object RegressionTest {

@@ -25,7 +25,10 @@ object BinaryIncompatibilities {
   val SbtPlugin = Seq(
   )
 
-  val TestAdapter = Seq(
+  val TestCommon = Seq(
+  )
+
+  val TestAdapter = TestCommon ++ Seq(
   )
 
   val CLI = Seq(
@@ -34,6 +37,6 @@ object BinaryIncompatibilities {
   val Library = Seq(
   )
 
-  val TestInterface = Seq(
+  val TestInterface = TestCommon ++ Seq(
   )
 }

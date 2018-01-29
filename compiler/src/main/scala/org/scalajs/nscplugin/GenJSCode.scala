@@ -136,7 +136,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Per method body
     private val currentMethodSym = new ScopedVar[Symbol]
-    private val thisLocalVarInfo = new ScopedVar[Option[(js.Ident, jstpe.Type)]]
+    private val thisLocalVarIdent = new ScopedVar[Option[js.Ident]]
     private val fakeTailJumpParamRepl = new ScopedVar[(Symbol, Symbol)]
     private val enclosingLabelDefParams = new ScopedVar[Map[Symbol, List[Symbol]]]
     private val isModuleInitialized = new ScopedVar[VarBox[Boolean]]
@@ -181,9 +181,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       withScopedVars(
           currentClassSym := clsSym,
           unexpectedMutatedFields := mutable.Set.empty,
-          generatedSAMWrapperCount := null,
+          generatedSAMWrapperCount := new VarBox(0),
           currentMethodSym := null,
-          thisLocalVarInfo := null,
+          thisLocalVarIdent := null,
           fakeTailJumpParamRepl := null,
           enclosingLabelDefParams := null,
           isModuleInitialized := null,
@@ -1481,7 +1481,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       withScopedVars(
           currentMethodSym          := sym,
-          thisLocalVarInfo          := None,
+          thisLocalVarIdent         := None,
           fakeTailJumpParamRepl     := (NoSymbol, NoSymbol),
           enclosingLabelDefParams   := Map.empty,
           isModuleInitialized       := new VarBox(false),
@@ -1731,7 +1731,16 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           initialThis match {
             case Ident(_) =>
-              // TODO Is this special-case really needed?
+              /* This case happens in trait implementation classes, until
+               * Scala 2.11. In the method, all usages of `this` have been
+               * replaced by the method's formal parameter `$this`. However,
+               * there is still a declaration of the pseudo local variable
+               * `_$this`, which is used in the param list of the label. We
+               * need to remember it now, so that when we build the JS version
+               * of the formal params for the label, we can redirect the
+               * assignment to `$this` instead of the otherwise unused
+               * `_$this`.
+               */
               withScopedVars(
                 fakeTailJumpParamRepl := (thisDef.symbol, initialThis.symbol)
               ) {
@@ -1744,15 +1753,33 @@ abstract class GenJSCode extends plugins.PluginComponent
                 mutableLocalVars += thisSym
 
               val thisLocalIdent = encodeLocalSym(thisSym)
-              val thisLocalType = toIRType(thisSym.tpe)
+              val thisLocalType = currentClassType
 
-              val genRhs = genExpr(initialThis)
+              val genRhs = {
+                /* #3267 In default methods, scalac will type its _$this
+                 * pseudo-variable as the *self-type* of the enclosing class,
+                 * instead of the enclosing class type itself. However, it then
+                 * considers *usages* of _$this as if its type were the
+                 * enclosing class type. The latter makes sense, since it is
+                 * compiled as `this` in the bytecode, which necessarily needs
+                 * to be the enclosing class type. Only the declared type of
+                 * _$this is wrong.
+                 *
+                 * In our case, since we generate an actual local variable for
+                 * _$this, we must make sure to type it correctly, as the
+                 * enclosing class type. However, this means the rhs of the
+                 * ValDef does not match, which is why we have to adapt it
+                 * here.
+                 */
+                forceAdapt(genExpr(initialThis), thisLocalType)
+              }
+
               val thisLocalVarDef = js.VarDef(thisLocalIdent,
                   thisLocalType, thisSym.isMutable, genRhs)
 
               val innerBody = {
                 withScopedVars(
-                  thisLocalVarInfo := Some((thisLocalIdent, thisLocalType))
+                  thisLocalVarIdent := Some(thisLocalIdent)
                 ) {
                   genInnerBody()
                 }
@@ -1772,7 +1799,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (currentClassSym.isImplClass) {
             val thisParam = jsParams.head
             withScopedVars(
-                thisLocalVarInfo := Some((thisParam.name, thisParam.ptpe))
+                thisLocalVarIdent := Some(thisParam.name)
             ) {
               genBody()
             }
@@ -1787,7 +1814,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         val thisLocalIdent = freshLocalIdent("this")
         withScopedVars(
-          thisLocalVarInfo := Some((thisLocalIdent, jstpe.AnyType))
+          thisLocalVarIdent := Some(thisLocalIdent)
         ) {
           val thisParamDef = js.ParamDef(thisLocalIdent,
               jstpe.AnyType, mutable = false, rest = false)
@@ -1795,6 +1822,32 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.MethodDef(static = true, methodName, thisParamDef :: jsParams,
               resultIRType, Some(genBody()))(
               optimizerHints, None)
+        }
+      }
+    }
+
+    /** Forces the given `tree` to a given type by adapting it.
+     *
+     *  @param tree
+     *    The tree to adapt.
+     *  @param tpe
+     *    The target type, which must be either `AnyType` or `ClassType(_)`.
+     */
+    private def forceAdapt(tree: js.Tree, tpe: jstpe.Type): js.Tree = {
+      if (tree.tpe == tpe || tpe == jstpe.AnyType) {
+        tree
+      } else {
+        /* Remove the useless cast that scalac's erasure had to introduce to
+         * work around their own ill-typed _$this. Note that the optimizer will
+         * not be able to do that, since it won't be able to prove that the
+         * underlying expression is indeed an instance of `tpe`.
+         */
+        tree match {
+          case js.AsInstanceOf(underlying, _) if underlying.tpe == tpe =>
+            underlying
+          case _ =>
+            val cls = tpe.asInstanceOf[jstpe.ClassType].className
+            js.AsInstanceOf(tree, jstpe.ClassRef(cls))(tree.pos)
         }
       }
     }
@@ -1871,7 +1924,10 @@ abstract class GenJSCode extends plugins.PluginComponent
         /** Local val or var declaration */
         case ValDef(_, name, _, rhs) =>
           /* Must have been eliminated by the tail call transform performed
-           * by genMethodDef(). */
+           * by genMethodDef().
+           * If you ever change/remove this assertion, you need to update
+           * genEnclosingLabelApply() regarding `nme.THIS`.
+           */
           assert(name != nme.THIS,
               s"ValDef(_, nme.THIS, _, _) found at ${tree.pos}")
 
@@ -2092,15 +2148,21 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  is one.
      */
     private def genThis()(implicit pos: Position): js.Tree = {
-      thisLocalVarInfo.fold[js.Tree] {
+      thisLocalVarIdent.fold[js.Tree] {
         if (tryingToGenMethodAsJSFunction) {
           throw new CancelGenMethodAsJSFunction(
               "Trying to generate `this` inside the body")
         }
         js.This()(currentClassType)
-      } { case (thisLocalVarIdent, thisLocalVarTpe) =>
+      } { thisLocalIdent =>
         // .copy() to get the correct position
-        js.VarRef(thisLocalVarIdent.copy())(thisLocalVarTpe)
+        val tpe = {
+          if (currentClassSym.isImplClass)
+            encodeClassType(traitOfImplClass(currentClassSym))
+          else
+            currentClassType
+        }
+        js.VarRef(thisLocalIdent.copy())(tpe)
       }
     }
 
@@ -2605,23 +2667,49 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // Prepare quadruplets of (formalArg, irType, tempVar, actualArg)
       // Do not include trivial assignments (when actualArg == formalArg)
-      val formalArgs = enclosingLabelDefParams(sym)
-      val actualArgs = args map genExpr
       val quadruplets = {
-        for {
-          (formalArgSym, actualArg) <- formalArgs zip actualArgs
-          formalArg = encodeLocalSym(formalArgSym)
-          if (actualArg match {
-            case js.VarRef(`formalArg`) => false
-            case _                      => true
-          })
-        } yield {
-          mutatedLocalVars += formalArgSym
-          val tpe = toIRType(formalArgSym.tpe)
-          (js.VarRef(formalArg)(tpe), tpe,
-              freshLocalIdent("temp$" + formalArg.name),
-              actualArg)
+        val formalArgs = enclosingLabelDefParams(sym)
+        val quadruplets =
+          List.newBuilder[(js.VarRef, jstpe.Type, js.Ident, js.Tree)]
+
+        for ((formalArgSym, arg) <- formalArgs.zip(args)) {
+          val formalArg = encodeLocalSym(formalArgSym)
+          val actualArg = genExpr(arg)
+
+          /* #3267 The formal argument representing the special `this` of a
+           * tailrec method can have the wrong type in the scalac symbol table.
+           * We need to patch it up, along with the actual argument, to be the
+           * enclosing class type.
+           * See the longer comment in genMethodDef() for more details.
+           *
+           * Note that only testing the `name` against `nme.THIS` is safe,
+           * given that `genStatOrExpr()` for `ValDef` asserts that no local
+           * variable named `nme.THIS` can happen, other than the ones
+           * generated for tailrec methods.
+           */
+          val isTailJumpThisLocalVar = formalArgSym.name == nme.THIS
+
+          val tpe =
+            if (isTailJumpThisLocalVar) currentClassType
+            else toIRType(formalArgSym.tpe)
+
+          val fixedActualArg =
+            if (isTailJumpThisLocalVar) forceAdapt(actualArg, tpe)
+            else actualArg
+
+          actualArg match {
+            case js.VarRef(`formalArg`) =>
+              // This is trivial assignment, we don't need it
+
+            case _ =>
+              mutatedLocalVars += formalArgSym
+              quadruplets += ((js.VarRef(formalArg)(tpe), tpe,
+                  freshLocalIdent("temp$" + formalArg.name),
+                  fixedActualArg))
+          }
         }
+
+        quadruplets.result()
       }
 
       // The actual jump (continue labelDefIdent;)
@@ -5540,10 +5628,11 @@ abstract class GenJSCode extends plugins.PluginComponent
     sym.hasAnnotation(JSNativeAnnotation)
 
   /** Tests whether the given class is the impl class of a raw JS trait. */
-  private def isRawJSImplClass(sym: Symbol): Boolean = {
-    sym.isImplClass &&
-    isJSType(sym.owner.info.decl(sym.name.dropRight(nme.IMPL_CLASS_SUFFIX.length)))
-  }
+  private def isRawJSImplClass(sym: Symbol): Boolean =
+    sym.isImplClass && isJSType(traitOfImplClass(sym))
+
+  private def traitOfImplClass(sym: Symbol): Symbol =
+    sym.owner.info.decl(sym.name.dropRight(nme.IMPL_CLASS_SUFFIX.length))
 
   /** Tests whether the given member is exposed, i.e., whether it was
    *  originally a public or protected member of a non-native JS class.
