@@ -1233,12 +1233,6 @@ class RuntimeLongTest {
   }
 
   @Test def divide_/(): Unit = {
-    expectThrows(classOf[ArithmeticException], lg(0) / lg(0))
-    expectThrows(classOf[ArithmeticException], lg(5, 0) / lg(0))
-    expectThrows(classOf[ArithmeticException], lg(0, 5) / lg(0))
-    expectThrows(classOf[ArithmeticException], lg(-1) / lg(0))
-    expectThrows(classOf[ArithmeticException], lg(-1, 0) / lg(0))
-
     assertEquals(IntMaxValPlus1, IntMinVal / lg(-1))
     assertEquals(lg(-1), IntMinVal / IntMaxValPlus1)
     assertEquals(IntMinVal, IntMaxValPlus1 / lg(-1))
@@ -1598,12 +1592,6 @@ class RuntimeLongTest {
   }
 
   @Test def modulo_%(): Unit = {
-    expectThrows(classOf[ArithmeticException], lg(0) % lg(0))
-    expectThrows(classOf[ArithmeticException], lg(5, 0) % lg(0))
-    expectThrows(classOf[ArithmeticException], lg(0, 5) % lg(0))
-    expectThrows(classOf[ArithmeticException], lg(-1) % lg(0))
-    expectThrows(classOf[ArithmeticException], lg(-1, 0) % lg(0))
-
     assertEquals(lg(0), IntMinVal % lg(-1))
     assertEquals(lg(0), IntMinVal % IntMaxValPlus1)
     assertEquals(lg(0), IntMaxValPlus1 % lg(-1))
