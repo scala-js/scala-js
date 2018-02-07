@@ -252,8 +252,6 @@ class MathTestOnJDK8 {
     assertEquals(-Long.MaxValue, Math.floorDiv(Long.MaxValue, -1))
     assertEquals(Long.MinValue, Math.floorDiv(Long.MinValue, 1))
     assertEquals(Long.MinValue, Math.floorDiv(Long.MinValue, -1))
-    for (n <- Seq(0L, 1L, -1L, Long.MaxValue, Long.MinValue))
-      expectThrows(classOf[ArithmeticException], Math.floorDiv(n, 0))
   }
 
   @Test def floorMod(): Unit = {
@@ -290,9 +288,6 @@ class MathTestOnJDK8 {
     assertEquals(0L, Math.floorMod(Long.MaxValue, -1L))
     assertEquals(0L, Math.floorMod(Long.MinValue, 1L))
     assertEquals(0L, Math.floorMod(Long.MinValue, -1L))
-
-    for (n <- Seq(0L, 1L, -1L, Long.MaxValue, Long.MinValue))
-      assertThrows(classOf[ArithmeticException], Math.floorMod(n, 0))
   }
 
   @Test def nextDown_for_Double(): Unit = {
