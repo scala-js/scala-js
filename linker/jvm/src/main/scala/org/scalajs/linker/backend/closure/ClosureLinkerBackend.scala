@@ -40,6 +40,10 @@ final class ClosureLinkerBackend(config: LinkerBackend.Config)
       s"Cannot use features $esFeatures with the Closure Compiler" +
       "because they contain ECMAScript 2015 features")
 
+  require(!esFeatures.allowBigIntsForLongs,
+      s"Cannot use features $esFeatures with the Closure Compiler" +
+      "because they allow to use BigInts")
+
   private[this] val emitter = {
     new Emitter(config.commonConfig)
       .withOptimizeBracketSelects(false)

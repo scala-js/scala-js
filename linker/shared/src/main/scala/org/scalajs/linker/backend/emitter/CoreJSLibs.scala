@@ -66,6 +66,9 @@ private[emitter] object CoreJSLibs {
         esFeatures.useECMAScript2015.toString()
       case "moduleKind" =>
         moduleKind.toString()
+      case "longImpl" =>
+        if (esFeatures.allowBigIntsForLongs) "BigInt"
+        else "RuntimeLong"
     }
 
     val originalLines = ScalaJSEnvLines

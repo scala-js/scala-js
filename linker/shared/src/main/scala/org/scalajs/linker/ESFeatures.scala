@@ -26,22 +26,31 @@ final class ESFeatures private (
     /** Whether to use ECMAScript 2015 features, such as classes and arrow
      *  functions.
      */
-    val useECMAScript2015: Boolean
+    val useECMAScript2015: Boolean,
+    /** EXPERIMENTAL: Whether to allow using ECMAScript `BigInt`s to implement
+     *  `Long`s.
+     */
+    val allowBigIntsForLongs: Boolean
 ) {
   import ESFeatures._
 
   private def this() = {
     this(
-        useECMAScript2015 = false
+        useECMAScript2015 = false,
+        allowBigIntsForLongs = false
     )
   }
 
   def withUseECMAScript2015(useECMAScript2015: Boolean): ESFeatures =
     copy(useECMAScript2015 = useECMAScript2015)
 
+  def withAllowBigIntsForLongs(allowBigIntsForLongs: Boolean): ESFeatures =
+    copy(allowBigIntsForLongs = allowBigIntsForLongs)
+
   override def equals(that: Any): Boolean = that match {
     case that: ESFeatures =>
-      this.useECMAScript2015 == that.useECMAScript2015
+      this.useECMAScript2015 == that.useECMAScript2015 &&
+      this.allowBigIntsForLongs == that.allowBigIntsForLongs
     case _ =>
       false
   }
@@ -49,21 +58,25 @@ final class ESFeatures private (
   override def hashCode(): Int = {
     import scala.util.hashing.MurmurHash3._
     var acc = HashSeed
-    acc = mixLast(acc, useECMAScript2015.##)
-    finalizeHash(acc, 1)
+    acc = mix(acc, useECMAScript2015.##)
+    acc = mixLast(acc, allowBigIntsForLongs.##)
+    finalizeHash(acc, 2)
   }
 
   override def toString(): String = {
     s"""ESFeatures(
-       |  useECMAScript2015 = $useECMAScript2015
+       |  useECMAScript2015 = $useECMAScript2015,
+       |  allowBigIntsForLongs = $allowBigIntsForLongs
        |)""".stripMargin
   }
 
   private def copy(
-      useECMAScript2015: Boolean = this.useECMAScript2015
+      useECMAScript2015: Boolean = this.useECMAScript2015,
+      allowBigIntsForLongs: Boolean = this.allowBigIntsForLongs
   ): ESFeatures = {
     new ESFeatures(
-        useECMAScript2015 = useECMAScript2015
+        useECMAScript2015 = useECMAScript2015,
+        allowBigIntsForLongs = allowBigIntsForLongs
     )
   }
 }
@@ -75,6 +88,7 @@ object ESFeatures {
   /** Default configuration of ECMAScript features.
    *
    *  - `useECMAScript2015`: false
+   *  - `allowBigIntsForLongs`: false
    */
   val Defaults: ESFeatures = new ESFeatures()
 }

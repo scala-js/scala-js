@@ -37,6 +37,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   val useArrowFunctions = esFeatures.useECMAScript2015
 
+  val useBigIntForLongs = esFeatures.allowBigIntsForLongs
+
   def genZeroOf(tpe: Type)(implicit pos: Position): Tree = {
     tpe match {
       case BooleanType => BooleanLiteral(false)
@@ -53,8 +55,12 @@ private[emitter] final class JSGen(val semantics: Semantics,
     }
   }
 
-  def genLongZero()(implicit pos: Position): Tree =
-    envField("L0")
+  def genLongZero()(implicit pos: Position): Tree = {
+    if (useBigIntForLongs)
+      BigIntLiteral(0L)
+    else
+      envField("L0")
+  }
 
   def genLongModuleApply(methodName: String, args: Tree*)(
       implicit pos: Position): Tree = {
@@ -107,7 +113,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     typeRef match {
       case ClassRef(className0) =>
         val className =
-          if (className0 == BoxedLongClass) LongImpl.RuntimeLongClass
+          if (className0 == BoxedLongClass && !useBigIntForLongs) LongImpl.RuntimeLongClass
           else className0
 
         if (HijackedClasses.contains(className) && className != BoxedStringClass) {
@@ -119,6 +125,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
               case BoxedByteClass      => genCallHelper("isByte", expr)
               case BoxedShortClass     => genCallHelper("isShort", expr)
               case BoxedIntegerClass   => genCallHelper("isInt", expr)
+              case BoxedLongClass      => genCallHelper("isLong", expr)
               case BoxedFloatClass     => genCallHelper("isFloat", expr)
               case BoxedDoubleClass    => typeof(expr) === "number"
             }
@@ -130,6 +137,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
               case BoxedByteClass      => genCallHelper("asByte", expr)
               case BoxedShortClass     => genCallHelper("asShort", expr)
               case BoxedIntegerClass   => genCallHelper("asInt", expr)
+              case BoxedLongClass      => genCallHelper("asLong", expr)
               case BoxedFloatClass     => genCallHelper("asFloat", expr)
               case BoxedDoubleClass    => genCallHelper("asDouble", expr)
             }

@@ -702,15 +702,18 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
                     obj DOT "$classData" DOT "ancestors")
               }
 
+              def typeOfTest(typeString: String): js.Tree =
+                js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral(typeString)
+
               if (isAncestorOfString)
-                test = test || (
-                    js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string"))
-              if (isAncestorOfHijackedNumberClass)
-                test = test || (
-                    js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("number"))
+                test = test || typeOfTest("string")
+              if (isAncestorOfHijackedNumberClass) {
+                test = test || typeOfTest("number")
+                if (useBigIntForLongs)
+                  test = test || genCallHelper("isLong", obj)
+              }
               if (isAncestorOfBoxedBooleanClass)
-                test = test || (
-                    js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("boolean"))
+                test = test || typeOfTest("boolean")
               if (isAncestorOfBoxedCharacterClass)
                 test = test || genCallHelper("isChar", obj)
               if (isAncestorOfBoxedUnitClass)
