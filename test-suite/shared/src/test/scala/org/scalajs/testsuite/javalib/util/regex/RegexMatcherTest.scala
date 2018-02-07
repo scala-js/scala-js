@@ -404,10 +404,5 @@ class RegexMatcherTest  {
     if (!executingInJVM)
       assertThrows(classOf[Exception], ms group "Ape")
     assertFalse(ms.hasNext)
-
-    if (!executingInJVM) {
-      assertThrows(classOf[Exception], new Regex("a(?<Bee>b*)c"))
-      assertThrows(classOf[Exception], Pattern.compile("a(?<Bee>b*)c"))
-    }
   }
 }
