@@ -1,8 +1,59 @@
+// Check whether the job was started by a timer
+// See https://hopstorawpointers.blogspot.ch/2016/10/performing-nightly-build-steps-with.html
+@NonCPS
+def isJobStartedByTimer() {
+  def startedByTimer = false
+  def buildCauses = currentBuild.rawBuild.getCauses()
+  for (buildCause in buildCauses) {
+    if (buildCause != null) {
+      def causeDescription = buildCause.getShortDescription()
+      echo "shortDescription: ${causeDescription}"
+      if (causeDescription.contains("Started by timer")) {
+        startedByTimer = true
+      }
+    }
+  }
+  return startedByTimer
+}
+def startedByTimer = isJobStartedByTimer()
+
+def triggers = []
+if (env.BRANCH_NAME == 'master') {
+  // Run nightly from Monday to Saturday
+  triggers << cron('H H(0-2) * * 0-5')
+} else if (env.BRANCH_NAME == '0.6.x') {
+  // Run weekly on Sunday
+  triggers << cron('H H(0-2) * * 6')
+} else if (env.BRANCH_NAME == 'jenkinsfile') {
+  // For test, run hourly
+  triggers << cron('H * * * *')
+}
+
 properties([
   parameters([
-    string(name: 'matrix', defaultValue: 'pr', description: '')
-  ])
+    string(name: 'matrix', defaultValue: 'auto', description: 'The matrix to build (auto, pr, nightly)')
+  ]),
+  pipelineTriggers(triggers)
 ])
+
+def selectedMatrix = params.matrix
+if (selectedMatrix == 'auto') {
+  def reason = ''
+  if (env.CHANGE_ID) {
+    reason = "is a PR ${env.CHANGE_ID}"
+    selectedMatrix = 'pr'
+  } else {
+    reason = "is not a PR, startedByTimer = $startedByTimer"
+    if (startedByTimer) {
+      selectedMatrix = 'nightly'
+    } else {
+      selectedMatrix = 'pr'
+    }
+  }
+  echo("Auto-selected matrix: $selectedMatrix")
+} else {
+  echo("Explicit matrix: $selectedMatrix")
+}
 
 def HOME = "/localhome/jenkins"
 def LOC_SBT_BASE = "$HOME/scala-js-sbt-homes"
@@ -314,8 +365,8 @@ def mainJavaVersion = "1.8"
 def otherJavaVersions = []
 
 def mainScalaVersion = "2.12.4"
-def mainJVMScalaVersions = ["2.10.7", "2.11.12", "2.12.4", "2.13.0-M3"]
-def mainJSScalaVersions = ["2.11.12", "2.12.4", "2.13.0-M3"]
+def mainJVMScalaVersions = ["2.10.7", "2.11.12", "2.12.4", "2.13.0-M2"]
+def mainJSScalaVersions = ["2.11.12", "2.12.4", "2.13.0-M2"]
 def otherJSScalaVersions = [
   "2.11.0",
   "2.11.1",
@@ -352,12 +403,22 @@ prMatrix.add([task: "partestc", scala: "2.11.0", java: mainJavaVersion])
 prMatrix.add([task: "sbtplugin-test", toolsscala: "2.10.7", sbt_version_override: "", java: mainJavaVersion])
 prMatrix.add([task: "sbtplugin-test", toolsscala: "2.12.4", sbt_version_override: "1.0.0", java: mainJavaVersion])
 
+// The 'nightly' matrix
+def nightlyMatrix = prMatrix.clone()
+otherJSScalaVersions.each { scalaVersion ->
+  prMatrix.add([task: "main", scala: scalaVersion, java: mainJavaVersion])
+}
+mainJSScalaVersions.each { scalaVersion ->
+  prMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion])
+  prMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion])
+}
+
 def Matrices = [
-  pr: prMatrix
+  pr: prMatrix,
+  nightly: nightlyMatrix
 ]
 
-echo("Trying to run matrix ${params.matrix}")
-def matrix = Matrices[params.matrix]
+def matrix = Matrices[selectedMatrix]
 
 buildDefs = [:]
 matrix.each { taskDef ->
@@ -371,18 +432,14 @@ matrix.each { taskDef ->
     }
   }
 
-  echo("Found task: $fullTaskName")
+  def ciScript = CIScriptPrelude + taskStr
 
   buildDefs.put(fullTaskName, {
     node('linuxworker') {
       checkout scm
+      writeFile file: 'ciscript.sh', text: ciScript, encoding: 'UTF-8'
       retry(2) {
-        echo fullTaskName
-        echo taskStr
-        def ciScript = CIScriptPrelude + taskStr
-        writeFile file: 'ciscript.sh', text: ciScript, encoding: 'UTF-8'
-        sh 'cat ciscript.sh'
-        sh 'sh ciscript.sh'
+        sh "echo '$fullTaskName' && cat ciscript.sh && sh ciscript.sh"
       }
     }
   })
