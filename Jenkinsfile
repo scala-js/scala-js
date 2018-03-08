@@ -1,19 +1,101 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE ci [
-  <!ELEMENT ci (task*,matrix*)>
-  <!ELEMENT task (#PCDATA)>
-  <!ATTLIST task id ID #REQUIRED>
-  <!ELEMENT matrix (run*)>
-  <!ATTLIST matrix id ID #REQUIRED>
-  <!ELEMENT run (v*)>
-  <!ATTLIST run matrix IDREF #IMPLIED>
-  <!ATTLIST run task IDREF #IMPLIED>
-  <!ELEMENT v (#PCDATA)>
-  <!ATTLIST v n CDATA #REQUIRED>
-]>
-<ci>
+// If not a PR, this is a long-lived branch, which should have a nightly build
+def triggers = []
+if (!env.CHANGE_ID) {
+  // This is the 0.6.x series: run weekly on Sunday
+  triggers << cron('H H(0-2) * * 6')
+}
 
-  <task id="main"><![CDATA[
+// Setup properties of this job definition
+properties([
+  parameters([
+    string(name: 'matrix', defaultValue: 'auto', description: 'The matrix to build (auto, quick, full)')
+  ]),
+  pipelineTriggers(triggers)
+])
+
+// Check whether the job was started by a timer
+// See https://hopstorawpointers.blogspot.ch/2016/10/performing-nightly-build-steps-with.html
+@NonCPS
+def isJobStartedByTimer() {
+  def startedByTimer = false
+  def buildCauses = currentBuild.rawBuild.getCauses()
+  for (buildCause in buildCauses) {
+    if (buildCause != null) {
+      def causeDescription = buildCause.getShortDescription()
+      echo "shortDescription: ${causeDescription}"
+      if (causeDescription.contains("Started by timer")) {
+        startedByTimer = true
+      }
+    }
+  }
+  return startedByTimer
+}
+def startedByTimer = isJobStartedByTimer()
+
+// Auto-select a matrix if it was not explicitly specified
+def selectedMatrix = params.matrix
+if (selectedMatrix == 'auto') {
+  def reason = ''
+  if (env.CHANGE_ID) {
+    reason = "is a PR ${env.CHANGE_ID}"
+    selectedMatrix = 'quick'
+  } else {
+    reason = "is not a PR, startedByTimer = $startedByTimer"
+    if (startedByTimer) {
+      selectedMatrix = 'full'
+    } else {
+      selectedMatrix = 'quick'
+    }
+  }
+  echo("Auto-selected matrix: $selectedMatrix ($reason)")
+} else {
+  echo("Explicit matrix: $selectedMatrix")
+}
+
+def CIScriptPrelude = '''
+LOCAL_HOME="/localhome/jenkins"
+LOC_SBT_BASE="$LOCAL_HOME/scala-js-sbt-homes"
+LOC_SBT_BOOT="$LOC_SBT_BASE/sbt-boot"
+LOC_SBT_HOME="$LOC_SBT_BASE/sbt-home"
+
+export SBT_OPTS="-J-Xmx4G -J-XX:MaxPermSize=512M -Dsbt.boot.directory=$LOC_SBT_BOOT -Dsbt.ivy.home=$LOC_SBT_HOME -Divy.home=$LOC_SBT_HOME -Dsbt.global.base=$LOC_SBT_BASE"
+
+export NODE_PATH="$HOME/node_modules/"
+
+# Define setJavaVersion
+
+setJavaVersion() {
+  export JAVA_HOME=$HOME/apps/java-$1
+  export PATH=$JAVA_HOME/bin:$PATH
+}
+
+# Define sbtretry
+
+sbtretry() {
+  local TIMEOUT=35m
+  echo "RUNNING timeout -k 5 $TIMEOUT sbt" "$@"
+  timeout -k 5 $TIMEOUT sbt $SBT_OPTS "$@"
+  local CODE=$?
+  if [ "$CODE" -eq 124 ]; then
+    echo "TIMEOUT after" $TIMEOUT
+  fi
+  if [ "$CODE" -ne 0 ]; then
+    echo "RETRYING timeout -k 5 $TIMEOUT sbt" "$@"
+    timeout -k 5 $TIMEOUT sbt $SBT_OPTS "$@"
+    CODE=$?
+    if [ "$CODE" -eq 124 ]; then
+      echo "TIMEOUT after" $TIMEOUT
+    fi
+    if [ "$CODE" -ne 0 ]; then
+      echo "FAILED TWICE"
+      return $CODE
+    fi
+  fi
+}
+'''
+
+def Tasks = [
+  "main": '''
     setJavaVersion $java
     sbtretry ++$scala 'set scalaJSUseRhino in Global := true' helloworld/run &&
     sbtretry ++$scala helloworld/run &&
@@ -84,9 +166,9 @@
     sbtretry ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
     sh ci/checksizes.sh $scala &&
     sh ci/check-partest-coverage.sh $scala
-  ]]></task>
+  ''',
 
-  <task id="test-suite-ecma-script5"><![CDATA[
+  "test-suite-ecma-script5": '''
     setJavaVersion $java
     sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test \
         'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test &&
@@ -151,9 +233,9 @@
     sbtretry 'set scalaJSModuleKind in $testSuite := ModuleKind.CommonJSModule' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test
-  ]]></task>
+  ''',
 
-  <task id="test-suite-ecma-script6"><![CDATA[
+  "test-suite-ecma-script6": '''
     setJavaVersion $java
     sbtretry 'set scalaJSOutputMode in $testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
@@ -199,9 +281,9 @@
         'set scalaJSModuleKind in $testSuite := ModuleKind.CommonJSModule' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test
-  ]]></task>
+  ''',
 
-  <task id="bootstrap"><![CDATA[
+  "bootstrap": '''
     setJavaVersion $java
     sbt ++$scala irJS/test toolsJS/test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
@@ -209,9 +291,9 @@
     sbt ++$scala testSuite/test:fullOptJS &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
         ++$scala toolsJS/test
-  ]]></task>
+  ''',
 
-  <task id="tools-cli-stubs"><![CDATA[
+  "tools-cli-stubs": '''
     setJavaVersion $java
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
         stubs/package jsEnvsTestSuite/test testAdapter/test \
@@ -222,9 +304,9 @@
         irJS/mimaReportBinaryIssues toolsJS/mimaReportBinaryIssues &&
     sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc testAdapter/compile:doc stubs/compile:doc
-  ]]></task>
+  ''',
 
-  <task id="tools-cli-stubs-sbtplugin"><![CDATA[
+  "tools-cli-stubs-sbtplugin": '''
     setJavaVersion $java
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
         stubs/package jsEnvsTestSuite/test testAdapter/test \
@@ -252,14 +334,14 @@
     sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc testAdapter/compile:doc stubs/compile:doc \
         sbtPlugin/compile:doc
-  ]]></task>
+  ''',
 
-  <task id="partestc"><![CDATA[
+  "partestc": '''
     setJavaVersion $java
     sbt ++$scala partest/compile
-  ]]></task>
+  ''',
 
-  <task id="sbtplugin-test"><![CDATA[
+  "sbtplugin-test": '''
     setJavaVersion 1.8
     SBT_VER_OVERRIDE=$sbt_version_override
     # Publish Scala.js artifacts locally
@@ -283,534 +365,151 @@
         jsNoDependenciesTest/regressionTestForIssue2243 \
         multiTestJS/test:testScalaJSSourceMapAttribute \
         'set scalaJSUseRhino in Global := true' test
-  ]]></task>
+  ''',
 
-  <task id="partest-noopt"><![CDATA[
+  "partest-noopt": '''
     setJavaVersion $java
     sbt ++$scala package "partestSuite/testOnly -- --showDiff"
-  ]]></task>
+  ''',
 
-  <task id="partest-fastopt"><![CDATA[
+  "partest-fastopt": '''
     setJavaVersion $java
     sbt ++$scala package "partestSuite/testOnly -- --fastOpt --showDiff"
-  ]]></task>
+  ''',
 
-  <task id="partest-fullopt"><![CDATA[
+  "partest-fullopt": '''
     setJavaVersion $java
     sbt ++$scala package "partestSuite/testOnly -- --fullOpt --showDiff"
-  ]]></task>
+  '''
+]
 
-  <matrix id="pr">
-    <!-- Main test tasks, on all JDKs -->
-    <run task="main">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.12.4</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.13.0-M2</v>
-      <v n="java">1.8</v>
-    </run>
+def mainJavaVersion = "1.8"
+def otherJavaVersions = [] // should be ["1.6", "1.7"] but that's broken (see #3293)
+def allJavaVersions = otherJavaVersions.clone()
+allJavaVersions << mainJavaVersion
 
-    <!-- Test suite on ECMAScript5 tasks, only on JDK8 -->
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.12.4</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.13.0-M2</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">testSuite</v>
-    </run>
+def mainScalaVersion = "2.12.4"
+def mainScalaVersions = ["2.10.2", "2.11.12", "2.12.4", "2.13.0-M2"]
+def otherScalaVersions = [
+  "2.10.3",
+  "2.10.4",
+  "2.10.5",
+  "2.10.6",
+  "2.10.7",
+  "2.11.0",
+  "2.11.1",
+  "2.11.2",
+  "2.11.4",
+  "2.11.5",
+  "2.11.6",
+  "2.11.7",
+  "2.11.8",
+  "2.11.11",
+  "2.11.12",
+  "2.12.0",
+  "2.12.1",
+  "2.12.2",
+  "2.12.3"
+]
 
-    <!-- scala/scala test suite on ECMAScript5 tasks, only on JDK8 -->
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">scalaTestSuite</v>
-    </run>
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.12.4</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">scalaTestSuite</v>
-    </run>
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.13.0-M2</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">scalaTestSuite</v>
-    </run>
+// The 'quick' matrix
+def quickMatrix = []
+mainScalaVersions.each { scalaVersion ->
+  allJavaVersions.each { javaVersion ->
+    quickMatrix.add([task: "main", scala: scalaVersion, java: javaVersion])
+  }
+  quickMatrix.add([task: "test-suite-ecma-script5", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
+  quickMatrix.add([task: "test-suite-ecma-script6", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
+  if (!scalaVersion.startsWith("2.10.")) {
+    quickMatrix.add([task: "test-suite-ecma-script5", scala: scalaVersion, java: mainJavaVersion, testSuite: "scalaTestSuite"])
+    quickMatrix.add([task: "test-suite-ecma-script6", scala: scalaVersion, java: mainJavaVersion, testSuite: "scalaTestSuite"])
+  }
+  quickMatrix.add([task: "bootstrap", scala: scalaVersion, java: mainJavaVersion])
+  if (!scalaVersion.startsWith("2.10.")) {
+    // #3293, should be: def javaVersion = scalaVersion.startsWith("2.11.") ? "1.7" : mainJavaVersion
+    def javaVersion = "1.8"
+    quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: javaVersion])
+  }
+}
+allJavaVersions.each { javaVersion ->
+  quickMatrix.add([task: "tools-cli-stubs-sbtplugin", scala: "2.10.7", java: javaVersion])
+  if (javaVersion != "1.6") {
+    // Tools do not compile on JDK6, Scala 2.11.x (see #1235)
+    quickMatrix.add([task: "tools-cli-stubs", scala: "2.11.12", java: javaVersion])
+  }
+}
+quickMatrix.add([task: "tools-cli-stubs", scala: "2.12.4", java: mainJavaVersion])
+quickMatrix.add([task: "partestc", scala: "2.11.0", java: "1.8"]) // #3293, should be: 1.7
+quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.10.7", sbt_version_override: "", java: "1.7"])
+quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.12.4", sbt_version_override: "1.0.0", java: mainJavaVersion])
 
-    <!-- Test suite on ECMAScript6 tasks, only on JDK8 -->
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.12.4</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.13.0-M2</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">testSuite</v>
-    </run>
+// The 'full' matrix
+def fullMatrix = quickMatrix.clone()
+otherScalaVersions.each { scalaVersion ->
+  fullMatrix.add([task: "main", scala: scalaVersion, java: mainJavaVersion])
+}
+mainScalaVersions.each { scalaVersion ->
+  otherJavaVersions.each { javaVersion ->
+    quickMatrix.add([task: "test-suite-ecma-script5", scala: scalaVersion, java: javaVersion, testSuite: "testSuite"])
+    quickMatrix.add([task: "test-suite-ecma-script6", scala: scalaVersion, java: javaVersion, testSuite: "testSuite"])
+  }
+  if (!scalaVersion.startsWith("2.10.")) {
+    def javaVersion = scalaVersion.startsWith("2.11.") ? "1.7" : mainJavaVersion
+    fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion])
+    fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion])
+  }
+}
+otherScalaVersions.each { scalaVersion ->
+  // Partest does not compile on Scala 2.11.4 (see #1215).
+  if (!scalaVersion.startsWith("2.10.") && scalaVersion != "2.11.4") {
+    fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion])
+    fullMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion])
+    fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion])
+  }
+}
 
-    <!-- scala/scala test suite on ECMAScript6 tasks, only on JDK8 -->
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">scalaTestSuite</v>
-    </run>
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.12.4</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">scalaTestSuite</v>
-    </run>
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.13.0-M2</v>
-      <v n="java">1.8</v>
-      <v n="testSuite">scalaTestSuite</v>
-    </run>
+def Matrices = [
+  quick: quickMatrix,
+  full: fullMatrix
+]
 
-    <!-- Bootstrap test tasks, only on JDK8 -->
-    <run task="bootstrap">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="bootstrap">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="bootstrap">
-      <v n="scala">2.12.4</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="bootstrap">
-      <v n="scala">2.13.0-M2</v>
-      <v n="java">1.8</v>
-    </run>
+if (!Matrices.containsKey(selectedMatrix)) {
+  error("Nonexistent matrix '$selectedMatrix'")
+}
+def matrix = Matrices[selectedMatrix]
 
-    <!-- Tools / CLI / Stubs / sbtPlugin test tasks, on all JDKs -->
-    <run task="tools-cli-stubs-sbtplugin">
-      <v n="scala">2.10.7</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="tools-cli-stubs-sbtplugin">
-      <v n="scala">2.10.7</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="tools-cli-stubs-sbtplugin">
-      <v n="scala">2.10.7</v>
-      <v n="java">1.8</v>
-    </run>
-    <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
-    <run task="tools-cli-stubs">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="tools-cli-stubs">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="tools-cli-stubs">
-      <v n="scala">2.12.4</v>
-      <v n="java">1.8</v>
-    </run>
+buildDefs = [:]
+matrix.each { taskDef ->
+  def taskName = taskDef.task
+  if (!Tasks.containsKey(taskName)) {
+    error("Nonexistent task '$taskName'")
+  }
+  def taskStr = Tasks[taskName]
+  def fullTaskName = taskName
 
-    <!-- Partest compilation test tasks -->
-    <run task="partestc">
-      <v n="scala">2.11.0</v>
-      <v n="java">1.7</v>
-    </run>
+  taskDef.each { name, value ->
+    if (name != 'task') {
+      taskStr = taskStr.replace('$' + name, value)
+      fullTaskName += " $name=$value"
+    }
+  }
 
-    <!-- Partest fastOpt -->
-    <run task="partest-fastopt">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.12.4</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.13.0-M2</v>
-      <v n="java">1.8</v>
-    </run>
+  def ciScript = CIScriptPrelude + taskStr
 
-    <!-- The PhantomJS tests require Java 7 for jetty. -->
-    <run task="sbtplugin-test">
-      <v n="java">1.7</v>
-      <v n="toolsscala">2.10.7</v>
-      <v n="sbt_version_override"></v>
-    </run>
-    <run task="sbtplugin-test">
-      <v n="java">1.8</v>
-      <v n="toolsscala">2.12.4</v>
-      <v n="sbt_version_override">1.0.0</v>
-    </run>
-  </matrix>
+  buildDefs.put(fullTaskName, {
+    node('linuxworker') {
+      checkout scm
+      sh "git clean -fdx"
+      writeFile file: 'ciscript.sh', text: ciScript, encoding: 'UTF-8'
+      retry(2) {
+        sh "echo '$fullTaskName' && cat ciscript.sh && sh ciscript.sh"
+      }
+    }
+  })
+}
 
-  <matrix id="nightly">
-    <run matrix="pr" />
-
-    <!-- Main test tasks (all remaining Scala versions, only on JDK8) -->
-    <run task="main">
-      <v n="scala">2.10.3</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.10.4</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.10.5</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.10.6</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.10.7</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.0</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.1</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.4</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.5</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.6</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.7</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.8</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.11</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.12.0</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.12.1</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.12.2</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.12.3</v>
-      <v n="java">1.8</v>
-    </run>
-
-    <!-- Test suite on ECMAScript5 tasks on JDK6 and 7 -->
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.6</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.7</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.6</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script5">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-
-    <!-- Test suite on ECMAScript6 tasks on JDK6 and 7 -->
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.6</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.10.2</v>
-      <v n="java">1.7</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.6</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-    <run task="test-suite-ecma-script6">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
-      <v n="testSuite">testSuite</v>
-    </run>
-
-    <!-- Partest noOpt and fullOpt -->
-    <run task="partest-noopt">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.12.4</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.12.4</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.13.0-M2</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.13.0-M2</v>
-      <v n="java">1.8</v>
-    </run>
-  </matrix>
-
-  <matrix id="weekly">
-    <!-- weekly does not have to run nightly, since they will run at the same time -->
-
-    <run task="partest-noopt">
-      <v n="scala">2.11.0</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.0</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.0</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.11.1</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.1</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.1</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.8</v>
-    </run>
-    <!-- Partest does not compile on Scala 2.11.4 (see #1215). -->
-    <run task="partest-noopt">
-      <v n="scala">2.11.5</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.5</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.5</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.11.6</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.6</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.6</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.11.6</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.6</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.6</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.11.7</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.7</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.7</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.11.8</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.8</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.8</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.11.11</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.11</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.11</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.12</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.12.0</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.12.0</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.12.0</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.12.1</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.12.1</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.12.1</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.12.2</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.12.2</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.12.2</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.12.3</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.12.3</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.12.3</v>
-      <v n="java">1.8</v>
-    </run>
-  </matrix>
-
-</ci>
+ansiColor('xterm') {
+  stage('Test') {
+    parallel(buildDefs)
+  }
+}
