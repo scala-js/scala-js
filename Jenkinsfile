@@ -1,7 +1,7 @@
 // If not a PR, this is a long-lived branch, which should have a nightly build
 def triggers = []
 if (!env.CHANGE_ID) {
-  // This is the 0.6.x series: run weekly on Sunday
+  // This is the 0.6.x series: run weekly on Saturday
   triggers << cron('H H(0-2) * * 6')
 }
 
