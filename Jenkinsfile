@@ -58,7 +58,7 @@ LOC_SBT_BASE="$LOCAL_HOME/scala-js-sbt-homes"
 LOC_SBT_BOOT="$LOC_SBT_BASE/sbt-boot"
 LOC_SBT_HOME="$LOC_SBT_BASE/sbt-home"
 
-export SBT_OPTS="-J-Xmx4G -J-XX:MaxPermSize=512M -Dsbt.boot.directory=$LOC_SBT_BOOT -Dsbt.ivy.home=$LOC_SBT_HOME -Divy.home=$LOC_SBT_HOME -Dsbt.global.base=$LOC_SBT_BASE"
+export SBT_OPTS="-J-Xmx5G -J-XX:MaxPermSize=512M -Dsbt.boot.directory=$LOC_SBT_BOOT -Dsbt.ivy.home=$LOC_SBT_HOME -Divy.home=$LOC_SBT_HOME -Dsbt.global.base=$LOC_SBT_BASE"
 
 export NODE_PATH="$HOME/node_modules/"
 
