@@ -1,7 +1,7 @@
 // If not a PR, this is a long-lived branch, which should have a nightly build
 def triggers = []
 if (!env.CHANGE_ID) {
-  // This is the 0.6.x series: run weekly on Sunday
+  // This is the 0.6.x series: run weekly on Saturday
   triggers << cron('H H(0-2) * * 6')
 }
 
@@ -58,7 +58,7 @@ LOC_SBT_BASE="$LOCAL_HOME/scala-js-sbt-homes"
 LOC_SBT_BOOT="$LOC_SBT_BASE/sbt-boot"
 LOC_SBT_HOME="$LOC_SBT_BASE/sbt-home"
 
-export SBT_OPTS="-J-Xmx4G -J-XX:MaxPermSize=512M -Dsbt.boot.directory=$LOC_SBT_BOOT -Dsbt.ivy.home=$LOC_SBT_HOME -Divy.home=$LOC_SBT_HOME -Dsbt.global.base=$LOC_SBT_BASE"
+export SBT_OPTS="-J-Xmx5G -J-XX:MaxPermSize=512M -Dsbt.boot.directory=$LOC_SBT_BOOT -Dsbt.ivy.home=$LOC_SBT_HOME -Divy.home=$LOC_SBT_HOME -Dsbt.global.base=$LOC_SBT_BASE"
 
 export NODE_PATH="$HOME/node_modules/"
 
@@ -462,9 +462,7 @@ mainScalaVersions.each { scalaVersion ->
 otherScalaVersions.each { scalaVersion ->
   // Partest does not compile on Scala 2.11.4 (see #1215).
   if (!scalaVersion.startsWith("2.10.") && scalaVersion != "2.11.4") {
-    fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion])
     fullMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion])
-    fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion])
   }
 }
 
