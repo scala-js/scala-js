@@ -462,9 +462,7 @@ mainScalaVersions.each { scalaVersion ->
 otherScalaVersions.each { scalaVersion ->
   // Partest does not compile on Scala 2.11.4 (see #1215).
   if (!scalaVersion.startsWith("2.10.") && scalaVersion != "2.11.4") {
-    fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion])
     fullMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion])
-    fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion])
   }
 }
 
