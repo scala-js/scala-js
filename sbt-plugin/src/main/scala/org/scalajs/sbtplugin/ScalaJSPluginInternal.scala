@@ -276,29 +276,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
        */
       jsExecutionFiles := (jsExecutionFiles in (This, Zero, This)).value,
 
-      // Optionally add a JS file defining Java system properties
-      jsExecutionFiles ++= {
-        val javaSysPropsPattern = "-D([^=]*)=(.*)".r
-        val javaSystemProperties = javaOptions.value.collect {
-          case javaSysPropsPattern(propName, propValue) => (propName, propValue)
-        }.toMap
-
-        if (javaSystemProperties.isEmpty) {
-          Nil
-        } else {
-          val formattedProps = javaSystemProperties.map {
-            case (propName, propValue) =>
-              "\"" + escapeJS(propName) + "\": \"" + escapeJS(propValue) + "\""
-          }
-          val code = {
-            "var __ScalaJSEnv = (typeof __ScalaJSEnv === \"object\" && __ScalaJSEnv) ? __ScalaJSEnv : {};\n" +
-            "__ScalaJSEnv.javaSystemProperties = {" + formattedProps.mkString(", ") + "};\n"
-          }
-          Seq(new MemVirtualJSFile("setJavaSystemProperties.js").withContent(code))
-        }
-      },
-
-      // Crucially, add the Scala.js linked file to the JS files
+      // Add the Scala.js linked file to the JS files (by default, the only one)
       jsExecutionFiles +=
         new FileVirtualJSFile(scalaJSLinkedFile.value.data),
 
