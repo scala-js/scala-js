@@ -10,6 +10,10 @@ pos/t533.scala
 pos/functions.scala
 pos/MailBox.scala
 
+# Spuriously fails too often, and causes other subsequent tests to fail too
+# Note that this test, by design, stress-tests type checking
+pos/t6367.scala
+
 #
 # NEG
 #
