@@ -66,7 +66,36 @@ object MyScalaJSPlugin extends AutoPlugin {
   val isGeneratingEclipse =
     Properties.envOrElse("GENERATING_ECLIPSE", "false").toBoolean
 
-  override def projectSettings: Seq[Setting[_]] = Seq(
+  private val configSettings: Seq[Setting[_]] = Def.settings(
+      // Add a JS file defining Java system properties
+      jsExecutionFiles := {
+        val prev = jsExecutionFiles.value
+
+        val javaSysPropsPattern = "-D([^=]*)=(.*)".r
+        val javaSystemProperties = javaOptions.value.collect {
+          case javaSysPropsPattern(propName, propValue) => (propName, propValue)
+        }.toMap
+
+        if (javaSystemProperties.isEmpty) {
+          prev
+        } else {
+          val formattedProps = javaSystemProperties.map {
+            case (propName, propValue) =>
+              "\"" + escapeJS(propName) + "\": \"" + escapeJS(propValue) + "\""
+          }
+          val code = {
+            "var __ScalaJSEnv = (typeof __ScalaJSEnv === \"object\" && __ScalaJSEnv) ? __ScalaJSEnv : {};\n" +
+            "__ScalaJSEnv.javaSystemProperties = {" + formattedProps.mkString(", ") + "};\n"
+          }
+          val javaSysPropsFile =
+            new MemVirtualJSFile("setJavaSystemProperties.js").withContent(code)
+
+          javaSysPropsFile +: prev
+        }
+      }
+  )
+
+  override def projectSettings: Seq[Setting[_]] = Def.settings(
       /* Remove libraryDependencies on ourselves; we use .dependsOn() instead
        * inside this build.
        */
@@ -94,7 +123,10 @@ object MyScalaJSPlugin extends AutoPlugin {
           "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
           scalaJSVersion + "/"
         )
-      }
+      },
+
+      inConfig(Compile)(configSettings),
+      inConfig(Test)(configSettings)
   )
 }
 
