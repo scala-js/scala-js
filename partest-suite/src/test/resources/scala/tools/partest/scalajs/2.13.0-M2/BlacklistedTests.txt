@@ -5,6 +5,10 @@
 # Using Jsoup, what's that?
 pos/cycle-jsoup.scala
 
+# Spuriously fails too often, and causes other subsequent tests to fail too
+# Note that this test, by design, stress-tests type checking
+pos/t6367.scala
+
 # Kills our IR serializer, it's an artificially super-deep if/else if
 pos/t9181.scala
 
