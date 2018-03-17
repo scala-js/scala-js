@@ -1,11 +1,11 @@
-package org.scalajs.testinterface.internal
+package org.scalajs.testinterface
 
 import scala.scalajs.js
 import scala.scalajs.reflect.Reflect
 
 import sbt.testing.Framework
 
-private[internal] object FrameworkLoader {
+private[testinterface] object FrameworkLoader {
 
   def loadFramework(frameworkName: String): Framework = {
     val clazz = Reflect.lookupInstantiatableClass(frameworkName).getOrElse {

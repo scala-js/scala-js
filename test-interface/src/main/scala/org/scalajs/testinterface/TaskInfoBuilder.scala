@@ -1,10 +1,10 @@
-package org.scalajs.testinterface.internal
+package org.scalajs.testinterface
 
 import sbt.testing._
 
 import org.scalajs.testcommon.{TaskInfo, Serializer}
 
-private[internal] object TaskInfoBuilder {
+private[testinterface] object TaskInfoBuilder {
   def detachTask(task: Task, runner: Runner): TaskInfo = {
     def optSerializer(t: TaskDef) =
       if (t == task.taskDef) ""
