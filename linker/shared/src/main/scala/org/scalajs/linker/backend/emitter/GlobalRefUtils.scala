@@ -8,8 +8,6 @@
 
 package org.scalajs.linker.backend.emitter
 
-import org.scalajs.linker.standard.OutputMode
-
 /** Utilities related to global refs mentioned in the program.
  *
  *  When a global ref is mentioned somewhere in the program, bad things happen.

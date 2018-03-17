@@ -22,7 +22,6 @@ import ir.Types._
 
 import org.scalajs.linker._
 import org.scalajs.linker.CheckedBehavior._
-import org.scalajs.linker.standard.OutputMode
 import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import java.io.StringWriter
@@ -31,8 +30,8 @@ import Transients._
 
 /** Desugaring of the IR to JavaScript functions.
  *
- *  The general shape and compliance to standards is chosen with an
- *  [[OutputMode]].
+ *  The general shape and compliance to standards is chosen with
+ *  [[ESFeatures]].
  *
  *  The major difference between the IR and JS is that most constructs can be
  *  used in expression position. The main work of the desugaring is to
@@ -422,12 +421,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         if (isStat) body
         else Return(body)
 
-      val translateRestParam = outputMode match {
-        case OutputMode.ECMAScript51Isolated =>
-          params.nonEmpty && params.last.rest
-        case _ =>
-          false
-      }
+      val translateRestParam =
+        if (esFeatures.useECMAScript2015) false
+        else params.nonEmpty && params.last.rest
 
       val extractRestParam =
         if (translateRestParam) makeExtractRestParam(params)
@@ -652,32 +648,28 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   "Need enclosing class for super constructor call.")
             }
 
-            val superCtorCall = {
-              outputMode match {
-                case OutputMode.ECMAScript51Isolated =>
-                  val superCtor = {
-                    if (globalKnowledge.hasStoredSuperClass(enclosingClassName)) {
-                      envField("superClass")
-                    } else {
-                      val superClass =
-                        globalKnowledge.getSuperClassOfJSClass(enclosingClassName)
-                      extractWithGlobals(genRawJSClassConstructor(superClass))
-                    }
-                  }
+            val superCtorCall = if (useClasses) {
+              js.Apply(js.Super(), newArgs.map(transformJSArg))
+            } else {
+              val superCtor = {
+                if (globalKnowledge.hasStoredSuperClass(enclosingClassName)) {
+                  envField("superClass")
+                } else {
+                  val superClass =
+                    globalKnowledge.getSuperClassOfJSClass(enclosingClassName)
+                  extractWithGlobals(genRawJSClassConstructor(superClass))
+                }
+              }
 
-                  if (containsAnySpread(newArgs)) {
-                    val argArray = spreadToArgArray(newArgs)
-                    js.Apply(
-                        genIdentBracketSelect(superCtor, "apply"),
-                        List(js.This(), transformExprNoChar(argArray)))
-                  } else {
-                    js.Apply(
-                        genIdentBracketSelect(superCtor, "call"),
-                        js.This() :: newArgs.map(transformJSArg))
-                  }
-
-                case OutputMode.ECMAScript6 =>
-                  js.Apply(js.Super(), newArgs.map(transformJSArg))
+              if (containsAnySpread(newArgs)) {
+                val argArray = spreadToArgArray(newArgs)
+                js.Apply(
+                    genIdentBracketSelect(superCtor, "apply"),
+                    List(js.This(), transformExprNoChar(argArray)))
+              } else {
+                js.Apply(
+                    genIdentBracketSelect(superCtor, "call"),
+                    js.This() :: newArgs.map(transformJSArg))
               }
             }
 
@@ -1320,19 +1312,18 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
        */
       def extractLet(inner: (Lhs, Env) => js.Tree)(
           implicit env: Env): js.Tree = {
-        outputMode match {
-          case OutputMode.ECMAScript51Isolated =>
-            inner(lhs, env)
-          case OutputMode.ECMAScript6 =>
-            lhs match {
-              case Lhs.VarDef(name, tpe, mutable) =>
-                val innerEnv = env.withDef(name, tpe, true)
-                js.Block(
-                    doEmptyVarDef(name, tpe),
-                    inner(Lhs.Assign(VarRef(name)(tpe)), innerEnv))
-              case _ =>
-                inner(lhs, env)
-            }
+        if (esFeatures.useECMAScript2015) {
+          lhs match {
+            case Lhs.VarDef(name, tpe, mutable) =>
+              val innerEnv = env.withDef(name, tpe, true)
+              js.Block(
+                  doEmptyVarDef(name, tpe),
+                  inner(Lhs.Assign(VarRef(name)(tpe)), innerEnv))
+            case _ =>
+              inner(lhs, env)
+          }
+        } else {
+          inner(lhs, env)
         }
       }
 
@@ -1847,7 +1838,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     private def doesObjectConstrRequireDesugaring(
         tree: JSObjectConstr): Boolean = {
       def computedNamesAllowed: Boolean =
-        outputMode == OutputMode.ECMAScript6
+        esFeatures.useECMAScript2015
 
       def hasComputedName: Boolean =
         tree.fields.exists(_._1.isInstanceOf[ComputedName])
@@ -1885,7 +1876,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     def transformJSArg(tree: TreeOrJSSpread)(implicit env: Env): js.Tree = {
       tree match {
         case JSSpread(items) =>
-          assert(outputMode == OutputMode.ECMAScript6)
+          assert(esFeatures.useECMAScript2015)
           js.Spread(transformExprNoChar(items))(tree.pos)
         case tree: Tree =>
           transformExprNoChar(tree)

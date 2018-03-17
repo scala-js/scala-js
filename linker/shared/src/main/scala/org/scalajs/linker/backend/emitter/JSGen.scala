@@ -19,27 +19,23 @@ import ir.Types._
 import ir.{Trees => irt}
 
 import org.scalajs.linker._
-import org.scalajs.linker.standard.OutputMode
 import org.scalajs.linker.backend.javascript.Trees._
 
 /** Collection of tree generators that are used accross the board.
  *  This class is fully stateless.
  *
- *  Also carries around config (semantics and outputMode).
+ *  Also carries around config (semantics and esFeatures).
  */
 private[emitter] final class JSGen(val semantics: Semantics,
-    val outputMode: OutputMode, val moduleKind: ModuleKind,
+    val esFeatures: ESFeatures, val moduleKind: ModuleKind,
     internalOptions: InternalOptions,
     mentionedDangerousGlobalRefs: Set[String]) {
 
   import JSGen._
 
-  val useArrowFunctions = {
-    outputMode match {
-      case OutputMode.ECMAScript51Isolated => false
-      case OutputMode.ECMAScript6          => true
-    }
-  }
+  val useClasses = esFeatures.useECMAScript2015
+
+  val useArrowFunctions = esFeatures.useECMAScript2015
 
   def genZeroOf(tpe: Type)(implicit pos: Position): Tree = {
     tpe match {
@@ -70,12 +66,10 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genLet(name: Ident, mutable: Boolean, rhs: Tree)(
       implicit pos: Position): LocalDef = {
-    outputMode match {
-      case OutputMode.ECMAScript51Isolated =>
-        VarDef(name, Some(rhs))
-      case OutputMode.ECMAScript6 =>
-        Let(name, mutable, Some(rhs))
-    }
+    if (esFeatures.useECMAScript2015)
+      Let(name, mutable, Some(rhs))
+    else
+      VarDef(name, Some(rhs))
   }
 
   def genEmptyMutableLet(name: Ident)(implicit pos: Position): LocalDef =
@@ -86,12 +80,10 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   private def genEmptyLet(name: Ident, mutable: Boolean)(
       implicit pos: Position): LocalDef = {
-    outputMode match {
-      case OutputMode.ECMAScript51Isolated =>
-        VarDef(name, rhs = None)
-      case OutputMode.ECMAScript6 =>
-        Let(name, mutable, rhs = None)
-    }
+    if (esFeatures.useECMAScript2015)
+      Let(name, mutable, rhs = None)
+    else
+      VarDef(name, rhs = None)
   }
 
   def genSelectStatic(className: String, item: irt.Ident)(

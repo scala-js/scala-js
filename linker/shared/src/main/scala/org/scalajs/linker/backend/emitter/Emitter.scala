@@ -40,11 +40,11 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private val knowledgeGuardian = new KnowledgeGuardian
 
-  private val baseCoreJSLib = CoreJSLibs.lib(semantics, outputMode, moduleKind)
+  private val baseCoreJSLib = CoreJSLibs.lib(semantics, esFeatures, moduleKind)
 
   private class State(val lastMentionedDangerousGlobalRefs: Set[String]) {
     val jsGen: JSGen = {
-      new JSGen(semantics, outputMode, moduleKind, internalOptions,
+      new JSGen(semantics, esFeatures, moduleKind, internalOptions,
           lastMentionedDangerousGlobalRefs)
     }
 
@@ -648,10 +648,7 @@ private object Emitter {
     def cond(p: Boolean)(v: => SymbolRequirement): SymbolRequirement =
       if (p) v else none()
 
-    def assumingES6: Boolean = coreSpec.outputMode match {
-      case OutputMode.ECMAScript51Isolated => false
-      case OutputMode.ECMAScript6          => true
-    }
+    def assumingES6: Boolean = coreSpec.esFeatures.useECMAScript2015
 
     multiple(
         instantiateClass("O", "init___"),

@@ -15,14 +15,13 @@ import org.scalajs.ir.ScalaJSVersions
 import org.scalajs.io._
 
 import org.scalajs.linker._
-import org.scalajs.linker.standard._
 
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 
 private[emitter] object CoreJSLibs {
 
-  private type Config = (Semantics, OutputMode, ModuleKind)
+  private type Config = (Semantics, ESFeatures, ModuleKind)
 
   private val cachedLibByConfig =
     mutable.HashMap.empty[Config, VirtualJSFile]
@@ -33,21 +32,21 @@ private[emitter] object CoreJSLibs {
   private val gitHubBaseURI =
     new URI("https://raw.githubusercontent.com/scala-js/scala-js/")
 
-  def lib(semantics: Semantics, outputMode: OutputMode,
+  def lib(semantics: Semantics, esFeatures: ESFeatures,
       moduleKind: ModuleKind): VirtualJSFile = {
     synchronized {
       cachedLibByConfig.getOrElseUpdate(
-          (semantics, outputMode, moduleKind),
-          makeLib(semantics, outputMode, moduleKind))
+          (semantics, esFeatures, moduleKind),
+          makeLib(semantics, esFeatures, moduleKind))
     }
   }
 
-  private def makeLib(semantics: Semantics, outputMode: OutputMode,
+  private def makeLib(semantics: Semantics, esFeatures: ESFeatures,
       moduleKind: ModuleKind): VirtualJSFile = {
-    new ScalaJSEnvVirtualJSFile(makeContent(semantics, outputMode, moduleKind))
+    new ScalaJSEnvVirtualJSFile(makeContent(semantics, esFeatures, moduleKind))
   }
 
-  private def makeContent(semantics: Semantics, outputMode: OutputMode,
+  private def makeContent(semantics: Semantics, esFeatures: ESFeatures,
       moduleKind: ModuleKind): String = {
     // This is a basic sort-of-C-style preprocessor
 
@@ -63,8 +62,8 @@ private[emitter] object CoreJSLibs {
         else "Loose"
       case "productionMode" =>
         semantics.productionMode.toString()
-      case "outputMode" =>
-        outputMode.toString()
+      case "useECMAScript2015" =>
+        esFeatures.useECMAScript2015.toString()
       case "moduleKind" =>
         moduleKind.toString()
     }
@@ -119,14 +118,10 @@ private[emitter] object CoreJSLibs {
     val content = lines.mkString("", "\n", "\n").replace(
         "{{LINKER_VERSION}}", ScalaJSVersions.current)
 
-    outputMode match {
-      case OutputMode.ECMAScript51Isolated =>
-        content
-          .replaceAll(raw"\b(let|const)\b", "var")
-
-      case OutputMode.ECMAScript6 =>
-        content
-    }
+    if (esFeatures.useECMAScript2015)
+      content
+    else
+      content.replaceAll(raw"\b(let|const)\b", "var")
   }
 
   private class ScalaJSEnvVirtualJSFile(override val content: String) extends VirtualJSFile {
