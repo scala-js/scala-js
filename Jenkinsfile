@@ -455,10 +455,12 @@ matrix.each { taskDef ->
   buildDefs.put(fullTaskName, {
     node('linuxworker') {
       checkout scm
-      sh "git clean -fdx"
+      sh "git clean -fdx && rm -rf partest/fetchedSources/"
       writeFile file: 'ciscript.sh', text: ciScript, encoding: 'UTF-8'
       retry(2) {
-        sh "echo '$fullTaskName' && cat ciscript.sh && sh ciscript.sh"
+        timeout(time: 3, unit: 'HOURS') {
+          sh "echo '$fullTaskName' && cat ciscript.sh && sh ciscript.sh"
+        }
       }
     }
   })

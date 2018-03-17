@@ -202,7 +202,6 @@ pos/t6745.scala
 pos/t2809.scala
 pos/t7022.scala
 pos/t6447.scala
-pos/t6367.scala
 pos/t5846.scala
 pos/lubs.scala
 pos/t1987a.scala
