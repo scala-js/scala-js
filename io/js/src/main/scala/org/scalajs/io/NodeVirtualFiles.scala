@@ -17,6 +17,16 @@ class NodeVirtualTextFile(p: String) extends NodeVirtualFile(p)
   override def content: String = NodeFS.readFileSync(path, NodeSupport.utf8enc)
 }
 
+trait WritableNodeVirtualTextFile extends NodeVirtualTextFile
+                                     with WritableVirtualTextFile {
+  def contentWriter: Writer = new NodeWriter(path)
+}
+
+object WritableNodeVirtualTextFile {
+  def apply(path: String): WritableNodeVirtualTextFile =
+    new NodeVirtualTextFile(path) with WritableNodeVirtualTextFile
+}
+
 class NodeVirtualBinaryFile(p: String) extends NodeVirtualFile(p)
                                           with VirtualBinaryFile {
   private def buf: ArrayBuffer =
@@ -31,6 +41,17 @@ class NodeVirtualJSFile(p: String) extends NodeVirtualTextFile(p)
 
   /** Always returns None. We can't read them on JS anyway */
   override def sourceMap: Option[String] = None
+}
+
+trait WritableNodeVirtualJSFile extends NodeVirtualJSFile
+                                   with WritableVirtualJSFile
+                                   with WritableNodeVirtualTextFile {
+  def sourceMapWriter: Writer = new NodeWriter(path + ".map")
+}
+
+object WritableNodeVirtualJSFile {
+  def apply(path: String): WritableNodeVirtualJSFile =
+    new NodeVirtualJSFile(path) with WritableNodeVirtualJSFile
 }
 
 private[io] object NodeSupport {
@@ -51,6 +72,7 @@ private[io] object NodeFS extends js.Object {
   def readFileSync(path: String): js.Array[Int] = js.native
   def readFileSync(path: String, enc: Enc): String = js.native
   def statSync(path: String): Stat = js.native
+  def writeFileSync(path: String, data: String, enc: Enc): Unit = js.native
 }
 
 private[scalajs] class NodeVirtualJarFile(file: String)
@@ -109,5 +131,12 @@ private object NodeVirtualJarFile {
 
   private trait JSZipEntry extends js.Object {
     def asArrayBuffer(): ArrayBuffer
+  }
+}
+
+private[io] class NodeWriter(path: String) extends StringWriter {
+  override def close(): Unit = {
+    super.close()
+    NodeFS.writeFileSync(path, this.toString, NodeSupport.utf8enc)
   }
 }

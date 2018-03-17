@@ -32,6 +32,7 @@ import Loggers._
 import org.scalajs.io.{FileVirtualJSFile, MemVirtualJSFile}
 import org.scalajs.io.JSUtils.escapeJS
 import org.scalajs.linker._
+import org.scalajs.linker.irio._
 
 /* Things that we want to expose in the sbt command line (and hence also in
  * `ci/matrix.xml`).
@@ -63,7 +64,7 @@ object MyScalaJSPlugin extends AutoPlugin {
 
   val wantSourceMaps = settingKey[Boolean]("Whether source maps should be used")
 
-  private val configSettings: Seq[Setting[_]] = Def.settings(
+  val configSettings: Seq[Setting[_]] = Def.settings(
       // Add a JS file defining Java system properties
       jsExecutionFiles := {
         val prev = jsExecutionFiles.value
@@ -159,8 +160,6 @@ object Build {
   val javaVersion = settingKey[Int](
     "The major Java SDK version that should be assumed for compatibility. " +
     "Defaults to what sbt is running with.")
-
-  val bootstrapTest = taskKey[Unit]("Performs the bootstrap test")
 
   val javaDocBaseURL: String = "http://docs.oracle.com/javase/8/docs/api/"
 
@@ -707,123 +706,7 @@ object Build {
   ).settings(
       commonLinkerSettings,
       crossVersion := ScalaJSCrossVersion.binary,
-
-      scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
-
-      jsExecutionFiles in Test := {
-        val frameworks = (loadedTestFrameworks in testSuite in Test).value
-        val frameworkImplClassNames =
-          frameworks.toList.map(_._1.implClassNames.toList)
-
-        val taskDefs = for (td <- (definedTests in testSuite in Test).value) yield {
-          new sbt.testing.TaskDef(td.name, td.fingerprint,
-                td.explicitlySpecified, td.selectors)
-        }
-
-        val testDefinitions = {
-          org.scalajs.build.HTMLRunnerBuilderAccess.renderTestDefinitions(
-              frameworkImplClassNames, taskDefs.toList)
-        }
-
-        val testDefinitionsFile = {
-          new MemVirtualJSFile("js-test-definitions.js")
-            .withContent(testDefinitions)
-        }
-
-        testDefinitionsFile +: (jsExecutionFiles in Test).value
-      },
-
-      testSuiteJSExecutionFilesSetting,
-
-      // Give more memory to Node.js, and deactivate source maps
-      jsEnv := {
-        new NodeJSEnv(
-            NodeJSEnv.Config()
-              .withArgs(List("--max_old_space_size=3072"))
-              .withSourceMap(false))
-      },
-
-      inConfig(Test) {
-        // Definition of the bootstrap test
-        bootstrapTest := {
-          /* We'll explicitly `require` our linked file. Find its module, and
-           * remove it from the `jsExecutionFiles` to give to the runner.
-           */
-          val toolsTestModulePath = scalaJSLinkedFile.value.data.getPath
-          val executionFiles =
-            jsExecutionFiles.value.filter(_.path != toolsTestModulePath)
-
-          /* Collect relevant IR files from the classpath of the test suite.
-           * We assume here that the classpath is valid. This is checked by the
-           * the scalaJSIR task.
-           */
-          val cp = Attributed.data((fullClasspath in (testSuite, Test)).value)
-
-          // Files must be Jars, non-files must be dirs
-          val (jars, dirs) = cp.filter(_.exists).partition(_.isFile)
-          val irFiles = dirs.flatMap(dir => (dir ** "*.sjsir").get)
-
-          def seqOfStringsToJSArrayCode(strings: Seq[String]): String =
-            strings.map(s => "\"" + escapeJS(s) + "\"").mkString("[", ", ", "]")
-
-          val irPaths = {
-            val absolutePaths = (jars ++ irFiles).map(_.getAbsolutePath)
-            seqOfStringsToJSArrayCode(absolutePaths)
-          }
-
-          val mainMethods = {
-            /* Ideally we would read `scalaJSModuleInitializers in (testSuite, Test)`,
-             * but we cannot convert the ModuleInitializers to strings to be
-             * passed to the QuickLinker (because ModuleInitializer is a
-             * write-only data structure). So we have some duplication.
-             */
-            val unescapedMainMethods = List(
-                "org.scalajs.testsuite.compiler.ModuleInitializers.mainNoArgs",
-                "org.scalajs.testsuite.compiler.ModuleInitializers.mainWithArgs()",
-                "org.scalajs.testsuite.compiler.ModuleInitializers.mainWithArgs(foo,bar)"
-            )
-            seqOfStringsToJSArrayCode(unescapedMainMethods)
-          }
-
-          val scalaJSEnvForTestSuite = {
-            s"""
-            {"javaSystemProperties": {
-              "scalajs.scalaVersion": "${scalaVersion.value}",
-              "scalajs.testsuite.testtag": "testtag.value",
-              "scalajs.nodejs": "true",
-              "scalajs.typedarray": "true",
-              "scalajs.fastopt-stage": "true",
-              "scalajs.modulekind-nomodule": "true"
-            }}
-            """
-          }
-
-          val code = {
-            s"""
-            var toolsTestModule = require("${escapeJS(toolsTestModulePath)}");
-            var linker = toolsTestModule.scalajs.QuickLinker;
-            var lib = linker.linkTestSuiteNode($irPaths, $mainMethods);
-
-            var __ScalaJSEnv = $scalaJSEnvForTestSuite;
-            eval("(function() { 'use strict'; " +
-              lib + ";" +
-              "scalajs.ConsoleTestRunner.runTests();" +
-            "}).call(this);");
-            """
-          }
-
-          val launcher = new MemVirtualJSFile("Generated launcher file")
-            .withContent(code)
-
-          val config = RunConfig()
-            .withLogger(sbtLogger2ToolsLogger(streams.value.log))
-
-          val input = Input.ScriptsToLoad((executionFiles :+ launcher).toList)
-
-          val run = jsEnv.value.start(input, config)
-          Await.result(run.future, Duration.Inf)
-        }
-      }
+      scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, irProjectJS, ioJS, loggingJS, jUnitRuntime % "test"
   )
@@ -1362,92 +1245,80 @@ object Build {
 
   // Testing
 
-  val testTagSettings = {
-    val testOptionTags = TaskKey[Seq[String]]("testOptionTags",
-        "Task that lists all test options for javaOptions and testOptions.",
-        KeyRanks.Invisible)
+  val testTagJavaOptionsSetting = {
+    javaOptions ++= {
+      val s = streams.value
 
-    Seq(
-      testOptionTags := {
-        val s = streams.value
+      def envTagsFor(env: JSEnv): Seq[String] = env match {
+        case env: NodeJSEnv =>
+          val tags1 = Seq("nodejs", "typedarray")
 
-        def envTagsFor(env: JSEnv): Seq[String] = env match {
-          case env: NodeJSEnv =>
-            val tags1 = Seq("nodejs", "typedarray")
+          if (MyScalaJSPlugin.wantSourceMaps.value) tags1 :+ "source-maps"
+          else tags1
 
-            if (MyScalaJSPlugin.wantSourceMaps.value) tags1 :+ "source-maps"
-            else tags1
+        case env: NodeJSEnvForcePolyfills =>
+          Seq("nodejs", "source-maps")
 
-          case env: NodeJSEnvForcePolyfills =>
-            Seq("nodejs", "source-maps")
-
-          case _ =>
-            s.log.warn(
-                s"Unknown JSEnv of class ${env.getClass.getName}: " +
-                "don't know what tags to specify for the test suite, " +
-                "so I will assume that TypedArrays are supported")
-            Seq("unknown-jsenv", "typedarray")
-        }
-
-        val envTags = envTagsFor((jsEnv in Test).value)
-
-        val stage = (scalaJSStage in Test).value
-
-        val linkerConfig = stage match {
-          case FastOptStage => (scalaJSLinkerConfig in (Test, fastOptJS)).value
-          case FullOptStage => (scalaJSLinkerConfig in (Test, fullOptJS)).value
-        }
-        val sems = linkerConfig.semantics
-
-        val semTags = (
-            if (sems.asInstanceOfs == CheckedBehavior.Compliant)
-              Seq("compliant-asinstanceofs")
-            else
-              Seq()
-        ) ++ (
-            if (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant)
-              Seq("compliant-arrayindexoutofbounds")
-            else
-              Seq()
-        ) ++ (
-            if (sems.moduleInit == CheckedBehavior.Compliant)
-              Seq("compliant-moduleinit")
-            else
-              Seq()
-        ) ++ (
-            if (sems.strictFloats) Seq("strict-floats")
-            else Seq()
-        ) ++ (
-            if (sems.productionMode) Seq("production-mode")
-            else Seq("development-mode")
-        )
-
-        val stageTag = stage match {
-          case FastOptStage => "fastopt-stage"
-          case FullOptStage => "fullopt-stage"
-        }
-
-        val moduleKindTag = linkerConfig.moduleKind match {
-          case ModuleKind.NoModule       => "modulekind-nomodule"
-          case ModuleKind.CommonJSModule => "modulekind-commonjs"
-        }
-
-        envTags ++ (semTags :+ stageTag :+ moduleKindTag)
-      },
-      javaOptions in Test ++= {
-        def scalaJSProp(name: String): String =
-          s"-Dscalajs.$name=true"
-
-        testOptionTags.value.map(scalaJSProp) :+
-            "-Dscalajs.testsuite.testtag=testtag.value"
-      },
-      testOptions in Test ++= {
-        def testArgument(arg: String): Tests.Argument =
-          Tests.Argument("-t" + arg)
-
-        testOptionTags.value.map(testArgument)
+        case _ =>
+          s.log.warn(
+              s"Unknown JSEnv of class ${env.getClass.getName}: " +
+              "don't know what tags to specify for the test suite, " +
+              "so I will assume that TypedArrays are supported")
+          Seq("unknown-jsenv", "typedarray")
       }
-    )
+
+      val envTags = envTagsFor(jsEnv.value)
+
+      val stage = scalaJSStage.value
+
+      val linkerConfig = stage match {
+        case FastOptStage => (scalaJSLinkerConfig in fastOptJS).value
+        case FullOptStage => (scalaJSLinkerConfig in fullOptJS).value
+      }
+      val sems = linkerConfig.semantics
+
+      val semTags = (
+          if (sems.asInstanceOfs == CheckedBehavior.Compliant)
+            Seq("compliant-asinstanceofs")
+          else
+            Seq()
+      ) ++ (
+          if (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant)
+            Seq("compliant-arrayindexoutofbounds")
+          else
+            Seq()
+      ) ++ (
+          if (sems.moduleInit == CheckedBehavior.Compliant)
+            Seq("compliant-moduleinit")
+          else
+            Seq()
+      ) ++ (
+          if (sems.strictFloats) Seq("strict-floats")
+          else Seq()
+      ) ++ (
+          if (sems.productionMode) Seq("production-mode")
+          else Seq("development-mode")
+      )
+
+      val stageTag = stage match {
+        case FastOptStage => "fastopt-stage"
+        case FullOptStage => "fullopt-stage"
+      }
+
+      val moduleKindTag = linkerConfig.moduleKind match {
+        case ModuleKind.NoModule       => "modulekind-nomodule"
+        case ModuleKind.CommonJSModule => "modulekind-commonjs"
+      }
+
+      def scalaJSProp(name: String): String =
+        s"-Dscalajs.$name=true"
+
+      val tags = envTags ++ (semTags :+ stageTag :+ moduleKindTag)
+      tags.map(scalaJSProp) ++ List(
+          "-Dscalajs.testsuite.testtag=testtag.value",
+          "-Dscalajs.scalaVersion=" + scalaVersion.value
+      )
+    }
   }
 
   def testSuiteCommonSettings(isJSTest: Boolean): Seq[Setting[_]] = Seq(
@@ -1551,20 +1422,87 @@ object Build {
       }
   )
 
+  def testSuiteBootstrapSetting = Def.settings(
+      Defaults.testSettings,
+      ScalaJSPlugin.testConfigSettings,
+      MyScalaJSPlugin.configSettings,
+
+      fullOptJS := {
+        throw new MessageOnlyException("fullOptJS is not supported in Bootstrap")
+      },
+
+      fastOptJS := {
+        val s = streams.value
+
+        val irFiles = {
+          val cp = Attributed.data(fullClasspath.value)
+          FileScalaJSIRContainer.fromClasspath(cp).map(_.file)
+        }
+
+        val out = (artifactPath in fastOptJS).value
+
+        val linkerModule =
+          (scalaJSLinkedFile in (testSuiteLinker, Compile)).value.data
+
+        FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
+            FilesInfo.exists) { _ =>
+
+          val irPaths = irFiles
+            .map(f => "\"" + escapeJS(f.getAbsolutePath) + "\"")
+            .mkString("[", ", ", "]")
+
+          val code = {
+            s"""
+              var toolsTestModule = require("${escapeJS(linkerModule.getPath)}");
+              var linker = toolsTestModule.TestSuiteLinker;
+              linker.linkTestSuiteNode($irPaths, "${escapeJS(out.getAbsolutePath)}");
+            """
+          }
+
+          val launcher =
+            new MemVirtualJSFile("test-suite-linker.js").withContent(code)
+
+          val config = RunConfig().withLogger(sbtLogger2ToolsLogger(s.log))
+          val input = Input.ScriptsToLoad(List(launcher))
+
+          s.log.info(s"Linking test suite with JS linker")
+
+          val jsEnv = new NodeJSEnv(
+            NodeJSEnv.Config()
+              .withArgs(List("--max_old_space_size=3072"))
+              .withSourceMap(false))
+
+          val run = jsEnv.start(input, config)
+          Await.result(run.future, Duration.Inf)
+          Set(out)
+        } ((irFiles :+ linkerModule).toSet)
+
+        Attributed.blank(out)
+      },
+
+      compile := (compile in Test).value,
+      fullClasspath := (fullClasspath in Test).value,
+      testTagJavaOptionsSetting,
+      testSuiteJSExecutionFilesSetting
+  )
+
   def testSuiteJSExecutionFilesSetting: Setting[_] = {
-    jsExecutionFiles in Test := {
-      val resourceDir =
-        (resourceDirectory in (LocalProject("testSuite"), Test)).value
+    jsExecutionFiles := {
+      val resourceDir = (resourceDirectory in Test).value
       val f = FileVirtualJSFile(resourceDir / "NonNativeJSTypeTestNatives.js")
-      f +: (jsExecutionFiles in Test).value
+      f +: jsExecutionFiles.value
     }
   }
 
+  lazy val Bootstrap = config("bootstrap")
+    .describedAs("Configuration that uses a JS linker instead of the JVM")
+
   lazy val testSuite: Project = (project in file("test-suite/js")).enablePlugins(
       MyScalaJSPlugin
-  ).settings(
+  ).configs(Bootstrap).settings(
       commonSettings,
-      testTagSettings,
+      inConfig(Test)(testTagJavaOptionsSetting),
+      inConfig(Test)(testSuiteJSExecutionFilesSetting),
       testSuiteCommonSettings(isJSTest = true),
       name := "Scala.js test suite",
 
@@ -1575,31 +1513,8 @@ object Build {
             scalaJSLinkerConfig.value.moduleKind != ModuleKind.NoModule)
       },
 
-      testSuiteJSExecutionFilesSetting,
-
-      scalaJSLinkerConfig ~= { prevConfig =>
-        import Semantics.RuntimeClassNameMapper
-
-        prevConfig.withSemantics { sems =>
-          sems.withRuntimeClassNameMapper(
-              RuntimeClassNameMapper.keepAll().andThen(
-                  RuntimeClassNameMapper.regexReplace(
-                      raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$RenamedTestClass$$""".r,
-                      "renamed.test.Class")
-              ).andThen(
-                  RuntimeClassNameMapper.regexReplace(
-                      raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$Prefix""".r,
-                      "renamed.test.byprefix.")
-              ).andThen(
-                  RuntimeClassNameMapper.regexReplace(
-                      raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$OtherPrefix""".r,
-                      "renamed.test.byotherprefix.")
-              )
-          )
-        }
-      },
-
-      javaOptions in Test += "-Dscalajs.scalaVersion=" + scalaVersion.value,
+      scalaJSLinkerConfig ~= { _.withSemantics(TestSuiteLinkerOptions.semantics _) },
+      scalaJSModuleInitializers in Test ++= TestSuiteLinkerOptions.moduleInitializers,
 
       /* Generate a scala source file that throws exceptions in
        * various places (while attaching the source line to the
@@ -1679,17 +1594,8 @@ object Build {
         }
       },
 
-      // Module initializers. Duplicated in toolsJS/test
-      scalaJSModuleInitializers in Test ++= {
-        val module = "org.scalajs.testsuite.compiler.ModuleInitializers"
-        Seq(
-            ModuleInitializer.mainMethod(module, "mainNoArgs"),
-            ModuleInitializer.mainMethodWithArgs(module, "mainWithArgs"),
-            ModuleInitializer.mainMethodWithArgs(module, "mainWithArgs", List("foo", "bar"))
-        )
-      },
-
-      testSuiteTestHtmlSetting
+      testSuiteTestHtmlSetting,
+      inConfig(Bootstrap)(testSuiteBootstrapSetting)
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime
   )
@@ -1728,7 +1634,7 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonSettings,
-      testTagSettings,
+      inConfig(Test)(testTagJavaOptionsSetting),
       name := "Scala.js test suite ex",
       publishArtifact in Compile := false,
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
@@ -1736,6 +1642,17 @@ object Build {
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime, testSuite
   )
+
+
+  lazy val testSuiteLinker = (project in file("test-suite-linker")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
+      exampleSettings,
+      name := "Scala.js test suite linker",
+      scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
+      sources in Compile +=
+        baseDirectory.value.getParentFile / "project/TestSuiteLinkerOptions.scala"
+  ).withScalaJSCompiler.dependsOn(linkerJS)
 
   lazy val partest: Project = project.settings(
       commonSettings,
