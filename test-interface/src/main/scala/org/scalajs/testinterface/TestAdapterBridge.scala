@@ -1,7 +1,5 @@
 package org.scalajs.testinterface
 
-import scala.scalajs.js.annotation._
-
 import scala.concurrent.{Future, Promise}
 
 import scala.util.control.NonFatal
@@ -15,7 +13,6 @@ private[testinterface] object TestAdapterBridge {
 
   private[this] val mux = new RunMuxRPC(JSRPC)
 
-  @JSExportTopLevel("org.scalajs.testinterface.internal.startBridge")
   def start(): Unit = {
     import JSEndpoints._
 

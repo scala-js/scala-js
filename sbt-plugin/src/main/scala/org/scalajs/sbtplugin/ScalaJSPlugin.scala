@@ -104,6 +104,10 @@ object ScalaJSPlugin extends AutoPlugin {
         "If true, adds the `mainClass` as a module initializer of the Scala.js module",
         APlusSetting)
 
+    val scalaJSUseTestModuleInitializer = SettingKey[Boolean]("scalaJSUseTestModuleInitializer",
+        "If true, adds the module initializer required for testing to the Scala.js module",
+        BMinusSetting)
+
     val scalaJSMainModuleInitializer = TaskKey[Option[ModuleInitializer]](
         "scalaJSMainModuleInitializer",
         "The main module initializer, used if " +

@@ -49,8 +49,8 @@ lazy val noDOM = project.settings(baseSettings: _*).
       assert((scalaJSModuleInitializers in Compile).value.size == 2,
         "Bad number of scalaJSModuleInitializers in Compile")
 
-      // Test should have InitHolder.foo and TestApp.foo
-      assert((scalaJSModuleInitializers in Test).value.size == 2,
+      // Test should have test module init, InitHolder.foo and TestApp.foo
+      assert((scalaJSModuleInitializers in Test).value.size == 3,
         "Bad number of scalaJSModuleInitializers in Test")
     }
   ).

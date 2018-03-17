@@ -24,4 +24,15 @@ private[testinterface] object FrameworkLoader {
     for (frameworkNames <- names)
       yield frameworkNames.find(frameworkExists(_))
   }
+
+  def tryLoadFramework(names: List[String]): Option[Framework] = {
+    def tryLoad(name: String): Option[Framework] = {
+      Reflect.lookupInstantiatableClass(name).collect {
+        case clazz if classOf[Framework].isAssignableFrom(clazz.runtimeClass) =>
+          clazz.newInstance().asInstanceOf[Framework]
+      }
+    }
+
+    names.toStream.map(tryLoad).flatten.headOption
+  }
 }

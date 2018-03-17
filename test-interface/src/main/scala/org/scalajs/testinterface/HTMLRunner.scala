@@ -19,6 +19,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.util.Try
 
+import org.scalajs.testcommon.IsolatedTestSet
+
 import sbt.testing._
 
 protected[testinterface] object HTMLRunner {
@@ -42,8 +44,10 @@ protected[testinterface] object HTMLRunner {
     }
   }
 
-  @JSExportTopLevel("org.scalajs.testinterface.HTMLRunner.main")
-  def main(): Unit = {
+  def start(tests: IsolatedTestSet): Unit =
+    dom.window.addEventListener("DOMContentLoaded", () => onLoad(tests))
+
+  private def onLoad(tests: IsolatedTestSet): Unit = {
     /* Note: Test filtering is currently done based on the fully qualified name
      * of a test. While this is reasonable in most cases, there could be a test
      * that is run by multiple test frameworks.
@@ -66,7 +70,7 @@ protected[testinterface] object HTMLRunner {
       }
     }
 
-    val allTests = TestDetector.detectTests()
+    val allTests = TestLoader.loadTests(tests)
 
     val totalTestCount = allTests.map(_._2.size).sum
     val excludedTests = allTests.flatMap(_._2.filterNot(testFilter))
@@ -433,6 +437,12 @@ protected[testinterface] object HTMLRunner {
 
   // Mini dom facade.
   private object dom {
+    @JSGlobal("window")
+    @js.native
+    object window extends js.Object {
+      def addEventListener(tpe: String, handler: js.Function0[Unit]): Unit = js.native
+    }
+
     @JSGlobal("document")
     @js.native
     object document extends js.Object {
