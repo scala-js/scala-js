@@ -20,9 +20,11 @@ package object standard {
     import StandardLinker.Config
 
     /** Standard output mode. */
-    def outputMode: OutputMode = __self.outputMode
+    @deprecated("Use esFeatures instead.", "0.6.23")
+    def outputMode: OutputMode = __self.esFeatures
 
+    @deprecated("Use withESFeatures instead.", "0.6.23")
     def withOutputMode(outputMode: OutputMode): Config =
-      __self.withOutputMode(outputMode)
+      __self.withESFeatures(outputMode)
   }
 }

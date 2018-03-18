@@ -23,4 +23,9 @@ package object linker {
 
   val ModuleKind: org.scalajs.core.tools.linker.backend.ModuleKind.type =
     org.scalajs.core.tools.linker.backend.ModuleKind
+
+  type ESFeatures = org.scalajs.core.tools.linker.backend.OutputMode
+
+  val ESFeatures: org.scalajs.core.tools.linker.backend.OutputMode.type =
+    org.scalajs.core.tools.linker.backend.OutputMode
 }

@@ -8,6 +8,11 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // private[linker], not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.StandardLinker#Config.outputMode"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.StandardLinker#Config.withOutputMode")
   )
 
   val JSEnvs = Seq(

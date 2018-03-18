@@ -36,7 +36,7 @@ object StandardLinker {
       .withFrontendConfig(frontendConfig)
       .withBackendConfig(backendConfig)
 
-    Linker.applyInternal(config.semantics, config.outputMode, config.moduleKind,
+    Linker.applyInternal(config.semantics, config.esFeatures, config.moduleKind,
         oldAPIConfig)
   }
 
@@ -49,6 +49,8 @@ object StandardLinker {
       val semantics: Semantics,
       /** Module kind. */
       val moduleKind: ModuleKind,
+      /** ECMAScript features to use. */
+      val esFeatures: ESFeatures,
       /** Whether to only warn if the linker has errors. */
       val bypassLinkingErrors: Boolean,
       /** If true, performs expensive checks of the IR for the used parts. */
@@ -82,14 +84,13 @@ object StandardLinker {
        *  linker mainly designed for incremental runs may ignore
        *  `batchMode = true`.
        */
-      val batchMode: Boolean,
-      /** Standard output mode. */
-      private[linker] val outputMode: OutputMode
+      val batchMode: Boolean
   ) {
     private def this() = {
       this(
           semantics = Semantics.Defaults,
           moduleKind = ModuleKind.NoModule,
+          esFeatures = ESFeatures.Defaults,
           bypassLinkingErrors = false,
           checkIR = false,
           optimizer = true,
@@ -99,8 +100,7 @@ object StandardLinker {
           customOutputWrapper = ("", ""),
           closureCompilerIfAvailable = false,
           prettyPrint = false,
-          batchMode = false,
-          outputMode = OutputMode.Default
+          batchMode = false
       )
     }
 
@@ -112,6 +112,12 @@ object StandardLinker {
 
     def withModuleKind(moduleKind: ModuleKind): Config =
       copy(moduleKind = moduleKind)
+
+    def withESFeatures(esFeatures: ESFeatures): Config =
+      copy(esFeatures = esFeatures)
+
+    def withESFeatures(f: ESFeatures => ESFeatures): Config =
+      copy(esFeatures = f(esFeatures))
 
     @deprecated(
         "Bypassing linking errors will not be possible in the next major version.",
@@ -163,13 +169,11 @@ object StandardLinker {
     def withBatchMode(batchMode: Boolean): Config =
       copy(batchMode = batchMode)
 
-    private[linker] def withOutputMode(outputMode: OutputMode): Config =
-      copy(outputMode = outputMode)
-
     override def toString(): String = {
       s"""StandardLinker.Config(
          |  semantics                  = $semantics,
          |  moduleKind                 = $moduleKind,
+         |  esFeatures                 = $esFeatures,
          |  bypassLinkingErrors        = $bypassLinkingErrors,
          |  checkIR                    = $checkIR,
          |  optimizer                  = $optimizer,
@@ -180,13 +184,13 @@ object StandardLinker {
          |  closureCompilerIfAvailable = $closureCompilerIfAvailable,
          |  prettyPrint                = $prettyPrint,
          |  batchMode                  = $batchMode,
-         |  outputMode                 = $outputMode,
          |)""".stripMargin
     }
 
     private def copy(
         semantics: Semantics = semantics,
         moduleKind: ModuleKind = moduleKind,
+        esFeatures: ESFeatures = esFeatures,
         bypassLinkingErrors: Boolean = bypassLinkingErrors,
         checkIR: Boolean = checkIR,
         optimizer: Boolean = optimizer,
@@ -196,12 +200,12 @@ object StandardLinker {
         customOutputWrapper: (String, String) = customOutputWrapper,
         closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         prettyPrint: Boolean = prettyPrint,
-        batchMode: Boolean = batchMode,
-        outputMode: OutputMode = outputMode
+        batchMode: Boolean = batchMode
     ): Config = {
       new Config(
           semantics,
           moduleKind,
+          esFeatures,
           bypassLinkingErrors,
           checkIR,
           optimizer,
@@ -211,8 +215,7 @@ object StandardLinker {
           customOutputWrapper,
           closureCompilerIfAvailable,
           prettyPrint,
-          batchMode,
-          outputMode
+          batchMode
       )
     }
   }
@@ -224,6 +227,7 @@ object StandardLinker {
      *
      *  - `semantics`: [[org.scalajs.core.tools.sem.Semantics.Defaults Semantics.Defaults]]
      *  - `moduleKind`: [[ModuleKind.NoModule]]
+     *  - `esFeatures`: [[org.scalajs.core.tools.linker.backend.OutputMode.Defaults ESFeatures.Defaults]]
      *  - `bypassLinkingErrors`: `false` (deprecated)
      *  - `checkIR`: `false`
      *  - `optimizer`: `true`
@@ -234,13 +238,6 @@ object StandardLinker {
      *  - `closureCompilerIfAvailable`: `false`
      *  - `prettyPrint`: `false`
      *  - `batchMode`: `false`
-     *
-     *  The following additional options are configurable through
-     *  {{{
-     *  import org.scalajs.core.tools.linker.standard._
-     *  }}}
-     *
-     *  - `outputMode`: [[org.scalajs.core.tools.linker.backend.OutputMode.Default OutputMode.Default]]
      */
     def apply(): Config = new Config()
   }
