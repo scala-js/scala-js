@@ -223,7 +223,7 @@ object ScalaJSPluginInternal {
         StandardLinker.Config()
           .withSemantics(semantics)
           .withModuleKind(moduleKind)
-          .withOutputMode(outputMode)
+          .withESFeatures(outputMode)
           .withBypassLinkingErrorsInternal(opts.bypassLinkingErrors)
           .withCheckIR(opts.checkScalaJSIR)
           .withOptimizer(!opts.disableOptimizer)
@@ -1183,7 +1183,7 @@ object ScalaJSPluginInternal {
       jsManifestFilter := identity,
 
       scalaJSSemantics := scalaJSLinkerConfig.value.semantics,
-      scalaJSOutputMode := scalaJSLinkerConfig.value.outputMode,
+      scalaJSOutputMode := scalaJSLinkerConfig.value.esFeatures,
       scalaJSModuleKind := scalaJSLinkerConfig.value.moduleKind,
       checkScalaJSSemantics := true,
 

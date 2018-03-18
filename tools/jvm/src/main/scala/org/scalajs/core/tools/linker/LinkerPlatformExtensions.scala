@@ -52,7 +52,7 @@ trait LinkerPlatformExtensions { this: Linker.type =>
   @deprecated("Use StandardLinker.apply() instead.", "0.6.13")
   def apply(
       semantics: Semantics = Semantics.Defaults,
-      outputMode: OutputMode = OutputMode.Default,
+      outputMode: OutputMode = OutputMode.Defaults,
       withSourceMap: Boolean = true,
       disableOptimizer: Boolean = false,
       parallel: Boolean = true,

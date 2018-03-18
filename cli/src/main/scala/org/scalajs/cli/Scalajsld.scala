@@ -26,6 +26,11 @@ import java.net.URI
 
 object Scalajsld {
 
+  private val AllOutputModes = List(
+      OutputMode.ECMAScript51Isolated,
+      OutputMode.ECMAScript6,
+      OutputMode.ECMAScript51Global)
+
   private case class Options(
     cp: Seq[File] = Seq.empty,
     moduleInitializers: Seq[ModuleInitializer] = Seq.empty,
@@ -58,7 +63,7 @@ object Scalajsld {
   private implicit object OutputModeRead extends scopt.Read[OutputMode] {
     val arity = 1
     val reads = { (s: String) =>
-      OutputMode.All.find(_.toString() == s).getOrElse(
+      AllOutputModes.find(_.toString() == s).getOrElse(
           throw new IllegalArgumentException(s"$s is not a valid output mode"))
     }
   }
@@ -117,7 +122,7 @@ object Scalajsld {
         .text("Use compliant asInstanceOfs")
       opt[OutputMode]('m', "outputMode")
         .action { (mode, c) => c.copy(outputMode = mode) }
-        .text("Output mode " + OutputMode.All.mkString("(", ", ", ")"))
+        .text("Output mode " + AllOutputModes.mkString("(", ", ", ")"))
       opt[ModuleKind]('k', "moduleKind")
         .action { (kind, c) => c.copy(moduleKind = kind) }
         .text("Module kind " + ModuleKind.All.mkString("(", ", ", ")"))
@@ -189,7 +194,7 @@ object Scalajsld {
       val config = StandardLinker.Config()
         .withSemantics(semantics)
         .withModuleKind(options.moduleKind)
-        .withOutputMode(options.outputMode)
+        .withESFeatures(options.outputMode)
         .withBypassLinkingErrorsInternal(options.bypassLinkingErrors)
         .withCheckIR(options.checkIR)
         .withOptimizer(!options.noOpt)
