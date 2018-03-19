@@ -23,7 +23,7 @@ object StandardLinker {
     val coreSpec = CoreSpec(
         config.semantics,
         config.moduleKind,
-        config.outputMode)
+        config.esFeatures)
 
     val commonConfig = CommonPhaseConfig()
       .withCoreSpec(coreSpec)
@@ -54,6 +54,8 @@ object StandardLinker {
       val semantics: Semantics,
       /** Module kind. */
       val moduleKind: ModuleKind,
+      /** ECMAScript features to use. */
+      val esFeatures: ESFeatures,
       /** If true, performs expensive checks of the IR for the used parts. */
       val checkIR: Boolean,
       /** Whether to use the Scala.js optimizer. */
@@ -83,14 +85,13 @@ object StandardLinker {
        *  linker mainly designed for incremental runs may ignore
        *  `batchMode = true`.
        */
-      val batchMode: Boolean,
-      /** Standard output mode. */
-      private[linker] val outputMode: OutputMode
+      val batchMode: Boolean
   ) {
     private def this() = {
       this(
           semantics = Semantics.Defaults,
           moduleKind = ModuleKind.NoModule,
+          esFeatures = ESFeatures.Defaults,
           checkIR = true,
           optimizer = true,
           parallel = true,
@@ -98,8 +99,7 @@ object StandardLinker {
           relativizeSourceMapBase = None,
           closureCompilerIfAvailable = false,
           prettyPrint = false,
-          batchMode = false,
-          outputMode = OutputMode.Default
+          batchMode = false
       )
     }
 
@@ -111,6 +111,12 @@ object StandardLinker {
 
     def withModuleKind(moduleKind: ModuleKind): Config =
       copy(moduleKind = moduleKind)
+
+    def withESFeatures(esFeatures: ESFeatures): Config =
+      copy(esFeatures = esFeatures)
+
+    def withESFeatures(f: ESFeatures => ESFeatures): Config =
+      copy(esFeatures = f(esFeatures))
 
     def withCheckIR(checkIR: Boolean): Config =
       copy(checkIR = checkIR)
@@ -136,13 +142,11 @@ object StandardLinker {
     def withBatchMode(batchMode: Boolean): Config =
       copy(batchMode = batchMode)
 
-    private[linker] def withOutputMode(outputMode: OutputMode): Config =
-      copy(outputMode = outputMode)
-
     override def toString(): String = {
       s"""StandardLinker.Config(
          |  semantics                  = $semantics,
          |  moduleKind                 = $moduleKind,
+         |  esFeatures                 = $esFeatures,
          |  checkIR                    = $checkIR,
          |  optimizer                  = $optimizer,
          |  parallel                   = $parallel,
@@ -151,13 +155,13 @@ object StandardLinker {
          |  closureCompilerIfAvailable = $closureCompilerIfAvailable,
          |  prettyPrint                = $prettyPrint,
          |  batchMode                  = $batchMode,
-         |  outputMode                 = $outputMode,
          |)""".stripMargin
     }
 
     private def copy(
         semantics: Semantics = semantics,
         moduleKind: ModuleKind = moduleKind,
+        esFeatures: ESFeatures = esFeatures,
         checkIR: Boolean = checkIR,
         optimizer: Boolean = optimizer,
         parallel: Boolean = parallel,
@@ -165,12 +169,12 @@ object StandardLinker {
         relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
         closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         prettyPrint: Boolean = prettyPrint,
-        batchMode: Boolean = batchMode,
-        outputMode: OutputMode = outputMode
+        batchMode: Boolean = batchMode
     ): Config = {
       new Config(
           semantics,
           moduleKind,
+          esFeatures,
           checkIR,
           optimizer,
           parallel,
@@ -178,8 +182,7 @@ object StandardLinker {
           relativizeSourceMapBase,
           closureCompilerIfAvailable,
           prettyPrint,
-          batchMode,
-          outputMode
+          batchMode
       )
     }
   }
@@ -191,6 +194,7 @@ object StandardLinker {
      *
      *  - `semantics`: [[Semantics.Defaults]]
      *  - `moduleKind`: [[ModuleKind.NoModule]]
+     *  - `esFeatures`: [[org.scalajs.linker.standard.OutputMode.Defaults ESFeatures.Defaults]]
      *  - `checkIR`: `true`
      *  - `optimizer`: `true`
      *  - `parallel`: `true`
@@ -199,13 +203,6 @@ object StandardLinker {
      *  - `closureCompilerIfAvailable`: `false`
      *  - `prettyPrint`: `false`
      *  - `batchMode`: `false`
-     *
-     *  The following additional options are configurable through
-     *  {{{
-     *  import org.scalajs.linker.standard._
-     *  }}}
-     *
-     *  - `outputMode`: [[org.scalajs.linker.standard.OutputMode.Default OutputMode.Default]]
      */
     def apply(): Config = new Config()
   }

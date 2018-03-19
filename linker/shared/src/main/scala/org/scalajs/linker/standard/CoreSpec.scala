@@ -56,7 +56,7 @@ private[linker] object CoreSpec {
     new CoreSpec(
         semantics = Semantics.Defaults,
         moduleKind = ModuleKind.NoModule,
-        outputMode = OutputMode.Default)
+        outputMode = OutputMode.Defaults)
   }
 
   private[linker] def apply(

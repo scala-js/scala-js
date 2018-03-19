@@ -17,9 +17,11 @@ package object standard {
     @inline private def self: Config = __private_self
 
     /** Standard output mode. */
-    def outputMode: OutputMode = self.outputMode
+    @deprecated("Use esFeatures instead.", "0.6.23")
+    def outputMode: OutputMode = self.esFeatures
 
+    @deprecated("Use withESFeatures instead.", "0.6.23")
     def withOutputMode(outputMode: OutputMode): Config =
-      self.withOutputMode(outputMode)
+      self.withESFeatures(outputMode)
   }
 }

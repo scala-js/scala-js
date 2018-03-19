@@ -336,7 +336,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
           globalKnowledge.getAllScalaClassFieldDefs(tree.encodedName)
         genFieldDefsOfScalaClass(allFields)
 
-      case OutputMode.ECMAScript2015 =>
+      case OutputMode.ECMAScript6 =>
         val fieldDefs = genFieldDefsOfScalaClass(tree.fields)
         if (tree.superClass.isEmpty)
           fieldDefs

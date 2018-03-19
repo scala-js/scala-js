@@ -255,7 +255,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       scalaJSLinkerConfig in fullOptJS ~= { prevConfig =>
         prevConfig
           .withSemantics(_.optimized)
-          .withClosureCompiler(prevConfig.outputMode == OutputMode.ECMAScript51Isolated)
+          .withClosureCompiler(prevConfig.esFeatures == OutputMode.ECMAScript51Isolated)
       },
 
       scalaJSLinkedFile := Def.settingDyn {
