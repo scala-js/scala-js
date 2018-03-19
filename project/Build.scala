@@ -1131,6 +1131,11 @@ object Build {
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
 
       scalaJSExternalCompileSettings,
+
+      test in Test := {
+        streams.value.log.warn("Skipping library/test. Run testSuite/test to test library.")
+      },
+
       inConfig(Compile)(Seq(
           scalacOptions in doc ++= Seq("-implicits", "-groups"),
 

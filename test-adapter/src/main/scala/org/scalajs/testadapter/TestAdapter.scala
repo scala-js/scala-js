@@ -48,20 +48,10 @@ final class TestAdapter(jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
    *  [[close]] is called.
    */
   def loadFrameworks(frameworkNames: List[List[String]]): List[Option[Framework]] = {
-    val runner = getRunnerForThread()
-
-    val frameworks = runner.com
+    getRunnerForThread().com
       .call(JSEndpoints.detectFrameworks)(frameworkNames)
       .map(_.map(_.map(info => new FrameworkAdapter(info, this))))
-
-    val recovered = frameworks.recoverWith {
-      // If there is no testing framework loaded, nothing will reply.
-      case _: RPCCore.ClosedException =>
-        // We reply with no framework at all.
-        runner.runner.future.map(_ => frameworkNames.map(_ => None))
-    }
-
-    recovered.await()
+      .await()
   }
 
   /** Releases all resources. All associated runs must be done. */
@@ -139,26 +129,8 @@ final class TestAdapter(jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
         s"""require("${escapeJS(moduleName)}").org || {}"""
     }
 
-    /* #2752: if there is no testing framework at all on the classpath,
-     * the testing interface will not be there, and therefore the
-     * `startBridge` function will not exist. We must therefore be
-     * careful when selecting it.
-     * If it is not present, we will simply exit; `loadFrameworks` is prepared
-     * to deal with this case.
-     */
-    val code = s"""
-      (function() {
-        "use strict";
-        var namespace = $orgExpr;
-        namespace = namespace.scalajs || {};
-        namespace = namespace.testinterface || {};
-        namespace = namespace.internal || {};
-        var bridge = namespace.startBridge || function() {};
-        bridge();
-      })();
-    """
-
-    val launcher = new MemVirtualJSFile("startTestBridge.js").withContent(code)
+    val launcher = new MemVirtualJSFile("startTestBridge.js")
+      .withContent(s"($orgExpr).scalajs.testinterface.internal.startBridge();")
     val runner = jsEnv.comRunner(jsFiles :+ launcher)
     val com = new ComJSEnvRPC(runner)
     val mux = new RunMuxRPC(com)
