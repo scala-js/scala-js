@@ -59,6 +59,8 @@ object MyScalaJSPlugin extends AutoPlugin {
   val isGeneratingEclipse =
     Properties.envOrElse("GENERATING_ECLIPSE", "false").toBoolean
 
+  val wantSourceMaps = settingKey[Boolean]("Whether source maps should be used")
+
   private val configSettings: Seq[Setting[_]] = Def.settings(
       // Add a JS file defining Java system properties
       jsExecutionFiles := {
@@ -104,6 +106,11 @@ object MyScalaJSPlugin extends AutoPlugin {
       crossVersion := CrossVersion.binary,
 
       scalaJSLinkerConfig ~= (_.withCheckIR(true)),
+
+      wantSourceMaps := !scalaJSLinkerConfig.value.esFeatures.useECMAScript2015,
+
+      jsEnv := new NodeJSEnv(
+          NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)),
 
       // Link source maps
       scalacOptions ++= {
@@ -1357,19 +1364,10 @@ object Build {
         def envTagsFor(env: JSEnv): Seq[String] = env match {
           case env: NodeJSEnv =>
             val tags1 = Seq("nodejs")
-            val tags2 = if (env.wantSourceMap) {
-              if (!env.hasSourceMapSupport) {
-                throw new MessageOnlyException(
-                    "You must install Node.js source map support to " +
-                    "run the full Scala.js test suite (npm install " +
-                    "source-map-support). To deactivate source map " +
-                    "tests, do: set jsEnv in " + thisProject.value.id +
-                    " := NodeJSEnv().value.withSourceMap(false)")
-              }
-              tags1 :+ "source-maps"
-            } else {
-              tags1
-            }
+            val tags2 =
+              if (MyScalaJSPlugin.wantSourceMaps.value) tags1 :+ "source-maps"
+              else tags1
+
             env match {
               case env: NodeJSEnvForcePolyfills =>
                 tags1
