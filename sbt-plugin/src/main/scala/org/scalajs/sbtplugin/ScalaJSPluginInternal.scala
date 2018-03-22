@@ -17,7 +17,6 @@ import org.scalajs.io.JSUtils.escapeJS
 
 import org.scalajs.linker._
 import org.scalajs.linker.irio._
-import org.scalajs.linker.standard._
 
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
@@ -255,7 +254,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       scalaJSLinkerConfig in fullOptJS ~= { prevConfig =>
         prevConfig
           .withSemantics(_.optimized)
-          .withClosureCompiler(prevConfig.esFeatures == OutputMode.ECMAScript51Isolated)
+          .withClosureCompiler(!prevConfig.esFeatures.useECMAScript2015)
       },
 
       scalaJSLinkedFile := Def.settingDyn {

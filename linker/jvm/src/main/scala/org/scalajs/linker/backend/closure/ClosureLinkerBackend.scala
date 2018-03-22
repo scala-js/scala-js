@@ -22,7 +22,6 @@ import org.scalajs.io._
 import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
-import org.scalajs.linker.standard._
 import org.scalajs.linker.analyzer.SymbolRequirement
 import org.scalajs.linker.backend._
 import org.scalajs.linker.backend.emitter.Emitter
@@ -37,8 +36,9 @@ final class ClosureLinkerBackend(config: LinkerBackend.Config)
 
   import config.commonConfig.coreSpec._
 
-  require(outputMode == OutputMode.ECMAScript51Isolated,
-      s"Cannot use output mode $outputMode with the Closure Compiler")
+  require(!esFeatures.useECMAScript2015,
+      s"Cannot use features $esFeatures with the Closure Compiler" +
+      "because they contain ECMAScript 2015 features")
 
   private[this] val emitter = {
     new Emitter(config.commonConfig)

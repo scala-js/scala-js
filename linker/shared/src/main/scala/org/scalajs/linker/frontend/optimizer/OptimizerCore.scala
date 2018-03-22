@@ -3909,10 +3909,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         }
 
       case (JSLinkingInfo(), StringLiteral("assumingES6")) =>
-        BooleanLiteral(outputMode match {
-          case OutputMode.ECMAScript51Isolated => false
-          case OutputMode.ECMAScript6          => true
-        })
+        BooleanLiteral(esFeatures.useECMAScript2015)
 
       case (JSLinkingInfo(), StringLiteral("version")) =>
         StringLiteral(ScalaJSVersions.current)

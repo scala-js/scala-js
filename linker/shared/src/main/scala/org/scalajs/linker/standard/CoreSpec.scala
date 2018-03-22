@@ -16,8 +16,8 @@ final class CoreSpec private (
     val semantics: Semantics,
     /** Module kind. */
     val moduleKind: ModuleKind,
-    /** Standard output mode. */
-    val outputMode: OutputMode
+    /** ECMAScript features to use. */
+    val esFeatures: ESFeatures
 ) {
   import CoreSpec._
 
@@ -25,7 +25,7 @@ final class CoreSpec private (
     case that: CoreSpec =>
       this.semantics == that.semantics &&
       this.moduleKind == that.moduleKind &&
-      this.outputMode == that.outputMode
+      this.esFeatures == that.esFeatures
     case _ =>
       false
   }
@@ -35,7 +35,7 @@ final class CoreSpec private (
     var acc = HashSeed
     acc = mix(acc, semantics.##)
     acc = mix(acc, moduleKind.##)
-    acc = mixLast(acc, outputMode.##)
+    acc = mixLast(acc, esFeatures.##)
     finalizeHash(acc, 3)
   }
 
@@ -43,7 +43,7 @@ final class CoreSpec private (
     s"""CoreSpec(
        |  semantics  = $semantics,
        |  moduleKind = $moduleKind,
-       |  outputMode = $outputMode
+       |  esFeatures = $esFeatures
        |)""".stripMargin
   }
 }
@@ -56,13 +56,13 @@ private[linker] object CoreSpec {
     new CoreSpec(
         semantics = Semantics.Defaults,
         moduleKind = ModuleKind.NoModule,
-        outputMode = OutputMode.Defaults)
+        esFeatures = ESFeatures.Defaults)
   }
 
   private[linker] def apply(
       semantics: Semantics,
       moduleKind: ModuleKind,
-      outputMode: OutputMode): CoreSpec = {
-    new CoreSpec(semantics, moduleKind, outputMode)
+      esFeatures: ESFeatures): CoreSpec = {
+    new CoreSpec(semantics, moduleKind, esFeatures)
   }
 }

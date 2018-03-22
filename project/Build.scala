@@ -49,13 +49,6 @@ object ExposedValues extends AutoPlugin {
 
     val CheckedBehavior = org.scalajs.linker.CheckedBehavior
 
-    val OutputMode = org.scalajs.linker.standard.OutputMode
-
-    implicit def StandardLinkerConfigStandardOps(
-        config: StandardLinker.Config): standard.StandardLinkerConfigStandardOps = {
-      standard.StandardLinkerConfigStandardOps(config)
-    }
-
     type NodeJSEnvForcePolyfills = build.NodeJSEnvForcePolyfills
   }
 }

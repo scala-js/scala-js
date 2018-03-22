@@ -194,7 +194,7 @@ object StandardLinker {
      *
      *  - `semantics`: [[Semantics.Defaults]]
      *  - `moduleKind`: [[ModuleKind.NoModule]]
-     *  - `esFeatures`: [[org.scalajs.linker.standard.OutputMode.Defaults ESFeatures.Defaults]]
+     *  - `esFeatures`: [[ESFeatures.Defaults]]
      *  - `checkIR`: `true`
      *  - `optimizer`: `true`
      *  - `parallel`: `true`

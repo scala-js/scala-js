@@ -16,7 +16,6 @@ import org.scalajs.ir.Trees._
 import Types._
 
 import org.scalajs.linker._
-import org.scalajs.linker.standard.OutputMode
 import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import CheckedBehavior.Unchecked
@@ -56,17 +55,15 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       val className = tree.name.name
       val allDefsBlock = js.Block(allDefs)(tree.pos)
 
-      val entireClassDefWithGlobals = outputMode match {
-        case OutputMode.ECMAScript51Isolated =>
-          WithGlobals(allDefsBlock)
-
-        case OutputMode.ECMAScript6 =>
-          val allDefs = allDefsBlock match {
-            case js.Block(allDefs) => allDefs
-            case js.Skip()         => Nil
-            case oneDef            => List(oneDef)
-          }
-          genES6Class(tree, allDefs)
+      val entireClassDefWithGlobals = if (useClasses) {
+        val allDefs = allDefsBlock match {
+          case js.Block(allDefs) => allDefs
+          case js.Skip()         => Nil
+          case oneDef            => List(oneDef)
+        }
+        genES6Class(tree, allDefs)
+      } else {
+        WithGlobals(allDefsBlock)
       }
 
       if (!tree.kind.isJSClass) {
@@ -144,7 +141,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def genES6Class(tree: LinkedClass, members: List[js.Tree])(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
 
-    require(outputMode == OutputMode.ECMAScript6)
+    require(useClasses)
 
     val className = tree.name.name
     val classIdent =
@@ -193,13 +190,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     assert(tree.superClass.isDefined || tree.name.name == Definitions.ObjectClass,
         s"Class ${tree.name.name} is missing a parent class")
 
-    outputMode match {
-      case OutputMode.ECMAScript51Isolated =>
-        genES5Constructor(tree, initToInline)
-
-      case OutputMode.ECMAScript6 =>
-        genES6Constructor(tree, initToInline)
-    }
+    if (useClasses)
+      genES6Constructor(tree, initToInline)
+    else
+      genES5Constructor(tree, initToInline)
   }
 
   /** Generates the JS constructor for a class, ES5 style. */
@@ -330,18 +324,16 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     implicit val pos = tree.pos
 
-    val superCtorCallAndFieldDefs = outputMode match {
-      case OutputMode.ECMAScript51Isolated =>
-        val allFields =
-          globalKnowledge.getAllScalaClassFieldDefs(tree.encodedName)
-        genFieldDefsOfScalaClass(allFields)
-
-      case OutputMode.ECMAScript6 =>
-        val fieldDefs = genFieldDefsOfScalaClass(tree.fields)
-        if (tree.superClass.isEmpty)
-          fieldDefs
-        else
-          js.Apply(js.Super(), Nil) :: fieldDefs
+    val superCtorCallAndFieldDefs = if (useClasses) {
+      val fieldDefs = genFieldDefsOfScalaClass(tree.fields)
+      if (tree.superClass.isEmpty)
+        fieldDefs
+      else
+        js.Apply(js.Super(), Nil) :: fieldDefs
+    } else {
+      val allFields =
+        globalKnowledge.getAllScalaClassFieldDefs(tree.encodedName)
+      genFieldDefsOfScalaClass(allFields)
     }
 
     initToInline.fold {
@@ -476,28 +468,24 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
                 methodFun, origName))
 
           case methodName =>
-            outputMode match {
-              case OutputMode.ECMAScript51Isolated =>
-                genAddToObject(className, encodeClassVar(className), methodName,
-                    methodFun)
-
-              case OutputMode.ECMAScript6 =>
-                for (propName <- genPropertyName(methodName)) yield {
-                  js.MethodDef(static = true, propName, methodFun.args,
-                      methodFun.body)
-                }
+            if (useClasses) {
+              for (propName <- genPropertyName(methodName)) yield {
+                js.MethodDef(static = true, propName, methodFun.args,
+                    methodFun.body)
+              }
+            } else {
+              genAddToObject(className, encodeClassVar(className), methodName,
+                  methodFun)
             }
         }
       } else {
-        outputMode match {
-          case OutputMode.ECMAScript51Isolated =>
-            genAddToPrototype(className, method.name, methodFun)
-
-          case OutputMode.ECMAScript6 =>
-            for (propName <- genPropertyName(method.name)) yield {
-              js.MethodDef(static = false, propName, methodFun.args,
-                  methodFun.body)
-            }
+        if (useClasses) {
+          for (propName <- genPropertyName(method.name)) yield {
+            js.MethodDef(static = false, propName, methodFun.args,
+                methodFun.body)
+          }
+        } else {
+          genAddToPrototype(className, method.name, methodFun)
         }
       }
     }
@@ -527,12 +515,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   /** Generates a property. */
   def genProperty(className: String, property: PropertyDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
-    outputMode match {
-      case OutputMode.ECMAScript51Isolated =>
-        genPropertyES5(className, property)
-      case OutputMode.ECMAScript6 =>
-        genPropertyES6(className, property)
-    }
+    if (useClasses)
+      genPropertyES6(className, property)
+    else
+      genPropertyES5(className, property)
   }
 
   private def genPropertyES5(className: String, property: PropertyDef)(
@@ -1223,22 +1209,20 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val globalVar = envField(field, subField, origName)
     val globalVarIdent = globalVar.ident
 
-    outputMode match {
-      case OutputMode.ECMAScript51Isolated =>
-        value match {
-          case js.Function(false, args, body) =>
-            // Make sure the function has a meaningful `name` property
-            val functionExpr = js.FunctionDef(globalVarIdent, args, body)
-            if (keepFunctionExpression)
-              js.VarDef(globalVarIdent, Some(functionExpr))
-            else
-              functionExpr
-          case _ =>
-            js.VarDef(globalVarIdent, Some(value))
-        }
-
-      case OutputMode.ECMAScript6 =>
-        genLet(globalVarIdent, mutable, value)
+    if (esFeatures.useECMAScript2015) {
+      genLet(globalVarIdent, mutable, value)
+    } else {
+      value match {
+        case js.Function(false, args, body) =>
+          // Make sure the function has a meaningful `name` property
+          val functionExpr = js.FunctionDef(globalVarIdent, args, body)
+          if (keepFunctionExpression)
+            js.VarDef(globalVarIdent, Some(functionExpr))
+          else
+            functionExpr
+        case _ =>
+          js.VarDef(globalVarIdent, Some(value))
+      }
     }
   }
 

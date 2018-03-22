@@ -58,7 +58,7 @@ const $linkingInfo = {
     "productionMode": false
 //!endif
   },
-//!if outputMode == ECMAScript6
+//!if useECMAScript2015 == true
   "assumingES6": true,
 //!else
   "assumingES6": false,
@@ -71,7 +71,7 @@ Object["freeze"]($linkingInfo["semantics"]);
 
 // Snapshots of builtins and polyfills
 
-//!if outputMode == ECMAScript6
+//!if useECMAScript2015 == true
 const $imul = Math["imul"];
 const $fround = Math["fround"];
 const $clz32 = Math["clz32"];
@@ -155,7 +155,7 @@ let $L0;
 
 // identityHashCode support
 let $lastIDHash = 0; // last value attributed to an id hash code
-//!if outputMode == ECMAScript6
+//!if useECMAScript2015 == true
 const $idHashCodeMap = new WeakMap();
 //!else
 const $idHashCodeMap = typeof WeakMap !== "undefined" ? new WeakMap() : null;
@@ -198,7 +198,7 @@ function $propertyName(obj) {
 
 // Boxed Char
 
-//!if outputMode == ECMAScript6
+//!if useECMAScript2015 == true
 class $Char {
   constructor(c) {
     this.c = c;
@@ -545,7 +545,7 @@ function $systemArraycopy(src, srcPos, dest, destPos, length) {
 };
 
 const $systemIdentityHashCode =
-//!if outputMode != ECMAScript6
+//!if useECMAScript2015 == false
   ($idHashCodeMap !== null) ?
 //!endif
   (function(obj) {
@@ -565,7 +565,7 @@ const $systemIdentityHashCode =
           return hash;
         }
     }
-//!if outputMode != ECMAScript6
+//!if useECMAScript2015 == false
   }) :
   (function(obj) {
     switch (typeof obj) {
@@ -759,7 +759,7 @@ function $typedArray2DoubleArray(value) {
 
 // TypeData class
 
-//!if outputMode != ECMAScript6
+//!if useECMAScript2015 == false
 /** @constructor */
 function $TypeData() {
 //!else
@@ -788,7 +788,7 @@ constructor() {
   this["isInstance"] = void 0;
 };
 
-//!if outputMode != ECMAScript6
+//!if useECMAScript2015 == false
 $TypeData.prototype.initPrim = function(
 //!else
 initPrim(
@@ -809,7 +809,7 @@ initPrim(
   return this;
 };
 
-//!if outputMode != ECMAScript6
+//!if useECMAScript2015 == false
 $TypeData.prototype.initClass = function(
 //!else
 initClass(
@@ -842,7 +842,7 @@ initClass(
   return this;
 };
 
-//!if outputMode != ECMAScript6
+//!if useECMAScript2015 == false
 $TypeData.prototype.initArray = function(
 //!else
 initArray(
@@ -857,7 +857,7 @@ initArray(
   // been defined yet when this constructor is called.
   const componentZero = (componentZero0 == "longZero") ? $L0 : componentZero0;
 
-//!if outputMode != ECMAScript6
+//!if useECMAScript2015 == false
   /** @constructor */
   const ArrayClass = function(arg) {
     if (typeof(arg) === "number") {
@@ -969,7 +969,7 @@ initArray(
   return this;
 };
 
-//!if outputMode != ECMAScript6
+//!if useECMAScript2015 == false
 $TypeData.prototype.getClassOf = function() {
 //!else
 getClassOf() {
@@ -979,7 +979,7 @@ getClassOf() {
   return this._classOf;
 };
 
-//!if outputMode != ECMAScript6
+//!if useECMAScript2015 == false
 $TypeData.prototype.getArrayOf = function() {
 //!else
 getArrayOf() {
@@ -991,7 +991,7 @@ getArrayOf() {
 
 // java.lang.Class support
 
-//!if outputMode != ECMAScript6
+//!if useECMAScript2015 == false
 $TypeData.prototype["isAssignableFrom"] = function(that) {
 //!else
 "isAssignableFrom"(that) {
@@ -1020,7 +1020,7 @@ $TypeData.prototype["isAssignableFrom"] = function(that) {
   }
 };
 
-//!if outputMode != ECMAScript6
+//!if useECMAScript2015 == false
 $TypeData.prototype["getSuperclass"] = function() {
 //!else
 "getSuperclass"() {
@@ -1028,7 +1028,7 @@ $TypeData.prototype["getSuperclass"] = function() {
   return this.parentData ? this.parentData.getClassOf() : null;
 };
 
-//!if outputMode != ECMAScript6
+//!if useECMAScript2015 == false
 $TypeData.prototype["getComponentType"] = function() {
 //!else
 "getComponentType"() {
@@ -1036,7 +1036,7 @@ $TypeData.prototype["getComponentType"] = function() {
   return this.componentData ? this.componentData.getClassOf() : null;
 };
 
-//!if outputMode != ECMAScript6
+//!if useECMAScript2015 == false
 $TypeData.prototype["newArrayOfThisClass"] = function(lengths) {
 //!else
 "newArrayOfThisClass"(lengths) {
@@ -1046,7 +1046,7 @@ $TypeData.prototype["newArrayOfThisClass"] = function(lengths) {
     arrayClassData = arrayClassData.getArrayOf();
   return $newArrayObject(arrayClassData, lengths);
 };
-//!if outputMode == ECMAScript6
+//!if useECMAScript2015 == true
 };
 //!endif
 
