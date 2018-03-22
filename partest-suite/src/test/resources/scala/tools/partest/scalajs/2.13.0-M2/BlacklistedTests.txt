@@ -27,6 +27,7 @@ neg/t7622-cyclic-dependency
 neg/macro-incompatible-macro-engine-c.scala
 
 # Spurious failures
+neg/inlineMaxSize.scala
 neg/patmatexhaust-huge.scala
 
 # Uses .java files
