@@ -123,7 +123,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
               "Some things will go wrong.")
         }
 
-        new ClearableLinker(() => StandardLinker(config), config.batchMode)
+        StandardLinker.clearable(config)
       },
 
       // Have `clean` reset the state of the incremental linker
