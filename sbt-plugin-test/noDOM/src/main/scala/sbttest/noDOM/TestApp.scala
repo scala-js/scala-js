@@ -7,4 +7,6 @@ object TestApp {
     println(Lib.sq(10))
   }
 
+  // Used as a manual module initializer.
+  def foo(): Unit = ()
 }

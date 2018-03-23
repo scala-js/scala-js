@@ -778,11 +778,9 @@ object Build {
              * write-only data structure). So we have some duplication.
              */
             val unescapedMainMethods = List(
-                "org.scalajs.testsuite.compiler.ModuleInitializerInNoConfiguration.main",
-                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.main2",
-                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.main1",
-                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.mainArgs1()",
-                "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration.mainArgs2(foo,bar)"
+                "org.scalajs.testsuite.compiler.ModuleInitializers.mainNoArgs",
+                "org.scalajs.testsuite.compiler.ModuleInitializers.mainWithArgs()",
+                "org.scalajs.testsuite.compiler.ModuleInitializers.mainWithArgs(foo,bar)"
             )
             seqOfStringsToJSArrayCode(unescapedMainMethods)
           }
@@ -1682,35 +1680,13 @@ object Build {
       },
 
       // Module initializers. Duplicated in toolsJS/test
-      scalaJSModuleInitializers += {
-        ModuleInitializer.mainMethod(
-            "org.scalajs.testsuite.compiler.ModuleInitializerInNoConfiguration",
-            "main")
-      },
-      scalaJSModuleInitializers in Compile += {
-        ModuleInitializer.mainMethod(
-            "org.scalajs.testsuite.compiler.ModuleInitializerInCompileConfiguration",
-            "main")
-      },
-      scalaJSModuleInitializers in Test += {
-        ModuleInitializer.mainMethod(
-            "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
-            "main2")
-      },
-      scalaJSModuleInitializers in Test += {
-        ModuleInitializer.mainMethod(
-            "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
-            "main1")
-      },
-      scalaJSModuleInitializers in Test += {
-        ModuleInitializer.mainMethodWithArgs(
-            "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
-            "mainArgs1")
-      },
-      scalaJSModuleInitializers in Test += {
-        ModuleInitializer.mainMethodWithArgs(
-            "org.scalajs.testsuite.compiler.ModuleInitializerInTestConfiguration",
-            "mainArgs2", List("foo", "bar"))
+      scalaJSModuleInitializers in Test ++= {
+        val module = "org.scalajs.testsuite.compiler.ModuleInitializers"
+        Seq(
+            ModuleInitializer.mainMethod(module, "mainNoArgs"),
+            ModuleInitializer.mainMethodWithArgs(module, "mainWithArgs"),
+            ModuleInitializer.mainMethodWithArgs(module, "mainWithArgs", List("foo", "bar"))
+        )
       },
 
       testSuiteTestHtmlSetting
