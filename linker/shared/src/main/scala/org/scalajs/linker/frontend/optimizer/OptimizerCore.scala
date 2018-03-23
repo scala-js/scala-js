@@ -103,6 +103,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
   private var curTrampolineId = 0
 
+  private val useRuntimeLong = !config.coreSpec.esFeatures.allowBigIntsForLongs
+
   /** The record type for inlined `RuntimeLong`. */
   private lazy val inlinedRTLongRecordType =
     tryNewInlineableClass(LongImpl.RuntimeLongClass).map(_.tpe).get
@@ -114,6 +116,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   /** The name of the `lo` field of in the record type of `RuntimeLong`. */
   private lazy val inlinedRTLongHiField =
     inlinedRTLongRecordType.fields(1).name
+
+  private val getIntrinsicCode =
+    Intrinsics.buildIntrinsicsMap(config.coreSpec.esFeatures)
 
   def optimize(thisType: Type, originalDef: MethodDef): MethodDef = {
     try {
@@ -1106,7 +1111,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         }
 
       // Select the lo or hi "field" of a Long literal
-      case PreTransLit(LongLiteral(value)) =>
+      case PreTransLit(LongLiteral(value)) if useRuntimeLong =>
         val itemName = item.name
         assert(itemName == inlinedRTLongLoField ||
             itemName == inlinedRTLongHiField)
@@ -1524,8 +1529,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
   private def boxedClassForType(tpe: Type): String = (tpe: @unchecked) match {
     case ClassType(cls) =>
-      if (cls == Definitions.BoxedLongClass) LongImpl.RuntimeLongClass
-      else cls
+      if (cls == Definitions.BoxedLongClass && useRuntimeLong)
+        LongImpl.RuntimeLongClass
+      else
+        cls
 
     case AnyType      => Definitions.ObjectClass
     case UndefType    => Definitions.BoxedUnitClass
@@ -1534,7 +1541,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     case ByteType     => Definitions.BoxedByteClass
     case ShortType    => Definitions.BoxedShortClass
     case IntType      => Definitions.BoxedIntegerClass
-    case LongType     => LongImpl.RuntimeLongClass
+    case LongType     =>
+      if (useRuntimeLong) LongImpl.RuntimeLongClass
+      else Definitions.BoxedLongClass
     case FloatType    => Definitions.BoxedFloatClass
     case DoubleType   => Definitions.BoxedDoubleClass
     case StringType   => Definitions.BoxedStringClass
@@ -2519,6 +2528,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   private def expandLongValue(value: PreTransform)(cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
+    assert(useRuntimeLong)
+
     /* To force the expansion, we first store the `value` in a temporary
      * variable of type `RuntimeLong` (not `Long`, otherwise we would go into
      * infinite recursion), then we create a `new RuntimeLong` with its lo and
@@ -2573,7 +2584,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
 
     pretrans match {
-      case PreTransUnaryOp(op, arg) =>
+      case PreTransUnaryOp(op, arg) if useRuntimeLong =>
         import UnaryOp._
 
         (op: @switch) match {
@@ -2593,7 +2604,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             cont(pretrans)
         }
 
-      case PreTransBinaryOp(op, lhs, rhs) =>
+      case PreTransBinaryOp(op, lhs, rhs) if useRuntimeLong =>
         import BinaryOp._
 
         (op: @switch) match {
@@ -2632,21 +2643,6 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case _ =>
         cont(pretrans)
-    }
-  }
-
-  private def isLiteralOrOptimizableLong(texpr: PreTransform): Boolean = {
-    texpr match {
-      case PreTransTree(LongLiteral(_), _) =>
-        true
-      case PreTransLocalDef(LocalDef(_, _, replacement)) =>
-        replacement match {
-          case ReplaceWithVarRef(_, _, _, Some(_)) => true
-          case ReplaceWithConstant(LongLiteral(_)) => true
-          case _                                   => false
-        }
-      case _ =>
-        false
     }
   }
 
@@ -4153,7 +4149,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     def withDedicatedVar(tpe: RefinedType): TailRec[Tree] = {
       val rtLongClassType = ClassType(LongImpl.RuntimeLongClass)
 
-      if (tpe.base == LongType && declaredType != rtLongClassType) {
+      if (tpe.base == LongType && declaredType != rtLongClassType &&
+          useRuntimeLong) {
         /* If the value's type is a primitive Long, and the declared type is
          * not RuntimeLong, we want to force the expansion of the primitive
          * Long (which we know is in fact a RuntimeLong) into a local variable,
@@ -4955,7 +4952,7 @@ private[optimizer] object OptimizerCore {
     final val Float64ArrayToDoubleArray = Float32ArrayToFloatArray  + 1
 
     // scalastyle:off line.size.limit
-    val intrinsics: Map[String, Int] = Map(
+    private val baseIntrinsics: Map[String, Int] = Map(
       "jl_System$.arraycopy__O__I__O__I__I__V" -> ArrayCopy,
       "jl_System$.identityHashCode__O__I"      -> IdentityHashCode,
 
@@ -4964,11 +4961,6 @@ private[optimizer] object OptimizerCore {
       "sr_ScalaRunTime$.array$undlength__O__I"       -> ArrayLength,
 
       "jl_Integer$.numberOfLeadingZeros__I__I" -> IntegerNLZ,
-
-      "jl_Long$.toString__J__T"              -> LongToString,
-      "jl_Long$.compare__J__J__I"            -> LongCompare,
-      "jl_Long$.divideUnsigned__J__J__J"     -> LongDivideUnsigned,
-      "jl_Long$.remainderUnsigned__J__J__J"  -> LongRemainderUnsigned,
 
       "scm_ArrayBuilder$.scala$collection$mutable$ArrayBuilder$$zeroOf__jl_Class__O" -> ArrayBuilderZeroOf,
       "scm_ArrayBuilder$.scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult__jl_Class__sjs_js_Array__O" -> GenericArrayBuilderResult,
@@ -4992,12 +4984,24 @@ private[optimizer] object OptimizerCore {
       "sjs_js_typedarray_package$.int32Array2IntArray__sjs_js_typedarray_Int32Array__AI"        -> Int32ArrayToIntArray,
       "sjs_js_typedarray_package$.float32Array2FloatArray__sjs_js_typedarray_Float32Array__AF"  -> Float32ArrayToFloatArray,
       "sjs_js_typedarray_package$.float64Array2DoubleArray__sjs_js_typedarray_Float64Array__AD" -> Float64ArrayToDoubleArray
-    ).withDefaultValue(-1)
-    // scalastyle:on line.size.limit
-  }
+    )
 
-  private def getIntrinsicCode(target: AbstractMethodID): Int =
-    Intrinsics.intrinsics(target.toString)
+    private val runtimeLongIntrinsics: Map[String, Int] = Map(
+      "jl_Long$.toString__J__T"              -> LongToString,
+      "jl_Long$.compare__J__J__I"            -> LongCompare,
+      "jl_Long$.divideUnsigned__J__J__J"     -> LongDivideUnsigned,
+      "jl_Long$.remainderUnsigned__J__J__J"  -> LongRemainderUnsigned
+    )
+    // scalastyle:on line.size.limit
+
+    def buildIntrinsicsMap(esFeatures: ESFeatures): AbstractMethodID => Int = {
+      val intrinsics =
+        if (esFeatures.allowBigIntsForLongs) baseIntrinsics
+        else baseIntrinsics ++ runtimeLongIntrinsics
+
+      { target => intrinsics.getOrElse(target.toString, -1) }
+    }
+  }
 
   private trait StateBackup {
     def restore(): Unit

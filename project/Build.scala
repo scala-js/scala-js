@@ -1347,6 +1347,8 @@ object Build {
 
     Seq(
       testOptionTags := {
+        val s = streams.value
+
         def envTagsFor(env: JSEnv): Seq[String] = env match {
           case env: NodeJSEnv =>
             val tags1 = Seq("nodejs")
@@ -1371,9 +1373,11 @@ object Build {
             }
 
           case _ =>
-            throw new AssertionError(
+            s.log.warn(
                 s"Unknown JSEnv of class ${env.getClass.getName}: " +
-                "don't know what tags to specify for the test suite")
+                "don't know what tags to specify for the test suite, " +
+                "so I will assume that TypedArrays are supported")
+            Seq("unknown-jsenv", "typedarray")
         }
 
         val envTags = envTagsFor((jsEnv in Test).value)

@@ -35,6 +35,7 @@ object Platform {
 
   def executingInNodeJS: Boolean = sysProp("nodejs")
   def executingInBrowser: Boolean = sysProp("browser")
+  def executingInUnknownJSEnv: Boolean = sysProp("unknown-jsenv")
   def typedArrays: Boolean = sysProp("typedarray")
   def sourceMaps: Boolean = sysProp("source-maps")
 

@@ -150,8 +150,10 @@ const $clz32 = Math["clz32"] || (function(i) {
 });
 //!endif
 
+//!if longImpl == RuntimeLong
 // Cached instance of RuntimeLong for 0L
 let $L0;
+//!endif
 
 // identityHashCode support
 let $lastIDHash = 0; // last value attributed to an id hash code
@@ -309,7 +311,11 @@ function $objectGetClass(instance) {
     default:
       if (instance === null)
         return instance.getClass__jl_Class();
+//!if longImpl == RuntimeLong
       else if ($is_sjsr_RuntimeLong(instance))
+//!else
+      else if ($isLong(instance))
+//!endif
         return $d_jl_Long.getClassOf();
       else if ($isChar(instance))
         return $d_jl_Character.getClassOf();
@@ -361,6 +367,10 @@ function $dp_equals__O__Z(instance, rhs) {
     return instance.equals__O__Z(rhs);
   else if (typeof instance === "number")
     return $f_jl_Double__equals__O__Z(instance, rhs);
+//!if longImpl == BigInt
+  else if ($isLong(instance))
+    return $f_jl_Long__equals__O__Z(instance, rhs);
+//!endif
   else if ($isChar(instance))
     return $f_jl_Character__equals__O__Z(instance, rhs);
   else
@@ -380,6 +390,10 @@ function $dp_hashCode__I(instance) {
     default:
       if ($isScalaJSObject(instance) || instance === null)
         return instance.hashCode__I();
+//!if longImpl == BigInt
+      else if ($isLong(instance))
+        return $f_jl_Long__hashCode__I(instance);
+//!endif
       else if ($isChar(instance))
         return $f_jl_Character__hashCode__I(instance);
       else
@@ -398,6 +412,10 @@ function $dp_compareTo__O__I(instance, rhs) {
     default:
       if ($isChar(instance))
         return $f_jl_Character__compareTo__O__I(instance, rhs);
+//!if longImpl == BigInt
+      else if ($isLong(instance))
+        return $f_jl_Long__compareTo__O__I(instance, rhs);
+//!endif
       else
         return instance.compareTo__O__I(rhs);
   }
@@ -427,36 +445,60 @@ function $dp_subSequence__I__I__jl_CharSequence(instance, start, end) {
 function $dp_byteValue__B(instance) {
   if (typeof instance === "number")
     return $f_jl_Double__byteValue__B(instance);
+//!if longImpl == BigInt
+  else if ($isLong(instance))
+    return $f_jl_Long__byteValue__B(instance);
+//!endif
   else
     return instance.byteValue__B();
 };
 function $dp_shortValue__S(instance) {
   if (typeof instance === "number")
     return $f_jl_Double__shortValue__S(instance);
+//!if longImpl == BigInt
+  else if ($isLong(instance))
+    return $f_jl_Long__shortValue__S(instance);
+//!endif
   else
     return instance.shortValue__S();
 };
 function $dp_intValue__I(instance) {
   if (typeof instance === "number")
     return $f_jl_Double__intValue__I(instance);
+//!if longImpl == BigInt
+  else if ($isLong(instance))
+    return $f_jl_Long__intValue__I(instance);
+//!endif
   else
     return instance.intValue__I();
 };
 function $dp_longValue__J(instance) {
   if (typeof instance === "number")
     return $f_jl_Double__longValue__J(instance);
+//!if longImpl == BigInt
+  else if ($isLong(instance))
+    return $f_jl_Long__longValue__J(instance);
+//!endif
   else
     return instance.longValue__J();
 };
 function $dp_floatValue__F(instance) {
   if (typeof instance === "number")
     return $f_jl_Double__floatValue__F(instance);
+//!if longImpl == BigInt
+  else if ($isLong(instance))
+    return $f_jl_Long__floatValue__F(instance);
+//!endif
   else
     return instance.floatValue__F();
 };
 function $dp_doubleValue__D(instance) {
   if (typeof instance === "number")
     return $f_jl_Double__doubleValue__D(instance);
+//!if longImpl == BigInt
+  else if ($isLong(instance))
+    return $f_jl_Long__doubleValue__D(instance);
+//!endif
   else
     return instance.doubleValue__D();
 };
@@ -464,6 +506,25 @@ function $dp_doubleValue__D(instance) {
 function $doubleToInt(x) {
   return (x > 2147483647) ? (2147483647) : ((x < -2147483648) ? -2147483648 : (x | 0));
 };
+
+//!if longImpl == BigInt
+function $doubleToLong(x) {
+  /* BigInt(x) refuses to work if x is not a "safe integer", i.e., a number
+   * with an integral x, whose absolute x is < 2^53. Therefore, we basically
+   * use the same algorithm as in RuntimeLong.fromDouble.
+   */
+  if (x < -9223372036854775808.0) { // -2^63
+    return -9223372036854775808n;
+  } else if (x >= 9223372036854775808.0) { // 2^63
+    return 9223372036854775807n;
+  } else {
+    const lo = x | 0;
+    const rawHi = (x / 4294967296.0) | 0; // 2^32
+    const hi = (x < 0 && lo != 0) ? (rawHi - 1) | 0 : rawHi;
+    return (BigInt(hi) << 32n) | BigInt(lo >>> 0);
+  }
+};
+//!endif
 
 /** Instantiates a JS object with variadic arguments to the constructor. */
 function $newJSObjectWithVarargs(ctor, args) {
@@ -550,7 +611,7 @@ const $systemIdentityHashCode =
 //!endif
   (function(obj) {
     switch (typeof obj) {
-      case "string": case "number": case "boolean": case "undefined":
+      case "string": case "number": case "bigint": case "boolean": case "undefined":
         return $dp_hashCode__I(obj);
       default:
         if (obj === null) {
@@ -569,7 +630,7 @@ const $systemIdentityHashCode =
   }) :
   (function(obj) {
     switch (typeof obj) {
-      case "string": case "number": case "boolean": case "undefined":
+      case "string": case "number": case "bigint": case "boolean": case "undefined":
         return $dp_hashCode__I(obj);
       default:
         if ($isScalaJSObject(obj)) {
@@ -610,6 +671,12 @@ function $isShort(v) {
 function $isInt(v) {
   return typeof v === "number" && (v | 0) === v && 1/v !== 1/-0;
 };
+
+//!if longImpl == BigInt
+function $isLong(v) {
+  return typeof v === "bigint" && BigInt.asIntN(64, v) === v;
+};
+//!endif
 
 function $isFloat(v) {
 //!if floats == Strict
@@ -662,6 +729,15 @@ function $asInt(v) {
     $throwClassCastException(v, "java.lang.Integer");
 };
 
+//!if longImpl == BigInt
+function $asLong(v) {
+  if ($isLong(v) || v === null)
+    return v;
+  else
+    $throwClassCastException(v, "java.lang.Long");
+};
+//!endif
+
 function $asFloat(v) {
   if ($isFloat(v) || v === null)
     return v;
@@ -703,7 +779,11 @@ function $uI(value) {
   return $asInt(value) | 0;
 };
 function $uJ(value) {
+//!if longImpl == BigInt
+  return null === value ? 0n : $asLong(value);
+//!else
   return null === value ? $L0 : $as_sjsr_RuntimeLong(value);
+//!endif
 };
 function $uF(value) {
   /* Here, it is fine to use + instead of fround, because asFloat already
@@ -719,7 +799,11 @@ function $uC(value) {
   return null === value ? 0 : value.c;
 }
 function $uJ(value) {
+//!if longImpl == BigInt
+  return null === value ? 0n : value;
+//!else
   return null === value ? $L0 : value;
+//!endif
 };
 //!endif
 
@@ -850,12 +934,15 @@ initArray(
     componentData) {
   // The constructor
 
-  const componentZero0 = componentData.zero;
-
+//!if longImpl == BigInt
+  const componentZero = componentData.zero;
+//!else
   // The zero for the Long runtime representation
   // is a special case here, since the class has not
   // been defined yet when this constructor is called.
+  const componentZero0 = componentData.zero;
   const componentZero = (componentZero0 == "longZero") ? $L0 : componentZero0;
+//!endif
 
 //!if useECMAScript2015 == false
   /** @constructor */
@@ -1011,7 +1098,11 @@ $TypeData.prototype["isAssignableFrom"] = function(that) {
              that === $d_jl_Double)
       thatFakeInstance = 0;
     else if (that === $d_jl_Long)
+//!if longImpl == BigInt
+      thatFakeInstance = 0n;
+//!else
       thatFakeInstance = $L0;
+//!endif
     else if (that === $d_sr_BoxedUnit)
       thatFakeInstance = void 0;
     else
@@ -1058,7 +1149,11 @@ const $d_C = new $TypeData().initPrim(0, "C", "char");
 const $d_B = new $TypeData().initPrim(0, "B", "byte");
 const $d_S = new $TypeData().initPrim(0, "S", "short");
 const $d_I = new $TypeData().initPrim(0, "I", "int");
+//!if longImpl == BigInt
+const $d_J = new $TypeData().initPrim(0n, "J", "long");
+//!else
 const $d_J = new $TypeData().initPrim("longZero", "J", "long");
+//!endif
 const $d_F = new $TypeData().initPrim(0.0, "F", "float");
 const $d_D = new $TypeData().initPrim(0.0, "D", "double");
 

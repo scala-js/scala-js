@@ -212,6 +212,9 @@ object Trees {
   case class StringLiteral(value: String)(
       implicit val pos: Position) extends Literal with PropertyName
 
+  case class BigIntLiteral(value: BigInt)(
+      implicit val pos: Position) extends Literal
+
   // Atomic expressions
 
   case class VarRef(ident: Ident)(implicit val pos: Position) extends Tree

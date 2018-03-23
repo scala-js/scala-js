@@ -483,6 +483,16 @@ object Printers {
           printEscapeJS(value)
           print('\"')
 
+        case BigIntLiteral(value) =>
+          if (value >= 0) {
+            print(value.toString)
+            print('n')
+          } else {
+            print('(')
+            print(value.toString)
+            print("n)")
+          }
+
         // Atomic expressions
 
         case VarRef(ident) =>

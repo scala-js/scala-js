@@ -167,7 +167,8 @@ final class Emitter private (config: CommonPhaseConfig,
       for (generatedClass <- generatedClasses)
         emitJSTrees(generatedClass.main)
 
-      builder.addJSTree(emitInitializeL0())
+      if (!jsGen.useBigIntForLongs)
+        builder.addJSTree(emitInitializeL0())
 
       for (generatedClass <- generatedClasses)
         emitJSTrees(generatedClass.staticFields)
@@ -674,11 +675,14 @@ private object Emitter {
 
         instantiateClass("jl_Class", "init___O"),
 
-        instanceTests(LongImpl.RuntimeLongClass),
-        instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors),
-        callMethods(LongImpl.RuntimeLongClass, LongImpl.AllMethods),
-
-        callOnModule(LongImpl.RuntimeLongModuleClass, LongImpl.AllModuleMethods)
+        cond(!coreSpec.esFeatures.allowBigIntsForLongs) {
+          multiple(
+              instanceTests(LongImpl.RuntimeLongClass),
+              instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors),
+              callMethods(LongImpl.RuntimeLongClass, LongImpl.AllMethods),
+              callOnModule(LongImpl.RuntimeLongModuleClass, LongImpl.AllModuleMethods)
+          )
+        }
     )
   }
 

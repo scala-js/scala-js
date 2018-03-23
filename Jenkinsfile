@@ -72,7 +72,7 @@ setJavaVersion() {
 # Define sbtretry
 
 sbtretry() {
-  local TIMEOUT=35m
+  local TIMEOUT=45m
   echo "RUNNING timeout -k 5 $TIMEOUT sbt" "$@"
   timeout -k 5 $TIMEOUT sbt $SBT_OPTS "$@"
   local CODE=$?
@@ -458,7 +458,7 @@ matrix.each { taskDef ->
       sh "git clean -fdx && rm -rf partest/fetchedSources/"
       writeFile file: 'ciscript.sh', text: ciScript, encoding: 'UTF-8'
       retry(2) {
-        timeout(time: 3, unit: 'HOURS') {
+        timeout(time: 4, unit: 'HOURS') {
           sh "echo '$fullTaskName' && cat ciscript.sh && sh ciscript.sh"
         }
       }
