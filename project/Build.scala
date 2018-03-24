@@ -1635,6 +1635,20 @@ object Build {
         Seq(outFile)
       }.taskValue,
 
+      /* Blacklist LongTest.scala in FullOpt, because it generates so much
+       * code, through optimizer-based generative programming, that Closure
+       * loses it on that code.
+       */
+      sources in Test := {
+        val prev = (sources in Test).value
+        scalaJSStage.value match {
+          case FastOptStage =>
+            prev
+          case FullOptStage =>
+            prev.filter(!_.getPath.replace('\\', '/').endsWith("compiler/LongTest.scala"))
+        }
+      },
+
       // Module initializers. Duplicated in toolsJS/test
       scalaJSModuleInitializers += {
         ModuleInitializer.mainMethod(
