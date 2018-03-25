@@ -65,7 +65,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
   private val createdTestAdapters =
     new AtomicReference[List[TestAdapter]](Nil)
 
-  private def newTestAdapter(jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
+  private def newTestAdapter(jsEnv: JSEnv, jsFiles: Seq[VirtualJSFile],
       config: TestAdapter.Config): TestAdapter = {
     registerResource(createdTestAdapters,
         new TestAdapter(jsEnv, jsFiles, config))
@@ -316,12 +316,15 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         val log = streams.value.log
         val env = jsEnv.value
-        val files = jsExecutionFiles.value
 
-        log.info("Running " + mainClass.value.getOrElse("<unknown class>"))
+        val className = mainClass.value.getOrElse("<unknown class>")
+        log.info(s"Running $className. Hit any key to interrupt.")
         log.debug(s"with JSEnv ${env.name}")
 
-        env.jsRunner(files).run(sbtLogger2ToolsLogger(log), ConsoleJSConsole)
+        val input = Input.ScriptsToLoad(jsExecutionFiles.value.toList)
+        val config = RunConfig().withLogger(sbtLogger2ToolsLogger(log))
+
+        Run.runInterruptible(env, input, config)
       },
 
       runMain := {
@@ -342,15 +345,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         }
 
         val frameworks = testFrameworks.value
-
-        val env = jsEnv.value match {
-          case env: ComJSEnv => env
-
-          case env =>
-            throw new MessageOnlyException(
-                s"You need a ComJSEnv to test (found ${env.name})")
-        }
-
+        val env = jsEnv.value
         val files = jsExecutionFiles.value
 
         val moduleIdentifier = scalaJSLinkerConfig.value.moduleKind match {

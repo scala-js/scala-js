@@ -1,11 +1,21 @@
 package org.scalajs.jsenv.test
 
-import org.junit.Test
+import org.scalajs.jsenv.JSEnv
+
+import org.junit.{Before, Test}
 import org.junit.Assert._
+import org.junit.Assume._
 
 import scala.concurrent.duration._
 
-trait TimeoutTests extends JSEnvTest {
+private[test] class TimeoutRunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
+  private val kit = new TestKit(config, withCom)
+  import kit._
+
+  @Before
+  def before: Unit = {
+    assumeTrue("JSEnv needs timeout support", config.supportsTimeout)
+  }
 
   @Test
   def basicTimeoutTest: Unit = {

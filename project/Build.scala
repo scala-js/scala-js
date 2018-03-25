@@ -15,12 +15,14 @@ import java.io.{
 }
 
 import scala.collection.mutable
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 import scala.util.Properties
 
 import org.scalajs.ir
 
 import org.scalajs.sbtplugin._
-import org.scalajs.jsenv.{ConsoleJSConsole, JSEnv}
+import org.scalajs.jsenv.{JSEnv, RunConfig, Input}
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
@@ -58,6 +60,8 @@ object MyScalaJSPlugin extends AutoPlugin {
 
   val isGeneratingEclipse =
     Properties.envOrElse("GENERATING_ECLIPSE", "false").toBoolean
+
+  val wantSourceMaps = settingKey[Boolean]("Whether source maps should be used")
 
   private val configSettings: Seq[Setting[_]] = Def.settings(
       // Add a JS file defining Java system properties
@@ -104,6 +108,11 @@ object MyScalaJSPlugin extends AutoPlugin {
       crossVersion := CrossVersion.binary,
 
       scalaJSLinkerConfig ~= (_.withCheckIR(true)),
+
+      wantSourceMaps := !scalaJSLinkerConfig.value.esFeatures.useECMAScript2015,
+
+      jsEnv := new NodeJSEnv(
+          NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)),
 
       // Link source maps
       scalacOptions ++= {
@@ -807,9 +816,13 @@ object Build {
           val launcher = new MemVirtualJSFile("Generated launcher file")
             .withContent(code)
 
-          val runner = jsEnv.value.jsRunner(executionFiles :+ launcher)
+          val config = RunConfig()
+            .withLogger(sbtLogger2ToolsLogger(streams.value.log))
 
-          runner.run(sbtLogger2ToolsLogger(streams.value.log), ConsoleJSConsole)
+          val input = Input.ScriptsToLoad((executionFiles :+ launcher).toList)
+
+          val run = jsEnv.value.start(input, config)
+          Await.result(run.future, Duration.Inf)
         }
       }
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
@@ -821,6 +834,7 @@ object Build {
       publishSettings,
       fatalWarningsSettings,
       name := "Scala.js JS Envs",
+      libraryDependencies += "com.novocode" % "junit-interface" % "0.9" % "test",
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
   ).dependsOn(io, logging)
@@ -830,8 +844,7 @@ object Build {
       publishSettings,
       fatalWarningsSettings,
       name := "Scala.js JS Envs Test Kit",
-      libraryDependencies +=
-        "junit" % "junit" % "4.8.2",
+      libraryDependencies += "junit" % "junit" % "4.12",
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvsTestKit
   ).dependsOn(jsEnvs)
@@ -1131,6 +1144,11 @@ object Build {
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
 
       scalaJSExternalCompileSettings,
+
+      test in Test := {
+        streams.value.log.warn("Skipping library/test. Run testSuite/test to test library.")
+      },
+
       inConfig(Compile)(Seq(
           scalacOptions in doc ++= Seq("-implicits", "-groups"),
 
@@ -1351,26 +1369,13 @@ object Build {
 
         def envTagsFor(env: JSEnv): Seq[String] = env match {
           case env: NodeJSEnv =>
-            val tags1 = Seq("nodejs")
-            val tags2 = if (env.wantSourceMap) {
-              if (!env.hasSourceMapSupport) {
-                throw new MessageOnlyException(
-                    "You must install Node.js source map support to " +
-                    "run the full Scala.js test suite (npm install " +
-                    "source-map-support). To deactivate source map " +
-                    "tests, do: set jsEnv in " + thisProject.value.id +
-                    " := NodeJSEnv().value.withSourceMap(false)")
-              }
-              tags1 :+ "source-maps"
-            } else {
-              tags1
-            }
-            env match {
-              case env: NodeJSEnvForcePolyfills =>
-                tags1
-              case _ =>
-                tags1 :+ "typedarray"
-            }
+            val tags1 = Seq("nodejs", "typedarray")
+
+            if (MyScalaJSPlugin.wantSourceMaps.value) tags1 :+ "source-maps"
+            else tags1
+
+          case env: NodeJSEnvForcePolyfills =>
+            Seq("nodejs", "source-maps")
 
           case _ =>
             s.log.warn(

@@ -11,7 +11,7 @@ import org.scalajs.logging._
 import org.scalajs.linker._
 import org.scalajs.linker.irio._
 
-import org.scalajs.jsenv.JSConsole
+import org.scalajs.jsenv._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 import scala.tools.partest.scalajs.ScalaJSPartestOptions._
@@ -19,13 +19,11 @@ import scala.tools.partest.scalajs.ScalaJSPartestOptions._
 import java.io.File
 import java.net.URL
 import scala.io.Source
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 import Properties.{ versionString, copyrightString }
 import GenericRunnerCommand._
-
-class ScalaConsoleJSConsole extends JSConsole {
-  def log(msg: Any) = scala.Console.out.println(msg.toString)
-}
 
 class MainGenericRunner {
   def errorFn(ex: Throwable): Boolean = {
@@ -67,7 +65,6 @@ class MainGenericRunner {
       return errorFn("Scala.js runner can only run an object")
 
     val logger = new ScalaConsoleLogger(Level.Warn)
-    val jsConsole = new ScalaConsoleJSConsole
     val semantics0 = readSemantics()
     val semantics = if (optMode == FullOpt) semantics0.optimized else semantics0
     val ir = loadIR(command.settings.classpathURLs)
@@ -91,7 +88,15 @@ class MainGenericRunner {
       output
     }
 
-    new NodeJSEnv().jsRunner(sjsCode :: Nil).run(logger, jsConsole)
+    val input = Input.ScriptsToLoad(sjsCode :: Nil)
+    val config = RunConfig().withLogger(logger)
+
+    val run = new NodeJSEnv().start(input, config)
+    try {
+      Await.result(run.future, Duration.Inf)
+    } finally {
+      run.close()
+    }
 
     true
   }

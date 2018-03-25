@@ -116,13 +116,12 @@ def Tasks = [
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala testingExample/testHtml \
         testingExample/clean &&
-    sbtretry ++$scala library/test &&
     sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
     sbtretry ++$scala testSuite/test &&
     sbtretry ++$scala testSuiteEx/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala testSuiteEx/test &&
-    sbtretry ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
+    sbtretry ++$scala testSuite/test:doc library/test compiler/test reversi/fastOptJS reversi/fullOptJS &&
     sbtretry ++$scala compiler/compile:doc library/compile:doc \
         testInterface/compile:doc &&
     sbtretry ++$scala partest/fetchScalaSource &&
@@ -197,42 +196,34 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         ++$scala $testSuite/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test
@@ -258,7 +249,7 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbt ++$scala ir/test io/test logging/compile linker/compile \
-        stubs/package nodeJSEnv/test testAdapter/test \
+        stubs/package jsEnvs/test nodeJSEnv/test testAdapter/test \
         ir/mimaReportBinaryIssues io/mimaReportBinaryIssues \
         logging/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
@@ -275,7 +266,7 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbt ++$scala ir/test io/test logging/compile linker/compile \
-        stubs/package nodeJSEnv/test testAdapter/test \
+        stubs/package jsEnvs/test nodeJSEnv/test testAdapter/test \
         sbtPlugin/package \
         ir/mimaReportBinaryIssues io/mimaReportBinaryIssues \
         logging/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
@@ -290,7 +281,7 @@ def Tasks = [
         logging/scalastyle logging/test:scalastyle \
         linker/scalastyle linker/test:scalastyle \
         jsEnvs/scalastyle jsEnvsTestKit/scalastyle nodeJSEnv/scalastyle \
-        nodeJSEnv/test:scalastyle testAdapter/scalastyle \
+        jsEnvs/test:scalastyle nodeJSEnv/test:scalastyle testAdapter/scalastyle \
         sbtPlugin/scalastyle testInterface/scalastyle \
         testSuite/scalastyle testSuite/test:scalastyle \
         testSuiteJVM/test:scalastyle \

@@ -23,7 +23,7 @@ import org.scalajs.testcommon._
 
 import sbt.testing.Framework
 
-final class TestAdapter(jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
+final class TestAdapter(jsEnv: JSEnv, jsFiles: Seq[VirtualJSFile],
     config: TestAdapter.Config) {
 
   import TestAdapter._
@@ -48,20 +48,10 @@ final class TestAdapter(jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
    *  [[close]] is called.
    */
   def loadFrameworks(frameworkNames: List[List[String]]): List[Option[Framework]] = {
-    val runner = getRunnerForThread()
-
-    val frameworks = runner.com
+    getRunnerForThread().com
       .call(JSEndpoints.detectFrameworks)(frameworkNames)
       .map(_.map(_.map(info => new FrameworkAdapter(info, this))))
-
-    val recovered = frameworks.recoverWith {
-      // If there is no testing framework loaded, nothing will reply.
-      case _: RPCCore.ClosedException =>
-        // We reply with no framework at all.
-        runner.runner.future.map(_ => frameworkNames.map(_ => None))
-    }
-
-    recovered.await()
+      .await()
   }
 
   /** Releases all resources. All associated runs must be done. */
@@ -99,7 +89,6 @@ final class TestAdapter(jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
     if (!closed) {
       closed = true
       runners.values.foreach(_.com.close(cause))
-      runners.values.foreach(_.runner.stop())
       runners.clear()
     }
   }
@@ -139,33 +128,17 @@ final class TestAdapter(jsEnv: ComJSEnv, jsFiles: Seq[VirtualJSFile],
         s"""require("${escapeJS(moduleName)}").org || {}"""
     }
 
-    /* #2752: if there is no testing framework at all on the classpath,
-     * the testing interface will not be there, and therefore the
-     * `startBridge` function will not exist. We must therefore be
-     * careful when selecting it.
-     * If it is not present, we will simply exit; `loadFrameworks` is prepared
-     * to deal with this case.
-     */
-    val code = s"""
-      (function() {
-        "use strict";
-        var namespace = $orgExpr;
-        namespace = namespace.scalajs || {};
-        namespace = namespace.testinterface || {};
-        namespace = namespace.internal || {};
-        var bridge = namespace.startBridge || function() {};
-        bridge();
-      })();
-    """
+    val launcher = new MemVirtualJSFile("startTestBridge.js")
+      .withContent(s"($orgExpr).scalajs.testinterface.internal.startBridge();")
 
-    val launcher = new MemVirtualJSFile("startTestBridge.js").withContent(code)
-    val runner = jsEnv.comRunner(jsFiles :+ launcher)
-    val com = new ComJSEnvRPC(runner)
+    val input = Input.ScriptsToLoad((jsFiles :+ launcher).toList)
+    val runConfig = RunConfig()
+      .withLogger(config.logger)
+
+    val com = new JSEnvRPC(jsEnv, input, runConfig)
     val mux = new RunMuxRPC(com)
 
-    runner.start(config.logger, config.console)
-
-    new ManagedRunner(threadId, runner, com, mux)
+    new ManagedRunner(threadId, com, mux)
   }
 }
 
@@ -197,13 +170,11 @@ object TestAdapter {
 
   final class Config private (
       val logger: Logger,
-      val console: JSConsole,
       val moduleIdentifier: ModuleIdentifier
   ) {
     private def this() = {
       this(
           logger = NullLogger,
-          console = ConsoleJSConsole,
           moduleIdentifier = ModuleIdentifier.NoModule
       )
     }
@@ -211,18 +182,14 @@ object TestAdapter {
     def withLogger(logger: Logger): Config =
       copy(logger = logger)
 
-    def withJSConsole(console: JSConsole): Config =
-      copy(console = console)
-
     def withModuleIdentifier(moduleIdentifier: ModuleIdentifier): Config =
       copy(moduleIdentifier = moduleIdentifier)
 
     private def copy(
         logger: Logger = logger,
-        console: JSConsole = console,
         moduleIdentifier: ModuleIdentifier = moduleIdentifier
     ): Config = {
-      new Config(logger, console, moduleIdentifier)
+      new Config(logger, moduleIdentifier)
     }
   }
 
@@ -232,7 +199,6 @@ object TestAdapter {
 
   private[testadapter] final class ManagedRunner(
       val id: Long,
-      val runner: ComJSRunner,
       val com: RPCCore,
       val mux: RunMuxRPC
   )
