@@ -9,6 +9,9 @@
 package org.scalajs.linker.irio
 
 import java.io._
+import java.util.zip.{ZipInputStream, ZipEntry}
+
+import scala.annotation.tailrec
 
 import org.scalajs.io._
 
@@ -61,9 +64,46 @@ object FileScalaJSIRContainer {
   }
 }
 
-class FileVirtualJarScalaJSIRContainer(file: File)
-    extends FileVirtualJarFile(file) with ScalaJSIRContainer {
+final class FileVirtualJarScalaJSIRContainer(file: File)
+    extends FileVirtualFile(file) with ScalaJSIRContainer {
+  def sjsirFiles: List[VirtualScalaJSIRFile] = {
+    val stream = new ZipInputStream(new BufferedInputStream(new FileInputStream(file)))
+    try {
+      val buf = new Array[Byte](4096)
 
-  def sjsirFiles: List[VirtualScalaJSIRFile] =
-    ScalaJSIRContainer.sjsirFilesIn(this)
+      @tailrec
+      def readAll(out: OutputStream): Unit = {
+        val read = stream.read(buf)
+        if (read != -1) {
+          out.write(buf, 0, read)
+          readAll(out)
+        }
+      }
+
+      def makeVF(e: ZipEntry) = {
+        val size = e.getSize
+        val out =
+          if (0 <= size && size <= Int.MaxValue) new ByteArrayOutputStream(size.toInt)
+          else new ByteArrayOutputStream()
+
+        try {
+          readAll(out)
+          val path = s"${this.path}:${e.getName}"
+          new MemVirtualSerializedScalaJSIRFile(path, e.getName)
+            .withContent(out.toByteArray)
+            .withVersion(this.version)
+        } finally {
+          out.close()
+        }
+      }
+
+      Iterator.continually(stream.getNextEntry())
+        .takeWhile(_ != null)
+        .filter(_.getName.endsWith(".sjsir"))
+        .map(makeVF)
+        .toList
+    } finally {
+      stream.close()
+    }
+  }
 }

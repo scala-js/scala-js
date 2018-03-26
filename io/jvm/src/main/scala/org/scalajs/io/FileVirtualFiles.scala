@@ -148,6 +148,3 @@ object WritableFileVirtualJSFile {
   def apply(f: File): WritableFileVirtualJSFile =
     new FileVirtualJSFile(f) with WritableFileVirtualJSFile
 }
-
-class FileVirtualJarFile(file: File)
-    extends FileVirtualBinaryFile(file) with VirtualJarFile

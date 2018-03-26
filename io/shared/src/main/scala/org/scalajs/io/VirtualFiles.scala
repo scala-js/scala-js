@@ -95,23 +95,3 @@ object VirtualJSFile {
 trait WritableVirtualJSFile extends WritableVirtualTextFile with VirtualJSFile {
   def sourceMapWriter: Writer
 }
-
-/** A virtual file container.
- *
- *  This is a generic virtual container for embedded virtual files, especially
- *  one found on a classpath such as a jar.
- */
-trait VirtualFileContainer extends VirtualFile {
-  /** Lists the entries of this container that satisfy a given predicate.
-   *
-   *  @param p
-   *    Predicate on the relative path of files to select.
-   *  @param makeResult
-   *    Function building an element of the result list for an entry, given
-   *    its relative path an `InputStream` of the content. `makeResult` may
-   *    `close()` the input stream, but it is not mandatory. In any case, the
-   *    input stream cannot be used after `makeResult` returns.
-   */
-  def listEntries[T](p: String => Boolean)(
-      makeResult: (String, InputStream) => T): List[T]
-}
