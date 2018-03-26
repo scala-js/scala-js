@@ -10,7 +10,7 @@ package org.scalajs.io
 
 import java.net.URI
 
-object URIUtils {
+private[scalajs] object URIUtils {
 
   /** Relativize target URI w.r.t. base URI */
   def relativize(base0: URI, trgt0: URI): URI = {
