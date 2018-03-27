@@ -13,37 +13,13 @@ import scala.language.implicitConversions
 import java.net.URI
 
 import org.scalajs.linker.standard._
-import org.scalajs.linker.frontend.LinkerFrontendImpl
-import org.scalajs.linker.backend.LinkerBackendImpl
 
 object StandardLinker {
   import StandardLinkerPlatformExtensions._
 
   def apply(config: Config): Linker = {
-    val coreSpec = CoreSpec(
-        config.semantics,
-        config.moduleKind,
-        config.esFeatures)
-
-    val commonConfig = CommonPhaseConfig()
-      .withCoreSpec(coreSpec)
-      .withParallel(config.parallel)
-      .withBatchMode(config.batchMode)
-
-    val frontendConfig = LinkerFrontendImpl.Config()
-      .withCommonConfig(commonConfig)
-      .withCheckIR(config.checkIR)
-      .withOptimizer(config.optimizer)
-
-    val backendConfig = LinkerBackendImpl.Config()
-      .withCommonConfig(commonConfig)
-      .withSourceMap(config.sourceMap)
-      .withRelativizeSourceMapBase(config.relativizeSourceMapBase)
-      .withClosureCompilerIfAvailable(config.closureCompilerIfAvailable)
-      .withPrettyPrint(config.prettyPrint)
-
-    StandardLinkerImpl(LinkerFrontendImpl(frontendConfig),
-        LinkerBackendImpl(backendConfig))
+    StandardLinkerImpl(StandardLinkerFrontend(config),
+        StandardLinkerBackend(config))
   }
 
   def clearable(config: Config): ClearableLinker =
@@ -160,6 +136,14 @@ object StandardLinker {
          |  prettyPrint                = $prettyPrint,
          |  batchMode                  = $batchMode,
          |)""".stripMargin
+    }
+
+    private[linker] lazy val commonPhaseConfig: CommonPhaseConfig = {
+      val coreSpec = CoreSpec(semantics, moduleKind, esFeatures)
+      CommonPhaseConfig()
+        .withCoreSpec(coreSpec)
+        .withParallel(parallel)
+        .withBatchMode(batchMode)
     }
 
     private def copy(
