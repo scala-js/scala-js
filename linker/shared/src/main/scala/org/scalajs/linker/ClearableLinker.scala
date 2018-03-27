@@ -22,7 +22,8 @@ import org.scalajs.linker.irio._
  *
  *  This class is not thread-safe.
  */
-final class ClearableLinker(newLinker: () => Linker, batchMode: Boolean)
+final class ClearableLinker private (
+    newLinker: () => Linker, batchMode: Boolean)
     extends Linker {
 
   private[this] var _linker: Linker = _
@@ -59,4 +60,9 @@ final class ClearableLinker(newLinker: () => Linker, batchMode: Boolean)
     if (_linker == null)
       _linker = newLinker()
   }
+}
+
+object ClearableLinker {
+  def apply(newLinker: () => Linker, batchMode: Boolean): ClearableLinker =
+    new ClearableLinker(newLinker, batchMode)
 }

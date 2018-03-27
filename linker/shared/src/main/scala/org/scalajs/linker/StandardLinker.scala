@@ -47,7 +47,7 @@ object StandardLinker {
   }
 
   def clearable(config: Config): ClearableLinker =
-    new ClearableLinker(() => apply(config), config.batchMode)
+    ClearableLinker(() => apply(config), config.batchMode)
 
   implicit def configExt(config: Config): ConfigExt =
     new ConfigExt(config)
