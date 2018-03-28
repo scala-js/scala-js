@@ -64,7 +64,7 @@ object Build {
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.7", "2.11.12", "2.12.4", "2.13.0-M2")
+    Set("2.10.7", "2.11.12", "2.12.5", "2.13.0-M2")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -118,7 +118,7 @@ object Build {
   }
 
   val commonSettings = Seq(
-      scalaVersion := "2.11.12",
+      scalaVersion := "2.12.5",
       organization := "org.scala-js",
       version := scalaJSVersion,
 
