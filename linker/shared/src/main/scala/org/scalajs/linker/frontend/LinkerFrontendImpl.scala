@@ -13,19 +13,21 @@ import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
-import org.scalajs.linker.analyzer.SymbolRequirement
 import org.scalajs.linker.frontend.optimizer.{GenIncOptimizer, IncOptimizer}
 import org.scalajs.linker.irio._
 
-/** The frontend of the Scala.js linker. Produces a [[LinkingUnit]]
+/** The frontend of the Scala.js linker.
+ *
+ *  Produces a [[standard.LinkingUnit LinkingUnit]].
  *
  *  You probably want to use an instance of [[linker.Linker]], rather than this
  *  low-level class.
  *
- *  Attention: [[LinkerFrontend]] does not cache the IR input. It is advisable to do
- *  so, unless all IR is already in memory.
+ *  Attention: [[LinkerFrontendImpl]] does not cache the IR input. It is
+ *  advisable to do so, unless all IR is already in memory.
  */
-final class LinkerFrontend private (config: LinkerFrontend.Config) {
+final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
+    extends LinkerFrontend {
 
   /** Core specification that this linker frontend implements. */
   val coreSpec = config.commonConfig.coreSpec
@@ -34,11 +36,13 @@ final class LinkerFrontend private (config: LinkerFrontend.Config) {
     new BaseLinker(config.commonConfig)
 
   private[this] val optOptimizer: Option[GenIncOptimizer] =
-    LinkerFrontendPlatform.createOptimizer(config)
+    LinkerFrontendImplPlatform.createOptimizer(config)
 
   private[this] val refiner: Refiner = new Refiner(config.commonConfig)
 
-  /** Link and optionally optimize the given IR to a [[LinkingUnit]]. */
+  /** Link and optionally optimize the given IR to a
+   *  [[standard.LinkingUnit LinkingUnit]].
+   */
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit = {
@@ -69,9 +73,9 @@ final class LinkerFrontend private (config: LinkerFrontend.Config) {
   }
 }
 
-object LinkerFrontend {
-  def apply(config: Config): LinkerFrontend =
-    new LinkerFrontend(config)
+object LinkerFrontendImpl {
+  def apply(config: Config): LinkerFrontendImpl =
+    new LinkerFrontendImpl(config)
 
   /** Configurations relevant to the frontend */
   final class Config private (

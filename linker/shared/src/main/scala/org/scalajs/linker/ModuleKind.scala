@@ -10,7 +10,7 @@
 package org.scalajs.linker
 
 /** Kind of module structure emitted for the Scala.js output. */
-sealed abstract class ModuleKind
+abstract class ModuleKind private ()
 
 object ModuleKind {
 

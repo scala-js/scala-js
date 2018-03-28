@@ -9,68 +9,19 @@
 
 package org.scalajs.linker
 
-import scala.language.implicitConversions
-
-import java.util.concurrent.atomic.AtomicBoolean
-
 import org.scalajs.logging.Logger
 import org.scalajs.io._
 
-import org.scalajs.linker.analyzer.SymbolRequirement
-import org.scalajs.linker.frontend.LinkerFrontend
-import org.scalajs.linker.frontend.optimizer.IncOptimizer
-import org.scalajs.linker.backend.{LinkerBackend, BasicLinkerBackend}
 import org.scalajs.linker.irio._
 
-/** The Scala.js linker */
-final class Linker private (frontend: LinkerFrontend, backend: LinkerBackend)
-    extends GenLinker {
-
-  require(frontend.coreSpec == backend.coreSpec,
-      "Frontend and backend must implement the same core specification")
-
-  private[this] var _valid = true
-  private[this] val _linking = new AtomicBoolean(false)
-
-  def linkUnit(irFiles: Seq[VirtualScalaJSIRFile],
-      moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit =
-    guard(frontend.link(irFiles, moduleInitializers, symbolRequirements, logger))
-
+/** A Scala.js linker, with its most abstract API.
+ *
+ *  A linker can take a sequence of virtual .sjsir files and a sequence of
+ *  module initializers, link them together, and write the output to a writable
+ *  .js file.
+ */
+abstract class Linker private[linker] () {
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
-      output: WritableVirtualJSFile, logger: Logger): Unit = {
-    guard {
-      val unit = frontend.link(irFiles, moduleInitializers,
-          backend.symbolRequirements, logger)
-      backend.emit(unit, output, logger)
-    }
-  }
-
-  @inline
-  private[this] def guard[T](body: => T): T = {
-    if (!_linking.compareAndSet(false, true)) {
-      throw new IllegalStateException("Linker used concurrently")
-    }
-
-    try {
-      if (!_valid) {
-        throw new IllegalStateException(
-          "Linker is invalid due to a previous exception in a component")
-      }
-
-      body
-    } catch {
-      case t: Throwable =>
-        _valid = false
-        throw t
-    } finally {
-      _linking.set(false)
-    }
-  }
-}
-
-object Linker {
-  def apply(frontend: LinkerFrontend, backend: LinkerBackend): Linker =
-    new Linker(frontend, backend)
+      output: WritableVirtualJSFile, logger: Logger): Unit
 }

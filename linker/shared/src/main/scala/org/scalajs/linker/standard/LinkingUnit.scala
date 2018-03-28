@@ -1,6 +1,6 @@
-package org.scalajs.linker
+package org.scalajs.linker.standard
 
-import org.scalajs.linker.standard._
+import org.scalajs.linker._
 
 final class LinkingUnit private[linker] (
     val coreSpec: CoreSpec,

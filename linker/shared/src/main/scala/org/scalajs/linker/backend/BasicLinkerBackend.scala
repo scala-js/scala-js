@@ -12,8 +12,7 @@ package org.scalajs.linker.backend
 import org.scalajs.logging.Logger
 import org.scalajs.io.WritableVirtualJSFile
 
-import org.scalajs.linker.LinkingUnit
-import org.scalajs.linker.analyzer.SymbolRequirement
+import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.emitter.Emitter
 
 import org.scalajs.linker.backend.javascript.{
@@ -24,16 +23,16 @@ import org.scalajs.linker.backend.javascript.{
  *
  *  Simply emits the JavaScript without applying any further optimizations.
  */
-final class BasicLinkerBackend(config: LinkerBackend.Config)
-    extends LinkerBackend(config) {
+final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
+    extends LinkerBackendImpl(config) {
 
   private[this] val emitter = new Emitter(config.commonConfig)
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
 
-  /** Emit the given [[LinkingUnit]] to the target output
+  /** Emit the given [[standard.LinkingUnit LinkingUnit]] to the target output.
    *
-   *  @param unit [[LinkingUnit]] to emit
+   *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
    *  @param output File to write to
    */
   def emit(unit: LinkingUnit, output: WritableVirtualJSFile,

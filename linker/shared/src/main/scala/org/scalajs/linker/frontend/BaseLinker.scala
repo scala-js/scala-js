@@ -34,7 +34,7 @@ import ir.Definitions
 import Analysis._
 
 /** Links the information from [[irio.VirtualScalaJSIRFile]]s into
- *  [[LinkedClass]]es. Does a dead code elimination pass.
+ *  [[standard.LinkedClass LinkedClass]]es. Does a dead code elimination pass.
  */
 final class BaseLinker(config: CommonPhaseConfig) {
   import BaseLinker._

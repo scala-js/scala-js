@@ -13,37 +13,17 @@ import scala.language.implicitConversions
 import java.net.URI
 
 import org.scalajs.linker.standard._
-import org.scalajs.linker.frontend.LinkerFrontend
-import org.scalajs.linker.backend.LinkerBackend
 
 object StandardLinker {
   import StandardLinkerPlatformExtensions._
 
   def apply(config: Config): Linker = {
-    val coreSpec = CoreSpec(
-        config.semantics,
-        config.moduleKind,
-        config.esFeatures)
-
-    val commonConfig = CommonPhaseConfig()
-      .withCoreSpec(coreSpec)
-      .withParallel(config.parallel)
-      .withBatchMode(config.batchMode)
-
-    val frontendConfig = LinkerFrontend.Config()
-      .withCommonConfig(commonConfig)
-      .withCheckIR(config.checkIR)
-      .withOptimizer(config.optimizer)
-
-    val backendConfig = LinkerBackend.Config()
-      .withCommonConfig(commonConfig)
-      .withSourceMap(config.sourceMap)
-      .withRelativizeSourceMapBase(config.relativizeSourceMapBase)
-      .withClosureCompilerIfAvailable(config.closureCompilerIfAvailable)
-      .withPrettyPrint(config.prettyPrint)
-
-    Linker(LinkerFrontend(frontendConfig), LinkerBackend(backendConfig))
+    StandardLinkerImpl(StandardLinkerFrontend(config),
+        StandardLinkerBackend(config))
   }
+
+  def clearable(config: Config): ClearableLinker =
+    ClearableLinker(() => apply(config), config.batchMode)
 
   implicit def configExt(config: Config): ConfigExt =
     new ConfigExt(config)
@@ -156,6 +136,14 @@ object StandardLinker {
          |  prettyPrint                = $prettyPrint,
          |  batchMode                  = $batchMode,
          |)""".stripMargin
+    }
+
+    private[linker] lazy val commonPhaseConfig: CommonPhaseConfig = {
+      val coreSpec = CoreSpec(semantics, moduleKind, esFeatures)
+      CommonPhaseConfig()
+        .withCoreSpec(coreSpec)
+        .withParallel(parallel)
+        .withBatchMode(batchMode)
     }
 
     private def copy(

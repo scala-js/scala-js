@@ -18,7 +18,6 @@ import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
-import org.scalajs.linker.analyzer.SymbolRequirement
 
 /** A backend of the Scala.js linker. Produces a
  *  [[org.scalajs.io.VirtualJSFile VirtualJSFile]].
@@ -26,46 +25,17 @@ import org.scalajs.linker.analyzer.SymbolRequirement
  *  You probably want to use an instance of [[linker.Linker]], rather than this
  *  low-level class.
  */
-abstract class LinkerBackend(protected val config: LinkerBackend.Config) {
+abstract class LinkerBackendImpl(
+    protected val config: LinkerBackendImpl.Config)
+    extends LinkerBackend {
+
   /** Core specification that this linker backend implements. */
   val coreSpec = config.commonConfig.coreSpec
-
-  /** Symbols this backend needs to be present in the linking unit. */
-  val symbolRequirements: SymbolRequirement
-
-  /** Emit the given [[LinkingUnit]] to the target output.
-   *
-   *  The linking unit given to `emit` must:
-   *
-   *  - have the same `coreSpec` as this linker backend, and
-   *  - contain the symbols listed in [[symbolRequirements]].
-   *
-   *  @param unit [[LinkingUnit]] to emit
-   *  @param output File to write to
-   *  @param logger Logger to use
-   */
-  def emit(unit: LinkingUnit, output: WritableVirtualJSFile,
-      logger: Logger): Unit
-
-  /** Verify that a [[LinkingUnit]] can be processed by this [[LinkerBackend]].
-   *
-   *  Currently, this only tests that the linking unit core specification
-   *  matches [[coreSpec]].
-   *
-   *  In the future, this test could be extended to test [[symbolRequirements]]
-   *  too.
-   *
-   *  @throws java.lang.IllegalArgumentException if there is a mismatch
-   */
-  protected def verifyUnit(unit: LinkingUnit): Unit = {
-    require(unit.coreSpec == coreSpec,
-        "LinkingUnit and LinkerBackend must agree on their core specification")
-  }
 }
 
-object LinkerBackend {
-  def apply(config: Config): LinkerBackend =
-    LinkerBackendPlatform.createLinkerBackend(config)
+object LinkerBackendImpl {
+  def apply(config: Config): LinkerBackendImpl =
+    LinkerBackendImplPlatform.createLinkerBackend(config)
 
   /** Configurations relevant to the backend */
   final class Config private (
@@ -118,7 +88,7 @@ object LinkerBackend {
   }
 
   object Config {
-    import LinkerBackendPlatformExtensions._
+    import LinkerBackendImplPlatformExtensions._
 
     implicit def toPlatformExtensions(config: Config): ConfigExt =
       new ConfigExt(config)

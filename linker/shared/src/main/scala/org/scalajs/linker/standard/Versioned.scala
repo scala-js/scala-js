@@ -6,10 +6,7 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-package org.scalajs.linker
-
-import org.scalajs.ir
-import ir.Trees._
+package org.scalajs.linker.standard
 
 /** A versioned thing, accompanied by its version.
  *

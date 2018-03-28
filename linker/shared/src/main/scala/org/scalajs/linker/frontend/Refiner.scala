@@ -19,7 +19,8 @@ import org.scalajs.linker._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.analyzer._
 
-/** Does a dead code elimination pass on [[LinkedClass]]es */
+/** Does a dead code elimination pass on a [[standard.LinkingUnit LinkingUnit]].
+ */
 final class Refiner(config: CommonPhaseConfig) {
   import Refiner._
 
@@ -91,7 +92,7 @@ final class Refiner(config: CommonPhaseConfig) {
       if (info.isModuleAccessed) classDef.kind
       else classDef.kind.withoutModuleAccessor
 
-    classDef.copy(
+    classDef.refined(
         kind = kind,
         fields = fields,
         staticMethods = staticMethods,

@@ -24,12 +24,13 @@ import Types._
 import org.scalajs.logging._
 
 import org.scalajs.linker._
-import org.scalajs.linker.analyzer.SymbolRequirement
 import org.scalajs.linker.backend.emitter.LongImpl
 import org.scalajs.linker.standard._
 
 /** Incremental optimizer.
- *  An incremental optimizer optimizes a [[LinkingUnit]] in an incremental way.
+ *
+ *  An incremental optimizer optimizes a [[standard.LinkingUnit LinkingUnit]]
+ *  in an incremental way.
  *
  *  It maintains state between runs to do a minimal amount of work on every
  *  run, based on detecting what parts of the program must be re-optimized,
@@ -119,7 +120,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
           if (linkedClass.kind == ClassKind.Interface) getDefaults(encodedName)
           else getClass(encodedName)
 
-        linkedClass.copy(
+        linkedClass.optimized(
             staticMethods = defs(getStaticsNamespace(encodedName)),
             memberMethods = defs(memberNamespace))
       }

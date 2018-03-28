@@ -24,7 +24,8 @@ import Trees._
 import Types._
 
 import org.scalajs.logging._
-import org.scalajs.linker.{LinkingUnit, LinkedClass, Versioned}
+
+import org.scalajs.linker.standard._
 import org.scalajs.linker.analyzer.{Analyzer, Infos}
 
 /** Checker for the validity of the IR. */
@@ -1374,7 +1375,7 @@ private final class IRChecker(unit: LinkingUnit,
 }
 
 object IRChecker {
-  /** Checks that the IR in a [[LinkingUnit]] is correct.
+  /** Checks that the IR in a [[standard.LinkingUnit LinkingUnit]] is correct.
    *
    *  @return Count of IR checking errors (0 in case of success)
    */

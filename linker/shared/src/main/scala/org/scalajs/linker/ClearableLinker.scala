@@ -12,58 +12,83 @@ package org.scalajs.linker
 import org.scalajs.logging.Logger
 import org.scalajs.io._
 
-import org.scalajs.linker.analyzer.SymbolRequirement
 import org.scalajs.linker.irio._
 
-/** A box around a [[GenLinker]] to support clearing.
+/** A box around a [[Linker]] to support clearing.
  *
- *  This further supports:
- *  - batch mode (clearing after every operation)
- *  - clearing if linker throws
+ *  Calling `clear()` completely resets the state of this `ClearableLinker`, so
+ *  that it can be used again without being affected by previous calls to
+ *  `link`, even of those would have corrupted the internal state.
  *
- *  This class is not thread-safe.
+ *  In addition to the contract of [[Linker]], if [[Linker.link]] throws an
+ *  exception, the `ClearableLinker` is automatically `clear()`'ed.
+ *
+ *  Implementations are allowed to automatically `clear()` in other cases, but
+ *  never while a linking is in progress.
+ *
+ *  Unless otherwise specified, instances of this trait are not thread-safe.
  */
-final class ClearableLinker(newLinker: () => GenLinker, batchMode: Boolean)
-    extends GenLinker {
+trait ClearableLinker extends Linker {
+  /** Completely resets the state of this `ClearableLinker`.
+   *
+   *  After calling this method, this `ClearableLinker`, it can be used again
+   *  without being affected by previous calls to `link`, even of those would
+   *  have corrupted the internal state.
+   */
+  def clear(): Unit
+}
 
-  private[this] var _linker: GenLinker = _
+object ClearableLinker {
+  /** Creates a [[ClearableLinker]] from a function creating a [[Linker]].
+   *
+   *  Every time `clear()` is called, a new [[Linker]] is obtained from the
+   *  `newLinker` function to ensure that all the previous state is discarded.
+   *  `newLinker` must returned a new, independent instance of [[Linker]] every
+   *  time it is called.
+   *
+   *  If `batchMode` is true, the returned `ClearableLinker` clears itself
+   *  after every invocation of `link`.
+   */
+  def apply(newLinker: () => Linker, batchMode: Boolean): ClearableLinker =
+    new ClearableLinkerImpl(newLinker, batchMode)
 
-  def linkUnit(irFiles: Seq[VirtualScalaJSIRFile],
-      moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit = {
-    linkerOp(_.linkUnit(irFiles, moduleInitializers, symbolRequirements, logger))
-  }
+  private final class ClearableLinkerImpl(
+      newLinker: () => Linker, batchMode: Boolean)
+      extends ClearableLinker {
 
-  def link(irFiles: Seq[VirtualScalaJSIRFile],
-      moduleInitializers: Seq[ModuleInitializer],
-      output: WritableVirtualJSFile, logger: Logger): Unit = {
-    linkerOp(_.link(irFiles, moduleInitializers, output, logger))
-  }
+    private[this] var _linker: Linker = _
 
-  def clear(): Unit =
-    _linker = null
-
-  @inline
-  private[this] def linkerOp[T](op: GenLinker => T): T = {
-    ensureLinker()
-
-    try {
-      op(_linker)
-    } catch {
-      // Clear if we throw
-      case t: Throwable =>
-        clear()
-        throw t
-    } finally {
-      // Clear if we are in batch mode
-      if (batchMode)
-        clear()
+    def link(irFiles: Seq[VirtualScalaJSIRFile],
+        moduleInitializers: Seq[ModuleInitializer],
+        output: WritableVirtualJSFile, logger: Logger): Unit = {
+      linkerOp(_.link(irFiles, moduleInitializers, output, logger))
     }
-  }
 
-  private def ensureLinker(): Unit = {
-    // Ensure we have a linker
-    if (_linker == null)
-      _linker = newLinker()
+    def clear(): Unit =
+      _linker = null
+
+    @inline
+    private[this] def linkerOp[T](op: Linker => T): T = {
+      ensureLinker()
+
+      try {
+        op(_linker)
+      } catch {
+        // Clear if we throw
+        case t: Throwable =>
+          clear()
+          throw t
+      } finally {
+        // Clear if we are in batch mode
+        if (batchMode)
+          clear()
+      }
+    }
+
+    private def ensureLinker(): Unit = {
+      // Ensure we have a linker
+      if (_linker == null)
+        _linker = newLinker()
+    }
   }
 }

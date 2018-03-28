@@ -22,7 +22,7 @@ import org.scalajs.io._
 import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
-import org.scalajs.linker.analyzer.SymbolRequirement
+import org.scalajs.linker.standard._
 import org.scalajs.linker.backend._
 import org.scalajs.linker.backend.emitter.Emitter
 
@@ -31,8 +31,8 @@ import org.scalajs.linker.backend.emitter.Emitter
  *  Runs a the Google Closure Compiler in advanced mode on the emitted code.
  *  Use this for production builds.
  */
-final class ClosureLinkerBackend(config: LinkerBackend.Config)
-    extends LinkerBackend(config) {
+final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
+    extends LinkerBackendImpl(config) {
 
   import config.commonConfig.coreSpec._
 
@@ -59,9 +59,9 @@ final class ClosureLinkerBackend(config: LinkerBackend.Config)
   private def toClosureSource(file: VirtualJSFile) =
     ClosureSource.fromReader(file.toURI.toString(), file.reader)
 
-  /** Emit the given [[LinkingUnit]] to the target output
+  /** Emit the given [[standard.LinkingUnit LinkingUnit]] to the target output.
    *
-   *  @param unit [[LinkingUnit]] to emit
+   *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
    *  @param output File to write to
    */
   def emit(unit: LinkingUnit, output: WritableVirtualJSFile,

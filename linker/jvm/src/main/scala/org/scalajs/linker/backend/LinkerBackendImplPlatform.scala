@@ -6,21 +6,17 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-package org.scalajs.linker.frontend
+package org.scalajs.linker.backend
 
-import org.scalajs.linker.frontend.optimizer._
+import org.scalajs.linker.backend.closure.ClosureLinkerBackend
 
-private[frontend] object LinkerFrontendPlatform {
-  import LinkerFrontend.Config
+private[backend] object LinkerBackendImplPlatform {
+  import LinkerBackendImpl.Config
 
-  def createOptimizer(config: Config): Option[GenIncOptimizer] = {
-    import config.commonConfig
-
-    if (!config.optimizer)
-      None
-    else if (commonConfig.parallel)
-      Some(new ParIncOptimizer(commonConfig))
+  def createLinkerBackend(config: Config): LinkerBackendImpl = {
+    if (config.closureCompiler)
+      new ClosureLinkerBackend(config)
     else
-      Some(new IncOptimizer(commonConfig))
+      new BasicLinkerBackend(config)
   }
 }

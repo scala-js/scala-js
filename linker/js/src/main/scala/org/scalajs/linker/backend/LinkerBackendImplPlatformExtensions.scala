@@ -8,15 +8,17 @@
 
 package org.scalajs.linker.backend
 
-import org.scalajs.linker.backend.closure.ClosureLinkerBackend
+object LinkerBackendImplPlatformExtensions {
+  import LinkerBackendImpl.Config
 
-private[backend] object LinkerBackendPlatform {
-  import LinkerBackend.Config
+  final class ConfigExt private[backend] (private val self: Config)
+      extends AnyVal {
 
-  def createLinkerBackend(config: Config): LinkerBackend = {
-    if (config.closureCompiler)
-      new ClosureLinkerBackend(config)
-    else
-      new BasicLinkerBackend(config)
+    /** Whether to actually use the Google Closure Compiler pass.
+     *
+     *  On the JavaScript platform, this always returns `false`, as GCC is not
+     *  available.
+     */
+    def closureCompiler: Boolean = false
   }
 }

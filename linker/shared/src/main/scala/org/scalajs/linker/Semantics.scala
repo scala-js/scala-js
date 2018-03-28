@@ -9,8 +9,6 @@
 
 package org.scalajs.linker
 
-import scala.collection.immutable.Traversable
-
 import CheckedBehavior._
 
 final class Semantics private (
@@ -112,7 +110,7 @@ object Semantics {
     def andThen(that: RuntimeClassNameMapper): RuntimeClassNameMapper =
       AndThen(this, that)
 
-    private[linker] def apply(linkedClass: LinkedClass): String = {
+    private[linker] def apply(className: String): String = {
       def rec(mapper: RuntimeClassNameMapper, className: String): String = {
         mapper match {
           case KeepAll =>
@@ -126,7 +124,7 @@ object Semantics {
         }
       }
 
-      rec(this, linkedClass.fullName)
+      rec(this, className)
     }
   }
 
