@@ -12,6 +12,7 @@ scala/reflect/io/ZipArchiveTest.scala
 scala/reflect/internal/util/AbstractFileClassLoaderTest.scala
 scala/reflect/internal/util/SourceFileTest.scala
 scala/reflect/internal/util/StringOpsTest.scala
+scala/reflect/internal/Infer.scala
 scala/reflect/internal/PrintersTest.scala
 scala/reflect/internal/ScopeTest.scala
 scala/reflect/internal/TreeGenTest.scala
@@ -29,11 +30,13 @@ scala/tools/nsc/backend/jvm/IndySammyTest.scala
 scala/tools/nsc/backend/jvm/InnerClassAttributeTest.scala
 scala/tools/nsc/backend/jvm/NestedClassesCollectorTest.scala
 scala/tools/nsc/backend/jvm/OptimizedBytecodeTest.scala
+scala/tools/nsc/backend/jvm/PerRunInitTest.scala
 scala/tools/nsc/backend/jvm/StringConcatTest.scala
 scala/tools/nsc/backend/jvm/analysis/NullnessAnalyzerTest.scala
 scala/tools/nsc/backend/jvm/analysis/ProdConsAnalyzerTest.scala
 scala/tools/nsc/backend/jvm/opt/AnalyzerTest.scala
 scala/tools/nsc/backend/jvm/opt/BTypesFromClassfileTest.scala
+scala/tools/nsc/backend/jvm/opt/BoxUnboxTest.scala
 scala/tools/nsc/backend/jvm/opt/CallGraphTest.scala
 scala/tools/nsc/backend/jvm/opt/ClosureOptimizerTest.scala
 scala/tools/nsc/backend/jvm/opt/CompactLocalVariablesTest.scala
@@ -55,6 +58,7 @@ scala/tools/nsc/classpath/AggregateClassPathTest.scala
 scala/tools/nsc/classpath/JrtClassPathTest.scala
 scala/tools/nsc/classpath/PathResolverBaseTest.scala
 scala/tools/nsc/classpath/VirtualDirectoryClassPathTest.scala
+scala/tools/nsc/classpath/ZipAndJarFileLookupFactoryTest.scala
 scala/tools/nsc/doc/html/HtmlDocletTest.scala
 scala/tools/nsc/interpreter/CompletionTest.scala
 scala/tools/nsc/interpreter/ScriptedTest.scala
@@ -94,6 +98,7 @@ scala/collection/mutable/ArrayBufferTest.scala
 scala/collection/mutable/MutableListTest.scala
 scala/collection/mutable/OpenHashMapTest.scala
 scala/collection/mutable/PriorityQueueTest.scala
+scala/concurrent/FutureTest.scala
 scala/concurrent/duration/SerializationTest.scala
 scala/concurrent/impl/DefaultPromiseTest.scala
 scala/io/SourceTest.scala
@@ -119,11 +124,6 @@ scala/math/BigDecimalTest.scala
 
 # Difference of getClass() on primitive values
 scala/collection/immutable/RangeTest.scala
-
-# Test fails only some times with
-#   'set scalaJSOptimizerOptions in scalaTestSuite ~= (_.withDisableOptimizer(true))'
-#   and' 'set scalaJSUseRhino in Global := false'
-scala/collection/immutable/PagedSeqTest.scala
 
 # Bugs
 scala/collection/convert/MapWrapperTest.scala
