@@ -314,6 +314,8 @@ object Character {
     (c & HighSurrogateMask) == HighSurrogateID
   @inline def isLowSurrogate(c: scala.Char): scala.Boolean =
     (c & LowSurrogateMask) == LowSurrogateID
+  @inline def isSurrogate(c: scala.Char): scala.Boolean =
+    isHighSurrogate(c) || isLowSurrogate(c)
   @inline def isSurrogatePair(high: scala.Char, low: scala.Char): scala.Boolean =
     isHighSurrogate(high) && isLowSurrogate(low)
 
