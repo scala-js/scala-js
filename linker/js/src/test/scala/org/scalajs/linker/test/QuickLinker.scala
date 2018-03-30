@@ -61,10 +61,9 @@ object QuickLinker {
       if (file.endsWith(".jar")) {
         Platform.loadJar(file)
       } else if (file.endsWith(".sjsir")) {
-        new NodeVirtualScalaJSIRFile(file) with VirtualRelativeScalaJSIRFile {
-          // The compiler should not use this (only scalajsp does)
-          def relativePath: String = s"<dummy relative path from $getClass>"
-        }
+        // The compiler should not use this (only scalajsp does)
+        val relativePath: String = s"<dummy relative path from $getClass>"
+        new NodeVirtualScalaJSIRFile(file, relativePath)
       } else {
         throw new IllegalArgumentException("Illegal IR file / Jar: " + file)
       }

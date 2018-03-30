@@ -12,21 +12,14 @@ import java.io._
 
 import org.scalajs.io._
 
-class FileVirtualScalaJSIRFile(f: File)
+class FileVirtualScalaJSIRFile(f: File, val relativePath: String)
     extends FileVirtualBinaryFile(f) with VirtualSerializedScalaJSIRFile
 
-object FileVirtualScalaJSIRFile extends (File => FileVirtualScalaJSIRFile) {
+object FileVirtualScalaJSIRFile {
   import FileVirtualFile._
 
-  def apply(f: File): FileVirtualScalaJSIRFile =
-    new FileVirtualScalaJSIRFile(f)
-
-  def relative(f: File, relPath: String): FileVirtualScalaJSIRFile
-      with VirtualRelativeScalaJSIRFile = {
-    new FileVirtualScalaJSIRFile(f) with VirtualRelativeScalaJSIRFile {
-      def relativePath: String = relPath
-    }
-  }
+  def apply(f: File, relPath: String): FileVirtualScalaJSIRFile =
+    new FileVirtualScalaJSIRFile(f, relPath)
 
   def isScalaJSIRFile(file: File): Boolean =
     hasExtension(file, ".sjsir")
@@ -63,7 +56,7 @@ object FileScalaJSIRContainer {
         .stripPrefix(baseDir.getPath)
         .replace(java.io.File.separatorChar, '/')
         .stripPrefix("/")
-      FileVirtualScalaJSIRFile.relative(ir, relPath)
+      FileVirtualScalaJSIRFile(ir, relPath)
     }
   }
 }
@@ -71,6 +64,6 @@ object FileScalaJSIRContainer {
 class FileVirtualJarScalaJSIRContainer(file: File)
     extends FileVirtualJarFile(file) with ScalaJSIRContainer {
 
-  def sjsirFiles: List[VirtualRelativeScalaJSIRFile] =
+  def sjsirFiles: List[VirtualScalaJSIRFile] =
     ScalaJSIRContainer.sjsirFilesIn(this)
 }

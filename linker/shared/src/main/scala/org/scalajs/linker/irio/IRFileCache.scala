@@ -71,10 +71,10 @@ final class IRFileCache {
      *  [[free]].
      *
      *  @note Updating any of the underlying files in the container during the
-     *      lifetime of a returned [[VirtualRelativeScalaJSIRFile]] yields
+     *      lifetime of a returned [[VirtualScalaJSIRFile]] yields
      *      unspecified behavior.
      */
-    def cached(files: Seq[ScalaJSIRContainer]): Seq[VirtualRelativeScalaJSIRFile] = {
+    def cached(files: Seq[ScalaJSIRContainer]): Seq[VirtualScalaJSIRFile] = {
       update(files)
       localCache.flatMap(_.files)
     }
@@ -144,9 +144,9 @@ final class IRFileCache {
      *  May only be written under synchronization, except if this is a tombstone
      */
     @volatile
-    private[this] var _files: Seq[VirtualRelativeScalaJSIRFile] = null
+    private[this] var _files: Seq[VirtualScalaJSIRFile] = null
 
-    def files: Seq[VirtualRelativeScalaJSIRFile] = _files
+    def files: Seq[VirtualScalaJSIRFile] = _files
 
     /** Try to reference this block of files.
      *  @return true if referencing succeeded, false if this is a tombstone
@@ -226,8 +226,8 @@ final class IRFileCache {
   }
 
   private final class PersistentIRFile(
-      private[this] var _irFile: VirtualRelativeScalaJSIRFile)
-      extends VirtualRelativeScalaJSIRFile {
+      private[this] var _irFile: VirtualScalaJSIRFile)
+      extends VirtualScalaJSIRFile {
 
     @volatile
     private[this] var _tree: ClassDef = null

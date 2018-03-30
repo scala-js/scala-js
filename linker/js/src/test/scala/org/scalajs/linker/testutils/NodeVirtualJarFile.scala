@@ -72,6 +72,6 @@ object NodeVirtualJarFile {
 class NodeVirtualJarScalaJSIRContainer(file: String)
     extends NodeVirtualJarFile(file) with ScalaJSIRContainer {
 
-  def sjsirFiles: List[VirtualRelativeScalaJSIRFile] =
+  def sjsirFiles: List[VirtualScalaJSIRFile] =
     ScalaJSIRContainer.sjsirFilesIn(this)
 }

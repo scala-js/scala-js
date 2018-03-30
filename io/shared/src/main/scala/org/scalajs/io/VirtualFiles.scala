@@ -39,16 +39,6 @@ object VirtualFile {
   }
 }
 
-trait RelativeVirtualFile extends VirtualFile {
-  /** Relative path with respect to some container.
-   *
-   *  The container depends on the context in which this [[RelativeVirtualFile]]
-   *  is retrieved. A good example is the [[VirtualJarFile]] where the relative
-   *  path is the path inside the Jar.
-   */
-  def relativePath: String
-}
-
 /** A virtual input file.
  */
 trait VirtualTextFile extends VirtualFile {

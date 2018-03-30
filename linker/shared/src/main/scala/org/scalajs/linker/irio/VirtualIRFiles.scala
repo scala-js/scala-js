@@ -26,12 +26,12 @@ trait ScalaJSIRContainer extends VirtualFile {
    *
    *  It is up to the implementation whether these files are read lazily or not.
    */
-  def sjsirFiles: List[VirtualRelativeScalaJSIRFile]
+  def sjsirFiles: List[VirtualScalaJSIRFile]
 }
 
 object ScalaJSIRContainer {
   def sjsirFilesIn(
-      container: VirtualFileContainer): List[VirtualRelativeScalaJSIRFile] = {
+      container: VirtualFileContainer): List[VirtualScalaJSIRFile] = {
     container.listEntries(_.endsWith(".sjsir")) { (relPath, stream) =>
       val file = new EntryIRFile(container.path, relPath)
       file.content = IO.readInputStreamToByteArray(stream)
@@ -40,26 +40,26 @@ object ScalaJSIRContainer {
     }
   }
 
-  private class EntryIRFile(outerPath: String, val relativePath: String)
-      extends MemVirtualSerializedScalaJSIRFile(s"$outerPath:$relativePath")
-      with VirtualRelativeScalaJSIRFile
+  private class EntryIRFile(outerPath: String, relativePath: String)
+      extends MemVirtualSerializedScalaJSIRFile(s"$outerPath:$relativePath", relativePath)
+      with VirtualScalaJSIRFile
 }
 
 /** A virtual Scala.js IR file.
  *  It contains the class info and the IR tree.
  */
-trait VirtualScalaJSIRFile extends VirtualFile {
+trait VirtualScalaJSIRFile extends VirtualFile with ScalaJSIRContainer {
   /** Entry points information for this file. */
   def entryPointsInfo: ir.EntryPointsInfo =
     ir.EntryPointsInfo.forClassDef(tree)
 
   /** IR Tree of this file. */
   def tree: ir.Trees.ClassDef
-}
 
-trait VirtualRelativeScalaJSIRFile extends VirtualScalaJSIRFile
-    with RelativeVirtualFile with ScalaJSIRContainer {
-  def sjsirFiles: List[VirtualRelativeScalaJSIRFile] = this :: Nil
+  /** The path of this IR relative to its classpath root. */
+  def relativePath: String
+
+  def sjsirFiles: List[VirtualScalaJSIRFile] = this :: Nil
 }
 
 /** Base trait for virtual Scala.js IR files that are serialized as binary file.

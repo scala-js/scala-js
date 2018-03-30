@@ -221,7 +221,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val irContainers = FileScalaJSIRContainer.fromClasspath(classpath)
         val irFiles = cache.cached(irContainers)
         Attributed
-          .blank[Seq[VirtualScalaJSIRFile with RelativeVirtualFile]](irFiles)
+          .blank[Seq[VirtualScalaJSIRFile]](irFiles)
           .put(scalaJSSourceFiles, irContainers.map(_.file))
       },
 

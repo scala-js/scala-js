@@ -10,5 +10,5 @@ package org.scalajs.linker.irio
 
 import org.scalajs.io._
 
-class NodeVirtualScalaJSIRFile(p: String)
+class NodeVirtualScalaJSIRFile(p: String, val relativePath: String)
     extends NodeVirtualBinaryFile(p) with VirtualSerializedScalaJSIRFile
