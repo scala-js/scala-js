@@ -1,5 +1,3 @@
-scala/CharSequenceImplicitsTests.scala
-scala/collection/CollectionConversionsTest.scala
 scala/collection/IndexedSeqOptimizedTest.scala
 scala/collection/IndexedSeqTest.scala
 scala/collection/IterableViewLikeTest.scala
@@ -19,10 +17,10 @@ scala/collection/immutable/SetTest.scala
 scala/collection/immutable/TreeMapTest.scala
 scala/collection/immutable/TreeSetTest.scala
 scala/collection/immutable/VectorTest.scala
+scala/collection/mutable/AnyRefMapTest.scala
 scala/collection/mutable/ArraySortingTest.scala
 scala/collection/mutable/BitSetTest.scala
 scala/collection/mutable/HashMapTest.scala
-scala/collection/mutable/HashSetTest.scala
 scala/collection/mutable/LinkedHashMapTest.scala
 scala/collection/mutable/LinkedHashSetTest.scala
 scala/collection/mutable/SetLikeTest.scala
@@ -35,10 +33,8 @@ scala/math/BigIntTest.scala
 scala/math/NumericTest.scala
 scala/math/OrderingTest.scala
 scala/runtime/ZippedTest.scala
-scala/tools/nsc/SampleTest.scala
 scala/tools/testing/AssertUtil.scala
 scala/tools/testing/TempDir.scala
 scala/util/RandomTest.scala
-scala/util/RandomUtilTest.scala
 scala/util/TryTest.scala
 scala/util/control/ExceptionTest.scala

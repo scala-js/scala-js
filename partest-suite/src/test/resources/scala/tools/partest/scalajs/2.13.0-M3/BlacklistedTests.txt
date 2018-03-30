@@ -65,6 +65,8 @@ run/lambda-serialization-gc.scala
 run/t9390.scala
 run/t9390b.scala
 run/t9390c.scala
+run/t10527.scala
+run/t10650
 run/trait-defaults-super.scala
 
 run/t2849.scala
@@ -89,6 +91,7 @@ run/t6969.scala
 run/inner-obj-auto.scala
 run/predef-cycle.scala
 run/synchronized.scala
+run/sd409.scala
 
 # Uses java.security
 run/t2318.scala
@@ -143,6 +146,7 @@ run/lambda-serialization-security.scala
 run/t10232.scala
 run/t10233.scala
 run/t10244.scala
+run/t10522.scala
 
 # Using System.getProperties
 
@@ -152,6 +156,7 @@ run/t4426.scala
 
 run/t7336.scala
 run/t7775.scala
+run/t10513.scala
 run/future-flatmap-exec-count.scala
 
 # Using detailed stack trace
@@ -488,6 +493,7 @@ run/trait_fields_final.scala
 run/trait_fields_bytecode.scala
 run/trait_fields_volatile.scala
 run/junitForwarders
+run/sip23-toolbox-eval.scala
 
 run/reify_newimpl_29.scala
 run/reify_magicsymbols.scala
@@ -544,14 +550,12 @@ run/reify_nested_inner_refers_to_global.scala
 run/reify_newimpl_02.scala
 run/reify_newimpl_01.scala
 run/reify_fors_newpatmat.scala
-run/reify_classfileann_a.scala
 run/reify_nested_outer_refers_to_local.scala
 run/reify_newimpl_13.scala
 run/reify_closure5a.scala
 run/reify_inner4.scala
 run/reify_sort.scala
 run/reify_ann1a.scala
-run/reify_classfileann_b.scala
 run/reify_closure4a.scala
 run/reify_newimpl_33.scala
 run/reify_sort1.scala
@@ -603,6 +607,9 @@ run/reify_renamed_type_spliceable.scala
 run/reify_typerefs_1a.scala
 run/reify_timeofday.scala
 run/reify_renamed_term_t5841.scala
+run/reify_classfileann_a
+run/reify_classfileann_b
+run/reify_ann2b.scala
 
 run/t7521b.scala
 run/t8575b.scala
@@ -891,12 +898,13 @@ run/t9097.scala
 run/macroPlugins-enterStats.scala
 run/sbt-icode-interface.scala
 run/t8502b.scala
-run/t9437c
 run/repl-paste-parse.scala
 run/t5463.scala
 run/t8433.scala
 run/sd275.scala
 run/sd275-java
+run/t10471.scala
+run/t6130.scala
 
 # Using partest.StoreReporterDirectTest
 run/t10171
@@ -994,6 +1002,10 @@ run/t7936b
 run/t9937
 run/t10368
 run/t10334b
+run/sd304
+run/t10450
+run/t10042
+run/t8348
 
 # Using scala-script
 run/t7791-script-linenums.scala
@@ -1023,6 +1035,12 @@ run/t3493.scala
 # Custom invoke dynamic node
 run/indy-via-macro
 run/indy-via-macro-with-dynamic-args
+
+# Test the class name of LMF-generated lambdas
+run/t7187.scala
+
+# Crashes our optimizer because of artificially insane amount of inlining
+run/t10594.scala
 
 ###  Incorrect partests  ###
 # Badly uses constract of Console.print (no flush)
