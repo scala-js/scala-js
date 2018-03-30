@@ -1170,6 +1170,37 @@ abstract class GenJSCode extends plugins.PluginComponent
           mkSubPreCalls(constructorTree, overrideNumRef)
 
         val preSuperCall = {
+          def checkForUndefinedParams(args: List[js.Tree]): List[js.Tree] = {
+            if (!args.exists(_.isInstanceOf[js.UndefinedParam])) {
+              args
+            } else {
+              /* If we find an undefined param here, we're in trouble, because
+               * the handling of a default param for the target constructor has
+               * already been done during overload resolution. If we store an
+               * `undefined` now, it will fall through without being properly
+               * processed.
+               *
+               * Since this seems very tricky to deal with, and a pretty rare
+               * use case (with a workaround), we emit an "implementation
+               * restriction" error.
+               */
+              reporter.error(pos,
+                  "Implementation restriction: in a JS class, a secondary " +
+                  "constructor calling another constructor with default " +
+                  "parameters must provide the values of all parameters.")
+
+              /* Replace undefined params by undefined to prevent subsequent
+               * compiler crashes.
+               */
+              args.map {
+                case arg: js.UndefinedParam =>
+                  js.Undefined()(arg.pos)
+                case arg =>
+                  arg
+              }
+            }
+          }
+
           constructorTree.method.body.get match {
             case js.Block(stats) =>
               val beforeSuperCall = stats.takeWhile {
@@ -1179,14 +1210,16 @@ abstract class GenJSCode extends plugins.PluginComponent
               val superCallParams = stats.collectFirst {
                 case js.ApplyStatic(_, mtd, js.This() :: args)
                     if ir.Definitions.isConstructorName(mtd.name) =>
-                  zipMap(outputParams, args)(js.Assign(_, _))
+                  val checkedArgs = checkForUndefinedParams(args)
+                  zipMap(outputParams, checkedArgs)(js.Assign(_, _))
               }.getOrElse(Nil)
 
               beforeSuperCall ::: superCallParams
 
             case js.ApplyStatic(_, mtd, js.This() :: args)
                 if ir.Definitions.isConstructorName(mtd.name) =>
-              zipMap(outputParams, args)(js.Assign(_, _))
+              val checkedArgs = checkForUndefinedParams(args)
+              zipMap(outputParams, checkedArgs)(js.Assign(_, _))
 
             case _ => Nil
           }
