@@ -4,7 +4,7 @@ import org.scalajs.ir
 import ir.Position.NoPosition
 
 import org.scalajs.linker.backend.javascript.Trees.Tree
-import org.scalajs.linker.backend.javascript.JSTreeBuilder
+import org.scalajs.linker.backend.javascript.JSBuilder
 
 import com.google.javascript.rhino._
 import com.google.javascript.jscomp._
@@ -13,26 +13,41 @@ import scala.collection.mutable
 
 import java.net.URI
 
-private[closure] class ClosureAstBuilder(
-    relativizeBaseURI: Option[URI] = None) extends JSTreeBuilder {
+private[closure] class ClosureModuleBuilder(
+    relativizeBaseURI: Option[URI] = None) extends JSBuilder {
 
   private val transformer = new ClosureAstTransformer(relativizeBaseURI)
   private val treeBuf = mutable.ListBuffer.empty[Node]
+  private val module = new JSModule("Scala.js")
 
   def addJSTree(tree: Tree): Unit =
     treeBuf += transformer.transformStat(tree)(NoPosition)
 
-  lazy val closureAST: SourceAst = {
-    val root = transformer.setNodePosition(IR.script(treeBuf: _*), NoPosition)
-
-    treeBuf.clear()
-
-    new ClosureAstBuilder.ScalaJSSourceAst(root)
+  def addStatement(originalLocation: URI, code: String): Unit = {
+    flushTrees()
+    val path = URIUtil.sourceURIToString(relativizeBaseURI, originalLocation)
+    module.add(new CompilerInput(SourceFile.fromCode(path, code)))
   }
 
+  def complete(): Unit = flushTrees()
+
+  def result(): JSModule = {
+    complete()
+    module
+  }
+
+  private def flushTrees(): Unit = {
+    if (treeBuf.nonEmpty) {
+      val root = transformer.setNodePosition(IR.script(treeBuf: _*), NoPosition)
+      treeBuf.clear()
+
+      val ast = new ClosureModuleBuilder.ScalaJSSourceAst(root)
+      module.add(new CompilerInput(ast, ast.getInputId(), false))
+    }
+  }
 }
 
-private object ClosureAstBuilder {
+private object ClosureModuleBuilder {
   // Dummy Source AST class
 
   private class ScalaJSSourceAst(root: Node) extends SourceAst {

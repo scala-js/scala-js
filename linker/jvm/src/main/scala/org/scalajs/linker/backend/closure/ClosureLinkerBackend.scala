@@ -56,9 +56,6 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     case ModuleKind.CommonJSModule => false
   }
 
-  private def toClosureSource(file: VirtualJSFile) =
-    ClosureSource.fromReader(file.toURI.toString(), file.reader)
-
   /** Emit the given [[standard.LinkingUnit LinkingUnit]] to the target output.
    *
    *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
@@ -68,25 +65,17 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       logger: Logger): Unit = {
     verifyUnit(unit)
 
-    val builder = new ClosureAstBuilder(config.relativizeSourceMapBase)
-
     // Build Closure IR
-    val coreJSLib = logger.time("Emitter (create Closure trees)") {
+    val module = logger.time("Emitter (create Closure trees)") {
+      val builder = new ClosureModuleBuilder(config.relativizeSourceMapBase)
       emitter.emitForClosure(unit, builder, logger)
+      builder.result()
     }
-
-    // Build a Closure JSModule which includes the core libs
-    val module = new JSModule("Scala.js")
-
-    module.add(new CompilerInput(toClosureSource(coreJSLib)))
-
-    val ast = builder.closureAST
-    module.add(new CompilerInput(ast, ast.getInputId(), false))
 
     // Compile the module
     val closureExterns = List(
-        toClosureSource(ClosureLinkerBackend.ScalaJSExternsFile),
-        toClosureSource(makeExternsForExports(unit)))
+        ClosureSource.fromCode("ScalaJSExterns.js", ClosureLinkerBackend.ScalaJSExterns),
+        ClosureSource.fromCode("ScalaJSExportExterns.js", makeExternsForExports(unit)))
     val options = closureOptions(output.name)
     val compiler = closureCompiler(logger)
 
@@ -105,7 +94,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
    *
    *  This is necessary to avoid name clashes with renamed properties (#2491).
    */
-  private def makeExternsForExports(linkingUnit: LinkingUnit): VirtualJSFile = {
+  private def makeExternsForExports(linkingUnit: LinkingUnit): String = {
     import org.scalajs.ir.Trees._
 
     def exportName(memberDef: MemberDef): Option[String] = memberDef match {
@@ -127,8 +116,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     for (exportedPropertyName <- exportedPropertyNames.distinct)
       content.append(s"Object.prototype.$exportedPropertyName = 0;\n")
 
-    new MemVirtualJSFile("ScalaJSExportExterns.js")
-      .withContent(content.toString())
+    content.toString()
   }
 
   private def closureCompiler(logger: Logger) = {
@@ -206,7 +194,4 @@ private object ClosureLinkerBackend {
     var exports = {};
     var NaN = 0.0/0.0, Infinity = 1.0/0.0, undefined = void 0;
     """
-
-  private val ScalaJSExternsFile = new MemVirtualJSFile("ScalaJSExterns.js").
-    withContent(ScalaJSExterns)
 }

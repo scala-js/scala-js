@@ -105,14 +105,13 @@ final class Emitter private (config: CommonPhaseConfig,
         internalOptions.withOptimizeBracketSelects(optimizeBracketSelects))
   }
 
-  def emitAll(unit: LinkingUnit, builder: JSFileBuilder,
+  def emitAll(unit: LinkingUnit, builder: JSLineBuilder,
       logger: Logger): Unit = {
     emitInternal(unit, builder, logger) {
       if (needsIIFEWrapper)
         builder.addLine("(function(){")
 
       builder.addLine("'use strict';")
-      builder.addFile(coreJSLib)
     } {
       if (needsIIFEWrapper)
         builder.addLine("}).call(this);")
@@ -124,13 +123,12 @@ final class Emitter private (config: CommonPhaseConfig,
    *
    *  This is special for the Closure back-end.
    */
-  private[backend] def emitForClosure(unit: LinkingUnit, builder: JSTreeBuilder,
-      logger: Logger): VirtualJSFile = {
+  private[backend] def emitForClosure(unit: LinkingUnit, builder: JSBuilder,
+      logger: Logger): Unit = {
     emitInternal(unit, builder, logger)(())(())
-    coreJSLib
   }
 
-  private def emitInternal(unit: LinkingUnit, builder: JSTreeBuilder,
+  private def emitInternal(unit: LinkingUnit, builder: JSBuilder,
       logger: Logger)(
       emitPrelude: => Unit)(
       emitPostlude: => Unit): Unit = {
@@ -141,6 +139,8 @@ final class Emitter private (config: CommonPhaseConfig,
         genAllClasses(orderedClasses, logger, secondAttempt = false)
 
       emitPrelude
+
+      builder.addStatement(coreJSLib.toURI, coreJSLib.content)
 
       emitModuleImports(orderedClasses, builder, logger)
 
@@ -190,7 +190,7 @@ final class Emitter private (config: CommonPhaseConfig,
   }
 
   private def emitModuleImports(orderedClasses: List[LinkedClass],
-      builder: JSTreeBuilder, logger: Logger): Unit = {
+      builder: JSBuilder, logger: Logger): Unit = {
     moduleKind match {
       case ModuleKind.NoModule =>
         var importsFound: Boolean = false
@@ -474,7 +474,7 @@ final class Emitter private (config: CommonPhaseConfig,
    *  This is done at the very end of the emitted module/script.
    */
   private def emitModuleInitializer(moduleInitializer: ModuleInitializer,
-      builder: JSTreeBuilder): Unit = {
+      builder: JSBuilder): Unit = {
     builder.addJSTree(classEmitter.genModuleInitializer(moduleInitializer))
   }
 
