@@ -959,6 +959,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         genRegisterReflectiveInstantiationForModuleClass(sym)
       else if (sym.isModuleClass)
         None // #3228
+      else if (sym.isLifted && !sym.originalOwner.isClass)
+        None // #3227
       else
         genRegisterReflectiveInstantiationForNormalClass(sym)
     }

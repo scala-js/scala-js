@@ -35,6 +35,11 @@ class ReflectTest {
   private final val NameClassNoPublicConstructorEnableDirect =
     Prefix + "ClassNoPublicConstructorEnableDirect"
 
+  private final val NameInnerClass = {
+    Prefix + "ClassWithInnerClassWithEnableReflectiveInstantiation$" +
+    "InnerClassWithEnableReflectiveInstantiation"
+  }
+
   private final val NameClassEnableIndirect =
     Prefix + "ClassEnableIndirect"
   private final val NameClassEnableIndirectNoZeroArgCtor =
@@ -180,6 +185,33 @@ class ReflectTest {
     }
   }
 
+  @Test def testInnerClass(): Unit = {
+    import ReflectTest.ClassWithInnerClassWithEnableReflectiveInstantiation
+
+    val outer = new ClassWithInnerClassWithEnableReflectiveInstantiation(15)
+
+    val optClassData = Reflect.lookupInstantiatableClass(NameInnerClass)
+    assertTrue(optClassData.isDefined)
+    val classData = optClassData.get
+
+    val optCtorOuterString =
+      classData.getConstructor(outer.getClass, classOf[String])
+    assertTrue(optCtorOuterString.isDefined)
+    val instanceOuterString =
+      optCtorOuterString.get.newInstance(outer, "babar").asInstanceOf[Accessors]
+    assertEquals(15, instanceOuterString.x)
+    assertEquals("babar", instanceOuterString.y)
+  }
+
+  @Test def testLocalClass(): Unit = {
+    @EnableReflectiveInstantiation
+    class LocalClassWithEnableReflectiveInstantiation
+
+    val fqcn = classOf[LocalClassWithEnableReflectiveInstantiation].getName
+    assertFalse(s"$fqcn should not be found",
+        Reflect.lookupInstantiatableClass(fqcn).isDefined)
+  }
+
   @Test def testObjectLoad(): Unit = {
     for (name <- Seq(NameObjectEnableDirect, NameObjectEnableIndirect)) {
       val optClassData = Reflect.lookupLoadableModuleClass(name)
@@ -195,6 +227,14 @@ class ReflectTest {
   @Test def testInnerObjectWithEnableReflectiveInstantiation_issue_3228(): Unit = {
     assertFalse(Reflect.lookupLoadableModuleClass(NameInnerObject).isDefined)
     assertFalse(Reflect.lookupInstantiatableClass(NameInnerObject).isDefined)
+  }
+
+  @Test def testLocalClassWithReflectiveInstantiationInLambda_issue_3227(): Unit = {
+    // Test that the presence of the following code does not prevent linking
+    { () =>
+      @EnableReflectiveInstantiation
+      class Foo
+    }
   }
 
 }
@@ -255,6 +295,15 @@ object ReflectTest {
       extends Accessors {
 
     protected def this(y: String) = this(-5, y)
+  }
+
+  class ClassWithInnerClassWithEnableReflectiveInstantiation(_x: Int) {
+    @EnableReflectiveInstantiation
+    class InnerClassWithEnableReflectiveInstantiation(_y: String)
+        extends Accessors {
+      val x = _x
+      val y = _y
+    }
   }
 
   // Entities with reflection enabled by inheritance
