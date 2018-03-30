@@ -748,6 +748,16 @@ class RegressionTest {
     assertEquals(107, new ParserWithHelpers().rec(3))
   }
 
+  @Test def adaptedIntToLongInMatch_issue_3281(): Unit = {
+    import Bug3281._
+
+    val l: Any = 0 :: Nil
+    val r = overloaded(l match {
+      case x :: xs => 5
+    })
+    assertEquals(5L, r)
+  }
+
 }
 
 object RegressionTest {
@@ -797,5 +807,13 @@ object RegressionTest {
         def t3: String = B.this.f
       }
     }
+  }
+
+  object Bug3281 {
+    def overloaded(x: Long): Any =
+      x
+
+    def overloaded(x: Any): Unit =
+      fail("Bug3281.overloaded(x: Any) was called")
   }
 }

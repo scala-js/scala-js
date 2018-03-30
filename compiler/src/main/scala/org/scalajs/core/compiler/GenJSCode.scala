@@ -2687,29 +2687,56 @@ abstract class GenJSCode extends plugins.PluginComponent
           arguments)(resultType)
     }
 
-    /** Gen JS code for a conversion between primitive value types */
+    /* This method corresponds to the method of the same name in
+     * BCodeBodyBuilder of the JVM back-end. It ends up calling the method
+     * BCodeIdiomatic.emitT2T, whose logic we replicate here.
+     */
     def genConversion(from: TypeKind, to: TypeKind, value: js.Tree)(
         implicit pos: Position): js.Tree = {
-      def int0 = js.IntLiteral(0)
-      def int1 = js.IntLiteral(1)
-      def long0 = js.LongLiteral(0L)
-      def long1 = js.LongLiteral(1L)
-      def float0 = js.FloatLiteral(0.0f)
-      def float1 = js.FloatLiteral(1.0f)
+      import js.UnaryOp._
 
-      // scalastyle:off disallow.space.before.token
-      (from, to) match {
-        case (INT(_),   BOOL) => js.BinaryOp(js.BinaryOp.Num_!=,  value, int0)
-        case (LONG,     BOOL) => js.BinaryOp(js.BinaryOp.Long_!=, value, long0)
-        case (FLOAT(_), BOOL) => js.BinaryOp(js.BinaryOp.Num_!=,  value, float0)
+      if (from == to || from == NOTHING) {
+        value
+      } else if (from == BOOL || to == BOOL) {
+        throw new AssertionError(s"Invalid genConversion from $from to $to")
+      } else {
+        def intValue = (from: @unchecked) match {
+          case INT(_)   => value
+          case LONG     => js.UnaryOp(LongToInt, value)
+          case FLOAT(_) => js.UnaryOp(DoubleToInt, value)
+        }
 
-        case (BOOL, INT(_))   => js.If(value, int1,   int0  )(jstpe.IntType)
-        case (BOOL, LONG)     => js.If(value, long1,  long0 )(jstpe.LongType)
-        case (BOOL, FLOAT(_)) => js.If(value, float1, float0)(jstpe.FloatType)
+        def doubleValue = from match {
+          case FLOAT(_) | INT(_) => value
+          case LONG              => js.UnaryOp(LongToDouble, value)
+        }
 
-        case _ => value
+        (to: @unchecked) match {
+          case CharKind =>
+            js.BinaryOp(js.BinaryOp.Int_&, intValue, js.IntLiteral(0xffff))
+          case ByteKind =>
+            js.BinaryOp(js.BinaryOp.Int_>>,
+                js.BinaryOp(js.BinaryOp.Int_<<, intValue, js.IntLiteral(24)),
+                js.IntLiteral(24))
+          case ShortKind =>
+            js.BinaryOp(js.BinaryOp.Int_>>,
+                js.BinaryOp(js.BinaryOp.Int_<<, intValue, js.IntLiteral(24)),
+                js.IntLiteral(24))
+          case IntKind =>
+            intValue
+          case LongKind =>
+            from match {
+              case FLOAT(_) =>
+                js.UnaryOp(DoubleToLong, doubleValue)
+              case _ =>
+                js.UnaryOp(IntToLong, intValue)
+            }
+          case FloatKind =>
+            js.UnaryOp(js.UnaryOp.DoubleToFloat, doubleValue)
+          case DoubleKind =>
+            doubleValue
+        }
       }
-      // scalastyle:on disallow.space.before.token
     }
 
     /** Gen JS code for an isInstanceOf test (for reference types only) */
