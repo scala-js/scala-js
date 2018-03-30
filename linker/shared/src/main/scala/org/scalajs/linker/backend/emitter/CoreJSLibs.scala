@@ -130,13 +130,7 @@ private[emitter] object CoreJSLibs {
   private class ScalaJSEnvVirtualJSFile(override val content: String) extends VirtualJSFile {
     override def path: String = "scalajsenv.js"
     override def version: Option[String] = Some("")
-
-    override def toURI: URI = {
-      if (!ScalaJSVersions.currentIsSnapshot)
-        gitHubBaseURI.resolve(s"v${ScalaJSVersions.current}/tools/$path")
-      else
-        super.toURI
-    }
+    override def toURI: URI = ScalaJSEnvHolder.sourceMapPath
   }
 
 }
