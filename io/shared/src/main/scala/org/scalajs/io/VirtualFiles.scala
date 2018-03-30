@@ -24,15 +24,6 @@ trait VirtualFile {
    */
   def version: Option[String] = None
 
-  /** URI for this virtual file */
-  def toURI: URI = {
-    new URI(
-        "virtualfile", // Pseudo-Scheme
-        path,          // Scheme specific part
-        null           // Fragment
-    )
-  }
-
   override def toString(): String = {
     val className = getClass.getName
     val shortClassName = className.substring(className.lastIndexOf('.') + 1)

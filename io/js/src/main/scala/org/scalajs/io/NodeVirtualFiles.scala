@@ -16,11 +16,6 @@ class NodeVirtualFile(override val path: String) extends VirtualFile {
     else
       Some(stat.mtime.asInstanceOf[js.Date].getTime.toString)
   }
-
-  override def toURI: URI = {
-    val abspath = fs.realpathSync(path).asInstanceOf[String]
-    new URI("file", abspath, null)
-  }
 }
 
 class NodeVirtualTextFile(p: String) extends NodeVirtualFile(p)

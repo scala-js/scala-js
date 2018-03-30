@@ -15,8 +15,6 @@ class FileVirtualFile(val file: File) extends VirtualFile {
     if (!file.isFile) None
     else Some(file.lastModified.toString)
   }
-
-  override def toURI: URI = file.toURI
 }
 
 object FileVirtualFile extends (File => FileVirtualFile) {

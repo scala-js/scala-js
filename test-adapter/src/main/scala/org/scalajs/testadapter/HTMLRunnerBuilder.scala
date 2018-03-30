@@ -41,7 +41,7 @@ object HTMLRunnerBuilder {
 
     val jsFileCache = new VirtualFileMaterializer(true)
     val jsFileURIs = jsFiles.map {
-      case file: FileVirtualFile => file.toURI
+      case file: FileVirtualFile => file.file.toURI
       case file                  => jsFileCache.materialize(file).toURI
     }
     val cssFileURI = jsFileCache.materialize(cssFile).toURI
