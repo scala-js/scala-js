@@ -1090,6 +1090,18 @@ class ScalaJSDefinedTest {
     assertEquals(5, new ConstructorDefaultParamScalaNone(5).foo)
   }
 
+  @Test def constructors_with_default_parameters_in_multi_param_lists(): Unit = {
+    val foo1 = new ConstructorDefaultParamMultiParamList(5)("foobar")
+    assertEquals(5, foo1.default)
+    assertEquals("foobar", foo1.title)
+    assertEquals("5", foo1.description)
+
+    val foo2 = new ConstructorDefaultParamMultiParamList(56)("babar", "desc")
+    assertEquals(56, foo2.default)
+    assertEquals("babar", foo2.title)
+    assertEquals("desc", foo2.description)
+  }
+
   @Test def `call_super_constructor_with_:__*`(): Unit = {
     class CallSuperCtorWithSpread(x: Int, y: Int, z: Int)
         extends NativeParentClassWithVarargs(x, Seq(y, z): _*)
@@ -1730,6 +1742,10 @@ object ScalaJSDefinedTest {
 
   // sanity check
   class ConstructorDefaultParamScalaNone(val foo: Int = -1)
+
+  class ConstructorDefaultParamMultiParamList(val default: Int)(
+      val title: String, val description: js.UndefOr[String] = default.toString)
+      extends js.Object
 
   class OverloadedConstructorParamNumber(val foo: Int) extends js.Object {
     def this(x: Int, y: Int) = this(x + y)
