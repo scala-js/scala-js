@@ -12,3 +12,10 @@ import org.scalajs.io._
 
 class NodeVirtualScalaJSIRFile(p: String)
     extends NodeVirtualBinaryFile(p) with VirtualSerializedScalaJSIRFile
+
+class NodeVirtualJarScalaJSIRContainer(file: String)
+    extends NodeVirtualJarFile(file) with ScalaJSIRContainer {
+
+  def sjsirFiles: List[VirtualRelativeScalaJSIRFile] =
+    ScalaJSIRContainer.sjsirFilesIn(this)
+}
