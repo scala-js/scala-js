@@ -332,4 +332,32 @@ class CharacterTestOnJDK7 {
     assertFalse(Character.isIdeographic(958559))
     assertFalse(Character.isIdeographic(999076))
   }
+
+  @Test
+  def shouldProvideIsSurrogate(): Unit = {
+    //non-surrogate
+    assertFalse(Character.isSurrogate((Character.MIN_SURROGATE - 1).toChar))
+    assertFalse(Character.isSurrogate((Character.MAX_SURROGATE + 1).toChar))
+    assertFalse(Character.isSurrogate('a'))
+    assertFalse(Character.isSurrogate('7'))
+    assertFalse(Character.isSurrogate('ö'))
+    assertFalse(Character.isSurrogate('\t'))
+
+    //high surrogates
+    assertTrue(Character.isSurrogate(Character.MIN_SURROGATE))
+    assertTrue(Character.isSurrogate('\uD800')) //min
+    assertTrue(Character.isSurrogate('\uDBFF')) //max
+    assertTrue(Character.isSurrogate('\uDAAA'))
+    assertTrue(Character.isSurrogate('\uD999'))
+    assertTrue(Character.isSurrogate('\uDBFE'))
+
+    //low surrogates
+    assertTrue(Character.isSurrogate(Character.MAX_SURROGATE))
+    assertTrue(Character.isSurrogate('\uDFFF')) //max
+    assertTrue(Character.isSurrogate('\uDC00')) //min
+    assertTrue(Character.isSurrogate('\uDDDD'))
+    assertTrue(Character.isSurrogate('\uDE99'))
+    assertTrue(Character.isSurrogate('\uDFFE'))
+    assertTrue(Character.isSurrogate('\uDC01'))
+  }
 }
