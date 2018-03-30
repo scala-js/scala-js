@@ -49,16 +49,11 @@ final class Emitter private (config: CommonPhaseConfig,
 
     val classEmitter: ClassEmitter = new ClassEmitter(jsGen)
 
-    val coreJSLib: VirtualJSFile = {
+    val coreJSLib: String = {
       if (lastMentionedDangerousGlobalRefs.isEmpty) {
         baseCoreJSLib
       } else {
-        var content = {
-          val reader = baseCoreJSLib.reader
-          try IO.readReaderToString(reader)
-          finally reader.close()
-        }
-
+        var content = baseCoreJSLib
         for {
           globalRef <- lastMentionedDangerousGlobalRefs
           if !globalRef.startsWith("$$")
@@ -68,9 +63,7 @@ final class Emitter private (config: CommonPhaseConfig,
               java.util.regex.Matcher.quoteReplacement(replacement))
         }
 
-        val result = new MemVirtualJSFile(baseCoreJSLib.path)
-        result.content = content
-        result
+        content
       }
     }
   }
@@ -79,7 +72,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private def jsGen: JSGen = state.jsGen
   private def classEmitter: ClassEmitter = state.classEmitter
-  private def coreJSLib: VirtualJSFile = state.coreJSLib
+  private def coreJSLib: String = state.coreJSLib
 
   private val classCaches = mutable.Map.empty[List[String], ClassCache]
 
@@ -140,7 +133,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
       emitPrelude
 
-      builder.addStatement(coreJSLib.toURI, coreJSLib.content)
+      builder.addStatement(CoreJSLibs.locationForSourceMap, coreJSLib)
 
       emitModuleImports(orderedClasses, builder, logger)
 

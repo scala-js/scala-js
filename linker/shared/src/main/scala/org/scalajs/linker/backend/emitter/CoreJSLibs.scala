@@ -12,7 +12,6 @@ package org.scalajs.linker.backend.emitter
 import java.net.URI
 
 import org.scalajs.ir.ScalaJSVersions
-import org.scalajs.io._
 
 import org.scalajs.linker._
 
@@ -23,8 +22,7 @@ private[emitter] object CoreJSLibs {
 
   private type Config = (Semantics, ESFeatures, ModuleKind)
 
-  private val cachedLibByConfig =
-    mutable.HashMap.empty[Config, VirtualJSFile]
+  private val cachedLibByConfig = mutable.HashMap.empty[Config, String]
 
   private val ScalaJSEnvLines =
     ScalaJSEnvHolder.scalajsenv.split("\n|\r\n?")
@@ -33,7 +31,7 @@ private[emitter] object CoreJSLibs {
     new URI("https://raw.githubusercontent.com/scala-js/scala-js/")
 
   def lib(semantics: Semantics, esFeatures: ESFeatures,
-      moduleKind: ModuleKind): VirtualJSFile = {
+      moduleKind: ModuleKind): String = {
     synchronized {
       cachedLibByConfig.getOrElseUpdate(
           (semantics, esFeatures, moduleKind),
@@ -41,12 +39,9 @@ private[emitter] object CoreJSLibs {
     }
   }
 
-  private def makeLib(semantics: Semantics, esFeatures: ESFeatures,
-      moduleKind: ModuleKind): VirtualJSFile = {
-    new ScalaJSEnvVirtualJSFile(makeContent(semantics, esFeatures, moduleKind))
-  }
+  def locationForSourceMap: URI = ScalaJSEnvHolder.sourceMapPath
 
-  private def makeContent(semantics: Semantics, esFeatures: ESFeatures,
+  private def makeLib(semantics: Semantics, esFeatures: ESFeatures,
       moduleKind: ModuleKind): String = {
     // This is a basic sort-of-C-style preprocessor
 
@@ -126,11 +121,4 @@ private[emitter] object CoreJSLibs {
     else
       content.replaceAll(raw"\b(let|const)\b", "var")
   }
-
-  private class ScalaJSEnvVirtualJSFile(override val content: String) extends VirtualJSFile {
-    override def path: String = "scalajsenv.js"
-    override def version: Option[String] = Some("")
-    override def toURI: URI = ScalaJSEnvHolder.sourceMapPath
-  }
-
 }
