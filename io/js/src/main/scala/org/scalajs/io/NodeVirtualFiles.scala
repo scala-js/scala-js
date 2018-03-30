@@ -17,9 +17,6 @@ class NodeVirtualFile(override val path: String) extends VirtualFile {
       Some(stat.mtime.asInstanceOf[js.Date].getTime.toString)
   }
 
-  override def exists: Boolean =
-    fs.existsSync(path).asInstanceOf[Boolean]
-
   override def toURI: URI = {
     val abspath = fs.realpathSync(path).asInstanceOf[String]
     new URI("file", abspath, null)

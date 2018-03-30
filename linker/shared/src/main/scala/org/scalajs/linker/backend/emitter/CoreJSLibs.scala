@@ -130,7 +130,6 @@ private[emitter] object CoreJSLibs {
   private class ScalaJSEnvVirtualJSFile(override val content: String) extends VirtualJSFile {
     override def path: String = "scalajsenv.js"
     override def version: Option[String] = Some("")
-    override def exists: Boolean = true
 
     override def toURI: URI = {
       if (!ScalaJSVersions.currentIsSnapshot)

@@ -22,8 +22,6 @@ class MemVirtualFile(val path: String) extends VirtualFile {
     version = v
     this
   }
-
-  override def exists: Boolean = true
 }
 
 /** A simple in-memory mutable virtual text file. */

@@ -24,9 +24,6 @@ trait VirtualFile {
    */
   def version: Option[String] = None
 
-  /** Whether this file exists. Reading a non-existent file may fail */
-  def exists: Boolean
-
   /** URI for this virtual file */
   def toURI: URI = {
     new URI(

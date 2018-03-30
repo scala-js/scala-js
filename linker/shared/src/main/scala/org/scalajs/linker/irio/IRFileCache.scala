@@ -237,10 +237,6 @@ final class IRFileCache {
     override val entryPointsInfo: EntryPointsInfo = _irFile.entryPointsInfo
     override val relativePath: String = _irFile.relativePath
 
-    override def exists: Boolean = {
-      _tree != null || _irFile.exists
-    }
-
     override def tree: ClassDef = {
       if (_tree == null) {
         synchronized {
