@@ -9,53 +9,73 @@
 
 package org.scalajs.testadapter
 
-import java.io.File
+import scala.collection.JavaConverters._
+
+import java.io.{File, InputStream}
 import java.net.URI
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, StandardCopyOption}
 
 import sbt.testing.{Framework, TaskDef}
 
 import org.scalajs.io._
 import org.scalajs.io.JSUtils.escapeJS
 
-import org.scalajs.jsenv.VirtualFileMaterializer
-
 import org.scalajs.testcommon._
 
 /** Template for the HTML runner. */
 object HTMLRunnerBuilder {
 
-  private val cssFile: MemVirtualTextFile = {
+  private val tmpSuffixRE = """[a-zA-Z0-9-_.]*$""".r
+
+  private def tmpFile(path: String): File = {
+    /* - createTempFile requires a prefix of at least 3 chars
+     * - we use a safe part of the path as suffix so the extension stays (some
+     *   browsers need that) and there is a clue which file it came from.
+     */
+    val suffix = tmpSuffixRE.findFirstIn(path).orNull
+
+    val f = File.createTempFile("tmp-", suffix)
+    f.deleteOnExit()
+    f
+  }
+
+  private def loadCSSURI(): URI = {
     val name = "test-runner.css"
-    val inputStream = getClass.getResourceAsStream(name)
-    val content = try {
-      IO.readInputStreamToString(inputStream)
+    val f = tmpFile(name)
+
+    val s = getClass.getResourceAsStream(name)
+    try {
+      Files.copy(s, f.toPath(), StandardCopyOption.REPLACE_EXISTING)
     } finally {
-      inputStream.close()
+      s.close()
     }
-    new MemVirtualTextFile(name).withContent(content)
+    f.toURI()
+  }
+
+  private def loadJSFiles(jsFiles: Seq[VirtualJSFile]): Seq[URI] = {
+    jsFiles.map {
+      case file: FileVirtualFile => file.file.toURI
+
+      case file =>
+        val f = tmpFile(file.path)
+        IO.copyTo(file, WritableFileVirtualTextFile(f))
+        f.toURI
+    }
   }
 
   def writeToFile(output: File, title: String, jsFiles: Seq[VirtualJSFile],
       frameworkImplClassNames: List[List[String]],
       taskDefs: List[TaskDef]): Unit = {
 
-    val jsFileCache = new VirtualFileMaterializer(true)
-    val jsFileURIs = jsFiles.map {
-      case file: FileVirtualFile => file.file.toURI
-      case file                  => jsFileCache.materialize(file).toURI
-    }
-    val cssFileURI = jsFileCache.materialize(cssFile).toURI
+    val jsFileURIs = loadJSFiles(jsFiles)
+    val cssURI = loadCSSURI()
 
     val tests = new IsolatedTestSet(frameworkImplClassNames, taskDefs)
 
-    val htmlContent = render(output.toURI, title, jsFileURIs, cssFileURI, tests)
+    val htmlContent = render(output.toURI, title, jsFileURIs, cssURI, tests)
 
-    val outputWriter = WritableFileVirtualTextFile(output).contentWriter
-    try {
-      outputWriter.write(htmlContent)
-    } finally {
-      outputWriter.close()
-    }
+    Files.write(output.toPath, List(htmlContent).asJava, StandardCharsets.UTF_8)
   }
 
   private def render(baseURI: URI, title: String, jsFiles: Seq[URI],
