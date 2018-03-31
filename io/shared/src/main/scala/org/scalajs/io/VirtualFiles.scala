@@ -2,7 +2,6 @@ package org.scalajs.io
 
 import java.io._
 import java.net.URI
-import java.util.zip.{ZipInputStream, ZipEntry}
 
 /** A virtual input file.
  */
@@ -24,18 +23,6 @@ trait VirtualFile {
    */
   def version: Option[String] = None
 
-  /** Whether this file exists. Reading a non-existent file may fail */
-  def exists: Boolean
-
-  /** URI for this virtual file */
-  def toURI: URI = {
-    new URI(
-        "virtualfile", // Pseudo-Scheme
-        path,          // Scheme specific part
-        null           // Fragment
-    )
-  }
-
   override def toString(): String = {
     val className = getClass.getName
     val shortClassName = className.substring(className.lastIndexOf('.') + 1)
@@ -50,16 +37,6 @@ object VirtualFile {
     if (pos == -1) path
     else path.substring(pos + 1)
   }
-}
-
-trait RelativeVirtualFile extends VirtualFile {
-  /** Relative path with respect to some container.
-   *
-   *  The container depends on the context in which this [[RelativeVirtualFile]]
-   *  is retrieved. A good example is the [[VirtualJarFile]] where the relative
-   *  path is the path inside the Jar.
-   */
-  def relativePath: String
 }
 
 /** A virtual input file.
@@ -137,32 +114,4 @@ trait VirtualFileContainer extends VirtualFile {
    */
   def listEntries[T](p: String => Boolean)(
       makeResult: (String, InputStream) => T): List[T]
-}
-
-/** A virtual jar file. */
-trait VirtualJarFile extends VirtualFileContainer with VirtualBinaryFile {
-  import VirtualJarFile._
-
-  def listEntries[T](p: String => Boolean)(
-      makeResult: (String, InputStream) => T): List[T] = {
-    val stream = new ZipInputStream(inputStream)
-    try {
-      val streamIgnoreClose = new IgnoreCloseFilterInputStream(stream)
-      Iterator.continually(stream.getNextEntry())
-        .takeWhile(_ != null)
-        .filter(entry => p(entry.getName))
-        .map(entry => makeResult(entry.getName, streamIgnoreClose))
-        .toList
-    } finally {
-      stream.close()
-    }
-  }
-}
-
-private object VirtualJarFile {
-  private final class IgnoreCloseFilterInputStream(in: InputStream)
-      extends FilterInputStream(in) {
-
-    override def close(): Unit = ()
-  }
 }

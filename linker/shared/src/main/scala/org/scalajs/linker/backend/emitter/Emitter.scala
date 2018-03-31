@@ -49,16 +49,11 @@ final class Emitter private (config: CommonPhaseConfig,
 
     val classEmitter: ClassEmitter = new ClassEmitter(jsGen)
 
-    val coreJSLib: VirtualJSFile = {
+    val coreJSLib: String = {
       if (lastMentionedDangerousGlobalRefs.isEmpty) {
         baseCoreJSLib
       } else {
-        var content = {
-          val reader = baseCoreJSLib.reader
-          try IO.readReaderToString(reader)
-          finally reader.close()
-        }
-
+        var content = baseCoreJSLib
         for {
           globalRef <- lastMentionedDangerousGlobalRefs
           if !globalRef.startsWith("$$")
@@ -68,9 +63,7 @@ final class Emitter private (config: CommonPhaseConfig,
               java.util.regex.Matcher.quoteReplacement(replacement))
         }
 
-        val result = new MemVirtualJSFile(baseCoreJSLib.path)
-        result.content = content
-        result
+        content
       }
     }
   }
@@ -79,7 +72,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private def jsGen: JSGen = state.jsGen
   private def classEmitter: ClassEmitter = state.classEmitter
-  private def coreJSLib: VirtualJSFile = state.coreJSLib
+  private def coreJSLib: String = state.coreJSLib
 
   private val classCaches = mutable.Map.empty[List[String], ClassCache]
 
@@ -105,14 +98,13 @@ final class Emitter private (config: CommonPhaseConfig,
         internalOptions.withOptimizeBracketSelects(optimizeBracketSelects))
   }
 
-  def emitAll(unit: LinkingUnit, builder: JSFileBuilder,
+  def emitAll(unit: LinkingUnit, builder: JSLineBuilder,
       logger: Logger): Unit = {
     emitInternal(unit, builder, logger) {
       if (needsIIFEWrapper)
         builder.addLine("(function(){")
 
       builder.addLine("'use strict';")
-      builder.addFile(coreJSLib)
     } {
       if (needsIIFEWrapper)
         builder.addLine("}).call(this);")
@@ -124,13 +116,12 @@ final class Emitter private (config: CommonPhaseConfig,
    *
    *  This is special for the Closure back-end.
    */
-  private[backend] def emitForClosure(unit: LinkingUnit, builder: JSTreeBuilder,
-      logger: Logger): VirtualJSFile = {
+  private[backend] def emitForClosure(unit: LinkingUnit, builder: JSBuilder,
+      logger: Logger): Unit = {
     emitInternal(unit, builder, logger)(())(())
-    coreJSLib
   }
 
-  private def emitInternal(unit: LinkingUnit, builder: JSTreeBuilder,
+  private def emitInternal(unit: LinkingUnit, builder: JSBuilder,
       logger: Logger)(
       emitPrelude: => Unit)(
       emitPostlude: => Unit): Unit = {
@@ -141,6 +132,8 @@ final class Emitter private (config: CommonPhaseConfig,
         genAllClasses(orderedClasses, logger, secondAttempt = false)
 
       emitPrelude
+
+      builder.addStatement(CoreJSLibs.locationForSourceMap, coreJSLib)
 
       emitModuleImports(orderedClasses, builder, logger)
 
@@ -190,7 +183,7 @@ final class Emitter private (config: CommonPhaseConfig,
   }
 
   private def emitModuleImports(orderedClasses: List[LinkedClass],
-      builder: JSTreeBuilder, logger: Logger): Unit = {
+      builder: JSBuilder, logger: Logger): Unit = {
     moduleKind match {
       case ModuleKind.NoModule =>
         var importsFound: Boolean = false
@@ -474,7 +467,7 @@ final class Emitter private (config: CommonPhaseConfig,
    *  This is done at the very end of the emitted module/script.
    */
   private def emitModuleInitializer(moduleInitializer: ModuleInitializer,
-      builder: JSTreeBuilder): Unit = {
+      builder: JSBuilder): Unit = {
     builder.addJSTree(classEmitter.genModuleInitializer(moduleInitializer))
   }
 

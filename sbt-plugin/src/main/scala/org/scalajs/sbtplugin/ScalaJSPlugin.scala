@@ -92,7 +92,7 @@ object ScalaJSPlugin extends AutoPlugin {
     val testHtml = TaskKey[Attributed[File]]("testHtml",
         "Create an HTML test runner. Honors `scalaJSStage`.", AMinusTask)
 
-    val scalaJSIR = TaskKey[Attributed[Seq[VirtualScalaJSIRFile with RelativeVirtualFile]]](
+    val scalaJSIR = TaskKey[Attributed[Seq[VirtualScalaJSIRFile]]](
         "scalaJSIR", "All the *.sjsir files on the classpath", CTask)
 
     val scalaJSModuleInitializers = TaskKey[Seq[ModuleInitializer]]("scalaJSModuleInitializers",

@@ -13,7 +13,7 @@ object TestIRRepo {
 
   private val globalIRCache = new IRFileCache
 
-  val stdlibIRFiles: Seq[VirtualScalaJSIRFile with RelativeVirtualFile] =
+  val stdlibIRFiles: Seq[VirtualScalaJSIRFile] =
     globalIRCache.newCache.cached(Seq(Platform.loadJar(stdlibPath)))
 
   private val stdlibEncodedNameToFile =

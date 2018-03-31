@@ -97,6 +97,7 @@ object LinkerTest {
         def exists: Boolean = true
         def path: String = "mem://" + classDef.name.name + ".sjsir"
         def tree: ClassDef = classDef
+        def relativePath: String = classDef.name.name + ".sjsir"
       }
     }
 

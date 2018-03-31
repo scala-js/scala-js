@@ -15,9 +15,7 @@ import org.scalajs.io.WritableVirtualJSFile
 import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.emitter.Emitter
 
-import org.scalajs.linker.backend.javascript.{
-  JSFileBuilder, JSFileBuilderWithSourceMap
-}
+import org.scalajs.linker.backend.javascript.{JSLineBuilder, JSFileBuilder, JSFileBuilderWithSourceMap}
 
 /** The basic backend for the Scala.js linker.
  *
@@ -40,19 +38,16 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
     verifyUnit(unit)
 
     val builder = newBuilder(output)
-
     try {
       logger.time("Emitter (write output)") {
         emitter.emitAll(unit, builder, logger)
       }
-
-      builder.complete()
     } finally {
-      builder.closeWriters()
+      builder.complete()
     }
   }
 
-  private def newBuilder(output: WritableVirtualJSFile): JSFileBuilder = {
+  private def newBuilder(output: WritableVirtualJSFile): JSLineBuilder = {
     if (config.sourceMap) {
       new JSFileBuilderWithSourceMap(output.name, output.contentWriter,
           output.sourceMapWriter, config.relativizeSourceMapBase)

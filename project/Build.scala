@@ -675,7 +675,7 @@ object Build {
 
       sourceGenerators in Compile += Def.task {
         ScalaJSEnvGenerator.generateEnvHolder(
-          baseDirectory.value.getParentFile,
+          (baseDirectory in LocalProject("scalajs")).value,
           (sourceManaged in Compile).value)
       }.taskValue,
 

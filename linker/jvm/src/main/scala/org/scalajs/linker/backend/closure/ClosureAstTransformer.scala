@@ -334,19 +334,12 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
   }
 
   private def attachSourceFile(node: Node, source: URI): node.type = {
-    val str = sourceUriToString(source)
+    val str = URIUtil.sourceURIToString(relativizeBaseURI, source)
 
     node.setInputId(inputId)
     node.setStaticSourceFile(new SourceFile(str))
 
     node
-  }
-
-  private def sourceUriToString(uri: URI): String = {
-    import org.scalajs.io.URIUtils._
-
-    val relURI = relativizeBaseURI.fold(uri)(relativize(_, uri))
-    fixFileURI(relURI).toASCIIString
   }
 
   // Helpers for IR

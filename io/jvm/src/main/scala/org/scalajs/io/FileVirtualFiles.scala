@@ -15,10 +15,6 @@ class FileVirtualFile(val file: File) extends VirtualFile {
     if (!file.isFile) None
     else Some(file.lastModified.toString)
   }
-
-  override def exists: Boolean = file.exists
-
-  override def toURI: URI = file.toURI
 }
 
 object FileVirtualFile extends (File => FileVirtualFile) {
@@ -136,13 +132,6 @@ class FileVirtualJSFile(f: File) extends FileVirtualTextFile(f)
 object FileVirtualJSFile extends (File => FileVirtualJSFile) {
   def apply(f: File): FileVirtualJSFile =
     new FileVirtualJSFile(f)
-
-  def relative(f: File,
-      relPath: String): FileVirtualJSFile with RelativeVirtualFile = {
-    new FileVirtualJSFile(f) with RelativeVirtualFile {
-      def relativePath: String = relPath
-    }
-  }
 }
 
 trait WritableFileVirtualJSFile extends FileVirtualJSFile
