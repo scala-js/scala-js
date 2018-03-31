@@ -72,7 +72,7 @@ private object SourceMapWriter {
   }
 }
 
-class SourceMapWriter(
+private[javascript] class SourceMapWriter(
     val out: Writer,
     val generatedFile: String,
     val relativizeBaseURI: Option[URI] = None) {
