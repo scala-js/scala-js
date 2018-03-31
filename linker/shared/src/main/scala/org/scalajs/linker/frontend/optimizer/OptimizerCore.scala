@@ -288,7 +288,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case Labeled(ident @ Ident(label, _), tpe, body) =>
         trampoline {
-          returnable(label, if (isStat) NoType else tpe, body, isStat,
+          pretransformLabeled(label, if (isStat) NoType else tpe, body, isStat,
               usePreTransform = false)(finishTransform(isStat))
         }
 
@@ -342,31 +342,22 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           }
         }
 
-      case Return(expr, optLabel) =>
-        val optInfo = optLabel match {
-          case Some(Ident(label, _)) =>
-            Some(scope.env.labelInfos(label))
-          case None =>
-            scope.env.labelInfos.get("")
-        }
-        optInfo.fold[Tree] {
-          Return(transformExpr(expr), None)
-        } { info =>
-          val newOptLabel = Some(Ident(info.newName, None))
-          if (!info.acceptRecords) {
-            val newExpr = transformExpr(expr)
-            info.returnedTypes.value ::= (newExpr.tpe, RefinedType(newExpr.tpe))
-            Return(newExpr, newOptLabel)
-          } else trampoline {
-            pretransformNoLocalDef(expr) { texpr =>
-              texpr match {
-                case PreTransRecordTree(newExpr, origType, cancelFun) =>
-                  info.returnedTypes.value ::= (newExpr.tpe, origType)
-                  TailCalls.done(Return(newExpr, newOptLabel))
-                case PreTransTree(newExpr, tpe) =>
-                  info.returnedTypes.value ::= (newExpr.tpe, tpe)
-                  TailCalls.done(Return(newExpr, newOptLabel))
-              }
+      case Return(expr, label) =>
+        val info = scope.env.labelInfos(label.name)
+        val newLabel = Ident(info.newName, None)
+        if (!info.acceptRecords) {
+          val newExpr = transformExpr(expr)
+          info.returnedTypes.value ::= (newExpr.tpe, RefinedType(newExpr.tpe))
+          Return(newExpr, newLabel)
+        } else trampoline {
+          pretransformNoLocalDef(expr) { texpr =>
+            texpr match {
+              case PreTransRecordTree(newExpr, origType, cancelFun) =>
+                info.returnedTypes.value ::= (newExpr.tpe, origType)
+                TailCalls.done(Return(newExpr, newLabel))
+              case PreTransTree(newExpr, tpe) =>
+                info.returnedTypes.value ::= (newExpr.tpe, tpe)
+                TailCalls.done(Return(newExpr, newLabel))
             }
           }
         }
@@ -804,7 +795,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         }
 
       case Labeled(ident @ Ident(label, _), tpe, body) =>
-        returnable(label, tpe, body, isStat = false, usePreTransform = true)(cont)
+        pretransformLabeled(label, tpe, body, isStat = false,
+            usePreTransform = true)(cont)
 
       case New(cls, ctor, args) =>
         pretransformExprs(args) { targs =>
@@ -1924,8 +1916,13 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
 
     withBindings(optReceiverBinding ++: argsBindings) { (bodyScope, cont1) =>
-      returnable("", resultType, body, isStat, usePreTransform)(
-          cont1)(bodyScope, pos)
+      implicit val scope = bodyScope
+      if (usePreTransform) {
+        assert(!isStat, "Cannot use pretransform in statement position")
+        pretransformExpr(body)(cont1)
+      } else {
+        cont1(PreTransTree(transform(body, isStat)))
+      }
     } (cont) (scope.withEnv(OptEnv.Empty))
   }
 
@@ -3930,7 +3927,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     (newParamDefs, newBody)
   }
 
-  private def returnable(oldLabelName: String, resultType: Type,
+  private def pretransformLabeled(oldLabelName: String, resultType: Type,
       body: Tree, isStat: Boolean, usePreTransform: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = tailcall {
@@ -3991,7 +3988,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           }
         } (bodyScope)
       } { () =>
-        returnable(oldLabelName, resultType, body, isStat,
+        pretransformLabeled(oldLabelName, resultType, body, isStat,
             usePreTransform = false)(cont)
       }
     } else {
@@ -4032,7 +4029,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
           if (revAlts.size == returnCount - 1) {
             def tryDropReturn(body: Tree): Option[Tree] = body match {
-              case BlockOrAlone(prep, Return(result, Some(_))) =>
+              case BlockOrAlone(prep, Return(result, _)) =>
                 val result1 =
                   if (refinedType == NoType) keepOnlySideEffects(result)
                   else result

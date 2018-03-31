@@ -164,15 +164,10 @@ object Printers {
           print(rhs)
 
         case Return(expr, label) =>
-          if (label.isEmpty) {
-            print("return ")
-            print(expr)
-          } else {
-            print("return(")
-            print(label.get)
-            print(") ")
-            print(expr)
-          }
+          print("return@")
+          print(label)
+          print(" ")
+          print(expr)
 
         case If(cond, BooleanLiteral(true), elsep) =>
           print(cond)

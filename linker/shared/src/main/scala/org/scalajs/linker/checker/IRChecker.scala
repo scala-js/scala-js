@@ -710,7 +710,7 @@ private final class IRChecker(unit: LinkingUnit,
         typecheckExpect(body, env.withLabeledReturnType(label.name, tpe), tpe)
 
       case Return(expr, label) =>
-        env.returnTypes.get(label.map(_.name)).fold[Unit] {
+        env.returnTypes.get(label.name).fold[Unit] {
           reportError(s"Cannot return to label $label.")
           typecheckExpr(expr, env)
         } { returnType =>
@@ -1277,7 +1277,7 @@ private final class IRChecker(unit: LinkingUnit,
       /** Local variables in scope (including through closures). */
       val locals: Map[String, LocalDef],
       /** Return types by label. */
-      val returnTypes: Map[Option[String], Type],
+      val returnTypes: Map[String, Type],
       /** Whether we're in a constructor of the class */
       val inConstructor: Boolean
   ) {
@@ -1291,13 +1291,9 @@ private final class IRChecker(unit: LinkingUnit,
           this.inConstructor)
     }
 
-    def withReturnType(returnType: Type): Env =
-      new Env(this.thisTpe, this.locals,
-          returnTypes + (None -> returnType), this.inConstructor)
-
     def withLabeledReturnType(label: String, returnType: Type): Env =
       new Env(this.thisTpe, this.locals,
-          returnTypes + (Some(label) -> returnType), this.inConstructor)
+          returnTypes + (label -> returnType), this.inConstructor)
 
     def withInConstructor(inConstructor: Boolean): Env =
       new Env(this.thisTpe, this.locals, this.returnTypes, inConstructor)
@@ -1313,9 +1309,7 @@ private final class IRChecker(unit: LinkingUnit,
       val paramLocalDefs =
         for (p @ ParamDef(ident, tpe, mutable, _) <- allParams)
           yield ident.name -> LocalDef(ident.name, tpe, mutable)(p.pos)
-      new Env(thisType, paramLocalDefs.toMap,
-          Map(None -> (if (resultType == NoType) AnyType else resultType)),
-          isConstructor)
+      new Env(thisType, paramLocalDefs.toMap, Map.empty, isConstructor)
     }
   }
 
