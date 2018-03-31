@@ -31,6 +31,9 @@ trait Compat210Component {
     def isPrivateThis: Boolean = self.hasAllFlags(PRIVATE | LOCAL)
     def isLocalToBlock: Boolean = self.isLocal
 
+    def originalOwner: Symbol =
+      global.originalOwner.getOrElse(self, self.rawowner)
+
     def implClass: Symbol = NoSymbol
 
     def isTraitOrInterface: Boolean = self.isTrait || self.isInterface
@@ -48,6 +51,10 @@ trait Compat210Component {
 
   implicit final class GlobalCompat(
       self: Compat210Component.this.global.type) {
+
+    object originalOwner {
+      def getOrElse(sym: Symbol, orElse: => Symbol): Symbol = infiniteLoop()
+    }
 
     def enteringPhase[T](ph: Phase)(op: => T): T = self.beforePhase(ph)(op)
     def beforePhase[T](ph: Phase)(op: => T): T = infiniteLoop()
