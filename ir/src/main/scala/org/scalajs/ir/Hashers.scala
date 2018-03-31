@@ -129,17 +129,15 @@ object Hashers {
           mixTree(elsep)
           mixType(tree.tpe)
 
-        case While(cond, body, label) =>
+        case While(cond, body) =>
           mixTag(TagWhile)
           mixTree(cond)
           mixTree(body)
-          mixOptIdent(label)
 
-        case DoWhile(body, cond, label) =>
+        case DoWhile(body, cond) =>
           mixTag(TagDoWhile)
           mixTree(body)
           mixTree(cond)
-          mixOptIdent(label)
 
         case ForIn(obj, keyVar, body) =>
           mixTag(TagForIn)
@@ -163,10 +161,6 @@ object Hashers {
         case Throw(expr) =>
           mixTag(TagThrow)
           mixTree(expr)
-
-        case Continue(label) =>
-          mixTag(TagContinue)
-          mixOptIdent(label)
 
         case Match(selector, cases, default) =>
           mixTag(TagMatch)

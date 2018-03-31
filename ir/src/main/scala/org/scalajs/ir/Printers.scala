@@ -200,21 +200,13 @@ object Printers {
               printBlock(elsep)
           }
 
-        case While(cond, body, label) =>
-          if (label.isDefined) {
-            print(label.get)
-            print(": ")
-          }
+        case While(cond, body) =>
           print("while (")
           print(cond)
           print(") ")
           printBlock(body)
 
-        case DoWhile(body, cond, label) =>
-          if (label.isDefined) {
-            print(label.get)
-            print(": ")
-          }
+        case DoWhile(body, cond) =>
           print("do ")
           printBlock(body)
           print(" while (")
@@ -256,13 +248,6 @@ object Printers {
         case Throw(expr) =>
           print("throw ")
           print(expr)
-
-        case Continue(label) =>
-          print("continue")
-          if (label.isDefined) {
-            print(' ')
-            print(label.get)
-          }
 
         case Match(selector, cases, default) =>
           print("match (")

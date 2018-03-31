@@ -45,11 +45,11 @@ object Traversers {
         traverse(thenp)
         traverse(elsep)
 
-      case While(cond, body, label) =>
+      case While(cond, body) =>
         traverse(cond)
         traverse(body)
 
-      case DoWhile(body, cond, label) =>
+      case DoWhile(body, cond) =>
         traverse(body)
         traverse(cond)
 
@@ -204,7 +204,7 @@ object Traversers {
 
       // Trees that need not be traversed
 
-      case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:SelectStatic |
+      case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic |
           _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo | _:Literal |
           _:VarRef | _:This | _:JSGlobalRef | _:Transient =>
     }

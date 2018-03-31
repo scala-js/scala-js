@@ -598,14 +598,12 @@ private final class IRChecker(unit: LinkingUnit,
         typecheckStat(elsep, env)
         env
 
-      case While(cond, body, label) =>
-        label.foreach(checkDeclareLabel)
+      case While(cond, body) =>
         typecheckExpect(cond, env, BooleanType)
         typecheckStat(body, env)
         env
 
-      case DoWhile(body, cond, label) =>
-        label.foreach(checkDeclareLabel)
+      case DoWhile(body, cond) =>
         typecheckStat(body, env)
         typecheckExpect(cond, env, BooleanType)
         env
@@ -725,8 +723,7 @@ private final class IRChecker(unit: LinkingUnit,
         typecheckExpect(thenp, env, tpe)
         typecheckExpect(elsep, env, tpe)
 
-      case While(BooleanLiteral(true), body, label) if tree.tpe == NothingType =>
-        label.foreach(checkDeclareLabel)
+      case While(BooleanLiteral(true), body) if tree.tpe == NothingType =>
         typecheckStat(body, env)
 
       case TryCatch(block, errVar, handler) =>
@@ -743,13 +740,6 @@ private final class IRChecker(unit: LinkingUnit,
 
       case Throw(expr) =>
         typecheckExpr(expr, env)
-
-      case Continue(label) =>
-        /* Here we could check that it is indeed legal to break to the
-         * specified label. However, if we do anything illegal here, it will
-         * result in a SyntaxError in JavaScript anyway, so we do not really
-         * care.
-         */
 
       case Match(selector, cases, default) =>
         val tpe = tree.tpe

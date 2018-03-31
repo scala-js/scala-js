@@ -56,11 +56,11 @@ object Transformers {
           If(transformExpr(cond), transform(thenp, isStat),
               transform(elsep, isStat))(tree.tpe)
 
-        case While(cond, body, label) =>
-          While(transformExpr(cond), transformStat(body), label)
+        case While(cond, body) =>
+          While(transformExpr(cond), transformStat(body))
 
-        case DoWhile(body, cond, label) =>
-          DoWhile(transformStat(body), transformExpr(cond), label)
+        case DoWhile(body, cond) =>
+          DoWhile(transformStat(body), transformExpr(cond))
 
         case ForIn(obj, keyVar, body) =>
           ForIn(transformExpr(obj), keyVar, transformStat(body))
@@ -203,7 +203,7 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:SelectStatic |
+        case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic |
             _:LoadJSConstructor | _:LoadJSModule  | _:JSLinkingInfo |
             _:Literal | _:VarRef | _:This | _:JSGlobalRef | _:Transient  =>
           tree
