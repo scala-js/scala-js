@@ -12,6 +12,8 @@ import java.util.Date
 import org.junit.Assert._
 import org.junit.Test
 
+import org.scalajs.testsuite.utils.AssertThrows._
+
 /**
   * tests the implementation of the java standard library Date
   */
@@ -41,12 +43,17 @@ class DateTest {
   }
 
   @Test def parseStrings(): Unit = {
-    def test(s: String, v: Date): Unit =
+    def test(s: String, v: Date): Unit = {
       assertEquals(0, new Date(s).compareTo(v))
+      assertEquals(0, Date.parse(s).compareTo(v.getTime))
+    }
 
     test("Nov 5 1997 5:23:27 GMT", new Date(Date.UTC(97, 10, 5, 5, 23, 27)))
-    test("Nov 1 1997 GMT", new Date(Date.UTC(97,10,1, 0, 0, 0)))
-    test("Jan 1 1970 18:11:01 GMT", new Date(Date.UTC(70,0,1,18,11,1)))
+    test("Nov 1 1997 GMT", new Date(Date.UTC(97, 10, 1, 0, 0, 0)))
+    test("Jan 1 1970 18:11:01 GMT", new Date(Date.UTC(70, 0, 1, 18, 11, 1)))
+
+    assertThrows(classOf[IllegalArgumentException], new Date("not a date"))
+    assertThrows(classOf[IllegalArgumentException], Date.parse("not a date"))
   }
 
   @Test def after(): Unit = {
