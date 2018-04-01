@@ -20,7 +20,7 @@ object ScalaJSEnvGenerator {
       if (!ScalaJSVersions.currentIsSnapshot)
         s"https://raw.githubusercontent.com/scala-js/scala-js/v${ScalaJSVersions.current}/$relPath"
       else
-        env.getAbsolutePath
+        env.getAbsoluteFile.toURI.toASCIIString
     }
 
     if (!trg.exists() || trg.lastModified() < env.lastModified()) {
@@ -34,7 +34,7 @@ object ScalaJSEnvGenerator {
 
         private[emitter] object ScalaJSEnvHolder {
           final val scalajsenv = raw\"\"\"$scalajsenv\"\"\"
-          final val sourceMapPath = new URI("$sourceMapPath")
+          final val sourceMapPath = new URI(raw\"\"\"$sourceMapPath\"\"\")
         }
         """
 
