@@ -1,0 +1,21 @@
+version: '{build}'
+image: Visual Studio 2015
+environment:
+  global:
+    NODEJS_VERSION: "8"
+    JAVA_HOME: C:\Program Files\Java\jdk1.8.0
+    SCALA_VERSION: 2.12.4
+install:
+  - ps: Install-Product node $env:NODEJS_VERSION
+  - npm install
+  - cmd: choco install sbt --version 1.0.2 -ia "INSTALLDIR=""C:\sbt"""
+  - cmd: SET PATH=C:\sbt\bin;%JAVA_HOME%\bin;%PATH%
+  - cmd: SET SBT_OPTS=-Xmx4g
+build: off
+test_script:
+  # Very far from testing everything, but at least it is a good sanity check
+  - cmd: sbt ";clean;++%SCALA_VERSION%;testSuite/test"
+cache:
+  - C:\sbt
+  - C:\Users\appveyor\.ivy2\cache
+  - C:\Users\appveyor\.sbt
