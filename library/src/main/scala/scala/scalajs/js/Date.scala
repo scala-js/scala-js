@@ -23,6 +23,12 @@ import scala.scalajs.js.annotation._
  * since 1 January, 1970 UTC.
  *
  * MDN
+ *
+ * @note
+ *   `js.Date` objects can represent an *invalid date*, for example, if they
+ *   are constructed from a `String` that cannot be parsed as a date. Most
+ *   methods of such a `js.Date` will return `NaN` (for those returning a
+ *   `Double`) or other invalid values.
  */
 @js.native
 @JSGlobal
@@ -48,141 +54,144 @@ class Date extends js.Object {
    *
    * MDN
    */
-  def getFullYear(): Int = js.native
+  def getFullYear(): Double = js.native
 
   /**
    * Returns the year (4 digits for 4-digit years) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCFullYear(): Int = js.native
+  def getUTCFullYear(): Double = js.native
 
   /**
    * Returns the month (0-11) in the specified date according to local time.
    *
    * MDN
    */
-  def getMonth(): Int = js.native
+  def getMonth(): Double = js.native
 
   /**
    * Returns the month (0-11) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCMonth(): Int = js.native
+  def getUTCMonth(): Double = js.native
 
   /**
    * Returns the day of the month (1-31) for the specified date according to local time.
    *
    * MDN
    */
-  def getDate(): Int = js.native
+  def getDate(): Double = js.native
 
   /**
    * Returns the day (date) of the month (1-31) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCDate(): Int = js.native
+  def getUTCDate(): Double = js.native
 
   /**
    * Returns the day of the week (0-6) for the specified date according to local time.
    *
    * MDN
    */
-  def getDay(): Int = js.native
+  def getDay(): Double = js.native
 
   /**
    * Returns the day of the week (0-6) in the specified date according to universal time.
    * MDN
    */
-  def getUTCDay(): Int = js.native
+  def getUTCDay(): Double = js.native
 
   /**
    * Returns the hour (0-23) in the specified date according to local time.
    *
    * MDN
    */
-  def getHours(): Int = js.native
+  def getHours(): Double = js.native
 
   /**
    * Returns the hours (0-23) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCHours(): Int = js.native
+  def getUTCHours(): Double = js.native
 
   /**
    * Returns the minutes (0-59) in the specified date according to local time.
    *
    * MDN
    */
-  def getMinutes(): Int = js.native
+  def getMinutes(): Double = js.native
 
   /**
    * Returns the minutes (0-59) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCMinutes(): Int = js.native
+  def getUTCMinutes(): Double = js.native
 
   /**
    * Returns the seconds (0-59) in the specified date according to local time.
    *
    * MDN
    */
-  def getSeconds(): Int = js.native
+  def getSeconds(): Double = js.native
 
   /**
    * Returns the seconds (0-59) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCSeconds(): Int = js.native
+  def getUTCSeconds(): Double = js.native
 
   /**
    * Returns the milliseconds (0-999) in the specified date according to local time.
    *
    * MDN
    */
-  def getMilliseconds(): Int = js.native
+  def getMilliseconds(): Double = js.native
 
   /**
    * Returns the milliseconds (0-999) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCMilliseconds(): Int = js.native
+  def getUTCMilliseconds(): Double = js.native
 
   /**
    * Returns the time-zone offset in minutes for the current locale.
    *
    * MDN
    */
-  def getTimezoneOffset(): Int = js.native
+  def getTimezoneOffset(): Double = js.native
 
   def setTime(time: Double): Unit = js.native
-  def setMilliseconds(ms: Int): Unit = js.native
-  def setUTCMilliseconds(ms: Int): Unit = js.native
-  def setSeconds(sec: Int, ms: Int = getMilliseconds()): Unit = js.native
-  def setUTCSeconds(sec: Int, ms: Int = getMilliseconds()): Unit = js.native
-  def setMinutes(min: Int, sec: Int = getSeconds(),
-      ms: Int = getMilliseconds()): Unit = js.native
-  def setUTCMinutes(min: Int, sec: Int = getSeconds(),
-      ms: Int = getMilliseconds()): Unit = js.native
-  def setHours(hours: Int, min: Int = getMinutes(),
-      sec: Int = getSeconds(), ms: Int = getMilliseconds()): Unit = js.native
-  def setUTCHours(hours: Int, min: Int = getMinutes(),
-      sec: Int = getSeconds(), ms: Int = getMilliseconds()): Unit = js.native
+  def setMilliseconds(ms: Double): Unit = js.native
+  def setUTCMilliseconds(ms: Double): Unit = js.native
+  def setSeconds(sec: Double, ms: Double = getMilliseconds()): Unit = js.native
+  def setUTCSeconds(sec: Double,
+      ms: Double = getMilliseconds()): Unit = js.native
+  def setMinutes(min: Double, sec: Double = getSeconds(),
+      ms: Double = getMilliseconds()): Unit = js.native
+  def setUTCMinutes(min: Double, sec: Double = getSeconds(),
+      ms: Double = getMilliseconds()): Unit = js.native
+  def setHours(hours: Double, min: Double = getMinutes(),
+      sec: Double = getSeconds(),
+      ms: Double = getMilliseconds()): Unit = js.native
+  def setUTCHours(hours: Double, min: Double = getMinutes(),
+      sec: Double = getSeconds(),
+      ms: Double = getMilliseconds()): Unit = js.native
 
-  def setDate(date: Int): Unit = js.native
-  def setUTCDate(date: Int): Unit = js.native
-  def setMonth(month: Int, date: Int = getDate()): Unit = js.native
-  def setUTCMonth(month: Int, date: Int = getDate()): Unit = js.native
-  def setFullYear(year: Int, month: Int = getMonth(),
-      date: Int = getDate()): Unit = js.native
-  def setUTCFullYear(year: Int, month: Int = getMonth(),
-      date: Int = getDate()): Unit = js.native
+  def setDate(date: Double): Unit = js.native
+  def setUTCDate(date: Double): Unit = js.native
+  def setMonth(month: Double, date: Double = getDate()): Unit = js.native
+  def setUTCMonth(month: Double, date: Double = getDate()): Unit = js.native
+  def setFullYear(year: Double, month: Double = getMonth(),
+      date: Double = getDate()): Unit = js.native
+  def setUTCFullYear(year: Double, month: Double = getMonth(),
+      date: Double = getDate()): Unit = js.native
 
   def toUTCString(): String = js.native
   def toISOString(): String = js.native

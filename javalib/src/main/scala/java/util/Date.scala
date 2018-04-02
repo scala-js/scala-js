@@ -32,7 +32,14 @@ class Date private (private val date: js.Date) extends Object
   def this(date: Long) = this(new js.Date(date))
 
   @Deprecated
-  def this(date: String) = this(new js.Date(date))
+  def this(date: String) = {
+    this({
+      val jsDate = new js.Date(date)
+      if (jsDate.getTime().isNaN)
+        throw new IllegalArgumentException
+      jsDate
+    })
+  }
 
   def after(when: Date): Boolean = date.getTime() > when.date.getTime()
 
@@ -51,30 +58,30 @@ class Date private (private val date: js.Date) extends Object
   override def hashCode(): Int = date.getTime().hashCode()
 
   @Deprecated
-  def getDate(): Int = date.getDate()
+  def getDate(): Int = date.getDate().toInt
 
   @Deprecated
-  def getDay(): Int = date.getDay()
+  def getDay(): Int = date.getDay().toInt
 
   @Deprecated
-  def getHours(): Int = date.getHours()
+  def getHours(): Int = date.getHours().toInt
 
   @Deprecated
-  def getMinutes(): Int = date.getMinutes()
+  def getMinutes(): Int = date.getMinutes().toInt
 
   @Deprecated
-  def getMonth(): Int = date.getMonth()
+  def getMonth(): Int = date.getMonth().toInt
 
   @Deprecated
-  def getSeconds(): Int = date.getSeconds()
+  def getSeconds(): Int = date.getSeconds().toInt
 
   def getTime(): Long = date.getTime().toLong
 
   @Deprecated
-  def getTimezoneOffset(): Int = date.getTimezoneOffset()
+  def getTimezoneOffset(): Int = date.getTimezoneOffset().toInt
 
   @Deprecated
-  def getYear(): Int = date.getFullYear() - 1900
+  def getYear(): Int = date.getFullYear().toInt - 1900
 
   @Deprecated
   def setDate(date: Int): Unit = this.date.setDate(date)
@@ -98,28 +105,28 @@ class Date private (private val date: js.Date) extends Object
 
   @Deprecated
   def toGMTString(): String = {
-    date.getUTCDate() + " " + Months(date.getUTCMonth()) + " " +
-      date.getUTCFullYear() + " " + pad0(date.getUTCHours()) + ":" +
-      pad0(date.getUTCMinutes()) + ":" +
-      pad0(date.getUTCSeconds()) +" GMT"
+    date.getUTCDate().toInt + " " + Months(date.getUTCMonth().toInt) + " " +
+      date.getUTCFullYear().toInt + " " + pad0(date.getUTCHours().toInt) + ":" +
+      pad0(date.getUTCMinutes().toInt) + ":" +
+      pad0(date.getUTCSeconds().toInt) +" GMT"
   }
 
   @Deprecated
   def toLocaleString(): String = {
-    date.getDate() + "-" + Months(date.getMonth()) + "-" +
-      date.getFullYear() + "-" + pad0(date.getHours()) + ":" +
-      pad0(date.getMinutes()) + ":" + pad0(date.getSeconds())
+    date.getDate().toInt + "-" + Months(date.getMonth().toInt) + "-" +
+      date.getFullYear().toInt + "-" + pad0(date.getHours().toInt) + ":" +
+      pad0(date.getMinutes().toInt) + ":" + pad0(date.getSeconds().toInt)
   }
 
   override def toString(): String = {
-    val offset = -date.getTimezoneOffset()
+    val offset = -date.getTimezoneOffset().toInt
     val sign = if (offset < 0) "-" else "+"
     val hours = pad0(Math.abs(offset) / 60)
     val mins = pad0(Math.abs(offset) % 60)
-    Days(date.getDay()) + " "+ Months(date.getMonth()) + " " +
-      pad0(date.getDate()) + " " + pad0(date.getHours()) + ":" +
-      pad0(date.getMinutes()) + ":" + pad0(date.getSeconds()) + " GMT" + " " +
-      date.getFullYear()
+    Days(date.getDay().toInt) + " "+ Months(date.getMonth().toInt) + " " +
+      pad0(date.getDate().toInt) + " " + pad0(date.getHours().toInt) + ":" +
+      pad0(date.getMinutes().toInt) + ":" + pad0(date.getSeconds().toInt) +
+      " GMT" + " " + date.getFullYear().toInt
   }
 }
 
@@ -142,6 +149,10 @@ object Date {
     js.Date.UTC(year + 1900, month, date, hrs, min, sec).toLong
 
   @Deprecated
-  def parse(string: String): Long =
-    new Date(new js.Date(string)).getTime.toLong
+  def parse(string: String): Long = {
+    val time = new js.Date(string).getTime()
+    if (time.isNaN)
+      throw new IllegalArgumentException
+    time.toLong
+  }
 }
