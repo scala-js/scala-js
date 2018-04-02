@@ -1654,6 +1654,27 @@ object Build {
         }
       },
 
+      /* Because of the above tweak of `sources` depending on the value of
+       * `scalaJSStage`, it is ill-advised to invoke a linking task that does
+       * not correspond to the current `scalaJSStage`.
+       */
+      for ((key, stage) <- Seq(fastOptJS -> FastOptStage, fullOptJS -> FullOptStage)) yield {
+        key in Test := {
+          /* Note that due to the way dependencies between tasks work, the
+           * actual linking *will* be computed anyway, but it's not too late to
+           * prevent the user from doing anything meaningful with it
+           * afterwards.
+           */
+          val actual = (key in Test).value
+          if (scalaJSStage.value != stage) {
+            throw new MessageOnlyException(
+                s"testSuite/test:${key.key} can only be invoked when " +
+                s"(scalaJSStage in testSuite).value is $stage")
+          }
+          actual
+        }
+      },
+
       // Module initializers. Duplicated in toolsJS/test
       scalaJSModuleInitializers += {
         ModuleInitializer.mainMethod(
