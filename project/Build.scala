@@ -506,6 +506,7 @@ object Build {
           clean in compiler,
           clean in irProject, clean in irProjectJS,
           clean in io, clean in ioJS,
+          clean in logging, clean in loggingJS,
           clean in linker, clean in linkerJS,
           clean in jsEnvs, clean in jsEnvsTestKit, clean in nodeJSEnv,
           clean in testAdapter, clean in plugin,
