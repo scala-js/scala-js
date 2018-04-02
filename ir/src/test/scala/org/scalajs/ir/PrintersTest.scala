@@ -147,7 +147,7 @@ class PrintersTest {
   }
 
   @Test def printReturn(): Unit = {
-    assertPrintEquals("return 5", Return(i(5)))
+    assertPrintEquals("return 5", Return(i(5), None))
     assertPrintEquals("return(lab) 5", Return(i(5), Some("lab")))
   }
 
@@ -197,14 +197,6 @@ class PrintersTest {
           |}
         """,
         While(b(true), i(5)))
-
-    assertPrintEquals(
-        """
-          |lab: while (true) {
-          |  5
-          |}
-        """,
-        While(b(true), i(5), Some("lab")))
   }
 
   @Test def printDoWhile(): Unit = {
@@ -215,14 +207,6 @@ class PrintersTest {
           |} while (true)
         """,
         DoWhile(i(5), b(true)))
-
-    assertPrintEquals(
-        """
-          |lab: do {
-          |  5
-          |} while (true)
-        """,
-        DoWhile(i(5), b(true), Some("lab")))
   }
 
   @Test def printForIn(): Unit = {
@@ -271,11 +255,6 @@ class PrintersTest {
 
   @Test def printThrow(): Unit = {
     assertPrintEquals("throw null", Throw(Null()))
-  }
-
-  @Test def printContinue(): Unit = {
-    assertPrintEquals("continue", Continue())
-    assertPrintEquals("continue lab", Continue(Some("lab")))
   }
 
   @Test def printMatch(): Unit = {

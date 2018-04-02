@@ -177,7 +177,7 @@ object Trees {
     val tpe = NoType // cannot be in expression position
   }
 
-  case class Return(expr: Tree, label: Option[Ident] = None)(
+  case class Return(expr: Tree, label: Option[Ident])(
       implicit val pos: Position) extends Tree {
     val tpe = NothingType
   }
@@ -185,7 +185,7 @@ object Trees {
   case class If(cond: Tree, thenp: Tree, elsep: Tree)(val tpe: Type)(
       implicit val pos: Position) extends Tree
 
-  case class While(cond: Tree, body: Tree, label: Option[Ident] = None)(
+  case class While(cond: Tree, body: Tree)(
       implicit val pos: Position) extends Tree {
     // cannot be in expression position, unless it is infinite
     val tpe = cond match {
@@ -194,7 +194,7 @@ object Trees {
     }
   }
 
-  case class DoWhile(body: Tree, cond: Tree, label: Option[Ident] = None)(
+  case class DoWhile(body: Tree, cond: Tree)(
       implicit val pos: Position) extends Tree {
     val tpe = NoType // cannot be in expression position
   }
@@ -213,11 +213,6 @@ object Trees {
   }
 
   case class Throw(expr: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = NothingType
-  }
-
-  case class Continue(label: Option[Ident] = None)(
-      implicit val pos: Position) extends Tree {
     val tpe = NothingType
   }
 

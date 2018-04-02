@@ -162,13 +162,13 @@ object Serializers {
           writeTree(cond); writeTree(thenp); writeTree(elsep)
           writeType(tree.tpe)
 
-        case While(cond, body, label) =>
+        case While(cond, body) =>
           writeByte(TagWhile)
-          writeTree(cond); writeTree(body); writeOptIdent(label)
+          writeTree(cond); writeTree(body)
 
-        case DoWhile(body, cond, label) =>
+        case DoWhile(body, cond) =>
           writeByte(TagDoWhile)
-          writeTree(body); writeTree(cond); writeOptIdent(label)
+          writeTree(body); writeTree(cond)
 
         case ForIn(obj, keyVar, body) =>
           writeByte(TagForIn)
@@ -186,10 +186,6 @@ object Serializers {
         case Throw(expr) =>
           writeByte(TagThrow)
           writeTree(expr)
-
-        case Continue(label) =>
-          writeByte(TagContinue)
-          writeOptIdent(label)
 
         case Match(selector, cases, default) =>
           writeByte(TagMatch)
@@ -845,8 +841,8 @@ object Serializers {
         case TagAssign  => Assign(readTree(), readTree())
         case TagReturn  => Return(readTree(), readOptIdent())
         case TagIf      => If(readTree(), readTree(), readTree())(readType())
-        case TagWhile   => While(readTree(), readTree(), readOptIdent())
-        case TagDoWhile => DoWhile(readTree(), readTree(), readOptIdent())
+        case TagWhile   => While(readTree(), readTree())
+        case TagDoWhile => DoWhile(readTree(), readTree())
         case TagForIn   => ForIn(readTree(), readIdent(), readTree())
 
         case TagTryCatch =>
@@ -856,7 +852,6 @@ object Serializers {
           TryFinally(readTree(), readTree())
 
         case TagThrow    => Throw(readTree())
-        case TagContinue => Continue(readOptIdent())
         case TagMatch    =>
           Match(readTree(), List.fill(readInt()) {
             (readTrees().map(_.asInstanceOf[Literal]), readTree())

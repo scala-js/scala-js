@@ -385,33 +385,19 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             foldIf(newCond, newThenp, newElsep)(refinedType)
         }
 
-      case While(cond, body, optLabel) =>
+      case While(cond, body) =>
         val newCond = transformExpr(cond)
         newCond match {
           case BooleanLiteral(false) => Skip()
-          case _ =>
-            optLabel match {
-              case None =>
-                While(newCond, transformStat(body), None)
-
-              case Some(labelIdent @ Ident(label, _)) =>
-                val newLabel = freshLabelName(label)
-                val info = new LabelInfo(newLabel, acceptRecords = false,
-                    returnedTypes = newSimpleState(Nil))
-                While(newCond, {
-                  val bodyScope = scope.withEnv(
-                      scope.env.withLabelInfo(label, info))
-                  transformStat(body)(bodyScope)
-                }, Some(Ident(newLabel, None)(labelIdent.pos)))
-            }
+          case _                     => While(newCond, transformStat(body))
         }
 
-      case DoWhile(body, cond, None) =>
+      case DoWhile(body, cond) =>
         val newBody = transformStat(body)
         val newCond = transformExpr(cond)
         newCond match {
           case BooleanLiteral(false) => newBody
-          case _                     => DoWhile(newBody, newCond, None)
+          case _                     => DoWhile(newBody, newCond)
         }
 
       case ForIn(obj, keyVar @ Ident(name, originalName), body) =>
@@ -449,12 +435,6 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case Throw(expr) =>
         Throw(transformExpr(expr))
-
-      case Continue(optLabel) =>
-        val newOptLabel = optLabel map { label =>
-          Ident(scope.env.labelInfos(label.name).newName, None)(label.pos)
-        }
-        Continue(newOptLabel)
 
       case Match(selector, cases, default) =>
         val newSelector = transformExpr(selector)

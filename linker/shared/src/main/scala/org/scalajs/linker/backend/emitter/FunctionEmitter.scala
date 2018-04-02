@@ -190,6 +190,51 @@ import Transients._
  *  `defaultBreakTargets` is property of the *scope*, and is therefore stored
  *  in the environment.
  *
+ *  Finally, we also recover JavaScript `continue` statements out of labeled
+ *  blocks that are immediately nested in the body of `while` loops. When we
+ *  have:
+ *
+ *  {{{
+ *  while (cond) {
+ *    lab: {
+ *      ...
+ *      if (c)
+ *        return(lab) expr;
+ *      ...
+ *    }
+ *  }
+ *  }}}
+ *
+ *  we make the `while` loop "acquire" the label as its own, and instruct the
+ *  environment that, should an instruction want to return to that label, it
+ *  should use `continue` instead of `break`. This produces:
+ *
+ *  {{{
+ *  lab: while (cond) {
+ *    ...
+ *    if (c)
+ *      { expr; continue lab }
+ *    ...
+ *  }
+ *  }}}
+ *
+ *  Note that the result of `expr` is always discarded, in that case, since the
+ *  labeled block was in statement position (by construction).
+ *
+ *  Similarly to the treatment with `defaultBreakTargets`, we keep track of
+ *  `defaultContinueTargets`, the set of labels for which we can simply write
+ *  `continue` instead of `continue lab`. This allows the above code to finally
+ *  become:
+ *
+ *  {{{
+ *  while (cond) {
+ *    ...
+ *    if (c)
+ *      { expr; continue }
+ *    ...
+ *  }
+ *  }}}
+ *
  *  @author Sébastien Doeraene
  */
 private[emitter] class FunctionEmitter(jsGen: JSGen) {
@@ -419,7 +464,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
       val withReturn =
         if (isStat) body
-        else Return(body)
+        else Return(body, None)
 
       val translateRestParam =
         if (esFeatures.useECMAScript2015) false
@@ -575,54 +620,77 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 transformExprNoChar(newValue))
           }
 
-        case While(cond, body, label) =>
+        case While(cond, body) =>
+          /* If there is a Labeled block immediately enclosed within the body
+           * of this while loop, acquire its label and use it as the while's
+           * label, turning it into a `continue` label.
+           */
+          val (optLabel, newBody) = {
+            body match {
+              case Labeled(label, _, innerBody) =>
+                val innerBodyEnv = env
+                  .withLabeledExprLHS(label, Lhs.Discard)
+                  .withTurnLabelIntoContinue(label.name)
+                  .withDefaultBreakTargets(tailPosLabels)
+                  .withDefaultContinueTargets(Set(label.name))
+                val newBody =
+                  pushLhsInto(Lhs.Discard, innerBody, Set(label.name))(innerBodyEnv)
+                val optLabel = if (usedLabels.contains(label.name))
+                  Some(transformLabelIdent(label))
+                else
+                  None
+                (optLabel, newBody)
+
+              case _ =>
+                val bodyEnv = env
+                  .withDefaultBreakTargets(tailPosLabels)
+                  .withDefaultContinueTargets(Set.empty)
+                val newBody = transformStat(body, Set.empty)(bodyEnv)
+                (None, newBody)
+            }
+          }
+
           /* We cannot simply unnest(cond) here, because that would eject the
            * evaluation of the condition out of the loop.
            */
-          val newLabel = label.map(transformLabelIdent)
-          val bodyBreakTargets = tailPosLabels ++ label.map(_.name)
           if (isExpression(cond)) {
-            js.While(transformExprNoChar(cond),
-                transformStat(body, Set.empty)(
-                    env.withDefaultBreakTargets(bodyBreakTargets)),
-                newLabel)
+            js.While(transformExprNoChar(cond), newBody, optLabel)
           } else {
             js.While(js.BooleanLiteral(true), {
               unnest(cond) { (newCond, env0) =>
                 implicit val env = env0
-                js.If(transformExprNoChar(newCond),
-                    transformStat(body, Set.empty)(
-                        env.withDefaultBreakTargets(bodyBreakTargets)),
-                    js.Break())
+                js.If(transformExprNoChar(newCond), newBody, js.Break())
               }
-            }, newLabel)
+            }, optLabel)
           }
 
-        case DoWhile(body, cond, label) =>
+        case DoWhile(body, cond) =>
           /* We cannot simply unnest(cond) here, because that would eject the
            * evaluation of the condition out of the loop.
            */
-          val newLabel = label.map(transformLabelIdent)
-          val bodyBreakTargets = tailPosLabels ++ label.map(_.name)
+          val bodyEnv = env
+            .withDefaultBreakTargets(tailPosLabels)
+            .withDefaultContinueTargets(Set.empty)
+          val newBody = transformStat(body, Set.empty)(bodyEnv)
           if (isExpression(cond)) {
-            js.DoWhile(
-                transformStat(body, Set.empty)(
-                    env.withDefaultBreakTargets(bodyBreakTargets)),
-                transformExprNoChar(cond), newLabel)
+            /* Here, we could do the same optimization with `continue` as in
+             * `While` loops (see above), but no Scala source code produces
+             * patterns where this happens. Therefore, we do not bother.
+             */
+            js.DoWhile(newBody, transformExprNoChar(cond))
           } else {
-            /* This breaks 'continue' statements for this loop, but we don't
-             * care because we never emit continue statements for do..while
-             * loops.
+            /* Since in this rewriting, the old body is not in tail position of
+             * the emitted do..while body, we cannot optimize an inner Labeled
+             * block into using `continue` statements.
              */
             js.While(js.BooleanLiteral(true), {
               js.Block(
-                  transformStat(body, Set.empty)(
-                      env.withDefaultBreakTargets(bodyBreakTargets)),
+                  newBody,
                   unnest(cond) { (newCond, env0) =>
                     implicit val env = env0
                     js.If(transformExprNoChar(newCond), js.Skip(), js.Break())
                   })
-            }, newLabel)
+            })
           }
 
         case ForIn(obj, keyVar, body) =>
@@ -1340,9 +1408,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           body
         } else if (env.isDefaultBreakTarget(l.name)) {
           js.Block(body, js.Break(None))
+        } else if (env.isDefaultContinueTarget(l.name)) {
+          js.Block(body, js.Continue(None))
         } else {
           usedLabels += l.name
-          js.Block(body, js.Break(Some(transformLabelIdent(l))))
+          val transformedLabel = Some(transformLabelIdent(l))
+          val jump =
+            if (env.isLabelTurnedIntoContinue(l.name)) js.Continue(transformedLabel)
+            else js.Break(transformedLabel)
+          js.Block(body, jump)
         }
       }
 
@@ -1433,9 +1507,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case Return(expr, label) =>
           pushLhsInto(Lhs.Return(label), expr, tailPosLabels)
-
-        case Continue(label) =>
-          js.Continue(label.map(transformLabelIdent))
 
         case If(cond, thenp, elsep) =>
           unnest(cond) { (newCond, env0) =>
@@ -2737,7 +2808,9 @@ private object FunctionEmitter {
       val enclosingClassName: Option[String],
       vars: Map[String, Boolean],
       labeledExprLHSes: Map[String, Lhs],
-      defaultBreakTargets: Set[String]
+      labelsTurnedIntoContinue: Set[String],
+      defaultBreakTargets: Set[String],
+      defaultContinueTargets: Set[String]
   ) {
     def isLocalVar(ident: Ident): Boolean = vars.contains(ident.name)
 
@@ -2750,8 +2823,14 @@ private object FunctionEmitter {
 
     def lhsForLabeledExpr(label: Ident): Lhs = labeledExprLHSes(label.name)
 
+    def isLabelTurnedIntoContinue(label: String): Boolean =
+      labelsTurnedIntoContinue.contains(label)
+
     def isDefaultBreakTarget(label: String): Boolean =
       defaultBreakTargets.contains(label)
+
+    def isDefaultContinueTarget(label: String): Boolean =
+      defaultContinueTargets.contains(label)
 
     def withEnclosingClassName(enclosingClassName: Option[String]): Env =
       copy(enclosingClassName = enclosingClassName)
@@ -2773,8 +2852,14 @@ private object FunctionEmitter {
     def withLabeledExprLHS(label: Ident, lhs: Lhs): Env =
       copy(labeledExprLHSes = labeledExprLHSes + (label.name -> lhs))
 
+    def withTurnLabelIntoContinue(label: String): Env =
+      copy(labelsTurnedIntoContinue = labelsTurnedIntoContinue + label)
+
     def withDefaultBreakTargets(targets: Set[String]): Env =
       copy(defaultBreakTargets = targets)
+
+    def withDefaultContinueTargets(targets: Set[String]): Env =
+      copy(defaultContinueTargets = targets)
 
     private def copy(
         thisIdent: Option[js.Ident] = this.thisIdent,
@@ -2782,14 +2867,19 @@ private object FunctionEmitter {
         enclosingClassName: Option[String] = this.enclosingClassName,
         vars: Map[String, Boolean] = this.vars,
         labeledExprLHSes: Map[String, Lhs] = this.labeledExprLHSes,
-        defaultBreakTargets: Set[String] = this.defaultBreakTargets): Env = {
+        labelsTurnedIntoContinue: Set[String] = this.labelsTurnedIntoContinue,
+        defaultBreakTargets: Set[String] = this.defaultBreakTargets,
+        defaultContinueTargets: Set[String] = this.defaultContinueTargets): Env = {
       new Env(thisIdent, expectedReturnType, enclosingClassName, vars,
-          labeledExprLHSes, defaultBreakTargets)
+          labeledExprLHSes, labelsTurnedIntoContinue, defaultBreakTargets,
+          defaultContinueTargets)
     }
   }
 
   object Env {
-    def empty(expectedReturnType: Type): Env =
-      new Env(None, expectedReturnType, None, Map.empty, Map.empty, Set.empty)
+    def empty(expectedReturnType: Type): Env = {
+      new Env(None, expectedReturnType, None, Map.empty, Map.empty, Set.empty,
+          Set.empty, Set.empty)
+    }
   }
 }

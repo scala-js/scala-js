@@ -1958,7 +1958,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.Return(toIRType(expr.tpe) match {
             case jstpe.NoType => js.Block(genStat(expr), js.Undefined())
             case _            => genExpr(expr)
-          })
+          }, None)
 
         case t: Try =>
           genTry(t, isStat)
@@ -2265,11 +2265,13 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             js.Labeled(blockLabelIdent, bodyType, {
               js.While(js.BooleanLiteral(true), {
-                if (bodyType == jstpe.NoType)
-                  js.Block(genStat(rhs), js.Return(js.Undefined(), Some(blockLabelIdent)))
-                else
-                  js.Return(genExpr(rhs), Some(blockLabelIdent))
-              }, Some(labelIdent))
+                js.Labeled(labelIdent, jstpe.NoType, {
+                  if (bodyType == jstpe.NoType)
+                    js.Block(genStat(rhs), js.Return(js.Undefined(), Some(blockLabelIdent)))
+                  else
+                    js.Return(genExpr(rhs), Some(blockLabelIdent))
+                })
+              })
             })
           }
       }
@@ -2712,8 +2714,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         quadruplets.result()
       }
 
-      // The actual jump (continue labelDefIdent;)
-      val jump = js.Continue(Some(encodeLabelSym(sym)))
+      // The actual jump (return(labelDefIdent) undefined;)
+      val jump = js.Return(js.Undefined(), Some(encodeLabelSym(sym)))
 
       quadruplets match {
         case Nil => jump
@@ -3220,9 +3222,9 @@ abstract class GenJSCode extends plugins.PluginComponent
           val result = translateMatch(retExpr)
           if (result.tpe == jstpe.NoType) {
             // Could not actually reproduce this, but better be safe than sorry
-            js.Block(result, js.Return(js.Undefined()))
+            js.Block(result, js.Return(js.Undefined(), None))
           } else {
-            js.Return(result)
+            js.Return(result, None)
           }
 
         case _ =>
