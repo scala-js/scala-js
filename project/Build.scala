@@ -1050,7 +1050,12 @@ object Build {
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
-          scalacOptions in doc ++= Seq("-implicits", "-groups"),
+          scalacOptions in doc ++= Seq(
+              "-implicits",
+              "-groups",
+              "-doc-title", "Scala.js",
+              "-doc-version", scalaJSVersion
+          ),
 
           // Filter doc sources to remove implementation details from doc.
           sources in doc := {
