@@ -64,7 +64,7 @@ object Build {
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.7", "2.11.12", "2.12.5", "2.13.0-M3")
+    Set("2.10.7", "2.11.12", "2.12.5", "2.13.0-M4-pre-20d3c21")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -1051,6 +1051,15 @@ object Build {
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
+
+         unmanagedSourceDirectories += {
+            val dir = sourceDirectory.value
+            CrossVersion.partialVersion(scalaVersion.value) match {
+              case Some((2, 13)) => dir / "scala-2.13"
+              case _             => dir / "scala-2.10-2.12"
+            }
+          },
+
           scalacOptions in doc ++= Seq(
               "-implicits",
               "-groups",

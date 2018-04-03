@@ -461,7 +461,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       // Create a map: argCount -> methods (methods may appear multiple times)
       val methodByArgCount =
-        methodArgCounts.groupBy(_._1).mapValues(_.map(_._2).toSet)
+        methodArgCounts.groupBy(_._1).mapValues(_.map(_._2).toSet).toMap
 
       // Minimum number of arguments that must be given
       val minArgc = methodByArgCount.keys.min

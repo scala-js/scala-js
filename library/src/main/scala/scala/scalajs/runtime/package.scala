@@ -2,9 +2,7 @@ package scala.scalajs
 
 import scala.annotation.tailrec
 
-import scala.collection.GenTraversableOnce
-
-package object runtime {
+package object runtime extends ScalaVersionSpecificRuntime {
 
   @deprecated("Use scala.scalajs.LinkingInfo.assumingES6 instead.", "0.6.6")
   @inline
@@ -80,18 +78,6 @@ package object runtime {
     // scalastyle:on return
   }
 
-  @inline final def genTraversableOnce2jsArray[A](
-      col: GenTraversableOnce[A]): js.Array[A] = {
-    col match {
-      case col: js.ArrayOps[A]     => col.result()
-      case col: js.WrappedArray[A] => col.array
-      case _ =>
-        val result = new js.Array[A]
-        col.foreach(x => result.push(x))
-        result
-    }
-  }
-
   final def jsTupleArray2jsObject(
       tuples: js.Array[(String, js.Any)]): js.Object with js.Dynamic = {
     val result = js.Dynamic.literal()
@@ -111,7 +97,7 @@ package object runtime {
   @deprecated("Use js.Dynamic.newInstance instead.", "0.6.3")
   @inline
   def newJSObjectWithVarargs(ctor: js.Dynamic, args: js.Array[_]): js.Any =
-    js.Dynamic.newInstance(ctor)(args.asInstanceOf[js.Array[js.Any]]: _*)
+    js.Dynamic.newInstance(ctor)(args.asInstanceOf[js.Array[js.Any]].toSeq: _*)
 
   /** Dummy method used to preserve the type parameter of
    *  `js.constructorOf[T]` through erasure.

@@ -182,9 +182,9 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
             case (_, xs) => None
           }
 
-          val newStats = tree.stats.map(transform) ++ bootstrappers
+          val newStats = (tree.stats.map(transform).iterator ++ bootstrappers).toList
 
-          treeCopy.PackageDef(tree: Tree, tree.pid, newStats.toList)
+          treeCopy.PackageDef(tree: Tree, tree.pid, newStats)
 
         case _ =>
           super.transform(tree)
