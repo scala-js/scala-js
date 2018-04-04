@@ -9,12 +9,31 @@
 package scala
 
 //import scala.collection.generic._
-import scala.collection.{Factory, immutable, mutable}
+import scala.collection.{BuildFrom, Factory, immutable, mutable}
 import mutable.ArrayBuilder
 import immutable.ImmutableArray
 import scala.reflect.ClassTag
 import scala.runtime.ScalaRunTime
 import scala.runtime.ScalaRunTime.{array_apply, array_update}
+
+/** Contains a fallback builder for arrays when the element type
+  *  does not have a class tag. In that case a generic array is built.
+  */
+class FallbackArrayBuilding {
+
+  /** A builder factory that generates a generic array.
+    *  Called instead of `Array.newBuilder` if the element type of an array
+    *  does not have a class tag. Note that fallbackBuilder factory
+    *  needs an implicit parameter (otherwise it would not be dominated in
+    *  implicit search by `Array.canBuildFrom`). We make sure that
+    *  implicit search is always successful.
+    */
+  implicit def fallbackCanBuildFrom[T](implicit m: DummyImplicit): BuildFrom[Array[_], T, mutable.WrappedArray[T]] =
+    new BuildFrom[Array[_], T, mutable.WrappedArray[T]] {
+      def fromSpecificIterable(from: Array[_])(it: Iterable[T]) = mutable.WrappedArray.untagged.from(it)
+      def newBuilder(from: Array[_]) = mutable.WrappedArray.untagged.newBuilder[T]
+    }
+}
 
 /** Utility methods for operating on arrays.
  *  For example:
@@ -29,22 +48,43 @@ import scala.runtime.ScalaRunTime.{array_apply, array_update}
  *  @author Martin Odersky
  *  @version 1.0
  */
-object Array {
-  val emptyBooleanArray = new Array[Boolean](0)
-  val emptyByteArray    = new Array[Byte](0)
-  val emptyCharArray    = new Array[Char](0)
-  val emptyDoubleArray  = new Array[Double](0)
-  val emptyFloatArray   = new Array[Float](0)
-  val emptyIntArray     = new Array[Int](0)
-  val emptyLongArray    = new Array[Long](0)
-  val emptyShortArray   = new Array[Short](0)
-  val emptyObjectArray  = new Array[Object](0)
+object Array extends FallbackArrayBuilding {
+  def emptyBooleanArray = EmptyArrays.emptyBooleanArray
+  def emptyByteArray    = EmptyArrays.emptyByteArray
+  def emptyCharArray    = EmptyArrays.emptyCharArray
+  def emptyDoubleArray  = EmptyArrays.emptyDoubleArray
+  def emptyFloatArray   = EmptyArrays.emptyFloatArray
+  def emptyIntArray     = EmptyArrays.emptyIntArray
+  def emptyLongArray    = EmptyArrays.emptyLongArray
+  def emptyShortArray   = EmptyArrays.emptyShortArray
+  def emptyObjectArray  = EmptyArrays.emptyObjectArray
+
+  private object EmptyArrays {
+    val emptyBooleanArray = new Array[Boolean](0)
+    val emptyByteArray    = new Array[Byte](0)
+    val emptyCharArray    = new Array[Char](0)
+    val emptyDoubleArray  = new Array[Double](0)
+    val emptyFloatArray   = new Array[Float](0)
+    val emptyIntArray     = new Array[Int](0)
+    val emptyLongArray    = new Array[Long](0)
+    val emptyShortArray   = new Array[Short](0)
+    val emptyObjectArray  = new Array[Object](0)
+  }
+
+  implicit def buildFrom[T](implicit t: ClassTag[T]): BuildFrom[Array[_], T, Array[T]] = {
+    @inline
+    class ArrayCanBuildFrom extends BuildFrom[Array[_], T, Array[T]] {
+      def fromSpecificIterable(from: Array[_])(it: Iterable[T]) = Array.from(it)(t)
+      def newBuilder(from: Array[_]) = ArrayBuilder.make[T]()(t)
+    }
+    new ArrayCanBuildFrom
+  }
 
   /** Provides an implicit conversion from the Array object to a collection Factory */
   implicit def toFactory[A : ClassTag](dummy: Array.type): Factory[A, Array[A]] =
     new Factory[A, Array[A]] {
       def fromSpecific(it: IterableOnce[A]): Array[A] = Array.from[A](it)
-      def newBuilder(): mutable.Builder[A, Array[A]] = Array.newBuilder[A]
+      def newBuilder(): mutable.Builder[A, Array[A]] = ArrayBuilder.make[A]()
     }
 
   /**
@@ -53,23 +93,11 @@ object Array {
   def newBuilder[T](implicit t: ClassTag[T]): ArrayBuilder[T] = ArrayBuilder.make[T]()(t)
 
   def from[A : ClassTag](it: IterableOnce[A]): Array[A] = {
-    val n = it.knownSize
-    if (n > -1) {
-      val elements = new Array[A](n)
-      val iterator = it.iterator()
-      var i = 0
-      while (i < n) {
-        ScalaRunTime.array_update(elements, i, iterator.next())
-        i = i + 1
-      }
-      elements
-    } else {
-      val b = ArrayBuilder.make[A]()
-      val iterator = it.iterator()
-      while (iterator.hasNext)
-        b += iterator.next()
-      b.result()
-    }
+    val b = ArrayBuilder.make[A]()
+    val iterator = it.iterator()
+    while (iterator.hasNext)
+      b += iterator.next()
+    b.result()
   }
 
   private def slowcopy(src : AnyRef,
