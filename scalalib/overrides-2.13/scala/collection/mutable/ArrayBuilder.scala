@@ -42,7 +42,7 @@ sealed abstract class ArrayBuilder[T]
   override final def sizeHint(size: Int): Unit =
     if (capacity < size) resize(size)
 
-  final def clear(): Unit = size = 0
+  def clear(): Unit = size = 0
 
   protected[this] def resize(size: Int): Unit
 
@@ -95,26 +95,44 @@ object ArrayBuilder {
   private final class generic[T](elementClass: Class[_]) extends ArrayBuilder[T] {
 
     private val isCharArrayBuilder = classOf[Char] == elementClass
-    private var elems: js.Array[Any] = js.Array()
+    protected[this] var elems = null
+    private var jsElems: js.Array[Any] = js.Array()
 
     def addOne(elem: T): this.type = {
       val unboxedElem =
         if (isCharArrayBuilder) elem.asInstanceOf[Char].toInt
         else if (elem == null) zeroOf(elementClass)
         else elem
-      elems.push(unboxedElem)
+      jsElems.push(unboxedElem)
       this
     }
 
-    def clear(): Unit =
-      elems = js.Array()
+    /** Add a slice of an array */
+    override def addAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
+      ensureSize(this.size + length)
+      addAll(xs.view.slice(offset, length))
+      this
+    }
+
+    override def addAll(xs: IterableOnce[T]): this.type = {
+      val it = xs.iterator()
+      while (it.hasNext) {
+        this += it.next()
+      }
+      this
+    }
+
+    override def clear(): Unit =
+      jsElems = js.Array()
+
+    protected[this] def resize(size: Int): Unit = ()
 
     def result(): Array[T] = {
       val elemRuntimeClass =
         if (classOf[Unit] == elementClass) classOf[BoxedUnit]
         else if (classOf[Null] == elementClass || classOf[Nothing] == elementClass) classOf[Object]
         else elementClass
-      genericArrayBuilderResult(elemRuntimeClass, elems)
+      genericArrayBuilderResult(elemRuntimeClass, jsElems)
     }
 
     override def toString(): String = "ArrayBuilder.generic"
