@@ -29,31 +29,61 @@ package immutable
  *     assert(r1 sameElements r2.map(_ - veryBig))
  *  }}}
  *
- *  @author  Paul Phillips
- *  @version 2.8
  *  @define Coll `NumericRange`
  *  @define coll numeric range
  *  @define mayNotTerminateInf
  *  @define willNotTerminateInf
  */
-abstract class NumericRange[T]
-  (val start: T, val end: T, val step: T, val isInclusive: Boolean)
-  (implicit num: Integral[T])
-extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
+@SerialVersionUID(3L)
+sealed class NumericRange[T](
+  val start: T,
+  val end: T,
+  val step: T,
+  val isInclusive: Boolean
+)(implicit
+  num: Integral[T]
+)
+  extends IndexedSeq[T]
+    with IndexedSeqOps[T, IndexedSeq, IndexedSeq[T]]
+    with StrictOptimizedSeqOps[T, IndexedSeq, IndexedSeq[T]]
+    with Serializable { self =>
+
+  override def iterator() = new Iterator[T] {
+    import num.mkNumericOps
+
+    private var _hasNext = !self.isEmpty
+    private var _next: T = start
+    private val lastElement: T = if (_hasNext) last else start
+    override def knownSize: Int = if (_hasNext) num.toInt((lastElement - _next) / step) + 1 else 0
+    def hasNext: Boolean = _hasNext
+    def next(): T = {
+      if (!_hasNext) Iterator.empty.next()
+      val value = _next
+      _hasNext = value != lastElement
+      _next = num.plus(value, step)
+      value
+    }
+  }
   /** Note that NumericRange must be invariant so that constructs
    *  such as "1L to 10 by 5" do not infer the range type as AnyVal.
    */
   import num._
 
   // See comment in Range for why this must be lazy.
-  private lazy val numRangeElements: Int =
-    NumericRange.count(start, end, step, isInclusive)
-
-  override def length  = numRangeElements
+  override lazy val length: Int = NumericRange.count(start, end, step, isInclusive)
   override def isEmpty = length == 0
-  override lazy val last: T =
+  override def last: T =
     if (length == 0) Nil.last
     else locationAfterN(length - 1)
+  override def init: NumericRange[T] =
+    if (isEmpty) Nil.init
+    else new NumericRange(start, end - step, step, isInclusive)
+
+  override def head: T = if (isEmpty) Nil.head else start
+  override def tail: NumericRange[T] =
+    if (isEmpty) Nil.tail
+    else if(isInclusive) new NumericRange.Inclusive(start + step, end, step)
+    else new NumericRange.Exclusive(start + step, end, step)
 
   /** Create a new range with the start and end values of this range and
    *  a new `step`.
@@ -62,9 +92,16 @@ extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
 
   /** Create a copy of this range.
    */
-  def copy(start: T, end: T, step: T): NumericRange[T]
+  def copy(start: T, end: T, step: T): NumericRange[T] =
+    new NumericRange(start, end, step, isInclusive)
 
-  override def foreach[U](f: T => U) {
+  @throws[IndexOutOfBoundsException]
+  def apply(idx: Int): T = {
+    if (idx < 0 || idx >= length) throw new IndexOutOfBoundsException(idx.toString)
+    else locationAfterN(idx)
+  }
+
+  override def foreach[@specialized(Unit) U](f: T => U): Unit = {
     var count = 0
     var current = start
     while (count < length) {
@@ -94,22 +131,22 @@ extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
   // based on the given value.
   private def newEmptyRange(value: T) = NumericRange(value, value, step)
 
-  final override def take(n: Int): NumericRange[T] = (
+  final override def take(n: Int): NumericRange[T] = {
     if (n <= 0 || length == 0) newEmptyRange(start)
     else if (n >= length) this
     else new NumericRange.Inclusive(start, locationAfterN(n - 1), step)
-  )
+  }
 
-  final override def drop(n: Int): NumericRange[T] = (
+  final override def drop(n: Int): NumericRange[T] = {
     if (n <= 0 || length == 0) this
     else if (n >= length) newEmptyRange(end)
     else copy(locationAfterN(n), end, step)
-  )
-
-  def apply(idx: Int): T = {
-    if (idx < 0 || idx >= length) throw new IndexOutOfBoundsException(idx.toString)
-    else locationAfterN(idx)
   }
+
+  override def splitAt(n: Int): (NumericRange[T], NumericRange[T]) = (take(n), drop(n))
+
+  override def reverse: NumericRange[T] =
+    if (isEmpty) this else new NumericRange.Inclusive(last, start, -step)
 
   import NumericRange.defaultOrdering
 
@@ -157,12 +194,9 @@ extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
 
     // XXX This may be incomplete.
     new NumericRange[A](fm(start), fm(end), fm(step), isInclusive) {
-      def copy(start: A, end: A, step: A): NumericRange[A] =
-        if (isInclusive) NumericRange.inclusive(start, end, step)
-        else NumericRange(start, end, step)
 
       private lazy val underlyingRange: NumericRange[T] = self
-      override def foreach[U](f: A => U) { underlyingRange foreach (x => f(fm(x))) }
+      override def foreach[@specialized(Unit) U](f: A => U): Unit = { underlyingRange foreach (x => f(fm(x))) }
       override def isEmpty = underlyingRange.isEmpty
       override def apply(idx: Int): A = fm(underlyingRange(idx))
       override def containsTyped(el: A) = underlyingRange exists (x => fm(x) == el)
@@ -185,7 +219,7 @@ extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
 
   final override def sum[B >: T](implicit num: Numeric[B]): B = {
     if (isEmpty) num.zero
-    else if (numRangeElements == 1) head
+    else if (size == 1) head
     else {
       // If there is no overflow, use arithmetic series formula
       //   a + ... (n terms total) ... + b = n*(a+b)/2
@@ -194,7 +228,7 @@ extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
           (num eq scala.math.Numeric.ByteIsIntegral)||
           (num eq scala.math.Numeric.CharIsIntegral)) {
         // We can do math with no overflow in a Long--easy
-        val exact = (numRangeElements * ((num toLong head) + (num toInt last))) / 2
+        val exact = (size * ((num toLong head) + (num toInt last))) / 2
         num fromInt exact.toInt
       }
       else if (num eq scala.math.Numeric.LongIsIntegral) {
@@ -203,8 +237,8 @@ extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
         val a = head.toLong
         val b = last.toLong
         val ans =
-          if ((numRangeElements & 1) == 0) (numRangeElements / 2) * (a + b)
-          else numRangeElements * {
+          if ((size & 1) == 0) (size / 2) * (a + b)
+          else size * {
             // Sum is even, but we might overflow it, so divide in pieces and add back remainder
             val ha = a/2
             val hb = b/2
@@ -230,8 +264,8 @@ extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
     }
   }
 
-  override lazy val hashCode = super.hashCode()
-  override def equals(other: Any) = other match {
+  override lazy val hashCode: Int = super.hashCode()
+  override def equals(other: Any): Boolean = other match {
     case x: NumericRange[_] =>
       (x canEqual this) && (length == x.length) && (
         (length == 0) ||                      // all empty sequences are equal
@@ -241,7 +275,7 @@ extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
       super.equals(other)
   }
 
-  override def toString = {
+  override def toString: String = {
     val empty = if (isEmpty) "empty " else ""
     val preposition = if (isInclusive) "to" else "until"
     val stepped = if (step == 1) "" else s" by $step"
@@ -250,7 +284,9 @@ extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
 }
 
 /** A companion object for numeric ranges.
- */
+  *  @define Coll `NumericRange`
+  *  @define coll numeric range
+  */
 object NumericRange {
 
   /** Calculates the number of elements in a range given start, end, step, and
@@ -342,17 +378,19 @@ object NumericRange {
     }
   }
 
+  @SerialVersionUID(3L)
   class Inclusive[T](start: T, end: T, step: T)(implicit num: Integral[T])
   extends NumericRange(start, end, step, true) {
-    def copy(start: T, end: T, step: T): Inclusive[T] =
+    override def copy(start: T, end: T, step: T): Inclusive[T] =
       NumericRange.inclusive(start, end, step)
 
     def exclusive: Exclusive[T] = NumericRange(start, end, step)
   }
 
+  @SerialVersionUID(3L)
   class Exclusive[T](start: T, end: T, step: T)(implicit num: Integral[T])
   extends NumericRange(start, end, step, false) {
-    def copy(start: T, end: T, step: T): Exclusive[T] =
+    override def copy(start: T, end: T, step: T): Exclusive[T] =
       NumericRange(start, end, step)
 
     def inclusive: Inclusive[T] = NumericRange.inclusive(start, end, step)
