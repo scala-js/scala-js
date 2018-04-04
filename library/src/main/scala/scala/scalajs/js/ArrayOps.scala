@@ -32,9 +32,6 @@ final class ArrayOps[A](protected[this] val array: Array[A])
 
   def seq: collection.IndexedSeq[A] = new WrappedArray(array)
 
-  protected[this] def newBuilder: Builder[A, Array[A]] =
-    new ArrayOps[A]
-
   // Implementation of Builder
 
   @inline def clear(): Unit =

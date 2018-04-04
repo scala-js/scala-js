@@ -8,24 +8,42 @@
 
 package scala.scalajs.js
 
-import scala.collection.{mutable, StrictOptimizedSeqOps}
+import scala.collection.{mutable, IterableOnce, IterableFactory, StrictOptimizedSeqOps}
 
 // There is no equivalent of ArrayLike in 2.13, so we
 // redefine it here
 trait ScalaVersionSpecificArrayOps[A]
-  extends mutable.AbstractSeq[A]
-    with StrictOptimizedSeqOps[A, ArrayOps, ArrayOps[A]]
-    with mutable.IndexedSeq[A]
-    with mutable.IndexedOptimizedSeq[A]
-    with mutable.IndexedSeqOps[A, ArrayOps, ArrayOps[A]]
+  extends StrictOptimizedSeqOps[A, Array, Array[A]]
+    with mutable.IndexedSeqOps[A, Array, Array[A]]
     with Serializable { this: ArrayOps[A] =>
 
-//  override def iterableFactory = ???
+  object iterableFactory extends IterableFactory[Array] {
+    def empty[E]: Array[E] = new Array()
+    def from[E](source: IterableOnce[E]): Array[E] = (newBuilder[E]() ++= source).result()
+    def newBuilder[E](): mutable.Builder[E, Array[E]] = new ArrayOps[E]
+  }
+
+  protected[this] def coll: Array[A] = array
+
+  protected[this] def fromSpecificIterable(coll: scala.collection.Iterable[A]): Array[A] =
+    iterableFactory.from(coll)
+
+  protected[this] def newSpecificBuilder(): mutable.Builder[A, Array[A]] =
+    iterableFactory.newBuilder()
+
+  def toIterable: scala.collection.Iterable[A] = array
 
   def repr: Array[A] = array
 
   @inline final def addOne(elem: A): this.type = {
     array.push(elem)
+    this
+  }
+
+  def mapInPlace(f: A => A): this.type = {
+    var i = 0
+    val siz = size
+    while (i < siz) { this(i) = f(this(i)); i += 1 }
     this
   }
 
