@@ -66,6 +66,26 @@ trait Compat210Component {
 
   implicit final class DefinitionsCompat(
       self: Compat210Component.this.global.definitions.type) {
+
+    import self._
+
     lazy val StringTpe = definitions.StringClass.tpe
+
+    // Copied from https://github.com/scala/scala/blob/0d5b3f6746539f06d4e24673908c8ca1d178655c/src/reflect/scala/reflect/internal/Definitions.scala#L596-L609
+    def wrapVarargsArrayMethodName(elemtp: Type): TermName = elemtp.typeSymbol match {
+      case ByteClass    => nme.wrapByteArray
+      case ShortClass   => nme.wrapShortArray
+      case CharClass    => nme.wrapCharArray
+      case IntClass     => nme.wrapIntArray
+      case LongClass    => nme.wrapLongArray
+      case FloatClass   => nme.wrapFloatArray
+      case DoubleClass  => nme.wrapDoubleArray
+      case BooleanClass => nme.wrapBooleanArray
+      case UnitClass    => nme.wrapUnitArray
+      case _        =>
+        if ((elemtp <:< AnyRefTpe) && !isPhantomClass(elemtp.typeSymbol)) nme.wrapRefArray
+        else nme.genericWrapArray
+    }
+
   }
 }

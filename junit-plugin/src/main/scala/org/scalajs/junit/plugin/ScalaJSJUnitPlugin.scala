@@ -382,7 +382,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
           val array = ArrayValue(TypeTree(definitions.ObjectTpe), elems)
           val wrappedArray = gen.mkMethodCall(
               definitions.PredefModule,
-              definitions.wrapArrayMethodName(definitions.ObjectTpe),
+              definitions.wrapVarargsArrayMethodName(definitions.ObjectTpe),
               Nil, List(array))
           gen.mkMethodCall(definitions.List_apply, List(wrappedArray))
         }
