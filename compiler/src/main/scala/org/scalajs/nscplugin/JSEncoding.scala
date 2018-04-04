@@ -12,7 +12,7 @@ import scala.tools.nsc._
 import org.scalajs.ir
 import ir.{Trees => js, Types => jstpe}
 
-import util.ScopedVar
+import util.{ScopedVar, VarBox}
 import ScopedVar.withScopedVars
 
 /** Encoding of symbol names for JavaScript
@@ -59,6 +59,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   // Fresh local name generator ----------------------------------------------
 
   private val usedLocalNames = new ScopedVar[mutable.Set[String]]
+  private val returnLabelName = new ScopedVar[VarBox[Option[String]]]
   private val localSymbolNames = new ScopedVar[mutable.Map[Symbol, String]]
   private val isReserved =
     Set("arguments", "eval", ScalaJSEnvironmentName)
@@ -66,6 +67,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def withNewLocalNameScope[A](body: => A): A = {
     withScopedVars(
         usedLocalNames := mutable.Set.empty,
+        returnLabelName := null,
         localSymbolNames := mutable.Map.empty
     )(body)
   }
@@ -75,6 +77,21 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
         s"Trying to reserve the name '$name' but names have already been " +
         "allocated")
     usedLocalNames += name
+  }
+
+  def withNewReturnableScope(tpe: jstpe.Type)(body: => js.Tree)(
+      implicit pos: ir.Position): js.Tree = {
+    withScopedVars(
+        returnLabelName := new VarBox(None)
+    ) {
+      val inner = body
+      returnLabelName.get.value match {
+        case None =>
+          inner
+        case Some(labelName) =>
+          js.Labeled(js.Ident(labelName), tpe, inner)
+      }
+    }
   }
 
   private def freshName(base: String = "x"): String = {
@@ -96,6 +113,15 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   private def localSymbolName(sym: Symbol): String =
     localSymbolNames.getOrElseUpdate(sym, freshName(sym.name.toString))
+
+  def getEnclosingReturnLabel()(implicit pos: ir.Position): js.Ident = {
+    val box = returnLabelName.get
+    if (box == null)
+      throw new IllegalStateException(s"No enclosing returnable scope at $pos")
+    if (box.value.isEmpty)
+      box.value = Some(freshName("_return"))
+    js.Ident(box.value.get)
+  }
 
   // Encoding methods ----------------------------------------------------------
 

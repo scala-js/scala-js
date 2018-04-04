@@ -147,8 +147,7 @@ class PrintersTest {
   }
 
   @Test def printReturn(): Unit = {
-    assertPrintEquals("return 5", Return(i(5), None))
-    assertPrintEquals("return(lab) 5", Return(i(5), Some("lab")))
+    assertPrintEquals("return@lab 5", Return(i(5), "lab"))
   }
 
   @Test def printIf(): Unit = {

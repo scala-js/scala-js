@@ -462,10 +462,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
       val env = env0.withParams(params)
 
-      val withReturn =
-        if (isStat) body
-        else Return(body, None)
-
       val translateRestParam =
         if (esFeatures.useECMAScript2015) false
         else params.nonEmpty && params.last.rest
@@ -477,13 +473,17 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       val newParams =
         (if (translateRestParam) params.init else params).map(transformParamDef)
 
-      val newBody = transformStat(withReturn, Set.empty)(env) match {
+      val newBody =
+        if (isStat) transformStat(body, Set.empty)(env)
+        else pushLhsInto(Lhs.ReturnFromFunction, body, Set.empty)(env)
+
+      val cleanedNewBody = newBody match {
         case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)
         case other                                        => other
       }
 
       js.Function(arrow && useArrowFunctions, newParams,
-          js.Block(extractRestParam, newBody))
+          js.Block(extractRestParam, cleanedNewBody))
     }
 
     private def makeExtractRestParam(params: List[ParamDef])(
@@ -1455,9 +1455,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               doVarDef(name, tpe, mutable, rhs)
             case Lhs.Assign(lhs) =>
               doAssign(lhs, rhs)
-            case Lhs.Return(None) =>
+            case Lhs.ReturnFromFunction =>
               js.Return(transformExpr(rhs, env.expectedReturnType))
-            case Lhs.Return(Some(l)) =>
+            case Lhs.Return(l) =>
               doReturnToLabel(l)
           }
 
@@ -1485,10 +1485,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 js.Block(varDef, assign)
               }
 
-            case Lhs.Return(None) =>
+            case Lhs.ReturnFromFunction =>
               throw new AssertionError("Cannot return a record value.")
 
-            case Lhs.Return(Some(l)) =>
+            case Lhs.Return(l) =>
               doReturnToLabel(l)
           }
 
@@ -2792,7 +2792,11 @@ private object FunctionEmitter {
     case class Assign(lhs: Tree) extends Lhs
     case class VarDef(name: Ident, tpe: Type, mutable: Boolean) extends Lhs
 
-    case class Return(label: Option[Ident]) extends Lhs {
+    case object ReturnFromFunction extends Lhs {
+      override def hasNothingType: Boolean = true
+    }
+
+    case class Return(label: Ident) extends Lhs {
       override def hasNothingType: Boolean = true
     }
 

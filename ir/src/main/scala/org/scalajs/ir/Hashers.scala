@@ -120,7 +120,7 @@ object Hashers {
         case Return(expr, label) =>
           mixTag(TagReturn)
           mixTree(expr)
-          mixOptIdent(label)
+          mixIdent(label)
 
         case If(cond, thenp, elsep) =>
           mixTag(TagIf)

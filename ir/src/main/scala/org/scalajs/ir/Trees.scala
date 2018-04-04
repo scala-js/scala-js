@@ -177,7 +177,7 @@ object Trees {
     val tpe = NoType // cannot be in expression position
   }
 
-  case class Return(expr: Tree, label: Option[Ident])(
+  case class Return(expr: Tree, label: Ident)(
       implicit val pos: Position) extends Tree {
     val tpe = NothingType
   }

@@ -155,7 +155,7 @@ object Serializers {
 
         case Return(expr, label) =>
           writeByte(TagReturn)
-          writeTree(expr); writeOptIdent(label)
+          writeTree(expr); writeIdent(label)
 
         case If(cond, thenp, elsep) =>
           writeByte(TagIf)
@@ -839,7 +839,7 @@ object Serializers {
         case TagBlock   => Block(readTrees())
         case TagLabeled => Labeled(readIdent(), readType(), readTree())
         case TagAssign  => Assign(readTree(), readTree())
-        case TagReturn  => Return(readTree(), readOptIdent())
+        case TagReturn  => Return(readTree(), readIdent())
         case TagIf      => If(readTree(), readTree(), readTree())(readType())
         case TagWhile   => While(readTree(), readTree())
         case TagDoWhile => DoWhile(readTree(), readTree())
