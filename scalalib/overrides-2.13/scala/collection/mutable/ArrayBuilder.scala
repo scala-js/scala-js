@@ -21,7 +21,55 @@ import scala.scalajs.js
  *
  *  @tparam T    the type of the elements for the builder.
  */
-abstract class ArrayBuilder[T] extends ReusableBuilder[T, Array[T]] with Serializable
+@SerialVersionUID(3L)
+sealed abstract class ArrayBuilder[T]
+  extends ReusableBuilder[T, Array[T]]
+    with Serializable {
+  protected[this] var capacity: Int = 0
+  protected[this] def elems: Array[T]
+  protected var size: Int = 0
+
+  def length: Int = size
+
+  protected[this] final def ensureSize(size: Int): Unit = {
+    if (capacity < size || capacity == 0) {
+      var newsize = if (capacity == 0) 16 else capacity * 2
+      while (newsize < size) newsize *= 2
+      resize(newsize)
+    }
+  }
+
+  override final def sizeHint(size: Int): Unit =
+    if (capacity < size) resize(size)
+
+  final def clear(): Unit = size = 0
+
+  protected[this] def resize(size: Int): Unit
+
+  /** Add all elements of an array */
+  def addAll(xs: Array[_ <: T]): this.type = addAll(xs, 0, xs.length)
+
+  /** Add a slice of an array */
+  def addAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
+    ensureSize(this.size + length)
+    Array.copy(xs, offset, elems, this.size, length)
+    size += length
+    this
+  }
+
+  override def addAll(xs: IterableOnce[T]): this.type = {
+    val k = xs.knownSize
+    if(k > 0) {
+      ensureSize(this.size + k)
+      xs match {
+        case xs: Iterable[T] => xs.copyToArray(elems, this.size)
+        case _ => xs.iterator().copyToArray(elems, this.size)
+      }
+      size += k
+    } else if(k < 0) super.addAll(xs)
+    this
+  }
+}
 
 /** A companion object for array builders.
  *
@@ -49,7 +97,7 @@ object ArrayBuilder {
     private val isCharArrayBuilder = classOf[Char] == elementClass
     private var elems: js.Array[Any] = js.Array()
 
-    def +=(elem: T): this.type = {
+    def addOne(elem: T): this.type = {
       val unboxedElem =
         if (isCharArrayBuilder) elem.asInstanceOf[Char].toInt
         else if (elem == null) zeroOf(elementClass)
@@ -117,11 +165,11 @@ object ArrayBuilder {
    *
    *  @tparam T     type of elements for the array builder, subtype of `AnyRef` with a `ClassTag` context bound.
    */
-  final class ofRef[T <: AnyRef : ClassTag] extends ArrayBuilder[T] {
 
-    private var elems: Array[T] = _
-    private var capacity: Int = 0
-    private var size: Int = 0
+  @SerialVersionUID(3L)
+  final class ofRef[T <: AnyRef](implicit ct: ClassTag[T]) extends ArrayBuilder[T] {
+
+    protected var elems: Array[T] = _
 
     private def mkArray(size: Int): Array[T] = {
       val newelems = new Array[T](size)
@@ -129,41 +177,17 @@ object ArrayBuilder {
       newelems
     }
 
-    private def resize(size: Int) {
+    protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
-    override def sizeHint(size: Int) {
-      if (capacity < size) resize(size)
-    }
-
-    private def ensureSize(size: Int) {
-      if (capacity < size || capacity == 0) {
-        var newsize = if (capacity == 0) 16 else capacity * 2
-        while (newsize < size) newsize *= 2
-        resize(newsize)
-      }
-    }
-
-    def +=(elem: T): this.type = {
+    def addOne(elem: T): this.type = {
       ensureSize(size + 1)
       elems(size) = elem
       size += 1
       this
     }
-
-    override def ++=(xs: TraversableOnce[T]): this.type = (xs.asInstanceOf[AnyRef]) match {
-      case xs: WrappedArray.ofRef[_] =>
-        ensureSize(this.size + xs.length)
-        Array.copy(xs.array, 0, elems, this.size, xs.length)
-        size += xs.length
-        this
-      case _ =>
-        super.++=(xs)
-    }
-
-    def clear() { size = 0 }
 
     def result() = {
       if (capacity != 0 && capacity == size) {
@@ -182,11 +206,10 @@ object ArrayBuilder {
   }
 
   /** A class for array builders for arrays of `byte`s. It can be reused. */
+  @SerialVersionUID(3L)
   final class ofByte extends ArrayBuilder[Byte] {
 
-    private var elems: Array[Byte] = _
-    private var capacity: Int = 0
-    private var size: Int = 0
+    protected var elems: Array[Byte] = _
 
     private def mkArray(size: Int): Array[Byte] = {
       val newelems = new Array[Byte](size)
@@ -194,41 +217,17 @@ object ArrayBuilder {
       newelems
     }
 
-    private def resize(size: Int) {
+    protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
-    override def sizeHint(size: Int) {
-      if (capacity < size) resize(size)
-    }
-
-    private def ensureSize(size: Int) {
-      if (capacity < size || capacity == 0) {
-        var newsize = if (capacity == 0) 16 else capacity * 2
-        while (newsize < size) newsize *= 2
-        resize(newsize)
-      }
-    }
-
-    def +=(elem: Byte): this.type = {
+    def addOne(elem: Byte): this.type = {
       ensureSize(size + 1)
       elems(size) = elem
       size += 1
       this
     }
-
-    override def ++=(xs: TraversableOnce[Byte]): this.type = xs match {
-      case xs: WrappedArray.ofByte =>
-        ensureSize(this.size + xs.length)
-        Array.copy(xs.array, 0, elems, this.size, xs.length)
-        size += xs.length
-        this
-      case _ =>
-        super.++=(xs)
-    }
-
-    def clear() { size = 0 }
 
     def result() = {
       if (capacity != 0 && capacity == size) {
@@ -247,11 +246,10 @@ object ArrayBuilder {
   }
 
   /** A class for array builders for arrays of `short`s. It can be reused. */
+  @SerialVersionUID(3L)
   final class ofShort extends ArrayBuilder[Short] {
 
-    private var elems: Array[Short] = _
-    private var capacity: Int = 0
-    private var size: Int = 0
+    protected var elems: Array[Short] = _
 
     private def mkArray(size: Int): Array[Short] = {
       val newelems = new Array[Short](size)
@@ -259,41 +257,17 @@ object ArrayBuilder {
       newelems
     }
 
-    private def resize(size: Int) {
+    protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
-    override def sizeHint(size: Int) {
-      if (capacity < size) resize(size)
-    }
-
-    private def ensureSize(size: Int) {
-      if (capacity < size || capacity == 0) {
-        var newsize = if (capacity == 0) 16 else capacity * 2
-        while (newsize < size) newsize *= 2
-        resize(newsize)
-      }
-    }
-
-    def +=(elem: Short): this.type = {
+    def addOne(elem: Short): this.type = {
       ensureSize(size + 1)
       elems(size) = elem
       size += 1
       this
     }
-
-    override def ++=(xs: TraversableOnce[Short]): this.type = xs match {
-      case xs: WrappedArray.ofShort =>
-        ensureSize(this.size + xs.length)
-        Array.copy(xs.array, 0, elems, this.size, xs.length)
-        size += xs.length
-        this
-      case _ =>
-        super.++=(xs)
-    }
-
-    def clear() { size = 0 }
 
     def result() = {
       if (capacity != 0 && capacity == size) {
@@ -312,11 +286,10 @@ object ArrayBuilder {
   }
 
   /** A class for array builders for arrays of `char`s. It can be reused. */
+  @SerialVersionUID(3L)
   final class ofChar extends ArrayBuilder[Char] {
 
-    private var elems: Array[Char] = _
-    private var capacity: Int = 0
-    private var size: Int = 0
+    protected var elems: Array[Char] = _
 
     private def mkArray(size: Int): Array[Char] = {
       val newelems = new Array[Char](size)
@@ -324,41 +297,17 @@ object ArrayBuilder {
       newelems
     }
 
-    private def resize(size: Int) {
+    protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
-    override def sizeHint(size: Int) {
-      if (capacity < size) resize(size)
-    }
-
-    private def ensureSize(size: Int) {
-      if (capacity < size || capacity == 0) {
-        var newsize = if (capacity == 0) 16 else capacity * 2
-        while (newsize < size) newsize *= 2
-        resize(newsize)
-      }
-    }
-
-    def +=(elem: Char): this.type = {
+    def addOne(elem: Char): this.type = {
       ensureSize(size + 1)
       elems(size) = elem
       size += 1
       this
     }
-
-    override def ++=(xs: TraversableOnce[Char]): this.type = xs match {
-      case xs: WrappedArray.ofChar =>
-        ensureSize(this.size + xs.length)
-        Array.copy(xs.array, 0, elems, this.size, xs.length)
-        size += xs.length
-        this
-      case _ =>
-        super.++=(xs)
-    }
-
-    def clear() { size = 0 }
 
     def result() = {
       if (capacity != 0 && capacity == size) {
@@ -377,11 +326,10 @@ object ArrayBuilder {
   }
 
   /** A class for array builders for arrays of `int`s. It can be reused. */
+  @SerialVersionUID(3L)
   final class ofInt extends ArrayBuilder[Int] {
 
-    private var elems: Array[Int] = _
-    private var capacity: Int = 0
-    private var size: Int = 0
+    protected var elems: Array[Int] = _
 
     private def mkArray(size: Int): Array[Int] = {
       val newelems = new Array[Int](size)
@@ -389,41 +337,17 @@ object ArrayBuilder {
       newelems
     }
 
-    private def resize(size: Int) {
+    protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
-    override def sizeHint(size: Int) {
-      if (capacity < size) resize(size)
-    }
-
-    private def ensureSize(size: Int) {
-      if (capacity < size || capacity == 0) {
-        var newsize = if (capacity == 0) 16 else capacity * 2
-        while (newsize < size) newsize *= 2
-        resize(newsize)
-      }
-    }
-
-    def +=(elem: Int): this.type = {
+    def addOne(elem: Int): this.type = {
       ensureSize(size + 1)
       elems(size) = elem
       size += 1
       this
     }
-
-    override def ++=(xs: TraversableOnce[Int]): this.type = xs match {
-      case xs: WrappedArray.ofInt =>
-        ensureSize(this.size + xs.length)
-        Array.copy(xs.array, 0, elems, this.size, xs.length)
-        size += xs.length
-        this
-      case _ =>
-        super.++=(xs)
-    }
-
-    def clear() { size = 0 }
 
     def result() = {
       if (capacity != 0 && capacity == size) {
@@ -442,11 +366,10 @@ object ArrayBuilder {
   }
 
   /** A class for array builders for arrays of `long`s. It can be reused. */
+  @SerialVersionUID(3L)
   final class ofLong extends ArrayBuilder[Long] {
 
-    private var elems: Array[Long] = _
-    private var capacity: Int = 0
-    private var size: Int = 0
+    protected var elems: Array[Long] = _
 
     private def mkArray(size: Int): Array[Long] = {
       val newelems = new Array[Long](size)
@@ -454,41 +377,17 @@ object ArrayBuilder {
       newelems
     }
 
-    private def resize(size: Int) {
+    protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
-    override def sizeHint(size: Int) {
-      if (capacity < size) resize(size)
-    }
-
-    private def ensureSize(size: Int) {
-      if (capacity < size || capacity == 0) {
-        var newsize = if (capacity == 0) 16 else capacity * 2
-        while (newsize < size) newsize *= 2
-        resize(newsize)
-      }
-    }
-
-    def +=(elem: Long): this.type = {
+    def addOne(elem: Long): this.type = {
       ensureSize(size + 1)
       elems(size) = elem
       size += 1
       this
     }
-
-    override def ++=(xs: TraversableOnce[Long]): this.type = xs match {
-      case xs: WrappedArray.ofLong =>
-        ensureSize(this.size + xs.length)
-        Array.copy(xs.array, 0, elems, this.size, xs.length)
-        size += xs.length
-        this
-      case _ =>
-        super.++=(xs)
-    }
-
-    def clear() { size = 0 }
 
     def result() = {
       if (capacity != 0 && capacity == size) {
@@ -507,11 +406,10 @@ object ArrayBuilder {
   }
 
   /** A class for array builders for arrays of `float`s. It can be reused. */
+  @SerialVersionUID(3L)
   final class ofFloat extends ArrayBuilder[Float] {
 
-    private var elems: Array[Float] = _
-    private var capacity: Int = 0
-    private var size: Int = 0
+    protected var elems: Array[Float] = _
 
     private def mkArray(size: Int): Array[Float] = {
       val newelems = new Array[Float](size)
@@ -519,41 +417,17 @@ object ArrayBuilder {
       newelems
     }
 
-    private def resize(size: Int) {
+    protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
-    override def sizeHint(size: Int) {
-      if (capacity < size) resize(size)
-    }
-
-    private def ensureSize(size: Int) {
-      if (capacity < size || capacity == 0) {
-        var newsize = if (capacity == 0) 16 else capacity * 2
-        while (newsize < size) newsize *= 2
-        resize(newsize)
-      }
-    }
-
-    def +=(elem: Float): this.type = {
+    def addOne(elem: Float): this.type = {
       ensureSize(size + 1)
       elems(size) = elem
       size += 1
       this
     }
-
-    override def ++=(xs: TraversableOnce[Float]): this.type = xs match {
-      case xs: WrappedArray.ofFloat =>
-        ensureSize(this.size + xs.length)
-        Array.copy(xs.array, 0, elems, this.size, xs.length)
-        size += xs.length
-        this
-      case _ =>
-        super.++=(xs)
-    }
-
-    def clear() { size = 0 }
 
     def result() = {
       if (capacity != 0 && capacity == size) {
@@ -572,11 +446,10 @@ object ArrayBuilder {
   }
 
   /** A class for array builders for arrays of `double`s. It can be reused. */
+  @SerialVersionUID(3L)
   final class ofDouble extends ArrayBuilder[Double] {
 
-    private var elems: Array[Double] = _
-    private var capacity: Int = 0
-    private var size: Int = 0
+    protected var elems: Array[Double] = _
 
     private def mkArray(size: Int): Array[Double] = {
       val newelems = new Array[Double](size)
@@ -584,41 +457,17 @@ object ArrayBuilder {
       newelems
     }
 
-    private def resize(size: Int) {
+    protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
-    override def sizeHint(size: Int) {
-      if (capacity < size) resize(size)
-    }
-
-    private def ensureSize(size: Int) {
-      if (capacity < size || capacity == 0) {
-        var newsize = if (capacity == 0) 16 else capacity * 2
-        while (newsize < size) newsize *= 2
-        resize(newsize)
-      }
-    }
-
-    def +=(elem: Double): this.type = {
+    def addOne(elem: Double): this.type = {
       ensureSize(size + 1)
       elems(size) = elem
       size += 1
       this
     }
-
-    override def ++=(xs: TraversableOnce[Double]): this.type = xs match {
-      case xs: WrappedArray.ofDouble =>
-        ensureSize(this.size + xs.length)
-        Array.copy(xs.array, 0, elems, this.size, xs.length)
-        size += xs.length
-        this
-      case _ =>
-        super.++=(xs)
-    }
-
-    def clear() { size = 0 }
 
     def result() = {
       if (capacity != 0 && capacity == size) {
@@ -637,11 +486,10 @@ object ArrayBuilder {
   }
 
   /** A class for array builders for arrays of `boolean`s. It can be reused. */
+  @SerialVersionUID(3L)
   class ofBoolean extends ArrayBuilder[Boolean] {
 
-    private var elems: Array[Boolean] = _
-    private var capacity: Int = 0
-    private var size: Int = 0
+    protected var elems: Array[Boolean] = _
 
     private def mkArray(size: Int): Array[Boolean] = {
       val newelems = new Array[Boolean](size)
@@ -649,41 +497,17 @@ object ArrayBuilder {
       newelems
     }
 
-    private def resize(size: Int) {
+    protected[this] def resize(size: Int): Unit = {
       elems = mkArray(size)
       capacity = size
     }
 
-    override def sizeHint(size: Int) {
-      if (capacity < size) resize(size)
-    }
-
-    private def ensureSize(size: Int) {
-      if (capacity < size || capacity == 0) {
-        var newsize = if (capacity == 0) 16 else capacity * 2
-        while (newsize < size) newsize *= 2
-        resize(newsize)
-      }
-    }
-
-    def +=(elem: Boolean): this.type = {
+    def addOne(elem: Boolean): this.type = {
       ensureSize(size + 1)
       elems(size) = elem
       size += 1
       this
     }
-
-    override def ++=(xs: TraversableOnce[Boolean]): this.type = xs match {
-      case xs: WrappedArray.ofBoolean =>
-        ensureSize(this.size + xs.length)
-        Array.copy(xs.array, 0, elems, this.size, xs.length)
-        size += xs.length
-        this
-      case _ =>
-        super.++=(xs)
-    }
-
-    def clear() { size = 0 }
 
     def result() = {
       if (capacity != 0 && capacity == size) {
@@ -702,21 +526,25 @@ object ArrayBuilder {
   }
 
   /** A class for array builders for arrays of `Unit` type. It can be reused. */
+  @SerialVersionUID(3L)
   final class ofUnit extends ArrayBuilder[Unit] {
 
-    private var size: Int = 0
+    protected def elems: Array[Unit] = throw new UnsupportedOperationException()
 
-    def +=(elem: Unit): this.type = {
+    def addOne(elem: Unit): this.type = {
       size += 1
       this
     }
 
-    override def ++=(xs: TraversableOnce[Unit]): this.type = {
-      size += xs.size
+    override def addAll(xs: IterableOnce[Unit]): this.type = {
+      size += xs.iterator().size
       this
     }
 
-    def clear() { size = 0 }
+    override def addAll(xs: Array[_ <: Unit], offset: Int, length: Int): this.type = {
+      size += length
+      this
+    }
 
     def result() = {
       val ans = new Array[Unit](size)
@@ -729,6 +557,8 @@ object ArrayBuilder {
       case x: ofUnit => (size == x.size)
       case _ => false
     }
+
+    protected[this] def resize(size: Int): Unit = ()
 
     override def toString = "ArrayBuilder.ofUnit"
   }
