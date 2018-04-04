@@ -37,7 +37,7 @@ class Properties(protected val defaults: Properties)
   def propertyNames(): ju.Enumeration[_] = {
     val thisSet = keySet().asScala.map(_.asInstanceOf[String])
     val defaultsIterator =
-      if (defaults != null) defaults.propertyNames().asScala.toIterator
+      if (defaults != null) defaults.propertyNames().asScala.iterator()
       else scala.collection.Iterator.empty
     val filteredDefaults = defaultsIterator.collect {
       case k: String if !thisSet(k) => k

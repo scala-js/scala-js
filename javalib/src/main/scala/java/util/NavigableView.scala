@@ -121,7 +121,7 @@ private[util] class NavigableView[E](original: NavigableSet[E],
 
   def last(): E = {
     val iter = iterator()
-    if (iter.hasNext) iter.asScala.toIterable.last
+    if (iter.hasNext) iter.asScala.to(scala.collection.Iterable).last
     else null.asInstanceOf[E]
   }
 
