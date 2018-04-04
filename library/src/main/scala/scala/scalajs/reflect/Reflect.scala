@@ -118,11 +118,13 @@ object Reflect {
    *  The class or one of its super types (classes or traits) must be annotated
    *  with
    *  [[scala.scalajs.reflect.annotation.EnableReflectiveInstantiation @EnableReflectiveInstantiation]].
-   *  Moreover, the class must not be abstract.
+   *  Moreover, the class must not be abstract, nor be a local class (i.e., a
+   *  class defined inside a `def`). Inner classes (defined inside another
+   *  class) are supported.
    *
    *  If the class cannot be found, either because it does not exist,
-   *  was not `@EnableReflectiveInstantiation` or was abstract, this method
-   *  returns `None`.
+   *  was not `@EnableReflectiveInstantiation` or was abstract or local, this
+   *  method returns `None`.
    *
    *  @param fqcn
    *    Fully-qualified name of the class

@@ -12,6 +12,9 @@ pos/t6367.scala
 # Kills our IR serializer, it's an artificially super-deep if/else if
 pos/t9181.scala
 
+# Resource hungry, does not exist in 2.12.x anymore
+pos/t10387.scala
+
 #
 # NEG
 #
@@ -33,6 +36,7 @@ neg/patmatexhaust-huge.scala
 # Uses .java files
 run/t9200
 run/noInlineUnknownIndy
+
 #
 # RUN
 #
@@ -58,6 +62,7 @@ run/shutdownhooks.scala
 run/t5590.scala
 run/t3895b.scala
 run/t5974.scala
+run/hashset.scala
 run/t5262.scala
 run/serialize-stream.scala
 run/sysprops.scala
@@ -66,12 +71,11 @@ run/t9390.scala
 run/t9390b.scala
 run/t9390c.scala
 run/trait-defaults-super.scala
-
 run/t2849.scala
 run/t1360.scala
 run/t3199b.scala
 run/t8690.scala
-
+run/t10488.scala
 run/various-flat-classpath-types.scala
 
 # Uses java.util.Collections
@@ -89,6 +93,7 @@ run/t6969.scala
 run/inner-obj-auto.scala
 run/predef-cycle.scala
 run/synchronized.scala
+run/sd409.scala
 
 # Uses java.security
 run/t2318.scala
@@ -143,6 +148,7 @@ run/lambda-serialization-security.scala
 run/t10232.scala
 run/t10233.scala
 run/t10244.scala
+run/t10522.scala
 
 # Using System.getProperties
 
@@ -152,6 +158,7 @@ run/t4426.scala
 
 run/t7336.scala
 run/t7775.scala
+run/t10513.scala
 run/future-flatmap-exec-count.scala
 
 # Using detailed stack trace
@@ -470,6 +477,7 @@ run/mirror_symbolof_x.scala
 run/t8196.scala
 run/t8549b.scala
 run/t8574.scala
+run/t8549.scala
 run/t8637.scala
 run/t8253.scala
 run/t9027.scala
@@ -481,6 +489,8 @@ run/t9182.scala
 run/t9102.scala
 run/t720.scala
 run/t9408.scala
+run/t10527.scala
+run/t10650
 run/trait-default-specialize.scala
 run/lazy-locals-2.scala
 run/t5294.scala
@@ -488,6 +498,7 @@ run/trait_fields_final.scala
 run/trait_fields_bytecode.scala
 run/trait_fields_volatile.scala
 run/junitForwarders
+run/reflect-java-param-names
 
 run/reify_newimpl_29.scala
 run/reify_magicsymbols.scala
@@ -610,7 +621,6 @@ run/t8575c.scala
 run/t8944c.scala
 run/t9535.scala
 run/t9437a
-run/t9437b
 run/t9814.scala
 run/t10009.scala
 run/t10075.scala
@@ -680,8 +690,27 @@ run/triemap-hash.scala
 
 # Using parallel collections
 
+run/t5375.scala
+run/t4894.scala
+run/ctries-new
+run/collection-conversions.scala
 run/concurrent-map-conversions.scala
+run/t4761.scala
+run/t7498.scala
+run/t6448.scala
+run/ctries-old
 run/map_java_conversions.scala
+run/parmap-ops.scala
+run/pc-conversions.scala
+run/t4459.scala
+run/t4608.scala
+run/t4723.scala
+run/t4895.scala
+run/t6052.scala
+run/t6410.scala
+run/t6467.scala
+run/t6908.scala
+run/t8955.scala
 
 # Using scala.xml
 
@@ -861,6 +890,7 @@ run/t3368-d.scala
 run/t9944.scala
 
 # partest.DirectTest
+run/maxerrs.scala
 run/t6288.scala
 run/t6331.scala
 run/t6440b.scala
@@ -891,12 +921,15 @@ run/t9097.scala
 run/macroPlugins-enterStats.scala
 run/sbt-icode-interface.scala
 run/t8502b.scala
-run/t9437c
 run/repl-paste-parse.scala
 run/t5463.scala
 run/t8433.scala
 run/sd275.scala
 run/sd275-java
+run/t10471.scala
+run/t6130.scala
+run/t9437b.scala
+run/t10552
 
 # Using partest.StoreReporterDirectTest
 run/t10171
@@ -996,6 +1029,10 @@ run/t7936b
 run/t9937
 run/t10368
 run/t10334b
+run/sd304
+run/t10450
+run/t10042
+run/t10699
 
 # Using scala-script
 run/t7791-script-linenums.scala
@@ -1025,6 +1062,9 @@ run/t3493.scala
 # Custom invoke dynamic node
 run/indy-via-macro
 run/indy-via-macro-with-dynamic-args
+
+# Crashes our optimizer because of artificially insane amount of inlining
+run/t10594.scala
 
 ###  Incorrect partests  ###
 # Badly uses constract of Console.print (no flush)

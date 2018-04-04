@@ -121,7 +121,7 @@ class BigIntegerConstructorsTest {
   }
 
   @Test def testConstructorBytesZero(): Unit = {
-    val aBytes = Array[Byte](0, 0, 0, -0, +0, 0, -0)
+    val aBytes = Array[Byte](0, 0, 0, -0, 0, 0, -0)
     val rBytes = Array[Byte](0)
     val aNumber = new BigInteger(aBytes)
     var resBytes = Array.ofDim[Byte](rBytes.length)
@@ -350,7 +350,7 @@ class BigIntegerConstructorsTest {
   }
 
   @Test def testConstructorSignBytesZero1(): Unit = {
-    val aBytes = Array[Byte](-0, 0, +0, 0, 0, 0, 0)
+    val aBytes = Array[Byte](-0, 0, 0, 0, 0, 0, 0)
     val aSign = -1
     val rBytes = Array[Byte](0)
     val aNumber = new BigInteger(aSign, aBytes)
@@ -363,7 +363,7 @@ class BigIntegerConstructorsTest {
   }
 
   @Test def testConstructorSignBytesZero2(): Unit = {
-    val aBytes = Array[Byte](-0, 0, +0, 0, 0, 0, 0)
+    val aBytes = Array[Byte](-0, 0, 0, 0, 0, 0, 0)
     val aSign = 0
     val rBytes = Array[Byte](0)
     val aNumber = new BigInteger(aSign, aBytes)
@@ -376,7 +376,7 @@ class BigIntegerConstructorsTest {
   }
 
   @Test def testConstructorSignBytesZero3(): Unit = {
-    val aBytes = Array[Byte](-0, 0, +0, 0, 0, 0, 0)
+    val aBytes = Array[Byte](-0, 0, 0, 0, 0, 0, 0)
     val aSign = 1
     val rBytes = Array[Byte](0)
     val aNumber = new BigInteger(aSign, aBytes)

@@ -1086,6 +1086,42 @@ class NonNativeJSTypeTest {
     assertEquals(5, new ConstructorDefaultParamScalaNone(5).foo)
   }
 
+  @Test def constructors_with_default_parameters_in_multi_param_lists(): Unit = {
+    val foo1 = new ConstructorDefaultParamMultiParamList(5)("foobar")
+    assertEquals(5, foo1.default)
+    assertEquals("foobar", foo1.title)
+    assertEquals("5", foo1.description)
+
+    val foo2 = new ConstructorDefaultParamMultiParamList(56)("babar", "desc")
+    assertEquals(56, foo2.default)
+    assertEquals("babar", foo2.title)
+    assertEquals("desc", foo2.description)
+  }
+
+  @Test def constructors_with_default_parameters_in_multi_param_lists_and_overloading(): Unit = {
+    val foo1 = new ConstructorDefaultParamMultiParamListWithOverloading(5)(
+        "foobar")
+    assertEquals(5, foo1.default)
+    assertEquals("foobar", foo1.title)
+    assertEquals("5", foo1.description)
+
+    val foo2 = new ConstructorDefaultParamMultiParamListWithOverloading(56)(
+        "babar", "desc")
+    assertEquals(56, foo2.default)
+    assertEquals("babar", foo2.title)
+    assertEquals("desc", foo2.description)
+
+    val foo3 = new ConstructorDefaultParamMultiParamListWithOverloading('A')
+    assertEquals(65, foo3.default)
+    assertEquals("char", foo3.title)
+    assertEquals("a char", foo3.description)
+
+    val foo4 = new ConstructorDefaultParamMultiParamListWithOverloading(123, 456)
+    assertEquals(123, foo4.default)
+    assertEquals("456", foo4.title)
+    assertEquals(js.undefined, foo4.description)
+  }
+
   @Test def `call_super_constructor_with_:__*`(): Unit = {
     class CallSuperCtorWithSpread(x: Int, y: Int, z: Int)
         extends NativeParentClassWithVarargs(x, Seq(y, z): _*)
@@ -1753,6 +1789,18 @@ object NonNativeJSTypeTest {
 
   // sanity check
   class ConstructorDefaultParamScalaNone(val foo: Int = -1)
+
+  class ConstructorDefaultParamMultiParamList(val default: Int)(
+      val title: String, val description: js.UndefOr[String] = default.toString)
+      extends js.Object
+
+  class ConstructorDefaultParamMultiParamListWithOverloading(val default: Int)(
+      val title: String, val description: js.UndefOr[String] = default.toString)
+      extends js.Object {
+    def this(c: Char) = this(c.toInt)("char", "a char")
+
+    def this(x: Int, y: Int) = this(x)(y.toString, js.undefined)
+  }
 
   class OverloadedConstructorParamNumber(val foo: Int) extends js.Object {
     def this(x: Int, y: Int) = this(x + y)

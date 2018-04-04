@@ -151,7 +151,7 @@ object Build {
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.7", "2.11.12", "2.12.4", "2.13.0-M2")
+    Set("2.10.7", "2.11.12", "2.12.5", "2.13.0-M3")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
   */
@@ -202,7 +202,7 @@ object Build {
   }
 
   val commonSettings = Seq(
-      scalaVersion := "2.11.12",
+      scalaVersion := "2.12.5",
       organization := "org.scala-js",
       version := scalaJSVersion,
 
@@ -1151,7 +1151,12 @@ object Build {
       },
 
       inConfig(Compile)(Seq(
-          scalacOptions in doc ++= Seq("-implicits", "-groups"),
+          scalacOptions in doc ++= Seq(
+              "-implicits",
+              "-groups",
+              "-doc-title", "Scala.js",
+              "-doc-version", scalaJSVersion
+          ),
 
           // Filter doc sources to remove implementation details from doc.
           sources in doc := {
@@ -1494,7 +1499,7 @@ object Build {
           }
 
           val hasBugWithOverriddenMethods =
-            Set("2.12.0", "2.12.1", "2.12.2", "2.12.3", "2.12.4", "2.13.0-M2").contains(scalaV)
+            Set("2.12.0", "2.12.1", "2.12.2", "2.12.3", "2.12.4").contains(scalaV)
 
           if (hasBugWithOverriddenMethods)
             allSAMSources.filter(_.getName != "SAMWithOverridingBridgesTest.scala")
@@ -1807,7 +1812,7 @@ object Build {
                 else if (v.startsWith("2.11."))
                   "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
                 else
-                  "org.scala-lang.modules" %% "scala-partest" % "1.1.1"
+                  "org.scala-lang.modules" %% "scala-partest" % "1.1.4"
               }
           )
         } else {
