@@ -27,7 +27,7 @@ object ScalaRunTime {
     x != null && isArrayClass(x.getClass, atLevel)
 
   private def isArrayClass(clazz: jClass[_], atLevel: Int): Boolean =
-    clazz.isArray && (atLevel == 1 || isArrayClass(clazz.getComponentType, atLevel - 1))
+    clazz != null && clazz.isArray && (atLevel == 1 || isArrayClass(clazz.getComponentType, atLevel - 1))
 
   // A helper method to make my life in the pattern matcher a lot easier.
   def drop[Repr](coll: Repr, num: Int)(implicit iterable: IsIterableLike[Repr]): Repr =
