@@ -24,7 +24,7 @@ class HashSet[E] extends AbstractSet[E] with Set[E]
     inner.contains(Box(o.asInstanceOf[E]))
 
   override def remove(o: Any): Boolean =
-    inner.remove(Box(o.asInstanceOf[E]))
+    inner.remove(Box(o.asInstanceOf[E])).nonEmpty
 
   override def containsAll(c: Collection[_]): Boolean =
     c.iterator.asScala.forall(e => contains(e))

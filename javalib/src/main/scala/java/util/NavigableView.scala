@@ -121,22 +121,23 @@ private[util] class NavigableView[E](original: NavigableSet[E],
 
   def last(): E = {
     val iter = iterator()
-    if (iter.hasNext) iter.asScala.toTraversable.last
+    if (iter.hasNext) iter.asScala.toIterable.last
     else null.asInstanceOf[E]
   }
 
   def subSet(fromElement: E, fromInclusive: Boolean, toElement: E,
       toInclusive: Boolean): NavigableSet[E] = {
     val innerNow = inner()
+    implicit val boxOrdering: Ordering[Box[E]] = innerNow.ordering
     val boxedFrom = Box(fromElement)
     val boxedTo = Box(toElement)
 
     val subSetFun = { () =>
       val toTs =
-        if (toInclusive) innerNow.to(boxedTo)
+        if (toInclusive) innerNow.rangeTo(boxedTo)
         else innerNow.until(boxedTo)
       if (fromInclusive) toTs.from(boxedFrom)
-      else toTs.from(boxedFrom) - boxedFrom
+      else (toTs.from(boxedFrom).to(collection.immutable.SortedSet) - boxedFrom).to(collection.mutable.SortedSet)
     }
 
     new NavigableView(this, subSetFun,
@@ -149,7 +150,7 @@ private[util] class NavigableView[E](original: NavigableSet[E],
     val boxed = Box(toElement)
 
     val headSetFun =
-      if (inclusive) () => innerNow.to(boxed)
+      if (inclusive) () => innerNow.rangeTo(boxed)
       else () => innerNow.until(boxed)
 
     new NavigableView(this, headSetFun,
@@ -159,11 +160,12 @@ private[util] class NavigableView[E](original: NavigableSet[E],
 
   def tailSet(fromElement: E, inclusive: Boolean): NavigableSet[E] = {
     val innerNow = inner()
+    implicit val boxOrdering: Ordering[Box[E]] = innerNow.ordering
     val boxed = Box(fromElement)
 
     val tailSetFun =
       if (inclusive) () => innerNow.from(boxed)
-      else () => innerNow.from(boxed) - boxed
+      else () => (innerNow.from(boxed).to(collection.immutable.SortedSet) - boxed).to(collection.mutable.SortedSet)
 
     new NavigableView(this, tailSetFun,
         Some(fromElement), inclusive,

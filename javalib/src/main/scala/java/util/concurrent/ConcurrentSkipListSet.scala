@@ -4,7 +4,7 @@ import java.util._
 import java.lang.Comparable
 import scala.math.Ordering
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 class ConcurrentSkipListSet[E] private (inner: TreeSet[E])
     extends AbstractSet[E]
