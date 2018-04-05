@@ -95,7 +95,7 @@ protected[testinterface] object HTMLRunner {
       val oks = tasks.map { task =>
         for {
           (ok, newTasks) <- scheduleTask(task, ui)
-          newOk <- runAllTasks(newTasks)
+          newOk <- runAllTasks(newTasks.toIndexedSeq)
         } yield ok && newOk
       }
 
@@ -105,7 +105,7 @@ protected[testinterface] object HTMLRunner {
     val runner = framework.runner(Array(), Array(), classLoader)
     val tasks = runner.tasks(taskDefs.toArray)
 
-    for (ok <- runAllTasks(tasks)) yield {
+    for (ok <- runAllTasks(tasks.toIndexedSeq)) yield {
       val resultStr = runner.done()
       if (resultStr.nonEmpty)
         ui.reportFrameworkResult(ok, framework.name, resultStr)
@@ -413,7 +413,7 @@ protected[testinterface] object HTMLRunner {
     private def statusClass(ok: Boolean): String =
       if (ok) "success" else "error"
 
-    private def checkboxUpdater(tests: Seq[Test],
+    private def checkboxUpdater(tests: collection.Seq[Test],
         checkbox: dom.Checkbox): js.Function0[Boolean] = { () =>
       val all = tests.forall(_.selected)
       val indet = !all && tests.exists(_.selected)
@@ -424,7 +424,7 @@ protected[testinterface] object HTMLRunner {
       true
     }
 
-    private def testUpdater(tests: Seq[Test],
+    private def testUpdater(tests: collection.Seq[Test],
         checkbox: dom.Checkbox): js.Function0[Boolean] = { () =>
       tests.foreach(_.selected = checkbox.checked)
       true
@@ -506,5 +506,5 @@ protected[testinterface] object HTMLRunner {
     }
   }
 
-  private def and(xs: Seq[Boolean]): Boolean = xs.fold(true)(_ && _)
+  private def and(xs: Seq[Boolean]): Boolean = xs.foldLeft(true)(_ && _)
 }

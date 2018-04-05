@@ -53,7 +53,7 @@ private[scalajs] object TestDetector {
     def tryLoad(name: String): Option[Framework] =
       tryLoadFromReflect(name).orElse(tryLoadFromExportsNamespace(name))
 
-    names.toStream.map(tryLoad).flatten.headOption
+    names.iterator.map(tryLoad).flatten.buffered.headOption
   }
 
   // Copied from sbt.TestFramework
