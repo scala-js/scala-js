@@ -15,7 +15,7 @@ import org.junit.Test
 
 import org.scalajs.testsuite.utils.CollectionsTestBase
 
-import scala.collection.JavaConversions._
+import scala.collection.convert.ImplicitConversions._
 import scala.reflect.ClassTag
 
 trait CollectionsOnCollectionsTest extends CollectionsTestBase {

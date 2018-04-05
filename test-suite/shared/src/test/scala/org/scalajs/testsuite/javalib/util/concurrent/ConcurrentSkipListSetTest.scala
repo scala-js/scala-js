@@ -18,7 +18,7 @@ import org.scalajs.testsuite.javalib.util.NavigableSetFactory
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 

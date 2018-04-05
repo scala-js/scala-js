@@ -11,7 +11,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 import java.{util => ju}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
 trait SortedSetTest extends SetTest {

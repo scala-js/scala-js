@@ -4,7 +4,7 @@ import java.{lang => jl, util => ju}
 
 import org.scalajs.testsuite.utils.AssertThrows._
 
-import scala.collection.JavaConversions._
+import scala.collection.convert.ImplicitConversions._
 
 trait CollectionsTestBase {
 

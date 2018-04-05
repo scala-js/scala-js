@@ -15,7 +15,7 @@ import org.junit.Assert._
 import org.scalajs.testsuite.javalib.util.concurrent.ConcurrentMapFactory
 import org.scalajs.testsuite.utils.AssertThrows._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.{mutable => mu}
 import scala.reflect.ClassTag
 
@@ -248,7 +248,7 @@ trait MapTest {
 
     val m = mu.Map[String, String](
       "X" -> "y")
-    mp.putAll(mutableMapAsJavaMap(m))
+    mp.putAll(m.asJava)
     assertEquals(1, mp.size)
     assertEquals("y", mp.get("X"))
 
@@ -331,7 +331,7 @@ trait MapTest {
     if (factory.allowsNullValuesQueries)
       assertFalse(values.contains(null))
     else
-      expectThrows(classOf[Throwable], mp.contains(null))
+      expectThrows(classOf[Throwable], mp.asScala.contains(null))
 
     mp.put("THREE", "three")
 
@@ -492,7 +492,7 @@ trait MapTest {
     if (factory.allowsNullKeysQueries)
       assertFalse(keySet.contains(null))
     else
-      expectThrows(classOf[Throwable], mp.contains(null))
+      expectThrows(classOf[Throwable], mp.asScala.contains(null))
 
     mp.put("THREE", "three")
 

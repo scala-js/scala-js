@@ -11,7 +11,7 @@ import org.junit.Assert._
 
 import scala.language.implicitConversions
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import org.junit.Test
 import org.junit.Assert._
@@ -262,7 +262,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
     val ts1 = factory.empty[String]
 
     if (factory.allowsNullElement) {
-      assertTrue(ts1.addAll(l))
+      assertTrue(ts1.addAll(l.asJava))
       assertTrue(ts1.contains(null))
       assertTrue(ts1.contains("ONE"))
       assertFalse(ts1.contains("THREE"))

@@ -15,7 +15,7 @@ import org.junit.Test
 
 import org.scalajs.testsuite.javalib.util.concurrent.CopyOnWriteArrayListFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.convert.ImplicitConversions._
 
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._

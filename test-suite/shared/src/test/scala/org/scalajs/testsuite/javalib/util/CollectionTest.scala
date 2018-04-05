@@ -12,7 +12,7 @@ import java.{util => ju, lang => jl}
 import org.junit.Test
 import org.junit.Assert._
 
-import scala.collection.JavaConversions._
+import scala.collection.convert.ImplicitConversions._
 
 import org.scalajs.testsuite.utils.AssertThrows._
 

@@ -16,7 +16,7 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
 
-import scala.collection.JavaConversions._
+import scala.collection.convert.ImplicitConversions._
 
 import scala.reflect.ClassTag
 

@@ -10,7 +10,7 @@ package org.scalajs.testsuite.javalib.util
 import org.junit.Test
 import org.junit.Assert._
 
-import scala.collection.JavaConversions._
+import scala.collection.convert.ImplicitConversions._
 
 import java.{util => ju, lang => jl}
 

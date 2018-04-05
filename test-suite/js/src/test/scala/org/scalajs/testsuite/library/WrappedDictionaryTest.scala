@@ -97,7 +97,7 @@ class WrappedDictionaryTest {
 
   @Test def to_T(): Unit = {
     val dict = js.Dictionary("a" -> "a", "b" -> 6, "e" -> js.undefined)
-    val list = dict.to[List]
+    val list = dict.to(List)
     assertEquals(3, list.size)
   }
 

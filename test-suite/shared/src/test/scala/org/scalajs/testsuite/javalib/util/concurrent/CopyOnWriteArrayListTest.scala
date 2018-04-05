@@ -14,7 +14,7 @@ import org.junit.Test
 
 import org.scalajs.testsuite.javalib.util.{ListFactory, ListTest}
 
-import scala.collection.JavaConversions._
+import scala.collection.convert.ImplicitConversions._
 
 import org.scalajs.testsuite.utils.Platform.executingInJVM
 

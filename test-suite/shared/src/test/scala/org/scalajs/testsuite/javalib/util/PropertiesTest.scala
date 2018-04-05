@@ -9,7 +9,7 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
 
-import scala.collection.JavaConversions._
+import scala.collection.convert.ImplicitConversions._
 
 class PropertiesTest {
 

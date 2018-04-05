@@ -9,7 +9,7 @@ import org.scalajs.testsuite.javalib.util.concurrent.CopyOnWriteArrayListFactory
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.CollectionsTestBase
 
-import scala.collection.JavaConversions._
+import scala.collection.convert.ImplicitConversions._
 import scala.reflect.ClassTag
 
 object CollectionsOnListTest extends CollectionsTestBase {

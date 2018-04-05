@@ -381,7 +381,9 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         def mkList(elems: List[Tree]): Tree = {
           val array = ArrayValue(TypeTree(definitions.ObjectTpe), elems)
           val wrappedArray = gen.mkMethodCall(
-              definitions.PredefModule,
+              // TODO Make this switch 2.14.x proof
+              if (Properties.versionNumberString.startsWith("2.13")) definitions.ScalaRunTimeModule
+              else definitions.PredefModule,
               definitions.wrapVarargsArrayMethodName(definitions.ObjectTpe),
               Nil, List(array))
           gen.mkMethodCall(definitions.List_apply, List(wrappedArray))

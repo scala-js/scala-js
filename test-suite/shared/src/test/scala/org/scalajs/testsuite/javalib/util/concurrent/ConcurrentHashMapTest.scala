@@ -14,7 +14,7 @@ import org.junit.Test
 import org.scalajs.testsuite.javalib.util.MapTest
 import org.scalajs.testsuite.utils.AssertThrows._
 
-import scala.collection.JavaConversions._
+import scala.collection.convert.ImplicitConversions._
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 

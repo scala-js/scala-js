@@ -4,7 +4,7 @@ import java.{util => ju, lang => jl}
 
 import org.junit.Test
 
-import scala.collection.JavaConversions._
+import scala.collection.convert.ImplicitConversions._
 import scala.reflect.ClassTag
 
 trait CollectionsOnSetsTest extends CollectionsOnCollectionsTest {

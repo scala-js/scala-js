@@ -133,7 +133,7 @@ class UnionTypeTest {
     assertEquals("hello", y3.asInstanceOf[js.Any])
 
     val x4: List[Int] | Vector[Int] | mutable.Buffer[Int] = List(3, 5)
-    val y4: Seq[Int] = x4.merge
+    val y4: collection.Seq[Int] = x4.merge
     assertEquals(Seq(3, 5), y4)
   }
 

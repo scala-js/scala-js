@@ -16,7 +16,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
 
 import java.{util => ju, lang => jl}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
 trait SetTest extends CollectionTest {
@@ -218,8 +218,8 @@ trait SetTest extends CollectionTest {
       }
     }
     assertFalse(iter.hasNext())
-    assertTrue(result.containsAll(l))
-    assertTrue(l.containsAll(result))
+    assertTrue(result.asJava.containsAll(l.asJava))
+    assertTrue(l.asJava.containsAll(result.asJava))
   }
 }
 

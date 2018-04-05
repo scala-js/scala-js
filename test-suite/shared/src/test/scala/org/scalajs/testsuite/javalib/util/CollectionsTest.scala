@@ -15,7 +15,7 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.CollectionsTestBase
 
-import scala.collection.JavaConversions._
+import scala.collection.convert.ImplicitConversions._
 import scala.reflect.ClassTag
 
 class CollectionsTest extends CollectionsTestBase {
@@ -258,7 +258,7 @@ class CollectionsTest extends CollectionsTestBase {
   }
 
   @Test def enumeration(): Unit = {
-    val coll = asJavaCollection(range)
+    val coll = collection.JavaConverters.asJavaCollection(range)
     val enum = ju.Collections.enumeration(coll)
     for (elem <- coll) {
       assertTrue(enum.hasMoreElements)
@@ -268,7 +268,7 @@ class CollectionsTest extends CollectionsTestBase {
   }
 
   @Test def list(): Unit = {
-    val enum = asJavaEnumeration(range.iterator)
+    val enum = collection.JavaConverters.asJavaEnumeration(range.iterator)
     val list = ju.Collections.list(enum)
     assertEquals(range.size, list.size)
     for (i <- range)

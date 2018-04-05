@@ -20,7 +20,7 @@ class WrappedArrayTest {
 
   @Test def apply(): Unit = {
     val array = js.Array(3,4,5,6,3,4)
-    val seq: Seq[Int] = array
+    val seq: collection.Seq[Int] = array
 
     assertEquals(3, seq(0))
     assertEquals(6, seq(3))
@@ -43,7 +43,7 @@ class WrappedArrayTest {
 
   @Test def length(): Unit = {
     val array = js.Array(3,4,5,6,3,4)
-    val seq: Seq[Int] = array
+    val seq: collection.Seq[Int] = array
 
     assertEquals(6, seq.length)
     array.push(1)
@@ -56,11 +56,11 @@ class WrappedArrayTest {
     assertArrayEquals(Array(3, 5, 8, 9), array.toArray)
   }
 
-  @Test def ++=:(): Unit = {
+  @Test def prependAll(): Unit = {
     val array = js.Array(5, 8, 9)
-    js.Array(2, 0) ++=: array
+    array.prependAll(js.Array(2, 0))
     assertArrayEquals(Array(2, 0, 5, 8, 9), array.toArray)
-    Seq(-3, -45, 1) ++=: array
+    array.prependAll(Seq(-3, -45, 1))
     assertArrayEquals(Array(-3, -45, 1, 2, 0, 5, 8, 9), array.toArray)
   }
 
@@ -96,20 +96,20 @@ class WrappedArrayTest {
   }
 
   @Test def diff(): Unit = {
-    val seq: Seq[Int] = js.Array(1,2,1,3,1,10,9)
+    val seq: collection.Seq[Int] = js.Array(1,2,1,3,1,10,9)
     val diff = seq.diff(Seq(1,3,9))
     assertArrayEquals(Array(2,1,1,10), diff.toArray)
   }
 
   @Test def toList(): Unit = {
-    val seq: Seq[Int] = js.Array(1,2,1,3,1,10,9)
+    val seq: collection.Seq[Int] = js.Array(1,2,1,3,1,10,9)
     val list = seq.toList
     assertEquals(List(1,2,1,3,1,10,9), list)
   }
 
   @Test def to[T](): Unit = {
-    val seq: Seq[Int] = js.Array(1,2,1,3,1,10,9)
-    val list = seq.to[List]
+    val seq: collection.Seq[Int] = js.Array(1,2,1,3,1,10,9)
+    val list = seq.to(List)
     assertEquals(List(1,2,1,3,1,10,9), list)
   }
 

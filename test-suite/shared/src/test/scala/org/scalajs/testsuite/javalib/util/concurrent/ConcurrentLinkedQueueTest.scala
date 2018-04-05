@@ -14,7 +14,7 @@ import org.junit.Assert._
 import org.junit.Test
 import org.scalajs.testsuite.javalib.util.{AbstractCollectionFactory, AbstractCollectionTest}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
@@ -85,7 +85,7 @@ class ConcurrentLinkedQueueTest extends AbstractCollectionTest {
     val pq = factory.newFrom(l)
 
     assertEquals(5, pq.size())
-    for (i <- l) {
+    for (i <- l.asScala) {
       assertEquals(i, pq.poll())
     }
     assertTrue(pq.isEmpty)

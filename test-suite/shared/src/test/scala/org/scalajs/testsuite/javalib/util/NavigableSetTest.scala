@@ -14,7 +14,7 @@ import java.{util => ju}
 
 import org.scalajs.testsuite.javalib.util.concurrent.ConcurrentSkipListSetFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
 trait NavigableSetTest extends SetTest {

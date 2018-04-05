@@ -5,7 +5,7 @@ import org.junit.Assert._
 
 import java.{util => ju}
 
-import scala.collection.JavaConversions._
+import scala.collection.convert.ImplicitConversions._
 
 class HashtableTest {
 

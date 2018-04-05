@@ -9,7 +9,7 @@ package org.scalajs.testsuite.javalib.util
 
 import scala.language.implicitConversions
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import org.junit.Test
 import org.junit.Assert._
