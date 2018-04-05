@@ -230,9 +230,6 @@ object Traversers {
 
     def traverseTopLevelExportDef(exportDef: TopLevelExportDef): Unit = {
       exportDef match {
-        case TopLevelConstructorExportDef(fullName, args, body) =>
-          traverse(body)
-
         case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
             _:TopLevelFieldExportDef =>
 

@@ -250,9 +250,6 @@ object Transformers {
       implicit val pos = exportDef.pos
 
       exportDef match {
-        case TopLevelConstructorExportDef(fullName, args, body) =>
-          TopLevelConstructorExportDef(fullName, args, transformStat(body))
-
         case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
             _:TopLevelFieldExportDef =>
           exportDef

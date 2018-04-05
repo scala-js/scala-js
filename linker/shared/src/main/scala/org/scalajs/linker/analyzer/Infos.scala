@@ -351,13 +351,10 @@ object Infos {
   def generateTopLevelExportsInfo(enclosingClass: String,
       topLevelExportDefs: List[TopLevelExportDef]): Option[MethodInfo] = {
 
-    var exportedConstructors: List[TopLevelConstructorExportDef] = Nil
     var topLevelMethodExports: List[TopLevelMethodExportDef] = Nil
     var topLevelFieldExports: List[TopLevelFieldExportDef] = Nil
 
     topLevelExportDefs.foreach {
-      case constructorDef: TopLevelConstructorExportDef =>
-        exportedConstructors ::= constructorDef
       case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef =>
       case topLevelMethodExport: TopLevelMethodExportDef =>
         topLevelMethodExports ::= topLevelMethodExport
@@ -365,10 +362,9 @@ object Infos {
         topLevelFieldExports ::= topLevelFieldExport
     }
 
-    if (exportedConstructors.nonEmpty || topLevelMethodExports.nonEmpty ||
-        topLevelFieldExports.nonEmpty) {
+    if (topLevelMethodExports.nonEmpty || topLevelFieldExports.nonEmpty) {
       Some(new GenInfoTraverser().generateTopLevelExportsInfo(enclosingClass,
-          exportedConstructors, topLevelMethodExports, topLevelFieldExports))
+          topLevelMethodExports, topLevelFieldExports))
     } else {
       None
     }
@@ -416,15 +412,11 @@ object Infos {
     }
 
     def generateTopLevelExportsInfo(enclosingClass: String,
-        topLevelConstructorDefs: List[TopLevelConstructorExportDef],
         topLevelMethodExports: List[TopLevelMethodExportDef],
         topLevelFieldExports: List[TopLevelFieldExportDef]): MethodInfo = {
       builder
         .setEncodedName(TopLevelExportsName)
         .setIsExported(true)
-
-      for (topLevelConstructorDef <- topLevelConstructorDefs)
-        traverse(topLevelConstructorDef.body)
 
       for (topLevelMethodExport <- topLevelMethodExports)
         topLevelMethodExport.methodDef.body.foreach(traverse(_))

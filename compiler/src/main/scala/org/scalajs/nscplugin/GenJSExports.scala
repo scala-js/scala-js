@@ -61,7 +61,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     }
 
     def genConstructorExports(
-        classSym: Symbol): List[js.TopLevelConstructorExportDef] = {
+        classSym: Symbol): List[js.TopLevelMethodExportDef] = {
 
       val constructors = classSym.tpe.member(nme.CONSTRUCTOR).alternatives
 
@@ -81,11 +81,11 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
           implicit val pos = ctors.head.pos
 
-          val js.MethodDef(_, _, args, _, body) =
-            withNewLocalNameScope(genExportMethod(ctors, JSName.Literal(jsName),
-                static = false))
+          val methodDef = withNewLocalNameScope {
+            genExportMethod(ctors, JSName.Literal(jsName), static = true)
+          }
 
-          js.TopLevelConstructorExportDef(jsName, args, body.get)
+          js.TopLevelMethodExportDef(methodDef)
         }
 
         exports.toList
@@ -777,27 +777,32 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
     /** Generate the final forwarding call to the exported method. */
     private def genResult(exported: Exported, args: List[js.Tree],
-        static: Boolean)(implicit pos: Position) = {
+        static: Boolean)(implicit pos: Position): js.Tree = {
       val sym = exported.sym
-      val thisType =
-        if (sym.owner == ObjectClass) jstpe.ClassType(ir.Definitions.ObjectClass)
-        else encodeClassType(sym.owner)
-      val receiver =
-        if (static) genLoadModule(sym.owner)
-        else js.This()(thisType)
-      val call = {
-        if (isNonNativeJSClass(currentClassSym)) {
-          assert(sym.owner == currentClassSym.get, sym.fullName)
-          genApplyJSClassMethod(receiver, sym, args)
-        } else {
-          if (sym.isClassConstructor)
-            genApplyMethodStatically(receiver, sym, args)
-          else
-            genApplyMethod(receiver, sym, args)
-        }
+
+      def receiver = {
+        if (static)
+          genLoadModule(sym.owner)
+        else if (sym.owner == ObjectClass)
+          js.This()(jstpe.ClassType(ir.Definitions.ObjectClass))
+        else
+          js.This()(encodeClassType(sym.owner))
       }
-      ensureBoxed(call,
-          enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
+
+      def boxIfNeeded(call: js.Tree): js.Tree = {
+        ensureBoxed(call,
+            enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
+      }
+
+      if (isNonNativeJSClass(currentClassSym)) {
+        assert(sym.owner == currentClassSym.get, sym.fullName)
+        boxIfNeeded(genApplyJSClassMethod(receiver, sym, args))
+      } else {
+        if (sym.isClassConstructor)
+          genNew(currentClassSym, sym, args)
+        else
+          boxIfNeeded(genApplyMethod(receiver, sym, args))
+      }
     }
 
     private final class ParamSpec(val sym: Symbol, val tpe: Type,

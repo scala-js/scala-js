@@ -985,9 +985,8 @@ object Trees {
 
   sealed abstract class TopLevelExportDef extends IRNode {
     final def topLevelExportName: String = this match {
-      case TopLevelConstructorExportDef(name, _, _) => name
-      case TopLevelModuleExportDef(name)            => name
-      case TopLevelJSClassExportDef(name)           => name
+      case TopLevelModuleExportDef(name)  => name
+      case TopLevelJSClassExportDef(name) => name
 
       case TopLevelMethodExportDef(MethodDef(_, propName, _, _, _)) =>
         val StringLiteral(name) = propName
@@ -996,9 +995,6 @@ object Trees {
       case TopLevelFieldExportDef(name, _) => name
     }
   }
-
-  case class TopLevelConstructorExportDef(name: String, args: List[ParamDef],
-      body: Tree)(implicit val pos: Position) extends TopLevelExportDef
 
   case class TopLevelJSClassExportDef(fullName: String)(
       implicit val pos: Position) extends TopLevelExportDef

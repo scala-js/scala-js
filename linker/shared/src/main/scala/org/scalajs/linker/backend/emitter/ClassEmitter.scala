@@ -1047,8 +1047,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     val exportsWithGlobals = tree.topLevelExports.map { topLevelExport =>
       topLevelExport.value match {
-        case e: TopLevelConstructorExportDef =>
-          genTopLevelConstructorExportDef(tree, e)
         case e: TopLevelJSClassExportDef =>
           WithGlobals(genTopLevelJSClassExportDef(tree, e))
         case e: TopLevelModuleExportDef =>
@@ -1061,41 +1059,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
 
     WithGlobals.list(exportsWithGlobals)
-  }
-
-  def genTopLevelConstructorExportDef(cd: LinkedClass,
-      tree: TopLevelConstructorExportDef)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
-    import TreeDSL._
-
-    implicit val pos = tree.pos
-    val classType = ClassType(cd.name.name)
-    val TopLevelConstructorExportDef(fullName, args, body) = tree
-
-    val baseCtor = envField("c", cd.name.name, cd.name.originalName)
-
-    val generatedFunWithGlobals = desugarToFunctionWithExplicitThis(
-        cd.encodedName, args, body, resultType = NoType)
-
-    for (generatedFun <- generatedFunWithGlobals) yield {
-      val js.Function(arrow, thisParam :: ctorParams, ctorBody) = generatedFun
-      val thisIdent = thisParam.name
-
-      val exportedCtor = js.Function(arrow, ctorParams, js.Block(
-        genLet(thisIdent, mutable = false, js.New(baseCtor, Nil)),
-        ctorBody,
-        js.Return(js.VarRef(thisIdent))
-      ))
-
-      val (createNamespace, expCtorVar) =
-        genCreateNamespaceInExports(fullName)
-      js.Block(
-        createNamespace,
-        js.DocComment("@constructor"),
-        expCtorVar := exportedCtor,
-        expCtorVar DOT "prototype" := baseCtor DOT "prototype"
-      )
-    }
   }
 
   def genTopLevelJSClassExportDef(cd: LinkedClass,

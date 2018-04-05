@@ -105,8 +105,7 @@ private[ir] object Tags {
 
   // Tags for top-level export defs
 
-  final val TagTopLevelConstructorExportDef = 1
-  final val TagTopLevelJSClassExportDef = TagTopLevelConstructorExportDef + 1
+  final val TagTopLevelJSClassExportDef = 1
   final val TagTopLevelModuleExportDef = TagTopLevelJSClassExportDef + 1
   final val TagTopLevelMethodExportDef = TagTopLevelModuleExportDef + 1
   final val TagTopLevelFieldExportDef = TagTopLevelMethodExportDef + 1
