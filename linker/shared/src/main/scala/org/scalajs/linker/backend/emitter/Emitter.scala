@@ -15,7 +15,7 @@ import scala.collection.mutable
 
 import org.scalajs.ir.{ClassKind, Position}
 import org.scalajs.ir.Trees.JSNativeLoadSpec
-import org.scalajs.ir.Definitions.decodeClassName
+import org.scalajs.ir.Definitions.{ObjectClass, decodeClassName, isConstructorName}
 
 import org.scalajs.io._
 import org.scalajs.logging._
@@ -292,7 +292,9 @@ final class Emitter private (config: CommonPhaseConfig,
   @tailrec
   private def genAllClasses(orderedClasses: List[LinkedClass], logger: Logger,
       secondAttempt: Boolean): List[GeneratedClass] = {
-    val generatedClasses = orderedClasses.map(genClass)
+
+    val objectClass = orderedClasses.find(_.name.name == ObjectClass).get
+    val generatedClasses = orderedClasses.map(genClass(_, objectClass))
     val mentionedDangerousGlobalRefs = generatedClasses.foldLeft(Set.empty[String]) {
       (prev, generatedClass) =>
         unionPreserveEmpty(prev, generatedClass.mentionedDangerousGlobalRefs)
@@ -315,7 +317,8 @@ final class Emitter private (config: CommonPhaseConfig,
     }
   }
 
-  private def genClass(linkedClass: LinkedClass): GeneratedClass = {
+  private def genClass(linkedClass: LinkedClass,
+      objectClass: LinkedClass): GeneratedClass = {
     val className = linkedClass.encodedName
     val classCache = getClassCache(linkedClass.ancestors)
     val classTreeCache = classCache.getCache(linkedClass.version)
@@ -351,7 +354,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
     // Class definition
     if (linkedClass.hasInstances && kind.isAnyNonNativeClass) {
-      val (linkedInlineableInit, linkedMemberMethods) =
+      val (linkedInlineableInit, linkedMemberMethods0) =
         classEmitter.extractInlineableInit(linkedClass)(classCache)
 
       // JS constructor
@@ -368,6 +371,40 @@ final class Emitter private (config: CommonPhaseConfig,
         val initToInline = linkedInlineableInit.map(_.value)
         ctorCache.getOrElseUpdate(ctorVersion,
             classEmitter.genConstructor(linkedClass, initToInline)(ctorCache))
+      }
+
+      /* Bridges from Throwable to methods of Object, which are necessary
+       * because Throwable is rewired to extend JavaScript's Error instead of
+       * j.l.Object.
+       */
+      val linkedMemberMethods = if (ClassEmitter.shouldExtendJSError(linkedClass)) {
+        val existingMethods =
+          linkedMemberMethods0.map(_.value.name.encodedName).toSet
+
+        val bridges = for {
+          m <- objectClass.memberMethods
+          encodedName = m.value.name.encodedName
+          if !existingMethods.contains(encodedName) && !isConstructorName(encodedName)
+        } yield {
+          import org.scalajs.ir.Trees._
+          import org.scalajs.ir.Types._
+
+          val methodDef = m.value
+          implicit val pos = methodDef.pos
+
+          val methodName = methodDef.name.asInstanceOf[Ident]
+          val newBody = ApplyStatically(This()(ClassType(className)),
+              ClassType(ObjectClass), methodName, methodDef.args.map(_.ref))(
+              methodDef.resultType)
+          val newMethodDef = MethodDef(static = false, methodName,
+              methodDef.args, methodDef.resultType, Some(newBody))(
+              OptimizerHints.empty, None)
+          new Versioned(newMethodDef, m.version)
+        }
+
+        linkedMemberMethods0 ++ bridges
+      } else {
+        linkedMemberMethods0
       }
 
       // Normal methods

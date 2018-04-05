@@ -144,6 +144,34 @@ class ThrowablesTest {
     test3(new ExecutionException(_, _))
   }
 
+  @Test def throwableStillHasMethodsOfObject(): Unit = {
+    @noinline
+    def callEquals(a: Any, b: Any): Boolean = a.equals(b)
+
+    val t = new Throwable("foo")
+    assertTrue(callEquals(t, t))
+    assertFalse(callEquals(t, new Throwable("foo")))
+    assertFalse(callEquals(t, 55))
+  }
+
+  @Test def throwableJSToStringCanBeOverridden(): Unit = {
+    class ThrowableWithCustomToString extends Throwable("the message") {
+      override def toString(): String = "custom toString"
+    }
+
+    @noinline
+    def callToString(a: Any): String = a.toString()
+
+    @noinline
+    def concat(a: String, b: Any): String = a + b
+
+    val t = new ThrowableWithCustomToString
+    assertEquals("custom toString", t.toString())
+    assertEquals("custom toString", callToString(t))
+    assertEquals("my custom toString", "my " + t)
+    assertEquals("my custom toString", concat("my ", t))
+  }
+
   @Test def assertionErrorsPeculiarConstructors(): Unit = {
     def assertMessageNoCause(expectedMessage: String, e: AssertionError): Unit = {
       assertEquals(expectedMessage, e.getMessage)

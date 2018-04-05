@@ -37,7 +37,21 @@ private[lang] object StackTrace {
    *  by `extract()` to create an Array[StackTraceElement].
    */
   @inline def captureState(throwable: Throwable): Unit = {
-    if (js.isUndefined(js.constructorOf[js.Error].captureStackTrace)) {
+    val throwableAsJSAny = throwable.asInstanceOf[js.Any]
+    val identifyingString: Any = {
+      js.constructorOf[js.Object].prototype
+        .selectDynamic("toString")
+        .call(throwableAsJSAny)
+    }
+    if ("[object Error]" == identifyingString) {
+      /* The `throwable` has an `[[ErrorData]]` internal slot, which is as good
+       * a guarantee as any that it contains stack trace data itself. In
+       * practice, this happens when we emit ES 2015 classes, and no other
+       * compiler down the line has compiled them away as ES 5.1 functions and
+       * prototypes.
+       */
+      captureState(throwable, throwable)
+    } else if (js.isUndefined(js.constructorOf[js.Error].captureStackTrace)) {
       captureState(throwable, createException())
     } else {
       /* V8-specific.
@@ -47,7 +61,7 @@ private[lang] object StackTrace {
        * important so that Node.js will show stack traces if the exception
        * is never caught and reaches the global event queue.
        */
-      js.constructorOf[js.Error].captureStackTrace(throwable.asInstanceOf[js.Any])
+      js.constructorOf[js.Error].captureStackTrace(throwableAsJSAny)
       captureState(throwable, throwable)
     }
   }

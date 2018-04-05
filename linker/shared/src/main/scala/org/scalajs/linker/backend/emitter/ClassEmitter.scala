@@ -151,7 +151,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val parentVarWithGlobals = for (parentIdent <- tree.superClass) yield {
       implicit val pos = parentIdent.pos
       if (!tree.kind.isJSClass) {
-        WithGlobals(encodeClassVar(parentIdent.name))
+        if (shouldExtendJSError(tree))
+          WithGlobals(js.VarRef(js.Ident("Error")))
+        else
+          WithGlobals(encodeClassVar(parentIdent.name))
       } else if (tree.jsSuperClass.isDefined) {
         WithGlobals(envField("superClass"))
       } else {
@@ -208,12 +211,12 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val isJSClass = tree.kind.isJSClass
     val typeVar = encodeClassVar(className)
 
-    def makeInheritableCtorDef(ctorToMimic: js.Tree) = {
+    def makeInheritableCtorDef(ctorToMimic: js.Tree, field: String) = {
       js.Block(
         js.DocComment("@constructor"),
-        envFieldDef("h", className, js.Function(false, Nil, js.Skip()),
+        envFieldDef(field, className, js.Function(false, Nil, js.Skip()),
             keepFunctionExpression = isJSClass),
-        envField("h", className).prototype := ctorToMimic.prototype
+        envField(field, className).prototype := ctorToMimic.prototype
       )
     }
 
@@ -225,7 +228,13 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       WithGlobals(js.Skip())
     } { parentIdent =>
       val (inheritedCtorDefWithGlobals, inheritedCtorRef) = if (!isJSClass) {
-        (WithGlobals(js.Skip()), envField("h", parentIdent.name))
+        if (shouldExtendJSError(tree)) {
+          val inheritableCtorDef =
+            makeInheritableCtorDef(js.VarRef(js.Ident("Error")), "hh")
+          (WithGlobals(inheritableCtorDef), envField("hh", className))
+        } else {
+          (WithGlobals(js.Skip()), envField("h", parentIdent.name))
+        }
       } else {
         val superCtor = if (tree.jsSuperClass.isDefined) {
           WithGlobals(envField("superClass"))
@@ -233,7 +242,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
           genRawJSClassConstructor(parentIdent.name,
               keepOnlyDangerousVarNames = true)
         }
-        (superCtor.map(makeInheritableCtorDef(_)), envField("h", className))
+        (superCtor.map(makeInheritableCtorDef(_, "h")), envField("h", className))
       }
 
       for (inheritedCtorDef <- inheritedCtorDefWithGlobals) yield {
@@ -255,7 +264,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
       val inheritableCtorDef =
         if (isJSClass) js.Skip()
-        else makeInheritableCtorDef(typeVar)
+        else makeInheritableCtorDef(typeVar, "h")
 
       js.Block(docComment, ctorDef, chainProto, inheritableCtorDef)
     }
@@ -1255,7 +1264,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
 }
 
-private object ClassEmitter {
+private[emitter] object ClassEmitter {
   // TODO We should compute all of those from the Class Hierarchy
 
   private val CharSequenceClass = "jl_CharSequence"
@@ -1284,4 +1293,11 @@ private object ClassEmitter {
 
   private val ClassesWhoseDataReferToTheirInstanceTests =
     AncestorsOfHijackedClasses + Definitions.BoxedStringClass
+
+  private final val ThrowableClass = "jl_Throwable"
+
+  def shouldExtendJSError(linkedClass: LinkedClass): Boolean = {
+    linkedClass.name.name == ThrowableClass &&
+    linkedClass.superClass.exists(_.name == Definitions.ObjectClass)
+  }
 }
