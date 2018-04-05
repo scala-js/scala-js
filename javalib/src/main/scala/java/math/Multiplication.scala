@@ -447,5 +447,5 @@ private[math] object Multiplication {
   }
 
   private def newArrayOfPows(len: Int, pow: Int): Array[Int] =
-    new Array[Int](len - 1).scanLeft[Int](1)((z, _) => z * pow)/* temporary, see scala/collection-strawman#544 */.toArray
+    new Array[Int](len - 1).scanLeft(1)((z, _) => z * pow)/* temporary, see scala/collection-strawman#544 */.toArray
 }

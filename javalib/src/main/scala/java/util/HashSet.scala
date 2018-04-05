@@ -3,6 +3,8 @@ package java.util
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 
+import scala.Compat.BooleanNonEmpty
+
 class HashSet[E] extends AbstractSet[E] with Set[E]
                                         with Cloneable
                                         with Serializable { self =>

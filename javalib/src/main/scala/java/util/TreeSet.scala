@@ -7,6 +7,8 @@ import scala.math.Ordering
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 
+import scala.Compat.{BooleanNonEmpty, SortedSetRangeTo}
+
 class TreeSet[E] (_comparator: Comparator[_ >: E])
     extends AbstractSet[E]
     with NavigableSet[E]
