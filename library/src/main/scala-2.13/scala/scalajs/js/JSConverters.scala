@@ -64,7 +64,7 @@ object JSConverters extends JSConvertersLowPrioImplicits {
   }
 
   implicit class JSRichIterable[T](
-      val __self: Iterable[T]) extends AnyVal {
+      val __self: scala.collection.Iterable[T]) extends AnyVal {
     @inline final def toJSIterable: Iterable[T] = new IterableAdapter(__self)
   }
 
@@ -73,9 +73,9 @@ object JSConverters extends JSConvertersLowPrioImplicits {
     @inline final def toJSIterator: Iterator[T] = new IteratorAdapter(__self)
   }
 
-  private class IterableAdapter[+T](col: Iterable[T]) extends Iterable[T] {
+  private class IterableAdapter[+T](col: collection.Iterable[T]) extends Iterable[T] {
     @JSName(Symbol.iterator)
-    final def jsIterator(): Iterator[T] = col.iterator.toJSIterator
+    final def jsIterator(): Iterator[T] = col.iterator().toJSIterator
   }
 
   private class IteratorAdapter[+T](
