@@ -1183,18 +1183,6 @@ class PrintersTest {
     }
   }
 
-  @Test def printConstructorExportDef(): Unit = {
-    assertPrintEquals(
-        """
-          |export top constructor "pkg.Foo"(x: any) {
-          |  5
-          |}
-        """,
-        TopLevelConstructorExportDef("pkg.Foo",
-            List(ParamDef("x", AnyType, mutable = false, rest = false)),
-            i(5)))
-  }
-
   @Test def printJSClassExportDef(): Unit = {
     assertPrintEquals(
         """export top class "pkg.Foo"""",

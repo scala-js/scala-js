@@ -533,10 +533,6 @@ object Serializers {
       import buffer._
       writePosition(topLevelExportDef.pos)
       topLevelExportDef match {
-        case TopLevelConstructorExportDef(fullName, args, body) =>
-          writeByte(TagTopLevelConstructorExportDef)
-          writeString(fullName); writeParamDefs(args); writeTree(body)
-
         case TopLevelJSClassExportDef(fullName) =>
           writeByte(TagTopLevelJSClassExportDef)
           writeString(fullName)
@@ -996,10 +992,6 @@ object Serializers {
       val tag = input.readByte()
 
       (tag: @switch) match {
-        case TagTopLevelConstructorExportDef =>
-          TopLevelConstructorExportDef(readString(), readParamDefs(),
-              readTree())
-
         case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readString())
         case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readString())
         case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readMemberDef().asInstanceOf[MethodDef])

@@ -219,9 +219,6 @@ private final class IRChecker(unit: LinkingUnit,
         implicit val ctx = ErrorContext(tree)
 
         tree match {
-          case tree: TopLevelConstructorExportDef =>
-            checkTopLevelConstructorExportDef(tree, classDef)
-
           case tree: TopLevelJSClassExportDef =>
             checkTopLevelJSClassExportDef(tree, classDef)
 
@@ -490,24 +487,6 @@ private final class IRChecker(unit: LinkingUnit,
           reportError("Only JS classes may contain members with computed names")
         typecheckExpect(tree, Env.empty, AnyType)
     }
-  }
-
-  private def checkTopLevelConstructorExportDef(
-      ctorDef: TopLevelConstructorExportDef,
-      classDef: LinkedClass): Unit = withPerMethodState {
-    val TopLevelConstructorExportDef(_, params, body) = ctorDef
-    implicit val ctx = ErrorContext(ctorDef)
-
-    if (!classDef.kind.isClass) {
-      reportError(s"Exported constructor def can only appear in a class")
-      return
-    }
-
-    checkJSParamDefs(params)
-
-    val thisType = ClassType(classDef.name.name)
-    val bodyEnv = Env.fromSignature(thisType, None, params, NoType)
-    typecheckStat(body, bodyEnv)
   }
 
   private def checkTopLevelJSClassExportDef(

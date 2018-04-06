@@ -912,13 +912,6 @@ object Printers {
 
     def print(topLevelExportDef: TopLevelExportDef): Unit = {
       topLevelExportDef match {
-        case TopLevelConstructorExportDef(fullName, args, body) =>
-          print("export top constructor \"")
-          printEscapeJS(fullName, out)
-          print('\"')
-          printSig(args, NoType) // NoType as trick not to display a type
-          printBlock(body)
-
         case TopLevelJSClassExportDef(fullName) =>
           print("export top class \"")
           printEscapeJS(fullName, out)

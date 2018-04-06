@@ -109,9 +109,7 @@ private[emitter] final class KnowledgeGuardian {
       /* We can enable inlined init if all of the following apply:
        * - The class is not blacklisted
        * - It does not have any instantiated subclass
-       * - It has exactly one (regular) constructor
-       * - It does not have any exported constructor (since they are
-       *   effectively secondary constructors)
+       * - It has exactly one constructor
        *
        * By construction, this is always true for module classes.
        */
@@ -119,9 +117,6 @@ private[emitter] final class KnowledgeGuardian {
       !classesWithInstantiatedSubclasses(classDef.encodedName) && {
         classDef.memberMethods.count(
             x => Definitions.isConstructorName(x.value.encodedName)) == 1
-      } && {
-        !classDef.topLevelExports.exists(
-            _.value.isInstanceOf[TopLevelConstructorExportDef])
       }
     }
 
