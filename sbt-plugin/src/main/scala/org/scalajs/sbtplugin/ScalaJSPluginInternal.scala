@@ -49,14 +49,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
   }
 
   private val allocatedIRCaches =
-    new AtomicReference[List[globalIRCache.Cache]](Nil)
+    new AtomicReference[List[IRFileCache.Cache]](Nil)
 
   /** Allocates a new IR cache linked to the [[globalIRCache]].
    *
    *  The allocated IR cache will automatically be freed when the build is
    *  unloaded.
    */
-  private def newIRCache: globalIRCache.Cache =
+  private def newIRCache: IRFileCache.Cache =
     registerResource(allocatedIRCaches, globalIRCache.newCache)
 
   private[sbtplugin] def freeAllIRCaches(): Unit =
