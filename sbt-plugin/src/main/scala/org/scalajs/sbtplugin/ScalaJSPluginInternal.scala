@@ -19,7 +19,6 @@ import org.scalajs.linker._
 import org.scalajs.linker.irio._
 
 import org.scalajs.jsenv._
-import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 import org.scalajs.ir.Printers.IRTreePrinter
 
@@ -85,7 +84,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
    * which uses Scala 2.12. We should get rid of that workaround at that point
    * for tidiness, though.
    */
-  private val DefaultParallelLinker: Boolean = {
+  val DefaultParallelLinker: Boolean = {
     try {
       scala.util.Properties.isJavaAtLeast("1.8")
       true
@@ -427,17 +426,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
   private val scalaJSProjectBaseSettings = Seq(
       platformDepsCrossVersion := ScalaJSCrossVersion.binary,
 
-      scalaJSLinkerConfig := {
-        StandardLinker.Config()
-          .withParallel(DefaultParallelLinker)
-      },
-
       scalaJSModuleInitializers := Seq(),
       scalaJSUseMainModuleInitializer := false,
-
-      jsEnv := new NodeJSEnv(),
-
-      jsExecutionFiles := Nil,
 
       // you will need the Scala.js compiler plugin
       addCompilerPlugin(

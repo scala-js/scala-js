@@ -22,6 +22,7 @@ import org.scalajs.linker._
 import org.scalajs.linker.irio._
 
 import org.scalajs.jsenv.JSEnv
+import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 object ScalaJSPlugin extends AutoPlugin {
   override def requires: Plugins = plugins.JvmPlugin
@@ -160,6 +161,15 @@ object ScalaJSPlugin extends AutoPlugin {
   override def globalSettings: Seq[Setting[_]] = {
     Seq(
         scalaJSStage := Stage.FastOpt,
+
+        scalaJSLinkerConfig := {
+          StandardLinker.Config()
+            .withParallel(ScalaJSPluginInternal.DefaultParallelLinker)
+        },
+
+        jsEnv := new NodeJSEnv(),
+
+        jsExecutionFiles := Nil,
 
         // Clear the IR cache stats every time a sequence of tasks ends
         onComplete := {
