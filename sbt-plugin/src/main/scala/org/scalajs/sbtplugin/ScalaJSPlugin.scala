@@ -42,7 +42,7 @@ object ScalaJSPlugin extends AutoPlugin {
 
     // All our public-facing keys
 
-    val scalaJSIRCache = SettingKey[IRFileCache#Cache](
+    val scalaJSIRCache = SettingKey[IRFileCache.Cache](
         "scalaJSIRCache",
         "Scala.js internal: Task to access a cache.", KeyRanks.Invisible)
 

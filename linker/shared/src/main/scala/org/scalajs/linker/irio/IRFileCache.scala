@@ -33,6 +33,8 @@ final class IRFileCache {
    * that paying the cost for synchronization is lower than I/O.
    */
 
+  import IRFileCache._
+
   /** Holds the cached IR */
   private[this] val globalCache = new ConcurrentHashMap[String, PersistedFiles]
 
@@ -43,10 +45,10 @@ final class IRFileCache {
 
   /** Create a new sub-cache.
    *
-   *  Users should call [[Cache.free]] once they are done to allow for more
-   *  aggressive GC.
+   *  Users should call [[IRFileCache.Cache.free]] once they are done to allow
+   *  for more aggressive GC.
    */
-  def newCache: Cache = new Cache
+  def newCache: Cache = new CacheImpl
 
   /** Approximate statistics about the cache usage */
   def stats: IRFileCache.Stats = {
@@ -61,19 +63,9 @@ final class IRFileCache {
     statsTreesRead.set(0)
   }
 
-  /** A cache to use for individual runs. Not threadsafe */
-  final class Cache private[IRFileCache] {
+  private final class CacheImpl extends Cache {
     private[this] var localCache: Seq[PersistedFiles] = _
 
-    /** Extract and cache IR.
-     *
-     *  The returned value is valid until the next invocation of [[cached]] or
-     *  [[free]].
-     *
-     *  @note Updating any of the underlying files in the container during the
-     *      lifetime of a returned [[VirtualScalaJSIRFile]] yields
-     *      unspecified behavior.
-     */
     def cached(files: Seq[ScalaJSIRContainer]): Seq[VirtualScalaJSIRFile] = {
       update(files)
       localCache.flatMap(_.files)
@@ -103,12 +95,6 @@ final class IRFileCache {
       localCache = result.result()
     }
 
-    /** Should be called if this cache is not used anymore.
-     *
-     *  Frees resources in the global cache, if they are not used anymore.
-     *  The cache may be reused after calling [[free]] (but this is not any
-     *  faster than calling [[newCache]], modulo the object allocation).
-     */
     def free(): Unit = {
       if (localCache != null) {
         localCache.foreach(_.unreference())
@@ -275,6 +261,29 @@ final class IRFileCache {
 }
 
 object IRFileCache {
+  /** A cache to use for individual runs. Not threadsafe */
+  sealed trait Cache {
+    /** Extract and cache IR.
+     *
+     *  The returned value is valid until the next invocation of [[cached]] or
+     *  [[free]].
+     *
+     *  @note Updating any of the underlying files in the container during the
+     *      lifetime of a returned [[VirtualScalaJSIRFile]] yields
+     *      unspecified behavior.
+     */
+    def cached(files: Seq[ScalaJSIRContainer]): Seq[VirtualScalaJSIRFile]
+
+    /** Should be called if this cache is not used anymore.
+     *
+     *  Frees resources in the global cache, if they are not used anymore.
+     *  The cache may be reused after calling [[free]] (but this is not any
+     *  faster than calling [[IRFileCache.newCache]], modulo the object
+     *  allocation).
+     */
+    def free(): Unit
+  }
+
   final class Stats(val reused: Int, val invalidated: Int, val treesRead: Int) {
     /** Descriptive line to display in logs */
     def logLine: String = {
