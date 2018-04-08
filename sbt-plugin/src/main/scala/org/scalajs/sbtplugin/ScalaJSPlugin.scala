@@ -62,7 +62,12 @@ object ScalaJSPlugin extends AutoPlugin {
     val FullOptStage = Stage.FullOpt
 
     // CrossType
-    val CrossType = cross.CrossType
+    @deprecated(
+        "The built-in cross-project feature of sbt-scalajs is deprecated. " +
+        "Use the separate sbt plugin sbt-crossproject instead: " +
+        "https://github.com/portable-scala/sbt-crossproject",
+        "0.6.23")
+    lazy val CrossType = cross.CrossType
 
     // Factory methods for JSEnvs
 
