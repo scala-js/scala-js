@@ -91,12 +91,8 @@ object WrappedArray extends StrictOptimizedSeqFactory[WrappedArray] {
 
   def newBuilder[A](): mutable.Builder[A, WrappedArray[A]] = new WrappedArray[A]
 
-  def from[A](source: IterableOnce[A]): WrappedArray[A] = {
-    val b = newBuilder[A]()
-    b.sizeHint(source)
-    b ++= source
-    b.result()
-  }
+  def from[A](source: IterableOnce[A]): WrappedArray[A] =
+    (newBuilder[A]() ++= source).result()
 
   implicit def toJSArray[A](wrappedArray: WrappedArray[A]): Array[A] =
     wrappedArray.array

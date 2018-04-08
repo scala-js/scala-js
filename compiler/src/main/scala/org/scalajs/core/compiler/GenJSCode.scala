@@ -4671,8 +4671,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             tryGenRepeatedParamAsJSArray(arg, handleNil = false).fold {
               genExpr(arg)
             } { genArgs =>
-              genNew(WrappedArrayClass, WrappedArray_ctor,
-                  List(js.JSArrayConstr(genArgs)))
+              genWrappedArrayForVarargs(js.JSArrayConstr(genArgs))
             }
           } else {
             genExpr(arg)
@@ -4840,7 +4839,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           nme.wrapDoubleArray,
           nme.wrapBooleanArray,
           nme.wrapUnitArray,
-          nme.genericWrapArray).map(getMemberMethod(PredefModule, _)).toSet
+          nme.genericWrapArray).map(getMemberMethod(if (isScala213) ScalaRunTimeModule else PredefModule, _)).toSet
 
       def unapply(tree: Apply): Option[Tree] = tree match {
         case Apply(wrapArray_?, List(wrapped))
@@ -4849,6 +4848,24 @@ abstract class GenJSCode extends plugins.PluginComponent
         case _ =>
           None
       }
+
+    }
+
+    /**
+      * Generate `new ImmutableArray(arrayRef)` for Scala 2.13,
+      * or `new WrappedArray(arrayRef)` otherwise.
+      *
+      * This is required because in Scala 2.13 varargs are
+      * represented with an immutable collection.
+      *
+      * @param arrayRef Reference to the array to wrap
+      * @return Reference to the wrapped array
+      */
+    def genWrappedArrayForVarargs(arrayRef: js.Tree)(implicit pos: Position) = {
+      val (clazz, ctor) =
+        if (isScala213) (ImmutableArrayClass, ImmutableArray_ctor)
+        else (WrappedArrayClass, WrappedArray_ctor)
+      genNew(clazz, ctor, arrayRef :: Nil)
     }
 
     // Synthesizers for raw JS functions ---------------------------------------
@@ -5533,6 +5550,9 @@ abstract class GenJSCode extends plugins.PluginComponent
     scala.util.Properties.versionNumberString.startsWith("2.11.") &&
     settings.Xexperimental.value
   }
+
+  private[scalajs] lazy val isScala213 =
+    scala.util.Properties.versionNumberString.startsWith("2.13")
 
   /** Tests whether the given type represents a raw JavaScript type,
    *  i.e., whether it extends scala.scalajs.js.Any.

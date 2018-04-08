@@ -10,9 +10,9 @@ package scala.scalajs.js
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
-
 import scala.collection.mutable
 import scala.collection.mutable.Builder
+import scala.scalajs
 
 /** Wrapper to use a js.Dictionary as a scala.mutable.Map */
 @inline
@@ -85,6 +85,17 @@ class WrappedDictionary[A](val dict: Dictionary[A])
 
   override def empty: WrappedDictionary[A] =
     new WrappedDictionary(Dictionary.empty)
+
+  def map[B](f: ((String, A)) => (String, B)): WrappedDictionary[B] = {
+    val b = new WrappedDictionary.WrappedDictionaryBuilder[B]
+    val it = iterator()
+    while (it.hasNext) {
+      b += f(it.next())
+    }
+    b.result()
+  }
+
+  // TODO overload collect, flatMap and concat
 
 }
 

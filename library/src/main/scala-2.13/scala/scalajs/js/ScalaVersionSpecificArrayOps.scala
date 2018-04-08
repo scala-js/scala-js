@@ -31,7 +31,7 @@ trait ScalaVersionSpecificArrayOps[A]
   protected[this] def newSpecificBuilder(): mutable.Builder[A, Array[A]] =
     iterableFactory.newBuilder()
 
-  def toIterable: scala.collection.Iterable[A] = array
+  def toIterable: scala.collection.Iterable[A] = Any.wrapArray(array)
 
   def repr: Array[A] = array
 
