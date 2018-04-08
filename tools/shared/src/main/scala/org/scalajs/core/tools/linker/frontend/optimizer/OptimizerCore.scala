@@ -1977,7 +1977,7 @@ private[optimizer] abstract class OptimizerCore(
           case arrayTpe @ ArrayType(base, depth) =>
             val elemType = cursoryArrayElemType(arrayTpe)
             val select = ArraySelect(array, index)(elemType)
-            if (base == "C")
+            if (base == "C" && depth == 1)
               boxChar(select)(cont)
             else
               contTree(select)
