@@ -758,6 +758,19 @@ class RegressionTest {
     assertEquals(5L, r)
   }
 
+  @Test def polymorphicArrayApplyWithArrayOfArrayOfChar_issue_3338(): Unit = {
+    @inline
+    def arrayGet[A](a: Array[A], i: Int): Any = a(i)
+
+    val a = Array(Array('a'))
+    val b = arrayGet(a, 0)
+    assertTrue(b.isInstanceOf[Array[Char]])
+    val c = b.asInstanceOf[Array[Char]]
+    val d = arrayGet(c, 0)
+    assertTrue(d.isInstanceOf[Char])
+    assertEquals('a', d)
+  }
+
 }
 
 object RegressionTest {
