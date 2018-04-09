@@ -198,17 +198,17 @@ private[util] class NavigableView[E](original: NavigableSet[E],
 
 private[util] object NavigableViewCompat {
 
-  implicit class IterableExtensionMethods(private val fact: scala.collection.Iterable.type) extends AnyVal {
+  implicit class IterableExtensionMethods(val fact: scala.collection.Iterable.type) extends AnyVal {
     def from[A](source: scala.collection.Iterator[A]): scala.collection.Iterable[A] =
       fact.apply(source.toSeq: _*)
   }
 
-  implicit class ImmutableSortedSetExtensionMethods(private val fact: immutable.SortedSet.type) extends AnyVal {
+  implicit class ImmutableSortedSetExtensionMethods(val fact: immutable.SortedSet.type) extends AnyVal {
     def from[A: Ordering](source: scala.collection.Iterable[A]): immutable.SortedSet[A] =
       fact.apply(source.toSeq: _*)
   }
 
-  implicit class MutableSortedSetExtensionMethods(private val fact: mutable.SortedSet.type) extends AnyVal {
+  implicit class MutableSortedSetExtensionMethods(val fact: mutable.SortedSet.type) extends AnyVal {
     def from[A: Ordering](source: scala.collection.Iterable[A]): mutable.SortedSet[A] =
       fact.apply(source.toSeq: _*)
   }
