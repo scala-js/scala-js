@@ -4839,7 +4839,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           nme.wrapDoubleArray,
           nme.wrapBooleanArray,
           nme.wrapUnitArray,
-          nme.genericWrapArray).map(getMemberMethod(if (isScala213) ScalaRunTimeModule else PredefModule, _)).toSet
+          nme.genericWrapArray).map(getMemberMethod(if (isScala213NewCollections) ScalaRunTimeModule else PredefModule, _)).toSet
 
       def unapply(tree: Apply): Option[Tree] = tree match {
         case Apply(wrapArray_?, List(wrapped))
@@ -4852,7 +4852,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /**
-      * Generate `new ImmutableArray(arrayRef)` for Scala 2.13,
+      * Generate `new ImmutableArray(arrayRef)` for Scala 2.13’s new collections,
       * or `new WrappedArray(arrayRef)` otherwise.
       *
       * This is required because in Scala 2.13 varargs are
@@ -4863,7 +4863,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       */
     def genWrappedArrayForVarargs(arrayRef: js.Tree)(implicit pos: Position) = {
       val (clazz, ctor) =
-        if (isScala213) (ImmutableArrayClass, ImmutableArray_ctor)
+        if (isScala213NewCollections) (ImmutableArrayClass, ImmutableArray_ctor)
         else (WrappedArrayClass, WrappedArray_ctor)
       genNew(clazz, ctor, arrayRef :: Nil)
     }
@@ -5551,8 +5551,11 @@ abstract class GenJSCode extends plugins.PluginComponent
     settings.Xexperimental.value
   }
 
-  private[scalajs] lazy val isScala213 =
-    scala.util.Properties.versionNumberString.startsWith("2.13")
+  // The new collections have been introduced in 2.13.0-M4
+  private[scalajs] lazy val isScala213NewCollections = {
+    val v = scala.util.Properties.versionNumberString
+    v.startsWith("2.13") && v != "2.13.0-M3"
+  }
 
   /** Tests whether the given type represents a raw JavaScript type,
    *  i.e., whether it extends scala.scalajs.js.Any.

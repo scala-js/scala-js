@@ -410,7 +410,8 @@ def otherScalaVersions = [
   "2.12.1",
   "2.12.2",
   "2.12.3",
-  "2.12.4"
+  "2.12.4",
+  "2.13.0-M3"
 ]
 
 // The 'quick' matrix

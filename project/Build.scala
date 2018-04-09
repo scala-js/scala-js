@@ -64,7 +64,7 @@ object Build {
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.7", "2.11.12", "2.12.5", "2.13.0-M4-pre-20d3c21")
+    Set("2.10.7", "2.11.12", "2.12.5", "2.13.0-M3", "2.13.0-M4-pre-20d3c21")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -1054,9 +1054,10 @@ object Build {
 
          unmanagedSourceDirectories += {
             val dir = sourceDirectory.value
-            CrossVersion.partialVersion(scalaVersion.value) match {
-              case Some((2, 13)) => dir / "scala-2.13"
-              case _             => dir / "scala-2.10-2.12"
+            val scalaV = scalaVersion.value
+            CrossVersion.partialVersion(scalaV) match {
+              case Some((2, 13)) if scalaV != "2.13.0-M3" => dir / "scala-2.13"
+              case _ => dir / "scala-2.10_2.13.0-M3"
             }
           },
 

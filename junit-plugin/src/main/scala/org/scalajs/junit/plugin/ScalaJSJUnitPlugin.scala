@@ -380,10 +380,14 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
         def mkList(elems: List[Tree]): Tree = {
           val array = ArrayValue(TypeTree(definitions.ObjectTpe), elems)
+          val varargsModule = {
+            // Note: this logic duplicates the one in GenJSCode#isScala213NewCollections
+            val ver = Properties.versionNumberString
+            if (ver.startsWith("2.13") && ver != "2.13.0-M3") definitions.ScalaRunTimeModule
+            else definitions.PredefModule
+          }
           val wrappedArray = gen.mkMethodCall(
-              // TODO Make this switch 2.14.x proof
-              if (Properties.versionNumberString.startsWith("2.13")) definitions.ScalaRunTimeModule
-              else definitions.PredefModule,
+              varargsModule,
               definitions.wrapVarargsArrayMethodName(definitions.ObjectTpe),
               Nil, List(array))
           gen.mkMethodCall(definitions.List_apply, List(wrappedArray))
