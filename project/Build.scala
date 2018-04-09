@@ -1772,8 +1772,10 @@ object Build {
             // Checkout proper ref. We do this anyway so we fail if
             // something is wrong
             val git = Git.open(trgDir)
+            git.fetch().call()
             s.log.info(s"Checking out Scala source version $ver")
-            git.checkout().setName(s"v$ver").call()
+            val ref = if (ver == "2.13.0-M4-pre-20d3c21") "2ec31613fd702cbde6da07dd614ff7fac9af3b64" else s"v$ver"
+            git.checkout().setName(ref).call()
 
             trgDir
           },
