@@ -1523,7 +1523,11 @@ object Build {
 
         unmanagedSourceDirectories in Test ++= {
           val testDir = (sourceDirectory in Test).value
-
+          val scalaV = scalaVersion.value
+          (
+            if (scalaV.startsWith("2.13") && scalaV != "2.13.0-M3") testDir / "scala-2.13"
+            else testDir / "scala-2.10_2.13.0-M3"
+          ) ::
           includeIf(testDir / "require-modules",
               scalaJSModuleKind.value != ModuleKind.NoModule)
         },
