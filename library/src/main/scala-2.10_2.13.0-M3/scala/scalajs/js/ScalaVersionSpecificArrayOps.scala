@@ -23,7 +23,7 @@ trait ScalaVersionSpecificArrayOps[A]
   override protected[this] def toCollection(
       repr: Array[A]): mutable.IndexedSeq[A] = new WrappedArray(repr)
 
-  @inline final def +=(elem: A): this.type = {
+  @inline def +=(elem: A): this.type = {
     array.push(elem)
     this
   }
