@@ -1,6 +1,7 @@
 package java.lang
 
 import scala.scalajs.js
+import scala.scalajs.js.annotation.JSExport
 
 class Throwable(s: String, private var e: Throwable) extends Object with java.io.Serializable {
   def this() = this(null, null)
@@ -124,11 +125,32 @@ class Throwable(s: String, private var e: Throwable) extends Object with java.io
     }
   }
 
+  /* Re-export toString() because Throwable will be disconnected from Object
+   * to extend js.Error instead, and exports are not transferred.
+   */
+  @JSExport
   override def toString(): String = {
     val className = getClass.getName
     val message = getMessage()
     if (message eq null) className
     else className + ": " + message
+  }
+
+  /* A JavaScript Error object should have a `name` property containing a
+   * string representation of the class of the error.
+   */
+  @JSExport("name")
+  @inline
+  protected def js_name: String = getClass.getName
+
+  /* A JavaScript Error object should have a `message` property containing a
+   * string representation of the message associated with the error.
+   */
+  @JSExport("message")
+  @inline
+  protected def js_message: String = {
+    val m = getMessage()
+    if (m eq null) "" else m
   }
 }
 
