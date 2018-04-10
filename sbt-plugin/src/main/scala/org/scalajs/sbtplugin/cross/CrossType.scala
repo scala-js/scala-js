@@ -13,6 +13,11 @@ import sbt._
 
 import java.io.File
 
+@deprecated(
+    "The built-in cross-project feature of sbt-scalajs is deprecated. " +
+    "Use the separate sbt plugin sbt-crossproject instead: " +
+    "https://github.com/portable-scala/sbt-crossproject",
+    "0.6.23")
 abstract class CrossType {
 
   /** The base directory for a (true sbt) Project
@@ -36,6 +41,11 @@ abstract class CrossType {
 
 }
 
+@deprecated(
+    "The built-in cross-project feature of sbt-scalajs is deprecated. " +
+    "Use the separate sbt plugin sbt-crossproject instead: " +
+    "https://github.com/portable-scala/sbt-crossproject",
+    "0.6.23")
 object CrossType {
 
   object Full extends CrossType {

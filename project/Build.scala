@@ -774,6 +774,8 @@ object Build {
           previousArtifactSetting,
           mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
+          addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.0"),
+
           /* TODO Remove this in 1.x, since there are no macros in sbt-plugin
            * anymore.
            */

@@ -206,6 +206,11 @@ import java.io.File
  *  Implement your own subclass (sub-object) of [[CrossType]].
  *
  */
+@deprecated(
+    "The built-in cross-project feature of sbt-scalajs is deprecated. " +
+    "Use the separate sbt plugin sbt-crossproject instead: " +
+    "https://github.com/portable-scala/sbt-crossproject",
+    "0.6.23")
 final class CrossProject private (
     crossType: CrossType,
     val jvm: Project,
@@ -282,6 +287,11 @@ final class CrossProject private (
 
 }
 
+@deprecated(
+    "The built-in cross-project feature of sbt-scalajs is deprecated. " +
+    "Use the separate sbt plugin sbt-crossproject instead: " +
+    "https://github.com/portable-scala/sbt-crossproject",
+    "0.6.23")
 object CrossProject extends CrossProjectExtra {
 
   def apply(id: String, base: File, crossType: CrossType): CrossProject = {
@@ -343,19 +353,44 @@ object CrossProject extends CrossProjectExtra {
 
 }
 
+/** *Deprecated*.
+ *
+ *  Not marked as `@deprecated` for technical reasons, but should be considered
+ *  as such. All the members are deprecated.
+ */
 trait CrossProjectExtra {
 
+  @deprecated(
+      "The built-in cross-project feature of sbt-scalajs is deprecated. " +
+      "Use the separate sbt plugin sbt-crossproject instead: " +
+      "https://github.com/portable-scala/sbt-crossproject",
+      "0.6.23")
   def crossProject: CrossProject.Builder = macro CrossProject.crossProject_impl
 
+  @deprecated(
+      "The built-in cross-project feature of sbt-scalajs is deprecated. " +
+      "Use the separate sbt plugin sbt-crossproject instead: " +
+      "https://github.com/portable-scala/sbt-crossproject",
+      "0.6.23")
   implicit def crossProjectFromBuilder(
       builder: CrossProject.Builder): CrossProject = {
     builder.crossType(CrossType.Full)
   }
 
+  @deprecated(
+      "The built-in cross-project feature of sbt-scalajs is deprecated. " +
+      "Use the separate sbt plugin sbt-crossproject instead: " +
+      "https://github.com/portable-scala/sbt-crossproject",
+      "0.6.23")
   implicit def crossClasspathDependencyConstructor(
       cp: CrossProject): CrossClasspathDependency.Constructor =
     new CrossClasspathDependency.Constructor(cp)
 
+  @deprecated(
+      "The built-in cross-project feature of sbt-scalajs is deprecated. " +
+      "Use the separate sbt plugin sbt-crossproject instead: " +
+      "https://github.com/portable-scala/sbt-crossproject",
+      "0.6.23")
   implicit def crossClasspathDependency(
       cp: CrossProject): CrossClasspathDependency =
     new CrossClasspathDependency(cp, None)
