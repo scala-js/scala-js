@@ -71,7 +71,9 @@ trait Compat210Component {
 
     lazy val StringTpe = definitions.StringClass.tpe
 
+    // scalastyle:off
     // Copied from https://github.com/scala/scala/blob/0d5b3f6746539f06d4e24673908c8ca1d178655c/src/reflect/scala/reflect/internal/Definitions.scala#L596-L609
+    // scalastyle:on
     def wrapVarargsArrayMethodName(elemtp: Type): TermName = elemtp.typeSymbol match {
       case ByteClass    => nme.wrapByteArray
       case ShortClass   => nme.wrapShortArray

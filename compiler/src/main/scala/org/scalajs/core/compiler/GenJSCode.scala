@@ -4828,6 +4828,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     object WrapArray {
+      lazy val wrapArrayModule = if (isScala213NewCollections) ScalaRunTimeModule else PredefModule
       lazy val isWrapArray: Set[Symbol] = Seq(
           nme.wrapRefArray,
           nme.wrapByteArray,
@@ -4839,7 +4840,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           nme.wrapDoubleArray,
           nme.wrapBooleanArray,
           nme.wrapUnitArray,
-          nme.genericWrapArray).map(getMemberMethod(if (isScala213NewCollections) ScalaRunTimeModule else PredefModule, _)).toSet
+          nme.genericWrapArray).map(getMemberMethod(wrapArrayModule, _)).toSet
 
       def unapply(tree: Apply): Option[Tree] = tree match {
         case Apply(wrapArray_?, List(wrapped))
@@ -4861,7 +4862,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       * @param arrayRef Reference to the array to wrap
       * @return Reference to the wrapped array
       */
-    def genWrappedArrayForVarargs(arrayRef: js.Tree)(implicit pos: Position) = {
+    def genWrappedArrayForVarargs(arrayRef: js.Tree)(implicit pos: Position): js.Tree = {
       val (clazz, ctor) =
         if (isScala213NewCollections) (ImmutableArrayClass, ImmutableArray_ctor)
         else (WrappedArrayClass, WrappedArray_ctor)
