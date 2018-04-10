@@ -40,7 +40,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
 
   @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
     val s = Seq(1, 5, 2, 3, 4)
-    val l = asJavaCollection(s)
+    val l = s.asJavaCollection
     val ad = factory.from[Int](l)
 
     assertEquals(ad.size(), 5)
@@ -52,7 +52,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
   }
 
   @Test def should_add_multiple_element_in_one_operation(): Unit = {
-    val l = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val ad = factory.empty[Int]
 
     assertEquals(ad.size(), 0)
@@ -132,7 +132,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
   }
 
   @Test def should_remove_occurrences_of_provided_elements(): Unit = {
-    val l = asJavaCollection(Seq("one", "two", "three", "two", "one"))
+    val l = Seq("one", "two", "three", "two", "one").asJavaCollection
     val ad = factory.from[String](l)
 
     assertTrue(ad.removeFirstOccurrence("one"))
@@ -146,7 +146,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
 
   @Test def should_iterate_over_elements_in_both_directions(): Unit = {
     val s = Seq("one", "two", "three")
-    val l = asJavaCollection(s)
+    val l = s.asJavaCollection
     val ad = factory.from[String](l)
 
     val iter = ad.iterator()

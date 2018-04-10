@@ -23,7 +23,7 @@ class LinkedHashSetTest extends HashSetTest {
     val hs = factory.empty[String]
 
     val l1 = List[String]("ONE", "TWO", (null: String))
-    assertTrue(hs.addAll(asJavaCollection(l1)))
+    assertTrue(hs.addAll(l1.asJavaCollection))
     assertEquals(3, hs.size)
 
     val iter1 = hs.iterator()

@@ -22,7 +22,7 @@ trait NavigableSetTest extends SetTest {
   def factory: NavigableSetFactory
 
   @Test def `should_retrieve_ceiling(ordered)_elements`(): Unit = {
-    val lInt = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val lInt = Set(1, 5, 2, 3, 4).asJavaCollection
     val nsInt = factory.empty[Int]
 
     nsInt.addAll(lInt)
@@ -32,7 +32,7 @@ trait NavigableSetTest extends SetTest {
     assertEquals(1, nsInt.ceiling(1))
     assertEquals(5, nsInt.ceiling(5))
 
-    val lString = asJavaCollection(Set("a", "e", "b", "c", "d"))
+    val lString = Set("a", "e", "b", "c", "d").asJavaCollection
     val nsString = factory.empty[String]
 
     nsString.addAll(lString)
@@ -45,7 +45,7 @@ trait NavigableSetTest extends SetTest {
   }
 
   @Test def `should_retrieve_floor(ordered)_elements`(): Unit = {
-    val lInt = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val lInt = Set(1, 5, 2, 3, 4).asJavaCollection
     val nsInt = factory.empty[Int]
 
     nsInt.addAll(lInt)
@@ -55,7 +55,7 @@ trait NavigableSetTest extends SetTest {
     assertEquals(3, nsInt.floor(3))
     assertEquals(1, nsInt.floor(1))
 
-    val lString = asJavaCollection(Set("a", "e", "b", "c", "d"))
+    val lString = Set("a", "e", "b", "c", "d").asJavaCollection
     val nsString = factory.empty[String]
 
     nsString.addAll(lString)
@@ -68,7 +68,7 @@ trait NavigableSetTest extends SetTest {
   }
 
   @Test def `should_retrieve_higher(ordered)_elements`(): Unit = {
-    val lInt = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val lInt = Set(1, 5, 2, 3, 4).asJavaCollection
     val nsInt = factory.empty[Int]
 
     nsInt.addAll(lInt)
@@ -78,7 +78,7 @@ trait NavigableSetTest extends SetTest {
     assertEquals(2, nsInt.higher(1))
     assertEquals(1, nsInt.higher(-10))
 
-    val lString = asJavaCollection(Set("a", "e", "b", "c", "d"))
+    val lString = Set("a", "e", "b", "c", "d").asJavaCollection
     val nsString = factory.empty[String]
 
     nsString.addAll(lString)
@@ -91,7 +91,7 @@ trait NavigableSetTest extends SetTest {
   }
 
   @Test def `should_retrieve_lower(ordered)_elements`(): Unit = {
-    val lInt = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val lInt = Set(1, 5, 2, 3, 4).asJavaCollection
     val nsInt = factory.empty[Int]
 
     nsInt.addAll(lInt)
@@ -101,7 +101,7 @@ trait NavigableSetTest extends SetTest {
     assertEquals(2, nsInt.lower(3))
     assertEquals(5, nsInt.lower(10))
 
-    val lString = asJavaCollection(Set("a", "e", "b", "c", "d"))
+    val lString = Set("a", "e", "b", "c", "d").asJavaCollection
     val nsString = factory.empty[String]
 
     nsString.addAll(lString)
@@ -114,7 +114,7 @@ trait NavigableSetTest extends SetTest {
   }
 
   @Test def should_poll_first_and_last_elements(): Unit = {
-    val lInt = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val lInt = Set(1, 5, 2, 3, 4).asJavaCollection
     val ns = factory.empty[Int]
 
     ns.addAll(lInt)

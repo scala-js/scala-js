@@ -14,7 +14,7 @@ import org.junit.Test
 
 import org.scalajs.testsuite.javalib.util.{ListFactory, ListTest}
 
-import scala.collection.convert.ImplicitConversions._
+import scala.collection.JavaConverters._
 
 import org.scalajs.testsuite.utils.Platform.executingInJVM
 
@@ -44,27 +44,27 @@ class CopyOnWriteArrayListTest extends ListTest {
   @Test def should_implement_addAllAbsent(): Unit = {
     val list = factory.empty[Int]
 
-    assertEquals(3, list.addAllAbsent(0 until 3))
+    assertEquals(3, list.addAllAbsent((0 until 3).asJava))
     assertEquals(3, list.size)
     for (i <- 0 until 3)
       assertEquals(i, list.get(i))
 
-    assertEquals(0, list.addAllAbsent(0 until 2))
+    assertEquals(0, list.addAllAbsent((0 until 2).asJava))
     assertEquals(3, list.size)
     for (i <- 0 until 3)
       assertEquals(i, list.get(i))
 
-    assertEquals(3, list.addAllAbsent(3 until 6))
+    assertEquals(3, list.addAllAbsent((3 until 6).asJava))
     assertEquals(6, list.size)
     for (i <- 0 until 6)
       assertEquals(i, list.get(i))
 
-    assertEquals(4, list.addAllAbsent(0 until 10))
+    assertEquals(4, list.addAllAbsent((0 until 10).asJava))
     assertEquals(10, list.size)
     for (i <- 0 until 10)
       assertEquals(i, list.get(i))
 
-    assertEquals(1, list.addAllAbsent(Seq(42, 42, 42)))
+    assertEquals(1, list.addAllAbsent(Seq(42, 42, 42).asJava))
     assertEquals(11, list.size)
     for (i <- 0 until 10)
       assertEquals(i, list.get(i))
@@ -73,12 +73,12 @@ class CopyOnWriteArrayListTest extends ListTest {
 
   @Test def should_implement_a_snapshot_iterator(): Unit = {
     val list = factory.empty[Int]
-    list.addAll(0 to 10)
+    list.addAll((0 to 10).asJava)
 
     val iter = list.iterator()
     list.clear()
     val iter2 = list.iterator()
-    list.addAll(0 to 5)
+    list.addAll((0 to 5).asJava)
 
     for (i <- 0 to 10) {
       assertTrue(iter.hasNext)
@@ -91,7 +91,7 @@ class CopyOnWriteArrayListTest extends ListTest {
   @Test def `should_have_accessible_array_constructor_-_#2023`(): Unit = {
     def test[T <: AnyRef](arr: Array[T]): Unit = {
       val cowal1 = factory.newFrom(arr)
-      assertEquals(arr.length, cowal1.length)
+      assertEquals(arr.length, cowal1.asScala.length)
       for (i <- arr.indices)
         assertEquals(arr(i), cowal1.get(i))
     }

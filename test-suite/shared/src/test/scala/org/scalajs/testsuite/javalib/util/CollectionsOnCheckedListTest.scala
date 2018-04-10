@@ -17,7 +17,7 @@ import org.scalajs.testsuite.javalib.util.concurrent.CopyOnWriteArrayListFactory
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
 
-import scala.collection.convert.ImplicitConversions._
+import scala.collection.JavaConverters._
 
 import scala.reflect.ClassTag
 
@@ -46,7 +46,7 @@ trait CollectionsCheckedListTest
 
   @Test def testCheckedList(): Unit = {
     superList().add(0, new C)
-    assertTrue(superList().addAll(0, Seq(new C)))
+    assertTrue(superList().addAll(0, Seq(new C).asJava))
     testOnFirstPositionOfIterator[ju.ListIterator[A]](superList().listIterator _,
         _.add(new C), None)
     testOnFirstPositionOfIterator[ju.ListIterator[A]](superList().listIterator _,
@@ -58,7 +58,7 @@ trait CollectionsCheckedListTest
 
     expectThrows(classOf[ClassCastException], superList().add(0, new A))
     expectThrows(classOf[ClassCastException],
-        superList().addAll(0, Seq(new A)))
+        superList().addAll(0, Seq(new A).asJava))
     testOnFirstPositionOfIterator[ju.ListIterator[A]](
         superList().listIterator _,
         _.add(new A), Some(classOf[ClassCastException]))

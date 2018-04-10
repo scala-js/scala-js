@@ -117,7 +117,7 @@ class PriorityQueueTest {
   }
 
   @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
-    val l = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val pq = new PriorityQueue[Int](l)
 
     assertEquals(5, pq.size())
@@ -128,7 +128,7 @@ class PriorityQueueTest {
   }
 
   @Test def could_be_instantiated_with_a_prepopulated_PriorityQueue(): Unit = {
-    val l = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val pq1 = new PriorityQueue[Int](l)
     val pq2 = new PriorityQueue[Int](pq1)
 
@@ -142,7 +142,7 @@ class PriorityQueueTest {
   }
 
   @Test def could_be_instantiated_with_a_prepopulated_SortedSet(): Unit = {
-    val l = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val ss = new java.util.concurrent.ConcurrentSkipListSet[Int](l)
     val pq1 = new PriorityQueue[Int](l)
     val pq2 = new PriorityQueue[Int](ss)
@@ -157,7 +157,7 @@ class PriorityQueueTest {
   }
 
   @Test def should_be_cleared_in_a_single_operation(): Unit = {
-    val l = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val pq = new PriorityQueue[Int](l)
 
     assertEquals(5, pq.size())
@@ -166,7 +166,7 @@ class PriorityQueueTest {
   }
 
   @Test def should_add_multiple_elemnt_in_one_operation(): Unit = {
-    val l = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val pq = new PriorityQueue[Int]()
 
     assertEquals(0, pq.size())

@@ -4,7 +4,7 @@ import java.{lang => jl, util => ju}
 
 import org.scalajs.testsuite.utils.AssertThrows._
 
-import scala.collection.convert.ImplicitConversions._
+import scala.collection.JavaConverters._
 
 trait CollectionsTestBase {
 
@@ -29,13 +29,13 @@ trait CollectionsTestBase {
   def testCollectionUnmodifiability[E](coll: ju.Collection[E], elem: E): Unit = {
     expectThrows(classOf[UnsupportedOperationException], coll.add(elem))
     expectThrows(classOf[UnsupportedOperationException],
-        coll.addAll(Seq.empty[E]))
+        coll.addAll(Seq.empty[E].asJava))
     expectThrows(classOf[UnsupportedOperationException], coll.clear())
     expectThrows(classOf[UnsupportedOperationException], coll.remove(elem))
     expectThrows(classOf[UnsupportedOperationException],
-        coll.removeAll(Seq.empty[E]))
+        coll.removeAll(Seq.empty[E].asJava))
     expectThrows(classOf[UnsupportedOperationException],
-        coll.retainAll(Seq.empty[E]))
+        coll.retainAll(Seq.empty[E].asJava))
     testIteratorsUnmodifiability(() => coll.iterator())
   }
 
@@ -59,7 +59,7 @@ trait CollectionsTestBase {
     testCollectionUnmodifiability(list, elem)
     expectThrows(classOf[UnsupportedOperationException], list.add(0, elem))
     expectThrows(classOf[UnsupportedOperationException],
-        list.addAll(0, Seq.empty[E]))
+        list.addAll(0, Seq.empty[E].asJava))
     expectThrows(classOf[UnsupportedOperationException], list.remove(0))
     expectThrows(classOf[UnsupportedOperationException], list.set(0, elem))
     def testSublist(sl: ju.List[E]): Unit = {
@@ -88,7 +88,7 @@ trait CollectionsTestBase {
     expectThrows(classOf[UnsupportedOperationException], map.clear())
     expectThrows(classOf[UnsupportedOperationException], map.put(key, value))
     expectThrows(classOf[UnsupportedOperationException],
-        map.putAll(Map.empty[K, V]))
+        map.putAll(Map.empty[K, V].asJava))
     testSetUnmodifiability(map.entrySet(),
         new ju.AbstractMap.SimpleImmutableEntry(key, value))
     testSetUnmodifiability(map.keySet(), key)

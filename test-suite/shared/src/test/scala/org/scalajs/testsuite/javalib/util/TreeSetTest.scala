@@ -174,7 +174,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
   }
 
   @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
-    val l = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val ts = factory.newFrom(l)
 
     assertEquals(5, ts.size())
@@ -186,7 +186,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
   }
 
   @Test def should_be_cleared_in_a_single_operation(): Unit = {
-    val l = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val ts = factory.empty[Int]
 
     ts.addAll(l)
@@ -197,7 +197,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
   }
 
   @Test def should_add_multiple_element_in_one_operation(): Unit = {
-    val l = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val ts = factory.empty[Int]
 
     assertEquals(0, ts.size())
@@ -268,7 +268,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
       assertFalse(ts1.contains("THREE"))
     } else {
       expectThrows(classOf[Exception], {
-        ts1.addAll(asJavaCollection(l))
+        ts1.addAll(l.asJavaCollection)
       })
     }
   }
@@ -287,7 +287,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
   @Test def should_throw_exceptions_on_access_outside_bound_on_views(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
-    val l = asJavaCollection(Set(2, 3, 6))
+    val l = Set(2, 3, 6).asJavaCollection
     val ts = factory.empty[Int]
     ts.addAll(l)
 

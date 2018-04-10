@@ -81,7 +81,7 @@ class ConcurrentLinkedQueueTest extends AbstractCollectionTest {
   }
 
   @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
-    val l = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val pq = factory.newFrom(l)
 
     assertEquals(5, pq.size())
@@ -92,7 +92,7 @@ class ConcurrentLinkedQueueTest extends AbstractCollectionTest {
   }
 
   @Test def should_be_cleared_in_a_single_operation(): Unit = {
-    val l = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val pq = factory.newFrom(l)
 
     assertEquals(5, pq.size())
@@ -101,7 +101,7 @@ class ConcurrentLinkedQueueTest extends AbstractCollectionTest {
   }
 
   @Test def should_add_multiple_elemnt_in_one_operation(): Unit = {
-    val l = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val pq = factory.empty[Int]
 
     assertEquals(0, pq.size())
