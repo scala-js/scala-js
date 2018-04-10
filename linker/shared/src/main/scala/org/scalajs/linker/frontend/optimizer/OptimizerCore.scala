@@ -430,10 +430,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case Match(selector, cases, default) =>
         val newSelector = transformExpr(selector)
         newSelector match {
-          case newSelector: Literal =>
-            val body = cases collectFirst {
-              case (alts, body) if alts.exists(literal_===(_, newSelector)) => body
-            } getOrElse default
+          case IntLiteral(selectorValue) =>
+            val body = cases.collectFirst {
+              case (alts, body) if alts.exists(_.value == selectorValue) => body
+            }.getOrElse(default)
             transform(body, isStat)
           case _ =>
             Match(newSelector,
@@ -783,10 +783,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case Match(selector, cases, default) =>
         val newSelector = transformExpr(selector)
         newSelector match {
-          case newSelector: Literal =>
-            val body = cases collectFirst {
-              case (alts, body) if alts.exists(literal_===(_, newSelector)) => body
-            } getOrElse default
+          case IntLiteral(selectorValue) =>
+            val body = cases.collectFirst {
+              case (alts, body) if alts.exists(_.value == selectorValue) => body
+            }.getOrElse(default)
             pretransformExpr(body)(cont)
           case _ =>
             cont(Match(newSelector,
