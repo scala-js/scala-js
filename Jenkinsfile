@@ -229,27 +229,22 @@ def Tasks = [
         ++$scala $testSuite/test
   ''',
 
-  /* The reason we do `testSuite/test:fastOptJS` is that the linker tests will
-   * need the "discovered tests" from the test suite, which means we need to
-   * fast-optimize the test suite. We explicitly do it beforehand, so that the
-   * memory necessary to do that is not accumulated with the rest of the tests.
-   * Moreover, for the bootstrap tests to be able to call
+  /* For the bootstrap tests to be able to call
    * `testSuite/test:fastOptJS`, `scalaJSStage in testSuite` must be
    * `FastOptStage`, even when `scalaJSStage in Global` is `FullOptStage`.
    */
   "bootstrap": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala testSuite/test:fastOptJS &&
     sbt ++$scala linker/test &&
     sbt ++$scala irJS/test ioJS/test linkerJS/test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSStage in testSuite := FastOptStage' \
         ++$scala irJS/test ioJS/test linkerJS/test &&
-    sbt ++$scala linkerJS/bootstrapTest &&
+    sbt ++$scala testSuite/bootstrap:test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSStage in testSuite := FastOptStage' \
-        ++$scala linkerJS/bootstrapTest &&
+        ++$scala testSuite/bootstrap:test &&
     sbt ++$scala irJS/mimaReportBinaryIssues ioJS/mimaReportBinaryIssues \
         loggingJS/mimaReportBinaryIssues linkerJS/mimaReportBinaryIssues
   ''',
@@ -333,6 +328,7 @@ def Tasks = [
     sbt noDOM/run \
         noDOM/testHtml multiTestJS/testHtml \
         test \
+        noDOM/testScalaJSModuleInitializers \
         noDOM/clean noDOM/concurrentUseOfLinkerTest \
         multiTestJS/test:testScalaJSSourceMapAttribute &&
     sbt 'set scalaJSStage in Global := FullOptStage' \

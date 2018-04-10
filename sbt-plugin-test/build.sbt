@@ -1,4 +1,5 @@
 import org.scalajs.io._
+import org.scalajs.linker._
 import org.scalajs.sbtplugin.Loggers.sbtLogger2ToolsLogger
 import org.scalajs.sbtplugin.ScalaJSCrossVersion
 
@@ -26,6 +27,9 @@ val baseSettings = versionSettings ++ Seq(
 val testScalaJSSourceMapAttribute = TaskKey[Unit](
   "testScalaJSSourceMapAttribute", "", KeyRanks.BTask)
 
+val testScalaJSModuleInitializers = TaskKey[Unit](
+  "testScalaJSModuleInitializers", "", KeyRanks.BTask)
+
 lazy val root = project.in(file(".")).
   aggregate(noDOM, multiTestJS, multiTestJVM)
 
@@ -35,7 +39,20 @@ lazy val noDOM = project.settings(baseSettings: _*).
   settings(
     name := "Scala.js sbt test w/o DOM",
     scalaJSUseMainModuleInitializer := true,
-    javaOptions += "-Xmx512M" // test that this is ignored without error
+    scalaJSModuleInitializers +=
+      ModuleInitializer.mainMethod("sbttest.noDOM.TestApp", "foo"),
+    scalaJSModuleInitializers in Test +=
+      ModuleInitializer.mainMethod("sbttest.noDOM.InitHolder", "foo"),
+
+    testScalaJSModuleInitializers := {
+      // Compile should have main module init and TestApp.foo
+      assert((scalaJSModuleInitializers in Compile).value.size == 2,
+        "Bad number of scalaJSModuleInitializers in Compile")
+
+      // Test should have InitHolder.foo and TestApp.foo
+      assert((scalaJSModuleInitializers in Test).value.size == 2,
+        "Bad number of scalaJSModuleInitializers in Test")
+    }
   ).
   /* This hopefully exposes concurrent uses of the linker. If it fails/gets
    * flaky, there is a bug somewhere - #2202

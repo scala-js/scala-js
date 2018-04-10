@@ -1,0 +1,35 @@
+package build
+
+import org.scalajs.linker._
+
+object TestSuiteLinkerOptions {
+
+  def semantics(s: Semantics): Semantics = {
+    import Semantics.RuntimeClassNameMapper
+
+    s.withRuntimeClassNameMapper(
+        RuntimeClassNameMapper.keepAll().andThen(
+            RuntimeClassNameMapper.regexReplace(
+                raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$RenamedTestClass$$""".r,
+                "renamed.test.Class")
+        ).andThen(
+            RuntimeClassNameMapper.regexReplace(
+                raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$Prefix""".r,
+                "renamed.test.byprefix.")
+        ).andThen(
+            RuntimeClassNameMapper.regexReplace(
+                raw"""^org\.scalajs\.testsuite\.compiler\.ReflectionTest\$$OtherPrefix""".r,
+                "renamed.test.byotherprefix.")
+        )
+    )
+  }
+
+  def moduleInitializers: List[ModuleInitializer] = {
+    val module = "org.scalajs.testsuite.compiler.ModuleInitializers"
+    List(
+        ModuleInitializer.mainMethod(module, "mainNoArgs"),
+        ModuleInitializer.mainMethodWithArgs(module, "mainWithArgs"),
+        ModuleInitializer.mainMethodWithArgs(module, "mainWithArgs", List("foo", "bar"))
+    )
+  }
+}
