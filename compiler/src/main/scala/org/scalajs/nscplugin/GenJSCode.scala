@@ -3108,7 +3108,16 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = tree.pos
       val Match(selector, cases) = tree
 
-      val expr = genExpr(selector)
+      /* We adapt the selector to IntType so that we can use it in a js.Match,
+       * just like GenBCode does for the JVM. This seems to be redundant,
+       * though, as anything that comes out of the pattern matching has already
+       * been adapted to an Int (along with the cases). However, since GenBCode
+       * adapts, we do the same, to be on the safe side (for example, a
+       * compiler plugin could generate a Match with other types of
+       * primitives ...).
+       */
+      val expr = adaptPrimitive(genExpr(selector), jstpe.IntType)
+
       val resultType = toIRType(tree.tpe)
 
       val defaultLabelSym = cases.collectFirst {
@@ -3117,7 +3126,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           body.symbol
       }.getOrElse(NoSymbol)
 
-      var clauses: List[(List[js.Literal], js.Tree)] = Nil
+      var clauses: List[(List[js.IntLiteral], js.Tree)] = Nil
       var optElseClause: Option[js.Tree] = None
       var optElseClauseLabel: Option[js.Ident] = None
 
@@ -3168,8 +3177,12 @@ abstract class GenJSCode extends plugins.PluginComponent
             genStatOrExpr(body, isStat)
         }
 
-        def genLiteral(lit: Literal): js.Literal =
-          genExpr(lit).asInstanceOf[js.Literal]
+        /* value.intValue implicitly adapts the constant value to an Int. This
+         * is also what GenBCode for the JVM. See also the comment about
+         * adaptPrimitive at the beginning of this method.
+         */
+        def genLiteral(lit: Literal): js.IntLiteral =
+          js.IntLiteral(lit.value.intValue)(lit.pos)
 
         pat match {
           case lit: Literal =>

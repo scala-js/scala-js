@@ -850,7 +850,7 @@ object Serializers {
         case TagThrow    => Throw(readTree())
         case TagMatch    =>
           Match(readTree(), List.fill(readInt()) {
-            (readTrees().map(_.asInstanceOf[Literal]), readTree())
+            (readTrees().map(_.asInstanceOf[IntLiteral]), readTree())
           }, readTree())(readType())
         case TagDebugger => Debugger()
 

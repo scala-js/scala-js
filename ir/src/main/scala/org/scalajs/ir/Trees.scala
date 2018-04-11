@@ -218,12 +218,12 @@ object Trees {
 
   /** A break-free switch (without fallthrough behavior).
    *  Unlike a JavaScript switch, it can be used in expression position.
-   *  It supports alternatives explicitly (hence the List[Tree] in cases),
-   *  whereas in a switch one would use the fallthrough behavior to
+   *  It supports alternatives explicitly (hence the `List[IntLiteral]` in
+   *  cases), whereas in a switch one would use the fallthrough behavior to
    *  implement alternatives.
    *  (This is not a pattern matching construct like in Scala.)
    */
-  case class Match(selector: Tree, cases: List[(List[Literal], Tree)],
+  case class Match(selector: Tree, cases: List[(List[IntLiteral], Tree)],
       default: Tree)(val tpe: Type)(implicit val pos: Position) extends Tree
 
   case class Debugger()(implicit val pos: Position) extends Tree {

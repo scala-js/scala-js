@@ -607,11 +607,10 @@ private final class IRChecker(unit: LinkingUnit,
         env
 
       case Match(selector, cases, default) =>
-        typecheckExpr(selector, env)
-        for ((alts, body) <- cases) {
-          alts.foreach(typecheckExpr(_, env))
+        typecheckExpect(selector, env, IntType)
+        // The alternatives are IntLiterals, no point typechecking them
+        for ((_, body) <- cases)
           typecheckStat(body, env)
-        }
         typecheckStat(default, env)
         env
 
@@ -722,11 +721,10 @@ private final class IRChecker(unit: LinkingUnit,
 
       case Match(selector, cases, default) =>
         val tpe = tree.tpe
-        typecheckExpr(selector, env)
-        for ((alts, body) <- cases) {
-          alts.foreach(typecheckExpr(_, env))
+        typecheckExpect(selector, env, IntType)
+        // The alternatives are IntLiterals, no point typechecking them
+        for ((_, body) <- cases)
           typecheckExpect(body, env, tpe)
-        }
         typecheckExpect(default, env, tpe)
 
       // Scala expressions

@@ -1557,7 +1557,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               val newCases = {
                 for {
                   (values, body) <- cases
-                  newValues = values.map(transformExpr(_, preserveChar = true))
+                  newValues = values.map(v => js.IntLiteral(v.value)(v.pos))
                   // add the break statement
                   newBody = js.Block(
                       pushLhsInto(newLhs, body, tailPosLabels)(branchesEnv),
