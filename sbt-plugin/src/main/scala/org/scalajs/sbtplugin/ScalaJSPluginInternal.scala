@@ -22,8 +22,7 @@ import org.scalajs.jsenv._
 
 import org.scalajs.ir.Printers.IRTreePrinter
 
-import org.scalajs.testadapter.{TestAdapter, HTMLRunnerBuilder}
-import org.scalajs.testadapter.TestAdapter.ModuleIdentifier
+import org.scalajs.testadapter.{TestAdapter, HTMLRunnerBuilder, TestAdapterInitializer}
 
 import Loggers._
 import SBTCompat._
@@ -64,10 +63,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
   private val createdTestAdapters =
     new AtomicReference[List[TestAdapter]](Nil)
 
-  private def newTestAdapter(jsEnv: JSEnv, jsFiles: Seq[VirtualJSFile],
+  private def newTestAdapter(jsEnv: JSEnv, input: Input,
       config: TestAdapter.Config): TestAdapter = {
-    registerResource(createdTestAdapters,
-        new TestAdapter(jsEnv, jsFiles, config))
+    registerResource(createdTestAdapters, new TestAdapter(jsEnv, input, config))
   }
 
   private[sbtplugin] def closeAllTestAdapters(): Unit =
@@ -335,33 +333,65 @@ private[sbtplugin] object ScalaJSPluginInternal {
       scalaJSConfigSettings
   )
 
-  private val scalaJSTestFrameworkSettings = Seq(
+  val scalaJSTestSettings: Seq[Setting[_]] = (
+      scalaJSConfigSettings
+  ) ++ Seq(
+      /* Always default to false for scalaJSUseMainModuleInitializer in testing
+       * configurations, even if it is true in the Global configuration scope.
+       */
+      scalaJSUseMainModuleInitializer := false,
+
+      // Use test module initializer by default.
+      scalaJSUseTestModuleInitializer := true,
+
+      scalaJSModuleInitializers ++= {
+        val useMain = scalaJSUseMainModuleInitializer.value
+        val useTest = scalaJSUseTestModuleInitializer.value
+        val configName = configuration.value.name
+
+        if (useTest) {
+          if (useMain) {
+            throw new MessageOnlyException("You may only set one of " +
+                s"`scalaJSUseMainModuleInitializer in $configName` and " +
+                s"`scalaJSUseTestModuleInitializer in $configName` to true")
+          }
+
+          Seq(
+              ModuleInitializer.mainMethod(
+                  TestAdapterInitializer.ModuleClassName,
+                  TestAdapterInitializer.MainMethodName)
+          )
+        } else {
+          Seq.empty
+        }
+      },
+
       loadedTestFrameworks := {
+        val configName = configuration.value.name
+
         if (fork.value) {
           throw new MessageOnlyException(
-              "`test` tasks in a Scala.js project require " +
-              "`fork in Test := false`.")
+              s"`test in $configName` tasks in a Scala.js project require " +
+              s"`fork in $configName := false`.")
+        }
+
+        if (!scalaJSUseTestModuleInitializer.value) {
+          throw new MessageOnlyException(
+              s"You may only use `test in $configName` tasks in " +
+              "a Scala.js project if `scalaJSUseTestModuleInitializer in " +
+              s"$configName := true`")
         }
 
         val frameworks = testFrameworks.value
         val env = jsEnv.value
-        val files = jsExecutionFiles.value
-
-        val moduleIdentifier = scalaJSLinkerConfig.value.moduleKind match {
-          case ModuleKind.NoModule =>
-            ModuleIdentifier.NoModule
-          case ModuleKind.CommonJSModule =>
-            ModuleIdentifier.CommonJSModule(scalaJSLinkedFile.value.data.getPath)
-        }
-
+        val input = Input.ScriptsToLoad(jsExecutionFiles.value.toList)
         val frameworkNames = frameworks.map(_.implClassNames.toList).toList
 
         val logger = sbtLogger2ToolsLogger(streams.value.log)
         val config = TestAdapter.Config()
           .withLogger(logger)
-          .withModuleIdentifier(moduleIdentifier)
 
-        val adapter = newTestAdapter(env, files, config)
+        val adapter = newTestAdapter(env, input, config)
         val frameworkAdapters = adapter.loadFrameworks(frameworkNames)
 
         frameworks.zip(frameworkAdapters).collect {
@@ -374,10 +404,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
       definedTestNames := {
         definedTests.map(_.map(_.name).distinct)
           .storeAs(definedTestNames).triggeredBy(loadedTestFrameworks).value
-      }
-  )
+      },
 
-  private val scalaJSTestHtmlSettings = Seq(
       artifactPath in testHtml := {
         val stageSuffix = scalaJSStage.value match {
           case Stage.FastOpt => "fastopt"
@@ -410,17 +438,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         Attributed.blank(output)
       }
-  )
-
-  val scalaJSTestSettings: Seq[Setting[_]] = (
-      scalaJSConfigSettings ++
-      scalaJSTestFrameworkSettings ++
-      scalaJSTestHtmlSettings
-  ) ++ Seq(
-      /* Always default to false for scalaJSUseMainModuleInitializer in testing
-       * configurations, even if it is true in the Global configuration scope.
-       */
-      scalaJSUseMainModuleInitializer := false
   )
 
   private val scalaJSProjectBaseSettings = Seq(

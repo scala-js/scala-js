@@ -1,4 +1,4 @@
-package org.scalajs.testinterface.internal
+package org.scalajs.testinterface
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
@@ -9,7 +9,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import org.scalajs.testcommon.RPCCore
 
 /** JS RPC Core. Uses `scalajsCom`. */
-private[internal] final object JSRPC extends RPCCore {
+private[testinterface] final object JSRPC extends RPCCore {
   Com.init(handleMessage _)
 
   override protected def send(msg: String): Unit = Com.send(msg)

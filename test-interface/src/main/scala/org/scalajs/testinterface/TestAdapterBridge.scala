@@ -1,7 +1,4 @@
-package org.scalajs.testinterface.internal
-
-import scala.scalajs.js.annotation._
-import scala.scalajs.reflect.Reflect
+package org.scalajs.testinterface
 
 import scala.concurrent.{Future, Promise}
 
@@ -9,15 +6,13 @@ import scala.util.control.NonFatal
 import scala.util.Try
 
 import org.scalajs.testcommon._
-import org.scalajs.testinterface.ScalaJSClassLoader
 
 import sbt.testing._
 
-private object Bridge {
+private[testinterface] object TestAdapterBridge {
 
   private[this] val mux = new RunMuxRPC(JSRPC)
 
-  @JSExportTopLevel("org.scalajs.testinterface.internal.startBridge")
   def start(): Unit = {
     import JSEndpoints._
 

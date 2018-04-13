@@ -1,11 +1,11 @@
-package org.scalajs.testinterface.internal
+package org.scalajs.testinterface
 
 import scala.scalajs.js
 import scala.scalajs.reflect.Reflect
 
 import sbt.testing.Framework
 
-private[internal] object FrameworkLoader {
+private[testinterface] object FrameworkLoader {
 
   def loadFramework(frameworkName: String): Framework = {
     val clazz = Reflect.lookupInstantiatableClass(frameworkName).getOrElse {
@@ -23,5 +23,16 @@ private[internal] object FrameworkLoader {
 
     for (frameworkNames <- names)
       yield frameworkNames.find(frameworkExists(_))
+  }
+
+  def tryLoadFramework(names: List[String]): Option[Framework] = {
+    def tryLoad(name: String): Option[Framework] = {
+      Reflect.lookupInstantiatableClass(name).collect {
+        case clazz if classOf[Framework].isAssignableFrom(clazz.runtimeClass) =>
+          clazz.newInstance().asInstanceOf[Framework]
+      }
+    }
+
+    names.toStream.map(tryLoad).flatten.headOption
   }
 }

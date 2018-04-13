@@ -23,8 +23,7 @@ import org.scalajs.testcommon._
 
 import sbt.testing.Framework
 
-final class TestAdapter(jsEnv: JSEnv, jsFiles: Seq[VirtualJSFile],
-    config: TestAdapter.Config) {
+final class TestAdapter(jsEnv: JSEnv, input: Input, config: TestAdapter.Config) {
 
   import TestAdapter._
 
@@ -120,21 +119,7 @@ final class TestAdapter(jsEnv: JSEnv, jsFiles: Seq[VirtualJSFile],
     // Otherwise we might leak runners.
     require(!closed, "We are closed. Cannot create new runner.")
 
-    val orgExpr = config.moduleIdentifier match {
-      case ModuleIdentifier.NoModule =>
-        "typeof(org) != 'undefined' ? org : {}"
-
-      case ModuleIdentifier.CommonJSModule(moduleName) =>
-        s"""require("${escapeJS(moduleName)}").org || {}"""
-    }
-
-    val launcher = new MemVirtualJSFile("startTestBridge.js")
-      .withContent(s"($orgExpr).scalajs.testinterface.internal.startBridge();")
-
-    val input = Input.ScriptsToLoad((jsFiles :+ launcher).toList)
-    val runConfig = RunConfig()
-      .withLogger(config.logger)
-
+    val runConfig = RunConfig().withLogger(config.logger)
     val com = new JSEnvRPC(jsEnv, input, runConfig)
     val mux = new RunMuxRPC(com)
 
@@ -143,53 +128,22 @@ final class TestAdapter(jsEnv: JSEnv, jsFiles: Seq[VirtualJSFile],
 }
 
 object TestAdapter {
-  /** An identifier for the Scala.js module, which specifies where its exports
-   *  can be loaded from.
-   *
-   *  @note
-   *    Although this class looks like an ADT and is not extensible from the
-   *    outside, it is not `sealed`. Future versions may have more subclasses,
-   *    which means that `match`es covering all existing cases may fail with
-   *    `MatchError` in the future.
-   */
-  abstract class ModuleIdentifier private ()
-
-  object ModuleIdentifier {
-    /** The Scala.js code is not a module; its exports are in the global scope.
-     */
-    case object NoModule extends ModuleIdentifier
-
-    /** The Scala.js module is a CommonJS module.
-     *
-     *  @param moduleName
-     *    The module name such that `require(moduleName)` returns the exports
-     *    of the Scala.js module.
-     */
-    final case class CommonJSModule(moduleName: String) extends ModuleIdentifier
-  }
-
   final class Config private (
-      val logger: Logger,
-      val moduleIdentifier: ModuleIdentifier
+      val logger: Logger
   ) {
     private def this() = {
       this(
-          logger = NullLogger,
-          moduleIdentifier = ModuleIdentifier.NoModule
+          logger = NullLogger
       )
     }
 
     def withLogger(logger: Logger): Config =
       copy(logger = logger)
 
-    def withModuleIdentifier(moduleIdentifier: ModuleIdentifier): Config =
-      copy(moduleIdentifier = moduleIdentifier)
-
     private def copy(
-        logger: Logger = logger,
-        moduleIdentifier: ModuleIdentifier = moduleIdentifier
+        logger: Logger = logger
     ): Config = {
-      new Config(logger, moduleIdentifier)
+      new Config(logger)
     }
   }
 

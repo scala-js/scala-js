@@ -22,7 +22,11 @@ object QuickLinker {
 
     val linker = StandardLinker(config)
 
-    val moduleInitializers = build.TestSuiteLinkerOptions.moduleInitializers
+    val moduleInitializers = {
+      build.TestSuiteLinkerOptions.moduleInitializers :+
+      // Copied from org.scalajs.testadapter.TestAdapaterInitializer.
+      ModuleInitializer.mainMethod("org.scalajs.testinterface.Bridge", "start")
+    }
 
     val ir = extractIR(irFilesAndJars)
 

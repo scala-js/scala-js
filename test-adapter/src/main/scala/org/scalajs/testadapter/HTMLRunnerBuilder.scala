@@ -19,7 +19,7 @@ import org.scalajs.io.JSUtils.escapeJS
 
 import org.scalajs.jsenv.VirtualFileMaterializer
 
-import org.scalajs.testcommon.Serializer
+import org.scalajs.testcommon._
 
 /** Template for the HTML runner. */
 object HTMLRunnerBuilder {
@@ -46,8 +46,9 @@ object HTMLRunnerBuilder {
     }
     val cssFileURI = jsFileCache.materialize(cssFile).toURI
 
-    val htmlContent = render(output.toURI, title, jsFileURIs, cssFileURI,
-        frameworkImplClassNames, taskDefs)
+    val tests = new IsolatedTestSet(frameworkImplClassNames, taskDefs)
+
+    val htmlContent = render(output.toURI, title, jsFileURIs, cssFileURI, tests)
 
     val outputWriter = WritableFileVirtualTextFile(output).contentWriter
     try {
@@ -58,8 +59,7 @@ object HTMLRunnerBuilder {
   }
 
   private def render(baseURI: URI, title: String, jsFiles: Seq[URI],
-      css: URI, frameworkImplClassNames: List[List[String]],
-      taskDefs: List[TaskDef]): String = {
+      css: URI, tests: IsolatedTestSet): String = {
     def relURI(uri: URI) =
       htmlEscaped(URIUtils.relativize(baseURI, uri).toASCIIString)
 
@@ -70,29 +70,21 @@ object HTMLRunnerBuilder {
         <title>${htmlEscaped(title)}</title>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <link rel="stylesheet" type="text/css" href="${relURI(css)}" />
+        <script type="text/javascript">
+        ${injectInterfaceMode(tests)}
+        </script>
         ${(for (jsFile <- jsFiles) yield s"""
         <script type="text/javascript" src="${relURI(jsFile)}"></script>
         """).mkString("")}
-        <script type="text/javascript">
-        ${renderTestDefinitions(frameworkImplClassNames, taskDefs)}
-        </script>
       </head>
-      <body onload="org.scalajs.testinterface.HTMLRunner.main()" />
+      <body></body>
     </html>"""
   }
 
-  /** Courtesy to our own build.
-   *  This is a hack. The build should take care of its own mess, but oh well.
-   */
-  private[scalajs] def renderTestDefinitions(
-      frameworkImplClassNames: List[List[String]],
-      taskDefs: List[TaskDef]): String = {
-
-    def mkVar[T: Serializer](name: String, value: T) =
-      s"""var $name = "${escapeJS(Serializer.serialize(value))}";\n"""
-
-    mkVar("definedTests", taskDefs) +
-    mkVar("testFrameworkNames", frameworkImplClassNames)
+  private def injectInterfaceMode(tests: IsolatedTestSet): String = {
+    val mode = TestInterfaceMode.HTMLRunner(tests)
+    val ser = Serializer.serialize[TestInterfaceMode](mode)
+    s"""var __ScalaJSTestInterfaceMode = "${escapeJS(ser)}";"""
   }
 
   private def htmlEscaped(str: String): String = str.flatMap {
