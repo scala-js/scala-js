@@ -128,7 +128,7 @@ lazy val multiTestJS = project.in(file("multiTest/js")).
 
     // Make FrameworkDetector resilient to other output - #1572
     jsExecutionFiles in Test := {
-      val consoleWriter = FileVirtualJSFile(
+      val consoleWriter = FileVirtualBinaryFile(
           (resourceDirectory in Test).value / "consoleWriter.js")
       consoleWriter +: (jsExecutionFiles in Test).value
     },

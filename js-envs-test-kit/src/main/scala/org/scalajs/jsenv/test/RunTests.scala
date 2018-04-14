@@ -2,7 +2,7 @@ package org.scalajs.jsenv.test
 
 import scala.concurrent.Await
 
-import org.scalajs.io.VirtualJSFile
+import org.scalajs.io.VirtualBinaryFile
 import org.scalajs.jsenv._
 
 import org.junit.Assert._
@@ -118,10 +118,10 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
 
   @Test
   def noThrowOnBadFileTest: Unit = {
-    val badFile = new VirtualJSFile {
+    val badFile = new VirtualBinaryFile {
       def path: String = ???
       def exists: Boolean = ???
-      def content: String = ???
+      def content: Array[Byte] = ???
     }
 
     // `start` may not throw but must fail asynchronously

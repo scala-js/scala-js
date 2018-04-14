@@ -274,7 +274,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       // Add the Scala.js linked file to the JS files (by default, the only one)
       jsExecutionFiles +=
-        new FileVirtualJSFile(scalaJSLinkedFile.value.data),
+        new FileVirtualBinaryFile(scalaJSLinkedFile.value.data),
 
       scalaJSMainModuleInitializer := {
         mainClass.value.map { mainCl =>

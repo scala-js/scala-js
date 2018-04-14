@@ -9,7 +9,7 @@ import scala.annotation.tailrec
 import scala.concurrent.Await
 import scala.concurrent.duration.Deadline
 
-import org.scalajs.io.{VirtualJSFile, MemVirtualJSFile}
+import org.scalajs.io.{VirtualBinaryFile, MemVirtualBinaryFile}
 
 import org.scalajs.jsenv._
 
@@ -20,11 +20,11 @@ private[test] final class TestKit(config: JSEnvSuiteConfig, withCom: Boolean) {
   assumeTrue("JSEnv needs com support", config.supportsCom || !withCom)
 
   def start(code: String, config: RunConfig): JSRun = {
-    val vf = new MemVirtualJSFile("testScript.js").withContent(code)
+    val vf = new MemVirtualBinaryFile("testScript.js").withStringUTF8(code)
     start(vf, config)
   }
 
-  def start(vf: VirtualJSFile, runConfig: RunConfig): JSRun = {
+  def start(vf: VirtualBinaryFile, runConfig: RunConfig): JSRun = {
     val input = Input.ScriptsToLoad(List(vf))
     if (withCom)
       config.jsEnv.startWithCom(input, runConfig, _ => ())

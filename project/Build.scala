@@ -29,7 +29,7 @@ import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
-import org.scalajs.io.{FileVirtualJSFile, MemVirtualJSFile}
+import org.scalajs.io.{FileVirtualBinaryFile, MemVirtualBinaryFile}
 import org.scalajs.io.JSUtils.escapeJS
 import org.scalajs.linker._
 import org.scalajs.linker.irio._
@@ -86,7 +86,7 @@ object MyScalaJSPlugin extends AutoPlugin {
             "__ScalaJSEnv.javaSystemProperties = {" + formattedProps.mkString(", ") + "};\n"
           }
           val javaSysPropsFile =
-            new MemVirtualJSFile("setJavaSystemProperties.js").withContent(code)
+            new MemVirtualBinaryFile("setJavaSystemProperties.js").withStringUTF8(code)
 
           javaSysPropsFile +: prev
         }
@@ -1410,7 +1410,7 @@ object Build {
         """
 
         val patchedSystemPropertiesFile =
-          new MemVirtualJSFile("setJavaSystemProperties.js").withContent(code)
+          new MemVirtualBinaryFile("setJavaSystemProperties.js").withStringUTF8(code)
 
         // Replace the normal `setJavaSystemProperties.js` file with the patch
         for (file <- previousFiles) yield {
@@ -1460,7 +1460,7 @@ object Build {
           }
 
           val launcher =
-            new MemVirtualJSFile("test-suite-linker.js").withContent(code)
+            new MemVirtualBinaryFile("test-suite-linker.js").withStringUTF8(code)
 
           val config = RunConfig().withLogger(sbtLogger2ToolsLogger(s.log))
           val input = Input.ScriptsToLoad(List(launcher))
@@ -1489,7 +1489,7 @@ object Build {
   def testSuiteJSExecutionFilesSetting: Setting[_] = {
     jsExecutionFiles := {
       val resourceDir = (resourceDirectory in Test).value
-      val f = FileVirtualJSFile(resourceDir / "NonNativeJSTypeTestNatives.js")
+      val f = FileVirtualBinaryFile(resourceDir / "NonNativeJSTypeTestNatives.js")
       f +: jsExecutionFiles.value
     }
   }

@@ -9,8 +9,6 @@
 
 package org.scalajs.jsenv
 
-import org.scalajs.io.VirtualJSFile
-
 /** A JavaScript execution environment.
  *
  *  This can run and interact with JavaScript code.

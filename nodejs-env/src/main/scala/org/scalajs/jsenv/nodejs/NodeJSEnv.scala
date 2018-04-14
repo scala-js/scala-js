@@ -41,7 +41,7 @@ final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
     }
   }
 
-  private def internalStart(files: List[VirtualJSFile],
+  private def internalStart(files: List[VirtualBinaryFile],
       runConfig: RunConfig): JSRun = {
     val command = config.executable :: config.args
     val externalConfig = ExternalJSRun.Config()
@@ -50,7 +50,7 @@ final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
     ExternalJSRun.start(command, externalConfig)(NodeJSEnv.write(files))
   }
 
-  private def initFiles: List[VirtualJSFile] = {
+  private def initFiles: List[VirtualBinaryFile] = {
     val base = List(NodeJSEnv.runtimeEnv, Support.fixPercentConsole)
 
     if (config.sourceMap) NodeJSEnv.installSourceMap :: base
@@ -70,12 +70,12 @@ object NodeJSEnv {
   private lazy val validator = ExternalJSRun.supports(RunConfig.Validator())
 
   private lazy val installSourceMap = {
-    new MemVirtualJSFile("sourceMapSupport.js").withContent(
+    new MemVirtualBinaryFile("sourceMapSupport.js").withStringUTF8(
         "require('source-map-support').install();")
   }
 
   private lazy val runtimeEnv = {
-    new MemVirtualJSFile("scalaJSEnvInfo.js").withContent(
+    new MemVirtualBinaryFile("scalaJSEnvInfo.js").withStringUTF8(
         """
           |__ScalaJSEnv = {
           |  exitFunction: function(status) { process.exit(status); }
@@ -84,20 +84,19 @@ object NodeJSEnv {
     )
   }
 
-  private def write(files: List[VirtualJSFile])(out: OutputStream): Unit = {
-    val writer = new BufferedWriter(
-        new OutputStreamWriter(out, StandardCharsets.UTF_8))
+  private def write(files: List[VirtualBinaryFile])(out: OutputStream): Unit = {
+    val p = new PrintStream(out, false, "UTF8")
     try {
       files.foreach {
-        case file: FileVirtualJSFile =>
+        case file: FileVirtualBinaryFile =>
           val fname = file.file.getAbsolutePath
-          writer.write(s"""require("${escapeJS(fname)}");\n""")
+          p.println(s"""require("${escapeJS(fname)}");""")
         case f =>
-          IO.writeTo(f, writer)
-          writer.write('\n')
+          IO.writeTo(f, p)
+          p.println()
       }
     } finally {
-      writer.close()
+      p.close()
     }
   }
 

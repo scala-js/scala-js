@@ -53,18 +53,18 @@ object HTMLRunnerBuilder {
     f.toURI()
   }
 
-  private def loadJSFiles(jsFiles: Seq[VirtualJSFile]): Seq[URI] = {
+  private def loadJSFiles(jsFiles: Seq[VirtualBinaryFile]): Seq[URI] = {
     jsFiles.map {
       case file: FileVirtualFile => file.file.toURI
 
       case file =>
         val f = tmpFile(file.path)
-        IO.copyTo(file, WritableFileVirtualTextFile(f))
+        Files.copy(file.inputStream, f.toPath)
         f.toURI
     }
   }
 
-  def writeToFile(output: File, title: String, jsFiles: Seq[VirtualJSFile],
+  def writeToFile(output: File, title: String, jsFiles: Seq[VirtualBinaryFile],
       frameworkImplClassNames: List[List[String]],
       taskDefs: List[TaskDef]): Unit = {
 

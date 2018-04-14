@@ -11,6 +11,8 @@ package org.scalajs.io
 
 import java.io._
 
+import java.nio.charset.StandardCharsets
+
 /** A base class for simple in-memory mutable virtual files. */
 class MemVirtualFile(val path: String) extends VirtualFile {
   private[this] var _version: Option[String] = None
@@ -65,6 +67,9 @@ class MemVirtualBinaryFile(p: String) extends MemVirtualFile(p)
     content = v
     this
   }
+
+  final def withStringUTF8(v: String): this.type =
+    withContent(v.getBytes(StandardCharsets.UTF_8))
 }
 
 /** A simple in-memory mutable virtual JS file. */

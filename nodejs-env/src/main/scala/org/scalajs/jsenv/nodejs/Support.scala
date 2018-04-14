@@ -12,8 +12,8 @@ package org.scalajs.jsenv.nodejs
 import org.scalajs.io._
 
 object Support {
-  def fixPercentConsole: VirtualJSFile = {
-    new MemVirtualJSFile("nodeConsoleHack.js").withContent(
+  def fixPercentConsole: VirtualBinaryFile = {
+    new MemVirtualBinaryFile("nodeConsoleHack.js").withStringUTF8(
       """
         |// Hack console log to duplicate double % signs
         |(function() {
