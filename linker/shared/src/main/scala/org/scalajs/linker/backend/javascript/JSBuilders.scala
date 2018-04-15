@@ -11,8 +11,11 @@ package org.scalajs.linker.backend.javascript
 
 import org.scalajs.ir.Position
 
+import org.scalajs.linker.LinkerOutput
+
 import java.io._
 import java.net.URI
+import java.nio.charset.StandardCharsets
 
 /** An abstract builder taking IR or JSTrees */
 trait JSBuilder {
@@ -33,7 +36,10 @@ trait JSLineBuilder extends JSBuilder {
   def addLine(line: String): Unit
 }
 
-final class JSFileBuilder(name: String, outputWriter: Writer) extends JSLineBuilder {
+final class JSFileBuilder(output: LinkerOutput) extends JSLineBuilder {
+  private val outputWriter =
+    new OutputStreamWriter(output.jsFile.outputStream, StandardCharsets.UTF_8)
+
   def addLine(line: String): Unit = {
     outputWriter.write(line)
     outputWriter.write('\n')
@@ -55,15 +61,21 @@ final class JSFileBuilder(name: String, outputWriter: Writer) extends JSLineBuil
     // Do not close the printer: we do not have ownership of the writers
   }
 
-  def complete(): Unit =
-    outputWriter.close()
+  def complete(): Unit = outputWriter.close()
 }
 
-class JSFileBuilderWithSourceMap(name: String, outputWriter: Writer,
-    sourceMapOutputWriter: Writer,
+class JSFileBuilderWithSourceMap(output: LinkerOutput,
     relativizeSourceMapBasePath: Option[URI]) extends JSLineBuilder {
+  require(output.sourceMap.isDefined)
+
+  private def writer(out: OutputStream) =
+    new OutputStreamWriter(out, StandardCharsets.UTF_8)
+
+  private val outputWriter = writer(output.jsFile.outputStream)
+
   private val sourceMapWriter = new SourceMapWriter(
-      sourceMapOutputWriter, name, relativizeSourceMapBasePath)
+      writer(output.sourceMap.get.outputStream), output.jsFileURI,
+      relativizeSourceMapBasePath)
 
   def addLine(line: String): Unit = {
     outputWriter.write(line)
@@ -95,9 +107,9 @@ class JSFileBuilderWithSourceMap(name: String, outputWriter: Writer,
   }
 
   def complete(): Unit = {
-    addLine("//# sourceMappingURL=" + name + ".map")
+    output.sourceMapURI.foreach(uri =>
+        addLine("//# sourceMappingURL=" + uri.toASCIIString()))
     outputWriter.close()
     sourceMapWriter.complete()
-    sourceMapOutputWriter.close()
   }
 }

@@ -58,8 +58,10 @@ class LinkerTest {
 
     val linker = StandardLinker(StandardLinker.Config())
 
-    def callLink(): Unit =
-      linker.link(badSeq, Nil, WritableMemVirtualJSFile("some_file"), NullLogger)
+    def callLink(): Unit = {
+      val out = LinkerOutput(WritableMemVirtualBinaryFile("some_file"))
+      linker.link(badSeq, Nil, out, NullLogger)
+    }
 
     // Call first time. Get exception from badSeq.
     try {
@@ -103,7 +105,7 @@ object LinkerTest {
 
     val allIRFiles = TestIRRepo.stdlibIRFiles ++ classDefsFiles
 
-    val output = WritableMemVirtualJSFile("output.js")
+    val output = LinkerOutput(WritableMemVirtualBinaryFile("output.js"))
 
     linker.link(allIRFiles, moduleInitializers, output,
         new ScalaConsoleLogger(Level.Error))

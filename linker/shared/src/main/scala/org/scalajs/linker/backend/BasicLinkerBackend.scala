@@ -10,8 +10,8 @@
 package org.scalajs.linker.backend
 
 import org.scalajs.logging.Logger
-import org.scalajs.io.WritableVirtualJSFile
 
+import org.scalajs.linker.LinkerOutput
 import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.emitter.Emitter
 
@@ -33,8 +33,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
    *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
    *  @param output File to write to
    */
-  def emit(unit: LinkingUnit, output: WritableVirtualJSFile,
-      logger: Logger): Unit = {
+  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger): Unit = {
     verifyUnit(unit)
 
     val builder = newBuilder(output)
@@ -47,12 +46,11 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
     }
   }
 
-  private def newBuilder(output: WritableVirtualJSFile): JSLineBuilder = {
-    if (config.sourceMap) {
-      new JSFileBuilderWithSourceMap(output.name, output.contentWriter,
-          output.sourceMapWriter, config.relativizeSourceMapBase)
+  private def newBuilder(output: LinkerOutput): JSLineBuilder = {
+    if (config.sourceMap && output.sourceMap.isDefined) {
+      new JSFileBuilderWithSourceMap(output, config.relativizeSourceMapBase)
     } else {
-      new JSFileBuilder(output.name, output.contentWriter)
+      new JSFileBuilder(output)
     }
   }
 }

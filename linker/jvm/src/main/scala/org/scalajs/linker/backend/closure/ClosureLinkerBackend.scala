@@ -11,6 +11,10 @@ package org.scalajs.linker.backend.closure
 
 import scala.collection.JavaConverters._
 
+import java.io._
+import java.net.URI
+import java.nio.charset.StandardCharsets
+
 import com.google.javascript.jscomp.{
   SourceFile => ClosureSource,
   Compiler => ClosureCompiler,
@@ -61,8 +65,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
    *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
    *  @param output File to write to
    */
-  def emit(unit: LinkingUnit, output: WritableVirtualJSFile,
-      logger: Logger): Unit = {
+  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger): Unit = {
     verifyUnit(unit)
 
     // Build Closure IR
@@ -76,7 +79,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     val closureExterns = List(
         ClosureSource.fromCode("ScalaJSExterns.js", ClosureLinkerBackend.ScalaJSExterns),
         ClosureSource.fromCode("ScalaJSExportExterns.js", makeExternsForExports(unit)))
-    val options = closureOptions(output.name)
+    val options = closureOptions(output)
     val compiler = closureCompiler(logger)
 
     val result = logger.time("Closure: Compiler pass") {
@@ -126,7 +129,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   }
 
   private def writeResult(result: Result, compiler: ClosureCompiler,
-      output: WritableVirtualJSFile): Unit = {
+      output: LinkerOutput): Unit = {
 
     def ifIIFE(str: String): String = if (needsIIFEWrapper) str else ""
 
@@ -139,35 +142,44 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
     val sourceMap = Option(compiler.getSourceMap())
 
+    def writer(out: OutputStream) =
+      new OutputStreamWriter(out, StandardCharsets.UTF_8)
+
     // Write optimized code
-    val w = output.contentWriter
+    val w = writer(output.jsFile.outputStream)
     try {
       w.write(header)
       w.write(outputContent)
       w.write(footer)
-      if (sourceMap.isDefined)
-        w.write("//# sourceMappingURL=" + output.name + ".map\n")
-    } finally w.close()
+      output.sourceMapURI.foreach(uri =>
+          w.write("//# sourceMappingURL=" + uri.toASCIIString + "\n"))
+    } finally {
+      w.close()
+    }
 
     // Write source map (if available)
-    sourceMap.foreach { sm =>
+    for {
+      sm  <- sourceMap
+      smf <- output.sourceMap
+    } yield {
       sm.setWrapperPrefix(header)
-      val w = output.sourceMapWriter
-      try sm.appendTo(w, output.name)
+      val w = writer(smf.outputStream)
+      try sm.appendTo(w, output.jsFileURI.fold("")(_.toASCIIString))
       finally w.close()
     }
   }
 
-  private def closureOptions(outputName: String) = {
+  private def closureOptions(output: LinkerOutput) = {
     val options = new ClosureOptions
     options.prettyPrint = config.prettyPrint
     CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
     options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
     options.setCheckGlobalThisLevel(CheckLevel.OFF)
 
-    if (config.sourceMap) {
-      options.setSourceMapOutputPath(outputName + ".map")
+    if (config.sourceMap && output.sourceMap.isDefined) {
       options.setSourceMapDetailLevel(SourceMap.DetailLevel.ALL)
+      output.sourceMapURI.foreach(uri =>
+        options.setSourceMapOutputPath(uri.toASCIIString))
     }
 
     options

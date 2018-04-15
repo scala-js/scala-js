@@ -1,5 +1,7 @@
 package org.scalajs.io
 
+import scala.annotation.tailrec
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
 import scala.scalajs.js.typedarray._
@@ -17,16 +19,6 @@ class NodeVirtualTextFile(p: String) extends NodeVirtualFile(p)
   override def content: String = NodeFS.readFileSync(path, NodeSupport.utf8enc)
 }
 
-trait WritableNodeVirtualTextFile extends NodeVirtualTextFile
-                                     with WritableVirtualTextFile {
-  def contentWriter: Writer = new NodeWriter(path)
-}
-
-object WritableNodeVirtualTextFile {
-  def apply(path: String): WritableNodeVirtualTextFile =
-    new NodeVirtualTextFile(path) with WritableNodeVirtualTextFile
-}
-
 class NodeVirtualBinaryFile(p: String) extends NodeVirtualFile(p)
                                           with VirtualBinaryFile {
   private def buf: ArrayBuffer =
@@ -36,22 +28,21 @@ class NodeVirtualBinaryFile(p: String) extends NodeVirtualFile(p)
   override def inputStream: InputStream = new ArrayBufferInputStream(buf)
 }
 
+trait WritableNodeVirtualBinaryFile extends NodeVirtualBinaryFile
+                                       with WritableVirtualBinaryFile {
+  def outputStream: OutputStream = new NodeOutputStream(path)
+}
+
+object WritableNodeVirtualBinaryFile {
+  def apply(path: String): WritableNodeVirtualBinaryFile =
+    new NodeVirtualBinaryFile(path) with WritableNodeVirtualBinaryFile
+}
+
 class NodeVirtualJSFile(p: String) extends NodeVirtualTextFile(p)
                                       with VirtualJSFile {
 
   /** Always returns None. We can't read them on JS anyway */
   override def sourceMap: Option[String] = None
-}
-
-trait WritableNodeVirtualJSFile extends NodeVirtualJSFile
-                                   with WritableVirtualJSFile
-                                   with WritableNodeVirtualTextFile {
-  def sourceMapWriter: Writer = new NodeWriter(path + ".map")
-}
-
-object WritableNodeVirtualJSFile {
-  def apply(path: String): WritableNodeVirtualJSFile =
-    new NodeVirtualJSFile(path) with WritableNodeVirtualJSFile
 }
 
 private[io] object NodeSupport {
@@ -72,12 +63,53 @@ private[scalajs] object NodeFS extends js.Object {
   def readFileSync(path: String): js.Array[Int] = js.native
   def readFileSync(path: String, enc: Enc): String = js.native
   def statSync(path: String): Stat = js.native
-  def writeFileSync(path: String, data: String, enc: Enc): Unit = js.native
+
+  def openSync(path: String, flags: String): Int = js.native
+  def writeSync(fd: Int, buffer: Uint8Array): Int = js.native
+  def closeSync(fd: Int): Unit = js.native
 }
 
-private[io] class NodeWriter(path: String) extends StringWriter {
+private[io] final class NodeOutputStream(path: String) extends OutputStream {
+  private[this] val bufsize = 4096
+  private[this] val fd = NodeFS.openSync(path, "w")
+  private[this] val arrBuf = new ArrayBuffer(bufsize)
+  private[this] val buf = TypedArrayBuffer.wrap(arrBuf)
+
+  @tailrec
+  override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+    ensureSpace()
+
+    val ilen = Math.min(len, buf.remaining())
+    buf.put(b, off, ilen)
+
+    if (len > ilen)
+      write(b, off + ilen, ilen - len)
+  }
+
+  def write(b: Int): Unit = {
+    ensureSpace()
+    buf.put(b.toByte)
+  }
+
+  override def flush(): Unit = performWrite(0)
+
+  private def ensureSpace(): Unit = {
+    if (!buf.hasRemaining())
+      performWrite(bufsize / 4)
+  }
+
+  private def performWrite(limit: Int): Unit = {
+    buf.flip()
+    while (buf.remaining() > limit) {
+      val pos = buf.position()
+      val written = NodeFS.writeSync(fd, new Uint8Array(arrBuf, pos, buf.limit() - pos))
+      buf.position(pos + written)
+    }
+    buf.compact()
+  }
+
   override def close(): Unit = {
-    super.close()
-    NodeFS.writeFileSync(path, this.toString, NodeSupport.utf8enc)
+    flush()
+    NodeFS.closeSync(fd)
   }
 }

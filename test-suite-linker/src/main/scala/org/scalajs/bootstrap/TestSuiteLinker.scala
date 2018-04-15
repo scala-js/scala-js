@@ -3,6 +3,8 @@ package org.scalajs.linker.test
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
+import java.net.URI
+
 import org.scalajs.io._
 
 import org.scalajs.logging._
@@ -30,10 +32,17 @@ object QuickLinker {
 
     val ir = extractIR(irFilesAndJars)
 
-    val out = WritableNodeVirtualJSFile(outputPath)
-    linker.link(ir, moduleInitializers, out, new ScalaConsoleLogger)
+    val smPath = outputPath + ".map"
 
-    out.content
+    def relURI(path: String) =
+      new URI(null, null, NodePath.basename(path), null)
+
+    val out = LinkerOutput(WritableNodeVirtualBinaryFile(outputPath))
+      .withSourceMap(WritableNodeVirtualBinaryFile(smPath))
+      .withSourceMapURI(relURI(smPath))
+      .withJSFileURI(relURI(outputPath))
+
+    linker.link(ir, moduleInitializers, out, new ScalaConsoleLogger)
   }
 
   private def extractIR(irFilesAndJars: Seq[String]): Seq[VirtualScalaJSIRFile] = {
@@ -51,5 +60,11 @@ object QuickLinker {
     }
 
     cache.cached(irContainers)
+  }
+
+  @JSImport("path", JSImport.Namespace)
+  @js.native
+  private object NodePath extends js.Object {
+    def basename(str: String): String = js.native
   }
 }

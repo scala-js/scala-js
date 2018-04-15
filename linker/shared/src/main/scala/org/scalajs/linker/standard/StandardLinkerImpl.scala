@@ -32,7 +32,7 @@ private final class StandardLinkerImpl private (
 
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
-      output: WritableVirtualJSFile, logger: Logger): Unit = {
+      output: LinkerOutput, logger: Logger): Unit = {
     guard {
       val unit = frontend.link(irFiles, moduleInitializers,
           backend.symbolRequirements, logger)

@@ -60,7 +60,7 @@ object ClearableLinker {
 
     def link(irFiles: Seq[VirtualScalaJSIRFile],
         moduleInitializers: Seq[ModuleInitializer],
-        output: WritableVirtualJSFile, logger: Logger): Unit = {
+        output: LinkerOutput, logger: Logger): Unit = {
       linkerOp(_.link(irFiles, moduleInitializers, output, logger))
     }
 

@@ -10,8 +10,6 @@
 package org.scalajs.linker
 
 import org.scalajs.logging.Logger
-import org.scalajs.io._
-
 import org.scalajs.linker.irio._
 
 /** A Scala.js linker, with its most abstract API.
@@ -23,5 +21,5 @@ import org.scalajs.linker.irio._
 abstract class Linker private[linker] () {
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
-      output: WritableVirtualJSFile, logger: Logger): Unit
+      output: LinkerOutput, logger: Logger): Unit
 }

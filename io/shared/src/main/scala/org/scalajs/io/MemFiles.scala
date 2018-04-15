@@ -72,6 +72,21 @@ class MemVirtualBinaryFile(p: String) extends MemVirtualFile(p)
     withContent(v.getBytes(StandardCharsets.UTF_8))
 }
 
+trait WritableMemVirtualBinaryFile extends MemVirtualBinaryFile
+                                      with WritableVirtualBinaryFile {
+  def outputStream: OutputStream = new ByteArrayOutputStream {
+    override def close(): Unit = {
+      super.close()
+      WritableMemVirtualBinaryFile.this.content = this.toByteArray
+    }
+  }
+}
+
+object WritableMemVirtualBinaryFile {
+  def apply(path: String): WritableMemVirtualBinaryFile =
+    new MemVirtualBinaryFile(path) with WritableMemVirtualBinaryFile
+}
+
 /** A simple in-memory mutable virtual JS file. */
 class MemVirtualJSFile(p: String) extends MemVirtualTextFile(p)
                                      with VirtualJSFile {

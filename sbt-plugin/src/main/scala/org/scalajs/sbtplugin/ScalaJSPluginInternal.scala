@@ -160,6 +160,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val output = (artifactPath in key).value
         val linker = (scalaJSLinker in key).value
         val usesLinkerTag = (usesScalaJSLinkerTag in key).value
+        val sourceMapFile = new File(output.getPath + ".map")
 
         Def.task {
           val log = s.log
@@ -178,16 +179,20 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
             IO.createDirectory(output.getParentFile)
 
-            linker.link(ir, moduleInitializers,
-                AtomicWritableFileVirtualJSFile(output),
-                sbtLogger2ToolsLogger(log))
+            def relURI(path: String) = new URI(null, null, path, null)
+
+            val out = LinkerOutput(AtomicWritableFileVirtualBinaryFile(output))
+              .withSourceMap(AtomicWritableFileVirtualBinaryFile(sourceMapFile))
+              .withSourceMapURI(relURI(sourceMapFile.getName))
+              .withJSFileURI(relURI(output.getName))
+
+            linker.link(ir, moduleInitializers, out, sbtLogger2ToolsLogger(log))
 
             logIRCacheStats(log)
 
-            Set(output)
+            Set(output, sourceMapFile)
           } (realFiles.toSet)
 
-          val sourceMapFile = FileVirtualJSFile(output).sourceMapFile
           Attributed.blank(output).put(scalaJSSourceMap, sourceMapFile)
         }.tag(usesLinkerTag)
       }.value
