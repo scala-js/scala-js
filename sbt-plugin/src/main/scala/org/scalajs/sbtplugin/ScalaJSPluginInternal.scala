@@ -12,7 +12,7 @@ import sbt.complete.DefaultParsers._
 
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
-import org.scalajs.io.{IO => _, _}
+import org.scalajs.io._
 import org.scalajs.io.JSUtils.escapeJS
 
 import org.scalajs.linker._

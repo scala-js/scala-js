@@ -10,9 +10,6 @@ trait VirtualFile {
    *  Unique if possible (used for lookup). */
   def path: String
 
-  /** Name of the file/writer, including extension */
-  def name: String = VirtualFile.nameFromPath(path)
-
   /** Optionally returns an implementation-dependent "version" token.
    *  Versions are compared with ==.
    *  If non-empty, a different version must be returned when the content
@@ -30,68 +27,13 @@ trait VirtualFile {
   }
 }
 
-object VirtualFile {
-  /** Splits at the last slash and returns remainder */
-  def nameFromPath(path: String): String = {
-    val pos = path.lastIndexOf('/')
-    if (pos == -1) path
-    else path.substring(pos + 1)
-  }
-}
-
-/** A virtual input file.
- */
-trait VirtualTextFile extends VirtualFile {
-  /** Returns the content of the file. */
-  def content: String
-
-  /** Returns a new Reader of the file. */
-  def reader: Reader = new StringReader(content)
-
-  /** Returns the lines in the content.
-   *  Lines do not contain the new line characters.
-   */
-  def readLines(): List[String] = IO.readLines(reader)
-}
-
-object VirtualTextFile {
-  def empty(path: String): VirtualTextFile =
-    new MemVirtualTextFile(path)
-}
-
-trait WritableVirtualTextFile extends VirtualTextFile {
-  def contentWriter: Writer
-}
-
 /** A virtual binary input file.
  */
 trait VirtualBinaryFile extends VirtualFile {
-  /** Returns the content of the file. */
-  def content: Array[Byte]
-
   /** Returns a new InputStream of the file. */
-  def inputStream: InputStream = new ByteArrayInputStream(content)
+  def inputStream: InputStream
 }
 
 trait WritableVirtualBinaryFile extends VirtualBinaryFile {
   def outputStream: OutputStream
-}
-
-/** A virtual input file which contains JavaScript code.
- *  It may have a source map associated with it.
- */
-trait VirtualJSFile extends VirtualTextFile {
-  /** Optionally, content of the source map file associated with this
-   *  JavaScript source.
-   */
-  def sourceMap: Option[String] = None
-}
-
-object VirtualJSFile {
-  def empty(path: String): VirtualJSFile =
-    new MemVirtualJSFile(path).withVersion(Some(path))
-}
-
-trait WritableVirtualJSFile extends WritableVirtualTextFile with VirtualJSFile {
-  def sourceMapWriter: Writer
 }

@@ -23,9 +23,6 @@ object FileVirtualScalaJSIRFile {
 
   def apply(f: File, relPath: String): FileVirtualScalaJSIRFile =
     new FileVirtualScalaJSIRFile(f, relPath)
-
-  def isScalaJSIRFile(file: File): Boolean =
-    hasExtension(file, ".sjsir")
 }
 
 object FileScalaJSIRContainer {

@@ -121,7 +121,7 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
     val badFile = new VirtualBinaryFile {
       def path: String = ???
       def exists: Boolean = ???
-      def content: Array[Byte] = ???
+      def inputStream: java.io.InputStream = ???
     }
 
     // `start` may not throw but must fail asynchronously

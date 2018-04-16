@@ -14,18 +14,12 @@ class NodeVirtualFile(override val path: String) extends VirtualFile {
     NodeFS.statSync(path).mtime.map(_.getTime.toString).toOption
 }
 
-class NodeVirtualTextFile(p: String) extends NodeVirtualFile(p)
-                                        with VirtualTextFile {
-  override def content: String = NodeFS.readFileSync(path, NodeSupport.utf8enc)
-}
-
 class NodeVirtualBinaryFile(p: String) extends NodeVirtualFile(p)
                                           with VirtualBinaryFile {
   private def buf: ArrayBuffer =
     new Uint8Array(NodeFS.readFileSync(path)).buffer
 
-  override def content: Array[Byte] = new Int8Array(buf).toArray
-  override def inputStream: InputStream = new ArrayBufferInputStream(buf)
+  def inputStream: InputStream = new ArrayBufferInputStream(buf)
 }
 
 trait WritableNodeVirtualBinaryFile extends NodeVirtualBinaryFile
@@ -38,30 +32,14 @@ object WritableNodeVirtualBinaryFile {
     new NodeVirtualBinaryFile(path) with WritableNodeVirtualBinaryFile
 }
 
-class NodeVirtualJSFile(p: String) extends NodeVirtualTextFile(p)
-                                      with VirtualJSFile {
-
-  /** Always returns None. We can't read them on JS anyway */
-  override def sourceMap: Option[String] = None
-}
-
-private[io] object NodeSupport {
-  val utf8enc: NodeFS.Enc = new NodeFS.Enc { val encoding = "UTF-8" }
-}
-
 @JSImport("fs", JSImport.Namespace)
 @js.native
 private[scalajs] object NodeFS extends js.Object {
-  trait Enc extends js.Object {
-    val encoding: String
-  }
-
   trait Stat extends js.Object {
     val mtime: js.UndefOr[js.Date]
   }
 
   def readFileSync(path: String): js.Array[Int] = js.native
-  def readFileSync(path: String, enc: Enc): String = js.native
   def statSync(path: String): Stat = js.native
 
   def openSync(path: String, flags: String): Int = js.native

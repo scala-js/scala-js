@@ -11,7 +11,7 @@ package org.scalajs.jsenv.nodejs
 
 import java.nio.charset.StandardCharsets
 
-import scala.collection.immutable
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
 import org.scalajs.jsenv._
@@ -92,7 +92,24 @@ object NodeJSEnv {
           val fname = file.file.getAbsolutePath
           p.println(s"""require("${escapeJS(fname)}");""")
         case f =>
-          IO.writeTo(f, p)
+          val in = f.inputStream
+          try {
+            val buf = new Array[Byte](4096)
+
+            @tailrec
+            def loop(): Unit = {
+              val read = in.read(buf)
+              if (read != -1) {
+                p.write(buf, 0, read)
+                loop()
+              }
+            }
+
+            loop()
+          } finally {
+            in.close()
+          }
+
           p.println()
       }
     } finally {
