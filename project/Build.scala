@@ -370,7 +370,7 @@ object Build {
   private def parallelCollectionsDependencies(
       scalaVersion: String): Seq[ModuleID] = {
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((2, n)) if n >= 13 =>
+      case Some((2, n)) if n >= 13 && scalaVersion != "2.13.0-M4-pre-20d3c21" =>
         Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "0.1.2")
 
       case _ => Nil
@@ -557,6 +557,12 @@ object Build {
         baseDirectory.value.getParentFile / "shared/src/main/scala",
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile / "shared/src/test/scala",
+
+      unmanagedSourceDirectories in Compile += {
+        val sourceDir = file("/home/julien/workspace/dev/scala-js/scala-js/tools") / "shared" / "src" / "main"
+        if (scalaVersion.value == "2.13.0-M4-pre-20d3c21") sourceDir / "scala-2.13"
+        else sourceDir / "scala-2.10_2.13.0-M3"
+      },
 
       sourceGenerators in Compile += Def.task {
         ScalaJSEnvGenerator.generateEnvHolder(
@@ -1791,6 +1797,8 @@ object Build {
                       "org.scala-lang.modules" %% "scala-partest" % "1.0.13"
                     else if (v.startsWith("2.11."))
                       "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
+                    else if (v == "2.13.0-M4-pre-20d3c21")
+                      "org.scala-lang.modules" %% "scala-partest" % "1.1.7"
                     else
                       "org.scala-lang.modules" %% "scala-partest" % "1.1.4"
                   },
@@ -1810,6 +1818,8 @@ object Build {
             val v = scalaVersion.value
             if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
               sourceRoot / "main-partest-1.0.13"
+            else if (v == "2.13.0-M4-pre-20d3c21")
+              sourceRoot / "main-partest-1.1.7"
             else
               sourceRoot / "main-partest-1.0.16"
           },

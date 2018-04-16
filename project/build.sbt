@@ -26,6 +26,7 @@ unmanagedSourceDirectories in Compile ++= {
   Seq(
     root / "ir/src/main/scala",
     root / "tools/shared/src/main/scala",
+    root / "tools/shared/src/main/scala-2.10_2.13.0-M3",
     root / "tools/jvm/src/main/scala",
     root / "js-envs/src/main/scala",
     root / "test-adapter/src/main/scala",

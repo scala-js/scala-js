@@ -1546,9 +1546,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val methodDefWithoutUselessVars = {
               val unmutatedMutableLocalVars =
-                (mutableLocalVars -- mutatedLocalVars).toList
+                (mutableLocalVars diff mutatedLocalVars).toList
               val mutatedImmutableLocalVals =
-                (mutatedLocalVars -- mutableLocalVars).toList
+                (mutatedLocalVars diff mutableLocalVars).toList
               if (unmutatedMutableLocalVars.isEmpty &&
                   mutatedImmutableLocalVals.isEmpty) {
                 // OK, we're good (common case)

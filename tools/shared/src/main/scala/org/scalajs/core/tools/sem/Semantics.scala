@@ -247,7 +247,7 @@ object Semantics {
       productionMode = false,
       runtimeClassNameMapper = RuntimeClassNameMapper.keepAll())
 
-  def compliantTo(semantics: Traversable[String]): Semantics = {
+  def compliantTo(semantics: Iterable[String]): Semantics = {
     import Defaults._
 
     val semsSet = semantics.toSet

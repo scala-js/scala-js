@@ -33,7 +33,7 @@ object ComplianceRequirement {
    *  requirements.
    *  @throws BadComplianceException if the semantics are not compliant.
    */
-  final def checkCompliance(requirements: Traversable[ComplianceRequirement],
+  final def checkCompliance(requirements: Iterable[ComplianceRequirement],
       semantics: Semantics): Unit = {
     val unmet = requirements.filterNot(compliance =>
         semantics.isCompliant(compliance.semantics))
@@ -43,8 +43,8 @@ object ComplianceRequirement {
   }
 
   def mergeFromManifests(
-      manifests: Traversable[JSDependencyManifest]
-  ): Traversable[ComplianceRequirement] = {
+      manifests: Iterable[JSDependencyManifest]
+  ): Iterable[ComplianceRequirement] = {
 
     val flatTups = for {
       manifest <- manifests

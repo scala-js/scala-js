@@ -31,7 +31,7 @@ trait Analysis {
 
   def allAvailable: Boolean
   def classInfos: scala.collection.Map[String, ClassInfo]
-  def errors: Seq[Error]
+  def errors: scala.collection.Seq[Error]
 }
 
 object Analysis {
@@ -48,10 +48,10 @@ object Analysis {
     def isExported: Boolean
     def superClass: ClassInfo
     def ancestors: Seq[ClassInfo]
-    def descendants: Seq[ClassInfo]
+    def descendants: scala.collection.Seq[ClassInfo]
     def nonExistent: Boolean
     def ancestorCount: Int
-    def descendentClasses: Seq[ClassInfo]
+    def descendentClasses: scala.collection.Seq[ClassInfo]
     /** For a Scala class, it is instantiated with a `New`; for a JS class,
      *  its constructor is accessed with a `JSLoadConstructor` or because it
      *  is needed for a subclass.

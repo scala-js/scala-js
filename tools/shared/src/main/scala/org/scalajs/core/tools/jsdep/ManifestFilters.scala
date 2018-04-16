@@ -4,7 +4,7 @@ package org.scalajs.core.tools.jsdep
 object ManifestFilters {
 
   type ManifestFilter =
-    Traversable[JSDependencyManifest] => Traversable[JSDependencyManifest]
+    Iterable[JSDependencyManifest] => Iterable[JSDependencyManifest]
 
   /** Creates a manifest filter that maps resource names of a certain
    *  origin as if they were written differently

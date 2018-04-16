@@ -6,7 +6,7 @@
 **                          |/____/                                     **
 \*                                                                      */
 
-
+/* TODO Uncomment when the parallel collections module is published for 2.13.0
 package org.scalajs.core.tools.linker.frontend.optimizer
 
 import scala.collection.{GenTraversableOnce, GenIterable}
@@ -204,3 +204,4 @@ final class ParIncOptimizer(semantics: Semantics, esLevel: ESLevel,
 object ParIncOptimizer {
   val factory: GenIncOptimizer.OptimizerFactory = new ParIncOptimizer(_, _, _)
 }
+*/

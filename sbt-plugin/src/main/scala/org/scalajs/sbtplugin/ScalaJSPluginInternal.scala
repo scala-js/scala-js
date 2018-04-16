@@ -633,7 +633,7 @@ object ScalaJSPluginInternal {
               fromJSON[JSDependencyManifest](readJSON(IO.read(file)))
             })
 
-        rawManifests.map(manifests => filter(manifests.toTraversable))
+        rawManifests.map(manifests => filter(manifests))
       },
 
       resolvedJSDependencies := {
@@ -644,7 +644,7 @@ object ScalaJSPluginInternal {
         // Verify semantics compliance
         if (checkScalaJSSemantics.value) {
           import ComplianceRequirement._
-          val requirements = mergeFromManifests(attManifests.data)
+          val requirements = mergeFromManifests(attManifests.data.toIterable)
 
           /* We make the assumption here, that scalaJSSemantics has not
            * unreasonably overridden values for the fastOptJS and fullOptJS
@@ -670,7 +670,7 @@ object ScalaJSPluginInternal {
 
         // Actually resolve the dependencies
         val resolved = DependencyResolver.resolveDependencies(
-            attManifests.data, availableLibs, dependencyFilter)
+            attManifests.data.toIterable, availableLibs, dependencyFilter)
 
         Attributed.blank[Seq[ResolvedJSDependency]](resolved)
             .put(scalaJSSourceFiles, realFiles)

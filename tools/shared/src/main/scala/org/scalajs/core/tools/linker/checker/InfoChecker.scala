@@ -28,7 +28,7 @@ import org.scalajs.core.tools.logging._
 
 /** Checker for the validity of the IR. */
 private final class InfoChecker(
-    infoAndTrees: Traversable[(ClassInfo, ClassDef)], logger: Logger) {
+    infoAndTrees: Iterable[(ClassInfo, ClassDef)], logger: Logger) {
 
   private var errorCount: Int = 0
 
@@ -77,14 +77,14 @@ private final class InfoChecker(
     val expectedMethodIDs = expectedMethods.keySet
 
     if (actualMethodIDs != expectedMethodIDs) {
-      val missingMethods = expectedMethodIDs -- actualMethodIDs
+      val missingMethods = expectedMethodIDs diff actualMethodIDs
       if (missingMethods.nonEmpty) {
         errorCount += 1
         logger.error(
             s"Missing methods in $className: $missingMethods")
       }
 
-      val unexpectedMethods = actualMethodIDs -- expectedMethodIDs
+      val unexpectedMethods = actualMethodIDs diff expectedMethodIDs
       if (unexpectedMethods.nonEmpty) {
         errorCount += 1
         logger.error(
@@ -164,7 +164,7 @@ object InfoChecker {
    *
    *  @return Count of info checking errors (0 in case of success)
    */
-  def check(infoAndTrees: Traversable[(ClassInfo, ClassDef)],
+  def check(infoAndTrees: Iterable[(ClassInfo, ClassDef)],
       logger: Logger): Int = {
     new InfoChecker(infoAndTrees, logger).check()
   }

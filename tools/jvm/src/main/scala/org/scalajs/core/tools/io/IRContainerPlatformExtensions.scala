@@ -40,7 +40,7 @@ trait IRContainerPlatformExtensions { this: IRContainer.type =>
 
     def walkForIR(dir: JFile): Seq[JFile] = {
       val (subdirs, files) = dir.listFiles().partition(_.isDirectory)
-      subdirs.flatMap(walkForIR) ++ files.filter(_.getName.endsWith(".sjsir"))
+      (subdirs.flatMap(walkForIR _) ++ files.filter(_.getName.endsWith(".sjsir"))).toIndexedSeq
     }
 
     for (ir <- walkForIR(baseDir)) yield {
