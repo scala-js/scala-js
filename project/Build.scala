@@ -559,7 +559,7 @@ object Build {
         baseDirectory.value.getParentFile / "shared/src/test/scala",
 
       unmanagedSourceDirectories in Compile += {
-        val sourceDir = file("/home/julien/workspace/dev/scala-js/scala-js/tools") / "shared" / "src" / "main"
+        val sourceDir = baseDirectory.value.getParentFile / "shared" / "src" / "main"
         if (scalaVersion.value == "2.13.0-M4-pre-20d3c21") sourceDir / "scala-2.13"
         else sourceDir / "scala-2.10_2.13.0-M3"
       },
