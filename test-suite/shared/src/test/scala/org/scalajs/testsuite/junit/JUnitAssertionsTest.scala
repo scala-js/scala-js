@@ -149,7 +149,7 @@ class JUnitAssertionsTest {
     testCharAssertion('a', 'a')
     testCharAssertion('@', '@')
     testCharAssertion('\n', '\n')
-    testCharAssertion('a', '\0', NotEquals)
+    testCharAssertion('a', '\u0000', NotEquals)
     testCharAssertion('a', '@', NotEquals)
     testCharAssertion('a', '\n', NotEquals)
   }
