@@ -1,14 +1,14 @@
 package org.scalajs.core.tools.jsdep
 
 import scala.collection.mutable
-
 import org.scalajs.core.tools.io.VirtualJSFile
 import JSLibResolveException.Problem
+import org.scalajs.core.tools.Compat.NonDeprecatedTraversable
 
 object DependencyResolver {
 
   type DependencyFilter =
-    Iterable[FlatJSDependency] => Iterable[FlatJSDependency]
+    NonDeprecatedTraversable[FlatJSDependency] => NonDeprecatedTraversable[FlatJSDependency]
 
   /** Constructs an ordered list of JS libraries to include. Fails if:
    *  - Resource names do not identify a unique resource on the classpath
@@ -16,7 +16,7 @@ object DependencyResolver {
    *  - Not all dependencies are available
    */
   def resolveDependencies(
-      manifests: Iterable[JSDependencyManifest],
+      manifests: NonDeprecatedTraversable[JSDependencyManifest],
       availableLibs: Map[String, VirtualJSFile],
       dependencyFilter: DependencyFilter): List[ResolvedJSDependency] = {
 
@@ -50,7 +50,7 @@ object DependencyResolver {
    *  @return Map from resource name to the list of origins mentioning them
    */
   private def collectAllResourceNames(
-      manifests: Iterable[JSDependencyManifest]): Map[String, List[Origin]] = {
+      manifests: NonDeprecatedTraversable[JSDependencyManifest]): Map[String, List[Origin]] = {
 
     def allResources(dep: JSDependency) =
       dep.resourceName :: dep.dependencies ::: dep.minifiedResourceName.toList
@@ -104,7 +104,7 @@ object DependencyResolver {
 
   /** Create a sorted include list for js libs */
   private def createIncludeList(
-      flatDeps: Iterable[FlatJSDependency]): List[ResolutionInfo] = {
+      flatDeps: NonDeprecatedTraversable[FlatJSDependency]): List[ResolutionInfo] = {
     val jsDeps = mergeManifests(flatDeps)
 
     // Verify all dependencies are met
@@ -142,7 +142,7 @@ object DependencyResolver {
   /** Merges multiple JSDependencyManifests into a map of map:
    *  resourceName -> ResolutionInfo
    */
-  private def mergeManifests(flatDeps: Iterable[FlatJSDependency]) = {
+  private def mergeManifests(flatDeps: NonDeprecatedTraversable[FlatJSDependency]) = {
     checkCommonJSNameConflicts(flatDeps)
 
     val byRelPath = flatDeps.groupBy(_.relPath)
@@ -160,7 +160,7 @@ object DependencyResolver {
     }
   }
 
-  private def checkCommonJSNameConflicts(flatDeps: Iterable[FlatJSDependency]) = {
+  private def checkCommonJSNameConflicts(flatDeps: NonDeprecatedTraversable[FlatJSDependency]) = {
     @inline
     def hasConflict(x: FlatJSDependency, y: FlatJSDependency) = (
         x.commonJSName.isDefined &&
@@ -178,7 +178,7 @@ object DependencyResolver {
   }
 
   private def checkMinifiedJSConflicts(
-      byRelPath: Map[String, Iterable[FlatJSDependency]]) = {
+      byRelPath: Map[String, NonDeprecatedTraversable[FlatJSDependency]]) = {
 
     @inline
     def hasConflict(x: FlatJSDependency, y: FlatJSDependency) = (

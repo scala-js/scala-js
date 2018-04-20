@@ -1546,9 +1546,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val methodDefWithoutUselessVars = {
               val unmutatedMutableLocalVars =
-                (mutableLocalVars diff mutatedLocalVars).toList
+                (mutableLocalVars.diff(mutatedLocalVars)).toList
               val mutatedImmutableLocalVals =
-                (mutatedLocalVars diff mutableLocalVars).toList
+                (mutatedLocalVars.diff(mutableLocalVars)).toList
               if (unmutatedMutableLocalVars.isEmpty &&
                   mutatedImmutableLocalVals.isEmpty) {
                 // OK, we're good (common case)
@@ -4828,8 +4828,9 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     object WrapArray {
-      lazy val wrapArrayModule = if (isScala213NewCollections) ScalaRunTimeModule else PredefModule
-      lazy val isWrapArray: Set[Symbol] = Seq(
+      private lazy val wrapArrayModule =
+        if (isScala213NewCollections) ScalaRunTimeModule else PredefModule
+      private lazy val isWrapArray: Set[Symbol] = Seq(
           nme.wrapRefArray,
           nme.wrapByteArray,
           nme.wrapShortArray,
@@ -4849,25 +4850,25 @@ abstract class GenJSCode extends plugins.PluginComponent
         case _ =>
           None
       }
-
     }
 
-    /**
-      * Generate `new ImmutableArray(arrayRef)` for Scala 2.13’s new collections,
-      * or `new WrappedArray(arrayRef)` otherwise.
-      *
-      * This is required because in Scala 2.13 varargs are
-      * represented with an immutable collection.
-      *
-      * @param arrayRef Reference to the array to wrap
-      * @return Reference to the wrapped array
-      */
-    def genWrappedArrayForVarargs(arrayRef: js.Tree)(implicit pos: Position): js.Tree = {
-      val (clazz, ctor) =
-        if (isScala213NewCollections) (ImmutableArrayClass, ImmutableArray_ctor)
-        else (WrappedArrayClass, WrappedArray_ctor)
-      genNew(clazz, ctor, arrayRef :: Nil)
-    }
+    /** Wraps a `js.Array` to use as varargs.
+     *
+     *  Generate `new js.ImmutableArray(arrayRef)` for Scala 2.13’s new collections,
+     *  or `new js.WrappedArray(arrayRef)` otherwise.
+     *
+     *  This is required because in Scala 2.13 varargs are
+     *  represented with an immutable collection.
+     *
+     *  @param arrayRef Reference to the array to wrap
+     *  @return Reference to the wrapped array
+     */
+    def genWrappedArrayForVarargs(arrayRef: js.Tree)(implicit pos: Position): js.Tree =
+      if (isScala213NewCollections) {
+        genNew(ImmutableArrayClass, ImmutableArray_ctor, arrayRef :: Nil)
+      } else {
+        genNew(WrappedArrayClass, WrappedArray_ctor, arrayRef :: Nil)
+      }
 
     // Synthesizers for raw JS functions ---------------------------------------
 
@@ -5553,9 +5554,12 @@ abstract class GenJSCode extends plugins.PluginComponent
   }
 
   // The new collections have been introduced in 2.13.0-M4
-  private[scalajs] lazy val isScala213NewCollections = {
+  lazy val isScala213NewCollections = {
     val v = scala.util.Properties.versionNumberString
-    v.startsWith("2.13") && v != "2.13.0-M3"
+    !v.startsWith("2.10.") &&
+    !v.startsWith("2.11.") &&
+    !v.startsWith("2.12.") &&
+    v != "2.13.0-M3"
   }
 
   /** Tests whether the given type represents a raw JavaScript type,

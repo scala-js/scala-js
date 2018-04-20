@@ -1,10 +1,12 @@
 package org.scalajs.core.tools.jsdep
 
+import org.scalajs.core.tools.Compat.NonDeprecatedTraversable
+
 /** Holds useful JSDependencyManifest filters */
 object ManifestFilters {
 
   type ManifestFilter =
-    Iterable[JSDependencyManifest] => Iterable[JSDependencyManifest]
+    NonDeprecatedTraversable[JSDependencyManifest] => NonDeprecatedTraversable[JSDependencyManifest]
 
   /** Creates a manifest filter that maps resource names of a certain
    *  origin as if they were written differently

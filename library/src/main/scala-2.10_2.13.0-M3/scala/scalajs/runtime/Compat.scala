@@ -1,11 +1,14 @@
-package scala.scalajs
+package scala.scalajs.runtime
 
 import scala.collection.GenTraversableOnce
+import scala.scalajs.js
 
-trait ScalaVersionSpecificRuntime {
+object Compat {
 
-  @inline final def genTraversableOnce2jsArray[A](
-    col: GenTraversableOnce[A]): js.Array[A] = {
+  type CompatTraversableOnce[+A] = GenTraversableOnce[A]
+
+  @inline def genTraversableOnce2jsArrayImpl[A](
+      col: CompatTraversableOnce[A]): js.Array[A] = {
     col match {
       case col: js.ArrayOps[A]     => col.result()
       case col: js.WrappedArray[A] => col.array

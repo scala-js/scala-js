@@ -13,9 +13,10 @@ import scala.collection.{mutable, IterableOnce, IterableFactory, StrictOptimized
 // There is no equivalent of ArrayLike in 2.13, so we
 // redefine it here
 trait ScalaVersionSpecificArrayOps[A]
-  extends StrictOptimizedSeqOps[A, Array, Array[A]]
+    extends StrictOptimizedSeqOps[A, Array, Array[A]]
     with mutable.IndexedSeqOps[A, Array, Array[A]]
-    with Serializable { this: ArrayOps[A] =>
+    with Serializable {
+  this: ArrayOps[A] =>
 
   object iterableFactory extends IterableFactory[Array] {
     def empty[E]: Array[E] = new Array()
@@ -42,8 +43,11 @@ trait ScalaVersionSpecificArrayOps[A]
 
   def mapInPlace(f: A => A): this.type = {
     var i = 0
-    val siz = size
-    while (i < siz) { this(i) = f(this(i)); i += 1 }
+    val size = this.size
+    while (i < size) {
+      this(i) = f(this(i))
+      i += 1
+    }
     this
   }
 

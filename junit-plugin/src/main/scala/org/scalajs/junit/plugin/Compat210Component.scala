@@ -67,27 +67,16 @@ trait Compat210Component {
   implicit final class DefinitionsCompat(
       self: Compat210Component.this.global.definitions.type) {
 
-    import self._
-
     lazy val StringTpe = definitions.StringClass.tpe
 
-    // scalastyle:off
-    // Copied from https://github.com/scala/scala/blob/0d5b3f6746539f06d4e24673908c8ca1d178655c/src/reflect/scala/reflect/internal/Definitions.scala#L596-L609
-    // scalastyle:on
-    def wrapVarargsArrayMethodName(elemtp: Type): TermName = elemtp.typeSymbol match {
-      case ByteClass    => nme.wrapByteArray
-      case ShortClass   => nme.wrapShortArray
-      case CharClass    => nme.wrapCharArray
-      case IntClass     => nme.wrapIntArray
-      case LongClass    => nme.wrapLongArray
-      case FloatClass   => nme.wrapFloatArray
-      case DoubleClass  => nme.wrapDoubleArray
-      case BooleanClass => nme.wrapBooleanArray
-      case UnitClass    => nme.wrapUnitArray
-      case _        =>
-        if ((elemtp <:< AnyRefTpe) && !isPhantomClass(elemtp.typeSymbol)) nme.wrapRefArray
-        else nme.genericWrapArray
-    }
+    def wrapVarargsArrayMethodName(elemtp: Type): TermName =
+      self.wrapArrayMethodName(elemtp)
+
+    def wrapArrayMethodName(elemtp: Type): TermName = infiniteLoop()
 
   }
+
+  private def infiniteLoop(): Nothing =
+    throw new AssertionError("Infinite loop in Compat210Component")
+
 }

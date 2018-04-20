@@ -487,7 +487,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
       interfaces = newInterfaces
 
       val methodAttributeChanges =
-        ((parentMethodAttributeChanges diff methods.keySet) ++
+        (parentMethodAttributeChanges.diff(methods.keySet) ++
             addedMethods ++ changedMethods ++ deletedMethods)
 
       // Tag callers with dynamic calls
@@ -510,7 +510,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
               newInterfaces.size != existingInterfaces.size) {
             val allMethodNames = allMethods().keys
             for {
-              intf <- (oldInterfaces ++ newInterfaces) diff existingInterfaces
+              intf <- (oldInterfaces ++ newInterfaces).diff(existingInterfaces)
               methodName <- allMethodNames
             } {
               intf.tagDynamicCallersOf(methodName)

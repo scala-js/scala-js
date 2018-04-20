@@ -1,7 +1,10 @@
 package org.scalajs.core.tools
 
-import scala.collection.mutable
+import scala.collection.Iterable
 
-object Compat {
+private[tools] object Compat {
+
+  type NonDeprecatedTraversable[+A] = Iterable[A]
+  type NonDeprecatedImmutableTraversable[+A] = scala.collection.immutable.Iterable[A]
 
 }

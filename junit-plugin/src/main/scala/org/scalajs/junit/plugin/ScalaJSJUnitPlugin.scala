@@ -382,8 +382,14 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
           val array = ArrayValue(TypeTree(definitions.ObjectTpe), elems)
           val varargsModule = {
             // Note: this logic duplicates the one in GenJSCode#isScala213NewCollections
-            val ver = Properties.versionNumberString
-            if (ver.startsWith("2.13") && ver != "2.13.0-M3") definitions.ScalaRunTimeModule
+            val isScala213NewCollections = {
+              val v = Properties.versionNumberString
+              !v.startsWith("2.10.") &&
+              !v.startsWith("2.11.") &&
+              !v.startsWith("2.12.") &&
+              v != "2.13.0-M3"
+            }
+            if (isScala213NewCollections) definitions.ScalaRunTimeModule
             else definitions.PredefModule
           }
           val wrappedArray = gen.mkMethodCall(

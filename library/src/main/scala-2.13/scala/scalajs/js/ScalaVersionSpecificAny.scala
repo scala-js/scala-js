@@ -1,6 +1,7 @@
 package scala.scalajs.js
 
-import scala.collection.{BuildFrom, mutable}
+import scala.collection.BuildFrom
+import scala.collection.mutable
 
 trait ScalaVersionSpecificAny {
 

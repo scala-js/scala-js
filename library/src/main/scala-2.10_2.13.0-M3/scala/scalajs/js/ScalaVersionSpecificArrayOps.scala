@@ -11,7 +11,8 @@ package scala.scalajs.js
 import scala.collection.mutable
 
 trait ScalaVersionSpecificArrayOps[A]
-  extends mutable.ArrayLike[A, Array[A]] { this: ArrayOps[A] =>
+    extends mutable.ArrayLike[A, Array[A]] {
+  this: ArrayOps[A] =>
 
   protected[this] def newBuilder: mutable.Builder[A, Array[A]] =
     new ArrayOps[A]

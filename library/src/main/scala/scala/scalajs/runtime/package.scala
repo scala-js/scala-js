@@ -1,8 +1,9 @@
 package scala.scalajs
 
 import scala.annotation.tailrec
+import scala.scalajs.runtime.Compat._
 
-package object runtime extends ScalaVersionSpecificRuntime {
+package object runtime {
 
   @deprecated("Use scala.scalajs.LinkingInfo.assumingES6 instead.", "0.6.6")
   @inline
@@ -76,6 +77,11 @@ package object runtime extends ScalaVersionSpecificRuntime {
     throw js.JavaScriptException(
         new js.TypeError("super has no setter '" + propName + "'."))
     // scalastyle:on return
+  }
+
+  @inline final def genTraversableOnce2jsArray[A](
+      col: CompatTraversableOnce[A]): js.Array[A] = {
+    genTraversableOnce2jsArrayImpl(col)
   }
 
   final def jsTupleArray2jsObject(

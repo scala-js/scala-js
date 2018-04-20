@@ -5,7 +5,7 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
-    // Was using Traversable, which has been removed in 2.13
+    // Breaking
     ProblemFilters.exclude[IncompatibleMethTypeProblem]("org.scalajs.core.ir.Infos#ClassInfoBuilder.addInterfaces")
   )
 
@@ -15,27 +15,15 @@ object BinaryIncompatibilities {
           "org.scalajs.core.tools.linker.StandardLinker#Config.outputMode"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.core.tools.linker.StandardLinker#Config.withOutputMode"),
-      // Were using Traversable, which has been removed in 2.13
-      ProblemFilters.exclude[IncompatibleMethTypeProblem](
-          "org.scalajs.core.tools.jsdep.ComplianceRequirement.mergeFromManifests"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem](
-          "org.scalajs.core.tools.jsdep.ComplianceRequirement.checkCompliance"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem](
-          "org.scalajs.core.tools.jsdep.DependencyResolver.resolveDependencies"),
+//      // Were using Traversable, which has been removed in 2.13
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "org.scalajs.core.tools.linker.checker.IRChecker#CheckedClass.this"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem](
-          "org.scalajs.core.tools.linker.checker.InfoChecker.check"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem](
-          "org.scalajs.core.tools.linker.checker.InfoChecker.this"),
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "org.scalajs.core.tools.linker.analyzer.SymbolRequirement#Factory.callMethods"),
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "org.scalajs.core.tools.linker.analyzer.SymbolRequirement#Factory.instantiateClass"),
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "org.scalajs.core.tools.linker.analyzer.SymbolRequirement#Factory.callOnModule"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem](
-          "org.scalajs.core.tools.sem.Semantics.compliantTo"),
       // Were using GenIterable, which has been removed in 2.13
       ProblemFilters.exclude[IncompatibleResultTypeProblem](
           "org.scalajs.core.tools.linker.frontend.optimizer.IncOptimizer#CollOps.parFlatMapKeys"),

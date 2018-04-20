@@ -39,10 +39,10 @@ final class ArrayOps[A](protected[this] val array: Array[A])
 
   @inline def result(): Array[A] = array
 
-  // Scala notation for a fast scalajsConcat()
+  // Scala notation for a fast concat()
 
   @inline def ++[B >: A](that: Array[_ <: B]): Array[B] =
-    scalajsConcat(array, that)
+    ArrayOps.concat(array, that)
 
   // Methods whose inherited implementations do not play nice with the optimizer
 
@@ -83,7 +83,7 @@ object ArrayOps {
     throw new UnsupportedOperationException(msg)
 
   /** Non-inlined implementation of [[ArrayOps.++]]. */
-  private def scalajsConcat[A](left: Array[_ <: A], right: Array[_ <: A]): Array[A] = {
+  private def concat[A](left: Array[_ <: A], right: Array[_ <: A]): Array[A] = {
     val leftLength = left.length
     val rightLength = right.length
     val result = new Array[A](leftLength + rightLength)

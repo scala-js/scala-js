@@ -10,11 +10,8 @@
 package org.scalajs.core.tools.linker.checker
 
 import scala.language.implicitConversions
-
 import scala.annotation.switch
-
 import scala.collection.mutable
-
 import java.io.StringWriter
 
 import org.scalajs.core.ir._
@@ -23,12 +20,12 @@ import Infos._
 import Trees._
 import Types._
 import Printers._
-
+import org.scalajs.core.tools.Compat.NonDeprecatedTraversable
 import org.scalajs.core.tools.logging._
 
 /** Checker for the validity of the IR. */
 private final class InfoChecker(
-    infoAndTrees: Iterable[(ClassInfo, ClassDef)], logger: Logger) {
+    infoAndTrees: NonDeprecatedTraversable[(ClassInfo, ClassDef)], logger: Logger) {
 
   private var errorCount: Int = 0
 
@@ -77,14 +74,14 @@ private final class InfoChecker(
     val expectedMethodIDs = expectedMethods.keySet
 
     if (actualMethodIDs != expectedMethodIDs) {
-      val missingMethods = expectedMethodIDs diff actualMethodIDs
+      val missingMethods = expectedMethodIDs.diff(actualMethodIDs)
       if (missingMethods.nonEmpty) {
         errorCount += 1
         logger.error(
             s"Missing methods in $className: $missingMethods")
       }
 
-      val unexpectedMethods = actualMethodIDs diff expectedMethodIDs
+      val unexpectedMethods = actualMethodIDs.diff(expectedMethodIDs)
       if (unexpectedMethods.nonEmpty) {
         errorCount += 1
         logger.error(
@@ -164,7 +161,7 @@ object InfoChecker {
    *
    *  @return Count of info checking errors (0 in case of success)
    */
-  def check(infoAndTrees: Iterable[(ClassInfo, ClassDef)],
+  def check(infoAndTrees: NonDeprecatedTraversable[(ClassInfo, ClassDef)],
       logger: Logger): Int = {
     new InfoChecker(infoAndTrees, logger).check()
   }

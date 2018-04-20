@@ -1,5 +1,6 @@
 package org.scalajs.core.tools.jsdep
 
+import org.scalajs.core.tools.Compat.NonDeprecatedTraversable
 import org.scalajs.core.tools.sem.Semantics
 
 /** Expresses a requirement for a given semantic to be compliant */
@@ -33,7 +34,7 @@ object ComplianceRequirement {
    *  requirements.
    *  @throws BadComplianceException if the semantics are not compliant.
    */
-  final def checkCompliance(requirements: Iterable[ComplianceRequirement],
+  final def checkCompliance(requirements: NonDeprecatedTraversable[ComplianceRequirement],
       semantics: Semantics): Unit = {
     val unmet = requirements.filterNot(compliance =>
         semantics.isCompliant(compliance.semantics))
@@ -43,8 +44,8 @@ object ComplianceRequirement {
   }
 
   def mergeFromManifests(
-      manifests: Iterable[JSDependencyManifest]
-  ): Iterable[ComplianceRequirement] = {
+      manifests: NonDeprecatedTraversable[JSDependencyManifest]
+  ): NonDeprecatedTraversable[ComplianceRequirement] = {
 
     val flatTups = for {
       manifest <- manifests

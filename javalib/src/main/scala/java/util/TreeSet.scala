@@ -7,7 +7,7 @@ import scala.math.Ordering
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 
-import scala.Compat.{BooleanNonEmpty, SortedSetRangeTo}
+import Compat.{BooleanNonEmpty, SortedSetRangeTo}
 
 class TreeSet[E] (_comparator: Comparator[_ >: E])
     extends AbstractSet[E]
@@ -144,8 +144,7 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
     val boxedFrom = Box(fromElement)
     val boxedTo = Box(toElement)
     val subSetFun = { () =>
-      // the creation of a new TreeSet is to avoid a mysterious bug with scala 2.10
-      var base = new mutable.TreeSet[Box[E]]
+      val base = new mutable.TreeSet[Box[E]]
       base ++= inner.range(boxedFrom, boxedTo)
       if (!fromInclusive)
         base -= boxedFrom
