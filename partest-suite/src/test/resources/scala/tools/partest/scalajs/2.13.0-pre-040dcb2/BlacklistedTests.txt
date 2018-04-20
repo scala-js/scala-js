@@ -1042,6 +1042,23 @@ run/t7187.scala
 # Crashes our optimizer because of artificially insane amount of inlining
 run/t10594.scala
 
+# Relies on scala.tools.partest.Util
+run/Meter.scala
+run/MeterCaseClass.scala
+run/deeps.scala
+run/enrich-gentraversable.scala
+run/matcharraytail.scala
+run/matchemptyarray.scala
+run/multi-array.scala
+run/slices.scala
+run/streams.scala
+run/t0017.scala
+run/t0421-new.scala
+run/t0421-old.scala
+run/t0528.scala
+run/t1192.scala
+run/t3158.scala
+
 ###  Incorrect partests  ###
 # Badly uses constract of Console.print (no flush)
 run/t429.scala
