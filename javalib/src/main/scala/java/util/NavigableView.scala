@@ -11,7 +11,6 @@ private[util] class NavigableView[E](original: NavigableSet[E],
     upperBound: Option[E], upperInclusive: Boolean)
     extends AbstractCollection[E] with NavigableSet[E] with SortedSet[E] {
 
-  import NavigableView.Compat._
   import Compat.SortedSetRangeTo
 
   def size(): Int =
@@ -194,27 +193,4 @@ private[util] class NavigableView[E](original: NavigableSet[E],
 
     new NavigableView(this, descSetFun, None, true, None, true)
   }
-}
-
-object NavigableView {
-
-  private object Compat {
-
-//    implicit class IterableExtensionMethods(val fact: scala.collection.Iterable.type) extends AnyVal {
-//      def from[A](source: scala.collection.Iterator[A]): scala.collection.Iterable[A] =
-//        fact.apply(source.toSeq: _*)
-//    }
-
-//    implicit class ImmutableSortedSetExtensionMethods(val fact: immutable.SortedSet.type) extends AnyVal {
-//      def from[A: Ordering](source: scala.collection.Iterable[A]): immutable.SortedSet[A] =
-//        fact.apply(source.toSeq: _*)
-//    }
-//
-//    implicit class MutableSortedSetExtensionMethods(val fact: mutable.SortedSet.type) extends AnyVal {
-//      def from[A: Ordering](source: scala.collection.Iterable[A]): mutable.SortedSet[A] =
-//        fact.apply(source.toSeq: _*)
-//    }
-
-  }
-
 }
