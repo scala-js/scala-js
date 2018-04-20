@@ -1057,7 +1057,6 @@ run/gadts.scala
 run/t2386-new.scala
 run/virtpatmat_stringinterp.scala
 run/t657.scala
-run/t0017.scala
 run/t5713
 run/t576.scala
 run/t3580.scala
@@ -1080,7 +1079,6 @@ run/t6911.scala
 run/t5604.scala
 run/macro-term-declared-in-default-param
 run/collection-stacks.scala
-run/multi-array.scala
 run/t4560b.scala
 run/buffer-slice.scala
 run/t5629.scala
@@ -1115,14 +1113,12 @@ run/t889.scala
 run/QueueTest.scala
 run/t4537
 run/t3699.scala
-run/t1192.scala
 run/macro-expand-tparams-bounds
 run/macro-expand-nullary-generic
 run/t1434.scala
 run/t6443-varargs.scala
 run/macro-term-declared-in-trait
 run/t4080.scala
-run/matcharraytail.scala
 run/infiniteloop.scala
 run/t5733.scala
 run/virtpatmat_nested_lists.scala
@@ -1236,7 +1232,6 @@ run/macro-expand-implicit-macro-is-implicit
 run/blame_eye_triple_eee-float.scala
 run/t4482.scala
 run/t5488.scala
-run/matchemptyarray.scala
 run/t3714.scala
 run/richWrapperEquals.scala
 run/t5328.scala
@@ -1378,7 +1373,6 @@ run/matchonseq.scala
 run/t5428.scala
 run/macro-expand-overload
 run/t4660.scala
-run/enrich-gentraversable.scala
 run/macro-expand-override
 run/t4054.scala
 run/t4753.scala
@@ -1628,14 +1622,12 @@ run/t4013.scala
 run/macro-expand-tparams-explicit
 run/tuples.scala
 run/t5753_2
-run/t0528.scala
 run/t5105.scala
 run/t7341.scala
 run/t3670.scala
 run/t2594_tcpoly.scala
 run/t3895.scala
 run/t0668.scala
-run/slices.scala
 run/t6666a.scala
 run/valueclasses-classmanifest-generic.scala
 run/t2316_run.scala
@@ -2539,7 +2531,6 @@ run/lazy-traits.scala
 run/OrderingTest.scala
 run/ReplacementMatching.scala
 run/patmat-finally.scala
-run/t3158.scala
 run/t3346e.scala
 run/t4398.scala
 run/t4930.scala
@@ -2896,7 +2887,6 @@ run/iterator-from.scala
 run/SymbolsTest.scala
 run/t1074.scala
 run/t1505.scala
-run/streams.scala
 run/t2111.scala
 run/t4601.scala
 neg/t3692-new.scala
@@ -3264,9 +3254,7 @@ run/wacky-value-classes.scala
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala
-run/t0421-new.scala
 run/runtime.scala
-run/t0421-old.scala
 run/spec-self.scala
 run/t5552.scala
 run/Course-2002-02.scala
@@ -3279,9 +3267,6 @@ run/try-catch-unify.scala
 run/impconvtimes.scala
 run/Course-2002-10.scala
 run/Course-2002-08.scala
-run/MeterCaseClass.scala
-run/Meter.scala
-run/deeps.scala
 run/caseClassHash.scala
 run/interpolation.scala
 run/interpolationMultiline1.scala
