@@ -65,6 +65,24 @@ object Build {
 
   val scala213M4 = "2.13.0-pre-040dcb2"
 
+  def hasNewCollections(version: String): Boolean =
+    CrossVersion.partialVersion(version).exists { case (_, minor) =>
+      (minor == 13 && version != "2.13.0-M3") || minor > 13
+    }
+
+  /**
+    * @return A setting that adds an unmanaged source directory depending on
+    *         the fact that the Scala version uses the new collections
+    *         (introduced in 2.13.0-M4) or not.
+    */
+  def scala213M4SourceDirectorySetting(config: Configuration): Setting[_] =
+    unmanagedSourceDirectories in config += {
+      val sourceDir = (sourceDirectory in config).value
+      val scalaV = scalaVersion.value
+      if (hasNewCollections(scalaV)) sourceDir / "scala-2.13"
+      else sourceDir / "scala-2.10_2.13.0-M3"
+    }
+
   val scalaVersionsUsedForPublishing: Set[String] =
     Set("2.10.7", "2.11.12", "2.12.5", "2.13.0-M3", scala213M4)
   val newScalaBinaryVersionsInThisRelease: Set[String] =
@@ -549,11 +567,7 @@ object Build {
                 scalaArtifact("scala-reflect"))
           },
           exportJars := true,
-          unmanagedSourceDirectories in Test += {
-            val sourceDir = (sourceDirectory in Test).value
-            if (scalaVersion.value == scala213M4) sourceDir / "scala-2.13"
-            else sourceDir / "scala-2.10_2.13.0-M3"
-          }
+          scala213M4SourceDirectorySetting(Test)
       )
   ).dependsOnSource(irProject)
 
@@ -569,7 +583,7 @@ object Build {
 
       unmanagedSourceDirectories in Compile += {
         val sourceDir = baseDirectory.value.getParentFile / "shared" / "src" / "main"
-        if (scalaVersion.value == scala213M4) sourceDir / "scala-2.13"
+        if (hasNewCollections(scalaVersion.value)) sourceDir / "scala-2.13"
         else sourceDir / "scala-2.10_2.13.0-M3"
       },
 
@@ -1066,15 +1080,7 @@ object Build {
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
-
-         unmanagedSourceDirectories += {
-            val dir = sourceDirectory.value
-            val scalaV = scalaVersion.value
-            CrossVersion.partialVersion(scalaV) match {
-              case Some((2, 13)) if scalaV != "2.13.0-M3" => dir / "scala-2.13"
-              case _ => dir / "scala-2.10_2.13.0-M3"
-            }
-          },
+        scala213M4SourceDirectorySetting(Compile),
 
           scalacOptions in doc ++= Seq(
               "-implicits",
