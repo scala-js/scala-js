@@ -621,13 +621,18 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     private def reportCannotDisambiguateError(alts: List[Exported]): Unit = {
       val currentClass = currentClassSym.get
 
-      // Find a position that is in the current class for decent error reporting
-      val pos = alts.collectFirst {
+      /* Find a position that is in the current class for decent error reporting.
+       * If there are more than one, always use the "highest" one (i.e., the
+       * one coming last in the source text) so that we reliably display the
+       * same error in all compilers.
+       */
+      val validPositions = alts.collect {
         case ExportedSymbol(sym) if sym.owner == currentClass => sym.pos
         case alt: ExportedBody                                => alt.pos
-      }.getOrElse {
-        currentClass.pos
       }
+      val pos =
+        if (validPositions.isEmpty) currentClass.pos
+        else validPositions.maxBy(_.point)
 
       val kind =
         if (isScalaJSDefinedJSClass(currentClass)) "method"
@@ -897,7 +902,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         genApplyForSym(minArgc, hasRestParam, sym, static)
 
       def name: String =
-        if (isScalaJSDefinedJSClass(sym.owner)) jsNameOf(sym).displayName
+        if (isRawJSType(sym.owner.toTypeConstructor)) jsNameOf(sym).displayName
         else sym.name.toString
 
       def typeInfo: String = sym.tpe.toString
