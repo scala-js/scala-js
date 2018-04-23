@@ -4646,7 +4646,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  Returns a list of the transformed arguments.
      *
      *  This tries to optimize repeated arguments (varargs) by turning them
-     *  into js.WrappedArray instead of Scala wrapped arrays.
+     *  into js.ImmutableArray instead of Scala wrapped arrays.
      */
     private def genActualArgs(sym: Symbol, args: List[Tree])(
         implicit pos: Position): List[js.Tree] = {

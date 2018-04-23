@@ -548,7 +548,12 @@ object Build {
             System.setProperty("scala.scalajs.compiler.test.scalareflect",
                 scalaArtifact("scala-reflect"))
           },
-          exportJars := true
+          exportJars := true,
+          unmanagedSourceDirectories in Test += {
+            val sourceDir = (sourceDirectory in Test).value
+            if (scalaVersion.value == scala213M4) sourceDir / "scala-2.13"
+            else sourceDir / "scala-2.10_2.13.0-M3"
+          }
       )
   ).dependsOnSource(irProject)
 
