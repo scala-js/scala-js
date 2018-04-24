@@ -28,39 +28,20 @@ object HTMLRunnerBuilder {
 
   private val tmpSuffixRE = """[a-zA-Z0-9-_.]*$""".r
 
-  private def tmpFile(path: String): File = {
-    /* - createTempFile requires a prefix of at least 3 chars
-     * - we use a safe part of the path as suffix so the extension stays (some
-     *   browsers need that) and there is a clue which file it came from.
-     */
-    val suffix = tmpSuffixRE.findFirstIn(path).orNull
-
-    val f = File.createTempFile("tmp-", suffix)
-    f.deleteOnExit()
-    f
-  }
-
-  private def loadCSSURI(): URI = {
-    val name = "test-runner.css"
-    val f = tmpFile(name)
-
-    val s = getClass.getResourceAsStream(name)
+  private def tmpFile(path: String, in: InputStream): URI = {
     try {
-      Files.copy(s, f.toPath(), StandardCopyOption.REPLACE_EXISTING)
+      /* - createTempFile requires a prefix of at least 3 chars
+       * - we use a safe part of the path as suffix so the extension stays (some
+       *   browsers need that) and there is a clue which file it came from.
+       */
+      val suffix = tmpSuffixRE.findFirstIn(path).orNull
+
+      val f = File.createTempFile("tmp-", suffix)
+      f.deleteOnExit()
+      Files.copy(in, f.toPath(), StandardCopyOption.REPLACE_EXISTING)
+      f.toURI()
     } finally {
-      s.close()
-    }
-    f.toURI()
-  }
-
-  private def loadJSFiles(jsFiles: Seq[VirtualBinaryFile]): Seq[URI] = {
-    jsFiles.map {
-      case file: FileVirtualFile => file.file.toURI
-
-      case file =>
-        val f = tmpFile(file.path)
-        Files.copy(file.inputStream, f.toPath)
-        f.toURI
+      in.close()
     }
   }
 
@@ -68,8 +49,15 @@ object HTMLRunnerBuilder {
       frameworkImplClassNames: List[List[String]],
       taskDefs: List[TaskDef]): Unit = {
 
-    val jsFileURIs = loadJSFiles(jsFiles)
-    val cssURI = loadCSSURI()
+    val jsFileURIs = jsFiles.map {
+      case file: FileVirtualFile => file.file.toURI
+      case file                  => tmpFile(file.path, file.inputStream)
+    }
+
+    val cssURI = {
+      val name = "test-runner.css"
+      tmpFile(name, getClass.getResourceAsStream(name))
+    }
 
     val tests = new IsolatedTestSet(frameworkImplClassNames, taskDefs)
 
