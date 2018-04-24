@@ -95,7 +95,7 @@ protected[testinterface] object HTMLRunner {
       val oks = tasks.map { task =>
         for {
           (ok, newTasks) <- scheduleTask(task, ui)
-          newOk <- runAllTasks(newTasks)
+          newOk <- runAllTasks(newTasks.toIndexedSeq)
         } yield ok && newOk
       }
 
@@ -105,7 +105,7 @@ protected[testinterface] object HTMLRunner {
     val runner = framework.runner(Array(), Array(), classLoader)
     val tasks = runner.tasks(taskDefs.toArray)
 
-    for (ok <- runAllTasks(tasks)) yield {
+    for (ok <- runAllTasks(tasks.toIndexedSeq)) yield {
       val resultStr = runner.done()
       if (resultStr.nonEmpty)
         ui.reportFrameworkResult(ok, framework.name, resultStr)

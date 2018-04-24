@@ -1,14 +1,14 @@
 package org.scalajs.core.tools.jsdep
 
 import scala.collection.mutable
-
 import org.scalajs.core.tools.io.VirtualJSFile
 import JSLibResolveException.Problem
+import org.scalajs.core.tools.Compat.NonDeprecatedTraversable
 
 object DependencyResolver {
 
   type DependencyFilter =
-    Traversable[FlatJSDependency] => Traversable[FlatJSDependency]
+    NonDeprecatedTraversable[FlatJSDependency] => NonDeprecatedTraversable[FlatJSDependency]
 
   /** Constructs an ordered list of JS libraries to include. Fails if:
    *  - Resource names do not identify a unique resource on the classpath
@@ -16,7 +16,7 @@ object DependencyResolver {
    *  - Not all dependencies are available
    */
   def resolveDependencies(
-      manifests: Traversable[JSDependencyManifest],
+      manifests: NonDeprecatedTraversable[JSDependencyManifest],
       availableLibs: Map[String, VirtualJSFile],
       dependencyFilter: DependencyFilter): List[ResolvedJSDependency] = {
 
@@ -50,7 +50,7 @@ object DependencyResolver {
    *  @return Map from resource name to the list of origins mentioning them
    */
   private def collectAllResourceNames(
-      manifests: Traversable[JSDependencyManifest]): Map[String, List[Origin]] = {
+      manifests: NonDeprecatedTraversable[JSDependencyManifest]): Map[String, List[Origin]] = {
 
     def allResources(dep: JSDependency) =
       dep.resourceName :: dep.dependencies ::: dep.minifiedResourceName.toList
@@ -61,7 +61,7 @@ object DependencyResolver {
       resourceName <- allResources(dep)
     } yield (resourceName, manifest.origin)
 
-    nameOriginPairs.groupBy(_._1).mapValues(_.map(_._2))
+    nameOriginPairs.groupBy(_._1).mapValues(_.map(_._2)).toMap
   }
 
   /** Resolves all the resource names wrt to the current classpath.
@@ -70,7 +70,7 @@ object DependencyResolver {
    */
   private def resolveAllResourceNames(
       allResourceNames: Map[String, List[Origin]],
-      relPaths: Traversable[String]): Map[String, String] = {
+      relPaths: Iterable[String]): Map[String, String] = {
     val problems = mutable.ListBuffer.empty[Problem]
     val resolvedLibs = Map.newBuilder[String, String]
 
@@ -88,7 +88,7 @@ object DependencyResolver {
 
   /** Resolves one resource name wrt to the current classpath. */
   private def resolveResourceName(resourceName: String, origins: List[Origin],
-      relPaths: Traversable[String]): Either[Problem, String] = {
+      relPaths: Iterable[String]): Either[Problem, String] = {
     val candidates = (relPaths collect {
       case relPath if ("/" + relPath).endsWith("/" + resourceName) =>
         relPath
@@ -104,7 +104,7 @@ object DependencyResolver {
 
   /** Create a sorted include list for js libs */
   private def createIncludeList(
-      flatDeps: Traversable[FlatJSDependency]): List[ResolutionInfo] = {
+      flatDeps: NonDeprecatedTraversable[FlatJSDependency]): List[ResolutionInfo] = {
     val jsDeps = mergeManifests(flatDeps)
 
     // Verify all dependencies are met
@@ -142,7 +142,7 @@ object DependencyResolver {
   /** Merges multiple JSDependencyManifests into a map of map:
    *  resourceName -> ResolutionInfo
    */
-  private def mergeManifests(flatDeps: Traversable[FlatJSDependency]) = {
+  private def mergeManifests(flatDeps: NonDeprecatedTraversable[FlatJSDependency]) = {
     checkCommonJSNameConflicts(flatDeps)
 
     val byRelPath = flatDeps.groupBy(_.relPath)
@@ -160,7 +160,7 @@ object DependencyResolver {
     }
   }
 
-  private def checkCommonJSNameConflicts(flatDeps: Traversable[FlatJSDependency]) = {
+  private def checkCommonJSNameConflicts(flatDeps: NonDeprecatedTraversable[FlatJSDependency]) = {
     @inline
     def hasConflict(x: FlatJSDependency, y: FlatJSDependency) = (
         x.commonJSName.isDefined &&
@@ -178,7 +178,7 @@ object DependencyResolver {
   }
 
   private def checkMinifiedJSConflicts(
-      byRelPath: Map[String, Traversable[FlatJSDependency]]) = {
+      byRelPath: Map[String, NonDeprecatedTraversable[FlatJSDependency]]) = {
 
     @inline
     def hasConflict(x: FlatJSDependency, y: FlatJSDependency) = (

@@ -46,7 +46,7 @@ object QuickLinker {
 
   /** Link a Scala.js application on Node.js */
   def linkNodeInternal(semantics: Semantics,
-      irFilesAndJars: Seq[String], moduleInitializers: Seq[String]): String = {
+      irFilesAndJars: collection.Seq[String], moduleInitializers: collection.Seq[String]): String = {
     val cache = (new IRFileCache).newCache
 
     val config = StandardLinker.Config()
@@ -69,13 +69,13 @@ object QuickLinker {
       }
     }
 
-    val ir = cache.cached(irContainers)
+    val ir = cache.cached(irContainers.toSeq)
 
     val parsedModuleInitializers =
       moduleInitializers.map(parseModuleInitializer)
 
     val out = WritableMemVirtualJSFile("out.js")
-    linker.link(ir, parsedModuleInitializers, out, new ScalaConsoleLogger)
+    linker.link(ir, parsedModuleInitializers.toSeq, out, new ScalaConsoleLogger)
 
     out.content
   }

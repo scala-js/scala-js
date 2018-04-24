@@ -7,13 +7,13 @@
 \*                                                                      */
 package org.scalajs.testsuite.noircheck
 
+import java.util.concurrent.ForkJoinWorkerThread
+
 import org.junit.Test
 
 class DummyParentsTest {
 
   @Test def linking_stages_should_provide_dummy_parents_if_required(): Unit = {
-
-    import scala.concurrent.forkjoin._
 
     // scala.concurrent.forkjoin.ForkJoinWorkerThread is not defined
     class DummyFJWorkerThread extends ForkJoinWorkerThread(null) {

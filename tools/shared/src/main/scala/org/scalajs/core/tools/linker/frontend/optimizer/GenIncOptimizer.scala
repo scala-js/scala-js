@@ -13,7 +13,6 @@ import language.higherKinds
 
 import scala.annotation.{switch, tailrec}
 
-import scala.collection.{GenMap, GenTraversableOnce, GenIterable, GenIterableLike}
 import scala.collection.mutable
 
 import org.scalajs.core.ir._
@@ -21,6 +20,7 @@ import Definitions.isConstructorName
 import Trees._
 import Types._
 
+import org.scalajs.core.tools.Compat._
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging._
@@ -339,7 +339,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
       val methodSetChanged = methods.keySet != newMethodNames
       if (methodSetChanged) {
         // Remove deleted methods
-        methods retain { (methodName, method) =>
+        methods filterInPlace { case (methodName, method) =>
           if (newMethodNames.contains(methodName)) {
             true
           } else {
@@ -431,8 +431,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
       getLinkedClassIfNeeded(encodedName) match {
         case Some(linkedClass) if sameSuperClass(linkedClass) =>
           // Class still exists. Recurse.
-          subclasses = subclasses.filter(
-              _.walkClassesForDeletions(getLinkedClassIfNeeded))
+          subclasses = CollOps.filter(subclasses, (_: Class).walkClassesForDeletions(getLinkedClassIfNeeded))
           if (isInstantiated && !linkedClass.hasInstances)
             notInstantiatedAnymore()
           true
@@ -488,7 +487,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
       interfaces = newInterfaces
 
       val methodAttributeChanges =
-        (parentMethodAttributeChanges -- methods.keys ++
+        (parentMethodAttributeChanges.diff(methods.keySet) ++
             addedMethods ++ changedMethods ++ deletedMethods)
 
       // Tag callers with dynamic calls
@@ -511,7 +510,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
               newInterfaces.size != existingInterfaces.size) {
             val allMethodNames = allMethods().keys
             for {
-              intf <- oldInterfaces ++ newInterfaces -- existingInterfaces
+              intf <- (oldInterfaces ++ newInterfaces).diff(existingInterfaces)
               methodName <- allMethodNames
             } {
               intf.tagDynamicCallersOf(methodName)
@@ -547,7 +546,7 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
 
     /** UPDATE PASS ONLY. */
     def walkForAdditions(
-        getNewChildren: String => GenIterable[LinkedClass]): Unit = {
+        getNewChildren: String => Iterable[LinkedClass]): Unit = {
 
       val subclassAcc = CollOps.prepAdd(subclasses)
 
@@ -1022,11 +1021,12 @@ object GenIncOptimizer {
   private val isAdHocElidableModuleAccessor =
     Set("s_Predef$")
 
+  // TODO Adapt to the new parallel collections
   private[optimizer] trait AbsCollOps {
     type Map[K, V] <: mutable.Map[K, V]
-    type ParMap[K, V] <: GenMap[K, V]
+    type ParMap[K, V] <: collection.Map[K, V]
     type AccMap[K, V]
-    type ParIterable[V] <: GenIterableLike[V, ParIterable[V]]
+    type ParIterable[V] <: Iterable[V]
     type Addable[V]
 
     def emptyAccMap[K, V]: AccMap[K, V]
@@ -1041,11 +1041,12 @@ object GenIncOptimizer {
 
     // Operations on AccMap
     def acc[K, V](map: AccMap[K, V], k: K, v: V): Unit
-    def getAcc[K, V](map: AccMap[K, V], k: K): GenIterable[V]
+    def getAcc[K, V](map: AccMap[K, V], k: K): Iterable[V]
     def parFlatMapKeys[A, B](map: AccMap[A, _])(
-        f: A => GenTraversableOnce[B]): GenIterable[B]
+        f: A => Iterable[B]): collection.Iterable[B]
 
     // Operations on ParIterable
+    def filter[A](it: ParIterable[A], p: A => Boolean): ParIterable[A]
     def prepAdd[V](it: ParIterable[V]): Addable[V]
     def add[V](addable: Addable[V], v: V): Unit
     def finishAdd[V](addable: Addable[V]): ParIterable[V]

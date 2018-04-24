@@ -23,7 +23,7 @@ private[closure] class ClosureAstBuilder(
     treeBuf += transformer.transformStat(tree)(NoPosition)
 
   lazy val closureAST: SourceAst = {
-    val root = transformer.setNodePosition(IR.script(treeBuf: _*), NoPosition)
+    val root = transformer.setNodePosition(IR.script(treeBuf.toSeq: _*), NoPosition)
 
     treeBuf.clear()
 

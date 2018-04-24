@@ -29,7 +29,7 @@ class ComplianceRequirementTest {
       missing <- required.subsets
       if missing.nonEmpty
     } {
-      val present = required -- missing
+      val present = required.diff(missing)
       val requirements = required.map(mkComplianceRequirement)
       val semantics = Semantics.compliantTo(present)
       try {

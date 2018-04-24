@@ -33,7 +33,7 @@ private final class Analyzer(semantics: Semantics,
 
   def allAvailable: Boolean = _allAvailable
   def classInfos: scala.collection.Map[String, Analysis.ClassInfo] = _classInfos
-  def errors: Seq[Error] = _errors
+  def errors: collection.Seq[Error] = _errors
 
   private def lookupClass(encodedName: String): ClassInfo = {
     _classInfos.get(encodedName) match {

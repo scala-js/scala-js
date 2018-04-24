@@ -9,8 +9,9 @@
 
 package org.scalajs.core.tools.linker.frontend.optimizer
 
-import scala.collection.{GenTraversableOnce, GenIterable}
 import scala.collection.mutable
+
+import org.scalajs.core.tools.Compat._
 
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.javascript.ESLevel
@@ -36,20 +37,21 @@ final class IncOptimizer(semantics: Semantics, esLevel: ESLevel,
     def remove[K, V](map: ParMap[K, V], k: K): Option[V] = map.remove(k)
 
     def retain[K, V](map: ParMap[K, V])(p: (K, V) => Boolean): Unit =
-      map.retain(p)
+      map.filterInPlace(p.tupled)
 
     // Operations on AccMap
     def acc[K, V](map: AccMap[K, V], k: K, v: V): Unit =
       map.getOrElseUpdate(k, mutable.ListBuffer.empty) += v
 
-    def getAcc[K, V](map: AccMap[K, V], k: K): GenIterable[V] =
-      map.getOrElse(k, Nil)
+    def getAcc[K, V](map: AccMap[K, V], k: K): collection.Iterable[V] =
+      map.getOrElse(k, collection.Iterable.empty)
 
     def parFlatMapKeys[A, B](map: AccMap[A, _])(
-        f: A => GenTraversableOnce[B]): GenIterable[B] =
+        f: A => Iterable[B]): collection.Iterable[B] =
       map.keys.flatMap(f).toList
 
     // Operations on ParIterable
+    def filter[A](it: ParIterable[A], p: A => Boolean): ParIterable[A] = it.filter(p)
     def prepAdd[V](it: ParIterable[V]): Addable[V] = it
     def add[V](addable: Addable[V], v: V): Unit = addable += v
     def finishAdd[V](addable: Addable[V]): ParIterable[V] = addable

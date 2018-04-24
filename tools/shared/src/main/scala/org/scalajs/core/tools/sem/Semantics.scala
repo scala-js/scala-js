@@ -9,11 +9,9 @@
 
 package org.scalajs.core.tools.sem
 
-import scala.collection.immutable.Traversable
-
 import org.scalajs.core.tools.linker.LinkedClass
-
 import CheckedBehavior._
+import org.scalajs.core.tools.Compat.NonDeprecatedImmutableTraversable
 
 final class Semantics private (
     val asInstanceOfs: CheckedBehavior,
@@ -247,7 +245,7 @@ object Semantics {
       productionMode = false,
       runtimeClassNameMapper = RuntimeClassNameMapper.keepAll())
 
-  def compliantTo(semantics: Traversable[String]): Semantics = {
+  def compliantTo(semantics: NonDeprecatedImmutableTraversable[String]): Semantics = {
     import Defaults._
 
     val semsSet = semantics.toSet

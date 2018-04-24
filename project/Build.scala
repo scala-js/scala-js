@@ -78,7 +78,7 @@ object Build {
     else sourceDir / "scala-old-collections"
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.7", "2.11.12", "2.12.5", "2.13.0-M3")
+    Set("2.10.7", "2.11.12", "2.12.5", "2.13.0-M3", "2.13.0-M4")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -384,7 +384,7 @@ object Build {
   private def parallelCollectionsDependencies(
       scalaVersion: String): Seq[ModuleID] = {
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((2, n)) if n >= 13 =>
+      case Some((2, n)) if n >= 13 && scalaVersion != "2.13.0-M4" =>
         Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "0.1.2")
 
       case _ => Nil
@@ -571,6 +571,11 @@ object Build {
         baseDirectory.value.getParentFile / "shared/src/main/scala",
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile / "shared/src/test/scala",
+
+      unmanagedSourceDirectories in Compile += {
+        collectionsEraDependentDirectory(scalaVersion.value,
+            baseDirectory.value.getParentFile / "shared" / "src" / "main")
+      },
 
       sourceGenerators in Compile += Def.task {
         ScalaJSEnvGenerator.generateEnvHolder(
@@ -1787,13 +1792,14 @@ object Build {
           libraryDependencies ++= {
             if (shouldPartest.value) {
               Seq(
-                  "org.scala-sbt" % "sbt" % sbtVersion.value,
                   {
                     val v = scalaVersion.value
                     if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
                       "org.scala-lang.modules" %% "scala-partest" % "1.0.13"
                     else if (v.startsWith("2.11."))
                       "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
+                    else if (v == "2.13.0-M4")
+                      "org.scala-lang" % "scala-partest" % v exclude("org.scala-lang", "scala-repl-frontend") exclude("org.scala-lang", "scala-compiler-doc")
                     else
                       "org.scala-lang.modules" %% "scala-partest" % "1.1.4"
                   },
@@ -1813,6 +1819,8 @@ object Build {
             val v = scalaVersion.value
             if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
               sourceRoot / "main-partest-1.0.13"
+            else if (v == "2.13.0-M4")
+              sourceRoot / "main-partest-1.2.0"
             else
               sourceRoot / "main-partest-1.0.16"
           },
@@ -1854,6 +1862,18 @@ object Build {
 
           // Override the dependency of partest - see #1889
           dependencyOverrides += "org.scala-lang" % "scala-library" % scalaVersion.value % "test",
+
+          /* This appears to be needed to counteract an adversarial effect of
+           * `exclude` in `partest`'s own `libraryDependencies`.
+           */
+          libraryDependencies ++= {
+            val v = scalaVersion.value
+            if (shouldPartest.value && v == "2.13.0-M4") {
+              Seq("org.scala-lang" % "scala-partest" % v % "test" exclude("org.scala-lang", "scala-repl-frontend") exclude("org.scala-lang", "scala-compiler-doc"))
+            } else {
+              Seq()
+            }
+          },
 
           testFrameworks ++= {
             if (shouldPartest.value)

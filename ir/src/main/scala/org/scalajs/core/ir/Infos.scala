@@ -135,7 +135,7 @@ object Infos {
       this
     }
 
-    def addInterfaces(interfaces: TraversableOnce[String]): this.type = {
+    def addInterfaces(interfaces: Iterable[String]): this.type = {
       this.interfaces ++= interfaces
       this
     }

@@ -17,6 +17,7 @@ import org.scalajs.core.ir.{ClassKind, Position}
 import org.scalajs.core.ir.Trees.JSNativeLoadSpec
 import org.scalajs.core.ir.Definitions.decodeClassName
 
+import org.scalajs.core.tools.Compat._
 import org.scalajs.core.tools.logging._
 
 import org.scalajs.core.tools.javascript.{Trees => js, _}
@@ -234,7 +235,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     logger.debug(
         s"Emitter: Method tree cache stats: resued: $statsMethodsReused -- "+
         s"invalidated: $statsMethodsInvalidated")
-    classCaches.retain((_, c) => c.cleanAfterRun())
+    classCaches.filterInPlace { case (_, c) => c.cleanAfterRun() }
   }
 
   private def emitLinkedClass(
@@ -451,8 +452,8 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       _methodCaches.getOrElseUpdate(encodedName, new MethodCache)
 
     def cleanAfterRun(): Boolean = {
-      _staticCaches.retain((_, c) => c.cleanAfterRun())
-      _methodCaches.retain((_, c) => c.cleanAfterRun())
+      _staticCaches.filterInPlace { case (_, c) => c.cleanAfterRun() }
+      _methodCaches.filterInPlace { case (_, c) => c.cleanAfterRun() }
 
       if (!_cacheUsed)
         invalidate()
