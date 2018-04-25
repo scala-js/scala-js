@@ -63,8 +63,28 @@ object Build {
   val previousBinaryCrossVersion =
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
+  val scala213M4 = "2.13.0-pre-040dcb2"
+
+  def hasNewCollections(version: String): Boolean =
+    CrossVersion.partialVersion(version).exists { case (_, minor) =>
+      (minor == 13 && version != "2.13.0-M3") || minor > 13
+    }
+
+  /**
+    * @return A setting that adds an unmanaged source directory depending on
+    *         the fact that the Scala version uses the new collections
+    *         (introduced in 2.13.0-M4) or not.
+    */
+  def scala213M4SourceDirectorySetting(config: Configuration): Setting[_] =
+    unmanagedSourceDirectories in config += {
+      val sourceDir = (sourceDirectory in config).value
+      val scalaV = scalaVersion.value
+      if (hasNewCollections(scalaV)) sourceDir / "scala-2.13"
+      else sourceDir / "scala-2.10_2.13.0-M3"
+    }
+
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.7", "2.11.12", "2.12.5", "2.13.0-M3")
+    Set("2.10.7", "2.11.12", "2.12.5", "2.13.0-M3", scala213M4)
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -118,6 +138,8 @@ object Build {
   }
 
   val commonSettings = Seq(
+      // Temporary
+      resolvers += "scala-integration" at "https://scala-ci.typesafe.com/artifactory/scala-integration/",
       scalaVersion := "2.12.5",
       organization := "org.scala-js",
       version := scalaJSVersion,
@@ -370,7 +392,7 @@ object Build {
   private def parallelCollectionsDependencies(
       scalaVersion: String): Seq[ModuleID] = {
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((2, n)) if n >= 13 =>
+      case Some((2, n)) if n >= 13 && scalaVersion != scala213M4 =>
         Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "0.1.2")
 
       case _ => Nil
@@ -544,7 +566,8 @@ object Build {
             System.setProperty("scala.scalajs.compiler.test.scalareflect",
                 scalaArtifact("scala-reflect"))
           },
-          exportJars := true
+          exportJars := true,
+          scala213M4SourceDirectorySetting(Test)
       )
   ).dependsOnSource(irProject)
 
@@ -557,6 +580,12 @@ object Build {
         baseDirectory.value.getParentFile / "shared/src/main/scala",
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile / "shared/src/test/scala",
+
+      unmanagedSourceDirectories in Compile += {
+        val sourceDir = baseDirectory.value.getParentFile / "shared" / "src" / "main"
+        if (hasNewCollections(scalaVersion.value)) sourceDir / "scala-2.13"
+        else sourceDir / "scala-2.10_2.13.0-M3"
+      },
 
       sourceGenerators in Compile += Def.task {
         ScalaJSEnvGenerator.generateEnvHolder(
@@ -1051,6 +1080,8 @@ object Build {
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
+        scala213M4SourceDirectorySetting(Compile),
+
           scalacOptions in doc ++= Seq(
               "-implicits",
               "-groups",
@@ -1514,7 +1545,11 @@ object Build {
 
         unmanagedSourceDirectories in Test ++= {
           val testDir = (sourceDirectory in Test).value
-
+          val scalaV = scalaVersion.value
+          (
+            if (scalaV.startsWith("2.13") && scalaV != "2.13.0-M3") testDir / "scala-2.13"
+            else testDir / "scala-2.10_2.13.0-M3"
+          ) ::
           includeIf(testDir / "require-modules",
               scalaJSModuleKind.value != ModuleKind.NoModule)
         },
@@ -1759,8 +1794,10 @@ object Build {
             // Checkout proper ref. We do this anyway so we fail if
             // something is wrong
             val git = Git.open(trgDir)
+            git.fetch().call()
             s.log.info(s"Checking out Scala source version $ver")
-            git.checkout().setName(s"v$ver").call()
+            val ref = if (ver == scala213M4) "040dcb2" else s"v$ver"
+            git.checkout().setName(ref).call()
 
             trgDir
           },
@@ -1775,6 +1812,8 @@ object Build {
                       "org.scala-lang.modules" %% "scala-partest" % "1.0.13"
                     else if (v.startsWith("2.11."))
                       "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
+                    else if (v == scala213M4)
+                      "org.scala-lang.modules" %% "scala-partest" % "1.1.7"
                     else
                       "org.scala-lang.modules" %% "scala-partest" % "1.1.4"
                   },
@@ -1794,6 +1833,8 @@ object Build {
             val v = scalaVersion.value
             if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
               sourceRoot / "main-partest-1.0.13"
+            else if (v == scala213M4)
+              sourceRoot / "main-partest-1.1.7"
             else
               sourceRoot / "main-partest-1.0.16"
           },

@@ -10,7 +10,7 @@
 package org.scalajs.core.tools.linker
 
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
-import org.scalajs.core.tools.linker.frontend.optimizer.{ParIncOptimizer, IncOptimizer}
+import org.scalajs.core.tools.linker.frontend.optimizer.{/*ParIncOptimizer,*/ IncOptimizer}
 import org.scalajs.core.tools.linker.backend._
 import org.scalajs.core.tools.linker.backend.closure.ClosureLinkerBackend
 
@@ -27,7 +27,8 @@ trait LinkerPlatformExtensions { this: Linker.type =>
 
     val optOptimizerFactory = {
       if (!config.optimizer) None
-      else if (config.parallel) Some(ParIncOptimizer.factory)
+// TODO Uncomment when the parallel collections module is published for 2.13.0
+//      else if (config.parallel) Some(ParIncOptimizer.factory)
       else Some(IncOptimizer.factory)
     }
 

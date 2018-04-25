@@ -1,7 +1,7 @@
 package java.util.concurrent
 
 import java.util._
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 class ConcurrentLinkedQueue[E]()
     extends AbstractQueue[E] with Queue[E] with Serializable {

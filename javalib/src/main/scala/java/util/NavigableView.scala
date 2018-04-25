@@ -2,7 +2,7 @@ package java.util
 
 import scala.math.Ordering
 
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 import scala.collection.JavaConverters._
 
 private[util] class NavigableView[E](original: NavigableSet[E],
@@ -10,6 +10,8 @@ private[util] class NavigableView[E](original: NavigableSet[E],
     lowerBound: Option[E], lowerInclusive: Boolean,
     upperBound: Option[E], upperInclusive: Boolean)
     extends AbstractCollection[E] with NavigableSet[E] with SortedSet[E] {
+
+  import Compat.SortedSetRangeTo
 
   def size(): Int =
     iterator.asScala.size
@@ -121,8 +123,10 @@ private[util] class NavigableView[E](original: NavigableSet[E],
 
   def last(): E = {
     val iter = iterator()
-    if (iter.hasNext) iter.asScala.toTraversable.last
-    else null.asInstanceOf[E]
+    var result = null.asInstanceOf[E]
+    while (iter.hasNext)
+      result = iter.next()
+    result
   }
 
   def subSet(fromElement: E, fromInclusive: Boolean, toElement: E,
@@ -133,10 +137,10 @@ private[util] class NavigableView[E](original: NavigableSet[E],
 
     val subSetFun = { () =>
       val toTs =
-        if (toInclusive) innerNow.to(boxedTo)
+        if (toInclusive) innerNow.rangeTo(boxedTo)
         else innerNow.until(boxedTo)
       if (fromInclusive) toTs.from(boxedFrom)
-      else toTs.from(boxedFrom) - boxedFrom
+      else toTs.from(boxedFrom).clone() -= boxedFrom
     }
 
     new NavigableView(this, subSetFun,
@@ -149,7 +153,7 @@ private[util] class NavigableView[E](original: NavigableSet[E],
     val boxed = Box(toElement)
 
     val headSetFun =
-      if (inclusive) () => innerNow.to(boxed)
+      if (inclusive) () => innerNow.rangeTo(boxed)
       else () => innerNow.until(boxed)
 
     new NavigableView(this, headSetFun,
@@ -163,7 +167,7 @@ private[util] class NavigableView[E](original: NavigableSet[E],
 
     val tailSetFun =
       if (inclusive) () => innerNow.from(boxed)
-      else () => innerNow.from(boxed) - boxed
+      else () => innerNow.from(boxed).clone() -= boxed
 
     new NavigableView(this, tailSetFun,
         Some(fromElement), inclusive,

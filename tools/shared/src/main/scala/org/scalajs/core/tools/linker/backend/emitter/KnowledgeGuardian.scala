@@ -14,6 +14,7 @@ import scala.collection.mutable
 import org.scalajs.core.ir.{ClassKind, Definitions}
 import org.scalajs.core.ir.Trees.{FieldDef, JSNativeLoadSpec}
 
+import org.scalajs.core.tools.Compat._
 import org.scalajs.core.tools.linker._
 
 private[emitter] final class KnowledgeGuardian {
@@ -66,7 +67,7 @@ private[emitter] final class KnowledgeGuardian {
     }
 
     // Garbage collection
-    classes.retain((_, cls) => cls.testAndResetIsAlive())
+    classes.filterInPlace { case (_, cls) => cls.testAndResetIsAlive() }
 
     val invalidateAll = !firstRun && {
       newIsParentDataAccessed != isParentDataAccessed ||

@@ -15,7 +15,7 @@ import org.junit.Test
 
 import org.scalajs.testsuite.utils.CollectionsTestBase
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
 trait CollectionsOnCollectionsTest extends CollectionsTestBase {
@@ -25,7 +25,7 @@ trait CollectionsOnCollectionsTest extends CollectionsTestBase {
   def testMinMax1[T <: AnyRef with Comparable[T]: ClassTag](
       factory: CollectionFactory, toElem: Int => T, isMin: Boolean): Unit = {
     val coll = factory.empty[T]
-    coll.addAll(range.map(toElem))
+    coll.addAll(range.map(toElem).asJava)
 
     val minMax = if (isMin) range.head else range.last
     def getMinMax(): T =
@@ -36,9 +36,9 @@ trait CollectionsOnCollectionsTest extends CollectionsTestBase {
 
     coll match {
       case list: List[_] =>
-        ju.Collections.shuffle(list, new ju.Random(42))
+        ju.Collections.shuffle(list.asJava, new ju.Random(42))
         assertEquals(0, getMinMax().compareTo(toElem(minMax)))
-        ju.Collections.shuffle(list, new ju.Random(100000))
+        ju.Collections.shuffle(list.asJava, new ju.Random(100000))
         assertEquals(0, getMinMax().compareTo(toElem(minMax)))
       case _ =>
     }
@@ -47,7 +47,7 @@ trait CollectionsOnCollectionsTest extends CollectionsTestBase {
   def testMinMax2[T: ClassTag](factory: CollectionFactory, toElem: Int => T,
       isMin: Boolean, cmp: ju.Comparator[T]): Unit = {
     val coll = factory.empty[T]
-    coll.addAll(range.map(toElem))
+    coll.addAll(range.map(toElem).asJava)
 
     val minMax = if (isMin) range.head else range.last
     def getMinMax: T =
@@ -58,9 +58,9 @@ trait CollectionsOnCollectionsTest extends CollectionsTestBase {
 
     coll match {
       case list: List[_] =>
-        ju.Collections.shuffle(list, new ju.Random(42))
+        ju.Collections.shuffle(list.asJava, new ju.Random(42))
         assertEquals(0, cmp.compare(getMinMax, toElem(minMax)))
-        ju.Collections.shuffle(list, new ju.Random(100000))
+        ju.Collections.shuffle(list.asJava, new ju.Random(100000))
         assertEquals(0, cmp.compare(getMinMax, toElem(minMax)))
       case _ =>
     }
@@ -118,9 +118,9 @@ trait CollectionsOnCollectionsTest extends CollectionsTestBase {
       }
 
       expectAllFrequenciesToBe(0)
-      coll.addAll(range.map(toElem))
+      coll.addAll(range.map(toElem).asJava)
       expectAllFrequenciesToBe(1)
-      coll.addAll(range.map(toElem))
+      coll.addAll(range.map(toElem).asJava)
       coll match {
         case _: ju.Set[_]  => expectAllFrequenciesToBe(1)
         case _: ju.List[_] => expectAllFrequenciesToBe(2)
@@ -154,7 +154,7 @@ trait CollectionsOnCollectionsTest extends CollectionsTestBase {
       val coll = factory.empty[E]
       testCollectionUnmodifiability(ju.Collections.unmodifiableCollection(coll),
         toElem(0))
-      coll.addAll(range.map(toElem))
+      coll.addAll(range.map(toElem).asJava)
       testCollectionUnmodifiability(ju.Collections.unmodifiableCollection(coll),
         toElem(0))
     }

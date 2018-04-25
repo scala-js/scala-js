@@ -44,7 +44,7 @@ class ReflectArrayTest {
 
   @Test def newInstance(): Unit = {
     testNewInstance(classOf[Int], classOf[Array[Int]], 0)
-    testNewInstance(classOf[Char], classOf[Array[Char]], '\0')
+    testNewInstance(classOf[Char], classOf[Array[Char]], '\u0000')
     testNewInstance(classOf[Long], classOf[Array[Long]], 0L)
     testNewInstance(classOf[Boolean], classOf[Array[Boolean]], false)
 

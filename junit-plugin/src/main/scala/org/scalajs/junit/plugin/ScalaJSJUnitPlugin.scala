@@ -182,9 +182,9 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
             case (_, xs) => None
           }
 
-          val newStats = tree.stats.map(transform) ++ bootstrappers
+          val newStats = (tree.stats.map(transform).iterator ++ bootstrappers).toList
 
-          treeCopy.PackageDef(tree: Tree, tree.pid, newStats.toList)
+          treeCopy.PackageDef(tree: Tree, tree.pid, newStats)
 
         case _ =>
           super.transform(tree)
@@ -380,9 +380,21 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
         def mkList(elems: List[Tree]): Tree = {
           val array = ArrayValue(TypeTree(definitions.ObjectTpe), elems)
+          val varargsModule = {
+            // Note: this logic duplicates the one in GenJSCode#isScala213NewCollections
+            val isScala213NewCollections = {
+              val v = Properties.versionNumberString
+              !v.startsWith("2.10.") &&
+              !v.startsWith("2.11.") &&
+              !v.startsWith("2.12.") &&
+              v != "2.13.0-M3"
+            }
+            if (isScala213NewCollections) definitions.ScalaRunTimeModule
+            else definitions.PredefModule
+          }
           val wrappedArray = gen.mkMethodCall(
-              definitions.PredefModule,
-              definitions.wrapArrayMethodName(definitions.ObjectTpe),
+              varargsModule,
+              definitions.wrapVarargsArrayMethodName(definitions.ObjectTpe),
               Nil, List(array))
           gen.mkMethodCall(definitions.List_apply, List(wrappedArray))
         }

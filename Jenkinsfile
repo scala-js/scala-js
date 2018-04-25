@@ -389,7 +389,7 @@ def allJavaVersions = otherJavaVersions.clone()
 allJavaVersions << mainJavaVersion
 
 def mainScalaVersion = "2.12.5"
-def mainScalaVersions = ["2.10.2", "2.11.12", "2.12.5", "2.13.0-M3"]
+def mainScalaVersions = ["2.10.2", "2.11.12", "2.12.5", "2.13.0-M3", "2.13.0-pre-040dcb2"]
 def otherScalaVersions = [
   "2.10.3",
   "2.10.4",

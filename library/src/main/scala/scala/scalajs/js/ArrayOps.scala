@@ -15,8 +15,8 @@ import mutable.Builder
 
 /** Equivalent of scm.ArrayOps for js.Array */
 @inline
-final class ArrayOps[A](private[this] val array: Array[A])
-    extends mutable.ArrayLike[A, Array[A]]
+final class ArrayOps[A](protected[this] val array: Array[A])
+    extends ScalaVersionSpecificArrayOps[A]
        with Builder[A, Array[A]] {
 
   import ArrayOps._
@@ -30,24 +30,9 @@ final class ArrayOps[A](private[this] val array: Array[A])
   @inline def length: Int = array.length
   @inline def update(index: Int, element: A): Unit = array(index) = element
 
-  def seq: IndexedSeq[A] = new WrappedArray(array)
-
-  override def repr: Array[A] = array
-
-  override protected[this] def thisCollection: mutable.IndexedSeq[A] =
-    toCollection(array)
-  override protected[this] def toCollection(
-      repr: Array[A]): mutable.IndexedSeq[A] = new WrappedArray(repr)
-
-  protected[this] def newBuilder: Builder[A, Array[A]] =
-    new ArrayOps[A]
+  def seq: collection.IndexedSeq[A] = new WrappedArray(array)
 
   // Implementation of Builder
-
-  @inline def +=(elem: A): this.type = {
-    array.push(elem)
-    this
-  }
 
   @inline def clear(): Unit =
     array.length = 0
@@ -57,7 +42,7 @@ final class ArrayOps[A](private[this] val array: Array[A])
   // Scala notation for a fast concat()
 
   @inline def ++[B >: A](that: Array[_ <: B]): Array[B] =
-    concat(array, that)
+    ArrayOps.concat(array, that)
 
   // Methods whose inherited implementations do not play nice with the optimizer
 

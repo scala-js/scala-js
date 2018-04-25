@@ -7,6 +7,8 @@ import scala.math.Ordering
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 
+import Compat.{BooleanNonEmpty, SortedSetRangeTo}
+
 class TreeSet[E] (_comparator: Comparator[_ >: E])
     extends AbstractSet[E]
     with NavigableSet[E]
@@ -116,7 +118,7 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
   }
 
   override def remove(o: Any): Boolean =
-    inner.remove(Box(o.asInstanceOf[E]))
+    inner.remove(Box(o.asInstanceOf[E])).nonEmpty
 
   override def clear(): Unit =
     inner.clear()
@@ -133,7 +135,7 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
     val iter = c.iterator()
     var changed = false
     while (iter.hasNext)
-      changed = inner.remove(Box(iter.next).asInstanceOf[Box[E]]) || changed
+      changed = inner.remove(Box(iter.next).asInstanceOf[Box[E]]).nonEmpty || changed
     changed
   }
 
@@ -142,14 +144,13 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
     val boxedFrom = Box(fromElement)
     val boxedTo = Box(toElement)
     val subSetFun = { () =>
-      // the creation of a new TreeSet is to avoid a mysterious bug with scala 2.10
-      var base = new mutable.TreeSet[Box[E]]
+      val base = new mutable.TreeSet[Box[E]]
       base ++= inner.range(boxedFrom, boxedTo)
       if (!fromInclusive)
-        base = base - boxedFrom
+        base -= boxedFrom
 
       if (toInclusive && inner.contains(boxedTo))
-        base = base + boxedTo
+        base += boxedTo
 
       base
     }
@@ -165,7 +166,7 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
       // the creation of a new TreeSet is to avoid a mysterious bug with scala 2.10
       var base = new mutable.TreeSet[Box[E]]
       if (inclusive)
-        base ++= inner.to(boxed)
+        base ++= inner.rangeTo(boxed)
       else
         base ++= inner.until(boxed)
 

@@ -38,7 +38,7 @@ class AbstractCollectionFactory extends CollectionFactory {
 
       override def iterator(): ju.Iterator[E] = {
         new ju.Iterator[E] {
-          val innerIter = inner.seq.iterator
+          val innerIter = inner.iterator
 
           var last: Option[E] = None
 

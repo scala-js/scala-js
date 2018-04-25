@@ -86,8 +86,9 @@ class MainGenericRunner {
   }
 
   private def loadIR(classpathURLs: Seq[URL]) = {
+    // FIXME We drop the “jrt:/packages” element which can not be converted to a file
     val irContainers =
-      IRContainer.fromClasspath(classpathURLs.map(urlToFile))
+      IRContainer.fromClasspath(classpathURLs.filter(_.toString != "jrt:/packages").map(urlToFile))
     val cache = (new IRFileCache).newCache
     cache.cached(irContainers)
   }

@@ -149,6 +149,9 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val EnableReflectiveInstantiationAnnotation = getRequiredClass("scala.scalajs.reflect.annotation.EnableReflectiveInstantiation")
 
+    lazy val ImmutableArrayClass = getRequiredClass("scala.scalajs.js.ImmutableArray")
+      lazy val ImmutableArray_ctor = ImmutableArrayClass.primaryConstructor
+
   }
 
   // scalastyle:on line.size.limit

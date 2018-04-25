@@ -16,7 +16,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
 
 import java.{util => ju, lang => jl}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
 trait SetTest extends CollectionTest {
@@ -140,14 +140,14 @@ trait SetTest extends CollectionTest {
     assertTrue(hs.add("TWO"))
     assertEquals(2, hs.size())
     val l1 = List[String]("ONE", "TWO")
-    assertTrue(hs.removeAll(asJavaCollection(l1)))
+    assertTrue(hs.removeAll(l1.asJavaCollection))
     assertEquals(0, hs.size())
 
     assertTrue(hs.add("ONE"))
     assertTrue(hs.add("TWO"))
     assertEquals(2, hs.size())
     val l2 = List[String]("ONE", "THREE")
-    assertTrue(hs.retainAll(asJavaCollection(l2)))
+    assertTrue(hs.retainAll(l2.asJavaCollection))
     assertEquals(1, hs.size())
     assertTrue(hs.contains("ONE"))
     assertFalse(hs.contains("TWO"))
@@ -185,7 +185,7 @@ trait SetTest extends CollectionTest {
 
     if (factory.allowsNullElement) {
       val l = List[String]("ONE", "TWO", (null: String))
-      assertTrue(hs.addAll(asJavaCollection(l)))
+      assertTrue(hs.addAll(l.asJavaCollection))
       assertEquals(3, hs.size)
       assertTrue(hs.contains("ONE"))
       assertTrue(hs.contains("TWO"))
@@ -193,7 +193,7 @@ trait SetTest extends CollectionTest {
     } else {
       expectThrows(classOf[Exception], {
         val l = List[String]("ONE", "TWO", (null: String))
-        hs.addAll(asJavaCollection(l))
+        hs.addAll(l.asJavaCollection)
       })
     }
   }
@@ -207,7 +207,7 @@ trait SetTest extends CollectionTest {
       else
         List[String]("ONE", "TWO", "THREE")
     }
-    assertTrue(hs.addAll(asJavaCollection(l)))
+    assertTrue(hs.addAll(l.asJavaCollection))
     assertEquals(3, hs.size)
 
     val iter = hs.iterator()
@@ -218,8 +218,8 @@ trait SetTest extends CollectionTest {
       }
     }
     assertFalse(iter.hasNext())
-    assertTrue(result.containsAll(l))
-    assertTrue(l.containsAll(result))
+    assertTrue(result.asJava.containsAll(l.asJava))
+    assertTrue(l.asJava.containsAll(result.asJava))
   }
 }
 

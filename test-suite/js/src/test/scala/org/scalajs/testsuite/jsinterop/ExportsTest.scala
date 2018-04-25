@@ -1124,7 +1124,7 @@ class ExportsTest {
     @JSExportAll
     class Foo {
       def doBool(x: Boolean): Unit = assertTrue((x: Any) == false) // scalastyle:ignore
-      def doChar(x: Char): Unit = assertTrue(x.equals('\0'))
+      def doChar(x: Char): Unit = assertTrue(x.equals('\u0000'))
       def doByte(x: Byte): Unit = assertEquals(0, x)
       def doShort(x: Short): Unit = assertEquals(0, x)
       def doInt(x: Int): Unit = assertEquals(0, x)
@@ -1460,7 +1460,7 @@ class ExportsTest {
     assertEquals(null, TopLevelFieldExports.uninitializedVarString)
     assertEquals(null, jsPackage.toplevel.uninitializedVarString)
 
-    assertEquals('\0', TopLevelFieldExports.uninitializedVarChar)
+    assertEquals('\u0000', TopLevelFieldExports.uninitializedVarChar)
     assertEquals(null, jsPackage.toplevel.uninitializedVarChar)
   }
 

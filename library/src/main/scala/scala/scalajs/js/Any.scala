@@ -55,7 +55,7 @@ import annotation.ScalaJSDefined
 trait Any extends scala.AnyRef
 
 /** Provides implicit conversions from Scala values to JavaScript values. */
-object Any extends LowPrioAnyImplicits {
+object Any extends ScalaVersionSpecificAny with LowPrioAnyImplicits {
   @inline implicit def fromUnit(value: Unit): Any =
     value.asInstanceOf[Any]
   @inline implicit def fromBoolean(value: Boolean): Any =
@@ -77,17 +77,6 @@ object Any extends LowPrioAnyImplicits {
 
   implicit def jsArrayOps[A](array: Array[A]): ArrayOps[A] =
     new ArrayOps(array)
-
-  implicit def canBuildFromArray[A]: CanBuildFrom[Array[_], A, Array[A]] = {
-    @inline
-    class CanBuildFromArray extends CanBuildFrom[Array[_], A, Array[A]] {
-      def apply(from: Array[_]): mutable.Builder[A, Array[A]] =
-        new ArrayOps[A]
-      def apply(): mutable.Builder[A, Array[A]] =
-        new ArrayOps[A]
-    }
-    new CanBuildFromArray
-  }
 
   // scalastyle:off line.size.limit
 

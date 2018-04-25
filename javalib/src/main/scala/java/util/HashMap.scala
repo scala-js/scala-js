@@ -2,7 +2,7 @@ package java.util
 
 import scala.collection.mutable
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 class HashMap[K, V] protected (inner: mutable.Map[Box[K], V])
     extends AbstractMap[K, V] with Serializable with Cloneable {
