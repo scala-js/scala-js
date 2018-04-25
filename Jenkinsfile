@@ -152,6 +152,14 @@ def Tasks = [
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)))' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)).withOptimizer(false))' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
         ++$scala $testSuite/test &&
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
@@ -218,6 +226,14 @@ def Tasks = [
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
         'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true).withAllowBigIntsForLongs(true)))' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true).withAllowBigIntsForLongs(true)).withOptimizer(false))' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
