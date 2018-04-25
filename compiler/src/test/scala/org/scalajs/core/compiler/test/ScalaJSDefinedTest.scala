@@ -221,7 +221,7 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:14: error: Cannot disambiguate overloads for method bar with types
+      |newSource1.scala:14: error: Cannot disambiguate overloads for method foo with types
       |  (x: Int)Int
       |  (x: Int)Int
       |    class Bar extends Foo {
