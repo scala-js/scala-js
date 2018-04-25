@@ -2818,7 +2818,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
    *  `===` comparison, since they all upcast as primitive numbers.
    *
    *  Chars and Longs, however, never compare as `===`, since they are boxed
-   *  chars and instances of `RuntimeLong`, respectively.
+   *  chars and instances of `RuntimeLong`, respectively---unless we are using
+   *  `BigInt`s for `Long`s, in which case those can be `===`.
    */
   private def literal_===(lhs: Literal, rhs: Literal): Boolean = {
     object AnyNumLiteral {
@@ -2837,6 +2838,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case (StringLiteral(l), StringLiteral(r))   => l == r
       case (ClassOf(l), ClassOf(r))               => l == r
       case (AnyNumLiteral(l), AnyNumLiteral(r))   => l == r
+      case (LongLiteral(l), LongLiteral(r))       => l == r && !useRuntimeLong
       case (Undefined(), Undefined())             => true
       case (Null(), Null())                       => true
       case _                                      => false

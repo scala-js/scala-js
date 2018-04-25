@@ -2073,7 +2073,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               case AnyType =>
                 genDispatchApply()
 
-              case LongType | ClassType(BoxedLongClass) =>
+              case LongType | ClassType(BoxedLongClass) if !useBigIntForLongs =>
                 // All methods of java.lang.Long are also in RuntimeLong
                 genNormalApply()
 
