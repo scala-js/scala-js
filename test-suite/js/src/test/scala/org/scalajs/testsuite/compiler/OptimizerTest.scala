@@ -177,11 +177,16 @@ class OptimizerTest {
     test(false, 5.toByte, 5L)
     test(false, 5, 5L)
     test(false, 5L, 6L)
-    test(false, 5L, 5L) // they're instances of RuntimeLong, so not ===
     test(false, false, 0)
     test(false, 65, 'A')
     test(false, classOf[String], classOf[Boolean])
     test(false, "hello", "world")
+
+    /* When using BigInts for Longs, equal Longs will be ===, but not when
+     * using RuntimeLongs since the instances will be different.
+     */
+    val usingBigIntForLongs = js.typeOf(5L) == "bigint"
+    test(usingBigIntForLongs, 5L, 5L)
   }
 
   @Test def constant_folding_==(): Unit = {
