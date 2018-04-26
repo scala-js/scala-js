@@ -45,7 +45,6 @@ final class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config) extends JSEnv {
         |
         |delete global.Promise;
         |
-        |delete global.ArrayBuffer;
         |delete global.Int8Array;
         |delete global.Int16Array;
         |delete global.Int32Array;
