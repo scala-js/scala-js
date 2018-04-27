@@ -51,7 +51,7 @@ abstract class AbstractNodeJSEnv(
   }
 
   /** Retry-timeout to wait for the JS VM to connect */
-  protected val acceptTimeout = 5000
+  protected val acceptTimeout = 500
 
   protected trait AbstractNodeRunner extends AbstractExtRunner with JSInitFiles {
 
