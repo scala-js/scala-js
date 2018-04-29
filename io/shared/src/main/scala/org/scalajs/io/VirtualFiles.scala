@@ -34,6 +34,12 @@ trait VirtualBinaryFile extends VirtualFile {
   def inputStream: InputStream
 }
 
-trait WritableVirtualBinaryFile extends VirtualBinaryFile {
+/** A writable virtual binary file.
+ *
+ *  @note This does **not** extend [[VirtualBinaryFile]] nor [[VirtualFile]],
+ *      mainly because the Scala.js stack never needs these two things together.
+ *      Implementations are free to provide both interfaces.
+ */
+trait WritableVirtualBinaryFile {
   def outputStream: OutputStream
 }
