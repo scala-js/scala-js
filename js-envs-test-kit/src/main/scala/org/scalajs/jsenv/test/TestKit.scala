@@ -20,7 +20,7 @@ private[test] final class TestKit(config: JSEnvSuiteConfig, withCom: Boolean) {
   assumeTrue("JSEnv needs com support", config.supportsCom || !withCom)
 
   def start(code: String, config: RunConfig): JSRun = {
-    val vf = new MemVirtualBinaryFile("testScript.js").withStringUTF8(code)
+    val vf = MemVirtualBinaryFile.fromStringUTF8("testScript.js", code)
     start(vf, config)
   }
 

@@ -59,7 +59,7 @@ class LinkerTest {
     val linker = StandardLinker(StandardLinker.Config())
 
     def callLink(): Unit = {
-      val out = LinkerOutput(WritableMemVirtualBinaryFile("some_file"))
+      val out = LinkerOutput(new WritableMemVirtualBinaryFile)
       linker.link(badSeq, Nil, out, NullLogger)
     }
 
@@ -105,7 +105,7 @@ object LinkerTest {
 
     val allIRFiles = TestIRRepo.stdlibIRFiles ++ classDefsFiles
 
-    val output = LinkerOutput(WritableMemVirtualBinaryFile("output.js"))
+    val output = LinkerOutput(new WritableMemVirtualBinaryFile)
 
     linker.link(allIRFiles, moduleInitializers, output,
         new ScalaConsoleLogger(Level.Error))

@@ -70,12 +70,12 @@ object NodeJSEnv {
   private lazy val validator = ExternalJSRun.supports(RunConfig.Validator())
 
   private lazy val installSourceMap = {
-    new MemVirtualBinaryFile("sourceMapSupport.js").withStringUTF8(
+    MemVirtualBinaryFile.fromStringUTF8("sourceMapSupport.js",
         "require('source-map-support').install();")
   }
 
   private lazy val runtimeEnv = {
-    new MemVirtualBinaryFile("scalaJSEnvInfo.js").withStringUTF8(
+    MemVirtualBinaryFile.fromStringUTF8("scalaJSEnvInfo.js",
         """
           |__ScalaJSEnv = {
           |  exitFunction: function(status) { process.exit(status); }

@@ -85,10 +85,12 @@ final class FileVirtualJarScalaJSIRContainer(file: File)
 
         try {
           readAll(out)
-          val path = s"${this.path}:${e.getName}"
-          new MemVirtualSerializedScalaJSIRFile(path, e.getName)
-            .withContent(out.toByteArray)
-            .withVersion(this.version)
+          new MemVirtualSerializedScalaJSIRFile(
+              path = s"${this.path}:${e.getName}",
+              relativePath = e.getName,
+              content = out.toByteArray,
+              version = this.version
+          )
         } finally {
           out.close()
         }

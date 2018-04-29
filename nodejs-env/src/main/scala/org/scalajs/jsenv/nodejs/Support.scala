@@ -13,7 +13,7 @@ import org.scalajs.io._
 
 object Support {
   def fixPercentConsole: VirtualBinaryFile = {
-    new MemVirtualBinaryFile("nodeConsoleHack.js").withStringUTF8(
+    MemVirtualBinaryFile.fromStringUTF8("nodeConsoleHack.js",
       """
         |// Hack console log to duplicate double % signs
         |(function() {

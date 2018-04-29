@@ -238,7 +238,7 @@ object ComRun {
   }
 
   private def setupFile(port: Int): VirtualBinaryFile = {
-    new MemVirtualBinaryFile("comSetup.js").withStringUTF8(
+    MemVirtualBinaryFile.fromStringUTF8("comSetup.js",
         s"""
            |(function() {
            |  // The socket for communication

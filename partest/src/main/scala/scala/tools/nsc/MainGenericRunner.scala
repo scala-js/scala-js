@@ -83,9 +83,9 @@ class MainGenericRunner {
     val linker = StandardLinker(linkerConfig)
 
     val sjsCode = {
-      val out = WritableMemVirtualBinaryFile("partest.js")
+      val out = new WritableMemVirtualBinaryFile
       linker.link(ir, moduleInitializers, LinkerOutput(out), logger)
-      out
+      out.toReadable("partest.js")
     }
 
     val input = Input.ScriptsToLoad(sjsCode :: Nil)

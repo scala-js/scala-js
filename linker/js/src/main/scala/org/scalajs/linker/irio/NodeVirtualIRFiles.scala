@@ -28,10 +28,12 @@ private[scalajs] class NodeVirtualJarScalaJSIRContainer(path: String)
       (name, entry) <- zip.files.toList
       if name.endsWith(".sjsir")
     } yield {
-      val path = s"${this.path}:$name"
-      new MemVirtualSerializedScalaJSIRFile(path, name)
-        .withContent(new Int8Array(entry.asArrayBuffer()).toArray)
-        .withVersion(this.version)
+      new MemVirtualSerializedScalaJSIRFile(
+          path = s"${this.path}:$name",
+          relativePath = name,
+          content = new Int8Array(entry.asArrayBuffer()).toArray,
+          version = this.version
+      )
     }
   }
 }

@@ -68,7 +68,7 @@ lazy val noDOM = project.settings(baseSettings: _*).
         Def.task {
           log.info("Fake full optimizing")
           val linker = (scalaJSLinker in fullOptJS).value
-          val output = LinkerOutput(WritableMemVirtualBinaryFile("fake-fastopt.js"))
+          val output = LinkerOutput(new WritableMemVirtualBinaryFile)
           linker.link(ir, moduleInitializers, output, sbtLogger2ToolsLogger(log))
         }.tag((usesScalaJSLinkerTag in fullOptJS).value)
       }.value,

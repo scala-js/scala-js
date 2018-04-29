@@ -86,7 +86,7 @@ object MyScalaJSPlugin extends AutoPlugin {
             "__ScalaJSEnv.javaSystemProperties = {" + formattedProps.mkString(", ") + "};\n"
           }
           val javaSysPropsFile =
-            new MemVirtualBinaryFile("setJavaSystemProperties.js").withStringUTF8(code)
+            MemVirtualBinaryFile.fromStringUTF8("setJavaSystemProperties.js", code)
 
           javaSysPropsFile +: prev
         }
@@ -1410,7 +1410,7 @@ object Build {
         """
 
         val patchedSystemPropertiesFile =
-          new MemVirtualBinaryFile("setJavaSystemProperties.js").withStringUTF8(code)
+          MemVirtualBinaryFile.fromStringUTF8("setJavaSystemProperties.js", code)
 
         // Replace the normal `setJavaSystemProperties.js` file with the patch
         for (file <- previousFiles) yield {
@@ -1460,7 +1460,7 @@ object Build {
           }
 
           val launcher =
-            new MemVirtualBinaryFile("test-suite-linker.js").withStringUTF8(code)
+            MemVirtualBinaryFile.fromStringUTF8("test-suite-linker.js", code)
 
           val config = RunConfig().withLogger(sbtLogger2ToolsLogger(s.log))
           val input = Input.ScriptsToLoad(List(launcher))

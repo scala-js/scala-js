@@ -14,7 +14,7 @@ import scala.concurrent.duration.Duration
 
 private[test] final class TestComKit(config: JSEnvSuiteConfig) {
   def start(code: String, runConfig: RunConfig): Run = {
-    val vf = new MemVirtualBinaryFile("testScript.js").withStringUTF8(code)
+    val vf = MemVirtualBinaryFile.fromStringUTF8("testScript.js", code)
     start(vf, runConfig)
   }
 

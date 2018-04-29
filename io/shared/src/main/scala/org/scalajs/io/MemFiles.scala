@@ -10,52 +10,53 @@
 package org.scalajs.io
 
 import java.io._
-
 import java.nio.charset.StandardCharsets
 
-/** A base class for simple in-memory mutable virtual files. */
-class MemVirtualFile(val path: String) extends VirtualFile {
-  private[this] var _version: Option[String] = None
+/** A simple in-memory immutable virtual binary file.
+ *
+ *  Modifying the passed `content` after creation of a [[MemVirtualBinaryFile]]
+ *  yields undefined behavior.
+ */
+class MemVirtualBinaryFile(
+    final val path: String,
+    content: Array[Byte],
+    final override val version: Option[String]
+) extends VirtualBinaryFile {
+  final def inputStream: InputStream = new ByteArrayInputStream(content)
+}
 
-  override def version: Option[String] = _version
-  def version_=(v: Option[String]): Unit = _version = v
+object MemVirtualBinaryFile {
+  def apply(path: String, content: Array[Byte]): MemVirtualBinaryFile =
+    apply(path, content, None)
 
-  final def withVersion(v: Option[String]): this.type = {
-    version = v
-    this
+  def apply(path: String, content: Array[Byte],
+      version: Option[String]): MemVirtualBinaryFile = {
+    new MemVirtualBinaryFile(path, content, version)
+  }
+
+  def fromStringUTF8(path: String, content: String): MemVirtualBinaryFile =
+    fromStringUTF8(path, content, None)
+
+  def fromStringUTF8(path: String, content: String,
+      version: Option[String]): MemVirtualBinaryFile = {
+    apply(path, content.getBytes(StandardCharsets.UTF_8), version)
   }
 }
 
-/** A simple in-memory mutable virtual binary file. */
-class MemVirtualBinaryFile(p: String) extends MemVirtualFile(p)
-                                         with VirtualBinaryFile {
-  private[this] var _content: Array[Byte] = new Array[Byte](0)
+final class WritableMemVirtualBinaryFile extends WritableVirtualBinaryFile {
+  private var _content: Array[Byte] = _
 
   def content: Array[Byte] = _content
-  def content_=(v: Array[Byte]): Unit = _content = v
 
-  def inputStream: InputStream = new ByteArrayInputStream(content)
-
-  final def withContent(v: Array[Byte]): this.type = {
-    content = v
-    this
-  }
-
-  final def withStringUTF8(v: String): this.type =
-    withContent(v.getBytes(StandardCharsets.UTF_8))
-}
-
-trait WritableMemVirtualBinaryFile extends MemVirtualBinaryFile
-                                      with WritableVirtualBinaryFile {
   def outputStream: OutputStream = new ByteArrayOutputStream {
     override def close(): Unit = {
       super.close()
-      WritableMemVirtualBinaryFile.this.content = this.toByteArray
+      _content = this.toByteArray
     }
   }
-}
 
-object WritableMemVirtualBinaryFile {
-  def apply(path: String): WritableMemVirtualBinaryFile =
-    new MemVirtualBinaryFile(path) with WritableMemVirtualBinaryFile
+  def toReadable(path: String): MemVirtualBinaryFile = toReadable(path, None)
+
+  def toReadable(path: String, version: Option[String]): MemVirtualBinaryFile =
+    new MemVirtualBinaryFile(path, content, version)
 }

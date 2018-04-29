@@ -29,7 +29,7 @@ final class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config) extends JSEnv {
    *  native functions.
    */
   private def forcePolyfills(): VirtualBinaryFile = {
-    val f = new MemVirtualBinaryFile("scalaJSEnvInfo.js").withStringUTF8(
+    MemVirtualBinaryFile.fromStringUTF8("scalaJSEnvInfo.js",
       """
         |delete Math.fround;
         |delete Math.imul;
@@ -55,6 +55,5 @@ final class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config) extends JSEnv {
         |delete global.Float64Array;
       """.stripMargin
     )
-    f
   }
 }
