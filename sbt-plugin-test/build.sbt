@@ -117,8 +117,6 @@ lazy val multiTest = crossProject.
   jsSettings(baseSettings: _*).
   jsSettings(
     name := "Multi test framework test JS",
-    // Make FrameworkDetector resilient to other output - #1572
-    jsDependencies in Test += ProvidedJS / "consoleWriter.js",
 
     // Test isScalaJSProject (as a setting, it's evaluated when loading the build)
     isScalaJSProject ~= { value =>
