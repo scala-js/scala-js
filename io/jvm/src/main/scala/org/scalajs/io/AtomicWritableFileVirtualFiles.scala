@@ -1,14 +1,9 @@
 package org.scalajs.io
 
 import java.io._
-import java.net.URI
 
-trait AtomicWritableFileVirtualBinaryFile extends WritableFileVirtualBinaryFile {
+final class AtomicWritableFileVirtualBinaryFile(f: File)
+    extends FileVirtualFile(f) with WritableVirtualBinaryFile {
   override def outputStream: OutputStream =
     new BufferedOutputStream(new AtomicFileOutputStream(file))
-}
-
-object AtomicWritableFileVirtualBinaryFile {
-  def apply(f: File): AtomicWritableFileVirtualBinaryFile =
-    new FileVirtualBinaryFile(f) with AtomicWritableFileVirtualBinaryFile
 }

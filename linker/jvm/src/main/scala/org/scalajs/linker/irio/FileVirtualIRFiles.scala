@@ -15,15 +15,8 @@ import scala.annotation.tailrec
 
 import org.scalajs.io._
 
-class FileVirtualScalaJSIRFile(f: File, val relativePath: String)
+final class FileVirtualScalaJSIRFile(f: File, val relativePath: String)
     extends FileVirtualBinaryFile(f) with VirtualSerializedScalaJSIRFile
-
-object FileVirtualScalaJSIRFile {
-  import FileVirtualFile._
-
-  def apply(f: File, relPath: String): FileVirtualScalaJSIRFile =
-    new FileVirtualScalaJSIRFile(f, relPath)
-}
 
 object FileScalaJSIRContainer {
   def fromClasspath(
@@ -56,7 +49,7 @@ object FileScalaJSIRContainer {
         .stripPrefix(baseDir.getPath)
         .replace(java.io.File.separatorChar, '/')
         .stripPrefix("/")
-      FileVirtualScalaJSIRFile(ir, relPath)
+      new FileVirtualScalaJSIRFile(ir, relPath)
     }
   }
 }

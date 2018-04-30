@@ -1489,7 +1489,8 @@ object Build {
   def testSuiteJSExecutionFilesSetting: Setting[_] = {
     jsExecutionFiles := {
       val resourceDir = (resourceDirectory in Test).value
-      val f = FileVirtualBinaryFile(resourceDir / "NonNativeJSTypeTestNatives.js")
+      val f = new FileVirtualBinaryFile(
+          resourceDir / "NonNativeJSTypeTestNatives.js")
       f +: jsExecutionFiles.value
     }
   }
