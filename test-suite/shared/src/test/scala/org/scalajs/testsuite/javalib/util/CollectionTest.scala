@@ -12,7 +12,7 @@ import java.{util => ju, lang => jl}
 import org.junit.Test
 import org.junit.Assert._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import org.scalajs.testsuite.utils.AssertThrows._
 
@@ -44,14 +44,14 @@ trait CollectionTest {
 
     coll.clear()
     assertEquals(0, coll.size())
-    assertFalse(coll.addAll(Seq.empty[String]))
+    assertFalse(coll.addAll(Seq.empty[String].asJava))
     assertEquals(0, coll.size())
 
-    assertTrue(coll.addAll(Seq("one")))
+    assertTrue(coll.addAll(Seq("one").asJava))
     assertEquals(1, coll.size())
 
     coll.clear()
-    assertTrue(coll.addAll(Seq("one", "two", "one")))
+    assertTrue(coll.addAll(Seq("one", "two", "one").asJava))
     assertTrue(coll.size() >= 1)
   }
 
@@ -64,14 +64,14 @@ trait CollectionTest {
 
     coll.clear()
     assertEquals(0, coll.size())
-    assertFalse(coll.addAll(Seq.empty[Int]))
+    assertFalse(coll.addAll(Seq.empty[Int].asJava))
     assertEquals(0, coll.size())
 
-    assertTrue(coll.addAll(Seq(1)))
+    assertTrue(coll.addAll(Seq(1).asJava))
     assertEquals(1, coll.size())
 
     coll.clear()
-    assertTrue(coll.addAll(Seq(1, 2, 1)))
+    assertTrue(coll.addAll(Seq(1, 2, 1).asJava))
     assertTrue(coll.size() >= 1)
   }
 
@@ -84,14 +84,14 @@ trait CollectionTest {
 
     coll.clear()
     assertEquals(0, coll.size())
-    assertFalse(coll.addAll(Seq.empty[Double]))
+    assertFalse(coll.addAll(Seq.empty[Double].asJava))
     assertEquals(0, coll.size())
 
-    assertTrue(coll.addAll(Seq(1.234)))
+    assertTrue(coll.addAll(Seq(1.234).asJava))
     assertEquals(1, coll.size())
 
     coll.clear()
-    assertTrue(coll.addAll(Seq(1.234, 2.345, 1.234)))
+    assertTrue(coll.addAll(Seq(1.234, 2.345, 1.234).asJava))
     assertTrue(coll.size() >= 1)
 
     coll.clear()
@@ -214,7 +214,7 @@ trait CollectionTest {
     coll.add("three")
     coll.add("three")
 
-    assertEquals(coll.iterator().toSet, Set("one", "two", "three"))
+    assertEquals(coll.iterator().asScala.toSet, Set("one", "two", "three"))
   }
 }
 

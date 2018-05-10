@@ -15,7 +15,7 @@ import org.junit.Test
 
 import org.scalajs.testsuite.javalib.util.concurrent.CopyOnWriteArrayListFactory
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
@@ -41,7 +41,7 @@ trait CollectionsCheckedCollectionTest
 
   @Test def testCheckedCollection(): Unit = {
     assertTrue(superColl().add(new C))
-    assertTrue(superColl().addAll(Seq(new C)))
+    assertTrue(superColl().addAll(Seq(new C).asJava))
   }
 
   @Test def testCheckedCollectionBadInputs(): Unit = {
@@ -49,7 +49,7 @@ trait CollectionsCheckedCollectionTest
 
     expectThrows(classOf[ClassCastException], superColl().add(new A))
     expectThrows(classOf[ClassCastException],
-        superColl().addAll(Seq(new A)))
+        superColl().addAll(Seq(new A).asJava))
   }
 
   protected def superColl(): ju.Collection[A] =

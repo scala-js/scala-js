@@ -10,7 +10,7 @@ package org.scalajs.testsuite.javalib.util
 import org.junit.Test
 import org.junit.Assert._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import java.{util => ju, lang => jl}
 
@@ -54,17 +54,17 @@ abstract class LinkedHashMapTest extends HashMapTest {
     val expectedSize = withSizeLimit.getOrElse(100)
 
     assertEquals(expectedSize, lhm.entrySet.size)
-    for ((entry, index) <- lhm.entrySet.zipWithIndex) {
+    for ((entry, index) <- lhm.entrySet.asScala.zipWithIndex) {
       assertEquals(expectedKey(index), entry.getKey)
       assertEquals(expectedValue(index), entry.getValue)
     }
 
     assertEquals(expectedSize, lhm.keySet.size)
-    for ((key, index) <- lhm.keySet.zipWithIndex)
+    for ((key, index) <- lhm.keySet.asScala.zipWithIndex)
       assertEquals(expectedKey(index), key)
 
     assertEquals(expectedSize, lhm.entrySet.size)
-    for ((value, index) <- lhm.values.zipWithIndex)
+    for ((value, index) <- lhm.values.asScala.zipWithIndex)
       assertEquals(expectedValue(index), value)
   }
 
@@ -83,17 +83,17 @@ abstract class LinkedHashMapTest extends HashMapTest {
     val expectedSize = if (withSizeLimit.isDefined) 33 else 66
 
     assertEquals(expectedSize, lhm.entrySet.size)
-    for ((entry, index) <- lhm.entrySet.zipWithIndex) {
+    for ((entry, index) <- lhm.entrySet.asScala.zipWithIndex) {
       assertEquals(expectedKey(index), entry.getKey)
       assertEquals(expectedValue(index), entry.getValue)
     }
 
     assertEquals(expectedSize, lhm.keySet.size)
-    for ((key, index) <- lhm.keySet.zipWithIndex)
+    for ((key, index) <- lhm.keySet.asScala.zipWithIndex)
       assertEquals(expectedKey(index), key)
 
     assertEquals(expectedSize, lhm.entrySet.size)
-    for ((value, index) <- lhm.values.zipWithIndex)
+    for ((value, index) <- lhm.values.asScala.zipWithIndex)
       assertEquals(expectedValue(index), value)
   }
 
@@ -101,12 +101,12 @@ abstract class LinkedHashMapTest extends HashMapTest {
     val lhm = factory.empty[jl.Integer, String]
     (0 until 100).foreach(key => lhm.put(key, s"elem $key"))
 
-    lhm(0) = "new 0"
-    lhm(100) = "elem 100"
-    lhm(42) = "new 42"
-    lhm(52) = "new 52"
-    lhm(1) = "new 1"
-    lhm(98) = "new 98"
+    lhm.put(0, "new 0")
+    lhm.put(100, "elem 100")
+    lhm.put(42, "new 42")
+    lhm.put(52, "new 52")
+    lhm.put(1, "new 1")
+    lhm.put(98, "new 98")
 
     val expectedKey = {
       if (factory.accessOrder) {
@@ -131,17 +131,17 @@ abstract class LinkedHashMapTest extends HashMapTest {
 
     assertEquals(expectedSize, lhm.entrySet.size)
 
-    for ((entry, index) <- lhm.entrySet.zipWithIndex) {
+    for ((entry, index) <- lhm.entrySet.asScala.zipWithIndex) {
       assertEquals(expectedKey(index), entry.getKey)
       assertEquals(expectedElem(index), entry.getValue)
     }
 
     assertEquals(expectedSize, lhm.keySet.size)
-    for ((key, index) <- lhm.keySet.zipWithIndex)
+    for ((key, index) <- lhm.keySet.asScala.zipWithIndex)
       assertEquals(expectedKey(index), key)
 
     assertEquals(expectedSize, lhm.entrySet.size)
-    for ((value, index) <- lhm.values.zipWithIndex)
+    for ((value, index) <- lhm.values.asScala.zipWithIndex)
       assertEquals(expectedElem(index), value)
   }
 
@@ -185,17 +185,17 @@ abstract class LinkedHashMapTest extends HashMapTest {
     val expectedSize = withSizeLimit.getOrElse(100)
 
     assertEquals(expectedSize, lhm.entrySet.size)
-    for ((entry, index) <- lhm.entrySet.zipWithIndex) {
+    for ((entry, index) <- lhm.entrySet.asScala.zipWithIndex) {
       assertEquals(expectedKey(index), entry.getKey)
       assertEquals(expectedValue(index), entry.getValue)
     }
 
     assertEquals(expectedSize, lhm.keySet.size)
-    for ((key, index) <- lhm.keySet.zipWithIndex)
+    for ((key, index) <- lhm.keySet.asScala.zipWithIndex)
       assertEquals(expectedKey(index), key)
 
     assertEquals(expectedSize, lhm.entrySet.size)
-    for ((value, index) <- lhm.values.zipWithIndex)
+    for ((value, index) <- lhm.values.asScala.zipWithIndex)
       assertEquals(expectedValue(index), value)
   }
 

@@ -4,7 +4,7 @@ import java.{util => ju, lang => jl}
 
 import org.junit.Test
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
 trait CollectionsOnSetsTest extends CollectionsOnCollectionsTest {
@@ -14,7 +14,7 @@ trait CollectionsOnSetsTest extends CollectionsOnCollectionsTest {
     def test[E: ClassTag](toElem: Int => E): Unit = {
       val set = factory.empty[E]
       testSetUnmodifiability(ju.Collections.unmodifiableSet(set), toElem(0))
-      set.addAll(range.map(toElem))
+      set.addAll(range.map(toElem).asJava)
       testSetUnmodifiability(ju.Collections.unmodifiableSet(set), toElem(0))
     }
 
@@ -33,7 +33,7 @@ trait CollectionsOnSortedSetsTest extends CollectionsOnSetsTest {
       val sortedSet = factory.empty[E]
       testSortedSetUnmodifiability(ju.Collections.unmodifiableSortedSet(sortedSet),
         toElem(0))
-      sortedSet.addAll(range.map(toElem))
+      sortedSet.addAll(range.map(toElem).asJava)
       testSortedSetUnmodifiability(ju.Collections.unmodifiableSortedSet(sortedSet),
         toElem(0))
     }
