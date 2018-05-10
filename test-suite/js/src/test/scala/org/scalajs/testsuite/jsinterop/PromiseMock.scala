@@ -9,8 +9,6 @@ import js.Thenable
 object PromiseMock {
   import js.Dynamic.global
 
-  MockPromise.initMockPromiseStaticMethods()
-
   @noinline
   def withMockedPromise[A](body: (() => Unit) => A): A = {
     val oldPromise =
@@ -48,15 +46,8 @@ object PromiseMock {
   private object MockPromise {
     private val queue = js.Array[js.Function0[Any]]()
 
-    def initMockPromiseStaticMethods(): Unit = {
-      val ctor = js.constructorOf[MockPromise[_]]
-      ctor.resolve = resolve _
-      ctor.reject = reject _
-      // Not implemented: `all` and `race`
-    }
-
-    // static
-    private def resolve[A](value: A | js.Thenable[A]): MockPromise[A] = {
+    @JSExportStatic
+    def resolve[A](value: A | js.Thenable[A]): MockPromise[A] = {
       new MockPromise[A]({
         (resolve: js.Function1[A | js.Thenable[A], _],
             reject: js.Function1[Any, _]) =>
@@ -64,8 +55,8 @@ object PromiseMock {
       })
     }
 
-    // static
-    private def reject(reason: Any): MockPromise[Nothing] = {
+    @JSExportStatic
+    def reject(reason: Any): MockPromise[Nothing] = {
       new MockPromise[Nothing]({
         (resolve: js.Function1[Nothing | js.Thenable[Nothing], _],
             reject: js.Function1[Any, _]) =>
