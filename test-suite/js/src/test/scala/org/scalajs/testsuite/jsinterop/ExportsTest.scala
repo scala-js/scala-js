@@ -433,8 +433,8 @@ class ExportsTest {
     }
 
     val foo = (new Foo).asInstanceOf[js.Dynamic]
-    assertTrue(foo.foo(true).isInstanceOf[Int])
-    assertTrue(foo.foo(false).isInstanceOf[A])
+    assertTrue((foo.foo(true): Any).isInstanceOf[Int])
+    assertTrue((foo.foo(false): Any).isInstanceOf[A])
   }
 
   @Test def boxed_value_classes_as_parameter(): Unit = {
@@ -481,7 +481,7 @@ class ExportsTest {
     }
 
     val c2 = (new C2).asInstanceOf[js.Dynamic]
-    assertTrue(c2.x.isInstanceOf[B])
+    assertTrue((c2.x: Any).isInstanceOf[B])
   }
 
   @Test def exports_for_methods_with_refined_types_as_return_type(): Unit = {
