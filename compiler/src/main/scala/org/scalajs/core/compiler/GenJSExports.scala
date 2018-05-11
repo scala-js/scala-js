@@ -639,7 +639,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         else "exported method"
 
       val displayName = jsName.displayName
-      val altsTypesInfo = alts.map(_.typeInfo).mkString("\n  ")
+      val altsTypesInfo = alts.map(_.typeInfo).sorted.mkString("\n  ")
 
       reporter.error(pos,
           s"Cannot disambiguate overloads for $kind $displayName with types\n" +
