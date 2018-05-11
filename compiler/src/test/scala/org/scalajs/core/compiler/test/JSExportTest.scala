@@ -157,7 +157,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: Cannot disambiguate overloads for exported method $js$exported$meth$foo with types
+      |newSource1.scala:7: error: Cannot disambiguate overloads for exported method foo with types
       |  (x: Seq)Object
       |  (x: Int, ys: Seq)Object
       |      @JSExport
@@ -173,7 +173,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: Cannot disambiguate overloads for exported method $js$exported$meth$foo with types
+      |newSource1.scala:6: error: Cannot disambiguate overloads for exported method foo with types
       |  (x: Int)Object
       |  (x: Seq)Object
       |      @JSExport
@@ -1515,7 +1515,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:10: error: Cannot disambiguate overloads for exported method bar with types
+      |newSource1.scala:10: error: Cannot disambiguate overloads for exported method foo with types
       |  (x: Int)Int
       |  (x: Int)Int
       |      def bar(x: Int): Int = x + 1
@@ -1557,7 +1557,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:10: error: Cannot disambiguate overloads for exported method bar_$eq with types
+      |newSource1.scala:10: error: Cannot disambiguate overloads for exported method foo with types
       |  (v: Int)Unit
       |  (v: Int)Unit
       |      def bar_=(v: Int): Unit = ()
