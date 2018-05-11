@@ -1,7 +1,9 @@
 package org.scalajs.io
 
+import scala.util.control.NonFatal
+
 import java.io._
-import java.net.URI
+import java.nio.file._
 
 /** Provides best-effort atomic writing to a file
  *
@@ -40,14 +42,23 @@ private[io] class AtomicFileOutputStream private (
 
   /** Try to atomically replace the baseFile with the tmpFile */
   private[this] def atomicReplace(): Unit = {
-    if (!tmpFile.renameTo(baseFile)) {
-      // Renaming failed. Fallback to copy
-      try {
-        IO.copyTo(FileVirtualBinaryFile(tmpFile),
-            WritableFileVirtualBinaryFile(baseFile))
-      } finally {
-        tmpFile.delete()
-      }
+    try {
+      // Try atomic move.
+      Files.move(tmpFile.toPath, baseFile.toPath, StandardCopyOption.ATOMIC_MOVE)
+    } catch {
+      case NonFatal(_) =>
+        /* We need to catch all exceptions, because it is platform dependent:
+         * - whether ATOMIC_MOVE overrides an existing file or not,
+         * - it throws a FileAlreadyExistsException in this case.
+         *
+         * If the atomic move fails, we fall back to a normal copy & delete.
+         */
+        try {
+          Files.copy(tmpFile.toPath, baseFile.toPath,
+              StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+          tmpFile.delete()
+        }
     }
   }
 }
