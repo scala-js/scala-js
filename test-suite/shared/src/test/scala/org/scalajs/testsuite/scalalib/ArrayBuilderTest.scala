@@ -115,7 +115,7 @@ class ArrayBuilderTest {
     assertSame(classOf[Array[Char]], a.getClass)
     assertEquals(3, a.length)
     assertTrue(erase(a(0)).isInstanceOf[Char])
-    assertEquals('\0', erase(a(0)))
+    assertEquals('\u0000', erase(a(0)))
   }
 
   @Test def Char_zeros_noinline(): Unit = {
@@ -123,7 +123,7 @@ class ArrayBuilderTest {
     assertSame(classOf[Array[Char]], a.getClass)
     assertEquals(3, a.length)
     assertTrue(erase(a(0)).isInstanceOf[Char])
-    assertEquals('\0', erase(a(0)))
+    assertEquals('\u0000', erase(a(0)))
   }
 
   @Test def Boolean_normal_case_inline(): Unit = {

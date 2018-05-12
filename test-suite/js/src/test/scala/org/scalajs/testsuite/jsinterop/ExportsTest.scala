@@ -433,8 +433,8 @@ class ExportsTest {
     }
 
     val foo = (new Foo).asInstanceOf[js.Dynamic]
-    assertTrue(foo.foo(true).isInstanceOf[Int])
-    assertTrue(foo.foo(false).isInstanceOf[A])
+    assertTrue((foo.foo(true): Any).isInstanceOf[Int])
+    assertTrue((foo.foo(false): Any).isInstanceOf[A])
   }
 
   @Test def boxed_value_classes_as_parameter(): Unit = {
@@ -481,7 +481,7 @@ class ExportsTest {
     }
 
     val c2 = (new C2).asInstanceOf[js.Dynamic]
-    assertTrue(c2.x.isInstanceOf[B])
+    assertTrue((c2.x: Any).isInstanceOf[B])
   }
 
   @Test def exports_for_methods_with_refined_types_as_return_type(): Unit = {
@@ -1124,7 +1124,7 @@ class ExportsTest {
     @JSExportAll
     class Foo {
       def doBool(x: Boolean): Unit = assertTrue((x: Any) == false) // scalastyle:ignore
-      def doChar(x: Char): Unit = assertTrue(x.equals('\0'))
+      def doChar(x: Char): Unit = assertTrue(x.equals('\u0000'))
       def doByte(x: Byte): Unit = assertEquals(0, x)
       def doShort(x: Short): Unit = assertEquals(0, x)
       def doInt(x: Int): Unit = assertEquals(0, x)
@@ -1460,7 +1460,7 @@ class ExportsTest {
     assertEquals(null, TopLevelFieldExports.uninitializedVarString)
     assertEquals(null, jsPackage.toplevel.uninitializedVarString)
 
-    assertEquals('\0', TopLevelFieldExports.uninitializedVarChar)
+    assertEquals('\u0000', TopLevelFieldExports.uninitializedVarChar)
     assertEquals(null, jsPackage.toplevel.uninitializedVarChar)
   }
 

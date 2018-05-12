@@ -5,7 +5,7 @@ import org.junit.Assert._
 
 import java.{util => ju}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 class HashtableTest {
 
@@ -36,22 +36,22 @@ class HashtableTest {
 
   @Test def keys(): Unit = {
     val ht = new ju.Hashtable[Int, Int]
-    assertEquals(Set.empty[Int], ht.keys().toSet)
+    assertEquals(Set.empty[Int], ht.keys().asScala.toSet)
     ht.put(1, 4)
-    assertEquals(Set(1), ht.keys().toSet)
+    assertEquals(Set(1), ht.keys().asScala.toSet)
     ht.put(2, 5)
     ht.put(3, 6)
-    assertEquals(Set(1, 2, 3), ht.keys().toSet)
+    assertEquals(Set(1, 2, 3), ht.keys().asScala.toSet)
   }
 
   @Test def elements(): Unit = {
     val ht = new ju.Hashtable[Int, Int]
-    assertEquals(Set.empty[Int], ht.elements().toSet)
+    assertEquals(Set.empty[Int], ht.elements().asScala.toSet)
     ht.put(1, 4)
-    assertEquals(Set(4), ht.elements().toSet)
+    assertEquals(Set(4), ht.elements().asScala.toSet)
     ht.put(2, 5)
     ht.put(3, 6)
-    assertEquals(Set(4, 5, 6), ht.elements().toSet)
+    assertEquals(Set(4, 5, 6), ht.elements().asScala.toSet)
   }
 
   @Test def contains(): Unit = {
@@ -180,37 +180,37 @@ class HashtableTest {
 
   @Test def keySet(): Unit = {
     val ht = new ju.Hashtable[Int, Int]
-    assertEquals(Set.empty[Int], ht.keySet().toSet)
+    assertEquals(Set.empty[Int], ht.keySet().asScala.toSet)
     ht.put(1, 4)
-    assertEquals(Set(1), ht.keySet().toSet)
+    assertEquals(Set(1), ht.keySet().asScala.toSet)
     ht.put(2, 5)
-    assertEquals(Set(1, 2), ht.keySet().toSet)
+    assertEquals(Set(1, 2), ht.keySet().asScala.toSet)
     ht.put(3, 6)
-    assertEquals(Set(1, 2, 3), ht.keySet().toSet)
+    assertEquals(Set(1, 2, 3), ht.keySet().asScala.toSet)
   }
 
   @Test def entrySet(): Unit = {
     val ht = new ju.Hashtable[Int, Int]
     assertTrue(ht.entrySet().isEmpty)
     ht.put(1, 4)
-    assertEquals(Set(1), ht.entrySet().map(_.getKey))
-    assertEquals(Set(4), ht.entrySet().map(_.getValue))
+    assertEquals(Set(1), ht.entrySet().asScala.map(_.getKey))
+    assertEquals(Set(4), ht.entrySet().asScala.map(_.getValue))
     ht.put(2, 5)
-    assertEquals(Set(1, 2), ht.entrySet().map(_.getKey))
-    assertEquals(Set(4, 5), ht.entrySet().map(_.getValue))
+    assertEquals(Set(1, 2), ht.entrySet().asScala.map(_.getKey))
+    assertEquals(Set(4, 5), ht.entrySet().asScala.map(_.getValue))
     ht.put(3, 6)
-    assertEquals(Set(1, 2, 3), ht.entrySet().map(_.getKey))
-    assertEquals(Set(4, 5, 6), ht.entrySet().map(_.getValue))
+    assertEquals(Set(1, 2, 3), ht.entrySet().asScala.map(_.getKey))
+    assertEquals(Set(4, 5, 6), ht.entrySet().asScala.map(_.getValue))
   }
 
   @Test def values(): Unit = {
     val ht = new ju.Hashtable[Int, Int]
-    assertEquals(Set.empty[Int], ht.values().toSet)
+    assertEquals(Set.empty[Int], ht.values().asScala.toSet)
     ht.put(1, 4)
-    assertEquals(Set(4), ht.values().toSet)
+    assertEquals(Set(4), ht.values().asScala.toSet)
     ht.put(2, 5)
-    assertEquals(Set(4, 5), ht.values().toSet)
+    assertEquals(Set(4, 5), ht.values().asScala.toSet)
     ht.put(3, 6)
-    assertEquals(Set(4, 5, 6), ht.values().toSet)
+    assertEquals(Set(4, 5, 6), ht.values().asScala.toSet)
   }
 }

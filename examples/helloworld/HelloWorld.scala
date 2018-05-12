@@ -9,7 +9,7 @@ import scala.scalajs.js
 import js.annotation._
 
 object HelloWorld extends js.JSApp {
-  def main() {
+  def main(): Unit = {
     import js.DynamicImplicits.truthValue
 
     if (js.Dynamic.global.document &&
@@ -23,7 +23,7 @@ object HelloWorld extends js.JSApp {
     }
   }
 
-  def sayHelloFromDOM() {
+  def sayHelloFromDOM(): Unit = {
     val document = js.Dynamic.global.document
     val playground = document.getElementById("playground")
 
@@ -32,7 +32,7 @@ object HelloWorld extends js.JSApp {
     playground.appendChild(newP)
   }
 
-  def sayHelloFromTypedDOM() {
+  def sayHelloFromTypedDOM(): Unit = {
     val document = window.document
     val playground = document.getElementById("playground")
 
@@ -41,14 +41,14 @@ object HelloWorld extends js.JSApp {
     playground.appendChild(newP)
   }
 
-  def sayHelloFromJQuery() {
+  def sayHelloFromJQuery(): Unit = {
     // val $ is fine too, but not very recommended in Scala code
     val jQuery = js.Dynamic.global.jQuery
     val newP = jQuery("<p>").html("Hello world! <i>-- jQuery</i>")
     newP.appendTo(jQuery("#playground"))
   }
 
-  def sayHelloFromTypedJQuery() {
+  def sayHelloFromTypedJQuery(): Unit = {
     val jQuery = helloworld.JQuery
     val newP = jQuery("<p>").html("Hello world! <i>-- typed jQuery</i>")
     newP.appendTo(jQuery("#playground"))

@@ -7,16 +7,17 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib.util.concurrent
 
+import scala.language.implicitConversions
+
+import scala.reflect.ClassTag
+
 import java.{util => ju}
 
 import org.junit.Assert._
 import org.junit.Test
+
 import org.scalajs.testsuite.javalib.util.MapTest
 import org.scalajs.testsuite.utils.AssertThrows._
-
-import scala.collection.JavaConversions._
-import scala.language.implicitConversions
-import scala.reflect.ClassTag
 
 class ConcurrentHashMapTest extends MapTest {
 
@@ -27,9 +28,9 @@ class ConcurrentHashMapTest extends MapTest {
 
     chm.put("ONE", "one")
     val elements = chm.elements
-    assertTrue(elements.hasNext)
+    assertTrue(elements.hasMoreElements)
     assertEquals("one", elements.nextElement)
-    assertFalse(elements.hasNext)
+    assertFalse(elements.hasMoreElements)
   }
 
   @Test def `should replace contained items`(): Unit = {

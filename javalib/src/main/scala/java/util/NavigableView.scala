@@ -121,8 +121,10 @@ private[util] class NavigableView[E](original: NavigableSet[E],
 
   def last(): E = {
     val iter = iterator()
-    if (iter.hasNext) iter.asScala.toTraversable.last
-    else null.asInstanceOf[E]
+    var result = null.asInstanceOf[E]
+    while (iter.hasNext)
+      result = iter.next()
+    result
   }
 
   def subSet(fromElement: E, fromInclusive: Boolean, toElement: E,
