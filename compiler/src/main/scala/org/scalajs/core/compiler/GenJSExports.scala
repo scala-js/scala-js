@@ -388,9 +388,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           None
         } else {
           val arg = genFormalArg(1)
-          val body = genExportSameArgc(minArgc = 1, hasRestParam = false,
-              alts = setters.map(ExportedSymbol), paramIndex = 0,
-              static = static)
+          val body = genExportSameArgc(jsName, minArgc = 1,
+              hasRestParam = false, alts = setters.map(ExportedSymbol),
+              paramIndex = 0, static = static)
           Some((arg, body))
         }
       }
@@ -492,9 +492,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         if methods != varArgMeths.toSet
 
         // body of case to disambiguates methods with current count
-        caseBody =
-          genExportSameArgc(minArgc, needsRestParam,
-              methods.toList, paramIndex = 0, static, Some(argcs.min))
+        caseBody = genExportSameArgc(jsName, minArgc, needsRestParam,
+            methods.toList, paramIndex = 0, static, Some(argcs.min))
 
         // argc in reverse order
         argcList = argcs.toList.sortBy(- _)
@@ -504,7 +503,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         if (!hasVarArg) {
           genThrowTypeError()
         } else {
-          genExportSameArgc(minArgc, needsRestParam, varArgMeths,
+          genExportSameArgc(jsName, minArgc, needsRestParam, varArgMeths,
               paramIndex = 0, static = static)
         }
       }
@@ -538,9 +537,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
      * @param paramIndex Index where to start disambiguation
      * @param maxArgc only use that many arguments
      */
-    private def genExportSameArgc(minArgc: Int, hasRestParam: Boolean,
-        alts: List[Exported], paramIndex: Int, static: Boolean,
-        maxArgc: Option[Int] = None): js.Tree = {
+    private def genExportSameArgc(jsName: JSName, minArgc: Int,
+        hasRestParam: Boolean, alts: List[Exported], paramIndex: Int,
+        static: Boolean, maxArgc: Option[Int] = None): js.Tree = {
 
       implicit val pos = alts.head.pos
 
@@ -553,7 +552,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         // 2. The optional argument count restriction has triggered
         // 3. We only have (more than once) repeated parameters left
         // Therefore, we should fail
-        reportCannotDisambiguateError(alts)
+        reportCannotDisambiguateError(jsName, alts)
         js.Undefined()
       } else {
         val altsByTypeTest = groupByWithoutHashCode(alts) {
@@ -566,7 +565,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         if (altsByTypeTest.size == 1) {
           // Testing this parameter is not doing any us good
-          genExportSameArgc(minArgc, hasRestParam, alts,
+          genExportSameArgc(jsName, minArgc, hasRestParam, alts,
               paramIndex+1, static, maxArgc)
         } else {
           // Sort them so that, e.g., isInstanceOf[String]
@@ -581,7 +580,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             implicit val pos = subAlts.head.pos
 
             val paramRef = genFormalArgRef(paramIndex+1, minArgc)
-            val genSubAlts = genExportSameArgc(minArgc, hasRestParam,
+            val genSubAlts = genExportSameArgc(jsName, minArgc, hasRestParam,
                 subAlts, paramIndex+1, static, maxArgc)
 
             def hasDefaultParam = subAlts.exists {
@@ -618,7 +617,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
     }
 
-    private def reportCannotDisambiguateError(alts: List[Exported]): Unit = {
+    private def reportCannotDisambiguateError(jsName: JSName,
+        alts: List[Exported]): Unit = {
       val currentClass = currentClassSym.get
 
       /* Find a position that is in the current class for decent error reporting.
@@ -638,11 +638,11 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         if (isScalaJSDefinedJSClass(currentClass)) "method"
         else "exported method"
 
-      val name = alts.head.name
-      val altsTypesInfo = alts.map(_.typeInfo).mkString("\n  ")
+      val displayName = jsName.displayName
+      val altsTypesInfo = alts.map(_.typeInfo).sorted.mkString("\n  ")
 
       reporter.error(pos,
-          s"Cannot disambiguate overloads for $kind $name with types\n" +
+          s"Cannot disambiguate overloads for $kind $displayName with types\n" +
           s"  $altsTypesInfo")
     }
 
@@ -889,7 +889,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       def pos: Position
       def params: List[Type]
       def genBody(minArgc: Int, hasRestParam: Boolean, static: Boolean): js.Tree
-      def name: String
       def typeInfo: String
       def hasRepeatedParam: Boolean
     }
@@ -900,10 +899,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       def genBody(minArgc: Int, hasRestParam: Boolean, static: Boolean): js.Tree =
         genApplyForSym(minArgc, hasRestParam, sym, static)
-
-      def name: String =
-        if (isRawJSType(sym.owner.toTypeConstructor)) jsNameOf(sym).displayName
-        else sym.name.toString
 
       def typeInfo: String = sym.tpe.toString
       def hasRepeatedParam: Boolean = GenJSExports.this.hasRepeatedParam(sym)
