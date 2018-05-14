@@ -31,15 +31,27 @@ import scala.runtime.ScalaRunTime.{array_apply, array_update}
  *  @version 1.0
  */
 object Array {
-  val emptyBooleanArray = new Array[Boolean](0)
-  val emptyByteArray    = new Array[Byte](0)
-  val emptyCharArray    = new Array[Char](0)
-  val emptyDoubleArray  = new Array[Double](0)
-  val emptyFloatArray   = new Array[Float](0)
-  val emptyIntArray     = new Array[Int](0)
-  val emptyLongArray    = new Array[Long](0)
-  val emptyShortArray   = new Array[Short](0)
-  val emptyObjectArray  = new Array[Object](0)
+  def emptyBooleanArray = EmptyArrays.emptyBooleanArray
+  def emptyByteArray    = EmptyArrays.emptyByteArray
+  def emptyCharArray    = EmptyArrays.emptyCharArray
+  def emptyDoubleArray  = EmptyArrays.emptyDoubleArray
+  def emptyFloatArray   = EmptyArrays.emptyFloatArray
+  def emptyIntArray     = EmptyArrays.emptyIntArray
+  def emptyLongArray    = EmptyArrays.emptyLongArray
+  def emptyShortArray   = EmptyArrays.emptyShortArray
+  def emptyObjectArray  = EmptyArrays.emptyObjectArray
+
+  private object EmptyArrays {
+    val emptyBooleanArray = new Array[Boolean](0)
+    val emptyByteArray    = new Array[Byte](0)
+    val emptyCharArray    = new Array[Char](0)
+    val emptyDoubleArray  = new Array[Double](0)
+    val emptyFloatArray   = new Array[Float](0)
+    val emptyIntArray     = new Array[Int](0)
+    val emptyLongArray    = new Array[Long](0)
+    val emptyShortArray   = new Array[Short](0)
+    val emptyObjectArray  = new Array[Object](0)
+  }
 
   /** Provides an implicit conversion from the Array object to a collection Factory */
   implicit def toFactory[A : ClassTag](dummy: Array.type): Factory[A, Array[A]] =
@@ -54,23 +66,11 @@ object Array {
   def newBuilder[T](implicit t: ClassTag[T]): ArrayBuilder[T] = ArrayBuilder.make[T](t)
 
   def from[A : ClassTag](it: IterableOnce[A]): Array[A] = {
-    val n = it.knownSize
-    if (n > -1) {
-      val elements = new Array[A](n)
-      val iterator = it.iterator
-      var i = 0
-      while (i < n) {
-        ScalaRunTime.array_update(elements, i, iterator.next())
-        i = i + 1
-      }
-      elements
-    } else {
-      val b = ArrayBuilder.make[A]
-      val iterator = it.iterator
-      while (iterator.hasNext)
-        b += iterator.next()
-      b.result()
-    }
+    val b = ArrayBuilder.make[A]
+    val iterator = it.iterator
+    while (iterator.hasNext)
+      b += iterator.next()
+    b.result()
   }
 
   private def slowcopy(src : AnyRef,
@@ -153,25 +153,16 @@ object Array {
     val destClass = ct.runtimeClass.asInstanceOf[Class[A]]
     if (destClass.isAssignableFrom(original.getClass.getComponentType)) {
       if(destClass.isPrimitive) copyOf[A](original.asInstanceOf[Array[A]], newLength)
-      else java.util.Arrays.copyOf(original.asInstanceOf[Array[AnyRef]], newLength, getArrayClass(destClass).asInstanceOf[Class[Array[AnyRef]]]).asInstanceOf[Array[A]]
+      else {
+        val destArrayClass = java.lang.reflect.Array.newInstance(destClass, 0).getClass.asInstanceOf[Class[Array[AnyRef]]]
+        java.util.Arrays.copyOf(original.asInstanceOf[Array[AnyRef]], newLength, destArrayClass).asInstanceOf[Array[A]]
+      }
     } else {
       val dest = new Array[A](newLength)
       Array.copy(original, 0, dest, 0, original.length)
       dest
     }
   }
-
-  private def getArrayClass[A](c: Class[A]): Class[Array[A]] = {
-    if(c eq classOf[Int]) classOf[Array[Int]]
-    else if(c eq classOf[Long]) classOf[Array[Long]]
-    else if(c eq classOf[Char]) classOf[Array[Char]]
-    else if(c eq classOf[Boolean]) classOf[Array[Boolean]]
-    else if(c eq classOf[Double]) classOf[Array[Double]]
-    else if(c eq classOf[Byte]) classOf[Array[Byte]]
-    else if(c eq classOf[Float]) classOf[Array[Float]]
-    else if(c eq classOf[Short]) classOf[Array[Short]]
-    else Class.forName(if(c.isArray) "["+c.getName else "[L"+c.getName+";", true, c.getClassLoader)
-  }.asInstanceOf[Class[Array[A]]]
 
   /** Returns an array of length 0 */
   def empty[T: ClassTag]: Array[T] = new Array[T](0)

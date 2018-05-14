@@ -537,7 +537,7 @@ object Collections {
   }
 
   def addAll[T](c: Collection[_ >: T], elements: Array[AnyRef]): Boolean =
-    c.addAll((elements.asInstanceOf[Array[T]]: Seq[T]).asJava)
+    c.addAll(elements.asInstanceOf[Array[T]].toSeq.asJava)
 
   def newSetFromMap[E](map: Map[E, java.lang.Boolean]): Set[E] = {
     if (!map.isEmpty)

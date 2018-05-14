@@ -95,7 +95,7 @@ abstract class BaseDescription extends Description {
   protected def append(c: Char): Unit
 
   private def toJavaSyntax(unformatted: String): String =
-    s""""${unformatted.map(toJavaSyntax)}"""" // Note the four "
+    s""""${unformatted.map((ch: Char) => toJavaSyntax(ch))}"""" // Note the four "
 
   private def toJavaSyntax(ch: Char): String = {
     ch match {

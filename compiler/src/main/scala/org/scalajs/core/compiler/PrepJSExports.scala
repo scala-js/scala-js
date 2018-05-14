@@ -641,8 +641,8 @@ trait PrepJSExports { this: PrepJSInterop =>
     def ph = Ident(Predef_???)
 
     // Create a call to the forwarded method with ??? as args
-    val sel: Tree = Select(This(clsSym), defSym)
-    val call = (sel /: defSym.paramss) {
+    val sel = Select(This(clsSym), defSym)
+    val call = defSym.paramss.foldLeft[Tree](sel) {
       (fun, params) => Apply(fun, List.fill(params.size)(ph))
     }
 
@@ -687,8 +687,8 @@ trait PrepJSExports { this: PrepJSInterop =>
     }
 
     // Construct proxied function call
-    val sel: Tree = Select(This(clsSym), trgSym)
-    val rhs = (sel /: proxySym.paramss) {
+    val sel = Select(This(clsSym), trgSym)
+    val rhs = proxySym.paramss.foldLeft[Tree](sel) {
       (fun,params) => Apply(fun, params map spliceParam)
     }
 

@@ -63,6 +63,20 @@ object Build {
   val previousBinaryCrossVersion =
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
+  def hasNewCollections(version: String): Boolean = {
+    !version.startsWith("2.10.") &&
+    !version.startsWith("2.11.") &&
+    !version.startsWith("2.12.") &&
+    version != "2.13.0-M3"
+  }
+
+  /** Returns the appropriate subdirectory of `sourceDir` depending on whether
+   *  the `scalaV` uses the new collections (introduced in 2.13.0-M4) or not.
+   */
+  def collectionsEraDependentDirectory(scalaV: String, sourceDir: File): File =
+    if (hasNewCollections(scalaV)) sourceDir / "scala-new-collections"
+    else sourceDir / "scala-old-collections"
+
   val scalaVersionsUsedForPublishing: Set[String] =
     Set("2.10.7", "2.11.12", "2.12.5", "2.13.0-M3")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
@@ -1051,6 +1065,9 @@ object Build {
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
+          unmanagedSourceDirectories +=
+            collectionsEraDependentDirectory(scalaVersion.value, sourceDirectory.value),
+
           scalacOptions in doc ++= Seq(
               "-implicits",
               "-groups",
@@ -1514,7 +1531,9 @@ object Build {
 
         unmanagedSourceDirectories in Test ++= {
           val testDir = (sourceDirectory in Test).value
+          val scalaV = scalaVersion.value
 
+          collectionsEraDependentDirectory(scalaV, testDir) ::
           includeIf(testDir / "require-modules",
               scalaJSModuleKind.value != ModuleKind.NoModule)
         },

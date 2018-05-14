@@ -126,15 +126,13 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val Runtime_unwrapJavaScriptException  = getMemberMethod(RuntimePackageModule, newTermName("unwrapJavaScriptException"))
       lazy val Runtime_jsObjectSuperGet           = getMemberMethod(RuntimePackageModule, newTermName("jsObjectSuperGet"))
       lazy val Runtime_jsObjectSuperSet           = getMemberMethod(RuntimePackageModule, newTermName("jsObjectSuperSet"))
+      lazy val Runtime_toScalaVarArgs             = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgs"))
       lazy val Runtime_genTraversableOnce2jsArray = getMemberMethod(RuntimePackageModule, newTermName("genTraversableOnce2jsArray"))
       lazy val Runtime_jsTupleArray2jsObject      = getMemberMethod(RuntimePackageModule, newTermName("jsTupleArray2jsObject"))
       lazy val Runtime_constructorOf              = getMemberMethod(RuntimePackageModule, newTermName("constructorOf"))
       lazy val Runtime_newConstructorTag          = getMemberMethod(RuntimePackageModule, newTermName("newConstructorTag"))
       lazy val Runtime_propertiesOf               = getMemberMethod(RuntimePackageModule, newTermName("propertiesOf"))
       lazy val Runtime_linkingInfo                = getMemberMethod(RuntimePackageModule, newTermName("linkingInfo"))
-
-    lazy val WrappedArrayClass = getRequiredClass("scala.scalajs.js.WrappedArray")
-      lazy val WrappedArray_ctor = WrappedArrayClass.primaryConstructor
 
     // This is a def, since similar symbols (arrayUpdateMethod, etc.) are in runDefinitions
     // (rather than definitions) and we weren't sure if it is safe to make this a lazy val
