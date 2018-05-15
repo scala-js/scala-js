@@ -396,7 +396,7 @@ private[regex] class GroupStartMap(string: String, start: Int, pattern: Pattern)
     }
     node.setNewGroup(1)
     val groupNodeMap = node.getGroupNodeMap
-    node.transformGroupNumber(groupNodeMap.mapValues(_.newGroup))
+    node.transformGroupNumber(groupNodeMap.mapValues(_.newGroup).toMap)
     val allMatchingRegexStr = node.buildRegex
     val allMatchingRegex = new js.RegExp(allMatchingRegexStr, flags)
     allMatchingRegex.lastIndex = start

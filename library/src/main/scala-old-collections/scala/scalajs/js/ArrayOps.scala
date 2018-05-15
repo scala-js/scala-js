@@ -19,8 +19,6 @@ final class ArrayOps[A](private[this] val array: Array[A])
     extends mutable.ArrayLike[A, Array[A]]
        with Builder[A, Array[A]] {
 
-  import ArrayOps._
-
   /** Creates a new empty [[ArrayOps]]. */
   def this() = this(Array())
 
@@ -57,63 +55,17 @@ final class ArrayOps[A](private[this] val array: Array[A])
   // Scala notation for a fast concat()
 
   @inline def ++[B >: A](that: Array[_ <: B]): Array[B] =
-    concat(array, that)
+    ArrayOpsCommon.concat(array, that)
 
   // Methods whose inherited implementations do not play nice with the optimizer
 
-  override def reduceLeft[B >: A](op: (B, A) => B): B = {
-    val length = this.length
-    if (length <= 0)
-      throwUnsupported("empty.reduceLeft")
+  override def reduceLeft[B >: A](op: (B, A) => B): B =
+    ArrayOpsCommon.reduceLeft(array, op)
 
-    @inline
-    @tailrec
-    def loop(start: Int, z: B): B =
-      if (start == length) z
-      else loop(start+1, op(z, this(start)))
-
-    loop(1, this(0))
-  }
-
-  override def reduceRight[B >: A](op: (A, B) => B): B = {
-    val length = this.length
-    if (length <= 0)
-      throwUnsupported("empty.reduceRight")
-
-    @inline
-    @tailrec
-    def loop(end: Int, z: B): B =
-      if (end == 0) z
-      else loop(end-1, op(this(end-1), z))
-
-    loop(length-1, this(length-1))
-  }
+  override def reduceRight[B >: A](op: (A, B) => B): B =
+    ArrayOpsCommon.reduceRight(array, op)
 
 }
 
-object ArrayOps {
-
-  /** Extract the throw in a separate, non-inlineable method. */
-  private def throwUnsupported(msg: String): Nothing =
-    throw new UnsupportedOperationException(msg)
-
-  /** Non-inlined implementation of [[ArrayOps.++]]. */
-  private def concat[A](left: Array[_ <: A], right: Array[_ <: A]): Array[A] = {
-    val leftLength = left.length
-    val rightLength = right.length
-    val result = new Array[A](leftLength + rightLength)
-
-    @inline
-    @tailrec
-    def loop(src: Array[_ <: A], i: Int, len: Int, offset: Int): Unit =
-      if (i != len) {
-        result(i+offset) = src(i)
-        loop(src, i+1, len, offset)
-      }
-
-    loop(left, 0, leftLength, 0)
-    loop(right, 0, rightLength, leftLength)
-    result
-  }
-
-}
+@deprecated("Kept only for binary compatibility", "0.6.23")
+object ArrayOps

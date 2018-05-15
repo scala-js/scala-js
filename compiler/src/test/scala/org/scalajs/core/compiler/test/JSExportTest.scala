@@ -821,6 +821,18 @@ class JSExportTest extends DirectTest with TestHelpers {
   @Test
   def noOverrideNamedExport: Unit = {
 
+    val indent = {
+      val version = scala.util.Properties.versionNumberString
+      if (version.startsWith("2.10.") ||
+          version.startsWith("2.11.") ||
+          version.startsWith("2.12.") ||
+          version == "2.13.0-M3") {
+        " "
+      } else {
+        "  "
+      }
+    }
+
     """
     class A {
       @JSExportNamed
@@ -840,7 +852,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       |      @JSExportNamed
       |       ^
       |newSource1.scala:9: error: overriding method $$js$$exported$$meth$$foo in class A of type (namedArgs: Any)Any;
-      | method $$js$$exported$$meth$$foo cannot override final member
+      |${indent}method $$js$$exported$$meth$$foo cannot override final member
       |      @JSExportNamed
       |       ^
       |newSource1.scala:10: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.

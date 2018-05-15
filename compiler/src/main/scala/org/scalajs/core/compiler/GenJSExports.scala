@@ -461,7 +461,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       // Create a map: argCount -> methods (methods may appear multiple times)
       val methodByArgCount =
-        methodArgCounts.groupBy(_._1).mapValues(_.map(_._2).toSet)
+        methodArgCounts.groupBy(_._1).mapValues(_.map(_._2).toSet).toMap
 
       // Minimum number of arguments that must be given
       val minArgc = methodByArgCount.keys.min
@@ -754,9 +754,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       // optional repeated parameter list
       val jsVarArgPrep = repeatedTpe map { tpe =>
-        // new WrappedArray(varargs)
-        val rhs = genNew(WrappedArrayClass, WrappedArray_ctor, List(
-            genVarargRef(normalArgc, minArgc)))
+        val rhs = genJSArrayToVarArgs(genVarargRef(normalArgc, minArgc))
         js.VarDef(js.Ident("prep" + normalArgc), rhs.tpe, mutable = false, rhs)
       }
 

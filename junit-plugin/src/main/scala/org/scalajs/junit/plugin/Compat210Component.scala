@@ -66,6 +66,15 @@ trait Compat210Component {
 
   implicit final class DefinitionsCompat(
       self: Compat210Component.this.global.definitions.type) {
+
     lazy val StringTpe = definitions.StringClass.tpe
+
+    def wrapVarargsArrayMethodName(elemtp: Type): TermName =
+      self.wrapArrayMethodName(elemtp)
+
+    def wrapArrayMethodName(elemtp: Type): TermName = infiniteLoop()
   }
+
+  private def infiniteLoop(): Nothing =
+    throw new AssertionError("Infinite loop in Compat210Component")
 }

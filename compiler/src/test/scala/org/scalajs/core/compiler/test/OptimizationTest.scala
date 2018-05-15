@@ -7,6 +7,7 @@ import org.junit.Test
 import org.scalajs.core.ir.{Trees => js, Types => jstpe}
 
 class OptimizationTest extends JSASTTest {
+  import OptimizationTest._
 
   @Test
   def unwrapScalaFunWrapper: Unit = {
@@ -55,8 +56,7 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasNot("any of the wrapArray methods") {
-      case js.Apply(_, js.Ident(name, _), _)
-          if name.startsWith("wrap") && name.endsWith("__scm_WrappedArray") =>
+      case WrapArrayCall() =>
     }
   }
 
@@ -79,8 +79,7 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasNot("any of the wrapArray methods") {
-      case js.Apply(_, js.Ident(name, _), _)
-          if name.startsWith("wrap") && name.endsWith("__scm_WrappedArray") =>
+      case WrapArrayCall() =>
     }
 
     /* #2265 and #2741:
@@ -108,21 +107,30 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasNot("any of the wrapArray methods") {
-      case js.Apply(_, js.Ident(name, _), _)
-          if name.startsWith("wrap") && name.endsWith("__scm_WrappedArray") =>
+      case WrapArrayCall() =>
     }
 
-    // Make sure our wrapper matcher has the right name
-    """
-    import scala.scalajs.js
-
-    class A {
-      val a: Seq[Int] = new Array[Int](5)
+    /* Make sure our wrapper matcher has the right name.
+     * With the new collections, only actual varargs will produce a call to the
+     * methods we optimize, and we would always be able to optimize them in
+     * that case. So we need to explicitly call the method that the codegen
+     * would use.
+     */
+    val sanityCheckCode = if (hasOldCollections) {
+      """
+      class A {
+        val a: Seq[Int] = new Array[Int](5)
+      }
+      """
+    } else {
+      """
+      class A {
+        runtime.ScalaRunTime.wrapIntArray(new Array[Int](5))
+      }
+      """
     }
-    """.
-    has("one of the wrapArray methods") {
-      case js.Apply(_, js.Ident(name, _), _)
-          if name.startsWith("wrap") && name.endsWith("__scm_WrappedArray") =>
+    sanityCheckCode.has("one of the wrapArray methods") {
+      case WrapArrayCall() =>
     }
   }
 
@@ -254,6 +262,30 @@ class OptimizationTest extends JSASTTest {
       case js.JSNew(_, _) =>
     }.has("object literal") {
       case js.JSObjectConstr(Nil) =>
+    }
+  }
+
+}
+
+object OptimizationTest {
+
+  private val hasOldCollections = {
+    val version = scala.util.Properties.versionNumberString
+
+    version.startsWith("2.10.") ||
+    version.startsWith("2.11.") ||
+    version.startsWith("2.12.") ||
+    version == "2.13.0-M3"
+  }
+
+  private object WrapArrayCall {
+    private val Suffix =
+      if (hasOldCollections) "__scm_WrappedArray"
+      else "__sci_ArraySeq"
+
+    def unapply(tree: js.Apply): Boolean = {
+      val methodName = tree.method.name
+      methodName.startsWith("wrap") && methodName.endsWith(Suffix)
     }
   }
 

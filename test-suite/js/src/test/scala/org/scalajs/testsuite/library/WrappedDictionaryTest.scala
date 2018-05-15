@@ -54,26 +54,68 @@ class WrappedDictionaryTest {
     assertTrue(map.iterator.toList.sorted.sameElements(elems))
   }
 
-  // Some arbitrary methods to test the builders
+  /* Methods that need to be overloaded in 2.13 collections to get the correct
+   * result type.
+   */
 
   @Test def map(): Unit = {
     def ct[A: ClassTag](x: A): ClassTag[A] = implicitly[ClassTag[A]]
-    val dict = js.Dictionary[Int]()
-    dict ++= Seq("one" -> 1, "two" -> 2, "three" -> 3)
 
-    val mapChr = dict.map { case (k,v) => k(0)          -> v * 2 }
-    val mapStr = dict.map { case (k,v) => k(0).toString -> v * 2 }
+    val dict = js.Dictionary[Int]("one" -> 1, "two" -> 2, "three" -> 3)
 
-    assertFalse(ct(mapChr).runtimeClass == classOf[js.WrappedDictionary[_]])
-    assertTrue(ct(mapStr).runtimeClass == classOf[js.WrappedDictionary[_]])
+    val mapChr = dict.map { case (k, v) => k(0)          -> v * 2 }
+    val mapStr = dict.map { case (k, v) => k(0).toString -> v * 2 }
+
+    assertNotSame(classOf[js.WrappedDictionary[_]], ct(mapChr).runtimeClass)
+    assertSame(classOf[js.WrappedDictionary[_]], ct(mapStr).runtimeClass)
 
     assertEquals(2, mapChr.size)
     assertEquals(2, mapStr.size)
   }
 
+  @Test def flatMap(): Unit = {
+    def ct[A: ClassTag](x: A): ClassTag[A] = implicitly[ClassTag[A]]
+
+    val dict = js.Dictionary[Int]("one" -> 1, "two" -> 2, "three" -> 3)
+
+    val flatMapChr = dict.flatMap {
+      case (k, v) => List(k(0) -> v * 2, k(1) -> v * 3)
+    }
+    val flatMapStr = dict.flatMap {
+      case (k, v) => List(k(0).toString -> v * 2, k(1).toString -> v * 3)
+    }
+
+    assertNotSame(classOf[js.WrappedDictionary[_]], ct(flatMapChr).runtimeClass)
+    assertSame(classOf[js.WrappedDictionary[_]], ct(flatMapStr).runtimeClass)
+
+    assertEquals(5, flatMapChr.size)
+    assertEquals(5, flatMapStr.size)
+  }
+
+  @Test def collect(): Unit = {
+    def ct[A: ClassTag](x: A): ClassTag[A] = implicitly[ClassTag[A]]
+
+    val dict = js.Dictionary[Int]("one" -> 1, "two" -> 2, "three" -> 3)
+
+    val collectChr = dict.collect {
+      case (k, v) if v > 1 => k(0) -> v * 2
+    }
+    val collectStr = dict.collect {
+      case (k, v) if v > 1 => k(0).toString -> v * 2
+    }
+
+    assertNotSame(classOf[js.WrappedDictionary[_]], ct(collectChr).runtimeClass)
+    assertSame(classOf[js.WrappedDictionary[_]], ct(collectStr).runtimeClass)
+
+    assertEquals(1, collectChr.size)
+    assertEquals(1, collectStr.size)
+  }
+
+  // Some arbitrary methods to test the builders
+
   @Test def withFilter(): Unit = {
     val dict = js.Dictionary[Int]()
-    val flt = dict.withFilter { case (k,v) => v > 5 || k == "a" }
+    val flt = dict.withFilter { case (k, v) => v > 5 || k == "a" }
     def size: Int = flt.map(x => x).size
 
     assertEquals(0, size)
@@ -92,12 +134,6 @@ class WrappedDictionaryTest {
   @Test def toList(): Unit = {
     val dict = js.Dictionary("a" -> "a", "b" -> 6, "e" -> js.undefined)
     val list = dict.toList
-    assertEquals(3, list.size)
-  }
-
-  @Test def to_T(): Unit = {
-    val dict = js.Dictionary("a" -> "a", "b" -> 6, "e" -> js.undefined)
-    val list = dict.to[List]
     assertEquals(3, list.size)
   }
 
