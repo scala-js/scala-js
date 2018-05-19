@@ -24,9 +24,18 @@ class ArrayBuilderTest {
   def erase(x: Any): Any = x
 
   @inline
-  def makeNoInline[T: ClassTag](): ArrayBuilder[T] = {
-    @noinline def ct = implicitly[ClassTag[T]]
-    ArrayBuilder.make[T]()(ct)
+  def makeNoInline[T](implicit ct: ClassTag[T]): ArrayBuilder[T] = {
+    /* The dance in this method is to be source compatible with the old and
+     * new collections. In the new collections, ArrayBuilder.make[T] doesn't
+     * take an explicit () parameter list, but it does in the old collections.
+     */
+
+    @noinline def ctNoInline = ct
+
+    {
+      implicit val ct = ctNoInline
+      ArrayBuilder.make[T]
+    }
   }
 
   @inline
@@ -43,7 +52,7 @@ class ArrayBuilderTest {
   @noinline def someString: String = "world"
 
   @Test def Int_normal_case_inline(): Unit = {
-    val b = ArrayBuilder.make[Int]()
+    val b = ArrayBuilder.make[Int]
     b += 42
     b += someInt
     val a = b.result()
@@ -56,7 +65,7 @@ class ArrayBuilderTest {
   }
 
   @Test def Int_normal_case_noinline(): Unit = {
-    val b = makeNoInline[Int]()
+    val b = makeNoInline[Int]
     b += 42
     b += someInt
     val a = b.result()
@@ -85,7 +94,7 @@ class ArrayBuilderTest {
   }
 
   @Test def Char_normal_case_inline(): Unit = {
-    val b = ArrayBuilder.make[Char]()
+    val b = ArrayBuilder.make[Char]
     b += 'A'
     b += someChar
     val a = b.result()
@@ -98,7 +107,7 @@ class ArrayBuilderTest {
   }
 
   @Test def Char_normal_case_noinline(): Unit = {
-    val b = makeNoInline[Char]()
+    val b = makeNoInline[Char]
     b += 'A'
     b += someChar
     val a = b.result()
@@ -115,7 +124,7 @@ class ArrayBuilderTest {
     assertSame(classOf[Array[Char]], a.getClass)
     assertEquals(3, a.length)
     assertTrue(erase(a(0)).isInstanceOf[Char])
-    assertEquals('\0', erase(a(0)))
+    assertEquals('\u0000', erase(a(0)))
   }
 
   @Test def Char_zeros_noinline(): Unit = {
@@ -123,11 +132,11 @@ class ArrayBuilderTest {
     assertSame(classOf[Array[Char]], a.getClass)
     assertEquals(3, a.length)
     assertTrue(erase(a(0)).isInstanceOf[Char])
-    assertEquals('\0', erase(a(0)))
+    assertEquals('\u0000', erase(a(0)))
   }
 
   @Test def Boolean_normal_case_inline(): Unit = {
-    val b = ArrayBuilder.make[Boolean]()
+    val b = ArrayBuilder.make[Boolean]
     b += true
     b += someBoolean
     val a = b.result()
@@ -140,7 +149,7 @@ class ArrayBuilderTest {
   }
 
   @Test def Boolean_normal_case_noinline(): Unit = {
-    val b = makeNoInline[Boolean]()
+    val b = makeNoInline[Boolean]
     b += true
     b += someBoolean
     val a = b.result()
@@ -169,7 +178,7 @@ class ArrayBuilderTest {
   }
 
   @Test def Unit_normal_case_inline(): Unit = {
-    val b = ArrayBuilder.make[Unit]()
+    val b = ArrayBuilder.make[Unit]
     b += ()
     val a = b.result()
 
@@ -180,7 +189,7 @@ class ArrayBuilderTest {
   }
 
   @Test def Unit_normal_case_noinline(): Unit = {
-    val b = makeNoInline[Unit]()
+    val b = makeNoInline[Unit]
     b += ()
     val a = b.result()
 
@@ -211,7 +220,7 @@ class ArrayBuilderTest {
   }
 
   @Test def String_normal_case_inline(): Unit = {
-    val b = ArrayBuilder.make[String]()
+    val b = ArrayBuilder.make[String]
     b += "hello"
     b += someString
     val a = b.result()
@@ -224,7 +233,7 @@ class ArrayBuilderTest {
   }
 
   @Test def String_normal_case_noinline(): Unit = {
-    val b = makeNoInline[String]()
+    val b = makeNoInline[String]
     b += "hello"
     b += someString
     val a = b.result()
@@ -251,10 +260,10 @@ class ArrayBuilderTest {
   }
 
   @Test def Nothing_and_Null(): Unit = {
-    assertSame(classOf[Array[Nothing]], ArrayBuilder.make[Nothing]().result().getClass)
-    assertSame(classOf[Array[Null]], ArrayBuilder.make[Null]().result().getClass)
+    assertSame(classOf[Array[Nothing]], ArrayBuilder.make[Nothing].result().getClass)
+    assertSame(classOf[Array[Null]], ArrayBuilder.make[Null].result().getClass)
 
-    assertSame(classOf[Array[Nothing]], makeNoInline[Nothing]().result().getClass)
-    assertSame(classOf[Array[Null]], makeNoInline[Null]().result().getClass)
+    assertSame(classOf[Array[Nothing]], makeNoInline[Nothing].result().getClass)
+    assertSame(classOf[Array[Null]], makeNoInline[Null].result().getClass)
   }
 }

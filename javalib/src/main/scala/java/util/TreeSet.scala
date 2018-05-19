@@ -7,6 +7,8 @@ import scala.math.Ordering
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 
+import Compat.SortedSetCompat
+
 class TreeSet[E] (_comparator: Comparator[_ >: E])
     extends AbstractSet[E]
     with NavigableSet[E]
@@ -141,15 +143,14 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
       toInclusive: Boolean): NavigableSet[E] = {
     val boxedFrom = Box(fromElement)
     val boxedTo = Box(toElement)
+
     val subSetFun = { () =>
-      var base = new mutable.TreeSet[Box[E]]
+      val base = new mutable.TreeSet[Box[E]]
       base ++= inner.range(boxedFrom, boxedTo)
       if (!fromInclusive)
-        base = base - boxedFrom
-
+        base -= boxedFrom
       if (toInclusive && inner.contains(boxedTo))
-        base = base + boxedTo
-
+        base += boxedTo
       base
     }
 
@@ -160,13 +161,13 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
 
   def headSet(toElement: E, inclusive: Boolean): NavigableSet[E] = {
     val boxed = Box(toElement)
-    val headSetFun = { () =>
-      var base = new mutable.TreeSet[Box[E]]
-      if (inclusive)
-        base ++= inner.to(boxed)
-      else
-        base ++= inner.until(boxed)
 
+    val headSetFun = { () =>
+      val base = new mutable.TreeSet[Box[E]]
+      if (inclusive)
+        base ++= inner.rangeTo(boxed)
+      else
+        base ++= inner.rangeUntil(boxed)
       base
     }
 
@@ -177,12 +178,12 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
 
   def tailSet(fromElement: E, inclusive: Boolean): NavigableSet[E] = {
     val boxed = Box(fromElement)
+
     val tailSetFun = { () =>
-      var base = new mutable.TreeSet[Box[E]]
-      base ++= inner.from(boxed)
+      val base = new mutable.TreeSet[Box[E]]
+      base ++= inner.rangeFrom(boxed)
       if (!inclusive)
         base -= boxed
-
       base
     }
 

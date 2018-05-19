@@ -258,9 +258,9 @@ class JSExportStaticTest {
         JSExportStaticTest.StaticExportFields.uninitializedVarString)
     assertEquals(null, statics.uninitializedVarString)
 
-    assertEquals('\0',
+    assertEquals('\u0000',
         JSExportStaticTest.StaticExportFields.uninitializedVarChar)
-    assertEquals('\0', statics.uninitializedVarChar)
+    assertEquals('\u0000', statics.uninitializedVarChar)
   }
 
   @Test def field_also_exists_in_member(): Unit = {

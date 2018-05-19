@@ -145,7 +145,7 @@ object Build {
     "Whether we should partest the current scala version (and fail if we can't)")
 
   /* MiMa configuration -- irrelevant while in 1.0.0-SNAPSHOT.
-  val previousVersion = "0.6.22"
+  val previousVersion = "0.6.23"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
@@ -156,6 +156,20 @@ object Build {
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
   */
+
+  def hasNewCollections(version: String): Boolean = {
+    !version.startsWith("2.10.") &&
+    !version.startsWith("2.11.") &&
+    !version.startsWith("2.12.") &&
+    version != "2.13.0-M3"
+  }
+
+  /** Returns the appropriate subdirectory of `sourceDir` depending on whether
+   *  the `scalaV` uses the new collections (introduced in 2.13.0-M4) or not.
+   */
+  def collectionsEraDependentDirectory(scalaV: String, sourceDir: File): File =
+    if (hasNewCollections(scalaV)) sourceDir / "scala-new-collections"
+    else sourceDir / "scala-old-collections"
 
   val javaVersion = settingKey[Int](
     "The major Java SDK version that should be assumed for compatibility. " +
@@ -1039,6 +1053,9 @@ object Build {
               "-doc-version", scalaJSVersion
           ),
 
+          unmanagedSourceDirectories +=
+            collectionsEraDependentDirectory(scalaVersion.value, sourceDirectory.value),
+
           // Filter doc sources to remove implementation details from doc.
           sources in doc := {
             val prev = (sources in doc).value
@@ -1508,7 +1525,9 @@ object Build {
 
       unmanagedSourceDirectories in Test ++= {
         val testDir = (sourceDirectory in Test).value
+        val scalaV = scalaVersion.value
 
+        collectionsEraDependentDirectory(scalaV, testDir) ::
         includeIf(testDir / "require-modules",
             scalaJSLinkerConfig.value.moduleKind != ModuleKind.NoModule)
       },

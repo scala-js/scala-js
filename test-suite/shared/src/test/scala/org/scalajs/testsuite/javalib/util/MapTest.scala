@@ -15,7 +15,7 @@ import org.junit.Assert._
 import org.scalajs.testsuite.javalib.util.concurrent.ConcurrentMapFactory
 import org.scalajs.testsuite.utils.AssertThrows._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.{mutable => mu}
 import scala.reflect.ClassTag
 
@@ -248,7 +248,7 @@ trait MapTest {
 
     val m = mu.Map[String, String](
       "X" -> "y")
-    mp.putAll(mutableMapAsJavaMap(m))
+    mp.putAll(m.asJava)
     assertEquals(1, mp.size)
     assertEquals("y", mp.get("X"))
 
@@ -257,20 +257,20 @@ trait MapTest {
       "X" -> "y")
 
     if (factory.allowsNullKeys) {
-      mp.putAll(mutableMapAsJavaMap(nullMap))
+      mp.putAll(nullMap.asJava)
       assertEquals("y", mp.get(null))
       assertEquals("y", mp.get("X"))
     } else {
-      expectThrows(classOf[NullPointerException], mp.putAll(mutableMapAsJavaMap(nullMap)))
+      expectThrows(classOf[NullPointerException], mp.putAll(nullMap.asJava))
     }
   }
 
   class SimpleQueryableMap[K, V](inner: mu.HashMap[K, V])
       extends ju.AbstractMap[K, V] {
     def entrySet(): java.util.Set[java.util.Map.Entry[K, V]] = {
-      setAsJavaSet(inner.map {
+      inner.map {
         case (k, v) => new ju.AbstractMap.SimpleImmutableEntry(k, v)
-      }.toSet)
+      }.toSet[java.util.Map.Entry[K, V]].asJava
     }
   }
 
@@ -331,19 +331,19 @@ trait MapTest {
     if (factory.allowsNullValuesQueries)
       assertFalse(values.contains(null))
     else
-      expectThrows(classOf[Throwable], mp.contains(null))
+      expectThrows(classOf[Throwable], mp.asScala.contains(null))
 
     mp.put("THREE", "three")
 
     assertTrue(values.contains("three"))
 
-    val coll1 = asJavaCollection(Set("one", "two", "three"))
+    val coll1 = Set("one", "two", "three").asJavaCollection
     assertTrue(values.containsAll(coll1))
 
-    val coll2 = asJavaCollection(Set("one", "two", "three", "four"))
+    val coll2 = Set("one", "two", "three", "four").asJavaCollection
     assertFalse(values.containsAll(coll2))
 
-    val coll3 = asJavaCollection(Set("one", "two", "three", null))
+    val coll3 = Set("one", "two", "three", null).asJavaCollection
     assertFalse(values.containsAll(coll2))
 
     val nummp = factory.empty[Double, Double]
@@ -414,7 +414,7 @@ trait MapTest {
     assertTrue(mp.containsKey("TWO"))
     assertTrue(mp.containsKey("THREE"))
 
-    values.removeAll(asJavaCollection(List("one", "two")))
+    values.removeAll(List("one", "two").asJavaCollection)
 
     assertFalse(mp.containsKey("ONE"))
     assertFalse(mp.containsKey("TWO"))
@@ -428,7 +428,7 @@ trait MapTest {
     assertTrue(mp.containsKey("TWO"))
     assertTrue(mp.containsKey("THREE"))
 
-    values.retainAll(asJavaCollection(List("one", "two")))
+    values.retainAll(List("one", "two").asJavaCollection)
 
     assertTrue(mp.containsKey("ONE"))
     assertTrue(mp.containsKey("TWO"))
@@ -492,22 +492,22 @@ trait MapTest {
     if (factory.allowsNullKeysQueries)
       assertFalse(keySet.contains(null))
     else
-      expectThrows(classOf[Throwable], mp.contains(null))
+      expectThrows(classOf[Throwable], mp.asScala.contains(null))
 
     mp.put("THREE", "three")
 
     assertTrue(keySet.contains("THREE"))
 
     val coll1 =
-      asJavaCollection(Set("ONE", "TWO", "THREE"))
+      Set("ONE", "TWO", "THREE").asJavaCollection
     assertTrue(keySet.containsAll(coll1))
 
     val coll2 =
-      asJavaCollection(Set("ONE", "TWO", "THREE", "FOUR"))
+      Set("ONE", "TWO", "THREE", "FOUR").asJavaCollection
     assertFalse(keySet.containsAll(coll2))
 
     val coll3 =
-      asJavaCollection(Set("ONE", "TWO", "THREE", null))
+      Set("ONE", "TWO", "THREE", null).asJavaCollection
     assertFalse(keySet.containsAll(coll2))
 
     val nummp = factory.empty[Double, Double]
@@ -579,7 +579,7 @@ trait MapTest {
     assertTrue(mp.containsKey("TWO"))
     assertTrue(mp.containsKey("THREE"))
 
-    keySet.removeAll(asJavaCollection(List("ONE", "TWO")))
+    keySet.removeAll(List("ONE", "TWO").asJavaCollection)
 
     assertFalse(mp.containsKey("ONE"))
     assertFalse(mp.containsKey("TWO"))
@@ -593,7 +593,7 @@ trait MapTest {
     assertTrue(mp.containsKey("TWO"))
     assertTrue(mp.containsKey("THREE"))
 
-    keySet.retainAll(asJavaCollection(List("ONE", "TWO")))
+    keySet.retainAll(List("ONE", "TWO").asJavaCollection)
 
     assertTrue(mp.containsKey("ONE"))
     assertTrue(mp.containsKey("TWO"))

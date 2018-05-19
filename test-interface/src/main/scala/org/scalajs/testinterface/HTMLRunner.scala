@@ -95,7 +95,7 @@ protected[testinterface] object HTMLRunner {
 
   private def runTests(framework: Framework,
       taskDefs: Seq[TaskDef], ui: UI): Future[Boolean] = {
-    def runAllTasks(tasks: Seq[Task]): Future[Boolean] = {
+    def runAllTasks(tasks: collection.Seq[Task]): Future[Boolean] = {
       val oks = tasks.map { task =>
         for {
           (ok, newTasks) <- scheduleTask(task, ui)
@@ -417,7 +417,7 @@ protected[testinterface] object HTMLRunner {
     private def statusClass(ok: Boolean): String =
       if (ok) "success" else "error"
 
-    private def checkboxUpdater(tests: Seq[Test],
+    private def checkboxUpdater(tests: collection.Seq[Test],
         checkbox: dom.Checkbox): js.Function0[Boolean] = { () =>
       val all = tests.forall(_.selected)
       val indet = !all && tests.exists(_.selected)
@@ -428,7 +428,7 @@ protected[testinterface] object HTMLRunner {
       true
     }
 
-    private def testUpdater(tests: Seq[Test],
+    private def testUpdater(tests: collection.Seq[Test],
         checkbox: dom.Checkbox): js.Function0[Boolean] = { () =>
       tests.foreach(_.selected = checkbox.checked)
       true
@@ -518,5 +518,6 @@ protected[testinterface] object HTMLRunner {
     }
   }
 
-  private def and(xs: Seq[Boolean]): Boolean = xs.fold(true)(_ && _)
+  private def and(xs: collection.Seq[Boolean]): Boolean =
+    xs.foldLeft(true)(_ && _)
 }

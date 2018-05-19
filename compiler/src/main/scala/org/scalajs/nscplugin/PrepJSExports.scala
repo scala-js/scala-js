@@ -501,8 +501,8 @@ trait PrepJSExports { this: PrepJSInterop =>
     }
 
     // Construct proxied function call
-    val sel: Tree = Select(This(clsSym), trgSym)
-    val rhs = (sel /: proxySym.paramss) {
+    val sel = Select(This(clsSym), trgSym)
+    val rhs = proxySym.paramss.foldLeft[Tree](sel) {
       (fun,params) => Apply(fun, params map spliceParam)
     }
 

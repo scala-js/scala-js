@@ -5,6 +5,8 @@ import scala.math.Ordering
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 
+import Compat.SortedSetCompat
+
 private[util] class NavigableView[E](original: NavigableSet[E],
     inner: () => mutable.SortedSet[Box[E]],
     lowerBound: Option[E], lowerInclusive: Boolean,
@@ -121,8 +123,10 @@ private[util] class NavigableView[E](original: NavigableSet[E],
 
   def last(): E = {
     val iter = iterator()
-    if (iter.hasNext) iter.asScala.toTraversable.last
-    else null.asInstanceOf[E]
+    var result = null.asInstanceOf[E]
+    while (iter.hasNext)
+      result = iter.next()
+    result
   }
 
   def subSet(fromElement: E, fromInclusive: Boolean, toElement: E,
@@ -133,10 +137,10 @@ private[util] class NavigableView[E](original: NavigableSet[E],
 
     val subSetFun = { () =>
       val toTs =
-        if (toInclusive) innerNow.to(boxedTo)
-        else innerNow.until(boxedTo)
-      if (fromInclusive) toTs.from(boxedFrom)
-      else toTs.from(boxedFrom) - boxedFrom
+        if (toInclusive) innerNow.rangeTo(boxedTo)
+        else innerNow.rangeUntil(boxedTo)
+      if (fromInclusive) toTs.rangeFrom(boxedFrom)
+      else toTs.rangeFrom(boxedFrom).clone() -= boxedFrom
     }
 
     new NavigableView(this, subSetFun,
@@ -149,8 +153,8 @@ private[util] class NavigableView[E](original: NavigableSet[E],
     val boxed = Box(toElement)
 
     val headSetFun =
-      if (inclusive) () => innerNow.to(boxed)
-      else () => innerNow.until(boxed)
+      if (inclusive) () => innerNow.rangeTo(boxed)
+      else () => innerNow.rangeUntil(boxed)
 
     new NavigableView(this, headSetFun,
         None, true,
@@ -162,8 +166,8 @@ private[util] class NavigableView[E](original: NavigableSet[E],
     val boxed = Box(fromElement)
 
     val tailSetFun =
-      if (inclusive) () => innerNow.from(boxed)
-      else () => innerNow.from(boxed) - boxed
+      if (inclusive) () => innerNow.rangeFrom(boxed)
+      else () => innerNow.rangeFrom(boxed).clone() -= boxed
 
     new NavigableView(this, tailSetFun,
         Some(fromElement), inclusive,

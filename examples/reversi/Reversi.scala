@@ -41,7 +41,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
     var onOwnerChange: (OptPlayer, OptPlayer) => Unit = (oldP, newP) => ()
 
     def owner = _owner
-    def owner_=(value: OptPlayer) {
+    def owner_=(value: OptPlayer): Unit = {
       val previous = _owner
       if (value != previous) {
         _owner = value
@@ -79,7 +79,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
     jQuery("<span>")
   }
 
-  def buildUI() {
+  def buildUI(): Unit = {
     // Some dimensions
     val SquareSizePx = 48
     val HalfSquareSizePx = SquareSizePx/2
@@ -95,7 +95,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
     playground.append(jQuery("<div>").append(boardCanvas))
 
     /** Draw the specified square on the board canvas */
-    def drawSquare(square: Square) {
+    def drawSquare(square: Square): Unit = {
       val x = square.x * SquareSizePx
       val y = square.y * SquareSizePx
 
@@ -147,12 +147,12 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
 
   // The Game ------------------------------------------------------------------
 
-  def reset() {
+  def reset(): Unit = {
     startGame()
   }
 
   @JSExport
-  def startGame() {
+  def startGame(): Unit = {
     // Set up the board
     allSquares foreach (_.owner = NoPlayer)
     board(3)(3).owner = White
@@ -167,7 +167,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
     startTurn()
   }
 
-  def startTurn() {
+  def startTurn(): Unit = {
     val (scoreWhite, scoreBlack) = computeScore()
     status.text(currentPlayer+"'s turn -- White: "+scoreWhite+
         " -- Black: "+scoreBlack)
@@ -194,7 +194,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
     }
   }
 
-  def clickSquare(square: Square) {
+  def clickSquare(square: Square): Unit = {
     val toFlip = computeFlips(square)
     if (!toFlip.isEmpty) {
       (square :: toFlip) foreach (_.owner = currentPlayer)
@@ -202,7 +202,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
     }
   }
 
-  def pass() {
+  def pass(): Unit = {
     assert(!existsValidMove())
     nextTurn()
   }
@@ -259,7 +259,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
     }
   }
 
-  def nextTurn() {
+  def nextTurn(): Unit = {
     currentPlayer = currentPlayer.opponent
     startTurn()
   }

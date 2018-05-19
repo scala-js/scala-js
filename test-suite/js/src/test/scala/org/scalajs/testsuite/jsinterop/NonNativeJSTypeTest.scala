@@ -384,8 +384,10 @@ class NonNativeJSTypeTest {
 
   @Test def anonymous_class_field_init_order(): Unit = {
     val obj = new js.Object {
-      val x = y
+      val x = getY
       val y = "Hello World"
+
+      private def getY: String = y
     }.asInstanceOf[js.Dynamic]
 
     assertNull(obj.x)

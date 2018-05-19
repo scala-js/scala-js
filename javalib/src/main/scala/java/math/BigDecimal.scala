@@ -195,7 +195,7 @@ object BigDecimal {
   }
 
   private[math] def newArrayOfPows(len: Int, pow: Int): Array[Long] =
-    new Array[Long](len - 1).scanLeft[Long, Array[Long]](1)((z, e) => z * pow)
+    Array.iterate(1L, len)(_ * pow)
 
   /** Return an increment that can be -1,0 or 1, depending on {@code roundingMode}.
    *

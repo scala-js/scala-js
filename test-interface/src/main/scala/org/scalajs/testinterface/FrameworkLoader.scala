@@ -33,6 +33,8 @@ private[testinterface] object FrameworkLoader {
       }
     }
 
-    names.toStream.map(tryLoad).flatten.headOption
+    names.iterator.map(tryLoad).collectFirst {
+      case Some(framework) => framework
+    }
   }
 }

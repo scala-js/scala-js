@@ -486,7 +486,7 @@ class OptimizerTest {
 
     val a = js.Array[Any]("hello", 42)
     val foo = new Foo
-    foo.check(5, "foobar", a: _*)
+    foo.check(5, "foobar", a.toIndexedSeq: _*)
   }
 
   @Test def must_not_break_virtualized_tuple(): Unit = {

@@ -1475,7 +1475,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val ctorToChildren = secondaryCtors.map { ctor =>
         findCtorForwarderCall(ctor.body.get) -> ctor
-      }.groupBy(_._1).mapValues(_.map(_._2)).withDefaultValue(Nil)
+      }.groupBy(_._1).mapValues(_.map(_._2)).toMap.withDefaultValue(Nil)
 
       var overrideNum = -1
       def mkConstructorTree(method: js.MethodDef): ConstructorTree = {
@@ -1625,9 +1625,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val methodDefWithoutUselessVars = {
               val unmutatedMutableLocalVars =
-                (mutableLocalVars -- mutatedLocalVars).toList
+                (mutableLocalVars.diff(mutatedLocalVars)).toList
               val mutatedImmutableLocalVals =
-                (mutatedLocalVars -- mutableLocalVars).toList
+                (mutatedLocalVars.diff(mutableLocalVars)).toList
               if (unmutatedMutableLocalVars.isEmpty &&
                   mutatedImmutableLocalVals.isEmpty) {
                 // OK, we're good (common case)
@@ -4618,10 +4618,12 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen actual actual arguments to Scala method call.
+     *
      *  Returns a list of the transformed arguments.
      *
      *  This tries to optimize repeated arguments (varargs) by turning them
-     *  into js.WrappedArray instead of Scala wrapped arrays.
+     *  into JS arrays wrapped in the appropriate Seq, rather than Scala
+     *  arrays.
      */
     private def genActualArgs(sym: Symbol, args: List[Tree])(
         implicit pos: Position): List[js.Tree] = {
@@ -4646,8 +4648,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             tryGenRepeatedParamAsJSArray(arg, handleNil = false).fold {
               genExpr(arg)
             } { genArgs =>
-              genNew(WrappedArrayClass, WrappedArray_ctor,
-                  List(js.JSArrayConstr(genArgs)))
+              genJSArrayToVarArgs(js.JSArrayConstr(genArgs))
             }
           } else {
             genExpr(arg)
@@ -4829,18 +4830,25 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     object WrapArray {
-      lazy val isWrapArray: Set[Symbol] = Seq(
-          nme.wrapRefArray,
-          nme.wrapByteArray,
-          nme.wrapShortArray,
-          nme.wrapCharArray,
-          nme.wrapIntArray,
-          nme.wrapLongArray,
-          nme.wrapFloatArray,
-          nme.wrapDoubleArray,
-          nme.wrapBooleanArray,
-          nme.wrapUnitArray,
-          nme.genericWrapArray).map(getMemberMethod(PredefModule, _)).toSet
+      private val isWrapArray: Set[Symbol] = {
+        val wrapArrayModule =
+          if (hasNewCollections) ScalaRunTimeModule
+          else PredefModule
+
+        Seq(
+            nme.wrapRefArray,
+            nme.wrapByteArray,
+            nme.wrapShortArray,
+            nme.wrapCharArray,
+            nme.wrapIntArray,
+            nme.wrapLongArray,
+            nme.wrapFloatArray,
+            nme.wrapDoubleArray,
+            nme.wrapBooleanArray,
+            nme.wrapUnitArray,
+            nme.genericWrapArray
+        ).map(getMemberMethod(wrapArrayModule, _)).toSet
+      }
 
       def unapply(tree: Apply): Option[Tree] = tree match {
         case Apply(wrapArray_?, List(wrapped))
@@ -4849,6 +4857,13 @@ abstract class GenJSCode extends plugins.PluginComponent
         case _ =>
           None
       }
+    }
+
+    /** Wraps a `js.Array` to use as varargs. */
+    def genJSArrayToVarArgs(arrayRef: js.Tree)(
+        implicit pos: Position): js.Tree = {
+      genApplyMethod(genLoadModule(RuntimePackageModule),
+          Runtime_toScalaVarArgs, List(arrayRef))
     }
 
     /** Gen the actual capture values for a JS constructor based on its fake
@@ -5660,6 +5675,14 @@ abstract class GenJSCode extends plugins.PluginComponent
   private lazy val isScala211WithXexperimental = {
     scala.util.Properties.versionNumberString.startsWith("2.11.") &&
     settings.Xexperimental.value
+  }
+
+  private lazy val hasNewCollections = {
+    val v = scala.util.Properties.versionNumberString
+    !v.startsWith("2.10.") &&
+    !v.startsWith("2.11.") &&
+    !v.startsWith("2.12.") &&
+    v != "2.13.0-M3"
   }
 
   /** Tests whether the given type represents a raw JavaScript type,

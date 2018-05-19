@@ -106,6 +106,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val RuntimePackageModule = getPackageObject("scala.scalajs.runtime")
       lazy val Runtime_wrapJavaScriptException    = getMemberMethod(RuntimePackageModule, newTermName("wrapJavaScriptException"))
       lazy val Runtime_unwrapJavaScriptException  = getMemberMethod(RuntimePackageModule, newTermName("unwrapJavaScriptException"))
+      lazy val Runtime_toScalaVarArgs             = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgs"))
       lazy val Runtime_toJSVarArgs                = getMemberMethod(RuntimePackageModule, newTermName("toJSVarArgs"))
       lazy val Runtime_constructorOf              = getMemberMethod(RuntimePackageModule, newTermName("constructorOf"))
       lazy val Runtime_newConstructorTag          = getMemberMethod(RuntimePackageModule, newTermName("newConstructorTag"))
@@ -113,9 +114,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val Runtime_createLocalJSClass         = getMemberMethod(RuntimePackageModule, newTermName("createLocalJSClass"))
       lazy val Runtime_withContextualJSClassValue = getMemberMethod(RuntimePackageModule, newTermName("withContextualJSClassValue"))
       lazy val Runtime_linkingInfo                = getMemberMethod(RuntimePackageModule, newTermName("linkingInfo"))
-
-    lazy val WrappedArrayClass = getRequiredClass("scala.scalajs.js.WrappedArray")
-      lazy val WrappedArray_ctor = WrappedArrayClass.primaryConstructor
 
     lazy val Tuple2_apply = getMemberMethod(TupleClass(2).companionModule, nme.apply)
 

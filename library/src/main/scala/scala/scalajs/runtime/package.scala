@@ -2,9 +2,9 @@ package scala.scalajs
 
 import scala.annotation.tailrec
 
-import scala.collection.GenTraversableOnce
-
 package object runtime {
+
+  import scala.scalajs.runtime.Compat._
 
   def wrapJavaScriptException(e: Any): Throwable = e match {
     case e: Throwable => e
@@ -16,16 +16,11 @@ package object runtime {
     case _                         => th
   }
 
-  def toJSVarArgs[A](seq: Seq[A]): js.Array[A] = {
-    seq match {
-      case seq: js.WrappedArray[A] =>
-        seq.array
-      case _ =>
-        val result = new js.Array[A]
-        seq.foreach(x => result.push(x))
-        result
-    }
-  }
+  @inline def toScalaVarArgs[A](array: js.Array[A]): Seq[A] =
+    toScalaVarArgsImpl(array)
+
+  @inline def toJSVarArgs[A](seq: Seq[A]): js.Array[A] =
+    toJSVarArgsImpl(seq)
 
   /** Dummy method used to preserve the type parameter of
    *  `js.constructorOf[T]` through erasure.

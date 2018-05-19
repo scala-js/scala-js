@@ -66,7 +66,7 @@ class ArrayList[E] private (private[ArrayList] val inner: js.Array[E])
   override def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
     c match {
       case other: ArrayList[_] =>
-        inner.splice(index, 0, other.inner: _*)
+        inner.splice(index, 0, other.inner.toSeq: _*)
         other.size > 0
       case _ => super.addAll(index, c)
     }

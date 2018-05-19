@@ -102,7 +102,8 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
   }
 
   object ScalaJSJUnitPluginComponent
-      extends plugins.PluginComponent with transform.Transform {
+      extends plugins.PluginComponent with transform.Transform
+      with CompatComponent {
 
     val global: Global = ScalaJSJUnitPlugin.this.global
     import global._
@@ -182,9 +183,9 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
             case (_, xs) => None
           }
 
-          val newStats = tree.stats.map(transform) ++ bootstrappers
+          val newStats = (tree.stats.map(transform).iterator ++ bootstrappers).toList
 
-          treeCopy.PackageDef(tree: Tree, tree.pid, newStats.toList)
+          treeCopy.PackageDef(tree: Tree, tree.pid, newStats)
 
         case _ =>
           super.transform(tree)
@@ -396,10 +397,14 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         }
 
         def mkList(elems: List[Tree]): Tree = {
+          val varargsModule =
+            if (hasNewCollections) definitions.ScalaRunTimeModule
+            else definitions.PredefModule
+
           val array = ArrayValue(TypeTree(definitions.ObjectTpe), elems)
           val wrappedArray = gen.mkMethodCall(
-              definitions.PredefModule,
-              definitions.wrapArrayMethodName(definitions.ObjectTpe),
+              varargsModule,
+              definitions.wrapVarargsArrayMethodName(definitions.ObjectTpe),
               Nil, List(array))
           gen.mkMethodCall(definitions.List_apply, List(wrappedArray))
         }
@@ -483,6 +488,14 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         val exception = mkNewInstance[NoSuchMethodException](List(msg))
         Throw(exception)
       }
+    }
+
+    private lazy val hasNewCollections = {
+      val v = scala.util.Properties.versionNumberString
+      !v.startsWith("2.10.") &&
+      !v.startsWith("2.11.") &&
+      !v.startsWith("2.12.") &&
+      v != "2.13.0-M3"
     }
   }
 }

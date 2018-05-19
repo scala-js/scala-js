@@ -12,7 +12,7 @@ import scala.language.implicitConversions
 import org.junit.Test
 import org.junit.Assert._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import java.util.LinkedList
 
@@ -40,7 +40,7 @@ class LinkedListTest extends AbstractListTest {
 
   @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
     val s = Seq(1, 5, 2, 3, 4)
-    val l = asJavaCollection(s)
+    val l = s.asJavaCollection
     val ll = new LinkedList[Int](l)
 
     assertEquals(5, ll.size())
@@ -52,7 +52,7 @@ class LinkedListTest extends AbstractListTest {
   }
 
   @Test def should_add_multiple_element_in_one_operation(): Unit = {
-    val l = asJavaCollection(Set(1, 5, 2, 3, 4))
+    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val ll = new LinkedList[Int]()
 
     assertEquals(0, ll.size())
@@ -64,7 +64,7 @@ class LinkedListTest extends AbstractListTest {
 
   @Test def `could_be_instantiated_with_a_prepopulated_Collection_-_LinkedListTest`(): Unit = {
     val s = Seq(1, 5, 2, 3, 4)
-    val l = asJavaCollection(s)
+    val l = s.asJavaCollection
     val ll = new LinkedList[Int](l)
 
     assertEquals(5, ll.size())
@@ -145,7 +145,7 @@ class LinkedListTest extends AbstractListTest {
   }
 
   @Test def should_remove_occurrences_of_provided_elements(): Unit = {
-    val l = asJavaCollection(Seq("one", "two", "three", "two", "one"))
+    val l = Seq("one", "two", "three", "two", "one").asJavaCollection
     val ll = new LinkedList[String](l)
 
     assertTrue(ll.removeFirstOccurrence("one"))
@@ -161,7 +161,7 @@ class LinkedListTest extends AbstractListTest {
 
   @Test def should_iterate_over_elements_in_both_directions(): Unit = {
     val s = Seq("one", "two", "three")
-    val l = asJavaCollection(s)
+    val l = s.asJavaCollection
     val ll = new LinkedList[String](l)
 
     val iter = ll.iterator()
