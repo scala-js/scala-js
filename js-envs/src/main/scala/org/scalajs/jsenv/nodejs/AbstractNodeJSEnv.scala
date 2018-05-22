@@ -172,7 +172,7 @@ abstract class AbstractNodeJSEnv(
              |  var recvCallback = null;
              |
              |  // Buffers received data
-             |  var inBuffer = new Buffer(0);
+             |  var inBuffer = Buffer.alloc(0);
              |
              |  function onData(data) {
              |    inBuffer = Buffer.concat([inBuffer, data]);
@@ -227,7 +227,7 @@ abstract class AbstractNodeJSEnv(
              |      if (socket === null) throw new Error("Com not open");
              |
              |      var len = msg.length;
-             |      var buf = new Buffer(4 + len * 2);
+             |      var buf = Buffer.allocUnsafe(4 + len * 2);
              |      buf.writeInt32BE(len, 0);
              |      for (var i = 0; i < len; ++i)
              |        buf.writeUInt16BE(msg.charCodeAt(i), 4 + i * 2);
