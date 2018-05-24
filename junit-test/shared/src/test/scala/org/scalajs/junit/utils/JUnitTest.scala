@@ -132,10 +132,11 @@ abstract class JUnitTest {
       )
     }
 
-    def assertion(testName: String, message: String): OutputBuilder = {
+    def assertion(testName: String, message: String,
+        exClass: String = "java.lang.AssertionError"): OutputBuilder = {
       append(1, 0, 1)(
           testStartedOutput(testName),
-          testAssertionErrorMsgOutput(testName, message),
+          testAssertionErrorMsgOutput(testName, message, exClass),
           failureEvent,
           testFinishedOutput(testName)
       )
@@ -253,9 +254,10 @@ abstract class JUnitTest {
           s"failed: $exClassStr$msg, took $TIME_TAG sec")
     }
 
-    private def testAssertionErrorMsgOutput(method: String, msg: String): Output = {
-      val assertClass = exceptionClassInfo(show = logExceptionClass && logAssert,
-          "java.lang.AssertionError")
+    private def testAssertionErrorMsgOutput(method: String, msg: String,
+        exClass: String): Output = {
+      val assertClass = exceptionClassInfo(
+          show = logExceptionClass && logAssert, exClass)
       Error(s"Test $formattedTestClass.${red(method)} failed: $assertClass" +
           s"$msg, took $TIME_TAG sec")
     }
