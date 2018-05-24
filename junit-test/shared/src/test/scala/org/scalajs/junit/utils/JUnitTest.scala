@@ -120,6 +120,18 @@ abstract class JUnitTest {
       )
     }
 
+    def exceptionAndAnotherExceptionInAfter(testName: String, msg: String,
+        clazz: String, afterMsg: String, afterClazz: String): OutputBuilder = {
+      // Yes, there are 2 failed for 1 total ...
+      append(1, 0, 2)(
+          testStartedOutput(testName),
+          testExceptionMsgOutput(testName, msg, clazz),
+          failureEvent,
+          testExceptionMsgOutput(testName, afterMsg, afterClazz),
+          testFinishedOutput(testName)
+      )
+    }
+
     def assertion(testName: String, message: String): OutputBuilder = {
       append(1, 0, 1)(
           testStartedOutput(testName),
