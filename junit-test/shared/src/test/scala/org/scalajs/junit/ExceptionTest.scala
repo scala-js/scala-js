@@ -13,6 +13,7 @@ class ExceptionTest {
 class ExceptionTestAssertions extends JUnitTest {
   protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
     builder.exception("test",
-        "Exception message", "java.lang.IndexOutOfBoundsException")
+        "Exception message",
+        classOf[IndexOutOfBoundsException])
   }
 }

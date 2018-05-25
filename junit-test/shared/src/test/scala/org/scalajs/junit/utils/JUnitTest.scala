@@ -8,6 +8,8 @@ import scala.annotation.tailrec
 abstract class JUnitTest {
   import JUnitTest._
 
+  type ThrowableClass = Class[_ <: Throwable]
+
   // ANSI colors codes
   private final val NORMAL = "\u001B[0m"
   private final val RED = "\u001B[31m"
@@ -111,7 +113,8 @@ abstract class JUnitTest {
         testFinishedOutput(testName)
     )
 
-    def exception(testName: String, msg: String, clazz: String): OutputBuilder = {
+    def exception(testName: String, msg: String,
+        clazz: ThrowableClass): OutputBuilder = {
       append(1, 0, 1)(
           testStartedOutput(testName),
           testExceptionMsgOutput(testName, msg, clazz),
@@ -120,10 +123,24 @@ abstract class JUnitTest {
       )
     }
 
-    def assertion(testName: String, message: String): OutputBuilder = {
+    def exceptionAndAnotherExceptionInAfter(testName: String, msg: String,
+        clazz: ThrowableClass, afterMsg: String,
+        afterClazz: ThrowableClass): OutputBuilder = {
+      // Yes, there are 2 failed for 1 total ...
+      append(1, 0, 2)(
+          testStartedOutput(testName),
+          testExceptionMsgOutput(testName, msg, clazz),
+          failureEvent,
+          testExceptionMsgOutput(testName, afterMsg, afterClazz),
+          testFinishedOutput(testName)
+      )
+    }
+
+    def assertion(testName: String, message: String,
+        exClass: ThrowableClass = classOf[AssertionError]): OutputBuilder = {
       append(1, 0, 1)(
           testStartedOutput(testName),
-          testAssertionErrorMsgOutput(testName, message),
+          testAssertionErrorMsgOutput(testName, message, exClass),
           failureEvent,
           testFinishedOutput(testName)
       )
@@ -235,22 +252,23 @@ abstract class JUnitTest {
       Info(s"Test $formattedTestClass ignored")
 
     private def testExceptionMsgOutput(method: String, msg: String,
-        exClass: String): Output = {
+        exClass: ThrowableClass): Output = {
       val exClassStr = exceptionClassInfo(show = logExceptionClass, exClass)
       Error(s"Test $formattedTestClass.${red(method)} " +
           s"failed: $exClassStr$msg, took $TIME_TAG sec")
     }
 
-    private def testAssertionErrorMsgOutput(method: String, msg: String): Output = {
-      val assertClass = exceptionClassInfo(show = logExceptionClass && logAssert,
-          "java.lang.AssertionError")
+    private def testAssertionErrorMsgOutput(method: String, msg: String,
+        exClass: ThrowableClass): Output = {
+      val assertClass = exceptionClassInfo(
+          show = logExceptionClass && logAssert, exClass)
       Error(s"Test $formattedTestClass.${red(method)} failed: $assertClass" +
           s"$msg, took $TIME_TAG sec")
     }
 
     private def testAssumptionViolatedOutput(method: String): Output = {
       val exceptionStr = exceptionClassInfo(logExceptionClass,
-          "org.junit.internal.AssumptionViolatedException")
+          classOf[org.junit.internal.AssumptionViolatedException])
       Warn(s"Test assumption in test $formattedTestClass.${red(method)}" +
           s" failed: $exceptionStr" +
           s"This assume should not pass, took $TIME_TAG sec")
@@ -284,8 +302,8 @@ abstract class JUnitTest {
     private def formattedTestClass: String =
       formatClass(suiteUnderTestName, yellow)
 
-    private def exceptionClassInfo(show: Boolean, fullName: String) = {
-      if (show) formatClass(fullName, red) + ": "
+    private def exceptionClassInfo(show: Boolean, clazz: ThrowableClass) = {
+      if (show) formatClass(clazz.getName, red) + ": "
       else ""
     }
 
