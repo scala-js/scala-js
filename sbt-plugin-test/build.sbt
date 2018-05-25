@@ -68,9 +68,8 @@ lazy val noDOM = project.settings(baseSettings: _*).
         Def.task {
           log.info("Fake full optimizing")
           val linker = (scalaJSLinker in fullOptJS).value
-          linker.link(ir, moduleInitializers,
-              WritableMemVirtualJSFile("fake-fastopt.js"),
-              sbtLogger2ToolsLogger(log))
+          val output = LinkerOutput(new WritableMemVirtualBinaryFile)
+          linker.link(ir, moduleInitializers, output, sbtLogger2ToolsLogger(log))
         }.tag((usesScalaJSLinkerTag in fullOptJS).value)
       }.value,
 
@@ -128,7 +127,7 @@ lazy val multiTestJS = project.in(file("multiTest/js")).
 
     // Make FrameworkDetector resilient to other output - #1572
     jsExecutionFiles in Test := {
-      val consoleWriter = FileVirtualJSFile(
+      val consoleWriter = new FileVirtualBinaryFile(
           (resourceDirectory in Test).value / "consoleWriter.js")
       consoleWriter +: (jsExecutionFiles in Test).value
     },

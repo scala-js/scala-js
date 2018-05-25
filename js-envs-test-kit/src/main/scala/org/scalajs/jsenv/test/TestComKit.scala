@@ -2,7 +2,7 @@ package org.scalajs.jsenv.test
 
 import java.util.concurrent.TimeoutException
 
-import org.scalajs.io.{VirtualJSFile, MemVirtualJSFile}
+import org.scalajs.io.{VirtualBinaryFile, MemVirtualBinaryFile}
 
 import org.scalajs.jsenv._
 
@@ -14,11 +14,11 @@ import scala.concurrent.duration.Duration
 
 private[test] final class TestComKit(config: JSEnvSuiteConfig) {
   def start(code: String, runConfig: RunConfig): Run = {
-    val vf = new MemVirtualJSFile("testScript.js").withContent(code)
+    val vf = MemVirtualBinaryFile.fromStringUTF8("testScript.js", code)
     start(vf, runConfig)
   }
 
-  def start(vf: VirtualJSFile, runConfig: RunConfig): Run = {
+  def start(vf: VirtualBinaryFile, runConfig: RunConfig): Run = {
     val input = Input.ScriptsToLoad(List(vf))
     new Run(input, runConfig)
   }

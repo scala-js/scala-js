@@ -10,11 +10,11 @@ package org.scalajs.linker.standard
 
 import org.scalajs.logging._
 
-import org.scalajs.io._
+import org.scalajs.linker.LinkerOutput
 
 /** A backend of a standard Scala.js linker.
  *
- *  Produces a [[org.scalajs.io.VirtualJSFile VirtualJSFile]].
+ *  Produces a JavaScript file with an optional source map.
  *
  *  You probably want to use an instance of [[Linker]], rather than this
  *  low-level class.
@@ -38,8 +38,7 @@ abstract class LinkerBackend {
    *  @param output File to write to
    *  @param logger Logger to use
    */
-  def emit(unit: LinkingUnit, output: WritableVirtualJSFile,
-      logger: Logger): Unit
+  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger): Unit
 
   /** Verify that a [[LinkingUnit]] can be processed by this [[LinkerBackend]].
    *

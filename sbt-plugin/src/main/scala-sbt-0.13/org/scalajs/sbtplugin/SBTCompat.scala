@@ -2,8 +2,6 @@ package org.scalajs.sbtplugin
 
 import sbt._
 
-import org.scalajs.io.FileVirtualFile
-
 private[sbtplugin] object SBTCompat {
   type IncOptions = sbt.inc.IncOptions
 
@@ -38,7 +36,7 @@ private[sbtplugin] object SBTCompat {
       def delete(classes: Iterable[File]): Unit = {
         inherited.delete(classes flatMap { classFile =>
           val scalaJSFiles = if (classFile.getPath endsWith ".class") {
-            val f = FileVirtualFile.withExtension(classFile, ".class", ".sjsir")
+            val f = new File(classFile.getPath.stripSuffix(".class") + ".sjsir")
             if (f.exists) List(f)
             else Nil
           } else Nil

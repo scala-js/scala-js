@@ -11,5 +11,7 @@ package org.scalajs.linker.irio
 import org.scalajs.io._
 
 /** A simple in-memory mutable virtual serialized Scala.js IR file. */
-class MemVirtualSerializedScalaJSIRFile(p: String, val relativePath: String)
-    extends MemVirtualBinaryFile(p) with VirtualSerializedScalaJSIRFile
+class MemVirtualSerializedScalaJSIRFile(path: String, val relativePath: String,
+    content: Array[Byte], version: Option[String])
+    extends MemVirtualBinaryFile(path, content, version)
+    with VirtualSerializedScalaJSIRFile

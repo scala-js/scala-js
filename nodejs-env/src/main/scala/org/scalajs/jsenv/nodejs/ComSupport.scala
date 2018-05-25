@@ -12,7 +12,7 @@ package org.scalajs.jsenv.nodejs
 import java.io._
 import java.net._
 
-import org.scalajs.io.{VirtualJSFile, MemVirtualJSFile}
+import org.scalajs.io.{VirtualBinaryFile, MemVirtualBinaryFile}
 import org.scalajs.jsenv._
 
 import scala.collection.immutable
@@ -197,11 +197,11 @@ object ComRun {
    *  @param config Configuration for the run.
    *  @param onMessage callback upon message reception.
    *  @param startRun [[JSRun]] launcher. Gets passed a
-   *      [[org.scalajs.io.VirtualJSFile VirtualJSFile]] that
+   *      [[org.scalajs.io.VirtualBinaryFile VirtualBinaryFile]] that
    *      initializes `scalaJSCom` on `global`. Requires Node.js libraries.
    */
   def start(config: RunConfig, onMessage: String => Unit)(
-      startRun: VirtualJSFile => JSRun): JSComRun = {
+      startRun: VirtualBinaryFile => JSRun): JSComRun = {
     try {
       val serverSocket =
         new ServerSocket(0, 0, InetAddress.getByName(null)) // Loopback address
@@ -237,8 +237,8 @@ object ComRun {
     s.writeChars(msg)
   }
 
-  private def setupFile(port: Int): VirtualJSFile = {
-    new MemVirtualJSFile("comSetup.js").withContent(
+  private def setupFile(port: Int): VirtualBinaryFile = {
+    MemVirtualBinaryFile.fromStringUTF8("comSetup.js",
         s"""
            |(function() {
            |  // The socket for communication

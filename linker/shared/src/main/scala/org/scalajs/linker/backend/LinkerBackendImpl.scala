@@ -13,14 +13,14 @@ import scala.language.implicitConversions
 
 import java.net.URI
 
-import org.scalajs.io.WritableVirtualJSFile
 import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
 
-/** A backend of the Scala.js linker. Produces a
- *  [[org.scalajs.io.VirtualJSFile VirtualJSFile]].
+/** A backend of the Scala.js linker.
+ *
+ *  Produces a JavaScript file with an optional source map.
  *
  *  You probably want to use an instance of [[linker.Linker]], rather than this
  *  low-level class.

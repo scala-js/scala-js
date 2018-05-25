@@ -9,21 +9,14 @@
 package org.scalajs.linker.irio
 
 import java.io._
+import java.util.zip.{ZipInputStream, ZipEntry}
+
+import scala.annotation.tailrec
 
 import org.scalajs.io._
 
-class FileVirtualScalaJSIRFile(f: File, val relativePath: String)
+final class FileVirtualScalaJSIRFile(f: File, val relativePath: String)
     extends FileVirtualBinaryFile(f) with VirtualSerializedScalaJSIRFile
-
-object FileVirtualScalaJSIRFile {
-  import FileVirtualFile._
-
-  def apply(f: File, relPath: String): FileVirtualScalaJSIRFile =
-    new FileVirtualScalaJSIRFile(f, relPath)
-
-  def isScalaJSIRFile(file: File): Boolean =
-    hasExtension(file, ".sjsir")
-}
 
 object FileScalaJSIRContainer {
   def fromClasspath(
@@ -56,14 +49,53 @@ object FileScalaJSIRContainer {
         .stripPrefix(baseDir.getPath)
         .replace(java.io.File.separatorChar, '/')
         .stripPrefix("/")
-      FileVirtualScalaJSIRFile(ir, relPath)
+      new FileVirtualScalaJSIRFile(ir, relPath)
     }
   }
 }
 
-class FileVirtualJarScalaJSIRContainer(file: File)
-    extends FileVirtualJarFile(file) with ScalaJSIRContainer {
+final class FileVirtualJarScalaJSIRContainer(file: File)
+    extends FileVirtualFile(file) with ScalaJSIRContainer {
+  def sjsirFiles: List[VirtualScalaJSIRFile] = {
+    val stream = new ZipInputStream(new BufferedInputStream(new FileInputStream(file)))
+    try {
+      val buf = new Array[Byte](4096)
 
-  def sjsirFiles: List[VirtualScalaJSIRFile] =
-    ScalaJSIRContainer.sjsirFilesIn(this)
+      @tailrec
+      def readAll(out: OutputStream): Unit = {
+        val read = stream.read(buf)
+        if (read != -1) {
+          out.write(buf, 0, read)
+          readAll(out)
+        }
+      }
+
+      def makeVF(e: ZipEntry) = {
+        val size = e.getSize
+        val out =
+          if (0 <= size && size <= Int.MaxValue) new ByteArrayOutputStream(size.toInt)
+          else new ByteArrayOutputStream()
+
+        try {
+          readAll(out)
+          new MemVirtualSerializedScalaJSIRFile(
+              path = s"${this.path}:${e.getName}",
+              relativePath = e.getName,
+              content = out.toByteArray,
+              version = this.version
+          )
+        } finally {
+          out.close()
+        }
+      }
+
+      Iterator.continually(stream.getNextEntry())
+        .takeWhile(_ != null)
+        .filter(_.getName.endsWith(".sjsir"))
+        .map(makeVF)
+        .toList
+    } finally {
+      stream.close()
+    }
+  }
 }

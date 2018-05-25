@@ -1,5 +1,7 @@
 package org.scalajs.io
 
+import scala.annotation.tailrec
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
 import scala.scalajs.js.typedarray._
@@ -12,131 +14,80 @@ class NodeVirtualFile(override val path: String) extends VirtualFile {
     NodeFS.statSync(path).mtime.map(_.getTime.toString).toOption
 }
 
-class NodeVirtualTextFile(p: String) extends NodeVirtualFile(p)
-                                        with VirtualTextFile {
-  override def content: String = NodeFS.readFileSync(path, NodeSupport.utf8enc)
-}
-
-trait WritableNodeVirtualTextFile extends NodeVirtualTextFile
-                                     with WritableVirtualTextFile {
-  def contentWriter: Writer = new NodeWriter(path)
-}
-
-object WritableNodeVirtualTextFile {
-  def apply(path: String): WritableNodeVirtualTextFile =
-    new NodeVirtualTextFile(path) with WritableNodeVirtualTextFile
-}
-
 class NodeVirtualBinaryFile(p: String) extends NodeVirtualFile(p)
                                           with VirtualBinaryFile {
   private def buf: ArrayBuffer =
     new Uint8Array(NodeFS.readFileSync(path)).buffer
 
-  override def content: Array[Byte] = new Int8Array(buf).toArray
-  override def inputStream: InputStream = new ArrayBufferInputStream(buf)
+  def inputStream: InputStream = new ArrayBufferInputStream(buf)
 }
 
-class NodeVirtualJSFile(p: String) extends NodeVirtualTextFile(p)
-                                      with VirtualJSFile {
-
-  /** Always returns None. We can't read them on JS anyway */
-  override def sourceMap: Option[String] = None
+trait WritableNodeVirtualBinaryFile extends NodeVirtualBinaryFile
+                                       with WritableVirtualBinaryFile {
+  def outputStream: OutputStream = new NodeOutputStream(path)
 }
 
-trait WritableNodeVirtualJSFile extends NodeVirtualJSFile
-                                   with WritableVirtualJSFile
-                                   with WritableNodeVirtualTextFile {
-  def sourceMapWriter: Writer = new NodeWriter(path + ".map")
-}
-
-object WritableNodeVirtualJSFile {
-  def apply(path: String): WritableNodeVirtualJSFile =
-    new NodeVirtualJSFile(path) with WritableNodeVirtualJSFile
-}
-
-private[io] object NodeSupport {
-  val utf8enc: NodeFS.Enc = new NodeFS.Enc { val encoding = "UTF-8" }
+object WritableNodeVirtualBinaryFile {
+  def apply(path: String): WritableNodeVirtualBinaryFile =
+    new NodeVirtualBinaryFile(path) with WritableNodeVirtualBinaryFile
 }
 
 @JSImport("fs", JSImport.Namespace)
 @js.native
-private[io] object NodeFS extends js.Object {
-  trait Enc extends js.Object {
-    val encoding: String
-  }
-
+private[scalajs] object NodeFS extends js.Object {
   trait Stat extends js.Object {
     val mtime: js.UndefOr[js.Date]
   }
 
   def readFileSync(path: String): js.Array[Int] = js.native
-  def readFileSync(path: String, enc: Enc): String = js.native
   def statSync(path: String): Stat = js.native
-  def writeFileSync(path: String, data: String, enc: Enc): Unit = js.native
+
+  def openSync(path: String, flags: String): Int = js.native
+  def writeSync(fd: Int, buffer: Uint8Array): Int = js.native
+  def closeSync(fd: Int): Unit = js.native
 }
 
-private[scalajs] class NodeVirtualJarFile(file: String)
-    extends NodeVirtualBinaryFile(file) with VirtualFileContainer {
+private[io] final class NodeOutputStream(path: String) extends OutputStream {
+  private[this] val bufsize = 4096
+  private[this] val fd = NodeFS.openSync(path, "w")
+  private[this] val arrBuf = new ArrayBuffer(bufsize)
+  private[this] val buf = TypedArrayBuffer.wrap(arrBuf)
 
-  import NodeVirtualJarFile._
+  @tailrec
+  override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+    ensureSpace()
 
-  def listEntries[T](p: String => Boolean)(
-      makeResult: (String, InputStream) => T): List[T] = {
-    import js.Dynamic.{global => g}
+    val ilen = Math.min(len, buf.remaining())
+    buf.put(b, off, ilen)
 
-    val stream = inputStream
-    try {
-      /* Build a Uint8Array with the content of this jar file.
-       * We know that in practice, NodeVirtualBinaryFile#inputStream returns
-       * an ArrayBufferInputStream, so we just fetch its internal ArrayBuffer
-       * rather than copying.
-       *
-       * Since we have NodeVirtualBinaryFile under our control, in the same
-       * repository, we can make this assumption. Should we change
-       * NodeVirtualBinaryFile, this test will immediately fail, and we can
-       * adapt it.
-       */
-      val data = stream match {
-        case stream: ArrayBufferInputStream =>
-          // Simulate reading all the data
-          while (stream.skip(stream.available()) > 0) {}
-          new Uint8Array(stream.buffer, stream.offset, stream.length)
-        case _ =>
-          throw new AssertionError(
-              s"Uh! '$file' was not read as an ArrayBufferInputStream")
-      }
+    if (len > ilen)
+      write(b, off + ilen, ilen - len)
+  }
 
-      val zip = new JSZip(data)
+  def write(b: Int): Unit = {
+    ensureSpace()
+    buf.put(b.toByte)
+  }
 
-      for ((name, entry) <- zip.files.toList if p(name)) yield {
-        val entryStream = new ArrayBufferInputStream(entry.asArrayBuffer())
-        try {
-          makeResult(name, entryStream)
-        } finally {
-          entryStream.close()
-        }
-      }
-    } finally {
-      stream.close()
+  override def flush(): Unit = performWrite(0)
+
+  private def ensureSpace(): Unit = {
+    if (!buf.hasRemaining())
+      performWrite(bufsize / 4)
+  }
+
+  private def performWrite(limit: Int): Unit = {
+    buf.flip()
+    while (buf.remaining() > limit) {
+      val pos = buf.position()
+      val written = NodeFS.writeSync(fd, new Uint8Array(arrBuf, pos, buf.limit() - pos))
+      buf.position(pos + written)
     }
-  }
-}
-
-private object NodeVirtualJarFile {
-  @js.native
-  @JSImport("jszip", JSImport.Default)
-  private class JSZip(data: Uint8Array) extends js.Object {
-    def files: js.Dictionary[JSZipEntry] = js.native
+    buf.compact()
   }
 
-  private trait JSZipEntry extends js.Object {
-    def asArrayBuffer(): ArrayBuffer
-  }
-}
-
-private[io] class NodeWriter(path: String) extends StringWriter {
   override def close(): Unit = {
-    super.close()
-    NodeFS.writeFileSync(path, this.toString, NodeSupport.utf8enc)
+    flush()
+    NodeFS.closeSync(fd)
   }
 }

@@ -72,9 +72,9 @@ private object SourceMapWriter {
   }
 }
 
-class SourceMapWriter(
+private[javascript] class SourceMapWriter(
     val out: Writer,
-    val generatedFile: String,
+    val jsFileURI: Option[URI],
     val relativizeBaseURI: Option[URI] = None) {
 
   import SourceMapWriter._
@@ -137,8 +137,11 @@ class SourceMapWriter(
   }
 
   private def writeHeader(): Unit = {
-    out.write("{\n\"version\": 3,\n\"file\": ")
-    printJSONString(generatedFile, out)
+    out.write("{\n\"version\": 3")
+    jsFileURI.foreach { uri =>
+      out.write(",\n\"file\": ")
+      printJSONString(uri.toASCIIString, out)
+    }
     out.write(",\n\"mappings\": \"")
   }
 
@@ -267,6 +270,7 @@ class SourceMapWriter(
     out.write("],\n\"lineCount\": ")
     out.write(lineCountInGenerated.toString)
     out.write("\n}\n")
+    out.close()
   }
 
   /** Write the Base 64 VLQ of an integer to the mappings

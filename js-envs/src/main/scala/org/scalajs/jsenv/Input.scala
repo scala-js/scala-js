@@ -24,7 +24,7 @@ abstract class Input private ()
 
 object Input {
   /** All files are to be loaded as scripts into the global scope in the order given. */
-  final case class ScriptsToLoad(scripts: List[VirtualJSFile]) extends Input
+  final case class ScriptsToLoad(scripts: List[VirtualBinaryFile]) extends Input
 }
 
 case class UnsupportedInputException(msg: String, cause: Throwable)

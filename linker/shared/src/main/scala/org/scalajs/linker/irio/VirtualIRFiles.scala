@@ -29,22 +29,6 @@ trait ScalaJSIRContainer extends VirtualFile {
   def sjsirFiles: List[VirtualScalaJSIRFile]
 }
 
-object ScalaJSIRContainer {
-  def sjsirFilesIn(
-      container: VirtualFileContainer): List[VirtualScalaJSIRFile] = {
-    container.listEntries(_.endsWith(".sjsir")) { (relPath, stream) =>
-      val file = new EntryIRFile(container.path, relPath)
-      file.content = IO.readInputStreamToByteArray(stream)
-      file.version = container.version
-      file
-    }
-  }
-
-  private class EntryIRFile(outerPath: String, relativePath: String)
-      extends MemVirtualSerializedScalaJSIRFile(s"$outerPath:$relativePath", relativePath)
-      with VirtualScalaJSIRFile
-}
-
 /** A virtual Scala.js IR file.
  *  It contains the class info and the IR tree.
  */

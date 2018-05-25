@@ -140,7 +140,7 @@ object ScalaJSPlugin extends AutoPlugin {
         "Prints the content of a .sjsir file in human readable form.",
         CTask)
 
-    val jsExecutionFiles = TaskKey[Seq[VirtualJSFile]](
+    val jsExecutionFiles = TaskKey[Seq[VirtualBinaryFile]](
         "jsExecutionFiles",
         "All the JS files given to JS environments on `run`, `test`, etc.",
         BTask)

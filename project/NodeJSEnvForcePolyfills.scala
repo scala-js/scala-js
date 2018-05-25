@@ -28,8 +28,8 @@ final class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config) extends JSEnv {
   /** File to force all our ES 2015 polyfills to be used, by deleting the
    *  native functions.
    */
-  private def forcePolyfills(): VirtualJSFile = {
-    val f = new MemVirtualJSFile("scalaJSEnvInfo.js").withContent(
+  private def forcePolyfills(): VirtualBinaryFile = {
+    MemVirtualBinaryFile.fromStringUTF8("scalaJSEnvInfo.js",
       """
         |delete Math.fround;
         |delete Math.imul;
@@ -55,6 +55,5 @@ final class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config) extends JSEnv {
         |delete global.Float64Array;
       """.stripMargin
     )
-    f
   }
 }
