@@ -21,6 +21,6 @@ class ExceptionInAfterTestAssertions extends JUnitTest {
   protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
     builder.exception("test",
         "Exception in after()",
-        "java.lang.UnsupportedOperationException")
+        classOf[UnsupportedOperationException])
   }
 }

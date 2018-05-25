@@ -15,6 +15,6 @@ class AssertStringEqualsTestAssertions extends JUnitTest {
   protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
     builder.assertion("test",
         "expected:<foob[a]r> but was:<foob[bb]r>",
-        "org.junit.ComparisonFailure")
+        classOf[org.junit.ComparisonFailure])
   }
 }

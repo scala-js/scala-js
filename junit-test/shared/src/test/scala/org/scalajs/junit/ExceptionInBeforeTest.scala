@@ -24,8 +24,8 @@ class ExceptionInBeforeTestAssertions extends JUnitTest {
   protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
     builder.exceptionAndAnotherExceptionInAfter("test",
         "Exception in before()",
-        "java.lang.UnsupportedOperationException",
+        classOf[UnsupportedOperationException],
         "after() must actually be called",
-        "java.lang.IllegalArgumentException")
+        classOf[IllegalArgumentException])
   }
 }
