@@ -11,6 +11,8 @@ import java.nio.{ReadOnlyBufferException, BufferUnderflowException, InvalidMarkE
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
+
 import org.scalajs.testsuite.niobuffer.ByteBufferFactories.SlicedAllocByteBufferFactory
 
 import org.scalajs.testsuite.utils.AssertThrows._
@@ -295,21 +297,22 @@ abstract class BaseBufferTest {
   }
 
   @Test def compact(): Unit = {
+    assumeFalse("Affected by a bug in the JDK.",
+        executingInJVMOnJDK8OrLower &&
+        factory.isInstanceOf[BufferFactory.ByteBufferViewFactory])
+
     if (!createsReadOnly) {
       val buf = withContent(10, elemRange(0, 10): _*)
       buf.position(6)
       buf.mark()
 
-      if (!executingInJVM) {
-        // throws IllegalArgumentException on JVM when executing compact()
-        buf.compact()
-        assertEquals(4, buf.position())
-        assertEquals(10, buf.limit())
-        expectThrows(classOf[InvalidMarkException], buf.reset())
+      buf.compact()
+      assertEquals(4, buf.position())
+      assertEquals(10, buf.limit())
+      expectThrows(classOf[InvalidMarkException], buf.reset())
 
-        for (i <- 0 until 4)
-          assertEquals(elemFromInt(i + 6), buf.get(i))
-      }
+      for (i <- 0 until 4)
+        assertEquals(elemFromInt(i + 6), buf.get(i))
     } else {
       val buf = allocBuffer(10)
       expectThrows(classOf[ReadOnlyBufferException], buf.compact())
