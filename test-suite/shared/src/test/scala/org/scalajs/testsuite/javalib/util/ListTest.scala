@@ -11,7 +11,6 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 import java.{util => ju}
 
@@ -354,10 +353,10 @@ trait ListTest extends CollectionTest {
     assertEquals("nine", al1.get(0))
     for (i <- 0 until 3) {
       assertEquals(al.get(2 + i), al1.get(i))
-      if (!executingInJVM) {
-        /* CopyOnWriteArrayList throws a ConcurrentModificationException
-         * on the JVM.
-         * issue #2064: not solved
+      if (!al.isInstanceOf[ju.concurrent.CopyOnWriteArrayList[_]]) {
+        /* For CopyOnWriteArrayList, accessing al0 after al has been modified
+         * through al1 (i.e., through anything bug al0 itself) is undefined
+         * behavior.
          */
         assertEquals(al0.get(2 + i), al1.get(i))
       }

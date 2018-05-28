@@ -16,8 +16,6 @@ import org.scalajs.testsuite.javalib.util.{ListFactory, ListTest}
 
 import scala.collection.JavaConverters._
 
-import org.scalajs.testsuite.utils.Platform.executingInJVM
-
 import scala.reflect.ClassTag
 
 class CopyOnWriteArrayListTest extends ListTest {
