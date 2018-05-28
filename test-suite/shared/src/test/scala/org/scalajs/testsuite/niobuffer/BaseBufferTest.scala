@@ -288,9 +288,17 @@ abstract class BaseBufferTest {
       assertEquals(0, buf.position())
       assertEquals(elemFromInt(0), buf.get(0))
 
+      /* Trying to put an array too large into a read-only buffer can either
+       * throw a ReadOnlyBufferException or a BufferOverflowException. The spec
+       * does not favor one or the other, and on the JVM, in some cases it is
+       * one and in some other cases the other.
+       */
       buf.position(8)
-      if (!executingInJVM) // throws BufferOverflowException on JVM
-        expectThrows(classOf[ReadOnlyBufferException], buf.put(Array[ElementType](6, 7, 12)))
+      val exception =
+        expectThrows(classOf[RuntimeException], buf.put(Array[ElementType](6, 7, 12)))
+      assertTrue(
+          exception.isInstanceOf[ReadOnlyBufferException] ||
+          exception.isInstanceOf[BufferOverflowException])
       assertEquals(8, buf.position())
       assertEquals(elemFromInt(0), buf.get(8))
     }
