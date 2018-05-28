@@ -162,8 +162,16 @@ class RegressionTest {
   }
 
   @Test def should_support_class_literals_for_existential_value_types_issue_218(): Unit = {
-    assumeFalse("Not bug-compatible with the JVM, issue #2801",
-        Platform.executingInJVM)
+    import Platform.scalaVersion
+
+    assumeFalse("Affected by https://github.com/scala/bug/issues/10551",
+        Platform.executingInJVM && {
+          scalaVersion.startsWith("2.10.") ||
+          scalaVersion.startsWith("2.11.") ||
+          scalaVersion == "2.12.0" || scalaVersion == "2.12.1" ||
+          scalaVersion == "2.12.2" || scalaVersion == "2.12.3" ||
+          scalaVersion == "2.12.4" || scalaVersion == "2.13.0-M3"
+        })
 
     assertEquals("org.scalajs.testsuite.compiler.RegressionTest$Bug218Foo",
         scala.reflect.classTag[Bug218Foo[_]].toString)
