@@ -13,7 +13,6 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class OutputStreamWriterTest {
   private def newOSWriter(): (OutputStreamWriter, MockByteArrayOutputStream) = {
@@ -27,8 +26,10 @@ class OutputStreamWriterTest {
     bos.write(1)
     osw.write("ABC")
     assertFalse(bos.flushed)
+
     osw.flush()
     assertTrue(bos.flushed)
+    assertArrayEquals(Array[Byte](1, 'A', 'B', 'C'), bos.toByteArray)
   }
 
   @Test def close(): Unit = {
@@ -38,9 +39,8 @@ class OutputStreamWriterTest {
     assertFalse(bos.flushed)
 
     osw.close()
-    if (!executingInJVM)
-      assertTrue(bos.flushed)
     assertTrue(bos.closed)
+    assertArrayEquals(Array[Byte](1, 'A', 'B', 'C'), bos.toByteArray)
 
     // can double-close without error
     osw.close()
@@ -64,8 +64,6 @@ class OutputStreamWriterTest {
       assertEquals(0, bos.size) // write() methods should buffer
       osw.flush()
     }
-    if (!executingInJVM)
-      assertTrue(bos.flushed)
     assertArrayEquals(expected.map(_.toByte), bos.toByteArray)
   }
 

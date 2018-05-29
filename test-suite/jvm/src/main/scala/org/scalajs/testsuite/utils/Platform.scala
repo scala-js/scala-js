@@ -14,10 +14,12 @@ object Platform {
 
   def executingInJVMOnJDK7OrLower: Boolean = jdkVersion <= 7
 
+  def executingInJVMOnJDK8OrLower: Boolean = jdkVersion <= 8
+
   private lazy val jdkVersion = {
     val v = System.getProperty("java.version")
     if (v.startsWith("1.")) Integer.parseInt(v.drop(2).takeWhile(_.isDigit))
-    else throw new Exception("Unknown java.version format")
+    else Integer.parseInt(v.takeWhile(_.isDigit))
   }
 
   def executingInRhino: Boolean = false
