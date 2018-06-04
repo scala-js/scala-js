@@ -18,6 +18,16 @@ object Arrays {
     }
   }
 
+  // Impose the total ordering of java.lang.Float.compare in Arrays
+  private implicit object FloatTotalOrdering extends Ordering[Float] {
+    def compare(x: Float, y: Float): Int = java.lang.Float.compare(x, y)
+  }
+
+  // Impose the total ordering of java.lang.Double.compare in Arrays
+  private implicit object DoubleTotalOrdering extends Ordering[Double] {
+    def compare(x: Double, y: Double): Int = java.lang.Double.compare(x, y)
+  }
+
   @noinline def sort(a: Array[Int]): Unit =
     sortImpl(a)
 
