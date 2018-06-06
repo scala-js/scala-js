@@ -1911,9 +1911,12 @@ abstract class GenJSCode extends plugins.PluginComponent
        */
       implicit val pos = tree.pos
       tree match {
-        case js.Block(stats :+ expr)  => js.Block(stats :+ exprToStat(expr))
-        case _:js.Literal | js.This() => js.Skip()
-        case _                        => tree
+        case js.Block(stats :+ expr) =>
+          js.Block(stats :+ exprToStat(expr))
+        case _:js.Literal | _:js.This | _:js.VarRef =>
+          js.Skip()
+        case _ =>
+          tree
       }
     }
 
@@ -3213,8 +3216,37 @@ abstract class GenJSCode extends plugins.PluginComponent
       val elseClause = optElseClause.getOrElse(
           throw new AssertionError("No elseClause in pattern match"))
 
+      /* Builds a `js.Match`, but simplifies it to a `js.If` if there is only
+       * one case with one alternative, and to a `js.Block` if there is no case
+       * at all. This happens in practice in the standard library. Having no
+       * case is a typical product of `match`es that are full of
+       * `case n if ... =>`, which are used instead of `if` chains for
+       * convenience and/or readability.
+       */
+      def buildMatch(selector: js.Tree,
+          cases: List[(List[js.IntLiteral], js.Tree)],
+          default: js.Tree, tpe: jstpe.Type): js.Tree = {
+        cases match {
+          case Nil =>
+            /* Completely remove the Match. Preserve the side-effects of
+             * `selector`.
+             */
+            js.Block(exprToStat(selector), default)
+
+          case (uniqueAlt :: Nil, caseRhs) :: Nil =>
+            /* Simplify the `match` as an `if`, so that the optimizer has less
+             * work to do, and we emit less code at the end of the day.
+             */
+            js.If(js.BinaryOp(js.BinaryOp.Int_==, selector, uniqueAlt),
+                caseRhs, default)(tpe)
+
+          case _ =>
+            js.Match(selector, cases, default)(tpe)
+        }
+      }
+
       optElseClauseLabel.fold[js.Tree] {
-        js.Match(expr, clauses.reverse, elseClause)(resultType)
+        buildMatch(expr, clauses.reverse, elseClause, resultType)
       } { elseClauseLabel =>
         val matchResultLabel = freshLocalIdent("matchResult")
         val patchedClauses = for ((alts, body) <- clauses) yield {
@@ -3226,7 +3258,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
         js.Labeled(matchResultLabel, resultType, js.Block(List(
             js.Labeled(elseClauseLabel, jstpe.NoType, {
-              js.Match(expr, patchedClauses.reverse, js.Skip())(jstpe.NoType)
+              buildMatch(expr, patchedClauses.reverse, js.Skip(), jstpe.NoType)
             }),
             elseClause
         )))

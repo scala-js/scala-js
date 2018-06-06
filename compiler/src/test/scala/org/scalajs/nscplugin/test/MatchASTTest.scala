@@ -37,4 +37,33 @@ class MatchASTTest extends JSASTTest {
     }
   }
 
+  @Test
+  def matchWithZeroAlternativeInSwitch: Unit = {
+    """
+    object A {
+      def foo(x: Int): Int = (x: @scala.annotation.switch) match {
+        case n if n > 5  => n
+        case n if n >= 0 => 0
+        case n           => -n
+      }
+    }
+    """.hasNot("any match") {
+      case js.Match(_, _, _) =>
+    }
+  }
+
+  @Test
+  def matchWithOneAlternativeInSwitch: Unit = {
+    """
+    object A {
+      def foo(x: Int): Int = (x: @scala.annotation.switch) match {
+        case -1 => 10
+        case n  => n
+      }
+    }
+    """.hasNot("any match") {
+      case js.Match(_, _, _) =>
+    }
+  }
+
 }
