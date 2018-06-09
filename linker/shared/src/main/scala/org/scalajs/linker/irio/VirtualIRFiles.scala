@@ -46,6 +46,22 @@ trait VirtualScalaJSIRFile extends VirtualFile with ScalaJSIRContainer {
   def sjsirFiles: List[VirtualScalaJSIRFile] = this :: Nil
 }
 
+object VirtualScalaJSIRFile {
+  def withPathExceptionContext[A](path: String)(body: => A): A = {
+    try {
+      body
+    } catch {
+      case e: ir.IRVersionNotSupportedException =>
+        throw new ir.IRVersionNotSupportedException(e.version, e.supported,
+            s"Failed to deserialize a file compiled with Scala.js ${e.version}" +
+            s" (supported: ${e.supported.mkString(", ")}): $path", e)
+
+      case e: IOException =>
+        throw new IOException(s"Failed to deserialize $path", e)
+    }
+  }
+}
+
 /** Base trait for virtual Scala.js IR files that are serialized as binary file.
  */
 trait VirtualSerializedScalaJSIRFile
@@ -63,15 +79,7 @@ trait VirtualSerializedScalaJSIRFile
   private def withInputStream[A](f: InputStream => A): A = {
     val stream = inputStream
     try {
-      f(stream)
-    } catch {
-      case e: ir.IRVersionNotSupportedException =>
-        throw new ir.IRVersionNotSupportedException(e.version, e.supported,
-            s"Failed to deserialize a file compiled with Scala.js ${e.version}" +
-            s" (supported: ${e.supported.mkString(", ")}): $path", e)
-
-      case e: IOException =>
-        throw new IOException(s"Failed to deserialize $path", e)
+      VirtualScalaJSIRFile.withPathExceptionContext(path)(f(stream))
     } finally {
       stream.close()
     }

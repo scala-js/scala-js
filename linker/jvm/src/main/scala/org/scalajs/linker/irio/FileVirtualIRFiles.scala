@@ -9,10 +9,11 @@
 package org.scalajs.linker.irio
 
 import java.io._
-import java.util.zip.{ZipInputStream, ZipEntry}
+import java.util.zip.{ZipFile, ZipEntry}
 
-import scala.annotation.tailrec
+import scala.collection.JavaConverters._
 
+import org.scalajs.ir
 import org.scalajs.io._
 
 final class FileVirtualScalaJSIRFile(f: File, val relativePath: String)
@@ -57,45 +58,42 @@ object FileScalaJSIRContainer {
 final class FileVirtualJarScalaJSIRContainer(file: File)
     extends FileVirtualFile(file) with ScalaJSIRContainer {
   def sjsirFiles: List[VirtualScalaJSIRFile] = {
-    val stream = new ZipInputStream(new BufferedInputStream(new FileInputStream(file)))
-    try {
-      val buf = new Array[Byte](4096)
-
-      @tailrec
-      def readAll(out: OutputStream): Unit = {
-        val read = stream.read(buf)
-        if (read != -1) {
-          out.write(buf, 0, read)
-          readAll(out)
-        }
-      }
-
-      def makeVF(e: ZipEntry) = {
-        val size = e.getSize
-        val out =
-          if (0 <= size && size <= Int.MaxValue) new ByteArrayOutputStream(size.toInt)
-          else new ByteArrayOutputStream()
-
-        try {
-          readAll(out)
-          new MemVirtualSerializedScalaJSIRFile(
-              path = s"${this.path}:${e.getName}",
-              relativePath = e.getName,
-              content = out.toByteArray,
-              version = this.version
-          )
-        } finally {
-          out.close()
-        }
-      }
-
-      Iterator.continually(stream.getNextEntry())
-        .takeWhile(_ != null)
-        .filter(_.getName.endsWith(".sjsir"))
-        .map(makeVF)
+    val pinnedVersion = version
+    withZipFile { zipFile =>
+      zipFile.entries().asScala
+        .withFilter(_.getName.endsWith(".sjsir"))
+        .map(entryFile(_, zipFile, pinnedVersion))
         .toList
-    } finally {
-      stream.close()
     }
+  }
+
+  private def entryFile(entry: ZipEntry, zipFile: ZipFile, fileVersion: Option[String]) = {
+    val filePath = s"$path:${entry.getName()}"
+
+    @inline
+    def withInputStream[A](zf: ZipFile)(f: InputStream => A) = {
+      val in = zf.getInputStream(entry)
+      try VirtualScalaJSIRFile.withPathExceptionContext(filePath)(f(in))
+      finally in.close()
+    }
+
+    val info =
+      withInputStream(zipFile)(ir.Serializers.deserializeEntryPointsInfo)
+
+    new VirtualScalaJSIRFile {
+      val path: String = filePath
+      val relativePath: String = entry.getName()
+      override val version: Option[String] = fileVersion
+      override val entryPointsInfo: ir.EntryPointsInfo = info
+      def tree: ir.Trees.ClassDef =
+        withZipFile(withInputStream(_)(ir.Serializers.deserialize))
+    }
+  }
+
+  @inline
+  private def withZipFile[A](f: ZipFile => A): A = {
+    val zf = new ZipFile(file)
+    try f(zf)
+    finally zf.close()
   }
 }
