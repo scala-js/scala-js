@@ -208,61 +208,70 @@ final class Emitter private (config: CommonPhaseConfig,
     startRun(unit)
     try {
       val orderedClasses = unit.classDefs.sortWith(compareClasses)
-      val WithGlobals(generatedClasses, trackedGlobalRefs) =
-        genAllClasses(orderedClasses, logger, secondAttempt = false)
+      val WithGlobals(generatedClasses, trackedGlobalRefs) = {
+        logger.time("Emitter: Generate classes") {
+          genAllClasses(orderedClasses, logger, secondAttempt = false)
+        }
+      }
 
-      emitPrelude
+      logger.time("Emitter: Write trees") {
+        emitPrelude
 
-      val WithGlobals(coreJSLibTree, coreJSLibTrackedGlobalRefs) = coreJSLib
-      builder.addJSTree(coreJSLibTree)
+        val WithGlobals(coreJSLibTree, coreJSLibTrackedGlobalRefs) = coreJSLib
+        builder.addJSTree(coreJSLibTree)
 
-      emitModuleImports(orderedClasses, builder, logger)
+        emitModuleImports(orderedClasses, builder, logger)
 
-      /* Emit all the classes, in the appropriate order:
-       *
-       * 1. All class definitions, which depend on nothing but their
-       *    superclasses.
-       * 2. The initialization of $L0, the Long zero, which depends on the
-       *    definition of the RuntimeLong class.
-       * 3. All static field definitions, which depend on nothing, except those
-       *    of type Long which need $L0.
-       * 4. All static initializers, which in the worst case can observe some
-       *    "zero" state of other static field definitions, but must not
-       *    observe a *non-initialized* (undefined) state.
-       * 5. All the exports, during which some JS class creation can happen,
-       *    causing JS static initializers to run. Those also must not observe
-       *    a non-initialized state of other static fields.
-       */
+        emitGeneratedClasses(builder, generatedClasses)
 
-      def emitJSTrees(trees: List[js.Tree]): Unit =
-        trees.foreach(builder.addJSTree(_))
+        // Emit the module initializers
+        for (moduleInitializer <- unit.moduleInitializers)
+          emitModuleInitializer(moduleInitializer, builder)
 
-      for (generatedClass <- generatedClasses)
-        emitJSTrees(generatedClass.main)
+        emitPostlude
 
-      if (!jsGen.useBigIntForLongs)
-        builder.addJSTree(emitInitializeL0())
-
-      for (generatedClass <- generatedClasses)
-        emitJSTrees(generatedClass.staticFields)
-
-      for (generatedClass <- generatedClasses)
-        emitJSTrees(generatedClass.staticInitialization)
-
-      for (generatedClass <- generatedClasses)
-        emitJSTrees(generatedClass.topLevelExports)
-
-      // Emit the module initializers
-
-      for (moduleInitializer <- unit.moduleInitializers)
-        emitModuleInitializer(moduleInitializer, builder)
-
-      emitPostlude
-
-      trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs
+        trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs
+      }
     } finally {
       endRun(logger)
     }
+  }
+
+  private def emitGeneratedClasses(builder: JSBuilder,
+      generatedClasses: List[GeneratedClass]): Unit = {
+    /* Emit all the classes, in the appropriate order:
+     *
+     * 1. All class definitions, which depend on nothing but their
+     *    superclasses.
+     * 2. The initialization of $L0, the Long zero, which depends on the
+     *    definition of the RuntimeLong class.
+     * 3. All static field definitions, which depend on nothing, except those
+     *    of type Long which need $L0.
+     * 4. All static initializers, which in the worst case can observe some
+     *    "zero" state of other static field definitions, but must not
+     *    observe a *non-initialized* (undefined) state.
+     * 5. All the exports, during which some JS class creation can happen,
+     *    causing JS static initializers to run. Those also must not observe
+     *    a non-initialized state of other static fields.
+     */
+
+    def emitJSTrees(trees: List[js.Tree]): Unit =
+      trees.foreach(builder.addJSTree(_))
+
+    for (generatedClass <- generatedClasses)
+      emitJSTrees(generatedClass.main)
+
+    if (!jsGen.useBigIntForLongs)
+      builder.addJSTree(emitInitializeL0())
+
+    for (generatedClass <- generatedClasses)
+      emitJSTrees(generatedClass.staticFields)
+
+    for (generatedClass <- generatedClasses)
+      emitJSTrees(generatedClass.staticInitialization)
+
+    for (generatedClass <- generatedClasses)
+      emitJSTrees(generatedClass.topLevelExports)
   }
 
   private def emitModuleImports(orderedClasses: List[LinkedClass],
