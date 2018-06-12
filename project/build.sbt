@@ -8,7 +8,7 @@ addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.0")
 
 libraryDependencies += "org.scala-js" % "closure-compiler-java-6" % "v20160517"
 
-libraryDependencies += "io.apigee" % "rhino" % "1.7R5pre4"
+libraryDependencies += "org.mozilla" % "rhino" % "1.7.6"
 
 libraryDependencies += "org.webjars" % "envjs" % "1.2"
 
