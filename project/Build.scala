@@ -718,7 +718,7 @@ object Build {
       ) ++ Seq(
           name := "Scala.js JS Envs",
           libraryDependencies ++= Seq(
-              "io.apigee" % "rhino" % "1.7R5pre4",
+              "org.mozilla" % "rhino" % "1.7.6",
               "org.webjars" % "envjs" % "1.2"
           ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided"),
           previousArtifactSetting,
@@ -1798,7 +1798,7 @@ object Build {
                       "org.scala-lang.modules" %% "scala-partest" % "1.1.4"
                   },
                   "org.scala-js" % "closure-compiler-java-6" % "v20160517",
-                  "io.apigee" % "rhino" % "1.7R5pre4",
+                  "org.mozilla" % "rhino" % "1.7.6",
                   "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit")
               ) ++ (
                   parallelCollectionsDependencies(scalaVersion.value)
