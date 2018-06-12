@@ -221,7 +221,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val cache = scalaJSIRCache.value
         val classpath = Attributed.data(fullClasspath.value)
         val irContainers = FileScalaJSIRContainer.fromClasspath(classpath)
-        val irFiles = cache.cached(irContainers)
+        val log = sbtLogger2ToolsLogger(streams.value.log)
+        val irFiles = log.time("Update IR cache")(cache.cached(irContainers))
+
         Attributed
           .blank[Seq[VirtualScalaJSIRFile]](irFiles)
           .put(scalaJSSourceFiles, irContainers.map(_.file))
