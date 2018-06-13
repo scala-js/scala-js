@@ -20,9 +20,9 @@ import scala.util.DynamicVariable
  *  @version 1.0, 03/09/2003
  */
 object Console extends DeprecatedConsole with AnsiColor {
-  private val outVar = new DynamicVariable[PrintStream](java.lang.System.out)
-  private val errVar = new DynamicVariable[PrintStream](java.lang.System.err)
-  private val inVar  = new DynamicVariable[BufferedReader](null)
+  private[this] val outVar = new DynamicVariable[PrintStream](java.lang.System.out)
+  private[this] val errVar = new DynamicVariable[PrintStream](java.lang.System.err)
+  private[this] val inVar  = new DynamicVariable[BufferedReader](null)
     //new BufferedReader(new InputStreamReader(java.lang.System.in)))
 
   protected def setOutDirect(out: PrintStream): Unit  = outVar.value = out
