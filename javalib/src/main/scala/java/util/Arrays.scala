@@ -593,7 +593,7 @@ object Arrays {
   @inline private def checkIndicesForCopyOfRange(
       len: Int, start: Int, end: Int): Unit = {
     if (start > end)
-      throw new IllegalArgumentException(start + " > " + end)
+      throw new IllegalArgumentException("" + start + " > " + end)
     SemanticsUtils.arrayIndexOutOfBoundsCheck(start < 0 || start > len,
         new ArrayIndexOutOfBoundsException)
   }

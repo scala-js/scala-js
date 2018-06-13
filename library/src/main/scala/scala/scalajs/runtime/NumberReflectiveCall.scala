@@ -42,7 +42,7 @@ class NumberReflectiveCall(value: Double) {
   def unary_- : scala.Double = -value
   // scalastyle:on disallow.space.before.token
 
-  def +(x: String): String = value + x
+  def +(x: String): String = "" + value + x
 
   def ==(x: scala.Byte): scala.Boolean = value == x
   def ==(x: scala.Short): scala.Boolean = value == x

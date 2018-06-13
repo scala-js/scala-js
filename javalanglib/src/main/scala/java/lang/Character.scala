@@ -42,7 +42,7 @@ class Character(private val value: scala.Char)
   protected def unary_- : scala.Int = -value
   // scalastyle:on disallow.space.before.token
 
-  protected def +(x: String): String = value + x
+  protected def +(x: String): String = "" + value + x
 
   protected def <<(x: scala.Int): scala.Int = value << x
   protected def <<(x: scala.Long): scala.Int = value << x.toInt
