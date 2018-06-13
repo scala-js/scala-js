@@ -64,11 +64,11 @@ class IntegerReflectiveCall(value: Int) {
   // scalastyle:on disallow.space.before.token
 
   def <<(x: scala.Int): scala.Int = value << x
-  def <<(x: scala.Long): scala.Int = value << x
+  def <<(x: scala.Long): scala.Int = value << x.toInt
   def >>>(x: scala.Int): scala.Int = value >>> x
-  def >>>(x: scala.Long): scala.Int = value >>> x
+  def >>>(x: scala.Long): scala.Int = value >>> x.toInt
   def >>(x: scala.Int): scala.Int = value >> x
-  def >>(x: scala.Long): scala.Int = value >> x
+  def >>(x: scala.Long): scala.Int = value >> x.toInt
 
   def |(x: scala.Byte): scala.Int = value | x
   def |(x: scala.Short): scala.Int = value | x

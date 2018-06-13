@@ -45,11 +45,11 @@ class Character(private val value: scala.Char)
   protected def +(x: String): String = value + x
 
   protected def <<(x: scala.Int): scala.Int = value << x
-  protected def <<(x: scala.Long): scala.Int = value << x
+  protected def <<(x: scala.Long): scala.Int = value << x.toInt
   protected def >>>(x: scala.Int): scala.Int = value >>> x
-  protected def >>>(x: scala.Long): scala.Int = value >>> x
+  protected def >>>(x: scala.Long): scala.Int = value >>> x.toInt
   protected def >>(x: scala.Int): scala.Int = value >> x
-  protected def >>(x: scala.Long): scala.Int = value >> x
+  protected def >>(x: scala.Long): scala.Int = value >> x.toInt
 
   protected def ==(x: scala.Byte): scala.Boolean = value == x
   protected def ==(x: scala.Short): scala.Boolean = value == x

@@ -139,11 +139,11 @@ class NumberReflectiveCall(value: Double) {
   // scalastyle:on disallow.space.before.token
 
   def <<(x: scala.Int): scala.Int = value.toInt << x
-  def <<(x: scala.Long): scala.Int = value.toInt << x
+  def <<(x: scala.Long): scala.Int = value.toInt << x.toInt
   def >>>(x: scala.Int): scala.Int = value.toInt >>> x
-  def >>>(x: scala.Long): scala.Int = value.toInt >>> x
+  def >>>(x: scala.Long): scala.Int = value.toInt >>> x.toInt
   def >>(x: scala.Int): scala.Int = value.toInt >> x
-  def >>(x: scala.Long): scala.Int = value.toInt >> x
+  def >>(x: scala.Long): scala.Int = value.toInt >> x.toInt
 
   def |(x: scala.Byte): scala.Int = value.toInt | x
   def |(x: scala.Short): scala.Int = value.toInt | x
