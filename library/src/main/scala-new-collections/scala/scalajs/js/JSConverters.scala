@@ -65,29 +65,31 @@ object JSConverters extends JSConvertersLowPrioImplicits {
 
   implicit class JSRichIterable[T](
       val __self: scala.collection.Iterable[T]) extends AnyVal {
-    @inline final def toJSIterable: Iterable[T] = new IterableAdapter(__self)
+    @inline final def toJSIterable: js.Iterable[T] = new IterableAdapter(__self)
   }
 
   implicit class JSRichIterator[T](
       val __self: scala.collection.Iterator[T]) extends AnyVal {
-    @inline final def toJSIterator: Iterator[T] = new IteratorAdapter(__self)
+    @inline final def toJSIterator: js.Iterator[T] = new IteratorAdapter(__self)
   }
 
-  private class IterableAdapter[+T](col: collection.Iterable[T]) extends Iterable[T] {
+  private class IterableAdapter[+T](col: collection.Iterable[T])
+      extends js.Iterable[T] {
+
     @JSName(Symbol.iterator)
-    final def jsIterator(): Iterator[T] = col.iterator.toJSIterator
+    final def jsIterator(): js.Iterator[T] = col.iterator.toJSIterator
   }
 
   private class IteratorAdapter[+T](
-      it: scala.collection.Iterator[T]) extends Iterator[T] {
-    final def next(): Iterator.Entry[T] = {
+      it: scala.collection.Iterator[T]) extends js.Iterator[T] {
+    final def next(): js.Iterator.Entry[T] = {
       if (it.hasNext) {
-        new Iterator.Entry[T] {
+        new js.Iterator.Entry[T] {
           val done: Boolean = false
           val value: T = it.next()
         }
       } else {
-        new Iterator.Entry[T] {
+        new js.Iterator.Entry[T] {
           val done: Boolean = true
           // Evil cast to work around typing. By specification, reading `value`
           // is undefined behavior, so this is ok.

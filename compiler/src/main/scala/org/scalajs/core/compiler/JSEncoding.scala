@@ -12,7 +12,7 @@ import scala.tools.nsc._
 import org.scalajs.core.ir
 import ir.{Trees => js, Types => jstpe}
 
-import util.ScopedVar
+import org.scalajs.core.compiler.util.ScopedVar
 import ScopedVar.withScopedVars
 
 /** Encoding of symbol names for JavaScript
