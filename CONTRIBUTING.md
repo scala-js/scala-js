@@ -17,19 +17,19 @@ Please consult and follow our [coding style guide](./CODINGSTYLE.md).
 This the general workflow for contributing to Scala.js.
 
 1.  Make sure you have signed the
-    [Scala CLA](http://typesafe.com/contribute/cla/scala).
+    [Scala CLA](https://www.lightbend.com/contribute/cla/scala).
     If not, sign it.
 2.  You should always perform your work in its own Git branch.
     The branch should be given a descriptive name that explains its intent.
 3.  When the feature or fix is completed you should open a
-    [Pull Request](https://help.github.com/articles/using-pull-requests) on GitHub.
+    [Pull Request](https://help.github.com/articles/about-pull-requests/) on GitHub.
 4.  The Pull Request should be reviewed by other maintainers (as many as feasible/practical),
     among which at least one core developer.
     Independent contributors can also participate in the review process,
     and are encouraged to do so.
 5.  After the review, you should resolve issues brought up by the reviewers as needed
     (amending or adding commits to address reviewers' comments), iterating until
-    the reviewers give their thumbs up, the "LGTM" (acronym for "Looks Good To Me").
+    the reviewers give their thumbs up by approving the Pull Request.
 6.  Once the code has passed review the Pull Request can be merged into the distribution.
 
 ## Pull Request Requirements
@@ -38,8 +38,8 @@ In order for a Pull Request to be considered, it has to meet these requirements:
 
 1.  Live up to the current code standard:
     - Follow the [coding style](./CODINGSTYLE.md)
-    - Not violate [DRY](http://programmer.97things.oreilly.com/wiki/index.php/Don%27t_Repeat_Yourself).
-    - [Boy Scout Rule](http://programmer.97things.oreilly.com/wiki/index.php/The_Boy_Scout_Rule) should be applied.
+    - Not violate [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself).
+    - The [Boy Scout Rule](https://medium.com/@biratkirat/step-8-the-boy-scout-rule-robert-c-martin-uncle-bob-9ac839778385) should be applied.
 2.  Be accompanied by appropriate tests.
 3.  Be issued from a branch *other than master* (PRs coming from master will not be accepted, as we've had trouble in the past with such PRs)
 
@@ -52,7 +52,7 @@ All code contributed to the user-facing standard library (the `library/`
 directory) should come accompanied with documentation.
 Pull requests containing undocumented code will not be accepted.
 
-Code contributed to the internals (compiler, tools, JS environments, etc.)
+Code contributed to the internals (compiler, IR, linker, JS environments, etc.)
 should come accompanied by internal documentation if the code is not
 self-explanatory, e.g., important design decisions that other maintainers
 should know about.
@@ -69,7 +69,7 @@ doing merges/rebases etc.) then please do not commit it all but rewrite the
 history by squashing the commits into **one commit per useful unit of
 change**, each accompanied by a detailed commit message.
 For more info, see the article:
-[Git Workflow](http://sandofsky.com/blog/git-workflow.html).
+[Git Workflow](https://sandofsky.com/blog/git-workflow.html).
 Additionally, every commit should be able to be used in isolation--that is,
 each commit must build and pass all tests.
 
