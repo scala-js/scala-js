@@ -8,28 +8,22 @@ class ConcurrentModificationException(s: String) extends RuntimeException(s) {
   def this() = this(null)
 }
 
-class DuplicateFormatFlagsException private() extends IllegalFormatException {
-  private var flags: String = null
-  def this(f: String) = {
-    this()
-    if (f == null)
-      throw new NullPointerException()
-    flags = f
-  }
-  def getFlags(): String = flags
-  override def getMessage(): String = s"Flags = '$flags'"
+class DuplicateFormatFlagsException(f: String) extends IllegalFormatException {
+  if (f == null)
+    throw new NullPointerException()
+
+  def getFlags(): String = f
+  override def getMessage(): String = "Flags = '" + f + "'"
 }
 
 class EmptyStackException extends RuntimeException
 
-class FormatFlagsConversionMismatchException private(private val c: Char) extends IllegalFormatException {
-  private var f: String = null
-  def this(f: String, c: Char) = {
-    this(c)
-    if (f == null)
-      throw new NullPointerException()
-    this.f = f
-  }
+class FormatFlagsConversionMismatchException(f: String, c: Char)
+    extends IllegalFormatException {
+
+  if (f == null)
+    throw new NullPointerException()
+
   def getFlags(): String = f
   def getConversion(): Char = c
   override def getMessage(): String = "Conversion = " + c + ", Flags = " + f
@@ -37,9 +31,9 @@ class FormatFlagsConversionMismatchException private(private val c: Char) extend
 
 class FormatterClosedException extends IllegalStateException
 
-class IllegalFormatCodePointException(private val c: Int) extends IllegalFormatException {
+class IllegalFormatCodePointException(c: Int) extends IllegalFormatException {
   def getCodePoint(): Int = c
-  override def getMessage(): String = s"Code point = $c"
+  override def getMessage(): String = "Code point = 0x" + Integer.toHexString(c)
 }
 
 class IllegalFormatConversionException(c: Char, arg: Class[_])
@@ -51,29 +45,25 @@ class IllegalFormatConversionException(c: Char, arg: Class[_])
   def getConversion(): Char = c
   def getArgumentClass(): Class[_] = arg
 
-  override def getMessage(): String = s"$c != ${arg.getName()}"
+  override def getMessage(): String = c.toString() + " != " + arg.getName()
 }
 
 class IllegalFormatException private[util] () extends IllegalArgumentException
 
-class IllegalFormatFlagsException private() extends IllegalFormatException {
-  private var flags: String = null
-  def this(f: String) = {
-    this()
-    if (f == null)
-      throw new NullPointerException()
-    this.flags = f
-  }
-  def getFlags(): String = flags
-  override def getMessage(): String = "Flags = '" + flags + "'"
+class IllegalFormatFlagsException(f: String) extends IllegalFormatException {
+  if (f == null)
+    throw new NullPointerException()
+
+  def getFlags(): String = f
+  override def getMessage(): String = "Flags = '" + f + "'"
 }
 
-class IllegalFormatPrecisionException(private val p: Int) extends IllegalFormatException {
+class IllegalFormatPrecisionException(p: Int) extends IllegalFormatException {
   def getPrecision(): Int = p
   override def getMessage(): String = Integer.toString(p)
 }
 
-class IllegalFormatWidthException(private val w: Int) extends IllegalFormatException {
+class IllegalFormatWidthException(w: Int) extends IllegalFormatException {
   def getWidth(): Int = w
   override def getMessage(): String = Integer.toString(w)
 }
@@ -100,26 +90,18 @@ class InvalidPropertiesFormatException(s: String) extends java.io.IOException(s)
   //   throw new java.io.NotSerializableException("Not serializable.")
 }
 
-class MissingFormatArgumentException private() extends IllegalFormatException {
-  private var s: String = null
-  def this(s: String) = {
-    this()
-    if (s == null)
-      throw new NullPointerException()
-    this.s = s
-  }
+class MissingFormatArgumentException(s: String) extends IllegalFormatException {
+  if (s == null)
+    throw new NullPointerException()
+
   def getFormatSpecifier(): String = s
   override def getMessage(): String = "Format specifier '" + s + "'"
 }
 
-class MissingFormatWidthException private() extends IllegalFormatException {
-  private var s: String = null
-  def this(s: String) = {
-    this()
-    if (s == null)
-      throw new NullPointerException()
-    this.s = s
-  }
+class MissingFormatWidthException(s: String) extends IllegalFormatException {
+  if (s == null)
+    throw new NullPointerException()
+
   def getFormatSpecifier(): String = s
   override def getMessage(): String = s
 }
@@ -140,26 +122,20 @@ class TooManyListenersException(s: String) extends Exception(s) {
   def this() = this(null)
 }
 
-class UnknownFormatConversionException private () extends IllegalFormatException {
-  private var s: String = null
-  def this(s: String) = {
-    this()
-    if (s == null)
-      throw new NullPointerException()
-    this.s = s
-  }
+class UnknownFormatConversionException(s: String)
+    extends IllegalFormatException {
+
+  if (s == null)
+    throw new NullPointerException()
+
   def getConversion(): String = s
-  override def getMessage(): String = s"Conversion = '$s'"
+  override def getMessage(): String = "Conversion = '" + s + "'"
 }
 
-class UnknownFormatFlagsException private() extends IllegalFormatException {
-  private var flags: String = null
-  def this(f: String) = {
-    this()
-    if (f == null)
-      throw new NullPointerException()
-    this.flags = f
-  }
-  def getFlags(): String = flags
-  override def getMessage(): String = "Flags = " + flags
+class UnknownFormatFlagsException(f: String) extends IllegalFormatException {
+  if (f == null)
+    throw new NullPointerException()
+
+  def getFlags(): String = f
+  override def getMessage(): String = "Flags = " + f
 }

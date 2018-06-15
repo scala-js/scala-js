@@ -434,43 +434,43 @@ object Long {
     else         Integer.numberOfTrailingZeros((l >>> 32).toInt) + 32
   }
 
-  def toBinaryString(l: scala.Long): String = {
+  @inline def toBinaryString(l: scala.Long): String =
+    toBinaryString(l.toInt, (l >>> 32).toInt)
+
+  private def toBinaryString(lo: Int, hi: Int): String = {
     val zeros = "00000000000000000000000000000000" // 32 zeros
     @inline def padBinary32(i: Int) = {
       val s = Integer.toBinaryString(i)
       zeros.substring(s.length) + s
     }
 
-    val lo = l.toInt
-    val hi = (l >>> 32).toInt
-
     if (hi != 0) Integer.toBinaryString(hi) + padBinary32(lo)
     else Integer.toBinaryString(lo)
   }
 
-  def toHexString(l: scala.Long): String = {
+  @inline def toHexString(l: scala.Long): String =
+    toHexString(l.toInt, (l >>> 32).toInt)
+
+  private def toHexString(lo: Int, hi: Int): String = {
     val zeros = "00000000" // 8 zeros
     @inline def padBinary8(i: Int) = {
       val s = Integer.toHexString(i)
       zeros.substring(s.length) + s
     }
 
-    val lo = l.toInt
-    val hi = (l >>> 32).toInt
-
     if (hi != 0) Integer.toHexString(hi) + padBinary8(lo)
     else Integer.toHexString(lo)
   }
 
-  def toOctalString(l: scala.Long): String = {
+  @inline def toOctalString(l: scala.Long): String =
+    toOctalString(l.toInt, (l >>> 32).toInt)
+
+  private def toOctalString(lo: Int, hi: Int): String = {
     val zeros = "0000000000" // 10 zeros
     @inline def padOctal10(i: Int) = {
       val s = Integer.toOctalString(i)
       zeros.substring(s.length) + s
     }
-
-    val lo = l.toInt
-    val hi = (l >>> 32).toInt
 
     val lp = lo & 0x3fffffff
     val mp = ((lo >>> 30) + (hi << 2)) & 0x3fffffff

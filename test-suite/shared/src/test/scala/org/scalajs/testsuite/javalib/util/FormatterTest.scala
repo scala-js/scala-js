@@ -25,8 +25,8 @@ class FormatterTest {
     assertEquals(expected, res)
   }
 
-  def testWithInfinityAndNaN(conversion: Char,
-      acceptUpperCase: Boolean = true): Unit = {
+  def testWithInfinityAndNaN(conversion: Char, acceptSharp: Boolean = true,
+      acceptComma: Boolean = true, acceptUpperCase: Boolean = true): Unit = {
 
     import Double.{NaN, PositiveInfinity => PosInf, NegativeInfinity => NegInf}
 
@@ -45,11 +45,19 @@ class FormatterTest {
     assertF(" Infinity", "% " + conversion, PosInf)
     assertF("-Infinity", "%+" + conversion, NegInf)
     assertF("-Infinity", "% " + conversion, NegInf)
+    assertF("NaN", "%+" + conversion, NaN)
+    assertF("NaN", "% " + conversion, NaN)
 
     assertF("+Infinity", "%+(" + conversion, PosInf)
     assertF(" Infinity", "% (" + conversion, PosInf)
     assertF("(Infinity)", "%+(" + conversion, NegInf)
     assertF("(Infinity)", "% (" + conversion, NegInf)
+
+    if (acceptSharp)
+      assertF("Infinity", "%#" + conversion, PosInf)
+
+    if (acceptComma)
+      assertF("Infinity", "%," + conversion, PosInf)
 
     if (acceptUpperCase) {
       val upConversion = conversion.toUpper
@@ -59,11 +67,86 @@ class FormatterTest {
     }
   }
 
+  /* Every conversion accepts `null` as input. Other than `%b`, which formats
+   * `null` as `"false"`, they all format it as `"null"`. While they reject
+   * flags and/or precision according to the conversion, they will then all
+   * handle the width, the `-` flag and the precision as if the conversion were
+   * `%s`. Notably, the precision truncates the string.
+   */
+  def testWithNull(conversion: Char, flags: String,
+      acceptPrecision: Boolean = true,
+      acceptUpperCase: Boolean = true): Unit = {
+
+    assertF("null", "%" + conversion, null)
+
+    for (flag <- flags)
+      assertF("null", "%" + flag + "1" + conversion, null)
+
+    assertF("  null", "%6" + conversion, null)
+    assertF("null  ", "%-6" + conversion, null)
+
+    if (acceptPrecision) {
+      assertF("nul", "%.3" + conversion, null)
+      assertF("  nul", "%5.3" + conversion, null)
+      assertF("nul  ", "%-5.3" + conversion, null)
+    }
+
+    if (acceptUpperCase) {
+      val upConversion = conversion.toUpper
+      assertF("NULL", "%" + upConversion, null)
+      assertF("  NULL", "%6" + upConversion, null)
+    }
+  }
+
   def expectFormatterThrows[T <: Throwable](exeption: Class[T], format: String,
       args: Any*): T = {
     val fmt = new Formatter()
     expectThrows(exeption,
         fmt.format(format, args.asInstanceOf[Seq[AnyRef]]: _*))
+  }
+
+  def expectFormatFlagsConversionMismatch(conversion: Char,
+      invalidFlags: String, arg: Any): Unit = {
+
+    for (flag <- invalidFlags) {
+      val e = expectFormatterThrows(
+          classOf[FormatFlagsConversionMismatchException],
+          "%" + flag + conversion, arg)
+      assertEquals(flag.toString, e.getFlags)
+      assertEquals(conversion, e.getConversion)
+    }
+  }
+
+  def expectIllegalFormatFlags(format: String, flags: String,
+      arg: Any): Unit = {
+    val e = expectFormatterThrows(classOf[IllegalFormatFlagsException],
+        format, arg)
+    assertEquals(flags, e.getFlags)
+  }
+
+  def expectIllegalFormatPrecision(conversion: Char, arg: Any): Unit = {
+    val e = expectFormatterThrows(classOf[IllegalFormatPrecisionException],
+        "%.5" + conversion, arg)
+    assertEquals(5, e.getPrecision)
+  }
+
+  def expectIllegalFormatWidth(conversion: Char, arg: Any): Unit = {
+    val e = expectFormatterThrows(classOf[IllegalFormatWidthException],
+        "%5" + conversion, arg)
+    assertEquals(5, e.getWidth)
+  }
+
+  def expectIllegalFormatConversion(conversion: Char, arg: Any): Unit = {
+    val e = expectFormatterThrows(classOf[IllegalFormatConversionException],
+        "%" + conversion, arg)
+    assertEquals(conversion, e.getConversion)
+    assertEquals(arg.getClass, e.getArgumentClass)
+  }
+
+  def expectUnknownFormatConversion(format: String, conversion: Char): Unit = {
+    val e = expectFormatterThrows(classOf[UnknownFormatConversionException],
+        format, 1, 2, 3)
+    assertEquals(conversion.toString, e.getConversion)
   }
 
   @Test def `should_provide_b_conversion`(): Unit = {
@@ -78,6 +161,13 @@ class FormatterTest {
     assertF("true   ", "%-7b", true)
 
     assertF("FALSE", "%B", false)
+
+    assertF("tru", "%.3b", true)
+    assertF("     tru", "%8.3b", true)
+    assertF("fal", "%.3b", null)
+    assertF("     fal", "%8.3b", null)
+
+    expectFormatFlagsConversionMismatch('b', "#+ 0,(", true)
   }
 
   @Test def `should_provide_h_conversion`(): Unit = {
@@ -87,7 +177,11 @@ class FormatterTest {
 
     assertF("  f1e2a3", "%8h", x)
 
-    assertF("null", "%h", null)
+    assertF("f1e2a", "%.5h", x)
+
+    testWithNull('h', "")
+
+    expectFormatFlagsConversionMismatch('h', "#+ 0,(", x)
   }
 
   @Test def sConversionWithNonFormattable(): Unit = {
@@ -100,10 +194,13 @@ class FormatterTest {
     assertF("     hello", "%10s", "hello")
     assertF("hello     ", "%-10s", "hello")
 
-    assertF("null", "%s", null)
+    assertF("hel", "%.3s", "hello")
+    assertF("    HEL", "%7.3S", "hello")
 
-    if (!executingInJVMOnJDK6)
-      expectFormatterThrows(classOf[Exception], "%#s", "hello")
+    testWithNull('s', "")
+
+    expectFormatFlagsConversionMismatch('s',
+        if (executingInJVMOnJDK6) "+ 0,(" else "#+ 0,(", "hello")
   }
 
   @Test def sConversionWithFormattable(): Unit = {
@@ -129,6 +226,9 @@ class FormatterTest {
         assertEquals(width, this.width)
         assertEquals(precision, this.precision)
       }
+
+      def expectNotCalled(): Unit =
+        assertEquals(0, this.calls)
     }
 
     def test(format: String, flags: Int, width: Int, precision: Int): Unit = {
@@ -141,15 +241,29 @@ class FormatterTest {
     test("%-10s", LEFT_JUSTIFY, 10, -1)
     test("%#-10.2s", LEFT_JUSTIFY | ALTERNATE, 10, 2)
     test("%#10.2S", UPPERCASE | ALTERNATE, 10, 2)
+
+    val x = new FormattableClass
+    expectFormatFlagsConversionMismatch('s', "+ 0,(", x)
+    x.expectNotCalled()
   }
 
   @Test def `should_provide_c_conversion`(): Unit = {
     assertF("a", "%c", 'a')
     assertF("A", "%C", 'A')
     assertF("A", "%c", 65)
+    assertF("\ud83d\udca9", "%c", 0x1f4a9)
 
     assertF("    !", "%5c", '!')
     assertF("!    ", "%-5c", '!')
+
+    testWithNull('c', "", acceptPrecision = false)
+
+    expectFormatFlagsConversionMismatch('c', "#+ 0,(", 'A')
+    expectIllegalFormatPrecision('c', 'A')
+
+    val e = expectFormatterThrows(classOf[IllegalFormatCodePointException],
+        "%c", 0x123456)
+    assertEquals(0x123456, e.getCodePoint)
   }
 
   @Test def `should_provide_d_conversion`(): Unit = {
@@ -159,6 +273,21 @@ class FormatterTest {
     assertF("00005", "%05d", 5)
     assertF("  -10", "%5d", -10)
     assertF("-0010", "%05d", -10)
+
+    assertF("345,678", "%,d", 345678)
+    assertF("-345,678", "%,d", -345678)
+    assertF("12,345,678", "%,d", 12345678)
+    assertF("    12,345,678", "%,14d", 12345678)
+    assertF("000012,345,678", "%,014d", 12345678)
+    assertF("   -12,345,678", "%,14d", -12345678)
+
+    assertF("2,345,678", "%,d", 2345678)
+    assertF("345,678", "%,d", 345678)
+    assertF("45,678", "%,d", 45678)
+    assertF("5,678", "%,d", 5678)
+    assertF("678", "%,d", 678)
+    assertF("78", "%,d", 78)
+    assertF("8", "%,d", 8)
 
     assertF("56", "%(d", 56)
     assertF("(56)", "%(d", -56)
@@ -177,6 +306,12 @@ class FormatterTest {
 
     assertF("56    ", "%-6d", 56)
     assertF("-56   ", "%-6d", -56)
+
+    testWithNull('d', "+ (", acceptPrecision = false, acceptUpperCase = false)
+
+    expectIllegalFormatFlags("%+- (5d", "-+ (", 56)
+    expectIllegalFormatFlags("%+-0(5d", "-+0(", 56)
+    expectIllegalFormatPrecision('d', 5)
   }
 
   @Test def `should_provide_o_conversion`(): Unit = {
@@ -213,6 +348,11 @@ class FormatterTest {
     assertF("37777777766", "%05o", asIntOnJVM(-10.toByte))
     assertF("37777777766", "%5o", asIntOnJVM(-10.toShort))
     assertF("000037777777766", "%015o", asIntOnJVM(-10.toShort))
+
+    testWithNull('o', "#0", acceptPrecision = false, acceptUpperCase = false)
+
+    expectFormatFlagsConversionMismatch('o', "+ ,(", 5)
+    expectIllegalFormatPrecision('o', 5)
   }
 
   @Test def `should_provide_x_conversion`(): Unit = {
@@ -256,12 +396,18 @@ class FormatterTest {
 
     assertF("ffffffffffff2bcf", "%x", -54321L)
     assertF("28EEA4CB1", "%X", 10987654321L)
+
+    testWithNull('x', "#0", acceptPrecision = false)
+
+    expectFormatFlagsConversionMismatch('x', "+ ,(", 5)
+    expectIllegalFormatPrecision('x', 5)
   }
 
   @Test def `should_provide_e_conversion`(): Unit = {
     assertF("1.000000e+03", "%e", 1000.0)
     assertF("1e+100", "%.0e", 1.2e100)
     assertF("0.000e+00", "%.3e", 0.0)
+    assertF("-0.000e+00", "%.3e", -0.0)
 
     /* We use 1.51e100 in this test, since we seem to have a floating point
      * imprecision at exactly 1.5e100 that yields to a rounding error towards
@@ -288,12 +434,19 @@ class FormatterTest {
     assertF("001.2000E-21", "%012.4E", 1.2e-21f)
     assertF("(0001.2000e-21)", "%(015.4e", -1.2e-21f)
 
+    assertF("1.e+100", "%#.0e", 1.2e100)
+
     assertF("+1.234560e+30", "%+e", 1.23456e30)
     assertF("-1.234560e+30", "%+e", -1.23456e30)
     assertF(" 1.234560e+30", "% e", 1.23456e30)
     assertF("-1.234560e+30", "% e", -1.23456e30)
 
-    testWithInfinityAndNaN('e')
+    testWithInfinityAndNaN('e', acceptComma = false)
+    testWithNull('e', "#+ 0(")
+
+    expectFormatFlagsConversionMismatch('e', ",", 5.5)
+    expectIllegalFormatFlags("%-05e", "-0", 5.5)
+    expectIllegalFormatFlags("% +e", "+ ", 5.5)
   }
 
   @Test def `should_provide_g_conversion`(): Unit = {
@@ -345,7 +498,15 @@ class FormatterTest {
     assertF("300000         ", "%-15g", 3e5)
     assertF("-300000        ", "%-15g", -3e5)
 
-    testWithInfinityAndNaN('g')
+    assertF("300,000", "%,g", 3e5)
+    assertF("00000300,000", "%0,12g", 3e5)
+
+    testWithInfinityAndNaN('g', acceptSharp = false)
+    testWithNull('g', "+ 0,(")
+
+    expectFormatFlagsConversionMismatch('g', "#", 5.5)
+    expectIllegalFormatFlags("%-05g", "-0", 5.5)
+    expectIllegalFormatFlags("% +g", "+ ", 5.5)
   }
 
   @Test def `should_provide_f_conversion`(): Unit = {
@@ -355,6 +516,8 @@ class FormatterTest {
     assertF("30000001024.000000", "%f", 3e10f)
 
     assertF("30000000000.000000", "%f", 3e10)
+
+    assertF("30,000,000,000.000000", "%,f", 3e10)
 
     assertF("00000000.000050", "%015f", 0.5e-4)
     assertF("-0000000.000050", "%015f", -0.5e-4)
@@ -394,6 +557,9 @@ class FormatterTest {
     assertF("300000.000000  ", "%-15f", 3e5)
     assertF("-300000.000000 ", "%-15f", -3e5)
 
+    assertF("300,000.000000", "%,f", 3e5)
+    assertF("00000300,000.000000", "%0,19f", 3e5)
+
     // #3202
     if (executingInJVM) {
       assertF("66380.78812500000", "%.11f", 66380.788125)
@@ -402,14 +568,33 @@ class FormatterTest {
     }
 
     testWithInfinityAndNaN('f', acceptUpperCase = false)
+    testWithNull('f', "#+ 0,(", acceptUpperCase = false)
+
+    expectIllegalFormatFlags("%-05f", "-0", 5.5)
+    expectIllegalFormatFlags("% +f", "+ ", 5.5)
   }
 
   @Test def `should_support_%%`(): Unit = {
     assertF("1%2", "%d%%%d", 1, 2)
+
+    /* https://bugs.java.com/bugdatabase/view_bug.do?bug_id=JDK-8204229
+     * 'width' is ignored before JDK 11.
+     */
+    if (!executingInJVM) {
+      assertF("    %", "%5%")
+      assertF("%    ", "%-5%")
+    }
+
+    expectIllegalFormatFlags("%0,+< (#%", "#+ 0,(<", null)
+    expectIllegalFormatPrecision('%', null)
   }
 
   @Test def `should_support_%n`(): Unit = {
     assertF("1\n2", "%d%n%d", 1, 2)
+
+    expectIllegalFormatFlags("%0-,+< (#n", "-#+ 0,(<", null)
+    expectIllegalFormatPrecision('%', null)
+    expectIllegalFormatWidth('n', null)
   }
 
   @Test def should_allow_positional_arguments(): Unit = {
@@ -418,15 +603,44 @@ class FormatterTest {
     assertF("2 2 1", "%2$d %<d %d", 1, 2)
   }
 
+  @Test def unknownFormatConversion(): Unit = {
+    // Correct format, unknown conversion
+    expectUnknownFormatConversion("abc%udf", 'u')
+    expectUnknownFormatConversion("abc%2$-(<034.12udf", 'u')
+
+    // Unknown conversion *and* the index (45$) is too large
+    expectUnknownFormatConversion("abc%45$-(<034.12udf", 'u')
+
+    // Incorrect format, the reported conversion is the character after '%'
+    expectUnknownFormatConversion("abc%2$-(_034.12udf", '2')
+
+    // Weird case: for a trailing '%', the reported unknown conversion is '%'
+    expectUnknownFormatConversion("abc%", '%')
+  }
+
   @Test def leftAlignWithoutWidthThrows(): Unit = {
-    for (conversion <- "bBhHsHcCdoxXeEgGf") {
+    for (conversion <- "bBhHsHcCdoxXeEgGf%") {
       val fmt = "ab%-" + conversion + "cd"
       val arg: Any = conversion match {
         case 'e' | 'E' | 'g' | 'G' | 'f' => 5.5
         case _                           => 5
       }
-      expectFormatterThrows(classOf[MissingFormatWidthException], fmt, arg)
+      val e =
+        expectFormatterThrows(classOf[MissingFormatWidthException], fmt, arg)
+      assertEquals(fmt, "%-" + conversion, e.getFormatSpecifier)
     }
+  }
+
+  @Test def indexTooLargeIsLikeUseLastIndex(): Unit = {
+    expectFormatterThrows(classOf[MissingFormatArgumentException],
+        "%9876543210$d", 56, 78)
+
+    assertF("56 56", "%d %9876543210$d", 56, 78)
+  }
+
+  @Test def widthOrPrecisionTooLargeIsIgnored(): Unit = {
+    assertF("56 78", "%d %9876543210d", 56, 78)
+    assertF("56 78", "%d %.9876543210d", 56, 78)
   }
 
   @Test def should_fail_when_called_after_close(): Unit = {
