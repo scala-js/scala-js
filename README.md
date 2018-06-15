@@ -1,5 +1,5 @@
 This is the repository for
-[Scala.js, the Scala to JavaScript compiler](http://www.scala-js.org/).
+[Scala.js, the Scala to JavaScript compiler](https://www.scala-js.org/).
 
 * [Report an issue](https://github.com/scala-js/scala-js/issues)
 * [Developer documentation](./DEVELOPING.md)
@@ -8,4 +8,4 @@ This is the repository for
 ## License
 
 Scala.js is distributed under the
-[Scala License](http://www.scala-lang.org/license.html).
+[Scala License](https://www.scala-lang.org/license.html).
