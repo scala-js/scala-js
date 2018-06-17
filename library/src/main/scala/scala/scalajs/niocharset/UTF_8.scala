@@ -236,7 +236,7 @@ private[niocharset] object UTF_8 extends Charset("UTF-8", Array(
         // By construction, 0 <= codePoint <= 0x7ff < MIN_SURROGATE
         if (codePoint < 0x80) {
           // Should have been encoded with only 1 byte
-          DecodedMultiByte(CoderResult.malformedForLength(2))
+          DecodedMultiByte(CoderResult.malformedForLength(1))
         } else {
           DecodedMultiByte(codePoint.toChar)
         }
@@ -251,10 +251,11 @@ private[niocharset] object UTF_8 extends Charset("UTF-8", Array(
       else {
         val codePoint = (((b1 & 0xf) << 12) | ((b2 & 0x3f) << 6) | (b3 & 0x3f))
         // By construction, 0 <= codePoint <= 0xffff < MIN_SUPPLEMENTARY_CODE_POINT
-        if ((codePoint < 0x800) ||
-            (codePoint >= MIN_SURROGATE && codePoint <= MAX_SURROGATE)) {
+        if (codePoint < 0x800) {
           // Should have been encoded with only 1 or 2 bytes
-          // or it is a surrogate, which is not a valid code point
+          DecodedMultiByte(CoderResult.malformedForLength(1))
+        } else if (codePoint >= MIN_SURROGATE && codePoint <= MAX_SURROGATE) {
+          // It is a surrogate, which is not a valid code point
           DecodedMultiByte(CoderResult.malformedForLength(3))
         } else {
           DecodedMultiByte(codePoint.toChar)
@@ -276,7 +277,7 @@ private[niocharset] object UTF_8 extends Charset("UTF-8", Array(
         if (codePoint < 0x10000 || codePoint > MAX_CODE_POINT) {
           // It should have been encoded with 1, 2, or 3 bytes
           // or it is not a valid code point
-          DecodedMultiByte(CoderResult.malformedForLength(4))
+          DecodedMultiByte(CoderResult.malformedForLength(1))
         } else {
           // Here, we need to encode the code point as a surrogate pair.
           // http://en.wikipedia.org/wiki/UTF-16
