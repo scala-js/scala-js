@@ -8,23 +8,20 @@
 package org.scalajs.testsuite.noircheck
 
 import org.junit.Test
+import org.junit.Assert._
 
 class DummyParentsTest {
 
   @Test def linking_stages_should_provide_dummy_parents_if_required(): Unit = {
 
-    import scala.concurrent.forkjoin._
-
-    // scala.concurrent.forkjoin.ForkJoinWorkerThread is not defined
-    class DummyFJWorkerThread extends ForkJoinWorkerThread(null) {
-      override def onStart(): Unit = { /* something */ }
-    }
+    // java.util.WeakHashMap is not defined
+    class DummyWeakHashMap extends java.util.WeakHashMap
 
     val x = "1".toInt
 
     if (x + x < 0) {
-      // Ensure DummyFuture is not DCEd, but never instantiated
-      new DummyFJWorkerThread()
+      // Ensure DummyWeakHashMap is not DCEd, but never instantiated
+      assertEquals(0, new DummyWeakHashMap().size())
     }
 
   }
