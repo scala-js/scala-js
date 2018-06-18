@@ -105,7 +105,7 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
           def padCaptureSign(argStr: String, prefix: String) = {
             val firstChar = argStr.charAt(0)
             if (firstChar == '+' || firstChar == '-')
-              pad(argStr.substring(1), firstChar+prefix)
+              pad(argStr.substring(1), firstChar.toString + prefix)
             else
               pad(argStr, prefix)
           }

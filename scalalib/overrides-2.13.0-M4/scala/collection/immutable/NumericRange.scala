@@ -1,6 +1,6 @@
 package scala.collection.immutable
 
-import scala.collection.{AbstractIterator, SeqFactory, IterableFactory, IterableOnce, Iterator, StrictOptimizedIterableOps}
+import scala.collection.{SeqFactory, IterableFactory, IterableOnce, Iterator, StrictOptimizedIterableOps}
 
 import java.lang.String
 
@@ -39,9 +39,25 @@ sealed class NumericRange[T](
   extends AbstractSeq[T]
     with IndexedSeq[T]
     with IndexedSeqOps[T, IndexedSeq, IndexedSeq[T]]
-    with StrictOptimizedSeqOps[T, IndexedSeq, IndexedSeq[T]] { self =>
+    with StrictOptimizedSeqOps[T, IndexedSeq, IndexedSeq[T]]
+    with Serializable { self =>
 
-  override def iterator: Iterator[T] = new NumericRange.NumericRangeIterator(this, num)
+  override def iterator() = new Iterator[T] {
+    import num.mkNumericOps
+
+    private var _hasNext = !self.isEmpty
+    private var _next: T = start
+    private val lastElement: T = if (_hasNext) last else start
+    override def knownSize: Int = if (_hasNext) num.toInt((lastElement - _next) / step) + 1 else 0
+    def hasNext: Boolean = _hasNext
+    def next(): T = {
+      if (!_hasNext) Iterator.empty.next()
+      val value = _next
+      _hasNext = value != lastElement
+      _next = num.plus(value, step)
+      value
+    }
+  }
 
   /** Note that NumericRange must be invariant so that constructs
     *  such as "1L to 10 by 5" do not infer the range type as AnyVal.
@@ -175,7 +191,7 @@ sealed class NumericRange[T](
     // XXX This may be incomplete.
     new NumericRange[A](fm(start), fm(end), fm(step), isInclusive) {
 
-      private[this] lazy val underlyingRange: NumericRange[T] = self
+      private lazy val underlyingRange: NumericRange[T] = self
       override def foreach[@specialized(Unit) U](f: A => U): Unit = { underlyingRange foreach (x => f(fm(x))) }
       override def isEmpty = underlyingRange.isEmpty
       override def apply(idx: Int): A = fm(underlyingRange(idx))
@@ -261,8 +277,6 @@ sealed class NumericRange[T](
     val stepped = if (step == 1) "" else s" by $step"
     s"${empty}NumericRange $start $preposition $end$stepped"
   }
-
-  override protected[this] def writeReplace(): AnyRef = this
 }
 
 /** A companion object for numeric ranges.
@@ -391,21 +405,5 @@ object NumericRange {
     Numeric.LongIsIntegral -> Ordering.Long
   )
 
-  @SerialVersionUID(3L)
-  private final class NumericRangeIterator[T](self: NumericRange[T], num: Integral[T]) extends AbstractIterator[T] with Serializable {
-    import num.mkNumericOps
-
-    private[this] var _hasNext = !self.isEmpty
-    private[this] var _next: T = self.start
-    private[this] val lastElement: T = if (_hasNext) self.last else self.start
-    override def knownSize: Int = if (_hasNext) num.toInt((lastElement - _next) / self.step) + 1 else 0
-    def hasNext: Boolean = _hasNext
-    def next(): T = {
-      if (!_hasNext) Iterator.empty.next()
-      val value = _next
-      _hasNext = value != lastElement
-      _next = num.plus(value, self.step)
-      value
-    }
-  }
 }
+

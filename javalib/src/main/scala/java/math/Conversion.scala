@@ -100,7 +100,7 @@ private[math] object Conversion {
           @tailrec
           def innerLoop(): Unit = {
             currentChar -= 1
-            result = Character.forDigit(resDigit % radix, radix) + result
+            result = Character.forDigit(resDigit % radix, radix).toString + result
             resDigit /= radix
             if(resDigit != 0 && currentChar != 0)
               innerLoop()
@@ -111,7 +111,7 @@ private[math] object Conversion {
           var i: Int = 0
           while (i < delta && currentChar > 0) {
             currentChar -= 1
-            result = '0' + result
+            result = "0" + result
             i += 1
           }
           i = tempLen - 1
@@ -130,14 +130,14 @@ private[math] object Conversion {
           while (j < 8 && currentChar > 0) {
             resDigit = digits(i) >> (j << 2) & 0xf
             currentChar -= 1
-            result = java.lang.Character.forDigit(resDigit, 16) + result
+            result = resDigit.toHexString + result
             j += 1
           }
         }
       }
       // strip leading zero's
       result = result.dropWhile(_ == '0')
-      if (sign == -1) '-' + result
+      if (sign == -1) "-" + result
       else result
     }
   }
@@ -192,7 +192,7 @@ private[math] object Conversion {
 
       result = dropLeadingZeros(result)
 
-      if (sign < 0) '-' + result
+      if (sign < 0) "-" + result
       else result
     }
   }
@@ -241,7 +241,7 @@ private[math] object Conversion {
         val prev = v
         v /= 10
         currentChar -= 1
-        result = (48 + (prev - v * 10)).toChar + result
+        result = (prev - v * 10).toInt.toString + result
       } while (v != 0)
 
       val exponent = resLengthInChars - currentChar - scale - 1
@@ -254,24 +254,24 @@ private[math] object Conversion {
         } else {
           // special case 2
           for (j <- 0 until -index) {
-            result = '0' + result
+            result = "0" + result
           }
           result = "0." + result
         }
       } else if (scale !=0) {
         var result1 =  exponent.toString
         if (exponent > 0)
-          result1 = '+' + result1
-        result1 = 'E' + result1
+          result1 = "+" + result1
+        result1 = "E" + result1
 
         result =
           if (resLengthInChars - currentChar > 1)
-            result(0) + "." + result.substring(1) + result1
+            result.substring(0, 1) + "." + result.substring(1) + result1
           else
             result + result1
       }
 
-      if (negNumber) '-' + result
+      if (negNumber) "-" + result
       else result
     }
   }

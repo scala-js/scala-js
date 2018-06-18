@@ -84,7 +84,7 @@ final class Class[A] private (data: ScalaJSClassData[A]) extends Object {
     scala.scalajs.runtime.SemanticsUtils.asInstanceOfCheck(
         (this eq classOf[Nothing]) ||
         (obj != null && !isRawJSType && !isInstance(obj)),
-        new ClassCastException(obj + " is not an instance of " + getName))
+        new ClassCastException("" + obj + " is not an instance of " + getName))
     obj.asInstanceOf[A]
   }
 

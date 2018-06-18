@@ -72,7 +72,7 @@ class Hashtable[K, V] private (inner: mutable.HashMap[Box[Any], V])
     new ju.Hashtable[K, V](this)
 
   override def toString(): String =
-    inner.iterator.map(kv => kv._1.inner + "=" + kv._2).mkString("{", ", ", "}")
+    inner.iterator.map(kv => "" + kv._1.inner + "=" + kv._2).mkString("{", ", ", "}")
 
   def keySet(): ju.Set[K] =
     inner.keySet.map(_.inner.asInstanceOf[K]).asJava

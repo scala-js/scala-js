@@ -388,7 +388,14 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
               varargsModule,
               definitions.wrapVarargsArrayMethodName(definitions.ObjectTpe),
               Nil, List(array))
-          gen.mkMethodCall(definitions.List_apply, List(wrappedArray))
+          val listApply = typer.typed {
+            gen.mkMethodCall(definitions.ListModule, nme.apply, Nil, List(wrappedArray))
+          }
+
+          if (listApply.tpe.typeSymbol.isSubClass(definitions.ListClass))
+            listApply
+          else
+            gen.mkCast(listApply, definitions.ListClass.toTypeConstructor)
         }
 
         def mkMethodList(tpe: TypeTree)(testMethods: List[MethodSymbol]): Tree =
