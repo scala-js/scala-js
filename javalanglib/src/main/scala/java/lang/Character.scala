@@ -248,7 +248,7 @@ object Character {
       digitWithValidRadix(codePoint, radix)
   }
 
-  private def digitWithValidRadix(codePoint: Int, radix: Int): Int = {
+  private[lang] def digitWithValidRadix(codePoint: Int, radix: Int): Int = {
     val value = if (codePoint < 256) {
       // Fast-path for the ASCII repertoire
       if (codePoint >= '0' && codePoint <= '9')
@@ -289,6 +289,10 @@ object Character {
     if (value < radix) value
     else -1
   }
+
+  private[lang] def isZeroDigit(ch: Char): scala.Boolean =
+    if (ch < 256) ch == '0'
+    else Arrays.binarySearch(nonASCIIZeroDigitCodePoints, ch.toInt) >= 0
 
   // ported from https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/lang/Character.java
   def forDigit(digit: Int, radix: Int): Char = {
