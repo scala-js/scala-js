@@ -1,0 +1,6 @@
+This project contains a translation of JUnit 4.12 to Scala.js in
+junit-runtime/src/main/scala/org/junit/. The original code can be found at
+https://github.com/junit-team/junit4/commit/64155f8a9babcfcf4263cf4d08253a1556e75481
+As a translation, it constitutes a derivative work and is therefore licensed
+under the Eclipse Public License v1.0, whose full text can be found in
+junit-runtime/src/main/scala/org/junit/LICENSE-junit.txt
