@@ -171,8 +171,8 @@ object Build {
       autoAPIMappings := true,
 
       // Add Java Scaladoc mapping
-      apiMappings += {
-        val rtJar = {
+      apiMappings ++= {
+        val optRTJar = {
           val bootClasspath = System.getProperty("sun.boot.class.path")
           if (bootClasspath != null) {
             // JDK <= 8, there is an rt.jar (or classes.jar) on the boot classpath
@@ -182,16 +182,20 @@ object Build {
             val jar = jars.find(matches(_, "rt")) // most JREs
               .orElse(jars.find(matches(_, "classes"))) // Java 6 on Mac OS X
               .get
-            file(jar)
+            Some(file(jar))
           } else {
-            // JDK >= 9, sbt gives us a fake rt.jar in `scala.ext.dirs`
-            val scalaExtDirs = System.getProperty("scala.ext.dirs")
-            file(scalaExtDirs) / "rt.jar"
+            // JDK >= 9, maybe sbt gives us a fake rt.jar in `scala.ext.dirs`
+            val scalaExtDirs = Option(System.getProperty("scala.ext.dirs"))
+            scalaExtDirs.map(extDirs => file(extDirs) / "rt.jar")
           }
         }
 
-        assert(rtJar.exists, s"$rtJar does not exist")
-        rtJar -> url(javaDocBaseURL)
+        optRTJar.fold[Map[File, URL]] {
+          Map.empty
+        } { rtJar =>
+          assert(rtJar.exists, s"$rtJar does not exist")
+          Map(rtJar -> url(javaDocBaseURL))
+        }
       },
 
       /* Add a second Java Scaladoc mapping for cases where Scala actually
@@ -1078,8 +1082,25 @@ object Build {
           // Filter doc sources to remove implementation details from doc.
           sources in doc := {
             val prev = (sources in doc).value
+            val javaV = javaVersion.value
+            val scalaV = scalaVersion.value
 
-            if (javaVersion.value < 9) {
+            /* On Java 9+, Scaladoc will crash with "bad constant pool tag 20"
+             * until version 2.12.1 included. The problem seems to have been
+             * fixed in 2.12.2, perhaps through
+             * https://github.com/scala/scala/pull/5711.
+             * See also #3152.
+             */
+            val mustAvoidJavaDoc = {
+              javaV >= 9 && {
+                scalaV.startsWith("2.10.") ||
+                scalaV.startsWith("2.11.") ||
+                scalaV == "2.12.0" ||
+                scalaV == "2.12.1"
+              }
+            }
+
+            if (!mustAvoidJavaDoc) {
               def containsFileFilter(s: String): FileFilter = new FileFilter {
                 override def accept(f: File): Boolean = {
                   val path = f.getAbsolutePath.replace('\\', '/')
@@ -1096,10 +1117,6 @@ object Build {
 
               (sources in doc).value.filter(filter.accept)
             } else {
-              /* Work around #3152: library/doc crashes with
-               *   <Cannot read source file>
-               * on JDK 9.
-               */
               Nil
             }
           },
