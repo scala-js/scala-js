@@ -20,6 +20,7 @@ import org.scalajs.linker.irio._
 
 import org.scalajs.jsenv._
 
+import org.scalajs.ir.IRVersionNotSupportedException
 import org.scalajs.ir.Printers.IRTreePrinter
 
 import org.scalajs.testadapter.{TestAdapter, HTMLRunnerBuilder, TestAdapterInitializer}
@@ -88,6 +89,18 @@ private[sbtplugin] object ScalaJSPluginInternal {
       true
     } catch {
       case _: NumberFormatException => false
+    }
+  }
+
+  private def enhanceIRVersionNotSupportedException[A](body: => A): A = {
+    try {
+      body
+    } catch {
+      case e: IRVersionNotSupportedException =>
+        throw new IRVersionNotSupportedException(e.version, e.supported,
+            s"${e.getMessage}\nYou may need to upgrade the Scala.js sbt " +
+            s"plugin to version ${e.version} or later.",
+            e)
     }
   }
 
@@ -186,7 +199,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
               .withSourceMapURI(relURI(sourceMapFile.getName))
               .withJSFileURI(relURI(output.getName))
 
-            linker.link(ir, moduleInitializers, out, sbtLogger2ToolsLogger(log))
+            enhanceIRVersionNotSupportedException {
+              linker.link(ir, moduleInitializers, out, sbtLogger2ToolsLogger(log))
+            }
 
             logIRCacheStats(log)
 
@@ -222,7 +237,10 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val classpath = Attributed.data(fullClasspath.value)
         val irContainers = FileScalaJSIRContainer.fromClasspath(classpath)
         val log = sbtLogger2ToolsLogger(streams.value.log)
-        val irFiles = log.time("Update IR cache")(cache.cached(irContainers))
+
+        val irFiles = enhanceIRVersionNotSupportedException {
+          log.time("Update IR cache")(cache.cached(irContainers))
+        }
 
         Attributed
           .blank[Seq[VirtualScalaJSIRFile]](irFiles)
@@ -240,9 +258,11 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .find(_.relativePath == relPath)
           .getOrElse(throw new FileNotFoundException(relPath))
 
-        val stdout = new java.io.PrintWriter(System.out)
-        new IRTreePrinter(stdout).print(vfile.tree)
-        stdout.flush()
+        enhanceIRVersionNotSupportedException {
+          val stdout = new java.io.PrintWriter(System.out)
+          new IRTreePrinter(stdout).print(vfile.tree)
+          stdout.flush()
+        }
 
         logIRCacheStats(streams.value.log)
       },
