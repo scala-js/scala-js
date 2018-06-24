@@ -74,38 +74,43 @@ object Integer {
   @inline
   private def parseIntImpl(s: String, radix: scala.Int,
       signed: scala.Boolean): scala.Int = {
-    def fail = throw new NumberFormatException(s"""For input string: "$s"""")
 
-    if (s == null || s.size == 0 ||
-        radix < Character.MIN_RADIX ||
-        radix > Character.MAX_RADIX)
-      fail
-    else {
-      var i = if ((signed && s(0) == '-') || s(0) == '+') 1 else 0
-      // JavaDoc says: We need at least one digit
-      if (s.size <= i) fail
-      else {
-        // Check each character for validity
-        while (i < s.size) {
-          if (Character.digit(s(i), radix) < 0) fail
-          i += 1
-        }
-        val res = js.Dynamic.global.parseInt(s, radix).asInstanceOf[scala.Double]
+    def fail(): Nothing =
+      throw new NumberFormatException(s"""For input string: "$s"""")
 
-        @inline def isOutOfBounds: scala.Boolean = {
-          if (signed) res > MAX_VALUE || res < MIN_VALUE
-          else res > 0xFFFFFFFFL || res < 0
-        }
+    val len = if (s == null) 0 else s.length
 
-        if (res.isNaN || isOutOfBounds) {
-          fail
-        } else if (signed) {
-          res.toInt
-        } else {
-          asInt(res)
-        }
-      }
+    if (len == 0 || radix < Character.MIN_RADIX || radix > Character.MAX_RADIX)
+      fail()
+
+    val firstChar = s.charAt(0)
+    val negative = signed && firstChar == '-'
+
+    val maxAbsValue: scala.Double = {
+      if (!signed) 0xffffffffL.toDouble
+      else if (negative) 0x80000000L.toDouble
+      else 0x7fffffffL.toDouble
     }
+
+    var i = if (negative || firstChar == '+') 1 else 0
+
+    // We need at least one digit
+    if (i >= s.length)
+      fail()
+
+    var result: scala.Double = 0.0
+    while (i != len) {
+      val digit = Character.digitWithValidRadix(s.charAt(i), radix)
+      result = result * radix + digit
+      if (digit == -1 || result > maxAbsValue)
+        fail()
+      i += 1
+    }
+
+    if (negative)
+      asInt(-result)
+    else
+      asInt(result)
   }
 
   @inline def toString(i: scala.Int): String = "" + i

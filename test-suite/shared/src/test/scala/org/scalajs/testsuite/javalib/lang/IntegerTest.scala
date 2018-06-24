@@ -504,6 +504,15 @@ class IntegerTest {
       test("+42", 42)
     test("-0", 0)
     test("-FF", -255, 16)
+
+    test("\u1045\u1043\u1047", 537)
+    test("\u1040\u1040\u1040\u1040\u1040\u1040\u1040\u1040\u1040159", 159)
+    if (!executingInJVMOnJDK6)
+      test("+\u1040\u1040\u1040\u1040\u1040\u1040\u1040\u1040\u1040159", 159)
+    test("-\u1040\u1040\u1040\u1040\u1040\u1040\u1040\u1040\u1040159", -159)
+
+    test("\uff21\uff34", 389, 36)
+    test("\uff41\uff54", 389, 36)
   }
 
   @Test def should_reject_invalid_strings_when_parsing(): Unit = {
@@ -516,6 +525,68 @@ class IntegerTest {
     test("99", 8)
     test("-")
     test("")
+    test(null)
+
+    test("0", 1)
+    test("12", 1)
+    test("12", 40)
+
+    /* Supplementary characters are not supported by parseInt, even those that
+     * are valid digits according to Character.digit(int, int).
+     */
+    test("\ud804\udcf0")
+  }
+
+  @Test def parseUnsignedInt(): Unit = {
+    def test(s: String, v: Int, radix: Int = 10): Unit =
+      assertEquals(v, Integer.parseUnsignedInt(s, radix))
+
+    test("0", 0)
+    test("5", 5)
+    test("127", 127)
+    test("30000", 30000)
+    test("Kona", 411787, 27)
+    if (!executingInJVMOnJDK6)
+      test("+42", 42)
+    test("FF", 255, 16)
+    test("4294967295", 0xffffffff)
+    test("ffFFffFF", 0xffffffff, 16)
+
+    test("\u1045\u1043\u1047", 537)
+    test("\u1040\u1040\u1040\u1040\u1040\u1040\u1040\u1040\u1040159", 159)
+    if (!executingInJVMOnJDK6)
+      test("+\u1040\u1040\u1040\u1040\u1040\u1040\u1040\u1040\u1040159", 159)
+
+    test("\uff21\uff34", 389, 36)
+    test("\uff41\uff54", 389, 36)
+  }
+
+  @Test def parseUnsignedIntInvalid(): Unit = {
+    def test(s: String, radix: Int = 10): Unit = {
+      expectThrows(classOf[NumberFormatException],
+          Integer.parseUnsignedInt(s, radix))
+    }
+
+    test("abc")
+    test("5a")
+    test("4294967296")
+    test("ffFFffFF", 20)
+    test("99", 8)
+    test("-")
+    test("")
+    test(null)
+
+    test("-100")
+    test("-0")
+
+    test("0", 1)
+    test("12", 1)
+    test("12", 40)
+
+    /* Supplementary characters are not supported by parseInt, even those that
+     * are valid digits according to Character.digit(int, int).
+     */
+    test("\ud804\udcf0")
   }
 
   @Test def should_parse_strings_in_base_16(): Unit = {
