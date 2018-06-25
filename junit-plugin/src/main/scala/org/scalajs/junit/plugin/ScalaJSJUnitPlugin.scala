@@ -87,20 +87,6 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
   val description: String = "Makes JUnit test classes invokable in Scala.js"
 
-  // `ScalaJSPlugin` instance reference. Only `registerModuleExports` is accessible.
-  private lazy val scalaJSPlugin = {
-    type ScalaJSPlugin = NscPlugin {
-      def registerModuleExports(sym: ScalaJSJUnitPluginComponent.global.Symbol): Unit
-    }
-    global.plugins.collectFirst {
-      case pl if pl.getClass.getName == "org.scalajs.core.compiler.ScalaJSPlugin" =>
-        pl.asInstanceOf[ScalaJSPlugin]
-    }.getOrElse {
-      throw new Exception(
-          "The Scala.js JUnit plugin only works with the Scala.js plugin enabled.")
-    }
-  }
-
   object ScalaJSJUnitPluginComponent
       extends plugins.PluginComponent with transform.Transform with Compat210Component {
 
@@ -238,7 +224,6 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
           ClassInfoType(newParentsInfo, decls, bootSym.info.typeSymbol)
         }
         bootSym.setInfo(newClazzInfo)
-        scalaJSPlugin.registerModuleExports(bootSym)
         bootClazz.setSymbol(bootSym)
 
         currentRun.symSource(bootSym) = clazz.symbol.sourceFile
