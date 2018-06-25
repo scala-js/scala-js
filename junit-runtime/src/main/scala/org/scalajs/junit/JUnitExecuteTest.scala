@@ -72,7 +72,6 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
   private[this] def executeTestMethod(classMetadata: JUnitTestBootstrapper,
       method: JUnitMethodMetadata) = {
     val jUnitMetadata = classMetadata.metadata()
-    val testClassInstance = classMetadata.newInstance()
     val methodName = method.name
     val decodedMethodName = {
       if (decodeScalaNames) runner.runSettings.decodeName(methodName)
@@ -80,29 +79,42 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
     }
     val testAnnotation = method.getTestAnnotation.get
 
+    if (verbose)
+      logFormattedInfo(decodedMethodName, "started")
+    else
+      logFormattedDebug(decodedMethodName, "started")
+
     val t0 = System.nanoTime
     def getTimeInSeconds(): Double = (System.nanoTime - t0).toDouble / 1000000000
 
-    def executeTestMethods(): Unit = {
-      val expectedException = testAnnotation.expected
-      try {
-        if (verbose) logFormattedInfo(decodedMethodName, "started")
-        else logFormattedDebug(decodedMethodName, "started")
+    var eventAlreadyEmitted: Boolean = false
 
-        classMetadata.invoke(testClassInstance, method.name)
-        logFormattedDebug(decodedMethodName,
-            s"finished, took ${getTimeInSeconds()} sec")
+    def emitTestFailed(): Unit = {
+      if (eventAlreadyEmitted) {
+        // Only add to the failed test count, don't emit an event
+        runner.testFailed()
+      } else {
+        testFailed(methodName)
+        eventAlreadyEmitted = true
+      }
+    }
+
+    def execute(expectedException: Class[_] = classOf[org.junit.Test.None])(
+        body: => Unit): Boolean = {
+
+      try {
+        body
 
         if (expectedException == classOf[org.junit.Test.None]) {
-          testPassed(methodName)
-          executeAfterMethods()
+          true
         } else {
           val msg = {
             s"failed: Expected exception: " + expectedException +
             s"took ${getTimeInSeconds()} sec"
           }
           logFormattedError(decodedMethodName, msg, None)
-          testFailed(methodName)
+          emitTestFailed()
+          false
         }
       } catch {
         case ex: Throwable =>
@@ -111,9 +123,9 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
               ex.isInstanceOf[internal.AssumptionViolatedException]) {
             logAssertionWarning(decodedMethodName, ex, timeInSeconds)
             testSkipped()
+            false
           } else if (expectedException.isInstance(ex)) {
-            testPassed(methodName)
-            executeAfterMethods()
+            true
           } else if (expectedException == classOf[org.junit.Test.None]) {
             val isAssertion = ex.isInstanceOf[AssertionError]
             val failedMsg = new StringBuilder
@@ -134,48 +146,62 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
               else None
             }
             logFormattedError(decodedMethodName, msg, exOpt)
-            testFailed(methodName)
+            emitTestFailed()
+            false
           } else {
             val msg = s"failed: ${ex.getClass}, took $timeInSeconds sec"
             logFormattedError(decodedMethodName, msg, Some(ex))
-            testFailed(methodName)
+            emitTestFailed()
+            false
           }
-          logFormattedDebug(decodedMethodName,
-              s"finished, took $timeInSeconds sec")
       }
-      runner.testRegisterTotal()
     }
 
-    def executeAfterMethods(): Unit = {
-      try {
+    var testClassInstance: AnyRef = null
+
+    val instantiationSucceeded = execute() {
+      testClassInstance = classMetadata.newInstance()
+    }
+
+    val success = if (!instantiationSucceeded) {
+      false
+    } else {
+      val beforeSucceeded = execute() {
+        for (method <- jUnitMetadata.beforeMethod)
+          classMetadata.invoke(testClassInstance, method.name)
+      }
+
+      val beforeAndTestSucceeded = if (!beforeSucceeded) {
+        false
+      } else {
+        execute(testAnnotation.expected) {
+          classMetadata.invoke(testClassInstance, method.name)
+        }
+      }
+
+      // Whether before and/or test succeeded or not, run the after methods
+      val afterSucceeded = execute() {
         for (method <- jUnitMetadata.afterMethod)
           classMetadata.invoke(testClassInstance, method.name)
-
-        val timeInSeconds = getTimeInSeconds()
-        if (testAnnotation.timeout != 0 && testAnnotation.timeout <= timeInSeconds) {
-          richLogger.warn("Timeout: took " + timeInSeconds + " sec, expected " +
-              (testAnnotation.timeout.toDouble / 1000) + " sec")
-        }
-      } catch {
-        case ex: Throwable =>
-          logFormattedError(methodName, "failed: on @AfterClass method", Some(ex))
-          val selector = new NestedTestSelector(fullyQualifiedName, methodName)
-          eventHandler.handle(new JUnitEvent(taskDef, Status.Failure, selector))
       }
+
+      beforeAndTestSucceeded && afterSucceeded
     }
 
-    try {
-      for (method <- jUnitMetadata.beforeMethod) {
-        classMetadata.invoke(testClassInstance, method.name)
-      }
-      executeTestMethods()
-    } catch {
-      case ex: AssumptionViolatedException =>
-        logAssertionWarning(methodName, ex, getTimeInSeconds())
+    logFormattedDebug(decodedMethodName,
+        s"finished, took ${getTimeInSeconds()} sec")
 
-      case ex: internal.AssumptionViolatedException =>
-        logAssertionWarning(methodName, ex, getTimeInSeconds())
+    // Scala.js-specific: timeouts are warnings only, after the fact
+    val timeInSeconds = getTimeInSeconds()
+    if (testAnnotation.timeout != 0 && testAnnotation.timeout <= timeInSeconds) {
+      richLogger.warn("Timeout: took " + timeInSeconds + " sec, expected " +
+          (testAnnotation.timeout.toDouble / 1000) + " sec")
     }
+
+    if (success)
+      testPassed(methodName)
+
+    runner.testRegisterTotal()
   }
 
   private def ignoreTest(methodName: String) = {

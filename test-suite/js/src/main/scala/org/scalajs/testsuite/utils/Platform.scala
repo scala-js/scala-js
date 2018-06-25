@@ -24,6 +24,8 @@ object Platform {
 
   final val executingInJVMOnJDK7OrLower = false
 
+  final val executingInJVMOnJDK8OrLower = false
+
   // Members that are only accessible from testSuite/js
   // (i.e. do no link on the JVM).
 

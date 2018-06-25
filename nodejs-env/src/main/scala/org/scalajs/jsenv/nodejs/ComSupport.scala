@@ -245,7 +245,7 @@ object ComRun {
            |  var socket = require('net').connect($port);
            |
            |  // Buffers received data
-           |  var inBuffer = new Buffer(0);
+           |  var inBuffer = Buffer.alloc(0);
            |
            |  // Buffers received messages
            |  var inMessages = [];
@@ -289,7 +289,7 @@ object ComRun {
            |    },
            |    send: function(msg) {
            |      var len = msg.length;
-           |      var buf = new Buffer(4 + len * 2);
+           |      var buf = Buffer.allocUnsafe(4 + len * 2);
            |      buf.writeInt32BE(len, 0);
            |      for (var i = 0; i < len; ++i)
            |        buf.writeUInt16BE(msg.charCodeAt(i), 4 + i * 2);

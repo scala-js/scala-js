@@ -62,7 +62,7 @@ class ModulesTest {
   }
 
   @Test def testImportClassInModule(): Unit = {
-    val b = new Buffer(5)
+    val b = Buffer.alloc(5)
     for (i <- 0 until 5)
       b(i) = (i * i).toShort
 
@@ -71,8 +71,8 @@ class ModulesTest {
   }
 
   @Test def testImportIntegrated(): Unit = {
-    val b = new Buffer(js.Array[Short](0xe3, 0x81, 0x93, 0xe3, 0x82, 0x93, 0xe3,
-        0x81, 0xab, 0xe3, 0x81, 0xa1, 0xe3, 0x81, 0xaf))
+    val b = Buffer.from(js.Array[Short](0xe3, 0x81, 0x93, 0xe3, 0x82, 0x93,
+        0xe3, 0x81, 0xab, 0xe3, 0x81, 0xa1, 0xe3, 0x81, 0xaf))
     val decoder = new StringDecoder()
     assertTrue(Buffer.isBuffer(b))
     assertFalse(Buffer.isBuffer(decoder))
@@ -105,19 +105,17 @@ object ModulesTest {
     def end(): String = js.native
   }
 
-  /* To stay compatible with Node.js 4.2.1, we describe and use deprecated
-   * APIs.
-   */
   @js.native
   @JSImport("buffer", "Buffer")
-  class Buffer private[this] () extends js.typedarray.Uint8Array(0) {
-    def this(size: Int) = this()
-    def this(array: js.Array[Short]) = this()
-  }
+  class Buffer private[this] () extends js.typedarray.Uint8Array(0)
 
+  // This API requires Node.js >= v5.10.0
   @js.native
   @JSImport("buffer", "Buffer")
   object Buffer extends js.Object {
+    def alloc(size: Int): Buffer = js.native
+    def from(array: js.Array[Short]): Buffer = js.native
+
     def isBuffer(x: Any): Boolean = js.native
   }
 }

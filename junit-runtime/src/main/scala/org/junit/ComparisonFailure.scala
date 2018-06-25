@@ -33,14 +33,14 @@ object ComparisonFailure {
     }
 
     private def sharedSuffix(prefix: String): String = {
+      def charAtFromEnd(s: String, i: Int): Char =
+        s.charAt(s.length() - 1 - i)
+
       var suffixLength = 0
       var maxSuffixLength = Math.min(expected.length() - prefix.length(),
         actual.length() - prefix.length()) - 1
-      while (suffixLength <= maxSuffixLength) {
-        if (expected.charAt(expected.length() - 1 - suffixLength)
-          != actual.charAt(actual.length() - 1 - suffixLength)) {
-          maxSuffixLength = suffixLength - 1 // break
-        }
+      while (suffixLength <= maxSuffixLength &&
+          charAtFromEnd(expected, suffixLength) == charAtFromEnd(actual, suffixLength)) {
         suffixLength += 1
       }
       expected.substring(expected.length() - suffixLength)
