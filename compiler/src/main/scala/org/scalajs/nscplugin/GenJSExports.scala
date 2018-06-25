@@ -16,7 +16,7 @@ import org.scalajs.ir
 import ir.{Trees => js, Types => jstpe}
 import ir.Trees.OptimizerHints
 
-import util.ScopedVar
+import org.scalajs.nscplugin.util.ScopedVar
 import ScopedVar.withScopedVars
 
 /** Generation of exports for JavaScript

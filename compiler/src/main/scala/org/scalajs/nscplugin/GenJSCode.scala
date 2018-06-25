@@ -20,8 +20,7 @@ import org.scalajs.ir
 import ir.{Trees => js, Types => jstpe, ClassKind, Hashers}
 import ir.Trees.OptimizerHints
 
-import util.ScopedVar
-import util.VarBox
+import org.scalajs.nscplugin.util.{ScopedVar, VarBox}
 import ScopedVar.withScopedVars
 
 /** Generate JavaScript code and output it to disk

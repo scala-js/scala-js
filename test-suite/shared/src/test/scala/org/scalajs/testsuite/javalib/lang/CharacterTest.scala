@@ -29,12 +29,77 @@ class CharacterTest {
   }
 
   @Test def digit(): Unit = {
-    assertEquals(10, Character.digit('a', 16))
-    assertEquals(-1, Character.digit('}', 5))
-    assertEquals(-1, Character.digit('1', 50))
-    assertEquals(1, Character.digit('1', 36))
-    assertEquals(35, Character.digit('Z', 36))
-    assertEquals(11, Character.digit('\uFF22', 20))
+    import Character.{MAX_RADIX, MIN_RADIX}
+
+    def test(expected: Int, codePoint: Int): Unit = {
+      assertEquals(expected, Character.digit(codePoint, MAX_RADIX))
+      if (codePoint <= Char.MaxValue)
+        assertEquals(expected, Character.digit(codePoint.toChar, MAX_RADIX))
+
+      if (expected != -1) {
+        assertEquals(expected,
+            Character.digit(codePoint, Math.max(expected + 1, MIN_RADIX)))
+
+        if (expected >= MIN_RADIX)
+          assertEquals(-1, Character.digit(codePoint, expected))
+      }
+    }
+
+    // Invalid radix
+
+    assertEquals(-1, Character.digit('0', MIN_RADIX - 1))
+    assertEquals(-1, Character.digit('0', MAX_RADIX + 1))
+    assertEquals(-1, Character.digit('0', -1))
+
+    assertEquals(-1, Character.digit('0'.toInt, MIN_RADIX - 1))
+    assertEquals(-1, Character.digit('0'.toInt, MAX_RADIX + 1))
+    assertEquals(-1, Character.digit('0'.toInt, -1))
+
+    // A few invalid digits
+    test(-1, '}')
+    test(-1, -4)
+    test(-1, 0xffffff)
+    test(-1, '0' - 1)
+    test(-1, '9' + 1)
+    test(-1, 'A' - 1)
+    test(-1, 'Z' + 1)
+    test(-1, 'a' - 1)
+    test(-1, 'z' + 1)
+    test(-1, 0xff20)
+    test(-1, 0xff3b)
+    test(-1, 0xff40)
+    test(-1, 0xff5b)
+    test(-1, 0xbe5)
+    test(-1, 0xbf0)
+    test(-1, 0x11065)
+    test(-1, 0x11070)
+    test(-1, Int.MinValue)
+    test(-1, Int.MaxValue)
+
+    // Every single valid digit
+
+    val All0s = Array[Int]('0', 0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66,
+        0xae6, 0xb66, 0xbe6, 0xc66, 0xce6, 0xd66, 0xe50, 0xed0, 0xf20, 0x1040,
+        0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0,
+        0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xaa50, 0xabf0, 0xff10,
+        0x104a0, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x116c0, 0x1d7ce, 0x1d7d8,
+        0x1d7e2, 0x1d7ec, 0x1d7f6)
+
+    for {
+      zero <- All0s
+      offset <- 0 to 9
+    } {
+      test(offset, zero + offset)
+    }
+
+    val AllAs = Array[Int]('A', 'a', 0xff21, 0xff41)
+
+    for {
+      a <- AllAs
+      offset <- 0 to 25
+    } {
+      test(10 + offset, a + offset)
+    }
   }
 
   @Test def forDigit(): Unit = {

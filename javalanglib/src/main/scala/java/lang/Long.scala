@@ -229,8 +229,10 @@ object Long {
        * number of chunks that are necessary to parse any string.
        */
       var firstChunkStart = start
-      while (firstChunkStart < length && s.charAt(firstChunkStart) == '0')
+      while (firstChunkStart < length &&
+          Character.isZeroDigit(s.charAt(firstChunkStart))) {
         firstChunkStart += 1
+      }
 
       /* After that, if more than 3 chunks are necessary, it means the value
        * is too large, and does not fit in an unsigned Long.
@@ -238,20 +240,21 @@ object Long {
       if (length - firstChunkStart > 3 * chunkLen)
         parseLongError(s)
 
-      // Check each character for validity
-      var i = firstChunkStart
-      while (i < length) {
-        if (Character.digit(s.charAt(i), radix) < 0)
-          parseLongError(s)
-        i += 1
+      @noinline def parseChunkAsUInt(chunkStart: Int, chunkEnd: Int): Int = {
+        var result = 0 // This is an *unsigned* integer
+        var i = chunkStart
+        while (i != chunkEnd) {
+          val digit = Character.digitWithValidRadix(s.charAt(i), radix)
+          if (digit == -1)
+            parseLongError(s)
+          result = result * radix + digit // cannot overflow
+          i += 1
+        }
+        result
       }
 
-      @inline def parseChunk(chunkStart: Int, chunkEnd: Int): scala.Long = {
-        val chunk = s.jsSubstring(chunkStart, chunkEnd)
-        val chunkValueDouble =
-          js.Dynamic.global.parseInt(chunk, radix).asInstanceOf[scala.Double]
-        Integer.toUnsignedLong(chunkValueDouble.toInt)
-      }
+      @inline def parseChunk(chunkStart: Int, chunkEnd: Int): scala.Long =
+        Integer.toUnsignedLong(parseChunkAsUInt(chunkStart, chunkEnd))
 
       /* The first chunk is sized so that all subsequent chunks are of size
        * chunkLen. Note also that the first chunk cannot overflow.
@@ -438,43 +441,43 @@ object Long {
     else         Integer.numberOfTrailingZeros((l >>> 32).toInt) + 32
   }
 
-  def toBinaryString(l: scala.Long): String = {
+  @inline def toBinaryString(l: scala.Long): String =
+    toBinaryString(l.toInt, (l >>> 32).toInt)
+
+  private def toBinaryString(lo: Int, hi: Int): String = {
     val zeros = "00000000000000000000000000000000" // 32 zeros
     @inline def padBinary32(i: Int) = {
       val s = Integer.toBinaryString(i)
       zeros.substring(s.length) + s
     }
 
-    val lo = l.toInt
-    val hi = (l >>> 32).toInt
-
     if (hi != 0) Integer.toBinaryString(hi) + padBinary32(lo)
     else Integer.toBinaryString(lo)
   }
 
-  def toHexString(l: scala.Long): String = {
+  @inline def toHexString(l: scala.Long): String =
+    toHexString(l.toInt, (l >>> 32).toInt)
+
+  private def toHexString(lo: Int, hi: Int): String = {
     val zeros = "00000000" // 8 zeros
     @inline def padBinary8(i: Int) = {
       val s = Integer.toHexString(i)
       zeros.substring(s.length) + s
     }
 
-    val lo = l.toInt
-    val hi = (l >>> 32).toInt
-
     if (hi != 0) Integer.toHexString(hi) + padBinary8(lo)
     else Integer.toHexString(lo)
   }
 
-  def toOctalString(l: scala.Long): String = {
+  @inline def toOctalString(l: scala.Long): String =
+    toOctalString(l.toInt, (l >>> 32).toInt)
+
+  private def toOctalString(lo: Int, hi: Int): String = {
     val zeros = "0000000000" // 10 zeros
     @inline def padOctal10(i: Int) = {
       val s = Integer.toOctalString(i)
       zeros.substring(s.length) + s
     }
-
-    val lo = l.toInt
-    val hi = (l >>> 32).toInt
 
     val lp = lo & 0x3fffffff
     val mp = ((lo >>> 30) + (hi << 2)) & 0x3fffffff

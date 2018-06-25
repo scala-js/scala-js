@@ -147,8 +147,8 @@ object ScalaRunTime {
   /** A helper for case classes. */
   def typedProductIterator[T](x: Product): Iterator[T] = {
     new AbstractIterator[T] {
-      private[this] var c: Int = 0
-      private[this] val cmax = x.productArity
+      private var c: Int = 0
+      private val cmax = x.productArity
       def hasNext = c < cmax
       def next() = {
         val result = x.productElement(c)
@@ -238,8 +238,8 @@ object ScalaRunTime {
       case x: String                    => if (x.head.isWhitespace || x.last.isWhitespace) "\"" + x + "\"" else x
       case x if useOwnToString(x)       => x.toString
       case x: AnyRef if isArray(x)      => arrayToString(x)
-      case x: scala.collection.Map[_, _] => x.iterator take maxElements map mapInner mkString (x.collectionClassName + "(", ", ", ")")
-      case x: Iterable[_]               => x.iterator take maxElements map inner mkString (x.collectionClassName + "(", ", ", ")")
+      case x: scala.collection.Map[_, _] => x.iterator take maxElements map mapInner mkString (x.className + "(", ", ", ")")
+      case x: Iterable[_]               => x.iterator take maxElements map inner mkString (x.className + "(", ", ", ")")
       case x: Product1[_] if isTuple(x) => "(" + inner(x._1) + ",)" // that special trailing comma
       case x: Product if isTuple(x)     => x.productIterator map inner mkString ("(", ",", ")")
       case x                            => x.toString

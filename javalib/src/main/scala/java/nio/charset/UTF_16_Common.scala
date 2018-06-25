@@ -82,7 +82,7 @@ private[charset] abstract class UTF_16_Common protected (
 
                 if (!Character.isLowSurrogate(c2)) {
                   in.position(in.position() - 4)
-                  CoderResult.malformedForLength(2)
+                  CoderResult.malformedForLength(4)
                 } else {
                   if (out.remaining < 2) {
                     in.position(in.position() - 4)

@@ -98,7 +98,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
 
   /** The mapping from the integer used to identify values to their
     * names. */
-  private[this] val nmap: mutable.Map[Int, String] = new mutable.HashMap
+  private val nmap: mutable.Map[Int, String] = new mutable.HashMap
 
   /** The values of this enumeration as a set.
    */
@@ -121,11 +121,11 @@ abstract class Enumeration (initial: Int) extends Serializable {
 
   /** The highest integer amongst those used to identify values in this
     * enumeration. */
-  private[this] var topId = initial
+  private var topId = initial
 
   /** The lowest integer amongst those used to identify values in this
     * enumeration, but no higher than 0. */
-  private[this] var bottomId = if(initial < 0) initial else 0
+  private var bottomId = if(initial < 0) initial else 0
 
   /** The one higher than the highest integer amongst those used to identify
     *  values in this enumeration. */
@@ -256,7 +256,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
   class ValueSet private[ValueSet] (private[this] var nnIds: immutable.BitSet)
     extends immutable.AbstractSet[Value]
       with immutable.SortedSet[Value]
-      with immutable.SortedSetOps[Value, immutable.SortedSet, ValueSet]
+      with immutable.SetOps[Value, immutable.Set, ValueSet]
       with StrictOptimizedIterableOps[Value, immutable.Set, ValueSet]
       with Serializable {
 

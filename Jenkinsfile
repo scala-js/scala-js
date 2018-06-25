@@ -393,6 +393,7 @@ def otherScalaVersions = [
   "2.12.3",
   "2.12.4"
 ]
+def limitedCIScalaVersions = ["2.13.0-M4"]
 
 // The 'quick' matrix
 def quickMatrix = []
@@ -408,6 +409,11 @@ mainScalaVersions.each { scalaVersion ->
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion])
 }
 quickMatrix.add([task: "test-suite-ecma-script5-force-polyfills", scala: mainScalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
+limitedCIScalaVersions.each { scalaVersion ->
+  quickMatrix.add([task: "main", scala: scalaVersion, java: mainJavaVersion])
+  quickMatrix.add([task: "test-suite-ecma-script5", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
+  quickMatrix.add([task: "test-suite-ecma-script6", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
+}
 allJavaVersions.each { javaVersion ->
   quickMatrix.add([task: "tools-stubs-sbtplugin", scala: "2.10.7", java: javaVersion])
   quickMatrix.add([task: "tools-stubs", scala: "2.11.12", java: javaVersion])

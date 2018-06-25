@@ -486,7 +486,7 @@ private[regex] class GroupStartMap(string: String, start: Int, pattern: Pattern)
 
         def default = {
           val e = pattern(pIndex)
-          addSiblings(Node(e + ""), pIndex + 1, nextGroupIndex)
+          addSiblings(Node("" + e), pIndex + 1, nextGroupIndex)
         }
 
         (pattern(pIndex): @switch) match {

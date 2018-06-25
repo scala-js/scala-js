@@ -137,6 +137,11 @@ class LongTest {
     test("-4", -4L)
     test("4000000000", 4000000000L)
     test("-18014398509482040", -18014398509482040L)
+
+    test("\u19d9\u0f24\u0c6f\u1c47\ua623\u19d9\u0f24\u0c6f\u1c47\ua623",
+        9497394973L)
+    test("\u19d0" * 50 + "\u19d9\u0f24\u0c6f\u1c47\ua623\u19d9\u0f24\u0c6f\u1c47\ua623",
+        9497394973L)
   }
 
   @Test def should_reject_invalid_strings_when_parsing(): Unit = {
@@ -162,6 +167,9 @@ class LongTest {
     test("-90000", -0x90000L)
     test("bfc94973", 3217639795L)
     test("bfc949733", 51482236723L)
+
+    test("\uff22\uff26\uff23\u19d9\u0f24\u0c6f\u1c47\ua623", 3217639795L)
+    test("\uff42\uff46\uff43\u19d9\u0f24\u0c6f\u1c47\ua6233", 51482236723L)
   }
 
   @Test def should_parse_strings_in_bases_2_to_36(): Unit = {

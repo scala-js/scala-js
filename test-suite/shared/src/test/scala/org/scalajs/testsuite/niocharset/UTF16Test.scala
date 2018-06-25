@@ -14,8 +14,6 @@ import BaseCharsetTest._
 
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.Platform.executingInJVM
-
 abstract class BaseUTF16Test(charset: Charset) extends BaseCharsetTest(charset) {
   @Test def decode(): Unit = {
     // ASCII characters
@@ -47,21 +45,25 @@ abstract class BaseUTF16Test(charset: Charset) extends BaseCharsetTest(charset) 
     testDecode(bb"dfff")(Malformed(2))
 
     // High UTF-16 surrogates not followed by low surrogates
-    if (!executingInJVM) {
-      testDecode(bb"d800 0041")(Malformed(2), cb"A")
-      testDecode(bb"d800 d800")(Malformed(2), Malformed(2))
-      testDecode(bb"d800 d835 dcd7")(Malformed(2), cb"\ud835\udcd7")
-      testDecode(bb"dbff 0041")(Malformed(2), cb"A")
-      testDecode(bb"dbff db8f")(Malformed(2), Malformed(2))
-      testDecode(bb"dbff d835 dcd7")(Malformed(2), cb"\ud835\udcd7")
-    }
+    testDecode(bb"d800 0041 0042")(Malformed(4), cb"B")
+    testDecode(bb"d800 d800 0042")(Malformed(4), cb"B")
+    testDecode(bb"d800 d835 dcd7 0042 0043")(Malformed(4), Malformed(2), cb"BC")
+    testDecode(bb"dbff 0041 0042")(Malformed(4), cb"B")
+    testDecode(bb"dbff db8f 0042")(Malformed(4), cb"B")
+    testDecode(bb"dbff d835 dcd7 0042")(Malformed(4), Malformed(2), cb"B")
+    testDecode(bb"dbff 0041 d835 dcd7")(Malformed(4), cb"\ud835\udcd7")
+
+    // Low UTF-16 surrogates not preceded by high surrogates
+    testDecode(bb"0041 dcd7 0042")(cb"A", Malformed(2), cb"B")
+    testDecode(bb"0041 dcd7 d835 dcd7")(cb"A", Malformed(2), cb"\ud835\udcd7")
 
     // Lonely byte at the end
     testDecode(bb"0041 41")(cb"A", Malformed(1))
+    testDecode(bb"d835 41")(Malformed(3))
   }
 
   @Test def encode(): Unit = {
-      // ASCII characters
+    // ASCII characters
     testEncode(cb"Bonjour")(bb"0042 006f 006e 006a 006f 0075 0072")
 
     // Other characters without surrogate pairs

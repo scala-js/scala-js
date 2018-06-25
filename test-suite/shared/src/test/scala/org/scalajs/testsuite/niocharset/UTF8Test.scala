@@ -15,8 +15,6 @@ import org.junit.Assert._
 
 import BaseCharsetTest._
 
-import org.scalajs.testsuite.utils.Platform.executingInJVM
-
 class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
   @Test def decode(): Unit = {
     def OutSeq(elems: OutPart[CharBuffer]*): Seq[OutPart[CharBuffer]] =
@@ -37,7 +35,7 @@ class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
 
     // 4-byte characters
     testDecode(bb"f0 9d 93 97 f0 9d 93 ae f0 9d 93 b5 f0 9d 93 b5 f0 9d 93 b8")(
-      cb"\ud835\udcd7\ud835\udcee\ud835\udcf5\ud835\udcf5\ud835\udcf8")
+        cb"\ud835\udcd7\ud835\udcee\ud835\udcf5\ud835\udcf5\ud835\udcf8")
 
     testDecode(bb"")(cb"")
 
@@ -61,10 +59,8 @@ class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
     // Here begin the sequences with at least one error
 
     // Code point too big
-    if (!executingInJVM) {
-      testDecode(bb"f4 90 80 80")(Malformed(4))
-      testDecode(bb"41 f4 90 80 80 42")(cb"A", Malformed(4), cb"B")
-    }
+    testDecode(bb"f4 90 80 80")(Malformed(1), Malformed(1), Malformed(1), Malformed(1))
+    testDecode(bb"41 f4 90 80 80 42")(cb"A", Malformed(1), Malformed(1), Malformed(1), Malformed(1), cb"B")
 
     // Unexpected continuation bytes (each is reported separately)
     testDecode(bb"80")(Malformed(1))
@@ -76,10 +72,8 @@ class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
     testDecode(bb"41 80 80 42 80 43")(cb"A", Malformed(1), Malformed(1), cb"B", Malformed(1), cb"C")
 
     // Lonely start characters, separated by spaces
-    if (!executingInJVM) {
-      testDecode(bb"${(0xc0 to 0xf4).flatMap(c => Seq(c, 32))}")(
+    testDecode(bb"${(0xc0 to 0xf4).flatMap(c => Seq(c, 32))}")(
         (0xc0 to 0xf4).flatMap(i => OutSeq(Malformed(1), cb" ")): _*)
-    }
 
     // Sequences with some continuation bytes missing
     testDecode(bb"c2")(Malformed(1))
@@ -90,60 +84,58 @@ class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
     testDecode(bb"f0 90 80")(Malformed(3))
     // at the end of the buffer - #1537
     testDecode(bb"c0")(Malformed(1))
-    if (!executingInJVM)
-      testDecode(bb"e1 41")(Malformed(1), cb"A")
+    testDecode(bb"e1 41")(Malformed(1), cb"A")
     testDecode(bb"e1 80 42")(Malformed(2), cb"B")
     // and all of them concatenated
     testDecode(bb"c2  e0  e0 a0  f0  f0 90  f0 90 80")(
-      Seq(1, 1, 2, 1, 2, 3).map(Malformed(_)): _*)
+        Seq(1, 1, 2, 1, 2, 3).map(Malformed(_)): _*)
     // and with normal sequences interspersed
     testDecode(bb"c2 41 e0 41 e0 a0 41 f0 41 f0 90 41 f0 90 80 41")(
-      Seq(1, 1, 2, 1, 2, 3).flatMap(l => Seq[OutPart[CharBuffer]](Malformed(l), cb"A")): _*)
+        Seq(1, 1, 2, 1, 2, 3).flatMap(l => Seq[OutPart[CharBuffer]](Malformed(l), cb"A")): _*)
 
     // Impossible bytes
     testDecode(bb"fe")(Malformed(1))
     testDecode(bb"ff")(Malformed(1))
     testDecode(bb"fe fe ff ff")(Malformed(1), Malformed(1), Malformed(1), Malformed(1))
+
     // Old 5-byte and 6-byte starts
-    if (!executingInJVM) {
-      testDecode(bb"f8 80 80 80 af")(
-          Malformed(1), Malformed(1), Malformed(1), Malformed(1), Malformed(1))
-      testDecode(bb"fc 80 80 80 80 af")(
-          Malformed(1), Malformed(1), Malformed(1), Malformed(1), Malformed(1), Malformed(1))
+    testDecode(bb"f8 80 80 80 af")(
+        Malformed(1), Malformed(1), Malformed(1), Malformed(1), Malformed(1))
+    testDecode(bb"fc 80 80 80 80 af")(
+        Malformed(1), Malformed(1), Malformed(1), Malformed(1), Malformed(1), Malformed(1))
 
-      // Overlong sequences (encoded with more bytes than necessary)
-      // Overlong '/'
-      testDecode(bb"c0 af")(Malformed(2))
-      testDecode(bb"e0 80 af")(Malformed(3))
-      testDecode(bb"f0 80 80 af")(Malformed(4))
-      // Maximum overlong sequences
-      testDecode(bb"c1 bf")(Malformed(2))
-      testDecode(bb"e0 9f bf")(Malformed(3))
-      testDecode(bb"f0 8f bf bf")(Malformed(4))
-      // Overlong NUL
-      testDecode(bb"c0 80")(Malformed(2))
-      testDecode(bb"e0 80 80")(Malformed(3))
-      testDecode(bb"f0 80 80 80")(Malformed(4))
+    // Overlong sequences (encoded with more bytes than necessary)
+    // Overlong '/'
+    testDecode(bb"c0 af")(Malformed(1), Malformed(1))
+    testDecode(bb"e0 80 af")(Malformed(1), Malformed(1), Malformed(1))
+    testDecode(bb"f0 80 80 af")(Malformed(1), Malformed(1), Malformed(1), Malformed(1))
+    // Maximum overlong sequences
+    testDecode(bb"c1 bf")(Malformed(1), Malformed(1))
+    testDecode(bb"e0 9f bf")(Malformed(1), Malformed(1), Malformed(1))
+    testDecode(bb"f0 8f bf bf")(Malformed(1), Malformed(1), Malformed(1), Malformed(1))
+    // Overlong NUL
+    testDecode(bb"c0 80")(Malformed(1), Malformed(1))
+    testDecode(bb"e0 80 80")(Malformed(1), Malformed(1), Malformed(1))
+    testDecode(bb"f0 80 80 80")(Malformed(1), Malformed(1), Malformed(1), Malformed(1))
 
-      // Single UTF-16 surrogates
-      testDecode(bb"ed a0 80")(Malformed(3))
-      testDecode(bb"ed ad bf")(Malformed(3))
-      testDecode(bb"ed ae 80")(Malformed(3))
-      testDecode(bb"ed af bf")(Malformed(3))
-      testDecode(bb"ed b0 80")(Malformed(3))
-      testDecode(bb"ed be 80")(Malformed(3))
-      testDecode(bb"ed bf bf")(Malformed(3))
+    // Single UTF-16 surrogates
+    testDecode(bb"ed a0 80")(Malformed(3))
+    testDecode(bb"ed ad bf")(Malformed(3))
+    testDecode(bb"ed ae 80")(Malformed(3))
+    testDecode(bb"ed af bf")(Malformed(3))
+    testDecode(bb"ed b0 80")(Malformed(3))
+    testDecode(bb"ed be 80")(Malformed(3))
+    testDecode(bb"ed bf bf")(Malformed(3))
 
-      // Paired UTF-16 surrogates
-      testDecode(bb"ed a0 80 ed b0 80")(Malformed(3), Malformed(3))
-      testDecode(bb"ed a0 80 ed bf bf")(Malformed(3), Malformed(3))
-      testDecode(bb"ed ad bf ed b0 80")(Malformed(3), Malformed(3))
-      testDecode(bb"ed ad bf ed bf bf")(Malformed(3), Malformed(3))
-      testDecode(bb"ed ae 80 ed b0 80")(Malformed(3), Malformed(3))
-      testDecode(bb"ed ae 80 ed bf bf")(Malformed(3), Malformed(3))
-      testDecode(bb"ed af bf ed b0 80")(Malformed(3), Malformed(3))
-      testDecode(bb"ed af bf ed bf bf")(Malformed(3), Malformed(3))
-    }
+    // Paired UTF-16 surrogates
+    testDecode(bb"ed a0 80 ed b0 80")(Malformed(3), Malformed(3))
+    testDecode(bb"ed a0 80 ed bf bf")(Malformed(3), Malformed(3))
+    testDecode(bb"ed ad bf ed b0 80")(Malformed(3), Malformed(3))
+    testDecode(bb"ed ad bf ed bf bf")(Malformed(3), Malformed(3))
+    testDecode(bb"ed ae 80 ed b0 80")(Malformed(3), Malformed(3))
+    testDecode(bb"ed ae 80 ed bf bf")(Malformed(3), Malformed(3))
+    testDecode(bb"ed af bf ed b0 80")(Malformed(3), Malformed(3))
+    testDecode(bb"ed af bf ed bf bf")(Malformed(3), Malformed(3))
   }
 
   @Test def encode(): Unit = {

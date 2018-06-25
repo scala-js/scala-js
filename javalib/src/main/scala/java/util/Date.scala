@@ -105,7 +105,7 @@ class Date private (private val date: js.Date) extends Object
 
   @Deprecated
   def toGMTString(): String = {
-    date.getUTCDate().toInt + " " + Months(date.getUTCMonth().toInt) + " " +
+    "" + date.getUTCDate().toInt + " " + Months(date.getUTCMonth().toInt) + " " +
       date.getUTCFullYear().toInt + " " + pad0(date.getUTCHours().toInt) + ":" +
       pad0(date.getUTCMinutes().toInt) + ":" +
       pad0(date.getUTCSeconds().toInt) +" GMT"
@@ -113,7 +113,7 @@ class Date private (private val date: js.Date) extends Object
 
   @Deprecated
   def toLocaleString(): String = {
-    date.getDate().toInt + "-" + Months(date.getMonth().toInt) + "-" +
+    "" + date.getDate().toInt + "-" + Months(date.getMonth().toInt) + "-" +
       date.getFullYear().toInt + "-" + pad0(date.getHours().toInt) + ":" +
       pad0(date.getMinutes().toInt) + ":" + pad0(date.getSeconds().toInt)
   }

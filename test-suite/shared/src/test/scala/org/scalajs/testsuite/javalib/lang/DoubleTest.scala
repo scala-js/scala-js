@@ -16,7 +16,7 @@ import java.lang.{Double => JDouble}
 import scala.util.Try
 
 import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.Platform.{executingInJVM, executingInPhantomJS}
+import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class DoubleTest {
 
@@ -162,10 +162,6 @@ class DoubleTest {
     /* Then, a larger set of input strings, which we only test without padding
      * and with only one entry point.
      */
-
-    // Here, PhantomJS suffers from precision bugs, so we must discard it
-    assumeFalse("PhantomJS has precision bugs with Doubles",
-        executingInPhantomJS)
 
     def test(s: String, v: Double): Unit = {
       val r = JDouble.parseDouble(s)
