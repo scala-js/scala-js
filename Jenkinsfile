@@ -388,8 +388,8 @@ def otherJavaVersions = [] // should be ["1.6", "1.7"] but that's broken (see #3
 def allJavaVersions = otherJavaVersions.clone()
 allJavaVersions << mainJavaVersion
 
-def mainScalaVersion = "2.12.5"
-def mainScalaVersions = ["2.10.2", "2.11.12", "2.12.5", "2.13.0-M3"]
+def mainScalaVersion = "2.12.6"
+def mainScalaVersions = ["2.10.2", "2.11.12", "2.12.6", "2.13.0-M3"]
 def otherScalaVersions = [
   "2.10.3",
   "2.10.4",
@@ -410,7 +410,8 @@ def otherScalaVersions = [
   "2.12.1",
   "2.12.2",
   "2.12.3",
-  "2.12.4"
+  "2.12.4",
+  "2.12.5"
 ]
 def limitedCIScalaVersions = ["2.13.0-M4"]
 
@@ -445,10 +446,10 @@ allJavaVersions.each { javaVersion ->
     quickMatrix.add([task: "tools-cli-stubs", scala: "2.11.12", java: javaVersion])
   }
 }
-quickMatrix.add([task: "tools-cli-stubs", scala: "2.12.5", java: mainJavaVersion])
+quickMatrix.add([task: "tools-cli-stubs", scala: "2.12.6", java: mainJavaVersion])
 quickMatrix.add([task: "partestc", scala: "2.11.0", java: "1.8"]) // #3293, should be: 1.7
 quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.10.7", sbt_version_override: "", java: "1.7"])
-quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.12.5", sbt_version_override: "1.0.0", java: mainJavaVersion])
+quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.12.6", sbt_version_override: "1.0.0", java: mainJavaVersion])
 
 // The 'full' matrix
 def fullMatrix = quickMatrix.clone()
