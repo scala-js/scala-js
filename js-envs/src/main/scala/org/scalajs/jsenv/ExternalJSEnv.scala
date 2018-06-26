@@ -183,8 +183,11 @@ abstract class ExternalJSEnv(
           case e => ioThreadEx = e
         }
 
-        // Chain Try's the other way: We want VM failure first, then IO failure
-        promise.complete(pipeResult orElse vmComplete)
+        /* We want the VM failure to take precedence if there was one,
+         * otherwise the IO failure if there is one. We complete with a
+         * successful () only when both vmComplete and pipeResult were successful.
+         */
+        promise.complete(vmComplete.flatMap(_ => pipeResult))
       }
     }
 
