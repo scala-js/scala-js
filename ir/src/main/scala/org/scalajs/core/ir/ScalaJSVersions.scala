@@ -10,7 +10,7 @@ object ScalaJSVersions {
    */
 
   /** Scala.js version. */
-  val current: String = "0.6.24-SNAPSHOT"
+  val current: String = "0.6.24"
 
   /** true iff the Scala.js version is a snapshot version. */
   val currentIsSnapshot: Boolean = current endsWith "-SNAPSHOT"
