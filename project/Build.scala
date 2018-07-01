@@ -790,17 +790,7 @@ object Build {
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
-      /* This works around a bug in ^^ from sbt (should be just addSbtPlugin).
-       * We inline the definition of addSbtPlugin and fix the sbt binary version.
-       */
-      libraryDependencies += {
-        val sbtV =
-          if ((sbtVersion in pluginCrossBuild).value.startsWith("1.0.")) "1.0"
-          else (sbtBinaryVersion in update).value
-        val scalaV = (scalaBinaryVersion in update).value
-        Defaults.sbtPluginExtra(
-            "org.portable-scala" % "sbt-platform-deps" % "1.0.0-M2", sbtV, scalaV)
-      },
+      addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.0"),
 
       // Add API mappings for sbt (seems they don't export their API URL)
       apiMappings ++= {

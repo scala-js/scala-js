@@ -2,7 +2,7 @@ addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.18")
 
 addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "1.0.0")
 
-addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.0-M2")
+addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.0")
 
 libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20160517"
 
