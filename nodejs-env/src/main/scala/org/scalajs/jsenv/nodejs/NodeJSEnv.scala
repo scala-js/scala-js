@@ -23,6 +23,8 @@ import org.scalajs.logging._
 import java.io._
 
 final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
+  import NodeJSEnv._
+
   def this() = this(NodeJSEnv.Config())
 
   val name: String = "Node.js"
@@ -53,8 +55,11 @@ final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
   private def initFiles: List[VirtualBinaryFile] = {
     val base = List(NodeJSEnv.runtimeEnv, Support.fixPercentConsole)
 
-    if (config.sourceMap) NodeJSEnv.installSourceMap :: base
-    else base
+    config.sourceMap match {
+      case SourceMap.Disable           => base
+      case SourceMap.EnableIfAvailable => installSourceMapIfAvailable :: base
+      case SourceMap.Enable            => installSourceMap :: base
+    }
   }
 
   private def inputFiles(input: Input) = input match {
@@ -68,6 +73,17 @@ final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
 
 object NodeJSEnv {
   private lazy val validator = ExternalJSRun.supports(RunConfig.Validator())
+
+  private lazy val installSourceMapIfAvailable = {
+    MemVirtualBinaryFile.fromStringUTF8("sourceMapSupport.js",
+        """
+          |try {
+          |  require('source-map-support').install();
+          |} catch (e) {
+          |};
+        """.stripMargin
+    )
+  }
 
   private lazy val installSourceMap = {
     MemVirtualBinaryFile.fromStringUTF8("sourceMapSupport.js",
@@ -117,18 +133,36 @@ object NodeJSEnv {
     }
   }
 
+  /** Requirements for source map support. */
+  sealed abstract class SourceMap
+
+  object SourceMap {
+    /** Disable source maps. */
+    case object Disable extends SourceMap
+
+    /** Enable source maps if `source-map-support` is available. */
+    case object EnableIfAvailable extends SourceMap
+
+    /** Always enable source maps.
+     *
+     *  If `source-map-support` is not available, loading the .js code will
+     *  fail.
+     */
+    case object Enable extends SourceMap
+  }
+
   final class Config private (
       val executable: String,
       val args: List[String],
       val env: Map[String, String],
-      val sourceMap: Boolean
+      val sourceMap: SourceMap
   ) {
     private def this() = {
       this(
           executable = "node",
           args = Nil,
           env = Map.empty,
-          sourceMap = true
+          sourceMap = SourceMap.EnableIfAvailable
       )
     }
 
@@ -141,14 +175,23 @@ object NodeJSEnv {
     def withEnv(env: Map[String, String]): Config =
       copy(env = env)
 
-    def withSourceMap(sourceMap: Boolean): Config =
+    def withSourceMap(sourceMap: SourceMap): Config =
       copy(sourceMap = sourceMap)
+
+    /** Forces enabling (true) or disabling (false) source maps.
+     *
+     *  `sourceMap = true` maps to [[SourceMap.Enable]]. `sourceMap = false`
+     *  maps to [[SourceMap.Disable]]. [[SourceMap.EnableIfAvailable]] is never
+     *  used by this method.
+     */
+    def withSourceMap(sourceMap: Boolean): Config =
+      withSourceMap(if (sourceMap) SourceMap.Enable else SourceMap.Disable)
 
     private def copy(
         executable: String = executable,
         args: List[String] = args,
         env: Map[String, String] = env,
-        sourceMap: Boolean = sourceMap
+        sourceMap: SourceMap = sourceMap
     ): Config = {
       new Config(executable, args, env, sourceMap)
     }
@@ -162,7 +205,7 @@ object NodeJSEnv {
      *  - `executable`: `"node"`
      *  - `args`: `Nil`
      *  - `env`: `Map.empty`
-     *  - `sourceMap`: `true`
+     *  - `sourceMap`: [[SourceMap.EnableIfAvailable]]
      */
     def apply(): Config = new Config()
   }
