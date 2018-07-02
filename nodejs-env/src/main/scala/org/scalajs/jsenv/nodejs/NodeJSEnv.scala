@@ -87,7 +87,13 @@ object NodeJSEnv {
 
   private lazy val installSourceMap = {
     MemVirtualBinaryFile.fromStringUTF8("sourceMapSupport.js",
-        "require('source-map-support').install();")
+        """
+          |try {
+          |  require('source-map-support').install();
+          |} catch (e) {
+          |};
+        """.stripMargin
+    )
   }
 
   private lazy val runtimeEnv = {
