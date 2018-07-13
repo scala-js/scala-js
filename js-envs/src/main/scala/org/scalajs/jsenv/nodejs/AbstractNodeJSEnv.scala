@@ -9,6 +9,8 @@
 
 package org.scalajs.jsenv.nodejs
 
+import scala.annotation.tailrec
+
 import java.io.{Console => _, _}
 import java.net._
 
@@ -153,8 +155,17 @@ abstract class AbstractNodeJSEnv(
 
   protected trait NodeComJSRunner extends ComJSRunner with JSInitFiles {
 
+    /* Manipulation of the socket must be protected by synchronized, except
+     * calls to `close()`.
+     */
     private[this] val serverSocket =
       new ServerSocket(0, 0, InetAddress.getByName(null)) // Loopback address
+
+    /* Those 3 fields are assigned *once* under synchronization in
+     * `awaitConnection()`.
+     * Read access must be protected by synchronized, or be done after a
+     * successful call to `awaitConnection()`.
+     */
     private var comSocket: Socket = _
     private var jvm2js: DataOutputStream = _
     private var js2jvm: DataInputStream = _
@@ -280,34 +291,67 @@ abstract class AbstractNodeJSEnv(
     }
 
     def close(): Unit = {
+      /* Close the socket first. This will cause any existing and upcoming
+       * calls to `awaitConnection()` to be canceled and throw a
+       * `SocketException` (unless it has already successfully completed the
+       * `accept()` call).
+       */
       serverSocket.close()
-      if (jvm2js != null)
-        jvm2js.close()
-      if (js2jvm != null)
-        js2jvm.close()
-      if (comSocket != null)
-        comSocket.close()
+
+      /* Now wait for a possibly still-successful `awaitConnection()` to
+       * complete before closing the sockets.
+       */
+      synchronized {
+        if (comSocket != null) {
+          jvm2js.close()
+          js2jvm.close()
+          comSocket.close()
+        }
+      }
     }
 
     /** Waits until the JS VM has established a connection or terminates
      *
      *  @return true if the connection was established
      */
-    private def awaitConnection(): Boolean = {
-      serverSocket.setSoTimeout(acceptTimeout)
-      while (comSocket == null && isRunning) {
-        try {
-          comSocket = serverSocket.accept()
-          jvm2js = new DataOutputStream(
-            new BufferedOutputStream(comSocket.getOutputStream()))
-          js2jvm = new DataInputStream(
-            new BufferedInputStream(comSocket.getInputStream()))
-        } catch {
-          case to: SocketTimeoutException =>
+    private def awaitConnection(): Boolean = synchronized {
+      if (comSocket != null) {
+        true
+      } else {
+        @tailrec
+        def acceptLoop(): Option[Socket] = {
+          if (!isRunning) {
+            None
+          } else {
+            try {
+              Some(serverSocket.accept())
+            } catch {
+              case to: SocketTimeoutException => acceptLoop()
+            }
+          }
+        }
+
+        serverSocket.setSoTimeout(acceptTimeout)
+        val optComSocket = acceptLoop()
+
+        optComSocket.fold {
+          false
+        } { comSocket0 =>
+          val jvm2js0 = new DataOutputStream(
+              new BufferedOutputStream(comSocket0.getOutputStream()))
+          val js2jvm0 = new DataInputStream(
+              new BufferedInputStream(comSocket0.getInputStream()))
+
+          /* Assign those three fields together, without the possibility of
+           * an exception happening in the middle (see #3408).
+           */
+          comSocket = comSocket0
+          jvm2js = jvm2js0
+          js2jvm = js2jvm0
+
+          true
         }
       }
-
-      comSocket != null
     }
 
     override protected def finalize(): Unit = close()
