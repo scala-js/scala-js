@@ -76,4 +76,35 @@ class NodeJSTest extends TimeoutComTests {
     com.await(DefaultTimeout)
   }
 
+  @Test
+  def testConcurrentSendReceive_issue3408: Unit = {
+    for (_ <- 0 until 50) {
+      val com = comRunner("""
+        scalajsCom.init(function(msg) {
+          scalajsCom.send("pong: " + msg);
+        });
+      """)
+
+      start(com)
+
+      // Try very hard to send and receive at the same time
+      val lock = new AnyRef
+      val threadSend = new Thread {
+        override def run(): Unit = {
+          lock.synchronized(lock.wait())
+          com.send("ping")
+        }
+      }
+      threadSend.start()
+
+      Thread.sleep(200L)
+      lock.synchronized(lock.notifyAll())
+      assertEquals(com.receive(), "pong: ping")
+
+      threadSend.join()
+      com.close()
+      com.await(DefaultTimeout)
+    }
+  }
+
 }
