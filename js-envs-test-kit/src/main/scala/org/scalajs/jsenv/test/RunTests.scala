@@ -44,9 +44,9 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
 
   @Test
   def jsExitsTest: Unit = {
-    assumeTrue(config.terminateVMJSCode.isDefined)
+    assumeTrue(config.supportsExit)
 
-    val run = kit.start(config.terminateVMJSCode.get, RunConfig())
+    val run = kit.start("__ScalaJSEnv.exitFunction(0);", RunConfig())
     try {
       Await.result(run.future, config.awaitTimeout)
     } finally {
