@@ -86,4 +86,21 @@ private[test] class TimeoutComTests(config: JSEnvSuiteConfig) {
     """, RunConfig())
     run.closeAndWait()
   }
+
+  @Test // #3411
+  def noImmediateCallbackTest: Unit = {
+    val run = kit.start(s"""
+      setTimeout(function() {
+        var gotCalled = false;
+        scalajsCom.init(function(msg) { gotCalled = true; });
+        if (gotCalled) throw "Buffered messages did not get deferred to the event loop";
+      }, 100);
+    """, RunConfig())
+
+    try {
+      run.run.send("Hello World")
+    } finally {
+      run.closeAndWait()
+    }
+  }
 }

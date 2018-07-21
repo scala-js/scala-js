@@ -251,7 +251,7 @@ object ComRun {
            |  var inMessages = [];
            |
            |  // The callback where received messages go
-           |  var recvCallback = function(msg) { inMessages.push(msg); };
+           |  var onMessage = null;
            |
            |  socket.on('data', function(data) {
            |    inBuffer = Buffer.concat([inBuffer, data]);
@@ -268,7 +268,8 @@ object ComRun {
            |
            |      inBuffer = inBuffer.slice(byteLen);
            |
-           |      recvCallback(res);
+           |      if (inMessages !== null) inMessages.push(res);
+           |      else onMessage(res);
            |    }
            |  });
            |
@@ -280,12 +281,14 @@ object ComRun {
            |  socket.on('close', function() { process.exit(0); });
            |
            |  global.scalajsCom = {
-           |    init: function(recvCB) {
-           |      if (inMessages === null) throw new Error("Com already initialized");
-           |      for (var i = 0; i < inMessages.length; ++i)
-           |        recvCB(inMessages[i]);
-           |      inMessages = null;
-           |      recvCallback = recvCB;
+           |    init: function(onMsg) {
+           |      if (onMessage !== null) throw new Error("Com already initialized");
+           |      onMessage = onMsg;
+           |      process.nextTick(function() {
+           |        for (var i = 0; i < inMessages.length; ++i)
+           |          onMessage(inMessages[i]);
+           |        inMessages = null;
+           |      });
            |    },
            |    send: function(msg) {
            |      var len = msg.length;
