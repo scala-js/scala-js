@@ -44,9 +44,9 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
 
   @Test
   def jsExitsTest: Unit = {
-    assumeTrue(config.terminateVMJSCode.isDefined)
+    assumeTrue(config.supportsExit)
 
-    val run = kit.start(config.terminateVMJSCode.get, RunConfig())
+    val run = kit.start("__ScalaJSEnv.exitFunction(0);", RunConfig())
     try {
       Await.result(run.future, config.awaitTimeout)
     } finally {
@@ -118,10 +118,12 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
 
   @Test
   def noThrowOnBadFileTest: Unit = {
+    def fail() = throw new java.io.IOException("exception for test")
+
     val badFile = new VirtualBinaryFile {
-      def path: String = ???
-      def exists: Boolean = ???
-      def inputStream: java.io.InputStream = ???
+      def path: String = fail()
+      def exists: Boolean = fail()
+      def inputStream: java.io.InputStream = fail()
     }
 
     // `start` may not throw but must fail asynchronously

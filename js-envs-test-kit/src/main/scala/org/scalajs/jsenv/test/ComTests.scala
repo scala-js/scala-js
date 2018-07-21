@@ -38,10 +38,10 @@ private[test] class ComTests(config: JSEnvSuiteConfig) {
 
   @Test
   def jsExitsOnMessageTest: Unit = {
-    assumeTrue(config.terminateVMJSCode.isDefined)
+    assumeTrue(config.supportsExit)
 
-    val run = kit.start(s"""
-      scalajsCom.init(function(msg) { ${config.terminateVMJSCode.get}; });
+    val run = kit.start("""
+      scalajsCom.init(function(msg) { __ScalaJSEnv.exitFunction(0); });
       for (var i = 0; i < 10; ++i)
         scalajsCom.send("msg: " + i);
       """, RunConfig())

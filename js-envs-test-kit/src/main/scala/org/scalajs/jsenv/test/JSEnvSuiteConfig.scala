@@ -26,7 +26,7 @@ import scala.concurrent.duration._
  */
 final class JSEnvSuiteConfig private (
     val jsEnv: JSEnv,
-    val terminateVMJSCode: Option[String],
+    val supportsExit: Boolean,
     val supportsCom: Boolean,
     val supportsTimeout: Boolean,
     val awaitTimeout: FiniteDuration,
@@ -34,15 +34,15 @@ final class JSEnvSuiteConfig private (
 ) {
   private def this(jsEnv: JSEnv) = this(
       jsEnv = jsEnv,
-      terminateVMJSCode = None,
+      supportsExit = true,
       supportsCom = true,
       supportsTimeout = true,
       awaitTimeout = 1.minute,
       description = jsEnv.name
   )
 
-  def withTerminateVMJSCode(code: String): JSEnvSuiteConfig =
-    copy(terminateVMJSCode = Some(code))
+  def withSupportsExit(supportsExit: Boolean): JSEnvSuiteConfig =
+    copy(supportsExit = supportsExit)
 
   def withSupportsCom(supportsCom: Boolean): JSEnvSuiteConfig =
     copy(supportsCom = supportsCom)
@@ -56,12 +56,13 @@ final class JSEnvSuiteConfig private (
   def withDescription(description: String): JSEnvSuiteConfig =
     copy(description = description)
 
-  private def copy(terminateVMJSCode: Option[String] = terminateVMJSCode,
+  private def copy(
+      supportsExit: Boolean = supportsExit,
       supportsCom: Boolean = supportsCom,
       supportsTimeout: Boolean = supportsTimeout,
       awaitTimeout: FiniteDuration = awaitTimeout,
       description: String = description) = {
-    new JSEnvSuiteConfig(jsEnv, terminateVMJSCode, supportsCom,
+    new JSEnvSuiteConfig(jsEnv, supportsExit, supportsCom,
         supportsTimeout, awaitTimeout, description)
   }
 }
