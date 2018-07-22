@@ -50,7 +50,7 @@ final class JSEnvSuiteConfig private (
   def withSupportsTimeout(supportsTimeout: Boolean): JSEnvSuiteConfig =
     copy(supportsTimeout = supportsTimeout)
 
-  def withAwaitTimepout(awaitTimeout: FiniteDuration): JSEnvSuiteConfig =
+  def withAwaitTimeout(awaitTimeout: FiniteDuration): JSEnvSuiteConfig =
     copy(awaitTimeout = awaitTimeout)
 
   def withDescription(description: String): JSEnvSuiteConfig =
