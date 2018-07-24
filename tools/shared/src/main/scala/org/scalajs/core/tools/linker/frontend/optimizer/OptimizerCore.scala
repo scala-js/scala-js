@@ -136,7 +136,8 @@ private[optimizer] abstract class OptimizerCore(
       }
 
       val (newParams, newBody1) = try {
-        transformIsolatedBody(Some(myself), thisType, params, resultType, body)
+        transformIsolatedBody(Some(myself), thisType, params, resultType, body,
+            Set.empty)
       } catch {
         case _: TooManyRollbacksException =>
           localNameAllocator.clear()
@@ -144,7 +145,8 @@ private[optimizer] abstract class OptimizerCore(
           labelNameAllocator.clear()
           stateBackupChain = Nil
           disableOptimisticOptimizations = true
-          transformIsolatedBody(Some(myself), thisType, params, resultType, body)
+          transformIsolatedBody(Some(myself), thisType, params, resultType,
+              body, Set.empty)
       }
       val newBody =
         if (name.encodedName == "init___") tryElimStoreModule(newBody1)
@@ -683,10 +685,10 @@ private[optimizer] abstract class OptimizerCore(
 
   private def transformClosureCommon(captureParams: List[ParamDef],
       params: List[ParamDef], body: Tree, newCaptureValues: List[Tree])(
-      implicit pos: Position): Closure = {
+      implicit scope: Scope, pos: Position): Closure = {
 
-    val (allNewParams, newBody) =
-      transformIsolatedBody(None, AnyType, captureParams ++ params, AnyType, body)
+    val (allNewParams, newBody) = transformIsolatedBody(None, AnyType,
+        captureParams ++ params, AnyType, body, scope.implsBeingInlined)
     val (newCaptureParams, newParams) =
       allNewParams.splitAt(captureParams.size)
 
@@ -3766,7 +3768,8 @@ private[optimizer] abstract class OptimizerCore(
 
   def transformIsolatedBody(optTarget: Option[MethodID],
       thisType: Type, params: List[ParamDef], resultType: Type,
-      body: Tree): (List[ParamDef], Tree) = {
+      body: Tree,
+      alreadyInlining: Set[Scope.InliningID]): (List[ParamDef], Tree) = {
     val (paramLocalDefs, newParamDefs) = (for {
       p @ ParamDef(ident @ Ident(name, originalName), ptpe, mutable, rest) <- params
     } yield {
@@ -3789,10 +3792,14 @@ private[optimizer] abstract class OptimizerCore(
 
     val allLocalDefs = thisLocalDef ++: paramLocalDefs
 
-    val allocationSites = List.fill(allLocalDefs.size)(AllocationSite.Anonymous)
-    val scope0 = optTarget.fold(Scope.Empty)(
-        target => Scope.Empty.inlining((allocationSites, target)))
-    val scope = scope0.withEnv(OptEnv.Empty.withLocalDefs(allLocalDefs))
+    val inlining = optTarget.fold(alreadyInlining) { target =>
+      val allocationSites =
+        List.fill(allLocalDefs.size)(AllocationSite.Anonymous)
+      alreadyInlining + ((allocationSites, target))
+    }
+    val scope = Scope.Empty
+      .inlining(inlining)
+      .withEnv(OptEnv.Empty.withLocalDefs(allLocalDefs))
     val newBody =
       transform(body, resultType == NoType)(scope)
 
@@ -4412,17 +4419,25 @@ private[optimizer] object OptimizerCore {
   }
 
   private class Scope(val env: OptEnv,
-      val implsBeingInlined: Set[(List[AllocationSite], AbstractMethodID)]) {
+      val implsBeingInlined: Set[Scope.InliningID]) {
     def withEnv(env: OptEnv): Scope =
       new Scope(env, implsBeingInlined)
 
-    def inlining(impl: (List[AllocationSite], AbstractMethodID)): Scope = {
+    def inlining(impl: Scope.InliningID): Scope = {
       assert(!implsBeingInlined(impl), s"Circular inlining of $impl")
       new Scope(env, implsBeingInlined + impl)
+    }
+
+    def inlining(impls: Set[Scope.InliningID]): Scope = {
+      val intersection = implsBeingInlined.intersect(impls)
+      assert(intersection.isEmpty, s"Circular inlining of $intersection")
+      new Scope(env, implsBeingInlined ++ impls)
     }
   }
 
   private object Scope {
+    type InliningID = (List[AllocationSite], AbstractMethodID)
+
     val Empty: Scope = new Scope(OptEnv.Empty, Set.empty)
   }
 
