@@ -45,7 +45,10 @@ trait VirtualFile {
 object VirtualFile {
   /** Splits at the last slash and returns remainder */
   def nameFromPath(path: String): String = {
-    val pos = path.lastIndexOf('/')
+    val pos0 = path.lastIndexOf('/')
+    val pos =
+      if (pos0 >= 0) pos0
+      else path.lastIndexOf('\\')
     if (pos == -1) path
     else path.substring(pos + 1)
   }
