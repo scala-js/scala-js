@@ -28,6 +28,24 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
     """.fails()
   }
 
+  @Test
+  def throwExceptionTest: Unit = {
+    """
+    throw 1;
+    """.fails()
+  }
+
+  @Test
+  def catchExceptionTest: Unit = {
+    """
+    try {
+      throw "hello world";
+    } catch (e) {
+      console.log(e);
+    }
+    """ hasOutput "hello world\n"
+  }
+
   @Test // Failed in Phantom - #2053
   def utf8Test: Unit = {
     """
