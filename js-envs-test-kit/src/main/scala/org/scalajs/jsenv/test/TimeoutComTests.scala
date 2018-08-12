@@ -19,6 +19,7 @@ private[test] class TimeoutComTests(config: JSEnvSuiteConfig) {
 
   @Test
   def delayedInitTest: Unit = {
+    val deadline = 100.millis.fromNow
     val run = kit.start(s"""
       setTimeout(function() {
         scalajsCom.init(function(msg) {
@@ -28,9 +29,6 @@ private[test] class TimeoutComTests(config: JSEnvSuiteConfig) {
     """, RunConfig())
 
     try {
-      // Deadline only starts now. Execution must happen asynchronously.
-      val deadline = 100.millis.fromNow
-
       run.run.send("Hello World")
       assertEquals("Got: Hello World", run.waitNextMessage())
       assertTrue("Execution took too little time", deadline.isOverdue())
@@ -49,7 +47,7 @@ private[test] class TimeoutComTests(config: JSEnvSuiteConfig) {
 
     try {
       for (i <- 1 to 10) {
-        val deadline = 190.millis.fromNow // give some slack
+        val deadline = 200.millis.fromNow
         run.run.send(s"Hello World: $i")
         assertEquals(s"Got: Hello World: $i", run.waitNextMessage())
         assertTrue("Execution took too little time", deadline.isOverdue())
@@ -61,14 +59,19 @@ private[test] class TimeoutComTests(config: JSEnvSuiteConfig) {
 
   @Test
   def intervalSendTest: Unit = {
+    val deadline = 250.millis.fromNow
+
     val run = kit.start(s"""
       scalajsCom.init(function(msg) {});
-      var interval = setInterval(scalajsCom.send, 50, "Hello");
-      setTimeout(clearInterval, 295, interval);
+      var sent = 0
+      var interval = setInterval(function () {
+        scalajsCom.send("Hello");
+        sent++;
+        if (sent >= 5) clearInterval(interval);
+      }, 50);
     """, RunConfig())
 
     try {
-      val deadline = 245.millis.fromNow
       for (i <- 1 to 5)
         assertEquals("Hello", run.waitNextMessage())
 
