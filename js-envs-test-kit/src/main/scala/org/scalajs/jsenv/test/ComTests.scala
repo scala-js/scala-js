@@ -1,16 +1,13 @@
 package org.scalajs.jsenv.test
 
-import org.scalajs.jsenv._
-
 import org.junit.{Before, Test}
-import org.junit.Assert._
 import org.junit.Assume._
 
-import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
+import org.scalajs.jsenv._
+import org.scalajs.jsenv.test.kit.TestKit
 
 private[test] class ComTests(config: JSEnvSuiteConfig) {
-  private val kit = new TestComKit(config)
+  private val kit = new TestKit(config.jsEnv, config.awaitTimeout)
 
   @Before
   def before: Unit = {
@@ -19,20 +16,21 @@ private[test] class ComTests(config: JSEnvSuiteConfig) {
 
   @Test
   def basicTest: Unit = {
-    val run = kit.start("""
+    kit.withComRun("""
       scalajsCom.init(function(msg) { scalajsCom.send("received: " + msg); });
       scalajsCom.send("Hello World");
-    """, RunConfig())
+    """) { run =>
 
-    try {
-      assertEquals("Hello World", run.waitNextMessage())
+      run.expectMsg("Hello World")
 
       for (i <- 0 to 10) {
-        run.run.send(i.toString)
-        assertEquals(s"received: $i", run.waitNextMessage())
+        run
+          .send(i.toString)
+          .expectMsg(s"received: $i")
       }
-    } finally {
-      run.closeAndWait()
+
+      run.expectNoMsgs()
+        .closeRun()
     }
   }
 
@@ -40,21 +38,19 @@ private[test] class ComTests(config: JSEnvSuiteConfig) {
   def jsExitsOnMessageTest: Unit = {
     assumeTrue(config.supportsExit)
 
-    val run = kit.start("""
+    kit.withComRun("""
       scalajsCom.init(function(msg) { __ScalaJSEnv.exitFunction(0); });
       for (var i = 0; i < 10; ++i)
         scalajsCom.send("msg: " + i);
-      """, RunConfig())
+      """) { run =>
 
-    try {
       for (i <- 0 until 10)
-        assertEquals(s"msg: $i", run.waitNextMessage())
+        run.expectMsg(s"msg: $i")
 
-      run.run.send("quit")
-
-      Await.result(run.run.future, config.awaitTimeout)
-    } finally {
-      run.run.close()
+      run
+        .send("quit")
+        .expectNoMsgs()
+        .succeeds()
     }
   }
 
@@ -62,31 +58,34 @@ private[test] class ComTests(config: JSEnvSuiteConfig) {
   def multiEnvTest: Unit = {
     val n = 10
     val runs = List.fill(5) {
-      kit.start("""
+      kit.startWithCom("""
       scalajsCom.init(function(msg) {
         scalajsCom.send("pong");
       });
-      """, RunConfig())
+      """)
     }
 
     try {
       for (_ <- 0 until n) {
-        runs.foreach(_.run.send("ping"))
-        runs.foreach(r => assertEquals("pong", r.waitNextMessage()))
+        runs.foreach(_.send("ping"))
+        runs.foreach(_.expectMsg("pong"))
+      }
+
+      runs.foreach {
+        _.expectNoMsgs()
+          .closeRun()
       }
     } finally {
-      runs.foreach(_.closeAndWait())
+      runs.foreach(_.close())
     }
   }
 
   private def replyTest(msg: String) = {
-    val run = kit.start("scalajsCom.init(scalajsCom.send);", RunConfig())
-
-    try {
-      run.run.send(msg)
-      assertEquals(msg, run.waitNextMessage())
-    } finally {
-      run.closeAndWait()
+    kit.withComRun("scalajsCom.init(scalajsCom.send);") {
+      _.send(msg)
+        .expectMsg(msg)
+        .expectNoMsgs()
+        .closeRun()
     }
   }
 
@@ -103,11 +102,10 @@ private[test] class ComTests(config: JSEnvSuiteConfig) {
 
   @Test
   def noInitTest: Unit = {
-    val run = kit.start("", RunConfig())
-    try {
-      run.run.send("Dummy")
-    } finally {
-      run.closeAndWait()
+    kit.withComRun("") {
+      _.send("Dummy")
+        .expectNoMsgs()
+        .closeRun()
     }
   }
 }

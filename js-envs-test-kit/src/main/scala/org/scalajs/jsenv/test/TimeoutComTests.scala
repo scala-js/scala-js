@@ -1,15 +1,16 @@
 package org.scalajs.jsenv.test
 
-import org.scalajs.jsenv._
+import scala.concurrent.duration._
 
 import org.junit.{Before, Test}
 import org.junit.Assert._
 import org.junit.Assume._
 
-import scala.concurrent.duration._
+import org.scalajs.jsenv._
+import org.scalajs.jsenv.test.kit.TestKit
 
 private[test] class TimeoutComTests(config: JSEnvSuiteConfig) {
-  private val kit = new TestComKit(config)
+  private val kit = new TestKit(config.jsEnv, config.awaitTimeout)
 
   @Before
   def before: Unit = {
@@ -27,40 +28,43 @@ private[test] class TimeoutComTests(config: JSEnvSuiteConfig) {
   @Test
   def delayedInitTest: Unit = {
     val deadline = (100.millis - slack).fromNow
-    val run = kit.start(s"""
+    kit.withComRun("""
       setTimeout(function() {
         scalajsCom.init(function(msg) {
           scalajsCom.send("Got: " + msg);
         });
       }, 100);
-    """, RunConfig())
+    """) { run =>
+      run.send("Hello World")
+        .expectMsg("Got: Hello World")
 
-    try {
-      run.run.send("Hello World")
-      assertEquals("Got: Hello World", run.waitNextMessage())
       assertTrue("Execution took too little time", deadline.isOverdue())
-    } finally {
-      run.closeAndWait()
+
+      run
+        .expectNoMsgs()
+        .closeRun()
     }
   }
 
   @Test
   def delayedReplyTest: Unit = {
-    val run = kit.start(s"""
+    kit.withComRun("""
       scalajsCom.init(function(msg) {
         setTimeout(scalajsCom.send, 200, "Got: " + msg);
       });
-    """, RunConfig())
-
-    try {
+    """) { run =>
       for (i <- 1 to 10) {
         val deadline = (200.millis - slack).fromNow
-        run.run.send(s"Hello World: $i")
-        assertEquals(s"Got: Hello World: $i", run.waitNextMessage())
+        run
+          .send(s"Hello World: $i")
+          .expectMsg(s"Got: Hello World: $i")
+
         assertTrue("Execution took too little time", deadline.isOverdue())
       }
-    } finally {
-      run.closeAndWait()
+
+      run
+        .expectNoMsgs()
+        .closeRun()
     }
   }
 
@@ -68,7 +72,7 @@ private[test] class TimeoutComTests(config: JSEnvSuiteConfig) {
   def intervalSendTest: Unit = {
     val deadline = (250.millis - slack).fromNow
 
-    val run = kit.start(s"""
+    kit.withComRun("""
       scalajsCom.init(function(msg) {});
       var sent = 0
       var interval = setInterval(function () {
@@ -76,41 +80,39 @@ private[test] class TimeoutComTests(config: JSEnvSuiteConfig) {
         sent++;
         if (sent >= 5) clearInterval(interval);
       }, 50);
-    """, RunConfig())
-
-    try {
+    """) { run =>
       for (i <- 1 to 5)
-        assertEquals("Hello", run.waitNextMessage())
+        run.expectMsg("Hello")
 
       assertTrue("Execution took too little time", deadline.isOverdue())
-    } finally {
-      run.closeAndWait()
+
+      run
+        .expectNoMsgs()
+        .closeRun()
     }
   }
 
   @Test
   def noMessageTest: Unit = {
-    val run = kit.start(s"""
+    kit.withComRun(s"""
       // Make sure JVM has already closed when we init
       setTimeout(scalajsCom.init, 1000, function(msg) {});
-    """, RunConfig())
-    run.closeAndWait()
+    """) {
+      _.closeRun()
+    }
   }
 
   @Test // #3411
   def noImmediateCallbackTest: Unit = {
-    val run = kit.start(s"""
+    kit.withComRun(s"""
       setTimeout(function() {
         var gotCalled = false;
         scalajsCom.init(function(msg) { gotCalled = true; });
         if (gotCalled) throw "Buffered messages did not get deferred to the event loop";
       }, 100);
-    """, RunConfig())
-
-    try {
-      run.run.send("Hello World")
-    } finally {
-      run.closeAndWait()
+    """) {
+      _.send("Hello World")
+        .closeRun()
     }
   }
 }
