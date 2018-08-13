@@ -269,6 +269,10 @@ class ScalaJSDefinedTest {
     assertEquals(1, obj2.initCount)
   }
 
+  @Test def nullingOutLazyValField_issue3422(): Unit = {
+    assertEquals("foo", new NullingOutLazyValFieldBug3422("foo").str)
+  }
+
   @Test def simple_inherited_from_a_native_class(): Unit = {
     val obj = new SimpleInheritedFromNative(3, 5)
     assertEquals(3, obj.x)
@@ -1908,6 +1912,10 @@ object ScalaJSDefinedTest {
       initCount += 1
       53
     }
+  }
+
+  class NullingOutLazyValFieldBug3422(initStr: String) extends js.Object {
+    lazy val str: String = initStr
   }
 
   class SimpleInheritedFromNative(
