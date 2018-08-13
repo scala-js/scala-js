@@ -206,6 +206,69 @@ class ScalaJSDefinedTest {
     assertNull(obj.asInstanceOf[js.Dynamic].valueClass)
   }
 
+  @Test def lazy_vals(): Unit = {
+    val obj1 = new LazyValFields()
+    assertEquals(0, obj1.initCount)
+    assertEquals(42, obj1.field)
+    assertEquals(1, obj1.initCount)
+    assertEquals(42, obj1.field)
+    assertEquals(1, obj1.initCount)
+    assertEquals(42, obj1.asInstanceOf[js.Dynamic].field)
+    assertEquals(1, obj1.initCount)
+    assertEquals(42, (obj1: LazyValFieldsSuperTrait).field)
+    assertEquals(1, obj1.initCount)
+
+    val obj2 = new LazyValFields().asInstanceOf[js.Dynamic]
+    assertEquals(0, obj2.initCount)
+    assertEquals(42, obj2.field)
+    assertEquals(1, obj2.initCount)
+    assertEquals(42, obj2.field)
+    assertEquals(1, obj2.initCount)
+    assertEquals(42, obj2.asInstanceOf[LazyValFields].field)
+    assertEquals(1, obj2.initCount)
+    assertEquals(42, obj2.asInstanceOf[LazyValFieldsSuperTrait].field)
+    assertEquals(1, obj2.initCount)
+
+    val obj3: LazyValFieldsSuperTrait = new LazyValFields()
+    assertEquals(0, obj3.initCount)
+    assertEquals(42, obj3.field)
+    assertEquals(1, obj3.initCount)
+    assertEquals(42, obj3.field)
+    assertEquals(1, obj3.initCount)
+    assertEquals(42, obj3.asInstanceOf[LazyValFields].field)
+    assertEquals(1, obj3.initCount)
+    assertEquals(42, obj3.asInstanceOf[js.Dynamic].field)
+    assertEquals(1, obj3.initCount)
+  }
+
+  @Test def override_lazy_vals(): Unit = {
+    val obj1 = new OverrideLazyValFields()
+    assertEquals(0, obj1.initCount)
+    assertEquals(53, obj1.field)
+    assertEquals(1, obj1.initCount)
+    assertEquals(53, obj1.field)
+    assertEquals(1, obj1.initCount)
+    assertEquals(53, obj1.asInstanceOf[js.Dynamic].field)
+    assertEquals(1, obj1.initCount)
+    assertEquals(53, (obj1: LazyValFieldsSuperTrait).field)
+    assertEquals(1, obj1.initCount)
+    assertEquals(53, (obj1: LazyValFields).field)
+    assertEquals(1, obj1.initCount)
+
+    val obj2 = new OverrideLazyValFields()
+    assertEquals(0, obj2.initCount)
+    assertEquals(53, (obj2: LazyValFields).field)
+    assertEquals(1, obj2.initCount)
+    assertEquals(53, obj2.field)
+    assertEquals(1, obj2.initCount)
+    assertEquals(53, obj2.field)
+    assertEquals(1, obj2.initCount)
+    assertEquals(53, obj2.asInstanceOf[js.Dynamic].field)
+    assertEquals(1, obj2.initCount)
+    assertEquals(53, (obj2: LazyValFieldsSuperTrait).field)
+    assertEquals(1, obj2.initCount)
+  }
+
   @Test def simple_inherited_from_a_native_class(): Unit = {
     val obj = new SimpleInheritedFromNative(3, 5)
     assertEquals(3, obj.x)
@@ -1824,6 +1887,27 @@ object ScalaJSDefinedTest {
     var string: String = _
     var unit: Unit = _
     var valueClass: SomeValueClass = _
+  }
+
+  trait LazyValFieldsSuperTrait extends js.Object {
+    def initCount: Int
+    def field: Int
+  }
+
+  class LazyValFields extends js.Object with LazyValFieldsSuperTrait {
+    var initCount: Int = 0
+
+    lazy val field: Int = {
+      initCount += 1
+      42
+    }
+  }
+
+  class OverrideLazyValFields extends LazyValFields {
+    override lazy val field: Int = {
+      initCount += 1
+      53
+    }
   }
 
   class SimpleInheritedFromNative(

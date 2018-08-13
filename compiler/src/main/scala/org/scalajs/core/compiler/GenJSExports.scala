@@ -324,7 +324,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
     private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.Tree = {
       val alts = classSym.info.members.toList.filter { sym =>
-        !sym.isBridge && jsNameOf(sym) == name
+        sym.isMethod && !sym.isBridge && jsNameOf(sym) == name
       }
 
       assert(!alts.isEmpty,

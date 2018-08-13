@@ -59,6 +59,20 @@ class JSOptionalTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noOptionalLazyVal: Unit = {
+    s"""
+    trait A extends js.Object {
+      lazy val a1: js.UndefOr[Int] = js.undefined
+    }
+    """ hasErrors
+    s"""
+      |newSource1.scala:6: error: A Scala.js-defined JS trait cannot contain lazy vals
+      |      lazy val a1: js.UndefOr[Int] = js.undefined
+      |               ^
+    """
+  }
+
+  @Test
   def noOverrideConcreteNonOptionalWithOptional: Unit = {
     """
     abstract class A extends js.Object {

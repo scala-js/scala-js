@@ -1057,6 +1057,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           if (sym.isMethod && isPrivateMaybeWithin(sym)) {
             reporter.error(tree.pos,
                 "A Scala.js-defined JS trait cannot contain private members")
+          } else if (sym.isLazy) {
+            reporter.error(tree.pos,
+                "A Scala.js-defined JS trait cannot contain lazy vals")
           } else if (!sym.isDeferred) {
             /* Tell the back-end not emit this thing. In fact, this only
              * matters for mixed-in members created from this member.
