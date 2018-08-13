@@ -2009,8 +2009,17 @@ abstract class GenJSCode extends plugins.PluginComponent
               val genQual = genExpr(qualifier)
 
               def genBoxedRhs: js.Tree = {
-                ensureBoxed(genRhs,
-                    enteringPhase(currentRun.posterasurePhase)(rhs.tpe))
+                val tpeEnteringPosterasure =
+                  enteringPhase(currentRun.posterasurePhase)(rhs.tpe)
+                if ((tpeEnteringPosterasure eq null) && genRhs.isInstanceOf[js.Null]) {
+                  devWarning(
+                      "Working around https://github.com/scala-js/scala-js/issues/3422 " +
+                      s"for ${sym.fullName} at ${sym.pos}")
+                  // Fortunately, a literal `null` never needs to be boxed
+                  genRhs
+                } else {
+                  ensureBoxed(genRhs, tpeEnteringPosterasure)
+                }
               }
 
               if (isScalaJSDefinedJSClass(sym.owner)) {
