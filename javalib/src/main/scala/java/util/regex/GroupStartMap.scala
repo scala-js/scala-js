@@ -388,12 +388,8 @@ private[regex] class GroupStartMap(string: String, start: Int, pattern: Pattern)
   import Pattern.{CASE_INSENSITIVE, MULTILINE}
 
   val mapping: Int => Int = {
-    val node = parseRegex(pattern.pattern())
-    val flags = {
-      "g" +
-      (if ((pattern.flags() & CASE_INSENSITIVE) != 0) "i" else "") +
-      (if ((pattern.flags() & MULTILINE) != 0) "m" else "")
-    }
+    val node = parseRegex(pattern.jsPattern)
+    val flags = pattern.jsFlags
     node.setNewGroup(1)
     val groupNodeMap = node.getGroupNodeMap
     node.transformGroupNumber(groupNodeMap.mapValues(_.newGroup).toMap)
