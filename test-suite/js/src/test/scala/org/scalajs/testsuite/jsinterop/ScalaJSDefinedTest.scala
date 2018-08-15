@@ -242,6 +242,10 @@ class ScalaJSDefinedTest {
   }
 
   @Test def override_lazy_vals(): Unit = {
+    assumeTrue(
+        "intentionally broken to preserve backward binary compatibility",
+        false)
+
     val obj1 = new OverrideLazyValFields()
     assertEquals(0, obj1.initCount)
     assertEquals(53, obj1.field)

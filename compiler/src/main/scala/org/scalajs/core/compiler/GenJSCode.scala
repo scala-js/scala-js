@@ -2665,7 +2665,18 @@ abstract class GenJSCode extends plugins.PluginComponent
       if (sym.owner == StringClass && !isStringMethodFromObject) {
         genStringCall(tree)
       } else if (isRawJSType(receiver.tpe) && sym.owner != ObjectClass) {
-        if (!isScalaJSDefinedJSClass(sym.owner) || isExposed(sym))
+        /* The !sym.isLazy test is intentionally bogus, to preserve backward
+         * binary compatibility at the cost of not correctly handling
+         * `override lazy val`s.
+         *
+         * It will cause the call site to directly access the internal accessor
+         * with a static call, rather than the JS getter using dynamic
+         * dispatch. This is necessary for bincompat, because Scala.js 0.6.24
+         * and earlier did not generate a getter for the JS access, only a
+         * field (which does not trigger the initialization of the field when
+         * it hasn't been done yet).
+         */
+        if (!isScalaJSDefinedJSClass(sym.owner) || (isExposed(sym) && !sym.isLazy))
           genPrimitiveJSCall(tree, isStat)
         else
           genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
