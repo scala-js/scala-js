@@ -12,6 +12,14 @@ final class Pattern private (jsRegExp: js.RegExp, _pattern: String, _flags: Int)
   def pattern(): String = _pattern
   def flags(): Int = _flags
 
+  private[regex] def jsPattern: String = jsRegExp.source
+
+  private[regex] def jsFlags: String = {
+    (if (jsRegExp.global) "g" else "") +
+    (if (jsRegExp.ignoreCase) "i" else "") +
+    (if (jsRegExp.multiline) "m" else "")
+  }
+
   override def toString(): String = pattern
 
   private[regex] def newJSRegExp(): js.RegExp = {
@@ -26,12 +34,7 @@ final class Pattern private (jsRegExp: js.RegExp, _pattern: String, _flags: Int)
        * We therefore reconstruct the pattern and flags used to create
        * jsRegExp and create a new one from there.
        */
-      val jsFlags = {
-        (if (jsRegExp.global) "g" else "") +
-        (if (jsRegExp.ignoreCase) "i" else "") +
-        (if (jsRegExp.multiline) "m" else "")
-      }
-      new js.RegExp(jsRegExp.source, jsFlags)
+      new js.RegExp(jsPattern, jsFlags)
     }
   }
 
