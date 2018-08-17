@@ -498,7 +498,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             if (sym.isClassConstructor) {
               constructorTrees += dd
-            } else if (exposed && sym.isAccessor) {
+            } else if (exposed && sym.isAccessor && !sym.isLazy) {
               /* Exposed accessors must not be emitted, since the field they
                * access is enough.
                */
@@ -2009,8 +2009,18 @@ abstract class GenJSCode extends plugins.PluginComponent
               val genQual = genExpr(qualifier)
 
               def genBoxedRhs: js.Tree = {
-                ensureBoxed(genRhs,
-                    enteringPhase(currentRun.posterasurePhase)(rhs.tpe))
+                val tpeEnteringPosterasure =
+                  enteringPhase(currentRun.posterasurePhase)(rhs.tpe)
+                if ((tpeEnteringPosterasure eq null) && genRhs.isInstanceOf[js.Null]) {
+                  // 2.10.x does not yet have `devWarning`, so use `debugwarn` instead.
+                  debugwarn(
+                      "Working around https://github.com/scala-js/scala-js/issues/3422 " +
+                      s"for ${sym.fullName} at ${sym.pos}")
+                  // Fortunately, a literal `null` never needs to be boxed
+                  genRhs
+                } else {
+                  ensureBoxed(genRhs, tpeEnteringPosterasure)
+                }
               }
 
               if (isScalaJSDefinedJSClass(sym.owner)) {
@@ -2655,7 +2665,18 @@ abstract class GenJSCode extends plugins.PluginComponent
       if (sym.owner == StringClass && !isStringMethodFromObject) {
         genStringCall(tree)
       } else if (isRawJSType(receiver.tpe) && sym.owner != ObjectClass) {
-        if (!isScalaJSDefinedJSClass(sym.owner) || isExposed(sym))
+        /* The !sym.isLazy test is intentionally bogus, to preserve backward
+         * binary compatibility at the cost of not correctly handling
+         * `override lazy val`s.
+         *
+         * It will cause the call site to directly access the internal accessor
+         * with a static call, rather than the JS getter using dynamic
+         * dispatch. This is necessary for bincompat, because Scala.js 0.6.24
+         * and earlier did not generate a getter for the JS access, only a
+         * field (which does not trigger the initialization of the field when
+         * it hasn't been done yet).
+         */
+        if (!isScalaJSDefinedJSClass(sym.owner) || (isExposed(sym) && !sym.isLazy))
           genPrimitiveJSCall(tree, isStat)
         else
           genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
@@ -5582,8 +5603,14 @@ abstract class GenJSCode extends plugins.PluginComponent
   /** Tests whether the given member is exposed, i.e., whether it was
    *  originally a public or protected member of a Scala.js-defined JS class.
    */
-  private def isExposed(sym: Symbol): Boolean =
-    !sym.isBridge && sym.hasAnnotation(ExposedJSMemberAnnot)
+  private def isExposed(sym: Symbol): Boolean = {
+    !sym.isBridge && {
+      if (sym.isLazy)
+        sym.isAccessor && sym.accessed.hasAnnotation(ExposedJSMemberAnnot)
+      else
+        sym.hasAnnotation(ExposedJSMemberAnnot)
+    }
+  }
 
   /** Test whether `sym` is the symbol of a raw JS function definition */
   private def isRawJSFunctionDef(sym: Symbol): Boolean =
