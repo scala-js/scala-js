@@ -214,10 +214,6 @@ def Tasks = [
         $testSuite/clean &&
     sbtretry 'set inScope(ThisScope in $testSuite)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
         'set parallelExecution in ($testSuite, Test) := false' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set inScope(ThisScope in $testSuite)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
-        'set parallelExecution in ($testSuite, Test) := false' \
-        'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
