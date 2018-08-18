@@ -2,8 +2,6 @@ package sbttest.framework
 
 import sbt.testing._
 
-import org.scalajs.testinterface.TestUtils
-
 import scala.concurrent.ExecutionContext.Implicits.global
 
 final class DummyTask(
@@ -15,9 +13,9 @@ final class DummyTask(
 
   def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
     try {
-      // Just create a new instance.
-      val inst = TestUtils.newInstance(taskDef.fullyQualifiedName,
-          runner.testClassLoader, Seq())(Seq())
+      // Just create a new instance of the test class, for its side effects.
+      Platform.instantiateTestClass(taskDef.fullyQualifiedName,
+          runner.testClassLoader)
 
       eventHandler.handle(new DummyEvent(taskDef, None))
       loggers.foreach(_.info(s"Success: ${taskDef.fullyQualifiedName}"))
