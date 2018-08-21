@@ -3,6 +3,11 @@ package org.scalajs.testinterface
 import scala.scalajs.js
 import scala.scalajs.reflect._
 
+@deprecated(
+    "Use scala.scalajs.reflect.Reflect (JS-only) or " +
+    "https://github.com/portable-scala/portable-scala-reflect (portable) " +
+    "instead.",
+    "0.6.25")
 object TestUtils {
 
   /** Instantiates the class given by its fully qualified name.

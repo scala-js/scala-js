@@ -11,6 +11,9 @@ private object Compat210 {
 
 import Compat210._
 
+@deprecated(
+    "Use https://github.com/portable-scala/portable-scala-reflect instead.",
+    "0.6.25")
 object TestUtils {
   import scala.reflect.macros._ // shadows blackbox from above
   import blackbox.Context

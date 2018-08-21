@@ -89,7 +89,7 @@ lazy val jetty9 = project.settings(baseSettings: _*).
     Jetty9Test.runSetting
   )
 
-lazy val testFramework = crossProject.crossType(CrossType.Pure).
+lazy val testFramework = crossProject.crossType(CrossType.Full).
   settings(versionSettings: _*).
   settings(name := "Dummy cross JS/JVM test framework").
   jsSettings(
