@@ -174,16 +174,15 @@ object ArrayBuilder {
    *
    *  @tparam T     type of elements for the array builder, subtype of `AnyRef` with a `ClassTag` context bound.
    */
-
   @SerialVersionUID(3L)
   final class ofRef[T <: AnyRef](implicit ct: ClassTag[T]) extends ArrayBuilder[T] {
 
     protected var elems: Array[T] = _
 
     private def mkArray(size: Int): Array[T] = {
-      val newelems = new Array[T](size)
-      if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
-      newelems
+      if (capacity == size && capacity > 0) elems
+      else if (elems eq null) new Array[T](size)
+      else java.util.Arrays.copyOf[T](elems, size)
     }
 
     protected[this] def resize(size: Int): Unit = {
@@ -201,9 +200,16 @@ object ArrayBuilder {
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        elems
+        val res = elems
+        elems = null
+        res
       }
       else mkArray(size)
+    }
+
+    override def clear(): Unit = {
+      super.clear()
+      if(elems ne null) java.util.Arrays.fill(elems.asInstanceOf[Array[AnyRef]], null)
     }
 
     override def equals(other: Any): Boolean = other match {
@@ -241,7 +247,9 @@ object ArrayBuilder {
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        elems
+        val res = elems
+        elems = null
+        res
       }
       else mkArray(size)
     }
@@ -281,7 +289,9 @@ object ArrayBuilder {
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        elems
+        val res = elems
+        elems = null
+        res
       }
       else mkArray(size)
     }
@@ -321,7 +331,9 @@ object ArrayBuilder {
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        elems
+        val res = elems
+        elems = null
+        res
       }
       else mkArray(size)
     }
@@ -361,7 +373,9 @@ object ArrayBuilder {
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        elems
+        val res = elems
+        elems = null
+        res
       }
       else mkArray(size)
     }
@@ -401,7 +415,9 @@ object ArrayBuilder {
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        elems
+        val res = elems
+        elems = null
+        res
       }
       else mkArray(size)
     }
@@ -441,7 +457,9 @@ object ArrayBuilder {
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        elems
+        val res = elems
+        elems = null
+        res
       }
       else mkArray(size)
     }
@@ -481,7 +499,9 @@ object ArrayBuilder {
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        elems
+        val res = elems
+        elems = null
+        res
       }
       else mkArray(size)
     }
@@ -521,7 +541,9 @@ object ArrayBuilder {
     def result() = {
       if (capacity != 0 && capacity == size) {
         capacity = 0
-        elems
+        val res = elems
+        elems = null
+        res
       }
       else mkArray(size)
     }
