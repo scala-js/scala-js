@@ -123,7 +123,6 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     override def name: String = phaseName
     override def description: String = GenJSCode.this.description
-    override def erasedTypes: Boolean = true
 
     // Scoped state ------------------------------------------------------------
     // Per class body

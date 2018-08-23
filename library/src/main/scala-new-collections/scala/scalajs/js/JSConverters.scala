@@ -53,7 +53,6 @@ object JSConverters extends JSConvertersLowPrioImplicits {
        * case the entire match disappears and `col` can stay stack-allocated).
        */
       col match {
-        case col: js.ArrayOps[T]     => col.repr
         case col: js.WrappedArray[T] => col.array
         case _ =>
           val result = new js.Array[T]

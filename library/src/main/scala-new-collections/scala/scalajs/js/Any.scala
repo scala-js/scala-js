@@ -19,6 +19,8 @@ import scala.language.implicitConversions
 import scala.collection.BuildFrom
 import scala.collection.mutable
 
+import scala.scalajs.js
+
 /** Root of the hierarchy of JavaScript types.
  *
  *  Subtypes of [[Any js.Any]] are JavaScript types, which have different
@@ -79,8 +81,8 @@ object Any extends LowPrioAnyImplicits {
   implicit def buildFromArray[A]: BuildFrom[Array[_], A, Array[A]] = {
     @inline
     class BuildFromArray extends BuildFrom[Array[_], A, Array[A]] {
-      def fromSpecificIterable(from: Array[_])(
-          it: scala.collection.Iterable[A]): Array[A] = {
+      def fromSpecific(from: Array[_])(
+          it: scala.collection.IterableOnce[A]): Array[A] = {
         val b = newBuilder(from)
         b.sizeHint(it)
         b ++= it
@@ -88,10 +90,28 @@ object Any extends LowPrioAnyImplicits {
       }
 
       def newBuilder(from: Array[_]): mutable.Builder[A, Array[A]] =
-        new ArrayOps[A]
+        new ArrayBuilder[A]()
     }
 
     new BuildFromArray
+  }
+
+  @inline
+  private class ArrayBuilder[A] extends mutable.Builder[A, js.Array[A]] {
+    private[this] var array: js.Array[A] = js.Array()
+
+    def addOne(elem: A): this.type = {
+      array.push(elem)
+      this
+    }
+
+    def result(): js.Array[A] =
+      array
+
+    def clear(): Unit = {
+      // need to create a new one so that the builder is reusable
+      array = js.Array()
+    }
   }
 
   // scalastyle:off line.size.limit
@@ -181,13 +201,15 @@ object Any extends LowPrioAnyImplicits {
 }
 
 trait LowPrioAnyImplicits extends LowestPrioAnyImplicits {
-  implicit def wrapArray[A](array: Array[A]): WrappedArray[A] =
-    new WrappedArray(array)
-  implicit def wrapDictionary[A](dict: Dictionary[A]): WrappedDictionary[A] =
-    new WrappedDictionary(dict)
+  implicit def wrapArray[A](array: js.Array[A]): js.WrappedArray[A] =
+    new js.WrappedArray(array)
+  implicit def wrapDictionary[A](dict: js.Dictionary[A]): js.WrappedDictionary[A] =
+    new js.WrappedDictionary(dict)
 }
 
 sealed trait LowestPrioAnyImplicits {
-  implicit def iterableOps[A](iterable: Iterable[A]): IterableOps[A] =
-    new IterableOps(iterable)
+  implicit def arrayAsIterable[A](array: js.Array[_ <: A]): scala.collection.Iterable[A] =
+    new js.WrappedArray(array)
+  implicit def iterableOps[A](iterable: js.Iterable[A]): js.IterableOps[A] =
+    new js.IterableOps(iterable)
 }
