@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "devDependencies": {
+    "source-map-support": "0.4.15",
+    "jszip": "2.4.0",
+    "jsdom": "10.0.0"
+  }
+}
