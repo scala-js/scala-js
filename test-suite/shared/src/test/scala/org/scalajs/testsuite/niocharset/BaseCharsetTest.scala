@@ -30,18 +30,79 @@ class BaseCharsetTest(val charset: Charset) {
   protected def testDecode(in: ByteBuffer)(
       outParts: OutPart[CharBuffer]*): Unit = {
 
+    def newDecoder(malformedAction: CodingErrorAction,
+        unmappableAction: CodingErrorAction): CharsetDecoder =  {
+          val decoder = charset.newDecoder
+          decoder.onMalformedInput(malformedAction)
+          decoder.onUnmappableCharacter(unmappableAction)
+          decoder
+        }
+
+    def prepareInputBuffer(readOnly: Boolean): ByteBuffer = {
+      val buf = if (readOnly) in.asReadOnlyBuffer()
+                else in.duplicate()
+
+      assert(buf.isReadOnly == readOnly)
+      assert(buf.hasArray != readOnly)
+      buf
+    }
+
+    def testDecodeVsSteppedDecode(malformedAction: CodingErrorAction,
+        unmappableAction: CodingErrorAction, readOnly: Boolean): Unit = {
+
+      //compares the decode result of a single decoder.decode(buffer) call vs
+      //repeated decode(input, output, done) calls with a buffer that increments
+      //its limit each step
+      //this will catch mishandled broken up multi-byte sequences
+
+      val decoder = newDecoder(malformedAction, unmappableAction)
+
+      val directResult = Try(decoder.decode(prepareInputBuffer(readOnly)))
+                         .map(_.toString)
+
+      val inputForIncremental = prepareInputBuffer(readOnly)
+      inputForIncremental.limit(inputForIncremental.position)
+
+      val outputBuffer = CharBuffer.allocate(in.capacity * 2)
+      decoder.reset()
+
+      def increaseBuffer(bb: ByteBuffer) = (bb.limit < bb.capacity) &&
+                                           (bb.limit(bb.limit + 1) != null)
+
+      val incrementalResult = Try {
+        var result: CoderResult = CoderResult.UNDERFLOW
+        while(increaseBuffer(inputForIncremental) && result.isUnderflow){
+          result = decoder.decode(inputForIncremental, outputBuffer, false)
+        }
+        if(result.isError) result.throwException
+        result = decoder.decode(inputForIncremental, outputBuffer, true)
+        if(result.isError) result.throwException
+        result = decoder.flush(outputBuffer)
+        if(result.isError) result.throwException
+        outputBuffer.flip
+        outputBuffer.toString
+      }
+      (directResult, incrementalResult) match {
+        case (Success(directString), Success(incrementalString)) =>
+          assertSame(directString, incrementalString)
+        case (Failure(dex: UnmappableCharacterException),
+              Failure(incex: UnmappableCharacterException)) =>
+          assertEquals(dex.getInputLength, incex.getInputLength)
+        case (Failure(dex: MalformedInputException),
+              Failure(incex: MalformedInputException)) =>
+          assertEquals(dex.getInputLength, incex.getInputLength)
+        //the fallback will assert false, but have an informational failure message
+        case _ => assertSame(directResult, incrementalResult)
+      }
+
+    }
+
     def testOneConfig(malformedAction: CodingErrorAction,
         unmappableAction: CodingErrorAction, readOnly: Boolean): Unit = {
 
-      val decoder = charset.newDecoder()
-      decoder.onMalformedInput(malformedAction)
-      decoder.onUnmappableCharacter(unmappableAction)
+      val decoder = newDecoder(malformedAction, unmappableAction)
 
-      val inBuf =
-        if (readOnly) in.asReadOnlyBuffer()
-        else in.duplicate()
-      assert(inBuf.isReadOnly == readOnly)
-      assert(inBuf.hasArray != readOnly)
+      val inBuf = prepareInputBuffer(readOnly)
 
       val actualTry = Try {
         val buf = decoder.decode(inBuf)
@@ -105,6 +166,7 @@ class BaseCharsetTest(val charset: Charset) {
       unmappableAction <- if (hasAnyUnmappable) AllErrorActions else ReportActions
       readOnly         <- List(false, true)
     } {
+      testDecodeVsSteppedDecode(malformedAction, unmappableAction, readOnly)
       testOneConfig(malformedAction, unmappableAction, readOnly)
     }
   }
