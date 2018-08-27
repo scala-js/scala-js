@@ -97,6 +97,7 @@ sbtretry() {
 def Tasks = [
   "main": '''
     setJavaVersion $java
+    npm install &&
     sbtretry ++$scala 'set scalaJSUseRhino in Global := true' helloworld/run &&
     sbtretry ++$scala helloworld/run &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
@@ -170,6 +171,7 @@ def Tasks = [
 
   "test-suite-ecma-script5": '''
     setJavaVersion $java
+    npm install &&
     sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test \
         'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test &&
     sbtretry ++$scala 'set scalaJSUseRhino in Global := true' jUnitTestOutputsJS/test &&
@@ -233,6 +235,7 @@ def Tasks = [
 
   "test-suite-ecma-script6": '''
     setJavaVersion $java
+    npm install &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         ++$scala $testSuite/test \
@@ -281,6 +284,7 @@ def Tasks = [
 
   "bootstrap": '''
     setJavaVersion $java
+    npm install &&
     sbt ++$scala irJS/test toolsJS/test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
         ++$scala irJS/test &&
@@ -291,6 +295,7 @@ def Tasks = [
 
   "tools-cli-stubs": '''
     setJavaVersion $java
+    npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
         stubs/package jsEnvsTestSuite/test testAdapter/test \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
@@ -304,6 +309,7 @@ def Tasks = [
 
   "tools-cli-stubs-sbtplugin": '''
     setJavaVersion $java
+    npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
         stubs/package jsEnvsTestSuite/test testAdapter/test \
         sbtPlugin/package \
@@ -334,6 +340,7 @@ def Tasks = [
 
   "partestc": '''
     setJavaVersion $java
+    npm install &&
     sbt ++$scala partest/compile
   ''',
 
@@ -342,6 +349,7 @@ def Tasks = [
     SBT_VER_OVERRIDE=$sbt_version_override
     # Publish Scala.js artifacts locally
     # Then go into standalone project and test
+    npm install &&
     sbt ++2.11.12 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
                   testInterface/publishLocal stubs/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
@@ -365,16 +373,19 @@ def Tasks = [
 
   "partest-noopt": '''
     setJavaVersion $java
+    npm install &&
     sbt ++$scala package "partestSuite/testOnly -- --showDiff"
   ''',
 
   "partest-fastopt": '''
     setJavaVersion $java
+    npm install &&
     sbt ++$scala package "partestSuite/testOnly -- --fastOpt --showDiff"
   ''',
 
   "partest-fullopt": '''
     setJavaVersion $java
+    npm install &&
     sbt ++$scala package "partestSuite/testOnly -- --fullOpt --showDiff"
   '''
 ]

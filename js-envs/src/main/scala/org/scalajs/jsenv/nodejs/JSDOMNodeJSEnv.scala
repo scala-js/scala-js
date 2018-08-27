@@ -65,46 +65,89 @@ class JSDOMNodeJSEnv private[jsenv] (
   protected trait AbstractDOMNodeRunner extends AbstractNodeRunner {
 
     protected def codeWithJSDOMContext(): Seq[VirtualJSFile] = {
-      val scriptsJSPaths = getLibJSFiles().map {
-        case file: FileVirtualFile => file.path
-        case file                  => libCache.materialize(file).getAbsolutePath
+      val scriptsFiles = (getLibJSFiles() :+ code).map {
+        case file: FileVirtualFile => file.file
+        case file                  => libCache.materialize(file)
       }
-      val scriptsStringPath = scriptsJSPaths.map('"' + escapeJS(_) + '"')
+      val scriptsURIsAsJSStrings = scriptsFiles.map { file =>
+        '"' + escapeJS(file.toURI.toASCIIString) + '"'
+      }
+      val scriptsURIsJSArray = scriptsURIsAsJSStrings.mkString("[", ", ", "]")
+
       val jsDOMCode = {
         s"""
            |(function () {
-           |  var jsdom;
-           |  try {
-           |    jsdom = require("jsdom/lib/old-api.js"); // jsdom >= 10.x
-           |  } catch (e) {
-           |    jsdom = require("jsdom"); // jsdom <= 9.x
-           |  }
+           |  var jsdom = require("jsdom");
            |
-           |  var windowKeys = [];
-           |
-           |  jsdom.env({
-           |    html: "",
-           |    virtualConsole: jsdom.createVirtualConsole().sendTo(console),
-           |    created: function (error, window) {
-           |      if (error == null) {
-           |        window["__ScalaJSEnv"] = __ScalaJSEnv;
-           |        window["scalajsCom"] = global.scalajsCom;
-           |        windowKeys = Object.keys(window);
-           |      } else {
-           |        console.log(error);
+           |  if (typeof jsdom.JSDOM === "function") {
+           |    // jsdom >= 10.0.0
+           |    var virtualConsole = new jsdom.VirtualConsole()
+           |      .sendTo(console, { omitJSDOMErrors: true });
+           |    virtualConsole.on("jsdomError", function (error) {
+           |      try {
+           |        // Display as much info about the error as possible
+           |        if (error.detail && error.detail.stack) {
+           |          console.error("" + error.detail);
+           |          console.error(error.detail.stack);
+           |        } else {
+           |          console.error(error);
+           |        }
+           |      } finally {
+           |        // Whatever happens, kill the process so that the run fails
+           |        process.exit(1);
            |      }
-           |    },
-           |    scripts: [${scriptsStringPath.mkString(", ")}],
-           |    onload: function (window) {
-           |      jsdom.changeURL(window, "http://localhost");
-           |      for (var k in window) {
-           |        if (windowKeys.indexOf(k) == -1)
-           |          global[k] = window[k];
-           |      }
+           |    });
            |
-           |      ${code.content}
+           |    var dom = new jsdom.JSDOM("", {
+           |      virtualConsole: virtualConsole,
+           |      url: "http://localhost/",
+           |
+           |      /* Allow unrestricted <script> tags. This is exactly as
+           |       * "dangerous" as the arbitrary execution of script files we
+           |       * do in the non-jsdom Node.js env.
+           |       */
+           |      resources: "usable",
+           |      runScripts: "dangerously"
+           |    });
+           |
+           |    var window = dom.window;
+           |    window["__ScalaJSEnv"] = __ScalaJSEnv;
+           |    window["scalajsCom"] = global.scalajsCom;
+           |
+           |    var scriptsSrcs = $scriptsURIsJSArray;
+           |    for (var i = 0; i < scriptsSrcs.length; i++) {
+           |      var script = window.document.createElement("script");
+           |      script.src = scriptsSrcs[i];
+           |      window.document.body.appendChild(script);
            |    }
-           |  });
+           |  } else {
+           |    // jsdom v9.x
+           |    var windowKeys = [];
+           |
+           |    jsdom.env({
+           |      html: "",
+           |      virtualConsole: jsdom.createVirtualConsole().sendTo(console),
+           |      created: function (error, window) {
+           |        if (error == null) {
+           |          window["__ScalaJSEnv"] = __ScalaJSEnv;
+           |          window["scalajsCom"] = global.scalajsCom;
+           |          windowKeys = Object.keys(window);
+           |        } else {
+           |          console.log(error);
+           |        }
+           |      },
+           |      scripts: ${scriptsURIsAsJSStrings.init.mkString("[", ", ", "]")},
+           |      onload: function (window) {
+           |        jsdom.changeURL(window, "http://localhost");
+           |        for (var k in window) {
+           |          if (windowKeys.indexOf(k) == -1)
+           |            global[k] = window[k];
+           |        }
+           |
+           |        ${code.content}
+           |      }
+           |    });
+           |  }
            |})();
            |""".stripMargin
       }
