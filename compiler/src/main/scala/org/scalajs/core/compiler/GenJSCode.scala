@@ -5605,10 +5605,14 @@ abstract class GenJSCode extends plugins.PluginComponent
    */
   private def isExposed(sym: Symbol): Boolean = {
     !sym.isBridge && {
-      if (sym.isLazy)
-        sym.isAccessor && sym.accessed.hasAnnotation(ExposedJSMemberAnnot)
-      else
+      if (sym.isLazy) {
+        sym.isAccessor && {
+          sym.accessed.hasAnnotation(ExposedJSMemberAnnot) ||
+          sym.hasAnnotation(ExposedJSMemberAnnot) // for 2.12.0, see #3439
+        }
+      } else {
         sym.hasAnnotation(ExposedJSMemberAnnot)
+      }
     }
   }
 
