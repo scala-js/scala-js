@@ -27,6 +27,12 @@ import scala.scalajs.js.annotation._
  *  To enable the use of these functions on js.[[Array]]s, import the implicit
  *  conversion [[JSArrayOps.jsArrayOps]].
  */
+@deprecated(
+    "It almost never makes sense to call native JavaScript Array functions " +
+    "from Scala.js. Use the normal Scala collection methods instead. " +
+    "If this is really what you want, use js.Dynamic or write your own " +
+    "facade type.",
+    "0.6.25")
 @native
 trait JSArrayOps[A] extends Object {
 
@@ -259,6 +265,12 @@ trait JSArrayOps[A] extends Object {
 
 }
 
+@deprecated(
+    "It almost never makes sense to call native JavaScript Array functions " +
+    "from Scala.js. Use the normal Scala collection methods instead. " +
+    "If this is really what you want, use js.Dynamic or write your own " +
+    "facade type.",
+    "0.6.25")
 object JSArrayOps {
   @inline implicit def jsArrayOps[A](array: Array[A]): JSArrayOps[A] =
     array.asInstanceOf[JSArrayOps[A]]
