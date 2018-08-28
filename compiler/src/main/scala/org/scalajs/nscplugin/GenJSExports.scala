@@ -848,7 +848,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
     private case class ExportedSymbol(sym: Symbol) extends Exported {
       private val isAnonJSClassConstructor =
-        sym.isClassConstructor && isAnonJSClass(sym.owner)
+        sym.isClassConstructor && sym.owner.isAnonymousClass && isJSType(sym.owner)
 
       val isLiftedJSConstructor =
         sym.isClassConstructor && isNestedJSClass(sym.owner)

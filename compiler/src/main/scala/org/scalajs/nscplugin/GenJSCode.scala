@@ -272,10 +272,12 @@ abstract class GenJSCode extends plugins.PluginComponent
         /* There are three types of anonymous classes we want to generate
          * only once we need them so we can inline them at construction site:
          *
-         * - lambdas for js.FunctionN and js.ThisFunctionN (SAMs). (We may not
-         *   generate actual Scala classes for these).
-         * - anonymous (non-lambda) JS classes. These classes may not have their
-         *   own prototype. Therefore, their constructor *must* be inlined.
+         * - anonymous class that are JS types, which includes:
+         *   - lambdas for js.FunctionN and js.ThisFunctionN (SAMs). (We may
+         *     not generate actual Scala classes for these).
+         *   - anonymous (non-lambda) JS classes. These classes may not have
+         *     their own prototype. Therefore, their constructor *must* be
+         *     inlined.
          * - lambdas for scala.FunctionN. This is only an optimization and may
          *   fail. In the case of failure, we fall back to generating a
          *   fully-fledged Scala class.
@@ -285,8 +287,7 @@ abstract class GenJSCode extends plugins.PluginComponent
          */
         val (lazyAnons, fullClassDefs0) = allClassDefs.partition { cd =>
           val sym = cd.symbol
-          isRawJSFunctionDef(sym) || sym.isAnonymousFunction ||
-          isAnonJSClass(sym)
+          (sym.isAnonymousClass && isJSType(sym)) || sym.isAnonymousFunction
         }
 
         lazilyGeneratedAnonClasses ++= lazyAnons.map(cd => cd.symbol -> cd)
@@ -641,7 +642,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     def genAnonJSClassNew(sym: Symbol, jsSuperClassValue: js.Tree,
         args: List[js.TreeOrJSSpread], pos: Position): js.Tree = {
-      assert(isAnonJSClass(sym),
+      assert(sym.isAnonymousClass && !isRawJSFunctionDef(sym),
           "Generating AnonJSClassNew of non anonymous JS class")
 
       // Find the ClassDef for this anonymous class
@@ -4637,7 +4638,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.JSObjectConstr(Nil)
         else if (cls == JSArrayClass && args0.isEmpty)
           js.JSArrayConstr(Nil)
-        else if (isAnonJSClass(cls))
+        else if (cls.isAnonymousClass)
           genAnonJSClassNew(cls, jsClassValue.get, args, fun.pos)
         else if (!nestedJSClass)
           js.JSNew(genPrimitiveJSClass(cls), args)
@@ -4744,7 +4745,7 @@ abstract class GenJSCode extends plugins.PluginComponent
        */
 
       val isAnonJSClassConstructor =
-        sym.isClassConstructor && isAnonJSClass(sym.owner)
+        sym.isClassConstructor && sym.owner.isAnonymousClass
 
       val wereRepeated = enteringPhase(currentRun.uncurryPhase) {
         for {
@@ -5747,9 +5748,6 @@ abstract class GenJSCode extends plugins.PluginComponent
   /** Tests whether the given class is a non-native JS class. */
   def isNonNativeJSClass(sym: Symbol): Boolean =
     !sym.isTrait && isJSType(sym) && !sym.hasAnnotation(JSNativeAnnotation)
-
-  def isAnonJSClass(sym: Symbol): Boolean =
-    sym.hasAnnotation(AnonymousJSClassAnnotation)
 
   def isNestedJSClass(sym: Symbol): Boolean =
     sym.isLifted && !sym.originalOwner.isModuleClass && isJSType(sym)

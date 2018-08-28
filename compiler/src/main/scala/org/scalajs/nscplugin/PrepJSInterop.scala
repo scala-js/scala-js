@@ -495,9 +495,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       val isJSAnonFun = isJSLambda(sym)
 
       sym.addAnnotation(RawJSTypeAnnot)
-      if (sym.isAnonymousClass && !isJSAnonFun) {
-        sym.addAnnotation(AnonymousJSClassAnnotation)
-      }
 
       /* Anonymous functions are considered native, since they are handled
        * specially in the backend.
@@ -1407,7 +1404,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     def isCompilerAnnotation(annotation: AnnotationInfo): Boolean = {
       annotation.symbol == ExposedJSMemberAnnot ||
       annotation.symbol == RawJSTypeAnnot ||
-      annotation.symbol == AnonymousJSClassAnnotation ||
       annotation.symbol == JSOptionalAnnotation
     }
 
