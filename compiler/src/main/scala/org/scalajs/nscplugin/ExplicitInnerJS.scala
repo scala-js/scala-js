@@ -93,7 +93,7 @@ abstract class ExplicitInnerJS
 
   /** Is the given clazz an inner JS class? */
   private def isInnerJSClass(clazz: Symbol): Boolean = {
-    clazz.hasAnnotation(RawJSTypeAnnot) &&
+    clazz.hasAnnotation(JSTypeAnnot) &&
     !clazz.isPackageClass && !clazz.outerClass.isStaticOwner &&
     !clazz.isLocalToBlock && !clazz.isModuleClass && !clazz.isTrait
   }
@@ -108,7 +108,7 @@ abstract class ExplicitInnerJS
       if (innerJSClasses.isEmpty) {
         tp
       } else {
-        val clazzIsJSClass = clazz.hasAnnotation(RawJSTypeAnnot)
+        val clazzIsJSClass = clazz.hasAnnotation(JSTypeAnnot)
 
         val decls1 = decls.cloneScope
         for (innerJSClass <- innerJSClasses) {

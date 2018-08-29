@@ -24,7 +24,7 @@ object Types {
   /** Type of a term (expression or statement) in the IR.
    *
    *  There is a many-to-one relationship from [[TypeRef]]s to `Type`s,
-   *  because `java.lang.Object` and raw JS types all collapse to [[AnyType]].
+   *  because `java.lang.Object` and JS types all collapse to [[AnyType]].
    *
    *  In fact, there are two `Type`s that do not have any real equivalent in
    *  type refs: [[StringType]] and [[UndefType]], as they refer to the
@@ -42,13 +42,13 @@ object Types {
 
   /** Any type (the top type of this type system).
    *  A variable of this type can contain any value, including `undefined`
-   *  and `null` and any raw JS value. This type supports a very limited set
+   *  and `null` and any JS value. This type supports a very limited set
    *  of Scala operations, the ones common to all values. Basically only
    *  reference equality tests and instance tests. It also supports all
    *  JavaScript operations, since all Scala objects are also genuine
    *  JavaScript objects.
    *  The type java.lang.Object in the back-end maps to [[AnyType]] because it
-   *  can hold raw JS values (not only instances of Scala.js classes).
+   *  can hold JS values (not only instances of Scala.js classes).
    */
   case object AnyType extends Type
 
@@ -147,7 +147,7 @@ object Types {
    *
    *  - All primitive types have their `TypeRef` (including `scala.Byte` and
    *    `scala.Short`), and they are different from their boxed versions.
-   *  - Raw JS types are not erased to `any`
+   *  - JS types are not erased to `any`
    *  - Array types are like on the JVM
    *
    *  A `TypeRef` therefore uniquely identifies a `classOf[T]`. It is also the
@@ -247,7 +247,7 @@ object Types {
               lhsBase == rhsBase
             } else {
               /* All things must be considered subclasses of Object for this
-               * purpose, even raw JS types and interfaces, which do not have
+               * purpose, even JS types and interfaces, which do not have
                * Object in their ancestors.
                */
               rhsBase == ObjectClass || isSubclass(lhsBase, rhsBase)

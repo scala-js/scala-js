@@ -29,8 +29,8 @@ class InternalAnnotationsTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def rawJSType: Unit = {
-    test("RawJSType")
+  def jsType: Unit = {
+    test("JSType")
   }
 
   @Test

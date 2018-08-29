@@ -170,7 +170,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       |newSource1.scala:7: error: In non-native JS traits, defs with parentheses must be abstract.
       |      def b(x: Int): js.UndefOr[Int] = js.undefined
       |                                          ^
-      |newSource1.scala:8: error: Raw JS setters must return Unit
+      |newSource1.scala:8: error: JS setters must return Unit
       |      def c_=(v: Int): js.UndefOr[Int] = js.undefined
       |          ^
       |newSource1.scala:8: error: In non-native JS traits, defs with parentheses must be abstract.

@@ -79,32 +79,32 @@ class ReflectionTest {
     assertTrue(classOf[Cloneable].isInstance(new Array[String](1)))
   }
 
-  @Test def isInstance_for_raw_JS_class(): Unit = {
-    js.eval("""var ReflectionTestRawJSClass = (function() {})""")
+  @Test def isInstance_for_JS_class(): Unit = {
+    js.eval("""var ReflectionTestJSClass = (function() {})""")
 
-    val obj = new ReflectionTestRawJSClass
-    assertTrue(obj.isInstanceOf[ReflectionTestRawJSClass])
-    assertTrue(classOf[ReflectionTestRawJSClass].isInstance(obj))
+    val obj = new ReflectionTestJSClass
+    assertTrue(obj.isInstanceOf[ReflectionTestJSClass])
+    assertTrue(classOf[ReflectionTestJSClass].isInstance(obj))
 
     val other = (5, 6): Any
-    assertFalse(other.isInstanceOf[ReflectionTestRawJSClass])
-    assertFalse(classOf[ReflectionTestRawJSClass].isInstance(other))
+    assertFalse(other.isInstanceOf[ReflectionTestJSClass])
+    assertFalse(classOf[ReflectionTestJSClass].isInstance(other))
 
-    val ct = classTag[ReflectionTestRawJSClass]
+    val ct = classTag[ReflectionTestJSClass]
     assertTrue(ct.unapply(obj).isDefined)
     assertFalse(ct.unapply(other).isDefined)
 
-    assertTrue(implicitClassTagTest[ReflectionTestRawJSClass](obj))
-    assertFalse(implicitClassTagTest[ReflectionTestRawJSClass](other))
+    assertTrue(implicitClassTagTest[ReflectionTestJSClass](obj))
+    assertFalse(implicitClassTagTest[ReflectionTestJSClass](other))
   }
 
-  @Test def isInstance_for_raw_JS_traits_should_fail(): Unit = {
-    assertThrows(classOf[Exception], classOf[ReflectionTestRawJSTrait].isInstance(5))
+  @Test def isInstance_for_JS_traits_should_fail(): Unit = {
+    assertThrows(classOf[Exception], classOf[ReflectionTestJSTrait].isInstance(5))
 
-    val ct = classTag[ReflectionTestRawJSTrait]
+    val ct = classTag[ReflectionTestJSTrait]
     assertThrows(classOf[Exception], ct.unapply(new AnyRef))
 
-    assertThrows(classOf[Exception], implicitClassTagTest[ReflectionTestRawJSTrait](new AnyRef))
+    assertThrows(classOf[Exception], implicitClassTagTest[ReflectionTestJSTrait](new AnyRef))
   }
 
   @Test def getClass_for_normal_types(): Unit = {
@@ -166,12 +166,12 @@ object ReflectionTest {
 
   class OtherPrefixRenamedTestClass
 
-  @JSGlobal("ReflectionTestRawJSClass")
+  @JSGlobal("ReflectionTestJSClass")
   @js.native
-  class ReflectionTestRawJSClass extends js.Object
+  class ReflectionTestJSClass extends js.Object
 
   @js.native
-  trait ReflectionTestRawJSTrait extends js.Object
+  trait ReflectionTestJSTrait extends js.Object
 
   class SomeParentClass
   class SomeChildClass extends SomeParentClass

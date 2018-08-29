@@ -610,16 +610,16 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:8: error: Raw JS setters must return Unit
+      |newSource1.scala:8: error: JS setters must return Unit
       |      def foo_=(x: Int): Int = js.native
       |          ^
-      |newSource1.scala:9: error: Raw JS setters must have exactly one argument
+      |newSource1.scala:9: error: JS setters must have exactly one argument
       |      def bar_=(x: Int, y: Int): Unit = js.native
       |          ^
-      |newSource1.scala:10: error: Raw JS setters may not have repeated params
+      |newSource1.scala:10: error: JS setters may not have repeated params
       |      def goo_=(x: Int*): Unit = js.native
       |          ^
-      |newSource1.scala:11: error: Raw JS setters may not have default params
+      |newSource1.scala:11: error: JS setters may not have default params
       |      def hoo_=(x: Int = 1): Unit = js.native
       |          ^
     """
@@ -713,7 +713,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def onlyJSRawTraits: Unit = {
+  def onlyJSTraits: Unit = {
 
     """
     trait A
@@ -1072,7 +1072,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def warnNothingRaw: Unit = {
+  def warnNothingInNativeJS: Unit = {
 
     """
     @js.native

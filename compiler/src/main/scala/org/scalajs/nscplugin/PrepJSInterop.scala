@@ -131,7 +131,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
      *  won't reach the backend.
      *
      *  We don't completely disable this phase under ScalaDoc mostly because
-     *  we want to keep the addition of `RawJSType` annotations, so that they
+     *  we want to keep the addition of `JSType` annotations, so that they
      *  appear in the doc.
      *
      *  Preparing exports, however, is a pure waste of time, which we cannot
@@ -191,7 +191,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           checkJSAnySpecificAnnotsOnNonJSAny(cldef)
 
           if (sym == UnionClass)
-            sym.addAnnotation(RawJSTypeAnnot)
+            sym.addAnnotation(JSTypeAnnot)
 
           if (shouldPrepareExports)
             registerClassOrModuleExports(sym)
@@ -214,12 +214,12 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           super.transform(tree)
 
         // Catch ValDef in js.Any
-        case vdef: ValDef if enclosingOwner is OwnerKind.RawJSType =>
-          transformValOrDefDefInRawJSType(vdef)
+        case vdef: ValDef if enclosingOwner is OwnerKind.JSType =>
+          transformValOrDefDefInJSType(vdef)
 
         // Catch DefDef in js.Any
-        case ddef: DefDef if enclosingOwner is OwnerKind.RawJSType =>
-          transformValOrDefDefInRawJSType(fixPublicBeforeTyper(ddef))
+        case ddef: DefDef if enclosingOwner is OwnerKind.JSType =>
+          transformValOrDefDefInJSType(fixPublicBeforeTyper(ddef))
 
         // Catch ValDefs in enumerations with simple calls to Value
         case ValDef(mods, name, tpt, ScalaEnumValue.NoName(optPar))
@@ -494,7 +494,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       val isJSAnonFun = isJSLambda(sym)
 
-      sym.addAnnotation(RawJSTypeAnnot)
+      sym.addAnnotation(JSTypeAnnot)
 
       /* Anonymous functions are considered native, since they are handled
        * specially in the backend.
@@ -779,7 +779,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
 
     /** Verify a ValOrDefDef inside a js.Any */
-    private def transformValOrDefDefInRawJSType(tree: ValOrDefDef) = {
+    private def transformValOrDefDefInJSType(tree: ValOrDefDef) = {
       val sym = tree.symbol
 
       assert(!sym.isLocalToBlock, s"$tree at ${tree.pos}")
@@ -1129,7 +1129,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
    *  Reports error messages otherwise.
    */
   def checkSetterSignature(sym: Symbol, pos: Position, exported: Boolean): Unit = {
-    val typeStr = if (exported) "Exported" else "Raw JS"
+    val typeStr = if (exported) "Exported" else "JS"
 
     // Forbid setters with non-unit return type
     if (sym.tpe.resultType.typeSymbol != UnitClass) {
@@ -1403,7 +1403,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
      */
     def isCompilerAnnotation(annotation: AnnotationInfo): Boolean = {
       annotation.symbol == ExposedJSMemberAnnot ||
-      annotation.symbol == RawJSTypeAnnot ||
+      annotation.symbol == JSTypeAnnot ||
       annotation.symbol == JSOptionalAnnotation
     }
 
@@ -1478,10 +1478,10 @@ object PrepJSInterop {
     val JSNative = JSNativeClass | JSNativeMod
     /** A non-native JS class/trait/object. */
     val JSNonNative = JSClass | JSMod
-    /** A raw JS type, i.e., something extending js.Any. */
-    val RawJSType = JSNative | JSNonNative
+    /** A JS type, i.e., something extending js.Any. */
+    val JSType = JSNative | JSNonNative
 
-    /** Any kind of class/trait, i.e., a Scala or raw JS class/trait. */
+    /** Any kind of class/trait, i.e., a Scala or JS class/trait. */
     val AnyClass = ScalaClass | JSNativeClass | JSClass
   }
 }

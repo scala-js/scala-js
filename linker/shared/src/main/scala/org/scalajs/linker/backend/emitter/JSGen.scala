@@ -171,17 +171,17 @@ private[emitter] final class JSGen(val semantics: Semantics,
     Apply(envField("m", moduleClass), Nil)
   }
 
-  def genRawJSClassConstructor(className: String,
+  def genJSClassConstructor(className: String,
       keepOnlyDangerousVarNames: Boolean)(
       implicit globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[Tree] = {
 
-    genRawJSClassConstructor(className,
+    genJSClassConstructor(className,
         globalKnowledge.getJSNativeLoadSpec(className),
         keepOnlyDangerousVarNames)
   }
 
-  def genRawJSClassConstructor(className: String,
+  def genJSClassConstructor(className: String,
       spec: Option[irt.JSNativeLoadSpec],
       keepOnlyDangerousVarNames: Boolean)(
       implicit pos: Position): WithGlobals[Tree] = {
