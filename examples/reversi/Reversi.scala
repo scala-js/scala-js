@@ -169,7 +169,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
 
   def startTurn(): Unit = {
     val (scoreWhite, scoreBlack) = computeScore()
-    status.text(currentPlayer+"'s turn -- White: "+scoreWhite+
+    status.text(""+currentPlayer+"'s turn -- White: "+scoreWhite+
         " -- Black: "+scoreBlack)
 
     passButton.prop("disabled", true)

@@ -420,7 +420,7 @@ def otherScalaVersions = [
   "2.12.4",
   "2.12.5"
 ]
-def limitedCIScalaVersions = ["2.13.0-M4"]
+def limitedCIScalaVersions = ["2.13.0-M4", "2.13.0-M5"]
 
 // The 'quick' matrix
 def quickMatrix = []

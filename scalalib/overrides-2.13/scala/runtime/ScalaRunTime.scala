@@ -9,14 +9,14 @@
 package scala
 package runtime
 
-import scala.collection.{ AbstractIterator, AnyConstr, SortedOps, StrictOptimizedIterableOps, StringOps, StringView, View }
-import scala.collection.generic.IsIterableLike
-import scala.collection.immutable.{ NumericRange, ArraySeq }
+import scala.collection.{AbstractIterator, AnyConstr, SortedOps, StrictOptimizedIterableOps, StringOps, StringView, View}
+import scala.collection.immutable.{ArraySeq, NumericRange}
 import scala.collection.mutable.StringBuilder
-import scala.reflect.{ ClassTag, classTag }
-import java.lang.{ Class => jClass }
+import scala.reflect.{ClassTag, classTag}
+import java.lang.{Class => jClass}
+import java.lang.reflect.{Method => JMethod}
 
-import java.lang.reflect.{ Method => JMethod }
+import scala.collection.generic.IsIterable
 
 /** The object ScalaRunTime provides support methods required by
  *  the scala runtime.  All these methods should be considered
@@ -30,8 +30,8 @@ object ScalaRunTime {
     clazz != null && clazz.isArray && (atLevel == 1 || isArrayClass(clazz.getComponentType, atLevel - 1))
 
   // A helper method to make my life in the pattern matcher a lot easier.
-  def drop[Repr](coll: Repr, num: Int)(implicit iterable: IsIterableLike[Repr]): Repr =
-    iterable conversion coll drop num
+  def drop[Repr](coll: Repr, num: Int)(implicit iterable: IsIterable[Repr] { type C <: Repr }): Repr =
+    iterable(coll) drop num
 
   /** Return the class object representing an array with element class `clazz`.
    */
@@ -83,20 +83,10 @@ object ScalaRunTime {
   }
 
   /** Get generic array length */
-  def array_length(xs: AnyRef): Int = xs match {
-    case x: Array[AnyRef]  => x.length
-    case x: Array[Int]     => x.length
-    case x: Array[Double]  => x.length
-    case x: Array[Long]    => x.length
-    case x: Array[Float]   => x.length
-    case x: Array[Char]    => x.length
-    case x: Array[Byte]    => x.length
-    case x: Array[Short]   => x.length
-    case x: Array[Boolean] => x.length
-    case x: Array[Unit]    => x.length
-    case null => throw new NullPointerException
-  }
+  def array_length(xs: AnyRef): Int = java.lang.reflect.Array.getLength(xs)
 
+  // TODO: bytecode Object.clone() will in fact work here and avoids
+  // the type switch. See Array_clone comment in BCodeBodyBuilder.
   def array_clone(xs: AnyRef): AnyRef = xs match {
     case x: Array[AnyRef]  => x.clone()
     case x: Array[Int]     => x.clone()
@@ -107,7 +97,6 @@ object ScalaRunTime {
     case x: Array[Byte]    => x.clone()
     case x: Array[Short]   => x.clone()
     case x: Array[Boolean] => x.clone()
-    case x: Array[Unit]    => x
     case null => throw new NullPointerException
   }
 
@@ -254,12 +243,12 @@ object ScalaRunTime {
   }
 
   /** stringOf formatted for use in a repl result. */
-  def replStringOf(arg: Any, maxElements: Int): String = {
-    val s  = stringOf(arg, maxElements)
-    val nl = if (s contains "\n") "\n" else ""
-
-    nl + s + "\n"
-  }
+  def replStringOf(arg: Any, maxElements: Int): String =
+    stringOf(arg, maxElements) match {
+      case null => "null toString"
+      case s if s.indexOf('\n') >= 0 => "\n" + s + "\n"
+      case s => s + "\n"
+    }
 
   // Convert arrays to immutable.ArraySeq for use with Java varargs:
   def genericWrapArray[T](xs: Array[T]): ArraySeq[T] =

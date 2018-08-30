@@ -1,10 +1,8 @@
 package scala
 package collection.immutable
 
-import collection.{AbstractIterator, Iterator, SeqFactory}
+import collection.{AbstractIterator, Iterator}
 import java.lang.String
-
-import scala.collection.mutable.Builder
 
 /** The `Range` class represents integer values in range
   *  ''[start;end)'' with non-zero step value `step`.
@@ -381,6 +379,10 @@ sealed abstract class Range(
   }
 
   final override protected[this] def writeReplace(): AnyRef = this
+
+  override protected[this] def className = "Range"
+
+  override def distinct: Range = this
 }
 
 /**

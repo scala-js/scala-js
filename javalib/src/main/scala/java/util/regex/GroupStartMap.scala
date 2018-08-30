@@ -392,7 +392,7 @@ private[regex] class GroupStartMap(string: String, start: Int, pattern: Pattern)
     val flags = pattern.jsFlags
     node.setNewGroup(1)
     val groupNodeMap = node.getGroupNodeMap
-    node.transformGroupNumber(groupNodeMap.mapValues(_.newGroup).toMap)
+    node.transformGroupNumber(groupNodeMap.map(kv => (kv._1, kv._2.newGroup)))
     val allMatchingRegexStr = node.buildRegex
     val allMatchingRegex = new js.RegExp(allMatchingRegexStr, flags)
     allMatchingRegex.lastIndex = start
@@ -405,7 +405,7 @@ private[regex] class GroupStartMap(string: String, start: Int, pattern: Pattern)
     }
     node.setMatch((x: Int) => allMatchResult(x).getOrElse(null))
     node.setStartReturnEnd(start)
-    groupNodeMap.mapValues(_.start)
+    groupNodeMap.map(kv => (kv._1, kv._2.start))
   }
 
   /** Wraps every consecutive chars and simple expressions in the regexp in a

@@ -22,7 +22,7 @@ final class WrappedArray[A](val array: js.Array[A])
     with StrictOptimizedSeqOps[A, WrappedArray, WrappedArray[A]]
     with mutable.IndexedSeq[A]
     with mutable.IndexedSeqOps[A, WrappedArray, WrappedArray[A]]
-    with mutable.IndexedBuffer[A]
+    with mutable.IndexedOptimizedBuffer[A]
     with mutable.Builder[A, WrappedArray[A]]
     with Serializable {
 
@@ -61,13 +61,18 @@ final class WrappedArray[A](val array: js.Array[A])
     this
   }
 
-  @inline def insert(idx: Int, elem: A): Unit = {
+  @inline def subtractOne(elem: A): this.type = {
+    val i = indexOf(elem)
+    if (i != -1) remove(i)
+    this
+  }
+
+  def insert(idx: Int, elem: A): Unit = {
     if (idx < 0 || idx > array.length)
       throw new IndexOutOfBoundsException
     array.splice(idx, 0, elem)
   }
 
-  @inline
   def insertAll(n: Int, elems: scala.collection.IterableOnce[A]): Unit = {
     if (n < 0 || n > array.length)
       throw new IndexOutOfBoundsException

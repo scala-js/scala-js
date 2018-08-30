@@ -1,10 +1,8 @@
 package scala.collection.immutable
 
-import scala.collection.{AbstractIterator, SeqFactory, IterableFactory, IterableOnce, Iterator, StrictOptimizedIterableOps}
+import scala.collection.{AbstractIterator, Iterator}
 
 import java.lang.String
-
-import scala.collection.mutable.Builder
 
 /** `NumericRange` is a more generic version of the
   *  `Range` class which works with arbitrary types.
@@ -16,7 +14,7 @@ import scala.collection.mutable.Builder
   *  the `Int`-based `scala.Range` should be more performant.
   *
   *  {{{
-  *     val r1 = new Range(0, 100, 1)
+  *     val r1 = Range(0, 100, 1)
   *     val veryBig = Int.MaxValue.toLong + 1
   *     val r2 = Range.Long(veryBig, veryBig + 100, 1)
   *     assert(r1 sameElements r2.map(_ - veryBig))
@@ -263,6 +261,8 @@ sealed class NumericRange[T](
   }
 
   override protected[this] def writeReplace(): AnyRef = this
+
+  override protected[this] def className = "NumericRange"
 }
 
 /** A companion object for numeric ranges.

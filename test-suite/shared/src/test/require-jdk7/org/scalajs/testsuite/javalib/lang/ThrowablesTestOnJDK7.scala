@@ -55,4 +55,48 @@ class ThrowablesTestOnJDK7 {
     assertEquals("boom", e.getMessage)
     assertSame(th, e.getCause)
   }
+
+  @Test def noWritableStackTrace(): Unit = {
+    class NoStackTraceException(msg: String)
+        extends Throwable(msg, null, true, false) {
+
+      override def fillInStackTrace(): Throwable = {
+        fail("NoStackTraceException.fillInStackTrace() must not be called")
+        this
+      }
+    }
+
+    val e = new NoStackTraceException("error")
+    assertEquals(0, e.getStackTrace().length)
+
+    e.setStackTrace(Array(new StackTraceElement("class", "method", "file", 0)))
+    assertEquals(0, e.getStackTrace().length)
+  }
+
+  @Test def suppression(): Unit = {
+    val e = new Exception("error")
+    assertEquals(0, e.getSuppressed().length)
+
+    val suppressed1 = new IllegalArgumentException("suppressed 1")
+    val suppressed2 = new UnsupportedOperationException("suppressed 2")
+
+    // There is no ordering guarantee in suppressed exceptions, so we compare sets
+
+    e.addSuppressed(suppressed1)
+    assertEquals(Set(suppressed1), e.getSuppressed().toSet)
+
+    e.addSuppressed(suppressed2)
+    assertEquals(Set(suppressed1, suppressed2), e.getSuppressed().toSet)
+  }
+
+  @Test def noSuppression(): Unit = {
+    class NoSuppressionException(msg: String)
+        extends Throwable(msg, null, false, true)
+
+    val e = new NoSuppressionException("error")
+    assertEquals(0, e.getSuppressed().length)
+
+    e.addSuppressed(new Exception("suppressed"))
+    assertEquals(0, e.getSuppressed().length)
+  }
 }
