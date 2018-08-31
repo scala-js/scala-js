@@ -8,9 +8,6 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
-      // private[optimizer], not an issue
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore.transformIsolatedBody")
   )
 
   val JSEnvs = Seq(
