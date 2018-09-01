@@ -3,7 +3,7 @@ package org.scalajs.junit
 import com.novocode.junit.{Ansi, RichLogger}
 import Ansi._
 import sbt.testing._
-import org.scalajs.testinterface.TestUtils
+import scala.scalajs.reflect.Reflect
 import scala.util.{Try, Success, Failure}
 
 final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
@@ -41,7 +41,12 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
       eventHandler.handle(ev)
     }
 
-    Try(TestUtils.loadModule(bootstrapperName, runner.testClassLoader)) match {
+    Try {
+      Reflect
+        .lookupLoadableModuleClass(bootstrapperName + "$")
+        .getOrElse(throw new ClassNotFoundException(s"Cannot find $bootstrapperName$$"))
+        .loadModule()
+    } match {
       case Success(classMetadata: JUnitTestBootstrapper) =>
         new JUnitExecuteTest(taskDef, runner, classMetadata,
             richLogger, eventHandler).executeTests()

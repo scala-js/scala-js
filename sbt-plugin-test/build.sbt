@@ -86,10 +86,11 @@ lazy val noDOM = project.settings(baseSettings: _*).
 lazy val testFrameworkCommonSettings = Def.settings(
   versionSettings,
   name := "Dummy cross JS/JVM test framework",
-  scalaSource in Compile := baseDirectory.value.getParentFile / "src/main/scala"
+  unmanagedSourceDirectories in Compile +=
+    baseDirectory.value.getParentFile / "shared/src/main/scala"
 )
 
-lazy val testFrameworkJS = project.in(file("testFramework/.js")).
+lazy val testFrameworkJS = project.in(file("testFramework/js")).
   enablePlugins(ScalaJSPlugin).
   settings(
     testFrameworkCommonSettings,
@@ -97,7 +98,7 @@ lazy val testFrameworkJS = project.in(file("testFramework/.js")).
       "org.scala-js" %% "scalajs-test-interface" % scalaJSVersion
   )
 
-lazy val testFrameworkJVM = project.in(file("testFramework/.jvm")).
+lazy val testFrameworkJVM = project.in(file("testFramework/jvm")).
   settings(
     testFrameworkCommonSettings,
     libraryDependencies ++= Seq(
