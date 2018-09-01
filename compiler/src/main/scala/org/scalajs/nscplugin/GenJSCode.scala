@@ -531,7 +531,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             if (sym.isClassConstructor) {
               constructorTrees += dd
-            } else if (exposed && sym.isAccessor) {
+            } else if (exposed && sym.isAccessor && !sym.isLazy) {
               /* Exposed accessors must not be emitted, since the field they
                * access is enough.
                */
@@ -2145,8 +2145,18 @@ abstract class GenJSCode extends plugins.PluginComponent
               val genQual = genExpr(qualifier)
 
               def genBoxedRhs: js.Tree = {
-                ensureBoxed(genRhs,
-                    enteringPhase(currentRun.posterasurePhase)(rhs.tpe))
+                val tpeEnteringPosterasure =
+                  enteringPhase(currentRun.posterasurePhase)(rhs.tpe)
+                if ((tpeEnteringPosterasure eq null) && genRhs.isInstanceOf[js.Null]) {
+                  // 2.10.x does not yet have `devWarning`, so use `debugwarn` instead.
+                  debugwarn(
+                      "Working around https://github.com/scala-js/scala-js/issues/3422 " +
+                      s"for ${sym.fullName} at ${sym.pos}")
+                  // Fortunately, a literal `null` never needs to be boxed
+                  genRhs
+                } else {
+                  ensureBoxed(genRhs, tpeEnteringPosterasure)
+                }
               }
 
               if (isNonNativeJSClass(sym.owner)) {
@@ -5752,8 +5762,14 @@ abstract class GenJSCode extends plugins.PluginComponent
   /** Tests whether the given member is exposed, i.e., whether it was
    *  originally a public or protected member of a non-native JS class.
    */
-  private def isExposed(sym: Symbol): Boolean =
-    !sym.isBridge && sym.hasAnnotation(ExposedJSMemberAnnot)
+  private def isExposed(sym: Symbol): Boolean = {
+    !sym.isBridge && {
+      if (sym.isLazy)
+        sym.isAccessor && sym.accessed.hasAnnotation(ExposedJSMemberAnnot)
+      else
+        sym.hasAnnotation(ExposedJSMemberAnnot)
+    }
+  }
 
   /** Test whether `sym` is the symbol of a raw JS function definition */
   private def isRawJSFunctionDef(sym: Symbol): Boolean =
