@@ -508,6 +508,36 @@ class OptimizerTest {
 
     assertEquals("hello", escape(a)._1)
   }
+
+  // Bug #3415
+
+  @Test def infinite_recursion_inlining_issue3415_original(): Unit = {
+    assumeTrue("linking only", false)
+    doWhile1("foo")(f => f(true))
+  }
+
+  @inline def doWhile1[Domain2](endDoWhile1: => Domain2)(
+      condition2: (Boolean => Domain2) => Domain2): Domain2 = {
+    condition2 { (conditionValue2) =>
+      if (conditionValue2)
+        doWhile1[Domain2](endDoWhile1)(condition2)
+      else
+        endDoWhile1
+    }
+  }
+
+  @Test def infinite_recursion_inlining_issue3415_minimized(): Unit = {
+    assumeTrue("linking only", false)
+    doWhile(???)
+  }
+
+  @inline def doWhile(
+      condition: js.Function1[js.Function1[Boolean, String], String]): String = {
+    condition { (conditionValue: Boolean) =>
+      doWhile(condition)
+    }
+  }
+
 }
 
 object OptimizerTest {

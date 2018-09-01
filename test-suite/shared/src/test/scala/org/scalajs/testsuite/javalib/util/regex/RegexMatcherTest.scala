@@ -85,6 +85,21 @@ class RegexMatcherTest  {
     )
   }
 
+  @Test def start_end_group_and_toMatchResult_with_inline_flags_issue3406(): Unit = {
+    val matcher = Pattern
+      .compile("(?i)(a).*(aa)")
+      .matcher("bBaccAaD")
+    checkGroups(matcher,
+        (2, 7, "accAa"),
+        (2, 3, "a"),
+        (5, 7, "Aa")
+    )
+
+    // Test case from the bug report
+    assertEquals(List("a", "A"),
+        "(?i)(a)".r.findAllMatchIn("aA").map(_.matched).toList)
+  }
+
   def parseExpect(regex: String, str: String, pos: (Int, Int)*): Unit = {
     val matcher = Pattern.compile(regex).matcher(str)
     assertTrue(matcher.find())
@@ -151,9 +166,9 @@ class RegexMatcherTest  {
     assertEquals(startEndMatch(0)._3, matcher.group)
     assertEquals(startEndMatch.size - 1, matcher.groupCount)
     for (((start, end, mtch), i) <- startEndMatch.zipWithIndex) {
-      assertEquals(start, matcher.start(i))
-      assertEquals(end, matcher.end(i))
-      assertEquals(mtch, matcher.group(i))
+      assertEquals("" + i, start, matcher.start(i))
+      assertEquals("" + i, end, matcher.end(i))
+      assertEquals("" + i, mtch, matcher.group(i))
     }
 
     val matchResult = matcher.toMatchResult
