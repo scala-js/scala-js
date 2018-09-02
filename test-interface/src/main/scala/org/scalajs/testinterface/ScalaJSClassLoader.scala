@@ -12,17 +12,14 @@ import java.util.Enumeration
  *  [[java.lang.ClassLoader]]. It is exclusively used as a dummy class loader
  *  to preserve source compatibility with the sbt testing interface.
  */
-final class ScalaJSClassLoader extends ClassLoader(null) {
-
-  @deprecated(
-      "The `namespace` argument is ignored. " +
-      "Use the constructor with 0 argument.",
-      "1.0.0")
-  def this(namespace: js.Dynamic) = this()
-
-  private def nimp: Nothing =
-    throw new NotImplementedError("A ScalaJSClassLoader is a dummy. " +
-        "Use scala.scalajs.testinterface.TestUtils to instantiate things.")
+private[testinterface] final class ScalaJSClassLoader extends ClassLoader(null) {
+  private def nimp: Nothing = {
+    throw new NotImplementedError(
+        "A ScalaJSClassLoader is a dummy. " +
+        "Use scala.scalajs.reflect.Reflect (JS-only) or " +
+        "https://github.com/portable-scala/portable-scala-reflect (portable) " +
+        "to instantiate things.")
+  }
 
   override def clearAssertionStatus(): Unit = nimp
   override def getResource(name: String): URL = nimp
