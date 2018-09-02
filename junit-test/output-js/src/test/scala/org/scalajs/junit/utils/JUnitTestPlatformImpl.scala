@@ -4,8 +4,7 @@ import sbt.testing._
 
 object JUnitTestPlatformImpl {
 
-  def getClassLoader: ClassLoader =
-    new org.scalajs.testinterface.ScalaJSClassLoader()
+  def getClassLoader: ClassLoader = null
 
   def executeLoop(tasks: Array[Task], recorder: Logger with EventHandler): Unit = {
     if (tasks.nonEmpty) {

@@ -23,7 +23,7 @@ import org.scalajs.jsenv._
 import org.scalajs.ir.IRVersionNotSupportedException
 import org.scalajs.ir.Printers.IRTreePrinter
 
-import org.scalajs.testadapter.{TestAdapter, HTMLRunnerBuilder, TestAdapterInitializer}
+import org.scalajs.testing.adapter.{TestAdapter, HTMLRunnerBuilder, TestAdapterInitializer}
 
 import Loggers._
 import SBTCompat._
