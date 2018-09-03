@@ -23,8 +23,8 @@ class WrappedDictionary[A](val dict: js.Dictionary[A])
 
   import WrappedDictionary._
 
-  protected[this] override def fromSpecific(
-      coll: scala.collection.IterableOnce[(String, A)]
+  protected[this] override def fromSpecificIterable(
+      coll: scala.collection.Iterable[(String, A)]
   ): js.WrappedDictionary[A] = {
     val d = js.WrappedDictionary.empty[A]
     d ++= coll
@@ -72,6 +72,9 @@ class WrappedDictionary[A](val dict: js.Dictionary[A])
     dict(kv._1) = kv._2
     this
   }
+
+  def clear(): Unit =
+    keysIterator.foreach(subtractOne)
 
   def iterator: scala.collection.Iterator[(String, A)] =
     new DictionaryIterator(dict)

@@ -10,27 +10,26 @@ package scala.scalajs.js
 
 import scala.language.implicitConversions
 
+import scala.collection.mutable
+import scala.collection.{SeqFactory, StrictOptimizedSeqFactory, StrictOptimizedSeqOps}
+
 import scala.scalajs.js
 
-import scala.collection.mutable
-import mutable.Builder
-
-import scala.collection.generic.{CanBuildFrom, GenericCompanion, SeqFactory}
-
-/** Equivalent of `scm.WrappedArray` for [[js.Array]]. */
+/** Equivalent of scm.WrappedArray for js.Array */
 @inline
 final class WrappedArray[A](val array: js.Array[A])
     extends mutable.AbstractBuffer[A]
-       with scala.collection.generic.GenericTraversableTemplate[A, js.WrappedArray]
-       with mutable.IndexedSeq[A]
-       with mutable.BufferLike[A, js.WrappedArray[A]]
-       with mutable.ArrayLike[A, js.WrappedArray[A]]
-       with Builder[A, js.WrappedArray[A]] {
+    with StrictOptimizedSeqOps[A, js.WrappedArray, js.WrappedArray[A]]
+    with mutable.IndexedSeq[A]
+    with mutable.IndexedSeqOps[A, js.WrappedArray, js.WrappedArray[A]]
+    with mutable.IndexedOptimizedBuffer[A]
+    with mutable.Builder[A, js.WrappedArray[A]]
+    with Serializable {
 
-  /** Creates a new empty [[js.WrappedArray]]. */
+  /** Creates a new empty [[WrappedArray]]. */
   def this() = this(js.Array())
 
-  override def companion: GenericCompanion[js.WrappedArray] = js.WrappedArray
+  override def iterableFactory: SeqFactory[js.WrappedArray] = js.WrappedArray
 
   // IndexedSeq interface
 
@@ -40,7 +39,7 @@ final class WrappedArray[A](val array: js.Array[A])
 
   // Builder interface
 
-  @inline def +=(elem: A): this.type = {
+  @inline def addOne(elem: A): this.type = {
     array.push(elem)
     this
   }
@@ -50,23 +49,34 @@ final class WrappedArray[A](val array: js.Array[A])
 
   @inline def result(): js.WrappedArray[A] = this
 
-  // Rest of BufferLike interface
+  // Rest of Buffer interface
 
-  @inline def +=:(elem: A): this.type = {
+  @inline def prepend(elem: A): this.type = {
     array.unshift(elem)
     this
   }
 
-  @inline override def ++=:(xs: TraversableOnce[A]): this.type = {
-    array.unshift(xs.toSeq: _*)
+  @inline override def prependAll(xs: IterableOnce[A]): this.type = {
+    array.unshift(xs.iterator.toSeq: _*)
     this
   }
 
-  def insertAll(n: Int,
-      elems: scala.collection.Traversable[A]): Unit = {
+  @inline def subtractOne(elem: A): this.type = {
+    val i = indexOf(elem)
+    if (i != -1) remove(i)
+    this
+  }
+
+  def insert(idx: Int, elem: A): Unit = {
+    if (idx < 0 || idx > array.length)
+      throw new IndexOutOfBoundsException
+    array.splice(idx, 0, elem)
+  }
+
+  def insertAll(n: Int, elems: scala.collection.IterableOnce[A]): Unit = {
     if (n < 0 || n > array.length)
       throw new IndexOutOfBoundsException
-    array.splice(n, 0, elems.toSeq: _*)
+    array.splice(n, 0, elems.iterator.toSeq: _*)
   }
 
   def remove(n: Int): A = {
@@ -83,20 +93,21 @@ final class WrappedArray[A](val array: js.Array[A])
     array.splice(n, count)
   }
 
-  @inline override def stringPrefix: String = "WrappedArray"
+  @inline override def className: String = "WrappedArray"
 
 }
 
-/** Factory for [[js.WrappedArray]]. Mainly provides the relevant
- *  [[scala.collection.generic.CanBuildFrom CanBuildFroms]]s and implicit
- *  conversions.
+/** Factory for [[WrappedArray]]. Provides implicit conversion to [[Array]].
  */
-object WrappedArray extends SeqFactory[js.WrappedArray] {
-  /** Standard CBF for [[WrappedArray]] */
-  implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, js.WrappedArray[A]] =
-    ReusableCBF.asInstanceOf[GenericCanBuildFrom[A]]
+object WrappedArray extends StrictOptimizedSeqFactory[js.WrappedArray] {
 
-  def newBuilder[A]: Builder[A, js.WrappedArray[A]] = new js.WrappedArray[A]
+  def empty[A]: js.WrappedArray[A] = new js.WrappedArray[A]()
+
+  def newBuilder[A]: mutable.Builder[A, js.WrappedArray[A]] =
+    new js.WrappedArray[A]
+
+  def from[A](source: IterableOnce[A]): js.WrappedArray[A] =
+    (newBuilder[A] ++= source).result()
 
   implicit def toJSArray[A](wrappedArray: js.WrappedArray[A]): js.Array[A] =
     wrappedArray.array

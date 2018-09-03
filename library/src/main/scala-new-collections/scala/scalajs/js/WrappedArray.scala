@@ -22,7 +22,7 @@ final class WrappedArray[A](val array: js.Array[A])
     with StrictOptimizedSeqOps[A, js.WrappedArray, js.WrappedArray[A]]
     with mutable.IndexedSeq[A]
     with mutable.IndexedSeqOps[A, js.WrappedArray, js.WrappedArray[A]]
-    with mutable.IndexedOptimizedBuffer[A]
+    with mutable.IndexedBuffer[A]
     with mutable.Builder[A, js.WrappedArray[A]]
     with Serializable {
 
@@ -61,24 +61,32 @@ final class WrappedArray[A](val array: js.Array[A])
     this
   }
 
-  @inline def subtractOne(elem: A): this.type = {
-    val i = indexOf(elem)
-    if (i != -1) remove(i)
-    this
+  @inline def insert(idx: Int, elem: A): Unit = {
+    if (idx < 0 || idx > array.length)
+      throw new IndexOutOfBoundsException
+    array.splice(idx, 0, elem)
   }
 
-  @inline def insert(idx: Int, elem: A): Unit =
-    array.splice(idx, 0, elem)
-
   @inline
-  def insertAll(n: Int, elems: scala.collection.IterableOnce[A]): Unit =
+  def insertAll(n: Int, elems: scala.collection.IterableOnce[A]): Unit = {
+    if (n < 0 || n > array.length)
+      throw new IndexOutOfBoundsException
     array.splice(n, 0, elems.iterator.toSeq: _*)
+  }
 
-  @inline def remove(n: Int): A =
+  def remove(n: Int): A = {
+    if (n < 0 || n >= array.length)
+      throw new IndexOutOfBoundsException
     array.splice(n, 1)(0)
+  }
 
-  @inline override def remove(n: Int, count: Int): Unit =
+  override def remove(n: Int, count: Int): Unit = {
+    if (count < 0)
+      throw new IllegalArgumentException
+    if (n < 0 || (count > 0 && n + count > array.length))
+      throw new IndexOutOfBoundsException
     array.splice(n, count)
+  }
 
   @inline override def className: String = "WrappedArray"
 

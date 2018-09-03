@@ -3,7 +3,11 @@ package java.lang
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
 
-class Throwable(s: String, private var e: Throwable) extends Object with java.io.Serializable {
+class Throwable protected (s: String, private var e: Throwable,
+    enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean)
+    extends Object with java.io.Serializable {
+
+  def this(message: String, cause: Throwable) = this(message, cause, true, true)
   def this() = this(null, null)
   def this(s: String) = this(s, null)
   def this(e: Throwable) = this(if (e == null) null else e.toString, e)
@@ -11,7 +15,13 @@ class Throwable(s: String, private var e: Throwable) extends Object with java.io
   private[this] var stackTraceStateInternal: Any = _
   private[this] var stackTrace: Array[StackTraceElement] = _
 
-  fillInStackTrace()
+  /* We use an Array rather than, say, a List, so that Throwable does not
+   * depend on the Scala collections.
+   */
+  private[this] var suppressed: Array[Throwable] = _
+
+  if (writableStackTrace)
+    fillInStackTrace()
 
   def initCause(cause: Throwable): Throwable = {
     e = cause
@@ -40,20 +50,26 @@ class Throwable(s: String, private var e: Throwable) extends Object with java.io
     stackTraceStateInternal = e
 
   def getStackTrace(): Array[StackTraceElement] = {
-    if (stackTrace eq null)
-      stackTrace = StackTrace.extract(this)
+    if (stackTrace eq null) {
+      if (writableStackTrace)
+        stackTrace = StackTrace.extract(this)
+      else
+        stackTrace = new Array[StackTraceElement](0)
+    }
     stackTrace
   }
 
   def setStackTrace(stackTrace: Array[StackTraceElement]): Unit = {
-    var i = 0
-    while (i < stackTrace.length) {
-      if (stackTrace(i) eq null)
-        throw new NullPointerException()
-      i += 1
-    }
+    if (writableStackTrace) {
+      var i = 0
+      while (i < stackTrace.length) {
+        if (stackTrace(i) eq null)
+          throw new NullPointerException()
+        i += 1
+      }
 
-    this.stackTrace = stackTrace.clone()
+      this.stackTrace = stackTrace.clone()
+    }
   }
 
   def printStackTrace(): Unit = printStackTrace(System.err)
@@ -134,6 +150,32 @@ class Throwable(s: String, private var e: Throwable) extends Object with java.io
     val message = getMessage()
     if (message eq null) className
     else className + ": " + message
+  }
+
+  def addSuppressed(exception: Throwable): Unit = {
+    if (exception eq null)
+      throw new NullPointerException
+    if (exception eq this)
+      throw new IllegalArgumentException
+
+    if (enableSuppression) {
+      if (suppressed eq null) {
+        suppressed = Array(exception)
+      } else {
+        val length = suppressed.length
+        val newSuppressed = new Array[Throwable](length + 1)
+        System.arraycopy(suppressed, 0, newSuppressed, 0, length)
+        newSuppressed(length) = exception
+        suppressed = newSuppressed
+      }
+    }
+  }
+
+  def getSuppressed(): Array[Throwable] = {
+    if (suppressed eq null)
+      new Array(0)
+    else
+      suppressed.clone()
   }
 
   /* A JavaScript Error object should have a `name` property containing a

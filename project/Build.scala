@@ -145,7 +145,7 @@ object Build {
     "Whether we should partest the current scala version (and fail if we can't)")
 
   /* MiMa configuration -- irrelevant while in 1.0.0-SNAPSHOT.
-  val previousVersion = "0.6.24"
+  val previousVersion = "0.6.25"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
@@ -164,11 +164,16 @@ object Build {
     version != "2.13.0-M3"
   }
 
-  /** Returns the appropriate subdirectory of `sourceDir` depending on whether
-   *  the `scalaV` uses the new collections (introduced in 2.13.0-M4) or not.
+  /** Returns the appropriate subdirectory of `sourceDir` depending on the
+   *  collection "era" used by the `scalaV`.
+   *
+   *  It can be the new collections (2.13.0-M5+), the old collections (until
+   *  2.13.0-M3) or the intermediate "M4" collections (the transient state of
+   *  the collections in 2.13.0-M4).
    */
   def collectionsEraDependentDirectory(scalaV: String, sourceDir: File): File =
-    if (hasNewCollections(scalaV)) sourceDir / "scala-new-collections"
+    if (scalaV == "2.13.0-M4") sourceDir / "scala-m4-collections"
+    else if (hasNewCollections(scalaV)) sourceDir / "scala-new-collections"
     else sourceDir / "scala-old-collections"
 
   val javaVersion = settingKey[Int](

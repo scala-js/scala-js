@@ -21,8 +21,6 @@ import scala.scalajs.js
 import scala.collection.BuildFrom
 import scala.collection.mutable
 
-import scala.scalajs.js
-
 /** Root of the hierarchy of JavaScript types.
  *
  *  Subtypes of [[Any js.Any]] are JavaScript types, which have different
@@ -94,8 +92,8 @@ object Any extends LowPrioAnyImplicits {
   implicit def buildFromArray[A]: BuildFrom[js.Array[_], A, js.Array[A]] = {
     @inline
     class BuildFromArray extends BuildFrom[js.Array[_], A, js.Array[A]] {
-      def fromSpecific(from: js.Array[_])(
-          it: scala.collection.IterableOnce[A]): js.Array[A] = {
+      def fromSpecificIterable(from: js.Array[_])(
+          it: scala.collection.Iterable[A]): js.Array[A] = {
         val b = newBuilder(from)
         b.sizeHint(it)
         b ++= it
@@ -103,28 +101,10 @@ object Any extends LowPrioAnyImplicits {
       }
 
       def newBuilder(from: js.Array[_]): mutable.Builder[A, js.Array[A]] =
-        new ArrayBuilder[A]()
+        new js.ArrayOps[A]
     }
 
     new BuildFromArray
-  }
-
-  @inline
-  private class ArrayBuilder[A] extends mutable.Builder[A, js.Array[A]] {
-    private[this] var array: js.Array[A] = js.Array()
-
-    def addOne(elem: A): this.type = {
-      array.push(elem)
-      this
-    }
-
-    def result(): js.Array[A] =
-      array
-
-    def clear(): Unit = {
-      // need to create a new one so that the builder is reusable
-      array = js.Array()
-    }
   }
 
   // scalastyle:off line.size.limit
@@ -264,8 +244,6 @@ sealed trait LowPrioAnyImplicits extends LowestPrioAnyImplicits {
 sealed trait LowestPrioAnyImplicits {
   this: js.Any.type =>
 
-  implicit def arrayAsIterable[A](array: js.Array[_ <: A]): scala.collection.Iterable[A] =
-    new js.WrappedArray(array)
   implicit def iterableOps[A](iterable: js.Iterable[A]): js.IterableOps[A] =
     new js.IterableOps(iterable)
 }

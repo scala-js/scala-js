@@ -76,4 +76,11 @@ object Statics {
       case _         => x.hashCode()
     }
   }
+
+  /** Used as a marker object to return from PartialFunctions */
+  def pfMarker: AnyRef = PFMarker
+
+  private object PFMarker extends AnyRef
+
+  def releaseFence(): Unit = ()
 }

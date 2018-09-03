@@ -107,15 +107,33 @@ private[charset] object UTF_8 extends Charset("UTF-8", Array(
               finalize(CoderResult.malformedForLength(1))
             } else {
               val decoded = {
-                @inline
-                def inArrayOr0(offset: Int): Int =
-                  if (inPos + offset < inEnd) inArray(inPos + offset)
-                  else 0 // 0 is not a valid next byte
-
-                val b2 = inArrayOr0(1)
-                if (length == 2) decode2(leading, b2)
-                else if (length == 3) decode3(leading, b2, inArrayOr0(2))
-                else decode4(leading, b2, inArrayOr0(2), inArrayOr0(3))
+                if (inPos + 1 >= inEnd) {
+                  DecodedMultiByte(CoderResult.UNDERFLOW)
+                } else {
+                  val b2 = inArray(inPos + 1)
+                  if (isInvalidNextByte(b2)) {
+                    DecodedMultiByte(CoderResult.malformedForLength(1))
+                  } else if (length == 2) {
+                    decode2(leading, b2)
+                  } else if (inPos + 2 >= inEnd) {
+                    DecodedMultiByte(CoderResult.UNDERFLOW)
+                  } else {
+                    val b3 = inArray(inPos + 2)
+                    if (isInvalidNextByte(b3)) {
+                      DecodedMultiByte(CoderResult.malformedForLength(2))
+                    } else if (length == 3) {
+                      decode3(leading, b2, b3)
+                    } else if (inPos + 3 >= inEnd) {
+                      DecodedMultiByte(CoderResult.UNDERFLOW)
+                    } else {
+                      val b4 = inArray(inPos + 3)
+                      if (isInvalidNextByte(b4))
+                        DecodedMultiByte(CoderResult.malformedForLength(3))
+                      else
+                        decode4(leading, b2, b3, b4)
+                    }
+                  }
+                }
               }
 
               if (decoded.failure != null) {
@@ -150,9 +168,12 @@ private[charset] object UTF_8 extends Charset("UTF-8", Array(
       @inline
       @tailrec
       def loop(): CoderResult = {
+        // Mark the input position so that we can reset on multi-byte failure
+        val startPosition = in.position()
+
         @inline
-        def finalize(read: Int, result: CoderResult): CoderResult = {
-          in.position(in.position() - read)
+        def fail(result: CoderResult): CoderResult = {
+          in.position(startPosition)
           result
         }
 
@@ -163,7 +184,7 @@ private[charset] object UTF_8 extends Charset("UTF-8", Array(
           if (leading >= 0) {
             // US-ASCII repertoire
             if (!out.hasRemaining) {
-              finalize(1, CoderResult.OVERFLOW)
+              fail(CoderResult.OVERFLOW)
             } else {
               out.put(leading.toChar)
               loop()
@@ -172,27 +193,44 @@ private[charset] object UTF_8 extends Charset("UTF-8", Array(
             // Multi-byte
             val length = lengthByLeading(leading & 0x7f)
             if (length == -1) {
-              finalize(1, CoderResult.malformedForLength(1))
+              fail(CoderResult.malformedForLength(1))
             } else {
-              var bytesRead: Int = 1
-
               val decoded = {
-                @inline
-                def getOr0(): Int =
-                  if (in.hasRemaining) { bytesRead += 1; in.get() }
-                  else 0 // 0 is not a valid next byte
-
-                if (length == 2) decode2(leading, getOr0())
-                else if (length == 3) decode3(leading, getOr0(), getOr0())
-                else decode4(leading, getOr0(), getOr0(), getOr0())
+                if (in.hasRemaining) {
+                  val b2 = in.get()
+                  if (isInvalidNextByte(b2)) {
+                    DecodedMultiByte(CoderResult.malformedForLength(1))
+                  } else if (length == 2) {
+                    decode2(leading, b2)
+                  } else if (in.hasRemaining) {
+                    val b3 = in.get()
+                    if (isInvalidNextByte(b3)) {
+                      DecodedMultiByte(CoderResult.malformedForLength(2))
+                    } else if (length == 3) {
+                      decode3(leading, b2, b3)
+                    } else if (in.hasRemaining) {
+                      val b4 = in.get()
+                      if (isInvalidNextByte(b4))
+                        DecodedMultiByte(CoderResult.malformedForLength(3))
+                      else
+                        decode4(leading, b2, b3, b4)
+                    } else {
+                      DecodedMultiByte(CoderResult.UNDERFLOW)
+                    }
+                  } else {
+                    DecodedMultiByte(CoderResult.UNDERFLOW)
+                  }
+                } else {
+                  DecodedMultiByte(CoderResult.UNDERFLOW)
+                }
               }
 
               if (decoded.failure != null) {
-                finalize(bytesRead, decoded.failure)
+                fail(decoded.failure)
               } else if (decoded.low == 0) {
                 // not a surrogate pair
                 if (!out.hasRemaining)
-                  finalize(bytesRead, CoderResult.OVERFLOW)
+                  fail(CoderResult.OVERFLOW)
                 else {
                   out.put(decoded.high)
                   loop()
@@ -200,7 +238,7 @@ private[charset] object UTF_8 extends Charset("UTF-8", Array(
               } else {
                 // a surrogate pair
                 if (out.remaining < 2)
-                  finalize(bytesRead, CoderResult.OVERFLOW)
+                  fail(CoderResult.OVERFLOW)
                 else {
                   out.put(decoded.high)
                   out.put(decoded.low)
@@ -218,64 +256,49 @@ private[charset] object UTF_8 extends Charset("UTF-8", Array(
     @inline private def isInvalidNextByte(b: Int): Boolean =
       (b & 0xc0) != 0x80
 
+    /** Requires the input bytes to be a valid byte sequence. */
     @inline private def decode2(b1: Int, b2: Int): DecodedMultiByte = {
-      if (isInvalidNextByte(b2))
+      val codePoint = (((b1 & 0x1f) << 6) | (b2 & 0x3f))
+      // By construction, 0 <= codePoint <= 0x7ff < MIN_SURROGATE
+      if (codePoint < 0x80) {
+        // Should have been encoded with only 1 byte
         DecodedMultiByte(CoderResult.malformedForLength(1))
-      else {
-        val codePoint = (((b1 & 0x1f) << 6) | (b2 & 0x3f))
-        // By construction, 0 <= codePoint <= 0x7ff < MIN_SURROGATE
-        if (codePoint < 0x80) {
-          // Should have been encoded with only 1 byte
-          DecodedMultiByte(CoderResult.malformedForLength(1))
-        } else {
-          DecodedMultiByte(codePoint.toChar)
-        }
+      } else {
+        DecodedMultiByte(codePoint.toChar)
       }
     }
 
+    /** Requires the input bytes to be a valid byte sequence. */
     @inline private def decode3(b1: Int, b2: Int, b3: Int): DecodedMultiByte = {
-      if (isInvalidNextByte(b2))
+      val codePoint = (((b1 & 0xf) << 12) | ((b2 & 0x3f) << 6) | (b3 & 0x3f))
+      // By construction, 0 <= codePoint <= 0xffff < MIN_SUPPLEMENTARY_CODE_POINT
+      if (codePoint < 0x800) {
+        // Should have been encoded with only 1 or 2 bytes
         DecodedMultiByte(CoderResult.malformedForLength(1))
-      else if (isInvalidNextByte(b3))
-        DecodedMultiByte(CoderResult.malformedForLength(2))
-      else {
-        val codePoint = (((b1 & 0xf) << 12) | ((b2 & 0x3f) << 6) | (b3 & 0x3f))
-        // By construction, 0 <= codePoint <= 0xffff < MIN_SUPPLEMENTARY_CODE_POINT
-        if (codePoint < 0x800) {
-          // Should have been encoded with only 1 or 2 bytes
-          DecodedMultiByte(CoderResult.malformedForLength(1))
-        } else if (codePoint >= MIN_SURROGATE && codePoint <= MAX_SURROGATE) {
-          // It is a surrogate, which is not a valid code point
-          DecodedMultiByte(CoderResult.malformedForLength(3))
-        } else {
-          DecodedMultiByte(codePoint.toChar)
-        }
+      } else if (codePoint >= MIN_SURROGATE && codePoint <= MAX_SURROGATE) {
+        // It is a surrogate, which is not a valid code point
+        DecodedMultiByte(CoderResult.malformedForLength(3))
+      } else {
+        DecodedMultiByte(codePoint.toChar)
       }
     }
 
+    /** Requires the input bytes to be a valid byte sequence. */
     @inline private def decode4(b1: Int, b2: Int, b3: Int, b4: Int): DecodedMultiByte = {
-      if (isInvalidNextByte(b2))
+      val codePoint = (((b1 & 0x7) << 18) | ((b2 & 0x3f) << 12) |
+          ((b3 & 0x3f) << 6) | (b4 & 0x3f))
+      // By construction, 0 <= codePoint <= 0x1fffff
+      if (codePoint < 0x10000 || codePoint > MAX_CODE_POINT) {
+        // It should have been encoded with 1, 2, or 3 bytes
+        // or it is not a valid code point
         DecodedMultiByte(CoderResult.malformedForLength(1))
-      else if (isInvalidNextByte(b3))
-        DecodedMultiByte(CoderResult.malformedForLength(2))
-      else if (isInvalidNextByte(b4))
-        DecodedMultiByte(CoderResult.malformedForLength(3))
-      else {
-        val codePoint = (((b1 & 0x7) << 18) | ((b2 & 0x3f) << 12) |
-            ((b3 & 0x3f) << 6) | (b4 & 0x3f))
-        // By construction, 0 <= codePoint <= 0x1fffff
-        if (codePoint < 0x10000 || codePoint > MAX_CODE_POINT) {
-          // It should have been encoded with 1, 2, or 3 bytes
-          // or it is not a valid code point
-          DecodedMultiByte(CoderResult.malformedForLength(1))
-        } else {
-          // Here, we need to encode the code point as a surrogate pair.
-          // http://en.wikipedia.org/wiki/UTF-16
-          val offsetCodePoint = codePoint - 0x10000
-          DecodedMultiByte(
-              ((offsetCodePoint >> 10) | 0xd800).toChar,
-              ((offsetCodePoint & 0x3ff) | 0xdc00).toChar)
-        }
+      } else {
+        // Here, we need to encode the code point as a surrogate pair.
+        // http://en.wikipedia.org/wiki/UTF-16
+        val offsetCodePoint = codePoint - 0x10000
+        DecodedMultiByte(
+            ((offsetCodePoint >> 10) | 0xd800).toChar,
+            ((offsetCodePoint & 0x3ff) | 0xdc00).toChar)
       }
     }
   }

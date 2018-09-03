@@ -44,6 +44,7 @@ object JSConverters extends JSConvertersLowPrioImplicits {
 
     final def toJSArray: js.Array[T] = {
       col match {
+        case col: js.ArrayOps[T]     => col.repr
         case col: js.WrappedArray[T] => col.array
         case _ =>
           val result = new js.Array[T]
