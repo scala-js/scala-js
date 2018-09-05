@@ -5,6 +5,8 @@ package sbttest.framework
  *  A typical testing framework would use portable-scala-reflect instead.
  */
 private[framework] object Platform {
+  class EnableReflectiveInstantiation extends scala.annotation.Annotation
+
   def instantiateTestClass(fullName: String, classLoader: ClassLoader): Test = {
     val cls = Class.forName(fullName, true, classLoader)
     assert(classOf[Test].isAssignableFrom(cls), fullName)

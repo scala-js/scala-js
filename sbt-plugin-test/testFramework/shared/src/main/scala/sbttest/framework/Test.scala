@@ -1,6 +1,6 @@
 package sbttest.framework
 
-import scala.scalajs.reflect.annotation.EnableReflectiveInstantiation
+import Platform.EnableReflectiveInstantiation
 
 @EnableReflectiveInstantiation
 class Test
