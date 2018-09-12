@@ -3,7 +3,7 @@
 ## Very important notice about the Javalib
 
 If you haven't read it, ***read the very important notice about the Javalib
-in the [Developer documentation](./DEVELOPING.md)***.
+in the [Developer documentation](./DEVELOPING.md)*** .
 
 ## Coding style
 
