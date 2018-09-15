@@ -265,35 +265,33 @@ def Tasks = [
         loggingJS/mimaReportBinaryIssues linkerJS/mimaReportBinaryIssues
   ''',
 
-  "tools-stubs": '''
+  "tools": '''
     setJavaVersion $java
     npm install &&
     sbt ++$scala ir/test io/test logging/compile linker/compile \
-        stubs/package jsEnvs/test nodeJSEnv/test testAdapter/test \
+        jsEnvs/test nodeJSEnv/test testAdapter/test \
         ir/mimaReportBinaryIssues io/mimaReportBinaryIssues \
         logging/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         nodeJSEnv/mimaReportBinaryIssues \
-        testAdapter/mimaReportBinaryIssues \
-        stubs/mimaReportBinaryIssues &&
+        testAdapter/mimaReportBinaryIssues &&
     sbt ++$scala ir/compile:doc io/compile:doc logging/compile:doc \
         linker/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
-        testAdapter/compile:doc stubs/compile:doc
+        testAdapter/compile:doc
   ''',
 
-  "tools-stubs-sbtplugin": '''
+  "tools-sbtplugin": '''
     setJavaVersion $java
     npm install &&
     sbt ++$scala ir/test io/test logging/compile linker/compile \
-        stubs/package jsEnvs/test nodeJSEnv/test testAdapter/test \
+        jsEnvs/test nodeJSEnv/test testAdapter/test \
         sbtPlugin/package \
         ir/mimaReportBinaryIssues io/mimaReportBinaryIssues \
         logging/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         nodeJSEnv/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
-        stubs/mimaReportBinaryIssues \
         sbtPlugin/mimaReportBinaryIssues &&
     sbt ++$scala library/scalastyle javalanglib/scalastyle javalib/scalastyle \
         ir/scalastyle compiler/scalastyle \
@@ -314,7 +312,7 @@ def Tasks = [
     sbt ++$scala ir/compile:doc io/compile:doc logging/compile:doc \
         linker/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
-        testAdapter/compile:doc stubs/compile:doc \
+        testAdapter/compile:doc \
         sbtPlugin/compile:doc
   ''',
 
@@ -331,7 +329,7 @@ def Tasks = [
     # Then go into standalone project and test
     npm install &&
     sbt ++2.11.12 compiler/publishLocal library/publishLocal \
-                  testInterface/publishLocal stubs/publishLocal \
+                  testInterface/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++$toolsscala ${SBT_VER_OVERRIDE:+^^$SBT_VER_OVERRIDE} \
         ir/publishLocal io/publishLocal logging/publishLocal \
@@ -416,9 +414,9 @@ limitedCIScalaVersions.each { scalaVersion ->
   quickMatrix.add([task: "test-suite-ecma-script6", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
 }
 allJavaVersions.each { javaVersion ->
-  quickMatrix.add([task: "tools-stubs-sbtplugin", scala: "2.10.7", java: javaVersion])
-  quickMatrix.add([task: "tools-stubs", scala: "2.11.12", java: javaVersion])
-  quickMatrix.add([task: "tools-stubs", scala: "2.12.4", java: javaVersion])
+  quickMatrix.add([task: "tools-sbtplugin", scala: "2.10.7", java: javaVersion])
+  quickMatrix.add([task: "tools", scala: "2.11.12", java: javaVersion])
+  quickMatrix.add([task: "tools", scala: "2.12.4", java: javaVersion])
 }
 quickMatrix.add([task: "partestc", scala: "2.11.0", java: mainJavaVersion])
 quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.10.7", sbt_version_override: "", java: mainJavaVersion])

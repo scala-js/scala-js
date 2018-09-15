@@ -102,8 +102,7 @@ lazy val testFrameworkJVM = project.in(file("testFramework/jvm")).
   settings(
     testFrameworkCommonSettings,
     libraryDependencies ++= Seq(
-        "org.scala-sbt" % "test-interface" % "1.0",
-        "org.scala-js" %% "scalajs-stubs" % scalaJSVersion % "provided"
+        "org.scala-sbt" % "test-interface" % "1.0"
     )
   )
 

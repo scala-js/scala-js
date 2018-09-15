@@ -7,6 +7,9 @@ import scala.scalajs.reflect.Reflect
  *  A typical testing framework would use portable-scala-reflect instead.
  */
 private[framework] object Platform {
+  type EnableReflectiveInstantiation =
+    scala.scalajs.reflect.annotation.EnableReflectiveInstantiation
+
   def instantiateTestClass(fullName: String, classLoader: ClassLoader): Test = {
     val cls = Reflect.lookupInstantiatableClass(fullName).getOrElse {
       throw new ClassNotFoundException(s"Cannot find $fullName")

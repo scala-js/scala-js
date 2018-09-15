@@ -534,7 +534,6 @@ object Build {
           clean in testAdapter, clean in plugin,
           clean in javalanglib, clean in javalib, clean in scalalib,
           clean in libraryAux, clean in library, clean in minilib,
-          clean in stubs,
           clean in testInterface,
           clean in jUnitRuntime, clean in jUnitPlugin,
           clean in jUnitTestOutputsJS, clean in jUnitTestOutputsJVM,
@@ -1152,14 +1151,6 @@ object Build {
           }
       ))
   ).withScalaJSCompiler.dependsOn(library)
-
-  lazy val stubs: Project = project.settings(
-      commonSettings,
-      publishSettings,
-      name := "Scala.js Stubs",
-      libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      previousArtifactSetting
-  )
 
   // Test framework
   lazy val testInterface = (project in file("test-interface")).enablePlugins(
