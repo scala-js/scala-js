@@ -441,10 +441,6 @@ object Hashers {
           throw new InvalidIRException(tree,
               "Cannot hash a transient IR node (its value is of class " +
               s"${value.getClass})")
-
-        case _ =>
-          throw new IllegalArgumentException(
-              s"Unable to hash tree of class ${tree.getClass}")
       }
     }
 

@@ -822,7 +822,7 @@ object Serializers {
     }
 
     def readTreeOrJSSpreads(): List[TreeOrJSSpread] =
-      List.fill(input.readInt())(readTreeOrJSSpread)
+      List.fill(input.readInt())(readTreeOrJSSpread())
 
     private def readTreeFromTag(tag: Byte)(implicit pos: Position): Tree = {
       import input._
