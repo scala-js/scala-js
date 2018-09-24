@@ -247,20 +247,20 @@ object Printers {
         case Match(selector, cases, default) =>
           print("match (")
           print(selector)
-          print(") {"); indent
+          print(") {"); indent()
           for ((values, body) <- cases) {
             println()
-            printRow(values, "case ", " | ", ":"); indent; println()
+            printRow(values, "case ", " | ", ":"); indent(); println()
             print(body)
             print(";")
-            undent
+            undent()
           }
           println()
-          print("default:"); indent; println()
+          print("default:"); indent(); println()
           print(default)
           print(";")
-          undent
-          undent; println(); print('}')
+          undent()
+          undent(); println(); print('}')
 
         case Debugger() =>
           print("debugger")
@@ -657,7 +657,7 @@ object Printers {
           print("{}")
 
         case JSObjectConstr(fields) =>
-          print('{'); indent; println()
+          print('{'); indent(); println()
           var rest = fields
           while (rest.nonEmpty) {
             print(rest.head._1)
@@ -669,7 +669,7 @@ object Printers {
               println()
             }
           }
-          undent; println(); print('}')
+          undent(); println(); print('}')
 
         case JSGlobalRef(ident) =>
           print("global:")

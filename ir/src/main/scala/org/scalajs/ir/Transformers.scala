@@ -40,8 +40,8 @@ object Transformers {
 
         // Control flow constructs
 
-        case Block(stats :+ expr) =>
-          Block(stats.map(transformStat) :+ transform(expr, isStat))
+        case Block(stats) =>
+          Block(stats.init.map(transformStat) :+ transform(stats.last, isStat))
 
         case Labeled(label, tpe, body) =>
           Labeled(label, tpe, transform(body, isStat))
