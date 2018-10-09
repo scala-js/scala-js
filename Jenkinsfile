@@ -484,7 +484,27 @@ matrix.each { taskDef ->
   })
 }
 
+def fetchJSON(url) {
+  resp = httpRequest url
+  return readJSON(text: resp.content)
+}
+
+def validateCLA = script {
+  info = fetchJSON "https://api.github.com/repos/scala-js/scala-js/pulls/${env.CHANGE_ID}"
+  author = info.user.login
+  sign = fetchJSON "http://www.lightbend.com/contribute/cla/scala/check/$author"
+  if (!sign.signed) {
+    error("User $author has not signed the Scala CLA. Please sign the CLA at https://www.lightbend.com/contribute/cla/scala")
+  }
+}
+
 ansiColor('xterm') {
+  stage('Check CLA') {
+    when { changeRequest() }
+    steps {
+      validateCLA
+    }
+  }
   stage('Test') {
     parallel(buildDefs)
   }
