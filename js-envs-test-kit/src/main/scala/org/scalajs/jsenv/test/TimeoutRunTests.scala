@@ -17,10 +17,17 @@ private[test] class TimeoutRunTests(config: JSEnvSuiteConfig, withCom: Boolean) 
     assumeTrue("JSEnv needs timeout support", config.supportsTimeout)
   }
 
+  /** Slack for timeout tests (see #3457)
+   *
+   *  Empirically we can observe that timing can be off by ~0.1ms. By cutting
+   *  10ms slack, we definitely account for this without compromising the tests.
+   */
+  private val slack = 10.millis
+
   @Test
   def basicTimeoutTest: Unit = {
 
-    val deadline = 300.millis.fromNow
+    val deadline = (300.millis - slack).fromNow
 
     """
     setTimeout(function() { console.log("1"); }, 200);
@@ -40,7 +47,7 @@ private[test] class TimeoutRunTests(config: JSEnvSuiteConfig, withCom: Boolean) 
 
   @Test
   def intervalTest: Unit = {
-    val deadline = 100.millis.fromNow
+    val deadline = (100.millis - slack).fromNow
 
     // We rely on the test kit to terminate the test after 5 iterations.
     """

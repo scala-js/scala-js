@@ -17,9 +17,16 @@ private[test] class TimeoutComTests(config: JSEnvSuiteConfig) {
     assumeTrue("JSEnv needs com support", config.supportsCom)
   }
 
+  /** Slack for timeout tests (see #3457)
+   *
+   *  Empirically we can observe that timing can be off by ~0.1ms. By cutting
+   *  10ms slack, we definitely account for this without compromising the tests.
+   */
+  private val slack = 10.millis
+
   @Test
   def delayedInitTest: Unit = {
-    val deadline = 100.millis.fromNow
+    val deadline = (100.millis - slack).fromNow
     val run = kit.start(s"""
       setTimeout(function() {
         scalajsCom.init(function(msg) {
@@ -47,7 +54,7 @@ private[test] class TimeoutComTests(config: JSEnvSuiteConfig) {
 
     try {
       for (i <- 1 to 10) {
-        val deadline = 200.millis.fromNow
+        val deadline = (200.millis - slack).fromNow
         run.run.send(s"Hello World: $i")
         assertEquals(s"Got: Hello World: $i", run.waitNextMessage())
         assertTrue("Execution took too little time", deadline.isOverdue())
@@ -59,7 +66,7 @@ private[test] class TimeoutComTests(config: JSEnvSuiteConfig) {
 
   @Test
   def intervalSendTest: Unit = {
-    val deadline = 250.millis.fromNow
+    val deadline = (250.millis - slack).fromNow
 
     val run = kit.start(s"""
       scalajsCom.init(function(msg) {});
