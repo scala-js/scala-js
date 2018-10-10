@@ -1,74 +1,85 @@
 package org.scalajs.jsenv.test
 
-import scala.concurrent.Await
-
-import org.scalajs.io.VirtualBinaryFile
-import org.scalajs.jsenv._
-
-import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.{Test, Before}
 
+import org.scalajs.io.VirtualBinaryFile
+import org.scalajs.jsenv._
+import org.scalajs.jsenv.test.kit.{TestKit, Run}
+
 private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
-  private val kit = new TestKit(config, withCom)
-  import kit._
+  private val kit = new TestKit(config.jsEnv, config.awaitTimeout)
+
+  private def withRun(input: Input)(body: Run => Unit) = {
+    if (withCom) kit.withComRun(input)(body)
+    else kit.withRun(input)(body)
+  }
+
+  private def withRun(code: String, config: RunConfig = RunConfig())(body: Run => Unit) = {
+    if (withCom) kit.withComRun(code, config)(body)
+    else kit.withRun(code, config)(body)
+  }
 
   @Test
   def failureTest: Unit = {
-    """
-    var a = {};
-    a.foo();
-    """.fails()
+    withRun("""
+      var a = {};
+      a.foo();
+    """) {
+      _.fails()
+    }
   }
 
   @Test
   def syntaxErrorTest: Unit = {
-    """
-    {
-    """.fails()
+    withRun("{") {
+      _.fails()
+    }
   }
 
   @Test
   def throwExceptionTest: Unit = {
-    """
-    throw 1;
-    """.fails()
+    withRun("throw 1;") {
+      _.fails()
+    }
   }
 
   @Test
   def catchExceptionTest: Unit = {
-    """
-    try {
-      throw "hello world";
-    } catch (e) {
-      console.log(e);
+    withRun("""
+      try {
+        throw "hello world";
+      } catch (e) {
+        console.log(e);
+      }
+    """) {
+      _.expectOut("hello world\n")
+        .closeRun()
     }
-    """ hasOutput "hello world\n"
   }
 
   @Test // Failed in Phantom - #2053
   def utf8Test: Unit = {
-    """
-    console.log("\u1234");
-    """ hasOutput "\u1234\n";
+    withRun("""console.log("\u1234")""") {
+      _.expectOut("\u1234\n")
+        .closeRun()
+    }
   }
 
   @Test
   def allowScriptTags: Unit = {
-    """
-    console.log("<script></script>");
-    """ hasOutput "<script></script>\n";
+    withRun("""console.log("<script></script>");""") {
+      _.expectOut("<script></script>\n")
+        .closeRun()
+    }
   }
 
   @Test
   def jsExitsTest: Unit = {
     assumeTrue(config.supportsExit)
 
-    val run = kit.start("__ScalaJSEnv.exitFunction(0);", RunConfig())
-    try {
-      Await.result(run.future, config.awaitTimeout)
-    } finally {
-      run.close()
+    withRun("__ScalaJSEnv.exitFunction(0);") {
+      _.succeeds()
     }
   }
 
@@ -92,24 +103,28 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
 
     val result = strlists.map(_.mkString(" ") + "\n").mkString("")
 
-    codes.mkString("").hasOutput(result)
+    withRun(codes.mkString("")) {
+      _.expectOut(result)
+        .closeRun()
+    }
   }
 
   @Test // Node.js console.log hack didn't allow to log non-Strings - #561
   def nonStringTest: Unit = {
-    """
-    console.log(1);
-    console.log(undefined);
-    console.log(null);
-    console.log({});
-    console.log([1,2]);
-    """ hasOutput
-    """|1
-       |undefined
-       |null
-       |[object Object]
-       |1,2
-    |""".stripMargin
+    withRun("""
+      console.log(1);
+      console.log(undefined);
+      console.log(null);
+      console.log({});
+      console.log([1,2]);
+      """) {
+      _.expectOut("1\n")
+        .expectOut("undefined\n")
+        .expectOut("null\n")
+        .expectOut("[object Object]\n")
+        .expectOut("1,2\n")
+        .closeRun()
+    }
   }
 
   @Test
@@ -117,21 +132,21 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
     /* This test also tests a failure mode where the ExternalJSRun is still
      * piping output while the client calls close.
      */
-    val run = kit.start("", RunConfig())
-    run.close()
-    awaitAfterClose(run)
+    withRun("") {
+      _.closeRun()
+    }
   }
 
   @Test
   def multiCloseAfterTerminatedTest: Unit = {
-    val run = kit.start("", RunConfig())
-    run.close()
-    awaitAfterClose(run)
+    withRun("") { run =>
+      run.closeRun()
 
-    // Should be noops (and not fail).
-    run.close()
-    run.close()
-    run.close()
+      // Should be noops (and not fail).
+      run.closeRun()
+      run.closeRun()
+      run.closeRun()
+    }
   }
 
   @Test
@@ -145,13 +160,8 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
     }
 
     // `start` may not throw but must fail asynchronously
-    val run = kit.start(badFile, RunConfig())
-    try {
-      Await.ready(run.future, config.awaitTimeout)
-      assertTrue("Bad file should have made run fail",
-          run.future.value.get.isFailure)
-    } finally {
-      run.close()
+    withRun(Input.ScriptsToLoad(badFile :: Nil)) {
+      _.fails()
     }
   }
 
@@ -169,6 +179,6 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
   @Test(expected = classOf[IllegalArgumentException])
   def ensureValidate: Unit = {
     val cfg = RunConfig().withEternallyUnsupportedOption(true)
-    kit.start("", cfg).close()
+    withRun("", cfg)(identity)
   }
 }

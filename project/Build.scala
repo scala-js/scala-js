@@ -748,7 +748,10 @@ object Build {
       publishSettings,
       fatalWarningsSettings,
       name := "Scala.js JS Envs Test Kit",
-      libraryDependencies += "junit" % "junit" % "4.12",
+      libraryDependencies ++= Seq(
+          "junit" % "junit" % "4.12",
+          "com.novocode" % "junit-interface" % "0.9" % "test"
+      ),
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvsTestKit
   ).dependsOn(jsEnvs)
