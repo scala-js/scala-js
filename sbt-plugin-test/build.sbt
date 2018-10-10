@@ -125,13 +125,6 @@ lazy val multiTestJS = project.in(file("multiTest/js")).
   settings(
     name := "Multi test framework test JS",
 
-    // Make FrameworkDetector resilient to other output - #1572
-    jsExecutionFiles in Test := {
-      val consoleWriter = new FileVirtualBinaryFile(
-          (resourceDirectory in Test).value / "consoleWriter.js")
-      consoleWriter +: (jsExecutionFiles in Test).value
-    },
-
     // Test platformDepsCrossVersion (as a setting, it's evaluated when loading the build)
     platformDepsCrossVersion ~= { value =>
       assert(value eq ScalaJSCrossVersion.binary,
