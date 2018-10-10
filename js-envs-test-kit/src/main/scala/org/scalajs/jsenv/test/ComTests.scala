@@ -108,4 +108,26 @@ private[test] class ComTests(config: JSEnvSuiteConfig) {
         .closeRun()
     }
   }
+
+  @Test
+  def separateComStdoutTest: Unit = {
+    // Make sure that com and stdout do not interfere with each other.
+    kit.withComRun("""
+      scalajsCom.init(function (msg) {
+        console.log("got: " + msg)
+      });
+      console.log("a");
+      scalajsCom.send("b");
+      scalajsCom.send("c");
+      console.log("d");
+    """) {
+      _.expectOut("a\n")
+        .expectMsg("b")
+        .expectMsg("c")
+        .expectOut("d\n")
+        .send("foo")
+        .expectOut("got: foo\n")
+        .closeRun()
+    }
+  }
 }
