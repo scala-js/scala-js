@@ -102,6 +102,7 @@ class RegexMatcherTest  {
 
   def parseExpect(regex: String, str: String, pos: (Int, Int)*): Unit = {
     val matcher = Pattern.compile(regex).matcher(str)
+    assertEquals(pos.length - 1, matcher.groupCount)
     assertTrue(matcher.find())
     assertEquals(pos.length - 1, matcher.groupCount)
     var i = 0
@@ -159,6 +160,8 @@ class RegexMatcherTest  {
   }
 
   def checkGroups(matcher: Matcher, startEndMatch: (Int, Int, String)*): Unit = {
+    assertEquals(startEndMatch.size - 1, matcher.groupCount)
+
     assertTrue(matcher.find())
 
     assertEquals(startEndMatch(0)._1, matcher.start)
@@ -233,6 +236,13 @@ class RegexMatcherTest  {
     assertTrue(matcher1.matches())
     matcher1.usePattern(patternNoDots)
     assertFalse(matcher1.matches())
+
+    val patternWithOneGroup = Pattern.compile("ab(cd)efg")
+    val patternWithTwoGroups = Pattern.compile("ab(cd)(ef)g")
+    val matcher2 = patternWithOneGroup.matcher("Scala.js")
+    assertEquals(1, matcher2.groupCount())
+    matcher2.usePattern(patternWithTwoGroups)
+    assertEquals(2, matcher2.groupCount())
   }
 
   @Test def lookingAt(): Unit = {
