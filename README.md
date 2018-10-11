@@ -8,4 +8,4 @@ This is the repository for
 ## License
 
 Scala.js is distributed under the
-[Scala License](http://www.scala-lang.org/license.html).
+[Apache License Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
