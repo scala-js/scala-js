@@ -6,6 +6,7 @@ import Keys._
 import scala.annotation.tailrec
 
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
+import de.heikoseeberger.sbtheader.HeaderPlugin.autoImport._
 
 import java.io.{
   BufferedOutputStream,
@@ -145,9 +146,21 @@ object Build {
         _.replace("scala.js", "scalajs").replace("scala-js", "scalajs")
       },
 
-      homepage := Some(url("http://scala-js.org/")),
-      licenses += ("BSD New",
-          url("https://github.com/scala-js/scala-js/blob/master/LICENSE")),
+      homepage := Some(url("https://www.scala-js.org/")),
+      startYear := Some(2013),
+      licenses += (("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0"))),
+      headerLicense := Some(HeaderLicense.Custom(
+        s"""Scala.js (${homepage.value.get})
+           |
+           |Copyright EPFL.
+           |
+           |Licensed under Apache License 2.0
+           |(https://www.apache.org/licenses/LICENSE-2.0).
+           |
+           |See the NOTICE file distributed with this work for
+           |additional information regarding copyright ownership.
+           |""".stripMargin
+      )),
       scmInfo := Some(ScmInfo(
           url("https://github.com/scala-js/scala-js"),
           "scm:git:git@github.com:scala-js/scala-js.git",
@@ -462,28 +475,42 @@ object Build {
   lazy val root: Project = Project(
       id = "scalajs",
       base = file("."),
-      settings = commonSettings ++ Seq(
+      settings = commonSettings ++ Def.settings(
           name := "Scala.js",
           publishArtifact in Compile := false,
 
-          clean := clean.dependsOn(
-              clean in compiler,
-              clean in irProject, clean in irProjectJS,
-              clean in tools, clean in toolsJS,
-              clean in jsEnvs, clean in jsEnvsTestKit, clean in jsEnvsTestSuite,
-              clean in testAdapter, clean in plugin,
-              clean in javalanglib, clean in javalib, clean in scalalib,
-              clean in libraryAux, clean in library, clean in javalibEx,
-              clean in stubs, clean in cli,
-              clean in testInterface,
-              clean in jUnitRuntime, clean in jUnitPlugin,
-              clean in jUnitTestOutputsJS, clean in jUnitTestOutputsJVM,
-              clean in examples, clean in helloworld,
-              clean in reversi, clean in testingExample,
-              clean in testSuite, clean in testSuiteJVM, clean in noIrCheckTest,
-              clean in javalibExTestSuite,
-              clean in partest, clean in partestSuite,
-              clean in scalaTestSuite).value,
+          {
+            val allProjects = Seq(
+                compiler, irProject, irProjectJS, tools, toolsJS,
+                jsEnvs, jsEnvsTestKit, jsEnvsTestSuite, testAdapter, plugin,
+                javalanglib, javalib, scalalib, libraryAux, library, javalibEx,
+                stubs, cli,
+                testInterface, jUnitRuntime, jUnitPlugin,
+                jUnitTestOutputsJS, jUnitTestOutputsJVM,
+                helloworld, reversi, testingExample, testSuite, testSuiteJVM,
+                noIrCheckTest, javalibExTestSuite,
+                partest, partestSuite,
+                scalaTestSuite
+            )
+
+            val keys = Seq[TaskKey[_]](
+                clean, headerCreate in Compile, headerCreate in Test,
+                headerCheck in Compile, headerCheck in Test
+            )
+
+            for (key <- keys) yield {
+              /* The match is only used to capture the type parameter `a` of
+               * each individual TaskKey.
+               */
+              key match {
+                case key: TaskKey[a] =>
+                  key := key.dependsOn(allProjects.map(key in _): _*).value
+              }
+            }
+          },
+
+          headerCreate := (headerCreate in Test).dependsOn(headerCreate in Compile).value,
+          headerCheck := (headerCheck in Test).dependsOn(headerCheck in Compile).value,
 
           publish := {},
           publishLocal := {}
@@ -875,13 +902,20 @@ object Build {
       base = file("javalib"),
       settings = (
           commonSettings ++ myScalaJSSettings ++ fatalWarningsSettings
-      ) ++ Seq(
+      ) ++ Def.settings(
           name := "Java library for Scala.js",
           publishArtifact in Compile := false,
           delambdafySetting,
-          noClassFilesSettings
-      ) ++ (
-          scalaJSExternalCompileSettings
+          noClassFilesSettings,
+          scalaJSExternalCompileSettings,
+
+          headerSources in Compile ~= { srcs =>
+            srcs.filter { src =>
+              val path = src.getPath.replace('\\', '/')
+              !path.contains("/java/math/") &&
+              !path.endsWith("/java/util/concurrent/ThreadLocalRandom.scala")
+            }
+          }
       )
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
@@ -1019,6 +1053,9 @@ object Build {
 
             sources.result()
           },
+
+          headerSources in Compile := Nil,
+          headerSources in Test := Nil,
 
           // Continuation plugin (when using 2.10.x)
           autoCompilerPlugins := true,
@@ -1237,8 +1274,19 @@ object Build {
   lazy val jUnitRuntime = Project(
     id = "jUnitRuntime",
     base = file("junit-runtime"),
-    settings = commonSettings ++ publishSettings ++ myScalaJSSettings ++
-      fatalWarningsSettings ++ Seq(name := "Scala.js JUnit test runtime")
+    settings = (
+        commonSettings ++ publishSettings ++ myScalaJSSettings ++
+        fatalWarningsSettings
+    ) ++ Def.settings(
+        name := "Scala.js JUnit test runtime",
+
+        headerSources in Compile ~= { srcs =>
+          srcs.filter { src =>
+            val path = src.getPath.replace('\\', '/')
+            !path.contains("/org/junit/") && !path.contains("/org/hamcrest/")
+          }
+        }
+    )
   ).withScalaJSCompiler.dependsOn(testInterface)
 
   val commonJUnitTestOutputsSettings = commonSettings ++ Seq(
@@ -1296,7 +1344,10 @@ object Build {
       )
   ).aggregate(helloworld, reversi, testingExample)
 
-  lazy val exampleSettings = commonSettings ++ myScalaJSSettings ++ fatalWarningsSettings
+  lazy val exampleSettings = commonSettings ++ myScalaJSSettings ++ fatalWarningsSettings ++ Def.settings(
+      headerSources in Compile := Nil,
+      headerSources in Test := Nil
+  )
 
   lazy val helloworld: Project = Project(
       id = "helloworld",

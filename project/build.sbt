@@ -1,3 +1,5 @@
+addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.0.0")
+
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.5")
 
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.18")

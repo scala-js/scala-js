@@ -1,3 +1,15 @@
+/*
+ * Scala.js (https://www.scala-js.org/)
+ *
+ * Copyright EPFL.
+ *
+ * Licensed under Apache License 2.0
+ * (https://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
+
 package org.scalajs.testsuite.compiler
 
 import org.junit.Assert._
@@ -62,7 +74,7 @@ class SourceMapTest {
         val topSte = trace2.head
         assertTrue(normFileName(topSte).contains("/SourceMapTest.scala"))
 
-        val throwSte = if (topSte.getLineNumber == 19) {
+        val throwSte = if (topSte.getLineNumber == 31) {
           // line where `case class TestException is written` above
           val throwSte = trace2.tail.head
           assertTrue(normFileName(throwSte).contains("/SourceMapTest.scala"))
