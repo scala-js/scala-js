@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.frontend
 
+import scala.concurrent._
+
 import scala.collection.mutable
 
 import org.scalajs.ir.Trees._
@@ -30,7 +32,7 @@ final class Refiner(config: CommonPhaseConfig) {
   private val inputProvider = new InputProvider
 
   def refine(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
-      logger: Logger): LinkingUnit = {
+      logger: Logger)(implicit ex: ExecutionContext): Future[LinkingUnit] = {
 
     val linkedClassesByName =
       Map(unit.classDefs.map(c => c.encodedName -> c): _*)
@@ -41,39 +43,50 @@ final class Refiner(config: CommonPhaseConfig) {
         symbolRequirements ++
         ModuleInitializer.toSymbolRequirement(unit.moduleInitializers)
       }
-      Analyzer.computeReachability(config,
-          allSymbolRequirements, allowAddingSyntheticMethods = false,
-          inputProvider)
+
+      analyze(allSymbolRequirements, logger)
     }
 
-    /* There must not be linking errors at this point. If there are, it is a
-     * bug in the optimizer.
-     */
-    if (analysis.errors.nonEmpty) {
-      analysis.errors.foreach(Analysis.logError(_, logger, Level.Error))
-      throw new AssertionError(
-          "There were linking errors after the optimizer has run. " +
-          "This is a bug, please report it. " +
-          "You can work around the bug by disabling the optimizer. " +
-          "In the sbt plugin, this can be done with " +
-          "`scalaJSLinkerConfig ~= { _.withOptimizer(false) }`.")
-    }
+    for {
+      analysis <- analysis
+    } yield {
+      val result = logger.time("Refiner: Assemble LinkedClasses") {
+        val linkedClassDefs = for {
+          info <- analysis.classInfos.values
+        } yield {
+          refineClassDef(linkedClassesByName(info.encodedName), info)
+        }
 
-    val result = logger.time("Refiner: Assemble LinkedClasses") {
-      val linkedClassDefs = for {
-        analyzerInfo <- analysis.classInfos.values
-      } yield {
-        refineClassDef(linkedClassesByName(analyzerInfo.encodedName),
-            analyzerInfo)
+        new LinkingUnit(unit.coreSpec, linkedClassDefs.toList, unit.moduleInitializers)
       }
 
-      new LinkingUnit(unit.coreSpec, linkedClassDefs.toList,
-          unit.moduleInitializers)
+      inputProvider.cleanAfterRun()
+
+      result
     }
+  }
 
-    inputProvider.cleanAfterRun()
-
-    result
+  private def analyze(symbolRequirements: SymbolRequirement, logger: Logger)(
+      implicit ex: ExecutionContext): Future[Analysis] = {
+    for {
+      analysis <- Analyzer.computeReachability(config, symbolRequirements,
+          allowAddingSyntheticMethods = false, inputProvider)
+    } yield {
+      /* There must not be linking errors at this point. If there are, it is a
+       * bug in the optimizer.
+       */
+      if (analysis.errors.isEmpty) {
+        analysis
+      } else {
+        analysis.errors.foreach(Analysis.logError(_, logger, Level.Error))
+        throw new AssertionError(
+            "There were linking errors after the optimizer has run. " +
+            "This is a bug, please report it. " +
+            "You can work around the bug by disabling the optimizer. " +
+            "In the sbt plugin, this can be done with " +
+            "`scalaJSLinkerConfig ~= { _.withOptimizer(false) }`.")
+      }
+    }
   }
 
   private def refineClassDef(classDef: LinkedClass,
@@ -116,7 +129,7 @@ private object Refiner {
       this.linkedClassesByName = linkedClassesByName
     }
 
-    def classesWithEntryPoints(): TraversableOnce[String] = {
+    def classesWithEntryPoints()(implicit ex: ExecutionContext): Future[TraversableOnce[String]] = Future {
       for {
         linkedClass <- linkedClassesByName.valuesIterator
         if linkedClass.hasEntryPoint
@@ -125,7 +138,7 @@ private object Refiner {
       }
     }
 
-    def loadInfo(encodedName: String): Option[Infos.ClassInfo] =
+    def loadInfo(encodedName: String)(implicit ex: ExecutionContext): Option[Future[Infos.ClassInfo]] =
       getCache(encodedName).map(_.loadInfo(linkedClassesByName(encodedName)))
 
     private def getCache(encodedName: String): Option[LinkedClassInfoCache] = {
@@ -153,12 +166,12 @@ private object Refiner {
     private val exportedMembersInfoCaches = LinkedMembersInfosCache()
     private var info: Infos.ClassInfo = _
 
-    def loadInfo(linkedClass: LinkedClass): Infos.ClassInfo = {
+    def loadInfo(linkedClass: LinkedClass)(implicit ex: ExecutionContext): Future[Infos.ClassInfo] = Future {
       update(linkedClass)
       info
     }
 
-    private def update(linkedClass: LinkedClass): Unit = {
+    private def update(linkedClass: LinkedClass): Unit = synchronized {
       if (!cacheUsed) {
         cacheUsed = true
 
@@ -193,7 +206,7 @@ private object Refiner {
     }
 
     /** Returns true if the cache has been used and should be kept. */
-    def cleanAfterRun(): Boolean = {
+    def cleanAfterRun(): Boolean = synchronized {
       val result = cacheUsed
       cacheUsed = false
       if (result) {

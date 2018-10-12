@@ -48,54 +48,71 @@ final class BaseLinker(config: CommonPhaseConfig) {
   def link(irInput: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer], logger: Logger,
       symbolRequirements: SymbolRequirement, checkIR: Boolean)(
-      implicit ex: ExecutionContext): Future[LinkingUnit] = Future {
+      implicit ex: ExecutionContext): Future[LinkingUnit] = {
 
     inputProvider.update(irInput)
 
-    val analysis = logger.time("Linker: Compute reachability") {
-      val allSymbolRequirements = {
-        symbolRequirements ++
-        ModuleInitializer.toSymbolRequirement(moduleInitializers)
-      }
-      Analyzer.computeReachability(config,
-          allSymbolRequirements, allowAddingSyntheticMethods = true,
-          inputProvider)
+    val allSymbolRequirements = {
+      symbolRequirements ++
+      ModuleInitializer.toSymbolRequirement(moduleInitializers)
     }
 
-    if (analysis.errors.nonEmpty) {
+    for {
+      analysis <- logger.timeFuture("Linker: Compute reachability") {
+        analyze(allSymbolRequirements, logger)
+      }
+    } yield {
+      val linkResult = logger.time("Linker: Assemble LinkedClasses") {
+        assemble(moduleInitializers, analysis)
+      }
+
+      if (checkIR) {
+        logger.time("Linker: Check IR") {
+          val errorCount = IRChecker.check(linkResult, logger)
+          if (errorCount != 0) {
+            throw new LinkingException(
+                s"There were $errorCount IR checking errors.")
+          }
+        }
+      }
+
+      inputProvider.cleanAfterRun()
+
+      linkResult
+    }
+  }
+
+  private def analyze(symbolRequirements: SymbolRequirement, logger: Logger)(
+      implicit ex: ExecutionContext): Future[Analysis] = {
+    def reportErrors(errors: Seq[Analysis.Error]) = {
+      require(errors.nonEmpty)
+
       val maxDisplayErrors = {
         val propName = "org.scalajs.linker.maxlinkingerrors"
         Try(System.getProperty(propName, "20").toInt).getOrElse(20).max(1)
       }
 
-      analysis.errors
+      errors
         .take(maxDisplayErrors)
         .foreach(logError(_, logger, Level.Error))
 
-      val skipped = analysis.errors.size - maxDisplayErrors
+      val skipped = errors.size - maxDisplayErrors
       if (skipped > 0)
         logger.log(Level.Error, s"Not showing $skipped more linking errors")
 
       throw new LinkingException("There were linking errors")
     }
 
-    val linkResult = logger.time("Linker: Assemble LinkedClasses") {
-      assemble(moduleInitializers, analysis)
-    }
-
-    if (checkIR) {
-      logger.time("Linker: Check IR") {
-        val errorCount = IRChecker.check(linkResult, logger)
-        if (errorCount != 0) {
-          throw new LinkingException(
-              s"There were $errorCount IR checking errors.")
-        }
+    for {
+      analysis <- Analyzer.computeReachability(config, symbolRequirements,
+          allowAddingSyntheticMethods = true, inputProvider)
+    } yield {
+      if (analysis.errors.nonEmpty) {
+        reportErrors(analysis.errors)
       }
+
+      analysis
     }
-
-    inputProvider.cleanAfterRun()
-
-    linkResult
   }
 
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
@@ -332,17 +349,16 @@ private object BaseLinker {
       this.encodedNameToFile = encodedNameToFile
     }
 
-    def classesWithEntryPoints(): TraversableOnce[String] = {
-      for {
-        irFile <- encodedNameToFile.valuesIterator
-        entryPointsInfo = irFile.entryPointsInfo
-        if entryPointsInfo.hasEntryPoint
-      } yield {
-        entryPointsInfo.encodedName
-      }
+    def classesWithEntryPoints()(
+        implicit ex: ExecutionContext): Future[TraversableOnce[String]] = {
+      val infos = Future.traverse(encodedNameToFile.valuesIterator)(
+          irFile => Future(irFile.entryPointsInfo))
+
+      infos.map(_.withFilter(_.hasEntryPoint).map(_.encodedName))
     }
 
-    def loadInfo(encodedName: String): Option[Infos.ClassInfo] =
+    def loadInfo(encodedName: String)(
+        implicit ex: ExecutionContext): Option[Future[Infos.ClassInfo]] =
       getCache(encodedName).map(_.loadInfo(encodedNameToFile(encodedName)))
 
     def loadClassDefAndVersion(
@@ -380,7 +396,8 @@ private object BaseLinker {
     private var classDef: ClassDef = _
     private var info: Infos.ClassInfo = _
 
-    def loadInfo(irFile: VirtualScalaJSIRFile): Infos.ClassInfo = {
+    def loadInfo(irFile: VirtualScalaJSIRFile)(
+        implicit ex: ExecutionContext): Future[Infos.ClassInfo] = Future {
       update(irFile)
       info
     }
@@ -391,7 +408,7 @@ private object BaseLinker {
       (classDef, version)
     }
 
-    def update(irFile: VirtualScalaJSIRFile): Unit = {
+    def update(irFile: VirtualScalaJSIRFile): Unit = synchronized {
       /* If the cache was already used in this run, the classDef and info are
        * already correct, no matter what the versions say.
        */
@@ -409,7 +426,7 @@ private object BaseLinker {
     }
 
     /** Returns true if the cache has been used and should be kept. */
-    def cleanAfterRun(): Boolean = {
+    def cleanAfterRun(): Boolean = synchronized {
       val result = cacheUsed
       cacheUsed = false
       result

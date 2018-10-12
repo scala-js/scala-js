@@ -15,6 +15,12 @@ package org.scalajs.linker.analyzer
 import scala.annotation.tailrec
 
 import scala.collection.mutable
+import scala.concurrent._
+
+import scala.util.{Success, Failure}
+
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 
 import org.scalajs.ir
 import ir.{ClassKind, Definitions}
@@ -28,90 +34,112 @@ import Analysis._
 private final class Analyzer(config: CommonPhaseConfig,
     symbolRequirements: SymbolRequirement,
     allowAddingSyntheticMethods: Boolean,
-    inputProvider: Analyzer.InputProvider)
+    inputProvider: Analyzer.InputProvider,
+    executionContext: ExecutionContext)
     extends Analysis {
 
   import Analyzer._
-  import ClassInfo.newClassInfo
 
   private var objectClassInfo: ClassInfo = _
-  private[this] val _classInfos = mutable.Map.empty[String, ClassInfo]
+  private[this] val _classInfos = mutable.Map.empty[String, ClassLoadingState]
+
   private[this] val _errors = mutable.Buffer.empty[Error]
+
+  private val workQueue = new WorkQueue(executionContext)
 
   private val fromAnalyzer = FromCore("analyzer")
 
-  def classInfos: scala.collection.Map[String, Analysis.ClassInfo] = _classInfos
+  private[this] var _loadedClassInfos: scala.collection.Map[String, ClassInfo] = _
+
+  def classInfos: scala.collection.Map[String, Analysis.ClassInfo] = _loadedClassInfos
+
   def errors: Seq[Error] = _errors
 
-  def computeReachability(): Unit = {
+  def computeReachability(): Future[Unit] = {
     require(_classInfos.isEmpty, "Cannot run the same Analyzer multiple times")
+
+    loadObjectClass(() => loadEverything())
+
+    workQueue.join().map(_ => postLoad())(executionContext)
+  }
+
+  private def loadObjectClass(onSuccess: () => Unit): Unit = {
+    implicit val from = fromAnalyzer
+
+    /* Load the java.lang.Object class, and validate it
+     * If it is missing or invalid, we're in deep trouble, and cannot continue.
+     */
+    inputProvider.loadInfo(Definitions.ObjectClass)(executionContext) match {
+      case None =>
+        _errors += MissingJavaLangObjectClass(fromAnalyzer)
+
+      case Some(future) =>
+        workQueue.enqueue(future) { data =>
+          if (data.kind != ClassKind.Class || data.superClass.isDefined ||
+            data.interfaces.nonEmpty) {
+            _errors += InvalidJavaLangObjectClass(fromAnalyzer)
+          } else {
+            objectClassInfo = new ClassInfo(data,
+                unvalidatedSuperClass = None,
+                unvalidatedInterfaces = Nil, nonExistent = false)
+
+            objectClassInfo.link()
+            onSuccess()
+          }
+        }
+    }
+  }
+
+  private def loadEverything(): Unit = {
+    assert(objectClassInfo != null)
 
     implicit val from = fromAnalyzer
 
-    // Load the java.lang.Object class, and validate it
-    inputProvider.loadInfo(Definitions.ObjectClass) match {
-      case None =>
-        _errors += MissingJavaLangObjectClass(fromAnalyzer)
-      case Some(data) =>
-        if (data.kind != ClassKind.Class || data.superClass.isDefined ||
-            data.interfaces.nonEmpty) {
-          _errors += InvalidJavaLangObjectClass(fromAnalyzer)
-        } else {
-          objectClassInfo = newClassInfo(data, nonExistent = false)
-        }
+    /* Hijacked classes are always instantiated, because values of primitive
+     * types are their instances.
+     */
+    for (hijacked <- HijackedClasses)
+      lookupClass(hijacked)(_.instantiated())
+
+    // External symbol requirements, including module initializers
+    reachSymbolRequirement(symbolRequirements)
+
+    // Entry points (top-level exports and static initializers)
+    workQueue.enqueue(inputProvider.classesWithEntryPoints()(executionContext)) { names =>
+      names.foreach(n => lookupClass(n)(_.reachEntryPoints()))
     }
+  }
 
-    if (_errors.nonEmpty) {
-      /* If java.lang.Object was missing or invalid, we're in deep trouble, and
-       * cannot continue.
-       */
-    } else {
-      assert(objectClassInfo != null)
+  private def postLoad(): Unit = {
+    val infos = _classInfos.collect { case (k, i: ClassInfo) => (k, i) }
 
-      try {
-        /* Hijacked classes are always instantiated, because values of primitive
-         * types are their instances.
-         */
-        for (hijacked <- HijackedClasses)
-          lookupClass(hijacked).instantiated()
+    assert(_errors.nonEmpty || infos.size == _classInfos.size,
+        "unloaded classes in post load phase")
 
-        // External symbol requirements, including module initializers
-        reachSymbolRequirement(symbolRequirements)
+    _loadedClassInfos = infos
 
-        // Entry points (top-level exports and static initializers)
-        for (encodedName <- inputProvider.classesWithEntryPoints())
-          lookupClass(encodedName).reachEntryPoints()
+    // Reach additional data, based on reflection methods used
+    reachDataThroughReflection(infos)
 
-        // Reach additional data, based on reflection methods used
-        reachDataThroughReflection()
-
-        // Make sure top-level export names do not conflict
-        checkConflictingExports()
-      } catch {
-        case CyclicDependencyException(encodedClassNames, _) =>
-          _errors += CycleInInheritanceChain(encodedClassNames, fromAnalyzer)
-      }
-    }
+    // Make sure top-level export names do not conflict
+    checkConflictingExports(infos)
   }
 
   private def reachSymbolRequirement(requirement: SymbolRequirement,
       optional: Boolean = false): Unit = {
 
-    def withClass(className: String)(body: ClassInfo => Unit)(
+    def withClass(className: String)(onSuccess: ClassInfo => Unit)(
         implicit from: From): Unit = {
-      if (optional)
-        tryLookupClass(className).foreach(body)
-      else
-        body(lookupClass(className))
+      lookupClass(className, ignoreMissing = optional)(onSuccess)
     }
 
     def withMethod(className: String, methodName: String)(
-        body: ClassInfo => Unit)(
+        onSuccess: ClassInfo => Unit)(
         implicit from: From): Unit = {
       withClass(className) { clazz =>
         val doReach = !optional || clazz.tryLookupMethod(methodName).isDefined
         if (doReach)
-          body(clazz)
+          onSuccess(clazz)
       }
     }
 
@@ -162,8 +190,8 @@ private final class Analyzer(config: CommonPhaseConfig,
   }
 
   /** Reach additional class data based on reflection methods being used. */
-  private def reachDataThroughReflection(): Unit = {
-    val classClassInfo = _classInfos.get(Definitions.ClassClass)
+  private def reachDataThroughReflection(classInfos: scala.collection.Map[String, ClassInfo]): Unit = {
+    val classClassInfo = classInfos.get(Definitions.ClassClass)
 
     /* If Class.getSuperclass() is reachable, we can reach the data of all
      * superclasses of classes whose data we can already reach.
@@ -176,7 +204,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       // calledFrom should always be nonEmpty if isReachable, but let's be robust
       implicit val from =
         getSuperclassMethodInfo.calledFrom.headOption.getOrElse(fromAnalyzer)
-      for (classInfo <- _classInfos.values.filter(_.isDataAccessed).toList) {
+      for (classInfo <- classInfos.values.filter(_.isDataAccessed).toList) {
         @tailrec
         def loop(classInfo: ClassInfo): Unit = {
           classInfo.accessData()
@@ -190,9 +218,9 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def checkConflictingExports(): Unit = {
+  private def checkConflictingExports(classInfos: scala.collection.Map[String, ClassInfo]): Unit = {
     val namesAndInfos = for {
-      info <- _classInfos.values
+      info <- classInfos.values
       name <- info.topLevelExportNames
     } yield {
       name -> info
@@ -206,61 +234,117 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def tryLookupClass(encodedName: String)(
-      implicit from: From): Option[ClassInfo] = {
-    /* There is a significant amount of duplication with lookupClass, but it
-     * is unclear how to factor that out without hurting the performance of
-     * lookupClass, which is the common case.
-     */
-    _classInfos.get(encodedName) match {
-      case Some(info) =>
-        Some(info)
-      case None =>
-        inputProvider.loadInfo(encodedName) match {
-          case Some(data) =>
-            Some(newClassInfo(data, nonExistent = false))
-          case None =>
-            None
+  private def lookupClass(encodedName: String, ignoreMissing: Boolean = false)(
+      onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
+    lookupClassForLinking(encodedName, Set.empty) {
+      case info: ClassInfo =>
+        if (!info.nonExistent || !ignoreMissing) {
+          info.link()
+          onSuccess(info)
         }
+
+      case CycleInfo(cycle, _) =>
+        _errors += CycleInInheritanceChain(cycle, fromAnalyzer)
     }
   }
 
-  private def lookupClass(encodedName: String)(
-      implicit from: From): ClassInfo = {
-    // See the comment in tryLookupClass about the code duplication
+  private def lookupClassForLinking(encodedName: String,
+      knownDescendants: Set[LoadingClass] = Set.empty)(
+      onSuccess: LoadingResult => Unit): Unit = {
+
     _classInfos.get(encodedName) match {
-      case Some(info) =>
-        if (info.nonExistent)
-          _errors += MissingClass(info, from)
-        info
       case None =>
-        inputProvider.loadInfo(encodedName) match {
-          case Some(data) =>
-            newClassInfo(data, nonExistent = false)
-          case None =>
-            val data = createMissingClassInfo(encodedName)
-            val info = newClassInfo(data, nonExistent = true)
-            _errors += MissingClass(info, from)
-            info
+        val loading = new LoadingClass(encodedName)
+        loading.requestLink(knownDescendants)(onSuccess)
+
+      case Some(loading: LoadingClass) =>
+        loading.requestLink(knownDescendants)(onSuccess)
+
+      case Some(info: ClassInfo) =>
+        onSuccess(info)
+    }
+  }
+
+
+  private sealed trait LoadingResult
+  private sealed trait ClassLoadingState
+
+  private case class CycleInfo(cycle: List[String], root: LoadingClass) extends LoadingResult
+
+  private final class LoadingClass(encodedName: String) extends ClassLoadingState {
+    private val promise = Promise[LoadingResult]()
+    private var knownDescendants = Set[LoadingClass](this)
+
+    _classInfos(encodedName) = this
+
+    inputProvider.loadInfo(encodedName)(executionContext) match {
+      case Some(future) =>
+        workQueue.enqueue(future)(link(_, nonExistent = false))
+
+      case None =>
+        val data = createMissingClassInfo(encodedName)
+        link(data, nonExistent = true)
+    }
+
+    def requestLink(knownDescendants: Set[LoadingClass])(onSuccess: LoadingResult => Unit): Unit = {
+      if (knownDescendants.contains(this)) {
+        onSuccess(CycleInfo(Nil, this))
+      } else {
+        this.knownDescendants ++= knownDescendants
+        workQueue.enqueue(promise.future)(onSuccess)
+      }
+    }
+
+    private def link(data: Infos.ClassInfo, nonExistent: Boolean): Unit = {
+      lookupAncestors(data.superClass.toList ++ data.interfaces) { classes =>
+        val (superClass, interfaces) =
+          if (data.superClass.isEmpty) (None, classes)
+          else (Some(classes.head), classes.tail)
+
+        val info = new ClassInfo(data, superClass, interfaces, nonExistent)
+
+        implicit val from = FromClass(info)
+        classes.foreach(_.link())
+
+        promise.success(info)
+      } { cycleInfo =>
+        val newInfo = cycleInfo match {
+          case CycleInfo(_, null) => cycleInfo
+
+          case CycleInfo(c, root) if root == this =>
+            CycleInfo(encodedName :: c, null)
+
+          case CycleInfo(c, root) =>
+            CycleInfo(encodedName :: c, root)
         }
+
+        promise.success(newInfo)
+      }
+    }
+
+    private def lookupAncestors(encodedNames: List[String])(
+        loaded: List[ClassInfo] => Unit)(cycle: CycleInfo => Unit): Unit = {
+      encodedNames match {
+        case first :: rest =>
+          lookupClassForLinking(first, knownDescendants) {
+            case c: CycleInfo => cycle(c)
+
+            case ifirst: ClassInfo =>
+              lookupAncestors(rest)(irest => loaded(ifirst :: irest))(cycle)
+          }
+        case Nil =>
+          loaded(Nil)
+      }
     }
   }
 
-  private object ClassInfo {
-    def newClassInfo(data: Infos.ClassInfo, nonExistent: Boolean)(
-        implicit from: From): ClassInfo = {
-      val info = new ClassInfo(data, nonExistent)
-      _classInfos += data.encodedName -> info
-      info.linkClasses()
-      info
-    }
-  }
-
-  private class ClassInfo private (data: Infos.ClassInfo,
+  private class ClassInfo(
+      val data: Infos.ClassInfo,
+      unvalidatedSuperClass: Option[ClassInfo],
+      unvalidatedInterfaces: List[ClassInfo],
       val nonExistent: Boolean)
-      extends Analysis.ClassInfo {
+      extends Analysis.ClassInfo with ClassLoadingState with LoadingResult {
 
-    var linked: Boolean = false
     var linkedFrom: List[From] = Nil
 
     val encodedName = data.encodedName
@@ -275,71 +359,53 @@ private final class Analyzer(config: CommonPhaseConfig,
     val isExported = data.isExported
     val topLevelExportNames = data.topLevelExportNames
 
-    var superClass: Option[ClassInfo] = _
-    var interfaces: List[ClassInfo] = _
-    var ancestors: List[ClassInfo] = _
+    // Note: j.l.Object is special and is validated upfront
 
-    /** Links this class to its superclass and implemented interfaces. */
-    def linkClasses()(implicit from: From): Unit = {
-      assert(!linked)
-      linkedFrom ::= from
+    val superClass: Option[ClassInfo] =
+      if (encodedName == ObjectClass) unvalidatedSuperClass
+      else validateSuperClass(unvalidatedSuperClass)
 
-      try {
-        linkClassesImpl()
-      } catch {
-        case CyclicDependencyException(encodedClassNames, root) if root == this =>
-          throw new CyclicDependencyException(encodedName :: encodedClassNames, null)
+    val interfaces: List[ClassInfo] =
+      if (encodedName == ObjectClass) unvalidatedInterfaces
+      else validateInterfaces(unvalidatedInterfaces)
 
-        case CyclicDependencyException(encodedClassNames, root) if root != null =>
-          throw new CyclicDependencyException(encodedName :: encodedClassNames, root)
-      }
-
-      linked = true
-    }
-
-    private[this] def linkClassesImpl(): Unit = {
-      implicit val from = FromClass(this)
-
-      def lookupClassAndCheckCycles(encodedName: String): ClassInfo = {
-        val info = lookupClass(encodedName)
-        if (!info.linked)
-          throw CyclicDependencyException(Nil, info)
-        info
-      }
-
-      superClass = data.superClass.map(lookupClassAndCheckCycles)
-      interfaces = data.interfaces.map(lookupClassAndCheckCycles)
-
-      // j.l.Object is special and is validated upfront
-      if (encodedName != ObjectClass) {
-        validateSuperClass()
-        validateInterfaces()
-      }
-
+    val ancestors: List[ClassInfo] = {
       val parents = superClass ++: interfaces
-      ancestors = this +: parents.flatMap(_.ancestors).distinct
+      this +: parents.flatMap(_.ancestors).distinct
     }
 
-    private[this] def validateSuperClass(): Unit = {
+    _classInfos(encodedName) = this
+
+    def link()(implicit from: From): Unit = {
+      if (nonExistent)
+        _errors += MissingClass(this, from)
+
+      linkedFrom ::= from
+    }
+
+    private[this] def validateSuperClass(superClass: Option[ClassInfo]): Option[ClassInfo] = {
       implicit def from = FromClass(this)
 
       kind match {
         case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass =>
-          superClass.fold[Unit] {
+          superClass.fold[Option[ClassInfo]] {
             _errors += MissingSuperClass(this, from)
-            superClass = Some(objectClassInfo)
+            Some(objectClassInfo)
           } { superCl =>
             if (superCl.kind != ClassKind.Class) {
               _errors += InvalidSuperClass(superCl, this, from)
-              superClass = Some(objectClassInfo)
+              Some(objectClassInfo)
+            } else {
+              superClass
             }
           }
 
         case ClassKind.Interface =>
           superClass.foreach { superCl =>
             _errors += InvalidSuperClass(superCl, this, from)
-            superClass = None
           }
+
+          None
 
         case ClassKind.JSClass | ClassKind.JSModuleClass =>
           /* There is no correct fallback in case of error, here. The logical
@@ -348,50 +414,51 @@ private final class Analyzer(config: CommonPhaseConfig,
            * So we just say superClass = None in invalid cases, and make sure
            * this does not blow up the rest of the analysis.
            */
-          superClass.fold[Unit] {
+          superClass.fold[Option[ClassInfo]] {
             _errors += MissingSuperClass(this, from)
+            None
           } { superCl =>
             superCl.kind match {
               case ClassKind.JSClass | ClassKind.NativeJSClass =>
-                // ok
+                superClass // ok
               case _ =>
                 _errors += InvalidSuperClass(superCl, this, from)
-                superClass = None
+                None
             }
           }
 
         case ClassKind.NativeJSClass | ClassKind.NativeJSModuleClass =>
-          superClass.fold[Unit] {
+          superClass.fold[Option[ClassInfo]] {
             _errors += MissingSuperClass(this, from)
-            superClass = Some(objectClassInfo)
+            Some(objectClassInfo)
           } { superCl =>
             superCl.kind match {
               case ClassKind.JSClass | ClassKind.NativeJSClass =>
-                // ok
+                superClass // ok
               case _ if superCl eq objectClassInfo =>
-                // ok
+                superClass // ok
               case _ =>
                 _errors += InvalidSuperClass(superCl, this, from)
-                superClass = Some(objectClassInfo)
+                Some(objectClassInfo)
             }
           }
 
         case ClassKind.AbstractJSType =>
-          superClass.foreach { superCl =>
+          superClass.flatMap { superCl =>
             superCl.kind match {
               case ClassKind.JSClass | ClassKind.NativeJSClass =>
-                // ok
+                superClass // ok
               case _ if superCl eq objectClassInfo =>
-                // ok
+                superClass // ok
               case _ =>
                 _errors += InvalidSuperClass(superCl, this, from)
-                superClass = None
+                None
             }
           }
       }
     }
 
-    private[this] def validateInterfaces(): Unit = {
+    private[this] def validateInterfaces(interfaces: List[ClassInfo]): List[ClassInfo] = {
       implicit def from = FromClass(this)
 
       val validSuperIntfKind = kind match {
@@ -404,7 +471,7 @@ private final class Analyzer(config: CommonPhaseConfig,
           ClassKind.AbstractJSType
       }
 
-      interfaces = interfaces.filter { superIntf =>
+      interfaces.filter { superIntf =>
         if (superIntf.nonExistent) {
           // Remove it but do not report an additional error message
           false
@@ -639,10 +706,15 @@ private final class Analyzer(config: CommonPhaseConfig,
         right: ir.Types.TypeRef): Boolean = {
       import ir.Types._
 
+      def getClassInfo(name: String): Option[ClassInfo] = {
+        // TODO: This is suspicious: It shouldn't be necessary.
+        _classInfos.get(name).collect { case i: ClassInfo => i }
+      }
+
       def classIsMoreSpecific(leftCls: String, rightCls: String): Boolean = {
         leftCls != rightCls && {
-          val leftInfo = _classInfos.get(leftCls)
-          val rightInfo = _classInfos.get(rightCls)
+          val leftInfo = getClassInfo(leftCls)
+          val rightInfo = getClassInfo(rightCls)
           leftInfo.zip(rightInfo).exists { case (l, r) =>
             l.ancestors.contains(r)
           }
@@ -745,7 +817,7 @@ private final class Analyzer(config: CommonPhaseConfig,
          */
         for (className <- data.referencedFieldClasses) {
           if (!Definitions.PrimitiveClasses.contains(className))
-            lookupClass(className)
+            lookupClass(className)(_ => ())
         }
 
         if (isScalaClass) {
@@ -927,26 +999,26 @@ private final class Analyzer(config: CommonPhaseConfig,
       implicit val from = FromMethod(this)
 
       for (moduleName <- data.accessedModules) {
-        lookupClass(moduleName).accessModule()
+        lookupClass(moduleName)(_.accessModule())
       }
 
       for (className <- data.instantiatedClasses) {
-        lookupClass(className).instantiated()
+        lookupClass(className)(_.instantiated())
       }
 
       for (className <- data.usedInstanceTests) {
         if (!Definitions.PrimitiveClasses.contains(className))
-          lookupClass(className).useInstanceTests()
+          lookupClass(className)(_.useInstanceTests())
       }
 
       for (className <- data.accessedClassData) {
         if (!Definitions.PrimitiveClasses.contains(className))
-          lookupClass(className).accessData()
+          lookupClass(className)(_.accessData())
       }
 
       for (className <- data.referencedClasses) {
         if (!Definitions.PrimitiveClasses.contains(className))
-          lookupClass(className)
+          lookupClass(className)(_ => ())
       }
 
       /* `for` loops on maps are written with `while` loops to help the JIT
@@ -957,38 +1029,41 @@ private final class Analyzer(config: CommonPhaseConfig,
       while (staticFieldsReadIterator.hasNext) {
         val (className, fields) = staticFieldsReadIterator.next()
         if (fields.nonEmpty)
-          lookupClass(className).isAnyStaticFieldReachable = true
+          lookupClass(className)(_.isAnyStaticFieldReachable = true)
       }
 
       val staticFieldsWrittenIterator = data.staticFieldsWritten.iterator
       while (staticFieldsWrittenIterator.hasNext) {
         val (className, fields) = staticFieldsWrittenIterator.next()
         if (fields.nonEmpty)
-          lookupClass(className).isAnyStaticFieldReachable = true
+          lookupClass(className)(_.isAnyStaticFieldReachable = true)
       }
 
       val methodsCalledIterator = data.methodsCalled.iterator
       while (methodsCalledIterator.hasNext) {
         val (className, methods) = methodsCalledIterator.next()
-        val classInfo = lookupClass(className)
-        for (methodName <- methods)
-          classInfo.callMethod(methodName)
+        lookupClass(className) { classInfo =>
+          for (methodName <- methods)
+            classInfo.callMethod(methodName)
+        }
       }
 
       val methodsCalledStaticallyIterator = data.methodsCalledStatically.iterator
       while (methodsCalledStaticallyIterator.hasNext) {
         val (className, methods) = methodsCalledStaticallyIterator.next()
-        val classInfo = lookupClass(className)
-        for (methodName <- methods)
-          classInfo.callMethodStatically(methodName)
+        lookupClass(className) { classInfo =>
+          for (methodName <- methods)
+            classInfo.callMethodStatically(methodName)
+        }
       }
 
       val staticMethodsCalledIterator = data.staticMethodsCalled.iterator
       while (staticMethodsCalledIterator.hasNext) {
         val (className, methods) = staticMethodsCalledIterator.next()
-        val classInfo = lookupClass(className)
-        for (methodName <- methods)
-          classInfo.callStaticMethod(methodName)
+        lookupClass(className) { classInfo =>
+          for (methodName <- methods)
+            classInfo.callStaticMethod(methodName)
+        }
       }
     }
   }
@@ -1045,20 +1120,70 @@ object Analyzer {
   def computeReachability(config: CommonPhaseConfig,
       symbolRequirements: SymbolRequirement,
       allowAddingSyntheticMethods: Boolean,
-      inputProvider: InputProvider): Analysis = {
+      inputProvider: InputProvider)(implicit ex: ExecutionContext): Future[Analysis] = {
     val analyzer = new Analyzer(config, symbolRequirements,
-        allowAddingSyntheticMethods, inputProvider)
-    analyzer.computeReachability()
-    analyzer
+        allowAddingSyntheticMethods, inputProvider, ex)
+    analyzer.computeReachability().map(_ => analyzer)
   }
 
   trait InputProvider {
-    def classesWithEntryPoints(): TraversableOnce[String]
+    def classesWithEntryPoints()(implicit ex: ExecutionContext): Future[TraversableOnce[String]]
 
-    def loadInfo(encodedName: String): Option[Infos.ClassInfo]
+    def loadInfo(encodedName: String)(implicit ex: ExecutionContext): Option[Future[Infos.ClassInfo]]
   }
 
-  private final case class CyclicDependencyException(
-      encodedClassNames: List[String], root: Analysis.ClassInfo)
-      extends Exception(s"Cyclic dependency: $encodedClassNames")
+  private class WorkQueue(ex: ExecutionContext) {
+    private val queue = new ConcurrentLinkedQueue[() => Unit]()
+    private val working = new AtomicBoolean(false)
+    private val pending = new AtomicInteger(0)
+    private val promise = Promise[Unit]
+
+    def enqueue[T](fut: Future[T])(onSuccess: T => Unit): Unit = {
+      val got = pending.incrementAndGet()
+      assert(got > 0)
+
+      fut.onComplete {
+        case Success(r) =>
+          queue.add(() => onSuccess(r))
+          tryDoWork()
+
+        case Failure(t) =>
+          promise.tryFailure(t)
+      } (ex)
+    }
+
+    def join(): Future[Unit] = {
+      tryDoWork()
+      promise.future
+    }
+
+    @tailrec
+    private def tryDoWork(): Unit = {
+      if (!working.getAndSet(true)) {
+        while (!queue.isEmpty) {
+          try {
+            val work = queue.poll()
+            work()
+          } catch {
+            case t: Throwable => promise.tryFailure(t)
+          }
+
+          pending.decrementAndGet()
+        }
+
+        if (pending.compareAndSet(0, -1)) {
+          assert(queue.isEmpty)
+          promise.trySuccess(())
+        }
+
+        working.set(false)
+
+        /* Another thread might have inserted work in the meantime but not yet
+         * seen that we released the lock. Try and work steal again if this
+         * happens.
+         */
+        if (!queue.isEmpty) tryDoWork()
+      }
+    }
+  }
 }

@@ -63,12 +63,13 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
     }
 
     optOptimizer.fold(linkResult) { optimizer =>
-      linkResult.map(optimize(_, symbolRequirements, optimizer, logger))
+      linkResult.flatMap(optimize(_, symbolRequirements, optimizer, logger))
     }
   }
 
   private def optimize(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
-      optimizer: GenIncOptimizer, logger: Logger): LinkingUnit = {
+      optimizer: GenIncOptimizer, logger: Logger)(
+      implicit ex: ExecutionContext): Future[LinkingUnit] = {
     val optimized = logger.time("Optimizer") {
       optimizer.update(unit, logger)
     }
