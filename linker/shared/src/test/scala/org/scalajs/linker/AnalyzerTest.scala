@@ -104,6 +104,27 @@ class AnalyzerTest {
   }
 
   @Test
+  def bigCycleInInheritanceChain(): Unit = {
+    val classDefs = Seq(
+        classDef("LA", superClass = Some("LB")),
+        classDef("LB", superClass = Some("LC")),
+
+        // Start of cycle.
+        classDef("LC", superClass = Some("LD")),
+        classDef("LD", superClass = Some("LE")),
+        classDef("LE", superClass = Some("LC"))
+    )
+
+    val analysis = computeAnalysis(classDefs, reqsFactory.classData("LA"))
+
+    assertContainsError("CycleInInheritanceChain(LC, LD, LE)", analysis) {
+      case CycleInInheritanceChain(
+          List(ClsInfo("LC"), ClsInfo("LD"), ClsInfo("LE")),
+          FromClass(ClsInfo("LB"))) => true
+    }
+  }
+
+  @Test
   def missingClassDirect(): Unit = {
     val analysis = computeAnalysis(Nil, reqsFactory.classData("LA"))
 
