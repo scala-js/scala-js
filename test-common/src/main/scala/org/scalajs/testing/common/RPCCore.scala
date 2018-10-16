@@ -76,7 +76,28 @@ private[testing] abstract class RPCCore()(implicit ex: ExecutionContext) {
         case _ =>
           endpoints.get(opCode) match {
             case null =>
-              throw new IllegalStateException(s"Unknown opcode: $opCode")
+              /* Quick and dirty way to provide more error detail for certain
+               * known problems.
+               * This is not ideal, but the best we can do, since we do not know
+               * all possible opCodes we could receive (we'd need something like
+               * an opCode "domain").
+               * For now this is good enough; if collisions happen in the
+               * future, we can improve this.
+               */
+              val detail = opCode match {
+                case JSEndpoints.msgSlave.opCode =>
+                  "; " +
+                  "The test adapter could not send a message to a slave, " +
+                  "which probably happens because the slave terminated early, " +
+                  "without waiting for the reply to a call to send(). " +
+                  "This is probably a bug in the testing framework you are " +
+                  "using. See also #3201."
+
+                case _ =>
+                  ""
+              }
+
+              throw new IllegalStateException(s"Unknown opcode: $opCode$detail")
 
             case bep: BoundMsgEndpoint =>
               val ep: bep.endpoint.type = bep.endpoint
