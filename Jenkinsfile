@@ -124,6 +124,7 @@ def Tasks = [
     sbtretry ++$scala testSuite/test:doc library/test compiler/test reversi/fastOptJS reversi/fullOptJS &&
     sbtretry ++$scala compiler/compile:doc library/compile:doc \
         testInterface/compile:doc &&
+    sbtretry ++$scala headerCheck &&
     sbtretry ++$scala partest/fetchScalaSource &&
     sbtretry ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
     sh ci/checksizes.sh $scala &&

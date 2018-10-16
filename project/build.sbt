@@ -1,3 +1,5 @@
+addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.0.0")
+
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.18")
 
 addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "1.0.0")

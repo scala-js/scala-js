@@ -8,6 +8,7 @@ import sbt._
 import Keys._
 
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
+import de.heikoseeberger.sbtheader.HeaderPlugin.autoImport._
 
 import java.io.{
   BufferedOutputStream,
@@ -228,9 +229,21 @@ object Build {
         _.replace("scala.js", "scalajs").replace("scala-js", "scalajs")
       },
 
-      homepage := Some(url("http://scala-js.org/")),
-      licenses += ("BSD New",
-          url("https://github.com/scala-js/scala-js/blob/master/LICENSE")),
+      homepage := Some(url("https://www.scala-js.org/")),
+      startYear := Some(2013),
+      licenses += (("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0"))),
+      headerLicense := Some(HeaderLicense.Custom(
+        s"""Scala.js (${homepage.value.get})
+           |
+           |Copyright EPFL.
+           |
+           |Licensed under Apache License 2.0
+           |(https://www.apache.org/licenses/LICENSE-2.0).
+           |
+           |See the NOTICE file distributed with this work for
+           |additional information regarding copyright ownership.
+           |""".stripMargin
+      )),
       scmInfo := Some(ScmInfo(
           url("https://github.com/scala-js/scala-js"),
           "scm:git:git@github.com:scala-js/scala-js.git",
@@ -524,25 +537,38 @@ object Build {
       name := "Scala.js",
       publishArtifact in Compile := false,
 
-      clean := clean.dependsOn(
-          clean in compiler,
-          clean in irProject, clean in irProjectJS,
-          clean in io, clean in ioJS,
-          clean in logging, clean in loggingJS,
-          clean in linker, clean in linkerJS,
-          clean in jsEnvs, clean in jsEnvsTestKit, clean in nodeJSEnv,
-          clean in testAdapter, clean in plugin,
-          clean in javalanglib, clean in javalib, clean in scalalib,
-          clean in libraryAux, clean in library, clean in minilib,
-          clean in testInterface,
-          clean in jUnitRuntime, clean in jUnitPlugin,
-          clean in jUnitTestOutputsJS, clean in jUnitTestOutputsJVM,
-          clean in examples, clean in helloworld,
-          clean in reversi, clean in testingExample,
-          clean in testSuite, clean in testSuiteJVM,
-          clean in testSuiteEx,
-          clean in partest, clean in partestSuite,
-          clean in scalaTestSuite).value,
+      {
+        val allProjects = Seq(
+            compiler, irProject, irProjectJS, io, ioJS, logging, loggingJS,
+            linker, linkerJS,
+            jsEnvs, jsEnvsTestKit, nodeJSEnv, testAdapter, plugin,
+            javalanglib, javalib, scalalib, libraryAux, library, minilib,
+            testInterface, jUnitRuntime, jUnitPlugin,
+            jUnitTestOutputsJS, jUnitTestOutputsJVM,
+            helloworld, reversi, testingExample, testSuite, testSuiteJVM,
+            testSuiteEx,
+            partest, partestSuite,
+            scalaTestSuite
+        )
+
+        val keys = Seq[TaskKey[_]](
+            clean, headerCreate in Compile, headerCreate in Test,
+            headerCheck in Compile, headerCheck in Test
+        )
+
+        for (key <- keys) yield {
+          /* The match is only used to capture the type parameter `a` of
+           * each individual TaskKey.
+           */
+          key match {
+            case key: TaskKey[a] =>
+              key := key.dependsOn(allProjects.map(key in _): _*).value
+          }
+        }
+      },
+
+      headerCreate := (headerCreate in Test).dependsOn(headerCreate in Compile).value,
+      headerCheck := (headerCheck in Test).dependsOn(headerCheck in Compile).value,
 
       publish := {},
       publishLocal := {}
@@ -871,7 +897,15 @@ object Build {
       delambdafySetting,
       ensureSAMSupportSetting,
       noClassFilesSettings,
-      scalaJSExternalCompileSettings
+      scalaJSExternalCompileSettings,
+
+      headerSources in Compile ~= { srcs =>
+        srcs.filter { src =>
+          val path = src.getPath.replace('\\', '/')
+          !path.contains("/java/math/") &&
+          !path.endsWith("/java/util/concurrent/ThreadLocalRandom.scala")
+        }
+      }
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
   lazy val scalalib: Project = project.enablePlugins(
@@ -1011,6 +1045,9 @@ object Build {
 
         sources.result()
       },
+
+      headerSources in Compile := Nil,
+      headerSources in Test := Nil,
 
       scalaJSExternalCompileSettings
   ).withScalaJSCompiler.dependsOnLibraryNoJar
@@ -1180,7 +1217,14 @@ object Build {
       commonSettings,
       publishSettings,
       fatalWarningsSettings,
-      name := "Scala.js JUnit test runtime"
+      name := "Scala.js JUnit test runtime",
+
+      headerSources in Compile ~= { srcs =>
+        srcs.filter { src =>
+          val path = src.getPath.replace('\\', '/')
+          !path.contains("/org/junit/") && !path.contains("/org/hamcrest/")
+        }
+      }
   ).withScalaJSCompiler.dependsOn(testInterface)
 
   val commonJUnitTestOutputsSettings = Def.settings(
@@ -1231,7 +1275,10 @@ object Build {
       name := "Scala.js examples"
   ).aggregate(helloworld, reversi, testingExample)
 
-  lazy val exampleSettings = commonSettings ++ fatalWarningsSettings
+  lazy val exampleSettings = commonSettings ++ fatalWarningsSettings ++ Def.settings(
+      headerSources in Compile := Nil,
+      headerSources in Test := Nil
+  )
 
   lazy val helloworld: Project = (project in (file("examples") / "helloworld")).enablePlugins(
       MyScalaJSPlugin

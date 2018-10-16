@@ -1,6 +1,7 @@
 /*
  * Ported by Alistair Johnson from
  * https://android.googlesource.com/platform/libcore/+/master/luni/src/main/java/java/math/Multiplication.java
+ * Original license copied below:
  */
 
 /*
