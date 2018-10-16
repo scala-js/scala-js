@@ -1,3 +1,15 @@
+/*
+ * Scala.js (https://www.scala-js.org/)
+ *
+ * Copyright EPFL.
+ *
+ * Licensed under Apache License 2.0
+ * (https://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
+
 package java.util.regex
 
 import scala.language.implicitConversions
@@ -23,6 +35,9 @@ final class Matcher private[regex] (
   private var lastMatch: js.RegExp.ExecResult = null
   private var lastMatchIsValid = false
   private var canStillFind = true
+
+  // Group count
+  private var lastGroupCount: Option[Int] = None
 
   // Append state (updated by replacement methods)
   private var appendPos: Int = 0
@@ -160,6 +175,7 @@ final class Matcher private[regex] (
     regexp = pattern.newJSRegExp()
     regexp.lastIndex = prevLastIndex
     lastMatch = null
+    lastGroupCount = None
     startOfGroupCache = None
     this
   }
@@ -172,7 +188,21 @@ final class Matcher private[regex] (
     lastMatch
   }
 
-  def groupCount(): Int = ensureLastMatch.length-1
+  def groupCount(): Int = {
+    if (lastMatch != null) {
+      lastMatch.length-1
+    } else {
+      lastGroupCount match {
+        case Some(n) => n
+
+        case None =>
+          val groupCountRegex = new js.RegExp("|" + pattern0.jsPattern)
+          val newGroupCount = groupCountRegex.exec("").length-1
+          lastGroupCount = Some(newGroupCount)
+          newGroupCount
+      }
+    }
+  }
 
   def start(): Int = ensureLastMatch.index
   def end(): Int = start() + group().length
@@ -198,7 +228,7 @@ final class Matcher private[regex] (
 
   // Seal the state
 
-  def toMatchResult(): MatchResult = new SealedResult(inputstr, lastMatch, pattern())
+  def toMatchResult(): MatchResult = new SealedResult(inputstr, lastMatch, pattern(), groupCount())
 
   // Other query state methods
 
@@ -249,10 +279,11 @@ object Matcher {
   }
 
   private final class SealedResult(inputstr: String,
-      lastMatch: js.RegExp.ExecResult, pattern: Pattern)
+      lastMatch: js.RegExp.ExecResult, pattern: Pattern,
+      lastGroupCount: Int)
       extends MatchResult {
 
-    def groupCount(): Int = ensureLastMatch.length-1
+    def groupCount(): Int = lastGroupCount
 
     def start(): Int = ensureLastMatch.index
     def end(): Int = start() + group().length
