@@ -103,8 +103,13 @@ private[test] class ComTests(config: JSEnvSuiteConfig) {
 
   @Test
   def largeMessageTest: Unit = {
-    // 1MB data
-    replyTest(new String(Array.tabulate(1024 * 1024)(_.toChar)))
+    /* 1MB data.
+     * (i & 0x7f) limits the input to the ASCII repertoire, which will use
+     * exactly 1 byte per Char in UTF-8. This restriction also ensures that we
+     * do not introduce surrogate characters and therefore no invalid UTF-16
+     * strings.
+     */
+    replyTest(new String(Array.tabulate(1024 * 1024)(i => (i & 0x7f).toChar)))
   }
 
   @Test

@@ -63,6 +63,10 @@ object JSRun {
 trait JSComRun extends JSRun {
   /** Sends a message to the JS end.
    *
+   *  The `msg` must be a valid UTF-16 string, i.e., it must not contain any
+   *  unpaired surrogate character. The behavior of the communication channel
+   *  is unspecified if this requirement is not met.
+   *
    *  Async, nothrow. See [[JSEnv#startWithCom]] for expected message delivery
    *  guarantees.
    */

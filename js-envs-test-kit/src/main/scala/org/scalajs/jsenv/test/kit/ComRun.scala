@@ -31,6 +31,7 @@ class ComRun private[kit] (run: JSComRun, out: IOReader, err: IOReader,
 
   /** Calls [[JSComRun#send]] on the underlying run. */
   final def send(msg: String): this.type = {
+    requireValidMessage(msg)
     run.send(msg)
     this
   }
@@ -41,10 +42,39 @@ class ComRun private[kit] (run: JSComRun, out: IOReader, err: IOReader,
    *  @throws java.util.concurrent.TimeoutException if there is no message for too long.
    */
   final def expectMsg(expected: String): this.type = {
+    requireValidMessage(expected)
     require(!noMessages, "You may not call expectMsg after calling expectNoMsgs")
     val actual = msgs.waitOnMessage(timeout.fromNow)
     assertEquals("got bad message", expected, actual)
     this
+  }
+
+  private def requireValidMessage(msg: String): Unit = {
+    val len = msg.length
+    var i = 0
+    while (i < len) {
+      val c = msg.charAt(i)
+
+      def fail(lowOrHigh: String): Nothing = {
+        val msgDescription =
+          if (len > 128) s"Message (of length $len)"
+          else s"Message '$msg'"
+        throw new IllegalArgumentException(
+            s"$msgDescription is not a valid message because it contains an " +
+            s"unpaired $lowOrHigh surrogate 0x${c.toInt.toHexString} at index $i")
+      }
+
+      if (Character.isSurrogate(c)) {
+        if (Character.isLowSurrogate(c))
+          fail("low")
+        else if (i == len - 1 || !Character.isLowSurrogate(msg.charAt(i + 1)))
+          fail("high")
+        else
+          i += 2
+      } else {
+        i += 1
+      }
+    }
   }
 
   /** Marks that no further messages are expected.
