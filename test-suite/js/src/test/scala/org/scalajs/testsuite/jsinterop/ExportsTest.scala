@@ -29,9 +29,23 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.{JSUtils, Platform}
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
-class ExportsTest {
+object ExportsTest {
+  /* When using ES modules, there is no way to get hold of our own exports
+   * namespace from within. The build instead sets up a small script that will
+   * import our module and call `setExportsNamespaceForExportsTest` with our
+   * module namespace.
+   */
+
+  private[this] var explicitlySetExportsNamespace: Option[js.Dynamic] = None
+
+  @JSExportTopLevel("setExportsNamespaceForExportsTest")
+  def setExportsNamespaceForExportsTest(value: js.Dynamic): Unit =
+    explicitlySetExportsNamespace = Some(value)
 
   /** The namespace in which top-level exports are stored.
+   *
+   *  If it has been explicitly set, which is the case for `ESModule`, take
+   *  that value.
    *
    *  If we are linking the test suite in `NoModule`, then exports are in the
    *  global object (technically they're in the global scope, but at least so
@@ -41,17 +55,28 @@ class ExportsTest {
    *  module-global variable, which we can retrieve as if it were in the global
    *  scope.
    */
-  val exportsNamespace: js.Dynamic = {
-    if (Platform.isNoModule) {
-      null // need to use `global` instead
-    } else if (Platform.isCommonJSModule) {
-      js.Dynamic.global.exports
-    } else {
-      throw new NotImplementedError(
-          "Don't know how to fetch the exports namespace in an unknown " +
-          "module kind.")
+  def exportsNameSpace: js.Dynamic = {
+    explicitlySetExportsNamespace.getOrElse {
+      assert(!Platform.isESModule,
+          "The exportsNamespace should have been explicitly set for an ES " +
+          "module")
+      if (Platform.isNoModule) {
+        null // need to use `global` instead
+      } else if (Platform.isCommonJSModule) {
+        js.Dynamic.global.exports
+      } else {
+        throw new NotImplementedError(
+            "Don't know how to fetch the exports namespace in an unknown " +
+            "module kind.")
+      }
     }
   }
+}
+
+class ExportsTest {
+
+  /** The namespace in which top-level exports are stored. */
+  val exportsNamespace = ExportsTest.exportsNameSpace
 
   // @JSExport
 

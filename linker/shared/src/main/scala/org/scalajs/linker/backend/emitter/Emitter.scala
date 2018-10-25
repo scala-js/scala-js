@@ -89,8 +89,8 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private val needsIIFEWrapper = {
     moduleKind match {
-      case ModuleKind.NoModule       => true
-      case ModuleKind.CommonJSModule => false
+      case ModuleKind.NoModule                             => true
+      case ModuleKind.ESModule | ModuleKind.CommonJSModule => false
     }
   }
 
@@ -144,7 +144,7 @@ final class Emitter private (config: CommonPhaseConfig,
           Some(topLevelExportNames.mkString(kw, ", ", ";"))
         }
 
-      case ModuleKind.CommonJSModule =>
+      case ModuleKind.ESModule | ModuleKind.CommonJSModule =>
         None
     }
   }
@@ -212,6 +212,26 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private def emitModuleImports(orderedClasses: List[LinkedClass],
       builder: JSBuilder, logger: Logger): Unit = {
+
+    def foreachImportedModule(f: (String, Position) => Unit): Unit = {
+      val encounteredModuleNames = mutable.Set.empty[String]
+      for (classDef <- orderedClasses) {
+        def addModuleRef(module: String): Unit = {
+          if (encounteredModuleNames.add(module))
+            f(module, classDef.pos)
+        }
+        classDef.jsNativeLoadSpec match {
+          case None =>
+          case Some(JSNativeLoadSpec.Global(_, _)) =>
+          case Some(JSNativeLoadSpec.Import(module, _)) =>
+            addModuleRef(module)
+          case Some(JSNativeLoadSpec.ImportWithGlobalFallback(
+              JSNativeLoadSpec.Import(module, _), _)) =>
+            addModuleRef(module)
+        }
+      }
+    }
+
     moduleKind match {
       case ModuleKind.NoModule =>
         var importsFound: Boolean = false
@@ -237,32 +257,23 @@ final class Emitter private (config: CommonPhaseConfig,
               "(_.withModuleKind(ModuleKind.CommonJSModule))`.")
         }
 
+      case ModuleKind.ESModule =>
+        foreachImportedModule { (module, pos0) =>
+          implicit val pos = pos0
+          val from = js.StringLiteral(module)
+          val moduleBinding = jsGen.envModuleField(module).ident
+          val importStat = js.ImportNamespace(moduleBinding, from)
+          builder.addJSTree(importStat)
+        }
+
       case ModuleKind.CommonJSModule =>
-        val encounteredModuleNames = mutable.Set.empty[String]
-
-        for (classDef <- orderedClasses) {
-          def addModuleRef(module: String): Unit = {
-            if (encounteredModuleNames.add(module)) {
-              implicit val pos = classDef.pos
-              val rhs = js.Apply(js.VarRef(js.Ident("require")),
-                  List(js.StringLiteral(module)))
-              val lhs = jsGen.envModuleField(module)
-              val decl = jsGen.genLet(lhs.ident, mutable = false, rhs)
-              builder.addJSTree(decl)
-            }
-          }
-
-          classDef.jsNativeLoadSpec match {
-            case None =>
-            case Some(JSNativeLoadSpec.Global(_, _)) =>
-
-            case Some(JSNativeLoadSpec.Import(module, _)) =>
-              addModuleRef(module)
-
-            case Some(JSNativeLoadSpec.ImportWithGlobalFallback(
-                JSNativeLoadSpec.Import(module, _), _)) =>
-              addModuleRef(module)
-          }
+        foreachImportedModule { (module, pos0) =>
+          implicit val pos = pos0
+          val rhs = js.Apply(js.VarRef(js.Ident("require")),
+              List(js.StringLiteral(module)))
+          val lhs = jsGen.envModuleField(module)
+          val decl = jsGen.genLet(lhs.ident, mutable = false, rhs)
+          builder.addJSTree(decl)
         }
     }
   }

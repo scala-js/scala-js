@@ -59,8 +59,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
 
   private val needsIIFEWrapper = moduleKind match {
-    case ModuleKind.NoModule       => true
-    case ModuleKind.CommonJSModule => false
+    case ModuleKind.NoModule                             => true
+    case ModuleKind.ESModule | ModuleKind.CommonJSModule => false
   }
 
   /** Emit the given [[standard.LinkingUnit LinkingUnit]] to the target output.

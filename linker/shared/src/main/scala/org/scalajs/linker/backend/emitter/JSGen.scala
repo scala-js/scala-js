@@ -96,7 +96,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
   }
 
   def genSelectStatic(className: String, item: irt.Ident)(
-      implicit pos: Position): Tree = {
+      implicit pos: Position): VarRef = {
     envField("t", className + "__" + item.name)
   }
 
@@ -163,7 +163,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     Apply(envField(helperName), args.toList)
   }
 
-  def encodeClassVar(className: String)(implicit pos: Position): Tree =
+  def encodeClassVar(className: String)(implicit pos: Position): VarRef =
     envField("c", className)
 
   def genLoadModule(moduleClass: String)(implicit pos: Position): Tree = {
@@ -224,7 +224,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
       case irt.JSNativeLoadSpec.Import(module, path) =>
         val moduleValue = envModuleField(module)
         path match {
-          case DefaultExportName :: rest =>
+          case DefaultExportName :: rest if moduleKind == ModuleKind.CommonJSModule =>
             val defaultField = genCallHelper("moduleDefault", moduleValue)
             WithGlobals(pathSelection(defaultField, rest))
           case _ =>
@@ -235,7 +235,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
         moduleKind match {
           case ModuleKind.NoModule =>
             genLoadJSFromSpec(globalSpec, keepOnlyDangerousVarNames)
-          case ModuleKind.CommonJSModule =>
+          case ModuleKind.ESModule | ModuleKind.CommonJSModule =>
             genLoadJSFromSpec(importSpec, keepOnlyDangerousVarNames)
         }
     }

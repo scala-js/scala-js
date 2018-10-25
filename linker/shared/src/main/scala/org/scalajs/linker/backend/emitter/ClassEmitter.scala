@@ -148,8 +148,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     require(useClasses)
 
     val className = tree.name.name
-    val classIdent =
-      encodeClassVar(className)(tree.name.pos).asInstanceOf[js.VarRef].ident
+    val classIdent = encodeClassVar(className)(tree.name.pos).ident
 
     val parentVarWithGlobals = for (parentIdent <- tree.superClass) yield {
       implicit val pos = parentIdent.pos
@@ -1102,6 +1101,12 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       case ModuleKind.NoModule =>
         genAssignToNoModuleExportVar(exportName, exportedValue)
 
+      case ModuleKind.ESModule =>
+        val field = envField("e_" + exportName)
+        val let = js.Let(field.ident, mutable = true, Some(exportedValue))
+        val export = js.Export((field.ident -> js.ExportName(exportName)) :: Nil)
+        WithGlobals(js.Block(let, export))
+
       case ModuleKind.CommonJSModule =>
         val exportsVarRef = js.VarRef(js.Ident("exports"))
         WithGlobals(js.Assign(
@@ -1136,6 +1141,11 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
          */
         genAssignToNoModuleExportVar(exportName,
             genSelectStatic(cd.encodedName, field))
+
+      case ModuleKind.ESModule =>
+        val staticVarIdent = genSelectStatic(cd.encodedName, field).ident
+        WithGlobals(
+            js.Export((staticVarIdent -> js.ExportName(exportName)) :: Nil))
 
       case ModuleKind.CommonJSModule =>
         // defineProperty method
