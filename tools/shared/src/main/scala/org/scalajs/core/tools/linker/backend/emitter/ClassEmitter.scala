@@ -1068,31 +1068,38 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     implicit val pos = tree.pos
 
-    val (createNamespace, namespace, fieldName) =
-      genCreateNamespaceInExportsAndGetNamespace(fullName)
+    if (moduleKind == ModuleKind.ESModule && !fullName.contains('.')) {
+      // Special: directly export the variable
+      val staticVarIdent =
+        genSelectStatic(cd.encodedName, field).asInstanceOf[js.VarRef].ident
+      js.Export((staticVarIdent -> js.ExportName(fullName)) :: Nil)
+    } else {
+      val (createNamespace, namespace, fieldName) =
+        genCreateNamespaceInExportsAndGetNamespace(fullName)
 
-    // defineProperty method
-    val defProp =
-      genIdentBracketSelect(js.VarRef(js.Ident("Object")), "defineProperty")
+      // defineProperty method
+      val defProp =
+        genIdentBracketSelect(js.VarRef(js.Ident("Object")), "defineProperty")
 
-    // optional getter definition
-    val getterDef = {
-      js.StringLiteral("get") -> js.Function(Nil, {
-        js.Return(genSelectStatic(cd.encodedName, field))
-      })
+      // optional getter definition
+      val getterDef = {
+        js.StringLiteral("get") -> js.Function(Nil, {
+          js.Return(genSelectStatic(cd.encodedName, field))
+        })
+      }
+
+      // Options passed to the defineProperty method
+      val descriptor = js.ObjectConstr(
+          getterDef ::
+          (js.StringLiteral("configurable") -> js.BooleanLiteral(true)) ::
+          Nil
+      )
+
+      val callDefineProp =
+        js.Apply(defProp, namespace :: fieldName :: descriptor :: Nil)
+
+      js.Block(createNamespace, callDefineProp)
     }
-
-    // Options passed to the defineProperty method
-    val descriptor = js.ObjectConstr(
-        getterDef ::
-        (js.StringLiteral("configurable") -> js.BooleanLiteral(true)) ::
-        Nil
-    )
-
-    val callDefineProp =
-      js.Apply(defProp, namespace :: fieldName :: descriptor :: Nil)
-
-    js.Block(createNamespace, callDefineProp)
   }
 
   // Helpers
@@ -1138,9 +1145,16 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
    */
   private def genCreateNamespaceInExports(qualName: String)(
       implicit pos: Position): (js.Tree, js.Tree) = {
-    val (createNamespace, namespace, lastPart) =
-      genCreateNamespaceInExportsAndGetNamespace(qualName)
-    (createNamespace, genBracketSelect(namespace, lastPart))
+    if (moduleKind == ModuleKind.ESModule && !qualName.contains('.')) {
+      val field = envField("e_" + qualName).asInstanceOf[js.VarRef]
+      val let = js.Let(field.ident, mutable = true, None)
+      val export = js.Export((field.ident -> js.ExportName(qualName)) :: Nil)
+      (js.Block(let, export), field)
+    } else {
+      val (createNamespace, namespace, lastPart) =
+        genCreateNamespaceInExportsAndGetNamespace(qualName)
+      (createNamespace, genBracketSelect(namespace, lastPart))
+    }
   }
 
   /** Gen JS code for assigning an rhs to a qualified name in the exports scope.
@@ -1151,7 +1165,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
    *  $e["foo"]["bar"] = $e["foo"]["bar"] || {};
    *  }}}
    *
-   *  Returns `(statements, $e["foo"]["bar"], "Something")`
+   *  In an `ESModule`, returns `(statements, $e_foo["bar"], "Something")`.
+   *
+   *  For other module kinds, returns
+   *  `(statements, $e["foo"]["bar"], "Something")`.
    */
   private def genCreateNamespaceInExportsAndGetNamespace(qualName: String)(
       implicit pos: Position): (js.Tree, js.Tree, js.StringLiteral) = {
@@ -1159,10 +1176,14 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val statements = List.newBuilder[js.Tree]
     var namespace = envField("e")
     for (i <- 0 until parts.length-1) {
-      namespace = genBracketSelect(namespace, js.StringLiteral(parts(i)))
-      statements +=
-        js.Assign(namespace, js.BinaryOp(JSBinaryOp.||,
-            namespace, js.ObjectConstr(Nil)))
+      if (i == 0 && moduleKind == ModuleKind.ESModule) {
+        namespace = envField("e_" + parts(0))
+      } else {
+        namespace = genBracketSelect(namespace, js.StringLiteral(parts(i)))
+        statements +=
+          js.Assign(namespace, js.BinaryOp(JSBinaryOp.||,
+              namespace, js.ObjectConstr(Nil)))
+      }
     }
     (js.Block(statements.result()), namespace, js.StringLiteral(parts.last))
   }

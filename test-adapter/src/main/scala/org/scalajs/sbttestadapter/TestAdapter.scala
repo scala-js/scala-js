@@ -133,19 +133,6 @@ final class TestAdapter(jsEnv: ComJSEnv, config: TestAdapter.Config) {
     // Otherwise we might leak runners.
     require(!closed, "We are closed. Cannot create new runner.")
 
-    // !!! DUPLICATE code with ScalaJSPlugin.makeExportsNamespaceExpr
-    val orgExpr = config.moduleKind match {
-      case ModuleKind.NoModule =>
-        "typeof(org) != 'undefined' ? org : {}"
-
-      case ModuleKind.CommonJSModule =>
-        val moduleIdent = config.moduleIdentifier.getOrElse {
-          throw new IllegalArgumentException(
-              "The module identifier must be specified for CommonJS modules")
-        }
-        s"""require("${escapeJS(moduleIdent)}").org || {}"""
-    }
-
     /* #2752: if there is no testing framework at all on the classpath,
      * the testing interface will not be there, and therefore the
      * `startBridge` function will not exist. We must therefore be
@@ -153,19 +140,55 @@ final class TestAdapter(jsEnv: ComJSEnv, config: TestAdapter.Config) {
      * If it is not present, we will simply exit; `loadFrameworks` is prepared
      * to deal with this case.
      */
-    val code = s"""
-      (function() {
-        "use strict";
-        var namespace = $orgExpr;
+    val startBridgeFun = """
+      function startBridge(namespace) {
         namespace = namespace.scalajs || {};
         namespace = namespace.testinterface || {};
         namespace = namespace.internal || {};
         var bridge = namespace.startBridge || function() {};
         bridge();
-      })();
+      }
     """
 
-    val launcher = new MemVirtualJSFile("startTestBridge.js").withContent(code)
+    val code = config.moduleKind match {
+      case ModuleKind.NoModule =>
+        s"""
+          (function() {
+            "use strict";
+            $startBridgeFun
+            startBridge(typeof(org) != 'undefined' ? org : {});
+          })();
+        """
+
+      case ModuleKind.ESModule =>
+        val moduleIdent = config.moduleIdentifier.getOrElse {
+          throw new IllegalArgumentException(
+              "The module identifier must be specified for ES modules")
+        }
+        val uri = new java.io.File(moduleIdent).toURI.toASCIIString
+        s"""
+          import * as mod from "${escapeJS(moduleIdent)}";
+          $startBridgeFun
+          startBridge(mod.org || {});
+        """
+
+      case ModuleKind.CommonJSModule =>
+        val moduleIdent = config.moduleIdentifier.getOrElse {
+          throw new IllegalArgumentException(
+              "The module identifier must be specified for CommonJS modules")
+        }
+        s"""
+          (function() {
+            "use strict";
+            $startBridgeFun
+            startBridge(require("${escapeJS(moduleIdent)}").org || {});
+          })();
+        """
+    }
+
+    val ext = if (config.moduleKind == ModuleKind.ESModule) ".mjs" else ".js"
+
+    val launcher = new MemVirtualJSFile("startTestBridge" + ext).withContent(code)
     val runner = jsEnv.comRunner(launcher)
     val com = new ComJSEnvRPC(runner)
     val mux = new RunMuxRPC(com)

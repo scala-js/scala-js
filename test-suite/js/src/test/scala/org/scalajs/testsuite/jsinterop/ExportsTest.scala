@@ -28,10 +28,30 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.{JSUtils, Platform}
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
+object ExportsTest {
+  /* When using ES modules, there is no way to get hold of our own exports
+   * namespace from within. The build instead sets up a small script that will
+   * import our module and call `setExportsNamespaceForExportsTest` with our
+   * module namespace.
+   */
+
+  private[this] var explicitlySetExportsNamespace: Option[js.Dynamic] = None
+
+  @JSExportTopLevel("setExportsNamespaceForExportsTest")
+  def setExportsNamespaceForExportsTest(value: js.Dynamic): Unit =
+    explicitlySetExportsNamespace = Some(value)
+
+  def exportsNameSpace: js.Dynamic = {
+    explicitlySetExportsNamespace.getOrElse {
+      scala.scalajs.runtime.environmentInfo.exportsNamespace
+    }
+  }
+}
+
 class ExportsTest {
 
   /** The namespace in which top-level exports are stored. */
-  val exportsNamespace = scala.scalajs.runtime.environmentInfo.exportsNamespace
+  val exportsNamespace = ExportsTest.exportsNameSpace
 
   /** This package in the JS (export) namespace */
   val jsPackage = exportsNamespace.org.scalajs.testsuite.jsinterop

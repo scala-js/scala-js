@@ -21,6 +21,9 @@ ScalaJS.g =
     : ((typeof global === "object" && global && global["Object"] === Object) ? global : this);
 ScalaJS.env["global"] = ScalaJS.g;
 
+//!if moduleKind == ESModule
+ScalaJS.env["exportsNamespace"] = void 0;
+//!else
 // Where to send exports
 //!if moduleKind == CommonJSModule
 ScalaJS.e = exports;
@@ -30,6 +33,7 @@ ScalaJS.e =
     ? ScalaJS.env["exportsNamespace"] : ScalaJS.g;
 //!endif
 ScalaJS.env["exportsNamespace"] = ScalaJS.e;
+//!endif
 
 // Freeze the environment info
 ScalaJS.g["Object"]["freeze"](ScalaJS.env);

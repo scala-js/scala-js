@@ -188,7 +188,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
       case irt.JSNativeLoadSpec.Import(module, path) =>
         val moduleValue = envModuleField(module)
         path match {
-          case DefaultExportName :: rest =>
+          case DefaultExportName :: rest if moduleKind == ModuleKind.CommonJSModule =>
             val defaultField = genCallHelper("moduleDefault", moduleValue)
             pathSelection(defaultField, rest)
           case _ =>
@@ -199,7 +199,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
         moduleKind match {
           case ModuleKind.NoModule =>
             genLoadJSFromSpec(globalSpec)
-          case ModuleKind.CommonJSModule =>
+          case ModuleKind.ESModule | ModuleKind.CommonJSModule =>
             genLoadJSFromSpec(importSpec)
         }
     }

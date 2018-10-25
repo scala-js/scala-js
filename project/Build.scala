@@ -28,7 +28,7 @@ import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
-import org.scalajs.core.tools.io.MemVirtualJSFile
+import org.scalajs.core.tools.io.{MemVirtualJSFile, FileVirtualJSFile}
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.json._
@@ -52,6 +52,10 @@ object Build {
 
   val bintrayProjectName = settingKey[String](
       "Project name on Bintray")
+
+  val setModuleLoopbackScript = taskKey[Option[ResolvedJSDependency]](
+      "In the test suite, under ES modules, the script that sets the " +
+      "loopback module namespace")
 
   val fetchScalaSource = taskKey[File](
     "Fetches the scala source for the current scala version")
@@ -1485,6 +1489,7 @@ object Build {
 
         val moduleKindTag = scalaJSModuleKind.value match {
           case ModuleKind.NoModule       => "modulekind-nomodule"
+          case ModuleKind.ESModule       => "modulekind-esmodule"
           case ModuleKind.CommonJSModule => "modulekind-commonjs"
         }
 
@@ -1641,6 +1646,53 @@ object Build {
         },
 
         javaOptions in Test += "-Dscalajs.scalaVersion=" + scalaVersion.value,
+
+        /* The script that calls setExportsNamespaceForExportsTest to provide
+         * ExportsTest with a loopback reference to its own exports namespace.
+         * Only when using an ES module.
+         * See the comment in ExportsTest for more details.
+         */
+        setModuleLoopbackScript in Test := Def.settingDyn[Task[Option[ResolvedJSDependency]]] {
+          (scalaJSModuleKind in Test).value match {
+            case ModuleKind.ESModule =>
+              Def.task {
+                val linkedFile =
+                  (scalaJSLinkedFile in Test).value.asInstanceOf[FileVirtualJSFile].file
+                val uri = linkedFile.toURI.toASCIIString
+
+                val setNamespaceScriptFile =
+                  crossTarget.value / (linkedFile.getName + "-loopback.js")
+
+                /* Due to the asynchronous nature of ES module loading, there
+                 * exists a theoretical risk for a race condition here. It is
+                 * possible that tests will start running and reaching the
+                 * ExportsTest before the callback in this script is executed.
+                 * It's quite unlikely, though, given all the message passing
+                 * for the com and all that.
+                 */
+                IO.write(setNamespaceScriptFile,
+                    s"""
+                      |(function() {
+                      |  "use strict";
+                      |  import("${escapeJS(uri)}").then(mod => {
+                      |    mod.setExportsNamespaceForExportsTest(mod);
+                      |  });
+                      |})();
+                    """.stripMargin)
+
+                val vf = FileVirtualJSFile(setNamespaceScriptFile)
+                Some(ResolvedJSDependency.minimal(vf))
+              }
+
+            case _ =>
+              Def.task {
+                None
+              }
+          }
+        }.value,
+
+        scalaJSConfigurationLibs in Test ++=
+          (setModuleLoopbackScript in Test).value.toList,
 
         /* Generate a scala source file that throws exceptions in
          * various places (while attaching the source line to the
