@@ -51,6 +51,11 @@ trait JSEnv {
    *  scalajsCom.send("my message");
    *  }}}
    *
+   *  All messages, sent in both directions, must be valid UTF-16 strings,
+   *  i.e., they must not contain any unpaired surrogate character. The
+   *  behavior of a communication channel is unspecified if this requirement is
+   *  not met.
+   *
    *  We describe the expected message delivery guarantees by denoting the
    *  transmitter as `t` and  the receiver as `r`. Both the JVM and the JS end
    *  act once as a transmitter and once as a receiver. These two
