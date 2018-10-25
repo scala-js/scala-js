@@ -26,7 +26,7 @@ class ModulesTest {
 
   @Test def testImportModuleItself(): Unit = {
     val qs = QueryString
-    assertTrue(qs.isInstanceOf[js.Object])
+    assertEquals("object", js.typeOf(qs))
 
     val dict = js.Dictionary("foo" -> "bar", "baz" -> "qux")
 
@@ -42,7 +42,7 @@ class ModulesTest {
 
   @Test def testImportLegacyModuleItselfAsDefault(): Unit = {
     val qs = QueryStringAsDefault
-    assertTrue(qs.isInstanceOf[js.Object])
+    assertEquals("object", js.typeOf(qs))
 
     val dict = js.Dictionary("foo" -> "bar", "baz" -> "qux")
 

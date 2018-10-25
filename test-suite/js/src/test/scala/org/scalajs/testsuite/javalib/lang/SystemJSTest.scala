@@ -69,6 +69,8 @@ class SystemJSTest {
   @Test def systemProperties(): Unit = {
     def get(key: String): String = java.lang.System.getProperty(key)
 
+    def trueCount(xs: Boolean*): Int = xs.count(identity)
+
     // Defined in System.scala
 
     assertEquals("1.8", get("java.version"))
@@ -133,9 +135,11 @@ class SystemJSTest {
     assertEquals(isInFullOpt, Platform.isInFullOpt)
 
     val isNoModule = get("scalajs.modulekind-nomodule") == "true"
+    val isESModule = get("scalajs.modulekind-esmodule") == "true"
     val isCommonJSModule = get("scalajs.modulekind-commonjs") == "true"
     assertEquals(isNoModule, Platform.isNoModule)
+    assertEquals(isESModule, Platform.isESModule)
     assertEquals(isCommonJSModule, Platform.isCommonJSModule)
-    assertTrue(isNoModule ^ isCommonJSModule)
+    assertEquals(1, trueCount(isNoModule, isESModule, isCommonJSModule))
   }
 }

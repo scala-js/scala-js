@@ -97,6 +97,8 @@ object MyScalaJSPlugin extends AutoPlugin {
           prev match {
             case Input.ScriptsToLoad(prevFiles) =>
               Input.ScriptsToLoad(javaSysPropsFile :: prevFiles)
+            case Input.ESModulesToLoad(prevFiles) =>
+              Input.ESModulesToLoad(javaSysPropsFile :: prevFiles)
             case Input.CommonJSModulesToLoad(prevFiles) =>
               Input.CommonJSModulesToLoad(javaSysPropsFile :: prevFiles)
           }
@@ -149,6 +151,10 @@ object Build {
 
   val bintrayProjectName = settingKey[String](
       "Project name on Bintray")
+
+  val setModuleLoopbackScript = taskKey[Option[FileVirtualBinaryFile]](
+      "In the test suite, under ES modules, the script that sets the " +
+      "loopback module namespace")
 
   val fetchScalaSource = taskKey[File](
     "Fetches the scala source for the current scala version")
@@ -1387,6 +1393,7 @@ object Build {
 
       val moduleKindTag = linkerConfig.moduleKind match {
         case ModuleKind.NoModule       => "modulekind-nomodule"
+        case ModuleKind.ESModule       => "modulekind-esmodule"
         case ModuleKind.CommonJSModule => "modulekind-commonjs"
       }
 
@@ -1506,6 +1513,8 @@ object Build {
         previousInput match {
           case Input.ScriptsToLoad(prevFiles) =>
             Input.ScriptsToLoad(patchFiles(prevFiles, needsGlobal = false))
+          case Input.ESModulesToLoad(prevFiles) =>
+            Input.ESModulesToLoad(patchFiles(prevFiles, needsGlobal = true))
           case Input.CommonJSModulesToLoad(prevFiles) =>
             Input.CommonJSModulesToLoad(patchFiles(prevFiles, needsGlobal = true))
         }
@@ -1585,6 +1594,8 @@ object Build {
       jsEnvInput.value match {
         case Input.ScriptsToLoad(prevFiles) =>
           Input.ScriptsToLoad(f :: prevFiles)
+        case Input.ESModulesToLoad(prevFiles) =>
+          Input.ESModulesToLoad(f :: prevFiles)
         case Input.CommonJSModulesToLoad(prevFiles) =>
           Input.CommonJSModulesToLoad(f :: prevFiles)
       }
@@ -1614,6 +1625,63 @@ object Build {
 
       scalaJSLinkerConfig ~= { _.withSemantics(TestSuiteLinkerOptions.semantics _) },
       scalaJSModuleInitializers in Test ++= TestSuiteLinkerOptions.moduleInitializers,
+
+      /* The script that calls setExportsNamespaceForExportsTest to provide
+       * ExportsTest with a loopback reference to its own exports namespace.
+       * Only when using an ES module.
+       * See the comment in ExportsTest for more details.
+       */
+      setModuleLoopbackScript in Test := Def.settingDyn[Task[Option[FileVirtualBinaryFile]]] {
+        (scalaJSLinkerConfig in Test).value.moduleKind match {
+          case ModuleKind.ESModule =>
+            Def.task {
+              val linkedFile = (scalaJSLinkedFile in Test).value.data
+              val uri = linkedFile.toURI.toASCIIString
+
+              val ext = {
+                val name = linkedFile.getName
+                val dotPos = name.lastIndexOf('.')
+                if (dotPos < 0) ".js" else name.substring(dotPos)
+              }
+
+              val setNamespaceScriptFile =
+                crossTarget.value / (linkedFile.getName + "-loopback" + ext)
+
+              /* Due to the asynchronous nature of ES module loading, there
+               * exists a theoretical risk for a race condition here. It is
+               * possible that tests will start running and reaching the
+               * ExportsTest before this module is executed. It's quite
+               * unlikely, though, given all the message passing for the com
+               * and all that.
+               */
+              IO.write(setNamespaceScriptFile,
+                  s"""
+                    |import * as mod from "${escapeJS(uri)}";
+                    |mod.setExportsNamespaceForExportsTest(mod);
+                  """.stripMargin)
+
+              Some(new FileVirtualBinaryFile(setNamespaceScriptFile))
+            }
+
+          case _ =>
+            Def.task {
+              None
+            }
+        }
+      }.value,
+
+      jsEnvInput in Test := {
+        val prev = (jsEnvInput in Test).value
+        val loopbackScript = (setModuleLoopbackScript in Test).value
+
+        loopbackScript match {
+          case None =>
+            prev
+          case Some(script) =>
+            val Input.ESModulesToLoad(modules) = prev
+            Input.ESModulesToLoad(modules :+ script)
+        }
+      },
 
       /* Generate a scala source file that throws exceptions in
        * various places (while attaching the source line to the

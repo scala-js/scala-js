@@ -44,12 +44,15 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   import config.commonConfig.coreSpec._
 
   require(!esFeatures.useECMAScript2015,
-      s"Cannot use features $esFeatures with the Closure Compiler" +
+      s"Cannot use features $esFeatures with the Closure Compiler " +
       "because they contain ECMAScript 2015 features")
 
   require(!esFeatures.allowBigIntsForLongs,
-      s"Cannot use features $esFeatures with the Closure Compiler" +
+      s"Cannot use features $esFeatures with the Closure Compiler " +
       "because they allow to use BigInts")
+
+  require(moduleKind != ModuleKind.ESModule,
+      s"Cannot use module kind $moduleKind with the Closure Compiler")
 
   private[this] val emitter = {
     new Emitter(config.commonConfig)
@@ -59,8 +62,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
 
   private val needsIIFEWrapper = moduleKind match {
-    case ModuleKind.NoModule       => true
-    case ModuleKind.CommonJSModule => false
+    case ModuleKind.NoModule                             => true
+    case ModuleKind.ESModule | ModuleKind.CommonJSModule => false
   }
 
   /** Emit the given [[standard.LinkingUnit LinkingUnit]] to the target output.

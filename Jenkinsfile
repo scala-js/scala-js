@@ -112,6 +112,18 @@ def Tasks = [
         'set scalaJSLinkerConfig in helloworld ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         helloworld/run \
         helloworld/clean &&
+    sbtretry ++$scala \
+        'set artifactPath in (helloworld, Compile, fastOptJS) := (crossTarget in helloworld).value / "helloworld-fastopt.mjs"' \
+        'set jsEnv in helloworld := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")).withSourceMap(false))' \
+        'set scalaJSLinkerConfig in helloworld ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        helloworld/run &&
+    sbtretry ++$scala \
+        'set artifactPath in (helloworld, Compile, fullOptJS) := (crossTarget in helloworld).value / "helloworld-opt.mjs"' \
+        'set jsEnv in helloworld := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")).withSourceMap(false))' \
+        'set scalaJSLinkerConfig in helloworld ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        'set scalaJSStage in Global := FullOptStage' \
+        helloworld/run \
+        helloworld/clean &&
     sbtretry ++$scala testingExample/testHtml &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala testingExample/testHtml \
@@ -169,6 +181,18 @@ def Tasks = [
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         ++$scala $testSuite/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set artifactPath in ($testSuite, Test, fastOptJS) := (crossTarget in $testSuite).value / "testsuite-fastopt.mjs"' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")).withSourceMap(false))' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        'set MyScalaJSPlugin.wantSourceMaps in $testSuite := false' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set artifactPath in ($testSuite, Test, fullOptJS) := (crossTarget in $testSuite).value / "testsuite-opt.mjs"' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")).withSourceMap(false))' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        'set MyScalaJSPlugin.wantSourceMaps in $testSuite := false' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test
   ''',
@@ -242,6 +266,18 @@ def Tasks = [
         ++$scala $testSuite/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+        'set artifactPath in ($testSuite, Test, fastOptJS) := (crossTarget in $testSuite).value / "testsuite-fastopt.mjs"' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")).withSourceMap(false))' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+        'set artifactPath in ($testSuite, Test, fullOptJS) := (crossTarget in $testSuite).value / "testsuite-opt.mjs"' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")).withSourceMap(false))' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test
   ''',
