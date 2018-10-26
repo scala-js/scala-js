@@ -32,6 +32,7 @@ import java.io.File
 import java.net.URL
 import scala.io.Source
 import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import Properties.{ versionString, copyrightString }
@@ -96,7 +97,7 @@ class MainGenericRunner {
 
     val sjsCode = {
       val out = new WritableMemVirtualBinaryFile
-      linker.link(ir, moduleInitializers, LinkerOutput(out), logger)
+      Await.result(linker.link(ir, moduleInitializers, LinkerOutput(out), logger), Duration.Inf)
       out.toReadable("partest.js")
     }
 

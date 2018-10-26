@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.standard
 
+import scala.concurrent._
+
 import org.scalajs.logging._
 
 import org.scalajs.linker._
@@ -34,5 +36,6 @@ abstract class LinkerFrontend {
   /** Link and optionally optimize the given IR to a [[LinkingUnit]]. */
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit
+      symbolRequirements: SymbolRequirement, logger: Logger)(
+      implicit ex: ExecutionContext): Future[LinkingUnit]
 }

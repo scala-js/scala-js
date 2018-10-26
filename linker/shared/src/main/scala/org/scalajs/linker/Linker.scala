@@ -12,6 +12,8 @@
 
 package org.scalajs.linker
 
+import scala.concurrent._
+
 import org.scalajs.logging.Logger
 import org.scalajs.linker.irio._
 
@@ -24,5 +26,6 @@ import org.scalajs.linker.irio._
 abstract class Linker private[linker] () {
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
-      output: LinkerOutput, logger: Logger): Unit
+      output: LinkerOutput, logger: Logger)(
+      implicit ex: ExecutionContext): Future[Unit]
 }

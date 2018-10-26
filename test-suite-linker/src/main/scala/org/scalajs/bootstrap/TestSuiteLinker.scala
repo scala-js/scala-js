@@ -1,7 +1,10 @@
 package org.scalajs.linker.test
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
+import scala.scalajs.js.JSConverters._
 
 import java.net.URI
 
@@ -16,7 +19,7 @@ import org.scalajs.linker.irio._
 object QuickLinker {
   /** Link the Scala.js test suite on Node.js */
   @JSExport
-  def linkTestSuiteNode(irFilesAndJars: js.Array[String], outputPath: String): Unit = {
+  def linkTestSuiteNode(irFilesAndJars: js.Array[String], outputPath: String): js.Promise[Unit] = {
     val config = StandardLinker.Config()
       .withSemantics(build.TestSuiteLinkerOptions.semantics _)
       .withCheckIR(true)
@@ -42,7 +45,7 @@ object QuickLinker {
       .withSourceMapURI(relURI(smPath))
       .withJSFileURI(relURI(outputPath))
 
-    linker.link(ir, moduleInitializers, out, new ScalaConsoleLogger)
+    linker.link(ir, moduleInitializers, out, new ScalaConsoleLogger).toJSPromise
   }
 
   private def extractIR(irFilesAndJars: Seq[String]): Seq[VirtualScalaJSIRFile] = {
