@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.backend
 
+import scala.concurrent._
+
 import org.scalajs.logging.Logger
 
 import org.scalajs.linker.LinkerOutput
@@ -36,7 +38,8 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
    *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
    *  @param output File to write to
    */
-  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger): Unit = {
+  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
+      implicit ex: ExecutionContext): Future[Unit] = Future {
     verifyUnit(unit)
 
     val builder = newBuilder(output)

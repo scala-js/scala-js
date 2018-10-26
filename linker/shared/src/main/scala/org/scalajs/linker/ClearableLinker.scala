@@ -12,6 +12,8 @@
 
 package org.scalajs.linker
 
+import scala.concurrent._
+
 import org.scalajs.logging.Logger
 import org.scalajs.io._
 
@@ -63,7 +65,8 @@ object ClearableLinker {
 
     def link(irFiles: Seq[VirtualScalaJSIRFile],
         moduleInitializers: Seq[ModuleInitializer],
-        output: LinkerOutput, logger: Logger): Unit = {
+        output: LinkerOutput, logger: Logger)(
+        implicit ex: ExecutionContext): Future[Unit] = {
       linkerOp(_.link(irFiles, moduleInitializers, output, logger))
     }
 
@@ -71,20 +74,20 @@ object ClearableLinker {
       _linker = null
 
     @inline
-    private[this] def linkerOp[T](op: Linker => T): T = {
+    private[this] def linkerOp[T](op: Linker => Future[T])(
+        implicit ex: ExecutionContext): Future[T] = {
       ensureLinker()
 
       try {
-        op(_linker)
+        op(_linker) andThen {
+          // Clear if we failed async or are in batch mode
+          case t if t.isFailure || batchMode => clear()
+        }
       } catch {
         // Clear if we throw
         case t: Throwable =>
           clear()
           throw t
-      } finally {
-        // Clear if we are in batch mode
-        if (batchMode)
-          clear()
       }
     }
 

@@ -13,6 +13,7 @@
 package org.scalajs.linker.backend.closure
 
 import scala.collection.JavaConverters._
+import scala.concurrent._
 
 import java.io._
 import java.net.URI
@@ -68,7 +69,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
    *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
    *  @param output File to write to
    */
-  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger): Unit = {
+  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
+      implicit ex: ExecutionContext): Future[Unit] = Future {
     verifyUnit(unit)
 
     // Build Closure IR

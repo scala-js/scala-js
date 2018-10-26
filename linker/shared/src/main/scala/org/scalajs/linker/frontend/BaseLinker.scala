@@ -15,6 +15,7 @@ package org.scalajs.linker.frontend
 import scala.annotation.tailrec
 
 import scala.collection.mutable
+import scala.concurrent._
 import scala.util.Try
 
 import org.scalajs.logging._
@@ -46,7 +47,8 @@ final class BaseLinker(config: CommonPhaseConfig) {
 
   def link(irInput: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer], logger: Logger,
-      symbolRequirements: SymbolRequirement, checkIR: Boolean): LinkingUnit = {
+      symbolRequirements: SymbolRequirement, checkIR: Boolean)(
+      implicit ex: ExecutionContext): Future[LinkingUnit] = Future {
 
     inputProvider.update(irInput)
 

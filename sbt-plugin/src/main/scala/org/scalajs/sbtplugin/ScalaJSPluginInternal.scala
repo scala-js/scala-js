@@ -14,6 +14,9 @@ package org.scalajs.sbtplugin
 
 import scala.annotation.tailrec
 
+import scala.concurrent._
+import scala.concurrent.duration._
+
 import java.io.FileNotFoundException
 
 import java.util.concurrent.atomic.AtomicReference
@@ -212,7 +215,13 @@ private[sbtplugin] object ScalaJSPluginInternal {
               .withJSFileURI(relURI(output.getName))
 
             enhanceIRVersionNotSupportedException {
-              linker.link(ir, moduleInitializers, out, sbtLogger2ToolsLogger(log))
+              implicit val ex = ExecutionContext.fromExecutor(
+                  ExecutionContext.global, t => log.trace(t))
+
+              val linking =
+                linker.link(ir, moduleInitializers, out, sbtLogger2ToolsLogger(log))
+
+              Await.result(linking, Duration.Inf)
             }
 
             logIRCacheStats(log)

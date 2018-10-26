@@ -723,7 +723,7 @@ object Build {
           parallelCollectionsDependencies(scalaVersion.value)
       ),
       fork in Test := true
-  ).dependsOn(irProject, io, logging)
+  ).dependsOn(irProject, io, logging, jUnitAsyncJVM % "test")
 
   lazy val linkerJS: Project = (project in file("linker/js")).enablePlugins(
       MyScalaJSPlugin
@@ -732,7 +732,7 @@ object Build {
       crossVersion := ScalaJSCrossVersion.binary,
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, irProjectJS, ioJS, loggingJS, jUnitRuntime % "test"
+      library, irProjectJS, ioJS, loggingJS, jUnitRuntime % "test", jUnitAsyncJS % "test"
   )
 
   lazy val jsEnvs: Project = (project in file("js-envs")).settings(
@@ -1398,7 +1398,13 @@ object Build {
             s"""
               var toolsTestModule = require("${escapeJS(linkerModule.getPath)}");
               var linker = toolsTestModule.TestSuiteLinker;
-              linker.linkTestSuiteNode($irPaths, "${escapeJS(out.getAbsolutePath)}");
+              var result =
+                linker.linkTestSuiteNode($irPaths, "${escapeJS(out.getAbsolutePath)}");
+
+              result.catch(e => {
+                console.error(e);
+                process.exit(1);
+              });
             """
           }
 
