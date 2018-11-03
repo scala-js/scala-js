@@ -14,8 +14,6 @@ package org.scalajs.junit
 
 import java.lang.annotation.Annotation
 
-import org.junit.FixMethodOrder
-
 import scala.scalajs.reflect.annotation._
 
 @EnableReflectiveInstantiation
@@ -54,12 +52,8 @@ final class JUnitClassMetadata(classAnnotations: List[Annotation],
     moduleAnnotations: List[Annotation], classMethods: List[JUnitMethodMetadata],
     moduleMethods: List[JUnitMethodMetadata]) {
 
-  def testMethods: List[JUnitMethodMetadata] = {
-    val fixMethodOrderAnnotation = getFixMethodOrderAnnotation
-    val methodSorter = fixMethodOrderAnnotation.value
-    val tests = classMethods.filter(_.hasTestAnnotation)
-    tests.sortWith((a, b) => methodSorter.comparator.lt(a.name, b.name))
-  }
+  def testMethods: List[JUnitMethodMetadata] =
+    classMethods.filter(_.hasTestAnnotation)
 
   def beforeMethod: List[JUnitMethodMetadata] =
     classMethods.filter(_.hasBeforeAnnotation)
@@ -72,10 +66,4 @@ final class JUnitClassMetadata(classAnnotations: List[Annotation],
 
   def afterClassMethod: List[JUnitMethodMetadata] =
     moduleMethods.filter(_.hasAfterClassAnnotation)
-
-  def getFixMethodOrderAnnotation: FixMethodOrder = {
-    classAnnotations.collectFirst {
-      case fmo: FixMethodOrder => fmo
-    }.getOrElse(new FixMethodOrder)
-  }
 }

@@ -120,9 +120,6 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
       private val TestClass =
         getRequiredClass("org.junit.Test")
 
-      private val FixMethodOrderClass =
-        getRequiredClass("org.junit.FixMethodOrder")
-
       private val annotationWhiteList = List(
         TestClass,
         getRequiredClass("org.junit.Before"),
@@ -370,10 +367,6 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
             case ann if ann.atp.typeSymbol == TestClass && ann.original.isInstanceOf[Block] =>
               reporter.error(ann.pos, "@Test(timeout = ...) is not " +
                 "supported in Scala.js JUnit Framework")
-
-            case ann if ann.atp.typeSymbol == FixMethodOrderClass =>
-              reporter.error(ann.pos, "@FixMethodOrder(...) is not supported " +
-                "in Scala.js JUnit Framework")
 
             case _ => // all is well
           }
