@@ -18,6 +18,11 @@ import sbt.testing._
 import org.junit.Test
 import org.junit.Assert.fail
 
+import org.scalajs.junit.async._
+
+import scala.concurrent._
+import scala.concurrent.ExecutionContext.Implicits.global
+
 abstract class JUnitTest {
   import JUnitTest._
 
@@ -50,29 +55,33 @@ abstract class JUnitTest {
       List('v', 's', 'n')
   )
 
-  @Test def testJUnitOutput(): Unit = {
-    for (args <- frameworkArgss) {
-      val rawOut = runTests(args.map("-" + _))
+  @Test def testJUnitOutput(): AsyncResult = {
+    val futs = for (args <- frameworkArgss) yield {
+      for {
+        rawOut <- runTests(args.map("-" + _))
+      } yield {
+        val out = postprocessOutput(rawOut)
 
-      val out = postprocessOutput(rawOut)
+        val file = recordPath(args)
 
-      val file = recordPath(args)
+        if (recordOutput) {
+          val lines = out.map(Output.serialize)
+          JUnitTestPlatformImpl.writeLines(lines, file)
+        } else {
+          val lines = JUnitTestPlatformImpl.readLines(file)
+          val want = lines.map(Output.deserialize)
 
-      if (recordOutput) {
-        val lines = out.map(Output.serialize)
-        JUnitTestPlatformImpl.writeLines(lines, file)
-      } else {
-        val lines = JUnitTestPlatformImpl.readLines(file)
-        val want = lines.map(Output.deserialize)
-
-        if (want != out) {
-          fail(s"Bad output (args: $args)\n\nWant:\n${want.mkString("\n")}\n\nGot:\n${out.mkString("\n")}\n\n")
+          if (want != out) {
+            fail(s"Bad output (args: $args)\n\nWant:\n${want.mkString("\n")}\n\nGot:\n${out.mkString("\n")}\n\n")
+          }
         }
       }
     }
+
+    await(Future.sequence(futs).map(_ => ()))
   }
 
-  private def runTests(args: List[String]): List[Output] = {
+  private def runTests(args: List[String]): Future[List[Output]] = {
     val recorder = new JUnitTestRecorder
     val framework = new com.novocode.junit.JUnitFramework()
     val runner = framework.runner(args.toArray, Array.empty, classLoader)
@@ -80,10 +89,12 @@ abstract class JUnitTest {
         framework.fingerprints.head, true, Array.empty)))
 
     // run all tasks and the tasks they generate, needs platform extension
-    JUnitTestPlatformImpl.executeLoop(tasks, recorder)
-
-    recorder.recordDone(runner.done())
-    recorder.result()
+    for {
+      _ <- JUnitTestPlatformImpl.executeLoop(tasks, recorder)
+    } yield {
+      recorder.recordDone(runner.done())
+      recorder.result()
+    }
   }
 
   private def postprocessOutput(out: List[Output]): List[Output] = {

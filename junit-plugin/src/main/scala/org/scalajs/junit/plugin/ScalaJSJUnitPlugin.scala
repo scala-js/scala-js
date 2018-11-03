@@ -84,6 +84,15 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
     private lazy val TestMetadataClass =
       getRequiredClass("org.scalajs.junit.TestMetadata")
 
+    private lazy val FutureClass =
+      getRequiredClass("scala.concurrent.Future")
+
+    private lazy val FutureModule_successful =
+      getMemberMethod(FutureClass.companionModule, newTermName("successful"))
+
+    private lazy val SuccessModule_apply =
+      getMemberMethod(getRequiredClass("scala.util.Success").companionModule, nme.apply)
+
     class ScalaJSJUnitPluginTransformer extends Transformer {
       override def transform(tree: Tree): Tree = tree match {
         case tree: PackageDef =>
@@ -204,7 +213,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         val instanceParam = sym.newValueParameter(Names.instance).setInfo(ObjectTpe)
         val nameParam = sym.newValueParameter(Names.name).setInfo(StringTpe)
 
-        sym.setInfo(MethodType(List(instanceParam, nameParam), UnitTpe))
+        sym.setInfo(MethodType(List(instanceParam, nameParam), FutureClass.toTypeConstructor))
 
         val instance = castParam(instanceParam, testClass)
         val rhs = tests.foldRight[Tree] {
@@ -213,12 +222,32 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
           val cond = gen.mkMethodCall(Ident(nameParam), Object_equals, Nil,
               List(Literal(Constant(sym.name.toString))))
 
-          val call = gen.mkMethodCall(instance, sym, Nil, Nil)
+          val call = genTestInvocation(sym, instance)
 
           If(cond, call, next)
         }
 
         typer.typedDefDef(newDefDef(sym, rhs)())
+      }
+
+      private def genTestInvocation(sym: Symbol, instance: Tree): Tree = {
+        sym.tpe.resultType.typeSymbol match {
+          case UnitClass =>
+            val boxedUnit = gen.mkAttributedRef(definitions.BoxedUnit_UNIT)
+            val newSuccess = gen.mkMethodCall(SuccessModule_apply, List(boxedUnit))
+            Block(
+                gen.mkMethodCall(instance, sym, Nil, Nil),
+                gen.mkMethodCall(FutureModule_successful, List(newSuccess))
+            )
+
+          case FutureClass =>
+            gen.mkMethodCall(instance, sym, Nil, Nil)
+
+          case _ =>
+            // We lie in the error message to not expose that we support async testing.
+            reporter.error(sym.pos, "JUnit test must have Unit return type")
+            EmptyTree
+        }
       }
 
       private def genNewInstance(owner: ClassSymbol, testClass: ClassSymbol): DefDef = {

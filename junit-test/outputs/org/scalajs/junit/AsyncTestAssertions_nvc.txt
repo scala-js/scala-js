@@ -1,0 +1,13 @@
+liTest run started
+liTest org.scalajs.junit.AsyncTest.asyncFailure started
+leTest org.scalajs.junit.AsyncTest.asyncFailure failed: null, took <TIME>
+e2org.scalajs.junit.AsyncTest.asyncFailure
+ldTest org.scalajs.junit.AsyncTest.asyncFailure finished, took <TIME>
+liTest org.scalajs.junit.AsyncTest.expectedException started
+ldTest org.scalajs.junit.AsyncTest.expectedException finished, took <TIME>
+e0org.scalajs.junit.AsyncTest.expectedException
+liTest org.scalajs.junit.AsyncTest.success started
+ldTest org.scalajs.junit.AsyncTest.success finished, took <TIME>
+e0org.scalajs.junit.AsyncTest.success
+liTest run finished: 1 failed, 0 ignored, 3 total, <TIME>
+d
