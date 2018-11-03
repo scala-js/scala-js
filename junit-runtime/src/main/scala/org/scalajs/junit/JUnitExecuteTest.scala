@@ -21,14 +21,16 @@ private[junit] final class JUnitExecuteTest(taskDef: TaskDef,
     runSettings: RunSettings, bootstrapper: Bootstrapper,
     richLogger: RichLogger, eventHandler: EventHandler) {
 
-  private[this] var failed = 0
-  private[this] var ignored = 0
-  private[this] var total = 0
-
   def executeTests(): Unit = {
     richLogger.log(richLogger.infoOrDebug, Ansi.c("Test run started", Ansi.BLUE))
 
-    val (_, timeInSeconds) = runTestLifecycle(None)(()) { _ =>
+    var failed = 0
+    var ignored = 0
+    var total = 0
+
+    val (errors, timeInSeconds) = runTestLifecycle {
+      ()
+    } { _ =>
       bootstrapper.beforeClass()
 
       for (method <- bootstrapper.tests) {
@@ -37,11 +39,23 @@ private[junit] final class JUnitExecuteTest(taskDef: TaskDef,
           ignored += 1
           emitEvent(Some(method.name), Status.Skipped)
         } else {
-          executeTestMethod(bootstrapper, method)
+          failed += executeTestMethod(bootstrapper, method)
+          total += 1
         }
       }
     } { _ =>
       bootstrapper.afterClass()
+    }
+
+    errors match {
+      case e :: Nil if isAssumptionViolation(e) =>
+        richLogger.logTestInfo(_.info, None, "ignored")
+        ignored += 1
+        emitEvent(None, Status.Skipped)
+
+      case es =>
+        failed += es.size
+        reportErrors(None, timeInSeconds, es)
     }
 
     val msg = {
@@ -56,8 +70,10 @@ private[junit] final class JUnitExecuteTest(taskDef: TaskDef,
   }
 
   private[this] def executeTestMethod(bootstrapper: Bootstrapper,
-      test: TestMetadata) = {
-    richLogger.logTestInfo(richLogger.infoOrDebug, Some(test.name), "started")
+      test: TestMetadata): Int = {
+    val method = Some(test.name)
+
+    richLogger.logTestInfo(richLogger.infoOrDebug, method, "started")
 
     def handleExpected(expectedException: Class[_ <: Throwable])(body: => Unit) = {
       val wantException = expectedException != classOf[org.junit.Test.None]
@@ -78,7 +94,7 @@ private[junit] final class JUnitExecuteTest(taskDef: TaskDef,
         throw new AssertionError("Expected exception: " + expectedException.getName)
     }
 
-    val (passed, timeInSeconds) = runTestLifecycle(Some(test.name)) {
+    val (errors, timeInSeconds) = runTestLifecycle {
       bootstrapper.newInstance()
     } { instance =>
       bootstrapper.before(instance)
@@ -89,8 +105,18 @@ private[junit] final class JUnitExecuteTest(taskDef: TaskDef,
       bootstrapper.after(_)
     }
 
-    richLogger.logTestInfo(_.debug, Some(test.name),
-        s"finished, took $timeInSeconds sec")
+    val failed = errors match {
+      case e :: Nil if isAssumptionViolation(e) =>
+        richLogger.logTestException(_.warn, "Test assumption in test ", method, e, timeInSeconds)
+        emitEvent(method, Status.Skipped)
+        0
+
+      case es =>
+        reportErrors(method, timeInSeconds, es)
+        es.size
+    }
+
+    richLogger.logTestInfo(_.debug, method, s"finished, took $timeInSeconds sec")
 
     // Scala.js-specific: timeouts are warnings only, after the fact
     val timeout = test.annotation.timeout
@@ -99,14 +125,14 @@ private[junit] final class JUnitExecuteTest(taskDef: TaskDef,
           (timeout.toDouble / 1000) + " sec")
     }
 
-    if (passed)
-      emitEvent(Some(test.name), Status.Success)
+    if (errors.isEmpty)
+      emitEvent(method, Status.Success)
 
-    total += 1
+    failed
   }
 
-  private def runTestLifecycle[T](method: Option[String])(build: => T)(
-      body: T => Unit)(after: T => Unit): (Boolean, Double) = {
+  private def runTestLifecycle[T](build: => T)(body: T => Unit)(
+      after: T => Unit): (List[Throwable], Double) = {
     val startTime = System.nanoTime
 
     var exceptions: List[Throwable] = Nil
@@ -125,32 +151,21 @@ private[junit] final class JUnitExecuteTest(taskDef: TaskDef,
 
     val timeInSeconds = (System.nanoTime - startTime).toDouble / 1000000000
 
-    exceptions.reverse match {
-      case Nil =>
+    (exceptions.reverse, timeInSeconds)
+  }
 
-      case e :: Nil if isAssumptionViolation(e) =>
-        method.fold {
-          richLogger.logTestInfo(_.info, None, "ignored")
-          ignored += 1
-        } { _ =>
-          richLogger.logTestException(_.warn, "Test assumption in test ", method, e, timeInSeconds)
-        }
-
-        emitEvent(method, Status.Skipped)
-
-      case e :: es =>
-        def emit(t: Throwable) = {
-          richLogger.logTestException(_.error, "Test ", method, t, timeInSeconds)
-          richLogger.trace(t)
-          failed += 1
-        }
-
-        emit(e)
-        emitEvent(method, Status.Failure)
-        es.foreach(emit)
+  private def reportErrors(method: Option[String], timeInSeconds: Double,
+      errors: List[Throwable]): Unit = {
+    def emit(t: Throwable) = {
+      richLogger.logTestException(_.error, "Test ", method, t, timeInSeconds)
+      richLogger.trace(t)
     }
 
-    (exceptions.isEmpty, timeInSeconds)
+    if (errors.nonEmpty) {
+      emit(errors.head)
+      emitEvent(method, Status.Failure)
+      errors.tail.foreach(emit)
+    }
   }
 
   private def emitEvent(method: Option[String], status: Status): Unit = {
