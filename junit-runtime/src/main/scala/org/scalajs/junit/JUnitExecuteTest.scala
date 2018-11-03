@@ -22,7 +22,7 @@ import sbt.testing._
 import scala.util.matching.Regex
 
 final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
-    classMetadata: JUnitTestBootstrapper, richLogger: RichLogger,
+    bootstrapper: Bootstrapper, richLogger: RichLogger,
     eventHandler: EventHandler) {
 
   private val verbose = runner.runSettings.verbose
@@ -34,11 +34,8 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
   def fullyQualifiedName: String = taskDef.fullyQualifiedName()
 
   def executeTests(): Unit = {
-    val jUnitMetadata = classMetadata.metadata()
-
     val assumptionViolated = try {
-      for (method <- jUnitMetadata.beforeClassMethod)
-        classMetadata.invoke(method.name)
+      bootstrapper.beforeClass()
       false
     } catch {
       case _: AssumptionViolatedException | _:internal.AssumptionViolatedException =>
@@ -64,32 +61,27 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
       }
 
       runWithOrWithoutQuietMode {
-        for (method <- jUnitMetadata.testMethods) {
-          method.getIgnoreAnnotation match {
-            case Some(ign) =>
-              logTestIgnored(method.name)
-              ignoreTest(method.name)
-
-            case None =>
-              executeTestMethod(classMetadata, method)
+        for (method <- bootstrapper.tests) {
+          if (method.ignored) {
+            logTestIgnored(method.name)
+            ignoreTest(method.name)
+          } else {
+            executeTestMethod(bootstrapper, method)
           }
         }
       }
 
-      for (method <- jUnitMetadata.afterClassMethod)
-        classMetadata.invoke(method.name)
+      bootstrapper.afterClass()
     }
   }
 
-  private[this] def executeTestMethod(classMetadata: JUnitTestBootstrapper,
-      method: JUnitMethodMetadata) = {
-    val jUnitMetadata = classMetadata.metadata()
-    val methodName = method.name
+  private[this] def executeTestMethod(bootstrapper: Bootstrapper,
+      test: TestMetadata) = {
+    val methodName = test.name
     val decodedMethodName = {
       if (decodeScalaNames) runner.runSettings.decodeName(methodName)
       else methodName
     }
-    val testAnnotation = method.getTestAnnotation.get
 
     if (verbose)
       logFormattedInfo(decodedMethodName, "started")
@@ -172,29 +164,27 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
     var testClassInstance: AnyRef = null
 
     val instantiationSucceeded = execute() {
-      testClassInstance = classMetadata.newInstance()
+      testClassInstance = bootstrapper.newInstance()
     }
 
     val success = if (!instantiationSucceeded) {
       false
     } else {
       val beforeSucceeded = execute() {
-        for (method <- jUnitMetadata.beforeMethod)
-          classMetadata.invoke(testClassInstance, method.name)
+        bootstrapper.before(testClassInstance)
       }
 
       val beforeAndTestSucceeded = if (!beforeSucceeded) {
         false
       } else {
-        execute(testAnnotation.expected) {
-          classMetadata.invoke(testClassInstance, method.name)
+        execute(test.annotation.expected) {
+          bootstrapper.invokeTest(testClassInstance, test.name)
         }
       }
 
       // Whether before and/or test succeeded or not, run the after methods
       val afterSucceeded = execute() {
-        for (method <- jUnitMetadata.afterMethod)
-          classMetadata.invoke(testClassInstance, method.name)
+        bootstrapper.after(testClassInstance)
       }
 
       beforeAndTestSucceeded && afterSucceeded
@@ -205,9 +195,10 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
 
     // Scala.js-specific: timeouts are warnings only, after the fact
     val timeInSeconds = getTimeInSeconds()
-    if (testAnnotation.timeout != 0 && testAnnotation.timeout <= timeInSeconds) {
+    val timeout = test.annotation.timeout
+    if (timeout != 0 && timeout <= timeInSeconds) {
       richLogger.warn("Timeout: took " + timeInSeconds + " sec, expected " +
-          (testAnnotation.timeout.toDouble / 1000) + " sec")
+          (timeout.toDouble / 1000) + " sec")
     }
 
     if (success)
