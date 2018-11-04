@@ -19,7 +19,7 @@ import org.scalajs.testinterface.{ScalaJSClassLoader, TestDetector}
 
 import sbt.testing._
 
-@JSExportTopLevel("scalajs.TestRunner")
+@JSExportTopLevel("ScalaJSTestRunner")
 object TestRunner {
 
   @JSExport

@@ -1890,4 +1890,22 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """.succeeds
   }
+
+  @Test
+  def noWarnJSExportTopLevelNamespacedWhenSuppressed: Unit = {
+    """
+    @JSExportTopLevel("namespaced.export1")
+    object A
+    @JSExportTopLevel("namespaced.export2")
+    class B
+    object C {
+      @JSExportTopLevel("namespaced.export3")
+      val a: Int = 1
+      @JSExportTopLevel("namespaced.export4")
+      var b: Int = 1
+      @JSExportTopLevel("namespaced.export5")
+      def c(): Int = 1
+    }
+    """.hasNoWarns
+  }
 }

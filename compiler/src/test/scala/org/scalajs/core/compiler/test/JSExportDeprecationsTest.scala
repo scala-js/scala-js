@@ -114,4 +114,44 @@ class JSExportDeprecationsTest extends DirectTest with TestHelpers {
     }
   }
 
+  @Test
+  def warnJSExportTopLevelNamespaced: Unit = {
+    """
+    @JSExportTopLevel("namespaced.export1")
+    object A
+    @JSExportTopLevel("namespaced.export2")
+    class B
+    object C {
+      @JSExportTopLevel("namespaced.export3")
+      val a: Int = 1
+      @JSExportTopLevel("namespaced.export4")
+      var b: Int = 1
+      @JSExportTopLevel("namespaced.export5")
+      def c(): Int = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:3: warning: Using a namespaced export (with a '.') in @JSExportTopLevel is deprecated.
+      |  (you can suppress this warning in 0.6.x by passing the option `-P:scalajs:suppressExportDeprecations` to scalac)
+      |    @JSExportTopLevel("namespaced.export1")
+      |     ^
+      |newSource1.scala:5: warning: Using a namespaced export (with a '.') in @JSExportTopLevel is deprecated.
+      |  (you can suppress this warning in 0.6.x by passing the option `-P:scalajs:suppressExportDeprecations` to scalac)
+      |    @JSExportTopLevel("namespaced.export2")
+      |     ^
+      |newSource1.scala:8: warning: Using a namespaced export (with a '.') in @JSExportTopLevel is deprecated.
+      |  (you can suppress this warning in 0.6.x by passing the option `-P:scalajs:suppressExportDeprecations` to scalac)
+      |      @JSExportTopLevel("namespaced.export3")
+      |       ^
+      |newSource1.scala:10: warning: Using a namespaced export (with a '.') in @JSExportTopLevel is deprecated.
+      |  (you can suppress this warning in 0.6.x by passing the option `-P:scalajs:suppressExportDeprecations` to scalac)
+      |      @JSExportTopLevel("namespaced.export4")
+      |       ^
+      |newSource1.scala:12: warning: Using a namespaced export (with a '.') in @JSExportTopLevel is deprecated.
+      |  (you can suppress this warning in 0.6.x by passing the option `-P:scalajs:suppressExportDeprecations` to scalac)
+      |      @JSExportTopLevel("namespaced.export5")
+      |       ^
+    """
+  }
+
 }
