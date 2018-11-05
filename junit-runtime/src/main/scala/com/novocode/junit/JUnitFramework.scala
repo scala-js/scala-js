@@ -12,7 +12,7 @@
 
 package com.novocode.junit
 
-import org.scalajs.junit.{JUnitMasterRunner, JUnitSlaveRunner}
+import org.scalajs.junit.JUnitRunner
 import sbt.testing._
 
 final class JUnitFramework extends Framework {
@@ -30,15 +30,13 @@ final class JUnitFramework extends Framework {
   }
 
   def runner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader): JUnitMasterRunner = {
-    new JUnitMasterRunner(args, remoteArgs, testClassLoader,
-        parseRunSettings(args))
+      testClassLoader: ClassLoader): Runner = {
+    new JUnitRunner(args, remoteArgs, parseRunSettings(args))
   }
 
   def slaveRunner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader, send: String => Unit): JUnitSlaveRunner = {
-    new JUnitSlaveRunner(args, remoteArgs, testClassLoader, send,
-        parseRunSettings(args))
+      testClassLoader: ClassLoader, send: String => Unit): Runner = {
+    new JUnitRunner(args, remoteArgs, parseRunSettings(args))
   }
 
   def arrayString(arr: Array[String]): String = arr.mkString("Array(", ", ", ")")

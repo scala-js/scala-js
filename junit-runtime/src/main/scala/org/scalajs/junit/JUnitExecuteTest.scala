@@ -16,17 +16,19 @@ import java.io.ByteArrayOutputStream
 
 import com.novocode.junit.Ansi._
 import com.novocode.junit.RichLogger
+import com.novocode.junit.RunSettings
 import org.junit._
 import sbt.testing._
 
 import scala.util.matching.Regex
 
-final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
+final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
     bootstrapper: Bootstrapper, richLogger: RichLogger,
     eventHandler: EventHandler) {
 
-  private val verbose = runner.runSettings.verbose
-  private val decodeScalaNames = runner.runSettings.decodeScalaNames
+  private val taskDef = task.taskDef
+  private val verbose = runSettings.verbose
+  private val decodeScalaNames = runSettings.decodeScalaNames
 
   lazy val packageName = fullyQualifiedName.split('.').init.mkString(".")
   lazy val className = fullyQualifiedName.split('.').last
@@ -51,7 +53,7 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
       ignoreTestClass()
     } else {
       def runWithOrWithoutQuietMode[T](block: => T): T = {
-        if (runner.runSettings.quiet) {
+        if (runSettings.quiet) {
           scala.Console.withOut(new ByteArrayOutputStream()) {
             block
           }
@@ -79,7 +81,7 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
       test: TestMetadata) = {
     val methodName = test.name
     val decodedMethodName = {
-      if (decodeScalaNames) runner.runSettings.decodeName(methodName)
+      if (decodeScalaNames) runSettings.decodeName(methodName)
       else methodName
     }
 
@@ -96,7 +98,7 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
     def emitTestFailed(): Unit = {
       if (eventAlreadyEmitted) {
         // Only add to the failed test count, don't emit an event
-        runner.testFailed()
+        task.failed += 1
       } else {
         testFailed(methodName)
         eventAlreadyEmitted = true
@@ -134,8 +136,8 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
             val isAssertion = ex.isInstanceOf[AssertionError]
             val failedMsg = new StringBuilder
             failedMsg ++= "failed: "
-            if (!runner.runSettings.notLogExceptionClass &&
-                (!isAssertion || runner.runSettings.logAssert)) {
+            if (!runSettings.notLogExceptionClass &&
+                (!isAssertion || runSettings.logAssert)) {
               val classParts = ex.getClass.getName.split('.')
               failedMsg ++= classParts.init.mkString(".")
               failedMsg += '.'
@@ -146,7 +148,7 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
             failedMsg += ','
             val msg = s"$failedMsg took $timeInSeconds sec"
             val exOpt = {
-              if (!isAssertion || runner.runSettings.logAssert) Some(ex)
+              if (!isAssertion || runSettings.logAssert) Some(ex)
               else None
             }
             logFormattedError(decodedMethodName, msg, exOpt)
@@ -204,35 +206,33 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
     if (success)
       testPassed(methodName)
 
-    runner.testRegisterTotal()
+    task.total += 1
   }
 
   private def ignoreTest(methodName: String) = {
-    runner.testIgnored()
+    task.ignored += 1
     val selector = new NestedTestSelector(fullyQualifiedName, methodName)
     eventHandler.handle(new JUnitEvent(taskDef, Status.Skipped, selector))
   }
 
   private def ignoreTestClass() = {
-    runner.testIgnored()
+    task.ignored += 1
     val selector = new TestSelector(fullyQualifiedName)
     eventHandler.handle(new JUnitEvent(taskDef, Status.Skipped, selector))
   }
 
   private def testSkipped(): Unit = {
-    runner.testSkipped()
     val selector = new TestSelector(fullyQualifiedName)
     eventHandler.handle(new JUnitEvent(taskDef, Status.Skipped, selector))
   }
 
   private def testFailed(methodName: String): Unit = {
-    runner.testFailed()
+    task.failed += 1
     val selector = new NestedTestSelector(fullyQualifiedName, methodName)
     eventHandler.handle(new JUnitEvent(taskDef, Status.Failure, selector))
   }
 
   private def testPassed(methodName: String): Unit = {
-    runner.testPassed()
     val selector = new NestedTestSelector(fullyQualifiedName, methodName)
     eventHandler.handle(new JUnitEvent(taskDef, Status.Success, selector))
   }
@@ -240,7 +240,7 @@ final class JUnitExecuteTest(taskDef: TaskDef, runner: JUnitBaseRunner,
   private[this] def logAssertionWarning(methodName: String, ex: Throwable,
       timeInSeconds: Double): Unit = {
     val exName =
-      if (runner.runSettings.notLogExceptionClass) ""
+      if (runSettings.notLogExceptionClass) ""
       else "org.junit.internal." + c("AssumptionViolatedException", ERRMSG) + ": "
 
     val msg = s"failed: $exName${ex.getMessage}, took $timeInSeconds sec"

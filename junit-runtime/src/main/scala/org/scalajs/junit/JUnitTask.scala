@@ -12,16 +12,20 @@
 
 package org.scalajs.junit
 
-import com.novocode.junit.{Ansi, RichLogger}
+import com.novocode.junit.{Ansi, RichLogger, RunSettings}
 import Ansi._
 import sbt.testing._
 import scala.scalajs.reflect.Reflect
 import scala.util.{Try, Success, Failure}
 
-final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
+final class JUnitTask(val taskDef: TaskDef, runSettings: RunSettings)
     extends sbt.testing.Task {
 
   def tags: Array[String] = Array.empty
+
+  var failed = 0
+  var ignored = 0
+  var total = 0
 
   def execute(eventHandler: EventHandler, loggers: Array[Logger],
       continuation: Array[Task] => Unit): Unit = {
@@ -30,10 +34,10 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
 
   def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
     val fullClassName = taskDef.fullyQualifiedName
-    val richLogger = new RichLogger(loggers, runner.runSettings, fullClassName)
+    val richLogger = new RichLogger(loggers, runSettings, fullClassName)
 
     def infoOrDebug(msg: String): Unit = {
-      if (runner.runSettings.verbose)
+      if (runSettings.verbose)
         richLogger.info(msg)
       else
         richLogger.debug(msg)
@@ -59,8 +63,8 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
         .getOrElse(throw new ClassNotFoundException(s"Cannot find $bootstrapperName$$"))
         .loadModule()
     } match {
-      case Success(classMetadata: Bootstrapper) =>
-        new JUnitExecuteTest(taskDef, runner, classMetadata,
+      case Success(bootstrapper: Bootstrapper) =>
+        new JUnitExecuteTest(this, runSettings, bootstrapper,
             richLogger, eventHandler).executeTests()
 
       case Success(_) =>
@@ -71,12 +75,7 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
         errorWhileLoadingClass(exception)
     }
 
-    runner.taskDone()
-
     val time = System.nanoTime - startTime
-    val failed = runner.testFailedCount
-    val ignored = runner.testIgnoredCount
-    val total = runner.testTotalCount
 
     val msg = {
       c("Test run finished: ", INFO) +
@@ -87,7 +86,6 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
     }
 
     infoOrDebug(msg)
-    runner.resetTestCounts()
 
     Array()
   }
