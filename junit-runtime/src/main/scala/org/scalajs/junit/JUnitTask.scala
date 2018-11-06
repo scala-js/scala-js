@@ -59,12 +59,12 @@ final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
         .getOrElse(throw new ClassNotFoundException(s"Cannot find $bootstrapperName$$"))
         .loadModule()
     } match {
-      case Success(classMetadata: JUnitTestBootstrapper) =>
+      case Success(classMetadata: Bootstrapper) =>
         new JUnitExecuteTest(taskDef, runner, classMetadata,
             richLogger, eventHandler).executeTests()
 
       case Success(_) =>
-        val msg = s"Expected $bootstrapperName to extend JUnitTestBootstrapper"
+        val msg = s"Expected $bootstrapperName to extend Bootstrapper"
         errorWhileLoadingClass(new Exception(msg))
 
       case Failure(exception) =>

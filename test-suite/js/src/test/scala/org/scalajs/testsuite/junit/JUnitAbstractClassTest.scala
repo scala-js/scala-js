@@ -30,7 +30,7 @@ class JUnitAbstractClassTestCheck {
     val boot = JUnitUtil.loadBootstrapper(
         "org.scalajs.testsuite.junit.JUnitAbstractClassExtended1Test")
     try {
-      boot.invoke(boot.newInstance(), "test1")
+      boot.invokeTest(boot.newInstance(), "test1")
     } catch {
       case e: Throwable =>
         fail(s"Could not invoke a test: ${e.getMessage}")
@@ -41,8 +41,8 @@ class JUnitAbstractClassTestCheck {
     val boot = JUnitUtil.loadBootstrapper(
         "org.scalajs.testsuite.junit.JUnitAbstractClassExtended2Test")
     try {
-      boot.invoke(boot.newInstance(), "test1")
-      boot.invoke(boot.newInstance(), "test2")
+      boot.invokeTest(boot.newInstance(), "test1")
+      boot.invokeTest(boot.newInstance(), "test2")
     } catch {
       case e: Throwable =>
         fail(s"Could not invoke a test: ${e.getMessage}")

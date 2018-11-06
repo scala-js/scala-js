@@ -14,81 +14,22 @@ package org.scalajs.junit.plugin
 
 import scala.language.reflectiveCalls
 
+import scala.annotation.tailrec
+
 import scala.reflect.internal.Flags
 import scala.tools.nsc._
 import scala.tools.nsc.plugins.{
   Plugin => NscPlugin, PluginComponent => NscPluginComponent
 }
 
-/** The Scala.js jUnit plugin is a way to overcome the lack of annotation
- *  information of any test class (usually accessed through reflection).
- *  This is all the information required by the Scala.js testing framework to
- *  execute the tests.
+/** The Scala.js JUnit plugin replaces reflection based test lookup.
  *
- *  As an example we take the following test class:
- *  {{{
- *  class Foo {
- *    @Before def before(): Unit = {
- *      // Initialize the instance before the tests
- *    }
- *    @Test def bar(): Unit = {
- *      // assert some stuff
- *    }
- *    @Ignore("baz not implemented yet") @Test def baz(): Unit = {
- *      // assert some other stuff
- *    }
- *  }
+ *  For each JUnit test `my.pkg.X`, it generates a bootstrapper module/object
+ *  `my.pkg.X\$scalajs\$junit\$bootstrapper` implementing
+ *  `org.scalajs.junit.Bootstrapper`.
  *
- *  object Foo {
- *    @BeforeClass def beforeClass(): Unit = {
- *      // Initialize some global state for the tests.
- *    }
- *  }
- *  }}}
- *
- *  Will generate the following bootstrapper module:
- *
- *  {{{
- *  object Foo\$scalajs\$junit\$bootstrapper extends org.scalajs.junit.JUnitTestBootstrapper {
- *
- *    def metadata(): JUnitClassMetadata = {
- *      new JUnitClassMetadata(
- *        classAnnotations = List(),
- *        moduleAnnotations = List(),
- *        classMethods = List(
- *            new JUnitMethodMetadata(name = "before",
- *                annotations = List(new Before)),
- *            new JUnitMethodMetadata(name = "bar",
- *                annotations = List(new Test)),
- *            new JUnitMethodMetadata(name = "baz",
- *                annotations = List(new Test, new Ignore("baz not implemented yet")))
- *        ),
- *        moduleMethods(
- *            new JUnitMethodMetadata(name = "beforeClass",
- *                annotations = List(new BeforeClass)))
- *      )
- *    }
- *
- *    def newInstance(): AnyRef = new Foo()
- *
- *    def invoke(methodName: String): Unit = {
- *      if (methodName == "0") Foo.beforeClass()
- *      else throw new NoSuchMethodException(methodId)
- *    }
- *
- *    def invoke(instance: AnyRef, methodName: String): Unit = {
- *      if (methodName == "before") instance.asInstanceOf[Foo].before()
- *      else if (methodName == "bar") instance.asInstanceOf[Foo].bar()
- *      else if (methodName == "baz") instance.asInstanceOf[Foo].baz()
- *      else throw new NoSuchMethodException(methodId)
- *    }
- *  }
- *  }}}
- *  The test framework will identify `Foo\$scalajs\$junit\$bootstrapper` as a test module
- *  because it extends `JUnitTestBootstrapper`. It will know which methods to run based
- *  on the info returned by Foo\$scalajs\$junit\$bootstrapper.metadata,
- *  it will create new test instances using `Foo\$scalajs\$junit\$bootstrapper.newInstance()`
- *  and it will invoke test methods using `invoke` on the bootstrapper.
+ *  The test runner uses these objects to obtain test metadata and dispatch to
+ *  relevant methods.
  */
 class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
@@ -105,6 +46,8 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
     val global: Global = ScalaJSJUnitPlugin.this.global
     import global._
+    import definitions._
+    import rootMirror.getRequiredClass
 
     val phaseName: String = "junit-inject"
     val runsAfter: List[String] = List("mixin")
@@ -113,393 +56,177 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
     protected def newTransformer(unit: CompilationUnit): Transformer =
       new ScalaJSJUnitPluginTransformer
 
+    private object JUnitAnnots {
+      val Test = getRequiredClass("org.junit.Test")
+      val Before = getRequiredClass("org.junit.Before")
+      val After = getRequiredClass("org.junit.After")
+      val BeforeClass = getRequiredClass("org.junit.BeforeClass")
+      val AfterClass = getRequiredClass("org.junit.AfterClass")
+      val Ignore = getRequiredClass("org.junit.Ignore")
+    }
+
+    private object Names {
+      val beforeClass = newTermName("beforeClass")
+      val afterClass = newTermName("afterClass")
+      val before = newTermName("before")
+      val after = newTermName("after")
+      val tests = newTermName("tests")
+      val invokeTest = newTermName("invokeTest")
+      val newInstance = newTermName("newInstance")
+
+      val instance = newTermName("instance")
+      val name = newTermName("name")
+    }
+
+    private lazy val BootstrapperClass =
+      getRequiredClass("org.scalajs.junit.Bootstrapper")
+
+    private lazy val TestMetadataClass =
+      getRequiredClass("org.scalajs.junit.TestMetadata")
+
     class ScalaJSJUnitPluginTransformer extends Transformer {
-
-      import rootMirror.getRequiredClass
-
-      private val TestClass =
-        getRequiredClass("org.junit.Test")
-
-      private val FixMethodOrderClass =
-        getRequiredClass("org.junit.FixMethodOrder")
-
-      private val annotationWhiteList = List(
-        TestClass,
-        getRequiredClass("org.junit.Before"),
-        getRequiredClass("org.junit.After"),
-        getRequiredClass("org.junit.BeforeClass"),
-        getRequiredClass("org.junit.AfterClass"),
-        getRequiredClass("org.junit.Ignore")
-      )
-
-      private val jUnitClassMetadataType =
-        getRequiredClass("org.scalajs.junit.JUnitClassMetadata").toType
-
-      private val jUnitTestMetadataType =
-        getRequiredClass("org.scalajs.junit.JUnitTestBootstrapper").toType
-
-      private def jUnitMethodMetadataTypeTree =
-        TypeTree(getRequiredClass("org.scalajs.junit.JUnitMethodMetadata").toType)
-
       override def transform(tree: Tree): Tree = tree match {
         case tree: PackageDef =>
-          def isClassWithJUnitAnnotation(sym: Symbol): Boolean = sym match {
-            case _:ClassSymbol | _:ModuleSymbol =>
-              val hasAnnotationInClass = sym.selfType.members.exists {
-                case mtdSym: MethodSymbol => hasAnnotation(mtdSym, TestClass)
-                case _ => false
-              }
-              if (hasAnnotationInClass) true
-              else sym.parentSymbols.headOption.fold(false)(isClassWithJUnitAnnotation)
-
-            case _ => false
+          @tailrec
+          def hasTests(sym: Symbol): Boolean = {
+            sym.info.members.exists(m => m.isMethod && m.hasAnnotation(JUnitAnnots.Test)) ||
+            sym.superClass.exists && hasTests(sym.superClass)
           }
 
-          val bootstrappers = tree.stats.groupBy { // Group the class with its module
-            case clDef: ClassDef => Some(clDef.name)
-            case _               => None
-          }.iterator.flatMap {
-            case (Some(_), xs) if xs.exists(x => isClassWithJUnitAnnotation(x.symbol)) =>
-              def isModule(cDef: ClassDef): Boolean =
-                cDef.mods.hasFlag(Flags.MODULE)
-              def isTestClass(cDef: ClassDef): Boolean = {
-                !cDef.mods.hasFlag(Flags.MODULE) &&
-                !cDef.mods.hasFlag(Flags.ABSTRACT) &&
-                !cDef.mods.hasFlag(Flags.TRAIT)
-              }
-              // Get the class definition and do the transformation
-              xs.collectFirst {
-                case clDef: ClassDef if isTestClass(clDef) =>
-                  // Get the module definition
-                  val modDefOption = xs collectFirst {
-                    case clDef: ClassDef if isModule(clDef) => clDef
-                  }
-                  // Create a new module for the JUnit entry point.
-                  mkBootstrapperClass(clDef, modDefOption)
-              }
-
-            case (_, xs) => None
+          def isTest(sym: Symbol) = {
+            sym.isClass &&
+            !sym.isModuleClass &&
+            !sym.isAbstract &&
+            !sym.isTrait &&
+            hasTests(sym)
           }
 
-          val newStats = (tree.stats.map(transform).iterator ++ bootstrappers).toList
+          val bootstrappers = tree.stats.collect {
+            case clDef: ClassDef if isTest(clDef.symbol) =>
+              genBootstrapper(clDef.symbol.asClass)
+          }
 
-          treeCopy.PackageDef(tree: Tree, tree.pid, newStats)
+          val newStats = tree.stats.map(transform) ++ bootstrappers
+          treeCopy.PackageDef(tree, tree.pid, newStats)
 
-        case _ =>
+        case tree =>
           super.transform(tree)
       }
 
-      def mkBootstrapperClass(clazz: ClassDef, modDefOption: Option[ClassDef]): ClassDef = {
-        val bootSym = clazz.symbol.cloneSymbol
-        val getJUnitMetadataDef = mkGetJUnitMetadataDef(clazz.symbol,
-            modDefOption.map(_.symbol))
-        val newInstanceDef = genNewInstanceDef(clazz.symbol, bootSym)
-        val invokeJUnitMethodDef = {
-          val annotatedMethods = modDefOption.fold(List.empty[MethodSymbol]) { mod =>
-            jUnitAnnotatedMethods(mod.symbol.asClass)
-          }
-          mkInvokeJUnitMethodOnModuleDef(annotatedMethods, bootSym,
-              modDefOption.map(_.symbol))
-        }
-        val invokeJUnitMethodOnInstanceDef = {
-          val annotatedMethods = jUnitAnnotatedMethods(clazz.symbol.asClass)
-          mkInvokeJUnitMethodOnInstanceDef(annotatedMethods, bootSym,
-              clazz.symbol)
-        }
-        val ctorDef = mkConstructorDef(clazz.symbol, bootSym, clazz.pos)
+      def genBootstrapper(testClass: ClassSymbol): ClassDef = {
+        val bootSym = testClass.owner.newModuleClass(
+            newTypeName(testClass.name.toString + "$scalajs$junit$bootstrapper"))
 
-        val bootBody = {
-          List(getJUnitMetadataDef, newInstanceDef, invokeJUnitMethodDef,
-              invokeJUnitMethodOnInstanceDef, ctorDef)
-        }
-        val bootParents = List(
-          TypeTree(definitions.ObjectTpe),
-          TypeTree(jUnitTestMetadataType)
+        val bootInfo =
+          ClassInfoType(List(ObjectTpe, BootstrapperClass.toType), newScope, bootSym)
+
+        bootSym.setInfo(bootInfo)
+
+        val testMethods = annotatedMethods(testClass, JUnitAnnots.Test)
+
+        val defs = List(
+            genConstructor(bootSym),
+            genCallOnModule(bootSym, Names.beforeClass, testClass.companionModule, JUnitAnnots.BeforeClass),
+            genCallOnModule(bootSym, Names.afterClass, testClass.companionModule, JUnitAnnots.AfterClass),
+            genCallOnParam(bootSym, Names.before, testClass, JUnitAnnots.Before),
+            genCallOnParam(bootSym, Names.after, testClass, JUnitAnnots.After),
+            genTests(bootSym, testMethods),
+            genInvokeTest(bootSym, testClass, testMethods),
+            genNewInstance(bootSym, testClass)
         )
-        val bootImpl =
-          treeCopy.Template(clazz.impl, bootParents, clazz.impl.self, bootBody)
 
-        val bootName = newTypeName(clazz.name.toString + "$scalajs$junit$bootstrapper")
-        val bootClazz = gen.mkClassDef(Modifiers(Flags.MODULE),
-            bootName, Nil, bootImpl)
-        bootSym.flags += Flags.MODULE
-        bootSym.withoutAnnotations
-        bootSym.setName(bootName)
-        val newClazzInfo = {
-          val newParentsInfo = List(
-            definitions.ObjectTpe,
-            jUnitTestMetadataType
-          )
-          val decls = bootSym.info.decls
-          decls.enter(getJUnitMetadataDef.symbol)
-          decls.enter(newInstanceDef.symbol)
-          decls.enter(invokeJUnitMethodDef.symbol)
-          decls.enter(invokeJUnitMethodOnInstanceDef.symbol)
-          ClassInfoType(newParentsInfo, decls, bootSym.info.typeSymbol)
-        }
-        bootSym.setInfo(newClazzInfo)
-        bootClazz.setSymbol(bootSym)
-
-        currentRun.symSource(bootSym) = clazz.symbol.sourceFile
-
-        bootClazz
+        ClassDef(bootSym, defs)
       }
 
-      def jUnitAnnotatedMethods(sym: Symbol): List[MethodSymbol] = {
-        sym.selfType.members.collect {
-          case m: MethodSymbol if !m.isBridge && hasJUnitMethodAnnotation(m) => m
-        }.toList
-      }
+      private def genConstructor(owner: ClassSymbol): DefDef = {
+        val rhs = gen.mkMethodCall(
+            Super(owner, tpnme.EMPTY), ObjectClass.primaryConstructor, Nil, Nil)
 
-      /** Generates the constructor of a bootstrapper class. */
-      private def mkConstructorDef(classSym: Symbol, bootSymbol: Symbol,
-          pos: Position): DefDef = {
-        val rhs = Block(
-            Apply(
-                Select(
-                    Super(This(tpnme.EMPTY) setSymbol bootSymbol, tpnme.EMPTY),
-                    nme.CONSTRUCTOR).setSymbol(
-                    definitions.ObjectClass.primaryConstructor),
-                Nil),
-            Literal(Constant(()))
-        )
-        val sym = bootSymbol.newClassConstructor(pos)
+        val sym = owner.newClassConstructor(NoPosition)
+        sym.setInfoAndEnter(MethodType(Nil, owner.tpe))
         typer.typedDefDef(newDefDef(sym, rhs)())
       }
 
-      /** This method generates a method that invokes a test method in the module
-       *  given its name. These methods have no parameters.
-       *
-       *  Example:
-       *  {{{
-       *  object Foo {
-       *    @BeforeClass def bar(): Unit
-       *    @AfterClass def baz(): Unit
-       *  }
-       *  object Foo\$scalajs\$junit\$bootstrapper {
-       *    // This is the method generated by mkInvokeJUnitMethodOnModuleDef
-       *    def invoke(methodName: String): Unit = {
-       *      if (methodName == "bar") Foo.bar()
-       *      else if (methodName == "baz") Foo.baz()
-       *      else throw new NoSuchMethodException(methodName + " not found")
-       *    }
-       *  }
-       *  }}}
-       */
-      def mkInvokeJUnitMethodOnModuleDef(methods: List[MethodSymbol],
-          bootSym: Symbol, modClassSym: Option[Symbol]): DefDef = {
-        val invokeJUnitMethodSym = bootSym.newMethod(newTermName("invoke"))
+      private def genCallOnModule(owner: ClassSymbol, name: TermName, module: Symbol, annot: Symbol): DefDef = {
+        val sym = owner.newMethodSymbol(name)
+        sym.setInfoAndEnter(MethodType(Nil, definitions.UnitTpe))
 
-        val paramSyms = {
-          val params = List(("methodName", definitions.StringTpe))
-          mkParamSymbols(invokeJUnitMethodSym, params)
-        }
+        val calls = annotatedMethods(module, annot)
+          .map(gen.mkMethodCall(Ident(module), _, Nil, Nil))
+          .toList
 
-        invokeJUnitMethodSym.setInfo(MethodType(paramSyms, definitions.UnitTpe))
-
-        def callLocally(methodSymbol: Symbol): Tree = {
-          val methodSymbolLocal = {
-            modClassSym.fold(methodSymbol) { sym =>
-              methodSymbol.cloneSymbol(newOwner = sym)
-            }
-          }
-          gen.mkMethodCall(methodSymbolLocal, Nil)
-        }
-
-        val invokeJUnitMethodRhs = mkMethodResolutionAndCall(invokeJUnitMethodSym,
-            methods, paramSyms.head, callLocally)
-
-        mkMethod(invokeJUnitMethodSym, invokeJUnitMethodRhs, paramSyms)
+        typer.typedDefDef(newDefDef(sym, Block(calls: _*))())
       }
 
-      /** This method generates a method that invokes a test method in the class
-       *  given its name. These methods have no parameters.
-       *
-       *  Example:
-       *  {{{
-       *  class Foo {
-       *    @Test def bar(): Unit
-       *    @Test def baz(): Unit
-       *  }
-       *  object Foo\$scalajs\$junit\$bootstrapper {
-       *    // This is the method generated by mkInvokeJUnitMethodOnInstanceDef
-       *    def invoke(instance: AnyRef, methodName: String): Unit = {
-       *      if (methodName == "bar") instance.asInstanceOf[Foo].bar()
-       *      else if (methodName == "baz") instance.asInstanceOf[Foo].baz()
-       *      else throw new NoSuchMethodException(methodName + " not found")
-       *    }
-       *  }
-       *  }}}
-       */
-      def mkInvokeJUnitMethodOnInstanceDef(methods: List[MethodSymbol],
-          classSym: Symbol, refClassSym: Symbol): DefDef = {
-        val invokeJUnitMethodSym = classSym.newMethod(newTermName("invoke"))
+      private def genCallOnParam(owner: ClassSymbol, name: TermName, testClass: Symbol, annot: Symbol): DefDef = {
+        val sym = owner.newMethodSymbol(name)
 
-        val paramSyms = {
-          val params = List(("instance", definitions.ObjectTpe),
-            ("methodName", definitions.StringTpe))
-          mkParamSymbols(invokeJUnitMethodSym, params)
-        }
+        val instanceParam = sym.newValueParameter(Names.instance).setInfo(ObjectTpe)
 
-        val instanceParamSym :: idParamSym :: Nil = paramSyms
+        sym.setInfoAndEnter(MethodType(List(instanceParam), definitions.UnitTpe))
 
-        invokeJUnitMethodSym.setInfo(MethodType(paramSyms, definitions.UnitTpe))
+        val instance = castParam(instanceParam, testClass)
+        val calls = annotatedMethods(testClass, annot)
+          .map(gen.mkMethodCall(instance, _, Nil, Nil))
+          .toList
 
-        def callLocally(methodSymbol: Symbol): Tree = {
-          val instance = gen.mkAttributedIdent(instanceParamSym)
-          val castedInstance = gen.mkAttributedCast(instance, refClassSym.tpe)
-          gen.mkMethodCall(castedInstance, methodSymbol, Nil, Nil)
-        }
-
-        val invokeJUnitMethodRhs = mkMethodResolutionAndCall(invokeJUnitMethodSym,
-          methods, idParamSym, callLocally)
-
-        mkMethod(invokeJUnitMethodSym, invokeJUnitMethodRhs, paramSyms)
+        typer.typedDefDef(newDefDef(sym, Block(calls: _*))())
       }
 
-      def mkGetJUnitMetadataDef(clSym: Symbol,
-          modSymOption: Option[Symbol]): DefDef = {
-        val methods = jUnitAnnotatedMethods(clSym)
-        val modMethods = modSymOption.map(jUnitAnnotatedMethods)
+      private def genTests(owner: ClassSymbol, tests: Scope): DefDef = {
+        val sym = owner.newMethodSymbol(Names.tests)
+        sym.setInfoAndEnter(MethodType(Nil,
+            typeRef(NoType, ArrayClass, List(TestMetadataClass.tpe))))
 
-        def liftAnnotations(methodSymbol: Symbol): List[Tree] = {
-          val annotations = methodSymbol.annotations
+        val metadata = for (test <- tests) yield {
+          val reifiedAnnot = New(
+              JUnitAnnots.Test, test.getAnnotation(JUnitAnnots.Test).get.args: _*)
 
-          // Find and report unsupported JUnit annotations
-          annotations.foreach {
-            case ann if ann.atp.typeSymbol == TestClass && ann.original.isInstanceOf[Block] =>
-              reporter.error(ann.pos, "@Test(timeout = ...) is not " +
-                "supported in Scala.js JUnit Framework")
+          val name = Literal(Constant(test.name.toString))
+          val ignored = Literal(Constant(test.hasAnnotation(JUnitAnnots.Ignore)))
 
-            case ann if ann.atp.typeSymbol == FixMethodOrderClass =>
-              reporter.error(ann.pos, "@FixMethodOrder(...) is not supported " +
-                "in Scala.js JUnit Framework")
-
-            case _ => // all is well
-          }
-
-          // Collect lifted representations of the JUnit annotations
-          annotations.collect {
-            case ann if annotationWhiteList.contains(ann.tpe.typeSymbol) =>
-              val args = if (ann.args != null) ann.args else Nil
-              mkNewInstance(TypeTree(ann.tpe), args)
-          }
+          New(TestMetadataClass, name, ignored, reifiedAnnot)
         }
 
-        def defaultMethodMetadata(tpe: TypeTree)(mtdSym: MethodSymbol): Tree = {
-          val annotations = liftAnnotations(mtdSym)
-          mkNewInstance(tpe, List(
-              Literal(Constant(mtdSym.name.toString)),
-              mkList(annotations)))
+        val rhs = ArrayValue(TypeTree(TestMetadataClass.tpe), metadata.toList)
+
+        typer.typedDefDef(newDefDef(sym, rhs)())
+      }
+
+      private def genInvokeTest(owner: ClassSymbol, testClass: Symbol, tests: Scope): DefDef = {
+        val sym = owner.newMethodSymbol(Names.invokeTest)
+
+        val instanceParam = sym.newValueParameter(Names.instance).setInfo(ObjectTpe)
+        val nameParam = sym.newValueParameter(Names.name).setInfo(StringTpe)
+
+        sym.setInfo(MethodType(List(instanceParam, nameParam), UnitTpe))
+
+        val instance = castParam(instanceParam, testClass)
+        val rhs = tests.foldRight[Tree] {
+          Throw(New(typeOf[NoSuchMethodException], Ident(nameParam)))
+        } { (sym, next) =>
+          val cond = gen.mkMethodCall(Ident(nameParam), Object_equals, Nil,
+              List(Literal(Constant(sym.name.toString))))
+
+          val call = gen.mkMethodCall(instance, sym, Nil, Nil)
+
+          If(cond, call, next)
         }
 
-        def mkList(elems: List[Tree]): Tree = {
-          val varargsModule =
-            if (hasNewCollections) definitions.ScalaRunTimeModule
-            else definitions.PredefModule
-
-          val array = ArrayValue(TypeTree(definitions.ObjectTpe), elems)
-          val wrappedArray = gen.mkMethodCall(
-              varargsModule,
-              definitions.wrapVarargsArrayMethodName(definitions.ObjectTpe),
-              Nil, List(array))
-          val listApply = typer.typed {
-            gen.mkMethodCall(definitions.ListModule, nme.apply, Nil, List(wrappedArray))
-          }
-
-          if (listApply.tpe.typeSymbol.isSubClass(definitions.ListClass))
-            listApply
-          else
-            gen.mkCast(listApply, definitions.ListClass.toTypeConstructor)
-        }
-
-        def mkMethodList(tpe: TypeTree)(testMethods: List[MethodSymbol]): Tree =
-          mkList(testMethods.map(defaultMethodMetadata(tpe)))
-
-        val getJUnitMethodRhs = {
-          mkNewInstance(
-              TypeTree(jUnitClassMetadataType),
-              List(
-                mkList(liftAnnotations(clSym)),
-                gen.mkNil,
-                mkMethodList(jUnitMethodMetadataTypeTree)(methods),
-                modMethods.fold(gen.mkNil)(mkMethodList(jUnitMethodMetadataTypeTree))
-          ))
-        }
-
-        val getJUnitMetadataSym = clSym.newMethod(newTermName("metadata"))
-        getJUnitMetadataSym.setInfo(MethodType(Nil, jUnitClassMetadataType))
-
-        typer.typedDefDef(newDefDef(getJUnitMetadataSym, getJUnitMethodRhs)())
+        typer.typedDefDef(newDefDef(sym, rhs)())
       }
 
-      private def hasJUnitMethodAnnotation(mtd: MethodSymbol): Boolean =
-        annotationWhiteList.exists(hasAnnotation(mtd, _))
-
-      private def hasAnnotation(mtd: MethodSymbol, tpe: TypeSymbol): Boolean =
-        mtd.annotations.exists(_.atp.typeSymbol == tpe)
-
-      private def mkNewInstance[T: TypeTag](params: List[Tree]): Apply =
-        mkNewInstance(TypeTree(typeOf[T]), params)
-
-      private def mkNewInstance(tpe: TypeTree, params: List[Tree]): Apply =
-        Apply(Select(New(tpe), nme.CONSTRUCTOR), params)
-
-      /* Generate a method that creates a new instance of the test class, this
-       * method will be located in the bootstrapper class.
-       */
-      private def genNewInstanceDef(classSym: Symbol, bootSymbol: Symbol): DefDef = {
-        val mkNewInstanceDefRhs =
-          mkNewInstance(TypeTree(classSym.typeConstructor), Nil)
-        val mkNewInstanceDefSym = bootSymbol.newMethodSymbol(newTermName("newInstance"))
-        mkNewInstanceDefSym.setInfo(MethodType(Nil, definitions.ObjectTpe))
-
-        typer.typedDefDef(newDefDef(mkNewInstanceDefSym, mkNewInstanceDefRhs)())
+      private def genNewInstance(owner: ClassSymbol, testClass: ClassSymbol): DefDef = {
+        val sym = owner.newMethodSymbol(Names.newInstance)
+        sym.setInfoAndEnter(MethodType(Nil, ObjectTpe))
+        typer.typedDefDef(newDefDef(sym, New(testClass))())
       }
 
-      private def mkParamSymbols(method: MethodSymbol,
-          params: List[(String, Type)]): List[Symbol] = {
-        params.map {
-          case (pName, tpe) =>
-            val sym = method.newValueParameter(newTermName(pName))
-            sym.setInfo(tpe)
-            sym
-        }
-      }
+      private def castParam(param: Symbol, clazz: Symbol): Tree =
+        gen.mkAsInstanceOf(Ident(param), clazz.tpe, any = false)
 
-      private def mkMethod(methodSym: MethodSymbol, methodRhs: Tree,
-          paramSymbols: List[Symbol]): DefDef = {
-        val paramValDefs = List(paramSymbols.map(newValDef(_, EmptyTree)()))
-        typer.typedDefDef(newDefDef(methodSym, methodRhs)(vparamss = paramValDefs))
-      }
-
-      private def mkMethodResolutionAndCall(methodSym: MethodSymbol,
-          methods: List[Symbol], idParamSym: Symbol, genCall: Symbol => Tree): Tree = {
-        val tree = methods.foldRight[Tree](mkMethodNotFound(idParamSym)) { (methodSymbol, acc) =>
-            val mName = Literal(Constant(methodSymbol.name.toString))
-            val paramIdent = gen.mkAttributedIdent(idParamSym)
-            val cond = gen.mkMethodCall(paramIdent, definitions.Object_equals, Nil, List(mName))
-            val call = genCall(methodSymbol)
-            If(cond, call, acc)
-        }
-        atOwner(methodSym)(typer.typed(tree))
-      }
-
-      private def mkMethodNotFound(paramSym: Symbol) = {
-        val paramIdent = gen.mkAttributedIdent(paramSym)
-        val msg = gen.mkMethodCall(paramIdent, definitions.String_+, Nil,
-          List(Literal(Constant(" not found"))))
-        val exception = mkNewInstance[NoSuchMethodException](List(msg))
-        Throw(exception)
-      }
-    }
-
-    private lazy val hasNewCollections = {
-      val v = scala.util.Properties.versionNumberString
-      !v.startsWith("2.10.") &&
-      !v.startsWith("2.11.") &&
-      !v.startsWith("2.12.") &&
-      v != "2.13.0-M3"
+      private def annotatedMethods(owner: Symbol, annot: Symbol): Scope =
+        owner.info.members.filter(m => m.isMethod && !m.isBridge && m.hasAnnotation(annot))
     }
   }
 }

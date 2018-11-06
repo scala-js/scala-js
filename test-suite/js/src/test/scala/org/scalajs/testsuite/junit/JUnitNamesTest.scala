@@ -26,9 +26,9 @@ class JUnitNamesTestCheck {
     val boot = JUnitUtil.loadBootstrapper(
         "org.scalajs.testsuite.junit.JUnitNamesTest")
     try {
-      boot.invoke(boot.newInstance(), "$plus")
-      boot.invoke(boot.newInstance(), "$times")
-      boot.invoke(boot.newInstance(), "$u2206ƒ")
+      boot.invokeTest(boot.newInstance(), "$plus")
+      boot.invokeTest(boot.newInstance(), "$times")
+      boot.invokeTest(boot.newInstance(), "$u2206ƒ")
     } catch {
       case _: Throwable =>
         fail("Could not invoke method on JUnitNamesTest.")
