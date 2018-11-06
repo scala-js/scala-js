@@ -100,23 +100,10 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
       }
     }
 
-    def execute(expectedException: Class[_] = classOf[org.junit.Test.None])(
-        body: => Unit): Boolean = {
-
+    def execute(body: => Unit): Boolean = {
       try {
         body
-
-        if (expectedException == classOf[org.junit.Test.None]) {
-          true
-        } else {
-          val msg = {
-            s"failed: Expected exception: " + expectedException +
-            s"took ${getTimeInSeconds()} sec"
-          }
-          logFormattedError(decodedMethodName, msg, None)
-          emitTestFailed()
-          false
-        }
+        true
       } catch {
         case ex: Throwable =>
           val timeInSeconds = getTimeInSeconds()
@@ -125,9 +112,7 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
             logAssertionWarning(decodedMethodName, ex, timeInSeconds)
             testSkipped()
             false
-          } else if (expectedException.isInstance(ex)) {
-            true
-          } else if (expectedException == classOf[org.junit.Test.None]) {
+          } else {
             val isAssertion = ex.isInstanceOf[AssertionError]
             val failedMsg = new StringBuilder
             failedMsg ++= "failed: "
@@ -149,38 +134,54 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
             logFormattedError(decodedMethodName, msg, exOpt)
             emitTestFailed()
             false
-          } else {
-            val msg = s"failed: ${ex.getClass}, took $timeInSeconds sec"
-            logFormattedError(decodedMethodName, msg, Some(ex))
-            emitTestFailed()
-            false
           }
       }
     }
 
+    def handleExpected(expectedException: Class[_ <: Throwable])(body: => Unit) = {
+      val wantException = expectedException != classOf[org.junit.Test.None]
+      val succeeded = try {
+        body
+        true
+      } catch {
+        case t if expectedException.isInstance(t) => false
+
+        case t if wantException =>
+          val expName = expectedException.getName
+          val gotName = t.getClass.getName
+          throw new Exception(
+              s"Unexpected exception, expected<$expName> but was<$gotName>", t)
+      }
+
+      if (succeeded && wantException)
+        throw new AssertionError("Expected exception: " + expectedException.getName)
+    }
+
     var testClassInstance: AnyRef = null
 
-    val instantiationSucceeded = execute() {
+    val instantiationSucceeded = execute {
       testClassInstance = bootstrapper.newInstance()
     }
 
     val success = if (!instantiationSucceeded) {
       false
     } else {
-      val beforeSucceeded = execute() {
+      val beforeSucceeded = execute {
         bootstrapper.before(testClassInstance)
       }
 
       val beforeAndTestSucceeded = if (!beforeSucceeded) {
         false
       } else {
-        execute(test.annotation.expected) {
-          bootstrapper.invokeTest(testClassInstance, test.name)
+        execute {
+          handleExpected(test.annotation.expected) {
+            bootstrapper.invokeTest(testClassInstance, test.name)
+          }
         }
       }
 
       // Whether before and/or test succeeded or not, run the after methods
-      val afterSucceeded = execute() {
+      val afterSucceeded = execute {
         bootstrapper.after(testClassInstance)
       }
 

@@ -125,6 +125,16 @@ abstract class JUnitTest {
         testFinishedOutput(testName)
     )
 
+    def wrongException(testName: String, msg: String, clazz: ThrowableClass): OutputBuilder = {
+      append(1, 0, 1)(
+          testStartedOutput(testName),
+          testExceptionMsgOutput(testName, msg, classOf[Exception]),
+          Error(s"Caused by: ${clazz.getName}"),
+          failureEvent,
+          testFinishedOutput(testName)
+      )
+    }
+
     def exception(testName: String, msg: String,
         clazz: ThrowableClass): OutputBuilder = {
       append(1, 0, 1)(
