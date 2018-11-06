@@ -24,6 +24,7 @@ object ModuleKind {
    */
   val All: List[ModuleKind] = List(
       NoModule,
+      ESModule,
       CommonJSModule)
 
   /** No module structure.
@@ -35,6 +36,13 @@ object ModuleKind {
    *  Imports are not supported.
    */
   case object NoModule extends ModuleKind
+
+  /** An ECMAScript 2015 module.
+   *
+   *  Scala.js imports and exports directly map to `import` and `export`
+   *  clauses in the ES module.
+   */
+  case object ESModule extends ModuleKind
 
   /** A CommonJS module (notably used by Node.js).
    *

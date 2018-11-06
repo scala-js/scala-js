@@ -505,7 +505,12 @@ object ScalaJSPluginInternal {
       scalaJSOptimizerOptions in fullOptJS := {
         val prev = (scalaJSOptimizerOptions in fullOptJS).value
         val outputMode = (scalaJSOutputMode in fullOptJS).value
-        prev.withUseClosureCompiler(outputMode == OutputMode.ECMAScript51Isolated)
+        val moduleKind = (scalaJSModuleKind in fullOptJS).value
+        val useClosure = {
+          outputMode == OutputMode.ECMAScript51Isolated &&
+          moduleKind != ModuleKind.ESModule
+        }
+        prev.withUseClosureCompiler(useClosure)
       },
 
       fullOptJS := fullOptJS.dependsOn(packageMinifiedJSDependencies).value,
@@ -785,6 +790,11 @@ object ScalaJSPluginInternal {
               None
             }
 
+          case ModuleKind.ESModule =>
+            Def.task {
+              Some(scalaJSLinkedFile.value.toURI.toASCIIString)
+            }
+
           case ModuleKind.CommonJSModule =>
             Def.task {
               Some(scalaJSLinkedFile.value.path)
@@ -814,10 +824,13 @@ object ScalaJSPluginInternal {
 
   private[sbtplugin] def makeExportsNamespaceExpr(moduleKind: ModuleKind,
       moduleIdentifier: Option[String]): String = {
-    // !!! DUPLICATE code with TestAdpater.startManagedRunner
     moduleKind match {
       case ModuleKind.NoModule =>
         jsGlobalExpr
+
+      case ModuleKind.ESModule =>
+        throw new MessageOnlyException(
+            "Using a launcher file is not compatible with ES modules")
 
       case ModuleKind.CommonJSModule =>
         val moduleIdent = moduleIdentifier.getOrElse {

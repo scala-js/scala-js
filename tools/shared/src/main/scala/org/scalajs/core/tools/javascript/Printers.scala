@@ -552,6 +552,49 @@ object Printers {
         case Super() =>
           print("super")
 
+        // ECMAScript 6 modules
+
+        case Import(bindings, from) =>
+          print("import { ")
+          var first = true
+          var rest = bindings
+          while (rest.nonEmpty) {
+            val binding = rest.head
+            if (first)
+              first = false
+            else
+              print(", ")
+            print(binding._1)
+            print(" as ")
+            print(binding._2)
+            rest = rest.tail
+          }
+          print(" } from ")
+          print(from: Tree)
+
+        case ImportNamespace(binding, from) =>
+          print("import * as ")
+          print(binding)
+          print(" from ")
+          print(from: Tree)
+
+        case Export(bindings) =>
+          print("export { ")
+          var first = true
+          var rest = bindings
+          while (rest.nonEmpty) {
+            val binding = rest.head
+            if (first)
+              first = false
+            else
+              print(", ")
+            print(binding._1)
+            print(" as ")
+            print(binding._2)
+            rest = rest.tail
+          }
+          print(" }")
+
         case _ =>
           print(s"<error, elem of class ${tree.getClass}>")
       }
@@ -572,6 +615,9 @@ object Printers {
         print(tree)
         print("]")
     }
+
+    protected def print(exportName: ExportName): Unit =
+      printEscapeJS(exportName.name)
 
     protected def print(s: String): Unit =
       out.write(s)

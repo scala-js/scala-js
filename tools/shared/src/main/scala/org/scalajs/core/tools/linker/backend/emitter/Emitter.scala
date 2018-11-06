@@ -73,7 +73,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
             true
         }
 
-      case ModuleKind.CommonJSModule =>
+      case ModuleKind.ESModule | ModuleKind.CommonJSModule =>
         false
     }
   }
@@ -109,6 +109,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       val orderedClasses = unit.classDefs.sortWith(compareClasses)
 
       emitModuleImports(orderedClasses, builder, logger)
+      emitModuleExports(orderedClasses, builder, logger)
 
       /* Emit all the classes, in the appropriate order:
        *
@@ -147,6 +148,29 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
   private def emitModuleImports(orderedClasses: List[LinkedClass],
       builder: JSTreeBuilder, logger: Logger): Unit = {
+
+    def foreachImportedModule(f: (String, Position) => Unit): Unit = {
+      val encounteredModuleNames = mutable.Set.empty[String]
+      for (classDef <- orderedClasses) {
+        def addModuleRef(module: String): Unit = {
+          if (encounteredModuleNames.add(module))
+            f(module, classDef.pos)
+        }
+
+        classDef.jsNativeLoadSpec match {
+          case None =>
+          case Some(JSNativeLoadSpec.Global(_)) =>
+
+          case Some(JSNativeLoadSpec.Import(module, _)) =>
+            addModuleRef(module)
+
+          case Some(JSNativeLoadSpec.ImportWithGlobalFallback(
+              JSNativeLoadSpec.Import(module, _), _)) =>
+            addModuleRef(module)
+        }
+      }
+    }
+
     moduleKind match {
       case ModuleKind.NoModule =>
         var importsFound: Boolean = false
@@ -172,31 +196,61 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
               "ModuleKind.CommonJSModule.")
         }
 
+      case ModuleKind.ESModule =>
+        foreachImportedModule { (module, pos0) =>
+          implicit val pos = pos0
+          val from = js.StringLiteral(module)
+          val moduleBinding = jsGen.envModuleField(module).ident
+          val importStat = js.ImportNamespace(moduleBinding, from)
+          builder.addJSTree(importStat)
+        }
+
       case ModuleKind.CommonJSModule =>
-        val encounteredModuleNames = mutable.Set.empty[String]
+        foreachImportedModule { (module, pos0) =>
+          implicit val pos = pos0
+          val rhs = js.Apply(js.VarRef(js.Ident("require")),
+              List(js.StringLiteral(module)))
+          val lhs = jsGen.envModuleField(module)
+          val decl = jsGen.genLet(lhs.ident, mutable = false, rhs)
+          builder.addJSTree(decl)
+        }
+    }
+  }
+
+  private def emitModuleExports(orderedClasses: List[LinkedClass],
+      builder: JSTreeBuilder, logger: Logger): Unit = {
+    moduleKind match {
+      case ModuleKind.NoModule | ModuleKind.CommonJSModule =>
+
+      case ModuleKind.ESModule =>
+        /* Things that are exported under an unqualified name will emit their
+         * own `export` clauses. Here, we only declare top-level namespaces for
+         * qualified export names, i.e., the part before the first '.', when
+         * there is one.
+         */
+
+        val topLevelNamespaces = mutable.Set.empty[String]
+
+        def declareAndExportNamespace(namespace: String): Unit = {
+          if (topLevelNamespaces.add(namespace)) {
+            implicit val pos = Position.NoPosition
+            val exportVarIdent =
+              jsGen.envField("e_" + namespace).asInstanceOf[js.VarRef].ident
+            builder.addJSTree(js.Let(
+                exportVarIdent, mutable = false, Some(js.ObjectConstr(Nil))))
+            builder.addJSTree(
+                js.Export((exportVarIdent -> js.ExportName(namespace)) :: Nil))
+          }
+        }
 
         for (classDef <- orderedClasses) {
-          def addModuleRef(module: String): Unit = {
-            if (encounteredModuleNames.add(module)) {
-              implicit val pos = classDef.pos
-              val rhs = js.Apply(js.VarRef(js.Ident("require")),
-                  List(js.StringLiteral(module)))
-              val lhs = jsGen.envModuleField(module)
-              val decl = jsGen.genLet(lhs.ident, mutable = false, rhs)
-              builder.addJSTree(decl)
+          // Early exit for classes without any top-level exports (most of them)
+          if (classDef.classExports.nonEmpty) {
+            for (fullName <- classDef.topLevelExportNames) {
+              val dotPos = fullName.indexOf('.')
+              if (dotPos >= 0)
+                declareAndExportNamespace(fullName.substring(0, dotPos))
             }
-          }
-
-          classDef.jsNativeLoadSpec match {
-            case None =>
-            case Some(JSNativeLoadSpec.Global(_)) =>
-
-            case Some(JSNativeLoadSpec.Import(module, _)) =>
-              addModuleRef(module)
-
-            case Some(JSNativeLoadSpec.ImportWithGlobalFallback(
-                JSNativeLoadSpec.Import(module, _), _)) =>
-              addModuleRef(module)
           }
         }
     }

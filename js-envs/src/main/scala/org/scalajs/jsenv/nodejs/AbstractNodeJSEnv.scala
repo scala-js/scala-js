@@ -134,12 +134,37 @@ abstract class AbstractNodeJSEnv(
      */
     override protected def writeJSFile(file: VirtualJSFile,
         writer: Writer): Unit = {
+
+      def writeImport(file: File): Unit = {
+        val uri = file.toURI.toASCIIString
+        val importerFile = new MemVirtualJSFile("importer.js")
+        importerFile.content = {
+          s"""
+            |import("${escapeJS(uri)}").catch(e => {
+            |  /* Make sure to fail the process, but give time to Node.js to
+            |   * display a good stack trace before that.
+            |   */
+            |  setTimeout(() => process.exit(1), 100);
+            |  throw e;
+            |});
+          """.stripMargin
+        }
+        val f = libCache.materialize(importerFile)
+        writer.write(s"""require("${escapeJS(f.getAbsolutePath)}");\n""")
+      }
+
       file match {
         case file: FileVirtualJSFile =>
           val fname = file.file.getAbsolutePath
-          writer.write(s"""require("${escapeJS(fname)}");\n""")
+          if (fname.endsWith(".mjs"))
+            writeImport(file.file)
+          else
+            writer.write(s"""require("${escapeJS(fname)}");\n""")
         case _ =>
-          super.writeJSFile(file, writer)
+          if (file.path.endsWith(".mjs"))
+            writeImport(libCache.materialize(file))
+          else
+            super.writeJSFile(file, writer)
       }
     }
 

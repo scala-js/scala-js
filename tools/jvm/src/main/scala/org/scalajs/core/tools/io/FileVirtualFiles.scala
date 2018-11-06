@@ -137,7 +137,7 @@ class FileVirtualJSFile(f: File) extends FileVirtualTextFile(f)
   import FileVirtualFile._
   import FileVirtualTextFile._
 
-  val sourceMapFile: File = withExtension(file, ".js", ".js.map")
+  val sourceMapFile: File = withName(file, file.getName + ".map")
 
   override def sourceMap: Option[String] = {
     if (sourceMapFile.exists) Some(readFileToString(sourceMapFile))
