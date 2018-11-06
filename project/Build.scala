@@ -719,14 +719,14 @@ object Build {
 
           val code = {
             s"""
-            var linker = scalajs.QuickLinker;
+            var linker = ScalaJSQuickLinker;
             var lib = linker.linkTestSuiteNode($irPaths, $mainMethods);
 
             var __ScalaJSEnv = $scalaJSEnv;
 
             eval("(function() { 'use strict'; " +
               lib + ";" +
-              "scalajs.TestRunner.runTests();" +
+              "ScalaJSTestRunner.runTests();" +
             "}).call(this);");
             """
           }
@@ -1263,11 +1263,16 @@ object Build {
           previousArtifactSetting,
           mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestInterface,
           unmanagedSourceDirectories in Compile +=
-            baseDirectory.value.getParentFile / "test-common/src/main/scala"
+            baseDirectory.value.getParentFile / "test-common/src/main/scala",
           /* Note: We cannot add the test-common tests, since they test async
            * stuff and JUnit does not support async tests. Therefore we need to
            * block, so we cannot run on JS.
            */
+
+          /* The test bridge uses namespaced top-level exports that we cannot
+           * get rid of in 0.6.x.
+           */
+          scalacOptions += "-P:scalajs:suppressExportDeprecations"
       )
   ).withScalaJSCompiler.dependsOn(library)
 

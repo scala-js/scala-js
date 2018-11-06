@@ -413,6 +413,14 @@ trait PrepJSExports { this: PrepJSInterop =>
                 "Only static objects may export their members to the top level")
           }
 
+          // Warn for namespaced top-level exports
+          if (name.contains('.') && !scalaJSOpts.suppressExportDeprecations) {
+            reporter.warning(annot.pos,
+                "Using a namespaced export (with a '.') in @JSExportTopLevel " +
+                "is deprecated." +
+                SuppressExportDeprecationsMsg)
+          }
+
         case ExportDestination.Static =>
           val symOwner =
             if (sym.isClassConstructor) sym.owner.owner

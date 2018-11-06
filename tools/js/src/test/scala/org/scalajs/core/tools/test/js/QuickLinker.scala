@@ -20,7 +20,7 @@ import org.scalajs.core.tools.logging._
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
-@JSExportTopLevel("scalajs.QuickLinker")
+@JSExportTopLevel("ScalaJSQuickLinker")
 object QuickLinker {
 
   /** Link a Scala.js application on Node.js */
