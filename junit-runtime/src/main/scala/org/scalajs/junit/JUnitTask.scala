@@ -50,7 +50,8 @@ final class JUnitTask(val taskDef: TaskDef, runSettings: RunSettings)
     val startTime = System.nanoTime
 
     def errorWhileLoadingClass(t: Throwable): Unit = {
-      richLogger.error("Error while loading test class: " + fullClassName, t)
+      richLogger.error("Error while loading test class: " + fullClassName)
+      richLogger.trace(t)
       val selector = new TestSelector(fullClassName)
       val optThrowable = new OptionalThrowable(t)
       val ev = new JUnitEvent(taskDef, Status.Failure, selector, optThrowable)

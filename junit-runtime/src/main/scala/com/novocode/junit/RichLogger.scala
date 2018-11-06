@@ -27,12 +27,6 @@ final class RichLogger(loggers: Array[Logger], settings: RunSettings, testClassN
       l.error(filterAnsiIfNeeded(l, s))
   }
 
-  def error(s: String, t: Throwable): Unit = {
-    error(s)
-    if (t != null && (settings.logAssert || !t.isInstanceOf[AssertionError]))
-      logStackTrace(t)
-  }
-
   def info(s: String): Unit = {
     for (l <- loggers)
       l.info(filterAnsiIfNeeded(l, s))
@@ -47,7 +41,7 @@ final class RichLogger(loggers: Array[Logger], settings: RunSettings, testClassN
     if (l.ansiCodesSupported() && settings.color) s
     else filterAnsi(s)
 
-  private def logStackTrace(t: Throwable): Unit = {
+  def trace(t: Throwable): Unit = {
     val trace = t.getStackTrace.dropWhile { p =>
       p.getFileName != null && {
         p.getFileName.contains("StackTrace.scala") ||

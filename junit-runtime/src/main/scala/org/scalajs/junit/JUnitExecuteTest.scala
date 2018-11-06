@@ -127,11 +127,10 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
             failedMsg ++= ex.getMessage
             failedMsg += ','
             val msg = s"$failedMsg took $timeInSeconds sec"
-            val exOpt = {
-              if (!isAssertion || runSettings.logAssert) Some(ex)
-              else None
+            logFormattedError(decodedMethodName, msg)
+            if (!isAssertion || runSettings.logAssert) {
+              richLogger.trace(ex)
             }
-            logFormattedError(decodedMethodName, msg, exOpt)
             emitTestFailed()
             false
           }
@@ -262,15 +261,11 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
         formatLayout(prefix, packageName, c(className, NNAME1), fMethod, msg))
   }
 
-  private[this] def logFormattedError(method: String, msg: String,
-      exOpt: Option[Throwable]): Unit = {
+  private[this] def logFormattedError(method: String, msg: String): Unit = {
     val fMethod = if (method != null) c(method, ERRMSG) else null
     val formattedMsg = formatLayout("Test ", packageName, c(className, NNAME1),
         fMethod, msg)
-    exOpt match {
-      case Some(ex) => richLogger.error(formattedMsg, ex)
-      case None     => richLogger.error(formattedMsg)
-    }
+    richLogger.error(formattedMsg)
   }
 
   private[this] def formatLayout(prefix: String, packageName: String,
