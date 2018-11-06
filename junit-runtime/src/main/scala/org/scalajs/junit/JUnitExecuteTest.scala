@@ -78,37 +78,6 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
     val t0 = System.nanoTime
     def getTimeInSeconds(): Double = (System.nanoTime - t0).toDouble / 1000000000
 
-    var eventAlreadyEmitted: Boolean = false
-
-    def execute(body: => Unit): Boolean = {
-      try {
-        body
-        true
-      } catch {
-        case ex: Throwable =>
-          val timeInSeconds = getTimeInSeconds()
-          if (isAssumptionViolation(ex)) {
-            logThrowable(_.warn, "Test assumption in test ", methodName, ex, timeInSeconds)
-            emitMethodEvent(methodName, Status.Skipped)
-            false
-          } else {
-            logThrowable(_.error, "Test ", methodName, ex, timeInSeconds)
-            if (!ex.isInstanceOf[AssertionError] || runSettings.logAssert) {
-              richLogger.trace(ex)
-            }
-
-            task.failed += 1
-
-            if (!eventAlreadyEmitted) {
-              emitMethodEvent(methodName, Status.Failure)
-              eventAlreadyEmitted = true
-            }
-
-            false
-          }
-      }
-    }
-
     def handleExpected(expectedException: Class[_ <: Throwable])(body: => Unit) = {
       val wantException = expectedException != classOf[org.junit.Test.None]
       val succeeded = try {
@@ -128,49 +97,58 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
         throw new AssertionError("Expected exception: " + expectedException.getName)
     }
 
-    var testClassInstance: AnyRef = null
-
-    val instantiationSucceeded = execute {
-      testClassInstance = bootstrapper.newInstance()
+    var exceptions: List[Throwable] = Nil
+    try {
+      val instance = bootstrapper.newInstance()
+      try {
+        bootstrapper.before(instance)
+        handleExpected(test.annotation.expected) {
+          bootstrapper.invokeTest(instance, test.name)
+        }
+      } catch {
+        case t: Throwable => exceptions ::= t
+      } finally {
+        bootstrapper.after(instance)
+      }
+    } catch {
+      case t: Throwable => exceptions ::= t
     }
 
-    val success = if (!instantiationSucceeded) {
-      false
-    } else {
-      val beforeSucceeded = execute {
-        bootstrapper.before(testClassInstance)
-      }
+    val timeInSeconds = getTimeInSeconds()
 
-      val beforeAndTestSucceeded = if (!beforeSucceeded) {
-        false
-      } else {
-        execute {
-          handleExpected(test.annotation.expected) {
-            bootstrapper.invokeTest(testClassInstance, test.name)
+    exceptions.reverse match {
+      case Nil =>
+
+      case e :: Nil if isAssumptionViolation(e) =>
+        logThrowable(_.warn, "Test assumption in test ", methodName, e, timeInSeconds)
+        emitMethodEvent(methodName, Status.Skipped)
+
+      case e :: es =>
+        def emit(t: Throwable) = {
+          logThrowable(_.error, "Test ", methodName, t, timeInSeconds)
+
+          if (!t.isInstanceOf[AssertionError] || runSettings.logAssert) {
+            richLogger.trace(t)
           }
+          task.failed += 1
         }
-      }
 
-      // Whether before and/or test succeeded or not, run the after methods
-      val afterSucceeded = execute {
-        bootstrapper.after(testClassInstance)
-      }
-
-      beforeAndTestSucceeded && afterSucceeded
+        emit(e)
+        emitMethodEvent(methodName, Status.Failure)
+        es.foreach(emit)
     }
 
     logTestInfo(_.debug, methodName,
         s"finished, took ${getTimeInSeconds()} sec")
 
     // Scala.js-specific: timeouts are warnings only, after the fact
-    val timeInSeconds = getTimeInSeconds()
     val timeout = test.annotation.timeout
     if (timeout != 0 && timeout <= timeInSeconds) {
       richLogger.warn("Timeout: took " + timeInSeconds + " sec, expected " +
           (timeout.toDouble / 1000) + " sec")
     }
 
-    if (success)
+    if (exceptions.isEmpty)
       emitMethodEvent(methodName, Status.Success)
 
     task.total += 1
