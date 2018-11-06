@@ -14,28 +14,9 @@ package com.novocode.junit
 
 import sbt.testing._
 
-import scala.collection.mutable
-
 import Ansi._
 
-final class RichLogger private (loggers: Array[Logger], settings: RunSettings) {
-
-  private[this] var currentTestClassName: List[String] = Nil
-
-  def this(loggers: Array[Logger], settings: RunSettings,
-      testClassName: String) = {
-    this(loggers, settings)
-    currentTestClassName ::= testClassName
-  }
-
-  def pushCurrentTestClassName(s: String): Unit =
-    currentTestClassName ::= s
-
-  def popCurrentTestClassName(): Unit = {
-    if (!currentTestClassName.isEmpty && !currentTestClassName.tail.isEmpty)
-      currentTestClassName = currentTestClassName.tail
-  }
-
+final class RichLogger(loggers: Array[Logger], settings: RunSettings, testClassName: String) {
   def debug(s: String): Unit = {
     for (l <- loggers)
       l.debug(filterAnsiIfNeeded(l, s))
@@ -73,9 +54,8 @@ final class RichLogger private (loggers: Array[Logger], settings: RunSettings) {
         p.getFileName.contains("Throwables.scala")
       }
     }
-    val testClassName = currentTestClassName.head
     val testFileName = {
-      if (settings.color) findTestFileName(trace, testClassName)
+      if (settings.color) findTestFileName(trace)
       else null
     }
     val i = trace.indexWhere {
@@ -144,7 +124,7 @@ final class RichLogger private (loggers: Array[Logger], settings: RunSettings) {
     }
   }
 
-  private def findTestFileName(trace: Array[StackTraceElement], testClassName: String): String = {
+  private def findTestFileName(trace: Array[StackTraceElement]): String = {
     trace.collectFirst {
       case e if testClassName.equals(e.getClassName) => e.getFileName
     }.orNull
