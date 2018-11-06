@@ -135,14 +135,14 @@ final class RichLogger(loggers: Array[Logger], settings: RunSettings, testClassN
     r += '('
 
     if (e.isNativeMethod) {
-      r += c("Native Method", if (highlight) TESTFILE2 else null)
+      r += c("Native Method", if (highlight) YELLOW else null)
     } else if (e.getFileName == null) {
-      r += c("Unknown Source", if (highlight) TESTFILE2 else null)
+      r += c("Unknown Source", if (highlight) YELLOW else null)
     } else {
-      r += c(e.getFileName, if (highlight) TESTFILE1 else null)
+      r += c(e.getFileName, if (highlight) MAGENTA else null)
       if (e.getLineNumber >= 0) {
         r += ':'
-        r += c(String.valueOf(e.getLineNumber), if (highlight) TESTFILE2 else null)
+        r += c(String.valueOf(e.getLineNumber), if (highlight) YELLOW else null)
       }
     }
     r += ')'
