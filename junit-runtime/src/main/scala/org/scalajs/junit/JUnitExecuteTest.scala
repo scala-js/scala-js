@@ -27,8 +27,6 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
     eventHandler: EventHandler) {
 
   private val taskDef = task.taskDef
-  private val verbose = runSettings.verbose
-  private val decodeScalaNames = runSettings.decodeScalaNames
 
   lazy val packageName = fullyQualifiedName.split('.').init.mkString(".")
   lazy val className = fullyQualifiedName.split('.').last
@@ -80,12 +78,9 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
   private[this] def executeTestMethod(bootstrapper: Bootstrapper,
       test: TestMetadata) = {
     val methodName = test.name
-    val decodedMethodName = {
-      if (decodeScalaNames) runSettings.decodeName(methodName)
-      else methodName
-    }
+    val decodedMethodName = runSettings.decodeName(methodName)
 
-    if (verbose)
+    if (runSettings.verbose)
       logFormattedInfo(decodedMethodName, "started")
     else
       logFormattedDebug(decodedMethodName, "started")
