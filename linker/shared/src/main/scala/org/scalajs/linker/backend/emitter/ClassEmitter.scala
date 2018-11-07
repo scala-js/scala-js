@@ -1057,12 +1057,17 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
   def genTopLevelExports(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
-    val exportsWithGlobals = tree.topLevelExports.map { topLevelExport =>
-      topLevelExport.value match {
-        case e: TopLevelJSClassExportDef =>
-          WithGlobals(genTopLevelJSClassExportDef(tree, e))
-        case e: TopLevelModuleExportDef =>
-          WithGlobals(genTopLevelModuleExportDef(tree, e))
+    val exportsWithGlobals = tree.topLevelExports.map { versionedTopLevelExport =>
+      val topLevelExport = versionedTopLevelExport.value
+      implicit val pos = topLevelExport.pos
+
+      topLevelExport match {
+        case TopLevelJSClassExportDef(exportName) =>
+          WithGlobals(genConstValueExportDef(
+              exportName, genNonNativeJSClassConstructor(tree.name.name)))
+        case TopLevelModuleExportDef(exportName) =>
+          WithGlobals(genConstValueExportDef(
+              exportName, genLoadModule(tree.name.name)))
         case e: TopLevelMethodExportDef =>
           genTopLevelMethodExportDef(tree, e)
         case e: TopLevelFieldExportDef =>
@@ -1073,65 +1078,29 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     WithGlobals.list(exportsWithGlobals)
   }
 
-  def genTopLevelJSClassExportDef(cd: LinkedClass,
-      tree: TopLevelJSClassExportDef): js.Tree = {
-    import TreeDSL._
-
-    implicit val pos = tree.pos
-
-    val classVar = genNonNativeJSClassConstructor(cd.name.name)
-    genClassOrModuleExportDef(cd, tree.fullName, classVar)
-  }
-
-  /** Generates an exporter for a module at the top-level.
-   *
-   *  This corresponds to an `@JSExportTopLevel` on a module class. The module
-   *  instance is initialized during ES module instantiation.
-   */
-  def genTopLevelModuleExportDef(cd: LinkedClass,
-      tree: TopLevelModuleExportDef): js.Tree = {
-    import TreeDSL._
-
-    implicit val pos = tree.pos
-
-    val moduleVar = genLoadModule(cd.name.name)
-    genClassOrModuleExportDef(cd, tree.fullName, moduleVar)
-  }
-
-  private def genClassOrModuleExportDef(cd: LinkedClass, exportFullName: String,
-      exportedValue: js.Tree)(implicit pos: Position): js.Tree = {
-    import TreeDSL._
-
-    val (createNamespace, expAccessorVar) =
-      genCreateNamespaceInExports(exportFullName)
-    js.Block(
-      createNamespace,
-      expAccessorVar := exportedValue
-    )
-  }
-
   private def genTopLevelMethodExportDef(cd: LinkedClass,
       tree: TopLevelMethodExportDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
-    val MethodDef(true, StringLiteral(fullName), args, resultType, Some(body)) =
+    val MethodDef(true, StringLiteral(exportName), args, resultType, Some(body)) =
       tree.methodDef
 
     implicit val pos = tree.pos
-
-    val (createNamespace, expAccessorVar) =
-      genCreateNamespaceInExports(fullName)
 
     val methodDefWithGlobals = desugarToFunction(cd.encodedName, args, body,
         resultType)
 
     for (methodDef <- methodDefWithGlobals) yield {
-      js.Block(
-          createNamespace,
-          expAccessorVar := methodDef
-      )
+      genConstValueExportDef(exportName, methodDef)
     }
+  }
+
+  private def genConstValueExportDef(exportName: String,
+      exportedValue: js.Tree)(
+      implicit pos: Position): js.Tree = {
+    js.Assign(genBracketSelect(envField("e"), js.StringLiteral(exportName)),
+        exportedValue)
   }
 
   private def genTopLevelFieldExportDef(cd: LinkedClass,
@@ -1139,12 +1108,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     import TreeDSL._
 
-    val TopLevelFieldExportDef(fullName, field) = tree
+    val TopLevelFieldExportDef(exportName, field) = tree
 
     implicit val pos = tree.pos
-
-    val (createNamespace, namespace, fieldName) =
-      genCreateNamespaceInExportsAndGetNamespace(fullName)
 
     // defineProperty method
     val defProp =
@@ -1164,10 +1130,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         Nil
     )
 
-    val callDefineProp =
-      js.Apply(defProp, namespace :: fieldName :: descriptor :: Nil)
-
-    js.Block(createNamespace, callDefineProp)
+    js.Apply(defProp,
+        envField("e") :: js.StringLiteral(exportName) :: descriptor :: Nil)
   }
 
   // Helpers
@@ -1203,47 +1167,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
           js.VarDef(globalVarIdent, Some(value))
       }
     }
-  }
-
-  /** Gen JS code for assigning an rhs to a qualified name in the exports scope.
-   *  For example, given the qualified name `"foo.bar.Something"`, generates:
-   *
-   *  {{{
-   *  $e["foo"] = $e["foo"] || {};
-   *  $e["foo"]["bar"] = $e["foo"]["bar"] || {};
-   *  }}}
-   *
-   *  Returns `(statements, $e["foo"]["bar"]["Something"])`
-   */
-  private def genCreateNamespaceInExports(qualName: String)(
-      implicit pos: Position): (js.Tree, js.Tree) = {
-    val (createNamespace, namespace, lastPart) =
-      genCreateNamespaceInExportsAndGetNamespace(qualName)
-    (createNamespace, genBracketSelect(namespace, lastPart))
-  }
-
-  /** Gen JS code for assigning an rhs to a qualified name in the exports scope.
-   *  For example, given the qualified name `"foo.bar.Something"`, generates:
-   *
-   *  {{{
-   *  $e["foo"] = $e["foo"] || {};
-   *  $e["foo"]["bar"] = $e["foo"]["bar"] || {};
-   *  }}}
-   *
-   *  Returns `(statements, $e["foo"]["bar"], "Something")`
-   */
-  private def genCreateNamespaceInExportsAndGetNamespace(qualName: String)(
-      implicit pos: Position): (js.Tree, js.Tree, js.StringLiteral) = {
-    val parts = qualName.split("\\.")
-    val statements = List.newBuilder[js.Tree]
-    var namespace: js.Tree = envField("e")
-    for (i <- 0 until parts.length-1) {
-      namespace = genBracketSelect(namespace, js.StringLiteral(parts(i)))
-      statements +=
-        js.Assign(namespace, js.BinaryOp(JSBinaryOp.||,
-            namespace, js.ObjectConstr(Nil)))
-    }
-    (js.Block(statements.result()), namespace, js.StringLiteral(parts.last))
   }
 
   /** Gen JS code for an [[ModuleInitializer]]. */

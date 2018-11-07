@@ -999,7 +999,7 @@ object Trees {
     }
   }
 
-  case class TopLevelJSClassExportDef(fullName: String)(
+  case class TopLevelJSClassExportDef(exportName: String)(
       implicit val pos: Position) extends TopLevelExportDef
 
   /** Export for a top-level object.
@@ -1007,13 +1007,13 @@ object Trees {
    *  This exports the singleton instance of the containing module class.
    *  The instance is initialized during ES module instantiation.
    */
-  case class TopLevelModuleExportDef(fullName: String)(
+  case class TopLevelModuleExportDef(exportName: String)(
       implicit val pos: Position) extends TopLevelExportDef
 
   case class TopLevelMethodExportDef(methodDef: MethodDef)(
       implicit val pos: Position) extends TopLevelExportDef
 
-  case class TopLevelFieldExportDef(fullName: String, field: Ident)(
+  case class TopLevelFieldExportDef(exportName: String, field: Ident)(
       implicit val pos: Position) extends TopLevelExportDef
 
   // Miscellaneous
