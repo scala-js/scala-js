@@ -1038,6 +1038,9 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:23: error: The top-level export name must be a valid JavaScript identifier
       |    @JSExportTopLevel("not-a-valid-JS-identifier-6.foo")
       |     ^
+      |newSource1.scala:26: warning: Using a namespaced export (with a '.') in @JSExportTopLevel is deprecated.
+      |    @JSExportTopLevel("foo.not-a-valid-JS-identifier-7") // valid
+      |     ^
       |newSource1.scala:29: error: The top-level export name must be a valid JavaScript identifier
       |    @JSExportTopLevel(".tricky")
       |     ^
@@ -1799,5 +1802,40 @@ class JSExportTest extends DirectTest with TestHelpers {
       var c: Int = 1
     }
     """.succeeds
+  }
+
+  @Test
+  def warnJSExportTopLevelNamespaced: Unit = {
+    """
+    @JSExportTopLevel("namespaced.export1")
+    object A
+    @JSExportTopLevel("namespaced.export2")
+    class B
+    object C {
+      @JSExportTopLevel("namespaced.export3")
+      val a: Int = 1
+      @JSExportTopLevel("namespaced.export4")
+      var b: Int = 1
+      @JSExportTopLevel("namespaced.export5")
+      def c(): Int = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:3: warning: Using a namespaced export (with a '.') in @JSExportTopLevel is deprecated.
+      |    @JSExportTopLevel("namespaced.export1")
+      |     ^
+      |newSource1.scala:5: warning: Using a namespaced export (with a '.') in @JSExportTopLevel is deprecated.
+      |    @JSExportTopLevel("namespaced.export2")
+      |     ^
+      |newSource1.scala:8: warning: Using a namespaced export (with a '.') in @JSExportTopLevel is deprecated.
+      |      @JSExportTopLevel("namespaced.export3")
+      |       ^
+      |newSource1.scala:10: warning: Using a namespaced export (with a '.') in @JSExportTopLevel is deprecated.
+      |      @JSExportTopLevel("namespaced.export4")
+      |       ^
+      |newSource1.scala:12: warning: Using a namespaced export (with a '.') in @JSExportTopLevel is deprecated.
+      |      @JSExportTopLevel("namespaced.export5")
+      |       ^
+    """
   }
 }

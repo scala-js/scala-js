@@ -327,6 +327,13 @@ trait PrepJSExports { this: PrepJSInterop =>
                 "identifier")
           }
 
+          // Warn for namespaced top-level exports
+          if (name.contains('.')) {
+            reporter.warning(annot.pos,
+                "Using a namespaced export (with a '.') in @JSExportTopLevel " +
+                "is deprecated.")
+          }
+
         case ExportDestination.Static =>
           def companionIsNonNativeJSClass: Boolean = {
             val companion = symOwner.companionClass
