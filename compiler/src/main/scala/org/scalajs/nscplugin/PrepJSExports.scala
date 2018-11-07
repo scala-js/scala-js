@@ -321,7 +321,7 @@ trait PrepJSExports { this: PrepJSInterop =>
           }
 
           // The top-level name must be a valid JS identifier
-          if (!isValidIdentifier(name.split('.').head)) {
+          if (!isValidIdentifier(name)) {
             reporter.error(annot.pos,
                 "The top-level export name must be a valid JavaScript " +
                 "identifier")

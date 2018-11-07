@@ -52,9 +52,6 @@ class ExportsTest {
     }
   }
 
-  /** This package in the JS (export) namespace */
-  val jsPackage = exportsNamespace.org.scalajs.testsuite.jsinterop
-
   // @JSExport
 
   @Test def exports_for_methods_with_implicit_name(): Unit = {
@@ -705,15 +702,8 @@ class ExportsTest {
     assertSame(obj1, SJSDefinedExportedObject)
   }
 
-  @Test def toplevel_exports_for_objects_with_qualified_name(): Unit = {
-    val obj = exportsNamespace.qualified.testobject.TopLevelExportedObject
-    assertJSNotUndefined(obj)
-    assertEquals("object", js.typeOf(obj))
-    assertEquals("witness", obj.witness)
-  }
-
   @Test def toplevel_exports_for_nested_objects(): Unit = {
-    val obj = exportsNamespace.qualified.nested.ExportedObject
+    val obj = exportsNamespace.NestedExportedObject
     assertJSNotUndefined(obj)
     assertEquals("object", js.typeOf(obj))
     assertSame(obj, ExportHolder.ExportedObject)
@@ -752,46 +742,20 @@ class ExportsTest {
     assertSame(constr, js.constructorOf[SJSDefinedTopLevelExportedClass])
   }
 
-  @Test def toplevel_exports_for_classes_with_qualified_name(): Unit = {
-    val constr = exportsNamespace.qualified.testclass.TopLevelExportedClass
-    assertJSNotUndefined(constr)
-    assertEquals("function", js.typeOf(constr))
-    val obj = js.Dynamic.newInstance(constr)(5)
-    assertEquals(5, obj.x)
-  }
-
   @Test def toplevel_exports_for_nested_classes(): Unit = {
-    val constr = exportsNamespace.qualified.nested.ExportedClass
+    val constr = exportsNamespace.NestedExportedClass
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)()
     assertTrue((obj: Any).isInstanceOf[ExportHolder.ExportedClass])
   }
 
-  @Test def toplevel_exports_for_classes_with_qualified_name_SJSDefinedExportedClass(): Unit = {
-    val constr = exportsNamespace.qualified.testclass.SJSDefinedTopLevelExportedClass
-    assertJSNotUndefined(constr)
-    assertEquals("function", js.typeOf(constr))
-    val obj = js.Dynamic.newInstance(constr)(5)
-    assertTrue((obj: Any).isInstanceOf[SJSDefinedTopLevelExportedClass])
-    assertEquals(5, obj.x)
-  }
-
   @Test def toplevel_exports_for_nested_sjs_defined_classes(): Unit = {
-    val constr = exportsNamespace.qualified.nested.SJSDefinedExportedClass
+    val constr = exportsNamespace.NestedSJSDefinedExportedClass
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)()
     assertTrue((obj: Any).isInstanceOf[ExportHolder.SJSDefinedExportedClass])
-  }
-
-  @Test def toplevel_exports_under_nested_invalid_js_identifier(): Unit = {
-    val constr = exportsNamespace.qualified.selectDynamic("not-a-JS-identifier")
-    assertJSNotUndefined(constr)
-    assertEquals("function", js.typeOf(constr))
-    val obj = js.Dynamic.newInstance(constr)()
-    assertTrue(
-        (obj: Any).isInstanceOf[ExportHolder.ClassExportedUnderNestedInvalidJSIdentifier])
   }
 
   @Test def exports_for_classes_with_constant_folded_name(): Unit = {
@@ -973,11 +937,6 @@ class ExportsTest {
     val foo = (new Foo).asInstanceOf[js.Dynamic]
 
     assertEquals(1, foo.b)
-  }
-
-  @Test def exporting_under_org_namespace_issue_364(): Unit = {
-    val obj = exportsNamespace.org.ExportedUnderOrgObject
-    assertSame(ExportedUnderOrgObject.asInstanceOf[js.Any], obj)
   }
 
   @Test def null_for_arguments_of_primitive_value_type_issue_1719(): Unit = {
@@ -1229,48 +1188,43 @@ class ExportsTest {
   // @JSExportTopLevel
 
   @Test def basic_top_level_export(): Unit = {
-    assertEquals(1, jsPackage.toplevel.basic())
+    assertEquals(1, exportsNamespace.TopLevelExport_basic())
   }
 
   @Test def overloaded_top_level_export(): Unit = {
-    assertEquals("Hello World", jsPackage.toplevel.overload("World"))
-    assertEquals(2, jsPackage.toplevel.overload(2))
-    assertEquals(9, jsPackage.toplevel.overload(2, 7))
-    assertEquals(10, jsPackage.toplevel.overload(1, 2, 3, 4))
-  }
-
-  @Test def method_top_level_export_under_invalid_js_identifier(): Unit = {
-    assertEquals("not an identifier",
-        jsPackage.toplevel.applyDynamic("not-a-JS-identifier")())
+    assertEquals("Hello World", exportsNamespace.TopLevelExport_overload("World"))
+    assertEquals(2, exportsNamespace.TopLevelExport_overload(2))
+    assertEquals(9, exportsNamespace.TopLevelExport_overload(2, 7))
+    assertEquals(10, exportsNamespace.TopLevelExport_overload(1, 2, 3, 4))
   }
 
   @Test def top_level_export_uses_unique_object(): Unit = {
-    jsPackage.toplevel.set(3)
+    exportsNamespace.TopLevelExport_set(3)
     assertEquals(3, TopLevelExports.myVar)
-    jsPackage.toplevel.set(7)
+    exportsNamespace.TopLevelExport_set(7)
     assertEquals(7, TopLevelExports.myVar)
   }
 
   @Test def top_level_export_from_nested_object(): Unit = {
-    jsPackage.toplevel.setNested(28)
+    exportsNamespace.TopLevelExport_setNested(28)
     assertEquals(28, TopLevelExports.Nested.myVar)
   }
 
   @Test def top_level_export_is_always_reachable(): Unit = {
-    assertEquals("Hello World", jsPackage.toplevel.reachability())
+    assertEquals("Hello World", exportsNamespace.TopLevelExport_reachability())
   }
 
   // @JSExportTopLevel fields
 
   @Test def top_level_export_basic_field(): Unit = {
     // Initialization
-    assertEquals(5, jsPackage.toplevel.basicVal)
-    assertEquals("hello", jsPackage.toplevel.basicVar)
+    assertEquals(5, exportsNamespace.TopLevelExport_basicVal)
+    assertEquals("hello", exportsNamespace.TopLevelExport_basicVar)
 
     // Scala modifies var
     TopLevelFieldExports.basicVar = "modified"
     assertEquals("modified", TopLevelFieldExports.basicVar)
-    assertEquals("modified", jsPackage.toplevel.basicVar)
+    assertEquals("modified", exportsNamespace.TopLevelExport_basicVar)
 
     // Reset var
     TopLevelFieldExports.basicVar = "hello"
@@ -1278,15 +1232,15 @@ class ExportsTest {
 
   @Test def top_level_export_field_twice(): Unit = {
     // Initialization
-    assertEquals(5, jsPackage.toplevel.valExportedTwice1)
-    assertEquals("hello", jsPackage.toplevel.varExportedTwice1)
-    assertEquals("hello", jsPackage.toplevel.varExportedTwice2)
+    assertEquals(5, exportsNamespace.TopLevelExport_valExportedTwice1)
+    assertEquals("hello", exportsNamespace.TopLevelExport_varExportedTwice1)
+    assertEquals("hello", exportsNamespace.TopLevelExport_varExportedTwice2)
 
     // Scala modifies var
     TopLevelFieldExports.varExportedTwice = "modified"
     assertEquals("modified", TopLevelFieldExports.varExportedTwice)
-    assertEquals("modified", jsPackage.toplevel.varExportedTwice1)
-    assertEquals("modified", jsPackage.toplevel.varExportedTwice2)
+    assertEquals("modified", exportsNamespace.TopLevelExport_varExportedTwice1)
+    assertEquals("modified", exportsNamespace.TopLevelExport_varExportedTwice2)
 
     // Reset var
     TopLevelFieldExports.varExportedTwice = "hello"
@@ -1294,30 +1248,30 @@ class ExportsTest {
 
   @Test def top_level_export_write_val_var_causes_typeerror(): Unit = {
     assertThrows(classOf[js.JavaScriptException], {
-      jsPackage.toplevel.basicVal = 54
+      exportsNamespace.TopLevelExport_basicVal = 54
     })
 
     assertThrows(classOf[js.JavaScriptException], {
-      jsPackage.toplevel.basicVar = 54
+      exportsNamespace.TopLevelExport_basicVar = 54
     })
   }
 
   @Test def top_level_export_uninitialized_fields(): Unit = {
     assertEquals(0, TopLevelFieldExports.uninitializedVarInt)
-    assertEquals(null, jsPackage.toplevel.uninitializedVarInt)
+    assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarInt)
 
     assertEquals(0L, TopLevelFieldExports.uninitializedVarLong)
-    assertEquals(null, jsPackage.toplevel.uninitializedVarLong)
+    assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarLong)
 
     assertEquals(null, TopLevelFieldExports.uninitializedVarString)
-    assertEquals(null, jsPackage.toplevel.uninitializedVarString)
+    assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarString)
 
     assertEquals('\u0000', TopLevelFieldExports.uninitializedVarChar)
-    assertEquals(null, jsPackage.toplevel.uninitializedVarChar)
+    assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarChar)
   }
 
   @Test def top_level_export_field_is_always_reachable_and_initialized(): Unit = {
-    assertEquals("Hello World", jsPackage.toplevel.fieldreachability)
+    assertEquals("Hello World", exportsNamespace.TopLevelExport_fieldreachability)
   }
 
 }
@@ -1329,7 +1283,6 @@ object ExportNameHolder {
 }
 
 @JSExportTopLevel("TopLevelExportedObject")
-@JSExportTopLevel("qualified.testobject.TopLevelExportedObject")
 @JSExportTopLevel(ExportNameHolder.objectName)
 object TopLevelExportedObject {
   @JSExport
@@ -1337,7 +1290,6 @@ object TopLevelExportedObject {
 }
 
 @JSExportTopLevel("SJSDefinedTopLevelExportedObject")
-@JSExportTopLevel("qualified.testobject.SJSDefinedTopLevelExportedObject")
 object SJSDefinedExportedObject extends js.Object {
   val witness: String = "witness"
 }
@@ -1349,7 +1301,6 @@ protected object ProtectedExportedObject {
 }
 
 @JSExportTopLevel("TopLevelExportedClass")
-@JSExportTopLevel("qualified.testclass.TopLevelExportedClass")
 @JSExportTopLevel(ExportNameHolder.className)
 class TopLevelExportedClass(_x: Int) {
   @JSExport
@@ -1357,7 +1308,6 @@ class TopLevelExportedClass(_x: Int) {
 }
 
 @JSExportTopLevel("SJSDefinedTopLevelExportedClass")
-@JSExportTopLevel("qualified.testclass.SJSDefinedTopLevelExportedClass")
 class SJSDefinedTopLevelExportedClass(val x: Int) extends js.Object
 
 @JSExportTopLevel("ProtectedExportedClass")
@@ -1386,47 +1336,38 @@ class ExportedDefaultArgClass(x: Int, y: Int, z: Int) {
   def result: Int = x + y + z
 }
 
-@JSExportTopLevel("org.ExportedUnderOrgObject")
-object ExportedUnderOrgObject
-
 class SomeValueClass(val i: Int) extends AnyVal
 
 object ExportHolder {
-  @JSExportTopLevel("qualified.nested.ExportedClass")
+  @JSExportTopLevel("NestedExportedClass")
   class ExportedClass
 
-  @JSExportTopLevel("qualified.nested.ExportedObject")
+  @JSExportTopLevel("NestedExportedObject")
   object ExportedObject
 
-  @JSExportTopLevel("qualified.nested.SJSDefinedExportedClass")
+  @JSExportTopLevel("NestedSJSDefinedExportedClass")
   class SJSDefinedExportedClass extends js.Object
-
-  @JSExportTopLevel("qualified.not-a-JS-identifier")
-  class ClassExportedUnderNestedInvalidJSIdentifier
 }
 
 object TopLevelExports {
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.basic")
+  @JSExportTopLevel("TopLevelExport_basic")
   def basic(): Int = 1
 
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.overload")
+  @JSExportTopLevel("TopLevelExport_overload")
   def overload(x: String): String = "Hello " + x
 
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.overload")
+  @JSExportTopLevel("TopLevelExport_overload")
   def overload(x: Int, y: Int*): Int = x + y.sum
-
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.not-a-JS-identifier")
-  def methodExportedUnderNestedInvalidJSIdentifier(): String = "not an identifier"
 
   var myVar: Int = _
 
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.set")
+  @JSExportTopLevel("TopLevelExport_set")
   def setMyVar(x: Int): Unit = myVar = x
 
   object Nested {
     var myVar: Int = _
 
-    @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.setNested")
+    @JSExportTopLevel("TopLevelExport_setNested")
     def setMyVar(x: Int): Unit = myVar = x
   }
 }
@@ -1437,35 +1378,35 @@ object TopLevelExports {
 object TopLevelExportsReachability {
   private val name = "World"
 
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.reachability")
+  @JSExportTopLevel("TopLevelExport_reachability")
   def basic(): String = "Hello " + name
 }
 
 object TopLevelFieldExports {
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.basicVal")
+  @JSExportTopLevel("TopLevelExport_basicVal")
   val basicVal: Int = 5
 
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.basicVar")
+  @JSExportTopLevel("TopLevelExport_basicVar")
   var basicVar: String = "hello"
 
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.valExportedTwice1")
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.valExportedTwice2")
+  @JSExportTopLevel("TopLevelExport_valExportedTwice1")
+  @JSExportTopLevel("TopLevelExport_valExportedTwice2")
   val valExportedTwice: Int = 5
 
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.varExportedTwice1")
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.varExportedTwice2")
+  @JSExportTopLevel("TopLevelExport_varExportedTwice1")
+  @JSExportTopLevel("TopLevelExport_varExportedTwice2")
   var varExportedTwice: String = "hello"
 
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.uninitializedVarInt")
+  @JSExportTopLevel("TopLevelExport_uninitializedVarInt")
   var uninitializedVarInt: Int = _
 
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.uninitializedVarLong")
+  @JSExportTopLevel("TopLevelExport_uninitializedVarLong")
   var uninitializedVarLong: Long = _
 
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.uninitializedVarString")
+  @JSExportTopLevel("TopLevelExport_uninitializedVarString")
   var uninitializedVarString: String = _
 
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.uninitializedVarChar")
+  @JSExportTopLevel("TopLevelExport_uninitializedVarChar")
   var uninitializedVarChar: Char = _
 }
 
@@ -1476,6 +1417,6 @@ object TopLevelFieldExports {
 object TopLevelFieldExportsReachability {
   private val name = "World"
 
-  @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.fieldreachability")
+  @JSExportTopLevel("TopLevelExport_fieldreachability")
   val greeting = "Hello " + name
 }
