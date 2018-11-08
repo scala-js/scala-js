@@ -536,21 +536,21 @@ object Serializers {
       import buffer._
       writePosition(topLevelExportDef.pos)
       topLevelExportDef match {
-        case TopLevelJSClassExportDef(fullName) =>
+        case TopLevelJSClassExportDef(exportName) =>
           writeByte(TagTopLevelJSClassExportDef)
-          writeString(fullName)
+          writeString(exportName)
 
-        case TopLevelModuleExportDef(fullName) =>
+        case TopLevelModuleExportDef(exportName) =>
           writeByte(TagTopLevelModuleExportDef)
-          writeString(fullName)
+          writeString(exportName)
 
         case TopLevelMethodExportDef(methodDef) =>
           writeByte(TagTopLevelMethodExportDef)
           writeMemberDef(methodDef)
 
-        case TopLevelFieldExportDef(fullName, field) =>
+        case TopLevelFieldExportDef(exportName, field) =>
           writeByte(TagTopLevelFieldExportDef)
-          writeString(fullName); writeIdent(field)
+          writeString(exportName); writeIdent(field)
       }
     }
 

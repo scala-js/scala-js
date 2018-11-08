@@ -231,7 +231,7 @@ private final class IRChecker(unit: LinkingUnit,
           case TopLevelMethodExportDef(methodDef) =>
             checkExportedMethodDef(methodDef, classDef, isTopLevel = true)
 
-          case TopLevelFieldExportDef(fullName, field) =>
+          case TopLevelFieldExportDef(_, field) =>
             lookupClass(classDef.name.name).lookupStaticField(field.name).fold {
               reportError(s"Cannot export non-existent static field '$field'")
             } { checkedField =>
