@@ -73,12 +73,11 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
   private[this] def executeTestMethod(bootstrapper: Bootstrapper,
       test: TestMetadata) = {
     val methodName = test.name
-    val decodedMethodName = runSettings.decodeName(methodName)
 
     if (runSettings.verbose)
-      logTestInfo(_.info, decodedMethodName, "started")
+      logTestInfo(_.info, methodName, "started")
     else
-      logTestInfo(_.debug, decodedMethodName, "started")
+      logTestInfo(_.debug, methodName, "started")
 
     val t0 = System.nanoTime
     def getTimeInSeconds(): Double = (System.nanoTime - t0).toDouble / 1000000000
@@ -93,11 +92,11 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
         case ex: Throwable =>
           val timeInSeconds = getTimeInSeconds()
           if (isAssumptionViolation(ex)) {
-            logThrowable(_.warn, "Test assumption in test ", decodedMethodName, ex, timeInSeconds)
+            logThrowable(_.warn, "Test assumption in test ", methodName, ex, timeInSeconds)
             emitMethodEvent(methodName, Status.Skipped)
             false
           } else {
-            logThrowable(_.error, "Test ", decodedMethodName, ex, timeInSeconds)
+            logThrowable(_.error, "Test ", methodName, ex, timeInSeconds)
             if (!ex.isInstanceOf[AssertionError] || runSettings.logAssert) {
               richLogger.trace(ex)
             }
@@ -164,7 +163,7 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
       beforeAndTestSucceeded && afterSucceeded
     }
 
-    logTestInfo(_.debug, decodedMethodName,
+    logTestInfo(_.debug, methodName,
         s"finished, took ${getTimeInSeconds()} sec")
 
     // Scala.js-specific: timeouts are warnings only, after the fact
@@ -217,8 +216,10 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
     level(richLogger)(msg)
   }
 
-  private def formatMethod(method: String, color: String): String =
-    s"$formattedTestClass.${c(method, color)}"
+  private def formatMethod(method: String, color: String): String = {
+    val fmtMethod = c(runSettings.decodeName(method), color)
+    s"$formattedTestClass.$fmtMethod"
+  }
 
   private lazy val formattedTestClass = formatClass(taskDef.fullyQualifiedName, YELLOW)
 
