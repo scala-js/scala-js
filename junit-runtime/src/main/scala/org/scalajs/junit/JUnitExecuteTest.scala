@@ -26,10 +26,6 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
     bootstrapper: Bootstrapper, richLogger: RichLogger,
     eventHandler: EventHandler) {
 
-  private val taskDef = task.taskDef
-
-  def fullyQualifiedName: String = taskDef.fullyQualifiedName()
-
   def executeTests(): Unit = {
     val assumptionViolated = try {
       bootstrapper.beforeClass()
@@ -182,13 +178,13 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
 
 
   private def emitClassEvent(status: Status): Unit = {
-    val selector = new TestSelector(fullyQualifiedName)
-    eventHandler.handle(new JUnitEvent(taskDef, status, selector))
+    val selector = new TestSelector(task.taskDef.fullyQualifiedName)
+    eventHandler.handle(new JUnitEvent(task.taskDef, status, selector))
   }
 
   private def emitMethodEvent(methodName: String, status: Status): Unit = {
-    val selector = new NestedTestSelector(fullyQualifiedName, methodName)
-    eventHandler.handle(new JUnitEvent(taskDef, status, selector))
+    val selector = new NestedTestSelector(task.taskDef.fullyQualifiedName, methodName)
+    eventHandler.handle(new JUnitEvent(task.taskDef, status, selector))
   }
 
   private def logTestInfo(level: RichLogger => (String => Unit), method: String, msg: String): Unit =
@@ -221,7 +217,8 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
     s"$formattedTestClass.$fmtMethod"
   }
 
-  private lazy val formattedTestClass = formatClass(taskDef.fullyQualifiedName, YELLOW)
+  private lazy val formattedTestClass =
+    formatClass(task.taskDef.fullyQualifiedName, YELLOW)
 
   private def formatClass(fullName: String, color: String): String = {
     val (prefix, name) = fullName.splitAt(fullName.lastIndexOf(".") + 1)
