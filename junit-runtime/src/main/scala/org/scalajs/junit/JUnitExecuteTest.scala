@@ -41,7 +41,8 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
 
     if (assumptionViolated) {
       richLogger.info(s"Test $formattedTestClass ignored")
-      ignoreTestClass()
+      task.ignored += 1
+      emitClassEvent(Status.Skipped)
     } else {
       def runWithOrWithoutQuietMode[T](block: => T): T = {
         if (runSettings.quiet) {
@@ -57,7 +58,8 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
         for (method <- bootstrapper.tests) {
           if (method.ignored) {
             logTestInfo(_.info, method.name, "ignored")
-            ignoreTest(method.name)
+            task.ignored += 1
+            emitMethodEvent(method.name, Status.Skipped)
           } else {
             executeTestMethod(bootstrapper, method)
           }
@@ -83,16 +85,6 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
 
     var eventAlreadyEmitted: Boolean = false
 
-    def emitTestFailed(): Unit = {
-      if (eventAlreadyEmitted) {
-        // Only add to the failed test count, don't emit an event
-        task.failed += 1
-      } else {
-        testFailed(methodName)
-        eventAlreadyEmitted = true
-      }
-    }
-
     def execute(body: => Unit): Boolean = {
       try {
         body
@@ -102,14 +94,21 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
           val timeInSeconds = getTimeInSeconds()
           if (isAssumptionViolation(ex)) {
             logThrowable(_.warn, "Test assumption in test ", decodedMethodName, ex, timeInSeconds)
-            testSkipped()
+            emitMethodEvent(methodName, Status.Skipped)
             false
           } else {
             logThrowable(_.error, "Test ", decodedMethodName, ex, timeInSeconds)
             if (!ex.isInstanceOf[AssertionError] || runSettings.logAssert) {
               richLogger.trace(ex)
             }
-            emitTestFailed()
+
+            task.failed += 1
+
+            if (!eventAlreadyEmitted) {
+              emitMethodEvent(methodName, Status.Failure)
+              eventAlreadyEmitted = true
+            }
+
             false
           }
       }
@@ -177,37 +176,20 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
     }
 
     if (success)
-      testPassed(methodName)
+      emitMethodEvent(methodName, Status.Success)
 
     task.total += 1
   }
 
-  private def ignoreTest(methodName: String) = {
-    task.ignored += 1
-    val selector = new NestedTestSelector(fullyQualifiedName, methodName)
-    eventHandler.handle(new JUnitEvent(taskDef, Status.Skipped, selector))
-  }
 
-  private def ignoreTestClass() = {
-    task.ignored += 1
+  private def emitClassEvent(status: Status): Unit = {
     val selector = new TestSelector(fullyQualifiedName)
-    eventHandler.handle(new JUnitEvent(taskDef, Status.Skipped, selector))
+    eventHandler.handle(new JUnitEvent(taskDef, status, selector))
   }
 
-  private def testSkipped(): Unit = {
-    val selector = new TestSelector(fullyQualifiedName)
-    eventHandler.handle(new JUnitEvent(taskDef, Status.Skipped, selector))
-  }
-
-  private def testFailed(methodName: String): Unit = {
-    task.failed += 1
+  private def emitMethodEvent(methodName: String, status: Status): Unit = {
     val selector = new NestedTestSelector(fullyQualifiedName, methodName)
-    eventHandler.handle(new JUnitEvent(taskDef, Status.Failure, selector))
-  }
-
-  private def testPassed(methodName: String): Unit = {
-    val selector = new NestedTestSelector(fullyQualifiedName, methodName)
-    eventHandler.handle(new JUnitEvent(taskDef, Status.Success, selector))
+    eventHandler.handle(new JUnitEvent(taskDef, status, selector))
   }
 
   private def logTestInfo(level: RichLogger => (String => Unit), method: String, msg: String): Unit =
