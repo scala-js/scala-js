@@ -38,9 +38,7 @@ final class JUnitFramework extends Framework {
     new JUnitRunner(args, remoteArgs, parseRunSettings(args))
   }
 
-  def arrayString(arr: Array[String]): String = arr.mkString("Array(", ", ", ")")
-
-  def parseRunSettings(args: Array[String]): RunSettings = {
+  private def parseRunSettings(args: Array[String]): RunSettings = {
     var quiet = false
     var verbose = false
     var noColor = false
