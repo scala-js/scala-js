@@ -119,16 +119,21 @@ private final class ComRun(run: JSRun, handleMessage: String => Unit,
 
   def close(): Unit = synchronized {
     val oldState = state
+    if (oldState == Closing) () // Do nothing if old state is already closing
+    else {
+      // Close the underlying run
+      run.close()
 
-    // Signal receiver thread that it is OK if socket read fails.
-    state = Closing
+      // Signal receiver thread that it is OK if socket read fails.
+      state = Closing
 
-    oldState match {
-      case c: Connected =>
-        // Interrupts the receiver thread and signals the VM to terminate.
-        closeAll(c)
+      oldState match {
+        case c: Connected =>
+          // Interrupts the receiver thread and signals the VM to terminate.
+          closeAll(c)
 
-      case Closing | _:AwaitingConnection =>
+        case Closing | _: AwaitingConnection =>
+      }
     }
   }
 
