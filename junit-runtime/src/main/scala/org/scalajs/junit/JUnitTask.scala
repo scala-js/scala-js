@@ -43,14 +43,15 @@ final class JUnitTask(val taskDef: TaskDef, runSettings: RunSettings)
         richLogger.debug(msg)
     }
 
-    infoOrDebug(c("Test run started", INFO))
+    infoOrDebug(c("Test run started", BLUE))
 
     val bootstrapperName = fullClassName + "$scalajs$junit$bootstrapper"
 
     val startTime = System.nanoTime
 
     def errorWhileLoadingClass(t: Throwable): Unit = {
-      richLogger.error("Error while loading test class: " + fullClassName, t)
+      richLogger.error("Error while loading test class: " + fullClassName)
+      richLogger.trace(t)
       val selector = new TestSelector(fullClassName)
       val optThrowable = new OptionalThrowable(t)
       val ev = new JUnitEvent(taskDef, Status.Failure, selector, optThrowable)
@@ -78,11 +79,11 @@ final class JUnitTask(val taskDef: TaskDef, runSettings: RunSettings)
     val time = System.nanoTime - startTime
 
     val msg = {
-      c("Test run finished: ", INFO) +
-      c(s"$failed failed", if (failed == 0) INFO else ERRCOUNT) +
-      c(s", ", INFO) +
-      c(s"$ignored ignored", if (ignored == 0) INFO else IGNCOUNT) +
-      c(s", $total total, ${time.toDouble / 1000000000}s", INFO)
+      c("Test run finished: ", BLUE) +
+      c(s"$failed failed", if (failed == 0) BLUE else RED) +
+      c(s", ", BLUE) +
+      c(s"$ignored ignored", if (ignored == 0) BLUE else YELLOW) +
+      c(s", $total total, ${time.toDouble / 1000000000}s", BLUE)
     }
 
     infoOrDebug(msg)

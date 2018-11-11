@@ -14,28 +14,9 @@ package com.novocode.junit
 
 import sbt.testing._
 
-import scala.collection.mutable
-
 import Ansi._
 
-final class RichLogger private (loggers: Array[Logger], settings: RunSettings) {
-
-  private[this] var currentTestClassName: List[String] = Nil
-
-  def this(loggers: Array[Logger], settings: RunSettings,
-      testClassName: String) = {
-    this(loggers, settings)
-    currentTestClassName ::= testClassName
-  }
-
-  def pushCurrentTestClassName(s: String): Unit =
-    currentTestClassName ::= s
-
-  def popCurrentTestClassName(): Unit = {
-    if (!currentTestClassName.isEmpty && !currentTestClassName.tail.isEmpty)
-      currentTestClassName = currentTestClassName.tail
-  }
-
+final class RichLogger(loggers: Array[Logger], settings: RunSettings, testClassName: String) {
   def debug(s: String): Unit = {
     for (l <- loggers)
       l.debug(filterAnsiIfNeeded(l, s))
@@ -44,12 +25,6 @@ final class RichLogger private (loggers: Array[Logger], settings: RunSettings) {
   def error(s: String): Unit = {
     for (l <- loggers)
       l.error(filterAnsiIfNeeded(l, s))
-  }
-
-  def error(s: String, t: Throwable): Unit = {
-    error(s)
-    if (t != null && (settings.logAssert || !t.isInstanceOf[AssertionError]))
-      logStackTrace(t)
   }
 
   def info(s: String): Unit = {
@@ -66,16 +41,15 @@ final class RichLogger private (loggers: Array[Logger], settings: RunSettings) {
     if (l.ansiCodesSupported() && settings.color) s
     else filterAnsi(s)
 
-  private def logStackTrace(t: Throwable): Unit = {
+  def trace(t: Throwable): Unit = {
     val trace = t.getStackTrace.dropWhile { p =>
       p.getFileName != null && {
         p.getFileName.contains("StackTrace.scala") ||
         p.getFileName.contains("Throwables.scala")
       }
     }
-    val testClassName = currentTestClassName.head
     val testFileName = {
-      if (settings.color) findTestFileName(trace, testClassName)
+      if (settings.color) findTestFileName(trace)
       else null
     }
     val i = trace.indexWhere {
@@ -144,7 +118,7 @@ final class RichLogger private (loggers: Array[Logger], settings: RunSettings) {
     }
   }
 
-  private def findTestFileName(trace: Array[StackTraceElement], testClassName: String): String = {
+  private def findTestFileName(trace: Array[StackTraceElement]): String = {
     trace.collectFirst {
       case e if testClassName.equals(e.getClassName) => e.getFileName
     }.orNull
@@ -161,14 +135,14 @@ final class RichLogger private (loggers: Array[Logger], settings: RunSettings) {
     r += '('
 
     if (e.isNativeMethod) {
-      r += c("Native Method", if (highlight) TESTFILE2 else null)
+      r += c("Native Method", if (highlight) YELLOW else null)
     } else if (e.getFileName == null) {
-      r += c("Unknown Source", if (highlight) TESTFILE2 else null)
+      r += c("Unknown Source", if (highlight) YELLOW else null)
     } else {
-      r += c(e.getFileName, if (highlight) TESTFILE1 else null)
+      r += c(e.getFileName, if (highlight) MAGENTA else null)
       if (e.getLineNumber >= 0) {
         r += ':'
-        r += c(String.valueOf(e.getLineNumber), if (highlight) TESTFILE2 else null)
+        r += c(String.valueOf(e.getLineNumber), if (highlight) YELLOW else null)
       }
     }
     r += ')'
