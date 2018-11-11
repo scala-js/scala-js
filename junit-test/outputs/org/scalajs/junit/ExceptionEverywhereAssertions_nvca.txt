@@ -1,0 +1,6 @@
+liTest run started
+leTest org.scalajs.junit.ExceptionEverywhere failed: before class, took <TIME>
+e2org.scalajs.junit.ExceptionEverywhere
+leTest org.scalajs.junit.ExceptionEverywhere failed: after class, took <TIME>
+liTest run finished: 2 failed, 0 ignored, 0 total, <TIME>
+d

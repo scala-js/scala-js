@@ -19,14 +19,11 @@ import sbt.testing.Logger
 private[junit] final class RichLogger(loggers: Array[Logger],
     settings: RunSettings, testClassName: String) {
 
-  def logTestInfo(level: RichLogger.Level, method: String, msg: String): Unit =
-    log(level, s"Test ${formatMethod(method, Ansi.CYAN)} $msg")
-
-  def logTestInfo(level: RichLogger.Level, msg: String): Unit =
-    log(level, s"Test $formattedTestClass $msg")
+  def logTestInfo(level: RichLogger.Level, method: Option[String], msg: String): Unit =
+    log(level, s"Test ${formatTest(method, Ansi.CYAN)} $msg")
 
   def logTestException(level: RichLogger.Level, prefix: String,
-      method: String, ex: Throwable, timeInSeconds: Double): Unit = {
+      method: Option[String], ex: Throwable, timeInSeconds: Double): Unit = {
     val logException = {
       !settings.notLogExceptionClass &&
       (settings.logAssert || !ex.isInstanceOf[AssertionError])
@@ -45,7 +42,7 @@ private[junit] final class RichLogger(loggers: Array[Logger],
       ""
     }
 
-    val m = formatMethod(method, Ansi.RED)
+    val m = formatTest(method, Ansi.RED)
     val msg = s"$prefix$m failed: $fmtName${ex.getMessage}, took $timeInSeconds sec"
     log(level, msg)
   }
@@ -60,9 +57,11 @@ private[junit] final class RichLogger(loggers: Array[Logger],
     if (settings.verbose) _.info
     else _.debug
 
-  private def formatMethod(method: String, color: String): String = {
-    val fmtMethod = Ansi.c(settings.decodeName(method), color)
-    s"$formattedTestClass.$fmtMethod"
+  private def formatTest(method: Option[String], color: String): String = {
+    method.fold(formattedTestClass) { method =>
+      val fmtMethod = Ansi.c(settings.decodeName(method), color)
+      s"$formattedTestClass.$fmtMethod"
+    }
   }
 
   private lazy val formattedTestClass = formatClass(testClassName, Ansi.YELLOW)

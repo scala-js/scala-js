@@ -1,0 +1,11 @@
+liTest run started
+liTest org.scalajs.junit.ExceptionAfterClass.test1 started
+ldTest org.scalajs.junit.ExceptionAfterClass.test1 finished, took <TIME>
+e0org.scalajs.junit.ExceptionAfterClass.test1
+liTest org.scalajs.junit.ExceptionAfterClass.test2 started
+ldTest org.scalajs.junit.ExceptionAfterClass.test2 finished, took <TIME>
+e0org.scalajs.junit.ExceptionAfterClass.test2
+leTest org.scalajs.junit.ExceptionAfterClass failed: foo, took <TIME>
+e2org.scalajs.junit.ExceptionAfterClass
+liTest run finished: 1 failed, 0 ignored, 2 total, <TIME>
+d

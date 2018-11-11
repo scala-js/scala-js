@@ -1,0 +1,11 @@
+li[34mTest run started[0m
+liTest org.scalajs.junit.[33mExceptionAfterClass[0m.[36mtest1[0m started
+ldTest org.scalajs.junit.[33mExceptionAfterClass[0m.[36mtest1[0m finished, took <TIME>
+e0org.scalajs.junit.ExceptionAfterClass.test1
+liTest org.scalajs.junit.[33mExceptionAfterClass[0m.[36mtest2[0m started
+ldTest org.scalajs.junit.[33mExceptionAfterClass[0m.[36mtest2[0m finished, took <TIME>
+e0org.scalajs.junit.ExceptionAfterClass.test2
+leTest org.scalajs.junit.[33mExceptionAfterClass[0m failed: foo, took <TIME>
+e2org.scalajs.junit.ExceptionAfterClass
+li[34mTest run finished: [0m[31m1 failed[0m[34m, [0m[34m0 ignored[0m[34m, 2 total, <TIME>[0m
+d

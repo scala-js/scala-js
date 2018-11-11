@@ -1,0 +1,6 @@
+liTest run started
+leTest org.scalajs.junit.ExceptionBeforeAndAfterClass failed: java.lang.AssertionError: before, took <TIME>
+e2org.scalajs.junit.ExceptionBeforeAndAfterClass
+leTest org.scalajs.junit.ExceptionBeforeAndAfterClass failed: java.lang.IllegalArgumentException: after, took <TIME>
+liTest run finished: 2 failed, 0 ignored, 0 total, <TIME>
+d
