@@ -12,14 +12,12 @@
 
 package org.scalajs.junit
 
-import com.novocode.junit.{Ansi, RichLogger, RunSettings}
-import Ansi._
 import sbt.testing._
 import scala.scalajs.reflect.Reflect
 import scala.util.{Try, Success, Failure}
 
-final class JUnitTask(val taskDef: TaskDef, runSettings: RunSettings)
-    extends sbt.testing.Task {
+private[junit] final class JUnitTask(val taskDef: TaskDef,
+    runSettings: RunSettings) extends Task {
 
   def tags: Array[String] = Array.empty
 
@@ -43,7 +41,7 @@ final class JUnitTask(val taskDef: TaskDef, runSettings: RunSettings)
         richLogger.debug(msg)
     }
 
-    infoOrDebug(c("Test run started", BLUE))
+    infoOrDebug(Ansi.c("Test run started", Ansi.BLUE))
 
     val bootstrapperName = fullClassName + "$scalajs$junit$bootstrapper"
 
@@ -79,11 +77,11 @@ final class JUnitTask(val taskDef: TaskDef, runSettings: RunSettings)
     val time = System.nanoTime - startTime
 
     val msg = {
-      c("Test run finished: ", BLUE) +
-      c(s"$failed failed", if (failed == 0) BLUE else RED) +
-      c(s", ", BLUE) +
-      c(s"$ignored ignored", if (ignored == 0) BLUE else YELLOW) +
-      c(s", $total total, ${time.toDouble / 1000000000}s", BLUE)
+      Ansi.c("Test run finished: ", Ansi.BLUE) +
+      Ansi.c(s"$failed failed", if (failed == 0) Ansi.BLUE else Ansi.RED) +
+      Ansi.c(s", ", Ansi.BLUE) +
+      Ansi.c(s"$ignored ignored", if (ignored == 0) Ansi.BLUE else Ansi.YELLOW) +
+      Ansi.c(s", $total total, ${time.toDouble / 1000000000}s", Ansi.BLUE)
     }
 
     infoOrDebug(msg)

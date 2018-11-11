@@ -10,9 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-package com.novocode.junit
+package org.scalajs.junit
 
-object Ansi {
+private[junit] object Ansi {
 
   private[this] final val NORMAL = "\u001B[0m"
 

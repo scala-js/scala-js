@@ -12,89 +12,26 @@
 
 package com.novocode.junit
 
-import org.scalajs.junit.JUnitRunner
 import sbt.testing._
 
+/** Forwarder framework so no additional framework name is needed in sbt.
+ *
+ *  Note that a type alias is not enough, since sbt looks at the runtime type.
+ */
 final class JUnitFramework extends Framework {
+  private val f = new org.scalajs.junit.JUnitFramework
 
-  val name: String = "Scala.js JUnit test framework"
+  val name: String = f.name
 
-  private object JUnitFingerprint extends AnnotatedFingerprint {
-    override def annotationName(): String = "org.junit.Test"
-
-    override def isModule(): Boolean = false
-  }
-
-  def fingerprints(): Array[Fingerprint] = {
-    Array(JUnitFingerprint)
-  }
+  def fingerprints(): Array[Fingerprint] = f.fingerprints()
 
   def runner(args: Array[String], remoteArgs: Array[String],
       testClassLoader: ClassLoader): Runner = {
-    new JUnitRunner(args, remoteArgs, parseRunSettings(args))
+    f.runner(args, remoteArgs, testClassLoader)
   }
 
   def slaveRunner(args: Array[String], remoteArgs: Array[String],
       testClassLoader: ClassLoader, send: String => Unit): Runner = {
-    new JUnitRunner(args, remoteArgs, parseRunSettings(args))
-  }
-
-  def arrayString(arr: Array[String]): String = arr.mkString("Array(", ", ", ")")
-
-  def parseRunSettings(args: Array[String]): RunSettings = {
-    var quiet = false
-    var verbose = false
-    var noColor = false
-    var decodeScalaNames = false
-    var logAssert = false
-    var notLogExceptionClass = false
-    for (str <- args) {
-      str match {
-        case "-q" => quiet = true
-        case "-v" => verbose = true
-        case "-n" => noColor = true
-        case "-s" => decodeScalaNames = true
-        case "-a" => logAssert = true
-        case "-c" => notLogExceptionClass = true
-
-        case s if s.startsWith("-tests=") =>
-          throw new UnsupportedOperationException("-tests")
-
-        case s if s.startsWith("--tests=") =>
-          throw new UnsupportedOperationException("--tests")
-
-        case s if s.startsWith("--ignore-runners=") =>
-          throw new UnsupportedOperationException("--ignore-runners")
-
-        case s if s.startsWith("--run-listener=") =>
-          throw new UnsupportedOperationException("--run-listener")
-
-        case s if s.startsWith("--include-categories=") =>
-            throw new UnsupportedOperationException("--include-categories")
-
-        case s if s.startsWith("--exclude-categories=") =>
-            throw new UnsupportedOperationException("--exclude-categories")
-
-        case s if s.startsWith("-D") && s.contains("=") =>
-            throw new UnsupportedOperationException("-Dkey=value")
-
-        case s if !s.startsWith("-") && !s.startsWith("+") =>
-            throw new UnsupportedOperationException(s)
-
-        case _ =>
-      }
-    }
-    for (s <- args) {
-      s match {
-        case "+q" => quiet = false
-        case "+v" => verbose = false
-        case "+n" => noColor = false
-        case "+s" => decodeScalaNames = false
-        case "+a" => logAssert = false
-        case "+c" => notLogExceptionClass = false
-        case _    =>
-      }
-    }
-    new RunSettings(!noColor, decodeScalaNames, quiet, verbose, logAssert, notLogExceptionClass)
+    f.slaveRunner(args, remoteArgs, testClassLoader, send)
   }
 }

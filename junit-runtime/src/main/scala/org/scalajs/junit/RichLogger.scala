@@ -10,13 +10,13 @@
  * additional information regarding copyright ownership.
  */
 
-package com.novocode.junit
+package org.scalajs.junit
 
-import sbt.testing._
+import sbt.testing.Logger
 
-import Ansi._
+private[junit] final class RichLogger(loggers: Array[Logger],
+    settings: RunSettings, testClassName: String) {
 
-final class RichLogger(loggers: Array[Logger], settings: RunSettings, testClassName: String) {
   def debug(s: String): Unit = {
     for (l <- loggers)
       l.debug(filterAnsiIfNeeded(l, s))
@@ -39,7 +39,7 @@ final class RichLogger(loggers: Array[Logger], settings: RunSettings, testClassN
 
   private def filterAnsiIfNeeded(l: Logger, s: String): String =
     if (l.ansiCodesSupported() && settings.color) s
-    else filterAnsi(s)
+    else Ansi.filterAnsi(s)
 
   def trace(t: Throwable): Unit = {
     val trace = t.getStackTrace.dropWhile { p =>
@@ -135,14 +135,14 @@ final class RichLogger(loggers: Array[Logger], settings: RunSettings, testClassN
     r += '('
 
     if (e.isNativeMethod) {
-      r += c("Native Method", if (highlight) YELLOW else null)
+      r += Ansi.c("Native Method", if (highlight) Ansi.YELLOW else null)
     } else if (e.getFileName == null) {
-      r += c("Unknown Source", if (highlight) YELLOW else null)
+      r += Ansi.c("Unknown Source", if (highlight) Ansi.YELLOW else null)
     } else {
-      r += c(e.getFileName, if (highlight) MAGENTA else null)
+      r += Ansi.c(e.getFileName, if (highlight) Ansi.MAGENTA else null)
       if (e.getLineNumber >= 0) {
         r += ':'
-        r += c(String.valueOf(e.getLineNumber), if (highlight) YELLOW else null)
+        r += Ansi.c(String.valueOf(e.getLineNumber), if (highlight) Ansi.YELLOW else null)
       }
     }
     r += ')'

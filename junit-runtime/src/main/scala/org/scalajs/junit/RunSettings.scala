@@ -10,15 +10,11 @@
  * additional information regarding copyright ownership.
  */
 
-package com.novocode.junit
-
-import com.novocode.junit.Ansi._
-
-import java.util.HashSet
+package org.scalajs.junit
 
 import scala.util.Try
 
-final class RunSettings (
+private[junit] final class RunSettings (
     val color: Boolean,
     decodeScalaNames: Boolean,
     val quiet: Boolean,

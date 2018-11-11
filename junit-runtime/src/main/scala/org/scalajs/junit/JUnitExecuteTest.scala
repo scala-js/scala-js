@@ -14,17 +14,14 @@ package org.scalajs.junit
 
 import java.io.ByteArrayOutputStream
 
-import com.novocode.junit.Ansi._
-import com.novocode.junit.RichLogger
-import com.novocode.junit.RunSettings
 import org.junit._
 import sbt.testing._
 
 import scala.util.matching.Regex
 
-final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
-    bootstrapper: Bootstrapper, richLogger: RichLogger,
-    eventHandler: EventHandler) {
+private[junit] final class JUnitExecuteTest(task: JUnitTask,
+    runSettings: RunSettings, bootstrapper: Bootstrapper,
+    richLogger: RichLogger, eventHandler: EventHandler) {
 
   def executeTests(): Unit = {
     val assumptionViolated = try {
@@ -166,7 +163,7 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
   }
 
   private def logTestInfo(level: RichLogger => (String => Unit), method: String, msg: String): Unit =
-    level(richLogger)(s"Test ${formatMethod(method, CYAN)} $msg")
+    level(richLogger)(s"Test ${formatMethod(method, Ansi.CYAN)} $msg")
 
   private def logThrowable(level: RichLogger => (String => Unit), prefix: String,
       method: String, ex: Throwable, timeInSeconds: Double): Unit = {
@@ -180,27 +177,27 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
         if (isAssumptionViolation(ex)) classOf[internal.AssumptionViolatedException].getName
         else ex.getClass.getName
 
-      formatClass(name, RED) + ": "
+      formatClass(name, Ansi.RED) + ": "
     } else {
       ""
     }
 
-    val m = formatMethod(method, RED)
+    val m = formatMethod(method, Ansi.RED)
     val msg = s"$prefix$m failed: $fmtName${ex.getMessage}, took $timeInSeconds sec"
     level(richLogger)(msg)
   }
 
   private def formatMethod(method: String, color: String): String = {
-    val fmtMethod = c(runSettings.decodeName(method), color)
+    val fmtMethod = Ansi.c(runSettings.decodeName(method), color)
     s"$formattedTestClass.$fmtMethod"
   }
 
   private lazy val formattedTestClass =
-    formatClass(task.taskDef.fullyQualifiedName, YELLOW)
+    formatClass(task.taskDef.fullyQualifiedName, Ansi.YELLOW)
 
   private def formatClass(fullName: String, color: String): String = {
     val (prefix, name) = fullName.splitAt(fullName.lastIndexOf(".") + 1)
-    prefix + c(name, color)
+    prefix + Ansi.c(name, color)
   }
 
   private def isAssumptionViolation(ex: Throwable): Boolean = {
