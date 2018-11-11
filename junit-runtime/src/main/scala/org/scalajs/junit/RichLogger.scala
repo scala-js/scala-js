@@ -12,10 +12,65 @@
 
 package org.scalajs.junit
 
+import org.junit._
+
 import sbt.testing.Logger
 
 private[junit] final class RichLogger(loggers: Array[Logger],
     settings: RunSettings, testClassName: String) {
+
+  def logTestInfo(level: RichLogger.Level, method: String, msg: String): Unit =
+    log(level, s"Test ${formatMethod(method, Ansi.CYAN)} $msg")
+
+  def logTestInfo(level: RichLogger.Level, msg: String): Unit =
+    log(level, s"Test $formattedTestClass $msg")
+
+  def logTestException(level: RichLogger.Level, prefix: String,
+      method: String, ex: Throwable, timeInSeconds: Double): Unit = {
+    val logException = {
+      !settings.notLogExceptionClass &&
+      (settings.logAssert || !ex.isInstanceOf[AssertionError])
+    }
+
+    val fmtName = if (logException) {
+      val name = {
+        if (ex.isInstanceOf[AssumptionViolatedException])
+          classOf[internal.AssumptionViolatedException].getName
+        else
+          ex.getClass.getName
+      }
+
+      formatClass(name, Ansi.RED) + ": "
+    } else {
+      ""
+    }
+
+    val m = formatMethod(method, Ansi.RED)
+    val msg = s"$prefix$m failed: $fmtName${ex.getMessage}, took $timeInSeconds sec"
+    log(level, msg)
+  }
+
+  def trace(t: Throwable): Unit = {
+    if (!t.isInstanceOf[AssertionError] || settings.logAssert) {
+      logTrace(t)
+    }
+  }
+
+  def infoOrDebug: RichLogger.Level =
+    if (settings.verbose) _.info
+    else _.debug
+
+  private def formatMethod(method: String, color: String): String = {
+    val fmtMethod = Ansi.c(settings.decodeName(method), color)
+    s"$formattedTestClass.$fmtMethod"
+  }
+
+  private lazy val formattedTestClass = formatClass(testClassName, Ansi.YELLOW)
+
+  private def formatClass(fullName: String, color: String): String = {
+    val (prefix, name) = fullName.splitAt(fullName.lastIndexOf(".") + 1)
+    prefix + Ansi.c(name, color)
+  }
 
   def log(level: RichLogger.Level, s: String): Unit = {
     for (l <- loggers)
@@ -26,7 +81,7 @@ private[junit] final class RichLogger(loggers: Array[Logger],
     if (l.ansiCodesSupported() && settings.color) s
     else Ansi.filterAnsi(s)
 
-  def trace(t: Throwable): Unit = {
+  private def logTrace(t: Throwable): Unit = {
     val trace = t.getStackTrace.dropWhile { p =>
       p.getFileName != null && {
         p.getFileName.contains("StackTrace.scala") ||

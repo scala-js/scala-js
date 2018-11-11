@@ -33,7 +33,7 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
     }
 
     if (assumptionViolated) {
-      richLogger.log(_.info, s"Test $formattedTestClass ignored")
+      richLogger.logTestInfo(_.info, "ignored")
       task.ignored += 1
       emitClassEvent(Status.Skipped)
     } else {
@@ -50,7 +50,7 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
       runWithOrWithoutQuietMode {
         for (method <- bootstrapper.tests) {
           if (method.ignored) {
-            logTestInfo(_.info, method.name, "ignored")
+            richLogger.logTestInfo(_.info, method.name, "ignored")
             task.ignored += 1
             emitMethodEvent(method.name, Status.Skipped)
           } else {
@@ -67,10 +67,7 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
       test: TestMetadata) = {
     val methodName = test.name
 
-    if (runSettings.verbose)
-      logTestInfo(_.info, methodName, "started")
-    else
-      logTestInfo(_.debug, methodName, "started")
+    richLogger.logTestInfo(richLogger.infoOrDebug, methodName, "started")
 
     val t0 = System.nanoTime
     def getTimeInSeconds(): Double = (System.nanoTime - t0).toDouble / 1000000000
@@ -117,16 +114,13 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
       case Nil =>
 
       case e :: Nil if isAssumptionViolation(e) =>
-        logThrowable(_.warn, "Test assumption in test ", methodName, e, timeInSeconds)
+        richLogger.logTestException(_.warn, "Test assumption in test ", methodName, e, timeInSeconds)
         emitMethodEvent(methodName, Status.Skipped)
 
       case e :: es =>
         def emit(t: Throwable) = {
-          logThrowable(_.error, "Test ", methodName, t, timeInSeconds)
-
-          if (!t.isInstanceOf[AssertionError] || runSettings.logAssert) {
-            richLogger.trace(t)
-          }
+          richLogger.logTestException(_.error, "Test ", methodName, t, timeInSeconds)
+          richLogger.trace(t)
           task.failed += 1
         }
 
@@ -135,7 +129,7 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
         es.foreach(emit)
     }
 
-    logTestInfo(_.debug, methodName,
+    richLogger.logTestInfo(_.debug, methodName,
         s"finished, took ${getTimeInSeconds()} sec")
 
     // Scala.js-specific: timeouts are warnings only, after the fact
@@ -160,44 +154,6 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
   private def emitMethodEvent(methodName: String, status: Status): Unit = {
     val selector = new TestSelector(task.taskDef.fullyQualifiedName + "." + runSettings.decodeName(methodName))
     eventHandler.handle(new JUnitEvent(task.taskDef, status, selector))
-  }
-
-  private def logTestInfo(level: RichLogger.Level, method: String, msg: String): Unit =
-    richLogger.log(level, s"Test ${formatMethod(method, Ansi.CYAN)} $msg")
-
-  private def logThrowable(level: RichLogger.Level, prefix: String,
-      method: String, ex: Throwable, timeInSeconds: Double): Unit = {
-    val logException = {
-      !runSettings.notLogExceptionClass &&
-      (runSettings.logAssert || !ex.isInstanceOf[AssertionError])
-    }
-
-    val fmtName = if (logException) {
-      val name =
-        if (isAssumptionViolation(ex)) classOf[internal.AssumptionViolatedException].getName
-        else ex.getClass.getName
-
-      formatClass(name, Ansi.RED) + ": "
-    } else {
-      ""
-    }
-
-    val m = formatMethod(method, Ansi.RED)
-    val msg = s"$prefix$m failed: $fmtName${ex.getMessage}, took $timeInSeconds sec"
-    richLogger.log(level, msg)
-  }
-
-  private def formatMethod(method: String, color: String): String = {
-    val fmtMethod = Ansi.c(runSettings.decodeName(method), color)
-    s"$formattedTestClass.$fmtMethod"
-  }
-
-  private lazy val formattedTestClass =
-    formatClass(task.taskDef.fullyQualifiedName, Ansi.YELLOW)
-
-  private def formatClass(fullName: String, color: String): String = {
-    val (prefix, name) = fullName.splitAt(fullName.lastIndexOf(".") + 1)
-    prefix + Ansi.c(name, color)
   }
 
   private def isAssumptionViolation(ex: Throwable): Boolean = {

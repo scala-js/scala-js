@@ -34,14 +34,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     val fullClassName = taskDef.fullyQualifiedName
     val richLogger = new RichLogger(loggers, runSettings, fullClassName)
 
-    def infoOrDebug(msg: String): Unit = {
-      if (runSettings.verbose)
-        richLogger.log(_.info, msg)
-      else
-        richLogger.log(_.debug, msg)
-    }
-
-    infoOrDebug(Ansi.c("Test run started", Ansi.BLUE))
+    richLogger.log(richLogger.infoOrDebug, Ansi.c("Test run started", Ansi.BLUE))
 
     val bootstrapperName = fullClassName + "$scalajs$junit$bootstrapper"
 
@@ -84,7 +77,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
       Ansi.c(s", $total total, ${time.toDouble / 1000000000}s", Ansi.BLUE)
     }
 
-    infoOrDebug(msg)
+    richLogger.log(richLogger.infoOrDebug, msg)
 
     Array()
   }
