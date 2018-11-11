@@ -33,7 +33,7 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
     }
 
     if (assumptionViolated) {
-      richLogger.info(s"Test $formattedTestClass ignored")
+      richLogger.log(_.info, s"Test $formattedTestClass ignored")
       task.ignored += 1
       emitClassEvent(Status.Skipped)
     } else {
@@ -141,7 +141,7 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
     // Scala.js-specific: timeouts are warnings only, after the fact
     val timeout = test.annotation.timeout
     if (timeout != 0 && timeout <= timeInSeconds) {
-      richLogger.warn("Timeout: took " + timeInSeconds + " sec, expected " +
+      richLogger.log(_.warn, "Timeout: took " + timeInSeconds + " sec, expected " +
           (timeout.toDouble / 1000) + " sec")
     }
 
@@ -162,10 +162,10 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
     eventHandler.handle(new JUnitEvent(task.taskDef, status, selector))
   }
 
-  private def logTestInfo(level: RichLogger => (String => Unit), method: String, msg: String): Unit =
-    level(richLogger)(s"Test ${formatMethod(method, Ansi.CYAN)} $msg")
+  private def logTestInfo(level: RichLogger.Level, method: String, msg: String): Unit =
+    richLogger.log(level, s"Test ${formatMethod(method, Ansi.CYAN)} $msg")
 
-  private def logThrowable(level: RichLogger => (String => Unit), prefix: String,
+  private def logThrowable(level: RichLogger.Level, prefix: String,
       method: String, ex: Throwable, timeInSeconds: Double): Unit = {
     val logException = {
       !runSettings.notLogExceptionClass &&
@@ -184,7 +184,7 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
 
     val m = formatMethod(method, Ansi.RED)
     val msg = s"$prefix$m failed: $fmtName${ex.getMessage}, took $timeInSeconds sec"
-    level(richLogger)(msg)
+    richLogger.log(level, msg)
   }
 
   private def formatMethod(method: String, color: String): String = {

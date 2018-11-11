@@ -17,24 +17,9 @@ import sbt.testing.Logger
 private[junit] final class RichLogger(loggers: Array[Logger],
     settings: RunSettings, testClassName: String) {
 
-  def debug(s: String): Unit = {
+  def log(level: RichLogger.Level, s: String): Unit = {
     for (l <- loggers)
-      l.debug(filterAnsiIfNeeded(l, s))
-  }
-
-  def error(s: String): Unit = {
-    for (l <- loggers)
-      l.error(filterAnsiIfNeeded(l, s))
-  }
-
-  def info(s: String): Unit = {
-    for (l <- loggers)
-      l.info(filterAnsiIfNeeded(l, s))
-  }
-
-  def warn(s: String): Unit = {
-    for (l <- loggers)
-      l.warn(filterAnsiIfNeeded(l, s))
+      level(l)(filterAnsiIfNeeded(l, s))
   }
 
   private def filterAnsiIfNeeded(l: Logger, s: String): String =
@@ -90,15 +75,15 @@ private[junit] final class RichLogger(loggers: Array[Logger],
     }
 
     for (i <- top to m2) {
-      error("    at " +
+      log(_.error, "    at " +
         stackTraceElementToString(trace(i), testClassName, testFileName))
     }
     if (m0 != m2) {
       // skip junit-related frames
-      error("    ...")
+      log(_.error, "    ...")
     } else if (framesInCommon != 0) {
       // skip frames that were in the previous trace too
-      error("    ... " + framesInCommon + " more")
+      log(_.error, "    ... " + framesInCommon + " more")
     }
     logStackTraceAsCause(trace, t.getCause, testClassName, testFileName)
   }
@@ -113,7 +98,7 @@ private[junit] final class RichLogger(loggers: Array[Logger],
         m -= 1
         n -= 1
       }
-      error("Caused by: " + t)
+      log(_.error, "Caused by: " + t)
       logStackTracePart(trace, m, trace.length - 1 - m, t, testClassName, testFileName)
     }
   }
@@ -148,4 +133,8 @@ private[junit] final class RichLogger(loggers: Array[Logger],
     r += ')'
     r
   }
+}
+
+private[junit] object RichLogger {
+  type Level = Logger => (String => Unit)
 }

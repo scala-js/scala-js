@@ -36,9 +36,9 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
 
     def infoOrDebug(msg: String): Unit = {
       if (runSettings.verbose)
-        richLogger.info(msg)
+        richLogger.log(_.info, msg)
       else
-        richLogger.debug(msg)
+        richLogger.log(_.debug, msg)
     }
 
     infoOrDebug(Ansi.c("Test run started", Ansi.BLUE))
@@ -48,7 +48,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     val startTime = System.nanoTime
 
     def errorWhileLoadingClass(t: Throwable): Unit = {
-      richLogger.error("Error while loading test class: " + fullClassName)
+      richLogger.log(_.error, "Error while loading test class: " + fullClassName)
       richLogger.trace(t)
       val selector = new TestSelector(fullClassName)
       val optThrowable = new OptionalThrowable(t)
