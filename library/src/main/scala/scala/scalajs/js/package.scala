@@ -133,10 +133,10 @@ package object js {
    */
   def native: Nothing = {
     throw new java.lang.Error(
-        "A method defined in a JavaScript raw type of a Scala.js library has " +
-        "been called. This is most likely because you tried to run Scala.js " +
-        "binaries on the JVM. Make sure you are using the JVM version of the " +
-        "libraries.")
+        "A method defined in a native JavaScript type of a Scala.js library " +
+        "has been called. This is most likely because you tried to run " +
+        "Scala.js binaries on the JVM. Make sure you are using the JVM " +
+        "version of the libraries.")
   }
 
 }

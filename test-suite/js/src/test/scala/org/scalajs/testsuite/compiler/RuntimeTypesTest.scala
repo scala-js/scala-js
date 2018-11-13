@@ -110,7 +110,7 @@ class RuntimeTypesTest {
     arr.asInstanceOf[Array[Null]]
   }
 
-  @Test def rawJSTypes_Arrays_of_raw_JS_types(): Unit = {
+  @Test def scala_Arrays_of_JS_types(): Unit = {
     val arrayOfParentJSType = new Array[ParentJSType](0)
     val arrayOfJSInterface = new Array[SomeJSInterface](0)
     val arrayOfJSClass = new Array[SomeJSClass](0)

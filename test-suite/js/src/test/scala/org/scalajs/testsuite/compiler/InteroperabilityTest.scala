@@ -380,18 +380,18 @@ class InteroperabilityTest {
     assertEquals(42, Global.interoperabilityTestGlobalScopeValueAsInt)
   }
 
-  @Test def should_protect_receiver_of_raw_JS_apply_if_its_a_select_issue_804(): Unit = {
-    val rawReceiver = js.eval("""
-      var interoperabilityTestRawReceiver = {
+  @Test def should_protect_receiver_of_JS_apply_if_its_a_select_issue_804(): Unit = {
+    val obj = js.eval("""
+      var interoperabilityTestJSFunctionFieldApply = {
         member: 0xbad,
-        check: function(raw) { return this.member ? this.member : raw; }
+        check: function(x) { return this.member ? this.member : x; }
       };
-      interoperabilityTestRawReceiver;
-    """).asInstanceOf[InteroperabilityTestRawReceiver]
+      interoperabilityTestJSFunctionFieldApply;
+    """).asInstanceOf[InteroperabilityTestJSFunctionFieldApply]
 
-    assertEquals(7357, rawReceiver.check(7357))
+    assertEquals(7357, obj.check(7357))
 
-    val check = rawReceiver.check
+    val check = obj.check
     assertEquals(0x600d, check(0x600d))
 
     class InScalaSelect(check: js.Function1[Int, Int]) {
@@ -672,12 +672,12 @@ object InteroperabilityTest {
   }
 
   @js.native
-  trait InteroperabilityTestRawReceiver extends js.Object {
+  trait InteroperabilityTestJSFunctionFieldApply extends js.Object {
     val check: js.Function1[Int, Int] = js.native
   }
 
-  /** Trait with different method signatures, all forwarded to the same
-   *  JS raw function that returns the argument list for inspection
+  /** Trait with different method signatures, all forwarded to the same JS
+   *  function that returns the argument list for inspection.
    */
   @js.native
   trait InteroperabilityTestDefaultParam extends js.Object {

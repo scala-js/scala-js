@@ -161,7 +161,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       } else if (tree.jsSuperClass.isDefined) {
         WithGlobals(envField("superClass"))
       } else {
-        genRawJSClassConstructor(parentIdent.name,
+        genJSClassConstructor(parentIdent.name,
             keepOnlyDangerousVarNames = true)
       }
     }
@@ -242,7 +242,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         val superCtor = if (tree.jsSuperClass.isDefined) {
           WithGlobals(envField("superClass"))
         } else {
-          genRawJSClassConstructor(parentIdent.name,
+          genJSClassConstructor(parentIdent.name,
               keepOnlyDangerousVarNames = true)
         }
         (superCtor.map(makeInheritableCtorDef(_, "h")), envField("h", className))
@@ -868,7 +868,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val isJSType =
       kind.isJSType
 
-    val isRawJSTypeParam =
+    val isJSTypeParam =
       if (isJSType) js.BooleanLiteral(true)
       else js.Undefined()
 
@@ -911,7 +911,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
           WithGlobals(envField("noIsInstance"))
         } else {
           for {
-            jsCtor <- genRawJSClassConstructor(className, tree.jsNativeLoadSpec,
+            jsCtor <- genJSClassConstructor(className, tree.jsNativeLoadSpec,
                 keepOnlyDangerousVarNames = true)
           } yield {
             genArrowFunction(List(js.ParamDef(js.Ident("x"), rest = false)), js.Return {
@@ -941,7 +941,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
           js.BooleanLiteral(kind == ClassKind.Interface),
           js.StringLiteral(semantics.runtimeClassNameMapper(tree.fullName)),
           ancestorsRecord,
-          isRawJSTypeParam,
+          isJSTypeParam,
           parentData,
           isInstanceFun,
           isArrayOfFun

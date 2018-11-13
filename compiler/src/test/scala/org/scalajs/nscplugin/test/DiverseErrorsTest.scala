@@ -24,20 +24,20 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     """
 
   @Test
-  def noIsInstanceOnJSRaw: Unit = {
+  def noIsInstanceOnJS: Unit = {
 
     """
     @js.native
-    trait JSRaw extends js.Object
+    trait JSTrait extends js.Object
 
     class A {
       val a: AnyRef = "asdf"
-      def x = a.isInstanceOf[JSRaw]
+      def x = a.isInstanceOf[JSTrait]
     }
     """ hasErrors
     """
-      |newSource1.scala:8: error: isInstanceOf[JSRaw] not supported because it is a raw JS trait
-      |      def x = a.isInstanceOf[JSRaw]
+      |newSource1.scala:8: error: isInstanceOf[JSTrait] not supported because it is a JS trait
+      |      def x = a.isInstanceOf[JSTrait]
       |                            ^
     """
 

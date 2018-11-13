@@ -728,7 +728,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 } else {
                   val superClass =
                     globalKnowledge.getSuperClassOfJSClass(enclosingClassName)
-                  extractWithGlobals(genRawJSClassConstructor(superClass))
+                  extractWithGlobals(genJSClassConstructor(superClass))
                 }
               }
 
@@ -2514,7 +2514,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               transformExprNoChar(qualifier), transformExprNoChar(item))
 
         case LoadJSConstructor(cls) =>
-          extractWithGlobals(genRawJSClassConstructor(cls.className))
+          extractWithGlobals(genJSClassConstructor(cls.className))
 
         case LoadJSModule(cls) =>
           val className = cls.className
@@ -2723,9 +2723,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     /* In FunctionEmitter, we must always keep all global var names, not only
      * dangerous ones. This helper makes it less annoying.
      */
-    private def genRawJSClassConstructor(className: String)(
+    private def genJSClassConstructor(className: String)(
         implicit pos: Position): WithGlobals[js.Tree] = {
-      jsGen.genRawJSClassConstructor(className,
+      jsGen.genJSClassConstructor(className,
           keepOnlyDangerousVarNames = false)
     }
 

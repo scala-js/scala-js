@@ -648,7 +648,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportJSRawMember: Unit = {
+  def noExportJSMember: Unit = {
 
     """
     import scala.scalajs.js

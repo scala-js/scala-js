@@ -82,8 +82,11 @@ private final class IRChecker(unit: LinkingUnit,
               classDef.memberMethods.nonEmpty ||
               classDef.exportedMembers.nonEmpty ||
               classDef.topLevelExports.nonEmpty) {
-            reportError(s"Raw JS type ${classDef.name} cannot "+
-                "have instance members")
+            val kind =
+              if (classDef.kind == ClassKind.AbstractJSType) "Abstract"
+              else "Native"
+            reportError(
+                s"$kind JS type ${classDef.name} cannot have instance members")
           }
         case _ =>
           checkScalaClassDef(classDef)

@@ -257,7 +257,7 @@ function $throwArrayIndexOutOfBoundsException(i) {
 
 function $noIsInstance(instance) {
   throw new TypeError(
-    "Cannot call isInstance() on a Class representing a raw JS trait/object");
+    "Cannot call isInstance() on a Class representing a JS trait/object");
 };
 
 function $makeNativeArrayWrapper(arrayClassData, nativeArray) {
@@ -868,7 +868,7 @@ constructor() {
   this["isPrimitive"] = false;
   this["isInterface"] = false;
   this["isArrayClass"] = false;
-  this["isRawJSType"] = false;
+  this["isJSType"] = false;
   this["isInstance"] = void 0;
 };
 
@@ -899,7 +899,7 @@ $TypeData.prototype.initClass = function(
 initClass(
 //!endif
     internalNameObj, isInterface, fullName,
-    ancestors, isRawJSType, parentData, isInstance, isArrayOf) {
+    ancestors, isJSType, parentData, isInstance, isArrayOf) {
   const internalName = $propertyName(internalNameObj);
 
   isInstance = isInstance || function(obj) {
@@ -920,7 +920,7 @@ initClass(
   // java.lang.Class support
   this["name"] = fullName;
   this["isInterface"] = isInterface;
-  this["isRawJSType"] = !!isRawJSType;
+  this["isJSType"] = !!isJSType;
   this["isInstance"] = isInstance;
 
   return this;
