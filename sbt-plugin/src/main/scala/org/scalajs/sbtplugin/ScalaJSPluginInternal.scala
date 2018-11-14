@@ -305,15 +305,11 @@ private[sbtplugin] object ScalaJSPluginInternal {
             "are running a JVM REPL. JavaScript things won't work.")
       }).value,
 
-      /* Do not inherit jsExecutionFiles from the parent configuration.
-       * Instead, always derive them straight from the Zero configuration
-       * scope.
-       */
-      jsExecutionFiles := (jsExecutionFiles in (This, Zero, This)).value,
-
-      // Add the Scala.js linked file to the JS files (by default, the only one)
-      jsExecutionFiles +=
-        new FileVirtualBinaryFile(scalaJSLinkedFile.value.data),
+      // Use the Scala.js linked file as the default Input for the JSEnv
+      jsEnvInput := {
+        Input.ScriptsToLoad(List(
+            new FileVirtualBinaryFile(scalaJSLinkedFile.value.data)))
+      },
 
       scalaJSMainModuleInitializer := {
         mainClass.value.map { mainCl =>
@@ -357,7 +353,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         log.info(s"Running $className. Hit any key to interrupt.")
         log.debug(s"with JSEnv ${env.name}")
 
-        val input = Input.ScriptsToLoad(jsExecutionFiles.value.toList)
+        val input = jsEnvInput.value
         val config = RunConfig().withLogger(sbtLogger2ToolsLogger(log))
 
         Run.runInterruptible(env, input, config)
@@ -423,7 +419,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         val frameworks = testFrameworks.value
         val env = jsEnv.value
-        val input = Input.ScriptsToLoad(jsExecutionFiles.value.toList)
+        val input = jsEnvInput.value
         val frameworkNames = frameworks.map(_.implClassNames.toList).toList
 
         val logger = sbtLogger2ToolsLogger(streams.value.log)
@@ -459,7 +455,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val log = streams.value.log
         val output = (artifactPath in testHtml).value
         val title = name.value + " - tests"
-        val jsFiles = (jsExecutionFiles in testHtml).value
+        val input = (jsEnvInput in testHtml).value
 
         val frameworks = (loadedTestFrameworks in testHtml).value.toList
         val frameworkImplClassNames =
@@ -470,7 +466,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
               td.explicitlySpecified, td.selectors)
         }
 
-        HTMLRunnerBuilder.writeToFile(output, title, jsFiles,
+        HTMLRunnerBuilder.writeToFile(output, title, input,
             frameworkImplClassNames, taskDefs.toList)
 
         log.info(s"Wrote HTML test runner. Point your browser to ${output.toURI}")
