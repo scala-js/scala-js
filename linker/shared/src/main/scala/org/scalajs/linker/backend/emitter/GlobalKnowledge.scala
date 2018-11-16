@@ -12,7 +12,7 @@
 
 package org.scalajs.linker.backend.emitter
 
-import org.scalajs.ir.Trees.{FieldDef, JSNativeLoadSpec}
+import org.scalajs.ir.Trees.{FieldDef, Ident, JSNativeLoadSpec}
 import org.scalajs.ir.Types.Type
 
 private[emitter] trait GlobalKnowledge {
@@ -70,4 +70,7 @@ private[emitter] trait GlobalKnowledge {
    *  JS class.
    */
   def getJSClassFieldDefs(className: String): List[FieldDef]
+
+  /** The global variables that mirror a given static field. */
+  def getStaticFieldMirrors(className: String, field: String): List[String]
 }

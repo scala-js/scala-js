@@ -72,10 +72,13 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     verifyUnit(unit)
 
     // Build Closure IR
-    val module = logger.time("Emitter (create Closure trees)") {
-      val builder = new ClosureModuleBuilder(config.relativizeSourceMapBase)
-      emitter.emitForClosure(unit, builder, logger)
-      builder.result()
+    val (topLevelVarDeclarations, module) = {
+      logger.time("Emitter (create Closure trees)") {
+        val builder = new ClosureModuleBuilder(config.relativizeSourceMapBase)
+        val topLevelVarDeclarations =
+          emitter.emitForClosure(unit, builder, logger)
+        (topLevelVarDeclarations, builder.result())
+      }
     }
 
     // Compile the module
@@ -91,7 +94,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     }
 
     logger.time("Closure: Write result") {
-      writeResult(result, compiler, output)
+      writeResult(topLevelVarDeclarations, result, compiler, output)
     }
   }
 
@@ -131,12 +134,15 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     compiler
   }
 
-  private def writeResult(result: Result, compiler: ClosureCompiler,
-      output: LinkerOutput): Unit = {
+  private def writeResult(topLevelVarDeclarations: Option[String],
+      result: Result, compiler: ClosureCompiler, output: LinkerOutput): Unit = {
 
     def ifIIFE(str: String): String = if (needsIIFEWrapper) str else ""
 
-    val header = ifIIFE("(function(){") + "'use strict';\n"
+    val header = {
+      topLevelVarDeclarations.fold("")(_ + "\n") +
+      ifIIFE("(function(){") + "'use strict';\n"
+    }
     val footer = ifIIFE("}).call(this);\n")
 
     val outputContent =
@@ -205,7 +211,6 @@ private object ClosureLinkerBackend {
     Function.prototype.call = function() {};
     Function.prototype.apply = function() {};
     function require() {}
-    var global = {};
     var exports = {};
     var NaN = 0.0/0.0, Infinity = 1.0/0.0, undefined = void 0;
     """

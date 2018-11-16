@@ -1247,6 +1247,8 @@ class ExportsTest {
   }
 
   @Test def top_level_export_write_val_var_causes_typeerror(): Unit = {
+    assumeFalse("Unchecked in Script mode", isNoModule)
+
     assertThrows(classOf[js.JavaScriptException], {
       exportsNamespace.TopLevelExport_basicVal = 54
     })

@@ -21,7 +21,7 @@ import org.scalajs.ir.Types.Type
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
 
-private[emitter] final class KnowledgeGuardian {
+private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
   import KnowledgeGuardian._
 
   private var firstRun: Boolean = true
@@ -161,6 +161,9 @@ private[emitter] final class KnowledgeGuardian {
 
     def getJSClassFieldDefs(className: String): List[FieldDef] =
       classes(className).askJSClassFieldDefs(this)
+
+    def getStaticFieldMirrors(className: String, field: String): List[String] =
+      classes(className).askStaticFieldMirrors(this, field)
   }
 
   private class Class(initClass: LinkedClass,
@@ -176,6 +179,7 @@ private[emitter] final class KnowledgeGuardian {
     private var jsNativeLoadSpec = computeJSNativeLoadSpec(initClass)
     private var superClass = computeSuperClass(initClass)
     private var fieldDefs = computeFieldDefs(initClass)
+    private var staticFieldMirrors = computeStaticFieldMirrors(initClass)
 
     private val isInterfaceAskers = mutable.Set.empty[Invalidatable]
     private val hasInlineableInitAskers = mutable.Set.empty[Invalidatable]
@@ -184,6 +188,7 @@ private[emitter] final class KnowledgeGuardian {
     private val jsNativeLoadSpecAskers = mutable.Set.empty[Invalidatable]
     private val superClassAskers = mutable.Set.empty[Invalidatable]
     private val fieldDefsAskers = mutable.Set.empty[Invalidatable]
+    private val staticFieldMirrorsAskers = mutable.Set.empty[Invalidatable]
 
     def update(linkedClass: LinkedClass, newHasInlineableInit: Boolean): Unit = {
       isAlive = true
@@ -228,6 +233,12 @@ private[emitter] final class KnowledgeGuardian {
         fieldDefs = newFieldDefs
         invalidateAskers(fieldDefsAskers)
       }
+
+      val newStaticFieldMirrors = computeStaticFieldMirrors(linkedClass)
+      if (newStaticFieldMirrors != staticFieldMirrors) {
+        staticFieldMirrors = newStaticFieldMirrors
+        invalidateAskers(staticFieldMirrorsAskers)
+      }
     }
 
     private def computeIsInterface(linkedClass: LinkedClass): Boolean =
@@ -247,6 +258,26 @@ private[emitter] final class KnowledgeGuardian {
 
     private def computeFieldDefs(linkedClass: LinkedClass): List[FieldDef] =
       linkedClass.fields
+
+    private def computeStaticFieldMirrors(
+        linkedClass: LinkedClass): Map[String, List[String]] = {
+      if (config.coreSpec.moduleKind != ModuleKind.NoModule ||
+          linkedClass.topLevelExports.isEmpty) {
+        // Fast path
+        Map.empty
+      } else {
+        val result = mutable.Map.empty[String, List[String]]
+        for (export <- linkedClass.topLevelExports) {
+          export.value match {
+            case TopLevelFieldExportDef(exportName, Ident(fieldName, _)) =>
+              result(fieldName) = exportName :: result.getOrElse(fieldName, Nil)
+            case _ =>
+              ()
+          }
+        }
+        result.toMap
+      }
+    }
 
     private def invalidateAskers(askers: mutable.Set[Invalidatable]): Unit = {
       /* Calling `invalidateAndUnregisterFromAll()` will cause the
@@ -315,6 +346,13 @@ private[emitter] final class KnowledgeGuardian {
       invalidatable.registeredTo(this)
       fieldDefsAskers += invalidatable
       fieldDefs
+    }
+
+    def askStaticFieldMirrors(invalidatable: Invalidatable,
+        field: String): List[String] = {
+      invalidatable.registeredTo(this)
+      staticFieldMirrorsAskers += invalidatable
+      staticFieldMirrors.getOrElse(field, Nil)
     }
 
     def unregister(invalidatable: Invalidatable): Unit = {

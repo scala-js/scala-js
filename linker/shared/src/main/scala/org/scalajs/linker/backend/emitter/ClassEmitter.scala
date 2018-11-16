@@ -1063,15 +1063,14 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
       topLevelExport match {
         case TopLevelJSClassExportDef(exportName) =>
-          WithGlobals(genConstValueExportDef(
-              exportName, genNonNativeJSClassConstructor(tree.name.name)))
+          genConstValueExportDef(
+              exportName, genNonNativeJSClassConstructor(tree.name.name))
         case TopLevelModuleExportDef(exportName) =>
-          WithGlobals(genConstValueExportDef(
-              exportName, genLoadModule(tree.name.name)))
+          genConstValueExportDef(exportName, genLoadModule(tree.name.name))
         case e: TopLevelMethodExportDef =>
           genTopLevelMethodExportDef(tree, e)
         case e: TopLevelFieldExportDef =>
-          WithGlobals(genTopLevelFieldExportDef(tree, e))
+          genTopLevelFieldExportDef(tree, e)
       }
     }
 
@@ -1091,47 +1090,77 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val methodDefWithGlobals = desugarToFunction(cd.encodedName, args, body,
         resultType)
 
-    for (methodDef <- methodDefWithGlobals) yield {
+    methodDefWithGlobals.flatMap { methodDef =>
       genConstValueExportDef(exportName, methodDef)
     }
   }
 
   private def genConstValueExportDef(exportName: String,
       exportedValue: js.Tree)(
-      implicit pos: Position): js.Tree = {
-    js.Assign(genBracketSelect(envField("e"), js.StringLiteral(exportName)),
-        exportedValue)
+      implicit pos: Position): WithGlobals[js.Tree] = {
+    moduleKind match {
+      case ModuleKind.NoModule =>
+        genAssignToNoModuleExportVar(exportName, exportedValue)
+
+      case ModuleKind.CommonJSModule =>
+        val exportsVarRef = js.VarRef(js.Ident("exports"))
+        WithGlobals(js.Assign(
+            genBracketSelect(exportsVarRef, js.StringLiteral(exportName)),
+            exportedValue))
+    }
+  }
+
+  private def genAssignToNoModuleExportVar(exportName: String, rhs: js.Tree)(
+      implicit pos: Position): WithGlobals[js.Tree] = {
+    val dangerousGlobalRefs: Set[String] =
+      if (GlobalRefUtils.isDangerousGlobalRef(exportName)) Set(exportName)
+      else Set.empty
+    WithGlobals(
+        js.Assign(js.VarRef(js.Ident(exportName)), rhs),
+        dangerousGlobalRefs)
   }
 
   private def genTopLevelFieldExportDef(cd: LinkedClass,
       tree: TopLevelFieldExportDef)(
-      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
     val TopLevelFieldExportDef(exportName, field) = tree
 
     implicit val pos = tree.pos
 
-    // defineProperty method
-    val defProp =
-      genIdentBracketSelect(js.VarRef(js.Ident("Object")), "defineProperty")
+    moduleKind match {
+      case ModuleKind.NoModule =>
+        /* Initial value of the export. Updates are taken care of explicitly
+         * when we assign to the static field.
+         */
+        genAssignToNoModuleExportVar(exportName,
+            genSelectStatic(cd.encodedName, field))
 
-    // optional getter definition
-    val getterDef = {
-      js.StringLiteral("get") -> js.Function(arrow = false, Nil, {
-        js.Return(genSelectStatic(cd.encodedName, field))
-      })
+      case ModuleKind.CommonJSModule =>
+        // defineProperty method
+        val defProp =
+          genIdentBracketSelect(js.VarRef(js.Ident("Object")), "defineProperty")
+
+        val exportsVarRef = js.VarRef(js.Ident("exports"))
+
+        // optional getter definition
+        val getterDef = {
+          js.StringLiteral("get") -> js.Function(arrow = false, Nil, {
+            js.Return(genSelectStatic(cd.encodedName, field))
+          })
+        }
+
+        // Options passed to the defineProperty method
+        val descriptor = js.ObjectConstr(
+            getterDef ::
+            (js.StringLiteral("configurable") -> js.BooleanLiteral(true)) ::
+            Nil
+        )
+
+        WithGlobals(js.Apply(defProp,
+            exportsVarRef :: js.StringLiteral(exportName) :: descriptor :: Nil))
     }
-
-    // Options passed to the defineProperty method
-    val descriptor = js.ObjectConstr(
-        getterDef ::
-        (js.StringLiteral("configurable") -> js.BooleanLiteral(true)) ::
-        Nil
-    )
-
-    js.Apply(defProp,
-        envField("e") :: js.StringLiteral(exportName) :: descriptor :: Nil)
   }
 
   // Helpers
