@@ -137,10 +137,12 @@ final class Emitter private (config: CommonPhaseConfig,
         } {
           topLevelExportNames += export.value.topLevelExportName
         }
-        if (topLevelExportNames.isEmpty)
+        if (topLevelExportNames.isEmpty) {
           None
-        else
-          Some(topLevelExportNames.mkString("var ", ", ", ";"))
+        } else {
+          val kw = if (esFeatures.useECMAScript2015) "let " else "var "
+          Some(topLevelExportNames.mkString(kw, ", ", ";"))
+        }
 
       case ModuleKind.CommonJSModule =>
         None
