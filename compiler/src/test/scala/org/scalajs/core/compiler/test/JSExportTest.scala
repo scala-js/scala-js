@@ -127,6 +127,25 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def doubleUnderscoreOKInTopLevelExport: Unit = {
+    """
+    @JSExportTopLevel("__A")
+    class A
+
+    @JSExportTopLevel("__B")
+    object B
+
+    object Container {
+      @JSExportTopLevel("__c")
+      def c(): Int = 4
+
+      @JSExportTopLevel("__d")
+      val d: Boolean = true
+    }
+    """.hasNoWarns
+  }
+
+  @Test
   def noConflictingExport: Unit = {
     """
     class Confl {

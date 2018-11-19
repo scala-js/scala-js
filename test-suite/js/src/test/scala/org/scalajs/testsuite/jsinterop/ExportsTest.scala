@@ -1426,6 +1426,10 @@ class ExportsTest {
     assertEquals(28, TopLevelExports.Nested.myVar)
   }
 
+  @Test def top_level_export_with_double_underscore(): Unit = {
+    assertEquals(true, exportsNamespace.__topLevelExportWithDoubleUnderscore)
+  }
+
   @Test def top_level_export_is_always_reachable(): Unit = {
     assertEquals("Hello World", jsPackage.toplevel.reachability())
   }
@@ -1939,6 +1943,9 @@ object TopLevelExports {
     @JSExportTopLevel("org.scalajs.testsuite.jsinterop.toplevel.setNested")
     def setMyVar(x: Int): Unit = myVar = x
   }
+
+  @JSExportTopLevel("__topLevelExportWithDoubleUnderscore")
+  val topLevelExportWithDoubleUnderscore: Boolean = true
 }
 
 /* This object is only reachable via the top level export to make sure the
