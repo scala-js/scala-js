@@ -81,7 +81,7 @@ trait Compat210Component {
     }
   }
 
-  // Impl classes disappeared in 2.12.0-M4
+  // Impl classes disappeared in 2.12
 
   lazy val scalaUsesImplClasses: Boolean =
     definitions.SeqClass.implClass != NoSymbol // a trait we know has an impl class
@@ -98,7 +98,7 @@ trait Compat210Component {
     def interfaceName(implname: Name): TypeName = noImplClasses()
   }
 
-  // SAMFunction was introduced in 2.12.0-M4 for LMF-capable SAM types
+  // SAMFunction was introduced in 2.12 for LMF-capable SAM types
 
   object SAMFunctionAttachCompatDef {
     /* Should extend PlainAttachment, but it does not exist in 2.10, and we
@@ -135,7 +135,7 @@ trait Compat210Component {
    *   initializeCoreBTypes (it was actually typo'ed as intializeCoreBTypes!)
    * - In 2.11.6+, including 2.12, we finally have
    *   genBCode.bTypes.initializeCoreBTypes
-   * - As of 2.12.0-M4, it is mandatory to call that method from GenJSCode.run()
+   * - As of 2.12, it is mandatory to call that method from GenJSCode.run()
    */
 
   object LowPrioGenBCodeCompat {

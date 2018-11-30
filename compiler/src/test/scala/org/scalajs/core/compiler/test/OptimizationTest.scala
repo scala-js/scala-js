@@ -286,8 +286,7 @@ object OptimizationTest {
 
     version.startsWith("2.10.") ||
     version.startsWith("2.11.") ||
-    version.startsWith("2.12.") ||
-    version == "2.13.0-M3"
+    version.startsWith("2.12.")
   }
 
   private object WrapArrayCall {
