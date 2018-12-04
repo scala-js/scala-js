@@ -431,7 +431,7 @@ def allJavaVersions = otherJavaVersions.clone()
 allJavaVersions << mainJavaVersion
 
 def mainScalaVersion = "2.12.6"
-def mainScalaVersions = ["2.10.2", "2.11.12", "2.12.6", "2.13.0-M3"]
+def mainScalaVersions = ["2.10.2", "2.11.12", "2.12.6"]
 def otherScalaVersions = [
   "2.10.3",
   "2.10.4",
@@ -455,7 +455,7 @@ def otherScalaVersions = [
   "2.12.4",
   "2.12.5"
 ]
-def limitedCIScalaVersions = ["2.13.0-M4", "2.13.0-M5"]
+def noToolsScalaVersions = ["2.13.0-M5"]
 
 // The 'quick' matrix
 def quickMatrix = []
@@ -476,7 +476,7 @@ mainScalaVersions.each { scalaVersion ->
     quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: javaVersion])
   }
 }
-limitedCIScalaVersions.each { scalaVersion ->
+noToolsScalaVersions.each { scalaVersion ->
   quickMatrix.add([task: "main", scala: scalaVersion, java: mainJavaVersion])
   quickMatrix.add([task: "test-suite-ecma-script5", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-ecma-script6", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])

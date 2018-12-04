@@ -480,8 +480,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
       val v = scala.util.Properties.versionNumberString
       !v.startsWith("2.10.") &&
       !v.startsWith("2.11.") &&
-      !v.startsWith("2.12.") &&
-      v != "2.13.0-M3"
+      !v.startsWith("2.12.")
     }
   }
 }

@@ -343,8 +343,7 @@ class IntTest {
 
   private def scalacCorrectlyHandlesIntShiftLong: Boolean = {
     import Platform.scalaVersion
-    !(scalaVersion.startsWith("2.10.") || scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12.0-M4"))
+    !(scalaVersion.startsWith("2.10.") || scalaVersion.startsWith("2.11."))
   }
 
   @Test def intShiftLeftLongConstantFolded(): Unit = {

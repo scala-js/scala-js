@@ -856,8 +856,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       val version = scala.util.Properties.versionNumberString
       if (version.startsWith("2.10.") ||
           version.startsWith("2.11.") ||
-          version.startsWith("2.12.") ||
-          version == "2.13.0-M3") {
+          version.startsWith("2.12.")) {
         " "
       } else {
         "  "

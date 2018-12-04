@@ -5579,8 +5579,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     val v = scala.util.Properties.versionNumberString
     !v.startsWith("2.10.") &&
     !v.startsWith("2.11.") &&
-    !v.startsWith("2.12.") &&
-    v != "2.13.0-M3"
+    !v.startsWith("2.12.")
   }
 
   /** Tests whether the given type represents a raw JavaScript type,

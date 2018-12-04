@@ -325,7 +325,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
          *
          *   scala.this.Predef.classOf[T]
          *
-         * or, as of Scala 2.12.0-M3, as:
+         * or, as of Scala 2.12.0, as:
          *
          *   scala.Predef.classOf[T]
          *

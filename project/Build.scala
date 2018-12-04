@@ -71,24 +71,21 @@ object Build {
   def hasNewCollections(version: String): Boolean = {
     !version.startsWith("2.10.") &&
     !version.startsWith("2.11.") &&
-    !version.startsWith("2.12.") &&
-    version != "2.13.0-M3"
+    !version.startsWith("2.12.")
   }
 
   /** Returns the appropriate subdirectory of `sourceDir` depending on the
    *  collection "era" used by the `scalaV`.
    *
-   *  It can be the new collections (2.13.0-M5+), the old collections (until
-   *  2.13.0-M3) or the intermediate "M4" collections (the transient state of
-   *  the collections in 2.13.0-M4).
+   *  It can be the new collections (2.13.x+) or the old collections (until
+   *  2.12.x).
    */
   def collectionsEraDependentDirectory(scalaV: String, sourceDir: File): File =
-    if (scalaV == "2.13.0-M4") sourceDir / "scala-m4-collections"
-    else if (hasNewCollections(scalaV)) sourceDir / "scala-new-collections"
+    if (hasNewCollections(scalaV)) sourceDir / "scala-new-collections"
     else sourceDir / "scala-old-collections"
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.7", "2.11.12", "2.12.6", "2.13.0-M3")
+    Set("2.10.7", "2.11.12", "2.12.6")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
