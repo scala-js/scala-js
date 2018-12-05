@@ -38,29 +38,29 @@ import scala.concurrent.duration._
  */
 final class JSEnvSuiteConfig private (
     val jsEnv: JSEnv,
-    val supportsExit: Boolean,
     val supportsCom: Boolean,
     val supportsTimeout: Boolean,
+    val exitJSStatement: Option[String],
     val awaitTimeout: FiniteDuration,
     val description: String
 ) {
   private def this(jsEnv: JSEnv) = this(
       jsEnv = jsEnv,
-      supportsExit = true,
       supportsCom = true,
       supportsTimeout = true,
+      exitJSStatement = None,
       awaitTimeout = 1.minute,
       description = jsEnv.name
   )
-
-  def withSupportsExit(supportsExit: Boolean): JSEnvSuiteConfig =
-    copy(supportsExit = supportsExit)
 
   def withSupportsCom(supportsCom: Boolean): JSEnvSuiteConfig =
     copy(supportsCom = supportsCom)
 
   def withSupportsTimeout(supportsTimeout: Boolean): JSEnvSuiteConfig =
     copy(supportsTimeout = supportsTimeout)
+
+  def withExitJSStatement(code: String): JSEnvSuiteConfig =
+    copy(exitJSStatement = Some(code))
 
   def withAwaitTimeout(awaitTimeout: FiniteDuration): JSEnvSuiteConfig =
     copy(awaitTimeout = awaitTimeout)
@@ -69,13 +69,13 @@ final class JSEnvSuiteConfig private (
     copy(description = description)
 
   private def copy(
-      supportsExit: Boolean = supportsExit,
       supportsCom: Boolean = supportsCom,
       supportsTimeout: Boolean = supportsTimeout,
+      exitJSStatement: Option[String] = exitJSStatement,
       awaitTimeout: FiniteDuration = awaitTimeout,
       description: String = description) = {
-    new JSEnvSuiteConfig(jsEnv, supportsExit, supportsCom,
-        supportsTimeout, awaitTimeout, description)
+    new JSEnvSuiteConfig(jsEnv, supportsCom, supportsTimeout,
+        exitJSStatement, awaitTimeout, description)
   }
 }
 

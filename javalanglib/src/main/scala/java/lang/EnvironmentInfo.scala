@@ -32,13 +32,6 @@ import scala.scalajs.js
  */
 private[lang] sealed trait EnvironmentInfo extends js.Object {
 
-  // Can't link to java.lang.Runtime.exit - #1969
-  /** The function that is called by `java.lang.Runtime.exit`
-   *
-   *  @group envInfo
-   */
-  def exitFunction: js.UndefOr[js.Function1[Int, Nothing]]
-
   /** Dictionary of system properties to add to java.lang.System.getProperties()
    *
    *  @group envInfo

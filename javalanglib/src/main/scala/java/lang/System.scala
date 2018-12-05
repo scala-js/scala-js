@@ -296,7 +296,7 @@ object System {
     null
   }
 
-  def exit(status: scala.Int): Unit = Runtime.getRuntime().exit(status)
+  //def exit(status: scala.Int): Unit
   def gc(): Unit = Runtime.getRuntime().gc()
 }
 

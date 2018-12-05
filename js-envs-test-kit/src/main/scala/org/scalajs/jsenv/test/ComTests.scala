@@ -12,7 +12,7 @@
 
 package org.scalajs.jsenv.test
 
-import org.junit.{Before, Test}
+import org.junit.{Before, Test, AssumptionViolatedException}
 import org.junit.Assume._
 
 import org.scalajs.jsenv._
@@ -48,10 +48,11 @@ private[test] class ComTests(config: JSEnvSuiteConfig) {
 
   @Test
   def jsExitsOnMessageTest: Unit = {
-    assumeTrue(config.supportsExit)
+    val exitStat = config.exitJSStatement.getOrElse(
+        throw new AssumptionViolatedException("JSEnv needs exitJSStatement"))
 
-    kit.withComRun("""
-      scalajsCom.init(function(msg) { __ScalaJSEnv.exitFunction(0); });
+    kit.withComRun(s"""
+      scalajsCom.init(function(msg) { $exitStat });
       for (var i = 0; i < 10; ++i)
         scalajsCom.send("msg: " + i);
       """) { run =>
