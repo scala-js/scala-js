@@ -14,8 +14,6 @@ package java.lang
 
 import scala.scalajs.js
 
-import StackTrace.JSStackTraceElem
-
 /** Information about the JavaScript environment Scala.js runs in.
  *
  *  Holds configuration for the Scala.js internals and should not be used
@@ -40,13 +38,6 @@ private[lang] sealed trait EnvironmentInfo extends js.Object {
    *  @group envInfo
    */
   def exitFunction: js.UndefOr[js.Function1[Int, Nothing]]
-
-  /** Method used to source map JavaScript stack traces
-   *
-   *  @group envInfo
-   */
-  def sourceMapper: js.UndefOr[js.Function1[ // scalastyle:ignore
-    js.Array[JSStackTraceElem], js.Array[JSStackTraceElem]]]
 
   /** Dictionary of system properties to add to java.lang.System.getProperties()
    *
