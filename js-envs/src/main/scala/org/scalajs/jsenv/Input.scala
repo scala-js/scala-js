@@ -30,7 +30,7 @@ object Input {
   final case class ScriptsToLoad(scripts: List[VirtualBinaryFile]) extends Input
 }
 
-case class UnsupportedInputException(msg: String, cause: Throwable)
+class UnsupportedInputException(msg: String, cause: Throwable)
     extends IllegalArgumentException(msg, cause) {
   def this(msg: String) = this(msg, null)
   def this(input: Input) = this(s"Unsupported input: $input")
