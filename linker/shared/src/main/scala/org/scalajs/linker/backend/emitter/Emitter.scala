@@ -40,7 +40,7 @@ final class Emitter private (config: CommonPhaseConfig,
     this(config, InternalOptions())
   }
 
-  private val knowledgeGuardian = new KnowledgeGuardian
+  private val knowledgeGuardian = new KnowledgeGuardian(config)
 
   private val baseCoreJSLib = CoreJSLibs.lib(semantics, esFeatures, moduleKind)
 
@@ -104,6 +104,8 @@ final class Emitter private (config: CommonPhaseConfig,
   def emitAll(unit: LinkingUnit, builder: JSLineBuilder,
       logger: Logger): Unit = {
     emitInternal(unit, builder, logger) {
+      topLevelVarDeclarations(unit).foreach(builder.addLine(_))
+
       if (needsIIFEWrapper)
         builder.addLine("(function(){")
 
@@ -115,13 +117,36 @@ final class Emitter private (config: CommonPhaseConfig,
   }
 
   /** Emits everything but the core JS lib to the builder, and returns the
-   *  core JS lib.
+   *  top-level var declarations.
    *
    *  This is special for the Closure back-end.
    */
   private[backend] def emitForClosure(unit: LinkingUnit, builder: JSBuilder,
-      logger: Logger): Unit = {
+      logger: Logger): Option[String] = {
     emitInternal(unit, builder, logger)(())(())
+    topLevelVarDeclarations(unit)
+  }
+
+  private def topLevelVarDeclarations(unit: LinkingUnit): Option[String] = {
+    moduleKind match {
+      case ModuleKind.NoModule =>
+        val topLevelExportNames = mutable.Set.empty[String]
+        for {
+          classDef <- unit.classDefs
+          export <- classDef.topLevelExports
+        } {
+          topLevelExportNames += export.value.topLevelExportName
+        }
+        if (topLevelExportNames.isEmpty) {
+          None
+        } else {
+          val kw = if (esFeatures.useECMAScript2015) "let " else "var "
+          Some(topLevelExportNames.mkString(kw, ", ", ";"))
+        }
+
+      case ModuleKind.CommonJSModule =>
+        None
+    }
   }
 
   private def emitInternal(unit: LinkingUnit, builder: JSBuilder,

@@ -30,7 +30,7 @@ import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
-import org.scalajs.io.{FileVirtualBinaryFile, MemVirtualBinaryFile}
+import org.scalajs.io._
 import org.scalajs.io.JSUtils.escapeJS
 import org.scalajs.linker._
 import org.scalajs.linker.irio._
@@ -67,8 +67,8 @@ object MyScalaJSPlugin extends AutoPlugin {
 
   val configSettings: Seq[Setting[_]] = Def.settings(
       // Add a JS file defining Java system properties
-      jsExecutionFiles := {
-        val prev = jsExecutionFiles.value
+      jsEnvInput := {
+        val prev = jsEnvInput.value
 
         val javaSysPropsPattern = "-D([^=]*)=(.*)".r
         val javaSystemProperties = javaOptions.value.collect {
@@ -82,14 +82,24 @@ object MyScalaJSPlugin extends AutoPlugin {
             case (propName, propValue) =>
               "\"" + escapeJS(propName) + "\": \"" + escapeJS(propValue) + "\""
           }
-          val code = {
+
+          val needsGlobal = !prev.isInstanceOf[Input.ScriptsToLoad]
+          val code = if (needsGlobal) {
+            "global.__ScalaJSEnv = global.__ScalaJSEnv || {};\n" +
+            "global.__ScalaJSEnv.javaSystemProperties = {" + formattedProps.mkString(", ") + "};\n"
+          } else {
             "var __ScalaJSEnv = (typeof __ScalaJSEnv === \"object\" && __ScalaJSEnv) ? __ScalaJSEnv : {};\n" +
             "__ScalaJSEnv.javaSystemProperties = {" + formattedProps.mkString(", ") + "};\n"
           }
           val javaSysPropsFile =
             MemVirtualBinaryFile.fromStringUTF8("setJavaSystemProperties.js", code)
 
-          javaSysPropsFile +: prev
+          prev match {
+            case Input.ScriptsToLoad(prevFiles) =>
+              Input.ScriptsToLoad(javaSysPropsFile :: prevFiles)
+            case Input.CommonJSModulesToLoad(prevFiles) =>
+              Input.CommonJSModulesToLoad(javaSysPropsFile :: prevFiles)
+          }
         }
       }
   )
@@ -1452,8 +1462,8 @@ object Build {
 
   def testSuiteTestHtmlSetting = Def.settings(
       // We need to patch the system properties.
-      jsExecutionFiles in (Test, testHtml) := {
-        val previousFiles = (jsExecutionFiles in (Test, testHtml)).value
+      jsEnvInput in (Test, testHtml) := {
+        val previousInput = (jsEnvInput in (Test, testHtml)).value
 
         val patchedSystemProperties = {
           // Fetch the defaults
@@ -1473,21 +1483,31 @@ object Build {
           case (propName, propValue) =>
             "\"" + escapeJS(propName) + "\": \"" + escapeJS(propValue) + "\""
         }.mkString("{ ", ", ", " }")
-        val code = s"""
-          var __ScalaJSEnv = {
-            javaSystemProperties: $formattedProps
-          };
-        """
 
-        val patchedSystemPropertiesFile =
-          MemVirtualBinaryFile.fromStringUTF8("setJavaSystemProperties.js", code)
+        def patchFiles(files: List[VirtualBinaryFile], needsGlobal: Boolean) = {
+          val code = s"""
+            ${if (needsGlobal) "global." else "var "}__ScalaJSEnv = {
+              javaSystemProperties: $formattedProps
+            };
+          """
 
-        // Replace the normal `setJavaSystemProperties.js` file with the patch
-        for (file <- previousFiles) yield {
-          if (file.path == "setJavaSystemProperties.js")
-            patchedSystemPropertiesFile
-          else
-            file
+          val patchedSystemPropertiesFile =
+            MemVirtualBinaryFile.fromStringUTF8("setJavaSystemProperties.js", code)
+
+          // Replace the normal `setJavaSystemProperties.js` file with the patch
+          for (file <- files) yield {
+            if (file.path == "setJavaSystemProperties.js")
+              patchedSystemPropertiesFile
+            else
+              file
+          }
+        }
+
+        previousInput match {
+          case Input.ScriptsToLoad(prevFiles) =>
+            Input.ScriptsToLoad(patchFiles(prevFiles, needsGlobal = false))
+          case Input.CommonJSModulesToLoad(prevFiles) =>
+            Input.CommonJSModulesToLoad(patchFiles(prevFiles, needsGlobal = true))
         }
       }
   )
@@ -1557,11 +1577,17 @@ object Build {
   )
 
   def testSuiteJSExecutionFilesSetting: Setting[_] = {
-    jsExecutionFiles := {
+    jsEnvInput := {
       val resourceDir = (resourceDirectory in Test).value
       val f = new FileVirtualBinaryFile(
           resourceDir / "NonNativeJSTypeTestNatives.js")
-      f +: jsExecutionFiles.value
+
+      jsEnvInput.value match {
+        case Input.ScriptsToLoad(prevFiles) =>
+          Input.ScriptsToLoad(f :: prevFiles)
+        case Input.CommonJSModulesToLoad(prevFiles) =>
+          Input.CommonJSModulesToLoad(f :: prevFiles)
+      }
     }
   }
 

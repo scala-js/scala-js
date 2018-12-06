@@ -34,25 +34,36 @@ final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
 
   def start(input: Input, runConfig: RunConfig): JSRun = {
     NodeJSEnv.validator.validate(runConfig)
-    internalStart(initFiles ++ inputFiles(input), runConfig)
+    validateInput(input)
+    internalStart(initFiles, input, runConfig)
   }
 
   def startWithCom(input: Input, runConfig: RunConfig,
       onMessage: String => Unit): JSComRun = {
     NodeJSEnv.validator.validate(runConfig)
+    validateInput(input)
     ComRun.start(runConfig, onMessage) { comLoader =>
-      val files = initFiles ::: (comLoader :: inputFiles(input))
-      internalStart(files, runConfig)
+      internalStart(initFiles :+ comLoader, input, runConfig)
     }
   }
 
-  private def internalStart(files: List[VirtualBinaryFile],
+  private def validateInput(input: Input): Unit = {
+    input match {
+      case _:Input.ScriptsToLoad | _:Input.CommonJSModulesToLoad =>
+        // ok
+      case _ =>
+        throw new UnsupportedInputException(input)
+    }
+  }
+
+  private def internalStart(initFiles: List[VirtualBinaryFile], input: Input,
       runConfig: RunConfig): JSRun = {
     val command = config.executable :: config.args
     val externalConfig = ExternalJSRun.Config()
       .withEnv(env)
       .withRunConfig(runConfig)
-    ExternalJSRun.start(command, externalConfig)(NodeJSEnv.write(files))
+    ExternalJSRun.start(command, externalConfig)(
+        NodeJSEnv.write(initFiles, input))
   }
 
   private def initFiles: List[VirtualBinaryFile] = {
@@ -103,37 +114,110 @@ object NodeJSEnv {
     )
   }
 
-  private def write(files: List[VirtualBinaryFile])(out: OutputStream): Unit = {
+  private def write(initFiles: List[VirtualBinaryFile], input: Input)(
+      out: OutputStream): Unit = {
     val p = new PrintStream(out, false, "UTF8")
     try {
-      files.foreach {
-        case file: FileVirtualBinaryFile =>
-          val fname = file.file.getAbsolutePath
-          p.println(s"""require("${escapeJS(fname)}");""")
-        case f =>
-          val in = f.inputStream
-          try {
-            val buf = new Array[Byte](4096)
+      def writeRunScript(file: VirtualBinaryFile): Unit = {
+        file match {
+          case file: FileVirtualBinaryFile =>
+            val pathJS = "\"" + escapeJS(file.file.getAbsolutePath) + "\""
+            p.println(s"""
+              require('vm').runInThisContext(
+                require('fs').readFileSync($pathJS, { encoding: "utf-8" }),
+                { filename: $pathJS, displayErrors: true }
+              );
+            """)
 
-            @tailrec
-            def loop(): Unit = {
-              val read = in.read(buf)
-              if (read != -1) {
-                p.write(buf, 0, read)
-                loop()
-              }
-            }
+          case _ =>
+            val code = readInputStreamToString(file.inputStream)
+            val codeJS = "\"" + escapeJS(code) + "\""
+            val pathJS = "\"" + escapeJS(file.path) + "\""
+            p.println(s"""
+              require('vm').runInThisContext(
+                $codeJS,
+                { filename: $pathJS, displayErrors: true }
+              );
+            """)
+        }
+      }
 
-            loop()
-          } finally {
-            in.close()
-          }
+      def writeRequire(file: VirtualBinaryFile): Unit = {
+        file match {
+          case file: FileVirtualBinaryFile =>
+            p.println(s"""require("${escapeJS(file.file.getAbsolutePath)}")""")
 
-          p.println()
+          case _ =>
+            val f = tmpFile(file.path, file.inputStream)
+            p.println(s"""require("${escapeJS(f.getAbsolutePath)}")""")
+        }
+      }
+
+      for (initFile <- initFiles)
+        writeRunScript(initFile)
+
+      input match {
+        case Input.ScriptsToLoad(scripts) =>
+          for (script <- scripts)
+            writeRunScript(script)
+
+        case Input.CommonJSModulesToLoad(modules) =>
+          for (module <- modules)
+            writeRequire(module)
       }
     } finally {
       p.close()
     }
+  }
+
+  private def readInputStreamToString(inputStream: InputStream): String = {
+    val baos = new java.io.ByteArrayOutputStream
+    val in = inputStream
+    try {
+      val buf = new Array[Byte](4096)
+
+      @tailrec
+      def loop(): Unit = {
+        val read = in.read(buf)
+        if (read != -1) {
+          baos.write(buf, 0, read)
+          loop()
+        }
+      }
+
+      loop()
+    } finally {
+      in.close()
+    }
+    new String(baos.toByteArray(), StandardCharsets.UTF_8)
+  }
+
+  private def tmpFile(path: String, content: InputStream): File = {
+    import java.nio.file.{Files, StandardCopyOption}
+
+    try {
+      val f = createTmpFile(path)
+      Files.copy(content, f.toPath(), StandardCopyOption.REPLACE_EXISTING)
+      f
+    } finally {
+      content.close()
+    }
+  }
+
+  // tmpSuffixRE and createTmpFile copied from HTMLRunnerBuilder.scala
+
+  private val tmpSuffixRE = """[a-zA-Z0-9-_.]*$""".r
+
+  private def createTmpFile(path: String): File = {
+    /* - createTempFile requires a prefix of at least 3 chars
+     * - we use a safe part of the path as suffix so the extension stays (some
+     *   browsers need that) and there is a clue which file it came from.
+     */
+    val suffix = tmpSuffixRE.findFirstIn(path).orNull
+
+    val f = File.createTempFile("tmp-", suffix)
+    f.deleteOnExit()
+    f
   }
 
   /** Requirements for source map support. */

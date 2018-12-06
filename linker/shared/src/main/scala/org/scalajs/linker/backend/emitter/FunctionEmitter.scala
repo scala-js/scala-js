@@ -1363,8 +1363,20 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           })
 
         case _ =>
-          js.Assign(transformExpr(lhs, preserveChar = true),
+          val base = js.Assign(transformExpr(lhs, preserveChar = true),
               transformExpr(rhs, lhs.tpe))
+          lhs match {
+            case SelectStatic(ClassType(className), Ident(field, _))
+                if moduleKind == ModuleKind.NoModule =>
+              val mirrors =
+                globalKnowledge.getStaticFieldMirrors(className, field)
+              mirrors.foldLeft(base) { (prev, mirror) =>
+                referenceGlobalName(mirror)
+                js.Assign(js.VarRef(js.Ident(mirror)), prev)
+              }
+            case _ =>
+              base
+          }
       }
     }
 

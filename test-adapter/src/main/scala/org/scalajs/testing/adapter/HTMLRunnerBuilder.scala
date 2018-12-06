@@ -24,6 +24,8 @@ import sbt.testing.{Framework, TaskDef}
 import org.scalajs.io._
 import org.scalajs.io.JSUtils.escapeJS
 
+import org.scalajs.jsenv.{Input, UnsupportedInputException}
+
 import org.scalajs.testing.common._
 
 /** Template for the HTML runner. */
@@ -48,9 +50,17 @@ object HTMLRunnerBuilder {
     }
   }
 
-  def writeToFile(output: File, title: String, jsFiles: Seq[VirtualBinaryFile],
+  def writeToFile(output: File, title: String, input: Input,
       frameworkImplClassNames: List[List[String]],
       taskDefs: List[TaskDef]): Unit = {
+
+    val jsFiles = input match {
+      case Input.ScriptsToLoad(jsFiles) =>
+        jsFiles
+      case _ =>
+        throw new UnsupportedInputException(
+            s"Unsupported input for the generation of an HTML runner: $input")
+    }
 
     val jsFileURIs = jsFiles.map {
       case file: FileVirtualFile => file.file.toURI

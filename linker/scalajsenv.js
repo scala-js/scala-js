@@ -7,16 +7,6 @@
  * The top-level Scala.js environment *
  * ---------------------------------- */
 
-// Where to send exports
-//!if moduleKind == CommonJSModule
-const $e = exports;
-//!else
-// TODO Do not use global object detection, and rather export with actual `var` declarations
-const $e = (typeof global === "object" && global && global["Object"] === Object) ? global : this;
-// #3036 - convince GCC that $e must not be dce'ed away
-this["__ScalaJSWorkaroundToRetainExportsInGCC"] = $e;
-//!endif
-
 // Linking info - must be in sync with scala.scalajs.runtime.LinkingInfo
 const $linkingInfo = {
   "semantics": {

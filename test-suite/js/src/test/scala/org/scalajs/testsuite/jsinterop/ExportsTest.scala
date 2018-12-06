@@ -13,7 +13,8 @@
 package org.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
-import js.annotation._
+import scala.scalajs.js.annotation._
+import scala.scalajs.js.Dynamic.global
 
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.JSAssert._
@@ -42,7 +43,7 @@ class ExportsTest {
    */
   val exportsNamespace: js.Dynamic = {
     if (Platform.isNoModule) {
-      org.scalajs.testsuite.utils.JSUtils.globalObject
+      null // need to use `global` instead
     } else if (Platform.isCommonJSModule) {
       js.Dynamic.global.exports
     } else {
@@ -687,14 +688,18 @@ class ExportsTest {
   }
 
   @Test def toplevel_exports_for_objects(): Unit = {
-    val obj = exportsNamespace.TopLevelExportedObject
+    val obj =
+      if (isNoModule) global.TopLevelExportedObject
+      else exportsNamespace.TopLevelExportedObject
     assertJSNotUndefined(obj)
     assertEquals("object", js.typeOf(obj))
     assertEquals("witness", obj.witness)
   }
 
   @Test def toplevel_exports_for_Scala_js_defined_JS_objects(): Unit = {
-    val obj1 = exportsNamespace.SJSDefinedTopLevelExportedObject
+    val obj1 =
+      if (isNoModule) global.SJSDefinedTopLevelExportedObject
+      else exportsNamespace.SJSDefinedTopLevelExportedObject
     assertJSNotUndefined(obj1)
     assertEquals("object", js.typeOf(obj1))
     assertEquals("witness", obj1.witness)
@@ -703,28 +708,36 @@ class ExportsTest {
   }
 
   @Test def toplevel_exports_for_nested_objects(): Unit = {
-    val obj = exportsNamespace.NestedExportedObject
+    val obj =
+      if (isNoModule) global.NestedExportedObject
+      else exportsNamespace.NestedExportedObject
     assertJSNotUndefined(obj)
     assertEquals("object", js.typeOf(obj))
     assertSame(obj, ExportHolder.ExportedObject)
   }
 
   @Test def exports_for_objects_with_constant_folded_name(): Unit = {
-    val obj = exportsNamespace.ConstantFoldedObjectExport
+    val obj =
+      if (isNoModule) global.ConstantFoldedObjectExport
+      else exportsNamespace.ConstantFoldedObjectExport
     assertJSNotUndefined(obj)
     assertEquals("object", js.typeOf(obj))
     assertEquals("witness", obj.witness)
   }
 
   @Test def exports_for_protected_objects(): Unit = {
-    val obj = exportsNamespace.ProtectedExportedObject
+    val obj =
+      if (isNoModule) global.ProtectedExportedObject
+      else exportsNamespace.ProtectedExportedObject
     assertJSNotUndefined(obj)
     assertEquals("object", js.typeOf(obj))
     assertEquals("witness", obj.witness)
   }
 
   @Test def toplevel_exports_for_classes(): Unit = {
-    val constr = exportsNamespace.TopLevelExportedClass
+    val constr =
+      if (isNoModule) global.TopLevelExportedClass
+      else exportsNamespace.TopLevelExportedClass
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)(5)
@@ -732,7 +745,9 @@ class ExportsTest {
   }
 
   @Test def toplevel_exports_for_Scala_js_defined_JS_classes(): Unit = {
-    val constr = exportsNamespace.SJSDefinedTopLevelExportedClass
+    val constr =
+      if (isNoModule) global.SJSDefinedTopLevelExportedClass
+      else exportsNamespace.SJSDefinedTopLevelExportedClass
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)(5)
@@ -743,7 +758,9 @@ class ExportsTest {
   }
 
   @Test def toplevel_exports_for_nested_classes(): Unit = {
-    val constr = exportsNamespace.NestedExportedClass
+    val constr =
+      if (isNoModule) global.NestedExportedClass
+      else exportsNamespace.NestedExportedClass
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)()
@@ -751,7 +768,9 @@ class ExportsTest {
   }
 
   @Test def toplevel_exports_for_nested_sjs_defined_classes(): Unit = {
-    val constr = exportsNamespace.NestedSJSDefinedExportedClass
+    val constr =
+      if (isNoModule) global.NestedSJSDefinedExportedClass
+      else exportsNamespace.NestedSJSDefinedExportedClass
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)()
@@ -759,7 +778,9 @@ class ExportsTest {
   }
 
   @Test def exports_for_classes_with_constant_folded_name(): Unit = {
-    val constr = exportsNamespace.ConstantFoldedClassExport
+    val constr =
+      if (isNoModule) global.ConstantFoldedClassExport
+      else exportsNamespace.ConstantFoldedClassExport
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)(5)
@@ -767,7 +788,9 @@ class ExportsTest {
   }
 
   @Test def exports_for_protected_classes(): Unit = {
-    val constr = exportsNamespace.ProtectedExportedClass
+    val constr =
+      if (isNoModule) global.ProtectedExportedClass
+      else exportsNamespace.ProtectedExportedClass
     assertJSNotUndefined(constr)
     assertEquals("function", js.typeOf(constr))
     val obj = js.Dynamic.newInstance(constr)(5)
@@ -775,7 +798,9 @@ class ExportsTest {
   }
 
   @Test def export_for_classes_with_repeated_parameters_in_ctor(): Unit = {
-    val constr = exportsNamespace.ExportedVarArgClass
+    val constr =
+      if (isNoModule) global.ExportedVarArgClass
+      else exportsNamespace.ExportedVarArgClass
     assertEquals("", js.Dynamic.newInstance(constr)().result)
     assertEquals("a", js.Dynamic.newInstance(constr)("a").result)
     assertEquals("a|b", js.Dynamic.newInstance(constr)("a", "b").result)
@@ -784,7 +809,9 @@ class ExportsTest {
   }
 
   @Test def export_for_classes_with_default_parameters_in_ctor(): Unit = {
-    val constr = exportsNamespace.ExportedDefaultArgClass
+    val constr =
+      if (isNoModule) global.ExportedDefaultArgClass
+      else exportsNamespace.ExportedDefaultArgClass
     assertEquals(6, js.Dynamic.newInstance(constr)(1,2,3).result)
     assertEquals(106, js.Dynamic.newInstance(constr)(1).result)
     assertEquals(103, js.Dynamic.newInstance(constr)(1,2).result)
@@ -1188,65 +1215,116 @@ class ExportsTest {
   // @JSExportTopLevel
 
   @Test def basic_top_level_export(): Unit = {
-    assertEquals(1, exportsNamespace.TopLevelExport_basic())
+    if (isNoModule) {
+      assertEquals(1, global.TopLevelExport_basic())
+    } else {
+      assertEquals(1, exportsNamespace.TopLevelExport_basic())
+    }
   }
 
   @Test def overloaded_top_level_export(): Unit = {
-    assertEquals("Hello World", exportsNamespace.TopLevelExport_overload("World"))
-    assertEquals(2, exportsNamespace.TopLevelExport_overload(2))
-    assertEquals(9, exportsNamespace.TopLevelExport_overload(2, 7))
-    assertEquals(10, exportsNamespace.TopLevelExport_overload(1, 2, 3, 4))
+    if (isNoModule) {
+      assertEquals("Hello World", global.TopLevelExport_overload("World"))
+      assertEquals(2, global.TopLevelExport_overload(2))
+      assertEquals(9, global.TopLevelExport_overload(2, 7))
+      assertEquals(10, global.TopLevelExport_overload(1, 2, 3, 4))
+    } else {
+      assertEquals("Hello World", exportsNamespace.TopLevelExport_overload("World"))
+      assertEquals(2, exportsNamespace.TopLevelExport_overload(2))
+      assertEquals(9, exportsNamespace.TopLevelExport_overload(2, 7))
+      assertEquals(10, exportsNamespace.TopLevelExport_overload(1, 2, 3, 4))
+    }
   }
 
   @Test def top_level_export_uses_unique_object(): Unit = {
-    exportsNamespace.TopLevelExport_set(3)
-    assertEquals(3, TopLevelExports.myVar)
-    exportsNamespace.TopLevelExport_set(7)
-    assertEquals(7, TopLevelExports.myVar)
+    if (isNoModule) {
+      global.TopLevelExport_set(3)
+      assertEquals(3, TopLevelExports.myVar)
+      global.TopLevelExport_set(7)
+      assertEquals(7, TopLevelExports.myVar)
+    } else {
+      exportsNamespace.TopLevelExport_set(3)
+      assertEquals(3, TopLevelExports.myVar)
+      exportsNamespace.TopLevelExport_set(7)
+      assertEquals(7, TopLevelExports.myVar)
+    }
   }
 
   @Test def top_level_export_from_nested_object(): Unit = {
-    exportsNamespace.TopLevelExport_setNested(28)
+    if (isNoModule)
+      global.TopLevelExport_setNested(28)
+    else
+      exportsNamespace.TopLevelExport_setNested(28)
     assertEquals(28, TopLevelExports.Nested.myVar)
   }
 
   @Test def top_level_export_is_always_reachable(): Unit = {
-    assertEquals("Hello World", exportsNamespace.TopLevelExport_reachability())
+    if (isNoModule) {
+      assertEquals("Hello World", global.TopLevelExport_reachability())
+    } else {
+      assertEquals("Hello World", exportsNamespace.TopLevelExport_reachability())
+    }
   }
 
   // @JSExportTopLevel fields
 
   @Test def top_level_export_basic_field(): Unit = {
-    // Initialization
-    assertEquals(5, exportsNamespace.TopLevelExport_basicVal)
-    assertEquals("hello", exportsNamespace.TopLevelExport_basicVar)
+    if (isNoModule) {
+      // Initialization
+      assertEquals(5, global.TopLevelExport_basicVal)
+      assertEquals("hello", global.TopLevelExport_basicVar)
 
-    // Scala modifies var
-    TopLevelFieldExports.basicVar = "modified"
-    assertEquals("modified", TopLevelFieldExports.basicVar)
-    assertEquals("modified", exportsNamespace.TopLevelExport_basicVar)
+      // Scala modifies var
+      TopLevelFieldExports.basicVar = "modified"
+      assertEquals("modified", TopLevelFieldExports.basicVar)
+      assertEquals("modified", global.TopLevelExport_basicVar)
+    } else {
+      // Initialization
+      assertEquals(5, exportsNamespace.TopLevelExport_basicVal)
+      assertEquals("hello", exportsNamespace.TopLevelExport_basicVar)
+
+      // Scala modifies var
+      TopLevelFieldExports.basicVar = "modified"
+      assertEquals("modified", TopLevelFieldExports.basicVar)
+      assertEquals("modified", exportsNamespace.TopLevelExport_basicVar)
+    }
 
     // Reset var
     TopLevelFieldExports.basicVar = "hello"
   }
 
   @Test def top_level_export_field_twice(): Unit = {
-    // Initialization
-    assertEquals(5, exportsNamespace.TopLevelExport_valExportedTwice1)
-    assertEquals("hello", exportsNamespace.TopLevelExport_varExportedTwice1)
-    assertEquals("hello", exportsNamespace.TopLevelExport_varExportedTwice2)
+    if (isNoModule) {
+      // Initialization
+      assertEquals(5, global.TopLevelExport_valExportedTwice1)
+      assertEquals("hello", global.TopLevelExport_varExportedTwice1)
+      assertEquals("hello", global.TopLevelExport_varExportedTwice2)
 
-    // Scala modifies var
-    TopLevelFieldExports.varExportedTwice = "modified"
-    assertEquals("modified", TopLevelFieldExports.varExportedTwice)
-    assertEquals("modified", exportsNamespace.TopLevelExport_varExportedTwice1)
-    assertEquals("modified", exportsNamespace.TopLevelExport_varExportedTwice2)
+      // Scala modifies var
+      TopLevelFieldExports.varExportedTwice = "modified"
+      assertEquals("modified", TopLevelFieldExports.varExportedTwice)
+      assertEquals("modified", global.TopLevelExport_varExportedTwice1)
+      assertEquals("modified", global.TopLevelExport_varExportedTwice2)
+    } else {
+      // Initialization
+      assertEquals(5, exportsNamespace.TopLevelExport_valExportedTwice1)
+      assertEquals("hello", exportsNamespace.TopLevelExport_varExportedTwice1)
+      assertEquals("hello", exportsNamespace.TopLevelExport_varExportedTwice2)
+
+      // Scala modifies var
+      TopLevelFieldExports.varExportedTwice = "modified"
+      assertEquals("modified", TopLevelFieldExports.varExportedTwice)
+      assertEquals("modified", exportsNamespace.TopLevelExport_varExportedTwice1)
+      assertEquals("modified", exportsNamespace.TopLevelExport_varExportedTwice2)
+    }
 
     // Reset var
     TopLevelFieldExports.varExportedTwice = "hello"
   }
 
   @Test def top_level_export_write_val_var_causes_typeerror(): Unit = {
+    assumeFalse("Unchecked in Script mode", isNoModule)
+
     assertThrows(classOf[js.JavaScriptException], {
       exportsNamespace.TopLevelExport_basicVal = 54
     })
@@ -1258,20 +1336,29 @@ class ExportsTest {
 
   @Test def top_level_export_uninitialized_fields(): Unit = {
     assertEquals(0, TopLevelFieldExports.uninitializedVarInt)
-    assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarInt)
-
     assertEquals(0L, TopLevelFieldExports.uninitializedVarLong)
-    assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarLong)
-
     assertEquals(null, TopLevelFieldExports.uninitializedVarString)
-    assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarString)
-
     assertEquals('\u0000', TopLevelFieldExports.uninitializedVarChar)
-    assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarChar)
+
+    if (isNoModule) {
+      assertEquals(null, global.TopLevelExport_uninitializedVarInt)
+      assertEquals(null, global.TopLevelExport_uninitializedVarLong)
+      assertEquals(null, global.TopLevelExport_uninitializedVarString)
+      assertEquals(null, global.TopLevelExport_uninitializedVarChar)
+    } else {
+      assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarInt)
+      assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarLong)
+      assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarString)
+      assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarChar)
+    }
   }
 
   @Test def top_level_export_field_is_always_reachable_and_initialized(): Unit = {
-    assertEquals("Hello World", exportsNamespace.TopLevelExport_fieldreachability)
+    if (isNoModule) {
+      assertEquals("Hello World", global.TopLevelExport_fieldreachability)
+    } else {
+      assertEquals("Hello World", exportsNamespace.TopLevelExport_fieldreachability)
+    }
   }
 
 }

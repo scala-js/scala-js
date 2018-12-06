@@ -24,7 +24,7 @@ import org.scalajs.io._
 import org.scalajs.linker._
 import org.scalajs.linker.irio._
 
-import org.scalajs.jsenv.JSEnv
+import org.scalajs.jsenv.{Input, JSEnv}
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 object ScalaJSPlugin extends AutoPlugin {
@@ -143,9 +143,9 @@ object ScalaJSPlugin extends AutoPlugin {
         "Prints the content of a .sjsir file in human readable form.",
         CTask)
 
-    val jsExecutionFiles = TaskKey[Seq[VirtualBinaryFile]](
-        "jsExecutionFiles",
-        "All the JS files given to JS environments on `run`, `test`, etc.",
+    val jsEnvInput = TaskKey[Input](
+        "jsEnvInput",
+        "The JSEnv.Input to give to the jsEnv for tasks such as `run` and `test`",
         BTask)
 
     val scalaJSSourceFiles = AttributeKey[Seq[File]]("scalaJSSourceFiles",
@@ -175,8 +175,6 @@ object ScalaJSPlugin extends AutoPlugin {
         },
 
         jsEnv := new NodeJSEnv(),
-
-        jsExecutionFiles := Nil,
 
         // Clear the IR cache stats every time a sequence of tasks ends
         onComplete := {
