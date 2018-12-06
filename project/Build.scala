@@ -743,15 +743,18 @@ object Build {
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile / "shared/src/test/scala",
 
+      sourceGenerators in Test += Def.task {
+        ConstantHolderGenerator.generate(
+            (sourceManaged in Test).value,
+            "org.scalajs.linker.testutils.MinilibHolder",
+            "minilib" -> (packageBin in (LocalProject("minilib"), Compile)).value)
+      }.taskValue,
+
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Linker,
       exportJars := true, // required so ScalaDoc linking works
 
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a"),
-      javaOptions in Test += {
-        val libJar = (packageBin in (LocalProject("minilib"), Compile)).value
-        "-Dorg.scalajs.linker.stdlibjar=" + libJar.getAbsolutePath
-      }
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a")
   )
 
   lazy val linker: Project = (project in file("linker/jvm")).settings(

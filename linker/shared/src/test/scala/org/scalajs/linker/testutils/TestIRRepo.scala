@@ -20,8 +20,7 @@ import org.scalajs.linker.analyzer.Infos._
 import org.scalajs.linker.irio._
 
 object TestIRRepo {
-  private val stdlibPath =
-    System.getProperty("org.scalajs.linker.stdlibjar")
+  private val stdlibPath = MinilibHolder.minilib
 
   private val globalIRCache = new IRFileCache
 
