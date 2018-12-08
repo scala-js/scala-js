@@ -1283,6 +1283,14 @@ class ExportsTest {
     assertEquals(28, TopLevelExports.Nested.myVar)
   }
 
+  @Test def top_level_export_with_double_underscore(): Unit = {
+    if (isNoModule) {
+      assertEquals(true, global.__topLevelExportWithDoubleUnderscore)
+    } else {
+      assertEquals(true, exportsNamespace.__topLevelExportWithDoubleUnderscore)
+    }
+  }
+
   @Test def top_level_export_is_always_reachable(): Unit = {
     if (isNoModule) {
       assertEquals("Hello World", global.TopLevelExport_reachability())
@@ -1482,6 +1490,9 @@ object TopLevelExports {
     @JSExportTopLevel("TopLevelExport_setNested")
     def setMyVar(x: Int): Unit = myVar = x
   }
+
+  @JSExportTopLevel("__topLevelExportWithDoubleUnderscore")
+  val topLevelExportWithDoubleUnderscore: Boolean = true
 }
 
 /* This object is only reachable via the top level export to make sure the

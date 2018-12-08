@@ -162,7 +162,7 @@ object Build {
     "Whether we should partest the current scala version (and fail if we can't)")
 
   /* MiMa configuration -- irrelevant while in 1.0.0-SNAPSHOT.
-  val previousVersion = "0.6.25"
+  val previousVersion = "0.6.26"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
@@ -599,7 +599,7 @@ object Build {
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.IR,
       exportJars := true, // required so ScalaDoc linking works
 
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s")
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s")
   )
 
   lazy val irProject: Project = Project(id = "ir", base = file("ir")).settings(
@@ -633,7 +633,7 @@ object Build {
           "org.scala-lang" % "scala-reflect" % scalaVersion.value,
           "com.novocode" % "junit-interface" % "0.9" % "test"
       ),
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a"),
       testOptions += Tests.Setup { () =>
         val testOutDir = (streams.value.cacheDirectory / "scalajs-compiler-test")
         IO.createDirectory(testOutDir)
@@ -682,7 +682,7 @@ object Build {
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile / "shared/src/test/scala",
 
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s")
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s")
   )
 
   lazy val io: Project = (project in file("io/jvm")).settings(
@@ -747,7 +747,7 @@ object Build {
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Linker,
       exportJars := true, // required so ScalaDoc linking works
 
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a"),
       javaOptions in Test += {
         val libJar = (packageBin in (LocalProject("minilib"), Compile)).value
         "-Dorg.scalajs.linker.stdlibjar=" + libJar.getAbsolutePath
@@ -1250,7 +1250,7 @@ object Build {
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile / "shared/src/test/scala",
       testOptions in Test ++= Seq(
-          Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
+          Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
           Tests.Filter(_.endsWith("Assertions"))
       )
   )
@@ -1416,7 +1416,7 @@ object Build {
       libraryDependencies +=
         "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
 
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
 
       unmanagedSourceDirectories in Test ++= {
         val testDir = (sourceDirectory in Test).value
@@ -1804,12 +1804,11 @@ object Build {
       inConfig(Test)(testTagJavaOptionsSetting),
       name := "Scala.js test suite ex",
       publishArtifact in Compile := false,
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
       scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime, testSuite
   )
-
 
   lazy val testSuiteLinker = (project in file("test-suite-linker")).enablePlugins(
       MyScalaJSPlugin
@@ -1940,7 +1939,7 @@ object Build {
       commonSettings,
       publishArtifact in Compile := false,
 
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a", "-s"),
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
 
       unmanagedSources in Test ++= {
         def loadList(listName: String): Set[String] = {

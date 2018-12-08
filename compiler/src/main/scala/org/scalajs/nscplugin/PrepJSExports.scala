@@ -233,7 +233,7 @@ trait PrepJSExports { this: PrepJSInterop =>
         checkSetterSignature(sym, annot.pos, exported = true)
 
       // Enforce no __ in name
-      if (name.contains("__")) {
+      if (!isTopLevelExport && name.contains("__")) {
         // Get position for error message
         val pos = if (hasExplicitName) annot.args.head.pos else trgSym.pos
 

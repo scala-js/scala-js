@@ -68,7 +68,6 @@ class JSExportTest extends DirectTest with TestHelpers {
 
   @Test
   def noDoubleUnderscoreExport: Unit = {
-    // Normal exports
     """
     class A {
       @JSExport(name = "__")
@@ -77,12 +76,6 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport
       def bar__(x: Int) = x
     }
-
-    @JSExportTopLevel("B__")
-    class B__
-
-    @JSExportTopLevel("C__")
-    class C__ extends js.Object
     """ hasErrors
     """
       |newSource1.scala:4: error: An exported name may not contain a double underscore (`__`)
@@ -91,13 +84,26 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:8: error: An exported name may not contain a double underscore (`__`)
       |      def bar__(x: Int) = x
       |          ^
-      |newSource1.scala:11: error: An exported name may not contain a double underscore (`__`)
-      |    @JSExportTopLevel("B__")
-      |                      ^
-      |newSource1.scala:14: error: An exported name may not contain a double underscore (`__`)
-      |    @JSExportTopLevel("C__")
-      |                      ^
     """
+  }
+
+  @Test
+  def doubleUnderscoreOKInTopLevelExport: Unit = {
+    """
+    @JSExportTopLevel("__A")
+    class A
+
+    @JSExportTopLevel("__B")
+    object B
+
+    object Container {
+      @JSExportTopLevel("__c")
+      def c(): Int = 4
+
+      @JSExportTopLevel("__d")
+      val d: Boolean = true
+    }
+    """.hasNoWarns
   }
 
   @Test
