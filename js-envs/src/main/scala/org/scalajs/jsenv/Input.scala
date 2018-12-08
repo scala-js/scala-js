@@ -29,6 +29,16 @@ object Input {
   /** All files are to be loaded as scripts into the global scope in the order given. */
   final case class ScriptsToLoad(scripts: List[VirtualBinaryFile]) extends Input
 
+  /** All files are to be loaded as ES modules, in the given order.
+   *
+   *  Some environments may not be able to execute several ES modules in a
+   *  deterministic order. If that is the case, they must reject an
+   *  `ESModulesToLoad` input if the `modules` argument has more than one
+   *  element.
+   */
+  final case class ESModulesToLoad(modules: List[VirtualBinaryFile])
+      extends Input
+
   /** All files are to be loaded as CommonJS modules, in the given order. */
   final case class CommonJSModulesToLoad(modules: List[VirtualBinaryFile])
       extends Input

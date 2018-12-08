@@ -60,6 +60,7 @@ object Platform {
   def hasStrictFloats: Boolean = sysProp("strict-floats")
 
   def isNoModule: Boolean = sysProp("modulekind-nomodule")
+  def isESModule: Boolean = sysProp("modulekind-esmodule")
   def isCommonJSModule: Boolean = sysProp("modulekind-commonjs")
 
   private def sysProp(key: String): Boolean =

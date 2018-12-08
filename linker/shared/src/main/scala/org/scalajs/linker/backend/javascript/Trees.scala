@@ -247,4 +247,112 @@ object Trees {
       body: Tree)(implicit val pos: Position) extends Tree
 
   case class Super()(implicit val pos: Position) extends Tree
+
+  // ECMAScript 6 modules
+
+  /** The name of an ES module export.
+   *
+   *  It must be a valid `IdentifierName`, as tested by
+   *  [[ExportName.isValidExportName]].
+   */
+  case class ExportName(name: String)(implicit val pos: Position) {
+    require(ExportName.isValidExportName(name),
+        s"'$name' is not a valid export name")
+  }
+
+  object ExportName {
+    /** Tests whether a string is a valid export name.
+     *
+     *  A string is a valid export name if and only if it is a valid ECMAScript
+     *  `IdentifierName`, which is defined in
+     *  [[http://www.ecma-international.org/ecma-262/6.0/#sec-names-and-keywords
+     *  Section 11.6 of the ECMAScript 2015 specification]].
+     *
+     *  Currently, this implementation is buggy in some corner cases, as it does
+     *  not accept code points with the Unicode properties `Other_ID_Start` and
+     *  `Other_ID_Continue`. For example,
+     *  `isValidIdentifierName(0x2118.toChar.toString)` will return `false`
+     *  instead of `true`.
+     *
+     *  In theory, it does not really account for code points with the Unicode
+     *  properties `Pattern_Syntax` and `Pattern_White_Space`, which should be
+     *  rejected. However, with the current version of Unicode (9.0.0), there
+     *  seems to be no such character that would be accepted by this method.
+     */
+    final def isValidExportName(name: String): Boolean = {
+      // scalastyle:off return
+      import java.lang.Character._
+
+      def isJSIdentifierStart(cp: Int): Boolean =
+        isUnicodeIdentifierStart(cp) || cp == '$' || cp == '_'
+
+      def isJSIdentifierPart(cp: Int): Boolean = {
+        val ZWNJ = 0x200c
+        val ZWJ = 0x200d
+        isUnicodeIdentifierPart(cp) || cp == '$' || cp == '_' || cp == ZWNJ || cp == ZWJ
+      }
+
+      if (name.isEmpty)
+        return false
+
+      val firstCP = name.codePointAt(0)
+      if (!isJSIdentifierStart(firstCP))
+        return false
+
+      var i = charCount(firstCP)
+      while (i < name.length) {
+        val cp = name.codePointAt(i)
+        if (!isJSIdentifierPart(cp))
+          return false
+        i += charCount(cp)
+      }
+
+      true
+      // scalastyle:on return
+    }
+  }
+
+  /** `import` statement, except namespace import.
+   *
+   *  This corresponds to the following syntax:
+   *  {{{
+   *  import { <binding1_1> as <binding1_2>, ..., <bindingN_1> as <bindingN_2> } from <from>
+   *  }}}
+   *  The `_1` parts of bindings are therefore the identifier names that are
+   *  imported, as specified in `export` clauses of the module. The `_2` parts
+   *  are the names under which they are imported in the current module.
+   *
+   *  Special cases:
+   *  - When `_1.name == _2.name`, there is shorter syntax in ES, i.e.,
+   *    `import { binding } from 'from'`.
+   *  - When `_1.name == "default"`, it is equivalent to a default import.
+   */
+  case class Import(bindings: List[(ExportName, Ident)], from: StringLiteral)(
+      implicit val pos: Position)
+      extends Tree
+
+  /** Namespace `import` statement.
+   *
+   *  This corresponds to the following syntax:
+   *  {{{
+   *  import * as <binding> from <from>
+   *  }}}
+   */
+  case class ImportNamespace(binding: Ident, from: StringLiteral)(
+      implicit val pos: Position)
+      extends Tree
+
+  /** `export` statement.
+   *
+   *  This corresponds to the following syntax:
+   *  {{{
+   *  export { <binding1_1> as <binding1_2>, ..., <bindingN_1> as <bindingN_2> }
+   *  }}}
+   *  The `_1` parts of bindings are therefore the identifiers from the current
+   *  module that are exported. The `_2` parts are the names under which they
+   *  are exported to other modules.
+   */
+  case class Export(bindings: List[(Ident, ExportName)])(
+      implicit val pos: Position)
+      extends Tree
 }

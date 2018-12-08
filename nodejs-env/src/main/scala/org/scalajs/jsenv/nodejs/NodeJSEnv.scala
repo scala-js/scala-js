@@ -49,7 +49,8 @@ final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
 
   private def validateInput(input: Input): Unit = {
     input match {
-      case _:Input.ScriptsToLoad | _:Input.CommonJSModulesToLoad =>
+      case _:Input.ScriptsToLoad | _:Input.ESModulesToLoad |
+          _:Input.CommonJSModulesToLoad =>
         // ok
       case _ =>
         throw new UnsupportedInputException(input)
@@ -164,6 +165,34 @@ object NodeJSEnv {
         case Input.CommonJSModulesToLoad(modules) =>
           for (module <- modules)
             writeRequire(module)
+
+        case Input.ESModulesToLoad(modules) =>
+          if (modules.nonEmpty) {
+            val uris = modules.map {
+              case module: FileVirtualBinaryFile =>
+                module.file.toURI
+              case module =>
+                tmpFile(module.path, module.inputStream).toURI
+            }
+
+            val imports = uris.map { uri =>
+              s"""import("${escapeJS(uri.toASCIIString)}")"""
+            }
+            val importChain = imports.reduceLeft { (prev, imprt) =>
+              s"""$prev.then(_ => $imprt)"""
+            }
+
+            val importerFileContent = {
+              s"""
+                |$importChain.catch(e => {
+                |  console.error(e);
+                |  process.exit(1);
+                |});
+              """.stripMargin
+            }
+            val f = tmpFile("importer.js", importerFileContent)
+            p.println(s"""require("${escapeJS(f.getAbsolutePath)}");""")
+          }
       }
     } finally {
       p.close()
@@ -190,6 +219,17 @@ object NodeJSEnv {
       in.close()
     }
     new String(baos.toByteArray(), StandardCharsets.UTF_8)
+  }
+
+  private def tmpFile(path: String, content: String): File = {
+    import java.nio.file.{Files, StandardOpenOption}
+
+    val f = createTmpFile(path)
+    val contentList = new java.util.ArrayList[String]()
+    contentList.add(content)
+    Files.write(f.toPath(), contentList, StandardCharsets.UTF_8,
+        StandardOpenOption.TRUNCATE_EXISTING)
+    f
   }
 
   private def tmpFile(path: String, content: InputStream): File = {

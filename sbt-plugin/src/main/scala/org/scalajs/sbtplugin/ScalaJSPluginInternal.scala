@@ -288,9 +288,13 @@ private[sbtplugin] object ScalaJSPluginInternal {
             ((moduleName in fullOptJS).value + "-opt.js")),
 
       scalaJSLinkerConfig in fullOptJS ~= { prevConfig =>
+        val useClosure = {
+          !prevConfig.esFeatures.useECMAScript2015 &&
+          prevConfig.moduleKind != ModuleKind.ESModule
+        }
         prevConfig
           .withSemantics(_.optimized)
-          .withClosureCompiler(!prevConfig.esFeatures.useECMAScript2015)
+          .withClosureCompiler(useClosure)
       },
 
       scalaJSLinkedFile := Def.settingDyn {
@@ -311,6 +315,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
         scalaJSLinkerConfig.value.moduleKind match {
           case ModuleKind.NoModule =>
             Input.ScriptsToLoad(List(linkedFile))
+          case ModuleKind.ESModule =>
+            Input.ESModulesToLoad(List(linkedFile))
           case ModuleKind.CommonJSModule =>
             Input.CommonJSModulesToLoad(List(linkedFile))
         }
