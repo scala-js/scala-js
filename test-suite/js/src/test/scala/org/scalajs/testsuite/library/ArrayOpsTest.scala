@@ -77,14 +77,12 @@ class ArrayOpsTest {
   @Test def head(): Unit = {
     assertEquals(5, js.Array(5, 7, 10).head)
 
-    assumeFalse(scalaVersion == "2.13.0-M4")
     assertThrows(classOf[NoSuchElementException], js.Array[Int]().head)
   }
 
   @Test def last(): Unit = {
     assertEquals(10, js.Array(5, 7, 10).last)
 
-    assumeFalse(scalaVersion == "2.13.0-M4")
     assertThrows(classOf[NoSuchElementException], js.Array[Int]().last)
   }
 
@@ -203,7 +201,6 @@ class ArrayOpsTest {
     assertEquals(2, iter.next())
     assertFalse(iter.hasNext)
 
-    assumeFalse(scalaVersion == "2.13.0-M4")
     assertThrows(classOf[NoSuchElementException], iter.next())
   }
 
@@ -724,7 +721,6 @@ class ArrayOpsTest {
     assertJSArrayEquals(js.Array(2, 3, 5, 13, 21, 36, 51, 0, 2), array)
   }
 
-  /* TODO Reenable this when we get rid of 2.13.0-M4
   @Test def appendAll(): Unit = {
     val array = js.Array(2, 3, 5)
     array.appendAll(List(13, 21, 36))
@@ -732,7 +728,6 @@ class ArrayOpsTest {
     array.appendAll(js.Array(51, 0, 2))
     assertJSArrayEquals(js.Array(2, 3, 5, 13, 21, 36, 51, 0, 2), array)
   }
-  */
 
   @Test def -=(): Unit = {
     val array = js.Array(2, 3, 5, 3, 24, 2)
@@ -770,7 +765,6 @@ class ArrayOpsTest {
     assertJSArrayEquals(js.Array(51, 0, 2, 13, 21, 36, 2, 3, 5), array)
   }
 
-  /* TODO Reenable this when we get rid of 2.13.0-M4
   @Test def ++=:(): Unit = {
     val array = js.Array(2, 3, 5)
     List(13, 21, 36) ++=: array
@@ -778,7 +772,6 @@ class ArrayOpsTest {
     js.Array(51, 0, 2) ++=: array
     assertJSArrayEquals(js.Array(51, 0, 2, 13, 21, 36, 2, 3, 5), array)
   }
-  */
 
   @Test def insert(): Unit = {
     val array = js.Array(2, 3, 5, 54, 23)
@@ -829,11 +822,10 @@ class ArrayOpsTest {
     val array = js.Array(33, 11, 2, 3, 42, 53, 5, 54, 23, 44, 78)
     array.trimStart(4)
 
-    assumeFalse("the safe behavior was introduced in 2.13.0-M4",
+    assumeFalse("the safe behavior was introduced in 2.13",
         scalaVersion.startsWith("2.10.") ||
         scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12.") ||
-        scalaVersion == "2.13.0-M3")
+        scalaVersion.startsWith("2.12."))
     assertJSArrayEquals(js.Array(42, 53, 5, 54, 23, 44, 78), array)
     array.trimStart(-3)
     assertJSArrayEquals(js.Array(42, 53, 5, 54, 23, 44, 78), array)
@@ -845,11 +837,10 @@ class ArrayOpsTest {
     val array = js.Array(33, 11, 2, 3, 42, 53, 5, 54, 23, 44, 78)
     array.trimEnd(4)
 
-    assumeFalse("the safe behavior was introduced in 2.13.0-M4",
+    assumeFalse("the safe behavior was introduced in 2.13",
         scalaVersion.startsWith("2.10.") ||
         scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12.") ||
-        scalaVersion == "2.13.0-M3")
+        scalaVersion.startsWith("2.12."))
     assertJSArrayEquals(js.Array(33, 11, 2, 3, 42, 53, 5), array)
     array.trimEnd(-3)
     assertJSArrayEquals(js.Array(33, 11, 2, 3, 42, 53, 5), array)

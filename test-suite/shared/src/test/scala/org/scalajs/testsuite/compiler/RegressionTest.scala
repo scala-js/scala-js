@@ -175,7 +175,7 @@ class RegressionTest {
           scalaVersion.startsWith("2.11.") ||
           scalaVersion == "2.12.0" || scalaVersion == "2.12.1" ||
           scalaVersion == "2.12.2" || scalaVersion == "2.12.3" ||
-          scalaVersion == "2.12.4" || scalaVersion == "2.13.0-M3"
+          scalaVersion == "2.12.4"
         })
 
     assertEquals("org.scalajs.testsuite.compiler.RegressionTest$Bug218Foo",

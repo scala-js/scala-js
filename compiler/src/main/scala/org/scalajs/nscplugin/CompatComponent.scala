@@ -63,7 +63,7 @@ trait CompatComponent {
     def interfaceName(implname: Name): TypeName = noImplClasses()
   }
 
-  // SAMFunction was introduced in 2.12.0-M4 for LMF-capable SAM types
+  // SAMFunction was introduced in 2.12 for LMF-capable SAM types
 
   object SAMFunctionAttachCompatDef {
     case class SAMFunction(samTp: Type, sam: Symbol, synthCls: Symbol)
@@ -97,7 +97,7 @@ trait CompatComponent {
    *   initializeCoreBTypes (it was actually typo'ed as intializeCoreBTypes!)
    * - In 2.11.6+, including 2.12, we finally have
    *   genBCode.bTypes.initializeCoreBTypes
-   * - Since 2.12.0-M4, it is mandatory to call that method from GenJSCode.run()
+   * - Since 2.12, it is mandatory to call that method from GenJSCode.run()
    */
 
   object LowPrioGenBCodeCompat {
