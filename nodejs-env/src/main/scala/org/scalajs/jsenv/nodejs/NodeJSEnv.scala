@@ -68,7 +68,7 @@ final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
   }
 
   private def initFiles: List[VirtualBinaryFile] = {
-    val base = List(NodeJSEnv.runtimeEnv, Support.fixPercentConsole)
+    val base = List(NodeJSEnv.runtimeEnv)
 
     config.sourceMap match {
       case SourceMap.Disable           => base

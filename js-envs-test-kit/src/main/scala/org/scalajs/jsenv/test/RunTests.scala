@@ -95,46 +95,15 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
     }
   }
 
-  @Test // Node.js strips double percentage signs - #500
+  // #500 Node.js used to strip double percentage signs even with only 1 argument
+  @Test
   def percentageTest: Unit = {
-    val counts = 1 to 15
-    val argcs  = 1 to 3
-    val strings = counts.map("%" * _)
+    val strings = (1 to 15).map("%" * _)
+    val code = strings.map(str => s"""console.log("$str");\n""").mkString("")
+    val result = strings.mkString("", "\n", "\n")
 
-    val strlists = for {
-      count  <- argcs
-      string <- strings
-    } yield List.fill(count)(string)
-
-    val codes = for {
-      strlist <- strlists
-    } yield {
-      val args = strlist.map(s => s""""$s"""").mkString(", ")
-      s"console.log($args);\n"
-    }
-
-    val result = strlists.map(_.mkString(" ") + "\n").mkString("")
-
-    withRun(codes.mkString("")) {
+    withRun(code) {
       _.expectOut(result)
-        .closeRun()
-    }
-  }
-
-  @Test // Node.js console.log hack didn't allow to log non-Strings - #561
-  def nonStringTest: Unit = {
-    withRun("""
-      console.log(1);
-      console.log(undefined);
-      console.log(null);
-      console.log({});
-      console.log([1,2]);
-      """) {
-      _.expectOut("1\n")
-        .expectOut("undefined\n")
-        .expectOut("null\n")
-        .expectOut("[object Object]\n")
-        .expectOut("1,2\n")
         .closeRun()
     }
   }
