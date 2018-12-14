@@ -161,7 +161,7 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
   }
 
   private def emitMethodEvent(methodName: String, status: Status): Unit = {
-    val selector = new NestedTestSelector(task.taskDef.fullyQualifiedName, methodName)
+    val selector = new TestSelector(task.taskDef.fullyQualifiedName + "." + runSettings.decodeName(methodName))
     eventHandler.handle(new JUnitEvent(task.taskDef, status, selector))
   }
 
