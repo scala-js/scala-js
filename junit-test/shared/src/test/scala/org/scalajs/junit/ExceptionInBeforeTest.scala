@@ -32,12 +32,4 @@ class ExceptionInBeforeTest {
     throw new IllegalStateException("test() must not be called")
 }
 
-class ExceptionInBeforeTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
-    builder.exceptionAndAnotherExceptionInAfter("test",
-        "Exception in before()",
-        classOf[UnsupportedOperationException],
-        "after() must actually be called",
-        classOf[IllegalArgumentException])
-  }
-}
+class ExceptionInBeforeTestAssertions extends JUnitTest

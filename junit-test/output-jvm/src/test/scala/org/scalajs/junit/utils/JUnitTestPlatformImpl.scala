@@ -12,6 +12,11 @@
 
 package org.scalajs.junit.utils
 
+import scala.collection.JavaConverters._
+
+import java.nio.file._
+import java.nio.charset.StandardCharsets.UTF_8
+
 import sbt.testing._
 
 object JUnitTestPlatformImpl {
@@ -23,4 +28,10 @@ object JUnitTestPlatformImpl {
       executeLoop(tasks.flatMap(_.execute(recorder, Array(recorder))), recorder)
     }
   }
+
+  def writeLines(lines: List[String], file: String): Unit =
+    Files.write(Paths.get(file), lines.toIterable.asJava, UTF_8)
+
+  def readLines(file: String): List[String] =
+    Files.readAllLines(Paths.get(file), UTF_8).asScala.toList
 }

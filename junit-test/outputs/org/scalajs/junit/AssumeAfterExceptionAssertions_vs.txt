@@ -1,0 +1,8 @@
+li[34mTest run started[0m
+liTest org.scalajs.junit.[33mAssumeAfterException[0m.[36mtest[0m started
+leTest org.scalajs.junit.[33mAssumeAfterException[0m.[31mtest[0m failed: java.lang.[31mIllegalArgumentException[0m: test throws, took <TIME>
+e2org.scalajs.junit.AssumeAfterException.test
+leTest org.scalajs.junit.[33mAssumeAfterException[0m.[31mtest[0m failed: org.junit.internal.[31mAssumptionViolatedException[0m: This assume should not pass, took <TIME>
+ldTest org.scalajs.junit.[33mAssumeAfterException[0m.[36mtest[0m finished, took <TIME>
+li[34mTest run finished: [0m[31m2 failed[0m[34m, [0m[34m0 ignored[0m[34m, 1 total, <TIME>[0m
+d

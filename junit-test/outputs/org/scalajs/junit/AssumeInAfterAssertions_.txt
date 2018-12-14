@@ -1,0 +1,7 @@
+ld[34mTest run started[0m
+ldTest org.scalajs.junit.[33mAssumeInAfter[0m.[36mtest[0m started
+lwTest assumption in test org.scalajs.junit.[33mAssumeInAfter[0m.[31mtest[0m failed: org.junit.internal.[31mAssumptionViolatedException[0m: This assume should not pass, took <TIME>
+e3org.scalajs.junit.AssumeInAfter.test
+ldTest org.scalajs.junit.[33mAssumeInAfter[0m.[36mtest[0m finished, took <TIME>
+ld[34mTest run finished: [0m[34m0 failed[0m[34m, [0m[34m0 ignored[0m[34m, 1 total, <TIME>[0m
+d

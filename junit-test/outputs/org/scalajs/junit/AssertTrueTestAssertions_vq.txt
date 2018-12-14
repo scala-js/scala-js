@@ -1,0 +1,10 @@
+li[34mTest run started[0m
+liTest org.scalajs.junit.[33mAssertTrueTest[0m.[36mfailTest[0m started
+leTest org.scalajs.junit.[33mAssertTrueTest[0m.[31mfailTest[0m failed: null, took <TIME>
+e2org.scalajs.junit.AssertTrueTest.failTest
+ldTest org.scalajs.junit.[33mAssertTrueTest[0m.[36mfailTest[0m finished, took <TIME>
+liTest org.scalajs.junit.[33mAssertTrueTest[0m.[36msuccessTest[0m started
+ldTest org.scalajs.junit.[33mAssertTrueTest[0m.[36msuccessTest[0m finished, took <TIME>
+e0org.scalajs.junit.AssertTrueTest.successTest
+li[34mTest run finished: [0m[31m1 failed[0m[34m, [0m[34m0 ignored[0m[34m, 2 total, <TIME>[0m
+d

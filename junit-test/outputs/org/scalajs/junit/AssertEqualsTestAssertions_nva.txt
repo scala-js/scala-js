@@ -1,0 +1,7 @@
+liTest run started
+liTest org.scalajs.junit.AssertEqualsTest.test started
+leTest org.scalajs.junit.AssertEqualsTest.test failed: java.lang.AssertionError: expected:<false> but was:<true>, took <TIME>
+e2org.scalajs.junit.AssertEqualsTest.test
+ldTest org.scalajs.junit.AssertEqualsTest.test finished, took <TIME>
+liTest run finished: 1 failed, 0 ignored, 1 total, <TIME>
+d

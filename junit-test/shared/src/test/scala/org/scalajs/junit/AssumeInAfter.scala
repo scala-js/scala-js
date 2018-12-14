@@ -24,7 +24,4 @@ class AssumeInAfter {
   @Test def test(): Unit = {}
 }
 
-class AssumeInAfterAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
-    builder.assumptionViolated("test")
-}
+class AssumeInAfterAssertions extends JUnitTest

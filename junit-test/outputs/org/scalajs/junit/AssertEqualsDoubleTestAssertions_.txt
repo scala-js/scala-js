@@ -1,0 +1,23 @@
+ld[34mTest run started[0m
+ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mfailsWithDouble[0m started
+leTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[31mfailsWithDouble[0m failed: Use assertEquals(expected, actual, delta) to compare floating-point numbers, took <TIME>
+e2org.scalajs.junit.AssertEqualsDoubleTest.failsWithDouble
+ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mfailsWithDouble[0m finished, took <TIME>
+ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mfailsWithDoubleMessage[0m started
+leTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[31mfailsWithDoubleMessage[0m failed: Use assertEquals(expected, actual, delta) to compare floating-point numbers, took <TIME>
+e2org.scalajs.junit.AssertEqualsDoubleTest.failsWithDoubleMessage
+ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mfailsWithDoubleMessage[0m finished, took <TIME>
+ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithByte[0m started
+ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithByte[0m finished, took <TIME>
+e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithByte
+ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithEpsilon[0m started
+ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithEpsilon[0m finished, took <TIME>
+e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithEpsilon
+ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithInt[0m started
+ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithInt[0m finished, took <TIME>
+e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithInt
+ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithShort[0m started
+ldTest org.scalajs.junit.[33mAssertEqualsDoubleTest[0m.[36mworksWithShort[0m finished, took <TIME>
+e0org.scalajs.junit.AssertEqualsDoubleTest.worksWithShort
+ld[34mTest run finished: [0m[31m2 failed[0m[34m, [0m[34m0 ignored[0m[34m, 6 total, <TIME>[0m
+d

@@ -23,7 +23,4 @@ class AssumeTest {
   }
 }
 
-class AssumeTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
-    builder.assumptionViolated("assumeFail")
-}
+class AssumeTestAssertions extends JUnitTest

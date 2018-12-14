@@ -1,0 +1,17 @@
+ldTest run started
+liTest org.scalajs.junit.MultiIgnore1Test.multiTest1 ignored
+e3org.scalajs.junit.MultiIgnore1Test.multiTest1
+ldTest org.scalajs.junit.MultiIgnore1Test.multiTest2 started
+ldTest org.scalajs.junit.MultiIgnore1Test.multiTest2 finished, took <TIME>
+e0org.scalajs.junit.MultiIgnore1Test.multiTest2
+ldTest org.scalajs.junit.MultiIgnore1Test.multiTest3 started
+ldTest org.scalajs.junit.MultiIgnore1Test.multiTest3 finished, took <TIME>
+e0org.scalajs.junit.MultiIgnore1Test.multiTest3
+ldTest org.scalajs.junit.MultiIgnore1Test.multiTest4 started
+ldTest org.scalajs.junit.MultiIgnore1Test.multiTest4 finished, took <TIME>
+e0org.scalajs.junit.MultiIgnore1Test.multiTest4
+ldTest org.scalajs.junit.MultiIgnore1Test.multiTest5 started
+ldTest org.scalajs.junit.MultiIgnore1Test.multiTest5 finished, took <TIME>
+e0org.scalajs.junit.MultiIgnore1Test.multiTest5
+ldTest run finished: 0 failed, 1 ignored, 4 total, <TIME>
+d

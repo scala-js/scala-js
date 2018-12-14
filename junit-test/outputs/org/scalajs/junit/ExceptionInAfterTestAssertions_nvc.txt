@@ -1,0 +1,7 @@
+liTest run started
+liTest org.scalajs.junit.ExceptionInAfterTest.test started
+leTest org.scalajs.junit.ExceptionInAfterTest.test failed: Exception in after(), took <TIME>
+e2org.scalajs.junit.ExceptionInAfterTest.test
+ldTest org.scalajs.junit.ExceptionInAfterTest.test finished, took <TIME>
+liTest run finished: 1 failed, 0 ignored, 1 total, <TIME>
+d

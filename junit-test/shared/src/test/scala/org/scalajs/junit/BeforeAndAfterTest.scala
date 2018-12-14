@@ -26,7 +26,4 @@ class BeforeAndAfterTest {
   @Test def test(): Unit = ()
 }
 
-class BeforeAndAfterTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
-    builder.success("test")
-}
+class BeforeAndAfterTestAssertions extends JUnitTest

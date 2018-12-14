@@ -29,13 +29,4 @@ class MultiAssumeFail2Test {
   @Test def multiTest5(): Unit = ()
 }
 
-class MultiAssumeFail2TestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
-    builder
-      .assumptionViolated("multiTest1")
-      .success("multiTest2")
-      .success("multiTest3")
-      .assumptionViolated("multiTest4")
-      .success("multiTest5")
-  }
-}
+class MultiAssumeFail2TestAssertions extends JUnitTest

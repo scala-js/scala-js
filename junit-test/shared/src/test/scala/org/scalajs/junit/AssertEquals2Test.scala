@@ -22,7 +22,4 @@ class AssertEquals2Test {
   }
 }
 
-class AssertEquals2TestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
-    builder.assertion("test", "This is the message expected:<false> but was:<true>")
-}
+class AssertEquals2TestAssertions extends JUnitTest

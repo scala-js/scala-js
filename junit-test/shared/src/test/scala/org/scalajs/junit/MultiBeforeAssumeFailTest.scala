@@ -31,7 +31,4 @@ class MultiBeforeAssumeFailTest {
   @Test def multiTest5(): Unit = ()
 }
 
-class MultiBeforeAssumeFailTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
-    builder.ignoredClass()
-}
+class MultiBeforeAssumeFailTestAssertions extends JUnitTest

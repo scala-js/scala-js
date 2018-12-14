@@ -27,7 +27,4 @@ class BeforeAssumeFailTest {
   @Test def test(): Unit = ()
 }
 
-class BeforeAssumeFailTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
-    builder.ignoredClass()
-}
+class BeforeAssumeFailTestAssertions extends JUnitTest

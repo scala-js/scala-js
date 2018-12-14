@@ -26,12 +26,4 @@ class ExceptionAfterAssume {
   }
 }
 
-class ExceptionAfterAssumeAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
-    builder.exceptionAndAnotherExceptionInAfter("assumeFail",
-        "This assume should not pass",
-        classOf[org.junit.internal.AssumptionViolatedException],
-        "after() must be called",
-        classOf[IllegalArgumentException])
-  }
-}
+class ExceptionAfterAssumeAssertions extends JUnitTest

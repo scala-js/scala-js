@@ -1,0 +1,7 @@
+ld[34mTest run started[0m
+ldTest org.scalajs.junit.[33mAssertStringEqualsTest[0m.[36mtest[0m started
+leTest org.scalajs.junit.[33mAssertStringEqualsTest[0m.[31mtest[0m failed: org.junit.[31mComparisonFailure[0m: expected:<foob[a]r> but was:<foob[bb]r>, took <TIME>
+e2org.scalajs.junit.AssertStringEqualsTest.test
+ldTest org.scalajs.junit.[33mAssertStringEqualsTest[0m.[36mtest[0m finished, took <TIME>
+ld[34mTest run finished: [0m[31m1 failed[0m[34m, [0m[34m0 ignored[0m[34m, 1 total, <TIME>[0m
+d
