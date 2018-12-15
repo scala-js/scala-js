@@ -451,12 +451,12 @@ noToolsScalaVersions.each { scalaVersion ->
   quickMatrix.add([task: "test-suite-ecma-script6", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
 }
 allJavaVersions.each { javaVersion ->
-  quickMatrix.add([task: "tools-sbtplugin", scala: "2.10.7", java: javaVersion])
+  quickMatrix.add([task: "tools", scala: "2.10.7", java: javaVersion])
   quickMatrix.add([task: "tools", scala: "2.11.12", java: javaVersion])
-  quickMatrix.add([task: "tools", scala: "2.12.4", java: javaVersion])
+  quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.6", java: javaVersion])
 }
 quickMatrix.add([task: "partestc", scala: "2.11.0", java: mainJavaVersion])
-quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.10.7", sbt_version_override: "", java: mainJavaVersion])
+quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.10.7", sbt_version_override: "0.13.7" mainJavaVersion])
 quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.12.6", sbt_version_override: "1.0.0", java: mainJavaVersion])
 
 // The 'full' matrix

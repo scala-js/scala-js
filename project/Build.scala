@@ -831,6 +831,7 @@ object Build {
       normalizedName := "sbt-scalajs",
       bintrayProjectName := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
       sbtPlugin := true,
+      sbtVersion in pluginCrossBuild := "1.0.0",
       scalaBinaryVersion :=
         CrossVersion.binaryScalaVersion(scalaVersion.value),
       previousArtifactSetting,
