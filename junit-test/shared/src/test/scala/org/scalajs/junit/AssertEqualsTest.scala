@@ -23,7 +23,4 @@ class AssertEqualsTest {
   }
 }
 
-class AssertEqualsTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
-    builder.assertion("test", "expected:<false> but was:<true>")
-}
+class AssertEqualsTestAssertions extends JUnitTest

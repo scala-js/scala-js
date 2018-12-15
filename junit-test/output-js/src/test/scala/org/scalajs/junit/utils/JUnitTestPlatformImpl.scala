@@ -12,6 +12,8 @@
 
 package org.scalajs.junit.utils
 
+import scala.scalajs.js
+
 import sbt.testing._
 
 object JUnitTestPlatformImpl {
@@ -32,5 +34,14 @@ object JUnitTestPlatformImpl {
         Array.empty[Task]
       }, recorder)
     }
+  }
+
+  def writeLines(lines: List[String], file: String): Unit =
+    throw new UnsupportedOperationException("Writing is only supported on the JVM.")
+
+  def readLines(file: String): List[String] = {
+    val fs = js.Dynamic.global.require("fs")
+    val c = fs.readFileSync(file, "utf8").asInstanceOf[String]
+    c.split('\n').toList
   }
 }

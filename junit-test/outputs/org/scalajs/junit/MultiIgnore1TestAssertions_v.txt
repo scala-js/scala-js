@@ -1,0 +1,17 @@
+li[34mTest run started[0m
+liTest org.scalajs.junit.[33mMultiIgnore1Test[0m.[36mmultiTest1[0m ignored
+e3org.scalajs.junit.MultiIgnore1Test.multiTest1
+liTest org.scalajs.junit.[33mMultiIgnore1Test[0m.[36mmultiTest2[0m started
+ldTest org.scalajs.junit.[33mMultiIgnore1Test[0m.[36mmultiTest2[0m finished, took <TIME>
+e0org.scalajs.junit.MultiIgnore1Test.multiTest2
+liTest org.scalajs.junit.[33mMultiIgnore1Test[0m.[36mmultiTest3[0m started
+ldTest org.scalajs.junit.[33mMultiIgnore1Test[0m.[36mmultiTest3[0m finished, took <TIME>
+e0org.scalajs.junit.MultiIgnore1Test.multiTest3
+liTest org.scalajs.junit.[33mMultiIgnore1Test[0m.[36mmultiTest4[0m started
+ldTest org.scalajs.junit.[33mMultiIgnore1Test[0m.[36mmultiTest4[0m finished, took <TIME>
+e0org.scalajs.junit.MultiIgnore1Test.multiTest4
+liTest org.scalajs.junit.[33mMultiIgnore1Test[0m.[36mmultiTest5[0m started
+ldTest org.scalajs.junit.[33mMultiIgnore1Test[0m.[36mmultiTest5[0m finished, took <TIME>
+e0org.scalajs.junit.MultiIgnore1Test.multiTest5
+li[34mTest run finished: [0m[34m0 failed[0m[34m, [0m[33m1 ignored[0m[34m, 4 total, <TIME>[0m
+d

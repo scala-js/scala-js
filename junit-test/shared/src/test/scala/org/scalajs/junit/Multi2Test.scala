@@ -24,13 +24,4 @@ class Multi2Test {
   @Test def multiTest5(): Unit = ()
 }
 
-class Multi2TestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
-    builder
-      .success("multiTest1")
-      .success("multiTest2")
-      .success("multiTest3")
-      .success("multiTest4")
-      .success("multiTest5")
-  }
-}
+class Multi2TestAssertions extends JUnitTest

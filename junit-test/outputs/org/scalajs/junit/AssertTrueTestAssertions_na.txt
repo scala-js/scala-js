@@ -1,0 +1,10 @@
+ldTest run started
+ldTest org.scalajs.junit.AssertTrueTest.failTest started
+leTest org.scalajs.junit.AssertTrueTest.failTest failed: java.lang.AssertionError: null, took <TIME>
+e2org.scalajs.junit.AssertTrueTest.failTest
+ldTest org.scalajs.junit.AssertTrueTest.failTest finished, took <TIME>
+ldTest org.scalajs.junit.AssertTrueTest.successTest started
+ldTest org.scalajs.junit.AssertTrueTest.successTest finished, took <TIME>
+e0org.scalajs.junit.AssertTrueTest.successTest
+ldTest run finished: 1 failed, 0 ignored, 2 total, <TIME>
+d

@@ -29,10 +29,4 @@ class ExceptionInAfterTest {
     throw new UnsupportedOperationException("Exception in test()")
 }
 
-class ExceptionInAfterTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
-    builder.exception("test",
-        "Exception in after()",
-        classOf[UnsupportedOperationException])
-  }
-}
+class ExceptionInAfterTestAssertions extends JUnitTest

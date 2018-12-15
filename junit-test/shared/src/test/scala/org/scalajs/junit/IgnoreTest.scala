@@ -19,7 +19,4 @@ class IgnoreTest {
   @Ignore @Test def onlyTest(): Unit = ()
 }
 
-class IgnoreTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
-    builder.ignored("onlyTest")
-}
+class IgnoreTestAssertions extends JUnitTest

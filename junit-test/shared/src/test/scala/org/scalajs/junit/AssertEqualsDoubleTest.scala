@@ -47,16 +47,4 @@ class AssertEqualsDoubleTest {
   }
 }
 
-class AssertEqualsDoubleTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
-    builder
-      .success("worksWithEpsilon")
-      .assertion("failsWithDouble",
-          "Use assertEquals(expected, actual, delta) to compare floating-point numbers")
-      .assertion("failsWithDoubleMessage",
-          "Use assertEquals(expected, actual, delta) to compare floating-point numbers")
-      .success("worksWithByte")
-      .success("worksWithShort")
-      .success("worksWithInt")
-  }
-}
+class AssertEqualsDoubleTestAssertions extends JUnitTest

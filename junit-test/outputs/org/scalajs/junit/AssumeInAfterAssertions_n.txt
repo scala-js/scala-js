@@ -1,0 +1,7 @@
+ldTest run started
+ldTest org.scalajs.junit.AssumeInAfter.test started
+lwTest assumption in test org.scalajs.junit.AssumeInAfter.test failed: org.junit.internal.AssumptionViolatedException: This assume should not pass, took <TIME>
+e3org.scalajs.junit.AssumeInAfter.test
+ldTest org.scalajs.junit.AssumeInAfter.test finished, took <TIME>
+ldTest run finished: 0 failed, 0 ignored, 1 total, <TIME>
+d

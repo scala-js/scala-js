@@ -23,13 +23,4 @@ class MultiIgnore1Test {
   @Test def multiTest5(): Unit = ()
 }
 
-class MultiIgnore1TestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
-    builder
-      .ignored("multiTest1")
-      .success("multiTest2")
-      .success("multiTest3")
-      .success("multiTest4")
-      .success("multiTest5")
-  }
-}
+class MultiIgnore1TestAssertions extends JUnitTest

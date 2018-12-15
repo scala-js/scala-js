@@ -35,10 +35,4 @@ class ExceptionInConstructorTest {
     throw new IllegalStateException("test() must not be called")
 }
 
-class ExceptionInConstructorTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
-    builder.exception("test",
-        "Exception while constructing the test class",
-        classOf[UnsupportedOperationException])
-  }
-}
+class ExceptionInConstructorTestAssertions extends JUnitTest

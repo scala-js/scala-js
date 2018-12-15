@@ -23,7 +23,4 @@ class AssertFalseTest {
   }
 }
 
-class AssertFalseTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder =
-    builder.assertion("test", "null")
-}
+class AssertFalseTestAssertions extends JUnitTest

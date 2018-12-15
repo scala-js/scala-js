@@ -36,15 +36,4 @@ class ExpectTest {
   def failExpectAssert(): Unit = ()
 }
 
-class ExpectTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
-    builder
-      .success("expectNormal")
-      .wrongException("failExpectDifferent",
-          "Unexpected exception, expected<java.io.IOException> but was<java.lang.IllegalArgumentException>",
-          classOf[IllegalArgumentException])
-      .assertion("failExpectNoThrow", "Expected exception: java.io.IOException")
-      .success("expectAssert")
-      .assertion("failExpectAssert", "Expected exception: java.lang.AssertionError")
-  }
-}
+class ExpectTestAssertions extends JUnitTest

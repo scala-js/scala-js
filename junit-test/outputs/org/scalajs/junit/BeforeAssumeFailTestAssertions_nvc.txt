@@ -1,0 +1,5 @@
+liTest run started
+liTest org.scalajs.junit.BeforeAssumeFailTest ignored
+e3org.scalajs.junit.BeforeAssumeFailTest
+liTest run finished: 0 failed, 1 ignored, 0 total, <TIME>
+d

@@ -23,10 +23,4 @@ class AssertStringEqualsTest {
   }
 }
 
-class AssertStringEqualsTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
-    builder.assertion("test",
-        "expected:<foob[a]r> but was:<foob[bb]r>",
-        classOf[org.junit.ComparisonFailure])
-  }
-}
+class AssertStringEqualsTestAssertions extends JUnitTest

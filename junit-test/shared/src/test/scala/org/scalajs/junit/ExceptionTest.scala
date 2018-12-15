@@ -22,10 +22,4 @@ class ExceptionTest {
   }
 }
 
-class ExceptionTestAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
-    builder.exception("test",
-        "Exception message",
-        classOf[IndexOutOfBoundsException])
-  }
-}
+class ExceptionTestAssertions extends JUnitTest

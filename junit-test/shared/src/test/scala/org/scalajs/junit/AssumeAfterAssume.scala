@@ -25,12 +25,4 @@ class AssumeAfterAssume {
     assumeTrue("This assume should not pass", false)
 }
 
-class AssumeAfterAssumeAssertions extends JUnitTest {
-  protected def expectedOutput(builder: OutputBuilder): OutputBuilder = {
-    builder.exceptionAndAnotherExceptionInAfter("assumeFail",
-        "This assume should not pass",
-        classOf[org.junit.internal.AssumptionViolatedException],
-        "This assume should not pass",
-        classOf[org.junit.internal.AssumptionViolatedException])
-  }
-}
+class AssumeAfterAssumeAssertions extends JUnitTest
