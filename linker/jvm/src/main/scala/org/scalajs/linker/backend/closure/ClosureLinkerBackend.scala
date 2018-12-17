@@ -57,6 +57,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   private[this] val emitter = {
     new Emitter(config.commonConfig)
       .withOptimizeBracketSelects(false)
+      .withTrackAllGlobalRefs(true)
   }
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
@@ -75,19 +76,20 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     verifyUnit(unit)
 
     // Build Closure IR
-    val (topLevelVarDeclarations, module) = {
+    val (topLevelVarDeclarations, globalRefs, module) = {
       logger.time("Emitter (create Closure trees)") {
         val builder = new ClosureModuleBuilder(config.relativizeSourceMapBase)
-        val topLevelVarDeclarations =
+        val (topLevelVarDeclarations, globalRefs) =
           emitter.emitForClosure(unit, builder, logger)
-        (topLevelVarDeclarations, builder.result())
+        (topLevelVarDeclarations, globalRefs, builder.result())
       }
     }
 
     // Compile the module
     val closureExterns = List(
         ClosureSource.fromCode("ScalaJSExterns.js", ClosureLinkerBackend.ScalaJSExterns),
-        ClosureSource.fromCode("ScalaJSExportExterns.js", makeExternsForExports(unit)))
+        ClosureSource.fromCode("ScalaJSGlobalRefs.js", makeExternsForGlobalRefs(globalRefs)),
+        ClosureSource.fromCode("ScalaJSExportExterns.js", makeExternsForExports(topLevelVarDeclarations, unit)))
     val options = closureOptions(output)
     val compiler = closureCompiler(logger)
 
@@ -96,17 +98,28 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
           closureExterns.asJava, List(module).asJava, options)
     }
 
+    if (!result.success) {
+      throw new LinkingException(
+          "There were errors when applying the Google Closure Compiler")
+    }
+
     logger.time("Closure: Write result") {
       writeResult(topLevelVarDeclarations, result, compiler, output)
     }
   }
+
+  /** Constructs an externs file listing all the global refs.
+   */
+  private def makeExternsForGlobalRefs(globalRefs: Set[String]): String =
+    globalRefs.map("var " + _ + ";\n").mkString
 
   /** Constructs an externs file listing all exported properties in a linking
    *  unit.
    *
    *  This is necessary to avoid name clashes with renamed properties (#2491).
    */
-  private def makeExternsForExports(linkingUnit: LinkingUnit): String = {
+  private def makeExternsForExports(topLevelVarDeclarations: Option[String],
+      linkingUnit: LinkingUnit): String = {
     import org.scalajs.ir.Trees._
 
     def exportName(memberDef: MemberDef): Option[String] = memberDef match {
@@ -125,6 +138,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     }
 
     val content = new java.lang.StringBuilder
+    for (topLevelVarDecls <- topLevelVarDeclarations)
+      content.append(topLevelVarDecls + "\n")
     for (exportedPropertyName <- exportedPropertyNames.distinct)
       content.append(s"Object.prototype.$exportedPropertyName = 0;\n")
 
@@ -132,8 +147,11 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   }
 
   private def closureCompiler(logger: Logger) = {
+    import com.google.common.collect.ImmutableSet
+
     val compiler = new ClosureCompiler
-    compiler.setErrorManager(new LoggerErrorManager(logger))
+    compiler.setErrorManager(new SortingErrorManager(ImmutableSet.of(
+        new LoggerErrorReportGenerator(logger))))
     compiler
   }
 
@@ -148,9 +166,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     }
     val footer = ifIIFE("}).call(this);\n")
 
-    val outputContent =
-      if (result.errors.nonEmpty) "// errors while producing source\n"
-      else compiler.toSource + "\n"
+    val outputContent = compiler.toSource + "\n"
 
     val sourceMap = Option(compiler.getSourceMap())
 
@@ -183,10 +199,14 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
   private def closureOptions(output: LinkerOutput) = {
     val options = new ClosureOptions
-    options.prettyPrint = config.prettyPrint
+    options.setPrettyPrint(config.prettyPrint)
     CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
     options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
     options.setCheckGlobalThisLevel(CheckLevel.OFF)
+    options.setWarningLevel(DiagnosticGroups.DUPLICATE_VARS, CheckLevel.OFF)
+    options.setWarningLevel(DiagnosticGroups.CHECK_REGEXP, CheckLevel.OFF)
+    options.setWarningLevel(DiagnosticGroups.CHECK_TYPES, CheckLevel.OFF)
+    options.setWarningLevel(DiagnosticGroups.CHECK_USELESS_CODE, CheckLevel.OFF)
 
     if (config.sourceMap && output.sourceMap.isDefined) {
       options.setSourceMapDetailLevel(SourceMap.DetailLevel.ALL)
@@ -201,20 +221,28 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 private object ClosureLinkerBackend {
   /** Minimal set of externs to compile Scala.js-emitted code with Closure. */
   private val ScalaJSExterns = """
-    /** @constructor */
-    function Object() {}
-    Object.prototype.toString = function() {};
-    Object.prototype.$classData = {};
-    /** @constructor */
-    function Array() {}
-    Array.prototype.length = 0;
-    /** @constructor */
-    function Function() {}
-    Function.prototype.constructor = function() {};
-    Function.prototype.call = function() {};
-    Function.prototype.apply = function() {};
-    function require() {}
-    var exports = {};
+    var Object;
+    Object.prototype.constructor;
+    Object.prototype.toString;
+    Object.prototype.$classData;
+    var Array;
+    Array.prototype.length;
+    var Function;
+    Function.prototype.call;
+    Function.prototype.apply;
+    var require;
+    var exports;
     var NaN = 0.0/0.0, Infinity = 1.0/0.0, undefined = void 0;
+
+    var TypeError;
+    var Math;
+    var String;
+    var WeakMap;
+    var Int8Array;
+    var Int16Array;
+    var Uint16Array;
+    var Int32Array;
+    var Float32Array;
+    var Float64Array;
     """
 }

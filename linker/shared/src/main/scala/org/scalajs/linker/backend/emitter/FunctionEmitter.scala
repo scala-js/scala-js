@@ -378,13 +378,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         body: => A): WithGlobals[A] = {
       val result = body
       if (!isOptimisticNamingRun || !globalVarNames.exists(localVarNames)) {
-        /* Filter out non-dangerous global refs at this point. Outside of the
-         * function being desugared, only dangerous global refs still need to
-         * be tracked. Hopefully, the set is already emptied at this point for
-         * the large majority of methods, if not all.
+        /* At this point, filter out the global refs that do not need to be
+         * tracked across functions and classes.
          */
-        WithGlobals(result,
-            GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalVarNames.toSet))
+        WithGlobals(result, keepOnlyTrackedGlobalRefs(globalVarNames.toSet))
       } else {
         /* Clear the local var names, but *not* the global var names.
          * In the pessimistic run, we will use the knowledge gathered during

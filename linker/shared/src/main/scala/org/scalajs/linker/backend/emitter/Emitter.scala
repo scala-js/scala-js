@@ -101,6 +101,13 @@ final class Emitter private (config: CommonPhaseConfig,
         internalOptions.withOptimizeBracketSelects(optimizeBracketSelects))
   }
 
+  // Private API for the Closure backend (could be opened if necessary)
+  private[backend] def withTrackAllGlobalRefs(
+      trackAllGlobalRefs: Boolean): Emitter = {
+    new Emitter(config,
+        internalOptions.withTrackAllGlobalRefs(trackAllGlobalRefs))
+  }
+
   def emitAll(unit: LinkingUnit, builder: JSLineBuilder,
       logger: Logger): Unit = {
     emitInternal(unit, builder, logger) {
@@ -122,9 +129,67 @@ final class Emitter private (config: CommonPhaseConfig,
    *  This is special for the Closure back-end.
    */
   private[backend] def emitForClosure(unit: LinkingUnit, builder: JSBuilder,
-      logger: Logger): Option[String] = {
-    emitInternal(unit, builder, logger)(())(())
-    topLevelVarDeclarations(unit)
+      logger: Logger): (Option[String], Set[String]) = {
+    val globalRefs = emitInternal(unit, builder, logger) {
+      // no prelude
+    } {
+      /* When emitting for GCC, we must make sure that every referenced
+       * variable is statically declared. This is usually the case, except for
+       * some methods of hijacked classes that are accessed by the dispatch
+       * functions $dp_xyz. If the target methods are not reachable, they will
+       * not be declared, and GCC won't be happy.
+       *
+       * The following code makes sure to provide declarations for those
+       * methods if they are not reachable, to appease GCC.
+       *
+       * It would be valid and appropriate to introduce those declarations for
+       * the non-GCC output as well. However, that is not necessary, so we
+       * avoid it simply so that we do not perform useless work.
+       *
+       * None of this would be necessary if we generated the $dp_xyz functions
+       * programmatically, based on the set of reachable methods of hijacked
+       * classes, which eventually we should do. But in the meantime, this
+       * makes things work.
+       */
+
+      import org.scalajs.ir.Definitions._
+      import org.scalajs.ir.Position.NoPosition
+      import org.scalajs.ir.Trees.MethodDef
+
+      val equals = "equals__O__Z"
+      val hashCode = "hashCode__I"
+      val compareTo = "compareTo__O__I"
+
+      val requiredDefaultMethodDecls = List(
+          BoxedBooleanClass -> List(hashCode, compareTo),
+          BoxedCharacterClass -> List(equals, hashCode, compareTo),
+          BoxedDoubleClass -> List(
+              equals, hashCode, compareTo, "byteValue__B", "shortValue__S",
+              "intValue__I", "longValue__J", "floatValue__F", "doubleValue__D"
+          ),
+          BoxedUnitClass -> List(hashCode),
+          BoxedStringClass -> List(
+              hashCode, compareTo, "length__I", "charAt__I__C",
+              "subSequence__I__I__jl_CharSequence"
+          )
+      )
+
+      for ((className, requiredMethodNames) <- requiredDefaultMethodDecls) {
+        val memberMethods = unit.classDefs
+          .find(_.encodedName == className)
+          .fold[List[Versioned[MethodDef]]](Nil)(_.memberMethods)
+        for {
+          methodName <- requiredMethodNames
+          if !memberMethods.exists(_.value.name.encodedName == methodName)
+        } {
+          implicit val pos = NoPosition
+          val field = jsGen.envField("f", className + "__" + methodName).ident
+          builder.addJSTree(js.VarDef(field, None))
+        }
+      }
+    }
+
+    (topLevelVarDeclarations(unit), globalRefs)
   }
 
   private def topLevelVarDeclarations(unit: LinkingUnit): Option[String] = {
@@ -149,14 +214,15 @@ final class Emitter private (config: CommonPhaseConfig,
     }
   }
 
+  /** Returns the set of tracked global refs. */
   private def emitInternal(unit: LinkingUnit, builder: JSBuilder,
       logger: Logger)(
       emitPrelude: => Unit)(
-      emitPostlude: => Unit): Unit = {
+      emitPostlude: => Unit): Set[String] = {
     startRun(unit)
     try {
       val orderedClasses = unit.classDefs.sortWith(compareClasses)
-      val generatedClasses =
+      val WithGlobals(generatedClasses, trackedGlobalRefs) =
         genAllClasses(orderedClasses, logger, secondAttempt = false)
 
       emitPrelude
@@ -205,6 +271,8 @@ final class Emitter private (config: CommonPhaseConfig,
         emitModuleInitializer(moduleInitializer, builder)
 
       emitPostlude
+
+      trackedGlobalRefs
     } finally {
       endRun(logger)
     }
@@ -330,17 +398,21 @@ final class Emitter private (config: CommonPhaseConfig,
    */
   @tailrec
   private def genAllClasses(orderedClasses: List[LinkedClass], logger: Logger,
-      secondAttempt: Boolean): List[GeneratedClass] = {
+      secondAttempt: Boolean): WithGlobals[List[GeneratedClass]] = {
 
     val objectClass = orderedClasses.find(_.name.name == ObjectClass).get
     val generatedClasses = orderedClasses.map(genClass(_, objectClass))
-    val mentionedDangerousGlobalRefs = generatedClasses.foldLeft(Set.empty[String]) {
+    val trackedGlobalRefs = generatedClasses.foldLeft(Set.empty[String]) {
       (prev, generatedClass) =>
-        unionPreserveEmpty(prev, generatedClass.mentionedDangerousGlobalRefs)
+        unionPreserveEmpty(prev, generatedClass.trackedGlobalRefs)
     }
 
+    val mentionedDangerousGlobalRefs =
+      if (!internalOptions.trackAllGlobalRefs) trackedGlobalRefs
+      else GlobalRefUtils.keepOnlyDangerousGlobalRefs(trackedGlobalRefs)
+
     if (mentionedDangerousGlobalRefs == state.lastMentionedDangerousGlobalRefs) {
-      generatedClasses
+      WithGlobals(generatedClasses, trackedGlobalRefs)
     } else {
       assert(!secondAttempt,
           "Uh oh! The second attempt gave a different set of dangerous " +
@@ -365,12 +437,10 @@ final class Emitter private (config: CommonPhaseConfig,
 
     // Global ref management
 
-    var mentionedDangerousGlobalRefs: Set[String] = Set.empty
+    var trackedGlobalRefs: Set[String] = Set.empty
 
-    def addGlobalRefs(globalRefs: Set[String]): Unit = {
-      mentionedDangerousGlobalRefs =
-        unionPreserveEmpty(globalRefs, mentionedDangerousGlobalRefs)
-    }
+    def addGlobalRefs(globalRefs: Set[String]): Unit =
+      trackedGlobalRefs = unionPreserveEmpty(globalRefs, trackedGlobalRefs)
 
     // Main part
 
@@ -534,7 +604,7 @@ final class Emitter private (config: CommonPhaseConfig,
         staticFields,
         staticInitialization,
         topLevelExports,
-        mentionedDangerousGlobalRefs
+        trackedGlobalRefs
     )
   }
 
@@ -695,7 +765,7 @@ private object Emitter {
       val staticFields: List[js.Tree],
       val staticInitialization: List[js.Tree],
       val topLevelExports: List[js.Tree],
-      val mentionedDangerousGlobalRefs: Set[String]
+      val trackedGlobalRefs: Set[String]
   )
 
   private final class OneTimeCache[A >: Null] {
