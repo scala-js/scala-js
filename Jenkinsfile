@@ -232,27 +232,29 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
+        ++$scala $testSuite/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         'set scalaJSStage in Global := FullOptStage' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&

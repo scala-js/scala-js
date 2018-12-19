@@ -43,10 +43,6 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
   import config.commonConfig.coreSpec._
 
-  require(!esFeatures.useECMAScript2015,
-      s"Cannot use features $esFeatures with the Closure Compiler " +
-      "because they contain ECMAScript 2015 features")
-
   require(!esFeatures.allowBigIntsForLongs,
       s"Cannot use features $esFeatures with the Closure Compiler " +
       "because they allow to use BigInts")
@@ -138,8 +134,12 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     }
 
     val content = new java.lang.StringBuilder
-    for (topLevelVarDecls <- topLevelVarDeclarations)
-      content.append(topLevelVarDecls + "\n")
+    for (topLevelVarDecls <- topLevelVarDeclarations) {
+      val varDecls =
+        if (!topLevelVarDecls.startsWith("let ")) topLevelVarDecls
+        else "var " + topLevelVarDecls.stripPrefix("let ")
+      content.append(varDecls + "\n")
+    }
     for (exportedPropertyName <- exportedPropertyNames.distinct)
       content.append(s"Object.prototype.$exportedPropertyName = 0;\n")
 
@@ -201,7 +201,13 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     val options = new ClosureOptions
     options.setPrettyPrint(config.prettyPrint)
     CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
-    options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
+
+    val language =
+      if (esFeatures.useECMAScript2015) ClosureOptions.LanguageMode.ECMASCRIPT_2015
+      else ClosureOptions.LanguageMode.ECMASCRIPT5_STRICT
+    options.setLanguageIn(language)
+    options.setLanguageOut(language)
+
     options.setCheckGlobalThisLevel(CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.DUPLICATE_VARS, CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.CHECK_REGEXP, CheckLevel.OFF)

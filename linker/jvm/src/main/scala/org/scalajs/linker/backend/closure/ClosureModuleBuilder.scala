@@ -15,6 +15,7 @@ package org.scalajs.linker.backend.closure
 import org.scalajs.ir
 import ir.Position.NoPosition
 
+import org.scalajs.linker.backend.javascript.{Trees => js}
 import org.scalajs.linker.backend.javascript.Trees.Tree
 import org.scalajs.linker.backend.javascript.JSBuilder
 
@@ -32,8 +33,22 @@ private[closure] class ClosureModuleBuilder(
   private val treeBuf = mutable.ListBuffer.empty[Node]
   private val module = new JSModule("Scala.js")
 
-  def addJSTree(tree: Tree): Unit =
-    treeBuf += transformer.transformStat(tree)(NoPosition)
+  def addJSTree(tree: Tree): Unit = {
+    /* Top-level `js.Block`s must be explicitly flattened here.
+     * Our `js.Block`s do not have the same semantics as GCC's `BLOCK`s: GCC's
+     * impose strict scoping for `let`s, `const`s and `class`es, while ours are
+     * only a means of putting together several statements in one `js.Tree`
+     * (in fact, they automatically flatten themselves out upon construction).
+     */
+    tree match {
+      case js.Block(stats) =>
+        treeBuf ++= transformer.transformBlockStats(stats)(NoPosition)
+      case js.Skip() =>
+        // ignore
+      case _ =>
+        treeBuf += transformer.transformStat(tree)(NoPosition)
+    }
+  }
 
   def addStatement(originalLocation: URI, code: String): Unit = {
     flushTrees()
