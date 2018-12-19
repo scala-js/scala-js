@@ -15,6 +15,7 @@ package org.scalajs.core.tools.linker.backend.closure
 import org.scalajs.core.ir
 import ir.Position.NoPosition
 
+import org.scalajs.core.tools.javascript.{Trees => js}
 import org.scalajs.core.tools.javascript.Trees.Tree
 import org.scalajs.core.tools.javascript.JSTreeBuilder
 
@@ -31,8 +32,22 @@ private[closure] class ClosureAstBuilder(
   private val transformer = new ClosureAstTransformer(relativizeBaseURI)
   private val treeBuf = mutable.ListBuffer.empty[Node]
 
-  def addJSTree(tree: Tree): Unit =
-    treeBuf += transformer.transformStat(tree)(NoPosition)
+  def addJSTree(tree: Tree): Unit = {
+    /* Top-level `js.Block`s must be explicitly flattened here.
+     * Our `js.Block`s do not have the same semantics as GCC's `BLOCK`s: GCC's
+     * impose strict scoping for `let`s, `const`s and `class`es, while ours are
+     * only a means of putting together several statements in one `js.Tree`
+     * (in fact, they automatically flatten themselves out upon construction).
+     */
+    tree match {
+      case js.Block(stats) =>
+        treeBuf ++= transformer.transformBlockStats(stats)(NoPosition)
+      case js.Skip() =>
+        // ignore
+      case _ =>
+        treeBuf += transformer.transformStat(tree)(NoPosition)
+    }
+  }
 
   lazy val closureAST: SourceAst = {
     val root = transformer.setNodePosition(IR.script(treeBuf: _*), NoPosition)

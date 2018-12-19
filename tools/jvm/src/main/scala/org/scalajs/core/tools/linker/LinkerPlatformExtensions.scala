@@ -39,9 +39,7 @@ trait LinkerPlatformExtensions { this: Linker.type =>
 
     val backend = {
       if (config.closureCompiler) {
-        require(outputMode == OutputMode.ECMAScript51Isolated,
-            s"Cannot use output mode $outputMode with the Closure Compiler")
-        new ClosureLinkerBackend(semantics, moduleKind,
+        new ClosureLinkerBackend(semantics, outputMode, moduleKind,
             config.sourceMap, config.backendConfig)
       } else {
         new BasicLinkerBackend(semantics, outputMode, moduleKind,
