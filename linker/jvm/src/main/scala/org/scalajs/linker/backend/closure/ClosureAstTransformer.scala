@@ -21,6 +21,7 @@ import ir.Position.NoPosition
 import org.scalajs.linker.backend.javascript.Trees._
 
 import com.google.javascript.rhino._
+import com.google.javascript.rhino.StaticSourceFile.SourceKind
 import com.google.javascript.jscomp._
 
 import scala.collection.mutable
@@ -73,7 +74,7 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
         new Node(Token.LABEL, transformLabel(label),
             setNodePosition(doNode, pos))
       case ForIn(lhs, obj, body) =>
-        new Node(Token.FOR, transformStat(lhs), transformExpr(obj),
+        new Node(Token.FOR_IN, transformStat(lhs), transformExpr(obj),
             transformBlock(body))
       case TryFinally(TryCatch(block, errVar, handler), finalizer) =>
         val catchPos = handler.pos orElse pos
@@ -111,14 +112,14 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
 
         for ((expr, body) <- cases) {
           val bodyNode = transformBlock(body)
-          bodyNode.putBooleanProp(Node.SYNTHETIC_BLOCK_PROP, true)
+          bodyNode.setIsSyntheticBlock(true)
           val caseNode = new Node(Token.CASE, transformExpr(expr), bodyNode)
           switchNode.addChildToBack(
               setNodePosition(caseNode, expr.pos orElse pos))
         }
 
         val bodyNode = transformBlock(default)
-        bodyNode.putBooleanProp(Node.SYNTHETIC_BLOCK_PROP, true)
+        bodyNode.setIsSyntheticBlock(true)
         val caseNode = new Node(Token.DEFAULT_CASE, bodyNode)
         switchNode.addChildToBack(
             setNodePosition(caseNode, default.pos orElse pos))
@@ -349,7 +350,7 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
     val str = URIUtil.sourceURIToString(relativizeBaseURI, source)
 
     node.setInputId(inputId)
-    node.setStaticSourceFile(new SourceFile(str))
+    node.setStaticSourceFile(new SourceFile(str, SourceKind.STRONG))
 
     node
   }

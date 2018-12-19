@@ -754,7 +754,7 @@ object Build {
   lazy val linker: Project = (project in file("linker/jvm")).settings(
       commonLinkerSettings,
       libraryDependencies ++= Seq(
-          "com.google.javascript" % "closure-compiler" % "v20160517",
+          "com.google.javascript" % "closure-compiler" % "v20181210",
           "com.novocode" % "junit-interface" % "0.9" % "test"
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)

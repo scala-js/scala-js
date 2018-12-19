@@ -68,18 +68,11 @@ final class InvokableConstructor private[reflect]  (
 }
 
 object Reflect {
-  /* I would like those val's to be `js.Dictionary`'es instead of full-blown
-   * Scala Maps. But if I do that, GCC "dead-code"-eliminates away statements
-   * that fill `loadableModuleClasses`! We fool it into not making a fool of
-   * itself by using more complicated data structures that it does not
-   * understand -_-'.
-   */
-
   private val loadableModuleClasses =
-    mutable.Map.empty[String, LoadableModuleClass]
+    js.Dictionary.empty[LoadableModuleClass]
 
   private val instantiatableClasses =
-    mutable.Map.empty[String, InstantiatableClass]
+    js.Dictionary.empty[InstantiatableClass]
 
   // `protected[reflect]` makes it public in the IR
   protected[reflect] def registerLoadableModuleClass[T](

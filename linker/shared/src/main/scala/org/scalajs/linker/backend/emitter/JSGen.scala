@@ -341,6 +341,22 @@ private[emitter] final class JSGen(val semantics: Semantics,
       envFieldName
   }
 
+  /** Keeps only the global refs that need to be tracked.
+   *
+   *  By default, only dangerous global refs need to be tracked outside of
+   *  functions, to power `mentionedDangerousGlobalRefs` and therefore
+   *  `avoidClashWithGlobalRef`. In that case, the set is hopefully already
+   *  emptied at this point for the large majority of methods, if not all.
+   *
+   *  However, when integrating with GCC, we must tell it a list of all the
+   *  global variables that are accessed in an externs file. In that case, we
+   *  need to track all global variables across functions and classes. This is
+   *  slower, but running GCC will take most of the time anyway in that case.
+   */
+  def keepOnlyTrackedGlobalRefs(globalRefs: Set[String]): Set[String] =
+    if (internalOptions.trackAllGlobalRefs) globalRefs
+    else GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalRefs)
+
   def genPropSelect(qual: Tree, item: PropertyName)(
       implicit pos: Position): Tree = {
     item match {
