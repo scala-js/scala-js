@@ -153,6 +153,9 @@ def Tasks = [
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
