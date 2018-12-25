@@ -111,7 +111,11 @@ final class Emitter private (config: CommonPhaseConfig,
   def emitAll(unit: LinkingUnit, builder: JSLineBuilder,
       logger: Logger): Unit = {
     emitInternal(unit, builder, logger) {
-      topLevelVarDeclarations(unit).foreach(builder.addLine(_))
+      val topLevelVars = topLevelVarDeclarations(unit)
+      if (topLevelVars.nonEmpty) {
+        val kw = if (esFeatures.useECMAScript2015) "let " else "var "
+        builder.addLine(topLevelVars.mkString(kw, ", ", ";"))
+      }
 
       if (needsIIFEWrapper)
         builder.addLine("(function(){")
@@ -127,9 +131,14 @@ final class Emitter private (config: CommonPhaseConfig,
    *  top-level var declarations.
    *
    *  This is special for the Closure back-end.
+   *
+   *  @return
+   *    A pair whose first element is the list of top-level variables to be
+   *    declared (only non-empty with `NoModule`), and whose second element is
+   *    the set of tracked global variables that are accessed.
    */
   private[backend] def emitForClosure(unit: LinkingUnit, builder: JSBuilder,
-      logger: Logger): (Option[String], Set[String]) = {
+      logger: Logger): (List[String], Set[String]) = {
     val globalRefs = emitInternal(unit, builder, logger) {
       // no prelude
     } {
@@ -192,7 +201,7 @@ final class Emitter private (config: CommonPhaseConfig,
     (topLevelVarDeclarations(unit), globalRefs)
   }
 
-  private def topLevelVarDeclarations(unit: LinkingUnit): Option[String] = {
+  private def topLevelVarDeclarations(unit: LinkingUnit): List[String] = {
     moduleKind match {
       case ModuleKind.NoModule =>
         val topLevelExportNames = mutable.Set.empty[String]
@@ -202,15 +211,10 @@ final class Emitter private (config: CommonPhaseConfig,
         } {
           topLevelExportNames += export.value.topLevelExportName
         }
-        if (topLevelExportNames.isEmpty) {
-          None
-        } else {
-          val kw = if (esFeatures.useECMAScript2015) "let " else "var "
-          Some(topLevelExportNames.mkString(kw, ", ", ";"))
-        }
+        topLevelExportNames.toList
 
       case ModuleKind.ESModule | ModuleKind.CommonJSModule =>
-        None
+        Nil
     }
   }
 
