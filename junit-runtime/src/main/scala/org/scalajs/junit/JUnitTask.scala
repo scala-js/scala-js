@@ -21,10 +21,6 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
 
   def tags: Array[String] = Array.empty
 
-  var failed = 0
-  var ignored = 0
-  var total = 0
-
   def execute(eventHandler: EventHandler, loggers: Array[Logger],
       continuation: Array[Task] => Unit): Unit = {
     continuation(execute(eventHandler, loggers))
@@ -34,11 +30,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     val fullClassName = taskDef.fullyQualifiedName
     val richLogger = new RichLogger(loggers, runSettings, fullClassName)
 
-    richLogger.log(richLogger.infoOrDebug, Ansi.c("Test run started", Ansi.BLUE))
-
     val bootstrapperName = fullClassName + "$scalajs$junit$bootstrapper"
-
-    val startTime = System.nanoTime
 
     def errorWhileLoadingClass(t: Throwable): Unit = {
       richLogger.log(_.error, "Error while loading test class: " + fullClassName)
@@ -56,7 +48,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
         .loadModule()
     } match {
       case Success(bootstrapper: Bootstrapper) =>
-        new JUnitExecuteTest(this, runSettings, bootstrapper,
+        new JUnitExecuteTest(taskDef, runSettings, bootstrapper,
             richLogger, eventHandler).executeTests()
 
       case Success(_) =>
@@ -66,18 +58,6 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
       case Failure(exception) =>
         errorWhileLoadingClass(exception)
     }
-
-    val time = System.nanoTime - startTime
-
-    val msg = {
-      Ansi.c("Test run finished: ", Ansi.BLUE) +
-      Ansi.c(s"$failed failed", if (failed == 0) Ansi.BLUE else Ansi.RED) +
-      Ansi.c(s", ", Ansi.BLUE) +
-      Ansi.c(s"$ignored ignored", if (ignored == 0) Ansi.BLUE else Ansi.YELLOW) +
-      Ansi.c(s", $total total, ${time.toDouble / 1000000000}s", Ansi.BLUE)
-    }
-
-    richLogger.log(richLogger.infoOrDebug, msg)
 
     Array()
   }

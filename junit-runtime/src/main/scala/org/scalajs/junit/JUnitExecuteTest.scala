@@ -19,11 +19,19 @@ import sbt.testing._
 
 import scala.util.matching.Regex
 
-private[junit] final class JUnitExecuteTest(task: JUnitTask,
+private[junit] final class JUnitExecuteTest(taskDef: TaskDef,
     runSettings: RunSettings, bootstrapper: Bootstrapper,
     richLogger: RichLogger, eventHandler: EventHandler) {
 
+  private[this] var failed = 0
+  private[this] var ignored = 0
+  private[this] var total = 0
+
   def executeTests(): Unit = {
+    richLogger.log(richLogger.infoOrDebug, Ansi.c("Test run started", Ansi.BLUE))
+
+    val startTime = System.nanoTime
+
     val assumptionViolated = try {
       bootstrapper.beforeClass()
       false
@@ -34,7 +42,7 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
 
     if (assumptionViolated) {
       richLogger.logTestInfo(_.info, "ignored")
-      task.ignored += 1
+      ignored += 1
       emitClassEvent(Status.Skipped)
     } else {
       def runWithOrWithoutQuietMode[T](block: => T): T = {
@@ -51,7 +59,7 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
         for (method <- bootstrapper.tests) {
           if (method.ignored) {
             richLogger.logTestInfo(_.info, method.name, "ignored")
-            task.ignored += 1
+            ignored += 1
             emitMethodEvent(method.name, Status.Skipped)
           } else {
             executeTestMethod(bootstrapper, method)
@@ -61,6 +69,18 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
 
       bootstrapper.afterClass()
     }
+
+    val time = System.nanoTime - startTime
+
+    val msg = {
+      Ansi.c("Test run finished: ", Ansi.BLUE) +
+      Ansi.c(s"$failed failed", if (failed == 0) Ansi.BLUE else Ansi.RED) +
+      Ansi.c(s", ", Ansi.BLUE) +
+      Ansi.c(s"$ignored ignored", if (ignored == 0) Ansi.BLUE else Ansi.YELLOW) +
+      Ansi.c(s", $total total, ${time.toDouble / 1000000000}s", Ansi.BLUE)
+    }
+
+    richLogger.log(richLogger.infoOrDebug, msg)
   }
 
   private[this] def executeTestMethod(bootstrapper: Bootstrapper,
@@ -121,7 +141,7 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
         def emit(t: Throwable) = {
           richLogger.logTestException(_.error, "Test ", methodName, t, timeInSeconds)
           richLogger.trace(t)
-          task.failed += 1
+          failed += 1
         }
 
         emit(e)
@@ -142,18 +162,18 @@ private[junit] final class JUnitExecuteTest(task: JUnitTask,
     if (exceptions.isEmpty)
       emitMethodEvent(methodName, Status.Success)
 
-    task.total += 1
+    total += 1
   }
 
 
   private def emitClassEvent(status: Status): Unit = {
-    val selector = new TestSelector(task.taskDef.fullyQualifiedName)
-    eventHandler.handle(new JUnitEvent(task.taskDef, status, selector))
+    val selector = new TestSelector(taskDef.fullyQualifiedName)
+    eventHandler.handle(new JUnitEvent(taskDef, status, selector))
   }
 
   private def emitMethodEvent(methodName: String, status: Status): Unit = {
-    val selector = new TestSelector(task.taskDef.fullyQualifiedName + "." + runSettings.decodeName(methodName))
-    eventHandler.handle(new JUnitEvent(task.taskDef, status, selector))
+    val selector = new TestSelector(taskDef.fullyQualifiedName + "." + runSettings.decodeName(methodName))
+    eventHandler.handle(new JUnitEvent(taskDef, status, selector))
   }
 
   private def isAssumptionViolation(ex: Throwable): Boolean = {
