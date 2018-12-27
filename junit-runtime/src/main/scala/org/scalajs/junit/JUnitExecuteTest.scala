@@ -12,8 +12,6 @@
 
 package org.scalajs.junit
 
-import java.io.ByteArrayOutputStream
-
 import org.junit._
 import sbt.testing._
 
@@ -28,29 +26,18 @@ private[junit] final class JUnitExecuteTest(taskDef: TaskDef,
   private[this] var total = 0
 
   def executeTests(): Unit = {
-    def runWithOrWithoutQuietMode[T](block: => T): T = {
-      if (runSettings.quiet) {
-        scala.Console.withOut(new ByteArrayOutputStream()) {
-          block
-        }
-      } else {
-        block
-      }
-    }
-
     richLogger.log(richLogger.infoOrDebug, Ansi.c("Test run started", Ansi.BLUE))
 
     val (_, timeInSeconds) = runTestLifecycle(None)(()) { _ =>
       bootstrapper.beforeClass()
-      runWithOrWithoutQuietMode {
-        for (method <- bootstrapper.tests) {
-          if (method.ignored) {
-            richLogger.logTestInfo(_.info, Some(method.name), "ignored")
-            ignored += 1
-            emitEvent(Some(method.name), Status.Skipped)
-          } else {
-            executeTestMethod(bootstrapper, method)
-          }
+
+      for (method <- bootstrapper.tests) {
+        if (method.ignored) {
+          richLogger.logTestInfo(_.info, Some(method.name), "ignored")
+          ignored += 1
+          emitEvent(Some(method.name), Status.Skipped)
+        } else {
+          executeTestMethod(bootstrapper, method)
         }
       }
     } { _ =>

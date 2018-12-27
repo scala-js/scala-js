@@ -39,7 +39,6 @@ final class JUnitFramework extends Framework {
   }
 
   private def parseRunSettings(args: Array[String]): RunSettings = {
-    var quiet = false
     var verbose = false
     var noColor = false
     var decodeScalaNames = false
@@ -47,7 +46,6 @@ final class JUnitFramework extends Framework {
     var notLogExceptionClass = false
     for (str <- args) {
       str match {
-        case "-q" => quiet = true
         case "-v" => verbose = true
         case "-n" => noColor = true
         case "-s" => decodeScalaNames = true
@@ -83,7 +81,6 @@ final class JUnitFramework extends Framework {
     }
     for (s <- args) {
       s match {
-        case "+q" => quiet = false
         case "+v" => verbose = false
         case "+n" => noColor = false
         case "+s" => decodeScalaNames = false
@@ -92,6 +89,6 @@ final class JUnitFramework extends Framework {
         case _    =>
       }
     }
-    new RunSettings(!noColor, decodeScalaNames, quiet, verbose, logAssert, notLogExceptionClass)
+    new RunSettings(!noColor, decodeScalaNames, verbose, logAssert, notLogExceptionClass)
   }
 }

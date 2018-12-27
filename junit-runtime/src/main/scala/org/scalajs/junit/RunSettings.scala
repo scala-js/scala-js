@@ -17,7 +17,6 @@ import scala.util.Try
 private[junit] final class RunSettings (
     val color: Boolean,
     decodeScalaNames: Boolean,
-    val quiet: Boolean,
     val verbose: Boolean,
     val logAssert: Boolean,
     val notLogExceptionClass: Boolean

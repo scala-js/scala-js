@@ -1,7 +1,0 @@
-ld[34mTest run started[0m
-ldTest org.scalajs.junit.[33mAssertEqualsTest[0m.[36mtest[0m started
-leTest org.scalajs.junit.[33mAssertEqualsTest[0m.[31mtest[0m failed: expected:<false> but was:<true>, took <TIME>
-e2org.scalajs.junit.AssertEqualsTest.test
-ldTest org.scalajs.junit.[33mAssertEqualsTest[0m.[36mtest[0m finished, took <TIME>
-ld[34mTest run finished: [0m[31m1 failed[0m[34m, [0m[34m0 ignored[0m[34m, 1 total, <TIME>[0m
-d
