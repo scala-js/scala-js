@@ -85,7 +85,6 @@ If you want to develop in Eclipse, use
 the build by default are not suited for Eclipse. You can create *somewhat*
 appropriate projects with:
 
-    $ sbt linker/sources
     $ GENERATING_ECLIPSE=true sbt "eclipse with-source=true"
 
 You will still have to fix a few things:

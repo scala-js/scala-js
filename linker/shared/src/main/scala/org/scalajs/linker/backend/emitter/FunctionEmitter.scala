@@ -2582,8 +2582,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           }
 
         case ClassOf(cls) =>
-          js.Apply(js.DotSelect(genClassDataOf(cls), js.Ident("getClassOf")),
-              Nil)
+          genClassOf(cls)
 
         // Atomic expressions
 

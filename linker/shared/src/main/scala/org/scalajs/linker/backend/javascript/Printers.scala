@@ -236,6 +236,16 @@ object Printers {
           print(") ")
           printBlock(body)
 
+        case For(init, guard, update, body) =>
+          print("for (")
+          print(init)
+          print("; ")
+          print(guard)
+          print("; ")
+          print(update)
+          print(") ")
+          printBlock(body)
+
         case TryFinally(TryCatch(block, errVar, handler), finalizer) =>
           print("try ")
           printBlock(block)
@@ -378,6 +388,16 @@ object Printers {
             }
           }
           print(lhs)
+          print(')')
+
+        case IncDec(prefix, inc, arg) =>
+          val op = if (inc) "++" else "--"
+          print('(')
+          if (prefix)
+            print(op)
+          print(arg)
+          if (!prefix)
+            print(op)
           print(')')
 
         case BinaryOp(op, lhs, rhs) =>
@@ -629,7 +649,8 @@ object Printers {
           print(" }")
 
         case _ =>
-          print(s"<error, elem of class ${tree.getClass}>")
+          throw new IllegalArgumentException(
+              s"Unexpected tree of class ${tree.getClass.getName} at ${tree.pos}")
       }
     }
 

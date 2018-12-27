@@ -80,6 +80,12 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
       case ForIn(lhs, obj, body) =>
         new Node(Token.FOR_IN, transformStat(lhs), transformExpr(obj),
             transformBlock(body))
+      case For(init, guard, update, body) =>
+        // There is no constructor for Node with 4 children
+        val forNode = new Node(Token.FOR, transformStat(init),
+            transformExpr(guard), transformStat(update))
+        forNode.addChildToBack(transformBlock(body))
+        forNode
       case TryFinally(TryCatch(block, errVar, handler), finalizer) =>
         val catchPos = handler.pos orElse pos
         val catchNode =
@@ -290,6 +296,12 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
         new Node(Token.DELPROP, transformExpr(prop))
       case UnaryOp(op, lhs) =>
         mkUnaryOp(op, transformExpr(lhs))
+      case IncDec(prefix, inc, arg) =>
+        val token = if (inc) Token.INC else Token.DEC
+        val node = new Node(token, transformExpr(arg))
+        if (!prefix)
+          node.putBooleanProp(Node.INCRDECR_PROP, true)
+        node
       case BinaryOp(op, lhs, rhs) =>
         mkBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
       case ArrayConstr(items) =>

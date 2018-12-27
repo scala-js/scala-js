@@ -125,6 +125,10 @@ object Trees {
 
   case class ForIn(lhs: Tree, obj: Tree, body: Tree)(implicit val pos: Position) extends Tree
 
+  case class For(init: Tree, guard: Tree, update: Tree, body: Tree)(
+      implicit val pos: Position)
+      extends Tree
+
   case class TryCatch(block: Tree, errVar: Ident, handler: Tree)(implicit val pos: Position) extends Tree
 
   case class TryFinally(block: Tree, finalizer: Tree)(implicit val pos: Position) extends Tree
@@ -180,6 +184,11 @@ object Trees {
     /** Codes are the same as in the IR. */
     type Code = ir.Trees.JSUnaryOp.Code
   }
+
+  /** `++x`, `x++`, `--x` or `x--`. */
+  case class IncDec(prefix: Boolean, inc: Boolean, arg: Tree)(
+      implicit val pos: Position)
+      extends Tree
 
   /** Binary operation (always preserves pureness).
    *

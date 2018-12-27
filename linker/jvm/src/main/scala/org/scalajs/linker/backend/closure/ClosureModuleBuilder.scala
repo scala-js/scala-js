@@ -31,7 +31,6 @@ private[closure] class ClosureModuleBuilder(
 
   private val transformer = new ClosureAstTransformer(relativizeBaseURI)
   private val treeBuf = mutable.ListBuffer.empty[Node]
-  private val module = new JSModule("Scala.js")
 
   def addJSTree(tree: Tree): Unit = {
     /* Top-level `js.Block`s must be explicitly flattened here.
@@ -50,27 +49,18 @@ private[closure] class ClosureModuleBuilder(
     }
   }
 
-  def addStatement(originalLocation: URI, code: String): Unit = {
-    flushTrees()
-    val path = URIUtil.sourceURIToString(relativizeBaseURI, originalLocation)
-    module.add(new CompilerInput(SourceFile.fromCode(path, code)))
-  }
-
-  def complete(): Unit = flushTrees()
+  def complete(): Unit = ()
 
   def result(): JSModule = {
-    complete()
-    module
-  }
+    val module = new JSModule("Scala.js")
 
-  private def flushTrees(): Unit = {
     if (treeBuf.nonEmpty) {
       val root = transformer.setNodePosition(IR.script(treeBuf: _*), NoPosition)
-      treeBuf.clear()
-
       val ast = new ClosureModuleBuilder.ScalaJSSourceAst(root)
       module.add(new CompilerInput(ast, ast.getInputId(), false))
     }
+
+    module
   }
 }
 

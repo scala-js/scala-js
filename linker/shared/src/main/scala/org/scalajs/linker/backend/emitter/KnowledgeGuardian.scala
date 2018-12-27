@@ -84,13 +84,13 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
   }
 
   private def computeHasInlineableInit(linkingUnit: LinkingUnit): Set[String] = {
-    /* Those classes are instantiated in scalajsenv.js. Since they have
-     * multiple constructors and/or are not final, scalajsenv.js is written
+    /* Those classes are instantiated in CoreJSLib. Since they have
+     * multiple constructors and/or are not final, CoreJSLib is written
      * with the assumption that they will not have an inlineable init. We
      * therefore blacklist them here so that this is always true.
      *
      * Note that j.l.Class is not in this list, because it has only one
-     * constructor and is final, so even scalajsenv.js can assume it always
+     * constructor and is final, so even CoreJSLib can assume it always
      * has an inlineable init.
      */
     val blackList = Set(

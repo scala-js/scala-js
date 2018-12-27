@@ -42,8 +42,6 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private val knowledgeGuardian = new KnowledgeGuardian(config)
 
-  private val baseCoreJSLib = CoreJSLibs.lib(semantics, esFeatures, moduleKind)
-
   private class State(val lastMentionedDangerousGlobalRefs: Set[String]) {
     val jsGen: JSGen = {
       new JSGen(semantics, esFeatures, moduleKind, internalOptions,
@@ -52,30 +50,14 @@ final class Emitter private (config: CommonPhaseConfig,
 
     val classEmitter: ClassEmitter = new ClassEmitter(jsGen)
 
-    val coreJSLib: String = {
-      if (lastMentionedDangerousGlobalRefs.isEmpty) {
-        baseCoreJSLib
-      } else {
-        var content = baseCoreJSLib
-        for {
-          globalRef <- lastMentionedDangerousGlobalRefs
-          if !globalRef.startsWith("$$")
-        } {
-          val replacement = jsGen.avoidClashWithGlobalRef(globalRef)
-          content = content.replaceAll(raw"\$globalRef\b",
-              java.util.regex.Matcher.quoteReplacement(replacement))
-        }
-
-        content
-      }
-    }
+    val coreJSLib: WithGlobals[js.Tree] = CoreJSLib.build(jsGen)
   }
 
   private var state: State = new State(Set.empty)
 
   private def jsGen: JSGen = state.jsGen
   private def classEmitter: ClassEmitter = state.classEmitter
-  private def coreJSLib: String = state.coreJSLib
+  private def coreJSLib: WithGlobals[js.Tree] = state.coreJSLib
 
   private val classCaches = mutable.Map.empty[List[String], ClassCache]
 
@@ -231,7 +213,8 @@ final class Emitter private (config: CommonPhaseConfig,
 
       emitPrelude
 
-      builder.addStatement(CoreJSLibs.locationForSourceMap, coreJSLib)
+      val WithGlobals(coreJSLibTree, coreJSLibTrackedGlobalRefs) = coreJSLib
+      builder.addJSTree(coreJSLibTree)
 
       emitModuleImports(orderedClasses, builder, logger)
 
@@ -276,7 +259,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
       emitPostlude
 
-      trackedGlobalRefs
+      trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs
     } finally {
       endRun(logger)
     }
@@ -633,20 +616,6 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private def getClassCache(ancestors: List[String]) =
     classCaches.getOrElseUpdate(ancestors, new ClassCache)
-
-  private def emitLines(str: String, builder: JSFileBuilder): Unit = {
-    @tailrec def emitNextLine(index: Int): Unit = {
-      val endOfLine = str.indexOf('\n', index)
-      if (endOfLine != -1) {
-        builder.addLine(str.substring(index, endOfLine))
-        emitNextLine(endOfLine + 1)
-      } else {
-        builder.addLine(str.substring(index, str.length))
-      }
-    }
-    if (str != "")
-      emitNextLine(0)
-  }
 
   // Caching
 

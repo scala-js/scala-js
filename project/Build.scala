@@ -734,12 +734,6 @@ object Build {
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile / "shared/src/test/scala",
 
-      sourceGenerators in Compile += Def.task {
-        ScalaJSEnvGenerator.generateEnvHolder(
-          (baseDirectory in LocalProject("scalajs")).value,
-          (sourceManaged in Compile).value)
-      }.taskValue,
-
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Linker,
       exportJars := true, // required so ScalaDoc linking works

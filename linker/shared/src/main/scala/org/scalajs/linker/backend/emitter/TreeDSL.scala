@@ -43,12 +43,63 @@ private[emitter] object TreeDSL {
     def !==(that: Tree)(implicit pos: Position): Tree =
       BinaryOp(ir.Trees.JSBinaryOp.!==, self, that)
 
+    def unary_+()(implicit pos: Position): Tree =
+      UnaryOp(ir.Trees.JSUnaryOp.+, self)
+    def unary_-()(implicit pos: Position): Tree =
+      UnaryOp(ir.Trees.JSUnaryOp.-, self)
     def unary_!()(implicit pos: Position): Tree =
       UnaryOp(ir.Trees.JSUnaryOp.!, self)
+
     def &&(that: Tree)(implicit pos: Position): Tree =
       BinaryOp(ir.Trees.JSBinaryOp.&&, self, that)
     def ||(that: Tree)(implicit pos: Position): Tree =
       BinaryOp(ir.Trees.JSBinaryOp.||, self, that)
+
+    def +(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.+, self, that)
+    def -(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.-, self, that)
+    def *(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.*, self, that)
+    def /(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp./, self, that)
+    def %(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.%, self, that)
+
+    def &(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.&, self, that)
+    def |(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.|, self, that)
+
+    def <<(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.<<, self, that)
+    def >>(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.>>, self, that)
+    def >>>(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.>>>, self, that)
+
+    def <(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.<, self, that)
+    def >(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.>, self, that)
+    def <=(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.<=, self, that)
+    def >=(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.>=, self, that)
+
+    def prefix_++(implicit pos: Position): Tree =
+      IncDec(prefix = true, inc = true, self)
+    def prefix_--(implicit pos: Position): Tree =
+      IncDec(prefix = true, inc = false, self)
+    def ++(implicit pos: Position): Tree =
+      IncDec(prefix = false, inc = true, self)
+    def --(implicit pos: Position): Tree =
+      IncDec(prefix = false, inc = false, self)
+
+    def in(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.in, self, that)
+    def instanceof(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.instanceof, self, that)
 
     // Other constructs
 

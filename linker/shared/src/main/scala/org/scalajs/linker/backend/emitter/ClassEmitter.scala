@@ -727,7 +727,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
               if (isAncestorOfBoxedBooleanClass)
                 test = test || typeOfTest("boolean")
               if (isAncestorOfBoxedCharacterClass)
-                test = test || genCallHelper("isChar", obj)
+                test = test || (obj instanceof envField("Char"))
               if (isAncestorOfBoxedUnitClass)
                 test = test || (obj === js.Undefined())
 
@@ -914,7 +914,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
                 keepOnlyDangerousVarNames = true)
           } yield {
             genArrowFunction(List(js.ParamDef(js.Ident("x"), rest = false)), js.Return {
-              js.BinaryOp(JSBinaryOp.instanceof, js.VarRef(js.Ident("x")), jsCtor)
+              js.VarRef(js.Ident("x")) instanceof jsCtor
             })
           }
         }
