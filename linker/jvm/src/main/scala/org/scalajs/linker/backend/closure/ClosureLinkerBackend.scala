@@ -43,10 +43,6 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
   import config.commonConfig.coreSpec._
 
-  require(!esFeatures.useECMAScript2015,
-      s"Cannot use features $esFeatures with the Closure Compiler " +
-      "because they contain ECMAScript 2015 features")
-
   require(!esFeatures.allowBigIntsForLongs,
       s"Cannot use features $esFeatures with the Closure Compiler " +
       "because they allow to use BigInts")
@@ -118,7 +114,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
    *
    *  This is necessary to avoid name clashes with renamed properties (#2491).
    */
-  private def makeExternsForExports(topLevelVarDeclarations: Option[String],
+  private def makeExternsForExports(topLevelVarDeclarations: List[String],
       linkingUnit: LinkingUnit): String = {
     import org.scalajs.ir.Trees._
 
@@ -138,8 +134,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     }
 
     val content = new java.lang.StringBuilder
-    for (topLevelVarDecls <- topLevelVarDeclarations)
-      content.append(topLevelVarDecls + "\n")
+    for (topLevelVarDecl <- topLevelVarDeclarations)
+      content.append(s"var $topLevelVarDecl;\n")
     for (exportedPropertyName <- exportedPropertyNames.distinct)
       content.append(s"Object.prototype.$exportedPropertyName = 0;\n")
 
@@ -155,14 +151,19 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     compiler
   }
 
-  private def writeResult(topLevelVarDeclarations: Option[String],
+  private def writeResult(topLevelVarDeclarations: List[String],
       result: Result, compiler: ClosureCompiler, output: LinkerOutput): Unit = {
 
     def ifIIFE(str: String): String = if (needsIIFEWrapper) str else ""
 
     val header = {
-      topLevelVarDeclarations.fold("")(_ + "\n") +
-      ifIIFE("(function(){") + "'use strict';\n"
+      val maybeTopLevelVarDecls = if (topLevelVarDeclarations.nonEmpty) {
+        val kw = if (esFeatures.useECMAScript2015) "let " else "var "
+        topLevelVarDeclarations.mkString(kw, ",", ";\n")
+      } else {
+        ""
+      }
+      maybeTopLevelVarDecls + ifIIFE("(function(){") + "'use strict';\n"
     }
     val footer = ifIIFE("}).call(this);\n")
 
@@ -201,7 +202,13 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     val options = new ClosureOptions
     options.setPrettyPrint(config.prettyPrint)
     CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
-    options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
+
+    val language =
+      if (esFeatures.useECMAScript2015) ClosureOptions.LanguageMode.ECMASCRIPT_2015
+      else ClosureOptions.LanguageMode.ECMASCRIPT5_STRICT
+    options.setLanguageIn(language)
+    options.setLanguageOut(language)
+
     options.setCheckGlobalThisLevel(CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.DUPLICATE_VARS, CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.CHECK_REGEXP, CheckLevel.OFF)

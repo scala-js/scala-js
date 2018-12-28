@@ -214,10 +214,12 @@ private[emitter] final class JSGen(val semantics: Semantics,
       case irt.JSNativeLoadSpec.Global(globalRef, path) =>
         val globalVarRef = VarRef(Ident(globalRef, Some(globalRef)))
         val globalVarNames = {
-          if (keepOnlyDangerousVarNames && !GlobalRefUtils.isDangerousGlobalRef(globalRef))
+          if (keepOnlyDangerousVarNames && !internalOptions.trackAllGlobalRefs &&
+              !GlobalRefUtils.isDangerousGlobalRef(globalRef)) {
             Set.empty[String]
-          else
+          } else {
             Set(globalRef)
+          }
         }
         WithGlobals(pathSelection(globalVarRef, path), globalVarNames)
 
