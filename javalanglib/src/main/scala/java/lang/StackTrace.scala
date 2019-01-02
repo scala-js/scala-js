@@ -28,15 +28,6 @@ private[lang] object StackTrace {
    * errors, which would be very bad if it happened.
    */
 
-  private type SourceMapper =
-    js.Function1[js.Array[JSStackTraceElem], js.Array[JSStackTraceElem]]
-
-  private lazy val sourceMapper: SourceMapper = {
-    EnvironmentInfo.envInfo.flatMap(_.sourceMapper).getOrElse {
-      (s: js.Array[JSStackTraceElem]) => s
-    }
-  }
-
   /** Returns the current stack trace.
    *  If the stack trace cannot be analyzed in meaningful way (because we don't
    *  know the browser), an empty array is returned.
@@ -168,16 +159,13 @@ private[lang] object StackTrace {
       i += 1
     }
 
-    // Map stack trace through environment (if supported)
-    val mappedTrace = sourceMapper(trace)
-
     // Convert JS objects to java.lang.StackTraceElements
     // While loop due to space concerns
-    val result = new Array[StackTraceElement](mappedTrace.length)
+    val result = new Array[StackTraceElement](trace.length)
 
     i = 0
-    while (i < mappedTrace.length) {
-      val jsSte = mappedTrace(i)
+    while (i < trace.length) {
+      val jsSte = trace(i)
       val ste = new StackTraceElement(jsSte.declaringClass, jsSte.methodName,
           jsSte.fileName, jsSte.lineNumber)
       jsSte.columnNumber.foreach(ste.setColumnNumber)
@@ -514,7 +502,7 @@ private[lang] object StackTrace {
    * ---------------------------------------------------------------------------
    */
 
-  trait JSStackTraceElem extends js.Object {
+  private trait JSStackTraceElem extends js.Object {
     var declaringClass: String
     var methodName: String
     var fileName: String
@@ -524,7 +512,7 @@ private[lang] object StackTrace {
     var columnNumber: js.UndefOr[Int] = js.undefined
   }
 
-  object JSStackTraceElem {
+  private object JSStackTraceElem {
     @inline
     def apply(declaringClass: String, methodName: String,
         fileName: String, lineNumber: Int,
