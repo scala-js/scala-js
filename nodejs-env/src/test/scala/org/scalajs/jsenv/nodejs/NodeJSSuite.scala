@@ -17,4 +17,7 @@ import org.scalajs.jsenv.test._
 import org.junit.runner.RunWith
 
 @RunWith(classOf[JSEnvSuiteRunner])
-class NodeJSSuite extends JSEnvSuite(JSEnvSuiteConfig(new NodeJSEnv))
+class NodeJSSuite extends JSEnvSuite(
+  JSEnvSuiteConfig(new NodeJSEnv)
+    .withExitJSStatement("process.exit(0);")
+)

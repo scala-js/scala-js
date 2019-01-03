@@ -67,14 +67,10 @@ final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
         NodeJSEnv.write(initFiles, input))
   }
 
-  private def initFiles: List[VirtualBinaryFile] = {
-    val base = List(NodeJSEnv.runtimeEnv)
-
-    config.sourceMap match {
-      case SourceMap.Disable           => base
-      case SourceMap.EnableIfAvailable => installSourceMapIfAvailable :: base
-      case SourceMap.Enable            => installSourceMap :: base
-    }
+  private def initFiles: List[VirtualBinaryFile] = config.sourceMap match {
+    case SourceMap.Disable           => Nil
+    case SourceMap.EnableIfAvailable => installSourceMapIfAvailable :: Nil
+    case SourceMap.Enable            => installSourceMap :: Nil
   }
 
   private def inputFiles(input: Input) = input match {
@@ -103,16 +99,6 @@ object NodeJSEnv {
   private lazy val installSourceMap = {
     MemVirtualBinaryFile.fromStringUTF8("sourceMapSupport.js",
         "require('source-map-support').install();")
-  }
-
-  private lazy val runtimeEnv = {
-    MemVirtualBinaryFile.fromStringUTF8("scalaJSEnvInfo.js",
-        """
-          |__ScalaJSEnv = {
-          |  exitFunction: function(status) { process.exit(status); }
-          |};
-        """.stripMargin
-    )
   }
 
   private def write(initFiles: List[VirtualBinaryFile], input: Input)(

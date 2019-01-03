@@ -13,7 +13,7 @@
 package org.scalajs.jsenv.test
 
 import org.junit.Assume._
-import org.junit.{Test, Before}
+import org.junit.{Test, Before, AssumptionViolatedException}
 
 import org.scalajs.io.VirtualBinaryFile
 import org.scalajs.jsenv._
@@ -88,9 +88,10 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
 
   @Test
   def jsExitsTest: Unit = {
-    assumeTrue(config.supportsExit)
+    val exitStat = config.exitJSStatement.getOrElse(
+      throw new AssumptionViolatedException("JSEnv needs exitJSStatement"))
 
-    withRun("__ScalaJSEnv.exitFunction(0);") {
+    withRun(exitStat) {
       _.succeeds()
     }
   }

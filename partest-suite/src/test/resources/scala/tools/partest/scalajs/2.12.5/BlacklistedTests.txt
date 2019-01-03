@@ -154,6 +154,10 @@ run/t10522.scala
 
 run/t4426.scala
 
+# Using sys.exit / System.exit
+
+run/verify-ctor.scala
+
 # Using Await
 
 run/t7336.scala
