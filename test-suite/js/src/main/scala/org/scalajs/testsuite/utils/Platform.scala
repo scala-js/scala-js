@@ -13,12 +13,10 @@
 package org.scalajs.testsuite.utils
 
 import scala.scalajs.js
-import scala.scalajs.runtime
 
 object Platform {
 
-  def scalaVersion: String =
-    System.getProperty("scalajs.scalaVersion")
+  def scalaVersion: String = BuildInfo.scalaVersion
 
   /** Returns `true` if and only if the code is executing on a JVM.
    *  Note: Returns `false` when executing on any JS VM.
@@ -31,40 +29,36 @@ object Platform {
 
   final val executingInJVMOnJDK8OrLower = false
 
-  // Members that are only accessible from testSuite/js
-  // (i.e. do no link on the JVM).
+  def executingInNodeJS: Boolean = {
+    js.typeOf(js.Dynamic.global.process) != "undefined" &&
+    js.Dynamic.global.process.release != js.undefined &&
+    js.Dynamic.global.process.release.name == "node"
+  }
 
-  def areTypedArraysSupported: Boolean =
-    js.typeOf(js.Dynamic.global.Int32Array) != "undefined"
+  def jsSymbols: Boolean =
+    assumeES2015 || js.typeOf(js.Dynamic.global.Symbol) != "undefined"
 
-  def areJSSymbolsSupported: Boolean =
-    js.typeOf(js.Dynamic.global.Symbol) != "undefined"
+  def typedArrays: Boolean =
+    assumeES2015 || js.typeOf(js.Dynamic.global.Int32Array) != "undefined"
 
-  def executingInNodeJS: Boolean = sysProp("nodejs")
-  def executingInBrowser: Boolean = sysProp("browser")
-  def executingInUnknownJSEnv: Boolean = sysProp("unknown-jsenv")
-  def typedArrays: Boolean = sysProp("typedarray")
-  def sourceMaps: Boolean = sysProp("source-maps")
+  def sourceMaps: Boolean = BuildInfo.hasSourceMaps && executingInNodeJS
 
-  def isInFastOpt: Boolean = sysProp("fastopt-stage")
-  def isInFullOpt: Boolean = sysProp("fullopt-stage")
-  def isInProductionMode: Boolean = sysProp("production-mode")
-  def isInDevelopmentMode: Boolean = sysProp("development-mode")
+  def assumeES2015: Boolean = BuildInfo.es2015
 
-  def hasCompliantAsInstanceOfs: Boolean = sysProp("compliant-asinstanceofs")
+  def isInFullOpt: Boolean = BuildInfo.isFullOpt
+  def isInProductionMode: Boolean = BuildInfo.productionMode
+
+  def hasCompliantAsInstanceOfs: Boolean = BuildInfo.compliantAsInstanceOfs
 
   def hasCompliantArrayIndexOutOfBounds: Boolean =
-    sysProp("compliant-arrayindexoutofbounds")
+    BuildInfo.compliantArrayIndexOutOfBounds
 
-  def hasCompliantModule: Boolean = sysProp("compliant-moduleinit")
-  def hasStrictFloats: Boolean = sysProp("strict-floats")
+  def hasCompliantModuleInit: Boolean = BuildInfo.compliantModuleInit
+  def hasStrictFloats: Boolean = BuildInfo.strictFloats
 
-  def isNoModule: Boolean = sysProp("modulekind-nomodule")
-  def isESModule: Boolean = sysProp("modulekind-esmodule")
-  def isCommonJSModule: Boolean = sysProp("modulekind-commonjs")
-
-  private def sysProp(key: String): Boolean =
-    System.getProperty("scalajs." + key, "false") == "true"
+  def isNoModule: Boolean = BuildInfo.isNoModule
+  def isESModule: Boolean = BuildInfo.isESModule
+  def isCommonJSModule: Boolean = BuildInfo.isCommonJSModule
 
   /** Runs the specified piece of code in the global context.
    *

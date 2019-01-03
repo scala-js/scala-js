@@ -65,47 +65,6 @@ object MyScalaJSPlugin extends AutoPlugin {
 
   val wantSourceMaps = settingKey[Boolean]("Whether source maps should be used")
 
-  val configSettings: Seq[Setting[_]] = Def.settings(
-      // Add a JS file defining Java system properties
-      jsEnvInput := {
-        val prev = jsEnvInput.value
-
-        val javaSysPropsPattern = "-D([^=]*)=(.*)".r
-        val javaSystemProperties = javaOptions.value.collect {
-          case javaSysPropsPattern(propName, propValue) => (propName, propValue)
-        }.toMap
-
-        if (javaSystemProperties.isEmpty) {
-          prev
-        } else {
-          val formattedProps = javaSystemProperties.map {
-            case (propName, propValue) =>
-              "\"" + escapeJS(propName) + "\": \"" + escapeJS(propValue) + "\""
-          }
-
-          val needsGlobal = !prev.isInstanceOf[Input.ScriptsToLoad]
-          val code = if (needsGlobal) {
-            "global.__ScalaJSEnv = global.__ScalaJSEnv || {};\n" +
-            "global.__ScalaJSEnv.javaSystemProperties = {" + formattedProps.mkString(", ") + "};\n"
-          } else {
-            "var __ScalaJSEnv = (typeof __ScalaJSEnv === \"object\" && __ScalaJSEnv) ? __ScalaJSEnv : {};\n" +
-            "__ScalaJSEnv.javaSystemProperties = {" + formattedProps.mkString(", ") + "};\n"
-          }
-          val javaSysPropsFile =
-            MemVirtualBinaryFile.fromStringUTF8("setJavaSystemProperties.js", code)
-
-          prev match {
-            case Input.ScriptsToLoad(prevFiles) =>
-              Input.ScriptsToLoad(javaSysPropsFile :: prevFiles)
-            case Input.ESModulesToLoad(prevFiles) =>
-              Input.ESModulesToLoad(javaSysPropsFile :: prevFiles)
-            case Input.CommonJSModulesToLoad(prevFiles) =>
-              Input.CommonJSModulesToLoad(javaSysPropsFile :: prevFiles)
-          }
-        }
-      }
-  )
-
   override def projectSettings: Seq[Setting[_]] = Def.settings(
       /* Remove libraryDependencies on ourselves; we use .dependsOn() instead
        * inside this build.
@@ -139,10 +98,7 @@ object MyScalaJSPlugin extends AutoPlugin {
           "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
           scalaJSVersion + "/"
         )
-      },
-
-      inConfig(Compile)(configSettings),
-      inConfig(Test)(configSettings)
+      }
   )
 }
 
@@ -1334,83 +1290,6 @@ object Build {
 
   // Testing
 
-  val testTagJavaOptionsSetting = {
-    javaOptions ++= {
-      val s = streams.value
-
-      def envTagsFor(env: JSEnv): Seq[String] = env match {
-        case env: NodeJSEnv =>
-          val tags1 = Seq("nodejs", "typedarray")
-
-          if (MyScalaJSPlugin.wantSourceMaps.value) tags1 :+ "source-maps"
-          else tags1
-
-        case env: NodeJSEnvForcePolyfills =>
-          Seq("nodejs", "source-maps")
-
-        case _ =>
-          s.log.warn(
-              s"Unknown JSEnv of class ${env.getClass.getName}: " +
-              "don't know what tags to specify for the test suite, " +
-              "so I will assume that TypedArrays are supported")
-          Seq("unknown-jsenv", "typedarray")
-      }
-
-      val envTags = envTagsFor(jsEnv.value)
-
-      val stage = scalaJSStage.value
-
-      val linkerConfig = stage match {
-        case FastOptStage => (scalaJSLinkerConfig in fastOptJS).value
-        case FullOptStage => (scalaJSLinkerConfig in fullOptJS).value
-      }
-      val sems = linkerConfig.semantics
-
-      val semTags = (
-          if (sems.asInstanceOfs == CheckedBehavior.Compliant)
-            Seq("compliant-asinstanceofs")
-          else
-            Seq()
-      ) ++ (
-          if (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant)
-            Seq("compliant-arrayindexoutofbounds")
-          else
-            Seq()
-      ) ++ (
-          if (sems.moduleInit == CheckedBehavior.Compliant)
-            Seq("compliant-moduleinit")
-          else
-            Seq()
-      ) ++ (
-          if (sems.strictFloats) Seq("strict-floats")
-          else Seq()
-      ) ++ (
-          if (sems.productionMode) Seq("production-mode")
-          else Seq("development-mode")
-      )
-
-      val stageTag = stage match {
-        case FastOptStage => "fastopt-stage"
-        case FullOptStage => "fullopt-stage"
-      }
-
-      val moduleKindTag = linkerConfig.moduleKind match {
-        case ModuleKind.NoModule       => "modulekind-nomodule"
-        case ModuleKind.ESModule       => "modulekind-esmodule"
-        case ModuleKind.CommonJSModule => "modulekind-commonjs"
-      }
-
-      def scalaJSProp(name: String): String =
-        s"-Dscalajs.$name=true"
-
-      val tags = envTags ++ (semTags :+ stageTag :+ moduleKindTag)
-      tags.map(scalaJSProp) ++ List(
-          "-Dscalajs.testsuite.testtag=testtag.value",
-          "-Dscalajs.scalaVersion=" + scalaVersion.value
-      )
-    }
-  }
-
   def testSuiteCommonSettings(isJSTest: Boolean): Seq[Setting[_]] = Seq(
       publishArtifact in Compile := false,
       scalacOptions ~= (_.filter(_ != "-deprecation")),
@@ -1470,64 +1349,9 @@ object Build {
       }
   )
 
-  def testSuiteTestHtmlSetting = Def.settings(
-      // We need to patch the system properties.
-      jsEnvInput in (Test, testHtml) := {
-        val previousInput = (jsEnvInput in (Test, testHtml)).value
-
-        val patchedSystemProperties = {
-          // Fetch the defaults
-          val javaSysPropsPattern = "-D([^=]*)=(.*)".r
-          val base = (javaOptions in Test).value.collect {
-            case javaSysPropsPattern(propName, propValue) => (propName, propValue)
-          }.toMap
-
-          // Patch
-          val unsupported = Seq("nodejs", "source-maps")
-          val supported = Seq("typedarray", "browser")
-          base -- unsupported.map("scalajs." + _) ++
-              supported.map("scalajs." + _ -> "true")
-        }
-
-        val formattedProps = patchedSystemProperties.map {
-          case (propName, propValue) =>
-            "\"" + escapeJS(propName) + "\": \"" + escapeJS(propValue) + "\""
-        }.mkString("{ ", ", ", " }")
-
-        def patchFiles(files: List[VirtualBinaryFile], needsGlobal: Boolean) = {
-          val code = s"""
-            ${if (needsGlobal) "global." else "var "}__ScalaJSEnv = {
-              javaSystemProperties: $formattedProps
-            };
-          """
-
-          val patchedSystemPropertiesFile =
-            MemVirtualBinaryFile.fromStringUTF8("setJavaSystemProperties.js", code)
-
-          // Replace the normal `setJavaSystemProperties.js` file with the patch
-          for (file <- files) yield {
-            if (file.path == "setJavaSystemProperties.js")
-              patchedSystemPropertiesFile
-            else
-              file
-          }
-        }
-
-        previousInput match {
-          case Input.ScriptsToLoad(prevFiles) =>
-            Input.ScriptsToLoad(patchFiles(prevFiles, needsGlobal = false))
-          case Input.ESModulesToLoad(prevFiles) =>
-            Input.ESModulesToLoad(patchFiles(prevFiles, needsGlobal = true))
-          case Input.CommonJSModulesToLoad(prevFiles) =>
-            Input.CommonJSModulesToLoad(patchFiles(prevFiles, needsGlobal = true))
-        }
-      }
-  )
-
   def testSuiteBootstrapSetting = Def.settings(
       Defaults.testSettings,
       ScalaJSPlugin.testConfigSettings,
-      MyScalaJSPlugin.configSettings,
 
       fullOptJS := {
         throw new MessageOnlyException("fullOptJS is not supported in Bootstrap")
@@ -1584,7 +1408,6 @@ object Build {
 
       compile := (compile in Test).value,
       fullClasspath := (fullClasspath in Test).value,
-      testTagJavaOptionsSetting,
       testSuiteJSExecutionFilesSetting
   )
 
@@ -1612,7 +1435,6 @@ object Build {
       MyScalaJSPlugin
   ).configs(Bootstrap).settings(
       commonSettings,
-      inConfig(Test)(testTagJavaOptionsSetting),
       inConfig(Test)(testSuiteJSExecutionFilesSetting),
       testSuiteCommonSettings(isJSTest = true),
       name := "Scala.js test suite",
@@ -1685,6 +1507,35 @@ object Build {
             Input.ESModulesToLoad(modules :+ script)
         }
       },
+
+      sourceGenerators in Compile += Def.task {
+        val stage = scalaJSStage.value
+
+        val linkerConfig = stage match {
+          case FastOptStage => (scalaJSLinkerConfig in (Compile, fastOptJS)).value
+          case FullOptStage => (scalaJSLinkerConfig in (Compile, fullOptJS)).value
+        }
+
+        val moduleKind = linkerConfig.moduleKind
+        val sems = linkerConfig.semantics
+
+        ConstantHolderGenerator.generate(
+            (sourceManaged in Compile).value,
+            "org.scalajs.testsuite.utils.BuildInfo",
+            "scalaVersion" -> scalaVersion.value,
+            "hasSourceMaps" -> MyScalaJSPlugin.wantSourceMaps.value,
+            "isNoModule" -> (moduleKind == ModuleKind.NoModule),
+            "isESModule" -> (moduleKind == ModuleKind.ESModule),
+            "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
+            "isFullOpt" -> (stage == Stage.FullOpt),
+            "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
+            "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
+            "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
+            "strictFloats" -> sems.strictFloats,
+            "productionMode" -> sems.productionMode,
+            "es2015" -> linkerConfig.esFeatures.useECMAScript2015
+        )
+      }.taskValue,
 
       /* Generate a scala source file that throws exceptions in
        * various places (while attaching the source line to the
@@ -1764,7 +1615,6 @@ object Build {
         }
       },
 
-      testSuiteTestHtmlSetting,
       inConfig(Bootstrap)(testSuiteBootstrapSetting)
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime
@@ -1804,7 +1654,6 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonSettings,
-      inConfig(Test)(testTagJavaOptionsSetting),
       name := "Scala.js test suite ex",
       publishArtifact in Compile := false,
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
