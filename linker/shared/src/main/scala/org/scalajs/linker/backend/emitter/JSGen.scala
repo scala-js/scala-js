@@ -42,6 +42,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   val useBigIntForLongs = esFeatures.allowBigIntsForLongs
 
+  val trackAllGlobalRefs = internalOptions.trackAllGlobalRefs
+
   def genZeroOf(tpe: Type)(implicit pos: Position): Tree = {
     tpe match {
       case BooleanType => BooleanLiteral(false)
@@ -72,6 +74,9 @@ private[emitter] final class JSGen(val semantics: Semantics,
         genLoadModule(LongImpl.RuntimeLongModuleClass) DOT methodName,
         args.toList)
   }
+
+  def genConst(name: Ident, rhs: Tree)(implicit pos: Position): LocalDef =
+    genLet(name, mutable = false, rhs)
 
   def genLet(name: Ident, mutable: Boolean, rhs: Tree)(
       implicit pos: Position): LocalDef = {
@@ -119,18 +124,23 @@ private[emitter] final class JSGen(val semantics: Semantics,
           if (className0 == BoxedLongClass && !useBigIntForLongs) LongImpl.RuntimeLongClass
           else className0
 
-        if (HijackedClasses.contains(className) && className != BoxedStringClass) {
+        if (HijackedClasses.contains(className)) {
+          def genIsFloat(): Tree =
+            if (semantics.strictFloats) genCallHelper("isFloat", expr)
+            else typeof(expr) === "number"
+
           if (test) {
             className match {
               case BoxedUnitClass      => expr === Undefined()
               case BoxedBooleanClass   => typeof(expr) === "boolean"
-              case BoxedCharacterClass => genCallHelper("isChar", expr)
+              case BoxedCharacterClass => expr instanceof envField("Char")
               case BoxedByteClass      => genCallHelper("isByte", expr)
               case BoxedShortClass     => genCallHelper("isShort", expr)
               case BoxedIntegerClass   => genCallHelper("isInt", expr)
               case BoxedLongClass      => genCallHelper("isLong", expr)
-              case BoxedFloatClass     => genCallHelper("isFloat", expr)
+              case BoxedFloatClass     => genIsFloat()
               case BoxedDoubleClass    => typeof(expr) === "number"
+              case BoxedStringClass    => typeof(expr) === "string"
             }
           } else {
             className match {
@@ -143,6 +153,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
               case BoxedLongClass      => genCallHelper("asLong", expr)
               case BoxedFloatClass     => genCallHelper("asFloat", expr)
               case BoxedDoubleClass    => genCallHelper("asDouble", expr)
+              case BoxedStringClass    => Apply(envField("as_T"), List(expr))
             }
           }
         } else {
@@ -214,7 +225,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
       case irt.JSNativeLoadSpec.Global(globalRef, path) =>
         val globalVarRef = VarRef(Ident(globalRef, Some(globalRef)))
         val globalVarNames = {
-          if (keepOnlyDangerousVarNames && !internalOptions.trackAllGlobalRefs &&
+          if (keepOnlyDangerousVarNames && !trackAllGlobalRefs &&
               !GlobalRefUtils.isDangerousGlobalRef(globalRef)) {
             Set.empty[String]
           } else {
@@ -249,16 +260,25 @@ private[emitter] final class JSGen(val semantics: Semantics,
         ArrayConstr(elems))
   }
 
+  def genClassOf(typeRef: TypeRef)(implicit pos: Position): Tree =
+    Apply(DotSelect(genClassDataOf(typeRef), Ident("getClassOf")), Nil)
+
   def genClassDataOf(typeRef: TypeRef)(implicit pos: Position): Tree = {
     typeRef match {
       case ClassRef(className) =>
-        envField("d", className)
+        genClassDataOf(className)
       case ArrayTypeRef(base, dims) =>
         (1 to dims).foldLeft[Tree](envField("d", base)) { (prev, _) =>
           Apply(DotSelect(prev, Ident("getArrayOf")), Nil)
         }
     }
   }
+
+  def genClassOf(className: String)(implicit pos: Position): Tree =
+    Apply(DotSelect(genClassDataOf(className), Ident("getClassOf")), Nil)
+
+  def genClassDataOf(className: String)(implicit pos: Position): Tree =
+    envField("d", className)
 
   def envModuleField(module: String)(implicit pos: Position): VarRef = {
     /* This is written so that the happy path, when `module` contains only
@@ -315,7 +335,10 @@ private[emitter] final class JSGen(val semantics: Semantics,
   }
 
   def envField(field: String)(implicit pos: Position): VarRef =
-    VarRef(Ident(avoidClashWithGlobalRef("$" + field)))
+    VarRef(envFieldIdent(field))
+
+  def envFieldIdent(field: String)(implicit pos: Position): Ident =
+    Ident(avoidClashWithGlobalRef("$" + field))
 
   def avoidClashWithGlobalRef(envFieldName: String): String = {
     /* This is not cached because it should virtually never happen.
@@ -356,7 +379,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
    *  slower, but running GCC will take most of the time anyway in that case.
    */
   def keepOnlyTrackedGlobalRefs(globalRefs: Set[String]): Set[String] =
-    if (internalOptions.trackAllGlobalRefs) globalRefs
+    if (trackAllGlobalRefs) globalRefs
     else GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalRefs)
 
   def genPropSelect(qual: Tree, item: PropertyName)(

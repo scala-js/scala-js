@@ -28,9 +28,6 @@ trait JSBuilder {
    */
   def addJSTree(tree: Trees.Tree): Unit
 
-  /** Add a chunk of JavaScript code. */
-  def addStatement(originalLocation: URI, code: String): Unit
-
   /** Completes the builder. */
   def complete(): Unit
 }
@@ -46,12 +43,6 @@ final class JSFileBuilder(output: LinkerOutput) extends JSLineBuilder {
   def addLine(line: String): Unit = {
     outputWriter.write(line)
     outputWriter.write('\n')
-  }
-
-  def addStatement(originalLocation: URI, code: String): Unit = {
-    outputWriter.write(code)
-    if (code.nonEmpty && !code.endsWith("\n"))
-      outputWriter.write('\n')
   }
 
   /** Add a JavaScript tree representing a statement.
@@ -84,22 +75,6 @@ class JSFileBuilderWithSourceMap(output: LinkerOutput,
     outputWriter.write(line)
     outputWriter.write('\n')
     sourceMapWriter.nextLine()
-  }
-
-  def addStatement(originalLocation: URI, code: String): Unit = {
-    if (code.nonEmpty) {
-      outputWriter.write(code)
-
-      if (!code.endsWith("\n"))
-        outputWriter.write("\n")
-
-      for ((line, i) <- code.stripSuffix("\n").split("\n", -1).zipWithIndex) {
-        val originalPos = Position(originalLocation, i, 0)
-        sourceMapWriter.startNode(0, originalPos, None)
-        sourceMapWriter.endNode(line.length)
-        sourceMapWriter.nextLine()
-      }
-    }
   }
 
   def addJSTree(tree: Trees.Tree): Unit = {

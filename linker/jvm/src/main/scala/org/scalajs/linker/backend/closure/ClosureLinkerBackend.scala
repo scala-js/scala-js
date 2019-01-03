@@ -240,16 +240,5 @@ private object ClosureLinkerBackend {
     var require;
     var exports;
     var NaN = 0.0/0.0, Infinity = 1.0/0.0, undefined = void 0;
-
-    var TypeError;
-    var Math;
-    var String;
-    var WeakMap;
-    var Int8Array;
-    var Int16Array;
-    var Uint16Array;
-    var Int32Array;
-    var Float32Array;
-    var Float64Array;
     """
 }
