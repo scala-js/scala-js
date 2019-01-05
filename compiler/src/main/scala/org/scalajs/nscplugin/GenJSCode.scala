@@ -3497,7 +3497,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       else if (isCoercion(code))
         genCoercion(tree, receiver, code)
       else if (jsPrimitives.isJavaScriptPrimitive(code))
-        genJSPrimitive(tree, receiver, args, code, isStat)
+        genJSPrimitive(tree, args, code, isStat)
       else
         abort("Unknown primitive operation: " + sym.fullName + "(" +
             fun.symbol.simpleName + ") " + " at: " + (tree.pos))
@@ -4225,21 +4225,24 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen JS code for a Scala.js-specific primitive method */
-    private def genJSPrimitive(tree: Apply, receiver0: Tree,
-        args: List[Tree], code: Int, isStat: Boolean): js.Tree = {
+    private def genJSPrimitive(tree: Apply, args: List[Tree], code: Int,
+        isStat: Boolean): js.Tree = {
       import jsPrimitives._
 
       implicit val pos = tree.pos
 
-      def receiver: js.Tree = genExpr(receiver0)
-      def genArgs: List[js.TreeOrJSSpread] = genPrimitiveJSArgs(tree.symbol, args)
-
-      def genArgsNoSpread: List[js.Tree] = {
-        val genArgs1 = genArgs
-        assert(!genArgs1.exists(_.isInstanceOf[js.JSSpread]),
-            s"Unexpected spread at $pos")
-        genArgs1.asInstanceOf[List[js.Tree]]
+      def genArgs1: js.Tree = {
+        assert(args.size == 1)
+        genExpr(args.head)
       }
+
+      def genArgs2: (js.Tree, js.Tree) = {
+        assert(args.size == 2)
+        (genExpr(args.head), genExpr(args.tail.head))
+      }
+
+      def genArgsVarLength: List[js.TreeOrJSSpread] =
+        genPrimitiveJSArgs(tree.symbol, args)
 
       def resolveReifiedJSClassSym(arg: Tree): Symbol = {
         def fail(): Symbol = {
@@ -4264,105 +4267,121 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      if (code == DYNNEW) {
-        // js.Dynamic.newInstance(clazz)(actualArgs:_*)
-        val (jsClass, actualArgs) = extractFirstArg(genArgs)
-        js.JSNew(jsClass, actualArgs)
-      } else if (code == ARR_CREATE) {
-        // js.Array.create(elements: _*)
-        js.JSArrayConstr(genArgs)
-      } else if (code == CONSTRUCTOROF) {
-        val classSym = resolveReifiedJSClassSym(args.head)
-        if (classSym == NoSymbol)
-          js.Undefined() // compile error emitted by resolveReifiedJSClassSym
-        else
-          genPrimitiveJSClass(classSym)
-      } else if (code == CREATE_INNER_JS_CLASS || code == CREATE_LOCAL_JS_CLASS) {
-        val classSym = resolveReifiedJSClassSym(args(0))
-        val superClassValue = genExpr(args(1))
-        if (classSym == NoSymbol) {
-          js.Undefined() // compile error emitted by resolveReifiedJSClassSym
-        } else {
-          val captureValues = {
-            if (code == CREATE_INNER_JS_CLASS) {
-              val outer = genThis()
-              List.fill(classSym.info.decls.count(_.isClassConstructor))(outer)
-            } else {
-              val ArrayValue(_, fakeNewInstances) = args(2)
-              fakeNewInstances.flatMap(genCaptureValuesFromFakeNewInstance(_))
+      (code: @switch) match {
+        case DYNNEW =>
+          // js.Dynamic.newInstance(clazz)(actualArgs: _*)
+          val (jsClass, actualArgs) = extractFirstArg(genArgsVarLength)
+          js.JSNew(jsClass, actualArgs)
+
+        case ARR_CREATE =>
+          // js.Array(elements: _*)
+          js.JSArrayConstr(genArgsVarLength)
+
+        case CONSTRUCTOROF =>
+          // runtime.constructorOf(clazz)
+          val classSym = resolveReifiedJSClassSym(args.head)
+          if (classSym == NoSymbol)
+            js.Undefined() // compile error emitted by resolveReifiedJSClassSym
+          else
+            genPrimitiveJSClass(classSym)
+
+        case CREATE_INNER_JS_CLASS | CREATE_LOCAL_JS_CLASS =>
+          // runtime.createInnerJSClass(clazz, superClass)
+          // runtime.createLocalJSClass(clazz, superClass, fakeNewInstances)
+          val classSym = resolveReifiedJSClassSym(args(0))
+          val superClassValue = genExpr(args(1))
+          if (classSym == NoSymbol) {
+            js.Undefined() // compile error emitted by resolveReifiedJSClassSym
+          } else {
+            val captureValues = {
+              if (code == CREATE_INNER_JS_CLASS) {
+                val outer = genThis()
+                List.fill(classSym.info.decls.count(_.isClassConstructor))(outer)
+              } else {
+                val ArrayValue(_, fakeNewInstances) = args(2)
+                fakeNewInstances.flatMap(genCaptureValuesFromFakeNewInstance(_))
+              }
             }
-          }
-          js.CreateJSClass(jstpe.ClassRef(encodeClassFullName(classSym)),
-              superClassValue :: captureValues)
-        }
-      } else if (code == WITH_CONTEXTUAL_JS_CLASS_VALUE) {
-        val jsClassValue = genExpr(args(0))
-        withScopedVars(
-            contextualJSClassValue := Some(jsClassValue)
-        ) {
-          genStatOrExpr(args(1), isStat)
-        }
-      } else (genArgsNoSpread match {
-        case Nil =>
-          code match {
-            case LINKING_INFO => js.JSLinkingInfo()
-            case DEBUGGER     => js.Debugger()
-            case UNITVAL      => js.Undefined()
-            case JS_NATIVE    =>
-              reporter.error(pos, "js.native may only be used as stub implementation in facade types")
-              js.Undefined()
+            js.CreateJSClass(jstpe.ClassRef(encodeClassFullName(classSym)),
+                superClassValue :: captureValues)
           }
 
-        case List(arg) =>
-          code match {
-            case TYPEOF =>
-              // js.typeOf(arg)
-              genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg),
-                  StringClass.tpe)
+        case WITH_CONTEXTUAL_JS_CLASS_VALUE =>
+          // withContextualJSClassValue(jsclass, inner)
+          val jsClassValue = genExpr(args(0))
+          withScopedVars(
+              contextualJSClassValue := Some(jsClassValue)
+          ) {
+            genStatOrExpr(args(1), isStat)
           }
 
-        case List(arg1, arg2) =>
-          code match {
-            case IN =>
-              // js.special.in(arg1, arg2)
-              js.Unbox(js.JSBinaryOp(js.JSBinaryOp.in, arg1, arg2), 'Z')
+        case LINKING_INFO =>
+          // runtime.linkingInfo
+          js.JSLinkingInfo()
 
-            case INSTANCEOF =>
-              // js.special.instanceof(arg1, arg2)
-              js.Unbox(js.JSBinaryOp(js.JSBinaryOp.instanceof, arg1, arg2), 'Z')
+        case DEBUGGER =>
+          // js.special.debugger()
+          js.Debugger()
 
-            case DELETE =>
-              // js.special.delete(arg1, arg2)
-              js.JSDelete(js.JSBracketSelect(arg1, arg2))
+        case UNITVAL =>
+          // BoxedUnit.UNIT, which is the boxed version of ()
+          js.Undefined()
 
-            case FORIN =>
-              /* js.special.forin(arg1, arg2)
-               *
-               * We must generate:
-               *
-               * val obj = arg1
-               * val f = arg2
-               * for (val key in obj) {
-               *   f(key)
-               * }
-               *
-               * with temporary vals, because `arg2` must be evaluated only
-               * once, and after `arg1`.
-               */
-              val objVarDef = js.VarDef(freshLocalIdent("obj"), jstpe.AnyType,
-                  mutable = false, arg1)
-              val fVarDef = js.VarDef(freshLocalIdent("f"), jstpe.AnyType,
-                  mutable = false, arg2)
-              val keyVarIdent = freshLocalIdent("key")
-              val keyVarRef = js.VarRef(keyVarIdent)(jstpe.AnyType)
-              js.Block(
-                  objVarDef,
-                  fVarDef,
-                  js.ForIn(objVarDef.ref, keyVarIdent, {
-                    js.JSFunctionApply(fVarDef.ref, List(keyVarRef))
-                  }))
-          }
-      })
+        case JS_NATIVE =>
+          // js.native
+          reporter.error(pos,
+              "js.native may only be used as stub implementation in facade types")
+          js.Undefined()
+
+        case TYPEOF =>
+          // js.typeOf(arg)
+          val arg = genArgs1
+          genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg),
+              StringClass.tpe)
+
+        case IN =>
+          // js.special.in(arg1, arg2)
+          val (arg1, arg2) = genArgs2
+          js.Unbox(js.JSBinaryOp(js.JSBinaryOp.in, arg1, arg2), 'Z')
+
+        case INSTANCEOF =>
+          // js.special.instanceof(arg1, arg2)
+          val (arg1, arg2) = genArgs2
+          js.Unbox(js.JSBinaryOp(js.JSBinaryOp.instanceof, arg1, arg2), 'Z')
+
+        case DELETE =>
+          // js.special.delete(arg1, arg2)
+          val (arg1, arg2) = genArgs2
+          js.JSDelete(js.JSBracketSelect(arg1, arg2))
+
+        case FORIN =>
+          /* js.special.forin(arg1, arg2)
+           *
+           * We must generate:
+           *
+           * val obj = arg1
+           * val f = arg2
+           * for (val key in obj) {
+           *   f(key)
+           * }
+           *
+           * with temporary vals, because `arg2` must be evaluated only
+           * once, and after `arg1`.
+           */
+          val (arg1, arg2) = genArgs2
+          val objVarDef = js.VarDef(freshLocalIdent("obj"), jstpe.AnyType,
+              mutable = false, arg1)
+          val fVarDef = js.VarDef(freshLocalIdent("f"), jstpe.AnyType,
+              mutable = false, arg2)
+          val keyVarIdent = freshLocalIdent("key")
+          val keyVarRef = js.VarRef(keyVarIdent)(jstpe.AnyType)
+          js.Block(
+              objVarDef,
+              fVarDef,
+              js.ForIn(objVarDef.ref, keyVarIdent, {
+                js.JSFunctionApply(fVarDef.ref, List(keyVarRef))
+              }))
+      }
     }
 
     /** Gen JS code for a primitive JS call (to a method of a subclass of js.Any)
