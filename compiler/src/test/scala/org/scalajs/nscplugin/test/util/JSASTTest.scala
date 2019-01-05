@@ -21,8 +21,7 @@ import scala.util.control.ControlThrowable
 
 import org.junit.Assert._
 
-import org.scalajs.nscplugin.{ScalaJSPlugin, JSTreeExtractors}
-import JSTreeExtractors.jse
+import org.scalajs.nscplugin.ScalaJSPlugin
 import org.scalajs.ir
 import ir.{Trees => js}
 

@@ -53,7 +53,6 @@ abstract class GenJSCode extends plugins.PluginComponent
   import definitions._
   import jsDefinitions._
   import jsInterop.{jsNameOf, jsNativeLoadSpecOfOption, JSName}
-  import JSTreeExtractors._
 
   import treeInfo.hasSynthCaseSymbol
 
@@ -123,7 +122,6 @@ abstract class GenJSCode extends plugins.PluginComponent
   object jsnme {
     val anyHash = newTermName("anyHash")
     val arg_outer = newTermName("arg$outer")
-    val newString = newTermName("newString")
   }
 
   class JSCodePhase(prev: Phase) extends StdPhase(prev) with JSExportsPhase {
@@ -2831,6 +2829,14 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
+    /** Gen JS code for a call to a Scala method. */
+    def genApplyMethod(receiver: js.Tree,
+        methodSym: Symbol, arguments: List[js.Tree])(
+        implicit pos: Position): js.Tree = {
+      js.Apply(receiver, encodeMethodSym(methodSym), arguments)(
+          toIRType(methodSym.tpe.resultType))
+    }
+
     def genApplyMethodStatically(receiver: js.Tree, method: Symbol,
         arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
       val className = encodeClassFullName(method.owner)
@@ -2862,17 +2868,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     def genApplyStatic(method: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      val cls = encodeClassFullName(method.owner)
-      val methodIdent = encodeMethodSym(method)
-      genApplyStatic(cls, methodIdent, arguments,
+      js.ApplyStatic(jstpe.ClassType(encodeClassFullName(method.owner)),
+          encodeMethodSym(method), arguments)(
           toIRType(method.tpe.resultType))
-    }
-
-    def genApplyStatic(cls: String, methodIdent: js.Ident,
-        arguments: List[js.Tree], resultType: jstpe.Type)(
-        implicit pos: Position): js.Tree = {
-      js.ApplyStatic(jstpe.ClassType(cls), methodIdent,
-          arguments)(resultType)
     }
 
     private def adaptPrimitive(value: js.Tree, to: jstpe.Type)(
@@ -2986,27 +2984,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    /** Gen JS code for a call to a Scala method.
-     *  This also registers that the given method is called by the current
-     *  method in the method info builder.
-     */
-    def genApplyMethod(receiver: js.Tree,
-        methodSym: Symbol, arguments: List[js.Tree])(
-        implicit pos: Position): js.Tree = {
-      genApplyMethod(receiver, encodeMethodSym(methodSym),
-          arguments, toIRType(methodSym.tpe.resultType))
-    }
-
-    /** Gen JS code for a call to a Scala method.
-     *  This also registers that the given method is called by the current
-     *  method in the method info builder.
-     */
-    def genApplyMethod(receiver: js.Tree, methodIdent: js.Ident,
-        arguments: List[js.Tree], resultType: jstpe.Type)(
-        implicit pos: Position): js.Tree = {
-      js.Apply(receiver, methodIdent, arguments)(resultType)
-    }
-
     /** Gen JS code for a call to a Scala class constructor.
      *
      *  This also registers that the given class is instantiated by the current
@@ -3041,7 +3018,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
       val newMethodIdent = js.Ident(newMethodName, origName)
 
-      genApplyMethod(genLoadModule(moduleClass), newMethodIdent, args,
+      js.Apply(genLoadModule(moduleClass), newMethodIdent, args)(
           jstpe.ClassType(encodedName))
     }
 
@@ -3461,7 +3438,10 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       if (revAlts.size == returnCount - 1) {
         def tryDropReturn(body: js.Tree): Option[js.Tree] = body match {
-          case jse.BlockOrAlone(prep, js.Return(result, `label`)) =>
+          case js.Return(result, `label`) =>
+            Some(result)
+
+          case js.Block(prep :+ js.Return(result, `label`)) =>
             Some(js.Block(prep :+ result)(body.pos))
 
           case _ =>
@@ -4044,7 +4024,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val proxyIdent = encodeMethodSym(sym, reflProxy = true)
       var callStatement: js.Tree =
-        genApplyMethod(callTrg, proxyIdent, arguments, jstpe.AnyType)
+        js.Apply(callTrg, proxyIdent, arguments)(jstpe.AnyType)
 
       if (!isAnyRefPrimitive) {
         def boxIfNeeded(call: js.Tree, returnType: Type): js.Tree = {
@@ -4243,15 +4223,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           abort(s"makePrimitiveUnbox requires a primitive type, found $tpe at $pos")
       }
     }
-
-    private def lookupModuleClass(name: String) = {
-      val module = getModuleIfDefined(name)
-      if (module == NoSymbol) NoSymbol
-      else module.moduleClass
-    }
-
-    lazy val ReflectArrayModuleClass = lookupModuleClass("java.lang.reflect.Array")
-    lazy val UtilArraysModuleClass = lookupModuleClass("java.util.Arrays")
 
     /** Gen JS code for a Scala.js-specific primitive method */
     private def genJSPrimitive(tree: Apply, receiver0: Tree,
@@ -5007,25 +4978,18 @@ abstract class GenJSCode extends plugins.PluginComponent
           val (functionBase, arity) =
             tryGenAnonFunctionClassGeneric(cd, capturedArgs)(_ => return None)
 
-          Some(JSFunctionToScala(functionBase, arity))
+          Some(genJSFunctionToScala(functionBase, arity))
         }
       }
       // scalastyle:on return
     }
 
-    /** Constructor object for a tree that converts a JavaScript function into
-     *  a Scala function.
-     */
-    private object JSFunctionToScala {
-      private val AnonFunPrefScala =
-        "scala.scalajs.runtime.AnonFunction"
-
-      def apply(jsFunction: js.Tree, arity: Int)(
-          implicit pos: Position): js.Tree = {
-        val clsSym = getRequiredClass(AnonFunPrefScala + arity)
-        val ctor = clsSym.tpe.member(nme.CONSTRUCTOR)
-        genNew(clsSym, ctor, List(jsFunction))
-      }
+    /** Gen a conversion from a JavaScript function into a Scala function. */
+    private def genJSFunctionToScala(jsFunction: js.Tree, arity: Int)(
+        implicit pos: Position): js.Tree = {
+      val clsSym = getRequiredClass("scala.scalajs.runtime.AnonFunction" + arity)
+      val ctor = clsSym.primaryConstructor
+      genNew(clsSym, ctor, List(jsFunction))
     }
 
     /** Gen JS code for a JS function class.
@@ -5320,7 +5284,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         /* This is a scala.FunctionN. We use the existing AnonFunctionN
          * wrapper.
          */
-        JSFunctionToScala(closure, params.size)
+        genJSFunctionToScala(closure, params.size)
       } else {
         /* This is an arbitrary SAM type (can only happen in 2.12).
          * We have to synthesize a class like LambdaMetaFactory would do on

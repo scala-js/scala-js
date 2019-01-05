@@ -32,7 +32,6 @@ abstract class JSPrimitives {
   import global._
   import jsAddons._
   import definitions._
-  import rootMirror._
   import jsDefinitions._
   import scalaPrimitives._
 

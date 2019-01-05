@@ -79,11 +79,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     val ArrowAssoc = newTermName("ArrowAssoc")
   }
 
-  private final val SuppressMissingJSGlobalDeprecationsMsg = {
-    "\n  (you can suppress this warning in 0.6.x by passing the option " +
-    "`-P:scalajs:suppressMissingJSGlobalDeprecations` to scalac)"
-  }
-
   class JSInteropTransformer(unit: CompilationUnit) extends Transformer {
 
     // Force evaluation of JSDynamicLiteral: Strangely, we are unable to find

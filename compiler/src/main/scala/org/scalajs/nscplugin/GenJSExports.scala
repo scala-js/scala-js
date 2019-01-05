@@ -1110,9 +1110,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
   private def genRestArgRef()(implicit pos: Position): js.Tree =
     js.VarRef(js.Ident("arg$rest"))(jstpe.AnyType)
 
-  private def hasRepeatedParam(sym: Symbol) =
+  private def hasRepeatedParam(sym: Symbol) = {
     enteringPhase(currentRun.uncurryPhase) {
       sym.paramss.flatten.lastOption.exists(isRepeated _)
+    }
   }
 
 }
