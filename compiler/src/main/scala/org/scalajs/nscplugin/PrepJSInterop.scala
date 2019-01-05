@@ -132,7 +132,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
      *  Preparing exports, however, is a pure waste of time, which we cannot
      *  do properly anyway because of the aforementioned limitation.
      */
-    private def forScaladoc = global.forScaladoc
+    private def forScaladoc = global.isInstanceOf[doc.ScaladocGlobal]
 
     /** Whether to check that we have proper literals in some crucial places. */
     private def shouldCheckLiterals = !forScaladoc

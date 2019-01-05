@@ -325,7 +325,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                   }
                 } else if (sym.isTraitOrInterface) {
                   genInterface(cd)
-                } else if (sym.isImplClass) {
+                } else if (isImplClass(sym)) {
                   genImplClass(cd)
                 } else {
                   genClass(cd)
@@ -376,7 +376,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = cd.symbol
       implicit val pos = sym.pos
 
-      assert(!sym.isTraitOrInterface && !sym.isImplClass,
+      assert(!sym.isTraitOrInterface && !isImplClass(sym),
           "genClass() must be called only for normal classes: "+sym)
       assert(sym.superClass != NoSymbol, sym)
 
@@ -1577,7 +1577,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           None
         } else if (sym.isClassConstructor && isHijackedClass(sym.owner)) {
           None
-        } else if (scalaUsesImplClasses && !sym.owner.isImplClass &&
+        } else if (scalaUsesImplClasses && !isImplClass(sym.owner) &&
             sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
           // Do not emit trait impl forwarders with @JavaDefaultMethod
           None
@@ -1622,7 +1622,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                     Some(genStat(rhs)))(optimizerHints, None)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
-                genMethodDef(static = sym.owner.isImplClass, methodName,
+                genMethodDef(static = isImplClass(sym.owner), methodName,
                     params, resultIRType, rhs, optimizerHints)
               }
             }
@@ -1846,7 +1846,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       if (!isNonNativeJSClass(currentClassSym) ||
           isJSFunctionDef(currentClassSym)) {
         val body = {
-          if (currentClassSym.isImplClass) {
+          if (isImplClass(currentClassSym)) {
             val thisParam = jsParams.head
             withScopedVars(
                 thisLocalVarIdent := Some(thisParam.name)
@@ -2153,8 +2153,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 val tpeEnteringPosterasure =
                   enteringPhase(currentRun.posterasurePhase)(rhs.tpe)
                 if ((tpeEnteringPosterasure eq null) && genRhs.isInstanceOf[js.Null]) {
-                  // 2.10.x does not yet have `devWarning`, so use `debugwarn` instead.
-                  debugwarn(
+                  devWarning(
                       "Working around https://github.com/scala-js/scala-js/issues/3422 " +
                       s"for ${sym.fullName} at ${sym.pos}")
                   // Fortunately, a literal `null` never needs to be boxed
@@ -2220,7 +2219,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } { thisLocalIdent =>
         // .copy() to get the correct position
         val tpe = {
-          if (currentClassSym.isImplClass)
+          if (isImplClass(currentClassSym))
             encodeClassType(traitOfImplClass(currentClassSym))
           else
             currentClassType
@@ -5260,7 +5259,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             mutable = false, rest = false)(p.pos)
       }
 
-      val isInImplClass = target.owner.isImplClass
+      val isInImplClass = isImplClass(target.owner)
 
       val (allFormalCaptures, body, allActualCaptures) = if (!isInImplClass) {
         val thisActualCapture = genExpr(receiver)
@@ -5740,7 +5739,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   /** Tests whether the given class is the impl class of a JS trait. */
   private def isJSImplClass(sym: Symbol): Boolean =
-    sym.isImplClass && isJSType(traitOfImplClass(sym))
+    isImplClass(sym) && isJSType(traitOfImplClass(sym))
 
   private def traitOfImplClass(sym: Symbol): Symbol =
     sym.owner.info.decl(sym.name.dropRight(nme.IMPL_CLASS_SUFFIX.length))
@@ -5863,7 +5862,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     JavaScriptExceptionClass isSubClass tpe.typeSymbol
 
   def isStaticModule(sym: Symbol): Boolean =
-    sym.isModuleClass && !sym.isImplClass && !sym.isLifted
+    sym.isModuleClass && !isImplClass(sym) && !sym.isLifted
 
   sealed abstract class MaybeGlobalScope
 

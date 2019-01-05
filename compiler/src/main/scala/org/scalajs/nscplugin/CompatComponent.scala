@@ -14,7 +14,7 @@ package org.scalajs.nscplugin
 
 import scala.collection.mutable
 
-import scala.reflect.internal.Flags.{LOCAL, PRIVATE}
+import scala.reflect.internal.Flags
 import scala.tools.nsc._
 
 /** Hacks to have our source code compatible with the compiler internals of all
@@ -48,8 +48,15 @@ trait CompatComponent {
     }
   }
 
+  private implicit final class FlagsCompat(self: Flags.type) {
+    def IMPLCLASS: Long = infiniteLoop()
+  }
+
   lazy val scalaUsesImplClasses: Boolean =
     definitions.SeqClass.implClass != NoSymbol // a trait we know has an impl class
+
+  def isImplClass(sym: Symbol): Boolean =
+    scalaUsesImplClasses && sym.hasFlag(Flags.IMPLCLASS)
 
   implicit final class StdTermNamesCompat(self: global.nme.type) {
     def IMPL_CLASS_SUFFIX: String = noImplClasses()

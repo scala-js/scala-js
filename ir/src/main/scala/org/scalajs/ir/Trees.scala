@@ -890,11 +890,12 @@ object Trees {
     trait Value {
       /** Prints the IR representation of this transient node.
        *  This method is called by the IR printers when encountering a
-       *  [[Transient]] node.
+       *  [[org.scalajs.ir.Trees.Transient Transient]] node.
        *
        *  @param out
-       *    The [[Printers.IRTreePrinter]] to which the transient node must be
-       *    printed. It can be used to print raw strings or nested IR nodes.
+       *    The [[org.scalajs.ir.Printers.IRTreePrinter IRTreePrinter]] to
+       *    which the transient node must be printed. It can be used to print
+       *    raw strings or nested IR nodes.
        */
       def printIR(out: Printers.IRTreePrinter): Unit
     }

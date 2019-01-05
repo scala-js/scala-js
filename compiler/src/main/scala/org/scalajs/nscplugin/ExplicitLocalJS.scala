@@ -42,7 +42,7 @@ import scala.collection.mutable
  *    class Local extends ParentJSClass
  *  }
  *  }}}
- *  this phase creates a local `val Local$jslass` in the body of `outer()` to
+ *  this phase creates a local `val Local\$jslass` in the body of `outer()` to
  *  hold the JS class value for `Local`. The rhs of that val is a call to a
  *  magic method, used to retain information that the back-end will need:
  *
@@ -57,7 +57,7 @@ import scala.collection.mutable
  *  {{{
  *  def outer() = {
  *    class Local extends ParentJSClass
- *    val Local$jsclass: AnyRef = createLocalJSClass(
+ *    val Local\$jsclass: AnyRef = createLocalJSClass(
  *        classOf[Local],
  *        js.constructorOf[ParentJSClass],
  *        Array[AnyRef](new Local(), ...))
@@ -68,15 +68,15 @@ import scala.collection.mutable
  *  abstract local classes. We therefore reject them as implementation
  *  restriction.
  *
- *  If the body of `Local` references itself, then the `val Local$jsclass` is
+ *  If the body of `Local` references itself, then the `val Local\$jsclass` is
  *  instead declared as a `var` to work around the cyclic dependency:
  *  {{{
  *  def outer() = {
- *    var Local$jsclass: AnyRef = null
+ *    var Local\$jsclass: AnyRef = null
  *    class Local extends ParentJSClass {
  *      ...
  *    }
- *    Local$jsclass = createLocalJSClass(...)
+ *    Local\$jsclass = createLocalJSClass(...)
  *  }
  *  }}}
  *
@@ -91,10 +91,10 @@ import scala.collection.mutable
  *    `runtime.constructorOf(classOf[C])` so that the reified symbol survives
  *    erasure and reaches the back-end.
  *  - If `C` is an inner JS class, it must be of the form `path.D` for some
- *    pair (`path`, `D`), and we desugar it to `path.D$jsclass`, using the
+ *    pair (`path`, `D`), and we desugar it to `path.D\$jsclass`, using the
  *    field created by `ExplicitInnerJS` (it is an error if `C` is of the form
  *    `Enclosing#D`).
- *  - If `C` is a local JS class, desugar to `C$jsclass`, using the local val
+ *  - If `C` is a local JS class, desugar to `C\$jsclass`, using the local val
  *    created by this phase.
  *
  *  The other transformations build on top of the desugaring of

@@ -45,9 +45,9 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
    *  the magic method inserted by `ExplicitLocalJS`, leveraging `lambdalift`
    *  to ensure that it is properly captured.
    *
-   *  Using this identifier is only allowed if the current local name scope was
-   *  created with [[withNewLocalNameScopeUsingJSSuperClassParamName]].
-   *  Otherwise, this name can clash with another local identifier.
+   *  Using this identifier is only allowed if it was reserved in the current
+   *  local name scope using [[reserveLocalName]]. Otherwise, this name can
+   *  clash with another local identifier.
    */
   final val JSSuperClassParamName = "$superClass"
 
@@ -177,7 +177,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     def name = encodeMemberNameInternal(sym)
 
     def privateSuffix(owner: Symbol): String =
-      if (owner.isTraitOrInterface && !owner.isImplClass) encodeClassFullName(owner)
+      if (owner.isTraitOrInterface && !isImplClass(owner)) encodeClassFullName(owner)
       else owner.ancestors.count(!_.isTraitOrInterface).toString
 
     val encodedName = {
