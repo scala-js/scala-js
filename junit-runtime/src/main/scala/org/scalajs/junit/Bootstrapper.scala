@@ -14,6 +14,13 @@ package org.scalajs.junit
 
 import scala.scalajs.reflect.annotation._
 
+/** Scala.js internal JUnit bootstrapper.
+ *
+ *  This class is public due to implementation details. Only the junit compiler
+ *  plugin may generate classes inheriting from it.
+ *
+ *  Relying on this trait directly is unspecified behavior.
+ */
 @EnableReflectiveInstantiation
 trait Bootstrapper {
   def beforeClass(): Unit
@@ -27,6 +34,13 @@ trait Bootstrapper {
   def newInstance(): AnyRef
 }
 
+/** Scala.js internal JUnit test metadata
+ *
+ *  This class is public due to implementation details. Only the junit compiler
+ *  plugin may create instances of it.
+ *
+ *  Relying on this class directly is unspecified behavior.
+ */
 final class TestMetadata(
     val name: String,
     val ignored: Boolean,

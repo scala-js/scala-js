@@ -1,0 +1,8 @@
+liTest run started
+liTest org.scalajs.junit.AssumeAfterClassTest.test started
+ldTest org.scalajs.junit.AssumeAfterClassTest.test finished, took <TIME>
+e0org.scalajs.junit.AssumeAfterClassTest.test
+liTest org.scalajs.junit.AssumeAfterClassTest ignored
+e3org.scalajs.junit.AssumeAfterClassTest
+liTest run finished: 0 failed, 1 ignored, 1 total, <TIME>
+d

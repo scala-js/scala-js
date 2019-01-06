@@ -1,7 +1,0 @@
-li[34mTest run started[0m
-liTest org.scalajs.junit.[33mExceptionInConstructorTest[0m.[36mtest[0m started
-leTest org.scalajs.junit.[33mExceptionInConstructorTest[0m.[31mtest[0m failed: java.lang.[31mUnsupportedOperationException[0m: Exception while constructing the test class, took <TIME>
-e2org.scalajs.junit.ExceptionInConstructorTest.test
-ldTest org.scalajs.junit.[33mExceptionInConstructorTest[0m.[36mtest[0m finished, took <TIME>
-li[34mTest run finished: [0m[31m1 failed[0m[34m, [0m[34m0 ignored[0m[34m, 1 total, <TIME>[0m
-d

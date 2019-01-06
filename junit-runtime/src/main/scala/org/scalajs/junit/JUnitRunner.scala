@@ -12,10 +12,9 @@
 
 package org.scalajs.junit
 
-import com.novocode.junit.RunSettings
 import sbt.testing._
 
-final class JUnitRunner(
+private[junit] final class JUnitRunner(
     val args: Array[String],
     val remoteArgs: Array[String],
     runSettings: RunSettings) extends Runner {

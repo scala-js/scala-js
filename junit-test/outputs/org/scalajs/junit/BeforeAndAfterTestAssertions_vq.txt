@@ -1,6 +1,0 @@
-li[34mTest run started[0m
-liTest org.scalajs.junit.[33mBeforeAndAfterTest[0m.[36mtest[0m started
-ldTest org.scalajs.junit.[33mBeforeAndAfterTest[0m.[36mtest[0m finished, took <TIME>
-e0org.scalajs.junit.BeforeAndAfterTest.test
-li[34mTest run finished: [0m[34m0 failed[0m[34m, [0m[34m0 ignored[0m[34m, 1 total, <TIME>[0m
-d

@@ -12,71 +12,52 @@
 
 package org.scalajs.junit
 
-import java.io.ByteArrayOutputStream
-
-import com.novocode.junit.Ansi._
-import com.novocode.junit.RichLogger
-import com.novocode.junit.RunSettings
 import org.junit._
 import sbt.testing._
 
 import scala.util.matching.Regex
 
-final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
-    bootstrapper: Bootstrapper, richLogger: RichLogger,
-    eventHandler: EventHandler) {
+private[junit] final class JUnitExecuteTest(taskDef: TaskDef,
+    runSettings: RunSettings, bootstrapper: Bootstrapper,
+    richLogger: RichLogger, eventHandler: EventHandler) {
+
+  private[this] var failed = 0
+  private[this] var ignored = 0
+  private[this] var total = 0
 
   def executeTests(): Unit = {
-    val assumptionViolated = try {
+    richLogger.log(richLogger.infoOrDebug, Ansi.c("Test run started", Ansi.BLUE))
+
+    val (_, timeInSeconds) = runTestLifecycle(None)(()) { _ =>
       bootstrapper.beforeClass()
-      false
-    } catch {
-      case _: AssumptionViolatedException | _:internal.AssumptionViolatedException =>
-        true
-    }
 
-    if (assumptionViolated) {
-      richLogger.info(s"Test $formattedTestClass ignored")
-      task.ignored += 1
-      emitClassEvent(Status.Skipped)
-    } else {
-      def runWithOrWithoutQuietMode[T](block: => T): T = {
-        if (runSettings.quiet) {
-          scala.Console.withOut(new ByteArrayOutputStream()) {
-            block
-          }
+      for (method <- bootstrapper.tests) {
+        if (method.ignored) {
+          richLogger.logTestInfo(_.info, Some(method.name), "ignored")
+          ignored += 1
+          emitEvent(Some(method.name), Status.Skipped)
         } else {
-          block
+          executeTestMethod(bootstrapper, method)
         }
       }
-
-      runWithOrWithoutQuietMode {
-        for (method <- bootstrapper.tests) {
-          if (method.ignored) {
-            logTestInfo(_.info, method.name, "ignored")
-            task.ignored += 1
-            emitMethodEvent(method.name, Status.Skipped)
-          } else {
-            executeTestMethod(bootstrapper, method)
-          }
-        }
-      }
-
+    } { _ =>
       bootstrapper.afterClass()
     }
+
+    val msg = {
+      Ansi.c("Test run finished: ", Ansi.BLUE) +
+      Ansi.c(s"$failed failed", if (failed == 0) Ansi.BLUE else Ansi.RED) +
+      Ansi.c(s", ", Ansi.BLUE) +
+      Ansi.c(s"$ignored ignored", if (ignored == 0) Ansi.BLUE else Ansi.YELLOW) +
+      Ansi.c(s", $total total, ${timeInSeconds}s", Ansi.BLUE)
+    }
+
+    richLogger.log(richLogger.infoOrDebug, msg)
   }
 
   private[this] def executeTestMethod(bootstrapper: Bootstrapper,
       test: TestMetadata) = {
-    val methodName = test.name
-
-    if (runSettings.verbose)
-      logTestInfo(_.info, methodName, "started")
-    else
-      logTestInfo(_.debug, methodName, "started")
-
-    val t0 = System.nanoTime
-    def getTimeInSeconds(): Double = (System.nanoTime - t0).toDouble / 1000000000
+    richLogger.logTestInfo(richLogger.infoOrDebug, Some(test.name), "started")
 
     def handleExpected(expectedException: Class[_ <: Throwable])(body: => Unit) = {
       val wantException = expectedException != classOf[org.junit.Test.None]
@@ -97,110 +78,86 @@ final class JUnitExecuteTest(task: JUnitTask, runSettings: RunSettings,
         throw new AssertionError("Expected exception: " + expectedException.getName)
     }
 
+    val (passed, timeInSeconds) = runTestLifecycle(Some(test.name)) {
+      bootstrapper.newInstance()
+    } { instance =>
+      bootstrapper.before(instance)
+      handleExpected(test.annotation.expected) {
+        bootstrapper.invokeTest(instance, test.name)
+      }
+    } {
+      bootstrapper.after(_)
+    }
+
+    richLogger.logTestInfo(_.debug, Some(test.name),
+        s"finished, took $timeInSeconds sec")
+
+    // Scala.js-specific: timeouts are warnings only, after the fact
+    val timeout = test.annotation.timeout
+    if (timeout != 0 && timeout <= timeInSeconds) {
+      richLogger.log(_.warn, "Timeout: took " + timeInSeconds + " sec, expected " +
+          (timeout.toDouble / 1000) + " sec")
+    }
+
+    if (passed)
+      emitEvent(Some(test.name), Status.Success)
+
+    total += 1
+  }
+
+  private def runTestLifecycle[T](method: Option[String])(build: => T)(
+      body: T => Unit)(after: T => Unit): (Boolean, Double) = {
+    val startTime = System.nanoTime
+
     var exceptions: List[Throwable] = Nil
     try {
-      val instance = bootstrapper.newInstance()
+      val x = build
       try {
-        bootstrapper.before(instance)
-        handleExpected(test.annotation.expected) {
-          bootstrapper.invokeTest(instance, test.name)
-        }
+        body(x)
       } catch {
         case t: Throwable => exceptions ::= t
       } finally {
-        bootstrapper.after(instance)
+        after(x)
       }
     } catch {
       case t: Throwable => exceptions ::= t
     }
 
-    val timeInSeconds = getTimeInSeconds()
+    val timeInSeconds = (System.nanoTime - startTime).toDouble / 1000000000
 
     exceptions.reverse match {
       case Nil =>
 
       case e :: Nil if isAssumptionViolation(e) =>
-        logThrowable(_.warn, "Test assumption in test ", methodName, e, timeInSeconds)
-        emitMethodEvent(methodName, Status.Skipped)
+        method.fold {
+          richLogger.logTestInfo(_.info, None, "ignored")
+          ignored += 1
+        } { _ =>
+          richLogger.logTestException(_.warn, "Test assumption in test ", method, e, timeInSeconds)
+        }
+
+        emitEvent(method, Status.Skipped)
 
       case e :: es =>
         def emit(t: Throwable) = {
-          logThrowable(_.error, "Test ", methodName, t, timeInSeconds)
-
-          if (!t.isInstanceOf[AssertionError] || runSettings.logAssert) {
-            richLogger.trace(t)
-          }
-          task.failed += 1
+          richLogger.logTestException(_.error, "Test ", method, t, timeInSeconds)
+          richLogger.trace(t)
+          failed += 1
         }
 
         emit(e)
-        emitMethodEvent(methodName, Status.Failure)
+        emitEvent(method, Status.Failure)
         es.foreach(emit)
     }
 
-    logTestInfo(_.debug, methodName,
-        s"finished, took ${getTimeInSeconds()} sec")
-
-    // Scala.js-specific: timeouts are warnings only, after the fact
-    val timeout = test.annotation.timeout
-    if (timeout != 0 && timeout <= timeInSeconds) {
-      richLogger.warn("Timeout: took " + timeInSeconds + " sec, expected " +
-          (timeout.toDouble / 1000) + " sec")
-    }
-
-    if (exceptions.isEmpty)
-      emitMethodEvent(methodName, Status.Success)
-
-    task.total += 1
+    (exceptions.isEmpty, timeInSeconds)
   }
 
-
-  private def emitClassEvent(status: Status): Unit = {
-    val selector = new TestSelector(task.taskDef.fullyQualifiedName)
-    eventHandler.handle(new JUnitEvent(task.taskDef, status, selector))
-  }
-
-  private def emitMethodEvent(methodName: String, status: Status): Unit = {
-    val selector = new TestSelector(task.taskDef.fullyQualifiedName + "." + runSettings.decodeName(methodName))
-    eventHandler.handle(new JUnitEvent(task.taskDef, status, selector))
-  }
-
-  private def logTestInfo(level: RichLogger => (String => Unit), method: String, msg: String): Unit =
-    level(richLogger)(s"Test ${formatMethod(method, CYAN)} $msg")
-
-  private def logThrowable(level: RichLogger => (String => Unit), prefix: String,
-      method: String, ex: Throwable, timeInSeconds: Double): Unit = {
-    val logException = {
-      !runSettings.notLogExceptionClass &&
-      (runSettings.logAssert || !ex.isInstanceOf[AssertionError])
-    }
-
-    val fmtName = if (logException) {
-      val name =
-        if (isAssumptionViolation(ex)) classOf[internal.AssumptionViolatedException].getName
-        else ex.getClass.getName
-
-      formatClass(name, RED) + ": "
-    } else {
-      ""
-    }
-
-    val m = formatMethod(method, RED)
-    val msg = s"$prefix$m failed: $fmtName${ex.getMessage}, took $timeInSeconds sec"
-    level(richLogger)(msg)
-  }
-
-  private def formatMethod(method: String, color: String): String = {
-    val fmtMethod = c(runSettings.decodeName(method), color)
-    s"$formattedTestClass.$fmtMethod"
-  }
-
-  private lazy val formattedTestClass =
-    formatClass(task.taskDef.fullyQualifiedName, YELLOW)
-
-  private def formatClass(fullName: String, color: String): String = {
-    val (prefix, name) = fullName.splitAt(fullName.lastIndexOf(".") + 1)
-    prefix + c(name, color)
+  private def emitEvent(method: Option[String], status: Status): Unit = {
+    val testName = method.fold(taskDef.fullyQualifiedName)(method =>
+      taskDef.fullyQualifiedName + "." + runSettings.decodeName(method))
+    val selector = new TestSelector(testName)
+    eventHandler.handle(new JUnitEvent(taskDef, status, selector))
   }
 
   private def isAssumptionViolation(ex: Throwable): Boolean = {

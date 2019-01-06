@@ -36,7 +36,6 @@ abstract class JUnitTest {
 
   private val frameworkArgss: List[List[Char]] = List(
       List(),
-      List('q'),
       List('a'),
       List('v'),
       List('n'),
@@ -45,7 +44,6 @@ abstract class JUnitTest {
       List('n', 'v', 'a'),
       List('n', 'v', 'c'),
       List('n', 'v', 'c', 'a'),
-      List('v', 'q'),
       List('v', 'a'),
       List('v', 'c'),
       List('v', 's'),

@@ -1,0 +1,8 @@
+li[34mTest run started[0m
+liTest org.scalajs.junit.[33mAssumeAfterClassTest[0m.[36mtest[0m started
+ldTest org.scalajs.junit.[33mAssumeAfterClassTest[0m.[36mtest[0m finished, took <TIME>
+e0org.scalajs.junit.AssumeAfterClassTest.test
+liTest org.scalajs.junit.[33mAssumeAfterClassTest[0m ignored
+e3org.scalajs.junit.AssumeAfterClassTest
+li[34mTest run finished: [0m[34m0 failed[0m[34m, [0m[33m1 ignored[0m[34m, 1 total, <TIME>[0m
+d

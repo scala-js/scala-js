@@ -12,20 +12,14 @@
 
 package org.scalajs.junit
 
-import com.novocode.junit.{Ansi, RichLogger, RunSettings}
-import Ansi._
 import sbt.testing._
 import scala.scalajs.reflect.Reflect
 import scala.util.{Try, Success, Failure}
 
-final class JUnitTask(val taskDef: TaskDef, runSettings: RunSettings)
-    extends sbt.testing.Task {
+private[junit] final class JUnitTask(val taskDef: TaskDef,
+    runSettings: RunSettings) extends Task {
 
   def tags: Array[String] = Array.empty
-
-  var failed = 0
-  var ignored = 0
-  var total = 0
 
   def execute(eventHandler: EventHandler, loggers: Array[Logger],
       continuation: Array[Task] => Unit): Unit = {
@@ -36,21 +30,10 @@ final class JUnitTask(val taskDef: TaskDef, runSettings: RunSettings)
     val fullClassName = taskDef.fullyQualifiedName
     val richLogger = new RichLogger(loggers, runSettings, fullClassName)
 
-    def infoOrDebug(msg: String): Unit = {
-      if (runSettings.verbose)
-        richLogger.info(msg)
-      else
-        richLogger.debug(msg)
-    }
-
-    infoOrDebug(c("Test run started", BLUE))
-
     val bootstrapperName = fullClassName + "$scalajs$junit$bootstrapper"
 
-    val startTime = System.nanoTime
-
     def errorWhileLoadingClass(t: Throwable): Unit = {
-      richLogger.error("Error while loading test class: " + fullClassName)
+      richLogger.log(_.error, "Error while loading test class: " + fullClassName)
       richLogger.trace(t)
       val selector = new TestSelector(fullClassName)
       val optThrowable = new OptionalThrowable(t)
@@ -65,7 +48,7 @@ final class JUnitTask(val taskDef: TaskDef, runSettings: RunSettings)
         .loadModule()
     } match {
       case Success(bootstrapper: Bootstrapper) =>
-        new JUnitExecuteTest(this, runSettings, bootstrapper,
+        new JUnitExecuteTest(taskDef, runSettings, bootstrapper,
             richLogger, eventHandler).executeTests()
 
       case Success(_) =>
@@ -75,18 +58,6 @@ final class JUnitTask(val taskDef: TaskDef, runSettings: RunSettings)
       case Failure(exception) =>
         errorWhileLoadingClass(exception)
     }
-
-    val time = System.nanoTime - startTime
-
-    val msg = {
-      c("Test run finished: ", BLUE) +
-      c(s"$failed failed", if (failed == 0) BLUE else RED) +
-      c(s", ", BLUE) +
-      c(s"$ignored ignored", if (ignored == 0) BLUE else YELLOW) +
-      c(s", $total total, ${time.toDouble / 1000000000}s", BLUE)
-    }
-
-    infoOrDebug(msg)
 
     Array()
   }
