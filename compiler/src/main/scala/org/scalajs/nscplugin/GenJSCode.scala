@@ -35,7 +35,7 @@ import ScopedVar.withScopedVars
  *  @author Sébastien Doeraene
  */
 abstract class GenJSCode extends plugins.PluginComponent
-                            with TypeKinds
+                            with TypeConversions
                             with JSEncoding
                             with GenJSExports
                             with GenJSFiles
