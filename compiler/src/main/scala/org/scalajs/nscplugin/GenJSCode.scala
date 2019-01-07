@@ -2548,10 +2548,22 @@ abstract class GenJSCode extends plugins.PluginComponent
     private def genIsAsInstanceOf(expr: js.Tree, from: Type, to: Type,
         cast: Boolean)(
         implicit pos: Position): js.Tree = {
-      val l = toTypeKind(from)
-      val r = toTypeKind(to)
+      val l = toIRType(from)
+      val r = toIRType(to)
 
-      if (l.isValueType && r.isValueType) {
+      def isValueType(tpe: jstpe.Type): Boolean = tpe match {
+        case jstpe.NoType | jstpe.BooleanType | jstpe.CharType |
+            jstpe.ByteType | jstpe.ShortType | jstpe.IntType | jstpe.LongType |
+            jstpe.FloatType | jstpe.DoubleType =>
+          true
+        case _ =>
+          false
+      }
+
+      val lIsValueType = isValueType(l)
+      val rIsValueType = isValueType(r)
+
+      if (lIsValueType && rIsValueType) {
         if (cast) {
           /* It is unclear whether this case can be reached for all type
            * conversions, but scalac handles all cases, so we do too.
@@ -2559,16 +2571,16 @@ abstract class GenJSCode extends plugins.PluginComponent
            * case are `byte.##`, `short.##` and `char.##`, which become, e.g.,
            * `char.toChar().$asInstanceOf[Int]`.
            */
-          genConversion(l.toIRType, r.toIRType, expr)
+          genConversion(l, r, expr)
         } else {
           js.BooleanLiteral(l == r)
         }
-      } else if (l.isValueType) {
+      } else if (lIsValueType) {
         val result =
           if (cast) genThrowClassCastException()
           else js.BooleanLiteral(false)
         js.Block(expr, result) // eval and discard source
-      } else if (r.isValueType) {
+      } else if (rIsValueType) {
         assert(!cast, s"Unexpected asInstanceOf from ref type to value type")
         genIsInstanceOf(expr, boxedClass(to.typeSymbol).tpe)
       } else {
@@ -2664,13 +2676,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (isJSType(clsSym)) {
         genPrimitiveJSNew(tree)
       } else {
-        toTypeKind(tpe) match {
-          case arr @ ARRAY(elem) =>
-            genNewArray(arr.toIRType, args map genExpr)
-          case rt @ REFERENCE(cls) =>
+        toTypeRef(tpe) match {
+          case jstpe.ClassRef(cls) =>
             genNew(cls, ctor, genActualArgs(ctor, args))
-          case generatedType =>
-            abort(s"Non reference type cannot be instantiated: $generatedType")
+          case arr: jstpe.ArrayTypeRef =>
+            genNewArray(arr, args.map(genExpr))
         }
       }
     }
@@ -2983,19 +2993,18 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    /** Gen JS code for a call to a Scala class constructor.
-     *
-     *  This also registers that the given class is instantiated by the current
-     *  method, and that the given constructor is called, in the method info
-     *  builder.
-     */
+    /** Gen JS code for a call to a Scala class constructor. */
     def genNew(clazz: Symbol, ctor: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
       assert(!isJSFunctionDef(clazz),
           s"Trying to instantiate a JS function def $clazz")
-      val className = encodeClassFullName(clazz)
-      val ctorIdent = encodeMethodSym(ctor)
-      js.New(jstpe.ClassType(className), ctorIdent, arguments)
+      genNew(encodeClassFullName(clazz), ctor, arguments)
+    }
+
+    /** Gen JS code for a call to a Scala class constructor. */
+    def genNew(cls: String, ctor: Symbol, arguments: List[js.Tree])(
+        implicit pos: Position): js.Tree = {
+      js.New(jstpe.ClassType(cls), encodeMethodSym(ctor), arguments)
     }
 
     /** Gen JS code for a call to a constructor of a hijacked class.
@@ -3026,14 +3035,14 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  specify up to `dimensions` lengths for the first dimensions of the
      *  array.
      */
-    def genNewArray(arrayType: jstpe.ArrayType, arguments: List[js.Tree])(
+    def genNewArray(arrayTypeRef: jstpe.ArrayTypeRef, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      assert(arguments.length <= arrayType.arrayTypeRef.dimensions,
+      assert(arguments.length <= arrayTypeRef.dimensions,
           "too many arguments for array constructor: found " + arguments.length +
-          " but array has only " + arrayType.arrayTypeRef.dimensions +
+          " but array has only " + arrayTypeRef.dimensions +
           " dimension(s)")
 
-      js.NewArray(arrayType, arguments)
+      js.NewArray(jstpe.ArrayType(arrayTypeRef), arguments)
     }
 
     /** Gen JS code for an array literal.
@@ -3581,21 +3590,28 @@ abstract class GenJSCode extends plugins.PluginComponent
           import js.BinaryOp._
 
           val isShift = isShiftOp(code)
-          val leftKind = toTypeKind(argTpes(0))
-          val rightKind = toTypeKind(argTpes(1))
+          val leftIRType = toIRType(argTpes(0))
+          val rightIRType = toIRType(argTpes(1))
 
           val opType = {
             if (isShift) {
-              if (leftKind == LongKind) jstpe.LongType
+              if (leftIRType == jstpe.LongType) jstpe.LongType
               else jstpe.IntType
             } else {
-              (leftKind, rightKind) match {
-                case (DoubleKind, _) | (_, DoubleKind) => jstpe.DoubleType
-                case (FloatKind, _) | (_, FloatKind)   => jstpe.FloatType
-                case (LONG, _) | (_, LONG)             => jstpe.LongType
-                case (INT(_), _) | (_, INT(_))         => jstpe.IntType
-                case (BOOL, _) | (_, BOOL)             => jstpe.BooleanType
-                case _                                 => jstpe.AnyType
+              (leftIRType, rightIRType) match {
+                case (jstpe.DoubleType, _) | (_, jstpe.DoubleType) =>
+                  jstpe.DoubleType
+                case (jstpe.FloatType, _) | (_, jstpe.FloatType) =>
+                  jstpe.FloatType
+                case (jstpe.LongType, _) | (_, jstpe.LongType) =>
+                  jstpe.LongType
+                case (jstpe.IntType | jstpe.CharType | jstpe.ByteType | jstpe.ShortType, _) |
+                    (_, jstpe.IntType | jstpe.CharType | jstpe.ByteType | jstpe.ShortType) =>
+                  jstpe.IntType
+                case (jstpe.BooleanType, _) | (_, jstpe.BooleanType) =>
+                  jstpe.BooleanType
+                case _ =>
+                  jstpe.AnyType
               }
             }
           }
@@ -3711,12 +3727,16 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             case jstpe.AnyType =>
               def genAnyEquality(eqeq: Boolean, not: Boolean): js.Tree = {
+                // Arrays, Null, Nothing never have a custom equals() method
+                def canHaveCustomEquals(tpe: jstpe.Type): Boolean = tpe match {
+                  case jstpe.AnyType | jstpe.ClassType(_) => true
+                  case _                                  => false
+                }
                 if (eqeq &&
                     // don't call equals if we have a literal null at either side
                     !lsrc.isInstanceOf[js.Null] &&
                     !rsrc.isInstanceOf[js.Null] &&
-                    // Arrays, Null, Nothing do not have an equals() method
-                    leftKind.isInstanceOf[REFERENCE]) {
+                    canHaveCustomEquals(leftIRType)) {
                   val body = genEqEqPrimitive(argTpes(0), argTpes(1), lsrc, rsrc)
                   if (not) js.UnaryOp(js.UnaryOp.Boolean_!, body) else body
                 } else {
@@ -3866,26 +3886,23 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       implicit val pos = tree.pos
 
-      val Apply(Select(arrayObj, _), args) = tree
+      val Apply(fun @ Select(arrayObj, _), args) = tree
       val arrayValue = genExpr(arrayObj)
       val arguments = args map genExpr
 
-      def genSelect() = {
-        val elemIRType =
-          toTypeKind(arrayObj.tpe).asInstanceOf[ARRAY].elem.toIRType
-        js.ArraySelect(arrayValue, arguments(0))(elemIRType)
-      }
+      def genSelect(elemType: Type) =
+        js.ArraySelect(arrayValue, arguments(0))(toIRType(elemType))
 
       if (scalaPrimitives.isArrayGet(code)) {
         // get an item of the array
         assert(args.length == 1,
             s"Array get requires 1 argument, found ${args.length} in $tree")
-        genSelect()
+        genSelect(fun.tpe.resultType)
       } else if (scalaPrimitives.isArraySet(code)) {
         // set an item of the array
         assert(args.length == 2,
             s"Array set requires 2 arguments, found ${args.length} in $tree")
-        js.Assign(genSelect(), arguments(1))
+        js.Assign(genSelect(fun.tpe.paramTypes(1)), arguments(1))
       } else {
         // length of the array
         js.ArrayLength(arrayValue)
@@ -4102,15 +4119,16 @@ abstract class GenJSCode extends plugins.PluginComponent
           } else {
             val methodInPrimClass = matchingSymIn(primitiveClass)
             if (methodInPrimClass != NoSymbol && methodInPrimClass.isPublic) {
-              def isIntOrLongKind(kind: TypeKind) = kind match {
-                case CharKind     => false
-                case _:INT | LONG => true
-                case _            => false
+              def isIntOrLong(tpe: jstpe.Type): Boolean = tpe match {
+                case jstpe.ByteType | jstpe.ShortType | jstpe.IntType | jstpe.LongType =>
+                  true
+                case _ =>
+                  false
               }
               val ignoreBecauseItMustBeAnInt = {
                 primitiveClass == DoubleClass &&
-                toTypeKind(methodInPrimClass.tpe.resultType) == DoubleKind &&
-                isIntOrLongKind(toTypeKind(sym.tpe.resultType))
+                toIRType(methodInPrimClass.tpe.resultType) == jstpe.DoubleType &&
+                isIntOrLong(toIRType(sym.tpe.resultType))
               }
               if (ignoreBecauseItMustBeAnInt) {
                 // Fall through to the Int case that will come next
@@ -4200,11 +4218,13 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen a boxing operation (tpe is the primitive type) */
     def makePrimitiveBox(expr: js.Tree, tpe: Type)(
         implicit pos: Position): js.Tree = {
-      toTypeKind(tpe) match {
-        case VOID => // must be handled at least for JS interop
+      toIRType(tpe) match {
+        case jstpe.NoType => // for JS interop cases
           js.Block(expr, js.Undefined())
-        case kind: ValueTypeKind =>
-          expr // box is identity for all primitive types
+        case jstpe.BooleanType | jstpe.CharType | jstpe.ByteType |
+            jstpe.ShortType | jstpe.IntType | jstpe.LongType | jstpe.FloatType |
+            jstpe.DoubleType =>
+          expr // box is identity for all those primitive types
         case _ =>
           abort(s"makePrimitiveBox requires a primitive type, found $tpe at $pos")
       }
@@ -4213,11 +4233,17 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen an unboxing operation (tpe is the primitive type) */
     def makePrimitiveUnbox(expr: js.Tree, tpe: Type)(
         implicit pos: Position): js.Tree = {
-      toTypeKind(tpe) match {
-        case VOID => // must be handled at least for JS interop
-          expr
-        case kind: ValueTypeKind =>
-          js.Unbox(expr, kind.primitiveCharCode)
+      toIRType(tpe) match {
+        case jstpe.NoType      => expr // for JS interop cases
+        case jstpe.BooleanType => js.Unbox(expr, 'Z')
+        case jstpe.CharType    => js.Unbox(expr, 'C')
+        case jstpe.ByteType    => js.Unbox(expr, 'B')
+        case jstpe.ShortType   => js.Unbox(expr, 'S')
+        case jstpe.IntType     => js.Unbox(expr, 'I')
+        case jstpe.LongType    => js.Unbox(expr, 'J')
+        case jstpe.FloatType   => js.Unbox(expr, 'F')
+        case jstpe.DoubleType  => js.Unbox(expr, 'D')
+
         case _ =>
           abort(s"makePrimitiveUnbox requires a primitive type, found $tpe at $pos")
       }
@@ -4253,14 +4279,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
         arg match {
           case Literal(value) if value.tag == ClazzTag =>
-            val kind = toTypeKind(value.typeValue)
-            kind match {
-              case REFERENCE(classSym) if isJSType(classSym) &&
-                  !classSym.isTrait && !classSym.isModuleClass =>
-                classSym
-              case _ =>
-                fail()
-            }
+            val classSym = value.typeValue.typeSymbol
+            if (isJSType(classSym) && !classSym.isTrait && !classSym.isModuleClass)
+              classSym
+            else
+              fail()
           case _ =>
             fail()
         }

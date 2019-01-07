@@ -27,20 +27,20 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   import jsAddons._
   import definitions._
 
-  lazy val ObjectReference = REFERENCE(definitions.ObjectClass)
+  private lazy val ObjectReference = REFERENCE(definitions.ObjectClass)
 
-  lazy val VoidKind    = VOID
-  lazy val BooleanKind = BOOL
-  lazy val CharKind    = INT(CharClass)
-  lazy val ByteKind    = INT(ByteClass)
-  lazy val ShortKind   = INT(ShortClass)
-  lazy val IntKind     = INT(IntClass)
-  lazy val LongKind    = LONG
-  lazy val FloatKind   = FLOAT(FloatClass)
-  lazy val DoubleKind  = FLOAT(DoubleClass)
+  private lazy val VoidKind    = VOID
+  private lazy val BooleanKind = BOOL
+  private lazy val CharKind    = INT(CharClass)
+  private lazy val ByteKind    = INT(ByteClass)
+  private lazy val ShortKind   = INT(ShortClass)
+  private lazy val IntKind     = INT(IntClass)
+  private lazy val LongKind    = LONG
+  private lazy val FloatKind   = FLOAT(FloatClass)
+  private lazy val DoubleKind  = FLOAT(DoubleClass)
 
   /** TypeKinds for Scala primitive types. */
-  lazy val primitiveTypeMap: Map[Symbol, TypeKind] = {
+  private lazy val primitiveTypeMap: Map[Symbol, TypeKind] = {
     import definitions._
     Map(
       UnitClass    -> VoidKind,
@@ -58,7 +58,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   /** Glue representation of types as seen from the IR but still with a
    *  reference to the Symbols.
    */
-  sealed abstract class TypeKind {
+  private sealed abstract class TypeKind {
     def isReferenceType: Boolean = false
     def isArrayType: Boolean = false
     def isValueType: Boolean = false
@@ -67,14 +67,14 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
     def toTypeRef: Types.TypeRef
   }
 
-  sealed abstract class TypeKindButArray extends TypeKind {
+  private sealed abstract class TypeKindButArray extends TypeKind {
     protected def typeSymbol: Symbol
 
     def toTypeRef: Types.ClassRef
   }
 
   /** The void, for trees that can only appear in statement position. */
-  case object VOID extends TypeKindButArray {
+  private case object VOID extends TypeKindButArray {
     protected def typeSymbol: Symbol = UnitClass
     def toIRType: Types.NoType.type = Types.NoType
 
@@ -82,7 +82,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
       Types.ClassRef(ir.Definitions.VoidClass)
   }
 
-  sealed abstract class ValueTypeKind extends TypeKindButArray {
+  private sealed abstract class ValueTypeKind extends TypeKindButArray {
     override def isValueType: Boolean = true
 
     val primitiveCharCode: Char = typeSymbol match {
@@ -102,7 +102,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   }
 
   /** Integer number (Byte, Short, Char or Int). */
-  case class INT private[TypeKinds] (typeSymbol: Symbol) extends ValueTypeKind {
+  private case class INT private[TypeKinds] (typeSymbol: Symbol) extends ValueTypeKind {
     val toIRType: Types.Type = typeSymbol match {
       case CharClass  => Types.CharType
       case ByteClass  => Types.ByteType
@@ -112,13 +112,13 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   }
 
   /** Long */
-  case object LONG extends ValueTypeKind {
+  private case object LONG extends ValueTypeKind {
     protected def typeSymbol = definitions.LongClass
     def toIRType: Types.LongType.type = Types.LongType
   }
 
   /** Floating-point number (Float or Double). */
-  case class FLOAT private[TypeKinds] (typeSymbol: Symbol) extends ValueTypeKind {
+  private case class FLOAT private[TypeKinds] (typeSymbol: Symbol) extends ValueTypeKind {
     val toIRType: Types.Type = typeSymbol match {
       case FloatClass  => Types.FloatType
       case DoubleClass => Types.DoubleType
@@ -126,13 +126,13 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   }
 
   /** Boolean */
-  case object BOOL extends ValueTypeKind {
+  private case object BOOL extends ValueTypeKind {
     protected def typeSymbol = definitions.BooleanClass
     def toIRType: Types.BooleanType.type = Types.BooleanType
   }
 
   /** Nothing */
-  case object NOTHING extends TypeKindButArray {
+  private case object NOTHING extends TypeKindButArray {
     protected def typeSymbol: Symbol = definitions.NothingClass
     def toIRType: Types.NothingType.type = Types.NothingType
 
@@ -141,7 +141,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   }
 
   /** Null */
-  case object NULL extends TypeKindButArray {
+  private case object NULL extends TypeKindButArray {
     protected def typeSymbol: Symbol = definitions.NullClass
     def toIRType: Types.NullType.type = Types.NullType
 
@@ -150,7 +150,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   }
 
   /** An object */
-  case class REFERENCE private[TypeKinds] (typeSymbol: Symbol) extends TypeKindButArray {
+  private case class REFERENCE private[TypeKinds] (typeSymbol: Symbol) extends TypeKindButArray {
     override def toString(): String = "REFERENCE(" + typeSymbol.fullName + ")"
     override def isReferenceType: Boolean = true
 
@@ -161,7 +161,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   }
 
   /** An array */
-  case class ARRAY private[TypeKinds] (elem: TypeKind) extends TypeKind {
+  private case class ARRAY private[TypeKinds] (elem: TypeKind) extends TypeKind {
     override def toString(): String = "ARRAY[" + elem + "]"
     override def isArrayType: Boolean = true
 
@@ -200,7 +200,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
    *  Call to .normalize fixes #3003 (follow type aliases). Otherwise,
    *  arrayOrClassType below would return ObjectReference.
    */
-  def toTypeKind(t: Type): TypeKind = t.normalize match {
+  private def toTypeKind(t: Type): TypeKind = t.normalize match {
     case ThisType(ArrayClass)            => ObjectReference
     case ThisType(sym)                   => newReference(sym)
     case SingleType(_, sym)              => primitiveOrRefType(sym)
