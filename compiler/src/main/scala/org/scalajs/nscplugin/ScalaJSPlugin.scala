@@ -32,7 +32,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   val name = "scalajs"
   val description = "Compile to JavaScript"
   val components = {
-    if (global.forScaladoc) {
+    if (global.isInstanceOf[doc.ScaladocGlobal]) {
       List[NscPluginComponent](PrepInteropComponent)
     } else {
       List[NscPluginComponent](PreTyperComponentComponent, PrepInteropComponent,

@@ -32,34 +32,33 @@ abstract class JSPrimitives {
   import global._
   import jsAddons._
   import definitions._
-  import rootMirror._
   import jsDefinitions._
   import scalaPrimitives._
 
-  val FirstJSPrimitiveCode = 300
+  final val FirstJSPrimitiveCode = 300
 
-  val DYNNEW = FirstJSPrimitiveCode + 1 // Instantiate a new JavaScript object
+  final val DYNNEW = FirstJSPrimitiveCode + 1 // Instantiate a new JavaScript object
 
-  val ARR_CREATE = DYNNEW + 1 // js.Array.apply (array literal syntax)
+  final val ARR_CREATE = DYNNEW + 1 // js.Array.apply (array literal syntax)
 
-  val TYPEOF = ARR_CREATE + 1 // typeof x
-  val JS_NATIVE = TYPEOF + 1  // js.native. Marker method. Fails if tried to be emitted.
+  final val TYPEOF = ARR_CREATE + 1 // typeof x
+  final val JS_NATIVE = TYPEOF + 1  // js.native. Marker method. Fails if tried to be emitted.
 
-  val UNITVAL = JS_NATIVE + 1 // () value, which is undefined
+  final val UNITVAL = JS_NATIVE + 1 // () value, which is undefined
 
-  val CONSTRUCTOROF = UNITVAL + 1                                // runtime.constructorOf(clazz)
-  val CREATE_INNER_JS_CLASS = CONSTRUCTOROF + 1                  // runtime.createInnerJSClass
-  val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
-  val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
-  val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
+  final val CONSTRUCTOROF = UNITVAL + 1                                // runtime.constructorOf(clazz)
+  final val CREATE_INNER_JS_CLASS = CONSTRUCTOROF + 1                  // runtime.createInnerJSClass
+  final val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
+  final val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
+  final val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
 
-  val IN = LINKING_INFO + 1   // js.special.in
-  val INSTANCEOF = IN + 1     // js.special.instanceof
-  val DELETE = INSTANCEOF + 1 // js.special.delete
-  val FORIN = DELETE + 1      // js.special.forin
-  val DEBUGGER = FORIN + 1    // js.special.debugger
+  final val IN = LINKING_INFO + 1   // js.special.in
+  final val INSTANCEOF = IN + 1     // js.special.instanceof
+  final val DELETE = INSTANCEOF + 1 // js.special.delete
+  final val FORIN = DELETE + 1      // js.special.forin
+  final val DEBUGGER = FORIN + 1    // js.special.debugger
 
-  val LastJSPrimitiveCode = DEBUGGER
+  final val LastJSPrimitiveCode = DEBUGGER
 
   /** Initialize the map of primitive methods (for GenJSCode) */
   def init(): Unit = initWithPrimitives(addPrimitive)

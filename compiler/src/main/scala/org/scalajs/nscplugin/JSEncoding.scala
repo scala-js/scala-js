@@ -35,18 +35,6 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   import global._
   import jsAddons._
 
-  /** Outer separator string (between parameter types) */
-  final val OuterSep = "__"
-
-  /** Inner separator character (replace dots in full names) */
-  final val InnerSep = "_"
-
-  /** Name given to the local Scala.js environment variable */
-  final val ScalaJSEnvironmentName = "ScalaJS"
-
-  /** Name given to all exported stuff of a class for DCE */
-  final val dceExportName = "<exported>"
-
   /** Name of the capture param storing the JS super class.
    *
    *  This is used by the dispatchers of exposed JS methods and properties of
@@ -57,9 +45,9 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
    *  the magic method inserted by `ExplicitLocalJS`, leveraging `lambdalift`
    *  to ensure that it is properly captured.
    *
-   *  Using this identifier is only allowed if the current local name scope was
-   *  created with [[withNewLocalNameScopeUsingJSSuperClassParamName]].
-   *  Otherwise, this name can clash with another local identifier.
+   *  Using this identifier is only allowed if it was reserved in the current
+   *  local name scope using [[reserveLocalName]]. Otherwise, this name can
+   *  clash with another local identifier.
    */
   final val JSSuperClassParamName = "$superClass"
 
@@ -68,8 +56,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   private val usedLocalNames = new ScopedVar[mutable.Set[String]]
   private val returnLabelName = new ScopedVar[VarBox[Option[String]]]
   private val localSymbolNames = new ScopedVar[mutable.Map[Symbol, String]]
-  private val isReserved =
-    Set("arguments", "eval", ScalaJSEnvironmentName)
+  private val isReserved = Set("arguments", "eval")
 
   def withNewLocalNameScope[A](body: => A): A = {
     withScopedVars(
@@ -181,48 +168,38 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     js.Ident(mangleJSName(encodedName), Some(sym.unexpandedName.decoded))
   }
 
-  def encodeMethodSym(sym: Symbol, reflProxy: Boolean = false)
-                     (implicit pos: Position): js.Ident = {
-    val (encodedName, paramsString) = encodeMethodNameInternal(sym, reflProxy)
-    js.Ident(encodedName + paramsString,
-        Some(sym.unexpandedName.decoded + paramsString))
-  }
+  def encodeMethodSym(sym: Symbol, reflProxy: Boolean = false)(
+      implicit pos: Position): js.Ident = {
 
-  def encodeMethodName(sym: Symbol, reflProxy: Boolean = false): String = {
-    val (encodedName, paramsString) = encodeMethodNameInternal(sym, reflProxy)
-    encodedName + paramsString
-  }
-
-  private def encodeMethodNameInternal(sym: Symbol,
-      reflProxy: Boolean): (String, String) = {
-    require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
+    require(sym.isMethod,
+        "encodeMethodSym called with non-method symbol: " + sym)
 
     def name = encodeMemberNameInternal(sym)
 
     def privateSuffix(owner: Symbol): String =
-      if (owner.isTraitOrInterface && !owner.isImplClass) encodeClassFullName(owner)
+      if (owner.isTraitOrInterface && !isImplClass(owner)) encodeClassFullName(owner)
       else owner.ancestors.count(!_.isTraitOrInterface).toString
 
     val encodedName = {
       if (sym.isClassConstructor)
-        "init" + InnerSep
+        "init_"
       else if (sym.isPrivate)
-        mangleJSName(name) + OuterSep + "p" + privateSuffix(sym.owner)
+        mangleJSName(name) + "__p" + privateSuffix(sym.owner)
       else
         mangleJSName(name)
     }
 
     val paramsString = makeParamsString(sym, reflProxy)
 
-    (encodedName, paramsString)
+    js.Ident(encodedName + paramsString,
+        Some(sym.unexpandedName.decoded + paramsString))
   }
 
   def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isStaticMember,
         "encodeStaticMemberSym called with non-static symbol: " + sym)
     js.Ident(
-        mangleJSName(encodeMemberNameInternal(sym)) +
-        makeParamsString(List(internalName(sym.tpe))),
+        mangleJSName(encodeMemberNameInternal(sym)) + "__" + internalName(sym.tpe),
         Some(sym.unexpandedName.decoded))
   }
 
@@ -300,16 +277,11 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
       else
         paramTypeNames :+ internalName(tpe.resultType)
     }
-    makeParamsString(paramAndResultTypeNames)
+    paramAndResultTypeNames.mkString("__", "__", "")
   }
 
-  private def makeParamsString(paramAndResultTypeNames: List[String]) =
-    paramAndResultTypeNames.mkString(OuterSep, OuterSep, "")
-
   /** Computes the internal name for a type. */
-  private def internalName(tpe: Type): String = internalName(toTypeKind(tpe))
-
-  private def internalName(kind: TypeKind): String = kind match {
+  private def internalName(tpe: Type): String = toTypeKind(tpe) match {
     case VOID                => "V"
     case kind: ValueTypeKind => kind.primitiveCharCode.toString()
     case NOTHING             => ir.Definitions.NothingClass

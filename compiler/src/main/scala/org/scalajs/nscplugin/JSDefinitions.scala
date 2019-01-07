@@ -49,14 +49,11 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val UnionClass = getRequiredClass("scala.scalajs.js.$bar")
 
     lazy val JSArrayClass = getRequiredClass("scala.scalajs.js.Array")
-      lazy val JSArray_apply  = getMemberMethod(JSArrayClass, newTermName("apply"))
-      lazy val JSArray_update = getMemberMethod(JSArrayClass, newTermName("update"))
 
     lazy val JSFunctionClasses     = (0 to 22) map (n => getRequiredClass("scala.scalajs.js.Function"+n))
     lazy val JSThisFunctionClasses = (0 to 21) map (n => getRequiredClass("scala.scalajs.js.ThisFunction"+n))
     lazy val AllJSFunctionClasses  = JSFunctionClasses ++ JSThisFunctionClasses
 
-    lazy val RuntimeExceptionClass    = requiredClass[RuntimeException]
     lazy val JavaScriptExceptionClass = getClassIfDefined("scala.scalajs.js.JavaScriptException")
 
     lazy val JSNameAnnotation          = getRequiredClass("scala.scalajs.js.annotation.JSName")
@@ -79,11 +76,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSTypeAnnot = getRequiredClass("scala.scalajs.js.annotation.internal.JSType")
     lazy val WasPublicBeforeTyperClass = getRequiredClass("scala.scalajs.js.annotation.internal.WasPublicBeforeTyper")
 
-    lazy val JSAnyTpe    = JSAnyClass.toTypeConstructor
-    lazy val JSObjectTpe = JSObjectClass.toTypeConstructor
-
-    lazy val JSFunctionTpes = JSFunctionClasses.map(_.toTypeConstructor)
-
     lazy val JSDynamicModule = JSDynamicClass.companionModule
       lazy val JSDynamic_newInstance = getMemberMethod(JSDynamicModule, newTermName("newInstance"))
     lazy val JSDynamicLiteral = getMemberModule(JSDynamicModule, newTermName("literal"))
@@ -103,12 +95,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val Special_forin = getMemberMethod(SpecialPackageModule, newTermName("forin"))
       lazy val Special_debugger = getMemberMethod(SpecialPackageModule, newTermName("debugger"))
 
-    lazy val BooleanReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.BooleanReflectiveCall")
-    lazy val CharacterReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.CharacterReflectiveCall")
-    lazy val NumberReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.NumberReflectiveCall")
-    lazy val IntegerReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.IntegerReflectiveCall")
-    lazy val LongReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.LongReflectiveCall")
-
     lazy val RuntimePackageModule = getPackageObject("scala.scalajs.runtime")
       lazy val Runtime_wrapJavaScriptException    = getMemberMethod(RuntimePackageModule, newTermName("wrapJavaScriptException"))
       lazy val Runtime_unwrapJavaScriptException  = getMemberMethod(RuntimePackageModule, newTermName("unwrapJavaScriptException"))
@@ -126,9 +112,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     // This is a def, since similar symbols (arrayUpdateMethod, etc.) are in runDefinitions
     // (rather than definitions) and we weren't sure if it is safe to make this a lazy val
     def ScalaRunTime_isArray: Symbol = getMemberMethod(ScalaRunTimeModule, newTermName("isArray")).suchThat(_.tpe.params.size == 2)
-
-    lazy val BoxesRunTime_boxToCharacter = getMemberMethod(BoxesRunTimeModule, newTermName("boxToCharacter"))
-    lazy val BoxesRunTime_unboxToChar    = getMemberMethod(BoxesRunTimeModule, newTermName("unboxToChar"))
 
     lazy val ReflectModule = getRequiredModule("scala.scalajs.reflect.Reflect")
       lazy val Reflect_registerLoadableModuleClass = getMemberMethod(ReflectModule, newTermName("registerLoadableModuleClass"))

@@ -29,12 +29,12 @@ import scala.collection.mutable
  *    class Inner extends ParentJSClass
  *  }
  *  }}}
- *  this phase creates a field `Inner$jsclass` in `Outer` to hold the JS class
+ *  this phase creates a field `Inner\$jsclass` in `Outer` to hold the JS class
  *  value for `Inner`. The rhs of that field is a call to a magic method, used
  *  to retain information that the back-end will need.
  *  {{{
  *  class Outer {
- *    <synthetic> val Inner$jsclass: AnyRef =
+ *    <synthetic> val Inner\$jsclass: AnyRef =
  *      createJSClass(classOf[Inner], js.constructorOf[ParentJSClass])
  *
  *    class Inner extends ParentJSClass
@@ -98,7 +98,7 @@ abstract class ExplicitInnerJS
     !clazz.isLocalToBlock && !clazz.isModuleClass && !clazz.isTrait
   }
 
-  /** Transforms the info of types to add the `Inner$jsclass` fields.
+  /** Transforms the info of types to add the `Inner\$jsclass` fields.
    *
    *  This method was inspired by `ExplicitOuter.transformInfo`.
    */

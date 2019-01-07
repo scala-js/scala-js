@@ -79,11 +79,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     val ArrowAssoc = newTermName("ArrowAssoc")
   }
 
-  private final val SuppressMissingJSGlobalDeprecationsMsg = {
-    "\n  (you can suppress this warning in 0.6.x by passing the option " +
-    "`-P:scalajs:suppressMissingJSGlobalDeprecations` to scalac)"
-  }
-
   class JSInteropTransformer(unit: CompilationUnit) extends Transformer {
 
     // Force evaluation of JSDynamicLiteral: Strangely, we are unable to find
@@ -137,7 +132,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
      *  Preparing exports, however, is a pure waste of time, which we cannot
      *  do properly anyway because of the aforementioned limitation.
      */
-    private def forScaladoc = global.forScaladoc
+    private def forScaladoc = global.isInstanceOf[doc.ScaladocGlobal]
 
     /** Whether to check that we have proper literals in some crucial places. */
     private def shouldCheckLiterals = !forScaladoc
