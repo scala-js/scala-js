@@ -424,7 +424,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       for (propName <- genPropertyName(name)) yield {
         val select = genPropSelect(classVar, propName)
         val zero =
-          if (ftpe == CharType) js.VarRef(js.Ident("$bC0"))
+          if (ftpe == CharType) js.StringLiteral("\u0000")
           else genZeroOf(ftpe)
         js.Assign(select, zero)
       }
@@ -727,7 +727,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
               if (isAncestorOfBoxedBooleanClass)
                 test = test || typeOfTest("boolean")
               if (isAncestorOfBoxedCharacterClass)
-                test = test || (obj instanceof envField("Char"))
+                test = test || genCallHelper("isChar", obj)
               if (isAncestorOfBoxedUnitClass)
                 test = test || (obj === js.Undefined())
 

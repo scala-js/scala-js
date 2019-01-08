@@ -2822,9 +2822,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
    *  Bytes, Shorts, Ints, Floats and Doubles all live in the same "space" for
    *  `===` comparison, since they all upcast as primitive numbers.
    *
-   *  Chars and Longs, however, never compare as `===`, since they are boxed
-   *  chars and instances of `RuntimeLong`, respectively---unless we are using
-   *  `BigInt`s for `Long`s, in which case those can be `===`.
+   *  Similarly, Chars and Strings live in the same space.
+   *
+   *  Longs, however, never compare as `===`, since they are instances of
+   *  `RuntimeLong`---unless we are using `BigInt`s for `Long`s, in which case
+   *  they can be `===`.
    */
   private def literal_===(lhs: Literal, rhs: Literal): Boolean = {
     object AnyNumLiteral {
@@ -2838,15 +2840,23 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       }
     }
 
+    object AnyStringLiteral {
+      def unapply(tree: Literal): Option[String] = tree match {
+        case CharLiteral(v)   => Some(v.toString)
+        case StringLiteral(v) => Some(v)
+        case _                => None
+      }
+    }
+
     (lhs, rhs) match {
-      case (BooleanLiteral(l), BooleanLiteral(r)) => l == r
-      case (StringLiteral(l), StringLiteral(r))   => l == r
-      case (ClassOf(l), ClassOf(r))               => l == r
-      case (AnyNumLiteral(l), AnyNumLiteral(r))   => l == r
-      case (LongLiteral(l), LongLiteral(r))       => l == r && !useRuntimeLong
-      case (Undefined(), Undefined())             => true
-      case (Null(), Null())                       => true
-      case _                                      => false
+      case (BooleanLiteral(l), BooleanLiteral(r))     => l == r
+      case (ClassOf(l), ClassOf(r))                   => l == r
+      case (AnyStringLiteral(l), AnyStringLiteral(r)) => l == r
+      case (AnyNumLiteral(l), AnyNumLiteral(r))       => l == r
+      case (LongLiteral(l), LongLiteral(r))           => l == r && !useRuntimeLong
+      case (Undefined(), Undefined())                 => true
+      case (Null(), Null())                           => true
+      case _                                          => false
     }
   }
 
@@ -4383,11 +4393,10 @@ private[optimizer] object OptimizerCore {
         RefinedType(tpe, isExact = false, isNullable = true)
       case NullType =>
         RefinedType(tpe, isExact = true, isNullable = true)
-      case NothingType | UndefType | BooleanType | CharType | LongType |
-          StringType | NoType =>
+      case NothingType | UndefType | BooleanType | LongType | NoType =>
         RefinedType(tpe, isExact = true, isNullable = false)
-      case ByteType | ShortType | IntType | FloatType | DoubleType |
-          RecordType(_) =>
+      case CharType | ByteType | ShortType | IntType | FloatType | DoubleType |
+          StringType | RecordType(_) =>
         /* At run-time, a byte will answer true to `x.isInstanceOf[Int]`,
          * therefore `byte`s must be non-exact. The same reasoning applies to
          * other primitive numberic types.

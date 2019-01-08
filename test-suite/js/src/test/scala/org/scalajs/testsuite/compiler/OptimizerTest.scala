@@ -167,6 +167,7 @@ class OptimizerTest {
     }
 
     test(true, false, false)
+    test(true, 'A', 'A')
     test(true, 5, 5)
     test(true, 5.toByte, 5.toByte)
     test(true, 5.toByte, 5)
@@ -174,9 +175,9 @@ class OptimizerTest {
     test(true, 5.0f, 5.toShort)
     test(true, classOf[String], classOf[String])
     test(true, "hello", "hello")
+    test(true, 'a', "a")
 
     test(false, false, true)
-    test(false, 'A', 'A') // they're boxed, so not ===
     test(false, 5, 6)
     test(false, 5.toByte, 6.toByte)
     test(false, 5.toByte, 5L)
@@ -186,6 +187,7 @@ class OptimizerTest {
     test(false, 65, 'A')
     test(false, classOf[String], classOf[Boolean])
     test(false, "hello", "world")
+    test(false, 'a', "b")
 
     /* When using BigInts for Longs, equal Longs will be ===, but not when
      * using RuntimeLongs since the instances will be different.

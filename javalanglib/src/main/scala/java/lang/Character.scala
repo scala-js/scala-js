@@ -34,10 +34,8 @@ class Character private ()
 
   @inline override def hashCode(): Int = charValue.toInt
 
-  @inline override def equals(that: Any): scala.Boolean = {
-    that.isInstanceOf[Character] &&
-    (charValue == that.asInstanceOf[Character].charValue)
-  }
+  @inline override def equals(that: Any): scala.Boolean =
+    this eq that.asInstanceOf[AnyRef]
 
   @inline override def toString(): String =
     Character.toString(charValue)
@@ -496,11 +494,8 @@ object Character {
   @inline private def lowSurrogateOf(codePoint: Int): Char =
     (0xdc00 | (codePoint & 0x3ff)).toChar
 
-  @inline def toString(c: scala.Char): String = {
-    js.Dynamic.global.String
-      .fromCharCode(c.toInt.asInstanceOf[js.Dynamic])
-      .asInstanceOf[String]
-  }
+  @inline def toString(c: scala.Char): String =
+    c.asInstanceOf[String]
 
   @inline def compare(x: scala.Char, y: scala.Char): Int =
     x - y

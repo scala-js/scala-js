@@ -69,7 +69,6 @@ private[emitter] object CoreJSLib {
       defineJSBuiltinsSnapshotsAndPolyfills()
       declareCachedL0()
       definePropertyName()
-      defineCharClass()
       defineRuntimeFunctions()
       defineDispatchFunctions()
       defineDoubleToIntLongConversions()
@@ -293,24 +292,6 @@ private[emitter] object CoreJSLib {
       )
     }
 
-    private def defineCharClass(): Unit = {
-      val ctor = {
-        val c = varRef("c")
-        MethodDef(static = false, Ident("constructor"), paramList(c), {
-          This() DOT "c" := c
-        })
-      }
-
-      val toStr = {
-        MethodDef(static = false, Ident("toString"), Nil, {
-          Return(Apply(genIdentBracketSelect(StringRef, "fromCharCode"),
-              (This() DOT "c") :: Nil))
-        })
-      }
-
-      buf += genClassDef(envFieldIdent("Char"), None, List(ctor, toStr))
-    }
-
     private def defineRuntimeFunctions(): Unit = {
       if (asInstanceOfs != CheckedBehavior.Unchecked) {
         // throwClassCastException
@@ -408,7 +389,11 @@ private[emitter] object CoreJSLib {
         buf += envFunctionDef("objectGetClass", paramList(instance), {
           Switch(typeof(instance), List(
               str("string") -> {
-                Return(genClassOf(BoxedStringClass))
+                If((instance DOT "length") === 1, {
+                  Return(genClassOf(BoxedCharacterClass))
+                }, {
+                  Return(genClassOf(BoxedStringClass))
+                })
               },
               str("number") -> {
                 Block(
@@ -449,14 +434,10 @@ private[emitter] object CoreJSLib {
               If(genIsInstanceOf(instance, ClassRef(BoxedLongClass)), {
                 Return(genClassOf(BoxedLongClass))
               }, {
-                If(genIsInstanceOf(instance, ClassRef(BoxedCharacterClass)), {
-                  Return(genClassOf(BoxedCharacterClass))
+                If(genIsScalaJSObject(instance), {
+                  Return(Apply(instance DOT classData DOT "getClassOf", Nil))
                 }, {
-                  If(genIsScalaJSObject(instance), {
-                    Return(Apply(instance DOT classData DOT "getClassOf", Nil))
-                  }, {
-                    Return(Null())
-                  })
+                  Return(Null())
                 })
               })
             })
@@ -577,17 +558,17 @@ private[emitter] object CoreJSLib {
 
       defineStandardDispatcher("equals__O__Z", varRef("rhs") :: Nil,
           Some(instance === rhs),
-          List(BoxedDoubleClass, BoxedLongClass, BoxedCharacterClass))
+          List(BoxedDoubleClass, BoxedLongClass))
 
       defineStandardDispatcher("hashCode__I", Nil,
           Some(genCallHelper("systemIdentityHashCode", instance)),
           List(BoxedStringClass, BoxedDoubleClass, BoxedBooleanClass,
-              BoxedUnitClass, BoxedLongClass, BoxedCharacterClass))
+              BoxedUnitClass, BoxedLongClass))
 
       defineStandardDispatcher("compareTo__O__I", varRef("rhs") :: Nil,
           None,
           List(BoxedStringClass, BoxedDoubleClass, BoxedBooleanClass,
-              BoxedLongClass, BoxedCharacterClass))
+              BoxedLongClass))
 
       defineStandardDispatcher("length__I", Nil, None,
           List(BoxedStringClass))
@@ -884,6 +865,12 @@ private[emitter] object CoreJSLib {
     private def defineIsHijackedBoxedClasses(): Unit = {
       val v = varRef("v")
 
+      locally {
+        buf += envFunctionDef("isChar", paramList(v), {
+          Return((typeof(v) === str("string")) && ((v DOT "length") === 1))
+        })
+      }
+
       def defineIsIntLike(name: String, specificTest: Tree): Unit = {
         buf += envFunctionDef(name, paramList(v), {
           Return((typeof(v) === str("number")) && specificTest &&
@@ -946,12 +933,15 @@ private[emitter] object CoreJSLib {
       locally {
         val c = varRef("c")
         buf += envFunctionDef("bC", paramList(c), {
-          Return(New(envField("Char"), c :: Nil))
+          Return(Apply(genIdentBracketSelect(StringRef, "fromCharCode"),
+              c :: Nil))
         })
-        buf += const(envField("bC0"), genCallHelper("bC", 0))
       }
 
       val v = varRef("v")
+
+      def charCodeAt0(s: Tree): Tree =
+        Apply(genIdentBracketSelect(s, "charCodeAt"), 0 :: Nil)
 
       if (asInstanceOfs != CheckedBehavior.Unchecked) {
         // Unboxes for everything
@@ -959,7 +949,7 @@ private[emitter] object CoreJSLib {
           Return(!(!(genCallHelper("asBoolean", v))))
         })
         buf += envFunctionDef("uC", paramList(v), {
-          Return(If(v === Null(), 0, genCallHelper("asChar", v) DOT "c"))
+          Return(If(v === Null(), 0, charCodeAt0(genCallHelper("asChar", v))))
         })
         buf += envFunctionDef("uB", paramList(v), {
           Return(genCallHelper("asByte", v) | 0)
@@ -986,7 +976,7 @@ private[emitter] object CoreJSLib {
       } else {
         // Unboxes for Chars and Longs
         buf += envFunctionDef("uC", paramList(v), {
-          Return(If(v === Null(), 0, v DOT "c"))
+          Return(If(v === Null(), 0, charCodeAt0(v)))
         })
         buf += envFunctionDef("uJ", paramList(v), {
           Return(If(v === Null(), genLongZero(), v))

@@ -1052,7 +1052,7 @@ class ExportsTest {
     assertThrows(classOf[Exception], foo.doBool("a"))
 
     assertThrows(classOf[Exception], foo.doChar(1))
-    assertThrows(classOf[Exception], foo.doChar("a"))
+    assertThrows(classOf[Exception], foo.doChar("abc"))
 
     assertThrows(classOf[Exception], foo.doByte(300))
     assertThrows(classOf[Exception], foo.doByte("a"))

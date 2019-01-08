@@ -133,7 +133,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
             className match {
               case BoxedUnitClass      => expr === Undefined()
               case BoxedBooleanClass   => typeof(expr) === "boolean"
-              case BoxedCharacterClass => expr instanceof envField("Char")
+              case BoxedCharacterClass => genCallHelper("isChar", expr)
               case BoxedByteClass      => genCallHelper("isByte", expr)
               case BoxedShortClass     => genCallHelper("isShort", expr)
               case BoxedIntegerClass   => genCallHelper("isInt", expr)

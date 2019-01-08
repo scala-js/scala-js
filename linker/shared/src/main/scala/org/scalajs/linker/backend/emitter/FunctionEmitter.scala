@@ -796,8 +796,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   args)
               }
 
-              val zero =
-                if (ftpe == CharType) js.VarRef(js.Ident("$bC0"))
+              val zero: js.Tree =
+                if (ftpe == CharType) js.StringLiteral("\u0000")
                 else genZeroOf(ftpe)
 
               val descriptor = js.ObjectConstr(List(
