@@ -281,22 +281,17 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   /** Computes the internal name for a type. */
-  private def internalName(tpe: Type): String = toTypeKind(tpe) match {
-    case VOID                => "V"
-    case kind: ValueTypeKind => kind.primitiveCharCode.toString()
-    case NOTHING             => ir.Definitions.NothingClass
-    case NULL                => ir.Definitions.NullClass
-    case REFERENCE(cls)      => encodeClassFullName(cls)
-    case ARRAY(elem)         => "A" + internalArrayElemName(elem)
-  }
+  private def internalName(tpe: Type): String = toTypeRef(tpe) match {
+    case jstpe.ClassRef("sr_Nothing$") => ir.Definitions.NothingClass
+    case jstpe.ClassRef("sr_Null$")    => ir.Definitions.NullClass
+    case jstpe.ClassRef(cls)           => cls
 
-  private def internalArrayElemName(kind: TypeKind): String = kind match {
-    case VOID                => "V"
-    case kind: ValueTypeKind => kind.primitiveCharCode.toString()
-    case NOTHING             => encodeClassFullName(definitions.RuntimeNothingClass)
-    case NULL                => encodeClassFullName(definitions.RuntimeNullClass)
-    case REFERENCE(cls)      => encodeClassFullName(cls)
-    case ARRAY(elem)         => "A" + internalArrayElemName(elem)
+    case jstpe.ArrayTypeRef(cls, depth) =>
+      val builder = new java.lang.StringBuilder(cls.length + depth)
+      for (i <- 0 until depth)
+        builder.append('A')
+      builder.append(cls)
+      builder.toString()
   }
 
   /** mangles names that are illegal in JavaScript by prepending a $

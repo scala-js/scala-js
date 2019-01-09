@@ -1022,28 +1022,24 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       case _ =>
         import ir.{Definitions => Defs}
-        (toTypeKind(tpe): @unchecked) match {
-          case VoidKind    => HijackedTypeTest(Defs.BoxedUnitClass, 0)
-          case BooleanKind => HijackedTypeTest(Defs.BoxedBooleanClass, 1)
-          case CharKind    => HijackedTypeTest(Defs.BoxedCharacterClass, 2)
-          case ByteKind    => HijackedTypeTest(Defs.BoxedByteClass, 3)
-          case ShortKind   => HijackedTypeTest(Defs.BoxedShortClass, 4)
-          case IntKind     => HijackedTypeTest(Defs.BoxedIntegerClass, 5)
-          case LongKind    => HijackedTypeTest(Defs.BoxedLongClass, 6)
-          case FloatKind   => HijackedTypeTest(Defs.BoxedFloatClass, 7)
-          case DoubleKind  => HijackedTypeTest(Defs.BoxedDoubleClass, 8)
+        (toIRType(tpe): @unchecked) match {
+          case jstpe.AnyType => NoTypeTest
 
-          case REFERENCE(cls) =>
-            cls match {
-              case BoxedUnitClass => HijackedTypeTest(Defs.BoxedUnitClass, 0)
-              case StringClass    => HijackedTypeTest(Defs.BoxedStringClass, 9)
-              case ObjectClass    => NoTypeTest
-              case _              =>
-                if (isJSType(cls)) NoTypeTest
-                else InstanceOfTypeTest(tpe)
-            }
+          case jstpe.NoType      => HijackedTypeTest(Defs.BoxedUnitClass, 0)
+          case jstpe.BooleanType => HijackedTypeTest(Defs.BoxedBooleanClass, 1)
+          case jstpe.CharType    => HijackedTypeTest(Defs.BoxedCharacterClass, 2)
+          case jstpe.ByteType    => HijackedTypeTest(Defs.BoxedByteClass, 3)
+          case jstpe.ShortType   => HijackedTypeTest(Defs.BoxedShortClass, 4)
+          case jstpe.IntType     => HijackedTypeTest(Defs.BoxedIntegerClass, 5)
+          case jstpe.LongType    => HijackedTypeTest(Defs.BoxedLongClass, 6)
+          case jstpe.FloatType   => HijackedTypeTest(Defs.BoxedFloatClass, 7)
+          case jstpe.DoubleType  => HijackedTypeTest(Defs.BoxedDoubleClass, 8)
 
-          case ARRAY(_) => InstanceOfTypeTest(tpe)
+          case jstpe.ClassType(Defs.BoxedUnitClass)   => HijackedTypeTest(Defs.BoxedUnitClass, 0)
+          case jstpe.ClassType(Defs.BoxedStringClass) => HijackedTypeTest(Defs.BoxedStringClass, 9)
+          case jstpe.ClassType(_)                     => InstanceOfTypeTest(tpe)
+
+          case jstpe.ArrayType(_) => InstanceOfTypeTest(tpe)
         }
     }
   }
