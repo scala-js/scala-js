@@ -34,8 +34,6 @@ private[emitter] final class JSGen(val semantics: Semantics,
     internalOptions: InternalOptions,
     mentionedDangerousGlobalRefs: Set[String]) {
 
-  import JSGen._
-
   val useClasses = esFeatures.useECMAScript2015
 
   val useArrowFunctions = esFeatures.useECMAScript2015
@@ -237,7 +235,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
       case irt.JSNativeLoadSpec.Import(module, path) =>
         val moduleValue = envModuleField(module)
         path match {
-          case DefaultExportName :: rest if moduleKind == ModuleKind.CommonJSModule =>
+          case "default" :: rest if moduleKind == ModuleKind.CommonJSModule =>
             val defaultField = genCallHelper("moduleDefault", moduleValue)
             WithGlobals(pathSelection(defaultField, rest))
           case _ =>
@@ -418,9 +416,4 @@ private[emitter] final class JSGen(val semantics: Semantics,
       implicit pos: Position): Function = {
     Function(useArrowFunctions, args, body)
   }
-}
-
-private object JSGen {
-  private final val ScalaJSEnvironmentName = "ScalaJS"
-  private final val DefaultExportName = "default"
 }
