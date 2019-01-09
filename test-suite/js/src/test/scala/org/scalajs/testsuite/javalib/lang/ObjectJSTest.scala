@@ -15,6 +15,8 @@ package org.scalajs.testsuite.javalib.lang
 import org.junit.Test
 import org.junit.Assert._
 
+import org.scalajs.testsuite.utils.AssertThrows._
+
 import scala.scalajs.js
 
 // scalastyle:off disallow.space.before.token
@@ -29,5 +31,14 @@ class ObjectJSTest {
   @Test def everything_should_cast_to_Object_successfully_including_null(): Unit = {
     (new js.Object: Any).asInstanceOf[Object]
     (js.Array(5)  : Any).asInstanceOf[Object]
+  }
+
+  @Test def cloneOnNonScalaObject(): Unit = {
+    class CloneOnNonScalaObject extends js.Object {
+      def boom(): Any = this.clone()
+    }
+
+    val obj = new CloneOnNonScalaObject()
+    assertThrows(classOf[CloneNotSupportedException], obj.boom())
   }
 }

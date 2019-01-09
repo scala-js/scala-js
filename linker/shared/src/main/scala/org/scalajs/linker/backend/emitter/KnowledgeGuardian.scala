@@ -97,7 +97,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
         "jl_ClassCastException",
         "jl_ArrayIndexOutOfBoundsException",
         "sjsr_UndefinedBehaviorError",
-        "js_CloneNotSupportedException"
+        "jl_CloneNotSupportedException"
     )
 
     val scalaClassDefs = linkingUnit.classDefs.filter(_.kind.isClass)
