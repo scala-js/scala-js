@@ -73,7 +73,7 @@ object Trees {
 
   final val isKeyword: Set[String] = Set(
       // Value keywords
-      "true", "false", "null", "undefined",
+      "true", "false", "null",
 
       // Current JavaScript keywords
       "break", "case", "catch", "continue", "debugger", "default", "delete",
@@ -86,12 +86,7 @@ object Trees {
 
       // Future reserved keywords in Strict mode
       "implements", "interface", "let", "package", "private", "protected",
-      "public", "static", "yield",
-
-      // Other reserved keywords found on the Web but not in the spec
-      "abstract", "boolean", "byte", "char", "double", "final", "float",
-      "goto", "int", "long", "native", "short", "synchronized", "throws",
-      "transient", "volatile"
+      "public", "static", "yield"
   )
 
   // Definitions
