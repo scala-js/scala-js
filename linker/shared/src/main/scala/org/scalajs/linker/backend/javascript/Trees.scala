@@ -45,10 +45,38 @@ object Trees {
 
   case class Ident(name: String, originalName: Option[String])(
       implicit val pos: Position) extends PropertyName {
+    /* The following test only checks that `name` conforms to the production
+     * `IdentifierName`. It will still allow keywords and other special
+     * identifiers to go through. It is not made stronger because the exact set
+     * of allowed identifier names varies according to the position in the
+     * grammar. For example, after a member selection `.`, *any*
+     * `IdentifierName` is allowed.
+     */
     requireValidIdent(name)
   }
 
   object Ident {
+    /** Set of identifier names that are reserved and cannot (or should not)
+     *  be declared as local variables.
+     *
+     *  This currently includes:
+     *
+     *  - All ECMAScript 2015 keywords;
+     *  - Identifier names that are treated as keywords in ECMAScript 2015
+     *    Strict Mode;
+     *  - The identifiers `arguments` and `eval`s, because they cannot be used
+     *    as `BindingIdentifier`s;
+     *  - `undefined`, because it would be really confusing.
+     *
+     *  It can be expanded in future versions of the linker.
+     */
+    val ReservedLocalNames: Set[String] = {
+      /* JSGlobalRef.ReservedWords already contains all keywords as well as
+       * `arguments`, per spec. Let's reuse them.
+       */
+      ir.Trees.JSGlobalRef.ReservedWords ++ Set("eval", "undefined")
+    }
+
     def apply(name: String)(implicit pos: Position): Ident =
       new Ident(name, Some(name))
   }

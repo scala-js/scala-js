@@ -5299,7 +5299,7 @@ private[optimizer] object OptimizerCore {
     case ApplyStatically(_, This(), _, _, Nil) =>
       true
     case ApplyStatic(_, _, Ident(methodName, _), This() :: Nil) =>
-      methodName.startsWith("$$init$__")
+      methodName.startsWith("$init$__")
     case _ =>
       false
   }
@@ -5421,8 +5421,14 @@ private[optimizer] object OptimizerCore {
 
   object FreshNameAllocator {
     private val InitialMap = {
-      val isReserved = isKeyword ++ Seq("arguments", "eval", "ScalaJS")
-      isReserved.map(_ -> 1).toMap
+      /* Since we're going to fresh-name a bunch of things, we might as well
+       * immediately banish reserved local names for JavaScript local
+       * variables. This will make the job of the emitter easier, as we will
+       * avoid using its second (pessimistic) naming attempt just to avoid the
+       * reserved names.
+       */
+      import org.scalajs.linker.backend.javascript.Trees.Ident.ReservedLocalNames
+      ReservedLocalNames.map(_ -> 1).toMap
     }
 
     final class Snapshot private[FreshNameAllocator] (

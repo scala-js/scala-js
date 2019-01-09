@@ -27,26 +27,26 @@ private[linker] object LongImpl {
   final val UNARY_- = "unary$und$minus" + SigUnary
   final val UNARY_~ = "unary$und$tilde" + SigUnary
 
-  final val + = "$$plus"    + SigBinary
-  final val - = "$$minus"   + SigBinary
-  final val * = "$$times"   + SigBinary
-  final val / = "$$div"     + SigBinary
-  final val % = "$$percent" + SigBinary
+  final val + = "$plus"    + SigBinary
+  final val - = "$minus"   + SigBinary
+  final val * = "$times"   + SigBinary
+  final val / = "$div"     + SigBinary
+  final val % = "$percent" + SigBinary
 
-  final val | = "$$bar" + SigBinary
-  final val & = "$$amp" + SigBinary
-  final val ^ = "$$up"  + SigBinary
+  final val | = "$bar" + SigBinary
+  final val & = "$amp" + SigBinary
+  final val ^ = "$up"  + SigBinary
 
-  final val <<  = "$$less$less"               + SigShift
-  final val >>> = "$$greater$greater$greater" + SigShift
-  final val >>  = "$$greater$greater"         + SigShift
+  final val <<  = "$less$less"               + SigShift
+  final val >>> = "$greater$greater$greater" + SigShift
+  final val >>  = "$greater$greater"         + SigShift
 
-  final val === = "equals"       + SigCompare
-  final val !== = "notEquals"    + SigCompare
-  final val <   = "$$less"       + SigCompare
-  final val <=  = "$$less$eq"    + SigCompare
-  final val >   = "$$greater"    + SigCompare
-  final val >=  = "$$greater$eq" + SigCompare
+  final val === = "equals"      + SigCompare
+  final val !== = "notEquals"   + SigCompare
+  final val <   = "$less"       + SigCompare
+  final val <=  = "$less$eq"    + SigCompare
+  final val >   = "$greater"    + SigCompare
+  final val >=  = "$greater$eq" + SigCompare
 
   final val toInt    = "toInt"    + "__I"
   final val toDouble = "toDouble" + "__D"

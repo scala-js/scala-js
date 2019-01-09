@@ -343,7 +343,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             var suffix = 0
             var result = name
             while (globalVarNames.contains(result) ||
-                localVarNames.contains(result)) {
+                localVarNames.contains(result) ||
+                js.Ident.ReservedLocalNames.contains(result)) {
               suffix += 1
               result = name + "$" + suffix
             }
@@ -377,7 +378,13 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     private def performOptimisticThenPessimisticRuns[A](
         body: => A): WithGlobals[A] = {
       val result = body
-      if (!isOptimisticNamingRun || !globalVarNames.exists(localVarNames)) {
+
+      def hadClashDuringOptimisticRun = {
+        globalVarNames.exists(localVarNames) ||
+        js.Ident.ReservedLocalNames.exists(localVarNames)
+      }
+
+      if (!isOptimisticNamingRun || !hadClashDuringOptimisticRun) {
         /* At this point, filter out the global refs that do not need to be
          * tracked across functions and classes.
          */

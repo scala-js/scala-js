@@ -62,32 +62,13 @@ object Trees {
     name.nonEmpty && {
       val c = name.head
       (c == '$' || c == '_' || c.isUnicodeIdentifierStart) &&
-      name.tail.forall(c => (c == '$') || c.isUnicodeIdentifierPart) &&
-      !isKeyword(name)
+      name.tail.forall(c => (c == '$') || c.isUnicodeIdentifierPart)
     }
   }
 
   @inline final def requireValidIdent(name: String): Unit = {
     require(isValidIdentifier(name), s"${name} is not a valid identifier")
   }
-
-  final val isKeyword: Set[String] = Set(
-      // Value keywords
-      "true", "false", "null",
-
-      // Current JavaScript keywords
-      "break", "case", "catch", "continue", "debugger", "default", "delete",
-      "do", "else", "finally", "for", "function", "if", "in", "instanceof",
-      "new", "return", "switch", "this", "throw", "try", "typeof", "var",
-      "void", "while", "with",
-
-      // Future reserved keywords
-      "class", "const", "enum", "export", "extends", "import", "super",
-
-      // Future reserved keywords in Strict mode
-      "implements", "interface", "let", "package", "private", "protected",
-      "public", "static", "yield"
-  )
 
   // Definitions
 
@@ -770,7 +751,42 @@ object Trees {
 
   case class JSGlobalRef(ident: Ident)(
       implicit val pos: Position) extends Tree {
+    require(!JSGlobalRef.ReservedWords.contains(ident.name))
+
     val tpe = AnyType
+  }
+
+  object JSGlobalRef {
+    /** Set of identifier names that can never be accessed from the global
+     *  scope.
+     *
+     *  This set includes and is limited to:
+     *
+     *  - All ECMAScript 2015 keywords;
+     *  - Identifier names that are treated as keywords in ECMAScript 2015
+     *    Strict Mode;
+     *  - The identifier `arguments`, because any attempt to refer to it always
+     *    refers to the magical `arguments` pseudo-array from the enclosing
+     *    function, rather than a global variable.
+     */
+    final val ReservedWords: Set[String] = Set(
+        "arguments", "break", "case", "catch", "class", "const", "continue",
+        "debugger", "default", "delete", "do", "else", "enum", "export",
+        "extends", "false", "finally", "for", "function", "if", "implements",
+        "import", "in", "instanceof", "interface", "let", "new", "null",
+        "package", "private", "protected", "public", "return", "static",
+        "super", "switch", "this", "throw", "true", "try", "typeof", "var",
+        "void", "while", "with", "yield"
+    )
+
+    /** Tests whether the given name is a valid identifier name that can be
+     *  accessed from the global scope.
+     *
+     *  This returns `true` iff
+     *  `isValidIdentifier(name) && !ReservedWords.contains(name)`.
+     */
+    def isValidGlobalRefName(name: String): Boolean =
+      isValidIdentifier(name) && !ReservedWords.contains(name)
   }
 
   case class JSLinkingInfo()(implicit val pos: Position) extends Tree {

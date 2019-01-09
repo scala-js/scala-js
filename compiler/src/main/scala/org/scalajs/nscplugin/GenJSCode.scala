@@ -3094,9 +3094,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val js.Ident(initName, origName) = encodeMethodSym(ctor)
       val newMethodName = initName match {
         case "init___" =>
-          "$new__" + encodedName
+          "new__" + encodedName
         case _ =>
-          "$new" + initName.stripPrefix("init_") + "__" + encodedName
+          "new" + initName.stripPrefix("init_") + "__" + encodedName
       }
       val newMethodIdent = js.Ident(newMethodName, origName)
 
@@ -5816,18 +5816,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case MaybeGlobalScope.GlobalScope(_) =>
           item match {
             case js.StringLiteral(value) =>
-              if (value == "arguments") {
-                reporter.error(pos,
-                    "Selecting a field of the global scope whose name is " +
-                    "`arguments` is not allowed." +
-                    GenericGlobalObjectInformationMsg)
-                js.JSGlobalRef(js.Ident("erroneous"))
-              } else if (js.isValidIdentifier(value)) {
+              if (js.JSGlobalRef.isValidGlobalRefName(value)) {
                 js.JSGlobalRef(js.Ident(value))
               } else {
                 reporter.error(pos,
                     "Selecting a field of the global scope whose name is " +
-                    "not a valid JavaScript identifier is not allowed." +
+                    "not a valid JavaScript identifier or is `arguments` is " +
+                    "not allowed." +
                     GenericGlobalObjectInformationMsg)
                 js.JSGlobalRef(js.Ident("erroneous"))
               }
@@ -5863,18 +5858,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case MaybeGlobalScope.GlobalScope(_) =>
           method match {
             case js.StringLiteral(value) =>
-              if (value == "arguments") {
-                reporter.error(pos,
-                    "Calling a method of the global scope whose name is " +
-                    "`arguments` is not allowed." +
-                    GenericGlobalObjectInformationMsg)
-                js.Undefined()
-              } else if (js.isValidIdentifier(value)) {
+              if (js.JSGlobalRef.isValidGlobalRefName(value)) {
                 js.JSFunctionApply(js.JSGlobalRef(js.Ident(value)), args)
               } else {
                 reporter.error(pos,
                     "Calling a method of the global scope whose name is not " +
-                    "a valid JavaScript identifier is not allowed." +
+                    "a valid JavaScript identifier or is `arguments` is not " +
+                    "allowed." +
                     GenericGlobalObjectInformationMsg)
                 js.Undefined()
               }

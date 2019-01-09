@@ -125,39 +125,39 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     s"""
-      |newSource1.scala:41: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier is not allowed.
+      |newSource1.scala:41: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val a = js.Dynamic.global.`not-a-valid-identifier-var`
       |                           ^
-      |newSource1.scala:42: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier is not allowed.
+      |newSource1.scala:42: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        js.Dynamic.global.`not-a-valid-identifier-var` = 3
       |                   ^
-      |newSource1.scala:43: error: Calling a method of the global scope whose name is not a valid JavaScript identifier is not allowed.
+      |newSource1.scala:43: error: Calling a method of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val b = js.Dynamic.global.`not-a-valid-identifier-def`()
       |                                                              ^
-      |newSource1.scala:45: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier is not allowed.
+      |newSource1.scala:45: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val c = SomeGlobalScope.`not-a-valid-identifier-var`
       |                                ^
-      |newSource1.scala:46: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier is not allowed.
+      |newSource1.scala:46: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        SomeGlobalScope.`not-a-valid-identifier-var` = 3
       |                                                     ^
-      |newSource1.scala:47: error: Calling a method of the global scope whose name is not a valid JavaScript identifier is not allowed.
+      |newSource1.scala:47: error: Calling a method of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val d = SomeGlobalScope.`not-a-valid-identifier-def`()
       |                                                            ^
-      |newSource1.scala:49: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier is not allowed.
+      |newSource1.scala:49: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val e = SomeGlobalScope.bracketSelect("not-a-valid-identifier-var")
       |                                             ^
-      |newSource1.scala:50: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier is not allowed.
+      |newSource1.scala:50: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        SomeGlobalScope.bracketUpdate("not-a-valid-identifier-var", 3)
       |                                     ^
-      |newSource1.scala:51: error: Calling a method of the global scope whose name is not a valid JavaScript identifier is not allowed.
+      |newSource1.scala:51: error: Calling a method of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val f = SomeGlobalScope.bracketCall("not-a-valid-identifier-def")(4)
       |                                                                         ^
@@ -304,27 +304,27 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     s"""
-      |newSource1.scala:41: error: Selecting a field of the global scope whose name is `arguments` is not allowed.
+      |newSource1.scala:41: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val a = js.Dynamic.global.arguments
       |                           ^
-      |newSource1.scala:42: error: Selecting a field of the global scope whose name is `arguments` is not allowed.
+      |newSource1.scala:42: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        js.Dynamic.global.arguments = null
       |                   ^
-      |newSource1.scala:43: error: Calling a method of the global scope whose name is `arguments` is not allowed.
+      |newSource1.scala:43: error: Calling a method of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val b = js.Dynamic.global.arguments(5)
       |                                           ^
-      |newSource1.scala:45: error: Selecting a field of the global scope whose name is `arguments` is not allowed.
+      |newSource1.scala:45: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val c = SomeGlobalScope.arguments
       |                                ^
-      |newSource1.scala:46: error: Selecting a field of the global scope whose name is `arguments` is not allowed.
+      |newSource1.scala:46: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        SomeGlobalScope.arguments = null
       |                                  ^
-      |newSource1.scala:47: error: Calling a method of the global scope whose name is `arguments` is not allowed.
+      |newSource1.scala:47: error: Calling a method of the global scope whose name is not a valid JavaScript identifier or is `arguments` is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val d = SomeGlobalScope.arguments2(5)
       |                                          ^
