@@ -1,10 +1,14 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2013, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
-** /____/\___/_/ |_/____/_/ | |                                         **
-**                          |/                                          **
-\*                                                                      */
+/*
+ * Scala (https://www.scala-lang.org)
+ *
+ * Copyright EPFL and Lightbend, Inc.
+ *
+ * Licensed under Apache License 2.0
+ * (http://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
 
 package scala.concurrent
 
@@ -26,21 +30,20 @@ import scala.util.Try
  * and an implicit `ExecutionContext`. The implicit `ExecutionContext`
  * will be used to execute the callback.
  *
- * It is possible to simply import
+ * While it is possible to simply import
  * `scala.concurrent.ExecutionContext.Implicits.global` to obtain an
- * implicit `ExecutionContext`. This global context is a reasonable
- * default thread pool.
- *
- * However, application developers should carefully consider where they
- * want to set policy; ideally, one place per application (or per
- * logically-related section of code) will make a decision about
- * which `ExecutionContext` to use. That is, you might want to avoid
- * hardcoding `scala.concurrent.ExecutionContext.Implicits.global` all
- * over the place in your code.
- * One approach is to add `(implicit ec: ExecutionContext)`
- * to methods which need an `ExecutionContext`. Then import a specific
- * context in one place for the entire application or module,
- * passing it implicitly to individual methods.
+ * implicit `ExecutionContext`, application developers should carefully
+ * consider where they want to set execution policy;
+ * ideally, one place per application—or per logically related section of code—
+ * will make a decision about which `ExecutionContext` to use.
+ * That is, you will mostly want to avoid hardcoding, especially via an import,
+ * `scala.concurrent.ExecutionContext.Implicits.global`.
+ * The recommended approach is to add `(implicit ec: ExecutionContext)` to methods,
+ * or class constructor parameters, which need an `ExecutionContext`.
+ * 
+ * Then locally import a specific `ExecutionContext` in one place for the entire
+ * application or module, passing it implicitly to individual methods.
+ * Alternatively define a local implicit val with the required `ExecutionContext`.
  *
  * A custom `ExecutionContext` may be appropriate to execute code
  * which blocks on IO or performs long-running computations.
@@ -56,8 +59,17 @@ import scala.util.Try
  * Application callback execution can be configured separately.
  */
 @implicitNotFound("""Cannot find an implicit ExecutionContext. You might pass
-an (implicit ec: ExecutionContext) parameter to your method
-or import scala.concurrent.ExecutionContext.Implicits.global.""")
+an (implicit ec: ExecutionContext) parameter to your method.
+
+The ExecutionContext is used to configure how and on which
+thread pools Futures will run, so the specific ExecutionContext
+that is selected is important.
+
+If your application does not define an ExecutionContext elsewhere,
+consider using Scala's global ExecutionContext by defining
+the following:
+
+implicit val ec = ExecutionContext.global""")
 trait ExecutionContext {
 
   /** Runs a block of code on this execution context.
@@ -72,22 +84,25 @@ trait ExecutionContext {
    */
   def reportFailure(@deprecatedName('t) cause: Throwable): Unit
 
-  /** Prepares for the execution of a task. Returns the prepared execution context.
-   *
-   *  `prepare` should be called at the site where an `ExecutionContext` is received (for
-   *  example, through an implicit method parameter). The returned execution context may
-   *  then be used to execute tasks. The role of `prepare` is to save any context relevant
-   *  to an execution's ''call site'', so that this context may be restored at the
-   *  ''execution site''. (These are often different: for example, execution may be
-   *  suspended through a `Promise`'s future until the `Promise` is completed, which may
-   *  be done in another thread, on another stack.)
-   *
-   *  Note: a valid implementation of `prepare` is one that simply returns `this`.
-   *
-   *  @return the prepared execution context
-   */
+  /** Prepares for the execution of a task. Returns the prepared
+     *  execution context. The recommended implementation of
+     *  `prepare` is to return `this`.
+     *
+     *  This method should no longer be overridden or called. It was
+     *  originally expected that `prepare` would be called by
+     *  all libraries that consume ExecutionContexts, in order to
+     *  capture thread local context. However, this usage has proven
+     *  difficult to implement in practice and instead it is
+     *  now better to avoid using `prepare` entirely.
+     *
+     *  Instead, if an `ExecutionContext` needs to capture thread
+     *  local context, it should capture that context when it is
+     *  constructed, so that it doesn't need any additional
+     *  preparation later.
+     */
+  @deprecated("preparation of ExecutionContexts will be removed", "2.12.0")
+  // This cannot be removed until there is a suitable replacement
   def prepare(): ExecutionContext = this
-
 }
 
 /**
@@ -110,13 +125,22 @@ object ExecutionContext {
    * The explicit global `ExecutionContext`. Invoke `global` when you want to provide the global
    * `ExecutionContext` explicitly.
    *
-   * The default `ExecutionContext` implementation is backed by a work-stealing thread pool. By default,
-   * the thread pool uses a target number of worker threads equal to the number of
-   * [[https://docs.oracle.com/javase/8/docs/api/java/lang/Runtime.html#availableProcessors-- available processors]].
+   * The default `ExecutionContext` implementation is backed by a work-stealing thread pool.
+   * It can be configured via the following [[scala.sys.SystemProperties]]:
+   *
+   * `scala.concurrent.context.minThreads` = defaults to "1"
+   * `scala.concurrent.context.numThreads` = defaults to "x1" (i.e. the current number of available processors * 1)
+   * `scala.concurrent.context.maxThreads` = defaults to "x1" (i.e. the current number of available processors * 1)
+   * `scala.concurrent.context.maxExtraThreads` = defaults to "256"
+   *
+   * The pool size of threads is then `numThreads` bounded by `minThreads` on the lower end and `maxThreads` on the high end.
+   *
+   * The `maxExtraThreads` is the maximum number of extra threads to have at any given time to evade deadlock,
+   * see [[scala.concurrent.BlockContext]].
    *
    * @return the global `ExecutionContext`
    */
-  def global: ExecutionContextExecutor = Implicits.global
+  def global: ExecutionContextExecutor = Implicits.global.asInstanceOf[ExecutionContextExecutor]
 
   object Implicits {
     /**

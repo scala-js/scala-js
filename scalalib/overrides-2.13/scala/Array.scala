@@ -1,10 +1,14 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2013, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
-** /____/\___/_/ |_/____/_/ | |                                         **
-**                          |/                                          **
-\*                                                                      */
+/*
+ * Scala (https://www.scala-lang.org)
+ *
+ * Copyright EPFL and Lightbend, Inc.
+ *
+ * Licensed under Apache License 2.0
+ * (http://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
 
 package scala
 
@@ -337,14 +341,17 @@ object Array {
    *  `elem`.
    */
   def fill[T: ClassTag](n: Int)(elem: => T): Array[T] = {
-    val b = newBuilder[T]
-    b.sizeHint(n)
-    var i = 0
-    while (i < n) {
-      b += elem
-      i += 1
+    if (n <= 0) {
+      empty[T]
+    } else {
+      val array = new Array[T](n)
+      var i = 0
+      while (i < n) {
+        array(i) = elem
+        i += 1
+      }
+      array
     }
-    b.result()
   }
 
   /** Returns a two-dimensional array that contains the results of some element
@@ -401,14 +408,17 @@ object Array {
    *  @return A traversable consisting of elements `f(0),f(1), ..., f(n - 1)`
    */
   def tabulate[T: ClassTag](n: Int)(f: Int => T): Array[T] = {
-    val b = newBuilder[T]
-    b.sizeHint(n)
-    var i = 0
-    while (i < n) {
-      b += f(i)
-      i += 1
+    if (n <= 0) {
+      empty[T]
+    } else {
+      val array = new Array[T](n)
+      var i = 0
+      while (i < n) {
+        array(i) = f(i)
+        i += 1
+      }
+      array
     }
-    b.result()
   }
 
   /** Returns a two-dimensional array containing values of a given function
@@ -475,15 +485,16 @@ object Array {
    */
   def range(start: Int, end: Int, step: Int): Array[Int] = {
     if (step == 0) throw new IllegalArgumentException("zero step")
-    val b = newBuilder[Int]
-    b.sizeHint(immutable.Range.count(start, end, step, isInclusive = false))
+    val array = new Array[Int](immutable.Range.count(start, end, step, isInclusive = false))
 
+    var n = 0
     var i = start
     while (if (step < 0) end < i else i < end) {
-      b += i
+      array(n) = i
       i += step
+      n += 1
     }
-    b.result()
+    array
   }
 
   /** Returns an array containing repeated applications of a function to a start value.
@@ -494,21 +505,21 @@ object Array {
    *  @return      the array returning `len` values in the sequence `start, f(start), f(f(start)), ...`
    */
   def iterate[T: ClassTag](start: T, len: Int)(f: T => T): Array[T] = {
-    val b = newBuilder[T]
-
     if (len > 0) {
-      b.sizeHint(len)
+      val array = new Array[T](len)
       var acc = start
       var i = 1
-      b += acc
+      array(0) = acc
 
       while (i < len) {
         acc = f(acc)
+        array(i) = acc
         i += 1
-        b += acc
       }
+      array
+    } else {
+      empty[T]
     }
-    b.result()
   }
 
   def equals(xs: Array[AnyRef], ys: Array[AnyRef]): Boolean = {
