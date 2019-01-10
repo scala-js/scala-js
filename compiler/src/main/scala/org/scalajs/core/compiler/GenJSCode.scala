@@ -158,7 +158,9 @@ abstract class GenJSCode extends plugins.PluginComponent
     private val paramAccessorLocals = new ScopedVar(Map.empty[Symbol, js.ParamDef])
 
     private class CancelGenMethodAsJSFunction(message: String)
-        extends Throwable(message) with scala.util.control.ControlThrowable
+        extends scala.util.control.ControlThrowable {
+      override def getMessage(): String = message
+    }
 
     // Rewriting of anonymous function classes ---------------------------------
 
