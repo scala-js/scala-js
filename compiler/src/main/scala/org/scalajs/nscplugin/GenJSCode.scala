@@ -5857,12 +5857,13 @@ abstract class GenJSCode extends plugins.PluginComponent
   protected lazy val isHijackedClass: Set[Symbol] = {
     /* This list is a duplicate of ir.Definitions.HijackedClasses, but
      * with global.Symbol's instead of IR encoded names as Strings.
-     * We also add HackedStringClass if it is defined.
+     * We also add java.lang.Void, which BoxedUnit "erases" to, and
+     * HackedStringClass if it is defined.
      */
     val s = Set[Symbol](
-        BoxedUnitClass, BoxedBooleanClass, BoxedCharacterClass, BoxedByteClass,
-        BoxedShortClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass,
-        BoxedDoubleClass, StringClass
+        JavaLangVoidClass, BoxedUnitClass, BoxedBooleanClass,
+        BoxedCharacterClass, BoxedByteClass, BoxedShortClass, BoxedIntClass,
+        BoxedLongClass, BoxedFloatClass, BoxedDoubleClass, StringClass
     )
     if (HackedStringClass == NoSymbol) s
     else s + HackedStringClass

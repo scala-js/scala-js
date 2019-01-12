@@ -28,7 +28,7 @@ object Types {
    *
    *  In fact, there are two `Type`s that do not have any real equivalent in
    *  type refs: [[StringType]] and [[UndefType]], as they refer to the
-   *  non-null variants of `java.lang.String` and `scala.runtime.BoxedUnit`,
+   *  non-null variants of `java.lang.String` and `java.lang.Void`,
    *  respectively.
    */
   abstract sealed class Type {

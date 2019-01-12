@@ -692,8 +692,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         NonObjectAncestorsOfBoxedBooleanClass.contains(className)
       val isAncestorOfBoxedCharacterClass =
         NonObjectAncestorsOfBoxedCharacterClass.contains(className)
-      val isAncestorOfBoxedUnitClass =
-        NonObjectAncestorsOfBoxedUnitClass.contains(className)
 
       val objParam = js.ParamDef(js.Ident("obj"), rest = false)
       val obj = objParam.ref
@@ -728,8 +726,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
                 test = test || typeOfTest("boolean")
               if (isAncestorOfBoxedCharacterClass)
                 test = test || (obj instanceof envField("Char"))
-              if (isAncestorOfBoxedUnitClass)
-                test = test || (obj === js.Undefined())
 
               !(!test)
           }
@@ -1245,8 +1241,6 @@ private[emitter] object ClassEmitter {
     Set(NumberClass, ComparableClass, SerializableClass)
   private val NonObjectAncestorsOfBoxedBooleanClass =
     Set(ComparableClass, SerializableClass)
-  private val NonObjectAncestorsOfBoxedUnitClass =
-    Set(SerializableClass)
 
   private[emitter] val AncestorsOfHijackedClasses = Set(
       Definitions.ObjectClass,

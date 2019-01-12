@@ -240,6 +240,13 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
       ir.Definitions.BoxedStringClass
     } else if (sym == jsDefinitions.HackedStringModClass) {
       "jl_String$"
+    } else if (sym == definitions.BoxedUnitClass) {
+      // Rewire scala.runtime.BoxedUnit to java.lang.Void, as the IR expects
+      // BoxedUnit$ is a JVM artifact
+      ir.Definitions.BoxedUnitClass
+    } else if (sym == jsDefinitions.BoxedUnitModClass) {
+      // Same for its module class
+      "jl_Void$"
     } else {
       ir.Definitions.encodeClassName(
           sym.fullName + (if (needsModuleClassSuffix(sym)) "$" else ""))

@@ -18,8 +18,7 @@ import org.junit.Assert._
 import java.io.Serializable
 
 class SerializableTest {
-  @Test def boxedClassesAreSerializable(): Unit = {
-    assertTrue("Unit", classOf[Serializable].isAssignableFrom(classOf[scala.runtime.BoxedUnit]))
+  @Test def nonUnitBoxedClassesAreSerializable(): Unit = {
     assertTrue("Boolean", classOf[Serializable].isAssignableFrom(classOf[java.lang.Boolean]))
     assertTrue("Character", classOf[Serializable].isAssignableFrom(classOf[java.lang.Character]))
     assertTrue("Byte", classOf[Serializable].isAssignableFrom(classOf[java.lang.Byte]))
@@ -31,8 +30,7 @@ class SerializableTest {
     assertTrue("String", classOf[Serializable].isAssignableFrom(classOf[java.lang.String]))
   }
 
-  @Test def boxedPrimitiveValuesAreSerializable(): Unit = {
-    assertTrue("Unit", ((): Any).isInstanceOf[Serializable])
+  @Test def nonUnitBoxedPrimitiveValuesAreSerializable(): Unit = {
     assertTrue("Boolean", (true: Any).isInstanceOf[Serializable])
     assertTrue("Char", ('Z': Any).isInstanceOf[Serializable])
     assertTrue("Byte", (1.toByte: Any).isInstanceOf[Serializable])
