@@ -1221,9 +1221,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
       case ModuleInitializer.MainMethodWithArgs(moduleClassName, mainMethodName,
           args) =>
-        val stringArrayTpe = ArrayType(ArrayTypeRef(BoxedStringClass, 1))
+        val stringArrayTypeRef = ArrayTypeRef(BoxedStringClass, 1)
         js.Apply(genLoadModule(moduleClassName) DOT mainMethodName,
-            genArrayValue(stringArrayTpe, args.map(js.StringLiteral(_))) :: Nil)
+            genArrayValue(stringArrayTypeRef, args.map(js.StringLiteral(_))) :: Nil)
     }
   }
 

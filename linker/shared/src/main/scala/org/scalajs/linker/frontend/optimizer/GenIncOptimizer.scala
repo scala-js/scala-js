@@ -620,14 +620,14 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         case Assign(Select(This(), _), rhs) => isTriviallySideEffectFree(rhs)
 
         // Mixin constructor, 2.11
-        case ApplyStatic(ClassType(cls), methodName, List(This())) =>
+        case ApplyStatic(ClassRef(cls), methodName, List(This())) =>
           statics(cls).methods(methodName.name).originalDef.body.exists {
             case Skip() => true
             case _      => false
           }
 
         // Mixin constructor, 2.12+
-        case ApplyStatically(This(), ClassType(cls), methodName, Nil)
+        case ApplyStatically(This(), ClassRef(cls), methodName, Nil)
             if !classes.contains(cls) =>
           // Since cls is not in classes, it must be a default method call.
           defaults(cls).methods.get(methodName.name) exists { methodDef =>
@@ -638,7 +638,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
           }
 
         // Super class constructor.
-        case ApplyStatically(This(), ClassType(cls), methodName, args) =>
+        case ApplyStatically(This(), ClassRef(cls), methodName, args) =>
           Definitions.isConstructorName(methodName.name) &&
           args.forall(isTriviallySideEffectFree) &&
           impl.owner.asInstanceOf[Class].superClass.exists { superCls =>

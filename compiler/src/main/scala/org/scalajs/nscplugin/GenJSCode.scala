@@ -2235,8 +2235,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       val exportInfos = jsInterop.staticFieldInfoOf(sym)
       (exportInfos.head.destination: @unchecked) match {
         case ExportDestination.TopLevel =>
-          val cls = jstpe.ClassType(encodeClassFullName(sym.owner))
-          js.SelectStatic(cls, encodeFieldSym(sym))(jstpe.AnyType)
+          js.SelectStatic(encodeClassRef(sym.owner), encodeFieldSym(sym))(
+              jstpe.AnyType)
 
         case ExportDestination.Static =>
           val exportInfo = exportInfos.head
@@ -2635,7 +2635,8 @@ abstract class GenJSCode extends plugins.PluginComponent
             currentMethodSym.isClassConstructor) {
           isModuleInitialized.value = true
           val thisType = jstpe.ClassType(encodeClassFullName(currentClassSym))
-          val initModule = js.StoreModule(thisType, js.This()(thisType))
+          val initModule = js.StoreModule(encodeClassRef(currentClassSym),
+              js.This()(thisType))
           js.Block(superCall, initModule)
         } else {
           superCall
@@ -2679,7 +2680,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         genPrimitiveJSNew(tree)
       } else {
         toTypeRef(tpe) match {
-          case jstpe.ClassRef(cls) =>
+          case cls: jstpe.ClassRef =>
             genNew(cls, ctor, genActualArgs(ctor, args))
           case arr: jstpe.ArrayTypeRef =>
             genNewArray(arr, args.map(genExpr))
@@ -2850,12 +2851,11 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     def genApplyMethodStatically(receiver: js.Tree, method: Symbol,
         arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
-      val className = encodeClassFullName(method.owner)
       val methodIdent = encodeMethodSym(method)
       val resultType =
         if (method.isClassConstructor) jstpe.NoType
         else toIRType(method.tpe.resultType)
-      js.ApplyStatically(receiver, jstpe.ClassType(className),
+      js.ApplyStatically(receiver, encodeClassRef(method.owner),
           methodIdent, arguments)(resultType)
     }
 
@@ -2879,8 +2879,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     def genApplyStatic(method: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      js.ApplyStatic(jstpe.ClassType(encodeClassFullName(method.owner)),
-          encodeMethodSym(method), arguments)(
+      js.ApplyStatic(encodeClassRef(method.owner), encodeMethodSym(method),
+          arguments)(
           toIRType(method.tpe.resultType))
     }
 
@@ -3000,13 +3000,13 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): js.Tree = {
       assert(!isJSFunctionDef(clazz),
           s"Trying to instantiate a JS function def $clazz")
-      genNew(encodeClassFullName(clazz), ctor, arguments)
+      genNew(encodeClassRef(clazz), ctor, arguments)
     }
 
     /** Gen JS code for a call to a Scala class constructor. */
-    def genNew(cls: String, ctor: Symbol, arguments: List[js.Tree])(
+    def genNew(cls: jstpe.ClassRef, ctor: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      js.New(jstpe.ClassType(cls), encodeMethodSym(ctor), arguments)
+      js.New(cls, encodeMethodSym(ctor), arguments)
     }
 
     /** Gen JS code for a call to a constructor of a hijacked class.
@@ -3044,7 +3044,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           " but array has only " + arrayTypeRef.dimensions +
           " dimension(s)")
 
-      js.NewArray(jstpe.ArrayType(arrayTypeRef), arguments)
+      js.NewArray(arrayTypeRef, arguments)
     }
 
     /** Gen JS code for an array literal.
@@ -3054,7 +3054,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val ArrayValue(tpt @ TypeTree(), elems) = tree
 
       val arrayTypeRef = toTypeRef(tree.tpe).asInstanceOf[jstpe.ArrayTypeRef]
-      js.ArrayValue(jstpe.ArrayType(arrayTypeRef), elems map genExpr)
+      js.ArrayValue(arrayTypeRef, elems map genExpr)
     }
 
     /** Gen JS code for a Match, i.e., a switch-able pattern match.
@@ -4326,7 +4326,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 fakeNewInstances.flatMap(genCaptureValuesFromFakeNewInstance(_))
               }
             }
-            js.CreateJSClass(jstpe.ClassRef(encodeClassFullName(classSym)),
+            js.CreateJSClass(encodeClassRef(classSym),
                 superClassValue :: captureValues)
           }
 
@@ -4668,14 +4668,14 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): js.Tree = {
       assert(!isStaticModule(sym) && !sym.isTraitOrInterface,
           s"genPrimitiveJSClass called with non-class $sym")
-      js.LoadJSConstructor(jstpe.ClassType(encodeClassFullName(sym)))
+      js.LoadJSConstructor(encodeClassRef(sym))
     }
 
     /** Gen JS code to create the JS class of an inner JS module class. */
     private def genCreateInnerJSModule(sym: Symbol,
         jsSuperClassValue: js.Tree, args: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      js.JSNew(js.CreateJSClass(jstpe.ClassRef(encodeClassFullName(sym)),
+      js.JSNew(js.CreateJSClass(encodeClassRef(sym),
           jsSuperClassValue :: args), Nil)
     }
 
@@ -5338,7 +5338,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
 
         val samWrapperClassName = synthesizeSAMWrapper(funSym, sam)
-        js.New(jstpe.ClassType(samWrapperClassName), js.Ident("init___O"),
+        js.New(jstpe.ClassRef(samWrapperClassName), js.Ident("init___O"),
             List(closure))
       }
     }
@@ -5372,7 +5372,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                     js.Select(js.This()(classType), fFieldIdent)(jstpe.AnyType),
                     fParamDef.ref),
                 js.ApplyStatically(js.This()(classType),
-                    jstpe.ClassType(ir.Definitions.ObjectClass),
+                    jstpe.ClassRef(ir.Definitions.ObjectClass),
                     js.Ident("init___"),
                     Nil)(jstpe.NoType)))))(
             js.OptimizerHints.empty, None)
@@ -5571,7 +5571,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       if (sym.hasAnnotation(JSGlobalScopeAnnotation)) {
         MaybeGlobalScope.GlobalScope(pos)
       } else {
-        val cls = jstpe.ClassType(encodeClassFullName(sym))
+        val cls = encodeClassRef(sym)
         val tree =
           if (isJSType(sym)) js.LoadJSModule(cls)
           else js.LoadModule(cls)

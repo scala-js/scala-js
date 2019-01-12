@@ -60,7 +60,7 @@ object JavaLangObject {
           IntType,
           Some {
             Apply(
-              LoadModule(ClassType("jl_System$")),
+              LoadModule(ClassRef("jl_System$")),
               Ident("identityHashCode__O__I", Some("identityHashCode")),
               List(This()(ThisType)))(IntType)
           })(OptimizerHints.empty, None),
@@ -89,11 +89,11 @@ object JavaLangObject {
           AnyType,
           Some {
             If(IsInstanceOf(This()(ThisType), ClassRef("jl_Cloneable")), {
-              Apply(LoadModule(ClassType("jl_ObjectClone$")),
+              Apply(LoadModule(ClassRef("jl_ObjectClone$")),
                   Ident("clone__O__O", Some("clone")),
                   List(This()(ThisType)))(AnyType)
             }, {
-              Throw(New(ClassType("jl_CloneNotSupportedException"),
+              Throw(New(ClassRef("jl_CloneNotSupportedException"),
                 Ident("init___", Some("<init>")), Nil))
             })(AnyType)
           })(OptimizerHints.empty.withInline(true), None),
@@ -117,7 +117,7 @@ object JavaLangObject {
               StringLiteral("@")),
               // +
               Apply(
-                LoadModule(ClassType("jl_Integer$")),
+                LoadModule(ClassRef("jl_Integer$")),
                 Ident("toHexString__I__T"),
                 List(Apply(This()(ThisType), Ident("hashCode__I"), Nil)(IntType)))(
                 ClassType(BoxedStringClass)))

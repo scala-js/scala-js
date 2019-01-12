@@ -205,15 +205,15 @@ object Serializers {
 
         case New(cls, ctor, args) =>
           writeByte(TagNew)
-          writeClassType(cls); writeIdent(ctor); writeTrees(args)
+          writeClassRef(cls); writeIdent(ctor); writeTrees(args)
 
         case LoadModule(cls) =>
           writeByte(TagLoadModule)
-          writeClassType(cls)
+          writeClassRef(cls)
 
         case StoreModule(cls, value) =>
           writeByte(TagStoreModule)
-          writeClassType(cls); writeTree(value)
+          writeClassRef(cls); writeTree(value)
 
         case Select(qualifier, item) =>
           writeByte(TagSelect)
@@ -222,7 +222,7 @@ object Serializers {
 
         case SelectStatic(cls, item) =>
           writeByte(TagSelectStatic)
-          writeClassType(cls); writeIdent(item)
+          writeClassRef(cls); writeIdent(item)
           writeType(tree.tpe)
 
         case Apply(receiver, method, args) =>
@@ -232,12 +232,12 @@ object Serializers {
 
         case ApplyStatically(receiver, cls, method, args) =>
           writeByte(TagApplyStatically)
-          writeTree(receiver); writeClassType(cls); writeIdent(method); writeTrees(args)
+          writeTree(receiver); writeClassRef(cls); writeIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
         case ApplyStatic(cls, method, args) =>
           writeByte(TagApplyStatic)
-          writeClassType(cls); writeIdent(method); writeTrees(args)
+          writeClassRef(cls); writeIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
         case UnaryOp(op, lhs) =>
@@ -250,11 +250,11 @@ object Serializers {
 
         case NewArray(tpe, lengths) =>
           writeByte(TagNewArray)
-          writeArrayType(tpe); writeTrees(lengths)
+          writeArrayTypeRef(tpe); writeTrees(lengths)
 
         case ArrayValue(tpe, elems) =>
           writeByte(TagArrayValue)
-          writeArrayType(tpe); writeTrees(elems)
+          writeArrayTypeRef(tpe); writeTrees(elems)
 
         case ArrayLength(array) =>
           writeByte(TagArrayLength)
@@ -323,11 +323,11 @@ object Serializers {
 
         case LoadJSConstructor(cls) =>
           writeByte(TagLoadJSConstructor)
-          writeClassType(cls)
+          writeClassRef(cls)
 
         case LoadJSModule(cls) =>
           writeByte(TagLoadJSModule)
-          writeClassType(cls)
+          writeClassRef(cls)
 
         case JSDelete(prop) =>
           writeByte(TagJSDelete)
@@ -605,13 +605,13 @@ object Serializers {
         case NullType    => buffer.write(TagNullType)
         case NoType      => buffer.write(TagNoType)
 
-        case tpe: ClassType =>
+        case ClassType(className) =>
           buffer.write(TagClassType)
-          writeClassType(tpe)
+          writeString(className)
 
-        case tpe: ArrayType =>
+        case ArrayType(arrayTypeRef) =>
           buffer.write(TagArrayType)
-          writeArrayType(tpe)
+          writeArrayTypeRef(arrayTypeRef)
 
         case RecordType(fields) =>
           buffer.write(TagRecordType)
@@ -625,26 +625,22 @@ object Serializers {
       }
     }
 
-    def writeClassType(tpe: ClassType): Unit =
-      writeString(tpe.className)
-
-    def writeArrayType(tpe: ArrayType): Unit = {
-      writeString(tpe.arrayTypeRef.baseClassName)
-      buffer.writeInt(tpe.arrayTypeRef.dimensions)
-    }
-
-    def writeTypeRef(tpe: TypeRef): Unit = tpe match {
-      case ClassRef(className) =>
+    def writeTypeRef(typeRef: TypeRef): Unit = typeRef match {
+      case typeRef: ClassRef =>
         buffer.writeByte(TagClassRef)
-        writeString(className)
-      case ArrayTypeRef(baseClassName, dimensions) =>
+        writeClassRef(typeRef)
+      case typeRef: ArrayTypeRef =>
         buffer.writeByte(TagArrayTypeRef)
-        writeString(baseClassName)
-        buffer.writeInt(dimensions)
+        writeArrayTypeRef(typeRef)
     }
 
     def writeClassRef(cls: ClassRef): Unit =
       writeString(cls.className)
+
+    def writeArrayTypeRef(typeRef: ArrayTypeRef): Unit = {
+      writeString(typeRef.baseClassName)
+      buffer.writeInt(typeRef.dimensions)
+    }
 
     def writePropertyName(name: PropertyName): Unit = name match {
       case name: Ident =>
@@ -857,18 +853,18 @@ object Serializers {
           }, readTree())(readType())
         case TagDebugger => Debugger()
 
-        case TagNew             => New(readClassType(), readIdent(), readTrees())
-        case TagLoadModule      => LoadModule(readClassType())
-        case TagStoreModule     => StoreModule(readClassType(), readTree())
+        case TagNew             => New(readClassRef(), readIdent(), readTrees())
+        case TagLoadModule      => LoadModule(readClassRef())
+        case TagStoreModule     => StoreModule(readClassRef(), readTree())
         case TagSelect          => Select(readTree(), readIdent())(readType())
-        case TagSelectStatic    => SelectStatic(readClassType(), readIdent())(readType())
+        case TagSelectStatic    => SelectStatic(readClassRef(), readIdent())(readType())
         case TagApply           => Apply(readTree(), readIdent(), readTrees())(readType())
-        case TagApplyStatically => ApplyStatically(readTree(), readClassType(), readIdent(), readTrees())(readType())
-        case TagApplyStatic     => ApplyStatic(readClassType(), readIdent(), readTrees())(readType())
+        case TagApplyStatically => ApplyStatically(readTree(), readClassRef(), readIdent(), readTrees())(readType())
+        case TagApplyStatic     => ApplyStatic(readClassRef(), readIdent(), readTrees())(readType())
         case TagUnaryOp         => UnaryOp(readByte(), readTree())
         case TagBinaryOp        => BinaryOp(readByte(), readTree(), readTree())
-        case TagNewArray        => NewArray(readArrayType(), readTrees())
-        case TagArrayValue      => ArrayValue(readArrayType(), readTrees())
+        case TagNewArray        => NewArray(readArrayTypeRef(), readTrees())
+        case TagArrayValue      => ArrayValue(readArrayTypeRef(), readTrees())
         case TagArrayLength     => ArrayLength(readTree())
         case TagArraySelect     => ArraySelect(readTree(), readTree())(readType())
         case TagRecordValue     => RecordValue(readType().asInstanceOf[RecordType], readTrees())
@@ -887,8 +883,8 @@ object Serializers {
         case TagJSSuperBracketCall   =>
           JSSuperBracketCall(readTree(), readTree(), readTree(), readTreeOrJSSpreads())
         case TagJSSuperConstructorCall => JSSuperConstructorCall(readTreeOrJSSpreads())
-        case TagLoadJSConstructor    => LoadJSConstructor(readClassType())
-        case TagLoadJSModule         => LoadJSModule(readClassType())
+        case TagLoadJSConstructor    => LoadJSConstructor(readClassRef())
+        case TagLoadJSModule         => LoadJSModule(readClassRef())
         case TagJSDelete             => JSDelete(readTree())
         case TagJSUnaryOp            => JSUnaryOp(readInt(), readTree())
         case TagJSBinaryOp           => JSBinaryOp(readInt(), readTree(), readTree())
@@ -1048,8 +1044,8 @@ object Serializers {
         case TagNullType    => NullType
         case TagNoType      => NoType
 
-        case TagClassType => readClassType()
-        case TagArrayType => readArrayType()
+        case TagClassType => ClassType(readString())
+        case TagArrayType => ArrayType(readArrayTypeRef())
 
         case TagRecordType =>
           RecordType(List.fill(input.readInt()) {
@@ -1064,23 +1060,20 @@ object Serializers {
       }
     }
 
-    def readClassType(): ClassType =
-      ClassType(readString())
-
-    def readArrayType(): ArrayType =
-      ArrayType(ArrayTypeRef(readString(), input.readInt()))
-
     def readTypeRef(): TypeRef = {
       input.readByte() match {
         case TagClassRef =>
-          ClassRef(readString())
+          readClassRef()
         case TagArrayTypeRef =>
-          ArrayTypeRef(readString(), input.readInt())
+          readArrayTypeRef()
       }
     }
 
     def readClassRef(): ClassRef =
       ClassRef(readString())
+
+    def readArrayTypeRef(): ArrayTypeRef =
+      ArrayTypeRef(readString(), input.readInt())
 
     def readPropertyName(): PropertyName = {
       input.readByte() match {

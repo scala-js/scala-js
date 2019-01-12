@@ -189,17 +189,17 @@ object Hashers {
 
         case New(cls, ctor, args) =>
           mixTag(TagNew)
-          mixType(cls)
+          mixClassRef(cls)
           mixIdent(ctor)
           mixTrees(args)
 
         case LoadModule(cls) =>
           mixTag(TagLoadModule)
-          mixType(cls)
+          mixClassRef(cls)
 
         case StoreModule(cls, value) =>
           mixTag(TagStoreModule)
-          mixType(cls)
+          mixClassRef(cls)
           mixTree(value)
 
         case Select(qualifier, item) =>
@@ -210,7 +210,7 @@ object Hashers {
 
         case SelectStatic(cls, item) =>
           mixTag(TagSelectStatic)
-          mixType(cls)
+          mixClassRef(cls)
           mixIdent(item)
           mixType(tree.tpe)
 
@@ -224,14 +224,14 @@ object Hashers {
         case ApplyStatically(receiver, cls, method, args) =>
           mixTag(TagApplyStatically)
           mixTree(receiver)
-          mixType(cls)
+          mixClassRef(cls)
           mixIdent(method)
           mixTrees(args)
           mixType(tree.tpe)
 
         case ApplyStatic(cls, method, args) =>
           mixTag(TagApplyStatic)
-          mixType(cls)
+          mixClassRef(cls)
           mixIdent(method)
           mixTrees(args)
           mixType(tree.tpe)
@@ -247,14 +247,14 @@ object Hashers {
           mixTree(lhs)
           mixTree(rhs)
 
-        case NewArray(tpe, lengths) =>
+        case NewArray(typeRef, lengths) =>
           mixTag(TagNewArray)
-          mixType(tpe)
+          mixArrayTypeRef(typeRef)
           mixTrees(lengths)
 
-        case ArrayValue(tpe, elems) =>
+        case ArrayValue(typeRef, elems) =>
           mixTag(TagArrayValue)
-          mixType(tpe)
+          mixArrayTypeRef(typeRef)
           mixTrees(elems)
 
         case ArrayLength(array) =>
@@ -342,11 +342,11 @@ object Hashers {
 
         case LoadJSConstructor(cls) =>
           mixTag(TagLoadJSConstructor)
-          mixType(cls)
+          mixClassRef(cls)
 
         case LoadJSModule(cls) =>
           mixTag(TagLoadJSModule)
-          mixType(cls)
+          mixClassRef(cls)
 
         case JSDelete(prop) =>
           mixTag(TagJSDelete)
@@ -476,17 +476,21 @@ object Hashers {
     }
 
     def mixTypeRef(typeRef: TypeRef): Unit = typeRef match {
-      case ClassRef(className) =>
+      case typeRef: ClassRef =>
         mixTag(TagClassRef)
-        mixString(className)
-      case ArrayTypeRef(baseClassName, dimensions) =>
+        mixClassRef(typeRef)
+      case typeRef: ArrayTypeRef =>
         mixTag(TagArrayTypeRef)
-        mixString(baseClassName)
-        mixInt(dimensions)
+        mixArrayTypeRef(typeRef)
     }
 
     def mixClassRef(classRef: ClassRef): Unit =
       mixString(classRef.className)
+
+    def mixArrayTypeRef(arrayTypeRef: ArrayTypeRef): Unit = {
+      mixString(arrayTypeRef.baseClassName)
+      mixInt(arrayTypeRef.dimensions)
+    }
 
     def mixType(tpe: Type): Unit = tpe match {
       case AnyType     => mixTag(TagAnyType)
