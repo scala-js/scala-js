@@ -1,15 +1,3 @@
-/*
- * Scala (https://www.scala-lang.org)
- *
- * Copyright EPFL and Lightbend, Inc.
- *
- * Licensed under Apache License 2.0
- * (http://www.apache.org/licenses/LICENSE-2.0).
- *
- * See the NOTICE file distributed with this work for
- * additional information regarding copyright ownership.
- */
-
 package scala
 package reflect
 
@@ -89,17 +77,15 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
  * Class tags corresponding to primitive types and constructor/extractor for ClassTags.
  */
 object ClassTag {
-  import ManifestFactory._
-
-  def Byte    : ByteManifest               = ManifestFactory.Byte
-  def Short   : ShortManifest              = ManifestFactory.Short
-  def Char    : CharManifest               = ManifestFactory.Char
-  def Int     : IntManifest                = ManifestFactory.Int
-  def Long    : LongManifest               = ManifestFactory.Long
-  def Float   : FloatManifest              = ManifestFactory.Float
-  def Double  : DoubleManifest             = ManifestFactory.Double
-  def Boolean : BooleanManifest            = ManifestFactory.Boolean
-  def Unit    : UnitManifest               = ManifestFactory.Unit
+  def Byte    : ClassTag[scala.Byte]       = ManifestFactory.Byte
+  def Short   : ClassTag[scala.Short]      = ManifestFactory.Short
+  def Char    : ClassTag[scala.Char]       = ManifestFactory.Char
+  def Int     : ClassTag[scala.Int]        = ManifestFactory.Int
+  def Long    : ClassTag[scala.Long]       = ManifestFactory.Long
+  def Float   : ClassTag[scala.Float]      = ManifestFactory.Float
+  def Double  : ClassTag[scala.Double]     = ManifestFactory.Double
+  def Boolean : ClassTag[scala.Boolean]    = ManifestFactory.Boolean
+  def Unit    : ClassTag[scala.Unit]       = ManifestFactory.Unit
   def Any     : ClassTag[scala.Any]        = ManifestFactory.Any
   def Object  : ClassTag[java.lang.Object] = ManifestFactory.Object
   def AnyVal  : ClassTag[scala.AnyVal]     = ManifestFactory.AnyVal

@@ -44,12 +44,20 @@ class ArrayBuilderTest {
   }
 
   @inline
-  def zerosInline[T: ClassTag](length: Int): Array[T] =
-    Array.fill(length)(null.asInstanceOf[T])
+  def zerosInline[T: ClassTag](length: Int): Array[T] = {
+    val builder = ArrayBuilder.make[T]
+    builder.sizeHint(length)
+    var i = 0
+    while (i < length) {
+      builder += null.asInstanceOf[T]
+      i += 1
+    }
+    builder.result()
+  }
 
   @noinline
   def zerosNoInline[T: ClassTag](length: Int): Array[T] =
-    Array.fill(length)(null.asInstanceOf[T])
+    zerosInline[T](length)
 
   @noinline def someInt: Int = 53
   @noinline def someChar: Char = 'S'

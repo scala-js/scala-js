@@ -104,6 +104,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
     val global: Global = ScalaJSJUnitPlugin.this.global
     import global._
+    import definitions.ObjectClass
 
     val phaseName: String = "junit-inject"
     val runsAfter: List[String] = List("mixin")
@@ -189,7 +190,18 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
       }
 
       def mkBootstrapperClass(clazz: ClassDef, modDefOption: Option[ClassDef]): ClassDef = {
-        val bootSym = clazz.symbol.cloneSymbol
+        // Create the module and its module class, and enter them in their owner's scope
+        val bootName = newTypeName(clazz.name.toString + "$scalajs$junit$bootstrapper")
+        val (moduleSym, bootSym) = clazz.symbol.owner.newModuleAndClassSymbol(bootName, clazz.pos, 0L)
+        val bootInfo =
+          ClassInfoType(List(definitions.ObjectTpe, jUnitTestMetadataType), newScope, bootSym)
+        bootSym.setInfo(bootInfo)
+        moduleSym.setInfoAndEnter(bootSym.toTypeConstructor)
+        bootSym.owner.info.decls.enter(bootSym)
+        bootSym.sourceModule.info
+
+        // Generate the Trees of the members
+        val constructorDef = genConstructor(bootSym)
         val getJUnitMetadataDef = mkGetJUnitMetadataDef(clazz.symbol,
             modDefOption.map(_.symbol))
         val newInstanceDef = genNewInstanceDef(clazz.symbol, bootSym)
@@ -206,9 +218,17 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
               clazz.symbol)
         }
 
+        // Enter the member symbols into the module class' scope
+        val decls = bootSym.info.decls
+        decls.enter(getJUnitMetadataDef.symbol)
+        decls.enter(newInstanceDef.symbol)
+        decls.enter(invokeJUnitMethodDef.symbol)
+        decls.enter(invokeJUnitMethodOnInstanceDef.symbol)
+
+        // Build the ClassDef
         val bootBody = {
-          List(getJUnitMetadataDef, newInstanceDef, invokeJUnitMethodDef,
-              invokeJUnitMethodOnInstanceDef)
+          List(constructorDef, getJUnitMetadataDef, newInstanceDef,
+              invokeJUnitMethodDef, invokeJUnitMethodOnInstanceDef)
         }
         val bootParents = List(
           TypeTree(definitions.ObjectTpe),
@@ -217,30 +237,25 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         val bootImpl =
           treeCopy.Template(clazz.impl, bootParents, clazz.impl.self, bootBody)
 
-        val bootName = newTypeName(clazz.name.toString + "$scalajs$junit$bootstrapper")
         val bootClazz = gen.mkClassDef(Modifiers(Flags.MODULE),
             bootName, Nil, bootImpl)
-        bootSym.flags += Flags.MODULE
-        bootSym.withoutAnnotations
-        bootSym.setName(bootName)
-        val newClazzInfo = {
-          val newParentsInfo = List(
-            definitions.ObjectTpe,
-            jUnitTestMetadataType
-          )
-          val decls = bootSym.info.decls
-          decls.enter(getJUnitMetadataDef.symbol)
-          decls.enter(newInstanceDef.symbol)
-          decls.enter(invokeJUnitMethodDef.symbol)
-          decls.enter(invokeJUnitMethodOnInstanceDef.symbol)
-          ClassInfoType(newParentsInfo, decls, bootSym.info.typeSymbol)
-        }
-        bootSym.setInfo(newClazzInfo)
         bootClazz.setSymbol(bootSym)
 
         currentRun.symSource(bootSym) = clazz.symbol.sourceFile
 
         bootClazz
+      }
+
+      private def genConstructor(owner: ClassSymbol): DefDef = {
+        /* The constructor body must be a Block in order not to freak out the
+         * JVM back-end.
+         */
+        val rhs = Block(gen.mkMethodCall(
+            Super(owner, tpnme.EMPTY), ObjectClass.primaryConstructor, Nil, Nil))
+
+        val sym = owner.newClassConstructor(NoPosition)
+        sym.setInfoAndEnter(MethodType(Nil, owner.tpe))
+        typer.typedDefDef(newDefDef(sym, rhs)())
       }
 
       def jUnitAnnotatedMethods(sym: Symbol): List[MethodSymbol] = {

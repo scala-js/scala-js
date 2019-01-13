@@ -1115,6 +1115,23 @@ object Build {
           unmanagedSourceDirectories +=
             collectionsEraDependentDirectory(scalaVersion.value, sourceDirectory.value),
 
+          /* After 2.13.0-M5, we use the new version of UndefinedBehaviorError
+           * which is used in Scala.js 1.x. This is necessary because the old
+           * one won't compile anymore due to changes upstream to
+           * ControlThrowable. It is also OK to use the new one because 2.13.x
+           * requires JDK 8 anyway, and the binary ecosystems are different.
+           */
+          unmanagedSourceDirectories += {
+            val scalaV = scalaVersion.value
+            val sourceDir = sourceDirectory.value
+            if (scalaV.startsWith("2.10.") || scalaV.startsWith("2.11.") ||
+                scalaV.startsWith("2.12.") || scalaV == "2.13.0-M5") {
+              sourceDir / "scala-old-ube"
+            } else {
+              sourceDir / "scala-new-ube"
+            }
+          },
+
           scalacOptions in doc ++= Seq(
               "-implicits",
               "-groups",

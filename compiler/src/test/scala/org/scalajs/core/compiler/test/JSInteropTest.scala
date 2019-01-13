@@ -697,11 +697,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
     @js.native
     @JSGlobal
-    class B extends js.Object with Serializable
+    class B extends js.Object with java.io.Serializable
     """ hasErrors
     """
-      |newSource1.scala:7: error: B extends scala.Serializable which does not extend js.Any.
-      |    class B extends js.Object with Serializable
+      |newSource1.scala:7: error: B extends java.io.Serializable which does not extend js.Any.
+      |    class B extends js.Object with java.io.Serializable
       |          ^
     """
 

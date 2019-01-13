@@ -1,22 +1,8 @@
-/*
- * Scala (https://www.scala-lang.org)
- *
- * Copyright EPFL and Lightbend, Inc.
- *
- * Licensed under Apache License 2.0
- * (http://www.apache.org/licenses/LICENSE-2.0).
- *
- * See the NOTICE file distributed with this work for
- * additional information regarding copyright ownership.
- */
-
 package scala
 package collection.immutable
 
 import collection.{AbstractIterator, Iterator}
 import java.lang.String
-
-import scala.util.hashing.MurmurHash3
 
 /** The `Range` class represents integer values in range
   *  ''[start;end)'' with non-zero step value `step`.
@@ -137,11 +123,6 @@ sealed abstract class Range(
     else new Range.Exclusive(start + step, end, step)
   }
 
-  override def map[B](f: Int => B): IndexedSeq[B] = {
-    validateMaxLength()
-    super.map(f)
-  }
-
   final protected def copy(start: Int = start, end: Int = end, step: Int = step, isInclusive: Boolean = isInclusive): Range =
     if(isInclusive) new Range.Inclusive(start, end, step) else new Range.Exclusive(start, end, step)
 
@@ -166,7 +147,7 @@ sealed abstract class Range(
   @throws[IndexOutOfBoundsException]
   final def apply(idx: Int): Int = {
     validateMaxLength()
-    if (idx < 0 || idx >= numRangeElements) throw new IndexOutOfBoundsException(s"$idx is out of bounds (min 0, max ${numRangeElements-1})")
+    if (idx < 0 || idx >= numRangeElements) throw new IndexOutOfBoundsException(idx.toString)
     else start + (step * idx)
   }
 
@@ -364,50 +345,14 @@ sealed abstract class Range(
     if (ord eq Ordering.Int) {
       if (step > 0) head
       else last
-    } else if (Ordering.Int isReverseOf ord) {
-      if (step > 0) last
-      else head
     } else super.min(ord)
 
   final override def max[A1 >: Int](implicit ord: Ordering[A1]): Int =
     if (ord eq Ordering.Int) {
       if (step > 0) last
       else head
-    } else if (Ordering.Int isReverseOf ord) {
-      if (step > 0) head
-      else last
     } else super.max(ord)
 
-  override def tails: Iterator[Range] =
-    new AbstractIterator[Range] {
-      private[this] var i = 0
-      override def hasNext = i <= Range.this.length
-      override def next() = {
-        if (hasNext) {
-          val res = Range.this.drop(i)
-          i += 1
-          res
-        } else {
-          Iterator.empty.next()
-        }
-      }
-    }
-
-  override def inits: Iterator[Range] =
-    new AbstractIterator[Range] {
-      private[this] var i = 0
-      override def hasNext = i <= Range.this.length
-      override def next() = {
-        if (hasNext) {
-          val res = Range.this.dropRight(i)
-          i += 1
-          res
-        } else {
-          Iterator.empty.next()
-        }
-      }
-    }
-  override protected final def applyPreferredMaxLength: Int = Int.MaxValue
 
   final override def equals(other: Any) = other match {
     case x: Range =>
@@ -424,9 +369,7 @@ sealed abstract class Range(
       super.equals(other)
   }
 
-  final override def hashCode: Int =
-    if(length >= 2) MurmurHash3.rangeHash(start, step, lastElement)
-    else super.hashCode
+  /* Note: hashCode can't be overridden without breaking Seq's equals contract. */
 
   final override def toString: String = {
     val preposition = if (isInclusive) "to" else "until"
@@ -440,38 +383,6 @@ sealed abstract class Range(
   override protected[this] def className = "Range"
 
   override def distinct: Range = this
-
-  override def grouped(size: Int): Iterator[Range] = {
-    require(size >= 1, f"size=$size%d, but size must be positive")
-    if (isEmpty) {
-      Iterator.empty
-    } else {
-      val s = size
-      new AbstractIterator[Range] {
-        private[this] var i = 0
-        override def hasNext = Range.this.length > i
-        override def next() =
-          if (hasNext) {
-            val x = Range.this.slice(i, i + s)
-            i += s
-            x
-          } else {
-            Iterator.empty.next()
-          }
-      }
-    }
-  }
-
-  override def sorted[B >: Int](implicit ord: Ordering[B]): IndexedSeq[Int] =
-    if (ord eq Ordering.Int) {
-      if (step > 0) {
-        this
-      } else {
-        reverse
-      }
-    } else {
-      super.sorted(ord)
-    }
 }
 
 /**
@@ -614,20 +525,5 @@ private class RangeIterator(
     _hasNext = value != lastElement
     _next = value + step
     value
-  }
-
-  override def drop(n: Int): Iterator[Int] = {
-    if (n > 0) {
-      val longPos = _next.toLong + step * n
-      if (step > 0) {
-        _next = Math.min(lastElement, longPos).toInt
-        _hasNext = longPos <= lastElement
-      }
-      else if (step < 0) {
-        _next = Math.max(lastElement, longPos).toInt
-        _hasNext = longPos >= lastElement
-      }
-    }
-      this
   }
 }

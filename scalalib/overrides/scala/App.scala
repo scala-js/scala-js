@@ -1,17 +1,19 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2010-2013, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
-** /____/\___/_/ |_/____/_/ | |                                         **
-**                          |/                                          **
-\*                                                                      */
+/*
+ * Scala (https://www.scala-lang.org)
+ *
+ * Copyright EPFL and Lightbend, Inc.
+ *
+ * Licensed under Apache License 2.0
+ * (http://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
 
 package scala
 
 import java.lang.System.{currentTimeMillis => currentTime}
 import scala.collection.mutable.ListBuffer
-
-import scala.scalajs.js.annotation.JSExport
 
 /** The `App` trait can be used to quickly turn objects
  *  into executable programs. Here is an example:
@@ -20,7 +22,9 @@ import scala.scalajs.js.annotation.JSExport
  *    Console.println("Hello World: " + (args mkString ", "))
  *  }
  *  }}}
- *  Here, object `Main` inherits the `main` method of `App`.
+ *
+ *  No explicit `main` method is needed.  Instead,
+ *  the whole class body becomes the “main method”.
  *
  *  `args` returns the current command line arguments as an array.
  *
@@ -30,22 +34,20 @@ import scala.scalajs.js.annotation.JSExport
  *  functionality, which means that fields of the object will not have been initialized
  *  before the main method has been executed.'''''
  *
- *  It should also be noted that the `main` method will not normally need to be overridden:
- *  the purpose is to turn the whole class body into the “main method”. You should only
- *  chose to override it if you know what you are doing.
+ *  Future versions of this trait will no longer extend `DelayedInit`.
  *
  *  @author  Martin Odersky
- *  @version 2.1, 15/02/2011
+ *  @since   2.1
  */
 trait App extends DelayedInit {
 
   /** The time when the execution of this program started, in milliseconds since 1
     * January 1970 UTC. */
-  val executionStart: Long = currentTime
+  final val executionStart: Long = currentTime
 
   /** The command line arguments passed to the application's `main` method.
    */
-  protected def args: Array[String] = _args
+  protected final def args: Array[String] = _args
 
   private[this] var _args: Array[String] = _
 
@@ -58,18 +60,18 @@ trait App extends DelayedInit {
    *  themselves define a `delayedInit` method.
    *  @param body the initialization code to be stored for later execution
    */
-  override def delayedInit(body: => Unit) {
+  @deprecated("the delayedInit mechanism will disappear", "2.11.0")
+  override def delayedInit(body: => Unit): Unit = {
     initCode += (() => body)
   }
 
   /** The main method.
-   *  This stores all argument so that they can be retrieved with `args`
-   *  and the executes all initialization code segments in the order they were
-   *  passed to `delayedInit`
-   *
+   *  This stores all arguments so that they can be retrieved with `args`
+   *  and then executes all initialization code segments in the order in which
+   *  they were passed to `delayedInit`.
    *  @param args the arguments passed to the main method
    */
-  def main(args: Array[String]) = {
+  final def main(args: Array[String]) = {
     this._args = args
     for (proc <- initCode) proc()
 
