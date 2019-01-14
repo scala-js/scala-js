@@ -114,13 +114,15 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
       }
 
       def genBootstrapper(testClass: ClassSymbol): ClassDef = {
-        val bootSym = testClass.owner.newModuleClass(
-            newTypeName(testClass.name.toString + "$scalajs$junit$bootstrapper"))
-
+        // Create the module and its module class, and enter them in their owner's scope
+        val (moduleSym, bootSym) = testClass.owner.newModuleAndClassSymbol(
+            newTypeName(testClass.name.toString + "$scalajs$junit$bootstrapper"),
+            testClass.pos, 0L)
         val bootInfo =
           ClassInfoType(List(ObjectTpe, BootstrapperClass.toType), newScope, bootSym)
-
         bootSym.setInfo(bootInfo)
+        moduleSym.setInfoAndEnter(bootSym.toTypeConstructor)
+        bootSym.owner.info.decls.enter(bootSym)
 
         val testMethods = annotatedMethods(testClass, JUnitAnnots.Test)
 
@@ -139,8 +141,11 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
       }
 
       private def genConstructor(owner: ClassSymbol): DefDef = {
-        val rhs = gen.mkMethodCall(
-            Super(owner, tpnme.EMPTY), ObjectClass.primaryConstructor, Nil, Nil)
+        /* The constructor body must be a Block in order not to freak out the
+         * JVM back-end.
+         */
+        val rhs = Block(gen.mkMethodCall(
+            Super(owner, tpnme.EMPTY), ObjectClass.primaryConstructor, Nil, Nil))
 
         val sym = owner.newClassConstructor(NoPosition)
         sym.setInfoAndEnter(MethodType(Nil, owner.tpe))
