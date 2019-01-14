@@ -3,6 +3,46 @@ package scala.runtime
 import scala.math.ScalaNumber
 
 object BoxesRunTime {
+  def boxToBoolean(b: Boolean): java.lang.Boolean =
+    b.asInstanceOf[java.lang.Boolean]
+
+  def boxToCharacter(c: Char): java.lang.Character =
+    c.asInstanceOf[java.lang.Character]
+
+  def boxToByte(b: Byte): java.lang.Boolean =
+    b.asInstanceOf[java.lang.Boolean]
+
+  def boxToShort(s: Short): java.lang.Short =
+    s.asInstanceOf[java.lang.Short]
+
+  def boxToInteger(i: Int): java.lang.Integer =
+    i.asInstanceOf[java.lang.Integer]
+
+  def boxToLong(l: Long): java.lang.Long =
+    l.asInstanceOf[java.lang.Long]
+
+  def boxToFloat(f: Float): java.lang.Float =
+    f.asInstanceOf[java.lang.Float]
+
+  def boxToDouble(d: Double): java.lang.Double =
+    d.asInstanceOf[java.lang.Double]
+
+  def unboxToBoolean(b: Any): Boolean = b.asInstanceOf[Boolean]
+
+  def unboxToChar(c: Any): Char = c.asInstanceOf[Char]
+
+  def unboxToByte(b: Any): Byte = b.asInstanceOf[Byte]
+
+  def unboxToShort(s: Any): Short = s.asInstanceOf[Short]
+
+  def unboxToInt(i: Any): Int = i.asInstanceOf[Int]
+
+  def unboxToLong(l: Any): Long = l.asInstanceOf[Long]
+
+  def unboxToFloat(f: Any): Float = f.asInstanceOf[Float]
+
+  def unboxToDouble(d: Any): Double = d.asInstanceOf[Double]
+
   def equals(x: Object, y: Object): Boolean =
     if (x eq y) true
     else equals2(x, y)
