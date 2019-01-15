@@ -540,7 +540,7 @@ private final class IRChecker(unit: LinkingUnit,
                 } reportError(s"Assignment to immutable field $name.")
               case _ =>
             }
-          case SelectStatic(ClassType(cls), Ident(name, _)) =>
+          case SelectStatic(ClassRef(cls), Ident(name, _)) =>
             for {
               c <- tryLookupClass(cls)
               f <- c.lookupStaticField(name)
@@ -790,7 +790,7 @@ private final class IRChecker(unit: LinkingUnit,
             reportError(s"Cannot select $item of non-class type $qualType")
         }
 
-      case SelectStatic(ClassType(cls), Ident(item, _)) =>
+      case SelectStatic(ClassRef(cls), Ident(item, _)) =>
         val checkedClass = lookupClass(cls)
         if (checkedClass.kind.isJSType) {
           reportError(s"Cannot select static $item of JS type $cls")
@@ -810,7 +810,7 @@ private final class IRChecker(unit: LinkingUnit,
             isStatic = false)
 
       case ApplyStatically(receiver, cls, Ident(method, _), args) =>
-        typecheckExpect(receiver, env, cls)
+        typecheckExpect(receiver, env, ClassType(cls.className))
         checkApplyGeneric(method, s"$cls.$method", args, tree.tpe,
             isStatic = false)
 
@@ -870,14 +870,14 @@ private final class IRChecker(unit: LinkingUnit,
         typecheckExpect(lhs, env, expectedLhsType)
         typecheckExpect(rhs, env, expectedRhsType)
 
-      case NewArray(tpe, lengths) =>
-        checkArrayType(tpe)
+      case NewArray(typeRef, lengths) =>
+        checkArrayTypeRef(typeRef)
         for (length <- lengths)
           typecheckExpect(length, env, IntType)
 
-      case ArrayValue(tpe, elems) =>
-        checkArrayType(tpe)
-        val elemType = arrayElemType(tpe)
+      case ArrayValue(typeRef, elems) =>
+        checkArrayTypeRef(typeRef)
+        val elemType = arrayElemType(typeRef)
         for (elem <- elems)
           typecheckExpect(elem, env, elemType)
 
@@ -1196,7 +1196,12 @@ private final class IRChecker(unit: LinkingUnit,
 
   private def arrayElemType(arrayType: ArrayType)(
       implicit ctx: ErrorContext): Type = {
-    val ArrayType(ArrayTypeRef(baseClassName, dimensions)) = arrayType
+    arrayElemType(arrayType.arrayTypeRef)
+  }
+
+  private def arrayElemType(arrayTypeRef: ArrayTypeRef)(
+      implicit ctx: ErrorContext): Type = {
+    val ArrayTypeRef(baseClassName, dimensions) = arrayTypeRef
     if (dimensions == 1) classNameToType(baseClassName)
     else ArrayType(ArrayTypeRef(baseClassName, dimensions - 1))
   }

@@ -1363,7 +1363,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           val base = js.Assign(transformExpr(lhs, preserveChar = true),
               transformExpr(rhs, lhs.tpe))
           lhs match {
-            case SelectStatic(ClassType(className), Ident(field, _))
+            case SelectStatic(ClassRef(className), Ident(field, _))
                 if moduleKind == ModuleKind.NoModule =>
               val mirrors =
                 globalKnowledge.getStaticFieldMirrors(className, field)
@@ -2394,15 +2394,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             case Boolean_& => !(!js.BinaryOp(JSBinaryOp.&, newLhs, newRhs))
           }
 
-        case NewArray(tpe, lengths) =>
+        case NewArray(typeRef, lengths) =>
           genCallHelper("newArrayObject",
-              genClassDataOf(tpe.arrayTypeRef),
+              genClassDataOf(typeRef),
               js.ArrayConstr(lengths.map(transformExprNoChar)))
 
-        case ArrayValue(tpe, elems) =>
-          val ArrayTypeRef(baseClassName, dimensions) = tpe.arrayTypeRef
+        case ArrayValue(typeRef, elems) =>
+          val ArrayTypeRef(baseClassName, dimensions) = typeRef
           val preserveChar = baseClassName == "C" && dimensions == 1
-          genArrayValue(tpe, elems.map(transformExpr(_, preserveChar)))
+          genArrayValue(typeRef, elems.map(transformExpr(_, preserveChar)))
 
         case ArrayLength(array) =>
           genIdentBracketSelect(js.DotSelect(transformExprNoChar(array),

@@ -451,19 +451,19 @@ object Printers {
           print(rhs)
           print(')')
 
-        case NewArray(tpe, lengths) =>
+        case NewArray(typeRef, lengths) =>
           print("new ")
-          print(tpe.arrayTypeRef.baseClassName)
+          print(typeRef.baseClassName)
           for (length <- lengths) {
             print('[')
             print(length)
             print(']')
           }
-          for (dim <- lengths.size until tpe.arrayTypeRef.dimensions)
+          for (dim <- lengths.size until typeRef.dimensions)
             print("[]")
 
-        case ArrayValue(tpe, elems) =>
-          print(tpe)
+        case ArrayValue(typeRef, elems) =>
+          print(typeRef)
           printArgs(elems)
 
         case ArrayLength(array) =>

@@ -514,20 +514,20 @@ class PrintersTest {
   }
 
   @Test def printNewArray(): Unit = {
-    assertPrintEquals("new I[3]", NewArray(arrayType("I", 1), List(i(3))))
-    assertPrintEquals("new I[3][]", NewArray(arrayType("I", 2), List(i(3))))
+    assertPrintEquals("new I[3]", NewArray(ArrayTypeRef("I", 1), List(i(3))))
+    assertPrintEquals("new I[3][]", NewArray(ArrayTypeRef("I", 2), List(i(3))))
     assertPrintEquals("new O[3][4][][]",
-        NewArray(arrayType("O", 4), List(i(3), i(4))))
+        NewArray(ArrayTypeRef("O", 4), List(i(3), i(4))))
   }
 
   @Test def printArrayValue(): Unit = {
     assertPrintEquals("I[]()",
-        ArrayValue(arrayType("I", 1), List()))
+        ArrayValue(ArrayTypeRef("I", 1), List()))
     assertPrintEquals("I[](5, 6)",
-        ArrayValue(arrayType("I", 1), List(i(5), i(6))))
+        ArrayValue(ArrayTypeRef("I", 1), List(i(5), i(6))))
 
     assertPrintEquals("I[][](null)",
-        ArrayValue(arrayType("I", 2), List(Null())))
+        ArrayValue(ArrayTypeRef("I", 2), List(Null())))
   }
 
   @Test def printArrayLength(): Unit = {

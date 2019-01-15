@@ -229,6 +229,9 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     }
   }
 
+  def encodeClassRef(sym: Symbol): jstpe.ClassRef =
+    jstpe.ClassRef(encodeClassFullName(sym))
+
   def encodeClassFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
     js.Ident(encodeClassFullName(sym), Some(sym.fullName))
   }

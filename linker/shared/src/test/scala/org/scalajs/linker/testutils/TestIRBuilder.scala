@@ -42,7 +42,7 @@ object TestIRBuilder {
   def trivialCtor(enclosingClassName: String): MethodDef = {
     MethodDef(static = false, Ident("init___"), Nil, NoType,
         Some(ApplyStatically(This()(ClassType(enclosingClassName)),
-            ClassType(ObjectClass), Ident("init___"), Nil)(NoType)))(
+            ClassRef(ObjectClass), Ident("init___"), Nil)(NoType)))(
         emptyOptHints, None)
   }
 

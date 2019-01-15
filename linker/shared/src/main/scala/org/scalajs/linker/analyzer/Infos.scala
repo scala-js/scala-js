@@ -438,27 +438,27 @@ object Infos {
         /* Do not call super.traverse() so that the field is not also marked as
          * read.
          */
-        case Assign(SelectStatic(ClassType(cls), Ident(field, _)), rhs) =>
+        case Assign(SelectStatic(ClassRef(cls), Ident(field, _)), rhs) =>
           builder.addStaticFieldWritten(cls, field)
           traverse(rhs)
 
         // In all other cases, we'll have to call super.traverse()
         case _ =>
           tree match {
-            case New(ClassType(cls), ctor, _) =>
+            case New(ClassRef(cls), ctor, _) =>
               builder.addInstantiatedClass(cls, ctor.name)
 
-            case SelectStatic(ClassType(cls), Ident(field, _)) =>
+            case SelectStatic(ClassRef(cls), Ident(field, _)) =>
               builder.addStaticFieldRead(cls, field)
 
             case Apply(receiver, Ident(method, _), _) =>
               builder.addMethodCalled(receiver.tpe, method)
-            case ApplyStatically(_, ClassType(cls), method, _) =>
+            case ApplyStatically(_, ClassRef(cls), method, _) =>
               builder.addMethodCalledStatically(cls, method.name)
-            case ApplyStatic(ClassType(cls), method, _) =>
+            case ApplyStatic(ClassRef(cls), method, _) =>
               builder.addStaticMethodCalled(cls, method.name)
 
-            case LoadModule(ClassType(cls)) =>
+            case LoadModule(ClassRef(cls)) =>
               builder.addAccessedModule(cls)
 
             case IsInstanceOf(_, tpe) =>
@@ -466,17 +466,17 @@ object Infos {
             case AsInstanceOf(_, tpe) =>
               builder.addUsedInstanceTest(tpe)
 
-            case NewArray(tpe, _) =>
-              builder.addAccessedClassData(tpe.arrayTypeRef)
-            case ArrayValue(tpe, _) =>
-              builder.addAccessedClassData(tpe.arrayTypeRef)
+            case NewArray(typeRef, _) =>
+              builder.addAccessedClassData(typeRef)
+            case ArrayValue(typeRef, _) =>
+              builder.addAccessedClassData(typeRef)
             case ClassOf(cls) =>
               builder.addAccessedClassData(cls)
 
             case LoadJSConstructor(cls) =>
               builder.addInstantiatedClass(cls.className)
 
-            case LoadJSModule(ClassType(cls)) =>
+            case LoadJSModule(ClassRef(cls)) =>
               builder.addAccessedModule(cls)
 
             case CreateJSClass(cls, _) =>

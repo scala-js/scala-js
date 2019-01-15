@@ -645,7 +645,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         if (isNestedJSClass(superClassSym)) {
           js.VarRef(js.Ident(JSSuperClassParamName))(jstpe.AnyType)
         } else {
-          js.LoadJSConstructor(jstpe.ClassType(encodeClassFullName(superClassSym)))
+          js.LoadJSConstructor(encodeClassRef(superClassSym))
         }
       }
 

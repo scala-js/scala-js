@@ -235,17 +235,17 @@ object Trees {
 
   // Scala expressions
 
-  case class New(cls: ClassType, ctor: Ident, args: List[Tree])(
+  case class New(cls: ClassRef, ctor: Ident, args: List[Tree])(
       implicit val pos: Position) extends Tree {
-    val tpe = cls
+    val tpe = ClassType(cls.className)
   }
 
-  case class LoadModule(cls: ClassType)(
+  case class LoadModule(cls: ClassRef)(
       implicit val pos: Position) extends Tree {
-    val tpe = cls
+    val tpe = ClassType(cls.className)
   }
 
-  case class StoreModule(cls: ClassType, value: Tree)(
+  case class StoreModule(cls: ClassRef, value: Tree)(
       implicit val pos: Position) extends Tree {
     val tpe = NoType // cannot be in expression position
   }
@@ -253,7 +253,7 @@ object Trees {
   case class Select(qualifier: Tree, item: Ident)(val tpe: Type)(
       implicit val pos: Position) extends Tree
 
-  case class SelectStatic(cls: ClassType, item: Ident)(val tpe: Type)(
+  case class SelectStatic(cls: ClassRef, item: Ident)(val tpe: Type)(
       implicit val pos: Position) extends Tree
 
   /** Apply an instance method with dynamic dispatch (the default). */
@@ -261,11 +261,11 @@ object Trees {
       val tpe: Type)(implicit val pos: Position) extends Tree
 
   /** Apply an instance method with static dispatch (e.g., super calls). */
-  case class ApplyStatically(receiver: Tree, cls: ClassType, method: Ident,
+  case class ApplyStatically(receiver: Tree, cls: ClassRef, method: Ident,
       args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
 
   /** Apply a static method. */
-  case class ApplyStatic(cls: ClassType, method: Ident, args: List[Tree])(
+  case class ApplyStatic(cls: ClassRef, method: Ident, args: List[Tree])(
       val tpe: Type)(implicit val pos: Position) extends Tree
 
   /** Unary operation (always preserves pureness). */
@@ -423,13 +423,17 @@ object Trees {
     }
   }
 
-  case class NewArray(tpe: ArrayType, lengths: List[Tree])(
+  case class NewArray(typeRef: ArrayTypeRef, lengths: List[Tree])(
       implicit val pos: Position) extends Tree {
-    require(lengths.nonEmpty && lengths.size <= tpe.arrayTypeRef.dimensions)
+    require(lengths.nonEmpty && lengths.size <= typeRef.dimensions)
+
+    val tpe = ArrayType(typeRef)
   }
 
-  case class ArrayValue(tpe: ArrayType, elems: List[Tree])(
-      implicit val pos: Position) extends Tree
+  case class ArrayValue(typeRef: ArrayTypeRef, elems: List[Tree])(
+      implicit val pos: Position) extends Tree {
+    val tpe = ArrayType(typeRef)
+  }
 
   case class ArrayLength(array: Tree)(implicit val pos: Position) extends Tree {
     val tpe = IntType
@@ -516,7 +520,7 @@ object Trees {
    *  The node
    *
    *  {{{
-   *  JSSuperBrackerSelect(LoadJSConstructor(ClassType(Bar)), qualifier, item)
+   *  JSSuperBrackerSelect(LoadJSConstructor(ClassRef(Bar)), qualifier, item)
    *  }}}
    *
    *  which is printed as
@@ -560,7 +564,7 @@ object Trees {
    *  The node
    *
    *  {{{
-   *  JSSuperBrackerCall(LoadJSConstructor(ClassType(Bar)), receiver, method, args)
+   *  JSSuperBrackerCall(LoadJSConstructor(ClassRef(Bar)), receiver, method, args)
    *  }}}
    *
    *  which is printed as
@@ -644,25 +648,25 @@ object Trees {
    *  The instantiation `new Foo(1)` would be represented as
    *
    *  {{{
-   *  JSNew(LoadJSConstructor(ClassType("Foo")), List(IntLiteral(1)))
+   *  JSNew(LoadJSConstructor(ClassRef("Foo")), List(IntLiteral(1)))
    *  }}}
    *
    *  This node is also useful to encode `o.isInstanceOf[Foo]`:
    *
    *  {{{
-   *  JSBinaryOp(instanceof, o, LoadJSConstructor(ClassType("Foo")))
+   *  JSBinaryOp(instanceof, o, LoadJSConstructor(ClassRef("Foo")))
    *  }}}
    *
    *  If `Foo` is non-native, the presence of this node makes it instantiable,
    *  and therefore reachable.
    */
-  case class LoadJSConstructor(cls: ClassType)(
+  case class LoadJSConstructor(cls: ClassRef)(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
 
   /** Like [[LoadModule]] but for a JS module class. */
-  case class LoadJSModule(cls: ClassType)(
+  case class LoadJSModule(cls: ClassRef)(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }

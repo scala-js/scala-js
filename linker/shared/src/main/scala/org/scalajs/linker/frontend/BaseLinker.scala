@@ -262,7 +262,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
     val currentClassType = ClassType(classInfo.encodedName)
 
     val body = ApplyStatically(
-        This()(currentClassType), ClassType(targetInterface), targetIdent,
+        This()(currentClassType), ClassRef(targetInterface), targetIdent,
         params.map(_.ref))(targetMDef.resultType)
 
     MethodDef(static = false, bridgeIdent, params, targetMDef.resultType, Some(body))(

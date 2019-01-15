@@ -254,9 +254,9 @@ private[emitter] final class JSGen(val semantics: Semantics,
     }
   }
 
-  def genArrayValue(tpe: ArrayType, elems: List[Tree])(
+  def genArrayValue(arrayTypeRef: ArrayTypeRef, elems: List[Tree])(
       implicit pos: Position): Tree = {
-    genCallHelper("makeNativeArrayWrapper", genClassDataOf(tpe.arrayTypeRef),
+    genCallHelper("makeNativeArrayWrapper", genClassDataOf(arrayTypeRef),
         ArrayConstr(elems))
   }
 
