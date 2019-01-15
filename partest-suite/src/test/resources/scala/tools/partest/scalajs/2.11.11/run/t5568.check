@@ -1,7 +1,7 @@
 void
 int
-class scala.runtime.BoxedUnit
-class scala.runtime.BoxedUnit
+class java.lang.Void
+class java.lang.Void
 class java.lang.Byte
 class java.lang.Byte
 5

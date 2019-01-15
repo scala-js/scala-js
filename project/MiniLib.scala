@@ -12,6 +12,7 @@ object MiniLib {
         "Comparable",
         "Number",
 
+        "Void",
         "Boolean",
         "Character",
         "Byte",
@@ -53,11 +54,6 @@ object MiniLib {
         "Serializable"
     ).map("scala/" + _)
 
-    // TODO We should find a way to get rid of this one
-    val inScalaRuntime = List(
-        "BoxedUnit"
-    ).map("scala/runtime/" + _)
-
     /* TODO Could we put UndefinedBehaviorError in a neutral namespace?
      * RuntimeLong should probably be part of the linker itself, as a resource.
      */
@@ -68,7 +64,7 @@ object MiniLib {
     ).map("scala/scalajs/runtime/" + _)
 
     val allBaseNames =
-      inJavaLang ::: inJavaIO ::: inScala ::: inScalaRuntime ::: inScalaJSRuntime
+      inJavaLang ::: inJavaIO ::: inScala ::: inScalaJSRuntime
 
     allBaseNames.flatMap(name => List(name + ".sjsir", name + "$.sjsir")).toSet
   }

@@ -143,6 +143,7 @@ class ClassTagTest {
     testTrue[Float](1.5f)
     testTrue[Double](5.4)
 
+    testTrueOnJS[Void](())
     testTrueOnJS[Byte](5)
     testTrueOnJS[java.lang.Byte](5)
     testTrueOnJS[Int](5.toByte)
@@ -152,7 +153,6 @@ class ClassTagTest {
 
     testFalse[Unit](5)
     testFalse[scala.runtime.BoxedUnit](5)
-    testFalse[Void](())
     testFalse[Void](5)
     testFalse[Boolean](5)
     testFalse[java.lang.Boolean](5)

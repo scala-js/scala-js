@@ -50,5 +50,5 @@ Checking if void matches void
 Some(undefined)
 Checking if void matches byte
 None
-Checking if class scala.runtime.BoxedUnit matches void
+Checking if class java.lang.Void matches void
 Some(undefined)

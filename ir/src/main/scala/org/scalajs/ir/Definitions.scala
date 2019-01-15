@@ -47,7 +47,7 @@ object Definitions {
   )
 
   // Hijacked classes
-  val BoxedUnitClass = "sr_BoxedUnit"
+  val BoxedUnitClass = "jl_Void"
   val BoxedBooleanClass = "jl_Boolean"
   val BoxedCharacterClass = "jl_Character"
   val BoxedByteClass = "jl_Byte"
