@@ -65,6 +65,19 @@ object MyScalaJSPlugin extends AutoPlugin {
 
   val wantSourceMaps = settingKey[Boolean]("Whether source maps should be used")
 
+  val configSettings: Seq[Setting[_]] = Def.settings(
+      /* In this build, artifically add the products of the linker private
+       * library to the classpath used to load the IR. In other builds, those
+       * products will be found in the resources of the linker.
+       */
+      fullClasspath := {
+        val prev = fullClasspath.value
+        val linkerLibProducts =
+          (products in (LocalProject("linkerPrivateLibrary"), Compile)).value
+        prev ++ linkerLibProducts.map(Attributed.blank(_))
+      }
+  )
+
   override def projectSettings: Seq[Setting[_]] = Def.settings(
       /* Remove libraryDependencies on ourselves; we use .dependsOn() instead
        * inside this build.
@@ -98,7 +111,10 @@ object MyScalaJSPlugin extends AutoPlugin {
           "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
           scalaJSVersion + "/"
         )
-      }
+      },
+
+      inConfig(Compile)(configSettings),
+      inConfig(Test)(configSettings)
   )
 }
 
@@ -688,6 +704,18 @@ object Build {
       library
   )
 
+  lazy val linkerPrivateLibrary: Project = (project in file("linker-private-library")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
+      commonSettings,
+      fatalWarningsSettings,
+      name := "Scala.js linker private library",
+      publishArtifact in Compile := false,
+      delambdafySetting
+  ).withScalaJSCompiler.dependsOn(
+      library
+  )
+
   val commonLinkerSettings = Def.settings(
       commonSettings,
       publishSettings,
@@ -721,14 +749,108 @@ object Build {
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
       ),
+
+      resourceGenerators in Compile += Def.task {
+        val baseResourceDir = (resourceManaged in Compile).value
+        val resourceDir = baseResourceDir / "org/scalajs/linker/backend/emitter"
+
+        /* Awful hack to execute `products in (linkerPrivateLibrary, Compile)`
+         * as if we were in ++2.12.8, regardless of the current version of the
+         * linker and other projects.
+         */
+        val privateLibProducts = {
+          val s = state.value
+          val relevantProjects = List(compiler, library, libraryAux, scalalib,
+              javalanglib, javalib, linkerPrivateLibrary)
+          val setVersionSettings = relevantProjects.map { p =>
+            scalaVersion in p := "2.12.8"
+          }
+          val newState =
+            appendWithSession(Project.extract(s), setVersionSettings, s)
+          val extracted = Project.extract(newState)
+          val (_, privateLibProducts) =
+            extracted.runTask(products in (linkerPrivateLibrary, Compile), newState)
+          privateLibProducts
+        }
+
+        IO.createDirectory(resourceDir)
+        val copyPairs = for {
+          f <- (privateLibProducts ** "*.sjsir").get
+        } yield {
+          f -> resourceDir / f.getName
+        }
+        IO.copy(copyPairs, overwrite = false, preserveLastModified = true).toSeq
+      }.taskValue,
+
       fork in Test := true
   ).dependsOn(irProject, io, logging)
+
+  // Copy-pasted `Extracted.appendWithSession` from sbt, available only in sbt 1.1.
+  private def appendWithSession(extracted: Extracted, settings: Seq[Setting[_]],
+      state: State): State = {
+    appendImpl(extracted, settings, state, extracted.session.mergeSettings)
+  }
+
+  private[this] def appendImpl(extracted: Extracted, settings: Seq[Setting[_]],
+      state: State, sessionSettings: Seq[Setting[_]]): State = {
+    import extracted.{currentRef, rootProject, session, showKey, structure}
+    val appendSettings = Load.transformSettings(Load.projectScope(currentRef),
+        currentRef.build, rootProject, settings)
+    val newStructure =
+      Load.reapply(sessionSettings ++ appendSettings, structure)
+    Project.setProject(session, newStructure, state)
+  }
 
   lazy val linkerJS: Project = (project in file("linker/js")).enablePlugins(
       MyScalaJSPlugin
   ).settings(
       commonLinkerSettings,
       crossVersion := ScalaJSCrossVersion.binary,
+
+      sourceGenerators in Compile += Def.task {
+        val dir = (sourceManaged in Compile).value
+        val privateLibProducts = (products in (linkerPrivateLibrary, Compile)).value
+
+        val content = {
+          val namesAndContents = for {
+            f <- (privateLibProducts ** "*.sjsir").get
+          } yield {
+            val bytes = IO.readBytes(f)
+            val base64 = java.util.Base64.getEncoder().encodeToString(bytes)
+            s""""${f.getName}" -> "$base64""""
+          }
+
+          s"""
+          |package org.scalajs.linker.backend.emitter
+          |
+          |import org.scalajs.linker.irio._
+          |
+          |object PrivateLibHolder {
+          |  private val relativeDir = "scala/scalajs/runtime/"
+          |
+          |  private val namesAndContents = Seq(
+          |    ${namesAndContents.mkString(",\n    ")}
+          |  )
+          |
+          |  val files: Seq[VirtualScalaJSIRFile] = {
+          |    for ((name, contentBase64) <- namesAndContents) yield {
+          |      val relativePath = "scala/scalajs/runtime/" + name
+          |      val content = java.util.Base64.getDecoder().decode(contentBase64)
+          |      val version = Some("") // this indicates that the file never changes
+          |      new MemVirtualSerializedScalaJSIRFile(
+          |            relativePath, relativePath, content, version)
+          |    }
+          |  }
+          |}
+          """.stripMargin
+        }
+
+        IO.createDirectory(dir)
+        val output = dir / "PrivateLibHolder.scala"
+        IO.write(output, content)
+        Seq(output)
+      }.taskValue,
+
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, irProjectJS, ioJS, loggingJS, jUnitRuntime % "test"

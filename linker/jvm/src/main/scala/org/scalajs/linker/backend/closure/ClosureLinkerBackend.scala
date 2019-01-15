@@ -29,6 +29,7 @@ import org.scalajs.io._
 import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
+import org.scalajs.linker.irio.VirtualScalaJSIRFile
 import org.scalajs.linker.standard._
 import org.scalajs.linker.backend._
 import org.scalajs.linker.backend.emitter.Emitter
@@ -57,6 +58,9 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   }
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
+
+  override def injectedIRFiles: Seq[VirtualScalaJSIRFile] =
+    emitter.injectedIRFiles
 
   private val needsIIFEWrapper = moduleKind match {
     case ModuleKind.NoModule                             => true

@@ -15,6 +15,7 @@ package org.scalajs.linker.standard
 import org.scalajs.logging._
 
 import org.scalajs.linker.LinkerOutput
+import org.scalajs.linker.irio.VirtualScalaJSIRFile
 
 /** A backend of a standard Scala.js linker.
  *
@@ -30,6 +31,16 @@ abstract class LinkerBackend {
 
   /** Symbols this backend needs to be present in the linking unit. */
   val symbolRequirements: SymbolRequirement
+
+  /** Additional IR files to inject for linking, mandated by this back-end.
+   *
+   *  Example: the standard emitter back-end injects `RuntimeLong.sjsir` and
+   *  its companion object, unless it uses `BigInt`s to implement `Long`s.
+   *
+   *  The default implementation in `LinkerBackend` returns an empty sequence.
+   */
+  def injectedIRFiles: Seq[VirtualScalaJSIRFile] =
+    Nil
 
   /** Emit the given [[LinkingUnit]] to the target output.
    *

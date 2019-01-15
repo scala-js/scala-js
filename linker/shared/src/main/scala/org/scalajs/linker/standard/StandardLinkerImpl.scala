@@ -37,8 +37,8 @@ private final class StandardLinkerImpl private (
       moduleInitializers: Seq[ModuleInitializer],
       output: LinkerOutput, logger: Logger): Unit = {
     guard {
-      val unit = frontend.link(irFiles, moduleInitializers,
-          backend.symbolRequirements, logger)
+      val unit = frontend.link(irFiles ++ backend.injectedIRFiles,
+          moduleInitializers, backend.symbolRequirements, logger)
       backend.emit(unit, output, logger)
     }
   }

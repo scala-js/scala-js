@@ -8,6 +8,7 @@ val io = Build.io
 val ioJS = Build.ioJS
 val logging = Build.logging
 val loggingJS = Build.loggingJS
+val linkerPrivateLibrary = Build.linkerPrivateLibrary
 val linker = Build.linker
 val linkerJS = Build.linkerJS
 val jsEnvs = Build.jsEnvs

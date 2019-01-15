@@ -28,6 +28,7 @@ import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.javascript.{Trees => js, _}
 
 import GlobalRefUtils._
+import org.scalajs.linker.irio.VirtualScalaJSIRFile
 
 /** Emits a desugared JS tree to a builder */
 final class Emitter private (config: CommonPhaseConfig,
@@ -68,6 +69,9 @@ final class Emitter private (config: CommonPhaseConfig,
 
   val symbolRequirements: SymbolRequirement =
     Emitter.symbolRequirements(config.coreSpec)
+
+  val injectedIRFiles: Seq[VirtualScalaJSIRFile] =
+    Emitter.injectedIRFiles(config.coreSpec)
 
   private val needsIIFEWrapper = {
     moduleKind match {
@@ -797,5 +801,7 @@ private object Emitter {
     )
   }
 
-
+  private def injectedIRFiles(coreSpec: CoreSpec): Seq[VirtualScalaJSIRFile] =
+    if (coreSpec.esFeatures.allowBigIntsForLongs) Nil
+    else PrivateLibHolder.files
 }

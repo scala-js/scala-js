@@ -15,6 +15,7 @@ package org.scalajs.linker.backend
 import org.scalajs.logging.Logger
 
 import org.scalajs.linker.LinkerOutput
+import org.scalajs.linker.irio.VirtualScalaJSIRFile
 import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.emitter.Emitter
 
@@ -30,6 +31,9 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
   private[this] val emitter = new Emitter(config.commonConfig)
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
+
+  override def injectedIRFiles: Seq[VirtualScalaJSIRFile] =
+    emitter.injectedIRFiles
 
   /** Emit the given [[standard.LinkingUnit LinkingUnit]] to the target output.
    *
