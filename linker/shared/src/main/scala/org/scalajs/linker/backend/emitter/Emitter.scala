@@ -71,6 +71,8 @@ final class Emitter private (config: CommonPhaseConfig,
   val symbolRequirements: SymbolRequirement =
     Emitter.symbolRequirements(config.coreSpec)
 
+  val injectedIRFiles: Seq[IRFile] = PrivateLibHolder.files
+
   private val needsIIFEWrapper = {
     moduleKind match {
       case ModuleKind.NoModule                             => true

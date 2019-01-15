@@ -47,12 +47,9 @@ object MiniLib {
         "Serializable"
     ).map("java/io/" + _)
 
-    /* TODO Could we put UndefinedBehaviorError in a neutral namespace?
-     * RuntimeLong should probably be part of the linker itself, as a resource.
-     */
+    // TODO Move UndefinedBehaviorError into the linker library (#3824)
     val inScalaJSRuntime = List(
-        "UndefinedBehaviorError",
-        "RuntimeLong"
+        "UndefinedBehaviorError"
     ).map("scala/scalajs/runtime/" + _)
 
     val allBaseNames =

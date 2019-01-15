@@ -8,6 +8,7 @@ val logging = Build.logging
 val loggingJS = Build.loggingJS
 val linkerInterface = Build.linkerInterface
 val linkerInterfaceJS = Build.linkerInterfaceJS
+val linkerPrivateLibrary = Build.linkerPrivateLibrary
 val linker = Build.linker
 val linkerJS = Build.linkerJS
 val jsEnvs = Build.jsEnvs

@@ -49,8 +49,6 @@ final class Long private () extends Number with Comparable[Long] {
 }
 
 object Long {
-  import scala.scalajs.runtime.RuntimeLong
-
   final val TYPE = scala.Predef.classOf[scala.Long]
   final val MIN_VALUE = -9223372036854775808L
   final val MAX_VALUE = 9223372036854775807L

@@ -436,6 +436,14 @@ object Build {
     }
   }
 
+  implicit class ProjectOps(val project: Project) extends AnyVal {
+    /** Uses the Scala.js compiler plugin. */
+    def withScalaJSCompiler2_12: Project = {
+      if (isGeneratingForIDE) project
+      else project.dependsOn(compiler.v2_12 % "plugin")
+    }
+  }
+
   implicit class MultiProjectOps(val project: MultiScalaProject) extends AnyVal {
     /** Uses the Scala.js compiler plugin. */
     def withScalaJSCompiler: MultiScalaProject = {
@@ -499,7 +507,9 @@ object Build {
       publishArtifact in Compile := false,
 
       {
-        val allProjects: Seq[Project] = Seq(plugin) ++ Seq(
+        val allProjects: Seq[Project] = Seq(
+            plugin, linkerPrivateLibrary
+        ) ++ Seq(
             compiler, irProject, irProjectJS, logging, loggingJS,
             linkerInterface, linkerInterfaceJS, linker, linkerJS,
             jsEnvs, jsEnvsTestKit, nodeJSEnv, testAdapter,
@@ -684,6 +694,17 @@ object Build {
       library, irProjectJS, loggingJS,
   )
 
+  lazy val linkerPrivateLibrary: Project = (project in file("linker-private-library")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
+      commonSettings,
+      scalaVersion := "2.12.10",
+      fatalWarningsSettings,
+      name := "Scala.js linker private library",
+      publishArtifact in Compile := false,
+      delambdafySetting
+  ).withScalaJSCompiler2_12.dependsOn(library.v2_12)
+
   def commonLinkerSettings(minilib: LocalProject, library: LocalProject) = Def.settings(
       commonSettings,
       publishSettings,
@@ -726,6 +747,21 @@ object Build {
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
       ),
+
+      resourceGenerators in Compile += Def.task {
+        val s = streams.value
+        val baseResourceDir = (resourceManaged in Compile).value
+        val resourceDir = baseResourceDir / "org/scalajs/linker/backend/emitter"
+
+        val privateLibProducts = (products in (linkerPrivateLibrary, Compile)).value
+
+        // Copy all *.sjsir files to resourceDir.
+        val mappings = (privateLibProducts ** "*.sjsir").pair(Path.flat(resourceDir))
+        Sync.sync(s.cacheStoreFactory.make("linker-library"))(mappings)
+
+        mappings.unzip._2
+      }.taskValue,
+
       fork in Test := true
   ).dependsOn(linkerInterface, irProject, logging, jUnitAsyncJVM % "test")
 
@@ -737,6 +773,50 @@ object Build {
       commonLinkerSettings _
   ).settings(
       crossVersion := ScalaJSCrossVersion.binary,
+
+      sourceGenerators in Compile += Def.task {
+        val dir = (sourceManaged in Compile).value
+        val privateLibProducts = (products in (linkerPrivateLibrary, Compile)).value
+
+        val content = {
+          val namesAndContents = for {
+            f <- (privateLibProducts ** "*.sjsir").get
+          } yield {
+            val bytes = IO.readBytes(f)
+            val base64 = java.util.Base64.getEncoder().encodeToString(bytes)
+            s""""${f.getName}" -> "$base64""""
+          }
+
+          s"""
+          |package org.scalajs.linker.backend.emitter
+          |
+          |import org.scalajs.linker.interface.IRFile
+          |import org.scalajs.linker.standard.MemIRFileImpl
+          |
+          |object PrivateLibHolder {
+          |  private val namesAndContents = Seq(
+          |    ${namesAndContents.mkString(",\n    ")}
+          |  )
+          |
+          |  val files: Seq[IRFile] = {
+          |    for ((name, contentBase64) <- namesAndContents) yield {
+          |      new MemIRFileImpl(
+          |          path = "scala/scalajs/runtime/" + name,
+          |          version = Some(""), // this indicates that the file never changes
+          |          content = java.util.Base64.getDecoder().decode(contentBase64)
+          |      )
+          |    }
+          |  }
+          |}
+          """.stripMargin
+        }
+
+        IO.createDirectory(dir)
+        val output = dir / "PrivateLibHolder.scala"
+        IO.write(output, content)
+        Seq(output)
+      }.taskValue,
+
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       linkerInterfaceJS, library, irProjectJS, loggingJS, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test"

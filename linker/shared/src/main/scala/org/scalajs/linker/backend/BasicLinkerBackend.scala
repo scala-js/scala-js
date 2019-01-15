@@ -16,7 +16,7 @@ import scala.concurrent._
 
 import org.scalajs.logging.Logger
 
-import org.scalajs.linker.interface.LinkerOutput
+import org.scalajs.linker.interface.{IRFile, LinkerOutput}
 import org.scalajs.linker.interface.unstable.OutputFileImpl
 import org.scalajs.linker.standard._
 
@@ -33,6 +33,8 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
   private[this] val emitter = new Emitter(config.commonConfig)
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
+
+  override def injectedIRFiles: Seq[IRFile] = emitter.injectedIRFiles
 
   /** Emit the given [[standard.LinkingUnit LinkingUnit]] to the target output.
    *

@@ -16,7 +16,7 @@ import scala.concurrent._
 
 import org.scalajs.logging._
 
-import org.scalajs.linker.interface.LinkerOutput
+import org.scalajs.linker.interface.{IRFile, LinkerOutput}
 
 /** A backend of a standard Scala.js linker.
  *
@@ -32,6 +32,13 @@ abstract class LinkerBackend {
 
   /** Symbols this backend needs to be present in the linking unit. */
   val symbolRequirements: SymbolRequirement
+
+  /** Additional IR files to inject for linking, mandated by this back-end.
+   *
+   *  Example: the standard emitter back-end injects `RuntimeLong.sjsir` and
+   *  its companion object, unless it uses `BigInt`s to implement `Long`s.
+   */
+  def injectedIRFiles: Seq[IRFile]
 
   /** Emit the given [[LinkingUnit]] to the target output.
    *

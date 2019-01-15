@@ -166,21 +166,7 @@ object IRCheckerTest {
   def testLinkNoIRError(classDefs: Seq[ClassDef],
       moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[Unit] = {
-
-    val config = StandardConfig()
-      .withCheckIR(true)
-      .withOptimizer(false)
-    val linkerFrontend = StandardLinkerFrontend(config)
-    val symbolRequirements = StandardLinkerBackend(config).symbolRequirements
-
-    val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
-
-    val result = TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
-      linkerFrontend.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
-        symbolRequirements, new ScalaConsoleLogger(Level.Error))
-    }
-
-    result.map(_ => ())
+    link(classDefs, moduleInitializers, new ScalaConsoleLogger(Level.Error))
   }
 
   def assertContainsLogLine(expected: String, log: List[String]): Unit = {
@@ -209,25 +195,36 @@ object IRCheckerTest {
         logBuilder += t.toString()
     }
 
-    val config = StandardConfig()
-      .withCheckIR(true)
-      .withOptimizer(false)
-    val linkerFrontend = StandardLinkerFrontend(config)
-    val symbolRequirements = StandardLinkerBackend(config).symbolRequirements
-
-    val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
-
-    val result = TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
-      linkerFrontend.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
-        symbolRequirements, ErrorLogger)
-    }
-
     // We cannot use `transform` because of 2.11.
-    result.failed.recoverWith {
+    link(classDefs, moduleInitializers, ErrorLogger).failed.recoverWith {
       case _: NoSuchElementException =>
         Future.failed(new AssertionError("IR checking did not fail"))
     }.map { _ =>
       logBuilder.result()
     }
+  }
+
+  private def link(classDefs: Seq[ClassDef],
+      moduleInitializers: List[ModuleInitializer],
+      logger: Logger)(implicit ec: ExecutionContext): Future[Unit] = {
+    val config = StandardConfig()
+      .withCheckIR(true)
+      .withOptimizer(false)
+    val linkerFrontend = StandardLinkerFrontend(config)
+    val linkerBackend = StandardLinkerBackend(config)
+
+    TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
+      val irFiles = (
+          /* TODO(#3853): Split symbol requirements such that injectedIRFiles
+           * are not needed anymore.
+           */
+          linkerBackend.injectedIRFiles ++
+          stdLibFiles ++
+          classDefs.map(MemClassDefIRFile(_))
+      )
+
+      linkerFrontend.link(irFiles, moduleInitializers,
+          linkerBackend.symbolRequirements, logger)
+    }.map(_ => ())
   }
 }
