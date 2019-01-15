@@ -44,7 +44,6 @@ final class RuntimeLong(val lo: Int, val hi: Int)
   a =>
 
   import RuntimeLong._
-  import Utils._
 
   // Universal equality
 
@@ -537,14 +536,12 @@ final class RuntimeLong(val lo: Int, val hi: Int)
 }
 
 object RuntimeLong {
-  import Utils._
-
   private final val TwoPow32 = 4294967296.0
   private final val TwoPow63 = 9223372036854775808.0
 
   /** The magical mask that allows to test whether an unsigned long is a safe
    *  double.
-   *  @see Utils.isUnsignedSafeDouble
+   *  @see isUnsignedSafeDouble
    */
   private final val UnsignedSafeDoubleHiMask = 0xffe00000
 
@@ -963,108 +960,104 @@ object RuntimeLong {
       .asInstanceOf[String]
   }
 
-  // In a different object so they can be inlined without cost
-  private object Utils {
-    /** Tests whether the long (lo, hi) is 0. */
-    @inline def isZero(lo: Int, hi: Int): Boolean =
-      (lo | hi) == 0
+  /** Tests whether the long (lo, hi) is 0. */
+  @inline private def isZero(lo: Int, hi: Int): Boolean =
+    (lo | hi) == 0
 
-    /** Tests whether the long (lo, hi)'s mathematic value fits in a signed Int. */
-    @inline def isInt32(lo: Int, hi: Int): Boolean =
-      hi == (lo >> 31)
+  /** Tests whether the long (lo, hi)'s mathematic value fits in a signed Int. */
+  @inline private def isInt32(lo: Int, hi: Int): Boolean =
+    hi == (lo >> 31)
 
-    /** Tests whether the long (_, hi)'s mathematic value fits in an unsigned Int. */
-    @inline def isUInt32(hi: Int): Boolean =
-      hi == 0
+  /** Tests whether the long (_, hi)'s mathematic value fits in an unsigned Int. */
+  @inline private def isUInt32(hi: Int): Boolean =
+    hi == 0
 
-    /** Tests whether an unsigned long (lo, hi) is a safe Double.
-     *  This test is in fact slightly stricter than necessary, as it tests
-     *  whether `x < 2^53`, although x == 2^53 would be a perfectly safe
-     *  Double. The reason we do this is that testing `x <= 2^53` is much
-     *  slower, as `x == 2^53` basically has to be treated specially.
-     *  Since there is virtually no gain to treating 2^53 itself as a safe
-     *  Double, compared to all numbers smaller than it, we don't bother, and
-     *  stay on the fast side.
-     */
-    @inline def isUnsignedSafeDouble(hi: Int): Boolean =
-      (hi & UnsignedSafeDoubleHiMask) == 0
+  /** Tests whether an unsigned long (lo, hi) is a safe Double.
+   *  This test is in fact slightly stricter than necessary, as it tests
+   *  whether `x < 2^53`, although x == 2^53 would be a perfectly safe
+   *  Double. The reason we do this is that testing `x <= 2^53` is much
+   *  slower, as `x == 2^53` basically has to be treated specially.
+   *  Since there is virtually no gain to treating 2^53 itself as a safe
+   *  Double, compared to all numbers smaller than it, we don't bother, and
+   *  stay on the fast side.
+   */
+  @inline private def isUnsignedSafeDouble(hi: Int): Boolean =
+    (hi & UnsignedSafeDoubleHiMask) == 0
 
-    /** Converts an unsigned safe double into its Double representation. */
-    @inline def asUnsignedSafeDouble(lo: Int, hi: Int): Double =
-      hi * TwoPow32 + asUint(lo)
+  /** Converts an unsigned safe double into its Double representation. */
+  @inline private def asUnsignedSafeDouble(lo: Int, hi: Int): Double =
+    hi * TwoPow32 + asUint(lo)
 
-    /** Converts an unsigned safe double into its RuntimeLong representation. */
-    @inline def fromUnsignedSafeDouble(x: Double): RuntimeLong =
-      new RuntimeLong(unsignedSafeDoubleLo(x), unsignedSafeDoubleHi(x))
+  /** Converts an unsigned safe double into its RuntimeLong representation. */
+  @inline private def fromUnsignedSafeDouble(x: Double): RuntimeLong =
+    new RuntimeLong(unsignedSafeDoubleLo(x), unsignedSafeDoubleHi(x))
 
-    /** Computes the lo part of a long from an unsigned safe double. */
-    @inline def unsignedSafeDoubleLo(x: Double): Int =
-      rawToInt(x)
+  /** Computes the lo part of a long from an unsigned safe double. */
+  @inline private def unsignedSafeDoubleLo(x: Double): Int =
+    rawToInt(x)
 
-    /** Computes the hi part of a long from an unsigned safe double. */
-    @inline def unsignedSafeDoubleHi(x: Double): Int =
-      rawToInt(x / TwoPow32)
+  /** Computes the hi part of a long from an unsigned safe double. */
+  @inline private def unsignedSafeDoubleHi(x: Double): Int =
+    rawToInt(x / TwoPow32)
 
-    /** Interprets an `Int` as an unsigned integer and returns its value as a
-     *  `Double`.
-     */
-    @inline def asUint(x: Int): Double = {
-      import scala.scalajs.js
-      (x.asInstanceOf[js.Dynamic] >>> 0.asInstanceOf[js.Dynamic]).asInstanceOf[Double]
-    }
-
-    /** Performs the JavaScript operation `(x | 0)`. */
-    @inline def rawToInt(x: Double): Int = {
-      import scala.scalajs.js
-      (x.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
-    }
-
-    /** Tests whether the given non-zero unsigned Int is an exact power of 2. */
-    @inline def isPowerOfTwo_IKnowItsNot0(i: Int): Boolean =
-      (i & (i - 1)) == 0
-
-    /** Returns the log2 of the given unsigned Int assuming it is an exact power of 2. */
-    @inline def log2OfPowerOfTwo(i: Int): Int =
-      31 - Integer.numberOfLeadingZeros(i)
-
-    /** Returns the number of leading zeros in the given long (lo, hi). */
-    @inline def inlineNumberOfLeadingZeros(lo: Int, hi: Int): Int =
-      if (hi != 0) Integer.numberOfLeadingZeros(hi)
-      else Integer.numberOfLeadingZeros(lo) + 32
-
-    /** Tests whether the unsigned long (alo, ahi) is >= (blo, bhi). */
-    @inline
-    def inlineUnsigned_>=(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
-      if (ahi == bhi) inlineUnsignedInt_>=(alo, blo)
-      else inlineUnsignedInt_>=(ahi, bhi)
-
-    @inline
-    def inlineUnsignedInt_<(a: Int, b: Int): Boolean =
-      (a ^ 0x80000000) < (b ^ 0x80000000)
-
-    @inline
-    def inlineUnsignedInt_>(a: Int, b: Int): Boolean =
-      (a ^ 0x80000000) > (b ^ 0x80000000)
-
-    @inline
-    def inlineUnsignedInt_>=(a: Int, b: Int): Boolean =
-      (a ^ 0x80000000) >= (b ^ 0x80000000)
-
-    @inline
-    def inline_lo_unary_-(lo: Int): Int =
-      -lo
-
-    @inline
-    def inline_hi_unary_-(lo: Int, hi: Int): Int =
-      if (lo != 0) ~hi else -hi
-
-    @inline
-    def inline_abs(lo: Int, hi: Int): RuntimeLong = {
-      if (hi < 0)
-        new RuntimeLong(inline_lo_unary_-(lo), inline_hi_unary_-(lo, hi))
-      else
-        new RuntimeLong(lo, hi)
-    }
+  /** Interprets an `Int` as an unsigned integer and returns its value as a
+   *  `Double`.
+   */
+  @inline private def asUint(x: Int): Double = {
+    import scala.scalajs.js
+    (x.asInstanceOf[js.Dynamic] >>> 0.asInstanceOf[js.Dynamic]).asInstanceOf[Double]
   }
 
+  /** Performs the JavaScript operation `(x | 0)`. */
+  @inline private def rawToInt(x: Double): Int = {
+    import scala.scalajs.js
+    (x.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
+  }
+
+  /** Tests whether the given non-zero unsigned Int is an exact power of 2. */
+  @inline private def isPowerOfTwo_IKnowItsNot0(i: Int): Boolean =
+    (i & (i - 1)) == 0
+
+  /** Returns the log2 of the given unsigned Int assuming it is an exact power of 2. */
+  @inline private def log2OfPowerOfTwo(i: Int): Int =
+    31 - Integer.numberOfLeadingZeros(i)
+
+  /** Returns the number of leading zeros in the given long (lo, hi). */
+  @inline private def inlineNumberOfLeadingZeros(lo: Int, hi: Int): Int =
+    if (hi != 0) Integer.numberOfLeadingZeros(hi)
+    else Integer.numberOfLeadingZeros(lo) + 32
+
+  /** Tests whether the unsigned long (alo, ahi) is >= (blo, bhi). */
+  @inline
+  private def inlineUnsigned_>=(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
+    if (ahi == bhi) inlineUnsignedInt_>=(alo, blo)
+    else inlineUnsignedInt_>=(ahi, bhi)
+
+  @inline
+  private def inlineUnsignedInt_<(a: Int, b: Int): Boolean =
+    (a ^ 0x80000000) < (b ^ 0x80000000)
+
+  @inline
+  private def inlineUnsignedInt_>(a: Int, b: Int): Boolean =
+    (a ^ 0x80000000) > (b ^ 0x80000000)
+
+  @inline
+  private def inlineUnsignedInt_>=(a: Int, b: Int): Boolean =
+    (a ^ 0x80000000) >= (b ^ 0x80000000)
+
+  @inline
+  private def inline_lo_unary_-(lo: Int): Int =
+    -lo
+
+  @inline
+  private def inline_hi_unary_-(lo: Int, hi: Int): Int =
+    if (lo != 0) ~hi else -hi
+
+  @inline
+  private def inline_abs(lo: Int, hi: Int): RuntimeLong = {
+    if (hi < 0)
+      new RuntimeLong(inline_lo_unary_-(lo), inline_hi_unary_-(lo, hi))
+    else
+      new RuntimeLong(lo, hi)
+  }
 }

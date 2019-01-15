@@ -59,8 +59,7 @@ object MiniLib {
      */
     val inScalaJSRuntime = List(
         "UndefinedBehaviorError",
-        "RuntimeLong",
-        "RuntimeLong$Utils"
+        "RuntimeLong"
     ).map("scala/scalajs/runtime/" + _)
 
     val allBaseNames =
