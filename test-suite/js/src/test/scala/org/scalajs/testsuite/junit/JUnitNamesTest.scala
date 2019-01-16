@@ -19,6 +19,7 @@ class JUnitNamesTest {
   @Test def +(): Unit = ()
   @Test def `*`(): Unit = ()
   @Test def `∆ƒ`(): Unit = ()
+  @Test def `3€`(): Unit = ()
 }
 
 class JUnitNamesTestCheck {
@@ -29,6 +30,7 @@ class JUnitNamesTestCheck {
       boot.invokeTest(boot.newInstance(), "$plus")
       boot.invokeTest(boot.newInstance(), "$times")
       boot.invokeTest(boot.newInstance(), "$u2206ƒ")
+      boot.invokeTest(boot.newInstance(), "3€")
     } catch {
       case _: Throwable =>
         fail("Could not invoke method on JUnitNamesTest.")
