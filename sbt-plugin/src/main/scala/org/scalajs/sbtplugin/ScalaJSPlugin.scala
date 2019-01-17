@@ -58,6 +58,21 @@ object ScalaJSPlugin extends AutoPlugin {
     val scalaJSIsSnapshotVersion = ScalaJSVersions.currentIsSnapshot
     val scalaJSBinaryVersion = ScalaJSCrossVersion.currentBinaryVersion
 
+    /** Declares [[sbt.Tags.Tag Tag]]s which may be used to limit the
+     *  concurrency of build tasks.
+     *
+     *  For example, the following snippet can be used to limit the
+     *  number of linking tasks which are able to run at once:
+     *
+     *  {{{
+     *  Global / concurrentRestrictions += Tags.limit(ScalaJSTags.Link, 2)
+     *  }}}
+     */
+    object ScalaJSTags {
+      /** This tag is applied to the [[fastOptJS]] and [[fullOptJS]] tasks. */
+      val Link = Tags.Tag("scalajs-link")
+    }
+
     // Stage values
     @deprecated("Use FastOptStage instead", "0.6.6")
     val PreLinkStage = Stage.FastOpt
