@@ -12,34 +12,32 @@
 
 package org.scalajs.testsuite.library
 
+import scala.scalajs.LinkingInfo
+
 import org.junit.Assert._
-import org.junit.Assume._
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.Platform._
+import org.scalajs.testsuite.utils.Platform
 
 class LinkingInfoTest {
+  @Test def productionMode(): Unit =
+    assertEquals(Platform.isInProductionMode, LinkingInfo.productionMode)
 
-  import scala.scalajs.LinkingInfo
+  @Test def developmentMode(): Unit =
+    assertEquals(!Platform.isInProductionMode, LinkingInfo.developmentMode)
 
-  @Test def productionMode_when_in_production_mode(): Unit = {
-    assumeTrue("Assumed in production mode", isInProductionMode)
-    assertTrue(LinkingInfo.productionMode)
+  @Test def assumingES6(): Unit =
+    assertEquals(Platform.assumeES2015, LinkingInfo.assumingES6)
+
+  @Test def runtime(): Unit = {
+    import scala.scalajs.runtime.{linkingInfo, LinkingInfo}
+
+    def isCompliant(f: LinkingInfo.Semantics => Int) =
+      f(linkingInfo.semantics) == LinkingInfo.Semantics.Compliant
+
+    assertEquals(Platform.hasCompliantAsInstanceOfs, isCompliant(_.asInstanceOfs))
+    assertEquals(Platform.hasCompliantArrayIndexOutOfBounds, isCompliant(_.arrayIndexOutOfBounds))
+    assertEquals(Platform.hasCompliantModuleInit, isCompliant(_.moduleInit))
+    assertEquals(Platform.hasStrictFloats, linkingInfo.semantics.strictFloats)
   }
-
-  @Test def productionMode_when_in_development_mode(): Unit = {
-    assumeTrue("Assumed in development mode", isInDevelopmentMode)
-    assertFalse(LinkingInfo.productionMode)
-  }
-
-  @Test def developmentMode_when_in_production_mode(): Unit = {
-    assumeTrue("Assumed in production mode", isInProductionMode)
-    assertFalse(LinkingInfo.developmentMode)
-  }
-
-  @Test def developmentMode_when_in_development_mode(): Unit = {
-    assumeTrue("Assumed in development mode", isInDevelopmentMode)
-    assertTrue(LinkingInfo.developmentMode)
-  }
-
 }

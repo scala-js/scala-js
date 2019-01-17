@@ -220,7 +220,7 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
 
   @Test def is_iterable(): Unit = {
     assumeTrue("Assuming JavaScript symbols are supported",
-        org.scalajs.testsuite.utils.Platform.areJSSymbolsSupported)
+        org.scalajs.testsuite.utils.Platform.jsSymbols)
 
     import js.JSConverters._
 
@@ -234,7 +234,7 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
 
   @Test def from_iterable(): Unit = {
     assumeTrue("Assuming JavaScript symbols are supported",
-        org.scalajs.testsuite.utils.Platform.areJSSymbolsSupported)
+        org.scalajs.testsuite.utils.Platform.jsSymbols)
 
     import js.JSConverters._
 

@@ -19,6 +19,6 @@ import org.scalajs.testsuite.utils.Platform
 
 trait SupportsTypedArrays {
   @BeforeClass def assumeThatContextSupportsTypedByteArrays(): Unit = {
-    assumeTrue("Assumed typed arrays are supported", Platform.areTypedArraysSupported)
+    assumeTrue("Assumed typed arrays are supported", Platform.typedArrays)
   }
 }

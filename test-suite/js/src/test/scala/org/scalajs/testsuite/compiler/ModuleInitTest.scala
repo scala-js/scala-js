@@ -22,7 +22,7 @@ class ModuleInitTest {
   import ModuleInitTest._
 
   @Test def should_only_execute_module_initializers_once(): Unit = {
-    assumeTrue("Assumed compliant Module", hasCompliantModule)
+    assumeTrue("Assumed compliant Module", hasCompliantModuleInit)
     val x = A.Y
     val y = A.cs.head
     assertTrue(x ne null)

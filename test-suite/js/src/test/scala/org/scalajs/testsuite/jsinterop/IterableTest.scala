@@ -22,7 +22,7 @@ import org.junit.{BeforeClass, Test}
 object IterableTest {
   @BeforeClass def assumeSymbolsAreSupported(): Unit = {
     assumeTrue("Assuming JavaScript symbols are supported",
-        org.scalajs.testsuite.utils.Platform.areJSSymbolsSupported)
+        org.scalajs.testsuite.utils.Platform.jsSymbols)
   }
 
   private class CounterIterable(val max: Int) extends js.Iterable[Int] {

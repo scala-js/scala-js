@@ -34,14 +34,7 @@ object Platform {
     else Integer.parseInt(v.takeWhile(_.isDigit))
   }
 
-  def executingInNodeJS: Boolean = false
-  def typedArrays: Boolean = false
-  def sourceMaps: Boolean = false
-
-  def isInFastOpt: Boolean = false
   def isInFullOpt: Boolean = false
-  def isInProductionMode: Boolean = false
-  def isInDevelopmentMode: Boolean = true
 
   def hasCompliantAsInstanceOfs: Boolean = true
   def hasCompliantArrayIndexOutOfBounds: Boolean = true

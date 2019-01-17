@@ -250,15 +250,6 @@ object System {
       sysProp.setProperty("file.separator", "/")
       sysProp.setProperty("path.separator", ":")
       sysProp.setProperty("line.separator", "\n")
-
-      for {
-        envInfo <- EnvironmentInfo.envInfo
-        jsEnvProperties <- envInfo.javaSystemProperties
-        (key, value) <- jsEnvProperties
-      } {
-        sysProp.setProperty(key, value)
-      }
-
       sysProp
     }
   }
