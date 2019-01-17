@@ -158,11 +158,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       usesScalaJSLinkerTag in key := {
         val projectPart = thisProject.value.id
         val configPart = configuration.value.name
-
-        val stagePart = stage match {
-          case Stage.FastOpt => "fastopt"
-          case Stage.FullOpt => "fullopt"
-        }
+        val stagePart = stage.tagName
 
         Tags.Tag(s"uses-scalajs-linker-$projectPart-$configPart-$stagePart")
       },
@@ -185,9 +181,11 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val output = (artifactPath in key).value
         val linker = (scalaJSLinker in key).value
         val usesLinkerTag = (usesScalaJSLinkerTag in key).value
+        val scalaJsOptTag = Tags.Tag(s"scalajs-${stage.tagName}")
+
         val sourceMapFile = new File(output.getPath + ".map")
 
-        Def.task {
+        val linkerTask = Def.task {
           val log = s.log
           val realFiles = irInfo.get(scalaJSSourceFiles).get
           val ir = irInfo.data
@@ -195,10 +193,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
           FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
               FilesInfo.exists) { _ => // We don't need the files
 
-            val stageName = stage match {
-              case Stage.FastOpt => "Fast"
-              case Stage.FullOpt => "Full"
-            }
+            val stageName = stage.name
 
             log.info(s"$stageName optimizing $output")
 
@@ -221,7 +216,12 @@ private[sbtplugin] object ScalaJSPluginInternal {
           } (realFiles.toSet)
 
           Attributed.blank(output).put(scalaJSSourceMap, sourceMapFile)
-        }.tag(usesLinkerTag)
+        }
+
+        linkerTask
+          .tag(scalaJsOptTag)
+          .tag(usesLinkerTag)
+
       }.value
   )
 
@@ -450,10 +450,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       },
 
       artifactPath in testHtml := {
-        val stageSuffix = scalaJSStage.value match {
-          case Stage.FastOpt => "fastopt"
-          case Stage.FullOpt => "opt"
-        }
+        val stageSuffix = scalaJSStage.value.fileSuffix
         val config = configuration.value.name
         ((crossTarget in testHtml).value /
             ((moduleName in testHtml).value + s"-$stageSuffix-$config.html"))

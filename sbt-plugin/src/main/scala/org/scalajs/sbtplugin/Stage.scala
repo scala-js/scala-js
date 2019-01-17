@@ -12,9 +12,21 @@
 
 package org.scalajs.sbtplugin
 
-sealed trait Stage
+sealed trait Stage {
+  def tagName: String
+  def fileSuffix: String
+  def name: String
+}
 
 object Stage {
-  case object FullOpt extends Stage
-  case object FastOpt extends Stage
+  case object FullOpt extends Stage {
+    val tagName: String = "fullopt"
+    val fileSuffix: String = "opt"
+    val name: String = "Full"
+  }
+  case object FastOpt extends Stage {
+    val tagName: String = "fastopt"
+    val fileSuffix: String = "fastopt"
+    val name: String = "Fast"
+  }
 }
