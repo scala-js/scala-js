@@ -332,6 +332,8 @@ class LongTestOnJDK8 {
     test(89731974104L, 1173247030L, 76L)
     test(385847542338318L, 7846L, 49177611819L)
     test(-9223372026066135207L, 480301980L, 19203277170L)
+
+    assertThrows(classOf[ArithmeticException], JLong.divideUnsigned(5L, 0L))
   }
 
   @Test def remainderUnsigned(): Unit = {
@@ -395,6 +397,8 @@ class LongTestOnJDK8 {
     test(-9223372036846154797L, 11L, 0L)
     test(-9212519596031121696L, 1L, 0L)
     test(0L, 2L, 0L)
+
+    assertThrows(classOf[ArithmeticException], JLong.remainderUnsigned(5L, 0L))
   }
 
   @Test def toUnsignedString(): Unit = {

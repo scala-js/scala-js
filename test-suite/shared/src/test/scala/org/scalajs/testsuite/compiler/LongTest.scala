@@ -16,6 +16,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 class LongTest {
@@ -2029,6 +2030,26 @@ class LongTest {
     test(lg(8, 0), lg(1810734914, 124115952), lg(1149563530, 15197570))
   }
 
+  @Test def divisionByZero(): Unit = {
+    @noinline def divNoInline(x: Long, y: Long): Long = x / y
+
+    @inline def divInline(x: Long, y: Long): Long = x / y
+
+    @inline def test(x: Long): Unit = {
+      assertThrows(classOf[ArithmeticException], x / 0L)
+      assertThrows(classOf[ArithmeticException], divNoInline(x, 0L))
+      assertThrows(classOf[ArithmeticException], divInline(x, 0L))
+    }
+
+    test(0L)
+    test(1L)
+    test(43L)
+    test(-3L)
+
+    // Eligible for constant-folded by scalac itself
+    assertThrows(classOf[ArithmeticException], 5L / 0L)
+  }
+
   @Test def modulo_%(): Unit = {
     @inline def test(expected: Long, x: Long, y: Long): Unit = {
       assertEquals(expected, x % y)
@@ -2518,6 +2539,26 @@ class LongTest {
     test(lg(2056903464, -4954201), lg(-425905039, -180148939), lg(-1397064581, -15926795))
     test(lg(-2055992988, 596420), lg(-920215872, 219325473), lg(1357686103, 54682263))
     test(lg(1279110660, -10784541), lg(1279110660, -10784541), lg(278869448, 758126792))
+  }
+
+  @Test def moduloByZero(): Unit = {
+    @noinline def modNoInline(x: Long, y: Long): Long = x % y
+
+    @inline def modInline(x: Long, y: Long): Long = x % y
+
+    @inline def test(x: Long): Unit = {
+      assertThrows(classOf[ArithmeticException], x % 0L)
+      assertThrows(classOf[ArithmeticException], modNoInline(x, 0L))
+      assertThrows(classOf[ArithmeticException], modInline(x, 0L))
+    }
+
+    test(0L)
+    test(1L)
+    test(43L)
+    test(-3L)
+
+    // Eligible for constant-folded by scalac itself
+    assertThrows(classOf[ArithmeticException], 5L % 0L)
   }
 }
 

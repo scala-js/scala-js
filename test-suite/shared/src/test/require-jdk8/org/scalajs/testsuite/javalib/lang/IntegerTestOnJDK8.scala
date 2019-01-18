@@ -106,6 +106,8 @@ class IntegerTestOnJDK8 {
     test(0xFFFFFFFF, 7, 613566756)
     test(0xFFFFFFFF, 0xEE6B2800, 1)
     test(0xEE6B2800, 2, 2000000000)
+
+    assertThrows(classOf[ArithmeticException], Integer.divideUnsigned(5, 0))
   }
 
   @Test def should_provide_remainderUnsigned(): Unit = {
@@ -118,6 +120,8 @@ class IntegerTestOnJDK8 {
     test(0xFFFFFFFF, 7, 3)
     test(0xFFFFFFFF, 0xEE6B2800, 294967295)
     test(0xEE6B2800, 2, 0)
+
+    assertThrows(classOf[ArithmeticException], Integer.remainderUnsigned(5, 0))
   }
 
   @Test def should_provide_toUnsignedString_without_radix(): Unit = {

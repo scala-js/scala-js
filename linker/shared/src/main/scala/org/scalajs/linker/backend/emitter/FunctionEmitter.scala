@@ -1195,6 +1195,18 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case SelectStatic(_, _) =>
           allowUnpure
 
+        // Division and modulo, preserve pureness unless they can divide by 0
+        case BinaryOp(BinaryOp.Int_/ | BinaryOp.Int_%, lhs, rhs) if !allowSideEffects =>
+          rhs match {
+            case IntLiteral(r) if r != 0 => test(lhs)
+            case _                       => false
+          }
+        case BinaryOp(BinaryOp.Long_/ | BinaryOp.Long_%, lhs, rhs) if !allowSideEffects =>
+          rhs match {
+            case LongLiteral(r) if r != 0L => test(lhs)
+            case _                         => false
+          }
+
         // Expressions preserving pureness
         case Block(trees)            => trees forall test
         case If(cond, thenp, elsep)  => test(cond) && test(thenp) && test(elsep)
@@ -2242,8 +2254,20 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 case _             => or0(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
               }
             case Int_* => genCallHelper("imul", newLhs, newRhs)
-            case Int_/ => or0(js.BinaryOp(JSBinaryOp./, newLhs, newRhs))
-            case Int_% => or0(js.BinaryOp(JSBinaryOp.%, newLhs, newRhs))
+            case Int_/ =>
+              rhs match {
+                case IntLiteral(r) if r != 0 =>
+                  or0(js.BinaryOp(JSBinaryOp./, newLhs, newRhs))
+                case _ =>
+                  genCallHelper("intDiv", newLhs, newRhs)
+              }
+            case Int_% =>
+              rhs match {
+                case IntLiteral(r) if r != 0 =>
+                  or0(js.BinaryOp(JSBinaryOp.%, newLhs, newRhs))
+                case _ =>
+                  genCallHelper("intMod", newLhs, newRhs)
+              }
 
             case Int_|   => js.BinaryOp(JSBinaryOp.|, newLhs, newRhs)
             case Int_&   => js.BinaryOp(JSBinaryOp.&, newLhs, newRhs)
@@ -2285,15 +2309,27 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               else
                 genLongMethodApply(newLhs, LongImpl.*, newRhs)
             case Long_/ =>
-              if (useBigIntForLongs)
-                wrapBigInt64(js.BinaryOp(JSBinaryOp./, newLhs, newRhs))
-              else
+              if (useBigIntForLongs) {
+                rhs match {
+                  case LongLiteral(r) if r != 0L =>
+                    wrapBigInt64(js.BinaryOp(JSBinaryOp./, newLhs, newRhs))
+                  case _ =>
+                    genCallHelper("longDiv", newLhs, newRhs)
+                }
+              } else {
                 genLongMethodApply(newLhs, LongImpl./, newRhs)
+              }
             case Long_% =>
-              if (useBigIntForLongs)
-                wrapBigInt64(js.BinaryOp(JSBinaryOp.%, newLhs, newRhs))
-              else
+              if (useBigIntForLongs) {
+                rhs match {
+                  case LongLiteral(r) if r != 0L =>
+                    wrapBigInt64(js.BinaryOp(JSBinaryOp.%, newLhs, newRhs))
+                  case _ =>
+                    genCallHelper("longMod", newLhs, newRhs)
+                }
+              } else {
                 genLongMethodApply(newLhs, LongImpl.%, newRhs)
+              }
 
             case Long_| =>
               if (useBigIntForLongs)

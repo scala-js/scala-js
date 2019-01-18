@@ -94,6 +94,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
      * has an inlineable init.
      */
     val blackList = Set(
+        "jl_ArithmeticException",
         "jl_ClassCastException",
         "jl_ArrayIndexOutOfBoundsException",
         "sjsr_UndefinedBehaviorError",

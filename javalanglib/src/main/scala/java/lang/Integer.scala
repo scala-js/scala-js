@@ -154,10 +154,12 @@ object Integer {
   }
 
   @inline def divideUnsigned(dividend: Int, divisor: Int): Int =
-    asInt(asUint(dividend) / asUint(divisor))
+    if (divisor == 0) 0 / 0
+    else asInt(asUint(dividend) / asUint(divisor))
 
   @inline def remainderUnsigned(dividend: Int, divisor: Int): Int =
-    asInt(asUint(dividend) % asUint(divisor))
+    if (divisor == 0) 0 % 0
+    else asInt(asUint(dividend) % asUint(divisor))
 
   @inline def highestOneBit(i: Int): Int = {
     /* The natural way of implementing this is:

@@ -17,6 +17,7 @@ import org.junit.Assert._
 import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.Platform
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 /* General note on the way these tests are written:
  * We leverage the constant folding applied by the Scala compiler to write
@@ -286,6 +287,46 @@ class IntTest {
     test(AlmostMaxVal, -14, AlmostMaxVal / -14)
     test(AlmostMinVal, 100, AlmostMinVal / 100)
     test(AlmostMaxVal, -123, AlmostMaxVal / -123)
+  }
+
+  @Test def divisionByZero(): Unit = {
+    @noinline def divNoInline(x: Int, y: Int): Int = x / y
+
+    @inline def divInline(x: Int, y: Int): Int = x / y
+
+    @inline def test(x: Int): Unit = {
+      assertThrows(classOf[ArithmeticException], x / 0)
+      assertThrows(classOf[ArithmeticException], divNoInline(x, 0))
+      assertThrows(classOf[ArithmeticException], divInline(x, 0))
+    }
+
+    test(0)
+    test(1)
+    test(43)
+    test(-3)
+
+    // Eligible for constant-folding by scalac itself
+    assertThrows(classOf[ArithmeticException], 5 / 0)
+  }
+
+  @Test def moduloByZero(): Unit = {
+    @noinline def modNoInline(x: Int, y: Int): Int = x % y
+
+    @inline def modInline(x: Int, y: Int): Int = x % y
+
+    @inline def test(x: Int): Unit = {
+      assertThrows(classOf[ArithmeticException], x % 0)
+      assertThrows(classOf[ArithmeticException], modNoInline(x, 0))
+      assertThrows(classOf[ArithmeticException], modInline(x, 0))
+    }
+
+    test(0)
+    test(1)
+    test(43)
+    test(-3)
+
+    // Eligible for constant-folding by scalac itself
+    assertThrows(classOf[ArithmeticException], 5 % 0)
   }
 
   @Test def `percent_should_never_produce_a_negative_0_#1984`(): Unit = {
