@@ -227,55 +227,80 @@ object System {
   }
 
   private object SystemProperties {
-    var value = loadSystemProperties()
+    var dict: js.Dictionary[String] = loadSystemProperties()
+    var properties: ju.Properties = null
 
-    private[System] def loadSystemProperties(): ju.Properties = {
-      val sysProp = new ju.Properties()
-      sysProp.setProperty("java.version", "1.8")
-      sysProp.setProperty("java.vm.specification.version", "1.8")
-      sysProp.setProperty("java.vm.specification.vendor", "Oracle Corporation")
-      sysProp.setProperty("java.vm.specification.name", "Java Virtual Machine Specification")
-      sysProp.setProperty("java.vm.name", "Scala.js")
-      linkingInfo.linkerVersion.foreach(v => sysProp.setProperty("java.vm.version", v))
-      sysProp.setProperty("java.specification.version", "1.8")
-      sysProp.setProperty("java.specification.vendor", "Oracle Corporation")
-      sysProp.setProperty("java.specification.name", "Java Platform API Specification")
-      sysProp.setProperty("file.separator", "/")
-      sysProp.setProperty("path.separator", ":")
-      sysProp.setProperty("line.separator", "\n")
+    private[System] def loadSystemProperties(): js.Dictionary[String] = {
+      val sysProp = js.Dictionary.empty[String]
+      sysProp("java.version") = "1.8"
+      sysProp("java.vm.specification.version") = "1.8"
+      sysProp("java.vm.specification.vendor") = "Oracle Corporation"
+      sysProp("java.vm.specification.name") = "Java Virtual Machine Specification"
+      sysProp("java.vm.name") = "Scala.js"
+      linkingInfo.linkerVersion.foreach(v => sysProp("java.vm.version") = v)
+      sysProp("java.specification.version") = "1.8"
+      sysProp("java.specification.vendor") = "Oracle Corporation"
+      sysProp("java.specification.name") = "Java Platform API Specification"
+      sysProp("file.separator") = "/"
+      sysProp("path.separator") = ":"
+      sysProp("line.separator") = "\n"
 
       for {
         jsEnvProperties <- environmentInfo.javaSystemProperties
-        (key, value) <- jsEnvProperties
+        key <- js.Object.keys(jsEnvProperties.asInstanceOf[js.Object])
       } {
-        sysProp.setProperty(key, value)
+        sysProp(key) = jsEnvProperties(key)
       }
       sysProp
+    }
+
+    private[System] def forceProperties(): ju.Properties = {
+      if (properties eq null) {
+        properties = new ju.Properties
+        for ((key, value) <- dict)
+          properties.setProperty(key, value)
+        dict = null
+      }
+      properties
     }
   }
 
   def getProperties(): ju.Properties =
-    SystemProperties.value
+    SystemProperties.forceProperties()
 
   def lineSeparator(): String = "\n"
 
   def setProperties(properties: ju.Properties): Unit = {
-    SystemProperties.value =
-      if (properties != null) properties
-      else SystemProperties.loadSystemProperties()
+    if (properties eq null) {
+      SystemProperties.dict = SystemProperties.loadSystemProperties()
+      SystemProperties.properties = null
+    } else {
+      SystemProperties.dict = null
+      SystemProperties.properties = properties
+    }
   }
 
   def getProperty(key: String): String =
-    SystemProperties.value.getProperty(key)
+    if (SystemProperties.dict ne null) SystemProperties.dict.getOrElse(key, null)
+    else SystemProperties.properties.getProperty(key)
 
   def getProperty(key: String, default: String): String =
-    SystemProperties.value.getProperty(key, default)
+    if (SystemProperties.dict ne null) SystemProperties.dict.getOrElse(key, default)
+    else SystemProperties.properties.getProperty(key, default)
 
   def clearProperty(key: String): String =
-    SystemProperties.value.remove(key).asInstanceOf[String]
+    if (SystemProperties.dict ne null) SystemProperties.dict.remove(key).getOrElse(null)
+    else SystemProperties.properties.remove(key).asInstanceOf[String]
 
-  def setProperty(key: String, value: String): String =
-    SystemProperties.value.setProperty(key, value).asInstanceOf[String]
+  def setProperty(key: String, value: String): String = {
+    if (SystemProperties.dict ne null) {
+      val oldValue = getProperty(key)
+      SystemProperties.dict(key) = value
+      oldValue
+    } else {
+      SystemProperties.properties.setProperty(key, value).asInstanceOf[String]
+    }
+  }
 
   def getenv(): ju.Map[String, String] =
     ju.Collections.emptyMap()
