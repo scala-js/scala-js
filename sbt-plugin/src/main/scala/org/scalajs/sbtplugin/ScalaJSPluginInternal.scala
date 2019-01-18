@@ -333,7 +333,7 @@ object ScalaJSPluginInternal {
 
           val sourceMapFile = FileVirtualJSFile(output).sourceMapFile
           Attributed.blank(output).put(scalaJSSourceMap, sourceMapFile)
-        }.tag(usesLinkerTag)
+        }.tag(usesLinkerTag, ScalaJSTags.Link)
       }.value,
 
       key := key.dependsOn(packageJSDependencies, packageScalaJSLauncherInternal).value,
