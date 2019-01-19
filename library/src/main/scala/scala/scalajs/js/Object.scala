@@ -57,6 +57,37 @@ object Object extends Object {
   def apply(): Object = native
   def apply(value: Any): Object = native
 
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  The `Object.assign()` method is used to copy the values of all enumerable
+   *  own properties from one or more source objects to a target object. It will
+   *  return the target object.
+   *
+   *  Properties in the target object will be overwritten by properties in the
+   *  sources if they have the same key. Later sources' properties will
+   *  similarly overwrite earlier ones.
+   *
+   *  The `Object.assign()` method only copies enumerable and own properties from
+   *  a source object to a target object. It uses `Get` on the source and `Set`
+   *  on the target, so it will invoke getters and setters. Therefore it
+   *  assigns properties versus just copying or defining new properties. This may
+   *  make it unsuitable for merging new properties into a prototype if the merge
+   *  sources contain getters. For copying property definitions, including their
+   *  enumerability, into prototypes `Object.getOwnPropertyDescriptor()` and
+   *  `Object.defineProperty()` should be used instead.
+   *
+   *  Both `String` and `Symbol` properties are copied.
+   *
+   *  In case of an error, for example if a property is non-writable, a
+   *  `TypeError` will be raised, and the target object can be changed if any
+   *  properties are added before error is raised.
+   *
+   *  Note that `Object.assign()` does not throw on null or undefined source
+   *  values.
+   *
+   *  MDN
+   */
+  def assign(t: Object, s: Object*): Object = native
+
   /** Tests whether the object has a property on itself or in its prototype
    *  chain. This method is the equivalent of `p in o` in JavaScript.
    */
