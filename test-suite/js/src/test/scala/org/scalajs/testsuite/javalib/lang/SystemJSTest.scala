@@ -81,6 +81,6 @@ class SystemJSTest {
     assertEquals("/", get("file.separator"))
     assertEquals(":", get("path.separator"))
     assertEquals("\n", get("line.separator"))
-    assertEquals(linkingInfo.linkerVersion.getOrElse(null), get("java.vm.version"))
+    assertEquals(linkingInfo.linkerVersion, get("java.vm.version"))
   }
 }

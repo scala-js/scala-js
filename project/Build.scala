@@ -702,8 +702,9 @@ object Build {
       sourceGenerators in Test += Def.task {
         ConstantHolderGenerator.generate(
             (sourceManaged in Test).value,
-            "org.scalajs.linker.testutils.MinilibHolder",
-            "minilib" -> (packageBin in (LocalProject("minilib"), Compile)).value)
+            "org.scalajs.linker.testutils.StdlibHolder",
+            "minilib" -> (packageBin in (LocalProject("minilib"), Compile)).value,
+            "fulllib" -> (packageBin in (LocalProject("library"), Compile)).value)
       }.taskValue,
 
       previousArtifactSetting,

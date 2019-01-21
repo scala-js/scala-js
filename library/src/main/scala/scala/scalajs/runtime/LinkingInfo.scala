@@ -23,7 +23,7 @@ sealed trait LinkingInfo extends js.Object {
   val assumingES6: Boolean
 
   /** Version of the linker */
-  val linkerVersion: js.UndefOr[String]
+  val linkerVersion: String
 
   /** The value of the global JavaScript `this`. */
   val globalThis: Any
