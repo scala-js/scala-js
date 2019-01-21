@@ -115,7 +115,7 @@ object LinkerTest {
       }
     }
 
-    val allIRFiles = TestIRRepo.stdlibIRFiles ++ classDefsFiles
+    val allIRFiles = TestIRRepo.minilib.stdlibIRFiles ++ classDefsFiles
 
     val output = LinkerOutput(new WritableMemVirtualBinaryFile)
 

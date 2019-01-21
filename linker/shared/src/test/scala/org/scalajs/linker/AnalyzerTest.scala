@@ -48,7 +48,7 @@ class AnalyzerTest {
 
   @Test
   def missingJavaLangObject(): Unit = {
-    val analysis = computeAnalysis(Nil, stdlib = false)
+    val analysis = computeAnalysis(Nil, stdlib = None)
     assertExactErrors(analysis,
         MissingJavaLangObjectClass(fromAnalyzer))
   }
@@ -65,7 +65,7 @@ class AnalyzerTest {
     )
 
     for (jlObjectDef <- invalidJLObjectDefs) {
-      val analysis = computeAnalysis(Seq(jlObjectDef), stdlib = false)
+      val analysis = computeAnalysis(Seq(jlObjectDef), stdlib = None)
       assertExactErrors(analysis,
           InvalidJavaLangObjectClass(fromAnalyzer))
     }
@@ -343,6 +343,37 @@ class AnalyzerTest {
     }
   }
 
+  @Test
+  def juPropertiesNotReachableWhenUsingGetSetClearProperty(): Unit = {
+    val systemMod = LoadModule(ClassRef("jl_System$"))
+    val emptyStr = StringLiteral("")
+    val StringType = ClassType(BoxedStringClass)
+
+    val classDefs = Seq(
+        classDef("LA", superClass = Some(ObjectClass), memberDefs = List(
+            trivialCtor("LA"),
+            MethodDef(static = false, Ident("test__V"), Nil, NoType, Some(Block(
+                Apply(systemMod, Ident("getProperty__T__T"), List(emptyStr))(StringType),
+                Apply(systemMod, Ident("getProperty__T__T__T"), List(emptyStr))(StringType),
+                Apply(systemMod, Ident("setProperty__T__T__T"), List(emptyStr))(StringType),
+                Apply(systemMod, Ident("clearProperty__T__T"), List(emptyStr))(StringType)
+            )))(emptyOptHints, None)
+        ))
+    )
+
+    val analysis = computeAnalysis(classDefs,
+        reqsFactory.instantiateClass("LA", "init___") ++
+        reqsFactory.callMethod("LA", "test__V"),
+        stdlib = Some(TestIRRepo.fulllib))
+
+    assertNoError(analysis)
+
+    val juPropertiesClass = analysis.classInfos("ju_Properties")
+    assertFalse(juPropertiesClass.isAnySubclassInstantiated)
+    assertFalse(juPropertiesClass.areInstanceTestsUsed)
+    assertFalse(juPropertiesClass.isDataAccessed)
+  }
+
   private def validParentForKind(kind: ClassKind): Option[String] = {
     import ClassKind._
     kind match {
@@ -358,7 +389,7 @@ class AnalyzerTest {
 
   private def computeAnalysis(classDefs: Seq[ClassDef],
       symbolRequirements: SymbolRequirement = reqsFactory.none(),
-      stdlib: Boolean = true): Analysis = {
+      stdlib: Option[TestIRRepo] = Some(TestIRRepo.minilib)): Analysis = {
 
     val classesWithEntryPoints0 = classDefs
       .map(ir.EntryPointsInfo.forClassDef)
@@ -374,8 +405,7 @@ class AnalyzerTest {
 
       def loadInfo(encodedName: String): Option[Infos.ClassInfo] = {
         val own = encodedNameToInfo.get(encodedName)
-        if (stdlib) own.orElse(TestIRRepo.loadInfo(encodedName))
-        else own
+        own.orElse(stdlib.flatMap(_.loadInfo(encodedName)))
       }
     }
 

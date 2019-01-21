@@ -20,8 +20,11 @@ import org.scalajs.linker.analyzer.Infos._
 import org.scalajs.linker.irio._
 
 object TestIRRepo {
-  private val stdlibPath = MinilibHolder.minilib
+  val minilib = new TestIRRepo(StdlibHolder.minilib)
+  val fulllib = new TestIRRepo(StdlibHolder.fulllib)
+}
 
+final class TestIRRepo(stdlibPath: String) {
   private val globalIRCache = new IRFileCache
 
   val stdlibIRFiles: Seq[VirtualScalaJSIRFile] =
