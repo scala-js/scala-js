@@ -14,15 +14,66 @@ package org.scalajs.junit
 
 import org.junit._
 
-import sbt.testing.Logger
+import sbt.testing._
 
-private[junit] final class RichLogger(loggers: Array[Logger],
-    settings: RunSettings, testClassName: String) {
+private[junit] final class Reporter(eventHandler: EventHandler,
+    loggers: Array[Logger], settings: RunSettings, taskDef: TaskDef) {
 
-  def logTestInfo(level: RichLogger.Level, method: Option[String], msg: String): Unit =
+  def reportRunStarted(): Unit =
+    log(infoOrDebug, Ansi.c("Test run started", Ansi.BLUE))
+
+  def reportRunFinished(failed: Int, ignored: Int, total: Int,
+      timeInSeconds: Double): Unit = {
+    val msg = {
+      Ansi.c("Test run finished: ", Ansi.BLUE) +
+      Ansi.c(s"$failed failed", if (failed == 0) Ansi.BLUE else Ansi.RED) +
+      Ansi.c(s", ", Ansi.BLUE) +
+      Ansi.c(s"$ignored ignored", if (ignored == 0) Ansi.BLUE else Ansi.YELLOW) +
+      Ansi.c(s", $total total, ${timeInSeconds}s", Ansi.BLUE)
+    }
+
+    log(infoOrDebug, msg)
+  }
+
+  def reportIgnored(method: Option[String]): Unit = {
+    logTestInfo(_.info, method, "ignored")
+    emitEvent(method, Status.Skipped)
+  }
+
+  def reportTestStarted(method: String): Unit =
+    logTestInfo(infoOrDebug, Some(method), "started")
+
+  def reportTestFinished(method: String, succeeded: Boolean, timeInSeconds: Double): Unit = {
+    logTestInfo(_.debug, Some(method), s"finished, took $timeInSeconds sec")
+
+    if (succeeded)
+      emitEvent(Some(method), Status.Success)
+  }
+
+  def reportErrors(prefix: String, method: Option[String],
+      timeInSeconds: Double, errors: List[Throwable]): Unit = {
+    def emit(t: Throwable) = {
+      logTestException(_.error, prefix, method, t, timeInSeconds)
+      trace(t)
+    }
+
+    if (errors.nonEmpty) {
+      emit(errors.head)
+      emitEvent(method, Status.Failure)
+      errors.tail.foreach(emit)
+    }
+  }
+
+  def reportAssumptionViolation(method: String, timeInSeconds: Double, e: Throwable): Unit = {
+    logTestException(_.warn, "Test assumption in test ", Some(method), e,
+        timeInSeconds)
+    emitEvent(Some(method), Status.Skipped)
+  }
+
+  private def logTestInfo(level: Reporter.Level, method: Option[String], msg: String): Unit =
     log(level, s"Test ${formatTest(method, Ansi.CYAN)} $msg")
 
-  def logTestException(level: RichLogger.Level, prefix: String,
+  private def logTestException(level: Reporter.Level, prefix: String,
       method: Option[String], ex: Throwable, timeInSeconds: Double): Unit = {
     val logException = {
       !settings.notLogExceptionClass &&
@@ -47,13 +98,13 @@ private[junit] final class RichLogger(loggers: Array[Logger],
     log(level, msg)
   }
 
-  def trace(t: Throwable): Unit = {
+  private def trace(t: Throwable): Unit = {
     if (!t.isInstanceOf[AssertionError] || settings.logAssert) {
       logTrace(t)
     }
   }
 
-  def infoOrDebug: RichLogger.Level =
+  private def infoOrDebug: Reporter.Level =
     if (settings.verbose) _.info
     else _.debug
 
@@ -64,14 +115,21 @@ private[junit] final class RichLogger(loggers: Array[Logger],
     }
   }
 
-  private lazy val formattedTestClass = formatClass(testClassName, Ansi.YELLOW)
+  private lazy val formattedTestClass = formatClass(taskDef.fullyQualifiedName, Ansi.YELLOW)
 
   private def formatClass(fullName: String, color: String): String = {
     val (prefix, name) = fullName.splitAt(fullName.lastIndexOf(".") + 1)
     prefix + Ansi.c(name, color)
   }
 
-  def log(level: RichLogger.Level, s: String): Unit = {
+  private def emitEvent(method: Option[String], status: Status): Unit = {
+    val testName = method.fold(taskDef.fullyQualifiedName)(method =>
+        taskDef.fullyQualifiedName + "." + settings.decodeName(method))
+    val selector = new TestSelector(testName)
+    eventHandler.handle(new JUnitEvent(taskDef, status, selector))
+  }
+
+  def log(level: Reporter.Level, s: String): Unit = {
     for (l <- loggers)
       level(l)(filterAnsiIfNeeded(l, s))
   }
@@ -95,12 +153,11 @@ private[junit] final class RichLogger(loggers: Array[Logger],
       p => p.getFileName != null && p.getFileName.contains("JUnitExecuteTest.scala")
     } - 1
     val m = if (i > 0) i else trace.length - 1
-    logStackTracePart(trace, m, trace.length - m - 1, t, testClassName, testFileName)
+    logStackTracePart(trace, m, trace.length - m - 1, t, testFileName)
   }
 
   private def logStackTracePart(trace: Array[StackTraceElement], m: Int,
-      framesInCommon: Int, t: Throwable, testClassName: String,
-      testFileName: String): Unit = {
+      framesInCommon: Int, t: Throwable, testFileName: String): Unit = {
     val m0 = m
     var m2 = m
     var top = 0
@@ -130,7 +187,7 @@ private[junit] final class RichLogger(loggers: Array[Logger],
 
     for (i <- top to m2) {
       log(_.error, "    at " +
-        stackTraceElementToString(trace(i), testClassName, testFileName))
+        stackTraceElementToString(trace(i), testFileName))
     }
     if (m0 != m2) {
       // skip junit-related frames
@@ -139,11 +196,11 @@ private[junit] final class RichLogger(loggers: Array[Logger],
       // skip frames that were in the previous trace too
       log(_.error, "    ... " + framesInCommon + " more")
     }
-    logStackTraceAsCause(trace, t.getCause, testClassName, testFileName)
+    logStackTraceAsCause(trace, t.getCause, testFileName)
   }
 
   private def logStackTraceAsCause(causedTrace: Array[StackTraceElement],
-      t: Throwable, testClassName: String, testFileName: String): Unit = {
+      t: Throwable, testFileName: String): Unit = {
     if (t != null) {
       val trace = t.getStackTrace
       var m = trace.length - 1
@@ -153,20 +210,16 @@ private[junit] final class RichLogger(loggers: Array[Logger],
         n -= 1
       }
       log(_.error, "Caused by: " + t)
-      logStackTracePart(trace, m, trace.length - 1 - m, t, testClassName, testFileName)
+      logStackTracePart(trace, m, trace.length - 1 - m, t, testFileName)
     }
   }
 
-  private def findTestFileName(trace: Array[StackTraceElement]): String = {
-    trace.collectFirst {
-      case e if testClassName.equals(e.getClassName) => e.getFileName
-    }.orNull
-  }
+  private def findTestFileName(trace: Array[StackTraceElement]): String =
+    trace.find(_.getClassName == taskDef.fullyQualifiedName).map(_.getFileName).orNull
 
-  private def stackTraceElementToString(e: StackTraceElement,
-      testClassName: String, testFileName: String): String = {
+  private def stackTraceElementToString(e: StackTraceElement, testFileName: String): String = {
     val highlight = settings.color && {
-      testClassName == e.getClassName ||
+      taskDef.fullyQualifiedName == e.getClassName ||
       (testFileName != null && testFileName == e.getFileName)
     }
     var r = ""
@@ -189,6 +242,6 @@ private[junit] final class RichLogger(loggers: Array[Logger],
   }
 }
 
-private[junit] object RichLogger {
+private[junit] object Reporter {
   type Level = Logger => (String => Unit)
 }

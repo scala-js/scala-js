@@ -512,8 +512,8 @@ object Build {
             linker, linkerJS,
             jsEnvs, jsEnvsTestKit, nodeJSEnv, testAdapter, plugin,
             javalanglib, javalib, scalalib, libraryAux, library, minilib,
-            testInterface, jUnitRuntime, jUnitPlugin,
-            jUnitTestOutputsJS, jUnitTestOutputsJVM,
+            testInterface, jUnitRuntime, jUnitPlugin, jUnitAsyncJS,
+            jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
             helloworld, reversi, testingExample, testSuite, testSuiteJVM,
             testSuiteEx,
             partest, partestSuite,
@@ -1221,7 +1221,7 @@ object Build {
       commonJUnitTestOutputsSettings,
       name := "Tests for Scala.js JUnit output in JS."
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      jUnitRuntime % "test", testInterface % "test"
+      jUnitRuntime % "test", testInterface % "test", jUnitAsyncJS % "test"
   )
 
 
@@ -1232,6 +1232,8 @@ object Build {
           "org.scala-sbt" % "test-interface" % "1.0" % "test",
           "com.novocode" % "junit-interface" % "0.11" % "test"
       )
+  ).dependsOn(
+       jUnitAsyncJVM % "test"
   )
 
   lazy val jUnitPlugin = (project in file("junit-plugin")).settings(
@@ -1242,6 +1244,20 @@ object Build {
       crossVersion := CrossVersion.full,
       libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
       exportJars := true
+  )
+
+  lazy val jUnitAsyncJS = (project in file("junit-async/js")).enablePlugins(
+      MyScalaJSPlugin
+  ).withScalaJSCompiler.settings(
+      commonSettings,
+      name := "Scala.js internal JUnit async JS support",
+      publishArtifact in Compile := false
+  ).dependsOn(library)
+
+  lazy val jUnitAsyncJVM = (project in file("junit-async/jvm")).settings(
+      commonSettings,
+      name := "Scala.js internal JUnit async JVM support",
+      publishArtifact in Compile := false
   )
 
   // Examples

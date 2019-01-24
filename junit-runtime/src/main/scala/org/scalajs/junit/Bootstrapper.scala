@@ -12,6 +12,9 @@
 
 package org.scalajs.junit
 
+import scala.concurrent.Future
+import scala.util.Try
+
 import scala.scalajs.reflect.annotation._
 
 /** Scala.js internal JUnit bootstrapper.
@@ -29,7 +32,7 @@ trait Bootstrapper {
   def after(instance: AnyRef): Unit
 
   def tests(): Array[TestMetadata]
-  def invokeTest(instance: AnyRef, name: String): Unit
+  def invokeTest(instance: AnyRef, name: String): Future[Try[Unit]]
 
   def newInstance(): AnyRef
 }
