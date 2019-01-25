@@ -155,7 +155,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport("value")
       def world = "bar"
     }
-    """ fails() // No error test, Scala version dependent error messages
+    """.fails() // No error test, Scala version dependent error messages
 
     """
     class Confl {
@@ -166,7 +166,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport
       def ub(x: Box[Int]): Int = x.x
     }
-    """ fails() // No error test, Scala version dependent error messages
+    """.fails() // No error test, Scala version dependent error messages
 
     """
     class Confl {
@@ -176,7 +176,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport
       def rtType(x: Double) = x
     }
-    """ fails() // Error message depends on Scala version
+    """.fails() // Error message depends on Scala version
 
     """
     class Confl {
@@ -218,7 +218,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport
       def foo(x: Double, y: String)(z: String*) = x
     }
-    """ fails() // Error message depends on Scala version
+    """.fails() // Error message depends on Scala version
 
     """
     class A {
@@ -228,7 +228,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport
       def a(x: Any) = 2
     }
-    """ fails() // Error message depends on Scala version
+    """.fails() // Error message depends on Scala version
 
   }
 
@@ -904,7 +904,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport
       def foo(x: scala.scalajs.js.Any) = 2
     }
-    """ fails() // No error test, Scala version dependent error messages
+    """.fails() // No error test, Scala version dependent error messages
 
     // Ctors
     """
@@ -918,7 +918,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExportNamed
       def this(x: Long) = this()
     }
-    """ fails() // No error test, Scala version dependent error messages
+    """.fails() // No error test, Scala version dependent error messages
 
   }
 
@@ -1025,7 +1025,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       def foo(x: String, y: String = "hello") = x
       def foo(x: Int, y: String = "bar") = x
     }
-    """ fails()
+    """.fails()
   }
 
   @Test

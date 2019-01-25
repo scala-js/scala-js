@@ -128,7 +128,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       protected class Val1 extends Val
       protected class Val2 extends Val(1)
     }
-    """ warns() // no message checking: position differs in 2.10 and 2.11
+    """.warns() // no message checking: position differs in 2.10 and 2.11
 
   }
 
@@ -140,7 +140,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       protected class Val1 extends Val(null)
       protected class Val2 extends Val(1,null)
     }
-    """ warns() // no message checking: position differs in 2.10 and 2.11
+    """.warns() // no message checking: position differs in 2.10 and 2.11
 
   }
 
