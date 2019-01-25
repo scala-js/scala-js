@@ -141,11 +141,8 @@ abstract class AbstractNodeJSEnv(
         importerFile.content = {
           s"""
             |import("${escapeJS(uri)}").catch(e => {
-            |  /* Make sure to fail the process, but give time to Node.js to
-            |   * display a good stack trace before that.
-            |   */
-            |  setTimeout(() => process.exit(1), 100);
-            |  throw e;
+            |  console.error(e);
+            |  process.exit(1);
             |});
           """.stripMargin
         }
