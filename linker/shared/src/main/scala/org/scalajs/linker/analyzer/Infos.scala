@@ -466,6 +466,27 @@ object Infos {
             case AsInstanceOf(_, tpe) =>
               builder.addUsedInstanceTest(tpe)
 
+            case BinaryOp(op, _, rhs) =>
+              import BinaryOp._
+
+              def addArithmeticException(): Unit =
+                builder.addInstantiatedClass("jl_ArithmeticException", "init___T")
+
+              op match {
+                case Int_/ | Int_% =>
+                  rhs match {
+                    case IntLiteral(r) if r != 0 =>
+                    case _                       => addArithmeticException()
+                  }
+                case Long_/ | Long_% =>
+                  rhs match {
+                    case LongLiteral(r) if r != 0L =>
+                    case _                         => addArithmeticException()
+                  }
+                case _ =>
+                  // do nothing
+              }
+
             case NewArray(typeRef, _) =>
               builder.addAccessedClassData(typeRef)
             case ArrayValue(typeRef, _) =>

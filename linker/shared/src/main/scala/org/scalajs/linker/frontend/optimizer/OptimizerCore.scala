@@ -1300,8 +1300,37 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       finishTransformBindings(bindingsAndStats, finishTransformStat(result))
     case PreTransUnaryOp(_, lhs) =>
       finishTransformStat(lhs)
-    case PreTransBinaryOp(_, lhs, rhs) =>
-      Block(finishTransformStat(lhs), finishTransformStat(rhs))(stat.pos)
+
+    case PreTransBinaryOp(op, lhs, rhs) =>
+      // Here we need to preserve the side-effects of integer division/modulo
+      import BinaryOp._
+
+      val newLhs = finishTransformStat(lhs)
+
+      def finishNoSideEffects: Tree =
+        Block(newLhs, finishTransformStat(rhs))(stat.pos)
+
+      op match {
+        case Int_/ | Int_% =>
+          rhs match {
+            case PreTransLit(IntLiteral(r)) if r != 0 =>
+              finishNoSideEffects
+            case _ =>
+              Block(newLhs, BinaryOp(op, IntLiteral(0)(stat.pos),
+                  finishTransformExpr(rhs))(stat.pos))(stat.pos)
+          }
+        case Long_/ | Long_% =>
+          rhs match {
+            case PreTransLit(LongLiteral(r)) if r != 0L =>
+              finishNoSideEffects
+            case _ =>
+              Block(newLhs, BinaryOp(op, LongLiteral(0L)(stat.pos),
+                  finishTransformExpr(rhs))(stat.pos))(stat.pos)
+          }
+        case _ =>
+          finishNoSideEffects
+      }
+
     case PreTransLocalDef(_) =>
       Skip()(stat.pos)
     case PreTransRecordTree(tree, _, _) =>
@@ -2887,18 +2916,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case Int_+ => IntLiteral(int(lhs) + int(rhs))
       case Int_- => IntLiteral(int(lhs) - int(rhs))
       case Int_* => IntLiteral(int(lhs) * int(rhs))
-
-      case Int_/ =>
-        int(rhs) match {
-          case 0 => IntLiteral(0) // Undefined Behavior
-          case r => IntLiteral(int(lhs) / r)
-        }
-
-      case Int_% =>
-        int(rhs) match {
-          case 0 => IntLiteral(0) // Undefined Behavior
-          case r => IntLiteral(int(lhs) % r)
-        }
+      case Int_/ => IntLiteral(int(lhs) / int(rhs))
+      case Int_% => IntLiteral(int(lhs) % int(rhs))
 
       case Int_|   => IntLiteral(int(lhs) | int(rhs))
       case Int_&   => IntLiteral(int(lhs) & int(rhs))
@@ -2917,18 +2936,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case Long_+ => LongLiteral(long(lhs) + long(rhs))
       case Long_- => LongLiteral(long(lhs) - long(rhs))
       case Long_* => LongLiteral(long(lhs) * long(rhs))
-
-      case Long_/ =>
-        long(rhs) match {
-          case 0 => LongLiteral(0L) // Undefined Behavior
-          case r => LongLiteral(long(lhs) / r)
-        }
-
-      case Long_% =>
-        long(rhs) match {
-          case 0 => LongLiteral(0L) // Undefined Behavior
-          case r => LongLiteral(long(lhs) % r)
-        }
+      case Long_/ => LongLiteral(long(lhs) / long(rhs))
+      case Long_% => LongLiteral(long(lhs) % long(rhs))
 
       case Long_|   => LongLiteral(long(lhs) | long(rhs))
       case Long_&   => LongLiteral(long(lhs) & long(rhs))
@@ -3020,12 +3029,32 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       implicit pos: Position): PreTransform = {
     import BinaryOp._
 
+    def constant(lhsLit: Literal, rhsLit: Literal): PreTransform =
+      PreTransLit(constantFoldBinaryOp_except_String_+(op, lhsLit, rhsLit))
+
+    def nonConstant(): PreTransform = foldBinaryOpNonConstant(op, lhs, rhs)
+
     (lhs, rhs) match {
-      case (PreTransLit(lhsLit), PreTransLit(rhsLit)) if op != String_+ =>
-        PreTransLit(constantFoldBinaryOp_except_String_+(op, lhsLit, rhsLit))
+      case (PreTransLit(lhsLit), PreTransLit(rhsLit)) =>
+        op match {
+          case String_+ =>
+            nonConstant()
+          case Int_/ | Int_% =>
+            rhsLit match {
+              case IntLiteral(0) => nonConstant()
+              case _             => constant(lhsLit, rhsLit)
+            }
+          case Long_/ | Long_% =>
+            rhsLit match {
+              case LongLiteral(0) => nonConstant()
+              case _              => constant(lhsLit, rhsLit)
+            }
+          case _ =>
+            constant(lhsLit, rhsLit)
+        }
 
       case _ =>
-        foldBinaryOpNonConstant(op, lhs, rhs)
+        nonConstant()
     }
   }
 
@@ -3336,9 +3365,6 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case Long_/ =>
         (lhs, rhs) match {
-          case (_, PreTransLit(LongLiteral(0))) =>
-            default // Undefined Behavior
-
           case (_, PreTransLit(LongLiteral(1))) =>
             lhs
           case (_, PreTransLit(LongLiteral(-1))) =>
@@ -3353,9 +3379,6 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case Long_% =>
         (lhs, rhs) match {
-          case (_, PreTransLit(LongLiteral(0))) =>
-            default // Undefined Behavior
-
           case (_, PreTransLit(LongLiteral(1L | -1L))) =>
             Block(finishTransformStat(lhs), LongLiteral(0L)).toPreTransform
 

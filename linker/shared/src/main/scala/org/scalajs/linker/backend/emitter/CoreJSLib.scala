@@ -72,7 +72,7 @@ private[emitter] object CoreJSLib {
       defineCharClass()
       defineRuntimeFunctions()
       defineDispatchFunctions()
-      defineDoubleToIntLongConversions()
+      defineArithmeticOps()
       defineES2015LikeHelpers()
       defineModuleHelpers()
       defineIntrinsics()
@@ -608,8 +608,25 @@ private[emitter] object CoreJSLib {
       }
     }
 
-    private def defineDoubleToIntLongConversions(): Unit = {
+    private def defineArithmeticOps(): Unit = {
       val x = varRef("x")
+      val y = varRef("y")
+
+      val throwDivByZero =
+        Throw(genScalaClassNew("jl_ArithmeticException", "init___T", str("/ by zero")))
+
+      locally {
+        buf += envFunctionDef("intDiv", paramList(x, y), {
+          If(y === 0, throwDivByZero, {
+            Return((x / y) | 0)
+          })
+        })
+        buf += envFunctionDef("intMod", paramList(x, y), {
+          If(y === 0, throwDivByZero, {
+            Return((x % y) | 0)
+          })
+        })
+      }
 
       locally {
         buf += envFunctionDef("doubleToInt", paramList(x), {
@@ -618,6 +635,20 @@ private[emitter] object CoreJSLib {
       }
 
       if (allowBigIntsForLongs) {
+        def wrapBigInt64(tree: Tree): Tree =
+          Apply(genIdentBracketSelect(BigIntRef, "asIntN"), 64 :: tree :: Nil)
+
+        buf += envFunctionDef("longDiv", paramList(x, y), {
+          If(y === BigIntLiteral(0), throwDivByZero, {
+            Return(wrapBigInt64(x / y))
+          })
+        })
+        buf += envFunctionDef("longMod", paramList(x, y), {
+          If(y === BigIntLiteral(0), throwDivByZero, {
+            Return(wrapBigInt64(x % y))
+          })
+        })
+
         val lo = varRef("lo")
         val rawHi = varRef("rawHi")
         val hi = varRef("hi")
