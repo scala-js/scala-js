@@ -221,7 +221,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
           } (realFiles.toSet)
 
           Attributed.blank(output).put(scalaJSSourceMap, sourceMapFile)
-        }.tag(usesLinkerTag)
+        }.tag(usesLinkerTag, ScalaJSTags.Link)
       }.value
   )
 
