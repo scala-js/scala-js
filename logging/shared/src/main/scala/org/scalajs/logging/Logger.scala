@@ -15,7 +15,6 @@ package org.scalajs.logging
 /** Abstract logger for our tools. Designed after sbt's Loggers. */
 trait Logger {
   def log(level: Level, message: => String): Unit
-  def success(message: => String): Unit
   def trace(t: => Throwable): Unit
 
   def error(message: => String): Unit = log(Level.Error, message)

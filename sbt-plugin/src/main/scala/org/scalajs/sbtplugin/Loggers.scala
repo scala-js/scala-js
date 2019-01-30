@@ -19,8 +19,6 @@ object Loggers {
   private class SbtLoggerWrapper(underlying: SbtLogger) extends Logger {
     def log(level: Level, message: => String): Unit =
       underlying.log(toolsLevel2sbtLevel(level), message)
-    def success(message: => String): Unit =
-      underlying.success(message)
     def trace(t: => Throwable): Unit =
       underlying.trace(t)
   }
