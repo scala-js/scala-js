@@ -17,10 +17,10 @@ trait Logger {
   def log(level: Level, message: => String): Unit
   def trace(t: => Throwable): Unit
 
-  def error(message: => String): Unit = log(Level.Error, message)
-  def warn(message: => String): Unit = log(Level.Warn, message)
-  def info(message: => String): Unit = log(Level.Info, message)
-  def debug(message: => String): Unit = log(Level.Debug, message)
+  final def error(message: => String): Unit = log(Level.Error, message)
+  final def warn(message: => String): Unit = log(Level.Warn, message)
+  final def info(message: => String): Unit = log(Level.Info, message)
+  final def debug(message: => String): Unit = log(Level.Debug, message)
 
   def time(title: String, nanos: Long): Unit =
     debug(s"$title: ${nanos / 1000} us")
