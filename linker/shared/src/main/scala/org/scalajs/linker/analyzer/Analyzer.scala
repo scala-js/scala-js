@@ -88,8 +88,8 @@ private final class Analyzer(config: CommonPhaseConfig,
         // Make sure top-level export names do not conflict
         checkConflictingExports()
       } catch {
-        case CyclicDependencyException(chain, _, from) =>
-          _errors += CycleInInheritanceChain(chain, from)
+        case CyclicDependencyException(encodedClassNames, _) =>
+          _errors += CycleInInheritanceChain(encodedClassNames, fromAnalyzer)
       }
     }
   }
@@ -287,12 +287,11 @@ private final class Analyzer(config: CommonPhaseConfig,
       try {
         linkClassesImpl()
       } catch {
-        case CyclicDependencyException(cycle, root, null) =>
-          if (root == this) {
-            throw new CyclicDependencyException(this :: cycle, null, from)
-          } else {
-            throw new CyclicDependencyException(this :: cycle, root, null)
-          }
+        case CyclicDependencyException(encodedClassNames, root) if root == this =>
+          throw new CyclicDependencyException(encodedName :: encodedClassNames, null)
+
+        case CyclicDependencyException(encodedClassNames, root) if root != null =>
+          throw new CyclicDependencyException(encodedName :: encodedClassNames, root)
       }
 
       linked = true
@@ -304,7 +303,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       def lookupClassAndCheckCycles(encodedName: String): ClassInfo = {
         val info = lookupClass(encodedName)
         if (!info.linked)
-          throw CyclicDependencyException(Nil, info, null)
+          throw CyclicDependencyException(Nil, info)
         info
       }
 
@@ -1043,6 +1042,6 @@ object Analyzer {
   }
 
   private final case class CyclicDependencyException(
-      chain: List[Analysis.ClassInfo], root: Analysis.ClassInfo, from: From)
-      extends Exception(s"Cyclic dependency: $chain")
+      encodedClassNames: List[String], root: Analysis.ClassInfo)
+      extends Exception(s"Cyclic dependency: $encodedClassNames")
 }

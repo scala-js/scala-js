@@ -81,8 +81,7 @@ class AnalyzerTest {
     val analysis = computeAnalysis(classDefs, reqsFactory.classData("LA"))
 
     assertContainsError("CycleInInheritanceChain(LA, LB)", analysis) {
-      case CycleInInheritanceChain(List(ClsInfo("LA"), ClsInfo("LB")),
-          `fromUnitTest`) =>
+      case CycleInInheritanceChain(List("LA", "LB"), `fromAnalyzer`) =>
         true
     }
   }
@@ -97,8 +96,7 @@ class AnalyzerTest {
     val analysis = computeAnalysis(classDefs, reqsFactory.classData("LA"))
 
     assertContainsError("CycleInInheritanceChain(LA, LB)", analysis) {
-      case CycleInInheritanceChain(List(ClsInfo("LA"), ClsInfo("LB")),
-          `fromUnitTest`) =>
+      case CycleInInheritanceChain(List("LA", "LB"), `fromAnalyzer`) =>
         true
     }
   }
@@ -118,9 +116,8 @@ class AnalyzerTest {
     val analysis = computeAnalysis(classDefs, reqsFactory.classData("LA"))
 
     assertContainsError("CycleInInheritanceChain(LC, LD, LE)", analysis) {
-      case CycleInInheritanceChain(
-          List(ClsInfo("LC"), ClsInfo("LD"), ClsInfo("LE")),
-          FromClass(ClsInfo("LB"))) => true
+      case CycleInInheritanceChain(List("LC", "LD", "LE"), `fromAnalyzer`) =>
+        true
     }
   }
 
