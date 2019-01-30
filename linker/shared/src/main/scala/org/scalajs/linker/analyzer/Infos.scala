@@ -35,7 +35,9 @@ object Infos {
       val interfaces: List[String], // direct parent interfaces only
       val methods: List[MethodInfo],
       val topLevelExportNames: List[String]
-  )
+  ) {
+    override def toString(): String = encodedName
+  }
 
   object ClassInfo {
     def apply(
@@ -68,7 +70,9 @@ object Infos {
       val accessedModules: List[String],
       val usedInstanceTests: List[String],
       val accessedClassData: List[String]
-  )
+  ) {
+    override def toString(): String = encodedName
+  }
 
   object MethodInfo {
     def apply(
