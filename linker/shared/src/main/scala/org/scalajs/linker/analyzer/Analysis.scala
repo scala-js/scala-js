@@ -175,7 +175,7 @@ object Analysis {
 
   final case class MissingJavaLangObjectClass(from: From) extends Error
   final case class InvalidJavaLangObjectClass(from: From) extends Error
-  final case class CycleInInheritanceChain(cycle: List[ClassInfo], from: From) extends Error
+  final case class CycleInInheritanceChain(encodedClassNames: List[String], from: From) extends Error
   final case class MissingClass(info: ClassInfo, from: From) extends Error
 
   final case class MissingSuperClass(subClassInfo: ClassInfo, from: From)
@@ -209,9 +209,9 @@ object Analysis {
       case InvalidJavaLangObjectClass(_) =>
         "Fatal error: java.lang.Object is invalid (it must be a Scala class " +
         "without superclass nor any implemented interface)"
-      case CycleInInheritanceChain(cycle, _) =>
+      case CycleInInheritanceChain(encodedClassNames, _) =>
         ("Fatal error: cycle in inheritance chain involving " +
-            cycle.map(_.displayName).mkString(", "))
+            encodedClassNames.map(decodeClassName).mkString(", "))
       case MissingClass(info, _) =>
         s"Referring to non-existent class ${info.displayName}"
       case MissingSuperClass(subClassInfo, _) =>
