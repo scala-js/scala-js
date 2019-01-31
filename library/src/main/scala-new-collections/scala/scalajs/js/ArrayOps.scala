@@ -1369,7 +1369,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *    `x` will not form part of the result, but any following occurrences
    *    will.
    */
-  def diff(that: Seq[_ >: A]): js.Array[A] =
+  def diff[B >: A](that: Seq[B]): js.Array[A] =
     new js.WrappedArray(xs).diff(that).array
 
   /** Computes the multiset intersection between this array and another
@@ -1383,7 +1383,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *    the first ''n'' occurrences of `x` will be retained in the result, but
    *    any following occurrences will be omitted.
    */
-  def intersect(that: Seq[_ >: A]): js.Array[A] =
+  def intersect[B >: A](that: Seq[B]): js.Array[A] =
     new js.WrappedArray(xs).intersect(that).array
 
   /** Groups elements in fixed size blocks by passing a "sliding window" over
