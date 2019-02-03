@@ -33,6 +33,7 @@ object Infos {
       val kind: ClassKind,
       val superClass: Option[String], // always None for interfaces
       val interfaces: List[String], // direct parent interfaces only
+      val referencedFieldClasses: List[String],
       val methods: List[MethodInfo],
       val topLevelExportNames: List[String]
   ) {
@@ -46,10 +47,11 @@ object Infos {
         kind: ClassKind = ClassKind.Class,
         superClass: Option[String] = None,
         interfaces: List[String] = Nil,
+        referencedFieldClasses: List[String] = Nil,
         methods: List[MethodInfo] = Nil,
         topLevelExportNames: List[String] = Nil): ClassInfo = {
       new ClassInfo(encodedName, isExported, kind, superClass,
-          interfaces, methods, topLevelExportNames)
+          interfaces, referencedFieldClasses, methods, topLevelExportNames)
     }
   }
 
@@ -69,7 +71,8 @@ object Infos {
       val instantiatedClasses: List[String],
       val accessedModules: List[String],
       val usedInstanceTests: List[String],
-      val accessedClassData: List[String]
+      val accessedClassData: List[String],
+      val referencedClasses: List[String]
   ) {
     override def toString(): String = encodedName
   }
@@ -88,12 +91,13 @@ object Infos {
         instantiatedClasses: List[String],
         accessedModules: List[String],
         usedInstanceTests: List[String],
-        accessedClassData: List[String]): MethodInfo = {
+        accessedClassData: List[String],
+        referencedClasses: List[String]): MethodInfo = {
       new MethodInfo(encodedName, isStatic, isAbstract, isExported,
           staticFieldsRead, staticFieldsWritten,
           methodsCalled, methodsCalledStatically, staticMethodsCalled,
           instantiatedClasses, accessedModules, usedInstanceTests,
-          accessedClassData)
+          accessedClassData, referencedClasses)
     }
   }
 
@@ -103,6 +107,7 @@ object Infos {
     private var isExported: Boolean = false
     private var superClass: Option[String] = None
     private val interfaces = mutable.ListBuffer.empty[String]
+    private val referencedFieldClasses = mutable.Set.empty[String]
     private val methods = mutable.ListBuffer.empty[MethodInfo]
     private var topLevelExportNames: List[String] = Nil
 
@@ -136,6 +141,16 @@ object Infos {
       this
     }
 
+    def maybeAddReferencedFieldClass(tpe: Type): this.type = {
+      tpe match {
+        case ClassType(cls)                   => referencedFieldClasses += cls
+        case ArrayType(ArrayTypeRef(base, _)) => referencedFieldClasses += base
+        case _                                =>
+      }
+
+      this
+    }
+
     def addMethod(methodInfo: MethodInfo): this.type = {
       methods += methodInfo
       this
@@ -148,7 +163,8 @@ object Infos {
 
     def result(): ClassInfo = {
       ClassInfo(encodedName, isExported, kind, superClass,
-          interfaces.toList, methods.toList, topLevelExportNames)
+          interfaces.toList, referencedFieldClasses.toList, methods.toList,
+          topLevelExportNames)
     }
   }
 
@@ -167,6 +183,7 @@ object Infos {
     private val accessedModules = mutable.Set.empty[String]
     private val usedInstanceTests = mutable.Set.empty[String]
     private val accessedClassData = mutable.Set.empty[String]
+    private val referencedClasses = mutable.Set.empty[String]
 
     def setEncodedName(encodedName: String): this.type = {
       this.encodedName = encodedName
@@ -281,6 +298,20 @@ object Infos {
       this
     }
 
+    def addReferencedClass(tpe: TypeRef): this.type =
+      addReferencedClass(baseNameOf(tpe))
+
+    def addReferencedClass(cls: String): this.type = {
+      referencedClasses += cls
+      this
+    }
+
+    def maybeAddReferencedClass(tpe: Type): this.type = tpe match {
+      case ClassType(cls)     => addReferencedClass(cls)
+      case ArrayType(typeRef) => addReferencedClass(typeRef)
+      case _                  => this
+    }
+
     private def baseNameOf(tpe: TypeRef): String = tpe match {
       case ClassRef(name)        => name
       case ArrayTypeRef(base, _) => base
@@ -305,7 +336,8 @@ object Infos {
           instantiatedClasses = instantiatedClasses.toList,
           accessedModules = accessedModules.toList,
           usedInstanceTests = usedInstanceTests.toList,
-          accessedClassData = accessedClassData.toList
+          accessedClassData = accessedClassData.toList,
+          referencedClasses = referencedClasses.toList
       )
     }
   }
@@ -322,8 +354,11 @@ object Infos {
 
     classDef.memberDefs foreach {
       case fieldDef: FieldDef =>
+        builder.maybeAddReferencedFieldClass(fieldDef.ftpe)
+
       case methodDef: MethodDef =>
         builder.addMethod(generateMethodInfo(methodDef))
+
       case propertyDef: PropertyDef =>
         builder.addMethod(generatePropertyInfo(propertyDef))
     }
@@ -390,7 +425,13 @@ object Infos {
       methodDef.name match {
         case ComputedName(tree, _) =>
           traverse(tree)
-        case _ =>
+
+        case StringLiteral(_) =>
+
+        case Ident(name, _) =>
+          val (_, params, result) = decodeMethodName(name)
+          params.foreach(builder.addReferencedClass)
+          result.foreach(builder.addReferencedClass)
       }
 
       methodDef.body.foreach(traverse)
@@ -438,6 +479,8 @@ object Infos {
     }
 
     override def traverse(tree: Tree): Unit = {
+      builder.maybeAddReferencedClass(tree.tpe)
+
       tree match {
         /* Do not call super.traverse() so that the field is not also marked as
          * read.
@@ -510,6 +553,9 @@ object Infos {
             case Transient(CallHelper(_, args)) =>
               // This should only happen when called from the Refiner
               args.foreach(traverse)
+
+            case VarDef(_, vtpe, _, _) =>
+              builder.maybeAddReferencedClass(vtpe)
 
             case _ =>
           }

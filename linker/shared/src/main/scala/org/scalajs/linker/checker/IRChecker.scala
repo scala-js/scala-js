@@ -32,8 +32,7 @@ import org.scalajs.linker.standard._
 import org.scalajs.linker.analyzer.{Analyzer, Infos}
 
 /** Checker for the validity of the IR. */
-private final class IRChecker(unit: LinkingUnit,
-    inputProvider: Analyzer.InputProvider, logger: Logger) {
+private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   import IRChecker._
 
@@ -533,16 +532,18 @@ private final class IRChecker(unit: LinkingUnit,
           case Select(receiver, Ident(name, _)) =>
             receiver.tpe match {
               case ClassType(clazz) =>
+                val c = lookupClass(clazz)
+
                 for {
-                  c <- tryLookupClass(clazz)
                   f <- c.lookupField(name)
                   if !f.mutable
                 } reportError(s"Assignment to immutable field $name.")
               case _ =>
             }
           case SelectStatic(ClassRef(cls), Ident(name, _)) =>
+            val c = lookupClass(cls)
+
             for {
-              c <- tryLookupClass(cls)
               f <- c.lookupStaticField(name)
               if !f.mutable
             } {
@@ -750,37 +751,29 @@ private final class IRChecker(unit: LinkingUnit,
         val qualType = typecheckExpr(qualifier, env)
         qualType match {
           case ClassType(cls) =>
-            val maybeClass = tryLookupClass(cls)
-            val kind = maybeClass.fold(_.kind, _.kind)
+            val c = lookupClass(cls)
+            val kind = c.kind
             if (!kind.isClass) {
               reportError(s"Cannot select $item of non-class $cls")
             } else {
-              /* Actually checking the field is done only if
+              /* Actually checking the field is done only if the class has
+               * instances (including instances of subclasses).
                *
-               * * the class exists, and
-               * * it has instances (including instances of subclasses).
-               *
-               * The latter test is necessary because the BaseLinker can
-               * completely get rid of all the fields of a class that has no
-               * instance. Obviously in such cases, the only value that
-               * `qualifier` can assume is `null`, and the `Select` will fail
-               * with an NPE. But the IR is still valid per se.
-               *
-               * The former case is necessary too because, if the class is not
-               * even "needed at all", the BaseLinker will simply remove the
-               * class entirely.
+               * This is necessary because the BaseLinker can completely get rid
+               * of all the fields of a class that has no instance. Obviously in
+               * such cases, the only value that `qualifier` can assume is
+               * `null`, and the `Select` will fail with an NPE. But the IR is
+               * still valid per se.
                *
                * See #3060.
                */
-              maybeClass.foreach { c =>
-                if (c.hasInstances) {
-                  c.lookupField(item).fold[Unit] {
-                    reportError(s"Class $cls does not have a field $item")
-                  } { fieldDef =>
-                    if (fieldDef.tpe != tree.tpe)
-                      reportError(s"Select $cls.$item of type "+
+              if (c.hasInstances) {
+                c.lookupField(item).fold[Unit] {
+                  reportError(s"Class $cls does not have a field $item")
+                } { fieldDef =>
+                  if (fieldDef.tpe != tree.tpe)
+                    reportError(s"Select $cls.$item of type "+
                         s"${fieldDef.tpe} typed as ${tree.tpe}")
-                  }
                 }
               }
             }
@@ -1188,7 +1181,7 @@ private final class IRChecker(unit: LinkingUnit,
         case 'T' => ClassType(BoxedStringClass) // NOT StringType
       }
     } else {
-      val kind = tryLookupClass(encodedName).fold(_.kind, _.kind)
+      val kind = lookupClass(encodedName).kind
       if (kind.isJSType) AnyType
       else ClassType(encodedName)
     }
@@ -1209,20 +1202,6 @@ private final class IRChecker(unit: LinkingUnit,
   private def reportError(msg: String)(implicit ctx: ErrorContext): Unit = {
     logger.error(s"$ctx: $msg")
     errorCount += 1
-  }
-
-  private def lookupInfo(className: String)(
-      implicit ctx: ErrorContext): Infos.ClassInfo = {
-    inputProvider.loadInfo(className).getOrElse {
-      reportError(s"Cannot find info for class $className")
-      Infos.ClassInfo(className)
-    }
-  }
-
-  private def tryLookupClass(className: String)(
-       implicit ctx: ErrorContext): Either[Infos.ClassInfo, CheckedClass] = {
-    classes.get(className).fold[Either[Infos.ClassInfo, CheckedClass]](
-        Left(lookupInfo(className)))(Right(_))
   }
 
   private def lookupClass(className: String)(
@@ -1246,12 +1225,7 @@ private final class IRChecker(unit: LinkingUnit,
 
   private def isSubclass(lhs: String, rhs: String)(
       implicit ctx: ErrorContext): Boolean = {
-    tryLookupClass(lhs).fold({ info =>
-      val parents = info.superClass ++: info.interfaces
-      parents.exists(_ == rhs) || parents.exists(isSubclass(_, rhs))
-    }, { lhsClass =>
-      lhsClass.ancestors.contains(rhs)
-    })
+    lookupClass(lhs).ancestors.contains(rhs)
   }
 
   private def isSubtype(lhs: Type, rhs: Type)(
@@ -1351,9 +1325,8 @@ object IRChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(unit: LinkingUnit, inputProvider: Analyzer.InputProvider,
-      logger: Logger): Int = {
-    new IRChecker(unit, inputProvider, logger).check()
+  def check(unit: LinkingUnit, logger: Logger): Int = {
+    new IRChecker(unit, logger).check()
   }
 
   /** The context in which to report IR check errors.
@@ -1400,17 +1373,4 @@ object IRChecker {
 
   private case class LocalDef(name: String, tpe: Type, mutable: Boolean)(
       val pos: Position)
-
-  /** Enable the right-biased API of Either from 2.12 in earlier versions. */
-  private implicit class RightBiasedEither[A, B](
-      val __private_self: Either[A, B])
-      extends AnyVal {
-
-    @inline private def self: Either[A, B] = __private_self
-
-    def foreach[U](f: B => U): Unit = self match {
-      case Left(_)  =>
-      case Right(r) => f(r)
-    }
-  }
 }

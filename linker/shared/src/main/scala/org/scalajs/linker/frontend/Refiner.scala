@@ -168,6 +168,8 @@ private object Refiner {
           .setSuperClass(linkedClass.superClass.map(_.name))
           .addInterfaces(linkedClass.interfaces.map(_.name))
 
+        for (field <- linkedClass.fields)
+          builder.maybeAddReferencedFieldClass(field.ftpe)
         for (linkedMethod <- linkedClass.staticMethods)
           builder.addMethod(staticMethodsInfoCaches.getInfo(linkedMethod))
         for (linkedMethod <- linkedClass.memberMethods)

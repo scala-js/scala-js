@@ -737,6 +737,17 @@ private final class Analyzer(config: CommonPhaseConfig,
           (isScalaClass || isJSClass || isNativeJSClass)) {
         isInstantiated = true
 
+        /* Reach referenced classes of non-static fields
+         *
+         * Note that the classes referenced by static fields are reached
+         * implicitly by the call-sites that read or write the field: the
+         * SelectStatic expression has the same type as the field.
+         */
+        for (className <- data.referencedFieldClasses) {
+          if (!Definitions.PrimitiveClasses.contains(className))
+            lookupClass(className)
+        }
+
         if (isScalaClass) {
           accessData()
 
@@ -933,6 +944,11 @@ private final class Analyzer(config: CommonPhaseConfig,
           lookupClass(className).accessData()
       }
 
+      for (className <- data.referencedClasses) {
+        if (!Definitions.PrimitiveClasses.contains(className))
+          lookupClass(className)
+      }
+
       /* `for` loops on maps are written with `while` loops to help the JIT
        * compiler to inline and stack allocate tuples created by the iterators
        */
@@ -1018,7 +1034,8 @@ private final class Analyzer(config: CommonPhaseConfig,
         instantiatedClasses = instantiatedClasses,
         accessedModules = Nil,
         usedInstanceTests = Nil,
-        accessedClassData = Nil
+        accessedClassData = Nil,
+        referencedClasses = Nil
     )
   }
 
