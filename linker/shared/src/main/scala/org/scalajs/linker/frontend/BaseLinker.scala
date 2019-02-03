@@ -56,11 +56,10 @@ final class BaseLinker(config: CommonPhaseConfig) {
       analysis <- logger.timeFuture("Linker: Compute reachability") {
         analyze(allSymbolRequirements, logger)
       }
-    } yield {
-      val linkResult = logger.time("Linker: Assemble LinkedClasses") {
+      linkResult <- logger.timeFuture("Linker: Assemble LinkedClasses") {
         assemble(moduleInitializers, analysis)
       }
-
+    } yield {
       if (checkIR) {
         logger.time("Linker: Check IR") {
           val errorCount = IRChecker.check(linkResult, logger)
@@ -111,25 +110,33 @@ final class BaseLinker(config: CommonPhaseConfig) {
   }
 
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
-      analysis: Analysis): LinkingUnit = {
-    val linkedClassDefs = for {
-      analyzerInfo <- analysis.classInfos.values
-    } yield {
-      linkedClassDef(analyzerInfo, analysis)
+      analysis: Analysis)(implicit ex: ExecutionContext): Future[LinkingUnit] = {
+    def assembleClass(info: ClassInfo) = {
+      val classAndVersion = inputProvider.loadClassDefAndVersion(info.encodedName)
+      val syntheticMethods = methodSynthesizer.synthesizeMembers(info, analysis)
+
+      for {
+        (classDef, version) <- classAndVersion
+        syntheticMethods <- syntheticMethods
+      } yield {
+        linkedClassDef(classDef, version, syntheticMethods, info, analysis)
+      }
     }
 
-    new LinkingUnit(config.coreSpec, linkedClassDefs.toList,
-        moduleInitializers.toList)
+    for {
+      linkedClassDefs <- Future.traverse(analysis.classInfos.values)(assembleClass)
+    } yield {
+      new LinkingUnit(config.coreSpec, linkedClassDefs.toList,
+          moduleInitializers.toList)
+    }
   }
 
   /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
    */
-  private def linkedClassDef(analyzerInfo: Analysis.ClassInfo,
-      analysis: Analysis): LinkedClass = {
+  private def linkedClassDef(classDef: ClassDef, version: Option[String],
+      syntheticMethodDefs: Iterator[MethodDef],
+      analyzerInfo: ClassInfo, analysis: Analysis): LinkedClass = {
     import ir.Trees._
-
-    val (classDef, version) =
-      inputProvider.loadClassDefAndVersion(analyzerInfo.encodedName)
 
     val fields = mutable.Buffer.empty[FieldDef]
     val staticMethods = mutable.Buffer.empty[Versioned[MethodDef]]
@@ -175,8 +182,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
           exportedMembers += linkedProperty(m)
     }
 
-    memberMethods ++= methodSynthesizer.synthesizeMembers(analyzerInfo, analysis)
-      .map(linkedMethod)
+    memberMethods ++= syntheticMethodDefs.map(linkedMethod)
 
     val topLevelExports =
       classDef.topLevelExportDefs.map(new Versioned(_, version))
@@ -238,16 +244,18 @@ private object BaseLinker {
         implicit ex: ExecutionContext): Option[Future[Infos.ClassInfo]] =
       getCache(encodedName).map(_.loadInfo(encodedNameToFile(encodedName)))
 
-    def loadClassDefAndVersion(
-        encodedName: String): (ClassDef, Option[String]) = {
+    def loadClassDefAndVersion(encodedName: String)(
+        implicit ex: ExecutionContext): Future[(ClassDef, Option[String])] = {
       val fileCache = getCache(encodedName).getOrElse {
         throw new AssertionError(s"Cannot load file for class $encodedName")
       }
       fileCache.loadClassDefAndVersion(encodedNameToFile(encodedName))
     }
 
-    def loadClassDef(encodedName: String): ClassDef =
-      loadClassDefAndVersion(encodedName)._1
+    def loadClassDef(encodedName: String)(
+        implicit ex: ExecutionContext): Future[ClassDef] = {
+      loadClassDefAndVersion(encodedName).map(_._1)
+    }
 
     private def getCache(encodedName: String): Option[ClassDefAndInfoCache] = {
       cache.get(encodedName).orElse {
@@ -279,8 +287,8 @@ private object BaseLinker {
       info
     }
 
-    def loadClassDefAndVersion(
-        irFile: VirtualScalaJSIRFile): (ClassDef, Option[String]) = {
+    def loadClassDefAndVersion(irFile: VirtualScalaJSIRFile)(
+        implicit ex: ExecutionContext): Future[(ClassDef, Option[String])] = Future {
       update(irFile)
       (classDef, version)
     }
