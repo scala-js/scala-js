@@ -12,8 +12,6 @@
 
 package org.scalajs.linker.frontend
 
-import scala.annotation.tailrec
-
 import scala.collection.mutable
 import scala.concurrent._
 import scala.util.Try
@@ -28,12 +26,8 @@ import org.scalajs.linker.analyzer._
 import org.scalajs.linker.irio._
 
 import org.scalajs.ir
-import ir.Trees._
-import ir.Types._
-import ir.ClassKind
+import ir.Trees.{ClassDef, MethodDef}
 import ir.Hashers
-import ir.Position
-import ir.Definitions
 
 import Analysis._
 
@@ -44,6 +38,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
   import BaseLinker._
 
   private val inputProvider = new InputProvider
+  private val methodSynthesizer = new MethodSynthesizer(inputProvider)
 
   def link(irInput: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer], logger: Logger,
@@ -150,11 +145,6 @@ final class BaseLinker(config: CommonPhaseConfig) {
       new Versioned(p, None)
     }
 
-    def linkedSyntheticMethod(m: MethodDef) = {
-      val version = m.hash.map(Hashers.hashAsVersion(_))
-      new Versioned(m, version)
-    }
-
     classDef.memberDefs.foreach {
       case field: FieldDef =>
         if (analyzerInfo.isAnySubclassInstantiated)
@@ -185,26 +175,8 @@ final class BaseLinker(config: CommonPhaseConfig) {
           exportedMembers += linkedProperty(m)
     }
 
-    // Synthetic members
-    for {
-      m <- analyzerInfo.methodInfos.valuesIterator
-      if m.isReachable
-    } {
-      m.syntheticKind match {
-        case MethodSyntheticKind.None =>
-          // nothing to do
-
-        case MethodSyntheticKind.ReflectiveProxy(targetName) =>
-          val syntheticMDef = synthesizeReflectiveProxy(
-              analyzerInfo, m, targetName, analysis)
-          memberMethods += linkedSyntheticMethod(syntheticMDef)
-
-        case MethodSyntheticKind.DefaultBridge(targetInterface) =>
-          val syntheticMDef = synthesizeDefaultBridge(
-              analyzerInfo, m, targetInterface, analysis)
-          memberMethods += linkedSyntheticMethod(syntheticMDef)
-      }
-    }
+    memberMethods ++= methodSynthesizer.synthesizeMembers(analyzerInfo, analysis)
+      .map(linkedMethod)
 
     val topLevelExports =
       classDef.topLevelExportDefs.map(new Versioned(_, version))
@@ -236,105 +208,10 @@ final class BaseLinker(config: CommonPhaseConfig) {
         hasRuntimeTypeInfo = analyzerInfo.isDataAccessed,
         version)
   }
-
-  private def synthesizeReflectiveProxy(
-      classInfo: Analysis.ClassInfo, methodInfo: Analysis.MethodInfo,
-      targetName: String, analysis: Analysis): MethodDef = {
-    val encodedName = methodInfo.encodedName
-
-    val targetMDef = findInheritedMethodDef(analysis, classInfo, targetName)
-
-    implicit val pos = targetMDef.pos
-
-    val targetIdent = targetMDef.name.asInstanceOf[Ident].copy() // for the new pos
-    val proxyIdent = Ident(encodedName, None)
-    val params = targetMDef.args.map(_.copy()) // for the new pos
-    val currentClassType = ClassType(classInfo.encodedName)
-
-    val call = Apply(This()(currentClassType),
-        targetIdent, params.map(_.ref))(targetMDef.resultType)
-
-    val body = if (targetName.endsWith("__V")) {
-      // Materialize an `undefined` result for void methods
-      Block(call, Undefined())
-    } else {
-      call
-    }
-
-    MethodDef(static = false, proxyIdent, params, AnyType, Some(body))(
-        OptimizerHints.empty, targetMDef.hash)
-  }
-
-  private def synthesizeDefaultBridge(
-      classInfo: Analysis.ClassInfo, methodInfo: Analysis.MethodInfo,
-      targetInterface: String, analysis: Analysis): MethodDef = {
-    val encodedName = methodInfo.encodedName
-
-    val targetInterfaceInfo = analysis.classInfos(targetInterface)
-    val targetMDef = findMethodDef(targetInterfaceInfo, encodedName)
-
-    implicit val pos = targetMDef.pos
-
-    val targetIdent = targetMDef.name.asInstanceOf[Ident].copy() // for the new pos
-    val bridgeIdent = targetIdent
-    val params = targetMDef.args.map(_.copy()) // for the new pos
-    val currentClassType = ClassType(classInfo.encodedName)
-
-    val body = ApplyStatically(
-        This()(currentClassType), ClassRef(targetInterface), targetIdent,
-        params.map(_.ref))(targetMDef.resultType)
-
-    MethodDef(static = false, bridgeIdent, params, targetMDef.resultType, Some(body))(
-        OptimizerHints.empty, targetMDef.hash)
-  }
-
-  private def findInheritedMethodDef(analysis: Analysis,
-      classInfo: Analysis.ClassInfo, methodName: String,
-      p: Analysis.MethodInfo => Boolean = _ => true): MethodDef = {
-    @tailrec
-    def loop(ancestorInfo: Analysis.ClassInfo): MethodDef = {
-      val inherited = ancestorInfo.methodInfos.get(methodName)
-      inherited.find(p) match {
-        case Some(m) =>
-          m.syntheticKind match {
-            case MethodSyntheticKind.None =>
-              findMethodDef(ancestorInfo, methodName)
-
-            case MethodSyntheticKind.DefaultBridge(targetInterface) =>
-              val targetInterfaceInfo = analysis.classInfos(targetInterface)
-              findMethodDef(targetInterfaceInfo, methodName)
-
-            case MethodSyntheticKind.ReflectiveProxy(_) =>
-              throw new AssertionError(
-                  s"Cannot recursively follow $ancestorInfo.$methodName of " +
-                  s"kind ${m.syntheticKind}")
-          }
-
-        case None =>
-          assert(ancestorInfo.superClass.isDefined,
-              s"Could not find $methodName anywhere in ${classInfo.encodedName}")
-          loop(ancestorInfo.superClass.get)
-      }
-    }
-
-    loop(classInfo)
-  }
-
-  private def findMethodDef(classInfo: Analysis.ClassInfo,
-      methodName: String): MethodDef = {
-    val classDef = inputProvider.loadClassDef(classInfo.encodedName)
-    classDef.memberDefs.collectFirst {
-      case mDef: MethodDef
-          if !mDef.static && mDef.encodedName == methodName => mDef
-    }.getOrElse {
-      throw new AssertionError(
-          s"Cannot find $methodName in ${classInfo.encodedName}")
-    }
-  }
 }
 
 private object BaseLinker {
-  private class InputProvider extends Analyzer.InputProvider {
+  private class InputProvider extends Analyzer.InputProvider with MethodSynthesizer.InputProvider {
     private var encodedNameToFile: collection.Map[String, VirtualScalaJSIRFile] = _
     private val cache = mutable.Map.empty[String, ClassDefAndInfoCache]
 
