@@ -41,7 +41,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
     s"""
     package object jspackage extends js.Object
-    """ hasWarns
+    """ containsWarns
     s"""
       |newSource1.scala:5: warning: Package objects inheriting from js.Any are deprecated. Use a normal object instead.
       |    package object jspackage extends js.Object
