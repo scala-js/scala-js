@@ -944,7 +944,7 @@ private final class Analyzer(config: CommonPhaseConfig,
           lookupClass(className).isAnyStaticFieldReachable = true
       }
 
-      val staticFieldsWrittenIterator = data.staticFieldsRead.iterator
+      val staticFieldsWrittenIterator = data.staticFieldsWritten.iterator
       while (staticFieldsWrittenIterator.hasNext) {
         val (className, fields) = staticFieldsWrittenIterator.next()
         if (fields.nonEmpty)
