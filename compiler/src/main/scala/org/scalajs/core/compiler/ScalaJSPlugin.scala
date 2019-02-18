@@ -26,13 +26,15 @@ import org.scalajs.core.ir.Trees
  *
  *  @author Sébastien Doeraene
  */
-class ScalaJSPlugin(val global: Global) extends NscPlugin {
+class ScalaJSPlugin(val global: Global)
+    extends NscPlugin with Compat210Component {
+
   import global._
 
   val name = "scalajs"
   val description = "Compile to JavaScript"
   val components = {
-    if (global.forScaladoc) {
+    if (forScaladoc) {
       List[NscPluginComponent](PrepInteropComponent)
     } else {
       List[NscPluginComponent](PreTyperComponentComponent, PrepInteropComponent,
