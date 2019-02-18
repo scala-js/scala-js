@@ -179,17 +179,32 @@ class LongTest {
   }
 
   @Test def `should_have_correct_hash_in_case_classes`(): Unit = {
-    assertEquals(-1669410282, HashTestBox(0L).##)
-    assertEquals(-1561146018, HashTestBox(55L).##)
-    assertEquals(-1266055417, HashTestBox(-12L).##)
-    assertEquals(-1383472436, HashTestBox(10006548L).##)
-    assertEquals(1748124846, HashTestBox(-1098748L).##)
+    if (scalaVersion.startsWith("2.10.") || scalaVersion.startsWith("2.11.") ||
+        scalaVersion.startsWith("2.12.") || scalaVersion == "2.13.0-M5") {
+      assertEquals(-1669410282, HashTestBox(0L).##)
+      assertEquals(-1561146018, HashTestBox(55L).##)
+      assertEquals(-1266055417, HashTestBox(-12L).##)
+      assertEquals(-1383472436, HashTestBox(10006548L).##)
+      assertEquals(1748124846, HashTestBox(-1098748L).##)
 
-    assertEquals(1291324266, HashTestBox(9863155567412L).##)
-    assertEquals(-450677189, HashTestBox(3632147899696541255L).##)
+      assertEquals(1291324266, HashTestBox(9863155567412L).##)
+      assertEquals(-450677189, HashTestBox(3632147899696541255L).##)
 
-    assertEquals(259268522, HashTestBox(1461126709984L).##)
-    assertEquals(818387364, HashTestBox(1L).##)
+      assertEquals(259268522, HashTestBox(1461126709984L).##)
+      assertEquals(818387364, HashTestBox(1L).##)
+    } else {
+      assertEquals(1445817443, HashTestBox(0L).##)
+      assertEquals(536512430, HashTestBox(55L).##)
+      assertEquals(2131034006, HashTestBox(-12L).##)
+      assertEquals(713468002, HashTestBox(10006548L).##)
+      assertEquals(-1926941956, HashTestBox(-1098748L).##)
+
+      assertEquals(1150870245, HashTestBox(9863155567412L).##)
+      assertEquals(-1713893803, HashTestBox(3632147899696541255L).##)
+
+      assertEquals(-1901418683, HashTestBox(1461126709984L).##)
+      assertEquals(-491089524, HashTestBox(1L).##)
+    }
   }
 
   @Test def `should_correctly_concat_to_string`(): Unit = {
