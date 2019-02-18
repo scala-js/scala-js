@@ -46,7 +46,7 @@ trait Compat210Component {
     def isTraitOrInterface: Boolean = self.isTrait || self.isInterface
   }
 
-  // enteringPhase/exitingPhase replace beforePhase/afterPhase
+  // Global compat
 
   @inline final def enteringPhase[T](ph: Phase)(op: => T): T = {
     global.enteringPhase(ph)(op)
@@ -55,6 +55,12 @@ trait Compat210Component {
   @inline final def exitingPhase[T](ph: Phase)(op: => T): T = {
     global.exitingPhase(ph)(op)
   }
+
+  @inline final def devWarning(msg: => String): Unit =
+    global.devWarning(msg)
+
+  @inline final def forScaladoc: Boolean =
+    global.forScaladoc
 
   implicit final class GlobalCompat(
       self: Compat210Component.this.global.type) {
@@ -70,6 +76,26 @@ trait Compat210Component {
     def afterPhase[T](ph: Phase)(op: => T): T = infiniteLoop()
 
     def delambdafy: DelambdafyCompat.type = DelambdafyCompat
+
+    def devWarning(msg: => String): Unit = self.debugwarn(msg)
+    def debugwarn(msg: => String): Unit = infiniteLoop()
+
+    def forScaladoc: Boolean =
+      self.isInstanceOf[ScaladocGlobalCompat.ScaladocGlobalCompat]
+  }
+
+  object ScaladocGlobalCompat {
+    object Compat {
+      trait ScaladocGlobal
+    }
+
+    import Compat._
+
+    object Inner {
+      type ScaladocGlobalCompat = ScaladocGlobal
+    }
+
+    type ScaladocGlobalCompat = Inner.ScaladocGlobalCompat
   }
 
   object DelambdafyCompat {

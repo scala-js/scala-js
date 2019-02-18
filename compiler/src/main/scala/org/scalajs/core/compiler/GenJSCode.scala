@@ -2020,8 +2020,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 val tpeEnteringPosterasure =
                   enteringPhase(currentRun.posterasurePhase)(rhs.tpe)
                 if ((tpeEnteringPosterasure eq null) && genRhs.isInstanceOf[js.Null]) {
-                  // 2.10.x does not yet have `devWarning`, so use `debugwarn` instead.
-                  debugwarn(
+                  devWarning(
                       "Working around https://github.com/scala-js/scala-js/issues/3422 " +
                       s"for ${sym.fullName} at ${sym.pos}")
                   // Fortunately, a literal `null` never needs to be boxed
