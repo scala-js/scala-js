@@ -41,7 +41,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
 
     val builder = newBuilder(output)
     try {
-      logger.time("Emitter (write output)") {
+      logger.time("Emitter") {
         emitter.emitAll(unit, builder, logger)
       }
     } finally {
