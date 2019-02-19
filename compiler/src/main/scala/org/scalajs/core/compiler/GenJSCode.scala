@@ -313,7 +313,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 }
               } else if (sym.isTraitOrInterface) {
                 genInterface(cd)
-              } else if (sym.isImplClass) {
+              } else if (isImplClass(sym)) {
                 genImplClass(cd)
               } else {
                 genClass(cd)
@@ -346,7 +346,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = cd.symbol
       implicit val pos = sym.pos
 
-      assert(!sym.isTraitOrInterface && !sym.isImplClass,
+      assert(!sym.isTraitOrInterface && !isImplClass(sym),
           "genClass() must be called only for normal classes: "+sym)
       assert(sym.superClass != NoSymbol, sym)
 
@@ -1501,7 +1501,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           None
         } else if (sym.isClassConstructor && isHijackedBoxedClass(sym.owner)) {
           None
-        } else if (scalaUsesImplClasses && !sym.owner.isImplClass &&
+        } else if (scalaUsesImplClasses && !isImplClass(sym.owner) &&
             sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
           // Do not emit trait impl forwarders with @JavaDefaultMethod
           None
@@ -1546,7 +1546,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                     Some(genStat(rhs)))(optimizerHints, None)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
-                genMethodDef(static = sym.owner.isImplClass, methodName,
+                genMethodDef(static = isImplClass(sym.owner), methodName,
                     params, resultIRType, rhs, optimizerHints)
               }
             }
@@ -2761,7 +2761,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           case FLOAT(_) => js.UnaryOp(DoubleToInt, value)
         }
 
-        def doubleValue = from match {
+        def doubleValue = (from: @unchecked) match {
           case FLOAT(_) | INT(_) => value
           case LONG              => js.UnaryOp(LongToDouble, value)
         }
@@ -5237,7 +5237,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             mutable = false, rest = false)(p.pos)
       }
 
-      val isInImplClass = target.owner.isImplClass
+      val isInImplClass = isImplClass(target.owner)
 
       val (allFormalCaptures, body, allActualCaptures) = if (!isInImplClass) {
         val thisActualCapture = genExpr(receiver)
@@ -5602,7 +5602,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   /** Tests whether the given class is the impl class of a raw JS trait. */
   private def isRawJSImplClass(sym: Symbol): Boolean = {
-    sym.isImplClass && isRawJSType(
+    isImplClass(sym) && isRawJSType(
         sym.owner.info.decl(sym.name.dropRight(nme.IMPL_CLASS_SUFFIX.length)).tpe)
   }
 
@@ -5738,5 +5738,5 @@ abstract class GenJSCode extends plugins.PluginComponent
     JavaScriptExceptionClass isSubClass tpe.typeSymbol
 
   def isStaticModule(sym: Symbol): Boolean =
-    sym.isModuleClass && !sym.isImplClass && !sym.isLifted
+    sym.isModuleClass && !isImplClass(sym) && !sym.isLifted
 }

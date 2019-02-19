@@ -64,7 +64,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
     val dir = (baseDir /: pathParts.init)(_.subdirectoryNamed(_))
 
     var filename = pathParts.last
-    if (sym.isModuleClass && !sym.isImplClass)
+    if (sym.isModuleClass && !isImplClass(sym))
       filename = filename + nme.MODULE_SUFFIX_STRING
 
     dir fileNamed (filename + suffix)

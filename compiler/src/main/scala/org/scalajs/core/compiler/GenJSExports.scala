@@ -919,11 +919,11 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
   private sealed abstract class RTTypeTest
 
-  private final case class HijackedTypeTest(
+  private case class HijackedTypeTest(
       boxedClassName: String, rank: Int) extends RTTypeTest
 
   // scalastyle:off equals.hash.code
-  private final case class InstanceOfTypeTest(tpe: Type) extends RTTypeTest {
+  private case class InstanceOfTypeTest(tpe: Type) extends RTTypeTest {
     override def equals(that: Any): Boolean = {
       that match {
         case InstanceOfTypeTest(thatTpe) => tpe =:= thatTpe
