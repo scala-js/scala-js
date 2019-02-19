@@ -61,7 +61,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
       settings.outputDirs.outputDirFor(cunit.source.file)
 
     val pathParts = sym.fullName.split("[./]")
-    val dir = (baseDir /: pathParts.init)(_.subdirectoryNamed(_))
+    val dir = pathParts.init.foldLeft(baseDir)(_.subdirectoryNamed(_))
 
     var filename = pathParts.last
     if (sym.isModuleClass && !isImplClass(sym))

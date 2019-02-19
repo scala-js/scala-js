@@ -1403,7 +1403,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val ctorToChildren = secondaryCtors.map { ctor =>
         findCtorForwarderCall(ctor.body.get) -> ctor
-      }.groupBy(_._1).mapValues(_.map(_._2)).toMap.withDefaultValue(Nil)
+      }.groupBy(_._1).map(kv => kv._1 -> kv._2.map(_._2)).withDefaultValue(Nil)
 
       var overrideNum = -1
       def mkConstructorTree(method: js.MethodDef): ConstructorTree = {

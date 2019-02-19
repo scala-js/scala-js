@@ -471,7 +471,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       // Create a map: argCount -> methods (methods may appear multiple times)
       val methodByArgCount =
-        methodArgCounts.groupBy(_._1).mapValues(_.map(_._2).toSet).toMap
+        methodArgCounts.groupBy(_._1).map(kv => kv._1 -> kv._2.map(_._2).toSet)
 
       // Minimum number of arguments that must be given
       val minArgc = methodByArgCount.keys.min
@@ -484,7 +484,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       // Create tuples: (methods, argCounts). This will be the cases we generate
       val caseDefinitions =
-        methodByArgCount.groupBy(_._2).mapValues(_.keySet)
+        methodByArgCount.groupBy(_._2).map(kv => kv._1 -> kv._2.keySet)
 
       // Verify stuff about caseDefinitions
       assert({
