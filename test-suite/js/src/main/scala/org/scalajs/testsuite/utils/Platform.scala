@@ -31,8 +31,8 @@ object Platform {
 
   def executingInNodeJS: Boolean = {
     js.typeOf(js.Dynamic.global.process) != "undefined" &&
-    js.Dynamic.global.process.release != js.undefined &&
-    js.Dynamic.global.process.release.name == "node"
+    !js.isUndefined(js.Dynamic.global.process.release) &&
+    (js.Dynamic.global.process.release.name: Any) == "node"
   }
 
   def jsSymbols: Boolean =
