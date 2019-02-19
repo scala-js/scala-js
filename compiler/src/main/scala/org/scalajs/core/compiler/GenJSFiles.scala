@@ -25,7 +25,9 @@ import ir.Infos
  *
  *  @author Sébastien Doeraene
  */
-trait GenJSFiles extends SubComponent { self: GenJSCode =>
+trait GenJSFiles[G <: Global with Singleton] extends SubComponent {
+  self: GenJSCode[G] =>
+
   import global._
   import jsAddons._
 

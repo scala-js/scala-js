@@ -32,16 +32,18 @@ import org.scalajs.core.ir.Trees.JSNativeLoadSpec
  *
  * @author Tobias Schlatter
  */
-abstract class PrepJSInterop extends plugins.PluginComponent
-                                with PrepJSExports
-                                with transform.Transform
-                                with PluginComponent210Compat {
+abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
+    extends plugins.PluginComponent with PrepJSExports[G]
+    with transform.Transform with PluginComponent210Compat {
+
   import PrepJSInterop._
 
+  /** Not for use in the constructor body: only initialized afterwards. */
   val jsAddons: JSGlobalAddons {
     val global: PrepJSInterop.this.global.type
   }
 
+  /** Not for use in the constructor body: only initialized afterwards. */
   val scalaJSOpts: ScalaJSOptions
 
   import global._
@@ -1350,10 +1352,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
   }
 
-  private trait ScalaEnumFctExtractors {
-    protected val methSym: Symbol
-
-    protected def resolve(ptpes: Symbol*) = {
+  private abstract class ScalaEnumFctExtractors(methSym: Symbol) {
+    private def resolve(ptpes: Symbol*) = {
       val res = methSym suchThat {
         _.tpe.params.map(_.tpe.typeSymbol) == ptpes.toList
       }
@@ -1361,10 +1361,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       res
     }
 
-    protected val noArg    = resolve()
-    protected val nameArg  = resolve(StringClass)
-    protected val intArg   = resolve(IntClass)
-    protected val fullMeth = resolve(IntClass, StringClass)
+    private val noArg = resolve()
+    private val nameArg = resolve(StringClass)
+    private val intArg = resolve(IntClass)
+    private val fullMeth = resolve(IntClass, StringClass)
 
     /**
      * Extractor object for calls to the targeted symbol that do not have an
@@ -1397,16 +1397,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
   }
 
-  private object ScalaEnumValue extends {
-    protected val methSym = getMemberMethod(ScalaEnumClass, jsnme.Value)
-  } with ScalaEnumFctExtractors
+  private object ScalaEnumValue
+      extends ScalaEnumFctExtractors(getMemberMethod(ScalaEnumClass, jsnme.Value))
 
-  private object ScalaEnumVal extends {
-    protected val methSym = {
-      val valSym = getMemberClass(ScalaEnumClass, jsnme.Val)
-      valSym.tpe.member(nme.CONSTRUCTOR)
-    }
-  } with ScalaEnumFctExtractors
+  private object ScalaEnumVal
+      extends ScalaEnumFctExtractors(getMemberClass(ScalaEnumClass, jsnme.Val).tpe.member(nme.CONSTRUCTOR))
 
   /**
    * Construct a call to Enumeration.Value

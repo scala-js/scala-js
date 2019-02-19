@@ -14,12 +14,14 @@ package org.scalajs.core.compiler
 
 import scala.collection.mutable
 
+import scala.tools.nsc.Global
+
 /**
  *  Prepare export generation
  *
  *  Helpers for transformation of @JSExport annotations
  */
-trait PrepJSExports { this: PrepJSInterop =>
+trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
 
   import global._
   import jsAddons._

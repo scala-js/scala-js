@@ -22,7 +22,9 @@ import ir.{Definitions, Types}
  *
  *  @author Sébastien Doeraene
  */
-trait TypeKinds extends SubComponent { this: GenJSCode =>
+trait TypeKinds[G <: Global with Singleton] extends SubComponent {
+  this: GenJSCode[G] =>
+
   import global._
   import jsAddons._
   import definitions._

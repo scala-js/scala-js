@@ -29,7 +29,9 @@ import ScopedVar.withScopedVars
  *
  *  @author Sébastien Doeraene
  */
-trait GenJSExports extends SubComponent { self: GenJSCode =>
+trait GenJSExports[G <: Global with Singleton] extends SubComponent {
+  self: GenJSCode[G] =>
+
   import global._
   import jsAddons._
   import definitions._

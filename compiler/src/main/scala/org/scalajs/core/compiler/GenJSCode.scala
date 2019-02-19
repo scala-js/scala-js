@@ -34,17 +34,16 @@ import ScopedVar.withScopedVars
  *
  *  @author Sébastien Doeraene
  */
-abstract class GenJSCode extends plugins.PluginComponent
-                            with TypeKinds
-                            with JSEncoding
-                            with GenJSExports
-                            with GenJSFiles
-                            with PluginComponent210Compat {
+abstract class GenJSCode[G <: Global with Singleton](val global: G)
+    extends plugins.PluginComponent with TypeKinds[G] with JSEncoding[G]
+    with GenJSExports[G] with GenJSFiles[G] with PluginComponent210Compat {
 
+  /** Not for use in the constructor body: only initialized afterwards. */
   val jsAddons: JSGlobalAddons {
     val global: GenJSCode.this.global.type
   }
 
+  /** Not for use in the constructor body: only initialized afterwards. */
   val scalaJSOpts: ScalaJSOptions
 
   import global._
