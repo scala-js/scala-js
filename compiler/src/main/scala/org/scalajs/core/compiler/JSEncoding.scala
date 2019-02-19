@@ -163,7 +163,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def encodeRTStringMethodSym(sym: Symbol)(
       implicit pos: Position): (Symbol, js.Ident) = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
-    require(!sym.isClassConstructor && !sym.isPrivate)
+    require(!sym.isClassConstructor && !sym.isPrivate, sym)
 
     val (encodedName, paramsString) =
       encodeMethodNameInternal(sym, inRTClass = true)
@@ -246,7 +246,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     sym.isModuleClass && !foreignIsImplClass(sym)
 
   def encodeComputedNameIdentity(sym: Symbol): String = {
-    assert(sym.owner.isModuleClass)
+    assert(sym.owner.isModuleClass, sym)
     encodeClassFullName(sym.owner) + "__" + encodeMemberNameInternal(sym)
   }
 

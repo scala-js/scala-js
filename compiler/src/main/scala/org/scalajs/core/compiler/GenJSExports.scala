@@ -154,7 +154,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         destination: ExportDestination): List[js.Tree] = {
       require(
           destination == ExportDestination.TopLevel ||
-          destination == ExportDestination.Static)
+          destination == ExportDestination.Static,
+          destination)
 
       val exportsNamesAndPositions = {
         genTopLevelOrStaticFieldExports(classSym, destination) ++
@@ -367,7 +368,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
     private def genExportProperty(alts: List[Symbol], jsName: JSName,
         static: Boolean): js.PropertyDef = {
-      assert(!alts.isEmpty)
+      assert(!alts.isEmpty,
+          s"genExportProperty with empty alternatives for $jsName")
+
       implicit val pos = alts.head.pos
 
       // Separate getters and setters. Somehow isJSGetter doesn't work here. Hence
@@ -671,7 +674,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         if (!alt.isClassConstructor) {
           // get parameter type while resolving repeated params
           if (paramsTypesUncurry.size <= paramIndex || isRepeatedUncurry(paramIndex)) {
-            assert(isRepeatedUncurry.last)
+            assert(isRepeatedUncurry.last,
+                s"$alt does not have varargs nor enough params for $paramIndex")
             repeatedToSingle(paramsTypesUncurry.last)
           } else {
             paramTypePosterasure
@@ -691,7 +695,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             val paramIndexNoCaptures = paramIndex - numCapturesFront
             if (paramsTypesUncurry.size <= paramIndexNoCaptures ||
                 isRepeatedUncurry(paramIndexNoCaptures)) {
-              assert(isRepeatedUncurry.last)
+              assert(isRepeatedUncurry.last,
+                  s"$alt does not have varargs nor enough params for $paramIndexNoCaptures")
               repeatedToSingle(paramsTypesUncurry.last)
             } else {
               paramsTypesUncurry(paramIndexNoCaptures)
@@ -710,7 +715,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         sym: Symbol, static: Boolean): js.Tree = {
       if (isScalaJSDefinedJSClass(currentClassSym) &&
           sym.owner != currentClassSym.get) {
-        assert(!static)
+        assert(!static, s"nonsensical JS super call in static export of $sym")
         genApplyForSymJSSuperCall(minArgc, hasRestParam, sym)
       } else {
         genApplyForSymNonJSSuperCall(minArgc, sym, static)
@@ -733,10 +738,12 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val nameString = genExpr(jsNameOf(sym))
 
       if (jsInterop.isJSGetter(sym)) {
-        assert(allArgs.isEmpty)
+        assert(allArgs.isEmpty,
+            s"getter symbol $sym does not have a getter signature")
         js.JSSuperBracketSelect(cls, receiver, nameString)
       } else if (jsInterop.isJSSetter(sym)) {
-        assert(allArgs.size == 1 && !allArgs.head.isInstanceOf[js.JSSpread])
+        assert(allArgs.size == 1 && !allArgs.head.isInstanceOf[js.JSSpread],
+            s"setter symbol $sym does not have a setter signature")
         js.Assign(js.JSSuperBracketSelect(cls, receiver, nameString),
             allArgs.head)
       } else {
@@ -823,7 +830,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
             assert(defaultGetter.exists,
                 s"need default getter for method ${sym.fullName}")
-            assert(!defaultGetter.isOverloaded)
+            assert(!defaultGetter.isOverloaded,
+                s"found overloaded default getter $defaultGetter")
 
             val trgTree = {
               if (sym.isClassConstructor) genLoadModule(trgSym)
@@ -1069,7 +1077,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
   private def genVarargRef(fixedParamCount: Int, minArgc: Int)(
       implicit pos: Position): js.Tree = {
     val restParam = genRestArgRef()
-    assert(fixedParamCount >= minArgc)
+    assert(fixedParamCount >= minArgc,
+        s"genVarargRef($fixedParamCount, $minArgc) at $pos")
     if (fixedParamCount == minArgc) restParam
     else {
       js.JSBracketMethodApply(restParam, js.StringLiteral("slice"), List(

@@ -637,7 +637,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           if (sym.isModuleClass)
             sym.addAnnotation(HasJSNativeLoadSpecAnnotation)
         } else {
-          assert(sym.isTrait) // just tested in the previous `if`
+          assert(sym.isTrait, sym) // just tested in the previous `if`
           for {
             annot <- sym.annotations
             annotSym = annot.symbol
@@ -1357,7 +1357,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       val res = methSym suchThat {
         _.tpe.params.map(_.tpe.typeSymbol) == ptpes.toList
       }
-      assert(res != NoSymbol)
+      assert(res != NoSymbol, s"no overload of $methSym for param types $ptpes")
       res
     }
 
@@ -1524,7 +1524,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
 
   private def shouldModuleBeExposed(sym: Symbol) = {
-    assert(sym.isModuleOrModuleClass)
+    assert(sym.isModuleOrModuleClass, sym)
     !sym.isLocalToBlock && !sym.isSynthetic && !isPrivateMaybeWithin(sym)
   }
 
@@ -1574,8 +1574,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     if (tree.isInstanceOf[MemberDef]) {
       for (annotation <- tree.symbol.annotations) {
         if (isCompilerAnnotation(annotation)) {
-          reporter.error(annotation.pos, annotation +
-              " is for compiler internal use only. Do not use it yourself.")
+          reporter.error(annotation.pos,
+              s"$annotation is for compiler internal use only. " +
+              "Do not use it yourself.")
         }
       }
     }
