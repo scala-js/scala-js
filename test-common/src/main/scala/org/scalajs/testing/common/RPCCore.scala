@@ -38,7 +38,7 @@ import FutureUtil._
  *  This class guarantees that dispatch handles synchronously when
  *  [[handleMessage]] is called, so closing can be performed race-free.
  */
-private[testing] abstract class RPCCore()(implicit ex: ExecutionContext) {
+private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
   import RPCCore._
 
   /** Pending calls. */
