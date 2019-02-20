@@ -22,7 +22,9 @@ import ir.{Definitions, Types}
  *
  *  @author Sébastien Doeraene
  */
-trait TypeKinds extends SubComponent { this: GenJSCode =>
+trait TypeKinds[G <: Global with Singleton] extends SubComponent {
+  this: GenJSCode[G] =>
+
   import global._
   import jsAddons._
   import definitions._
@@ -240,7 +242,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
       // Can't call .toInterface (at this phase) or we trip an assertion.
       // See PackratParser#grow for a method which fails with an apparent mismatch
       // between "object PackratParsers$class" and "trait PackratParsers"
-      if (sym.isImplClass) {
+      if (isImplClass(sym)) {
         // pos/spec-List.scala is the sole failure if we don't check for NoSymbol
         val traitSym = sym.owner.info.decl(tpnme.interfaceName(sym.name))
         if (traitSym != NoSymbol)

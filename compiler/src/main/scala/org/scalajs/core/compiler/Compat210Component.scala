@@ -112,6 +112,9 @@ trait Compat210Component {
   lazy val scalaUsesImplClasses: Boolean =
     definitions.SeqClass.implClass != NoSymbol // a trait we know has an impl class
 
+  def isImplClass(sym: Symbol): Boolean =
+    sym.isImplClass
+
   implicit final class StdTermNamesCompat(self: global.nme.type) {
     def IMPL_CLASS_SUFFIX: String = noImplClasses()
 

@@ -28,7 +28,7 @@ import nsc._
  *
  *  As an example:
  *  {{{
- *  class $anon extends ... {
+ *  class \$anon extends ... {
  *    val foo = ???
  *    var bar = ???
  *    def baz = ???
@@ -40,7 +40,7 @@ import nsc._
  *
  *  Would become:
  *  {{{
- *  class $anon extends ... {
+ *  class \$anon extends ... {
  *    @WasPublicBeforeTyper val foo = ???
  *    @WasPublicBeforeTyper var bar = ???
  *    @WasPublicBeforeTyper def baz = ???
@@ -52,7 +52,7 @@ import nsc._
  *
  *  And after `typer` (if has SI-9487) will be:
  *  {{{
- *  class $anon extends ... {
+ *  class \$anon extends ... {
  *    @WasPublicBeforeTyper private[this] var foo = ???
  *    private <stable> <accessor> def foo = ??? // Needs fix
  *
@@ -67,7 +67,8 @@ import nsc._
  *
  *  @author Nicolas Stucki
  */
-abstract class PreTyperComponent extends plugins.PluginComponent
+abstract class PreTyperComponent(val global: Global)
+    extends plugins.PluginComponent
     with transform.Transform with PluginComponent210Compat {
 
   import global._

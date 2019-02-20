@@ -45,10 +45,14 @@ class ScalaJSPlugin(val global: Global)
   /** Called when the JS ASTs are generated. Override for testing */
   def generatedJSAST(clDefs: List[Trees.Tree]): Unit = {}
 
-  /** Addons for JavaScript platform */
-  object jsAddons extends {
-    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
-  } with JSGlobalAddons with Compat210Component
+  /** A trick to avoid early initializers while still enforcing that `global`
+   *  is initialized early.
+   */
+  abstract class JSGlobalAddonsEarlyInit[G <: Global with Singleton](val global: G)
+      extends JSGlobalAddons
+
+  /** Addons for the JavaScript platform. */
+  object jsAddons extends JSGlobalAddonsEarlyInit[global.type](global)
 
   object scalaJSOpts extends ScalaJSOptions {
     import ScalaJSOptions.URIMap
@@ -78,27 +82,24 @@ class ScalaJSPlugin(val global: Global)
   def registerModuleExports(sym: Symbol): Unit =
     PrepInteropComponent.registerModuleExports(sym)
 
-  object PreTyperComponentComponent extends {
-    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
+  object PreTyperComponentComponent extends PreTyperComponent(global) {
     val runsAfter = List("parser")
     override val runsBefore = List("namer")
-  } with PreTyperComponent
+  }
 
-  object PrepInteropComponent extends {
-    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
+  object PrepInteropComponent extends PrepJSInterop[global.type](global) {
     val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons
     val scalaJSOpts = ScalaJSPlugin.this.scalaJSOpts
     override val runsAfter = List("typer")
     override val runsBefore = List("pickle")
-  } with PrepJSInterop
+  }
 
-  object GenCodeComponent extends {
-    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
+  object GenCodeComponent extends GenJSCode[global.type](global) {
     val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons
     val scalaJSOpts = ScalaJSPlugin.this.scalaJSOpts
     override val runsAfter = List("mixin")
     override val runsBefore = List("delambdafy", "cleanup", "terminal")
-  } with GenJSCode {
+
     def generatedJSAST(clDefs: List[Trees.Tree]): Unit =
       ScalaJSPlugin.this.generatedJSAST(clDefs)
   }

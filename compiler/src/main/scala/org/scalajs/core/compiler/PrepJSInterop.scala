@@ -32,16 +32,18 @@ import org.scalajs.core.ir.Trees.JSNativeLoadSpec
  *
  * @author Tobias Schlatter
  */
-abstract class PrepJSInterop extends plugins.PluginComponent
-                                with PrepJSExports
-                                with transform.Transform
-                                with PluginComponent210Compat {
+abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
+    extends plugins.PluginComponent with PrepJSExports[G]
+    with transform.Transform with PluginComponent210Compat {
+
   import PrepJSInterop._
 
+  /** Not for use in the constructor body: only initialized afterwards. */
   val jsAddons: JSGlobalAddons {
     val global: PrepJSInterop.this.global.type
   }
 
+  /** Not for use in the constructor body: only initialized afterwards. */
   val scalaJSOpts: ScalaJSOptions
 
   import global._
@@ -140,7 +142,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
      *  Preparing exports, however, is a pure waste of time, which we cannot
      *  do properly anyway because of the aforementioned limitation.
      */
-    private def forScaladoc = global.forScaladoc
+    private def forScaladoc = PrepJSInterop.this.forScaladoc
 
     /** Whether to check that we have proper literals in some crucial places. */
     private def shouldCheckLiterals = !forScaladoc
@@ -637,7 +639,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           if (sym.isModuleClass)
             sym.addAnnotation(HasJSNativeLoadSpecAnnotation)
         } else {
-          assert(sym.isTrait) // just tested in the previous `if`
+          assert(sym.isTrait, sym) // just tested in the previous `if`
           for {
             annot <- sym.annotations
             annotSym = annot.symbol
@@ -1350,21 +1352,19 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
   }
 
-  private trait ScalaEnumFctExtractors {
-    protected val methSym: Symbol
-
-    protected def resolve(ptpes: Symbol*) = {
+  private abstract class ScalaEnumFctExtractors(methSym: Symbol) {
+    private def resolve(ptpes: Symbol*) = {
       val res = methSym suchThat {
         _.tpe.params.map(_.tpe.typeSymbol) == ptpes.toList
       }
-      assert(res != NoSymbol)
+      assert(res != NoSymbol, s"no overload of $methSym for param types $ptpes")
       res
     }
 
-    protected val noArg    = resolve()
-    protected val nameArg  = resolve(StringClass)
-    protected val intArg   = resolve(IntClass)
-    protected val fullMeth = resolve(IntClass, StringClass)
+    private val noArg = resolve()
+    private val nameArg = resolve(StringClass)
+    private val intArg = resolve(IntClass)
+    private val fullMeth = resolve(IntClass, StringClass)
 
     /**
      * Extractor object for calls to the targeted symbol that do not have an
@@ -1397,16 +1397,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
   }
 
-  private object ScalaEnumValue extends {
-    protected val methSym = getMemberMethod(ScalaEnumClass, jsnme.Value)
-  } with ScalaEnumFctExtractors
+  private object ScalaEnumValue
+      extends ScalaEnumFctExtractors(getMemberMethod(ScalaEnumClass, jsnme.Value))
 
-  private object ScalaEnumVal extends {
-    protected val methSym = {
-      val valSym = getMemberClass(ScalaEnumClass, jsnme.Val)
-      valSym.tpe.member(nme.CONSTRUCTOR)
-    }
-  } with ScalaEnumFctExtractors
+  private object ScalaEnumVal
+      extends ScalaEnumFctExtractors(getMemberClass(ScalaEnumClass, jsnme.Val).tpe.member(nme.CONSTRUCTOR))
 
   /**
    * Construct a call to Enumeration.Value
@@ -1524,7 +1519,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
 
   private def shouldModuleBeExposed(sym: Symbol) = {
-    assert(sym.isModuleOrModuleClass)
+    assert(sym.isModuleOrModuleClass, sym)
     !sym.isLocalToBlock && !sym.isSynthetic && !isPrivateMaybeWithin(sym)
   }
 
@@ -1574,8 +1569,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     if (tree.isInstanceOf[MemberDef]) {
       for (annotation <- tree.symbol.annotations) {
         if (isCompilerAnnotation(annotation)) {
-          reporter.error(annotation.pos, annotation +
-              " is for compiler internal use only. Do not use it yourself.")
+          reporter.error(annotation.pos,
+              s"$annotation is for compiler internal use only. " +
+              "Do not use it yourself.")
         }
       }
     }

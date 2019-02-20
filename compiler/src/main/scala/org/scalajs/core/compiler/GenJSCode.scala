@@ -34,17 +34,16 @@ import ScopedVar.withScopedVars
  *
  *  @author Sébastien Doeraene
  */
-abstract class GenJSCode extends plugins.PluginComponent
-                            with TypeKinds
-                            with JSEncoding
-                            with GenJSExports
-                            with GenJSFiles
-                            with PluginComponent210Compat {
+abstract class GenJSCode[G <: Global with Singleton](val global: G)
+    extends plugins.PluginComponent with TypeKinds[G] with JSEncoding[G]
+    with GenJSExports[G] with GenJSFiles[G] with PluginComponent210Compat {
 
+  /** Not for use in the constructor body: only initialized afterwards. */
   val jsAddons: JSGlobalAddons {
     val global: GenJSCode.this.global.type
   }
 
+  /** Not for use in the constructor body: only initialized afterwards. */
   val scalaJSOpts: ScalaJSOptions
 
   import global._
@@ -313,7 +312,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 }
               } else if (sym.isTraitOrInterface) {
                 genInterface(cd)
-              } else if (sym.isImplClass) {
+              } else if (isImplClass(sym)) {
                 genImplClass(cd)
               } else {
                 genClass(cd)
@@ -346,7 +345,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = cd.symbol
       implicit val pos = sym.pos
 
-      assert(!sym.isTraitOrInterface && !sym.isImplClass,
+      assert(!sym.isTraitOrInterface && !isImplClass(sym),
           "genClass() must be called only for normal classes: "+sym)
       assert(sym.superClass != NoSymbol, sym)
 
@@ -1313,7 +1312,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
         val js.ApplyStatic(_, js.Ident(ctorName, _), js.This() :: ctorArgs) =
           applyCtor
-        assert(ir.Definitions.isConstructorName(ctorName))
+        assert(ir.Definitions.isConstructorName(ctorName),
+            s"unexpected super constructor call to non-constructor $ctorName at ${applyCtor.pos}")
         (prepStats, ctorName, ctorArgs)
       }
 
@@ -1402,7 +1402,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val ctorToChildren = secondaryCtors.map { ctor =>
         findCtorForwarderCall(ctor.body.get) -> ctor
-      }.groupBy(_._1).mapValues(_.map(_._2)).toMap.withDefaultValue(Nil)
+      }.groupBy(_._1).map(kv => kv._1 -> kv._2.map(_._2)).withDefaultValue(Nil)
 
       var overrideNum = -1
       def mkConstructorTree(method: js.MethodDef): ConstructorTree = {
@@ -1501,7 +1501,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           None
         } else if (sym.isClassConstructor && isHijackedBoxedClass(sym.owner)) {
           None
-        } else if (scalaUsesImplClasses && !sym.owner.isImplClass &&
+        } else if (scalaUsesImplClasses && !isImplClass(sym.owner) &&
             sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
           // Do not emit trait impl forwarders with @JavaDefaultMethod
           None
@@ -1546,7 +1546,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                     Some(genStat(rhs)))(optimizerHints, None)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
-                genMethodDef(static = sym.owner.isImplClass, methodName,
+                genMethodDef(static = isImplClass(sym.owner), methodName,
                     params, resultIRType, rhs, optimizerHints)
               }
             }
@@ -1614,7 +1614,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val transformer = new ir.Transformers.Transformer {
         override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
           case js.VarDef(name, vtpe, mutable, rhs) =>
-            assert(isStat)
+            assert(isStat, s"found a VarDef in expression position at ${tree.pos}")
             super.transform(js.VarDef(
                 name, vtpe, newMutable(name.name, mutable), rhs)(tree.pos), isStat)
           case js.Closure(captureParams, params, body, captureValues) =>
@@ -2761,7 +2761,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           case FLOAT(_) => js.UnaryOp(DoubleToInt, value)
         }
 
-        def doubleValue = from match {
+        def doubleValue = (from: @unchecked) match {
           case FLOAT(_) | INT(_) => value
           case LONG              => js.UnaryOp(LongToDouble, value)
         }
@@ -2887,7 +2887,8 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     private def genNewHijackedBoxedClass(clazz: Symbol, ctor: Symbol,
         arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
-      assert(arguments.size == 1)
+      assert(arguments.size == 1,
+          s"genNewHijackedBoxedClass of non-unary constructor $ctor")
       if (isStringType(ctor.tpe.params.head.tpe)) {
         // BoxedClass.valueOf(arg)
         val companion = clazz.companionModule.moduleClass
@@ -3002,7 +3003,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       for (caze @ CaseDef(pat, guard, body) <- cases) {
-        assert(guard == EmptyTree)
+        assert(guard == EmptyTree, s"found a case guard at ${caze.pos}")
 
         def genBody(body: Tree): js.Tree = body match {
           case app @ Apply(_, Nil) if app.symbol == defaultLabelSym =>
@@ -3642,8 +3643,10 @@ abstract class GenJSCode extends plugins.PluginComponent
        * Otherwise, both lhs and rhs are already reference types (Any of String)
        * so boxing is not necessary (in particular, rhs is never a primitive).
        */
-      assert(!isPrimitiveValueType(receiver.tpe) || isStringType(args.head.tpe))
-      assert(!isPrimitiveValueType(args.head.tpe))
+      assert(!isPrimitiveValueType(receiver.tpe) || isStringType(args.head.tpe),
+          s"unexpected signature for string-concat call at $pos")
+      assert(!isPrimitiveValueType(args.head.tpe),
+          s"unexpected signature for string-concat call at $pos")
 
       val rhs = genExpr(args.head)
 
@@ -4250,7 +4253,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           def genFunctionToJSFunction(isThisFunction: Boolean): js.Tree = {
             val arity = {
               val funName = tree.fun.symbol.name.encoded
-              assert(funName.startsWith("fromFunction"))
+              assert(funName.startsWith("fromFunction"), funName)
               funName.stripPrefix("fromFunction").toInt
             }
             val inputClass = FunctionClass(arity)
@@ -4495,10 +4498,12 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
           if (jsInterop.isJSGetter(sym)) {
-            assert(noSpread && argc == 0)
+            assert(noSpread && argc == 0,
+                s"wrong number of arguments for call to JS getter $sym at $pos")
             genSelectGet(jsFunName)
           } else if (jsInterop.isJSSetter(sym)) {
-            assert(noSpread && argc == 1)
+            assert(noSpread && argc == 1,
+                s"wrong number of arguments for call to JS setter $sym at $pos")
             genSelectSet(jsFunName, args.head)
           } else if (jsInterop.isJSBracketAccess(sym)) {
             assert(noSpread && (argc == 1 || argc == 2),
@@ -5145,7 +5150,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         val capturedArgs =
           if (hasUnusedOuterCtorParam) initialCapturedArgs.tail
           else initialCapturedArgs
-        assert(capturedArgs.size == ctorParamDefs.size)
+        assert(capturedArgs.size == ctorParamDefs.size,
+            s"$capturedArgs does not match $ctorParamDefs")
 
         val closure = {
           if (isThisFunction) {
@@ -5237,7 +5243,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             mutable = false, rest = false)(p.pos)
       }
 
-      val isInImplClass = target.owner.isImplClass
+      val isInImplClass = isImplClass(target.owner)
 
       val (allFormalCaptures, body, allActualCaptures) = if (!isInImplClass) {
         val thisActualCapture = genExpr(receiver)
@@ -5602,7 +5608,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   /** Tests whether the given class is the impl class of a raw JS trait. */
   private def isRawJSImplClass(sym: Symbol): Boolean = {
-    sym.isImplClass && isRawJSType(
+    isImplClass(sym) && isRawJSType(
         sym.owner.info.decl(sym.name.dropRight(nme.IMPL_CLASS_SUFFIX.length)).tpe)
   }
 
@@ -5738,5 +5744,5 @@ abstract class GenJSCode extends plugins.PluginComponent
     JavaScriptExceptionClass isSubClass tpe.typeSymbol
 
   def isStaticModule(sym: Symbol): Boolean =
-    sym.isModuleClass && !sym.isImplClass && !sym.isLifted
+    sym.isModuleClass && !isImplClass(sym) && !sym.isLifted
 }

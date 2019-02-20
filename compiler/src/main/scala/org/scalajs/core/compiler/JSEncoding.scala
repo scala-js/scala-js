@@ -31,7 +31,9 @@ import ScopedVar.withScopedVars
  *
  *  @author Sébastien Doeraene
  */
-trait JSEncoding extends SubComponent { self: GenJSCode =>
+trait JSEncoding[G <: Global with Singleton] extends SubComponent {
+  self: GenJSCode[G] =>
+
   import global._
   import jsAddons._
 
@@ -163,7 +165,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def encodeRTStringMethodSym(sym: Symbol)(
       implicit pos: Position): (Symbol, js.Ident) = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
-    require(!sym.isClassConstructor && !sym.isPrivate)
+    require(!sym.isClassConstructor && !sym.isPrivate, sym)
 
     val (encodedName, paramsString) =
       encodeMethodNameInternal(sym, inRTClass = true)
@@ -181,7 +183,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     def name = encodeMemberNameInternal(sym)
 
     def privateSuffix(owner: Symbol): String =
-      if (owner.isTraitOrInterface && !owner.isImplClass) encodeClassFullName(owner)
+      if (owner.isTraitOrInterface && !isImplClass(owner)) encodeClassFullName(owner)
       else owner.ancestors.count(!_.isTraitOrInterface).toString
 
     val encodedName = {
@@ -246,7 +248,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     sym.isModuleClass && !foreignIsImplClass(sym)
 
   def encodeComputedNameIdentity(sym: Symbol): String = {
-    assert(sym.owner.isModuleClass)
+    assert(sym.owner.isModuleClass, sym)
     encodeClassFullName(sym.owner) + "__" + encodeMemberNameInternal(sym)
   }
 

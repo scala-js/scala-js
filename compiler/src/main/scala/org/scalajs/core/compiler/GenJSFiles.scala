@@ -25,7 +25,9 @@ import ir.Infos
  *
  *  @author Sébastien Doeraene
  */
-trait GenJSFiles extends SubComponent { self: GenJSCode =>
+trait GenJSFiles[G <: Global with Singleton] extends SubComponent {
+  self: GenJSCode[G] =>
+
   import global._
   import jsAddons._
 
@@ -61,10 +63,10 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
       settings.outputDirs.outputDirFor(cunit.source.file)
 
     val pathParts = sym.fullName.split("[./]")
-    val dir = (baseDir /: pathParts.init)(_.subdirectoryNamed(_))
+    val dir = pathParts.init.foldLeft(baseDir)(_.subdirectoryNamed(_))
 
     var filename = pathParts.last
-    if (sym.isModuleClass && !sym.isImplClass)
+    if (sym.isModuleClass && !isImplClass(sym))
       filename = filename + nme.MODULE_SUFFIX_STRING
 
     dir fileNamed (filename + suffix)
