@@ -54,7 +54,7 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
       optimizer => symbolRequirements ++ optimizer.symbolRequirements
     }
 
-    val linkResult = logger.time("Basic Linking") {
+    val linkResult = logger.time("Linker") {
       linker.link(irFiles, moduleInitializers, logger,
           preOptimizerRequirements, config.checkIR)
     }
@@ -66,7 +66,7 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
 
   private def optimize(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
       optimizer: GenIncOptimizer, logger: Logger): LinkingUnit = {
-    val optimized = logger.time("Inc. optimizer") {
+    val optimized = logger.time("Optimizer") {
       optimizer.update(unit, logger)
     }
 

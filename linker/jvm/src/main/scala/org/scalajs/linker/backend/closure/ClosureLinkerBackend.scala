@@ -73,7 +73,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
     // Build Closure IR
     val (topLevelVarDeclarations, globalRefs, module) = {
-      logger.time("Emitter (create Closure trees)") {
+      logger.time("Closure: Emitter (create Closure trees)") {
         val builder = new ClosureModuleBuilder(config.relativizeSourceMapBase)
         val (topLevelVarDeclarations, globalRefs) =
           emitter.emitForClosure(unit, builder, logger)

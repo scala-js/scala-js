@@ -102,14 +102,14 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
   def update(unit: LinkingUnit, logger: Logger): LinkingUnit = {
     withLogger(logger) {
       batchMode = objectClass == null
-      logger.debug(s"Inc. optimizer: Batch mode: $batchMode")
+      logger.debug(s"Optimizer: Batch mode: $batchMode")
 
-      logger.time("Inc. optimizer: Incremental part") {
+      logger.time("Optimizer: Incremental part") {
         /* UPDATE PASS */
         updateAndTagEverything(unit.classDefs)
       }
 
-      logger.time("Inc. optimizer: Optimizer part") {
+      logger.time("Optimizer: Optimizer part") {
         /* PROCESS PASS */
         processAllTaggedMethods()
       }
@@ -279,7 +279,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
   private[optimizer] def processAllTaggedMethods(): Unit
 
   private[optimizer] def logProcessingMethods(count: Int): Unit =
-    logger.debug(s"Inc. optimizer: Optimizing $count methods.")
+    logger.debug(s"Optimizer: Optimizing $count methods.")
 
   /** Base class for [[GenIncOptimizer.Class]] and
    *  [[GenIncOptimizer.StaticsNamespace]].
