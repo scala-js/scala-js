@@ -33,7 +33,7 @@ class AsyncTest {
   implicit def eraseArray[T](a: Array[T]): Array[AnyRef] =
     a.map(_.asInstanceOf[AnyRef])
 
-  def asyncTest(implicit executor: ExecutionContext): ArrayBuffer[String] = {
+  def asyncTest(implicit ec: ExecutionContext): ArrayBuffer[String] = {
     val steps = new ArrayBuffer[String]
 
     steps += "prep-future"
@@ -60,7 +60,7 @@ class AsyncTest {
   }
 
   def queueExecOrderTests(processQueue: () => Unit)(
-      implicit executor: ExecutionContext): Unit = {
+      implicit ec: ExecutionContext): Unit = {
 
     val res = asyncTest
 

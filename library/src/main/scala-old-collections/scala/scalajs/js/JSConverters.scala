@@ -148,7 +148,7 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
      *  The signature of the `toJSPromise` method is only valid
      *  <i>provided that</i> the values of `A` do not have a `then` method.
      */
-    def toJSPromise(implicit executor: ExecutionContext): js.Promise[A] = {
+    def toJSPromise(implicit ec: ExecutionContext): js.Promise[A] = {
       new js.Promise[A]({
         (resolve: js.Function1[A | js.Thenable[A], _], reject: js.Function1[scala.Any, _]) =>
           self onComplete {
