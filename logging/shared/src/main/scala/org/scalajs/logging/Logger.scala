@@ -12,6 +12,8 @@
 
 package org.scalajs.logging
 
+import scala.concurrent._
+
 /** Abstract logger for our tools. Designed after sbt's Loggers. */
 trait Logger {
   def log(level: Level, message: => String): Unit
@@ -24,6 +26,16 @@ trait Logger {
 
   def time(title: String, nanos: Long): Unit =
     debug(s"$title: ${nanos / 1000} us")
+
+  final def timeFuture[A](title: String)(body: => Future[A])(
+      implicit ex: ExecutionContext): Future[A] = {
+    val startTime = System.nanoTime()
+    body.andThen { case t =>
+      val endTime = System.nanoTime()
+      val elapsedTime = endTime - startTime
+      time(title, elapsedTime)
+    }
+  }
 
   final def time[A](title: String)(body: => A): A = {
     val startTime = System.nanoTime()

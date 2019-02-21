@@ -12,7 +12,7 @@
 
 package org.scalajs.linker.standard
 
-import scala.language.implicitConversions
+import scala.concurrent._
 
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -35,33 +35,26 @@ private final class StandardLinkerImpl private (
 
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
-      output: LinkerOutput, logger: Logger): Unit = {
-    guard {
-      val unit = frontend.link(irFiles, moduleInitializers,
-          backend.symbolRequirements, logger)
-      backend.emit(unit, output, logger)
-    }
-  }
-
-  @inline
-  private[this] def guard[T](body: => T): T = {
+      output: LinkerOutput, logger: Logger)(
+      implicit ex: ExecutionContext): Future[Unit] = {
     if (!_linking.compareAndSet(false, true)) {
       throw new IllegalStateException("Linker used concurrently")
     }
 
-    try {
-      if (!_valid) {
-        throw new IllegalStateException(
-          "Linker is invalid due to a previous exception in a component")
-      }
+    checkValid()
+      .flatMap(_ => frontend.link(
+          irFiles, moduleInitializers, backend.symbolRequirements, logger))
+      .flatMap(linkingUnit => backend.emit(linkingUnit, output, logger))
+      .andThen { case t if t.isFailure => _valid = false }
+      .andThen { case t => _linking.set(false) }
+  }
 
-      body
-    } catch {
-      case t: Throwable =>
-        _valid = false
-        throw t
-    } finally {
-      _linking.set(false)
+  private def checkValid(): Future[Unit] = {
+    if (!_valid) {
+      Future.failed(new IllegalStateException(
+          "Linker is invalid due to a previous exception in a component"))
+    } else {
+      Future.successful(())
     }
   }
 }

@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.standard
 
+import scala.concurrent._
+
 import org.scalajs.logging._
 
 import org.scalajs.linker.LinkerOutput
@@ -42,7 +44,8 @@ abstract class LinkerBackend {
    *  @param output File to write to
    *  @param logger Logger to use
    */
-  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger): Unit
+  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
+      implicit ex: ExecutionContext): Future[Unit]
 
   /** Verify that a [[LinkingUnit]] can be processed by this [[LinkerBackend]].
    *

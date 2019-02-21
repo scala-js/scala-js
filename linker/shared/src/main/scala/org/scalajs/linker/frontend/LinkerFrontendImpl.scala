@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.frontend
 
+import scala.concurrent._
+
 import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
@@ -48,24 +50,26 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
    */
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit = {
+      symbolRequirements: SymbolRequirement, logger: Logger)(
+      implicit ex: ExecutionContext): Future[LinkingUnit] = {
 
     val preOptimizerRequirements = optOptimizer.fold(symbolRequirements) {
       optimizer => symbolRequirements ++ optimizer.symbolRequirements
     }
 
-    val linkResult = logger.time("Linker") {
+    val linkResult = logger.timeFuture("Linker") {
       linker.link(irFiles, moduleInitializers, logger,
           preOptimizerRequirements, config.checkIR)
     }
 
     optOptimizer.fold(linkResult) { optimizer =>
-      optimize(linkResult, symbolRequirements, optimizer, logger)
+      linkResult.flatMap(optimize(_, symbolRequirements, optimizer, logger))
     }
   }
 
   private def optimize(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
-      optimizer: GenIncOptimizer, logger: Logger): LinkingUnit = {
+      optimizer: GenIncOptimizer, logger: Logger)(
+      implicit ex: ExecutionContext): Future[LinkingUnit] = {
     val optimized = logger.time("Optimizer") {
       optimizer.update(unit, logger)
     }

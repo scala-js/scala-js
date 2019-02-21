@@ -12,6 +12,9 @@
 
 package org.scalajs.linker
 
+import scala.concurrent._
+import scala.concurrent.ExecutionContext.Implicits.global
+
 import org.junit.Test
 import org.junit.Assert._
 
@@ -21,6 +24,8 @@ import org.scalajs.ir.Trees._
 
 import org.scalajs.logging._
 import org.scalajs.io._
+
+import org.scalajs.junit.async._
 
 import org.scalajs.linker._
 import org.scalajs.linker.irio._
@@ -35,7 +40,7 @@ class LinkerTest {
    *  world.
    */
   @Test
-  def linkHelloWorld(): Unit = {
+  def linkHelloWorld(): AsyncResult = {
     val name = "LHelloWorld$"
     val mainMethodBody = {
       JSBracketMethodApply(JSGlobalRef(Ident("console")), StringLiteral("log"),
@@ -53,14 +58,14 @@ class LinkerTest {
     val moduleInitializers = List(
         ModuleInitializer.mainMethodWithArgs("HelloWorld", "main")
     )
-    testLink(classDefs, moduleInitializers)
+    await(testLink(classDefs, moduleInitializers))
   }
 
   /** This test exposes a problem where a linker in error state is called
    *  multiple times and ends up thinking it is being used concurrently.
    */
   @Test
-  def clean_linking_state(): Unit = {
+  def clean_linking_state(): AsyncResult = {
     class DummyException extends Exception
 
     val badSeq = new IndexedSeq[VirtualScalaJSIRFile] {
@@ -70,39 +75,37 @@ class LinkerTest {
 
     val linker = StandardLinker(StandardLinker.Config())
 
-    def callLink(): Unit = {
+    def callLink(): Future[Unit] = {
       val out = LinkerOutput(new WritableMemVirtualBinaryFile)
       linker.link(badSeq, Nil, out, NullLogger)
     }
 
     // Call first time. Get exception from badSeq.
-    try {
-      callLink()
-      fail("Expected DummyException")
-    } catch {
+    // Note that the call must not throw immediately.
+    val firstRun = callLink().failed.map {
       case e: DummyException => // ok.
+      case _                 => fail("Expected DummyException")
     }
 
-    def callInFailedState(): Unit = {
-      try {
-        callLink()
-        fail("Expected IllegalStateException")
-      } catch {
+    def callInFailedState(prev: Future[Unit]): Future[Unit] = {
+      prev.flatMap(_ => callLink()).failed.map {
         case e: IllegalStateException =>
           if (e.getMessage.contains("concurrent")) {
             fail("Found bad message in exception: " + e.getMessage)
           }
+
+        case _ => fail("Expected IllegalStateException")
       }
     }
 
-    for (_ <- 1 to 4) callInFailedState()
+    await((1 to 4).foldLeft(firstRun)((p, _) => callInFailedState(p)))
   }
 
 }
 
 object LinkerTest {
   def testLink(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer]): Unit = {
+      moduleInitializers: List[ModuleInitializer]): Future[Unit] = {
 
     val linker = StandardLinker(StandardLinker.Config())
 
