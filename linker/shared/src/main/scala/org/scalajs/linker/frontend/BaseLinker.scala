@@ -45,14 +45,13 @@ final class BaseLinker(config: CommonPhaseConfig) {
       symbolRequirements: SymbolRequirement, checkIR: Boolean)(
       implicit ex: ExecutionContext): Future[LinkingUnit] = {
 
-    inputProvider.update(irInput)
-
     val allSymbolRequirements = {
       symbolRequirements ++
       ModuleInitializer.toSymbolRequirement(moduleInitializers)
     }
 
-    for {
+    val result = for {
+      _ <- inputProvider.update(irInput)
       analysis <- logger.timeFuture("Linker: Compute reachability") {
         analyze(allSymbolRequirements, logger)
       }
@@ -70,10 +69,10 @@ final class BaseLinker(config: CommonPhaseConfig) {
         }
       }
 
-      inputProvider.cleanAfterRun()
-
       linkResult
     }
+
+    result.andThen { case _ => inputProvider.cleanAfterRun() }
   }
 
   private def analyze(symbolRequirements: SymbolRequirement, logger: Logger)(
@@ -219,26 +218,29 @@ final class BaseLinker(config: CommonPhaseConfig) {
 private object BaseLinker {
   private class InputProvider extends Analyzer.InputProvider with MethodSynthesizer.InputProvider {
     private var encodedNameToFile: collection.Map[String, VirtualScalaJSIRFile] = _
+    private var entryPoints: collection.Set[String] = _
     private val cache = mutable.Map.empty[String, ClassDefAndInfoCache]
 
-    def update(irInput: Seq[VirtualScalaJSIRFile]): Unit = {
-      val encodedNameToFile = mutable.Map.empty[String, VirtualScalaJSIRFile]
-      for (irFile <- irInput) {
-        // Remove duplicates. Just like the JVM
-        val encodedName = irFile.entryPointsInfo.encodedName
-        if (!encodedNameToFile.contains(encodedName))
-          encodedNameToFile += encodedName -> irFile
+    def update(irInput: Seq[VirtualScalaJSIRFile])(implicit ec: ExecutionContext): Future[Unit] = {
+      Future.traverse(irInput)(f => Future(f.entryPointsInfo)).map { infos =>
+        val encodedNameToFile = mutable.Map.empty[String, VirtualScalaJSIRFile]
+        val entryPoints = mutable.Set.empty[String]
+
+        for ((input, info) <- irInput.zip(infos)) {
+          // Remove duplicates. Just like the JVM
+          if (!encodedNameToFile.contains(info.encodedName))
+            encodedNameToFile += info.encodedName -> input
+
+          if (info.hasEntryPoint)
+            entryPoints += info.encodedName
+        }
+
+        this.encodedNameToFile = encodedNameToFile
+        this.entryPoints = entryPoints
       }
-      this.encodedNameToFile = encodedNameToFile
     }
 
-    def classesWithEntryPoints()(
-        implicit ex: ExecutionContext): Future[TraversableOnce[String]] = {
-      val infos = Future.traverse(encodedNameToFile.valuesIterator)(
-          irFile => Future(irFile.entryPointsInfo))
-
-      infos.map(_.withFilter(_.hasEntryPoint).map(_.encodedName))
-    }
+    def classesWithEntryPoints(): TraversableOnce[String] = entryPoints
 
     def loadInfo(encodedName: String)(
         implicit ex: ExecutionContext): Option[Future[Infos.ClassInfo]] =
@@ -271,6 +273,7 @@ private object BaseLinker {
 
     def cleanAfterRun(): Unit = {
       encodedNameToFile = null
+      entryPoints = null
       cache.retain((_, fileCache) => fileCache.cleanAfterRun())
     }
   }

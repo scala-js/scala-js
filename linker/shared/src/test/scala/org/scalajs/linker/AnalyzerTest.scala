@@ -455,15 +455,13 @@ class AnalyzerTest {
       classDefs.map(c => c.name.name -> Infos.generateClassInfo(c)).toMap
 
     val inputProvider = new Analyzer.InputProvider {
-      /* Note: We could use Future.successful here to complete the future
-       * immediately. However, in order to exercise as much asynchronizity as
-       * possible, we don't.
-       */
-
-      def classesWithEntryPoints()(implicit ex: ExecutionContext): Future[TraversableOnce[String]] =
-        Future(classesWithEntryPoints0)(ex)
+      def classesWithEntryPoints(): TraversableOnce[String] = classesWithEntryPoints0
 
       def loadInfo(encodedName: String)(implicit ex: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
+        /* Note: We could use Future.successful here to complete the future
+         * immediately. However, in order to exercise as much asynchronizity as
+         * possible, we don't.
+         */
         val own = encodedNameToInfo.get(encodedName)
         own.orElse(stdlib.flatMap(_.loadInfo(encodedName))).map(Future(_)(ex))
       }
