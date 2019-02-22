@@ -457,13 +457,13 @@ class AnalyzerTest {
     val inputProvider = new Analyzer.InputProvider {
       def classesWithEntryPoints(): TraversableOnce[String] = classesWithEntryPoints0
 
-      def loadInfo(encodedName: String)(implicit ex: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
+      def loadInfo(encodedName: String)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
         /* Note: We could use Future.successful here to complete the future
          * immediately. However, in order to exercise as much asynchronizity as
          * possible, we don't.
          */
         val own = encodedNameToInfo.get(encodedName)
-        own.orElse(stdlib.flatMap(_.loadInfo(encodedName))).map(Future(_)(ex))
+        own.orElse(stdlib.flatMap(_.loadInfo(encodedName))).map(Future(_)(ec))
       }
     }
 

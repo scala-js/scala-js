@@ -70,7 +70,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
    *  @param output File to write to
    */
   def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
-      implicit ex: ExecutionContext): Future[Unit] = Future {
+      implicit ec: ExecutionContext): Future[Unit] = Future {
     verifyUnit(unit)
 
     // Build Closure IR

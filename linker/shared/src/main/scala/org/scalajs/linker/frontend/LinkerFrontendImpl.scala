@@ -51,7 +51,7 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(
-      implicit ex: ExecutionContext): Future[LinkingUnit] = {
+      implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
     val preOptimizerRequirements = optOptimizer.fold(symbolRequirements) {
       optimizer => symbolRequirements ++ optimizer.symbolRequirements
@@ -69,7 +69,7 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
 
   private def optimize(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
       optimizer: GenIncOptimizer, logger: Logger)(
-      implicit ex: ExecutionContext): Future[LinkingUnit] = {
+      implicit ec: ExecutionContext): Future[LinkingUnit] = {
     val optimized = logger.time("Optimizer") {
       optimizer.update(unit, logger)
     }

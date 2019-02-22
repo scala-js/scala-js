@@ -28,7 +28,7 @@ private[frontend] final class MethodSynthesizer(
     inputProvider: MethodSynthesizer.InputProvider) {
 
   def synthesizeMembers(classInfo: ClassInfo, analysis: Analysis)(
-      implicit ex: ExecutionContext): Future[Iterator[MethodDef]] = {
+      implicit ec: ExecutionContext): Future[Iterator[MethodDef]] = {
     val futures = classInfo.methodInfos.valuesIterator.filter(_.isReachable).flatMap { m =>
       m.syntheticKind match {
         case MethodSyntheticKind.None =>
@@ -48,7 +48,7 @@ private[frontend] final class MethodSynthesizer(
   private def synthesizeReflectiveProxy(
       classInfo: ClassInfo, methodInfo: MethodInfo,
       targetName: String, analysis: Analysis)(
-      implicit ex: ExecutionContext): Future[MethodDef] = {
+      implicit ec: ExecutionContext): Future[MethodDef] = {
     val encodedName = methodInfo.encodedName
 
     for {
@@ -79,7 +79,7 @@ private[frontend] final class MethodSynthesizer(
   private def synthesizeDefaultBridge(
       classInfo: ClassInfo, methodInfo: MethodInfo,
       targetInterface: String, analysis: Analysis)(
-      implicit ex: ExecutionContext): Future[MethodDef] = {
+      implicit ec: ExecutionContext): Future[MethodDef] = {
     val encodedName = methodInfo.encodedName
 
     val targetInterfaceInfo = analysis.classInfos(targetInterface)
@@ -106,7 +106,7 @@ private[frontend] final class MethodSynthesizer(
   private def findInheritedMethodDef(analysis: Analysis,
       classInfo: ClassInfo, methodName: String,
       p: MethodInfo => Boolean = _ => true)(
-      implicit ex: ExecutionContext): Future[MethodDef] = {
+      implicit ec: ExecutionContext): Future[MethodDef] = {
     @tailrec
     def loop(ancestorInfo: ClassInfo): Future[MethodDef] = {
       val inherited = ancestorInfo.methodInfos.get(methodName)
@@ -137,7 +137,7 @@ private[frontend] final class MethodSynthesizer(
   }
 
   private def findMethodDef(classInfo: ClassInfo, methodName: String)(
-      implicit ex: ExecutionContext): Future[MethodDef] = {
+      implicit ec: ExecutionContext): Future[MethodDef] = {
     for {
       classDef <- inputProvider.loadClassDef(classInfo.encodedName)
     } yield {
@@ -154,6 +154,6 @@ private[frontend] final class MethodSynthesizer(
 
 private[frontend] object MethodSynthesizer {
   trait InputProvider {
-    def loadClassDef(encodedName: String)(implicit ex: ExecutionContext): Future[ClassDef]
+    def loadClassDef(encodedName: String)(implicit ec: ExecutionContext): Future[ClassDef]
   }
 }

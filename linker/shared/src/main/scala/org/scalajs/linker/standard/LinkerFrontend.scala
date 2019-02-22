@@ -37,5 +37,5 @@ abstract class LinkerFrontend {
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(
-      implicit ex: ExecutionContext): Future[LinkingUnit]
+      implicit ec: ExecutionContext): Future[LinkingUnit]
 }

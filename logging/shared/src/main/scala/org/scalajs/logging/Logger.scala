@@ -28,7 +28,7 @@ trait Logger {
     debug(s"$title: ${nanos / 1000} us")
 
   final def timeFuture[A](title: String)(body: => Future[A])(
-      implicit ex: ExecutionContext): Future[A] = {
+      implicit ec: ExecutionContext): Future[A] = {
     val startTime = System.nanoTime()
     body.andThen { case t =>
       val endTime = System.nanoTime()
