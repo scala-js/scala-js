@@ -129,7 +129,7 @@ private object Refiner {
       this.linkedClassesByName = linkedClassesByName
     }
 
-    def classesWithEntryPoints()(implicit ex: ExecutionContext): Future[TraversableOnce[String]] = Future {
+    def classesWithEntryPoints(): TraversableOnce[String] = {
       for {
         linkedClass <- linkedClassesByName.valuesIterator
         if linkedClass.hasEntryPoint

@@ -105,9 +105,8 @@ private final class Analyzer(config: CommonPhaseConfig,
     reachSymbolRequirement(symbolRequirements)
 
     // Entry points (top-level exports and static initializers)
-    workQueue.enqueue(inputProvider.classesWithEntryPoints()(executionContext)) { names =>
-      names.foreach(n => lookupClass(n)(_.reachEntryPoints()))
-    }
+    for (className <- inputProvider.classesWithEntryPoints())
+      lookupClass(className)(_.reachEntryPoints())
   }
 
   private def postLoad(): Unit = {
@@ -1127,7 +1126,7 @@ object Analyzer {
   }
 
   trait InputProvider {
-    def classesWithEntryPoints()(implicit ex: ExecutionContext): Future[TraversableOnce[String]]
+    def classesWithEntryPoints(): TraversableOnce[String]
 
     def loadInfo(encodedName: String)(implicit ex: ExecutionContext): Option[Future[Infos.ClassInfo]]
   }
