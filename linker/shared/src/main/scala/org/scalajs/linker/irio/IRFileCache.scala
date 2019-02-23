@@ -13,6 +13,8 @@
 package org.scalajs.linker.irio
 
 import scala.annotation.tailrec
+import scala.concurrent._
+import scala.util.Failure
 
 import java.net.URI
 
@@ -69,12 +71,14 @@ final class IRFileCache {
   private final class CacheImpl extends Cache {
     private[this] var localCache: Seq[PersistedFiles] = _
 
-    def cached(files: Seq[ScalaJSIRContainer]): Seq[VirtualScalaJSIRFile] = {
+    def cached(files: Seq[ScalaJSIRContainer])(
+        implicit ec: ExecutionContext): Future[Seq[VirtualScalaJSIRFile]] = {
       update(files)
-      localCache.flatMap(_.files)
+      Future.traverse(localCache)(_.files).map(_.flatten)
     }
 
-    private def update(files: Seq[ScalaJSIRContainer]): Unit = clearOnThrow {
+    private def update(files: Seq[ScalaJSIRContainer])(
+        implicit ec: ExecutionContext): Unit = clearOnThrow {
       val result = Seq.newBuilder[PersistedFiles]
 
       for (file <- files) {
@@ -129,13 +133,13 @@ final class IRFileCache {
     @volatile
     private[this] var _version: Option[String] = None
 
-    /** Files in this [[PersistedFiles]]
+    /** Files in this [[PersistedFiles]] being calculated.
      *  May only be written under synchronization, except if this is a tombstone
      */
     @volatile
-    private[this] var _files: Seq[VirtualScalaJSIRFile] = null
+    private[this] var _files: Future[Seq[VirtualScalaJSIRFile]] = null
 
-    def files: Seq[VirtualScalaJSIRFile] = _files
+    def files: Future[Seq[VirtualScalaJSIRFile]] = _files
 
     /** Try to reference this block of files.
      *  @return true if referencing succeeded, false if this is a tombstone
@@ -187,7 +191,7 @@ final class IRFileCache {
      *
      *  May only be called by a thread, if it holds a reference to this file.
      */
-    def update(file: ScalaJSIRContainer): Unit = {
+    def update(file: ScalaJSIRContainer)(implicit ec: ExecutionContext): Unit = {
       assert(_references.get > 0, "Updating an unreferenced file")
       assert(file.path == path, s"Path mismatch: $path, ${file.path}")
 
@@ -206,7 +210,7 @@ final class IRFileCache {
             statsReused.incrementAndGet()
           } else {
             statsInvalidated.incrementAndGet()
-            _files = file.sjsirFiles.map(new PersistentIRFile(_))
+            _files = clearOnFail(file.sjsirFiles.map(_.map(new PersistentIRFile(_))))
             _version = file.version
           }
         }
@@ -215,18 +219,24 @@ final class IRFileCache {
   }
 
   private final class PersistentIRFile(
-      private[this] var _irFile: VirtualScalaJSIRFile)
+      private[this] var _irFile: VirtualScalaJSIRFile)(
+      implicit ec: ExecutionContext)
       extends VirtualScalaJSIRFile {
 
     @volatile
-    private[this] var _tree: ClassDef = null
+    private[this] var _tree: Future[ClassDef] = null
 
     override val path: String = _irFile.path
     override val version: Option[String] = _irFile.version
-    override val entryPointsInfo: EntryPointsInfo = _irFile.entryPointsInfo
     override val relativePath: String = _irFile.relativePath
 
-    override def tree: ClassDef = {
+    // Force reading of entry points since we'll definitely need them.
+    private[this] val _entryPointsInfo: Future[EntryPointsInfo] = _irFile.entryPointsInfo
+
+    override def entryPointsInfo(implicit ec: ExecutionContext): Future[EntryPointsInfo] =
+      _entryPointsInfo
+
+    override def tree(implicit ec: ExecutionContext): Future[ClassDef] = {
       if (_tree == null) {
         synchronized {
           if (_tree == null) { // check again, race!
@@ -239,9 +249,9 @@ final class IRFileCache {
     }
 
     /** Must be called under synchronization only */
-    private def loadTree(): Unit = clearOnThrow {
+    private def loadTree()(implicit ec: ExecutionContext): Unit = {
       statsTreesRead.incrementAndGet()
-      _tree = _irFile.tree // This can fail due to I/O
+      _tree = clearOnFail(_irFile.tree) // This can fail due to I/O
       _irFile = null // Free for GC
     }
   }
@@ -252,15 +262,19 @@ final class IRFileCache {
    *  are not anymore.
    */
   @inline
+  private def clearOnFail[T](v: => Future[T])(implicit ec: ExecutionContext): Future[T] =
+    clearOnThrow(v).andThen { case Failure(_) => globalCache.clear() }
+
+  @inline
   private def clearOnThrow[T](body: => T): T = {
-    try body
-    catch {
+    try {
+      body
+    } catch {
       case t: Throwable =>
         globalCache.clear()
         throw t
     }
   }
-
 }
 
 object IRFileCache {
@@ -275,7 +289,8 @@ object IRFileCache {
      *      lifetime of a returned [[VirtualScalaJSIRFile]] yields
      *      unspecified behavior.
      */
-    def cached(files: Seq[ScalaJSIRContainer]): Seq[VirtualScalaJSIRFile]
+    def cached(files: Seq[ScalaJSIRContainer])(
+        implicit ec: ExecutionContext): Future[Seq[VirtualScalaJSIRFile]]
 
     /** Should be called if this cache is not used anymore.
      *

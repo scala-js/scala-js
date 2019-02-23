@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.irio
 
+import scala.concurrent._
+
 import java.io.IOException
 
 import org.scalajs.ir
@@ -45,7 +47,7 @@ trait ScalaJSIRContainer {
    *
    *  It is up to the implementation whether these files are read lazily or not.
    */
-  def sjsirFiles: List[VirtualScalaJSIRFile]
+  def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]]
 
   override def toString(): String = {
     val className = getClass.getName
@@ -59,22 +61,22 @@ trait ScalaJSIRContainer {
  */
 trait VirtualScalaJSIRFile extends ScalaJSIRContainer {
   /** Entry points information for this file. */
-  def entryPointsInfo: ir.EntryPointsInfo
+  def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo]
 
   /** IR Tree of this file. */
-  def tree: ir.Trees.ClassDef
+  def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef]
 
   /** The path of this IR relative to its classpath root. */
   def relativePath: String
 
-  final def sjsirFiles: List[VirtualScalaJSIRFile] = this :: Nil
+  final def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]] =
+    Future.successful(this :: Nil)
 }
 
 object VirtualScalaJSIRFile {
-  def withPathExceptionContext[A](path: String)(body: => A): A = {
-    try {
-      body
-    } catch {
+  def withPathExceptionContext[A](path: String, future: Future[A])(
+      implicit ec: ExecutionContext): Future[A] = {
+    future.recover {
       case e: ir.IRVersionNotSupportedException =>
         throw new ir.IRVersionNotSupportedException(e.version, e.supported,
             s"Failed to deserialize a file compiled with Scala.js ${e.version}" +

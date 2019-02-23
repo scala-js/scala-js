@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.irio
 
+import scala.concurrent._
+
 import java.io._
 
 import org.scalajs.ir
@@ -23,16 +25,21 @@ final class MemVirtualSerializedScalaJSIRFile(
     val version: Option[String],
     content: Array[Byte]
 ) extends VirtualScalaJSIRFile {
-  def entryPointsInfo: ir.EntryPointsInfo =
+  def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] =
     withInputStream(ir.Serializers.deserializeEntryPointsInfo)
 
-  def tree: ir.Trees.ClassDef =
+  def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef] =
     withInputStream(ir.Serializers.deserialize)
 
   @inline
-  private def withInputStream[A](f: InputStream => A): A = {
-    val stream = new ByteArrayInputStream(content)
-    try VirtualScalaJSIRFile.withPathExceptionContext(path)(f(stream))
-    finally stream.close()
+  private def withInputStream[A](f: InputStream => A)(
+      implicit ec: ExecutionContext): Future[A] = {
+    val result = Future {
+      val stream = new ByteArrayInputStream(content)
+      try f(stream)
+      finally stream.close()
+    }
+
+    VirtualScalaJSIRFile.withPathExceptionContext(path, result)
   }
 }

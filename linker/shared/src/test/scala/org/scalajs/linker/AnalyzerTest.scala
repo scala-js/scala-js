@@ -460,7 +460,7 @@ object AnalyzerTest {
     val encodedNameToInfo =
       classDefs.map(c => c.name.name -> Infos.generateClassInfo(c)).toMap
 
-    val inputProvider = new Analyzer.InputProvider {
+    def inputProvider(loader: Option[TestIRRepo.InfoLoader]) = new Analyzer.InputProvider {
       def classesWithEntryPoints(): TraversableOnce[String] = classesWithEntryPoints0
 
       def loadInfo(encodedName: String)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
@@ -468,13 +468,19 @@ object AnalyzerTest {
          * immediately. However, in order to exercise as much asynchronizity as
          * possible, we don't.
          */
-        val own = encodedNameToInfo.get(encodedName)
-        own.orElse(stdlib.flatMap(_.loadInfo(encodedName))).map(Future(_))
+        val own = encodedNameToInfo.get(encodedName).map(Future(_))
+        own.orElse(loader.flatMap(_.loadInfo(encodedName)))
       }
     }
 
-    Analyzer.computeReachability(CommonPhaseConfig(), symbolRequirements,
-        allowAddingSyntheticMethods = true, inputProvider)
+    for {
+      loader <- Future.traverse(stdlib.toList)(_.loader).map(_.headOption)
+      analysis <- Analyzer.computeReachability(CommonPhaseConfig(),
+          symbolRequirements, allowAddingSyntheticMethods = true,
+          inputProvider(loader))
+    } yield {
+      analysis
+    }
   }
 
   private def assertNoError(analysis: Future[Analysis])(

@@ -14,6 +14,8 @@ package org.scalajs.linker.irio
 
 import scala.annotation.tailrec
 
+import scala.concurrent._
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
 import scala.scalajs.js.typedarray._
@@ -26,18 +28,23 @@ class NodeVirtualScalaJSIRFile(val path: String, val relativePath: String) exten
   val version: Option[String] =
     NodeFS.statSync(path).mtime.map(_.getTime.toString).toOption
 
-  def entryPointsInfo: ir.EntryPointsInfo =
+  def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] =
     withInputStream(ir.Serializers.deserializeEntryPointsInfo)
 
-  def tree: ir.Trees.ClassDef =
+  def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef] =
     withInputStream(ir.Serializers.deserialize)
 
   @inline
-  private def withInputStream[A](f: InputStream => A): A = {
-    val buf = new Uint8Array(NodeFS.readFileSync(path)).buffer
-    val stream = new ArrayBufferInputStream(buf)
-    try VirtualScalaJSIRFile.withPathExceptionContext(path)(f(stream))
-    finally stream.close()
+  private def withInputStream[A](f: InputStream => A)(
+      implicit ec: ExecutionContext): Future[A] = {
+    def read() = {
+      val buf = new Uint8Array(NodeFS.readFileSync(path)).buffer
+      val stream = new ArrayBufferInputStream(buf)
+      try f(stream)
+      finally stream.close()
+    }
+
+    VirtualScalaJSIRFile.withPathExceptionContext(path, Future(blocking(read())))
   }
 }
 
@@ -47,7 +54,7 @@ private[scalajs] class NodeVirtualJarScalaJSIRContainer(val path: String) extend
   val version: Option[String] =
     NodeFS.statSync(path).mtime.map(_.getTime.toString).toOption
 
-  def sjsirFiles: List[VirtualScalaJSIRFile] = {
+  def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]] = Future {
     val zip = new JSZip(NodeFS.readFileSync(path))
 
     for {

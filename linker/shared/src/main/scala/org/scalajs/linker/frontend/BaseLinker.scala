@@ -215,7 +215,7 @@ private object BaseLinker {
     private val cache = mutable.Map.empty[String, ClassDefAndInfoCache]
 
     def update(irInput: Seq[VirtualScalaJSIRFile])(implicit ec: ExecutionContext): Future[Unit] = {
-      Future.traverse(irInput)(f => Future(f.entryPointsInfo)).map { infos =>
+      Future.traverse(irInput)(_.entryPointsInfo).map { infos =>
         val encodedNameToFile = mutable.Map.empty[String, VirtualScalaJSIRFile]
         val entryPoints = mutable.Set.empty[String]
 
@@ -298,7 +298,7 @@ private object BaseLinker {
         if (version.isEmpty || newVersion.isEmpty ||
             version.get != newVersion.get) {
           version = newVersion
-          cacheUpdate = Future(irFile.tree).map(t => (t, Infos.generateClassInfo(t)))
+          cacheUpdate = irFile.tree.map(t => (t, Infos.generateClassInfo(t)))
         }
       }
 

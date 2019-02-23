@@ -80,7 +80,6 @@ class MainGenericRunner {
     val logger = new ScalaConsoleLogger(Level.Warn)
     val semantics0 = readSemantics()
     val semantics = if (optMode == FullOpt) semantics0.optimized else semantics0
-    val ir = loadIR(command.settings.classpathURLs)
 
     val moduleInitializers = Seq(ModuleInitializer.mainMethodWithArgs(
         command.thingToRun, "main", command.arguments))
@@ -97,7 +96,13 @@ class MainGenericRunner {
 
     val sjsCode = {
       val out = new WritableMemVirtualBinaryFile
-      Await.result(linker.link(ir, moduleInitializers, LinkerOutput(out), logger), Duration.Inf)
+
+      val result = loadIR(command.settings.classpathURLs).flatMap { ir =>
+        linker.link(ir, moduleInitializers, LinkerOutput(out), logger)
+      }
+
+      Await.result(result, Duration.Inf)
+
       out.toReadable("partest.js")
     }
 
