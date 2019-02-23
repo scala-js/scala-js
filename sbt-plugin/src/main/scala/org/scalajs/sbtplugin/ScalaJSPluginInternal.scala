@@ -119,6 +119,13 @@ private[sbtplugin] object ScalaJSPluginInternal {
     }
   }
 
+  private def await[T](log: Logger)(body: ExecutionContext => Future[T]): T = {
+    val ec = ExecutionContext.fromExecutor(
+        ExecutionContext.global, t => log.trace(t))
+
+    Await.result(body(ec), Duration.Inf)
+  }
+
   private val scalajspParser = {
     loadForParser(sjsirFilesOnClasspath) { (_, relPaths) =>
       val examples = ScalajspUtils.relPathsExamples(relPaths.getOrElse(Nil))
@@ -215,13 +222,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
               .withJSFileURI(relURI(output.getName))
 
             enhanceIRVersionNotSupportedException {
-              implicit val ex = ExecutionContext.fromExecutor(
-                  ExecutionContext.global, t => log.trace(t))
-
-              val linking =
-                linker.link(ir, moduleInitializers, out, sbtLogger2ToolsLogger(log))
-
-              Await.result(linking, Duration.Inf)
+              val tlog = sbtLogger2ToolsLogger(log)
+              await(log)(linker.link(ir, moduleInitializers, out, tlog)(_))
             }
 
             logIRCacheStats(log)
@@ -257,10 +259,13 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val cache = scalaJSIRCache.value
         val classpath = Attributed.data(fullClasspath.value)
         val irContainers = FileScalaJSIRContainer.fromClasspath(classpath)
-        val log = sbtLogger2ToolsLogger(streams.value.log)
+        val log = streams.value.log
+        val tlog = sbtLogger2ToolsLogger(log)
 
         val irFiles = enhanceIRVersionNotSupportedException {
-          log.time("Update IR cache")(cache.cached(irContainers))
+          tlog.time("Update IR cache") {
+            await(log)(cache.cached(irContainers)(_))
+          }
         }
 
         Attributed
@@ -280,8 +285,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .getOrElse(throw new FileNotFoundException(relPath))
 
         enhanceIRVersionNotSupportedException {
+          val log = streams.value.log
           val stdout = new java.io.PrintWriter(System.out)
-          new IRTreePrinter(stdout).print(vfile.tree)
+          new IRTreePrinter(stdout).print(await(log)(vfile.tree(_)))
           stdout.flush()
         }
 

@@ -13,6 +13,7 @@
 package org.scalajs.linker.irio
 
 import scala.annotation.tailrec
+import scala.concurrent._
 
 import java.io._
 import java.util.zip.{ZipInputStream, ZipEntry}
@@ -67,17 +68,22 @@ final class FileVirtualScalaJSIRFile(
     else Some(file.lastModified.toString)
   }
 
-  def entryPointsInfo: ir.EntryPointsInfo =
+  def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] =
     withInputStream(ir.Serializers.deserializeEntryPointsInfo)
 
-  def tree: ir.Trees.ClassDef =
+  def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef] =
     withInputStream(ir.Serializers.deserialize)
 
   @inline
-  private def withInputStream[A](f: InputStream => A): A = {
-    val stream = new BufferedInputStream(new FileInputStream(file))
-    try VirtualScalaJSIRFile.withPathExceptionContext(path)(f(stream))
-    finally stream.close()
+  private def withInputStream[A](f: InputStream => A)(
+      implicit ec: ExecutionContext): Future[A] = {
+    def read() = {
+      val stream = new BufferedInputStream(new FileInputStream(file))
+      try f(stream)
+      finally stream.close()
+    }
+
+    VirtualScalaJSIRFile.withPathExceptionContext(path, Future(blocking(read())))
   }
 }
 
@@ -89,7 +95,10 @@ final class FileVirtualJarScalaJSIRContainer(val file: File) extends FileScalaJS
     else Some(file.lastModified.toString)
   }
 
-  def sjsirFiles: List[VirtualScalaJSIRFile] = {
+  def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]] =
+    Future(blocking(read()))
+
+  private def read(): List[VirtualScalaJSIRFile] = {
     val stream = new ZipInputStream(new BufferedInputStream(new FileInputStream(file)))
     try {
       val buf = new Array[Byte](4096)

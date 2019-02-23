@@ -1,5 +1,6 @@
 package org.scalajs.linker.test
 
+import scala.concurrent._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.scalajs.js
@@ -33,8 +34,6 @@ object QuickLinker {
       ModuleInitializer.mainMethod("org.scalajs.testing.interface.Bridge", "start")
     }
 
-    val ir = extractIR(irFilesAndJars)
-
     val smPath = outputPath + ".map"
 
     def relURI(path: String) =
@@ -45,10 +44,12 @@ object QuickLinker {
       .withSourceMapURI(relURI(smPath))
       .withJSFileURI(relURI(outputPath))
 
-    linker.link(ir, moduleInitializers, out, new ScalaConsoleLogger).toJSPromise
+    extractIR(irFilesAndJars).flatMap { ir =>
+      linker.link(ir, moduleInitializers, out, new ScalaConsoleLogger)
+    }.toJSPromise
   }
 
-  private def extractIR(irFilesAndJars: Seq[String]): Seq[VirtualScalaJSIRFile] = {
+  private def extractIR(irFilesAndJars: Seq[String]): Future[Seq[VirtualScalaJSIRFile]] = {
     val cache = (new IRFileCache).newCache
     val irContainers = irFilesAndJars.map { file =>
       if (file.endsWith(".jar")) {
