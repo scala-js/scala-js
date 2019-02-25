@@ -27,5 +27,5 @@ abstract class Linker private[linker] () {
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
       output: LinkerOutput, logger: Logger)(
-      implicit ex: ExecutionContext): Future[Unit]
+      implicit ec: ExecutionContext): Future[Unit]
 }

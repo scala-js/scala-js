@@ -35,7 +35,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     symbolRequirements: SymbolRequirement,
     allowAddingSyntheticMethods: Boolean,
     inputProvider: Analyzer.InputProvider,
-    executionContext: ExecutionContext)
+    ec: ExecutionContext)
     extends Analysis {
 
   import Analyzer._
@@ -45,7 +45,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
   private[this] val _errors = mutable.Buffer.empty[Error]
 
-  private val workQueue = new WorkQueue(executionContext)
+  private val workQueue = new WorkQueue(ec)
 
   private val fromAnalyzer = FromCore("analyzer")
 
@@ -60,7 +60,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     loadObjectClass(() => loadEverything())
 
-    workQueue.join().map(_ => postLoad())(executionContext)
+    workQueue.join().map(_ => postLoad())(ec)
   }
 
   private def loadObjectClass(onSuccess: () => Unit): Unit = {
@@ -69,7 +69,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     /* Load the java.lang.Object class, and validate it
      * If it is missing or invalid, we're in deep trouble, and cannot continue.
      */
-    inputProvider.loadInfo(Definitions.ObjectClass)(executionContext) match {
+    inputProvider.loadInfo(Definitions.ObjectClass)(ec) match {
       case None =>
         _errors += MissingJavaLangObjectClass(fromAnalyzer)
 
@@ -276,7 +276,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     _classInfos(encodedName) = this
 
-    inputProvider.loadInfo(encodedName)(executionContext) match {
+    inputProvider.loadInfo(encodedName)(ec) match {
       case Some(future) =>
         workQueue.enqueue(future)(link(_, nonExistent = false))
 
@@ -1119,19 +1119,19 @@ object Analyzer {
   def computeReachability(config: CommonPhaseConfig,
       symbolRequirements: SymbolRequirement,
       allowAddingSyntheticMethods: Boolean,
-      inputProvider: InputProvider)(implicit ex: ExecutionContext): Future[Analysis] = {
+      inputProvider: InputProvider)(implicit ec: ExecutionContext): Future[Analysis] = {
     val analyzer = new Analyzer(config, symbolRequirements,
-        allowAddingSyntheticMethods, inputProvider, ex)
+        allowAddingSyntheticMethods, inputProvider, ec)
     analyzer.computeReachability().map(_ => analyzer)
   }
 
   trait InputProvider {
     def classesWithEntryPoints(): TraversableOnce[String]
 
-    def loadInfo(encodedName: String)(implicit ex: ExecutionContext): Option[Future[Infos.ClassInfo]]
+    def loadInfo(encodedName: String)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]]
   }
 
-  private class WorkQueue(ex: ExecutionContext) {
+  private class WorkQueue(ec: ExecutionContext) {
     private val queue = new ConcurrentLinkedQueue[() => Unit]()
     private val working = new AtomicBoolean(false)
     private val pending = new AtomicInteger(0)
@@ -1148,7 +1148,7 @@ object Analyzer {
 
         case Failure(t) =>
           promise.tryFailure(t)
-      } (ex)
+      } (ec)
     }
 
     def join(): Future[Unit] = {

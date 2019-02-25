@@ -36,7 +36,7 @@ private final class StandardLinkerImpl private (
   def link(irFiles: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer],
       output: LinkerOutput, logger: Logger)(
-      implicit ex: ExecutionContext): Future[Unit] = {
+      implicit ec: ExecutionContext): Future[Unit] = {
     if (!_linking.compareAndSet(false, true)) {
       throw new IllegalStateException("Linker used concurrently")
     }

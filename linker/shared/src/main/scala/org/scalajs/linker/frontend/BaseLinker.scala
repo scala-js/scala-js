@@ -43,7 +43,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
   def link(irInput: Seq[VirtualScalaJSIRFile],
       moduleInitializers: Seq[ModuleInitializer], logger: Logger,
       symbolRequirements: SymbolRequirement, checkIR: Boolean)(
-      implicit ex: ExecutionContext): Future[LinkingUnit] = {
+      implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
     val allSymbolRequirements = {
       symbolRequirements ++
@@ -76,7 +76,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
   }
 
   private def analyze(symbolRequirements: SymbolRequirement, logger: Logger)(
-      implicit ex: ExecutionContext): Future[Analysis] = {
+      implicit ec: ExecutionContext): Future[Analysis] = {
     def reportErrors(errors: Seq[Analysis.Error]) = {
       require(errors.nonEmpty)
 
@@ -109,7 +109,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
   }
 
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
-      analysis: Analysis)(implicit ex: ExecutionContext): Future[LinkingUnit] = {
+      analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
     def assembleClass(info: ClassInfo) = {
       val classAndVersion = inputProvider.loadClassDefAndVersion(info.encodedName)
       val syntheticMethods = methodSynthesizer.synthesizeMembers(info, analysis)
@@ -243,11 +243,11 @@ private object BaseLinker {
     def classesWithEntryPoints(): TraversableOnce[String] = entryPoints
 
     def loadInfo(encodedName: String)(
-        implicit ex: ExecutionContext): Option[Future[Infos.ClassInfo]] =
+        implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
       getCache(encodedName).map(_.loadInfo(encodedNameToFile(encodedName)))
 
     def loadClassDefAndVersion(encodedName: String)(
-        implicit ex: ExecutionContext): Future[(ClassDef, Option[String])] = {
+        implicit ec: ExecutionContext): Future[(ClassDef, Option[String])] = {
       val fileCache = getCache(encodedName).getOrElse {
         throw new AssertionError(s"Cannot load file for class $encodedName")
       }
@@ -255,7 +255,7 @@ private object BaseLinker {
     }
 
     def loadClassDef(encodedName: String)(
-        implicit ex: ExecutionContext): Future[ClassDef] = {
+        implicit ec: ExecutionContext): Future[ClassDef] = {
       loadClassDefAndVersion(encodedName).map(_._1)
     }
 
@@ -285,13 +285,13 @@ private object BaseLinker {
     private var info: Infos.ClassInfo = _
 
     def loadInfo(irFile: VirtualScalaJSIRFile)(
-        implicit ex: ExecutionContext): Future[Infos.ClassInfo] = Future {
+        implicit ec: ExecutionContext): Future[Infos.ClassInfo] = Future {
       update(irFile)
       info
     }
 
     def loadClassDefAndVersion(irFile: VirtualScalaJSIRFile)(
-        implicit ex: ExecutionContext): Future[(ClassDef, Option[String])] = Future {
+        implicit ec: ExecutionContext): Future[(ClassDef, Option[String])] = Future {
       update(irFile)
       (classDef, version)
     }

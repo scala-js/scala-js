@@ -32,7 +32,7 @@ final class Refiner(config: CommonPhaseConfig) {
   private val inputProvider = new InputProvider
 
   def refine(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
-      logger: Logger)(implicit ex: ExecutionContext): Future[LinkingUnit] = {
+      logger: Logger)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
     val linkedClassesByName =
       Map(unit.classDefs.map(c => c.encodedName -> c): _*)
@@ -67,7 +67,7 @@ final class Refiner(config: CommonPhaseConfig) {
   }
 
   private def analyze(symbolRequirements: SymbolRequirement, logger: Logger)(
-      implicit ex: ExecutionContext): Future[Analysis] = {
+      implicit ec: ExecutionContext): Future[Analysis] = {
     for {
       analysis <- Analyzer.computeReachability(config, symbolRequirements,
           allowAddingSyntheticMethods = false, inputProvider)
@@ -138,7 +138,7 @@ private object Refiner {
       }
     }
 
-    def loadInfo(encodedName: String)(implicit ex: ExecutionContext): Option[Future[Infos.ClassInfo]] =
+    def loadInfo(encodedName: String)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
       getCache(encodedName).map(_.loadInfo(linkedClassesByName(encodedName)))
 
     private def getCache(encodedName: String): Option[LinkedClassInfoCache] = {
@@ -166,7 +166,7 @@ private object Refiner {
     private val exportedMembersInfoCaches = LinkedMembersInfosCache()
     private var info: Infos.ClassInfo = _
 
-    def loadInfo(linkedClass: LinkedClass)(implicit ex: ExecutionContext): Future[Infos.ClassInfo] = Future {
+    def loadInfo(linkedClass: LinkedClass)(implicit ec: ExecutionContext): Future[Infos.ClassInfo] = Future {
       update(linkedClass)
       info
     }

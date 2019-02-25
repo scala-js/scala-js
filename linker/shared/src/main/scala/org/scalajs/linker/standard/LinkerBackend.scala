@@ -45,7 +45,7 @@ abstract class LinkerBackend {
    *  @param logger Logger to use
    */
   def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
-      implicit ex: ExecutionContext): Future[Unit]
+      implicit ec: ExecutionContext): Future[Unit]
 
   /** Verify that a [[LinkingUnit]] can be processed by this [[LinkerBackend]].
    *

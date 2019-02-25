@@ -66,7 +66,7 @@ object ClearableLinker {
     def link(irFiles: Seq[VirtualScalaJSIRFile],
         moduleInitializers: Seq[ModuleInitializer],
         output: LinkerOutput, logger: Logger)(
-        implicit ex: ExecutionContext): Future[Unit] = {
+        implicit ec: ExecutionContext): Future[Unit] = {
       linkerOp(_.link(irFiles, moduleInitializers, output, logger))
     }
 
@@ -75,7 +75,7 @@ object ClearableLinker {
 
     @inline
     private[this] def linkerOp[T](op: Linker => Future[T])(
-        implicit ex: ExecutionContext): Future[T] = {
+        implicit ec: ExecutionContext): Future[T] = {
       ensureLinker()
 
       try {
