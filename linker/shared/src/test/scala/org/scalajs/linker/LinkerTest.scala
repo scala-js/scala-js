@@ -19,6 +19,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.ir.ClassKind
+import org.scalajs.ir.EntryPointsInfo
 import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Trees._
 
@@ -111,10 +112,11 @@ object LinkerTest {
 
     val classDefsFiles = classDefs.map { classDef =>
       new VirtualScalaJSIRFile {
-        def exists: Boolean = true
-        def path: String = "mem://" + classDef.name.name + ".sjsir"
+        val path: String = "mem://" + classDef.name.name + ".sjsir"
+        val relativePath: String = classDef.name.name + ".sjsir"
+        val version: Option[String] = None
         def tree: ClassDef = classDef
-        def relativePath: String = classDef.name.name + ".sjsir"
+        def entryPointsInfo: EntryPointsInfo = EntryPointsInfo.forClassDef(tree)
       }
     }
 

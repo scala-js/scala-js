@@ -12,19 +12,19 @@
 
 package org.scalajs.linker.irio
 
+import scala.annotation.tailrec
+
 import java.io._
 import java.util.zip.{ZipInputStream, ZipEntry}
 
-import scala.annotation.tailrec
+import org.scalajs.ir
 
-import org.scalajs.io._
-
-final class FileVirtualScalaJSIRFile(f: File, val relativePath: String)
-    extends FileVirtualBinaryFile(f) with VirtualSerializedScalaJSIRFile
+trait FileScalaJSIRContainer extends ScalaJSIRContainer {
+  val file: File
+}
 
 object FileScalaJSIRContainer {
-  def fromClasspath(
-      classpath: Seq[File]): Seq[ScalaJSIRContainer with FileVirtualFile] = {
+  def fromClasspath(classpath: Seq[File]): Seq[FileScalaJSIRContainer] = {
     classpath.flatMap { entry =>
       if (!entry.exists)
         Nil
@@ -37,8 +37,7 @@ object FileScalaJSIRContainer {
     }
   }
 
-  private def fromDirectory(
-      dir: File): Seq[ScalaJSIRContainer with FileVirtualFile] = {
+  private def fromDirectory(dir: File): Seq[FileScalaJSIRContainer] = {
     require(dir.isDirectory)
 
     val baseDir = dir.getAbsoluteFile
@@ -58,8 +57,38 @@ object FileScalaJSIRContainer {
   }
 }
 
-final class FileVirtualJarScalaJSIRContainer(file: File)
-    extends FileVirtualFile(file) with ScalaJSIRContainer {
+final class FileVirtualScalaJSIRFile(
+    val file: File, val relativePath: String)
+    extends VirtualScalaJSIRFile with FileScalaJSIRContainer {
+  val path: String = file.getPath
+
+  val version: Option[String] = {
+    if (!file.isFile) None
+    else Some(file.lastModified.toString)
+  }
+
+  def entryPointsInfo: ir.EntryPointsInfo =
+    withInputStream(ir.Serializers.deserializeEntryPointsInfo)
+
+  def tree: ir.Trees.ClassDef =
+    withInputStream(ir.Serializers.deserialize)
+
+  @inline
+  private def withInputStream[A](f: InputStream => A): A = {
+    val stream = new BufferedInputStream(new FileInputStream(file))
+    try VirtualScalaJSIRFile.withPathExceptionContext(path)(f(stream))
+    finally stream.close()
+  }
+}
+
+final class FileVirtualJarScalaJSIRContainer(val file: File) extends FileScalaJSIRContainer {
+  val path: String = file.getPath
+
+  val version: Option[String] = {
+    if (!file.isFile) None
+    else Some(file.lastModified.toString)
+  }
+
   def sjsirFiles: List[VirtualScalaJSIRFile] = {
     val stream = new ZipInputStream(new BufferedInputStream(new FileInputStream(file)))
     try {

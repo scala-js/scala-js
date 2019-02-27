@@ -12,10 +12,27 @@
 
 package org.scalajs.linker.irio
 
-import org.scalajs.io._
+import java.io._
 
-/** A simple in-memory mutable virtual serialized Scala.js IR file. */
-class MemVirtualSerializedScalaJSIRFile(path: String, val relativePath: String,
-    content: Array[Byte], version: Option[String])
-    extends MemVirtualBinaryFile(path, content, version)
-    with VirtualSerializedScalaJSIRFile
+import org.scalajs.ir
+
+/** A simple in-memory virtual serialized Scala.js IR file. */
+final class MemVirtualSerializedScalaJSIRFile(
+    val path: String,
+    val relativePath: String,
+    val version: Option[String],
+    content: Array[Byte]
+) extends VirtualScalaJSIRFile {
+  def entryPointsInfo: ir.EntryPointsInfo =
+    withInputStream(ir.Serializers.deserializeEntryPointsInfo)
+
+  def tree: ir.Trees.ClassDef =
+    withInputStream(ir.Serializers.deserialize)
+
+  @inline
+  private def withInputStream[A](f: InputStream => A): A = {
+    val stream = new ByteArrayInputStream(content)
+    try VirtualScalaJSIRFile.withPathExceptionContext(path)(f(stream))
+    finally stream.close()
+  }
+}
