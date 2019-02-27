@@ -12,18 +12,40 @@
 
 package org.scalajs.linker.irio
 
-import org.scalajs.io._
+import scala.annotation.tailrec
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
 import scala.scalajs.js.typedarray._
 
-class NodeVirtualScalaJSIRFile(p: String, val relativePath: String)
-    extends NodeVirtualBinaryFile(p) with VirtualSerializedScalaJSIRFile
+import java.io._
 
-private[scalajs] class NodeVirtualJarScalaJSIRContainer(path: String)
-    extends NodeVirtualFile(path) with ScalaJSIRContainer {
+import org.scalajs.ir
+
+class NodeVirtualScalaJSIRFile(val path: String, val relativePath: String) extends VirtualScalaJSIRFile {
+  val version: Option[String] =
+    NodeFS.statSync(path).mtime.map(_.getTime.toString).toOption
+
+  def entryPointsInfo: ir.EntryPointsInfo =
+    withInputStream(ir.Serializers.deserializeEntryPointsInfo)
+
+  def tree: ir.Trees.ClassDef =
+    withInputStream(ir.Serializers.deserialize)
+
+  @inline
+  private def withInputStream[A](f: InputStream => A): A = {
+    val buf = new Uint8Array(NodeFS.readFileSync(path)).buffer
+    val stream = new ArrayBufferInputStream(buf)
+    try VirtualScalaJSIRFile.withPathExceptionContext(path)(f(stream))
+    finally stream.close()
+  }
+}
+
+private[scalajs] class NodeVirtualJarScalaJSIRContainer(val path: String) extends ScalaJSIRContainer {
   import NodeVirtualJarScalaJSIRContainer.JSZip
+
+  val version: Option[String] =
+    NodeFS.statSync(path).mtime.map(_.getTime.toString).toOption
 
   def sjsirFiles: List[VirtualScalaJSIRFile] = {
     val zip = new JSZip(NodeFS.readFileSync(path))
@@ -52,4 +74,15 @@ private object NodeVirtualJarScalaJSIRContainer {
   private trait JSZipEntry extends js.Object {
     def asArrayBuffer(): ArrayBuffer
   }
+}
+
+@JSImport("fs", JSImport.Namespace)
+@js.native
+private object NodeFS extends js.Object {
+  trait Stat extends js.Object {
+    val mtime: js.UndefOr[js.Date]
+  }
+
+  def readFileSync(path: String): js.Array[Int] = js.native
+  def statSync(path: String): Stat = js.native
 }

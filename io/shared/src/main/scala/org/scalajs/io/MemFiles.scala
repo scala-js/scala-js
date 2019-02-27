@@ -22,28 +22,17 @@ import java.nio.charset.StandardCharsets
  */
 class MemVirtualBinaryFile(
     final val path: String,
-    content: Array[Byte],
-    final override val version: Option[String]
+    content: Array[Byte]
 ) extends VirtualBinaryFile {
   final def inputStream: InputStream = new ByteArrayInputStream(content)
 }
 
 object MemVirtualBinaryFile {
   def apply(path: String, content: Array[Byte]): MemVirtualBinaryFile =
-    apply(path, content, None)
-
-  def apply(path: String, content: Array[Byte],
-      version: Option[String]): MemVirtualBinaryFile = {
-    new MemVirtualBinaryFile(path, content, version)
-  }
+    new MemVirtualBinaryFile(path, content)
 
   def fromStringUTF8(path: String, content: String): MemVirtualBinaryFile =
-    fromStringUTF8(path, content, None)
-
-  def fromStringUTF8(path: String, content: String,
-      version: Option[String]): MemVirtualBinaryFile = {
-    apply(path, content.getBytes(StandardCharsets.UTF_8), version)
-  }
+    apply(path, content.getBytes(StandardCharsets.UTF_8))
 }
 
 final class WritableMemVirtualBinaryFile extends WritableVirtualBinaryFile {
@@ -58,8 +47,6 @@ final class WritableMemVirtualBinaryFile extends WritableVirtualBinaryFile {
     }
   }
 
-  def toReadable(path: String): MemVirtualBinaryFile = toReadable(path, None)
-
-  def toReadable(path: String, version: Option[String]): MemVirtualBinaryFile =
-    new MemVirtualBinaryFile(path, content, version)
+  def toReadable(path: String): MemVirtualBinaryFile =
+    new MemVirtualBinaryFile(path, content)
 }
