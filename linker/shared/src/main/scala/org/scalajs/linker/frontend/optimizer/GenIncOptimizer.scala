@@ -388,7 +388,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
     var fields: List[FieldDef] = Nil
     var isInlineable: Boolean = false
-    var tryNewInlineable: Option[RecordValue] = None
+    var tryNewInlineable: Option[OptimizerCore.InlineableClassStructure] = None
 
     override def toString(): String =
       encodedName
@@ -559,16 +559,15 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       if (!isInlineable) {
         tryNewInlineable = None
       } else {
-        val allFields = reverseParentChain.flatMap(_.fields)
-        val (fieldValues, fieldTypes) = (for {
-          f @ FieldDef(flags, Ident(name, originalName), tpe) <- allFields
-          if !flags.namespace.isStatic
+        val allFields = for {
+          parent <- reverseParentChain
+          field <- parent.fields
+          if !field.flags.namespace.isStatic
         } yield {
-          (zeroOf(tpe)(f.pos),
-              RecordType.Field(name, originalName, tpe, flags.isMutable))
-        }).unzip
-        tryNewInlineable = Some(
-            RecordValue(RecordType(fieldTypes), fieldValues)(Position.NoPosition))
+          parent.encodedName -> field
+        }
+        tryNewInlineable =
+          Some(new OptimizerCore.InlineableClassStructure(allFields))
       }
       tryNewInlineable != oldTryNewInlineable
     }
@@ -964,8 +963,10 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       protected def hasElidableModuleAccessor(moduleClassName: String): Boolean =
         classes(moduleClassName).hasElidableModuleAccessor
 
-      protected def tryNewInlineableClass(className: String): Option[RecordValue] =
+      protected def tryNewInlineableClass(
+          className: String): Option[OptimizerCore.InlineableClassStructure] = {
         classes(className).tryNewInlineable
+      }
     }
   }
 

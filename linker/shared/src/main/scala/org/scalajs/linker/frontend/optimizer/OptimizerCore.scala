@@ -66,10 +66,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   protected def hasElidableModuleAccessor(moduleClassName: String): Boolean
 
   /** Tests whether the given class is inlineable.
-   *  @return None if the class is not inlineable, Some(value) if it is, where
-   *          value is a RecordValue with the initial value of its fields.
+   *
+   *  @return
+   *    `None` if the class is not inlineable, `Some(structure)` if it is.
    */
-  protected def tryNewInlineableClass(className: String): Option[RecordValue]
+  protected def tryNewInlineableClass(
+      className: String): Option[InlineableClassStructure]
 
   private val localNameAllocator: FreshNameAllocator = new FreshNameAllocator
 
@@ -105,16 +107,16 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   private val useRuntimeLong = !config.coreSpec.esFeatures.allowBigIntsForLongs
 
   /** The record type for inlined `RuntimeLong`. */
-  private lazy val inlinedRTLongRecordType =
-    tryNewInlineableClass(LongImpl.RuntimeLongClass).map(_.tpe).get
+  private lazy val inlinedRTLongStructure =
+    tryNewInlineableClass(LongImpl.RuntimeLongClass).get
 
   /** The name of the `lo` field of in the record type of `RuntimeLong`. */
   private lazy val inlinedRTLongLoField =
-    inlinedRTLongRecordType.fields(0).name
+    inlinedRTLongStructure.recordType.fields(0).name
 
   /** The name of the `lo` field of in the record type of `RuntimeLong`. */
   private lazy val inlinedRTLongHiField =
-    inlinedRTLongRecordType.fields(1).name
+    inlinedRTLongStructure.recordType.fields(1).name
 
   private val intrinsics =
     Intrinsics.buildIntrinsics(config.coreSpec.esFeatures)
@@ -1036,8 +1038,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
     preTransQual match {
       case PreTransLocalDef(LocalDef(_, _,
-          InlineClassBeingConstructedReplacement(fieldLocalDefs, cancelFun))) =>
-        val fieldLocalDef = fieldLocalDefs(item.name)
+          InlineClassBeingConstructedReplacement(_, fieldLocalDefs, cancelFun))) =>
+        val fieldLocalDef = fieldLocalDefs(FieldID(item))
         if (!isLhsOfAssign || fieldLocalDef.mutable) {
           cont(fieldLocalDef.toPreTransform)
         } else {
@@ -1052,7 +1054,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case PreTransLocalDef(LocalDef(_, _,
           InlineClassInstanceReplacement(_, fieldLocalDefs, cancelFun))) =>
-        val fieldLocalDef = fieldLocalDefs(item.name)
+        val fieldLocalDef = fieldLocalDefs(FieldID(item))
         if (!isLhsOfAssign || fieldLocalDef.mutable) {
           cont(fieldLocalDef.toPreTransform)
         } else {
@@ -1105,9 +1107,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     val className = cls.className
 
     tryNewInlineableClass(className) match {
-      case Some(initialValue) =>
+      case Some(structure) =>
         tryOrRollback { cancelFun =>
-          inlineClassConstructor(allocationSite, cls, initialValue,
+          inlineClassConstructor(allocationSite, cls, structure,
               ctor, targs, cancelFun)(cont)
         } { () =>
           cont(PreTransTree(
@@ -1145,12 +1147,13 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             PreTransRecordTree(
                 VarRef(Ident(name, originalName))(recordType), tpe, cancelFun)
 
-          case InlineClassInstanceReplacement(recordType, fieldLocalDefs, cancelFun) =>
+          case InlineClassInstanceReplacement(structure, fieldLocalDefs, cancelFun) =>
+            val recordType = structure.recordType
             if (!isImmutableType(recordType))
               cancelFun()
             PreTransRecordTree(
-                RecordValue(recordType, recordType.fields.map(
-                    f => fieldLocalDefs(f.name).newReplacement)),
+                RecordValue(recordType, structure.fieldIDs.map(
+                    id => fieldLocalDefs(id).newReplacement)),
                 tpe, cancelFun)
 
           case _ =>
@@ -1186,8 +1189,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               recordType, used, cancelFun) =>
             Some((recordType, cancelFun))
 
-          case InlineClassInstanceReplacement(recordType, fieldLocalDefs, cancelFun) =>
-            Some((recordType, cancelFun))
+          case InlineClassInstanceReplacement(structure, fieldLocalDefs, cancelFun) =>
+            Some((structure.recordType, cancelFun))
 
           case _ =>
             None
@@ -1829,10 +1832,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case PreTransLocalDef(localDef) =>
         (localDef.replacement match {
-          case TentativeClosureReplacement(_, _, _, _, _, _) => true
-          case ReplaceWithRecordVarRef(_, _, _, _, _)        => true
-          case InlineClassBeingConstructedReplacement(_, _)  => true
-          case InlineClassInstanceReplacement(_, _, _)       => true
+          case TentativeClosureReplacement(_, _, _, _, _, _)    => true
+          case ReplaceWithRecordVarRef(_, _, _, _, _)           => true
+          case InlineClassBeingConstructedReplacement(_, _, _)  => true
+          case InlineClassInstanceReplacement(_, _, _)          => true
           case _ =>
             isTypeLikelyOptimizable(localDef.tpe)
         }) && !isLocalOnlyInlineType(localDef.tpe)
@@ -2150,9 +2153,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                 } yield {
                   elemLocalDef match {
                     case LocalDef(RefinedType(ClassType("T2"), _, _), false,
-                        InlineClassInstanceReplacement(recType, tupleFields, _)) =>
-                      val List(key, value) =
-                        recType.fields.map(f => tupleFields(f.name))
+                        InlineClassInstanceReplacement(structure, tupleFields, _)) =>
+                      val List(key, value) = structure.fieldIDs.map(tupleFields)
                       (key.newReplacement, value.newReplacement)
 
                     case _ =>
@@ -2224,45 +2226,39 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   }
 
   private def inlineClassConstructor(allocationSite: AllocationSite,
-      cls: ClassRef, initialValue: RecordValue,
+      cls: ClassRef, structure: InlineableClassStructure,
       ctor: Ident, args: List[PreTransform], cancelFun: CancelFun)(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
-    val RecordValue(recordType, initialFieldValues) = initialValue
-
-    pretransformExprs(initialFieldValues) { tinitialFieldValues =>
-      val initialFieldBindings = for {
-        (RecordType.Field(name, originalName, tpe, mutable), value) <-
-          recordType.fields zip tinitialFieldValues
-      } yield {
-        Binding(name, originalName, tpe, mutable, value)
-      }
-
-      withNewLocalDefs(initialFieldBindings) { (initialFieldLocalDefList, cont1) =>
-        val fieldNames = initialValue.tpe.fields.map(_.name)
-        val initialFieldLocalDefs =
-          Map(fieldNames zip initialFieldLocalDefList: _*)
-
-        inlineClassConstructorBody(allocationSite, initialFieldLocalDefs,
-            cls, cls, ctor, args, cancelFun) { (finalFieldLocalDefs, cont2) =>
-          cont2(LocalDef(
-              RefinedType(ClassType(cls.className), isExact = true,
-                  isNullable = false, allocationSite = allocationSite),
-              mutable = false,
-              InlineClassInstanceReplacement(recordType, finalFieldLocalDefs,
-                  cancelFun)).toPreTransform)
-        } (cont1)
-      } (cont)
+    val initialFieldBindings = for {
+      RecordType.Field(name, originalName, tpe, mutable) <- structure.recordType.fields
+    } yield {
+      Binding(name, originalName, tpe, mutable, PreTransLit(zeroOf(tpe)))
     }
+
+    withNewLocalDefs(initialFieldBindings) { (initialFieldLocalDefList, cont1) =>
+      val initialFieldLocalDefs =
+        structure.fieldIDs.zip(initialFieldLocalDefList).toMap
+
+      inlineClassConstructorBody(allocationSite, structure, initialFieldLocalDefs,
+          cls, cls, ctor, args, cancelFun) { (finalFieldLocalDefs, cont2) =>
+        cont2(LocalDef(
+            RefinedType(ClassType(cls.className), isExact = true,
+                isNullable = false, allocationSite = allocationSite),
+            mutable = false,
+            InlineClassInstanceReplacement(structure, finalFieldLocalDefs,
+                cancelFun)).toPreTransform)
+      } (cont1)
+    } (cont)
   }
 
   private def inlineClassConstructorBody(
-      allocationSite: AllocationSite,
-      inputFieldsLocalDefs: Map[String, LocalDef], cls: ClassRef,
+      allocationSite: AllocationSite, structure: InlineableClassStructure,
+      inputFieldsLocalDefs: Map[FieldID, LocalDef], cls: ClassRef,
       ctorClass: ClassRef, ctor: Ident, args: List[PreTransform],
       cancelFun: CancelFun)(
-      buildInner: (Map[String, LocalDef], PreTransCont) => TailRec[Tree])(
+      buildInner: (Map[FieldID, LocalDef], PreTransCont) => TailRec[Tree])(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = tailcall {
 
@@ -2289,32 +2285,31 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       val thisLocalDef = LocalDef(
           RefinedType(ClassType(cls.className), isExact = true, isNullable = false),
           false,
-          InlineClassBeingConstructedReplacement(inputFieldsLocalDefs, cancelFun))
+          InlineClassBeingConstructedReplacement(structure, inputFieldsLocalDefs, cancelFun))
       val statsScope = bodyScope.inlining(targetID).withEnv(
           bodyScope.env.withLocalDef("this", thisLocalDef))
-      inlineClassConstructorBodyList(allocationSite, thisLocalDef,
+      inlineClassConstructorBodyList(allocationSite, structure, thisLocalDef,
           inputFieldsLocalDefs, cls, stats, cancelFun)(
           buildInner)(cont1)(statsScope)
     } (cont) (scope.withEnv(OptEnv.Empty))
   }
 
   private def inlineClassConstructorBodyList(
-      allocationSite: AllocationSite,
-      thisLocalDef: LocalDef, inputFieldsLocalDefs: Map[String, LocalDef],
+      allocationSite: AllocationSite, structure: InlineableClassStructure,
+      thisLocalDef: LocalDef, inputFieldsLocalDefs: Map[FieldID, LocalDef],
       cls: ClassRef, stats: List[Tree], cancelFun: CancelFun)(
-      buildInner: (Map[String, LocalDef], PreTransCont) => TailRec[Tree])(
+      buildInner: (Map[FieldID, LocalDef], PreTransCont) => TailRec[Tree])(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
     stats match {
       case This() :: rest =>
-        inlineClassConstructorBodyList(allocationSite, thisLocalDef,
+        inlineClassConstructorBodyList(allocationSite, structure, thisLocalDef,
             inputFieldsLocalDefs, cls, rest, cancelFun)(buildInner)(cont)
 
-      case Assign(s @ Select(ths: This,
-          Ident(fieldName, fieldOrigName)), value) :: rest
-          if !inputFieldsLocalDefs(fieldName).mutable =>
+      case Assign(s @ Select(ths: This, field), value) :: rest
+          if !inputFieldsLocalDefs(FieldID(field)).mutable =>
         pretransformExpr(value) { tvalue =>
-          withNewLocalDef(Binding(fieldName, fieldOrigName, s.tpe, false,
+          withNewLocalDef(Binding(field.name, field.originalName, s.tpe, false,
               tvalue)) { (localDef, cont1) =>
             if (localDef.contains(thisLocalDef)) {
               /* Uh oh, there is a `val x = ...this...`. We can't keep it,
@@ -2323,12 +2318,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               cancelFun()
             }
             val newFieldsLocalDefs =
-              inputFieldsLocalDefs.updated(fieldName, localDef)
+              inputFieldsLocalDefs.updated(FieldID(field), localDef)
             val newThisLocalDef = LocalDef(thisLocalDef.tpe, false,
-                InlineClassBeingConstructedReplacement(newFieldsLocalDefs, cancelFun))
+                InlineClassBeingConstructedReplacement(structure, newFieldsLocalDefs, cancelFun))
             val restScope = scope.withEnv(scope.env.withLocalDef(
                 "this", newThisLocalDef))
-            inlineClassConstructorBodyList(allocationSite,
+            inlineClassConstructorBodyList(allocationSite, structure,
                 newThisLocalDef, newFieldsLocalDefs, cls, rest, cancelFun)(
                 buildInner)(cont1)(restScope)
           } (cont)
@@ -2352,7 +2347,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val stat = stats.head.asInstanceOf[If]
         val ass = stat.elsep.asInstanceOf[Assign]
         val lhs = ass.lhs
-        inlineClassConstructorBodyList(allocationSite, thisLocalDef,
+        inlineClassConstructorBodyList(allocationSite, structure, thisLocalDef,
             inputFieldsLocalDefs, cls,
             Assign(lhs, If(cond, th, value)(lhs.tpe)(stat.pos))(ass.pos) :: rest,
             cancelFun)(buildInner)(cont)
@@ -2360,14 +2355,14 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case ApplyStatically(flags, ths: This, superClass, superCtor, args) :: rest
           if flags.isConstructor =>
         pretransformExprs(args) { targs =>
-          inlineClassConstructorBody(allocationSite, inputFieldsLocalDefs,
-              cls, superClass, superCtor, targs,
+          inlineClassConstructorBody(allocationSite, structure,
+              inputFieldsLocalDefs, cls, superClass, superCtor, targs,
               cancelFun) { (outputFieldsLocalDefs, cont1) =>
             val newThisLocalDef = LocalDef(thisLocalDef.tpe, false,
-                InlineClassBeingConstructedReplacement(outputFieldsLocalDefs, cancelFun))
+                InlineClassBeingConstructedReplacement(structure, outputFieldsLocalDefs, cancelFun))
             val restScope = scope.withEnv(scope.env.withLocalDef(
                 "this", newThisLocalDef))
-            inlineClassConstructorBodyList(allocationSite,
+            inlineClassConstructorBodyList(allocationSite, structure,
                 newThisLocalDef, outputFieldsLocalDefs,
                 cls, rest, cancelFun)(buildInner)(cont1)(restScope)
           } (cont)
@@ -2376,7 +2371,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case VarDef(Ident(name, originalName), tpe, mutable, rhs) :: rest =>
         pretransformExpr(rhs) { trhs =>
           withBinding(Binding(name, originalName, tpe, mutable, trhs)) { (restScope, cont1) =>
-            inlineClassConstructorBodyList(allocationSite,
+            inlineClassConstructorBodyList(allocationSite, structure,
                 thisLocalDef, inputFieldsLocalDefs,
                 cls, rest, cancelFun)(buildInner)(cont1)(restScope)
           } (cont)
@@ -2386,14 +2381,14 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val transformedStat = transformStat(stat)
         transformedStat match {
           case Skip() =>
-            inlineClassConstructorBodyList(allocationSite,
+            inlineClassConstructorBodyList(allocationSite, structure,
                 thisLocalDef, inputFieldsLocalDefs,
                 cls, rest, cancelFun)(buildInner)(cont)
           case _ =>
             if (transformedStat.tpe == NothingType)
               cont(PreTransTree(transformedStat, RefinedType.Nothing))
             else {
-              inlineClassConstructorBodyList(allocationSite,
+              inlineClassConstructorBodyList(allocationSite, structure,
                   thisLocalDef, inputFieldsLocalDefs,
                   cls, rest, cancelFun)(buildInner) { tinner =>
                 cont(PreTransBlock(transformedStat, tinner))
@@ -4357,6 +4352,51 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
 private[optimizer] object OptimizerCore {
 
+  final class InlineableClassStructure(
+      /** `List[ownerClassName -> fieldDef]`. */
+      private val allFields: List[(String, FieldDef)]) {
+
+    assert(allFields.forall(_._2.name.isInstanceOf[Ident]),
+        s"unexpected JS field in InlineableClassStructure: $allFields")
+
+    private[OptimizerCore] val fieldIDs: List[FieldID] =
+      allFields.map(field => FieldID(field._2))
+
+    private[OptimizerCore] val recordType: RecordType = {
+      val allocator = new FreshNameAllocator
+      val recordFields = for {
+        (cls, f @ FieldDef(flags, Ident(name, originalName), ftpe)) <- allFields
+      } yield {
+        assert(!flags.namespace.isStatic,
+            s"unexpected static field in InlineableClassStructure at ${f.pos}")
+        RecordType.Field(allocator.freshName(name), originalName, ftpe,
+            flags.isMutable)
+      }
+      RecordType(recordFields)
+    }
+
+    private val recordFieldNames: Map[FieldID, RecordType.Field] = {
+      val elems = for (((cls, fieldDef), recordField) <- allFields.zip(recordType.fields))
+        yield FieldID(fieldDef) -> recordField
+      elems.toMap
+    }
+
+    private[OptimizerCore] def recordFieldNameOf(fieldID: FieldID)(
+        implicit pos: Position): Ident = {
+      val recordField = recordFieldNames(fieldID)
+      Ident(recordField.name, recordField.originalName)
+    }
+
+    override def equals(that: Any): Boolean = that match {
+      case that: InlineableClassStructure =>
+        this.allFields == that.allFields
+      case _ =>
+        false
+    }
+
+    override def hashCode(): Int = allFields.##
+  }
+
   private final val MaxRollbacksPerMethod = 256
 
   private final class TooManyRollbacksException
@@ -4473,18 +4513,18 @@ private[optimizer] object OptimizerCore {
       case TentativeClosureReplacement(_, _, _, _, _, cancelFun) =>
         cancelFun()
 
-      case InlineClassBeingConstructedReplacement(_, cancelFun) =>
+      case InlineClassBeingConstructedReplacement(_, _, cancelFun) =>
         cancelFun()
 
       /* Allocate an instance of RuntimeLong on the fly.
        * See the comment in finishTransformExpr about why it is desirable and
        * safe to do so.
        */
-      case InlineClassInstanceReplacement(recordType, fieldLocalDefs, _)
+      case InlineClassInstanceReplacement(structure, fieldLocalDefs, _)
           if tpe.base == ClassType(LongImpl.RuntimeLongClass) =>
-        val List(loField, hiField) = recordType.fields
-        val lo = fieldLocalDefs(loField.name).newReplacement
-        val hi = fieldLocalDefs(hiField.name).newReplacement
+        val List(loField, hiField) = structure.fieldIDs
+        val lo = fieldLocalDefs(loField).newReplacement
+        val hi = fieldLocalDefs(hiField).newReplacement
         createNewLong(lo, hi)
 
       case InlineClassInstanceReplacement(_, _, cancelFun) =>
@@ -4533,12 +4573,13 @@ private[optimizer] object OptimizerCore {
       cancelFun: CancelFun) extends LocalDefReplacement
 
   private final case class InlineClassBeingConstructedReplacement(
-      fieldLocalDefs: Map[String, LocalDef],
+      structure: InlineableClassStructure,
+      fieldLocalDefs: Map[FieldID, LocalDef],
       cancelFun: CancelFun) extends LocalDefReplacement
 
   private final case class InlineClassInstanceReplacement(
-      recordType: RecordType,
-      fieldLocalDefs: Map[String, LocalDef],
+      structure: InlineableClassStructure,
+      fieldLocalDefs: Map[FieldID, LocalDef],
       cancelFun: CancelFun) extends LocalDefReplacement
 
   private final case class InlineJSArrayReplacement(
@@ -5255,6 +5296,34 @@ private[optimizer] object OptimizerCore {
 
     final class Snapshot private[FreshNameAllocator] (
         private[FreshNameAllocator] val usedNamesToNextCounter: Map[String, Int])
+  }
+
+  final class FieldID private (val name: String) {
+    override def equals(that: Any): Boolean = that match {
+      case that: FieldID =>
+        this.name == that.name
+      case _ =>
+        false
+    }
+
+    override def hashCode(): Int =
+      name.##
+
+    override def toString(): String =
+      s"FieldID($name)"
+  }
+
+  object FieldID {
+    def apply(field: Ident): FieldID =
+      new FieldID(field.name)
+
+    def apply(fieldDef: FieldDef): FieldID = fieldDef.name match {
+      case nameIdent: Ident =>
+        apply(nameIdent)
+      case _ =>
+        throw new AssertionError(
+            s"unexpected JS field $fieldDef at ${fieldDef.pos} when building a FieldID")
+    }
   }
 
 }
