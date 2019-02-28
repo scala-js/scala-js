@@ -2620,10 +2620,6 @@ private[optimizer] abstract class OptimizerCore(
 
               case BinaryOp.Num_== => BinaryOp.Num_!=
               case BinaryOp.Num_!= => BinaryOp.Num_==
-              case BinaryOp.Num_<  => BinaryOp.Num_>=
-              case BinaryOp.Num_<= => BinaryOp.Num_>
-              case BinaryOp.Num_>  => BinaryOp.Num_<=
-              case BinaryOp.Num_>= => BinaryOp.Num_<
 
               case BinaryOp.Long_== => BinaryOp.Long_!=
               case BinaryOp.Long_!= => BinaryOp.Long_==
