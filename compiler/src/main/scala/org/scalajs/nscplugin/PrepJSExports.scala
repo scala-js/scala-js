@@ -14,6 +14,8 @@ package org.scalajs.nscplugin
 
 import scala.collection.mutable
 
+import scala.tools.nsc.Global
+
 import org.scalajs.ir.Trees.isValidIdentifier
 
 /**
@@ -21,7 +23,7 @@ import org.scalajs.ir.Trees.isValidIdentifier
  *
  *  Helpers for transformation of @JSExport annotations
  */
-trait PrepJSExports { this: PrepJSInterop =>
+trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
 
   import global._
   import jsAddons._
@@ -86,7 +88,8 @@ trait PrepJSExports { this: PrepJSInterop =>
 
       Nil
     } else {
-      assert(!baseSym.isBridge)
+      assert(!baseSym.isBridge,
+          s"genExportMember called for bridge symbol $baseSym")
 
       // Reset interface flag: Any trait will contain non-empty methods
       clsSym.resetFlag(Flags.INTERFACE)
@@ -478,7 +481,8 @@ trait PrepJSExports { this: PrepJSInterop =>
     val trgGetter =
       clsSym.tpe.member(nme.defaultGetterName(trgMethod.name, paramPos))
 
-    assert(trgGetter.exists)
+    assert(trgGetter.exists,
+        s"Cannot find default getter for param $paramPos of $trgMethod")
 
     // Although the following must be true in a correct program, we cannot
     // assert, since a graceful failure message is only generated later

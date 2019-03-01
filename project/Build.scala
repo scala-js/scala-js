@@ -580,14 +580,6 @@ object Build {
       commonSettings,
       publishSettings,
       fatalWarningsSettings,
-      scalacOptions := {
-        val prev = scalacOptions.value
-        val scalaV = scalaVersion.value
-        if (!scalaV.startsWith("2.11.") && !scalaV.startsWith("2.12."))
-          prev.filter(_ != "-Xfatal-warnings") // do not error for early initializers
-        else
-          prev
-      },
       name := "Scala.js compiler",
       crossVersion := CrossVersion.full, // because compiler api is not binary compatible
       libraryDependencies ++= Seq(

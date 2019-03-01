@@ -13,19 +13,17 @@
 package org.scalajs.nscplugin.test.util
 
 import java.io._
-import scala.tools.nsc._
 
-import reporters.{Reporter, ConsoleReporter}
+import scala.tools.nsc._
+import scala.tools.nsc.reporters.ConsoleReporter
 
 import org.junit.Assert._
-
-import scala.util.matching.Regex
 
 trait TestHelpers extends DirectTest {
 
   private[this] val errBuffer = new CharArrayWriter
 
-  override def newReporter(settings: Settings): Reporter = {
+  override def newReporter(settings: Settings): ConsoleReporter = {
     val in = new BufferedReader(new StringReader(""))
     val out = new PrintWriter(errBuffer)
     new ConsoleReporter(settings, in, out)

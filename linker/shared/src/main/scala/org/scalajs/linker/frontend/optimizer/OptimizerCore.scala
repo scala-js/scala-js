@@ -2694,10 +2694,6 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
               case BinaryOp.Double_== => BinaryOp.Double_!=
               case BinaryOp.Double_!= => BinaryOp.Double_==
-              case BinaryOp.Double_<  => BinaryOp.Double_>=
-              case BinaryOp.Double_<= => BinaryOp.Double_>
-              case BinaryOp.Double_>  => BinaryOp.Double_<=
-              case BinaryOp.Double_>= => BinaryOp.Double_<
 
               case BinaryOp.Boolean_== => BinaryOp.Boolean_!=
               case BinaryOp.Boolean_!= => BinaryOp.Boolean_==

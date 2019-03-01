@@ -117,7 +117,7 @@ import scala.collection.mutable
  *  basically define something very similar to an `object`, although without
  *  its own JS class.
  */
-abstract class ExplicitLocalJS
+abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
     extends plugins.PluginComponent with Transform with TypingTransformers
     with CompatComponent {
 

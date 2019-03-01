@@ -67,7 +67,8 @@ import nsc._
  *
  *  @author Nicolas Stucki
  */
-abstract class PreTyperComponent extends plugins.PluginComponent
+abstract class PreTyperComponent(val global: Global)
+    extends plugins.PluginComponent
     with transform.Transform with CompatComponent {
 
   import global._

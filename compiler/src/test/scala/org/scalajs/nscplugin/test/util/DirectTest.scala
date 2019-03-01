@@ -14,8 +14,9 @@ package org.scalajs.nscplugin.test.util
 
 import scala.tools.nsc._
 import scala.tools.nsc.plugins.Plugin
-import reporters.{Reporter, ConsoleReporter}
-import scala.reflect.internal.util.{ SourceFile, BatchSourceFile }
+import scala.tools.nsc.reporters.ConsoleReporter
+
+import scala.reflect.internal.util.{SourceFile, BatchSourceFile}
 
 import org.scalajs.nscplugin.ScalaJSPlugin
 
@@ -71,7 +72,8 @@ abstract class DirectTest {
   def newScalaJSPlugin(global: Global): ScalaJSPlugin =
     new ScalaJSPlugin(global)
 
-  def newReporter(settings: Settings): Reporter = new ConsoleReporter(settings)
+  def newReporter(settings: Settings): ConsoleReporter =
+    new ConsoleReporter(settings)
 
   private def newSources(codes: String*) = codes.toList.zipWithIndex map {
     case (src, idx) => new BatchSourceFile(s"newSource${idx + 1}.scala", src)

@@ -43,10 +43,14 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   /** Called when the JS ASTs are generated. Override for testing */
   def generatedJSAST(clDefs: List[Trees.ClassDef]): Unit = {}
 
-  /** Addons for JavaScript platform */
-  object jsAddons extends {
-    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
-  } with JSGlobalAddons with CompatComponent
+  /** A trick to avoid early initializers while still enforcing that `global`
+   *  is initialized early.
+   */
+  abstract class JSGlobalAddonsEarlyInit[G <: Global with Singleton](val global: G)
+      extends JSGlobalAddons
+
+  /** Addons for the JavaScript platform. */
+  object jsAddons extends JSGlobalAddonsEarlyInit[global.type](global)
 
   object scalaJSOpts extends ScalaJSOptions {
     import ScalaJSOptions.URIMap
@@ -73,41 +77,36 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   def registerModuleExports(sym: Symbol): Unit =
     PrepInteropComponent.registerClassOrModuleExports(sym)
 
-  object PreTyperComponentComponent extends {
-    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
+  object PreTyperComponentComponent extends PreTyperComponent(global) {
     val runsAfter = List("parser")
     override val runsBefore = List("namer")
-  } with PreTyperComponent
+  }
 
-  object PrepInteropComponent extends {
-    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
+  object PrepInteropComponent extends PrepJSInterop[global.type](global) {
     val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons
     val scalaJSOpts = ScalaJSPlugin.this.scalaJSOpts
     override val runsAfter = List("typer")
     override val runsBefore = List("pickle")
-  } with PrepJSInterop
+  }
 
-  object ExplicitInnerJSComponent extends {
-    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
+  object ExplicitInnerJSComponent extends ExplicitInnerJS[global.type](global) {
     val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons
     override val runsAfter = List("refchecks")
     override val runsBefore = List("uncurry")
-  } with ExplicitInnerJS
+  }
 
-  object ExplicitLocalJSComponent extends {
-    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
+  object ExplicitLocalJSComponent extends ExplicitLocalJS[global.type](global) {
     val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons
     override val runsAfter = List("specialize")
     override val runsBefore = List("explicitouter")
-  } with ExplicitLocalJS
+  }
 
-  object GenCodeComponent extends {
-    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
+  object GenCodeComponent extends GenJSCode[global.type](global) {
     val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons
     val scalaJSOpts = ScalaJSPlugin.this.scalaJSOpts
     override val runsAfter = List("mixin")
     override val runsBefore = List("delambdafy", "cleanup", "terminal")
-  } with GenJSCode {
+
     def generatedJSAST(clDefs: List[Trees.ClassDef]): Unit =
       ScalaJSPlugin.this.generatedJSAST(clDefs)
   }

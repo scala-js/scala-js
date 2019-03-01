@@ -18,7 +18,9 @@ import scala.tools.nsc._
  *
  *  @author Sébastien Doeraene
  */
-trait JSDefinitions { self: JSGlobalAddons =>
+trait JSDefinitions {
+  val global: Global
+
   import global._
 
   // scalastyle:off line.size.limit

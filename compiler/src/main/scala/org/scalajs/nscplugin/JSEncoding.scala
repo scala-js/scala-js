@@ -31,7 +31,9 @@ import ScopedVar.withScopedVars
  *
  *  @author Sébastien Doeraene
  */
-trait JSEncoding extends SubComponent { self: GenJSCode =>
+trait JSEncoding[G <: Global with Singleton] extends SubComponent {
+  self: GenJSCode[G] =>
+
   import global._
   import jsAddons._
 
@@ -260,7 +262,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     sym.isModuleClass && !foreignIsImplClass(sym)
 
   def encodeComputedNameIdentity(sym: Symbol): String = {
-    assert(sym.owner.isModuleClass)
+    assert(sym.owner.isModuleClass, sym)
     encodeClassFullName(sym.owner) + "__" + encodeMemberNameInternal(sym)
   }
 

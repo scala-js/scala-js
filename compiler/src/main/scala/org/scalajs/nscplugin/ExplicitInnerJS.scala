@@ -54,7 +54,7 @@ import scala.collection.mutable
  *  the future", with `exitingPhase(ExplicitInnerJS)`. This design is similar
  *  to how `explicitouter` works.
  */
-abstract class ExplicitInnerJS
+abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
     extends plugins.PluginComponent with InfoTransform with TypingTransformers
     with CompatComponent {
 
@@ -124,7 +124,8 @@ abstract class ExplicitInnerJS
             }
           }
 
-          val accessorName = innerJSClass.name.append("$jsclass").toTermName
+          val accessorName: TermName =
+            innerJSClass.name.append("$jsclass").toTermName
           val accessorFlags =
             Flags.SYNTHETIC | Flags.ARTIFACT | Flags.STABLE | Flags.ACCESSOR
           val accessor =

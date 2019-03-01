@@ -18,7 +18,9 @@ import org.scalajs.ir
 import ir.{Definitions, Types}
 
 /** Conversions from scalac `Type`s to the IR `Type`s and `TypeRef`s. */
-trait TypeConversions extends SubComponent { this: GenJSCode =>
+trait TypeConversions[G <: Global with Singleton] extends SubComponent {
+  this: GenJSCode[G] =>
+
   import global._
   import definitions._
 

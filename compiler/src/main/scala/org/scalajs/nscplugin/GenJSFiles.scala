@@ -24,7 +24,9 @@ import org.scalajs.ir
  *
  *  @author Sébastien Doeraene
  */
-trait GenJSFiles extends SubComponent { self: GenJSCode =>
+trait GenJSFiles[G <: Global with Singleton] extends SubComponent {
+  self: GenJSCode[G] =>
+
   import global._
   import jsAddons._
 
@@ -47,7 +49,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
     }
 
     val pathParts = fullName.split("[./]")
-    val dir = (baseDir /: pathParts.init)(_.subdirectoryNamed(_))
+    val dir = pathParts.init.foldLeft(baseDir)(_.subdirectoryNamed(_))
 
     var filename = pathParts.last
     if (sym.isModuleClass && !isImplClass(sym))

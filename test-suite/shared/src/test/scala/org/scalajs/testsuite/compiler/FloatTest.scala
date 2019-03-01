@@ -47,4 +47,58 @@ class FloatTest {
     test(-2147483500f, -2147483520)
     test(-65.67f, -65)
   }
+
+  @Test
+  def noReverseComparisons_issue3575(): Unit = {
+    import Float.NaN
+
+    @noinline def test_not_==(x: Float, y: Float): Boolean = !(x == y)
+    @noinline def test_not_!=(x: Float, y: Float): Boolean = !(x != y)
+    @noinline def test_not_<(x: Float, y: Float): Boolean = !(x < y)
+    @noinline def test_not_<=(x: Float, y: Float): Boolean = !(x <= y)
+    @noinline def test_not_>(x: Float, y: Float): Boolean = !(x > y)
+    @noinline def test_not_>=(x: Float, y: Float): Boolean = !(x >= y)
+
+    assertFalse(test_not_==(5, 5))
+    assertTrue(test_not_==(5, 10))
+    assertTrue(test_not_==(10, 5))
+    assertTrue(test_not_==(5, NaN))
+    assertTrue(test_not_==(NaN, NaN))
+    assertFalse(test_not_==(0.0f, -0.0f))
+
+    assertTrue(test_not_!=(5, 5))
+    assertFalse(test_not_!=(5, 10))
+    assertFalse(test_not_!=(10, 5))
+    assertFalse(test_not_!=(5, NaN))
+    assertFalse(test_not_!=(NaN, NaN))
+    assertTrue(test_not_!=(0.0f, -0.0f))
+
+    assertTrue(test_not_<(5, 5))
+    assertFalse(test_not_<(5, 10))
+    assertTrue(test_not_<(10, 5))
+    assertTrue(test_not_<(5, NaN))
+    assertTrue(test_not_<(NaN, NaN))
+    assertTrue(test_not_<(0.0f, -0.0f))
+
+    assertFalse(test_not_<=(5, 5))
+    assertFalse(test_not_<=(5, 10))
+    assertTrue(test_not_<=(10, 5))
+    assertTrue(test_not_<=(5, NaN))
+    assertTrue(test_not_<=(NaN, NaN))
+    assertFalse(test_not_<=(0.0f, -0.0f))
+
+    assertTrue(test_not_>(5, 5))
+    assertTrue(test_not_>(5, 10))
+    assertFalse(test_not_>(10, 5))
+    assertTrue(test_not_>(5, NaN))
+    assertTrue(test_not_>(NaN, NaN))
+    assertTrue(test_not_>(0.0f, -0.0f))
+
+    assertFalse(test_not_>=(5, 5))
+    assertTrue(test_not_>=(5, 10))
+    assertFalse(test_not_>=(10, 5))
+    assertTrue(test_not_>=(5, NaN))
+    assertTrue(test_not_>=(NaN, NaN))
+    assertFalse(test_not_>=(0.0f, -0.0f))
+  }
 }

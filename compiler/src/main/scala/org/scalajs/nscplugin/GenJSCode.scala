@@ -34,17 +34,16 @@ import ScopedVar.withScopedVars
  *
  *  @author Sébastien Doeraene
  */
-abstract class GenJSCode extends plugins.PluginComponent
-                            with TypeConversions
-                            with JSEncoding
-                            with GenJSExports
-                            with GenJSFiles
-                            with CompatComponent {
+abstract class GenJSCode[G <: Global with Singleton](val global: G)
+    extends plugins.PluginComponent with TypeConversions[G] with JSEncoding[G]
+    with GenJSExports[G] with GenJSFiles[G] with CompatComponent {
 
+  /** Not for use in the constructor body: only initialized afterwards. */
   val jsAddons: JSGlobalAddons {
     val global: GenJSCode.this.global.type
   }
 
+  /** Not for use in the constructor body: only initialized afterwards. */
   val scalaJSOpts: ScalaJSOptions
 
   import global._
@@ -1392,7 +1391,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
         val js.ApplyStatic(_, js.Ident(ctorName, _), js.This() :: ctorArgs) =
           applyCtor
-        assert(ir.Definitions.isConstructorName(ctorName))
+        assert(ir.Definitions.isConstructorName(ctorName),
+            s"unexpected super constructor call to non-constructor $ctorName at ${applyCtor.pos}")
         (prepStats, ctorName, ctorArgs)
       }
 
@@ -1481,7 +1481,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val ctorToChildren = secondaryCtors.map { ctor =>
         findCtorForwarderCall(ctor.body.get) -> ctor
-      }.groupBy(_._1).mapValues(_.map(_._2)).toMap.withDefaultValue(Nil)
+      }.groupBy(_._1).map(kv => kv._1 -> kv._2.map(_._2)).withDefaultValue(Nil)
 
       var overrideNum = -1
       def mkConstructorTree(method: js.MethodDef): ConstructorTree = {
@@ -1692,7 +1692,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val transformer = new ir.Transformers.Transformer {
         override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
           case js.VarDef(name, vtpe, mutable, rhs) =>
-            assert(isStat)
+            assert(isStat, s"found a VarDef in expression position at ${tree.pos}")
             super.transform(js.VarDef(
                 name, vtpe, newMutable(name.name, mutable), rhs)(tree.pos), isStat)
           case js.Closure(arrow, captureParams, params, body, captureValues) =>
@@ -3143,7 +3143,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       for (caze @ CaseDef(pat, guard, body) <- cases) {
-        assert(guard == EmptyTree)
+        assert(guard == EmptyTree, s"found a case guard at ${caze.pos}")
 
         def genBody(body: Tree): js.Tree = body match {
           case app @ Apply(_, Nil) if app.symbol == defaultLabelSym =>
@@ -3850,8 +3850,10 @@ abstract class GenJSCode extends plugins.PluginComponent
        * Otherwise, both lhs and rhs are already reference types (Any of String)
        * so boxing is not necessary (in particular, rhs is never a primitive).
        */
-      assert(!isPrimitiveValueType(receiver.tpe) || isStringType(args.head.tpe))
-      assert(!isPrimitiveValueType(args.head.tpe))
+      assert(!isPrimitiveValueType(receiver.tpe) || isStringType(args.head.tpe),
+          s"unexpected signature for string-concat call at $pos")
+      assert(!isPrimitiveValueType(args.head.tpe),
+          s"unexpected signature for string-concat call at $pos")
 
       val rhs = genExpr(args.head)
 
@@ -4259,12 +4261,16 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = tree.pos
 
       def genArgs1: js.Tree = {
-        assert(args.size == 1)
+        assert(args.size == 1,
+            s"Expected exactly 1 argument for JS primitive $code but got " +
+            s"${args.size} at $pos")
         genExpr(args.head)
       }
 
       def genArgs2: (js.Tree, js.Tree) = {
-        assert(args.size == 2)
+        assert(args.size == 2,
+            s"Expected exactly 2 arguments for JS primitive $code but got " +
+            s"${args.size} at $pos")
         (genExpr(args.head), genExpr(args.tail.head))
       }
 
@@ -4540,10 +4546,12 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
           if (jsInterop.isJSGetter(sym)) {
-            assert(argc == 0)
+            assert(argc == 0,
+                s"wrong number of arguments for call to JS getter $sym at $pos")
             genSelectGet(jsFunName)
           } else if (jsInterop.isJSSetter(sym)) {
-            assert(argc == 1)
+            assert(argc == 1,
+                s"wrong number of arguments for call to JS setter $sym at $pos")
             genSelectSet(jsFunName, argsNoSpread.head)
           } else if (jsInterop.isJSBracketAccess(sym)) {
             assert(argc == 1 || argc == 2,
@@ -5190,7 +5198,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         val capturedArgs =
           if (hasUnusedOuterCtorParam) initialCapturedArgs.tail
           else initialCapturedArgs
-        assert(capturedArgs.size == ctorParamDefs.size)
+        assert(capturedArgs.size == ctorParamDefs.size,
+            s"$capturedArgs does not match $ctorParamDefs")
 
         val closure = {
           if (isThisFunction) {

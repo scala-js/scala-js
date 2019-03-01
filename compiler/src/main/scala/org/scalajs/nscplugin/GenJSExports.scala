@@ -30,7 +30,9 @@ import ScopedVar.withScopedVars
  *
  *  @author Sébastien Doeraene
  */
-trait GenJSExports extends SubComponent { self: GenJSCode =>
+trait GenJSExports[G <: Global with Singleton] extends SubComponent {
+  self: GenJSCode[G] =>
+
   import global._
   import jsAddons._
   import definitions._
@@ -147,7 +149,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         classSym: Symbol, destination: ExportDestination): List[A] = {
       require(
           destination == ExportDestination.TopLevel ||
-          destination == ExportDestination.Static)
+          destination == ExportDestination.Static,
+          destination)
 
       val exportsNamesAndPositions = {
         genTopLevelOrStaticFieldExports(classSym, destination) ++
@@ -308,7 +311,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val exporteds = alts.map(ExportedSymbol)
 
       val isLiftedJSCtor = exporteds.head.isLiftedJSConstructor
-      assert(exporteds.tail.forall(_.isLiftedJSConstructor == isLiftedJSCtor))
+      assert(exporteds.tail.forall(_.isLiftedJSConstructor == isLiftedJSCtor),
+          s"Alternative constructors $alts do not agree on whether they are " +
+          "lifted JS constructors or not")
       val captureParams = if (!isLiftedJSCtor) {
         None
       } else {
@@ -330,7 +335,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
     private def genExportProperty(alts: List[Symbol], jsName: JSName,
         static: Boolean): js.PropertyDef = {
-      assert(!alts.isEmpty)
+      assert(!alts.isEmpty,
+          s"genExportProperty with empty alternatives for $jsName")
+
       implicit val pos = alts.head.pos
 
       // Separate getters and setters. Somehow isJSGetter doesn't work here. Hence
@@ -430,7 +437,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       // Create a map: argCount -> methods (methods may appear multiple times)
       val methodByArgCount =
-        methodArgCounts.groupBy(_._1).mapValues(_.map(_._2).toSet).toMap
+        methodArgCounts.groupBy(_._1).map(kv => kv._1 -> kv._2.map(_._2).toSet)
 
       // Minimum number of arguments that must be given
       val minArgc = methodByArgCount.keys.min
@@ -443,7 +450,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       // Create tuples: (methods, argCounts). This will be the cases we generate
       val caseDefinitions =
-        methodByArgCount.groupBy(_._2).mapValues(_.keySet)
+        methodByArgCount.groupBy(_._2).map(kv => kv._1 -> kv._2.keySet)
 
       // Verify stuff about caseDefinitions
       assert({
@@ -617,7 +624,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         exported: Exported, static: Boolean): js.Tree = {
       if (isNonNativeJSClass(currentClassSym) &&
           exported.sym.owner != currentClassSym.get) {
-        assert(!static)
+        assert(!static,
+            s"nonsensical JS super call in static export of ${exported.sym}")
         genApplyForSymJSSuperCall(minArgc, hasRestParam, exported)
       } else {
         genApplyForSymNonJSSuperCall(minArgc, exported, static)
@@ -653,10 +661,12 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val nameString = genExpr(jsNameOf(sym))
 
       if (jsInterop.isJSGetter(sym)) {
-        assert(allArgs.isEmpty)
+        assert(allArgs.isEmpty,
+            s"getter symbol $sym does not have a getter signature")
         js.JSSuperBracketSelect(superClass, receiver, nameString)
       } else if (jsInterop.isJSSetter(sym)) {
-        assert(allArgs.size == 1 && allArgs.head.isInstanceOf[js.Tree])
+        assert(allArgs.size == 1 && allArgs.head.isInstanceOf[js.Tree],
+            s"setter symbol $sym does not have a setter signature")
         js.Assign(js.JSSuperBracketSelect(superClass, receiver, nameString),
             allArgs.head.asInstanceOf[js.Tree])
       } else {
@@ -764,7 +774,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       assert(defaultGetter.exists,
           s"need default getter for method ${sym.fullName}")
-      assert(!defaultGetter.isOverloaded)
+      assert(!defaultGetter.isOverloaded,
+          s"found overloaded default getter $defaultGetter")
 
       val trgTree = {
         if (sym.isClassConstructor) genLoadModule(trgSym)
@@ -936,7 +947,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         if (paramIndex < params.length) {
           params(paramIndex).tpe
         } else {
-          assert(hasRepeatedParam)
+          assert(hasRepeatedParam,
+              s"$sym does not have varargs nor enough params for $paramIndex")
           params.last.tpe
         }
       }
@@ -1095,7 +1107,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
   private def genVarargRef(fixedParamCount: Int, minArgc: Int)(
       implicit pos: Position): js.Tree = {
     val restParam = genRestArgRef()
-    assert(fixedParamCount >= minArgc)
+    assert(fixedParamCount >= minArgc,
+        s"genVarargRef($fixedParamCount, $minArgc) at $pos")
     if (fixedParamCount == minArgc) restParam
     else {
       js.JSBracketMethodApply(restParam, js.StringLiteral("slice"), List(
