@@ -13,7 +13,6 @@
 package org.scalajs.linker
 
 import scala.concurrent._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 import org.junit.Test
 import org.junit.Assert._
@@ -38,12 +37,8 @@ import org.scalajs.linker.testutils._
 import org.scalajs.linker.testutils.TestIRBuilder._
 
 class AnalyzerTest {
+  import scala.concurrent.ExecutionContext.Implicits.global
   import AnalyzerTest._
-
-  private val reqsFactory = SymbolRequirement.factory("unit test")
-
-  private val fromAnalyzer = FromCore("analyzer")
-  private val fromUnitTest = FromCore("unit test")
 
   private val EAF = ApplyFlags.empty
 
@@ -431,6 +426,14 @@ class AnalyzerTest {
     await(result)
   }
 
+}
+
+object AnalyzerTest {
+  private val reqsFactory = SymbolRequirement.factory("unit test")
+
+  private val fromAnalyzer = FromCore("analyzer")
+  private val fromUnitTest = FromCore("unit test")
+
   private def validParentForKind(kind: ClassKind): Option[String] = {
     import ClassKind._
     kind match {
@@ -446,7 +449,8 @@ class AnalyzerTest {
 
   private def computeAnalysis(classDefs: Seq[ClassDef],
       symbolRequirements: SymbolRequirement = reqsFactory.none(),
-      stdlib: Option[TestIRRepo] = Some(TestIRRepo.minilib)): Future[Analysis] = {
+      stdlib: Option[TestIRRepo] = Some(TestIRRepo.minilib))(
+      implicit ec: ExecutionContext): Future[Analysis] = {
 
     val classesWithEntryPoints0 = classDefs
       .map(ir.EntryPointsInfo.forClassDef)
@@ -465,24 +469,24 @@ class AnalyzerTest {
          * possible, we don't.
          */
         val own = encodedNameToInfo.get(encodedName)
-        own.orElse(stdlib.flatMap(_.loadInfo(encodedName))).map(Future(_)(ec))
+        own.orElse(stdlib.flatMap(_.loadInfo(encodedName))).map(Future(_))
       }
     }
 
     Analyzer.computeReachability(CommonPhaseConfig(), symbolRequirements,
         allowAddingSyntheticMethods = true, inputProvider)
   }
-}
 
-object AnalyzerTest {
-  private def assertNoError(analysis: Future[Analysis]): Future[Unit] =
+  private def assertNoError(analysis: Future[Analysis])(
+      implicit ec: ExecutionContext): Future[Unit] = {
     assertExactErrors(analysis)
+  }
 
   private def assertNoError(analysis: Analysis): Unit =
     assertExactErrors(analysis)
 
   private def assertExactErrors(analysis: Future[Analysis],
-      expectedErrors: Error*): Future[Unit] = {
+      expectedErrors: Error*)(implicit ec: ExecutionContext): Future[Unit] = {
     analysis.map(assertExactErrors(_, expectedErrors: _*))
   }
 
@@ -504,7 +508,8 @@ object AnalyzerTest {
   }
 
   private def assertContainsError(msg: String, analysis: Future[Analysis])(
-      pf: PartialFunction[Error, Boolean]): Future[Unit] = {
+      pf: PartialFunction[Error, Boolean])(
+      implicit ec: ExecutionContext): Future[Unit] = {
     analysis.map(assertContainsError(msg, _)(pf))
   }
 
