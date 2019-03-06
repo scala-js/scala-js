@@ -94,16 +94,16 @@ object Transformers {
         case Select(qualifier, item) =>
           Select(transformExpr(qualifier), item)(tree.tpe)
 
-        case Apply(receiver, method, args) =>
-          Apply(transformExpr(receiver), method,
+        case Apply(flags, receiver, method, args) =>
+          Apply(flags, transformExpr(receiver), method,
               args map transformExpr)(tree.tpe)
 
-        case ApplyStatically(receiver, cls, method, args) =>
-          ApplyStatically(transformExpr(receiver), cls, method,
+        case ApplyStatically(flags, receiver, cls, method, args) =>
+          ApplyStatically(flags, transformExpr(receiver), cls, method,
               args map transformExpr)(tree.tpe)
 
-        case ApplyStatic(cls, method, args) =>
-          ApplyStatic(cls, method, args map transformExpr)(tree.tpe)
+        case ApplyStatic(flags, cls, method, args) =>
+          ApplyStatic(flags, cls, method, args map transformExpr)(tree.tpe)
 
         case UnaryOp(op, lhs) =>
           UnaryOp(op, transformExpr(lhs))
@@ -228,17 +228,17 @@ object Transformers {
       implicit val pos = memberDef.pos
 
       memberDef match {
-        case FieldDef(_, _, _, _) =>
+        case FieldDef(_, _, _) =>
           memberDef
 
         case memberDef: MethodDef =>
-          val MethodDef(static, name, args, resultType, body) = memberDef
-          MethodDef(static, name, args, resultType, body.map(transformStat))(
+          val MethodDef(flags, name, args, resultType, body) = memberDef
+          MethodDef(flags, name, args, resultType, body.map(transformStat))(
               memberDef.optimizerHints, None)
 
-        case PropertyDef(static, name, getterBody, setterArgAndBody) =>
+        case PropertyDef(flags, name, getterBody, setterArgAndBody) =>
           PropertyDef(
-              static,
+              flags,
               name,
               getterBody.map(transformStat),
               setterArgAndBody map { case (arg, body) =>

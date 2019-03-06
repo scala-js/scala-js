@@ -297,23 +297,25 @@ object Printers {
           print('.')
           print(item)
 
-        case Apply(receiver, method, args) =>
+        case Apply(flags, receiver, method, args) =>
           print(receiver)
           print(".")
           print(method)
           printArgs(args)
 
-        case ApplyStatically(receiver, cls, method, args) =>
+        case ApplyStatically(flags, receiver, cls, method, args) =>
           print(receiver)
           print(".")
           print(cls)
           print("::")
+          print(flags)
           print(method)
           printArgs(args)
 
-        case ApplyStatic(cls, method, args) =>
+        case ApplyStatic(flags, cls, method, args) =>
           print(cls)
           print("::")
+          print(flags)
           print(method)
           printArgs(args)
 
@@ -863,10 +865,9 @@ object Printers {
 
     def print(memberDef: MemberDef): Unit = {
       memberDef match {
-        case FieldDef(static, name, vtpe, mutable) =>
-          if (static)
-            print("static ")
-          if (mutable)
+        case FieldDef(flags, name, vtpe) =>
+          print(flags.namespace.prefixString)
+          if (flags.isMutable)
             print("var ")
           else
             print("val ")
@@ -875,10 +876,9 @@ object Printers {
           print(vtpe)
 
         case tree: MethodDef =>
-          val MethodDef(static, name, args, resultType, body) = tree
+          val MethodDef(flags, name, args, resultType, body) = tree
           print(tree.optimizerHints)
-          if (static)
-            print("static ")
+          print(flags.namespace.prefixString)
           print("def ")
           print(name)
           printSig(args, resultType)
@@ -888,10 +888,9 @@ object Printers {
             printBlock(body)
           }
 
-        case PropertyDef(static, name, getterBody, setterArgAndBody) =>
+        case PropertyDef(flags, name, getterBody, setterArgAndBody) =>
           getterBody foreach { body =>
-            if (static)
-              print("static ")
+            print(flags.namespace.prefixString)
             print("get ")
             print(name)
             printSig(Nil, AnyType)
@@ -903,8 +902,7 @@ object Printers {
           }
 
           setterArgAndBody foreach { case (arg, body) =>
-            if (static)
-              print("static ")
+            print(flags.namespace.prefixString)
             print("set ")
             print(name)
             printSig(arg :: Nil, NoType)
@@ -1040,6 +1038,12 @@ object Printers {
         print(OptimizerHints.toBits(optimizerHints).toString)
         print(") ")
       }
+    }
+
+    def print(flags: ApplyFlags)(
+        implicit dummy1: DummyImplicit, dummy2: DummyImplicit): Unit = {
+      if (flags.isPrivate)
+        print("private::")
     }
 
     // Make it public

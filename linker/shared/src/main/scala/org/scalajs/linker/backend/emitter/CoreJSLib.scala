@@ -1427,7 +1427,8 @@ private[emitter] object CoreJSLib {
 
     private def genScalaClassNew(className: String, ctorName: String,
         args: Tree*): Tree = {
-      Apply(New(encodeClassVar(className), Nil) DOT ctorName, args.toList)
+      Apply(envField("ct", className + "__" + ctorName),
+          New(encodeClassVar(className), Nil) :: args.toList)
     }
 
     private def genIsScalaJSObject(obj: VarRef): Tree =

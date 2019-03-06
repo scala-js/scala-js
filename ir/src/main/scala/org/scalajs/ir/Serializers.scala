@@ -225,19 +225,19 @@ object Serializers {
           writeClassRef(cls); writeIdent(item)
           writeType(tree.tpe)
 
-        case Apply(receiver, method, args) =>
+        case Apply(flags, receiver, method, args) =>
           writeByte(TagApply)
-          writeTree(receiver); writeIdent(method); writeTrees(args)
+          writeApplyFlags(flags); writeTree(receiver); writeIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
-        case ApplyStatically(receiver, cls, method, args) =>
+        case ApplyStatically(flags, receiver, cls, method, args) =>
           writeByte(TagApplyStatically)
-          writeTree(receiver); writeClassRef(cls); writeIdent(method); writeTrees(args)
+          writeApplyFlags(flags); writeTree(receiver); writeClassRef(cls); writeIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
-        case ApplyStatic(cls, method, args) =>
+        case ApplyStatic(flags, cls, method, args) =>
           writeByte(TagApplyStatic)
-          writeClassRef(cls); writeIdent(method); writeTrees(args)
+          writeApplyFlags(flags); writeClassRef(cls); writeIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
         case UnaryOp(op, lhs) =>
@@ -488,15 +488,14 @@ object Serializers {
       import buffer._
       writePosition(memberDef.pos)
       memberDef match {
-        case FieldDef(static, name, ftpe, mutable) =>
+        case FieldDef(flags, name, ftpe) =>
           writeByte(TagFieldDef)
-          writeBoolean(static)
+          writeInt(MemberFlags.toBits(flags))
           writePropertyName(name)
           writeType(ftpe)
-          writeBoolean(mutable)
 
         case methodDef: MethodDef =>
-          val MethodDef(static, name, args, resultType, body) = methodDef
+          val MethodDef(flags, name, args, resultType, body) = methodDef
 
           writeByte(TagMethodDef)
           writeOptHash(methodDef.hash)
@@ -506,7 +505,7 @@ object Serializers {
           writeInt(-1)
 
           // Write out method def
-          writeBoolean(static); writePropertyName(name)
+          writeInt(MemberFlags.toBits(flags)); writePropertyName(name)
           writeParamDefs(args); writeType(resultType); writeOptTree(body)
           writeInt(OptimizerHints.toBits(methodDef.optimizerHints))
 
@@ -515,9 +514,9 @@ object Serializers {
           writeInt(length)
           bufferUnderlying.continue()
 
-        case PropertyDef(static, name, getter, setterArgAndBody) =>
+        case PropertyDef(flags, name, getter, setterArgAndBody) =>
           writeByte(TagPropertyDef)
-          writeBoolean(static)
+          writeInt(MemberFlags.toBits(flags))
           writePropertyName(name)
           writeOptTree(getter)
           writeBoolean(setterArgAndBody.isDefined)
@@ -656,6 +655,9 @@ object Serializers {
         writeTree(tree)
         writeString(index)
     }
+
+    def writeApplyFlags(flags: ApplyFlags): Unit =
+      buffer.writeInt(ApplyFlags.toBits(flags))
 
     def writePosition(pos: Position): Unit = {
       import buffer._
@@ -853,25 +855,33 @@ object Serializers {
           }, readTree())(readType())
         case TagDebugger => Debugger()
 
-        case TagNew             => New(readClassRef(), readIdent(), readTrees())
-        case TagLoadModule      => LoadModule(readClassRef())
-        case TagStoreModule     => StoreModule(readClassRef(), readTree())
-        case TagSelect          => Select(readTree(), readIdent())(readType())
-        case TagSelectStatic    => SelectStatic(readClassRef(), readIdent())(readType())
-        case TagApply           => Apply(readTree(), readIdent(), readTrees())(readType())
-        case TagApplyStatically => ApplyStatically(readTree(), readClassRef(), readIdent(), readTrees())(readType())
-        case TagApplyStatic     => ApplyStatic(readClassRef(), readIdent(), readTrees())(readType())
-        case TagUnaryOp         => UnaryOp(readByte(), readTree())
-        case TagBinaryOp        => BinaryOp(readByte(), readTree(), readTree())
-        case TagNewArray        => NewArray(readArrayTypeRef(), readTrees())
-        case TagArrayValue      => ArrayValue(readArrayTypeRef(), readTrees())
-        case TagArrayLength     => ArrayLength(readTree())
-        case TagArraySelect     => ArraySelect(readTree(), readTree())(readType())
-        case TagRecordValue     => RecordValue(readType().asInstanceOf[RecordType], readTrees())
-        case TagIsInstanceOf    => IsInstanceOf(readTree(), readTypeRef())
-        case TagAsInstanceOf    => AsInstanceOf(readTree(), readTypeRef())
-        case TagUnbox           => Unbox(readTree(), readByte().toChar)
-        case TagGetClass        => GetClass(readTree())
+        case TagNew          => New(readClassRef(), readIdent(), readTrees())
+        case TagLoadModule   => LoadModule(readClassRef())
+        case TagStoreModule  => StoreModule(readClassRef(), readTree())
+        case TagSelect       => Select(readTree(), readIdent())(readType())
+        case TagSelectStatic => SelectStatic(readClassRef(), readIdent())(readType())
+
+        case TagApply =>
+          Apply(readApplyFlags(), readTree(), readIdent(), readTrees())(
+              readType())
+        case TagApplyStatically =>
+          ApplyStatically(readApplyFlags(), readTree(), readClassRef(),
+              readIdent(), readTrees())(readType())
+        case TagApplyStatic =>
+          ApplyStatic(readApplyFlags(), readClassRef(), readIdent(),
+              readTrees())(readType())
+
+        case TagUnaryOp      => UnaryOp(readByte(), readTree())
+        case TagBinaryOp     => BinaryOp(readByte(), readTree(), readTree())
+        case TagNewArray     => NewArray(readArrayTypeRef(), readTrees())
+        case TagArrayValue   => ArrayValue(readArrayTypeRef(), readTrees())
+        case TagArrayLength  => ArrayLength(readTree())
+        case TagArraySelect  => ArraySelect(readTree(), readTree())(readType())
+        case TagRecordValue  => RecordValue(readType().asInstanceOf[RecordType], readTrees())
+        case TagIsInstanceOf => IsInstanceOf(readTree(), readTypeRef())
+        case TagAsInstanceOf => AsInstanceOf(readTree(), readTypeRef())
+        case TagUnbox        => Unbox(readTree(), readByte().toChar)
+        case TagGetClass     => GetClass(readTree())
 
         case TagJSNew                => JSNew(readTree(), readTreeOrJSSpreads())
         case TagJSDotSelect          => JSDotSelect(readTree(), readIdent())
@@ -958,19 +968,19 @@ object Serializers {
 
       (tag: @switch) match {
         case TagFieldDef =>
-          FieldDef(readBoolean(), readPropertyName(), readType(), readBoolean())
+          FieldDef(MemberFlags.fromBits(readInt()), readPropertyName(), readType())
 
         case TagMethodDef =>
           val optHash = readOptHash()
           // read and discard the length
           val len = readInt()
           assert(len >= 0)
-          MethodDef(readBoolean(), readPropertyName(),
+          MethodDef(MemberFlags.fromBits(readInt()), readPropertyName(),
               readParamDefs(), readType(), readOptTree())(
               OptimizerHints.fromBits(readInt()), optHash)
 
         case TagPropertyDef =>
-          val static = readBoolean()
+          val flags = MemberFlags.fromBits(readInt())
           val name = readPropertyName()
           val getterBody = readOptTree()
           val setterArgAndBody = {
@@ -979,7 +989,7 @@ object Serializers {
             else
               None
           }
-          PropertyDef(static, name, getterBody, setterArgAndBody)
+          PropertyDef(flags, name, getterBody, setterArgAndBody)
       }
     }
 
@@ -1085,6 +1095,9 @@ object Serializers {
           ComputedName(readTree(), readString())
       }
     }
+
+    def readApplyFlags(): ApplyFlags =
+      ApplyFlags.fromBits(input.readInt())
 
     def readPosition(): Position = {
       import input._

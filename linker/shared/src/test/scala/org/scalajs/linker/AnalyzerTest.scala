@@ -45,6 +45,8 @@ class AnalyzerTest {
   private val fromAnalyzer = FromCore("analyzer")
   private val fromUnitTest = FromCore("unit test")
 
+  private val EAF = ApplyFlags.empty
+
   @Test
   def trivialOK(): AsyncResult = {
     val analysis = computeAnalysis(Nil)
@@ -324,7 +326,7 @@ class AnalyzerTest {
 
   @Test
   def conflictingDefaultMethods(): AsyncResult = {
-    val defaultMethodDef = MethodDef(static = false, Ident("foo__V"), Nil,
+    val defaultMethodDef = MethodDef(MemberFlags.empty, Ident("foo__V"), Nil,
         NoType, Some(Skip()))(emptyOptHints, None)
     val classDefs = Seq(
         classDef("LI1", kind = ClassKind.Interface,
@@ -403,11 +405,11 @@ class AnalyzerTest {
     val classDefs = Seq(
         classDef("LA", superClass = Some(ObjectClass), memberDefs = List(
             trivialCtor("LA"),
-            MethodDef(static = false, Ident("test__V"), Nil, NoType, Some(Block(
-                Apply(systemMod, Ident("getProperty__T__T"), List(emptyStr))(StringType),
-                Apply(systemMod, Ident("getProperty__T__T__T"), List(emptyStr))(StringType),
-                Apply(systemMod, Ident("setProperty__T__T__T"), List(emptyStr))(StringType),
-                Apply(systemMod, Ident("clearProperty__T__T"), List(emptyStr))(StringType)
+            MethodDef(MemberFlags.empty, Ident("test__V"), Nil, NoType, Some(Block(
+                Apply(EAF, systemMod, Ident("getProperty__T__T"), List(emptyStr))(StringType),
+                Apply(EAF, systemMod, Ident("getProperty__T__T__T"), List(emptyStr))(StringType),
+                Apply(EAF, systemMod, Ident("setProperty__T__T__T"), List(emptyStr))(StringType),
+                Apply(EAF, systemMod, Ident("clearProperty__T__T"), List(emptyStr))(StringType)
             )))(emptyOptHints, None)
         ))
     )

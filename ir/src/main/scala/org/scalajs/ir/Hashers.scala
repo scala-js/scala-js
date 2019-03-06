@@ -26,10 +26,10 @@ object Hashers {
     if (methodDef.hash.isDefined) methodDef
     else {
       val hasher = new TreeHasher()
-      val MethodDef(static, name, args, resultType, body) = methodDef
+      val MethodDef(flags, name, args, resultType, body) = methodDef
 
       hasher.mixPos(methodDef.pos)
-      hasher.mixBoolean(static)
+      hasher.mixInt(MemberFlags.toBits(flags))
       hasher.mixPropertyName(name)
       hasher.mixParamDefs(args)
       hasher.mixType(resultType)
@@ -38,7 +38,7 @@ object Hashers {
 
       val hash = hasher.finalizeHash()
 
-      MethodDef(static, name, args, resultType, body)(
+      MethodDef(flags, name, args, resultType, body)(
           methodDef.optimizerHints, Some(hash))(methodDef.pos)
     }
   }
@@ -214,23 +214,26 @@ object Hashers {
           mixIdent(item)
           mixType(tree.tpe)
 
-        case Apply(receiver, method, args) =>
+        case Apply(flags, receiver, method, args) =>
           mixTag(TagApply)
+          mixInt(ApplyFlags.toBits(flags))
           mixTree(receiver)
           mixIdent(method)
           mixTrees(args)
           mixType(tree.tpe)
 
-        case ApplyStatically(receiver, cls, method, args) =>
+        case ApplyStatically(flags, receiver, cls, method, args) =>
           mixTag(TagApplyStatically)
+          mixInt(ApplyFlags.toBits(flags))
           mixTree(receiver)
           mixClassRef(cls)
           mixIdent(method)
           mixTrees(args)
           mixType(tree.tpe)
 
-        case ApplyStatic(cls, method, args) =>
+        case ApplyStatic(flags, cls, method, args) =>
           mixTag(TagApplyStatic)
+          mixInt(ApplyFlags.toBits(flags))
           mixClassRef(cls)
           mixIdent(method)
           mixTrees(args)

@@ -21,6 +21,7 @@ import org.scalajs.logging._
 import org.scalajs.ir
 import ir.ClassKind
 import ir.Definitions.{decodeClassName, decodeMethodName}
+import ir.Trees.MemberNamespace
 
 /** Reachability graph produced by the [[Analyzer]].
  *
@@ -75,8 +76,8 @@ object Analysis {
     def isDataAccessed: Boolean
     def linkedFrom: Seq[From]
     def instantiatedFrom: Seq[From]
-    def methodInfos: scala.collection.Map[String, MethodInfo]
-    def staticMethodInfos: scala.collection.Map[String, MethodInfo]
+    def methodInfos(
+        namespace: MemberNamespace): scala.collection.Map[String, MethodInfo]
 
     def displayName: String = decodeClassName(encodedName)
   }
@@ -90,7 +91,8 @@ object Analysis {
   trait MethodInfo {
     def owner: ClassInfo
     def encodedName: String
-    def isStatic: Boolean
+    // Using the ordinal works around a bug of Scala 2.10
+    protected def namespaceOrdinal: Int
     def isAbstract: Boolean
     def isExported: Boolean
     def isReflProxy: Boolean
@@ -123,7 +125,18 @@ object Analysis {
     }
 
     def fullDisplayName: String =
-      owner.displayName + "." + displayName
+      this.namespace.prefixString + owner.displayName + "." + displayName
+  }
+
+  object MethodInfo {
+    implicit class MethodInfoOps private[MethodInfo] (
+        val __private_self: MethodInfo) extends AnyVal {
+
+      @inline private def self: MethodInfo = __private_self
+
+      def namespace: MemberNamespace =
+        MemberNamespace.fromOrdinal(self.namespaceOrdinal)
+    }
   }
 
   sealed trait MethodSyntheticKind

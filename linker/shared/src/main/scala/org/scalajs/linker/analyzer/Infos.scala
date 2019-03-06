@@ -27,6 +27,9 @@ object Infos {
   /** Name used for infos of top-level exports. */
   private val TopLevelExportsName = "__topLevelExports"
 
+  final case class NamespacedEncodedName(
+      namespace: MemberNamespace, encodedName: String)
+
   final class ClassInfo private (
       val encodedName: String,
       val isExported: Boolean,
@@ -57,14 +60,13 @@ object Infos {
 
   final class MethodInfo private (
       val encodedName: String,
-      val isStatic: Boolean,
+      val namespace: MemberNamespace,
       val isAbstract: Boolean,
       val isExported: Boolean,
       val staticFieldsRead: Map[String, List[String]],
       val staticFieldsWritten: Map[String, List[String]],
       val methodsCalled: Map[String, List[String]],
-      val methodsCalledStatically: Map[String, List[String]],
-      val staticMethodsCalled: Map[String, List[String]],
+      val methodsCalledStatically: Map[String, List[NamespacedEncodedName]],
       /** For a Scala class, it is instantiated with a `New`; for a JS class,
        *  its constructor is accessed with a `JSLoadConstructor`.
        */
@@ -80,24 +82,22 @@ object Infos {
   object MethodInfo {
     def apply(
         encodedName: String,
-        isStatic: Boolean,
+        namespace: MemberNamespace,
         isAbstract: Boolean,
         isExported: Boolean,
         staticFieldsRead: Map[String, List[String]],
         staticFieldsWritten: Map[String, List[String]],
         methodsCalled: Map[String, List[String]],
-        methodsCalledStatically: Map[String, List[String]],
-        staticMethodsCalled: Map[String, List[String]],
+        methodsCalledStatically: Map[String, List[NamespacedEncodedName]],
         instantiatedClasses: List[String],
         accessedModules: List[String],
         usedInstanceTests: List[String],
         accessedClassData: List[String],
         referencedClasses: List[String]): MethodInfo = {
-      new MethodInfo(encodedName, isStatic, isAbstract, isExported,
-          staticFieldsRead, staticFieldsWritten,
-          methodsCalled, methodsCalledStatically, staticMethodsCalled,
-          instantiatedClasses, accessedModules, usedInstanceTests,
-          accessedClassData, referencedClasses)
+      new MethodInfo(encodedName, namespace, isAbstract, isExported,
+          staticFieldsRead, staticFieldsWritten, methodsCalled,
+          methodsCalledStatically, instantiatedClasses, accessedModules,
+          usedInstanceTests, accessedClassData, referencedClasses)
     }
   }
 
@@ -170,15 +170,14 @@ object Infos {
 
   final class MethodInfoBuilder {
     private var encodedName: String = ""
-    private var isStatic: Boolean = false
+    private var namespace: MemberNamespace = MemberNamespace.Public
     private var isAbstract: Boolean = false
     private var isExported: Boolean = false
 
     private val staticFieldsRead = mutable.Map.empty[String, mutable.Set[String]]
     private val staticFieldsWritten = mutable.Map.empty[String, mutable.Set[String]]
     private val methodsCalled = mutable.Map.empty[String, mutable.Set[String]]
-    private val methodsCalledStatically = mutable.Map.empty[String, mutable.Set[String]]
-    private val staticMethodsCalled = mutable.Map.empty[String, mutable.Set[String]]
+    private val methodsCalledStatically = mutable.Map.empty[String, mutable.Set[NamespacedEncodedName]]
     private val instantiatedClasses = mutable.Set.empty[String]
     private val accessedModules = mutable.Set.empty[String]
     private val usedInstanceTests = mutable.Set.empty[String]
@@ -190,8 +189,8 @@ object Infos {
       this
     }
 
-    def setIsStatic(isStatic: Boolean): this.type = {
-      this.isStatic = isStatic
+    def setNamespace(namespace: MemberNamespace): this.type = {
+      this.namespace = namespace
       this
     }
 
@@ -240,8 +239,10 @@ object Infos {
            * can model their reachability by calling them statically in the
            * Object class.
            */
-          if (method != "clone__O")
-            addMethodCalledStatically(ObjectClass, method)
+          if (method != "clone__O") {
+            addMethodCalledStatically(ObjectClass,
+                NamespacedEncodedName(MemberNamespace.Public, method))
+          }
 
         case NullType | NothingType =>
           // Nothing to do
@@ -259,13 +260,9 @@ object Infos {
       this
     }
 
-    def addMethodCalledStatically(cls: String, method: String): this.type = {
+    def addMethodCalledStatically(cls: String,
+        method: NamespacedEncodedName): this.type = {
       methodsCalledStatically.getOrElseUpdate(cls, mutable.Set.empty) += method
-      this
-    }
-
-    def addStaticMethodCalled(cls: String, method: String): this.type = {
-      staticMethodsCalled.getOrElseUpdate(cls, mutable.Set.empty) += method
       this
     }
 
@@ -274,8 +271,10 @@ object Infos {
       this
     }
 
-    def addInstantiatedClass(cls: String, ctor: String): this.type =
-      addInstantiatedClass(cls).addMethodCalledStatically(cls, ctor)
+    def addInstantiatedClass(cls: String, ctor: String): this.type = {
+      addInstantiatedClass(cls).addMethodCalledStatically(cls,
+          NamespacedEncodedName(MemberNamespace.Constructor, ctor))
+    }
 
     def addAccessedModule(cls: String): this.type = {
       accessedModules += cls
@@ -318,21 +317,20 @@ object Infos {
     }
 
     def result(): MethodInfo = {
-      def toMapOfLists(
-          m: mutable.Map[String, mutable.Set[String]]): Map[String, List[String]] = {
+      def toMapOfLists[A](
+          m: mutable.Map[String, mutable.Set[A]]): Map[String, List[A]] = {
         m.mapValues(_.toList).toMap
       }
 
       MethodInfo(
           encodedName = encodedName,
-          isStatic = isStatic,
+          namespace = namespace,
           isAbstract = isAbstract,
           isExported = isExported,
           staticFieldsRead = toMapOfLists(staticFieldsRead),
           staticFieldsWritten = toMapOfLists(staticFieldsWritten),
           methodsCalled = toMapOfLists(methodsCalled),
           methodsCalledStatically = toMapOfLists(methodsCalledStatically),
-          staticMethodsCalled = toMapOfLists(staticMethodsCalled),
           instantiatedClasses = instantiatedClasses.toList,
           accessedModules = accessedModules.toList,
           usedInstanceTests = usedInstanceTests.toList,
@@ -418,7 +416,7 @@ object Infos {
     def generateMethodInfo(methodDef: MethodDef): MethodInfo = {
       builder
         .setEncodedName(methodDef.name.encodedName)
-        .setIsStatic(methodDef.static)
+        .setNamespace(methodDef.flags.namespace)
         .setIsAbstract(methodDef.body.isEmpty)
         .setIsExported(!methodDef.name.isInstanceOf[Ident])
 
@@ -442,7 +440,7 @@ object Infos {
     def generatePropertyInfo(propertyDef: PropertyDef): MethodInfo = {
       builder
         .setEncodedName(propertyDef.name.encodedName)
-        .setIsStatic(propertyDef.static)
+        .setNamespace(propertyDef.flags.namespace)
         .setIsExported(true)
 
       propertyDef.name match {
@@ -498,12 +496,16 @@ object Infos {
             case SelectStatic(ClassRef(cls), Ident(field, _)) =>
               builder.addStaticFieldRead(cls, field)
 
-            case Apply(receiver, Ident(method, _), _) =>
+            case Apply(flags, receiver, Ident(method, _), _) =>
               builder.addMethodCalled(receiver.tpe, method)
-            case ApplyStatically(_, ClassRef(cls), method, _) =>
-              builder.addMethodCalledStatically(cls, method.name)
-            case ApplyStatic(ClassRef(cls), method, _) =>
-              builder.addStaticMethodCalled(cls, method.name)
+            case ApplyStatically(flags, _, ClassRef(cls), method, _) =>
+              val namespace = MemberNamespace.forNonStaticCall(flags)
+              builder.addMethodCalledStatically(cls,
+                  NamespacedEncodedName(namespace, method.name))
+            case ApplyStatic(flags, ClassRef(cls), method, _) =>
+              val namespace = MemberNamespace.forStaticCall(flags)
+              builder.addMethodCalledStatically(cls,
+                  NamespacedEncodedName(namespace, method.name))
 
             case LoadModule(ClassRef(cls)) =>
               builder.addAccessedModule(cls)

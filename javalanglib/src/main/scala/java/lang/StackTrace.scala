@@ -197,7 +197,7 @@ private[lang] object StackTrace {
    */
   private def extractClassMethod(functionName: String): (String, String) = {
     val PatC = """^(?:Object\.|\[object Object\]\.)?\$c_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
-    val PatS = """^(?:Object\.|\[object Object\]\.)?\$[sf]_((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatS = """^(?:Object\.|\[object Object\]\.)?\$(?:ct|ps?|s|f)_((?:_[^_]|[^_])+)__([^\.]+)$""".re
     val PatN = """^new (?:Object\.|\[object Object\]\.)?\$c_([^\.]+)$""".re
     val PatM = """^(?:Object\.|\[object Object\]\.)?\$m_([^\.]+)$""".re
 

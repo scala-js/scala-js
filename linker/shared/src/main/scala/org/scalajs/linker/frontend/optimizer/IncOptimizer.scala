@@ -15,6 +15,8 @@ package org.scalajs.linker.frontend.optimizer
 import scala.collection.{GenTraversableOnce, GenIterable}
 import scala.collection.mutable
 
+import org.scalajs.ir.Trees.MemberNamespace
+
 import org.scalajs.linker.standard._
 
 final class IncOptimizer(config: CommonPhaseConfig)
@@ -77,8 +79,9 @@ final class IncOptimizer(config: CommonPhaseConfig)
   private class SeqInterfaceType(encName: String) extends InterfaceType(encName) {
     private val ancestorsAskers = mutable.Set.empty[MethodImpl]
     private val dynamicCallers = mutable.Map.empty[String, mutable.Set[MethodImpl]]
-    private val staticCallers = mutable.Map.empty[String, mutable.Set[MethodImpl]]
-    private val callersOfStatic = mutable.Map.empty[String, mutable.Set[MethodImpl]]
+
+    private val staticCallers =
+      Array.fill(MemberNamespace.Count)(mutable.Map.empty[String, mutable.Set[MethodImpl]])
 
     private var _ancestors: List[String] = encodedName :: Nil
 
@@ -108,27 +111,27 @@ final class IncOptimizer(config: CommonPhaseConfig)
     def registerDynamicCaller(methodName: String, caller: MethodImpl): Unit =
       dynamicCallers.getOrElseUpdate(methodName, mutable.Set.empty) += caller
 
-    def registerStaticCaller(methodName: String, caller: MethodImpl): Unit =
-      staticCallers.getOrElseUpdate(methodName, mutable.Set.empty) += caller
-
-    def registerCallerOfStatic(methodName: String, caller: MethodImpl): Unit =
-      callersOfStatic.getOrElseUpdate(methodName, mutable.Set.empty) += caller
+    def registerStaticCaller(namespaceOrdinal: Int, methodName: String,
+        caller: MethodImpl): Unit = {
+      staticCallers(namespaceOrdinal)
+        .getOrElseUpdate(methodName, mutable.Set.empty) += caller
+    }
 
     def unregisterDependee(dependee: MethodImpl): Unit = {
       ancestorsAskers -= dependee
       dynamicCallers.values.foreach(_ -= dependee)
-      staticCallers.values.foreach(_ -= dependee)
-      callersOfStatic.values.foreach(_ -= dependee)
+      staticCallers.foreach(_.values.foreach(_ -= dependee))
     }
 
     def tagDynamicCallersOf(methodName: String): Unit =
       dynamicCallers.remove(methodName).foreach(_.foreach(_.tag()))
 
-    def tagStaticCallersOf(methodName: String): Unit =
-      staticCallers.remove(methodName).foreach(_.foreach(_.tag()))
-
-    def tagCallersOfStatic(methodName: String): Unit =
-      callersOfStatic.remove(methodName).foreach(_.foreach(_.tag()))
+    def tagStaticCallersOf(namespaceOrdinal: Int,
+        methodName: String): Unit = {
+      staticCallers(namespaceOrdinal)
+        .remove(methodName)
+        .foreach(_.foreach(_.tag()))
+    }
   }
 
   private class SeqMethodImpl(owner: MethodContainer,

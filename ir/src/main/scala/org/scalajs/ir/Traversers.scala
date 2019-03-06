@@ -87,15 +87,15 @@ object Traversers {
       case Select(qualifier, item) =>
         traverse(qualifier)
 
-      case Apply(receiver, method, args) =>
+      case Apply(_, receiver, method, args) =>
         traverse(receiver)
         args foreach traverse
 
-      case ApplyStatically(receiver, cls, method, args) =>
+      case ApplyStatically(_, receiver, cls, method, args) =>
         traverse(receiver)
         args foreach traverse
 
-      case ApplyStatic(cls, method, args) =>
+      case ApplyStatic(_, cls, method, args) =>
         args foreach traverse
 
       case UnaryOp(op, lhs) =>
@@ -220,7 +220,7 @@ object Traversers {
 
     def traverseMemberDef(memberDef: MemberDef): Unit = {
       memberDef match {
-        case FieldDef(_, _, _, _) =>
+        case FieldDef(_, _, _) =>
 
         case MethodDef(_, _, _, _, body) =>
           body.foreach(traverse)

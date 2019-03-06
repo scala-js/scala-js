@@ -22,9 +22,9 @@ import ir.Definitions
 
 /** A ClassDef after linking.
  *
- *  Note that the [[version]] in the LinkedClass does not cover
- *  [[staticMethods]], [[memberMethods]] and [[exportedMembers]] as they have
- *  their individual versions. (The collections themselves are not versioned).
+ *  Note that the [[version]] in the LinkedClass does not cover [[methods]] nor
+ *  [[exportedMembers]] as they have their individual versions. (The
+ *  collections themselves are not versioned).
  *
  *  Moreover, the [[version]] is relative to the identity of a LinkedClass.
  *  The definition of identity varies as linked classes progress through the
@@ -44,8 +44,7 @@ final class LinkedClass(
     val jsSuperClass: Option[Tree],
     val jsNativeLoadSpec: Option[JSNativeLoadSpec],
     val fields: List[FieldDef],
-    val staticMethods: List[Versioned[MethodDef]],
-    val memberMethods: List[Versioned[MethodDef]],
+    val methods: List[Versioned[MethodDef]],
     val exportedMembers: List[Versioned[MemberDef]],
     val topLevelExports: List[Versioned[TopLevelExportDef]],
     val optimizerHints: OptimizerHints,
@@ -62,9 +61,7 @@ final class LinkedClass(
 
   val hasEntryPoint: Boolean = {
     topLevelExports.nonEmpty ||
-    staticMethods.exists { m =>
-      m.value.encodedName == Definitions.StaticInitializerName
-    }
+    methods.exists(_.value.flags.namespace == MemberNamespace.StaticConstructor)
   }
 
   def fullName: String = Definitions.decodeClassName(encodedName)
@@ -72,8 +69,7 @@ final class LinkedClass(
   private[linker] def refined(
       kind: ClassKind,
       fields: List[FieldDef],
-      staticMethods: List[Versioned[MethodDef]],
-      memberMethods: List[Versioned[MethodDef]],
+      methods: List[Versioned[MethodDef]],
       hasInstances: Boolean,
       hasInstanceTests: Boolean,
       hasRuntimeTypeInfo: Boolean
@@ -81,8 +77,7 @@ final class LinkedClass(
     copy(
         kind = kind,
         fields = fields,
-        staticMethods = staticMethods,
-        memberMethods = memberMethods,
+        methods = methods,
         hasInstances = hasInstances,
         hasInstanceTests = hasInstanceTests,
         hasRuntimeTypeInfo = hasRuntimeTypeInfo
@@ -90,13 +85,9 @@ final class LinkedClass(
   }
 
   private[linker] def optimized(
-      staticMethods: List[Versioned[MethodDef]],
-      memberMethods: List[Versioned[MethodDef]]
+      methods: List[Versioned[MethodDef]]
   ): LinkedClass = {
-    copy(
-        staticMethods = staticMethods,
-        memberMethods = memberMethods
-    )
+    copy(methods = methods)
   }
 
   private def copy(
@@ -108,8 +99,7 @@ final class LinkedClass(
       jsSuperClass: Option[Tree] = this.jsSuperClass,
       jsNativeLoadSpec: Option[JSNativeLoadSpec] = this.jsNativeLoadSpec,
       fields: List[FieldDef] = this.fields,
-      staticMethods: List[Versioned[MethodDef]] = this.staticMethods,
-      memberMethods: List[Versioned[MethodDef]] = this.memberMethods,
+      methods: List[Versioned[MethodDef]] = this.methods,
       exportedMembers: List[Versioned[MemberDef]] = this.exportedMembers,
       topLevelExports: List[Versioned[TopLevelExportDef]] = this.topLevelExports,
       optimizerHints: OptimizerHints = this.optimizerHints,
@@ -128,8 +118,7 @@ final class LinkedClass(
         jsSuperClass,
         jsNativeLoadSpec,
         fields,
-        staticMethods,
-        memberMethods,
+        methods,
         exportedMembers,
         topLevelExports,
         optimizerHints,

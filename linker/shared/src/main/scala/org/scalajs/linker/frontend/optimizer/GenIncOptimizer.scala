@@ -66,8 +66,9 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
   private var objectClass: Class = _
   private val classes = CollOps.emptyMap[String, Class]
-  private val statics = CollOps.emptyParMap[String, StaticsNamespace]
-  private val defaults = CollOps.emptyParMap[String, Defaults]
+
+  private val staticLikes =
+    CollOps.emptyParMap[String, Array[StaticLikeNamespace]]
 
   private[optimizer] def getInterface(encodedName: String): InterfaceType
 
@@ -76,20 +77,6 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
   private[optimizer] def newMethodImpl(owner: MethodContainer,
       encodedName: String): MethodImpl
-
-  private def findStaticsNamespace(encodedName: String): StaticsNamespace =
-    statics(encodedName)
-  private def findClass(encodedName: String): Class =
-    classes(encodedName)
-  private def findDefaults(encodedName: String): Defaults =
-    defaults(encodedName)
-
-  private def getStaticsNamespace(encodedName: String): Option[StaticsNamespace] =
-    statics.get(encodedName)
-  private def getClass(encodedName: String): Option[Class] =
-    classes.get(encodedName)
-  private def getDefaults(encodedName: String): Option[Defaults] =
-    defaults.get(encodedName)
 
   private def withLogger[A](logger: Logger)(body: => A): A = {
     assert(this.logger == null)
@@ -115,17 +102,30 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       }
 
       val newLinkedClasses = for (linkedClass <- unit.classDefs) yield {
-        def defs(container: Option[MethodContainer]) =
-          container.fold[List[Versioned[MethodDef]]](Nil)(_.optimizedDefs)
-
         val encodedName = linkedClass.encodedName
-        val memberNamespace =
-          if (linkedClass.kind == ClassKind.Interface) getDefaults(encodedName)
-          else getClass(encodedName)
+        val staticLikeContainers = staticLikes(encodedName)
 
-        linkedClass.optimized(
-            staticMethods = defs(getStaticsNamespace(encodedName)),
-            memberMethods = defs(memberNamespace))
+        val publicContainer = classes.get(encodedName).getOrElse {
+          /* For interfaces, we need to look at default methods.
+           * For other kinds of classes, the public namespace is necessarily
+           * empty.
+           */
+          val container = staticLikeContainers(MemberNamespace.Public.ordinal)
+          assert(
+              linkedClass.kind == ClassKind.Interface || container.methods.isEmpty,
+              linkedClass.encodedName -> linkedClass.kind)
+          container
+        }
+
+        val newMethods = for (m <- linkedClass.methods) yield {
+          val namespace = m.value.flags.namespace
+          val container =
+            if (namespace == MemberNamespace.Public) publicContainer
+            else staticLikeContainers(namespace.ordinal)
+          container.methods(m.value.encodedName).optimizedMethodDef
+        }
+
+        linkedClass.optimized(methods = newMethods)
       }
 
       new LinkingUnit(unit.coreSpec, newLinkedClasses, unit.moduleInitializers)
@@ -136,83 +136,61 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
    *  UPDATE PASS ONLY. (This IS the update pass).
    */
   private def updateAndTagEverything(linkedClasses: List[LinkedClass]): Unit = {
+    val neededStaticLikes = CollOps.emptyParMap[String, LinkedClass]
     val neededClasses = CollOps.emptyParMap[String, LinkedClass]
-    val neededStatics = CollOps.emptyParMap[String, LinkedClass]
-    val neededDefaults = CollOps.emptyParMap[String, LinkedClass]
     for (linkedClass <- linkedClasses) {
       // Update the list of ancestors for all linked classes
       getInterface(linkedClass.encodedName).ancestors = linkedClass.ancestors
+
+      CollOps.put(neededStaticLikes, linkedClass.encodedName, linkedClass)
 
       if (linkedClass.hasInstances &&
           (linkedClass.kind.isClass || linkedClass.kind == ClassKind.HijackedClass)) {
         CollOps.put(neededClasses, linkedClass.encodedName, linkedClass)
       }
-
-      if (linkedClass.staticMethods.nonEmpty)
-        CollOps.put(neededStatics, linkedClass.encodedName, linkedClass)
-
-      if (linkedClass.kind == ClassKind.Interface &&
-          linkedClass.memberMethods.nonEmpty) {
-        CollOps.put(neededDefaults, linkedClass.encodedName, linkedClass)
-      }
     }
 
-    /* Remove deleted statics/defaults, and update existing statics/defaults.
+    /* Remove deleted static-like stuff, and update existing ones.
      * We don't even have to notify callers in case of additions or removals
      * because callers have got to be invalidated by themselves.
      * Only changed methods need to trigger notifications.
      *
      * Non-batch mode only.
      */
-    assert(!batchMode || (statics.isEmpty && defaults.isEmpty))
+    assert(!batchMode || staticLikes.isEmpty)
     if (!batchMode) {
-      for {
-        (containerMap, neededLinkedClasses) <-
-          Seq((statics, neededStatics), (defaults, neededDefaults))
-      } {
-        CollOps.retain(containerMap) { (namespaceName, namespace) =>
-          CollOps.remove(neededLinkedClasses, namespaceName).fold {
-            /* Deleted static/defaults context. Mark all its methods as
-             * deleted, and remove it from known static/default contexts.
-             */
-            namespace.methods.values.foreach(_.delete())
-
-            false
-          } { linkedClass =>
-            /* Existing static/default context. Update it. */
-            val (added, changed, removed) =
-              namespace.updateWith(linkedClass)
-
-            if (containerMap eq statics) {
-              for (method <- changed)
-                namespace.myInterface.tagCallersOfStatic(method)
-            } else {
-              for (method <- changed)
-                namespace.myInterface.tagStaticCallersOf(method)
+      CollOps.retain(staticLikes) { (encodedName, staticLikeNamespaces) =>
+        CollOps.remove(neededStaticLikes, encodedName).fold {
+          /* Deleted static-like context. Mark all its methods as deleted, and
+           * remove it from known static-like contexts.
+           */
+          for (staticLikeNamespace <- staticLikeNamespaces)
+            staticLikeNamespace.methods.values.foreach(_.delete())
+          false
+        } { linkedClass =>
+          /* Existing static-like context. Update it. */
+          for (staticLikeNamespace <- staticLikeNamespaces) {
+            val (_, changed, _) = staticLikeNamespace.updateWith(linkedClass)
+            for (method <- changed) {
+              staticLikeNamespace.myInterface.tagStaticCallersOf(
+                  staticLikeNamespace.namespace.ordinal, method)
             }
-
-            true
           }
+          true
         }
       }
     }
 
-    /* Add new statics.
+    /* Add new static-like stuff.
      * Easy, we don't have to notify anyone.
      */
-    for (linkedClass <- neededStatics.values) {
-      val staticsNS = new StaticsNamespace(linkedClass.encodedName)
-      CollOps.put(statics, staticsNS.encodedName, staticsNS)
-      staticsNS.updateWith(linkedClass)
-    }
-
-    /* Add new defaults.
-     * Easy, we don't have to notify anyone.
-     */
-    for (linkedClass <- neededDefaults.values) {
-      val defaultsNS = new Defaults(linkedClass.encodedName)
-      CollOps.put(defaults, defaultsNS.encodedName, defaultsNS)
-      defaultsNS.updateWith(linkedClass)
+    for (linkedClass <- neededStaticLikes.values) {
+      val namespaces = Array.tabulate(MemberNamespace.Count) { ord =>
+        new StaticLikeNamespace(linkedClass.encodedName,
+            MemberNamespace.fromOrdinal(ord))
+      }
+      CollOps.put(staticLikes, linkedClass.encodedName, namespaces)
+      namespaces.foreach(_.updateWith(linkedClass))
     }
 
     if (!batchMode) {
@@ -282,11 +260,14 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     logger.debug(s"Optimizer: Optimizing $count methods.")
 
   /** Base class for [[GenIncOptimizer.Class]] and
-   *  [[GenIncOptimizer.StaticsNamespace]].
+   *  [[GenIncOptimizer.StaticLikeNamespace]].
    */
   private[optimizer] abstract class MethodContainer(val encodedName: String,
-      val isStatic: Boolean) {
-    def thisType: Type
+      val namespace: MemberNamespace) {
+
+    def thisType: Type =
+      if (namespace.isStatic) NoType
+      else ClassType(encodedName)
 
     val myInterface = getInterface(encodedName)
 
@@ -309,9 +290,21 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       val changedMethods = Set.newBuilder[String]
       val deletedMethods = Set.newBuilder[String]
 
-      val linkedMethodDefs =
-        if (isStatic) linkedClass.staticMethods
-        else linkedClass.memberMethods
+      val applicableNamespaceOrdinal = this match {
+        case _: StaticLikeNamespace
+            if namespace == MemberNamespace.Public &&
+                (linkedClass.kind.isClass || linkedClass.kind == ClassKind.HijackedClass) =>
+          /* The public non-static namespace for a class is always empty,
+           * because its would-be content must be handled by the `Class`
+           * instead.
+           */
+          -1 // different from all `ordinal` values of legit namespaces
+        case _ =>
+          namespace.ordinal
+      }
+      val linkedMethodDefs = linkedClass.methods.withFilter {
+        _.value.flags.namespace.ordinal == applicableNamespaceOrdinal
+      }
 
       val newMethodNames = linkedMethodDefs.map(_.value.encodedName).toSet
       val methodSetChanged = methods.keySet != newMethodNames
@@ -353,6 +346,11 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
       (addedMethods.result(), changedMethods.result(), deletedMethods.result())
     }
+
+    def lookupMethod(methodName: String): Option[MethodImpl]
+
+    override def toString(): String =
+      namespace.prefixString + encodedName
   }
 
   /** Class in the class hierarchy (not an interface).
@@ -362,8 +360,9 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
    *  [[Class]] form a tree of the class hierarchy.
    */
   private[optimizer] class Class(val superClass: Option[Class],
-      _encodedName: String) extends MethodContainer(
-      _encodedName, isStatic = false) {
+      _encodedName: String)
+      extends MethodContainer(_encodedName, MemberNamespace.Public) {
+
     if (encodedName == Definitions.ObjectClass) {
       assert(superClass.isEmpty)
       assert(objectClass == null)
@@ -378,8 +377,6 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     /** Reverse parent chain from Object to this. */
     val reverseParentChain: List[Class] =
       parentChain.reverse
-
-    def thisType: Type = ClassType(encodedName)
 
     var interfaces: Set[InterfaceType] = Set.empty
     var subclasses: CollOps.ParIterable[Class] = CollOps.emptyParIterable
@@ -506,7 +503,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
       // Tag callers with static calls
       for (methodName <- methodAttributeChanges)
-        myInterface.tagStaticCallersOf(methodName)
+        myInterface.tagStaticCallersOf(namespace.ordinal, methodName)
 
       // Module class specifics
       updateHasElidableModuleAccessor()
@@ -514,7 +511,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       // Inlineable class
       if (updateIsInlineable(linkedClass)) {
         for (method <- methods.values; if isConstructorName(method.encodedName))
-          myInterface.tagStaticCallersOf(method.encodedName)
+          myInterface.tagStaticCallersOf(namespace.ordinal, method.encodedName)
       }
 
       // Recurse in subclasses
@@ -541,9 +538,12 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
     /** UPDATE PASS ONLY. */
     def updateHasElidableModuleAccessor(): Unit = {
+      def lookupModuleConstructor: Option[MethodImpl] =
+        staticLikes(encodedName)(MemberNamespace.Constructor.ordinal).methods.get("init___")
+
       hasElidableModuleAccessor =
         isAdHocElidableModuleAccessor(encodedName) ||
-        (isModuleClass && lookupMethod("init___").exists(isElidableModuleConstructor))
+        (isModuleClass && lookupModuleConstructor.exists(isElidableModuleConstructor))
     }
 
     /** UPDATE PASS ONLY. */
@@ -556,10 +556,11 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       } else {
         val allFields = reverseParentChain.flatMap(_.fields)
         val (fieldValues, fieldTypes) = (for {
-          f @ FieldDef(false, Ident(name, originalName), tpe, mutable) <- allFields
+          f @ FieldDef(flags, Ident(name, originalName), tpe) <- allFields
+          if !flags.namespace.isStatic
         } yield {
           (zeroOf(tpe)(f.pos),
-              RecordType.Field(name, originalName, tpe, mutable))
+              RecordType.Field(name, originalName, tpe, flags.isMutable))
         }).unzip
         tryNewInlineable = Some(
             RecordValue(RecordType(fieldTypes), fieldValues)(Position.NoPosition))
@@ -602,7 +603,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
          * not just added.
          */
         for (methodName <- allMethodNames)
-          myInterface.tagStaticCallersOf(methodName)
+          myInterface.tagStaticCallersOf(namespace.ordinal, methodName)
       }
 
       updateHasElidableModuleAccessor()
@@ -620,31 +621,32 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         case Assign(Select(This(), _), rhs) => isTriviallySideEffectFree(rhs)
 
         // Mixin constructor, 2.11
-        case ApplyStatic(ClassRef(cls), methodName, List(This())) =>
-          statics(cls).methods(methodName.name).originalDef.body.exists {
+        case ApplyStatic(flags, ClassRef(cls), methodName, List(This()))
+            if !flags.isPrivate =>
+          val container = staticLikes(cls)(MemberNamespace.PublicStatic.ordinal)
+          container.methods(methodName.name).originalDef.body.exists {
             case Skip() => true
             case _      => false
           }
 
         // Mixin constructor, 2.12+
-        case ApplyStatically(This(), ClassRef(cls), methodName, Nil)
-            if !classes.contains(cls) =>
+        case ApplyStatically(flags, This(), ClassRef(cls), methodName, Nil)
+            if !flags.isPrivate && !classes.contains(cls) =>
           // Since cls is not in classes, it must be a default method call.
-          defaults(cls).methods.get(methodName.name) exists { methodDef =>
+          val container = staticLikes(cls)(MemberNamespace.Public.ordinal)
+          container.methods.get(methodName.name) exists { methodDef =>
             methodDef.originalDef.body exists {
               case Skip() => true
               case _      => false
             }
           }
 
-        // Super class constructor.
-        case ApplyStatically(This(), ClassRef(cls), methodName, args) =>
-          Definitions.isConstructorName(methodName.name) &&
+        // Delegation to another constructor (super or in the same class)
+        case ApplyStatically(flags, This(), ClassRef(cls), methodName, args)
+            if flags.isConstructor =>
+          val namespace = MemberNamespace.Constructor.ordinal
           args.forall(isTriviallySideEffectFree) &&
-          impl.owner.asInstanceOf[Class].superClass.exists { superCls =>
-            superCls.encodedName == cls &&
-            superCls.lookupMethod(methodName.name).exists(isElidableModuleConstructor)
-          }
+          staticLikes(cls)(namespace).methods.get(methodName.name).exists(isElidableModuleConstructor)
 
         case StoreModule(_, _) => true
         case _                 => isTriviallySideEffectFree(tree)
@@ -682,24 +684,13 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
   }
 
   /** Namespace for static members of a class. */
-  private[optimizer] class StaticsNamespace(
-      _encodedName: String) extends MethodContainer(
-      _encodedName, isStatic = true) {
+  private[optimizer] class StaticLikeNamespace(encodedName: String,
+      namespace: MemberNamespace)
+      extends MethodContainer(encodedName, namespace) {
 
-    def thisType: Type = NoType
-
-    override def toString(): String =
-      s"static $encodedName"
-  }
-
-  /** Default methods of an interface. */
-  private[optimizer] class Defaults(_encodedName: String)
-      extends MethodContainer(_encodedName, isStatic = false) {
-
-    def thisType: Type = ClassType(encodedName)
-
-    override def toString(): String =
-      s"defaults $encodedName"
+    /** BOTH PASSES. */
+    final def lookupMethod(methodName: String): Option[MethodImpl] =
+      methods.get(methodName)
   }
 
   /** Thing from which a [[MethodImpl]] can unregister itself from. */
@@ -752,12 +743,9 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     /** Register a static-caller of an instance method.
      *  PROCESS PASS ONLY.
      */
-    def registerStaticCaller(methodName: String, caller: MethodImpl): Unit
-
-    /** Register a caller of a static method.
-     *  PROCESS PASS ONLY.
-     */
-    def registerCallerOfStatic(methodName: String, caller: MethodImpl): Unit
+    // Using the ordinal works around a bug of Scala 2.10
+    def registerStaticCaller(namespaceOrdinal: Int, methodName: String,
+        caller: MethodImpl): Unit
 
     /** Tag the dynamic-callers of an instance method.
      *  UPDATE PASS ONLY.
@@ -767,12 +755,9 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     /** Tag the static-callers of an instance method.
      *  UPDATE PASS ONLY.
      */
-    def tagStaticCallersOf(methodName: String): Unit
-
-    /** Tag the callers of a static method.
-     *  UPDATE PASS ONLY.
-     */
-    def tagCallersOfStatic(methodName: String): Unit
+    // Using the ordinal works around a bug of Scala 2.10
+    def tagStaticCallersOf(namespaceOrdinal: Int,
+        methodName: String): Unit
   }
 
   /** A method implementation.
@@ -828,17 +813,8 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
      *  PROCESS PASS ONLY.
      */
     private def registerStaticCall(intf: InterfaceType,
-        methodName: String): Unit = {
-      intf.registerStaticCaller(methodName, this)
-      registeredTo(intf)
-    }
-
-    /** Register that this method is a caller of a static method.
-     *  PROCESS PASS ONLY.
-     */
-    private def registerCallStatic(intf: InterfaceType,
-        methodName: String): Unit = {
-      intf.registerCallerOfStatic(methodName, this)
+        namespace: MemberNamespace, methodName: String): Unit = {
+      intf.registerStaticCaller(namespace.ordinal, methodName, this)
       registeredTo(intf)
     }
 
@@ -955,25 +931,19 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       }
 
       /** Look up the target of a static call to an instance method. */
-      protected def staticCall(className: String,
+      protected def staticCall(className: String, namespace: MemberNamespace,
           methodName: String): Option[MethodID] = {
-        classes.get(className).fold {
-          // If it's not a class, it must be a call to a default intf method
-          val defaultsNS = defaults(className)
-          MethodImpl.this.registerStaticCall(defaultsNS.myInterface, methodName)
-          defaultsNS.methods.get(methodName)
-        } { clazz =>
-          MethodImpl.this.registerStaticCall(clazz.myInterface, methodName)
-          clazz.lookupMethod(methodName)
-        }
-      }
 
-      /** Look up the target of a call to a static method. */
-      protected def callStatic(className: String,
-          methodName: String): Option[MethodID] = {
-        val staticsNS = statics(className)
-        registerCallStatic(staticsNS.myInterface, methodName)
-        staticsNS.methods.get(methodName)
+        def inStaticsLike =
+          staticLikes(className)(namespace.ordinal)
+
+        val container =
+          if (namespace != MemberNamespace.Public) inStaticsLike
+          else classes.get(className).getOrElse(inStaticsLike)
+
+        MethodImpl.this.registerStaticCall(container.myInterface, namespace,
+            methodName)
+        container.lookupMethod(methodName)
       }
 
       protected def getAncestorsOf(intfName: String): List[String] = {

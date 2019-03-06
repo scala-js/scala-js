@@ -138,8 +138,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
     import ir.Trees._
 
     val fields = mutable.Buffer.empty[FieldDef]
-    val staticMethods = mutable.Buffer.empty[Versioned[MethodDef]]
-    val memberMethods = mutable.Buffer.empty[Versioned[MethodDef]]
+    val methods = mutable.Buffer.empty[Versioned[MethodDef]]
     val exportedMembers = mutable.Buffer.empty[Versioned[MemberDef]]
 
     def linkedMethod(m: MethodDef) = {
@@ -158,22 +157,17 @@ final class BaseLinker(config: CommonPhaseConfig) {
 
       case m: MethodDef =>
         val methodInfo =
-          if (m.static) analyzerInfo.staticMethodInfos(m.encodedName)
-          else analyzerInfo.methodInfos(m.encodedName)
+          analyzerInfo.methodInfos(m.flags.namespace)(m.encodedName)
 
         if (methodInfo.isReachable) {
           assert(m.body.isDefined,
               s"The abstract method ${classDef.name.name}.${m.encodedName} " +
               "is reachable.")
           val linked = linkedMethod(m)
-          if (m.name.isInstanceOf[Ident]) {
-            if (m.static)
-              staticMethods += linked
-            else
-              memberMethods += linked
-          } else {
+          if (m.name.isInstanceOf[Ident])
+            methods += linked
+          else
             exportedMembers += linked
-          }
         }
 
       case m: PropertyDef =>
@@ -181,7 +175,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
           exportedMembers += linkedProperty(m)
     }
 
-    memberMethods ++= syntheticMethodDefs.map(linkedMethod)
+    methods ++= syntheticMethodDefs.map(linkedMethod)
 
     val topLevelExports =
       classDef.topLevelExportDefs.map(new Versioned(_, version))
@@ -201,8 +195,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
         classDef.jsSuperClass,
         classDef.jsNativeLoadSpec,
         fields.toList,
-        staticMethods.toList,
-        memberMethods.toList,
+        methods.toList,
         exportedMembers.toList,
         topLevelExports,
         classDef.optimizerHints,

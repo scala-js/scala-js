@@ -23,13 +23,15 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 
 import org.scalajs.ir
-import ir.{ClassKind, Definitions}
-import Definitions._
+import org.scalajs.ir.{ClassKind, Definitions}
+import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Trees.MemberNamespace
 
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
 
 import Analysis._
+import Infos.NamespacedEncodedName
 
 private final class Analyzer(config: CommonPhaseConfig,
     symbolRequirements: SymbolRequirement,
@@ -153,7 +155,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         implicit val from = FromCore(origin)
         withMethod(className, constructor) { clazz =>
           clazz.instantiated()
-          clazz.callMethodStatically(constructor)
+          clazz.callMethodStatically(MemberNamespace.Constructor, constructor)
         }
 
       case InstanceTests(origin, className) =>
@@ -168,14 +170,17 @@ private final class Analyzer(config: CommonPhaseConfig,
         implicit val from = FromCore(origin)
         withMethod(className, methodName) { classInfo =>
           if (statically)
-            classInfo.callMethodStatically(methodName)
+            classInfo.callMethodStatically(MemberNamespace.Public, methodName)
           else
             classInfo.callMethod(methodName)
         }
 
       case CallStaticMethod(origin, className, methodName) =>
         implicit val from = FromCore(origin)
-        withMethod(className, methodName)(_.callStaticMethod(methodName))
+        withMethod(className, methodName) { classInfo =>
+          classInfo.callMethodStatically(MemberNamespace.PublicStatic,
+              methodName)
+        }
 
       case Optional(requirement) =>
         reachSymbolRequirement(requirement, optional = true)
@@ -197,7 +202,7 @@ private final class Analyzer(config: CommonPhaseConfig,
      */
     for {
       getSuperclassMethodInfo <-
-        classClassInfo.flatMap(_.methodInfos.get("getSuperclass__jl_Class"))
+        classClassInfo.flatMap(_.publicMethodInfos.get("getSuperclass__jl_Class"))
       if getSuperclassMethodInfo.isReachable
     } {
       // calledFrom should always be nonEmpty if isReachable, but let's be robust
@@ -498,18 +503,25 @@ private final class Analyzer(config: CommonPhaseConfig,
     var instantiatedSubclasses: List[ClassInfo] = Nil
     var methodsCalledLog: List[(String, From)] = Nil
 
-    lazy val (methodInfos, staticMethodInfos) = {
-      val allInfos = for (methodData <- data.methods)
-        yield (methodData.encodedName, new MethodInfo(this, methodData))
-      val (staticMethodInfos, methodInfos) = allInfos.partition(_._2.isStatic)
-      (mutable.Map(methodInfos: _*), mutable.Map(staticMethodInfos: _*))
+    private val nsMethodInfos = {
+      val nsMethodInfos = Array.fill(MemberNamespace.Count) {
+        mutable.Map.empty[String, MethodInfo]
+      }
+      for (methodData <- data.methods) {
+        // TODO It would be good to report duplicates as errors at this point
+        val relevantMap = nsMethodInfos(methodData.namespace.ordinal)
+        relevantMap(methodData.encodedName) = new MethodInfo(this, methodData)
+      }
+      nsMethodInfos
     }
 
-    def lookupConstructor(ctorName: String): MethodInfo = {
-      methodInfos.get(ctorName).getOrElse {
-        createNonExistentMethod(ctorName)
-      }
+    def methodInfos(
+        namespace: MemberNamespace): mutable.Map[String, MethodInfo] = {
+      nsMethodInfos(namespace.ordinal)
     }
+
+    val publicMethodInfos: mutable.Map[String, MethodInfo] =
+      methodInfos(MemberNamespace.Public)
 
     def lookupMethod(methodName: String): MethodInfo = {
       tryLookupMethod(methodName).getOrElse {
@@ -518,10 +530,10 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     private def createNonExistentMethod(methodName: String): MethodInfo = {
-      val syntheticData = createMissingMethodInfo(methodName)
+      val syntheticData = makeSyntheticMethodInfo(methodName)
       val m = new MethodInfo(this, syntheticData)
       m.nonExistent = true
-      methodInfos += methodName -> m
+      publicMethodInfos += methodName -> m
       m
     }
 
@@ -531,7 +543,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       @tailrec
       def tryLookupInherited(ancestorInfo: ClassInfo): Option[MethodInfo] = {
-        ancestorInfo.methodInfos.get(methodName) match {
+        ancestorInfo.publicMethodInfos.get(methodName) match {
           case Some(m) if !m.isAbstract =>
             Some(m)
           case _ =>
@@ -543,7 +555,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
       val existing =
         if (isScalaClass) tryLookupInherited(this)
-        else methodInfos.get(methodName).filter(!_.isAbstract)
+        else publicMethodInfos.get(methodName).filter(!_.isAbstract)
 
       if (!allowAddingSyntheticMethods) {
         existing
@@ -583,7 +595,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     private def findDefaultTarget(methodName: String): Option[MethodInfo] = {
       val candidates = for {
         intf <- ancestors if intf.isInterface
-        m <- intf.methodInfos.get(methodName)
+        m <- intf.publicMethodInfos.get(methodName)
         if !m.isAbstract && !m.isDefaultBridge
       } yield m
 
@@ -618,11 +630,13 @@ private final class Analyzer(config: CommonPhaseConfig,
       val syntheticInfo = makeSyntheticMethodInfo(
           encodedName = methodName,
           methodsCalledStatically = Map(
-              targetOwner.encodedName -> List(methodName)))
+              targetOwner.encodedName -> List(
+                  NamespacedEncodedName(MemberNamespace.Public, methodName)
+              )))
       val m = new MethodInfo(this, syntheticInfo)
       m.syntheticKind = MethodSyntheticKind.DefaultBridge(
           targetOwner.encodedName)
-      methodInfos += methodName -> m
+      publicMethodInfos += methodName -> m
       m
     }
 
@@ -630,7 +644,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       if (!allowAddingSyntheticMethods) {
         tryLookupMethod(proxyName)
       } else {
-        methodInfos.get(proxyName).orElse {
+        publicMethodInfos.get(proxyName).orElse {
           findReflectiveTarget(proxyName).map { reflectiveTarget =>
             createReflProxy(proxyName, reflectiveTarget.encodedName)
           }
@@ -664,7 +678,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     private def findProxyMatch(proxyName: String): Option[MethodInfo] = {
-      val candidates = methodInfos.valuesIterator.filter { m =>
+      val candidates = publicMethodInfos.valuesIterator.filter { m =>
         // TODO In theory we should filter out protected methods
         !m.isReflProxy && !m.isDefaultBridge && !m.isExported && !m.isAbstract &&
         reflProxyMatches(m.encodedName, proxyName)
@@ -743,22 +757,25 @@ private final class Analyzer(config: CommonPhaseConfig,
               this.encodedName -> List(targetName)))
       val m = new MethodInfo(this, syntheticInfo)
       m.syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName)
-      methodInfos += proxyName -> m
+      publicMethodInfos += proxyName -> m
       m
     }
 
-    def lookupStaticMethod(methodName: String): MethodInfo = {
-      tryLookupStaticMethod(methodName).getOrElse {
-        val syntheticData = createMissingStaticMethodInfo(methodName)
+    def lookupStaticLikeMethod(namespace: MemberNamespace,
+        methodName: String): MethodInfo = {
+      tryLookupStaticLikeMethod(namespace, methodName).getOrElse {
+        val syntheticData = makeSyntheticMethodInfo(methodName, namespace)
         val m = new MethodInfo(this, syntheticData)
         m.nonExistent = true
-        staticMethodInfos += methodName -> m
+        methodInfos(namespace)(methodName) = m
         m
       }
     }
 
-    def tryLookupStaticMethod(methodName: String): Option[MethodInfo] =
-      staticMethodInfos.get(methodName)
+    def tryLookupStaticLikeMethod(namespace: MemberNamespace,
+        methodName: String): Option[MethodInfo] = {
+      methodInfos(namespace).get(methodName)
+    }
 
     override def toString(): String = encodedName
 
@@ -776,7 +793,8 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       // Static initializer
       if (!isJSType) {
-        staticMethodInfos.get(StaticInitializerName).foreach {
+        tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor,
+            StaticInitializerName).foreach {
           _.reachStatic()(fromAnalyzer)
         }
       }
@@ -791,7 +809,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         if (kind != ClassKind.NativeJSModuleClass) {
           instantiated()
           if (isScalaClass)
-            callMethodStatically("init___")
+            callMethodStatically(MemberNamespace.Constructor, "init___")
         }
       }
     }
@@ -843,16 +861,17 @@ private final class Analyzer(config: CommonPhaseConfig,
 
           if (isJSClass) {
             superClass.foreach(_.instantiated())
-            tryLookupStaticMethod(Definitions.StaticInitializerName).foreach {
+            tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor,
+                Definitions.StaticInitializerName).foreach {
               staticInit => staticInit.reachStatic()
             }
           }
 
-          for (methodInfo <- staticMethodInfos.values) {
+          for (methodInfo <- methodInfos(MemberNamespace.PublicStatic).values) {
             if (methodInfo.isExported)
               methodInfo.reachStatic()(FromExports)
           }
-          for (methodInfo <- methodInfos.values) {
+          for (methodInfo <- publicMethodInfos.values) {
             if (methodInfo.isExported)
               methodInfo.reach(this)(FromExports)
           }
@@ -868,7 +887,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         // Reach exported members
         if (!isJSClass) {
           implicit val from = FromExports
-          for (methodInfo <- methodInfos.values) {
+          for (methodInfo <- publicMethodInfos.values) {
             if (methodInfo.isExported)
               callMethod(methodInfo.encodedName)
           }
@@ -887,10 +906,6 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     def callMethod(methodName: String)(implicit from: From): Unit = {
-      // Constructors must always be called statically
-      assert(!isConstructorName(methodName),
-          s"Trying to dynamically call the constructor $this.$methodName from $from")
-
       /* First add the call to the log, then fetch the instantiated subclasses,
        * then perform the resolved call. This order is important because,
        * during the resolved calls, new instantiated subclasses could be
@@ -912,18 +927,19 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
-    def callMethodStatically(methodName: String)(implicit from: From): Unit = {
-      if (isConstructorName(methodName)) {
-        lookupConstructor(methodName).reachStatic()
-      } else {
-        assert(!isReflProxyName(methodName),
-            s"Trying to call statically refl proxy $this.$methodName")
-        lookupMethod(methodName).reachStatic()
-      }
+    def callMethodStatically(methodName: NamespacedEncodedName)(
+        implicit from: From): Unit = {
+      callMethodStatically(methodName.namespace, methodName.encodedName)
     }
 
-    def callStaticMethod(methodName: String)(implicit from: From): Unit = {
-      lookupStaticMethod(methodName).reachStatic()
+    def callMethodStatically(namespace: MemberNamespace, encodedName: String)(
+        implicit from: From): Unit = {
+      assert(!isReflProxyName(encodedName),
+          s"Trying to call statically refl proxy $this.$encodedName")
+      if (namespace != MemberNamespace.Public)
+        lookupStaticLikeMethod(namespace, encodedName).reachStatic()
+      else
+        lookupMethod(encodedName).reachStatic()
     }
   }
 
@@ -931,7 +947,8 @@ private final class Analyzer(config: CommonPhaseConfig,
       data: Infos.MethodInfo) extends Analysis.MethodInfo {
 
     val encodedName = data.encodedName
-    val isStatic = data.isStatic
+    val namespace = data.namespace
+    protected val namespaceOrdinal = namespace.ordinal
     val isAbstract = data.isAbstract
     val isExported = data.isExported
     val isReflProxy = isReflProxyName(encodedName)
@@ -969,13 +986,13 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     def reach(inClass: ClassInfo)(implicit from: From): Unit = {
-      assert(!isStatic,
+      assert(!namespace.isStatic,
           s"Trying to dynamically reach the static method $this")
       assert(!isAbstract,
           s"Trying to dynamically reach the abstract method $this")
       assert(owner.isAnyClass,
           s"Trying to dynamically reach the non-class method $this")
-      assert(!isConstructorName(encodedName),
+      assert(!namespace.isConstructor,
           s"Trying to dynamically reach the constructor $this")
 
       checkExistent()
@@ -1055,15 +1072,6 @@ private final class Analyzer(config: CommonPhaseConfig,
             classInfo.callMethodStatically(methodName)
         }
       }
-
-      val staticMethodsCalledIterator = data.staticMethodsCalled.iterator
-      while (staticMethodsCalledIterator.hasNext) {
-        val (className, methods) = staticMethodsCalledIterator.next()
-        lookupClass(className) { classInfo =>
-          for (methodName <- methods)
-            classInfo.callStaticMethod(methodName)
-        }
-      }
     }
   }
 
@@ -1074,37 +1082,26 @@ private final class Analyzer(config: CommonPhaseConfig,
         kind = ClassKind.Class,
         superClass = Some("O"),
         interfaces = Nil,
-        methods = List(createMissingMethodInfo("init___"))
+        methods = List(makeSyntheticMethodInfo("init___"))
     )
-  }
-
-  private def createMissingMethodInfo(
-      encodedName: String): Infos.MethodInfo = {
-    makeSyntheticMethodInfo(encodedName = encodedName)
-  }
-
-  private def createMissingStaticMethodInfo(
-      encodedName: String): Infos.MethodInfo = {
-    makeSyntheticMethodInfo(encodedName = encodedName, isStatic = true)
   }
 
   private def makeSyntheticMethodInfo(
       encodedName: String,
-      isStatic: Boolean = false,
+      namespace: MemberNamespace = MemberNamespace.Public,
       methodsCalled: Map[String, List[String]] = Map.empty,
-      methodsCalledStatically: Map[String, List[String]] = Map.empty,
+      methodsCalledStatically: Map[String, List[NamespacedEncodedName]] = Map.empty,
       instantiatedClasses: List[String] = Nil
   ): Infos.MethodInfo = {
     Infos.MethodInfo(
         encodedName,
-        isStatic,
+        namespace,
         isAbstract = false,
         isExported = false,
         staticFieldsRead = Map.empty,
         staticFieldsWritten = Map.empty,
         methodsCalled = methodsCalled,
         methodsCalledStatically = methodsCalledStatically,
-        staticMethodsCalled = Map.empty,
         instantiatedClasses = instantiatedClasses,
         accessedModules = Nil,
         usedInstanceTests = Nil,

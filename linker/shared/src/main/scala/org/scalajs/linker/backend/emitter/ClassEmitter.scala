@@ -33,24 +33,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   import functionEmitter._
   import jsGen._
 
-  def genStaticMembers(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
-    val className = tree.name.name
-    val staticMemberDefsWithGlobals =
-      tree.staticMethods.map(m => genMethod(className, m.value))
-    for (staticMemberDefs <- WithGlobals.list(staticMemberDefsWithGlobals))
-      yield js.Block(staticMemberDefs)(tree.pos)
-  }
-
-  def genDefaultMethods(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
-    val className = tree.name.name
-    val defaultMethodDefsWithGlobals =
-      tree.memberMethods.map(m => genDefaultMethod(className, m.value))
-    for (defaultMethodDefs <- WithGlobals.list(defaultMethodDefsWithGlobals))
-      yield js.Block(defaultMethodDefs)(tree.pos)
-  }
-
   def buildClass(tree: LinkedClass, ctor: WithGlobals[js.Tree],
       memberDefs: List[WithGlobals[js.Tree]], exportedDefs: WithGlobals[js.Tree])(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
@@ -173,18 +155,16 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def extractInlineableInit(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): (Option[Versioned[MethodDef]], List[Versioned[MethodDef]]) = {
 
-    val memberMethods = tree.memberMethods
-
     if (globalKnowledge.hasInlineableInit(tree.encodedName)) {
-      val (constructors, otherMethods) = memberMethods.partition { method =>
-        Definitions.isConstructorName(method.value.encodedName)
+      val (constructors, otherMethods) = tree.methods.partition { m =>
+        m.value.flags.namespace == MemberNamespace.Constructor
       }
       assert(constructors.size == 1,
           s"Found ${constructors.size} constructors in class " +
           s"${tree.encodedName} which has an inlined init.")
       (Some(constructors.head), otherMethods)
     } else {
-      (None, memberMethods)
+      (None, tree.methods)
     }
   }
 
@@ -378,7 +358,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     require(tree.kind.isJSClass)
 
     tree.exportedMembers.map(_.value) collectFirst {
-      case MethodDef(false, StringLiteral("constructor"), params, _, body) =>
+      case MethodDef(flags, StringLiteral("constructor"), params, _, body)
+          if flags.namespace == MemberNamespace.Public =>
         desugarToFunction(tree.encodedName, params, body.get, resultType = NoType)
     } getOrElse {
       throw new IllegalArgumentException(
@@ -390,7 +371,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   private def genFieldDefsOfScalaClass(fields: List[FieldDef])(
       implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     for {
-      field @ FieldDef(false, name, ftpe, mutable) <- fields
+      field @ FieldDef(flags, name, ftpe) <- fields
+      if !flags.namespace.isStatic
     } yield {
       implicit val pos = field.pos
       val jsIdent = (name: @unchecked) match {
@@ -404,11 +386,12 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def genCreateStaticFieldsOfScalaClass(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     for {
-      field @ FieldDef(true, Ident(name, origName), ftpe, mutable) <- tree.fields
+      field @ FieldDef(flags, Ident(name, origName), ftpe) <- tree.fields
+      if flags.namespace.isStatic
     } yield {
       implicit val pos = field.pos
       val fullName = tree.encodedName + "__" + name
-      envFieldDef("t", fullName, genZeroOf(ftpe), origName, mutable)
+      envFieldDef("t", fullName, genZeroOf(ftpe), origName, flags.isMutable)
     }
   }
 
@@ -417,7 +400,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     val className = tree.encodedName
     val statsWithGlobals = for {
-      field @ FieldDef(true, name, ftpe, mutable) <- tree.fields
+      field @ FieldDef(flags, name, ftpe) <- tree.fields
+      if flags.namespace.isStatic
     } yield {
       implicit val pos = field.pos
       val classVar = envField("c", className)
@@ -438,15 +422,16 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     implicit val pos = tree.pos
     if (hasStaticInitializer(tree)) {
       val fullName = tree.encodedName + "__" + StaticInitializerName
-      js.Apply(envField("s", fullName, Some("<clinit>")), Nil) :: Nil
+      js.Apply(envField("sct", fullName, Some("<clinit>")), Nil) :: Nil
     } else {
       Nil
     }
   }
 
   private def hasStaticInitializer(tree: LinkedClass): Boolean = {
-    import Definitions.StaticInitializerName
-    tree.staticMethods.exists(_.value.encodedName == StaticInitializerName)
+    tree.methods.exists { m =>
+      m.value.flags.namespace == MemberNamespace.StaticConstructor
+    }
   }
 
   /** Generates a method. */
@@ -457,26 +442,42 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     implicit val pos = method.pos
 
-    val methodFun0WithGlobals = desugarToFunction(className,
-        method.args, methodBody, method.resultType)
+    val namespace = method.flags.namespace
+
+    val methodFun0WithGlobals = {
+      if (namespace != MemberNamespace.Constructor &&
+          namespace != MemberNamespace.Private) {
+        desugarToFunction(className, method.args, methodBody, method.resultType)
+      } else {
+        desugarToFunctionWithExplicitThis(className, method.args, methodBody,
+            method.resultType)
+      }
+    }
 
     methodFun0WithGlobals.flatMap { methodFun0 =>
-      val methodFun = if (Definitions.isConstructorName(method.encodedName)) {
+      val methodFun = if (namespace == MemberNamespace.Constructor) {
         // init methods have to return `this` so that we can chain them to `new`
         js.Function(arrow = false, methodFun0.args, {
           implicit val pos = methodFun0.body.pos
           js.Block(
               methodFun0.body,
-              js.Return(js.This()))
+              js.Return(methodFun0.args.head.ref))
         })(methodFun0.pos)
       } else {
         methodFun0
       }
 
-      if (method.static) {
+      if (namespace != MemberNamespace.Public) {
         method.name match {
           case Ident(methodName, origName) =>
-            WithGlobals(envFieldDef("s", className + "__" + methodName,
+            val field = namespace match {
+              case MemberNamespace.Private           => "p"
+              case MemberNamespace.PublicStatic      => "s"
+              case MemberNamespace.PrivateStatic     => "ps"
+              case MemberNamespace.Constructor       => "ct"
+              case MemberNamespace.StaticConstructor => "sct"
+            }
+            WithGlobals(envFieldDef(field, className + "__" + methodName,
                 methodFun, origName))
 
           case methodName =>
@@ -545,7 +546,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     // class prototype
     val classVar = encodeClassVar(className)
     val targetObject =
-      if (property.static) classVar
+      if (property.flags.namespace.isStatic) classVar
       else classVar.prototype
 
     // property name
@@ -594,7 +595,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = property.pos
 
-    val static = property.static
+    val static = property.flags.namespace.isStatic
 
     genPropertyName(property.name).flatMap { propName =>
       val getterWithGlobals = property.getterBody.fold {
@@ -1033,8 +1034,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     val exportsWithGlobals = tree.exportedMembers map { member =>
       member.value match {
-        case MethodDef(false, StringLiteral("constructor"), _, _, _)
-            if tree.kind.isJSClass =>
+        case MethodDef(flags, StringLiteral("constructor"), _, _, _)
+            if flags.namespace == MemberNamespace.Public && tree.kind.isJSClass =>
           WithGlobals(js.Skip()(member.value.pos))
         case m: MethodDef =>
           genMethod(tree.encodedName, m)
@@ -1077,8 +1078,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
-    val MethodDef(true, StringLiteral(exportName), args, resultType, Some(body)) =
+    val MethodDef(flags, StringLiteral(exportName), args, resultType, Some(body)) =
       tree.methodDef
+
+    assert(flags.namespace == MemberNamespace.PublicStatic, exportName)
 
     implicit val pos = tree.pos
 

@@ -185,10 +185,13 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         implicit val pos = fieldSym.pos
 
         val tree = if (destination == ExportDestination.Static) {
-          val mutable = true // static fields must always be mutable
+          // static fields must always be mutable
+          val flags = js.MemberFlags.empty
+            .withNamespace(js.MemberNamespace.PublicStatic)
+            .withMutable(true)
           val name = js.StringLiteral(export.jsName)
           val irTpe = genExposedFieldIRType(fieldSym)
-          checkedCast[A](js.FieldDef(static = true, name, irTpe, mutable))
+          checkedCast[A](js.FieldDef(flags, name, irTpe))
         } else {
           checkedCast[A](
               js.TopLevelFieldExportDef(export.jsName, encodeFieldSym(fieldSym)))
@@ -289,7 +292,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         reporter.error(alts.head.pos,
             s"Conflicting properties and methods for ${classSym.fullName}::$name.")
         implicit val pos = alts.head.pos
-        js.PropertyDef(static = false, genPropertyName(name), None, None)
+        js.PropertyDef(js.MemberFlags.empty, genPropertyName(name), None, None)
       } else {
         genMemberExportOrDispatcher(classSym, name, isProp, alts,
             static = false)
@@ -340,6 +343,11 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
       implicit val pos = alts.head.pos
 
+      val namespace =
+        if (static) js.MemberNamespace.PublicStatic
+        else js.MemberNamespace.Public
+      val flags = js.MemberFlags.empty.withNamespace(namespace)
+
       // Separate getters and setters. Somehow isJSGetter doesn't work here. Hence
       // we just check the parameter list length.
       val (getter, setters) = alts.partition(_.tpe.params.isEmpty)
@@ -374,7 +382,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         }
       }
 
-      js.PropertyDef(static, genPropertyName(jsName), getterBody,
+      js.PropertyDef(flags, genPropertyName(jsName), getterBody,
           setterArgAndBody)
     }
 
@@ -386,6 +394,11 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           "need at least one alternative to generate exporter method")
 
       implicit val pos = alts0.head.pos
+
+      val namespace =
+        if (static) js.MemberNamespace.PublicStatic
+        else js.MemberNamespace.Public
+      val flags = js.MemberFlags.empty.withNamespace(namespace)
 
       val alts = {
         // toString() is always exported. We might need to add it here
@@ -501,7 +514,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         }
       }
 
-      js.MethodDef(static, genPropertyName(jsName),
+      js.MethodDef(flags, genPropertyName(jsName),
           formalArgs, jstpe.AnyType, Some(body))(OptimizerHints.empty, None)
     }
 
@@ -824,6 +837,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       } else {
         if (sym.isClassConstructor)
           genNew(currentClassSym, sym, args)
+        else if (sym.isPrivate)
+          boxIfNeeded(genApplyMethodStatically(receiver, sym, args))
         else
           boxIfNeeded(genApplyMethod(receiver, sym, args))
       }
