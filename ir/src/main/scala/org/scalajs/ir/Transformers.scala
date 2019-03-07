@@ -143,29 +143,25 @@ object Transformers {
         case JSNew(ctor, args) =>
           JSNew(transformExpr(ctor), args.map(transformExprOrJSSpread))
 
-        case JSDotSelect(qualifier, item) =>
-          JSDotSelect(transformExpr(qualifier), item)
+        case JSPrivateSelect(qualifier, item) =>
+          JSPrivateSelect(transformExpr(qualifier), item)
 
-        case JSBracketSelect(qualifier, item) =>
-          JSBracketSelect(transformExpr(qualifier), transformExpr(item))
+        case JSSelect(qualifier, item) =>
+          JSSelect(transformExpr(qualifier), transformExpr(item))
 
         case JSFunctionApply(fun, args) =>
           JSFunctionApply(transformExpr(fun), args.map(transformExprOrJSSpread))
 
-        case JSDotMethodApply(receiver, method, args) =>
-          JSDotMethodApply(transformExpr(receiver), method,
+        case JSMethodApply(receiver, method, args) =>
+          JSMethodApply(transformExpr(receiver), transformExpr(method),
               args.map(transformExprOrJSSpread))
 
-        case JSBracketMethodApply(receiver, method, args) =>
-          JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
-              args.map(transformExprOrJSSpread))
-
-        case JSSuperBracketSelect(superClass, qualifier, item) =>
-          JSSuperBracketSelect(superClass, transformExpr(qualifier),
+        case JSSuperSelect(superClass, qualifier, item) =>
+          JSSuperSelect(superClass, transformExpr(qualifier),
               transformExpr(item))
 
-        case JSSuperBracketCall(superClass, receiver, method, args) =>
-          JSSuperBracketCall(superClass, transformExpr(receiver),
+        case JSSuperMethodCall(superClass, receiver, method, args) =>
+          JSSuperMethodCall(superClass, transformExpr(receiver),
               transformExpr(method), args.map(transformExprOrJSSpread))
 
         case JSSuperConstructorCall(args) =>
@@ -174,8 +170,8 @@ object Transformers {
         case JSImportCall(arg) =>
           JSImportCall(transformExpr(arg))
 
-        case JSDelete(prop) =>
-          JSDelete(transformExpr(prop))
+        case JSDelete(qualifier, item) =>
+          JSDelete(transformExpr(qualifier), transformExpr(item))
 
         case JSUnaryOp(op, lhs) =>
           JSUnaryOp(op, transformExpr(lhs))

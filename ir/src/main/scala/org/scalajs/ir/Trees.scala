@@ -170,8 +170,7 @@ object Trees {
       implicit val pos: Position) extends Tree {
     require(lhs match {
       case _:VarRef | _:Select | _:SelectStatic | _:ArraySelect |
-           _:JSDotSelect | _:JSBracketSelect | _:JSSuperBracketSelect |
-           _:JSGlobalRef =>
+          _:JSPrivateSelect | _:JSSelect | _:JSSuperSelect | _:JSGlobalRef =>
         true
       case _ =>
         false
@@ -489,12 +488,12 @@ object Trees {
     val tpe = AnyType
   }
 
-  case class JSDotSelect(qualifier: Tree, item: Ident)(
+  case class JSPrivateSelect(qualifier: Tree, item: Ident)(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
 
-  case class JSBracketSelect(qualifier: Tree, item: Tree)(
+  case class JSSelect(qualifier: Tree, item: Tree)(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
@@ -504,12 +503,7 @@ object Trees {
     val tpe = AnyType
   }
 
-  case class JSDotMethodApply(receiver: Tree, method: Ident,
-      args: List[TreeOrJSSpread])(implicit val pos: Position) extends Tree {
-    val tpe = AnyType
-  }
-
-  case class JSBracketMethodApply(receiver: Tree, method: Tree,
+  case class JSMethodApply(receiver: Tree, method: Tree,
       args: List[TreeOrJSSpread])(implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
@@ -544,7 +538,7 @@ object Trees {
    *  as if it were in an instance method of `Foo` with `qualifier` as the
    *  `this` value.
    */
-  case class JSSuperBracketSelect(superClass: Tree, receiver: Tree, item: Tree)(
+  case class JSSuperSelect(superClass: Tree, receiver: Tree, item: Tree)(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
@@ -593,7 +587,7 @@ object Trees {
    *  super[method](...args)
    *  }}}
    */
-  case class JSSuperBracketCall(superClass: Tree, receiver: Tree, method: Tree,
+  case class JSSuperMethodCall(superClass: Tree, receiver: Tree, method: Tree,
       args: List[TreeOrJSSpread])(implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
@@ -694,19 +688,14 @@ object Trees {
 
   /** `...items`, the "spread" operator of ECMAScript 6.
    *
-   *  It is only valid in the `args`/`items` of a [[JSNew]], [[JSFunctionApply]],
-   *  [[JSDotMethodApply]], [[JSBracketMethodApply]], or [[JSArrayConstr]].
-   *
    *  @param items An Array whose items will be spread (not an arbitrary iterable)
    */
   case class JSSpread(items: Tree)(implicit val pos: Position)
       extends IRNode with TreeOrJSSpread
 
-  case class JSDelete(prop: Tree)(implicit val pos: Position) extends Tree {
-    require(prop match {
-      case _:JSDotSelect | _:JSBracketSelect => true
-      case _ => false
-    }, s"Invalid prop for JSDelete: $prop")
+  /** `delete qualifier[item]` */
+  case class JSDelete(qualifier: Tree, item: Tree)(implicit val pos: Position)
+      extends Tree {
 
     val tpe = NoType // cannot be in expression position
   }

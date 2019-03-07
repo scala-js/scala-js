@@ -336,8 +336,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           lhs match {
             case lhs: Select =>
               pretransformSelectCommon(lhs, isLhsOfAssign = true)(cont)
-            case lhs: JSBracketSelect =>
-              pretransformJSBracketSelect(lhs, isLhsOfAssign = true)(cont)
+            case lhs: JSSelect =>
+              pretransformJSSelect(lhs, isLhsOfAssign = true)(cont)
             case _ =>
               pretransformExpr(lhs)(cont)
           }
@@ -563,12 +563,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case JSNew(ctor, args) =>
         JSNew(transformExpr(ctor), transformExprsOrSpreads(args))
 
-      case JSDotSelect(qualifier, item) =>
-        JSDotSelect(transformExpr(qualifier), item)
+      case JSPrivateSelect(qualifier, item) =>
+        JSPrivateSelect(transformExpr(qualifier), item)
 
-      case tree: JSBracketSelect =>
+      case tree: JSSelect =>
         trampoline {
-          pretransformJSBracketSelect(tree, isLhsOfAssign = false)(
+          pretransformJSSelect(tree, isLhsOfAssign = false)(
               finishTransform(isStat))
         }
 
@@ -578,20 +578,16 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               finishTransform(isStat))
         }
 
-      case JSDotMethodApply(receiver, method, args) =>
-        JSDotMethodApply(transformExpr(receiver), method,
+      case JSMethodApply(receiver, method, args) =>
+        JSMethodApply(transformExpr(receiver), transformExpr(method),
             transformExprsOrSpreads(args))
 
-      case JSBracketMethodApply(receiver, method, args) =>
-        JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
-            transformExprsOrSpreads(args))
-
-      case JSSuperBracketSelect(superClass, qualifier, item) =>
-        JSSuperBracketSelect(transformExpr(superClass), transformExpr(qualifier),
+      case JSSuperSelect(superClass, qualifier, item) =>
+        JSSuperSelect(transformExpr(superClass), transformExpr(qualifier),
             transformExpr(item))
 
-      case JSSuperBracketCall(superClass, receiver, method, args) =>
-        JSSuperBracketCall(transformExpr(superClass), transformExpr(receiver),
+      case JSSuperMethodCall(superClass, receiver, method, args) =>
+        JSSuperMethodCall(transformExpr(superClass), transformExpr(receiver),
             transformExpr(method), transformExprsOrSpreads(args))
 
       case JSSuperConstructorCall(args) =>
@@ -600,11 +596,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case JSImportCall(arg) =>
         JSImportCall(transformExpr(arg))
 
-      case JSDelete(JSDotSelect(obj, prop)) =>
-        JSDelete(JSDotSelect(transformExpr(obj), prop))
-
-      case JSDelete(JSBracketSelect(obj, prop)) =>
-        JSDelete(JSBracketSelect(transformExpr(obj), transformExpr(prop)))
+      case JSDelete(qualifier, item) =>
+        JSDelete(transformExpr(qualifier), transformExpr(item))
 
       case JSUnaryOp(op, lhs) =>
         JSUnaryOp(op, transformExpr(lhs))
@@ -828,8 +821,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case tree: BinaryOp =>
         pretransformBinaryOp(tree)(cont)
 
-      case tree: JSBracketSelect =>
-        pretransformJSBracketSelect(tree, isLhsOfAssign = false)(cont)
+      case tree: JSSelect =>
+        pretransformJSSelect(tree, isLhsOfAssign = false)(cont)
 
       case tree: JSFunctionApply =>
         pretransformJSFunctionApply(tree, isStat = false,
@@ -1655,19 +1648,18 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
   }
 
-  private def pretransformJSBracketSelect(tree: JSBracketSelect,
-      isLhsOfAssign: Boolean)(
+  private def pretransformJSSelect(tree: JSSelect, isLhsOfAssign: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
 
-    val JSBracketSelect(qual, item) = tree
+    val JSSelect(qual, item) = tree
     implicit val pos = tree.pos
 
     pretransformExprs(qual, item) { (tqual, titem0) =>
       val titem = optimizeJSBracketSelectItem(titem0)
 
       def default: TailRec[Tree] = {
-        cont(PreTransTree(foldJSBracketSelect(finishTransformExpr(tqual),
+        cont(PreTransTree(foldJSSelect(finishTransformExpr(tqual),
             finishTransformExpr(titem))))
       }
 
@@ -3883,17 +3875,17 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
   }
 
-  private def foldJSBracketSelect(qualifier: Tree, item: Tree)(
+  private def foldJSSelect(qualifier: Tree, item: Tree)(
       implicit pos: Position): Tree = {
     // !!! Must be in sync with scala.scalajs.runtime.LinkingInfo
 
     import config.coreSpec._
 
     @inline def default =
-      JSBracketSelect(qualifier, item)
+      JSSelect(qualifier, item)
 
     (qualifier, item) match {
-      case (JSBracketSelect(JSLinkingInfo(), StringLiteral("semantics")),
+      case (JSSelect(JSLinkingInfo(), StringLiteral("semantics")),
           StringLiteral(semanticsStr)) =>
         def behavior2IntLiteral(behavior: CheckedBehavior) = {
           IntLiteral(behavior match {

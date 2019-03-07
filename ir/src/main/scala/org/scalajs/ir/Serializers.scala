@@ -309,32 +309,28 @@ object Serializers {
           writeByte(TagJSNew)
           writeTree(ctor); writeTreeOrJSSpreads(args)
 
-        case JSDotSelect(qualifier, item) =>
-          writeByte(TagJSDotSelect)
+        case JSPrivateSelect(qualifier, item) =>
+          writeByte(TagJSPrivateSelect)
           writeTree(qualifier); writeIdent(item)
 
-        case JSBracketSelect(qualifier, item) =>
-          writeByte(TagJSBracketSelect)
+        case JSSelect(qualifier, item) =>
+          writeByte(TagJSSelect)
           writeTree(qualifier); writeTree(item)
 
         case JSFunctionApply(fun, args) =>
           writeByte(TagJSFunctionApply)
           writeTree(fun); writeTreeOrJSSpreads(args)
 
-        case JSDotMethodApply(receiver, method, args) =>
-          writeByte(TagJSDotMethodApply)
-          writeTree(receiver); writeIdent(method); writeTreeOrJSSpreads(args)
-
-        case JSBracketMethodApply(receiver, method, args) =>
-          writeByte(TagJSBracketMethodApply)
+        case JSMethodApply(receiver, method, args) =>
+          writeByte(TagJSMethodApply)
           writeTree(receiver); writeTree(method); writeTreeOrJSSpreads(args)
 
-        case JSSuperBracketSelect(superClass, qualifier, item) =>
-          writeByte(TagJSSuperBracketSelect)
+        case JSSuperSelect(superClass, qualifier, item) =>
+          writeByte(TagJSSuperSelect)
           writeTree(superClass); writeTree(qualifier); writeTree(item)
 
-        case JSSuperBracketCall(superClass, receiver, method, args) =>
-          writeByte(TagJSSuperBracketCall)
+        case JSSuperMethodCall(superClass, receiver, method, args) =>
+          writeByte(TagJSSuperMethodCall)
           writeTree(superClass); writeTree(receiver); writeTree(method); writeTreeOrJSSpreads(args)
 
         case JSSuperConstructorCall(args) =>
@@ -353,9 +349,10 @@ object Serializers {
           writeByte(TagLoadJSModule)
           writeClassRef(cls)
 
-        case JSDelete(prop) =>
+        case JSDelete(qualifier, item) =>
           writeByte(TagJSDelete)
-          writeTree(prop)
+          writeTree(qualifier)
+          writeTree(item)
 
         case JSUnaryOp(op, lhs) =>
           writeByte(TagJSUnaryOp)
@@ -907,19 +904,18 @@ object Serializers {
         case TagGetClass     => GetClass(readTree())
 
         case TagJSNew                => JSNew(readTree(), readTreeOrJSSpreads())
-        case TagJSDotSelect          => JSDotSelect(readTree(), readIdent())
-        case TagJSBracketSelect      => JSBracketSelect(readTree(), readTree())
+        case TagJSPrivateSelect      => JSPrivateSelect(readTree(), readIdent())
+        case TagJSSelect             => JSSelect(readTree(), readTree())
         case TagJSFunctionApply      => JSFunctionApply(readTree(), readTreeOrJSSpreads())
-        case TagJSDotMethodApply     => JSDotMethodApply(readTree(), readIdent(), readTreeOrJSSpreads())
-        case TagJSBracketMethodApply => JSBracketMethodApply(readTree(), readTree(), readTreeOrJSSpreads())
-        case TagJSSuperBracketSelect => JSSuperBracketSelect(readTree(), readTree(), readTree())
-        case TagJSSuperBracketCall   =>
-          JSSuperBracketCall(readTree(), readTree(), readTree(), readTreeOrJSSpreads())
+        case TagJSMethodApply        => JSMethodApply(readTree(), readTree(), readTreeOrJSSpreads())
+        case TagJSSuperSelect        => JSSuperSelect(readTree(), readTree(), readTree())
+        case TagJSSuperMethodCall    =>
+          JSSuperMethodCall(readTree(), readTree(), readTree(), readTreeOrJSSpreads())
         case TagJSSuperConstructorCall => JSSuperConstructorCall(readTreeOrJSSpreads())
         case TagJSImportCall         => JSImportCall(readTree())
         case TagLoadJSConstructor    => LoadJSConstructor(readClassRef())
         case TagLoadJSModule         => LoadJSModule(readClassRef())
-        case TagJSDelete             => JSDelete(readTree())
+        case TagJSDelete             => JSDelete(readTree(), readTree())
         case TagJSUnaryOp            => JSUnaryOp(readInt(), readTree())
         case TagJSBinaryOp           => JSBinaryOp(readInt(), readTree(), readTree())
         case TagJSArrayConstr        => JSArrayConstr(readTreeOrJSSpreads())

@@ -577,7 +577,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               }
           }
 
-        case Assign(select @ JSDotSelect(qualifier, item), rhs) =>
+        case Assign(select @ JSPrivateSelect(qualifier, item), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
             js.Assign(
@@ -586,7 +586,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 transformExprNoChar(newRhs))
           }
 
-        case Assign(select @ JSBracketSelect(qualifier, item), rhs) =>
+        case Assign(select @ JSSelect(qualifier, item), rhs) =>
           unnest(List(qualifier, item, rhs)) {
             case (List(newQualifier, newItem, newRhs), env0) =>
               implicit val env = env0
@@ -596,7 +596,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   transformExprNoChar(newRhs))
           }
 
-        case Assign(select @ JSSuperBracketSelect(superClass, qualifier, item), rhs) =>
+        case Assign(select @ JSSuperSelect(superClass, qualifier, item), rhs) =>
           unnest(List(superClass, qualifier, item, rhs)) {
             case (List(newSuperClass, newQualifier, newItem, newRhs), env0) =>
               implicit val env = env0
@@ -830,18 +830,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             js.Block(superCtorCall :: fieldDefs)
           }
 
-        case JSDelete(JSDotSelect(obj, prop)) =>
-          unnest(obj) { (newObj, env0) =>
-            implicit val env = env0
-            js.Delete(js.DotSelect(transformExprNoChar(newObj),
-                transformPropIdent(prop)))
-          }
-
-        case JSDelete(JSBracketSelect(obj, prop)) =>
-          unnest(obj, prop) { (newObj, newProp, env0) =>
+        case JSDelete(qualifier, item) =>
+          unnest(qualifier, item) { (newQual, newItem, env0) =>
             implicit val env = env0
             js.Delete(genBracketSelect(
-                transformExprNoChar(newObj), transformExprNoChar(newProp)))
+                transformExprNoChar(newQual), transformExprNoChar(newItem)))
           }
 
         // Treat 'return' as an LHS
@@ -1263,17 +1256,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // JavaScript expressions that can always have side-effects
         case JSNew(fun, args) =>
           allowSideEffects && test(fun) && (args.forall(testJSArg))
-        case JSDotSelect(qualifier, item) =>
+        case JSPrivateSelect(qualifier, item) =>
           allowSideEffects && test(qualifier)
-        case JSBracketSelect(qualifier, item) =>
+        case JSSelect(qualifier, item) =>
           allowSideEffects && test(qualifier) && test(item)
         case JSFunctionApply(fun, args) =>
           allowSideEffects && test(fun) && (args.forall(testJSArg))
-        case JSDotMethodApply(receiver, method, args) =>
-          allowSideEffects && test(receiver) && (args.forall(testJSArg))
-        case JSBracketMethodApply(receiver, method, args) =>
+        case JSMethodApply(receiver, method, args) =>
           allowSideEffects && test(receiver) && test(method) && (args.forall(testJSArg))
-        case JSSuperBracketSelect(superClass, qualifier, item) =>
+        case JSSuperSelect(superClass, qualifier, item) =>
           allowSideEffects && test(superClass) && test(qualifier) && test(item)
         case JSImportCall(arg) =>
           allowSideEffects && test(arg)
@@ -1705,7 +1696,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSFunctionApply(fun, args) =>
           if (containsAnySpread(args)) {
             redo {
-              JSBracketMethodApply(fun, StringLiteral("apply"),
+              JSMethodApply(fun, StringLiteral("apply"),
                   List(Undefined(), spreadToArgArray(args)))
             }
           } else {
@@ -1715,31 +1706,13 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             }
           }
 
-        case JSDotMethodApply(receiver, method, args) =>
+        case JSMethodApply(receiver, method, args) =>
           if (containsAnySpread(args)) {
             withTempVar(receiver) { (newReceiver, env0) =>
               implicit val env = env0
               redo {
-                JSBracketMethodApply(
-                    JSDotSelect(newReceiver, method),
-                    StringLiteral("apply"),
-                    List(newReceiver, spreadToArgArray(args)))
-              }
-            }
-          } else {
-            unnest(receiver :: castNoSpread(args)) { (newReceiverAndArgs, env) =>
-              val newReceiver :: newArgs = newReceiverAndArgs
-              redo(JSDotMethodApply(newReceiver, method, newArgs))(env)
-            }
-          }
-
-        case JSBracketMethodApply(receiver, method, args) =>
-          if (containsAnySpread(args)) {
-            withTempVar(receiver) { (newReceiver, env0) =>
-              implicit val env = env0
-              redo {
-                JSBracketMethodApply(
-                    JSBracketSelect(newReceiver, method),
+                JSMethodApply(
+                    JSSelect(newReceiver, method),
                     StringLiteral("apply"),
                     List(newReceiver, spreadToArgArray(args)))
               }
@@ -1747,21 +1720,21 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           } else {
             unnest(receiver :: method :: castNoSpread(args)) { (newReceiverAndArgs, env) =>
               val newReceiver :: newMethod :: newArgs = newReceiverAndArgs
-              redo(JSBracketMethodApply(newReceiver, newMethod, newArgs))(env)
+              redo(JSMethodApply(newReceiver, newMethod, newArgs))(env)
             }
           }
 
-        case JSSuperBracketSelect(superClass, qualifier, item) =>
+        case JSSuperSelect(superClass, qualifier, item) =>
           unnest(List(superClass, qualifier, item)) {
             case (List(newSuperClass, newQualifier, newItem), env) =>
-              redo(JSSuperBracketSelect(newSuperClass, newQualifier, newItem))(env)
+              redo(JSSuperSelect(newSuperClass, newQualifier, newItem))(env)
           }
 
-        case JSSuperBracketCall(superClass, receiver, method, args) =>
+        case JSSuperMethodCall(superClass, receiver, method, args) =>
           redo {
-            JSBracketMethodApply(
-                JSBracketSelect(
-                    JSBracketSelect(superClass, StringLiteral("prototype")),
+            JSMethodApply(
+                JSSelect(
+                    JSSelect(superClass, StringLiteral("prototype")),
                     method),
                 StringLiteral("call"),
                 receiver :: args)
@@ -1772,14 +1745,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             redo(JSImportCall(newArg))(env)
           }
 
-        case JSDotSelect(qualifier, item) =>
+        case JSPrivateSelect(qualifier, item) =>
           unnest(qualifier) { (newQualifier, env) =>
-            redo(JSDotSelect(newQualifier, item))(env)
+            redo(JSPrivateSelect(newQualifier, item))(env)
           }
 
-        case JSBracketSelect(qualifier, item) =>
+        case JSSelect(qualifier, item) =>
           unnest(qualifier, item) { (newQualifier, newItem, env) =>
-            redo(JSBracketSelect(newQualifier, newItem))(env)
+            redo(JSSelect(newQualifier, newItem))(env)
           }
 
         case JSUnaryOp(op, lhs) =>
@@ -1839,11 +1812,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                      */
                     value
                   case prop: Ident =>
-                    Assign(JSDotSelect(objVarDef.ref, prop), value)
+                    Assign(JSPrivateSelect(objVarDef.ref, prop), value)
                   case prop: StringLiteral =>
-                    Assign(JSBracketSelect(objVarDef.ref, prop), value)
+                    Assign(JSSelect(objVarDef.ref, prop), value)
                   case ComputedName(tree, _) =>
-                    Assign(JSBracketSelect(objVarDef.ref, tree), value)
+                    Assign(JSSelect(objVarDef.ref, tree), value)
                 }
                 (namesSeen ++ nameForDupes, stat :: statsAcc)
             }._2
@@ -1931,8 +1904,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case List(part) => part
         case _          =>
           val partHead :: partTail = reversedParts.reverse
-          JSBracketMethodApply(
-              partHead, StringLiteral("concat"), partTail)
+          JSMethodApply(partHead, StringLiteral("concat"), partTail)
       }
     }
 
@@ -2519,10 +2491,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSNew(constr, args) =>
           js.New(transformExprNoChar(constr), args.map(transformJSArg))
 
-        case JSDotSelect(qualifier, item) =>
+        case JSPrivateSelect(qualifier, item) =>
           js.DotSelect(transformExprNoChar(qualifier), transformPropIdent(item))
 
-        case JSBracketSelect(qualifier, item) =>
+        case JSSelect(qualifier, item) =>
           genBracketSelect(transformExprNoChar(qualifier),
               transformExprNoChar(item))
 
@@ -2551,17 +2523,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           }
           js.Apply(protectedFun, args.map(transformJSArg))
 
-        case JSDotMethodApply(receiver, method, args) =>
-          js.Apply(
-              js.DotSelect(transformExprNoChar(receiver),
-                  transformPropIdent(method)),
-              args.map(transformJSArg))
-
-        case JSBracketMethodApply(receiver, method, args) =>
+        case JSMethodApply(receiver, method, args) =>
           js.Apply(genBracketSelect(transformExprNoChar(receiver),
               transformExprNoChar(method)), args.map(transformJSArg))
 
-        case JSSuperBracketSelect(superClass, qualifier, item) =>
+        case JSSuperSelect(superClass, qualifier, item) =>
           genCallHelper("superGet", transformExprNoChar(superClass),
               transformExprNoChar(qualifier), transformExprNoChar(item))
 

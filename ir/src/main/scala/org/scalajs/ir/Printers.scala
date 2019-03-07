@@ -516,8 +516,8 @@ object Printers {
 
         case JSNew(ctor, args) =>
           def containsOnlySelectsFromAtom(tree: Tree): Boolean = tree match {
-            case JSDotSelect(qual, _)     => containsOnlySelectsFromAtom(qual)
-            case JSBracketSelect(qual, _) => containsOnlySelectsFromAtom(qual)
+            case JSPrivateSelect(qual, _) => containsOnlySelectsFromAtom(qual)
+            case JSSelect(qual, _)        => containsOnlySelectsFromAtom(qual)
             case VarRef(_)                => true
             case This()                   => true
             case _                        => false // in particular, Apply
@@ -532,12 +532,12 @@ object Printers {
           }
           printArgs(args)
 
-        case JSDotSelect(qualifier, item) =>
+        case JSPrivateSelect(qualifier, item) =>
           print(qualifier)
           print(".")
           print(item)
 
-        case JSBracketSelect(qualifier, item) =>
+        case JSSelect(qualifier, item) =>
           print(qualifier)
           print('[')
           print(item)
@@ -545,7 +545,7 @@ object Printers {
 
         case JSFunctionApply(fun, args) =>
           fun match {
-            case _:JSDotSelect | _:JSBracketSelect | _:Select =>
+            case _:JSPrivateSelect | _:JSSelect | _:Select =>
               print("(0, ")
               print(fun)
               print(')')
@@ -555,20 +555,14 @@ object Printers {
           }
           printArgs(args)
 
-        case JSDotMethodApply(receiver, method, args) =>
-          print(receiver)
-          print(".")
-          print(method)
-          printArgs(args)
-
-        case JSBracketMethodApply(receiver, method, args) =>
+        case JSMethodApply(receiver, method, args) =>
           print(receiver)
           print('[')
           print(method)
           print(']')
           printArgs(args)
 
-        case JSSuperBracketSelect(superClass, qualifier, item) =>
+        case JSSuperSelect(superClass, qualifier, item) =>
           print("super(")
           print(superClass)
           print(")::")
@@ -577,7 +571,7 @@ object Printers {
           print(item)
           print(']')
 
-        case JSSuperBracketCall(superClass, receiver, method, args) =>
+        case JSSuperMethodCall(superClass, receiver, method, args) =>
           print("super(")
           print(superClass)
           print(")::")
@@ -605,9 +599,12 @@ object Printers {
           print("mod:")
           print(cls)
 
-        case JSDelete(prop) =>
+        case JSDelete(qualifier, item) =>
           print("delete ")
-          print(prop)
+          print(qualifier)
+          print('[')
+          print(item)
+          print(']')
 
         case JSUnaryOp(op, lhs) =>
           import JSUnaryOp._
