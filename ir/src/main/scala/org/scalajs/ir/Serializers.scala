@@ -369,8 +369,8 @@ object Serializers {
         case JSObjectConstr(fields) =>
           writeByte(TagJSObjectConstr)
           writeInt(fields.size)
-          fields foreach { field =>
-            writePropertyName(field._1); writeTree(field._2)
+          fields.foreach { field =>
+            writeTree(field._1); writeTree(field._2)
           }
 
         case JSGlobalRef(ident) =>
@@ -920,7 +920,7 @@ object Serializers {
         case TagJSBinaryOp           => JSBinaryOp(readInt(), readTree(), readTree())
         case TagJSArrayConstr        => JSArrayConstr(readTreeOrJSSpreads())
         case TagJSObjectConstr       =>
-          JSObjectConstr(List.fill(readInt())((readPropertyName(), readTree())))
+          JSObjectConstr(List.fill(readInt())((readTree(), readTree())))
         case TagJSGlobalRef          => JSGlobalRef(readIdent())
         case TagJSLinkingInfo        => JSLinkingInfo()
 

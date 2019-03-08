@@ -371,8 +371,8 @@ object Hashers {
 
         case JSObjectConstr(fields) =>
           mixTag(TagJSObjectConstr)
-          fields foreach { case (pn, value) =>
-            mixPropertyName(pn)
+          fields.foreach { case (key, value) =>
+            mixTree(key)
             mixTree(value)
           }
 

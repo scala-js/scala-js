@@ -183,15 +183,8 @@ object Transformers {
           JSArrayConstr(items.map(transformExprOrJSSpread))
 
         case JSObjectConstr(fields) =>
-          JSObjectConstr(fields map {
-            case (name, value) =>
-              val newName = name match {
-                case ComputedName(tree, logicalName) =>
-                  ComputedName(transformExpr(tree), logicalName)
-                case _ =>
-                  name
-              }
-              (newName, transformExpr(value))
+          JSObjectConstr(fields.map { field =>
+            (transformExpr(field._1), transformExpr(field._2))
           })
 
         // Atomic expressions

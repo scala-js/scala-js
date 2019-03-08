@@ -609,20 +609,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         JSArrayConstr(transformExprsOrSpreads(items))
 
       case JSObjectConstr(fields) =>
-        JSObjectConstr(fields map {
-          case (name, value) =>
-            val newName = name match {
-              case _:StringLiteral | _:Ident =>
-                name
-              case ComputedName(nameExpr, logicalName) =>
-                transformExpr(nameExpr) match {
-                  case newName: StringLiteral =>
-                    newName
-                  case newName =>
-                    ComputedName(newName, logicalName)
-                }
-            }
-            (newName, transformExpr(value))
+        JSObjectConstr(fields.map { field =>
+          (transformExpr(field._1), transformExpr(field._2))
         })
 
       // Atomic expressions
@@ -2157,7 +2145,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             jsArray.replacement match {
               case InlineJSArrayReplacement(elemLocalDefs, _)
                   if elemLocalDefs.forall(e => isSubtype(e.tpe.base, ClassType("T2"))) =>
-                val fields: List[(PropertyName, Tree)] = for {
+                val fields: List[(Tree, Tree)] = for {
                   (elemLocalDef, idx) <- elemLocalDefs.toList.zipWithIndex
                 } yield {
                   elemLocalDef match {
@@ -2165,13 +2153,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                         InlineClassInstanceReplacement(recType, tupleFields, _)) =>
                       val List(key, value) =
                         recType.fields.map(f => tupleFields(f.name))
-                      val keyProp = key.newReplacement match {
-                        case keyProp: StringLiteral =>
-                          keyProp
-                        case keyTree =>
-                          ComputedName(keyTree, "local" + idx)
-                      }
-                      (keyProp, value.newReplacement)
+                      (key.newReplacement, value.newReplacement)
 
                     case _ =>
                       val flags = ApplyFlags.empty
@@ -2179,7 +2161,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                           "$$und1__O", Nil)(AnyType)
                       val value = Apply(flags, elemLocalDef.newReplacement,
                           "$$und2__O", Nil)(AnyType)
-                      (ComputedName(key, "local" + idx), value)
+                      (key, value)
                   }
                 }
 

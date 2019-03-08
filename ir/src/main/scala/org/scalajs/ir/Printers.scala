@@ -667,7 +667,15 @@ object Printers {
           print('{'); indent(); println()
           var rest = fields
           while (rest.nonEmpty) {
-            print(rest.head._1)
+            val elem = rest.head
+            elem._1 match {
+              case key: StringLiteral =>
+                print(key: Tree)
+              case key =>
+                print('[')
+                print(key)
+                print(']')
+            }
             print(": ")
             print(rest.head._2)
             rest = rest.tail

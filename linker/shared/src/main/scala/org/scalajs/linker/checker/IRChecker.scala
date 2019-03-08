@@ -1033,8 +1033,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           typecheckExprOrSpread(item, env)
 
       case JSObjectConstr(fields) =>
-        for ((_, value) <- fields)
+        for ((key, value) <- fields) {
+          typecheckExpr(key, env)
           typecheckExpr(value, env)
+        }
 
       case JSGlobalRef(_) =>
 

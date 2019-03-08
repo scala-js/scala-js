@@ -188,11 +188,7 @@ object Traversers {
 
       case JSObjectConstr(fields) =>
         for ((key, value) <- fields) {
-          key match {
-            case ComputedName(tree, _) =>
-              traverse(tree)
-            case _ =>
-          }
+          traverse(key)
           traverse(value)
         }
 

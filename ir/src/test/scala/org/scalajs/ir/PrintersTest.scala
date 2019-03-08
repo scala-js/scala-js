@@ -731,11 +731,11 @@ class PrintersTest {
     assertPrintEquals(
         """
           |{
-          |  f: 5,
+          |  [x]: 5,
           |  "g": 6
           |}
         """,
-        JSObjectConstr(List(Ident("f") -> i(5), StringLiteral("g") -> i(6))))
+        JSObjectConstr(List(ref("x", AnyType) -> i(5), StringLiteral("g") -> i(6))))
   }
 
   @Test def printGlobalRef(): Unit = {

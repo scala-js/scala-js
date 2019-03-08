@@ -769,7 +769,7 @@ object Trees {
     val tpe = AnyType
   }
 
-  case class JSObjectConstr(fields: List[(PropertyName, Tree)])(
+  case class JSObjectConstr(fields: List[(Tree, Tree)])(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
