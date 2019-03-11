@@ -39,7 +39,7 @@ import scala.annotation.implicitNotFound
  * `scala.concurrent.ExecutionContext.Implicits.global`.
  * The recommended approach is to add `(implicit ec: ExecutionContext)` to methods,
  * or class constructor parameters, which need an `ExecutionContext`.
- * 
+ *
  * Then locally import a specific `ExecutionContext` in one place for the entire
  * application or module, passing it implicitly to individual methods.
  * Alternatively define a local implicit val with the required `ExecutionContext`.
@@ -68,7 +68,7 @@ If your application does not define an ExecutionContext elsewhere,
 consider using Scala's global ExecutionContext by defining
 the following:
 
-implicit val ec = ExecutionContext.global""")
+implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global""")
 trait ExecutionContext {
 
   /** Runs a block of code on this execution context.
@@ -139,9 +139,35 @@ object ExecutionContext {
    *
    * @return the global `ExecutionContext`
    */
-  def global: ExecutionContextExecutor = Implicits.global.asInstanceOf[ExecutionContextExecutor]
+  final lazy val global: ExecutionContextExecutor =
+    scala.scalajs.concurrent.JSExecutionContext.queue
 
-  object Implicits {
+  /**
+   * WARNING: Only ever execute logic which will quickly return control to the caller.
+   *
+   * This `ExecutionContext` steals execution time from other threads by having its
+   * `Runnable`s run on the `Thread` which calls `execute` and then yielding back control
+   * to the caller after *all* its `Runnable`s have been executed.
+   * Nested invocations of `execute` will be trampolined to prevent uncontrolled stack space growth.
+   *
+   * When using `parasitic` with abstractions such as `Future` it will in many cases be non-deterministic
+   * as to which `Thread` will be executing the logic, as it depends on when/if that `Future` is completed.
+   *
+   * Do *not* call any blocking code in the `Runnable`s submitted to this `ExecutionContext`
+   * as it will prevent progress by other enqueued `Runnable`s and the calling `Thread`.
+   *
+   * Symptoms of misuse of this `ExecutionContext` include, but are not limited to, deadlocks
+   * and severe performance problems.
+   *
+   * Any `NonFatal` or `InterruptedException`s will be reported to the `defaultReporter`.
+   */
+  final object parasitic extends ExecutionContextExecutor with BatchingExecutor {
+    override final def submitForExecution(runnable: Runnable): Unit = runnable.run()
+    override final def execute(runnable: Runnable): Unit = submitSyncBatched(runnable)
+    override final def reportFailure(t: Throwable): Unit = defaultReporter(t)
+  }
+
+  final object Implicits {
     /**
      * The implicit global `ExecutionContext`. Import `global` when you want to provide the global
      * `ExecutionContext` implicitly.
@@ -150,8 +176,7 @@ object ExecutionContext {
      * the thread pool uses a target number of worker threads equal to the number of
      * [[https://docs.oracle.com/javase/8/docs/api/java/lang/Runtime.html#availableProcessors-- available processors]].
      */
-    implicit lazy val global: ExecutionContext =
-      scala.scalajs.concurrent.JSExecutionContext.queue
+    implicit final def global: ExecutionContext = ExecutionContext.global
   }
 
   /** Creates an `ExecutionContext` from the given `ExecutorService`.
@@ -198,7 +223,5 @@ object ExecutionContext {
    *
    *  @return the function for error reporting
    */
-  def defaultReporter: Throwable => Unit = _.printStackTrace()
+  final val defaultReporter: Throwable => Unit = _.printStackTrace()
 }
-
-
