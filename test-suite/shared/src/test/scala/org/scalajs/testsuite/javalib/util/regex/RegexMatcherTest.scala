@@ -264,25 +264,6 @@ class RegexMatcherTest  {
     assertTrue(matcher3.lookingAt())
   }
 
-  @Test def hitEnd(): Unit = {
-    val matcher0 = Pattern.compile("S[a-z]*").matcher("Scala.js")
-    assertTrue(matcher0.find())
-    assertFalse(matcher0.hitEnd)
-    assertFalse(matcher0.find())
-    assertTrue(matcher0.hitEnd)
-
-    val matcher1 = Pattern.compile("[A-Za-z]+").matcher("Scala.js")
-    assertTrue(matcher1.find())
-    assertFalse(matcher1.hitEnd)
-    assertEquals("Scala", matcher1.group)
-    assertTrue(matcher1.find())
-    assertTrue(matcher1.hitEnd)
-    assertEquals("js", matcher1.group)
-    assertTrue(matcher1.lookingAt())
-    assertEquals("Scala", matcher1.group)
-    assertFalse(matcher1.hitEnd)
-  }
-
   @Test def region(): Unit = {
     val matcher0 = Pattern.compile("S[a-z]+").matcher("A Scalable Solution")
 
