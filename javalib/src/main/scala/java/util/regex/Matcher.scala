@@ -232,10 +232,11 @@ final class Matcher private[regex] (
 
   // Other query state methods
 
-  def hitEnd(): Boolean =
-    lastMatchIsValid && (lastMatch == null || end() == inputstr.length)
+  // Cannot be implemented (see #3454)
+  //def hitEnd(): Boolean
 
-  //def requireEnd(): Boolean // I don't understand the spec
+  // Similar difficulties as with hitEnd()
+  //def requireEnd(): Boolean
 
   // Stub methods for region management
 
