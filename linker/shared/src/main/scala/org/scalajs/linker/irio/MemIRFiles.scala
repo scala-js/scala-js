@@ -21,7 +21,6 @@ import org.scalajs.ir
 /** A simple in-memory virtual serialized Scala.js IR file. */
 final class MemVirtualSerializedScalaJSIRFile(
     val path: String,
-    val relativePath: String,
     val version: Option[String],
     content: Array[Byte]
 ) extends VirtualScalaJSIRFile {

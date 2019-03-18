@@ -14,10 +14,11 @@ package org.scalajs.sbtplugin
 
 import scala.annotation.tailrec
 
-import scala.concurrent._
+// Import Future explicitly to avoid collision with sbt.Future.
+import scala.concurrent.{Future, _}
 import scala.concurrent.duration._
 
-import java.io.FileNotFoundException
+import scala.util.{Failure, Success}
 
 import java.util.concurrent.atomic.AtomicReference
 
@@ -35,7 +36,7 @@ import org.scalajs.linker.irio._
 
 import org.scalajs.jsenv._
 
-import org.scalajs.ir.IRVersionNotSupportedException
+import org.scalajs.ir.{Definitions, IRVersionNotSupportedException}
 import org.scalajs.ir.Printers.IRTreePrinter
 
 import org.scalajs.testing.adapter.{TestAdapter, HTMLRunnerBuilder, TestAdapterInitializer}
@@ -127,8 +128,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
   }
 
   private val scalajspParser = {
-    loadForParser(sjsirFilesOnClasspath) { (_, relPaths) =>
-      val examples = ScalajspUtils.relPathsExamples(relPaths.getOrElse(Nil))
+    loadForParser(scalaJSClassNamesOnClasspath) { (_, names) =>
+      val examples = sbt.complete.FixedSetExamples(names.getOrElse(Nil))
       OptSpace ~> StringBasic.examples(examples)
     }
   }
@@ -278,21 +279,44 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .put(scalaJSSourceFiles, irContainers.map(_.file))
       },
 
-      sjsirFilesOnClasspath := Def.task {
-        scalaJSIR.value.data.map(_.relativePath).toSeq
-      }.storeAs(sjsirFilesOnClasspath).triggeredBy(scalaJSIR).value,
+      scalaJSClassNamesOnClasspath := Def.task {
+        val none = Future.successful(None)
+
+        await(streams.value.log) { eci =>
+          implicit val ec = eci
+          Future.traverse(scalaJSIR.value.data) { ir =>
+            ir.entryPointsInfo
+              .map(i => Some(Definitions.decodeClassName(i.encodedName)))
+              .fallbackTo(none)
+          }
+        }.flatten
+      }.storeAs(scalaJSClassNamesOnClasspath).triggeredBy(scalaJSIR).value,
 
       scalajsp := {
-        val relPath = scalajspParser.parsed
-
-        val vfile = scalaJSIR.value.data
-          .find(_.relativePath == relPath)
-          .getOrElse(throw new FileNotFoundException(relPath))
+        val name = scalajspParser.parsed
 
         enhanceIRVersionNotSupportedException {
           val log = streams.value.log
           val stdout = new java.io.PrintWriter(System.out)
-          new IRTreePrinter(stdout).print(await(log)(vfile.tree(_)))
+          val tree = await(log) { eci =>
+            implicit val ec = eci
+            Future.traverse(scalaJSIR.value.data) { ir =>
+              ir.entryPointsInfo.map { i =>
+                if (i.encodedName == name || Definitions.decodeClassName(i.encodedName) == name) Success(Some(ir))
+                else Success(None)
+              }.recover { case t => Failure(t) }
+            }.flatMap { irs =>
+              irs.collectFirst {
+                case Success(Some(f)) => f.tree
+              }.getOrElse {
+                val t = new MessageOnlyException(s"class $name not found on classpath")
+                irs.collect { case Failure(st) => t.addSuppressed(st) }
+                throw t
+              }
+            }
+          }
+
+          new IRTreePrinter(stdout).print(tree)
           stdout.flush()
         }
 

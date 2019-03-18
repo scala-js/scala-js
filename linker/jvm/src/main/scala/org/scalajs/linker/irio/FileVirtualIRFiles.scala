@@ -44,33 +44,30 @@ object FileScalaJSIRContainer {
   def fromJar(file: File)(implicit ec: ExecutionContext): Future[FileScalaJSIRContainer] =
     Future(blocking(new FileVirtualJarScalaJSIRContainer(file)))
 
-  def fromSingleFile(file: File, relativePath: String)(
+  def fromSingleFile(file: File)(
       implicit ec: ExecutionContext): Future[FileScalaJSIRContainer] = {
-    Future(blocking(new FileVirtualScalaJSIRFile(file, relativePath)))
+    Future(blocking(new FileVirtualScalaJSIRFile(file)))
   }
 
   private def fromDirectory(dir: File)(
       implicit ec: ExecutionContext): Future[Seq[FileScalaJSIRContainer]] = {
     require(dir.isDirectory)
 
-    val baseDir = dir.getAbsoluteFile
+    val (subdirs, files) = dir.listFiles().toList.partition(_.isDirectory)
 
-    def walkForIR(dir: File): Seq[File] = {
-      val (subdirs, files) = dir.listFiles().partition(_.isDirectory)
-      subdirs.flatMap(walkForIR) ++ files.filter(_.getName.endsWith(".sjsir"))
-    }
+    val subdirFiles = Future.traverse(subdirs)(fromDirectory)
 
-    Future.traverse(walkForIR(baseDir)) { ir =>
-      val relPath = ir.getPath
-        .stripPrefix(baseDir.getPath)
-        .replace(java.io.File.separatorChar, '/')
-        .stripPrefix("/")
-      fromSingleFile(ir, relPath)
-    }
+    val directFiles =
+      Future.traverse(files.filter(_.getName.endsWith(".sjsir")))(fromSingleFile)
+
+    for {
+      sdf <- subdirFiles
+      df <- directFiles
+    } yield sdf.flatten ++ df
   }
 }
 
-private final class FileVirtualScalaJSIRFile(val file: File, val relativePath: String)
+private final class FileVirtualScalaJSIRFile(val file: File)
     extends VirtualScalaJSIRFile with FileScalaJSIRContainer {
   val path: String = file.getPath
 
@@ -171,7 +168,6 @@ private final class FileVirtualJarScalaJSIRContainer(val file: File) extends Fil
           readAll(out)
           new MemVirtualSerializedScalaJSIRFile(
               path = s"${this.path}:${e.getName}",
-              relativePath = e.getName,
               content = out.toByteArray,
               version = this.version
           )

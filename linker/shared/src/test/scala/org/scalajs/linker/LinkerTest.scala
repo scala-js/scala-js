@@ -115,7 +115,6 @@ object LinkerTest {
     val classDefsFiles = classDefs.map { classDef =>
       new VirtualScalaJSIRFile {
         val path: String = "mem://" + classDef.name.name + ".sjsir"
-        val relativePath: String = classDef.name.name + ".sjsir"
         val version: Option[String] = None
         def tree(implicit ec: ExecutionContext): Future[ClassDef] = Future(classDef)
 

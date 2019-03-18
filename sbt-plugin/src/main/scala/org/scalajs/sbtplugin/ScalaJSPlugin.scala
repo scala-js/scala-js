@@ -148,9 +148,9 @@ object ScalaJSPlugin extends AutoPlugin {
         "The JavaScript environment in which to run and test Scala.js applications.",
         AMinusTask)
 
-    /** All .sjsir files on the fullClasspath, used by scalajsp. */
-    val sjsirFilesOnClasspath = TaskKey[Seq[String]]("sjsirFilesOnClasspath",
-        "All .sjsir files on the fullClasspath, used by scalajsp",
+    /** All Scala.js class names on the fullClasspath, used by scalajsp. */
+    val scalaJSClassNamesOnClasspath = TaskKey[Seq[String]]("scalaJSClassNamesOnClasspath",
+        "All Scala.js class names on the fullClasspath, used by scalajsp",
         KeyRanks.Invisible)
 
     /** Prints the content of a .sjsir file in human readable form. */

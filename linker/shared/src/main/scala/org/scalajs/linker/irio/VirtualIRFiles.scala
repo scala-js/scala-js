@@ -66,9 +66,6 @@ trait VirtualScalaJSIRFile extends ScalaJSIRContainer {
   /** IR Tree of this file. */
   def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef]
 
-  /** The path of this IR relative to its classpath root. */
-  def relativePath: String
-
   final def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]] =
     Future.successful(this :: Nil)
 }
