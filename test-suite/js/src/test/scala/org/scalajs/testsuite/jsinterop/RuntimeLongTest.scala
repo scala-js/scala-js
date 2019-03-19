@@ -186,7 +186,7 @@ class RuntimeLongTest {
     assertEquals(512144461, lg(-615008378, -976157749).hashCode())
   }
 
-  @Test def toString()(): Unit = {
+  @Test def testToString(): Unit = {
     assertEquals("0", lg(0).toString())
     assertEquals("1", lg(1).toString())
     assertEquals("-1", lg(-1).toString())
