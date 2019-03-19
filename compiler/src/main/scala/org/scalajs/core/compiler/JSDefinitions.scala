@@ -32,11 +32,11 @@ trait JSDefinitions {
 
   class JSDefinitionsClass {
 
-    lazy val ScalaJSJSPackage = getPackage(newTermNameCached("scala.scalajs.js")) // compat 2.10/2.11
-      lazy val JSPackage_typeOf        = getMemberMethod(ScalaJSJSPackage, newTermName("typeOf"))
-      lazy val JSPackage_constructorOf = getMemberMethod(ScalaJSJSPackage, newTermName("constructorOf"))
-      lazy val JSPackage_native        = getMemberMethod(ScalaJSJSPackage, newTermName("native"))
-      lazy val JSPackage_undefined     = getMemberMethod(ScalaJSJSPackage, newTermName("undefined"))
+    lazy val ScalaJSJSPackageModule = getPackageObject("scala.scalajs.js")
+      lazy val JSPackage_typeOf        = getMemberMethod(ScalaJSJSPackageModule, newTermName("typeOf"))
+      lazy val JSPackage_constructorOf = getMemberMethod(ScalaJSJSPackageModule, newTermName("constructorOf"))
+      lazy val JSPackage_native        = getMemberMethod(ScalaJSJSPackageModule, newTermName("native"))
+      lazy val JSPackage_undefined     = getMemberMethod(ScalaJSJSPackageModule, newTermName("undefined"))
 
     lazy val JSNativeAnnotation = getRequiredClass("scala.scalajs.js.native")
 
