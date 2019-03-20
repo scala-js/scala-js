@@ -253,7 +253,14 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       classTag[A].runtimeClass.asInstanceOf[Class[A]].cast(x)
 
     private def genMemberExport(classSym: Symbol, name: TermName): js.MemberDef = {
-      val alts = classSym.info.member(name).alternatives
+      /* This used to be `.member(name)`, but it caused #3538, since we were
+       * sometimes selecting mixin forwarders, whose type history does not go
+       * far enough back in time to see varargs. We now explicitly exclude
+       * mixed-in members in addition to bridge methods (the latter are always
+       * excluded by `.member(name)`).
+       */
+      val alts = classSym.info.memberBasedOnName(name,
+          excludedFlags = Flags.BRIDGE | Flags.MIXEDIN).alternatives
 
       assert(!alts.isEmpty,
           s"Ended up with no alternatives for ${classSym.fullName}::$name. " +

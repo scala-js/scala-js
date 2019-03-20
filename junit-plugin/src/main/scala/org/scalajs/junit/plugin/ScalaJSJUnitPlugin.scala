@@ -260,7 +260,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         gen.mkAsInstanceOf(Ident(param), clazz.tpe, any = false)
 
       private def annotatedMethods(owner: Symbol, annot: Symbol): Scope =
-        owner.info.members.filter(m => m.isMethod && !m.isBridge && m.hasAnnotation(annot))
+        owner.info.members.filter(m => m.isMethod && m.hasAnnotation(annot))
     }
   }
 }

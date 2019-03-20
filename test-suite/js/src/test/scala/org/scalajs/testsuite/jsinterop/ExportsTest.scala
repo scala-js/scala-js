@@ -374,6 +374,35 @@ class ExportsTest {
     assertEquals(4, bar.method(2))
   }
 
+  @Test def should_inherit_exports_from_traits_with_value_classes(): Unit = {
+    trait Foo {
+      @JSExport
+      def x: SomeValueClass = new SomeValueClass(5)
+
+      @JSExport
+      def method(x: SomeValueClass): Int = x.i
+    }
+
+    class Bar extends Foo
+
+    val bar = (new Bar).asInstanceOf[js.Dynamic]
+    assertEquals(new SomeValueClass(5), bar.x)
+    val vc = new SomeValueClass(4)
+    assertEquals(4, bar.method(vc.asInstanceOf[js.Any]))
+  }
+
+  @Test def should_inherit_exports_from_traits_with_varargs_issue_3538(): Unit = {
+    trait Foo {
+      @JSExport
+      def method(args: Int*): Int = args.sum
+    }
+
+    class Bar extends Foo
+
+    val bar = (new Bar).asInstanceOf[js.Dynamic]
+    assertEquals(18, bar.method(5, 6, 7))
+  }
+
   @Test def overloading_with_inherited_exports(): Unit = {
     class A {
       @JSExport
