@@ -58,6 +58,15 @@ object ArrayOpsTest {
 
   object FallbackImplicits {
     implicit class JSArrayOpsFallback[A](self: js.Any) {
+      def sizeCompare(otherSize: Int): Int =
+        throw new AssertionError("unreachable code")
+
+      def sizeIs: Int =
+        throw new AssertionError("unreachable code")
+
+      def lengthIs: Int =
+        throw new AssertionError("unreachable code")
+
       def partitionMap[A1, A2](f: Any => Either[A1, A2]): (js.Array[A1], js.Array[A2]) =
         throw new AssertionError("unreachable code")
     }
@@ -103,11 +112,59 @@ class ArrayOpsTest {
     assertEquals(None, js.Array[Int]().lastOption)
   }
 
+  @Test def sizeCompare(): Unit = {
+    assumeFalse("sizeCompare was added in 2.13",
+        scalaVersion.startsWith("2.10.") ||
+        scalaVersion.startsWith("2.11.") ||
+        scalaVersion.startsWith("2.12.") ||
+        scalaVersion == "2.13.0-M5")
+
+    import FallbackImplicits._
+    import js.Any.jsArrayOps
+
+    val array = js.Array(5, 7, 10)
+    assertEquals(0, array.sizeCompare(3))
+    assertTrue(array.sizeCompare(1) > 0)
+    assertTrue(array.sizeCompare(6) < 0)
+  }
+
   @Test def lengthCompare(): Unit = {
     val array = js.Array(5, 7, 10)
     assertEquals(0, array.lengthCompare(3))
     assertTrue(array.lengthCompare(1) > 0)
     assertTrue(array.lengthCompare(6) < 0)
+  }
+
+  @Test def sizeIs(): Unit = {
+    assumeFalse("sizeIs was added in 2.13",
+        scalaVersion.startsWith("2.10.") ||
+        scalaVersion.startsWith("2.11.") ||
+        scalaVersion.startsWith("2.12.") ||
+        scalaVersion == "2.13.0-M5")
+
+    import FallbackImplicits._
+    import js.Any.jsArrayOps
+
+    val array = js.Array(5, 7, 10)
+    assertTrue(array.sizeIs == 3)
+    assertTrue(array.sizeIs > 1)
+    assertTrue(array.sizeIs < 6)
+  }
+
+  @Test def lengthIs(): Unit = {
+    assumeFalse("lengthIs was added in 2.13",
+        scalaVersion.startsWith("2.10.") ||
+        scalaVersion.startsWith("2.11.") ||
+        scalaVersion.startsWith("2.12.") ||
+        scalaVersion == "2.13.0-M5")
+
+    import FallbackImplicits._
+    import js.Any.jsArrayOps
+
+    val array = js.Array(5, 7, 10)
+    assertTrue(array.lengthIs == 3)
+    assertTrue(array.lengthIs > 1)
+    assertTrue(array.lengthIs < 6)
   }
 
   @Test def slice(): Unit = {
