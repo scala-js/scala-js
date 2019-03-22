@@ -1828,7 +1828,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
     xs.length -= clampIndex(n)
 
   @noinline // js.WrappedArray itself is @inline, so the call below will produce a lot of code
-  def patchInPlace(from: Int, patch: scala.collection.Seq[A],
+  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A],
       replaced: Int): js.Array[A] = {
     new js.WrappedArray(xs).patchInPlace(from, patch, replaced)
     xs
