@@ -589,6 +589,13 @@ class ArrayOpsTest {
   @Test def startsWith(): Unit = {
     val array = js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3)
 
+    val supportsNegativeStart = {
+      !scalaVersion.startsWith("2.10.") &&
+      !scalaVersion.startsWith("2.11.") &&
+      !scalaVersion.startsWith("2.12.") &&
+      scalaVersion != "2.13.0-M5"
+    }
+
     // js.Array
 
     assertTrue(array.startsWith(js.Array[Int]()))
@@ -601,9 +608,15 @@ class ArrayOpsTest {
     assertTrue(array.startsWith(js.Array[Int](), 2))
     assertTrue(array.startsWith(js.Array(7, 2), 2))
     assertTrue(array.startsWith(js.Array(7, 2, 54, 2, 78, 0, 3), 2))
+    if (supportsNegativeStart) {
+      assertTrue(array.startsWith(js.Array(1, 5, 7, 2), -1))
+      assertTrue(array.startsWith(js.Array(1, 5, 7, 2), Int.MinValue))
+    }
 
     assertFalse(array.startsWith(js.Array(7, 2, 34, 2), 2))
     assertFalse(array.startsWith(js.Array(7, 2, 54, 2, 78, 0, 3, 6, 4), 2))
+    if (supportsNegativeStart)
+      assertFalse(array.startsWith(js.Array(1, 5, 3, 2), -1))
 
     // List
 
@@ -617,9 +630,15 @@ class ArrayOpsTest {
     assertTrue(array.startsWith(List[Int](), 2))
     assertTrue(array.startsWith(List(7, 2), 2))
     assertTrue(array.startsWith(List(7, 2, 54, 2, 78, 0, 3), 2))
+    if (supportsNegativeStart) {
+      assertTrue(array.startsWith(List(1, 5, 7, 2), -1))
+      assertTrue(array.startsWith(List(1, 5, 7, 2), Int.MinValue))
+    }
 
     assertFalse(array.startsWith(List(7, 2, 34, 2), 2))
     assertFalse(array.startsWith(List(7, 2, 54, 2, 78, 0, 3, 6, 4), 2))
+    if (supportsNegativeStart)
+      assertFalse(array.startsWith(List(1, 5, 3, 2), -1))
   }
 
   @Test def endsWith(): Unit = {

@@ -1295,13 +1295,14 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    */
   def startsWith[B >: A](that: js.Array[B], offset: Int): Boolean = {
     // scalastyle:return off
+    val safeOffset = offset.max(0)
     val thatl = that.length
-    if (thatl > xs.length - offset) {
+    if (thatl > xs.length - safeOffset) {
       thatl == 0
     } else {
       var i = 0
       while (i < thatl) {
-        if (xs(i + offset) != that(i))
+        if (xs(i + safeOffset) != that(i))
           return false
         i += 1
       }
