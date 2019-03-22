@@ -15,7 +15,7 @@ package scala.scalajs.js
 import scala.annotation.tailrec
 
 import scala.collection.{immutable, mutable}
-import scala.collection.{AbstractIterator, IndexedSeqView, IterableOnce}
+import scala.collection.{AbstractIndexedSeqView, AbstractIterator, IndexedSeqView, IterableOnce}
 
 import scala.reflect.ClassTag
 
@@ -1799,7 +1799,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 }
 
 object ArrayOps {
-  private class ArrayView[A](xs: js.Array[A]) extends IndexedSeqView[A] {
+  private class ArrayView[A](xs: js.Array[A]) extends AbstractIndexedSeqView[A] {
     @inline def length: Int = xs.length
 
     @inline def apply(n: Int): A = xs(n)
