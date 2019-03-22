@@ -1230,32 +1230,64 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 
   /** Copy elements of this array to a Scala array.
    *
-   *  Fills the given array `dest` starting at index `start` with at most `len`
+   *  Fills the given array `xs` starting at index 0. Copying will stop once
+   *  either all the elements of this array have been copied, or the end of the
+   *  array is reached.
+   *
+   *  @param xs
+   *    the array to fill.
+   *  @tparam B
+   *    the type of the elements of the array.
+   */
+  def copyToArray[B >: A](xs: scala.Array[B]): Int =
+    copyToArray(xs, 0)
+
+  /** Copy elements of this array to a Scala array.
+   *
+   *  Fills the given array `xs` starting at index `start`. Copying will stop
+   *  once either all the elements of this array have been copied, or the end
+   *  of the array is reached.
+   *
+   *  @param xs
+   *    the array to fill.
+   *  @param start
+   *    the starting index within the destination array.
+   *  @tparam B
+   *    the type of the elements of the array.
+   */
+  def copyToArray[B >: A](xs: scala.Array[B], start: Int): Int =
+    copyToArray(xs, start, Int.MaxValue)
+
+
+  /** Copy elements of this array to a Scala array.
+   *
+   *  Fills the given array `xs` starting at index `start` with at most `len`
    *  values. Copying will stop once either all the elements of this array have
    *  been copied, or the end of the array is reached, or `len` elements have
    *  been copied.
    *
-   *  @param dest
+   *  @param xs
    *    the array to fill.
    *  @param start
-   *    the starting index.
+   *    the starting index within the destination array.
    *  @param len
    *    the maximal number of elements to copy.
    *  @tparam B
    *    the type of the elements of the array.
    */
-  def copyToArray[B >: A](dest: scala.Array[B], start: Int,
-      len: Int = Int.MaxValue): Int = {
+  def copyToArray[B >: A](xs: scala.Array[B], start: Int, len: Int): Int = {
+    val src = this.xs
+    val dest = xs
 
     // Copied from IterableOnce.elemsToCopyToArray
     @inline
     def elemsToCopyToArray(srcLen: Int, destLen: Int, start: Int, len: Int): Int =
       max(min(min(len, srcLen), destLen - start), 0)
 
-    val copied = elemsToCopyToArray(xs.length, dest.length, start, len)
+    val copied = elemsToCopyToArray(src.length, dest.length, start, len)
     var i = 0
     while (i < copied) {
-      dest(i + start) = xs(i)
+      dest(i + start) = src(i)
       i += 1
     }
     copied
