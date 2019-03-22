@@ -1904,6 +1904,12 @@ object ArrayOps {
       pos += 1
       r
     }
+
+    override def drop(n: Int): scala.collection.Iterator[A] = {
+      if (n > 0)
+        pos = Math.min(xs.length, pos + n)
+      this
+    }
   }
 
   private class ReverseIterator[A](private[this] val xs: js.Array[A])
@@ -1919,6 +1925,12 @@ object ArrayOps {
       val r = xs(pos)
       pos -= 1
       r
+    }
+
+    override def drop(n: Int): scala.collection.Iterator[A] = {
+      if (n > 0)
+        pos = Math.max(-1, pos - n)
+      this
     }
   }
 
