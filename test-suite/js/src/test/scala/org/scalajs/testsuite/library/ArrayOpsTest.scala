@@ -55,6 +55,13 @@ object ArrayOpsTest {
     assertJSArrayEquals(expected._1, actual._1)
     assertJSArrayEquals(expected._2, actual._2)
   }
+
+  object FallbackImplicits {
+    implicit class JSArrayOpsFallback[A](self: js.Any) {
+      def partitionMap[A1, A2](f: Any => Either[A1, A2]): (js.Array[A1], js.Array[A2]) =
+        throw new AssertionError("unreachable code")
+    }
+  }
 }
 
 class ArrayOpsTest {
@@ -240,6 +247,25 @@ class ArrayOpsTest {
     assertJSArrayPairEquals((js.Array(), array), array.partition(_ < 0))
     assertJSArrayPairEquals((js.Array(1, 5, 7, 2, 2, 0, 3), js.Array(54, 78)), array.partition(_ < 10))
     assertJSArrayPairEquals((array, js.Array()), array.partition(_ < 100))
+  }
+
+  @Test def partitionMap(): Unit = {
+    assumeFalse("partitionMap was added in 2.13",
+        scalaVersion.startsWith("2.10.") ||
+        scalaVersion.startsWith("2.11.") ||
+        scalaVersion.startsWith("2.12.") ||
+        scalaVersion == "2.13.0-M5")
+
+    import FallbackImplicits._
+    import js.Any.jsArrayOps
+
+    val array = js.Array[Any](1, "one", 2, "two", 3, "three")
+    val resultInferType = array.partitionMap {
+      case x: Int    => Left(x)
+      case x: String => Right(x)
+    }
+    val result: (js.Array[Int], js.Array[String]) = resultInferType
+    assertJSArrayPairEquals((js.Array(1, 2, 3), js.Array("one", "two", "three")), result)
   }
 
   @Test def reverse(): Unit = {

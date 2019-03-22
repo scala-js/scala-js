@@ -284,6 +284,44 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
     (res1, res2)
   }
 
+  /** Applies a function `f` to each element of the array and returns a pair of
+   *  arrays: the first one made of those values returned by `f` that were
+   *  wrapped in [[scala.util.Left]], and the second one made of those wrapped
+   *  in [[scala.util.Right]].
+   *
+   *  Example:
+   *  {{{
+   *  val xs = js.Array(1, "one", 2, "two", 3, "three").partitionMap {
+   *    case i: Int    => Left(i)
+   *    case s: String => Right(s)
+   *  }
+   *  // xs == (js.Array(1, 2, 3),
+   *  //        js.Array("one", "two", "three"))
+   *  }}}
+   *
+   *  @tparam A1
+   *    the element type of the first resulting collection
+   *  @tparam A2
+   *    the element type of the second resulting collection
+   *  @param f
+   *    the 'split function' mapping the elements of this array to an [[scala.util.Either]]
+   *  @return
+   *    a pair of arrays: the first one made of those values returned by `f`
+   *    that were wrapped in [[scala.util.Left]],  and the second one made of
+   *    those wrapped in [[scala.util.Right]].
+   */
+  def partitionMap[A1, A2](f: A => Either[A1, A2]): (Array[A1], Array[A2]) = {
+    val res1 = js.Array[A1]()
+    val res2 = js.Array[A2]()
+    for (x <- xs) {
+      f(x) match {
+        case Left(y)  => res1 += y
+        case Right(y) => res2 += y
+      }
+    }
+    (res1, res2)
+  }
+
   /** Returns a new array with the elements in reversed order. */
   def reverse: js.Array[A] = {
     val len = xs.length
