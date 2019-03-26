@@ -15,9 +15,11 @@ package org.scalajs.ir
 import scala.annotation.switch
 
 import java.io._
+import java.nio._
 import java.net.URI
 
 import scala.collection.mutable
+import scala.concurrent._
 
 import Definitions.isConstructorName
 import Position._
@@ -40,13 +42,27 @@ object Serializers {
     new Serializer().serialize(stream, classDef)
   }
 
-  def deserializeEntryPointsInfo(stream: InputStream): EntryPointsInfo = {
-    new Deserializer(stream).deserializeEntryPointsInfo()
-  }
+  /** Deserializes entry points from the given buffer.
+   *
+   *  Sets the buffer's order to BIG_ENDAIN.
+   *
+   *  @throws java.nio.BufferUnderflowException if not enough data is available
+   *      in the buffer. In this case the buffer's position is unspecified and
+   *      needs to be reset by the caller.
+   */
+  def deserializeEntryPointsInfo(buf: ByteBuffer): EntryPointsInfo =
+    new Deserializer(buf).deserializeEntryPointsInfo()
 
-  def deserialize(stream: InputStream): ClassDef = {
-    new Deserializer(stream).deserialize()
-  }
+  /** Deserializes a class def from the given buffer.
+   *
+   *  Sets the buffer's order to BIG_ENDAIN.
+   *
+   *  @throws java.nio.BufferUnderflowException if not enough data is available
+   *      in the buffer. In this case the buffer's position is unspecified and
+   *      needs to be reset by the caller.
+   */
+  def deserialize(buf: ByteBuffer): ClassDef =
+    new Deserializer(buf).deserialize()
 
   // true for easier debugging (not for "production", it adds 8 bytes per node)
   private final val UseDebugMagic = false
@@ -751,39 +767,39 @@ object Serializers {
     }
   }
 
-  private final class Deserializer(stream: InputStream) {
-    private[this] val input = new DataInputStream(stream)
-
+  private final class Deserializer(buf: ByteBuffer) {
     private[this] var sourceVersion: String = _
     private[this] var files: Array[URI] = _
     private[this] var strings: Array[String] = _
 
     private[this] var lastPosition: Position = Position.NoPosition
 
+    buf.order(ByteOrder.BIG_ENDIAN)
+
     def deserializeEntryPointsInfo(): EntryPointsInfo = {
-      sourceVersion = readHeader()
-      readEntryPointsInfo()
+      sourceVersion = getHeader()
+      getEntryPointsInfo()
     }
 
     def deserialize(): ClassDef = {
-      sourceVersion = readHeader()
-      readEntryPointsInfo() // discarded
-      files = Array.fill(input.readInt())(new URI(input.readUTF()))
-      strings = Array.fill(input.readInt())(input.readUTF())
-      readClassDef()
+      sourceVersion = getHeader()
+      getEntryPointsInfo() // discarded
+      files = Array.fill(buf.getInt())(new URI(getUTF()))
+      strings = Array.fill(buf.getInt())(getUTF())
+      getClassDef()
     }
 
     /** Reads the Scala.js IR header and verifies the version compatibility.
      *
      *  @return the binary version that was read
      */
-    private def readHeader(): String = {
+    private def getHeader(): String = {
       // Check magic number
-      if (input.readInt() != IRMagicNumber)
+      if (buf.getInt() != IRMagicNumber)
         throw new IOException("Not a Scala.js IR file")
 
       // Check that we support this version of the IR
-      val version = input.readUTF()
+      val version = getUTF()
       val supported = ScalaJSVersions.binarySupported
       if (!supported.contains(version)) {
         throw new IRVersionNotSupportedException(version, supported,
@@ -794,198 +810,249 @@ object Serializers {
       version
     }
 
-    private def readEntryPointsInfo(): EntryPointsInfo = {
-      val encodedName = input.readUTF()
-      val hasEntryPoint = input.readBoolean()
+    private def getUTF(): String = {
+      // DataInput.readUTF for buffers.
+
+      val length = buf.getShort() & 0xffff // unsigned
+      var res = ""
+      var i = 0
+
+      def badFormat(msg: String) = throw new UTFDataFormatException(msg)
+
+      while (i < length) {
+        val a = buf.get()
+
+        i += 1
+
+        val char = {
+          if ((a & 0x80) == 0x00) { // 0xxxxxxx
+            a.toChar
+          } else if ((a & 0xE0) == 0xC0 && i < length) { // 110xxxxx
+            val b = buf.get()
+            i += 1
+
+            if ((b & 0xC0) != 0x80) // 10xxxxxx
+              badFormat(f"Expected 2 bytes, found: $b%#02x (init: $a%#02x)")
+
+            (((a & 0x1F) << 6) | (b & 0x3F)).toChar
+          } else if ((a & 0xF0) == 0xE0 && i < length - 1) { // 1110xxxx
+            val b = buf.get()
+            val c = buf.get()
+            i += 2
+
+            if ((b & 0xC0) != 0x80)   // 10xxxxxx
+              badFormat(f"Expected 3 bytes, found: $b%#02x (init: $a%#02x)")
+
+            if ((c & 0xC0) != 0x80)   // 10xxxxxx
+              badFormat(
+                  f"Expected 3 bytes, found: $b%#02x, $c%#02x (init: $a%#02x)")
+
+            (((a & 0x0F) << 12) | ((b & 0x3F) << 6) | (c & 0x3F)).toChar
+          } else {
+            val rem = length - i
+            badFormat(f"Unexpected start of char: $a%#02x ($rem%d bytes to go)")
+          }
+        }
+
+        res += char
+      }
+
+      res
+    }
+
+    private def getEntryPointsInfo(): EntryPointsInfo = {
+      val encodedName = getUTF()
+      val hasEntryPoint = getBoolean()
       new EntryPointsInfo(encodedName, hasEntryPoint)
     }
 
-    def readTree(): Tree = {
-      val pos = readPosition()
-      readTreeFromTag(input.readByte())(pos)
+    def getTree(): Tree = {
+      val pos = getPosition()
+      getTreeFromTag(buf.get())(pos)
     }
 
-    def readOptTree(): Option[Tree] = {
+    def getOptTree(): Option[Tree] = {
       // TODO switch tag and position when we can break binary compat.
-      val pos = readPosition()
-      val tag = input.readByte()
+      val pos = getPosition()
+      val tag = buf.get()
       if (tag == TagEmptyTree) None
-      else Some(readTreeFromTag(tag)(pos))
+      else Some(getTreeFromTag(tag)(pos))
     }
 
-    def readTreeOrJSSpread(): TreeOrJSSpread = {
-      val pos = readPosition()
-      val tag = input.readByte()
+    def getTreeOrJSSpread(): TreeOrJSSpread = {
+      val pos = getPosition()
+      val tag = buf.get()
       if (tag == TagJSSpread)
-        JSSpread(readTree())(pos)
+        JSSpread(getTree())(pos)
       else
-        readTreeFromTag(tag)(pos)
+        getTreeFromTag(tag)(pos)
     }
 
-    def readTreeOrJSSpreads(): List[TreeOrJSSpread] =
-      List.fill(input.readInt())(readTreeOrJSSpread())
+    def getTreeOrJSSpreads(): List[TreeOrJSSpread] =
+      List.fill(buf.getInt())(getTreeOrJSSpread())
 
-    private def readTreeFromTag(tag: Byte)(implicit pos: Position): Tree = {
-      import input._
+    private def getTreeFromTag(tag: Byte)(implicit pos: Position): Tree = {
+      import buf._
+
       val result = (tag: @switch) match {
         case TagEmptyTree =>
           throw new IOException("Found invalid TagEmptyTree")
 
-        case TagVarDef  => VarDef(readIdent(), readType(), readBoolean(), readTree())
+        case TagVarDef  => VarDef(getIdent(), getType(), getBoolean(), getTree())
         case TagSkip    => Skip()
-        case TagBlock   => Block(readTrees())
-        case TagLabeled => Labeled(readIdent(), readType(), readTree())
-        case TagAssign  => Assign(readTree(), readTree())
-        case TagReturn  => Return(readTree(), readIdent())
-        case TagIf      => If(readTree(), readTree(), readTree())(readType())
-        case TagWhile   => While(readTree(), readTree())
-        case TagDoWhile => DoWhile(readTree(), readTree())
-        case TagForIn   => ForIn(readTree(), readIdent(), readTree())
+        case TagBlock   => Block(getTrees())
+        case TagLabeled => Labeled(getIdent(), getType(), getTree())
+        case TagAssign  => Assign(getTree(), getTree())
+        case TagReturn  => Return(getTree(), getIdent())
+        case TagIf      => If(getTree(), getTree(), getTree())(getType())
+        case TagWhile   => While(getTree(), getTree())
+        case TagDoWhile => DoWhile(getTree(), getTree())
+        case TagForIn   => ForIn(getTree(), getIdent(), getTree())
 
         case TagTryCatch =>
-          TryCatch(readTree(), readIdent(), readTree())(readType())
+          TryCatch(getTree(), getIdent(), getTree())(getType())
 
         case TagTryFinally =>
-          TryFinally(readTree(), readTree())
+          TryFinally(getTree(), getTree())
 
-        case TagThrow    => Throw(readTree())
+        case TagThrow    => Throw(getTree())
         case TagMatch    =>
-          Match(readTree(), List.fill(readInt()) {
-            (readTrees().map(_.asInstanceOf[IntLiteral]), readTree())
-          }, readTree())(readType())
+          Match(getTree(), List.fill(getInt()) {
+            (getTrees().map(_.asInstanceOf[IntLiteral]), getTree())
+          }, getTree())(getType())
         case TagDebugger => Debugger()
 
-        case TagNew          => New(readClassRef(), readIdent(), readTrees())
-        case TagLoadModule   => LoadModule(readClassRef())
-        case TagStoreModule  => StoreModule(readClassRef(), readTree())
-        case TagSelect       => Select(readTree(), readIdent())(readType())
-        case TagSelectStatic => SelectStatic(readClassRef(), readIdent())(readType())
+        case TagNew          => New(getClassRef(), getIdent(), getTrees())
+        case TagLoadModule   => LoadModule(getClassRef())
+        case TagStoreModule  => StoreModule(getClassRef(), getTree())
+        case TagSelect       => Select(getTree(), getIdent())(getType())
+        case TagSelectStatic => SelectStatic(getClassRef(), getIdent())(getType())
 
         case TagApply =>
-          Apply(readApplyFlags(), readTree(), readIdent(), readTrees())(
-              readType())
+          Apply(getApplyFlags(), getTree(), getIdent(), getTrees())(
+              getType())
         case TagApplyStatically =>
-          ApplyStatically(readApplyFlags(), readTree(), readClassRef(),
-              readIdent(), readTrees())(readType())
+          ApplyStatically(getApplyFlags(), getTree(), getClassRef(),
+              getIdent(), getTrees())(getType())
         case TagApplyStatic =>
-          ApplyStatic(readApplyFlags(), readClassRef(), readIdent(),
-              readTrees())(readType())
+          ApplyStatic(getApplyFlags(), getClassRef(), getIdent(),
+              getTrees())(getType())
 
-        case TagUnaryOp      => UnaryOp(readByte(), readTree())
-        case TagBinaryOp     => BinaryOp(readByte(), readTree(), readTree())
-        case TagNewArray     => NewArray(readArrayTypeRef(), readTrees())
-        case TagArrayValue   => ArrayValue(readArrayTypeRef(), readTrees())
-        case TagArrayLength  => ArrayLength(readTree())
-        case TagArraySelect  => ArraySelect(readTree(), readTree())(readType())
-        case TagRecordValue  => RecordValue(readType().asInstanceOf[RecordType], readTrees())
-        case TagIsInstanceOf => IsInstanceOf(readTree(), readTypeRef())
-        case TagAsInstanceOf => AsInstanceOf(readTree(), readTypeRef())
-        case TagUnbox        => Unbox(readTree(), readByte().toChar)
-        case TagGetClass     => GetClass(readTree())
+        case TagUnaryOp      => UnaryOp(get(), getTree())
+        case TagBinaryOp     => BinaryOp(get(), getTree(), getTree())
+        case TagNewArray     => NewArray(getArrayTypeRef(), getTrees())
+        case TagArrayValue   => ArrayValue(getArrayTypeRef(), getTrees())
+        case TagArrayLength  => ArrayLength(getTree())
+        case TagArraySelect  => ArraySelect(getTree(), getTree())(getType())
+        case TagRecordValue  => RecordValue(getType().asInstanceOf[RecordType], getTrees())
+        case TagIsInstanceOf => IsInstanceOf(getTree(), getTypeRef())
+        case TagAsInstanceOf => AsInstanceOf(getTree(), getTypeRef())
+        case TagUnbox        => Unbox(getTree(), get().toChar)
+        case TagGetClass     => GetClass(getTree())
 
-        case TagJSNew                => JSNew(readTree(), readTreeOrJSSpreads())
-        case TagJSDotSelect          => JSDotSelect(readTree(), readIdent())
-        case TagJSBracketSelect      => JSBracketSelect(readTree(), readTree())
-        case TagJSFunctionApply      => JSFunctionApply(readTree(), readTreeOrJSSpreads())
-        case TagJSDotMethodApply     => JSDotMethodApply(readTree(), readIdent(), readTreeOrJSSpreads())
-        case TagJSBracketMethodApply => JSBracketMethodApply(readTree(), readTree(), readTreeOrJSSpreads())
-        case TagJSSuperBracketSelect => JSSuperBracketSelect(readTree(), readTree(), readTree())
+        case TagJSNew                => JSNew(getTree(), getTreeOrJSSpreads())
+        case TagJSDotSelect          => JSDotSelect(getTree(), getIdent())
+        case TagJSBracketSelect      => JSBracketSelect(getTree(), getTree())
+        case TagJSFunctionApply      => JSFunctionApply(getTree(), getTreeOrJSSpreads())
+        case TagJSDotMethodApply     => JSDotMethodApply(getTree(), getIdent(), getTreeOrJSSpreads())
+        case TagJSBracketMethodApply => JSBracketMethodApply(getTree(), getTree(), getTreeOrJSSpreads())
+        case TagJSSuperBracketSelect => JSSuperBracketSelect(getTree(), getTree(), getTree())
         case TagJSSuperBracketCall   =>
-          JSSuperBracketCall(readTree(), readTree(), readTree(), readTreeOrJSSpreads())
-        case TagJSSuperConstructorCall => JSSuperConstructorCall(readTreeOrJSSpreads())
-        case TagLoadJSConstructor    => LoadJSConstructor(readClassRef())
-        case TagLoadJSModule         => LoadJSModule(readClassRef())
-        case TagJSDelete             => JSDelete(readTree())
-        case TagJSUnaryOp            => JSUnaryOp(readInt(), readTree())
-        case TagJSBinaryOp           => JSBinaryOp(readInt(), readTree(), readTree())
-        case TagJSArrayConstr        => JSArrayConstr(readTreeOrJSSpreads())
+          JSSuperBracketCall(getTree(), getTree(), getTree(), getTreeOrJSSpreads())
+        case TagJSSuperConstructorCall => JSSuperConstructorCall(getTreeOrJSSpreads())
+        case TagLoadJSConstructor    => LoadJSConstructor(getClassRef())
+        case TagLoadJSModule         => LoadJSModule(getClassRef())
+        case TagJSDelete             => JSDelete(getTree())
+        case TagJSUnaryOp            => JSUnaryOp(getInt(), getTree())
+        case TagJSBinaryOp           => JSBinaryOp(getInt(), getTree(), getTree())
+        case TagJSArrayConstr        => JSArrayConstr(getTreeOrJSSpreads())
         case TagJSObjectConstr       =>
-          JSObjectConstr(List.fill(readInt())((readPropertyName(), readTree())))
-        case TagJSGlobalRef          => JSGlobalRef(readIdent())
+          JSObjectConstr(List.fill(getInt())((getPropertyName(), getTree())))
+        case TagJSGlobalRef          => JSGlobalRef(getIdent())
         case TagJSLinkingInfo        => JSLinkingInfo()
 
         case TagUndefined      => Undefined()
         case TagNull           => Null()
-        case TagBooleanLiteral => BooleanLiteral(readBoolean())
-        case TagCharLiteral    => CharLiteral(readChar())
-        case TagByteLiteral    => ByteLiteral(readByte())
-        case TagShortLiteral   => ShortLiteral(readShort())
-        case TagIntLiteral     => IntLiteral(readInt())
-        case TagLongLiteral    => LongLiteral(readLong())
-        case TagFloatLiteral   => FloatLiteral(readFloat())
-        case TagDoubleLiteral  => DoubleLiteral(readDouble())
-        case TagStringLiteral  => StringLiteral(readString())
-        case TagClassOf        => ClassOf(readTypeRef())
+        case TagBooleanLiteral => BooleanLiteral(getBoolean())
+        case TagCharLiteral    => CharLiteral(getChar())
+        case TagByteLiteral    => ByteLiteral(get())
+        case TagShortLiteral   => ShortLiteral(getShort())
+        case TagIntLiteral     => IntLiteral(getInt())
+        case TagLongLiteral    => LongLiteral(getLong())
+        case TagFloatLiteral   => FloatLiteral(getFloat())
+        case TagDoubleLiteral  => DoubleLiteral(getDouble())
+        case TagStringLiteral  => StringLiteral(getString())
+        case TagClassOf        => ClassOf(getTypeRef())
 
         case TagVarRef =>
-          VarRef(readIdent())(readType())
+          VarRef(getIdent())(getType())
         case TagThis =>
-          This()(readType())
+          This()(getType())
         case TagClosure =>
-          Closure(readBoolean(), readParamDefs(), readParamDefs(), readTree(),
-              readTrees())
+          Closure(getBoolean(), getParamDefs(), getParamDefs(), getTree(),
+              getTrees())
         case TagCreateJSClass =>
-          CreateJSClass(readClassRef(), readTrees())
+          CreateJSClass(getClassRef(), getTrees())
       }
       if (UseDebugMagic) {
-        val magic = readInt()
+        val magic = getInt()
         assert(magic == DebugMagic,
             s"Bad magic after reading a ${result.getClass}!")
       }
       result
     }
 
-    def readTrees(): List[Tree] =
-      List.fill(input.readInt())(readTree())
+    def getTrees(): List[Tree] =
+      List.fill(buf.getInt())(getTree())
 
-    def readClassDef(): ClassDef = {
-      import input._
+    def getClassDef(): ClassDef = {
+      import buf._
 
-      implicit val pos = readPosition()
-      val name = readIdent()
-      val kind = ClassKind.fromByte(readByte())
-      val hasJSClassCaptures = readBoolean()
+      implicit val pos = getPosition()
+      val name = getIdent()
+      val kind = ClassKind.fromByte(get())
+      val hasJSClassCaptures = getBoolean()
       val jsClassCaptures =
         if (!hasJSClassCaptures) None
-        else Some(readParamDefs())
-      val superClass = readOptIdent()
-      val parents = readIdents()
-      val jsSuperClass = readOptTree()
-      val jsNativeLoadSpec = readJSNativeLoadSpec()
-      val memberDefs = readMemberDefs()
-      val topLevelExportDefs = readTopLevelExportDefs()
-      val optimizerHints = OptimizerHints.fromBits(readInt())
+        else Some(getParamDefs())
+      val superClass = getOptIdent()
+      val parents = getIdents()
+      val jsSuperClass = getOptTree()
+      val jsNativeLoadSpec = getJSNativeLoadSpec()
+      val memberDefs = getMemberDefs()
+      val topLevelExportDefs = getTopLevelExportDefs()
+      val optimizerHints = OptimizerHints.fromBits(getInt())
       ClassDef(name, kind, jsClassCaptures, superClass, parents, jsSuperClass,
           jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
           optimizerHints)
     }
 
-    def readMemberDef(): MemberDef = {
-      import input._
+    def getMemberDef(): MemberDef = {
+      import buf._
 
-      implicit val pos = readPosition()
-      val tag = input.readByte()
+      implicit val pos = getPosition()
+      val tag = buf.get()
 
       (tag: @switch) match {
         case TagFieldDef =>
-          FieldDef(MemberFlags.fromBits(readInt()), readPropertyName(), readType())
+          FieldDef(MemberFlags.fromBits(getInt()), getPropertyName(), getType())
 
         case TagMethodDef =>
-          val optHash = readOptHash()
+          val optHash = getOptHash()
           // read and discard the length
-          val len = readInt()
+          val len = getInt()
           assert(len >= 0)
-          MethodDef(MemberFlags.fromBits(readInt()), readPropertyName(),
-              readParamDefs(), readType(), readOptTree())(
-              OptimizerHints.fromBits(readInt()), optHash)
+          MethodDef(MemberFlags.fromBits(getInt()), getPropertyName(),
+              getParamDefs(), getType(), getOptTree())(
+              OptimizerHints.fromBits(getInt()), optHash)
 
         case TagPropertyDef =>
-          val flags = MemberFlags.fromBits(readInt())
-          val name = readPropertyName()
-          val getterBody = readOptTree()
+          val flags = MemberFlags.fromBits(getInt())
+          val name = getPropertyName()
+          val getterBody = getOptTree()
           val setterArgAndBody = {
-            if (readBoolean())
-              Some((readParamDef(), readTree()))
+            if (getBoolean())
+              Some((getParamDef(), getTree()))
             else
               None
           }
@@ -993,51 +1060,49 @@ object Serializers {
       }
     }
 
-    def readMemberDefs(): List[MemberDef] =
-      List.fill(input.readInt())(readMemberDef())
+    def getMemberDefs(): List[MemberDef] =
+      List.fill(buf.getInt())(getMemberDef())
 
-    def readTopLevelExportDef(): TopLevelExportDef = {
-      implicit val pos = readPosition()
-      val tag = input.readByte()
+    def getTopLevelExportDef(): TopLevelExportDef = {
+      implicit val pos = getPosition()
+      val tag = buf.get()
 
       (tag: @switch) match {
-        case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readString())
-        case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readString())
-        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readMemberDef().asInstanceOf[MethodDef])
-        case TagTopLevelFieldExportDef   => TopLevelFieldExportDef(readString(), readIdent())
+        case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(getString())
+        case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(getString())
+        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(getMemberDef().asInstanceOf[MethodDef])
+        case TagTopLevelFieldExportDef   => TopLevelFieldExportDef(getString(), getIdent())
       }
     }
 
-    def readTopLevelExportDefs(): List[TopLevelExportDef] =
-      List.fill(input.readInt())(readTopLevelExportDef())
+    def getTopLevelExportDefs(): List[TopLevelExportDef] =
+      List.fill(buf.getInt())(getTopLevelExportDef())
 
-    def readIdent(): Ident = {
-      implicit val pos = readPosition()
-      val name = readString()
-      val originalName = readString()
+    def getIdent(): Ident = {
+      implicit val pos = getPosition()
+      val name = getString()
+      val originalName = getString()
       Ident(name, if (originalName.isEmpty) None else Some(originalName))
     }
 
-    def readIdents(): List[Ident] =
-      List.fill(input.readInt())(readIdent())
+    def getIdents(): List[Ident] =
+      List.fill(buf.getInt())(getIdent())
 
-    def readOptIdent(): Option[Ident] = {
-      if (input.readBoolean()) Some(readIdent())
+    def getOptIdent(): Option[Ident] = {
+      if (getBoolean()) Some(getIdent())
       else None
     }
 
-    def readParamDef(): ParamDef = {
-      import input._
-
-      implicit val pos = readPosition()
-      ParamDef(readIdent(), readType(), readBoolean(), readBoolean())
+    def getParamDef(): ParamDef = {
+      implicit val pos = getPosition()
+      ParamDef(getIdent(), getType(), getBoolean(), getBoolean())
     }
 
-    def readParamDefs(): List[ParamDef] =
-      List.fill(input.readInt())(readParamDef())
+    def getParamDefs(): List[ParamDef] =
+      List.fill(buf.getInt())(getParamDef())
 
-    def readType(): Type = {
-      val tag = input.readByte()
+    def getType(): Type = {
+      val tag = buf.get()
       (tag: @switch) match {
         case TagAnyType     => AnyType
         case TagNothingType => NothingType
@@ -1054,15 +1119,15 @@ object Serializers {
         case TagNullType    => NullType
         case TagNoType      => NoType
 
-        case TagClassType => ClassType(readString())
-        case TagArrayType => ArrayType(readArrayTypeRef())
+        case TagClassType => ClassType(getString())
+        case TagArrayType => ArrayType(getArrayTypeRef())
 
         case TagRecordType =>
-          RecordType(List.fill(input.readInt()) {
-            val name = readString()
-            val originalName = readString()
-            val tpe = readType()
-            val mutable = input.readBoolean()
+          RecordType(List.fill(buf.getInt()) {
+            val name = getString()
+            val originalName = getString()
+            val tpe = getType()
+            val mutable = getBoolean()
             RecordType.Field(name,
                 if (originalName.isEmpty) None else Some(originalName),
                 tpe, mutable)
@@ -1070,48 +1135,48 @@ object Serializers {
       }
     }
 
-    def readTypeRef(): TypeRef = {
-      input.readByte() match {
+    def getTypeRef(): TypeRef = {
+      buf.get() match {
         case TagClassRef =>
-          readClassRef()
+          getClassRef()
         case TagArrayTypeRef =>
-          readArrayTypeRef()
+          getArrayTypeRef()
       }
     }
 
-    def readClassRef(): ClassRef =
-      ClassRef(readString())
+    def getClassRef(): ClassRef =
+      ClassRef(getString())
 
-    def readArrayTypeRef(): ArrayTypeRef =
-      ArrayTypeRef(readString(), input.readInt())
+    def getArrayTypeRef(): ArrayTypeRef =
+      ArrayTypeRef(getString(), buf.getInt())
 
-    def readPropertyName(): PropertyName = {
-      input.readByte() match {
+    def getPropertyName(): PropertyName = {
+      buf.get() match {
         case TagPropertyNameIdent =>
-          readIdent()
+          getIdent()
         case TagPropertyNameStringLiteral =>
-          readTree().asInstanceOf[StringLiteral]
+          getTree().asInstanceOf[StringLiteral]
         case TagPropertyNameComputedName =>
-          ComputedName(readTree(), readString())
+          ComputedName(getTree(), getString())
       }
     }
 
-    def readApplyFlags(): ApplyFlags =
-      ApplyFlags.fromBits(input.readInt())
+    def getApplyFlags(): ApplyFlags =
+      ApplyFlags.fromBits(buf.getInt())
 
-    def readPosition(): Position = {
-      import input._
+    def getPosition(): Position = {
       import PositionFormat._
+      import buf._
 
-      val first = readByte()
+      val first = get()
 
       val result = if (first == FormatNoPositionValue) {
         Position.NoPosition
       } else {
         val result = if ((first & FormatFullMask) == FormatFullMaskValue) {
-          val file = files(readInt())
-          val line = readInt()
-          val column = readInt()
+          val file = files(getInt())
+          val line = getInt()
+          val column = getInt()
           Position(file, line, column)
         } else {
           assert(lastPosition != NoPosition,
@@ -1122,14 +1187,14 @@ object Serializers {
                 lastPosition.column + columnDiff)
           } else if ((first & Format2Mask) == Format2MaskValue) {
             val lineDiff = first >> Format2Shift
-            val column = readByte() & 0xff // unsigned
+            val column = get() & 0xff // unsigned
             Position(lastPosition.source,
                 lastPosition.line + lineDiff, column)
           } else {
             assert((first & Format3Mask) == Format3MaskValue,
                 s"Position format error: first byte $first does not match any format")
-            val lineDiff = readShort()
-            val column = readByte() & 0xff // unsigned
+            val lineDiff = getShort()
+            val column = get() & 0xff // unsigned
             Position(lastPosition.source,
                 lastPosition.line + lineDiff, column)
           }
@@ -1139,7 +1204,7 @@ object Serializers {
       }
 
       if (UseDebugMagic) {
-        val magic = readInt()
+        val magic = getInt()
         assert(magic == PosDebugMagic,
             s"Bad magic after reading position with first byte $first")
       }
@@ -1147,39 +1212,41 @@ object Serializers {
       result
     }
 
-    def readJSNativeLoadSpec(): Option[JSNativeLoadSpec] = {
-      def readGlobalSpec(): JSNativeLoadSpec.Global =
-        JSNativeLoadSpec.Global(readString(), readStrings())
+    def getJSNativeLoadSpec(): Option[JSNativeLoadSpec] = {
+      def getGlobalSpec(): JSNativeLoadSpec.Global =
+        JSNativeLoadSpec.Global(getString(), getStrings())
 
-      def readImportSpec(): JSNativeLoadSpec.Import =
-        JSNativeLoadSpec.Import(readString(), readStrings())
+      def getImportSpec(): JSNativeLoadSpec.Import =
+        JSNativeLoadSpec.Import(getString(), getStrings())
 
-      (input.readByte(): @switch) match {
+      (buf.get(): @switch) match {
         case TagJSNativeLoadSpecNone =>
           None
         case TagJSNativeLoadSpecGlobal =>
-          Some(readGlobalSpec())
+          Some(getGlobalSpec())
         case TagJSNativeLoadSpecImport =>
-          Some(readImportSpec())
+          Some(getImportSpec())
         case TagJSNativeLoadSpecImportWithGlobalFallback =>
           Some(JSNativeLoadSpec.ImportWithGlobalFallback(
-              readImportSpec(), readGlobalSpec()))
+              getImportSpec(), getGlobalSpec()))
       }
     }
 
-    def readOptHash(): Option[TreeHash] = {
-      if (input.readBoolean()) {
+    def getOptHash(): Option[TreeHash] = {
+      if (getBoolean()) {
         val hash = new Array[Byte](20)
-        input.readFully(hash)
+        buf.get(hash)
         Some(new TreeHash(hash))
       } else None
     }
 
-    def readString(): String = {
-      strings(input.readInt())
+    def getBoolean(): Boolean = buf.get() != 0
+
+    def getString(): String = {
+      strings(buf.getInt())
     }
 
-    def readStrings(): List[String] =
-      List.fill(input.readInt())(readString())
+    def getStrings(): List[String] =
+      List.fill(buf.getInt())(getString())
   }
 }

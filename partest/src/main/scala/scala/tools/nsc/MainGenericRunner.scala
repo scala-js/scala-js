@@ -97,9 +97,11 @@ class MainGenericRunner {
     val sjsCode = {
       val out = new WritableMemVirtualBinaryFile
 
-      val result = loadIR(command.settings.classpathURLs).flatMap { ir =>
-        linker.link(ir, moduleInitializers, LinkerOutput(out), logger)
-      }
+      val cache = (new IRFileCache).newCache
+      val result = FileScalaJSIRContainer
+        .fromClasspath(command.settings.classpathURLs.map(urlToFile _))
+        .flatMap(cache.cached _)
+        .flatMap(linker.link(_, moduleInitializers, LinkerOutput(out), logger))
 
       Await.result(result, Duration.Inf)
 
@@ -117,13 +119,6 @@ class MainGenericRunner {
     }
 
     true
-  }
-
-  private def loadIR(classpathURLs: Seq[URL]) = {
-    val irContainers =
-      FileScalaJSIRContainer.fromClasspath(classpathURLs.map(urlToFile))
-    val cache = (new IRFileCache).newCache
-    cache.cached(irContainers)
   }
 
   private def urlToFile(url: java.net.URL) = {

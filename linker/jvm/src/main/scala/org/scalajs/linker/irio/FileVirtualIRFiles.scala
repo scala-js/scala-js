@@ -16,6 +16,8 @@ import scala.annotation.tailrec
 import scala.concurrent._
 
 import java.io._
+import java.nio._
+import java.nio.channels._
 import java.util.zip.{ZipInputStream, ZipEntry}
 
 import org.scalajs.ir
@@ -25,20 +27,30 @@ trait FileScalaJSIRContainer extends ScalaJSIRContainer {
 }
 
 object FileScalaJSIRContainer {
-  def fromClasspath(classpath: Seq[File]): Seq[FileScalaJSIRContainer] = {
-    classpath.flatMap { entry =>
+  def fromClasspath(classpath: Seq[File])(
+      implicit ec: ExecutionContext): Future[Seq[FileScalaJSIRContainer]] = {
+    Future.traverse(classpath) { entry =>
       if (!entry.exists)
-        Nil
+        Future.successful(Nil)
       else if (entry.isDirectory)
         fromDirectory(entry)
       else if (entry.getName.endsWith(".jar"))
-        List(new FileVirtualJarScalaJSIRContainer(entry))
+        fromJar(entry).map(List(_))
       else
         throw new IllegalArgumentException("Illegal classpath entry " + entry)
-    }
+    }.map(_.flatten)
   }
 
-  private def fromDirectory(dir: File): Seq[FileScalaJSIRContainer] = {
+  def fromJar(file: File)(implicit ec: ExecutionContext): Future[FileScalaJSIRContainer] =
+    Future(new FileVirtualJarScalaJSIRContainer(file))
+
+  def fromSingleFile(file: File, relativePath: String)(
+      implicit ec: ExecutionContext): Future[FileScalaJSIRContainer] = {
+    Future(new FileVirtualScalaJSIRFile(file, relativePath))
+  }
+
+  private def fromDirectory(dir: File)(
+      implicit ec: ExecutionContext): Future[Seq[FileScalaJSIRContainer]] = {
     require(dir.isDirectory)
 
     val baseDir = dir.getAbsoluteFile
@@ -48,17 +60,17 @@ object FileScalaJSIRContainer {
       subdirs.flatMap(walkForIR) ++ files.filter(_.getName.endsWith(".sjsir"))
     }
 
-    for (ir <- walkForIR(baseDir)) yield {
+    Future.traverse(walkForIR(baseDir)) { ir =>
       val relPath = ir.getPath
         .stripPrefix(baseDir.getPath)
         .replace(java.io.File.separatorChar, '/')
         .stripPrefix("/")
-      new FileVirtualScalaJSIRFile(ir, relPath)
+      fromSingleFile(ir, relPath)
     }
   }
 }
 
-final class FileVirtualScalaJSIRFile(
+private final class FileVirtualScalaJSIRFile(
     val file: File, val relativePath: String)
     extends VirtualScalaJSIRFile with FileScalaJSIRContainer {
   val path: String = file.getPath
@@ -68,26 +80,61 @@ final class FileVirtualScalaJSIRFile(
     else Some(file.lastModified.toString)
   }
 
-  def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] =
-    withInputStream(ir.Serializers.deserializeEntryPointsInfo)
+  def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
+    val chan = AsynchronousFileChannel.open(file.toPath)
 
-  def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef] =
-    withInputStream(ir.Serializers.deserialize)
+    def loop(buf: ByteBuffer): Future[ir.EntryPointsInfo] = {
+      AsyncIO.read(chan, buf).map { _ =>
+        buf.flip()
+        ir.Serializers.deserializeEntryPointsInfo(buf)
+      }.recoverWith {
+        case _: BufferUnderflowException =>
+          // Reset to write again.
+          buf.position(buf.limit())
+          buf.limit(buf.capacity())
 
-  @inline
-  private def withInputStream[A](f: InputStream => A)(
-      implicit ec: ExecutionContext): Future[A] = {
-    def read() = {
-      val stream = new BufferedInputStream(new FileInputStream(file))
-      try f(stream)
-      finally stream.close()
+          val newBuf = if (buf.remaining() <= 0) {
+            val newBuf = ByteBuffer.allocate(buf.capacity() * 2)
+            buf.flip()
+            newBuf.put(buf)
+            buf
+          } else {
+            buf
+          }
+
+          loop(newBuf)
+      }
     }
 
-    VirtualScalaJSIRFile.withPathExceptionContext(path, Future(blocking(read())))
+    val result = loop(ByteBuffer.allocate(1024)).andThen { case _ => chan.close() }
+    VirtualScalaJSIRFile.withPathExceptionContext(path, result)
+  }
+
+  def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef] = {
+    val chan = AsynchronousFileChannel.open(file.toPath)
+    val s = chan.size()
+    if (s > Int.MaxValue) {
+      Future.failed(new IOException("$file is too big ($s bytes)"))
+    } else {
+      val buf = ByteBuffer.allocate(s.toInt)
+      def read(): Future[Unit] = AsyncIO.read(chan, buf).flatMap { _ =>
+        if (buf.hasRemaining()) read()
+        else Future.successful(())
+      }
+
+      val result = for {
+        _ <- read()
+      } yield {
+        buf.flip()
+        ir.Serializers.deserialize(buf)
+      }
+
+      VirtualScalaJSIRFile.withPathExceptionContext(path, result)
+    }
   }
 }
 
-final class FileVirtualJarScalaJSIRContainer(val file: File) extends FileScalaJSIRContainer {
+private final class FileVirtualJarScalaJSIRContainer(val file: File) extends FileScalaJSIRContainer {
   val path: String = file.getPath
 
   val version: Option[String] = {
@@ -139,5 +186,21 @@ final class FileVirtualJarScalaJSIRContainer(val file: File) extends FileScalaJS
     } finally {
       stream.close()
     }
+  }
+}
+
+private object AsyncIO {
+  def read(chan: AsynchronousFileChannel, buf: ByteBuffer): Future[Unit] = {
+    val promise = Promise[Unit]()
+    chan.read(buf, buf.position(), promise, ReadCompletionHandler)
+    promise.future
+  }
+
+  private object ReadCompletionHandler extends CompletionHandler[Integer, Promise[Unit]] {
+    def completed(result: Integer, attachment: Promise[Unit]): Unit =
+      attachment.success(())
+
+    def failed(exc: Throwable, attachment: Promise[Unit]): Unit =
+      attachment.failure(exc)
   }
 }
