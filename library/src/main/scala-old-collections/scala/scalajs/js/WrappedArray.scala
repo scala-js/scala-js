@@ -42,6 +42,8 @@ final class WrappedArray[A](val array: js.Array[A])
   @inline def apply(index: Int): A = array(index)
   @inline def length: Int = array.length
 
+  override def knownSize: Int = array.length
+
   // Builder interface
 
   @inline def +=(elem: A): this.type = {
