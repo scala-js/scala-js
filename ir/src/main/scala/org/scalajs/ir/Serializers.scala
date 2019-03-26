@@ -15,9 +15,11 @@ package org.scalajs.ir
 import scala.annotation.switch
 
 import java.io._
+import java.nio._
 import java.net.URI
 
 import scala.collection.mutable
+import scala.concurrent._
 
 import Definitions.isConstructorName
 import Position._
@@ -40,12 +42,30 @@ object Serializers {
     new Serializer().serialize(stream, classDef)
   }
 
-  def deserializeEntryPointsInfo(stream: InputStream): EntryPointsInfo = {
-    new Deserializer(stream).deserializeEntryPointsInfo()
-  }
+  /** Deserializes entry points from the given buffer.
+   *
+   *  @throws java.nio.BufferUnderflowException if not enough data is available
+   *      in the buffer. In this case the buffer's position is unspecified and
+   *      needs to be reset by the caller.
+   */
+  def deserializeEntryPointsInfo(buf: ByteBuffer): EntryPointsInfo =
+    withBigEndian(buf)(new Deserializer(_).deserializeEntryPointsInfo())
 
-  def deserialize(stream: InputStream): ClassDef = {
-    new Deserializer(stream).deserialize()
+  /** Deserializes a class def from the given buffer.
+   *
+   *  @throws java.nio.BufferUnderflowException if not enough data is available
+   *      in the buffer. In this case the buffer's position is unspecified and
+   *      needs to be reset by the caller.
+   */
+  def deserialize(buf: ByteBuffer): ClassDef =
+    withBigEndian(buf)(new Deserializer(_).deserialize())
+
+  @inline
+  private def withBigEndian[T](buf: ByteBuffer)(body: ByteBuffer => T): T = {
+    val o = buf.order()
+    buf.order(ByteOrder.BIG_ENDIAN)
+    try body(buf)
+    finally buf.order(o)
   }
 
   // true for easier debugging (not for "production", it adds 8 bytes per node)
@@ -751,8 +771,8 @@ object Serializers {
     }
   }
 
-  private final class Deserializer(stream: InputStream) {
-    private[this] val input = new DataInputStream(stream)
+  private final class Deserializer(buf: ByteBuffer) {
+    require(buf.order() == ByteOrder.BIG_ENDIAN)
 
     private[this] var sourceVersion: String = _
     private[this] var files: Array[URI] = _
@@ -768,8 +788,8 @@ object Serializers {
     def deserialize(): ClassDef = {
       sourceVersion = readHeader()
       readEntryPointsInfo() // discarded
-      files = Array.fill(input.readInt())(new URI(input.readUTF()))
-      strings = Array.fill(input.readInt())(input.readUTF())
+      files = Array.fill(readInt())(new URI(readUTF()))
+      strings = Array.fill(readInt())(readUTF())
       readClassDef()
     }
 
@@ -779,11 +799,11 @@ object Serializers {
      */
     private def readHeader(): String = {
       // Check magic number
-      if (input.readInt() != IRMagicNumber)
+      if (readInt() != IRMagicNumber)
         throw new IOException("Not a Scala.js IR file")
 
       // Check that we support this version of the IR
-      val version = input.readUTF()
+      val version = readUTF()
       val supported = ScalaJSVersions.binarySupported
       if (!supported.contains(version)) {
         throw new IRVersionNotSupportedException(version, supported,
@@ -795,27 +815,27 @@ object Serializers {
     }
 
     private def readEntryPointsInfo(): EntryPointsInfo = {
-      val encodedName = input.readUTF()
-      val hasEntryPoint = input.readBoolean()
+      val encodedName = readUTF()
+      val hasEntryPoint = readBoolean()
       new EntryPointsInfo(encodedName, hasEntryPoint)
     }
 
     def readTree(): Tree = {
       val pos = readPosition()
-      readTreeFromTag(input.readByte())(pos)
+      readTreeFromTag(readByte())(pos)
     }
 
     def readOptTree(): Option[Tree] = {
       // TODO switch tag and position when we can break binary compat.
       val pos = readPosition()
-      val tag = input.readByte()
+      val tag = readByte()
       if (tag == TagEmptyTree) None
       else Some(readTreeFromTag(tag)(pos))
     }
 
     def readTreeOrJSSpread(): TreeOrJSSpread = {
       val pos = readPosition()
-      val tag = input.readByte()
+      val tag = readByte()
       if (tag == TagJSSpread)
         JSSpread(readTree())(pos)
       else
@@ -823,10 +843,9 @@ object Serializers {
     }
 
     def readTreeOrJSSpreads(): List[TreeOrJSSpread] =
-      List.fill(input.readInt())(readTreeOrJSSpread())
+      List.fill(readInt())(readTreeOrJSSpread())
 
     private def readTreeFromTag(tag: Byte)(implicit pos: Position): Tree = {
-      import input._
       val result = (tag: @switch) match {
         case TagEmptyTree =>
           throw new IOException("Found invalid TagEmptyTree")
@@ -936,11 +955,9 @@ object Serializers {
     }
 
     def readTrees(): List[Tree] =
-      List.fill(input.readInt())(readTree())
+      List.fill(readInt())(readTree())
 
     def readClassDef(): ClassDef = {
-      import input._
-
       implicit val pos = readPosition()
       val name = readIdent()
       val kind = ClassKind.fromByte(readByte())
@@ -961,10 +978,8 @@ object Serializers {
     }
 
     def readMemberDef(): MemberDef = {
-      import input._
-
       implicit val pos = readPosition()
-      val tag = input.readByte()
+      val tag = readByte()
 
       (tag: @switch) match {
         case TagFieldDef =>
@@ -994,11 +1009,11 @@ object Serializers {
     }
 
     def readMemberDefs(): List[MemberDef] =
-      List.fill(input.readInt())(readMemberDef())
+      List.fill(readInt())(readMemberDef())
 
     def readTopLevelExportDef(): TopLevelExportDef = {
       implicit val pos = readPosition()
-      val tag = input.readByte()
+      val tag = readByte()
 
       (tag: @switch) match {
         case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readString())
@@ -1009,7 +1024,7 @@ object Serializers {
     }
 
     def readTopLevelExportDefs(): List[TopLevelExportDef] =
-      List.fill(input.readInt())(readTopLevelExportDef())
+      List.fill(readInt())(readTopLevelExportDef())
 
     def readIdent(): Ident = {
       implicit val pos = readPosition()
@@ -1019,25 +1034,23 @@ object Serializers {
     }
 
     def readIdents(): List[Ident] =
-      List.fill(input.readInt())(readIdent())
+      List.fill(readInt())(readIdent())
 
     def readOptIdent(): Option[Ident] = {
-      if (input.readBoolean()) Some(readIdent())
+      if (readBoolean()) Some(readIdent())
       else None
     }
 
     def readParamDef(): ParamDef = {
-      import input._
-
       implicit val pos = readPosition()
       ParamDef(readIdent(), readType(), readBoolean(), readBoolean())
     }
 
     def readParamDefs(): List[ParamDef] =
-      List.fill(input.readInt())(readParamDef())
+      List.fill(readInt())(readParamDef())
 
     def readType(): Type = {
-      val tag = input.readByte()
+      val tag = readByte()
       (tag: @switch) match {
         case TagAnyType     => AnyType
         case TagNothingType => NothingType
@@ -1058,11 +1071,11 @@ object Serializers {
         case TagArrayType => ArrayType(readArrayTypeRef())
 
         case TagRecordType =>
-          RecordType(List.fill(input.readInt()) {
+          RecordType(List.fill(readInt()) {
             val name = readString()
             val originalName = readString()
             val tpe = readType()
-            val mutable = input.readBoolean()
+            val mutable = readBoolean()
             RecordType.Field(name,
                 if (originalName.isEmpty) None else Some(originalName),
                 tpe, mutable)
@@ -1071,7 +1084,7 @@ object Serializers {
     }
 
     def readTypeRef(): TypeRef = {
-      input.readByte() match {
+      readByte() match {
         case TagClassRef =>
           readClassRef()
         case TagArrayTypeRef =>
@@ -1083,10 +1096,10 @@ object Serializers {
       ClassRef(readString())
 
     def readArrayTypeRef(): ArrayTypeRef =
-      ArrayTypeRef(readString(), input.readInt())
+      ArrayTypeRef(readString(), readInt())
 
     def readPropertyName(): PropertyName = {
-      input.readByte() match {
+      readByte() match {
         case TagPropertyNameIdent =>
           readIdent()
         case TagPropertyNameStringLiteral =>
@@ -1097,10 +1110,9 @@ object Serializers {
     }
 
     def readApplyFlags(): ApplyFlags =
-      ApplyFlags.fromBits(input.readInt())
+      ApplyFlags.fromBits(readInt())
 
     def readPosition(): Position = {
-      import input._
       import PositionFormat._
 
       val first = readByte()
@@ -1154,7 +1166,7 @@ object Serializers {
       def readImportSpec(): JSNativeLoadSpec.Import =
         JSNativeLoadSpec.Import(readString(), readStrings())
 
-      (input.readByte(): @switch) match {
+      (readByte(): @switch) match {
         case TagJSNativeLoadSpecNone =>
           None
         case TagJSNativeLoadSpecGlobal =>
@@ -1168,18 +1180,78 @@ object Serializers {
     }
 
     def readOptHash(): Option[TreeHash] = {
-      if (input.readBoolean()) {
+      if (readBoolean()) {
         val hash = new Array[Byte](20)
-        input.readFully(hash)
+        buf.get(hash)
         Some(new TreeHash(hash))
-      } else None
+      } else {
+        None
+      }
     }
 
     def readString(): String = {
-      strings(input.readInt())
+      strings(readInt())
     }
 
     def readStrings(): List[String] =
-      List.fill(input.readInt())(readString())
+      List.fill(readInt())(readString())
+
+    private def readBoolean() = buf.get() != 0
+    private def readByte() = buf.get()
+    private def readChar() = buf.getChar()
+    private def readShort() = buf.getShort()
+    private def readInt() = buf.getInt()
+    private def readLong() = buf.getLong()
+    private def readFloat() = buf.getFloat()
+    private def readDouble() = buf.getDouble()
+
+    private def readUTF(): String = {
+      // DataInput.readUTF for buffers.
+
+      val length = buf.getShort() & 0xffff // unsigned
+      var res = ""
+      var i = 0
+
+      def badFormat(msg: String) = throw new UTFDataFormatException(msg)
+
+      while (i < length) {
+        val a = buf.get()
+
+        i += 1
+
+        val char = {
+          if ((a & 0x80) == 0x00) { // 0xxxxxxx
+            a.toChar
+          } else if ((a & 0xE0) == 0xC0 && i < length) { // 110xxxxx
+            val b = buf.get()
+            i += 1
+
+            if ((b & 0xC0) != 0x80) // 10xxxxxx
+              badFormat("Expected 2 bytes, found: %#02x (init: %#02x)".format(b, a))
+
+            (((a & 0x1F) << 6) | (b & 0x3F)).toChar
+          } else if ((a & 0xF0) == 0xE0 && i < length - 1) { // 1110xxxx
+            val b = buf.get()
+            val c = buf.get()
+            i += 2
+
+            if ((b & 0xC0) != 0x80)   // 10xxxxxx
+              badFormat("Expected 3 bytes, found: %#02x (init: %#02x)".format(b, a))
+
+            if ((c & 0xC0) != 0x80)   // 10xxxxxx
+              badFormat("Expected 3 bytes, found: %#02x, %#02x (init: %#02x)".format(b, c, a))
+
+            (((a & 0x0F) << 12) | ((b & 0x3F) << 6) | (c & 0x3F)).toChar
+          } else {
+            val rem = length - i
+            badFormat("Unexpected start of char: %#02x (%d bytes to go)".format(a, rem))
+          }
+        }
+
+        res += char
+      }
+
+      res
+    }
   }
 }

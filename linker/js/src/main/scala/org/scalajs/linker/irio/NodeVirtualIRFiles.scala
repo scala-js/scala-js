@@ -16,80 +16,249 @@ import scala.annotation.tailrec
 
 import scala.concurrent._
 
+import scala.util.{Success, Failure}
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
 import scala.scalajs.js.typedarray._
+import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 
-import java.io._
+import java.io.EOFException
+import java.nio._
 
 import org.scalajs.ir
 
-class NodeVirtualScalaJSIRFile(val path: String, val relativePath: String) extends VirtualScalaJSIRFile {
-  val version: Option[String] =
-    NodeFS.statSync(path).mtime.map(_.getTime.toString).toOption
+trait NodeScalaJSIRContainer extends ScalaJSIRContainer {
+  val path: String
+}
 
-  def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] =
-    withInputStream(ir.Serializers.deserializeEntryPointsInfo)
+object NodeScalaJSIRContainer {
+  import NodeInterop._
 
-  def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef] =
-    withInputStream(ir.Serializers.deserialize)
+  def fromClasspath(cp: Seq[String])(
+      implicit ec: ExecutionContext): Future[Seq[NodeScalaJSIRContainer]] = {
+    Future.traverse(cp) { entry =>
+      stat(entry).transformWith {
+        case Success(stat) =>
+          if (stat.isDirectory)
+            fromDirectory(entry)
+          else if (entry.endsWith(".jar"))
+            Future.successful(Seq(new NodeVirtualJarScalaJSIRContainer(entry, version(stat))))
+          else
+            throw new IllegalArgumentException("Illegal classpath entry " + entry)
 
-  @inline
-  private def withInputStream[A](f: InputStream => A)(
-      implicit ec: ExecutionContext): Future[A] = {
-    def read() = {
-      val buf = new Uint8Array(NodeFS.readFileSync(path)).buffer
-      val stream = new ArrayBufferInputStream(buf)
-      try f(stream)
-      finally stream.close()
+        case Failure(js.JavaScriptException(e: js.Error)) if isNotFound(e) =>
+          Future.successful(Nil)
+
+        case Failure(t) =>
+          throw t
+      }
+    }.map(_.flatten)
+  }
+
+  def fromJar(path: String)(implicit ec: ExecutionContext): Future[NodeScalaJSIRContainer] =
+    stat(path).map(s => new NodeVirtualJarScalaJSIRContainer(path, version(s)))
+
+  def fromSingleFile(path: String, relativePath: String)(
+      implicit ec: ExecutionContext): Future[NodeScalaJSIRContainer] = {
+    stat(path).map(s => new NodeVirtualScalaJSIRFile(path, relativePath, version(s)))
+  }
+
+  private def fromDirectory(dir: String)(
+      implicit ec: ExecutionContext): Future[Seq[NodeScalaJSIRContainer]] = {
+    cbFuture[js.Array[FS.Dirent]](FS.readdir(dir, ReadDirOpt, _)).flatMap { entries =>
+      val (dirs, files) = entries.toSeq.partition(_.isDirectory)
+
+      val subdirFiles = Future.traverse(dirs) { e =>
+        val path = Path.join(dir, e.name)
+        fromDirectory(path)
+      }
+
+      // Since we will remove relativePath (#3580) we do not bother calculating it here.
+      val irFileNames = files.map(_.name).filter(_.endsWith(".sjsir"))
+      val directFiles = Future.traverse(irFileNames) { name =>
+        val path = Path.join(dir, name)
+        fromSingleFile(path, "dummy")
+      }
+
+      for {
+        sdf <- subdirFiles
+        df <- directFiles
+      } yield sdf.flatten ++ df
+    }
+  }
+
+  private def stat(path: String)(implicit ec: ExecutionContext): Future[FS.Stats] =
+    cbFuture[FS.Stats](FS.stat(path, _))
+
+  private def version(stats: FS.Stats): Option[String] =
+    stats.mtime.map(_.getTime.toString).toOption
+
+  private def isNotFound(e: js.Error): Boolean =
+    (e.asInstanceOf[js.Dynamic].code: Any) == "ENOENT"
+}
+
+private class NodeVirtualScalaJSIRFile(
+    val path: String,
+    val relativePath: String,
+    val version: Option[String]
+) extends VirtualScalaJSIRFile with NodeScalaJSIRContainer {
+  import NodeInterop._
+
+  def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
+    def loop(fd: Int, buf: ByteBuffer): Future[ir.EntryPointsInfo] = {
+      val len = buf.remaining()
+      val off = buf.position()
+
+      cbFuture[Int](FS.read(fd, buf.typedArray(), off, len, off, _)).map { bytesRead =>
+        if (bytesRead <= 0)
+          throw new EOFException
+
+        buf.position(buf.position() + bytesRead)
+        buf.flip()
+        ir.Serializers.deserializeEntryPointsInfo(buf)
+      }.recoverWith {
+        case _: BufferUnderflowException =>
+          // Reset to write again.
+          buf.position(buf.limit())
+          buf.limit(buf.capacity())
+
+          val newBuf = if (buf.remaining() <= 0) {
+            val newBuf = ByteBuffer.allocateDirect(buf.capacity() * 2)
+            buf.flip()
+            newBuf.put(buf)
+            buf
+          } else {
+            buf
+          }
+
+          loop(fd, newBuf)
+      }
     }
 
-    VirtualScalaJSIRFile.withPathExceptionContext(path, Future(blocking(read())))
+    val result = cbFuture[Int](FS.open(path, "r", _)).flatMap { fd =>
+      loop(fd, ByteBuffer.allocateDirect(1024))
+        .finallyWith(cbFuture[Unit](FS.close(fd, _)))
+    }
+
+    VirtualScalaJSIRFile.withPathExceptionContext(path, result)
+  }
+
+  def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef] = {
+    val result = cbFuture[Uint8Array](FS.readFile(path, _)).map { arr =>
+      ir.Serializers.deserialize(TypedArrayBuffer.wrap(arr.buffer))
+    }
+
+    VirtualScalaJSIRFile.withPathExceptionContext(path, result)
   }
 }
 
-private[scalajs] class NodeVirtualJarScalaJSIRContainer(val path: String) extends ScalaJSIRContainer {
-  import NodeVirtualJarScalaJSIRContainer.JSZip
+private class NodeVirtualJarScalaJSIRContainer(
+    val path: String, val version: Option[String]) extends NodeScalaJSIRContainer {
+  import NodeInterop._
 
-  val version: Option[String] =
-    NodeFS.statSync(path).mtime.map(_.getTime.toString).toOption
-
-  def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]] = Future {
-    val zip = new JSZip(NodeFS.readFileSync(path))
-
+  def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]] = {
     for {
-      (name, entry) <- zip.files.toList
-      if name.endsWith(".sjsir")
+      arr <- cbFuture[Uint8Array](FS.readFile(path, _))
+      zip <- JSZip.loadAsync(arr).toFuture
+      files <- loadFromZip(zip)
     } yield {
-      new MemVirtualSerializedScalaJSIRFile(
-          path = s"${this.path}:$name",
-          relativePath = name,
-          content = new Int8Array(entry.asArrayBuffer()).toArray,
-          version = this.version
-      )
+      files.toList
+    }
+  }
+
+  private def loadFromZip(obj: JSZip.JSZip)(
+      implicit ec: ExecutionContext): Future[Iterator[VirtualScalaJSIRFile]] = {
+    val entries = obj.files.valuesIterator
+      .filter(e => e.name.endsWith(".sjsir") && !e.dir)
+
+    Future.traverse(entries) { entry =>
+      entry.async(JSZipInterop.arrayBuffer).toFuture.map { buf =>
+        new MemVirtualSerializedScalaJSIRFile(
+            path = s"${this.path}:${entry.name}",
+            relativePath = entry.name,
+            content = new Int8Array(buf).toArray,
+            version = version
+        )
+      }
     }
   }
 }
 
-private object NodeVirtualJarScalaJSIRContainer {
-  @js.native
-  @JSImport("jszip", JSImport.Default)
-  private class JSZip(data: js.Array[Int]) extends js.Object {
-    def files: js.Dictionary[JSZipEntry] = js.native
+private object NodeInterop {
+  type CB[T] = js.Function2[js.Error, T, Unit]
+
+  def cbFuture[A](op: CB[A] => Unit): Future[A] = {
+    val promise = Promise[A]()
+
+    def cb(err: js.Error, v: A): Unit = {
+      import js.DynamicImplicits.truthValue
+
+      if (err.asInstanceOf[js.Dynamic])
+        promise.failure(new js.JavaScriptException(err))
+      else
+        promise.success(v)
+    }
+
+    op(cb _)
+
+    promise.future
   }
 
-  private trait JSZipEntry extends js.Object {
-    def asArrayBuffer(): ArrayBuffer
+  object ReadDirOpt extends js.Object {
+    val withFileTypes: Boolean = true
   }
+}
+
+private object JSZipInterop {
+  val arrayBuffer: String = "arraybuffer"
+}
+
+@js.native
+@JSImport("jszip", JSImport.Default)
+private object JSZip extends js.Object {
+  trait JSZip extends js.Object {
+    val files: js.Dictionary[ZipObject]
+  }
+
+  trait ZipObject extends js.Object {
+    val name: String
+    val dir: Boolean
+    def async(tpe: JSZipInterop.arrayBuffer.type): js.Promise[ArrayBuffer]
+  }
+
+  def loadAsync(data: Uint8Array): js.Promise[JSZip] = js.native
 }
 
 @JSImport("fs", JSImport.Namespace)
 @js.native
-private object NodeFS extends js.Object {
-  trait Stat extends js.Object {
+private object FS extends js.Object {
+  trait Stats extends js.Object {
     val mtime: js.UndefOr[js.Date]
+    def isDirectory(): Boolean
   }
 
-  def readFileSync(path: String): js.Array[Int] = js.native
-  def statSync(path: String): Stat = js.native
+  trait Dirent extends js.Object {
+    val name: String
+    def isDirectory(): Boolean
+  }
+
+  def open(path: String, flags: String, callback: NodeInterop.CB[Int]): Unit = js.native
+  def close(fd: Int, callback: NodeInterop.CB[Unit]): Unit = js.native
+
+  def read(fd: Int, buffer: TypedArray[_, _], offset: Int, length: Int, position: Int,
+    callback: NodeInterop.CB[Int]): Unit = js.native
+
+  def readdir(path: String, opts: NodeInterop.ReadDirOpt.type,
+      cb: NodeInterop.CB[js.Array[Dirent]]): Unit = js.native
+
+  def readFile(path: String, cb: NodeInterop.CB[Uint8Array]): Unit = js.native
+
+  def stat(path: String, cb: NodeInterop.CB[Stats]): Unit = js.native
+}
+
+@JSImport("path", JSImport.Namespace)
+@js.native
+private object Path extends js.Object {
+  def join(paths: String*): String = js.native
 }

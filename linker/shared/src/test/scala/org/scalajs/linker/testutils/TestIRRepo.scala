@@ -47,8 +47,10 @@ final class TestIRRepo(stdlibPath: String) {
 
   private val globalIRCache = new IRFileCache
 
-  val stdlibIRFiles: Future[Seq[VirtualScalaJSIRFile]] =
-    globalIRCache.newCache.cached(Seq(Platform.loadJar(stdlibPath)))
+  val stdlibIRFiles: Future[Seq[VirtualScalaJSIRFile]] = {
+    Platform.loadJar(stdlibPath).flatMap(
+        jar => globalIRCache.newCache.cached(Seq(jar)))
+  }
 
   lazy val loader: Future[InfoLoader] = {
     def toElem(f: VirtualScalaJSIRFile) =

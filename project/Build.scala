@@ -1373,20 +1373,18 @@ object Build {
       fastOptJS := {
         val s = streams.value
 
-        val irFiles = {
-          val cp = Attributed.data(fullClasspath.value)
-          FileScalaJSIRContainer.fromClasspath(cp).map(_.file)
-        }
-
         val out = (artifactPath in fastOptJS).value
 
         val linkerModule =
           (scalaJSLinkedFile in (testSuiteLinker, Compile)).value.data
 
+        val cp = Attributed.data(fullClasspath.value)
+        val cpFiles = (scalaJSIR in fastOptJS).value.get(scalaJSSourceFiles).get
+
         FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
             FilesInfo.exists) { _ =>
 
-          val irPaths = irFiles
+          val cpPaths = cp
             .map(f => "\"" + escapeJS(f.getAbsolutePath) + "\"")
             .mkString("[", ", ", "]")
 
@@ -1395,7 +1393,7 @@ object Build {
               var toolsTestModule = require("${escapeJS(linkerModule.getPath)}");
               var linker = toolsTestModule.TestSuiteLinker;
               var result =
-                linker.linkTestSuiteNode($irPaths, "${escapeJS(out.getAbsolutePath)}");
+                linker.linkTestSuiteNode($cpPaths, "${escapeJS(out.getAbsolutePath)}");
 
               result.catch(e => {
                 console.error(e);
@@ -1420,7 +1418,7 @@ object Build {
           val run = jsEnv.start(input, config)
           Await.result(run.future, Duration.Inf)
           Set(out)
-        } ((irFiles :+ linkerModule).toSet)
+        } ((cpFiles :+ linkerModule).toSet)
 
         Attributed.blank(out)
       },

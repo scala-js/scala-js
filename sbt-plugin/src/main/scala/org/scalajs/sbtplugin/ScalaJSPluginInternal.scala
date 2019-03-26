@@ -258,13 +258,18 @@ private[sbtplugin] object ScalaJSPluginInternal {
       scalaJSIR := {
         val cache = scalaJSIRCache.value
         val classpath = Attributed.data(fullClasspath.value)
-        val irContainers = FileScalaJSIRContainer.fromClasspath(classpath)
         val log = streams.value.log
         val tlog = sbtLogger2ToolsLogger(log)
 
-        val irFiles = enhanceIRVersionNotSupportedException {
+        val (irFiles, irContainers) = enhanceIRVersionNotSupportedException {
           tlog.time("Update IR cache") {
-            await(log)(cache.cached(irContainers)(_))
+            await(log) { eci =>
+              implicit val ec = eci
+              for {
+                irContainers <- FileScalaJSIRContainer.fromClasspath(classpath)
+                irFiles <- cache.cached(irContainers)
+              } yield (irFiles, irContainers)
+            }
           }
         }
 
