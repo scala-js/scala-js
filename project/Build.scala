@@ -1112,8 +1112,12 @@ object Build {
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
-          unmanagedSourceDirectories +=
-            collectionsEraDependentDirectory(scalaVersion.value, sourceDirectory.value),
+          unmanagedSourceDirectories += {
+            val scalaV = scalaVersion.value
+            val sourceDir = sourceDirectory.value
+            if (scalaV == "2.13.0-M5") sourceDir / "scala-m5-collections"
+            else collectionsEraDependentDirectory(scalaV, sourceDir)
+          },
 
           /* After 2.13.0-M5, we use the new version of UndefinedBehaviorError
            * which is used in Scala.js 1.x. This is necessary because the old
