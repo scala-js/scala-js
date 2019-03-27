@@ -15,7 +15,7 @@ package scala.scalajs.js
 import scala.annotation.tailrec
 
 import scala.collection.{immutable, mutable}
-import scala.collection.{AbstractIterator, IndexedSeqView, IterableOnce}
+import scala.collection.{AbstractIndexedSeqView, AbstractIterator, IndexedSeqView, IterableOnce}
 
 import scala.reflect.ClassTag
 
@@ -102,6 +102,21 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
     if (isEmpty) None
     else Some(xs.apply(xs.length - 1))
 
+  /** Compares the size of this array to a test value.
+   *
+   *  @param otherSize
+   *    the test value that gets compared with the size.
+   *  @return
+   *    A value `x` where
+   *    {{{
+   *    x <  0       if this.size <  otherSize
+   *    x == 0       if this.size == otherSize
+   *    x >  0       if this.size >  otherSize
+   *    }}}
+   */
+  @inline def sizeCompare(otherSize: Int): Int =
+    Integer.compare(xs.length, otherSize)
+
   /** Compares the length of this array to a test value.
    *
    *  @param len
@@ -117,6 +132,42 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    */
   @inline def lengthCompare(len: Int): Int =
     Integer.compare(xs.length, len)
+
+  /** Method mirroring [[SeqOps.sizeIs]] for consistency, except it returns an
+   *  `Int` because `size` is known and comparison is constant-time.
+   *
+   *  These operations are equivalent to
+   *  [[sizeCompare(Int) `sizeCompare(Int)`]], and allow the following more
+   *  readable usages:
+   *
+   *  {{{
+   *  this.sizeIs < size     // this.sizeCompare(size) < 0
+   *  this.sizeIs <= size    // this.sizeCompare(size) <= 0
+   *  this.sizeIs == size    // this.sizeCompare(size) == 0
+   *  this.sizeIs != size    // this.sizeCompare(size) != 0
+   *  this.sizeIs >= size    // this.sizeCompare(size) >= 0
+   *  this.sizeIs > size     // this.sizeCompare(size) > 0
+   *  }}}
+   */
+  def sizeIs: Int = xs.length
+
+  /** Method mirroring [[SeqOps.lengthIs]] for consistency, except it returns
+   *  an `Int` because `length` is known and comparison is constant-time.
+   *
+   *  These operations are equivalent to
+   *  [[lengthCompare(Int) `lengthCompare(Int)`]], and allow the following more
+   *  readable usages:
+   *
+   *  {{{
+   *  this.lengthIs < len     // this.lengthCompare(len) < 0
+   *  this.lengthIs <= len    // this.lengthCompare(len) <= 0
+   *  this.lengthIs == len    // this.lengthCompare(len) == 0
+   *  this.lengthIs != len    // this.lengthCompare(len) != 0
+   *  this.lengthIs >= len    // this.lengthCompare(len) >= 0
+   *  this.lengthIs > len     // this.lengthCompare(len) > 0
+   *  }}}
+   */
+  def lengthIs: Int = xs.length
 
   /** Selects an interval of elements.
    *
@@ -281,6 +332,44 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
     val res2 = js.Array[A]()
     for (x <- xs)
       (if (p(x)) res1 else res2).push(x)
+    (res1, res2)
+  }
+
+  /** Applies a function `f` to each element of the array and returns a pair of
+   *  arrays: the first one made of those values returned by `f` that were
+   *  wrapped in [[scala.util.Left]], and the second one made of those wrapped
+   *  in [[scala.util.Right]].
+   *
+   *  Example:
+   *  {{{
+   *  val xs = js.Array(1, "one", 2, "two", 3, "three").partitionMap {
+   *    case i: Int    => Left(i)
+   *    case s: String => Right(s)
+   *  }
+   *  // xs == (js.Array(1, 2, 3),
+   *  //        js.Array("one", "two", "three"))
+   *  }}}
+   *
+   *  @tparam A1
+   *    the element type of the first resulting collection
+   *  @tparam A2
+   *    the element type of the second resulting collection
+   *  @param f
+   *    the 'split function' mapping the elements of this array to an [[scala.util.Either]]
+   *  @return
+   *    a pair of arrays: the first one made of those values returned by `f`
+   *    that were wrapped in [[scala.util.Left]],  and the second one made of
+   *    those wrapped in [[scala.util.Right]].
+   */
+  def partitionMap[A1, A2](f: A => Either[A1, A2]): (Array[A1], Array[A2]) = {
+    val res1 = js.Array[A1]()
+    val res2 = js.Array[A2]()
+    for (x <- xs) {
+      f(x) match {
+        case Left(y)  => res1 += y
+        case Right(y) => res2 += y
+      }
+    }
     (res1, res2)
   }
 
@@ -1230,32 +1319,64 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 
   /** Copy elements of this array to a Scala array.
    *
-   *  Fills the given array `dest` starting at index `start` with at most `len`
+   *  Fills the given array `xs` starting at index 0. Copying will stop once
+   *  either all the elements of this array have been copied, or the end of the
+   *  array is reached.
+   *
+   *  @param xs
+   *    the array to fill.
+   *  @tparam B
+   *    the type of the elements of the array.
+   */
+  def copyToArray[B >: A](xs: scala.Array[B]): Int =
+    copyToArray(xs, 0)
+
+  /** Copy elements of this array to a Scala array.
+   *
+   *  Fills the given array `xs` starting at index `start`. Copying will stop
+   *  once either all the elements of this array have been copied, or the end
+   *  of the array is reached.
+   *
+   *  @param xs
+   *    the array to fill.
+   *  @param start
+   *    the starting index within the destination array.
+   *  @tparam B
+   *    the type of the elements of the array.
+   */
+  def copyToArray[B >: A](xs: scala.Array[B], start: Int): Int =
+    copyToArray(xs, start, Int.MaxValue)
+
+
+  /** Copy elements of this array to a Scala array.
+   *
+   *  Fills the given array `xs` starting at index `start` with at most `len`
    *  values. Copying will stop once either all the elements of this array have
    *  been copied, or the end of the array is reached, or `len` elements have
    *  been copied.
    *
-   *  @param dest
+   *  @param xs
    *    the array to fill.
    *  @param start
-   *    the starting index.
+   *    the starting index within the destination array.
    *  @param len
    *    the maximal number of elements to copy.
    *  @tparam B
    *    the type of the elements of the array.
    */
-  def copyToArray[B >: A](dest: scala.Array[B], start: Int,
-      len: Int = Int.MaxValue): Int = {
+  def copyToArray[B >: A](xs: scala.Array[B], start: Int, len: Int): Int = {
+    val src = this.xs
+    val dest = xs
 
     // Copied from IterableOnce.elemsToCopyToArray
     @inline
     def elemsToCopyToArray(srcLen: Int, destLen: Int, start: Int, len: Int): Int =
       max(min(min(len, srcLen), destLen - start), 0)
 
-    val copied = elemsToCopyToArray(xs.length, dest.length, start, len)
+    val copied = elemsToCopyToArray(src.length, dest.length, start, len)
     var i = 0
     while (i < copied) {
-      dest(i + start) = xs(i)
+      dest(i + start) = src(i)
       i += 1
     }
     copied
@@ -1295,13 +1416,14 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    */
   def startsWith[B >: A](that: js.Array[B], offset: Int): Boolean = {
     // scalastyle:return off
+    val safeOffset = offset.max(0)
     val thatl = that.length
-    if (thatl > xs.length - offset) {
+    if (thatl > xs.length - safeOffset) {
       thatl == 0
     } else {
       var i = 0
       while (i < thatl) {
-        if (xs(i + offset) != that(i))
+        if (xs(i + safeOffset) != that(i))
           return false
         i += 1
       }
@@ -1706,7 +1828,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
     xs.length -= clampIndex(n)
 
   @noinline // js.WrappedArray itself is @inline, so the call below will produce a lot of code
-  def patchInPlace(from: Int, patch: scala.collection.Seq[A],
+  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A],
       replaced: Int): js.Array[A] = {
     new js.WrappedArray(xs).patchInPlace(from, patch, replaced)
     xs
@@ -1799,7 +1921,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 }
 
 object ArrayOps {
-  private class ArrayView[A](xs: js.Array[A]) extends IndexedSeqView[A] {
+  private class ArrayView[A](xs: js.Array[A]) extends AbstractIndexedSeqView[A] {
     @inline def length: Int = xs.length
 
     @inline def apply(n: Int): A = xs(n)
@@ -1903,6 +2025,12 @@ object ArrayOps {
       pos += 1
       r
     }
+
+    override def drop(n: Int): scala.collection.Iterator[A] = {
+      if (n > 0)
+        pos = Math.min(xs.length, pos + n)
+      this
+    }
   }
 
   private class ReverseIterator[A](private[this] val xs: js.Array[A])
@@ -1918,6 +2046,12 @@ object ArrayOps {
       val r = xs(pos)
       pos -= 1
       r
+    }
+
+    override def drop(n: Int): scala.collection.Iterator[A] = {
+      if (n > 0)
+        pos = Math.max(-1, pos - n)
+      this
     }
   }
 

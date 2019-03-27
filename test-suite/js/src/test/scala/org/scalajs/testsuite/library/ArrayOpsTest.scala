@@ -55,6 +55,22 @@ object ArrayOpsTest {
     assertJSArrayEquals(expected._1, actual._1)
     assertJSArrayEquals(expected._2, actual._2)
   }
+
+  object FallbackImplicits {
+    implicit class JSArrayOpsFallback[A](self: js.Any) {
+      def sizeCompare(otherSize: Int): Int =
+        throw new AssertionError("unreachable code")
+
+      def sizeIs: Int =
+        throw new AssertionError("unreachable code")
+
+      def lengthIs: Int =
+        throw new AssertionError("unreachable code")
+
+      def partitionMap[A1, A2](f: Any => Either[A1, A2]): (js.Array[A1], js.Array[A2]) =
+        throw new AssertionError("unreachable code")
+    }
+  }
 }
 
 class ArrayOpsTest {
@@ -96,11 +112,59 @@ class ArrayOpsTest {
     assertEquals(None, js.Array[Int]().lastOption)
   }
 
+  @Test def sizeCompare(): Unit = {
+    assumeFalse("sizeCompare was added in 2.13",
+        scalaVersion.startsWith("2.10.") ||
+        scalaVersion.startsWith("2.11.") ||
+        scalaVersion.startsWith("2.12.") ||
+        scalaVersion == "2.13.0-M5")
+
+    import FallbackImplicits._
+    import js.Any.jsArrayOps
+
+    val array = js.Array(5, 7, 10)
+    assertEquals(0, array.sizeCompare(3))
+    assertTrue(array.sizeCompare(1) > 0)
+    assertTrue(array.sizeCompare(6) < 0)
+  }
+
   @Test def lengthCompare(): Unit = {
     val array = js.Array(5, 7, 10)
     assertEquals(0, array.lengthCompare(3))
     assertTrue(array.lengthCompare(1) > 0)
     assertTrue(array.lengthCompare(6) < 0)
+  }
+
+  @Test def sizeIs(): Unit = {
+    assumeFalse("sizeIs was added in 2.13",
+        scalaVersion.startsWith("2.10.") ||
+        scalaVersion.startsWith("2.11.") ||
+        scalaVersion.startsWith("2.12.") ||
+        scalaVersion == "2.13.0-M5")
+
+    import FallbackImplicits._
+    import js.Any.jsArrayOps
+
+    val array = js.Array(5, 7, 10)
+    assertTrue(array.sizeIs == 3)
+    assertTrue(array.sizeIs > 1)
+    assertTrue(array.sizeIs < 6)
+  }
+
+  @Test def lengthIs(): Unit = {
+    assumeFalse("lengthIs was added in 2.13",
+        scalaVersion.startsWith("2.10.") ||
+        scalaVersion.startsWith("2.11.") ||
+        scalaVersion.startsWith("2.12.") ||
+        scalaVersion == "2.13.0-M5")
+
+    import FallbackImplicits._
+    import js.Any.jsArrayOps
+
+    val array = js.Array(5, 7, 10)
+    assertTrue(array.lengthIs == 3)
+    assertTrue(array.lengthIs > 1)
+    assertTrue(array.lengthIs < 6)
   }
 
   @Test def slice(): Unit = {
@@ -240,6 +304,25 @@ class ArrayOpsTest {
     assertJSArrayPairEquals((js.Array(), array), array.partition(_ < 0))
     assertJSArrayPairEquals((js.Array(1, 5, 7, 2, 2, 0, 3), js.Array(54, 78)), array.partition(_ < 10))
     assertJSArrayPairEquals((array, js.Array()), array.partition(_ < 100))
+  }
+
+  @Test def partitionMap(): Unit = {
+    assumeFalse("partitionMap was added in 2.13",
+        scalaVersion.startsWith("2.10.") ||
+        scalaVersion.startsWith("2.11.") ||
+        scalaVersion.startsWith("2.12.") ||
+        scalaVersion == "2.13.0-M5")
+
+    import FallbackImplicits._
+    import js.Any.jsArrayOps
+
+    val array = js.Array[Any](1, "one", 2, "two", 3, "three")
+    val resultInferType = array.partitionMap {
+      case x: Int    => Left(x)
+      case x: String => Right(x)
+    }
+    val result: (js.Array[Int], js.Array[String]) = resultInferType
+    assertJSArrayPairEquals((js.Array(1, 2, 3), js.Array("one", "two", "three")), result)
   }
 
   @Test def reverse(): Unit = {
@@ -589,6 +672,13 @@ class ArrayOpsTest {
   @Test def startsWith(): Unit = {
     val array = js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3)
 
+    val supportsNegativeStart = {
+      !scalaVersion.startsWith("2.10.") &&
+      !scalaVersion.startsWith("2.11.") &&
+      !scalaVersion.startsWith("2.12.") &&
+      scalaVersion != "2.13.0-M5"
+    }
+
     // js.Array
 
     assertTrue(array.startsWith(js.Array[Int]()))
@@ -601,9 +691,15 @@ class ArrayOpsTest {
     assertTrue(array.startsWith(js.Array[Int](), 2))
     assertTrue(array.startsWith(js.Array(7, 2), 2))
     assertTrue(array.startsWith(js.Array(7, 2, 54, 2, 78, 0, 3), 2))
+    if (supportsNegativeStart) {
+      assertTrue(array.startsWith(js.Array(1, 5, 7, 2), -1))
+      assertTrue(array.startsWith(js.Array(1, 5, 7, 2), Int.MinValue))
+    }
 
     assertFalse(array.startsWith(js.Array(7, 2, 34, 2), 2))
     assertFalse(array.startsWith(js.Array(7, 2, 54, 2, 78, 0, 3, 6, 4), 2))
+    if (supportsNegativeStart)
+      assertFalse(array.startsWith(js.Array(1, 5, 3, 2), -1))
 
     // List
 
@@ -617,9 +713,15 @@ class ArrayOpsTest {
     assertTrue(array.startsWith(List[Int](), 2))
     assertTrue(array.startsWith(List(7, 2), 2))
     assertTrue(array.startsWith(List(7, 2, 54, 2, 78, 0, 3), 2))
+    if (supportsNegativeStart) {
+      assertTrue(array.startsWith(List(1, 5, 7, 2), -1))
+      assertTrue(array.startsWith(List(1, 5, 7, 2), Int.MinValue))
+    }
 
     assertFalse(array.startsWith(List(7, 2, 34, 2), 2))
     assertFalse(array.startsWith(List(7, 2, 54, 2, 78, 0, 3, 6, 4), 2))
+    if (supportsNegativeStart)
+      assertFalse(array.startsWith(List(1, 5, 3, 2), -1))
   }
 
   @Test def endsWith(): Unit = {
