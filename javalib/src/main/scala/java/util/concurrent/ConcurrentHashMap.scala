@@ -16,7 +16,7 @@ import java.lang.{reflect => jlr}
 import java.io.Serializable
 import java.util._
 
-import scala.collection.JavaConverters._
+import Compat.JDKCollectionConvertersCompat.Converters._
 
 class ConcurrentHashMap[K >: Null, V >: Null]
     extends AbstractMap[K, V] with ConcurrentMap[K, V] with Serializable { self =>

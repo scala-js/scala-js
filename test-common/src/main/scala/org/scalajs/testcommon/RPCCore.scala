@@ -14,7 +14,6 @@ package org.scalajs.testcommon
 
 import scala.util.{Try, Failure, Success}
 
-import scala.collection.JavaConverters._
 import scala.concurrent._
 import scala.concurrent.duration._
 
@@ -24,7 +23,6 @@ import java.util.concurrent.atomic.AtomicLong
 
 import Serializer.{serialize, deserialize}
 import FutureUtil._
-
 
 /** Core RPC dispatcher.
  *
@@ -40,6 +38,7 @@ import FutureUtil._
  */
 private[scalajs] abstract class RPCCore()(implicit ex: ExecutionContext) {
   import RPCCore._
+  import JDKCollectionConvertersCompat.Converters._
 
   /** Pending calls. */
   private[this] val pending = new ConcurrentHashMap[Long, PendingCall]
@@ -302,4 +301,32 @@ private[scalajs] object RPCCore {
       }
     }
   }
+
+  // !!! Duplicate code with java.util.Compat.JDKCollectionConvertersCompat
+  /** Magic to get cross-compiling access to `scala.jdk.CollectionConverters`
+   *  with a fallback on `scala.collection.JavaConverters`, without deprecation
+   *  warning in any Scala version.
+   */
+  private object JDKCollectionConvertersCompat {
+    object Scope1 {
+      object jdk {
+        object CollectionConverters {
+          type Ops = Int
+        }
+      }
+    }
+    import Scope1._
+
+    object Scope2 {
+      import scala.collection.{JavaConverters => Ops}
+      object Inner {
+        import scala._
+        import jdk.CollectionConverters.Ops
+        val Converters = Ops
+      }
+    }
+
+    val Converters = Scope2.Inner.Converters
+  }
+  // !!! End duplicate code
 }
