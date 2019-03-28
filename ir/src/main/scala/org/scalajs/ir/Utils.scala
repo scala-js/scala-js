@@ -62,7 +62,7 @@ private[ir] object Utils {
             out.append(EscapeJSChars, 14, 16)
             writtenChars += 2
           } else {
-            out.append(f"\\u$c%04x")
+            out.append("\\u%04x".format(c))
             writtenChars += 6
           }
         }
