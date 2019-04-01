@@ -13,7 +13,8 @@
 package java.util
 
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+
+import Compat.JDKCollectionConvertersCompat.Converters._
 
 class LinkedList[E]() extends AbstractSequentialList[E]
     with List[E] with Deque[E] with Cloneable with Serializable {

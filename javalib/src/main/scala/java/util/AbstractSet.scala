@@ -14,7 +14,7 @@ package java.util
 
 import scala.annotation.tailrec
 
-import scala.collection.JavaConverters._
+import Compat.JDKCollectionConvertersCompat.Converters._
 
 abstract class AbstractSet[E] protected () extends AbstractCollection[E]
                                               with Set[E] {

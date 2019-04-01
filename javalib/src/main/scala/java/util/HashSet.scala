@@ -13,7 +13,8 @@
 package java.util
 
 import scala.collection.mutable
-import scala.collection.JavaConverters._
+
+import Compat.JDKCollectionConvertersCompat.Converters._
 
 class HashSet[E] extends AbstractSet[E] with Set[E]
                                         with Cloneable

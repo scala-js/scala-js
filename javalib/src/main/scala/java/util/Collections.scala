@@ -19,7 +19,7 @@ import scala.language.implicitConversions
 
 import scala.annotation.tailrec
 
-import scala.collection.JavaConverters._
+import Compat.JDKCollectionConvertersCompat.Converters._
 
 object Collections {
 
