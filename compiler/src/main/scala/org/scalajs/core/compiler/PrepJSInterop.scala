@@ -684,7 +684,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       }
 
       // Check for consistency of JS semantics across overriding
-      for (overridingPair <- new overridingPairs.Cursor(sym).iterator) {
+      for (overridingPair <- new JSRefChecksCursor(sym).iterator) {
         val low = overridingPair.low
         val high = overridingPair.high
 
@@ -1349,6 +1349,26 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             "The third argument to @JSImport, when present, must be a " +
             "literal string.")
       }
+    }
+  }
+
+  private class JSRefChecksCursor(sym: Symbol) extends overridingPairs.Cursor(sym) {
+    /* Implements an abstract method of SymbolPairs#Cursor introduced in 2.13,
+     * in the same way as the RefChecksCursor used by the refchecks phase.
+     * Before 2.13, this method did not exist, and its behavior was hard-coded
+     * in Cursor, so it won't be called.
+     */
+    protected def skipOwnerPair(lowClass: Symbol, highClass: Symbol): Boolean = {
+      lowClass != this.nonTraitParent &&
+      this.nonTraitParent.isNonBottomSubClass(lowClass) &&
+      this.nonTraitParent.isNonBottomSubClass(highClass)
+    }
+  }
+
+  private object JSRefChecksCursor {
+    private final implicit class CompatOps(val self: JSRefChecksCursor) {
+      def nonTraitParent: Symbol =
+        throw new AssertionError("unreachable compat code")
     }
   }
 
