@@ -200,8 +200,11 @@ object Array {
   // Array(e0, ..., en) is translated to { val a = new Array(3); a(i) = ei; a }
   def apply[T: ClassTag](xs: T*): Array[T] = {
     val array = new Array[T](xs.length)
+    val iterator = xs.iterator
     var i = 0
-    for (x <- xs.iterator) { array(i) = x; i += 1 }
+    while (iterator.hasNext) {
+      array(i) = iterator.next(); i += 1
+    }
     array
   }
 
@@ -210,8 +213,11 @@ object Array {
   def apply(x: Boolean, xs: Boolean*): Array[Boolean] = {
     val array = new Array[Boolean](xs.length + 1)
     array(0) = x
+    val iterator = xs.iterator
     var i = 1
-    for (x <- xs.iterator) { array(i) = x; i += 1 }
+    while (iterator.hasNext) {
+      array(i) = iterator.next(); i += 1
+    }
     array
   }
 
@@ -220,8 +226,11 @@ object Array {
   def apply(x: Byte, xs: Byte*): Array[Byte] = {
     val array = new Array[Byte](xs.length + 1)
     array(0) = x
+    val iterator = xs.iterator
     var i = 1
-    for (x <- xs.iterator) { array(i) = x; i += 1 }
+    while (iterator.hasNext) {
+      array(i) = iterator.next(); i += 1
+    }
     array
   }
 
@@ -230,8 +239,11 @@ object Array {
   def apply(x: Short, xs: Short*): Array[Short] = {
     val array = new Array[Short](xs.length + 1)
     array(0) = x
+    val iterator = xs.iterator
     var i = 1
-    for (x <- xs.iterator) { array(i) = x; i += 1 }
+    while (iterator.hasNext) {
+      array(i) = iterator.next(); i += 1
+    }
     array
   }
 
@@ -240,8 +252,11 @@ object Array {
   def apply(x: Char, xs: Char*): Array[Char] = {
     val array = new Array[Char](xs.length + 1)
     array(0) = x
+    val iterator = xs.iterator
     var i = 1
-    for (x <- xs.iterator) { array(i) = x; i += 1 }
+    while (iterator.hasNext) {
+      array(i) = iterator.next(); i += 1
+    }
     array
   }
 
@@ -250,8 +265,11 @@ object Array {
   def apply(x: Int, xs: Int*): Array[Int] = {
     val array = new Array[Int](xs.length + 1)
     array(0) = x
+    val iterator = xs.iterator
     var i = 1
-    for (x <- xs.iterator) { array(i) = x; i += 1 }
+    while (iterator.hasNext) {
+      array(i) = iterator.next(); i += 1
+    }
     array
   }
 
@@ -260,8 +278,11 @@ object Array {
   def apply(x: Long, xs: Long*): Array[Long] = {
     val array = new Array[Long](xs.length + 1)
     array(0) = x
+    val iterator = xs.iterator
     var i = 1
-    for (x <- xs.iterator) { array(i) = x; i += 1 }
+    while (iterator.hasNext) {
+      array(i) = iterator.next(); i += 1
+    }
     array
   }
 
@@ -270,8 +291,11 @@ object Array {
   def apply(x: Float, xs: Float*): Array[Float] = {
     val array = new Array[Float](xs.length + 1)
     array(0) = x
+    val iterator = xs.iterator
     var i = 1
-    for (x <- xs.iterator) { array(i) = x; i += 1 }
+    while (iterator.hasNext) {
+      array(i) = iterator.next(); i += 1
+    }
     array
   }
 
@@ -280,8 +304,11 @@ object Array {
   def apply(x: Double, xs: Double*): Array[Double] = {
     val array = new Array[Double](xs.length + 1)
     array(0) = x
+    val iterator = xs.iterator
     var i = 1
-    for (x <- xs.iterator) { array(i) = x; i += 1 }
+    while (iterator.hasNext) {
+      array(i) = iterator.next(); i += 1
+    }
     array
   }
 
@@ -289,8 +316,11 @@ object Array {
   def apply(x: Unit, xs: Unit*): Array[Unit] = {
     val array = new Array[Unit](xs.length + 1)
     array(0) = x
+    val iterator = xs.iterator
     var i = 1
-    for (x <- xs.iterator) { array(i) = x; i += 1 }
+    while (iterator.hasNext) {
+      array(i) = iterator.next(); i += 1
+    }
     array
   }
 
