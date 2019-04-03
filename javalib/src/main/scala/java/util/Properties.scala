@@ -14,7 +14,7 @@ package java.util
 
 import java.{util => ju}
 
-import scala.collection.JavaConverters._
+import Compat.JDKCollectionConvertersCompat.Converters._
 
 class Properties(protected val defaults: Properties)
     extends ju.Hashtable[AnyRef, AnyRef] {

@@ -17,8 +17,8 @@ import java.lang.Comparable
 import scala.math.Ordering
 
 import scala.collection.mutable
-import scala.collection.JavaConverters._
 
+import Compat.JDKCollectionConvertersCompat.Converters._
 import Compat.SortedSetCompat
 
 class TreeSet[E] (_comparator: Comparator[_ >: E])

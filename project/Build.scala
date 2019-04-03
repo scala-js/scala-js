@@ -1059,8 +1059,12 @@ object Build {
               "-doc-version", scalaJSVersion
           ),
 
-          unmanagedSourceDirectories +=
-            collectionsEraDependentDirectory(scalaVersion.value, sourceDirectory.value),
+          unmanagedSourceDirectories += {
+            val scalaV = scalaVersion.value
+            val sourceDir = sourceDirectory.value
+            if (scalaV == "2.13.0-M5") sourceDir / "scala-m5-collections"
+            else collectionsEraDependentDirectory(scalaV, sourceDir)
+          },
 
           // Filter doc sources to remove implementation details from doc.
           sources in doc := {

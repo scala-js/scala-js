@@ -17,7 +17,7 @@ import java.util._
 
 import scala.annotation.tailrec
 
-import scala.collection.JavaConverters._
+import Compat.JDKCollectionConvertersCompat.Converters._
 
 import scala.scalajs._
 

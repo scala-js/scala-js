@@ -15,8 +15,8 @@ package java.util
 import scala.math.Ordering
 
 import scala.collection.mutable
-import scala.collection.JavaConverters._
 
+import Compat.JDKCollectionConvertersCompat.Converters._
 import Compat.SortedSetCompat
 
 private[util] class NavigableView[E](original: NavigableSet[E],

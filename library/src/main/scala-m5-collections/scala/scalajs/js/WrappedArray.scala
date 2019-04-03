@@ -28,7 +28,6 @@ final class WrappedArray[A](val array: js.Array[A])
     with mutable.IndexedSeqOps[A, js.WrappedArray, js.WrappedArray[A]]
     with mutable.IndexedBuffer[A]
     with mutable.Builder[A, js.WrappedArray[A]]
-    with scala.collection.IterableFactoryDefaults[A, js.WrappedArray]
     with Serializable {
 
   /** Creates a new empty [[WrappedArray]]. */
@@ -41,8 +40,6 @@ final class WrappedArray[A](val array: js.Array[A])
   @inline def update(index: Int, elem: A): Unit = array(index) = elem
   @inline def apply(index: Int): A = array(index)
   @inline def length: Int = array.length
-
-  @inline override def knownSize: Int = length
 
   // Builder interface
 

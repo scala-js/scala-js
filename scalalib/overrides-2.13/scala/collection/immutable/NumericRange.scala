@@ -12,9 +12,8 @@
 
 package scala.collection.immutable
 
-import scala.collection.{AbstractIterator, Iterator}
-
-import java.lang.String
+import scala.collection.Stepper.EfficientSplit
+import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, Iterator, Stepper, StepperShape}
 
 /** `NumericRange` is a more generic version of the
   *  `Range` class which works with arbitrary types.
@@ -50,9 +49,22 @@ sealed class NumericRange[T](
     with IndexedSeq[T]
     with IndexedSeqOps[T, IndexedSeq, IndexedSeq[T]]
     with StrictOptimizedSeqOps[T, IndexedSeq, IndexedSeq[T]]
+    with IterableFactoryDefaults[T, IndexedSeq]
     with Serializable { self =>
 
   override def iterator: Iterator[T] = new NumericRange.NumericRangeIterator(this, num)
+
+  override def stepper[B >: T, S <: Stepper[_]](implicit shape: StepperShape[B, S]): S with EfficientSplit = {
+    import scala.collection.convert._
+    import impl._
+    val s = shape.shape match {
+      case StepperShape.IntShape    => new IntNumericRangeStepper   (this.asInstanceOf[NumericRange[Int]],    0, length)
+      case StepperShape.LongShape   => new LongNumericRangeStepper  (this.asInstanceOf[NumericRange[Long]],   0, length)
+      case _         => shape.parUnbox(new AnyNumericRangeStepper[T](this, 0, length).asInstanceOf[AnyStepper[B] with EfficientSplit])
+    }
+    s.asInstanceOf[S with EfficientSplit]
+  }
+
 
   /** Note that NumericRange must be invariant so that constructs
     *  such as "1L to 10 by 5" do not infer the range type as AnyVal.
