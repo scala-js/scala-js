@@ -29,6 +29,7 @@ private[runtime] final class WrappedVarArgs[+A] private (array: js.Array[A])
     extends immutable.IndexedSeq[A]
     with immutable.IndexedSeqOps[A, WrappedVarArgs, WrappedVarArgs[A]]
     with immutable.StrictOptimizedSeqOps[A, WrappedVarArgs, WrappedVarArgs[A]]
+    with scala.collection.IterableFactoryDefaults[A, WrappedVarArgs]
     with Serializable {
 
   /** Creates a new empty [[WrappedVarArgs]]. */
