@@ -20,7 +20,8 @@ trait Buffer[A]
   extends Seq[A]
     with SeqOps[A, Buffer, Buffer[A]]
     with Growable[A]
-    with Shrinkable[A] {
+    with Shrinkable[A]
+    with IterableFactoryDefaults[A, Buffer] {
 
   override def iterableFactory: SeqFactory[Buffer] = Buffer
 
@@ -101,7 +102,7 @@ trait Buffer[A]
   @throws[IndexOutOfBoundsException]
   @throws[IllegalArgumentException]
   def remove(idx: Int, count: Int): Unit
-  
+
   /** Removes a single element from this buffer, at its first occurrence.
     *  If the buffer does not contain that element, it is unchanged.
     *
@@ -174,7 +175,8 @@ trait Buffer[A]
 
 trait IndexedBuffer[A] extends IndexedSeq[A]
   with IndexedSeqOps[A, IndexedBuffer, IndexedBuffer[A]]
-  with Buffer[A] {
+  with Buffer[A]
+  with IterableFactoryDefaults[A, IndexedBuffer] {
 
   override def iterableFactory: SeqFactory[IndexedBuffer] = IndexedBuffer
 
