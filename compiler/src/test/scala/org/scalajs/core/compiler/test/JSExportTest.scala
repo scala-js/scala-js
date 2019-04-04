@@ -852,14 +852,19 @@ class JSExportTest extends DirectTest with TestHelpers {
   @Test
   def noOverrideNamedExport: Unit = {
 
-    val indent = {
+    val overrideFinalMsg = {
       val version = scala.util.Properties.versionNumberString
       if (version.startsWith("2.10.") ||
           version.startsWith("2.11.") ||
           version.startsWith("2.12.")) {
-        " "
+        """overriding method $js$exported$meth$foo in class A of type (namedArgs: Any)Any;
+          | method $js$exported$meth$foo cannot override final member""".stripMargin
+      } else if (version == "2.13.0-M5") {
+        """overriding method $js$exported$meth$foo in class A of type (namedArgs: Any)Any;
+          |  method $js$exported$meth$foo cannot override final member""".stripMargin
       } else {
-        "  "
+        """cannot override final member:
+          |final def $js$exported$meth$foo(namedArgs: Any): Any (defined in class A)""".stripMargin
       }
     }
 
@@ -881,8 +886,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:4: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
       |      @JSExportNamed
       |       ^
-      |newSource1.scala:9: error: overriding method $$js$$exported$$meth$$foo in class A of type (namedArgs: Any)Any;
-      |${indent}method $$js$$exported$$meth$$foo cannot override final member
+      |newSource1.scala:9: error: $overrideFinalMsg
       |      @JSExportNamed
       |       ^
       |newSource1.scala:10: warning: class JSExportNamed in package annotation is deprecated${since("0.6.11")}: Use @JSExport with an explicit option bag instead. See the Scaladoc for more details.
