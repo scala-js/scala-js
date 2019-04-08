@@ -100,4 +100,13 @@ object | { // scalastyle:ignore
     def merge[B](implicit ev: |.Evidence[A, B]): B =
       self.asInstanceOf[B]
   }
+
+  implicit final def unitOrOps[A, B](unitOr: Unit | A)(implicit ev: |.Evidence[A, B]): UndefOrOps[B] = {
+    new UndefOrOps(unitOr.asInstanceOf[UndefOr[B]])
+  }
+
+  implicit final def orUnitOps[A, B](unitOr: A | Unit)(implicit ev: |.Evidence[A, B]): UndefOrOps[B] = {
+    new UndefOrOps(unitOr.asInstanceOf[UndefOr[B]])
+  }
+
 }
