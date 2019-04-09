@@ -92,6 +92,8 @@ trait Compat210Component {
     import Compat._
 
     object Inner {
+      import scala.tools.nsc.doc._
+
       type ScaladocGlobalCompat = ScaladocGlobal
     }
 
