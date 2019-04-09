@@ -133,11 +133,13 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
   @inline def lengthCompare(len: Int): Int =
     Integer.compare(xs.length, len)
 
-  /** Method mirroring [[SeqOps.sizeIs]] for consistency, except it returns an
-   *  `Int` because `size` is known and comparison is constant-time.
+  /** Method mirroring
+   *  [[scala.collection.IterableOps.sizeIs IterableOps.sizeIs]] for
+   *  consistency, except it returns an `Int` because `size` is known and
+   *  comparison is constant-time.
    *
    *  These operations are equivalent to
-   *  [[sizeCompare(Int) `sizeCompare(Int)`]], and allow the following more
+   *  [[sizeCompare `sizeCompare(Int)`]], and allow the following more
    *  readable usages:
    *
    *  {{{
@@ -151,11 +153,12 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    */
   def sizeIs: Int = xs.length
 
-  /** Method mirroring [[SeqOps.lengthIs]] for consistency, except it returns
-   *  an `Int` because `length` is known and comparison is constant-time.
+  /** Method mirroring [[scala.collection.SeqOps.lengthIs SeqOps.lengthIs]] for
+   *  consistency, except it returns an `Int` because `length` is known and
+   *  comparison is constant-time.
    *
    *  These operations are equivalent to
-   *  [[lengthCompare(Int) `lengthCompare(Int)`]], and allow the following more
+   *  [[lengthCompare `lengthCompare(Int)`]], and allow the following more
    *  readable usages:
    *
    *  {{{
