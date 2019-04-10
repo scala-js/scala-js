@@ -859,9 +859,6 @@ class JSExportTest extends DirectTest with TestHelpers {
           version.startsWith("2.12.")) {
         """overriding method $js$exported$meth$foo in class A of type (namedArgs: Any)Any;
           | method $js$exported$meth$foo cannot override final member""".stripMargin
-      } else if (version == "2.13.0-M5") {
-        """overriding method $js$exported$meth$foo in class A of type (namedArgs: Any)Any;
-          |  method $js$exported$meth$foo cannot override final member""".stripMargin
       } else {
         """cannot override final member:
           |final def $js$exported$meth$foo(namedArgs: Any): Any (defined in class A)""".stripMargin
