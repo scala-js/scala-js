@@ -12,7 +12,7 @@
 
 package org.scalajs.jsenv
 
-import org.scalajs.io._
+import java.nio.file.Path
 
 /** Input to a [[JSEnv]].
  *
@@ -27,7 +27,7 @@ abstract class Input private ()
 
 object Input {
   /** All files are to be loaded as scripts into the global scope in the order given. */
-  final case class ScriptsToLoad(scripts: List[VirtualBinaryFile]) extends Input
+  final case class ScriptsToLoad(scripts: List[Path]) extends Input
 
   /** All files are to be loaded as ES modules, in the given order.
    *
@@ -36,11 +36,11 @@ object Input {
    *  `ESModulesToLoad` input if the `modules` argument has more than one
    *  element.
    */
-  final case class ESModulesToLoad(modules: List[VirtualBinaryFile])
+  final case class ESModulesToLoad(modules: List[Path])
       extends Input
 
   /** All files are to be loaded as CommonJS modules, in the given order. */
-  final case class CommonJSModulesToLoad(modules: List[VirtualBinaryFile])
+  final case class CommonJSModulesToLoad(modules: List[Path])
       extends Input
 }
 

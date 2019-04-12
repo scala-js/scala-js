@@ -15,26 +15,6 @@ package org.scalajs.io
 import java.io._
 import java.nio.charset.StandardCharsets
 
-/** A simple in-memory immutable virtual binary file.
- *
- *  Modifying the passed `content` after creation of a [[MemVirtualBinaryFile]]
- *  yields undefined behavior.
- */
-class MemVirtualBinaryFile(
-    final val path: String,
-    content: Array[Byte]
-) extends VirtualBinaryFile {
-  final def inputStream: InputStream = new ByteArrayInputStream(content)
-}
-
-object MemVirtualBinaryFile {
-  def apply(path: String, content: Array[Byte]): MemVirtualBinaryFile =
-    new MemVirtualBinaryFile(path, content)
-
-  def fromStringUTF8(path: String, content: String): MemVirtualBinaryFile =
-    apply(path, content.getBytes(StandardCharsets.UTF_8))
-}
-
 final class WritableMemVirtualBinaryFile extends WritableVirtualBinaryFile {
   private var _content: Array[Byte] = _
 
@@ -46,7 +26,4 @@ final class WritableMemVirtualBinaryFile extends WritableVirtualBinaryFile {
       _content = this.toByteArray
     }
   }
-
-  def toReadable(path: String): MemVirtualBinaryFile =
-    new MemVirtualBinaryFile(path, content)
 }

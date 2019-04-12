@@ -12,10 +12,11 @@
 
 package org.scalajs.jsenv.test
 
+import com.google.common.jimfs.Jimfs
+
 import org.junit.Assume._
 import org.junit.{Test, Before, AssumptionViolatedException}
 
-import org.scalajs.io.VirtualBinaryFile
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.test.kit.{TestKit, Run}
 
@@ -133,13 +134,7 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
 
   @Test
   def noThrowOnBadFileTest: Unit = {
-    def fail() = throw new java.io.IOException("exception for test")
-
-    val badFile = new VirtualBinaryFile {
-      def path: String = fail()
-      def exists: Boolean = fail()
-      def inputStream: java.io.InputStream = fail()
-    }
+    val badFile = Jimfs.newFileSystem().getPath("nonexistent")
 
     // `start` may not throw but must fail asynchronously
     withRun(Input.ScriptsToLoad(badFile :: Nil)) {

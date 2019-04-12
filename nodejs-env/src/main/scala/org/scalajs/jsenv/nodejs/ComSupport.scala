@@ -12,12 +12,6 @@
 
 package org.scalajs.jsenv.nodejs
 
-import java.io._
-import java.net._
-
-import org.scalajs.io.{VirtualBinaryFile, MemVirtualBinaryFile}
-import org.scalajs.jsenv._
-
 import scala.collection.immutable
 import scala.concurrent._
 import scala.util.{Failure, Success}
@@ -25,6 +19,15 @@ import scala.util.control.NonFatal
 
 // TODO Replace this by a better execution context on the RunConfig.
 import scala.concurrent.ExecutionContext.Implicits.global
+
+import java.io._
+import java.net._
+import java.nio.charset.StandardCharsets
+import java.nio.file._
+
+import com.google.common.jimfs.Jimfs
+
+import org.scalajs.jsenv._
 
 private final class ComRun(run: JSRun, handleMessage: String => Unit,
     serverSocket: ServerSocket) extends JSComRun {
@@ -200,11 +203,10 @@ object ComRun {
    *  @param config Configuration for the run.
    *  @param onMessage callback upon message reception.
    *  @param startRun [[JSRun]] launcher. Gets passed a
-   *      [[org.scalajs.io.VirtualBinaryFile VirtualBinaryFile]] that
-   *      initializes `scalaJSCom` on `global`. Requires Node.js libraries.
+   *      [[java.nio.file.Path Path]] that initializes `scalaJSCom` on
+   *      `global`. Requires Node.js libraries.
    */
-  def start(config: RunConfig, onMessage: String => Unit)(
-      startRun: VirtualBinaryFile => JSRun): JSComRun = {
+  def start(config: RunConfig, onMessage: String => Unit)(startRun: Path => JSRun): JSComRun = {
     try {
       val serverSocket =
         new ServerSocket(0, 0, InetAddress.getByName(null)) // Loopback address
@@ -240,8 +242,9 @@ object ComRun {
     s.writeChars(msg)
   }
 
-  private def setupFile(port: Int): VirtualBinaryFile = {
-    MemVirtualBinaryFile.fromStringUTF8("comSetup.js",
+  private def setupFile(port: Int): Path = {
+    Files.write(
+        Jimfs.newFileSystem().getPath("comSetup.js"),
         s"""
            |(function() {
            |  // The socket for communication
@@ -303,6 +306,6 @@ object ComRun {
            |    }
            |  }
            |}).call(this);
-        """.stripMargin)
+        """.stripMargin.getBytes(StandardCharsets.UTF_8))
   }
 }
