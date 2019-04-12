@@ -62,9 +62,13 @@ object HTMLRunnerBuilder {
             s"Unsupported input for the generation of an HTML runner: $input")
     }
 
-    val jsFileURIs = jsFiles.map {
-      case file: FileVirtualBinaryFile => file.file.toURI
-      case file                        => tmpFile(file.path, file.inputStream)
+    val jsFileURIs = jsFiles.map { f =>
+      try {
+        f.toFile.toURI
+      } catch {
+        case _: UnsupportedOperationException =>
+          tmpFile(f.toString, Files.newInputStream(f))
+      }
     }
 
     val cssURI = {

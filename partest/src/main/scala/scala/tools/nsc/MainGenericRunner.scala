@@ -26,10 +26,13 @@ import org.scalajs.linker.irio._
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
+import com.google.common.jimfs.Jimfs
+
 import scala.tools.partest.scalajs.ScalaJSPartestOptions._
 
 import java.io.File
 import java.net.URL
+import java.nio.file.Files
 import scala.io.Source
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -105,7 +108,7 @@ class MainGenericRunner {
 
       Await.result(result, Duration.Inf)
 
-      out.toReadable("partest.js")
+      Files.write(Jimfs.newFileSystem().getPath("partest.js"), out.content)
     }
 
     val input = Input.ScriptsToLoad(sjsCode :: Nil)

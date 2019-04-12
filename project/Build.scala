@@ -108,7 +108,7 @@ object Build {
   val bintrayProjectName = settingKey[String](
       "Project name on Bintray")
 
-  val setModuleLoopbackScript = taskKey[Option[FileVirtualBinaryFile]](
+  val setModuleLoopbackScript = taskKey[Option[java.nio.file.Path]](
       "In the test suite, under ES modules, the script that sets the " +
       "loopback module namespace")
 
@@ -735,7 +735,7 @@ object Build {
       libraryDependencies += "com.novocode" % "junit-interface" % "0.9" % "test",
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
-  ).dependsOn(io, logging)
+  ).dependsOn(logging)
 
   lazy val jsEnvsTestKit: Project = (project in file("js-envs-test-kit")).settings(
       commonSettings,
@@ -743,6 +743,7 @@ object Build {
       fatalWarningsSettings,
       name := "Scala.js JS Envs Test Kit",
       libraryDependencies ++= Seq(
+          "com.google.jimfs" % "jimfs" % "1.1",
           "junit" % "junit" % "4.12",
           "com.novocode" % "junit-interface" % "0.9" % "test"
       ),
@@ -757,10 +758,12 @@ object Build {
       name := "Scala.js Node.js env",
       normalizedName := "scalajs-nodejs-env",
       moduleName := "scalajs-env-nodejs",
-      libraryDependencies +=
-        "com.novocode" % "junit-interface" % "0.9" % "test",
+      libraryDependencies ++= Seq(
+          "com.google.jimfs" % "jimfs" % "1.1",
+          "com.novocode" % "junit-interface" % "0.9" % "test"
+      ),
       previousArtifactSetting
-  ).dependsOn(jsEnvs, jsEnvsTestKit % "test")
+  ).dependsOn(io, jsEnvs, jsEnvsTestKit % "test")
 
   lazy val testAdapter = (project in file("test-adapter")).settings(
       commonSettings,
@@ -1402,11 +1405,11 @@ object Build {
             """
           }
 
-          val launcher =
-            MemVirtualBinaryFile.fromStringUTF8("test-suite-linker.js", code)
+          val launcherFile = crossTarget.value / "test-suite-linker.js"
+          IO.write(launcherFile, code)
 
           val config = RunConfig().withLogger(sbtLogger2ToolsLogger(s.log))
-          val input = Input.ScriptsToLoad(List(launcher))
+          val input = Input.ScriptsToLoad(List(launcherFile.toPath))
 
           s.log.info(s"Linking test suite with JS linker")
 
@@ -1431,8 +1434,7 @@ object Build {
   def testSuiteJSExecutionFilesSetting: Setting[_] = {
     jsEnvInput := {
       val resourceDir = (resourceDirectory in Test).value
-      val f = new FileVirtualBinaryFile(
-          resourceDir / "NonNativeJSTypeTestNatives.js")
+      val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
 
       jsEnvInput.value match {
         case Input.ScriptsToLoad(prevFiles) =>
@@ -1473,7 +1475,7 @@ object Build {
        * Only when using an ES module.
        * See the comment in ExportsTest for more details.
        */
-      setModuleLoopbackScript in Test := Def.settingDyn[Task[Option[FileVirtualBinaryFile]]] {
+      setModuleLoopbackScript in Test := Def.settingDyn[Task[Option[java.nio.file.Path]]] {
         (scalaJSLinkerConfig in Test).value.moduleKind match {
           case ModuleKind.ESModule =>
             Def.task {
@@ -1502,7 +1504,7 @@ object Build {
                     |mod.setExportsNamespaceForExportsTest(mod);
                   """.stripMargin)
 
-              Some(new FileVirtualBinaryFile(setNamespaceScriptFile))
+              Some(setNamespaceScriptFile.toPath)
             }
 
           case _ =>
