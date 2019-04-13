@@ -499,13 +499,8 @@ private final class Analyzer(semantics: Semantics,
       import ir.Types._
 
       def classIsMoreSpecific(leftCls: String, rightCls: String): Boolean = {
-        leftCls != rightCls && {
-          val leftInfo = _classInfos.get(leftCls)
-          val rightInfo = _classInfos.get(rightCls)
-          leftInfo.zip(rightInfo).exists { case (l, r) =>
-            l.ancestors.contains(r)
-          }
-        }
+        leftCls != rightCls &&
+        lookupClass(leftCls).ancestors.contains(lookupClass(rightCls))
       }
 
       (left, right) match {
