@@ -640,19 +640,24 @@ private final class Analyzer(config: CommonPhaseConfig,
       m
     }
 
-    def tryLookupReflProxyMethod(proxyName: String): Option[MethodInfo] = {
+    def tryLookupReflProxyMethod(proxyName: String)(
+        onSuccess: MethodInfo => Unit)(implicit from: From): Unit = {
       if (!allowAddingSyntheticMethods) {
-        tryLookupMethod(proxyName)
+        tryLookupMethod(proxyName).foreach(onSuccess)
       } else {
-        publicMethodInfos.get(proxyName).orElse {
-          findReflectiveTarget(proxyName).map { reflectiveTarget =>
-            createReflProxy(proxyName, reflectiveTarget.encodedName)
+        publicMethodInfos.get(proxyName).fold {
+          workQueue.enqueue(findReflectiveTarget(proxyName)) { maybeTarget =>
+            maybeTarget.foreach { reflectiveTarget =>
+              val proxy = createReflProxy(proxyName, reflectiveTarget.encodedName)
+              onSuccess(proxy)
+            }
           }
-        }
+        } (onSuccess)
       }
     }
 
-    private def findReflectiveTarget(proxyName: String): Option[MethodInfo] = {
+    private def findReflectiveTarget(proxyName: String)(
+        implicit from: From): Future[Option[MethodInfo]] = {
       /* The lookup for a target method in this code implements the
        * algorithm defining `java.lang.Class.getMethod`. This mimics how
        * reflective calls are implemented on the JVM, at link time.
@@ -672,12 +677,16 @@ private final class Analyzer(config: CommonPhaseConfig,
         Iterator.iterate(this)(_.superClass.orNull).takeWhile(_ ne null)
       val superClassesThenAncestors = superClasses ++ ancestors.iterator
 
-      superClassesThenAncestors.map(_.findProxyMatch(proxyName)).collectFirst {
-        case Some(m) => m
+      val candidates = superClassesThenAncestors.map(_.findProxyMatch(proxyName))
+
+      locally {
+        implicit val iec = ec
+        Future.sequence(candidates).map(_.collectFirst { case Some(m) => m })
       }
     }
 
-    private def findProxyMatch(proxyName: String): Option[MethodInfo] = {
+    private def findProxyMatch(proxyName: String)(
+        implicit from: From): Future[Option[MethodInfo]] = {
       val candidates = publicMethodInfos.valuesIterator.filter { m =>
         // TODO In theory we should filter out protected methods
         !m.isReflProxy && !m.isDefaultBridge && !m.isExported && !m.isAbstract &&
@@ -692,19 +701,32 @@ private final class Analyzer(config: CommonPhaseConfig,
        *   chosen arbitrarily.
        */
 
-      val targets = candidates.filterNot { c =>
-        val resultType = methodResultType(c.encodedName)
-        candidates.exists { other =>
-          (other ne c) &&
-          isMoreSpecific(methodResultType(other.encodedName), resultType)
-        }
+      val resultTypes = candidates.map(c => methodResultType(c.encodedName))
+
+      // We must not use Future.traverse since otherwise we might run things on
+      // the non-main thread.
+      val specificityChecks = resultTypes.map { x =>
+        for (y <- resultTypes if x != y)
+          yield isMoreSpecific(y, x)
       }
 
-      /* This last step (chosen arbitrarily) causes some soundness issues of
-       * the implementation of reflective calls. This is bug-compatible with
-       * Scala/JVM.
-       */
-      targets.headOption
+      // Starting here, we just do data juggling, so it can run on any thread.
+      locally {
+        implicit val iec = ec
+
+        val hasMoreSpecific = Future.traverse(specificityChecks)(
+            checks => Future.sequence(checks).map(_.contains(true)))
+
+        hasMoreSpecific.map { hms =>
+          val targets = candidates.zip(hms).filterNot(_._2).map(_._1)
+
+          /* This last step (chosen arbitrarily) causes some soundness issues of
+           * the implementation of reflective calls. This is bug-compatible with
+           * Scala/JVM.
+           */
+          targets.headOption
+        }
+      }
     }
 
     private def reflProxyMatches(methodName: String, proxyName: String): Boolean = {
@@ -715,22 +737,26 @@ private final class Analyzer(config: CommonPhaseConfig,
     private def methodResultType(methodName: String): ir.Types.TypeRef =
       decodeTypeRef(methodName.substring(methodName.lastIndexOf("__") + 2))
 
-    private def isMoreSpecific(left: ir.Types.TypeRef,
-        right: ir.Types.TypeRef): Boolean = {
+    private def isMoreSpecific(left: ir.Types.TypeRef, right: ir.Types.TypeRef)(
+        implicit from: From): Future[Boolean] = {
       import ir.Types._
 
-      def getClassInfo(name: String): Option[ClassInfo] = {
-        // TODO: This is suspicious: It shouldn't be necessary.
-        _classInfos.get(name).collect { case i: ClassInfo => i }
-      }
+      def isPrimitive(className: String) =
+        Definitions.PrimitiveClasses.contains(className)
 
-      def classIsMoreSpecific(leftCls: String, rightCls: String): Boolean = {
-        leftCls != rightCls && {
-          val leftInfo = getClassInfo(leftCls)
-          val rightInfo = getClassInfo(rightCls)
-          leftInfo.zip(rightInfo).exists { case (l, r) =>
-            l.ancestors.contains(r)
+      def classIsMoreSpecific(leftCls: String, rightCls: String): Future[Boolean] = {
+        if (leftCls == rightCls || isPrimitive(leftCls) || isPrimitive(rightCls)) {
+          Future.successful(false)
+        } else {
+          val promise = Promise[Boolean]()
+
+          lookupClass(leftCls) { leftInfo =>
+            lookupClass(rightCls) { rightInfo =>
+              promise.success(leftInfo.ancestors.contains(rightInfo))
+            }
           }
+
+          promise.future
         }
       }
 
@@ -738,11 +764,12 @@ private final class Analyzer(config: CommonPhaseConfig,
         case (ClassRef(leftCls), ClassRef(rightCls)) =>
           classIsMoreSpecific(leftCls, rightCls)
         case (ArrayTypeRef(leftBase, leftDepth), ArrayTypeRef(rightBase, rightDepth)) =>
-          leftDepth == rightDepth && classIsMoreSpecific(leftBase, rightBase)
+          if (leftDepth != rightDepth) Future.successful(false)
+          else classIsMoreSpecific(leftBase, rightBase)
         case (ArrayTypeRef(_, _), ClassRef(ObjectClass)) =>
-          true
+          Future.successful(true)
         case _ =>
-          false
+          Future.successful(false)
       }
     }
 
@@ -921,7 +948,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     private def callMethodResolved(methodName: String)(
         implicit from: From): Unit = {
       if (isReflProxyName(methodName)) {
-        tryLookupReflProxyMethod(methodName).foreach(_.reach(this))
+        tryLookupReflProxyMethod(methodName)(_.reach(this))
       } else {
         lookupMethod(methodName).reach(this)
       }

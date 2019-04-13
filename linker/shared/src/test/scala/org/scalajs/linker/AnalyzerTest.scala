@@ -426,6 +426,40 @@ class AnalyzerTest {
     await(result)
   }
 
+  @Test  // #3571
+  def specificReflectiveProxy(): AsyncResult = {
+    val classDefs = Seq(
+        classDef("LA", superClass = Some(ObjectClass)),
+        classDef("LB", superClass = Some("LA")),
+        classDef("LX", superClass = Some(ObjectClass),
+            memberDefs = List(
+                trivialCtor("LX"),
+                MethodDef(MemberFlags.empty, Ident("foo__LA"), Nil, ClassType("LA"),
+                    Some(Null()))(emptyOptHints, None),
+                MethodDef(MemberFlags.empty, Ident("foo__LB"), Nil, ClassType("LB"),
+                    Some(Null()))(emptyOptHints, None)
+            )
+        )
+    )
+
+    val result = for {
+      analysis <- computeAnalysis(classDefs,
+          reqsFactory.instantiateClass("LX", "init___") ++
+          reqsFactory.callMethod("LX", "foo__"))
+    } yield {
+      assertNoError(analysis)
+
+      val MethodSyntheticKind.ReflectiveProxy(target) = {
+        analysis.classInfos("LX")
+          .methodInfos(MemberNamespace.Public)("foo__")
+          .syntheticKind
+      }
+
+      assertEquals("foo__LB", target)
+    }
+
+    await(result)
+  }
 }
 
 object AnalyzerTest {
