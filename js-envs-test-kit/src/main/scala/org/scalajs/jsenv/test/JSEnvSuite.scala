@@ -43,7 +43,8 @@ final class JSEnvSuiteRunner(root: Class[_], config: JSEnvSuiteConfig)
     extends Suite(root, JSEnvSuiteRunner.getRunners(config).asJava) {
 
   /** Constructor for reflective instantiation via `@RunWith`. */
-  def this(suite: Class[_ <: JSEnvSuite]) = this(suite, suite.newInstance().config)
+  def this(suite: Class[_ <: JSEnvSuite]) =
+    this(suite, suite.getDeclaredConstructor().newInstance().config)
 
   /** Constructor for instantiation in a user defined Runner. */
   def this(config: JSEnvSuiteConfig) = this(null, config)
