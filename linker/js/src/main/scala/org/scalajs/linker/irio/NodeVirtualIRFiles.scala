@@ -29,7 +29,7 @@ import java.nio._
 import org.scalajs.ir
 
 object NodeScalaJSIRContainer {
-  import NodeInterop._
+  import NodeFS._
 
   def fromClasspath(cp: Seq[String])(
       implicit ec: ExecutionContext): Future[Seq[NodeScalaJSIRContainer]] = {
@@ -62,7 +62,7 @@ object NodeScalaJSIRContainer {
 
   private def fromDirectory(dir: String)(
       implicit ec: ExecutionContext): Future[Seq[NodeScalaJSIRContainer]] = {
-    cbFuture[js.Array[FS.Dirent]](FS.readdir(dir, ReadDirOpt, _)).flatMap { entries =>
+    cbFuture[js.Array[Dirent]](FS.readdir(dir, ReadDirOpt, _)).flatMap { entries =>
       val (dirs, files) = entries.toSeq.partition(_.isDirectory)
 
       val subdirFiles = Future.traverse(dirs) { e =>
@@ -81,10 +81,10 @@ object NodeScalaJSIRContainer {
     }
   }
 
-  private def stat(path: String)(implicit ec: ExecutionContext): Future[FS.Stats] =
-    cbFuture[FS.Stats](FS.stat(path, _))
+  private def stat(path: String)(implicit ec: ExecutionContext): Future[Stats] =
+    cbFuture[Stats](FS.stat(path, _))
 
-  private def version(stats: FS.Stats): Option[String] =
+  private def version(stats: Stats): Option[String] =
     stats.mtime.map(_.getTime.toString).toOption
 
   private def isNotFound(e: js.Error): Boolean =
@@ -96,7 +96,7 @@ abstract class NodeScalaJSIRContainer private[irio] (
 
 private class NodeVirtualScalaJSIRFile(path: String, version: Option[String])
     extends NodeScalaJSIRContainer(path, version) with VirtualScalaJSIRFile {
-  import NodeInterop._
+  import NodeFS._
 
   def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
     def loop(fd: Int, buf: ByteBuffer): Future[ir.EntryPointsInfo] = {
@@ -151,7 +151,7 @@ private class NodeVirtualScalaJSIRFile(path: String, version: Option[String])
 
 private class NodeVirtualJarScalaJSIRContainer(path: String, version: Option[String])
     extends NodeScalaJSIRContainer(path, version) {
-  import NodeInterop._
+  import NodeFS._
 
   def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]] = {
     for {
@@ -180,31 +180,6 @@ private class NodeVirtualJarScalaJSIRContainer(path: String, version: Option[Str
   }
 }
 
-private object NodeInterop {
-  type CB[T] = js.Function2[js.Error, T, Unit]
-
-  def cbFuture[A](op: CB[A] => Unit): Future[A] = {
-    val promise = Promise[A]()
-
-    def cb(err: js.Error, v: A): Unit = {
-      import js.DynamicImplicits.truthValue
-
-      if (err.asInstanceOf[js.Dynamic])
-        promise.failure(new js.JavaScriptException(err))
-      else
-        promise.success(v)
-    }
-
-    op(cb _)
-
-    promise.future
-  }
-
-  object ReadDirOpt extends js.Object {
-    val withFileTypes: Boolean = true
-  }
-}
-
 private object JSZipInterop {
   val arrayBuffer: String = "arraybuffer"
 }
@@ -223,33 +198,6 @@ private object JSZip extends js.Object {
   }
 
   def loadAsync(data: Uint8Array): js.Promise[JSZip] = js.native
-}
-
-@JSImport("fs", JSImport.Namespace)
-@js.native
-private object FS extends js.Object {
-  trait Stats extends js.Object {
-    val mtime: js.UndefOr[js.Date]
-    def isDirectory(): Boolean
-  }
-
-  trait Dirent extends js.Object {
-    val name: String
-    def isDirectory(): Boolean
-  }
-
-  def open(path: String, flags: String, callback: NodeInterop.CB[Int]): Unit = js.native
-  def close(fd: Int, callback: NodeInterop.CB[Unit]): Unit = js.native
-
-  def read(fd: Int, buffer: TypedArray[_, _], offset: Int, length: Int, position: Int,
-    callback: NodeInterop.CB[Int]): Unit = js.native
-
-  def readdir(path: String, opts: NodeInterop.ReadDirOpt.type,
-      cb: NodeInterop.CB[js.Array[Dirent]]): Unit = js.native
-
-  def readFile(path: String, cb: NodeInterop.CB[Uint8Array]): Unit = js.native
-
-  def stat(path: String, cb: NodeInterop.CB[Stats]): Unit = js.native
 }
 
 @JSImport("path", JSImport.Namespace)
