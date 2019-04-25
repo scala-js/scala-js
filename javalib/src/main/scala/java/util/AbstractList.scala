@@ -14,7 +14,7 @@ package java.util
 
 import scala.annotation.tailrec
 
-import Compat.JDKCollectionConvertersCompat.Converters._
+import ScalaOps._
 
 abstract class AbstractList[E] protected () extends AbstractCollection[E]
     with List[E] {
@@ -35,7 +35,7 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
     throw new UnsupportedOperationException
 
   def indexOf(o: Any): Int =
-    iterator.asScala.indexWhere(_ === o)
+    this.scalaOps.indexWhere(_ === o)
 
   def lastIndexOf(o: Any): Int = {
     @tailrec
@@ -52,7 +52,7 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
 
   def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
     checkIndexOnBounds(index)
-    for ((elem, i) <- c.iterator.asScala.zipWithIndex)
+    for ((elem, i) <- c.iterator().scalaOps.zipWithIndex.scalaOps)
       add(index + i, elem)
     !c.isEmpty
   }
@@ -111,14 +111,14 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
       o match {
         case o: List[_] =>
           val oIter = o.listIterator
-          this.asScala.forall(oIter.hasNext && _ === oIter.next()) && !oIter.hasNext
+          this.scalaOps.forall(oIter.hasNext && _ === oIter.next()) && !oIter.hasNext
         case _ => false
       }
     }
   }
 
   override def hashCode(): Int = {
-    this.asScala.foldLeft(1) {
+    this.scalaOps.foldLeft(1) {
       (prev, elem) => 31 * prev + (if (elem == null) 0 else elem.hashCode)
     }
   }

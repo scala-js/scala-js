@@ -18,8 +18,8 @@ import scala.math.Ordering
 
 import scala.collection.mutable
 
-import Compat.JDKCollectionConvertersCompat.Converters._
 import Compat.SortedSetCompat
+import ScalaOps._
 
 class TreeSet[E] (_comparator: Comparator[_ >: E])
     extends AbstractSet[E]
@@ -222,16 +222,16 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
     inner.last.inner
 
   def lower(e: E): E =
-    headSet(e, false).asScala.lastOption.getOrElse(null.asInstanceOf[E])
+    headSet(e, false).last()
 
   def floor(e: E): E =
-    headSet(e, true).asScala.lastOption.getOrElse(null.asInstanceOf[E])
+    headSet(e, true).last()
 
   def ceiling(e: E): E =
-    tailSet(e, true).asScala.headOption.getOrElse(null.asInstanceOf[E])
+    tailSet(e, true).first()
 
   def higher(e: E): E =
-    tailSet(e, false).asScala.headOption.getOrElse(null.asInstanceOf[E])
+    tailSet(e, false).first()
 
   def pollFirst(): E = {
     val polled = inner.headOption
