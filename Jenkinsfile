@@ -426,7 +426,7 @@ def Tasks = [
 ]
 
 def mainJavaVersion = "1.8"
-def otherJavaVersions = [] // should be ["1.6", "1.7"] but that's broken (see #3293)
+def otherJavaVersions = []
 def allJavaVersions = otherJavaVersions.clone()
 allJavaVersions << mainJavaVersion
 
@@ -473,9 +473,7 @@ mainScalaVersions.each { scalaVersion ->
   }
   quickMatrix.add([task: "bootstrap", scala: scalaVersion, java: mainJavaVersion])
   if (!scalaVersion.startsWith("2.10.")) {
-    // #3293, should be: def javaVersion = scalaVersion.startsWith("2.11.") ? "1.7" : mainJavaVersion
-    def javaVersion = "1.8"
-    quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: javaVersion])
+    quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion])
   }
 }
 noToolsScalaVersions.each { scalaVersion ->
@@ -485,14 +483,10 @@ noToolsScalaVersions.each { scalaVersion ->
 }
 allJavaVersions.each { javaVersion ->
   quickMatrix.add([task: "tools-cli-stubs-sbtplugin", scala: "2.10.7", java: javaVersion])
-  if (javaVersion != "1.6") {
-    // Tools do not compile on JDK6, Scala 2.11.x (see #1235)
-    quickMatrix.add([task: "tools-cli-stubs", scala: "2.11.12", java: javaVersion])
-  }
 }
 quickMatrix.add([task: "tools-cli-stubs", scala: "2.12.8", java: mainJavaVersion])
-quickMatrix.add([task: "partestc", scala: "2.11.0", java: "1.8"]) // #3293, should be: 1.7
-quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.10.7", sbt_version_override: "", java: "1.7"])
+quickMatrix.add([task: "partestc", scala: "2.11.0", java: mainJavaVersion])
+quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.10.7", sbt_version_override: "", java: mainJavaVersion])
 quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.12.8", sbt_version_override: "1.0.0", java: mainJavaVersion])
 
 // The 'full' matrix

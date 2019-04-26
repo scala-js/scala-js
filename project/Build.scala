@@ -353,11 +353,8 @@ object Build {
       scalacOptions in (Compile, doc) := {
         val baseOptions = (scalacOptions in (Compile, doc)).value
 
-        /* - need JDK7 to link the doc to java.nio.charset.StandardCharsets
-         * - in Scala 2.10, some ScalaDoc links fail
-         */
-        val fatalInDoc =
-          javaVersion.value >= 7 && scalaBinaryVersion.value != "2.10"
+        // in Scala 2.10, some ScalaDoc links fail
+        val fatalInDoc = scalaBinaryVersion.value != "2.10"
 
         if (fatalInDoc) baseOptions
         else baseOptions.filterNot(_ == "-Xfatal-warnings")
@@ -469,6 +466,8 @@ object Build {
         val fullVersion = System.getProperty("java.version")
         val v = fullVersion.stripPrefix("1.").takeWhile(_.isDigit).toInt
         sLog.value.info(s"Detected JDK version $v")
+        if (v < 8)
+          throw new MessageOnlyException("This build requires JDK 8 or later. Aborting.")
         v
       }
   )
@@ -1544,9 +1543,8 @@ object Build {
       val isScalaAtLeast212 =
         !scalaV.startsWith("2.10.") && !scalaV.startsWith("2.11.")
 
-      List(sharedTestDir / "scala") ++
-      includeIf(sharedTestDir / "require-jdk7", javaVersion.value >= 7) ++
-      includeIf(sharedTestDir / "require-jdk8", javaVersion.value >= 8) ++
+      List(sharedTestDir / "scala", sharedTestDir / "require-jdk7",
+          sharedTestDir / "require-jdk8") ++
       includeIf(testDir / "require-2.12", isJSTest && isScalaAtLeast212)
     },
 
