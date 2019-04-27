@@ -28,4 +28,13 @@ class SerializerTest {
     assertEquals(in.toString(), out.toString())
     assertEquals(in.getStackTrace().size, out.getStackTrace().size)
   }
+
+  // # 3611
+  @Test
+  def serializeStackTraceElementWithNullFilename: Unit = {
+    val st = new StackTraceElement("MyClass", "myMethod", null, 1)
+    val deserialized = roundTrip(st)
+    assertNull(deserialized.getFileName)
+    assertEquals("MyClass.myMethod(Unknown Source)", deserialized.toString)
+  }
 }
