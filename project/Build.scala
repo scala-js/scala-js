@@ -624,7 +624,7 @@ object Build {
       base = file("tools/jvm"),
       settings = commonToolsSettings ++ Seq(
           libraryDependencies ++= Seq(
-              "org.scala-js" % "closure-compiler-java-6" % "v20160517",
+              "com.google.javascript" % "closure-compiler" % "v20160517",
               "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit"),
               "com.novocode" % "junit-interface" % "0.9" % "test"
           ) ++ (
@@ -1939,7 +1939,7 @@ object Build {
                     else
                       "org.scala-lang.modules" %% "scala-partest" % "1.1.4"
                   },
-                  "org.scala-js" % "closure-compiler-java-6" % "v20160517",
+                  "com.google.javascript" % "closure-compiler" % "v20160517",
                   "org.mozilla" % "rhino" % "1.7.6",
                   "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit")
               ) ++ (
