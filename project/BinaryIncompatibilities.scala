@@ -32,6 +32,10 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+      // private[niocharset], not an issue
+      ProblemFilters.exclude[MissingClassProblem]("scala.scalajs.niocharset.ISO_*"),
+      ProblemFilters.exclude[MissingClassProblem]("scala.scalajs.niocharset.US_*"),
+      ProblemFilters.exclude[MissingClassProblem]("scala.scalajs.niocharset.UTF_*")
   )
 
   val TestInterface = TestCommon ++ Seq(

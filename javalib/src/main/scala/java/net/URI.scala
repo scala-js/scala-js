@@ -15,12 +15,10 @@ package java.net
 import scala.scalajs.js.RegExp
 import scala.scalajs.js
 
-import scala.scalajs.niocharset.StandardCharsets
-
 import scala.annotation.tailrec
 
 import java.nio._
-import java.nio.charset.CodingErrorAction
+import java.nio.charset.{CodingErrorAction, StandardCharsets}
 
 final class URI(origStr: String) extends Serializable with Comparable[URI] {
 
