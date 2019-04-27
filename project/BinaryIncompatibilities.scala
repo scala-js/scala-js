@@ -8,6 +8,9 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // private[closure], not an issue
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.tools.linker.backend.closure.LoggerErrorManager")
   )
 
   val JSEnvs = Seq(

@@ -3054,6 +3054,7 @@ run/mapConserve.scala
 run/colltest.scala
 run/t0412.scala
 run/t6261.scala
+run/Predef.readLine.scala
 run/java-erasure.scala
 run/t6197.scala
 run/t4201.scala

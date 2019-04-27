@@ -26,7 +26,7 @@ import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.sem.Semantics
 
-import org.scalajs.core.tools.linker.LinkingUnit
+import org.scalajs.core.tools.linker.{LinkingException, LinkingUnit}
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.backend._
 import org.scalajs.core.tools.linker.backend.emitter.{Emitter, CoreJSLibs}
@@ -102,6 +102,11 @@ final class ClosureLinkerBackend(
           closureExterns.asJava, List(module).asJava, options)
     }
 
+    if (!result.success) {
+      throw new LinkingException(
+          "There were errors when applying the Google Closure Compiler")
+    }
+
     logger.time("Closure: Write result") {
       writeResult(result, compiler, output)
     }
@@ -139,8 +144,11 @@ final class ClosureLinkerBackend(
   }
 
   private def closureCompiler(logger: Logger) = {
+    import com.google.common.collect.ImmutableSet
+
     val compiler = new ClosureCompiler
-    compiler.setErrorManager(new LoggerErrorManager(logger))
+    compiler.setErrorManager(new SortingErrorManager(ImmutableSet.of(
+        new LoggerErrorReportGenerator(logger))))
     compiler
   }
 
@@ -153,9 +161,7 @@ final class ClosureLinkerBackend(
     val header = withNewLine(header0) + ifIIFE("(function(){") + "'use strict';\n"
     val footer = ifIIFE("}).call(this);\n") + withNewLine(footer0)
 
-    val outputContent =
-      if (result.errors.nonEmpty) "// errors while producing source\n"
-      else compiler.toSource + "\n"
+    val outputContent = compiler.toSource + "\n"
 
     val sourceMap = Option(compiler.getSourceMap())
 
@@ -180,10 +186,14 @@ final class ClosureLinkerBackend(
 
   private def closureOptions(outputName: String) = {
     val options = new ClosureOptions
-    options.prettyPrint = config.prettyPrint
+    options.setPrettyPrint(config.prettyPrint)
     CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
     options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
     options.setCheckGlobalThisLevel(CheckLevel.OFF)
+    options.setWarningLevel(DiagnosticGroups.DUPLICATE_VARS, CheckLevel.OFF)
+    options.setWarningLevel(DiagnosticGroups.CHECK_REGEXP, CheckLevel.OFF)
+    options.setWarningLevel(DiagnosticGroups.CHECK_TYPES, CheckLevel.OFF)
+    options.setWarningLevel(DiagnosticGroups.CHECK_USELESS_CODE, CheckLevel.OFF)
 
     if (withSourceMap) {
       options.setSourceMapOutputPath(outputName + ".map")
@@ -197,22 +207,18 @@ final class ClosureLinkerBackend(
 private object ClosureLinkerBackend {
   /** Minimal set of externs to compile Scala.js-emitted code with Closure. */
   private val ScalaJSExterns = """
-    /** @constructor */
-    function Object() {}
-    Object.prototype.toString = function() {};
-    Object.prototype.$classData = {};
-    /** @constructor */
-    function Array() {}
-    Array.prototype.length = 0;
-    /** @constructor */
-    function Function() {}
-    Function.prototype.constructor = function() {};
-    Function.prototype.call = function() {};
-    Function.prototype.apply = function() {};
-    function require() {}
-    var global = {};
-    var exports = {};
-    var __ScalaJSEnv = {};
+    var Object;
+    Object.prototype.constructor;
+    Object.prototype.toString;
+    Object.prototype.$classData;
+    var Array;
+    Array.prototype.length;
+    var Function;
+    Function.prototype.call;
+    Function.prototype.apply;
+    var require;
+    var exports;
+    var __ScalaJSEnv;
     var NaN = 0.0/0.0, Infinity = 1.0/0.0, undefined = void 0;
     """
 
