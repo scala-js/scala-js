@@ -13,12 +13,12 @@
 package org.scalajs.linker
 
 import scala.concurrent._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.ir.ClassKind
+import org.scalajs.ir.EntryPointsInfo
 import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Trees._
 
@@ -34,6 +34,8 @@ import org.scalajs.linker.testutils._
 import org.scalajs.linker.testutils.TestIRBuilder._
 
 class LinkerTest {
+  import scala.concurrent.ExecutionContext.Implicits.global
+
   import LinkerTest._
 
   /** Makes sure that the minilib is sufficient to completely link a hello
@@ -105,24 +107,28 @@ class LinkerTest {
 
 object LinkerTest {
   def testLink(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer]): Future[Unit] = {
+      moduleInitializers: List[ModuleInitializer])(
+      implicit ec: ExecutionContext): Future[Unit] = {
 
     val linker = StandardLinker(StandardLinker.Config())
 
     val classDefsFiles = classDefs.map { classDef =>
       new VirtualScalaJSIRFile {
-        def exists: Boolean = true
-        def path: String = "mem://" + classDef.name.name + ".sjsir"
-        def tree: ClassDef = classDef
-        def relativePath: String = classDef.name.name + ".sjsir"
+        val path: String = "mem://" + classDef.name.name + ".sjsir"
+        val relativePath: String = classDef.name.name + ".sjsir"
+        val version: Option[String] = None
+        def tree(implicit ec: ExecutionContext): Future[ClassDef] = Future(classDef)
+
+        def entryPointsInfo(implicit ec: ExecutionContext): Future[EntryPointsInfo] =
+          tree.map(EntryPointsInfo.forClassDef)
       }
     }
 
-    val allIRFiles = TestIRRepo.minilib.stdlibIRFiles ++ classDefsFiles
-
     val output = LinkerOutput(new WritableMemVirtualBinaryFile)
 
-    linker.link(allIRFiles, moduleInitializers, output,
-        new ScalaConsoleLogger(Level.Error))
+    TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
+      linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
+          output, new ScalaConsoleLogger(Level.Error))
+    }
   }
 }

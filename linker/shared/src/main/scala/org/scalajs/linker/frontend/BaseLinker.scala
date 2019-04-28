@@ -215,7 +215,7 @@ private object BaseLinker {
     private val cache = mutable.Map.empty[String, ClassDefAndInfoCache]
 
     def update(irInput: Seq[VirtualScalaJSIRFile])(implicit ec: ExecutionContext): Future[Unit] = {
-      Future.traverse(irInput)(f => Future(f.entryPointsInfo)).map { infos =>
+      Future.traverse(irInput)(_.entryPointsInfo).map { infos =>
         val encodedNameToFile = mutable.Map.empty[String, VirtualScalaJSIRFile]
         val entryPoints = mutable.Set.empty[String]
 
@@ -274,22 +274,20 @@ private object BaseLinker {
   private final class ClassDefAndInfoCache {
     private var cacheUsed: Boolean = false
     private var version: Option[String] = None
-    private var classDef: ClassDef = _
-    private var info: Infos.ClassInfo = _
+    private var cacheUpdate: Future[(ClassDef, Infos.ClassInfo)] = _
 
     def loadInfo(irFile: VirtualScalaJSIRFile)(
-        implicit ec: ExecutionContext): Future[Infos.ClassInfo] = Future {
-      update(irFile)
-      info
+        implicit ec: ExecutionContext): Future[Infos.ClassInfo] = {
+      update(irFile).map(_._2)
     }
 
     def loadClassDefAndVersion(irFile: VirtualScalaJSIRFile)(
-        implicit ec: ExecutionContext): Future[(ClassDef, Option[String])] = Future {
-      update(irFile)
-      (classDef, version)
+        implicit ec: ExecutionContext): Future[(ClassDef, Option[String])] = {
+      update(irFile).map(s => (s._1, version))
     }
 
-    def update(irFile: VirtualScalaJSIRFile): Unit = synchronized {
+    private def update(irFile: VirtualScalaJSIRFile)(
+        implicit ec: ExecutionContext): Future[(ClassDef, Infos.ClassInfo)] = synchronized {
       /* If the cache was already used in this run, the classDef and info are
        * already correct, no matter what the versions say.
        */
@@ -299,11 +297,12 @@ private object BaseLinker {
         val newVersion = irFile.version
         if (version.isEmpty || newVersion.isEmpty ||
             version.get != newVersion.get) {
-          classDef = irFile.tree
-          info = Infos.generateClassInfo(classDef)
           version = newVersion
+          cacheUpdate = irFile.tree.map(t => (t, Infos.generateClassInfo(t)))
         }
       }
+
+      cacheUpdate
     }
 
     /** Returns true if the cache has been used and should be kept. */

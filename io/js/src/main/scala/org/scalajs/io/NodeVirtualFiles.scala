@@ -21,39 +21,18 @@ import scala.scalajs.js.typedarray._
 import java.io._
 import java.net.URI
 
-class NodeVirtualFile(override val path: String) extends VirtualFile {
-  override def version: Option[String] =
-    NodeFS.statSync(path).mtime.map(_.getTime.toString).toOption
-}
-
-class NodeVirtualBinaryFile(p: String) extends NodeVirtualFile(p)
-                                          with VirtualBinaryFile {
-  private def buf: ArrayBuffer =
-    new Uint8Array(NodeFS.readFileSync(path)).buffer
-
-  def inputStream: InputStream = new ArrayBufferInputStream(buf)
-}
-
-trait WritableNodeVirtualBinaryFile extends NodeVirtualBinaryFile
-                                       with WritableVirtualBinaryFile {
+class WritableNodeVirtualBinaryFile(path: String) extends WritableVirtualBinaryFile {
   def outputStream: OutputStream = new NodeOutputStream(path)
 }
 
 object WritableNodeVirtualBinaryFile {
   def apply(path: String): WritableNodeVirtualBinaryFile =
-    new NodeVirtualBinaryFile(path) with WritableNodeVirtualBinaryFile
+    new WritableNodeVirtualBinaryFile(path)
 }
 
 @JSImport("fs", JSImport.Namespace)
 @js.native
-private[scalajs] object NodeFS extends js.Object {
-  trait Stat extends js.Object {
-    val mtime: js.UndefOr[js.Date]
-  }
-
-  def readFileSync(path: String): js.Array[Int] = js.native
-  def statSync(path: String): Stat = js.native
-
+private object NodeFS extends js.Object {
   def openSync(path: String, flags: String): Int = js.native
   def writeSync(fd: Int, buffer: Uint8Array): Int = js.native
   def closeSync(fd: Int): Unit = js.native

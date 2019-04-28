@@ -80,7 +80,6 @@ class MainGenericRunner {
     val logger = new ScalaConsoleLogger(Level.Warn)
     val semantics0 = readSemantics()
     val semantics = if (optMode == FullOpt) semantics0.optimized else semantics0
-    val ir = loadIR(command.settings.classpathURLs)
 
     val moduleInitializers = Seq(ModuleInitializer.mainMethodWithArgs(
         command.thingToRun, "main", command.arguments))
@@ -97,7 +96,15 @@ class MainGenericRunner {
 
     val sjsCode = {
       val out = new WritableMemVirtualBinaryFile
-      Await.result(linker.link(ir, moduleInitializers, LinkerOutput(out), logger), Duration.Inf)
+
+      val cache = (new IRFileCache).newCache
+      val result = FileScalaJSIRContainer
+        .fromClasspath(command.settings.classpathURLs.map(urlToFile _))
+        .flatMap(cache.cached _)
+        .flatMap(linker.link(_, moduleInitializers, LinkerOutput(out), logger))
+
+      Await.result(result, Duration.Inf)
+
       out.toReadable("partest.js")
     }
 
@@ -112,13 +119,6 @@ class MainGenericRunner {
     }
 
     true
-  }
-
-  private def loadIR(classpathURLs: Seq[URL]) = {
-    val irContainers =
-      FileScalaJSIRContainer.fromClasspath(classpathURLs.map(urlToFile))
-    val cache = (new IRFileCache).newCache
-    cache.cached(irContainers)
   }
 
   private def urlToFile(url: java.net.URL) = {

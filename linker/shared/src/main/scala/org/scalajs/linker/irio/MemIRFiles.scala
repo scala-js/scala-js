@@ -12,10 +12,29 @@
 
 package org.scalajs.linker.irio
 
-import org.scalajs.io._
+import scala.concurrent._
 
-/** A simple in-memory mutable virtual serialized Scala.js IR file. */
-class MemVirtualSerializedScalaJSIRFile(path: String, val relativePath: String,
-    content: Array[Byte], version: Option[String])
-    extends MemVirtualBinaryFile(path, content, version)
-    with VirtualSerializedScalaJSIRFile
+import java.nio.ByteBuffer
+
+import org.scalajs.ir
+
+/** A simple in-memory virtual serialized Scala.js IR file. */
+final class MemVirtualSerializedScalaJSIRFile(
+    val path: String,
+    val relativePath: String,
+    val version: Option[String],
+    content: Array[Byte]
+) extends VirtualScalaJSIRFile {
+  def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] =
+    withBuffer(ir.Serializers.deserializeEntryPointsInfo)
+
+  def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef] =
+    withBuffer(ir.Serializers.deserialize)
+
+  @inline
+  private def withBuffer[A](f: ByteBuffer => A)(
+      implicit ec: ExecutionContext): Future[A] = {
+    val result = Future(f(ByteBuffer.wrap(content)))
+    VirtualScalaJSIRFile.withPathExceptionContext(path, result)
+  }
+}

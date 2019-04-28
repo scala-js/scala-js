@@ -63,8 +63,8 @@ object HTMLRunnerBuilder {
     }
 
     val jsFileURIs = jsFiles.map {
-      case file: FileVirtualFile => file.file.toURI
-      case file                  => tmpFile(file.path, file.inputStream)
+      case file: FileVirtualBinaryFile => file.file.toURI
+      case file                        => tmpFile(file.path, file.inputStream)
     }
 
     val cssURI = {

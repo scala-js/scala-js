@@ -1,5 +1,6 @@
 package org.scalajs.linker.test
 
+import scala.concurrent._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.scalajs.js
@@ -19,7 +20,7 @@ import org.scalajs.linker.irio._
 object QuickLinker {
   /** Link the Scala.js test suite on Node.js */
   @JSExport
-  def linkTestSuiteNode(irFilesAndJars: js.Array[String], outputPath: String): js.Promise[Unit] = {
+  def linkTestSuiteNode(cp: js.Array[String], outputPath: String): js.Promise[Unit] = {
     val config = StandardLinker.Config()
       .withSemantics(build.TestSuiteLinkerOptions.semantics _)
       .withCheckIR(true)
@@ -33,8 +34,6 @@ object QuickLinker {
       ModuleInitializer.mainMethod("org.scalajs.testing.interface.Bridge", "start")
     }
 
-    val ir = extractIR(irFilesAndJars)
-
     val smPath = outputPath + ".map"
 
     def relURI(path: String) =
@@ -45,24 +44,12 @@ object QuickLinker {
       .withSourceMapURI(relURI(smPath))
       .withJSFileURI(relURI(outputPath))
 
-    linker.link(ir, moduleInitializers, out, new ScalaConsoleLogger).toJSPromise
-  }
-
-  private def extractIR(irFilesAndJars: Seq[String]): Seq[VirtualScalaJSIRFile] = {
     val cache = (new IRFileCache).newCache
-    val irContainers = irFilesAndJars.map { file =>
-      if (file.endsWith(".jar")) {
-        new NodeVirtualJarScalaJSIRContainer(file)
-      } else if (file.endsWith(".sjsir")) {
-        // The compiler should not use this (only scalajsp does)
-        val relativePath: String = s"<dummy relative path from $getClass>"
-        new NodeVirtualScalaJSIRFile(file, relativePath)
-      } else {
-        throw new IllegalArgumentException("Illegal IR file / Jar: " + file)
-      }
-    }
 
-    cache.cached(irContainers)
+    NodeScalaJSIRContainer.fromClasspath(cp.toSeq)
+      .flatMap(cache.cached _)
+      .flatMap(linker.link(_, moduleInitializers, out, new ScalaConsoleLogger))
+      .toJSPromise
   }
 
   @JSImport("path", JSImport.Namespace)
