@@ -466,6 +466,17 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
           ignoreInvalid = false)
     }
 
+    allExportInfos.filter(_.destination == ExportDestination.Normal)
+      .groupBy(_.jsName)
+      .filter { case (jsName, group) =>
+        if (jsName == "apply" && group.size == 2)
+          // @JSExportAll and single @JSExport("apply") should not be warned.
+          !unitAnnots.exists(_.symbol == JSExportAllAnnotation)
+        else
+          group.size > 1
+      }
+      .foreach(_ => reporter.warning(sym.pos, s"Found duplicate @JSExport"))
+
     /* Filter out static exports of accessors (as they are not actually
      * exported, their fields are). The above is only used to uniformly perform
      * checks.
