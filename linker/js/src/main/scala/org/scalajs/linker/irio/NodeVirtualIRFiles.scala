@@ -59,9 +59,9 @@ object NodeScalaJSIRContainer {
   def fromJar(path: String)(implicit ec: ExecutionContext): Future[NodeScalaJSIRContainer] =
     stat(path).map(s => new NodeVirtualJarScalaJSIRContainer(path, version(s)))
 
-  def fromSingleFile(path: String, relativePath: String)(
+  def fromSingleFile(path: String)(
       implicit ec: ExecutionContext): Future[NodeScalaJSIRContainer] = {
-    stat(path).map(s => new NodeVirtualScalaJSIRFile(path, relativePath, version(s)))
+    stat(path).map(s => new NodeVirtualScalaJSIRFile(path, version(s)))
   }
 
   private def fromDirectory(dir: String)(
@@ -74,12 +74,9 @@ object NodeScalaJSIRContainer {
         fromDirectory(path)
       }
 
-      // Since we will remove relativePath (#3580) we do not bother calculating it here.
       val irFileNames = files.map(_.name).filter(_.endsWith(".sjsir"))
-      val directFiles = Future.traverse(irFileNames) { name =>
-        val path = Path.join(dir, name)
-        fromSingleFile(path, "dummy")
-      }
+      val directFiles =
+        Future.traverse(irFileNames)(n => fromSingleFile(Path.join(dir, n)))
 
       for {
         sdf <- subdirFiles
@@ -100,7 +97,6 @@ object NodeScalaJSIRContainer {
 
 private class NodeVirtualScalaJSIRFile(
     val path: String,
-    val relativePath: String,
     val version: Option[String]
 ) extends VirtualScalaJSIRFile with NodeScalaJSIRContainer {
   import NodeInterop._
@@ -176,7 +172,6 @@ private class NodeVirtualJarScalaJSIRContainer(
       entry.async(JSZipInterop.arrayBuffer).toFuture.map { buf =>
         new MemVirtualSerializedScalaJSIRFile(
             path = s"${this.path}:${entry.name}",
-            relativePath = entry.name,
             content = new Int8Array(buf).toArray,
             version = version
         )

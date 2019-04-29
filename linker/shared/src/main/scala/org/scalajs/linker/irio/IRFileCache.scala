@@ -228,7 +228,6 @@ final class IRFileCache {
 
     override val path: String = _irFile.path
     override val version: Option[String] = _irFile.version
-    override val relativePath: String = _irFile.relativePath
 
     // Force reading of entry points since we'll definitely need them.
     private[this] val _entryPointsInfo: Future[EntryPointsInfo] = _irFile.entryPointsInfo
