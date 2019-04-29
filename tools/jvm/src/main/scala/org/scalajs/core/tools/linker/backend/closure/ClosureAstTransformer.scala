@@ -21,6 +21,7 @@ import ir.Position.NoPosition
 import org.scalajs.core.tools.javascript.Trees._
 
 import com.google.javascript.rhino._
+import com.google.javascript.rhino.StaticSourceFile.SourceKind
 import com.google.javascript.jscomp._
 
 import scala.collection.mutable
@@ -108,14 +109,14 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
 
         for ((expr, body) <- cases) {
           val bodyNode = transformBlock(body)
-          bodyNode.putBooleanProp(Node.SYNTHETIC_BLOCK_PROP, true)
+          bodyNode.setIsSyntheticBlock(true)
           val caseNode = new Node(Token.CASE, transformExpr(expr), bodyNode)
           switchNode.addChildToBack(
               setNodePosition(caseNode, expr.pos orElse pos))
         }
 
         val bodyNode = transformBlock(default)
-        bodyNode.putBooleanProp(Node.SYNTHETIC_BLOCK_PROP, true)
+        bodyNode.setIsSyntheticBlock(true)
         val caseNode = new Node(Token.DEFAULT_CASE, bodyNode)
         switchNode.addChildToBack(
             setNodePosition(caseNode, default.pos orElse pos))
@@ -346,7 +347,7 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
     val str = sourceUriToString(source)
 
     node.setInputId(inputId)
-    node.setStaticSourceFile(new SourceFile(str))
+    node.setStaticSourceFile(new SourceFile(str, SourceKind.STRONG))
 
     node
   }
