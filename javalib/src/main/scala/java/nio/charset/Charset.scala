@@ -18,7 +18,8 @@ import java.util.{Collections, HashSet, Arrays}
 import scala.scalajs.js
 
 abstract class Charset protected (canonicalName: String,
-    _aliases: Array[String]) extends AnyRef with Comparable[Charset] {
+    private val _aliases: Array[String])
+    extends AnyRef with Comparable[Charset] {
 
   private lazy val aliasesSet =
     Collections.unmodifiableSet(new HashSet(Arrays.asList(_aliases)))
@@ -85,38 +86,11 @@ object Charset {
 
   private lazy val CharsetMap = {
     val m = js.Dictionary.empty[Charset]
-
-    // All these lists where obtained by experimentation on the JDK
-
-    for (s <- Seq("iso-8859-1", "iso8859-1", "iso_8859_1", "iso8859_1",
-        "iso_8859-1", "8859_1", "iso_8859-1:1987",
-        "latin1", "csisolatin1", "l1",
-        "ibm-819", "ibm819", "cp819", "819",
-        "iso-ir-100"))
-      m(s) = ISO_8859_1
-
-    for (s <- Seq("us-ascii", "ascii7", "ascii", "csascii",
-        "default",
-        "cp367", "ibm367",
-        "iso646-us", "646", "iso_646.irv:1983", "iso_646.irv:1991",
-        "ansi_x3.4-1986", "ansi_x3.4-1968",
-        "iso-ir-6"))
-      m(s) = US_ASCII
-
-    for (s <- Seq("utf-8", "utf8", "unicode-1-1-utf-8"))
-      m(s) = UTF_8
-
-    for (s <- Seq("utf-16be", "utf_16be", "x-utf-16be",
-        "iso-10646-ucs-2", "unicodebigunmarked"))
-      m(s) = UTF_16BE
-
-    for (s <- Seq("utf-16le", "utf_16le", "x-utf-16le",
-        "unicodelittleunmarked"))
-      m(s) = UTF_16LE
-
-    for (s <- Seq("utf-16", "utf_16", "unicode", "unicodebig"))
-      m(s) = UTF_16
-
+    for (c <- js.Array(US_ASCII, ISO_8859_1, UTF_8, UTF_16BE, UTF_16LE, UTF_16)) {
+      m(c.name.toLowerCase) = c
+      for (alias <- c._aliases)
+        m(alias.toLowerCase) = c
+    }
     m
   }
 }

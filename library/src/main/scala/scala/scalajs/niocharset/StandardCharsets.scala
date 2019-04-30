@@ -12,34 +12,30 @@
 
 package scala.scalajs.niocharset
 
-import java.nio.charset._
+import java.nio.charset.{Charset, StandardCharsets => JStdCharsets}
 
-/** Standard charsets.
- *  This is basically the same as [[java.nio.charset.StandardCharsets]], but
- *  it is also available when compiling with a JDK 6.
- */
+/** Standard charsets. */
+@deprecated("Use java.nio.charset.StandardCharsets instead.", "0.6.28")
 object StandardCharsets {
-  import scala.scalajs.niocharset
-
   /** ISO-8859-1, aka latin1. */
-  def ISO_8859_1: Charset = niocharset.ISO_8859_1
+  def ISO_8859_1: Charset = JStdCharsets.ISO_8859_1
 
   /** US-ASCII. */
-  def US_ASCII: Charset = niocharset.US_ASCII
+  def US_ASCII: Charset = JStdCharsets.US_ASCII
 
   /** UTF-8. */
-  def UTF_8: Charset = niocharset.UTF_8
+  def UTF_8: Charset = JStdCharsets.UTF_8
 
   /** UTF-16 Big Endian without BOM. */
-  def UTF_16BE: Charset = niocharset.UTF_16BE
+  def UTF_16BE: Charset = JStdCharsets.UTF_16BE
 
   /** UTF-16 Little Endian without BOM. */
-  def UTF_16LE: Charset = niocharset.UTF_16LE
+  def UTF_16LE: Charset = JStdCharsets.UTF_16LE
 
   /** UTF-16 with an optional BOM.
    *  When encoding, Big Endian is always used.
    *  When decoding, the BOM specifies what endianness to use. If no BOM is
    *  found, it defaults to Big Endian.
    */
-  def UTF_16: Charset = niocharset.UTF_16
+  def UTF_16: Charset = JStdCharsets.UTF_16
 }

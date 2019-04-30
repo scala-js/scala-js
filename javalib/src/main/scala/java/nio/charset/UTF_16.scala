@@ -10,11 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-package scala.scalajs.niocharset
+package java.nio.charset
 
-import java.nio.charset._
-
-private[niocharset] object UTF_16BE extends UTF_16_Common(
-    "UTF-16BE", Array(
-    "X-UTF-16BE", "UTF_16BE", "ISO-10646-UCS-2", "UnicodeBigUnmarked"),
-    endianness = UTF_16_Common.BigEndian)
+private[charset] object UTF_16 extends UTF_16_Common(
+    "UTF-16", Array(
+    "utf16", "UTF_16", "UnicodeBig", "unicode"),
+    endianness = UTF_16_Common.AutoEndian)
