@@ -23,6 +23,9 @@ object BinaryIncompatibilities {
   )
 
   val TestCommon = Seq(
+      // private, not an issue
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.testcommon.RPCCore$JDKCollectionConvertersCompat$*")
   )
 
   val TestAdapter = TestCommon ++ Seq(

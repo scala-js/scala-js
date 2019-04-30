@@ -14,7 +14,7 @@ package java.util
 
 import scala.annotation.tailrec
 
-import Compat.JDKCollectionConvertersCompat.Converters._
+import ScalaOps._
 
 object AbstractMap {
 
@@ -95,13 +95,13 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
   def isEmpty(): Boolean = size == 0
 
   def containsValue(value: Any): Boolean =
-    entrySet.iterator.asScala.exists(value === _.getValue)
+    entrySet.scalaOps.exists(value === _.getValue)
 
   def containsKey(key: Any): Boolean =
-    entrySet.iterator.asScala.exists(entry => entry === key)
+    entrySet.scalaOps.exists(entry => entry === key)
 
   def get(key: Any): V = {
-    entrySet.iterator.asScala.find(_.getKey === key).fold[V] {
+    entrySet.scalaOps.find(_.getKey === key).fold[V] {
       null.asInstanceOf[V]
     } { entry =>
       entry.getValue
@@ -128,7 +128,7 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
   }
 
   def putAll(m: Map[_ <: K, _ <: V]): Unit =
-    m.entrySet.iterator.asScala.foreach(e => put(e.getKey, e.getValue))
+    m.entrySet.scalaOps.foreach(e => put(e.getKey, e.getValue))
 
   def clear(): Unit =
     entrySet.clear()
@@ -177,18 +177,18 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
       o match {
         case m: Map[_, _] =>
           self.size == m.size &&
-          entrySet.asScala.forall(item => m.get(item.getKey) === item.getValue)
+          entrySet.scalaOps.forall(item => m.get(item.getKey) === item.getValue)
         case _ => false
       }
     }
   }
 
   override def hashCode(): Int =
-    entrySet.asScala.foldLeft(0)((prev, item) => item.hashCode + prev)
+    entrySet.scalaOps.foldLeft(0)((prev, item) => item.hashCode + prev)
 
   override def toString(): String = {
-    entrySet.iterator.asScala.map {
+    entrySet.iterator.scalaOps.map {
       e => s"${e.getKey}=${e.getValue}"
-    }.mkString("{", ", ", "}")
+    }.scalaOps.mkString("{", ", ", "}")
   }
 }
