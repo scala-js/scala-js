@@ -8,7 +8,7 @@ addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "1.0.0")
 
 addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.0")
 
-libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20181210"
+libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20190415"
 
 libraryDependencies += "org.mozilla" % "rhino" % "1.7.6"
 
