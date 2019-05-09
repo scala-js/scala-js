@@ -14,7 +14,7 @@ package java.util
 
 import scala.annotation.tailrec
 
-import Compat.JDKCollectionConvertersCompat.Converters._
+import ScalaOps._
 
 class LinkedList[E]() extends AbstractSequentialList[E]
     with List[E] with Deque[E] with Cloneable with Serializable {
@@ -109,7 +109,7 @@ class LinkedList[E]() extends AbstractSequentialList[E]
   }
 
   override def contains(o: Any): Boolean =
-    iterator().asScala.exists(_ === o)
+    this.scalaOps.exists(_ === o)
 
   override def size(): Int =
     _size.toInt

@@ -16,7 +16,7 @@ import java.{util => ju}
 
 import scala.collection.mutable
 
-import Compat.JDKCollectionConvertersCompat.Converters._
+import ScalaOps._
 
 class Hashtable[K, V] private (inner: mutable.HashMap[Box[Any], V])
     extends ju.Dictionary[K,V] with ju.Map[K, V] with Cloneable with Serializable {
@@ -73,8 +73,8 @@ class Hashtable[K, V] private (inner: mutable.HashMap[Box[Any], V])
   }
 
   def putAll(m: ju.Map[_ <: K, _ <: V]): Unit = {
-    m.asScala.iterator.foreach {
-      kv => inner.put(Box(kv._1.asInstanceOf[AnyRef]), kv._2)
+    m.entrySet.scalaOps.foreach {
+      kv => inner.put(Box(kv.getKey.asInstanceOf[AnyRef]), kv.getValue)
     }
   }
 
@@ -87,25 +87,96 @@ class Hashtable[K, V] private (inner: mutable.HashMap[Box[Any], V])
   override def toString(): String =
     inner.iterator.map(kv => "" + kv._1.inner + "=" + kv._2).mkString("{", ", ", "}")
 
-  def keySet(): ju.Set[K] =
-    inner.keySet.map(_.inner.asInstanceOf[K]).asJava
+  def keySet(): ju.Set[K] = {
+    new AbstractSet[K] {
+      def iterator(): Iterator[K] =
+        new EntrySetIterator().scalaOps.map(_.getKey())
 
-  def entrySet(): ju.Set[ju.Map.Entry[K, V]] = {
-    class UnboxedEntry(
-        private[UnboxedEntry] val boxedEntry: ju.Map.Entry[Box[Any], V])
-        extends ju.Map.Entry[K, V] {
-      def getKey(): K = boxedEntry.getKey.inner.asInstanceOf[K]
-      def getValue(): V = boxedEntry.getValue
-      def setValue(value: V): V = boxedEntry.setValue(value)
-      override def equals(o: Any): Boolean = o match {
-        case o: UnboxedEntry => boxedEntry.equals(o.boxedEntry)
-        case _               => false
-      }
-      override def hashCode(): Int = boxedEntry.hashCode()
+      def size(): Int = inner.size
     }
-    inner.asJava.entrySet().asScala.map(new UnboxedEntry(_): ju.Map.Entry[K, V]).asJava
   }
 
-  def values(): ju.Collection[V] =
-    inner.asJava.values
+  def entrySet(): ju.Set[ju.Map.Entry[K, V]] = {
+    new AbstractSet[Map.Entry[K, V]] {
+      def iterator(): Iterator[Map.Entry[K, V]] =
+        new EntrySetIterator
+
+      def size(): Int = inner.size
+    }
+  }
+
+  /* Inspired by the implementation of
+   * scala.collection.convert.JavaCollectionWrappers.MapWrapper.entrySet
+   * as found in version 2.13.0-RC1, with two changes:
+   *
+   * - accommodate the fact that our keys are boxed, and
+   * - explicitly snapshot the underlying contents right before any mutation of
+   *   the underlying Map, as we do not have any guarantee that mutations
+   *   preserve the state of existing iterators.
+   */
+  private class EntrySetIterator extends Iterator[Map.Entry[K, V]] {
+    private var underlying: scala.collection.Iterator[(Box[Any], V)] =
+      Hashtable.this.inner.iterator
+
+    private var isSnapshot: Boolean = false
+
+    private var prev: Box[Any] = null
+
+    private def ensureSnapshot(): Unit = {
+      if (!isSnapshot) {
+        underlying = underlying.toList.iterator
+        isSnapshot = true
+      }
+    }
+
+    def hasNext(): Boolean = underlying.hasNext
+
+    def next(): Map.Entry[K, V] = {
+      val (boxedKey, initialValue) = underlying.next()
+      prev = boxedKey
+
+      new Map.Entry[K, V] {
+        private var value = initialValue
+
+        def getKey(): K = boxedKey.inner.asInstanceOf[K]
+
+        def getValue(): V = value
+
+        def setValue(v: V): V = {
+          ensureSnapshot()
+          val oldValue = value
+          inner.put(boxedKey, v)
+          value = v
+          oldValue
+        }
+
+        override def equals(that: Any): Boolean = that match {
+          case that: Map.Entry[_, _] =>
+            getKey() === that.getKey() && getValue() === that.getValue()
+          case _ =>
+            false
+        }
+
+        override def hashCode(): Int =
+          boxedKey.hashCode ^ (if (value == null) 0 else value.hashCode())
+      }
+    }
+
+    def remove(): Unit = {
+      if (prev == null)
+        throw new IllegalStateException("next must be called at least once before remove")
+      ensureSnapshot()
+      inner -= prev
+      prev = null
+    }
+  }
+
+  def values(): ju.Collection[V] = {
+    new AbstractCollection[V] {
+      def iterator(): Iterator[V] =
+        new EntrySetIterator().scalaOps.map(_.getValue())
+
+      def size(): Int = inner.size
+    }
+  }
 }

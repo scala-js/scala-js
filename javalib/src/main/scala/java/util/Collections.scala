@@ -19,7 +19,9 @@ import scala.language.implicitConversions
 
 import scala.annotation.tailrec
 
-import Compat.JDKCollectionConvertersCompat.Converters._
+import scala.collection.mutable
+
+import ScalaOps._
 
 object Collections {
 
@@ -70,10 +72,10 @@ object Collections {
     sort(list, naturalComparator[T])
 
   def sort[T](list: List[T], c: Comparator[_ >: T]): Unit = {
-    val sortedList = list.asScala.sorted(c).asJava
+    val sortedListIter = list.scalaOps.toSeq.sorted(c).javaIterator()
     list match {
-      case list: RandomAccess => copyImpl(sortedList.iterator, list)
-      case _                  => copyImpl(sortedList.iterator, list.listIterator)
+      case list: RandomAccess => copyImpl(sortedListIter, list)
+      case _                  => copyImpl(sortedListIter, list.listIterator)
     }
   }
 
@@ -153,10 +155,10 @@ object Collections {
   @inline
   def shuffleImpl[T](list: List[T], rnd: Random): Unit = {
     val scalaRnd = scala.util.Random.javaRandomToRandom(rnd)
-    val shuffledList = scalaRnd.shuffle(list.asScala.toSeq).asJava
+    val shuffledListIter = scalaRnd.shuffle(list.scalaOps.toSeq).javaIterator()
     list match {
-      case list: RandomAccess => copyImpl(shuffledList.iterator, list)
-      case _                  => copyImpl(shuffledList.iterator, list.listIterator)
+      case list: RandomAccess => copyImpl(shuffledListIter, list)
+      case _                  => copyImpl(shuffledListIter, list.listIterator)
     }
   }
 
@@ -249,14 +251,14 @@ object Collections {
     min(coll, naturalComparator[T])
 
   def min[T](coll: Collection[_ <: T], comp: Comparator[_ >: T]): T =
-    coll.asScala.min(comp)
+    coll.scalaOps.reduceLeft((a, b) => if (comp.compare(a, b) <= 0) a else b)
 
   // Differs from original type definition, original: [T <: jl.Comparable[_ >: T]]
   def max[T <: AnyRef with jl.Comparable[T]](coll: Collection[_ <: T]): T =
     max(coll, naturalComparator[T])
 
   def max[T](coll: Collection[_ <: T], comp: Comparator[_ >: T]): T =
-    coll.asScala.max(comp)
+    coll.scalaOps.reduceLeft((a, b) => if (comp.compare(a, b) >= 0) a else b)
 
   def rotate(list: List[_], distance: Int): Unit =
     rotateImpl(list, distance)
@@ -534,22 +536,29 @@ object Collections {
 
   def list[T](e: Enumeration[T]): ArrayList[T] = {
     val arrayList = new ArrayList[T]
-    e.asScala.foreach(arrayList.add(_))
+    e.scalaOps.foreach(arrayList.add(_))
     arrayList
   }
 
   def frequency(c: Collection[_], o: AnyRef): Int =
-    c.asScala.count(_ === o)
+    c.scalaOps.count(_ === o)
 
   def disjoint(c1: Collection[_], c2: Collection[_]): Boolean = {
     if (c1.size < c2.size)
-      !c1.asScala.exists(elem => c2.contains(elem))
+      !c1.scalaOps.exists(elem => c2.contains(elem))
     else
-      !c2.asScala.exists(elem => c1.contains(elem))
+      !c2.scalaOps.exists(elem => c1.contains(elem))
   }
 
-  def addAll[T](c: Collection[_ >: T], elements: Array[AnyRef]): Boolean =
-    c.addAll(elements.asInstanceOf[Array[T]].toSeq.asJava)
+  def addAll[T](c: Collection[_ >: T], elements: Array[AnyRef]): Boolean = {
+    val elementsColl = new AbstractCollection[T] {
+      def size(): Int = elements.length
+
+      def iterator(): Iterator[T] =
+        (elements: mutable.Seq[AnyRef]).javaIterator().asInstanceOf[Iterator[T]]
+    }
+    c.addAll(elementsColl)
+  }
 
   def newSetFromMap[E](map: Map[E, java.lang.Boolean]): Set[E] = {
     if (!map.isEmpty)
@@ -563,7 +572,7 @@ object Collections {
         map.put(e, true) == null
 
       override def addAll(c: Collection[_ <: E]): Boolean = {
-        c.asScala.foldLeft(false) {
+        c.scalaOps.foldLeft(false) {
           (prev, elem) => map.put(elem, true) == null || prev
         }
       }
@@ -832,8 +841,8 @@ object Collections {
       if (eagerThrow) {
         throw new UnsupportedOperationException
       } else {
-        val cSet = c.asInstanceOf[Collection[AnyRef]].asScala.toSet
-        if (this.asScala.exists(e => cSet(e.asInstanceOf[AnyRef]))) {
+        val cSet = c.asInstanceOf[Collection[AnyRef]].scalaOps.toSet
+        if (this.scalaOps.exists(e => cSet(e.asInstanceOf[AnyRef]))) {
           throw new UnsupportedOperationException
         } else {
           false
@@ -845,8 +854,8 @@ object Collections {
       if (eagerThrow) {
         throw new UnsupportedOperationException
       } else {
-        val cSet = c.asInstanceOf[Collection[AnyRef]].asScala.toSet
-        if (this.asScala.exists(e => !cSet(e.asInstanceOf[AnyRef]))) {
+        val cSet = c.asInstanceOf[Collection[AnyRef]].scalaOps.toSet
+        if (this.scalaOps.exists(e => !cSet(e.asInstanceOf[AnyRef]))) {
           throw new UnsupportedOperationException
         } else {
           false
@@ -974,7 +983,7 @@ object Collections {
     }
 
     override def addAll(c: Collection[_ <: E]): Boolean = {
-      c.asScala.foreach(checkElem)
+      c.scalaOps.foreach(checkElem)
       super.addAll(c)
     }
 
@@ -1002,7 +1011,7 @@ object Collections {
       extends CheckedCollection[E, List[E]](inner, elemClazz) with WrappedList[E] {
 
     override def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
-      c.asScala.foreach(checkElem)
+      c.scalaOps.foreach(checkElem)
       super.addAll(index, c)
     }
 
@@ -1034,7 +1043,7 @@ object Collections {
     }
 
     override def putAll(m: Map[_ <: K, _ <: V]): Unit = {
-      m.entrySet().asScala.foreach {
+      m.entrySet().scalaOps.foreach {
         entry => checkKeyAndValue(entry.getKey, entry.getValue)
       }
       super.putAll(m)

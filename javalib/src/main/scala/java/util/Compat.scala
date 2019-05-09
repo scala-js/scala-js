@@ -56,32 +56,4 @@ private[util] object Compat {
 
   }
 
-  // !!! Duplicate code with org.scalajs.testcommon.RPCCore.JDKCollectionConvertersCompat
-  /** Magic to get cross-compiling access to `scala.jdk.CollectionConverters`
-   *  with a fallback on `scala.collection.JavaConverters`, without deprecation
-   *  warning in any Scala version.
-   */
-  object JDKCollectionConvertersCompat {
-    object Scope1 {
-      object jdk {
-        object CollectionConverters {
-          type Ops = Int
-        }
-      }
-    }
-    import Scope1._
-
-    object Scope2 {
-      import scala.collection.{JavaConverters => Ops}
-      object Inner {
-        import scala._
-        import jdk.CollectionConverters.Ops
-        val Converters = Ops
-      }
-    }
-
-    val Converters = Scope2.Inner.Converters
-  }
-  // !!! End duplicate code
-
 }

@@ -14,7 +14,7 @@ package java.util
 
 import scala.annotation.tailrec
 
-import Compat.JDKCollectionConvertersCompat.Converters._
+import ScalaOps._
 
 abstract class AbstractSet[E] protected () extends AbstractCollection[E]
                                               with Set[E] {
@@ -29,11 +29,11 @@ abstract class AbstractSet[E] protected () extends AbstractCollection[E]
   }
 
   override def hashCode(): Int =
-    iterator.asScala.foldLeft(0)((prev, item) => item.hashCode + prev)
+    this.scalaOps.foldLeft(0)((prev, item) => item.hashCode + prev)
 
   override def removeAll(c: Collection[_]): Boolean = {
     if (size > c.size) {
-      c.asScala.foldLeft(false)((prev, elem) => this.remove(elem) || prev)
+      c.scalaOps.foldLeft(false)((prev, elem) => this.remove(elem) || prev)
     } else {
       @tailrec
       def removeAll(iter: Iterator[E], modified: Boolean): Boolean = {

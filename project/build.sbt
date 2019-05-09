@@ -6,7 +6,7 @@ addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "1.0.0")
 
 addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.0")
 
-libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20181210"
+libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20190415"
 
 libraryDependencies += "org.eclipse.jgit" % "org.eclipse.jgit.pgm" % "3.2.0.201312181205-r"
 

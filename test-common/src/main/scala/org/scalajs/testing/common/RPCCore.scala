@@ -38,7 +38,6 @@ import FutureUtil._
  */
 private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
   import RPCCore._
-  import JDKCollectionConvertersCompat.Converters._
 
   /** Pending calls. */
   private[this] val pending = new ConcurrentHashMap[Long, PendingCall]
@@ -224,11 +223,14 @@ private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
     val pendingCallIDs = (pending: java.util.Map[Long, _]).keySet()
     val exception = new ClosedException(closeReason)
 
-    for {
-      callID <- pendingCallIDs.asScala
-      failing <- Option(pending.remove(callID))
-    } {
-      failing.promise.failure(exception)
+    /* Directly use the Java Iterator because Scala's JavaConverters are
+     * tricky to use across 2.12- and 2.13+.
+     */
+    val pendingCallIDsIter = pendingCallIDs.iterator()
+    while (pendingCallIDsIter.hasNext()) {
+      val callID = pendingCallIDsIter.next()
+      for (failing <- Option(pending.remove(callID)))
+        failing.promise.failure(exception)
     }
   }
 
@@ -301,32 +303,4 @@ private[testing] object RPCCore {
       }
     }
   }
-
-  // !!! Duplicate code with java.util.Compat.JDKCollectionConvertersCompat
-  /** Magic to get cross-compiling access to `scala.jdk.CollectionConverters`
-   *  with a fallback on `scala.collection.JavaConverters`, without deprecation
-   *  warning in any Scala version.
-   */
-  private object JDKCollectionConvertersCompat {
-    object Scope1 {
-      object jdk {
-        object CollectionConverters {
-          type Ops = Int
-        }
-      }
-    }
-    import Scope1._
-
-    object Scope2 {
-      import scala.collection.{JavaConverters => Ops}
-      object Inner {
-        import scala._
-        import jdk.CollectionConverters.Ops
-        val Converters = Ops
-      }
-    }
-
-    val Converters = Scope2.Inner.Converters
-  }
-  // !!! End duplicate code
 }

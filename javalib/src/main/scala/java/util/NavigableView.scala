@@ -16,8 +16,8 @@ import scala.math.Ordering
 
 import scala.collection.mutable
 
-import Compat.JDKCollectionConvertersCompat.Converters._
 import Compat.SortedSetCompat
+import ScalaOps._
 
 private[util] class NavigableView[E](original: NavigableSet[E],
     inner: () => mutable.SortedSet[Box[E]],
@@ -26,7 +26,7 @@ private[util] class NavigableView[E](original: NavigableSet[E],
     extends AbstractCollection[E] with NavigableSet[E] with SortedSet[E] {
 
   def size(): Int =
-    iterator.asScala.size
+    iterator.scalaOps.count(_ => true)
 
   override def contains(o: Any): Boolean =
     inner().contains(Box(o.asInstanceOf[E]))
@@ -75,7 +75,7 @@ private[util] class NavigableView[E](original: NavigableSet[E],
     _iterator(inner().iterator.map(_.inner))
 
   def descendingIterator(): Iterator[E] =
-    _iterator(iterator.asScala.toList.reverse.iterator)
+    _iterator(iterator.scalaOps.toList.reverse.iterator)
 
   override def removeAll(c: Collection[_]): Boolean = {
     val iter = c.iterator()
@@ -89,16 +89,16 @@ private[util] class NavigableView[E](original: NavigableSet[E],
     original.addAll(c)
 
   def lower(e: E): E =
-    headSet(e, false).asScala.lastOption.getOrElse(null.asInstanceOf[E])
+    headSet(e, false).last()
 
   def floor(e: E): E =
-    headSet(e, true).asScala.lastOption.getOrElse(null.asInstanceOf[E])
+    headSet(e, true).last()
 
   def ceiling(e: E): E =
-    tailSet(e, true).asScala.headOption.getOrElse(null.asInstanceOf[E])
+    tailSet(e, true).first()
 
   def higher(e: E): E =
-    tailSet(e, false).asScala.headOption.getOrElse(null.asInstanceOf[E])
+    tailSet(e, false).first()
 
   def pollFirst(): E = {
     val polled = inner().headOption

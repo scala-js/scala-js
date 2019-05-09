@@ -14,7 +14,9 @@ package java.util
 
 import java.{util => ju}
 
-import Compat.JDKCollectionConvertersCompat.Converters._
+import scala.collection.mutable
+
+import ScalaOps._
 
 class Properties(protected val defaults: Properties)
     extends ju.Hashtable[AnyRef, AnyRef] {
@@ -47,19 +49,17 @@ class Properties(protected val defaults: Properties)
   }
 
   def propertyNames(): ju.Enumeration[_] = {
-    val thisSet = keySet().asScala.map(_.asInstanceOf[String])
-    val defaultsIterator =
-      if (defaults != null) defaults.propertyNames().asScala
-      else scala.collection.Iterator.empty
-    val filteredDefaults = defaultsIterator.collect {
-      case k: String if !thisSet(k) => k
-    }
-    (thisSet.iterator ++ filteredDefaults).asJavaEnumeration
+    val propNames = mutable.Set.empty[Any]
+    // Explicitly use asInstanceOf, to trigger the ClassCastException mandated by the spec
+    keySet().scalaOps.foreach(propNames += _.asInstanceOf[String])
+    if (defaults != null)
+      defaults.propertyNames().scalaOps.foreach(propNames += _)
+    propNames.iterator.asJavaEnumeration
   }
 
   def stringPropertyNames(): ju.Set[String] = {
     val set = new ju.HashSet[String]
-    entrySet().asScala.foreach { entry =>
+    entrySet().scalaOps.foreach { entry =>
       (entry.getKey, entry.getValue) match {
         case (key: String, _: String) => set.add(key)
         case _                        => // Ignore key

@@ -203,16 +203,50 @@ class HashtableTest {
 
   @Test def entrySet(): Unit = {
     val ht = new ju.Hashtable[Int, Int]
-    assertTrue(ht.entrySet().isEmpty)
+    val entrySet = ht.entrySet()
+
+    assertTrue(entrySet.isEmpty)
     ht.put(1, 4)
-    assertEquals(Set(1), ht.entrySet().asScala.map(_.getKey))
-    assertEquals(Set(4), ht.entrySet().asScala.map(_.getValue))
+    assertEquals(Set(1), entrySet.asScala.map(_.getKey))
+    assertEquals(Set(4), entrySet.asScala.map(_.getValue))
     ht.put(2, 5)
-    assertEquals(Set(1, 2), ht.entrySet().asScala.map(_.getKey))
-    assertEquals(Set(4, 5), ht.entrySet().asScala.map(_.getValue))
+    assertEquals(Set(1, 2), entrySet.asScala.map(_.getKey))
+    assertEquals(Set(4, 5), entrySet.asScala.map(_.getValue))
     ht.put(3, 6)
-    assertEquals(Set(1, 2, 3), ht.entrySet().asScala.map(_.getKey))
-    assertEquals(Set(4, 5, 6), ht.entrySet().asScala.map(_.getValue))
+    assertEquals(Set(1, 2, 3), entrySet.asScala.map(_.getKey))
+    assertEquals(Set(4, 5, 6), entrySet.asScala.map(_.getValue))
+
+    // Directly test the iterator, including its mutation capabilities
+
+    val allKeys = Set(1, 2, 3)
+
+    val iter = entrySet.iterator()
+    assertTrue(iter.hasNext())
+    val firstEntry = iter.next()
+    val firstKey = firstEntry.getKey()
+    val expectedFirstValue = ht.get(firstKey)
+    assertTrue(allKeys.contains(firstKey))
+    assertEquals(expectedFirstValue, firstEntry.getValue())
+    assertEquals(expectedFirstValue, firstEntry.setValue(42))
+    assertEquals(42, ht.get(firstKey))
+    assertEquals(42, firstEntry.getValue())
+
+    assertTrue(iter.hasNext())
+    val secondEntry = iter.next()
+    val secondKey = secondEntry.getKey()
+    assertTrue((allKeys - firstKey).contains(secondKey))
+    iter.remove()
+
+    assertTrue(iter.hasNext())
+    val thirdEntry = iter.next()
+    val thirdKey = thirdEntry.getKey()
+    assertTrue((allKeys - firstKey - secondKey).contains(thirdKey))
+    assertEquals(ht.get(thirdKey), thirdEntry.getValue())
+
+    assertFalse(iter.hasNext())
+    assertEquals(allKeys - secondKey, entrySet.asScala.map(_.getKey))
+    assertTrue(ht.containsKey(firstKey) && ht.containsKey(thirdKey))
+    assertFalse(ht.containsKey(secondKey))
   }
 
   @Test def values(): Unit = {

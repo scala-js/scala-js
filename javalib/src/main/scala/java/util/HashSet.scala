@@ -14,7 +14,7 @@ package java.util
 
 import scala.collection.mutable
 
-import Compat.JDKCollectionConvertersCompat.Converters._
+import ScalaOps._
 
 class HashSet[E] extends AbstractSet[E] with Set[E]
                                         with Cloneable
@@ -40,7 +40,7 @@ class HashSet[E] extends AbstractSet[E] with Set[E]
     inner.remove(Box(o.asInstanceOf[E]))
 
   override def containsAll(c: Collection[_]): Boolean =
-    c.iterator.asScala.forall(e => contains(e))
+    c.scalaOps.forall(e => contains(e))
 
   override def removeAll(c: Collection[_]): Boolean = {
     val iter = c.iterator
