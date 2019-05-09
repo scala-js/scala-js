@@ -436,7 +436,7 @@ def otherScalaVersions = [
   "2.12.6",
   "2.12.7"
 ]
-def noToolsScalaVersions = ["2.13.0-M5"]
+def noToolsScalaVersions = ["2.13.0-RC1"]
 
 // The 'quick' matrix
 def quickMatrix = []

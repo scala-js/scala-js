@@ -116,8 +116,7 @@ class ArrayOpsTest {
     assumeFalse("sizeCompare was added in 2.13",
         scalaVersion.startsWith("2.10.") ||
         scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12.") ||
-        scalaVersion == "2.13.0-M5")
+        scalaVersion.startsWith("2.12."))
 
     import FallbackImplicits._
     import js.Any.jsArrayOps
@@ -139,8 +138,7 @@ class ArrayOpsTest {
     assumeFalse("sizeIs was added in 2.13",
         scalaVersion.startsWith("2.10.") ||
         scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12.") ||
-        scalaVersion == "2.13.0-M5")
+        scalaVersion.startsWith("2.12."))
 
     import FallbackImplicits._
     import js.Any.jsArrayOps
@@ -155,8 +153,7 @@ class ArrayOpsTest {
     assumeFalse("lengthIs was added in 2.13",
         scalaVersion.startsWith("2.10.") ||
         scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12.") ||
-        scalaVersion == "2.13.0-M5")
+        scalaVersion.startsWith("2.12."))
 
     import FallbackImplicits._
     import js.Any.jsArrayOps
@@ -310,8 +307,7 @@ class ArrayOpsTest {
     assumeFalse("partitionMap was added in 2.13",
         scalaVersion.startsWith("2.10.") ||
         scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12.") ||
-        scalaVersion == "2.13.0-M5")
+        scalaVersion.startsWith("2.12."))
 
     import FallbackImplicits._
     import js.Any.jsArrayOps
@@ -675,8 +671,7 @@ class ArrayOpsTest {
     val supportsNegativeStart = {
       !scalaVersion.startsWith("2.10.") &&
       !scalaVersion.startsWith("2.11.") &&
-      !scalaVersion.startsWith("2.12.") &&
-      scalaVersion != "2.13.0-M5"
+      !scalaVersion.startsWith("2.12.")
     }
 
     // js.Array
