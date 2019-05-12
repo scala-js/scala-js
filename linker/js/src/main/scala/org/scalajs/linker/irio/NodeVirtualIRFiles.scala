@@ -28,10 +28,6 @@ import java.nio._
 
 import org.scalajs.ir
 
-trait NodeScalaJSIRContainer extends ScalaJSIRContainer {
-  val path: String
-}
-
 object NodeScalaJSIRContainer {
   import NodeInterop._
 
@@ -95,10 +91,11 @@ object NodeScalaJSIRContainer {
     (e.asInstanceOf[js.Dynamic].code: Any) == "ENOENT"
 }
 
-private class NodeVirtualScalaJSIRFile(
-    val path: String,
-    val version: Option[String]
-) extends VirtualScalaJSIRFile with NodeScalaJSIRContainer {
+abstract class NodeScalaJSIRContainer private[irio] (
+    val path: String, val version: Option[String]) extends ScalaJSIRContainer
+
+private class NodeVirtualScalaJSIRFile(path: String, version: Option[String])
+    extends NodeScalaJSIRContainer(path, version) with VirtualScalaJSIRFile {
   import NodeInterop._
 
   def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
@@ -147,10 +144,13 @@ private class NodeVirtualScalaJSIRFile(
 
     VirtualScalaJSIRFile.withPathExceptionContext(path, result)
   }
+
+  def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]] =
+    Future.successful(this :: Nil)
 }
 
-private class NodeVirtualJarScalaJSIRContainer(
-    val path: String, val version: Option[String]) extends NodeScalaJSIRContainer {
+private class NodeVirtualJarScalaJSIRContainer(path: String, version: Option[String])
+    extends NodeScalaJSIRContainer(path, version) {
   import NodeInterop._
 
   def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]] = {
