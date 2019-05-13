@@ -132,13 +132,13 @@ private[testing] object Serializer {
     def serialize(x: StackTraceElement, out: SerializeState): Unit = {
       out.write(x.getClassName())
       out.write(x.getMethodName())
-      out.write(Option(x.getFileName()).getOrElse(""))
+      out.write(Option(x.getFileName()))
       out.write(x.getLineNumber())
     }
 
     def deserialize(in: DeserializeState): StackTraceElement = {
       new StackTraceElement(in.read[String](), in.read[String](),
-          Option(in.read[String]()).filter(_.nonEmpty).orNull, in.read[Int]())
+          in.read[Option[String]]().orNull, in.read[Int]())
     }
   }
 
