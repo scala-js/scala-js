@@ -59,15 +59,29 @@ trait ScalaJSIRContainer {
 /** A virtual Scala.js IR file.
  *  It contains the class info and the IR tree.
  */
-trait VirtualScalaJSIRFile extends ScalaJSIRContainer {
+trait VirtualScalaJSIRFile {
+  /** Abstract path of the file.
+   *
+   *  The path of the file is used for lookup and caching (together with the
+   *  version).
+   */
+  val path: String
+
+  /** An optional implementation-dependent "version" token.
+   *
+   *  If non-empty, a different version must be returned when the content
+   *  changes. It should be equal if the content has not changed, but it is
+   *  not mandatory.
+   *  Such a token can be used by caches: the file need not be read and
+   *  processed again if its version has not changed.
+   */
+  val version: Option[String]
+
   /** Entry points information for this file. */
   def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo]
 
   /** IR Tree of this file. */
   def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef]
-
-  final def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]] =
-    Future.successful(this :: Nil)
 }
 
 object VirtualScalaJSIRFile {

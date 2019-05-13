@@ -22,10 +22,6 @@ import java.util.zip.{ZipInputStream, ZipEntry}
 
 import org.scalajs.ir
 
-trait FileScalaJSIRContainer extends ScalaJSIRContainer {
-  val file: File
-}
-
 object FileScalaJSIRContainer {
   def fromClasspath(classpath: Seq[File])(
       implicit ec: ExecutionContext): Future[Seq[FileScalaJSIRContainer]] = {
@@ -67,15 +63,18 @@ object FileScalaJSIRContainer {
   }
 }
 
-private final class FileVirtualScalaJSIRFile(val file: File)
-    extends VirtualScalaJSIRFile with FileScalaJSIRContainer {
-  val path: String = file.getPath
+abstract class FileScalaJSIRContainer private[irio] (val file: File)
+    extends ScalaJSIRContainer {
+  final val path: String = file.getPath
 
-  val version: Option[String] = {
+  final val version: Option[String] = {
     if (!file.isFile) None
     else Some(file.lastModified.toString)
   }
+}
 
+private final class FileVirtualScalaJSIRFile(file: File)
+    extends FileScalaJSIRContainer(file) with VirtualScalaJSIRFile {
   def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
     def loop(chan: AsynchronousFileChannel, buf: ByteBuffer): Future[ir.EntryPointsInfo] = {
       AsyncIO.read(chan, buf).map { _ =>
@@ -123,6 +122,9 @@ private final class FileVirtualScalaJSIRFile(val file: File)
     }
   }
 
+  def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]] =
+    Future.successful(this :: Nil)
+
   private def withChannel[T](body: AsynchronousFileChannel => Future[T])(
       implicit ec: ExecutionContext): Future[T] = {
     val result = Future(AsynchronousFileChannel.open(file.toPath)).flatMap { chan =>
@@ -133,14 +135,8 @@ private final class FileVirtualScalaJSIRFile(val file: File)
   }
 }
 
-private final class FileVirtualJarScalaJSIRContainer(val file: File) extends FileScalaJSIRContainer {
-  val path: String = file.getPath
-
-  val version: Option[String] = {
-    if (!file.isFile) None
-    else Some(file.lastModified.toString)
-  }
-
+private final class FileVirtualJarScalaJSIRContainer(file: File)
+    extends FileScalaJSIRContainer(file) {
   def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]] =
     Future(blocking(read()))
 
