@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.io
+package org.scalajs.jsenv
 
 object JSUtils {
 
@@ -35,17 +35,18 @@ object JSUtils {
     sb.toString
   }
 
-  // !!! BEGIN COPY-PASTED CODE with ir/.../Utils.scala
+  /* !!! BEGIN CODE VERY SIMILAR TO ir/.../Utils.scala and
+   * linker/.../javascript/Utils.scala
+   */
 
   private final val EscapeJSChars = "\\b\\t\\n\\v\\f\\r\\\"\\\\"
 
-  def printEscapeJS(str: String, out: java.lang.Appendable): Int = {
+  private def printEscapeJS(str: String, out: java.lang.StringBuilder): Unit = {
     /* Note that Java and JavaScript happen to use the same encoding for
      * Unicode, namely UTF-16, which means that 1 char from Java always equals
      * 1 char in JavaScript. */
     val end = str.length()
     var i = 0
-    var writtenChars = 0
     /* Loop prints all consecutive ASCII printable characters starting
      * from current i and one non ASCII printable character (if it exists).
      * The new i is set at the end of the appended characters.
@@ -62,7 +63,6 @@ object JSUtils {
       // Print ASCII printable characters from `start`
       if (start != i) {
         out.append(str, start, i)
-        writtenChars += i
       }
 
       // Print next non ASCII printable character
@@ -71,25 +71,22 @@ object JSUtils {
           if (7 < c && c < 14) {
             val i = 2 * (c - 8)
             out.append(EscapeJSChars, i, i + 2)
-            writtenChars += 2
           } else if (c == 34) {
             out.append(EscapeJSChars, 12, 14)
-            writtenChars += 2
           } else if (c == 92) {
             out.append(EscapeJSChars, 14, 16)
-            writtenChars += 2
           } else {
-            out.append(f"\\u$c%04x")
-            writtenChars += 6
+            out.append("\\u%04x".format(c))
           }
         }
         escapeJSEncoded(c)
         i += 1
       }
     }
-    writtenChars
   }
 
-  // !!! END COPY-PASTED CODE with ir/.../Utils.scala
+  /* !!! END CODE VERY SIMILAR TO ir/.../Utils.scala and
+   * linker/.../javascript/Utils.scala
+   */
 
 }

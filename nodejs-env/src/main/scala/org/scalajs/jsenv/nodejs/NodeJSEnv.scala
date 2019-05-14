@@ -18,9 +18,9 @@ import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
 import org.scalajs.jsenv._
+import org.scalajs.jsenv.JSUtils.escapeJS
 
 import org.scalajs.io._
-import org.scalajs.io.JSUtils.escapeJS
 import org.scalajs.logging._
 
 import java.io._

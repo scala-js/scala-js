@@ -22,9 +22,9 @@ import java.nio.file.{Files, StandardCopyOption}
 import sbt.testing.{Framework, TaskDef}
 
 import org.scalajs.io._
-import org.scalajs.io.JSUtils.escapeJS
 
 import org.scalajs.jsenv.{Input, UnsupportedInputException}
+import org.scalajs.jsenv.JSUtils.escapeJS
 
 import org.scalajs.testing.common._
 
