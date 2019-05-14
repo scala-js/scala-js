@@ -24,6 +24,7 @@ import org.scalajs.ir
 
 import org.scalajs.sbtplugin._
 import org.scalajs.jsenv.{JSEnv, RunConfig, Input}
+import org.scalajs.jsenv.JSUtils.escapeJS
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
@@ -31,7 +32,6 @@ import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
 import org.scalajs.io._
-import org.scalajs.io.JSUtils.escapeJS
 import org.scalajs.linker._
 import org.scalajs.linker.irio._
 

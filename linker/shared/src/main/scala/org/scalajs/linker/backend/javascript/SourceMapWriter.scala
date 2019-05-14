@@ -21,9 +21,6 @@ import scala.collection.mutable.{ ListBuffer, HashMap, Stack, StringBuilder }
 import org.scalajs.ir
 import ir.Position
 import ir.Position._
-import ir.Utils
-
-import org.scalajs.io.JSUtils
 
 private object SourceMapWriter {
   private val Base64Map =
@@ -40,7 +37,7 @@ private object SourceMapWriter {
 
   private def printJSONString(s: String, out: Writer) = {
     out.write('\"')
-    JSUtils.printEscapeJS(s, out)
+    Utils.printEscapeJS(s, out)
     out.write('\"')
   }
 
