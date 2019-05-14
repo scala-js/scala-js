@@ -498,8 +498,12 @@ private final class Analyzer(semantics: Semantics,
         right: ir.Types.ReferenceType): Boolean = {
       import ir.Types._
 
+      def isPrimitive(className: String) =
+        Definitions.PrimitiveClasses.contains(className)
+
       def classIsMoreSpecific(leftCls: String, rightCls: String): Boolean = {
         leftCls != rightCls &&
+        !isPrimitive(leftCls) && !isPrimitive(rightCls) &&
         lookupClass(leftCls).ancestors.contains(lookupClass(rightCls))
       }
 
