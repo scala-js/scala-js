@@ -135,6 +135,47 @@ class OptimizationTest extends JSASTTest {
   }
 
   @Test
+  def noLabeledBlockForPatmatWithToplevelCaseClassesOnlyAndNoGuards: Unit = {
+    """
+    sealed abstract class Foo
+    final case class Foobar(x: Int) extends Foo
+    final case class Foobaz(y: String) extends Foo
+
+    class Test {
+      def testWithListsStat(xs: List[Int]): Unit = {
+        xs match {
+          case head :: tail => println(head + " " + tail)
+          case Nil          => println("nil")
+        }
+      }
+
+      def testWithListsExpr(xs: List[Int]): Int = {
+        xs match {
+          case head :: tail => head + tail.size
+          case Nil          => 0
+        }
+      }
+
+      def testWithFooStat(foo: Foo): Unit = {
+        foo match {
+          case Foobar(x) => println("foobar: " + x)
+          case Foobaz(y) => println(y)
+        }
+      }
+
+      def testWithFooExpr(foo: Foo): String = {
+        foo match {
+          case Foobar(x) => "foobar: " + x
+          case Foobaz(y) => "foobaz: " + y
+        }
+      }
+    }
+    """.hasNot("Labeled block") {
+      case js.Labeled(_, _, _) =>
+    }
+  }
+
+  @Test
   def switchWithoutGuards: Unit = {
     """
     class Test {
