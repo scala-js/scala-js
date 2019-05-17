@@ -144,6 +144,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private val fakeTailJumpParamRepl = new ScopedVar[(Symbol, Symbol)]
     private val enclosingLabelDefParams = new ScopedVar[Map[Symbol, List[Symbol]]]
     private val isModuleInitialized = new ScopedVar[VarBox[Boolean]]
+    private val countsOfReturnsToMatchCase = new ScopedVar[mutable.Map[Symbol, Int]]
     private val countsOfReturnsToMatchEnd = new ScopedVar[mutable.Map[Symbol, Int]]
     private val undefinedDefaultParams = new ScopedVar[mutable.Set[Symbol]]
 
@@ -178,6 +179,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           fakeTailJumpParamRepl := null,
           enclosingLabelDefParams := null,
           isModuleInitialized := null,
+          countsOfReturnsToMatchCase := null,
           countsOfReturnsToMatchEnd := null,
           undefinedDefaultParams := null,
           mutableLocalVars := null,
@@ -1447,13 +1449,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val sym = dd.symbol
 
       withScopedVars(
-          currentMethodSym          := sym,
-          thisLocalVarIdent         := None,
-          fakeTailJumpParamRepl     := (NoSymbol, NoSymbol),
-          enclosingLabelDefParams   := Map.empty,
-          isModuleInitialized       := new VarBox(false),
+          currentMethodSym := sym,
+          thisLocalVarIdent := None,
+          fakeTailJumpParamRepl := (NoSymbol, NoSymbol),
+          enclosingLabelDefParams := Map.empty,
+          isModuleInitialized := new VarBox(false),
+          countsOfReturnsToMatchCase := mutable.Map.empty,
           countsOfReturnsToMatchEnd := mutable.Map.empty,
-          undefinedDefaultParams    := mutable.Set.empty
+          undefinedDefaultParams := mutable.Set.empty
       ) {
         assert(vparamss.isEmpty || vparamss.tail.isEmpty,
             "Malformed parameter list: " + vparamss)
@@ -2540,13 +2543,30 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       if (enclosingLabelDefParams.contains(sym)) {
         genEnclosingLabelApply(tree)
-      } else if (countsOfReturnsToMatchEnd.contains(sym)) {
-        /* Jump the to the end-label of a pattern match
-         * Such labels have exactly one argument, which is the result of
-         * the pattern match (of type BoxedUnit if the match is in statement
-         * position). We simply `return` the argument as the result of the
-         * labeled block surrounding the match.
+      } else if (countsOfReturnsToMatchCase.contains(sym)) {
+        /* Jump the to a next-`case` label of a pattern match.
+         *
+         * Such labels are not enclosing. Instead, they are forward jumps to a
+         * following case LabelDef. For those labels, we generate a js.Return
+         * and keep track of how many such returns we generate, so that the
+         * enclosing `genTranslatedMatch` can optimize away the labeled blocks
+         * in some cases, notably when they are not used at all or used only
+         * once.
+         *
+         * Next-case labels have no argument.
          */
+        assert(args.isEmpty, tree)
+        countsOfReturnsToMatchCase(sym) += 1
+        js.Return(js.Undefined(), Some(encodeLabelSym(sym)))
+      } else if (countsOfReturnsToMatchEnd.contains(sym)) {
+        /* Jump the to the match-end of a pattern match.
+         * This is similar to the jumps to next-case (see above), except that
+         * match-end labels hae exactly one argument, which is the result of the
+         * pattern match (of type BoxedUnit if the match is in statement position).
+         * We simply `return` the argument as the result of the labeled block
+         * surrounding the match.
+         */
+        assert(args.size == 1, tree)
         countsOfReturnsToMatchEnd(sym) += 1
         js.Return(genExpr(args.head), Some(encodeLabelSym(sym)))
       } else {
@@ -3196,6 +3216,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val translatedCases = for {
         (LabelDef(_, Nil, rhs), nextCaseSym) <- cases zip nextCaseSyms
       } yield {
+        if (nextCaseSym.exists)
+          countsOfReturnsToMatchCase(nextCaseSym) = 0
+
         def genCaseBody(tree: Tree): js.Tree = {
           implicit val pos = tree.pos
           tree match {
@@ -3214,7 +3237,15 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           }
         }
 
-        genCaseBody(rhs)
+        val translatedBody = genCaseBody(rhs)
+
+        if (!nextCaseSym.exists) {
+          translatedBody
+        } else {
+          val returnCount = countsOfReturnsToMatchCase.remove(nextCaseSym).get
+          genOptimizedCaseLabeled(encodeLabelSym(nextCaseSym), translatedBody,
+              returnCount)
+        }
       }
 
       val returnCount = countsOfReturnsToMatchEnd.remove(matchEndSym).get
@@ -3222,7 +3253,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val LabelDef(_, List(matchEndParam), matchEndBody) = matchEnd
 
       val innerResultType = toIRType(matchEndParam.tpe)
-      val optimized = genOptimizedLabeled(encodeLabelSym(matchEndSym),
+      val optimized = genOptimizedMatchEndLabeled(encodeLabelSym(matchEndSym),
           innerResultType, translatedCases, returnCount)
 
       matchEndBody match {
@@ -3243,8 +3274,94 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
     }
 
-    /** Gen JS code for a Labeled block from a pattern match, while trying
-     *  to optimize it away as an If chain.
+    /** Gen JS code for a Labeled block from a pattern match'es case, while
+     *  trying to optimize it away as a reversed If.
+     *
+     *  If there was no `return` to the label at all, simply avoid generating
+     *  the `Labeled` block alltogether.
+     *
+     *  If there was more than one `return`, do not optimize anything, as
+     *  nothing could be good enough for `genOptimizedMatchEndLabeled` to do
+     *  anything useful down the line.
+     *
+     *  If however there was a single `return`, we try and get rid of it by
+     *  identifying the following shape:
+     *
+     *  {{{
+     *  {
+     *    ...stats1
+     *    if (test)
+     *      return(nextCaseSym)
+     *    ...stats2
+     *  }
+     *  }}}
+     *
+     *  which we then rewrite as
+     *
+     *  {{{
+     *  {
+     *    ...stats1
+     *    if (!test) {
+     *      ...stats2
+     *    }
+     *  }
+     *  }}}
+     *
+     *  The above rewrite is important for `genOptimizedMatchEndLabeled` below
+     *  to be able to do its job, which in turn is important for the IR
+     *  optimizer to perform a better analysis.
+     *
+     *  This whole thing is only necessary in Scala 2.12.9+, with the new flat
+     *  patmat ASTs. In previous versions, `returnCount` is always 0 because
+     *  all jumps to case labels are already caught upstream by `genCaseBody()`
+     *  inside `genTranslatedMatch()`.
+     */
+    private def genOptimizedCaseLabeled(label: js.Ident,
+        translatedBody: js.Tree, returnCount: Int)(
+        implicit pos: Position): js.Tree = {
+
+      def default: js.Tree =
+        js.Labeled(label, jstpe.NoType, translatedBody)
+
+      if (returnCount == 0) {
+        translatedBody
+      } else if (returnCount > 1) {
+        default
+      } else {
+        translatedBody match {
+          case js.Block(stats) =>
+            val (stats1, testAndStats2) = stats.span {
+              case js.If(_, js.Return(js.Undefined(), Some(`label`)), js.Skip()) =>
+                false
+              case _ =>
+                true
+            }
+
+            testAndStats2 match {
+              case js.If(cond, _, _) :: stats2 =>
+                val notCond = cond match {
+                  case js.UnaryOp(js.UnaryOp.Boolean_!, notCond) =>
+                    notCond
+                  case _ =>
+                    js.UnaryOp(js.UnaryOp.Boolean_!, cond)
+                }
+                js.Block(stats1 :+ js.If(notCond, js.Block(stats2), js.Skip())(jstpe.NoType))
+
+              case _ :: _ =>
+                throw new AssertionError("unreachable code")
+
+              case Nil =>
+                default
+            }
+
+          case _ =>
+            default
+        }
+      }
+    }
+
+    /** Gen JS code for a Labeled block from a pattern match'es match-end,
+     *  while trying to optimize it away as an If chain.
      *
      *  It is important to do so at compile-time because, when successful, the
      *  resulting IR can be much better optimized by the optimizer.
@@ -3256,7 +3373,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  !!! There is quite of bit of code duplication with
      *      OptimizerCore.tryOptimizePatternMatch.
      */
-    def genOptimizedLabeled(label: js.Ident, tpe: jstpe.Type,
+    def genOptimizedMatchEndLabeled(label: js.Ident, tpe: jstpe.Type,
         translatedCases: List[js.Tree], returnCount: Int)(
         implicit pos: Position): js.Tree = {
       def default: js.Tree =
