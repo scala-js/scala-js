@@ -16,9 +16,12 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
 import java.io.InputStream
+import java.nio.charset.StandardCharsets
+import java.nio.file._
 import java.util.concurrent.Executors
 
-import org.scalajs.io.MemVirtualBinaryFile
+import com.google.common.jimfs.Jimfs
+
 import org.scalajs.jsenv._
 
 /** TestKit is a utility class to simplify testing of [[JSEnv]]s.
@@ -152,7 +155,9 @@ private object TestKit {
     ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
 
   private def codeToInput(code: String): Input = {
-    val vf = MemVirtualBinaryFile.fromStringUTF8("testScript.js", code)
-    Input.ScriptsToLoad(List(vf))
+    val p = Files.write(
+        Jimfs.newFileSystem().getPath("testScript.js"),
+        code.getBytes(StandardCharsets.UTF_8))
+    Input.ScriptsToLoad(List(p))
   }
 }

@@ -12,18 +12,19 @@
 
 package org.scalajs.jsenv.nodejs
 
-import java.nio.charset.StandardCharsets
 
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+
+import java.io._
+import java.nio.charset.StandardCharsets
+import java.nio.file._
 
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.JSUtils.escapeJS
 
-import org.scalajs.io._
 import org.scalajs.logging._
 
-import java.io._
+import com.google.common.jimfs.Jimfs
 
 final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
   import NodeJSEnv._
@@ -57,8 +58,7 @@ final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
     }
   }
 
-  private def internalStart(initFiles: List[VirtualBinaryFile], input: Input,
-      runConfig: RunConfig): JSRun = {
+  private def internalStart(initFiles: List[Path], input: Input, runConfig: RunConfig): JSRun = {
     val command = config.executable :: config.args
     val externalConfig = ExternalJSRun.Config()
       .withEnv(env)
@@ -67,7 +67,7 @@ final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
         NodeJSEnv.write(initFiles, input))
   }
 
-  private def initFiles: List[VirtualBinaryFile] = config.sourceMap match {
+  private def initFiles: List[Path] = config.sourceMap match {
     case SourceMap.Disable           => Nil
     case SourceMap.EnableIfAvailable => installSourceMapIfAvailable :: Nil
     case SourceMap.Enable            => installSourceMap :: Nil
@@ -83,60 +83,51 @@ final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
 }
 
 object NodeJSEnv {
+  private lazy val fs = Jimfs.newFileSystem()
+
   private lazy val validator = ExternalJSRun.supports(RunConfig.Validator())
 
   private lazy val installSourceMapIfAvailable = {
-    MemVirtualBinaryFile.fromStringUTF8("sourceMapSupport.js",
+    Files.write(
+        fs.getPath("optionalSourceMapSupport.js"),
         """
           |try {
           |  require('source-map-support').install();
           |} catch (e) {
           |};
-        """.stripMargin
-    )
+        """.stripMargin.getBytes(StandardCharsets.UTF_8))
   }
 
   private lazy val installSourceMap = {
-    MemVirtualBinaryFile.fromStringUTF8("sourceMapSupport.js",
-        "require('source-map-support').install();")
+    Files.write(
+        fs.getPath("sourceMapSupport.js"),
+        "require('source-map-support').install();".getBytes(StandardCharsets.UTF_8))
   }
 
-  private def write(initFiles: List[VirtualBinaryFile], input: Input)(
-      out: OutputStream): Unit = {
+  private def write(initFiles: List[Path], input: Input)(out: OutputStream): Unit = {
     val p = new PrintStream(out, false, "UTF8")
     try {
-      def writeRunScript(file: VirtualBinaryFile): Unit = {
-        file match {
-          case file: FileVirtualBinaryFile =>
-            val pathJS = "\"" + escapeJS(file.file.getAbsolutePath) + "\""
-            p.println(s"""
-              require('vm').runInThisContext(
-                require('fs').readFileSync($pathJS, { encoding: "utf-8" }),
-                { filename: $pathJS, displayErrors: true }
-              );
-            """)
-
-          case _ =>
-            val code = readInputStreamToString(file.inputStream)
+      def writeRunScript(path: Path): Unit = {
+        try {
+          val f = path.toFile
+          val pathJS = "\"" + escapeJS(f.getAbsolutePath) + "\""
+          p.println(s"""
+            require('vm').runInThisContext(
+              require('fs').readFileSync($pathJS, { encoding: "utf-8" }),
+              { filename: $pathJS, displayErrors: true }
+            );
+          """)
+        } catch {
+          case _: UnsupportedOperationException =>
+            val code = new String(Files.readAllBytes(path), StandardCharsets.UTF_8)
             val codeJS = "\"" + escapeJS(code) + "\""
-            val pathJS = "\"" + escapeJS(file.path) + "\""
+            val pathJS = "\"" + escapeJS(path.toString) + "\""
             p.println(s"""
               require('vm').runInThisContext(
                 $codeJS,
                 { filename: $pathJS, displayErrors: true }
               );
             """)
-        }
-      }
-
-      def writeRequire(file: VirtualBinaryFile): Unit = {
-        file match {
-          case file: FileVirtualBinaryFile =>
-            p.println(s"""require("${escapeJS(file.file.getAbsolutePath)}")""")
-
-          case _ =>
-            val f = tmpFile(file.path, file.inputStream)
-            p.println(s"""require("${escapeJS(f.getAbsolutePath)}")""")
         }
       }
 
@@ -150,16 +141,11 @@ object NodeJSEnv {
 
         case Input.CommonJSModulesToLoad(modules) =>
           for (module <- modules)
-            writeRequire(module)
+            p.println(s"""require("${escapeJS(toFile(module).getAbsolutePath)}")""")
 
         case Input.ESModulesToLoad(modules) =>
           if (modules.nonEmpty) {
-            val uris = modules.map {
-              case module: FileVirtualBinaryFile =>
-                module.file.toURI
-              case module =>
-                tmpFile(module.path, module.inputStream).toURI
-            }
+            val uris = modules.map(m => toFile(m).toURI)
 
             val imports = uris.map { uri =>
               s"""import("${escapeJS(uri.toASCIIString)}")"""
@@ -176,7 +162,8 @@ object NodeJSEnv {
                 |});
               """.stripMargin
             }
-            val f = tmpFile("importer.js", importerFileContent)
+            val f = createTmpFile("importer.js")
+            Files.write(f.toPath, importerFileContent.getBytes(StandardCharsets.UTF_8))
             p.println(s"""require("${escapeJS(f.getAbsolutePath)}");""")
           }
       }
@@ -185,48 +172,14 @@ object NodeJSEnv {
     }
   }
 
-  private def readInputStreamToString(inputStream: InputStream): String = {
-    val baos = new java.io.ByteArrayOutputStream
-    val in = inputStream
+  private def toFile(path: Path): File = {
     try {
-      val buf = new Array[Byte](4096)
-
-      @tailrec
-      def loop(): Unit = {
-        val read = in.read(buf)
-        if (read != -1) {
-          baos.write(buf, 0, read)
-          loop()
-        }
-      }
-
-      loop()
-    } finally {
-      in.close()
-    }
-    new String(baos.toByteArray(), StandardCharsets.UTF_8)
-  }
-
-  private def tmpFile(path: String, content: String): File = {
-    import java.nio.file.{Files, StandardOpenOption}
-
-    val f = createTmpFile(path)
-    val contentList = new java.util.ArrayList[String]()
-    contentList.add(content)
-    Files.write(f.toPath(), contentList, StandardCharsets.UTF_8,
-        StandardOpenOption.TRUNCATE_EXISTING)
-    f
-  }
-
-  private def tmpFile(path: String, content: InputStream): File = {
-    import java.nio.file.{Files, StandardCopyOption}
-
-    try {
-      val f = createTmpFile(path)
-      Files.copy(content, f.toPath(), StandardCopyOption.REPLACE_EXISTING)
-      f
-    } finally {
-      content.close()
+      path.toFile
+    } catch {
+      case _: UnsupportedOperationException =>
+        val f = createTmpFile(path.toString)
+        Files.copy(path, f.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        f
     }
   }
 

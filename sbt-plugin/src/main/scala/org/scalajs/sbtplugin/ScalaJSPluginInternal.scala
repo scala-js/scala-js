@@ -351,7 +351,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       // Use the Scala.js linked file as the default Input for the JSEnv
       jsEnvInput := {
-        val linkedFile = new FileVirtualBinaryFile(scalaJSLinkedFile.value.data)
+        val linkedFile = scalaJSLinkedFile.value.data.toPath
         scalaJSLinkerConfig.value.moduleKind match {
           case ModuleKind.NoModule =>
             Input.ScriptsToLoad(List(linkedFile))
