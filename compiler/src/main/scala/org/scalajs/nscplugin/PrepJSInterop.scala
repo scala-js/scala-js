@@ -444,9 +444,12 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           }
         }
 
-        val exports = exporters.get(clsSym).toIterable.flatten
-        // Add exports to the template
-        treeCopy.Template(tree, parents, self, body ++ exports)
+        // Add exports to the template, if there are any
+        exporters.get(clsSym).fold {
+          tree // nothing to change
+        } { exports =>
+          treeCopy.Template(tree, parents, self, body ::: exports.toList)
+        }
 
       case memDef: MemberDef =>
         val sym = memDef.symbol
