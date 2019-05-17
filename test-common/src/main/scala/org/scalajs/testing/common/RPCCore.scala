@@ -262,10 +262,10 @@ private[testing] object RPCCore {
   type OpCode = Byte
 
   /** Exception thrown if a remote invocation fails. */
-  final case class RPCException(c: Throwable) extends Exception(null, c)
+  final case class RPCException(c: Throwable) extends Exception(c)
 
   /** Exception thrown if the channel got closed. */
-  final case class ClosedException(c: Throwable) extends Exception(null, c)
+  final case class ClosedException(c: Throwable) extends Exception(c)
 
   private val ReplyOK: Byte = 0.toByte
   private val ReplyErr: Byte = 1.toByte
