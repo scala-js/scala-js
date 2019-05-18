@@ -1310,7 +1310,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
       val argIsValid = annot.stringArg(0).isDefined
       if (!argIsValid) {
-        reporter.error(annot.args(0).pos,
+        reporter.error(annot.args.head.pos,
             "The argument to @JSGlobal must be a literal string.")
       }
     }
@@ -1332,7 +1332,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
       val firstArgIsValid = annot.stringArg(0).isDefined
       if (!firstArgIsValid) {
-        reporter.error(annot.args(0).pos,
+        reporter.error(annot.args.head.pos,
             "The first argument to @JSImport must be a literal string.")
       }
 
@@ -1511,7 +1511,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
    *  take any arguments
    */
   private def primCtorNoArg(cldef: ClassDef) =
-    getPrimCtor(cldef.symbol.tpe).map(_.paramss == List(List())).getOrElse(true)
+    getPrimCtor(cldef.symbol.tpe).forall(_.paramss == List(List()))
 
   /** return the MethodSymbol of the primary constructor of the given type
    *  if it exists
