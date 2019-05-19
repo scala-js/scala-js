@@ -12,6 +12,10 @@
 
 package org.scalajs.jsenv.test
 
+import java.io.File
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+
 import com.google.common.jimfs.Jimfs
 
 import org.junit.Assume._
@@ -139,6 +143,24 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
     // `start` may not throw but must fail asynchronously
     withRun(Input.ScriptsToLoad(badFile :: Nil)) {
       _.fails()
+    }
+  }
+
+  @Test
+  def defaultFilesystem: Unit = {
+    // Tests that a JSEnv works with files from the default filesystem.
+
+    val tmpFile = File.createTempFile("sjs-run-test-defaultfile", ".js")
+    try {
+      val tmpPath = tmpFile.toPath
+      Files.write(tmpPath, "console.log(\"test\");".getBytes(StandardCharsets.UTF_8))
+
+      withRun(Input.ScriptsToLoad(tmpPath :: Nil)) {
+        _.expectOut("test\n")
+          .closeRun()
+      }
+    } finally {
+      tmpFile.delete()
     }
   }
 
