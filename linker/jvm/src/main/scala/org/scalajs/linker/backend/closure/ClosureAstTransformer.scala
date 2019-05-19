@@ -14,6 +14,8 @@ package org.scalajs.linker.backend.closure
 
 import scala.annotation.switch
 
+import org.scalajs.io.URIUtils
+
 import org.scalajs.ir
 import ir.Position
 import ir.Position.NoPosition
@@ -476,7 +478,10 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
   }
 
   private def attachSourceFile(node: Node, source: URI): node.type = {
-    val str = URIUtil.sourceURIToString(relativizeBaseURI, source)
+    import org.scalajs.io.URIUtils._
+
+    val relURI = relativizeBaseURI.fold(source)(URIUtils.relativize(_, source))
+    val str = URIUtils.fixFileURI(relURI).toASCIIString
 
     node.setInputId(inputId)
     node.setStaticSourceFile(new SourceFile(str, SourceKind.STRONG))
