@@ -38,11 +38,19 @@ import org.scalajs.core.tools.linker.backend.emitter.{Emitter, CoreJSLibs}
  */
 final class ClosureLinkerBackend(
     semantics: Semantics,
+    outputMode: OutputMode,
     moduleKind: ModuleKind,
     withSourceMap: Boolean,
     config: LinkerBackend.Config
-) extends LinkerBackend(semantics, ESLevel.ES5, moduleKind, withSourceMap,
+) extends LinkerBackend(semantics, outputMode.esLevel, moduleKind, withSourceMap,
     config) {
+
+  @deprecated("Use the overload with an explicit OutputMode", "0.6.28")
+  def this(semantics: Semantics, moduleKind: ModuleKind, withSourceMap: Boolean,
+      config: LinkerBackend.Config) {
+    this(semantics, OutputMode.ECMAScript51Isolated, moduleKind, withSourceMap,
+        config)
+  }
 
   @deprecated("Use the overload with an explicit ModuleKind", "0.6.13")
   def this(semantics: Semantics, withSourceMap: Boolean,
@@ -51,7 +59,7 @@ final class ClosureLinkerBackend(
   }
 
   private[this] val emitter = {
-    new Emitter(semantics, OutputMode.ECMAScript51Isolated, moduleKind)
+    new Emitter(semantics, outputMode, moduleKind)
       .withOptimizeBracketSelects(false)
   }
 
@@ -85,7 +93,7 @@ final class ClosureLinkerBackend(
     val module = new JSModule("Scala.js")
 
     module.add(new CompilerInput(toClosureSource(
-        CoreJSLibs.lib(semantics, OutputMode.ECMAScript51Isolated, moduleKind))))
+        CoreJSLibs.lib(semantics, outputMode, moduleKind))))
 
     val ast = builder.closureAST
     module.add(new CompilerInput(ast, ast.getInputId(), false))
@@ -188,7 +196,13 @@ final class ClosureLinkerBackend(
     val options = new ClosureOptions
     options.setPrettyPrint(config.prettyPrint)
     CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
-    options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
+
+    val language =
+      if (esLevel == ESLevel.ES6) ClosureOptions.LanguageMode.ECMASCRIPT_2015
+      else ClosureOptions.LanguageMode.ECMASCRIPT5_STRICT
+    options.setLanguageIn(language)
+    options.setLanguageOut(language)
+
     options.setCheckGlobalThisLevel(CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.DUPLICATE_VARS, CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.CHECK_REGEXP, CheckLevel.OFF)

@@ -9,6 +9,8 @@ object BinaryIncompatibilities {
 
   val Tools = Seq(
       // private[closure], not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.closure.ClosureAstTransformer.transformStringKey"),
       ProblemFilters.exclude[MissingClassProblem](
           "org.scalajs.core.tools.linker.backend.closure.LoggerErrorManager")
   )

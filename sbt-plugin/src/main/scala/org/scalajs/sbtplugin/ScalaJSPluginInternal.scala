@@ -507,7 +507,7 @@ object ScalaJSPluginInternal {
         val outputMode = (scalaJSOutputMode in fullOptJS).value
         val moduleKind = (scalaJSModuleKind in fullOptJS).value
         val useClosure = {
-          outputMode == OutputMode.ECMAScript51Isolated &&
+          outputMode != OutputMode.ECMAScript51Global &&
           moduleKind != ModuleKind.ESModule
         }
         prev.withUseClosureCompiler(useClosure)

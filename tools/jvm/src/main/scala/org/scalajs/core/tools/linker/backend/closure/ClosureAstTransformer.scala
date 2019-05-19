@@ -46,6 +46,10 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
         val node = transformName(ident)
         optRhs.foreach(rhs => node.addChildToFront(transformExpr(rhs)))
         new Node(Token.VAR, node)
+      case Let(ident, mutable, optRhs) =>
+        val node = transformName(ident)
+        optRhs.foreach(rhs => node.addChildToFront(transformExpr(rhs)))
+        new Node(if (mutable) Token.LET else Token.CONST, node)
       case Skip() =>
         new Node(Token.EMPTY)
       case Block(stats) =>
@@ -107,16 +111,27 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
       case Switch(selector, cases, default) =>
         val switchNode = new Node(Token.SWITCH, transformExpr(selector))
 
+        def transformBody(body: Tree): Node = {
+          /* Transform the body of a switch case or default, then wrap the
+           * result in a synthetic block. The synthetic block is important for
+           * switches, but at the same time we must not flatten out an actual
+           * Block(), lest we conflate the scopes for local declarations.
+           */
+          val block = new Node(Token.BLOCK)
+          block.addChildToBack(transformStat(body))
+          block.setIsSyntheticBlock(true)
+          setNodePosition(block, body.pos.orElse(pos))
+          block
+        }
+
         for ((expr, body) <- cases) {
-          val bodyNode = transformBlock(body)
-          bodyNode.setIsSyntheticBlock(true)
+          val bodyNode = transformBody(body)
           val caseNode = new Node(Token.CASE, transformExpr(expr), bodyNode)
           switchNode.addChildToBack(
               setNodePosition(caseNode, expr.pos orElse pos))
         }
 
-        val bodyNode = transformBlock(default)
-        bodyNode.setIsSyntheticBlock(true)
+        val bodyNode = transformBody(default)
         val caseNode = new Node(Token.DEFAULT_CASE, bodyNode)
         switchNode.addChildToBack(
             setNodePosition(caseNode, default.pos orElse pos))
@@ -132,9 +147,112 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
         node.addChildToFront(rhs)
         new Node(Token.VAR, node)
 
+      case ClassDef(className, parentClass, members) =>
+        val membersBlock = new Node(Token.CLASS_MEMBERS)
+        for (member <- members)
+          membersBlock.addChildToBack(transformClassMember(member))
+        new Node(
+            Token.CLASS,
+            className.fold(new Node(Token.EMPTY))(transformName(_)),
+            parentClass.fold(new Node(Token.EMPTY))(transformExpr(_)),
+            membersBlock)
+
       case _ =>
         // We just assume it is an expression
         new Node(Token.EXPR_RESULT, transformExpr(tree))
+    }
+  }
+
+  private def transformClassMember(member: Tree): Node = {
+    implicit val pos = member.pos
+
+    def newFixedPropNode(token: Token, static: Boolean, name: Ident,
+        function: Node): Node = {
+      val node = Node.newString(token, name.name)
+      node.addChildToBack(function)
+      node.setStaticMember(static)
+      node
+    }
+
+    /* This method should take a `prop: Node.Prop` parameter to factor out
+     * the `node.putBooleanProp()` that we find the three cases below. However,
+     * that is not possible because `Node.Prop` is private in `Node`. Go figure
+     * why Java allows to export as `public` the aliases
+     * `Node.COMPUTED_PROP_METHOD` et al. with a type that is not public ...
+     */
+    def newComputedPropNode(static: Boolean, nameExpr: Tree,
+        function: Node): Node = {
+      val node = new Node(Token.COMPUTED_PROP, transformExpr(nameExpr), function)
+      node.setStaticMember(static)
+      node
+    }
+
+    wrapTransform(member) {
+      case MethodDef(static, name, args, body) =>
+        val function = genFunction("", args, body)
+        name match {
+          case ComputedName(nameExpr) =>
+            val node = newComputedPropNode(static, nameExpr, function)
+            node.putBooleanProp(Node.COMPUTED_PROP_METHOD, true)
+            node
+          case nameExpr: StringLiteral =>
+            /* I think this case should not be necessary, and that
+             * newFixedPropNode below should work for StringLiterals as well
+             * as Idents (with a QuotedString in GCC's AST). However, if we do
+             * that, GCC systematically ignores the definition of the method.
+             * To be fair, there is a comment on StringNode.setIsQuotedString()
+             * that reads
+             *
+             * > This should only be called for STRING nodes created in object
+             * > lits.
+             *
+             * which does suggest that COMPUTED_PROP must be used instead.
+             * This analysis is also supported by the fact that string-literal
+             * method declarations in source are systematically compiled as
+             * computed-named methods by GCC when used outside Scala.js.
+             */
+            val node = newComputedPropNode(static, nameExpr, function)
+            node.putBooleanProp(Node.COMPUTED_PROP_METHOD, true)
+            node
+          case name: Ident =>
+            newFixedPropNode(Token.MEMBER_FUNCTION_DEF, static, name, function)
+        }
+
+      case GetterDef(static, name, body) =>
+        val function = genFunction("", Nil, body)
+        name match {
+          case ComputedName(nameExpr) =>
+            val node = newComputedPropNode(static, nameExpr, function)
+            node.putBooleanProp(Node.COMPUTED_PROP_GETTER, true)
+            node
+          case nameExpr: StringLiteral =>
+            // See comment above in case MethodDef
+            val node = newComputedPropNode(static, nameExpr, function)
+            node.putBooleanProp(Node.COMPUTED_PROP_GETTER, true)
+            node
+          case name: Ident =>
+            newFixedPropNode(Token.GETTER_DEF, static, name, function)
+        }
+
+      case SetterDef(static, name, param, body) =>
+        val function = genFunction("", param :: Nil, body)
+        name match {
+          case ComputedName(nameExpr) =>
+            val node = newComputedPropNode(static, nameExpr, function)
+            node.putBooleanProp(Node.COMPUTED_PROP_SETTER, true)
+            node
+          case nameExpr: StringLiteral =>
+            // See comment above in case MethodDef
+            val node = newComputedPropNode(static, nameExpr, function)
+            node.putBooleanProp(Node.COMPUTED_PROP_SETTER, true)
+            node
+          case name: Ident =>
+            newFixedPropNode(Token.SETTER_DEF, static, name, function)
+        }
+
+      case _ =>
+        throw new AssertionError(
+            s"Unexpected class member tree of class ${member.getClass.getName}")
     }
   }
 
@@ -186,16 +304,10 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
         val node = new Node(Token.ARRAYLIT)
         items.foreach(i => node.addChildToBack(transformExpr(i)))
         node
-
       case ObjectConstr(fields) =>
         val node = new Node(Token.OBJECTLIT)
-
-        for ((name, expr) <- fields) {
-          val fldNode = transformStringKey(name)
-          fldNode.addChildToBack(transformExpr(expr))
-          node.addChildToBack(fldNode)
-        }
-
+        for ((name, value) <- fields)
+          node.addChildToBack(transformObjectLitField(name, value))
         node
 
       case Undefined() =>
@@ -214,11 +326,16 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
         transformName(ident)
       case This() =>
         new Node(Token.THIS)
+      case Super() =>
+        new Node(Token.SUPER)
 
       case Function(args, body) =>
         genFunction("", args, body)
       case FunctionDef(name, args, body) =>
         genFunction(name.name, args, body)
+
+      case Spread(items) =>
+        new Node(Token.SPREAD, transformExpr(items))
 
       case _ =>
         throw new TransformException(s"Unknown tree of class ${tree.getClass()}")
@@ -235,8 +352,14 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
     new Node(Token.FUNCTION, nameNode, paramList, transformBlock(body))
   }
 
-  def transformParam(param: ParamDef)(implicit parentPos: Position): Node =
-    transformName(param.name)
+  def transformParam(param: ParamDef)(implicit parentPos: Position): Node = {
+    val pos = if (param.pos.isDefined) param.pos else parentPos
+    val node = transformName(param.name)(pos)
+    if (param.rest)
+      setNodePosition(new Node(Token.REST, node), pos)
+    else
+      node
+  }
 
   def transformName(ident: Ident)(implicit parentPos: Position): Node =
     setNodePosition(Node.newString(Token.NAME, ident.name),
@@ -249,9 +372,12 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
   def transformString(ident: Ident)(implicit parentPos: Position): Node =
     setNodePosition(Node.newString(ident.name), ident.pos orElse parentPos)
 
-  def transformStringKey(pName: PropertyName)(
+  def transformObjectLitField(name: PropertyName, value: Tree)(
       implicit parentPos: Position): Node = {
-    val node = pName match {
+
+    val transformedValue = transformExpr(value)
+
+    val node = name match {
       case Ident(name, _) =>
         Node.newString(Token.STRING_KEY, name)
 
@@ -260,14 +386,12 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
         node.setQuotedString()
         node
 
-      case ComputedName(tree) =>
-        throw new AssertionError(
-            "The Closure AST compiler received a ComputedName, which it " +
-            "cannot translate because it always emits ES 5.1 code. " +
-            "Position: " + parentPos)
+      case ComputedName(nameExpr) =>
+        new Node(Token.COMPUTED_PROP, transformExpr(nameExpr))
     }
 
-    setNodePosition(node, pName.pos orElse parentPos)
+    node.addChildToBack(transformExpr(value))
+    setNodePosition(node, name.pos.orElse(parentPos))
   }
 
   def transformBlock(tree: Tree)(implicit parentPos: Position): Node = {
@@ -281,42 +405,44 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
   }
 
   def transformBlock(stats: List[Tree], blockPos: Position): Node = {
+    val block = new Node(Token.BLOCK)
+    for (node <- transformBlockStats(stats)(blockPos))
+      block.addChildToBack(node)
+    block
+  }
+
+  def transformBlockStats(stats: List[Tree])(
+      implicit parentPos: Position): List[Node] = {
+
     @inline def ctorDoc() = {
       val b = new JSDocInfoBuilder(false)
       b.recordConstructor()
       b.build()
     }
 
-    val block = new Node(Token.BLOCK)
-
     // The Rhino IR attaches DocComments to the following nodes (rather than
     // having individual nodes). We preprocess these here.
     @tailrec
-    def loop(ts: List[Tree], nextIsCtor: Boolean = false): Unit = ts match {
-      case DocComment(text) :: tss if text.startsWith("@constructor") =>
-        loop(tss, nextIsCtor = true)
+    def loop(ts: List[Tree], nextIsCtor: Boolean, acc: List[Node]): List[Node] = ts match {
       case DocComment(text) :: tss =>
-        loop(tss)
+        loop(tss, nextIsCtor = text.startsWith("@constructor"), acc)
+
       case t :: tss =>
-        val node = transformStat(t)(blockPos)
+        val node = transformStat(t)
         if (nextIsCtor) {
           // The @constructor must be propagated through an ExprResult node
           val trg =
             if (node.isExprResult()) node.getChildAtIndex(0)
             else node
-
           trg.setJSDocInfo(ctorDoc())
         }
+        loop(tss, nextIsCtor = false, node :: acc)
 
-        block.addChildToBack(node)
-
-        loop(tss)
       case Nil =>
+        acc.reverse
     }
 
-    loop(stats)
-
-    block
+    loop(stats, nextIsCtor = false, Nil)
   }
 
   @inline

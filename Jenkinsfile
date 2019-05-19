@@ -261,6 +261,10 @@ def Tasks = [
     npm install &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
@@ -270,27 +274,26 @@ def Tasks = [
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
+        ++$scala $testSuite/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
-        'set scalaJSSemantics in $testSuite ~= makeCompliant' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
-        'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
+        'set scalaJSSemantics in $testSuite ~= makeCompliant' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
+        'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
+        'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
