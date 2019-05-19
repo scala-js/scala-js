@@ -14,11 +14,11 @@ package org.scalajs.linker.testutils
 
 import scala.concurrent._
 
-import java.io.File
+import java.nio.file.Paths
 
 import org.scalajs.linker.irio._
 
 object Platform {
   def loadJar(path: String)(implicit ec: ExecutionContext): Future[ScalaJSIRContainer] =
-    FileScalaJSIRContainer.fromJar(new File(path))
+    FileScalaJSIRContainer.fromJar(Paths.get(path))
 }

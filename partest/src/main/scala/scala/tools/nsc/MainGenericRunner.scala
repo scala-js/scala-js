@@ -28,9 +28,9 @@ import com.google.common.jimfs.Jimfs
 
 import scala.tools.partest.scalajs.ScalaJSPartestOptions._
 
-import java.io.File
 import java.net.URL
-import java.nio.file.Files
+import java.nio.file._
+
 import scala.io.Source
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -101,7 +101,7 @@ class MainGenericRunner {
 
       val cache = (new IRFileCache).newCache
       val result = FileScalaJSIRContainer
-        .fromClasspath(command.settings.classpathURLs.map(urlToFile _))
+        .fromClasspath(command.settings.classpathURLs.map(urlToPath _))
         .flatMap(cache.cached _)
         .flatMap(linker.link(_, moduleInitializers, LinkerOutput(out), logger))
 
@@ -123,11 +123,11 @@ class MainGenericRunner {
     true
   }
 
-  private def urlToFile(url: java.net.URL) = {
+  private def urlToPath(url: java.net.URL) = {
     try {
-      new File(url.toURI())
+      Paths.get(url.toURI())
     } catch {
-      case e: java.net.URISyntaxException => new File(url.getPath())
+      case e: java.net.URISyntaxException => Paths.get(url.getPath())
     }
   }
 }

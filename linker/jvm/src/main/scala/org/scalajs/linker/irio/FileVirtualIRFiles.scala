@@ -17,64 +17,63 @@ import scala.concurrent._
 
 import java.io._
 import java.nio._
+import java.nio.file._
+import java.nio.file.attribute._
 import java.nio.channels._
+import java.util.EnumSet
 import java.util.zip.{ZipInputStream, ZipEntry}
 
 import org.scalajs.ir
 
 object FileScalaJSIRContainer {
-  def fromClasspath(classpath: Seq[File])(
-      implicit ec: ExecutionContext): Future[Seq[FileScalaJSIRContainer]] = {
-    Future.traverse(classpath) { entry =>
-      if (!entry.exists)
-        Future.successful(Nil)
-      else if (entry.isDirectory)
-        fromDirectory(entry)
-      else if (entry.getName.endsWith(".jar"))
-        fromJar(entry).map(List(_))
-      else
-        throw new IllegalArgumentException("Illegal classpath entry " + entry)
-    }.map(_.flatten)
+  def fromClasspath(classpath: Seq[Path])(
+      implicit ec: ExecutionContext): Future[Seq[FileScalaJSIRContainer]] = Future {
+    val result = Seq.newBuilder[FileScalaJSIRContainer]
+
+    val dirVisitor = new SimpleFileVisitor[Path] {
+      override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
+        if (file.getFileName().toString().endsWith(".sjsir")) {
+          result += new FileVirtualScalaJSIRFile(file, attrs.lastModifiedTime())
+        }
+        super.visitFile(file, attrs)
+      }
+    }
+
+    blocking {
+      for (entry <- classpath if Files.exists(entry)) {
+        val attrs = Files.readAttributes(entry, classOf[BasicFileAttributes])
+
+        if (attrs.isDirectory())
+          Files.walkFileTree(entry, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Int.MaxValue, dirVisitor)
+        else if (entry.getFileName().toString().endsWith(".jar"))
+          result += new FileVirtualJarScalaJSIRContainer(entry, attrs.lastModifiedTime())
+        else
+          throw new IllegalArgumentException("Illegal classpath entry " + entry)
+      }
+    }
+
+    result.result()
   }
 
-  def fromJar(file: File)(implicit ec: ExecutionContext): Future[FileScalaJSIRContainer] =
-    Future(blocking(new FileVirtualJarScalaJSIRContainer(file)))
+  def fromJar(file: Path)(implicit ec: ExecutionContext): Future[FileScalaJSIRContainer] =
+    lastModified(file).map(new FileVirtualJarScalaJSIRContainer(file, _))
 
-  def fromSingleFile(file: File)(
-      implicit ec: ExecutionContext): Future[FileScalaJSIRContainer] = {
-    Future(blocking(new FileVirtualScalaJSIRFile(file)))
-  }
+  def fromSingleFile(file: Path)(implicit ec: ExecutionContext): Future[FileScalaJSIRContainer] =
+    lastModified(file).map(new FileVirtualScalaJSIRFile(file, _))
 
-  private def fromDirectory(dir: File)(
-      implicit ec: ExecutionContext): Future[Seq[FileScalaJSIRContainer]] = {
-    require(dir.isDirectory)
-
-    val (subdirs, files) = dir.listFiles().toList.partition(_.isDirectory)
-
-    val subdirFiles = Future.traverse(subdirs)(fromDirectory)
-
-    val directFiles =
-      Future.traverse(files.filter(_.getName.endsWith(".sjsir")))(fromSingleFile)
-
-    for {
-      sdf <- subdirFiles
-      df <- directFiles
-    } yield sdf.flatten ++ df
-  }
+  private def lastModified(path: Path)(implicit ec: ExecutionContext): Future[FileTime] =
+    Future(blocking(Files.getLastModifiedTime(path)))
 }
 
-abstract class FileScalaJSIRContainer private[irio] (val file: File)
+abstract class FileScalaJSIRContainer private[irio] (val file: Path, lastModified: FileTime)
     extends ScalaJSIRContainer {
-  final val path: String = file.getPath
+  final val path: String = file.toString
 
-  final val version: Option[String] = {
-    if (!file.isFile) None
-    else Some(file.lastModified.toString)
-  }
+  final val version: Option[String] = Some(lastModified.toString)
 }
 
-private final class FileVirtualScalaJSIRFile(file: File)
-    extends FileScalaJSIRContainer(file) with VirtualScalaJSIRFile {
+private final class FileVirtualScalaJSIRFile(file: Path, lastModified: FileTime)
+    extends FileScalaJSIRContainer(file, lastModified) with VirtualScalaJSIRFile {
   def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
     def loop(chan: AsynchronousFileChannel, buf: ByteBuffer): Future[ir.EntryPointsInfo] = {
       AsyncIO.read(chan, buf).map { _ =>
@@ -127,7 +126,7 @@ private final class FileVirtualScalaJSIRFile(file: File)
 
   private def withChannel[T](body: AsynchronousFileChannel => Future[T])(
       implicit ec: ExecutionContext): Future[T] = {
-    val result = Future(AsynchronousFileChannel.open(file.toPath)).flatMap { chan =>
+    val result = Future(AsynchronousFileChannel.open(file)).flatMap { chan =>
       body(chan).finallyWith(Future(blocking(chan.close())))
     }
 
@@ -135,13 +134,13 @@ private final class FileVirtualScalaJSIRFile(file: File)
   }
 }
 
-private final class FileVirtualJarScalaJSIRContainer(file: File)
-    extends FileScalaJSIRContainer(file) {
+private final class FileVirtualJarScalaJSIRContainer(file: Path, lastModified: FileTime)
+    extends FileScalaJSIRContainer(file, lastModified) {
   def sjsirFiles(implicit ec: ExecutionContext): Future[List[VirtualScalaJSIRFile]] =
     Future(blocking(read()))
 
   private def read(): List[VirtualScalaJSIRFile] = {
-    val stream = new ZipInputStream(new BufferedInputStream(new FileInputStream(file)))
+    val stream = new ZipInputStream(new BufferedInputStream(Files.newInputStream(file)))
     try {
       val buf = new Array[Byte](4096)
 
