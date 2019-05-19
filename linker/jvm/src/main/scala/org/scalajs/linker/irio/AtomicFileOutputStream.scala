@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.io
+package org.scalajs.linker.irio
 
 import scala.util.control.NonFatal
 
@@ -24,7 +24,7 @@ import java.nio.file._
  *  it is only able to do so, if the underlying filesystem supports
  *  it. If it doesn't it falls back to non-atomic moving or copying.
  */
-private[io] class AtomicFileOutputStream private (
+private[irio] class AtomicFileOutputStream private (
     private val baseFile: File,
     private val tmpFile: File
 ) extends FileOutputStream(tmpFile) {

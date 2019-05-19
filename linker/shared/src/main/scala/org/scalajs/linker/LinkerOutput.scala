@@ -12,7 +12,7 @@
 
 package org.scalajs.linker
 
-import org.scalajs.io.WritableVirtualBinaryFile
+import org.scalajs.linker.irio.WritableVirtualBinaryFile
 
 import java.net.URI
 

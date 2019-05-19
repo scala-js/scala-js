@@ -31,7 +31,6 @@ import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
-import org.scalajs.io._
 import org.scalajs.linker._
 import org.scalajs.linker.irio._
 
@@ -508,7 +507,7 @@ object Build {
 
       {
         val allProjects = Seq(
-            compiler, irProject, irProjectJS, io, ioJS, logging, loggingJS,
+            compiler, irProject, irProjectJS, logging, loggingJS,
             linker, linkerJS,
             jsEnvs, jsEnvsTestKit, nodeJSEnv, testAdapter, plugin,
             javalanglib, javalib, scalalib, libraryAux, library, minilib,
@@ -622,38 +621,6 @@ object Build {
       exportJars := true
   ).dependsOnSource(irProject)
 
-  val commonIOSettings = Def.settings(
-      commonSettings,
-      publishSettings,
-      fatalWarningsSettings,
-      name := "Scala.js IO",
-      previousArtifactSetting,
-      mimaBinaryIssueFilters ++= BinaryIncompatibilities.IO,
-      exportJars := true, // required so ScalaDoc linking works
-
-      unmanagedSourceDirectories in Compile +=
-        baseDirectory.value.getParentFile / "shared/src/main/scala",
-      unmanagedSourceDirectories in Test +=
-        baseDirectory.value.getParentFile / "shared/src/test/scala",
-
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s")
-  )
-
-  lazy val io: Project = (project in file("io/jvm")).settings(
-      commonIOSettings,
-      libraryDependencies +=
-        "com.novocode" % "junit-interface" % "0.9" % "test"
-  )
-
-  lazy val ioJS: Project = (project in file("io/js")).enablePlugins(
-      MyScalaJSPlugin
-  ).settings(
-      commonIOSettings,
-      crossVersion := ScalaJSCrossVersion.binary
-  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, jUnitRuntime % "test"
-  )
-
   val commonLoggingSettings = Def.settings(
       commonSettings,
       publishSettings,
@@ -715,7 +682,7 @@ object Build {
           parallelCollectionsDependencies(scalaVersion.value)
       ),
       fork in Test := true
-  ).dependsOn(irProject, io, logging, jUnitAsyncJVM % "test")
+  ).dependsOn(irProject, logging, jUnitAsyncJVM % "test")
 
   lazy val linkerJS: Project = (project in file("linker/js")).enablePlugins(
       MyScalaJSPlugin
@@ -724,7 +691,7 @@ object Build {
       crossVersion := ScalaJSCrossVersion.binary,
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, irProjectJS, ioJS, loggingJS, jUnitRuntime % "test", jUnitAsyncJS % "test"
+      library, irProjectJS, loggingJS, jUnitRuntime % "test", jUnitAsyncJS % "test"
   )
 
   lazy val jsEnvs: Project = (project in file("js-envs")).settings(
@@ -735,7 +702,7 @@ object Build {
       libraryDependencies += "com.novocode" % "junit-interface" % "0.9" % "test",
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
-  ).dependsOn(io, logging)
+  ).dependsOn(logging)
 
   lazy val jsEnvsTestKit: Project = (project in file("js-envs-test-kit")).settings(
       commonSettings,

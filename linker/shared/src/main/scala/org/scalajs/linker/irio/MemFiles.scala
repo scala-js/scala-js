@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.io
+package org.scalajs.linker.irio
 
 import java.io._
 import java.nio.charset.StandardCharsets

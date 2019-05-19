@@ -15,7 +15,6 @@ package org.scalajs.linker
 import scala.concurrent._
 
 import org.scalajs.logging.Logger
-import org.scalajs.io._
 
 import org.scalajs.linker.irio._
 

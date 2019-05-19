@@ -24,8 +24,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import org.scalajs.ir.EntryPointsInfo
 import org.scalajs.ir.Trees.ClassDef
 
-import org.scalajs.io._
-
 /** Centralized Scala.js IR cache.
  *
  *  Caches all Scala.js IR used in a given JVM. It supports creating of multiple

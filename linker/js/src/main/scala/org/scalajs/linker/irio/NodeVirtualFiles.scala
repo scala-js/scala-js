@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.io
+package org.scalajs.linker.irio
 
 import scala.annotation.tailrec
 
@@ -38,7 +38,7 @@ private object NodeFS extends js.Object {
   def closeSync(fd: Int): Unit = js.native
 }
 
-private[io] final class NodeOutputStream(path: String) extends OutputStream {
+private final class NodeOutputStream(path: String) extends OutputStream {
   private[this] val bufsize = 4096
   private[this] val fd = NodeFS.openSync(path, "w")
   private[this] val arrBuf = new ArrayBuffer(bufsize)

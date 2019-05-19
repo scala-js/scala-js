@@ -16,9 +16,9 @@ SBT1_VERSION="2.12.8"
 SBT1_SBTVERSION="1.0.0"
 
 COMPILER="compiler jUnitPlugin"
-LIBS="library irJS ioJS loggingJS linkerJS testInterface jUnitRuntime"
+LIBS="library irJS loggingJS linkerJS testInterface jUnitRuntime"
 NO_TOOLS_LIBS="library testInterface jUnitRuntime"
-JVM_LIBS="ir io logging linker jsEnvs jsEnvsTestKit nodeJSEnv testAdapter"
+JVM_LIBS="ir logging linker jsEnvs jsEnvsTestKit nodeJSEnv testAdapter"
 
 # Publish compiler
 for v in $COMPILER_VERSIONS; do

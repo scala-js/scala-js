@@ -23,7 +23,6 @@ import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Trees._
 
 import org.scalajs.logging._
-import org.scalajs.io._
 
 import org.scalajs.junit.async._
 

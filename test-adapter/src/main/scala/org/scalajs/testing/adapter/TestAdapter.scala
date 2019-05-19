@@ -16,7 +16,6 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import scala.collection.concurrent.TrieMap
 
-import org.scalajs.io._
 import org.scalajs.logging._
 
 import org.scalajs.jsenv._

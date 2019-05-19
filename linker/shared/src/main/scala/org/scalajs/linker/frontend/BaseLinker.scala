@@ -17,7 +17,6 @@ import scala.concurrent._
 import scala.util.Try
 
 import org.scalajs.logging._
-import org.scalajs.io._
 
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
