@@ -10,22 +10,22 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.io
+package org.scalajs.linker.backend.javascript
 
 import java.net.URI
 
 import org.junit.Test
 import org.junit.Assert._
 
-class URIUtilsTest {
+class SourceFileUtilTest {
 
-  @Test def relativizeURI(): Unit = {
+  @Test def relativeWebURI(): Unit = {
     def test(base: String, trgt: String, rel: String) = {
       val baseURI = new URI(base)
       val trgtURI = new URI(trgt)
-      val relURI = URIUtils.relativize(baseURI, trgtURI)
-      assertEquals(rel, relURI.toString)
-      assertEquals(trgtURI, baseURI.resolve(relURI))
+      val relURI = SourceFileUtil.webURI(Some(baseURI), trgtURI)
+      assertEquals(rel, relURI)
+      assertEquals(trgtURI, baseURI.resolve(new URI(relURI)))
     }
 
     test("file:///foo/bar/", "file:///foo/bar/baz", "baz")

@@ -10,14 +10,19 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.io
+package org.scalajs.linker.backend.javascript
 
 import java.net.URI
 
-private[scalajs] object URIUtils {
+private[backend] object SourceFileUtil {
+  /** Relatively hacky way to get a Web-friendly URI to the source file */
+  def webURI(relativizeBase: Option[URI], uri: URI): String = {
+    val relURI = relativizeBase.fold(uri)(relativizeURI(_, uri))
+    fixFileURI(relURI).toASCIIString
+  }
 
   /** Relativize target URI w.r.t. base URI */
-  def relativize(base0: URI, trgt0: URI): URI = {
+  private def relativizeURI(base0: URI, trgt0: URI): URI = {
     val base = base0.normalize
     val trgt = trgt0.normalize
 
@@ -48,8 +53,7 @@ private[scalajs] object URIUtils {
   /** Adds an empty authority to URIs with the "file" scheme without authority.
    *  Some browsers don't fetch URIs without authority correctly.
    */
-  def fixFileURI(uri: URI): URI =
+  private def fixFileURI(uri: URI): URI =
     if (uri.getScheme() != "file" || uri.getAuthority() != null) uri
     else new URI("file", "", uri.getPath(), uri.getQuery(), uri.getFragment())
-
 }

@@ -14,13 +14,12 @@ package org.scalajs.linker.backend.closure
 
 import scala.annotation.switch
 
-import org.scalajs.io.URIUtils
-
 import org.scalajs.ir
 import ir.Position
 import ir.Position.NoPosition
 
 import org.scalajs.linker.backend.javascript.Trees._
+import org.scalajs.linker.backend.javascript.SourceFileUtil
 
 import com.google.javascript.rhino._
 import com.google.javascript.rhino.StaticSourceFile.SourceKind
@@ -478,10 +477,7 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
   }
 
   private def attachSourceFile(node: Node, source: URI): node.type = {
-    import org.scalajs.io.URIUtils._
-
-    val relURI = relativizeBaseURI.fold(source)(URIUtils.relativize(_, source))
-    val str = URIUtils.fixFileURI(relURI).toASCIIString
+    val str = SourceFileUtil.webURI(relativizeBaseURI, source)
 
     node.setInputId(inputId)
     node.setStaticSourceFile(new SourceFile(str, SourceKind.STRONG))
