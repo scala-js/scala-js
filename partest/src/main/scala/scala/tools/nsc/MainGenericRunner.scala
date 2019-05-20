@@ -16,8 +16,6 @@ package scala.tools.nsc
 
 import org.scalajs.ir
 
-import org.scalajs.io._
-
 import org.scalajs.logging._
 
 import org.scalajs.linker._

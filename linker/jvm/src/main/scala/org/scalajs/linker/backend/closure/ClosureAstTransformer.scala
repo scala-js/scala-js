@@ -19,6 +19,7 @@ import ir.Position
 import ir.Position.NoPosition
 
 import org.scalajs.linker.backend.javascript.Trees._
+import org.scalajs.linker.backend.javascript.SourceFileUtil
 
 import com.google.javascript.rhino._
 import com.google.javascript.rhino.StaticSourceFile.SourceKind
@@ -476,7 +477,7 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
   }
 
   private def attachSourceFile(node: Node, source: URI): node.type = {
-    val str = URIUtil.sourceURIToString(relativizeBaseURI, source)
+    val str = SourceFileUtil.webURI(relativizeBaseURI, source)
 
     node.setInputId(inputId)
     node.setStaticSourceFile(new SourceFile(str, SourceKind.STRONG))

@@ -15,8 +15,6 @@ package org.scalajs.linker.testutils
 import scala.collection.mutable
 import scala.concurrent._
 
-import org.scalajs.io._
-
 import org.scalajs.linker.analyzer.Infos._
 import org.scalajs.linker.irio._
 

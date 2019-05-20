@@ -295,29 +295,29 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbt ++$scala linker/test &&
-    sbt ++$scala irJS/test ioJS/test linkerJS/test &&
+    sbt ++$scala irJS/test linkerJS/test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSStage in testSuite := FastOptStage' \
-        ++$scala irJS/test ioJS/test linkerJS/test &&
+        ++$scala irJS/test linkerJS/test &&
     sbt ++$scala testSuite/bootstrap:test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSStage in testSuite := FastOptStage' \
         ++$scala testSuite/bootstrap:test &&
-    sbt ++$scala irJS/mimaReportBinaryIssues ioJS/mimaReportBinaryIssues \
+    sbt ++$scala irJS/mimaReportBinaryIssues \
         loggingJS/mimaReportBinaryIssues linkerJS/mimaReportBinaryIssues
   ''',
 
   "tools": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala ir/test io/test logging/compile linker/compile \
+    sbt ++$scala ir/test logging/compile linker/compile \
         jsEnvs/test nodeJSEnv/test testAdapter/test \
-        ir/mimaReportBinaryIssues io/mimaReportBinaryIssues \
+        ir/mimaReportBinaryIssues \
         logging/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         nodeJSEnv/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues &&
-    sbt ++$scala ir/compile:doc io/compile:doc logging/compile:doc \
+    sbt ++$scala ir/compile:doc logging/compile:doc \
         linker/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
         testAdapter/compile:doc
@@ -326,10 +326,10 @@ def Tasks = [
   "tools-sbtplugin": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala ir/test io/test logging/compile linker/compile \
+    sbt ++$scala ir/test logging/compile linker/compile \
         jsEnvs/test nodeJSEnv/test testAdapter/test \
         sbtPlugin/package \
-        ir/mimaReportBinaryIssues io/mimaReportBinaryIssues \
+        ir/mimaReportBinaryIssues \
         logging/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         nodeJSEnv/mimaReportBinaryIssues \
@@ -337,7 +337,7 @@ def Tasks = [
         sbtPlugin/mimaReportBinaryIssues &&
     sbt ++$scala library/scalastyle javalanglib/scalastyle javalib/scalastyle \
         ir/scalastyle compiler/scalastyle \
-        compiler/test:scalastyle io/scalastyle io/test:scalastyle \
+        compiler/test:scalastyle \
         logging/scalastyle logging/test:scalastyle \
         linker/scalastyle linker/test:scalastyle \
         jsEnvs/scalastyle jsEnvsTestKit/scalastyle nodeJSEnv/scalastyle \
@@ -351,7 +351,7 @@ def Tasks = [
         jUnitPlugin/scalastyle jUnitRuntime/scalastyle \
         jUnitTestOutputsJVM/scalastyle jUnitTestOutputsJVM/test:scalastyle \
         jUnitTestOutputsJS/scalastyle jUnitTestOutputsJS/test:scalastyle &&
-    sbt ++$scala ir/compile:doc io/compile:doc logging/compile:doc \
+    sbt ++$scala ir/compile:doc logging/compile:doc \
         linker/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
         testAdapter/compile:doc \
@@ -374,7 +374,7 @@ def Tasks = [
                   testInterface/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++$toolsscala ${SBT_VER_OVERRIDE:+^^$SBT_VER_OVERRIDE} \
-        ir/publishLocal io/publishLocal logging/publishLocal \
+        ir/publishLocal logging/publishLocal \
         linker/publishLocal jsEnvs/publishLocal \
         nodeJSEnv/publishLocal testAdapter/publishLocal \
         sbtPlugin/publishLocal &&

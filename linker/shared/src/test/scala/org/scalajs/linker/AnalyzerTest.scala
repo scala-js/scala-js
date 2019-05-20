@@ -26,7 +26,6 @@ import org.scalajs.ir.Types._
 import org.scalajs.junit.async._
 
 import org.scalajs.logging.NullLogger
-import org.scalajs.io._
 import org.scalajs.linker._
 import org.scalajs.linker.analyzer._
 import org.scalajs.linker.standard._

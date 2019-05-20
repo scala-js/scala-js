@@ -9,8 +9,6 @@ import scala.scalajs.js.JSConverters._
 
 import java.net.URI
 
-import org.scalajs.io._
-
 import org.scalajs.logging._
 
 import org.scalajs.linker._

@@ -7,9 +7,6 @@ object BinaryIncompatibilities {
   val IR = Seq(
   )
 
-  val IO = Seq(
-  )
-
   val Logging = Seq(
   )
 

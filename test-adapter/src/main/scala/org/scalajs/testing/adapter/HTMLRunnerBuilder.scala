@@ -21,8 +21,6 @@ import java.nio.file.{Files, StandardCopyOption}
 
 import sbt.testing.{Framework, TaskDef}
 
-import org.scalajs.io._
-
 import org.scalajs.jsenv.{Input, UnsupportedInputException}
 import org.scalajs.jsenv.JSUtils.escapeJS
 
@@ -78,15 +76,14 @@ object HTMLRunnerBuilder {
 
     val tests = new IsolatedTestSet(frameworkImplClassNames, taskDefs)
 
-    val htmlContent = render(output.toURI, title, jsFileURIs, cssURI, tests)
+    val htmlContent = render(title, jsFileURIs, cssURI, tests)
 
     Files.write(output.toPath, List(htmlContent).asJava, StandardCharsets.UTF_8)
   }
 
-  private def render(baseURI: URI, title: String, jsFiles: Seq[URI],
+  private def render(title: String, jsFiles: Seq[URI],
       css: URI, tests: IsolatedTestSet): String = {
-    def relURI(uri: URI) =
-      htmlEscaped(URIUtils.relativize(baseURI, uri).toASCIIString)
+    def uristr(uri: URI) = htmlEscaped(uri.toASCIIString)
 
     s"""
     <!DOCTYPE html>
@@ -94,12 +91,12 @@ object HTMLRunnerBuilder {
       <head>
         <title>${htmlEscaped(title)}</title>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-        <link rel="stylesheet" type="text/css" href="${relURI(css)}" />
+        <link rel="stylesheet" type="text/css" href="${uristr(css)}" />
         <script type="text/javascript">
         ${injectInterfaceMode(tests)}
         </script>
         ${(for (jsFile <- jsFiles) yield s"""
-        <script type="text/javascript" src="${relURI(jsFile)}"></script>
+        <script type="text/javascript" src="${uristr(jsFile)}"></script>
         """).mkString("")}
       </head>
       <body></body>

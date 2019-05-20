@@ -111,18 +111,9 @@ private[javascript] class SourceMapWriter(
     } else {
       val index = sources.size
       _srcToIndex.put(source, index)
-      sources += sourceToURI(source)
+      sources += SourceFileUtil.webURI(relativizeBaseURI, source)
       index
     }
-  }
-
-  /** Relatively hacky way to get a Web-friendly URI to the source file */
-  private def sourceToURI(source: SourceFile): String = {
-    import org.scalajs.io.URIUtils._
-
-    val uri = source
-    val relURI = relativizeBaseURI.fold(uri)(relativize(_, uri))
-    fixFileURI(relURI).toASCIIString
   }
 
   private def nameToIndex(name: String): Int = {

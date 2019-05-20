@@ -20,7 +20,6 @@ import org.scalajs.ir.{ClassKind, Position}
 import org.scalajs.ir.Trees.{JSNativeLoadSpec, MemberNamespace}
 import org.scalajs.ir.Definitions.{ObjectClass, decodeClassName, isConstructorName}
 
-import org.scalajs.io._
 import org.scalajs.logging._
 
 import org.scalajs.linker._
