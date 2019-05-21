@@ -17,6 +17,7 @@ import scala.concurrent._
 
 import java.io._
 import java.net.URI
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 import com.google.javascript.jscomp.{
@@ -70,7 +71,15 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
    *  @param output File to write to
    */
   def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
-      implicit ec: ExecutionContext): Future[Unit] = Future {
+      implicit ec: ExecutionContext): Future[Unit] = {
+    Future(compile(unit, output, logger)).flatMap { case (topLevelVarDeclarations, code, sourceMap) =>
+      logger.timeFuture("Closure: Write result") {
+        writeResult(topLevelVarDeclarations, code, sourceMap, output)
+      }
+    }
+  }
+
+  private def compile(unit: LinkingUnit, output: LinkerOutput, logger: Logger) = {
     verifyUnit(unit)
 
     // Build Closure IR
@@ -101,9 +110,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
           "There were errors when applying the Google Closure Compiler")
     }
 
-    logger.time("Closure: Write result") {
-      writeResult(topLevelVarDeclarations, result, compiler, output)
-    }
+    (topLevelVarDeclarations, compiler.toSource + "\n", Option(compiler.getSourceMap()))
   }
 
   /** Constructs an externs file listing all the global refs.
@@ -154,7 +161,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   }
 
   private def writeResult(topLevelVarDeclarations: List[String],
-      result: Result, compiler: ClosureCompiler, output: LinkerOutput): Unit = {
+      outputContent: String, sourceMap: Option[SourceMap], output: LinkerOutput)(
+      implicit ec: ExecutionContext): Future[Unit] = {
 
     def ifIIFE(str: String): String = if (needsIIFEWrapper) str else ""
 
@@ -169,35 +177,36 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     }
     val footer = ifIIFE("}).call(this);\n")
 
-    val outputContent = compiler.toSource + "\n"
+    def writeToFile(file: WritableVirtualBinaryFile)(content: Writer => Unit): Future[Unit] = {
+      val out = new ByteArrayOutputStream()
+      val writer = new OutputStreamWriter(out, StandardCharsets.UTF_8)
+      try content(writer)
+      finally writer.close()
 
-    val sourceMap = Option(compiler.getSourceMap())
-
-    def writer(out: OutputStream) =
-      new OutputStreamWriter(out, StandardCharsets.UTF_8)
+      file.writeFull(ByteBuffer.wrap(out.toByteArray))
+    }
 
     // Write optimized code
-    val w = writer(output.jsFile.outputStream)
-    try {
+    val codeWritten = writeToFile(output.jsFile) { w =>
       w.write(header)
       w.write(outputContent)
       w.write(footer)
       output.sourceMapURI.foreach(uri =>
           w.write("//# sourceMappingURL=" + uri.toASCIIString + "\n"))
-    } finally {
-      w.close()
     }
 
     // Write source map (if available)
-    for {
+    val smWritten = for {
       sm  <- sourceMap
       smf <- output.sourceMap
     } yield {
       sm.setWrapperPrefix(header)
-      val w = writer(smf.outputStream)
-      try sm.appendTo(w, output.jsFileURI.fold("")(_.toASCIIString))
-      finally w.close()
+      writeToFile(smf) { w =>
+        sm.appendTo(w, output.jsFileURI.fold("")(_.toASCIIString))
+      }
     }
+
+    smWritten.fold(codeWritten)(_.flatMap(_ => codeWritten))
   }
 
   private def closureOptions(output: LinkerOutput) = {

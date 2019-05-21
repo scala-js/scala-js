@@ -14,71 +14,44 @@ package org.scalajs.linker.irio
 
 import scala.annotation.tailrec
 
+import scala.concurrent._
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
 import scala.scalajs.js.typedarray._
+import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 
 import java.io._
 import java.net.URI
+import java.nio.ByteBuffer
 
-class WritableNodeVirtualBinaryFile(path: String) extends WritableVirtualBinaryFile {
-  def outputStream: OutputStream = new NodeOutputStream(path)
+final class WritableNodeVirtualBinaryFile(path: String) extends WritableVirtualBinaryFile {
+  import NodeFS._
+
+  def newChannel()(implicit ec: ExecutionContext): Future[WriteChannel] = {
+    cbFuture[Int](FS.open(path, "w", _)).map(new WritableNodeVirtualBinaryFile.Channel(_))
+  }
 }
 
-object WritableNodeVirtualBinaryFile {
-  def apply(path: String): WritableNodeVirtualBinaryFile =
-    new WritableNodeVirtualBinaryFile(path)
-}
+private object WritableNodeVirtualBinaryFile {
+  import NodeFS._
 
-@JSImport("fs", JSImport.Namespace)
-@js.native
-private object NodeFS extends js.Object {
-  def openSync(path: String, flags: String): Int = js.native
-  def writeSync(fd: Int, buffer: Uint8Array): Int = js.native
-  def closeSync(fd: Int): Unit = js.native
-}
-
-private final class NodeOutputStream(path: String) extends OutputStream {
-  private[this] val bufsize = 4096
-  private[this] val fd = NodeFS.openSync(path, "w")
-  private[this] val arrBuf = new ArrayBuffer(bufsize)
-  private[this] val buf = TypedArrayBuffer.wrap(arrBuf)
-
-  @tailrec
-  override def write(b: Array[Byte], off: Int, len: Int): Unit = {
-    ensureSpace()
-
-    val ilen = Math.min(len, buf.remaining())
-    buf.put(b, off, ilen)
-
-    if (len > ilen)
-      write(b, off + ilen, ilen - len)
-  }
-
-  def write(b: Int): Unit = {
-    ensureSpace()
-    buf.put(b.toByte)
-  }
-
-  override def flush(): Unit = performWrite(0)
-
-  private def ensureSpace(): Unit = {
-    if (!buf.hasRemaining())
-      performWrite(bufsize / 4)
-  }
-
-  private def performWrite(limit: Int): Unit = {
-    buf.flip()
-    while (buf.remaining() > limit) {
+  private final class Channel(fd: Int) extends WriteChannel {
+    def write(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
       val pos = buf.position()
-      val written = NodeFS.writeSync(fd, new Uint8Array(arrBuf, pos, buf.limit() - pos))
-      buf.position(pos + written)
-    }
-    buf.compact()
-  }
+      val write = {
+        if (buf.hasTypedArray) {
+          cbFuture[Int](FS.write(fd, buf.typedArray(), pos, buf.remaining(), (), _))
+        } else {
+          val ta = ByteBuffer.allocateDirect(buf.remaining()).put(buf).typedArray()
+          cbFuture[Int](FS.write(fd, ta, 0, ta.length, js.undefined, _))
+        }
+      }
 
-  override def close(): Unit = {
-    flush()
-    NodeFS.closeSync(fd)
+      write.map(bytesWritten => buf.position(pos + bytesWritten))
+    }
+
+    def close()(implicit ec: ExecutionContext): Future[Unit] =
+      cbFuture[Unit](FS.close(fd, _))
   }
 }

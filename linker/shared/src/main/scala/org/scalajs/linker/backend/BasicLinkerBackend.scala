@@ -39,24 +39,25 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
    *  @param output File to write to
    */
   def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
-      implicit ec: ExecutionContext): Future[Unit] = Future {
+      implicit ec: ExecutionContext): Future[Unit] = {
     verifyUnit(unit)
 
-    val builder = newBuilder(output)
-    try {
-      logger.time("Emitter") {
-        emitter.emitAll(unit, builder, logger)
-      }
-    } finally {
-      builder.complete()
-    }
-  }
+    logger.timeFuture("Emitter") {
+      output.sourceMap.filter(_ => config.sourceMap).fold {
+        // Without source map.
+        val b = new JSFileBuilder
+        emitter.emitAll(unit, b, logger)
+        output.jsFile.writeFull(b.complete())
+      } { sourceMap =>
+        // With source map.
+        val b = new JSFileBuilderWithSourceMap(output.jsFileURI,
+            output.sourceMapURI, config.relativizeSourceMapBase)
+        emitter.emitAll(unit, b, logger)
+        val (js, sm) = b.complete()
 
-  private def newBuilder(output: LinkerOutput): JSLineBuilder = {
-    if (config.sourceMap && output.sourceMap.isDefined) {
-      new JSFileBuilderWithSourceMap(output, config.relativizeSourceMapBase)
-    } else {
-      new JSFileBuilder(output)
+        output.jsFile.writeFull(js)
+          .flatMap(_ => sourceMap.writeFull(sm))
+      }
     }
   }
 }

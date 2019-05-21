@@ -12,7 +12,10 @@
 
 package org.scalajs.linker.irio
 
+import scala.concurrent._
+
 import java.io._
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 final class WritableMemVirtualBinaryFile extends WritableVirtualBinaryFile {
@@ -20,10 +23,34 @@ final class WritableMemVirtualBinaryFile extends WritableVirtualBinaryFile {
 
   def content: Array[Byte] = _content
 
-  def outputStream: OutputStream = new ByteArrayOutputStream {
-    override def close(): Unit = {
-      super.close()
-      _content = this.toByteArray
+  def newChannel()(implicit ec: ExecutionContext): Future[WriteChannel] =
+    Future.successful(new Channel)
+
+  override def writeFull(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
+    val c = new Array[Byte](buf.remaining())
+    buf.get(c)
+    _content = c
+    Future.successful(())
+  }
+
+  private class Channel extends WriteChannel {
+    private val out = new ByteArrayOutputStream
+
+    def write(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = Future {
+      val promise = Promise[Unit]()
+      if (buf.hasArray()) {
+        out.write(buf.array(), buf.arrayOffset() + buf.position(), buf.remaining())
+        buf.position(buf.limit())
+      } else {
+        val c = new Array[Byte](buf.remaining())
+        buf.get(c)
+        out.write(c)
+      }
+    }
+
+    def close()(implicit ec: ExecutionContext): Future[Unit] = {
+      _content = out.toByteArray
+      Future.successful(())
     }
   }
 }

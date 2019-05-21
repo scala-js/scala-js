@@ -12,12 +12,9 @@
 
 package org.scalajs.linker.backend.javascript
 
-import org.scalajs.ir.Position
-
-import org.scalajs.linker.LinkerOutput
-
 import java.io._
 import java.net.URI
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 /** An abstract builder taking IR or JSTrees */
@@ -27,18 +24,16 @@ trait JSBuilder {
    *  desugaring a full-fledged IR tree).
    */
   def addJSTree(tree: Trees.Tree): Unit
-
-  /** Completes the builder. */
-  def complete(): Unit
 }
 
 trait JSLineBuilder extends JSBuilder {
   def addLine(line: String): Unit
 }
 
-final class JSFileBuilder(output: LinkerOutput) extends JSLineBuilder {
+final class JSFileBuilder extends JSLineBuilder {
+  private val out = new ByteArrayOutputStream
   private val outputWriter =
-    new OutputStreamWriter(output.jsFile.outputStream, StandardCharsets.UTF_8)
+    new OutputStreamWriter(out, StandardCharsets.UTF_8)
 
   def addLine(line: String): Unit = {
     outputWriter.write(line)
@@ -55,39 +50,47 @@ final class JSFileBuilder(output: LinkerOutput) extends JSLineBuilder {
     // Do not close the printer: we do not have ownership of the writers
   }
 
-  def complete(): Unit = outputWriter.close()
+  def complete(): ByteBuffer = {
+    outputWriter.close()
+    ByteBuffer.wrap(out.toByteArray())
+  }
 }
 
-class JSFileBuilderWithSourceMap(output: LinkerOutput,
-    relativizeSourceMapBasePath: Option[URI]) extends JSLineBuilder {
-  require(output.sourceMap.isDefined)
+final class JSFileBuilderWithSourceMap(
+    jsFileURI: Option[URI],
+    sourceMapURI: Option[URI],
+    relativizeSourceMapBasePath: Option[URI]
+) extends JSLineBuilder {
 
   private def writer(out: OutputStream) =
     new OutputStreamWriter(out, StandardCharsets.UTF_8)
 
-  private val outputWriter = writer(output.jsFile.outputStream)
+  private val jsOut = new ByteArrayOutputStream()
+  private val smOut = new ByteArrayOutputStream()
 
-  private val sourceMapWriter = new SourceMapWriter(
-      writer(output.sourceMap.get.outputStream), output.jsFileURI,
-      relativizeSourceMapBasePath)
+  private val jsWriter = writer(jsOut)
+
+  private val smWriter =
+    new SourceMapWriter(writer(smOut), jsFileURI, relativizeSourceMapBasePath)
 
   def addLine(line: String): Unit = {
-    outputWriter.write(line)
-    outputWriter.write('\n')
-    sourceMapWriter.nextLine()
+    jsWriter.write(line)
+    jsWriter.write('\n')
+    smWriter.nextLine()
   }
 
   def addJSTree(tree: Trees.Tree): Unit = {
-    val printer = new Printers.JSTreePrinterWithSourceMap(
-        outputWriter, sourceMapWriter)
+    val printer = new Printers.JSTreePrinterWithSourceMap(jsWriter, smWriter)
     printer.printTopLevelTree(tree)
     // Do not close the printer: we do not have ownership of the writers
   }
 
-  def complete(): Unit = {
-    output.sourceMapURI.foreach(uri =>
+  def complete(): (ByteBuffer, ByteBuffer) = {
+    sourceMapURI.foreach(uri =>
         addLine("//# sourceMappingURL=" + uri.toASCIIString()))
-    outputWriter.close()
-    sourceMapWriter.complete()
+    jsWriter.close()
+    smWriter.complete()
+
+    (ByteBuffer.wrap(jsOut.toByteArray()), ByteBuffer.wrap(smOut.toByteArray()))
   }
 }
