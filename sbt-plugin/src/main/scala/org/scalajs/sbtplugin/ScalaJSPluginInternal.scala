@@ -264,7 +264,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
             await(log) { eci =>
               implicit val ec = eci
               for {
-                irContainers <- FileScalaJSIRContainer.fromClasspath(classpath)
+                irContainers <- FileScalaJSIRContainer.fromClasspath(classpath.map(_.toPath))
                 irFiles <- cache.cached(irContainers)
               } yield (irFiles, irContainers)
             }
@@ -273,7 +273,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         Attributed
           .blank[Seq[VirtualScalaJSIRFile]](irFiles)
-          .put(scalaJSSourceFiles, irContainers.map(_.file))
+          .put(scalaJSSourceFiles, irContainers.map(_.file.toFile))
       },
 
       scalaJSClassNamesOnClasspath := Def.task {
