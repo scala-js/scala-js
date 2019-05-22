@@ -235,14 +235,14 @@ object Serializers {
           writeByte(TagStoreModule)
           writeClassRef(cls); writeTree(value)
 
-        case Select(qualifier, item) =>
+        case Select(qualifier, cls, field) =>
           writeByte(TagSelect)
-          writeTree(qualifier); writeIdent(item)
+          writeTree(qualifier); writeClassRef(cls); writeIdent(field)
           writeType(tree.tpe)
 
-        case SelectStatic(cls, item) =>
+        case SelectStatic(cls, field) =>
           writeByte(TagSelectStatic)
-          writeClassRef(cls); writeIdent(item)
+          writeClassRef(cls); writeIdent(field)
           writeType(tree.tpe)
 
         case Apply(flags, receiver, method, args) =>
@@ -289,6 +289,11 @@ object Serializers {
           writeByte(TagRecordValue)
           writeType(tpe); writeTrees(elems)
 
+        case RecordSelect(record, field) =>
+          writeByte(TagRecordSelect)
+          writeTree(record); writeIdent(field)
+          writeType(tree.tpe)
+
         case IsInstanceOf(expr, typeRef) =>
           writeByte(TagIsInstanceOf)
           writeTree(expr); writeTypeRef(typeRef)
@@ -309,9 +314,9 @@ object Serializers {
           writeByte(TagJSNew)
           writeTree(ctor); writeTreeOrJSSpreads(args)
 
-        case JSPrivateSelect(qualifier, item) =>
+        case JSPrivateSelect(qualifier, cls, field) =>
           writeByte(TagJSPrivateSelect)
-          writeTree(qualifier); writeIdent(item)
+          writeTree(qualifier); writeClassRef(cls); writeIdent(field)
 
         case JSSelect(qualifier, item) =>
           writeByte(TagJSSelect)
@@ -878,7 +883,7 @@ object Serializers {
         case TagNew          => New(readClassRef(), readIdent(), readTrees())
         case TagLoadModule   => LoadModule(readClassRef())
         case TagStoreModule  => StoreModule(readClassRef(), readTree())
-        case TagSelect       => Select(readTree(), readIdent())(readType())
+        case TagSelect       => Select(readTree(), readClassRef(), readIdent())(readType())
         case TagSelectStatic => SelectStatic(readClassRef(), readIdent())(readType())
 
         case TagApply =>
@@ -904,7 +909,7 @@ object Serializers {
         case TagGetClass     => GetClass(readTree())
 
         case TagJSNew                => JSNew(readTree(), readTreeOrJSSpreads())
-        case TagJSPrivateSelect      => JSPrivateSelect(readTree(), readIdent())
+        case TagJSPrivateSelect      => JSPrivateSelect(readTree(), readClassRef(), readIdent())
         case TagJSSelect             => JSSelect(readTree(), readTree())
         case TagJSFunctionApply      => JSFunctionApply(readTree(), readTreeOrJSSpreads())
         case TagJSMethodApply        => JSMethodApply(readTree(), readTree(), readTreeOrJSSpreads())

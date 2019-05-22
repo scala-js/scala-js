@@ -721,7 +721,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case fdef: js.FieldDef =>
           implicit val pos = fdef.pos
           val select = fdef.name match {
-            case ident: js.Ident          => js.JSPrivateSelect(selfRef, ident)
+            case ident: js.Ident          => js.JSPrivateSelect(selfRef, encodeClassRef(sym), ident)
             case lit: js.StringLiteral    => js.JSSelect(selfRef, lit)
             case js.ComputedName(tree, _) => js.JSSelect(selfRef, tree)
           }
@@ -2116,12 +2116,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             val boxed = if (isExposed(sym))
               js.JSSelect(genQual, genExpr(jsNameOf(sym)))
             else
-              js.JSPrivateSelect(genQual, encodeFieldSym(sym))
+              js.JSPrivateSelect(genQual, encodeClassRef(sym.owner), encodeFieldSym(sym))
             unboxFieldValue(boxed)
           } else if (jsInterop.isFieldStatic(sym)) {
             unboxFieldValue(genSelectStaticFieldAsBoxed(sym))
           } else {
-            js.Select(genExpr(qualifier),
+            js.Select(genExpr(qualifier), encodeClassRef(sym.owner),
                 encodeFieldSym(sym))(toIRType(sym.tpe))
           }
 
@@ -2216,13 +2216,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 val genLhs = if (isExposed(sym))
                   js.JSSelect(genQual, genExpr(jsNameOf(sym)))
                 else
-                  js.JSPrivateSelect(genQual, encodeFieldSym(sym))
+                  js.JSPrivateSelect(genQual, encodeClassRef(sym.owner), encodeFieldSym(sym))
                 js.Assign(genLhs, genBoxedRhs)
               } else if (jsInterop.isFieldStatic(sym)) {
                 js.Assign(genSelectStaticFieldAsBoxed(sym), genBoxedRhs)
               } else {
                 js.Assign(
-                    js.Select(genQual, encodeFieldSym(sym))(toIRType(sym.tpe)),
+                    js.Select(genQual, encodeClassRef(sym.owner),
+                        encodeFieldSym(sym))(toIRType(sym.tpe)),
                     genRhs)
               }
             case _ =>
@@ -5544,6 +5545,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val generatedClassName = encodeClassFullName(currentClassSym) + suffix
 
       val classType = jstpe.ClassType(generatedClassName)
+      val classRef = jstpe.ClassRef(generatedClassName)
 
       // val f$1: Any
       val fFieldIdent = js.Ident("f$1", Some("f"))
@@ -5561,7 +5563,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             jstpe.NoType,
             Some(js.Block(List(
                 js.Assign(
-                    js.Select(js.This()(classType), fFieldIdent)(jstpe.AnyType),
+                    js.Select(js.This()(classType), classRef, fFieldIdent)(
+                        jstpe.AnyType),
                     fParamDef.ref),
                 js.ApplyStatically(js.ApplyFlags.empty.withConstructor(true),
                     js.This()(classType),
@@ -5615,7 +5618,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }.map((ensureBoxed _).tupled)
 
         val call = js.JSFunctionApply(
-            js.Select(js.This()(classType), fFieldIdent)(jstpe.AnyType),
+            js.Select(js.This()(classType), classRef, fFieldIdent)(jstpe.AnyType),
             actualParams)
 
         val body = fromAny(call, enteringPhase(currentRun.posterasurePhase) {

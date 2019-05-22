@@ -287,15 +287,17 @@ object Printers {
           print("<-")
           print(value)
 
-        case Select(qualifier, item) =>
+        case Select(qualifier, cls, field) =>
           print(qualifier)
           print('.')
-          print(item)
-
-        case SelectStatic(cls, item) =>
           print(cls)
-          print('.')
-          print(item)
+          print("::")
+          print(field)
+
+        case SelectStatic(cls, field) =>
+          print(cls)
+          print("::")
+          print(field)
 
         case Apply(flags, receiver, method, args) =>
           print(receiver)
@@ -490,6 +492,11 @@ object Printers {
           }
           print(')')
 
+        case RecordSelect(record, field) =>
+          print(record)
+          print('.')
+          print(field)
+
         case IsInstanceOf(expr, typeRef) =>
           print(expr)
           print(".isInstanceOf[")
@@ -516,11 +523,11 @@ object Printers {
 
         case JSNew(ctor, args) =>
           def containsOnlySelectsFromAtom(tree: Tree): Boolean = tree match {
-            case JSPrivateSelect(qual, _) => containsOnlySelectsFromAtom(qual)
-            case JSSelect(qual, _)        => containsOnlySelectsFromAtom(qual)
-            case VarRef(_)                => true
-            case This()                   => true
-            case _                        => false // in particular, Apply
+            case JSPrivateSelect(qual, _, _) => containsOnlySelectsFromAtom(qual)
+            case JSSelect(qual, _)           => containsOnlySelectsFromAtom(qual)
+            case VarRef(_)                   => true
+            case This()                      => true
+            case _                           => false // in particular, Apply
           }
           if (containsOnlySelectsFromAtom(ctor)) {
             print("new ")
@@ -532,10 +539,12 @@ object Printers {
           }
           printArgs(args)
 
-        case JSPrivateSelect(qualifier, item) =>
+        case JSPrivateSelect(qualifier, cls, field) =>
           print(qualifier)
-          print(".")
-          print(item)
+          print('.')
+          print(cls)
+          print("::")
+          print(field)
 
         case JSSelect(qualifier, item) =>
           print(qualifier)

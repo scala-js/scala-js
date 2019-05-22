@@ -621,8 +621,8 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         case _                                      => false
       }
       def isElidableStat(tree: Tree): Boolean = tree match {
-        case Block(stats)                   => stats.forall(isElidableStat)
-        case Assign(Select(This(), _), rhs) => isTriviallySideEffectFree(rhs)
+        case Block(stats)                      => stats.forall(isElidableStat)
+        case Assign(Select(This(), _, _), rhs) => isTriviallySideEffectFree(rhs)
 
         // Mixin constructor, 2.11
         case ApplyStatic(flags, ClassRef(cls), methodName, List(This()))

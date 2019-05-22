@@ -560,22 +560,19 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case Assign(select, rhs) =>
         select match {
-          case Select(This(), Ident(_, _)) if env.inConstructor =>
+          case Select(This(), ClassRef(cls), Ident(_, _))
+              if env.inConstructor && env.thisTpe == ClassType(cls) =>
             // ok
-          case Select(receiver, Ident(name, _)) =>
-            receiver.tpe match {
-              case ClassType(clazz) =>
-                val c = lookupClass(clazz)
-
-                for {
-                  f <- c.lookupField(name)
-                  if !f.flags.isMutable
-                } reportError(s"Assignment to immutable field $name.")
-              case _ =>
+          case Select(receiver, ClassRef(cls), Ident(name, _)) =>
+            val c = lookupClass(cls)
+            for {
+              f <- c.lookupField(name)
+              if !f.flags.isMutable
+            } {
+              reportError(s"Assignment to immutable field $name.")
             }
           case SelectStatic(ClassRef(cls), Ident(name, _)) =>
             val c = lookupClass(cls)
-
             for {
               f <- c.lookupStaticField(name)
               if !f.flags.isMutable
@@ -776,40 +773,35 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         if (!cls.className.endsWith("$"))
           reportError("LoadModule of non-module class $cls")
 
-      case Select(qualifier, Ident(item, _)) =>
-        val qualType = typecheckExpr(qualifier, env)
-        qualType match {
-          case ClassType(cls) =>
-            val c = lookupClass(cls)
-            val kind = c.kind
-            if (!kind.isClass) {
-              reportError(s"Cannot select $item of non-class $cls")
-            } else {
-              /* Actually checking the field is done only if the class has
-               * instances (including instances of subclasses).
-               *
-               * This is necessary because the BaseLinker can completely get rid
-               * of all the fields of a class that has no instance. Obviously in
-               * such cases, the only value that `qualifier` can assume is
-               * `null`, and the `Select` will fail with an NPE. But the IR is
-               * still valid per se.
-               *
-               * See #3060.
-               */
-              if (c.hasInstances) {
-                c.lookupField(item).fold[Unit] {
-                  reportError(s"Class $cls does not have a field $item")
-                } { fieldDef =>
-                  if (fieldDef.tpe != tree.tpe)
-                    reportError(s"Select $cls.$item of type "+
-                        s"${fieldDef.tpe} typed as ${tree.tpe}")
-                }
-              }
+      case Select(qualifier, ClassRef(cls), Ident(item, _)) =>
+        val c = lookupClass(cls)
+        val kind = c.kind
+        if (!kind.isClass) {
+          reportError(s"Cannot select $item of non-class $cls")
+          typecheckExpr(qualifier, env)
+        } else {
+          typecheckExpect(qualifier, env, ClassType(cls))
+
+          /* Actually checking the field is done only if the class has
+           * instances (including instances of subclasses).
+           *
+           * This is necessary because the BaseLinker can completely get rid
+           * of all the fields of a class that has no instance. Obviously in
+           * such cases, the only value that `qualifier` can assume is
+           * `null`, and the `Select` will fail with an NPE. But the IR is
+           * still valid per se.
+           *
+           * See #3060.
+           */
+          if (c.hasInstances) {
+            c.lookupField(item).fold[Unit] {
+              reportError(s"Class $cls does not have a field $item")
+            } { fieldDef =>
+              if (fieldDef.tpe != tree.tpe)
+                reportError(s"Select $cls.$item of type "+
+                    s"${fieldDef.tpe} typed as ${tree.tpe}")
             }
-          case NullType | NothingType =>
-            // always ok
-          case _ =>
-            reportError(s"Cannot select $item of non-class type $qualType")
+          }
         }
 
       case SelectStatic(ClassRef(cls), Ident(item, _)) =>
@@ -965,7 +957,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         for (arg <- args)
           typecheckExprOrSpread(arg, env)
 
-      case JSPrivateSelect(qualifier, item) =>
+      case JSPrivateSelect(qualifier, cls, field) =>
+        // TODO Should we check that cls::field is defined somewhere?
         typecheckExpr(qualifier, env)
 
       case JSSelect(qualifier, item) =>
@@ -1358,7 +1351,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
 
     def lookupField(name: String): Option[CheckedField] =
-      fields.get(name).orElse(superClass.flatMap(_.lookupField(name)))
+      fields.get(name)
 
     def lookupStaticField(name: String): Option[CheckedField] =
       staticFields.get(name)

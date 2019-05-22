@@ -315,12 +315,13 @@ class PrintersTest {
   }
 
   @Test def printSelect(): Unit = {
-    assertPrintEquals("x.f$1", Select(ref("x", "Ltest_Test"), "f$1")(IntType))
+    assertPrintEquals("x.Ltest_Test::f",
+        Select(ref("x", "Ltest_Test"), "Ltest_Test", "f")(IntType))
   }
 
   @Test def printSelectStatic(): Unit = {
-    assertPrintEquals("Ltest_Test.f$1",
-        SelectStatic("Ltest_Test", "f$1")(IntType))
+    assertPrintEquals("Ltest_Test::f",
+        SelectStatic("Ltest_Test", "f")(IntType))
   }
 
   @Test def printApply(): Unit = {
@@ -581,21 +582,22 @@ class PrintersTest {
   @Test def printJSNew(): Unit = {
     assertPrintEquals("new C()", JSNew(ref("C", AnyType), Nil))
     assertPrintEquals("new C(4, 5)", JSNew(ref("C", AnyType), List(i(4), i(5))))
-    assertPrintEquals("new x.C(4, 5)",
-        JSNew(JSPrivateSelect(ref("x", AnyType), "C"), List(i(4), i(5))))
+    assertPrintEquals("new x.Ltest_Test::C(4, 5)",
+        JSNew(JSPrivateSelect(ref("x", AnyType), "Ltest_Test", "C"), List(i(4), i(5))))
     assertPrintEquals("""new x["C"]()""",
         JSNew(JSSelect(ref("x", AnyType), StringLiteral("C")), Nil))
 
     val fApplied = JSFunctionApply(ref("f", AnyType), Nil)
     assertPrintEquals("new (f())()", JSNew(fApplied, Nil))
-    assertPrintEquals("new (f().C)(4, 5)",
-        JSNew(JSPrivateSelect(fApplied, "C"), List(i(4), i(5))))
+    assertPrintEquals("new (f().Ltest_Test::C)(4, 5)",
+        JSNew(JSPrivateSelect(fApplied, "Ltest_Test", "C"), List(i(4), i(5))))
     assertPrintEquals("""new (f()["C"])()""",
         JSNew(JSSelect(fApplied, StringLiteral("C")), Nil))
   }
 
   @Test def printJSPrivateSelect(): Unit = {
-    assertPrintEquals("x.f", JSPrivateSelect(ref("x", AnyType), "f"))
+    assertPrintEquals("x.Ltest_Test::f",
+        JSPrivateSelect(ref("x", AnyType), "Ltest_Test", "f"))
   }
 
   @Test def printJSSelect(): Unit = {
@@ -608,13 +610,14 @@ class PrintersTest {
     assertPrintEquals("f(3, 4)",
         JSFunctionApply(ref("f", AnyType), List(i(3), i(4))))
 
-    assertPrintEquals("(0, x.f)()",
-        JSFunctionApply(JSPrivateSelect(ref("x", AnyType), "f"), Nil))
+    assertPrintEquals("(0, x.Ltest_Test::f)()",
+        JSFunctionApply(JSPrivateSelect(ref("x", AnyType), "Ltest_Test", "f"), Nil))
     assertPrintEquals("""(0, x["f"])()""",
         JSFunctionApply(JSSelect(ref("x", AnyType), StringLiteral("f")),
             Nil))
-    assertPrintEquals("(0, x.f$1)()",
-        JSFunctionApply(Select(ref("x", "Ltest_Test"), "f$1")(AnyType), Nil))
+    assertPrintEquals("(0, x.Ltest_Test::f)()",
+        JSFunctionApply(Select(ref("x", "Ltest_Test"), "Ltest_Test", "f")(AnyType),
+            Nil))
   }
 
   @Test def printJSMethodApply(): Unit = {

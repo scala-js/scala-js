@@ -319,7 +319,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     implicit val pos = tree.pos
 
     val superCtorCallAndFieldDefs = if (useClasses) {
-      val fieldDefs = genFieldDefsOfScalaClass(tree.fields)
+      val fieldDefs = genFieldDefsOfScalaClass(tree.encodedName, tree.fields)
       if (tree.superClass.isEmpty)
         fieldDefs
       else
@@ -327,7 +327,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     } else {
       val allFields =
         globalKnowledge.getAllScalaClassFieldDefs(tree.encodedName)
-      genFieldDefsOfScalaClass(allFields)
+      allFields.flatMap { classAndFields =>
+        genFieldDefsOfScalaClass(classAndFields._1, classAndFields._2)
+      }
     }
 
     initToInline.fold {
@@ -370,17 +372,16 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   /** Generates the creation of fields for a Scala class. */
-  private def genFieldDefsOfScalaClass(fields: List[FieldDef])(
+  private def genFieldDefsOfScalaClass(className: String,
+      fields: List[FieldDef])(
       implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     for {
       field @ FieldDef(flags, name, ftpe) <- fields
       if !flags.namespace.isStatic
     } yield {
       implicit val pos = field.pos
-      val jsIdent = (name: @unchecked) match {
-        case Ident(name, origName) => js.Ident(name, origName)
-      }
-      js.Assign(js.DotSelect(js.This(), jsIdent), genZeroOf(ftpe))
+      val nameIdent = name.asInstanceOf[Ident]
+      js.Assign(genSelect(js.This(), className, nameIdent), genZeroOf(ftpe))
     }
   }
 

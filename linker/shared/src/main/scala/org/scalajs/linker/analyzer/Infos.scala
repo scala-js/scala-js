@@ -493,6 +493,8 @@ object Infos {
             case New(ClassRef(cls), ctor, _) =>
               builder.addInstantiatedClass(cls, ctor.name)
 
+            case Select(_, ClassRef(cls), _) =>
+              builder.addReferencedClass(cls)
             case SelectStatic(ClassRef(cls), Ident(field, _)) =>
               builder.addStaticFieldRead(cls, field)
 

@@ -170,7 +170,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         } else {
           val after = from.tail
           val afterIsTrivial = after.forall {
-            case Assign(Select(This(), _), _:Literal | _:VarRef) =>
+            case Assign(Select(This(), _, _), _:Literal | _:VarRef) =>
               true
             case Assign(SelectStatic(_, _), _:Literal | _:VarRef) =>
               true
@@ -565,8 +565,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case JSNew(ctor, args) =>
         JSNew(transformExpr(ctor), transformExprsOrSpreads(args))
 
-      case JSPrivateSelect(qualifier, item) =>
-        JSPrivateSelect(transformExpr(qualifier), item)
+      case JSPrivateSelect(qualifier, cls, field) =>
+        JSPrivateSelect(transformExpr(qualifier), cls, field)
 
       case tree: JSSelect =>
         trampoline {
@@ -1025,21 +1025,22 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   private def pretransformSelectCommon(tree: Select, isLhsOfAssign: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
-    val Select(qualifier, item) = tree
+    val Select(qualifier, cls, field) = tree
     pretransformExpr(qualifier) { preTransQual =>
-      pretransformSelectCommon(tree.tpe, preTransQual, item,
+      pretransformSelectCommon(tree.tpe, preTransQual, cls, field,
           isLhsOfAssign)(cont)(scope, tree.pos)
     }
   }
 
   private def pretransformSelectCommon(expectedType: Type,
-      preTransQual: PreTransform, item: Ident, isLhsOfAssign: Boolean)(
+      preTransQual: PreTransform, cls: ClassRef, field: Ident,
+      isLhsOfAssign: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
     preTransQual match {
       case PreTransLocalDef(LocalDef(_, _,
           InlineClassBeingConstructedReplacement(_, fieldLocalDefs, cancelFun))) =>
-        val fieldLocalDef = fieldLocalDefs(FieldID(item))
+        val fieldLocalDef = fieldLocalDefs(FieldID(cls, field))
         if (!isLhsOfAssign || fieldLocalDef.mutable) {
           cont(fieldLocalDef.toPreTransform)
         } else {
@@ -1054,7 +1055,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case PreTransLocalDef(LocalDef(_, _,
           InlineClassInstanceReplacement(_, fieldLocalDefs, cancelFun))) =>
-        val fieldLocalDef = fieldLocalDefs(FieldID(item))
+        val fieldLocalDef = fieldLocalDefs(FieldID(cls, field))
         if (!isLhsOfAssign || fieldLocalDef.mutable) {
           cont(fieldLocalDef.toPreTransform)
         } else {
@@ -1071,7 +1072,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       // Select the lo or hi "field" of a Long literal
       case PreTransLit(LongLiteral(value)) if useRuntimeLong =>
-        val itemName = item.name
+        val itemName = field.name
         assert(itemName == inlinedRTLongLoField ||
             itemName == inlinedRTLongHiField)
         assert(expectedType == IntType)
@@ -1084,8 +1085,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         resolveLocalDef(preTransQual) match {
           case PreTransRecordTree(newQual, origType, cancelFun) =>
             val recordType = newQual.tpe.asInstanceOf[RecordType]
-            val field = recordType.findField(item.name)
-            val sel = Select(newQual, item)(field.tpe)
+            val recordField = recordType.findField(field.name)
+            val sel = RecordSelect(newQual, field)(recordField.tpe)
             sel.tpe match {
               case _: RecordType =>
                 cont(PreTransRecordTree(sel, RefinedType(expectedType), cancelFun))
@@ -1094,7 +1095,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             }
 
           case PreTransTree(newQual, _) =>
-            cont(PreTransTree(Select(newQual, item)(expectedType),
+            cont(PreTransTree(Select(newQual, cls, field)(expectedType),
                 RefinedType(expectedType)))
         }
     }
@@ -1385,7 +1386,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       else stat
     case NewArray(_, lengths) =>
       Block(lengths.map(keepOnlySideEffects))(stat.pos)
-    case Select(qualifier, _) =>
+    case Select(qualifier, _, _) =>
       keepOnlySideEffects(qualifier)
     case Closure(_, _, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
@@ -1400,6 +1401,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       Block(keepOnlySideEffects(lhs), keepOnlySideEffects(rhs))(stat.pos)
     case RecordValue(_, elems) =>
       Block(elems.map(keepOnlySideEffects))(stat.pos)
+    case RecordSelect(record, _) =>
+      keepOnlySideEffects(record)
     case _ =>
       stat
   }
@@ -1891,18 +1894,18 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             "There was a This(), there should be a receiver")
         cont(optReceiver.get)
 
-      case Select(This(), field) if formals.isEmpty =>
+      case Select(This(), cls, field) if formals.isEmpty =>
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        pretransformSelectCommon(body.tpe, optReceiver.get, field,
+        pretransformSelectCommon(body.tpe, optReceiver.get, cls, field,
             isLhsOfAssign = false)(cont)
 
-      case Assign(lhs @ Select(This(), field), VarRef(Ident(rhsName, _)))
+      case Assign(lhs @ Select(This(), cls, field), VarRef(Ident(rhsName, _)))
           if formals.size == 1 && formals.head.name.name == rhsName =>
         assert(isStat, "Found Assign in expression position")
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        pretransformSelectCommon(lhs.tpe, optReceiver.get, field,
+        pretransformSelectCommon(lhs.tpe, optReceiver.get, cls, field,
             isLhsOfAssign = true) { preTransLhs =>
           // TODO Support assignment of record
           cont(PreTransTree(
@@ -2306,8 +2309,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         inlineClassConstructorBodyList(allocationSite, structure, thisLocalDef,
             inputFieldsLocalDefs, cls, rest, cancelFun)(buildInner)(cont)
 
-      case Assign(s @ Select(ths: This, field), value) :: rest
-          if !inputFieldsLocalDefs(FieldID(field)).mutable =>
+      case Assign(s @ Select(ths: This, cls, field), value) :: rest
+          if !inputFieldsLocalDefs(FieldID(cls, field)).mutable =>
         pretransformExpr(value) { tvalue =>
           withNewLocalDef(Binding(field.name, field.originalName, s.tpe, false,
               tvalue)) { (localDef, cont1) =>
@@ -2318,7 +2321,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               cancelFun()
             }
             val newFieldsLocalDefs =
-              inputFieldsLocalDefs.updated(FieldID(field), localDef)
+              inputFieldsLocalDefs.updated(FieldID(cls, field), localDef)
             val newThisLocalDef = LocalDef(thisLocalDef.tpe, false,
                 InlineClassBeingConstructedReplacement(structure, newFieldsLocalDefs, cancelFun))
             val restScope = scope.withEnv(scope.env.withLocalDef(
@@ -2342,7 +2345,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
        *
        * Typical shape of initialization of outer pointer of inner classes.
        */
-      case If(cond, th: Throw, Assign(Select(This(), _), value)) :: rest =>
+      case If(cond, th: Throw, Assign(Select(This(), _, _), value)) :: rest =>
         // work around a bug of the compiler (these should be @-bindings)
         val stat = stats.head.asInstanceOf[If]
         val ass = stat.elsep.asInstanceOf[Assign]
@@ -4360,7 +4363,7 @@ private[optimizer] object OptimizerCore {
         s"unexpected JS field in InlineableClassStructure: $allFields")
 
     private[OptimizerCore] val fieldIDs: List[FieldID] =
-      allFields.map(field => FieldID(field._2))
+      allFields.map(field => FieldID(field._1, field._2))
 
     private[OptimizerCore] val recordType: RecordType = {
       val allocator = new FreshNameAllocator
@@ -4377,7 +4380,7 @@ private[optimizer] object OptimizerCore {
 
     private val recordFieldNames: Map[FieldID, RecordType.Field] = {
       val elems = for (((cls, fieldDef), recordField) <- allFields.zip(recordType.fields))
-        yield FieldID(fieldDef) -> recordField
+        yield FieldID(cls, fieldDef) -> recordField
       elems.toMap
     }
 
@@ -4928,8 +4931,8 @@ private[optimizer] object OptimizerCore {
 
     val RecordType(List(loField, hiField)) = recordVarRef.tpe
     createNewLong(
-        Select(recordVarRef, Ident(loField.name, loField.originalName))(IntType),
-        Select(recordVarRef, Ident(hiField.name, hiField.originalName))(IntType))
+        RecordSelect(recordVarRef, Ident(loField.name, loField.originalName))(IntType),
+        RecordSelect(recordVarRef, Ident(hiField.name, hiField.originalName))(IntType))
   }
 
   /** Creates a new instance of `RuntimeLong` from its `lo` and `hi` parts. */
@@ -5129,22 +5132,27 @@ private[optimizer] object OptimizerCore {
       shouldInline = inlineable && {
         optimizerHints.inline || isForwarder || {
           body match {
-            case _:Skip | _:This | _:Literal                          => true
+            case _:Skip | _:This | _:Literal =>
+              true
 
             // Shape of accessors
-            case Select(This(), _) if params.isEmpty                  => true
-            case Assign(Select(This(), _), VarRef(_))
-                if params.size == 1                                   => true
+            case Select(This(), _, _) if params.isEmpty =>
+              true
+            case Assign(Select(This(), _, _), VarRef(_)) if params.size == 1 =>
+              true
 
             // Shape of trivial call-super constructors
             case Block(stats)
                 if params.isEmpty && isConstructorName(encodedName) &&
-                    stats.forall(isTrivialConstructorStat)            => true
+                    stats.forall(isTrivialConstructorStat) =>
+              true
 
             // Simple method
-            case SimpleMethodBody()                                   => true
+            case SimpleMethodBody() =>
+              true
 
-            case _ => false
+            case _ =>
+              false
           }
         }
       }
@@ -5180,7 +5188,7 @@ private[optimizer] object OptimizerCore {
       case Apply(_, receiver, _, args)              => areSimpleArgs(receiver :: args)
       case ApplyStatically(_, receiver, _, _, args) => areSimpleArgs(receiver :: args)
       case ApplyStatic(_, _, _, args)               => areSimpleArgs(args)
-      case Select(qual, _)                          => isSimpleArg(qual)
+      case Select(qual, _, _)                       => isSimpleArg(qual)
       case IsInstanceOf(inner, _)                   => isSimpleArg(inner)
 
       case Block(List(inner, Undefined())) =>
@@ -5298,28 +5306,29 @@ private[optimizer] object OptimizerCore {
         private[FreshNameAllocator] val usedNamesToNextCounter: Map[String, Int])
   }
 
-  final class FieldID private (val name: String) {
+  final class FieldID private (val ownerClassName: String, val name: String) {
     override def equals(that: Any): Boolean = that match {
       case that: FieldID =>
+        this.ownerClassName == that.ownerClassName &&
         this.name == that.name
       case _ =>
         false
     }
 
     override def hashCode(): Int =
-      name.##
+      ownerClassName.## ^ name.##
 
     override def toString(): String =
-      s"FieldID($name)"
+      s"FieldID($ownerClassName, $name)"
   }
 
   object FieldID {
-    def apply(field: Ident): FieldID =
-      new FieldID(field.name)
+    def apply(cls: ClassRef, field: Ident): FieldID =
+      new FieldID(cls.className, field.name)
 
-    def apply(fieldDef: FieldDef): FieldID = fieldDef.name match {
-      case nameIdent: Ident =>
-        apply(nameIdent)
+    def apply(ownerClassName: String, fieldDef: FieldDef): FieldID = fieldDef.name match {
+      case Ident(name, _) =>
+        new FieldID(ownerClassName, name)
       case _ =>
         throw new AssertionError(
             s"unexpected JS field $fieldDef at ${fieldDef.pos} when building a FieldID")
