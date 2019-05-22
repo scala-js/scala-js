@@ -81,7 +81,7 @@ object MyScalaJSPlugin extends AutoPlugin {
 
       scalaJSLinkerConfig ~= (_.withCheckIR(true)),
 
-      wantSourceMaps := !scalaJSLinkerConfig.value.esFeatures.useECMAScript2015,
+      wantSourceMaps := true,
 
       jsEnv := new NodeJSEnv(
           NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)),
