@@ -384,7 +384,7 @@ ScalaJS.comparableCompareTo = function(instance, rhs) {
       return instance === rhs ? 0 : (instance < rhs ? -1 : 1);
     case "number":
 //!if asInstanceOfs != Unchecked
-      ScalaJS.as.jl_Number(rhs);
+      ScalaJS.asDouble(rhs);
 //!endif
       return ScalaJS.m.jl_Double$().compare__D__D__I(instance, rhs);
     case "boolean":
