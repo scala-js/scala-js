@@ -39,7 +39,7 @@ final class ESFeatures private (
 
   private def this() = {
     this(
-        useECMAScript2015 = false,
+        useECMAScript2015 = true,
         allowBigIntsForLongs = false
     )
   }
@@ -90,7 +90,7 @@ object ESFeatures {
 
   /** Default configuration of ECMAScript features.
    *
-   *  - `useECMAScript2015`: false
+   *  - `useECMAScript2015`: true
    *  - `allowBigIntsForLongs`: false
    */
   val Defaults: ESFeatures = new ESFeatures()
