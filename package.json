@@ -1,7 +1,7 @@
 {
   "private": true,
   "devDependencies": {
-    "source-map-support": "0.4.15",
+    "source-map-support": "0.5.7",
     "jszip": "3.1.4"
   }
 }
