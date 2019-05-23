@@ -8,11 +8,6 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
-      // private[closure], not an issue
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.core.tools.linker.backend.closure.ClosureAstTransformer.transformStringKey"),
-      ProblemFilters.exclude[MissingClassProblem](
-          "org.scalajs.core.tools.linker.backend.closure.LoggerErrorManager")
   )
 
   val JSEnvs = Seq(
@@ -25,9 +20,6 @@ object BinaryIncompatibilities {
   )
 
   val TestCommon = Seq(
-      // private, not an issue
-      ProblemFilters.exclude[MissingClassProblem](
-          "org.scalajs.testcommon.RPCCore$JDKCollectionConvertersCompat$*")
   )
 
   val TestAdapter = TestCommon ++ Seq(
@@ -37,10 +29,6 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
-      // private[niocharset], not an issue
-      ProblemFilters.exclude[MissingClassProblem]("scala.scalajs.niocharset.ISO_*"),
-      ProblemFilters.exclude[MissingClassProblem]("scala.scalajs.niocharset.US_*"),
-      ProblemFilters.exclude[MissingClassProblem]("scala.scalajs.niocharset.UTF_*")
   )
 
   val TestInterface = TestCommon ++ Seq(
