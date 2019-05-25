@@ -97,13 +97,12 @@ class MainGenericRunner {
 
     val sjsCode = {
       val file = Jimfs.newFileSystem().getPath("partest.js")
-      val out = new WritableFileVirtualBinaryFile(file)
 
       val cache = (new IRFileCache).newCache
       val result = FileScalaJSIRContainer
         .fromClasspath(command.settings.classpathURLs.map(urlToPath _))
         .flatMap(cache.cached _)
-        .flatMap(linker.link(_, moduleInitializers, LinkerOutput(out), logger))
+        .flatMap(linker.link(_, moduleInitializers, LinkerOutput(LinkerOutput.newPathFile(file)), logger))
 
       Await.result(result, Duration.Inf)
 

@@ -10,15 +10,19 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.irio
+package org.scalajs.linker.standard
 
 import scala.concurrent._
 
 import java.nio.ByteBuffer
 
-/** A writable virtual binary file. */
-trait WritableVirtualBinaryFile {
-  def newChannel()(implicit ec: ExecutionContext): Future[WriteChannel]
+import org.scalajs.linker.LinkerOutput
+import org.scalajs.linker.irio._
+
+abstract class OutputFileImpl extends LinkerOutput.File {
+  final private[linker] def impl: OutputFileImpl = this
+
+  def newChannel()(implicit ec: ExecutionContext): Future[OutputFileImpl.Channel]
 
   def writeFull(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
     newChannel().flatMap { chan =>
@@ -32,7 +36,11 @@ trait WritableVirtualBinaryFile {
   }
 }
 
-trait WriteChannel {
-  def write(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit]
-  def close()(implicit ec: ExecutionContext): Future[Unit]
+object OutputFileImpl {
+  def fromOutputFile(f: LinkerOutput.File): OutputFileImpl = f.impl
+
+  trait Channel {
+    def write(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit]
+    def close()(implicit ec: ExecutionContext): Future[Unit]
+  }
 }

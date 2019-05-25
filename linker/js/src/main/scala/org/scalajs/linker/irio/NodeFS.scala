@@ -18,7 +18,7 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
 import scala.scalajs.js.typedarray._
 
-private[irio] object NodeFS {
+private[linker] object NodeFS {
   type CB[T] = js.Function2[js.Error, T, Unit]
 
   def cbFuture[A](op: CB[A] => Unit): Future[A] = {

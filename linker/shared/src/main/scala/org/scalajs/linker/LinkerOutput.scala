@@ -12,9 +12,14 @@
 
 package org.scalajs.linker
 
-import org.scalajs.linker.irio.WritableVirtualBinaryFile
+import scala.concurrent._
+
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
 
 import java.net.URI
+
+import org.scalajs.linker.standard.OutputFileImpl
 
 /** Output specification for a linker run.
  *
@@ -36,15 +41,15 @@ import java.net.URI
  *      this even if [[sourceMap]] is not set, but it is typically meaningless.
  */
 final class LinkerOutput private (
-    val jsFile: WritableVirtualBinaryFile,
-    val sourceMap: Option[WritableVirtualBinaryFile],
+    val jsFile: LinkerOutput.File,
+    val sourceMap: Option[LinkerOutput.File],
     val sourceMapURI: Option[URI],
     val jsFileURI: Option[URI]
 ) {
-  private def this(jsFile: WritableVirtualBinaryFile) =
+  private def this(jsFile: LinkerOutput.File) =
     this(jsFile, None, None, None)
 
-  def withSourceMap(sourceMap: WritableVirtualBinaryFile): LinkerOutput =
+  def withSourceMap(sourceMap: LinkerOutput.File): LinkerOutput =
     copy(sourceMap = Some(sourceMap))
 
   def withSourceMapURI(sourceMapURI: URI): LinkerOutput =
@@ -53,14 +58,71 @@ final class LinkerOutput private (
   def withJSFileURI(jsFileURI: URI): LinkerOutput =
     copy(jsFileURI = Some(jsFileURI))
 
-  private def copy(jsFile: WritableVirtualBinaryFile = jsFile,
-      sourceMap: Option[WritableVirtualBinaryFile] = sourceMap,
+  private def copy(
+      jsFile: LinkerOutput.File = jsFile,
+      sourceMap: Option[LinkerOutput.File] = sourceMap,
       sourceMapURI: Option[URI] = sourceMapURI,
       jsFileURI: Option[URI] = jsFileURI): LinkerOutput = {
     new LinkerOutput(jsFile, sourceMap, sourceMapURI, jsFileURI)
   }
 }
 
-object LinkerOutput {
-  def apply(jsFile: WritableVirtualBinaryFile): LinkerOutput = new LinkerOutput(jsFile)
+object LinkerOutput extends LinkerOutputPlatformExtensions {
+  def apply(jsFile: LinkerOutput.File): LinkerOutput = new LinkerOutput(jsFile)
+
+  def newMemFile(): MemFile = new MemFileImpl()
+
+  abstract class File private[linker] () {
+    private[linker] def impl: OutputFileImpl
+  }
+
+  sealed trait MemFile extends File {
+    /** Content that has been written to this [[MemFile]].
+     *
+     *  @throws java.lang.IllegalStateException if nothing has been written yet.
+     */
+    def content: Array[Byte]
+  }
+
+  private final class MemFileImpl extends OutputFileImpl with MemFile {
+    @volatile
+    private var _content: Array[Byte] = _
+
+    def content: Array[Byte] = {
+      if (_content == null)
+        throw new IllegalStateException("content hasn't been written yet")
+      _content
+    }
+
+    def newChannel()(implicit ec: ExecutionContext): Future[OutputFileImpl.Channel] =
+      Future.successful(new Channel)
+
+    override def writeFull(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
+      val c = new Array[Byte](buf.remaining())
+      buf.get(c)
+      _content = c
+      Future.successful(())
+    }
+
+    private class Channel extends OutputFileImpl.Channel {
+      private val out = new ByteArrayOutputStream
+
+      def write(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = Future {
+        val promise = Promise[Unit]()
+        if (buf.hasArray()) {
+          out.write(buf.array(), buf.arrayOffset() + buf.position(), buf.remaining())
+          buf.position(buf.limit())
+        } else {
+          val c = new Array[Byte](buf.remaining())
+          buf.get(c)
+          out.write(c)
+        }
+      }
+
+      def close()(implicit ec: ExecutionContext): Future[Unit] = {
+        _content = out.toByteArray
+        Future.successful(())
+      }
+    }
+  }
 }

@@ -10,33 +10,31 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.irio
-
-import scala.annotation.tailrec
+package org.scalajs.linker
 
 import scala.concurrent._
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.JSImport
-import scala.scalajs.js.typedarray._
 import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 
-import java.io._
-import java.net.URI
 import java.nio.ByteBuffer
 
-final class WritableNodeVirtualBinaryFile(path: String) extends WritableVirtualBinaryFile {
-  import NodeFS._
+import org.scalajs.linker.irio.NodeFS._
+import org.scalajs.linker.standard.OutputFileImpl
 
-  def newChannel()(implicit ec: ExecutionContext): Future[WriteChannel] = {
-    cbFuture[Int](FS.open(path, "w", _)).map(new WritableNodeVirtualBinaryFile.Channel(_))
-  }
+abstract class LinkerOutputPlatformExtensions private[linker] () {
+  def newNodeFile(path: String): LinkerOutput.File =
+    new LinkerOutputPlatformExtensions.NodeOutputFileImpl(path)
 }
 
-private object WritableNodeVirtualBinaryFile {
-  import NodeFS._
+private object LinkerOutputPlatformExtensions {
+  private final class NodeOutputFileImpl(path: String) extends OutputFileImpl {
+    def newChannel()(implicit ec: ExecutionContext): Future[OutputFileImpl.Channel] = {
+      cbFuture[Int](FS.open(path, "w", _)).map(new NodeOutputChannel(_))
+    }
+  }
 
-  private final class Channel(fd: Int) extends WriteChannel {
+  private final class NodeOutputChannel(fd: Int) extends OutputFileImpl.Channel {
     def write(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
       val pos = buf.position()
       val write = {

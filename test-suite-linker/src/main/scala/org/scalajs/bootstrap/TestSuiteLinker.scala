@@ -37,8 +37,8 @@ object QuickLinker {
     def relURI(path: String) =
       new URI(null, null, NodePath.basename(path), null)
 
-    val out = LinkerOutput(new WritableNodeVirtualBinaryFile(outputPath))
-      .withSourceMap(new WritableNodeVirtualBinaryFile(smPath))
+    val out = LinkerOutput(LinkerOutput.newNodeFile(outputPath))
+      .withSourceMap(LinkerOutput.newNodeFile(smPath))
       .withSourceMapURI(relURI(smPath))
       .withJSFileURI(relURI(outputPath))
 

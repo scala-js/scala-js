@@ -214,8 +214,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
             def relURI(path: String) = new URI(null, null, path, null)
 
-            val out = LinkerOutput(new AtomicWritableFileVirtualBinaryFile(output.toPath))
-              .withSourceMap(new AtomicWritableFileVirtualBinaryFile(sourceMapFile.toPath))
+            val out = LinkerOutput(LinkerOutput.newAtomicPathFile(output.toPath))
+              .withSourceMap(LinkerOutput.newAtomicPathFile(sourceMapFile.toPath))
               .withSourceMapURI(relURI(sourceMapFile.getName))
               .withJSFileURI(relURI(output.getName))
 

@@ -2,7 +2,6 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 import org.scalajs.linker._
-import org.scalajs.linker.irio._
 import org.scalajs.sbtplugin.Loggers.sbtLogger2ToolsLogger
 import org.scalajs.sbtplugin.ScalaJSCrossVersion
 
@@ -73,7 +72,7 @@ lazy val noDOM = project.settings(baseSettings: _*).
 
           log.info("Fake full optimizing")
           val linker = (scalaJSLinker in fullOptJS).value
-          val output = LinkerOutput(new WritableMemVirtualBinaryFile)
+          val output = LinkerOutput(LinkerOutput.newMemFile())
           Await.result(
               linker.link(ir, moduleInitializers, output, sbtLogger2ToolsLogger(log)),
               Duration.Inf)

@@ -177,13 +177,14 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     }
     val footer = ifIIFE("}).call(this);\n")
 
-    def writeToFile(file: WritableVirtualBinaryFile)(content: Writer => Unit): Future[Unit] = {
+    def writeToFile(file: LinkerOutput.File)(content: Writer => Unit): Future[Unit] = {
       val out = new ByteArrayOutputStream()
       val writer = new OutputStreamWriter(out, StandardCharsets.UTF_8)
       try content(writer)
       finally writer.close()
 
-      file.writeFull(ByteBuffer.wrap(out.toByteArray))
+      OutputFileImpl.fromOutputFile(file)
+        .writeFull(ByteBuffer.wrap(out.toByteArray))
     }
 
     // Write optimized code

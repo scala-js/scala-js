@@ -77,7 +77,7 @@ class LinkerTest {
     val linker = StandardLinker(StandardLinker.Config())
 
     def callLink(): Future[Unit] = {
-      val out = LinkerOutput(new WritableMemVirtualBinaryFile)
+      val out = LinkerOutput(LinkerOutput.newMemFile())
       linker.link(badSeq, Nil, out, NullLogger)
     }
 
@@ -122,7 +122,7 @@ object LinkerTest {
       }
     }
 
-    val output = LinkerOutput(new WritableMemVirtualBinaryFile)
+    val output = LinkerOutput(LinkerOutput.newMemFile())
 
     TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
       linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,

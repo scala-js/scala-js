@@ -17,7 +17,7 @@ import scala.concurrent._
 import scala.util.{Try, Success, Failure}
 
 package object irio {
-  private[irio] implicit class FutureOps[T](val __self: Future[T]) extends AnyVal {
+  private[linker] implicit class FutureOps[T](val __self: Future[T]) extends AnyVal {
     def transformWith[S](f: Try[T] => Future[S])(implicit ec: ExecutionContext): Future[S] =
       __self.map[Try[T]](Success(_)).recover { case t => Failure(t) }.flatMap(f)
 
