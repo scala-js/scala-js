@@ -43,7 +43,7 @@ final class TestIRRepo(stdlibPath: String) {
   import scala.concurrent.ExecutionContext.Implicits.global
   import TestIRRepo.InfoLoader
 
-  private val globalIRCache = new IRFileCache
+  private val globalIRCache = IRFileCache()
 
   val stdlibIRFiles: Future[Seq[VirtualScalaJSIRFile]] = {
     Platform.loadJar(stdlibPath).flatMap(

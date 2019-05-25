@@ -98,7 +98,7 @@ class MainGenericRunner {
     val sjsCode = {
       val file = Jimfs.newFileSystem().getPath("partest.js")
 
-      val cache = (new IRFileCache).newCache
+      val cache = IRFileCache().newCache
       val result = FileScalaJSIRContainer
         .fromClasspath(command.settings.classpathURLs.map(urlToPath _))
         .flatMap(cache.cached _)

@@ -50,7 +50,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
   import ScalaJSPlugin.logIRCacheStats
 
   /** The global Scala.js IR cache */
-  val globalIRCache: IRFileCache = new IRFileCache()
+  val globalIRCache: IRFileCache = IRFileCache()
 
   @tailrec
   final private def registerResource[T <: AnyRef](

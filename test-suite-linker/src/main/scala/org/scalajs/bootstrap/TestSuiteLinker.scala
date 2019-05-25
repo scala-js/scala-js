@@ -42,7 +42,7 @@ object QuickLinker {
       .withSourceMapURI(relURI(smPath))
       .withJSFileURI(relURI(outputPath))
 
-    val cache = (new IRFileCache).newCache
+    val cache = IRFileCache().newCache
 
     NodeScalaJSIRContainer.fromClasspath(cp.toSeq)
       .flatMap(cache.cached _)
