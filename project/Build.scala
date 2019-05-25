@@ -294,7 +294,7 @@ object Build {
           }
         } (docPaths.keySet + additionalStylesFile)
 
-        if (errorsSeen.size > 0)
+        if (errorsSeen.nonEmpty)
           throw new MessageOnlyException("ScalaDoc patching had errors")
 
         outDir

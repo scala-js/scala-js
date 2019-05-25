@@ -512,5 +512,5 @@ protected[testinterface] object HTMLRunner {
   }
 
   private def and(xs: collection.Seq[Boolean]): Boolean =
-    xs.foldLeft(true)(_ && _)
+    xs.forall(identity)
 }
