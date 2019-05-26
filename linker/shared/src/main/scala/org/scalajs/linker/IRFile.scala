@@ -10,13 +10,12 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.testutils
+package org.scalajs.linker
 
-import scala.concurrent._
+import org.scalajs.linker.standard.IRFileImpl
 
-import org.scalajs.linker.IRContainer
-
-object Platform {
-  def loadJar(path: String)(implicit ec: ExecutionContext): Future[Seq[IRContainer]] =
-    IRContainer.fromNodeClasspath(Seq(path)).map(_._1)
+abstract class IRFile private[linker] () {
+  private[linker] def impl: IRFileImpl
 }
+
+object IRFile extends IRFilePlatformExtensions

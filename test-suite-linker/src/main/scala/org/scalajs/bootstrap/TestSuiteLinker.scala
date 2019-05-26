@@ -12,7 +12,6 @@ import java.net.URI
 import org.scalajs.logging._
 
 import org.scalajs.linker._
-import org.scalajs.linker.irio._
 
 @JSExportTopLevel("TestSuiteLinker")
 object QuickLinker {
@@ -44,7 +43,8 @@ object QuickLinker {
 
     val cache = IRFileCache().newCache
 
-    NodeScalaJSIRContainer.fromClasspath(cp.toSeq)
+    IRContainer.fromNodeClasspath(cp.toSeq)
+      .map(_._1)
       .flatMap(cache.cached _)
       .flatMap(linker.link(_, moduleInitializers, out, new ScalaConsoleLogger))
       .toJSPromise

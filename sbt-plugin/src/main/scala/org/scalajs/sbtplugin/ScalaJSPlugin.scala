@@ -20,7 +20,6 @@ import sbt.Keys._
 import org.scalajs.ir.ScalaJSVersions
 
 import org.scalajs.linker._
-import org.scalajs.linker.irio._
 
 import org.scalajs.jsenv.{Input, JSEnv}
 import org.scalajs.jsenv.nodejs.NodeJSEnv
@@ -109,7 +108,7 @@ object ScalaJSPlugin extends AutoPlugin {
     val testHtml = TaskKey[Attributed[File]]("testHtml",
         "Create an HTML test runner. Honors `scalaJSStage`.", AMinusTask)
 
-    val scalaJSIR = TaskKey[Attributed[Seq[VirtualScalaJSIRFile]]](
+    val scalaJSIR = TaskKey[Attributed[Seq[IRFile]]](
         "scalaJSIR", "All the *.sjsir files on the classpath", CTask)
 
     val scalaJSModuleInitializers = TaskKey[Seq[ModuleInitializer]]("scalaJSModuleInitializers",

@@ -19,7 +19,6 @@ import org.scalajs.ir
 import org.scalajs.logging._
 
 import org.scalajs.linker._
-import org.scalajs.linker.irio._
 
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
@@ -99,8 +98,9 @@ class MainGenericRunner {
       val file = Jimfs.newFileSystem().getPath("partest.js")
 
       val cache = IRFileCache().newCache
-      val result = FileScalaJSIRContainer
-        .fromClasspath(command.settings.classpathURLs.map(urlToPath _))
+      val result = IRContainer
+        .fromPathClasspath(command.settings.classpathURLs.map(urlToPath _))
+        .map(_._1)
         .flatMap(cache.cached _)
         .flatMap(linker.link(_, moduleInitializers, LinkerOutput(LinkerOutput.newPathFile(file)), logger))
 

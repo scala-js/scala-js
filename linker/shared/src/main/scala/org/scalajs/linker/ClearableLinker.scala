@@ -62,7 +62,7 @@ object ClearableLinker {
 
     private[this] var _linker: Linker = _
 
-    def link(irFiles: Seq[VirtualScalaJSIRFile],
+    def link(irFiles: Seq[IRFile],
         moduleInitializers: Seq[ModuleInitializer],
         output: LinkerOutput, logger: Logger)(
         implicit ec: ExecutionContext): Future[Unit] = {

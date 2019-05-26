@@ -29,7 +29,7 @@ import sbt.complete.DefaultParsers._
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
 import org.scalajs.linker._
-import org.scalajs.linker.irio._
+import org.scalajs.linker.standard.IRFileImpl
 
 import org.scalajs.jsenv._
 
@@ -259,21 +259,21 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val log = streams.value.log
         val tlog = sbtLogger2ToolsLogger(log)
 
-        val (irFiles, irContainers) = enhanceIRVersionNotSupportedException {
+        val (irFiles, paths) = enhanceIRVersionNotSupportedException {
           tlog.time("Update IR cache") {
             await(log) { eci =>
               implicit val ec = eci
               for {
-                irContainers <- FileScalaJSIRContainer.fromClasspath(classpath.map(_.toPath))
+                (irContainers, paths) <- IRContainer.fromPathClasspath(classpath.map(_.toPath))
                 irFiles <- cache.cached(irContainers)
-              } yield (irFiles, irContainers)
+              } yield (irFiles, paths)
             }
           }
         }
 
         Attributed
-          .blank[Seq[VirtualScalaJSIRFile]](irFiles)
-          .put(scalaJSSourceFiles, irContainers.map(_.file.toFile))
+          .blank[Seq[IRFile]](irFiles)
+          .put(scalaJSSourceFiles, paths.map(_.toFile))
       },
 
       scalaJSClassNamesOnClasspath := Def.task {
@@ -282,7 +282,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
         await(streams.value.log) { eci =>
           implicit val ec = eci
           Future.traverse(scalaJSIR.value.data) { ir =>
-            ir.entryPointsInfo
+            IRFileImpl.fromIRFile(ir)
+              .entryPointsInfo
               .map(i => Some(Definitions.decodeClassName(i.encodedName)))
               .fallbackTo(none)
           }
@@ -297,7 +298,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
           val stdout = new java.io.PrintWriter(System.out)
           val tree = await(log) { eci =>
             implicit val ec = eci
-            Future.traverse(scalaJSIR.value.data) { ir =>
+            Future.traverse(scalaJSIR.value.data) { irFile =>
+              val ir = IRFileImpl.fromIRFile(irFile)
               ir.entryPointsInfo.map { i =>
                 if (i.encodedName == name || Definitions.decodeClassName(i.encodedName) == name) Success(Some(ir))
                 else Success(None)

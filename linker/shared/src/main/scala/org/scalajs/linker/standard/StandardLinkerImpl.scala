@@ -32,7 +32,7 @@ private final class StandardLinkerImpl private (
   private[this] var _valid = true
   private[this] val _linking = new AtomicBoolean(false)
 
-  def link(irFiles: Seq[VirtualScalaJSIRFile],
+  def link(irFiles: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer],
       output: LinkerOutput, logger: Logger)(
       implicit ec: ExecutionContext): Future[Unit] = {

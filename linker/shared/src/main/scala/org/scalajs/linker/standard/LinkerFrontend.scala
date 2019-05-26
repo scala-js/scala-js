@@ -34,7 +34,7 @@ abstract class LinkerFrontend {
   val coreSpec: CoreSpec
 
   /** Link and optionally optimize the given IR to a [[LinkingUnit]]. */
-  def link(irFiles: Seq[VirtualScalaJSIRFile],
+  def link(irFiles: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(
       implicit ec: ExecutionContext): Future[LinkingUnit]

@@ -14,7 +14,6 @@ package org.scalajs.linker
 
 import scala.concurrent._
 
-import org.scalajs.linker.irio._
 import org.scalajs.linker.standard.StandardIRFileCache
 
 /** Centralized Scala.js IR cache.
@@ -49,11 +48,10 @@ object IRFileCache {
      *  [[free]].
      *
      *  @note Updating any of the underlying files in the container during the
-     *      lifetime of a returned [[irio.VirtualScalaJSIRFile]] yields
-     *      unspecified behavior.
+     *      lifetime of a returned [[IRFile]] yields unspecified behavior.
      */
-    def cached(files: Seq[ScalaJSIRContainer])(
-        implicit ec: ExecutionContext): Future[Seq[VirtualScalaJSIRFile]]
+    def cached(files: Seq[IRContainer])(
+        implicit ec: ExecutionContext): Future[Seq[IRFile]]
 
     /** Should be called if this cache is not used anymore.
      *

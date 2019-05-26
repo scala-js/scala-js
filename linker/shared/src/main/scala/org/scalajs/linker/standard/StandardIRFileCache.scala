@@ -24,8 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import org.scalajs.ir.EntryPointsInfo
 import org.scalajs.ir.Trees.ClassDef
 
-import org.scalajs.linker.irio._
-import org.scalajs.linker.IRFileCache
+import org.scalajs.linker._
 
 final class StandardIRFileCache extends IRFileCache {
   /* General implementation comment: We always synchronize before doing I/O
@@ -57,17 +56,19 @@ final class StandardIRFileCache extends IRFileCache {
   private final class CacheImpl extends IRFileCache.Cache {
     private[this] var localCache: Seq[PersistedFiles] = _
 
-    def cached(files: Seq[ScalaJSIRContainer])(
-        implicit ec: ExecutionContext): Future[Seq[VirtualScalaJSIRFile]] = {
+    def cached(files: Seq[IRContainer])(
+        implicit ec: ExecutionContext): Future[Seq[IRFile]] = {
       update(files)
       Future.traverse(localCache)(_.files).map(_.flatten)
     }
 
-    private def update(files: Seq[ScalaJSIRContainer])(
+    private def update(files: Seq[IRContainer])(
         implicit ec: ExecutionContext): Unit = clearOnThrow {
       val result = Seq.newBuilder[PersistedFiles]
 
-      for (file <- files) {
+      for (stableFile <- files) {
+        val file = IRContainerImpl.fromIRContainer(stableFile)
+
         @tailrec
         def putContents(): PersistedFiles = {
           val newValue = new PersistedFiles(file.path)
@@ -100,7 +101,7 @@ final class StandardIRFileCache extends IRFileCache {
     }
   }
 
-  /** Stores the extracted [[VirtualScalaJSIRFile]]s from the file at path.
+  /** Stores the extracted [[IRFile]]s from the file at path.
    *
    *  This also tracks references to itself by reference counting.
    *  Further, a [[PersistedFiles]] has a tombstone state. It is necessary to
@@ -123,9 +124,9 @@ final class StandardIRFileCache extends IRFileCache {
      *  May only be written under synchronization, except if this is a tombstone
      */
     @volatile
-    private[this] var _files: Future[Seq[VirtualScalaJSIRFile]] = null
+    private[this] var _files: Future[Seq[IRFile]] = null
 
-    def files: Future[Seq[VirtualScalaJSIRFile]] = _files
+    def files: Future[Seq[IRFile]] = _files
 
     /** Try to reference this block of files.
      *  @return true if referencing succeeded, false if this is a tombstone
@@ -177,7 +178,7 @@ final class StandardIRFileCache extends IRFileCache {
      *
      *  May only be called by a thread, if it holds a reference to this file.
      */
-    def update(file: ScalaJSIRContainer)(implicit ec: ExecutionContext): Unit = {
+    def update(file: IRContainerImpl)(implicit ec: ExecutionContext): Unit = {
       assert(_references.get > 0, "Updating an unreferenced file")
       assert(file.path == path, s"Path mismatch: $path, ${file.path}")
 
@@ -196,7 +197,13 @@ final class StandardIRFileCache extends IRFileCache {
             statsReused.incrementAndGet()
           } else {
             statsInvalidated.incrementAndGet()
-            _files = clearOnFail(file.sjsirFiles.map(_.map(new PersistentIRFile(_))))
+            _files = clearOnFail {
+              file.sjsirFiles.map { files =>
+                files.map { file =>
+                  new PersistentIRFile(IRFileImpl.fromIRFile(file))
+                }
+              }
+            }
             _version = file.version
           }
         }
@@ -204,16 +211,11 @@ final class StandardIRFileCache extends IRFileCache {
     }
   }
 
-  private final class PersistentIRFile(
-      private[this] var _irFile: VirtualScalaJSIRFile)(
-      implicit ec: ExecutionContext)
-      extends VirtualScalaJSIRFile {
+  private final class PersistentIRFile(private[this] var _irFile: IRFileImpl)(
+      implicit ec: ExecutionContext) extends IRFileImpl(_irFile.path, _irFile.version) {
 
     @volatile
     private[this] var _tree: Future[ClassDef] = null
-
-    override val path: String = _irFile.path
-    override val version: Option[String] = _irFile.version
 
     // Force reading of entry points since we'll definitely need them.
     private[this] val _entryPointsInfo: Future[EntryPointsInfo] = _irFile.entryPointsInfo
