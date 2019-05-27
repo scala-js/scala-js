@@ -114,12 +114,12 @@ def Tasks = [
         helloworld/clean &&
     sbtretry ++$scala \
         'set artifactPath in (helloworld, Compile, fastOptJS) := (crossTarget in helloworld).value / "helloworld-fastopt.mjs"' \
-        'set jsEnv in helloworld := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")).withSourceMap(false))' \
+        'set jsEnv in helloworld := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
         'set scalaJSLinkerConfig in helloworld ~= (_.withModuleKind(ModuleKind.ESModule))' \
         helloworld/run &&
     sbtretry ++$scala \
         'set artifactPath in (helloworld, Compile, fullOptJS) := (crossTarget in helloworld).value / "helloworld-opt.mjs"' \
-        'set jsEnv in helloworld := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")).withSourceMap(false))' \
+        'set jsEnv in helloworld := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
         'set scalaJSLinkerConfig in helloworld ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         helloworld/run \
@@ -143,7 +143,7 @@ def Tasks = [
     sh ci/check-partest-coverage.sh $scala
   ''',
 
-  "test-suite-ecma-script5": '''
+  "test-suite-ecma-script2015": '''
     setJavaVersion $java
     npm install &&
     sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test \
@@ -188,14 +188,12 @@ def Tasks = [
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set artifactPath in ($testSuite, Test, fastOptJS) := (crossTarget in $testSuite).value / "testsuite-fastopt.mjs"' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")).withSourceMap(false))' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.ESModule))' \
-        'set MyScalaJSPlugin.wantSourceMaps in $testSuite := false' \
         ++$scala $testSuite/test &&
     sbtretry 'set artifactPath in ($testSuite, Test, fullOptJS) := (crossTarget in $testSuite).value / "testsuite-opt.mjs"' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")).withSourceMap(false))' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.ESModule))' \
-        'set MyScalaJSPlugin.wantSourceMaps in $testSuite := false' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test
   ''',
@@ -203,85 +201,91 @@ def Tasks = [
   "test-suite-ecma-script5-force-polyfills": '''
     setJavaVersion $java
     npm install &&
-    sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
         ++$scala $testSuite/test &&
-    sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
         'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         ++$scala $testSuite/test &&
-    sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
         'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
         'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean
   ''',
 
-  "test-suite-ecma-script6": '''
+  "test-suite-ecma-script5": '''
     setJavaVersion $java
     npm install &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true).withAllowBigIntsForLongs(true)))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false).withAllowBigIntsForLongs(true)))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true).withAllowBigIntsForLongs(true)).withOptimizer(false))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false).withAllowBigIntsForLongs(true)).withOptimizer(false))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set artifactPath in ($testSuite, Test, fastOptJS) := (crossTarget in $testSuite).value / "testsuite-fastopt.mjs"' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")).withSourceMap(false))' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set artifactPath in ($testSuite, Test, fullOptJS) := (crossTarget in $testSuite).value / "testsuite-opt.mjs"' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")).withSourceMap(false))' \
+        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
         'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test
@@ -444,18 +448,18 @@ mainScalaVersions.each { scalaVersion ->
   allJavaVersions.each { javaVersion ->
     quickMatrix.add([task: "main", scala: scalaVersion, java: javaVersion])
   }
+  quickMatrix.add([task: "test-suite-ecma-script2015", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-ecma-script5", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
-  quickMatrix.add([task: "test-suite-ecma-script6", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
+  quickMatrix.add([task: "test-suite-ecma-script2015", scala: scalaVersion, java: mainJavaVersion, testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "test-suite-ecma-script5", scala: scalaVersion, java: mainJavaVersion, testSuite: "scalaTestSuite"])
-  quickMatrix.add([task: "test-suite-ecma-script6", scala: scalaVersion, java: mainJavaVersion, testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "bootstrap", scala: scalaVersion, java: mainJavaVersion])
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion])
 }
 quickMatrix.add([task: "test-suite-ecma-script5-force-polyfills", scala: mainScalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
 noToolsScalaVersions.each { scalaVersion ->
   quickMatrix.add([task: "main", scala: scalaVersion, java: mainJavaVersion])
+  quickMatrix.add([task: "test-suite-ecma-script2015", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-ecma-script5", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
-  quickMatrix.add([task: "test-suite-ecma-script6", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
 }
 allJavaVersions.each { javaVersion ->
   quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.8", sbt_version_override: "", java: javaVersion])
@@ -473,8 +477,8 @@ otherScalaVersions.each { scalaVersion ->
 }
 mainScalaVersions.each { scalaVersion ->
   otherJavaVersions.each { javaVersion ->
+    quickMatrix.add([task: "test-suite-ecma-script2015", scala: scalaVersion, java: javaVersion, testSuite: "testSuite"])
     quickMatrix.add([task: "test-suite-ecma-script5", scala: scalaVersion, java: javaVersion, testSuite: "testSuite"])
-    quickMatrix.add([task: "test-suite-ecma-script6", scala: scalaVersion, java: javaVersion, testSuite: "testSuite"])
   }
   fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion])
   fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion])
