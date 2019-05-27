@@ -485,7 +485,7 @@ object Build {
                 jsEnvs, jsEnvsTestKit, jsEnvsTestSuite, testAdapter, plugin,
                 javalanglib, javalib, scalalib, libraryAux, library, javalibEx,
                 stubs, cli,
-                testInterface, jUnitRuntime, jUnitPlugin,
+                testInterface, testBridge, jUnitRuntime, jUnitPlugin,
                 jUnitTestOutputsJS, jUnitTestOutputsJVM,
                 helloworld, reversi, testingExample, testSuite, testSuiteJVM,
                 noIrCheckTest, javalibExTestSuite,
@@ -548,7 +548,7 @@ object Build {
             (scalaSource in Test in irProject).value
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      javalibEx, jUnitRuntime % "test"
+      javalibEx, jUnitRuntime % "test", testBridge % "test"
   )
 
   lazy val compiler: Project = Project(
@@ -1269,7 +1269,7 @@ object Build {
       )
   ).dependsOn(tools)
 
-  // Test framework
+  // The Scala.js version of sbt-testing-interface
   lazy val testInterface = Project(
       id = "testInterface",
       base = file("test-interface"),
@@ -1279,7 +1279,23 @@ object Build {
           name := "Scala.js test interface",
           delambdafySetting,
           previousArtifactSetting,
-          mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestInterface,
+          mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestInterface
+      )
+  ).withScalaJSCompiler.dependsOn(library)
+
+  lazy val testBridge = Project(
+      id = "testBridge",
+      base = file("test-bridge"),
+      settings = (
+          commonSettings ++ publishSettings ++ myScalaJSSettings ++ fatalWarningsSettings
+      ) ++ Seq(
+          name := "Scala.js test bridge",
+          delambdafySetting,
+          /* By design, the test-bridge has a completely private API (it is
+           * only loaded through a privately-known top-level export), so it
+           * does not have `previousArtifactSetting` nor
+           * `mimaBinaryIssueFilters`.
+           */
           unmanagedSourceDirectories in Compile +=
             baseDirectory.value.getParentFile / "test-common/src/main/scala",
           /* Note: We cannot add the test-common tests, since they test async
@@ -1292,7 +1308,7 @@ object Build {
            */
           scalacOptions += "-P:scalajs:suppressExportDeprecations"
       )
-  ).withScalaJSCompiler.dependsOn(library)
+  ).withScalaJSCompiler.dependsOn(library, testInterface)
 
   lazy val jUnitRuntime = Project(
     id = "jUnitRuntime",
@@ -1330,7 +1346,7 @@ object Build {
         name := "Tests for Scala.js JUnit output in JS."
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      jUnitRuntime % "test", testInterface % "test"
+      jUnitRuntime % "test", testBridge % "test"
   )
 
 
@@ -1414,7 +1430,7 @@ object Build {
           )
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, jUnitRuntime % "test"
+      library, jUnitRuntime % "test", testBridge % "test"
   )
 
   // Testing
@@ -1834,7 +1850,7 @@ object Build {
         }
       )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-    library, jUnitRuntime
+    library, jUnitRuntime, testBridge % "test"
   )
 
   lazy val testSuiteJVM: Project = Project(
@@ -1871,7 +1887,7 @@ object Build {
           testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
           publishArtifact in Compile := false
      )
-  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(library, jUnitRuntime)
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(library, jUnitRuntime, testBridge % "test")
 
   lazy val javalibExTestSuite: Project = Project(
       id = "javalibExTestSuite",
@@ -1884,7 +1900,7 @@ object Build {
           testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
           scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
       )
-  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(javalibEx, jUnitRuntime)
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(javalibEx, jUnitRuntime, testBridge % "test")
 
   lazy val partest: Project = Project(
       id = "partest",
@@ -2101,6 +2117,6 @@ object Build {
         }
       }
     )
-  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(jUnitRuntime)
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(jUnitRuntime, testBridge % "test")
 
 }
