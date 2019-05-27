@@ -20,6 +20,7 @@ val javalibEx = Build.javalibEx
 val stubs = Build.stubs
 val cli = Build.cli
 val testInterface = Build.testInterface
+val testBridge = Build.testBridge
 val jUnitRuntime = Build.jUnitRuntime
 val jUnitTestOutputsJS = Build.jUnitTestOutputsJS
 val jUnitTestOutputsJVM = Build.jUnitTestOutputsJVM

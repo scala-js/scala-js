@@ -16,8 +16,8 @@ SBT1_VERSION="2.12.8"
 SBT1_SBTVERSION="1.0.0"
 
 COMPILER="compiler jUnitPlugin"
-LIBS="library javalibEx ir irJS tools toolsJS jsEnvs jsEnvsTestKit testAdapter stubs testInterface jUnitRuntime"
-NO_TOOLS_LIBS="library javalibEx stubs testInterface jUnitRuntime"
+LIBS="library javalibEx ir irJS tools toolsJS jsEnvs jsEnvsTestKit testAdapter stubs testInterface testBridge jUnitRuntime"
+NO_TOOLS_LIBS="library javalibEx stubs testInterface testBridge jUnitRuntime"
 
 # Publish compiler
 for v in $COMPILER_VERSIONS; do

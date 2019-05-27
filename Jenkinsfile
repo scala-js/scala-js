@@ -174,7 +174,7 @@ def Tasks = [
         ++$scala javalibExTestSuite/test &&
     sbtretry ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
     sbtretry ++$scala compiler/compile:doc library/compile:doc javalibEx/compile:doc \
-        testInterface/compile:doc &&
+        testInterface/compile:doc testBridge/compile:doc &&
     sbtretry ++$scala headerCheck &&
     sbtretry ++$scala partest/fetchScalaSource &&
     sbtretry ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
@@ -362,7 +362,7 @@ def Tasks = [
         compiler/test:scalastyle tools/scalastyle tools/test:scalastyle \
         jsEnvs/scalastyle jsEnvsTestKit/scalastyle \
         jsEnvsTestSuite/test:scalastyle testAdapter/scalastyle \
-        sbtPlugin/scalastyle testInterface/scalastyle \
+        sbtPlugin/scalastyle testInterface/scalastyle testBridge/scalastyle \
         testSuite/scalastyle testSuite/test:scalastyle \
         testSuiteJVM/test:scalastyle \
         javalibExTestSuite/test:scalastyle helloworld/scalastyle \
@@ -389,7 +389,7 @@ def Tasks = [
     # Then go into standalone project and test
     npm install &&
     sbt ++2.11.12 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
-                  testInterface/publishLocal stubs/publishLocal \
+                  testInterface/publishLocal testBridge/publishLocal stubs/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++$toolsscala ${SBT_VER_OVERRIDE:+^^$SBT_VER_OVERRIDE} \
         ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
