@@ -70,7 +70,7 @@ object MyScalaJSPlugin extends AutoPlugin {
        */
       libraryDependencies ~= { libDeps =>
         val blacklist =
-          Set("scalajs-compiler", "scalajs-library", "scalajs-test-interface")
+          Set("scalajs-compiler", "scalajs-library", "scalajs-test-bridge")
         libDeps.filterNot(dep => blacklist.contains(dep.name))
       },
 
@@ -117,7 +117,7 @@ object Build {
     "Whether we should partest the current scala version (and fail if we can't)")
 
   /* MiMa configuration -- irrelevant while in 1.0.0-SNAPSHOT.
-  val previousVersion = "0.6.27"
+  val previousVersion = "0.6.28"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
@@ -344,7 +344,7 @@ object Build {
           }
         } (docPaths.keySet + additionalStylesFile)
 
-        if (errorsSeen.size > 0)
+        if (errorsSeen.nonEmpty)
           throw new MessageOnlyException("ScalaDoc patching had errors")
 
         outDir
@@ -511,7 +511,7 @@ object Build {
             linker, linkerJS,
             jsEnvs, jsEnvsTestKit, nodeJSEnv, testAdapter, plugin,
             javalanglib, javalib, scalalib, libraryAux, library, minilib,
-            testInterface, jUnitRuntime, jUnitPlugin, jUnitAsyncJS,
+            testInterface, jUnitRuntime, testBridge, jUnitPlugin, jUnitAsyncJS,
             jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
             helloworld, reversi, testingExample, testSuite, testSuiteJVM,
             testSuiteEx,
@@ -572,7 +572,7 @@ object Build {
       unmanagedSourceDirectories in Test +=
         (scalaSource in Test in irProject).value
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, jUnitRuntime % "test"
+      library, jUnitRuntime % "test", testBridge % "test"
   )
 
   lazy val compiler: Project = project.settings(
@@ -691,7 +691,7 @@ object Build {
       crossVersion := ScalaJSCrossVersion.binary,
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, irProjectJS, loggingJS, jUnitRuntime % "test", jUnitAsyncJS % "test"
+      library, irProjectJS, loggingJS, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test"
   )
 
   lazy val jsEnvs: Project = (project in file("js-envs")).settings(
@@ -1136,7 +1136,7 @@ object Build {
       ))
   ).withScalaJSCompiler.dependsOn(library)
 
-  // Test framework
+  // The Scala.js version of sbt-testing-interface
   lazy val testInterface = (project in file("test-interface")).enablePlugins(
       MyScalaJSPlugin
   ).settings(
@@ -1146,14 +1146,29 @@ object Build {
       name := "Scala.js test interface",
       delambdafySetting,
       previousArtifactSetting,
-      mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestInterface,
+      mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestInterface
+  ).withScalaJSCompiler.dependsOn(library)
+
+  lazy val testBridge = (project in file("test-bridge")).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
+      commonSettings,
+      publishSettings,
+      fatalWarningsSettings,
+      name := "Scala.js test bridge",
+      delambdafySetting,
+      /* By design, the test-bridge has a completely private API (it is
+       * only loaded through a privately-known top-level export), so it
+       * does not have `previousArtifactSetting` nor
+       * `mimaBinaryIssueFilters`.
+       */
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value.getParentFile / "test-common/src/main/scala"
       /* Note: We cannot add the test-common tests, since they test async
        * stuff and JUnit does not support async tests. Therefore we need to
        * block, so we cannot run on JS.
        */
-  ).withScalaJSCompiler.dependsOn(library)
+  ).withScalaJSCompiler.dependsOn(library, testInterface)
 
   lazy val jUnitRuntime = (project in file("junit-runtime")).enablePlugins(
       MyScalaJSPlugin
@@ -1189,7 +1204,7 @@ object Build {
       commonJUnitTestOutputsSettings,
       name := "Tests for Scala.js JUnit output in JS."
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      jUnitRuntime % "test", testInterface % "test", jUnitAsyncJS % "test"
+      jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test"
   )
 
 
@@ -1270,7 +1285,7 @@ object Build {
             "support. Use testingExample/testHtml instead.")
       }
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, jUnitRuntime % "test"
+      library, jUnitRuntime % "test", testBridge % "test"
   )
 
   // Testing
@@ -1605,7 +1620,7 @@ object Build {
 
       inConfig(Bootstrap)(testSuiteBootstrapSetting)
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, jUnitRuntime
+      library, jUnitRuntime, testBridge % "test"
   )
 
   lazy val testSuiteJVM: Project = (project in file("test-suite/jvm")).settings(
@@ -1647,7 +1662,7 @@ object Build {
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
       scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, jUnitRuntime, testSuite
+      library, jUnitRuntime, testBridge % "test", testSuite
   )
 
   lazy val testSuiteLinker = (project in file("test-suite-linker")).enablePlugins(
@@ -1845,6 +1860,6 @@ object Build {
           case fTup if whitelist(fTup._1) => fTup._2
         }
       }
-  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(jUnitRuntime)
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(jUnitRuntime, testBridge % "test")
 
 }

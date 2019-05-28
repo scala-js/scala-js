@@ -34,6 +34,6 @@ object BinaryIncompatibilities {
   val Library = Seq(
   )
 
-  val TestInterface = TestCommon ++ Seq(
+  val TestInterface = Seq(
   )
 }

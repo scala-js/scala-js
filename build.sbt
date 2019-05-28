@@ -20,6 +20,7 @@ val libraryAux = Build.libraryAux
 val library = Build.library
 val minilib = Build.minilib
 val testInterface = Build.testInterface
+val testBridge = Build.testBridge
 val jUnitRuntime = Build.jUnitRuntime
 val jUnitTestOutputsJS = Build.jUnitTestOutputsJS
 val jUnitTestOutputsJVM = Build.jUnitTestOutputsJVM

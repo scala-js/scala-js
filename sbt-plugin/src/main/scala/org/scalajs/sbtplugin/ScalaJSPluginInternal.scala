@@ -537,8 +537,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
       libraryDependencies ++= Seq(
           // and of course the Scala.js library
           "org.scala-js" %% "scalajs-library" % scalaJSVersion,
-          // also bump the version of the test-interface
-          "org.scala-js" %% "scalajs-test-interface" % scalaJSVersion % "test"
+          // as well as the test-bridge in the Test configuration
+          "org.scala-js" %% "scalajs-test-bridge" % scalaJSVersion % "test"
       ),
 
       // and you will want to be cross-compiled on the Scala.js binary version
