@@ -10,14 +10,14 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.testing.interface
+package org.scalajs.testing.bridge
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.{JSGlobalScope, JSName}
 
 import org.scalajs.testing.common._
 
-private[interface] object Bridge {
+private[bridge] object Bridge {
   // Called via org.scalajs.testing.adapter.testAdapterInitializer
   def start(): Unit = mode match {
     case TestInterfaceMode.FullBridge        => TestAdapterBridge.start()

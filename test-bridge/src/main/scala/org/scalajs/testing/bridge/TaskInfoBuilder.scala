@@ -10,13 +10,13 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.testing.interface
+package org.scalajs.testing.bridge
 
 import sbt.testing._
 
 import org.scalajs.testing.common.{TaskInfo, Serializer}
 
-private[interface] object TaskInfoBuilder {
+private[bridge] object TaskInfoBuilder {
   def detachTask(task: Task, runner: Runner): TaskInfo = {
     def optSerializer(t: TaskDef) =
       if (t == task.taskDef) ""

@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.testing.interface
+package org.scalajs.testing.bridge
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
@@ -21,7 +21,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import org.scalajs.testing.common.RPCCore
 
 /** JS RPC Core. Uses `scalajsCom`. */
-private[interface] final object JSRPC extends RPCCore {
+private[bridge] final object JSRPC extends RPCCore {
   Com.init(handleMessage _)
 
   override protected def send(msg: String): Unit = Com.send(msg)

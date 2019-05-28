@@ -13,6 +13,6 @@
 package org.scalajs.testing.adapter
 
 object TestAdapterInitializer {
-  val ModuleClassName: String = "org.scalajs.testing.interface.Bridge"
+  val ModuleClassName: String = "org.scalajs.testing.bridge.Bridge"
   val MainMethodName: String = "start"
 }

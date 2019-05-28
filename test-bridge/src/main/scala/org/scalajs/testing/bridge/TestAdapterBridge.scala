@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.testing.interface
+package org.scalajs.testing.bridge
 
 import scala.concurrent.{Future, Promise}
 
@@ -21,7 +21,7 @@ import org.scalajs.testing.common._
 
 import sbt.testing._
 
-private[interface] object TestAdapterBridge {
+private[bridge] object TestAdapterBridge {
 
   private[this] val mux = new RunMuxRPC(JSRPC)
 

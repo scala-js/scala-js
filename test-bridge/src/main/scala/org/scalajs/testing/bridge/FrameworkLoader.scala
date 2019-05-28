@@ -10,14 +10,14 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.testing.interface
+package org.scalajs.testing.bridge
 
 import scala.scalajs.js
 import scala.scalajs.reflect.Reflect
 
 import sbt.testing.Framework
 
-private[interface] object FrameworkLoader {
+private[bridge] object FrameworkLoader {
 
   def loadFramework(frameworkName: String): Framework = {
     val clazz = Reflect.lookupInstantiatableClass(frameworkName).getOrElse {
