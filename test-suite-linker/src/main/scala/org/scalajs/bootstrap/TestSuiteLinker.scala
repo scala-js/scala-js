@@ -29,7 +29,7 @@ object QuickLinker {
     val moduleInitializers = {
       build.TestSuiteLinkerOptions.moduleInitializers :+
       // Copied from org.scalajs.testing.adapter.TestAdapaterInitializer.
-      ModuleInitializer.mainMethod("org.scalajs.testing.interface.Bridge", "start")
+      ModuleInitializer.mainMethod("org.scalajs.testing.bridge.Bridge", "start")
     }
 
     val smPath = outputPath + ".map"

@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.testing.interface
+package org.scalajs.testing.bridge
 
 import scala.scalajs.js
 import scala.scalajs.concurrent.QueueExecutionContext
@@ -28,7 +28,7 @@ import org.scalajs.testing.common.IsolatedTestSet
 
 import sbt.testing._
 
-protected[interface] object HTMLRunner {
+protected[bridge] object HTMLRunner {
   private val classLoader = new ScalaJSClassLoader()
 
   private object EventCounter {

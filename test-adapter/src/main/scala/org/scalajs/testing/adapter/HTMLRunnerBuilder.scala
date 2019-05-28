@@ -93,7 +93,7 @@ object HTMLRunnerBuilder {
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <link rel="stylesheet" type="text/css" href="${uristr(css)}" />
         <script type="text/javascript">
-        ${injectInterfaceMode(tests)}
+        ${injectBridgeMode(tests)}
         </script>
         ${(for (jsFile <- jsFiles) yield s"""
         <script type="text/javascript" src="${uristr(jsFile)}"></script>
@@ -103,10 +103,10 @@ object HTMLRunnerBuilder {
     </html>"""
   }
 
-  private def injectInterfaceMode(tests: IsolatedTestSet): String = {
-    val mode = TestInterfaceMode.HTMLRunner(tests)
-    val ser = Serializer.serialize[TestInterfaceMode](mode)
-    s"""var __ScalaJSTestInterfaceMode = "${escapeJS(ser)}";"""
+  private def injectBridgeMode(tests: IsolatedTestSet): String = {
+    val mode = TestBridgeMode.HTMLRunner(tests)
+    val ser = Serializer.serialize[TestBridgeMode](mode)
+    s"""var __ScalaJSTestBridgeMode = "${escapeJS(ser)}";"""
   }
 
   private def htmlEscaped(str: String): String = str.flatMap {

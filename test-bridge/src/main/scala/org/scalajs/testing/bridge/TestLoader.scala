@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.testing.interface
+package org.scalajs.testing.bridge
 
 import java.io._
 
@@ -22,7 +22,7 @@ import org.scalajs.testing.common.IsolatedTestSet
 
 import sbt.testing._
 
-private[scalajs] object TestLoader {
+private[bridge] object TestLoader {
   def loadTests(tests: IsolatedTestSet): Seq[(Framework, Seq[TaskDef])] = {
     for {
       nameAlternatives <- tests.testFrameworkNames

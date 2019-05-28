@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.testing.interface
+package org.scalajs.testing.bridge
 
 import scala.scalajs.js
 
@@ -24,7 +24,7 @@ import java.util.Enumeration
  *  [[java.lang.ClassLoader]]. It is exclusively used as a dummy class loader
  *  to preserve source compatibility with the sbt testing interface.
  */
-private[interface] final class ScalaJSClassLoader extends ClassLoader(null) {
+private[bridge] final class ScalaJSClassLoader extends ClassLoader(null) {
   private def nimp: Nothing = {
     throw new NotImplementedError(
         "A ScalaJSClassLoader is a dummy. " +
