@@ -20,17 +20,17 @@ import org.scalajs.testing.common._
 private[bridge] object Bridge {
   // Called via org.scalajs.testing.adapter.testAdapterInitializer
   def start(): Unit = mode match {
-    case TestInterfaceMode.FullBridge        => TestAdapterBridge.start()
-    case TestInterfaceMode.HTMLRunner(tests) => HTMLRunner.start(tests)
+    case TestBridgeMode.FullBridge        => TestAdapterBridge.start()
+    case TestBridgeMode.HTMLRunner(tests) => HTMLRunner.start(tests)
   }
 
   private def mode = {
-    if (js.typeOf(js.Dynamic.global.__ScalaJSTestInterfaceMode) == "undefined") {
-      TestInterfaceMode.FullBridge
+    if (js.typeOf(js.Dynamic.global.__ScalaJSTestBridgeMode) == "undefined") {
+      TestBridgeMode.FullBridge
     } else {
       val modeStr =
-        js.Dynamic.global.__ScalaJSTestInterfaceMode.asInstanceOf[String]
-      Serializer.deserialize[TestInterfaceMode](modeStr)
+        js.Dynamic.global.__ScalaJSTestBridgeMode.asInstanceOf[String]
+      Serializer.deserialize[TestBridgeMode](modeStr)
     }
   }
 }
