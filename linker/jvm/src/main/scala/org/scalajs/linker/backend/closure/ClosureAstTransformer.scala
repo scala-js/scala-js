@@ -121,16 +121,27 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
       case Switch(selector, cases, default) =>
         val switchNode = new Node(Token.SWITCH, transformExpr(selector))
 
+        def transformBody(body: Tree): Node = {
+          /* Transform the body of a switch case or default, then wrap the
+           * result in a synthetic block. The synthetic block is important for
+           * switches, but at the same time we must not flatten out an actual
+           * Block(), lest we conflate the scopes for local declarations.
+           */
+          val block = new Node(Token.BLOCK)
+          block.addChildToBack(transformStat(body))
+          block.setIsSyntheticBlock(true)
+          setNodePosition(block, body.pos.orElse(pos))
+          block
+        }
+
         for ((expr, body) <- cases) {
-          val bodyNode = transformBlock(body)
-          bodyNode.setIsSyntheticBlock(true)
+          val bodyNode = transformBody(body)
           val caseNode = new Node(Token.CASE, transformExpr(expr), bodyNode)
           switchNode.addChildToBack(
               setNodePosition(caseNode, expr.pos orElse pos))
         }
 
-        val bodyNode = transformBlock(default)
-        bodyNode.setIsSyntheticBlock(true)
+        val bodyNode = transformBody(default)
         val caseNode = new Node(Token.DEFAULT_CASE, bodyNode)
         switchNode.addChildToBack(
             setNodePosition(caseNode, default.pos orElse pos))
