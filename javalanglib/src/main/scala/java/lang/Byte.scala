@@ -81,4 +81,15 @@ object Byte {
 
   @inline def compare(x: scala.Byte, y: scala.Byte): scala.Int =
     x - y
+
+  def decode(s: String): Byte = {
+    val lowerCase = s.toLowerCase
+    val radix = if (lowerCase.contains("0x") || lowerCase.contains("#"))
+      16
+    else if (s.startsWith("0") || s.startsWith("+0") || s.startsWith("-0"))
+      8
+    else
+      10
+    parseByte(lowerCase.replaceAll("[x#]", ""), radix)
+  }
 }

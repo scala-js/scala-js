@@ -64,4 +64,48 @@ class ByteTest {
     test("")
     test("200") // out of range
   }
+
+  @Test def should_decode_byte_strings(): Unit = {
+    def check(v: String, expected: Byte): Unit ={
+      assertEquals(expected, JByte.decode(v))
+    }
+
+    check(s"${JByte.MIN_VALUE}", JByte.MIN_VALUE)
+    check(s"${JByte.MAX_VALUE}", JByte.MAX_VALUE)
+
+    check("10", 10.toByte)
+    check("0x10", 16.toByte)
+    check("0X10", 16.toByte)
+    check("010", 8.toByte)
+    check("#10", 16.toByte)
+
+    check("+10", 10.toByte)
+    check("+0x10", 16.toByte)
+    check("+0X10", 16.toByte)
+    check("+010", 8.toByte)
+    check("+#10", 16.toByte)
+
+    check("-10", -10.toByte)
+    check("-0x10", -16.toByte)
+    check("-0X10", -16.toByte)
+    check("-010", -8.toByte)
+    check("-#10", -16.toByte)
+
+    check(Integer.toString(JByte.MIN_VALUE.toInt), JByte.MIN_VALUE)
+    check(Integer.toString(JByte.MAX_VALUE.toInt), JByte.MAX_VALUE)
+  }
+
+  @Test def should_reject_invalid_byte_strings_when_decoding(): Unit = {
+    def checkFailure(v: String): Unit = {
+      assertThrows(classOf[NumberFormatException], JByte.decode(v))
+    }
+
+    checkFailure("0x-10")
+    checkFailure("0x+10")
+    checkFailure("+")
+    checkFailure("-")
+    checkFailure(Integer.toString(JByte.MIN_VALUE.toInt - 1))
+    checkFailure(Integer.toString(JByte.MAX_VALUE.toInt + 1))
+    checkFailure("")
+  }
 }
