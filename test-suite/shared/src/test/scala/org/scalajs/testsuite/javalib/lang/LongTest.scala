@@ -367,4 +367,62 @@ class LongTest {
     assertEquals(1, JLong.signum(98765432158845L))
     assertEquals(1, JLong.signum(Long.MaxValue))
   }
+
+
+  @Test def should_decode_decimal_string(): Unit = {
+    assertEquals(89000000005L, JLong.decode("89000000005"))
+    assertEquals(89000000005L, JLong.decode("+89000000005"))
+    assertEquals(-89000000005L, JLong.decode("-89000000005"))
+  }
+
+  @Test def should_decode_octal_string_with_leading_0(): Unit = {
+    assertEquals(456324454L, JLong.decode("03314572546"))
+    assertEquals(456324454L, JLong.decode("+03314572546"))
+    assertEquals(-456324454L, JLong.decode("-03314572546"))
+  }
+
+  @Test def should_decode_hexadeciaml_string_with_hexadecimal_specifier(): Unit = {
+    assertEquals(98765432158845L, JLong.decode("0x59d39e7ffa7d"))
+    assertEquals(98765432158845L, JLong.decode("+0x59d39e7ffa7d"))
+    assertEquals(-49575304457780L, JLong.decode("-0x2d16a6696e34"))
+
+    assertEquals(98765432158845L, JLong.decode("0X59d39e7ffa7d"))
+    assertEquals(98765432158845L, JLong.decode("+0X59d39e7ffa7d"))
+    assertEquals(-49575304457780L, JLong.decode("-0X2d16a6696e34"))
+
+    assertEquals(98765432158845L, JLong.decode("#59d39e7ffa7d"))
+    assertEquals(98765432158845L, JLong.decode("+#59d39e7ffa7d"))
+    assertEquals(-49575304457780L, JLong.decode("-#2d16a6696e34"))
+  }
+
+  @Test def should_decode_min_and_max(): Unit = {
+    assertEquals(JLong.MIN_VALUE, JLong.decode(s"-01000000000000000000000"))
+    assertEquals(JLong.MIN_VALUE, JLong.decode(s"-0x8000000000000000"))
+    assertEquals(JLong.MIN_VALUE, JLong.decode(s"-9223372036854775808"))
+
+    assertEquals(JLong.MAX_VALUE, JLong.decode(s"0777777777777777777777"))
+    assertEquals(JLong.MAX_VALUE, JLong.decode(s"0x7fffffffffffffff"))
+    assertEquals(JLong.MAX_VALUE, JLong.decode(s"9223372036854775807"))
+  }
+
+  @Test def should_reject_strings_containing_other_than_numbers_when_decoding(): Unit = {
+    // underscore delimitters
+    assertThrows(classOf[NumberFormatException], JLong.decode("0_88_88"))
+    assertThrows(classOf[NumberFormatException], JLong.decode("0xFF_FF"))
+
+    // whitespaces
+    assertThrows(classOf[NumberFormatException], JLong.decode(" 088"))
+    assertThrows(classOf[NumberFormatException], JLong.decode("0xFF "))
+
+    // signs after radix specifier
+    assertThrows(classOf[NumberFormatException], JLong.decode("0+8888"))
+    assertThrows(classOf[NumberFormatException], JLong.decode("0x-FF"))
+  }
+
+  @Test def should_reject_when_decoding_out_of_range(): Unit = {
+    assertThrows(classOf[NumberFormatException], JLong.decode(s"9223372036854775808"))
+    assertThrows(classOf[NumberFormatException], JLong.decode(s"-9223372036854775809"))
+    assertThrows(classOf[NumberFormatException], JLong.decode(s"0x8000000000000000"))
+    assertThrows(classOf[NumberFormatException], JLong.decode(s"-0x8000000000000001"))
+  }
 }

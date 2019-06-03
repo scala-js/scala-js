@@ -12,8 +12,9 @@
 
 package java.lang
 
-import scala.annotation.{switch, tailrec}
+import java.lang.Integer.parseInt
 
+import scala.annotation.{ switch, tailrec }
 import scala.scalajs.js
 
 /* This is a hijacked class. Its instances are the representation of scala.Longs.
@@ -504,4 +505,15 @@ object Long {
 
   @inline def min(a: scala.Long, b: scala.Long): scala.Long =
     Math.min(a, b)
+
+  def decode(s: String): Long = {
+    val lowerCase = s.toLowerCase
+    val radix = if (lowerCase.contains("0x") || lowerCase.contains("#"))
+      16
+    else if (s.startsWith("0") || s.startsWith("+0") || s.startsWith("-0"))
+      8
+    else
+      10
+    parseLong(lowerCase.replaceAll("[x#]", ""), radix)
+  }
 }

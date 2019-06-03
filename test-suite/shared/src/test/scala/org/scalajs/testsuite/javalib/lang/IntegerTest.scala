@@ -661,4 +661,61 @@ class IntegerTest {
     assertEquals("-10000000000000000000000000000000", Integer.toString(-2147483648, 2))
     assertEquals("-2147483648", Integer.toString(-2147483648, 10))
   }
+
+  @Test def should_decode_decimal_string(): Unit = {
+    assertEquals(1000, Integer.decode("1000"))
+    assertEquals(2000, Integer.decode("+2000"))
+    assertEquals(-4000, Integer.decode("-4000"))
+  }
+
+  @Test def should_decode_octal_string_with_leading_0(): Unit = {
+    assertEquals(512, Integer.decode("01000"))
+    assertEquals(1024, Integer.decode("+02000"))
+    assertEquals(-2048, Integer.decode("-04000"))
+  }
+
+  @Test def should_decode_hexadeciaml_string_with_hexadecimal_specifier(): Unit = {
+    assertEquals(65535, Integer.decode("0xFFFF"))
+    assertEquals(4095, Integer.decode("+0xfff"))
+    assertEquals(-255, Integer.decode("-0xFF"))
+
+    assertEquals(65535, Integer.decode("0XFffF"))
+    assertEquals(4095, Integer.decode("+0XFfF"))
+    assertEquals(-255, Integer.decode("-0XFf"))
+
+    assertEquals(65535, Integer.decode("#FFFF"))
+    assertEquals(4095, Integer.decode("+#fFF"))
+    assertEquals(-255, Integer.decode("-#Ff"))
+  }
+
+  @Test def should_decode_min_and_max(): Unit = {
+    assertEquals(Integer.MIN_VALUE, Integer.decode(s"-020000000000"))
+    assertEquals(Integer.MIN_VALUE, Integer.decode(s"-0x80000000"))
+    assertEquals(Integer.MIN_VALUE, Integer.decode(s"-2147483648"))
+
+    assertEquals(Integer.MAX_VALUE, Integer.decode(s"017777777777"))
+    assertEquals(Integer.MAX_VALUE, Integer.decode(s"0x7fffffff"))
+    assertEquals(Integer.MAX_VALUE, Integer.decode(s"2147483647"))
+  }
+
+  @Test def should_reject_strings_containing_other_than_numbers_when_decoding(): Unit = {
+    // underscore delimitters
+    assertThrows(classOf[NumberFormatException], Integer.decode("0_88_88"))
+    assertThrows(classOf[NumberFormatException], Integer.decode("0xFF_FF"))
+
+    // whitespaces
+    assertThrows(classOf[NumberFormatException], Integer.decode(" 088"))
+    assertThrows(classOf[NumberFormatException], Integer.decode("0xFF "))
+
+    // signs after radix specifier
+    assertThrows(classOf[NumberFormatException], Integer.decode("0+8888"))
+    assertThrows(classOf[NumberFormatException], Integer.decode("0x-FF"))
+  }
+
+  @Test def should_reject_when_decoding_out_of_range(): Unit = {
+    assertThrows(classOf[NumberFormatException], Integer.decode(s"2147483648"))
+    assertThrows(classOf[NumberFormatException], Integer.decode(s"-2147483649"))
+    assertThrows(classOf[NumberFormatException], Integer.decode(s"0x80000000"))
+    assertThrows(classOf[NumberFormatException], Integer.decode(s"-0x80000001"))
+  }
 }

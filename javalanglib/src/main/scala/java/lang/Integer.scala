@@ -12,6 +12,8 @@
 
 package java.lang
 
+import java.lang.Byte.parseByte
+
 import scala.scalajs.js
 
 /* This is a hijacked class. Its instances are primitive numbers.
@@ -268,4 +270,15 @@ object Integer {
 
   @inline private def asInt(n: scala.Double): scala.Int =
     (n.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
+
+  def decode(s: String): Integer = {
+    val lowerCase = s.toLowerCase
+    val radix = if (lowerCase.contains("0x") || lowerCase.contains("#"))
+      16
+    else if (s.startsWith("0") || s.startsWith("+0") || s.startsWith("-0"))
+      8
+    else
+      10
+    parseInt(lowerCase.replaceAll("[x#]", ""), radix)
+  }
 }

@@ -81,4 +81,12 @@ object Byte {
 
   @inline def compare(x: scala.Byte, y: scala.Byte): scala.Int =
     x - y
+
+  def decode(s: String): Byte = {
+    val r = Integer.decode(s)
+    if (r < MIN_VALUE || r > MAX_VALUE)
+      throw new NumberFormatException(s"""For input string: "$s"""")
+    else
+      r.toByte
+  }
 }
