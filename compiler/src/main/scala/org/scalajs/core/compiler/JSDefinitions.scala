@@ -118,6 +118,10 @@ trait JSDefinitions {
     lazy val RawJSTypeAnnot = getRequiredClass("scala.scalajs.js.annotation.RawJSType")
     lazy val ExposedJSMemberAnnot = getRequiredClass("scala.scalajs.js.annotation.ExposedJSMember")
 
+    lazy val JSImportModule = getRequiredModule("scala.scalajs.js.import")
+    lazy val JSImportModuleClass = JSImportModule.moduleClass
+      lazy val JSImport_apply = getMemberMethod(JSImportModuleClass, nme.apply)
+
     lazy val SpecialPackageModule = getPackageObject("scala.scalajs.js.special")
       lazy val Special_delete = getMemberMethod(SpecialPackageModule, newTermName("delete"))
       lazy val Special_debugger = getMemberMethod(SpecialPackageModule, newTermName("debugger"))

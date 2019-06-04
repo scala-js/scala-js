@@ -294,6 +294,8 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
 
         node
 
+      case ImportCall(arg) =>
+        new Node(Token.DYNAMIC_IMPORT, transformExpr(arg))
       case Delete(prop) =>
         new Node(Token.DELPROP, transformExpr(prop))
       case UnaryOp(op, lhs) =>

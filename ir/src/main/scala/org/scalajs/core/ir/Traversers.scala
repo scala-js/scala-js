@@ -165,6 +165,9 @@ object Traversers {
       case JSSuperConstructorCall(args) =>
         args foreach traverse
 
+      case JSImportCall(arg) =>
+        traverse(arg)
+
       case JSSpread(items) =>
         traverse(items)
 

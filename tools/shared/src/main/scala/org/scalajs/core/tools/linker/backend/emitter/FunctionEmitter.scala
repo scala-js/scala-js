@@ -1060,6 +1060,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           allowSideEffects && test(receiver) && test(method) && (args forall test)
         case JSSuperBracketSelect(_, qualifier, item) =>
           allowSideEffects && test(qualifier) && test(item)
+        case JSImportCall(arg) =>
+          allowSideEffects && test(arg)
         case LoadJSModule(_) =>
           allowSideEffects
 
@@ -1524,6 +1526,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                     method),
                 StringLiteral("call"),
                 receiver :: args)
+          }
+
+        case JSImportCall(arg) =>
+          unnest(arg) { (newArg, env) =>
+            redo(JSImportCall(newArg))(env)
           }
 
         case JSDotSelect(qualifier, item) =>
@@ -2057,6 +2064,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           val ctor = genRawJSClassConstructor(cls.className)
           genCallHelper("superGet", ctor DOT "prototype",
               transformExpr(qualifier), transformExpr(item))
+
+        case JSImportCall(arg) =>
+          js.ImportCall(transformExpr(arg))
 
         case LoadJSConstructor(cls) =>
           genRawJSClassConstructor(cls.className)

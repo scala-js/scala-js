@@ -1647,7 +1647,9 @@ object Build {
 
           collectionsEraDependentDirectory(scalaV, testDir) ::
           includeIf(testDir / "require-modules",
-              scalaJSModuleKind.value != ModuleKind.NoModule)
+              scalaJSModuleKind.value != ModuleKind.NoModule) :::
+          includeIf(testDir / "require-dynamic-import",
+              scalaJSModuleKind.value == ModuleKind.ESModule) // this is an approximation that works for now
         },
 
         jsDependencies += ProvidedJS / "ScalaJSDefinedTestNatives.js" % "test",

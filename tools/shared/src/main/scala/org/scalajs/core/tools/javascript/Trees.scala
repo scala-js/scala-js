@@ -151,6 +151,10 @@ object Trees {
    */
   case class Apply(fun: Tree, args: List[Tree])(implicit val pos: Position) extends Tree
 
+  /** Dynamic `import(arg)`. */
+  case class ImportCall(arg: Tree)(implicit val pos: Position)
+      extends Tree
+
   /** `...items`, the "spread" operator of ECMAScript 6.
    *
    *  It is only valid in ECMAScript 6, in the `args`/`items` of a [[New]],
