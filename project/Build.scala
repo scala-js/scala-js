@@ -1624,7 +1624,7 @@ object Build {
 
       inConfig(Bootstrap)(testSuiteBootstrapSetting)
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, jUnitRuntime, testBridge % "test"
+      library, jUnitRuntime, testBridge % "test", jUnitAsyncJS % "test"
   )
 
   lazy val testSuiteJVM: Project = (project in file("test-suite/jvm")).settings(
