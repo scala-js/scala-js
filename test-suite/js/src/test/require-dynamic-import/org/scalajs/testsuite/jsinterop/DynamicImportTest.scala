@@ -16,32 +16,35 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import org.junit.Assert._
 import org.junit.Test
 
+import org.scalajs.junit.async._
+
 /* This is currently hard-coded for Node.js modules in particular.
  * We are importing built-in Node.js modules, because we do not have any
  * infrastructure to load non-built-in modules. In the future, we should use
  * our own user-defined ES6 modules written in JavaScript.
  */
 class DynamicImportTest {
+  import DynamicImportTest._
 
-  @Test def testDynImportParsesAndExecutes(): Unit = {
-    /* Since we do not have support for asynchronous tests, all we can do here
-     * is test that `js.import` parses, links, and executes without error,
-     * returning a `Promise`. We can't actually wait for the promise to
-     * resolve and hence cannot test its result.
-     *
-     * We will be able to revisit this in Scala.js 1.x.
-     */
+  @Test def testSuccessfulImport(): AsyncResult = {
+    await(js.`import`[QueryStringAPI]("querystring").toFuture.map { qs =>
+      assertEquals("object", js.typeOf(qs))
 
-    def isPromise(x: Any): Boolean = x.isInstanceOf[js.Promise[_]]
+      val dict = js.Dictionary("foo" -> "bar", "baz" -> "qux")
 
-    assertTrue(isPromise(js.`import`[js.Any]("fs")))
-
-    val failedPromise = js.`import`[js.Any]("non-existent-module")
-    assertTrue(isPromise(failedPromise))
-    // Recover to avoid the unhandled rejected Promise warning of Node.js
-    failedPromise.toFuture.recover {
-      case th: Throwable => ()
-    }
+      assertEquals("foo=bar&baz=qux", qs.stringify(dict))
+      assertEquals("foo:bar;baz:qux", qs.stringify(dict, ";", ":"))
+    })
   }
 
+  @Test(expected = classOf[js.JavaScriptException])
+  def testFailedImport(): AsyncResult =
+    await(js.`import`[js.Any]("non-existent-module").toFuture)
+}
+
+object DynamicImportTest {
+  trait QueryStringAPI extends js.Any {
+    def stringify(obj: js.Dictionary[String]): String
+    def stringify(obj: js.Dictionary[String], sep: String, eq: String): String
+  }
 }
