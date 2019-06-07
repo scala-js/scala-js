@@ -578,6 +578,21 @@ object Trees {
     val tpe = NoType
   }
 
+  /** JavaScript dynamic import of the form `import(arg)`.
+   *
+   *  This form is its own node, rather than using something like
+   *  {{{
+   *  JSFunctionApply(JSImport())
+   *  }}}
+   *  because `import` is not a first-class term in JavaScript.
+   *  `ImportCall` is a dedicated syntactic form that cannot be
+   *  dissociated.
+   */
+  case class JSImportCall(arg: Tree)(implicit val pos: Position)
+      extends Tree {
+    val tpe = AnyType // it is a JavaScript Promise
+  }
+
   /** Loads the constructor of a JS class (native or not).
    *
    *  `cls` must represent a non-trait JS class (native or not).

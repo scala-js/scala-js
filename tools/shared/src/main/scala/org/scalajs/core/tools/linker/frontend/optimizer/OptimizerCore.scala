@@ -628,6 +628,9 @@ private[optimizer] abstract class OptimizerCore(
       case JSSuperConstructorCall(args) =>
         JSSuperConstructorCall(transformExprsOrSpreads(args))
 
+      case JSImportCall(arg) =>
+        JSImportCall(transformExpr(arg))
+
       case JSDelete(JSDotSelect(obj, prop)) =>
         JSDelete(JSDotSelect(transformExpr(obj), prop))
 

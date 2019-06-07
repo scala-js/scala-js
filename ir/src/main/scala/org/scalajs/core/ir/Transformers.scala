@@ -162,6 +162,9 @@ object Transformers {
         case JSSuperConstructorCall(args) =>
           JSSuperConstructorCall(args map transformExpr)
 
+        case JSImportCall(arg) =>
+          JSImportCall(transformExpr(arg))
+
         case JSSpread(items) =>
           JSSpread(transformExpr(items))
 

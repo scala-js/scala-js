@@ -54,6 +54,8 @@ abstract class JSPrimitives {
 
   val UNITVAL = 349 // () value, which is undefined
 
+  val JS_IMPORT = 350 // js.import.apply(specifier)
+
   val CONSTRUCTOROF = 352 // runtime.constructorOf(clazz)
   val LINKING_INFO = 354  // $linkingInfo
 
@@ -110,6 +112,8 @@ abstract class JSPrimitives {
     addPrimitive(JSObject_properties, OBJPROPS)
 
     addPrimitive(BoxedUnit_UNIT, UNITVAL)
+
+    addPrimitive(JSImport_apply, JS_IMPORT)
 
     addPrimitive(Runtime_constructorOf, CONSTRUCTOROF)
     addPrimitive(Runtime_linkingInfo, LINKING_INFO)
