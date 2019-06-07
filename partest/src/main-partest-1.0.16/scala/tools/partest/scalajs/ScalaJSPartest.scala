@@ -47,7 +47,12 @@ class ScalaJSRunner(testFile: File, suiteRunner: SuiteRunner,
         new nest.NestUI(diffOnFail = options.showDiff, colorEnabled = true)) {
   private val compliantSems: List[String] = {
     scalaJSConfigFile("sem").fold(List.empty[String]) { file =>
-      Source.fromFile(file).getLines.toList
+      val source = Source.fromFile(file)
+      try {
+        source.getLines.toList
+      } finally {
+        source.close()
+      }
     }
   }
 

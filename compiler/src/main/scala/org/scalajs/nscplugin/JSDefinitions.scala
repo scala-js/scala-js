@@ -94,6 +94,10 @@ trait JSDefinitions {
     lazy val JSConstructorTagModule = getRequiredModule("scala.scalajs.js.ConstructorTag")
       lazy val JSConstructorTag_materialize = getMemberMethod(JSConstructorTagModule, newTermName("materialize"))
 
+    lazy val JSImportModule = getRequiredModule("scala.scalajs.js.import")
+    lazy val JSImportModuleClass = JSImportModule.moduleClass
+      lazy val JSImport_apply = getMemberMethod(JSImportModuleClass, nme.apply)
+
     lazy val SpecialPackageModule = getPackageObject("scala.scalajs.js.special")
       lazy val Special_in = getMemberMethod(SpecialPackageModule, newTermName("in"))
       lazy val Special_instanceof = getMemberMethod(SpecialPackageModule, newTermName("instanceof"))

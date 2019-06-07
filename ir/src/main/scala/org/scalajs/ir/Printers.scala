@@ -591,6 +591,11 @@ object Printers {
           print("super")
           printArgs(args)
 
+        case JSImportCall(arg) =>
+          print("import(")
+          print(arg)
+          print(')')
+
         case LoadJSConstructor(cls) =>
           print("constructorOf[")
           print(cls)

@@ -1446,9 +1446,13 @@ object Build {
         val testDir = (sourceDirectory in Test).value
         val scalaV = scalaVersion.value
 
+        val moduleKind = scalaJSLinkerConfig.value.moduleKind
+
         collectionsEraDependentDirectory(scalaV, testDir) ::
         includeIf(testDir / "require-modules",
-            scalaJSLinkerConfig.value.moduleKind != ModuleKind.NoModule)
+            moduleKind != ModuleKind.NoModule) :::
+        includeIf(testDir / "require-dynamic-import",
+            moduleKind == ModuleKind.ESModule) // this is an approximation that works for now
       },
 
       scalaJSLinkerConfig ~= { _.withSemantics(TestSuiteLinkerOptions.semantics _) },

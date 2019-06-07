@@ -68,7 +68,8 @@ private[ir] object Tags {
   final val TagJSSuperBracketSelect = TagJSBracketMethodApply + 1
   final val TagJSSuperBracketCall = TagJSSuperBracketSelect + 1
   final val TagJSSuperConstructorCall = TagJSSuperBracketCall + 1
-  final val TagLoadJSConstructor = TagJSSuperConstructorCall + 1
+  final val TagJSImportCall = TagJSSuperConstructorCall + 1
+  final val TagLoadJSConstructor = TagJSImportCall + 1
   final val TagLoadJSModule = TagLoadJSConstructor + 1
   final val TagJSDelete = TagLoadJSModule + 1
   final val TagJSUnaryOp = TagJSDelete + 1

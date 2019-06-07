@@ -1275,6 +1275,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           allowSideEffects && test(receiver) && test(method) && (args.forall(testJSArg))
         case JSSuperBracketSelect(superClass, qualifier, item) =>
           allowSideEffects && test(superClass) && test(qualifier) && test(item)
+        case JSImportCall(arg) =>
+          allowSideEffects && test(arg)
         case LoadJSModule(_) =>
           allowSideEffects
         case JSGlobalRef(_) =>
@@ -1763,6 +1765,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                     method),
                 StringLiteral("call"),
                 receiver :: args)
+          }
+
+        case JSImportCall(arg) =>
+          unnest(arg) { (newArg, env) =>
+            redo(JSImportCall(newArg))(env)
           }
 
         case JSDotSelect(qualifier, item) =>
@@ -2557,6 +2564,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSSuperBracketSelect(superClass, qualifier, item) =>
           genCallHelper("superGet", transformExprNoChar(superClass),
               transformExprNoChar(qualifier), transformExprNoChar(item))
+
+        case JSImportCall(arg) =>
+          js.ImportCall(transformExprNoChar(arg))
 
         case LoadJSConstructor(cls) =>
           extractWithGlobals(genJSClassConstructor(cls.className))

@@ -343,6 +343,10 @@ object Hashers {
           mixTag(TagJSSuperConstructorCall)
           mixTreeOrJSSpreads(args)
 
+        case JSImportCall(arg) =>
+          mixTag(TagJSImportCall)
+          mixTree(arg)
+
         case LoadJSConstructor(cls) =>
           mixTag(TagLoadJSConstructor)
           mixClassRef(cls)

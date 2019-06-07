@@ -173,6 +173,9 @@ object Traversers {
       case JSSuperConstructorCall(args) =>
         args.foreach(traverseTreeOrJSSpread)
 
+      case JSImportCall(arg) =>
+        traverse(arg)
+
       case JSDelete(prop) =>
         traverse(prop)
 

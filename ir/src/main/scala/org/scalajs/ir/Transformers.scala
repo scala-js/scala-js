@@ -171,6 +171,9 @@ object Transformers {
         case JSSuperConstructorCall(args) =>
           JSSuperConstructorCall(args.map(transformExprOrJSSpread))
 
+        case JSImportCall(arg) =>
+          JSImportCall(transformExpr(arg))
+
         case JSDelete(prop) =>
           JSDelete(transformExpr(prop))
 

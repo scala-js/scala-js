@@ -363,6 +363,11 @@ object Printers {
           print(fun)
           printArgs(args)
 
+        case ImportCall(arg) =>
+          print("import(")
+          print(arg)
+          print(')')
+
         case Spread(items) =>
           print("...")
           print(items)

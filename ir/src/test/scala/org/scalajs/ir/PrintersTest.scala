@@ -646,6 +646,10 @@ class PrintersTest {
     assertPrintEquals("super(4, 5)", JSSuperConstructorCall(List(i(4), i(5))))
   }
 
+  @Test def printJSImportCall(): Unit = {
+    assertPrintEquals("""import("foo.js")""", JSImportCall(StringLiteral("foo.js")))
+  }
+
   @Test def printLoadJSConstructor(): Unit = {
     assertPrintEquals("constructorOf[LTest]", LoadJSConstructor("LTest"))
   }

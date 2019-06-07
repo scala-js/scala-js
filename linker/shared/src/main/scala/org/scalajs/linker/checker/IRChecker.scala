@@ -980,6 +980,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         for (arg <- args)
           typecheckExprOrSpread(arg, env)
 
+      case JSImportCall(arg) =>
+        typecheckExpr(arg, env)
+
       case LoadJSConstructor(cls) =>
         val clazz = lookupClass(cls)
         val valid = clazz.kind match {
