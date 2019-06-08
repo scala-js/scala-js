@@ -74,7 +74,7 @@ class ReentrantLock(fair: Boolean) extends Lock with Serializable {
   //Not Implemented
   //final def hasQueuedThread(thread: Thread): Boolean
 
-  //Not Imolemented
+  //Not Implemented
   //final def getQueueLength(): Int
 
   //Not Implemented

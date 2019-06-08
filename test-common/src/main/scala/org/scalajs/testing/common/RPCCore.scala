@@ -49,7 +49,7 @@ private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
   /** Next call ID we'll assign. */
   private[this] val nextID = new AtomicLong(0L)
 
-  /** Currently registered enpoints. */
+  /** Currently registered endpoints. */
   private[this] val endpoints = new ConcurrentHashMap[OpCode, BoundEndpoint]
 
   /** Subclass should call this whenever a new message arrives */
