@@ -107,7 +107,7 @@ class Hashtable[K, V] private (inner: mutable.HashMap[Box[Any], V])
 
   /* Inspired by the implementation of
    * scala.collection.convert.JavaCollectionWrappers.MapWrapper.entrySet
-   * as found in version 2.13.0-RC3, with two changes:
+   * as found in version 2.13.0, with two changes:
    *
    * - accommodate the fact that our keys are boxed, and
    * - explicitly snapshot the underlying contents right before any mutation of
