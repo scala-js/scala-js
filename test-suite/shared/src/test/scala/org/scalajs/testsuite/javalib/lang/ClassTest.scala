@@ -67,11 +67,14 @@ class ClassTest {
     assertNotSame(classOf[java.lang.Double], java.lang.Double.TYPE)
   }
 
+  object TestObject
+
   @Test def getSimpleName(): Unit = {
     assertEquals("Integer", classOf[java.lang.Integer].getSimpleName())
     assertEquals("Class", classOf[java.lang.Class[_]].getSimpleName())
     assertEquals("Map", classOf[scala.collection.Map[_, _]].getSimpleName())
     assertEquals("InnerClass", classOf[ClassTestClass#InnerClass].getSimpleName())
+    assertEquals("TestObject$", TestObject.getClass.getSimpleName)
   }
 
   @Test def isAssignableFrom(): Unit = {
