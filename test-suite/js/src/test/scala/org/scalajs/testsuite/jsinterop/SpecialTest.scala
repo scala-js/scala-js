@@ -60,9 +60,9 @@ class SpecialTest {
     js.special.delete(a[js.Object]("foo"), kh.key)
   }
 
-  // js.special.globalThis
+  // js.special.fileLevelThis
 
-  @Test def globalThis_can_be_used_to_detect_the_global_object(): Unit = {
+  @Test def fileLevelThis_can_be_used_to_detect_the_global_object(): Unit = {
     val globalObject = {
       import js.Dynamic.{global => g}
       // We've got to use selectDynamic explicitly not to crash Scala 2.10
@@ -72,11 +72,17 @@ class SpecialTest {
         g.selectDynamic("global")
       } else {
         // In all other well-known environment, we can use the global `this`
-        js.special.globalThis
+        js.special.fileLevelThis
       }
     }
 
     assertSame(js.Dynamic.global, globalObject)
+  }
+
+  // js.special.globalThis (deprecated)
+
+  @Test def globalThis_is_fileLevelThis(): Unit = {
+    assertSame(js.special.fileLevelThis, js.special.globalThis)
   }
 
   // js.special.debugger
