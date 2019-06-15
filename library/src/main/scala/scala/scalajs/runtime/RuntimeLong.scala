@@ -969,11 +969,11 @@ object RuntimeLong {
     @inline def isZero(lo: Int, hi: Int): Boolean =
       (lo | hi) == 0
 
-    /** Tests whether the long (lo, hi)'s mathematic value fits in a signed Int. */
+    /** Tests whether the long (lo, hi)'s mathematical value fits in a signed Int. */
     @inline def isInt32(lo: Int, hi: Int): Boolean =
       hi == (lo >> 31)
 
-    /** Tests whether the long (_, hi)'s mathematic value fits in an unsigned Int. */
+    /** Tests whether the long (_, hi)'s mathematical value fits in an unsigned Int. */
     @inline def isUInt32(hi: Int): Boolean =
       hi == 0
 

@@ -47,7 +47,7 @@ class StackTraceTest {
   }
 
   @Test def decode_class_name_and_method_name(): Unit = {
-    assumeTrue("Assume node.js", executingInNodeJS)
+    assumeTrue("Assume Node.js", executingInNodeJS)
     assumeFalse("Assume fullopt-stage", isInFullOpt)
 
     val Error = js.constructorOf[js.Error]

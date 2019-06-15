@@ -1,5 +1,5 @@
-This is a standalone SBT project to test the Scala.js SBT plugin as it
-will be used by the users. (Through normal SBT dependency
+This is a standalone sbt project to test the Scala.js sbt plugin as it
+will be used by the users. (Through normal sbt dependency
 management). This needs the Scala.js artifacts to be published
 locally.
 

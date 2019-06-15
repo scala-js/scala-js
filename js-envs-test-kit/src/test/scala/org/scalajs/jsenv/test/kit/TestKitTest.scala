@@ -33,7 +33,7 @@ class TestKitTest {
 
       expectAssert(msg, cause)(body(kit))
 
-      assertFalse("faster than timout", deadline.isOverdue)
+      assertFalse("faster than timeout", deadline.isOverdue)
     }
 
     test(env.withSuccess(), null)

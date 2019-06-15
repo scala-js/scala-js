@@ -75,7 +75,7 @@ final class TestAdapter(jsEnv: JSEnv, input: Input, config: TestAdapter.Config) 
 
   /** Called when a throwable bubbles up the execution stack.
    *
-   *  We terminate everyting if this happens to make sure nothing hangs waiting
+   *  We terminate everything if this happens to make sure nothing hangs waiting
    *  on an async operation to complete.
    */
   private def reportFailure(cause: Throwable): Unit = {

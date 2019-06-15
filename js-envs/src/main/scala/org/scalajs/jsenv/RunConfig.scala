@@ -115,8 +115,7 @@ final object RunConfig {
    *  1. inform it of the [[JSEnv]]'s capabilities
    *  1. invoke [[validate]] with every received [[RunConfig]]
    *
-   *  This ensures that enusre that all set config options are supported by the
-   *  [[JSEnv]].
+   *  This ensures that all set config options are supported by the [[JSEnv]].
    */
   final class Validator private (
       inheritIO: Boolean,

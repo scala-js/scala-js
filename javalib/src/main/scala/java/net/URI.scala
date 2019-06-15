@@ -180,7 +180,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
     val origPath = _path.get
 
     // Step 1: Remove all "." segments
-    // Step 2: Remove ".." segments preceeded by non ".." segment until no
+    // Step 2: Remove ".." segments preceded by non ".." segment until no
     // longer applicable
 
     /** Checks whether a successive ".." may drop the head of a
@@ -206,7 +206,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
         // remove empty segments not at end of path
         loop(xs, resRev)
       case ".." :: xs if okToDropFrom(resRev) =>
-        // Remove preceeding non-".." segment
+        // Remove preceding non-".." segment
         loop(xs, resRev.tail)
       case x :: xs =>
         loop(xs, x :: resRev)

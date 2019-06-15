@@ -40,7 +40,7 @@ private[kit] class TestEnv private (
 
   def withOutErrHang(): TestEnv = {
     def hangStream() = new InputStream {
-      // read method that hangs indfinitely.
+      // read method that hangs indefinitely.
       def read(): Int = synchronized {
         while (true) wait()
         throw new AssertionError("unreachable code")

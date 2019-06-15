@@ -28,7 +28,7 @@ package sbt.testing
  *  <code>Runner</code>, where one of these instances is considered the master.
  *  The slaves receive a communication channel to the master. Once the master's
  *  <code>done</code> method is invoked, nothing may be invoked on the slaves
- *  or the master. Slaves can be de-comissioned before the master terminates.
+ *  or the master. Slaves can be de-commissioned before the master terminates.
  */
 trait Runner {
 
