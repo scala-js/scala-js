@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.irio
+package org.scalajs.linker
 
 import scala.concurrent._
 

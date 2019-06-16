@@ -17,7 +17,6 @@ import scala.concurrent._
 import org.scalajs.logging._
 
 import org.scalajs.linker._
-import org.scalajs.linker.irio._
 
 /** A frontend for a standard Scala.js linker.
  *

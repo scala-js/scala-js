@@ -21,7 +21,6 @@ import java.nio.file._
 import java.nio.file.attribute._
 
 import org.scalajs.ir
-import org.scalajs.linker.irio._
 import org.scalajs.linker.standard.IRFileImpl
 
 abstract class IRFilePlatformExtensions private[linker] () {

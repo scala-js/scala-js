@@ -23,7 +23,6 @@ import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 
 import java.nio._
 
-import org.scalajs.linker.irio._
 import org.scalajs.linker.standard.{IRContainerImpl, IRFileImpl}
 
 abstract class IRContainerPlatformExtensions private[linker] () {

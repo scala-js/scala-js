@@ -16,8 +16,8 @@ import scala.concurrent._
 
 import java.nio.ByteBuffer
 
+import org.scalajs.linker._
 import org.scalajs.linker.LinkerOutput
-import org.scalajs.linker.irio._
 
 abstract class OutputFileImpl extends LinkerOutput.File {
   final private[linker] def impl: OutputFileImpl = this

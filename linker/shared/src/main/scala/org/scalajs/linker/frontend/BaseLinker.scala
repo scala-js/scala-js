@@ -22,7 +22,6 @@ import org.scalajs.linker._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.checker._
 import org.scalajs.linker.analyzer._
-import org.scalajs.linker.irio._
 
 import org.scalajs.ir
 import ir.Trees.{ClassDef, MethodDef}

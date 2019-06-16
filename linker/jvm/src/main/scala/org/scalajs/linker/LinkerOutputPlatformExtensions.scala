@@ -20,7 +20,6 @@ import java.nio.file._
 
 import java.io.IOException
 
-import org.scalajs.linker.irio._
 import org.scalajs.linker.standard.OutputFileImpl
 
 abstract class LinkerOutputPlatformExtensions private[linker] () {

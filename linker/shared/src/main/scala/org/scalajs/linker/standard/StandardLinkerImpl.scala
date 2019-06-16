@@ -19,7 +19,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
-import org.scalajs.linker.irio._
 
 /** Standard implementation of a Scala.js linker. */
 private final class StandardLinkerImpl private (

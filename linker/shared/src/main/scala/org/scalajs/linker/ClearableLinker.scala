@@ -16,8 +16,6 @@ import scala.concurrent._
 
 import org.scalajs.logging.Logger
 
-import org.scalajs.linker.irio._
-
 /** A box around a [[Linker]] to support clearing.
  *
  *  Calling `clear()` completely resets the state of this `ClearableLinker`, so

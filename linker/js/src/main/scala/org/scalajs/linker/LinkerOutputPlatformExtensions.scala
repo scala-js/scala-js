@@ -19,7 +19,6 @@ import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 
 import java.nio.ByteBuffer
 
-import org.scalajs.linker.irio.NodeFS._
 import org.scalajs.linker.standard.OutputFileImpl
 
 abstract class LinkerOutputPlatformExtensions private[linker] () {
@@ -28,6 +27,8 @@ abstract class LinkerOutputPlatformExtensions private[linker] () {
 }
 
 private object LinkerOutputPlatformExtensions {
+  import NodeFS._
+
   private final class NodeOutputFileImpl(path: String) extends OutputFileImpl {
     def newChannel()(implicit ec: ExecutionContext): Future[OutputFileImpl.Channel] = {
       cbFuture[Int](FS.open(path, "w", _)).map(new NodeOutputChannel(_))

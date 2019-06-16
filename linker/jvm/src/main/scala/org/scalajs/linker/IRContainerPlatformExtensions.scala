@@ -22,7 +22,6 @@ import java.nio.file.attribute._
 import java.util.EnumSet
 import java.util.zip.{ZipInputStream, ZipEntry}
 
-import org.scalajs.linker.irio._
 import org.scalajs.linker.standard.{IRContainerImpl, IRFileImpl}
 
 abstract class IRContainerPlatformExtensions private[linker] () {

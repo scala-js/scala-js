@@ -32,7 +32,6 @@ import org.scalajs.logging.Logger
 import org.scalajs.linker._
 import org.scalajs.linker.backend._
 import org.scalajs.linker.backend.emitter.Emitter
-import org.scalajs.linker.irio._
 import org.scalajs.linker.standard._
 
 /** The Closure backend of the Scala.js linker.
