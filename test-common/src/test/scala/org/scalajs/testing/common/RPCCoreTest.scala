@@ -13,13 +13,14 @@
 package org.scalajs.testing.common
 
 import scala.concurrent._
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 import java.util.concurrent.atomic.AtomicInteger
 
 import org.junit.Test
 import org.junit.Assert._
+
+import org.scalajs.junit.async._
 
 class RPCCoreTest {
   import RPCCoreTest._
@@ -35,15 +36,14 @@ class RPCCoreTest {
   }
 
   @Test
-  def simpleEndpoint: Unit = {
+  def simpleEndpoint: AsyncResult = await {
     var called = false
     x.attach(eps.simple)((_: Unit) => called = true)
-    Await.result(y.call(eps.simple)(()), atMost = 1.second)
-    assertTrue(called)
+    y.call(eps.simple)(()).map(_ => assertTrue(called))
   }
 
   @Test
-  def multiplePendingCalls: Unit = {
+  def multiplePendingCalls: AsyncResult = await {
     val p = Promise[Int]
 
     x.attachAsync(eps.number)(_ => p.future)
@@ -52,8 +52,7 @@ class RPCCoreTest {
 
     p.success(1)
 
-    val results = Await.result(Future.sequence(futures), atMost = 10.second)
-    assertEquals(List.fill(20)(1), results)
+    Future.sequence(futures).map(res => assertEquals(List.fill(20)(1), res))
   }
 
   @Test
@@ -90,7 +89,7 @@ class RPCCoreTest {
   }
 
   @Test
-  def msgRPCOrdering: Unit = {
+  def msgRPCOrdering: AsyncResult = await {
     val msgsX = new AtomicInteger(0)
     val msgsY = new AtomicInteger(0)
 
@@ -112,11 +111,11 @@ class RPCCoreTest {
     y.send(eps.msg0)(0)
     p.success(())
 
-    Await.result(y.call(eps.simple)(()), atMost = 1.second)
-
-    // Message from x must be here by now.
-    assertEquals(1, msgsX.get())
-    assertEquals(1, msgsY.get())
+    y.call(eps.simple)(()).map { _ =>
+      // Message from x must be here by now.
+      assertEquals(1, msgsX.get())
+      assertEquals(1, msgsY.get())
+    }
   }
 
   @Test
@@ -131,26 +130,25 @@ class RPCCoreTest {
   }
 
   @Test
-  def remoteException: Unit = {
+  def remoteException: AsyncResult = await {
     val msg0 = "My message for the outer exception"
     val msg1 = "My message for the inner exception"
     x.attach(eps.simple)(
         (_: Unit) => throw new Exception(msg0, new Exception(msg1)))
 
-    try {
-      Await.result(y.call(eps.simple)(()), atMost = 1.second)
-      fail("Expected exception")
-    } catch {
-      case e: RPCCore.RPCException =>
-        assertNotNull(e.getCause())
-        assertEquals(msg0, e.getCause().getMessage())
-        assertNotNull(e.getCause().getCause())
-        assertEquals(msg1, e.getCause().getCause().getMessage())
-    }
+    y.call(eps.simple)(())
+      .map(_ => fail("Expected exception"))
+      .recover {
+        case e: RPCCore.RPCException =>
+          assertNotNull(e.getCause())
+          assertEquals(msg0, e.getCause().getMessage())
+          assertNotNull(e.getCause().getCause())
+          assertEquals(msg1, e.getCause().getCause().getMessage())
+      }
   }
 
   @Test
-  def closeChannel: Unit = {
+  def closeChannel: AsyncResult = await {
     // Attach something that never completes.
     x.attachAsync(eps.number)((_: Unit) => Promise[Int].future)
 
@@ -159,13 +157,12 @@ class RPCCoreTest {
     val cause = new Throwable("blah")
     y.close(cause)
 
-    try {
-      Await.result(future, atMost = 1.second)
-      fail("Expected exception")
-    } catch {
-      case e: RPCCore.ClosedException =>
-        assertSame(cause, e.getCause())
-    }
+    future
+      .map(_ => fail("Expected exception"))
+      .recover {
+        case e: RPCCore.ClosedException =>
+          assertSame(cause, e.getCause())
+      }
   }
 }
 

@@ -146,8 +146,8 @@ def Tasks = [
   "test-suite-ecma-script2015": '''
     setJavaVersion $java
     npm install &&
-    sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test \
-        'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test &&
+    sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test testBridge/test \
+        'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test testBridge/test &&
     sbtretry ++$scala $testSuite/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \

@@ -745,7 +745,7 @@ object Build {
         baseDirectory.value.getParentFile / "test-common/src/main/scala",
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile / "test-common/src/test/scala"
-  ).dependsOn(jsEnvs)
+  ).dependsOn(jsEnvs, jUnitAsyncJVM % "test")
 
   lazy val plugin: Project = Project(id = "sbtPlugin", base = file("sbt-plugin")).settings(
       commonSettings,
@@ -1162,12 +1162,12 @@ object Build {
        * `mimaBinaryIssueFilters`.
        */
       unmanagedSourceDirectories in Compile +=
-        baseDirectory.value.getParentFile / "test-common/src/main/scala"
-      /* Note: We cannot add the test-common tests, since they test async
-       * stuff and JUnit does not support async tests. Therefore we need to
-       * block, so we cannot run on JS.
-       */
-  ).withScalaJSCompiler.dependsOn(library, testInterface)
+        baseDirectory.value.getParentFile / "test-common/src/main/scala",
+      unmanagedSourceDirectories in Test +=
+        baseDirectory.value.getParentFile / "test-common/src/test/scala"
+  ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
+      library, testInterface, jUnitRuntime % "test", jUnitAsyncJS % "test"
+  )
 
   lazy val jUnitRuntime = (project in file("junit-runtime")).enablePlugins(
       MyScalaJSPlugin
