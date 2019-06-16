@@ -55,7 +55,7 @@ abstract class JUnitTest {
       List('v', 's', 'n')
   )
 
-  @Test def testJUnitOutput(): AsyncResult = {
+  @Test def testJUnitOutput(): AsyncResult = await {
     val futs = for (args <- frameworkArgss) yield {
       for {
         rawOut <- runTests(args.map("-" + _))
@@ -78,7 +78,7 @@ abstract class JUnitTest {
       }
     }
 
-    await(Future.sequence(futs).map(_ => ()))
+    Future.sequence(futs).map(_ => ())
   }
 
   private def runTests(args: List[String]): Future[List[Output]] = {
