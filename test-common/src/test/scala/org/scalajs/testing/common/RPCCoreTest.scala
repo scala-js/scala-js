@@ -34,11 +34,6 @@ class RPCCoreTest {
     val msg1: MsgEndpoint.EP[Int] = MsgEndpoint[Int](5)
   }
 
-  private def fail(msg: String): Nothing = {
-    org.junit.Assert.fail(msg)
-    throw new AssertionError("Shouldn't reach here")
-  }
-
   @Test
   def simpleEndpoint: Unit = {
     var called = false

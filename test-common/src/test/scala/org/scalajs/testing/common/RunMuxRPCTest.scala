@@ -35,11 +35,6 @@ class RunMuxRPCTest {
     val msg: MsgEndpoint.EP[RunMux[Unit]] = MsgEndpoint[RunMux[Unit]](3)
   }
 
-  private def fail(msg: String): Nothing = {
-    org.junit.Assert.fail(msg)
-    throw new AssertionError("Shouldn't reach here")
-  }
-
   @Test
   def muxedCall: Unit = {
     val called = Array.fill(10)(false)
