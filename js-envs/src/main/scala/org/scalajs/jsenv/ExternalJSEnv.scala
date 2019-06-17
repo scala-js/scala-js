@@ -24,9 +24,7 @@ import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
 abstract class ExternalJSEnv(
-    @deprecatedName('additionalArgs)
     final protected val args: Seq[String],
-    @deprecatedName('additionalEnv)
     final protected val env: Map[String, String])
     extends AsyncJSEnv {
 

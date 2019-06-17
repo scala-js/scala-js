@@ -29,11 +29,8 @@ import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
 
 abstract class AbstractNodeJSEnv(
-    @deprecatedName('nodejsPath)
     protected val executable: String,
-    @deprecatedName('addArgs)
     args: Seq[String],
-    @deprecatedName('addEnv)
     env: Map[String, String],
     val sourceMap: Boolean)
     extends ExternalJSEnv(args, env) with ComJSEnv {

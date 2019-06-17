@@ -30,11 +30,8 @@ class NodeJSEnv(config: NodeJSEnv.Config)
 
   @deprecated("Use the overload with a NodeJSEnv.Config.", "0.6.18")
   def this(
-      @deprecatedName('nodejsPath)
       executable: String = "node",
-      @deprecatedName('addArgs)
       args: Seq[String] = Seq.empty,
-      @deprecatedName('addEnv)
       env: Map[String, String] = Map.empty) = {
     this(NodeJSEnv.Config().withExecutable(executable).withArgs(args.toList).withEnv(env))
   }

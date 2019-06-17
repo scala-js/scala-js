@@ -29,11 +29,8 @@ class JSDOMNodeJSEnv private[jsenv] (
 
   @deprecated("Use org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv.", "0.6.18")
   def this(
-      @deprecatedName('nodejsPath)
       executable: String = "node",
-      @deprecatedName('addArgs)
       args: Seq[String] = Seq.empty,
-      @deprecatedName('addEnv)
       env: Map[String, String] = Map.empty
   ) = {
     this(executable, args, env, internal = ())
