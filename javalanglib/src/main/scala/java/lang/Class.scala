@@ -61,8 +61,20 @@ final class Class[A] private (data0: Object) extends Object {
   def getName(): String =
     data.name
 
-  def getSimpleName(): String =
-    data.name.split('.').last.split('$').last
+  def getSimpleName(): String = {
+    val name = data.name
+    var idx = name.length - 1
+    while (idx >= 0 && name.charAt(idx) == '$') {
+      idx -= 1
+    }
+    while (idx >= 0 && {
+      val currChar = name.charAt(idx)
+      currChar != '.' && currChar != '$'
+    }) {
+      idx -= 1
+    }
+    name.substring(idx + 1)
+  }
 
   def getSuperclass(): Class[_ >: A] =
     data.getSuperclass()

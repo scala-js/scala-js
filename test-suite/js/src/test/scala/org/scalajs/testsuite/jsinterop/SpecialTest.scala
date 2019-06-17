@@ -89,9 +89,9 @@ class SpecialTest {
     js.special.delete(a[js.Object]("foo"), kh.key)
   }
 
-  // js.special.globalThis
+  // js.special.fileLevelThis
 
-  @Test def globalThis_can_be_used_to_detect_the_global_object(): Unit = {
+  @Test def fileLevelThis_can_be_used_to_detect_the_global_object(): Unit = {
     val globalObject = {
       import js.Dynamic.{global => g}
       if (js.typeOf(g.global) != "undefined" && (g.global.Object eq g.Object)) {
@@ -99,11 +99,17 @@ class SpecialTest {
         g.global
       } else {
         // In all other well-known environment, we can use the global `this`
-        js.special.globalThis.asInstanceOf[js.Dynamic]
+        js.special.fileLevelThis.asInstanceOf[js.Dynamic]
       }
     }
 
     assertSame(js.Math, globalObject.Math)
+  }
+
+  // js.special.globalThis (deprecated)
+
+  @Test def globalThis_is_fileLevelThis(): Unit = {
+    assertSame(js.special.fileLevelThis, js.special.globalThis)
   }
 
   // js.special.debugger
