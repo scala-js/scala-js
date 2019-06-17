@@ -32,7 +32,6 @@ import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
 import org.scalajs.linker._
-import org.scalajs.linker.irio._
 
 /* Things that we want to expose in the sbt command line (and hence also in
  * `ci/matrix.xml`).

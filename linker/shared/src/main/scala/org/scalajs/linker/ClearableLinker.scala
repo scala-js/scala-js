@@ -16,8 +16,6 @@ import scala.concurrent._
 
 import org.scalajs.logging.Logger
 
-import org.scalajs.linker.irio._
-
 /** A box around a [[Linker]] to support clearing.
  *
  *  Calling `clear()` completely resets the state of this `ClearableLinker`, so
@@ -62,7 +60,7 @@ object ClearableLinker {
 
     private[this] var _linker: Linker = _
 
-    def link(irFiles: Seq[VirtualScalaJSIRFile],
+    def link(irFiles: Seq[IRFile],
         moduleInitializers: Seq[ModuleInitializer],
         output: LinkerOutput, logger: Logger)(
         implicit ec: ExecutionContext): Future[Unit] = {

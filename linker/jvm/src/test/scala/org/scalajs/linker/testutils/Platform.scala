@@ -16,9 +16,9 @@ import scala.concurrent._
 
 import java.nio.file.Paths
 
-import org.scalajs.linker.irio._
+import org.scalajs.linker._
 
 object Platform {
-  def loadJar(path: String)(implicit ec: ExecutionContext): Future[ScalaJSIRContainer] =
-    FileScalaJSIRContainer.fromJar(Paths.get(path))
+  def loadJar(path: String)(implicit ec: ExecutionContext): Future[Seq[IRContainer]] =
+    IRContainer.fromPathClasspath(Seq(Paths.get(path))).map(_._1)
 }

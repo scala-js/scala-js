@@ -22,7 +22,6 @@ import org.scalajs.linker._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.checker._
 import org.scalajs.linker.analyzer._
-import org.scalajs.linker.irio._
 
 import org.scalajs.ir
 import ir.Trees.{ClassDef, MethodDef}
@@ -30,7 +29,7 @@ import ir.Hashers
 
 import Analysis._
 
-/** Links the information from [[irio.VirtualScalaJSIRFile]]s into
+/** Links the information from [[IRFile]]s into
  *  [[standard.LinkedClass LinkedClass]]es. Does a dead code elimination pass.
  */
 final class BaseLinker(config: CommonPhaseConfig) {
@@ -39,7 +38,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
   private val inputProvider = new InputProvider
   private val methodSynthesizer = new MethodSynthesizer(inputProvider)
 
-  def link(irInput: Seq[VirtualScalaJSIRFile],
+  def link(irInput: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer], logger: Logger,
       symbolRequirements: SymbolRequirement, checkIR: Boolean)(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
@@ -209,19 +208,19 @@ final class BaseLinker(config: CommonPhaseConfig) {
 
 private object BaseLinker {
   private class InputProvider extends Analyzer.InputProvider with MethodSynthesizer.InputProvider {
-    private var encodedNameToFile: collection.Map[String, VirtualScalaJSIRFile] = _
+    private var encodedNameToFile: collection.Map[String, IRFileImpl] = _
     private var entryPoints: collection.Set[String] = _
     private val cache = mutable.Map.empty[String, ClassDefAndInfoCache]
 
-    def update(irInput: Seq[VirtualScalaJSIRFile])(implicit ec: ExecutionContext): Future[Unit] = {
-      Future.traverse(irInput)(_.entryPointsInfo).map { infos =>
-        val encodedNameToFile = mutable.Map.empty[String, VirtualScalaJSIRFile]
+    def update(irInput: Seq[IRFile])(implicit ec: ExecutionContext): Future[Unit] = {
+      Future.traverse(irInput)(i => IRFileImpl.fromIRFile(i).entryPointsInfo).map { infos =>
+        val encodedNameToFile = mutable.Map.empty[String, IRFileImpl]
         val entryPoints = mutable.Set.empty[String]
 
         for ((input, info) <- irInput.zip(infos)) {
           // Remove duplicates. Just like the JVM
           if (!encodedNameToFile.contains(info.encodedName))
-            encodedNameToFile += info.encodedName -> input
+            encodedNameToFile += info.encodedName -> IRFileImpl.fromIRFile(input)
 
           if (info.hasEntryPoint)
             entryPoints += info.encodedName
@@ -275,17 +274,17 @@ private object BaseLinker {
     private var version: Option[String] = None
     private var cacheUpdate: Future[(ClassDef, Infos.ClassInfo)] = _
 
-    def loadInfo(irFile: VirtualScalaJSIRFile)(
+    def loadInfo(irFile: IRFileImpl)(
         implicit ec: ExecutionContext): Future[Infos.ClassInfo] = {
       update(irFile).map(_._2)
     }
 
-    def loadClassDefAndVersion(irFile: VirtualScalaJSIRFile)(
+    def loadClassDefAndVersion(irFile: IRFileImpl)(
         implicit ec: ExecutionContext): Future[(ClassDef, Option[String])] = {
       update(irFile).map(s => (s._1, version))
     }
 
-    private def update(irFile: VirtualScalaJSIRFile)(
+    private def update(irFile: IRFileImpl)(
         implicit ec: ExecutionContext): Future[(ClassDef, Infos.ClassInfo)] = synchronized {
       /* If the cache was already used in this run, the classDef and info are
        * already correct, no matter what the versions say.

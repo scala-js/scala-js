@@ -12,7 +12,6 @@ import java.net.URI
 import org.scalajs.logging._
 
 import org.scalajs.linker._
-import org.scalajs.linker.irio._
 
 @JSExportTopLevel("TestSuiteLinker")
 object QuickLinker {
@@ -37,14 +36,15 @@ object QuickLinker {
     def relURI(path: String) =
       new URI(null, null, NodePath.basename(path), null)
 
-    val out = LinkerOutput(new WritableNodeVirtualBinaryFile(outputPath))
-      .withSourceMap(new WritableNodeVirtualBinaryFile(smPath))
+    val out = LinkerOutput(LinkerOutput.newNodeFile(outputPath))
+      .withSourceMap(LinkerOutput.newNodeFile(smPath))
       .withSourceMapURI(relURI(smPath))
       .withJSFileURI(relURI(outputPath))
 
-    val cache = (new IRFileCache).newCache
+    val cache = IRFileCache().newCache
 
-    NodeScalaJSIRContainer.fromClasspath(cp.toSeq)
+    IRContainer.fromNodeClasspath(cp.toSeq)
+      .map(_._1)
       .flatMap(cache.cached _)
       .flatMap(linker.link(_, moduleInitializers, out, new ScalaConsoleLogger))
       .toJSPromise

@@ -19,7 +19,6 @@ import org.scalajs.logging.Logger
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.frontend.optimizer.{GenIncOptimizer, IncOptimizer}
-import org.scalajs.linker.irio._
 
 /** The frontend of the Scala.js linker.
  *
@@ -48,7 +47,7 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
   /** Link and optionally optimize the given IR to a
    *  [[standard.LinkingUnit LinkingUnit]].
    */
-  def link(irFiles: Seq[VirtualScalaJSIRFile],
+  def link(irFiles: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {

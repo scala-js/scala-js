@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.irio
+package org.scalajs.linker.standard
 
 import scala.annotation.tailrec
 import scala.concurrent._
@@ -24,19 +24,15 @@ import java.util.concurrent.atomic.AtomicInteger
 import org.scalajs.ir.EntryPointsInfo
 import org.scalajs.ir.Trees.ClassDef
 
-/** Centralized Scala.js IR cache.
- *
- *  Caches all Scala.js IR used in a given JVM. It supports creating of multiple
- *  sub-caches ([[IRFileCache.Cache]]) that track individual file sets.
- *  The global cache is fully thread-safe. However, the sub-caches are not.
- */
-final class IRFileCache {
+import org.scalajs.linker._
+
+final class StandardIRFileCache extends IRFileCache {
   /* General implementation comment: We always synchronize before doing I/O
    * (instead of using a calculate and CAS pattern). This is since we assume
    * that paying the cost for synchronization is lower than I/O.
    */
 
-  import IRFileCache._
+  import StandardIRFileCache.Stats
 
   /** Holds the cached IR */
   private[this] val globalCache = new ConcurrentHashMap[String, PersistedFiles]
@@ -46,40 +42,33 @@ final class IRFileCache {
   private[this] val statsInvalidated = new AtomicInteger(0)
   private[this] val statsTreesRead = new AtomicInteger(0)
 
-  /** Create a new sub-cache.
-   *
-   *  Users should call [[IRFileCache.Cache.free]] once they are done to allow
-   *  for more aggressive GC.
-   */
-  def newCache: Cache = new CacheImpl
+  def newCache: IRFileCache.Cache = new CacheImpl
 
-  /** Approximate statistics about the cache usage */
-  def stats: IRFileCache.Stats = {
-    new IRFileCache.Stats(statsReused.get, statsInvalidated.get,
-        statsTreesRead.get)
-  }
+  def stats: Stats =
+    new Stats(statsReused.get, statsInvalidated.get, statsTreesRead.get)
 
-  /** Reset statistics */
   def clearStats(): Unit = {
     statsReused.set(0)
     statsInvalidated.set(0)
     statsTreesRead.set(0)
   }
 
-  private final class CacheImpl extends Cache {
+  private final class CacheImpl extends IRFileCache.Cache {
     private[this] var localCache: Seq[PersistedFiles] = _
 
-    def cached(files: Seq[ScalaJSIRContainer])(
-        implicit ec: ExecutionContext): Future[Seq[VirtualScalaJSIRFile]] = {
+    def cached(files: Seq[IRContainer])(
+        implicit ec: ExecutionContext): Future[Seq[IRFile]] = {
       update(files)
       Future.traverse(localCache)(_.files).map(_.flatten)
     }
 
-    private def update(files: Seq[ScalaJSIRContainer])(
+    private def update(files: Seq[IRContainer])(
         implicit ec: ExecutionContext): Unit = clearOnThrow {
       val result = Seq.newBuilder[PersistedFiles]
 
-      for (file <- files) {
+      for (stableFile <- files) {
+        val file = IRContainerImpl.fromIRContainer(stableFile)
+
         @tailrec
         def putContents(): PersistedFiles = {
           val newValue = new PersistedFiles(file.path)
@@ -112,7 +101,7 @@ final class IRFileCache {
     }
   }
 
-  /** Stores the extracted [[VirtualScalaJSIRFile]]s from the file at path.
+  /** Stores the extracted [[IRFile]]s from the file at path.
    *
    *  This also tracks references to itself by reference counting.
    *  Further, a [[PersistedFiles]] has a tombstone state. It is necessary to
@@ -135,9 +124,9 @@ final class IRFileCache {
      *  May only be written under synchronization, except if this is a tombstone
      */
     @volatile
-    private[this] var _files: Future[Seq[VirtualScalaJSIRFile]] = null
+    private[this] var _files: Future[Seq[IRFile]] = null
 
-    def files: Future[Seq[VirtualScalaJSIRFile]] = _files
+    def files: Future[Seq[IRFile]] = _files
 
     /** Try to reference this block of files.
      *  @return true if referencing succeeded, false if this is a tombstone
@@ -189,7 +178,7 @@ final class IRFileCache {
      *
      *  May only be called by a thread, if it holds a reference to this file.
      */
-    def update(file: ScalaJSIRContainer)(implicit ec: ExecutionContext): Unit = {
+    def update(file: IRContainerImpl)(implicit ec: ExecutionContext): Unit = {
       assert(_references.get > 0, "Updating an unreferenced file")
       assert(file.path == path, s"Path mismatch: $path, ${file.path}")
 
@@ -208,7 +197,13 @@ final class IRFileCache {
             statsReused.incrementAndGet()
           } else {
             statsInvalidated.incrementAndGet()
-            _files = clearOnFail(file.sjsirFiles.map(_.map(new PersistentIRFile(_))))
+            _files = clearOnFail {
+              file.sjsirFiles.map { files =>
+                files.map { file =>
+                  new PersistentIRFile(IRFileImpl.fromIRFile(file))
+                }
+              }
+            }
             _version = file.version
           }
         }
@@ -216,16 +211,11 @@ final class IRFileCache {
     }
   }
 
-  private final class PersistentIRFile(
-      private[this] var _irFile: VirtualScalaJSIRFile)(
-      implicit ec: ExecutionContext)
-      extends VirtualScalaJSIRFile {
+  private final class PersistentIRFile(private[this] var _irFile: IRFileImpl)(
+      implicit ec: ExecutionContext) extends IRFileImpl(_irFile.path, _irFile.version) {
 
     @volatile
     private[this] var _tree: Future[ClassDef] = null
-
-    override val path: String = _irFile.path
-    override val version: Option[String] = _irFile.version
 
     // Force reading of entry points since we'll definitely need them.
     private[this] val _entryPointsInfo: Future[EntryPointsInfo] = _irFile.entryPointsInfo
@@ -274,33 +264,12 @@ final class IRFileCache {
   }
 }
 
-object IRFileCache {
-  /** A cache to use for individual runs. Not threadsafe */
-  sealed trait Cache {
-    /** Extract and cache IR.
-     *
-     *  The returned value is valid until the next invocation of [[cached]] or
-     *  [[free]].
-     *
-     *  @note Updating any of the underlying files in the container during the
-     *      lifetime of a returned [[VirtualScalaJSIRFile]] yields
-     *      unspecified behavior.
-     */
-    def cached(files: Seq[ScalaJSIRContainer])(
-        implicit ec: ExecutionContext): Future[Seq[VirtualScalaJSIRFile]]
-
-    /** Should be called if this cache is not used anymore.
-     *
-     *  Frees resources in the global cache, if they are not used anymore.
-     *  The cache may be reused after calling [[free]] (but this is not any
-     *  faster than calling [[IRFileCache.newCache]], modulo the object
-     *  allocation).
-     */
-    def free(): Unit
-  }
-
-  final class Stats(val reused: Int, val invalidated: Int, val treesRead: Int) {
-    /** Descriptive line to display in logs */
+object StandardIRFileCache {
+  final class Stats private[StandardIRFileCache] (
+      val reused: Int,
+      val invalidated: Int,
+      val treesRead: Int
+  ) extends IRFileCache.Stats {
     def logLine: String = {
       s"reused: $reused -- " +
       s"invalidated: $invalidated -- " +

@@ -27,7 +27,7 @@ import org.scalajs.logging._
 import org.scalajs.junit.async._
 
 import org.scalajs.linker._
-import org.scalajs.linker.irio._
+import org.scalajs.linker.standard.IRFileImpl
 
 import org.scalajs.linker.testutils._
 import org.scalajs.linker.testutils.TestIRBuilder._
@@ -69,15 +69,15 @@ class LinkerTest {
   def clean_linking_state(): AsyncResult = {
     class DummyException extends Exception
 
-    val badSeq = new IndexedSeq[VirtualScalaJSIRFile] {
-      def apply(x: Int): VirtualScalaJSIRFile = throw new DummyException()
+    val badSeq = new IndexedSeq[IRFile] {
+      def apply(x: Int): IRFile = throw new DummyException()
       def length: Int = throw new DummyException()
     }
 
     val linker = StandardLinker(StandardLinker.Config())
 
     def callLink(): Future[Unit] = {
-      val out = LinkerOutput(new WritableMemVirtualBinaryFile)
+      val out = LinkerOutput(LinkerOutput.newMemFile())
       linker.link(badSeq, Nil, out, NullLogger)
     }
 
@@ -112,9 +112,7 @@ object LinkerTest {
     val linker = StandardLinker(StandardLinker.Config())
 
     val classDefsFiles = classDefs.map { classDef =>
-      new VirtualScalaJSIRFile {
-        val path: String = "mem://" + classDef.name.name + ".sjsir"
-        val version: Option[String] = None
+      new IRFileImpl("mem://" + classDef.name.name + ".sjsir", None) {
         def tree(implicit ec: ExecutionContext): Future[ClassDef] = Future(classDef)
 
         def entryPointsInfo(implicit ec: ExecutionContext): Future[EntryPointsInfo] =
@@ -122,7 +120,7 @@ object LinkerTest {
       }
     }
 
-    val output = LinkerOutput(new WritableMemVirtualBinaryFile)
+    val output = LinkerOutput(LinkerOutput.newMemFile())
 
     TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
       linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,

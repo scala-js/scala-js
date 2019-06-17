@@ -15,14 +15,15 @@ package org.scalajs.linker.testutils
 import scala.collection.mutable
 import scala.concurrent._
 
+import org.scalajs.linker._
+import org.scalajs.linker.standard._
 import org.scalajs.linker.analyzer.Infos._
-import org.scalajs.linker.irio._
 
 object TestIRRepo {
   val minilib = new TestIRRepo(StdlibHolder.minilib)
   val fulllib = new TestIRRepo(StdlibHolder.fulllib)
 
-  class InfoLoader(encodedNameToFile: Map[String, VirtualScalaJSIRFile]) {
+  class InfoLoader(encodedNameToFile: Map[String, IRFileImpl]) {
     private val infosCache = mutable.Map.empty[String, Future[ClassInfo]]
 
     def loadInfo(encodedName: String)(
@@ -43,16 +44,18 @@ final class TestIRRepo(stdlibPath: String) {
   import scala.concurrent.ExecutionContext.Implicits.global
   import TestIRRepo.InfoLoader
 
-  private val globalIRCache = new IRFileCache
+  private val globalIRCache = IRFileCache()
 
-  val stdlibIRFiles: Future[Seq[VirtualScalaJSIRFile]] = {
-    Platform.loadJar(stdlibPath).flatMap(
-        jar => globalIRCache.newCache.cached(Seq(jar)))
+  val stdlibIRFiles: Future[Seq[IRFile]] = {
+    Platform.loadJar(stdlibPath)
+      .flatMap(globalIRCache.newCache.cached _)
   }
 
   lazy val loader: Future[InfoLoader] = {
-    def toElem(f: VirtualScalaJSIRFile) =
-      f.entryPointsInfo.map(i => i.encodedName -> f)
+    def toElem(f: IRFile) = {
+      val impl = IRFileImpl.fromIRFile(f)
+      impl.entryPointsInfo.map(i => i.encodedName -> impl)
+    }
 
     for {
       files <- stdlibIRFiles

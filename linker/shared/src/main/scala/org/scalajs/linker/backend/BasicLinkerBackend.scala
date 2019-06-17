@@ -18,8 +18,8 @@ import org.scalajs.logging.Logger
 
 import org.scalajs.linker.LinkerOutput
 import org.scalajs.linker.standard._
-import org.scalajs.linker.backend.emitter.Emitter
 
+import org.scalajs.linker.backend.emitter.Emitter
 import org.scalajs.linker.backend.javascript.{JSLineBuilder, JSFileBuilder, JSFileBuilderWithSourceMap}
 
 /** The basic backend for the Scala.js linker.
@@ -47,7 +47,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         // Without source map.
         val b = new JSFileBuilder
         emitter.emitAll(unit, b, logger)
-        output.jsFile.writeFull(b.complete())
+        OutputFileImpl.fromOutputFile(output.jsFile).writeFull(b.complete())
       } { sourceMap =>
         // With source map.
         val b = new JSFileBuilderWithSourceMap(output.jsFileURI,
@@ -55,8 +55,8 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         emitter.emitAll(unit, b, logger)
         val (js, sm) = b.complete()
 
-        output.jsFile.writeFull(js)
-          .flatMap(_ => sourceMap.writeFull(sm))
+        OutputFileImpl.fromOutputFile(output.jsFile).writeFull(js)
+          .flatMap(_ => OutputFileImpl.fromOutputFile(sourceMap).writeFull(sm))
       }
     }
   }

@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.irio
+package org.scalajs.linker
 
 import scala.concurrent._
 
@@ -18,7 +18,7 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
 import scala.scalajs.js.typedarray._
 
-private[irio] object NodeFS {
+private[linker] object NodeFS {
   type CB[T] = js.Function2[js.Error, T, Unit]
 
   def cbFuture[A](op: CB[A] => Unit): Future[A] = {
