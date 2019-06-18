@@ -27,7 +27,8 @@ object QuickLinker {
   @JSExport
   def linkNode(irFilesAndJars: js.Array[String],
       moduleInitializers: js.Array[String]): String = {
-    linkNodeInternal(Semantics.Defaults, irFilesAndJars, moduleInitializers)
+    linkNodeInternal(Semantics.Defaults, irFilesAndJars.toSeq,
+        moduleInitializers.toSeq)
   }
 
   /** Link the Scala.js test suite on Node.js */
@@ -53,7 +54,7 @@ object QuickLinker {
         )
     )
 
-    linkNodeInternal(semantics, irFilesAndJars, moduleInitializers)
+    linkNodeInternal(semantics, irFilesAndJars.toSeq, moduleInitializers.toSeq)
   }
 
   /** Link a Scala.js application on Node.js */

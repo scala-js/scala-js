@@ -70,7 +70,7 @@ class JSDOMNodeJSEnv private[jsenv] (
         case file                  => libCache.materialize(file)
       }
       val scriptsURIsAsJSStrings = scriptsFiles.map { file =>
-        '"' + escapeJS(file.toURI.toASCIIString) + '"'
+        "\"" + escapeJS(file.toURI.toASCIIString) + "\""
       }
       val scriptsURIsJSArray = scriptsURIsAsJSStrings.mkString("[", ", ", "]")
 

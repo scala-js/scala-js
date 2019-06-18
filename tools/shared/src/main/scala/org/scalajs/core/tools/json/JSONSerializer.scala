@@ -39,7 +39,7 @@ object JSONSerializer {
   implicit def mapJSON[V: JSONSerializer]:JSONSerializer[Map[String, V]] = {
     new JSONSerializer[Map[String, V]] {
       def serialize(x: Map[String, V]): JSON =
-        Impl.fromMap(x.mapValues(_.toJSON))
+        Impl.fromMap(x.map(kv => kv._1 -> kv._2.toJSON))
     }
   }
 

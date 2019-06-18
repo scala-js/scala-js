@@ -77,7 +77,7 @@ final class VirtualFileMaterializer(singleDir: Boolean = false) {
   // scalastyle:on line.size.limit
   private def createTempDir(): File = {
     val baseDir = new File(System.getProperty("java.io.tmpdir"))
-    val baseName = System.currentTimeMillis() + "-"
+    val baseName = "" + System.currentTimeMillis() + "-"
 
     @tailrec
     def loop(tries: Int): File = {

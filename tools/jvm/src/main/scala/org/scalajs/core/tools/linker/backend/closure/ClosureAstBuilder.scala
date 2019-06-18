@@ -30,7 +30,7 @@ private[closure] class ClosureAstBuilder(
     relativizeBaseURI: Option[URI] = None) extends JSTreeBuilder {
 
   private val transformer = new ClosureAstTransformer(relativizeBaseURI)
-  private val treeBuf = mutable.ListBuffer.empty[Node]
+  private val treeBuf = List.newBuilder[Node]
 
   def addJSTree(tree: Tree): Unit = {
     /* Top-level `js.Block`s must be explicitly flattened here.
@@ -50,10 +50,9 @@ private[closure] class ClosureAstBuilder(
   }
 
   lazy val closureAST: SourceAst = {
-    val root = transformer.setNodePosition(IR.script(treeBuf: _*), NoPosition)
-
+    val root =
+      transformer.setNodePosition(IR.script(treeBuf.result(): _*), NoPosition)
     treeBuf.clear()
-
     new ClosureAstBuilder.ScalaJSSourceAst(root)
   }
 

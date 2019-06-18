@@ -18,6 +18,7 @@ import org.scalajs.core.ir.{ClassKind, Definitions}
 import org.scalajs.core.ir.Trees.{FieldDef, JSNativeLoadSpec}
 
 import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.CollectionsCompat.MutableMapCompatOps
 
 private[emitter] final class KnowledgeGuardian {
   import KnowledgeGuardian._
@@ -69,7 +70,7 @@ private[emitter] final class KnowledgeGuardian {
     }
 
     // Garbage collection
-    classes.retain((_, cls) => cls.testAndResetIsAlive())
+    classes.filterInPlace((_, cls) => cls.testAndResetIsAlive())
 
     val invalidateAll = !firstRun && {
       newIsParentDataAccessed != isParentDataAccessed ||

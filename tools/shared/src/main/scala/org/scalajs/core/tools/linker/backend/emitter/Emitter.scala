@@ -27,6 +27,7 @@ import org.scalajs.core.tools.javascript.{Trees => js, _}
 import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.backend.{OutputMode, ModuleKind}
+import org.scalajs.core.tools.linker.CollectionsCompat.MutableMapCompatOps
 
 /** Emits a desugared JS tree to a builder */
 final class Emitter private (semantics: Semantics, outputMode: OutputMode,
@@ -291,7 +292,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     logger.debug(
         s"Emitter: Method tree cache stats: resued: $statsMethodsReused -- "+
         s"invalidated: $statsMethodsInvalidated")
-    classCaches.retain((_, c) => c.cleanAfterRun())
+    classCaches.filterInPlace((_, c) => c.cleanAfterRun())
   }
 
   private def emitLinkedClass(
@@ -508,8 +509,8 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       _methodCaches.getOrElseUpdate(encodedName, new MethodCache)
 
     def cleanAfterRun(): Boolean = {
-      _staticCaches.retain((_, c) => c.cleanAfterRun())
-      _methodCaches.retain((_, c) => c.cleanAfterRun())
+      _staticCaches.filterInPlace((_, c) => c.cleanAfterRun())
+      _methodCaches.filterInPlace((_, c) => c.cleanAfterRun())
 
       if (!_cacheUsed)
         invalidate()
@@ -615,10 +616,10 @@ private[scalajs] object Emitter {
         callOnModule("sjsr_RuntimeString$", "hashCode__T__I"),
 
         instanceTests(LongImpl.RuntimeLongClass),
-        instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors),
-        callMethods(LongImpl.RuntimeLongClass, LongImpl.AllMethods),
+        instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors.toList),
+        callMethods(LongImpl.RuntimeLongClass, LongImpl.AllMethods.toList),
 
-        callOnModule(LongImpl.RuntimeLongModuleClass, LongImpl.AllModuleMethods),
+        callOnModule(LongImpl.RuntimeLongModuleClass, LongImpl.AllModuleMethods.toList),
 
         cond(semantics.strictFloats && esLevel == ESLevel.ES5) {
           callOnModule("sjsr_package$", "froundPolyfill__D__D")

@@ -524,7 +524,7 @@ class PhantomJSEnv(config: PhantomJSEnv.Config)
     case '>' => "&gt;"
     case '"' => "&quot;"
     case '&' => "&amp;"
-    case c   => c :: Nil
+    case c   => c.toString()
   }
 
 }

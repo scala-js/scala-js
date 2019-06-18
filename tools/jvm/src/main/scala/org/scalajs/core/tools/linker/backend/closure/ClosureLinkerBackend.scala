@@ -12,8 +12,6 @@
 
 package org.scalajs.core.tools.linker.backend.closure
 
-import scala.collection.JavaConverters._
-
 import com.google.javascript.jscomp.{
   SourceFile => ClosureSource,
   Compiler => ClosureCompiler,
@@ -99,7 +97,7 @@ final class ClosureLinkerBackend(
     module.add(new CompilerInput(ast, ast.getInputId(), false))
 
     // Compile the module
-    val closureExterns = List(
+    val closureExterns = java.util.Arrays.asList(
         toClosureSource(ClosureLinkerBackend.ScalaJSExternsFile),
         toClosureSource(makeExternsForExports(unit)))
     val options = closureOptions(output.name)
@@ -107,7 +105,7 @@ final class ClosureLinkerBackend(
 
     val result = logger.time("Closure: Compiler pass") {
       compiler.compileModules(
-          closureExterns.asJava, List(module).asJava, options)
+          closureExterns, java.util.Arrays.asList(module), options)
     }
 
     if (!result.success) {

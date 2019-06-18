@@ -390,7 +390,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       val initialEnv = Env.fromSignature(NoType, params, NoType,
           isConstructor = true)
 
-      val preparedEnv = (initialEnv /: prepStats) { (prevEnv, stat) =>
+      val preparedEnv = prepStats.foldLeft(initialEnv) { (prevEnv, stat) =>
         typecheckStat(stat, prevEnv)
       }
 
@@ -569,7 +569,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         env
 
       case Block(stats) =>
-        (env /: stats) { (prevEnv, stat) =>
+        stats.foldLeft(env) { (prevEnv, stat) =>
           typecheckStat(stat, prevEnv)
         }
         env
@@ -683,7 +683,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case Block(statsAndExpr) =>
         val stats :+ expr = statsAndExpr
-        val envAfterStats = (env /: stats) { (prevEnv, stat) =>
+        val envAfterStats = stats.foldLeft(env) { (prevEnv, stat) =>
           typecheckStat(stat, prevEnv)
         }
         typecheckExpr(expr, envAfterStats)
@@ -1257,7 +1257,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       val ancestors: Set[String],
       val hasInstances: Boolean,
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
-      _fields: TraversableOnce[CheckedField])(
+      _fields: List[CheckedField])(
       implicit ctx: ErrorContext) {
 
     val fields = _fields.filter(!_.static).map(f => f.name -> f).toMap
