@@ -457,7 +457,7 @@ object AnalyzerTest {
       classDefs.map(c => c.name.name -> Infos.generateClassInfo(c)).toMap
 
     def inputProvider(loader: Option[TestIRRepo.InfoLoader]) = new Analyzer.InputProvider {
-      def classesWithEntryPoints(): TraversableOnce[String] = classesWithEntryPoints0
+      def classesWithEntryPoints(): Iterable[String] = classesWithEntryPoints0
 
       def loadInfo(encodedName: String)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
         /* Note: We could use Future.successful here to complete the future

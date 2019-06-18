@@ -22,6 +22,7 @@ import org.scalajs.linker._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.checker._
 import org.scalajs.linker.analyzer._
+import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 import org.scalajs.ir
 import ir.Trees.{ClassDef, MethodDef}
@@ -75,7 +76,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
 
   private def analyze(symbolRequirements: SymbolRequirement, logger: Logger)(
       implicit ec: ExecutionContext): Future[Analysis] = {
-    def reportErrors(errors: Seq[Analysis.Error]) = {
+    def reportErrors(errors: scala.collection.Seq[Analysis.Error]) = {
       require(errors.nonEmpty)
 
       val maxDisplayErrors = {
@@ -231,7 +232,7 @@ private object BaseLinker {
       }
     }
 
-    def classesWithEntryPoints(): TraversableOnce[String] = entryPoints
+    def classesWithEntryPoints(): Iterable[String] = entryPoints
 
     def loadInfo(encodedName: String)(
         implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
@@ -265,7 +266,7 @@ private object BaseLinker {
     def cleanAfterRun(): Unit = {
       encodedNameToFile = null
       entryPoints = null
-      cache.retain((_, fileCache) => fileCache.cleanAfterRun())
+      cache.filterInPlace((_, fileCache) => fileCache.cleanAfterRun())
     }
   }
 

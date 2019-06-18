@@ -33,7 +33,7 @@ trait Analysis {
   import Analysis._
 
   def classInfos: scala.collection.Map[String, ClassInfo]
-  def errors: Seq[Error]
+  def errors: scala.collection.Seq[Error]
 }
 
 object Analysis {
@@ -62,8 +62,8 @@ object Analysis {
     def encodedName: String
     def kind: ClassKind
     def superClass: Option[ClassInfo]
-    def interfaces: Seq[ClassInfo]
-    def ancestors: Seq[ClassInfo]
+    def interfaces: scala.collection.Seq[ClassInfo]
+    def ancestors: scala.collection.Seq[ClassInfo]
     def nonExistent: Boolean
     /** For a Scala class, it is instantiated with a `New`; for a JS class,
      *  its constructor is accessed with a `JSLoadConstructor` or because it
@@ -74,8 +74,8 @@ object Analysis {
     def isModuleAccessed: Boolean
     def areInstanceTestsUsed: Boolean
     def isDataAccessed: Boolean
-    def linkedFrom: Seq[From]
-    def instantiatedFrom: Seq[From]
+    def linkedFrom: scala.collection.Seq[From]
+    def instantiatedFrom: scala.collection.Seq[From]
     def methodInfos(
         namespace: MemberNamespace): scala.collection.Map[String, MethodInfo]
 
@@ -97,8 +97,8 @@ object Analysis {
     def isExported: Boolean
     def isReflProxy: Boolean
     def isReachable: Boolean
-    def calledFrom: Seq[From]
-    def instantiatedSubclasses: Seq[ClassInfo]
+    def calledFrom: scala.collection.Seq[From]
+    def instantiatedSubclasses: scala.collection.Seq[ClassInfo]
     def nonExistent: Boolean
     def syntheticKind: MethodSyntheticKind
 

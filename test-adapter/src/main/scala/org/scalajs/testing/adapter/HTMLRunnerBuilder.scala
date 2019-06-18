@@ -12,11 +12,9 @@
 
 package org.scalajs.testing.adapter
 
-import scala.collection.JavaConverters._
-
 import java.io.{File, InputStream}
 import java.net.URI
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, StandardCopyOption}
 
 import sbt.testing.{Framework, TaskDef}
@@ -78,7 +76,7 @@ object HTMLRunnerBuilder {
 
     val htmlContent = render(title, jsFileURIs, cssURI, tests)
 
-    Files.write(output.toPath, List(htmlContent).asJava, StandardCharsets.UTF_8)
+    Files.write(output.toPath, java.util.Arrays.asList(htmlContent), UTF_8)
   }
 
   private def render(title: String, jsFiles: Seq[URI],
@@ -114,6 +112,6 @@ object HTMLRunnerBuilder {
     case '>' => "&gt;"
     case '"' => "&quot;"
     case '&' => "&amp;"
-    case c   => c :: Nil
+    case c   => c.toString()
   }
 }

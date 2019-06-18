@@ -136,7 +136,7 @@ object Infos {
       this
     }
 
-    def addInterfaces(interfaces: TraversableOnce[String]): this.type = {
+    def addInterfaces(interfaces: List[String]): this.type = {
       this.interfaces ++= interfaces
       this
     }
@@ -319,7 +319,7 @@ object Infos {
     def result(): MethodInfo = {
       def toMapOfLists[A](
           m: mutable.Map[String, mutable.Set[A]]): Map[String, List[A]] = {
-        m.mapValues(_.toList).toMap
+        m.map(kv => kv._1 -> kv._2.toList).toMap
       }
 
       MethodInfo(

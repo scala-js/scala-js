@@ -16,7 +16,6 @@ import language.higherKinds
 
 import scala.annotation.{switch, tailrec}
 
-import scala.collection.{GenMap, GenTraversableOnce, GenIterable, GenIterableLike}
 import scala.collection.mutable
 
 import org.scalajs.ir._
@@ -29,6 +28,7 @@ import org.scalajs.logging._
 import org.scalajs.linker._
 import org.scalajs.linker.backend.emitter.LongImpl
 import org.scalajs.linker.standard._
+import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 /** Incremental optimizer.
  *
@@ -50,7 +50,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     val factory = SymbolRequirement.factory("optimizer")
     import factory._
 
-    callMethods(LongImpl.RuntimeLongClass, LongImpl.AllIntrinsicMethods) ++
+    callMethods(LongImpl.RuntimeLongClass, LongImpl.AllIntrinsicMethods.toList) ++
     instantiateClass("jl_NullPointerException", "init___")
   }
 
@@ -103,7 +103,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
       val newLinkedClasses = for (linkedClass <- unit.classDefs) yield {
         val encodedName = linkedClass.encodedName
-        val staticLikeContainers = staticLikes(encodedName)
+        val staticLikeContainers = CollOps.forceGet(staticLikes, encodedName)
 
         val publicContainer = classes.get(encodedName).getOrElse {
           /* For interfaces, we need to look at default methods.
@@ -157,7 +157,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
      *
      * Non-batch mode only.
      */
-    assert(!batchMode || staticLikes.isEmpty)
+    assert(!batchMode || CollOps.isEmpty(staticLikes))
     if (!batchMode) {
       CollOps.retain(staticLikes) { (encodedName, staticLikeNamespaces) =>
         CollOps.remove(neededStaticLikes, encodedName).fold {
@@ -184,7 +184,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     /* Add new static-like stuff.
      * Easy, we don't have to notify anyone.
      */
-    for (linkedClass <- neededStaticLikes.values) {
+    CollOps.valuesForeach(neededStaticLikes) { linkedClass =>
       val namespaces = Array.tabulate(MemberNamespace.Count) { ord =>
         new StaticLikeNamespace(linkedClass.encodedName,
             MemberNamespace.fromOrdinal(ord))
@@ -203,7 +203,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
        * Non-batch mode only.
        */
       val objectClassStillExists =
-        objectClass.walkClassesForDeletions(neededClasses.get(_))
+        objectClass.walkClassesForDeletions(CollOps.get(neededClasses, _))
       assert(objectClassStillExists, "Uh oh, java.lang.Object was deleted!")
 
       /* Class changes:
@@ -225,7 +225,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     // Group children by (immediate) parent
     val newChildrenByParent = CollOps.emptyAccMap[String, LinkedClass]
 
-    for (linkedClass <- neededClasses.values) {
+    CollOps.valuesForeach(neededClasses) { linkedClass =>
       linkedClass.superClass.fold {
         assert(batchMode, "Trying to add java.lang.Object in incremental mode")
         objectClass = new Class(None, linkedClass.encodedName)
@@ -245,8 +245,9 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     } else {
       val existingParents =
         CollOps.parFlatMapKeys(newChildrenByParent)(classes.get)
-      for (parent <- existingParents)
+      CollOps.foreach(existingParents) { parent =>
         parent.walkForAdditions(getNewChildren)
+      }
     }
 
   }
@@ -310,7 +311,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       val methodSetChanged = methods.keySet != newMethodNames
       if (methodSetChanged) {
         // Remove deleted methods
-        methods retain { (methodName, method) =>
+        methods.filterInPlace { (methodName, method) =>
           if (newMethodNames.contains(methodName)) {
             true
           } else {
@@ -405,7 +406,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       getLinkedClassIfNeeded(encodedName) match {
         case Some(linkedClass) if sameSuperClass(linkedClass) =>
           // Class still exists. Recurse.
-          subclasses = subclasses.filter(
+          subclasses = CollOps.filter(subclasses)(
               _.walkClassesForDeletions(getLinkedClassIfNeeded))
           if (isInstantiated && !linkedClass.hasInstances)
             notInstantiatedAnymore()
@@ -420,8 +421,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     /** Delete this class and all its subclasses. UPDATE PASS ONLY. */
     def deleteSubtree(): Unit = {
       delete()
-      for (subclass <- subclasses)
-        subclass.deleteSubtree()
+      CollOps.foreach(subclasses)(_.deleteSubtree())
     }
 
     /** UPDATE PASS ONLY. */
@@ -515,17 +515,18 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       }
 
       // Recurse in subclasses
-      for (cls <- subclasses)
+      CollOps.foreach(subclasses) { cls =>
         cls.walkForChanges(getLinkedClass, methodAttributeChanges)
+      }
     }
 
     /** UPDATE PASS ONLY. */
     def walkForAdditions(
-        getNewChildren: String => GenIterable[LinkedClass]): Unit = {
+        getNewChildren: String => CollOps.ParIterable[LinkedClass]): Unit = {
 
       val subclassAcc = CollOps.prepAdd(subclasses)
 
-      for (linkedClass <- getNewChildren(encodedName)) {
+      CollOps.foreach(getNewChildren(encodedName)) { linkedClass =>
         val cls = new Class(Some(this), linkedClass.encodedName)
         CollOps.add(subclassAcc, cls)
         classes += linkedClass.encodedName -> cls
@@ -538,8 +539,12 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
     /** UPDATE PASS ONLY. */
     def updateHasElidableModuleAccessor(): Unit = {
-      def lookupModuleConstructor: Option[MethodImpl] =
-        staticLikes(encodedName)(MemberNamespace.Constructor.ordinal).methods.get("init___")
+      def lookupModuleConstructor: Option[MethodImpl] = {
+        CollOps
+          .forceGet(staticLikes, encodedName)(MemberNamespace.Constructor.ordinal)
+          .methods
+          .get("init___")
+      }
 
       hasElidableModuleAccessor =
         isAdHocElidableModuleAccessor(encodedName) ||
@@ -623,7 +628,8 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         // Mixin constructor, 2.11
         case ApplyStatic(flags, ClassRef(cls), methodName, List(This()))
             if !flags.isPrivate =>
-          val container = staticLikes(cls)(MemberNamespace.PublicStatic.ordinal)
+          val container =
+            CollOps.forceGet(staticLikes, cls)(MemberNamespace.PublicStatic.ordinal)
           container.methods(methodName.name).originalDef.body.exists {
             case Skip() => true
             case _      => false
@@ -633,7 +639,8 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         case ApplyStatically(flags, This(), ClassRef(cls), methodName, Nil)
             if !flags.isPrivate && !classes.contains(cls) =>
           // Since cls is not in classes, it must be a default method call.
-          val container = staticLikes(cls)(MemberNamespace.Public.ordinal)
+          val container =
+            CollOps.forceGet(staticLikes, cls)(MemberNamespace.Public.ordinal)
           container.methods.get(methodName.name) exists { methodDef =>
             methodDef.originalDef.body exists {
               case Skip() => true
@@ -645,8 +652,13 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         case ApplyStatically(flags, This(), ClassRef(cls), methodName, args)
             if flags.isConstructor =>
           val namespace = MemberNamespace.Constructor.ordinal
-          args.forall(isTriviallySideEffectFree) &&
-          staticLikes(cls)(namespace).methods.get(methodName.name).exists(isElidableModuleConstructor)
+          args.forall(isTriviallySideEffectFree) && {
+            CollOps
+              .forceGet(staticLikes, cls)(namespace)
+              .methods
+              .get(methodName.name)
+              .exists(isElidableModuleConstructor)
+          }
 
         case StoreModule(_, _) => true
         case _                 => isTriviallySideEffectFree(tree)
@@ -935,7 +947,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
           methodName: String): Option[MethodID] = {
 
         def inStaticsLike =
-          staticLikes(className)(namespace.ordinal)
+          CollOps.forceGet(staticLikes, className)(namespace.ordinal)
 
         val container =
           if (namespace != MemberNamespace.Public) inStaticsLike
@@ -969,10 +981,10 @@ object GenIncOptimizer {
 
   private[optimizer] trait AbsCollOps {
     type Map[K, V] <: mutable.Map[K, V]
-    type ParMap[K, V] <: GenMap[K, V]
-    type AccMap[K, V]
-    type ParIterable[V] <: GenIterableLike[V, ParIterable[V]]
-    type Addable[V]
+    type ParMap[K, V] <: AnyRef
+    type AccMap[K, V] <: AnyRef
+    type ParIterable[V] <: AnyRef
+    type Addable[V] <: AnyRef
 
     def emptyAccMap[K, V]: AccMap[K, V]
     def emptyMap[K, V]: Map[K, V]
@@ -980,20 +992,26 @@ object GenIncOptimizer {
     def emptyParIterable[V]: ParIterable[V]
 
     // Operations on ParMap
+    def isEmpty[K, V](map: ParMap[K, V]): Boolean
+    def forceGet[K, V](map: ParMap[K, V], k: K): V
+    def get[K, V](map: ParMap[K, V], k: K): Option[V]
     def put[K, V](map: ParMap[K, V], k: K, v: V): Unit
     def remove[K, V](map: ParMap[K, V], k: K): Option[V]
     def retain[K, V](map: ParMap[K, V])(p: (K, V) => Boolean): Unit
+    def valuesForeach[K, V, U](map: ParMap[K, V])(f: V => U): Unit
 
     // Operations on AccMap
     def acc[K, V](map: AccMap[K, V], k: K, v: V): Unit
-    def getAcc[K, V](map: AccMap[K, V], k: K): GenIterable[V]
+    def getAcc[K, V](map: AccMap[K, V], k: K): ParIterable[V]
     def parFlatMapKeys[A, B](map: AccMap[A, _])(
-        f: A => GenTraversableOnce[B]): GenIterable[B]
+        f: A => Option[B]): ParIterable[B]
 
     // Operations on ParIterable
     def prepAdd[V](it: ParIterable[V]): Addable[V]
     def add[V](addable: Addable[V], v: V): Unit
     def finishAdd[V](addable: Addable[V]): ParIterable[V]
+    def foreach[V, U](it: ParIterable[V])(f: V => U): Unit
+    def filter[V](it: ParIterable[V])(f: V => Boolean): ParIterable[V]
 
   }
 

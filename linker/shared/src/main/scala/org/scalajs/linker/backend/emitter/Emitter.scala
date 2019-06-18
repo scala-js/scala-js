@@ -25,6 +25,7 @@ import org.scalajs.logging._
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.javascript.{Trees => js, _}
+import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 import GlobalRefUtils._
 
@@ -402,7 +403,7 @@ final class Emitter private (config: CommonPhaseConfig,
     logger.debug(
         s"Emitter: Method tree cache stats: resued: $statsMethodsReused -- "+
         s"invalidated: $statsMethodsInvalidated")
-    classCaches.retain((_, c) => c.cleanAfterRun())
+    classCaches.filterInPlace((_, c) => c.cleanAfterRun())
   }
 
   /** Generates all the desugared classes.
@@ -658,7 +659,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private def mergeVersions(v1: Option[String],
       v2: Option[String]): Option[String] = {
-    v1.flatMap(s1 => v2.map(s2 => s1.length + "-" + s1 + s2))
+    v1.flatMap(s1 => v2.map(s2 => "" + s1.length + "-" + s1 + s2))
   }
 
   private def getClassTreeCache(linkedClass: LinkedClass): DesugaredClassCache =
@@ -722,7 +723,7 @@ final class Emitter private (config: CommonPhaseConfig,
     }
 
     def cleanAfterRun(): Boolean = {
-      _methodCaches.foreach(_.retain((_, c) => c.cleanAfterRun()))
+      _methodCaches.foreach(_.filterInPlace((_, c) => c.cleanAfterRun()))
 
       if (_constructorCache.exists(!_.cleanAfterRun()))
         _constructorCache = None
@@ -837,9 +838,9 @@ private object Emitter {
         cond(!coreSpec.esFeatures.allowBigIntsForLongs) {
           multiple(
               instanceTests(LongImpl.RuntimeLongClass),
-              instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors),
-              callMethods(LongImpl.RuntimeLongClass, LongImpl.AllMethods),
-              callOnModule(LongImpl.RuntimeLongModuleClass, LongImpl.AllModuleMethods)
+              instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors.toList),
+              callMethods(LongImpl.RuntimeLongClass, LongImpl.AllMethods.toList),
+              callOnModule(LongImpl.RuntimeLongModuleClass, LongImpl.AllModuleMethods.toList)
           )
         }
     )

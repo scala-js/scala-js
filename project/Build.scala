@@ -434,7 +434,7 @@ object Build {
       scalaVersion: String): Seq[ModuleID] = {
     CrossVersion.partialVersion(scalaVersion) match {
       case Some((2, n)) if n >= 13 =>
-        Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "0.1.2")
+        Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0")
 
       case _ => Nil
     }
@@ -1798,6 +1798,18 @@ object Build {
       publishArtifact in Compile := false,
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
+
+      unmanagedSources in Compile ++= {
+        val scalaV = scalaVersion.value
+        val upstreamSrcDir = (fetchScalaSource in partest).value
+
+        if (scalaV.startsWith("2.10.") || scalaV.startsWith("2.11.") ||
+            scalaV.startsWith("2.12.")) {
+          Nil
+        } else {
+          List(upstreamSrcDir / "src/testkit/scala/tools/testkit/AssertUtil.scala")
+        }
+      },
 
       unmanagedSources in Test ++= {
         def loadList(listName: String): Set[String] = {
