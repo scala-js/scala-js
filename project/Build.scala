@@ -1255,7 +1255,7 @@ object Build {
       ) ++ Seq(
           name := "Scala.js CLI",
           libraryDependencies ++= Seq(
-              "com.github.scopt" %% "scopt" % "3.5.0"
+              "com.github.scopt" %% "scopt" % "3.7.1"
           ),
 
           previousArtifactSetting,
