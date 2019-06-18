@@ -41,7 +41,7 @@ class LinkerTest {
    *  world.
    */
   @Test
-  def linkHelloWorld(): AsyncResult = {
+  def linkHelloWorld(): AsyncResult = await {
     val name = "LHelloWorld$"
     val mainMethodBody = {
       JSBracketMethodApply(JSGlobalRef(Ident("console")), StringLiteral("log"),
@@ -59,14 +59,14 @@ class LinkerTest {
     val moduleInitializers = List(
         ModuleInitializer.mainMethodWithArgs("HelloWorld", "main")
     )
-    await(testLink(classDefs, moduleInitializers))
+    testLink(classDefs, moduleInitializers)
   }
 
   /** This test exposes a problem where a linker in error state is called
    *  multiple times and ends up thinking it is being used concurrently.
    */
   @Test
-  def clean_linking_state(): AsyncResult = {
+  def clean_linking_state(): AsyncResult = await {
     class DummyException extends Exception
 
     val badSeq = new IndexedSeq[IRFile] {
@@ -99,7 +99,7 @@ class LinkerTest {
       }
     }
 
-    await((1 to 4).foldLeft(firstRun)((p, _) => callInFailedState(p)))
+    (1 to 4).foldLeft(firstRun)((p, _) => callInFailedState(p))
   }
 
 }

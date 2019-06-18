@@ -13,13 +13,14 @@
 package org.scalajs.testing.common
 
 import scala.concurrent._
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 import java.util.concurrent.atomic.AtomicInteger
 
 import org.junit.Test
 import org.junit.Assert._
+
+import org.scalajs.junit.async._
 
 class RunMuxRPCTest {
   import RPCCoreTest._
@@ -35,23 +36,22 @@ class RunMuxRPCTest {
     val msg: MsgEndpoint.EP[RunMux[Unit]] = MsgEndpoint[RunMux[Unit]](3)
   }
 
-  private def fail(msg: String): Nothing = {
-    org.junit.Assert.fail(msg)
-    throw new AssertionError("Shouldn't reach here")
-  }
-
   @Test
-  def muxedCall: Unit = {
+  def muxedCall: AsyncResult = await {
     val called = Array.fill(10)(false)
 
     for (i <- called.indices)
       x.attach(eps.call, i)(_ => called(i) = true)
 
-    for (i <- called.indices) {
-      Await.result(y.call(eps.call, i)(()), atMost = 1.second)
-      val (needTrue, needFalse) = called.splitAt(i + 1)
-      needTrue.foreach(assertTrue _)
-      needFalse.foreach(assertFalse _)
+    called.indices.foldLeft(Future.successful(())) { (prev, i) =>
+      for {
+        _ <- prev
+        _ <- y.call(eps.call, i)(())
+      } yield {
+        val (needTrue, needFalse) = called.splitAt(i + 1)
+        needTrue.foreach(assertTrue _)
+        needFalse.foreach(assertFalse _)
+      }
     }
   }
 
@@ -71,18 +71,17 @@ class RunMuxRPCTest {
   }
 
   @Test
-  def badRunId: Unit = {
+  def badRunId: AsyncResult = await {
     x.attach(eps.call, 0)(_ => ())
 
-    try {
-      Await.result(y.call(eps.call, 1)(()), atMost = 1.second)
-      fail("Expected exception")
-    } catch {
-      case e: RPCCore.RPCException =>
-        val cause = e.getCause()
-        assertNotNull(s"Did not get cause: $e", cause)
-        assertEquals("Unknown run 1", cause.getMessage())
-    }
+    y.call(eps.call, 1)(())
+      .map(_ => fail("Expected exception"))
+      .recover {
+        case e: RPCCore.RPCException =>
+          val cause = e.getCause()
+          assertNotNull(s"Did not get cause: $e", cause)
+          assertEquals("Unknown run 1", cause.getMessage())
+      }
   }
 
   @Test

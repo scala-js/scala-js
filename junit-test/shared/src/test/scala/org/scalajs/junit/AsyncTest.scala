@@ -23,23 +23,20 @@ import org.scalajs.junit.async._
 
 class AsyncTest {
   @Test
-  def success(): AsyncResult = {
-    val res = Future(1 + 1).filter(_ == 2)
-    await(res)
+  def success(): AsyncResult = await {
+    Future(1 + 1).filter(_ == 2)
   }
 
   @Test(expected = classOf[IllegalArgumentException])
-  def expectedException(): AsyncResult = {
+  def expectedException(): AsyncResult = await {
     // Do not throw synchronously.
-    val res = Future.failed(new IllegalArgumentException)
-    await(res)
+    Future.failed(new IllegalArgumentException)
   }
 
   @Test
-  def asyncFailure(): AsyncResult = {
+  def asyncFailure(): AsyncResult = await {
     // Do not throw synchronously.
-    val res = Future.failed(new IllegalArgumentException)
-    await(res)
+    Future.failed(new IllegalArgumentException)
   }
 }
 

@@ -26,20 +26,21 @@ import org.scalajs.junit.async._
 class DynamicImportTest {
   import DynamicImportTest._
 
-  @Test def testSuccessfulImport(): AsyncResult = {
-    await(js.`import`[QueryStringAPI]("querystring").toFuture.map { qs =>
+  @Test def testSuccessfulImport(): AsyncResult = await {
+    js.`import`[QueryStringAPI]("querystring").toFuture.map { qs =>
       assertEquals("object", js.typeOf(qs))
 
       val dict = js.Dictionary("foo" -> "bar", "baz" -> "qux")
 
       assertEquals("foo=bar&baz=qux", qs.stringify(dict))
       assertEquals("foo:bar;baz:qux", qs.stringify(dict, ";", ":"))
-    })
+    }
   }
 
   @Test(expected = classOf[js.JavaScriptException])
-  def testFailedImport(): AsyncResult =
-    await(js.`import`[js.Any]("non-existent-module").toFuture)
+  def testFailedImport(): AsyncResult = await {
+    js.`import`[js.Any]("non-existent-module").toFuture
+  }
 }
 
 object DynamicImportTest {
