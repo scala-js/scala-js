@@ -3095,7 +3095,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             PreTransLit(StringLiteral(s1 + s2))
           case (_, PreTransLit(StringLiteral(""))) =>
             foldBinaryOp(op, rhs1, lhs1)
-          case (PreTransLit(StringLiteral("")), _) if rhs1.tpe == StringType =>
+          case (PreTransLit(StringLiteral("")), _) if rhs1.tpe.base == StringType =>
             rhs1
           case (_, PreTransBinaryOp(String_+, rl, rr)) =>
             foldBinaryOp(String_+, PreTransBinaryOp(String_+, lhs1, rl), rr)
