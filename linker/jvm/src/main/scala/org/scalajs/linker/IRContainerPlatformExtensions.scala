@@ -12,15 +12,12 @@
 
 package org.scalajs.linker
 
-import scala.annotation.tailrec
 import scala.concurrent._
 
-import java.io._
 import java.nio._
 import java.nio.file._
 import java.nio.file.attribute._
 import java.util.EnumSet
-import java.util.zip.{ZipInputStream, ZipEntry}
 
 import org.scalajs.linker.standard.{IRContainerImpl, IRFileImpl}
 
@@ -30,23 +27,16 @@ abstract class IRContainerPlatformExtensions private[linker] () {
     val containers = Seq.newBuilder[IRContainer]
     val paths = Seq.newBuilder[Path]
 
-    val dirVisitor = new SimpleFileVisitor[Path] {
-      override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
-        if (path.getFileName().toString().endsWith(".sjsir")) {
-          containers += IRContainer.fromIRFile(
-              new IRFilePlatformExtensions.PathIRFileImpl(path, attrs.lastModifiedTime()))
-          paths += path
-        }
-        super.visitFile(path, attrs)
-      }
-    }
-
     blocking {
       for (entry <- classpath if Files.exists(entry)) {
         val attrs = Files.readAttributes(entry, classOf[BasicFileAttributes])
 
         if (attrs.isDirectory()) {
-          Files.walkFileTree(entry, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Int.MaxValue, dirVisitor)
+          walkIR(entry) { (path, attrs) =>
+            containers += IRContainer.fromIRFile(
+              new IRFilePlatformExtensions.PathIRFileImpl(path, attrs.lastModifiedTime()))
+            paths += path
+          }
         } else if (entry.getFileName().toString().endsWith(".jar")) {
           containers += new JarIRContainer(entry, attrs.lastModifiedTime())
           paths += entry
@@ -61,45 +51,43 @@ abstract class IRContainerPlatformExtensions private[linker] () {
 
   private final class JarIRContainer(path: Path, lastModified: FileTime)
       extends IRContainerImpl(path.toString, Some(lastModified.toString)) {
-    def sjsirFiles(implicit ec: ExecutionContext): Future[List[IRFile]] =
-      Future(blocking(read()))
+    def sjsirFiles(implicit ec: ExecutionContext): Future[List[IRFile]] = Future {
+      val files = List.newBuilder[IRFile]
 
-    private def read(): List[IRFile] = {
-      val stream = new ZipInputStream(new BufferedInputStream(Files.newInputStream(path)))
-      try {
-        val buf = new Array[Byte](4096)
-
-        @tailrec
-        def readAll(out: OutputStream): Unit = {
-          val read = stream.read(buf)
-          if (read != -1) {
-            out.write(buf, 0, read)
-            readAll(out)
+      blocking {
+        // Open zip/jar file as filesystem.
+        val fs = FileSystems.newFileSystem(path, null)
+        try {
+          val i = fs.getRootDirectories().iterator()
+          while (i.hasNext()) {
+            walkIR(i.next()) { (entry, _) =>
+              // We copy the contents of the file, otherwise we'd have to keep
+              // the zip file system open (and it's unclear if it would be
+              // faster).
+              files += IRFileImpl.fromMem(
+                  s"${path.toString}:${entry.toString}", version,
+                  Files.readAllBytes(entry))
+            }
           }
+        } finally {
+          fs.close()
         }
+      }
 
-        def makeVF(e: ZipEntry) = {
-          val size = e.getSize
-          val out =
-            if (0 <= size && size <= Int.MaxValue) new ByteArrayOutputStream(size.toInt)
-            else new ByteArrayOutputStream()
+      files.result()
+    }
+  }
 
-          try {
-            readAll(out)
-            IRFileImpl.fromMem(s"${path.toString}:${e.getName}", version, out.toByteArray)
-          } finally {
-            out.close()
-          }
+  private def walkIR(path: Path)(visit: (Path, BasicFileAttributes) => Unit): Unit = {
+    val dirVisitor = new SimpleFileVisitor[Path] {
+      override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
+        if (path.getFileName().toString().endsWith(".sjsir")) {
+          visit(path, attrs)
         }
-
-        Iterator.continually(stream.getNextEntry())
-          .takeWhile(_ != null)
-          .filter(_.getName.endsWith(".sjsir"))
-          .map(makeVF)
-          .toList
-      } finally {
-        stream.close()
+        super.visitFile(path, attrs)
       }
     }
+
+    Files.walkFileTree(path, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Int.MaxValue, dirVisitor)
   }
 }
