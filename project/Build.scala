@@ -47,8 +47,10 @@ object ExposedValues extends AutoPlugin {
 
 object Build {
 
-  val isGeneratingEclipse =
-    Properties.envOrElse("GENERATING_ECLIPSE", "false").toBoolean
+  val isGeneratingForIDE = {
+    Properties.envOrElse("GENERATING_ECLIPSE", "false").toBoolean ||
+    Properties.envOrElse("METALS_ENABLED", "false").toBoolean
+  }
 
   val bintrayProjectName = settingKey[String](
       "Project name on Bintray")
@@ -303,7 +305,7 @@ object Build {
 
   val noClassFilesSettings: Setting[_] = (
       scalacOptions in (Compile, compile) ++= {
-        if (isGeneratingEclipse) Seq()
+        if (isGeneratingForIDE) Seq()
         else Seq("-Yskip:cleanup,icode,jvm")
       }
   )
@@ -388,7 +390,7 @@ object Build {
 
       // Link source maps
       scalacOptions ++= {
-        if (isGeneratingEclipse) Seq()
+        if (isGeneratingForIDE) Seq()
         else if (scalaJSIsSnapshotVersion) Seq()
         else Seq(
           // Link source maps to github sources
@@ -414,13 +416,13 @@ object Build {
   implicit class ProjectOps(val project: Project) extends AnyVal {
     /** Uses the Scala.js compiler plugin. */
     def withScalaJSCompiler: Project =
-      if (isGeneratingEclipse) project
+      if (isGeneratingForIDE) project
       else project.dependsOn(compiler % "plugin")
 
     def withScalaJSJUnitPlugin: Project = {
       project.settings(
         scalacOptions in Test ++= {
-          if (isGeneratingEclipse) {
+          if (isGeneratingForIDE) {
             Seq.empty
           } else {
             val jar = (packageBin in (jUnitPlugin, Compile)).value
@@ -432,7 +434,7 @@ object Build {
 
     /** Depends on library as if (exportJars in library) was set to false. */
     def dependsOnLibraryNoJar: Project = {
-      if (isGeneratingEclipse) {
+      if (isGeneratingForIDE) {
         project.dependsOn(library)
       } else {
         project.settings(
@@ -447,7 +449,7 @@ object Build {
 
     /** Depends on the sources of another project. */
     def dependsOnSource(dependency: Project): Project = {
-      if (isGeneratingEclipse) {
+      if (isGeneratingForIDE) {
         project.dependsOn(dependency)
       } else {
         project.settings(
@@ -858,7 +860,7 @@ object Build {
 
   lazy val delambdafySetting = {
     scalacOptions ++= (
-        if (isGeneratingEclipse) Seq()
+        if (isGeneratingForIDE) Seq()
         else if (scalaBinaryVersion.value == "2.10") Seq()
         else Seq("-Ydelambdafy:method"))
   }
@@ -1108,7 +1110,7 @@ object Build {
       ) ++ Seq(
           name := "Scala.js library",
           delambdafySetting,
-          exportJars := !isGeneratingEclipse,
+          exportJars := !isGeneratingForIDE,
           previousArtifactSetting,
           mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
           libraryDependencies +=

@@ -74,6 +74,11 @@ or, more typically,
 
     > partestSuite/testOnly -- --fastOpt
 
+## Metals-based IDEs
+
+We recommend [Metals](https://scalameta.org/metals/)-based IDEs such as VS Code
+to develop Scala.js itself. It can import the Scala.js build out-of-the-box.
+
 ## Eclipse
 
 If you want to develop in Eclipse, use
