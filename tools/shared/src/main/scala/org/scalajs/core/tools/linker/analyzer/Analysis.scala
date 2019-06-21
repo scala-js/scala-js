@@ -34,7 +34,7 @@ trait Analysis {
 
   def allAvailable: Boolean
   def classInfos: scala.collection.Map[String, ClassInfo]
-  def errors: Seq[Error]
+  def errors: scala.collection.Seq[Error]
 }
 
 object Analysis {
@@ -50,11 +50,11 @@ object Analysis {
     def kind: ClassKind
     def isExported: Boolean
     def superClass: ClassInfo
-    def ancestors: Seq[ClassInfo]
-    def descendants: Seq[ClassInfo]
+    def ancestors: scala.collection.Seq[ClassInfo]
+    def descendants: scala.collection.Seq[ClassInfo]
     def nonExistent: Boolean
     def ancestorCount: Int
-    def descendentClasses: Seq[ClassInfo]
+    def descendentClasses: scala.collection.Seq[ClassInfo]
     /** For a Scala class, it is instantiated with a `New`; for a JS class,
      *  its constructor is accessed with a `JSLoadConstructor` or because it
      *  is needed for a subclass.
@@ -64,7 +64,7 @@ object Analysis {
     def isModuleAccessed: Boolean
     def areInstanceTestsUsed: Boolean
     def isDataAccessed: Boolean
-    def instantiatedFrom: Seq[From]
+    def instantiatedFrom: scala.collection.Seq[From]
     def isNeededAtAll: Boolean
     def isAnyStaticMethodReachable: Boolean
     def methodInfos: scala.collection.Map[String, MethodInfo]
@@ -87,8 +87,8 @@ object Analysis {
     def isExported: Boolean
     def isReflProxy: Boolean
     def isReachable: Boolean
-    def calledFrom: Seq[From]
-    def instantiatedSubclasses: Seq[ClassInfo]
+    def calledFrom: scala.collection.Seq[From]
+    def instantiatedSubclasses: scala.collection.Seq[ClassInfo]
     def nonExistent: Boolean
     def syntheticKind: MethodSyntheticKind
 

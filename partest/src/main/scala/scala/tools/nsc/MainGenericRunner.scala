@@ -53,7 +53,7 @@ class MainGenericRunner {
     val opt = Option(System.getProperty("scalajs.partest.compliantSems"))
     opt.fold(Semantics.Defaults) { str =>
       val sems = str.split(',')
-      Semantics.compliantTo(sems.toList)
+      Semantics.compliantTo(sems.toSet)
     }
   }
 

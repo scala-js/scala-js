@@ -140,7 +140,7 @@ trait TimeoutTests extends JSEnvTest {
       if (c >= 10)
         clearInterval(i);
     }, 10);
-    """ hasOutput (1 to 10).map(_ + "\n").mkString
+    """ hasOutput (1 to 10).mkString("", "\n", "\n")
 
     assertTrue("Execution took too little time", deadline.isOverdue())
 

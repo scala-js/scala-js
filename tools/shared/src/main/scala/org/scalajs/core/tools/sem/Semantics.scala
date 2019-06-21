@@ -250,13 +250,11 @@ object Semantics {
       productionMode = false,
       runtimeClassNameMapper = RuntimeClassNameMapper.keepAll())
 
-  def compliantTo(semantics: Traversable[String]): Semantics = {
+  def compliantTo(semantics: Set[String]): Semantics = {
     import Defaults._
 
-    val semsSet = semantics.toSet
-
     def sw[T](name: String, compliant: T, default: T): T =
-      if (semsSet.contains(name)) compliant else default
+      if (semantics.contains(name)) compliant else default
 
     new Semantics(
         asInstanceOfs = sw("asInstanceOfs", Compliant, asInstanceOfs),
@@ -267,4 +265,8 @@ object Semantics {
         productionMode = false,
         runtimeClassNameMapper = RuntimeClassNameMapper.keepAll())
   }
+
+  @deprecated("Use the overload with a Set instead.", "0.6.29")
+  def compliantTo(semantics: Traversable[String]): Semantics =
+    compliantTo(semantics.toSet)
 }

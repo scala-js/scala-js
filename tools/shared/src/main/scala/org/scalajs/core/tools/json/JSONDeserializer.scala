@@ -39,7 +39,7 @@ object JSONDeserializer {
   implicit def mapJSON[V: JSONDeserializer]: JSONDeserializer[Map[String, V]] = {
     new JSONDeserializer[Map[String, V]] {
       def deserialize(x: JSON): Map[String, V] =
-        Impl.toMap(x).mapValues(fromJSON[V] _)
+        Impl.toMap(x).map(kv => kv._1 -> fromJSON[V](kv._2))
     }
   }
 

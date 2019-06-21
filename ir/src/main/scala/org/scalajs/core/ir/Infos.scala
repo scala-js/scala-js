@@ -138,6 +138,12 @@ object Infos {
       this
     }
 
+    def addInterfaces(interfaces: List[String]): this.type = {
+      this.interfaces ++= interfaces
+      this
+    }
+
+    @deprecated("Use the overload with a List.", "0.6.29")
     def addInterfaces(interfaces: TraversableOnce[String]): this.type = {
       this.interfaces ++= interfaces
       this
@@ -276,7 +282,7 @@ object Infos {
     def result(): MethodInfo = {
       def toMapOfLists(
           m: mutable.Map[String, mutable.Set[String]]): Map[String, List[String]] = {
-        m.mapValues(_.toList).toMap
+        m.map(kv => kv._1 -> kv._2.toList).toMap
       }
 
       MethodInfo(

@@ -24,9 +24,7 @@ import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
 abstract class ExternalJSEnv(
-    @deprecatedName('additionalArgs)
     final protected val args: Seq[String],
-    @deprecatedName('additionalEnv)
     final protected val env: Map[String, String])
     extends AsyncJSEnv {
 
@@ -83,8 +81,18 @@ abstract class ExternalJSEnv(
      *  The default value in `ExternalJSEnv` is
      *  `System.getenv().asScala.toMap ++ env`.
      */
-    protected def getVMEnv(): Map[String, String] =
-      System.getenv().asScala.toMap ++ env
+    protected def getVMEnv(): Map[String, String] = {
+      /* We use Java's `forEach` not to depend on Scala's JavaConverters, which
+       * are very difficult to cross-compile across 2.12- and 2.13+.
+       */
+      val builder = Map.newBuilder[String, String]
+      System.getenv().forEach(new java.util.function.BiConsumer[String, String] {
+        def accept(key: String, value: String): Unit =
+        builder += key -> value
+      })
+      builder ++= env
+      builder.result()
+    }
 
     /** Get files that are a library (i.e. that do not run anything) */
     protected def getLibJSFiles(): Seq[VirtualJSFile] =

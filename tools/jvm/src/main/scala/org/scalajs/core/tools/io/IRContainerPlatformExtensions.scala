@@ -41,9 +41,9 @@ trait IRContainerPlatformExtensions { this: IRContainer.type =>
 
     val baseDir = dir.getAbsoluteFile
 
-    def walkForIR(dir: JFile): Seq[JFile] = {
-      val (subdirs, files) = dir.listFiles().partition(_.isDirectory)
-      subdirs.flatMap(walkForIR) ++ files.filter(_.getName.endsWith(".sjsir"))
+    def walkForIR(dir: JFile): List[JFile] = {
+      val (subdirs, files) = dir.listFiles().toList.partition(_.isDirectory)
+      subdirs.flatMap(walkForIR) ::: files.filter(_.getName.endsWith(".sjsir"))
     }
 
     for (ir <- walkForIR(baseDir)) yield {

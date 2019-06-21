@@ -31,9 +31,15 @@ object SymbolRequirement {
       multiple(accessModule(moduleName), callMethod(moduleName, methodName))
 
     def callOnModule(moduleName: String,
-        methodName: Traversable[String]): SymbolRequirement = {
-      val methodCalls = methodName.map(callMethod(moduleName, _)).toList
+        methodName: List[String]): SymbolRequirement = {
+      val methodCalls = methodName.map(callMethod(moduleName, _))
       multipleInternal(accessModule(moduleName) :: methodCalls)
+    }
+
+    @deprecated("Use the overload with a List instead.", "0.6.29")
+    def callOnModule(moduleName: String,
+        methodName: Traversable[String]): SymbolRequirement = {
+      callOnModule(moduleName, methodName.toList)
     }
 
     def instantiateClass(className: String,
@@ -42,8 +48,14 @@ object SymbolRequirement {
     }
 
     def instantiateClass(className: String,
+        constructors: List[String]): SymbolRequirement = {
+      multipleInternal(constructors.map(instantiateClass(className, _)))
+    }
+
+    @deprecated("Use the overload with a List instead.", "0.6.29")
+    def instantiateClass(className: String,
         constructors: Traversable[String]): SymbolRequirement = {
-      multipleInternal(constructors.toList.map(instantiateClass(className, _)))
+      instantiateClass(className, constructors.toList)
     }
 
     def instanceTests(className: String): SymbolRequirement =
@@ -56,8 +68,14 @@ object SymbolRequirement {
       CallMethod(origin, className, methodName, statically = false)
 
     def callMethods(className: String,
+        methodNames: List[String]): SymbolRequirement = {
+      multipleInternal(methodNames.map(callMethod(className, _)))
+    }
+
+    @deprecated("Use the overload with a List instead.", "0.6.29")
+    def callMethods(className: String,
         methodNames: Traversable[String]): SymbolRequirement = {
-      multipleInternal(methodNames.toList.map(callMethod(className, _)))
+      callMethods(className, methodNames.toList)
     }
 
     def callMethodStatically(className: String, methodName: String): SymbolRequirement =

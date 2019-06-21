@@ -31,7 +31,7 @@ import org.scalajs.core.tools.logging._
 
 /** Checker for the validity of the IR. */
 private final class InfoChecker(
-    infoAndTrees: Traversable[(ClassInfo, ClassDef)], logger: Logger) {
+    infoAndTrees: List[(ClassInfo, ClassDef)], logger: Logger) {
 
   private var errorCount: Int = 0
 
@@ -167,8 +167,18 @@ object InfoChecker {
    *
    *  @return Count of info checking errors (0 in case of success)
    */
-  def check(infoAndTrees: Traversable[(ClassInfo, ClassDef)],
+  def check(infoAndTrees: List[(ClassInfo, ClassDef)],
       logger: Logger): Int = {
     new InfoChecker(infoAndTrees, logger).check()
+  }
+
+  /** Checks that the `ClassInfo`s associated with `ClassDef`s are correct.
+   *
+   *  @return Count of info checking errors (0 in case of success)
+   */
+  @deprecated("Use the overload with a List instead.", "0.6.29")
+  def check(infoAndTrees: Traversable[(ClassInfo, ClassDef)],
+      logger: Logger): Int = {
+    check(infoAndTrees.toList, logger)
   }
 }

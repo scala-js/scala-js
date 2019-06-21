@@ -40,11 +40,8 @@ class PhantomJSEnv(config: PhantomJSEnv.Config)
 
   @deprecated("Use the overload with a PhantomJSEnv.Config.", "0.6.18")
   def this(
-      @deprecatedName('phantomjsPath)
       executable: String = "phantomjs",
-      @deprecatedName('addArgs)
       args: Seq[String] = Seq.empty,
-      @deprecatedName('addEnv)
       env: Map[String, String] = Map.empty,
       autoExit: Boolean = true,
       jettyClassLoader: ClassLoader = null
@@ -527,7 +524,7 @@ class PhantomJSEnv(config: PhantomJSEnv.Config)
     case '>' => "&gt;"
     case '"' => "&quot;"
     case '&' => "&amp;"
-    case c   => c :: Nil
+    case c   => c.toString()
   }
 
 }

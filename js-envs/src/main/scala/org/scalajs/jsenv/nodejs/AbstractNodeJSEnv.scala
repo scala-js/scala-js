@@ -29,11 +29,8 @@ import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
 
 abstract class AbstractNodeJSEnv(
-    @deprecatedName('nodejsPath)
     protected val executable: String,
-    @deprecatedName('addArgs)
     args: Seq[String],
-    @deprecatedName('addEnv)
     env: Map[String, String],
     val sourceMap: Boolean)
     extends ExternalJSEnv(args, env) with ComJSEnv {
@@ -171,10 +168,18 @@ abstract class AbstractNodeJSEnv(
       val nodePath = libCache.cacheDir.getAbsolutePath +
           baseNodePath.fold("")(p => File.pathSeparator + p)
 
-      System.getenv().asScala.toMap ++ Seq(
-        "NODE_MODULE_CONTEXTS" -> "0",
-        "NODE_PATH" -> nodePath
-      ) ++ env
+      /* We use Java's `forEach` not to depend on Scala's JavaConverters, which
+       * are very difficult to cross-compile across 2.12- and 2.13+.
+       */
+      val builder = Map.newBuilder[String, String]
+      System.getenv().forEach(new java.util.function.BiConsumer[String, String] {
+        def accept(key: String, value: String): Unit =
+        builder += key -> value
+      })
+      builder += "NODE_MODULE_CONTEXTS" -> "0"
+      builder += "NODE_PATH" -> nodePath
+      builder ++= env
+      builder.result()
     }
   }
 
