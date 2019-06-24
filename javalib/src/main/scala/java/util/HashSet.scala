@@ -12,57 +12,47 @@
 
 package java.util
 
-import scala.collection.mutable
+class HashSet[E] private[util] (inner: HashMap[E, Any])
+    extends AbstractSet[E] with Set[E] with Cloneable with Serializable {
 
-import ScalaOps._
+  /* Note: in practice, the values of `inner` are always `()` (aka `undefined`).
+   * We use `Any` because we need to deal with `null`s, and referencing
+   * `scala.runtime.BoxedUnit` in this code would be really ugly.
+   */
 
-class HashSet[E] extends AbstractSet[E] with Set[E]
-                                        with Cloneable
-                                        with Serializable { self =>
   def this(initialCapacity: Int, loadFactor: Float) =
-    this()
+    this(new HashMap[E, Any](initialCapacity, loadFactor))
 
   def this(initialCapacity: Int) =
-    this()
+    this(new HashMap[E, Any](initialCapacity))
+
+  def this() =
+    this(new HashMap[E, Any]())
 
   def this(c: Collection[_ <: E]) = {
-    this()
+    this(c.size())
     addAll(c)
   }
 
-  protected val inner: mutable.Set[Box[E]] =
-    new mutable.HashSet[Box[E]]()
+  private val innerKeySet = inner.keySet()
 
   override def contains(o: Any): Boolean =
-    inner.contains(Box(o.asInstanceOf[E]))
+    inner.containsKey(o)
 
   override def remove(o: Any): Boolean =
-    inner.remove(Box(o.asInstanceOf[E]))
+    inner.remove(o) != null
 
   override def containsAll(c: Collection[_]): Boolean =
-    c.scalaOps.forall(e => contains(e))
+    innerKeySet.containsAll(c)
 
-  override def removeAll(c: Collection[_]): Boolean = {
-    val iter = c.iterator
-    var changed = false
-    while (iter.hasNext)
-      changed = remove(iter.next()) || changed
-    changed
-  }
+  override def removeAll(c: Collection[_]): Boolean =
+    innerKeySet.removeAll(c)
 
-  override def retainAll(c: Collection[_]): Boolean = {
-    val iter = iterator
-    var changed = false
-    while (iter.hasNext) {
-      val value = iter.next
-      if (!c.contains(value))
-        changed = remove(value) || changed
-    }
-    changed
-  }
+  override def retainAll(c: Collection[_]): Boolean =
+    innerKeySet.retainAll(c)
 
   override def add(e: E): Boolean =
-    inner.add(Box(e))
+    inner.put(e, ()) == null
 
   override def addAll(c: Collection[_ <: E]): Boolean = {
     val iter = c.iterator()
@@ -74,30 +64,9 @@ class HashSet[E] extends AbstractSet[E] with Set[E]
 
   override def clear(): Unit = inner.clear()
 
-  override def size(): Int = inner.size
+  override def size(): Int = inner.size()
 
-  def iterator(): Iterator[E] = {
-    new Iterator[E] {
-      private val iter = inner.clone.iterator
-
-      private var last: Option[E] = None
-
-      def hasNext(): Boolean = iter.hasNext
-
-      def next(): E = {
-        last = Some(iter.next().inner)
-        last.get
-      }
-
-      def remove(): Unit = {
-        if (last.isEmpty) {
-          throw new IllegalStateException()
-        } else {
-          last.foreach(self.remove(_))
-          last = None
-        }
-      }
-    }
-  }
+  def iterator(): Iterator[E] =
+    innerKeySet.iterator()
 
 }
