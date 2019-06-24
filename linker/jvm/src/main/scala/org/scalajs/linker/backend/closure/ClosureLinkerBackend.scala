@@ -12,7 +12,6 @@
 
 package org.scalajs.linker.backend.closure
 
-import scala.collection.JavaConverters._
 import scala.concurrent._
 
 import java.io._
@@ -92,7 +91,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     }
 
     // Compile the module
-    val closureExterns = List(
+    val closureExterns = java.util.Arrays.asList(
         ClosureSource.fromCode("ScalaJSExterns.js", ClosureLinkerBackend.ScalaJSExterns),
         ClosureSource.fromCode("ScalaJSGlobalRefs.js", makeExternsForGlobalRefs(globalRefs)),
         ClosureSource.fromCode("ScalaJSExportExterns.js", makeExternsForExports(topLevelVarDeclarations, unit)))
@@ -101,7 +100,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
     val result = logger.time("Closure: Compiler pass") {
       compiler.compileModules(
-          closureExterns.asJava, List(module).asJava, options)
+          closureExterns, java.util.Arrays.asList(module), options)
     }
 
     if (!result.success) {

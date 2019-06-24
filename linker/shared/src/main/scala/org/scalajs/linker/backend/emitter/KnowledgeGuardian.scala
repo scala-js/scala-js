@@ -20,6 +20,7 @@ import org.scalajs.ir.Types.Type
 
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
+import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
   import KnowledgeGuardian._
@@ -73,7 +74,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     }
 
     // Garbage collection
-    classes.retain((_, cls) => cls.testAndResetIsAlive())
+    classes.filterInPlace((_, cls) => cls.testAndResetIsAlive())
 
     val invalidateAll = !firstRun && {
       newIsParentDataAccessed != isParentDataAccessed

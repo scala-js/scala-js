@@ -55,7 +55,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
   def classInfos: scala.collection.Map[String, Analysis.ClassInfo] = _loadedClassInfos
 
-  def errors: Seq[Error] = _errors
+  def errors: scala.collection.Seq[Error] = _errors
 
   def computeReachability(): Future[Unit] = {
     require(_classInfos.isEmpty, "Cannot run the same Analyzer multiple times")
@@ -1150,7 +1150,7 @@ object Analyzer {
   }
 
   trait InputProvider {
-    def classesWithEntryPoints(): TraversableOnce[String]
+    def classesWithEntryPoints(): Iterable[String]
 
     def loadInfo(encodedName: String)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]]
   }

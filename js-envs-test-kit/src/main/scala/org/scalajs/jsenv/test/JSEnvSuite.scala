@@ -14,7 +14,6 @@ package org.scalajs.jsenv.test
 
 import org.scalajs.jsenv.JSEnv
 
-import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
 import org.junit.runner.Runner
@@ -40,7 +39,7 @@ abstract class JSEnvSuite(private[test] val config: JSEnvSuiteConfig)
 
 /** Runner for a [[JSEnvSuite]]. May only be used on subclasses of [[JSEnvSuite]]. */
 final class JSEnvSuiteRunner(root: Class[_], config: JSEnvSuiteConfig)
-    extends Suite(root, JSEnvSuiteRunner.getRunners(config).asJava) {
+    extends Suite(root, JSEnvSuiteRunner.getRunners(config)) {
 
   /** Constructor for reflective instantiation via `@RunWith`. */
   def this(suite: Class[_ <: JSEnvSuite]) =
@@ -56,16 +55,19 @@ private object JSEnvSuiteRunner {
       .map { case (name, value) => s"$name = $value" }
       .mkString("[", ", ", "]")
 
-    val paramValues = config +: params.map(_._2)
+    val paramValues = new java.util.LinkedList[AnyRef]
+    paramValues.add(config)
+    for (param <- params)
+      paramValues.add(param._2)
 
     new BlockJUnit4ClassRunnerWithParameters(
-        new TestWithParameters(name, new TestClass(t.runtimeClass), paramValues.asJava))
+        new TestWithParameters(name, new TestClass(t.runtimeClass), paramValues))
   }
 
-  private def getRunners(config: JSEnvSuiteConfig): List[Runner] = {
+  private def getRunners(config: JSEnvSuiteConfig): java.util.List[Runner] = {
     import java.lang.Boolean.{TRUE, FALSE}
 
-    List(
+    java.util.Arrays.asList(
         r[RunTests](config, "withCom" -> FALSE),
         r[RunTests](config, "withCom" -> TRUE),
         r[TimeoutRunTests](config, "withCom" -> FALSE),

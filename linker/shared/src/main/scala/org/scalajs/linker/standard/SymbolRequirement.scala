@@ -31,8 +31,8 @@ object SymbolRequirement {
       multiple(accessModule(moduleName), callMethod(moduleName, methodName))
 
     def callOnModule(moduleName: String,
-        methodName: Traversable[String]): SymbolRequirement = {
-      val methodCalls = methodName.map(callMethod(moduleName, _)).toList
+        methodName: List[String]): SymbolRequirement = {
+      val methodCalls = methodName.map(callMethod(moduleName, _))
       multipleInternal(accessModule(moduleName) :: methodCalls)
     }
 
@@ -42,8 +42,8 @@ object SymbolRequirement {
     }
 
     def instantiateClass(className: String,
-        constructors: Traversable[String]): SymbolRequirement = {
-      multipleInternal(constructors.toList.map(instantiateClass(className, _)))
+        constructors: List[String]): SymbolRequirement = {
+      multipleInternal(constructors.map(instantiateClass(className, _)))
     }
 
     def instanceTests(className: String): SymbolRequirement =
@@ -56,8 +56,8 @@ object SymbolRequirement {
       CallMethod(origin, className, methodName, statically = false)
 
     def callMethods(className: String,
-        methodNames: Traversable[String]): SymbolRequirement = {
-      multipleInternal(methodNames.toList.map(callMethod(className, _)))
+        methodNames: List[String]): SymbolRequirement = {
+      multipleInternal(methodNames.map(callMethod(className, _)))
     }
 
     def callMethodStatically(className: String, methodName: String): SymbolRequirement =

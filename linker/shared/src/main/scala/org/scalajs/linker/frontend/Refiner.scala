@@ -23,6 +23,7 @@ import org.scalajs.logging._
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.analyzer._
+import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 /** Does a dead code elimination pass on a [[standard.LinkingUnit LinkingUnit]].
  */
@@ -126,13 +127,13 @@ private object Refiner {
       this.linkedClassesByName = linkedClassesByName
     }
 
-    def classesWithEntryPoints(): TraversableOnce[String] = {
-      for {
+    def classesWithEntryPoints(): Iterable[String] = {
+      (for {
         linkedClass <- linkedClassesByName.valuesIterator
         if linkedClass.hasEntryPoint
       } yield {
         linkedClass.encodedName
-      }
+      }).toList
     }
 
     def loadInfo(encodedName: String)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
@@ -152,7 +153,7 @@ private object Refiner {
 
     def cleanAfterRun(): Unit = {
       linkedClassesByName = null
-      cache.retain((_, linkedClassCache) => linkedClassCache.cleanAfterRun())
+      cache.filterInPlace((_, linkedClassCache) => linkedClassCache.cleanAfterRun())
     }
   }
 
@@ -224,7 +225,7 @@ private object Refiner {
     }
 
     def cleanAfterRun(): Unit = {
-      caches.foreach(_.retain((_, cache) => cache.cleanAfterRun()))
+      caches.foreach(_.filterInPlace((_, cache) => cache.cleanAfterRun()))
     }
   }
 
