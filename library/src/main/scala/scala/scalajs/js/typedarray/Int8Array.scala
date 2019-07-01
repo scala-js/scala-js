@@ -44,4 +44,4 @@ class Int8Array private[this] () extends TypedArray[Byte, Int8Array] {
  */
 @js.native
 @JSGlobal
-object Int8Array extends TypedArrayStatic
+object Int8Array extends TypedArrayStatic[Byte, Int8Array]

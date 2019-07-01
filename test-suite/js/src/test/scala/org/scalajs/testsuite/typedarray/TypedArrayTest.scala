@@ -27,6 +27,10 @@ import js.typedarray._
 trait TypedArrayTest[V, T <: TypedArray[V, T]] {
 
   def bytesPerElement: Int
+  def ofFn(items: V*): T
+  def fromFn(iterable: js.Iterable[V]): T
+  def fromFn[E](iterable: js.Iterable[E])(mapper: js.Function1[E, V]): T
+  def fromFn[D, E](iterable: js.Iterable[E], thisObj: D)(mapper: js.ThisFunction1[D, E, V]): T
   def lenCtor(len: Int): T
   def tarrCtor(tarr: TypedArray[_, _]): T
   def itCtor(arr: js.Iterable[_]): T
@@ -35,6 +39,32 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): T
   def hasType(obj: Any): Boolean
   def intToV(n: Int): V
+
+  @Test def should_provide_a_factory_method_of(): Unit = {
+    val x = ofFn(intToV(0), intToV(1), intToV(2))
+    assertEquals(3, x.length)
+    assertEquals(2, x(2))
+  }
+
+  @Test def should_provide_a_factory_method_from(): Unit = {
+    val x = fromFn(js.Array(intToV(0), intToV(1), intToV(2)))
+    assertEquals(3, x.length)
+    assertEquals(2, x(2))
+  }
+
+  @Test def should_provide_a_factory_method_from_with_mapping_function(): Unit = {
+    val src = js.Array("", "a", "bc")
+    val x = fromFn(src)((s: String) => intToV(s.length))
+    assertEquals(3, x.length)
+    assertEquals(2, x(2))
+  }
+
+  @Test def should_provide_a_factory_method_from_with_mapping_function_and_thisArg(): Unit = {
+    val src = js.Array("", "a", "bc")
+    val x = fromFn(src, 10)((thisArg: Int, s: String) => intToV(s.length * thisArg))
+    assertEquals(3, x.length)
+    assertEquals(20, x(2))
+  }
 
   @Test def should_allow_constructing_a_new_name_with_length(): Unit = {
     val x = lenCtor(10)
@@ -251,6 +281,11 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
 object Int8ArrayTest extends Requires.TypedArray
 
 class Int8ArrayTest extends TypedArrayTest[Byte, Int8Array] {
+  def ofFn(items: Byte*): Int8Array = Int8Array.of(items: _*)
+  def fromFn(iterable: js.Iterable[Byte]): Int8Array = Int8Array.from(iterable)
+  def fromFn[E](iterable: js.Iterable[E])(fn: js.Function1[E, Byte]): Int8Array = Int8Array.from(iterable, fn)
+  def fromFn[D, E](iterable: js.Iterable[E], thisObj: D)(fn: js.ThisFunction1[D, E, Byte]): Int8Array =
+    Int8Array.from(iterable, fn, thisObj)
   def bytesPerElement: Int = Int8Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Int8Array = new Int8Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Int8Array = new Int8Array(tarr)
@@ -265,6 +300,11 @@ class Int8ArrayTest extends TypedArrayTest[Byte, Int8Array] {
 object Uint8ArrayTest extends Requires.TypedArray
 
 class Uint8ArrayTest extends TypedArrayTest[Short, Uint8Array] {
+  def ofFn(items: Short*): Uint8Array = Uint8Array.of(items: _*)
+  def fromFn(iterable: js.Iterable[Short]): Uint8Array = Uint8Array.from(iterable)
+  def fromFn[E](iterable: js.Iterable[E])(fn: js.Function1[E, Short]): Uint8Array = Uint8Array.from(iterable, fn)
+  def fromFn[D, E](iterable: js.Iterable[E], thisObj: D)(fn: js.ThisFunction1[D, E, Short]): Uint8Array =
+    Uint8Array.from(iterable, fn, thisObj)
   def bytesPerElement: Int = Uint8Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Uint8Array = new Uint8Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Uint8Array = new Uint8Array(tarr)
@@ -279,6 +319,12 @@ class Uint8ArrayTest extends TypedArrayTest[Short, Uint8Array] {
 object Uint8ClampedArrayTest extends Requires.TypedArray
 
 class Uint8ClampedArrayTest extends TypedArrayTest[Int, Uint8ClampedArray] {
+  def ofFn(items: Int*): Uint8ClampedArray = Uint8ClampedArray.of(items: _*)
+  def fromFn(iterable: js.Iterable[Int]): Uint8ClampedArray = Uint8ClampedArray.from(iterable)
+  def fromFn[E](iterable: js.Iterable[E])(fn: js.Function1[E, Int]): Uint8ClampedArray =
+    Uint8ClampedArray.from(iterable, fn)
+  def fromFn[D, E](iterable: js.Iterable[E], thisObj: D)(fn: js.ThisFunction1[D, E, Int]): Uint8ClampedArray =
+    Uint8ClampedArray.from(iterable, fn, thisObj)
   def bytesPerElement: Int = Uint8ClampedArray.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Uint8ClampedArray = new Uint8ClampedArray(len)
   def tarrCtor(tarr: TypedArray[_, _]): Uint8ClampedArray = new Uint8ClampedArray(tarr)
@@ -293,6 +339,11 @@ class Uint8ClampedArrayTest extends TypedArrayTest[Int, Uint8ClampedArray] {
 object Int16ArrayTest extends Requires.TypedArray
 
 class Int16ArrayTest extends TypedArrayTest[Short, Int16Array] {
+  def ofFn(items: Short*): Int16Array = Int16Array.of(items: _*)
+  def fromFn(iterable: js.Iterable[Short]): Int16Array = Int16Array.from(iterable)
+  def fromFn[E](iterable: js.Iterable[E])(fn: js.Function1[E, Short]): Int16Array = Int16Array.from(iterable, fn)
+  def fromFn[D, E](iterable: js.Iterable[E], thisObj: D)(fn: js.ThisFunction1[D, E, Short]): Int16Array =
+    Int16Array.from(iterable, fn, thisObj)
   def bytesPerElement: Int = Int16Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Int16Array = new Int16Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Int16Array = new Int16Array(tarr)
@@ -307,6 +358,11 @@ class Int16ArrayTest extends TypedArrayTest[Short, Int16Array] {
 object Uint16ArrayTest extends Requires.TypedArray
 
 class Uint16ArrayTest extends TypedArrayTest[Int, Uint16Array] {
+  def ofFn(items: Int*): Uint16Array = Uint16Array.of(items: _*)
+  def fromFn(iterable: js.Iterable[Int]): Uint16Array = Uint16Array.from(iterable)
+  def fromFn[E](iterable: js.Iterable[E])(fn: js.Function1[E, Int]): Uint16Array = Uint16Array.from(iterable, fn)
+  def fromFn[D, E](iterable: js.Iterable[E], thisObj: D)(fn: js.ThisFunction1[D, E, Int]): Uint16Array =
+    Uint16Array.from(iterable, fn, thisObj)
   def bytesPerElement: Int = Uint16Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Uint16Array = new Uint16Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Uint16Array = new Uint16Array(tarr)
@@ -321,6 +377,11 @@ class Uint16ArrayTest extends TypedArrayTest[Int, Uint16Array] {
 object Int32ArrayTest extends Requires.TypedArray
 
 class Int32ArrayTest extends TypedArrayTest[Int, Int32Array] {
+  def ofFn(items: Int*): Int32Array = Int32Array.of(items: _*)
+  def fromFn(iterable: js.Iterable[Int]): Int32Array = Int32Array.from(iterable)
+  def fromFn[E](iterable: js.Iterable[E])(fn: js.Function1[E, Int]): Int32Array = Int32Array.from(iterable, fn)
+  def fromFn[D, E](iterable: js.Iterable[E], thisObj: D)(fn: js.ThisFunction1[D, E, Int]): Int32Array =
+    Int32Array.from(iterable, fn, thisObj)
   def bytesPerElement: Int = Int32Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Int32Array = new Int32Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Int32Array = new Int32Array(tarr)
@@ -335,6 +396,11 @@ class Int32ArrayTest extends TypedArrayTest[Int, Int32Array] {
 object Uint32ArrayTest extends Requires.TypedArray
 
 class Uint32ArrayTest extends TypedArrayTest[Double, Uint32Array] {
+  def ofFn(items: Double*): Uint32Array = Uint32Array.of(items: _*)
+  def fromFn(iterable: js.Iterable[Double]): Uint32Array = Uint32Array.from(iterable)
+  def fromFn[E](iterable: js.Iterable[E])(fn: js.Function1[E, Double]): Uint32Array = Uint32Array.from(iterable, fn)
+  def fromFn[D, E](iterable: js.Iterable[E], thisObj: D)(fn: js.ThisFunction1[D, E, Double]): Uint32Array =
+    Uint32Array.from(iterable, fn, thisObj)
   def bytesPerElement: Int = Uint32Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Uint32Array = new Uint32Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Uint32Array = new Uint32Array(tarr)
@@ -349,6 +415,11 @@ class Uint32ArrayTest extends TypedArrayTest[Double, Uint32Array] {
 object Float32ArrayTest extends Requires.TypedArray
 
 class Float32ArrayTest extends TypedArrayTest[Float, Float32Array] {
+  def ofFn(items: Float*): Float32Array = Float32Array.of(items: _*)
+  def fromFn(iterable: js.Iterable[Float]): Float32Array = Float32Array.from(iterable)
+  def fromFn[E](iterable: js.Iterable[E])(fn: js.Function1[E, Float]): Float32Array = Float32Array.from(iterable, fn)
+  def fromFn[D, E](iterable: js.Iterable[E], thisObj: D)(fn: js.ThisFunction1[D, E, Float]): Float32Array =
+    Float32Array.from(iterable, fn, thisObj)
   def bytesPerElement: Int = Float32Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Float32Array = new Float32Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Float32Array = new Float32Array(tarr)
@@ -363,6 +434,11 @@ class Float32ArrayTest extends TypedArrayTest[Float, Float32Array] {
 object Float64ArrayTest extends Requires.TypedArray
 
 class Float64ArrayTest extends TypedArrayTest[Double, Float64Array] {
+  def ofFn(items: Double*): Float64Array = Float64Array.of(items: _*)
+  def fromFn(iterable: js.Iterable[Double]): Float64Array = Float64Array.from(iterable)
+  def fromFn[E](iterable: js.Iterable[E])(fn: js.Function1[E, Double]): Float64Array = Float64Array.from(iterable, fn)
+  def fromFn[D, E](iterable: js.Iterable[E], thisObj: D)(fn: js.ThisFunction1[D, E, Double]): Float64Array =
+    Float64Array.from(iterable, fn, thisObj)
   def bytesPerElement: Int = Float64Array.BYTES_PER_ELEMENT
   def lenCtor(len: Int): Float64Array = new Float64Array(len)
   def tarrCtor(tarr: TypedArray[_, _]): Float64Array = new Float64Array(tarr)
