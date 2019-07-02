@@ -322,8 +322,12 @@ object Build {
       }
   )
 
-  val noClassFilesSettings: Setting[_] =
-    scalacOptions in (Compile, compile) += "-Yskip:cleanup,icode,jvm"
+  val noClassFilesSettings: Setting[_] = {
+    scalacOptions in (Compile, compile) += {
+      if (isGeneratingForIDE) "-Yskip:jvm"
+      else "-Ystop-after:jscode"
+    }
+  }
 
   val publishSettings = Seq(
       publishMavenStyle := true,
