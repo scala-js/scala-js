@@ -29,6 +29,86 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
 
   @Test
+  def warnOnDuplicateExport: Unit = {
+    """
+    class A {
+      @JSExport
+      @JSExport
+      def a = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:6: warning: Found duplicate @JSExport
+      |      def a = 1
+      |          ^
+    """
+
+    """
+    class A {
+      @JSExport
+      @JSExport("a")
+      def a = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:6: warning: Found duplicate @JSExport
+      |      def a = 1
+      |          ^
+    """
+
+    """
+    class A {
+      @JSExport("a")
+      @JSExport("a")
+      def a = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:6: warning: Found duplicate @JSExport
+      |      def a = 1
+      |          ^
+    """
+
+    // special case for @JSExportAll and 2 or more @JSExport("apply")
+    // since @JSExportAll and single @JSExport("apply") should not be warned (see other tests)
+    """
+    @JSExportAll
+    class A {
+      @JSExport("apply")
+      @JSExport("apply")
+      def apply(): Int = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:7: warning: Found duplicate @JSExport
+      |      def apply(): Int = 1
+      |          ^
+    """
+
+    """
+    @JSExportAll
+    class A {
+      @JSExport
+      def a = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:6: warning: Found duplicate @JSExport
+      |      def a = 1
+      |          ^
+    """
+  }
+  @Test
+  def noWarnOnUniqueExplicitName: Unit = {
+    """
+    class A {
+      @JSExport("a")
+      @JSExport("b")
+      def c = 1
+    }
+    """.hasNoWarns
+  }
+  @Test
   def noDoubleUnderscoreExport: Unit = {
     // Normal exports
     """
