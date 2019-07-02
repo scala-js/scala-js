@@ -130,6 +130,29 @@ class StringReaderTest {
   @Test def should_support_marking(): Unit = {
     assertTrue(newReader.markSupported)
   }
+
+  @Test def skip_should_accept_negative_lookahead_as_lookback(): Unit = {
+    // StringReader.skip accepts negative lookahead
+    val r = newReader
+    assertEquals("already head", 0, r.skip(-1))
+    assertEquals('a', r.read())
+
+    assertEquals(1, r.skip(1))
+    assertEquals('d', r.read())
+
+    assertEquals(-2, r.skip(-2))
+    assertEquals('s', r.read())
+  }
+
+  @Test def skip_should_always_return_0_after_reaching_end(): Unit = {
+    val r = newReader
+    assertEquals(4, r.skip(100))
+    assertEquals(-1, r.read())
+
+    assertEquals(0, r.skip(-100))
+    assertEquals(-1, r.read())
+  }
+
 }
 
 class BufferedReaderTest {
@@ -260,6 +283,15 @@ class BufferedReaderTest {
     assertEquals(null, r.readLine())
   }
 
+  @Test def skip_should_always_return_0_after_reaching_end(): Unit = {
+    val r = newReader
+    assertEquals(25, r.skip(100))
+    assertEquals(-1, r.read())
+
+    assertEquals(0, r.skip(100))
+    assertEquals(-1, r.read())
+  }
+
   @Test def should_support_marking(): Unit = {
     assertTrue(newReader.markSupported)
   }
@@ -311,4 +343,19 @@ class InputStreamReaderTest {
     assertEquals(0, streamReader.read(new Array[Char](0)))
   }
 
+  @Test def skip_should_always_return_0_after_reaching_end(): Unit = {
+    val data = "Lorem ipsum".getBytes()
+    val r = new InputStreamReader(new ByteArrayInputStream(data))
+    assertTrue(r.skip(100) > 0)
+    assertEquals(-1, r.read())
+
+    assertEquals(0, r.skip(100))
+    assertEquals(-1, r.read())
+  }
+
+  @Test def should_throw_IOException_since_mark_is_not_supported(): Unit = {
+    val data = "Lorem ipsum".getBytes()
+    val r = new InputStreamReader(new ByteArrayInputStream(data))
+    expectThrows(classOf[IOException], r.mark(0))
+  }
 }
