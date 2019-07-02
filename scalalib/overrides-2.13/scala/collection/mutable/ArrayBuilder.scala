@@ -114,8 +114,12 @@ object ArrayBuilder {
 
     /** Add a slice of an array */
     override def addAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
-      ensureSize(this.size + length)
-      addAll(xs.view.slice(offset, length))
+      val end = offset + length
+      var i = offset
+      while (i < end) {
+        this += xs(i)
+        i += 1
+      }
       this
     }
 

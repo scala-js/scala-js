@@ -24,6 +24,7 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.Platform._
 
 class ArrayBuilderTest {
+  import ArrayBuilderTest._
 
   @noinline
   def erase(x: Any): Any = x
@@ -278,5 +279,24 @@ class ArrayBuilderTest {
 
     assertSame(classOf[Array[Nothing]], makeNoInline[Nothing].result().getClass)
     assertSame(classOf[Array[Null]], makeNoInline[Null].result().getClass)
+  }
+
+  @Test def addAll(): Unit = {
+    assumeFalse("Needs at least Scala 2.13",
+        scalaVersion.startsWith("2.10.") ||
+        scalaVersion.startsWith("2.11.") ||
+        scalaVersion.startsWith("2.12."))
+
+    val b = ArrayBuilder.make[Int]
+    val arr = Array[Int](1, 2, 3, 4, 5)
+    b.addAll(arr, 3, 2)
+    assertArrayEquals(Array[Int](4, 5), b.result())
+  }
+}
+
+object ArrayBuilderTest {
+  implicit class ArrayBuilderCompat[A](val __sef: ArrayBuilder[A]) extends AnyVal {
+    def addAll(xs: Array[_ <: A], offset: Int, length: Int): Unit =
+      throw new AssertionError("unreachable code")
   }
 }

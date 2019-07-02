@@ -187,5 +187,3 @@ scala/collection/convert/MapWrapperTest.scala
 ## Buglisted
 # 3704
 scala/collection/convert/JSetWrapperTest.scala
-# 3705
-scala/collection/ArrayOpsTest.scala

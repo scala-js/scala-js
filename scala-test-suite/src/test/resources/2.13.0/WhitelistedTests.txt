@@ -3,6 +3,7 @@ scala/CharSequenceImplicitsTests.scala
 scala/EnumerationTest.scala
 scala/PartialFunctionCompositionTest.scala
 scala/PredefTest.scala
+scala/collection/ArrayOpsTest.scala
 scala/collection/BuildFromTest.scala
 scala/collection/CatTest.scala
 scala/collection/CollectionConversionsTest.scala
