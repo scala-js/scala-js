@@ -23,6 +23,8 @@ class StringReader(s: String) extends Reader {
   }
 
   override def mark(readAheadLimit: Int): Unit = {
+    if (readAheadLimit < 0)
+      throw new IllegalArgumentException("Read-ahead limit < 0")
     ensureOpen()
 
     mark = pos

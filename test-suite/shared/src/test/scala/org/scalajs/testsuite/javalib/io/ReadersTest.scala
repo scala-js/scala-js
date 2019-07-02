@@ -131,6 +131,10 @@ class StringReaderTest {
     assertTrue(newReader.markSupported)
   }
 
+  @Test def mark_should_throw_with_negative_lookahead(): Unit = {
+    expectThrows(classOf[IllegalArgumentException], newReader.mark(-10))
+  }
+
   @Test def skip_should_accept_negative_lookahead_as_lookback(): Unit = {
     // StringReader.skip accepts negative lookahead
     val r = newReader
@@ -294,6 +298,10 @@ class BufferedReaderTest {
 
   @Test def should_support_marking(): Unit = {
     assertTrue(newReader.markSupported)
+  }
+
+  @Test def mark_should_throw_with_negative_lookahead(): Unit = {
+    expectThrows(classOf[IllegalArgumentException], newReader.mark(-10))
   }
 }
 
