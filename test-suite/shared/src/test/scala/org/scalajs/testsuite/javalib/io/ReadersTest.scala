@@ -18,10 +18,28 @@ import java.io._
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform._
 
 /** Tests for our implementation of java.io._ reader classes */
+class ReaderTest {
+  object MyReader extends java.io.Reader {
+    def read(dbuf: Array[Char], off: Int, len: Int): Int = {
+      java.util.Arrays.fill(dbuf, off, off + len, 'A')
+      len
+    }
+    def close(): Unit = ()
+  }
+
+  @Test def skip_should_always_skip_n_if_possible(): Unit = {
+    assumeFalse("Too slow in Rhino", executingInRhino)
+    assertEquals(42, MyReader.skip(42))
+    assertEquals(10000, MyReader.skip(10000)) // more than the 8192 batch size
+  }
+}
+
 class StringReaderTest {
   val str = "asdf"
   def newReader: StringReader = new StringReader(str)
