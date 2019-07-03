@@ -17,13 +17,13 @@ import scala.reflect.ClassTag
 object Objects {
 
   @inline
-  def equals(a: AnyRef, b: AnyRef): Boolean =
+  def equals(a: Any, b: Any): Boolean =
     if (a == null) b == null
     else a.equals(b)
 
   @inline
-  def deepEquals(a: AnyRef, b: AnyRef): Boolean = {
-    if (a eq b) true
+  def deepEquals(a: Any, b: Any): Boolean = {
+    if (a.asInstanceOf[AnyRef] eq b.asInstanceOf[AnyRef]) true
     else if (a == null || b == null) false
     else {
       (a, b) match {
@@ -42,7 +42,7 @@ object Objects {
   }
 
   @inline
-  def hashCode(o: AnyRef): Int =
+  def hashCode(o: Any): Int =
     if (o == null) 0
     else o.hashCode()
 
@@ -51,11 +51,11 @@ object Objects {
     Arrays.hashCode(values)
 
   @inline
-  def toString(o: AnyRef): String =
+  def toString(o: Any): String =
     String.valueOf(o)
 
   @inline
-  def toString(o: AnyRef, nullDefault: String): String =
+  def toString(o: Any, nullDefault: String): String =
     if (o == null) nullDefault
     else o.toString
 
@@ -75,11 +75,11 @@ object Objects {
     else obj
 
   @inline
-  def isNull(obj: AnyRef): Boolean =
+  def isNull(obj: Any): Boolean =
     obj == null
 
   @inline
-  def nonNull(obj: AnyRef): Boolean =
+  def nonNull(obj: Any): Boolean =
     obj != null
 
   // Requires the implementation of java.util.function
