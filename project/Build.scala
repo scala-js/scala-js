@@ -1549,6 +1549,25 @@ object Build {
     publishArtifact in Compile := false,
     scalacOptions ~= (_.filter(_ != "-deprecation")),
 
+    // To support calls to static methods in interfaces
+    scalacOptions in Test ++= {
+      /* Starting from 2.10.7 and 2.11.12, scalac refuses to emit calls to
+       * static methods in interfaces unless the -target:jvm-1.8 flag is given.
+       * scalac 2.12+ emits JVM 8 bytecode by default, of course, so it is not
+       * needed for later versions.
+       */
+      val PartialVersion = """(\d+)\.(\d+)\.(\d+)(?:-.+)?""".r
+      val needsTargetFlag = scalaVersion.value match {
+        case PartialVersion("2", "10", n) => n.toInt >= 7
+        case PartialVersion("2", "11", n) => n.toInt >= 12
+        case _                            => false
+      }
+      if (needsTargetFlag)
+        Seq("-target:jvm-1.8")
+      else
+        Nil
+    },
+
     // Need reflect for typechecking macros
     libraryDependencies +=
       "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
