@@ -221,6 +221,23 @@ trait CollectionTest {
 
     assertEquals(coll.iterator().asScala.toSet, Set("one", "two", "three"))
   }
+
+  @Test def removeIf(): Unit = {
+    val coll = factory.fromElements[Int](42, 50, 12, 0, -45, 102, 32, 75)
+    assertEquals(8, coll.size())
+
+    assertTrue(coll.removeIf(new java.util.function.Predicate[Int] {
+      def test(x: Int): Boolean = x >= 50
+    }))
+    assertEquals(5, coll.size())
+    assertEquals(coll.iterator().asScala.toSet, Set(-45, 0, 12, 32, 42))
+
+    assertFalse(coll.removeIf(new java.util.function.Predicate[Int] {
+      def test(x: Int): Boolean = x >= 45
+    }))
+    assertEquals(5, coll.size())
+    assertEquals(coll.iterator().asScala.toSet, Set(-45, 0, 12, 32, 42))
+  }
 }
 
 object CollectionFactory {
@@ -233,4 +250,10 @@ trait CollectionFactory {
   def empty[E: ClassTag]: ju.Collection[E]
   def allowsMutationThroughIterator: Boolean = true
   def allowsNullElementQuery: Boolean = true
+
+  def fromElements[E: ClassTag](elems: E*): ju.Collection[E] = {
+    val coll = empty[E]
+    coll.addAll(elems.asJavaCollection)
+    coll
+  }
 }

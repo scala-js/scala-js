@@ -33,6 +33,7 @@ scala/collection/convert/BinaryTreeStepperTest.scala
 scala/collection/convert/JCollectionWrapperTest.scala
 scala/collection/convert/JIterableWrapperTest.scala
 scala/collection/convert/JListWrapperTest.scala
+scala/collection/convert/JSetWrapperTest.scala
 scala/collection/convert/NullSafetyToJavaTest.scala
 scala/collection/convert/NullSafetyToScalaTest.scala
 scala/collection/generic/DecoratorsTest.scala
