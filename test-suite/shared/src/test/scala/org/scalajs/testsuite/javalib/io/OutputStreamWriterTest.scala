@@ -134,4 +134,11 @@ class OutputStreamWriterTest {
     testW({ osw => osw.write("ab\ud83d"); osw.close() },
         Array('a', 'b', '?'), alreadyFlushed = true)
   }
+
+  @Test def constructor_throw_UnsupportedEncodingException_if_unsupported_charset_name_given(): Unit = {
+    val ex = expectThrows(classOf[UnsupportedEncodingException],
+      new OutputStreamWriter(new ByteArrayOutputStream(), "UNSUPPORTED-CHARSET"))
+    assertTrue("Cause should be null since constructor does not accept cause",
+      ex.getCause == null)
+  }
 }
