@@ -41,17 +41,19 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+      // New methods in a native JS trait, not an issue
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.scalajs.js.typedarray.TypedArrayStatic.*")
   )
 
   val TestInterface = Seq(
-    /* Things that moved to scalajs-test-bridge.
-     * They were private[scalajs] or stricter, so not an issue.
-     */
-    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.testcommon.*"),
-    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.testinterface.HTMLRunner"),
-    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.testinterface.HTMLRunner$*"),
-    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.testinterface.TestDetector"),
-    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.testinterface.TestDetector$*"),
-    ProblemFilters.exclude[MissingClassProblem]("org.scalajs.testinterface.internal.*")
+      /* Things that moved to scalajs-test-bridge.
+       * They were private[scalajs] or stricter, so not an issue.
+       */
+      ProblemFilters.exclude[MissingClassProblem]("org.scalajs.testcommon.*"),
+      ProblemFilters.exclude[MissingClassProblem]("org.scalajs.testinterface.HTMLRunner"),
+      ProblemFilters.exclude[MissingClassProblem]("org.scalajs.testinterface.HTMLRunner$*"),
+      ProblemFilters.exclude[MissingClassProblem]("org.scalajs.testinterface.TestDetector"),
+      ProblemFilters.exclude[MissingClassProblem]("org.scalajs.testinterface.TestDetector$*"),
+      ProblemFilters.exclude[MissingClassProblem]("org.scalajs.testinterface.internal.*")
   )
 }

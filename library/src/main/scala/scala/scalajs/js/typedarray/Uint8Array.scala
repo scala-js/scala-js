@@ -44,4 +44,4 @@ class Uint8Array private[this] () extends TypedArray[Short, Uint8Array] {
  */
 @js.native
 @JSGlobal
-object Uint8Array extends TypedArrayStatic
+object Uint8Array extends TypedArrayStatic[Short, Uint8Array]

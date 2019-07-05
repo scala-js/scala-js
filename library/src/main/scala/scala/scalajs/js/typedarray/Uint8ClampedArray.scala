@@ -46,4 +46,4 @@ class Uint8ClampedArray private[this] ()
  */
 @js.native
 @JSGlobal
-object Uint8ClampedArray extends TypedArrayStatic
+object Uint8ClampedArray extends TypedArrayStatic[Int, Uint8ClampedArray]
