@@ -19,11 +19,11 @@ import js.typedarray
 /** Manipulating the bits of floating point numbers. */
 private[lang] object FloatingPointBits {
 
-  import scala.scalajs.LinkingInfo.assumingES6
+  import scala.scalajs.runtime.linkingInfo
 
   private[this] val _areTypedArraysSupported = {
     // Here we use `assumingES6` to dce the 4 subsequent tests
-    assumingES6 || {
+    linkingInfo.assumingES6 || {
       js.typeOf(global.ArrayBuffer) != "undefined" &&
       js.typeOf(global.Int32Array) != "undefined" &&
       js.typeOf(global.Float32Array) != "undefined" &&
@@ -41,7 +41,7 @@ private[lang] object FloatingPointBits {
      * * If we emit ES5, replace `areTypedArraysSupported` by
      *   `_areTypedArraysSupported` so we do not calculate it multiple times.
      */
-    assumingES6 || _areTypedArraysSupported
+    linkingInfo.assumingES6 || _areTypedArraysSupported
   }
 
   private val arrayBuffer =
@@ -153,18 +153,16 @@ private[lang] object FloatingPointBits {
   private def floatToIntBitsPolyfill(value: scala.Double): Int = {
     val ebits = 8
     val fbits = 23
-    val (s, e, f) = encodeIEEE754(ebits, fbits, value)
-    (if (s) 0x80000000 else 0) | (e << fbits) | rawToInt(f)
+    val sef = encodeIEEE754(ebits, fbits, value)
+    (if (sef.s) 0x80000000 else 0) | (sef.e << fbits) | rawToInt(sef.f)
   }
 
   private def longBitsToDoublePolyfill(bits: scala.Long): scala.Double = {
-    import js.JSNumberOps._
-
     val ebits = 11
     val fbits = 52
     val hifbits = fbits-32
     val hi = (bits >>> 32).toInt
-    val lo = bits.toInt.toUint
+    val lo = Utils.toUint(bits.toInt)
     val s = hi < 0
     val e = (hi >> hifbits) & ((1 << ebits) - 1)
     val f = (hi & ((1 << hifbits) - 1)).toDouble * 0x100000000L.toDouble + lo
@@ -175,10 +173,10 @@ private[lang] object FloatingPointBits {
     val ebits = 11
     val fbits = 52
     val hifbits = fbits-32
-    val (s, e, f) = encodeIEEE754(ebits, fbits, value)
-    val hif = rawToInt(f / 0x100000000L.toDouble)
-    val hi = (if (s) 0x80000000 else 0) | (e << hifbits) | hif
-    val lo = rawToInt(f)
+    val sef = encodeIEEE754(ebits, fbits, value)
+    val hif = rawToInt(sef.f / 0x100000000L.toDouble)
+    val hi = (if (sef.s) 0x80000000 else 0) | (sef.e << hifbits) | hif
+    val lo = rawToInt(sef.f)
     (hi.toLong << 32) | (lo.toLong & 0xffffffffL)
   }
 
@@ -209,7 +207,7 @@ private[lang] object FloatingPointBits {
   }
 
   @inline private def encodeIEEE754(ebits: Int, fbits: Int,
-      v: scala.Double): (scala.Boolean, Int, scala.Double) = {
+      v: scala.Double): EncodeIEEE754Result = {
 
     import Math._
 
@@ -217,11 +215,11 @@ private[lang] object FloatingPointBits {
 
     if (Double.isNaN(v)) {
       // http://dev.w3.org/2006/webapi/WebIDL/#es-type-mapping
-      (false, (1 << ebits) - 1, pow(2, fbits-1))
+      new EncodeIEEE754Result(false, (1 << ebits) - 1, pow(2, fbits-1))
     } else if (Double.isInfinite(v)) {
-      (v < 0, (1 << ebits) - 1, 0.0)
+      new EncodeIEEE754Result(v < 0, (1 << ebits) - 1, 0.0)
     } else if (v == 0.0) {
-      (1 / v == scala.Double.NegativeInfinity, 0, 0.0)
+      new EncodeIEEE754Result(1 / v == scala.Double.NegativeInfinity, 0, 0.0)
     } else {
       val LN2 = 0.6931471805599453
 
@@ -259,10 +257,10 @@ private[lang] object FloatingPointBits {
           e = e + bias
           f = f - twoPowFbits
         }
-        (s, e, f)
+        new EncodeIEEE754Result(s, e, f)
       } else {
         // Subnormal
-        (s, 0, roundToEven(av / pow(2, 1-bias-fbits)))
+        new EncodeIEEE754Result(s, 0, roundToEven(av / pow(2, 1-bias-fbits)))
       }
     }
   }
@@ -278,5 +276,10 @@ private[lang] object FloatingPointBits {
     else if (w % 2 != 0) w + 1
     else w
   }
+
+  // Cannot use tuples in the javalanglib
+  @inline
+  private final class EncodeIEEE754Result(val s: scala.Boolean, val e: Int,
+      val f: scala.Double)
 
 }

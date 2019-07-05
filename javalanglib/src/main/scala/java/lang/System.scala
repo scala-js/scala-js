@@ -16,10 +16,11 @@ import java.io._
 
 import scala.scalajs.js
 import scala.scalajs.js.Dynamic.global
-import scala.scalajs.LinkingInfo.assumingES6
-import scala.scalajs.runtime.{linkingInfo, SemanticsUtils}
+import scala.scalajs.runtime.linkingInfo
 
 import java.{util => ju}
+
+import Utils._
 
 object System {
   var out: PrintStream = new JSConsoleBasedPrintStream(isErr = false)
@@ -40,7 +41,7 @@ object System {
   }
 
   private[this] val getHighPrecisionTime: js.Function0[scala.Double] = {
-    import js.DynamicImplicits.truthValue
+    import Utils.DynamicImplicits.truthValue
 
     if (js.typeOf(global.performance) != "undefined") {
       if (global.performance.now) {
@@ -63,50 +64,28 @@ object System {
 
     import scala.{Boolean, Char, Byte, Short, Int, Long, Float, Double}
 
-    @inline def checkIndices(srcLen: Int, destLen: Int): Unit = {
-      SemanticsUtils.arrayIndexOutOfBoundsCheck({
-        srcPos < 0 || destPos < 0 || length < 0 ||
-        srcPos > srcLen - length ||
-        destPos > destLen - length
-      }, {
-        new ArrayIndexOutOfBoundsException()
-      })
-    }
-
     def mismatch(): Nothing =
       throw new ArrayStoreException("Incompatible array types")
 
-    val forward = (src ne dest) || destPos < srcPos || srcPos + length < destPos
+    def impl(srcLen: Int, destLen: Int, f: js.Function2[Int, Int, Any]): Unit = {
+      SemanticsUtils.arrayIndexOutOfBoundsCheck({ () =>
+        srcPos < 0 || destPos < 0 || length < 0 ||
+        srcPos > srcLen - length ||
+        destPos > destLen - length
+      }, { () =>
+        new ArrayIndexOutOfBoundsException()
+      })
 
-    def copyPrim[@specialized T](src: Array[T], dest: Array[T]): Unit = {
-      checkIndices(src.length, dest.length)
-      if (forward) {
+      if ((src ne dest) || destPos < srcPos || srcPos + length < destPos) {
         var i = 0
         while (i < length) {
-          dest(i+destPos) = src(i+srcPos)
+          f(i + destPos, i + srcPos)
           i += 1
         }
       } else {
-        var i = length-1
+        var i = length - 1
         while (i >= 0) {
-          dest(i+destPos) = src(i+srcPos)
-          i -= 1
-        }
-      }
-    }
-
-    def copyRef(src: Array[AnyRef], dest: Array[AnyRef]): Unit = {
-      checkIndices(src.length, dest.length)
-      if (forward) {
-        var i = 0
-        while (i < length) {
-          dest(i+destPos) = src(i+srcPos)
-          i += 1
-        }
-      } else {
-        var i = length-1
-        while (i >= 0) {
-          dest(i+destPos) = src(i+srcPos)
+          f(i + destPos, i + srcPos)
           i -= 1
         }
       }
@@ -117,47 +96,47 @@ object System {
     } else (src match {
       case src: Array[AnyRef] =>
         dest match {
-          case dest: Array[AnyRef] => copyRef(src, dest)
+          case dest: Array[AnyRef] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
           case _                   => mismatch()
         }
       case src: Array[Boolean] =>
         dest match {
-          case dest: Array[Boolean] => copyPrim(src, dest)
+          case dest: Array[Boolean] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
           case _                    => mismatch()
         }
       case src: Array[Char] =>
         dest match {
-          case dest: Array[Char] => copyPrim(src, dest)
+          case dest: Array[Char] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
           case _                 => mismatch()
         }
       case src: Array[Byte] =>
         dest match {
-          case dest: Array[Byte] => copyPrim(src, dest)
+          case dest: Array[Byte] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
           case _                 => mismatch()
         }
       case src: Array[Short] =>
         dest match {
-          case dest: Array[Short] => copyPrim(src, dest)
+          case dest: Array[Short] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
           case _                  => mismatch()
         }
       case src: Array[Int] =>
         dest match {
-          case dest: Array[Int] => copyPrim(src, dest)
+          case dest: Array[Int] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
           case _                => mismatch()
         }
       case src: Array[Long] =>
         dest match {
-          case dest: Array[Long] => copyPrim(src, dest)
+          case dest: Array[Long] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
           case _                 => mismatch()
         }
       case src: Array[Float] =>
         dest match {
-          case dest: Array[Float] => copyPrim(src, dest)
+          case dest: Array[Float] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
           case _                  => mismatch()
         }
       case src: Array[Double] =>
         dest match {
-          case dest: Array[Double] => copyPrim(src, dest)
+          case dest: Array[Double] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
           case _                   => mismatch()
         }
       case _ =>
@@ -183,19 +162,19 @@ object System {
            * through `System.identityHashCode(x)` than with `x.hashCode()`.
            */
           x.hashCode()
-        } else if (assumingES6 || idHashCodeMap != null) {
+        } else if (linkingInfo.assumingES6 || idHashCodeMap != null) {
           // Use the global WeakMap of attributed id hash codes
           val hash = idHashCodeMap.get(x.asInstanceOf[js.Any])
-          if (!js.isUndefined(hash)) {
+          if (!Utils.isUndefined(hash)) {
             hash.asInstanceOf[Int]
           } else {
             val newHash = nextIDHashCode()
-            idHashCodeMap.set(x.asInstanceOf[js.Any], newHash)
+            idHashCodeMap.set(x.asInstanceOf[js.Any], newHash.asInstanceOf[js.Any])
             newHash
           }
         } else {
           val hash = x.asInstanceOf[js.Dynamic].selectDynamic("$idHashCode$0")
-          if (!js.isUndefined(hash)) {
+          if (!Utils.isUndefined(hash)) {
             /* Note that this can work even if x is sealed, if
              * identityHashCode() was called for the first time before x was
              * sealed.
@@ -207,7 +186,7 @@ object System {
              * technically undefined behavior.
              */
             val newHash = nextIDHashCode()
-            x.asInstanceOf[js.Dynamic].updateDynamic("$idHashCode$0")(newHash)
+            x.asInstanceOf[js.Dynamic].updateDynamic("$idHashCode$0")(newHash.asInstanceOf[js.Any])
             newHash
           } else {
             // Otherwise, we unfortunately have to return a constant.
@@ -221,7 +200,7 @@ object System {
     private var lastIDHashCode: Int = 0
 
     val idHashCodeMap =
-      if (assumingES6 || js.typeOf(global.WeakMap) != "undefined")
+      if (linkingInfo.assumingES6 || js.typeOf(global.WeakMap) != "undefined")
         js.Dynamic.newInstance(global.WeakMap)()
       else
         null
@@ -238,27 +217,29 @@ object System {
     var properties: ju.Properties = null
 
     private[System] def loadSystemProperties(): js.Dictionary[String] = {
-      js.Dictionary(
-          ("java.version", "1.8"),
-          ("java.vm.specification.version", "1.8"),
-          ("java.vm.specification.vendor", "Oracle Corporation"),
-          ("java.vm.specification.name", "Java Virtual Machine Specification"),
-          ("java.vm.name", "Scala.js"),
-          ("java.vm.version", linkingInfo.linkerVersion),
-          ("java.specification.version", "1.8"),
-          ("java.specification.vendor", "Oracle Corporation"),
-          ("java.specification.name", "Java Platform API Specification"),
-          ("file.separator", "/"),
-          ("path.separator", ":"),
-          ("line.separator", "\n")
-      )
+      val result = new js.Object().asInstanceOf[js.Dictionary[String]]
+      dictSet(result, "java.version", "1.8")
+      dictSet(result, "java.vm.specification.version", "1.8")
+      dictSet(result, "java.vm.specification.vendor", "Oracle Corporation")
+      dictSet(result, "java.vm.specification.name", "Java Virtual Machine Specification")
+      dictSet(result, "java.vm.name", "Scala.js")
+      dictSet(result, "java.vm.version", linkingInfo.linkerVersion)
+      dictSet(result, "java.specification.version", "1.8")
+      dictSet(result, "java.specification.vendor", "Oracle Corporation")
+      dictSet(result, "java.specification.name", "Java Platform API Specification")
+      dictSet(result, "file.separator", "/")
+      dictSet(result, "path.separator", ":")
+      dictSet(result, "line.separator", "\n")
+      result
     }
 
     private[System] def forceProperties(): ju.Properties = {
       if (properties eq null) {
         properties = new ju.Properties
-        for ((key, value) <- dict)
-          properties.setProperty(key, value)
+        val keys = js.Object.keys(dict.asInstanceOf[js.Object])
+        forArrayElems(keys) { key =>
+          properties.setProperty(key, dictRawApply(dict, key))
+        }
         dict = null
       }
       properties
@@ -281,21 +262,21 @@ object System {
   }
 
   def getProperty(key: String): String =
-    if (SystemProperties.dict ne null) SystemProperties.dict.getOrElse(key, null)
+    if (SystemProperties.dict ne null) dictGetOrElse(SystemProperties.dict, key, null)
     else SystemProperties.properties.getProperty(key)
 
   def getProperty(key: String, default: String): String =
-    if (SystemProperties.dict ne null) SystemProperties.dict.getOrElse(key, default)
+    if (SystemProperties.dict ne null) dictGetOrElse(SystemProperties.dict, key, default)
     else SystemProperties.properties.getProperty(key, default)
 
   def clearProperty(key: String): String =
-    if (SystemProperties.dict ne null) SystemProperties.dict.remove(key).getOrElse(null)
+    if (SystemProperties.dict ne null) dictGetOrElseAndRemove(SystemProperties.dict, key, null)
     else SystemProperties.properties.remove(key).asInstanceOf[String]
 
   def setProperty(key: String, value: String): String = {
     if (SystemProperties.dict ne null) {
       val oldValue = getProperty(key)
-      SystemProperties.dict(key) = value
+      dictSet(SystemProperties.dict, key, value)
       oldValue
     } else {
       SystemProperties.properties.setProperty(key, value).asInstanceOf[String]
@@ -394,13 +375,13 @@ private[lang] final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
   override def close(): Unit = ()
 
   private def doWriteLine(line: String): Unit = {
-    import js.DynamicImplicits.truthValue
+    import Utils.DynamicImplicits.truthValue
 
     if (js.typeOf(global.console) != "undefined") {
       if (isErr && global.console.error)
-        global.console.error(line)
+        global.console.error(line.asInstanceOf[js.Any])
       else
-        global.console.log(line)
+        global.console.log(line.asInstanceOf[js.Any])
     }
   }
 }

@@ -840,7 +840,37 @@ object Build {
 
         Seq(output)
       }.taskValue,
-      scalaJSExternalCompileSettings
+      scalaJSExternalCompileSettings,
+
+      products in Compile := {
+        val s = streams.value
+
+        val prev = (products in Compile).value
+        assert(prev.size == 1)
+        val javalibDir = prev.head
+
+        val dependencyClasspath =
+          Attributed.data((internalDependencyClasspath in Compile).value)
+
+        val inputsFinder = dependencyClasspath.foldLeft(javalibDir ** "*.sjsir") {
+          (prev, classpathItem) => prev +++ classpathItem ** "*.sjsir"
+        }
+
+        val outputDir = crossTarget.value / "cleaned-classes"
+
+        FileFunction.cached(s.cacheDirectory / "cleaned-sjsir",
+            FilesInfo.lastModified, FilesInfo.exists) { _ =>
+          s.log.info(s"Patching sjsir files for javalanglib...")
+
+          if (outputDir.exists)
+            IO.delete(outputDir)
+          IO.createDirectory(outputDir)
+
+          JavalibIRCleaner.cleanIR(dependencyClasspath, javalibDir, outputDir, s.log)
+        } (inputsFinder.get.toSet)
+
+        Seq(outputDir)
+      }
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
   lazy val javalib: Project = project.enablePlugins(

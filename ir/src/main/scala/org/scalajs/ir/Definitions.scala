@@ -138,6 +138,25 @@ object Definitions {
   private val decompressedPrefixes: Seq[(String, String)] =
     compressedPrefixes map { case (a, b) => (b, a) }
 
+  /** Encodes a method name from its full signature. */
+  def encodeMethodName(baseName: String, paramTypes: List[TypeRef],
+      resultType: Option[TypeRef]): String = {
+
+    val paramTypesString = paramTypes.map(encodeTypeRef).mkString("__")
+
+    if (baseName == "<clinit>") {
+      assert(paramTypes.isEmpty && resultType.isEmpty)
+      StaticInitializerName
+    } else if (baseName == "<init>") {
+      assert(resultType.isEmpty)
+      paramTypes.map(encodeTypeRef).mkString("init___", "__", "")
+    } else {
+      val resultTypeString = resultType.fold("")(encodeTypeRef)
+      (paramTypes.map(encodeTypeRef) :+ resultTypeString).mkString(
+          baseName + "__", "__", "")
+    }
+  }
+
   /** Decodes a method name into its full signature. */
   def decodeMethodName(
       encodedName: String): (String, List[TypeRef], Option[TypeRef]) = {
@@ -154,11 +173,7 @@ object Definitions {
     }
 
     // -1 preserves trailing empty strings
-    val parts = privateAndSigString.split("__", -1).toSeq
-    val paramsAndResultStrings =
-      if (parts.headOption.exists(_.startsWith("p"))) parts.tail
-      else parts
-
+    val paramsAndResultStrings = privateAndSigString.split("__", -1).toSeq
     val paramStrings :+ resultString = paramsAndResultStrings
 
     val paramTypes = paramStrings.map(decodeTypeRef).toList
@@ -167,6 +182,18 @@ object Definitions {
       else Some(decodeTypeRef(resultString))
 
     (simpleName, paramTypes, resultType)
+  }
+
+  /** Encodes a [[Types.TypeRef]] to be used for example in an encoded method
+   *  signature.
+   */
+  def encodeTypeRef(typeRef: TypeRef): String = {
+    typeRef match {
+      case ClassRef(className) =>
+        className
+      case ArrayTypeRef(baseClassName, dimensions) =>
+        "A" * dimensions + baseClassName
+    }
   }
 
   /** Decodes a [[Types.TypeRef]], such as in an encoded method signature.

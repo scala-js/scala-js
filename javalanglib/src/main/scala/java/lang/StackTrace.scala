@@ -15,7 +15,9 @@ package java.lang
 import scala.annotation.tailrec
 
 import scala.scalajs.js
-import js.JSStringOps._
+
+import Utils._
+import Utils.Implicits.enableJSStringOps
 
 /** Conversions of JavaScript stack traces to Java stack traces.
  */
@@ -54,7 +56,7 @@ private[lang] object StackTrace {
        * prototypes.
        */
       captureState(throwable, throwable)
-    } else if (js.isUndefined(js.constructorOf[js.Error].captureStackTrace)) {
+    } else if (Utils.isUndefined(js.constructorOf[js.Error].captureStackTrace)) {
       captureState(throwable, createException())
     } else {
       /* V8-specific.
@@ -70,14 +72,8 @@ private[lang] object StackTrace {
   }
 
   /** Creates a JS Error with the current stack trace state. */
-  @inline private def createException(): Any = {
-    try {
-      // Intentionally throw a JavaScript error
-      new js.Object().asInstanceOf[js.Dynamic].undef()
-    } catch {
-      case js.JavaScriptException(e) => e
-    }
-  }
+  @inline private def createException(): Any =
+    new js.Error()
 
   /** Captures browser-specific state recording the stack trace of a JS error.
    *  The state is stored as a magic field of the throwable, and will be used
@@ -116,10 +112,11 @@ private[lang] object StackTrace {
   private def normalizedLinesToStackTrace(
       lines: js.Array[String]): Array[StackTraceElement] = {
 
-    import Integer.parseInt
-
     val NormalizedFrameLine = """^([^\@]*)\@(.*):([0-9]+)$""".re
     val NormalizedFrameLineWithColumn = """^([^\@]*)\@(.*):([0-9]+):([0-9]+)$""".re
+
+    @inline def parseInt(s: String): Int =
+      js.Dynamic.global.parseInt(s).asInstanceOf[Int]
 
     val trace = js.Array[StackTraceElement]()
     var i = 0
@@ -128,17 +125,21 @@ private[lang] object StackTrace {
       if (!line.isEmpty) {
         val mtch1 = NormalizedFrameLineWithColumn.exec(line)
         if (mtch1 ne null) {
-          val (className, methodName) = extractClassMethod(mtch1(1).get)
-          val elem = new StackTraceElement(className, methodName, mtch1(2).get,
-              parseInt(mtch1(3).get))
-          elem.setColumnNumber(parseInt(mtch1(4).get))
+          val classAndMethodName =
+            extractClassMethod(undefOrForceGet(mtch1(1)))
+          val elem = new StackTraceElement(classAndMethodName(0),
+              classAndMethodName(1), undefOrForceGet(mtch1(2)),
+              parseInt(undefOrForceGet(mtch1(3))))
+          elem.setColumnNumber(parseInt(undefOrForceGet(mtch1(4))))
           trace.push(elem)
         } else {
           val mtch2 = NormalizedFrameLine.exec(line)
           if (mtch2 ne null) {
-            val (className, methodName) = extractClassMethod(mtch2(1).get)
-            trace.push(new StackTraceElement(className,
-                methodName, mtch2(2).get, parseInt(mtch2(3).get)))
+            val classAndMethodName =
+              extractClassMethod(undefOrForceGet(mtch2(1)))
+            trace.push(new StackTraceElement(classAndMethodName(0),
+                classAndMethodName(1), undefOrForceGet(mtch2(2)),
+                parseInt(undefOrForceGet(mtch2(3)))))
           } else {
             // just in case
             trace.push(new StackTraceElement("<jscode>", line, null, -1))
@@ -178,8 +179,14 @@ private[lang] object StackTrace {
    *    `("<jscode>", functionName)`
    *  is returned, which will instruct [[StackTraceElement.toString()]] to only
    *  display the function name.
+   *
+   *  @return
+   *    A 2-element array with the recovered class and method names, in that
+   *    order. It is an array instead of a tuple because tuples have user code
+   *    in the Scala.js standard library, which we cannot reference from the
+   *    javalanglib.
    */
-  private def extractClassMethod(functionName: String): (String, String) = {
+  private def extractClassMethod(functionName: String): js.Array[String] = {
     val PatC = """^(?:Object\.|\[object Object\]\.)?\$c_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
     val PatS = """^(?:Object\.|\[object Object\]\.)?\$(?:ct|ps?|s|f)_((?:_[^_]|[^_])+)__([^\.]+)$""".re
     val PatN = """^new (?:Object\.|\[object Object\]\.)?\$c_([^\.]+)$""".re
@@ -188,17 +195,18 @@ private[lang] object StackTrace {
     val matchC = PatC.exec(functionName)
     val matchCOrS = if (matchC ne null) matchC else PatS.exec(functionName)
     if (matchCOrS ne null) {
-      (decodeClassName(matchCOrS(1).get), decodeMethodName(matchCOrS(2).get))
+      js.Array[String](decodeClassName(undefOrForceGet(matchCOrS(1))),
+          decodeMethodName(undefOrForceGet(matchCOrS(2))))
     } else {
       val matchN = PatN.exec(functionName)
       if (matchN ne null) {
-        (decodeClassName(matchN(1).get), "<init>")
+        js.Array[String](decodeClassName(undefOrForceGet(matchN(1))), "<init>")
       } else {
         val matchM = PatM.exec(functionName)
         if (matchM ne null) {
-          (decodeClassName(matchM(1).get), "<clinit>")
+          js.Array[String](decodeClassName(undefOrForceGet(matchM(1))), "<clinit>")
         } else {
-          ("<jscode>", functionName)
+          js.Array[String]("<jscode>", functionName)
         }
       }
     }
@@ -209,15 +217,15 @@ private[lang] object StackTrace {
   // !!! Duplicate logic: this code must be in sync with ir.Definitions
 
   private def decodeClassName(encodedName: String): String = {
-    val base = if (decompressedClasses.contains(encodedName)) {
-      decompressedClasses(encodedName)
+    val base = if (dictContains(decompressedClasses, encodedName)) {
+      dictRawApply(decompressedClasses, encodedName)
     } else {
       @tailrec
       def loop(i: Int): String = {
         if (i < compressedPrefixes.length) {
           val prefix = compressedPrefixes(i)
           if (encodedName.startsWith(prefix))
-            decompressedPrefixes(prefix) + encodedName.substring(prefix.length)
+            dictRawApply(decompressedPrefixes, prefix) + encodedName.substring(prefix.length)
           else
             loop(i+1)
         } else {
@@ -232,34 +240,35 @@ private[lang] object StackTrace {
   }
 
   private lazy val decompressedClasses: js.Dictionary[String] = {
-    val dict = js.Dynamic.literal(
-        O = "java_lang_Object",
-        T = "java_lang_String"
-    ).asInstanceOf[js.Dictionary[String]]
+    val dict = new js.Object().asInstanceOf[js.Dictionary[String]]
+    dictSet(dict, "O", "java_lang_Object")
+    dictSet(dict, "T", "java_lang_String")
 
     var index = 0
     while (index <= 22) {
       if (index >= 2)
-        dict("T"+index) = "scala_Tuple"+index
-      dict("F"+index) = "scala_Function"+index
+        dictSet(dict, "T" + index, "scala_Tuple" + index)
+      dictSet(dict, "F" + index, "scala_Function" + index)
       index += 1
     }
 
     dict
   }
 
-  private lazy val decompressedPrefixes = js.Dynamic.literal(
-      sjsr_ = "scala_scalajs_runtime_",
-      sjs_  = "scala_scalajs_",
-      sci_  = "scala_collection_immutable_",
-      scm_  = "scala_collection_mutable_",
-      scg_  = "scala_collection_generic_",
-      sc_   = "scala_collection_",
-      sr_   = "scala_runtime_",
-      s_    = "scala_",
-      jl_   = "java_lang_",
-      ju_   = "java_util_"
-  ).asInstanceOf[js.Dictionary[String]]
+  private lazy val decompressedPrefixes: js.Dictionary[String] = {
+    val dict = new js.Object().asInstanceOf[js.Dictionary[String]]
+    dictSet(dict, "sjsr_", "scala_scalajs_runtime_")
+    dictSet(dict, "sjs_", "scala_scalajs_")
+    dictSet(dict, "sci_", "scala_collection_immutable_")
+    dictSet(dict, "scm_", "scala_collection_mutable_")
+    dictSet(dict, "scg_", "scala_collection_generic_")
+    dictSet(dict, "sc_", "scala_collection_")
+    dictSet(dict, "sr_", "scala_runtime_")
+    dictSet(dict, "s_", "scala_")
+    dictSet(dict, "jl_", "java_lang_")
+    dictSet(dict, "ju_", "java_util_")
+    dict
+  }
 
   private lazy val compressedPrefixes =
     js.Object.keys(decompressedPrefixes.asInstanceOf[js.Object])
@@ -292,7 +301,7 @@ private[lang] object StackTrace {
    */
 
   private def normalizeStackTraceLines(e: js.Dynamic): js.Array[String] = {
-    import js.DynamicImplicits.{truthValue, number2dynamic}
+    import Utils.DynamicImplicits.{truthValue, number2dynamic}
 
     /* You would think that we could test once and for all which "mode" to
      * adopt. But the format can actually differ for different exceptions
@@ -387,11 +396,13 @@ private[lang] object StackTrace {
     val result = new js.Array[String]
 
     var i = 2
-    val len = lines.length.toInt
+    val len = lines.length
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        result.push("{anonymous}()@" + mtch(2).get + ":" + mtch(1).get
+        result.push(
+            "{anonymous}()@" + undefOrForceGet(mtch(2)) + ":" +
+            undefOrForceGet(mtch(1))
             /* + " -- " + lines(i+1).replace("""^\s+""".re, "") */)
       }
       i += 2
@@ -408,12 +419,14 @@ private[lang] object StackTrace {
     val result = new js.Array[String]
 
     var i = 0
-    val len = lines.length.toInt
+    val len = lines.length
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        val fnName = mtch(3).getOrElse("{anonymous}")
-        result.push(fnName + "()@" + mtch(2).get + ":" + mtch(1).get
+        val fnName = undefOrGetOrElse(mtch(3), "{anonymous}")
+        result.push(
+            fnName + "()@" + undefOrForceGet(mtch(2)) + ":" +
+            undefOrForceGet(mtch(1))
             /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/)
       }
       i += 2
@@ -431,12 +444,12 @@ private[lang] object StackTrace {
     val result = new js.Array[String]
 
     var i = 0
-    val len = lines.length.toInt
+    val len = lines.length
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        val fnName = mtch(1).fold("global code")(_ + "()")
-        result.push(fnName + "@" + mtch(2).get + ":" + mtch(3).get)
+        val fnName = undefOrFold(mtch(1))("global code", _ + "()")
+        result.push(fnName + "@" + undefOrForceGet(mtch(2)) + ":" + undefOrForceGet(mtch(3)))
       }
       i += 1
     }
@@ -450,12 +463,12 @@ private[lang] object StackTrace {
     val result = new js.Array[String]
 
     var i = 0
-    val len = lines.length.toInt
+    val len = lines.length
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        val location = mtch(4).get + ":" + mtch(1).get + ":" + mtch(2).get
-        val fnName0 = mtch(2).getOrElse("global code")
+        val location = undefOrForceGet(mtch(4)) + ":" + undefOrForceGet(mtch(1)) + ":" + undefOrForceGet(mtch(2))
+        val fnName0 = undefOrGetOrElse(mtch(2), "global code")
         val fnName = fnName0
           .jsReplace("""<anonymous function: (\S+)>""".re, "$1")
           .jsReplace("""<anonymous function>""".re, "{anonymous}")

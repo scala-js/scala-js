@@ -84,9 +84,11 @@ final class Class[A] private (data0: Object) extends Object {
 
   @inline // optimize for the Unchecked case, where this becomes identity()
   def cast(obj: Object): A = {
-    scala.scalajs.runtime.SemanticsUtils.asInstanceOfCheck(
-        (obj != null && !isJSType && !isInstance(obj)),
-        new ClassCastException("" + obj + " is not an instance of " + getName))
+    SemanticsUtils.asInstanceOfCheck({ () =>
+      (obj != null && !isJSType && !isInstance(obj))
+    }, { () =>
+      new ClassCastException("" + obj + " is not an instance of " + getName)
+    })
     obj.asInstanceOf[A]
   }
 

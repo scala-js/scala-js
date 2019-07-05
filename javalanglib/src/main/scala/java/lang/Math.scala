@@ -16,11 +16,14 @@ package lang
 import scala.scalajs.js
 import js.Dynamic.{ global => g }
 
-import scala.scalajs.LinkingInfo.assumingES6
+import scala.scalajs.runtime.linkingInfo
 
 object Math {
   final val E  = 2.718281828459045
   final val PI = 3.141592653589793
+
+  @inline private def assumingES6: scala.Boolean =
+    linkingInfo.assumingES6
 
   @inline def abs(a: scala.Int): scala.Int = if (a < 0) -a else a
   @inline def abs(a: scala.Long): scala.Long = if (a < 0) -a else a
@@ -63,14 +66,14 @@ object Math {
   @inline def log(a: scala.Double): scala.Double = js.Math.log(a)
 
   @inline def log10(a: scala.Double): scala.Double = {
-    if (assumingES6 || !js.isUndefined(g.Math.log10))
+    if (assumingES6 || !Utils.isUndefined(g.Math.log10))
       js.Math.log10(a)
     else
       log(a) / 2.302585092994046
   }
 
   @inline def log1p(a: scala.Double): scala.Double = {
-    if (assumingES6 || !js.isUndefined(g.Math.log1p))
+    if (assumingES6 || !Utils.isUndefined(g.Math.log1p))
       js.Math.log1p(a)
     else if (a == 0.0) a
     else log(a + 1)
@@ -102,7 +105,7 @@ object Math {
   }
 
   def cbrt(a: scala.Double): scala.Double = {
-    if (assumingES6 || !js.isUndefined(g.Math.cbrt)) {
+    if (assumingES6 || !Utils.isUndefined(g.Math.cbrt)) {
       js.Math.cbrt(a)
     } else {
       if (a == 0 || Double.isNaN(a) || Double.isInfinite(a)) {
@@ -207,7 +210,7 @@ object Math {
   }
 
   def hypot(a: scala.Double, b: scala.Double): scala.Double = {
-    if (assumingES6 || !js.isUndefined(g.Math.hypot)) {
+    if (assumingES6 || !Utils.isUndefined(g.Math.hypot)) {
       js.Math.hypot(a, b)
     } else {
       // http://en.wikipedia.org/wiki/Hypot#Implementation
@@ -230,7 +233,7 @@ object Math {
   }
 
   def expm1(a: scala.Double): scala.Double = {
-    if (assumingES6 || !js.isUndefined(g.Math.expm1)) {
+    if (assumingES6 || !Utils.isUndefined(g.Math.expm1)) {
       js.Math.expm1(a)
     } else {
       // https://github.com/ghewgill/picomath/blob/master/javascript/expm1.js
@@ -246,7 +249,7 @@ object Math {
   }
 
   def sinh(a: scala.Double): scala.Double = {
-    if (assumingES6 || !js.isUndefined(g.Math.sinh)) {
+    if (assumingES6 || !Utils.isUndefined(g.Math.sinh)) {
       js.Math.sinh(a)
     } else {
       if (Double.isNaN(a) || a == 0.0 || abs(a) == scala.Double.PositiveInfinity) a
@@ -255,7 +258,7 @@ object Math {
   }
 
   def cosh(a: scala.Double): scala.Double = {
-    if (assumingES6 || !js.isUndefined(g.Math.cosh)) {
+    if (assumingES6 || !Utils.isUndefined(g.Math.cosh)) {
       js.Math.cosh(a)
     } else {
       if (Double.isNaN(a))
@@ -270,7 +273,7 @@ object Math {
   }
 
   def tanh(a: scala.Double): scala.Double = {
-    if (assumingES6 || !js.isUndefined(g.Math.tanh)) {
+    if (assumingES6 || !Utils.isUndefined(g.Math.tanh)) {
       js.Math.tanh(a)
     } else {
       if (Double.isNaN(a) || a == 0.0)
