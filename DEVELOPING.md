@@ -79,6 +79,10 @@ or, more typically,
 We recommend [Metals](https://scalameta.org/metals/)-based IDEs such as VS Code
 to develop Scala.js itself. It can import the Scala.js build out-of-the-box.
 
+After importing the build in Metals, you will need to run `clean` in sbt before
+normal sbt commands can correctly work. Metals will continue to provide all its
+features after cleaning.
+
 ## Eclipse
 
 If you want to develop in Eclipse, use

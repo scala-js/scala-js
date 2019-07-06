@@ -110,6 +110,25 @@ object Build {
     if (condition) List(testDir)
     else Nil
 
+  private def addScalaJSCompilerOption(option: String): Setting[_] =
+    addScalaJSCompilerOption(Def.setting(option))
+
+  private def addScalaJSCompilerOption(option: Def.Initialize[String]): Setting[_] =
+    addScalaJSCompilerOption(None, option)
+
+  private def addScalaJSCompilerOptionInConfig(config: Configuration,
+      option: String): Setting[_] = {
+    addScalaJSCompilerOption(Some(config), Def.setting(option))
+  }
+
+  private def addScalaJSCompilerOption(config: Option[Configuration],
+      option: Def.Initialize[String]): Setting[_] = {
+    config.fold(scalacOptions)(scalacOptions in _) ++= {
+      if (isGeneratingForIDE) Nil
+      else Seq(s"-P:scalajs:${option.value}")
+    }
+  }
+
   val previousArtifactSetting: Setting[_] = {
     mimaPreviousArtifacts ++= {
       val scalaV = scalaVersion.value
@@ -303,12 +322,12 @@ object Build {
       }
   )
 
-  val noClassFilesSettings: Setting[_] = (
-      scalacOptions in (Compile, compile) ++= {
-        if (isGeneratingForIDE) Seq()
-        else Seq("-Yskip:cleanup,icode,jvm")
-      }
-  )
+  val noClassFilesSettings: Setting[_] = {
+    scalacOptions in (Compile, compile) += {
+      if (isGeneratingForIDE) "-Yskip:jvm"
+      else "-Ystop-after:jscode"
+    }
+  }
 
   val publishSettings = Seq(
       publishMavenStyle := true,
@@ -400,7 +419,7 @@ object Build {
         )
       },
 
-      scalacOptions += "-P:scalajs:sjsDefinedByDefault"
+      addScalaJSCompilerOption("sjsDefinedByDefault")
   )
 
   private def parallelCollectionsDependencies(
@@ -612,11 +631,16 @@ object Build {
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile / "shared/src/test/scala",
 
-      sourceGenerators in Compile += Def.task {
-        ScalaJSEnvGenerator.generateEnvHolder(
-          baseDirectory.value.getParentFile,
-          (sourceManaged in Compile).value)
-      }.taskValue,
+      if (isGeneratingForIDE) {
+        unmanagedSourceDirectories in Compile +=
+          baseDirectory.value.getParentFile / "shared/src/main/scala-ide-stubs"
+      } else {
+        sourceGenerators in Compile += Def.task {
+          ScalaJSEnvGenerator.generateEnvHolder(
+            baseDirectory.value.getParentFile,
+            (sourceManaged in Compile).value)
+        }.taskValue
+      },
 
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Tools,
@@ -648,20 +672,24 @@ object Build {
            */
           scalacOptions in Test -= "-Xfatal-warnings",
 
-          resourceGenerators in Test += Def.task {
-            val base = (resourceManaged in Compile).value
-            IO.createDirectory(base)
-            val outFile = base / "js-test-definitions.js"
+          if (isGeneratingForIDE) {
+            resourceGenerators in Test ++= Nil
+          } else {
+            resourceGenerators in Test += Def.task {
+              val base = (resourceManaged in Compile).value
+              IO.createDirectory(base)
+              val outFile = base / "js-test-definitions.js"
 
-            val testDefinitions = {
-              org.scalajs.build.HTMLRunnerTemplateAccess.renderTestDefinitions(
-                  (loadedTestFrameworks in testSuite in Test).value,
-                  (definedTests in testSuite in Test).value)
-            }
+              val testDefinitions = {
+                org.scalajs.build.HTMLRunnerTemplateAccess.renderTestDefinitions(
+                    (loadedTestFrameworks in testSuite in Test).value,
+                    (definedTests in testSuite in Test).value)
+              }
 
-            IO.write(outFile, testDefinitions)
-            Seq(outFile)
-          }.taskValue,
+              IO.write(outFile, testDefinitions)
+              Seq(outFile)
+            }.taskValue
+          },
 
           // Give more memory to Node.js, and deactivate source maps
           jsEnv := {
@@ -937,12 +965,12 @@ object Build {
            * #2195 This must come *before* the option added by myScalaJSSettings
            * because mapSourceURI works on a first-match basis.
            */
-          scalacOptions += {
-            "-P:scalajs:mapSourceURI:" +
+          addScalaJSCompilerOption(Def.setting {
+            "mapSourceURI:" +
             (artifactPath in fetchScalaSource).value.toURI +
             "->https://raw.githubusercontent.com/scala/scala/v" +
             scalaVersion.value + "/src/library/"
-          }
+          })
       ) ++ myScalaJSSettings ++ Seq(
           name := "Scala library for Scala.js",
           publishArtifact in Compile := false,
@@ -954,7 +982,7 @@ object Build {
               Set("-deprecation", "-unchecked", "-feature") contains _)),
 
           // Tell the plugin to hack-fix bad classOf trees
-          scalacOptions += "-P:scalajs:fixClassOf",
+          addScalaJSCompilerOption("fixClassOf"),
 
           libraryDependencies +=
             "org.scala-lang" % "scala-library" % scalaVersion.value classifier "sources",
@@ -1117,7 +1145,7 @@ object Build {
             "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
 
           // js.JSApp is annotated with @JSExportDescendentObjects
-          scalacOptions += "-P:scalajs:suppressExportDeprecations"
+          addScalaJSCompilerOption("suppressExportDeprecations")
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
@@ -1310,7 +1338,7 @@ object Build {
           /* The test bridge uses namespaced top-level exports that we cannot
            * get rid of in 0.6.x.
            */
-          scalacOptions += "-P:scalajs:suppressExportDeprecations"
+          addScalaJSCompilerOption("suppressExportDeprecations")
       )
   ).withScalaJSCompiler.dependsOn(library, testInterface)
 
@@ -1661,8 +1689,8 @@ object Build {
          * @JSName/missing @JSGlobal. Don't drown the test:compile output under
          * useless warnings.
          */
-        scalacOptions in Test += "-P:scalajs:suppressExportDeprecations",
-        scalacOptions in Test += "-P:scalajs:suppressMissingJSGlobalDeprecations",
+        addScalaJSCompilerOptionInConfig(Test, "suppressExportDeprecations"),
+        addScalaJSCompilerOptionInConfig(Test, "suppressMissingJSGlobalDeprecations"),
 
         unmanagedSourceDirectories in Test ++= {
           val testDir = (sourceDirectory in Test).value
