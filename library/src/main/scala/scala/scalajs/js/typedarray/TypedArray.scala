@@ -65,6 +65,20 @@ trait TypedArray[T, Repr] extends ArrayBufferView with js.Iterable[T] {
  *  Static information that exists for any concrete TypedArray
  */
 @js.native
-trait TypedArrayStatic extends js.Object {
+trait TypedArrayStatic[T, Repr] extends js.Object {
   val BYTES_PER_ELEMENT: Int = js.native
+
+  /** Returns a new array from a set of elements. */
+  def of(items: T*): Repr = js.native
+
+  /** Creates an array from an `iterable` object. */
+  def from(iterable: js.Iterable[T]): Repr = js.native
+
+  /** Creates an array from an `iterable` object. */
+  def from[E](iterable: js.Iterable[E],
+      mapFn: js.Function1[E, T]): Repr = js.native
+
+  /** Creates an array from an `iterable` object. */
+  def from[D, E](iterable: js.Iterable[E], mapFn: js.ThisFunction1[D, E, T],
+      thisArg: D): Repr = js.native
 }

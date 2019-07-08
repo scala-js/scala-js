@@ -44,4 +44,4 @@ class Uint32Array private[this] () extends TypedArray[Double, Uint32Array] {
  */
 @js.native
 @JSGlobal
-object Uint32Array extends TypedArrayStatic
+object Uint32Array extends TypedArrayStatic[Double, Uint32Array]

@@ -44,4 +44,4 @@ class Int16Array private[this] () extends TypedArray[Short, Int16Array] {
  */
 @js.native
 @JSGlobal
-object Int16Array extends TypedArrayStatic
+object Int16Array extends TypedArrayStatic[Short, Int16Array]

@@ -14,6 +14,7 @@ package java.util.concurrent
 
 import java.lang.{reflect => jlr}
 import java.util._
+import java.util.function.Predicate
 
 import scala.annotation.tailrec
 
@@ -183,6 +184,39 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     copyIfNeeded()
     innerSplice(index, 0, c.asInstanceOf[Collection[E]].scalaOps.toSeq: _*)
     !c.isEmpty
+  }
+
+  /* Override Collection.removeIf() because our iterators do not support
+   * the `remove()` method.
+   */
+  override def removeIf(filter: Predicate[_ >: E]): Boolean = {
+    // scalastyle:off return
+    /* The outer loop iterates as long as no element passes the filter (and
+     * hence no modification is required).
+     */
+    val iter = iterator()
+    var index = 0
+    while (iter.hasNext()) {
+      if (filter.test(iter.next())) {
+        /* We found the first element that needs to be removed: copy and
+         * truncate at the current index.
+         */
+        copyIfNeeded()
+        innerSplice(index, size() - index)
+        /* Now keep iterating, but push elements that do not pass the test.
+         * `index` is useless from now on, so do not keep updating it.
+         */
+        while (iter.hasNext()) {
+          val elem = iter.next()
+          if (!filter.test(elem))
+            innerPush(elem)
+        }
+        return true
+      }
+      index += 1
+    }
+    false // the outer loop finished without entering the inner one
+    // scalastyle:on return
   }
 
   override def toString: String =

@@ -44,4 +44,4 @@ class Float64Array private[this] () extends TypedArray[Double, Float64Array] {
  */
 @js.native
 @JSGlobal
-object Float64Array extends TypedArrayStatic
+object Float64Array extends TypedArrayStatic[Double, Float64Array]

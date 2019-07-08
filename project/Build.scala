@@ -58,10 +58,31 @@ object ExposedValues extends AutoPlugin {
 object MyScalaJSPlugin extends AutoPlugin {
   override def requires: Plugins = ScalaJSPlugin
 
-  val isGeneratingEclipse =
-    Properties.envOrElse("GENERATING_ECLIPSE", "false").toBoolean
+  val isGeneratingForIDE = {
+    Properties.envOrElse("GENERATING_ECLIPSE", "false").toBoolean ||
+    Properties.envOrElse("METALS_ENABLED", "false").toBoolean
+  }
 
   val wantSourceMaps = settingKey[Boolean]("Whether source maps should be used")
+
+  def addScalaJSCompilerOption(option: String): Setting[_] =
+    addScalaJSCompilerOption(Def.setting(option))
+
+  def addScalaJSCompilerOption(option: Def.Initialize[String]): Setting[_] =
+    addScalaJSCompilerOption(None, option)
+
+  def addScalaJSCompilerOptionInConfig(config: Configuration,
+      option: String): Setting[_] = {
+    addScalaJSCompilerOption(Some(config), Def.setting(option))
+  }
+
+  def addScalaJSCompilerOption(config: Option[Configuration],
+      option: Def.Initialize[String]): Setting[_] = {
+    config.fold(scalacOptions)(scalacOptions in _) ++= {
+      if (isGeneratingForIDE) Nil
+      else Seq(s"-P:scalajs:${option.value}")
+    }
+  }
 
   override def projectSettings: Seq[Setting[_]] = Def.settings(
       /* Remove libraryDependencies on ourselves; we use .dependsOn() instead
@@ -85,23 +106,18 @@ object MyScalaJSPlugin extends AutoPlugin {
       jsEnv := new NodeJSEnv(
           NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)),
 
-      // Link source maps
-      scalacOptions ++= {
-        val base = (baseDirectory in LocalProject("scalajs")).value
-        if (isGeneratingEclipse) Seq()
-        else if (isSnapshot.value) Seq()
-        else Seq(
-          // Link source maps to github sources
-          "-P:scalajs:mapSourceURI:" + base.toURI +
-          "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
-          scalaJSVersion + "/"
-        )
-      }
+      // Link source maps to GitHub sources
+      addScalaJSCompilerOption(Def.setting {
+        "mapSourceURI:" +
+        (baseDirectory in LocalProject("scalajs")).value.toURI +
+        "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
+        scalaJSVersion + "/"
+      })
   )
 }
 
 object Build {
-  import MyScalaJSPlugin.isGeneratingEclipse
+  import MyScalaJSPlugin.{addScalaJSCompilerOption, isGeneratingForIDE}
 
   val bintrayProjectName = settingKey[String](
       "Project name on Bintray")
@@ -350,12 +366,12 @@ object Build {
       }
   )
 
-  val noClassFilesSettings: Setting[_] = (
-      scalacOptions in (Compile, compile) ++= {
-        if (isGeneratingEclipse) Seq()
-        else Seq("-Yskip:cleanup,icode,jvm")
-      }
-  )
+  val noClassFilesSettings: Setting[_] = {
+    scalacOptions in (Compile, compile) += {
+      if (isGeneratingForIDE) "-Yskip:jvm"
+      else "-Ystop-after:jscode"
+    }
+  }
 
   val publishSettings = Seq(
       publishMavenStyle := true,
@@ -443,13 +459,13 @@ object Build {
   implicit class ProjectOps(val project: Project) extends AnyVal {
     /** Uses the Scala.js compiler plugin. */
     def withScalaJSCompiler: Project =
-      if (isGeneratingEclipse) project
+      if (isGeneratingForIDE) project
       else project.dependsOn(compiler % "plugin")
 
     def withScalaJSJUnitPlugin: Project = {
       project.settings(
           scalacOptions in Test ++= {
-            if (isGeneratingEclipse) {
+            if (isGeneratingForIDE) {
               Seq.empty
             } else {
               val jar = (packageBin in (jUnitPlugin, Compile)).value
@@ -461,7 +477,7 @@ object Build {
 
     /** Depends on library as if (exportJars in library) was set to false. */
     def dependsOnLibraryNoJar: Project = {
-      if (isGeneratingEclipse) {
+      if (isGeneratingForIDE) {
         project.dependsOn(library)
       } else {
         project.settings(
@@ -476,7 +492,7 @@ object Build {
 
     /** Depends on the sources of another project. */
     def dependsOnSource(dependency: Project): Project = {
-      if (isGeneratingEclipse) {
+      if (isGeneratingForIDE) {
         project.dependsOn(dependency)
       } else {
         project.settings(
@@ -657,13 +673,18 @@ object Build {
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile / "shared/src/test/scala",
 
-      sourceGenerators in Test += Def.task {
-        ConstantHolderGenerator.generate(
-            (sourceManaged in Test).value,
-            "org.scalajs.linker.testutils.StdlibHolder",
-            "minilib" -> (packageBin in (LocalProject("minilib"), Compile)).value,
-            "fulllib" -> (packageBin in (LocalProject("library"), Compile)).value)
-      }.taskValue,
+      if (isGeneratingForIDE) {
+        unmanagedSourceDirectories in Test +=
+          baseDirectory.value.getParentFile / "shared/src/test/scala-ide-stubs"
+      } else {
+        sourceGenerators in Test += Def.task {
+          ConstantHolderGenerator.generate(
+              (sourceManaged in Test).value,
+              "org.scalajs.linker.testutils.StdlibHolder",
+              "minilib" -> (packageBin in (LocalProject("minilib"), Compile)).value,
+              "fulllib" -> (packageBin in (LocalProject("library"), Compile)).value)
+        }.taskValue
+      },
 
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Linker,
@@ -786,7 +807,7 @@ object Build {
 
   lazy val delambdafySetting = {
     scalacOptions ++= (
-        if (isGeneratingEclipse) Seq()
+        if (isGeneratingForIDE) Seq()
         else Seq("-Ydelambdafy:method"))
   }
 
@@ -859,16 +880,12 @@ object Build {
        * #2195 This must come *before* the option added by MyScalaJSPlugin
        * because mapSourceURI works on a first-match basis.
        */
-      scalacOptions := {
-        val previousScalacOptions = scalacOptions.value
-        val sourceMapOption = {
-          "-P:scalajs:mapSourceURI:" +
-          (artifactPath in fetchScalaSource).value.toURI +
-          "->https://raw.githubusercontent.com/scala/scala/v" +
-          scalaVersion.value + "/src/library/"
-        }
-        sourceMapOption +: previousScalacOptions
-      },
+      addScalaJSCompilerOption(Def.setting {
+        "mapSourceURI:" +
+        (artifactPath in fetchScalaSource).value.toURI +
+        "->https://raw.githubusercontent.com/scala/scala/v" +
+        scalaVersion.value + "/src/library/"
+      }),
       name := "Scala library for Scala.js",
       publishArtifact in Compile := false,
       delambdafySetting,
@@ -879,7 +896,7 @@ object Build {
           Set("-deprecation", "-unchecked", "-feature") contains _)),
 
       // Tell the plugin to hack-fix bad classOf trees
-      scalacOptions += "-P:scalajs:fixClassOf",
+      addScalaJSCompilerOption("fixClassOf"),
 
       libraryDependencies +=
         "org.scala-lang" % "scala-library" % scalaVersion.value classifier "sources",
@@ -1016,7 +1033,7 @@ object Build {
       name := "Scala.js library",
       delambdafySetting,
       ensureSAMSupportSetting,
-      exportJars := !isGeneratingEclipse,
+      exportJars := !isGeneratingForIDE,
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
 
@@ -1293,6 +1310,25 @@ object Build {
       publishArtifact in Compile := false,
       scalacOptions ~= (_.filter(_ != "-deprecation")),
 
+      // To support calls to static methods in interfaces
+      scalacOptions in Test ++= {
+        /* Starting from 2.10.7 and 2.11.12, scalac refuses to emit calls to
+        * static methods in interfaces unless the -target:jvm-1.8 flag is given.
+        * scalac 2.12+ emits JVM 8 bytecode by default, of course, so it is not
+        * needed for later versions.
+        */
+        val PartialVersion = """(\d+)\.(\d+)\.(\d+)(?:-.+)?""".r
+        val needsTargetFlag = scalaVersion.value match {
+          case PartialVersion("2", "10", n) => n.toInt >= 7
+          case PartialVersion("2", "11", n) => n.toInt >= 12
+          case _                            => false
+        }
+        if (needsTargetFlag)
+          Seq("-target:jvm-1.8")
+        else
+          Nil
+      },
+
       // Need reflect for typechecking macros
       libraryDependencies +=
         "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
@@ -1514,34 +1550,39 @@ object Build {
         }
       },
 
-      sourceGenerators in Compile += Def.task {
-        val stage = scalaJSStage.value
+      if (isGeneratingForIDE) {
+        unmanagedSourceDirectories in Compile +=
+          baseDirectory.value / "src/main/scala-ide-stubs"
+      } else {
+        sourceGenerators in Compile += Def.task {
+          val stage = scalaJSStage.value
 
-        val linkerConfig = stage match {
-          case FastOptStage => (scalaJSLinkerConfig in (Compile, fastOptJS)).value
-          case FullOptStage => (scalaJSLinkerConfig in (Compile, fullOptJS)).value
-        }
+          val linkerConfig = stage match {
+            case FastOptStage => (scalaJSLinkerConfig in (Compile, fastOptJS)).value
+            case FullOptStage => (scalaJSLinkerConfig in (Compile, fullOptJS)).value
+          }
 
-        val moduleKind = linkerConfig.moduleKind
-        val sems = linkerConfig.semantics
+          val moduleKind = linkerConfig.moduleKind
+          val sems = linkerConfig.semantics
 
-        ConstantHolderGenerator.generate(
-            (sourceManaged in Compile).value,
-            "org.scalajs.testsuite.utils.BuildInfo",
-            "scalaVersion" -> scalaVersion.value,
-            "hasSourceMaps" -> MyScalaJSPlugin.wantSourceMaps.value,
-            "isNoModule" -> (moduleKind == ModuleKind.NoModule),
-            "isESModule" -> (moduleKind == ModuleKind.ESModule),
-            "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
-            "isFullOpt" -> (stage == Stage.FullOpt),
-            "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
-            "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
-            "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
-            "strictFloats" -> sems.strictFloats,
-            "productionMode" -> sems.productionMode,
-            "es2015" -> linkerConfig.esFeatures.useECMAScript2015
-        )
-      }.taskValue,
+          ConstantHolderGenerator.generate(
+              (sourceManaged in Compile).value,
+              "org.scalajs.testsuite.utils.BuildInfo",
+              "scalaVersion" -> scalaVersion.value,
+              "hasSourceMaps" -> MyScalaJSPlugin.wantSourceMaps.value,
+              "isNoModule" -> (moduleKind == ModuleKind.NoModule),
+              "isESModule" -> (moduleKind == ModuleKind.ESModule),
+              "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
+              "isFullOpt" -> (stage == Stage.FullOpt),
+              "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
+              "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
+              "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
+              "strictFloats" -> sems.strictFloats,
+              "productionMode" -> sems.productionMode,
+              "es2015" -> linkerConfig.esFeatures.useECMAScript2015
+          )
+        }.taskValue
+      },
 
       /* Generate a scala source file that throws exceptions in
        * various places (while attaching the source line to the
