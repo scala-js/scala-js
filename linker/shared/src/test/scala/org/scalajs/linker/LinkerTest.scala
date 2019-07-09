@@ -56,10 +56,7 @@ class LinkerTest {
             )
         )
     )
-    val moduleInitializers = List(
-        ModuleInitializer.mainMethodWithArgs("HelloWorld", "main")
-    )
-    testLink(classDefs, moduleInitializers)
+    testLink(classDefs, mainModuleInitializers("HelloWorld"))
   }
 
   /** This test exposes a problem where a linker in error state is called
@@ -110,16 +107,7 @@ object LinkerTest {
       implicit ec: ExecutionContext): Future[Unit] = {
 
     val linker = StandardLinker(StandardLinker.Config())
-
-    val classDefsFiles = classDefs.map { classDef =>
-      new IRFileImpl("mem://" + classDef.name.name + ".sjsir", None) {
-        def tree(implicit ec: ExecutionContext): Future[ClassDef] = Future(classDef)
-
-        def entryPointsInfo(implicit ec: ExecutionContext): Future[EntryPointsInfo] =
-          tree.map(EntryPointsInfo.forClassDef)
-      }
-    }
-
+    val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
     val output = LinkerOutput(LinkerOutput.newMemFile())
 
     TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
