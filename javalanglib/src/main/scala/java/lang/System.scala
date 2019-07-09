@@ -291,7 +291,7 @@ object System {
   def gc(): Unit = Runtime.getRuntime().gc()
 }
 
-private[lang] final class JSConsoleBasedPrintStream(isErr: Boolean)
+private[lang] final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
     extends PrintStream(new JSConsoleBasedPrintStream.DummyOutputStream) {
 
   import JSConsoleBasedPrintStream._

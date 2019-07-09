@@ -41,7 +41,7 @@ final class Boolean private ()
 }
 
 object Boolean {
-  final val TYPE = classOf[scala.Boolean]
+  final val TYPE = scala.Predef.classOf[scala.Boolean]
 
   /* TRUE and FALSE are supposed to be vals. However, they are better
    * optimized as defs, because they end up being just the constant true and

@@ -51,7 +51,7 @@ final class Long private () extends Number with Comparable[Long] {
 object Long {
   import scala.scalajs.runtime.RuntimeLong
 
-  final val TYPE = classOf[scala.Long]
+  final val TYPE = scala.Predef.classOf[scala.Long]
   final val MIN_VALUE = -9223372036854775808L
   final val MAX_VALUE = 9223372036854775807L
   final val SIZE = 64
@@ -68,11 +68,14 @@ object Long {
    */
   private lazy val StringRadixInfos: js.Array[StringRadixInfo] = {
     val r = new js.Array[StringRadixInfo]()
+    var radix = 0
 
-    for (_ <- 0 until Character.MIN_RADIX)
+    while (radix < Character.MIN_RADIX) {
       r += null
+      radix += 1
+    }
 
-    for (radix <- Character.MIN_RADIX to Character.MAX_RADIX) {
+    while (radix <= Character.MAX_RADIX) {
       /* Find the biggest chunk size we can use.
        *
        * - radixPowLength should be the biggest signed int32 value that is an
@@ -95,6 +98,7 @@ object Long {
       val overflowBarrier = Long.divideUnsigned(-1L, radixPowLengthLong)
       r += new StringRadixInfo(chunkLength, radixPowLengthLong,
           paddingZeros, overflowBarrier)
+      radix += 1
     }
 
     r
@@ -291,7 +295,7 @@ object Long {
           secondResult
         } else {
           // Third and final chunk. This one can overflow
-          assert(secondChunkEnd + chunkLen == length)
+          // Assert: secondChunkEnd + chunkLen == length
 
           val overflowBarrier = radixInfo.overflowBarrier
           val thirdChunk = parseChunk(secondChunkEnd, length)
