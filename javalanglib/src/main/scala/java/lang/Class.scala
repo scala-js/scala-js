@@ -41,7 +41,9 @@ final class Class[A] private (data: ScalaJSClassData[A]) extends Object {
   def isInstance(obj: Object): scala.Boolean =
     data.isInstance(obj)
 
-  def isAssignableFrom(that: Class[_]): scala.Boolean =
+  def isAssignableFrom(that: Class[_]): scala.Boolean = {
+    import scala.Predef.classOf
+
     if (this.isPrimitive || that.isPrimitive) {
       /* This differs from the JVM specification to mimic the behavior of
        * runtime type tests of primitive numeric types.
@@ -63,6 +65,7 @@ final class Class[A] private (data: ScalaJSClassData[A]) extends Object {
     } else {
       this.isInstance(that.getFakeInstance())
     }
+  }
 
   private def getFakeInstance(): Object =
     data.getFakeInstance()
@@ -106,7 +109,7 @@ final class Class[A] private (data: ScalaJSClassData[A]) extends Object {
   @inline // optimize for the Unchecked case, where this becomes identity()
   def cast(obj: Object): A = {
     scala.scalajs.runtime.SemanticsUtils.asInstanceOfCheck(
-        (this eq classOf[Nothing]) ||
+        (this eq scala.Predef.classOf[Nothing]) ||
         (obj != null && !isRawJSType && !isInstance(obj)),
         new ClassCastException("" + obj + " is not an instance of " + getName))
     obj.asInstanceOf[A]

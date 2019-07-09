@@ -923,6 +923,15 @@ object Build {
           delambdafySetting,
           noClassFilesSettings,
 
+          /* When writing code in the java.lang package, references to things
+           * like `Boolean` or `Double` refer to `j.l.Boolean` or `j.l.Double`.
+           * Usually this is not what we want (we want the primitive types
+           * instead), but the implicits available in `Predef` hide mistakes by
+           * introducing boxing and unboxing where required. The `-Yno-predef`
+           * flag prevents these mistakes from happening.
+           */
+          scalacOptions += "-Yno-predef",
+
           resourceGenerators in Compile += Def.task {
             val base = (resourceManaged in Compile).value
             Seq(

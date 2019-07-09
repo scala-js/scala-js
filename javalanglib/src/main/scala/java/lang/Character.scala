@@ -172,7 +172,7 @@ class Character(private val value: scala.Char)
 }
 
 object Character {
-  final val TYPE = classOf[scala.Char]
+  final val TYPE = scala.Predef.classOf[scala.Char]
   final val MIN_VALUE = '\u0000'
   final val MAX_VALUE = '\uffff'
   final val SIZE = 16
@@ -571,8 +571,8 @@ object Character {
   //def getDirectionality(c: scala.Char): scala.Byte
 
   /* Conversions */
-  def toUpperCase(c: scala.Char): scala.Char = c.toString.toUpperCase()(0)
-  def toLowerCase(c: scala.Char): scala.Char = c.toString.toLowerCase()(0)
+  def toUpperCase(c: scala.Char): scala.Char = c.toString.toUpperCase().charAt(0)
+  def toLowerCase(c: scala.Char): scala.Char = c.toString.toLowerCase().charAt(0)
   //def toTitleCase(c: scala.Char): scala.Char
   //def getNumericValue(c: scala.Char): Int
 
@@ -995,8 +995,14 @@ object Character {
   }
 
   private[this] def uncompressDeltas(deltas: Array[Int]): Array[Int] = {
-    for (i <- 1 until deltas.length)
-      deltas(i) += deltas(i - 1)
+    var acc = deltas(0)
+    var i = 1
+    val len = deltas.length
+    while (i != len) {
+      acc += deltas(i)
+      deltas(i) = acc
+      i += 1
+    }
     deltas
   }
 

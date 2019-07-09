@@ -44,7 +44,7 @@ final class Short private () extends Number with Comparable[Short] {
 }
 
 object Short {
-  final val TYPE = classOf[scala.Short]
+  final val TYPE = scala.Predef.classOf[scala.Short]
   final val SIZE = 16
   final val BYTES = 2
 
