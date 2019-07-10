@@ -18,10 +18,28 @@ import java.io._
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform._
 
 /** Tests for our implementation of java.io._ reader classes */
+class ReaderTest {
+  object MyReader extends java.io.Reader {
+    def read(dbuf: Array[Char], off: Int, len: Int): Int = {
+      java.util.Arrays.fill(dbuf, off, off + len, 'A')
+      len
+    }
+    def close(): Unit = ()
+  }
+
+  @Test def skip_should_always_skip_n_if_possible(): Unit = {
+    assumeFalse("Too slow in Rhino", executingInRhino)
+    assertEquals(42, MyReader.skip(42))
+    assertEquals(10000, MyReader.skip(10000)) // more than the 8192 batch size
+  }
+}
+
 class StringReaderTest {
   val str = "asdf"
   def newReader: StringReader = new StringReader(str)
@@ -112,6 +130,33 @@ class StringReaderTest {
   @Test def should_support_marking(): Unit = {
     assertTrue(newReader.markSupported)
   }
+
+  @Test def mark_should_throw_with_negative_lookahead(): Unit = {
+    expectThrows(classOf[IllegalArgumentException], newReader.mark(-10))
+  }
+
+  @Test def skip_should_accept_negative_lookahead_as_lookback(): Unit = {
+    // StringReader.skip accepts negative lookahead
+    val r = newReader
+    assertEquals("already head", 0, r.skip(-1))
+    assertEquals('a', r.read())
+
+    assertEquals(1, r.skip(1))
+    assertEquals('d', r.read())
+
+    assertEquals(-2, r.skip(-2))
+    assertEquals('s', r.read())
+  }
+
+  @Test def skip_should_always_return_0_after_reaching_end(): Unit = {
+    val r = newReader
+    assertEquals(4, r.skip(100))
+    assertEquals(-1, r.read())
+
+    assertEquals(0, r.skip(-100))
+    assertEquals(-1, r.read())
+  }
+
 }
 
 class BufferedReaderTest {
@@ -242,8 +287,21 @@ class BufferedReaderTest {
     assertEquals(null, r.readLine())
   }
 
+  @Test def skip_should_always_return_0_after_reaching_end(): Unit = {
+    val r = newReader
+    assertEquals(25, r.skip(100))
+    assertEquals(-1, r.read())
+
+    assertEquals(0, r.skip(100))
+    assertEquals(-1, r.read())
+  }
+
   @Test def should_support_marking(): Unit = {
     assertTrue(newReader.markSupported)
+  }
+
+  @Test def mark_should_throw_with_negative_lookahead(): Unit = {
+    expectThrows(classOf[IllegalArgumentException], newReader.mark(-10))
   }
 }
 
@@ -293,4 +351,19 @@ class InputStreamReaderTest {
     assertEquals(0, streamReader.read(new Array[Char](0)))
   }
 
+  @Test def skip_should_always_return_0_after_reaching_end(): Unit = {
+    val data = "Lorem ipsum".getBytes()
+    val r = new InputStreamReader(new ByteArrayInputStream(data))
+    assertTrue(r.skip(100) > 0)
+    assertEquals(-1, r.read())
+
+    assertEquals(0, r.skip(100))
+    assertEquals(-1, r.read())
+  }
+
+  @Test def should_throw_IOException_since_mark_is_not_supported(): Unit = {
+    val data = "Lorem ipsum".getBytes()
+    val r = new InputStreamReader(new ByteArrayInputStream(data))
+    expectThrows(classOf[IOException], r.mark(0))
+  }
 }
