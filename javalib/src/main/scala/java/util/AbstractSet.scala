@@ -41,10 +41,12 @@ abstract class AbstractSet[E] protected () extends AbstractCollection[E]
           if (c.contains(iter.next())) {
             iter.remove()
             removeAll(iter, true)
-          } else
+          } else {
             removeAll(iter, modified)
-        } else
+          }
+        } else {
           modified
+        }
       }
       removeAll(this.iterator, false)
     }

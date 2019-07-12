@@ -16,9 +16,11 @@ import java.{util => ju}
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.javalib.util.concurrent.ConcurrentMapFactory
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform._
 
 import scala.reflect.ClassTag
 
@@ -29,7 +31,14 @@ trait MapTest {
 
   def factory: MapFactory
 
+  def testObj(i: Int): TestObj = TestObj(i)
+
+  private def assumeNotIdentityHashMapOnJVM(): Unit =
+    assumeFalse("JVM vs JS cache differences", executingInJVM && factory.isIdentityBased)
+
   @Test def testSizeGetPutWithStrings(): Unit = {
+    assumeNotIdentityHashMapOnJVM()
+
     val mp = factory.empty[String, String]
 
     assertEquals(0, mp.size())
@@ -45,12 +54,14 @@ trait MapTest {
 
     assertEquals(null, mp.get("THREE"))
     assertEquals(null, mp.get(42))
-    assertEquals(null, mp.get(TestObj(42)))
+    assertEquals(null, mp.get(testObj(42)))
     if (factory.allowsNullKeysQueries)
       assertEquals(null, mp.get(null))
   }
 
   @Test def testSizeGetPutWithStringsLargeMap(): Unit = {
+    assumeNotIdentityHashMapOnJVM()
+
     val largeMap = factory.empty[String, Int]
     for (i <- 0 until 1000)
       largeMap.put(i.toString(), i)
@@ -62,12 +73,14 @@ trait MapTest {
 
     assertEquals(null, largeMap.get("THREE"))
     assertEquals(null, largeMap.get(42))
-    assertEquals(null, largeMap.get(TestObj(42)))
+    assertEquals(null, largeMap.get(testObj(42)))
     if (factory.allowsNullKeysQueries)
       assertEquals(null, largeMap.get(null))
   }
 
   @Test def testSizeGetPutWithInts(): Unit = {
+    assumeNotIdentityHashMapOnJVM()
+
     val mp = factory.empty[Int, Int]
 
     mp.put(100, 12345)
@@ -82,12 +95,14 @@ trait MapTest {
 
     assertEquals(null, mp.get(42))
     assertEquals(null, mp.get("THREE"))
-    assertEquals(null, mp.get(TestObj(42)))
+    assertEquals(null, mp.get(testObj(42)))
     if (factory.allowsNullKeysQueries)
       assertEquals(null, mp.get(null))
   }
 
   @Test def testSizeGetPutWithIntsLargeMap(): Unit = {
+    assumeNotIdentityHashMapOnJVM()
+
     val largeMap = factory.empty[Int, Int]
     for (i <- 0 until 1000)
       largeMap.put(i, i * 2)
@@ -99,7 +114,7 @@ trait MapTest {
 
     assertEquals(null, largeMap.get(-42))
     assertEquals(null, largeMap.get("THREE"))
-    assertEquals(null, largeMap.get(TestObj(42)))
+    assertEquals(null, largeMap.get(testObj(42)))
     if (factory.allowsNullKeysQueries)
       assertEquals(null, largeMap.get(null))
   }
@@ -107,19 +122,19 @@ trait MapTest {
   @Test def testSizeGetPutWithCustomObjects(): Unit = {
     val mp = factory.empty[TestObj, TestObj]
 
-    mp.put(TestObj(100), TestObj(12345))
+    mp.put(testObj(100), TestObj(12345))
     assertEquals(1, mp.size())
-    assertEquals(12345, mp.get(TestObj(100)).num)
-    mp.put(TestObj(150), TestObj(54321))
+    assertEquals(12345, mp.get(testObj(100)).num)
+    mp.put(testObj(150), TestObj(54321))
     assertEquals(2, mp.size())
-    assertEquals(54321, mp.get(TestObj(150)).num)
-    mp.put(TestObj(100), TestObj(3))
+    assertEquals(54321, mp.get(testObj(150)).num)
+    mp.put(testObj(100), TestObj(3))
     assertEquals(2, mp.size())
-    assertEquals(3, mp.get(TestObj(100)).num)
+    assertEquals(3, mp.get(testObj(100)).num)
 
     assertEquals(null, mp.get("THREE"))
     assertEquals(null, mp.get(42))
-    assertEquals(null, mp.get(TestObj(42)))
+    assertEquals(null, mp.get(testObj(42)))
     if (factory.allowsNullKeysQueries)
       assertEquals(null, mp.get(null))
   }
@@ -127,14 +142,14 @@ trait MapTest {
   @Test def testSizeGetPutWithCustomObjectsLargeMap(): Unit = {
     val largeMap = factory.empty[TestObj, Int]
     for (i <- 0 until 1000)
-      largeMap.put(TestObj(i), i * 2)
+      largeMap.put(testObj(i), i * 2)
     val expectedSize = factory.withSizeLimit.fold(1000)(Math.min(_, 1000))
     assertEquals(expectedSize, largeMap.size())
     for (i <- (1000 - expectedSize) until 1000)
-      assertEquals(i * 2, largeMap.get(TestObj(i)))
+      assertEquals(i * 2, largeMap.get(testObj(i)))
     assertNull(largeMap.get(1000))
 
-    assertEquals(null, largeMap.get(TestObj(-42)))
+    assertEquals(null, largeMap.get(testObj(-42)))
     assertEquals(null, largeMap.get("THREE"))
     assertEquals(null, largeMap.get(42))
     if (factory.allowsNullKeysQueries)
@@ -142,6 +157,8 @@ trait MapTest {
   }
 
   @Test def testSizeGetPutWithDoublesCornerCasesOfEquals(): Unit = {
+    assumeNotIdentityHashMapOnJVM()
+
     val mp = factory.empty[Double, Double]
 
     mp.put(1.2345, 11111.0)
@@ -178,12 +195,14 @@ trait MapTest {
 
     assertNull(mp.remove("foobar"))
     assertNull(mp.remove(42))
-    assertNull(mp.remove(TestObj(42)))
+    assertNull(mp.remove(testObj(42)))
     if (factory.allowsNullKeys)
       assertNull(mp.remove(null))
   }
 
   @Test def testRemoveWithInts(): Unit = {
+    assumeNotIdentityHashMapOnJVM()
+
     val mp = factory.empty[Int, String]
 
     mp.put(543, "one")
@@ -196,7 +215,7 @@ trait MapTest {
 
     assertNull(mp.remove("foobar"))
     assertNull(mp.remove(42))
-    assertNull(mp.remove(TestObj(42)))
+    assertNull(mp.remove(testObj(42)))
     if (factory.allowsNullKeys)
       assertNull(mp.remove(null))
   }
@@ -204,15 +223,15 @@ trait MapTest {
   @Test def testRemoveWithCustomObjects(): Unit = {
     val mp = factory.empty[TestObj, String]
 
-    mp.put(TestObj(543), "one")
+    mp.put(testObj(543), "one")
     for (i <- 0 until 30)
-      mp.put(TestObj(i), s"value $i")
+      mp.put(testObj(i), s"value $i")
     assertEquals(31, mp.size())
-    assertEquals("one", mp.remove(TestObj(543)))
-    assertNull(mp.get(TestObj(543)))
-    assertNull(mp.remove(TestObj(543)))
+    assertEquals("one", mp.remove(testObj(543)))
+    assertNull(mp.get(testObj(543)))
+    assertNull(mp.remove(testObj(543)))
 
-    assertNull(mp.remove(TestObj(42)))
+    assertNull(mp.remove(testObj(42)))
     assertNull(mp.remove("foobar"))
     assertNull(mp.remove(42))
     if (factory.allowsNullKeys)
@@ -220,6 +239,8 @@ trait MapTest {
   }
 
   @Test def testRemoveWithDoublesCornerCasesOfEquals(): Unit = {
+    assumeNotIdentityHashMapOnJVM()
+
     val mp = factory.empty[Double, String]
 
     mp.put(1.2345, "11111.0")
@@ -438,38 +459,40 @@ trait MapTest {
 
   @Test def testValuesIsViewForQueriesWithCustomObjects(): Unit = {
     val mp = factory.empty[TestObj, TestObj]
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(2), TestObj(22))
+    mp.put(testObj(1), testObj(11))
+    mp.put(testObj(2), testObj(22))
     val values = mp.values()
 
-    assertTrue(values.contains(TestObj(11)))
-    assertTrue(values.contains(TestObj(22)))
-    assertFalse(values.contains(TestObj(33)))
+    assertTrue(values.contains(testObj(11)))
+    assertTrue(values.contains(testObj(22)))
+    assertFalse(values.contains(testObj(33)))
     if (factory.allowsNullValuesQueries)
       assertFalse(values.contains(null))
     else
       expectThrows(classOf[NullPointerException], values.contains(null))
 
-    mp.put(TestObj(3), TestObj(33))
+    mp.put(testObj(3), testObj(33))
 
-    assertTrue(values.contains(TestObj(33)))
+    assertTrue(values.contains(testObj(33)))
 
-    val coll1 = TrivialImmutableCollection(TestObj(11), TestObj(22),
-        TestObj(33))
+    val coll1 = TrivialImmutableCollection(testObj(11), testObj(22),
+        testObj(33))
     assertTrue(values.containsAll(coll1))
 
-    val coll2 = TrivialImmutableCollection(TestObj(11), TestObj(22),
-        TestObj(33), TestObj(44))
+    val coll2 = TrivialImmutableCollection(testObj(11), testObj(22),
+        testObj(33), testObj(44))
     assertFalse(values.containsAll(coll2))
 
     if (factory.allowsNullValuesQueries) {
-      val coll3 = TrivialImmutableCollection(TestObj(11), TestObj(22),
-          TestObj(33), null)
+      val coll3 = TrivialImmutableCollection(testObj(11), testObj(22),
+          testObj(33), null)
       assertFalse(values.containsAll(coll3))
     }
   }
 
   @Test def testValuesIsViewForQueriesWithDoublesCornerCaseOfEquals(): Unit = {
+    assumeNotIdentityHashMapOnJVM()
+
     val nummp = factory.empty[Double, Double]
     val numValues = nummp.values()
 
@@ -540,8 +563,8 @@ trait MapTest {
 
   @Test def testValuesIsViewForRemoveWithCustomObjects(): Unit = {
     val mp = factory.empty[TestObj, TestObj]
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(2), TestObj(22))
+    mp.put(testObj(1), testObj(11))
+    mp.put(testObj(2), testObj(22))
     val values = mp.values()
 
     assertFalse(values.isEmpty)
@@ -552,39 +575,39 @@ trait MapTest {
     assertTrue(values.isEmpty)
     assertTrue(mp.isEmpty)
 
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(2), TestObj(22))
+    mp.put(testObj(1), testObj(11))
+    mp.put(testObj(2), testObj(22))
 
-    assertTrue(mp.containsKey(TestObj(1)))
-    values.remove(TestObj(11))
-    assertFalse(mp.containsKey(TestObj(1)))
+    assertTrue(mp.containsKey(testObj(1)))
+    values.remove(testObj(11))
+    assertFalse(mp.containsKey(testObj(1)))
 
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(3), TestObj(33))
+    mp.put(testObj(1), testObj(11))
+    mp.put(testObj(3), testObj(33))
 
-    assertTrue(mp.containsKey(TestObj(1)))
-    assertTrue(mp.containsKey(TestObj(2)))
-    assertTrue(mp.containsKey(TestObj(3)))
+    assertTrue(mp.containsKey(testObj(1)))
+    assertTrue(mp.containsKey(testObj(2)))
+    assertTrue(mp.containsKey(testObj(3)))
 
-    values.removeAll(TrivialImmutableCollection(TestObj(11), TestObj(22)))
+    values.removeAll(TrivialImmutableCollection(testObj(11), testObj(22)))
 
-    assertFalse(mp.containsKey(TestObj(1)))
-    assertFalse(mp.containsKey(TestObj(2)))
-    assertTrue(mp.containsKey(TestObj(3)))
+    assertFalse(mp.containsKey(testObj(1)))
+    assertFalse(mp.containsKey(testObj(2)))
+    assertTrue(mp.containsKey(testObj(3)))
 
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(2), TestObj(22))
-    mp.put(TestObj(3), TestObj(33))
+    mp.put(testObj(1), testObj(11))
+    mp.put(testObj(2), testObj(22))
+    mp.put(testObj(3), testObj(33))
 
-    assertTrue(mp.containsKey(TestObj(1)))
-    assertTrue(mp.containsKey(TestObj(2)))
-    assertTrue(mp.containsKey(TestObj(3)))
+    assertTrue(mp.containsKey(testObj(1)))
+    assertTrue(mp.containsKey(testObj(2)))
+    assertTrue(mp.containsKey(testObj(3)))
 
-    values.retainAll(TrivialImmutableCollection(TestObj(11), TestObj(22)))
+    values.retainAll(TrivialImmutableCollection(testObj(11), testObj(22)))
 
-    assertTrue(mp.containsKey(TestObj(1)))
-    assertTrue(mp.containsKey(TestObj(2)))
-    assertFalse(mp.containsKey(TestObj(3)))
+    assertTrue(mp.containsKey(testObj(1)))
+    assertTrue(mp.containsKey(testObj(2)))
+    assertFalse(mp.containsKey(testObj(3)))
   }
 
   @Test def testKeySetIsViewForSize(): Unit = {
@@ -636,35 +659,37 @@ trait MapTest {
 
   @Test def testKeySetIsViewForQueriesWithCustomObjects(): Unit = {
     val mp = factory.empty[TestObj, TestObj]
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(2), TestObj(22))
+    mp.put(testObj(1), TestObj(11))
+    mp.put(testObj(2), TestObj(22))
     val keySet = mp.keySet()
 
-    assertTrue(keySet.contains(TestObj(1)))
-    assertTrue(keySet.contains(TestObj(2)))
-    assertFalse(keySet.contains(TestObj(3)))
+    assertTrue(keySet.contains(testObj(1)))
+    assertTrue(keySet.contains(testObj(2)))
+    assertFalse(keySet.contains(testObj(3)))
     if (factory.allowsNullKeysQueries)
       assertFalse(keySet.contains(null))
     else
       expectThrows(classOf[NullPointerException], keySet.contains(null))
 
-    mp.put(TestObj(3), TestObj(33))
+    mp.put(testObj(3), TestObj(33))
 
-    assertTrue(keySet.contains(TestObj(3)))
+    assertTrue(keySet.contains(testObj(3)))
 
-    val coll1 = TrivialImmutableCollection(TestObj(1), TestObj(2), TestObj(3))
+    val coll1 = TrivialImmutableCollection(testObj(1), testObj(2), testObj(3))
     assertTrue(keySet.containsAll(coll1))
 
-    val coll2 = TrivialImmutableCollection(TestObj(1), TestObj(2), TestObj(4))
+    val coll2 = TrivialImmutableCollection(testObj(1), testObj(2), testObj(4))
     assertFalse(keySet.containsAll(coll2))
 
     if (factory.allowsNullKeysQueries) {
-      val coll3 = TrivialImmutableCollection(TestObj(1), TestObj(2), null)
+      val coll3 = TrivialImmutableCollection(testObj(1), testObj(2), null)
       assertFalse(keySet.containsAll(coll3))
     }
   }
 
   @Test def testKeySetIsViewForQueriesWithDoublesCornerCaseOfEquals(): Unit = {
+    assumeNotIdentityHashMapOnJVM()
+
     val nummp = factory.empty[Double, Double]
     val numkeySet = nummp.keySet()
 
@@ -732,12 +757,28 @@ trait MapTest {
     assertTrue(mp.containsKey("ONE"))
     assertTrue(mp.containsKey("TWO"))
     assertFalse(mp.containsKey("THREE"))
+
+    if (factory.allowsNullKeys) {
+      mp.put(null, "NULL")
+      assertTrue(mp.containsKey(null))
+      assertTrue(keySet.contains(null))
+      assertTrue(keySet.remove(null))
+      assertFalse(mp.containsKey(null))
+    }
+
+    if (factory.allowsNullValues) {
+      mp.put("NULL", null)
+      assertTrue(mp.containsKey("NULL"))
+      assertTrue(keySet.contains("NULL"))
+      assertTrue(keySet.remove("NULL"))
+      assertFalse(mp.containsKey("NULL"))
+    }
   }
 
   @Test def testKeySetIsViewForRemoveWithCustomObjects(): Unit = {
     val mp = factory.empty[TestObj, TestObj]
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(2), TestObj(22))
+    mp.put(testObj(1), TestObj(11))
+    mp.put(testObj(2), TestObj(22))
     val keySet = mp.keySet()
 
     assertFalse(keySet.isEmpty)
@@ -749,41 +790,57 @@ trait MapTest {
 
     assertTrue(mp.isEmpty)
 
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(2), TestObj(22))
+    mp.put(testObj(1), TestObj(11))
+    mp.put(testObj(2), TestObj(22))
 
-    assertTrue(mp.containsKey(TestObj(1)))
-    keySet.remove(TestObj(1))
-    assertFalse(mp.containsKey(TestObj(1)))
+    assertTrue(mp.containsKey(testObj(1)))
+    keySet.remove(testObj(1))
+    assertFalse(mp.containsKey(testObj(1)))
 
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(3), TestObj(33))
+    mp.put(testObj(1), TestObj(11))
+    mp.put(testObj(3), TestObj(33))
 
-    assertTrue(mp.containsKey(TestObj(1)))
-    assertTrue(mp.containsKey(TestObj(2)))
-    assertTrue(mp.containsKey(TestObj(3)))
+    assertTrue(mp.containsKey(testObj(1)))
+    assertTrue(mp.containsKey(testObj(2)))
+    assertTrue(mp.containsKey(testObj(3)))
 
-    keySet.removeAll(TrivialImmutableCollection(TestObj(1), TestObj(2),
-        TestObj(5)))
+    keySet.removeAll(TrivialImmutableCollection(testObj(1), testObj(2),
+        testObj(5)))
 
-    assertFalse(mp.containsKey(TestObj(1)))
-    assertFalse(mp.containsKey(TestObj(2)))
-    assertTrue(mp.containsKey(TestObj(3)))
+    assertFalse(mp.containsKey(testObj(1)))
+    assertFalse(mp.containsKey(testObj(2)))
+    assertTrue(mp.containsKey(testObj(3)))
 
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(2), TestObj(22))
-    mp.put(TestObj(3), TestObj(33))
+    mp.put(testObj(1), TestObj(11))
+    mp.put(testObj(2), TestObj(22))
+    mp.put(testObj(3), TestObj(33))
 
-    assertTrue(mp.containsKey(TestObj(1)))
-    assertTrue(mp.containsKey(TestObj(2)))
-    assertTrue(mp.containsKey(TestObj(3)))
+    assertTrue(mp.containsKey(testObj(1)))
+    assertTrue(mp.containsKey(testObj(2)))
+    assertTrue(mp.containsKey(testObj(3)))
 
-    keySet.retainAll(TrivialImmutableCollection(TestObj(1), TestObj(2),
-        TestObj(5)))
+    keySet.retainAll(TrivialImmutableCollection(testObj(1), testObj(2),
+        testObj(5)))
 
-    assertTrue(mp.containsKey(TestObj(1)))
-    assertTrue(mp.containsKey(TestObj(2)))
-    assertFalse(mp.containsKey(TestObj(3)))
+    assertTrue(mp.containsKey(testObj(1)))
+    assertTrue(mp.containsKey(testObj(2)))
+    assertFalse(mp.containsKey(testObj(3)))
+
+    if (factory.allowsNullKeys) {
+      mp.put(null, TestObj(111))
+      assertTrue(mp.containsKey(null))
+      assertTrue(keySet.contains(null))
+      assertTrue(keySet.remove(null))
+      assertFalse(mp.containsKey(null))
+    }
+
+    if (factory.allowsNullValues) {
+      mp.put(testObj(4), null)
+      assertTrue(mp.containsKey(testObj(4)))
+      assertTrue(keySet.contains(testObj(4)))
+      assertTrue(keySet.remove(testObj(4)))
+      assertFalse(mp.containsKey(testObj(4)))
+    }
   }
 
   @Test def testEntrySetIsViewForSize(): Unit = {
@@ -807,6 +864,10 @@ trait MapTest {
     val mp = factory.empty[String, String]
     mp.put("ONE", "one")
     mp.put("TWO", "two")
+    if (factory.allowsNullKeys)
+      mp.put(null, "NULL")
+    if (factory.allowsNullValues)
+      mp.put("NULL", null)
     val entrySet = mp.entrySet()
 
     assertTrue(entrySet.contains(SIE("ONE", "one")))
@@ -814,6 +875,11 @@ trait MapTest {
     assertFalse(entrySet.contains(SIE("THREE", "three")))
     assertFalse(entrySet.contains(SIE("ONE", "two")))
     assertFalse(entrySet.contains(SIE("THREE", "one")))
+    if (factory.allowsNullValuesQueries) {
+      assertTrue(entrySet.contains(SIE("NULL", null)))
+      assertTrue(entrySet.contains(SIE(null, "NULL")))
+      assertFalse(entrySet.contains(SIE("NOTFOUND", null)))
+    }
 
     mp.put("THREE", "three")
 
@@ -838,35 +904,48 @@ trait MapTest {
 
   @Test def testEntrySetIsViewForQueriesWithCustomObjects(): Unit = {
     val mp = factory.empty[TestObj, TestObj]
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(2), TestObj(22))
+    mp.put(testObj(1), testObj(11))
+    mp.put(testObj(2), testObj(22))
+    if (factory.allowsNullValues)
+      mp.put(testObj(5), null)
+    if (factory.allowsNullKeys)
+      mp.put(null, testObj(55))
     val entrySet = mp.entrySet()
 
-    assertTrue(entrySet.contains(SIE(TestObj(1), TestObj(11))))
-    assertTrue(entrySet.contains(SIE(TestObj(2), TestObj(22))))
-    assertFalse(entrySet.contains(SIE(TestObj(3), TestObj(33))))
-    assertFalse(entrySet.contains(SIE(TestObj(1), TestObj(22))))
-    assertFalse(entrySet.contains(SIE(TestObj(3), TestObj(11))))
+    assertTrue(entrySet.contains(SIE(testObj(1), testObj(11))))
+    assertTrue(entrySet.contains(SIE(testObj(2), testObj(22))))
+    assertFalse(entrySet.contains(SIE(testObj(3), testObj(33))))
+    assertFalse(entrySet.contains(SIE(testObj(1), testObj(22))))
+    assertFalse(entrySet.contains(SIE(testObj(3), testObj(11))))
+    if (factory.allowsNullValuesQueries) {
+      assertTrue(entrySet.contains(SIE(testObj(5), null)))
+      assertFalse(entrySet.contains(SIE(testObj(6), null)))
+    }
+    if (factory.allowsNullKeysQueries)
+      assertTrue(entrySet.contains(SIE(null, testObj(55))))
 
-    mp.put(TestObj(3), TestObj(33))
+    if (factory.allowsNullValuesQueries)
+      assertFalse(entrySet.contains(SIE(testObj(7), null)))
 
-    assertTrue(entrySet.contains(SIE(TestObj(3), TestObj(33))))
+    mp.put(testObj(3), testObj(33))
 
-    val coll1 = TrivialImmutableCollection(SIE(TestObj(1), TestObj(11)),
-        SIE(TestObj(2), TestObj(22)), SIE(TestObj(3), TestObj(33)))
+    assertTrue(entrySet.contains(SIE(testObj(3), testObj(33))))
+
+    val coll1 = TrivialImmutableCollection(SIE(testObj(1), testObj(11)),
+        SIE(testObj(2), testObj(22)), SIE(testObj(3), testObj(33)))
     assertTrue(entrySet.containsAll(coll1))
 
-    val coll2 = TrivialImmutableCollection(SIE(TestObj(1), TestObj(11)),
-        SIE(TestObj(2), TestObj(22)), SIE(TestObj(3), TestObj(33)),
-        SIE(TestObj(4), TestObj(44)))
+    val coll2 = TrivialImmutableCollection(SIE(testObj(1), testObj(11)),
+        SIE(testObj(2), testObj(22)), SIE(testObj(3), testObj(33)),
+        SIE(testObj(4), testObj(44)))
     assertFalse(entrySet.containsAll(coll2))
 
-    val coll3 = TrivialImmutableCollection(SIE(TestObj(1), TestObj(11)),
-        SIE(TestObj(2), TestObj(44)), SIE(TestObj(3), TestObj(33)))
+    val coll3 = TrivialImmutableCollection(SIE(testObj(1), testObj(11)),
+        SIE(testObj(2), testObj(44)), SIE(testObj(3), testObj(33)))
     assertFalse(entrySet.containsAll(coll3))
 
-    val coll4 = TrivialImmutableCollection(SIE(TestObj(1), TestObj(11)),
-        SIE(TestObj(4), TestObj(22)), SIE(TestObj(3), TestObj(33)))
+    val coll4 = TrivialImmutableCollection(SIE(testObj(1), testObj(11)),
+        SIE(testObj(4), testObj(22)), SIE(testObj(3), testObj(33)))
     assertFalse(entrySet.containsAll(coll4))
   }
 
@@ -885,6 +964,10 @@ trait MapTest {
 
     mp.put("ONE", "one")
     mp.put("TWO", "two")
+    if (factory.allowsNullKeys)
+      mp.put(null, "NULL")
+    if (factory.allowsNullValues)
+      mp.put("NULL", null)
 
     assertTrue(mp.containsKey("ONE"))
     assertTrue(entrySet.remove(SIE("ONE", "one")))
@@ -892,6 +975,12 @@ trait MapTest {
     assertFalse(entrySet.remove("TWO"))
     assertFalse(mp.containsKey("ONE"))
     assertTrue(mp.containsKey("TWO"))
+    if (factory.allowsNullKeysQueries)
+      assertTrue(mp.containsKey(null))
+    if (factory.allowsNullValuesQueries) {
+      assertTrue(mp.containsValue(null))
+      assertFalse(entrySet.remove(SIE("NOTFOUND", null)))
+    }
 
     mp.put("ONE", "one")
     mp.put("THREE", "three")
@@ -925,8 +1014,8 @@ trait MapTest {
 
   @Test def testEntrySetIsViewForRemoveWithCustomObjects(): Unit = {
     val mp = factory.empty[TestObj, TestObj]
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(2), TestObj(22))
+    mp.put(testObj(1), testObj(11))
+    mp.put(testObj(2), testObj(22))
     val entrySet = mp.entrySet()
 
     assertFalse(entrySet.isEmpty)
@@ -936,46 +1025,56 @@ trait MapTest {
     assertTrue(entrySet.isEmpty)
     assertTrue(mp.isEmpty)
 
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(2), TestObj(22))
+    mp.put(testObj(1), testObj(11))
+    mp.put(testObj(2), testObj(22))
+    if (factory.allowsNullKeys)
+      mp.put(null, testObj(55))
+    if (factory.allowsNullValues)
+      mp.put(testObj(5), null)
 
-    assertTrue(mp.containsKey(TestObj(1)))
-    assertTrue(entrySet.remove(SIE(TestObj(1), TestObj(11))))
-    assertFalse(entrySet.remove(SIE(TestObj(2), TestObj(44))))
-    assertFalse(entrySet.remove(TestObj(2)))
-    assertFalse(mp.containsKey(TestObj(1)))
-    assertTrue(mp.containsKey(TestObj(2)))
+    assertTrue(mp.containsKey(testObj(1)))
+    assertTrue(entrySet.remove(SIE(testObj(1), testObj(11))))
+    assertFalse(entrySet.remove(SIE(testObj(2), testObj(44))))
+    assertFalse(entrySet.remove(testObj(2))) // remove should take Map.Entry
+    assertFalse(mp.containsKey(testObj(1)))
+    assertTrue(mp.containsKey(testObj(2)))
+    if (factory.allowsNullKeysQueries)
+      assertTrue(mp.containsKey(null))
+    if (factory.allowsNullValuesQueries) {
+      assertTrue(mp.containsValue(null))
+      assertFalse(entrySet.remove(SIE(testObj(6), null)))
+    }
 
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(3), TestObj(33))
+    mp.put(testObj(1), testObj(11))
+    mp.put(testObj(3), testObj(33))
 
-    assertTrue(mp.containsKey(TestObj(1)))
-    assertTrue(mp.containsKey(TestObj(2)))
-    assertTrue(mp.containsKey(TestObj(3)))
+    assertTrue(mp.containsKey(testObj(1)))
+    assertTrue(mp.containsKey(testObj(2)))
+    assertTrue(mp.containsKey(testObj(3)))
 
-    entrySet.removeAll(TrivialImmutableCollection(SIE(TestObj(1), TestObj(11)),
-        SIE(TestObj(2), TestObj(22)), SIE(TestObj(3), TestObj(44)),
-        TestObj(3), 42))
+    entrySet.removeAll(TrivialImmutableCollection(SIE(testObj(1), testObj(11)),
+        SIE(testObj(2), testObj(22)), SIE(testObj(3), testObj(44)),
+        testObj(3), 42))
 
-    assertFalse(mp.containsKey(TestObj(1)))
-    assertFalse(mp.containsKey(TestObj(2)))
-    assertTrue(mp.containsKey(TestObj(3)))
+    assertFalse(mp.containsKey(testObj(1)))
+    assertFalse(mp.containsKey(testObj(2)))
+    assertTrue(mp.containsKey(testObj(3)))
 
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(2), TestObj(22))
-    mp.put(TestObj(3), TestObj(33))
+    mp.put(testObj(1), testObj(11))
+    mp.put(testObj(2), testObj(22))
+    mp.put(testObj(3), testObj(33))
 
-    assertTrue(mp.containsKey(TestObj(1)))
-    assertTrue(mp.containsKey(TestObj(2)))
-    assertTrue(mp.containsKey(TestObj(3)))
+    assertTrue(mp.containsKey(testObj(1)))
+    assertTrue(mp.containsKey(testObj(2)))
+    assertTrue(mp.containsKey(testObj(3)))
 
-    entrySet.retainAll(TrivialImmutableCollection(SIE(TestObj(1), TestObj(11)),
-        SIE(TestObj(2), TestObj(22)), SIE(TestObj(3), TestObj(44)),
-        TestObj(3), 42))
+    entrySet.retainAll(TrivialImmutableCollection(SIE(testObj(1), testObj(11)),
+        SIE(testObj(2), testObj(22)), SIE(testObj(3), testObj(44)),
+        testObj(3), 42))
 
-    assertTrue(mp.containsKey(TestObj(1)))
-    assertTrue(mp.containsKey(TestObj(2)))
-    assertFalse(mp.containsKey(TestObj(3)))
+    assertTrue(mp.containsKey(testObj(1)))
+    assertTrue(mp.containsKey(testObj(2)))
+    assertFalse(mp.containsKey(testObj(3)))
   }
 
   @Test def testEntrySetIsViewForSetValueWithStrings(): Unit = {
@@ -997,8 +1096,8 @@ trait MapTest {
 
   @Test def testEntrySetIsViewForSetValueWithCustomObjects(): Unit = {
     val mp = factory.empty[TestObj, TestObj]
-    mp.put(TestObj(1), TestObj(11))
-    mp.put(TestObj(2), TestObj(22))
+    mp.put(testObj(1), TestObj(11))
+    mp.put(testObj(2), TestObj(22))
     val entrySet = mp.entrySet()
 
     val entry = entrySet.iterator().next()
@@ -1011,7 +1110,6 @@ trait MapTest {
     assertEquals(TestObj(56), entry.getValue())
     assertEquals(TestObj(56), mp.get(key))
   }
-
 }
 
 object MapTest {
@@ -1032,4 +1130,6 @@ trait MapFactory {
   def allowsNullValuesQueries: Boolean = true
 
   def withSizeLimit: Option[Int] = None
+
+  def isIdentityBased: Boolean = false
 }
