@@ -184,5 +184,5 @@ following incantations.
 
     > ++SCALA_VERSION
     > ;compiler/publishLocal;library/publishLocal;testInterface/publishLocal;testBridge/publishLocal;jUnitRuntime/publishLocal;jUnitPlugin/publishLocal
-    > ++2.10.7
+    > ++2.12.8
     > ;ir/publishLocal;io/publishLocal;logging/publishLocal;linker/publishLocal;jsEnvs/publishLocal;jsEnvsTestKit/publishLocal;nodeJSEnv/publishLocal;testAdapter/publishLocal;sbtPlugin/publishLocal

@@ -39,9 +39,9 @@ import org.scalajs.ir.Printers.IRTreePrinter
 import org.scalajs.testing.adapter.{TestAdapter, HTMLRunnerBuilder, TestAdapterInitializer}
 
 import Loggers._
-import SBTCompat._
-import SBTCompat.formatImplicits._
-import SBTCompat.formatImplicits.seqFormat
+
+import sjsonnew.BasicJsonProtocol._
+import sjsonnew.BasicJsonProtocol.seqFormat
 
 /** Implementation details of `ScalaJSPlugin`. */
 private[sbtplugin] object ScalaJSPluginInternal {
@@ -85,26 +85,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
   private[sbtplugin] def closeAllTestAdapters(): Unit =
     createdTestAdapters.getAndSet(Nil).foreach(_.close())
 
-  /* #2798 -- On Java 9+, the parallel collections on 2.10 die with a
-   * `NumberFormatException` and prevent the linker from working.
-   *
-   * By default, we therefore pre-emptively disable the parallel optimizer in
-   * case the parallel collections cannot deal with the current version of
-   * Java.
-   *
-   * TODO This will automatically "fix itself" once we upgrade to sbt 1.x,
-   * which uses Scala 2.12. We should get rid of that workaround at that point
-   * for tidiness, though.
-   */
-  val DefaultParallelLinker: Boolean = {
-    try {
-      scala.util.Properties.isJavaAtLeast("1.8")
-      true
-    } catch {
-      case _: NumberFormatException => false
-    }
-  }
-
   private def enhanceIRVersionNotSupportedException[A](body: => A): A = {
     try {
       body
@@ -131,9 +111,40 @@ private[sbtplugin] object ScalaJSPluginInternal {
     }
   }
 
-  /** Patches the IncOptions so that .sjsir files are pruned as needed. */
-  def scalaJSPatchIncOptions(incOptions: IncOptions): IncOptions =
-    SBTCompat.scalaJSPatchIncOptions(incOptions)
+  /** Patches the IncOptions so that .sjsir files are pruned as needed.
+   *
+   *  This complicated logic patches the ClassfileManager factory of the given
+   *  IncOptions with one that is aware of .sjsir files emitted by the Scala.js
+   *  compiler. This makes sure that, when a .class file must be deleted, the
+   *  corresponding .sjsir file are also deleted.
+   */
+  def scalaJSPatchIncOptions(incOptions: IncOptions): IncOptions = {
+    import xsbti.compile.{ClassFileManager, ClassFileManagerUtil}
+
+    val sjsirFileManager = new ClassFileManager {
+      private[this] val inherited =
+        ClassFileManagerUtil.getDefaultClassFileManager(incOptions)
+
+      def delete(classes: Array[File]): Unit = {
+        inherited.delete(classes.flatMap { classFile =>
+          if (classFile.getPath.endsWith(".class")) {
+            val f = new File(classFile.getPath.stripSuffix(".class") + ".sjsir")
+            if (f.exists) List(f)
+            else Nil
+          } else {
+            Nil
+          }
+        })
+      }
+
+      def generated(classes: Array[File]): Unit = {}
+      def complete(success: Boolean): Unit = {}
+    }
+
+    val newExternalHooks =
+      incOptions.externalHooks.withExternalClassFileManager(sjsirFileManager)
+    incOptions.withExternalHooks(newExternalHooks)
+  }
 
   /** Settings for the production key (e.g. fastOptJS) of a given stage */
   private def scalaJSStageSettings(stage: Stage,
