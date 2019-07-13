@@ -455,7 +455,6 @@ mainScalaVersions.each { scalaVersion ->
 quickMatrix.add([task: "test-suite-ecma-script5-force-polyfills", scala: mainScalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
 allJavaVersions.each { javaVersion ->
   quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.8", java: javaVersion])
-  quickMatrix.add([task: "tools", scala: "2.10.7", java: javaVersion])
   quickMatrix.add([task: "tools", scala: "2.11.12", java: javaVersion])
 }
 quickMatrix.add([task: "partestc", scala: "2.11.0", java: mainJavaVersion])

@@ -20,8 +20,6 @@ import scala.util.Try
 
 import java.util.concurrent.ConcurrentHashMap
 
-import FutureUtil.futureFromTry
-
 /** Helper above an [[RPCCore]] that allows to multiplex between runs.
  *
  *  Instead of registering/calling a single endpoint, it supports
@@ -51,7 +49,7 @@ private[testing] final class RunMuxRPC(rpc: RPCCore) {
     attachMux(ep.opCode, runId, ex)(rpc.attach(ep))
 
   def attach[Req](ep: MuxRPCEndpoint[Req], runId: RunID)(ex: Req => ep.Resp): Unit =
-    attachAsync(ep, runId)(x => futureFromTry(Try(ex(x))))
+    attachAsync(ep, runId)(x => Future.fromTry(Try(ex(x))))
 
   def attachAsync[Req](ep: MuxRPCEndpoint[Req], runId: RunID)(
       ex: Req => Future[ep.Resp]): Unit = {

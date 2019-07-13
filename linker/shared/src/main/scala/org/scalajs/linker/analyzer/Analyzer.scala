@@ -975,7 +975,6 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     val encodedName = data.encodedName
     val namespace = data.namespace
-    protected val namespaceOrdinal = namespace.ordinal
     val isAbstract = data.isAbstract
     val isExported = data.isExported
     val isReflProxy = isReflProxyName(encodedName)

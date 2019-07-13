@@ -137,13 +137,12 @@ object Build {
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.7", "2.11.12", "2.12.8")
+    Set("2.11.12", "2.12.8")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
   */
 
   def hasNewCollections(version: String): Boolean = {
-    !version.startsWith("2.10.") &&
     !version.startsWith("2.11.") &&
     !version.startsWith("2.12.")
   }
@@ -207,7 +206,6 @@ object Build {
       version := scalaJSVersion,
 
       crossScalaVersions := Seq(
-          "2.10.7",
           "2.11.0", "2.11.1", "2.11.2", "2.11.4", "2.11.5", "2.11.6", "2.11.7",
           "2.11.8", "2.11.11", "2.11.12",
           "2.12.1", "2.12.2", "2.12.3", "2.12.4", "2.12.5", "2.12.6", "2.12.7",
@@ -415,22 +413,11 @@ object Build {
       // The pattern matcher used to exceed its analysis budget before 2.11.5
       scalacOptions ++= {
         scalaVersion.value.split('.') match {
-          case Array("2", "10", _)                 => Nil
           case Array("2", "11", x)
               if x.takeWhile(_.isDigit).toInt <= 4 => Nil
           case _                                   => Seq("-Xfatal-warnings")
         }
       },
-
-      scalacOptions in (Compile, doc) := {
-        val baseOptions = (scalacOptions in (Compile, doc)).value
-
-        // in Scala 2.10, some ScalaDoc links fail
-        val fatalInDoc = scalaBinaryVersion.value != "2.10"
-
-        if (fatalInDoc) baseOptions
-        else baseOptions.filterNot(_ == "-Xfatal-warnings")
-      }
   )
 
   private def publishToBintraySettings = Def.settings(
@@ -1053,7 +1040,6 @@ object Build {
              */
             val mustAvoidJavaDoc = {
               javaV >= 9 && {
-                scalaV.startsWith("2.10.") ||
                 scalaV.startsWith("2.11.") ||
                 scalaV == "2.12.0" ||
                 scalaV == "2.12.1"
@@ -1297,14 +1283,13 @@ object Build {
 
       // To support calls to static methods in interfaces
       scalacOptions in Test ++= {
-        /* Starting from 2.10.7 and 2.11.12, scalac refuses to emit calls to
-        * static methods in interfaces unless the -target:jvm-1.8 flag is given.
-        * scalac 2.12+ emits JVM 8 bytecode by default, of course, so it is not
-        * needed for later versions.
-        */
+        /* Starting from 2.11.12, scalac refuses to emit calls to static methods
+         * in interfaces unless the -target:jvm-1.8 flag is given. 
+         * scalac 2.12+ emits JVM 8 bytecode by default, of course, so it is not
+         * needed for later versions.
+         */
         val PartialVersion = """(\d+)\.(\d+)\.(\d+)(?:-.+)?""".r
         val needsTargetFlag = scalaVersion.value match {
-          case PartialVersion("2", "10", n) => n.toInt >= 7
           case PartialVersion("2", "11", n) => n.toInt >= 12
           case _                            => false
         }
@@ -1827,7 +1812,7 @@ object Build {
         val scalaV = scalaVersion.value
         val upstreamSrcDir = (fetchScalaSource in partest).value
 
-        if (scalaV.startsWith("2.10.") || scalaV.startsWith("2.11.") ||
+        if (scalaV.startsWith("2.11.") ||
             scalaV.startsWith("2.12.")) {
           Nil
         } else {
