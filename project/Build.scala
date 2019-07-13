@@ -76,8 +76,9 @@ object MyScalaJSPlugin extends AutoPlugin {
   def addScalaJSCompilerOption(config: Option[Configuration],
       option: Def.Initialize[String]): Setting[_] = {
     config.fold(scalacOptions)(scalacOptions in _) ++= {
+      val o = option.value
       if (isGeneratingForIDE) Nil
-      else Seq(s"-P:scalajs:${option.value}")
+      else Seq(s"-P:scalajs:$o")
     }
   }
 
@@ -204,6 +205,15 @@ object Build {
       scalaVersion := "2.12.8",
       organization := "org.scala-js",
       version := scalaJSVersion,
+
+      crossScalaVersions := Seq(
+          "2.10.7",
+          "2.11.0", "2.11.1", "2.11.2", "2.11.4", "2.11.5", "2.11.6", "2.11.7",
+          "2.11.8", "2.11.11", "2.11.12",
+          "2.12.1", "2.12.2", "2.12.3", "2.12.4", "2.12.5", "2.12.6", "2.12.7",
+          "2.12.8",
+          "2.13.0",
+      ),
 
       normalizedName ~= {
         _.replace("scala.js", "scalajs").replace("scala-js", "scalajs")
@@ -462,12 +472,9 @@ object Build {
     def withScalaJSJUnitPlugin: Project = {
       project.settings(
           scalacOptions in Test ++= {
-            if (isGeneratingForIDE) {
-              Seq.empty
-            } else {
-              val jar = (packageBin in (jUnitPlugin, Compile)).value
-              Seq(s"-Xplugin:$jar")
-            }
+            val jar = (packageBin in (jUnitPlugin, Compile)).value
+            if (isGeneratingForIDE) Seq.empty
+            else Seq(s"-Xplugin:$jar")
           }
       )
     }
@@ -599,36 +606,41 @@ object Build {
           "com.novocode" % "junit-interface" % "0.9" % "test"
       ),
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a"),
-      testOptions += Tests.Setup { () =>
-        val testOutDir = (streams.value.cacheDirectory / "scalajs-compiler-test")
-        IO.createDirectory(testOutDir)
-        System.setProperty("scala.scalajs.compiler.test.output",
-            testOutDir.getAbsolutePath)
-        System.setProperty("scala.scalajs.compiler.test.scalajslib",
-            (packageBin in (LocalProject("library"), Compile)).value.getAbsolutePath)
+      testOptions += {
+        val s = streams.value
+        val sjslib = (packageBin in (LocalProject("library"), Compile)).value
 
-        def scalaArtifact(name: String): String = {
-          def isTarget(att: Attributed[File]) = {
-            att.metadata.get(moduleID.key).exists { mId =>
-              mId.organization == "org.scala-lang" &&
-              mId.name == name &&
-              mId.revision == scalaVersion.value
+        Tests.Setup { () =>
+          val testOutDir = (s.cacheDirectory / "scalajs-compiler-test")
+          IO.createDirectory(testOutDir)
+          System.setProperty("scala.scalajs.compiler.test.output",
+              testOutDir.getAbsolutePath)
+          System.setProperty("scala.scalajs.compiler.test.scalajslib",
+              sjslib.getAbsolutePath)
+
+          def scalaArtifact(name: String): String = {
+            def isTarget(att: Attributed[File]) = {
+              att.metadata.get(moduleID.key).exists { mId =>
+                mId.organization == "org.scala-lang" &&
+                mId.name == name &&
+                mId.revision == scalaVersion.value
+              }
+            }
+
+            (managedClasspath in Test).value.find(isTarget).fold {
+              s.log.error(s"Couldn't find $name on the classpath")
+              ""
+            } { lib =>
+              lib.data.getAbsolutePath
             }
           }
 
-          (managedClasspath in Test).value.find(isTarget).fold {
-            streams.value.log.error(s"Couldn't find $name on the classpath")
-            ""
-          } { lib =>
-            lib.data.getAbsolutePath
-          }
+          System.setProperty("scala.scalajs.compiler.test.scalalib",
+              scalaArtifact("scala-library"))
+
+          System.setProperty("scala.scalajs.compiler.test.scalareflect",
+              scalaArtifact("scala-reflect"))
         }
-
-        System.setProperty("scala.scalajs.compiler.test.scalalib",
-            scalaArtifact("scala-library"))
-
-        System.setProperty("scala.scalajs.compiler.test.scalareflect",
-            scalaArtifact("scala-reflect"))
       },
       exportJars := true
   ).dependsOnSource(irProject)
@@ -779,6 +791,7 @@ object Build {
           case _ => "1.0.0"
         }
       },
+      crossScalaVersions := Seq("2.10.7", "2.12.8"),
       scalaBinaryVersion :=
         CrossVersion.binaryScalaVersion(scalaVersion.value),
       previousArtifactSetting,
@@ -892,28 +905,15 @@ object Build {
       artifactPath in fetchScalaSource :=
         target.value / "scalaSources" / scalaVersion.value,
 
-      /* Work around for #2649. We would like to always use `update`, but
-       * that fails if the scalaVersion we're looking for happens to be the
-       * version of Scala used by sbt itself. This is clearly a bug in sbt,
-       * which we work around here by using `updateClassifiers` instead in
-       * that case.
-       */
-      update in fetchScalaSource := Def.taskDyn {
-        if (scalaVersion.value == scala.util.Properties.versionNumberString)
-          updateClassifiers
-        else
-          update
-      }.value,
-
       fetchScalaSource := {
         val s = streams.value
         val cacheDir = s.cacheDirectory
         val ver = scalaVersion.value
         val trgDir = (artifactPath in fetchScalaSource).value
 
-        val report = (update in fetchScalaSource).value
+        val report = update.value
         val scalaLibSourcesJar = report.select(
-            configuration = Set("compile"),
+            configuration = configurationFilter("compile"),
             module = moduleFilter(name = "scala-library"),
             artifact = artifactFilter(classifier = "sources")).headOption.getOrElse {
           throw new Exception(
@@ -973,6 +973,8 @@ object Build {
         val sources = mutable.ListBuffer.empty[File]
         val paths = mutable.Set.empty[String]
 
+        val s = streams.value
+
         for {
           srcDir <- sourceDirectories
           normSrcDir = normPath(srcDir)
@@ -987,7 +989,7 @@ object Build {
             if (paths.add(path))
               sources += src
             else
-              streams.value.log.debug(s"not including $src")
+              s.log.debug(s"not including $src")
           }
         }
 
@@ -1078,7 +1080,7 @@ object Build {
                     -- "*.nodoc.scala"
               )
 
-              (sources in doc).value.filter(filter.accept)
+              prev.filter(filter.accept)
             } else {
               Nil
             }
@@ -1776,10 +1778,8 @@ object Build {
       },
 
       sources in Compile := {
-        if (shouldPartest.value)
-          (sources in Compile).value
-        else
-          Nil
+        val s = (sources in Compile).value
+        if (shouldPartest.value) s else Nil
       }
   ).dependsOn(compiler, linker, nodeJSEnv)
 
