@@ -4,6 +4,8 @@ package build
  * Hard-coded IR for java.lang.Object.
  */
 
+import java.io.ByteArrayOutputStream
+
 import org.scalajs.ir
 import ir._
 import ir.Definitions._
@@ -18,8 +20,7 @@ import ir.Position.NoPosition
  *  compiler to define java.lang.Object.
  */
 object JavaLangObject {
-
-  val TheClassDef = {
+  private val TheClassDef = {
     implicit val DummyPos = NoPosition
 
     // ClassType(Object) is normally invalid, but not in this class def
@@ -175,4 +176,10 @@ object JavaLangObject {
     Hashers.hashClassDef(classDef)
   }
 
+  val irBytes: Array[Byte] = {
+    val stream = new ByteArrayOutputStream
+    try ir.Serializers.serialize(stream, TheClassDef)
+    finally stream.close()
+    stream.toByteArray
+  }
 }

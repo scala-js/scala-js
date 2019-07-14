@@ -10,10 +10,7 @@ import Keys._
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
 import de.heikoseeberger.sbtheader.HeaderPlugin.autoImport._
 
-import java.io.{
-  BufferedOutputStream,
-  FileOutputStream
-}
+import java.util.Arrays
 
 import scala.collection.mutable
 import scala.concurrent.Await
@@ -818,21 +815,6 @@ object Build {
     }
   }
 
-  private def serializeHardcodedIR(base: File,
-      classDef: ir.Trees.ClassDef): File = {
-    // We assume that there are no weird characters in the full name
-    val fullName = ir.Definitions.decodeClassName(classDef.name.name)
-    val output = base / (fullName.replace('.', '/') + ".sjsir")
-
-    if (!output.exists()) {
-      IO.createDirectory(output.getParentFile)
-      val stream = new BufferedOutputStream(new FileOutputStream(output))
-      try ir.Serializers.serialize(stream, classDef)
-      finally stream.close()
-    }
-    output
-  }
-
   lazy val javalanglib: Project = project.enablePlugins(
       MyScalaJSPlugin
   ).settings(
@@ -845,8 +827,14 @@ object Build {
       noClassFilesSettings,
 
       resourceGenerators in Compile += Def.task {
-        val base = (resourceManaged in Compile).value
-        Seq(serializeHardcodedIR(base, JavaLangObject.TheClassDef))
+        val output = (resourceManaged in Compile).value / "java/lang/Object.sjsir"
+        val data = JavaLangObject.irBytes
+
+        if (!output.exists || !Arrays.equals(data, IO.readBytes(output))) {
+          IO.write(output, data)
+        }
+
+        Seq(output)
       }.taskValue,
       scalaJSExternalCompileSettings
   ).withScalaJSCompiler.dependsOnLibraryNoJar
