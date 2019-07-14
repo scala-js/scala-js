@@ -50,16 +50,17 @@ object ExternalCompile {
 
         // Compile
 
-        val cachedCompile = FileFunction.cached(cacheDir / "compile",
+        val outputDirectory = cacheDir / "compile-out"
+        val cachedCompile = FileFunction.cached(cacheDir / "compile-cache",
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
 
           logger.info(
               "Compiling %d Scala sources to %s..." format (
               sources.size, classesDirectory))
 
-          if (classesDirectory.exists)
-            IO.delete(classesDirectory)
-          IO.createDirectory(classesDirectory)
+          if (outputDirectory.exists)
+            IO.delete(outputDirectory)
+          IO.createDirectory(outputDirectory)
 
           val sourcesArgs = sources.map(_.getAbsolutePath()).toList
 
@@ -83,7 +84,7 @@ object ExternalCompile {
             val run = (runner in compile).value
             val optErrorMsg = run.run("scala.tools.nsc.Main", compilerCp,
                 "-cp" :: cpStr ::
-                "-d" :: classesDirectory.getAbsolutePath() ::
+                "-d" :: outputDirectory.getAbsolutePath() ::
                 options ++:
                 sourcesArgs,
                 patchedLogger)
@@ -103,8 +104,12 @@ object ExternalCompile {
             doCompile(sourcesArgs)
           }
 
-          // Output is all files in classesDirectory
-          (classesDirectory ** AllPassFilter).get.toSet
+          // Copy to classes directory.
+          val mappings = (outputDirectory ** AllPassFilter)
+            .pair(Path.rebase(outputDirectory, classesDirectory))
+          Sync.sync(s.cacheStoreFactory.make("compile-copy"))(mappings)
+
+          mappings.unzip._2.toSet
         }
 
         cachedCompile((sources ++ allMyDependencies).toSet)
