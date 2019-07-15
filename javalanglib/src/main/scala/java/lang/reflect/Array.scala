@@ -41,14 +41,14 @@ object Array {
 
   def get(array: AnyRef, index: Int): AnyRef = array match {
     case array: Array[Object]  => array(index)
-    case array: Array[Boolean] => new java.lang.Boolean(array(index))
-    case array: Array[Char]    => new java.lang.Character(array(index))
-    case array: Array[Byte]    => new java.lang.Byte(array(index))
-    case array: Array[Short]   => new java.lang.Short(array(index))
-    case array: Array[Int]     => new java.lang.Integer(array(index))
-    case array: Array[Long]    => new java.lang.Long(array(index))
-    case array: Array[Float]   => new java.lang.Float(array(index))
-    case array: Array[Double]  => new java.lang.Double(array(index))
+    case array: Array[Boolean] => java.lang.Boolean.valueOf(array(index))
+    case array: Array[Char]    => java.lang.Character.valueOf(array(index))
+    case array: Array[Byte]    => java.lang.Byte.valueOf(array(index))
+    case array: Array[Short]   => java.lang.Short.valueOf(array(index))
+    case array: Array[Int]     => java.lang.Integer.valueOf(array(index))
+    case array: Array[Long]    => java.lang.Long.valueOf(array(index))
+    case array: Array[Float]   => java.lang.Float.valueOf(array(index))
+    case array: Array[Double]  => java.lang.Double.valueOf(array(index))
     case _ => throw new IllegalArgumentException("argument type mismatch")
   }
 
