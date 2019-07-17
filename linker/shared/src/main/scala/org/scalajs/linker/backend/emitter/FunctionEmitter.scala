@@ -357,12 +357,12 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     var syntheticVarCounter: Int = 0
 
-    def newSyntheticVar()(implicit pos: Position): Ident = {
-      /* TODO Integrate this with proper name management.
-       * This is filed as #2971.
-       */
+    @tailrec
+    private def newSyntheticVar()(implicit pos: Position): Ident = {
       syntheticVarCounter += 1
-      Ident("jsx$" + syntheticVarCounter, None)
+      val varName = "jsx$" + syntheticVarCounter
+      if (localVarNames.contains(varName)) newSyntheticVar()
+      else Ident(varName, None)
     }
 
     def resetSyntheticVarCounterIn[A](f: => A): A = {
