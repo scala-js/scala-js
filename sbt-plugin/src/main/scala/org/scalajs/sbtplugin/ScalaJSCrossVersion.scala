@@ -16,8 +16,6 @@ import sbt._
 
 import org.scalajs.ir.ScalaJSVersions
 
-import SBTCompat._
-
 object ScalaJSCrossVersion {
   private final val ReleaseVersion =
     raw"""(\d+)\.(\d+)\.(\d+)""".r
@@ -32,8 +30,16 @@ object ScalaJSCrossVersion {
     case _                                 => full
   }
 
-  def scalaJSMapped(cross: CrossVersion): CrossVersion =
-    crossVersionAddScalaJSPart(cross, "sjs" + currentBinaryVersion)
+  def scalaJSMapped(cross: CrossVersion): CrossVersion = cross match {
+    case CrossVersion.Disabled =>
+      CrossVersion.constant("sjs" + currentBinaryVersion)
+    case cross: sbt.librarymanagement.Constant =>
+      cross.withValue("sjs" + currentBinaryVersion + "_" + cross.value)
+    case cross: CrossVersion.Binary =>
+      cross.withPrefix("sjs" + currentBinaryVersion + "_" + cross.prefix)
+    case cross: CrossVersion.Full =>
+      cross.withPrefix("sjs" + currentBinaryVersion + "_" + cross.prefix)
+  }
 
   val binary: CrossVersion = scalaJSMapped(CrossVersion.binary)
 

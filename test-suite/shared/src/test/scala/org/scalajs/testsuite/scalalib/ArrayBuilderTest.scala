@@ -283,7 +283,6 @@ class ArrayBuilderTest {
 
   @Test def addAll(): Unit = {
     assumeFalse("Needs at least Scala 2.13",
-        scalaVersion.startsWith("2.10.") ||
         scalaVersion.startsWith("2.11.") ||
         scalaVersion.startsWith("2.12."))
 

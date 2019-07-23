@@ -297,7 +297,6 @@ object OptimizationTest {
   private val hasOldCollections = {
     val version = scala.util.Properties.versionNumberString
 
-    version.startsWith("2.10.") ||
     version.startsWith("2.11.") ||
     version.startsWith("2.12.")
   }

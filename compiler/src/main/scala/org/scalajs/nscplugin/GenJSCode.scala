@@ -5907,7 +5907,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
   private lazy val hasNewCollections = {
     val v = scala.util.Properties.versionNumberString
-    !v.startsWith("2.10.") &&
     !v.startsWith("2.11.") &&
     !v.startsWith("2.12.")
   }

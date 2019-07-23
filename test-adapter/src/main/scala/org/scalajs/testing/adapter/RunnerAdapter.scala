@@ -23,7 +23,6 @@ import org.scalajs.testing.common._
 
 import sbt.testing._
 
-import FutureUtil._
 import TestAdapter.ManagedRunner
 
 private final class RunnerAdapter private (runnerArgs: RunnerArgs,

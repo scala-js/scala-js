@@ -22,7 +22,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 import Serializer.{serialize, deserialize}
-import FutureUtil._
 
 /** Core RPC dispatcher.
  *
@@ -121,7 +120,7 @@ private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
               val ep: bep.endpoint.type = bep.endpoint
               import ep._
 
-              futureFromTry(Try(deserialize[Req](in)))
+              Future.fromTry(Try(deserialize[Req](in)))
                 .flatMap(bep.exec)
                 .onComplete(repl => send(makeReply(callID, repl)))
           }
@@ -180,7 +179,7 @@ private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
 
   /** Attaches the given method to the given (local) endpoint. */
   final def attach(ep: RPCEndpoint)(ex: ep.Req => ep.Resp): Unit = {
-    attachAsync(ep)(x => futureFromTry(Try(ex(x))))
+    attachAsync(ep)(x => Future.fromTry(Try(ex(x))))
   }
 
   /** Attaches the given method to the given (local) endpoint. */

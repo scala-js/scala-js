@@ -171,7 +171,6 @@ class RegressionTest {
 
     assumeFalse("Affected by https://github.com/scala/bug/issues/10551",
         Platform.executingInJVM && {
-          scalaVersion.startsWith("2.10.") ||
           scalaVersion.startsWith("2.11.") ||
           scalaVersion == "2.12.0" || scalaVersion == "2.12.1" ||
           scalaVersion == "2.12.2" || scalaVersion == "2.12.3" ||

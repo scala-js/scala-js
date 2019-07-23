@@ -370,21 +370,19 @@ def Tasks = [
 
   "sbtplugin-test": '''
     setJavaVersion 1.8
-    SBT_VER_OVERRIDE=$sbt_version_override
     # Publish Scala.js artifacts locally
     # Then go into standalone project and test
     npm install &&
     sbt ++2.11.12 compiler/publishLocal library/publishLocal \
                   testInterface/publishLocal testBridge/publishLocal \
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
-    sbt ++$toolsscala ${SBT_VER_OVERRIDE:+^^$SBT_VER_OVERRIDE} \
+    sbt ++$toolsscala \
         ir/publishLocal logging/publishLocal \
         linker/publishLocal jsEnvs/publishLocal \
         nodeJSEnv/publishLocal testAdapter/publishLocal \
         sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&
     setJavaVersion $java &&
-    if [ -n "$SBT_VER_OVERRIDE" ]; then echo "sbt.version=$SBT_VER_OVERRIDE" > ./project/build.properties; fi &&
     sbt noDOM/run \
         noDOM/testHtml multiTestJS/testHtml \
         test \
@@ -456,13 +454,11 @@ mainScalaVersions.each { scalaVersion ->
 }
 quickMatrix.add([task: "test-suite-ecma-script5-force-polyfills", scala: mainScalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
 allJavaVersions.each { javaVersion ->
-  quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.8", sbt_version_override: "", java: javaVersion])
-  quickMatrix.add([task: "tools", scala: "2.10.7", java: javaVersion])
+  quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.8", java: javaVersion])
   quickMatrix.add([task: "tools", scala: "2.11.12", java: javaVersion])
 }
 quickMatrix.add([task: "partestc", scala: "2.11.0", java: mainJavaVersion])
-quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.10.7", sbt_version_override: "0.13.17", java: mainJavaVersion])
-quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.12.8", sbt_version_override: "", java: mainJavaVersion])
+quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.12.8", java: mainJavaVersion])
 
 // The 'full' matrix
 def fullMatrix = quickMatrix.clone()

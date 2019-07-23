@@ -179,7 +179,7 @@ class LongTest {
   }
 
   @Test def `should_have_correct_hash_in_case_classes`(): Unit = {
-    if (scalaVersion.startsWith("2.10.") || scalaVersion.startsWith("2.11.") ||
+    if (scalaVersion.startsWith("2.11.") ||
         scalaVersion.startsWith("2.12.")) {
       assertEquals(-1669410282, HashTestBox(0L).##)
       assertEquals(-1561146018, HashTestBox(55L).##)

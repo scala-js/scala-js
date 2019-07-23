@@ -181,10 +181,7 @@ object ScalaJSPlugin extends AutoPlugin {
     Seq(
         scalaJSStage := Stage.FastOpt,
 
-        scalaJSLinkerConfig := {
-          StandardLinker.Config()
-            .withParallel(ScalaJSPluginInternal.DefaultParallelLinker)
-        },
+        scalaJSLinkerConfig := StandardLinker.Config(),
 
         jsEnv := new NodeJSEnv(),
 
