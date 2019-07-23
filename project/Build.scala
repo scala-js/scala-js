@@ -1750,7 +1750,7 @@ object Build {
       libraryDependencies ++= {
         if (shouldPartest.value) {
           Seq(
-              "org.scala-sbt" % "sbt" % sbtVersion.value,
+              "org.scala-sbt" % "test-interface" % "1.0",
               {
                 val v = scalaVersion.value
                 if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
