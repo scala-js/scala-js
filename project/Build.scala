@@ -887,13 +887,26 @@ object Build {
       artifactPath in fetchScalaSource :=
         target.value / "scalaSources" / scalaVersion.value,
 
+      /* Work around for #2649. We would like to always use `update`, but
+       * that fails if the scalaVersion we're looking for happens to be the
+       * version of Scala used by sbt itself. This is clearly a bug in sbt,
+       * which we work around here by using `updateClassifiers` instead in
+       * that case.
+       */
+      update in fetchScalaSource := Def.taskDyn {
+        if (scalaVersion.value == scala.util.Properties.versionNumberString)
+          updateClassifiers
+        else
+          update
+      }.value,
+
       fetchScalaSource := {
         val s = streams.value
         val cacheDir = s.cacheDirectory
         val ver = scalaVersion.value
         val trgDir = (artifactPath in fetchScalaSource).value
 
-        val report = update.value
+        val report = (update in fetchScalaSource).value
         val scalaLibSourcesJar = report.select(
             configuration = configurationFilter("compile"),
             module = moduleFilter(name = "scala-library"),
