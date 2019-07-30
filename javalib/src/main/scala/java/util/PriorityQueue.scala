@@ -95,7 +95,7 @@ class PriorityQueue[E] protected (ordering: Ordering[_ >: E], _comparator: Compa
   }
 
   override def contains(o: Any): Boolean =
-    inner.exists(_ === Box(o))
+    inner.exists(box => Objects.equals(o, box.inner))
 
   def iterator(): Iterator[E] = {
     new Iterator[E] {

@@ -305,7 +305,7 @@ object Collections {
       case _: RandomAccess =>
         var modified = false
         for (i <- 0 until list.size) {
-          if (list.get(i) === oldVal) {
+          if (Objects.equals(list.get(i), oldVal)) {
             list.set(i, newVal)
             modified = true
           }
@@ -316,7 +316,7 @@ object Collections {
         @tailrec
         def replaceAll(iter: ListIterator[T], mod: Boolean): Boolean = {
           if (iter.hasNext) {
-            val isEqual = iter.next() === oldVal
+            val isEqual = Objects.equals(iter.next(), oldVal)
             if (isEqual)
               iter.set(newVal)
             replaceAll(iter, mod || isEqual)
@@ -541,7 +541,7 @@ object Collections {
   }
 
   def frequency(c: Collection[_], o: AnyRef): Int =
-    c.scalaOps.count(_ === o)
+    c.scalaOps.count(Objects.equals(_, o))
 
   def disjoint(c1: Collection[_], c2: Collection[_]): Boolean = {
     if (c1.size < c2.size)

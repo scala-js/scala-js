@@ -47,13 +47,13 @@ class ConcurrentHashMap[K >: Null, V >: Null]
   override def containsKey(key: Any): Boolean = {
     if (key == null)
       throw new NullPointerException()
-    inner.exists { case (ik, _) => key === ik() }
+    inner.exists { case (ik, _) => Objects.equals(key, ik()) }
   }
 
   override def containsValue(value: Any): Boolean = {
     if (value == null)
       throw new NullPointerException()
-    inner.exists { case (_, iv) => value === iv }
+    inner.exists { case (_, iv) => Objects.equals(value, iv) }
   }
 
   override def put(key: K, value: V): V = {
@@ -84,7 +84,7 @@ class ConcurrentHashMap[K >: Null, V >: Null]
 
   override def remove(key: Any, value: Any): Boolean = {
     val old = inner(Box(key.asInstanceOf[K]))
-    if (value === old)
+    if (Objects.equals(value, old))
       inner.remove(Box(key.asInstanceOf[K])).isDefined
     else
       false
@@ -93,7 +93,7 @@ class ConcurrentHashMap[K >: Null, V >: Null]
   override def replace(key: K, oldValue: V, newValue: V): Boolean = {
     if (key != null && oldValue != null && newValue != null) {
       val old = inner(Box(key))
-      if (oldValue === old) {
+      if (Objects.equals(oldValue, old)) {
         put(key, newValue)
         true
       } else {
