@@ -215,10 +215,10 @@ private[lang] object FloatingPointBits {
 
     val bias = (1 << (ebits-1)) - 1 // constant
 
-    if (v.isNaN) {
+    if (Double.isNaN(v)) {
       // http://dev.w3.org/2006/webapi/WebIDL/#es-type-mapping
       (false, (1 << ebits) - 1, pow(2, fbits-1))
-    } else if (v.isInfinite) {
+    } else if (Double.isInfinite(v)) {
       (v < 0, (1 << ebits) - 1, 0.0)
     } else if (v == 0.0) {
       (1 / v == scala.Double.NegativeInfinity, 0, 0.0)

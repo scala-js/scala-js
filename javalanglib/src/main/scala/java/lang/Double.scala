@@ -66,7 +66,7 @@ final class Double private () extends Number with Comparable[Double] {
 }
 
 object Double {
-  final val TYPE = classOf[scala.Double]
+  final val TYPE = scala.Predef.classOf[scala.Double]
   final val POSITIVE_INFINITY = 1.0 / 0.0
   final val NEGATIVE_INFINITY = 1.0 / -0.0
   final val NaN = 0.0 / 0.0
@@ -186,7 +186,7 @@ object Double {
 
       val mantissa =
         js.Dynamic.global.parseInt(truncatedMantissaStr, 16).asInstanceOf[scala.Double]
-      assert(mantissa != 0.0 && mantissa != scala.Double.PositiveInfinity)
+      // Assert: mantissa != 0.0 && mantissa != scala.Double.PositiveInfinity
 
       val binaryExpDouble =
         js.Dynamic.global.parseInt(binaryExpStr, 10).asInstanceOf[scala.Double]

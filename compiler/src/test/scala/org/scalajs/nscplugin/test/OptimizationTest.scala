@@ -22,6 +22,45 @@ class OptimizationTest extends JSASTTest {
   import OptimizationTest._
 
   @Test
+  def testArrayApplyOptimization: Unit = {
+    /* Make sure Array(...) is optimized away completely for several kinds
+     * of data types, with both the generic overload and the ones specialized
+     * for primitives.
+     */
+    """
+    class A {
+      val a = Array(5, 7, 9, -3)
+      val b = Array("hello", "world")
+      val c = Array('a', 'b')
+      val d = Array(Nil)
+      val e = Array(5.toByte, 7.toByte, 9.toByte, -3.toByte)
+    }
+    """.
+    hasNot("any LoadModule of the scala.Array companion") {
+      case js.LoadModule(jstpe.ClassRef("s_Array$")) =>
+    }
+
+    /* Using [] with primitives produces suboptimal trees, which cannot be
+     * optimized. We should improve this in the future, if possible. This is
+     * particularly annoying for Byte and Short, as it means that we need to
+     * write `.toByte` for every single element if we want the optimization to
+     * kick in.
+     *
+     * Scala/JVM has the same limitation.
+     */
+    """
+    class A {
+      val a = Array[Int](5, 7, 9, -3)
+      val b = Array[Byte](5, 7, 9, -3)
+    }
+    """.
+    hasExactly(2, "calls to Array.apply methods") {
+      case js.Apply(_, js.LoadModule(jstpe.ClassRef("s_Array$")), js.Ident(methodName, _), _)
+          if methodName.startsWith("apply__") =>
+    }
+  }
+
+  @Test
   def testJSArrayApplyOptimization: Unit = {
     /* Make sure js.Array(...) is optimized away completely for several kinds
      * of data types.

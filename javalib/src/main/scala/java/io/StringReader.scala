@@ -23,6 +23,8 @@ class StringReader(s: String) extends Reader {
   }
 
   override def mark(readAheadLimit: Int): Unit = {
+    if (readAheadLimit < 0)
+      throw new IllegalArgumentException("Read-ahead limit < 0")
     ensureOpen()
 
     mark = pos
@@ -70,10 +72,15 @@ class StringReader(s: String) extends Reader {
   }
 
   override def skip(ns: Long): Long = {
-    // Apparently, StringReader.skip allows negative skips
-    val count = Math.max(Math.min(ns, s.length - pos).toInt, -pos)
-    pos += count
-    count.toLong
+    if (pos >= s.length) {
+      // Always return 0 if the entire string has been read or skipped
+      0
+    } else {
+      // Apparently, StringReader.skip allows negative skips
+      val count = Math.max(Math.min(ns, s.length - pos).toInt, -pos)
+      pos += count
+      count.toLong
+    }
   }
 
   private def ensureOpen(): Unit = {

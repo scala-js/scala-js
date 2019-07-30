@@ -93,7 +93,7 @@ private[lang] object StackTrace {
    *  env that manages to use either without surgery in the Scala.js linker.
    *  So we keep support of stack trace detection for those engines.
    */
-  private lazy val isRhino: Boolean = {
+  private lazy val isRhino: scala.Boolean = {
     try {
       js.Dynamic.global.Packages.org.mozilla.javascript.JavaScriptException
       true
@@ -131,6 +131,9 @@ private[lang] object StackTrace {
    */
   private def normalizedLinesToStackTrace(
       lines: js.Array[String]): Array[StackTraceElement] = {
+
+    import Integer.parseInt
+
     val NormalizedFrameLine = """^([^\@]*)\@(.*):([0-9]+)$""".re
     val NormalizedFrameLineWithColumn = """^([^\@]*)\@(.*):([0-9]+):([0-9]+)$""".re
 
@@ -143,13 +146,13 @@ private[lang] object StackTrace {
         if (mtch1 ne null) {
           val (className, methodName) = extractClassMethod(mtch1(1).get)
           trace.push(JSStackTraceElem(className, methodName, mtch1(2).get,
-              mtch1(3).get.toInt, mtch1(4).get.toInt))
+              parseInt(mtch1(3).get), parseInt(mtch1(4).get)))
         } else {
           val mtch2 = NormalizedFrameLine.exec(line)
           if (mtch2 ne null) {
             val (className, methodName) = extractClassMethod(mtch2(1).get)
             trace.push(JSStackTraceElem(className,
-                methodName, mtch2(2).get, mtch2(3).get.toInt))
+                methodName, mtch2(2).get, parseInt(mtch2(3).get)))
           } else {
             // just in case
             trace.push(JSStackTraceElem("<jscode>", line, null, -1))

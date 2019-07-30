@@ -36,6 +36,8 @@ class BufferedReader(in: Reader, sz: Int) extends Reader {
   }
 
   override def mark(readAheadLimit: Int): Unit = {
+    if (readAheadLimit < 0)
+      throw new IllegalArgumentException("Read-ahead limit < 0")
     ensureOpen()
 
     val srcBuf = buf

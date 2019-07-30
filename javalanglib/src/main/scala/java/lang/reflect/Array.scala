@@ -14,16 +14,22 @@ package java.lang.reflect
 
 import scala.scalajs.js
 
-import js.JSConverters._
-
 import java.lang.Class
 
 object Array {
   def newInstance(componentType: Class[_], length: Int): AnyRef =
     componentType.newArrayOfThisClass(js.Array(length))
 
-  def newInstance(componentType: Class[_], dimensions: scala.Array[Int]): AnyRef =
-    componentType.newArrayOfThisClass(dimensions.toJSArray)
+  def newInstance(componentType: Class[_], dimensions: scala.Array[Int]): AnyRef = {
+    val jsDims = js.Array[Int]()
+    val len = dimensions.length
+    var i = 0
+    while (i != len) {
+      jsDims.push(dimensions(i))
+      i += 1
+    }
+    componentType.newArrayOfThisClass(jsDims)
+  }
 
   def getLength(array: AnyRef): Int = array match {
     // yes, this is kind of stupid, but that's how it is
@@ -41,14 +47,14 @@ object Array {
 
   def get(array: AnyRef, index: Int): AnyRef = array match {
     case array: Array[Object]  => array(index)
-    case array: Array[Boolean] => new java.lang.Boolean(array(index))
-    case array: Array[Char]    => new java.lang.Character(array(index))
-    case array: Array[Byte]    => new java.lang.Byte(array(index))
-    case array: Array[Short]   => new java.lang.Short(array(index))
-    case array: Array[Int]     => new java.lang.Integer(array(index))
-    case array: Array[Long]    => new java.lang.Long(array(index))
-    case array: Array[Float]   => new java.lang.Float(array(index))
-    case array: Array[Double]  => new java.lang.Double(array(index))
+    case array: Array[Boolean] => java.lang.Boolean.valueOf(array(index))
+    case array: Array[Char]    => java.lang.Character.valueOf(array(index))
+    case array: Array[Byte]    => java.lang.Byte.valueOf(array(index))
+    case array: Array[Short]   => java.lang.Short.valueOf(array(index))
+    case array: Array[Int]     => java.lang.Integer.valueOf(array(index))
+    case array: Array[Long]    => java.lang.Long.valueOf(array(index))
+    case array: Array[Float]   => java.lang.Float.valueOf(array(index))
+    case array: Array[Double]  => java.lang.Double.valueOf(array(index))
     case _ => throw new IllegalArgumentException("argument type mismatch")
   }
 

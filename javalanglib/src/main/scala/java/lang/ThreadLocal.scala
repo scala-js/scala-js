@@ -13,7 +13,7 @@
 package java.lang
 
 class ThreadLocal[T] {
-  private var hasValue: Boolean = false
+  private var hasValue: scala.Boolean = false
   private var v: T = _
 
   protected def initialValue(): T = null.asInstanceOf[T]

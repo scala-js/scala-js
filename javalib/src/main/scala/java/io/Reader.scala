@@ -14,6 +14,8 @@ package java.io
 
 import java.nio.CharBuffer
 
+import scala.annotation.tailrec
+
 abstract class Reader private[this] (_lock: Option[Object])
     extends Readable with Closeable {
 
@@ -53,8 +55,24 @@ abstract class Reader private[this] (_lock: Option[Object])
   def skip(n: Long): Long = {
     if (n < 0)
       throw new IllegalArgumentException("Cannot skip negative amount")
-    else if (read() == -1) 0
-    else 1
+
+    val buffer = new Array[Char](8192)
+    @tailrec
+    def loop(m: Long, lastSkipped: Long): Long = {
+      if (m <= 0) {
+        lastSkipped
+      } else {
+        val mMin = Math.min(m, 8192).toInt
+        val skipped = read(buffer, 0, mMin)
+        if (skipped < 0) {
+          lastSkipped
+        } else {
+          val totalSkipped = lastSkipped + skipped
+          loop(m - mMin, totalSkipped)
+        }
+      }
+    }
+    loop(n, 0)
   }
 
   def ready(): Boolean = false

@@ -53,7 +53,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
   import jsDefinitions._
   import jsInterop.{jsNameOf, jsNativeLoadSpecOfOption, JSName}
 
-  import treeInfo.hasSynthCaseSymbol
+  import treeInfo.{hasSynthCaseSymbol, StripCast}
 
   import platform.isMaybeBoxed
 
@@ -2060,6 +2060,23 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               ex
             }
           }
+
+        /* !!! Copy-pasted from `CleanUp.scala` upstream and simplified with
+         * our `WrapArray` extractor.
+         *
+         * Replaces `Array(Predef.wrapArray(ArrayValue(...).$asInstanceOf[...]), <tag>)`
+         * with just `ArrayValue(...).$asInstanceOf[...]`
+         *
+         * See scala/bug#6611; we must *only* do this for literal vararg arrays.
+         *
+         * This is normally done by `cleanup` but it comes later than this phase.
+         */
+        case Apply(appMeth, Apply(wrapRefArrayMeth, (arg @ StripCast(ArrayValue(_, _))) :: Nil) :: _ :: Nil)
+            if wrapRefArrayMeth.symbol == WrapArray.wrapRefArrayMethod && appMeth.symbol == ArrayModule_genericApply =>
+          genStatOrExpr(arg, isStat)
+        case Apply(appMeth, elem0 :: WrapArray(rest @ ArrayValue(elemtpt, _)) :: Nil)
+            if appMeth.symbol == ArrayModule_apply(elemtpt.tpe) =>
+          genStatOrExpr(treeCopy.ArrayValue(rest, rest.elemtpt, elem0 :: rest.elems), isStat)
 
         case app: Apply =>
           genApply(app, isStat)
@@ -5060,11 +5077,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     object WrapArray {
-      private val isWrapArray: Set[Symbol] = {
-        val wrapArrayModule =
-          if (hasNewCollections) ScalaRunTimeModule
-          else PredefModule
+      private val wrapArrayModule =
+        if (hasNewCollections) ScalaRunTimeModule
+        else PredefModule
 
+      val wrapRefArrayMethod: Symbol =
+        getMemberMethod(wrapArrayModule, nme.wrapRefArray)
+
+      private val isWrapArray: Set[Symbol] = {
         Seq(
             nme.wrapRefArray,
             nme.wrapByteArray,
