@@ -12,72 +12,150 @@
 
 package java.util
 
-import scala.collection.mutable
+import java.{util => ju}
 
-class LinkedHashMap[K, V] private (inner: mutable.LinkedHashMap[Box[K], V],
-    accessOrder: Boolean) extends HashMap[K, V](inner) {
+class LinkedHashMap[K, V](initialCapacity: Int, loadFactor: Float,
+    accessOrder: Boolean)
+    extends HashMap[K, V](initialCapacity, loadFactor) {
   self =>
 
-  def this() =
-    this(mutable.LinkedHashMap.empty[Box[K], V], false)
+  import LinkedHashMap._
 
-  def this(initialCapacity: Int, loadFactor: Float, accessOrder: Boolean) = {
-    this(mutable.LinkedHashMap.empty[Box[K], V], accessOrder)
-    if (initialCapacity < 0)
-      throw new IllegalArgumentException("initialCapacity < 0")
-    else if (loadFactor < 0.0)
-      throw new IllegalArgumentException("loadFactor <= 0.0")
-  }
+  /** Node that was least recently created (or accessed under access-order). */
+  private var eldest: Node[K, V] = _
+
+  /** Node that was most recently created (or accessed under access-order). */
+  private var youngest: Node[K, V] = _
 
   def this(initialCapacity: Int, loadFactor: Float) =
     this(initialCapacity, loadFactor, false)
 
   def this(initialCapacity: Int) =
-    this(initialCapacity, LinkedHashMap.DEFAULT_LOAD_FACTOR)
+    this(initialCapacity, HashMap.DEFAULT_LOAD_FACTOR)
+
+  def this() =
+    this(HashMap.DEFAULT_INITIAL_CAPACITY)
 
   def this(m: Map[_ <: K, _ <: V]) = {
-    this()
+    this(m.size())
     putAll(m)
   }
 
-  override def get(key: scala.Any): V = {
-    val value = super.get(key)
-    if (accessOrder) {
-      val boxedKey = Box(key.asInstanceOf[K])
-      if (value != null || containsKey(boxedKey)) {
-        inner.remove(boxedKey)
-        inner(boxedKey) = value
-      }
-    }
-    value
+  private def asMyNode(node: HashMap.Node[K, V]): Node[K, V] =
+    node.asInstanceOf[Node[K, V]]
+
+  private[util] override def newNode(key: K, hash: Int, value: V,
+      previous: HashMap.Node[K, V],
+      next: HashMap.Node[K, V]): HashMap.Node[K, V] = {
+    new Node(key, hash, value, previous, next, null, null)
   }
 
-  override def put(key: K, value: V): V = {
-    val oldValue = {
-      if (accessOrder) {
-        val old = remove(key)
-        super.put(key, value)
-        old
-      } else {
-        super.put(key, value)
+  private[util] override def nodeWasAccessed(node: HashMap.Node[K, V]): Unit = {
+    if (accessOrder) {
+      val myNode = asMyNode(node)
+      if (myNode.younger ne null) {
+        removeFromOrderedList(myNode)
+        appendToOrderedList(myNode)
       }
     }
-    val iter = entrySet().iterator()
-    if (iter.hasNext && removeEldestEntry(iter.next()))
-      iter.remove()
-    oldValue
+  }
+
+  private[util] override def nodeWasAdded(node: HashMap.Node[K, V]): Unit = {
+    appendToOrderedList(asMyNode(node))
+    if (removeEldestEntry(eldest))
+      removeNode(eldest)
+  }
+
+  private[util] override def nodeWasRemoved(node: HashMap.Node[K, V]): Unit =
+    removeFromOrderedList(asMyNode(node))
+
+  private def appendToOrderedList(node: Node[K, V]): Unit = {
+    val older = youngest
+    if (older ne null)
+      older.younger = node
+    else
+      eldest = node
+    node.older = older
+    node.younger = null
+    youngest = node
+  }
+
+  private def removeFromOrderedList(node: Node[K, V]): Unit = {
+    val older = node.older
+    val younger = node.younger
+    if (older eq null)
+      eldest = younger
+    else
+      older.younger = younger
+    if (younger eq null)
+      youngest = older
+    else
+      younger.older = older
   }
 
   protected def removeEldestEntry(eldest: Map.Entry[K, V]): Boolean = false
 
+  private[util] override def nodeIterator(): ju.Iterator[HashMap.Node[K, V]] =
+    new NodeIterator
+
+  private[util] override def keyIterator(): ju.Iterator[K] =
+    new KeyIterator
+
+  private[util] override def valueIterator(): ju.Iterator[V] =
+    new ValueIterator
+
+  private final class NodeIterator
+      extends AbstractLinkedHashMapIterator[HashMap.Node[K, V]] {
+    protected[this] def extract(node: Node[K, V]): Node[K, V] = node
+  }
+
+  private final class KeyIterator extends AbstractLinkedHashMapIterator[K] {
+    protected[this] def extract(node: Node[K, V]): K = node.key
+  }
+
+  private final class ValueIterator extends AbstractLinkedHashMapIterator[V] {
+    protected[this] def extract(node: Node[K, V]): V = node.value
+  }
+
+  private abstract class AbstractLinkedHashMapIterator[A] extends ju.Iterator[A] {
+    private[this] var nextNode: Node[K, V] = eldest
+    private[this] var lastNode: Node[K, V] = _
+
+    protected[this] def extract(node: Node[K, V]): A
+
+    def hasNext(): Boolean =
+      nextNode ne null
+
+    def next(): A = {
+      if (!hasNext())
+        throw new NoSuchElementException("next on empty iterator")
+      val node = nextNode
+      lastNode = node
+      nextNode = node.younger
+      extract(node)
+    }
+
+    def remove(): Unit = {
+      val last = lastNode
+      if (last eq null)
+        throw new IllegalStateException("next must be called at least once before remove")
+      removeNode(last)
+      lastNode = null
+    }
+  }
+
   override def clone(): AnyRef = {
-    new LinkedHashMap(inner.clone(), accessOrder)
+    val result = new LinkedHashMap[K, V](size(), loadFactor, accessOrder)
+    result.putAll(this)
+    result
   }
 }
 
 object LinkedHashMap {
 
-  private[LinkedHashMap] final val DEFAULT_INITIAL_CAPACITY = 16
-  private[LinkedHashMap] final val DEFAULT_LOAD_FACTOR = 0.75f
+  private final class Node[K, V](key: K, hash: Int, value: V,
+      previous: HashMap.Node[K, V], next: HashMap.Node[K, V],
+      var older: Node[K, V], var younger: Node[K, V])
+      extends HashMap.Node[K, V](key, hash, value, previous, next)
 
 }

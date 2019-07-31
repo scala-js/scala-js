@@ -63,6 +63,17 @@ trait MapTest {
     assertEquals("two", mp.get("TWO"))
   }
 
+  @Test def should_store_strings_large_map(): Unit = {
+    val largeMap = factory.empty[String, Int]
+    for (i <- 0 until 1000)
+      largeMap.put(i.toString(), i)
+    val expectedSize = factory.withSizeLimit.fold(1000)(Math.min(_, 1000))
+    assertEquals(expectedSize, largeMap.size())
+    for (i <- (1000 - expectedSize) until 1000)
+      assertEquals(i, largeMap.get(i.toString()))
+    assertNull(largeMap.get("1000"))
+  }
+
   @Test def should_store_integers(): Unit = {
     val mp = factory.empty[Int, Int]
 
@@ -70,6 +81,17 @@ trait MapTest {
     assertEquals(1, mp.size())
     val one = mp.get(100)
     assertEquals(12345, one)
+  }
+
+  @Test def should_store_integers_large_map(): Unit = {
+    val largeMap = factory.empty[Int, Int]
+    for (i <- 0 until 1000)
+      largeMap.put(i, i * 2)
+    val expectedSize = factory.withSizeLimit.fold(1000)(Math.min(_, 1000))
+    assertEquals(expectedSize, largeMap.size())
+    for (i <- (1000 - expectedSize) until 1000)
+      assertEquals(i * 2, largeMap.get(i))
+    assertNull(largeMap.get(1000))
   }
 
   @Test def should_store_doubles_also_in_corner_cases(): Unit = {
@@ -624,4 +646,6 @@ trait MapFactory {
   def allowsNullKeysQueries: Boolean = true
 
   def allowsNullValuesQueries: Boolean = true
+
+  def withSizeLimit: Option[Int] = None
 }

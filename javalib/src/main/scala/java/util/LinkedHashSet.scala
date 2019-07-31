@@ -12,23 +12,21 @@
 
 package java.util
 
-import scala.collection.mutable
+class LinkedHashSet[E] private[util] (inner: LinkedHashMap[E, Any])
+    extends HashSet[E](inner) with Set[E] with Cloneable with Serializable {
 
-class LinkedHashSet[E] extends HashSet[E] with Set[E]
-                                          with Cloneable
-                                          with Serializable {
   def this(initialCapacity: Int, loadFactor: Float) =
-    this()
+    this(new LinkedHashMap[E, Any](initialCapacity, loadFactor))
 
   def this(initialCapacity: Int) =
-    this()
+    this(new LinkedHashMap[E, Any](initialCapacity))
+
+  def this() =
+    this(new LinkedHashMap[E, Any]())
 
   def this(c: java.util.Collection[_ <: E]) = {
-    this()
+    this(c.size())
     addAll(c)
   }
-
-  override protected val inner: mutable.Set[Box[E]] =
-    new mutable.LinkedHashSet[Box[E]]()
 
 }
