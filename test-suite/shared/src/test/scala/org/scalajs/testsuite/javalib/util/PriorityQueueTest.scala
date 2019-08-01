@@ -15,14 +15,19 @@ package org.scalajs.testsuite.javalib.util
 import scala.language.implicitConversions
 
 import scala.collection.JavaConverters._
+import scala.reflect.ClassTag
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import java.util.PriorityQueue
 import java.util.Comparator
 
-class PriorityQueueTest {
+import org.scalajs.testsuite.utils.Platform.executingInJVM
+
+class PriorityQueueTest extends CollectionTest {
+  def factory: PriorityQueueFactory = new PriorityQueueFactory
 
   @Test def should_store_and_remove_ordered_integers(): Unit = {
     val pq = new PriorityQueue[Int]()
@@ -235,5 +240,240 @@ class PriorityQueueTest {
     assertTrue(pqDouble.add(-0.987))
     assertEquals(-0.987, pqDouble.poll(), 0.0)
   }
+
+  @Test def poll(): Unit = {
+    val pq = newPriorityQueueWith0Until100()
+
+    var nextExpected = 0
+    while (!pq.isEmpty()) {
+      assertEquals(nextExpected, pq.poll())
+      nextExpected += 1
+    }
+    assertEquals(100, nextExpected)
+  }
+
+  @Test def removingAnArbitraryElementPreservesPriorities(): Unit = {
+    for (itemToRemove <- 0 until 100) {
+      val pq = newPriorityQueueWith0Until100()
+
+      assertTrue(pq.remove(itemToRemove))
+
+      var nextExpected = 0
+      while (!pq.isEmpty()) {
+        if (nextExpected == itemToRemove)
+          nextExpected += 1
+        assertEquals(s"after removing $itemToRemove", nextExpected, pq.poll())
+        nextExpected += 1
+      }
+
+      if (itemToRemove == 99)
+        assertEquals(99, nextExpected)
+      else
+        assertEquals(100, nextExpected)
+    }
+  }
+
+  @Test def removingAnArbitraryElementWithAnIteratorPreservesPriorities(): Unit = {
+    for (itemToRemove <- 0 until 100) {
+      val pq = newPriorityQueueWith0Until100()
+
+      val iter = pq.iterator()
+      while (iter.next() != itemToRemove) {}
+      iter.remove()
+
+      var nextExpected = 0
+      while (!pq.isEmpty()) {
+        if (nextExpected == itemToRemove)
+          nextExpected += 1
+        assertEquals(s"after removing $itemToRemove", nextExpected, pq.poll())
+        nextExpected += 1
+      }
+
+      if (itemToRemove == 99)
+        assertEquals(99, nextExpected)
+      else
+        assertEquals(100, nextExpected)
+    }
+  }
+
+  // --- Begin Whitebox Tests ---
+
+  /* The following tests are meant to test the behavior of `Iterator.remove()`
+   * and subsequent iteration in very specific scenarios that are corner cases
+   * of the current implementation.
+   *
+   * We could write the same tests as blackbox, but then we would not be able
+   * to verify that they are indeed testing the scenarios they are supposed to
+   * test.
+   *
+   * Therefore, these tests are whitebox, and rely on details of our own
+   * implementation. They verify that elements are iterated in a very specific
+   * order, and that the internal representation of the heap evolves in the way
+   * we expect.
+   *
+   * Since the following tests are whitebox, they may have to be changed if the
+   * internal data structure and/or algorithms of PriorityQueue are modified in
+   * the future.
+   */
+
+  @Test def removingAnArbitraryElementWithAnIteratorPreservesPrioritiesCornerCase(): Unit = {
+    /* This tests the specific scenario where `Iterator.remove()` causes the
+     * array to be reordered in such a way that a) elements yet to be iterated
+     * are moved before the iteration cursor, and b) elements already iteratoed
+     * are moved after the cursor.
+     *
+     * Due to the nature of a binary heap, triggering this scenario is quite
+     * difficult, and does not easily happen by chance. The arrangement of
+     * nodes has to be engineered in a specific way for the test to be
+     * meaningful.
+     */
+
+    assumeFalse("whitebox test of our own implementation", executingInJVM)
+
+    val pq = new java.util.PriorityQueue[Int]()
+    for (x <- List(1, 2, 30, 4, 3, 40, 35, 10))
+      pq.add(x)
+
+    assertEquals("[1,2,30,4,3,40,35,10]", pq.toString())
+
+    val iter = pq.iterator()
+    assertEquals(1, iter.next())
+    assertEquals(2, iter.next())
+    assertEquals(30, iter.next())
+    assertEquals(4, iter.next())
+    assertEquals(3, iter.next())
+    assertEquals(40, iter.next())
+
+    iter.remove()
+    assertEquals("[1,2,10,4,3,30,35]", pq.toString())
+
+    assertEquals(35, iter.next())
+    assertEquals(10, iter.next())
+
+    iter.remove()
+    assertEquals("[1,2,30,4,3,35]", pq.toString())
+
+    assertFalse(iter.hasNext())
+  }
+
+  @Test def removingAnArbitraryElementWithAnIteratorDoubleCornerCase(): Unit = {
+    /* This tests that when `Iterator.remove()` is supposed to remove a zero,
+     * it does not accidentally remove a zero of the opposite sign.
+     *
+     * To be meaningful, this tests requires that the zero we are trying to
+     * remove be positioned further in the internal array than the other one.
+     */
+
+    assumeFalse("whitebox test of our own implementation", executingInJVM)
+
+    val pq = new java.util.PriorityQueue[Double]()
+    for (x <- List(-1.0, -0.0, 0.0, 3.5, Double.NaN))
+      pq.add(x)
+
+    assertEquals("[-1,0,0,3.5,NaN]", pq.toString())
+
+    val iter = pq.iterator()
+    assertEquals(-1.0: Any, iter.next())
+    assertEquals(-0.0: Any, iter.next())
+    assertEquals(0.0: Any, iter.next())
+
+    iter.remove()
+    assertEquals("+0.0 must have been removed, not -0.0",
+        "[-1,0,NaN,3.5]", pq.toString())
+    assertTrue("+0.0 must have been removed, not -0.0",
+        pq.contains(-0.0) && !pq.contains(0.0))
+
+    assertEquals(3.5: Any, iter.next())
+    assertEquals(Double.NaN: Any, iter.next())
+
+    iter.remove()
+    assertEquals("NaN must have been removed", "[-1,0,3.5]", pq.toString())
+
+    assertFalse(iter.hasNext())
+  }
+
+  @Test def removingAnArbitraryElementWithAnIteratorReferenceCornerCase(): Unit = {
+    /* This tests that when `Iterator.remove()` is supposed to remove an
+     * object, it does not accidentally remove an other object that happens to
+     * be `equals` to it (but with a different identity).
+     *
+     * To be meaningful, this tests requires that the object we are trying to
+     * remove be positioned further in the internal array than the other one.
+     */
+
+    assumeFalse("whitebox test of our own implementation", executingInJVM)
+
+    final case class TestObj(i: Int)(val id: Int) extends Comparable[TestObj] {
+      def compareTo(o: TestObj): Int = Integer.compare(this.i, o.i)
+
+      override def toString(): String = s"TestObj@$id"
+    }
+
+    val first = TestObj(1)(10)
+    val second = TestObj(2)(20)
+    val third = TestObj(2)(21)
+    val fourth = TestObj(3)(30)
+    val fifth = TestObj(4)(40)
+
+    val pq = new java.util.PriorityQueue[TestObj]()
+    for (x <- List(first, second, third, fourth, fifth))
+      pq.add(x)
+
+    assertEquals("[TestObj@10,TestObj@20,TestObj@21,TestObj@30,TestObj@40]",
+        pq.toString())
+
+    val iter = pq.iterator()
+    assertSame(first, iter.next())
+    assertSame(second, iter.next())
+    assertSame(third, iter.next())
+
+    iter.remove()
+    assertEquals("third must have been removed, not second",
+        "[TestObj@10,TestObj@20,TestObj@40,TestObj@30]", pq.toString())
+
+    assertSame(fourth, iter.next())
+    assertSame(fifth, iter.next())
+
+    iter.remove()
+    assertEquals("[TestObj@10,TestObj@20,TestObj@30]", pq.toString())
+
+    assertFalse(iter.hasNext())
+  }
+
+  // --- End Whitebox Tests ---
+
+  /** Built with `scala.util.Random.shuffle((0 until 100).toList)`. */
+  private val listOfShuffled0Until100 = List(
+      89, 26, 23, 9, 96, 81, 34, 79, 37, 90, 45, 66, 16, 49, 70, 77, 5, 19, 39,
+      98, 44, 15, 1, 6, 43, 27, 40, 3, 68, 91, 76, 20, 54, 87, 85, 12, 86, 31,
+      67, 24, 95, 0, 38, 22, 97, 28, 59, 2, 94, 7, 51, 30, 72, 56, 18, 13, 14,
+      75, 53, 64, 47, 46, 58, 93, 74, 32, 57, 83, 60, 73, 11, 88, 69, 65, 33,
+      52, 29, 80, 50, 63, 10, 62, 48, 55, 41, 35, 21, 42, 61, 36, 99, 78, 82,
+      8, 4, 71, 25, 84, 92, 17
+  )
+
+  /** Creates a new priority queue in which the integers 0 until 100 have been
+   *  added in a random order.
+   *
+   *  The random order is important to avoid creating a degenerate heap where
+   *  the array is in strict increasing order. Such degenerate heaps tend to
+   *  pass tests too easily, even with broken implementations.
+   */
+  private def newPriorityQueueWith0Until100(): PriorityQueue[Int] = {
+    val pq = new PriorityQueue[Int]()
+    for (i <- listOfShuffled0Until100)
+      pq.add(i)
+    pq
+  }
+
+}
+
+class PriorityQueueFactory extends CollectionFactory {
+
+  override def implementationName: String =
+    "java.util.PriorityQueue"
+
+  override def empty[E: ClassTag]: PriorityQueue[E] =
+    new PriorityQueue()
 
 }
