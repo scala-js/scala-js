@@ -209,7 +209,7 @@ private[lang] object FloatingPointBits {
   @inline private def encodeIEEE754(ebits: Int, fbits: Int,
       v: scala.Double): EncodeIEEE754Result = {
 
-    import Math._
+    import js.Math.{floor, log, pow}
 
     val bias = (1 << (ebits-1)) - 1 // constant
 
@@ -229,7 +229,9 @@ private[lang] object FloatingPointBits {
       if (av >= pow(2, 1-bias)) {
         val twoPowFbits = pow(2, fbits)
 
-        var e = min(rawToInt(floor(log(av) / LN2)), 1023)
+        var e = rawToInt(floor(log(av) / LN2))
+        if (e > 1023)
+          e = 1023
         var twoPowE = pow(2, e)
 
         /* #2911: When av is very close under a power of 2 (e.g.,
@@ -269,7 +271,7 @@ private[lang] object FloatingPointBits {
     (x.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
 
   @inline private def roundToEven(n: scala.Double): scala.Double = {
-    val w = Math.floor(n)
+    val w = js.Math.floor(n)
     val f = n - w
     if (f < 0.5) w
     else if (f > 0.5) w + 1

@@ -17,9 +17,9 @@ package java.lang
  *
  *  We cannot use the full `java.lang.Throwable` out of the box, because its
  *  constructor calls `initStackTrace()`, which uses `StackTrace.scala` and
- *  therefore a bunch of JS stuff inside to recover stack traces. This stripped
- *  down `Throwable` does not offer any method to access the stack trace so
- *  that `initStackTrace()` is not necessary.
+ *  therefore a bunch of utilities inside to recover stack traces. This
+ *  stripped down `Throwable` does not offer any method to access the stack
+ *  trace so that `initStackTrace()` is not necessary.
  */
 class Throwable(s: String, e: Throwable)
     extends Object with java.io.Serializable {

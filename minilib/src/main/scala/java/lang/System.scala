@@ -13,7 +13,7 @@
 package java.lang
 
 /** Stripped down version of `java.lang.System` with the bare minimum to
- *  support a correct `numberHashCode()`.
+ *  support a correct `Object.hashCode()`.
  *
  *  We cannot use the full `java.lang.System` out of the box, because its
  *  constructor initializes `out` and `err`, which require

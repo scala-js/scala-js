@@ -4,7 +4,7 @@ object MiniLib {
   val Whitelist = {
     val inJavaLang = List(
         "Object",
-        // "Class" is overridden in minilib/
+        "Class",
         // "System" is overridden in minilib/
 
         "CharSequence",
@@ -23,7 +23,8 @@ object MiniLib {
         "Double",
         "String",
 
-        // "FloatingPointBits" is overridden in minilib/
+        "FloatingPointBits",
+        "FloatingPointBits$EncodeIEEE754Result",
 
         // "Throwable" is overridden in minilib/
         "Error",
@@ -44,16 +45,6 @@ object MiniLib {
         "Serializable"
     ).map("java/io/" + _)
 
-    /* TODO Unfortunately, when a class extends java.io.Serializable, scalac
-     * forces its companion object to extend scala.Serializable (ugh!), which
-     * means that things like java.lang.Integer$ depend on scala.Serializable.
-     * However, as far as the linker is concerned, it shouldn't need, so it
-     * would be nice to get rid of this dependency.
-     */
-    val inScala = List(
-        "Serializable"
-    ).map("scala/" + _)
-
     /* TODO Could we put UndefinedBehaviorError in a neutral namespace?
      * RuntimeLong should probably be part of the linker itself, as a resource.
      */
@@ -64,7 +55,7 @@ object MiniLib {
     ).map("scala/scalajs/runtime/" + _)
 
     val allBaseNames =
-      inJavaLang ::: inJavaIO ::: inScala ::: inScalaJSRuntime
+      inJavaLang ::: inJavaIO ::: inScalaJSRuntime
 
     allBaseNames.flatMap(name => List(name + ".sjsir", name + "$.sjsir")).toSet
   }
