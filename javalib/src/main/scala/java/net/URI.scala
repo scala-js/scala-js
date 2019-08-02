@@ -201,63 +201,79 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   def isOpaque(): Boolean = _isOpaque
 
   def normalize(): URI = if (_isOpaque || _path.isEmpty) this else {
+    import js.JSStringOps._
+
     val origPath = _path.get
+
+    val segments = origPath.jsSplit("/")
 
     // Step 1: Remove all "." segments
     // Step 2: Remove ".." segments preceeded by non ".." segment until no
     // longer applicable
 
-    /** Checks whether a successive ".." may drop the head of a
-     *  reversed segment list.
-     */
-    def okToDropFrom(resRev: List[String]) =
-      resRev.nonEmpty && resRev.head != ".." && resRev.head != ""
+    val inLen = segments.length
+    val isAbsPath = inLen != 0 && segments(0) == ""
 
-    @tailrec
-    def loop(in: List[String], resRev: List[String]): List[String] = in match {
-      case "." :: Nil =>
-        // convert "." segments at end to an empty segment
-        // (consider: /a/b/. => /a/b/, not /a/b)
-        loop(Nil, "" :: resRev)
-      case ".." :: Nil if okToDropFrom(resRev) =>
-        // prevent a ".." segment at end to change a "dir" into a "file"
-        // (consider: /a/b/.. => /a/, not /a)
-        loop(Nil, "" :: resRev.tail)
-      case "." :: xs =>
-        // remove "." segments
-        loop(xs, resRev)
-      case "" :: xs if xs.nonEmpty =>
+    // Do not inject the first empty segment into the normalization loop,
+    // so that we don't need to special-case it inside.
+    val startIdx = if (isAbsPath) 1 else 0
+    var inIdx = startIdx
+    var outIdx = startIdx
+
+    while (inIdx != inLen) {
+      val segment = segments(inIdx)
+      inIdx += 1 // do this before the rest of the loop
+
+      if (segment == ".") {
+        if (inIdx == inLen) {
+          // convert "." segments at end to an empty segment
+          // (consider: /a/b/. => /a/b/, not /a/b)
+          segments(outIdx) = ""
+          outIdx += 1
+        } else {
+          // remove "." segments, so do not increment outIdx
+        }
+      } else if (segment == "..") {
+        val okToDrop = outIdx != startIdx && {
+          val lastSegment = segments(outIdx - 1)
+          lastSegment != ".." && lastSegment != ""
+        }
+        if (okToDrop) {
+          if (inIdx == inLen) { // did we reach the end?
+            // prevent a ".." segment at end to change a "dir" into a "file"
+            // (consider: /a/b/.. => /a/, not /a)
+            segments(outIdx - 1) = ""
+            // do not increment outIdx
+          } else {
+            // remove preceding segment (it is not "..")
+            outIdx -= 1
+          }
+        } else {
+          // cannot drop
+          segments(outIdx) = ".."
+          outIdx += 1
+        }
+      } else if (segment == "" && inIdx != inLen) {
         // remove empty segments not at end of path
-        loop(xs, resRev)
-      case ".." :: xs if okToDropFrom(resRev) =>
-        // Remove preceeding non-".." segment
-        loop(xs, resRev.tail)
-      case x :: xs =>
-        loop(xs, x :: resRev)
-      case Nil =>
-        resRev.reverse
+        // do not increment outIdx
+      } else {
+        // keep the segment
+        segments(outIdx) = segment
+        outIdx += 1
+      }
     }
 
-    // Split into segments. -1 since we want empty trailing ones
-    val segments0 = origPath.split("/", -1).toList
-    val isAbsPath = segments0.nonEmpty && segments0.head == ""
-    // Don't inject first empty segment into normalization loop, so we
-    // won't need to special case it.
-    val segments1 = if (isAbsPath) segments0.tail else segments0
-    val segments2 = loop(segments1, Nil)
+    // Truncate `segments` at `outIdx`
+    segments.length = outIdx
 
     // Step 3: If path is relative and first segment contains ":", prepend "."
-    // segment (according to JavaDoc). If it is absolute, add empty
-    // segment again to have leading "/".
-    val segments3 = {
-      if (isAbsPath)
-        "" :: segments2
-      else if (segments2.nonEmpty && segments2.head.contains(':'))
-        "." :: segments2
-      else segments2
-    }
+    // segment (according to JavaDoc). If the path is absolute, the first
+    // segment is "" so the `contains(':')` returns false.
+    if (outIdx != 0 && segments(0).contains(":"))
+      segments.unshift(".")
 
-    val newPath = segments3.mkString("/")
+    // Now add all the segments from step 1, 2 and 3
+    val newPath = segments.join("/")
 
     // Only create new instance if anything changed
     if (newPath == origPath)
