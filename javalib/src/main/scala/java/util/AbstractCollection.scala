@@ -25,7 +25,7 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
   def isEmpty(): Boolean = size == 0
 
   def contains(o: Any): Boolean =
-    this.scalaOps.exists(o === _)
+    this.scalaOps.exists(Objects.equals(o, _))
 
   def toArray(): Array[AnyRef] =
     toArray(new Array[AnyRef](size))
@@ -50,7 +50,7 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
     @tailrec
     def findAndRemove(iter: Iterator[E]): Boolean = {
       if (iter.hasNext) {
-        if (iter.next() === o) {
+        if (Objects.equals(iter.next(), o)) {
           iter.remove()
           true
         } else

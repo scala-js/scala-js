@@ -21,21 +21,14 @@ object AbstractMap {
   private def entryEquals[K, V](entry: Map.Entry[K, V], other: Any): Boolean = {
     other match {
       case other: Map.Entry[_, _] =>
-        entry.getKey === other.getKey && entry.getValue === other.getValue
+        Objects.equals(entry.getKey, other.getKey) &&
+        Objects.equals(entry.getValue, other.getValue)
       case _ => false
     }
   }
 
-  private def entryHashCode[K, V](entry: Map.Entry[K, V]): Int = {
-    val keyHash =
-      if (entry.getKey == null) 0
-      else entry.getKey.hashCode
-    val valueHash =
-      if (entry.getValue == null) 0
-      else entry.getValue.hashCode
-
-    keyHash ^ valueHash
-  }
+  private def entryHashCode[K, V](entry: Map.Entry[K, V]): Int =
+    Objects.hashCode(entry.getKey) ^ Objects.hashCode(entry.getValue)
 
   class SimpleEntry[K, V](private var key: K, private var value: V)
       extends Map.Entry[K, V] with Serializable {
@@ -95,13 +88,13 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
   def isEmpty(): Boolean = size == 0
 
   def containsValue(value: Any): Boolean =
-    entrySet.scalaOps.exists(value === _.getValue)
+    entrySet.scalaOps.exists(entry => Objects.equals(value, entry.getValue))
 
   def containsKey(key: Any): Boolean =
-    entrySet.scalaOps.exists(entry => entry === key)
+    entrySet.scalaOps.exists(entry => Objects.equals(key, entry.getKey))
 
   def get(key: Any): V = {
-    entrySet.scalaOps.find(_.getKey === key).fold[V] {
+    entrySet.scalaOps.find(entry => Objects.equals(key, entry.getKey)).fold[V] {
       null.asInstanceOf[V]
     } { entry =>
       entry.getValue
@@ -116,7 +109,7 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
     def findAndRemove(iter: Iterator[Map.Entry[K, V]]): V = {
       if (iter.hasNext) {
         val item = iter.next()
-        if (key === item.getKey) {
+        if (Objects.equals(key, item.getKey)) {
           iter.remove()
           item.getValue
         } else
@@ -177,7 +170,7 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
       o match {
         case m: Map[_, _] =>
           self.size == m.size &&
-          entrySet.scalaOps.forall(item => m.get(item.getKey) === item.getValue)
+          entrySet.scalaOps.forall(item => Objects.equals(m.get(item.getKey), item.getValue))
         case _ => false
       }
     }

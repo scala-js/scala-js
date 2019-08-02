@@ -109,7 +109,7 @@ class LinkedList[E]() extends AbstractSequentialList[E]
   }
 
   override def contains(o: Any): Boolean =
-    this.scalaOps.exists(_ === o)
+    this.scalaOps.exists(Objects.equals(_, o))
 
   override def size(): Int =
     _size.toInt
@@ -253,7 +253,7 @@ class LinkedList[E]() extends AbstractSequentialList[E]
   private def _removeOccurrence(iter: Iterator[E], o: Any): Boolean = {
     var changed = false
     while (iter.hasNext() && !changed) {
-      if (iter.next() === o) {
+      if (Objects.equals(iter.next(), o)) {
         iter.remove()
         changed = true
       }

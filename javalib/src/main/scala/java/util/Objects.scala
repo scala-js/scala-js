@@ -36,7 +36,7 @@ object Objects {
         case (a1: Array[Boolean], a2: Array[Boolean]) => Arrays.equals(a1, a2)
         case (a1: Array[Float], a2: Array[Float])     => Arrays.equals(a1, a2)
         case (a1: Array[Double], a2: Array[Double])   => Arrays.equals(a1, a2)
-        case _                                        => a === b
+        case _                                        => Objects.equals(a, b)
       }
     }
   }

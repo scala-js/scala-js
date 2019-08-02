@@ -35,13 +35,13 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
     throw new UnsupportedOperationException
 
   def indexOf(o: Any): Int =
-    this.scalaOps.indexWhere(_ === o)
+    this.scalaOps.indexWhere(Objects.equals(_, o))
 
   def lastIndexOf(o: Any): Int = {
     @tailrec
     def findIndex(iter: ListIterator[E]): Int = {
       if (!iter.hasPrevious) -1
-      else if (iter.previous() === o) iter.nextIndex
+      else if (Objects.equals(iter.previous(), o)) iter.nextIndex
       else findIndex(iter)
     }
     findIndex(listIterator(size))
@@ -111,7 +111,7 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
       o match {
         case o: List[_] =>
           val oIter = o.listIterator
-          this.scalaOps.forall(oIter.hasNext && _ === oIter.next()) && !oIter.hasNext
+          this.scalaOps.forall(oIter.hasNext && Objects.equals(_, oIter.next())) && !oIter.hasNext
         case _ => false
       }
     }
@@ -119,7 +119,7 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
 
   override def hashCode(): Int = {
     this.scalaOps.foldLeft(1) {
-      (prev, elem) => 31 * prev + (if (elem == null) 0 else elem.hashCode)
+      (prev, elem) => 31 * prev + Objects.hashCode(elem)
     }
   }
 

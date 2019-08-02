@@ -651,13 +651,13 @@ object Arrays {
     hashCodeImpl[Double](a)
 
   @noinline def hashCode(a: Array[AnyRef]): Int =
-    hashCodeImpl[AnyRef](a)
+    hashCodeImpl[AnyRef](a, Objects.hashCode(_))
 
   @inline
   private def hashCodeImpl[T](a: Array[T],
-      elementHashCode: T => Int = (x: T) => x.asInstanceOf[AnyRef].hashCode): Int = {
+      elementHashCode: T => Int = (x: T) => x.hashCode): Int = {
     if (a == null) 0
-    else a.foldLeft(1)((acc, x) => 31*acc + (if (x == null) 0 else elementHashCode(x)))
+    else a.foldLeft(1)((acc, x) => 31*acc + elementHashCode(x))
   }
 
   @noinline def deepHashCode(a: Array[AnyRef]): Int = {
@@ -673,7 +673,7 @@ object Arrays {
         case elem: Array[Boolean] => hashCode(elem)
         case elem: Array[Float]   => hashCode(elem)
         case elem: Array[Double]  => hashCode(elem)
-        case _                    => elem.hashCode
+        case _                    => Objects.hashCode(elem)
       }
     }
     hashCodeImpl(a, getHash)
