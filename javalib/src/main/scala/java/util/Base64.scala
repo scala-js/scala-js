@@ -20,18 +20,37 @@ import java.nio.ByteBuffer
 
 object Base64 {
 
-  private val chars = ('A' to 'Z') ++ ('a' to 'z') ++ ('0' to '9')
+  private val basicEncodeTable: Array[Byte] = {
+    val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    val table = new Array[Byte](64)
+    var i = 0
+    while (i != 64) {
+      table(i) = chars.charAt(i).toByte
+      i += 1
+    }
+    table
+  }
 
-  private val basicEncodeTable: Array[Byte] =
-    (chars ++ Seq('+', '/')).map(_.toByte).toArray
-
-  private val urlSafeEncodeTable: Array[Byte] =
-    (chars ++ Seq('-', '_')).map(_.toByte).toArray
+  private val urlSafeEncodeTable: Array[Byte] = {
+    val table = basicEncodeTable.clone()
+    table(62) = '-'.toByte
+    table(63) = '_'.toByte
+    table
+  }
 
   private def decodeTable(encode: Array[Byte]): Array[Int] = {
-    val decode = Array.fill[Int](256)(-1)
-    for ((b, i) <- encode.zipWithIndex)
-      decode(b) = i
+    val decode = new Array[Int](256)
+    var i = 0
+    while (i != 256) {
+      decode(i) = -1
+      i += 1
+    }
+    val len = encode.length
+    var j = 0
+    while (j != len) {
+      decode(encode(j)) = j
+      j += 1
+    }
     decode('=') = -2
     decode
   }
@@ -39,7 +58,7 @@ object Base64 {
   private val basicDecodeTable = decodeTable(basicEncodeTable)
   private val urlSafeDecodeTable = decodeTable(urlSafeEncodeTable)
 
-  private val mimeLineSeparators = Array[Byte]('\r', '\n')
+  private val mimeLineSeparators = Array('\r'.toByte, '\n'.toByte)
   private final val mimeLineLength = 76
 
   private val basicEncoder =
