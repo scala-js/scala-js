@@ -121,7 +121,7 @@ private[lang] object StackTrace {
     val NormalizedFrameLine = """^([^\@]*)\@(.*):([0-9]+)$""".re
     val NormalizedFrameLineWithColumn = """^([^\@]*)\@(.*):([0-9]+):([0-9]+)$""".re
 
-    val trace = new js.Array[JSStackTraceElem]
+    val trace = js.Array[StackTraceElement]()
     var i = 0
     while (i < lines.length) {
       val line = lines(i)
@@ -129,34 +129,31 @@ private[lang] object StackTrace {
         val mtch1 = NormalizedFrameLineWithColumn.exec(line)
         if (mtch1 ne null) {
           val (className, methodName) = extractClassMethod(mtch1(1).get)
-          trace.push(JSStackTraceElem(className, methodName, mtch1(2).get,
-              parseInt(mtch1(3).get), parseInt(mtch1(4).get)))
+          val elem = new StackTraceElement(className, methodName, mtch1(2).get,
+              parseInt(mtch1(3).get))
+          elem.setColumnNumber(parseInt(mtch1(4).get))
+          trace.push(elem)
         } else {
           val mtch2 = NormalizedFrameLine.exec(line)
           if (mtch2 ne null) {
             val (className, methodName) = extractClassMethod(mtch2(1).get)
-            trace.push(JSStackTraceElem(className,
+            trace.push(new StackTraceElement(className,
                 methodName, mtch2(2).get, parseInt(mtch2(3).get)))
           } else {
             // just in case
-            trace.push(JSStackTraceElem("<jscode>", line, null, -1))
+            trace.push(new StackTraceElement("<jscode>", line, null, -1))
           }
         }
       }
       i += 1
     }
 
-    // Convert JS objects to java.lang.StackTraceElements
-    // While loop due to space concerns
-    val result = new Array[StackTraceElement](trace.length)
-
+    // Convert the JS array into a Scala array
+    val len = trace.length
+    val result = new Array[StackTraceElement](len)
     i = 0
-    while (i < trace.length) {
-      val jsSte = trace(i)
-      val ste = new StackTraceElement(jsSte.declaringClass, jsSte.methodName,
-          jsSte.fileName, jsSte.lineNumber)
-      jsSte.columnNumber.foreach(ste.setColumnNumber)
-      result(i) = ste
+    while (i < len) {
+      result(i) = trace(i)
       i += 1
     }
 
@@ -478,30 +475,5 @@ private[lang] object StackTrace {
   /* End copy-paste-translate from stacktrace.js
    * ---------------------------------------------------------------------------
    */
-
-  private trait JSStackTraceElem extends js.Object {
-    var declaringClass: String
-    var methodName: String
-    var fileName: String
-    /** 1-based line number */
-    var lineNumber: Int
-    /** 1-based optional columnNumber */
-    var columnNumber: js.UndefOr[Int] = js.undefined
-  }
-
-  private object JSStackTraceElem {
-    @inline
-    def apply(declaringClass: String, methodName: String,
-        fileName: String, lineNumber: Int,
-        columnNumber: js.UndefOr[Int] = js.undefined): JSStackTraceElem = {
-      js.Dynamic.literal(
-          declaringClass = declaringClass,
-          methodName = methodName,
-          fileName = fileName,
-          lineNumber = lineNumber,
-          columnNumber = columnNumber
-      ).asInstanceOf[JSStackTraceElem]
-    }
-  }
 
 }
