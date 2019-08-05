@@ -20,45 +20,80 @@ import scala.scalajs.runtime.linkingInfo
 
 import java.{util => ju}
 
-import Utils._
-
 object System {
-  var out: PrintStream = new JSConsoleBasedPrintStream(isErr = false)
-  var err: PrintStream = new JSConsoleBasedPrintStream(isErr = true)
-  var in: InputStream = null
+  /* System contains a bag of unrelated features. If we naively implement
+   * everything inside System, reaching any of these features can reach
+   * unrelated code. For example, using `nanoTime()` would reach
+   * `JSConsoleBasedPrintStream` and therefore a bunch of `java.io` classes.
+   *
+   * Instead, every feature that requires its own fields is extracted in a
+   * separate private object, and corresponding methods of System delegate to
+   * methods of that private object.
+   *
+   * All non-intrinsic methods are marked `@inline` so that the module accessor
+   * of `System` can always be completely elided.
+   */
 
-  def setIn(in: InputStream): Unit =
-    this.in = in
+  // Standard streams (out, err, in) ------------------------------------------
 
-  def setOut(out: PrintStream): Unit =
-    this.out = out
-
-  def setErr(err: PrintStream): Unit =
-    this.err = err
-
-  def currentTimeMillis(): scala.Long = {
-    (new js.Date).getTime().toLong
+  private object Streams {
+    var out: PrintStream = new JSConsoleBasedPrintStream(isErr = false)
+    var err: PrintStream = new JSConsoleBasedPrintStream(isErr = true)
+    var in: InputStream = null
   }
 
-  private[this] val getHighPrecisionTime: js.Function0[scala.Double] = {
-    import Utils.DynamicImplicits.truthValue
+  @inline
+  def out: PrintStream = Streams.out
 
-    if (js.typeOf(global.performance) != "undefined") {
-      if (global.performance.now) {
-        () => global.performance.now().asInstanceOf[scala.Double]
-      } else if (global.performance.webkitNow) {
-        () => global.performance.webkitNow().asInstanceOf[scala.Double]
+  @inline
+  def err: PrintStream = Streams.err
+
+  @inline
+  def in: InputStream = Streams.in
+
+  @inline
+  def setIn(in: InputStream): Unit =
+    Streams.in = in
+
+  @inline
+  def setOut(out: PrintStream): Unit =
+    Streams.out = out
+
+  @inline
+  def setErr(err: PrintStream): Unit =
+    Streams.err = err
+
+  // System time --------------------------------------------------------------
+
+  @inline
+  def currentTimeMillis(): scala.Long =
+    (new js.Date).getTime().toLong
+
+  private object NanoTime {
+    val getHighPrecisionTime: js.Function0[scala.Double] = {
+      import Utils.DynamicImplicits.truthValue
+
+      if (js.typeOf(global.performance) != "undefined") {
+        if (global.performance.now) {
+          () => global.performance.now().asInstanceOf[scala.Double]
+        } else if (global.performance.webkitNow) {
+          () => global.performance.webkitNow().asInstanceOf[scala.Double]
+        } else {
+          () => new js.Date().getTime()
+        }
       } else {
         () => new js.Date().getTime()
       }
-    } else {
-      () => new js.Date().getTime()
     }
   }
 
+  @inline
   def nanoTime(): scala.Long =
-    (getHighPrecisionTime() * 1000000).toLong
+    (NanoTime.getHighPrecisionTime() * 1000000).toLong
 
+  // arraycopy ----------------------------------------------------------------
+
+  // Intrinsic
   def arraycopy(src: Object, srcPos: scala.Int, dest: Object,
       destPos: scala.Int, length: scala.Int): Unit = {
 
@@ -144,79 +179,93 @@ object System {
     })
   }
 
-  def identityHashCode(x: Object): scala.Int = {
-    (x: Any) match {
-      case null => 0
-      case _:scala.Boolean | _:scala.Double | _:String | () =>
-        x.hashCode()
-      case _ =>
-        import IDHashCode._
-        if (x.getClass == null) {
-          /* x is not a Scala.js object: we have delegate to x.hashCode().
-           * This is very important, as we really need to go through
-           * `$objectHashCode()` in `CoreJSLib` instead of using our own
-           * `idHashCodeMap`. That's because `$objectHashCode()` uses the
-           * intrinsic `$systemIdentityHashCode` for JS objects, regardless of
-           * whether the optimizer is enabled or not. If we use our own
-           * `idHashCodeMap`, we will get different hash codes when obtained
-           * through `System.identityHashCode(x)` than with `x.hashCode()`.
-           */
-          x.hashCode()
-        } else if (linkingInfo.assumingES6 || idHashCodeMap != null) {
-          // Use the global WeakMap of attributed id hash codes
-          val hash = idHashCodeMap.get(x.asInstanceOf[js.Any])
-          if (!Utils.isUndefined(hash)) {
-            hash.asInstanceOf[Int]
-          } else {
-            val newHash = nextIDHashCode()
-            idHashCodeMap.set(x.asInstanceOf[js.Any], newHash.asInstanceOf[js.Any])
-            newHash
-          }
-        } else {
-          val hash = x.asInstanceOf[js.Dynamic].selectDynamic("$idHashCode$0")
-          if (!Utils.isUndefined(hash)) {
-            /* Note that this can work even if x is sealed, if
-             * identityHashCode() was called for the first time before x was
-             * sealed.
-             */
-            hash.asInstanceOf[Int]
-          } else if (!js.Object.isSealed(x.asInstanceOf[js.Object])) {
-            /* If x is not sealed, we can (almost) safely create an additional
-             * field with a bizarre and relatively long name, even though it is
-             * technically undefined behavior.
-             */
-            val newHash = nextIDHashCode()
-            x.asInstanceOf[js.Dynamic].updateDynamic("$idHashCode$0")(newHash.asInstanceOf[js.Any])
-            newHash
-          } else {
-            // Otherwise, we unfortunately have to return a constant.
-            42
-          }
-        }
-    }
-  }
+  // identityHashCode ---------------------------------------------------------
 
   private object IDHashCode {
-    private var lastIDHashCode: Int = 0
+    private[this] var lastIDHashCode: Int = 0
 
-    val idHashCodeMap =
+    private[this] val idHashCodeMap = {
       if (linkingInfo.assumingES6 || js.typeOf(global.WeakMap) != "undefined")
         js.Dynamic.newInstance(global.WeakMap)()
       else
         null
+    }
 
-    def nextIDHashCode(): Int = {
+    @inline
+    private def nextIDHashCode(): Int = {
       val r = lastIDHashCode + 1
       lastIDHashCode = r
       r
     }
+
+    def idHashCode(x: Object): scala.Int = {
+      (x: Any) match {
+        case null =>
+          0
+        case _:scala.Boolean | _:scala.Double | _:String | () =>
+          x.hashCode()
+        case _ =>
+          if (x.getClass == null) {
+            /* x is not a Scala.js object: we have delegate to x.hashCode().
+             * This is very important, as we really need to go through
+             * `$objectHashCode()` in `CoreJSLib` instead of using our own
+             * `idHashCodeMap`. That's because `$objectHashCode()` uses the
+             * intrinsic `$systemIdentityHashCode` for JS objects, regardless
+             * of whether the optimizer is enabled or not. If we use our own
+             * `idHashCodeMap`, we will get different hash codes when obtained
+             * through `System.identityHashCode(x)` than with `x.hashCode()`.
+             */
+            x.hashCode()
+          } else if (linkingInfo.assumingES6 || idHashCodeMap != null) {
+            // Use the global WeakMap of attributed id hash codes
+            val hash = idHashCodeMap.get(x.asInstanceOf[js.Any])
+            if (hash ne ().asInstanceOf[AnyRef]) {
+              hash.asInstanceOf[Int]
+            } else {
+              val newHash = nextIDHashCode()
+              idHashCodeMap.set(x.asInstanceOf[js.Any],
+                  newHash.asInstanceOf[js.Any])
+              newHash
+            }
+          } else {
+            val hash = x.asInstanceOf[js.Dynamic].selectDynamic("$idHashCode$0")
+            if (hash ne ().asInstanceOf[AnyRef]) {
+              /* Note that this can work even if x is sealed, if
+               * identityHashCode() was called for the first time before x was
+               * sealed.
+               */
+              hash.asInstanceOf[Int]
+            } else if (!js.Object.isSealed(x.asInstanceOf[js.Object])) {
+              /* If x is not sealed, we can (almost) safely create an
+               * additional field with a bizarre and relatively long name, even
+               * though it is technically undefined behavior.
+               */
+              val newHash = nextIDHashCode()
+              x.asInstanceOf[js.Dynamic].updateDynamic("$idHashCode$0")(
+                  newHash.asInstanceOf[js.Any])
+              newHash
+            } else {
+              // Otherwise, we unfortunately have to return a constant.
+              42
+            }
+          }
+      }
+    }
   }
 
-  private object SystemProperties {
-    var dict: js.Dictionary[String] = loadSystemProperties()
-    var properties: ju.Properties = null
+  // Intrinsic
+  def identityHashCode(x: Object): scala.Int =
+    IDHashCode.idHashCode(x)
 
-    private[System] def loadSystemProperties(): js.Dictionary[String] = {
+  // System properties --------------------------------------------------------
+
+  private object SystemProperties {
+    import Utils._
+
+    private[this] var dict: js.Dictionary[String] = loadSystemProperties()
+    private[this] var properties: ju.Properties = null
+
+    private def loadSystemProperties(): js.Dictionary[String] = {
       val result = new js.Object().asInstanceOf[js.Dictionary[String]]
       dictSet(result, "java.version", "1.8")
       dictSet(result, "java.vm.specification.version", "1.8")
@@ -233,7 +282,7 @@ object System {
       result
     }
 
-    private[System] def forceProperties(): ju.Properties = {
+    def getProperties(): ju.Properties = {
       if (properties eq null) {
         properties = new ju.Properties
         val keys = js.Object.keys(dict.asInstanceOf[js.Object])
@@ -244,48 +293,74 @@ object System {
       }
       properties
     }
+
+    def setProperties(properties: ju.Properties): Unit = {
+      if (properties eq null) {
+        dict = loadSystemProperties()
+        this.properties = null
+      } else {
+        dict = null
+        this.properties = properties
+      }
+    }
+
+    def getProperty(key: String): String =
+      if (dict ne null) dictGetOrElse(dict, key, null)
+      else properties.getProperty(key)
+
+    def getProperty(key: String, default: String): String =
+      if (dict ne null) dictGetOrElse(dict, key, default)
+      else properties.getProperty(key, default)
+
+    def clearProperty(key: String): String =
+      if (dict ne null) dictGetOrElseAndRemove(dict, key, null)
+      else properties.remove(key).asInstanceOf[String]
+
+    def setProperty(key: String, value: String): String = {
+      if (dict ne null) {
+        val oldValue = getProperty(key)
+        dictSet(dict, key, value)
+        oldValue
+      } else {
+        properties.setProperty(key, value).asInstanceOf[String]
+      }
+    }
   }
 
+  @inline
   def getProperties(): ju.Properties =
-    SystemProperties.forceProperties()
+    SystemProperties.getProperties()
 
+  @inline
   def lineSeparator(): String = "\n"
 
-  def setProperties(properties: ju.Properties): Unit = {
-    if (properties eq null) {
-      SystemProperties.dict = SystemProperties.loadSystemProperties()
-      SystemProperties.properties = null
-    } else {
-      SystemProperties.dict = null
-      SystemProperties.properties = properties
-    }
-  }
+  @inline
+  def setProperties(properties: ju.Properties): Unit =
+    SystemProperties.setProperties(properties)
 
+  @inline
   def getProperty(key: String): String =
-    if (SystemProperties.dict ne null) dictGetOrElse(SystemProperties.dict, key, null)
-    else SystemProperties.properties.getProperty(key)
+    SystemProperties.getProperty(key)
 
+  @inline
   def getProperty(key: String, default: String): String =
-    if (SystemProperties.dict ne null) dictGetOrElse(SystemProperties.dict, key, default)
-    else SystemProperties.properties.getProperty(key, default)
+    SystemProperties.getProperty(key, default)
 
+  @inline
   def clearProperty(key: String): String =
-    if (SystemProperties.dict ne null) dictGetOrElseAndRemove(SystemProperties.dict, key, null)
-    else SystemProperties.properties.remove(key).asInstanceOf[String]
+    SystemProperties.clearProperty(key)
 
-  def setProperty(key: String, value: String): String = {
-    if (SystemProperties.dict ne null) {
-      val oldValue = getProperty(key)
-      dictSet(SystemProperties.dict, key, value)
-      oldValue
-    } else {
-      SystemProperties.properties.setProperty(key, value).asInstanceOf[String]
-    }
-  }
+  @inline
+  def setProperty(key: String, value: String): String =
+    SystemProperties.setProperty(key, value)
 
+  // Environment variables ----------------------------------------------------
+
+  @inline
   def getenv(): ju.Map[String, String] =
     ju.Collections.emptyMap()
 
+  @inline
   def getenv(name: String): String = {
     if (name eq null)
       throw new NullPointerException
@@ -293,11 +368,15 @@ object System {
     null
   }
 
+  // Runtime ------------------------------------------------------------------
+
   //def exit(status: scala.Int): Unit
+
+  @inline
   def gc(): Unit = Runtime.getRuntime().gc()
 }
 
-private[lang] final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
+private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
     extends PrintStream(new JSConsoleBasedPrintStream.DummyOutputStream) {
 
   import JSConsoleBasedPrintStream._

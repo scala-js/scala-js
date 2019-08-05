@@ -5,7 +5,8 @@ object MiniLib {
     val inJavaLang = List(
         "Object",
         "Class",
-        // "System" is overridden in minilib/
+        "System",
+        "System$IDHashCode",
 
         "CharSequence",
         "Cloneable",
