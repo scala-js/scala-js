@@ -834,8 +834,32 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         if (flags.isPrivate)
           reportError(s"Illegal flag for Apply: Private")
         val receiverType = typecheckExpr(receiver, env)
-        checkApplyGeneric(method, s"$receiverType.$method", args, tree.tpe,
-            isStatic = false)
+        val fullCheck = receiverType match {
+          case ClassType(cls) =>
+            /* For class types, we only perform full checks if the class has
+             * instances. This is necessary because the BaseLinker can
+             * completely get rid of all the method *definitions* for the call
+             * method. In that case, the classes references in the *signature*
+             * of the method might not have been made reachable, and hence
+             * inferring the type signature might fail. Obviously in such cases,
+             * the only value that `receiver` can assume is `null`, and the
+             * `Apply` will fail with an NPE, so the types of the arguments are
+             * irreleant.
+             */
+            lookupClass(cls).hasInstances
+          case NullType | NothingType =>
+            // By a similar argument, we must not perform full checks here
+            false
+          case _ =>
+            true
+        }
+        if (fullCheck) {
+          checkApplyGeneric(method, s"$receiverType.$method", args, tree.tpe,
+              isStatic = false)
+        } else {
+          for (arg <- args)
+            typecheckExpr(arg, env)
+        }
 
       case ApplyStatically(_, receiver, cls, Ident(method, _), args) =>
         typecheckExpect(receiver, env, ClassType(cls.className))

@@ -39,8 +39,6 @@ class AnalyzerTest {
   import scala.concurrent.ExecutionContext.Implicits.global
   import AnalyzerTest._
 
-  private val EAF = ApplyFlags.empty
-
   @Test
   def trivialOK(): AsyncResult = await {
     val analysis = computeAnalysis(Nil)
