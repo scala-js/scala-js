@@ -15,24 +15,19 @@ final class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config) extends JSEnv {
 
   private val nodeJSEnv = new NodeJSEnv(config)
 
-  def start(input: Input, runConfig: RunConfig): JSRun =
-    nodeJSEnv.start(patchInput(input), runConfig)
+  def start(input: Seq[Input], runConfig: RunConfig): JSRun =
+    nodeJSEnv.start(forcePolyfills +: input, runConfig)
 
-  def startWithCom(input: Input, runConfig: RunConfig,
+  def startWithCom(input: Seq[Input], runConfig: RunConfig,
       onMessage: String => Unit): JSComRun = {
-    nodeJSEnv.startWithCom(patchInput(input), runConfig, onMessage)
-  }
-
-  private def patchInput(input: Input): Input = input match {
-    case Input.ScriptsToLoad(scripts) => Input.ScriptsToLoad(forcePolyfills +: scripts)
-    case _                            => throw new UnsupportedInputException(input)
+    nodeJSEnv.startWithCom(forcePolyfills +: input, runConfig, onMessage)
   }
 
   /** File to force all our ES 2015 polyfills to be used, by deleting the
    *  native functions.
    */
-  private def forcePolyfills(): Path = {
-    Files.write(
+  private def forcePolyfills(): Input = {
+    val p = Files.write(
         Jimfs.newFileSystem().getPath("scalaJSEnvInfo.js"),
         """
           |delete Math.fround;
@@ -58,5 +53,6 @@ final class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config) extends JSEnv {
           |delete global.Float32Array;
           |delete global.Float64Array;
         """.stripMargin.getBytes(StandardCharsets.UTF_8))
+    Input.Script(p)
   }
 }

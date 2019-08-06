@@ -25,7 +25,7 @@ import org.scalajs.testing.common._
 
 import sbt.testing.Framework
 
-final class TestAdapter(jsEnv: JSEnv, input: Input, config: TestAdapter.Config) {
+final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Config) {
 
   import TestAdapter._
 

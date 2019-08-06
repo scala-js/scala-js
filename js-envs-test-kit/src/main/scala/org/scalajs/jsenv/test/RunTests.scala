@@ -27,7 +27,7 @@ import org.scalajs.jsenv.test.kit.{TestKit, Run}
 private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
   private val kit = new TestKit(config.jsEnv, config.awaitTimeout)
 
-  private def withRun(input: Input)(body: Run => Unit) = {
+  private def withRun(input: Seq[Input])(body: Run => Unit) = {
     if (withCom) kit.withComRun(input)(body)
     else kit.withRun(input)(body)
   }
@@ -141,7 +141,7 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
     val badFile = Jimfs.newFileSystem().getPath("nonexistent")
 
     // `start` may not throw but must fail asynchronously
-    withRun(Input.ScriptsToLoad(badFile :: Nil)) {
+    withRun(Input.Script(badFile) :: Nil) {
       _.fails()
     }
   }
@@ -155,7 +155,7 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
       val tmpPath = tmpFile.toPath
       Files.write(tmpPath, "console.log(\"test\");".getBytes(StandardCharsets.UTF_8))
 
-      withRun(Input.ScriptsToLoad(tmpPath :: Nil)) {
+      withRun(Input.Script(tmpPath) :: Nil) {
         _.expectOut("test\n")
           .closeRun()
       }

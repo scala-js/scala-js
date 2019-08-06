@@ -155,9 +155,9 @@ object ScalaJSPlugin extends AutoPlugin {
         "Prints the content of a .sjsir file in human readable form.",
         CTask)
 
-    val jsEnvInput = TaskKey[Input](
+    val jsEnvInput = TaskKey[Seq[Input]](
         "jsEnvInput",
-        "The JSEnv.Input to give to the jsEnv for tasks such as `run` and `test`",
+        "The JSEnv.Inputs to give to the jsEnv for tasks such as `run` and `test`",
         BTask)
 
     val scalaJSSourceFiles = AttributeKey[Seq[File]]("scalaJSSourceFiles",

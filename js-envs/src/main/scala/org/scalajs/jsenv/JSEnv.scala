@@ -33,10 +33,12 @@ trait JSEnv {
    *  with the input's content (e.g. file does not exist, syntax error, etc.).
    *  In this case, [[JSRun#future]] should be failed instead.
    *
-   *  @throws java.lang.IllegalArgumentException if the value of `input` or
-   *      `config` cannot be supported.
+   *  @throws UnsupportedInputException if the value of `input` cannot be
+   *      supported.
+   *  @throws java.lang.IllegalArgumentException if the value of `config` cannot
+   *      be supported.
    */
-  def start(input: Input, config: RunConfig): JSRun
+  def start(input: Seq[Input], config: RunConfig): JSRun
 
   /** Like [[start]], but initializes a communication channel.
    *
@@ -83,6 +85,6 @@ trait JSEnv {
    *      [[JSRun#future]] of the returned [[JSComRun]] is completed. Further,
    *      [[JSRun#future]] may only complete with no callback in-flight.
    */
-  def startWithCom(input: Input, config: RunConfig,
+  def startWithCom(input: Seq[Input], config: RunConfig,
       onMessage: String => Unit): JSComRun
 }
