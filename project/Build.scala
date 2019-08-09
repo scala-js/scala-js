@@ -1271,6 +1271,8 @@ object Build {
           Nil
       },
 
+      cleanIRSettings,
+
       headerSources in Compile ~= { srcs =>
         srcs.filter { src =>
           val path = src.getPath.replace('\\', '/')
