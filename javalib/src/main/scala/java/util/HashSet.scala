@@ -12,6 +12,8 @@
 
 package java.util
 
+import java.lang.Cloneable
+
 class HashSet[E] private[util] (inner: HashMap[E, Any])
     extends AbstractSet[E] with Set[E] with Cloneable with Serializable {
 

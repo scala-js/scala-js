@@ -12,6 +12,8 @@
 
 package java.util
 
+import java.lang.Cloneable
+
 import scala.scalajs.js
 
 class ArrayDeque[E] private (private var inner: js.Array[E])

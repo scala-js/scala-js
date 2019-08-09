@@ -12,6 +12,8 @@
 
 package java.util
 
+import java.lang.Cloneable
+
 class LinkedHashSet[E] private[util] (inner: LinkedHashMap[E, Any])
     extends HashSet[E](inner) with Set[E] with Cloneable with Serializable {
 

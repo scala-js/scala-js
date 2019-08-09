@@ -12,6 +12,7 @@
 
 package java.util.concurrent
 
+import java.lang.Cloneable
 import java.lang.{reflect => jlr}
 import java.util._
 import java.util.function.{Predicate, UnaryOperator}

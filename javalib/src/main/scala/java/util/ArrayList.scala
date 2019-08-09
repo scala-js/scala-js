@@ -12,6 +12,8 @@
 
 package java.util
 
+import java.lang.Cloneable
+
 import scala.scalajs._
 
 class ArrayList[E] private (private[ArrayList] val inner: js.Array[E])
