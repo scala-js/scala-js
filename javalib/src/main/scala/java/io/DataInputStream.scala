@@ -24,34 +24,6 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
   private var pushedBack: Int = -1
   private var pushedBackMark: Int = -1
 
-  /* ArrayBufferInputStream mode helpers
-   *
-   * These variables are used to special case on ArrayBufferInputStreams
-   * They allow directly accessing the underlying ArrayBuffer rather than
-   * creating byte arrays first.
-   */
-  private val inArrayBufferStream = in match {
-    case in: ArrayBufferInputStream => in
-    case _ => null
-  }
-  private val hasArrayBuffer = inArrayBufferStream != null
-  private val bufDataView = {
-    if (hasArrayBuffer) {
-      val in = inArrayBufferStream
-      new DataView(in.buffer, in.offset, in.length)
-    } else {
-      null
-    }
-  }
-
-  private def consumePos(n: Int) = {
-    val off = if (pushedBack != -1) 1 else 0
-    val resultPos = inArrayBufferStream.pos - off
-    val toSkip = n - off
-    if (in.skip(toSkip) != toSkip) eof()
-    resultPos
-  }
-
   // General Helpers
   private def eof() = throw new EOFException()
   private def pushBack(v: Int) = { pushedBack = v }
@@ -65,26 +37,14 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     res.toByte
   }
 
-  def readChar(): Char = {
-    if (hasArrayBuffer)
-      bufDataView.getUint16(consumePos(2)).toChar
-    else
-      ((readByte() << 8) | readUnsignedByte()).toChar
-  }
+  def readChar(): Char =
+    ((readByte() << 8) | readUnsignedByte()).toChar
 
-  def readDouble(): Double = {
-    if (hasArrayBuffer)
-      bufDataView.getFloat64(consumePos(8))
-    else
-      java.lang.Double.longBitsToDouble(readLong())
-  }
+  def readDouble(): Double =
+    java.lang.Double.longBitsToDouble(readLong())
 
-  def readFloat(): Float = {
-    if (hasArrayBuffer)
-      bufDataView.getFloat32(consumePos(4))
-    else
-      java.lang.Float.intBitsToFloat(readInt())
-  }
+  def readFloat(): Float =
+    java.lang.Float.intBitsToFloat(readInt())
 
   def readFully(b: Array[Byte]): Unit = readFully(b, 0, b.length)
 
@@ -103,12 +63,8 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
   }
 
   def readInt(): Int = {
-    if (hasArrayBuffer) {
-      bufDataView.getInt32(consumePos(4))
-    } else {
-      (readUnsignedByte() << 24) | (readUnsignedByte() << 16) |
-      (readUnsignedByte() << 8) | readUnsignedByte()
-    }
+    (readUnsignedByte() << 24) | (readUnsignedByte() << 16) |
+    (readUnsignedByte() << 8) | readUnsignedByte()
   }
 
   def readLine(): String = {
@@ -135,12 +91,8 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     (hi << 32) | (lo & 0xFFFFFFFFL)
   }
 
-  def readShort(): Short = {
-    if (hasArrayBuffer)
-      bufDataView.getInt16(consumePos(2))
-    else
-      ((readByte() << 8) | readUnsignedByte()).toShort
-  }
+  def readShort(): Short =
+    ((readByte() << 8) | readUnsignedByte()).toShort
 
   def readUnsignedByte(): Int = {
     val res = read()
@@ -148,12 +100,8 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     res
   }
 
-  def readUnsignedShort(): Int = {
-    if (hasArrayBuffer)
-      bufDataView.getUint16(consumePos(2))
-    else
-      (readUnsignedByte() << 8) | readUnsignedByte()
-  }
+  def readUnsignedShort(): Int =
+    (readUnsignedByte() << 8) | readUnsignedByte()
 
   def readUTF(): String = {
     val length = readUnsignedShort()
