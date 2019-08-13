@@ -27,19 +27,6 @@ trait CollectionTest {
 
   def factory: CollectionFactory
 
-  def testCollectionApi(): Unit = {
-    shouldStoreStrings()
-    shouldStoreIntegers()
-    shouldStoreDoubles()
-    shouldStoreCustomObjects()
-    shouldRemoveStoredElements()
-    shouldRemoveStoredElementsOnDoubleCornerCases()
-    shouldBeClearedWithOneOperation()
-    shouldCheckContainedPresence()
-    shouldCheckContainedPresenceForDoubleCornerCases()
-    shouldGiveProperIteratorOverElements()
-  }
-
   @Test def shouldStoreStrings(): Unit = {
     val coll = factory.empty[String]
 

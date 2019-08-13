@@ -28,29 +28,6 @@ trait MapTest {
 
   def factory: MapFactory
 
-  def testMapApi(): Unit = {
-    should_store_strings()
-    should_store_integers()
-    should_store_doubles_also_in_corner_cases()
-    should_store_custom_objects()
-    should_remove_stored_elements()
-    should_remove_stored_elements_on_double_corner_cases()
-    should_put_or_fail_on_null_keys()
-    should_put_or_fail_on_null_values()
-    should_be_cleared_with_one_operation()
-    should_check_contained_key_presence()
-    should_check_contained_value_presence()
-    should_give_proper_Collection_over_values()
-    should_give_proper_EntrySet_over_key_values_pairs()
-    should_put_a_whole_map_into()
-    values_should_mirror_the_related_map_size()
-    values_should_check_single_and_multiple_objects_presence()
-    values_should_side_effect_clear_remove_retain_on_the_related_map()
-    keySet_should_mirror_the_related_map_size()
-    keySet_should_check_single_and_multiple_objects_presence()
-    keySet_should_side_effect_clear_remove_retain_on_the_related_map()
-  }
-
   @Test def should_store_strings(): Unit = {
     val mp = factory.empty[String, String]
 

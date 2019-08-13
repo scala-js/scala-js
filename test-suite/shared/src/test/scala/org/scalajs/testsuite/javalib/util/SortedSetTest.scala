@@ -23,15 +23,6 @@ trait SortedSetTest extends SetTest {
 
   def factory: SortedSetFactory
 
-  def testSortedSetApi(): Unit = {
-    testSetApi()
-    shouldRetrieveTheFirstElement()
-    shouldRetrieveTheLastElement()
-    shouldReturnAProperHeadSet()
-    shouldReturnAProperTailSet()
-    shouldReturnAProperSubSet()
-  }
-
   @Test def shouldRetrieveTheFirstElement(): Unit = {
     val ssInt = factory.empty[Int]
 
