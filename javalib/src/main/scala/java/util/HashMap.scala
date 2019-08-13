@@ -421,6 +421,9 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     def size(): Int =
       self.size()
 
+    override def contains(o: Any): Boolean =
+      containsValue(o)
+
     override def clear(): Unit =
       self.clear()
   }
