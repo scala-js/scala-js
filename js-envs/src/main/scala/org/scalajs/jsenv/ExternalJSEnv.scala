@@ -19,7 +19,6 @@ import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import java.io.{ Console => _, _ }
 import scala.io.Source
 
-import scala.collection.JavaConverters._
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
