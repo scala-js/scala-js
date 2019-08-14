@@ -15,8 +15,6 @@ package org.scalajs.testsuite.javalib.util
 import org.junit.Test
 import org.junit.Assert._
 
-import scala.collection.JavaConverters._
-
 import java.{util => ju, lang => jl}
 
 import scala.reflect.ClassTag
@@ -53,24 +51,12 @@ abstract class LinkedHashMapTest extends HashMapTest {
     def expectedKey(index: Int): String =
       (withSizeLimit.getOrElse(0) + index).toString()
 
-    def expectedValue(index: Int): String =
-      s"elem ${expectedKey(index)}"
-
-    val expectedSize = withSizeLimit.getOrElse(100)
-
-    assertEquals(expectedSize, lhm.entrySet.size)
-    for ((entry, index) <- lhm.entrySet.asScala.zipWithIndex) {
-      assertEquals(expectedKey(index), entry.getKey)
-      assertEquals(expectedValue(index), entry.getValue)
+    val expected = (0 until withSizeLimit.getOrElse(100)).map { i =>
+      val key = expectedKey(i)
+      key -> s"elem $key"
     }
 
-    assertEquals(expectedSize, lhm.keySet.size)
-    for ((key, index) <- lhm.keySet.asScala.zipWithIndex)
-      assertEquals(expectedKey(index), key)
-
-    assertEquals(expectedSize, lhm.entrySet.size)
-    for ((value, index) <- lhm.values.asScala.zipWithIndex)
-      assertEquals(expectedValue(index), value)
+    assertSameEntriesOrdered(expected: _*)(lhm)
   }
 
   @Test def should_iterate_in_the_same_order_after_removal_of_elements(): Unit = {
@@ -79,27 +65,12 @@ abstract class LinkedHashMapTest extends HashMapTest {
 
     (0 until 100 by 3).foreach(key => lhm.remove(key.toString()))
 
-    val expectedKey =
-      ((100 - withSizeLimit.getOrElse(100)) to 100).filter(_ % 3 != 0).map(_.toString()).toArray
+    val expectedKeys =
+      ((100 - withSizeLimit.getOrElse(100)) until 100).filter(_ % 3 != 0).map(_.toString())
 
-    def expectedValue(index: Int): String =
-      s"elem ${expectedKey(index)}"
+    val expected = expectedKeys.map(key => key -> s"elem $key")
 
-    val expectedSize = if (withSizeLimit.isDefined) 33 else 66
-
-    assertEquals(expectedSize, lhm.entrySet.size)
-    for ((entry, index) <- lhm.entrySet.asScala.zipWithIndex) {
-      assertEquals(expectedKey(index), entry.getKey)
-      assertEquals(expectedValue(index), entry.getValue)
-    }
-
-    assertEquals(expectedSize, lhm.keySet.size)
-    for ((key, index) <- lhm.keySet.asScala.zipWithIndex)
-      assertEquals(expectedKey(index), key)
-
-    assertEquals(expectedSize, lhm.entrySet.size)
-    for ((value, index) <- lhm.values.asScala.zipWithIndex)
-      assertEquals(expectedValue(index), value)
+    assertSameEntriesOrdered(expected: _*)(lhm)
   }
 
   @Test def should_iterate_in_order_after_adding_elements(): Unit = {
@@ -113,7 +84,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
     lhm.put("1", "new 1")
     lhm.put("98", "new 98")
 
-    val expectedKey = {
+    val expectedKeys = {
       if (factory.accessOrder) {
         val keys = (2 until 42) ++ (43 until 52) ++ (53 until 98) ++
             List(99, 0, 100, 42, 52, 1, 98)
@@ -122,32 +93,18 @@ abstract class LinkedHashMapTest extends HashMapTest {
         if (withSizeLimit.isDefined) (55 until 100) ++ List(0, 100, 42, 52, 1)
         else 0 to 100
       }
-    }.map(_.toString()).toArray
+    }.map(_.toString())
 
-    def expectedElem(index: Int): String = {
-      val key = expectedKey(index)
+    def expectedElem(key: String): String = {
       if (key == "0" || key == "1" || key == "42" || key == "52" || key == "98")
         s"new $key"
       else
         s"elem $key"
     }
 
-    val expectedSize = withSizeLimit.getOrElse(101)
+    val expected = expectedKeys.map(key => key -> expectedElem(key))
 
-    assertEquals(expectedSize, lhm.entrySet.size)
-
-    for ((entry, index) <- lhm.entrySet.asScala.zipWithIndex) {
-      assertEquals(expectedKey(index), entry.getKey)
-      assertEquals(expectedElem(index), entry.getValue)
-    }
-
-    assertEquals(expectedSize, lhm.keySet.size)
-    for ((key, index) <- lhm.keySet.asScala.zipWithIndex)
-      assertEquals(expectedKey(index), key)
-
-    assertEquals(expectedSize, lhm.entrySet.size)
-    for ((value, index) <- lhm.values.asScala.zipWithIndex)
-      assertEquals(expectedElem(index), value)
+    assertSameEntriesOrdered(expected: _*)(lhm)
   }
 
   @Test def should_iterate_in__after_accessing_elements(): Unit = {
@@ -185,24 +142,49 @@ abstract class LinkedHashMapTest extends HashMapTest {
       intKey.toString()
     }
 
-    def expectedValue(index: Int): String =
-      s"elem ${expectedKey(index)}"
-
-    val expectedSize = withSizeLimit.getOrElse(100)
-
-    assertEquals(expectedSize, lhm.entrySet.size)
-    for ((entry, index) <- lhm.entrySet.asScala.zipWithIndex) {
-      assertEquals(expectedKey(index), entry.getKey)
-      assertEquals(expectedValue(index), entry.getValue)
+    val expected = (0 until withSizeLimit.getOrElse(100)).map { i =>
+      val key = expectedKey(i)
+      key -> s"elem $key"
     }
 
-    assertEquals(expectedSize, lhm.keySet.size)
-    for ((key, index) <- lhm.keySet.asScala.zipWithIndex)
-      assertEquals(expectedKey(index), key)
+    assertSameEntriesOrdered(expected: _*)(lhm)
+  }
 
-    assertEquals(expectedSize, lhm.entrySet.size)
-    for ((value, index) <- lhm.values.asScala.zipWithIndex)
-      assertEquals(expectedValue(index), value)
+  private def assertSameEntriesOrdered[A, B](expected: (A, B)*)(
+      map: ju.Map[A, B]): Unit = {
+
+    val expectedSize = expected.size
+
+    val entrySet = map.entrySet()
+    assertEquals(expectedSize, entrySet.size())
+    val keySet = map.keySet()
+    assertEquals(expectedSize, keySet.size())
+    val values = map.values()
+    assertEquals(expectedSize, values.size())
+
+    val expectedIter = expected.iterator
+    val entryIter = entrySet.iterator()
+    val keyIter = keySet.iterator()
+    val valueIter = values.iterator()
+
+    for (_ <- 0 until expectedSize) {
+      val (key, value) = expectedIter.next()
+
+      assertTrue(entryIter.hasNext())
+      val entry = entryIter.next()
+      assertEquals(key, entry.getKey())
+      assertEquals(value, entry.getValue())
+
+      assertTrue(keyIter.hasNext())
+      assertEquals(key, keyIter.next())
+
+      assertTrue(valueIter.hasNext())
+      assertEquals(value, valueIter.next())
+    }
+
+    assertFalse(entryIter.hasNext())
+    assertFalse(keyIter.hasNext())
+    assertFalse(valueIter.hasNext())
   }
 
 }

@@ -21,7 +21,6 @@ import org.scalajs.testsuite.javalib.util.concurrent.CopyOnWriteArrayListFactory
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.CollectionsTestBase
 
-import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
 object CollectionsOnListTest extends CollectionsTestBase {
@@ -65,19 +64,20 @@ object CollectionsOnListTest extends CollectionsTestBase {
       }
     }
 
-    list.addAll(range.map(toElem).asJava)
+    list.addAll(rangeOfElems(toElem))
     ju.Collections.sort(list)
     testIfSorted(true)
 
     list.clear()
-    list.addAll(range.reverse.map(toElem).asJava)
+    list.addAll(TrivialImmutableCollection(range.reverse.map(toElem): _*))
     ju.Collections.sort(list)
     testIfSorted(true)
 
     for (seed <- List(0, 1, 42, -5432, 2341242)) {
       val rnd = new scala.util.Random(seed)
       list.clear()
-      list.addAll(range.map(_ => toElem(rnd.nextInt())).asJava)
+      list.addAll(
+          TrivialImmutableCollection(range.map(_ => toElem(rnd.nextInt())): _*))
       ju.Collections.sort(list)
       testIfSorted(false)
     }
@@ -101,19 +101,20 @@ object CollectionsOnListTest extends CollectionsTestBase {
       override def compare(o1: T, o2: T): Int = cmpFun(o1, o2)
     }
 
-    list.addAll(range.map(toElem).asJava)
+    list.addAll(rangeOfElems(toElem))
     ju.Collections.sort(list, cmp)
     testIfSorted(true)
 
     list.clear()
-    list.addAll(range.reverse.map(toElem).asJava)
+    list.addAll(TrivialImmutableCollection(range.reverse.map(toElem): _*))
     ju.Collections.sort(list, cmp)
     testIfSorted(true)
 
     for (seed <- List(0, 1, 42, -5432, 2341242)) {
       val rnd = new scala.util.Random(seed)
       list.clear()
-      list.addAll(range.map(_ => toElem(rnd.nextInt())).asJava)
+      list.addAll(
+          TrivialImmutableCollection(range.map(_ => toElem(rnd.nextInt())): _*))
       ju.Collections.sort(list, cmp)
       testIfSorted(false)
     }
@@ -133,9 +134,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
   @Test def binarySearch_on_comparables(): Unit = {
     // Test: binarySearch[T](list: List[Comparable[T]], T)
     def test[T <: AnyRef with Comparable[T]: ClassTag](toElem: Int => T): Unit = {
-      val list = factory.empty[T]
-
-      list.addAll(range.map(toElem).sorted.asJava)
+      val list = factory.fromElements[T](range.map(toElem).sorted: _*)
 
       for (i <- Seq(range.head, range.last, range(range.size/3),
         range(range.size/2), range(3*range.size/5))) {
@@ -162,12 +161,12 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
   @Test def binarySearch_with_comparator(): Unit = {
     // Test: binarySearch[T](List[T], key: T, Comparator[T]))
     def test[T: ClassTag](toElem: Int => T, cmpFun: (T, T) => Int): Unit = {
-      val list = factory.empty[T]
       val cmp = new ju.Comparator[T] {
         override def compare(o1: T, o2: T): Int = cmpFun(o1, o2)
       }
 
-      list.addAll(range.map(toElem).sortWith(cmpFun(_, _) < 0).asJava)
+      val list = factory.fromElements[T](
+          range.map(toElem).sortWith(cmpFun(_, _) < 0): _*)
 
       for (i <- Seq(range.head, range.last, range(range.size/3),
         range(range.size/2), range(3*range.size/5))) {
@@ -194,8 +193,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
   @Test def reverse(): Unit = {
     // Test: reverse(list: List[_])
     def test[T: ClassTag](toElem: Int => T): Unit = {
-      val list = factory.empty[T]
-      list.addAll(range.map(toElem).asJava)
+      val list = factory.fromElements[T](range.map(toElem): _*)
 
       def testIfInOrder(reversed: Boolean): Unit = {
         for (i <- range) {
@@ -225,10 +223,10 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
         val list = factory.empty[E]
         ju.Collections.shuffle(list)
         assertEquals(0, list.size)
-        list.addAll(range.map(toElem).asJava)
+        list.addAll(rangeOfElems(toElem))
         shuffle(list)
         assertEquals(range.size, list.size)
-        assertTrue(list.containsAll(range.map(toElem).asJava))
+        assertTrue(list.containsAll(rangeOfElems(toElem)))
       }
       test[jl.Integer](_.toInt)
       test[jl.Long](_.toLong)
@@ -250,8 +248,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
   @Test def swap(): Unit = {
     // Test: swap(List[_], Int, Int)
     def test[E: ClassTag](toElem: Int => E): Unit = {
-      val list = factory.empty[E]
-      list.addAll(range.map(toElem(_)).asJava)
+      val list = factory.fromElements[E](range.map(toElem): _*)
 
       ju.Collections.swap(list, 0, 1)
       assertEquals(toElem(1), list.get(0))
@@ -282,8 +279,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
   @Test def fill(): Unit = {
     // Test: fill[E](List[E], E)
     def test[E: ClassTag](toElem: Int => E): Unit = {
-      val list = factory.empty[E]
-      list.addAll(range.map(toElem(_)).asJava)
+      val list = factory.fromElements[E](range.map(toElem): _*)
 
       ju.Collections.fill(list, toElem(0))
       for (i <- range)
@@ -341,8 +337,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
   @Test def rotate(): Unit = {
     def modulo(a: Int, b: Int): Int = ((a % b) + b) % b
     def test[E: ClassTag](toElem: Int => E): Unit = {
-      val list = factory.empty[E]
-      list.addAll(range.map(toElem).asJava)
+      val list = factory.fromElements[E](range.map(toElem): _*)
 
       ju.Collections.rotate(list, 0)
       for (i <- range)
@@ -365,7 +360,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
         assertEquals(toElem(modulo(i + 3, range.size)), list.get(i))
 
       list.clear()
-      list.addAll((0 until 6).map(toElem).asJava)
+      list.addAll(TrivialImmutableCollection((0 until 6).map(toElem): _*))
       ju.Collections.rotate(list, 2)
       for (i <- 0 until 6)
         assertEquals(toElem(modulo(i - 2, 6)), list.get(i))
@@ -379,26 +374,25 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
 
   @Test def replaceAll(): Unit = {
     def test[E: ClassTag](toElem: Int => E): Unit = {
-      val list = factory.empty[E]
-      list.addAll(range.map(toElem).asJava)
+      val list = factory.fromElements[E](range.map(toElem): _*)
 
       ju.Collections.replaceAll(list, toElem(range.last), toElem(0))
       for (i <- range.init)
         assertEquals(toElem(i), list.get(i))
-      assertEquals(toElem(0), list.asScala.last)
+      assertEquals(toElem(0), list.get(list.size() - 1))
 
       ju.Collections.replaceAll(list, toElem(range(range.size - 2)), toElem(0))
       for (i <- range.dropRight(2))
         assertEquals(toElem(i), list.get(i))
-      assertEquals(toElem(0), list.asScala.dropRight(1).last)
-      assertEquals(toElem(0), list.asScala.last)
+      assertEquals(toElem(0), list.get(list.size() - 2))
+      assertEquals(toElem(0), list.get(list.size() - 1))
 
       ju.Collections.replaceAll(list, toElem(0), toElem(-1))
       for (i <- range.tail.dropRight(2))
         assertEquals(toElem(i), list.get(i))
-      assertEquals(toElem(-1), list.asScala.head)
-      assertEquals(toElem(-1), list.asScala.dropRight(1).last)
-      assertEquals(toElem(-1), list.asScala.last)
+      assertEquals(toElem(-1), list.get(0))
+      assertEquals(toElem(-1), list.get(list.size() - 2))
+      assertEquals(toElem(-1), list.get(list.size() - 1))
     }
 
     test[jl.Integer](_.toInt)
@@ -414,16 +408,16 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
 
       assertEquals(0, ju.Collections.indexOfSubList(source, target))
 
-      source.addAll(range.map(toElem).asJava)
+      source.addAll(rangeOfElems(toElem))
       assertEquals(0, ju.Collections.indexOfSubList(source, target))
 
-      target.addAll(range.map(toElem).asJava)
+      target.addAll(rangeOfElems(toElem))
       assertEquals(0, ju.Collections.indexOfSubList(source, target))
 
-      source.addAll(range.map(toElem).asJava)
+      source.addAll(rangeOfElems(toElem))
       assertEquals(0, ju.Collections.indexOfSubList(source, target))
 
-      source.addAll(range.map(toElem).asJava)
+      source.addAll(rangeOfElems(toElem))
       assertEquals(0, ju.Collections.indexOfSubList(source, target))
 
       source.remove(0)
@@ -446,16 +440,16 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
 
       assertEquals(0, ju.Collections.lastIndexOfSubList(source, target))
 
-      source.addAll(range.map(toElem).asJava)
+      source.addAll(rangeOfElems(toElem))
       assertEquals(range.size, ju.Collections.lastIndexOfSubList(source, target))
 
-      target.addAll(range.map(toElem).asJava)
+      target.addAll(rangeOfElems(toElem))
       assertEquals(0, ju.Collections.lastIndexOfSubList(source, target))
 
-      source.addAll(range.map(toElem).asJava)
+      source.addAll(rangeOfElems(toElem))
       assertEquals(range.size, ju.Collections.lastIndexOfSubList(source, target))
 
-      source.addAll(range.map(toElem).asJava)
+      source.addAll(rangeOfElems(toElem))
       assertEquals(2 * range.size, ju.Collections.lastIndexOfSubList(source, target))
 
       source.remove(source.size - 1)

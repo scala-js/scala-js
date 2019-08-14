@@ -21,8 +21,9 @@ import org.scalajs.testsuite.utils.AssertThrows._
 
 import java.{util => ju, lang => jl}
 
-import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
+
+import Utils._
 
 trait SetTest extends CollectionTest {
 
@@ -130,15 +131,13 @@ trait SetTest extends CollectionTest {
     assertTrue(hs.add("ONE"))
     assertTrue(hs.add("TWO"))
     assertEquals(2, hs.size())
-    val l1 = List[String]("ONE", "TWO")
-    assertTrue(hs.removeAll(l1.asJavaCollection))
+    assertTrue(hs.removeAll(TrivialImmutableCollection("ONE", "TWO")))
     assertEquals(0, hs.size())
 
     assertTrue(hs.add("ONE"))
     assertTrue(hs.add("TWO"))
     assertEquals(2, hs.size())
-    val l2 = List[String]("ONE", "THREE")
-    assertTrue(hs.retainAll(l2.asJavaCollection))
+    assertTrue(hs.retainAll(TrivialImmutableCollection("ONE", "THREE")))
     assertEquals(1, hs.size())
     assertTrue(hs.contains("ONE"))
     assertFalse(hs.contains("TWO"))
@@ -174,18 +173,16 @@ trait SetTest extends CollectionTest {
   @Test def shouldPutAWholeCollectionInto(): Unit = {
     val hs = factory.empty[String]
 
+    val l = TrivialImmutableCollection("ONE", "TWO", null)
+
     if (factory.allowsNullElement) {
-      val l = List[String]("ONE", "TWO", (null: String))
-      assertTrue(hs.addAll(l.asJavaCollection))
+      assertTrue(hs.addAll(l))
       assertEquals(3, hs.size)
       assertTrue(hs.contains("ONE"))
       assertTrue(hs.contains("TWO"))
       assertTrue(hs.contains(null))
     } else {
-      expectThrows(classOf[Exception], {
-        val l = List[String]("ONE", "TWO", (null: String))
-        hs.addAll(l.asJavaCollection)
-      })
+      expectThrows(classOf[Exception], hs.addAll(l))
     }
   }
 
@@ -194,23 +191,14 @@ trait SetTest extends CollectionTest {
 
     val l = {
       if (factory.allowsNullElement)
-        List[String]("ONE", "TWO", (null: String))
+        List("ONE", "TWO", null)
       else
-        List[String]("ONE", "TWO", "THREE")
+        List("ONE", "TWO", "THREE")
     }
-    assertTrue(hs.addAll(l.asJavaCollection))
+    assertTrue(hs.addAll(TrivialImmutableCollection(l: _*)))
     assertEquals(3, hs.size)
 
-    val iter = hs.iterator()
-    val result = {
-      for (i <- 0 until 3) yield {
-        assertTrue(iter.hasNext())
-        iter.next()
-      }
-    }
-    assertFalse(iter.hasNext())
-    assertTrue(result.asJava.containsAll(l.asJava))
-    assertTrue(l.asJava.containsAll(result.asJava))
+    assertIteratorSameElementsAsSet(l: _*)(hs.iterator())
   }
 }
 

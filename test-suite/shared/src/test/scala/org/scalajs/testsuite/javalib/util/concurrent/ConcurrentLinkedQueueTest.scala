@@ -17,11 +17,11 @@ import java.{util => ju}
 
 import org.junit.Assert._
 import org.junit.Test
+
 import org.scalajs.testsuite.javalib.util.{AbstractCollectionFactory, AbstractCollectionTest}
 
-import scala.collection.JavaConverters._
-import scala.language.implicitConversions
 import scala.reflect.ClassTag
+import org.scalajs.testsuite.javalib.util.TrivialImmutableCollection
 
 class ConcurrentLinkedQueueTest extends AbstractCollectionTest {
 
@@ -86,18 +86,18 @@ class ConcurrentLinkedQueueTest extends AbstractCollectionTest {
   }
 
   @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
-    val l = Set(1, 5, 2, 3, 4).asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val pq = factory.newFrom(l)
 
     assertEquals(5, pq.size())
-    for (i <- l.asScala) {
+    for (i <- List(1, 5, 2, 3, 4)) {
       assertEquals(i, pq.poll())
     }
     assertTrue(pq.isEmpty)
   }
 
   @Test def should_be_cleared_in_a_single_operation(): Unit = {
-    val l = Set(1, 5, 2, 3, 4).asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val pq = factory.newFrom(l)
 
     assertEquals(5, pq.size())
@@ -106,7 +106,7 @@ class ConcurrentLinkedQueueTest extends AbstractCollectionTest {
   }
 
   @Test def should_add_multiple_elemnt_in_one_operation(): Unit = {
-    val l = Set(1, 5, 2, 3, 4).asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val pq = factory.empty[Int]
 
     assertEquals(0, pq.size())

@@ -16,8 +16,6 @@ import org.junit.Assert._
 
 import scala.language.implicitConversions
 
-import scala.collection.JavaConverters._
-
 import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
@@ -179,7 +177,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
   }
 
   @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
-    val l = Set(1, 5, 2, 3, 4).asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val ts = factory.newFrom(l)
 
     assertEquals(5, ts.size())
@@ -191,7 +189,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
   }
 
   @Test def should_be_cleared_in_a_single_operation(): Unit = {
-    val l = Set(1, 5, 2, 3, 4).asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val ts = factory.empty[Int]
 
     ts.addAll(l)
@@ -202,7 +200,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
   }
 
   @Test def should_add_multiple_element_in_one_operation(): Unit = {
-    val l = Set(1, 5, 2, 3, 4).asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val ts = factory.empty[Int]
 
     assertEquals(0, ts.size())
@@ -263,18 +261,16 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
   }
 
   @Test def should_not_put_a_whole_Collection_with_null_elements_into(): Unit = {
-    val l = List[String]("ONE", "TWO", (null: String))
+    val l = TrivialImmutableCollection("ONE", "TWO", (null: String))
     val ts1 = factory.empty[String]
 
     if (factory.allowsNullElement) {
-      assertTrue(ts1.addAll(l.asJava))
+      assertTrue(ts1.addAll(l))
       assertTrue(ts1.contains(null))
       assertTrue(ts1.contains("ONE"))
       assertFalse(ts1.contains("THREE"))
     } else {
-      expectThrows(classOf[Exception], {
-        ts1.addAll(l.asJavaCollection)
-      })
+      expectThrows(classOf[Exception], ts1.addAll(l))
     }
   }
 
@@ -292,7 +288,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
   @Test def should_throw_exceptions_on_access_outside_bound_on_views(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
-    val l = Set(2, 3, 6).asJavaCollection
+    val l = TrivialImmutableCollection(2, 3, 6)
     val ts = factory.empty[Int]
     ts.addAll(l)
 

@@ -16,11 +16,15 @@ import java.{lang => jl, util => ju}
 
 import org.scalajs.testsuite.utils.AssertThrows._
 
-import scala.collection.JavaConverters._
+import org.scalajs.testsuite.javalib.util.TrivialImmutableCollection
+import org.scalajs.testsuite.javalib.util.TrivialImmutableMap
 
 trait CollectionsTestBase {
 
   val range: Range = 0 to 30
+
+  def rangeOfElems[A](toElem: Int => A): TrivialImmutableCollection[A] =
+    TrivialImmutableCollection(range.map(toElem): _*)
 
   class A extends jl.Comparable[A] {
     def compareTo(o: A): Int = this.##.compareTo(o.##)
@@ -39,15 +43,13 @@ trait CollectionsTestBase {
   }
 
   def testCollectionUnmodifiability[E](coll: ju.Collection[E], elem: E): Unit = {
+    val empty = TrivialImmutableCollection[E]()
     expectThrows(classOf[UnsupportedOperationException], coll.add(elem))
-    expectThrows(classOf[UnsupportedOperationException],
-        coll.addAll(Seq.empty[E].asJava))
+    expectThrows(classOf[UnsupportedOperationException], coll.addAll(empty))
     expectThrows(classOf[UnsupportedOperationException], coll.clear())
     expectThrows(classOf[UnsupportedOperationException], coll.remove(elem))
-    expectThrows(classOf[UnsupportedOperationException],
-        coll.removeAll(Seq.empty[E].asJava))
-    expectThrows(classOf[UnsupportedOperationException],
-        coll.retainAll(Seq.empty[E].asJava))
+    expectThrows(classOf[UnsupportedOperationException], coll.removeAll(empty))
+    expectThrows(classOf[UnsupportedOperationException], coll.retainAll(empty))
     testIteratorsUnmodifiability(() => coll.iterator())
   }
 
@@ -71,7 +73,7 @@ trait CollectionsTestBase {
     testCollectionUnmodifiability(list, elem)
     expectThrows(classOf[UnsupportedOperationException], list.add(0, elem))
     expectThrows(classOf[UnsupportedOperationException],
-        list.addAll(0, Seq.empty[E].asJava))
+        list.addAll(0, TrivialImmutableCollection[E]()))
     expectThrows(classOf[UnsupportedOperationException], list.remove(0))
     expectThrows(classOf[UnsupportedOperationException], list.set(0, elem))
     def testSublist(sl: ju.List[E]): Unit = {
@@ -100,7 +102,7 @@ trait CollectionsTestBase {
     expectThrows(classOf[UnsupportedOperationException], map.clear())
     expectThrows(classOf[UnsupportedOperationException], map.put(key, value))
     expectThrows(classOf[UnsupportedOperationException],
-        map.putAll(Map.empty[K, V].asJava))
+        map.putAll(TrivialImmutableMap[K, V]()))
     testSetUnmodifiability(map.entrySet(),
         new ju.AbstractMap.SimpleImmutableEntry(key, value))
     testSetUnmodifiability(map.keySet(), key)

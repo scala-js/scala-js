@@ -12,6 +12,7 @@
 
 package org.scalajs.testsuite.javalib.util
 
+import java.{util => ju}
 import java.util.Properties
 
 import org.junit.Test
@@ -21,7 +22,7 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
 
-import scala.collection.JavaConverters._
+import Utils._
 
 class PropertiesTest {
 
@@ -63,18 +64,18 @@ class PropertiesTest {
 
   @Test def propertyNames(): Unit = {
     val prop = new Properties()
-    assertEquals(0, prop.propertyNames().asScala.size)
+    assertTrue(enumerationIsEmpty(prop.propertyNames()))
     prop.setProperty("a", "A")
     prop.setProperty("b", "B")
     prop.setProperty("c", "C")
-    assertEquals(3, prop.propertyNames().asScala.size)
-    assertEquals(Set("a", "b", "c"), prop.propertyNames().asScala.toSet)
+    assertEquals(3, enumerationSize(prop.propertyNames()))
+    assertEnumSameElementsAsSet[Any]("a", "b", "c")(prop.propertyNames())
 
     val prop2 = new Properties(prop)
     prop.setProperty("c", "CC")
     prop.setProperty("d", "D")
-    assertEquals(4, prop2.propertyNames().asScala.size)
-    assertEquals(Set("a", "b", "c", "d"), prop2.propertyNames().asScala.toSet)
+    assertEquals(4, enumerationSize(prop2.propertyNames()))
+    assertEnumSameElementsAsSet[Any]("a", "b", "c", "d")(prop2.propertyNames())
   }
 
   @Test def propertyNamesWithBadContents(): Unit = {
@@ -90,7 +91,7 @@ class PropertiesTest {
     prop.remove(1.asInstanceOf[AnyRef])
 
     prop.put("1", 1.asInstanceOf[AnyRef])
-    assertEquals(Set("a", "b", "c", "1"), prop.propertyNames().asScala.toSet)
+    assertEnumSameElementsAsSet[Any]("a", "b", "c", "1")(prop.propertyNames())
     prop.remove("1")
 
     val prop2 = new Properties(prop)
@@ -102,7 +103,7 @@ class PropertiesTest {
     prop2.remove(1.asInstanceOf[AnyRef])
 
     prop2.put("1", 1.asInstanceOf[AnyRef])
-    assertEquals(Set("a", "b", "c", "d", "1"), prop2.propertyNames().asScala.toSet)
+    assertEnumSameElementsAsSet[Any]("a", "b", "c", "d", "1")(prop2.propertyNames())
   }
 
   @Test def stringPropertyNames(): Unit = {
@@ -112,13 +113,13 @@ class PropertiesTest {
     prop.setProperty("b", "B")
     prop.setProperty("c", "C")
     assertEquals(3, prop.stringPropertyNames().size)
-    assertEquals(Set("a", "b", "c"), prop.stringPropertyNames().asScala.toSet)
+    assertCollSameElementsAsSet("a", "b", "c")(prop.stringPropertyNames())
 
     val prop2 = new Properties(prop)
     prop.setProperty("c", "CC")
     prop.setProperty("d", "D")
     assertEquals(4, prop2.stringPropertyNames().size)
-    assertEquals(Set("a", "b", "c", "d"), prop2.stringPropertyNames().asScala.toSet)
+    assertCollSameElementsAsSet("a", "b", "c", "d")(prop2.stringPropertyNames())
   }
 
   @Test def stringPropertyNamesWithBadContents(): Unit = {
@@ -130,11 +131,11 @@ class PropertiesTest {
     prop.setProperty("c", "C")
 
     prop.put(1.asInstanceOf[AnyRef], "2")
-    assertEquals(Set("a", "b", "c"), prop.stringPropertyNames().asScala.toSet)
+    assertCollSameElementsAsSet("a", "b", "c")(prop.stringPropertyNames())
     prop.remove(1.asInstanceOf[AnyRef])
 
     prop.put("1", 1.asInstanceOf[AnyRef])
-    assertEquals(Set("a", "b", "c"), prop.stringPropertyNames().asScala.toSet)
+    assertCollSameElementsAsSet("a", "b", "c")(prop.stringPropertyNames())
     prop.remove("1")
 
     val prop2 = new Properties(prop)
@@ -142,10 +143,10 @@ class PropertiesTest {
     prop.setProperty("d", "D")
 
     prop2.put(1.asInstanceOf[AnyRef], "2")
-    assertEquals(Set("a", "b", "c", "d"), prop2.stringPropertyNames().asScala.toSet)
+    assertCollSameElementsAsSet("a", "b", "c", "d")(prop2.stringPropertyNames())
     prop2.remove(1.asInstanceOf[AnyRef])
 
     prop2.put("1", 1.asInstanceOf[AnyRef])
-    assertEquals(Set("a", "b", "c", "d"), prop2.stringPropertyNames().asScala.toSet)
+    assertCollSameElementsAsSet("a", "b", "c", "d")(prop2.stringPropertyNames())
   }
 }
