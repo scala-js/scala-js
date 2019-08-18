@@ -25,27 +25,6 @@ trait ListTest extends CollectionTest {
 
   def factory: ListFactory
 
-  def testListApi(): Unit = {
-    testCollectionApi()
-    shouldStoreStrings_List()
-    shouldStoreIntegers_List()
-    shouldStoreDoubles_List()
-    shouldStoreCustomObjects_List()
-    shouldRemoveStoredElements_List()
-    shouldRemoveStoredElementsOnDoubleCornerCases_List()
-    shouldBeClearedWithOneOperation_List()
-    shouldCheckContainedPresence_List()
-    shouldCheckContainedPresenceForDoubleCornerCases_List()
-    shouldGiveAProperSetOperation()
-    shouldGiveProperIteratorOverElements_List()
-    shouldGiveProperListIteratorOverElements()
-    shouldAddElementsAtAGivenIndex()
-    shouldGiveTheFirstIndexOfAnElement()
-    shouldGiveTheFirstOrLastIndexOfAnElementForDoubleCornerCases()
-    shouldGiveASublistBackedUpByTheOriginalList()
-    shouldIterateAndModifyElementsWithAListIteratorIfAllowed()
-  }
-
   @Test def shouldStoreStrings_List(): Unit = {
     val lst = factory.empty[String]
 
