@@ -322,9 +322,14 @@ object ScalaJSPluginInternal {
 
             IO.createDirectory(output.getParentFile)
 
-            linker.link(ir, moduleInitializers,
-                AtomicWritableFileVirtualJSFile(output),
-                sbtLogger2ToolsLogger(log))
+            try {
+              linker.link(ir, moduleInitializers,
+                  AtomicWritableFileVirtualJSFile(output),
+                  sbtLogger2ToolsLogger(log))
+            } catch {
+              case e: LinkingException =>
+                throw new MessageOnlyException(e.getMessage)
+            }
 
             logIRCacheStats(log)
 
