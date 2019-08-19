@@ -570,8 +570,10 @@ object Printers {
             else
               print(", ")
             print(binding._1)
-            print(" as ")
-            print(binding._2)
+            if (binding._1.name != binding._2.name) {
+              print(" as ")
+              print(binding._2)
+            }
             rest = rest.tail
           }
           print(" } from ")
