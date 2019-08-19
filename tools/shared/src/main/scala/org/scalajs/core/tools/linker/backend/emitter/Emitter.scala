@@ -202,7 +202,8 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
           implicit val pos = pos0
           val from = js.StringLiteral(module)
           val moduleBinding = jsGen.envModuleField(module).ident
-          val importStat = js.ImportNamespace(moduleBinding, from)
+          val bindings = List((js.ExportName(moduleBinding.name), moduleBinding))
+          val importStat = js.Import(bindings, from)
           builder.addJSTree(importStat)
         }
 
