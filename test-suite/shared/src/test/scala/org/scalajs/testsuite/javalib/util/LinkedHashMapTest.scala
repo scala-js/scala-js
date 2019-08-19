@@ -207,13 +207,6 @@ abstract class LinkedHashMapTest extends HashMapTest {
 
 }
 
-object LinkedHashMapFactory {
-  def allFactories: Iterator[MapFactory] = {
-    Iterator(new LinkedHashMapFactory(true, Some(50)), new LinkedHashMapFactory(true, None),
-        new LinkedHashMapFactory(false, Some(50)), new LinkedHashMapFactory(false, None))
-  }
-}
-
 class LinkedHashMapFactory(val accessOrder: Boolean,
     override val withSizeLimit: Option[Int])
     extends HashMapFactory {

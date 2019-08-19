@@ -20,11 +20,6 @@ class HashMapTest extends MapTest {
   def factory(): HashMapFactory = new HashMapFactory
 }
 
-object HashMapFactory {
-  def allFactories: Iterator[MapFactory] =
-    Iterator(new HashMapFactory) ++ LinkedHashMapFactory.allFactories
-}
-
 class HashMapFactory extends AbstractMapFactory {
   override def implementationName: String =
     "java.util.HashMap"

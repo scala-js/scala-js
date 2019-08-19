@@ -50,10 +50,6 @@ trait SortedMapTest extends MapTest {
   }
 }
 
-object SortedMapFactory {
-  def allFactories: Iterator[SortedMapFactory] = Iterator.empty
-}
-
 trait SortedMapFactory extends MapFactory {
   def empty[K: ClassTag, V: ClassTag]: ju.SortedMap[K, V]
 }

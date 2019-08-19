@@ -170,11 +170,6 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
   }
 }
 
-object ArrayDequeFactory {
-  def allFactories: Iterator[ArrayDequeFactory] =
-    Iterator(new ArrayDequeFactory())
-}
-
 class ArrayDequeFactory extends AbstractCollectionFactory with DequeFactory {
   override def implementationName: String =
     "java.util.ArrayDeque"

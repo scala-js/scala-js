@@ -20,11 +20,6 @@ trait DequeTest extends CollectionTest {
   def factory: DequeFactory
 }
 
-object DequeFactory {
-  def allFactories: Iterator[DequeFactory] =
-    ArrayDequeFactory.allFactories
-}
-
 trait DequeFactory extends CollectionFactory {
   def empty[E: ClassTag]: ju.Deque[E]
 }

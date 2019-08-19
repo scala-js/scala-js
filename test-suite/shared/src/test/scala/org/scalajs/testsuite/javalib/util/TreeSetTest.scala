@@ -343,11 +343,6 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
   }
 }
 
-object TreeSetFactory extends TreeSetFactory {
-  def allFactories: Iterator[TreeSetFactory] =
-    Iterator(new TreeSetFactory, new TreeSetWithNullFactory)
-}
-
 class TreeSetFactory extends AbstractSetFactory with NavigableSetFactory
     with SortedSetFactory {
   def implementationName: String =

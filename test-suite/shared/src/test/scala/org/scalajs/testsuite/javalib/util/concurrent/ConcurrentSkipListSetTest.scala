@@ -410,11 +410,6 @@ class ConcurrentSkipListSetTest {
   }
 }
 
-object ConcurrentSkipListSetFactory extends ConcurrentSkipListSetFactory {
-  def allFactories: Iterator[ConcurrentSkipListSetFactory] =
-    Iterator(new ConcurrentSkipListSetFactory)
-}
-
 class ConcurrentSkipListSetFactory extends NavigableSetFactory {
   def implementationName: String =
     "java.util.concurrent.ConcurrentSkipListSet"

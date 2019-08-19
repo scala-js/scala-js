@@ -214,11 +214,6 @@ trait SetTest extends CollectionTest {
   }
 }
 
-object SetFactory {
-  def allFactories: Iterator[SetFactory] =
-    AbstractSetFactory.allFactories ++ SortedSetFactory.allFactories ++ NavigableSetFactory.allFactories
-}
-
 trait SetFactory extends CollectionFactory {
   def empty[E: ClassTag]: ju.Set[E]
 
