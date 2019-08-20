@@ -120,6 +120,19 @@ private[emitter] object CoreJSLib {
 
     private def defineJSBuiltinsSnapshotsAndPolyfills(): Unit = {
       def genPolyfillFor(builtinName: String): Tree = builtinName match {
+        case "is" =>
+          val x = varRef("x")
+          val y = varRef("y")
+          Function(arrow = false, paramList(x, y), Return {
+            If(x === y, {
+              // +0.0 must be different from -0.0
+              (x !== 0) || ((int(1) / x) === (int(1) / y))
+            }, {
+              // NaN must be equal to NaN
+              (x !== x) && (y !== y)
+            })
+          })
+
         case "imul" =>
           val a = varRef("a")
           val b = varRef("b")
@@ -259,6 +272,11 @@ private[emitter] object CoreJSLib {
               If((i & 0xc0000000) === 0, Block(i := i << 2, r := r + 2), Skip()),
               Return(r + (i >> 31))
           ))
+      }
+
+      if (!useECMAScript2015) {
+        buf += const(envField("is"),
+            genIdentBracketSelect(ObjectRef, "is") || genPolyfillFor("is"))
       }
 
       buf ++= List("imul", "fround", "clz32").map { builtinName =>

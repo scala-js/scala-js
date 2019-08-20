@@ -103,23 +103,9 @@ class PriorityQueue[E] private (
   private def removeExact(o: Any): Unit = {
     val len = inner.length
     var i = 1
-
-    /* This is tricky. We must use reference equality to find the exact object
-     * to remove, but if `o` is a positive or negative 0.0 or NaN, we must use
-     * `equals` to delete the correct element (i.e., not confuse +0.0 and -0.0,
-     * and considering `NaN` equal to itself).
-     */
-    o match {
-      case o: Double if o == 0.0 || java.lang.Double.isNaN(o) =>
-        while (i != len && !o.equals(inner(i))) {
-          i += 1
-        }
-      case _ =>
-        while (i != len && (o.asInstanceOf[AnyRef] ne inner(i).asInstanceOf[AnyRef])) {
-          i += 1
-        }
+    while (i != len && (o.asInstanceOf[AnyRef] ne inner(i).asInstanceOf[AnyRef])) {
+      i += 1
     }
-
     if (i == len)
       throw new ConcurrentModificationException()
     removeAt(i)

@@ -44,7 +44,7 @@ object BoxesRunTime {
   def unboxToDouble(d: Any): Double = d.asInstanceOf[Double]
 
   def equals(x: Object, y: Object): Boolean =
-    if (x eq y) true
+    if (scala.scalajs.js.special.strictEquals(x, y)) true
     else equals2(x, y)
 
   @inline // only called by equals(), not by codegen

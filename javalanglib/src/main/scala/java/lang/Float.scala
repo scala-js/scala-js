@@ -30,7 +30,7 @@ final class Float private () extends Number with Comparable[Float] {
   @inline def doubleValue(): scala.Double = floatValue.toDouble
 
   @inline override def equals(that: Any): scala.Boolean =
-    doubleValue.equals(that)
+    this eq that.asInstanceOf[AnyRef]
 
   @inline override def hashCode(): Int =
     Float.hashCode(floatValue)

@@ -502,7 +502,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         RecordValue(tpe, elems map transformExpr)
 
       case IsInstanceOf(expr, ClassRef(ObjectClass)) =>
-        transformExpr(BinaryOp(BinaryOp.!==, expr, Null()))
+        transformExpr(JSBinaryOp(JSBinaryOp.!==, expr, Null()))
 
       case IsInstanceOf(expr, typeRef) =>
         trampoline {
@@ -512,7 +512,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
               if (isSubtype(texpr.tpe.base, typeRefTpe)) {
                 if (texpr.tpe.isNullable)
-                  BinaryOp(BinaryOp.!==, finishTransformExpr(texpr), Null())
+                  JSBinaryOp(JSBinaryOp.!==, finishTransformExpr(texpr), Null())
                 else
                   Block(finishTransformStat(texpr), BooleanLiteral(true))
               } else {
@@ -1137,7 +1137,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             PreTransTree(finishTransformBindings(bindingsAndStats, tree), tpe)
         }
 
-      case _:PreTransUnaryOp | _:PreTransBinaryOp =>
+      case _:PreTransUnaryOp | _:PreTransBinaryOp | _:PreTransJSBinaryOp =>
         PreTransTree(finishTransformExpr(preTrans))
 
       case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
@@ -1181,7 +1181,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case PreTransBlock(_, result) =>
         resolveRecordType(result)
 
-      case _:PreTransUnaryOp | _:PreTransBinaryOp =>
+      case _:PreTransUnaryOp | _:PreTransBinaryOp | _:PreTransJSBinaryOp =>
         None
 
       case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
@@ -1238,6 +1238,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         UnaryOp(op, finishTransformExpr(lhs))
       case PreTransBinaryOp(op, lhs, rhs) =>
         BinaryOp(op, finishTransformExpr(lhs), finishTransformExpr(rhs))
+      case PreTransJSBinaryOp(op, lhs, rhs) =>
+        JSBinaryOp(op, finishTransformExpr(lhs), finishTransformExpr(rhs))
       case PreTransLocalDef(localDef) =>
         localDef.newReplacement
 
@@ -1315,6 +1317,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           finishNoSideEffects
       }
 
+    case PreTransJSBinaryOp(op, lhs, rhs) =>
+      if (op == JSBinaryOp.=== || op == JSBinaryOp.!==)
+        Block(finishTransformStat(lhs), finishTransformStat(rhs))(stat.pos)
+      else // other operators can have side effects that we must preserve
+        finishTransformExpr(stat)
     case PreTransLocalDef(_) =>
       Skip()(stat.pos)
     case PreTransRecordTree(tree, _, _) =>
@@ -2436,9 +2443,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
              * the equals() method has been inlined as a reference
              * equality test.
              */
-            case (BinaryOp(BinaryOp.===, VarRef(lhsIdent), Null()),
-                BinaryOp(BinaryOp.===, VarRef(rhsIdent), Null()),
-                BinaryOp(BinaryOp.===, VarRef(lhsIdent2), VarRef(rhsIdent2)))
+            case (JSBinaryOp(JSBinaryOp.===, VarRef(lhsIdent), Null()),
+                JSBinaryOp(JSBinaryOp.===, VarRef(rhsIdent), Null()),
+                JSBinaryOp(JSBinaryOp.===, VarRef(lhsIdent2), VarRef(rhsIdent2)))
                 if lhsIdent2 == lhsIdent && rhsIdent2 == rhsIdent =>
               elsep
 
@@ -2683,6 +2690,16 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             if (newOp == -1) default
             else PreTransBinaryOp(newOp, l, r)
 
+          case PreTransJSBinaryOp(innerOp, l, r) =>
+            val newOp = innerOp match {
+              case JSBinaryOp.=== => JSBinaryOp.!==
+              case JSBinaryOp.!== => JSBinaryOp.===
+
+              case _ => -1
+            }
+            if (newOp == -1) default
+            else PreTransJSBinaryOp(newOp, l, r)
+
           case _ =>
             default
         }
@@ -2827,13 +2844,17 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
    *  The result is always known statically.
    *
    *  Bytes, Shorts, Ints, Floats and Doubles all live in the same "space" for
-   *  `===` comparison, since they all upcast as primitive numbers.
+   *  `===` comparison, since they all upcast as primitive numbers. If
+   *  `isJSStrictEq` is false, they are compared with `equals()` instead of
+   *  `==` so that `NaN === NaN` and `+0.0 !== -0.0`.
    *
    *  Chars and Longs, however, never compare as `===`, since they are boxed
    *  chars and instances of `RuntimeLong`, respectively---unless we are using
    *  `BigInt`s for `Long`s, in which case those can be `===`.
    */
-  private def literal_===(lhs: Literal, rhs: Literal): Boolean = {
+  private def literal_===(lhs: Literal, rhs: Literal,
+      isJSStrictEq: Boolean): Boolean = {
+
     object AnyNumLiteral {
       def unapply(tree: Literal): Option[Double] = tree match {
         case ByteLiteral(v)   => Some(v.toDouble)
@@ -2849,7 +2870,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case (BooleanLiteral(l), BooleanLiteral(r)) => l == r
       case (StringLiteral(l), StringLiteral(r))   => l == r
       case (ClassOf(l), ClassOf(r))               => l == r
-      case (AnyNumLiteral(l), AnyNumLiteral(r))   => l == r
+      case (AnyNumLiteral(l), AnyNumLiteral(r))   => if (isJSStrictEq) l == r else l.equals(r)
       case (LongLiteral(l), LongLiteral(r))       => l == r && !useRuntimeLong
       case (Undefined(), Undefined())             => true
       case (Null(), Null())                       => true
@@ -2882,8 +2903,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
 
     (op: @switch) match {
-      case === => BooleanLiteral(literal_===(lhs, rhs))
-      case !== => BooleanLiteral(!literal_===(lhs, rhs))
+      case === => BooleanLiteral(literal_===(lhs, rhs, isJSStrictEq = false))
+      case !== => BooleanLiteral(!literal_===(lhs, rhs, isJSStrictEq = false))
 
       case String_+ =>
         throw new IllegalArgumentException(
@@ -3034,6 +3055,16 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
   }
 
+  private val MaybeHijackedPrimNumberClasses = {
+    /* In theory, we could figure out the ancestors from the global knowledge,
+     * but that would be overkill.
+     */
+    import Definitions._
+    Set(BoxedByteClass, BoxedShortClass, BoxedIntegerClass, BoxedFloatClass,
+        BoxedDoubleClass, ObjectClass, "jl_CharSequence",
+        "Ljava_io_Serializable", "jl_Comparable", "jl_Number")
+  }
+
   private def foldBinaryOpNonConstant(op: BinaryOp.Code, lhs: PreTransform,
       rhs: PreTransform)(
       implicit pos: Position): PreTransform = {
@@ -3044,15 +3075,48 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     (op: @switch) match {
       case === | !== =>
-        val positive = (op == ===)
-        (lhs, rhs) match {
-          case (_, PreTransLit(Null())) if !lhs.tpe.isNullable =>
-            Block(
-                finishTransformStat(lhs),
-                BooleanLiteral(!positive)).toPreTransform
+        // Try to optimize as a primitive JS strict equality
 
-          case (PreTransLit(_), _) => foldBinaryOp(op, rhs, lhs)
-          case _                   => default
+        def canBePrimitiveNum(tpe: RefinedType): Boolean = tpe.base match {
+          case AnyType | ByteType | ShortType | IntType | FloatType | DoubleType =>
+            true
+          case ClassType(cls) =>
+            /* If `cls` is a concrete superclass of a boxed number class, then
+             * it can be exact, and in that case we know that it cannot be a
+             * primitive number. In practice this happens only for
+             * `java.lang.Object`, and especially for code generated for
+             * non-local returns in Scala.
+             */
+            !tpe.isExact && MaybeHijackedPrimNumberClasses.contains(cls)
+          case _ =>
+            false
+        }
+
+        def isWhole(tpe: RefinedType): Boolean = tpe.base match {
+          case ByteType | ShortType | IntType =>
+            true
+          case ClassType(cls) =>
+            cls == Definitions.BoxedByteClass ||
+            cls == Definitions.BoxedShortClass ||
+            cls == Definitions.BoxedIntegerClass
+          case _ =>
+            false
+        }
+
+        val lhsTpe = lhs.tpe
+        val rhsTpe = rhs.tpe
+        val canOptimizeAsJSStrictEq = (
+            !canBePrimitiveNum(lhsTpe) ||
+            !canBePrimitiveNum(rhsTpe) ||
+            (isWhole(lhsTpe) && isWhole(rhsTpe))
+        )
+
+        if (canOptimizeAsJSStrictEq) {
+          foldJSBinaryOp(
+              if (op == ===) JSBinaryOp.=== else JSBinaryOp.!==,
+              lhs, rhs)
+        } else {
+          default
         }
 
       case String_+ =>
@@ -3437,7 +3501,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val positive = (op == Long_==)
         (lhs, rhs) match {
           case (LongFromInt(x), LongFromInt(y)) =>
-            foldBinaryOp(if (positive) === else !==, x, y)
+            foldBinaryOp(if (positive) Int_== else Int_!=, x, y)
           case (LongFromInt(x), PreTransLit(LongLiteral(y))) =>
             assert(y > Int.MaxValue || y < Int.MinValue)
             Block(finishTransformStat(x),
@@ -3836,6 +3900,36 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               BooleanLiteral(false)).toPreTransform
         }
       }
+    }
+  }
+
+  private def foldJSBinaryOp(op: JSBinaryOp.Code, lhs: PreTransform,
+      rhs: PreTransform)(
+      implicit pos: Position): PreTransform = {
+    import JSBinaryOp._
+
+    def default: PreTransform =
+      PreTransJSBinaryOp(op, lhs, rhs)
+
+    op match {
+      case JSBinaryOp.=== | JSBinaryOp.!== =>
+        val positive = (op == JSBinaryOp.===)
+        (lhs, rhs) match {
+          case (PreTransLit(l), PreTransLit(r)) =>
+            val isEq = literal_===(l, r, isJSStrictEq = true)
+            PreTransLit(BooleanLiteral(if (positive) isEq else !isEq))
+
+          case (_, PreTransLit(Null())) if !lhs.tpe.isNullable =>
+            Block(
+                finishTransformStat(lhs),
+                BooleanLiteral(!positive)).toPreTransform
+
+          case (PreTransLit(_), _) => foldBinaryOp(op, rhs, lhs)
+          case _                   => default
+        }
+
+      case _ =>
+        default
     }
   }
 
@@ -4674,6 +4768,8 @@ private[optimizer] object OptimizerCore {
         lhs.contains(localDef)
       case PreTransBinaryOp(_, lhs, rhs) =>
         lhs.contains(localDef) || rhs.contains(localDef)
+      case PreTransJSBinaryOp(_, lhs, rhs) =>
+        lhs.contains(localDef) || rhs.contains(localDef)
       case PreTransLocalDef(thisLocalDef) =>
         thisLocalDef.contains(localDef)
       case _: PreTransGenTree =>
@@ -4814,6 +4910,19 @@ private[optimizer] object OptimizerCore {
     val tpe: RefinedType = RefinedType(BinaryOp.resultTypeOf(op))
   }
 
+  /** A `PreTransform` for a `JSBinaryOp`. */
+  private final case class PreTransJSBinaryOp(op: JSBinaryOp.Code,
+      lhs: PreTransform, rhs: PreTransform)(implicit val pos: Position)
+      extends PreTransResult {
+
+    val tpe: RefinedType = RefinedType(JSBinaryOp.resultTypeOf(op))
+  }
+
+  private object PreTransJSBinaryOp {
+    def isWorthPreTransforming(op: JSBinaryOp.Code): Boolean =
+      op == JSBinaryOp.=== || op == JSBinaryOp.!==
+  }
+
   /** A virtual reference to a `LocalDef`. */
   private final case class PreTransLocalDef(localDef: LocalDef)(
       implicit val pos: Position) extends PreTransResult {
@@ -4880,6 +4989,8 @@ private[optimizer] object OptimizerCore {
           PreTransUnaryOp(op, lhs.toPreTransform)(self.pos)
         case BinaryOp(op, lhs, rhs) =>
           PreTransBinaryOp(op, lhs.toPreTransform, rhs.toPreTransform)(self.pos)
+        case JSBinaryOp(op, lhs, rhs) if PreTransJSBinaryOp.isWorthPreTransforming(op) =>
+          PreTransJSBinaryOp(op, lhs.toPreTransform, rhs.toPreTransform)(self.pos)
         case _ =>
           PreTransTree(self)
       }

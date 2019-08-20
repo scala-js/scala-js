@@ -1367,7 +1367,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       private def mkOverrideNumsCond(numRef: js.VarRef,
           numBounds: (Int, Int))(implicit pos: Position) = numBounds match {
         case (lo, hi) if lo == hi =>
-          js.BinaryOp(js.BinaryOp.===, js.IntLiteral(lo), numRef)
+          js.BinaryOp(js.BinaryOp.Int_==, js.IntLiteral(lo), numRef)
 
         case (lo, hi) if lo == hi - 1 =>
           val lhs = js.BinaryOp(js.BinaryOp.Int_==, numRef, js.IntLiteral(lo))
@@ -4552,6 +4552,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           // js.import(arg)
           val arg = genArgs1
           js.JSImportCall(arg)
+
+        case STRICT_EQ =>
+          // js.special.strictEquals(arg1, arg2)
+          val (arg1, arg2) = genArgs2
+          js.JSBinaryOp(js.JSBinaryOp.===, arg1, arg2)
 
         case IN =>
           // js.special.in(arg1, arg2)

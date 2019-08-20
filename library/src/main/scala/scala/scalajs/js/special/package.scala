@@ -51,6 +51,20 @@ package object special {
     result
   }
 
+  /** Tests whether two values are equal according to ECMAScript's
+   *  *Strict Equality Comparison* (`===`).
+   *
+   *  This is equivalent to `x eq y`, except that:
+   *
+   *  - `strictEquals(NaN, NaN)` is `false` whereas `NaN eq NaN` is `true`
+   *  - `strictEquals(+0.0, -0.0)` is `true` whereas `+0.0 eq -0.0` is `false`
+   *
+   *  @return
+   *    the result of `x === y` where `===` is the ECMAScript operator.
+   */
+  def strictEquals(x: scala.Any, y: scala.Any): Boolean =
+    throw new java.lang.Error("stub")
+
   /** Tests whether an object has a given enumerable property in its prototype
    *  chain.
    *
