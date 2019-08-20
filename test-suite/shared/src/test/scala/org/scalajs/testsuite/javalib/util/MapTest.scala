@@ -1014,11 +1014,6 @@ object MapTest {
     new ju.AbstractMap.SimpleImmutableEntry(key, value)
 }
 
-object MapFactory {
-  def allFactories: Iterator[MapFactory] =
-    HashMapFactory.allFactories ++ SortedMapFactory.allFactories ++ ConcurrentMapFactory.allFactories
-}
-
 trait MapFactory {
   def implementationName: String
 

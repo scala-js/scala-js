@@ -227,11 +227,6 @@ trait CollectionTest {
   }
 }
 
-object CollectionFactory {
-  def allFactories: Iterator[CollectionFactory] =
-    ListFactory.allFactories ++ SetFactory.allFactories
-}
-
 trait CollectionFactory {
   def implementationName: String
   def empty[E: ClassTag]: ju.Collection[E]

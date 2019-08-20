@@ -228,11 +228,6 @@ class ConcurrentHashMapTest extends MapTest {
   }
 }
 
-object ConcurrentHashMapFactory extends ConcurrentHashMapFactory {
-  def allFactories: Iterator[ConcurrentHashMapFactory] =
-    Iterator(ConcurrentHashMapFactory)
-}
-
 class ConcurrentHashMapFactory extends ConcurrentMapFactory {
   def implementationName: String =
     "java.util.concurrent.ConcurrentHashMap"

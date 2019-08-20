@@ -137,11 +137,6 @@ trait SortedSetTest extends SetTest {
   }
 }
 
-object SortedSetFactory {
-  def allFactories: Iterator[SortedSetFactory] =
-    Iterator.empty
-}
-
 trait SortedSetFactory extends SetFactory {
   def empty[E: ClassTag]: ju.SortedSet[E]
 }

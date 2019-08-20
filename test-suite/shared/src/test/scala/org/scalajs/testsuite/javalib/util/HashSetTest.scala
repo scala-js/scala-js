@@ -22,11 +22,6 @@ class HashSetTest extends AbstractSetTest {
   def factory: HashSetFactory = new HashSetFactory
 }
 
-object HashSetFactory {
-  def allFactories: Iterator[HashSetFactory] =
-    Iterator(new HashSetFactory) ++ LinkedHashSetFactory.allFactories
-}
-
 class HashSetFactory extends AbstractSetFactory {
   def implementationName: String =
     "java.util.HashSet"

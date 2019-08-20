@@ -135,11 +135,6 @@ trait NavigableSetTest extends SetTest {
   }
 }
 
-object NavigableSetFactory {
-  def allFactories: Iterator[NavigableSetFactory] =
-    ConcurrentSkipListSetFactory.allFactories
-}
-
 trait NavigableSetFactory extends SetFactory {
   def empty[E: ClassTag]: ju.NavigableSet[E]
 }

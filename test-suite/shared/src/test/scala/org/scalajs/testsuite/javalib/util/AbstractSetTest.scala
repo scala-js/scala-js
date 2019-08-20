@@ -20,11 +20,6 @@ abstract class AbstractSetTest extends SetTest {
   def factory: AbstractSetFactory
 }
 
-object AbstractSetFactory {
-  def allFactories: Iterator[AbstractSetFactory] =
-    HashSetFactory.allFactories
-}
-
 trait AbstractSetFactory extends SetFactory {
   def empty[E: ClassTag]: ju.AbstractSet[E]
 }
