@@ -150,24 +150,24 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
   private def emitModuleImports(orderedClasses: List[LinkedClass],
       builder: JSTreeBuilder, logger: Logger): Unit = {
 
-    def foreachImportedModule(f: (String, Position) => Unit): Unit = {
+    def foreachImportedModule(f: (String, Position,  List[String]) => Unit): Unit = {
       val encounteredModuleNames = mutable.Set.empty[String]
       for (classDef <- orderedClasses) {
-        def addModuleRef(module: String): Unit = {
+        def addModuleRef(module: String, path: List[String]): Unit = {
           if (encounteredModuleNames.add(module))
-            f(module, classDef.pos)
+            f(module, classDef.pos, path)
         }
 
         classDef.jsNativeLoadSpec match {
           case None =>
           case Some(JSNativeLoadSpec.Global(_)) =>
 
-          case Some(JSNativeLoadSpec.Import(module, _)) =>
-            addModuleRef(module)
+          case Some(JSNativeLoadSpec.Import(module, path)) =>
+            addModuleRef(module, path)
 
           case Some(JSNativeLoadSpec.ImportWithGlobalFallback(
-              JSNativeLoadSpec.Import(module, _), _)) =>
-            addModuleRef(module)
+              JSNativeLoadSpec.Import(module, path), _)) =>
+            addModuleRef(module, path)
         }
       }
     }
@@ -198,17 +198,32 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
         }
 
       case ModuleKind.ESModule =>
-        foreachImportedModule { (module, pos0) =>
+        foreachImportedModule { (module, pos0, path) =>
           implicit val pos = pos0
           val from = js.StringLiteral(module)
           val moduleBinding = jsGen.envModuleField(module).ident
-          val bindings = List((js.ExportName(moduleBinding.name), moduleBinding))
-          val importStat = js.Import(bindings, from)
-          builder.addJSTree(importStat)
+          path match {
+            // namespace import or default import
+            case Nil | List("default") =>
+              val importStat = js.ImportNamespace(moduleBinding, from)
+              builder.addJSTree(importStat)
+            case _ =>
+              val bindings = path.map(p => (js.ExportName(p), js.Ident(p)))
+              val importStat = js.Import(bindings, from)
+              builder.addJSTree(importStat)
+
+              val rhs = js.ObjectConstr(
+                path.map { p =>
+                  js.StringLiteral(p) -> js.VarRef(js.Ident(p))
+                }
+              )
+              val minimizedModuleDecl = jsGen.genLet(moduleBinding, mutable = false, rhs)
+              builder.addJSTree(minimizedModuleDecl)
+          }
         }
 
       case ModuleKind.CommonJSModule =>
-        foreachImportedModule { (module, pos0) =>
+        foreachImportedModule { (module, pos0, _) =>
           implicit val pos = pos0
           val rhs = js.Apply(js.VarRef(js.Ident("require")),
               List(js.StringLiteral(module)))
