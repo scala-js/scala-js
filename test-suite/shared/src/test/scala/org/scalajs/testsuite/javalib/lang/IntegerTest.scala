@@ -19,10 +19,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
 
 class IntegerTest {
-
-  // Explicitly define these as `var`'s to avoid any compile-time constant folding
-  val MaxValue: Int = Int.MaxValue
-  val MinValue: Int = Int.MinValue
+  import IntegerTest._
 
   @Test def `reverseBytes`(): Unit = {
     assertEquals(0xefbeadde, Integer.reverseBytes(0xdeadbeef))
@@ -451,23 +448,23 @@ class IntegerTest {
   @Test def toBinaryString(): Unit = {
     assertEquals("11111111111111111111111111111111", Integer.toBinaryString(-1))
     assertEquals("11111111111111111101100011101111", Integer.toBinaryString(-10001))
-    assertEquals("10000000000000000000000000000000", Integer.toBinaryString(MinValue))
-    assertEquals("1111111111111111111111111111111", Integer.toBinaryString(MaxValue))
+    assertEquals("10000000000000000000000000000000", Integer.toBinaryString(Int.MinValue))
+    assertEquals("1111111111111111111111111111111", Integer.toBinaryString(Int.MaxValue))
   }
 
   @Test def toHexString(): Unit = {
     assertEquals("ffffffff", Integer.toHexString(-1))
     assertEquals("ffffd8ef", Integer.toHexString(-10001))
-    assertEquals("80000000", Integer.toHexString(MinValue))
+    assertEquals("80000000", Integer.toHexString(Int.MinValue))
     assertEquals("8007613e", Integer.toHexString(-2147000002))
-    assertEquals("7fffffff", Integer.toHexString(MaxValue))
+    assertEquals("7fffffff", Integer.toHexString(Int.MaxValue))
   }
 
   @Test def toOctalString(): Unit = {
     assertEquals("37777777777", Integer.toOctalString(-1))
     assertEquals("37777754357", Integer.toOctalString(-10001))
-    assertEquals("20000000000", Integer.toOctalString(MinValue))
-    assertEquals("17777777777", Integer.toOctalString(MaxValue))
+    assertEquals("20000000000", Integer.toOctalString(Int.MinValue))
+    assertEquals("17777777777", Integer.toOctalString(Int.MaxValue))
   }
 
   @Test def compareTo(): Unit = {
@@ -494,8 +491,10 @@ class IntegerTest {
     def test(s: String, v: Int, radix: Int = 10): Unit = {
       assertEquals(v, Integer.parseInt(s, radix))
       assertEquals(v, Integer.valueOf(s, radix).intValue())
-      if (radix == 10)
+      if (radix == 10) {
         assertEquals(v, new Integer(s).intValue())
+        assertEquals(v, Integer.decode(s))
+      }
     }
 
     test("0", 0)
@@ -521,8 +520,11 @@ class IntegerTest {
   }
 
   @Test def should_reject_invalid_strings_when_parsing(): Unit = {
-    def test(s: String, radix: Int = 10): Unit =
+    def test(s: String, radix: Int = 10): Unit = {
       expectThrows(classOf[NumberFormatException], Integer.parseInt(s, radix))
+      if (radix == 10 && s != null)
+        expectThrows(classOf[NumberFormatException], Integer.decode(s))
+    }
 
     test("abc")
     test("5a")
@@ -598,6 +600,9 @@ class IntegerTest {
     def test(s: String, v: Int): Unit = {
       assertEquals(v, Integer.parseInt(s, 16))
       assertEquals(v, Integer.valueOf(s, 16).intValue())
+      assertEquals(v, Integer.decode(insertAfterSign("0x", s)))
+      assertEquals(v, Integer.decode(insertAfterSign("0X", s)))
+      assertEquals(v, Integer.decode(insertAfterSign("#", s)))
     }
 
     test("0", 0x0)
@@ -606,6 +611,43 @@ class IntegerTest {
     test("-24", -0x24)
     test("30000", 0x30000)
     test("-90000", -0x90000)
+  }
+
+  @Test def testDecodeBase8(): Unit = {
+    def test(s: String, v: Int): Unit = {
+      assertEquals(v, Integer.decode(s))
+    }
+
+    test("00", 0)
+    test("012345670", 2739128)
+    test("-012", -10)
+  }
+
+  @Test def testDecodeInvalid(): Unit = {
+    def test(s: String): Unit =
+      assertThrows(classOf[NumberFormatException], Integer.decode(s))
+
+    // sign after another sign or after a base prefix
+    test("++0")
+    test("--0")
+    test("0x+1")
+    test("0X-1")
+    test("#-1")
+    test("0-1")
+
+    // empty string after sign or after base prefix
+    test("")
+    test("+")
+    test("-")
+    test("-0x")
+    test("+0X")
+    test("#")
+
+    // integer too large
+    test("0x80000000")
+    test("-0x800000001")
+    test("020000000000")
+    test("-020000000001")
   }
 
   @Test def highestOneBit(): Unit = {
@@ -660,5 +702,14 @@ class IntegerTest {
     assertEquals("-80000000", Integer.toString(-2147483648, 16))
     assertEquals("-10000000000000000000000000000000", Integer.toString(-2147483648, 2))
     assertEquals("-2147483648", Integer.toString(-2147483648, 10))
+  }
+}
+
+object IntegerTest {
+  def insertAfterSign(prefix: String, s: String): String = {
+    if (s.charAt(0) == '+' || s.charAt(0) == '-')
+      s.substring(0, 1) + prefix + s.substring(1)
+    else
+      prefix + s
   }
 }

@@ -48,6 +48,7 @@ class ShortTest {
       assertEquals(v, JShort.parseShort(s))
       assertEquals(v, JShort.valueOf(s).shortValue())
       assertEquals(v, new JShort(s).shortValue())
+      assertEquals(v, JShort.decode(s))
     }
 
     test("0", 0)
@@ -58,12 +59,68 @@ class ShortTest {
   }
 
   @Test def should_reject_invalid_strings_when_parsing(): Unit = {
-    def test(s: String): Unit =
+    def test(s: String): Unit = {
       expectThrows(classOf[NumberFormatException], JShort.parseShort(s))
+      expectThrows(classOf[NumberFormatException], JShort.decode(s))
+    }
 
     test("abc")
     test("")
     test("60000") // out of range
     test("-90000") // out of range
+  }
+
+  @Test def should_parse_strings_in_base_16(): Unit = {
+    def test(s: String, v: Short): Unit = {
+      assertEquals(v, JShort.parseShort(s, 16))
+      assertEquals(v, JShort.valueOf(s, 16).intValue())
+      assertEquals(v, JShort.decode(IntegerTest.insertAfterSign("0x", s)))
+      assertEquals(v, JShort.decode(IntegerTest.insertAfterSign("0X", s)))
+      assertEquals(v, JShort.decode(IntegerTest.insertAfterSign("#", s)))
+    }
+
+    test("0", 0x0)
+    test("5", 0x5)
+    test("ff", 0xff)
+    test("-24", -0x24)
+    test("3000", 0x3000)
+    test("-900", -0x900)
+  }
+
+  @Test def testDecodeBase8(): Unit = {
+    def test(s: String, v: Short): Unit = {
+      assertEquals(v, JShort.decode(s))
+    }
+
+    test("00", 0)
+    test("0123", 83)
+    test("-012", -10)
+  }
+
+  @Test def testDecodeInvalid(): Unit = {
+    def test(s: String): Unit =
+      assertThrows(classOf[NumberFormatException], JShort.decode(s))
+
+    // sign after another sign or after a base prefix
+    test("++0")
+    test("--0")
+    test("0x+1")
+    test("0X-1")
+    test("#-1")
+    test("0-1")
+
+    // empty string after sign or after base prefix
+    test("")
+    test("+")
+    test("-")
+    test("-0x")
+    test("+0X")
+    test("#")
+
+    // integer too large
+    test("0x8000")
+    test("-0x8001")
+    test("0100000")
+    test("-0100001")
   }
 }

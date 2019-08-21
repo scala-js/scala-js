@@ -130,6 +130,63 @@ object Integer {
   @inline def toUnsignedString(i: Int, radix: Int): String =
     toStringBase(i, radix)
 
+  @noinline def decode(nm: String): Integer =
+    decodeGeneric(nm, valueOf(_, _))
+
+  @inline private[lang] def decodeGeneric[A](nm: String,
+      parse: (String, Int) => A): A = {
+
+    val len = nm.length()
+    var i = 0
+
+    val negative = if (i != len) {
+      nm.charAt(i) match {
+        case '+' =>
+          i += 1
+          false
+        case '-' =>
+          i += 1
+          true
+        case _ =>
+          false
+      }
+    } else {
+      false
+    }
+
+    val base = if (i != len) {
+      nm.charAt(i) match {
+        case '0' =>
+          if (i == len - 1) {
+            10
+          } else {
+            i += 1
+            nm.charAt(i) match {
+              case 'x' | 'X' =>
+                i += 1
+                16
+              case _ =>
+                8
+            }
+          }
+        case '#' =>
+          i += 1
+          16
+        case _ =>
+          10
+      }
+    } else {
+      10
+    }
+
+    val remaining = nm.substring(i)
+    if (remaining.startsWith("+") || remaining.startsWith("-"))
+      throw new NumberFormatException("Sign character in wrong position")
+
+    val s = if (negative) "-" + remaining else remaining
+    parse(s, base)
+  }
+
   @inline def compare(x: scala.Int, y: scala.Int): scala.Int =
     if (x == y) 0 else if (x < y) -1 else 1
 
