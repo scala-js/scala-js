@@ -143,6 +143,7 @@ object ModulesTest {
     def has(key: String): Boolean = js.native
   }
 
+  // Defined in test-suite/src/test/resources/JSImportTest.js
   @js.native
   @JSImport("JSImportTest.js", "Foo.Bar")
   class FooBar(input: Double) extends js.Object {
