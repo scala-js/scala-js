@@ -80,6 +80,18 @@ class ModulesTest {
     assertEquals("", decoder.end())
   }
 
+  @Test def testImportDifferentPathsFromSameModule(): Unit = {
+    val url = new URL("https://example.org/?abc=123")
+    assertEquals(url.hostname(), "example.org")
+
+    val searchParams = new URLSearchParams("?abc=123")
+    assertTrue(searchParams.has("abc"))
+  }
+
+  @Test def testImportFurtherSelection(): Unit = {
+    val url = new FooBar(42)
+    assertEquals(url.num(), 42);
+  }
 }
 
 object ModulesTest {
@@ -117,5 +129,23 @@ object ModulesTest {
     def from(array: js.Array[Short]): Buffer = js.native
 
     def isBuffer(x: Any): Boolean = js.native
+  }
+
+  @js.native
+  @JSImport("url", "URL")
+  class URL(input: String) extends js.Object {
+    def hostname(): String = js.native
+  }
+
+  @js.native
+  @JSImport("url", "URLSearchParams")
+  class URLSearchParams(input: String) extends js.Object {
+    def has(key: String): Boolean = js.native
+  }
+
+  @js.native
+  @JSImport("JSImportTest.js", "Foo.Bar")
+  class FooBar(input: Double) extends js.Object {
+    def num(): Double = js.native
   }
 }
