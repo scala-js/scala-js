@@ -657,13 +657,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case Debugger() =>
         env
 
-      case JSDelete(JSDotSelect(obj, prop)) =>
-        typecheckExpr(obj, env)
-        env
-
-      case JSDelete(JSBracketSelect(obj, prop)) =>
-        typecheckExpr(obj, env)
-        typecheckExpr(prop, env)
+      case JSDelete(qualifier, item) =>
+        typecheckExpr(qualifier, env)
+        typecheckExpr(item, env)
         env
 
       case _ =>
@@ -969,10 +965,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         for (arg <- args)
           typecheckExprOrSpread(arg, env)
 
-      case JSDotSelect(qualifier, item) =>
+      case JSPrivateSelect(qualifier, item) =>
         typecheckExpr(qualifier, env)
 
-      case JSBracketSelect(qualifier, item) =>
+      case JSSelect(qualifier, item) =>
         typecheckExpr(qualifier, env)
         typecheckExpr(item, env)
 
@@ -981,23 +977,18 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         for (arg <- args)
           typecheckExprOrSpread(arg, env)
 
-      case JSDotMethodApply(receiver, method, args) =>
-        typecheckExpr(receiver, env)
-        for (arg <- args)
-          typecheckExprOrSpread(arg, env)
-
-      case JSBracketMethodApply(receiver, method, args) =>
+      case JSMethodApply(receiver, method, args) =>
         typecheckExpr(receiver, env)
         typecheckExpr(method, env)
         for (arg <- args)
           typecheckExprOrSpread(arg, env)
 
-      case JSSuperBracketSelect(superClass, qualifier, item) =>
+      case JSSuperSelect(superClass, qualifier, item) =>
         typecheckExpr(superClass, env)
         typecheckExpr(qualifier, env)
         typecheckExpr(item, env)
 
-      case JSSuperBracketCall(superClass, receiver, method, args) =>
+      case JSSuperMethodCall(superClass, receiver, method, args) =>
         typecheckExpr(superClass, env)
         typecheckExpr(receiver, env)
         typecheckExpr(method, env)
@@ -1042,8 +1033,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           typecheckExprOrSpread(item, env)
 
       case JSObjectConstr(fields) =>
-        for ((_, value) <- fields)
+        for ((key, value) <- fields) {
+          typecheckExpr(key, env)
           typecheckExpr(value, env)
+        }
 
       case JSGlobalRef(_) =>
 

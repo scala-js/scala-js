@@ -44,7 +44,7 @@ class LinkerTest {
   def linkHelloWorld(): AsyncResult = await {
     val name = "LHelloWorld$"
     val mainMethodBody = {
-      JSBracketMethodApply(JSGlobalRef(Ident("console")), StringLiteral("log"),
+      JSMethodApply(JSGlobalRef(Ident("console")), StringLiteral("log"),
           List(StringLiteral("Hello world!")))
     }
     val classDefs = Seq(

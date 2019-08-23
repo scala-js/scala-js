@@ -513,10 +513,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           assert(needsRestParam,
               "Trying to read rest param length but needsRestParam is false")
           js.Match(
-              js.Unbox(js.JSBracketSelect(
-                  genRestArgRef(),
-                  js.StringLiteral("length")),
-                  'I'),
+              js.Unbox(js.JSSelect(genRestArgRef(), js.StringLiteral("length")), 'I'),
               cases.toList, defaultCase)(jstpe.AnyType)
         }
       }
@@ -683,14 +680,14 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       if (jsInterop.isJSGetter(sym)) {
         assert(allArgs.isEmpty,
             s"getter symbol $sym does not have a getter signature")
-        js.JSSuperBracketSelect(superClass, receiver, nameString)
+        js.JSSuperSelect(superClass, receiver, nameString)
       } else if (jsInterop.isJSSetter(sym)) {
         assert(allArgs.size == 1 && allArgs.head.isInstanceOf[js.Tree],
             s"setter symbol $sym does not have a setter signature")
-        js.Assign(js.JSSuperBracketSelect(superClass, receiver, nameString),
+        js.Assign(js.JSSuperSelect(superClass, receiver, nameString),
             allArgs.head.asInstanceOf[js.Tree])
       } else {
-        js.JSSuperBracketCall(superClass, receiver, nameString, allArgs)
+        js.JSSuperMethodCall(superClass, receiver, nameString, allArgs)
       }
     }
 
@@ -1123,7 +1120,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     if (index <= minArgc)
       js.VarRef(js.Ident("arg$" + index))(jstpe.AnyType)
     else
-      js.JSBracketSelect(genRestArgRef(), js.IntLiteral(index - 1 - minArgc))
+      js.JSSelect(genRestArgRef(), js.IntLiteral(index - 1 - minArgc))
   }
 
   private def genVarargRef(fixedParamCount: Int, minArgc: Int)(
@@ -1133,8 +1130,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         s"genVarargRef($fixedParamCount, $minArgc) at $pos")
     if (fixedParamCount == minArgc) restParam
     else {
-      js.JSBracketMethodApply(restParam, js.StringLiteral("slice"), List(
-          js.IntLiteral(fixedParamCount - minArgc)))
+      js.JSMethodApply(restParam, js.StringLiteral("slice"),
+          List(js.IntLiteral(fixedParamCount - minArgc)))
     }
   }
 

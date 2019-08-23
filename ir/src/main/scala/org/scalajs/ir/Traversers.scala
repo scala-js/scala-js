@@ -139,10 +139,10 @@ object Traversers {
         traverse(ctor)
         args.foreach(traverseTreeOrJSSpread)
 
-      case JSDotSelect(qualifier, item) =>
+      case JSPrivateSelect(qualifier, item) =>
         traverse(qualifier)
 
-      case JSBracketSelect(qualifier, item) =>
+      case JSSelect(qualifier, item) =>
         traverse(qualifier)
         traverse(item)
 
@@ -150,21 +150,17 @@ object Traversers {
         traverse(fun)
         args.foreach(traverseTreeOrJSSpread)
 
-      case JSDotMethodApply(receiver, method, args) =>
-        traverse(receiver)
-        args.foreach(traverseTreeOrJSSpread)
-
-      case JSBracketMethodApply(receiver, method, args) =>
+      case JSMethodApply(receiver, method, args) =>
         traverse(receiver)
         traverse(method)
         args.foreach(traverseTreeOrJSSpread)
 
-      case JSSuperBracketSelect(superClass, qualifier, item) =>
+      case JSSuperSelect(superClass, qualifier, item) =>
         traverse(superClass)
         traverse(qualifier)
         traverse(item)
 
-      case JSSuperBracketCall(superClass, receiver, method, args) =>
+      case JSSuperMethodCall(superClass, receiver, method, args) =>
         traverse(superClass)
         traverse(receiver)
         traverse(method)
@@ -176,8 +172,9 @@ object Traversers {
       case JSImportCall(arg) =>
         traverse(arg)
 
-      case JSDelete(prop) =>
-        traverse(prop)
+      case JSDelete(qualifier, item) =>
+        traverse(qualifier)
+        traverse(item)
 
       case JSUnaryOp(op, lhs) =>
         traverse(lhs)
@@ -191,11 +188,7 @@ object Traversers {
 
       case JSObjectConstr(fields) =>
         for ((key, value) <- fields) {
-          key match {
-            case ComputedName(tree, _) =>
-              traverse(tree)
-            case _ =>
-          }
+          traverse(key)
           traverse(value)
         }
 

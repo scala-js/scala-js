@@ -582,25 +582,25 @@ class PrintersTest {
     assertPrintEquals("new C()", JSNew(ref("C", AnyType), Nil))
     assertPrintEquals("new C(4, 5)", JSNew(ref("C", AnyType), List(i(4), i(5))))
     assertPrintEquals("new x.C(4, 5)",
-        JSNew(JSDotSelect(ref("x", AnyType), "C"), List(i(4), i(5))))
+        JSNew(JSPrivateSelect(ref("x", AnyType), "C"), List(i(4), i(5))))
     assertPrintEquals("""new x["C"]()""",
-        JSNew(JSBracketSelect(ref("x", AnyType), StringLiteral("C")), Nil))
+        JSNew(JSSelect(ref("x", AnyType), StringLiteral("C")), Nil))
 
     val fApplied = JSFunctionApply(ref("f", AnyType), Nil)
     assertPrintEquals("new (f())()", JSNew(fApplied, Nil))
     assertPrintEquals("new (f().C)(4, 5)",
-        JSNew(JSDotSelect(fApplied, "C"), List(i(4), i(5))))
+        JSNew(JSPrivateSelect(fApplied, "C"), List(i(4), i(5))))
     assertPrintEquals("""new (f()["C"])()""",
-        JSNew(JSBracketSelect(fApplied, StringLiteral("C")), Nil))
+        JSNew(JSSelect(fApplied, StringLiteral("C")), Nil))
   }
 
-  @Test def printJSDotSelect(): Unit = {
-    assertPrintEquals("x.f", JSDotSelect(ref("x", AnyType), "f"))
+  @Test def printJSPrivateSelect(): Unit = {
+    assertPrintEquals("x.f", JSPrivateSelect(ref("x", AnyType), "f"))
   }
 
-  @Test def printJSBracketSelect(): Unit = {
+  @Test def printJSSelect(): Unit = {
     assertPrintEquals("""x["f"]""",
-        JSBracketSelect(ref("x", AnyType), StringLiteral("f")))
+        JSSelect(ref("x", AnyType), StringLiteral("f")))
   }
 
   @Test def printJSFunctionApply(): Unit = {
@@ -609,36 +609,30 @@ class PrintersTest {
         JSFunctionApply(ref("f", AnyType), List(i(3), i(4))))
 
     assertPrintEquals("(0, x.f)()",
-        JSFunctionApply(JSDotSelect(ref("x", AnyType), "f"), Nil))
+        JSFunctionApply(JSPrivateSelect(ref("x", AnyType), "f"), Nil))
     assertPrintEquals("""(0, x["f"])()""",
-        JSFunctionApply(JSBracketSelect(ref("x", AnyType), StringLiteral("f")),
+        JSFunctionApply(JSSelect(ref("x", AnyType), StringLiteral("f")),
             Nil))
     assertPrintEquals("(0, x.f$1)()",
         JSFunctionApply(Select(ref("x", "Ltest_Test"), "f$1")(AnyType), Nil))
   }
 
-  @Test def printJSDotMethodApply(): Unit = {
-    assertPrintEquals("x.m()", JSDotMethodApply(ref("x", AnyType), "m", Nil))
-    assertPrintEquals("x.m(4, 5)",
-        JSDotMethodApply(ref("x", AnyType), "m", List(i(4), i(5))))
-  }
-
-  @Test def printJSBracketMethodApply(): Unit = {
+  @Test def printJSMethodApply(): Unit = {
     assertPrintEquals("""x["m"]()""",
-        JSBracketMethodApply(ref("x", AnyType), StringLiteral("m"), Nil))
+        JSMethodApply(ref("x", AnyType), StringLiteral("m"), Nil))
     assertPrintEquals("""x["m"](4, 5)""",
-        JSBracketMethodApply(ref("x", AnyType), StringLiteral("m"),
+        JSMethodApply(ref("x", AnyType), StringLiteral("m"),
             List(i(4), i(5))))
   }
 
-  @Test def printJSSuperBracketSelect(): Unit = {
+  @Test def printJSSuperSelect(): Unit = {
     assertPrintEquals("""super(sc)::x["f"]""",
-        JSSuperBracketSelect(ref("sc", AnyType), ref("x", AnyType), StringLiteral("f")))
+        JSSuperSelect(ref("sc", AnyType), ref("x", AnyType), StringLiteral("f")))
   }
 
-  @Test def printJSSuperBracketCall(): Unit = {
+  @Test def printJSSuperMethodCall(): Unit = {
     assertPrintEquals("""super(sc)::x["f"]()""",
-        JSSuperBracketCall(ref("sc", AnyType), ref("x", AnyType), StringLiteral("f"), Nil))
+        JSSuperMethodCall(ref("sc", AnyType), ref("x", AnyType), StringLiteral("f"), Nil))
   }
 
   @Test def printJSSuperConstructorCall(): Unit = {
@@ -663,8 +657,8 @@ class PrintersTest {
   }
 
   @Test def printJSDelete(): Unit = {
-    assertPrintEquals("delete x.f",
-        JSDelete(JSDotSelect(ref("x", AnyType), "f")))
+    assertPrintEquals("""delete x["f"]""",
+        JSDelete(ref("x", AnyType), StringLiteral("f")))
   }
 
   @Test def printJSUnaryOp(): Unit = {
@@ -737,11 +731,11 @@ class PrintersTest {
     assertPrintEquals(
         """
           |{
-          |  f: 5,
+          |  [x]: 5,
           |  "g": 6
           |}
         """,
-        JSObjectConstr(List(Ident("f") -> i(5), StringLiteral("g") -> i(6))))
+        JSObjectConstr(List(ref("x", AnyType) -> i(5), StringLiteral("g") -> i(6))))
   }
 
   @Test def printGlobalRef(): Unit = {
