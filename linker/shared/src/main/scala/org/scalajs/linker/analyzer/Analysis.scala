@@ -229,7 +229,7 @@ object Analysis {
       case NotAModule(info, _) =>
         s"Cannot access module for non-module ${info.displayName}"
       case MissingMethod(info, _) =>
-        s"Referring to non-existent method ${info.fullDisplayName}"
+        s"Referring to non-existent method ${info.fullDisplayName} (forgot to use %%% in library dependencies?)"
       case ConflictingDefaultMethods(infos, _) =>
         s"Conflicting default methods: ${infos.map(_.fullDisplayName).mkString(" ")}"
       case ConflictingTopLevelExport(name, infos) =>
