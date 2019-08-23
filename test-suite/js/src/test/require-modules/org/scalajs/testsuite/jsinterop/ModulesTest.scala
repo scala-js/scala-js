@@ -89,8 +89,8 @@ class ModulesTest {
   }
 
   @Test def testImportFurtherSelection(): Unit = {
-    val url = new FooBar(42)
-    assertEquals(url.num(), 42);
+    val b = Buffer.alloc(1)
+    assertEquals(BufferPrototype.fill.apply(b, js.Array(1)).toString(), "\u0001");
   }
 }
 
@@ -143,10 +143,9 @@ object ModulesTest {
     def has(key: String): Boolean = js.native
   }
 
-  // Defined in test-suite/src/test/resources/JSImportTest.js
   @js.native
-  @JSImport("JSImportTest.js", "Foo.Bar")
-  class FooBar(input: Double) extends js.Object {
-    def num(): Double = js.native
+  @JSImport("buffer", "Buffer.prototype")
+  object BufferPrototype extends js.Object {
+    def buffer: js.ThisFunction1[Buffer, js.Array[Int], Buffer] = js.native
   }
 }

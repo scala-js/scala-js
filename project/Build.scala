@@ -1718,7 +1718,6 @@ object Build {
         },
 
         jsDependencies += ProvidedJS / "ScalaJSDefinedTestNatives.js" % "test",
-        jsDependencies += ProvidedJS / "JSImportTest.js" % "test",
         skip in packageJSDependencies in Test := false,
 
         scalaJSSemantics ~= { sems =>
