@@ -214,7 +214,7 @@ object Analysis {
         ("Fatal error: cycle in inheritance chain involving " +
             encodedClassNames.map(decodeClassName).mkString(", "))
       case MissingClass(info, _) =>
-        s"Referring to non-existent class ${info.displayName}"
+        s"Referring to non-existent class ${info.displayName} (forgot to use %%% in library dependencies?)"
       case MissingSuperClass(subClassInfo, _) =>
         s"${subClassInfo.displayName} (of kind ${subClassInfo.kind}) is " +
         "missing a super class"
