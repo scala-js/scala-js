@@ -10,10 +10,7 @@ import Keys._
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
 import de.heikoseeberger.sbtheader.HeaderPlugin.autoImport._
 
-import java.io.{
-  BufferedOutputStream,
-  FileOutputStream
-}
+import java.util.Arrays
 
 import scala.collection.mutable
 import scala.concurrent.Await
@@ -79,8 +76,9 @@ object MyScalaJSPlugin extends AutoPlugin {
   def addScalaJSCompilerOption(config: Option[Configuration],
       option: Def.Initialize[String]): Setting[_] = {
     config.fold(scalacOptions)(scalacOptions in _) ++= {
+      val o = option.value
       if (isGeneratingForIDE) Nil
-      else Seq(s"-P:scalajs:${option.value}")
+      else Seq(s"-P:scalajs:$o")
     }
   }
 
@@ -139,13 +137,12 @@ object Build {
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.7", "2.11.12", "2.12.8")
+    Set("2.11.12", "2.12.8")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
   */
 
   def hasNewCollections(version: String): Boolean = {
-    !version.startsWith("2.10.") &&
     !version.startsWith("2.11.") &&
     !version.startsWith("2.12.")
   }
@@ -207,6 +204,14 @@ object Build {
       scalaVersion := "2.12.8",
       organization := "org.scala-js",
       version := scalaJSVersion,
+
+      crossScalaVersions := Seq(
+          "2.11.0", "2.11.1", "2.11.2", "2.11.4", "2.11.5", "2.11.6", "2.11.7",
+          "2.11.8", "2.11.11", "2.11.12",
+          "2.12.1", "2.12.2", "2.12.3", "2.12.4", "2.12.5", "2.12.6", "2.12.7",
+          "2.12.8",
+          "2.13.0",
+      ),
 
       normalizedName ~= {
         _.replace("scala.js", "scalajs").replace("scala-js", "scalajs")
@@ -408,22 +413,11 @@ object Build {
       // The pattern matcher used to exceed its analysis budget before 2.11.5
       scalacOptions ++= {
         scalaVersion.value.split('.') match {
-          case Array("2", "10", _)                 => Nil
           case Array("2", "11", x)
               if x.takeWhile(_.isDigit).toInt <= 4 => Nil
           case _                                   => Seq("-Xfatal-warnings")
         }
       },
-
-      scalacOptions in (Compile, doc) := {
-        val baseOptions = (scalacOptions in (Compile, doc)).value
-
-        // in Scala 2.10, some ScalaDoc links fail
-        val fatalInDoc = scalaBinaryVersion.value != "2.10"
-
-        if (fatalInDoc) baseOptions
-        else baseOptions.filterNot(_ == "-Xfatal-warnings")
-      }
   )
 
   private def publishToBintraySettings = Def.settings(
@@ -465,12 +459,9 @@ object Build {
     def withScalaJSJUnitPlugin: Project = {
       project.settings(
           scalacOptions in Test ++= {
-            if (isGeneratingForIDE) {
-              Seq.empty
-            } else {
-              val jar = (packageBin in (jUnitPlugin, Compile)).value
-              Seq(s"-Xplugin:$jar")
-            }
+            val jar = (packageBin in (jUnitPlugin, Compile)).value
+            if (isGeneratingForIDE) Seq.empty
+            else Seq(s"-Xplugin:$jar")
           }
       )
     }
@@ -602,36 +593,41 @@ object Build {
           "com.novocode" % "junit-interface" % "0.9" % "test"
       ),
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a"),
-      testOptions += Tests.Setup { () =>
-        val testOutDir = (streams.value.cacheDirectory / "scalajs-compiler-test")
-        IO.createDirectory(testOutDir)
-        System.setProperty("scala.scalajs.compiler.test.output",
-            testOutDir.getAbsolutePath)
-        System.setProperty("scala.scalajs.compiler.test.scalajslib",
-            (packageBin in (LocalProject("library"), Compile)).value.getAbsolutePath)
+      testOptions += {
+        val s = streams.value
+        val sjslib = (packageBin in (LocalProject("library"), Compile)).value
 
-        def scalaArtifact(name: String): String = {
-          def isTarget(att: Attributed[File]) = {
-            att.metadata.get(moduleID.key).exists { mId =>
-              mId.organization == "org.scala-lang" &&
-              mId.name == name &&
-              mId.revision == scalaVersion.value
+        Tests.Setup { () =>
+          val testOutDir = (s.cacheDirectory / "scalajs-compiler-test")
+          IO.createDirectory(testOutDir)
+          System.setProperty("scala.scalajs.compiler.test.output",
+              testOutDir.getAbsolutePath)
+          System.setProperty("scala.scalajs.compiler.test.scalajslib",
+              sjslib.getAbsolutePath)
+
+          def scalaArtifact(name: String): String = {
+            def isTarget(att: Attributed[File]) = {
+              att.metadata.get(moduleID.key).exists { mId =>
+                mId.organization == "org.scala-lang" &&
+                mId.name == name &&
+                mId.revision == scalaVersion.value
+              }
+            }
+
+            (managedClasspath in Test).value.find(isTarget).fold {
+              s.log.error(s"Couldn't find $name on the classpath")
+              ""
+            } { lib =>
+              lib.data.getAbsolutePath
             }
           }
 
-          (managedClasspath in Test).value.find(isTarget).fold {
-            streams.value.log.error(s"Couldn't find $name on the classpath")
-            ""
-          } { lib =>
-            lib.data.getAbsolutePath
-          }
+          System.setProperty("scala.scalajs.compiler.test.scalalib",
+              scalaArtifact("scala-library"))
+
+          System.setProperty("scala.scalajs.compiler.test.scalareflect",
+              scalaArtifact("scala-reflect"))
         }
-
-        System.setProperty("scala.scalajs.compiler.test.scalalib",
-            scalaArtifact("scala-library"))
-
-        System.setProperty("scala.scalajs.compiler.test.scalareflect",
-            scalaArtifact("scala-reflect"))
       },
       exportJars := true
   ).dependsOnSource(irProject)
@@ -776,12 +772,8 @@ object Build {
       normalizedName := "sbt-scalajs",
       bintrayProjectName := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
       sbtPlugin := true,
-      sbtVersion in pluginCrossBuild := {
-        scalaVersion.value match {
-          case v if v.startsWith("2.10.") => "0.13.17"
-          case _ => "1.0.0"
-        }
-      },
+      crossScalaVersions := Seq("2.12.8"),
+      sbtVersion := "1.0.0",
       scalaBinaryVersion :=
         CrossVersion.binaryScalaVersion(scalaVersion.value),
       previousArtifactSetting,
@@ -818,21 +810,6 @@ object Build {
     }
   }
 
-  private def serializeHardcodedIR(base: File,
-      classDef: ir.Trees.ClassDef): File = {
-    // We assume that there are no weird characters in the full name
-    val fullName = ir.Definitions.decodeClassName(classDef.name.name)
-    val output = base / (fullName.replace('.', '/') + ".sjsir")
-
-    if (!output.exists()) {
-      IO.createDirectory(output.getParentFile)
-      val stream = new BufferedOutputStream(new FileOutputStream(output))
-      try ir.Serializers.serialize(stream, classDef)
-      finally stream.close()
-    }
-    output
-  }
-
   lazy val javalanglib: Project = project.enablePlugins(
       MyScalaJSPlugin
   ).settings(
@@ -844,9 +821,24 @@ object Build {
       ensureSAMSupportSetting,
       noClassFilesSettings,
 
+      /* When writing code in the java.lang package, references to things
+       * like `Boolean` or `Double` refer to `j.l.Boolean` or `j.l.Double`.
+       * Usually this is not what we want (we want the primitive types
+       * instead), but the implicits available in `Predef` hide mistakes by
+       * introducing boxing and unboxing where required. The `-Yno-predef`
+       * flag prevents these mistakes from happening.
+       */
+      scalacOptions += "-Yno-predef",
+
       resourceGenerators in Compile += Def.task {
-        val base = (resourceManaged in Compile).value
-        Seq(serializeHardcodedIR(base, JavaLangObject.TheClassDef))
+        val output = (resourceManaged in Compile).value / "java/lang/Object.sjsir"
+        val data = JavaLangObject.irBytes
+
+        if (!output.exists || !Arrays.equals(data, IO.readBytes(output))) {
+          IO.write(output, data)
+        }
+
+        Seq(output)
       }.taskValue,
       scalaJSExternalCompileSettings
   ).withScalaJSCompiler.dependsOnLibraryNoJar
@@ -925,7 +917,7 @@ object Build {
 
         val report = (update in fetchScalaSource).value
         val scalaLibSourcesJar = report.select(
-            configuration = Set("compile"),
+            configuration = configurationFilter("compile"),
             module = moduleFilter(name = "scala-library"),
             artifact = artifactFilter(classifier = "sources")).headOption.getOrElse {
           throw new Exception(
@@ -985,6 +977,8 @@ object Build {
         val sources = mutable.ListBuffer.empty[File]
         val paths = mutable.Set.empty[String]
 
+        val s = streams.value
+
         for {
           srcDir <- sourceDirectories
           normSrcDir = normPath(srcDir)
@@ -999,7 +993,7 @@ object Build {
             if (paths.add(path))
               sources += src
             else
-              streams.value.log.debug(s"not including $src")
+              s.log.debug(s"not including $src")
           }
         }
 
@@ -1068,7 +1062,6 @@ object Build {
              */
             val mustAvoidJavaDoc = {
               javaV >= 9 && {
-                scalaV.startsWith("2.10.") ||
                 scalaV.startsWith("2.11.") ||
                 scalaV == "2.12.0" ||
                 scalaV == "2.12.1"
@@ -1090,7 +1083,7 @@ object Build {
                     -- "*.nodoc.scala"
               )
 
-              (sources in doc).value.filter(filter.accept)
+              prev.filter(filter.accept)
             } else {
               Nil
             }
@@ -1312,14 +1305,13 @@ object Build {
 
       // To support calls to static methods in interfaces
       scalacOptions in Test ++= {
-        /* Starting from 2.10.7 and 2.11.12, scalac refuses to emit calls to
-        * static methods in interfaces unless the -target:jvm-1.8 flag is given.
-        * scalac 2.12+ emits JVM 8 bytecode by default, of course, so it is not
-        * needed for later versions.
-        */
+        /* Starting from 2.11.12, scalac refuses to emit calls to static methods
+         * in interfaces unless the -target:jvm-1.8 flag is given.
+         * scalac 2.12+ emits JVM 8 bytecode by default, of course, so it is not
+         * needed for later versions.
+         */
         val PartialVersion = """(\d+)\.(\d+)\.(\d+)(?:-.+)?""".r
         val needsTargetFlag = scalaVersion.value match {
-          case PartialVersion("2", "10", n) => n.toInt >= 7
           case PartialVersion("2", "11", n) => n.toInt >= 12
           case _                            => false
         }
@@ -1762,7 +1754,7 @@ object Build {
       libraryDependencies ++= {
         if (shouldPartest.value) {
           Seq(
-              "org.scala-sbt" % "sbt" % sbtVersion.value,
+              "org.scala-sbt" % "test-interface" % "1.0",
               {
                 val v = scalaVersion.value
                 if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
@@ -1788,10 +1780,8 @@ object Build {
       },
 
       sources in Compile := {
-        if (shouldPartest.value)
-          (sources in Compile).value
-        else
-          Nil
+        val s = (sources in Compile).value
+        if (shouldPartest.value) s else Nil
       }
   ).dependsOn(compiler, linker, nodeJSEnv)
 
@@ -1844,7 +1834,7 @@ object Build {
         val scalaV = scalaVersion.value
         val upstreamSrcDir = (fetchScalaSource in partest).value
 
-        if (scalaV.startsWith("2.10.") || scalaV.startsWith("2.11.") ||
+        if (scalaV.startsWith("2.11.") ||
             scalaV.startsWith("2.12.")) {
           Nil
         } else {

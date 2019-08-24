@@ -27,7 +27,12 @@ object ExternalCompile {
 
       compile := {
         val inputs = (compileInputs in compile).value
-        import inputs.config._
+        val run = (runner in compile).value
+
+        val classpath = inputs.options.classpath
+        val classesDirectory = inputs.options.classesDirectory
+        val sources = inputs.options.sources
+        val options = inputs.options.scalacOptions
 
         val s = streams.value
         val logger = s.log
@@ -50,16 +55,17 @@ object ExternalCompile {
 
         // Compile
 
-        val cachedCompile = FileFunction.cached(cacheDir / "compile",
+        val outputDirectory = cacheDir / "compile-out"
+        val cachedCompile = FileFunction.cached(cacheDir / "compile-cache",
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
 
           logger.info(
               "Compiling %d Scala sources to %s..." format (
               sources.size, classesDirectory))
 
-          if (classesDirectory.exists)
-            IO.delete(classesDirectory)
-          IO.createDirectory(classesDirectory)
+          if (outputDirectory.exists)
+            IO.delete(outputDirectory)
+          IO.createDirectory(outputDirectory)
 
           val sourcesArgs = sources.map(_.getAbsolutePath()).toList
 
@@ -72,7 +78,7 @@ object ExternalCompile {
             def log(level: Level.Value, message: => String) = {
               val msg = message
               if (level != Level.Info ||
-                  !msg.startsWith("Running scala.tools.nsc.Main"))
+                  !msg.startsWith("Running (fork) scala.tools.nsc.Main"))
                 logger.log(level, msg)
             }
             def success(message: => String) = logger.success(message)
@@ -80,14 +86,12 @@ object ExternalCompile {
           }
 
           def doCompile(sourcesArgs: List[String]): Unit = {
-            val run = (runner in compile).value
-            val optErrorMsg = run.run("scala.tools.nsc.Main", compilerCp,
+            run.run("scala.tools.nsc.Main", compilerCp,
                 "-cp" :: cpStr ::
-                "-d" :: classesDirectory.getAbsolutePath() ::
+                "-d" :: outputDirectory.getAbsolutePath() ::
                 options ++:
                 sourcesArgs,
-                patchedLogger)
-            optErrorMsg.foreach(errorMsg => throw new Exception(errorMsg))
+                patchedLogger).get
           }
 
           /* Crude way of overcoming the Windows limitation on command line
@@ -103,14 +107,18 @@ object ExternalCompile {
             doCompile(sourcesArgs)
           }
 
-          // Output is all files in classesDirectory
-          (classesDirectory ** AllPassFilter).get.toSet
+          // Copy to classes directory.
+          val mappings = (outputDirectory ** AllPassFilter)
+            .pair(Path.rebase(outputDirectory, classesDirectory))
+          Sync.sync(s.cacheStoreFactory.make("compile-copy"))(mappings)
+
+          mappings.unzip._2.toSet
         }
 
         cachedCompile((sources ++ allMyDependencies).toSet)
 
         // We do not have dependency analysis when compiling externally
-        sbt.inc.Analysis.Empty
+        sbt.internal.inc.Analysis.Empty
       }
   )
 

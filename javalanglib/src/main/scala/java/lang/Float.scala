@@ -50,7 +50,7 @@ final class Float private () extends Number with Comparable[Float] {
 }
 
 object Float {
-  final val TYPE = classOf[scala.Float]
+  final val TYPE = scala.Predef.classOf[scala.Float]
   final val POSITIVE_INFINITY = 1.0f / 0.0f
   final val NEGATIVE_INFINITY = 1.0f / -0.0f
   final val NaN = 0.0f / 0.0f

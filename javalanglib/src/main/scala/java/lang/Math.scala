@@ -105,7 +105,7 @@ object Math {
     if (assumingES6 || !js.isUndefined(g.Math.cbrt)) {
       js.Math.cbrt(a)
     } else {
-      if (a == 0 || a.isNaN || a.isPosInfinity || a.isNegInfinity) {
+      if (a == 0 || Double.isNaN(a) || Double.isInfinite(a)) {
         a
       } else {
         val sign = if (a < 0.0) -1.0 else 1.0
@@ -213,7 +213,7 @@ object Math {
       // http://en.wikipedia.org/wiki/Hypot#Implementation
       if (abs(a) == scala.Double.PositiveInfinity || abs(b) == scala.Double.PositiveInfinity)
         scala.Double.PositiveInfinity
-      else if (a.isNaN || b.isNaN)
+      else if (Double.isNaN(a) || Double.isNaN(b))
         scala.Double.NaN
       else if (a == 0 && b == 0)
         0.0
@@ -234,7 +234,7 @@ object Math {
       js.Math.expm1(a)
     } else {
       // https://github.com/ghewgill/picomath/blob/master/javascript/expm1.js
-      if (a == 0 || a.isNaN)
+      if (a == 0 || Double.isNaN(a))
         a
       // Power Series http://en.wikipedia.org/wiki/Power_series
       // for small values of a, exp(a) = 1 + a + (a*a)/2
@@ -249,7 +249,7 @@ object Math {
     if (assumingES6 || !js.isUndefined(g.Math.sinh)) {
       js.Math.sinh(a)
     } else {
-      if (a.isNaN || a == 0.0 || abs(a) == scala.Double.PositiveInfinity) a
+      if (Double.isNaN(a) || a == 0.0 || abs(a) == scala.Double.PositiveInfinity) a
       else (exp(a) - exp(-a)) / 2.0
     }
   }
@@ -258,7 +258,7 @@ object Math {
     if (assumingES6 || !js.isUndefined(g.Math.cosh)) {
       js.Math.cosh(a)
     } else {
-      if (a.isNaN)
+      if (Double.isNaN(a))
         a
       else if (a == 0.0)
         1.0
@@ -273,7 +273,7 @@ object Math {
     if (assumingES6 || !js.isUndefined(g.Math.tanh)) {
       js.Math.tanh(a)
     } else {
-      if (a.isNaN || a == 0.0)
+      if (Double.isNaN(a) || a == 0.0)
         a
       else if (abs(a) == scala.Double.PositiveInfinity)
         signum(a)

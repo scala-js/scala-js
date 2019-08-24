@@ -58,13 +58,12 @@ class RuntimeTypesTest {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     def test(x: Any): Unit = {
       try {
-        classOf[Nothing].cast(x)
+        val result = classOf[Nothing].cast(x)
         fail("casting " + x + " to Nothing did not fail")
+        identity(result) // discard `result` without warning
       } catch {
-        case th: Throwable =>
-          assertTrue(th.isInstanceOf[ClassCastException])
-          assertEquals(x + " is not an instance of scala.runtime.Nothing$",
-              th.getMessage)
+        case th: ClassCastException =>
+          // ok
       }
     }
     test("a")

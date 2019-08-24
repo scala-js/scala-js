@@ -164,11 +164,8 @@ lazy val multiTestJVM = project.in(file("multiTest/jvm")).
     // Test platformDepsCrossVersion (as a setting, it's evaluated when loading the build)
     platformDepsCrossVersion := {
       val value = platformDepsCrossVersion.value
-      if (!sbtVersion.value.startsWith("0.")) {
-        // In 0.13, CrossVersions do not have a meaningful ==, but they do in 1.0
-        assert(value == CrossVersion.binary,
-            "platformDepsCrossVersion should be CrossVersion.binary in multiTestJVM")
-      }
+      assert(value == CrossVersion.binary,
+          "platformDepsCrossVersion should be CrossVersion.binary in multiTestJVM")
       value
     }
   ).

@@ -173,7 +173,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
             val (_, changed, _) = staticLikeNamespace.updateWith(linkedClass)
             for (method <- changed) {
               staticLikeNamespace.myInterface.tagStaticCallersOf(
-                  staticLikeNamespace.namespace.ordinal, method)
+                  staticLikeNamespace.namespace, method)
             }
           }
           true
@@ -503,7 +503,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
       // Tag callers with static calls
       for (methodName <- methodAttributeChanges)
-        myInterface.tagStaticCallersOf(namespace.ordinal, methodName)
+        myInterface.tagStaticCallersOf(namespace, methodName)
 
       // Module class specifics
       updateHasElidableModuleAccessor()
@@ -511,7 +511,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       // Inlineable class
       if (updateIsInlineable(linkedClass)) {
         for (method <- methods.values; if isConstructorName(method.encodedName))
-          myInterface.tagStaticCallersOf(namespace.ordinal, method.encodedName)
+          myInterface.tagStaticCallersOf(namespace, method.encodedName)
       }
 
       // Recurse in subclasses
@@ -608,7 +608,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
          * not just added.
          */
         for (methodName <- allMethodNames)
-          myInterface.tagStaticCallersOf(namespace.ordinal, methodName)
+          myInterface.tagStaticCallersOf(namespace, methodName)
       }
 
       updateHasElidableModuleAccessor()
@@ -755,8 +755,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     /** Register a static-caller of an instance method.
      *  PROCESS PASS ONLY.
      */
-    // Using the ordinal works around a bug of Scala 2.10
-    def registerStaticCaller(namespaceOrdinal: Int, methodName: String,
+    def registerStaticCaller(namespace: MemberNamespace, methodName: String,
         caller: MethodImpl): Unit
 
     /** Tag the dynamic-callers of an instance method.
@@ -767,9 +766,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     /** Tag the static-callers of an instance method.
      *  UPDATE PASS ONLY.
      */
-    // Using the ordinal works around a bug of Scala 2.10
-    def tagStaticCallersOf(namespaceOrdinal: Int,
-        methodName: String): Unit
+    def tagStaticCallersOf(namespace: MemberNamespace, methodName: String): Unit
   }
 
   /** A method implementation.
@@ -826,7 +823,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
      */
     private def registerStaticCall(intf: InterfaceType,
         namespace: MemberNamespace, methodName: String): Unit = {
-      intf.registerStaticCaller(namespace.ordinal, methodName, this)
+      intf.registerStaticCaller(namespace, methodName, this)
       registeredTo(intf)
     }
 

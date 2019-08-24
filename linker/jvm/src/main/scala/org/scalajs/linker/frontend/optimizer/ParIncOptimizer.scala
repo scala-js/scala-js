@@ -153,9 +153,9 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
       dynamicCallers.getOrPut(methodName, TrieSet.empty) += caller
 
     /** PROCESS PASS ONLY. */
-    def registerStaticCaller(namespaceOrdinal: Int, methodName: String,
+    def registerStaticCaller(namespace: MemberNamespace, methodName: String,
         caller: MethodImpl): Unit = {
-      staticCallers(namespaceOrdinal)
+      staticCallers(namespace.ordinal)
         .getOrPut(methodName, TrieSet.empty) += caller
     }
 
@@ -171,9 +171,9 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
       dynamicCallers.remove(methodName).foreach(_.keysIterator.foreach(_.tag()))
 
     /** UPDATE PASS ONLY. */
-    def tagStaticCallersOf(namespaceOrdinal: Int,
+    def tagStaticCallersOf(namespace: MemberNamespace,
         methodName: String): Unit = {
-      staticCallers(namespaceOrdinal)
+      staticCallers(namespace.ordinal)
         .remove(methodName)
         .foreach(_.keysIterator.foreach(_.tag()))
     }

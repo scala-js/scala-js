@@ -577,7 +577,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               }
           }
 
-        case Assign(select @ JSDotSelect(qualifier, item), rhs) =>
+        case Assign(select @ JSPrivateSelect(qualifier, item), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
             js.Assign(
@@ -586,7 +586,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 transformExprNoChar(newRhs))
           }
 
-        case Assign(select @ JSBracketSelect(qualifier, item), rhs) =>
+        case Assign(select @ JSSelect(qualifier, item), rhs) =>
           unnest(List(qualifier, item, rhs)) {
             case (List(newQualifier, newItem, newRhs), env0) =>
               implicit val env = env0
@@ -596,7 +596,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   transformExprNoChar(newRhs))
           }
 
-        case Assign(select @ JSSuperBracketSelect(superClass, qualifier, item), rhs) =>
+        case Assign(select @ JSSuperSelect(superClass, qualifier, item), rhs) =>
           unnest(List(superClass, qualifier, item, rhs)) {
             case (List(newSuperClass, newQualifier, newItem, newRhs), env0) =>
               implicit val env = env0
@@ -830,18 +830,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             js.Block(superCtorCall :: fieldDefs)
           }
 
-        case JSDelete(JSDotSelect(obj, prop)) =>
-          unnest(obj) { (newObj, env0) =>
-            implicit val env = env0
-            js.Delete(js.DotSelect(transformExprNoChar(newObj),
-                transformPropIdent(prop)))
-          }
-
-        case JSDelete(JSBracketSelect(obj, prop)) =>
-          unnest(obj, prop) { (newObj, newProp, env0) =>
+        case JSDelete(qualifier, item) =>
+          unnest(qualifier, item) { (newQual, newItem, env0) =>
             implicit val env = env0
             js.Delete(genBracketSelect(
-                transformExprNoChar(newObj), transformExprNoChar(newProp)))
+                transformExprNoChar(newQual), transformExprNoChar(newItem)))
           }
 
         // Treat 'return' as an LHS
@@ -1020,15 +1013,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               case arg @ JSObjectConstr(items)
                   if !doesObjectConstrRequireDesugaring(arg) =>
                 // We need to properly interleave keys and values here
-                val newItems = items.foldRight[List[(PropertyName, Tree)]](Nil) {
+                val newItems = items.foldRight[List[(Tree, Tree)]](Nil) {
                   case ((key, value), acc) =>
                     val newValue = rec(value) // value first!
-                    val newKey = key match {
-                      case _:Ident | _:StringLiteral =>
-                        key
-                      case ComputedName(keyExpr, logicalName) =>
-                        ComputedName(rec(keyExpr), logicalName)
-                    }
+                    val newKey = rec(key)
                     (newKey, newValue) :: acc
                 }
                 JSObjectConstr(newItems)
@@ -1116,34 +1104,23 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     }
 
     /** Unnest for the fields of a `JSObjectConstr`. */
-    def unnestJSObjectConstrFields(fields: List[(PropertyName, Tree)])(
-        makeStat: (List[(PropertyName, Tree)], Env) => js.Tree)(
+    def unnestJSObjectConstrFields(fields: List[(Tree, Tree)])(
+        makeStat: (List[(Tree, Tree)], Env) => js.Tree)(
         implicit env: Env): js.Tree = {
 
       // Collect all the trees that need unnesting, in evaluation order
-      val trees = fields.flatMap {
-        case (ComputedName(tree, _), value) => List(tree, value)
-        case (_, value)                     => List(value)
+      val trees = fields.flatMap { field =>
+        List(field._1, field._2)
       }
 
       unnest(trees) { (newTrees, env) =>
+        // Re-decompose all the trees into pairs of (key, value)
         val newTreesIterator = newTrees.iterator
+        val newFields = List.newBuilder[(Tree, Tree)]
+        while (newTreesIterator.hasNext)
+          newFields += ((newTreesIterator.next(), newTreesIterator.next()))
 
-        val newFields = fields.map {
-          case (propName, value) =>
-            val newPropName = propName match {
-              case ComputedName(_, logicalName) =>
-                val newTree = newTreesIterator.next()
-                ComputedName(newTree, logicalName)
-              case _:StringLiteral | _:Ident =>
-                propName
-            }
-            val newValue = newTreesIterator.next()
-            (newPropName, newValue)
-        }
-
-        assert(!newTreesIterator.hasNext)
-        makeStat(newFields, env)
+        makeStat(newFields.result(), env)
       }
     }
 
@@ -1230,10 +1207,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           allowUnpure &&
           !doesObjectConstrRequireDesugaring(tree) &&
           items.forall { item =>
-            test(item._2) && (item._1 match {
-              case ComputedName(tree, _) => test(tree)
-              case _                     => true
-            })
+            test(item._1) && test(item._2)
           }
         case Closure(arrow, captureParams, params, body, captureValues) =>
           allowUnpure && (captureValues forall test)
@@ -1263,17 +1237,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // JavaScript expressions that can always have side-effects
         case JSNew(fun, args) =>
           allowSideEffects && test(fun) && (args.forall(testJSArg))
-        case JSDotSelect(qualifier, item) =>
+        case JSPrivateSelect(qualifier, item) =>
           allowSideEffects && test(qualifier)
-        case JSBracketSelect(qualifier, item) =>
+        case JSSelect(qualifier, item) =>
           allowSideEffects && test(qualifier) && test(item)
         case JSFunctionApply(fun, args) =>
           allowSideEffects && test(fun) && (args.forall(testJSArg))
-        case JSDotMethodApply(receiver, method, args) =>
-          allowSideEffects && test(receiver) && (args.forall(testJSArg))
-        case JSBracketMethodApply(receiver, method, args) =>
+        case JSMethodApply(receiver, method, args) =>
           allowSideEffects && test(receiver) && test(method) && (args.forall(testJSArg))
-        case JSSuperBracketSelect(superClass, qualifier, item) =>
+        case JSSuperSelect(superClass, qualifier, item) =>
           allowSideEffects && test(superClass) && test(qualifier) && test(item)
         case JSImportCall(arg) =>
           allowSideEffects && test(arg)
@@ -1705,7 +1677,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSFunctionApply(fun, args) =>
           if (containsAnySpread(args)) {
             redo {
-              JSBracketMethodApply(fun, StringLiteral("apply"),
+              JSMethodApply(fun, StringLiteral("apply"),
                   List(Undefined(), spreadToArgArray(args)))
             }
           } else {
@@ -1715,31 +1687,13 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             }
           }
 
-        case JSDotMethodApply(receiver, method, args) =>
+        case JSMethodApply(receiver, method, args) =>
           if (containsAnySpread(args)) {
             withTempVar(receiver) { (newReceiver, env0) =>
               implicit val env = env0
               redo {
-                JSBracketMethodApply(
-                    JSDotSelect(newReceiver, method),
-                    StringLiteral("apply"),
-                    List(newReceiver, spreadToArgArray(args)))
-              }
-            }
-          } else {
-            unnest(receiver :: castNoSpread(args)) { (newReceiverAndArgs, env) =>
-              val newReceiver :: newArgs = newReceiverAndArgs
-              redo(JSDotMethodApply(newReceiver, method, newArgs))(env)
-            }
-          }
-
-        case JSBracketMethodApply(receiver, method, args) =>
-          if (containsAnySpread(args)) {
-            withTempVar(receiver) { (newReceiver, env0) =>
-              implicit val env = env0
-              redo {
-                JSBracketMethodApply(
-                    JSBracketSelect(newReceiver, method),
+                JSMethodApply(
+                    JSSelect(newReceiver, method),
                     StringLiteral("apply"),
                     List(newReceiver, spreadToArgArray(args)))
               }
@@ -1747,21 +1701,21 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           } else {
             unnest(receiver :: method :: castNoSpread(args)) { (newReceiverAndArgs, env) =>
               val newReceiver :: newMethod :: newArgs = newReceiverAndArgs
-              redo(JSBracketMethodApply(newReceiver, newMethod, newArgs))(env)
+              redo(JSMethodApply(newReceiver, newMethod, newArgs))(env)
             }
           }
 
-        case JSSuperBracketSelect(superClass, qualifier, item) =>
+        case JSSuperSelect(superClass, qualifier, item) =>
           unnest(List(superClass, qualifier, item)) {
             case (List(newSuperClass, newQualifier, newItem), env) =>
-              redo(JSSuperBracketSelect(newSuperClass, newQualifier, newItem))(env)
+              redo(JSSuperSelect(newSuperClass, newQualifier, newItem))(env)
           }
 
-        case JSSuperBracketCall(superClass, receiver, method, args) =>
+        case JSSuperMethodCall(superClass, receiver, method, args) =>
           redo {
-            JSBracketMethodApply(
-                JSBracketSelect(
-                    JSBracketSelect(superClass, StringLiteral("prototype")),
+            JSMethodApply(
+                JSSelect(
+                    JSSelect(superClass, StringLiteral("prototype")),
                     method),
                 StringLiteral("call"),
                 receiver :: args)
@@ -1772,14 +1726,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             redo(JSImportCall(newArg))(env)
           }
 
-        case JSDotSelect(qualifier, item) =>
+        case JSPrivateSelect(qualifier, item) =>
           unnest(qualifier) { (newQualifier, env) =>
-            redo(JSDotSelect(newQualifier, item))(env)
+            redo(JSPrivateSelect(newQualifier, item))(env)
           }
 
-        case JSBracketSelect(qualifier, item) =>
+        case JSSelect(qualifier, item) =>
           unnest(qualifier, item) { (newQualifier, newItem, env) =>
-            redo(JSBracketSelect(newQualifier, newItem))(env)
+            redo(JSSelect(newQualifier, newItem))(env)
           }
 
         case JSUnaryOp(op, lhs) =>
@@ -1826,24 +1780,19 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             val objVarDef = VarDef(newSyntheticVar(), AnyType, mutable = false,
                 JSObjectConstr(Nil))
             val assignFields = fields.foldRight((Set.empty[String], List.empty[Tree])) {
-              case ((prop, value), (namesSeen, statsAcc)) =>
+              case ((key, value), (namesSeen, statsAcc)) =>
                 implicit val pos = value.pos
-                val nameForDupes = prop match {
-                  case _:StringLiteral | _:Ident => Some(prop.encodedName)
-                  case _: ComputedName           => None
+                val nameForDupes = key match {
+                  case StringLiteral(s) => Some(s)
+                  case _                => None
                 }
-                val stat = prop match {
-                  case _ if nameForDupes.exists(namesSeen) =>
-                    /* Important: do not emit the assignment, otherwise
-                     * Closure recreates a literal with the duplicate field!
-                     */
-                    value
-                  case prop: Ident =>
-                    Assign(JSDotSelect(objVarDef.ref, prop), value)
-                  case prop: StringLiteral =>
-                    Assign(JSBracketSelect(objVarDef.ref, prop), value)
-                  case ComputedName(tree, _) =>
-                    Assign(JSBracketSelect(objVarDef.ref, tree), value)
+                val stat = if (nameForDupes.exists(namesSeen)) {
+                  /* Important: do not emit the assignment, otherwise
+                   * Closure recreates a literal with the duplicate field!
+                   */
+                  value
+                } else {
+                  Assign(JSSelect(objVarDef.ref, key), value)
                 }
                 (namesSeen ++ nameForDupes, stat :: statsAcc)
             }._2
@@ -1931,8 +1880,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case List(part) => part
         case _          =>
           val partHead :: partTail = reversedParts.reverse
-          JSBracketMethodApply(
-              partHead, StringLiteral("concat"), partTail)
+          JSMethodApply(partHead, StringLiteral("concat"), partTail)
       }
     }
 
@@ -1943,12 +1891,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         esFeatures.useECMAScript2015
 
       def hasComputedName: Boolean =
-        tree.fields.exists(_._1.isInstanceOf[ComputedName])
+        tree.fields.exists(!_._1.isInstanceOf[StringLiteral])
 
       def hasDuplicateNonComputedProp: Boolean = {
         val names = tree.fields.collect {
           case (StringLiteral(name), _) => name
-          case (Ident(name, _), _)      => name
         }
         names.toSet.size != names.size
       }
@@ -2519,10 +2466,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSNew(constr, args) =>
           js.New(transformExprNoChar(constr), args.map(transformJSArg))
 
-        case JSDotSelect(qualifier, item) =>
+        case JSPrivateSelect(qualifier, item) =>
           js.DotSelect(transformExprNoChar(qualifier), transformPropIdent(item))
 
-        case JSBracketSelect(qualifier, item) =>
+        case JSSelect(qualifier, item) =>
           genBracketSelect(transformExprNoChar(qualifier),
               transformExprNoChar(item))
 
@@ -2551,17 +2498,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           }
           js.Apply(protectedFun, args.map(transformJSArg))
 
-        case JSDotMethodApply(receiver, method, args) =>
-          js.Apply(
-              js.DotSelect(transformExprNoChar(receiver),
-                  transformPropIdent(method)),
-              args.map(transformJSArg))
-
-        case JSBracketMethodApply(receiver, method, args) =>
+        case JSMethodApply(receiver, method, args) =>
           js.Apply(genBracketSelect(transformExprNoChar(receiver),
               transformExprNoChar(method)), args.map(transformJSArg))
 
-        case JSSuperBracketSelect(superClass, qualifier, item) =>
+        case JSSuperSelect(superClass, qualifier, item) =>
           genCallHelper("superGet", transformExprNoChar(superClass),
               transformExprNoChar(qualifier), transformExprNoChar(item))
 
@@ -2593,8 +2534,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           js.ArrayConstr(items.map(transformJSArg))
 
         case JSObjectConstr(fields) =>
-          js.ObjectConstr(fields map { case (name, value) =>
-            (transformPropertyName(name), transformExprNoChar(value))
+          js.ObjectConstr(fields.map { field =>
+            val key = field._1
+            implicit val pos = key.pos
+            val newKey = key match {
+              case StringLiteral(s) => js.StringLiteral(s)
+              case _                => js.ComputedName(transformExprNoChar(key))
+            }
+            (newKey, transformExprNoChar(field._2))
           })
 
         case JSGlobalRef(name) =>
@@ -2742,16 +2689,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     private def transformParamDef(paramDef: ParamDef): js.ParamDef = {
       js.ParamDef(transformLocalVarIdent(paramDef.name), paramDef.rest)(
           paramDef.pos)
-    }
-
-    def transformPropertyName(pName: PropertyName)(
-        implicit env: Env): js.PropertyName = {
-      implicit val pos = pName.pos
-      pName match {
-        case name: Ident           => transformPropIdent(name)
-        case StringLiteral(s)      => js.StringLiteral(s)
-        case ComputedName(tree, _) => js.ComputedName(transformExprNoChar(tree))
-      }
     }
 
     private def transformLabelIdent(ident: Ident): js.Ident =

@@ -299,13 +299,13 @@ object Hashers {
           mixTree(ctor)
           mixTreeOrJSSpreads(args)
 
-        case JSDotSelect(qualifier, item) =>
-          mixTag(TagJSDotSelect)
+        case JSPrivateSelect(qualifier, item) =>
+          mixTag(TagJSPrivateSelect)
           mixTree(qualifier)
           mixIdent(item)
 
-        case JSBracketSelect(qualifier, item) =>
-          mixTag(TagJSBracketSelect)
+        case JSSelect(qualifier, item) =>
+          mixTag(TagJSSelect)
           mixTree(qualifier)
           mixTree(item)
 
@@ -314,26 +314,20 @@ object Hashers {
           mixTree(fun)
           mixTreeOrJSSpreads(args)
 
-        case JSDotMethodApply(receiver, method, args) =>
-          mixTag(TagJSDotMethodApply)
-          mixTree(receiver)
-          mixIdent(method)
-          mixTreeOrJSSpreads(args)
-
-        case JSBracketMethodApply(receiver, method, args) =>
-          mixTag(TagJSBracketMethodApply)
+        case JSMethodApply(receiver, method, args) =>
+          mixTag(TagJSMethodApply)
           mixTree(receiver)
           mixTree(method)
           mixTreeOrJSSpreads(args)
 
-        case JSSuperBracketSelect(superClass, qualifier, item) =>
-          mixTag(TagJSSuperBracketSelect)
+        case JSSuperSelect(superClass, qualifier, item) =>
+          mixTag(TagJSSuperSelect)
           mixTree(superClass)
           mixTree(qualifier)
           mixTree(item)
 
-        case JSSuperBracketCall(superClass, receiver, method, args) =>
-          mixTag(TagJSSuperBracketCall)
+        case JSSuperMethodCall(superClass, receiver, method, args) =>
+          mixTag(TagJSSuperMethodCall)
           mixTree(superClass)
           mixTree(receiver)
           mixTree(method)
@@ -355,9 +349,10 @@ object Hashers {
           mixTag(TagLoadJSModule)
           mixClassRef(cls)
 
-        case JSDelete(prop) =>
+        case JSDelete(qualifier, item) =>
           mixTag(TagJSDelete)
-          mixTree(prop)
+          mixTree(qualifier)
+          mixTree(item)
 
         case JSUnaryOp(op, lhs) =>
           mixTag(TagJSUnaryOp)
@@ -376,8 +371,8 @@ object Hashers {
 
         case JSObjectConstr(fields) =>
           mixTag(TagJSObjectConstr)
-          fields foreach { case (pn, value) =>
-            mixPropertyName(pn)
+          fields.foreach { case (key, value) =>
+            mixTree(key)
             mixTree(value)
           }
 

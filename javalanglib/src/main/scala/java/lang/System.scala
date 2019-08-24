@@ -239,18 +239,18 @@ object System {
 
     private[System] def loadSystemProperties(): js.Dictionary[String] = {
       js.Dictionary(
-          "java.version" -> "1.8",
-          "java.vm.specification.version" -> "1.8",
-          "java.vm.specification.vendor" -> "Oracle Corporation",
-          "java.vm.specification.name" -> "Java Virtual Machine Specification",
-          "java.vm.name" -> "Scala.js",
-          "java.vm.version" -> linkingInfo.linkerVersion,
-          "java.specification.version" -> "1.8",
-          "java.specification.vendor" -> "Oracle Corporation",
-          "java.specification.name" -> "Java Platform API Specification",
-          "file.separator" -> "/",
-          "path.separator" -> ":",
-          "line.separator" -> "\n"
+          ("java.version", "1.8"),
+          ("java.vm.specification.version", "1.8"),
+          ("java.vm.specification.vendor", "Oracle Corporation"),
+          ("java.vm.specification.name", "Java Virtual Machine Specification"),
+          ("java.vm.name", "Scala.js"),
+          ("java.vm.version", linkingInfo.linkerVersion),
+          ("java.specification.version", "1.8"),
+          ("java.specification.vendor", "Oracle Corporation"),
+          ("java.specification.name", "Java Platform API Specification"),
+          ("file.separator", "/"),
+          ("path.separator", ":"),
+          ("line.separator", "\n")
       )
     }
 
@@ -316,7 +316,7 @@ object System {
   def gc(): Unit = Runtime.getRuntime().gc()
 }
 
-private[lang] final class JSConsoleBasedPrintStream(isErr: Boolean)
+private[lang] final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
     extends PrintStream(new JSConsoleBasedPrintStream.DummyOutputStream) {
 
   import JSConsoleBasedPrintStream._

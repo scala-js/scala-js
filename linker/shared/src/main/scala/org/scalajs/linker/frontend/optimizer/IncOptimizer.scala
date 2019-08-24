@@ -122,9 +122,9 @@ final class IncOptimizer(config: CommonPhaseConfig)
     def registerDynamicCaller(methodName: String, caller: MethodImpl): Unit =
       dynamicCallers.getOrElseUpdate(methodName, mutable.Set.empty) += caller
 
-    def registerStaticCaller(namespaceOrdinal: Int, methodName: String,
+    def registerStaticCaller(namespace: MemberNamespace, methodName: String,
         caller: MethodImpl): Unit = {
-      staticCallers(namespaceOrdinal)
+      staticCallers(namespace.ordinal)
         .getOrElseUpdate(methodName, mutable.Set.empty) += caller
     }
 
@@ -137,9 +137,9 @@ final class IncOptimizer(config: CommonPhaseConfig)
     def tagDynamicCallersOf(methodName: String): Unit =
       dynamicCallers.remove(methodName).foreach(_.foreach(_.tag()))
 
-    def tagStaticCallersOf(namespaceOrdinal: Int,
+    def tagStaticCallersOf(namespace: MemberNamespace,
         methodName: String): Unit = {
-      staticCallers(namespaceOrdinal)
+      staticCallers(namespace.ordinal)
         .remove(methodName)
         .foreach(_.foreach(_.tag()))
     }

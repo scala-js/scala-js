@@ -53,7 +53,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
   import jsDefinitions._
   import jsInterop.{jsNameOf, jsNativeLoadSpecOfOption, JSName}
 
-  import treeInfo.hasSynthCaseSymbol
+  import treeInfo.{hasSynthCaseSymbol, StripCast}
 
   import platform.isMaybeBoxed
 
@@ -721,9 +721,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case fdef: js.FieldDef =>
           implicit val pos = fdef.pos
           val select = fdef.name match {
-            case ident: js.Ident          => js.JSDotSelect(selfRef, ident)
-            case lit: js.StringLiteral    => js.JSBracketSelect(selfRef, lit)
-            case js.ComputedName(tree, _) => js.JSBracketSelect(selfRef, tree)
+            case ident: js.Ident          => js.JSPrivateSelect(selfRef, ident)
+            case lit: js.StringLiteral    => js.JSSelect(selfRef, lit)
+            case js.ComputedName(tree, _) => js.JSSelect(selfRef, tree)
           }
           js.Assign(select, jstpe.zeroOf(fdef.ftpe))
 
@@ -732,7 +732,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val name = mdef.name.asInstanceOf[js.StringLiteral]
           val impl = memberLambda(mdef.args, mdef.body.getOrElse(
               throw new AssertionError("Got anon SJS class with abstract method")))
-          js.Assign(js.JSBracketSelect(selfRef, name), impl)
+          js.Assign(js.JSSelect(selfRef, name), impl)
 
         case pdef: js.PropertyDef =>
           implicit val pos = pdef.pos
@@ -756,7 +756,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               List(js.StringLiteral("configurable") -> js.BooleanLiteral(true))
           )
 
-          js.JSBracketMethodApply(jsObject, js.StringLiteral("defineProperty"),
+          js.JSMethodApply(jsObject, js.StringLiteral("defineProperty"),
               List(selfRef, name, descriptor))
 
         case tree =>
@@ -2061,6 +2061,23 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             }
           }
 
+        /* !!! Copy-pasted from `CleanUp.scala` upstream and simplified with
+         * our `WrapArray` extractor.
+         *
+         * Replaces `Array(Predef.wrapArray(ArrayValue(...).$asInstanceOf[...]), <tag>)`
+         * with just `ArrayValue(...).$asInstanceOf[...]`
+         *
+         * See scala/bug#6611; we must *only* do this for literal vararg arrays.
+         *
+         * This is normally done by `cleanup` but it comes later than this phase.
+         */
+        case Apply(appMeth, Apply(wrapRefArrayMeth, (arg @ StripCast(ArrayValue(_, _))) :: Nil) :: _ :: Nil)
+            if wrapRefArrayMeth.symbol == WrapArray.wrapRefArrayMethod && appMeth.symbol == ArrayModule_genericApply =>
+          genStatOrExpr(arg, isStat)
+        case Apply(appMeth, elem0 :: WrapArray(rest @ ArrayValue(elemtpt, _)) :: Nil)
+            if appMeth.symbol == ArrayModule_apply(elemtpt.tpe) =>
+          genStatOrExpr(treeCopy.ArrayValue(rest, rest.elemtpt, elem0 :: rest.elems), isStat)
+
         case app: Apply =>
           genApply(app, isStat)
 
@@ -2097,9 +2114,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           } else if (isNonNativeJSClass(sym.owner)) {
             val genQual = genExpr(qualifier)
             val boxed = if (isExposed(sym))
-              js.JSBracketSelect(genQual, genExpr(jsNameOf(sym)))
+              js.JSSelect(genQual, genExpr(jsNameOf(sym)))
             else
-              js.JSDotSelect(genQual, encodeFieldSym(sym))
+              js.JSPrivateSelect(genQual, encodeFieldSym(sym))
             unboxFieldValue(boxed)
           } else if (jsInterop.isFieldStatic(sym)) {
             unboxFieldValue(genSelectStaticFieldAsBoxed(sym))
@@ -2197,9 +2214,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
               if (isNonNativeJSClass(sym.owner)) {
                 val genLhs = if (isExposed(sym))
-                  js.JSBracketSelect(genQual, genExpr(jsNameOf(sym)))
+                  js.JSSelect(genQual, genExpr(jsNameOf(sym)))
                 else
-                  js.JSDotSelect(genQual, encodeFieldSym(sym))
+                  js.JSPrivateSelect(genQual, encodeFieldSym(sym))
                 js.Assign(genLhs, genBoxedRhs)
               } else if (jsInterop.isFieldStatic(sym)) {
                 js.Assign(genSelectStaticFieldAsBoxed(sym), genBoxedRhs)
@@ -2271,7 +2288,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case ExportDestination.Static =>
           val exportInfo = exportInfos.head
           val companionClass = patchedLinkedClassOfClass(sym.owner)
-          js.JSBracketSelect(
+          js.JSSelect(
               genPrimitiveJSClass(companionClass),
               js.StringLiteral(exportInfo.jsName))
       }
@@ -4542,7 +4559,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case DELETE =>
           // js.special.delete(arg1, arg2)
           val (arg1, arg2) = genArgs2
-          js.JSDelete(js.JSBracketSelect(arg1, arg2))
+          js.JSDelete(arg1, arg2)
 
         case FORIN =>
           /* js.special.forin(arg1, arg2)
@@ -4683,7 +4700,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             jsSuperClassValue.fold[js.Tree] {
               genJSBracketSelectOrGlobalRef(receiver, propName)
             } { superClassValue =>
-              js.JSSuperBracketSelect(superClassValue,
+              js.JSSuperSelect(superClassValue,
                   ruleOutGlobalScope(receiver), propName)
             }
           }
@@ -4700,7 +4717,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               genJSBracketMethodApplyOrGlobalRefApply(
                   receiver, methodName, args)
             } { superClassValue =>
-              js.JSSuperBracketCall(superClassValue,
+              js.JSSuperMethodCall(superClassValue,
                   ruleOutGlobalScope(receiver), methodName, args)
             }
           }
@@ -5060,11 +5077,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     object WrapArray {
-      private val isWrapArray: Set[Symbol] = {
-        val wrapArrayModule =
-          if (hasNewCollections) ScalaRunTimeModule
-          else PredefModule
+      private val wrapArrayModule =
+        if (hasNewCollections) ScalaRunTimeModule
+        else PredefModule
 
+      val wrapRefArrayMethod: Symbol =
+        getMemberMethod(wrapArrayModule, nme.wrapRefArray)
+
+      private val isWrapArray: Set[Symbol] = {
         Seq(
             nme.wrapRefArray,
             nme.wrapByteArray,
@@ -5797,7 +5817,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         item: js.Tree)(implicit pos: Position): js.Tree = {
       qual match {
         case MaybeGlobalScope.NotGlobalScope(qualTree) =>
-          js.JSBracketSelect(qualTree, item)
+          js.JSSelect(qualTree, item)
 
         case MaybeGlobalScope.GlobalScope(_) =>
           item match {
@@ -5844,7 +5864,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         implicit pos: Position): js.Tree = {
       receiver match {
         case MaybeGlobalScope.NotGlobalScope(receiverTree) =>
-          js.JSBracketMethodApply(receiverTree, method, args)
+          js.JSMethodApply(receiverTree, method, args)
 
         case MaybeGlobalScope.GlobalScope(_) =>
           method match {
@@ -5907,7 +5927,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
   private lazy val hasNewCollections = {
     val v = scala.util.Properties.versionNumberString
-    !v.startsWith("2.10.") &&
     !v.startsWith("2.11.") &&
     !v.startsWith("2.12.")
   }

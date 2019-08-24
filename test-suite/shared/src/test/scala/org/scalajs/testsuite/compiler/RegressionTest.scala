@@ -171,7 +171,6 @@ class RegressionTest {
 
     assumeFalse("Affected by https://github.com/scala/bug/issues/10551",
         Platform.executingInJVM && {
-          scalaVersion.startsWith("2.10.") ||
           scalaVersion.startsWith("2.11.") ||
           scalaVersion == "2.12.0" || scalaVersion == "2.12.1" ||
           scalaVersion == "2.12.2" || scalaVersion == "2.12.3" ||
@@ -330,6 +329,26 @@ class RegressionTest {
     assertFalse(classOf[Outer].isInterface)
 
     assertEquals(3, test(null))
+  }
+
+  @Test def IR_checker_must_not_check_method_signatures_on_classes_with_no_instance(): Unit = {
+    assumeTrue("linking only", false)
+
+    class Foo // this class will be dropped by base linking
+
+    class Bar {
+      /* This method is called, but unreachable because there are no instances
+       * of `Bar`. It will therefore not make `Foo` reachable.
+       */
+      def meth(foo: Foo): String = foo.toString()
+    }
+
+    @noinline def nullBar(): Bar = null
+
+    // the IR checker must not try to infer the signature of these calls
+    nullBar().meth(null)
+    (null: Bar).meth(null)
+    (??? : Bar).meth(null) // scalastyle:ignore
   }
 
   @Test def should_properly_order_ctor_statements_when_inlining_issue_1369(): Unit = {

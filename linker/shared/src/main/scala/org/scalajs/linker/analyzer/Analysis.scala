@@ -91,8 +91,7 @@ object Analysis {
   trait MethodInfo {
     def owner: ClassInfo
     def encodedName: String
-    // Using the ordinal works around a bug of Scala 2.10
-    protected def namespaceOrdinal: Int
+    def namespace: MemberNamespace
     def isAbstract: Boolean
     def isExported: Boolean
     def isReflProxy: Boolean
@@ -126,17 +125,6 @@ object Analysis {
 
     def fullDisplayName: String =
       this.namespace.prefixString + owner.displayName + "." + displayName
-  }
-
-  object MethodInfo {
-    implicit class MethodInfoOps private[MethodInfo] (
-        val __private_self: MethodInfo) extends AnyVal {
-
-      @inline private def self: MethodInfo = __private_self
-
-      def namespace: MemberNamespace =
-        MemberNamespace.fromOrdinal(self.namespaceOrdinal)
-    }
   }
 
   sealed trait MethodSyntheticKind

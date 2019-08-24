@@ -18,10 +18,12 @@ import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
+import org.scalajs.linker.ModuleInitializer
+
 object TestIRBuilder {
   implicit val noPosition: ir.Position = ir.Position.NoPosition
 
-  private val EAF = ApplyFlags.empty
+  val EAF = ApplyFlags.empty
 
   val emptyOptHints: OptimizerHints = OptimizerHints.empty
 
@@ -52,9 +54,14 @@ object TestIRBuilder {
 
   def mainMethodDef(body: Tree): MethodDef = {
     val stringArrayType = ArrayType(ArrayTypeRef("T", 1))
-    val argsParamDef = ParamDef(Ident("args", Some("args")), stringArrayType,
-        mutable = false, rest = false)
+    val argsParamDef = paramDef("args", stringArrayType)
     MethodDef(MemberFlags.empty, Ident("main__AT__V"), List(argsParamDef),
         NoType, Some(body))(emptyOptHints, None)
   }
+
+  def paramDef(name: String, ptpe: Type): ParamDef =
+    ParamDef(Ident(name, Some(name)), ptpe, mutable = false, rest = false)
+
+  def mainModuleInitializers(moduleClassName: String): List[ModuleInitializer] =
+    ModuleInitializer.mainMethodWithArgs(moduleClassName, "main") :: Nil
 }

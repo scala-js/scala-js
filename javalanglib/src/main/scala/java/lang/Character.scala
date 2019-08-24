@@ -47,7 +47,7 @@ class Character private ()
 }
 
 object Character {
-  final val TYPE = classOf[scala.Char]
+  final val TYPE = scala.Predef.classOf[scala.Char]
   final val MIN_VALUE = '\u0000'
   final val MAX_VALUE = '\uffff'
   final val SIZE = 16
@@ -114,10 +114,10 @@ object Character {
   }
 
   @inline
-  private[this] def getTypeLT256(codePoint: Int): scala.Byte =
+  private[this] def getTypeLT256(codePoint: Int): Int =
     charTypesFirst256(codePoint)
 
-  private[this] def getTypeGE256(codePoint: Int): scala.Byte = {
+  private[this] def getTypeGE256(codePoint: Int): Int = {
     // the idx is increased by 1 due to the differences in indexing
     // between charTypeIndices and charType
     val idx = Arrays.binarySearch(charTypeIndices, codePoint) + 1
@@ -448,8 +448,8 @@ object Character {
   //def getDirectionality(c: scala.Char): scala.Byte
 
   /* Conversions */
-  def toUpperCase(c: scala.Char): scala.Char = c.toString.toUpperCase()(0)
-  def toLowerCase(c: scala.Char): scala.Char = c.toString.toLowerCase()(0)
+  def toUpperCase(c: scala.Char): scala.Char = c.toString.toUpperCase().charAt(0)
+  def toLowerCase(c: scala.Char): scala.Char = c.toString.toLowerCase().charAt(0)
   //def toTitleCase(c: scala.Char): scala.Char
   //def getNumericValue(c: scala.Char): Int
 
@@ -508,7 +508,7 @@ object Character {
   // Based on Unicode 7.0.0
 
   // Types of characters from 0 to 255
-  private[this] lazy val charTypesFirst256 = Array[scala.Byte](15, 15, 15, 15,
+  private[this] lazy val charTypesFirst256: Array[Int] = Array(15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 24, 24, 24, 26, 24, 24, 24,
     21, 22, 24, 25, 24, 20, 24, 24, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 24, 24, 25,
@@ -541,11 +541,11 @@ object Character {
   //    .map(tup => tup._1 - tup._2)
   //  val charTypes = indicesAndTypes.map(_._2)
   //  println(charTypeIndicesDeltas.mkString(
-  //    "charTypeIndices: val deltas = Array[Int](", ", ", ")"))
-  //  println(charTypes.mkString("val charTypes = Array[scala.Byte](", ", ", ")"))
+  //    "charTypeIndices: val deltas = Array(", ", ", ")"))
+  //  println(charTypes.mkString("val charTypes = Array(", ", ", ")"))
   //
-  private[this] lazy val charTypeIndices = {
-    val deltas = Array[Int](257, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  private[this] lazy val charTypeIndices: Array[Int] = {
+    val deltas = Array(257, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1,
       1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -695,7 +695,7 @@ object Character {
     uncompressDeltas(deltas)
   }
 
-  private[this] lazy val charTypes = Array[scala.Byte](1, 2, 1, 2, 1, 2,
+  private[this] lazy val charTypes: Array[Int] = Array(1, 2, 1, 2, 1, 2,
     1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
     2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2,
     1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
@@ -859,8 +859,8 @@ object Character {
   //       0 :: isMirroredIndices.init).map(tup => tup._1 - tup._2)
   //  println(isMirroredIndicesDeltas.mkString(
   //     "isMirroredIndices: val deltas = Array[Int](", ", ", ")"))
-  private[this] lazy val isMirroredIndices = {
-    val deltas = Array[Int](40, 2, 18, 1, 1, 1, 28, 1, 1, 1, 29, 1, 1, 1,
+  private[this] lazy val isMirroredIndices: Array[Int] = {
+    val deltas = Array(40, 2, 18, 1, 1, 1, 28, 1, 1, 1, 29, 1, 1, 1,
       45, 1, 15, 1, 3710, 4, 1885, 2, 2460, 2, 10, 2, 54, 2, 14, 2, 177, 1,
       192, 4, 3, 6, 3, 1, 3, 2, 3, 4, 1, 4, 1, 1, 1, 1, 4, 9, 5, 1, 1, 18,
       5, 4, 9, 2, 1, 1, 1, 8, 2, 31, 2, 4, 5, 1, 9, 2, 2, 19, 5, 2, 9, 5, 2,
@@ -875,8 +875,14 @@ object Character {
   }
 
   private[this] def uncompressDeltas(deltas: Array[Int]): Array[Int] = {
-    for (i <- 1 until deltas.length)
-      deltas(i) += deltas(i - 1)
+    var acc = deltas(0)
+    var i = 1
+    val len = deltas.length
+    while (i != len) {
+      acc += deltas(i)
+      deltas(i) = acc
+      i += 1
+    }
     deltas
   }
 
@@ -887,7 +893,7 @@ object Character {
    *  point mapping to digits from 0 to 9.
    */
   private[this] lazy val nonASCIIZeroDigitCodePoints: Array[Int] = {
-    Array[Int](0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 0xbe6,
+    Array(0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 0xbe6,
         0xc66, 0xce6, 0xd66, 0xe50, 0xed0, 0xf20, 0x1040, 0x1090, 0x17e0,
         0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0, 0x1c40, 0x1c50,
         0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xaa50, 0xabf0, 0xff10, 0x104a0,
