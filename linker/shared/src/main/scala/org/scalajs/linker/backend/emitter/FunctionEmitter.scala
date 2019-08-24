@@ -1289,30 +1289,34 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     def doVarDef(ident: Ident, tpe: Type, mutable: Boolean, rhs: Tree)(
         implicit env: Env): js.Tree = {
-      implicit val pos = rhs.pos
-      tpe match {
-        case RecordType(fields) =>
-          val elems = (rhs: @unchecked) match {
-            case RecordValue(_, elems) =>
-              elems
-            case VarRef(rhsIdent) =>
-              for (RecordType.Field(fName, fOrigName, fTpe, _) <- fields)
-                yield VarRef(makeRecordFieldIdent(rhsIdent, fName, fOrigName))(fTpe)
-          }
-          js.Block(for {
-            (RecordType.Field(fName, fOrigName, fTpe, fMutable),
-                fRhs) <- fields zip elems
-          } yield {
-            doVarDef(makeRecordFieldIdent(ident, fName, fOrigName), fTpe,
+      if (localVarNames.contains(ident.name) && !tpe.isInstanceOf[RecordType]) {
+        implicit val post = rhs.pos
+        js.Assign(js.VarRef(js.Ident(ident.name)), transformExpr(rhs, tpe))
+      } else {
+        implicit val pos = rhs.pos
+        tpe match {
+          case RecordType(fields) =>
+            val elems = (rhs: @unchecked) match {
+              case RecordValue(_, elems) =>
+                elems
+              case VarRef(rhsIdent) =>
+                for (RecordType.Field(fName, fOrigName, fTpe, _) <- fields)
+                  yield VarRef(makeRecordFieldIdent(rhsIdent, fName, fOrigName))(fTpe)
+            }
+            js.Block(for {
+              (RecordType.Field(fName, fOrigName, fTpe, fMutable),
+              fRhs) <- fields zip elems
+            } yield {
+              doVarDef(makeRecordFieldIdent(ident, fName, fOrigName), fTpe,
                 mutable || fMutable, fRhs)
-          })
+            })
 
-        case _ =>
-          genLet(transformLocalVarIdent(ident), mutable,
+          case _ =>
+            genLet(transformLocalVarIdent(ident), mutable,
               transformExpr(rhs, tpe))
+        }
       }
     }
-
     def doEmptyVarDef(ident: Ident, tpe: Type)(
         implicit pos: Position, env: Env): js.Tree = {
       tpe match {
