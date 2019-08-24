@@ -58,6 +58,20 @@ class LocalScopeTestEx {
       buf
     }
     assertEquals("barbarbarbarbarbarbarbarbarbarbarbar", f2("bar"))
+
+    @noinline def f3(strs: Array[String]): String = {
+      val x = if (strs.length > 3 && {
+        val y = strs.length
+        y / 2 > y - 3
+      }) {
+        "one"
+      } else {
+        "two"
+      }
+      val `jsx$1` = "" + x + "-" + "foo"
+      `jsx$1` + "-bar"
+    }
+    assertEquals("two-foo-bar", f3(Array("one", "two", "three", "four", "five")))
   }
 }
 
