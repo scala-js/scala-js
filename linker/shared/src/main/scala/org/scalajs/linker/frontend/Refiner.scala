@@ -39,7 +39,7 @@ final class Refiner(config: CommonPhaseConfig) {
       Map(unit.classDefs.map(c => c.encodedName -> c): _*)
     inputProvider.update(linkedClassesByName)
 
-    val analysis = logger.time("Refiner: Compute reachability") {
+    val analysis = logger.timeFuture("Refiner: Compute reachability") {
       val allSymbolRequirements = {
         symbolRequirements ++
         ModuleInitializer.toSymbolRequirement(unit.moduleInitializers)

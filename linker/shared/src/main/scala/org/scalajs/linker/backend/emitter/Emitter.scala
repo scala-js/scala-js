@@ -401,7 +401,7 @@ final class Emitter private (config: CommonPhaseConfig,
         s"Emitter: Class tree cache stats: reused: $statsClassesReused -- "+
         s"invalidated: $statsClassesInvalidated")
     logger.debug(
-        s"Emitter: Method tree cache stats: resued: $statsMethodsReused -- "+
+        s"Emitter: Method tree cache stats: reused: $statsMethodsReused -- "+
         s"invalidated: $statsMethodsInvalidated")
     classCaches.filterInPlace((_, c) => c.cleanAfterRun())
   }
