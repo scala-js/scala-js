@@ -18,11 +18,14 @@ import scala.annotation.tailrec
 
 import org.scalajs.ir
 import ir._
+import ir.Definitions._
 import ir.Types._
 import ir.{Trees => irt}
 
 import org.scalajs.linker._
 import org.scalajs.linker.backend.javascript.Trees._
+
+import EmitterDefinitions._
 
 /** Collection of tree generators that are used accross the board.
  *  This class is fully stateless.
@@ -104,8 +107,33 @@ private[emitter] final class JSGen(val semantics: Semantics,
   }
 
   def genIsInstanceOf(expr: Tree, typeRef: TypeRef)(
-      implicit pos: Position): Tree =
-    genIsAsInstanceOf(expr, typeRef, test = true)
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
+    import TreeDSL._
+
+    typeRef match {
+      case ClassRef(className) =>
+        if (!HijackedClassesAndTheirSuperClasses.contains(className) &&
+            !globalKnowledge.isInterface(className)) {
+          expr instanceof encodeClassVar(className)
+        } else if (className == BoxedLongClass && !useBigIntForLongs) {
+          expr instanceof encodeClassVar(LongImpl.RuntimeLongClass)
+        } else {
+          genIsAsInstanceOf(expr, typeRef, test = true)
+        }
+      case ArrayTypeRef(_, _)  =>
+        genIsAsInstanceOf(expr, typeRef, test = true)
+    }
+  }
+
+  def genIsInstanceOfHijackedClass(expr: Tree, classRef: ClassRef)(
+      implicit pos: Position): Tree = {
+    import TreeDSL._
+
+    if (classRef.className == BoxedLongClass && !useBigIntForLongs)
+      expr instanceof encodeClassVar(LongImpl.RuntimeLongClass)
+    else
+      genIsAsInstanceOf(expr, classRef, test = true)
+  }
 
   def genAsInstanceOf(expr: Tree, typeRef: TypeRef)(
       implicit pos: Position): Tree =
@@ -113,7 +141,6 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   private def genIsAsInstanceOf(expr: Tree, typeRef: TypeRef, test: Boolean)(
       implicit pos: Position): Tree = {
-    import Definitions._
     import TreeDSL._
 
     typeRef match {

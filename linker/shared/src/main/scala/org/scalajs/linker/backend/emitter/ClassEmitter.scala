@@ -24,6 +24,8 @@ import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import CheckedBehavior.Unchecked
 
+import EmitterDefinitions._
+
 /** Emitter for the skeleton of classes. */
 private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
@@ -674,6 +676,25 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
   }
 
+  def genFakeClass(tree: LinkedClass): js.Tree = {
+    assert(tree.kind.isClass)
+
+    implicit val pos = tree.pos
+
+    val className = tree.encodedName
+
+    if (esFeatures.useECMAScript2015) {
+      js.ClassDef(Some(encodeClassVar(className).ident), None, Nil)
+    } else {
+      js.Block(
+          js.DocComment("@constructor"),
+          envFieldDef("c", className,
+              js.Function(arrow = false, Nil, js.Skip()),
+              keepFunctionExpression = false)
+      )
+    }
+  }
+
   def genInstanceTests(tree: LinkedClass): js.Tree = {
     import Definitions._
     import TreeDSL._
@@ -697,40 +718,56 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       val objParam = js.ParamDef(js.Ident("obj"), rest = false)
       val obj = objParam.ref
 
-      val createIsStat = {
-        envFunctionDef("is", className, List(objParam), js.Return {
-          className match {
-            case Definitions.ObjectClass =>
-              js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
+      val isExpression = {
+        className match {
+          case Definitions.ObjectClass =>
+            js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
 
-            case Definitions.BoxedStringClass =>
-              js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
+          case Definitions.BoxedStringClass =>
+            js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
 
-            case _ =>
-              var test = {
-                genIsScalaJSObject(obj) &&
-                genIsClassNameInAncestors(className,
-                    obj DOT "$classData" DOT "ancestors")
-              }
+          case _ =>
+            var test = if (tree.kind.isClass) {
+              obj instanceof encodeClassVar(className)
+            } else {
+              !(!(
+                  genIsScalaJSObject(obj) &&
+                  genIsClassNameInAncestors(className,
+                      obj DOT "$classData" DOT "ancestors")
+              ))
+            }
 
-              def typeOfTest(typeString: String): js.Tree =
-                js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral(typeString)
+            def typeOfTest(typeString: String): js.Tree =
+              js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral(typeString)
 
-              if (isAncestorOfString)
-                test = test || typeOfTest("string")
-              if (isAncestorOfHijackedNumberClass) {
-                test = test || typeOfTest("number")
-                if (useBigIntForLongs)
-                  test = test || genCallHelper("isLong", obj)
-              }
-              if (isAncestorOfBoxedBooleanClass)
-                test = test || typeOfTest("boolean")
-              if (isAncestorOfBoxedCharacterClass)
-                test = test || (obj instanceof envField("Char"))
+            if (isAncestorOfString)
+              test = test || typeOfTest("string")
+            if (isAncestorOfHijackedNumberClass) {
+              test = test || typeOfTest("number")
+              if (useBigIntForLongs)
+                test = test || genCallHelper("isLong", obj)
+            }
+            if (isAncestorOfBoxedBooleanClass)
+              test = test || typeOfTest("boolean")
+            if (isAncestorOfBoxedCharacterClass)
+              test = test || (obj instanceof envField("Char"))
 
-              !(!test)
-          }
-        })
+            test
+        }
+      }
+
+      val needIsFunction = isExpression match {
+        case js.BinaryOp(JSBinaryOp.instanceof, _, _) =>
+          // This is a simple `instanceof`. It will always be inlined at call site.
+          false
+        case _ =>
+          true
+      }
+
+      val createIsStat = if (needIsFunction) {
+        envFunctionDef("is", className, List(objParam), js.Return(isExpression))
+      } else {
+        js.Skip()
       }
 
       val createAsStat = if (semantics.asInstanceOfs == Unchecked) {
@@ -742,8 +779,11 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
               obj
 
             case _ =>
-              js.If(js.Apply(envField("is", className), List(obj)) ||
-                  (obj === js.Null()), {
+              val isCond =
+                if (needIsFunction) js.Apply(envField("is", className), List(obj))
+                else isExpression
+
+              js.If(isCond || (obj === js.Null()), {
                 obj
               }, {
                 genCallHelper("throwClassCastException",
@@ -1229,34 +1269,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 }
 
 private[emitter] object ClassEmitter {
-  // TODO We should compute all of those from the Class Hierarchy
-
-  private val CharSequenceClass = "jl_CharSequence"
-  private val SerializableClass = "Ljava_io_Serializable"
-  private val ComparableClass = "jl_Comparable"
-  private val NumberClass = "jl_Number"
-
-  private val NonObjectAncestorsOfStringClass =
-    Set(CharSequenceClass, ComparableClass, SerializableClass)
-  private val NonObjectAncestorsOfBoxedCharacterClass =
-    Set(ComparableClass, SerializableClass)
-  private val NonObjectAncestorsOfHijackedNumberClasses =
-    Set(NumberClass, ComparableClass, SerializableClass)
-  private val NonObjectAncestorsOfBoxedBooleanClass =
-    Set(ComparableClass, SerializableClass)
-
-  private[emitter] val AncestorsOfHijackedClasses = Set(
-      Definitions.ObjectClass,
-      CharSequenceClass,
-      SerializableClass,
-      ComparableClass,
-      NumberClass
-  )
-
   private val ClassesWhoseDataReferToTheirInstanceTests =
     AncestorsOfHijackedClasses + Definitions.BoxedStringClass
-
-  private final val ThrowableClass = "jl_Throwable"
 
   def shouldExtendJSError(linkedClass: LinkedClass): Boolean = {
     linkedClass.name.name == ThrowableClass &&
