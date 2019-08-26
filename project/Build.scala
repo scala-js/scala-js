@@ -520,7 +520,7 @@ object Build {
             testInterface, jUnitRuntime, testBridge, jUnitPlugin, jUnitAsyncJS,
             jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
             helloworld, reversi, testingExample, testSuite, testSuiteJVM,
-            testSuiteEx,
+            testSuiteEx, testSuiteLinker,
             partest, partestSuite,
             scalaTestSuite
         )
