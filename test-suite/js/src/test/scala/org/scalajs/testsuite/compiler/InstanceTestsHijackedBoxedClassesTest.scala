@@ -74,6 +74,40 @@ class InstanceTestsHijackedBoxedClassesTest {
     assertEquals("ok", test(0.2))
   }
 
+  @Test def isInstanceOfJavaLangNumber(): Unit = {
+    @noinline def testNoinline(expected: Boolean, value: Any): Unit = {
+      assertEquals(expected, value.isInstanceOf[java.lang.Number])
+      assertEquals(expected, classOf[java.lang.Number].isInstance(value))
+    }
+
+    @inline def test(expected: Boolean, value: Any): Unit = {
+      testNoinline(expected, value)
+      assertEquals(expected, value.isInstanceOf[java.lang.Number])
+      assertEquals(expected, classOf[java.lang.Number].isInstance(value))
+    }
+
+    test(false, true)
+    test(false, 'A')
+    test(false, ())
+    test(false, "hello")
+
+    test(true, 1.toByte)
+    test(true, 0x100.toShort)
+    test(true, 0x10000)
+    test(true, 0x100000000L)
+    test(true, 1.5f)
+    test(true, 1.2)
+
+    class CustomNumber extends java.lang.Number {
+      def intValue(): Int = 0
+      def longValue(): Long = 0
+      def floatValue(): Float = 0
+      def doubleValue(): Double = 0
+    }
+
+    test(true, new CustomNumber)
+  }
+
   @Test def should_support_asInstanceOf_positive(): Unit = {
     def swallow(x: Any): Unit = ()
     swallow(((): Any).asInstanceOf[Unit])
