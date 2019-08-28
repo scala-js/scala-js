@@ -2780,7 +2780,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
 private object FunctionEmitter {
   private val MaybeHijackedClasses = {
-    (Definitions.HijackedClasses ++ ClassEmitter.AncestorsOfHijackedClasses) -
+    (Definitions.HijackedClasses ++ EmitterDefinitions.AncestorsOfHijackedClasses) -
     Definitions.ObjectClass
   }
 
