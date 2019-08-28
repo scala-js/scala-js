@@ -321,6 +321,9 @@ object Long {
   @inline def valueOf(s: String, radix: Int): Long =
     valueOf(parseLong(s, radix))
 
+  @noinline def decode(nm: String): Long =
+    Integer.decodeGeneric(nm, valueOf(_, _))
+
   @inline def hashCode(value: scala.Long): Int =
     value.toInt ^ (value >>> 32).toInt
 

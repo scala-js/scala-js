@@ -48,6 +48,7 @@ class ByteTest {
       assertEquals(v, JByte.parseByte(s))
       assertEquals(v, JByte.valueOf(s).byteValue())
       assertEquals(v, new JByte(s).byteValue())
+      assertEquals(v, JByte.decode(s))
     }
 
     test("0", 0)
@@ -57,11 +58,67 @@ class ByteTest {
   }
 
   @Test def should_reject_invalid_strings_when_parsing(): Unit = {
-    def test(s: String): Unit =
+    def test(s: String): Unit = {
       expectThrows(classOf[NumberFormatException], JByte.parseByte(s))
+      expectThrows(classOf[NumberFormatException], JByte.decode(s))
+    }
 
     test("abc")
     test("")
     test("200") // out of range
+  }
+
+  @Test def should_parse_strings_in_base_16(): Unit = {
+    def test(s: String, v: Byte): Unit = {
+      assertEquals(v, JByte.parseByte(s, 16))
+      assertEquals(v, JByte.valueOf(s, 16).intValue())
+      assertEquals(v, JByte.decode(IntegerTest.insertAfterSign("0x", s)))
+      assertEquals(v, JByte.decode(IntegerTest.insertAfterSign("0X", s)))
+      assertEquals(v, JByte.decode(IntegerTest.insertAfterSign("#", s)))
+    }
+
+    test("0", 0x0)
+    test("5", 0x5)
+    test("7f", 0x7f)
+    test("-24", -0x24)
+    test("30", 0x30)
+    test("-9", -0x9)
+  }
+
+  @Test def testDecodeBase8(): Unit = {
+    def test(s: String, v: Byte): Unit = {
+      assertEquals(v, JByte.decode(s))
+    }
+
+    test("00", 0)
+    test("0123", 83)
+    test("-012", -10)
+  }
+
+  @Test def testDecodeInvalid(): Unit = {
+    def test(s: String): Unit =
+      assertThrows(classOf[NumberFormatException], JByte.decode(s))
+
+    // sign after another sign or after a base prefix
+    test("++0")
+    test("--0")
+    test("0x+1")
+    test("0X-1")
+    test("#-1")
+    test("0-1")
+
+    // empty string after sign or after base prefix
+    test("")
+    test("+")
+    test("-")
+    test("-0x")
+    test("+0X")
+    test("#")
+
+    // integer too large
+    test("0x80")
+    test("-0x81")
+    test("0200")
+    test("-0201")
   }
 }
