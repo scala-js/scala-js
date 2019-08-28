@@ -2421,6 +2421,15 @@ class CharacterTest {
     assertTrue(Character.isDefined('\uFD39'))
     assertTrue(Character.isDefined('\uFF3A'))
 
+    if (!executingInJVM) {
+      assertTrue(Character.isDefined('\u00BB'))
+      assertTrue(Character.isDefined('\u20BC'))
+      assertTrue(Character.isDefined('\u20BD'))
+      assertTrue(Character.isDefined('\u20BE'))
+      assertTrue(Character.isDefined('\u20BF'))
+      assertTrue(Character.isDefined('\u32FF'))
+    }
+
     // 100 randomly chosen characters that produce false
     assertFalse(Character.isDefined('\u0528'))
     assertFalse(Character.isDefined('\u052B'))
@@ -2492,7 +2501,6 @@ class CharacterTest {
     assertFalse(Character.isDefined('\u2FE9'))
     assertFalse(Character.isDefined('\u2FEE'))
     assertFalse(Character.isDefined('\u31EE'))
-    assertFalse(Character.isDefined('\u32FF'))
     assertFalse(Character.isDefined('\u9FE9'))
     assertFalse(Character.isDefined('\uA639'))
     assertFalse(Character.isDefined('\uA7AE'))
