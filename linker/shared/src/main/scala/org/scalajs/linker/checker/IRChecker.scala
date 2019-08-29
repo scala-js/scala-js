@@ -77,7 +77,18 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       classDef.kind match {
         case ClassKind.AbstractJSType | ClassKind.NativeJSClass |
             ClassKind.NativeJSModuleClass =>
-          if (classDef.fields.nonEmpty ||
+          val fieldsOK = if (classDef.kind == ClassKind.AbstractJSType) {
+            /* Private instance fields are allowed in abstract JS types. This
+             * is necessary for anonymous JS classes, whose definitions are
+             * inlined and their ClassDef turned into an abstract JS type.
+             */
+            checkFieldDefs(classDef)
+            true
+          } else {
+            classDef.fields.isEmpty
+          }
+
+          if (!fieldsOK ||
               classDef.methods.exists(!_.value.flags.namespace.isStatic) ||
               classDef.exportedMembers.nonEmpty ||
               classDef.topLevelExports.nonEmpty) {
@@ -176,10 +187,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     if (classDef.kind != ClassKind.HijackedClass &&
         classDef.kind != ClassKind.Interface) {
       // Check fields
-      for (field <- classDef.fields) {
-        implicit val ctx = ErrorContext(field)
-        checkFieldDef(field, classDef)
-      }
+      checkFieldDefs(classDef)
 
       /* Check for static field collisions.
        * TODO #2627 We currently cannot check instance field collisions because
@@ -274,6 +282,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       checkMethodDef(tree, classDef)
     }
+  }
+
+  private def checkFieldDefs(classDef: LinkedClass): Unit = {
+    for (fieldDef <- classDef.fields)
+      checkFieldDef(fieldDef, classDef)
   }
 
   private def checkFieldDef(fieldDef: FieldDef, classDef: LinkedClass): Unit = {
@@ -958,8 +971,18 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           typecheckExprOrSpread(arg, env)
 
       case JSPrivateSelect(qualifier, cls, field) =>
-        // TODO Should we check that cls::field is defined somewhere?
         typecheckExpr(qualifier, env)
+        val checkedClass = lookupClass(cls)
+        if (!checkedClass.kind.isJSClass && checkedClass.kind != ClassKind.AbstractJSType) {
+          reportError(s"Cannot select JS private field $field of non-JS class $cls")
+        } else {
+          if (checkedClass.lookupField(field.name).isEmpty)
+            reportError(s"JS class $cls does not have a field $field")
+          /* The declared type of the field is irrelevant here. It is only
+           * relevant for its initialization value. The type of the selection
+           * is always `any`.
+           */
+        }
 
       case JSSelect(qualifier, item) =>
         typecheckExpr(qualifier, env)
@@ -1346,8 +1369,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           classDef.ancestors.toSet,
           classDef.hasInstances,
           classDef.jsNativeLoadSpec,
-          if (classDef.kind.isJSClass) Nil
-          else classDef.fields.map(CheckedClass.checkedField))
+          CheckedClass.checkedFieldsOf(classDef))
     }
 
     def lookupField(name: String): Option[CheckedField] =
@@ -1358,9 +1380,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private object CheckedClass {
-    private def checkedField(fieldDef: FieldDef) = {
-      val FieldDef(flags, Ident(name, _), tpe) = fieldDef
-      new CheckedField(flags, name, tpe)
+    private def checkedFieldsOf(classDef: LinkedClass): List[CheckedField] = {
+      classDef.fields.collect {
+        case FieldDef(flags, Ident(name, _), tpe) =>
+          new CheckedField(flags, name, tpe)
+      }
     }
   }
 

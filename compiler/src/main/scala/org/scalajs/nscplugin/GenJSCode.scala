@@ -654,20 +654,26 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         nestedGenerateClass(sym)(genNonNativeJSClass(classDef))
 
       // Partition class members.
-      val staticMembers = ListBuffer.empty[js.MemberDef]
-      val classMembers = ListBuffer.empty[js.MemberDef]
+      val classDefMembers = ListBuffer.empty[js.MemberDef]
+      val instanceMembers = ListBuffer.empty[js.MemberDef]
       var constructor: Option[js.MethodDef] = None
 
       origJsClass.memberDefs.foreach {
         case fdef: js.FieldDef =>
-          classMembers += fdef
+          /* Private fields are both used when building the instance *and* kept
+           * as declarations in the abstract JS type, so that we can validate
+           * `JSPrivateSelect` nodes.
+           */
+          if (fdef.name.isInstanceOf[js.Ident])
+            classDefMembers += fdef
+          instanceMembers += fdef
 
         case mdef: js.MethodDef =>
           mdef.name match {
             case _: js.Ident =>
               assert(mdef.flags.namespace.isStatic,
                   "Non-static, unexported method in non-native JS class")
-              staticMembers += mdef
+              classDefMembers += mdef
 
             case js.StringLiteral("constructor") =>
               assert(!mdef.flags.namespace.isStatic, "Exported static method")
@@ -676,23 +682,23 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
             case _ =>
               assert(!mdef.flags.namespace.isStatic, "Exported static method")
-              classMembers += mdef
+              instanceMembers += mdef
           }
 
         case property: js.PropertyDef =>
-          classMembers += property
+          instanceMembers += property
       }
 
       assert(origJsClass.topLevelExportDefs.isEmpty,
           "Found top-level exports in anonymous JS class at " + pos)
 
-      // Make new class def with static members only
+      // Make new class def with static members and field definitions
       val newClassDef = {
         implicit val pos = origJsClass.pos
         val parent = js.Ident(ir.Definitions.ObjectClass)
         js.ClassDef(origJsClass.name, ClassKind.AbstractJSType, None,
             Some(parent), interfaces = Nil, jsSuperClass = None,
-            jsNativeLoadSpec = None, staticMembers.toList, Nil)(
+            jsNativeLoadSpec = None, classDefMembers.toList, Nil)(
             origJsClass.optimizerHints)
       }
 
@@ -717,7 +723,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             captureValues = Nil)
       }
 
-      val memberDefinitions = classMembers.toList.map {
+      val memberDefinitions = instanceMembers.toList.map {
         case fdef: js.FieldDef =>
           implicit val pos = fdef.pos
           val select = fdef.name match {

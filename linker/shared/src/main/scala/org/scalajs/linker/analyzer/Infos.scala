@@ -63,6 +63,7 @@ object Infos {
       val namespace: MemberNamespace,
       val isAbstract: Boolean,
       val isExported: Boolean,
+      val privateJSFieldsUsed: Map[String, List[String]],
       val staticFieldsRead: Map[String, List[String]],
       val staticFieldsWritten: Map[String, List[String]],
       val methodsCalled: Map[String, List[String]],
@@ -85,6 +86,7 @@ object Infos {
         namespace: MemberNamespace,
         isAbstract: Boolean,
         isExported: Boolean,
+        privateJSFieldsUsed: Map[String, List[String]],
         staticFieldsRead: Map[String, List[String]],
         staticFieldsWritten: Map[String, List[String]],
         methodsCalled: Map[String, List[String]],
@@ -95,9 +97,10 @@ object Infos {
         accessedClassData: List[String],
         referencedClasses: List[String]): MethodInfo = {
       new MethodInfo(encodedName, namespace, isAbstract, isExported,
-          staticFieldsRead, staticFieldsWritten, methodsCalled,
-          methodsCalledStatically, instantiatedClasses, accessedModules,
-          usedInstanceTests, accessedClassData, referencedClasses)
+          privateJSFieldsUsed, staticFieldsRead, staticFieldsWritten,
+          methodsCalled, methodsCalledStatically, instantiatedClasses,
+          accessedModules, usedInstanceTests, accessedClassData,
+          referencedClasses)
     }
   }
 
@@ -174,6 +177,7 @@ object Infos {
     private var isAbstract: Boolean = false
     private var isExported: Boolean = false
 
+    private val privateJSFieldsUsed = mutable.Map.empty[String, mutable.Set[String]]
     private val staticFieldsRead = mutable.Map.empty[String, mutable.Set[String]]
     private val staticFieldsWritten = mutable.Map.empty[String, mutable.Set[String]]
     private val methodsCalled = mutable.Map.empty[String, mutable.Set[String]]
@@ -201,6 +205,11 @@ object Infos {
 
     def setIsExported(isExported: Boolean): this.type = {
       this.isExported = isExported
+      this
+    }
+
+    def addPrivateJSFieldUsed(cls: String, field: String): this.type = {
+      privateJSFieldsUsed.getOrElseUpdate(cls, mutable.Set.empty) += field
       this
     }
 
@@ -327,6 +336,7 @@ object Infos {
           namespace = namespace,
           isAbstract = isAbstract,
           isExported = isExported,
+          privateJSFieldsUsed = toMapOfLists(privateJSFieldsUsed),
           staticFieldsRead = toMapOfLists(staticFieldsRead),
           staticFieldsWritten = toMapOfLists(staticFieldsWritten),
           methodsCalled = toMapOfLists(methodsCalled),
@@ -544,6 +554,9 @@ object Infos {
               builder.addAccessedClassData(typeRef)
             case ClassOf(cls) =>
               builder.addAccessedClassData(cls)
+
+            case JSPrivateSelect(qualifier, cls, field) =>
+              builder.addPrivateJSFieldUsed(cls.className, field.name)
 
             case LoadJSConstructor(cls) =>
               builder.addInstantiatedClass(cls.className)
