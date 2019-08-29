@@ -300,7 +300,7 @@ ScalaJS.objectGetClass = function(instance) {
     default:
       if (instance === null)
         return instance.getClass__jl_Class();
-      else if (ScalaJS.is.sjsr_RuntimeLong(instance))
+      else if (instance instanceof ScalaJS.c.sjsr_RuntimeLong)
         return ScalaJS.d.jl_Long.getClassOf();
       else if (ScalaJS.isScalaJSObject(instance))
         return instance.$classData.getClassOf();

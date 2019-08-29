@@ -341,6 +341,14 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     }
 
     if (classEmitter.needInstanceTests(linkedClass)) {
+      if (!linkedClass.hasInstances && kind.isClass) {
+        /* The isInstanceOf implementation will generate
+         * `x instanceof $c_TheClass`, but `$c_TheClass` won't be declared at
+         * all. Define it as a fake class to avoid `ReferenceError`s.
+         */
+        addTree(classEmitter.genFakeClass(linkedClass))
+      }
+
       addTree(classTreeCache.instanceTests.getOrElseUpdate(js.Block(
           classEmitter.genInstanceTests(linkedClass),
           classEmitter.genArrayInstanceTests(linkedClass)

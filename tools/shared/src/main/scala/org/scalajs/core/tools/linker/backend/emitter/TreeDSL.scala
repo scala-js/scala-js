@@ -46,6 +46,9 @@ private[emitter] object TreeDSL {
     def ||(that: Tree)(implicit pos: Position): Tree =
       BinaryOp(ir.Trees.JSBinaryOp.||, self, that)
 
+    def instanceof(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.instanceof, self, that)
+
     // Other constructs
 
     def :=(that: Tree)(implicit pos: Position): Tree =

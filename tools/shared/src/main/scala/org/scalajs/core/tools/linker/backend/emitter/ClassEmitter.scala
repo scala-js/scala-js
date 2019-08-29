@@ -51,6 +51,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     if (kind.isAnyScalaJSDefinedClass && tree.hasInstances)
       reverseParts ::= genClassForRhino(tree)
     if (needInstanceTests(tree)) {
+      if (tree.kind.isClass && !tree.hasInstances)
+        reverseParts ::= genFakeClass(tree)
       reverseParts ::= genInstanceTests(tree)
       reverseParts ::= genArrayInstanceTests(tree)
     }
@@ -558,6 +560,29 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
   }
 
+  def genFakeClass(tree: LinkedClass): js.Tree = {
+    assert(tree.kind.isClass)
+
+    implicit val pos = tree.pos
+
+    val className = tree.encodedName
+
+    outputMode match {
+      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+        js.Block(
+            js.DocComment("@constructor"),
+            envFieldDef("c", className,
+                js.Function(Nil, js.Skip()),
+                keepFunctionExpression = false)
+        )
+
+      case OutputMode.ECMAScript6 =>
+        js.ClassDef(
+            Some(encodeClassVar(className).asInstanceOf[js.VarRef].ident),
+            None, Nil)
+    }
+  }
+
   def genInstanceTests(tree: LinkedClass): js.Tree = {
     import Definitions._
     import TreeDSL._
@@ -581,40 +606,58 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       val objParam = js.ParamDef(Ident("obj"), rest = false)
       val obj = objParam.ref
 
-      val createIsStat = {
+      val isExpression = {
+        className match {
+          case Definitions.ObjectClass =>
+            js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
+
+          case Definitions.StringClass =>
+            js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
+
+          case Definitions.RuntimeNothingClass =>
+            // Even null is not an instance of Nothing
+            js.BooleanLiteral(false)
+
+          case _ =>
+            var test = if (tree.kind.isClass) {
+              obj instanceof encodeClassVar(className)
+            } else {
+              !(!(
+                  genIsScalaJSObject(obj) &&
+                  genIsClassNameInAncestors(className,
+                      obj DOT "$classData" DOT "ancestors")
+              ))
+            }
+
+            if (isAncestorOfString)
+              test = test || (
+                  js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string"))
+            if (isAncestorOfHijackedNumberClass)
+              test = test || (
+                  js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("number"))
+            if (isAncestorOfBoxedBooleanClass)
+              test = test || (
+                  js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("boolean"))
+            if (isAncestorOfBoxedUnitClass)
+              test = test || (obj === js.Undefined())
+
+            test
+        }
+      }
+
+      val needIsFunction = isExpression match {
+        case js.BinaryOp(JSBinaryOp.instanceof, _, _) =>
+          // This is a simple `instanceof`. It will always be inlined at call site.
+          false
+        case _ =>
+          true
+      }
+
+      val createIsStat = if (needIsFunction) {
         envFieldDef("is", className,
-          js.Function(List(objParam), js.Return(className match {
-            case Definitions.ObjectClass =>
-              js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
-
-            case Definitions.StringClass =>
-              js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
-
-            case Definitions.RuntimeNothingClass =>
-              // Even null is not an instance of Nothing
-              js.BooleanLiteral(false)
-
-            case _ =>
-              var test = {
-                genIsScalaJSObject(obj) &&
-                genIsClassNameInAncestors(className,
-                    obj DOT "$classData" DOT "ancestors")
-              }
-
-              if (isAncestorOfString)
-                test = test || (
-                    js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string"))
-              if (isAncestorOfHijackedNumberClass)
-                test = test || (
-                    js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("number"))
-              if (isAncestorOfBoxedBooleanClass)
-                test = test || (
-                    js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("boolean"))
-              if (isAncestorOfBoxedUnitClass)
-                test = test || (obj === js.Undefined())
-
-              !(!test)
-          })))
+            js.Function(List(objParam), js.Return(isExpression)))
+      } else {
+        js.Skip()
       }
 
       val createAsStat = if (semantics.asInstanceOfs == Unchecked) {
@@ -634,8 +677,11 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
                 // Always throw for .asInstanceOf[Nothing], even for null
                 throwError
               } else {
-                js.If(js.Apply(envField("is", className), List(obj)) ||
-                    (obj === js.Null()), {
+                val isCond =
+                  if (needIsFunction) js.Apply(envField("is", className), List(obj))
+                  else isExpression
+
+                js.If(isCond || (obj === js.Null()), {
                   obj
                 }, {
                   throwError

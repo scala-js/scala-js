@@ -16,12 +16,15 @@ import scala.language.implicitConversions
 
 import org.scalajs.core.ir
 import ir._
+import ir.Definitions._
 import ir.Types._
 import ir.{Trees => irt}
 
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.linker.backend.{ModuleKind, OutputMode}
 import org.scalajs.core.tools.javascript.Trees._
+
+import EmitterDefinitions._
 
 /** Collection of tree generators that are used accross the board.
  *  This class is fully stateless.
@@ -86,8 +89,23 @@ private[emitter] final class JSGen(val semantics: Semantics,
   }
 
   def genIsInstanceOf(expr: Tree, cls: ReferenceType)(
-      implicit pos: Position): Tree =
-    genIsAsInstanceOf(expr, cls, test = true)
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
+    import TreeDSL._
+
+    cls match {
+      case ClassType(className) =>
+        if (!HijackedClassesAndTheirSuperClasses.contains(className) &&
+            !globalKnowledge.isInterface(className)) {
+          expr instanceof encodeClassVar(className)
+        } else if (className == BoxedLongClass) {
+          expr instanceof encodeClassVar(LongImpl.RuntimeLongClass)
+        } else {
+          genIsAsInstanceOf(expr, cls, test = true)
+        }
+      case ArrayType(_, _)  =>
+        genIsAsInstanceOf(expr, cls, test = true)
+    }
+  }
 
   def genAsInstanceOf(expr: Tree, cls: ReferenceType)(
       implicit pos: Position): Tree =
@@ -95,7 +113,6 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   private def genIsAsInstanceOf(expr: Tree, cls: ReferenceType, test: Boolean)(
       implicit pos: Position): Tree = {
-    import Definitions._
     import TreeDSL._
 
     cls match {

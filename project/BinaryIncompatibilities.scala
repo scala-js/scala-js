@@ -17,6 +17,9 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[IncompatibleResultTypeProblem]("org.scalajs.core.tools.linker.frontend.optimizer.IncOptimizer#CollOps.*"),
       ProblemFilters.exclude[IncompatibleResultTypeProblem]("org.scalajs.core.tools.linker.frontend.optimizer.ParIncOptimizer#CollOps.*"),
 
+      // private[emitter], not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.core.tools.linker.backend.emitter.JSGen.genIsInstanceOf"),
+
       // private, not an issue
       ProblemFilters.exclude[IncompatibleMethTypeProblem]("org.scalajs.core.tools.linker.checker.InfoChecker.this"),
       ProblemFilters.exclude[IncompatibleMethTypeProblem]("org.scalajs.core.tools.linker.checker.IRChecker#CheckedClass.this")
