@@ -47,7 +47,7 @@ class BaseCharsetTest(val charset: Charset) {
       val buf =
         if (readOnly) in.asReadOnlyBuffer()
         else in.duplicate()
-      assert(buf.isReadOnly == readOnly)
+      assert(buf.asInstanceOf[java.nio.Buffer].isReadOnly == readOnly)
       assert(buf.hasArray != readOnly)
       buf
     }
@@ -137,6 +137,7 @@ class BaseCharsetTest(val charset: Charset) {
           case Malformed(len) =>
             malformedAction match {
               case CodingErrorAction.IGNORE  =>
+                expectedChars
               case CodingErrorAction.REPLACE =>
                 expectedChars ++= decoder.replacement()
               case CodingErrorAction.REPORT  =>
@@ -145,6 +146,7 @@ class BaseCharsetTest(val charset: Charset) {
           case Unmappable(len) =>
             unmappableAction match {
               case CodingErrorAction.IGNORE  =>
+                expectedChars
               case CodingErrorAction.REPLACE =>
                 expectedChars ++= decoder.replacement()
               case CodingErrorAction.REPORT  =>
@@ -198,7 +200,7 @@ class BaseCharsetTest(val charset: Charset) {
       val inBuf =
         if (readOnly) in.asReadOnlyBuffer()
         else in.duplicate()
-      assertTrue(inBuf.isReadOnly == readOnly)
+      assertTrue(inBuf.asInstanceOf[java.nio.Buffer].isReadOnly == readOnly)
       assertTrue(inBuf.hasArray != readOnly)
 
       val actualTry = Try {
@@ -220,6 +222,7 @@ class BaseCharsetTest(val charset: Charset) {
           case Malformed(len) =>
             malformedAction match {
               case CodingErrorAction.IGNORE  =>
+                expectedBytes
               case CodingErrorAction.REPLACE =>
                 expectedBytes ++= encoder.replacement()
               case CodingErrorAction.REPORT  =>
@@ -228,6 +231,7 @@ class BaseCharsetTest(val charset: Charset) {
           case Unmappable(len) =>
             unmappableAction match {
               case CodingErrorAction.IGNORE  =>
+                expectedBytes
               case CodingErrorAction.REPLACE =>
                 expectedBytes ++= encoder.replacement()
               case CodingErrorAction.REPORT  =>

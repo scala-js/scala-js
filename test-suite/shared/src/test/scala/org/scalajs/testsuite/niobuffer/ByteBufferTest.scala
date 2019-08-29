@@ -129,7 +129,7 @@ abstract class ByteBufferTest extends BaseBufferTest {
 
     buf.order(ByteOrder.BIG_ENDIAN)
     val charBuf1 = buf.asCharBuffer()
-    assertEquals(createsReadOnly, charBuf1.isReadOnly)
+    assertEquals(createsReadOnly, charBuf1.asInstanceOf[java.nio.Buffer].isReadOnly)
     assertEquals(3, charBuf1.capacity)
     assertEquals(0, charBuf1.position())
     assertEquals(3, charBuf1.limit())
@@ -141,7 +141,7 @@ abstract class ByteBufferTest extends BaseBufferTest {
 
     buf.order(ByteOrder.LITTLE_ENDIAN)
     val charBuf2 = buf.asCharBuffer()
-    assertEquals(createsReadOnly, charBuf2.isReadOnly)
+    assertEquals(createsReadOnly, charBuf2.asInstanceOf[java.nio.Buffer].isReadOnly)
     assertEquals(3, charBuf2.capacity)
     assertEquals(0, charBuf2.position())
     assertEquals(3, charBuf2.limit())
@@ -283,7 +283,7 @@ abstract class ByteBufferTest extends BaseBufferTest {
 
     buf.order(ByteOrder.BIG_ENDIAN)
     val shortBuf1 = buf.asShortBuffer()
-    assertEquals(createsReadOnly, shortBuf1.isReadOnly)
+    assertEquals(createsReadOnly, shortBuf1.asInstanceOf[java.nio.Buffer].isReadOnly)
     assertEquals(3, shortBuf1.capacity)
     assertEquals(0, shortBuf1.position())
     assertEquals(3, shortBuf1.limit())
@@ -295,7 +295,7 @@ abstract class ByteBufferTest extends BaseBufferTest {
 
     buf.order(ByteOrder.LITTLE_ENDIAN)
     val shortBuf2 = buf.asShortBuffer()
-    assertEquals(createsReadOnly, shortBuf2.isReadOnly)
+    assertEquals(createsReadOnly, shortBuf2.asInstanceOf[java.nio.Buffer].isReadOnly)
     assertEquals(3, shortBuf2.capacity)
     assertEquals(0, shortBuf2.position())
     assertEquals(3, shortBuf2.limit())
@@ -448,7 +448,7 @@ abstract class ByteBufferTest extends BaseBufferTest {
 
     buf.order(ByteOrder.BIG_ENDIAN)
     val intBuf1 = buf.asIntBuffer()
-    assertEquals(createsReadOnly, intBuf1.isReadOnly)
+    assertEquals(createsReadOnly, intBuf1.asInstanceOf[java.nio.Buffer].isReadOnly)
     assertEquals(2, intBuf1.capacity)
     assertEquals(0, intBuf1.position())
     assertEquals(2, intBuf1.limit())
@@ -460,7 +460,7 @@ abstract class ByteBufferTest extends BaseBufferTest {
 
     buf.order(ByteOrder.LITTLE_ENDIAN)
     val intBuf2 = buf.asIntBuffer()
-    assertEquals(createsReadOnly, intBuf2.isReadOnly)
+    assertEquals(createsReadOnly, intBuf2.asInstanceOf[java.nio.Buffer].isReadOnly)
     assertEquals(2, intBuf2.capacity)
     assertEquals(0, intBuf2.position())
     assertEquals(2, intBuf2.limit())
@@ -645,7 +645,7 @@ abstract class ByteBufferTest extends BaseBufferTest {
 
     buf.order(ByteOrder.BIG_ENDIAN)
     val longBuf1 = buf.asLongBuffer()
-    assertEquals(createsReadOnly, longBuf1.isReadOnly)
+    assertEquals(createsReadOnly, longBuf1.asInstanceOf[java.nio.Buffer].isReadOnly)
     assertEquals(2, longBuf1.capacity)
     assertEquals(0, longBuf1.position())
     assertEquals(2, longBuf1.limit())
@@ -657,7 +657,7 @@ abstract class ByteBufferTest extends BaseBufferTest {
 
     buf.order(ByteOrder.LITTLE_ENDIAN)
     val longBuf2 = buf.asLongBuffer()
-    assertEquals(createsReadOnly, longBuf2.isReadOnly)
+    assertEquals(createsReadOnly, longBuf2.asInstanceOf[java.nio.Buffer].isReadOnly)
     assertEquals(2, longBuf2.capacity)
     assertEquals(0, longBuf2.position())
     assertEquals(2, longBuf2.limit())
@@ -838,7 +838,7 @@ abstract class ByteBufferTest extends BaseBufferTest {
 
     buf.order(ByteOrder.BIG_ENDIAN)
     val floatBuf1 = buf.asFloatBuffer()
-    assertEquals(createsReadOnly, floatBuf1.isReadOnly)
+    assertEquals(createsReadOnly, floatBuf1.asInstanceOf[java.nio.Buffer].isReadOnly)
     assertEquals(2, floatBuf1.capacity)
     assertEquals(0, floatBuf1.position())
     assertEquals(2, floatBuf1.limit())
@@ -850,7 +850,7 @@ abstract class ByteBufferTest extends BaseBufferTest {
 
     buf.order(ByteOrder.LITTLE_ENDIAN)
     val floatBuf2 = buf.asFloatBuffer()
-    assertEquals(createsReadOnly, floatBuf2.isReadOnly)
+    assertEquals(createsReadOnly, floatBuf2.asInstanceOf[java.nio.Buffer].isReadOnly)
     assertEquals(2, floatBuf2.capacity)
     assertEquals(0, floatBuf2.position())
     assertEquals(2, floatBuf2.limit())
@@ -1044,7 +1044,7 @@ abstract class ByteBufferTest extends BaseBufferTest {
 
     buf.order(ByteOrder.BIG_ENDIAN)
     val doubleBuf1 = buf.asDoubleBuffer()
-    assertEquals(createsReadOnly, doubleBuf1.isReadOnly)
+    assertEquals(createsReadOnly, doubleBuf1.asInstanceOf[java.nio.Buffer].isReadOnly)
     assertEquals(2, doubleBuf1.capacity)
     assertEquals(0, doubleBuf1.position())
     assertEquals(2, doubleBuf1.limit())
@@ -1056,7 +1056,7 @@ abstract class ByteBufferTest extends BaseBufferTest {
 
     buf.order(ByteOrder.LITTLE_ENDIAN)
     val doubleBuf2 = buf.asDoubleBuffer()
-    assertEquals(createsReadOnly, doubleBuf2.isReadOnly)
+    assertEquals(createsReadOnly, doubleBuf2.asInstanceOf[java.nio.Buffer].isReadOnly)
     assertEquals(2, doubleBuf2.capacity)
     assertEquals(0, doubleBuf2.position())
     assertEquals(2, doubleBuf2.limit())
