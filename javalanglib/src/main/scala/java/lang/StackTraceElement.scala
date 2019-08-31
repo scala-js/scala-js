@@ -58,11 +58,11 @@ final class StackTraceElement(declaringClass: String, methodName: String,
       else
         result += "(Unknown Source)"
     } else {
-      result += s"($fileName"
+      result += "(" + fileName
       if (lineNumber >= 0) {
-        result += s":$lineNumber"
+        result += ":" + lineNumber
         if (columnNumber >= 0)
-          result += s":$columnNumber"
+          result += ":" + columnNumber
       }
       result += ")"
     }

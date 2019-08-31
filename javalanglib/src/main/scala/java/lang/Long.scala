@@ -71,7 +71,7 @@ object Long {
     var radix = 0
 
     while (radix < Character.MIN_RADIX) {
-      r += null
+      r.push(null)
       radix += 1
     }
 
@@ -96,8 +96,8 @@ object Long {
       }
       val radixPowLengthLong = radixPowLength.toLong
       val overflowBarrier = Long.divideUnsigned(-1L, radixPowLengthLong)
-      r += new StringRadixInfo(chunkLength, radixPowLengthLong,
-          paddingZeros, overflowBarrier)
+      r.push(new StringRadixInfo(chunkLength, radixPowLengthLong,
+          paddingZeros, overflowBarrier))
       radix += 1
     }
 
@@ -138,7 +138,7 @@ object Long {
     val hi = (i >>> 32).toInt
     if (lo >> 31 == hi) {
       // It's a signed int32
-      import js.JSNumberOps.enableJSNumberOps
+      import Utils.Implicits.enableJSNumberOps
       lo.toString(radix)
     } else if (hi < 0) {
       "-" + toUnsignedStringInternalLarge(-i, radix)
@@ -151,8 +151,8 @@ object Long {
   private def toUnsignedStringImpl(i: scala.Long, radix: Int): String = {
     if ((i >>> 32).toInt == 0) {
       // It's an unsigned int32
-      import js.JSNumberOps._
-      i.toInt.toUint.toString(radix)
+      import Utils.Implicits.enableJSNumberOps
+      Utils.toUint(i.toInt).toString(radix)
     } else {
       toUnsignedStringInternalLarge(i, radix)
     }
@@ -160,8 +160,7 @@ object Long {
 
   // Must be called only with valid radix
   private def toUnsignedStringInternalLarge(i: scala.Long, radix: Int): String = {
-    import js.JSNumberOps._
-    import js.JSStringOps._
+    import Utils.Implicits._
 
     val radixInfo = StringRadixInfos(radix)
     val divisor = radixInfo.radixPowLength
@@ -312,7 +311,7 @@ object Long {
   }
 
   private def parseLongError(s: String): Nothing =
-    throw new NumberFormatException(s"""For input string: "$s"""")
+    throw new NumberFormatException("For input string: \"" + s + "\"")
 
   @inline def `new`(value: scala.Long): Long = valueOf(value)
 

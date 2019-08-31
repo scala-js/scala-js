@@ -76,7 +76,7 @@ object Byte {
   def parseByte(s: String, radix: Int): scala.Byte = {
     val r = Integer.parseInt(s, radix)
     if (r < MIN_VALUE || r > MAX_VALUE)
-      throw new NumberFormatException(s"""For input string: "$s"""")
+      throw new NumberFormatException("For input string: \"" + s + "\"")
     else
       r.toByte
   }

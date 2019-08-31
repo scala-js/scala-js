@@ -16,11 +16,12 @@ import java.util.Comparator
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
-import js.JSStringOps._
 
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.regex._
+
+import Utils.Implicits.enableJSStringOps
 
 /* This is the implementation of java.lang.String, which is a hijacked class.
  * Its instances are primitive strings. Constructors are not emitted.

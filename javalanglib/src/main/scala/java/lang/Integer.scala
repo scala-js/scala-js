@@ -77,7 +77,7 @@ object Integer {
       signed: scala.Boolean): scala.Int = {
 
     def fail(): Nothing =
-      throw new NumberFormatException(s"""For input string: "$s"""")
+      throw new NumberFormatException("For input string: \"" + s + "\"")
 
     val len = if (s == null) 0 else s.length
 
@@ -123,9 +123,9 @@ object Integer {
     if (x == y) 0 else if (x < y) -1 else 1
 
   @inline def compareUnsigned(x: scala.Int, y: scala.Int): scala.Int = {
-    import js.JSNumberOps._
+    import Utils.toUint
     if (x == y) 0
-    else if (x.toUint > y.toUint) 1
+    else if (toUint(x) > toUint(y)) 1
     else -1
   }
 
@@ -235,7 +235,7 @@ object Integer {
     if (radix == 10 || radix < Character.MIN_RADIX || radix > Character.MAX_RADIX) {
       Integer.toString(i)
     } else {
-      import js.JSNumberOps.enableJSNumberOps
+      import Utils.Implicits.enableJSNumberOps
       i.toString(radix)
     }
   }

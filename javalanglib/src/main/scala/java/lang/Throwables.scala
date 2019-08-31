@@ -92,7 +92,7 @@ class Throwable protected (s: String, private var e: Throwable,
   def printStackTrace(s: java.io.PrintWriter): Unit =
     printStackTraceImpl(s.println(_))
 
-  private[this] def printStackTraceImpl(sprintln: String => Unit): Unit = {
+  private[this] def printStackTraceImpl(sprintln: js.Function1[String, Unit]): Unit = {
     getStackTrace() // will init it if still null
 
     // Message

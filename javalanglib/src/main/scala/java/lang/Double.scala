@@ -112,7 +112,7 @@ object Double {
 
   def parseDouble(s: String): scala.Double = {
     def fail(): Nothing =
-      throw new NumberFormatException(s"""For input string: "$s"""")
+      throw new NumberFormatException("For input string: \"" + s + "\"")
 
     // (Very) slow path for hexadecimal notation
     def parseHexDoubleImpl(match2: js.RegExp.ExecResult): scala.Double = {
@@ -184,12 +184,16 @@ object Double {
        * `binaryExp` (see below) did not stray too far from that range itself.
        */
 
-      val mantissa =
-        js.Dynamic.global.parseInt(truncatedMantissaStr, 16).asInstanceOf[scala.Double]
+      @inline def nativeParseInt(s: String, radix: Int): scala.Double = {
+        js.Dynamic.global
+          .parseInt(s.asInstanceOf[js.Any], radix.asInstanceOf[js.Any])
+          .asInstanceOf[scala.Double]
+      }
+
+      val mantissa = nativeParseInt(truncatedMantissaStr, 16)
       // Assert: mantissa != 0.0 && mantissa != scala.Double.PositiveInfinity
 
-      val binaryExpDouble =
-        js.Dynamic.global.parseInt(binaryExpStr, 10).asInstanceOf[scala.Double]
+      val binaryExpDouble = nativeParseInt(binaryExpStr, 10)
       val binaryExp = binaryExpDouble.toInt // caps to [MinValue, MaxValue]
 
       val binExpAndCorrection = binaryExp + fullCorrection
@@ -221,7 +225,7 @@ object Double {
 
     val match1 = doubleStrPat.exec(s)
     if (match1 != null) {
-      js.Dynamic.global.parseFloat(match1(1)).asInstanceOf[scala.Double]
+      js.Dynamic.global.parseFloat(match1(1).asInstanceOf[js.Any]).asInstanceOf[scala.Double]
     } else {
       val match2 = doubleStrHexPat.exec(s)
       if (match2 != null)
