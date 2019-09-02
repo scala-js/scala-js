@@ -2189,6 +2189,39 @@ object Build {
         scalaScalaJUnitSources.collect {
           case fTup if whitelist(fTup._1) => fTup._2
         }
+      },
+
+      /* Disable slow tests when running with Rhino, because they become *too*
+       * slow with Rhino.
+       *
+       * The following tests are targeted:
+       *
+       * - immutable.RangeConsistencyTest.rangeChurnTest
+       * - immutable.SetTest.t7326
+       * - immutable.TreeSeqMapTest.testAppend
+       * - mutable.ArrayDequeTest.apply
+       * - mutable.ArrayDequeTest.sliding
+       * - mutable.QueueTest.sliding
+       * - mutable.StackTest.sliding
+       *
+       * Unfortunately we cannot disable test by test, so we have to disable
+       * the whole class instead.
+       */
+      testOptions in Test := {
+        val prev = (testOptions in Test).value
+        val isRhino = (resolvedJSEnv in Test).value.isInstanceOf[RhinoJSEnv]
+        if (isRhino) {
+          prev :+ Tests.Filter { name =>
+            !name.endsWith(".immutable.RangeConsistencyTest") &&
+            !name.endsWith(".immutable.SetTest") &&
+            !name.endsWith(".immutable.TreeSeqMapTest") &&
+            !name.endsWith(".mutable.ArrayDequeTest") &&
+            !name.endsWith(".mutable.QueueTest") &&
+            !name.endsWith(".mutable.StackTest")
+          }
+        } else {
+          prev
+        }
       }
     )
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(jUnitRuntime, testBridge % "test")
