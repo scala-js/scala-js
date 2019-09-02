@@ -854,7 +854,7 @@ object Build {
           sbtVersion in pluginCrossBuild := {
             scalaVersion.value match {
               case v if v.startsWith("2.10.") => "0.13.17"
-              case _ => "1.0.0"
+              case _ => "1.2.1"
             }
           },
           scalaBinaryVersion :=

@@ -12,7 +12,7 @@ BIN_VERSIONS="2.10.7 2.11.12 2.12.8 2.13.0"
 CLI_VERSIONS="2.10.7 2.11.12 2.12.8 2.13.0"
 SBT_VERSION="2.10.7"
 SBT1_VERSION="2.12.8"
-SBT1_SBTVERSION="1.0.0"
+SBT1_SBTVERSION="1.2.1"
 
 COMPILER="compiler jUnitPlugin"
 LIBS="library javalibEx ir irJS tools toolsJS jsEnvs jsEnvsTestKit testAdapter stubs testInterface testBridge jUnitRuntime"
