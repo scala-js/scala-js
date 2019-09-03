@@ -436,8 +436,22 @@ object Arrays {
 
   @inline
   private def equalsImpl[T](a: Array[T], b: Array[T]): Boolean = {
-    (a eq b) || (a != null && b != null && a.length == b.length &&
-        a.indices.forall(i => a(i) == b(i)))
+    // scalastyle:off return
+    if (a eq b)
+      return true
+    if (a == null || b == null)
+      return false
+    val len = a.length
+    if (b.length != len)
+      return false
+    var i = 0
+    while (i != len) {
+      if (a(i) != b(i))
+        return false
+      i += 1
+    }
+    true
+    // scalastyle:on return
   }
 
   @noinline def fill(a: Array[Long], value: Long): Unit =
@@ -625,37 +639,42 @@ object Arrays {
   }
 
   @noinline def hashCode(a: Array[Long]): Int =
-    hashCodeImpl[Long](a)
+    hashCodeImpl[Long](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Int]): Int =
-    hashCodeImpl[Int](a)
+    hashCodeImpl[Int](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Short]): Int =
-    hashCodeImpl[Short](a)
+    hashCodeImpl[Short](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Char]): Int =
-    hashCodeImpl[Char](a)
+    hashCodeImpl[Char](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Byte]): Int =
-    hashCodeImpl[Byte](a)
+    hashCodeImpl[Byte](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Boolean]): Int =
-    hashCodeImpl[Boolean](a)
+    hashCodeImpl[Boolean](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Float]): Int =
-    hashCodeImpl[Float](a)
+    hashCodeImpl[Float](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Double]): Int =
-    hashCodeImpl[Double](a)
+    hashCodeImpl[Double](a, _.hashCode())
 
   @noinline def hashCode(a: Array[AnyRef]): Int =
     hashCodeImpl[AnyRef](a, Objects.hashCode(_))
 
   @inline
-  private def hashCodeImpl[T](a: Array[T],
-      elementHashCode: T => Int = (x: T) => x.hashCode): Int = {
-    if (a == null) 0
-    else a.foldLeft(1)((acc, x) => 31*acc + elementHashCode(x))
+  private def hashCodeImpl[T](a: Array[T], elementHashCode: T => Int): Int = {
+    if (a == null) {
+      0
+    } else {
+      var acc = 1
+      for (i <- 0 until a.length)
+        acc = 31 * acc + elementHashCode(a(i))
+      acc
+    }
   }
 
   @noinline def deepHashCode(a: Array[AnyRef]): Int = {
@@ -678,9 +697,22 @@ object Arrays {
   }
 
   @noinline def deepEquals(a1: Array[AnyRef], a2: Array[AnyRef]): Boolean = {
-    if (a1 eq a2) true
-    else if (a1 == null || a2 == null || a1.length != a2.length) false
-    else a1.indices.forall(i => Objects.deepEquals(a1(i), a2(i)))
+    // scalastyle:off return
+    if (a1 eq a2)
+      return true
+    if (a1 == null || a2 == null)
+      return false
+    val len = a1.length
+    if (a2.length != len)
+      return false
+    var i = 0
+    while (i != len) {
+      if (!Objects.deepEquals(a1(i), a2(i)))
+        return false
+      i += 1
+    }
+    true
+    // scalastyle:on return
   }
 
   @noinline def toString(a: Array[Long]): String =

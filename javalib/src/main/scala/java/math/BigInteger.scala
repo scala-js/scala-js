@@ -771,8 +771,17 @@ class BigInteger extends Number with Comparable[BigInteger] {
     numberLength += 1
   }
 
-  private[math] def equalsArrays(b: Array[Int]): Boolean =
-    (0 until numberLength).forall(i => digits(i) == b(i))
+  private[math] def equalsArrays(b: Array[Int]): Boolean = {
+    // scalastyle:off return
+    var i = 0
+    while (i != numberLength) {
+      if (digits(i) != b(i))
+        return false
+      i += 1
+    }
+    true
+    // scalastyle:on return
+  }
 
   private[math] def getFirstNonzeroDigit(): Int = {
     if (firstNonzeroDigit == firstNonzeroDigitNotSet) {

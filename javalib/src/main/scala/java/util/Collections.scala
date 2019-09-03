@@ -350,26 +350,33 @@ object Collections {
     }
   }
 
-  def indexOfSubList(source: List[_], target: List[_]): Int =
-    indexOfSubListImpl(source, target, fromStart = true)
-
-  def lastIndexOfSubList(source: List[_], target: List[_]): Int =
-    indexOfSubListImpl(source, target, fromStart = false)
-
-  @inline
-  private def indexOfSubListImpl(source: List[_], target: List[_],
-      fromStart: Boolean): Int = {
-    val targetSize = target.size
-    if (targetSize == 0) {
-      if (fromStart) 0
-      else source.size
-    } else {
-      val indices = 0 to source.size - targetSize
-      val indicesInOrder = if (fromStart) indices else indices.reverse
-      indicesInOrder.find { i =>
-        source.subList(i, i + target.size).equals(target)
-      }.getOrElse(-1)
+  def indexOfSubList(source: List[_], target: List[_]): Int = {
+    // scalastyle:off return
+    val sourceSize = source.size()
+    val targetSize = target.size()
+    val end = sourceSize - targetSize
+    var i = 0
+    while (i <= end) {
+      if (source.subList(i, i + targetSize).equals(target))
+        return i
+      i += 1
     }
+    -1
+    // scalastyle:on return
+  }
+
+  def lastIndexOfSubList(source: List[_], target: List[_]): Int = {
+    // scalastyle:off return
+    val sourceSize = source.size()
+    val targetSize = target.size()
+    var i = sourceSize - targetSize
+    while (i >= 0) {
+      if (source.subList(i, i + targetSize).equals(target))
+        return i
+      i -= 1
+    }
+    -1
+    // scalastyle:on return
   }
 
   def unmodifiableCollection[T](c: Collection[_ <: T]): Collection[T] =
