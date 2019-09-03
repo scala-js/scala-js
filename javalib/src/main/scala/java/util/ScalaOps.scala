@@ -131,58 +131,6 @@ private[util] object ScalaOps {
       }
       result + end
     }
-
-    @inline def map[B](f: A => B): Iterator[B] =
-      new MappedIterator(__self, f)
-
-    @inline def withFilter(f: A => Boolean): IteratorWithFilter[A] =
-      new IteratorWithFilter(__self, f)
-
-    @inline def zipWithIndex: Iterator[(A, Int)] =
-      new IteratorWithIndex(__self)
-  }
-
-  @inline
-  private class MappedIterator[A, B](iter: Iterator[A], f: A => B)
-      extends Iterator[B] {
-
-    def hasNext(): Boolean = iter.hasNext()
-
-    def next(): B = f(iter.next())
-
-    def remove(): Unit = iter.remove()
-  }
-
-  @inline
-  final class IteratorWithFilter[A] private[ScalaOps] (
-      iter: Iterator[A], pred: A => Boolean) {
-
-    def foreach[U](f: A => U): Unit = {
-      for (x <- iter.scalaOps) {
-        if (pred(x))
-          f(x)
-      }
-    }
-
-    def withFilter(f: A => Boolean): IteratorWithFilter[A] =
-      new IteratorWithFilter(iter, x => pred(x) && f(x))
-  }
-
-  @inline
-  private class IteratorWithIndex[A](iter: Iterator[A])
-      extends Iterator[(A, Int)] {
-
-    private var lastIndex = -1
-
-    def hasNext(): Boolean = iter.hasNext()
-
-    def next(): (A, Int) = {
-      val index = lastIndex + 1
-      lastIndex = index
-      (iter.next(), index)
-    }
-
-    def remove(): Unit = iter.remove()
   }
 
   implicit class ToJavaEnumerationOps[A] private[ScalaOps] (
