@@ -54,7 +54,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   private val _authority = fld(AbsAuthority, RelAuthority).filter(_ != "")
   private val _userInfo = fld(AbsUserInfo, RelUserInfo)
   private val _host = fld(AbsHost, RelHost)
-  private val _port = fld(AbsPort, RelPort).fold(-1)(_.toInt)
+  private val _port = fld(AbsPort, RelPort).map(_.toInt)
 
   private val _path = {
     val useNetPath = fld(AbsAuthority, RelAuthority).isDefined
@@ -101,41 +101,56 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
    */
   @inline
   private def internalCompare(that: URI)(cmp: (String, String) => Int): Int = {
-    @inline def cmpOpt(x: js.UndefOr[String], y: js.UndefOr[String]): Int = {
+    @inline
+    def cmpOpt[T](x: js.UndefOr[T], y: js.UndefOr[T])(comparator: (T, T) => Int): Int = {
       if (x == y) 0
       // Undefined components are considered less than defined components
-      else x.fold(-1)(s1 => y.fold(1)(s2 => cmp(s1, s2)))
+      else x.fold(-1)(s1 => y.fold(1)(s2 => comparator(s1, s2)))
+    }
+    def comparePathQueryFragement(): Int = {
+      val cmpPath = cmpOpt(this._path, that._path)(cmp)
+      if (cmpPath != 0) {
+        cmpPath
+      } else {
+        val cmpQuery = cmpOpt(this._query, that._query)(cmp)
+        if (cmpQuery != 0) cmpQuery
+        else cmpOpt(this._fragment, that._fragment)(cmp)
+      }
     }
 
-    if (this._scheme != that._scheme)
-      this._scheme.fold(-1)(s1 => that._scheme.fold(1)(s1.compareToIgnoreCase))
-    else if (this._isOpaque != that._isOpaque)
-      // A hierarchical URI is less than an opaque URI
-      if (this._isOpaque) 1 else -1
-    else if (_isOpaque) {
-      val ssp = cmp(this._schemeSpecificPart, that._schemeSpecificPart)
-      if (ssp != 0) ssp
-      else cmpOpt(this._fragment, that._fragment)
-    } else if (this._authority != that._authority) {
-      if (this._host.isDefined && that._host.isDefined) {
-        val ui = cmpOpt(this._userInfo, that._userInfo)
-        if (ui != 0) ui
-        else {
-          val hst = this._host.get.compareToIgnoreCase(that._host.get)
-          if (hst != 0) hst
-          else if (this._port == that._port) 0
-          else if (this._port == -1) -1
-          else if (that._port == -1)  1
-          else this._port - that._port
+    val cmpScheme = cmpOpt(this._scheme, that._scheme)(_.compareToIgnoreCase(_))
+    if (cmpScheme != 0) {
+      cmpScheme
+    } else {
+      val cmpIsOpaque = this.isOpaque.compareTo(that.isOpaque) // A hierarchical URI is less than an opaque URI
+      if (cmpIsOpaque != 0) {
+        cmpIsOpaque
+      } else {
+        if (this.isOpaque()) {
+          val cmpSchemeSpecificPart = cmp(this._schemeSpecificPart, that._schemeSpecificPart)
+          if (cmpSchemeSpecificPart != 0) cmpSchemeSpecificPart
+          else comparePathQueryFragement()
+        } else if (this._host.isDefined && that._host.isDefined) {
+          val cmpUserInfo = cmpOpt(this._userInfo, that._userInfo)(cmp)
+          if (cmpUserInfo != 0) {
+            cmpUserInfo
+          } else {
+            val cmpHost = cmpOpt(this._host, that._host)(_.compareToIgnoreCase(_))
+            if (cmpHost != 0) {
+              cmpHost
+            } else {
+              val cmpPort = cmpOpt(this._port, that._port)(_ - _)
+              if (cmpPort != 0) cmpPort
+              else comparePathQueryFragement()
+            }
+          }
+        } else {
+          val cmpAuthority = cmpOpt(this._authority, that._authority)(cmp)
+          if (cmpAuthority != 0) cmpAuthority
+          else comparePathQueryFragement()
         }
-      } else
-        cmpOpt(this._authority, that._authority)
-    } else if (this._path != that._path)
-      cmpOpt(this._path, that._path)
-    else if (this._query != that._query)
-      cmpOpt(this._query, that._query)
-    else
-      cmpOpt(this._fragment, that._fragment)
+      }
+    }
   }
 
   def compareTo(that: URI): Int = internalCompare(that)(_.compareTo(_))
@@ -149,7 +164,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   def getFragment(): String = _fragment.map(decodeComponent).orNull
   def getHost(): String = _host.orNull
   def getPath(): String = _path.map(decodeComponent).orNull
-  def getPort(): Int = _port
+  def getPort(): Int = _port.getOrElse(-1)
   def getQuery(): String = _query.map(decodeComponent).orNull
   def getRawAuthority(): String = _authority.orNull
   def getRawFragment(): String = _fragment.orNull
@@ -166,10 +181,19 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
     import URI.normalizeEscapes
 
     var acc = URI.uriSeed
-    acc = mix(acc, _scheme.##) // scheme may not contain escapes
-    acc = mix(acc, normalizeEscapes(_schemeSpecificPart).##)
-    acc = mixLast(acc, _fragment.map(normalizeEscapes).##)
-
+    acc = mix(acc, _scheme.map(_.toLowerCase).##) // scheme may not contain escapes
+    if (this.isOpaque()) {
+      acc = mix(acc, normalizeEscapes(this._schemeSpecificPart).##)
+    } else if (this._host.isDefined) {
+      acc = mix(acc, normalizeEscapes(this._userInfo).##)
+      acc = mix(acc, this._host.map(_.toLowerCase).##)
+      acc = mix(acc, this._port.##)
+    } else {
+      acc = mix(acc, normalizeEscapes(this._authority).##)
+    }
+    acc = mix(acc, normalizeEscapes(this._path).##)
+    acc = mix(acc, normalizeEscapes(this._query).##)
+    acc = mixLast(acc, normalizeEscapes(this._fragment).##)
     finalizeHash(acc, 3)
   }
 
@@ -334,7 +358,10 @@ object URI {
   }
 
   // IPv4address   = 1*digit "." 1*digit "." 1*digit "." 1*digit
-  private final val ipv4address = "[0-9]{1,3}(?:\\.[0-9]{1,3}){3}"
+  private final val ipv4address = {
+    val digit = "(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"
+    s"(?:$digit\\.){3}$digit"
+  }
 
   private final val ipv6address = {
     // http://stackoverflow.com/a/17871737/1149944
@@ -800,21 +827,22 @@ object URI {
   }
 
   /** Upper-cases all URI escape sequences in `str`. Used for hashing */
-  private def normalizeEscapes(str: String): String = {
-    var i = 0
-    var res = ""
-    while (i < str.length) {
-      if (str.charAt(i) == '%') {
-        assert(str.length > i + 2, "Invalid escape in URI")
-        res += str.substring(i, i+3).toUpperCase()
-        i += 3
-      } else {
-        res += str.substring(i, i+1)
-        i += 1
+  private def normalizeEscapes(maybeStr: js.UndefOr[String]): js.UndefOr[String] = {
+    maybeStr.map { str =>
+      var i = 0
+      var res = ""
+      while (i < str.length) {
+        if (str.charAt(i) == '%') {
+          assert(str.length > i + 2, "Invalid escape in URI")
+          res += str.substring(i, i+3).toUpperCase()
+          i += 3
+        } else {
+          res += str.substring(i, i+1)
+          i += 1
+        }
       }
+      res
     }
-
-    res
   }
 
   private final val uriSeed = 53722356
