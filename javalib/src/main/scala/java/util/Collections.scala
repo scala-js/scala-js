@@ -19,8 +19,6 @@ import scala.language.implicitConversions
 
 import scala.annotation.tailrec
 
-import scala.collection.mutable
-
 import ScalaOps._
 
 object Collections {
@@ -72,10 +70,15 @@ object Collections {
     sort(list, naturalComparator[T])
 
   def sort[T](list: List[T], c: Comparator[_ >: T]): Unit = {
-    val sortedListIter = list.scalaOps.toSeq.sorted(c).javaIterator()
+    val arrayBuf = list.toArray()
+    Arrays.sort[AnyRef with T](arrayBuf.asInstanceOf[Array[AnyRef with T]], c)
+
+    // The spec of `Arrays.asList()` guarantees that its result implements RandomAccess
+    val sortedList = Arrays.asList(arrayBuf).asInstanceOf[List[T] with RandomAccess]
+
     list match {
-      case list: RandomAccess => copyImpl(sortedListIter, list)
-      case _                  => copyImpl(sortedListIter, list.listIterator)
+      case list: RandomAccess => copyImpl(sortedList, list)
+      case _                  => copyImpl(sortedList, list.listIterator)
     }
   }
 
@@ -149,16 +152,35 @@ object Collections {
   def shuffle(list: List[_]): Unit =
     shuffle(list, new Random)
 
+  @noinline
   def shuffle(list: List[_], rnd: Random): Unit =
     shuffleImpl(list, rnd)
 
   @inline
-  def shuffleImpl[T](list: List[T], rnd: Random): Unit = {
-    val scalaRnd = scala.util.Random.javaRandomToRandom(rnd)
-    val shuffledListIter = scalaRnd.shuffle(list.scalaOps.toSeq).javaIterator()
+  private def shuffleImpl[T](list: List[T], rnd: Random): Unit = {
+    def shuffleInPlace(list: List[T] with RandomAccess): Unit = {
+      @inline
+      def swap(i1: Int, i2: Int): Unit = {
+        val tmp = list.get(i1)
+        list.set(i1, list.get(i2))
+        list.set(i2, tmp)
+      }
+
+      var n = list.size()
+      while (n > 1) {
+        val k = rnd.nextInt(n)
+        swap(n - 1, k)
+        n -= 1
+      }
+    }
+
     list match {
-      case list: RandomAccess => copyImpl(shuffledListIter, list)
-      case _                  => copyImpl(shuffledListIter, list.listIterator)
+      case list: RandomAccess =>
+        shuffleInPlace(list)
+      case _ =>
+        val buffer = new ArrayList[T](list)
+        shuffleInPlace(buffer)
+        copyImpl(buffer, list.listIterator)
     }
   }
 
@@ -555,13 +577,15 @@ object Collections {
   }
 
   def addAll[T](c: Collection[_ >: T], elements: Array[AnyRef]): Boolean = {
-    val elementsColl = new AbstractCollection[T] {
-      def size(): Int = elements.length
-
-      def iterator(): Iterator[T] =
-        (elements: mutable.Seq[AnyRef]).javaIterator().asInstanceOf[Iterator[T]]
+    var added = false
+    val len = elements.length
+    var i = 0
+    while (i != len) {
+      if (c.add(elements(i).asInstanceOf[T]))
+        added = true
+      i += 1
     }
-    c.addAll(elementsColl)
+    added
   }
 
   def newSetFromMap[E](map: Map[E, java.lang.Boolean]): Set[E] = {
@@ -845,12 +869,11 @@ object Collections {
       if (eagerThrow) {
         throw new UnsupportedOperationException
       } else {
-        val cSet = c.asInstanceOf[Collection[AnyRef]].scalaOps.toSet
-        if (this.scalaOps.exists(e => cSet(e.asInstanceOf[AnyRef]))) {
-          throw new UnsupportedOperationException
-        } else {
-          false
+        this.scalaOps.foreach { item =>
+          if (c.contains(item))
+            throw new UnsupportedOperationException()
         }
+        false
       }
     }
 
@@ -858,12 +881,11 @@ object Collections {
       if (eagerThrow) {
         throw new UnsupportedOperationException
       } else {
-        val cSet = c.asInstanceOf[Collection[AnyRef]].scalaOps.toSet
-        if (this.scalaOps.exists(e => !cSet(e.asInstanceOf[AnyRef]))) {
-          throw new UnsupportedOperationException
-        } else {
-          false
+        this.scalaOps.foreach { item =>
+          if (!c.contains(item))
+            throw new UnsupportedOperationException()
         }
+        false
       }
     }
   }

@@ -12,44 +12,8 @@
 
 package java.util
 
-import scala.collection.immutable
-import scala.collection.mutable
-
 /** Make some Scala collection APIs available on Java collections. */
 private[util] object ScalaOps {
-
-  implicit class ToScalaIterableOps[A] private[ScalaOps] (
-      val __self: scala.collection.Iterable[A])
-      extends AnyVal {
-    def javaIterator(): Iterator[A] =
-      new JavaIteratorAdapter(__self.iterator)
-  }
-
-  private class JavaIteratorAdapter[A](scalaIterator: scala.collection.Iterator[A])
-      extends Iterator[A] {
-    def hasNext(): Boolean = scalaIterator.hasNext
-    def next(): A = scalaIterator.next()
-
-    def remove(): Unit =
-      throw new UnsupportedOperationException("remove")
-  }
-
-  implicit class ScalaIteratorOps[A] private[ScalaOps] (
-      val __self: scala.collection.Iterator[A])
-      extends AnyVal {
-
-    def asJavaEnumeration(): Enumeration[A] =
-      new JavaEnumerationAdapter(__self)
-  }
-
-  private class JavaEnumerationAdapter[A] private[ScalaOps] (
-      val __self: scala.collection.Iterator[A])
-      extends Enumeration[A] {
-
-    def hasMoreElements(): Boolean = __self.hasNext
-
-    def nextElement(): A = __self.next()
-  }
 
   implicit class ToJavaIterableOps[A] private[ScalaOps] (
       val __self: java.lang.Iterable[A])
@@ -84,15 +48,6 @@ private[util] object ScalaOps {
 
     @inline def reduceLeft[B >: A](f: (B, A) => B): B =
       __self.iterator().scalaOps.reduceLeft(f)
-
-    @inline def toList: immutable.List[A] =
-      __self.iterator().scalaOps.toList
-
-    @inline def toSeq: immutable.Seq[A] =
-      __self.iterator().scalaOps.toSeq
-
-    @inline def toSet: immutable.Set[A] =
-      __self.iterator().scalaOps.toSet
 
     @inline def mkString(start: String, sep: String, end: String): String =
       __self.iterator().scalaOps.mkString(start, sep, end)
@@ -162,20 +117,6 @@ private[util] object ScalaOps {
       if (!__self.hasNext())
         throw new NoSuchElementException("collection is empty")
       foldLeft[B](__self.next())(f)
-    }
-
-    @inline def toList: immutable.List[A] = {
-      val builder = immutable.List.newBuilder[A]
-      foreach(builder += _)
-      builder.result()
-    }
-
-    @inline def toSeq: immutable.Seq[A] = toList
-
-    @inline def toSet: immutable.Set[A] = {
-      val builder = immutable.Set.newBuilder[A]
-      foreach(builder += _)
-      builder.result()
     }
 
     @inline def mkString(start: String, sep: String, end: String): String = {

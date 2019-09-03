@@ -12,9 +12,11 @@
 
 package java.util
 
+import scala.annotation.tailrec
+
 import java.{util => ju}
 
-import scala.collection.mutable
+import scala.scalajs.js
 
 import ScalaOps._
 
@@ -49,25 +51,34 @@ class Properties(protected val defaults: Properties)
   }
 
   def propertyNames(): ju.Enumeration[_] = {
-    val propNames = mutable.Set.empty[Any]
-    // Explicitly use asInstanceOf, to trigger the ClassCastException mandated by the spec
-    keySet().scalaOps.foreach(propNames += _.asInstanceOf[String])
-    if (defaults != null)
-      defaults.propertyNames().scalaOps.foreach(propNames += _)
-    propNames.iterator.asJavaEnumeration
+    val propNames = new ju.HashSet[String]
+    foreachAncestor { ancestor =>
+      ancestor.keySet().scalaOps.foreach { key =>
+        // Explicitly use asInstanceOf, to trigger the ClassCastException mandated by the spec
+        propNames.add(key.asInstanceOf[String])
+      }
+    }
+    Collections.enumeration(propNames)
   }
 
   def stringPropertyNames(): ju.Set[String] = {
     val set = new ju.HashSet[String]
-    entrySet().scalaOps.foreach { entry =>
-      (entry.getKey, entry.getValue) match {
-        case (key: String, _: String) => set.add(key)
-        case _                        => // Ignore key
+    foreachAncestor { ancestor =>
+      ancestor.entrySet().scalaOps.foreach { entry =>
+        (entry.getKey, entry.getValue) match {
+          case (key: String, _: String) => set.add(key)
+          case _                        => // Ignore key
+        }
       }
     }
-    if (defaults != null)
-      set.addAll(defaults.stringPropertyNames())
     set
+  }
+
+  @inline @tailrec
+  private final def foreachAncestor(f: Properties => Unit): Unit = {
+    f(this)
+    if (defaults ne null)
+      defaults.foreachAncestor(f)
   }
 
   // def list(out: PrintStream): Unit

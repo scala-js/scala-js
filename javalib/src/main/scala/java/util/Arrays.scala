@@ -19,8 +19,6 @@ import scala.annotation.tailrec
 
 import scala.reflect.ClassTag
 
-import scala.collection.immutable
-
 object Arrays {
 
   @inline
@@ -718,31 +716,56 @@ object Arrays {
     else a.mkString("[", ", ", "]")
   }
 
-  @noinline def deepToString(a: Array[AnyRef]): String =
-    deepToStringImpl(a, immutable.HashSet.empty[AsRef])
+  def deepToString(a: Array[AnyRef]): String = {
+    /* The following array represents a set of the `Array[AnyRef]` that have
+     * already been seen in the current recursion. We use a JS array instead of
+     * a full-blown `HashSet` because it will likely stay very short (its size
+     * is O(h) where h is the height of the tree of non-cyclical paths starting
+     * at `a`), so the cost of using `System.identityHashCode` will probably
+     * outweigh the benefits of the time complexity guarantees provided by a
+     * hash-set.
+     */
+    val seen = js.Array[Array[AnyRef]]()
 
-  private def deepToStringImpl(a: Array[AnyRef], branch: immutable.Set[AsRef]): String = {
-    @inline
-    def valueToString(e: AnyRef): String = {
-      if (e == null) "null"
-      else {
-        e match {
-          case e: Array[AnyRef]  => deepToStringImpl(e, branch + new AsRef(a))
-          case e: Array[Long]    => toString(e)
-          case e: Array[Int]     => toString(e)
-          case e: Array[Short]   => toString(e)
-          case e: Array[Byte]    => toString(e)
-          case e: Array[Char]    => toString(e)
-          case e: Array[Boolean] => toString(e)
-          case e: Array[Float]   => toString(e)
-          case e: Array[Double]  => toString(e)
-          case _                 => String.valueOf(e)
-        }
-      }
+    @inline def wasSeen(a: Array[AnyRef]): Boolean = {
+      // JavaScript's indexOf uses `===`
+      seen.asInstanceOf[js.Dynamic].indexOf(a.asInstanceOf[js.Any]).asInstanceOf[Int] >= 0
     }
+
+    def rec(a: Array[AnyRef]): String = {
+      var result = "["
+      val len = a.length
+      var i = 0
+      while (i != len) {
+        if (i != 0)
+          result += ", "
+        a(i) match {
+          case e: Array[AnyRef]  =>
+            if ((e eq a) || wasSeen(e)) {
+              result += "[...]"
+            } else {
+              seen.push(a)
+              result += rec(e)
+              seen.pop()
+            }
+
+          case e: Array[Long]    => result += toString(e)
+          case e: Array[Int]     => result += toString(e)
+          case e: Array[Short]   => result += toString(e)
+          case e: Array[Byte]    => result += toString(e)
+          case e: Array[Char]    => result += toString(e)
+          case e: Array[Boolean] => result += toString(e)
+          case e: Array[Float]   => result += toString(e)
+          case e: Array[Double]  => result += toString(e)
+          case e                 => result += e // handles null
+        }
+        i += 1
+      }
+      result + "]"
+    }
+
     if (a == null) "null"
-    else if (branch.contains(new AsRef(a))) "[...]"
-    else a.iterator.map(valueToString).mkString("[", ", ", "]")
+    else rec(a)
   }
 
   @inline
@@ -759,18 +782,6 @@ object Arrays {
   private def toOrdering[T](cmp: Comparator[T]): Ordering[T] = {
     new Ordering[T] {
       def compare(x: T, y: T): Int = cmp.compare(x, y)
-    }
-  }
-
-  private final class AsRef(val inner: AnyRef) {
-    override def hashCode(): Int =
-      System.identityHashCode(inner)
-
-    override def equals(obj: Any): Boolean = {
-      obj match {
-        case obj: AsRef => obj.inner eq inner
-        case _          => false
-      }
     }
   }
 }
