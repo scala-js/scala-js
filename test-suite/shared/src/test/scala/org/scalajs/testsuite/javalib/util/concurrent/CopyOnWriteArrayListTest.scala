@@ -18,8 +18,7 @@ import org.junit.Assert._
 import org.junit.Test
 
 import org.scalajs.testsuite.javalib.util.{ListFactory, ListTest}
-
-import scala.collection.JavaConverters._
+import org.scalajs.testsuite.javalib.util.TrivialImmutableCollection
 
 import scala.reflect.ClassTag
 
@@ -47,27 +46,27 @@ class CopyOnWriteArrayListTest extends ListTest {
   @Test def should_implement_addAllAbsent(): Unit = {
     val list = factory.empty[Int]
 
-    assertEquals(3, list.addAllAbsent((0 until 3).asJava))
+    assertEquals(3, list.addAllAbsent(TrivialImmutableCollection((0 until 3): _*)))
     assertEquals(3, list.size)
     for (i <- 0 until 3)
       assertEquals(i, list.get(i))
 
-    assertEquals(0, list.addAllAbsent((0 until 2).asJava))
+    assertEquals(0, list.addAllAbsent(TrivialImmutableCollection((0 until 2): _*)))
     assertEquals(3, list.size)
     for (i <- 0 until 3)
       assertEquals(i, list.get(i))
 
-    assertEquals(3, list.addAllAbsent((3 until 6).asJava))
+    assertEquals(3, list.addAllAbsent(TrivialImmutableCollection((3 until 6): _*)))
     assertEquals(6, list.size)
     for (i <- 0 until 6)
       assertEquals(i, list.get(i))
 
-    assertEquals(4, list.addAllAbsent((0 until 10).asJava))
+    assertEquals(4, list.addAllAbsent(TrivialImmutableCollection((0 until 10): _*)))
     assertEquals(10, list.size)
     for (i <- 0 until 10)
       assertEquals(i, list.get(i))
 
-    assertEquals(1, list.addAllAbsent(Seq(42, 42, 42).asJava))
+    assertEquals(1, list.addAllAbsent(TrivialImmutableCollection(42, 42, 42)))
     assertEquals(11, list.size)
     for (i <- 0 until 10)
       assertEquals(i, list.get(i))
@@ -76,12 +75,12 @@ class CopyOnWriteArrayListTest extends ListTest {
 
   @Test def should_implement_a_snapshot_iterator(): Unit = {
     val list = factory.empty[Int]
-    list.addAll((0 to 10).asJava)
+    list.addAll(TrivialImmutableCollection((0 to 10): _*))
 
     val iter = list.iterator()
     list.clear()
     val iter2 = list.iterator()
-    list.addAll((0 to 5).asJava)
+    list.addAll(TrivialImmutableCollection((0 to 5): _*))
 
     for (i <- 0 to 10) {
       assertTrue(iter.hasNext)

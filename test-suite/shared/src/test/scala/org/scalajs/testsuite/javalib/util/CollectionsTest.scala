@@ -20,32 +20,34 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.CollectionsTestBase
 
-import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
+
+import Utils._
 
 class CollectionsTest extends CollectionsTestBase {
 
   private def checkImmutablilityOfCollectionApi[E](coll: ju.Collection[E],
       elem: E): Unit = {
     expectThrows(classOf[UnsupportedOperationException], coll.add(elem))
-    expectThrows(classOf[UnsupportedOperationException], coll.addAll(List(elem).asJava))
-    assertFalse(coll.addAll(List.empty[E].asJava))
+    expectThrows(classOf[UnsupportedOperationException],
+        coll.addAll(TrivialImmutableCollection(elem)))
+    assertFalse(coll.addAll(TrivialImmutableCollection[E]()))
 
-    if (coll.asScala.count(_ == elem) != coll.size)
-      expectThrows(classOf[Exception], coll.retainAll(List(elem).asJava))
+    if (ju.Collections.frequency(coll, elem) != coll.size)
+      expectThrows(classOf[Exception], coll.retainAll(TrivialImmutableCollection(elem)))
     else
-      assertFalse(coll.retainAll(List(elem).asJava))
+      assertFalse(coll.retainAll(TrivialImmutableCollection(elem)))
 
     if (coll.contains(elem)) {
       expectThrows(classOf[Exception], coll.remove(elem))
-      expectThrows(classOf[Exception], coll.removeAll(List(elem).asJava))
+      expectThrows(classOf[Exception], coll.removeAll(TrivialImmutableCollection(elem)))
     } else {
       assertFalse(coll.remove(elem))
-      assertFalse(coll.removeAll(List(elem).asJava))
+      assertFalse(coll.removeAll(TrivialImmutableCollection(elem)))
     }
-    assertFalse(coll.removeAll(List.empty[E].asJava))
+    assertFalse(coll.removeAll(TrivialImmutableCollection[E]()))
 
-    if (coll.asScala.nonEmpty) {
+    if (!coll.isEmpty()) {
       expectThrows(classOf[Throwable], coll.clear())
     } else {
       coll.clear() // Should not throw
@@ -58,23 +60,25 @@ class CollectionsTest extends CollectionsTestBase {
   private def checkImmutablilityOfListApi[E](list: ju.List[E], elem: E): Unit = {
     checkImmutablilityOfCollectionApi(list, elem)
     expectThrows(classOf[UnsupportedOperationException], list.add(0, elem))
-    assertFalse(list.addAll(0, List.empty[E].asJava))
-    expectThrows(classOf[UnsupportedOperationException], list.addAll(0, List(elem).asJava))
+    assertFalse(list.addAll(0, TrivialImmutableCollection[E]()))
+    expectThrows(classOf[UnsupportedOperationException],
+        list.addAll(0, TrivialImmutableCollection(elem)))
     expectThrows(classOf[UnsupportedOperationException], list.remove(0))
   }
 
   private def checkImmutablilityOfMapApi[K, V](map: ju.Map[K, V], k: K,
       v: V): Unit = {
     expectThrows(classOf[UnsupportedOperationException], map.put(k, v))
-    expectThrows(classOf[UnsupportedOperationException], map.putAll(Map(k ->v).asJava))
-    map.putAll(Map.empty[K, V].asJava) // Should not throw
+    expectThrows(classOf[UnsupportedOperationException],
+        map.putAll(TrivialImmutableMap(k -> v)))
+    map.putAll(TrivialImmutableMap[K, V]()) // Should not throw
 
     if (map.containsKey(k))
       expectThrows(classOf[Throwable], map.remove(k))
     else
       assertNull(map.remove(k).asInstanceOf[AnyRef])
 
-    if (map.asScala.nonEmpty)
+    if (!map.isEmpty())
       expectThrows(classOf[Throwable], map.clear())
     else
       map.clear() // Should not throw
@@ -85,7 +89,7 @@ class CollectionsTest extends CollectionsTestBase {
       val emptySet = ju.Collections.emptySet[E]
       assertTrue(emptySet.isEmpty)
       assertEquals(0, emptySet.size)
-      assertEquals(0, emptySet.iterator.asScala.size)
+      assertTrue(iteratorIsEmpty(emptySet.iterator()))
       checkImmutablilityOfSetApi(emptySet, toElem(0))
     }
 
@@ -99,7 +103,7 @@ class CollectionsTest extends CollectionsTestBase {
       val emptyList = ju.Collections.emptyList[E]
       assertTrue(emptyList.isEmpty)
       assertEquals(0, emptyList.size)
-      assertEquals(0, emptyList.iterator.asScala.size)
+      assertTrue(iteratorIsEmpty(emptyList.iterator()))
       checkImmutablilityOfListApi(emptyList, toElem(0))
     }
 
@@ -129,7 +133,7 @@ class CollectionsTest extends CollectionsTestBase {
       val singletonSet = ju.Collections.singleton[E](toElem(0))
       assertTrue(singletonSet.contains(toElem(0)))
       assertEquals(1, singletonSet.size)
-      assertEquals(1, singletonSet.iterator.asScala.size)
+      assertEquals(1, iteratorSize(singletonSet.iterator()))
       checkImmutablilityOfSetApi(singletonSet, toElem(0))
       checkImmutablilityOfSetApi(singletonSet, toElem(1))
     }
@@ -144,7 +148,7 @@ class CollectionsTest extends CollectionsTestBase {
       val singletonList = ju.Collections.singletonList[E](toElem(0))
       assertTrue(singletonList.contains(toElem(0)))
       assertEquals(1, singletonList.size)
-      assertEquals(1, singletonList.iterator.asScala.size)
+      assertEquals(1, iteratorSize(singletonList.iterator()))
       checkImmutablilityOfListApi(singletonList, toElem(0))
       checkImmutablilityOfListApi(singletonList, toElem(1))
     }
@@ -159,7 +163,9 @@ class CollectionsTest extends CollectionsTestBase {
       val singletonMap = ju.Collections.singletonMap[K, V](toKey(0), toValue(1))
       assertEquals(toValue(1), singletonMap.get(toKey(0)))
       assertEquals(1, singletonMap.size)
-      assertEquals(1, singletonMap.asScala.iterator.size)
+      assertEquals(1, iteratorSize(singletonMap.entrySet().iterator()))
+      assertEquals(1, iteratorSize(singletonMap.keySet().iterator()))
+      assertEquals(1, iteratorSize(singletonMap.values().iterator()))
       checkImmutablilityOfMapApi(singletonMap, toKey(0), toValue(0))
       checkImmutablilityOfMapApi(singletonMap, toKey(1), toValue(1))
     }
@@ -174,9 +180,9 @@ class CollectionsTest extends CollectionsTestBase {
       for (n <- Seq(1, 4, 543)) {
         val nCopies = ju.Collections.nCopies(n, toElem(0))
         assertTrue(nCopies.contains(toElem(0)))
-        nCopies.asScala.forall(_ == toElem(0))
+        assertEquals(n, ju.Collections.frequency(nCopies, toElem(0)))
         assertEquals(n, nCopies.size)
-        assertEquals(n, nCopies.iterator.asScala.size)
+        assertEquals(n, iteratorSize(nCopies.iterator()))
         checkImmutablilityOfListApi(nCopies, toElem(0))
         checkImmutablilityOfListApi(nCopies, toElem(1))
       }
@@ -184,7 +190,7 @@ class CollectionsTest extends CollectionsTestBase {
       val zeroCopies = ju.Collections.nCopies(0, toElem(0))
       assertFalse(zeroCopies.contains(toElem(0)))
       assertEquals(0, zeroCopies.size)
-      assertEquals(0, zeroCopies.iterator.asScala.size)
+      assertTrue(iteratorIsEmpty(zeroCopies.iterator()))
       checkImmutablilityOfListApi(zeroCopies, toElem(0))
 
       for (n <- Seq(-1, -4, -543)) {
@@ -263,9 +269,9 @@ class CollectionsTest extends CollectionsTestBase {
   }
 
   @Test def enumeration(): Unit = {
-    val coll = range.asJavaCollection
+    val coll = TrivialImmutableCollection(range: _*)
     val enum = ju.Collections.enumeration(coll)
-    for (elem <- coll.asScala) {
+    for (elem <- range) {
       assertTrue(enum.hasMoreElements)
       assertEquals(elem, enum.nextElement())
     }
@@ -273,19 +279,44 @@ class CollectionsTest extends CollectionsTestBase {
   }
 
   @Test def list(): Unit = {
-    val enum = range.iterator.asJavaEnumeration
+    val elementCount = 30
+
+    val enum = new ju.Enumeration[Int] {
+      private var next: Int = 0
+      def hasMoreElements(): Boolean = next != elementCount
+      def nextElement(): Int = {
+        next += 1
+        next - 1
+      }
+    }
+
     val list = ju.Collections.list(enum)
-    assertEquals(range.size, list.size)
-    for (i <- range)
+    assertEquals(elementCount, list.size)
+    for (i <- 0 until elementCount)
       assertEquals(i, list.get(i))
   }
 
+  @Test def frequency(): Unit = {
+    val coll = TrivialImmutableCollection(5, 68, 12, 5, 5, 3, 12, 40, 56)
+
+    assertEquals(0, ju.Collections.frequency(coll, 1))
+    assertEquals(1, ju.Collections.frequency(coll, 3))
+    assertEquals(3, ju.Collections.frequency(coll, 5))
+    assertEquals(2, ju.Collections.frequency(coll, 12))
+    assertEquals(1, ju.Collections.frequency(coll, 40))
+    assertEquals(1, ju.Collections.frequency(coll, 56))
+    assertEquals(1, ju.Collections.frequency(coll, 68))
+  }
+
   @Test def disjoint(): Unit = {
-    assertFalse(ju.Collections.disjoint((0 to 3).asJava, (0 to 3).asJava))
-    assertFalse(ju.Collections.disjoint((0 to 3).asJava, (3 to 5).asJava))
-    assertTrue(ju.Collections.disjoint((0 to 3).asJava, (6 to 9).asJava))
-    assertTrue(ju.Collections.disjoint((0 to -1).asJava, (0 to 3).asJava))
-    assertTrue(ju.Collections.disjoint((0 to 3).asJava, (0 to -1).asJava))
-    assertTrue(ju.Collections.disjoint((0 to -1).asJava, (0 to -1).asJava))
+    def coll(range: Range): ju.Collection[Int] =
+      TrivialImmutableCollection(range: _*)
+
+    assertFalse(ju.Collections.disjoint(coll(0 to 3), coll(0 to 3)))
+    assertFalse(ju.Collections.disjoint(coll(0 to 3), coll(3 to 5)))
+    assertTrue(ju.Collections.disjoint(coll(0 to 3), coll(6 to 9)))
+    assertTrue(ju.Collections.disjoint(coll(0 to -1), coll(0 to 3)))
+    assertTrue(ju.Collections.disjoint(coll(0 to 3), coll(0 to -1)))
+    assertTrue(ju.Collections.disjoint(coll(0 to -1), coll(0 to -1)))
   }
 }

@@ -17,11 +17,11 @@ import java.{util => ju, lang => jl}
 import org.junit.Test
 import org.junit.Assert._
 
-import scala.collection.JavaConverters._
-
 import org.scalajs.testsuite.utils.AssertThrows._
 
 import scala.reflect.ClassTag
+
+import Utils._
 
 trait CollectionTest {
 
@@ -36,14 +36,14 @@ trait CollectionTest {
 
     coll.clear()
     assertEquals(0, coll.size())
-    assertFalse(coll.addAll(Seq.empty[String].asJava))
+    assertFalse(coll.addAll(TrivialImmutableCollection[String]()))
     assertEquals(0, coll.size())
 
-    assertTrue(coll.addAll(Seq("one").asJava))
+    assertTrue(coll.addAll(TrivialImmutableCollection("one")))
     assertEquals(1, coll.size())
 
     coll.clear()
-    assertTrue(coll.addAll(Seq("one", "two", "one").asJava))
+    assertTrue(coll.addAll(TrivialImmutableCollection("one", "two", "one")))
     assertTrue(coll.size() >= 1)
   }
 
@@ -56,14 +56,14 @@ trait CollectionTest {
 
     coll.clear()
     assertEquals(0, coll.size())
-    assertFalse(coll.addAll(Seq.empty[Int].asJava))
+    assertFalse(coll.addAll(TrivialImmutableCollection[Int]()))
     assertEquals(0, coll.size())
 
-    assertTrue(coll.addAll(Seq(1).asJava))
+    assertTrue(coll.addAll(TrivialImmutableCollection(1)))
     assertEquals(1, coll.size())
 
     coll.clear()
-    assertTrue(coll.addAll(Seq(1, 2, 1).asJava))
+    assertTrue(coll.addAll(TrivialImmutableCollection(1, 2, 1)))
     assertTrue(coll.size() >= 1)
   }
 
@@ -76,14 +76,14 @@ trait CollectionTest {
 
     coll.clear()
     assertEquals(0, coll.size())
-    assertFalse(coll.addAll(Seq.empty[Double].asJava))
+    assertFalse(coll.addAll(TrivialImmutableCollection[Double]()))
     assertEquals(0, coll.size())
 
-    assertTrue(coll.addAll(Seq(1.234).asJava))
+    assertTrue(coll.addAll(TrivialImmutableCollection(1.234)))
     assertEquals(1, coll.size())
 
     coll.clear()
-    assertTrue(coll.addAll(Seq(1.234, 2.345, 1.234).asJava))
+    assertTrue(coll.addAll(TrivialImmutableCollection(1.234, 2.345, 1.234)))
     assertTrue(coll.size() >= 1)
 
     coll.clear()
@@ -206,7 +206,8 @@ trait CollectionTest {
     coll.add("three")
     coll.add("three")
 
-    assertEquals(coll.iterator().asScala.toSet, Set("one", "two", "three"))
+    assertIteratorSameElementsAsSetDupesAllowed("one", "two", "three")(
+        coll.iterator())
   }
 
   @Test def removeIf(): Unit = {
@@ -217,13 +218,13 @@ trait CollectionTest {
       def test(x: Int): Boolean = x >= 50
     }))
     assertEquals(5, coll.size())
-    assertEquals(coll.iterator().asScala.toSet, Set(-45, 0, 12, 32, 42))
+    assertIteratorSameElementsAsSet(-45, 0, 12, 32, 42)(coll.iterator())
 
     assertFalse(coll.removeIf(new java.util.function.Predicate[Int] {
       def test(x: Int): Boolean = x >= 45
     }))
     assertEquals(5, coll.size())
-    assertEquals(coll.iterator().asScala.toSet, Set(-45, 0, 12, 32, 42))
+    assertIteratorSameElementsAsSet(-45, 0, 12, 32, 42)(coll.iterator())
   }
 }
 
@@ -235,7 +236,7 @@ trait CollectionFactory {
 
   def fromElements[E: ClassTag](elems: E*): ju.Collection[E] = {
     val coll = empty[E]
-    coll.addAll(elems.asJavaCollection)
+    coll.addAll(TrivialImmutableCollection(elems: _*))
     coll
   }
 }

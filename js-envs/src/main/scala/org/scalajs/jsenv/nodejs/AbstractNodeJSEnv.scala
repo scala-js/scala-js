@@ -24,7 +24,6 @@ import org.scalajs.core.tools.logging.NullLogger
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.Utils.OptDeadline
 
-import scala.collection.JavaConverters._
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
 

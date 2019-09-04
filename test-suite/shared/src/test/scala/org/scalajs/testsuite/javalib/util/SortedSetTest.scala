@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 import java.{util => ju}
-import scala.collection.JavaConverters._
+
 import scala.reflect.ClassTag
 
 trait SortedSetTest extends SetTest {
@@ -63,7 +63,7 @@ trait SortedSetTest extends SetTest {
     assertEquals(10000.987, ssDouble.last, 0.0)
   }
 
-  val l = Set(1, 5, 2, 3, 4).asJavaCollection
+  val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
 
   @Test def shouldReturnAProperHeadSet(): Unit = {
     val ss = factory.empty[Int]
@@ -71,22 +71,22 @@ trait SortedSetTest extends SetTest {
     ss.addAll(l)
 
     val hs1 = ss.headSet(3)
-    val l1 = Set(1,2).asJavaCollection
+    val l1 = TrivialImmutableCollection(1, 2)
     assertTrue(hs1.containsAll(l1))
     assertTrue(hs1.removeAll(l1))
     assertTrue(hs1.isEmpty)
     assertEquals(3, ss.size)
-    assertTrue(ss.containsAll(Set(3,4,5).asJavaCollection))
+    assertTrue(ss.containsAll(TrivialImmutableCollection(3, 4, 5)))
 
     ss.addAll(l)
 
     val hs2 = ss.headSet(4)
-    val l2 = Set(1,2,3).asJavaCollection
+    val l2 = TrivialImmutableCollection(1, 2, 3)
     assertTrue(hs2.containsAll(l2))
     assertTrue(hs2.removeAll(l2))
     assertTrue(hs2.isEmpty)
     assertEquals(2, ss.size)
-    assertTrue(ss.containsAll(Set(4,5).asJavaCollection))
+    assertTrue(ss.containsAll(TrivialImmutableCollection(4, 5)))
   }
 
   @Test def shouldReturnAProperTailSet(): Unit = {
@@ -95,22 +95,22 @@ trait SortedSetTest extends SetTest {
     ss.addAll(l)
 
     val ts1 = ss.tailSet(3)
-    val l3 = Set(3,4,5).asJavaCollection
+    val l3 = TrivialImmutableCollection(3, 4, 5)
     assertTrue(ts1.containsAll(l3))
     assertTrue(ts1.removeAll(l3))
     assertTrue(ts1.isEmpty)
     assertEquals(2, ss.size)
-    assertTrue(ss.containsAll(Set(1,2).asJavaCollection))
+    assertTrue(ss.containsAll(TrivialImmutableCollection(1, 2)))
 
     ss.addAll(l)
 
     val ts2 = ss.tailSet(4)
-    val l4 = Set(4,5).asJavaCollection
+    val l4 = TrivialImmutableCollection(4, 5)
     assertTrue(ts2.containsAll(l4))
     assertTrue(ts2.removeAll(l4))
     assertTrue(ts2.isEmpty)
     assertEquals(3, ss.size)
-    assertTrue(ss.containsAll(Set(1,2,3).asJavaCollection))
+    assertTrue(ss.containsAll(TrivialImmutableCollection(1, 2, 3)))
   }
 
   @Test def shouldReturnAProperSubSet(): Unit = {
@@ -119,12 +119,12 @@ trait SortedSetTest extends SetTest {
     ss.addAll(l)
 
     val ss1 = ss.subSet(2, 4)
-    val l5 = Set(2,3).asJavaCollection
+    val l5 = TrivialImmutableCollection(2, 3)
     assertTrue(ss1.containsAll(l5))
     assertTrue(ss1.removeAll(l5))
     assertTrue(ss1.isEmpty)
     assertEquals(3, ss.size)
-    assertTrue(ss.containsAll(Set(1,4,5).asJavaCollection))
+    assertTrue(ss.containsAll(TrivialImmutableCollection(1, 4, 5)))
 
     ss.addAll(l)
 
@@ -133,7 +133,7 @@ trait SortedSetTest extends SetTest {
     assertTrue(ss2.removeAll(l5))
     assertFalse(ss2.isEmpty)
     assertEquals(3, ss.size)
-    assertTrue(ss.containsAll(Set(1,4,5).asJavaCollection))
+    assertTrue(ss.containsAll(TrivialImmutableCollection(1, 4, 5)))
   }
 }
 

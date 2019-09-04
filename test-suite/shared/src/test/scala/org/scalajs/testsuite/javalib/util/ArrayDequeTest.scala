@@ -17,8 +17,6 @@ import java.util
 import org.junit.Test
 import org.junit.Assert._
 
-import scala.collection.JavaConverters._
-
 import java.{util => ju}
 
 import scala.reflect.ClassTag
@@ -44,24 +42,22 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
   }
 
   @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
-    val s = Seq(1, 5, 2, 3, 4)
-    val l = s.asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val ad = factory.from[Int](l)
 
     assertEquals(ad.size(), 5)
 
-    for (i <- 0 until s.size)
-      assertEquals(ad.poll(), s(i))
+    for (i <- 0 until l.size())
+      assertEquals(ad.poll(), l(i))
 
     assertTrue(ad.isEmpty)
   }
 
   @Test def should_add_multiple_element_in_one_operation(): Unit = {
-    val l = Set(1, 5, 2, 3, 4).asJavaCollection
     val ad = factory.empty[Int]
 
     assertEquals(ad.size(), 0)
-    ad.addAll(l)
+    ad.addAll(TrivialImmutableCollection(1, 5, 2, 3, 4))
     assertEquals(ad.size(), 5)
     ad.add(6)
     assertEquals(ad.size(), 6)
@@ -137,8 +133,8 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
   }
 
   @Test def should_remove_occurrences_of_provided_elements(): Unit = {
-    val l = Seq("one", "two", "three", "two", "one").asJavaCollection
-    val ad = factory.from[String](l)
+    val ad = factory.from[String](
+        TrivialImmutableCollection("one", "two", "three", "two", "one"))
 
     assertTrue(ad.removeFirstOccurrence("one"))
     assertTrue(ad.removeLastOccurrence("two"))
@@ -150,21 +146,20 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
   }
 
   @Test def should_iterate_over_elements_in_both_directions(): Unit = {
-    val s = Seq("one", "two", "three")
-    val l = s.asJavaCollection
+    val l = TrivialImmutableCollection("one", "two", "three")
     val ad = factory.from[String](l)
 
     val iter = ad.iterator()
     for (i <- 0 until l.size()) {
       assertTrue(iter.hasNext())
-      assertEquals(iter.next(), s(i))
+      assertEquals(iter.next(), l(i))
     }
     assertFalse(iter.hasNext())
 
     val diter = ad.descendingIterator()
     for (i <- (0 until l.size()).reverse) {
       assertTrue(diter.hasNext())
-      assertEquals(diter.next(), s(i))
+      assertEquals(diter.next(), l(i))
     }
     assertFalse(diter.hasNext())
   }

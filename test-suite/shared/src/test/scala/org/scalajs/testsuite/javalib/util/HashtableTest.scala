@@ -17,7 +17,7 @@ import org.junit.Assert._
 
 import java.{util => ju}
 
-import scala.collection.JavaConverters._
+import Utils._
 
 class HashtableTest {
 
@@ -48,22 +48,22 @@ class HashtableTest {
 
   @Test def keys(): Unit = {
     val ht = new ju.Hashtable[Int, Int]
-    assertEquals(Set.empty[Int], ht.keys().asScala.toSet)
+    assertEnumSameElementsAsSet()(ht.keys())
     ht.put(1, 4)
-    assertEquals(Set(1), ht.keys().asScala.toSet)
+    assertEnumSameElementsAsSet(1)(ht.keys())
     ht.put(2, 5)
     ht.put(3, 6)
-    assertEquals(Set(1, 2, 3), ht.keys().asScala.toSet)
+    assertEnumSameElementsAsSet(1, 2, 3)(ht.keys())
   }
 
   @Test def elements(): Unit = {
     val ht = new ju.Hashtable[Int, Int]
-    assertEquals(Set.empty[Int], ht.elements().asScala.toSet)
+    assertEnumSameElementsAsSet()(ht.elements())
     ht.put(1, 4)
-    assertEquals(Set(4), ht.elements().asScala.toSet)
+    assertEnumSameElementsAsSet(4)(ht.elements())
     ht.put(2, 5)
     ht.put(3, 6)
-    assertEquals(Set(4, 5, 6), ht.elements().asScala.toSet)
+    assertEnumSameElementsAsSet(4, 5, 6)(ht.elements())
   }
 
   @Test def contains(): Unit = {
@@ -192,13 +192,13 @@ class HashtableTest {
 
   @Test def keySet(): Unit = {
     val ht = new ju.Hashtable[Int, Int]
-    assertEquals(Set.empty[Int], ht.keySet().asScala.toSet)
+    assertCollSameElementsAsSet()(ht.keySet())
     ht.put(1, 4)
-    assertEquals(Set(1), ht.keySet().asScala.toSet)
+    assertCollSameElementsAsSet(1)(ht.keySet())
     ht.put(2, 5)
-    assertEquals(Set(1, 2), ht.keySet().asScala.toSet)
+    assertCollSameElementsAsSet(1, 2)(ht.keySet())
     ht.put(3, 6)
-    assertEquals(Set(1, 2, 3), ht.keySet().asScala.toSet)
+    assertCollSameElementsAsSet(1, 2, 3)(ht.keySet())
   }
 
   @Test def entrySet(): Unit = {
@@ -207,14 +207,13 @@ class HashtableTest {
 
     assertTrue(entrySet.isEmpty)
     ht.put(1, 4)
-    assertEquals(Set(1), entrySet.asScala.map(_.getKey))
-    assertEquals(Set(4), entrySet.asScala.map(_.getValue))
+    assertCollSameElementsAsSet[ju.Map.Entry[Int, Int]](SIE(1, 4))(entrySet)
     ht.put(2, 5)
-    assertEquals(Set(1, 2), entrySet.asScala.map(_.getKey))
-    assertEquals(Set(4, 5), entrySet.asScala.map(_.getValue))
+    assertCollSameElementsAsSet[ju.Map.Entry[Int, Int]](SIE(1, 4), SIE(2, 5))(
+        entrySet)
     ht.put(3, 6)
-    assertEquals(Set(1, 2, 3), entrySet.asScala.map(_.getKey))
-    assertEquals(Set(4, 5, 6), entrySet.asScala.map(_.getValue))
+    assertCollSameElementsAsSet[ju.Map.Entry[Int, Int]](SIE(1, 4), SIE(2, 5),
+        SIE(3, 6))(entrySet)
 
     // Directly test the iterator, including its mutation capabilities
 
@@ -244,19 +243,20 @@ class HashtableTest {
     assertEquals(ht.get(thirdKey), thirdEntry.getValue())
 
     assertFalse(iter.hasNext())
-    assertEquals(allKeys - secondKey, entrySet.asScala.map(_.getKey))
+    assertIteratorSameElementsAsSet((allKeys - secondKey).toSeq: _*)(
+        iteratorMap(entrySet.iterator())(_.getKey()))
     assertTrue(ht.containsKey(firstKey) && ht.containsKey(thirdKey))
     assertFalse(ht.containsKey(secondKey))
   }
 
   @Test def values(): Unit = {
     val ht = new ju.Hashtable[Int, Int]
-    assertEquals(Set.empty[Int], ht.values().asScala.toSet)
+    assertCollSameElementsAsSet()(ht.values())
     ht.put(1, 4)
-    assertEquals(Set(4), ht.values().asScala.toSet)
+    assertCollSameElementsAsSet(4)(ht.values())
     ht.put(2, 5)
-    assertEquals(Set(4, 5), ht.values().asScala.toSet)
+    assertCollSameElementsAsSet(4, 5)(ht.values())
     ht.put(3, 6)
-    assertEquals(Set(4, 5, 6), ht.values().asScala.toSet)
+    assertCollSameElementsAsSet(4, 5, 6)(ht.values())
   }
 }
