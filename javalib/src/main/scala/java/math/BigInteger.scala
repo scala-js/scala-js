@@ -678,7 +678,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
 
   def toByteArray(): Array[Byte] = {
     if (this.sign == 0)
-      return Array[Byte](0) // scalastyle:ignore
+      return Array(0.toByte) // scalastyle:ignore
 
     val temp: BigInteger = this
     val bitLen = bitLength()
