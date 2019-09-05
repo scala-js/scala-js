@@ -12,19 +12,19 @@
 
 package org.scalajs.testsuite.niocharset
 
-import scala.collection.JavaConverters._
-
 import java.nio.charset._
 import java.nio.charset.StandardCharsets._
 
 import org.junit.Test
 import org.junit.Assert._
 
+import org.scalajs.testsuite.javalib.util.TrivialImmutableCollection
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class CharsetTest {
-  def javaSet[A](elems: A*): java.util.Set[A] = Set(elems: _*).asJava
+  def javaSet[A](elems: A*): java.util.Set[A] =
+    new java.util.HashSet(TrivialImmutableCollection(elems: _*))
 
   @Test def defaultCharset(): Unit = {
     assertSame(UTF_8, Charset.defaultCharset())

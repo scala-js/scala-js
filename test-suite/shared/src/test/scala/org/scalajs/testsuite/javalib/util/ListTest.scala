@@ -441,6 +441,13 @@ trait ListTest extends CollectionTest {
 trait ListFactory extends CollectionFactory {
   def empty[E: ClassTag]: ju.List[E]
 
+  // Refines the result type of CollectionFactory.fromElements
+  override def fromElements[E: ClassTag](elems: E*): ju.List[E] = {
+    val coll = empty[E]
+    coll.addAll(TrivialImmutableCollection(elems: _*))
+    coll
+  }
+
   /** Sortable using java.util.Collections.sort
    */
   def sortableUsingCollections: Boolean = true

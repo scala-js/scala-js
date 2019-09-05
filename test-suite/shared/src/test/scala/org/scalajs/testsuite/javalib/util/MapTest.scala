@@ -22,6 +22,8 @@ import org.scalajs.testsuite.utils.AssertThrows._
 
 import scala.reflect.ClassTag
 
+import Utils._
+
 trait MapTest {
   import MapTest._
 
@@ -422,14 +424,14 @@ trait MapTest {
 
     assertTrue(values.contains("three"))
 
-    val coll1 = ju.Arrays.asList("one", "two", "three")
+    val coll1 = TrivialImmutableCollection("one", "two", "three")
     assertTrue(values.containsAll(coll1))
 
-    val coll2 = ju.Arrays.asList("one", "two", "three", "four")
+    val coll2 = TrivialImmutableCollection("one", "two", "three", "four")
     assertFalse(values.containsAll(coll2))
 
     if (factory.allowsNullValuesQueries) {
-      val coll3 = ju.Arrays.asList("one", "two", "three", null)
+      val coll3 = TrivialImmutableCollection("one", "two", "three", null)
       assertFalse(values.containsAll(coll3))
     }
   }
@@ -452,14 +454,17 @@ trait MapTest {
 
     assertTrue(values.contains(TestObj(33)))
 
-    val coll1 = ju.Arrays.asList(TestObj(11), TestObj(22), TestObj(33))
+    val coll1 = TrivialImmutableCollection(TestObj(11), TestObj(22),
+        TestObj(33))
     assertTrue(values.containsAll(coll1))
 
-    val coll2 = ju.Arrays.asList(TestObj(11), TestObj(22), TestObj(33), TestObj(44))
+    val coll2 = TrivialImmutableCollection(TestObj(11), TestObj(22),
+        TestObj(33), TestObj(44))
     assertFalse(values.containsAll(coll2))
 
     if (factory.allowsNullValuesQueries) {
-      val coll3 = ju.Arrays.asList(TestObj(11), TestObj(22), TestObj(33), null)
+      val coll3 = TrivialImmutableCollection(TestObj(11), TestObj(22),
+          TestObj(33), null)
       assertFalse(values.containsAll(coll3))
     }
   }
@@ -512,7 +517,7 @@ trait MapTest {
     assertTrue(mp.containsKey("TWO"))
     assertTrue(mp.containsKey("THREE"))
 
-    values.removeAll(ju.Arrays.asList("one", "two"))
+    values.removeAll(TrivialImmutableCollection("one", "two"))
 
     assertFalse(mp.containsKey("ONE"))
     assertFalse(mp.containsKey("TWO"))
@@ -526,7 +531,7 @@ trait MapTest {
     assertTrue(mp.containsKey("TWO"))
     assertTrue(mp.containsKey("THREE"))
 
-    values.retainAll(ju.Arrays.asList("one", "two"))
+    values.retainAll(TrivialImmutableCollection("one", "two"))
 
     assertTrue(mp.containsKey("ONE"))
     assertTrue(mp.containsKey("TWO"))
@@ -561,7 +566,7 @@ trait MapTest {
     assertTrue(mp.containsKey(TestObj(2)))
     assertTrue(mp.containsKey(TestObj(3)))
 
-    values.removeAll(ju.Arrays.asList(TestObj(11), TestObj(22)))
+    values.removeAll(TrivialImmutableCollection(TestObj(11), TestObj(22)))
 
     assertFalse(mp.containsKey(TestObj(1)))
     assertFalse(mp.containsKey(TestObj(2)))
@@ -575,7 +580,7 @@ trait MapTest {
     assertTrue(mp.containsKey(TestObj(2)))
     assertTrue(mp.containsKey(TestObj(3)))
 
-    values.retainAll(ju.Arrays.asList(TestObj(11), TestObj(22)))
+    values.retainAll(TrivialImmutableCollection(TestObj(11), TestObj(22)))
 
     assertTrue(mp.containsKey(TestObj(1)))
     assertTrue(mp.containsKey(TestObj(2)))
@@ -617,14 +622,14 @@ trait MapTest {
 
     assertTrue(keySet.contains("THREE"))
 
-    val coll1 = ju.Arrays.asList("ONE", "TWO", "THREE")
+    val coll1 = TrivialImmutableCollection("ONE", "TWO", "THREE")
     assertTrue(keySet.containsAll(coll1))
 
-    val coll2 = ju.Arrays.asList("ONE", "TWO", "THREE", "FOUR")
+    val coll2 = TrivialImmutableCollection("ONE", "TWO", "THREE", "FOUR")
     assertFalse(keySet.containsAll(coll2))
 
     if (factory.allowsNullKeysQueries) {
-      val coll3 = ju.Arrays.asList("ONE", "TWO", "THREE", null)
+      val coll3 = TrivialImmutableCollection("ONE", "TWO", "THREE", null)
       assertFalse(keySet.containsAll(coll3))
     }
   }
@@ -647,14 +652,14 @@ trait MapTest {
 
     assertTrue(keySet.contains(TestObj(3)))
 
-    val coll1 = ju.Arrays.asList(TestObj(1), TestObj(2), TestObj(3))
+    val coll1 = TrivialImmutableCollection(TestObj(1), TestObj(2), TestObj(3))
     assertTrue(keySet.containsAll(coll1))
 
-    val coll2 = ju.Arrays.asList(TestObj(1), TestObj(2), TestObj(4))
+    val coll2 = TrivialImmutableCollection(TestObj(1), TestObj(2), TestObj(4))
     assertFalse(keySet.containsAll(coll2))
 
     if (factory.allowsNullKeysQueries) {
-      val coll3 = ju.Arrays.asList(TestObj(1), TestObj(2), null)
+      val coll3 = TrivialImmutableCollection(TestObj(1), TestObj(2), null)
       assertFalse(keySet.containsAll(coll3))
     }
   }
@@ -708,7 +713,7 @@ trait MapTest {
     assertTrue(mp.containsKey("TWO"))
     assertTrue(mp.containsKey("THREE"))
 
-    keySet.removeAll(ju.Arrays.asList("ONE", "TWO", "FIVE"))
+    keySet.removeAll(TrivialImmutableCollection("ONE", "TWO", "FIVE"))
 
     assertFalse(mp.containsKey("ONE"))
     assertFalse(mp.containsKey("TWO"))
@@ -722,7 +727,7 @@ trait MapTest {
     assertTrue(mp.containsKey("TWO"))
     assertTrue(mp.containsKey("THREE"))
 
-    keySet.retainAll(ju.Arrays.asList("ONE", "TWO", "FIVE"))
+    keySet.retainAll(TrivialImmutableCollection("ONE", "TWO", "FIVE"))
 
     assertTrue(mp.containsKey("ONE"))
     assertTrue(mp.containsKey("TWO"))
@@ -758,7 +763,8 @@ trait MapTest {
     assertTrue(mp.containsKey(TestObj(2)))
     assertTrue(mp.containsKey(TestObj(3)))
 
-    keySet.removeAll(ju.Arrays.asList(TestObj(1), TestObj(2), TestObj(5)))
+    keySet.removeAll(TrivialImmutableCollection(TestObj(1), TestObj(2),
+        TestObj(5)))
 
     assertFalse(mp.containsKey(TestObj(1)))
     assertFalse(mp.containsKey(TestObj(2)))
@@ -772,7 +778,8 @@ trait MapTest {
     assertTrue(mp.containsKey(TestObj(2)))
     assertTrue(mp.containsKey(TestObj(3)))
 
-    keySet.retainAll(ju.Arrays.asList(TestObj(1), TestObj(2), TestObj(5)))
+    keySet.retainAll(TrivialImmutableCollection(TestObj(1), TestObj(2),
+        TestObj(5)))
 
     assertTrue(mp.containsKey(TestObj(1)))
     assertTrue(mp.containsKey(TestObj(2)))
@@ -812,20 +819,20 @@ trait MapTest {
 
     assertTrue(entrySet.contains(SIE("THREE", "three")))
 
-    val coll1 = ju.Arrays.asList(SIE("ONE", "one"), SIE("TWO", "two"),
-        SIE("THREE", "three"))
+    val coll1 = TrivialImmutableCollection(SIE("ONE", "one"),
+        SIE("TWO", "two"), SIE("THREE", "three"))
     assertTrue(entrySet.containsAll(coll1))
 
-    val coll2 = ju.Arrays.asList(SIE("ONE", "one"), SIE("TWO", "two"),
-        SIE("THREE", "three"), SIE("FOUR", "four"))
+    val coll2 = TrivialImmutableCollection(SIE("ONE", "one"),
+        SIE("TWO", "two"), SIE("THREE", "three"), SIE("FOUR", "four"))
     assertFalse(entrySet.containsAll(coll2))
 
-    val coll3 = ju.Arrays.asList(SIE("ONE", "one"), SIE("TWO", "four"),
-        SIE("THREE", "three"))
+    val coll3 = TrivialImmutableCollection(SIE("ONE", "one"),
+        SIE("TWO", "four"), SIE("THREE", "three"))
     assertFalse(entrySet.containsAll(coll3))
 
-    val coll4 = ju.Arrays.asList(SIE("ONE", "one"), SIE("four", "two"),
-        SIE("THREE", "three"))
+    val coll4 = TrivialImmutableCollection(SIE("ONE", "one"),
+        SIE("four", "two"), SIE("THREE", "three"))
     assertFalse(entrySet.containsAll(coll4))
   }
 
@@ -845,20 +852,20 @@ trait MapTest {
 
     assertTrue(entrySet.contains(SIE(TestObj(3), TestObj(33))))
 
-    val coll1 = ju.Arrays.asList(SIE(TestObj(1), TestObj(11)),
+    val coll1 = TrivialImmutableCollection(SIE(TestObj(1), TestObj(11)),
         SIE(TestObj(2), TestObj(22)), SIE(TestObj(3), TestObj(33)))
     assertTrue(entrySet.containsAll(coll1))
 
-    val coll2 = ju.Arrays.asList(SIE(TestObj(1), TestObj(11)),
+    val coll2 = TrivialImmutableCollection(SIE(TestObj(1), TestObj(11)),
         SIE(TestObj(2), TestObj(22)), SIE(TestObj(3), TestObj(33)),
         SIE(TestObj(4), TestObj(44)))
     assertFalse(entrySet.containsAll(coll2))
 
-    val coll3 = ju.Arrays.asList(SIE(TestObj(1), TestObj(11)),
+    val coll3 = TrivialImmutableCollection(SIE(TestObj(1), TestObj(11)),
         SIE(TestObj(2), TestObj(44)), SIE(TestObj(3), TestObj(33)))
     assertFalse(entrySet.containsAll(coll3))
 
-    val coll4 = ju.Arrays.asList(SIE(TestObj(1), TestObj(11)),
+    val coll4 = TrivialImmutableCollection(SIE(TestObj(1), TestObj(11)),
         SIE(TestObj(4), TestObj(22)), SIE(TestObj(3), TestObj(33)))
     assertFalse(entrySet.containsAll(coll4))
   }
@@ -893,8 +900,8 @@ trait MapTest {
     assertTrue(mp.containsKey("TWO"))
     assertTrue(mp.containsKey("THREE"))
 
-    entrySet.removeAll(ju.Arrays.asList(SIE("ONE", "one"), SIE("TWO", "two"),
-        SIE("THREE", "four"), "THREE", 42))
+    entrySet.removeAll(TrivialImmutableCollection(SIE("ONE", "one"),
+        SIE("TWO", "two"), SIE("THREE", "four"), "THREE", 42))
 
     assertFalse(mp.containsKey("ONE"))
     assertFalse(mp.containsKey("TWO"))
@@ -908,8 +915,8 @@ trait MapTest {
     assertTrue(mp.containsKey("TWO"))
     assertTrue(mp.containsKey("THREE"))
 
-    entrySet.retainAll(ju.Arrays.asList(SIE("ONE", "one"), SIE("TWO", "two"),
-        SIE("THREE", "four"), "THREE", 42))
+    entrySet.retainAll(TrivialImmutableCollection(SIE("ONE", "one"),
+        SIE("TWO", "two"), SIE("THREE", "four"), "THREE", 42))
 
     assertTrue(mp.containsKey("ONE"))
     assertTrue(mp.containsKey("TWO"))
@@ -946,7 +953,7 @@ trait MapTest {
     assertTrue(mp.containsKey(TestObj(2)))
     assertTrue(mp.containsKey(TestObj(3)))
 
-    entrySet.removeAll(ju.Arrays.asList(SIE(TestObj(1), TestObj(11)),
+    entrySet.removeAll(TrivialImmutableCollection(SIE(TestObj(1), TestObj(11)),
         SIE(TestObj(2), TestObj(22)), SIE(TestObj(3), TestObj(44)),
         TestObj(3), 42))
 
@@ -962,7 +969,7 @@ trait MapTest {
     assertTrue(mp.containsKey(TestObj(2)))
     assertTrue(mp.containsKey(TestObj(3)))
 
-    entrySet.retainAll(ju.Arrays.asList(SIE(TestObj(1), TestObj(11)),
+    entrySet.retainAll(TrivialImmutableCollection(SIE(TestObj(1), TestObj(11)),
         SIE(TestObj(2), TestObj(22)), SIE(TestObj(3), TestObj(44)),
         TestObj(3), 42))
 
@@ -1009,9 +1016,6 @@ trait MapTest {
 
 object MapTest {
   final case class TestObj(num: Int)
-
-  def SIE[K, V](key: K, value: V): ju.Map.Entry[K, V] =
-    new ju.AbstractMap.SimpleImmutableEntry(key, value)
 }
 
 trait MapFactory {

@@ -21,8 +21,6 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
 
-import scala.collection.JavaConverters._
-
 import scala.reflect.ClassTag
 
 trait CollectionsOnCheckedMapTest extends CollectionsOnMapsTest {
@@ -64,8 +62,8 @@ trait CollectionsOnCheckedMapTest extends CollectionsOnMapsTest {
       m.put(new C, new C)
       m.asInstanceOf[ju.Map[A, A]]
     }
-    expectThrows(classOf[ClassCastException],
-      singletonMap().entrySet().asScala.head.setValue(new A))
+    val firstEntry = singletonMap().entrySet().iterator().next()
+    expectThrows(classOf[ClassCastException], firstEntry.setValue(new A))
   }
 
   private def superMap(): ju.Map[A, A] =
@@ -111,8 +109,8 @@ trait CollectionsOnCheckedSortedMapTest extends CollectionsOnSortedMapsTest {
       m.put(new C, new C)
       m.asInstanceOf[ju.Map[A, A]]
     }
-    expectThrows(classOf[ClassCastException],
-        singletonMap().entrySet().asScala.head.setValue(new A))
+    val firstEntry = singletonMap().entrySet().iterator().next()
+    expectThrows(classOf[ClassCastException], firstEntry.setValue(new A))
   }
 
   private def superMap(): ju.Map[A, A] =

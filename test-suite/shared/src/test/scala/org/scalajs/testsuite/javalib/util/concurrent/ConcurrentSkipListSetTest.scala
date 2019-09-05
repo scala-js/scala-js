@@ -20,11 +20,11 @@ import org.junit.Assume._
 import org.junit.Test
 
 import org.scalajs.testsuite.javalib.util.NavigableSetFactory
+import org.scalajs.testsuite.javalib.util.TrivialImmutableCollection
+
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
 
-import scala.collection.JavaConverters._
-import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
 // TODO extends AbstractSetTest with NavigableSetTest
@@ -136,7 +136,7 @@ class ConcurrentSkipListSetTest {
   }
 
   @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
-    val l = Set(1, 5, 2, 3, 4).asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val csls = factory.newFrom(l)
 
     assertEquals(5, csls.size())
@@ -148,7 +148,7 @@ class ConcurrentSkipListSetTest {
   }
 
   @Test def should_be_cleared_in_a_single_operation(): Unit = {
-    val l = Set(1, 5, 2, 3, 4).asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val csls = factory.newFrom(l)
 
     assertEquals(5, csls.size())
@@ -157,7 +157,7 @@ class ConcurrentSkipListSetTest {
   }
 
   @Test def should_add_multiple_elemnt_in_one_operation(): Unit = {
-    val l = Set(1, 5, 2, 3, 4).asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val csls = factory.empty[Int]
 
     assertEquals(0, csls.size())
@@ -243,7 +243,7 @@ class ConcurrentSkipListSetTest {
   }
 
   @Test def `should_retrieve_ceiling(ordered)_elements`(): Unit = {
-    val lInt = Set(1, 5, 2, 3, 4).asJavaCollection
+    val lInt = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val cslsInt = new ConcurrentSkipListSet[Int](lInt)
 
     assertEquals(1, cslsInt.ceiling(-10))
@@ -251,7 +251,7 @@ class ConcurrentSkipListSetTest {
     assertEquals(1, cslsInt.ceiling(1))
     assertEquals(5, cslsInt.ceiling(5))
 
-    val lString = Set("a", "e", "b", "c", "d").asJavaCollection
+    val lString = TrivialImmutableCollection("a", "e", "b", "c", "d")
     val cslsString = new ConcurrentSkipListSet[String](lString)
 
     assertEquals("a", cslsString.ceiling("00000"))
@@ -262,7 +262,7 @@ class ConcurrentSkipListSetTest {
   }
 
   @Test def `should_retrieve_floor(ordered)_elements`(): Unit = {
-    val lInt = Set(1, 5, 2, 3, 4).asJavaCollection
+    val lInt = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val cslsInt = new ConcurrentSkipListSet[Int](lInt)
 
     assertEquals(5, cslsInt.floor(10))
@@ -270,7 +270,7 @@ class ConcurrentSkipListSetTest {
     assertEquals(3, cslsInt.floor(3))
     assertEquals(1, cslsInt.floor(1))
 
-    val lString = Set("a", "e", "b", "c", "d").asJavaCollection
+    val lString = TrivialImmutableCollection("a", "e", "b", "c", "d")
     val cslsString = new ConcurrentSkipListSet[String](lString)
 
     assertEquals("e", cslsString.floor("zzzzz"))
@@ -281,7 +281,7 @@ class ConcurrentSkipListSetTest {
   }
 
   @Test def `should_retrieve_higher(ordered)_elements`(): Unit = {
-    val lInt = Set(1, 5, 2, 3, 4).asJavaCollection
+    val lInt = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val cslsInt = new ConcurrentSkipListSet[Int](lInt)
 
     assertEquals(5, cslsInt.higher(4))
@@ -289,7 +289,7 @@ class ConcurrentSkipListSetTest {
     assertEquals(2, cslsInt.higher(1))
     assertEquals(1, cslsInt.higher(-10))
 
-    val lString = Set("a", "e", "b", "c", "d").asJavaCollection
+    val lString = TrivialImmutableCollection("a", "e", "b", "c", "d")
     val cslsString = new ConcurrentSkipListSet[String](lString)
 
     assertNull(cslsString.higher("zzzzz"))
@@ -300,7 +300,7 @@ class ConcurrentSkipListSetTest {
   }
 
   @Test def `should_retrieve_lower(ordered)_elements`(): Unit = {
-    val lInt = Set(1, 5, 2, 3, 4).asJavaCollection
+    val lInt = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val cslsInt = new ConcurrentSkipListSet[Int](lInt)
 
     assertEquals(4, cslsInt.lower(5))
@@ -308,7 +308,7 @@ class ConcurrentSkipListSetTest {
     assertEquals(2, cslsInt.lower(3))
     assertEquals(5, cslsInt.lower(10))
 
-    val lString = Set("a", "e", "b", "c", "d").asJavaCollection
+    val lString = TrivialImmutableCollection("a", "e", "b", "c", "d")
     val cslsString = new ConcurrentSkipListSet[String](lString)
 
     assertEquals("e", cslsString.lower("zzzzz"))
@@ -319,7 +319,7 @@ class ConcurrentSkipListSetTest {
   }
 
   @Test def should_poll_first_and_last_elements(): Unit = {
-    val l = Set(1, 5, 2, 3, 4).asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val csls = new ConcurrentSkipListSet[Int](l)
 
     assertTrue(csls.contains(1))
@@ -333,56 +333,56 @@ class ConcurrentSkipListSetTest {
   }
 
   @Test def should_get_partial_views_that_are_backed_on_the_original_list(): Unit = {
-    val l = Set(1, 5, 2, 3, 4).asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val csls = new ConcurrentSkipListSet[Int](l)
 
     val hs1 = csls.headSet(3)
-    val l1 = Set(1,2).asJavaCollection
+    val l1 = TrivialImmutableCollection(1, 2)
     assertTrue(hs1.containsAll(l1))
     assertTrue(hs1.removeAll(l1))
     assertTrue(hs1.isEmpty)
     assertEquals(3, csls.size)
-    assertTrue(csls.containsAll(Set(3,4,5).asJavaCollection))
+    assertTrue(csls.containsAll(TrivialImmutableCollection(3, 4, 5)))
 
     csls.addAll(l)
 
     val hs2 = csls.headSet(3, true)
-    val l2 = Set(1,2,3).asJavaCollection
+    val l2 = TrivialImmutableCollection(1, 2, 3)
     assertTrue(hs2.containsAll(l2))
     assertTrue(hs2.removeAll(l2))
     assertTrue(hs2.isEmpty)
     assertEquals(2, csls.size)
-    assertTrue(csls.containsAll(Set(4,5).asJavaCollection))
+    assertTrue(csls.containsAll(TrivialImmutableCollection(4, 5)))
 
     csls.addAll(l)
 
     val ts1 = csls.tailSet(3)
-    val l3 = Set(3,4,5).asJavaCollection
+    val l3 = TrivialImmutableCollection(3, 4, 5)
     assertTrue(ts1.containsAll(l3))
     assertTrue(ts1.removeAll(l3))
     assertTrue(ts1.isEmpty)
     assertEquals(2, csls.size)
-    assertTrue(csls.containsAll(Set(1,2).asJavaCollection))
+    assertTrue(csls.containsAll(TrivialImmutableCollection(1, 2)))
 
     csls.addAll(l)
 
     val ts2 = csls.tailSet(3, false)
-    val l4 = Set(4,5).asJavaCollection
+    val l4 = TrivialImmutableCollection(4, 5)
     assertTrue(ts2.containsAll(l4))
     assertTrue(ts2.removeAll(l4))
     assertTrue(ts2.isEmpty)
     assertEquals(3, csls.size)
-    assertTrue(csls.containsAll(Set(1,2,3).asJavaCollection))
+    assertTrue(csls.containsAll(TrivialImmutableCollection(1, 2, 3)))
 
     csls.addAll(l)
 
     val ss1 = csls.subSet(2, true, 3, true)
-    val l5 = Set(2,3).asJavaCollection
+    val l5 = TrivialImmutableCollection(2, 3)
     assertTrue(ss1.containsAll(l5))
     assertTrue(ss1.removeAll(l5))
     assertTrue(ss1.isEmpty)
     assertEquals(3, csls.size)
-    assertTrue(csls.containsAll(Set(1,4,5).asJavaCollection))
+    assertTrue(csls.containsAll(TrivialImmutableCollection(1, 4, 5)))
 
     csls.addAll(l)
 
@@ -391,7 +391,7 @@ class ConcurrentSkipListSetTest {
     assertTrue(ss2.removeAll(l5))
     assertTrue(ss2.isEmpty)
     assertEquals(3, csls.size)
-    assertTrue(csls.containsAll(Set(1,4,5).asJavaCollection))
+    assertTrue(csls.containsAll(TrivialImmutableCollection(1, 4, 5)))
   }
 
   @Test def should_throw_exception_on_non_comparable_objects(): Unit = {

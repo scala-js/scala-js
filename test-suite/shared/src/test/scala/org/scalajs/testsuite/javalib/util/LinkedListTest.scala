@@ -17,8 +17,6 @@ import scala.language.implicitConversions
 import org.junit.Test
 import org.junit.Assert._
 
-import scala.collection.JavaConverters._
-
 import java.util.LinkedList
 
 import scala.reflect.ClassTag
@@ -44,20 +42,19 @@ class LinkedListTest extends AbstractListTest {
   }
 
   @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
-    val s = Seq(1, 5, 2, 3, 4)
-    val l = s.asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val ll = new LinkedList[Int](l)
 
     assertEquals(5, ll.size())
 
-    for (i <- 0 until s.size)
-      assertEquals(s(i), ll.poll())
+    for (i <- 0 until l.size())
+      assertEquals(l(i), ll.poll())
 
     assertTrue(ll.isEmpty)
   }
 
   @Test def should_add_multiple_element_in_one_operation(): Unit = {
-    val l = Set(1, 5, 2, 3, 4).asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val ll = new LinkedList[Int]()
 
     assertEquals(0, ll.size())
@@ -68,14 +65,13 @@ class LinkedListTest extends AbstractListTest {
   }
 
   @Test def `could_be_instantiated_with_a_prepopulated_Collection_-_LinkedListTest`(): Unit = {
-    val s = Seq(1, 5, 2, 3, 4)
-    val l = s.asJavaCollection
+    val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val ll = new LinkedList[Int](l)
 
     assertEquals(5, ll.size())
 
-    for (i <- 0 until s.size)
-      assertEquals(s(i), ll.poll())
+    for (i <- 0 until l.size())
+      assertEquals(l(i), ll.poll())
 
     assertTrue(ll.isEmpty)
   }
@@ -150,7 +146,7 @@ class LinkedListTest extends AbstractListTest {
   }
 
   @Test def should_remove_occurrences_of_provided_elements(): Unit = {
-    val l = Seq("one", "two", "three", "two", "one").asJavaCollection
+    val l = TrivialImmutableCollection("one", "two", "three", "two", "one")
     val ll = new LinkedList[String](l)
 
     assertTrue(ll.removeFirstOccurrence("one"))
@@ -165,21 +161,20 @@ class LinkedListTest extends AbstractListTest {
   }
 
   @Test def should_iterate_over_elements_in_both_directions(): Unit = {
-    val s = Seq("one", "two", "three")
-    val l = s.asJavaCollection
+    val l = TrivialImmutableCollection("one", "two", "three")
     val ll = new LinkedList[String](l)
 
     val iter = ll.iterator()
     for (i <- 0 until l.size()) {
       assertTrue(iter.hasNext())
-      assertEquals(s(i), iter.next())
+      assertEquals(l(i), iter.next())
     }
     assertFalse(iter.hasNext())
 
     val diter = ll.descendingIterator()
     for (i <- (0 until l.size()).reverse) {
       assertTrue(diter.hasNext())
-      assertEquals(s(i), diter.next())
+      assertEquals(l(i), diter.next())
     }
     assertFalse(diter.hasNext())
   }

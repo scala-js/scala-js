@@ -18,7 +18,6 @@ import org.junit.Assert._
 import org.junit.Test
 
 import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class URITest {
 
@@ -166,6 +165,8 @@ class URITest {
     val y = new URI("http://example.com/asdf%6A")
     val z = new URI("http://example.com/asdfj")
     val rel = new URI("/foo/bar")
+    val rel2 = new URI("/foo/aaa")
+    val rel3 = new URI("/foo/ccc")
 
     assertTrue(x.compareTo(y) > 0)
     assertTrue(x.compareTo(z) < 0)
@@ -177,6 +178,8 @@ class URITest {
     assertTrue(y.compareTo(rel) > 0)
     assertTrue(z.compareTo(rel) > 0)
     assertEquals(0, rel.compareTo(rel))
+    assertTrue(rel.compareTo(rel2) > 0)
+    assertTrue(rel.compareTo(rel3) < 0)
   }
 
   @Test def should_provide_equals(): Unit = {
@@ -190,8 +193,33 @@ class URITest {
     assertTrue(x == x)
     assertTrue(y == y)
     assertTrue(z == z)
+  }
 
-    assertNotEquals(new URI("foo:helloWorld%6b%6C"), new URI("foo:helloWorld%6C%6b"))
+  @Test def equals_and_hashCode_should_produces_same_result(): Unit = {
+    val equalsPairs: Seq[(URI, URI)] = Seq(
+      (new URI("http://example.com"), new URI("http://Example.CoM")),
+      (new URI("http://Example.Com@example.com"), new URI("http://Example.Com@Example.Com")),
+      (new URI("http://example.com/foo"), new URI("http://ExaMple.CoM/foo")),
+      (new URI("http://example.com/asdf%6a"), new URI("http://example.com/asdf%6A")),
+      (new URI("MAILTO:john"), new URI("mailto:john"))
+    )
+    equalsPairs.foreach { case (a, b) =>
+      assertEquals(a, b)
+      assertEquals(b, a)
+      assertEquals(a.hashCode(), b.hashCode())
+    }
+
+    val nonEqualPairs: Seq[(URI,URI)] = Seq(
+      (new URI("http://example.com/example-com"), new URI("http://Example.CoM/eXAMplE-cOm")),
+      (new URI("http://example.com@example.com"), new URI("http://EXAMPLE.COM@EXAMPLE.Com")),
+      (new URI("foo:helloWorld%6b%6C"), new URI("foo:helloWorld%6C%6b"))
+    )
+    nonEqualPairs.foreach { case (a, b) =>
+      assertNotEquals(a, b)
+      // Note: hashCode is not restricted to produce same result even if a.equals(b) is false.
+      assertNotEquals("a does not equal to b, but produces same hashCode. Pick different test data",
+          a.hashCode(), b.hashCode())
+    }
   }
 
   @Test def should_provide_normalize(): Unit = {
@@ -337,10 +365,12 @@ class URITest {
   }
 
   @Test def should_provide_hashCode(): Unit = {
-    if (!executingInJVM) { // Fails on JDK6 and JDK7
-      assertEquals(new URI("http://example.com/asdf%6a").hashCode,
-          new URI("http://example.com/asdf%6A").hashCode)
-    }
+    assertEquals(new URI("http://example.com/asdf%6a").hashCode,
+        new URI("http://example.com/asdf%6A").hashCode)
+    assertEquals(new URI("http://example.com").hashCode(),
+        new URI("http://Example.CoM").hashCode())
+    assertNotEquals(new URI("http://example.com/example-com").hashCode(),
+        new URI("http://Example.CoM/eXAMplE-cOm").hashCode())
   }
 
   @Test def should_allow_non_ASCII_characters(): Unit = {
@@ -411,21 +441,34 @@ class URITest {
         rawPath = "/%E3%81a",
         rawSchemeSpecificPart = "//booh/%E3%81a")
 
-    if (!executingInJVM) { // Fails on JDK6 and JDK7
-      // %E3%E3 is considered as 2 malformed
-      expectURI(new URI("http://booh/%E3%E3a"), true, false)(
-          scheme = "http",
-          host = "booh",
-          path = "/��a",
-          authority = "booh",
-          schemeSpecificPart = "//booh/��a")(
-          rawPath = "/%E3%E3a",
-          rawSchemeSpecificPart = "//booh/%E3%E3a")
-    }
+    // %E3%E3 is considered as 2 malformed
+    expectURI(new URI("http://booh/%E3%E3a"), true, false)(
+        scheme = "http",
+        host = "booh",
+        path = "/��a",
+        authority = "booh",
+        schemeSpecificPart = "//booh/��a")(
+        rawPath = "/%E3%E3a",
+        rawSchemeSpecificPart = "//booh/%E3%E3a")
   }
 
   @Test def should_throw_on_bad_escape_sequences(): Unit = {
     expectThrows(classOf[URISyntaxException], new URI("http://booh/%E"))
     expectThrows(classOf[URISyntaxException], new URI("http://booh/%Ep"))
+  }
+
+  @Test def should_accept_valid_ipv4(): Unit = {
+    assertEquals(new URI("http","000.001.01.0", "", "").getHost, "000.001.01.0")
+  }
+
+  @Test def should_throw_on_ipv4_out_of_range(): Unit = {
+    expectThrows(classOf[URISyntaxException], new URI("http","256.1.1.1", "", ""))
+    expectThrows(classOf[URISyntaxException], new URI("http","123.45.67.890", "", ""))
+  }
+
+  @Test def opaque_url_should_consider_ssp_on_equality(): Unit = {
+    assertTrue("scheme case-insensitive", new URI("MAILTO:john") == new URI("mailto:john"))
+    assertTrue("SSP case-sensitive", new URI("mailto:john") != new URI("mailto:JOHN"))
+    assertTrue(new URI("mailto:john") != new URI("MAILTO:jim"))
   }
 }
