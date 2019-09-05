@@ -28,20 +28,6 @@ trait SetTest extends CollectionTest {
 
   def factory: SetFactory
 
-  def testSetApi(): Unit = {
-    testCollectionApi()
-    shouldCheckSetSize()
-    shouldStoreIntegers_Set()
-    shouldStoreObjectsWithSameHashCodeButDifferentTypes()
-    shouldStoreDoublesAlsoInCornerCases()
-    shouldStoreCustomObjects_Set()
-    shouldRemoveStoredElements_Set()
-    shouldBeClearedWithOneOperation_Set()
-    shouldCheckContainedElemsPresence()
-    shouldPutAWholeCollectionInto()
-    shouldIterateOverElements()
-  }
-
   @Test def shouldCheckSetSize(): Unit = {
     val hs = factory.empty[String]
 
@@ -226,11 +212,6 @@ trait SetTest extends CollectionTest {
     assertTrue(result.asJava.containsAll(l.asJava))
     assertTrue(l.asJava.containsAll(result.asJava))
   }
-}
-
-object SetFactory {
-  def allFactories: Iterator[SetFactory] =
-    AbstractSetFactory.allFactories ++ SortedSetFactory.allFactories ++ NavigableSetFactory.allFactories
 }
 
 trait SetFactory extends CollectionFactory {

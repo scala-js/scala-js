@@ -27,19 +27,6 @@ trait CollectionTest {
 
   def factory: CollectionFactory
 
-  def testCollectionApi(): Unit = {
-    shouldStoreStrings()
-    shouldStoreIntegers()
-    shouldStoreDoubles()
-    shouldStoreCustomObjects()
-    shouldRemoveStoredElements()
-    shouldRemoveStoredElementsOnDoubleCornerCases()
-    shouldBeClearedWithOneOperation()
-    shouldCheckContainedPresence()
-    shouldCheckContainedPresenceForDoubleCornerCases()
-    shouldGiveProperIteratorOverElements()
-  }
-
   @Test def shouldStoreStrings(): Unit = {
     val coll = factory.empty[String]
 
@@ -238,11 +225,6 @@ trait CollectionTest {
     assertEquals(5, coll.size())
     assertEquals(coll.iterator().asScala.toSet, Set(-45, 0, 12, 32, 42))
   }
-}
-
-object CollectionFactory {
-  def allFactories: Iterator[CollectionFactory] =
-    ListFactory.allFactories ++ SetFactory.allFactories
 }
 
 trait CollectionFactory {

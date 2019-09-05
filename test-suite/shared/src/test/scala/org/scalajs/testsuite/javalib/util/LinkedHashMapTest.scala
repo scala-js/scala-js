@@ -47,11 +47,11 @@ abstract class LinkedHashMapTest extends HashMapTest {
   val withSizeLimit = factory.withSizeLimit
 
   @Test def should_iterate_in_insertion_order_after_building(): Unit = {
-    val lhm = factory.empty[jl.Integer, String]
-    (0 until 100).foreach(key => lhm.put(key, s"elem $key"))
+    val lhm = factory.empty[String, String]
+    (0 until 100).foreach(key => lhm.put(key.toString(), s"elem $key"))
 
-    def expectedKey(index: Int): Int =
-      withSizeLimit.getOrElse(0) + index
+    def expectedKey(index: Int): String =
+      (withSizeLimit.getOrElse(0) + index).toString()
 
     def expectedValue(index: Int): String =
       s"elem ${expectedKey(index)}"
@@ -74,13 +74,13 @@ abstract class LinkedHashMapTest extends HashMapTest {
   }
 
   @Test def should_iterate_in_the_same_order_after_removal_of_elements(): Unit = {
-    val lhm = factory.empty[jl.Integer, String]
-    (0 until 100).foreach(key => lhm.put(key, s"elem $key"))
+    val lhm = factory.empty[String, String]
+    (0 until 100).foreach(key => lhm.put(key.toString(), s"elem $key"))
 
-    (0 until 100 by 3).foreach(key => lhm.remove(key))
+    (0 until 100 by 3).foreach(key => lhm.remove(key.toString()))
 
     val expectedKey =
-      ((100 - withSizeLimit.getOrElse(100)) to 100).filter(_ % 3 != 0).toArray
+      ((100 - withSizeLimit.getOrElse(100)) to 100).filter(_ % 3 != 0).map(_.toString()).toArray
 
     def expectedValue(index: Int): String =
       s"elem ${expectedKey(index)}"
@@ -103,15 +103,15 @@ abstract class LinkedHashMapTest extends HashMapTest {
   }
 
   @Test def should_iterate_in_order_after_adding_elements(): Unit = {
-    val lhm = factory.empty[jl.Integer, String]
-    (0 until 100).foreach(key => lhm.put(key, s"elem $key"))
+    val lhm = factory.empty[String, String]
+    (0 until 100).foreach(key => lhm.put(key.toString(), s"elem $key"))
 
-    lhm.put(0, "new 0")
-    lhm.put(100, "elem 100")
-    lhm.put(42, "new 42")
-    lhm.put(52, "new 52")
-    lhm.put(1, "new 1")
-    lhm.put(98, "new 98")
+    lhm.put("0", "new 0")
+    lhm.put("100", "elem 100")
+    lhm.put("42", "new 42")
+    lhm.put("52", "new 52")
+    lhm.put("1", "new 1")
+    lhm.put("98", "new 98")
 
     val expectedKey = {
       if (factory.accessOrder) {
@@ -122,11 +122,11 @@ abstract class LinkedHashMapTest extends HashMapTest {
         if (withSizeLimit.isDefined) (55 until 100) ++ List(0, 100, 42, 52, 1)
         else 0 to 100
       }
-    }.toArray
+    }.map(_.toString()).toArray
 
     def expectedElem(index: Int): String = {
       val key = expectedKey(index)
-      if (key == 0 || key == 1 || key == 42 || key == 52 || key == 98)
+      if (key == "0" || key == "1" || key == "42" || key == "52" || key == "98")
         s"new $key"
       else
         s"elem $key"
@@ -151,15 +151,15 @@ abstract class LinkedHashMapTest extends HashMapTest {
   }
 
   @Test def should_iterate_in__after_accessing_elements(): Unit = {
-    val lhm = factory.empty[jl.Integer, String]
-    (0 until 100).foreach(key => lhm.put(key, s"elem $key"))
+    val lhm = factory.empty[String, String]
+    (0 until 100).foreach(key => lhm.put(key.toString(), s"elem $key"))
 
-    lhm.get(42)
-    lhm.get(52)
-    lhm.get(5)
+    lhm.get("42")
+    lhm.get("52")
+    lhm.get("5")
 
-    def expectedKey(index: Int): Int = {
-      if (accessOrder) {
+    def expectedKey(index: Int): String = {
+      val intKey = if (accessOrder) {
         // elements ordered by insertion order except for those accessed
         if (withSizeLimit.isEmpty) {
           if (index < 5) index // no elements removed in this range
@@ -182,6 +182,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
         // accesses shouldn't modify the order
         withSizeLimit.getOrElse(0) + index
       }
+      intKey.toString()
     }
 
     def expectedValue(index: Int): String =
@@ -206,14 +207,8 @@ abstract class LinkedHashMapTest extends HashMapTest {
 
 }
 
-object LinkedHashMapFactory {
-  def allFactories: Iterator[MapFactory] = {
-    Iterator(new LinkedHashMapFactory(true, Some(50)), new LinkedHashMapFactory(true, None),
-        new LinkedHashMapFactory(false, Some(50)), new LinkedHashMapFactory(false, None))
-  }
-}
-
-class LinkedHashMapFactory(val accessOrder: Boolean, val withSizeLimit: Option[Int])
+class LinkedHashMapFactory(val accessOrder: Boolean,
+    override val withSizeLimit: Option[Int])
     extends HashMapFactory {
   def orderName: String =
     if (accessOrder) "access-order"

@@ -84,6 +84,9 @@ object Byte {
   @inline def toString(b: scala.Byte): String =
     "" + b
 
+  @noinline def decode(nm: String): Byte =
+    Integer.decodeGeneric(nm, valueOf(_, _))
+
   @inline def compare(x: scala.Byte, y: scala.Byte): scala.Int =
     x - y
 }

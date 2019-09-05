@@ -130,6 +130,7 @@ class LongTest {
       assertEquals(v, JLong.parseLong(s))
       assertEquals(v, JLong.valueOf(s).longValue())
       assertEquals(v, new JLong(s).longValue())
+      assertEquals(v, JLong.decode(s))
     }
 
     test("0", 0L)
@@ -162,6 +163,9 @@ class LongTest {
     def test(s: String, v: Long): Unit = {
       assertEquals(v, JLong.parseLong(s, 16))
       assertEquals(v, JLong.valueOf(s, 16).longValue())
+      assertEquals(v, JLong.decode(IntegerTest.insertAfterSign("0x", s)))
+      assertEquals(v, JLong.decode(IntegerTest.insertAfterSign("0X", s)))
+      assertEquals(v, JLong.decode(IntegerTest.insertAfterSign("#", s)))
     }
 
     test("0", 0x0L)
@@ -205,6 +209,43 @@ class LongTest {
     }
 
     List[Int](-10, -5, 0, 1, 37, 38, 50, 100).foreach(test("5", _))
+  }
+
+  @Test def testDecodeBase8(): Unit = {
+    def test(s: String, v: Long): Unit = {
+      assertEquals(v, JLong.decode(s))
+    }
+
+    test("00", 0L)
+    test("012345670", 2739128L)
+    test("-012", -10L)
+  }
+
+  @Test def testDecodeInvalid(): Unit = {
+    def test(s: String): Unit =
+      assertThrows(classOf[NumberFormatException], JLong.decode(s))
+
+    // sign after another sign or after a base prefix
+    test("++0")
+    test("--0")
+    test("0x+1")
+    test("0X-1")
+    test("#-1")
+    test("0-1")
+
+    // empty string after sign or after base prefix
+    test("")
+    test("+")
+    test("-")
+    test("-0x")
+    test("+0X")
+    test("#")
+
+    // integer too large
+    test("0x8000000000000000")
+    test("-0x80000000000000001")
+    test("01000000000000000000000")
+    test("-01000000000000000000001")
   }
 
   @Test def toString_without_radix(): Unit = {

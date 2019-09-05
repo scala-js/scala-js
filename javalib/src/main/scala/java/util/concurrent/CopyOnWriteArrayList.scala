@@ -51,14 +51,14 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     size == 0
 
   def contains(o: scala.Any): Boolean =
-    iterator.scalaOps.exists(o === _)
+    iterator.scalaOps.exists(Objects.equals(o, _))
 
   def indexOf(o: scala.Any): Int =
     indexOf(o.asInstanceOf[E], 0)
 
   def indexOf(e: E, index: Int): Int = {
     checkIndexInBounds(index)
-    index + listIterator(index).scalaOps.indexWhere(_ === e)
+    index + listIterator(index).scalaOps.indexWhere(Objects.equals(_, e))
   }
 
   def lastIndexOf(o: scala.Any): Int =
@@ -68,7 +68,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     @tailrec
     def findIndex(iter: ListIterator[E]): Int = {
       if (!iter.hasPrevious) -1
-      else if (iter.previous() === e) iter.nextIndex
+      else if (Objects.equals(iter.previous(), e)) iter.nextIndex
       else findIndex(iter)
     }
     findIndex(listIterator(size))
@@ -229,7 +229,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
       obj match {
         case obj: List[_] =>
           val oIter = obj.listIterator
-          this.scalaOps.forall(oIter.hasNext && _ === oIter.next()) && !oIter.hasNext
+          this.scalaOps.forall(elem => oIter.hasNext && Objects.equals(elem, oIter.next())) && !oIter.hasNext
         case _ => false
       }
     }
@@ -237,7 +237,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
 
   override def hashCode(): Int = {
     iterator().scalaOps.foldLeft(1) {
-      (prev, elem) => 31 * prev + (if (elem == null) 0 else elem.hashCode)
+      (prev, elem) => 31 * prev + Objects.hashCode(elem)
     }
   }
 

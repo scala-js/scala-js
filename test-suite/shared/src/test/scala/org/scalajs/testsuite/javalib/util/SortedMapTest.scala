@@ -23,16 +23,6 @@ trait SortedMapTest extends MapTest {
 
   def factory: SortedMapFactory
 
-  def testSortedMapApi(): Unit = {
-    testMapApi()
-    should_always_be_sorted()
-    should_return_the_firstKey()
-    should_return_the_lastKey()
-    should_return_a_proper_headMap()
-    should_return_a_proper_tailMap()
-    should_return_a_proper_subMap()
-  }
-
   // TODO: implement tests (when we port the first SortedMap)
 
   @Test def should_always_be_sorted(): Unit = {
@@ -58,10 +48,6 @@ trait SortedMapTest extends MapTest {
   @Test def should_return_a_proper_subMap(): Unit = {
 
   }
-}
-
-object SortedMapFactory {
-  def allFactories: Iterator[SortedMapFactory] = Iterator.empty
 }
 
 trait SortedMapFactory extends MapFactory {

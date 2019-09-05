@@ -83,6 +83,9 @@ object Short {
   @inline def toString(s: scala.Short): String =
     "" + s
 
+  @noinline def decode(nm: String): Short =
+    Integer.decodeGeneric(nm, valueOf(_, _))
+
   @inline def compare(x: scala.Short, y: scala.Short): scala.Int =
     x - y
 

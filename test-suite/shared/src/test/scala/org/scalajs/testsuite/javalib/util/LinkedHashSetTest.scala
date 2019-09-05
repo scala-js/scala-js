@@ -61,11 +61,6 @@ class LinkedHashSetTest extends HashSetTest {
 
 }
 
-object LinkedHashSetFactory extends HashSetFactory {
-  def allFactories: Iterator[LinkedHashSetFactory] =
-    Iterator(new LinkedHashSetFactory)
-}
-
 class LinkedHashSetFactory extends HashSetFactory {
   override def implementationName: String =
     "java.util.LinkedHashSet"

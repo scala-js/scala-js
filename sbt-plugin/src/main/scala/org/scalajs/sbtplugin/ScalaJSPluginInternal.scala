@@ -230,9 +230,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
               .withSourceMapURI(relURI(sourceMapFile.getName))
               .withJSFileURI(relURI(output.getName))
 
-            enhanceIRVersionNotSupportedException {
-              val tlog = sbtLogger2ToolsLogger(log)
-              await(log)(linker.link(ir, moduleInitializers, out, tlog)(_))
+            try {
+              enhanceIRVersionNotSupportedException {
+                val tlog = sbtLogger2ToolsLogger(log)
+                await(log)(linker.link(ir, moduleInitializers, out, tlog)(_))
+              }
+            } catch {
+              case e: LinkingException =>
+                throw new MessageOnlyException(e.getMessage)
             }
 
             logIRCacheStats(log)
@@ -387,15 +392,24 @@ private[sbtplugin] object ScalaJSPluginInternal {
         (scalaJSModuleInitializers in (This, Zero, This)).value,
 
       scalaJSModuleInitializers ++= {
+        val mainClasses = discoveredMainClasses.value
         if (scalaJSUseMainModuleInitializer.value) {
           Seq(scalaJSMainModuleInitializer.value.getOrElse {
-            throw new MessageOnlyException(
-                "No main module initializer was specified (possibly because " +
-                "no or multiple main classes were found), but " +
-                "scalaJSUseMainModuleInitializer was set to true. " +
-                "You can explicitly specify it either with " +
-                "`mainClass := Some(...)` or with " +
-                "`scalaJSMainModuleInitializer := Some(...)`")
+            if (mainClasses.isEmpty) {
+              throw new MessageOnlyException(
+                  "No main module initializer was specified, but " +
+                  "scalaJSUseMainModuleInitializer was set to true. " +
+                  "You can explicitly specify it either with " +
+                  "`mainClass := Some(...)` or with " +
+                  "`scalaJSMainModuleInitializer := Some(...)`")
+            } else {
+              throw new MessageOnlyException(
+                  s"Multiple main classes (${mainClasses.mkString(", ")}) " +
+                  "were found. " +
+                  "You can explicitly specify the one you want with " +
+                  "`mainClass := Some(...)` or with " +
+                  "`scalaJSMainModuleInitializer := Some(...)`")
+            }
           })
         } else {
           Seq.empty

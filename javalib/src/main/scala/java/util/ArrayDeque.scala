@@ -114,7 +114,7 @@ class ArrayDeque[E] private (private var inner: js.Array[E])
   }
 
   def removeFirstOccurrence(o: Any): Boolean = {
-    val index = inner.indexWhere(_ === o)
+    val index = inner.indexWhere(Objects.equals(_, o))
     if (index >= 0) {
       inner.remove(index)
       status += 1
@@ -124,7 +124,7 @@ class ArrayDeque[E] private (private var inner: js.Array[E])
   }
 
   def removeLastOccurrence(o: Any): Boolean = {
-    val index = inner.lastIndexWhere(_ === o)
+    val index = inner.lastIndexWhere(Objects.equals(_, o))
     if (index >= 0) {
       inner.remove(index)
       status += 1
@@ -193,7 +193,7 @@ class ArrayDeque[E] private (private var inner: js.Array[E])
   def descendingIterator(): Iterator[E] =
     failFastIterator(inner.size, x => (x - 1))
 
-  override def contains(o: Any): Boolean = inner.exists(_ === o)
+  override def contains(o: Any): Boolean = inner.exists(Objects.equals(_, o))
 
   override def remove(o: Any): Boolean = removeFirstOccurrence(o)
 

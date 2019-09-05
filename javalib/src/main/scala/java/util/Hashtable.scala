@@ -14,69 +14,62 @@ package java.util
 
 import java.{util => ju}
 
-import scala.collection.mutable
-
-import ScalaOps._
-
-class Hashtable[K, V] private (inner: mutable.HashMap[Box[Any], V])
+/* This implementation allows `null` keys and values, although the JavaDoc
+ * specifies that operations should throw `NullPointerException`s if `null`
+ * keys or values are used. This makes the implementation easier, notably by
+ * allowing to reuse the implementation of `j.u.HashMap`, and is acceptable
+ * given that NPEs are undefined behavior in Scala.js.
+ */
+class Hashtable[K, V] private (inner: ju.HashMap[K, V])
     extends ju.Dictionary[K,V] with ju.Map[K, V] with Cloneable with Serializable {
 
   def this() =
-    this(mutable.HashMap.empty[Box[Any], V])
+    this(new ju.HashMap[K, V]())
 
-  def this(initialCapacity: Int) = this()
+  def this(initialCapacity: Int) =
+    this(new ju.HashMap[K, V](initialCapacity))
 
-  def this(initialCapacity: Int, loadFactor: Float) = this()
+  def this(initialCapacity: Int, loadFactor: Float) =
+    this(new ju.HashMap[K, V](initialCapacity, loadFactor))
 
-  def this(t: ju.Map[_ <: K, _ <: V]) = {
-    this()
-    putAll(t)
-  }
+  def this(t: ju.Map[_ <: K, _ <: V]) =
+    this(new ju.HashMap[K, V](t))
 
   def size(): Int =
-    inner.size
+    inner.size()
 
-  def isEmpty: Boolean =
-    inner.isEmpty
+  def isEmpty(): Boolean =
+    inner.isEmpty()
 
   def keys(): ju.Enumeration[K] =
-    inner.keysIterator.map(_.inner.asInstanceOf[K]).asJavaEnumeration
+    Collections.enumeration(keySet())
 
   def elements(): ju.Enumeration[V] =
-    inner.valuesIterator.asJavaEnumeration
+    Collections.enumeration(values())
 
   def contains(value: Any): Boolean =
     containsValue(value)
 
   def containsValue(value: Any): Boolean =
-    inner.valuesIterator.contains(value)
+    inner.containsValue(value)
 
   def containsKey(key: Any): Boolean =
-    inner.contains(Box(key))
+    inner.containsKey(key)
 
-  def get(key: Any): V = {
-    if (key == null)
-      throw new NullPointerException
-    inner.getOrElse(Box(key), null.asInstanceOf[V])
-  }
+  def get(key: Any): V =
+    inner.get(key)
 
   // Not implemented
   // protected def rehash(): Unit
 
   def put(key: K, value: V): V =
-    inner.put(Box(key.asInstanceOf[AnyRef]), value).getOrElse(null.asInstanceOf[V])
+    inner.put(key, value)
 
-  def remove(key: Any): V = {
-    if (key == null)
-      throw new NullPointerException
-    inner.remove(Box(key)).getOrElse(null.asInstanceOf[V])
-  }
+  def remove(key: Any): V =
+    inner.remove(key)
 
-  def putAll(m: ju.Map[_ <: K, _ <: V]): Unit = {
-    m.entrySet.scalaOps.foreach {
-      kv => inner.put(Box(kv.getKey.asInstanceOf[AnyRef]), kv.getValue)
-    }
-  }
+  def putAll(m: ju.Map[_ <: K, _ <: V]): Unit =
+    inner.putAll(m)
 
   def clear(): Unit =
     inner.clear()
@@ -85,98 +78,14 @@ class Hashtable[K, V] private (inner: mutable.HashMap[Box[Any], V])
     new ju.Hashtable[K, V](this)
 
   override def toString(): String =
-    inner.iterator.map(kv => "" + kv._1.inner + "=" + kv._2).mkString("{", ", ", "}")
+    inner.toString()
 
-  def keySet(): ju.Set[K] = {
-    new AbstractSet[K] {
-      def iterator(): Iterator[K] =
-        new EntrySetIterator().scalaOps.map(_.getKey())
+  def keySet(): ju.Set[K] =
+    inner.keySet()
 
-      def size(): Int = inner.size
-    }
-  }
+  def entrySet(): ju.Set[ju.Map.Entry[K, V]] =
+    inner.entrySet()
 
-  def entrySet(): ju.Set[ju.Map.Entry[K, V]] = {
-    new AbstractSet[Map.Entry[K, V]] {
-      def iterator(): Iterator[Map.Entry[K, V]] =
-        new EntrySetIterator
-
-      def size(): Int = inner.size
-    }
-  }
-
-  /* Inspired by the implementation of
-   * scala.collection.convert.JavaCollectionWrappers.MapWrapper.entrySet
-   * as found in version 2.13.0, with two changes:
-   *
-   * - accommodate the fact that our keys are boxed, and
-   * - explicitly snapshot the underlying contents right before any mutation of
-   *   the underlying Map, as we do not have any guarantee that mutations
-   *   preserve the state of existing iterators.
-   */
-  private class EntrySetIterator extends Iterator[Map.Entry[K, V]] {
-    private var underlying: scala.collection.Iterator[(Box[Any], V)] =
-      Hashtable.this.inner.iterator
-
-    private var isSnapshot: Boolean = false
-
-    private var prev: Box[Any] = null
-
-    private def ensureSnapshot(): Unit = {
-      if (!isSnapshot) {
-        underlying = underlying.toList.iterator
-        isSnapshot = true
-      }
-    }
-
-    def hasNext(): Boolean = underlying.hasNext
-
-    def next(): Map.Entry[K, V] = {
-      val (boxedKey, initialValue) = underlying.next()
-      prev = boxedKey
-
-      new Map.Entry[K, V] {
-        private var value = initialValue
-
-        def getKey(): K = boxedKey.inner.asInstanceOf[K]
-
-        def getValue(): V = value
-
-        def setValue(v: V): V = {
-          ensureSnapshot()
-          val oldValue = value
-          inner.put(boxedKey, v)
-          value = v
-          oldValue
-        }
-
-        override def equals(that: Any): Boolean = that match {
-          case that: Map.Entry[_, _] =>
-            getKey() === that.getKey() && getValue() === that.getValue()
-          case _ =>
-            false
-        }
-
-        override def hashCode(): Int =
-          boxedKey.hashCode ^ (if (value == null) 0 else value.hashCode())
-      }
-    }
-
-    def remove(): Unit = {
-      if (prev == null)
-        throw new IllegalStateException("next must be called at least once before remove")
-      ensureSnapshot()
-      inner -= prev
-      prev = null
-    }
-  }
-
-  def values(): ju.Collection[V] = {
-    new AbstractCollection[V] {
-      def iterator(): Iterator[V] =
-        new EntrySetIterator().scalaOps.map(_.getValue())
-
-      def size(): Int = inner.size
-    }
-  }
+  def values(): ju.Collection[V] =
+    inner.values()
 }

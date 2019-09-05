@@ -23,15 +23,6 @@ trait SortedSetTest extends SetTest {
 
   def factory: SortedSetFactory
 
-  def testSortedSetApi(): Unit = {
-    testSetApi()
-    shouldRetrieveTheFirstElement()
-    shouldRetrieveTheLastElement()
-    shouldReturnAProperHeadSet()
-    shouldReturnAProperTailSet()
-    shouldReturnAProperSubSet()
-  }
-
   @Test def shouldRetrieveTheFirstElement(): Unit = {
     val ssInt = factory.empty[Int]
 
@@ -144,11 +135,6 @@ trait SortedSetTest extends SetTest {
     assertEquals(3, ss.size)
     assertTrue(ss.containsAll(Set(1,4,5).asJavaCollection))
   }
-}
-
-object SortedSetFactory {
-  def allFactories: Iterator[SortedSetFactory] =
-    Iterator.empty
 }
 
 trait SortedSetFactory extends SetFactory {
