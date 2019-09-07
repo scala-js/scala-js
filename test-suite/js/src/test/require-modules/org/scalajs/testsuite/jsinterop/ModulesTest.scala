@@ -146,6 +146,6 @@ object ModulesTest {
   @js.native
   @JSImport("buffer", "Buffer.prototype")
   object BufferPrototype extends js.Object {
-    def buffer: js.ThisFunction1[Buffer, js.Array[Int], Buffer] = js.native
+    val fill: js.ThisFunction1[Buffer, js.Array[Int], Buffer] = js.native
   }
 }
