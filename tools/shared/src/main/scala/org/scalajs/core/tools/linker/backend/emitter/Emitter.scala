@@ -203,8 +203,8 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
           val from = js.StringLiteral(module)
           val moduleBinding = jsGen.envModuleField(module).ident
           path match {
-            // namespace import or default import
-            case Nil | List("default") =>
+            // namespace import
+            case Nil =>
               val importStat = js.ImportNamespace(moduleBinding, from)
               builder.addJSTree(importStat)
             case _ =>
