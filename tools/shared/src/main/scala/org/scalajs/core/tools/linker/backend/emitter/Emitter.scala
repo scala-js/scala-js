@@ -208,15 +208,12 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
               val importStat = js.ImportNamespace(moduleBinding, from)
               builder.addJSTree(importStat)
             case _ =>
-              val bindings = path.map(p => (js.ExportName(p), js.Ident(p)))
-              val importStat = js.Import(bindings, from)
+              val pathHead = path.head
+              val binding = (js.ExportName(pathHead), js.Ident(pathHead))
+              val importStat = js.Import(List(binding), from)
               builder.addJSTree(importStat)
 
-              val rhs = js.ObjectConstr(
-                path.map { p =>
-                  js.StringLiteral(p) -> js.VarRef(js.Ident(p))
-                }
-              )
+              val rhs = js.ObjectConstr(List(js.StringLiteral(pathHead) -> js.VarRef(js.Ident(pathHead))))
               val minimizedModuleDecl = jsGen.genLet(moduleBinding, mutable = false, rhs)
               builder.addJSTree(minimizedModuleDecl)
           }
