@@ -184,4 +184,6 @@ class ConcurrentLinkedQueueFactory extends AbstractCollectionFactory {
 
   def newFrom[E](coll: ju.Collection[E]): ConcurrentLinkedQueue[E] =
     new ConcurrentLinkedQueue[E](coll)
+
+  override def allowsNullElement: Boolean = false
 }
