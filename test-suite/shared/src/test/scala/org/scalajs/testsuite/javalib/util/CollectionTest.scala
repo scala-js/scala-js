@@ -238,6 +238,56 @@ trait CollectionTest {
     assertEquals(5, coll.size())
     assertEquals(coll.iterator().asScala.toSet, Set(-45, 0, 12, 32, 42))
   }
+
+  @Test def toStringShouldConvertEmptyCollection(): Unit = {
+    val coll = factory.empty[Double]
+
+    val expected = "[]"
+    val result = coll.toString()
+    assertEquals(expected, result)
+  }
+
+  @Test def toStringShouldConvertOneElementCollection(): Unit = {
+    val coll = factory.fromElements[Double](1.01)
+
+    val expected = "[1.01]"
+    val result = coll.toString()
+    assertEquals(expected, result)
+  }
+
+  @Test def toStringShouldUseCommaSpace(): Unit = {
+    // Check/change regex pattern below if making changes here.
+    val coll = factory.fromElements[Double](88.42, -23.36, 60.173)
+
+    val result = coll.toString()
+
+    // The major interest here is if the Java 8 comma-space idiom
+    // is used correctly. 
+
+    // As long as this test is being run, might as well check that
+    // the output elements look the floating point numbers given
+    // to the factory.
+
+    // The order of the elements in the output is not specified by
+    // AbstractCollection. Some sub-classes, such as Deque & TreeSet,
+    // do define orders. HashMap is a concrete class which does not.
+
+    val element = "-?\\d{2}\\.\\d{2,3}"
+    val commaSpace = ", "
+
+    val pattern = "\\[" +
+        element + commaSpace +
+        element + commaSpace +
+        element + "\\]"
+
+    val resultIsValid =  result.matches(pattern)
+
+    val msg = "result '" + result +
+        "' did not match expected pattern '" + pattern + "'"
+
+    assertTrue(msg, resultIsValid)
+  }
+
 }
 
 object CollectionFactory {
