@@ -288,6 +288,45 @@ trait CollectionTest {
     assertTrue(msg, resultIsValid)
   }
 
+  @Test def toStringInCustomClassShouldWork(): Unit = {
+
+    val elements = Array[Int](-1, -2, -3)
+    val sep = "; "
+
+    val expected = ">" +
+        elements(0) + sep +
+        elements(1) + sep +
+        elements(2) + 
+        "<"
+
+    class Custom[E] extends ju.AbstractCollection[E] {
+      self =>
+
+      def iterator(): ju.Iterator[E] = {
+        new ju.Iterator[E]  {
+          def hasNext(): Boolean = false
+          def next(): E = throw new NoSuchElementException()
+          override def remove(): Unit = throw new UnsupportedOperationException
+        }
+      }
+
+      def size = 0
+
+      override def toString(): String = expected
+    }
+
+    val coll = new Custom
+
+    val result = coll.toString()
+
+    val resultIsValid = (result == expected)
+
+    val msg = "result '" + result +
+        "' did not match expected '" + expected + "'"
+
+    assertTrue(msg, resultIsValid)
+  }
+
 }
 
 object CollectionFactory {
