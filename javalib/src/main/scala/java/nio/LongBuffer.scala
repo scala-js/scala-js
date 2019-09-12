@@ -129,7 +129,7 @@ abstract class LongBuffer private[nio] (
 
   @noinline
   def compareTo(that: LongBuffer): Int =
-    GenBuffer(this).generic_compareTo(that)(_.compareTo(_))
+    GenBuffer(this).generic_compareTo(that)(java.lang.Long.compare(_, _))
 
   def order(): ByteOrder
 

@@ -19,6 +19,8 @@ import scala.annotation.tailrec
 
 import scala.reflect.ClassTag
 
+import ScalaOps._
+
 object Arrays {
 
   @inline
@@ -744,8 +746,20 @@ object Arrays {
 
   @inline
   private def toStringImpl[T](a: Array[T]): String = {
-    if (a == null) "null"
-    else a.mkString("[", ", ", "]")
+    if (a == null) {
+      "null"
+    } else {
+      var result = "["
+      val len = a.length
+      var i = 0
+      while (i != len) {
+        if (i != 0)
+          result += ", "
+        result += a(i)
+        i += 1
+      }
+      result + "]"
+    }
   }
 
   def deepToString(a: Array[AnyRef]): String = {

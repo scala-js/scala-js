@@ -41,8 +41,10 @@
 
 package java.math
 
-import java.util.Random
 import scala.annotation.tailrec
+
+import java.util.Random
+import java.util.ScalaOps._
 
 object BigInteger {
 
@@ -178,8 +180,12 @@ class BigInteger extends Number with Comparable[BigInteger] {
     checkNotNull(magnitude)
     if ((signum < -1) || (signum > 1))
       throw new NumberFormatException("Invalid signum value")
-    if (signum == 0 && magnitude.exists(_ != 0))
-      throw new NumberFormatException("signum-magnitude mismatch")
+    if (signum == 0) {
+      for (i <- 0 until magnitude.length) {
+        if (magnitude(i) != 0)
+          throw new NumberFormatException("signum-magnitude mismatch")
+      }
+    }
 
     if (magnitude.length == 0) {
       sign = 0

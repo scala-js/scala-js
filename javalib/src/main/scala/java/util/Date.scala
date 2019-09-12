@@ -48,7 +48,7 @@ class Date private (private val date: js.Date) extends Object
   override def clone(): Object = new Date(new js.Date(date.getTime()))
 
   override def compareTo(anotherDate: Date): Int =
-    date.getTime().compareTo(anotherDate.date.getTime())
+    java.lang.Double.compare(date.getTime(), anotherDate.date.getTime())
 
   override def equals(obj: Any): Boolean = obj match {
     case d: Date => d.date.getTime() == date.getTime()

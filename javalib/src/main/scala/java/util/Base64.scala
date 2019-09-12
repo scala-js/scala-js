@@ -18,6 +18,8 @@ import java.io._
 import java.nio.charset.StandardCharsets
 import java.nio.ByteBuffer
 
+import ScalaOps._
+
 object Base64 {
 
   private val basicEncodeTable: Array[Byte] = {
@@ -88,10 +90,11 @@ object Base64 {
   def getMimeEncoder(): Encoder = mimeEncoder
 
   def getMimeEncoder(lineLength: Int, lineSeparator: Array[Byte]): Encoder = {
-    for (b <- lineSeparator) {
-      if (basicDecodeTable(b & 0xff) != -1) {
+    for (i <- 0 until lineSeparator.length) {
+      val b = lineSeparator(i) & 0xff
+      if (basicDecodeTable(b) != -1) {
         throw new IllegalArgumentException(
-            "Illegal base64 line separator character 0x" + (b & 0xff).toHexString)
+            "Illegal base64 line separator character 0x" + Integer.toHexString(b))
       }
     }
     new Encoder(basicEncodeTable, lineLength / 4 * 4, lineSeparator)
@@ -186,7 +189,7 @@ object Base64 {
               case -1 =>
                 if (!ignoreInvalid) {
                   throw new IllegalArgumentException(
-                      "Illegal base64 character " + int.toHexString)
+                      "Illegal base64 character " + Integer.toHexString(int))
                 }
                 iterate()
 
@@ -222,7 +225,7 @@ object Base64 {
       var validBytes = 0
 
       if (ignoreInvalid) {
-        for (i <- src.indices) {
+        for (i <- 0 until src.length) {
           if (table(src(i) & 0xff) >= 0)
             validBytes += 1
         }
@@ -235,7 +238,7 @@ object Base64 {
          * thrown."
          */
         validBytes = src.length
-        if (src.length >= 1 && src.last == '=') {
+        if (src.length >= 1 && src(src.length - 1) == '=') {
           validBytes -= 1
           if (src.length >= 2 && src(src.length - 2) == '=')
             validBytes -= 1
@@ -297,7 +300,7 @@ object Base64 {
             case -1 =>
               if (!ignoreInvalid) {
                 throw new IOException(
-                    "Illegal base64 character " + i.toHexString)
+                    "Illegal base64 character " + Integer.toHexString(i))
               }
               0
 
@@ -461,7 +464,8 @@ object Base64 {
         currentLine += 4
         if (lineSeparator.length > 0 && lineLength > 0 &&
             currentLine == lineLength && dst.hasRemaining) {
-          lineSeparator.foreach(dst.put(_))
+          for (i <- 0 until lineSeparator.length)
+            dst.put(lineSeparator(i))
           currentLine = 0
         }
       }

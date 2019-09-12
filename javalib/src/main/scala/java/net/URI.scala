@@ -54,7 +54,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   private val _authority = fld(AbsAuthority, RelAuthority).filter(_ != "")
   private val _userInfo = fld(AbsUserInfo, RelUserInfo)
   private val _host = fld(AbsHost, RelHost)
-  private val _port = fld(AbsPort, RelPort).map(_.toInt)
+  private val _port = fld(AbsPort, RelPort).map(Integer.parseInt(_))
 
   private val _path = {
     val useNetPath = fld(AbsAuthority, RelAuthority).isDefined
@@ -122,7 +122,8 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
     if (cmpScheme != 0) {
       cmpScheme
     } else {
-      val cmpIsOpaque = this.isOpaque.compareTo(that.isOpaque) // A hierarchical URI is less than an opaque URI
+      // A hierarchical URI is less than an opaque URI
+      val cmpIsOpaque = java.lang.Boolean.compare(this.isOpaque, that.isOpaque)
       if (cmpIsOpaque != 0) {
         cmpIsOpaque
       } else {
@@ -301,12 +302,12 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
 
       // Strangely, Java doesn't handle escapes here. So we don't
       if (uriN.getRawPath().startsWith(thisN.getRawPath())) {
-        val newPath = uriN.getRawPath().stripPrefix(thisN.getRawPath())
+        val newPath = uriN.getRawPath().substring(thisN.getRawPath().length())
 
         new URI(scheme = null, authority = null,
-          // never produce an abs path if we relativized
-          path = newPath.stripPrefix("/"),
-          query = uri.getQuery(), fragment = uri.getFragment())
+            // never produce an abs path if we relativized
+            path = if (newPath.startsWith("/")) newPath.substring(1) else newPath,
+            query = uri.getQuery(), fragment = uri.getFragment())
       } else uri
     }
   }
@@ -672,9 +673,22 @@ object URI {
   // Quote helpers
 
   private def decodeComponent(str: String): String = {
+    def containsNoEncodedComponent(): Boolean = {
+      // scalastyle:off return
+      var i = 0
+      while (i != str.length) {
+        if (str.charAt(i) == '%')
+          return false
+        i += 1
+      }
+      true
+      // scalastyle:on return
+    }
+
     // Fast-track, if no encoded components
-    if (str.forall(_ != '%')) str
-    else {
+    if (containsNoEncodedComponent()) {
+      str
+    } else {
       val inBuf = CharBuffer.wrap(str)
       val outBuf = CharBuffer.allocate(inBuf.capacity)
       val byteBuf = ByteBuffer.allocate(64)
@@ -829,8 +843,8 @@ object URI {
         if (diff != 0) diff
         else if (x.charAt(i) == '%') {
           // we need to do a CI compare for the next two characters
-          assert(x.length > i + 2, "Invalid escape in URI")
-          assert(y.length > i + 2, "Invalid escape in URI")
+          if (i + 2 >= x.length || i + 2 >= y.length)
+            throw new AssertionError("Invalid escape in URI")
           val cmp =
             x.substring(i+1, i+3).compareToIgnoreCase(y.substring(i+1, i+3))
           if (cmp != 0) cmp
@@ -849,7 +863,8 @@ object URI {
       var res = ""
       while (i < str.length) {
         if (str.charAt(i) == '%') {
-          assert(str.length > i + 2, "Invalid escape in URI")
+          if (i + 2 >= str.length)
+            throw new AssertionError("Invalid escape in URI")
           res += str.substring(i, i+3).toUpperCase()
           i += 3
         } else {

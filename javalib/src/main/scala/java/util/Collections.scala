@@ -604,11 +604,11 @@ object Collections {
         map.keySet
 
       override def add(e: E): Boolean =
-        map.put(e, true) == null
+        map.put(e, java.lang.Boolean.TRUE) == null
 
       override def addAll(c: Collection[_ <: E]): Boolean = {
         c.scalaOps.foldLeft(false) {
-          (prev, elem) => map.put(elem, true) == null || prev
+          (prev, elem) => map.put(elem, java.lang.Boolean.TRUE) == null || prev
         }
       }
     }

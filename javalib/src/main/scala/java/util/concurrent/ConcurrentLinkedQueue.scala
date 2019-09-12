@@ -13,6 +13,7 @@
 package java.util.concurrent
 
 import java.util._
+import java.util.ScalaOps._
 
 class ConcurrentLinkedQueue[E]()
     extends AbstractQueue[E] with Queue[E] with Serializable {

@@ -41,7 +41,8 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
 
   def this(toCopyIn: Array[E]) = {
     this()
-    toCopyIn.foreach(add)
+    for (i <- 0 until toCopyIn.length)
+      add(toCopyIn(i))
   }
 
   def size(): Int =
@@ -83,13 +84,13 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   def toArray[T](a: Array[T]): Array[T] = {
     val componentType = a.getClass.getComponentType
     val toFill: Array[T] =
-      if (a.size >= size) a
+      if (a.length >= size) a
       else jlr.Array.newInstance(componentType, size).asInstanceOf[Array[T]]
 
     val iter = iterator
     for (i <- 0 until size)
       toFill(i) = iter.next().asInstanceOf[T]
-    if (toFill.size > size)
+    if (toFill.length > size)
       toFill(size) = null.asInstanceOf[T]
     toFill
   }

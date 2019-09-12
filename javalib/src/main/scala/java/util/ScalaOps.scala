@@ -13,7 +13,24 @@
 package java.util
 
 /** Make some Scala collection APIs available on Java collections. */
-private[util] object ScalaOps {
+private[java] object ScalaOps {
+
+  implicit class IntScalaOps private[ScalaOps] (val __self: Int) extends AnyVal {
+    @inline def until(end: Int): SimpleRange =
+      new SimpleRange(__self, end)
+  }
+
+  @inline
+  final class SimpleRange(start: Int, end: Int) {
+    @inline
+    def foreach[U](f: Int => U): Unit = {
+      var i = start
+      while (i < end) {
+        f(i)
+        i += 1
+      }
+    }
+  }
 
   implicit class ToJavaIterableOps[A] private[ScalaOps] (
       val __self: java.lang.Iterable[A])

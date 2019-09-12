@@ -143,7 +143,7 @@ private[nio] final class GenBuffer[B <: Buffer](val self: B) extends AnyVal {
         i += 1
       }
 
-      thisRemaining.compareTo(thatRemaining)
+      Integer.compare(thisRemaining, thatRemaining)
     }
     // scalastyle:on return
   }

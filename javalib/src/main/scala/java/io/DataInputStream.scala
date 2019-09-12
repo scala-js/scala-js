@@ -160,13 +160,16 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     var res = ""
     var i = 0
 
+    def hex(x: Int): String =
+      (if (x < 0x10) "0" else "") + Integer.toHexString(x)
+
     def badFormat(msg: String) = throw new UTFDataFormatException(msg)
 
     while (i < length) {
       val a = read()
 
       if (a == -1)
-        badFormat(s"Unexpected EOF: ${length - i} bytes to go")
+        badFormat("Unexpected EOF: " + (length - i) + " bytes to go")
 
       i += 1
 
@@ -178,9 +181,9 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
           i += 1
 
           if (b == -1)
-            badFormat(f"Expected 2 bytes, found: EOF (init: $a%#02x)")
+            badFormat("Expected 2 bytes, found: EOF (init: " + hex(a) + ")")
           if ((b & 0xC0) != 0x80) // 10xxxxxx
-            badFormat(f"Expected 2 bytes, found: $b%#02x (init: $a%#02x)")
+            badFormat("Expected 2 bytes, found: " + hex(b) + " (init: " + hex(a) + ")")
 
           (((a & 0x1F) << 6) | (b & 0x3F)).toChar
         } else if ((a & 0xF0) == 0xE0 && i < length - 1) { // 1110xxxx
@@ -189,22 +192,21 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
           i += 2
 
           if (b == -1)
-            badFormat(f"Expected 3 bytes, found: EOF (init: $a%#02x)")
+            badFormat("Expected 3 bytes, found: EOF (init: " + hex(a) + ")")
 
           if ((b & 0xC0) != 0x80)   // 10xxxxxx
-            badFormat(f"Expected 3 bytes, found: $b%#02x (init: $a%#02x)")
+            badFormat("Expected 3 bytes, found: " + hex(b) + " (init: " + hex(a) + ")")
 
           if (c == -1)
-            badFormat(f"Expected 3 bytes, found: $b%#02x, EOF (init: $a%#02x)")
+            badFormat("Expected 3 bytes, found: " + hex(b) + ", EOF (init: " + hex(a) + ")")
 
           if ((c & 0xC0) != 0x80)   // 10xxxxxx
-            badFormat(
-                f"Expected 3 bytes, found: $b%#02x, $c%#02x (init: $a%#02x)")
+            badFormat("Expected 3 bytes, found: " + hex(b) + ", " + hex(c) + " (init: " + hex(a) + ")")
 
           (((a & 0x0F) << 12) | ((b & 0x3F) << 6) | (c & 0x3F)).toChar
         } else {
           val rem = length - i
-          badFormat(f"Unexpected start of char: $a%#02x ($rem%d bytes to go)")
+          badFormat("Unexpected start of char: " + hex(a) + " (" + rem + " bytes to go)")
         }
       }
 

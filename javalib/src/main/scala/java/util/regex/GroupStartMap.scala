@@ -14,6 +14,8 @@ package java.util.regex
 
 import scala.annotation.{tailrec, switch}
 
+import scala.collection.immutable.Map
+
 import scala.scalajs.js
 
 /** The goal of a `GroupStartMap` is to retrieve the start position of each
@@ -146,13 +148,29 @@ private[regex] object GroupStartMap {
     }
   }
 
-  private def isBackReference(r: String): Boolean =
-    r.length >= 2 && r(0) == '\\' && r.tail.forall(_.isDigit)
+  @inline
+  private def isDigit(c: Char): Boolean =
+    c >= '0' && c <= '9'
+
+  private def isBackReference(r: String): Boolean = {
+    // scalastyle:off return
+    val len = r.length()
+    if (len < 2 || r.charAt(0) != '\\')
+      return false
+    var i = 1
+    while (i != len) {
+      if (!isDigit(r.charAt(i)))
+        return false
+      i += 1
+    }
+    true
+    // scalastyle:on return
+  }
 
   private object BackReferenceLeaf {
     def unapply(leaf: RegexLeaf): Option[Int] = {
       val r = leaf.regex
-      if (isBackReference(r)) Some(r.substring(1).toInt)
+      if (isBackReference(r)) Some(Integer.parseInt(r.substring(1)))
       else None
     }
   }
@@ -368,7 +386,7 @@ private[regex] object GroupStartMap {
 
     def getGroupNodeMap: Map[Int, Node] = {
       val thisGroupNodeMap = originalGroup.fold(
-          groupNum => Map(groupNum -> this),
+          groupNum => Map((groupNum, this)),
           (_, _) => Map[Int, Node]()
       )
       val childGroupNodeMap = nodeType.fold(
@@ -436,7 +454,7 @@ private[regex] class GroupStartMap(string: String, start: Int, pattern: Pattern)
     // Returns the position just after the next ending brace
     @tailrec def positionEndNextBrace(pIndex: Int): Int = {
       if (pattern.length <= pIndex) pIndex
-      else if (pattern(pIndex) == '}') pIndex + 1
+      else if (pattern.charAt(pIndex) == '}') pIndex + 1
       else positionEndNextBrace(pIndex + 1)
     }
 
@@ -444,16 +462,16 @@ private[regex] class GroupStartMap(string: String, start: Int, pattern: Pattern)
     @tailrec def positionEndSquareBracket(pIndex: Int): Int = {
       if (pattern.length <= pIndex)
         pIndex
-      else if (pattern(pIndex) == '\\' && pattern.length > 1)
+      else if (pattern.charAt(pIndex) == '\\' && pattern.length > 1)
         positionEndSquareBracket(pIndex + 2)
-      else if (pattern(pIndex) == ']')
+      else if (pattern.charAt(pIndex) == ']')
         pIndex + 1
       else
         positionEndSquareBracket(pIndex + 1)
     }
 
     @tailrec def positionAfterLastDigit(pIndex: Int): Int = {
-      if (pIndex < pattern.length && pattern(pIndex).isDigit)
+      if (pIndex < pattern.length && isDigit(pattern.charAt(pIndex)))
         positionAfterLastDigit(pIndex + 1)
       else
         pIndex
@@ -493,24 +511,24 @@ private[regex] class GroupStartMap(string: String, start: Int, pattern: Pattern)
         }
 
         def default = {
-          val e = pattern(pIndex)
+          val e = pattern.charAt(pIndex)
           addSiblings(Node("" + e), pIndex + 1, nextGroupIndex)
         }
 
-        (pattern(pIndex): @switch) match {
+        (pattern.charAt(pIndex): @switch) match {
           case '(' =>
-            if (pattern.length >= pIndex + 3 && pattern(pIndex + 1) == '?' &&
-                (pattern(pIndex + 2) == '=' || pattern(pIndex + 2) == '!')) {
+            if (pattern.length >= pIndex + 3 && pattern.charAt(pIndex + 1) == '?' &&
+                (pattern.charAt(pIndex + 2) == '=' || pattern.charAt(pIndex + 2) == '!')) {
               // Non-capturing test group
               val (parsed, remaining, newNextGroupIndex) =
                 parse(pIndex + 3, nextGroupIndex)
               val remaining1 = parseClosingParenthesis(remaining)
               addSiblings(
-                  Node(OriginallyWrapped("(?" + pattern(pIndex + 2), ")"),
+                  Node(OriginallyWrapped("(?" + pattern.charAt(pIndex + 2), ")"),
                       CreateParentNode(parsed)),
                   remaining1, newNextGroupIndex)
             } else if (pattern.length < pIndex + 3 ||
-                pattern(pIndex + 1) != '?' ||pattern(pIndex + 2) != ':') {
+                pattern.charAt(pIndex + 1) != '?' ||pattern.charAt(pIndex + 2) != ':') {
               // Capturing group
               val (parsed, remaining, newNextGroupIndex) =
                 parse(pIndex + 1, nextGroupIndex + 1)
@@ -520,7 +538,7 @@ private[regex] class GroupStartMap(string: String, start: Int, pattern: Pattern)
                       CreateParentNode(parsed)).simplify,
                   remaining1, newNextGroupIndex)
             } else if (pattern.length >= pIndex + 3 &&
-                pattern(pIndex + 1) == '?' && pattern(pIndex + 2) == ':') {
+                pattern.charAt(pIndex + 1) == '?' && pattern.charAt(pIndex + 2) == ':') {
               // Non-capturing group
               val (parsedNodes, remaining, newNextGroupIndex) =
                 parse(pIndex + 3, nextGroupIndex)
@@ -538,7 +556,7 @@ private[regex] class GroupStartMap(string: String, start: Int, pattern: Pattern)
           case '\\' =>
             if (pattern.length >= pIndex + 2) {
               val nextIndex =
-                if (pattern(pIndex + 1).isDigit) positionAfterLastDigit(pIndex + 1)
+                if (isDigit(pattern.charAt(pIndex + 1))) positionAfterLastDigit(pIndex + 1)
                 else pIndex + 2
               val regexPart = pattern.substring(pIndex, nextIndex)
               addSiblings(Node(regexPart), nextIndex, nextGroupIndex)
@@ -549,7 +567,7 @@ private[regex] class GroupStartMap(string: String, start: Int, pattern: Pattern)
 
           case '+' | '*' | '?' => // greedy or not greedy
             val nextIndex =
-              if (pattern.length >= pIndex + 2 && pattern(pIndex + 1) == '?') pIndex + 2
+              if (pattern.length >= pIndex + 2 && pattern.charAt(pIndex + 1) == '?') pIndex + 2
               else pIndex + 1
             val repeater = pattern.substring(pIndex, nextIndex)
             addSiblings(

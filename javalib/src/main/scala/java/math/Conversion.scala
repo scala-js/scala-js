@@ -25,6 +25,8 @@ package java.math
 
 import scala.annotation.tailrec
 
+import java.util.ScalaOps._
+
 /** Provides {@link BigInteger} base conversions.
  *
  *  Static library that provides {@link BigInteger} base conversion from/to any
@@ -130,13 +132,19 @@ private[math] object Conversion {
           while (j < 8 && currentChar > 0) {
             resDigit = digits(i) >> (j << 2) & 0xf
             currentChar -= 1
-            result = resDigit.toHexString + result
+            result = Integer.toHexString(resDigit) + result
             j += 1
           }
         }
       }
+
       // strip leading zero's
-      result = result.dropWhile(_ == '0')
+      var dropLen = 0
+      while (result.charAt(dropLen) == '0')
+        dropLen += 1
+      if (dropLen != 0)
+        result = result.substring(dropLen)
+
       if (sign == -1) "-" + result
       else result
     }

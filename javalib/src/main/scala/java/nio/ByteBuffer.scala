@@ -147,7 +147,7 @@ abstract class ByteBuffer private[nio] (
 
   @noinline
   def compareTo(that: ByteBuffer): Int =
-    GenBuffer(this).generic_compareTo(that)(_.compareTo(_))
+    GenBuffer(this).generic_compareTo(that)(java.lang.Byte.compare(_, _))
 
   final def order(): ByteOrder =
     if (_isBigEndian) ByteOrder.BIG_ENDIAN
