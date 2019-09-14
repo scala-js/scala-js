@@ -26,26 +26,24 @@ import java.nio.file.Path
 abstract class Input private ()
 
 object Input {
-  /** All files are to be loaded as scripts into the global scope in the order given. */
-  final case class ScriptsToLoad(scripts: List[Path]) extends Input
+  /** The file is to be loaded as a script into the global scope. */
+  final case class Script(script: Path) extends Input
 
-  /** All files are to be loaded as ES modules, in the given order.
+  /** The file is to be loaded as an ES module.
    *
-   *  Some environments may not be able to execute several ES modules in a
+   *  Some environments may not be able to load several ES modules in a
    *  deterministic order. If that is the case, they must reject an
-   *  `ESModulesToLoad` input if the `modules` argument has more than one
-   *  element.
+   *  `ESModule` input if it appears with other Inputs such that loading
+   *  in a deterministic order is not possible.
    */
-  final case class ESModulesToLoad(modules: List[Path])
-      extends Input
+  final case class ESModule(module: Path) extends Input
 
-  /** All files are to be loaded as CommonJS modules, in the given order. */
-  final case class CommonJSModulesToLoad(modules: List[Path])
-      extends Input
+  /** The file is to be loaded as a CommonJS module. */
+  final case class CommonJSModule(module: Path) extends Input
 }
 
 class UnsupportedInputException(msg: String, cause: Throwable)
     extends IllegalArgumentException(msg, cause) {
   def this(msg: String) = this(msg, null)
-  def this(input: Input) = this(s"Unsupported input: $input")
+  def this(input: Seq[Input]) = this(s"Unsupported input: $input")
 }

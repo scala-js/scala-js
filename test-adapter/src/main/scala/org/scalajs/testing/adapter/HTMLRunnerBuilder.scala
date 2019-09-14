@@ -46,13 +46,13 @@ object HTMLRunnerBuilder {
     }
   }
 
-  def writeToFile(output: File, title: String, input: Input,
+  def writeToFile(output: File, title: String, input: Seq[Input],
       frameworkImplClassNames: List[List[String]],
       taskDefs: List[TaskDef]): Unit = {
 
-    val jsFiles = input match {
-      case Input.ScriptsToLoad(jsFiles) =>
-        jsFiles
+    val jsFiles = input.map {
+      case Input.Script(script) => script
+
       case _ =>
         throw new UnsupportedInputException(
             s"Unsupported input for the generation of an HTML runner: $input")

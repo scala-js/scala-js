@@ -77,7 +77,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
   private val createdTestAdapters =
     new AtomicReference[List[TestAdapter]](Nil)
 
-  private def newTestAdapter(jsEnv: JSEnv, input: Input,
+  private def newTestAdapter(jsEnv: JSEnv, input: Seq[Input],
       config: TestAdapter.Config): TestAdapter = {
     registerResource(createdTestAdapters, new TestAdapter(jsEnv, input, config))
   }
@@ -343,14 +343,12 @@ private[sbtplugin] object ScalaJSPluginInternal {
       // Use the Scala.js linked file as the default Input for the JSEnv
       jsEnvInput := {
         val linkedFile = scalaJSLinkedFile.value.data.toPath
-        scalaJSLinkerConfig.value.moduleKind match {
-          case ModuleKind.NoModule =>
-            Input.ScriptsToLoad(List(linkedFile))
-          case ModuleKind.ESModule =>
-            Input.ESModulesToLoad(List(linkedFile))
-          case ModuleKind.CommonJSModule =>
-            Input.CommonJSModulesToLoad(List(linkedFile))
+        val input = scalaJSLinkerConfig.value.moduleKind match {
+          case ModuleKind.NoModule       => Input.Script(linkedFile)
+          case ModuleKind.ESModule       => Input.ESModule(linkedFile)
+          case ModuleKind.CommonJSModule => Input.CommonJSModule(linkedFile)
         }
+        List(input)
       },
 
       scalaJSMainModuleInitializer := {

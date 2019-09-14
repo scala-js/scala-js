@@ -23,7 +23,7 @@ private[sbtplugin] object Run {
    *
    *  Interruption can be triggered by typing anything into stdin.
    */
-  def runInterruptible(jsEnv: JSEnv, input: Input, config: RunConfig): Unit = {
+  def runInterruptible(jsEnv: JSEnv, input: Seq[Input], config: RunConfig): Unit = {
     val readPromise = Promise[Unit]()
     val readThread = new Thread {
       override def run(): Unit = {

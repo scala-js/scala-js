@@ -109,7 +109,7 @@ class MainGenericRunner {
       file
     }
 
-    val input = Input.ScriptsToLoad(sjsCode :: Nil)
+    val input = Input.Script(sjsCode) :: Nil
     val config = RunConfig().withLogger(logger)
 
     val run = new NodeJSEnv().start(input, config)

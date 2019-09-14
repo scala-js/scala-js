@@ -56,7 +56,7 @@ final class TestKit(jsEnv: JSEnv, timeout: FiniteDuration) {
     start(codeToInput(code))
 
   /** Starts a [[Run]] for testing. */
-  def start(input: Input): Run =
+  def start(input: Seq[Input]): Run =
     start(input, RunConfig())
 
   /** Starts a [[Run]] for testing. */
@@ -64,7 +64,7 @@ final class TestKit(jsEnv: JSEnv, timeout: FiniteDuration) {
     start(codeToInput(code), config)
 
   /** Starts a [[Run]] for testing. */
-  def start(input: Input, config: RunConfig): Run = {
+  def start(input: Seq[Input], config: RunConfig): Run = {
     val (run, out, err) = io(config)(jsEnv.start(input, _))
     new Run(run, out, err, timeout)
   }
@@ -74,7 +74,7 @@ final class TestKit(jsEnv: JSEnv, timeout: FiniteDuration) {
     startWithCom(codeToInput(code))
 
   /** Starts a [[ComRun]] for testing. */
-  def startWithCom(input: Input): ComRun =
+  def startWithCom(input: Seq[Input]): ComRun =
     startWithCom(input, RunConfig())
 
   /** Starts a [[ComRun]] for testing. */
@@ -82,7 +82,7 @@ final class TestKit(jsEnv: JSEnv, timeout: FiniteDuration) {
     startWithCom(codeToInput(code), config)
 
   /** Starts a [[ComRun]] for testing. */
-  def startWithCom(input: Input, config: RunConfig): ComRun = {
+  def startWithCom(input: Seq[Input], config: RunConfig): ComRun = {
     val msg = new MsgHandler
     val (run, out, err) = io(config)(jsEnv.startWithCom(input, _, msg.onMessage _))
     run.future.onComplete(msg.onRunComplete _)(TestKit.completer)
@@ -95,7 +95,7 @@ final class TestKit(jsEnv: JSEnv, timeout: FiniteDuration) {
     withRun(codeToInput(code))(body)
 
   /** Convenience method to start a [[Run]] and close it after usage. */
-  def withRun[T](input: Input)(body: Run => T): T =
+  def withRun[T](input: Seq[Input])(body: Run => T): T =
     withRun(input, RunConfig())(body)
 
   /** Convenience method to start a [[Run]] and close it after usage. */
@@ -103,7 +103,7 @@ final class TestKit(jsEnv: JSEnv, timeout: FiniteDuration) {
     withRun(codeToInput(code), config)(body)
 
   /** Convenience method to start a [[Run]] and close it after usage. */
-  def withRun[T](input: Input, config: RunConfig)(body: Run => T): T = {
+  def withRun[T](input: Seq[Input], config: RunConfig)(body: Run => T): T = {
     val run = start(input, config)
     try body(run)
     finally run.close()
@@ -113,14 +113,14 @@ final class TestKit(jsEnv: JSEnv, timeout: FiniteDuration) {
   def withComRun[T](code: String)(body: ComRun => T): T = withComRun(codeToInput(code))(body)
 
   /** Convenience method to start a [[ComRun]] and close it after usage. */
-  def withComRun[T](input: Input)(body: ComRun => T): T = withComRun(input, RunConfig())(body)
+  def withComRun[T](input: Seq[Input])(body: ComRun => T): T = withComRun(input, RunConfig())(body)
 
   /** Convenience method to start a [[ComRun]] and close it after usage. */
   def withComRun[T](code: String, config: RunConfig)(body: ComRun => T): T =
     withComRun(codeToInput(code), config)(body)
 
   /** Convenience method to start a [[ComRun]] and close it after usage. */
-  def withComRun[T](input: Input, config: RunConfig)(body: ComRun => T): T = {
+  def withComRun[T](input: Seq[Input], config: RunConfig)(body: ComRun => T): T = {
     val run = startWithCom(input, config)
     try body(run)
     finally run.close()
@@ -154,10 +154,10 @@ private object TestKit {
   private val completer =
     ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
 
-  private def codeToInput(code: String): Input = {
+  private def codeToInput(code: String): Seq[Input] = {
     val p = Files.write(
         Jimfs.newFileSystem().getPath("testScript.js"),
         code.getBytes(StandardCharsets.UTF_8))
-    Input.ScriptsToLoad(List(p))
+    List(Input.Script(p))
   }
 }

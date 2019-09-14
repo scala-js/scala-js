@@ -33,49 +33,40 @@ final class NodeJSEnv(config: NodeJSEnv.Config) extends JSEnv {
 
   val name: String = "Node.js"
 
-  def start(input: Input, runConfig: RunConfig): JSRun = {
+  def start(input: Seq[Input], runConfig: RunConfig): JSRun = {
     NodeJSEnv.validator.validate(runConfig)
     validateInput(input)
-    internalStart(initFiles, input, runConfig)
+    internalStart(initFiles ++ input, runConfig)
   }
 
-  def startWithCom(input: Input, runConfig: RunConfig,
+  def startWithCom(input: Seq[Input], runConfig: RunConfig,
       onMessage: String => Unit): JSComRun = {
     NodeJSEnv.validator.validate(runConfig)
     validateInput(input)
     ComRun.start(runConfig, onMessage) { comLoader =>
-      internalStart(initFiles :+ comLoader, input, runConfig)
+      internalStart(initFiles ++ (Input.Script(comLoader) +: input), runConfig)
     }
   }
 
-  private def validateInput(input: Input): Unit = {
-    input match {
-      case _:Input.ScriptsToLoad | _:Input.ESModulesToLoad |
-          _:Input.CommonJSModulesToLoad =>
-        // ok
-      case _ =>
-        throw new UnsupportedInputException(input)
-    }
+  private def validateInput(input: Seq[Input]): Unit = input.foreach {
+    case _:Input.Script | _:Input.ESModule | _:Input.CommonJSModule =>
+      // ok
+    case _ =>
+      throw new UnsupportedInputException(input)
   }
 
-  private def internalStart(initFiles: List[Path], input: Input, runConfig: RunConfig): JSRun = {
+  private def internalStart(input: Seq[Input], runConfig: RunConfig): JSRun = {
     val command = config.executable :: config.args
     val externalConfig = ExternalJSRun.Config()
       .withEnv(env)
       .withRunConfig(runConfig)
-    ExternalJSRun.start(command, externalConfig)(
-        NodeJSEnv.write(initFiles, input))
+    ExternalJSRun.start(command, externalConfig)(NodeJSEnv.write(input))
   }
 
-  private def initFiles: List[Path] = config.sourceMap match {
+  private def initFiles: Seq[Input] = config.sourceMap match {
     case SourceMap.Disable           => Nil
-    case SourceMap.EnableIfAvailable => installSourceMapIfAvailable :: Nil
-    case SourceMap.Enable            => installSourceMap :: Nil
-  }
-
-  private def inputFiles(input: Input) = input match {
-    case Input.ScriptsToLoad(scripts) => scripts
-    case _                            => throw new UnsupportedInputException(input)
+    case SourceMap.EnableIfAvailable => Input.Script(installSourceMapIfAvailable) :: Nil
+    case SourceMap.Enable            => Input.Script(installSourceMap) :: Nil
   }
 
   private def env: Map[String, String] =
@@ -104,68 +95,70 @@ object NodeJSEnv {
         "require('source-map-support').install();".getBytes(StandardCharsets.UTF_8))
   }
 
-  private def write(initFiles: List[Path], input: Input)(out: OutputStream): Unit = {
+  private def write(input: Seq[Input])(out: OutputStream): Unit = {
+    def runScript(path: Path): String = {
+      try {
+        val f = path.toFile
+        val pathJS = "\"" + escapeJS(f.getAbsolutePath) + "\""
+        s"""
+          require('vm').runInThisContext(
+            require('fs').readFileSync($pathJS, { encoding: "utf-8" }),
+            { filename: $pathJS, displayErrors: true }
+          )
+        """
+      } catch {
+        case _: UnsupportedOperationException =>
+          val code = new String(Files.readAllBytes(path), StandardCharsets.UTF_8)
+          val codeJS = "\"" + escapeJS(code) + "\""
+          val pathJS = "\"" + escapeJS(path.toString) + "\""
+          s"""
+            require('vm').runInThisContext(
+              $codeJS,
+              { filename: $pathJS, displayErrors: true }
+            )
+          """
+      }
+    }
+
+    def requireCommonJSModule(module: Path): String =
+      s"""require("${escapeJS(toFile(module).getAbsolutePath)}")"""
+
+    def importESModule(module: Path): String =
+      s"""import("${escapeJS(toFile(module).toURI.toASCIIString)}")"""
+
+    def execInputExpr(input: Input): String = input match {
+      case Input.Script(script)         => runScript(script)
+      case Input.CommonJSModule(module) => requireCommonJSModule(module)
+      case Input.ESModule(module)       => importESModule(module)
+    }
+
     val p = new PrintStream(out, false, "UTF8")
     try {
-      def writeRunScript(path: Path): Unit = {
-        try {
-          val f = path.toFile
-          val pathJS = "\"" + escapeJS(f.getAbsolutePath) + "\""
-          p.println(s"""
-            require('vm').runInThisContext(
-              require('fs').readFileSync($pathJS, { encoding: "utf-8" }),
-              { filename: $pathJS, displayErrors: true }
-            );
-          """)
-        } catch {
-          case _: UnsupportedOperationException =>
-            val code = new String(Files.readAllBytes(path), StandardCharsets.UTF_8)
-            val codeJS = "\"" + escapeJS(code) + "\""
-            val pathJS = "\"" + escapeJS(path.toString) + "\""
-            p.println(s"""
-              require('vm').runInThisContext(
-                $codeJS,
-                { filename: $pathJS, displayErrors: true }
-              );
-            """)
+      if (!input.exists(_.isInstanceOf[Input.ESModule])) {
+        /* If there is no ES module in the input, we can do everything
+         * synchronously, and directly on the standard input.
+         */
+        for (item <- input)
+          p.println(execInputExpr(item) + ";")
+      } else {
+        /* If there is at least one ES module, we must asynchronous chain things,
+         * and we must use an actual file to feed code to Node.js (because
+         * `import()` cannot be used from the standard input).
+         */
+        val importChain = input.foldLeft("Promise.resolve()") { (prev, item) =>
+          s"$prev.\n  then(${execInputExpr(item)})"
         }
-      }
-
-      for (initFile <- initFiles)
-        writeRunScript(initFile)
-
-      input match {
-        case Input.ScriptsToLoad(scripts) =>
-          for (script <- scripts)
-            writeRunScript(script)
-
-        case Input.CommonJSModulesToLoad(modules) =>
-          for (module <- modules)
-            p.println(s"""require("${escapeJS(toFile(module).getAbsolutePath)}")""")
-
-        case Input.ESModulesToLoad(modules) =>
-          if (modules.nonEmpty) {
-            val uris = modules.map(m => toFile(m).toURI)
-
-            val imports = uris.map { uri =>
-              s"""import("${escapeJS(uri.toASCIIString)}")"""
-            }
-            val importChain = imports.reduceLeft { (prev, imprt) =>
-              s"""$prev.then(_ => $imprt)"""
-            }
-
-            val importerFileContent = {
-              s"""
-                |$importChain.catch(e => {
-                |  console.error(e);
-                |  process.exit(1);
-                |});
-              """.stripMargin
-            }
-            val f = createTmpFile("importer.js")
-            Files.write(f.toPath, importerFileContent.getBytes(StandardCharsets.UTF_8))
-            p.println(s"""require("${escapeJS(f.getAbsolutePath)}");""")
-          }
+        val importerFileContent = {
+          s"""
+            |$importChain.catch(e => {
+            |  console.error(e);
+            |  process.exit(1);
+            |});
+          """.stripMargin
+        }
+        val f = createTmpFile("importer.js")
+        Files.write(f.toPath, importerFileContent.getBytes(StandardCharsets.UTF_8))
+        p.println(s"""require("${escapeJS(f.getAbsolutePath)}");""")
       }
     } finally {
       p.close()

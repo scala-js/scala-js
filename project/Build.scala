@@ -1450,7 +1450,7 @@ object Build {
           IO.write(launcherFile, code)
 
           val config = RunConfig().withLogger(sbtLogger2ToolsLogger(s.log))
-          val input = Input.ScriptsToLoad(List(launcherFile.toPath))
+          val input = List(Input.Script(launcherFile.toPath))
 
           s.log.info(s"Linking test suite with JS linker")
 
@@ -1476,15 +1476,7 @@ object Build {
     jsEnvInput := {
       val resourceDir = (resourceDirectory in Test).value
       val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
-
-      jsEnvInput.value match {
-        case Input.ScriptsToLoad(prevFiles) =>
-          Input.ScriptsToLoad(f :: prevFiles)
-        case Input.ESModulesToLoad(prevFiles) =>
-          Input.ESModulesToLoad(f :: prevFiles)
-        case Input.CommonJSModulesToLoad(prevFiles) =>
-          Input.CommonJSModulesToLoad(f :: prevFiles)
-      }
+      Input.Script(f) +: jsEnvInput.value
     }
   }
 
@@ -1559,18 +1551,8 @@ object Build {
         }
       }.value,
 
-      jsEnvInput in Test := {
-        val prev = (jsEnvInput in Test).value
-        val loopbackScript = (setModuleLoopbackScript in Test).value
-
-        loopbackScript match {
-          case None =>
-            prev
-          case Some(script) =>
-            val Input.ESModulesToLoad(modules) = prev
-            Input.ESModulesToLoad(modules :+ script)
-        }
-      },
+      jsEnvInput in Test ++=
+        (setModuleLoopbackScript in Test).value.toList.map(Input.ESModule(_)),
 
       if (isGeneratingForIDE) {
         unmanagedSourceDirectories in Compile +=
