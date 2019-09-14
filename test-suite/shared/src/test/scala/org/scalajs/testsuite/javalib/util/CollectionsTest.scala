@@ -268,6 +268,40 @@ class CollectionsTest extends CollectionsTestBase {
     }
   }
 
+  @Test def reverseOrder_with_null_comparator(): Unit = {
+    // Essentially equivalent to reverseOrder_on_comparables
+
+    def testNumerical[E](toElem: Int => E): Unit = {
+      val rCmp = ju.Collections.reverseOrder[E](null)
+      for (i <- range) {
+        assertEquals(0, rCmp.compare(toElem(i), toElem(i)))
+        assertTrue(rCmp.compare(toElem(i), toElem(i - 1)) < 0)
+        assertTrue(rCmp.compare(toElem(i), toElem(i + 1)) > 0)
+      }
+    }
+
+    testNumerical[Int](_.toInt)
+    testNumerical[Long](_.toLong)
+    testNumerical[Double](_.toDouble)
+
+    val rCmp = ju.Collections.reverseOrder[String](null)
+
+    assertEquals(0, rCmp.compare("", ""))
+    assertEquals(0, rCmp.compare("a", "a"))
+    assertEquals(0, rCmp.compare("123", "123"))
+    assertEquals(0, rCmp.compare("hello world", "hello world"))
+
+    assertTrue(rCmp.compare("a", "b") > 0)
+    assertTrue(rCmp.compare("a", "ba") > 0)
+    assertTrue(rCmp.compare("a", "aa") > 0)
+    assertTrue(rCmp.compare("aa", "aaa") > 0)
+
+    assertTrue(rCmp.compare("b", "a") < 0)
+    assertTrue(rCmp.compare("ba", "a") < 0)
+    assertTrue(rCmp.compare("aa", "a") < 0)
+    assertTrue(rCmp.compare("aaa", "aa") < 0)
+  }
+
   @Test def enumeration(): Unit = {
     val coll = TrivialImmutableCollection(range: _*)
     val enum = ju.Collections.enumeration(coll)

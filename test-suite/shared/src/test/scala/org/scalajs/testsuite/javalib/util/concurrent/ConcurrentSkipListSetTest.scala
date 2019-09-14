@@ -404,8 +404,11 @@ class ConcurrentSkipListSetTest {
     val csls = new ConcurrentSkipListSet[TestObj]()
 
     assertEquals(0, csls.size())
-    csls.add(new TestObj(111))
-    expectThrows(classOf[ClassCastException], csls.add(new TestObj(222)))
+    expectThrows(classOf[ClassCastException], {
+      // Throw either when the first or second element is added
+      csls.add(new TestObj(111))
+      csls.add(new TestObj(222))
+    })
     assertNull(csls.comparator)
   }
 }

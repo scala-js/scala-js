@@ -518,8 +518,12 @@ object Collections {
   }
 
   def reverseOrder[T](cmp: Comparator[T]): Comparator[T] = {
-    new Comparator[T] with Serializable {
-      override def compare(o1: T, o2: T): Int = cmp.compare(o2, o1)
+    if (cmp eq null) {
+      reverseOrder()
+    } else {
+      new Comparator[T] with Serializable {
+        override def compare(o1: T, o2: T): Int = cmp.compare(o2, o1)
+      }
     }
   }
 
