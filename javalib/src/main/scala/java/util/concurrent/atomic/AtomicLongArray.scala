@@ -14,7 +14,7 @@ package java.util.concurrent.atomic
 
 class AtomicLongArray(length: Int) extends Serializable {
   def this(array: Array[Long]) = {
-    this(array.size)
+    this(array.length)
     System.arraycopy(array, 0, inner, 0, length)
   }
 
@@ -74,5 +74,5 @@ class AtomicLongArray(length: Int) extends Serializable {
   }
 
   override def toString(): String =
-    inner.mkString("[", ", ", "]")
+    java.util.Arrays.toString(inner)
 }

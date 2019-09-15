@@ -128,9 +128,18 @@ object TimeUnit {
   def values(): Array[TimeUnit] = _values.clone()
 
   def valueOf(name: String): TimeUnit = {
-    _values.find(_.name == name).getOrElse {
-      throw new IllegalArgumentException("No enum const TimeUnit." + name)
+    // scalastyle:off return
+    val values = _values // local copy
+    val len = values.length
+    var i = 0
+    while (i != len) {
+      val value = values(i)
+      if (value.name == name)
+        return value
+      i += 1
     }
+    throw new IllegalArgumentException("No enum const TimeUnit." + name)
+    // scalastyle:on return
   }
 
   private def x(a: Long, b: Long, max: Long): Long = {

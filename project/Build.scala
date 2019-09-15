@@ -956,6 +956,11 @@ object Build {
           noClassFilesSettings,
           scalaJSExternalCompileSettings,
 
+          /* Do not import `Predef._` so that we have a better control of when
+           * we rely on the Scala library.
+           */
+          scalacOptions += "-Yno-predef",
+
           headerSources in Compile ~= { srcs =>
             srcs.filter { src =>
               val path = src.getPath.replace('\\', '/')

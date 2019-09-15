@@ -206,7 +206,8 @@ abstract class CharsetEncoder protected (cs: Charset,
       def loopEncode(out: ByteBuffer): ByteBuffer = {
         val result = encode(in, out, endOfInput = true)
         if (result.isUnderflow) {
-          assert(!in.hasRemaining)
+          if (in.hasRemaining)
+            throw new AssertionError
           out
         } else if (result.isOverflow) {
           loopEncode(grow(out))

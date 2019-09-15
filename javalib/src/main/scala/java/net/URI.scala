@@ -54,7 +54,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   private val _authority = fld(AbsAuthority, RelAuthority).filter(_ != "")
   private val _userInfo = fld(AbsUserInfo, RelUserInfo)
   private val _host = fld(AbsHost, RelHost)
-  private val _port = fld(AbsPort, RelPort).map(_.toInt)
+  private val _port = fld(AbsPort, RelPort).map(Integer.parseInt(_))
 
   private val _path = {
     val useNetPath = fld(AbsAuthority, RelAuthority).isDefined
@@ -122,7 +122,8 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
     if (cmpScheme != 0) {
       cmpScheme
     } else {
-      val cmpIsOpaque = this.isOpaque.compareTo(that.isOpaque) // A hierarchical URI is less than an opaque URI
+      // A hierarchical URI is less than an opaque URI
+      val cmpIsOpaque = java.lang.Boolean.compare(this.isOpaque, that.isOpaque)
       if (cmpIsOpaque != 0) {
         cmpIsOpaque
       } else {
@@ -201,63 +202,79 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   def isOpaque(): Boolean = _isOpaque
 
   def normalize(): URI = if (_isOpaque || _path.isEmpty) this else {
+    import js.JSStringOps._
+
     val origPath = _path.get
+
+    val segments = origPath.jsSplit("/")
 
     // Step 1: Remove all "." segments
     // Step 2: Remove ".." segments preceeded by non ".." segment until no
     // longer applicable
 
-    /** Checks whether a successive ".." may drop the head of a
-     *  reversed segment list.
-     */
-    def okToDropFrom(resRev: List[String]) =
-      resRev.nonEmpty && resRev.head != ".." && resRev.head != ""
+    val inLen = segments.length
+    val isAbsPath = inLen != 0 && segments(0) == ""
 
-    @tailrec
-    def loop(in: List[String], resRev: List[String]): List[String] = in match {
-      case "." :: Nil =>
-        // convert "." segments at end to an empty segment
-        // (consider: /a/b/. => /a/b/, not /a/b)
-        loop(Nil, "" :: resRev)
-      case ".." :: Nil if okToDropFrom(resRev) =>
-        // prevent a ".." segment at end to change a "dir" into a "file"
-        // (consider: /a/b/.. => /a/, not /a)
-        loop(Nil, "" :: resRev.tail)
-      case "." :: xs =>
-        // remove "." segments
-        loop(xs, resRev)
-      case "" :: xs if xs.nonEmpty =>
+    // Do not inject the first empty segment into the normalization loop,
+    // so that we don't need to special-case it inside.
+    val startIdx = if (isAbsPath) 1 else 0
+    var inIdx = startIdx
+    var outIdx = startIdx
+
+    while (inIdx != inLen) {
+      val segment = segments(inIdx)
+      inIdx += 1 // do this before the rest of the loop
+
+      if (segment == ".") {
+        if (inIdx == inLen) {
+          // convert "." segments at end to an empty segment
+          // (consider: /a/b/. => /a/b/, not /a/b)
+          segments(outIdx) = ""
+          outIdx += 1
+        } else {
+          // remove "." segments, so do not increment outIdx
+        }
+      } else if (segment == "..") {
+        val okToDrop = outIdx != startIdx && {
+          val lastSegment = segments(outIdx - 1)
+          lastSegment != ".." && lastSegment != ""
+        }
+        if (okToDrop) {
+          if (inIdx == inLen) { // did we reach the end?
+            // prevent a ".." segment at end to change a "dir" into a "file"
+            // (consider: /a/b/.. => /a/, not /a)
+            segments(outIdx - 1) = ""
+            // do not increment outIdx
+          } else {
+            // remove preceding segment (it is not "..")
+            outIdx -= 1
+          }
+        } else {
+          // cannot drop
+          segments(outIdx) = ".."
+          outIdx += 1
+        }
+      } else if (segment == "" && inIdx != inLen) {
         // remove empty segments not at end of path
-        loop(xs, resRev)
-      case ".." :: xs if okToDropFrom(resRev) =>
-        // Remove preceeding non-".." segment
-        loop(xs, resRev.tail)
-      case x :: xs =>
-        loop(xs, x :: resRev)
-      case Nil =>
-        resRev.reverse
+        // do not increment outIdx
+      } else {
+        // keep the segment
+        segments(outIdx) = segment
+        outIdx += 1
+      }
     }
 
-    // Split into segments. -1 since we want empty trailing ones
-    val segments0 = origPath.split("/", -1).toList
-    val isAbsPath = segments0.nonEmpty && segments0.head == ""
-    // Don't inject first empty segment into normalization loop, so we
-    // won't need to special case it.
-    val segments1 = if (isAbsPath) segments0.tail else segments0
-    val segments2 = loop(segments1, Nil)
+    // Truncate `segments` at `outIdx`
+    segments.length = outIdx
 
     // Step 3: If path is relative and first segment contains ":", prepend "."
-    // segment (according to JavaDoc). If it is absolute, add empty
-    // segment again to have leading "/".
-    val segments3 = {
-      if (isAbsPath)
-        "" :: segments2
-      else if (segments2.nonEmpty && segments2.head.contains(':'))
-        "." :: segments2
-      else segments2
-    }
+    // segment (according to JavaDoc). If the path is absolute, the first
+    // segment is "" so the `contains(':')` returns false.
+    if (outIdx != 0 && segments(0).contains(":"))
+      segments.unshift(".")
 
-    val newPath = segments3.mkString("/")
+    // Now add all the segments from step 1, 2 and 3
+    val newPath = segments.join("/")
 
     // Only create new instance if anything changed
     if (newPath == origPath)
@@ -285,12 +302,12 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
 
       // Strangely, Java doesn't handle escapes here. So we don't
       if (uriN.getRawPath().startsWith(thisN.getRawPath())) {
-        val newPath = uriN.getRawPath().stripPrefix(thisN.getRawPath())
+        val newPath = uriN.getRawPath().substring(thisN.getRawPath().length())
 
         new URI(scheme = null, authority = null,
-          // never produce an abs path if we relativized
-          path = newPath.stripPrefix("/"),
-          query = uri.getQuery(), fragment = uri.getFragment())
+            // never produce an abs path if we relativized
+            path = if (newPath.startsWith("/")) newPath.substring(1) else newPath,
+            query = uri.getQuery(), fragment = uri.getFragment())
       } else uri
     }
   }
@@ -656,9 +673,22 @@ object URI {
   // Quote helpers
 
   private def decodeComponent(str: String): String = {
+    def containsNoEncodedComponent(): Boolean = {
+      // scalastyle:off return
+      var i = 0
+      while (i != str.length) {
+        if (str.charAt(i) == '%')
+          return false
+        i += 1
+      }
+      true
+      // scalastyle:on return
+    }
+
     // Fast-track, if no encoded components
-    if (str.forall(_ != '%')) str
-    else {
+    if (containsNoEncodedComponent()) {
+      str
+    } else {
       val inBuf = CharBuffer.wrap(str)
       val outBuf = CharBuffer.allocate(inBuf.capacity)
       val byteBuf = ByteBuffer.allocate(64)
@@ -813,8 +843,8 @@ object URI {
         if (diff != 0) diff
         else if (x.charAt(i) == '%') {
           // we need to do a CI compare for the next two characters
-          assert(x.length > i + 2, "Invalid escape in URI")
-          assert(y.length > i + 2, "Invalid escape in URI")
+          if (i + 2 >= x.length || i + 2 >= y.length)
+            throw new AssertionError("Invalid escape in URI")
           val cmp =
             x.substring(i+1, i+3).compareToIgnoreCase(y.substring(i+1, i+3))
           if (cmp != 0) cmp
@@ -833,7 +863,8 @@ object URI {
       var res = ""
       while (i < str.length) {
         if (str.charAt(i) == '%') {
-          assert(str.length > i + 2, "Invalid escape in URI")
+          if (i + 2 >= str.length)
+            throw new AssertionError("Invalid escape in URI")
           res += str.substring(i, i+3).toUpperCase()
           i += 3
         } else {

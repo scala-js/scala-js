@@ -181,7 +181,8 @@ abstract class CharsetDecoder protected (cs: Charset,
     def loopDecode(out: CharBuffer): CharBuffer = {
       val result = decode(in, out, endOfInput = true)
       if (result.isUnderflow) {
-        assert(!in.hasRemaining)
+        if (in.hasRemaining)
+          throw new AssertionError
         out
       } else if (result.isOverflow) {
         loopDecode(grow(out))

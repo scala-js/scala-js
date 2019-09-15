@@ -136,7 +136,7 @@ abstract class IntBuffer private[nio] (
 
   @noinline
   def compareTo(that: IntBuffer): Int =
-    GenBuffer(this).generic_compareTo(that)(_.compareTo(_))
+    GenBuffer(this).generic_compareTo(that)(Integer.compare(_, _))
 
   def order(): ByteOrder
 

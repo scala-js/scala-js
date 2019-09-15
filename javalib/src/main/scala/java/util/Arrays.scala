@@ -19,7 +19,7 @@ import scala.annotation.tailrec
 
 import scala.reflect.ClassTag
 
-import scala.collection.immutable
+import ScalaOps._
 
 object Arrays {
 
@@ -438,8 +438,22 @@ object Arrays {
 
   @inline
   private def equalsImpl[T](a: Array[T], b: Array[T]): Boolean = {
-    (a eq b) || (a != null && b != null && a.length == b.length &&
-        a.indices.forall(i => a(i) == b(i)))
+    // scalastyle:off return
+    if (a eq b)
+      return true
+    if (a == null || b == null)
+      return false
+    val len = a.length
+    if (b.length != len)
+      return false
+    var i = 0
+    while (i != len) {
+      if (a(i) != b(i))
+        return false
+      i += 1
+    }
+    true
+    // scalastyle:on return
   }
 
   @noinline def fill(a: Array[Long], value: Long): Unit =
@@ -627,37 +641,42 @@ object Arrays {
   }
 
   @noinline def hashCode(a: Array[Long]): Int =
-    hashCodeImpl[Long](a)
+    hashCodeImpl[Long](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Int]): Int =
-    hashCodeImpl[Int](a)
+    hashCodeImpl[Int](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Short]): Int =
-    hashCodeImpl[Short](a)
+    hashCodeImpl[Short](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Char]): Int =
-    hashCodeImpl[Char](a)
+    hashCodeImpl[Char](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Byte]): Int =
-    hashCodeImpl[Byte](a)
+    hashCodeImpl[Byte](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Boolean]): Int =
-    hashCodeImpl[Boolean](a)
+    hashCodeImpl[Boolean](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Float]): Int =
-    hashCodeImpl[Float](a)
+    hashCodeImpl[Float](a, _.hashCode())
 
   @noinline def hashCode(a: Array[Double]): Int =
-    hashCodeImpl[Double](a)
+    hashCodeImpl[Double](a, _.hashCode())
 
   @noinline def hashCode(a: Array[AnyRef]): Int =
     hashCodeImpl[AnyRef](a, Objects.hashCode(_))
 
   @inline
-  private def hashCodeImpl[T](a: Array[T],
-      elementHashCode: T => Int = (x: T) => x.hashCode): Int = {
-    if (a == null) 0
-    else a.foldLeft(1)((acc, x) => 31*acc + elementHashCode(x))
+  private def hashCodeImpl[T](a: Array[T], elementHashCode: T => Int): Int = {
+    if (a == null) {
+      0
+    } else {
+      var acc = 1
+      for (i <- 0 until a.length)
+        acc = 31 * acc + elementHashCode(a(i))
+      acc
+    }
   }
 
   @noinline def deepHashCode(a: Array[AnyRef]): Int = {
@@ -680,9 +699,22 @@ object Arrays {
   }
 
   @noinline def deepEquals(a1: Array[AnyRef], a2: Array[AnyRef]): Boolean = {
-    if (a1 eq a2) true
-    else if (a1 == null || a2 == null || a1.length != a2.length) false
-    else a1.indices.forall(i => Objects.deepEquals(a1(i), a2(i)))
+    // scalastyle:off return
+    if (a1 eq a2)
+      return true
+    if (a1 == null || a2 == null)
+      return false
+    val len = a1.length
+    if (a2.length != len)
+      return false
+    var i = 0
+    while (i != len) {
+      if (!Objects.deepEquals(a1(i), a2(i)))
+        return false
+      i += 1
+    }
+    true
+    // scalastyle:on return
   }
 
   @noinline def toString(a: Array[Long]): String =
@@ -714,35 +746,72 @@ object Arrays {
 
   @inline
   private def toStringImpl[T](a: Array[T]): String = {
-    if (a == null) "null"
-    else a.mkString("[", ", ", "]")
+    if (a == null) {
+      "null"
+    } else {
+      var result = "["
+      val len = a.length
+      var i = 0
+      while (i != len) {
+        if (i != 0)
+          result += ", "
+        result += a(i)
+        i += 1
+      }
+      result + "]"
+    }
   }
 
-  @noinline def deepToString(a: Array[AnyRef]): String =
-    deepToStringImpl(a, immutable.HashSet.empty[AsRef])
+  def deepToString(a: Array[AnyRef]): String = {
+    /* The following array represents a set of the `Array[AnyRef]` that have
+     * already been seen in the current recursion. We use a JS array instead of
+     * a full-blown `HashSet` because it will likely stay very short (its size
+     * is O(h) where h is the height of the tree of non-cyclical paths starting
+     * at `a`), so the cost of using `System.identityHashCode` will probably
+     * outweigh the benefits of the time complexity guarantees provided by a
+     * hash-set.
+     */
+    val seen = js.Array[Array[AnyRef]]()
 
-  private def deepToStringImpl(a: Array[AnyRef], branch: immutable.Set[AsRef]): String = {
-    @inline
-    def valueToString(e: AnyRef): String = {
-      if (e == null) "null"
-      else {
-        e match {
-          case e: Array[AnyRef]  => deepToStringImpl(e, branch + new AsRef(a))
-          case e: Array[Long]    => toString(e)
-          case e: Array[Int]     => toString(e)
-          case e: Array[Short]   => toString(e)
-          case e: Array[Byte]    => toString(e)
-          case e: Array[Char]    => toString(e)
-          case e: Array[Boolean] => toString(e)
-          case e: Array[Float]   => toString(e)
-          case e: Array[Double]  => toString(e)
-          case _                 => String.valueOf(e)
-        }
-      }
+    @inline def wasSeen(a: Array[AnyRef]): Boolean = {
+      // JavaScript's indexOf uses `===`
+      seen.asInstanceOf[js.Dynamic].indexOf(a.asInstanceOf[js.Any]).asInstanceOf[Int] >= 0
     }
+
+    def rec(a: Array[AnyRef]): String = {
+      var result = "["
+      val len = a.length
+      var i = 0
+      while (i != len) {
+        if (i != 0)
+          result += ", "
+        a(i) match {
+          case e: Array[AnyRef]  =>
+            if ((e eq a) || wasSeen(e)) {
+              result += "[...]"
+            } else {
+              seen.push(a)
+              result += rec(e)
+              seen.pop()
+            }
+
+          case e: Array[Long]    => result += toString(e)
+          case e: Array[Int]     => result += toString(e)
+          case e: Array[Short]   => result += toString(e)
+          case e: Array[Byte]    => result += toString(e)
+          case e: Array[Char]    => result += toString(e)
+          case e: Array[Boolean] => result += toString(e)
+          case e: Array[Float]   => result += toString(e)
+          case e: Array[Double]  => result += toString(e)
+          case e                 => result += e // handles null
+        }
+        i += 1
+      }
+      result + "]"
+    }
+
     if (a == null) "null"
-    else if (branch.contains(new AsRef(a))) "[...]"
-    else a.iterator.map(valueToString).mkString("[", ", ", "]")
+    else rec(a)
   }
 
   @inline
@@ -759,18 +828,6 @@ object Arrays {
   private def toOrdering[T](cmp: Comparator[T]): Ordering[T] = {
     new Ordering[T] {
       def compare(x: T, y: T): Int = cmp.compare(x, y)
-    }
-  }
-
-  private final class AsRef(val inner: AnyRef) {
-    override def hashCode(): Int =
-      System.identityHashCode(inner)
-
-    override def equals(obj: Any): Boolean = {
-      obj match {
-        case obj: AsRef => obj.inner eq inner
-        case _          => false
-      }
     }
   }
 }
