@@ -142,14 +142,6 @@ object StandardLinker {
          |)""".stripMargin
     }
 
-    private[linker] lazy val commonPhaseConfig: CommonPhaseConfig = {
-      val coreSpec = CoreSpec(semantics, moduleKind, esFeatures)
-      CommonPhaseConfig()
-        .withCoreSpec(coreSpec)
-        .withParallel(parallel)
-        .withBatchMode(batchMode)
-    }
-
     private def copy(
         semantics: Semantics = semantics,
         moduleKind: ModuleKind = moduleKind,

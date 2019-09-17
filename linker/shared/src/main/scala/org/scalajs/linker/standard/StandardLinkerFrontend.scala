@@ -18,7 +18,7 @@ import org.scalajs.linker.frontend.LinkerFrontendImpl
 object StandardLinkerFrontend {
   def apply(config: StandardLinker.Config): LinkerFrontend = {
     val frontendConfig = LinkerFrontendImpl.Config()
-      .withCommonConfig(config.commonPhaseConfig)
+      .withCommonConfig(CommonPhaseConfig.fromStandardLinkerConfig(config))
       .withCheckIR(config.checkIR)
       .withOptimizer(config.optimizer)
 
