@@ -27,9 +27,9 @@ import org.scalajs.linker.standard.OutputFileImpl
  *
  *  @param sourceMap The sourceMap file the linker writes to. A [[Linker]] may
  *      ignore this file. N.b. the [[StandardLinker]] will ignore it if
- *      [[StandardLinker.Config.sourceMap]] is false. Further, a [[Linker]] must
- *      not fail if this is not set, but rather not write a source map (even if
- *      it is configured to write a source map).
+ *      [[StandardConfig.sourceMap]] is false. Further, a [[Linker]] must not
+ *      fail if this is not set, but rather not write a source map (even if it
+ *      is configured to write a source map).
  *
  *  @param sourceMapURI URI to reach the source map from the JavaScript file.
  *      This is typically a relative URI but is not required. A [[Linker]]

@@ -84,7 +84,7 @@ class MainGenericRunner {
     val moduleInitializers = Seq(ModuleInitializer.mainMethodWithArgs(
         command.thingToRun, "main", command.arguments))
 
-    val linkerConfig = StandardLinker.Config()
+    val linkerConfig = StandardConfig()
       .withCheckIR(true)
       .withSemantics(semantics)
       .withSourceMap(false)

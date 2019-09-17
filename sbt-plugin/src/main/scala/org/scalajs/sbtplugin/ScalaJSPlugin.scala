@@ -129,7 +129,7 @@ object ScalaJSPlugin extends AutoPlugin {
         "`scalaJSUseMainModuleInitializer` is true",
         CTask)
 
-    val scalaJSLinkerConfig = SettingKey[StandardLinker.Config](
+    val scalaJSLinkerConfig = SettingKey[StandardConfig](
         "scalaJSLinkerConfig",
         "Configuration of the Scala.js linker",
         BPlusSetting)
@@ -181,7 +181,7 @@ object ScalaJSPlugin extends AutoPlugin {
     Seq(
         scalaJSStage := Stage.FastOpt,
 
-        scalaJSLinkerConfig := StandardLinker.Config(),
+        scalaJSLinkerConfig := StandardConfig(),
 
         jsEnv := new NodeJSEnv(),
 

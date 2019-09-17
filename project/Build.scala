@@ -36,7 +36,7 @@ import org.scalajs.linker._
 object ExposedValues extends AutoPlugin {
   object autoImport {
     // set scalaJSLinkerConfig in someProject ~= makeCompliant
-    val makeCompliant: StandardLinker.Config => StandardLinker.Config = {
+    val makeCompliant: StandardConfig => StandardConfig = {
       _.withSemantics { semantics =>
         semantics
           .withAsInstanceOfs(CheckedBehavior.Compliant)

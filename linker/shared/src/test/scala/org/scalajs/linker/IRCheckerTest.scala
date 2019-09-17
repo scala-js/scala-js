@@ -88,7 +88,7 @@ object IRCheckerTest {
       moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[Unit] = {
 
-    val config = StandardLinker.Config()
+    val config = StandardConfig()
       .withCheckIR(true)
       .withOptimizer(false)
     val linkerFrontend = StandardLinkerFrontend(config)

@@ -18,7 +18,7 @@ object QuickLinker {
   /** Link the Scala.js test suite on Node.js */
   @JSExport
   def linkTestSuiteNode(cp: js.Array[String], outputPath: String): js.Promise[Unit] = {
-    val config = StandardLinker.Config()
+    val config = StandardConfig()
       .withSemantics(build.TestSuiteLinkerOptions.semantics _)
       .withCheckIR(true)
       .withBatchMode(true)

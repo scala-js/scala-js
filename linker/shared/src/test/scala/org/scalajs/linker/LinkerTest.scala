@@ -63,7 +63,7 @@ class LinkerTest {
       def length: Int = throw new DummyException()
     }
 
-    val linker = StandardLinker(StandardLinker.Config())
+    val linker = StandardLinker(StandardConfig())
 
     def callLink(): Future[Unit] = {
       val out = LinkerOutput(LinkerOutput.newMemFile())
@@ -98,7 +98,7 @@ object LinkerTest {
       moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[Unit] = {
 
-    val linker = StandardLinker(StandardLinker.Config())
+    val linker = StandardLinker(StandardConfig())
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
     val output = LinkerOutput(LinkerOutput.newMemFile())
 

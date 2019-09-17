@@ -12,10 +12,9 @@
 
 package org.scalajs.linker
 
-object StandardLinkerPlatformExtensions {
-  import StandardLinker.Config
+object StandardConfigPlatformExtensions {
 
-  final class ConfigExt private[linker] (private val self: Config)
+  final class ConfigExt private[linker] (private val self: StandardConfig)
       extends AnyVal {
 
     /** Whether to actually use the Google Closure Compiler pass.

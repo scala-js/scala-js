@@ -45,7 +45,7 @@ final class CommonPhaseConfig private (
 private[linker] object CommonPhaseConfig {
   private[linker] def apply(): CommonPhaseConfig = new CommonPhaseConfig()
 
-  private[linker] def fromStandardLinkerConfig(config: StandardLinker.Config): CommonPhaseConfig = {
+  private[linker] def fromStandardConfig(config: StandardConfig): CommonPhaseConfig = {
     val coreSpec = CoreSpec(config.semantics, config.moduleKind, config.esFeatures)
     new CommonPhaseConfig(coreSpec, config.parallel, config.batchMode)
   }

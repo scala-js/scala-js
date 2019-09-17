@@ -178,7 +178,7 @@ object OptimizerTest {
       moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
-    val config = StandardLinker.Config()
+    val config = StandardConfig()
     val frontend = StandardLinkerFrontend(config)
     val backend = new StoreLinkingUnitLinkerBackend(StandardLinkerBackend(config))
     val linker = StandardLinkerImpl(frontend, backend)
