@@ -41,6 +41,8 @@
 
 package java.math
 
+import java.util.ScalaOps._
+
 /** Object that provides all the <b>bit level</b> operations for {@link BigInteger}.
  *
  *  The operations are: <ul type="circle"> <li>Left Shifting</li>

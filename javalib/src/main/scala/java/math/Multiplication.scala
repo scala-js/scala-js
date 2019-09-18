@@ -25,6 +25,8 @@ package java.math
 
 import scala.annotation.tailrec
 
+import java.util.ScalaOps._
+
 /** Object that provides all multiplication of {@link BigInteger} methods. */
 private[math] object Multiplication {
 

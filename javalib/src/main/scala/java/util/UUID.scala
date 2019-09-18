@@ -41,18 +41,18 @@ final class UUID private (
   def this(mostSigBits: Long, leastSigBits: Long) = {
     this((mostSigBits >>> 32).toInt, mostSigBits.toInt,
         (leastSigBits >>> 32).toInt, leastSigBits.toInt,
-        mostSigBits, leastSigBits)
+        JLong.valueOf(mostSigBits), JLong.valueOf(leastSigBits))
   }
 
   def getLeastSignificantBits(): Long = {
     if (l2 eq null)
-      l2 = (i3.toLong << 32) | (i4.toLong & 0xffffffffL)
+      l2 = JLong.valueOf((i3.toLong << 32) | (i4.toLong & 0xffffffffL))
     l2.longValue
   }
 
   def getMostSignificantBits(): Long = {
     if (l1 eq null)
-      l1 = (i1.toLong << 32) | (i2.toLong & 0xffffffffL)
+      l1 = JLong.valueOf((i1.toLong << 32) | (i2.toLong & 0xffffffffL))
     l1.longValue
   }
 

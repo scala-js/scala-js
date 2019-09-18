@@ -12,7 +12,6 @@
 
 package java.util
 
-import scala.collection._
 import scala.concurrent.duration._
 
 class Timer() {

@@ -42,6 +42,7 @@ package java.math
 
 import java.util.Arrays
 import java.util.Random
+import java.util.ScalaOps._
 
 /** Provides primality probabilistic methods. */
 private[math] object Primality {
@@ -52,7 +53,7 @@ private[math] object Primality {
       59, 54, 49, 44, 38, 32, 26, 1)
 
   /** All prime numbers with bit length lesser than 10 bits. */
-  private val Primes = Array[Int](2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
+  private val Primes = Array(2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
       31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101,
       103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167,
       173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239,

@@ -42,7 +42,7 @@ class Date private (private val date: js.Date) extends Object
   def this(date: String) = {
     this({
       val jsDate = new js.Date(date)
-      if (jsDate.getTime().isNaN)
+      if (java.lang.Double.isNaN(jsDate.getTime()))
         throw new IllegalArgumentException
       jsDate
     })
@@ -55,7 +55,7 @@ class Date private (private val date: js.Date) extends Object
   override def clone(): Object = new Date(new js.Date(date.getTime()))
 
   override def compareTo(anotherDate: Date): Int =
-    date.getTime().compareTo(anotherDate.date.getTime())
+    java.lang.Double.compare(date.getTime(), anotherDate.date.getTime())
 
   override def equals(obj: Any): Boolean = obj match {
     case d: Date => d.date.getTime() == date.getTime()
@@ -158,7 +158,7 @@ object Date {
   @Deprecated
   def parse(string: String): Long = {
     val time = new js.Date(string).getTime()
-    if (time.isNaN)
+    if (java.lang.Double.isNaN(time))
       throw new IllegalArgumentException
     time.toLong
   }

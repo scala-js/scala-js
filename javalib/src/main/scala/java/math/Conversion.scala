@@ -25,6 +25,8 @@ package java.math
 
 import scala.annotation.tailrec
 
+import java.util.ScalaOps._
+
 /** Provides {@link BigInteger} base conversions.
  *
  *  Static library that provides {@link BigInteger} base conversion from/to any
@@ -37,7 +39,7 @@ private[math] object Conversion {
    *  Holds the maximal exponent for each radix, so that
    *  radix<sup>digitFitInInt[radix]</sup> fit in an {@code int} (32 bits).
    */
-  final val DigitFitInInt = Array[Int](
+  final val DigitFitInInt = Array(
       -1, -1, 31, 19, 15, 13, 11, 11, 10, 9, 9, 8, 8, 8, 8, 7, 7, 7, 7, 7, 7, 7,
       6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5)
 
@@ -47,7 +49,7 @@ private[math] object Conversion {
    *  numbers from 2 to 36) that fit into unsigned int (32 bits). bigRadices[0] =
    *  2 ^ 31, bigRadices[8] = 10 ^ 9, etc.
    */
-  final val BigRadices = Array[Int](
+  final val BigRadices = Array(
       -2147483648, 1162261467, 1073741824, 1220703125, 362797056, 1977326743,
       1073741824, 387420489, 1000000000, 214358881, 429981696, 815730721,
       1475789056, 170859375, 268435456, 410338673, 612220032, 893871739,
@@ -130,13 +132,19 @@ private[math] object Conversion {
           while (j < 8 && currentChar > 0) {
             resDigit = digits(i) >> (j << 2) & 0xf
             currentChar -= 1
-            result = resDigit.toHexString + result
+            result = Integer.toHexString(resDigit) + result
             j += 1
           }
         }
       }
+
       // strip leading zero's
-      result = result.dropWhile(_ == '0')
+      var dropLen = 0
+      while (result.charAt(dropLen) == '0')
+        dropLen += 1
+      if (dropLen != 0)
+        result = result.substring(dropLen)
+
       if (sign == -1) "-" + result
       else result
     }

@@ -162,7 +162,7 @@ abstract class CharBuffer private[nio] (
 
   @noinline
   def compareTo(that: CharBuffer): Int =
-    GenBuffer(this).generic_compareTo(that)(_.compareTo(_))
+    GenBuffer(this).generic_compareTo(that)(Character.compare(_, _))
 
   override def toString(): String = {
     if (_array != null) { // even if read-only

@@ -52,9 +52,18 @@ object RoundingMode {
   def values(): Array[RoundingMode] = _values.clone()
 
   def valueOf(name: String): RoundingMode = {
-    _values.find(_.name == name).getOrElse {
-      throw new IllegalArgumentException("No enum const RoundingMode." + name)
+    // scalastyle:off return
+    val values = _values // local copy
+    val len = values.length
+    var i = 0
+    while (i != len) {
+      val value = values(i)
+      if (value.name == name)
+        return value
+      i += 1
     }
+    throw new IllegalArgumentException("No enum const RoundingMode." + name)
+    // scalastyle:on return
   }
 
   def valueOf(mode: Int): RoundingMode = (mode: @switch) match {
@@ -70,4 +79,3 @@ object RoundingMode {
       throw new IllegalArgumentException("Invalid rounding mode")
   }
 }
-

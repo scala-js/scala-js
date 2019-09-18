@@ -180,8 +180,17 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
     entrySet.scalaOps.foldLeft(0)((prev, item) => item.hashCode + prev)
 
   override def toString(): String = {
-    entrySet.iterator.scalaOps.map {
-      e => s"${e.getKey}=${e.getValue}"
-    }.scalaOps.mkString("{", ", ", "}")
+    var result = "{"
+    var first = true
+    val iter = entrySet().iterator()
+    while (iter.hasNext()) {
+      val entry = iter.next()
+      if (first)
+        first = false
+      else
+        result += ", "
+      result = result + entry.getKey() + "=" + entry.getValue()
+    }
+    result + "}"
   }
 }

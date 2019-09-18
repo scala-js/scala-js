@@ -41,7 +41,8 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
 
   def this(toCopyIn: Array[E]) = {
     this()
-    toCopyIn.foreach(add)
+    for (i <- 0 until toCopyIn.length)
+      add(toCopyIn(i))
   }
 
   def size(): Int =
@@ -83,13 +84,13 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   def toArray[T](a: Array[T]): Array[T] = {
     val componentType = a.getClass.getComponentType
     val toFill: Array[T] =
-      if (a.size >= size) a
+      if (a.length >= size) a
       else jlr.Array.newInstance(componentType, size).asInstanceOf[Array[T]]
 
     val iter = iterator
     for (i <- 0 until size)
       toFill(i) = iter.next().asInstanceOf[T]
-    if (toFill.size > size)
+    if (toFill.length > size)
       toFill(size) = null.asInstanceOf[T]
     toFill
   }
@@ -116,13 +117,13 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   def add(index: Int, element: E): Unit = {
     checkIndexOnBounds(index)
     copyIfNeeded()
-    innerSplice(index, 0, element)
+    innerInsert(index, element)
   }
 
   def remove(index: Int): E = {
     checkIndexInBounds(index)
     copyIfNeeded()
-    innerSplice(index, 1)(0)
+    innerRemove(index)
   }
 
   def remove(o: scala.Any): Boolean = {
@@ -182,7 +183,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
     checkIndexOnBounds(index)
     copyIfNeeded()
-    innerSplice(index, 0, c.asInstanceOf[Collection[E]].scalaOps.toSeq: _*)
+    innerInsertMany(index, c)
     !c.isEmpty
   }
 
@@ -202,7 +203,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
          * truncate at the current index.
          */
         copyIfNeeded()
-        innerSplice(index, size() - index)
+        innerRemoveMany(index, size() - index)
         /* Now keep iterating, but push elements that do not pass the test.
          * `index` is useless from now on, so do not keep updating it.
          */
@@ -267,8 +268,20 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   protected def innerPush(elem: E): Unit =
     inner.push(elem)
 
-  protected def innerSplice(index: Int, deleteCount: Int, items: E*): js.Array[E] =
-    inner.splice(index, deleteCount, items: _*)
+  protected def innerInsert(index: Int, elem: E): Unit =
+    inner.splice(index, 0, elem)
+
+  protected def innerInsertMany(index: Int, items: Collection[_ <: E]): Unit = {
+    val itemsArray = js.Array[E]()
+    items.scalaOps.foreach(itemsArray.push(_))
+    inner.splice(index, 0, itemsArray.toSeq: _*)
+  }
+
+  protected def innerRemove(index: Int): E =
+    inner.splice(index, 1)(0)
+
+  protected def innerRemoveMany(index: Int, count: Int): Unit =
+    inner.splice(index, count)
 
   protected def copyIfNeeded(): Unit = {
     if (requiresCopyOnWrite) {
@@ -291,7 +304,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
 
     override def clear(): Unit = {
       copyIfNeeded()
-      self.innerSplice(fromIndex, size)
+      self.innerRemoveMany(fromIndex, size)
       changeSize(-size)
     }
 
@@ -325,19 +338,30 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     override protected def innerSet(index: Int, elem: E): Unit =
       self.innerSet(fromIndex + index, elem)
 
-    override protected def innerSplice(index: Int, deleteCount: Int,
-        items: E*): js.Array[E] = {
-      changeSize(items.size - deleteCount)
-      self.innerSplice(fromIndex + index, deleteCount, items: _*)
+    override protected def innerPush(elem: E): Unit = {
+      changeSize(1)
+      self.innerInsert(toIndex - 1, elem)
     }
 
-    override protected def innerPush(elem: E): Unit = {
-      if (toIndex < self.size) {
-        innerSplice(size, 0, elem)
-      } else {
-        changeSize(1)
-        self.innerPush(elem)
-      }
+    override protected def innerInsert(index: Int, elem: E): Unit = {
+      changeSize(1)
+      self.innerInsert(fromIndex + index, elem)
+    }
+
+    override protected def innerInsertMany(index: Int,
+        items: Collection[_ <: E]): Unit = {
+      changeSize(items.size())
+      self.innerInsertMany(fromIndex + index, items)
+    }
+
+    override protected def innerRemove(index: Int): E = {
+      changeSize(-1)
+      self.innerRemove(fromIndex + index)
+    }
+
+    override protected def innerRemoveMany(index: Int, count: Int): Unit = {
+      changeSize(-count)
+      self.innerRemoveMany(index, count)
     }
 
     override protected def copyIfNeeded(): Unit =

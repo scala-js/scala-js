@@ -136,7 +136,7 @@ abstract class FloatBuffer private[nio] (
 
   @noinline
   def compareTo(that: FloatBuffer): Int =
-    GenBuffer(this).generic_compareTo(that)(_.compareTo(_))
+    GenBuffer(this).generic_compareTo(that)(java.lang.Float.compare(_, _))
 
   def order(): ByteOrder
 

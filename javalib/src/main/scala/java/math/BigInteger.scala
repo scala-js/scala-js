@@ -41,8 +41,10 @@
 
 package java.math
 
-import java.util.Random
 import scala.annotation.tailrec
+
+import java.util.Random
+import java.util.ScalaOps._
 
 object BigInteger {
 
@@ -178,8 +180,12 @@ class BigInteger extends Number with Comparable[BigInteger] {
     checkNotNull(magnitude)
     if ((signum < -1) || (signum > 1))
       throw new NumberFormatException("Invalid signum value")
-    if (signum == 0 && magnitude.exists(_ != 0))
-      throw new NumberFormatException("signum-magnitude mismatch")
+    if (signum == 0) {
+      for (i <- 0 until magnitude.length) {
+        if (magnitude(i) != 0)
+          throw new NumberFormatException("signum-magnitude mismatch")
+      }
+    }
 
     if (magnitude.length == 0) {
       sign = 0
@@ -678,7 +684,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
 
   def toByteArray(): Array[Byte] = {
     if (this.sign == 0)
-      return Array[Byte](0) // scalastyle:ignore
+      return Array(0.toByte) // scalastyle:ignore
 
     val temp: BigInteger = this
     val bitLen = bitLength()
@@ -771,8 +777,17 @@ class BigInteger extends Number with Comparable[BigInteger] {
     numberLength += 1
   }
 
-  private[math] def equalsArrays(b: Array[Int]): Boolean =
-    (0 until numberLength).forall(i => digits(i) == b(i))
+  private[math] def equalsArrays(b: Array[Int]): Boolean = {
+    // scalastyle:off return
+    var i = 0
+    while (i != numberLength) {
+      if (digits(i) != b(i))
+        return false
+      i += 1
+    }
+    true
+    // scalastyle:on return
+  }
 
   private[math] def getFirstNonzeroDigit(): Int = {
     if (firstNonzeroDigit == firstNonzeroDigitNotSet) {

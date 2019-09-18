@@ -52,8 +52,12 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
 
   def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
     checkIndexOnBounds(index)
-    for ((elem, i) <- c.iterator().scalaOps.zipWithIndex.scalaOps)
-      add(index + i, elem)
+    var i = index
+    val iter = c.iterator()
+    while (iter.hasNext()) {
+      add(i, iter.next())
+      i += 1
+    }
     !c.isEmpty
   }
 

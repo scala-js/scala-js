@@ -12,43 +12,24 @@
 
 package java.util
 
-import scala.collection.immutable
-import scala.collection.mutable
-
 /** Make some Scala collection APIs available on Java collections. */
-private[util] object ScalaOps {
+private[java] object ScalaOps {
 
-  implicit class ToScalaIterableOps[A] private[ScalaOps] (
-      val __self: scala.collection.Iterable[A])
-      extends AnyVal {
-    def javaIterator(): Iterator[A] =
-      new JavaIteratorAdapter(__self.iterator)
+  implicit class IntScalaOps private[ScalaOps] (val __self: Int) extends AnyVal {
+    @inline def until(end: Int): SimpleRange =
+      new SimpleRange(__self, end)
   }
 
-  private class JavaIteratorAdapter[A](scalaIterator: scala.collection.Iterator[A])
-      extends Iterator[A] {
-    def hasNext(): Boolean = scalaIterator.hasNext
-    def next(): A = scalaIterator.next()
-
-    def remove(): Unit =
-      throw new UnsupportedOperationException("remove")
-  }
-
-  implicit class ScalaIteratorOps[A] private[ScalaOps] (
-      val __self: scala.collection.Iterator[A])
-      extends AnyVal {
-
-    def asJavaEnumeration(): Enumeration[A] =
-      new JavaEnumerationAdapter(__self)
-  }
-
-  private class JavaEnumerationAdapter[A] private[ScalaOps] (
-      val __self: scala.collection.Iterator[A])
-      extends Enumeration[A] {
-
-    def hasMoreElements(): Boolean = __self.hasNext
-
-    def nextElement(): A = __self.next()
+  @inline
+  final class SimpleRange(start: Int, end: Int) {
+    @inline
+    def foreach[U](f: Int => U): Unit = {
+      var i = start
+      while (i < end) {
+        f(i)
+        i += 1
+      }
+    }
   }
 
   implicit class ToJavaIterableOps[A] private[ScalaOps] (
@@ -84,15 +65,6 @@ private[util] object ScalaOps {
 
     @inline def reduceLeft[B >: A](f: (B, A) => B): B =
       __self.iterator().scalaOps.reduceLeft(f)
-
-    @inline def toList: immutable.List[A] =
-      __self.iterator().scalaOps.toList
-
-    @inline def toSeq: immutable.Seq[A] =
-      __self.iterator().scalaOps.toSeq
-
-    @inline def toSet: immutable.Set[A] =
-      __self.iterator().scalaOps.toSet
 
     @inline def mkString(start: String, sep: String, end: String): String =
       __self.iterator().scalaOps.mkString(start, sep, end)
@@ -164,20 +136,6 @@ private[util] object ScalaOps {
       foldLeft[B](__self.next())(f)
     }
 
-    @inline def toList: immutable.List[A] = {
-      val builder = immutable.List.newBuilder[A]
-      foreach(builder += _)
-      builder.result()
-    }
-
-    @inline def toSeq: immutable.Seq[A] = toList
-
-    @inline def toSet: immutable.Set[A] = {
-      val builder = immutable.Set.newBuilder[A]
-      foreach(builder += _)
-      builder.result()
-    }
-
     @inline def mkString(start: String, sep: String, end: String): String = {
       var result: String = start
       var first = true
@@ -190,58 +148,6 @@ private[util] object ScalaOps {
       }
       result + end
     }
-
-    @inline def map[B](f: A => B): Iterator[B] =
-      new MappedIterator(__self, f)
-
-    @inline def withFilter(f: A => Boolean): IteratorWithFilter[A] =
-      new IteratorWithFilter(__self, f)
-
-    @inline def zipWithIndex: Iterator[(A, Int)] =
-      new IteratorWithIndex(__self)
-  }
-
-  @inline
-  private class MappedIterator[A, B](iter: Iterator[A], f: A => B)
-      extends Iterator[B] {
-
-    def hasNext(): Boolean = iter.hasNext()
-
-    def next(): B = f(iter.next())
-
-    def remove(): Unit = iter.remove()
-  }
-
-  @inline
-  final class IteratorWithFilter[A] private[ScalaOps] (
-      iter: Iterator[A], pred: A => Boolean) {
-
-    def foreach[U](f: A => U): Unit = {
-      for (x <- iter.scalaOps) {
-        if (pred(x))
-          f(x)
-      }
-    }
-
-    def withFilter(f: A => Boolean): IteratorWithFilter[A] =
-      new IteratorWithFilter(iter, x => pred(x) && f(x))
-  }
-
-  @inline
-  private class IteratorWithIndex[A](iter: Iterator[A])
-      extends Iterator[(A, Int)] {
-
-    private var lastIndex = -1
-
-    def hasNext(): Boolean = iter.hasNext()
-
-    def next(): (A, Int) = {
-      val index = lastIndex + 1
-      lastIndex = index
-      (iter.next(), index)
-    }
-
-    def remove(): Unit = iter.remove()
   }
 
   implicit class ToJavaEnumerationOps[A] private[ScalaOps] (

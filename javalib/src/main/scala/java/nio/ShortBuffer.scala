@@ -136,7 +136,7 @@ abstract class ShortBuffer private[nio] (
 
   @noinline
   def compareTo(that: ShortBuffer): Int =
-    GenBuffer(this).generic_compareTo(that)(_.compareTo(_))
+    GenBuffer(this).generic_compareTo(that)(java.lang.Short.compare(_, _))
 
   def order(): ByteOrder
 

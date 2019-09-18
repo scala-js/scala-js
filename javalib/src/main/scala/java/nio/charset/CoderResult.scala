@@ -14,9 +14,9 @@ package java.nio.charset
 
 import scala.annotation.switch
 
-import scala.collection.mutable
-
 import java.nio._
+
+import scala.scalajs.js
 
 class CoderResult private (kind: Int, _length: Int) {
   import CoderResult._
@@ -57,14 +57,16 @@ object CoderResult {
   private val Malformed3 = new CoderResult(Malformed, 3)
   private val Malformed4 = new CoderResult(Malformed, 4)
 
-  private val uniqueMalformed = mutable.Map.empty[Int, CoderResult]
+  // This is a sparse array
+  private val uniqueMalformed = js.Array[js.UndefOr[CoderResult]]()
 
   private val Unmappable1 = new CoderResult(Unmappable, 1)
   private val Unmappable2 = new CoderResult(Unmappable, 2)
   private val Unmappable3 = new CoderResult(Unmappable, 3)
   private val Unmappable4 = new CoderResult(Unmappable, 4)
 
-  private val uniqueUnmappable = mutable.Map.empty[Int, CoderResult]
+  // This is a sparse array
+  private val uniqueUnmappable = js.Array[js.UndefOr[CoderResult]]()
 
   @inline def malformedForLength(length: Int): CoderResult = (length: @switch) match {
     case 1 => Malformed1
@@ -74,8 +76,15 @@ object CoderResult {
     case _ => malformedForLengthImpl(length)
   }
 
-  private def malformedForLengthImpl(length: Int): CoderResult =
-    uniqueMalformed.getOrElseUpdate(length, new CoderResult(Malformed, length))
+  private def malformedForLengthImpl(length: Int): CoderResult = {
+    uniqueMalformed(length).fold {
+      val result = new CoderResult(Malformed, length)
+      uniqueMalformed(length) = result
+      result
+    } { result =>
+      result
+    }
+  }
 
   @inline def unmappableForLength(length: Int): CoderResult = (length: @switch) match {
     case 1 => Unmappable1
@@ -85,6 +94,13 @@ object CoderResult {
     case _ => unmappableForLengthImpl(length)
   }
 
-  private def unmappableForLengthImpl(length: Int): CoderResult =
-    uniqueUnmappable.getOrElseUpdate(length, new CoderResult(Unmappable, length))
+  private def unmappableForLengthImpl(length: Int): CoderResult = {
+    uniqueUnmappable(length).fold {
+      val result = new CoderResult(Unmappable, length)
+      uniqueUnmappable(length) = result
+      result
+    } { result =>
+      result
+    }
+  }
 }

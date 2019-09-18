@@ -14,6 +14,7 @@ package java.nio.charset
 
 import java.nio.{ByteBuffer, CharBuffer}
 import java.util.{Collections, HashSet, Arrays}
+import java.util.ScalaOps._
 
 import scala.scalajs.js
 
@@ -88,8 +89,9 @@ object Charset {
     val m = js.Dictionary.empty[Charset]
     for (c <- js.Array(US_ASCII, ISO_8859_1, UTF_8, UTF_16BE, UTF_16LE, UTF_16)) {
       m(c.name.toLowerCase) = c
-      for (alias <- c._aliases)
-        m(alias.toLowerCase) = c
+      val aliases = c._aliases
+      for (i <- 0 until aliases.length)
+        m(aliases(i).toLowerCase) = c
     }
     m
   }

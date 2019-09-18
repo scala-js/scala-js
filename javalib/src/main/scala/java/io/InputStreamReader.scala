@@ -126,7 +126,8 @@ class InputStreamReader(private[this] var in: InputStream,
     }
 
     val charsRead = loopWithOutBuf(2*len)
-    assert(charsRead != 0) // can be -1, though
+    if (charsRead == 0)
+      throw new AssertionError() // can be -1, though
     outBuf.flip()
 
     if (charsRead == -1) -1
@@ -154,10 +155,12 @@ class InputStreamReader(private[this] var in: InputStream,
       out.position() - initPos
     } else if (result.isUnderflow) {
       if (endOfInput) {
-        assert(!inBuf.hasRemaining,
-            "CharsetDecoder.decode() should not have returned UNDERFLOW when "+
-            "both endOfInput and inBuf.hasRemaining are true. It should have "+
-            "returned a MalformedInput error instead.")
+        if (inBuf.hasRemaining) {
+          throw new AssertionError(
+              "CharsetDecoder.decode() should not have returned UNDERFLOW " +
+              "when both endOfInput and inBuf.hasRemaining are true. It " +
+              "should have returned a MalformedInput error instead.")
+        }
         // Flush
         if (decoder.flush(out).isOverflow) {
           InputStreamReader.Overflow

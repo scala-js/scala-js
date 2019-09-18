@@ -12,196 +12,81 @@
 
 package java.util
 
-import java.lang.Comparable
+import java.util.{RedBlackTree => RB}
 
-import scala.math.Ordering
+class TreeSet[E] private (tree: RB.Tree[E, Any])(
+    implicit comp: Comparator[_ >: E])
+    extends AbstractSet[E] with NavigableSet[E] with Cloneable with Serializable {
 
-import scala.collection.mutable
+  import TreeSet._
 
-import Compat.SortedSetCompat
-import ScalaOps._
-
-class TreeSet[E] (_comparator: Comparator[_ >: E])
-    extends AbstractSet[E]
-    with NavigableSet[E]
-    with Cloneable
-    with Serializable { self =>
+  /* Note: in practice, the values of `tree` are always `()` (aka `undefined`).
+   * We use `Any` because we need to deal with `null`s, and referencing
+   * `scala.runtime.BoxedUnit` in this code would be really ugly.
+   */
 
   def this() =
-    this(null.asInstanceOf[Comparator[_ >: E]])
+    this(RB.Tree.empty[E, Any])(NaturalComparator)
+
+  def this(comparator: Comparator[_ >: E]) =
+    this(RB.Tree.empty[E, Any])(NaturalComparator.select(comparator))
 
   def this(collection: Collection[_ <: E]) = {
-    this(null.asInstanceOf[Comparator[E]])
+    this()
     addAll(collection)
   }
 
   def this(sortedSet: SortedSet[E]) = {
-    this(sortedSet.comparator())
-    addAll(sortedSet)
+    this(RB.fromOrderedKeys(sortedSet.iterator(), sortedSet.size()))(
+        NaturalComparator.select(sortedSet.comparator()))
   }
 
-  private implicit object BoxOrdering extends Ordering[Box[E]] {
+  def iterator(): Iterator[E] =
+    RB.keysIterator(tree)
 
-    val cmp = {
-      if (_comparator ne null) _comparator
-      else defaultOrdering[E]
-    }
-
-    def compare(a: Box[E], b: Box[E]): Int = cmp.compare(a.inner, b.inner)
-
-  }
-
-  protected val inner: mutable.TreeSet[Box[E]] = new mutable.TreeSet[Box[E]]()
-
-  def iterator(): Iterator[E] = {
-    new Iterator[E] {
-      private val iter = inner.clone.iterator
-
-      private var last: Option[E] = None
-
-      def hasNext(): Boolean = iter.hasNext
-
-      def next(): E = {
-        last = Some(iter.next().inner)
-        last.get
-      }
-
-      def remove(): Unit = {
-        if (last.isEmpty) {
-          throw new IllegalStateException()
-        } else {
-          last.foreach(self.remove(_))
-          last = None
-        }
-      }
-    }
-  }
-
-  def descendingIterator(): Iterator[E] = {
-    new Iterator[E] {
-      private val iter = inner.iterator.toList.reverse.iterator
-
-      private var last: Option[E] = None
-
-      def hasNext(): Boolean = iter.hasNext
-
-      def next(): E = {
-        val nxt = iter.next().inner
-        last = Some(nxt)
-        nxt
-      }
-
-      def remove(): Unit = {
-        if (last.isEmpty) {
-          throw new IllegalStateException()
-        } else {
-          last.foreach(self.remove(_))
-          last = None
-        }
-      }
-    }
-  }
+  def descendingIterator(): Iterator[E] =
+    RB.descendingKeysIterator(tree)
 
   def descendingSet(): NavigableSet[E] = {
-    val descSetFun = { () =>
-      val retSet = new mutable.TreeSet[Box[E]]()(BoxOrdering.reverse)
-      retSet ++= inner
-      retSet
-    }
-    new NavigableView(this, descSetFun, None, true, None, true)
+    new DescendingProjection(tree, null.asInstanceOf[E], RB.NoBound,
+        null.asInstanceOf[E], RB.NoBound)
   }
 
   def size(): Int =
-    inner.size
+    RB.size(tree)
 
   override def isEmpty(): Boolean =
-    inner.headOption.isEmpty
+    RB.isEmpty(tree)
 
   override def contains(o: Any): Boolean =
-    inner.contains(Box(o.asInstanceOf[E]))
+    RB.contains(tree, o)
 
-  override def add(e: E): Boolean = {
-    val boxed = Box(e)
-
-    if (isEmpty)
-      BoxOrdering.compare(boxed, boxed)
-
-    inner.add(boxed)
-  }
+  override def add(e: E): Boolean =
+    RB.insert(tree, e, ()) == null
 
   override def remove(o: Any): Boolean =
-    inner.remove(Box(o.asInstanceOf[E]))
+    RB.delete(tree, o) != null
 
   override def clear(): Unit =
-    inner.clear()
-
-  override def addAll(c: Collection[_ <: E]): Boolean = {
-    val iter = c.iterator()
-    var changed = false
-    while (iter.hasNext)
-      changed = add(iter.next()) || changed
-    changed
-  }
-
-  override def removeAll(c: Collection[_]): Boolean = {
-    val iter = c.iterator()
-    var changed = false
-    while (iter.hasNext)
-      changed = inner.remove(Box(iter.next).asInstanceOf[Box[E]]) || changed
-    changed
-  }
+    RB.clear(tree)
 
   def subSet(fromElement: E, fromInclusive: Boolean, toElement: E,
       toInclusive: Boolean): NavigableSet[E] = {
-    val boxedFrom = Box(fromElement)
-    val boxedTo = Box(toElement)
-
-    val subSetFun = { () =>
-      val base = new mutable.TreeSet[Box[E]]
-      base ++= inner.range(boxedFrom, boxedTo)
-      if (!fromInclusive)
-        base -= boxedFrom
-      if (toInclusive && inner.contains(boxedTo))
-        base += boxedTo
-      base
-    }
-
-    new NavigableView(this, subSetFun,
-        Some(fromElement), fromInclusive,
-        Some(toElement), toInclusive)
+    new Projection(tree,
+        fromElement, RB.boundKindFromIsInclusive(fromInclusive),
+        toElement, RB.boundKindFromIsInclusive(toInclusive))
   }
 
   def headSet(toElement: E, inclusive: Boolean): NavigableSet[E] = {
-    val boxed = Box(toElement)
-
-    val headSetFun = { () =>
-      val base = new mutable.TreeSet[Box[E]]
-      if (inclusive)
-        base ++= inner.rangeTo(boxed)
-      else
-        base ++= inner.rangeUntil(boxed)
-      base
-    }
-
-    new NavigableView(this, headSetFun,
-        None, true,
-        Some(toElement), inclusive)
+    new Projection(tree,
+        null.asInstanceOf[E], RB.NoBound,
+        toElement, RB.boundKindFromIsInclusive(inclusive))
   }
 
   def tailSet(fromElement: E, inclusive: Boolean): NavigableSet[E] = {
-    val boxed = Box(fromElement)
-
-    val tailSetFun = { () =>
-      val base = new mutable.TreeSet[Box[E]]
-      base ++= inner.rangeFrom(boxed)
-      if (!inclusive)
-        base -= boxed
-      base
-    }
-
-    new NavigableView(this, tailSetFun,
-        Some(fromElement), inclusive,
-        None, true)
+    new Projection(tree,
+        fromElement, RB.boundKindFromIsInclusive(inclusive),
+        null.asInstanceOf[E], RB.NoBound)
   }
 
   def subSet(fromElement: E, toElement: E): SortedSet[E] =
@@ -213,44 +98,336 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
   def tailSet(fromElement: E): SortedSet[E] =
     tailSet(fromElement, true)
 
-  def comparator(): Comparator[_ >: E] = _comparator
+  def comparator(): Comparator[_ >: E] =
+    NaturalComparator.unselect(comp)
 
-  def first(): E =
-    inner.head.inner
+  def first(): E = {
+    if (isEmpty())
+      throw new NoSuchElementException()
+    RB.minKey(tree)
+  }
 
-  def last(): E =
-    inner.last.inner
+  def last(): E = {
+    if (isEmpty())
+      throw new NoSuchElementException()
+    RB.maxKey(tree)
+  }
 
   def lower(e: E): E =
-    headSet(e, false).last()
+    RB.maxKeyBefore(tree, e, RB.ExclusiveBound)
 
   def floor(e: E): E =
-    headSet(e, true).last()
+    RB.maxKeyBefore(tree, e, RB.InclusiveBound)
 
   def ceiling(e: E): E =
-    tailSet(e, true).first()
+    RB.minKeyAfter(tree, e, RB.InclusiveBound)
 
   def higher(e: E): E =
-    tailSet(e, false).first()
+    RB.minKeyAfter(tree, e, RB.ExclusiveBound)
 
   def pollFirst(): E = {
-    val polled = inner.headOption
-    if (polled.isDefined) {
-      val elem = polled.get.inner
-      remove(elem)
-      elem
-    } else null.asInstanceOf[E]
+    val node = RB.minNode(tree)
+    if (node ne null) {
+      RB.deleteNode(tree, node)
+      node.key
+    } else {
+      null.asInstanceOf[E]
+    }
   }
 
   def pollLast(): E = {
-    val polled = inner.lastOption
-    if (polled.isDefined) {
-      val elem = polled.get.inner
-      remove(elem)
-      elem
-    } else null.asInstanceOf[E]
+    val node = RB.maxNode(tree)
+    if (node ne null) {
+      RB.deleteNode(tree, node)
+      node.key
+    } else {
+      null.asInstanceOf[E]
+    }
   }
 
   override def clone(): TreeSet[E] =
-    new TreeSet(this)
+    new TreeSet(tree.treeCopy())(comp)
+}
+
+private object TreeSet {
+  private abstract class AbstractProjection[E](
+      protected val tree: RB.Tree[E, Any],
+      protected val lowerBound: E, protected val lowerKind: RB.BoundKind,
+      protected val upperBound: E, protected val upperKind: RB.BoundKind)(
+      implicit protected val comp: Comparator[_ >: E])
+      extends AbstractSet[E] with NavigableSet[E] {
+
+    // To be implemented by the two concrete subclasses, depending on the order
+
+    protected def nextKey(key: E, boundKind: RB.BoundKind): E
+    protected def previousKey(key: E, boundKind: RB.BoundKind): E
+
+    protected def subSetGeneric(newFromElement: E = null.asInstanceOf[E],
+        newFromBoundKind: RB.BoundKind = RB.NoBound,
+        newToElement: E = null.asInstanceOf[E],
+        newToBoundKind: RB.BoundKind = RB.NoBound): NavigableSet[E]
+
+    // Implementation of most of the NavigableSet API
+
+    def size(): Int =
+      RB.projectionSize(tree, lowerBound, lowerKind, upperBound, upperKind)
+
+    override def isEmpty(): Boolean =
+      RB.projectionIsEmpty(tree, lowerBound, lowerKind, upperBound, upperKind)
+
+    override def contains(o: Any): Boolean =
+      isWithinBounds(o) && RB.contains(tree, o)
+
+    override def add(e: E): Boolean = {
+      if (!isWithinBounds(e))
+        throw new IllegalArgumentException
+      RB.insert(tree, e, ()) == null
+    }
+
+    override def remove(o: Any): Boolean =
+      isWithinBounds(o) && RB.delete(tree, o) != null
+
+    def lower(e: E): E =
+      previousKey(e, RB.ExclusiveBound)
+
+    def floor(e: E): E =
+      previousKey(e, RB.InclusiveBound)
+
+    def ceiling(e: E): E =
+      nextKey(e, RB.InclusiveBound)
+
+    def higher(e: E): E =
+      nextKey(e, RB.ExclusiveBound)
+
+    def subSet(fromElement: E, fromInclusive: Boolean, toElement: E,
+        toInclusive: Boolean): NavigableSet[E] = {
+      subSetGeneric(
+          fromElement, RB.boundKindFromIsInclusive(fromInclusive),
+          toElement, RB.boundKindFromIsInclusive(toInclusive))
+    }
+
+    def headSet(toElement: E, inclusive: Boolean): NavigableSet[E] = {
+      subSetGeneric(newToElement = toElement,
+          newToBoundKind = RB.boundKindFromIsInclusive(inclusive))
+    }
+
+    def tailSet(fromElement: E, inclusive: Boolean): NavigableSet[E] = {
+      subSetGeneric(newFromElement = fromElement,
+          newFromBoundKind = RB.boundKindFromIsInclusive(inclusive))
+    }
+
+    def subSet(fromElement: E, toElement: E): SortedSet[E] =
+      subSet(fromElement, true, toElement, false)
+
+    def headSet(toElement: E): SortedSet[E] =
+      headSet(toElement, false)
+
+    def tailSet(fromElement: E): SortedSet[E] =
+      tailSet(fromElement, true)
+
+    // Common implementation of pollFirst() and pollLast()
+
+    @inline
+    protected final def pollLower(): E = {
+      val node = RB.minNodeAfter(tree, lowerBound, lowerKind)
+      if (node ne null) {
+        val key = node.key
+        if (isWithinUpperBound(key)) {
+          RB.deleteNode(tree, node)
+          key
+        } else {
+          null.asInstanceOf[E]
+        }
+      } else {
+        null.asInstanceOf[E]
+      }
+    }
+
+    @inline
+    protected final def pollUpper(): E = {
+      val node = RB.maxNodeBefore(tree, upperBound, upperKind)
+      if (node ne null) {
+        val key = node.key
+        if (isWithinLowerBound(key)) {
+          RB.deleteNode(tree, node)
+          key
+        } else {
+          null.asInstanceOf[E]
+        }
+      } else {
+        null.asInstanceOf[E]
+      }
+    }
+
+    // Helpers
+
+    protected final def isWithinBounds(key: Any): Boolean =
+      isWithinLowerBound(key) && isWithinUpperBound(key)
+
+    protected final def isWithinLowerBound(key: Any): Boolean =
+      RB.isWithinLowerBound(key, lowerBound, lowerKind)
+
+    protected final def isWithinUpperBound(key: Any): Boolean =
+      RB.isWithinUpperBound(key, upperBound, upperKind)
+
+    protected final def ifWithinLowerBound(e: E): E =
+      if (e != null && isWithinLowerBound(e)) e
+      else null.asInstanceOf[E]
+
+    protected final def ifWithinUpperBound(e: E): E =
+      if (e != null && isWithinUpperBound(e)) e
+      else null.asInstanceOf[E]
+  }
+
+  private final class Projection[E](
+      tree0: RB.Tree[E, Any], fromElement0: E, fromBoundKind0: RB.BoundKind,
+      toElement0: E, toBoundKind0: RB.BoundKind)(
+      implicit comp: Comparator[_ >: E])
+      extends AbstractProjection[E](tree0, fromElement0, fromBoundKind0,
+          toElement0, toBoundKind0) {
+
+    // Access fields under a different name, more appropriate for some uses
+
+    @inline private def fromElement: E = lowerBound
+    @inline private def fromBoundKind: RB.BoundKind = lowerKind
+    @inline private def toElement: E = upperBound
+    @inline private def toBoundKind: RB.BoundKind = upperKind
+
+    /* Implementation of the abstract methods from AbstractProjection
+     * Some are marked `@inline` for the likely case where
+     * `DescendingProjection` is not reachable at all and hence
+     * dead-code-eliminated.
+     */
+
+    @inline
+    protected def nextKey(key: E, boundKind: RB.BoundKind): E =
+      ifWithinUpperBound(RB.minKeyAfter(tree, key, boundKind))
+
+    @inline
+    protected def previousKey(key: E, boundKind: RB.BoundKind): E =
+      ifWithinLowerBound(RB.maxKeyBefore(tree, key, boundKind))
+
+    protected def subSetGeneric(
+        newFromElement: E, newFromBoundKind: RB.BoundKind,
+        newToElement: E, newToBoundKind: RB.BoundKind): NavigableSet[E] = {
+      val intersectedFromBound = RB.intersectLowerBounds(
+          new RB.Bound(fromElement, fromBoundKind),
+          new RB.Bound(newFromElement, newFromBoundKind))
+      val intersectedToBound = RB.intersectUpperBounds(
+          new RB.Bound(toElement, toBoundKind),
+          new RB.Bound(newToElement, newToBoundKind))
+      new Projection(tree,
+          intersectedFromBound.bound, intersectedFromBound.kind,
+          intersectedToBound.bound, intersectedToBound.kind)
+    }
+
+    // Methods of the NavigableSet API that are not implemented in AbstractProjection
+
+    def iterator(): Iterator[E] =
+      RB.projectionKeysIterator(tree, fromElement, fromBoundKind, toElement, toBoundKind)
+
+    def comparator(): Comparator[_ >: E] =
+      NaturalComparator.unselect(comp)
+
+    def first(): E = {
+      val key = nextKey(fromElement, fromBoundKind)
+      if (key == null)
+        throw new NoSuchElementException()
+      key
+    }
+
+    def last(): E = {
+      val key = previousKey(toElement, toBoundKind)
+      if (key == null)
+        throw new NoSuchElementException()
+      key
+    }
+
+    @noinline
+    def pollFirst(): E =
+      pollLower()
+
+    @noinline
+    def pollLast(): E =
+      pollUpper()
+
+    def descendingSet(): NavigableSet[E] =
+      new DescendingProjection(tree, toElement, toBoundKind, fromElement, fromBoundKind)
+
+    def descendingIterator(): Iterator[E] =
+      RB.descendingKeysIterator(tree, toElement, toBoundKind, fromElement, fromBoundKind)
+  }
+
+  private final class DescendingProjection[E](
+      tree0: RB.Tree[E, Any], fromElement0: E, fromBoundKind0: RB.BoundKind,
+      toElement0: E, toBoundKind0: RB.BoundKind)(
+      implicit comp: Comparator[_ >: E])
+      extends AbstractProjection[E](tree0, toElement0, toBoundKind0,
+          fromElement0, fromBoundKind0) {
+
+    // Access fields under a different name, more appropriate for some uses
+
+    @inline private def fromElement: E = upperBound
+    @inline private def fromBoundKind: RB.BoundKind = upperKind
+    @inline private def toElement: E = lowerBound
+    @inline private def toBoundKind: RB.BoundKind = lowerKind
+
+    // Implementation of the abstract methods from AbstractProjection
+
+    protected def nextKey(key: E, boundKind: RB.BoundKind): E =
+      ifWithinLowerBound(RB.maxKeyBefore(tree, key, boundKind))
+
+    protected def previousKey(key: E, boundKind: RB.BoundKind): E =
+      ifWithinUpperBound(RB.minKeyAfter(tree, key, boundKind))
+
+    protected def subSetGeneric(
+        newFromElement: E, newFromBoundKind: RB.BoundKind,
+        newToElement: E, newToBoundKind: RB.BoundKind): NavigableSet[E] = {
+      val intersectedFromBound = RB.intersectUpperBounds(
+          new RB.Bound(fromElement, fromBoundKind),
+          new RB.Bound(newFromElement, newFromBoundKind))
+      val intersectedToBound = RB.intersectLowerBounds(
+          new RB.Bound(toElement, toBoundKind),
+          new RB.Bound(newToElement, newToBoundKind))
+      new Projection(tree,
+          intersectedFromBound.bound, intersectedFromBound.kind,
+          intersectedToBound.bound, intersectedToBound.kind)
+    }
+
+    // Methods of the NavigableSet API that are not implemented in AbstractProjection
+
+    def iterator(): Iterator[E] =
+      RB.descendingKeysIterator(tree, fromElement, fromBoundKind, toElement, toBoundKind)
+
+    def comparator(): Comparator[_ >: E] =
+      Collections.reverseOrder(NaturalComparator.unselect(comp))
+
+    def first(): E = {
+      val key = nextKey(fromElement, fromBoundKind)
+      if (key == null)
+        throw new NoSuchElementException()
+      key
+    }
+
+    def last(): E = {
+      val key = previousKey(toElement, toBoundKind)
+      if (key == null)
+        throw new NoSuchElementException()
+      key
+    }
+
+    @noinline
+    def pollFirst(): E =
+      pollUpper()
+
+    @noinline
+    def pollLast(): E =
+      pollLower()
+
+    def descendingSet(): NavigableSet[E] =
+      new Projection(tree, toElement, toBoundKind, fromElement, fromBoundKind)
+
+    def descendingIterator(): Iterator[E] =
+      RB.projectionKeysIterator(tree, toElement, toBoundKind, fromElement, fromBoundKind)
+  }
 }

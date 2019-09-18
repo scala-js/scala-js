@@ -23,8 +23,11 @@
 
 package java.math
 
-import java.util.Arrays
 import scala.annotation.tailrec
+
+import java.lang.{Double => JDouble}
+import java.util.Arrays
+import java.util.ScalaOps._
 
 object BigDecimal {
 
@@ -84,8 +87,16 @@ object BigDecimal {
   private final val ZeroScaledBy =
     Array.tabulate[BigDecimal](BigIntScaledByZeroLength)(new BigDecimal(0, _))
 
-  /** An array filled with characters <code>'0'</code>. */
-  private final val CharZeros = Array.fill[Char](100)('0')
+  /** A string filled with 100 times the character `'0'`.
+   *  It is not a `final` val so that it isn't copied at every call site.
+   */
+  private val CharZeros: String = {
+    "00000000000000000000000000000000000000000000000000" +
+    "00000000000000000000000000000000000000000000000000"
+  }
+
+  /** `CharZeros.length`. */
+  final val CharZerosLength = 100
 
   def valueOf(unscaledVal: Long, scale: Int): BigDecimal = {
     if (scale == 0)
@@ -104,7 +115,7 @@ object BigDecimal {
   }
 
   def valueOf(d: Double): BigDecimal = {
-    if (d.isInfinite || d.isNaN)
+    if (JDouble.isInfinite(d) || JDouble.isNaN(d))
       throw new NumberFormatException("Infinity or NaN: " + d)
 
     new BigDecimal(d.toString)
@@ -386,7 +397,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     }
 
     val (unscaled, bufLength) = {
-      val u = in.subSequence(begin, index).toString
+      val u = String.valueOf(in, begin, index - begin)
       val b = index - begin
       // A decimal point was found
       if ((index <= last) && (in(index) == '.')) {
@@ -401,10 +412,10 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
           index += 1
         }
         _scale = index - begin
-        (u + in.subSequence(begin, begin + _scale).toString, b + _scale)
+        (u + String.valueOf(in, begin, _scale), b + _scale)
       } else {
         _scale = 0
-        (u,b)
+        (u, b)
       }
     }
 
@@ -458,7 +469,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
 
   def this(dVal: Double) = {
     this()
-    if (dVal.isInfinite || dVal.isNaN)
+    if (JDouble.isInfinite(dVal) || JDouble.isNaN(dVal))
       throw new NumberFormatException("Infinity or NaN: " + dVal)
 
     val bits = java.lang.Double.doubleToLongBits(dVal)
@@ -1301,7 +1312,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
               intString.insert(end - _scale, ".")
             } else {
               intString.insert(begin - 1, "0.").insert(
-                  begin + 1, CharZeros.mkString, 0, -exponent.toInt - 1)
+                  begin + 1, CharZeros, 0, -exponent.toInt - 1)
             }
           } else {
             val r0 =
@@ -1332,7 +1343,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
             intString.insert(end - _scale, ".")
           } else {
             intString.insert(begin - 1, "0.").insert(begin + 1,
-                CharZeros.mkString, 0, -exponent0.toInt - 1)
+                CharZeros, 0, -exponent0.toInt - 1)
           }
         } else {
           val delta = end - begin
@@ -1384,18 +1395,17 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       var delta = _scale
       // We take space for all digits, plus a possible decimal point, plus 'scale'
       var result = if (begin == 1) "-" else ""
-      val charZerosStr = CharZeros.mkString
 
       if (_scale > 0) {
         delta -= intStr.length - begin
         if (delta >= 0) {
           result += "0."
           // To append zeros after the decimal point
-          while (delta > CharZeros.length) {
-            result += charZerosStr
-            delta -= CharZeros.length
+          while (delta > CharZerosLength) {
+            result += CharZeros
+            delta -= CharZerosLength
           }
-          result += charZerosStr.substring(0, delta) + intStr.substring(begin)
+          result += CharZeros.substring(0, delta) + intStr.substring(begin)
         } else {
           delta = begin - delta
           result += intStr.substring(begin, delta) + "." + intStr.substring(delta)
@@ -1403,11 +1413,11 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       } else { // (scale <= 0)
         result += intStr.substring(begin)
         // To append trailing zeros
-        while (delta < -CharZeros.length) {
-          result += charZerosStr
-          delta += CharZeros.length
+        while (delta < -CharZerosLength) {
+          result += CharZeros
+          delta += CharZerosLength
         }
-        result += charZerosStr.substring(0, -delta)
+        result += CharZeros.substring(0, -delta)
       }
       result
     }

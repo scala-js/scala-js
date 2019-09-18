@@ -15,6 +15,7 @@ package java.util
 import scala.annotation.switch
 import scala.scalajs.js
 
+import java.lang.{Double => JDouble}
 import java.io._
 
 final class Formatter(private[this] var dest: Appendable)
@@ -264,7 +265,7 @@ final class Formatter(private[this] var dest: Appendable)
     @inline def efgCommon(notation: (Double, Int, Boolean) => String): Unit = {
       arg match {
         case arg: Double =>
-          if (arg.isNaN || arg.isInfinite) {
+          if (JDouble.isNaN(arg) || JDouble.isInfinite(arg)) {
             formatNaNOrInfinite(flags, width, arg)
           } else {
             /* The alternative format # of 'e', 'f' and 'g' is to force a
@@ -553,7 +554,7 @@ final class Formatter(private[this] var dest: Appendable)
   }
 
   private def formatNaNOrInfinite(flags: Flags, width: Int, x: Double): Unit = {
-    val str = if (x.isNaN) {
+    val str = if (JDouble.isNaN(x)) {
       "NaN"
     } else if (x > 0.0) {
       if (flags.positivePlus) "+Infinity"

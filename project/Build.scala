@@ -130,7 +130,7 @@ object Build {
     "Whether we should partest the current scala version (and fail if we can't)")
 
   /* MiMa configuration -- irrelevant while in 1.0.0-SNAPSHOT.
-  val previousVersion = "0.6.28"
+  val previousVersion = "0.6.29"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
@@ -884,6 +884,11 @@ object Build {
       ensureSAMSupportSetting,
       noClassFilesSettings,
       scalaJSExternalCompileSettings,
+
+      /* Do not import `Predef._` so that we have a better control of when
+       * we rely on the Scala library.
+       */
+      scalacOptions += "-Yno-predef",
 
       headerSources in Compile ~= { srcs =>
         srcs.filter { src =>

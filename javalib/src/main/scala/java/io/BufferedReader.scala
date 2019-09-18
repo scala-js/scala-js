@@ -41,7 +41,7 @@ class BufferedReader(in: Reader, sz: Int) extends Reader {
     ensureOpen()
 
     val srcBuf = buf
-    if (buf.size < readAheadLimit)
+    if (buf.length < readAheadLimit)
       buf = new Array[Char](readAheadLimit)
 
     // Move data to beginning of buffer

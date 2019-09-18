@@ -136,7 +136,7 @@ abstract class DoubleBuffer private[nio] (
 
   @noinline
   def compareTo(that: DoubleBuffer): Int =
-    GenBuffer(this).generic_compareTo(that)(_.compareTo(_))
+    GenBuffer(this).generic_compareTo(that)(java.lang.Double.compare(_, _))
 
   def order(): ByteOrder
 
