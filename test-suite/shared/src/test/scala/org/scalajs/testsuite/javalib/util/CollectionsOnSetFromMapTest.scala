@@ -28,7 +28,7 @@ trait CollectionsOnSetFromMapTest extends SetTest {
       def empty[E: ClassTag]: ju.Set[E] =
         ju.Collections.newSetFromMap[E](mapFactory.empty[E, jl.Boolean])
 
-      def allowsNullElement: Boolean =
+      override def allowsNullElement: Boolean =
         mapFactory.allowsNullKeys
     }
   }
