@@ -135,39 +135,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
       if (name0.charAt(name0.length()-1) != ' ') name0
       else name0.substring(0, name0.length()-1)
 
-    /* Java-defined fields are always accessed as if they were private. This
-     * is necessary because they are defined as private by our .scala source
-     * files, but they are considered `!isPrivate` at use site, since their
-     * symbols come from Java-emitted .class files. Fortunately, we can
-     * easily detect those as `isJavaDefined`. This includes fields of Ref
-     * types (IntRef, ObjectRef, etc.) which were special-cased at use-site
-     * in Scala.js < 0.6.15.
-     * Caveat: because of this, changing the length of the superclass chain of
-     * a Java-defined class is a binary incompatible change.
-     *
-     * We also special case outer fields. This essentially fixes #2382, which
-     * is caused by a class having various $outer pointers in its hierarchy
-     * that point to different outer instances. Without this fix, they all
-     * collapse to the same field in the IR.
-     *
-     * TODO We should probably consider emitting *all* fields with an ancestor
-     * count. We cannot do that in a binary compatible way, though. This is
-     * filed as #2629.
-     */
-    val idSuffix: String = {
-      val usePerClassSuffix = {
-        sym.isPrivate ||
-        sym.isJavaDefined ||
-        sym.isOuterField
-      }
-      if (usePerClassSuffix)
-        sym.owner.ancestors.count(!_.isTraitOrInterface).toString
-      else
-        "f"
-    }
-
-    val encodedName = name + "$" + idSuffix
-    js.Ident(mangleJSName(encodedName), Some(sym.unexpandedName.decoded))
+    js.Ident(mangleJSName(name), Some(sym.unexpandedName.decoded))
   }
 
   def encodeMethodSym(sym: Symbol, reflProxy: Boolean = false)(

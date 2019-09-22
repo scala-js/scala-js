@@ -170,7 +170,8 @@ object Trees {
       implicit val pos: Position) extends Tree {
     require(lhs match {
       case _:VarRef | _:Select | _:SelectStatic | _:ArraySelect |
-          _:JSPrivateSelect | _:JSSelect | _:JSSuperSelect | _:JSGlobalRef =>
+          _:RecordSelect | _:JSPrivateSelect | _:JSSelect | _:JSSuperSelect |
+          _:JSGlobalRef =>
         true
       case _ =>
         false
@@ -249,10 +250,10 @@ object Trees {
     val tpe = NoType // cannot be in expression position
   }
 
-  case class Select(qualifier: Tree, item: Ident)(val tpe: Type)(
+  case class Select(qualifier: Tree, cls: ClassRef, field: Ident)(val tpe: Type)(
       implicit val pos: Position) extends Tree
 
-  case class SelectStatic(cls: ClassRef, item: Ident)(val tpe: Type)(
+  case class SelectStatic(cls: ClassRef, field: Ident)(val tpe: Type)(
       implicit val pos: Position) extends Tree
 
   /** Apply an instance method with dynamic dispatch (the default). */
@@ -450,6 +451,10 @@ object Trees {
   case class RecordValue(tpe: RecordType, elems: List[Tree])(
       implicit val pos: Position) extends Tree
 
+  case class RecordSelect(record: Tree, field: Ident)(val tpe: Type)(
+      implicit val pos: Position)
+      extends Tree
+
   case class IsInstanceOf(expr: Tree, typeRef: TypeRef)(
       implicit val pos: Position) extends Tree {
     val tpe = BooleanType
@@ -488,7 +493,7 @@ object Trees {
     val tpe = AnyType
   }
 
-  case class JSPrivateSelect(qualifier: Tree, item: Ident)(
+  case class JSPrivateSelect(qualifier: Tree, cls: ClassRef, field: Ident)(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }

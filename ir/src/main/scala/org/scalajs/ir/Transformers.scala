@@ -91,8 +91,8 @@ object Transformers {
         case StoreModule(cls, value) =>
           StoreModule(cls, transformExpr(value))
 
-        case Select(qualifier, item) =>
-          Select(transformExpr(qualifier), item)(tree.tpe)
+        case Select(qualifier, cls, field) =>
+          Select(transformExpr(qualifier), cls, field)(tree.tpe)
 
         case Apply(flags, receiver, method, args) =>
           Apply(flags, transformExpr(receiver), method,
@@ -126,6 +126,9 @@ object Transformers {
         case RecordValue(tpe, elems) =>
           RecordValue(tpe, elems map transformExpr)
 
+        case RecordSelect(record, field) =>
+          RecordSelect(transformExpr(record), field)(tree.tpe)
+
         case IsInstanceOf(expr, cls) =>
           IsInstanceOf(transformExpr(expr), cls)
 
@@ -143,8 +146,8 @@ object Transformers {
         case JSNew(ctor, args) =>
           JSNew(transformExpr(ctor), args.map(transformExprOrJSSpread))
 
-        case JSPrivateSelect(qualifier, item) =>
-          JSPrivateSelect(transformExpr(qualifier), item)
+        case JSPrivateSelect(qualifier, cls, field) =>
+          JSPrivateSelect(transformExpr(qualifier), cls, field)
 
         case JSSelect(qualifier, item) =>
           JSSelect(transformExpr(qualifier), transformExpr(item))

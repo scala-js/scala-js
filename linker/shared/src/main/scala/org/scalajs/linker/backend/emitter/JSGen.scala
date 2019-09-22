@@ -101,9 +101,39 @@ private[emitter] final class JSGen(val semantics: Semantics,
       VarDef(name, rhs = None)
   }
 
+  def genSelect(receiver: Tree, cls: ClassRef, field: irt.Ident)(
+      implicit pos: Position): Tree = {
+    genSelect(receiver, cls.className, field)
+  }
+
+  def genSelect(receiver: Tree, cls: String, field: irt.Ident)(
+      implicit pos: Position): Tree = {
+    DotSelect(receiver, genFieldIdent(cls, field)(field.pos))
+  }
+
+  private def genFieldIdent(cls: String, field: irt.Ident)(
+      implicit pos: Position): Ident = {
+    Ident(cls + "__f_" + field.name, field.originalName)
+  }
+
   def genSelectStatic(className: String, item: irt.Ident)(
       implicit pos: Position): VarRef = {
     envField("t", className + "__" + item.name)
+  }
+
+  /* The similarity with `genSelect` is accidental. It will probably evolve in
+   * the future, to emit selections of symbols that are private to the
+   * Scala.js-generated code.
+   */
+  def genJSPrivateSelect(receiver: Tree, cls: ClassRef, field: irt.Ident)(
+      implicit pos: Position): Tree = {
+    DotSelect(receiver, genJSPrivateFieldIdent(cls.className, field)(field.pos))
+  }
+
+  // The similarity with `genFieldIdent is accidental. See above.
+  def genJSPrivateFieldIdent(cls: String, field: irt.Ident)(
+      implicit pos: Position): Ident = {
+    Ident(cls + "__f_" + field.name, field.originalName)
   }
 
   def genIsInstanceOf(expr: Tree, typeRef: TypeRef)(

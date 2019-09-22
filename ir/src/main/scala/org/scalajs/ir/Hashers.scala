@@ -202,16 +202,17 @@ object Hashers {
           mixClassRef(cls)
           mixTree(value)
 
-        case Select(qualifier, item) =>
+        case Select(qualifier, cls, field) =>
           mixTag(TagSelect)
           mixTree(qualifier)
-          mixIdent(item)
+          mixClassRef(cls)
+          mixIdent(field)
           mixType(tree.tpe)
 
-        case SelectStatic(cls, item) =>
+        case SelectStatic(cls, field) =>
           mixTag(TagSelectStatic)
           mixClassRef(cls)
-          mixIdent(item)
+          mixIdent(field)
           mixType(tree.tpe)
 
         case Apply(flags, receiver, method, args) =>
@@ -275,6 +276,12 @@ object Hashers {
           mixType(tpe)
           mixTrees(elems)
 
+        case RecordSelect(record, field) =>
+          mixTag(TagRecordSelect)
+          mixTree(record)
+          mixIdent(field)
+          mixType(tree.tpe)
+
         case IsInstanceOf(expr, cls) =>
           mixTag(TagIsInstanceOf)
           mixTree(expr)
@@ -299,10 +306,11 @@ object Hashers {
           mixTree(ctor)
           mixTreeOrJSSpreads(args)
 
-        case JSPrivateSelect(qualifier, item) =>
+        case JSPrivateSelect(qualifier, cls, field) =>
           mixTag(TagJSPrivateSelect)
           mixTree(qualifier)
-          mixIdent(item)
+          mixClassRef(cls)
+          mixIdent(field)
 
         case JSSelect(qualifier, item) =>
           mixTag(TagJSSelect)

@@ -74,6 +74,8 @@ object Analysis {
     def isModuleAccessed: Boolean
     def areInstanceTestsUsed: Boolean
     def isDataAccessed: Boolean
+    def isAnyStaticFieldUsed: Boolean
+    def isAnyPrivateJSFieldUsed: Boolean
     def linkedFrom: scala.collection.Seq[From]
     def instantiatedFrom: scala.collection.Seq[From]
     def methodInfos(

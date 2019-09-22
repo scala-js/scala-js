@@ -27,7 +27,8 @@ private[emitter] trait GlobalKnowledge {
    *  It is invalid to call this method with anything but a `Class` or
    *  `ModuleClass`.
    */
-  def getAllScalaClassFieldDefs(className: String): List[FieldDef]
+  def getAllScalaClassFieldDefs(
+      className: String): List[(String, List[FieldDef])]
 
   /** Tests whether the specified class uses an inlineable init.
    *

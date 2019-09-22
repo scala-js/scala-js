@@ -396,6 +396,18 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     // Record names
 
+    def makeRecordFieldVarRef(tree: RecordSelect): VarRef =
+      VarRef(makeRecordFieldIdent(tree)(tree.pos))(tree.tpe)(tree.pos)
+
+    def makeRecordFieldIdent(tree: RecordSelect)(
+        implicit pos: Position): Ident = {
+      val recIdent = (tree.record: @unchecked) match {
+        case VarRef(ident)        => ident
+        case record: RecordSelect => makeRecordFieldIdent(record)
+      }
+      makeRecordFieldIdent(recIdent, tree.field)
+    }
+
     def makeRecordFieldIdent(recIdent: Ident, fieldIdent: Ident)(
         implicit pos: Position): Ident =
       makeRecordFieldIdent(recIdent.name, recIdent.originalName,
@@ -545,15 +557,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case Skip() =>
           js.Skip()
 
-        case Assign(RecordFieldVarRef(lhs), rhs) =>
-          pushLhsInto(Lhs.Assign(lhs), rhs, tailPosLabels)
-
-        case Assign(select @ Select(qualifier, item), rhs) =>
+        case Assign(select @ Select(qualifier, cls, field), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
             js.Assign(
-                js.DotSelect(transformExprNoChar(newQualifier),
-                    transformPropIdent(item))(select.pos),
+                genSelect(transformExprNoChar(newQualifier), cls, field)(select.pos),
                 transformExpr(newRhs, select.tpe))
           }
 
@@ -577,12 +585,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               }
           }
 
-        case Assign(select @ JSPrivateSelect(qualifier, item), rhs) =>
+        case Assign(lhs: RecordSelect, rhs) =>
+          pushLhsInto(Lhs.Assign(makeRecordFieldVarRef(lhs)), rhs, tailPosLabels)
+
+        case Assign(select @ JSPrivateSelect(qualifier, cls, field), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
             js.Assign(
-                js.DotSelect(transformExprNoChar(newQualifier),
-                    transformPropIdent(item))(select.pos),
+                genJSPrivateSelect(transformExprNoChar(newQualifier),
+                    cls, field)(select.pos),
                 transformExprNoChar(newRhs))
           }
 
@@ -811,8 +822,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 implicit val env = env0
                 newName match {
                   case newName: Ident =>
-                    val descriptors = js.ObjectConstr(List(
-                        transformPropIdent(newName) -> descriptor))
+                    val fieldIdent =
+                      genJSPrivateFieldIdent(enclosingClassName, newName)
+                    val descriptors =
+                      js.ObjectConstr(List(fieldIdent -> descriptor))
                     makeObjectMethodApply("defineProperties",
                         List(js.This(), descriptors))
 
@@ -855,18 +868,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       }
     }
 
-    private object RecordFieldVarRef {
-      def unapply(tree: Tree): Option[VarRef] = {
-        tree match {
-          case Select(RecordVarRef(VarRef(recIdent)), fieldIdent) =>
-            implicit val pos = tree.pos
-            Some(VarRef(makeRecordFieldIdent(recIdent, fieldIdent))(tree.tpe))
-          case _ =>
-            None
-        }
-      }
-    }
-
     def transformBlockStats(trees: List[Tree])(
         implicit env: Env): (List[js.Tree], Env) = {
 
@@ -887,20 +888,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       }
 
       transformLoop(trees, env, Nil)
-    }
-
-    private object RecordVarRef {
-      def unapply(tree: Tree): Option[VarRef] = {
-        if (!tree.tpe.isInstanceOf[RecordType]) None
-        else {
-          tree match {
-            case tree: VarRef => Some(tree)
-            case Select(RecordVarRef(VarRef(recIdent)), fieldIdent) =>
-              implicit val pos = tree.pos
-              Some(VarRef(makeRecordFieldIdent(recIdent, fieldIdent))(tree.tpe))
-          }
-        }
-      }
     }
 
     /** Same as `unnest`, but allows (and preserves) [[JSSpread]]s at the
@@ -1026,8 +1013,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
               case New(cls, constr, args) if noExtractYet =>
                 New(cls, constr, recs(args))
-              case Select(qualifier, item) if noExtractYet =>
-                Select(rec(qualifier), item)(arg.tpe)
+              case Select(qualifier, cls, item) if noExtractYet =>
+                Select(rec(qualifier), cls, item)(arg.tpe)
               case Apply(flags, receiver, method, args) if noExtractYet =>
                 val newArgs = recs(args)
                 Apply(flags, rec(receiver), method, newArgs)(arg.tpe)
@@ -1041,6 +1028,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               case ArraySelect(array, index) if noExtractYet =>
                 val newIndex = rec(index)
                 ArraySelect(rec(array), newIndex)(arg.tpe)
+              case RecordSelect(record, field) if noExtractYet =>
+                RecordSelect(rec(record), field)(arg.tpe)
               case Transient(CallHelper(helper, args)) if noExtractYet =>
                 Transient(CallHelper(helper, recs(args)))(arg.tpe)
 
@@ -1165,7 +1154,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           allowUnpure || !env.isLocalMutable(name)
 
         // Fields may throw if qualifier is null
-        case Select(qualifier, item) =>
+        case Select(qualifier, _, _) =>
           allowSideEffects && test(qualifier)
 
         // Static fields are side-effect free
@@ -1192,6 +1181,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSBinaryOp(_, lhs, rhs) => test(lhs) && test(rhs)
         case JSUnaryOp(_, lhs)       => test(lhs)
         case ArrayLength(array)      => test(array)
+        case RecordSelect(record, _) => test(record)
         case IsInstanceOf(expr, _)   => test(expr)
 
         // Expressions preserving side-effect freedom
@@ -1237,7 +1227,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // JavaScript expressions that can always have side-effects
         case JSNew(fun, args) =>
           allowSideEffects && test(fun) && (args.forall(testJSArg))
-        case JSPrivateSelect(qualifier, item) =>
+        case JSPrivateSelect(qualifier, _, _) =>
           allowSideEffects && test(qualifier)
         case JSSelect(qualifier, item) =>
           allowSideEffects && test(qualifier) && test(item)
@@ -1580,9 +1570,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             redo(New(cls, ctor, newArgs))(env)
           }
 
-        case Select(qualifier, item) =>
+        case Select(qualifier, cls, item) =>
           unnest(qualifier) { (newQualifier, env) =>
-            redo(Select(newQualifier, item)(rhs.tpe))(env)
+            redo(Select(newQualifier, cls, item)(rhs.tpe))(env)
           }
 
         case Apply(flags, receiver, method, args) =>
@@ -1628,6 +1618,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case ArraySelect(array, index) =>
           unnest(array, index) { (newArray, newIndex, env) =>
             redo(ArraySelect(newArray, newIndex)(rhs.tpe))(env)
+          }
+
+        case RecordSelect(record, field) =>
+          unnest(record) { (newRecord, env) =>
+            redo(RecordSelect(newRecord, field)(rhs.tpe))(env)
           }
 
         case IsInstanceOf(expr, cls) =>
@@ -1726,9 +1721,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             redo(JSImportCall(newArg))(env)
           }
 
-        case JSPrivateSelect(qualifier, item) =>
+        case JSPrivateSelect(qualifier, cls, field) =>
           unnest(qualifier) { (newQualifier, env) =>
-            redo(JSPrivateSelect(newQualifier, item))(env)
+            redo(JSPrivateSelect(newQualifier, cls, field))(env)
           }
 
         case JSSelect(qualifier, item) =>
@@ -2014,12 +2009,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case LoadModule(cls) =>
           genLoadModule(cls.className)
 
-        case RecordFieldVarRef(VarRef(name)) =>
-          assert(env.isLocalVar(name), name.name)
-          js.VarRef(transformLocalVarIdent(name))
-
-        case Select(qualifier, item) =>
-          transformExprNoChar(qualifier) DOT transformPropIdent(item)
+        case Select(qualifier, cls, field) =>
+          genSelect(transformExprNoChar(qualifier), cls, field)
 
         case SelectStatic(cls, item) =>
           genSelectStatic(cls.className, item)
@@ -2408,6 +2399,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               js.BracketSelect(js.DotSelect(newArray, js.Ident("u")), newIndex)
           }
 
+        case tree: RecordSelect =>
+          val name = makeRecordFieldIdent(tree)
+          assert(env.isLocalVar(name), name.name)
+          js.VarRef(transformLocalVarIdent(name))
+
         case IsInstanceOf(expr, cls) =>
           genIsInstanceOf(transformExprNoChar(expr), cls)
 
@@ -2447,14 +2443,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 case ClassOf(tpe) =>
                   genClassDataOf(tpe)
                 case jlClass =>
-                  js.DotSelect(transformExprNoChar(jlClass), js.Ident("data$1"))
+                  js.DotSelect(transformExprNoChar(jlClass), js.Ident("jl_Class__f_data"))
               }
             case "arrayDataOf" =>
               js.Apply(js.DotSelect(transformExprNoChar(args.head),
                   js.Ident("getArrayOf")), Nil)
             case "zeroOf" =>
               js.DotSelect(
-                  js.DotSelect(transformExprNoChar(args.head), js.Ident("data$1")),
+                  js.DotSelect(transformExprNoChar(args.head), js.Ident("jl_Class__f_data")),
                   js.Ident("zero"))
             case _ =>
               genCallHelper(helper,
@@ -2466,8 +2462,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSNew(constr, args) =>
           js.New(transformExprNoChar(constr), args.map(transformJSArg))
 
-        case JSPrivateSelect(qualifier, item) =>
-          js.DotSelect(transformExprNoChar(qualifier), transformPropIdent(item))
+        case JSPrivateSelect(qualifier, cls, field) =>
+          genJSPrivateSelect(transformExprNoChar(qualifier), cls, field)
 
         case JSSelect(qualifier, item) =>
           genBracketSelect(transformExprNoChar(qualifier),

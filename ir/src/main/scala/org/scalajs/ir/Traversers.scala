@@ -84,7 +84,7 @@ object Traversers {
       case StoreModule(cls, value) =>
         traverse(value)
 
-      case Select(qualifier, item) =>
+      case Select(qualifier, cls, field) =>
         traverse(qualifier)
 
       case Apply(_, receiver, method, args) =>
@@ -121,6 +121,9 @@ object Traversers {
       case RecordValue(tpe, elems) =>
         elems foreach traverse
 
+      case RecordSelect(record, field) =>
+        traverse(record)
+
       case IsInstanceOf(expr, cls) =>
         traverse(expr)
 
@@ -139,7 +142,7 @@ object Traversers {
         traverse(ctor)
         args.foreach(traverseTreeOrJSSpread)
 
-      case JSPrivateSelect(qualifier, item) =>
+      case JSPrivateSelect(qualifier, _, _) =>
         traverse(qualifier)
 
       case JSSelect(qualifier, item) =>

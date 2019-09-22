@@ -147,7 +147,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     def isInterface(className: String): Boolean =
       classes(className).askIsInterface(this)
 
-    def getAllScalaClassFieldDefs(className: String): List[FieldDef] =
+    def getAllScalaClassFieldDefs(className: String): List[(String, List[FieldDef])] =
       classes(className).askAllScalaClassFieldDefs(this)
 
     def hasInlineableInit(className: String): Boolean =
@@ -175,6 +175,8 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
   private class Class(initClass: LinkedClass,
       initHasInlineableInit: Boolean)
       extends Unregisterable {
+
+    private val encodedName = initClass.encodedName
 
     private var isAlive: Boolean = true
 
@@ -308,14 +310,15 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       isInterface
     }
 
-    def askAllScalaClassFieldDefs(invalidatable: Invalidatable): List[FieldDef] = {
+    def askAllScalaClassFieldDefs(
+        invalidatable: Invalidatable): List[(String, List[FieldDef])] = {
       invalidatable.registeredTo(this)
       superClassAskers += invalidatable
       fieldDefsAskers += invalidatable
       val inheritedFieldDefs =
         if (superClass == null) Nil
         else classes(superClass).askAllScalaClassFieldDefs(invalidatable)
-      inheritedFieldDefs ::: fieldDefs
+      inheritedFieldDefs :+ (encodedName -> fieldDefs)
     }
 
     def askHasInlineableInit(invalidatable: Invalidatable): Boolean = {

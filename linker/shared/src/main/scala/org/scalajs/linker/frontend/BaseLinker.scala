@@ -151,7 +151,16 @@ final class BaseLinker(config: CommonPhaseConfig) {
 
     classDef.memberDefs.foreach {
       case field: FieldDef =>
-        if (analyzerInfo.isAnySubclassInstantiated)
+        val isNeeded = {
+          if (field.name.isInstanceOf[Ident]) {
+            if (field.flags.namespace.isStatic) analyzerInfo.isAnyStaticFieldUsed
+            else if (classDef.kind.isJSType) analyzerInfo.isAnyPrivateJSFieldUsed
+            else analyzerInfo.isAnySubclassInstantiated
+          } else {
+            analyzerInfo.isAnySubclassInstantiated
+          }
+        }
+        if (isNeeded)
           fields += field
 
       case m: MethodDef =>

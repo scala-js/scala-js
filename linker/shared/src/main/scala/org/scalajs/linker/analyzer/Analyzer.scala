@@ -493,7 +493,8 @@ private final class Analyzer(config: CommonPhaseConfig,
     var isModuleAccessed: Boolean = false
     var areInstanceTestsUsed: Boolean = false
     var isDataAccessed: Boolean = false
-    var isAnyStaticFieldReachable: Boolean = false
+    var isAnyStaticFieldUsed: Boolean = false
+    var isAnyPrivateJSFieldUsed: Boolean = false
 
     var instantiatedFrom: List[From] = Nil
 
@@ -1067,18 +1068,25 @@ private final class Analyzer(config: CommonPhaseConfig,
        * compiler to inline and stack allocate tuples created by the iterators
        */
 
+      val privateJSFieldsUsedIterator = data.privateJSFieldsUsed.iterator
+      while (privateJSFieldsUsedIterator.hasNext) {
+        val (className, fields) = privateJSFieldsUsedIterator.next()
+        if (fields.nonEmpty)
+          lookupClass(className)(_.isAnyPrivateJSFieldUsed = true)
+      }
+
       val staticFieldsReadIterator = data.staticFieldsRead.iterator
       while (staticFieldsReadIterator.hasNext) {
         val (className, fields) = staticFieldsReadIterator.next()
         if (fields.nonEmpty)
-          lookupClass(className)(_.isAnyStaticFieldReachable = true)
+          lookupClass(className)(_.isAnyStaticFieldUsed = true)
       }
 
       val staticFieldsWrittenIterator = data.staticFieldsWritten.iterator
       while (staticFieldsWrittenIterator.hasNext) {
         val (className, fields) = staticFieldsWrittenIterator.next()
         if (fields.nonEmpty)
-          lookupClass(className)(_.isAnyStaticFieldReachable = true)
+          lookupClass(className)(_.isAnyStaticFieldUsed = true)
       }
 
       val methodsCalledIterator = data.methodsCalled.iterator
@@ -1124,6 +1132,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         namespace,
         isAbstract = false,
         isExported = false,
+        privateJSFieldsUsed = Map.empty,
         staticFieldsRead = Map.empty,
         staticFieldsWritten = Map.empty,
         methodsCalled = methodsCalled,
