@@ -53,10 +53,12 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
         if (Objects.equals(iter.next(), o)) {
           iter.remove()
           true
-        } else
+        } else {
           findAndRemove(iter)
-      } else
+        }
+      } else {
         false
+      }
     }
     findAndRemove(iterator())
   }
