@@ -1086,16 +1086,18 @@ class PrintersTest {
         FieldDef(MemberFlags.empty, "x$1", IntType))
     assertPrintEquals("var y$1: any",
         FieldDef(MemberFlags.empty.withMutable(true), "y$1", AnyType))
+  }
 
+  @Test def printJSFieldDef(): Unit = {
     assertPrintEquals("""val "x": int""",
-        FieldDef(MemberFlags.empty, StringLiteral("x"), IntType))
+        JSFieldDef(MemberFlags.empty, StringLiteral("x"), IntType))
     assertPrintEquals("""var "y": any""",
-        FieldDef(MemberFlags.empty.withMutable(true), StringLiteral("y"), AnyType))
+        JSFieldDef(MemberFlags.empty.withMutable(true), StringLiteral("y"), AnyType))
 
     assertPrintEquals("""static val "x": int""",
-        FieldDef(MemberFlags.empty.withNamespace(Static), StringLiteral("x"), IntType))
+        JSFieldDef(MemberFlags.empty.withNamespace(Static), StringLiteral("x"), IntType))
     assertPrintEquals("""static var "y": any""",
-        FieldDef(MemberFlags.empty.withNamespace(Static).withMutable(true), StringLiteral("y"), AnyType))
+        JSFieldDef(MemberFlags.empty.withNamespace(Static).withMutable(true), StringLiteral("y"), AnyType))
   }
 
   @Test def printMethodDef(): Unit = {
@@ -1139,26 +1141,6 @@ class PrintersTest {
 
     assertPrintEquals(
         """
-          |def "m"(x: any): any = {
-          |  5
-          |}
-        """,
-        MethodDef(MemberFlags.empty, StringLiteral("m"),
-            List(ParamDef("x", AnyType, mutable = false, rest = false)),
-            AnyType, Some(i(5)))(NoOptHints, None))
-
-    assertPrintEquals(
-        """
-          |def "m"(...x: any): any = {
-          |  5
-          |}
-        """,
-        MethodDef(MemberFlags.empty, StringLiteral("m"),
-            List(ParamDef("x", AnyType, mutable = false, rest = true)),
-            AnyType, Some(i(5)))(NoOptHints, None))
-
-    assertPrintEquals(
-        """
           |static def m__I__I(x: int): int = {
           |  5
           |}
@@ -1188,7 +1170,39 @@ class PrintersTest {
             IntType, Some(i(5)))(NoOptHints, None))
   }
 
-  @Test def printPropertyDef(): Unit = {
+  @Test def printJSMethodDef(): Unit = {
+    assertPrintEquals(
+        """
+          |def "m"(x: any): any = {
+          |  5
+          |}
+        """,
+        JSMethodDef(MemberFlags.empty, StringLiteral("m"),
+            List(ParamDef("x", AnyType, mutable = false, rest = false)),
+            i(5))(NoOptHints, None))
+
+    assertPrintEquals(
+        """
+          |def "m"(...x: any): any = {
+          |  5
+          |}
+        """,
+        JSMethodDef(MemberFlags.empty, StringLiteral("m"),
+            List(ParamDef("x", AnyType, mutable = false, rest = true)),
+            i(5))(NoOptHints, None))
+
+    assertPrintEquals(
+        """
+          |static def "m"(x: any): any = {
+          |  5
+          |}
+        """,
+        JSMethodDef(MemberFlags.empty.withNamespace(Static), StringLiteral("m"),
+            List(ParamDef("x", AnyType, mutable = false, rest = false)),
+            i(5))(NoOptHints, None))
+  }
+
+  @Test def printJSPropertyDef(): Unit = {
     for (static <- Seq(false, true)) {
       val staticStr =
         if (static) "static "
@@ -1203,7 +1217,7 @@ class PrintersTest {
             |  5
             |}
           """,
-          PropertyDef(flags, StringLiteral("prop"), Some(i(5)), None))
+          JSPropertyDef(flags, StringLiteral("prop"), Some(i(5)), None))
 
       assertPrintEquals(
           s"""
@@ -1211,7 +1225,7 @@ class PrintersTest {
             |  7
             |}
           """,
-          PropertyDef(flags, StringLiteral("prop"),
+          JSPropertyDef(flags, StringLiteral("prop"),
               None,
               Some((ParamDef("x", AnyType, mutable = false, rest = false), i(7)))))
 
@@ -1224,7 +1238,7 @@ class PrintersTest {
             |  7
             |}
           """,
-          PropertyDef(flags, StringLiteral("prop"),
+          JSPropertyDef(flags, StringLiteral("prop"),
               Some(i(5)),
               Some((ParamDef("x", AnyType, mutable = false, rest = false),
                   i(7)))))
@@ -1249,10 +1263,10 @@ class PrintersTest {
           |export top static def "pkg.foo"(x: any): any = {
           |  5
           |}""",
-        TopLevelMethodExportDef(MethodDef(
+        TopLevelMethodExportDef(JSMethodDef(
             MemberFlags.empty.withNamespace(Static), StringLiteral("pkg.foo"),
             List(ParamDef("x", AnyType, mutable = false, rest = false)),
-            AnyType, Some(i(5)))(NoOptHints, None)))
+            i(5))(NoOptHints, None)))
   }
 
   @Test def printTopLevelFieldExportDef(): Unit = {

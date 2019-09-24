@@ -173,7 +173,7 @@ final class Emitter private (config: CommonPhaseConfig,
           methodName <- requiredMethodNames
           if !methods.exists { m =>
             m.value.flags.namespace == MemberNamespace.Public &&
-            m.value.name.encodedName == methodName
+            m.value.encodedName == methodName
           }
         } {
           implicit val pos = NoPosition
@@ -511,13 +511,13 @@ final class Emitter private (config: CommonPhaseConfig,
       val linkedMethodsAndBridges = if (ClassEmitter.shouldExtendJSError(linkedClass)) {
         val existingMethods = linkedMethods
           .withFilter(_.value.flags.namespace == MemberNamespace.Public)
-          .map(_.value.name.encodedName)
+          .map(_.value.encodedName)
           .toSet
 
         val bridges = for {
           m <- objectClass.methods
           if m.value.flags.namespace == MemberNamespace.Public
-          encodedName = m.value.name.encodedName
+          encodedName = m.value.encodedName
           if !existingMethods.contains(encodedName) && !isConstructorName(encodedName)
         } yield {
           import org.scalajs.ir.Trees._

@@ -159,8 +159,8 @@ private object Refiner {
 
   private class LinkedClassInfoCache {
     private var cacheUsed: Boolean = false
-    private val methodsInfoCaches = LinkedMembersInfosCache()
-    private val exportedMembersInfoCaches = LinkedMembersInfosCache()
+    private val methodsInfoCaches = LinkedMethodDefsInfosCache()
+    private val exportedMembersInfoCaches = LinkedJSMethodPropDefsInfosCache()
     private var info: Infos.ClassInfo = _
 
     def loadInfo(linkedClass: LinkedClass)(implicit ec: ExecutionContext): Future[Infos.ClassInfo] = Future {
@@ -182,8 +182,8 @@ private object Refiner {
           builder.maybeAddReferencedFieldClass(field.ftpe)
         for (linkedMethod <- linkedClass.methods)
           builder.addMethod(methodsInfoCaches.getInfo(linkedMethod))
-        for (linkedMember <- linkedClass.exportedMembers)
-          builder.addMethod(exportedMembersInfoCaches.getInfo(linkedMember))
+        for (info <- exportedMembersInfoCaches.getInfos(linkedClass.exportedMembers))
+          builder.addExportedMember(info)
 
         if (linkedClass.topLevelExports.nonEmpty) {
           /* We do not cache top-level exports, because they're quite rare,
@@ -193,7 +193,7 @@ private object Refiner {
 
           val optInfo = Infos.generateTopLevelExportsInfo(
               linkedClass.encodedName, linkedClass.topLevelExports.map(_.value))
-          optInfo.foreach(builder.addMethod(_))
+          optInfo.foreach(builder.addTopLevelExportedMember(_))
         }
 
         info = builder.result()
@@ -213,14 +213,14 @@ private object Refiner {
     }
   }
 
-  private final class LinkedMembersInfosCache private (
-      val caches: Array[mutable.Map[String, LinkedMemberInfoCache]])
+  private final class LinkedMethodDefsInfosCache private (
+      val caches: Array[mutable.Map[String, LinkedMethodDefInfoCache]])
       extends AnyVal {
 
-    def getInfo(member: Versioned[MemberDef]): Infos.MethodInfo = {
+    def getInfo(member: Versioned[MethodDef]): Infos.MethodInfo = {
       val memberDef = member.value
       val cache = caches(memberDef.flags.namespace.ordinal)
-        .getOrElseUpdate(memberDef.encodedName, new LinkedMemberInfoCache)
+        .getOrElseUpdate(memberDef.encodedName, new LinkedMethodDefInfoCache)
       cache.getInfo(member)
     }
 
@@ -229,48 +229,98 @@ private object Refiner {
     }
   }
 
-  private object LinkedMembersInfosCache {
-    def apply(): LinkedMembersInfosCache = {
-      new LinkedMembersInfosCache(
+  private object LinkedMethodDefsInfosCache {
+    def apply(): LinkedMethodDefsInfosCache = {
+      new LinkedMethodDefsInfosCache(
           Array.fill(MemberNamespace.Count)(mutable.Map.empty))
     }
   }
 
-  private final class LinkedMemberInfoCache {
+  /* For JS method and property definitions, we use their index in the list of
+   * `linkedClass.exportedMembers` as their identity. We cannot use their name
+   * because the name itself is a `Tree`.
+   *
+   * If there is a different number of exported members than in a previous run,
+   * we always recompute everything. This is fine because, for any given class,
+   * either all JS methods and properties are reachable, or none are. So we're
+   * only missing opportunities for incrementality in the case where JS members
+   * are added or removed in the original .sjsir, which is not a big deal.
+   */
+  private final class LinkedJSMethodPropDefsInfosCache private (
+      private var caches: Array[LinkedJSMethodPropDefInfoCache]) {
+
+    def getInfos(members: List[Versioned[JSMethodPropDef]]): List[Infos.ReachabilityInfo] = {
+      if (members.isEmpty) {
+        caches = null
+        Nil
+      } else {
+        val membersSize = members.size
+        if (caches == null || membersSize != caches.size)
+          caches = Array.fill(membersSize)(new LinkedJSMethodPropDefInfoCache)
+
+        for ((member, i) <- members.zipWithIndex) yield {
+          caches(i).getInfo(member)
+        }
+      }
+    }
+
+    // Just for consistency of API wrt. LinkedMethodDefsInfosCache
+    def cleanAfterRun(): Unit = ()
+  }
+
+  private object LinkedJSMethodPropDefsInfosCache {
+    def apply(): LinkedJSMethodPropDefsInfosCache =
+      new LinkedJSMethodPropDefsInfosCache(null)
+  }
+
+  private abstract class AbstractLinkedMemberInfoCache[Def <: MemberDef, Info] {
     private var cacheUsed: Boolean = false
     private var lastVersion: Option[String] = None
-    private var info: Infos.MethodInfo = _
+    private var info: Info = _
 
-    def getInfo(member: Versioned[MemberDef]): Infos.MethodInfo = {
+    final def getInfo(member: Versioned[Def]): Info = {
       update(member)
       info
     }
 
-    def update(member: Versioned[MemberDef]): Unit = {
+    private final def update(member: Versioned[Def]): Unit = {
       if (!cacheUsed) {
         cacheUsed = true
-
         val newVersion = member.version
         if (!versionsMatch(newVersion, lastVersion)) {
-          info = member.value match {
-            case _: FieldDef =>
-              throw new AssertionError(
-                  "A LinkedMemberInfoCache cannot be used for a FieldDef")
-            case methodDef: MethodDef =>
-              Infos.generateMethodInfo(methodDef)
-            case propertyDef: PropertyDef =>
-              Infos.generatePropertyInfo(propertyDef)
-          }
+          info = computeInfo(member.value)
           lastVersion = newVersion
         }
       }
     }
 
+    protected def computeInfo(member: Def): Info
+
     /** Returns true if the cache has been used and should be kept. */
-    def cleanAfterRun(): Boolean = {
+    final def cleanAfterRun(): Boolean = {
       val result = cacheUsed
       cacheUsed = false
       result
+    }
+  }
+
+  private final class LinkedMethodDefInfoCache
+      extends AbstractLinkedMemberInfoCache[MethodDef, Infos.MethodInfo] {
+
+    protected  def computeInfo(member: MethodDef): Infos.MethodInfo =
+      Infos.generateMethodInfo(member)
+  }
+
+  private final class LinkedJSMethodPropDefInfoCache
+      extends AbstractLinkedMemberInfoCache[JSMethodPropDef, Infos.ReachabilityInfo] {
+
+    protected  def computeInfo(member: JSMethodPropDef): Infos.ReachabilityInfo = {
+      member match {
+        case methodDef: JSMethodDef =>
+          Infos.generateJSMethodInfo(methodDef)
+        case propertyDef: JSPropertyDef =>
+          Infos.generateJSPropertyInfo(propertyDef)
+      }
     }
   }
 

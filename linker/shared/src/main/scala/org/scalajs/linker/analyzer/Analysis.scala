@@ -95,7 +95,6 @@ object Analysis {
     def encodedName: String
     def namespace: MemberNamespace
     def isAbstract: Boolean
-    def isExported: Boolean
     def isReflProxy: Boolean
     def isReachable: Boolean
     def calledFrom: scala.collection.Seq[From]
@@ -104,25 +103,21 @@ object Analysis {
     def syntheticKind: MethodSyntheticKind
 
     def displayName: String = {
-      if (isExported) {
-        encodedName
-      } else {
-        import ir.Types._
+      import ir.Types._
 
-        def classDisplayName(cls: String): String =
-          PrimitiveClassesDisplayNames.getOrElse(cls, decodeClassName(cls))
+      def classDisplayName(cls: String): String =
+        PrimitiveClassesDisplayNames.getOrElse(cls, decodeClassName(cls))
 
-        def typeDisplayName(tpe: TypeRef): String = tpe match {
-          case ClassRef(encodedName)          => classDisplayName(encodedName)
-          case ArrayTypeRef(base, dimensions) => "[" * dimensions + classDisplayName(base)
-        }
-
-        val (simpleName, paramTypes, resultType) =
-          ir.Definitions.decodeMethodName(encodedName)
-
-        simpleName + "(" + paramTypes.map(typeDisplayName).mkString(",") + ")" +
-        resultType.fold("")(typeDisplayName)
+      def typeDisplayName(tpe: TypeRef): String = tpe match {
+        case ClassRef(encodedName)          => classDisplayName(encodedName)
+        case ArrayTypeRef(base, dimensions) => "[" * dimensions + classDisplayName(base)
       }
+
+      val (simpleName, paramTypes, resultType) =
+        ir.Definitions.decodeMethodName(encodedName)
+
+      simpleName + "(" + paramTypes.map(typeDisplayName).mkString(",") + ")" +
+      resultType.fold("")(typeDisplayName)
     }
 
     def fullDisplayName: String =

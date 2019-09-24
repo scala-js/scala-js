@@ -126,9 +126,9 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     import org.scalajs.ir.Trees._
 
     def exportName(memberDef: MemberDef): Option[String] = memberDef match {
-      case MethodDef(_, StringLiteral(name), _, _, _) => Some(name)
-      case PropertyDef(_, StringLiteral(name), _, _)  => Some(name)
-      case _                                          => None
+      case JSMethodDef(_, StringLiteral(name), _, _)   => Some(name)
+      case JSPropertyDef(_, StringLiteral(name), _, _) => Some(name)
+      case _                                           => None
     }
 
     val exportedPropertyNames = for {

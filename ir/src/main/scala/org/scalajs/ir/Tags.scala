@@ -104,8 +104,10 @@ private[ir] object Tags {
   // Tags for member defs
 
   final val TagFieldDef = 1
-  final val TagMethodDef = TagFieldDef + 1
-  final val TagPropertyDef = TagMethodDef + 1
+  final val TagJSFieldDef = TagFieldDef + 1
+  final val TagMethodDef = TagJSFieldDef + 1
+  final val TagJSMethodDef = TagMethodDef + 1
+  final val TagJSPropertyDef = TagJSMethodDef + 1
 
   // Tags for top-level export defs
 
@@ -138,12 +140,6 @@ private[ir] object Tags {
 
   final val TagClassRef = 1
   final val TagArrayTypeRef = TagClassRef + 1
-
-  // Tags for PropertyNames
-
-  final val TagPropertyNameIdent = 1
-  final val TagPropertyNameStringLiteral = TagPropertyNameIdent + 1
-  final val TagPropertyNameComputedName = TagPropertyNameStringLiteral + 1
 
   // Tags for JS native loading specs
 

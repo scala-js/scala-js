@@ -13,6 +13,7 @@
 package org.scalajs.ir
 
 import Trees._
+import Types._
 
 object Transformers {
 
@@ -223,16 +224,22 @@ object Transformers {
       implicit val pos = memberDef.pos
 
       memberDef match {
-        case FieldDef(_, _, _) =>
+        case _: AnyFieldDef =>
           memberDef
 
         case memberDef: MethodDef =>
           val MethodDef(flags, name, args, resultType, body) = memberDef
-          MethodDef(flags, name, args, resultType, body.map(transformStat))(
+          val newBody = body.map(transform(_, isStat = resultType == NoType))
+          MethodDef(flags, name, args, resultType, newBody)(
               memberDef.optimizerHints, None)
 
-        case PropertyDef(flags, name, getterBody, setterArgAndBody) =>
-          PropertyDef(
+        case memberDef: JSMethodDef =>
+          val JSMethodDef(flags, name, args, body) = memberDef
+          JSMethodDef(flags, name, args, transformExpr(body))(
+              memberDef.optimizerHints, None)
+
+        case JSPropertyDef(flags, name, getterBody, setterArgAndBody) =>
+          JSPropertyDef(
               flags,
               name,
               getterBody.map(transformStat),
@@ -254,7 +261,7 @@ object Transformers {
 
         case TopLevelMethodExportDef(methodDef) =>
           TopLevelMethodExportDef(
-              transformMemberDef(methodDef).asInstanceOf[MethodDef])
+              transformMemberDef(methodDef).asInstanceOf[JSMethodDef])
       }
     }
   }

@@ -219,12 +219,15 @@ object Traversers {
 
     def traverseMemberDef(memberDef: MemberDef): Unit = {
       memberDef match {
-        case FieldDef(_, _, _) =>
+        case _: AnyFieldDef =>
 
         case MethodDef(_, _, _, _, body) =>
           body.foreach(traverse)
 
-        case PropertyDef(_, _, getterBody, setterArgAndBody) =>
+        case JSMethodDef(_, _, _, body) =>
+          traverse(body)
+
+        case JSPropertyDef(_, _, getterBody, setterArgAndBody) =>
           getterBody.foreach(traverse)
           setterArgAndBody.foreach(argAndBody => traverse(argAndBody._2))
       }

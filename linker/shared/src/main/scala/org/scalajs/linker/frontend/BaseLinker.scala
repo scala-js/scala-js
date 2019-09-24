@@ -136,31 +136,27 @@ final class BaseLinker(config: CommonPhaseConfig) {
       analyzerInfo: ClassInfo, analysis: Analysis): LinkedClass = {
     import ir.Trees._
 
-    val fields = mutable.Buffer.empty[FieldDef]
+    val fields = mutable.Buffer.empty[AnyFieldDef]
     val methods = mutable.Buffer.empty[Versioned[MethodDef]]
-    val exportedMembers = mutable.Buffer.empty[Versioned[MemberDef]]
+    val exportedMembers = mutable.Buffer.empty[Versioned[JSMethodPropDef]]
 
     def linkedMethod(m: MethodDef) = {
       val version = m.hash.map(Hashers.hashAsVersion(_))
       new Versioned(m, version)
     }
 
-    def linkedProperty(p: PropertyDef) = {
-      new Versioned(p, None)
-    }
-
     classDef.memberDefs.foreach {
       case field: FieldDef =>
         val isNeeded = {
-          if (field.name.isInstanceOf[Ident]) {
-            if (field.flags.namespace.isStatic) analyzerInfo.isAnyStaticFieldUsed
-            else if (classDef.kind.isJSType) analyzerInfo.isAnyPrivateJSFieldUsed
-            else analyzerInfo.isAnySubclassInstantiated
-          } else {
-            analyzerInfo.isAnySubclassInstantiated
-          }
+          if (field.flags.namespace.isStatic) analyzerInfo.isAnyStaticFieldUsed
+          else if (classDef.kind.isJSType) analyzerInfo.isAnyPrivateJSFieldUsed
+          else analyzerInfo.isAnySubclassInstantiated
         }
         if (isNeeded)
+          fields += field
+
+      case field: JSFieldDef =>
+        if (analyzerInfo.isAnySubclassInstantiated)
           fields += field
 
       case m: MethodDef =>
@@ -171,16 +167,18 @@ final class BaseLinker(config: CommonPhaseConfig) {
           assert(m.body.isDefined,
               s"The abstract method ${classDef.name.name}.${m.encodedName} " +
               "is reachable.")
-          val linked = linkedMethod(m)
-          if (m.name.isInstanceOf[Ident])
-            methods += linked
-          else
-            exportedMembers += linked
+          methods += linkedMethod(m)
         }
 
-      case m: PropertyDef =>
+      case m: JSMethodDef =>
+        if (analyzerInfo.isAnySubclassInstantiated) {
+          val version = m.hash.map(Hashers.hashAsVersion(_))
+          exportedMembers += new Versioned(m, version)
+        }
+
+      case m: JSPropertyDef =>
         if (analyzerInfo.isAnySubclassInstantiated)
-          exportedMembers += linkedProperty(m)
+          exportedMembers += new Versioned(m, None)
     }
 
     methods ++= syntheticMethodDefs.map(linkedMethod)

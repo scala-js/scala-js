@@ -577,7 +577,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val exports = withScopedVars(currentClassSym := companionModuleClass) {
             genStaticExports(companionModuleClass)
           }
-          if (exports.exists(_.isInstanceOf[js.FieldDef])) {
+          if (exports.exists(_.isInstanceOf[js.JSFieldDef])) {
             val staticInitializer =
               genStaticInitializerWithStats(genLoadModule(companionModuleClass))
             exports :+ staticInitializer
@@ -656,25 +656,27 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       // Partition class members.
       val classDefMembers = ListBuffer.empty[js.MemberDef]
       val instanceMembers = ListBuffer.empty[js.MemberDef]
-      var constructor: Option[js.MethodDef] = None
+      var constructor: Option[js.JSMethodDef] = None
 
       origJsClass.memberDefs.foreach {
         case fdef: js.FieldDef =>
-          /* Private fields are both used when building the instance *and* kept
+          /* Scala fields are both used when building the instance *and* kept
            * as declarations in the abstract JS type, so that we can validate
            * `JSPrivateSelect` nodes.
            */
-          if (fdef.name.isInstanceOf[js.Ident])
-            classDefMembers += fdef
+          classDefMembers += fdef
+          instanceMembers += fdef
+
+        case fdef: js.JSFieldDef =>
           instanceMembers += fdef
 
         case mdef: js.MethodDef =>
-          mdef.name match {
-            case _: js.Ident =>
-              assert(mdef.flags.namespace.isStatic,
-                  "Non-static, unexported method in non-native JS class")
-              classDefMembers += mdef
+          assert(mdef.flags.namespace.isStatic,
+              "Non-static, unexported method in non-native JS class")
+          classDefMembers += mdef
 
+        case mdef: js.JSMethodDef =>
+          mdef.name match {
             case js.StringLiteral("constructor") =>
               assert(!mdef.flags.namespace.isStatic, "Exported static method")
               assert(constructor.isEmpty, "two ctors in class")
@@ -685,7 +687,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               instanceMembers += mdef
           }
 
-        case property: js.PropertyDef =>
+        case property: js.JSPropertyDef =>
           instanceMembers += property
       }
 
@@ -705,7 +707,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       generatedClasses += ((sym, None, newClassDef))
 
       // Construct inline class definition
-      val js.MethodDef(_, _, ctorParams, _, Some(ctorBody)) =
+      val js.JSMethodDef(_, _, ctorParams, ctorBody) =
         constructor.getOrElse(throw new AssertionError("No ctor found"))
 
       val jsSuperClassParam = js.ParamDef(freshLocalIdent("super")(pos),
@@ -726,47 +728,37 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val memberDefinitions = instanceMembers.toList.map {
         case fdef: js.FieldDef =>
           implicit val pos = fdef.pos
-          val select = fdef.name match {
-            case ident: js.Ident          => js.JSPrivateSelect(selfRef, encodeClassRef(sym), ident)
-            case lit: js.StringLiteral    => js.JSSelect(selfRef, lit)
-            case js.ComputedName(tree, _) => js.JSSelect(selfRef, tree)
-          }
-          js.Assign(select, jstpe.zeroOf(fdef.ftpe))
+          js.Assign(js.JSPrivateSelect(selfRef, encodeClassRef(sym), fdef.name),
+              jstpe.zeroOf(fdef.ftpe))
+
+        case fdef: js.JSFieldDef =>
+          implicit val pos = fdef.pos
+          js.Assign(js.JSSelect(selfRef, fdef.name), jstpe.zeroOf(fdef.ftpe))
 
         case mdef: js.MethodDef =>
+          throw new AssertionError("unexpected MethodDef")
+
+        case mdef: js.JSMethodDef =>
           implicit val pos = mdef.pos
-          val name = mdef.name.asInstanceOf[js.StringLiteral]
-          val impl = memberLambda(mdef.args, mdef.body.getOrElse(
-              throw new AssertionError("Got anon SJS class with abstract method")))
-          js.Assign(js.JSSelect(selfRef, name), impl)
+          val impl = memberLambda(mdef.args, mdef.body)
+          js.Assign(js.JSSelect(selfRef, mdef.name), impl)
 
-        case pdef: js.PropertyDef =>
+        case pdef: js.JSPropertyDef =>
           implicit val pos = pdef.pos
-          val name = pdef.name.asInstanceOf[js.StringLiteral]
-          val jsObject = js.JSGlobalRef(js.Ident("Object"))
-
-          def field(name: String, value: js.Tree) =
-            List(js.StringLiteral(name) -> value)
-
-          val optGetter = pdef.getterBody map { body =>
+          val optGetter = pdef.getterBody.map { body =>
             js.StringLiteral("get") -> memberLambda(params = Nil, body)
           }
-
-          val optSetter = pdef.setterArgAndBody map { case (arg, body) =>
+          val optSetter = pdef.setterArgAndBody.map { case (arg, body) =>
             js.StringLiteral("set") -> memberLambda(params = arg :: Nil, body)
           }
-
           val descriptor = js.JSObjectConstr(
-              optGetter.toList ++
-              optSetter ++
+              optGetter.toList :::
+              optSetter.toList :::
               List(js.StringLiteral("configurable") -> js.BooleanLiteral(true))
           )
-
-          js.JSMethodApply(jsObject, js.StringLiteral("defineProperty"),
-              List(selfRef, name, descriptor))
-
-        case tree =>
-          abort("Unexpected tree: " + tree)
+          js.JSMethodApply(js.JSGlobalRef(js.Ident("Object")),
+              js.StringLiteral("defineProperty"),
+              List(selfRef, pdef.name, descriptor))
       }
 
       // Transform the constructor body.
@@ -936,7 +928,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     /** Gen definitions for the fields of a class.
      *  The fields are initialized with the zero of their types.
      */
-    def genClassFields(cd: ClassDef): List[js.FieldDef] = {
+    def genClassFields(cd: ClassDef): List[js.AnyFieldDef] = {
       val classSym = cd.symbol
       assert(currentClassSym.get == classSym,
           "genClassFields called with a ClassDef other than the current one")
@@ -967,17 +959,16 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val flags =
           js.MemberFlags.empty.withNamespace(namespace).withMutable(mutable)
 
-        val name =
-          if (isJSClass && isExposed(f)) genPropertyName(jsNameOf(f))
-          else encodeFieldSym(f)
-
         val irTpe = {
           if (isJSClass) genExposedFieldIRType(f)
           else if (static) jstpe.AnyType
           else toIRType(f.tpe)
         }
 
-        js.FieldDef(flags, name, irTpe)
+        if (isJSClass && isExposed(f))
+          js.JSFieldDef(flags, genExpr(jsNameOf(f)), irTpe)
+        else
+          js.FieldDef(flags, encodeFieldSym(f), irTpe)
       }).toList
     }
 
@@ -1112,7 +1103,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     // Constructor of a non-native JS class ------------------------------
 
     def genJSClassCapturesAndConstructor(classSym: Symbol,
-        constructorTrees: List[DefDef]): (Option[List[js.ParamDef]], js.MethodDef) = {
+        constructorTrees: List[DefDef]): (Option[List[js.ParamDef]], js.JSMethodDef) = {
       implicit val pos = classSym.pos
 
       if (hasDefaultCtorArgsAndJSModule(classSym)) {
@@ -1120,9 +1111,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             "Implementation restriction: constructors of " +
             "non-native JS classes cannot have default parameters " +
             "if their companion module is JS native.")
-        val ctorDef = js.MethodDef(js.MemberFlags.empty,
-            js.StringLiteral("constructor"), Nil, jstpe.AnyType,
-            Some(js.Skip()))(
+        val ctorDef = js.JSMethodDef(js.MemberFlags.empty,
+            js.StringLiteral("constructor"), Nil, js.Skip())(
             OptimizerHints.empty, None)
         (None, ctorDef)
       } else {
@@ -1152,12 +1142,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
     }
 
-    private def buildJSConstructorDef(dispatch: js.MethodDef,
+    private def buildJSConstructorDef(dispatch: js.JSMethodDef,
         ctors: List[js.MethodDef])(
-        implicit pos: Position): js.MethodDef = {
+        implicit pos: Position): js.JSMethodDef = {
 
-      val js.MethodDef(_, dispatchName, dispatchArgs, dispatchResultType,
-          Some(dispatchResolution)) = dispatch
+      val js.JSMethodDef(_, dispatchName, dispatchArgs, dispatchResolution) =
+        dispatch
 
       val jsConstructorBuilder = mkJSConstructorBuilder(ctors)
 
@@ -1182,10 +1172,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         jsConstructorBuilder.mkPostPrimaryCtorBody(overloadIdent)
 
       val newBody = js.Block(overloadSelection ::: prePrimaryCtorBody ::
-          primaryCtorBody :: postPrimaryCtorBody :: Nil)
+          primaryCtorBody :: postPrimaryCtorBody :: js.Undefined() :: Nil)
 
-      js.MethodDef(js.MemberFlags.empty, dispatchName, dispatchArgs,
-          jstpe.NoType, Some(newBody))(
+      js.JSMethodDef(js.MemberFlags.empty, dispatchName, dispatchArgs, newBody)(
           dispatch.optimizerHints, None)
     }
 
@@ -1197,7 +1186,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         else (subConstructors.head.overrideNumBounds._1, overrideNum)
 
       def get(methodName: String): Option[ConstructorTree] = {
-        if (methodName == this.method.name.encodedName) {
+        if (methodName == this.method.encodedName) {
           Some(this)
         } else {
           subConstructors.iterator.map(_.get(methodName)).collectFirst {
@@ -1503,7 +1492,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       var overrideNum = -1
       def mkConstructorTree(method: js.MethodDef): ConstructorTree = {
-        val methodName = method.name.encodedName
+        val methodName = method.encodedName
         val subCtrTrees = ctorToChildren(methodName).map(mkConstructorTree)
         overrideNum += 1
         new ConstructorTree(overrideNum, method, subCtrTrees)
@@ -1560,7 +1549,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val isJSClassConstructor =
           sym.isClassConstructor && isNonNativeJSClass(currentClassSym)
 
-        val methodName: js.PropertyName = encodeMethodSym(sym)
+        val methodName = encodeMethodSym(sym)
 
         def jsParams = for (param <- params) yield {
           implicit val pos = param.pos
@@ -1779,7 +1768,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  a peculiarity of recursive tail calls: the local ValDef that replaces
      *  `this`.
      */
-    def genMethodDef(namespace: js.MemberNamespace, methodName: js.PropertyName,
+    def genMethodDef(namespace: js.MemberNamespace, methodName: js.Ident,
         paramsSyms: List[Symbol], resultIRType: jstpe.Type,
         tree: Tree, optimizerHints: OptimizerHints): js.MethodDef = {
       implicit val pos = tree.pos
@@ -5712,15 +5701,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     // Methods to deal with JSName ---------------------------------------------
-
-    def genPropertyName(name: JSName)(implicit pos: Position): js.PropertyName = {
-      name match {
-        case JSName.Literal(name) => js.StringLiteral(name)
-
-        case JSName.Computed(sym) =>
-          js.ComputedName(genComputedJSName(sym), encodeComputedNameIdentity(sym))
-      }
-    }
 
     def genExpr(name: JSName)(implicit pos: Position): js.Tree = name match {
       case JSName.Literal(name) => js.StringLiteral(name)

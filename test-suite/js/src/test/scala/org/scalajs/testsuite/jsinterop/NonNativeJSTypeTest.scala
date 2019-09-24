@@ -287,6 +287,19 @@ class NonNativeJSTypeTest {
     assertTrue(obj.isInstanceOf[NativeParentClass])
   }
 
+  @Test def double_underscore_in_member_names_issue_3784(): Unit = {
+    class DoubleUnderscoreInMemberNames extends js.Object {
+      val x__y: String = "xy"
+      def foo__bar(x: Int): Int = x + 1
+      def ba__bar: String = "babar"
+    }
+
+    val obj = new DoubleUnderscoreInMemberNames
+    assertEquals("xy", obj.x__y)
+    assertEquals(6, obj.foo__bar(5))
+    assertEquals("babar", obj.ba__bar)
+  }
+
   @Test def lambda_inside_a_method_issue_2220(): Unit = {
     class LambdaInsideMethod extends js.Object {
       def foo(): Int = {

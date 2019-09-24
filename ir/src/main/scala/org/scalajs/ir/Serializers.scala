@@ -517,7 +517,13 @@ object Serializers {
         case FieldDef(flags, name, ftpe) =>
           writeByte(TagFieldDef)
           writeInt(MemberFlags.toBits(flags))
-          writePropertyName(name)
+          writeIdent(name)
+          writeType(ftpe)
+
+        case JSFieldDef(flags, name, ftpe) =>
+          writeByte(TagJSFieldDef)
+          writeInt(MemberFlags.toBits(flags))
+          writeTree(name)
           writeType(ftpe)
 
         case methodDef: MethodDef =>
@@ -531,7 +537,7 @@ object Serializers {
           writeInt(-1)
 
           // Write out method def
-          writeInt(MemberFlags.toBits(flags)); writePropertyName(name)
+          writeInt(MemberFlags.toBits(flags)); writeIdent(name)
           writeParamDefs(args); writeType(resultType); writeOptTree(body)
           writeInt(OptimizerHints.toBits(methodDef.optimizerHints))
 
@@ -540,10 +546,30 @@ object Serializers {
           writeInt(length)
           bufferUnderlying.continue()
 
-        case PropertyDef(flags, name, getter, setterArgAndBody) =>
-          writeByte(TagPropertyDef)
+        case methodDef: JSMethodDef =>
+          val JSMethodDef(flags, name, args, body) = methodDef
+
+          writeByte(TagJSMethodDef)
+          writeOptHash(methodDef.hash)
+
+          // Prepare for back-jump and write dummy length
+          bufferUnderlying.markJump()
+          writeInt(-1)
+
+          // Write out method def
+          writeInt(MemberFlags.toBits(flags)); writeTree(name)
+          writeParamDefs(args); writeTree(body)
+          writeInt(OptimizerHints.toBits(methodDef.optimizerHints))
+
+          // Jump back and write true length
+          val length = bufferUnderlying.jumpBack()
+          writeInt(length)
+          bufferUnderlying.continue()
+
+        case JSPropertyDef(flags, name, getter, setterArgAndBody) =>
+          writeByte(TagJSPropertyDef)
           writeInt(MemberFlags.toBits(flags))
-          writePropertyName(name)
+          writeTree(name)
           writeOptTree(getter)
           writeBoolean(setterArgAndBody.isDefined)
           setterArgAndBody foreach { case (arg, body) =>
@@ -665,21 +691,6 @@ object Serializers {
     def writeArrayTypeRef(typeRef: ArrayTypeRef): Unit = {
       writeString(typeRef.baseClassName)
       buffer.writeInt(typeRef.dimensions)
-    }
-
-    def writePropertyName(name: PropertyName): Unit = name match {
-      case name: Ident =>
-        buffer.writeByte(TagPropertyNameIdent)
-        writeIdent(name)
-
-      case name: StringLiteral =>
-        buffer.writeByte(TagPropertyNameStringLiteral)
-        writeTree(name)
-
-      case ComputedName(tree, index) =>
-        buffer.writeByte(TagPropertyNameComputedName)
-        writeTree(tree)
-        writeString(index)
     }
 
     def writeApplyFlags(flags: ApplyFlags): Unit =
@@ -989,20 +1000,32 @@ object Serializers {
 
       (tag: @switch) match {
         case TagFieldDef =>
-          FieldDef(MemberFlags.fromBits(readInt()), readPropertyName(), readType())
+          FieldDef(MemberFlags.fromBits(readInt()), readIdent(), readType())
+
+        case TagJSFieldDef =>
+          JSFieldDef(MemberFlags.fromBits(readInt()), readTree(), readType())
 
         case TagMethodDef =>
           val optHash = readOptHash()
           // read and discard the length
           val len = readInt()
           assert(len >= 0)
-          MethodDef(MemberFlags.fromBits(readInt()), readPropertyName(),
+          MethodDef(MemberFlags.fromBits(readInt()), readIdent(),
               readParamDefs(), readType(), readOptTree())(
               OptimizerHints.fromBits(readInt()), optHash)
 
-        case TagPropertyDef =>
+        case TagJSMethodDef =>
+          val optHash = readOptHash()
+          // read and discard the length
+          val len = readInt()
+          assert(len >= 0)
+          JSMethodDef(MemberFlags.fromBits(readInt()), readTree(),
+              readParamDefs(), readTree())(
+              OptimizerHints.fromBits(readInt()), optHash)
+
+        case TagJSPropertyDef =>
           val flags = MemberFlags.fromBits(readInt())
-          val name = readPropertyName()
+          val name = readTree()
           val getterBody = readOptTree()
           val setterArgAndBody = {
             if (readBoolean())
@@ -1010,7 +1033,7 @@ object Serializers {
             else
               None
           }
-          PropertyDef(flags, name, getterBody, setterArgAndBody)
+          JSPropertyDef(flags, name, getterBody, setterArgAndBody)
       }
     }
 
@@ -1024,7 +1047,7 @@ object Serializers {
       (tag: @switch) match {
         case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readString())
         case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readString())
-        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readMemberDef().asInstanceOf[MethodDef])
+        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readMemberDef().asInstanceOf[JSMethodDef])
         case TagTopLevelFieldExportDef   => TopLevelFieldExportDef(readString(), readIdent())
       }
     }
@@ -1103,17 +1126,6 @@ object Serializers {
 
     def readArrayTypeRef(): ArrayTypeRef =
       ArrayTypeRef(readString(), readInt())
-
-    def readPropertyName(): PropertyName = {
-      readByte() match {
-        case TagPropertyNameIdent =>
-          readIdent()
-        case TagPropertyNameStringLiteral =>
-          readTree().asInstanceOf[StringLiteral]
-        case TagPropertyNameComputedName =>
-          ComputedName(readTree(), readString())
-      }
-    }
 
     def readApplyFlags(): ApplyFlags =
       ApplyFlags.fromBits(readInt())
