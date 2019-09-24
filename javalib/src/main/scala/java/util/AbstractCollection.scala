@@ -53,10 +53,12 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
         if (Objects.equals(iter.next(), o)) {
           iter.remove()
           true
-        } else
+        } else {
           findAndRemove(iter)
-      } else
+        }
+      } else {
         false
+      }
     }
     findAndRemove(iterator())
   }
@@ -89,5 +91,5 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
   }
 
   override def toString(): String =
-    this.scalaOps.mkString("[", ",", "]")
+    this.scalaOps.mkString("[", ", ", "]")
 }

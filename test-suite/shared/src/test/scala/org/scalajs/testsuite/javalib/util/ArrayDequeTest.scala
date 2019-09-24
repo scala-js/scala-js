@@ -174,4 +174,6 @@ class ArrayDequeFactory extends AbstractCollectionFactory with DequeFactory {
 
   def from[E](coll: ju.Collection[E]): ju.ArrayDeque[E] =
     new ju.ArrayDeque[E](coll)
+
+  override def allowsNullElement: Boolean = false
 }

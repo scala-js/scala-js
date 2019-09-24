@@ -226,6 +226,65 @@ trait CollectionTest {
     assertEquals(5, coll.size())
     assertIteratorSameElementsAsSet(-45, 0, 12, 32, 42)(coll.iterator())
   }
+
+  @Test def toStringShouldConvertEmptyCollection(): Unit = {
+    val coll = factory.empty[Double]
+    assertEquals("[]", coll.toString())
+  }
+
+  @Test def toStringShouldConvertOneElementCollection(): Unit = {
+    val coll = factory.fromElements[Double](1.01)
+    // JavaScript displays n.0 as n, so one trailing digit must be non-zero.
+    assertEquals("[1.01]", coll.toString())
+  }
+
+  @Test def toStringShouldUseCommaSpace(): Unit = {
+    // Choose Doubles which display the same in Java and Scala.js.
+    // JavaScript displays n.0 as n, so one trailing digit must be non-zero.
+    val elements = Seq(88.42, -23.36, 60.173)
+
+    val coll = factory.fromElements[Double](elements: _*)
+
+    val result = coll.toString()
+
+    // The order of elements returned by each collection is defined
+    // by the collection. Be prepared to handle the general case of any
+    // order here. Specific collections should test the order they specify.
+    val expected = elements.permutations.map(_.mkString("[", ", ", "]")).toSet
+
+    assertTrue(s"result '${result}' not in expected set '${expected}'",
+        expected.contains(result))
+  }
+
+  @Test def toStringShouldHandleNullElements(): Unit = {
+    if (factory.allowsNullElement) {
+      val elements = Seq(-1, -2, null, -3)
+
+      val coll = factory.fromElements[Any](elements: _*)
+
+      val result = coll.toString()
+
+      val expected = elements.permutations.map(_.mkString("[", ", ", "]")).toSet
+      assertTrue(s"result '${result}' not in expected set '${expected}'",
+          expected.contains(result))
+    }
+  }
+
+  @Test def toStringInCustomClassShouldWork(): Unit = {
+    case class Custom(name: String, id: Int) extends Ordered[Custom] {
+      def compare(that: Custom): Int = this.id - that.id
+    }
+
+    val elements = Seq(Custom("A", 1), Custom("b", 2), Custom("C", 3))
+
+    val coll = factory.fromElements[Custom](elements: _*)
+
+    val result = coll.toString()
+    val expected = elements.permutations.map(_.mkString("[", ", ", "]")).toSet
+    assertTrue(s"result '${result}' not in expected set '${expected}'",
+        expected.contains(result))
+  }
+
 }
 
 trait CollectionFactory {
@@ -233,6 +292,7 @@ trait CollectionFactory {
   def empty[E: ClassTag]: ju.Collection[E]
   def allowsMutationThroughIterator: Boolean = true
   def allowsNullElementQuery: Boolean = true
+  def allowsNullElement: Boolean = true
 
   def fromElements[E: ClassTag](elems: E*): ju.Collection[E] = {
     val coll = empty[E]

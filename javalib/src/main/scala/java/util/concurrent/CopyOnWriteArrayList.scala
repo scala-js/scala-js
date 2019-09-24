@@ -221,7 +221,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   }
 
   override def toString: String =
-    iterator().scalaOps.mkString("[", ",", "]")
+    iterator().scalaOps.mkString("[", ", ", "]")
 
   override def equals(obj: Any): Boolean = {
     if (obj.asInstanceOf[AnyRef] eq this) {

@@ -28,7 +28,7 @@ trait CollectionsOnSynchronizedSetTest extends CollectionsOnSetsTest {
       override def empty[E: ClassTag]: ju.Set[E] =
         ju.Collections.synchronizedSet(originalFactory.empty[E])
 
-      def allowsNullElement: Boolean =
+      override def allowsNullElement: Boolean =
         originalFactory.allowsNullElement
     }
   }
@@ -46,7 +46,7 @@ trait CollectionsOnSynchronizedSortedSetTest extends CollectionsOnSortedSetsTest
       override def empty[E: ClassTag]: ju.SortedSet[E] =
         ju.Collections.synchronizedSortedSet(originalFactory.empty[E])
 
-      def allowsNullElement: Boolean =
+      override def allowsNullElement: Boolean =
         originalFactory.allowsNullElement
     }
   }

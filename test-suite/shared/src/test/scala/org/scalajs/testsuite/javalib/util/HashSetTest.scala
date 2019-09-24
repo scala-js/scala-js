@@ -28,6 +28,4 @@ class HashSetFactory extends AbstractSetFactory {
 
   def empty[E: ClassTag]: ju.HashSet[E] =
     new ju.HashSet[E]()
-
-  def allowsNullElement: Boolean = true
 }
