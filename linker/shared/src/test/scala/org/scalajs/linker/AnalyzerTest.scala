@@ -292,8 +292,8 @@ class AnalyzerTest {
 
   @Test
   def conflictingDefaultMethods(): AsyncResult = await {
-    val defaultMethodDef = MethodDef(MemberFlags.empty, Ident("foo__V"), Nil,
-        NoType, Some(Skip()))(emptyOptHints, None)
+    val defaultMethodDef = MethodDef(EMF, "foo__V", Nil,
+        NoType, Some(Skip()))(EOH, None)
     val classDefs = Seq(
         classDef("LI1", kind = ClassKind.Interface,
             memberDefs = List(defaultMethodDef)),
@@ -364,12 +364,12 @@ class AnalyzerTest {
     val classDefs = Seq(
         classDef("LA", superClass = Some(ObjectClass), memberDefs = List(
             trivialCtor("LA"),
-            MethodDef(MemberFlags.empty, Ident("test__V"), Nil, NoType, Some(Block(
-                Apply(EAF, systemMod, Ident("getProperty__T__T"), List(emptyStr))(StringType),
-                Apply(EAF, systemMod, Ident("getProperty__T__T__T"), List(emptyStr))(StringType),
-                Apply(EAF, systemMod, Ident("setProperty__T__T__T"), List(emptyStr))(StringType),
-                Apply(EAF, systemMod, Ident("clearProperty__T__T"), List(emptyStr))(StringType)
-            )))(emptyOptHints, None)
+            MethodDef(EMF, "test__V", Nil, NoType, Some(Block(
+                Apply(EAF, systemMod, "getProperty__T__T", List(emptyStr))(StringType),
+                Apply(EAF, systemMod, "getProperty__T__T__T", List(emptyStr))(StringType),
+                Apply(EAF, systemMod, "setProperty__T__T__T", List(emptyStr))(StringType),
+                Apply(EAF, systemMod, "clearProperty__T__T", List(emptyStr))(StringType)
+            )))(EOH, None)
         ))
     )
 
@@ -396,10 +396,10 @@ class AnalyzerTest {
         classDef("LX", superClass = Some(ObjectClass),
             memberDefs = List(
                 trivialCtor("LX"),
-                MethodDef(MemberFlags.empty, Ident("foo__LA"), Nil, ClassType("LA"),
-                    Some(Null()))(emptyOptHints, None),
-                MethodDef(MemberFlags.empty, Ident("foo__LB"), Nil, ClassType("LB"),
-                    Some(Null()))(emptyOptHints, None)
+                MethodDef(EMF, "foo__LA", Nil, ClassType("LA"),
+                    Some(Null()))(EOH, None),
+                MethodDef(EMF, "foo__LB", Nil, ClassType("LB"),
+                    Some(Null()))(EOH, None)
             )
         )
     )

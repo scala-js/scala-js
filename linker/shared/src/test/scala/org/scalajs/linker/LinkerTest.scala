@@ -42,21 +42,13 @@ class LinkerTest {
    */
   @Test
   def linkHelloWorld(): AsyncResult = await {
-    val name = "LHelloWorld$"
-    val mainMethodBody = {
-      JSMethodApply(JSGlobalRef(Ident("console")), StringLiteral("log"),
-          List(StringLiteral("Hello world!")))
-    }
     val classDefs = Seq(
-        classDef(name, kind = ClassKind.ModuleClass,
-            superClass = Some(ObjectClass),
-            memberDefs = List(
-                trivialCtor(name),
-                mainMethodDef(mainMethodBody)
-            )
-        )
+        mainTestClassDef({
+          JSMethodApply(JSGlobalRef("console"), StringLiteral("log"),
+              List(StringLiteral("Hello world!")))
+        })
     )
-    testLink(classDefs, mainModuleInitializers("HelloWorld"))
+    testLink(classDefs, MainTestModuleInitializers)
   }
 
   /** This test exposes a problem where a linker in error state is called

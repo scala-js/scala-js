@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.testutils
 
+import scala.language.implicitConversions
+
 import org.scalajs.ir
 import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Definitions._
@@ -24,8 +26,8 @@ object TestIRBuilder {
   implicit val noPosition: ir.Position = ir.Position.NoPosition
 
   val EAF = ApplyFlags.empty
-
-  val emptyOptHints: OptimizerHints = OptimizerHints.empty
+  val EMF = MemberFlags.empty
+  val EOH = OptimizerHints.empty
 
   def classDef(
       encodedName: String,
@@ -40,7 +42,23 @@ object TestIRBuilder {
     ClassDef(Ident(encodedName), kind, jsClassCaptures,
         superClass.map(Ident(_)), interfaces.map(Ident(_)), jsSuperClass,
         jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
-        emptyOptHints)
+        EOH)
+  }
+
+  final val MainTestClassDefEncodedName = "LTest$"
+
+  val MainTestModuleInitializers = mainModuleInitializers("Test")
+
+  def mainTestClassDef(mainBody: Tree): ClassDef = {
+    classDef(
+        MainTestClassDefEncodedName,
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        memberDefs = List(
+            trivialCtor(MainTestClassDefEncodedName),
+            mainMethodDef(mainBody)
+        )
+    )
   }
 
   def trivialCtor(enclosingClassName: String): MethodDef = {
@@ -49,14 +67,14 @@ object TestIRBuilder {
         Some(ApplyStatically(EAF.withConstructor(true),
             This()(ClassType(enclosingClassName)),
             ClassRef(ObjectClass), Ident("init___"), Nil)(NoType)))(
-        emptyOptHints, None)
+        EOH, None)
   }
 
   def mainMethodDef(body: Tree): MethodDef = {
     val stringArrayType = ArrayType(ArrayTypeRef("T", 1))
     val argsParamDef = paramDef("args", stringArrayType)
     MethodDef(MemberFlags.empty, Ident("main__AT__V"), List(argsParamDef),
-        NoType, Some(body))(emptyOptHints, None)
+        NoType, Some(body))(EOH, None)
   }
 
   def paramDef(name: String, ptpe: Type): ParamDef =
@@ -64,4 +82,7 @@ object TestIRBuilder {
 
   def mainModuleInitializers(moduleClassName: String): List[ModuleInitializer] =
     ModuleInitializer.mainMethodWithArgs(moduleClassName, "main") :: Nil
+
+  implicit def string2ident(name: String): Ident =
+    Ident(name)
 }
