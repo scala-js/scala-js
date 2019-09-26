@@ -712,7 +712,7 @@ object Trees {
    */
   case class JSUnaryOp(op: JSUnaryOp.Code, lhs: Tree)(
       implicit val pos: Position) extends Tree {
-    val tpe = AnyType
+    val tpe = JSUnaryOp.resultTypeOf(op)
   }
 
   object JSUnaryOp {
@@ -725,6 +725,9 @@ object Trees {
     final val ! = 4
 
     final val typeof = 5
+
+    def resultTypeOf(op: Code): Type =
+      AnyType
   }
 
   /** Binary operation (always preserves pureness).
@@ -734,7 +737,7 @@ object Trees {
    */
   case class JSBinaryOp(op: JSBinaryOp.Code, lhs: Tree, rhs: Tree)(
       implicit val pos: Position) extends Tree {
-    val tpe = AnyType
+    val tpe = JSBinaryOp.resultTypeOf(op)
   }
 
   object JSBinaryOp {
@@ -767,6 +770,18 @@ object Trees {
 
     final val in         = 20
     final val instanceof = 21
+
+    def resultTypeOf(op: Code): Type = op match {
+      case === | !== =>
+        /* We assume that ECMAScript will never pervert `===` and `!==` to the
+         * point of them not returning a primitive boolean. This is important
+         * for the trees resulting from optimizing `BinaryOp.===` into
+         * `JSBinaryOp.===` to be well-typed.
+         */
+        BooleanType
+      case _ =>
+        AnyType
+    }
   }
 
   case class JSArrayConstr(items: List[TreeOrJSSpread])(

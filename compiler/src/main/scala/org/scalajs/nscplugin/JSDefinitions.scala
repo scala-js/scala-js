@@ -99,6 +99,7 @@ trait JSDefinitions {
       lazy val JSImport_apply = getMemberMethod(JSImportModuleClass, nme.apply)
 
     lazy val SpecialPackageModule = getPackageObject("scala.scalajs.js.special")
+      lazy val Special_strictEquals = getMemberMethod(SpecialPackageModule, newTermName("strictEquals"))
       lazy val Special_in = getMemberMethod(SpecialPackageModule, newTermName("in"))
       lazy val Special_instanceof = getMemberMethod(SpecialPackageModule, newTermName("instanceof"))
       lazy val Special_delete = getMemberMethod(SpecialPackageModule, newTermName("delete"))

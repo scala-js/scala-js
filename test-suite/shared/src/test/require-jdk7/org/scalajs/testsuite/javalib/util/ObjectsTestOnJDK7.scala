@@ -44,6 +44,9 @@ class ObjectsTestOnJDK7 {
     assertFalse(ju.Objects.deepEquals(1, 2))
     assertTrue(ju.Objects.deepEquals("abc", "abc"))
     assertFalse(ju.Objects.deepEquals("abc", "abd"))
+    assertFalse(ju.Objects.deepEquals(0.0, -0.0))
+    assertTrue(ju.Objects.deepEquals(0.0, 0.0))
+    assertTrue(ju.Objects.deepEquals(Double.NaN, Double.NaN))
     assertTrue(ju.Objects.deepEquals(Array(Array(1)), Array(Array(1))))
   }
 

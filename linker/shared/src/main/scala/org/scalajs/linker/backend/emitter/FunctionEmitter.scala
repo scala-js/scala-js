@@ -2179,9 +2179,55 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           val newRhs = transformExprNoChar(rhs)
 
           (op: @switch) match {
-            case === | Int_== | Double_== | Boolean_== =>
+            case === | !== =>
+              /** Tests whether an operand receives exemption from the
+               *  `Object.is` treatment.
+               *
+               *  If either operand receives an exemption, we use `===`
+               *  instead.
+               */
+              def receivesExemption(tree: js.Tree): Boolean = tree match {
+                case _:js.Undefined | _:js.Null =>
+                  /* An `undefined` operand happens a lot for default
+                   * parameters in exported methods. Because exported methods
+                   * are not optimized, they survive until here.
+                   *
+                   * A `null` operand often happens in the constructor of inner
+                   * JS classes, which are not optimized either.
+                   */
+                  true
+                case _:js.This =>
+                  /* Due to how hijacked classes are encoded in JS, we know
+                   * that in `java.lang.Object` itself, `this` can never be a
+                   * primitive. It will always be a proper Scala.js object.
+                   *
+                   * Exempting `this` in `java.lang.Object` is important so
+                   * that the body of `Object.equals__O__Z` can be compiled as
+                   * `this === that` instead of `Object.is(this, that)`.
+                   *
+                   * This is something that the optimizer is not supposed to be
+                   * able to do, since it doesn't know how hijacked classes are
+                   * encoded.
+                   */
+                  env.enclosingClassName.exists(_ == Definitions.ObjectClass)
+                case _ =>
+                  false
+              }
+              if (receivesExemption(newLhs) || receivesExemption(newRhs)) {
+                js.BinaryOp(if (op == ===) JSBinaryOp.=== else JSBinaryOp.!==,
+                    newLhs, newRhs)
+              } else {
+                val objectIs =
+                  if (!esFeatures.useECMAScript2015) envField("is")
+                  else genIdentBracketSelect(genGlobalVarRef("Object"), "is")
+                val objectIsCall = js.Apply(objectIs, newLhs :: newRhs :: Nil)
+                if (op == ===) objectIsCall
+                else js.UnaryOp(JSUnaryOp.!, objectIsCall)
+              }
+
+            case Int_== | Double_== | Boolean_== =>
               js.BinaryOp(JSBinaryOp.===, newLhs, newRhs)
-            case !== | Int_!= | Double_!= | Boolean_!= =>
+            case Int_!= | Double_!= | Boolean_!= =>
               js.BinaryOp(JSBinaryOp.!==, newLhs, newRhs)
 
             case String_+ =>

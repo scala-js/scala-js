@@ -250,19 +250,8 @@ object IdentityHashMap {
       System.identityHashCode(inner)
   }
 
-  @inline private def same(v1: Any, v2: Any): Boolean = {
-    // v1.asInstanceOf[AnyRef] eq v2.asInstanceOf[AnyRef]
-    // Use the following until 1.0.0
-    // See https://github.com/scala-js/scala-js/pull/3747
-    val v1Ref = v1.asInstanceOf[AnyRef]
-    val v2Ref = v2.asInstanceOf[AnyRef]
-    if (v1Ref eq v2Ref) {
-      (v1Ref ne java.lang.Double.valueOf(0.0)) ||
-      (1.0 / v1Ref.asInstanceOf[Double] == 1.0 / v2Ref.asInstanceOf[Double]) // +0.0 v -0.0
-    } else {
-      (v1Ref ne v1Ref) && (v2Ref ne v2Ref) // NaN
-    }
-  }
+  @inline private def same(v1: Any, v2: Any): Boolean =
+    v1.asInstanceOf[AnyRef] eq v2.asInstanceOf[AnyRef]
 
   private def findSame[K](elem: K, c: Collection[_]): Boolean = {
     // scalastyle:off return
