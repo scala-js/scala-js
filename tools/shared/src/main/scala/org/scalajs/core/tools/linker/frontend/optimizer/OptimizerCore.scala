@@ -1435,6 +1435,15 @@ private[optimizer] abstract class OptimizerCore(
           targs.map(finishTransformExpr))(resultType), RefinedType(resultType)))
     }
 
+    def canBeArray(treceiver: PreTransform): Boolean = {
+      treceiver.tpe.base.isInstanceOf[ArrayType] || {
+        !treceiver.tpe.isExact && (treceiver.tpe.base match {
+          case AnyType | ClassType(ObjectClass) => true
+          case _                                => false
+        })
+      }
+    }
+
     treceiver.tpe.base match {
       case NothingType =>
         cont(treceiver)
@@ -1446,6 +1455,9 @@ private[optimizer] abstract class OptimizerCore(
       case _ =>
         if (isReflProxyName(methodName)) {
           // Never inline reflective proxies
+          treeNotInlined
+        } else if (methodName == "clone__O" && canBeArray(treceiver)) {
+          // #3778 Never inline the `clone__O()` method if the receiver can be an array
           treeNotInlined
         } else {
           val cls = boxedClassForType(treceiver.tpe.base)
