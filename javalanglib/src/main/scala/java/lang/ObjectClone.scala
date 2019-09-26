@@ -14,8 +14,6 @@ package java.lang
 
 import scala.scalajs.js
 
-import Utils._
-
 /** Implementation of `java.lang.Object.clone()`.
  *
  *  Called by the hard-coded IR of `java.lang.Object`.
@@ -69,7 +67,10 @@ private[lang] object ObjectClone {
       { (o: js.Object) =>
         val ownKeys = ownKeysFun(o)
         val descriptors = new js.Object
-        forArrayElems(ownKeys) { key =>
+        val len = ownKeys.length
+        var i = 0
+        while (i != len) {
+          val key = ownKeys(i)
           /* Almost equivalent to the JavaScript code
            *   descriptors[key] = Object.getOwnPropertyDescriptor(descriptors, key);
            * except that `defineProperty` will by-pass any existing setter for
@@ -81,6 +82,7 @@ private[lang] object ObjectClone {
             val writable = true
             val value = global.Object.getOwnPropertyDescriptor(o, key)
           })
+          i += 1
         }
         descriptors
       }

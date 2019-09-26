@@ -4,6 +4,7 @@ object MiniLib {
   val Whitelist = {
     val inJavaLang = List(
         "Object",
+        "ObjectClone",
         "Class",
         "System",
         "System$IDHashCode",

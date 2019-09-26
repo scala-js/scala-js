@@ -40,7 +40,7 @@ class IRCheckerTest {
   @Test
   def testMethodCallOnClassWithNoInstances(): AsyncResult = await {
     def callMethOn(receiver: Tree): Tree =
-      Apply(EAF, receiver, Ident("meth__LFoo__V"), List(Null()))(NoType)
+      Apply(EAF, receiver, "meth__LFoo__V", List(Null()))(NoType)
 
     val classDefs = Seq(
         // LFoo will be dropped by base linking
@@ -54,10 +54,10 @@ class IRCheckerTest {
                 /* This method is called, but unreachable because there are no
                  * instances of `Bar`. It will therefore not make `Foo` reachable.
                  */
-                MethodDef(MemberFlags.empty, Ident("meth__LFoo__V"),
+                MethodDef(EMF, "meth__LFoo__V",
                     List(paramDef("foo", ClassType("LFoo"))), NoType,
                     Some(Skip()))(
-                    emptyOptHints, None)
+                    EOH, None)
             )
         ),
 
@@ -65,12 +65,12 @@ class IRCheckerTest {
             superClass = Some(ObjectClass),
             memberDefs = List(
                 trivialCtor("LTest$"),
-                MethodDef(MemberFlags.empty, Ident("nullBar__LBar"), Nil, ClassType("LBar"),
+                MethodDef(EMF, "nullBar__LBar", Nil, ClassType("LBar"),
                     Some(Null()))(
-                    emptyOptHints, None),
+                    EOH, None),
                 mainMethodDef(Block(
                     callMethOn(Apply(EAF, This()(ClassType("LTest$")),
-                        Ident("nullBar__LBar"), Nil)(ClassType("LBar"))),
+                        "nullBar__LBar", Nil)(ClassType("LBar"))),
                     callMethOn(Null()),
                     callMethOn(Throw(Null()))
                 ))
