@@ -44,24 +44,13 @@ object Trees {
     val tpe: Type
   }
 
-  // Identifiers and properties
-
-  sealed trait PropertyName extends IRNode {
-    /** Encoded name of this PropertyName within its owner's scope.
-     *
-     *  For [[ComputedName]]s, the value of `encodedName` cannot be relied on
-     *  beyond equality tests, and the fact that it starts with `"__computed_"`.
-     */
-    def encodedName: String
-  }
+  // Identifiers
 
   case class Ident(name: String, originalName: Option[String])(
       implicit val pos: Position)
-      extends IRNode with PropertyName {
+      extends IRNode {
 
     requireValidIdent(name)
-
-    def encodedName: String = name
   }
 
   object Ident {
@@ -104,16 +93,6 @@ object Trees {
       "goto", "int", "long", "native", "short", "synchronized", "throws",
       "transient", "volatile"
   )
-
-  case class ComputedName(tree: Tree, logicalName: String)
-      extends IRNode with PropertyName {
-
-    requireValidIdent(logicalName)
-
-    def pos: Position = tree.pos
-
-    override def encodedName: String = "__computed_" + logicalName
-  }
 
   // Definitions
 
@@ -857,9 +836,8 @@ object Trees {
   }
 
   case class StringLiteral(value: String)(
-      implicit val pos: Position) extends Literal with PropertyName {
+      implicit val pos: Position) extends Literal {
     val tpe = StringType
-    override def encodedName: String = value
   }
 
   case class ClassOf(typeRef: TypeRef)(
@@ -976,7 +954,9 @@ object Trees {
       val topLevelExportDefs: List[TopLevelExportDef]
   )(
       val optimizerHints: OptimizerHints
-  )(implicit val pos: Position) extends IRNode
+  )(implicit val pos: Position) extends IRNode {
+    def encodedName: String = name.name
+  }
 
   object ClassDef {
     def apply(
@@ -999,27 +979,50 @@ object Trees {
 
   // Class members
 
+  /** Any member of a `ClassDef`.
+   *
+   *  Partitioned into `AnyFieldDef`, `MethodDef` and `JSMethodPropDef`.
+   */
   sealed abstract class MemberDef extends IRNode {
     val flags: MemberFlags
-    val name: PropertyName
-
-    def encodedName: String = name.encodedName
   }
 
-  case class FieldDef(flags: MemberFlags, name: PropertyName, ftpe: Type)(
-      implicit val pos: Position) extends MemberDef
+  sealed abstract class AnyFieldDef extends MemberDef {
+    // val name: Ident | Tree
+    val ftpe: Type
+  }
 
-  case class MethodDef(flags: MemberFlags, name: PropertyName,
+  case class FieldDef(flags: MemberFlags, name: Ident, ftpe: Type)(
+      implicit val pos: Position) extends AnyFieldDef
+
+  case class JSFieldDef(flags: MemberFlags, name: Tree, ftpe: Type)(
+      implicit val pos: Position) extends AnyFieldDef
+
+  case class MethodDef(flags: MemberFlags, name: Ident,
       args: List[ParamDef], resultType: Type, body: Option[Tree])(
       val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
       implicit val pos: Position) extends MemberDef {
 
     require(!flags.isMutable, "nonsensical mutable MethodDef")
+
+    def encodedName: String = name.name
   }
 
-  case class PropertyDef(flags: MemberFlags, name: PropertyName,
+  sealed abstract class JSMethodPropDef extends MemberDef
+
+  case class JSMethodDef(flags: MemberFlags, name: Tree,
+      args: List[ParamDef], body: Tree)(
+      val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
+      implicit val pos: Position)
+      extends JSMethodPropDef {
+
+    require(!flags.isMutable, "nonsensical mutable MethodDef")
+  }
+
+  case class JSPropertyDef(flags: MemberFlags, name: Tree,
       getterBody: Option[Tree], setterArgAndBody: Option[(ParamDef, Tree)])(
-      implicit val pos: Position) extends MemberDef {
+      implicit val pos: Position)
+      extends JSMethodPropDef {
 
     require(!flags.isMutable, "nonsensical mutable PropertyDef")
   }
@@ -1031,7 +1034,7 @@ object Trees {
       case TopLevelModuleExportDef(name)  => name
       case TopLevelJSClassExportDef(name) => name
 
-      case TopLevelMethodExportDef(MethodDef(_, propName, _, _, _)) =>
+      case TopLevelMethodExportDef(JSMethodDef(_, propName, _, _)) =>
         val StringLiteral(name) = propName
         name
 
@@ -1050,7 +1053,7 @@ object Trees {
   case class TopLevelModuleExportDef(exportName: String)(
       implicit val pos: Position) extends TopLevelExportDef
 
-  case class TopLevelMethodExportDef(methodDef: MethodDef)(
+  case class TopLevelMethodExportDef(methodDef: JSMethodDef)(
       implicit val pos: Position) extends TopLevelExportDef
 
   case class TopLevelFieldExportDef(exportName: String, field: Ident)(

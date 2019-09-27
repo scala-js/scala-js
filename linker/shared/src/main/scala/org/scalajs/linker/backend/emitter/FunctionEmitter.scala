@@ -756,8 +756,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               globalKnowledge.getJSClassFieldDefs(enclosingClassName)
 
             val fieldDefs = for {
-              field @ FieldDef(flags, name, ftpe) <- enclosingClassFieldDefs
-              if !flags.namespace.isStatic
+              field <- enclosingClassFieldDefs
+              if !field.flags.namespace.isStatic
             } yield {
               implicit val pos = field.pos
               /* Here, a naive translation would emit something like this:
@@ -808,8 +808,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               }
 
               val zero =
-                if (ftpe == CharType) js.VarRef(js.Ident("$bC0"))
-                else genZeroOf(ftpe)
+                if (field.ftpe == CharType) js.VarRef(js.Ident("$bC0"))
+                else genZeroOf(field.ftpe)
 
               val descriptor = js.ObjectConstr(List(
                   js.StringLiteral("configurable") -> js.BooleanLiteral(true),
@@ -818,25 +818,21 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   js.StringLiteral("value") -> zero
               ))
 
-              unnestPropertyName(name) { (newName, env0) =>
-                implicit val env = env0
-                newName match {
-                  case newName: Ident =>
-                    val fieldIdent =
-                      genJSPrivateFieldIdent(enclosingClassName, newName)
-                    val descriptors =
-                      js.ObjectConstr(List(fieldIdent -> descriptor))
-                    makeObjectMethodApply("defineProperties",
-                        List(js.This(), descriptors))
+              field match {
+                case FieldDef(_, name, _) =>
+                  val fieldIdent =
+                    genJSPrivateFieldIdent(enclosingClassName, name)
+                  val descriptors =
+                    js.ObjectConstr(List(fieldIdent -> descriptor))
+                  makeObjectMethodApply("defineProperties",
+                      List(js.This(), descriptors))
 
-                  case newName: StringLiteral =>
+                case JSFieldDef(_, name, _) =>
+                  unnest(name) { (newName, env0) =>
+                    implicit val env = env0
                     makeObjectMethodApply("defineProperty",
                         List(js.This(), transformExprNoChar(newName), descriptor))
-
-                  case ComputedName(nameTree, _) =>
-                    makeObjectMethodApply("defineProperty",
-                        List(js.This(), transformExprNoChar(nameTree), descriptor))
-                }
+                  }
               }
             }
 
@@ -1110,21 +1106,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           newFields += ((newTreesIterator.next(), newTreesIterator.next()))
 
         makeStat(newFields.result(), env)
-      }
-    }
-
-    /** Unnest for a `PropertyName`. */
-    def unnestPropertyName(arg: PropertyName)(
-        makeStat: (PropertyName, Env) => js.Tree)(
-        implicit env: Env): js.Tree = {
-
-      arg match {
-        case _:StringLiteral | _:Ident =>
-          makeStat(arg, env)
-        case ComputedName(tree, logicalName) =>
-          unnest(tree) { (newTree, env) =>
-            makeStat(ComputedName(newTree, logicalName), env)
-          }
       }
     }
 

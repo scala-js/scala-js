@@ -12,7 +12,7 @@
 
 package org.scalajs.linker.backend.emitter
 
-import org.scalajs.ir.Trees.{FieldDef, Ident, JSNativeLoadSpec}
+import org.scalajs.ir.Trees.{AnyFieldDef, Ident, JSNativeLoadSpec}
 import org.scalajs.ir.Types.Type
 
 private[emitter] trait GlobalKnowledge {
@@ -28,7 +28,7 @@ private[emitter] trait GlobalKnowledge {
    *  `ModuleClass`.
    */
   def getAllScalaClassFieldDefs(
-      className: String): List[(String, List[FieldDef])]
+      className: String): List[(String, List[AnyFieldDef])]
 
   /** Tests whether the specified class uses an inlineable init.
    *
@@ -70,7 +70,7 @@ private[emitter] trait GlobalKnowledge {
    *  It is invalid to call this method with a class that is not a non-native
    *  JS class.
    */
-  def getJSClassFieldDefs(className: String): List[FieldDef]
+  def getJSClassFieldDefs(className: String): List[AnyFieldDef]
 
   /** The global variables that mirror a given static field. */
   def getStaticFieldMirrors(className: String, field: String): List[String]

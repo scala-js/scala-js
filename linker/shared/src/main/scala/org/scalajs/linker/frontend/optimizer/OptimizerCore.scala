@@ -142,7 +142,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               body, Set.empty)
       }
       val newBody =
-        if (name.encodedName == "init___") tryElimStoreModule(newBody1)
+        if (originalDef.encodedName == "init___") tryElimStoreModule(newBody1)
         else newBody1
       MethodDef(static, name, newParams, resultType,
           Some(newBody))(originalDef.optimizerHints, None)(originalDef.pos)

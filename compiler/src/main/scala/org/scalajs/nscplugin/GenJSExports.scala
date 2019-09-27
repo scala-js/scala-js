@@ -191,7 +191,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
             .withMutable(true)
           val name = js.StringLiteral(export.jsName)
           val irTpe = genExposedFieldIRType(fieldSym)
-          checkedCast[A](js.FieldDef(flags, name, irTpe))
+          checkedCast[A](js.JSFieldDef(flags, name, irTpe))
         } else {
           checkedCast[A](
               js.TopLevelFieldExportDef(export.jsName, encodeFieldSym(fieldSym)))
@@ -242,7 +242,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           if (destination == ExportDestination.Static)
             checkedCast[A](exportedMember)
           else
-            checkedCast[A](js.TopLevelMethodExportDef(exportedMember.asInstanceOf[js.MethodDef]))
+            checkedCast[A](js.TopLevelMethodExportDef(exportedMember.asInstanceOf[js.JSMethodDef]))
         }
 
         (exportDef, jsName, pos)
@@ -299,7 +299,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         reporter.error(alts.head.pos,
             s"Conflicting properties and methods for ${classSym.fullName}::$name.")
         implicit val pos = alts.head.pos
-        js.PropertyDef(js.MemberFlags.empty, genPropertyName(name), None, None)
+        js.JSPropertyDef(js.MemberFlags.empty, genExpr(name), None, None)
       } else {
         genMemberExportOrDispatcher(classSym, name, isProp, alts,
             static = false)
@@ -317,7 +317,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     }
 
     def genJSConstructorExport(
-        alts: List[Symbol]): (Option[List[js.ParamDef]], js.MethodDef) = {
+        alts: List[Symbol]): (Option[List[js.ParamDef]], js.JSMethodDef) = {
       val exporteds = alts.map(ExportedSymbol)
 
       val isLiftedJSCtor = exporteds.head.isLiftedJSConstructor
@@ -344,7 +344,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     }
 
     private def genExportProperty(alts: List[Symbol], jsName: JSName,
-        static: Boolean): js.PropertyDef = {
+        static: Boolean): js.JSPropertyDef = {
       assert(!alts.isEmpty,
           s"genExportProperty with empty alternatives for $jsName")
 
@@ -389,14 +389,13 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         }
       }
 
-      js.PropertyDef(flags, genPropertyName(jsName), getterBody,
-          setterArgAndBody)
+      js.JSPropertyDef(flags, genExpr(jsName), getterBody, setterArgAndBody)
     }
 
     /** generates the exporter function (i.e. exporter for non-properties) for
      *  a given name */
     private def genExportMethod(alts0: List[Exported], jsName: JSName,
-        static: Boolean): js.MethodDef = {
+        static: Boolean): js.JSMethodDef = {
       assert(alts0.nonEmpty,
           "need at least one alternative to generate exporter method")
 
@@ -518,8 +517,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         }
       }
 
-      js.MethodDef(flags, genPropertyName(jsName),
-          formalArgs, jstpe.AnyType, Some(body))(OptimizerHints.empty, None)
+      js.JSMethodDef(flags, genExpr(jsName), formalArgs, body)(
+          OptimizerHints.empty, None)
     }
 
     /**

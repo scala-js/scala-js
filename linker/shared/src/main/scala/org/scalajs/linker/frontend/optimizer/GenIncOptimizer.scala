@@ -386,8 +386,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     var isModuleClass: Boolean = false
     var hasElidableModuleAccessor: Boolean = false
 
-    var fields: List[FieldDef] = Nil
-    var isInlineable: Boolean = false
+    var fields: List[AnyFieldDef] = Nil
     var tryNewInlineable: Option[OptimizerCore.InlineableClassStructure] = None
 
     override def toString(): String =
@@ -509,7 +508,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       updateHasElidableModuleAccessor()
 
       // Inlineable class
-      if (updateIsInlineable(linkedClass)) {
+      if (updateTryNewInlineable(linkedClass)) {
         for (method <- methods.values; if isConstructorName(method.encodedName))
           myInterface.tagStaticCallersOf(namespace, method.encodedName)
       }
@@ -552,12 +551,11 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     }
 
     /** UPDATE PASS ONLY. */
-    def updateIsInlineable(linkedClass: LinkedClass): Boolean = {
+    def updateTryNewInlineable(linkedClass: LinkedClass): Boolean = {
       val oldTryNewInlineable = tryNewInlineable
-      isInlineable = linkedClass.optimizerHints.inline
 
-      if (!isInlineable) {
-        tryNewInlineable = None
+      tryNewInlineable = if (!linkedClass.optimizerHints.inline) {
+        None
       } else {
         val allFields = for {
           parent <- reverseParentChain
@@ -566,9 +564,15 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         } yield {
           parent.encodedName -> field
         }
-        tryNewInlineable =
-          Some(new OptimizerCore.InlineableClassStructure(allFields))
+
+        if (allFields.forall(_._2.isInstanceOf[FieldDef])) {
+          Some(new OptimizerCore.InlineableClassStructure(
+              allFields.asInstanceOf[List[(String, FieldDef)]]))
+        } else {
+          None
+        }
       }
+
       tryNewInlineable != oldTryNewInlineable
     }
 
@@ -611,7 +615,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       }
 
       updateHasElidableModuleAccessor()
-      updateIsInlineable(linkedClass)
+      updateTryNewInlineable(linkedClass)
     }
 
     /** UPDATE PASS ONLY. */

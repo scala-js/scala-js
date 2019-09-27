@@ -31,7 +31,7 @@ import org.scalajs.linker._
 import org.scalajs.linker.standard._
 
 import Analysis._
-import Infos.NamespacedEncodedName
+import Infos.{NamespacedEncodedName, ReachabilityInfo}
 
 private final class Analyzer(config: CommonPhaseConfig,
     symbolRequirements: SymbolRequirement,
@@ -690,7 +690,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         implicit from: From): Future[Option[MethodInfo]] = {
       val candidates = publicMethodInfos.valuesIterator.filter { m =>
         // TODO In theory we should filter out protected methods
-        !m.isReflProxy && !m.isDefaultBridge && !m.isExported && !m.isAbstract &&
+        !m.isReflProxy && !m.isDefaultBridge && !m.isAbstract &&
         reflProxyMatches(m.encodedName, proxyName)
       }.toSeq
 
@@ -826,6 +826,10 @@ private final class Analyzer(config: CommonPhaseConfig,
           _.reachStatic()(fromAnalyzer)
         }
       }
+
+      // Top-level exports
+      for (reachabilityInfo <- data.topLevelExportedMembers)
+        followReachabilityInfo(reachabilityInfo)
     }
 
     def accessModule()(implicit from: From): Unit = {
@@ -895,14 +899,8 @@ private final class Analyzer(config: CommonPhaseConfig,
             }
           }
 
-          for (methodInfo <- methodInfos(MemberNamespace.PublicStatic).values) {
-            if (methodInfo.isExported)
-              methodInfo.reachStatic()(FromExports)
-          }
-          for (methodInfo <- publicMethodInfos.values) {
-            if (methodInfo.isExported)
-              methodInfo.reach(this)(FromExports)
-          }
+          for (reachabilityInfo <- data.exportedMembers)
+            followReachabilityInfo(reachabilityInfo)(FromExports)
         }
       }
     }
@@ -914,11 +912,8 @@ private final class Analyzer(config: CommonPhaseConfig,
 
         // Reach exported members
         if (!isJSClass) {
-          implicit val from = FromExports
-          for (methodInfo <- publicMethodInfos.values) {
-            if (methodInfo.isExported)
-              callMethod(methodInfo.encodedName)
-          }
+          for (reachabilityInfo <- data.exportedMembers)
+            followReachabilityInfo(reachabilityInfo)(FromExports)
         }
       }
     }
@@ -977,7 +972,6 @@ private final class Analyzer(config: CommonPhaseConfig,
     val encodedName = data.encodedName
     val namespace = data.namespace
     val isAbstract = data.isAbstract
-    val isExported = data.isExported
     val isReflProxy = isReflProxyName(encodedName)
 
     var isReachable: Boolean = false
@@ -1038,73 +1032,76 @@ private final class Analyzer(config: CommonPhaseConfig,
         _errors += MissingMethod(this, from)
     }
 
-    private[this] def doReach(): Unit = {
-      implicit val from = FromMethod(this)
+    private[this] def doReach(): Unit =
+      followReachabilityInfo(data.reachabilityInfo)(FromMethod(this))
+  }
 
-      for (moduleName <- data.accessedModules) {
-        lookupClass(moduleName)(_.accessModule())
+  private def followReachabilityInfo(data: ReachabilityInfo)(
+      implicit from: From): Unit = {
+
+    for (moduleName <- data.accessedModules) {
+      lookupClass(moduleName)(_.accessModule())
+    }
+
+    for (className <- data.instantiatedClasses) {
+      lookupClass(className)(_.instantiated())
+    }
+
+    for (className <- data.usedInstanceTests) {
+      if (!Definitions.PrimitiveClasses.contains(className))
+        lookupClass(className)(_.useInstanceTests())
+    }
+
+    for (className <- data.accessedClassData) {
+      if (!Definitions.PrimitiveClasses.contains(className))
+        lookupClass(className)(_.accessData())
+    }
+
+    for (className <- data.referencedClasses) {
+      if (!Definitions.PrimitiveClasses.contains(className))
+        lookupClass(className)(_ => ())
+    }
+
+    /* `for` loops on maps are written with `while` loops to help the JIT
+     * compiler to inline and stack allocate tuples created by the iterators
+     */
+
+    val privateJSFieldsUsedIterator = data.privateJSFieldsUsed.iterator
+    while (privateJSFieldsUsedIterator.hasNext) {
+      val (className, fields) = privateJSFieldsUsedIterator.next()
+      if (fields.nonEmpty)
+        lookupClass(className)(_.isAnyPrivateJSFieldUsed = true)
+    }
+
+    val staticFieldsReadIterator = data.staticFieldsRead.iterator
+    while (staticFieldsReadIterator.hasNext) {
+      val (className, fields) = staticFieldsReadIterator.next()
+      if (fields.nonEmpty)
+        lookupClass(className)(_.isAnyStaticFieldUsed = true)
+    }
+
+    val staticFieldsWrittenIterator = data.staticFieldsWritten.iterator
+    while (staticFieldsWrittenIterator.hasNext) {
+      val (className, fields) = staticFieldsWrittenIterator.next()
+      if (fields.nonEmpty)
+        lookupClass(className)(_.isAnyStaticFieldUsed = true)
+    }
+
+    val methodsCalledIterator = data.methodsCalled.iterator
+    while (methodsCalledIterator.hasNext) {
+      val (className, methods) = methodsCalledIterator.next()
+      lookupClass(className) { classInfo =>
+        for (methodName <- methods)
+          classInfo.callMethod(methodName)
       }
+    }
 
-      for (className <- data.instantiatedClasses) {
-        lookupClass(className)(_.instantiated())
-      }
-
-      for (className <- data.usedInstanceTests) {
-        if (!Definitions.PrimitiveClasses.contains(className))
-          lookupClass(className)(_.useInstanceTests())
-      }
-
-      for (className <- data.accessedClassData) {
-        if (!Definitions.PrimitiveClasses.contains(className))
-          lookupClass(className)(_.accessData())
-      }
-
-      for (className <- data.referencedClasses) {
-        if (!Definitions.PrimitiveClasses.contains(className))
-          lookupClass(className)(_ => ())
-      }
-
-      /* `for` loops on maps are written with `while` loops to help the JIT
-       * compiler to inline and stack allocate tuples created by the iterators
-       */
-
-      val privateJSFieldsUsedIterator = data.privateJSFieldsUsed.iterator
-      while (privateJSFieldsUsedIterator.hasNext) {
-        val (className, fields) = privateJSFieldsUsedIterator.next()
-        if (fields.nonEmpty)
-          lookupClass(className)(_.isAnyPrivateJSFieldUsed = true)
-      }
-
-      val staticFieldsReadIterator = data.staticFieldsRead.iterator
-      while (staticFieldsReadIterator.hasNext) {
-        val (className, fields) = staticFieldsReadIterator.next()
-        if (fields.nonEmpty)
-          lookupClass(className)(_.isAnyStaticFieldUsed = true)
-      }
-
-      val staticFieldsWrittenIterator = data.staticFieldsWritten.iterator
-      while (staticFieldsWrittenIterator.hasNext) {
-        val (className, fields) = staticFieldsWrittenIterator.next()
-        if (fields.nonEmpty)
-          lookupClass(className)(_.isAnyStaticFieldUsed = true)
-      }
-
-      val methodsCalledIterator = data.methodsCalled.iterator
-      while (methodsCalledIterator.hasNext) {
-        val (className, methods) = methodsCalledIterator.next()
-        lookupClass(className) { classInfo =>
-          for (methodName <- methods)
-            classInfo.callMethod(methodName)
-        }
-      }
-
-      val methodsCalledStaticallyIterator = data.methodsCalledStatically.iterator
-      while (methodsCalledStaticallyIterator.hasNext) {
-        val (className, methods) = methodsCalledStaticallyIterator.next()
-        lookupClass(className) { classInfo =>
-          for (methodName <- methods)
-            classInfo.callMethodStatically(methodName)
-        }
+    val methodsCalledStaticallyIterator = data.methodsCalledStatically.iterator
+    while (methodsCalledStaticallyIterator.hasNext) {
+      val (className, methods) = methodsCalledStaticallyIterator.next()
+      lookupClass(className) { classInfo =>
+        for (methodName <- methods)
+          classInfo.callMethodStatically(methodName)
       }
     }
   }
@@ -1116,7 +1113,11 @@ private final class Analyzer(config: CommonPhaseConfig,
         kind = ClassKind.Class,
         superClass = Some("O"),
         interfaces = Nil,
-        methods = List(makeSyntheticMethodInfo("init___"))
+        referencedFieldClasses = Nil,
+        methods = List(makeSyntheticMethodInfo("init___")),
+        exportedMembers = Nil,
+        topLevelExportedMembers = Nil,
+        topLevelExportNames = Nil
     )
   }
 
@@ -1127,11 +1128,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       methodsCalledStatically: Map[String, List[NamespacedEncodedName]] = Map.empty,
       instantiatedClasses: List[String] = Nil
   ): Infos.MethodInfo = {
-    Infos.MethodInfo(
-        encodedName,
-        namespace,
-        isAbstract = false,
-        isExported = false,
+    val reachabilityInfo = ReachabilityInfo(
         privateJSFieldsUsed = Map.empty,
         staticFieldsRead = Map.empty,
         staticFieldsWritten = Map.empty,
@@ -1143,6 +1140,8 @@ private final class Analyzer(config: CommonPhaseConfig,
         accessedClassData = Nil,
         referencedClasses = Nil
     )
+    Infos.MethodInfo(encodedName, namespace, isAbstract = false,
+        reachabilityInfo)
   }
 
 }

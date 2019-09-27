@@ -160,12 +160,11 @@ object JavaLangObject {
         // Exports
 
         /* JSExport for toString(). */
-        MethodDef(
+        JSMethodDef(
           MemberFlags.empty,
           StringLiteral("toString"),
           Nil,
-          AnyType,
-          Some {
+          {
             Apply(EAF, This()(ThisType),
                 Ident("toString__T", Some("toString__T")),
                 Nil)(ClassType(BoxedStringClass))

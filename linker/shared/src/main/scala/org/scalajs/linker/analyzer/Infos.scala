@@ -24,9 +24,6 @@ import org.scalajs.linker.backend.emitter.Transients._
 
 object Infos {
 
-  /** Name used for infos of top-level exports. */
-  private val TopLevelExportsName = "__topLevelExports"
-
   final case class NamespacedEncodedName(
       namespace: MemberNamespace, encodedName: String)
 
@@ -38,6 +35,8 @@ object Infos {
       val interfaces: List[String], // direct parent interfaces only
       val referencedFieldClasses: List[String],
       val methods: List[MethodInfo],
+      val exportedMembers: List[ReachabilityInfo],
+      val topLevelExportedMembers: List[ReachabilityInfo],
       val topLevelExportNames: List[String]
   ) {
     override def toString(): String = encodedName
@@ -46,15 +45,18 @@ object Infos {
   object ClassInfo {
     def apply(
         encodedName: String,
-        isExported: Boolean = false,
-        kind: ClassKind = ClassKind.Class,
-        superClass: Option[String] = None,
-        interfaces: List[String] = Nil,
-        referencedFieldClasses: List[String] = Nil,
-        methods: List[MethodInfo] = Nil,
-        topLevelExportNames: List[String] = Nil): ClassInfo = {
+        isExported: Boolean,
+        kind: ClassKind,
+        superClass: Option[String],
+        interfaces: List[String],
+        referencedFieldClasses: List[String],
+        methods: List[MethodInfo],
+        exportedMembers: List[ReachabilityInfo],
+        topLevelExportedMembers: List[ReachabilityInfo],
+        topLevelExportNames: List[String]): ClassInfo = {
       new ClassInfo(encodedName, isExported, kind, superClass,
-          interfaces, referencedFieldClasses, methods, topLevelExportNames)
+          interfaces, referencedFieldClasses, methods, exportedMembers,
+          topLevelExportedMembers, topLevelExportNames)
     }
   }
 
@@ -62,7 +64,22 @@ object Infos {
       val encodedName: String,
       val namespace: MemberNamespace,
       val isAbstract: Boolean,
-      val isExported: Boolean,
+      val reachabilityInfo: ReachabilityInfo
+  ) {
+    override def toString(): String = encodedName
+  }
+
+  object MethodInfo {
+    def apply(
+        encodedName: String,
+        namespace: MemberNamespace,
+        isAbstract: Boolean,
+        reachabilityInfo: ReachabilityInfo): MethodInfo = {
+      new MethodInfo(encodedName, namespace, isAbstract, reachabilityInfo)
+    }
+  }
+
+  final class ReachabilityInfo private (
       val privateJSFieldsUsed: Map[String, List[String]],
       val staticFieldsRead: Map[String, List[String]],
       val staticFieldsWritten: Map[String, List[String]],
@@ -76,16 +93,16 @@ object Infos {
       val usedInstanceTests: List[String],
       val accessedClassData: List[String],
       val referencedClasses: List[String]
-  ) {
-    override def toString(): String = encodedName
-  }
+  )
 
-  object MethodInfo {
+  object ReachabilityInfo {
+    val Empty: ReachabilityInfo = {
+      ReachabilityInfo(
+          Map.empty, Map.empty, Map.empty, Map.empty, Map.empty,
+          Nil, Nil, Nil, Nil, Nil)
+    }
+
     def apply(
-        encodedName: String,
-        namespace: MemberNamespace,
-        isAbstract: Boolean,
-        isExported: Boolean,
         privateJSFieldsUsed: Map[String, List[String]],
         staticFieldsRead: Map[String, List[String]],
         staticFieldsWritten: Map[String, List[String]],
@@ -95,12 +112,11 @@ object Infos {
         accessedModules: List[String],
         usedInstanceTests: List[String],
         accessedClassData: List[String],
-        referencedClasses: List[String]): MethodInfo = {
-      new MethodInfo(encodedName, namespace, isAbstract, isExported,
-          privateJSFieldsUsed, staticFieldsRead, staticFieldsWritten,
-          methodsCalled, methodsCalledStatically, instantiatedClasses,
-          accessedModules, usedInstanceTests, accessedClassData,
-          referencedClasses)
+        referencedClasses: List[String]): ReachabilityInfo = {
+      new ReachabilityInfo(privateJSFieldsUsed, staticFieldsRead,
+          staticFieldsWritten, methodsCalled, methodsCalledStatically,
+          instantiatedClasses, accessedModules, usedInstanceTests,
+          accessedClassData, referencedClasses)
     }
   }
 
@@ -112,6 +128,8 @@ object Infos {
     private val interfaces = mutable.ListBuffer.empty[String]
     private val referencedFieldClasses = mutable.Set.empty[String]
     private val methods = mutable.ListBuffer.empty[MethodInfo]
+    private val exportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
+    private val topLevelExportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
     private var topLevelExportNames: List[String] = Nil
 
     def setEncodedName(encodedName: String): this.type = {
@@ -159,6 +177,16 @@ object Infos {
       this
     }
 
+    def addExportedMember(reachabilityInfo: ReachabilityInfo): this.type = {
+      exportedMembers += reachabilityInfo
+      this
+    }
+
+    def addTopLevelExportedMember(reachabilityInfo: ReachabilityInfo): this.type = {
+      topLevelExportedMembers += reachabilityInfo
+      this
+    }
+
     def setTopLevelExportNames(names: List[String]): this.type = {
       topLevelExportNames = names
       this
@@ -167,16 +195,12 @@ object Infos {
     def result(): ClassInfo = {
       ClassInfo(encodedName, isExported, kind, superClass,
           interfaces.toList, referencedFieldClasses.toList, methods.toList,
+          exportedMembers.toList, topLevelExportedMembers.toList,
           topLevelExportNames)
     }
   }
 
-  final class MethodInfoBuilder {
-    private var encodedName: String = ""
-    private var namespace: MemberNamespace = MemberNamespace.Public
-    private var isAbstract: Boolean = false
-    private var isExported: Boolean = false
-
+  final class ReachabilityInfoBuilder {
     private val privateJSFieldsUsed = mutable.Map.empty[String, mutable.Set[String]]
     private val staticFieldsRead = mutable.Map.empty[String, mutable.Set[String]]
     private val staticFieldsWritten = mutable.Map.empty[String, mutable.Set[String]]
@@ -187,26 +211,6 @@ object Infos {
     private val usedInstanceTests = mutable.Set.empty[String]
     private val accessedClassData = mutable.Set.empty[String]
     private val referencedClasses = mutable.Set.empty[String]
-
-    def setEncodedName(encodedName: String): this.type = {
-      this.encodedName = encodedName
-      this
-    }
-
-    def setNamespace(namespace: MemberNamespace): this.type = {
-      this.namespace = namespace
-      this
-    }
-
-    def setIsAbstract(isAbstract: Boolean): this.type = {
-      this.isAbstract = isAbstract
-      this
-    }
-
-    def setIsExported(isExported: Boolean): this.type = {
-      this.isExported = isExported
-      this
-    }
 
     def addPrivateJSFieldUsed(cls: String, field: String): this.type = {
       privateJSFieldsUsed.getOrElseUpdate(cls, mutable.Set.empty) += field
@@ -325,17 +329,13 @@ object Infos {
       case ArrayTypeRef(base, _) => base
     }
 
-    def result(): MethodInfo = {
+    def result(): ReachabilityInfo = {
       def toMapOfLists[A](
           m: mutable.Map[String, mutable.Set[A]]): Map[String, List[A]] = {
         m.map(kv => kv._1 -> kv._2.toList).toMap
       }
 
-      MethodInfo(
-          encodedName = encodedName,
-          namespace = namespace,
-          isAbstract = isAbstract,
-          isExported = isExported,
+      ReachabilityInfo(
           privateJSFieldsUsed = toMapOfLists(privateJSFieldsUsed),
           staticFieldsRead = toMapOfLists(staticFieldsRead),
           staticFieldsWritten = toMapOfLists(staticFieldsWritten),
@@ -361,14 +361,17 @@ object Infos {
       .addInterfaces(classDef.interfaces.map(_.name))
 
     classDef.memberDefs foreach {
-      case fieldDef: FieldDef =>
+      case fieldDef: AnyFieldDef =>
         builder.maybeAddReferencedFieldClass(fieldDef.ftpe)
 
       case methodDef: MethodDef =>
         builder.addMethod(generateMethodInfo(methodDef))
 
-      case propertyDef: PropertyDef =>
-        builder.addMethod(generatePropertyInfo(propertyDef))
+      case methodDef: JSMethodDef =>
+        builder.addExportedMember(generateJSMethodInfo(methodDef))
+
+      case propertyDef: JSPropertyDef =>
+        builder.addExportedMember(generateJSPropertyInfo(propertyDef))
     }
 
     if (classDef.topLevelExportDefs.nonEmpty) {
@@ -376,7 +379,7 @@ object Infos {
 
       val optInfo = generateTopLevelExportsInfo(classDef.name.name,
           classDef.topLevelExportDefs)
-      optInfo.foreach(builder.addMethod(_))
+      optInfo.foreach(builder.addTopLevelExportedMember(_))
 
       val names = classDef.topLevelExportDefs.map(_.topLevelExportName)
       builder.setTopLevelExportNames(names)
@@ -391,15 +394,21 @@ object Infos {
   def generateMethodInfo(methodDef: MethodDef): MethodInfo =
     new GenInfoTraverser().generateMethodInfo(methodDef)
 
-  /** Generates the [[MethodInfo]] of a
-   *  [[org.scalajs.ir.Trees.PropertyDef Trees.PropertyDef]].
+  /** Generates the [[ReachabilityInfo]] of a
+   *  [[org.scalajs.ir.Trees.JSMethodDef Trees.JSMethodDef]].
    */
-  def generatePropertyInfo(propertyDef: PropertyDef): MethodInfo =
-    new GenInfoTraverser().generatePropertyInfo(propertyDef)
+  def generateJSMethodInfo(methodDef: JSMethodDef): ReachabilityInfo =
+    new GenInfoTraverser().generateJSMethodInfo(methodDef)
+
+  /** Generates the [[ReachabilityInfo]] of a
+   *  [[org.scalajs.ir.Trees.JSPropertyDef Trees.JSPropertyDef]].
+   */
+  def generateJSPropertyInfo(propertyDef: JSPropertyDef): ReachabilityInfo =
+    new GenInfoTraverser().generateJSPropertyInfo(propertyDef)
 
   /** Generates the [[MethodInfo]] for the top-level exports. */
   def generateTopLevelExportsInfo(enclosingClass: String,
-      topLevelExportDefs: List[TopLevelExportDef]): Option[MethodInfo] = {
+      topLevelExportDefs: List[TopLevelExportDef]): Option[ReachabilityInfo] = {
 
     var topLevelMethodExports: List[TopLevelMethodExportDef] = Nil
     var topLevelFieldExports: List[TopLevelFieldExportDef] = Nil
@@ -421,44 +430,34 @@ object Infos {
   }
 
   private final class GenInfoTraverser extends Traverser {
-    private val builder = new MethodInfoBuilder
+    private val builder = new ReachabilityInfoBuilder
 
     def generateMethodInfo(methodDef: MethodDef): MethodInfo = {
-      builder
-        .setEncodedName(methodDef.name.encodedName)
-        .setNamespace(methodDef.flags.namespace)
-        .setIsAbstract(methodDef.body.isEmpty)
-        .setIsExported(!methodDef.name.isInstanceOf[Ident])
-
-      methodDef.name match {
-        case ComputedName(tree, _) =>
-          traverse(tree)
-
-        case StringLiteral(_) =>
-
-        case Ident(name, _) =>
-          val (_, params, result) = decodeMethodName(name)
-          params.foreach(builder.addReferencedClass)
-          result.foreach(builder.addReferencedClass)
-      }
+      val (_, params, result) = decodeMethodName(methodDef.encodedName)
+      params.foreach(builder.addReferencedClass)
+      result.foreach(builder.addReferencedClass)
 
       methodDef.body.foreach(traverse)
+
+      val reachabilityInfo = builder.result()
+
+      MethodInfo(
+          methodDef.encodedName,
+          methodDef.flags.namespace,
+          methodDef.body.isEmpty,
+          reachabilityInfo
+      )
+    }
+
+    def generateJSMethodInfo(methodDef: JSMethodDef): ReachabilityInfo = {
+      traverse(methodDef.name)
+      traverse(methodDef.body)
 
       builder.result()
     }
 
-    def generatePropertyInfo(propertyDef: PropertyDef): MethodInfo = {
-      builder
-        .setEncodedName(propertyDef.name.encodedName)
-        .setNamespace(propertyDef.flags.namespace)
-        .setIsExported(true)
-
-      propertyDef.name match {
-        case ComputedName(tree, _) =>
-          traverse(tree)
-        case _ =>
-      }
-
+    def generateJSPropertyInfo(propertyDef: JSPropertyDef): ReachabilityInfo = {
+      traverse(propertyDef.name)
       propertyDef.getterBody.foreach(traverse)
       propertyDef.setterArgAndBody foreach { case (_, body) =>
         traverse(body)
@@ -469,13 +468,12 @@ object Infos {
 
     def generateTopLevelExportsInfo(enclosingClass: String,
         topLevelMethodExports: List[TopLevelMethodExportDef],
-        topLevelFieldExports: List[TopLevelFieldExportDef]): MethodInfo = {
-      builder
-        .setEncodedName(TopLevelExportsName)
-        .setIsExported(true)
+        topLevelFieldExports: List[TopLevelFieldExportDef]): ReachabilityInfo = {
 
-      for (topLevelMethodExport <- topLevelMethodExports)
-        topLevelMethodExport.methodDef.body.foreach(traverse(_))
+      for (topLevelMethodExport <- topLevelMethodExports) {
+        assert(topLevelMethodExport.methodDef.name.isInstanceOf[StringLiteral])
+        traverse(topLevelMethodExport.methodDef.body)
+      }
 
       for (topLevelFieldExport <- topLevelFieldExports) {
         val field = topLevelFieldExport.field.name

@@ -36,7 +36,7 @@ class JSExportASTTest extends JSASTTest {
       override def foo = 2
     }
     """.hasExactly(1, "definitions of property `foo`") {
-      case js.PropertyDef(_, js.StringLiteral("foo"), _, _) =>
+      case js.JSPropertyDef(_, js.StringLiteral("foo"), _, _) =>
     }
   }
 

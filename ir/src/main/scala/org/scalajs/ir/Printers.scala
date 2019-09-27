@@ -106,7 +106,6 @@ object Printers {
     def printAnyNode(node: IRNode): Unit = {
       node match {
         case node: Ident             => print(node)
-        case node: ComputedName      => print(node)
         case node: ParamDef          => print(node)
         case node: Tree              => print(node)
         case node: JSSpread          => print(node)
@@ -894,6 +893,16 @@ object Printers {
           print(": ")
           print(vtpe)
 
+        case JSFieldDef(flags, name, vtpe) =>
+          print(flags.namespace.prefixString)
+          if (flags.isMutable)
+            print("var ")
+          else
+            print("val ")
+          printJSMemberName(name)
+          print(": ")
+          print(vtpe)
+
         case tree: MethodDef =>
           val MethodDef(flags, name, args, resultType, body) = tree
           print(tree.optimizerHints)
@@ -907,11 +916,20 @@ object Printers {
             printBlock(body)
           }
 
-        case PropertyDef(flags, name, getterBody, setterArgAndBody) =>
+        case tree: JSMethodDef =>
+          val JSMethodDef(flags, name, args, body) = tree
+          print(tree.optimizerHints)
+          print(flags.namespace.prefixString)
+          print("def ")
+          printJSMemberName(name)
+          printSig(args, AnyType)
+          printBlock(body)
+
+        case JSPropertyDef(flags, name, getterBody, setterArgAndBody) =>
           getterBody foreach { body =>
             print(flags.namespace.prefixString)
             print("get ")
-            print(name)
+            printJSMemberName(name)
             printSig(Nil, AnyType)
             printBlock(body)
           }
@@ -923,7 +941,7 @@ object Printers {
           setterArgAndBody foreach { case (arg, body) =>
             print(flags.namespace.prefixString)
             print("set ")
-            print(name)
+            printJSMemberName(name)
             printSig(arg :: Nil, NoType)
             printBlock(body)
           }
@@ -1004,16 +1022,13 @@ object Printers {
     def print(ident: Ident): Unit =
       printEscapeJS(ident.name, out)
 
-    def print(propName: PropertyName): Unit = propName match {
-      case lit: StringLiteral => print(lit: Tree)
-      case ident: Ident       => print(ident)
-
-      case ComputedName(tree, index) =>
+    def printJSMemberName(name: Tree): Unit = name match {
+      case name: StringLiteral =>
+        print(name)
+      case _ =>
         print("[")
-        print(tree)
-        print("](")
-        print(index)
-        print(")")
+        print(name)
+        print("]")
     }
 
     def print(spec: JSNativeLoadSpec): Unit = {

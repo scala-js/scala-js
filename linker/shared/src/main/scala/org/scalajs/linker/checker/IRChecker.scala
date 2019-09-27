@@ -133,7 +133,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       def isStaticInit(methodDef: Versioned[MethodDef]): Boolean = {
         val m = methodDef.value
         m.flags.namespace == MemberNamespace.PublicStatic &&
-        m.name.encodedName == StaticInitializerName
+        m.encodedName == StaticInitializerName
       }
 
       for (staticInit <- classDef.methods.find(isStaticInit)) {
@@ -171,10 +171,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       val methodDef = member.value
       implicit val ctx = ErrorContext(methodDef)
 
-      if (!methodDef.name.isInstanceOf[Ident])
-        reportError(s"Static method ${methodDef.name} cannot be exported")
-      else
-        checkMethodDef(methodDef, classDef)
+      checkMethodDef(methodDef, classDef)
     }
   }
 
@@ -193,9 +190,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
        * TODO #2627 We currently cannot check instance field collisions because
        * of #2382.
        */
-      val staticFieldDefs = classDef.fields.filter(_.flags.namespace.isStatic)
+      val staticFieldDefs = classDef.fields.collect {
+        case fieldDef: FieldDef if fieldDef.flags.namespace.isStatic => fieldDef
+      }
       for {
-        fieldsWithSameName <- staticFieldDefs.groupBy(_.encodedName).values
+        fieldsWithSameName <- staticFieldDefs.groupBy(_.name.name).values
         duplicate <- fieldsWithSameName.tail
       } {
         implicit val ctx = ErrorContext(duplicate)
@@ -217,10 +216,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         implicit val ctx = ErrorContext(member.value)
 
         member.value match {
-          case m: MethodDef =>
+          case m: JSMethodDef =>
             checkExportedMethodDef(m, classDef, isTopLevel = false)
 
-          case p: PropertyDef =>
+          case p: JSPropertyDef =>
             checkExportedPropertyDef(p, classDef)
 
           // Anything else is illegal
@@ -289,26 +288,22 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       checkFieldDef(fieldDef, classDef)
   }
 
-  private def checkFieldDef(fieldDef: FieldDef, classDef: LinkedClass): Unit = {
-    val FieldDef(flags, name, tpe) = fieldDef
+  private def checkFieldDef(fieldDef: AnyFieldDef, classDef: LinkedClass): Unit = {
     implicit val ctx = ErrorContext(fieldDef)
 
-    if (flags.namespace.isPrivate)
+    if (fieldDef.flags.namespace.isPrivate)
       reportError("A field cannot be private")
 
-    name match {
-      case _: Ident =>
+    fieldDef match {
+      case _: FieldDef =>
         // ok
-      case _: StringLiteral =>
+      case JSFieldDef(_, name, _) =>
         if (!classDef.kind.isJSClass)
-          reportError(s"FieldDef '$name' cannot have a string literal name")
-      case ComputedName(tree, _) =>
-        if (!classDef.kind.isJSClass)
-          reportError(s"FieldDef '$name' cannot have a computed name")
-        typecheckExpect(tree, Env.empty, AnyType)
+          reportError(s"Illegal JS field '$name' in Scala class")
+        typecheckExpect(name, Env.empty, AnyType)
     }
 
-    if (tpe == NoType)
+    if (fieldDef.ftpe == NoType)
       reportError(s"FieldDef cannot have type NoType")
   }
 
@@ -375,9 +370,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  private def checkExportedMethodDef(methodDef: MethodDef,
+  private def checkExportedMethodDef(methodDef: JSMethodDef,
       classDef: LinkedClass, isTopLevel: Boolean): Unit = withPerMethodState {
-    val MethodDef(flags, pName, params, resultType, body) = methodDef
+    val JSMethodDef(flags, pName, params,  body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
     val static = flags.namespace.isStatic
@@ -411,76 +406,58 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     if (classDef.kind.isJSClass && isJSConstructor) {
       checkJSClassConstructor(methodDef, classDef)
     } else {
-      if (resultType != AnyType) {
-        reportError(s"Result type of exported method def is $resultType, "+
-            "but must be Any")
-      }
-
       val thisType = {
         if (static) NoType
         else if (classDef.kind.isJSClass) AnyType
         else ClassType(classDef.name.name)
       }
 
-      body.fold {
-        reportError("Exported method cannot be abstract")
-      } { body =>
-        val bodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures,
-            params, resultType)
-        typecheckExpect(body, bodyEnv, resultType)
-      }
+      val bodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures,
+          params, AnyType)
+      typecheckExpect(body, bodyEnv, AnyType)
     }
   }
 
-  private def checkJSClassConstructor(methodDef: MethodDef,
+  private def checkJSClassConstructor(methodDef: JSMethodDef,
       classDef: LinkedClass): Unit = {
-    val MethodDef(static, _, params, resultType, body) = methodDef
+    val JSMethodDef(static, _, params, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
-    if (resultType != NoType) {
-      reportError(s"Result type of JS class constructor is $resultType, "+
-          "but must be NoType")
+    val bodyStats = body match {
+      case Block(stats) => stats
+      case _            => body :: Nil
     }
 
-    body.fold {
-      reportError("JS class constructor cannot be abstract.")
-    } { body =>
-      val bodyStats = body match {
-        case Block(stats) => stats
-        case _            => body :: Nil
-      }
+    val (prepStats, superCallAndRest) =
+      bodyStats.span(!_.isInstanceOf[JSSuperConstructorCall])
 
-      val (prepStats, superCallAndRest) =
-        bodyStats.span(!_.isInstanceOf[JSSuperConstructorCall])
-
-      val (superCall, restStats) = superCallAndRest match {
-        case (superCall: JSSuperConstructorCall) :: restStats =>
-          (superCall, restStats)
-        case _ =>
-          reportError(
-              "A JS class constructor must contain one super constructor " +
-              "call at the top-level")
-          (JSSuperConstructorCall(Nil)(methodDef.pos), Nil)
-      }
-
-      val initialEnv = Env.fromSignature(NoType, classDef.jsClassCaptures,
-          params, NoType, isConstructor = true)
-
-      val preparedEnv = prepStats.foldLeft(initialEnv) { (prevEnv, stat) =>
-        typecheckStat(stat, prevEnv)
-      }
-
-      for (arg <- superCall.args)
-        typecheckExprOrSpread(arg, preparedEnv)
-
-      val restEnv = preparedEnv.withThis(AnyType)
-      typecheckStat(Block(restStats)(methodDef.pos), restEnv)
+    val (superCall, restStats) = superCallAndRest match {
+      case (superCall: JSSuperConstructorCall) :: restStats =>
+        (superCall, restStats)
+      case _ =>
+        reportError(
+            "A JS class constructor must contain one super constructor " +
+            "call at the top-level")
+        (JSSuperConstructorCall(Nil)(methodDef.pos), Nil)
     }
+
+    val initialEnv = Env.fromSignature(NoType, classDef.jsClassCaptures,
+        params, NoType, isConstructor = true)
+
+    val preparedEnv = prepStats.foldLeft(initialEnv) { (prevEnv, stat) =>
+      typecheckStat(stat, prevEnv)
+    }
+
+    for (arg <- superCall.args)
+      typecheckExprOrSpread(arg, preparedEnv)
+
+    val restEnv = preparedEnv.withThis(AnyType)
+    typecheckStat(Block(restStats)(methodDef.pos), restEnv)
   }
 
-  private def checkExportedPropertyDef(propDef: PropertyDef,
+  private def checkExportedPropertyDef(propDef: JSPropertyDef,
       classDef: LinkedClass): Unit = withPerMethodState {
-    val PropertyDef(flags, pName, getterBody, setterArgAndBody) = propDef
+    val JSPropertyDef(flags, pName, getterBody, setterArgAndBody) = propDef
     implicit val ctx = ErrorContext(propDef)
 
     val static = flags.namespace.isStatic
@@ -522,21 +499,18 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  private def checkExportedPropertyName(pName: PropertyName,
+  private def checkExportedPropertyName(propName: Tree,
       classDef: LinkedClass, isTopLevel: Boolean)(
       implicit ctx: ErrorContext): Unit = {
-    pName match {
-      case _: Ident =>
-        throw new AssertionError("Exported method may not have Ident as name")
-
+    propName match {
       case StringLiteral(name) =>
-        if (name.contains("__"))
+        if (!classDef.kind.isJSClass && name.contains("__"))
           reportError("Exported method def name cannot contain __")
 
-      case ComputedName(tree, _) =>
+      case _ =>
         if (isTopLevel || !classDef.kind.isJSClass)
           reportError("Only JS classes may contain members with computed names")
-        typecheckExpect(tree, Env.empty, AnyType)
+        typecheckExpect(propName, Env.empty, AnyType)
     }
   }
 

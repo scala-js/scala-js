@@ -147,7 +147,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     def isInterface(className: String): Boolean =
       classes(className).askIsInterface(this)
 
-    def getAllScalaClassFieldDefs(className: String): List[(String, List[FieldDef])] =
+    def getAllScalaClassFieldDefs(className: String): List[(String, List[AnyFieldDef])] =
       classes(className).askAllScalaClassFieldDefs(this)
 
     def hasInlineableInit(className: String): Boolean =
@@ -165,7 +165,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     def getSuperClassOfJSClass(className: String): String =
       classes(className).askJSSuperClass(this)
 
-    def getJSClassFieldDefs(className: String): List[FieldDef] =
+    def getJSClassFieldDefs(className: String): List[AnyFieldDef] =
       classes(className).askJSClassFieldDefs(this)
 
     def getStaticFieldMirrors(className: String, field: String): List[String] =
@@ -264,7 +264,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     private def computeSuperClass(linkedClass: LinkedClass): String =
       linkedClass.superClass.fold[String](null)(_.name)
 
-    private def computeFieldDefs(linkedClass: LinkedClass): List[FieldDef] =
+    private def computeFieldDefs(linkedClass: LinkedClass): List[AnyFieldDef] =
       linkedClass.fields
 
     private def computeStaticFieldMirrors(
@@ -311,7 +311,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     }
 
     def askAllScalaClassFieldDefs(
-        invalidatable: Invalidatable): List[(String, List[FieldDef])] = {
+        invalidatable: Invalidatable): List[(String, List[AnyFieldDef])] = {
       invalidatable.registeredTo(this)
       superClassAskers += invalidatable
       fieldDefsAskers += invalidatable
@@ -351,7 +351,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       superClass
     }
 
-    def askJSClassFieldDefs(invalidatable: Invalidatable): List[FieldDef] = {
+    def askJSClassFieldDefs(invalidatable: Invalidatable): List[AnyFieldDef] = {
       invalidatable.registeredTo(this)
       fieldDefsAskers += invalidatable
       fieldDefs

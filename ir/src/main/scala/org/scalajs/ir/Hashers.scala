@@ -30,7 +30,7 @@ object Hashers {
 
       hasher.mixPos(methodDef.pos)
       hasher.mixInt(MemberFlags.toBits(flags))
-      hasher.mixPropertyName(name)
+      hasher.mixIdent(name)
       hasher.mixParamDefs(args)
       hasher.mixType(resultType)
       body.foreach(hasher.mixTree)
@@ -43,10 +43,31 @@ object Hashers {
     }
   }
 
+  def hashJSMethodDef(methodDef: JSMethodDef): JSMethodDef = {
+    if (methodDef.hash.isDefined) methodDef
+    else {
+      val hasher = new TreeHasher()
+      val JSMethodDef(flags, name, args, body) = methodDef
+
+      hasher.mixPos(methodDef.pos)
+      hasher.mixInt(MemberFlags.toBits(flags))
+      hasher.mixTree(name)
+      hasher.mixParamDefs(args)
+      hasher.mixTree(body)
+      hasher.mixInt(OptimizerHints.toBits(methodDef.optimizerHints))
+
+      val hash = hasher.finalizeHash()
+
+      JSMethodDef(flags, name, args, body)(
+          methodDef.optimizerHints, Some(hash))(methodDef.pos)
+    }
+  }
+
   /** Hash definitions from a ClassDef where applicable */
   def hashMemberDefs(memberDefs: List[MemberDef]): List[MemberDef] = memberDefs.map {
-    case methodDef: MethodDef => hashMethodDef(methodDef)
-    case otherDef             => otherDef
+    case methodDef: MethodDef   => hashMethodDef(methodDef)
+    case methodDef: JSMethodDef => hashJSMethodDef(methodDef)
+    case otherDef               => otherDef
   }
 
   /** Hash the definitions in a ClassDef (where applicable) */
@@ -544,21 +565,6 @@ object Hashers {
     }
 
     def mixOptIdent(optIdent: Option[Ident]): Unit = optIdent.foreach(mixIdent)
-
-    def mixPropertyName(name: PropertyName): Unit = name match {
-      case name: Ident =>
-        mixTag(TagPropertyNameIdent)
-        mixIdent(name)
-
-      case name: StringLiteral =>
-        mixTag(TagPropertyNameStringLiteral)
-        mixTree(name)
-
-      case ComputedName(tree, logicalName) =>
-        mixTag(TagPropertyNameComputedName)
-        mixTree(tree)
-        mixString(logicalName)
-    }
 
     def mixPos(pos: Position): Unit = {
       digestStream.writeUTF(pos.source.toString)
