@@ -1285,15 +1285,15 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def genModuleInitializer(moduleInitializer: ModuleInitializer): js.Tree = {
     import TreeDSL._
     import Definitions.BoxedStringClass
+    import ModuleInitializerImpl._
 
     implicit val pos = Position.NoPosition
 
-    moduleInitializer match {
-      case ModuleInitializer.VoidMainMethod(moduleClassName, mainMethodName) =>
+    ModuleInitializerImpl.fromModuleInitializer(moduleInitializer) match {
+      case VoidMainMethod(moduleClassName, mainMethodName) =>
         js.Apply(genLoadModule(moduleClassName) DOT mainMethodName, Nil)
 
-      case ModuleInitializer.MainMethodWithArgs(moduleClassName, mainMethodName,
-          args) =>
+      case MainMethodWithArgs(moduleClassName, mainMethodName, args) =>
         val stringArrayTypeRef = ArrayTypeRef(ClassRef(BoxedStringClass), 1)
         js.Apply(genLoadModule(moduleClassName) DOT mainMethodName,
             genArrayValue(stringArrayTypeRef, args.map(js.StringLiteral(_))) :: Nil)

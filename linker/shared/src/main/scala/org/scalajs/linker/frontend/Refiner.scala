@@ -42,7 +42,7 @@ final class Refiner(config: CommonPhaseConfig) {
     val analysis = logger.timeFuture("Refiner: Compute reachability") {
       val allSymbolRequirements = {
         symbolRequirements ++
-        ModuleInitializer.toSymbolRequirement(unit.moduleInitializers)
+        SymbolRequirement.fromModuleInitializer(unit.moduleInitializers)
       }
 
       analyze(allSymbolRequirements, logger)

@@ -15,6 +15,8 @@ package org.scalajs.linker
 import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Types.ClassType
 
+import org.scalajs.linker.standard.ModuleInitializerImpl
+
 /** A module initializer for a Scala.js application.
  *
  *  When linking a Scala.js application, a sequence of `ModuleInitializer`s can
@@ -27,17 +29,13 @@ import org.scalajs.ir.Types.ClassType
  *  Instances of `ModuleInitializer` can be created with methods of
  *  [[ModuleInitializer$ the ModuleInitializer companion object]].
  */
-sealed abstract class ModuleInitializer
+abstract class ModuleInitializer private[linker] () {
+  private[linker] def impl: ModuleInitializerImpl
+}
 
 /** Factory for [[ModuleInitializer]]s. */
 object ModuleInitializer {
-  private[linker] final case class VoidMainMethod(moduleClassName: String,
-      encodedMainMethodName: String)
-      extends ModuleInitializer
-
-  private[linker] final case class MainMethodWithArgs(moduleClassName: String,
-      encodedMainMethodName: String, args: List[String])
-      extends ModuleInitializer
+  import ModuleInitializerImpl._
 
   /** Makes an [[ModuleInitializer]] that calls a zero-argument method returning
    *  `Unit` in a top-level `object`.
@@ -87,21 +85,5 @@ object ModuleInitializer {
       args: List[String]): ModuleInitializer = {
     MainMethodWithArgs(encodeClassName(moduleClassName + "$"),
         mainMethodName + "__AT__V", args)
-  }
-
-  private[linker] def toSymbolRequirement(
-      entryPoints: Seq[ModuleInitializer]): standard.SymbolRequirement = {
-    val factory = standard.SymbolRequirement.factory("module initializers")
-    val requirements = for (entryPoint <- entryPoints) yield {
-      entryPoint match {
-        case VoidMainMethod(moduleClassName, mainMethodName) =>
-          factory.callOnModule(moduleClassName, mainMethodName)
-
-        case MainMethodWithArgs(moduleClassName, mainMethodName, _) =>
-          factory.callOnModule(moduleClassName, mainMethodName) ++
-          factory.classData("T")
-      }
-    }
-    factory.multiple(requirements: _*)
   }
 }

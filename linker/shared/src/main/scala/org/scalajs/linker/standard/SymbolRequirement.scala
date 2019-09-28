@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.standard
 
+import org.scalajs.linker.ModuleInitializer
+
 sealed trait SymbolRequirement {
   final def ++(that: SymbolRequirement): SymbolRequirement =
     SymbolRequirement.multipleInternal(List(this, that))
@@ -107,5 +109,23 @@ object SymbolRequirement {
     case class Optional(requirement: SymbolRequirement) extends SymbolRequirement
     case class Multiple(requirements: List[SymbolRequirement]) extends SymbolRequirement
     case object NoRequirement extends SymbolRequirement
+  }
+
+  private[linker] def fromModuleInitializer(
+      entryPoints: Seq[ModuleInitializer]): SymbolRequirement = {
+    import ModuleInitializerImpl._
+
+    val factory = SymbolRequirement.factory("module initializers")
+    val requirements = for (entryPoint <- entryPoints) yield {
+      ModuleInitializerImpl.fromModuleInitializer(entryPoint) match {
+        case VoidMainMethod(moduleClassName, mainMethodName) =>
+          factory.callOnModule(moduleClassName, mainMethodName)
+
+        case MainMethodWithArgs(moduleClassName, mainMethodName, _) =>
+          factory.callOnModule(moduleClassName, mainMethodName) ++
+          factory.classData("T")
+      }
+    }
+    factory.multiple(requirements: _*)
   }
 }

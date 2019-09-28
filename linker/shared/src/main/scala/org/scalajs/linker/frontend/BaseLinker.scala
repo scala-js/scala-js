@@ -46,7 +46,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
 
     val allSymbolRequirements = {
       symbolRequirements ++
-      ModuleInitializer.toSymbolRequirement(moduleInitializers)
+      SymbolRequirement.fromModuleInitializer(moduleInitializers)
     }
 
     val result = for {
