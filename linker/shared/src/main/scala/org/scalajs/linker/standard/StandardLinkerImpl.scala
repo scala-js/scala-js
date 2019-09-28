@@ -23,7 +23,7 @@ import org.scalajs.linker._
 /** Standard implementation of a Scala.js linker. */
 private final class StandardLinkerImpl private (
     frontend: LinkerFrontend, backend: LinkerBackend)
-    extends Linker {
+    extends LinkerImpl {
 
   require(frontend.coreSpec == backend.coreSpec,
       "Frontend and backend must implement the same core specification")
