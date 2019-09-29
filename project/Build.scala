@@ -658,6 +658,34 @@ object Build {
       library
   )
 
+  val commonLinkerInterfaceSettings = Def.settings(
+      commonSettings,
+      publishSettings,
+      fatalWarningsSettings,
+      name := "Scala.js linker interface",
+
+      unmanagedSourceDirectories in Compile +=
+        baseDirectory.value.getParentFile / "shared/src/main/scala",
+      unmanagedSourceDirectories in Test +=
+        baseDirectory.value.getParentFile / "shared/src/test/scala",
+
+      previousArtifactSetting,
+      mimaBinaryIssueFilters ++= BinaryIncompatibilities.LinkerInterface,
+      exportJars := true, // required so ScalaDoc linking works
+
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a")
+  )
+
+  lazy val linkerInterface: Project = (project in file("linker-interface/jvm")).settings(
+      commonLinkerInterfaceSettings,
+  ).dependsOn(irProject, logging)
+
+  lazy val linkerInterfaceJS: Project = (project in file("linker-interface/js")).settings(
+      commonLinkerInterfaceSettings,
+  ).withScalaJSCompiler.dependsOn(
+      library, irProjectJS, loggingJS,
+  )
+
   val commonLinkerSettings = Def.settings(
       commonSettings,
       publishSettings,
@@ -698,7 +726,7 @@ object Build {
           parallelCollectionsDependencies(scalaVersion.value)
       ),
       fork in Test := true
-  ).dependsOn(irProject, logging, jUnitAsyncJVM % "test")
+  ).dependsOn(linkerInterface, irProject, logging, jUnitAsyncJVM % "test")
 
   lazy val linkerJS: Project = (project in file("linker/js")).enablePlugins(
       MyScalaJSPlugin
@@ -707,7 +735,7 @@ object Build {
       crossVersion := ScalaJSCrossVersion.binary,
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, irProjectJS, loggingJS, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test"
+      linkerInterfaceJS, library, irProjectJS, loggingJS, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test"
   )
 
   lazy val jsEnvs: Project = (project in file("js-envs")).settings(

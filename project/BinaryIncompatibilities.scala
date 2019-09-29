@@ -13,6 +13,9 @@ object BinaryIncompatibilities {
   val Linker = Seq(
   )
 
+  val LinkerInterface = Seq(
+  )
+
   val JSEnvs = Seq(
   )
 
