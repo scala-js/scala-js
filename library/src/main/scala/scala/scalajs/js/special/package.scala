@@ -26,6 +26,23 @@ package scala.scalajs.js
  */
 package object special {
 
+  /** Tests whether two values are equal according to ECMAScript's
+   *  *Strict Equality Comparison* (`===`).
+   *
+   *  In Scala.js 0.6.x, this is equivalent to `x eq y`. It is provided to ease
+   *  cross-compilation with Scala.js 1.x, where the definition of `x eq y` has
+   *  been changed such that:
+   *
+   *  - `strictEquals(NaN, NaN)` is `false` whereas `NaN eq NaN` is `true`
+   *  - `strictEquals(+0.0, -0.0)` is `true` whereas `+0.0 eq -0.0` is `false`
+   *
+   *  @return
+   *    the result of `x === y` where `===` is the ECMAScript operator.
+   */
+  @inline
+  def strictEquals(x: scala.Any, y: scala.Any): Boolean =
+    x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
+
   /** Deletes a property of an object.
    *
    *  This method is the exact equivalent of the `delete obj[key]` statement

@@ -24,6 +24,20 @@ import org.scalajs.testsuite.utils.Platform._
 class SpecialTest {
   import SpecialTest._
 
+  // scala.scalajs.js.special.strictEquals
+
+  @Test def strictEqualsTest(): Unit = {
+    import js.special.strictEquals
+
+    val o1 = new js.Object
+    val o2 = new js.Object
+    assertTrue(strictEquals(o1, o1))
+    assertFalse(strictEquals(o1, o2))
+    assertTrue(strictEquals(+0.0, -0.0))
+    assertTrue(strictEquals(-0.0, +0.0))
+    assertFalse(strictEquals(Double.NaN, Double.NaN))
+  }
+
   // scala.scalajs.js.special.delete
 
   @Test def should_provide_an_equivalent_of_the_JS_delete_keyword_issue_255(): Unit = {
