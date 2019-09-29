@@ -26,7 +26,7 @@ import org.scalajs.ir.Trees.ClassDef
 
 import org.scalajs.linker._
 
-final class StandardIRFileCache extends IRFileCache {
+final class StandardIRFileCache extends IRFileCacheImpl {
   /* General implementation comment: We always synchronize before doing I/O
    * (instead of using a calculate and CAS pattern). This is since we assume
    * that paying the cost for synchronization is lower than I/O.
@@ -53,7 +53,7 @@ final class StandardIRFileCache extends IRFileCache {
     statsTreesRead.set(0)
   }
 
-  private final class CacheImpl extends IRFileCache.Cache {
+  private final class CacheImpl extends IRFileCacheImpl.Cache {
     private[this] var localCache: Seq[PersistedFiles] = _
 
     def cached(files: Seq[IRContainer])(
@@ -269,7 +269,7 @@ object StandardIRFileCache {
       val reused: Int,
       val invalidated: Int,
       val treesRead: Int
-  ) extends IRFileCache.Stats {
+  ) extends IRFileCacheImpl.Stats {
     def logLine: String = {
       s"reused: $reused -- " +
       s"invalidated: $invalidated -- " +
