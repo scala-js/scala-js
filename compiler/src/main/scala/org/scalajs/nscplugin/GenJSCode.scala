@@ -4760,19 +4760,22 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     private object JSUnaryOpMethodName {
-      private val map = Map(
+      private val map = Map[Name, js.JSUnaryOp.Code](
         nme.UNARY_+ -> js.JSUnaryOp.+,
         nme.UNARY_- -> js.JSUnaryOp.-,
         nme.UNARY_~ -> js.JSUnaryOp.~,
         nme.UNARY_! -> js.JSUnaryOp.!
       )
 
-      def unapply(name: TermName): Option[js.JSUnaryOp.Code] =
+      /* We use Name instead of TermName to work around
+       * https://github.com/scala/bug/issues/11534
+       */
+      def unapply(name: Name): Option[js.JSUnaryOp.Code] =
         map.get(name)
     }
 
     private object JSBinaryOpMethodName {
-      private val map = Map(
+      private val map = Map[Name, js.JSBinaryOp.Code](
         nme.ADD -> js.JSBinaryOp.+,
         nme.SUB -> js.JSBinaryOp.-,
         nme.MUL -> js.JSBinaryOp.*,
@@ -4795,7 +4798,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         nme.ZOR  -> js.JSBinaryOp.||
       )
 
-      def unapply(name: TermName): Option[js.JSBinaryOp.Code] =
+      /* We use Name instead of TermName to work around
+       * https://github.com/scala/bug/issues/11534
+       */
+      def unapply(name: Name): Option[js.JSBinaryOp.Code] =
         map.get(name)
     }
 
