@@ -29,6 +29,8 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+    exclude[ReversedMissingMethodProblem]("scala.scalajs.js.LowPrioAnyImplicits.wrapMap"),
+    exclude[ReversedMissingMethodProblem]("scala.scalajs.js.LowPrioAnyImplicits.wrapSet")
   )
 
   val TestInterface = Seq(

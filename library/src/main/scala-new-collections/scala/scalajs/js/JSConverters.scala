@@ -109,6 +109,28 @@ object JSConverters extends JSConvertersLowPrioImplicits {
     }
   }
 
+  implicit final class JSRichGenMapKV[K, V] private[JSConverters] (
+      private val map: Map[K, V])
+      extends AnyVal {
+
+    @inline final def toJSMap: js.Map[K, V] = {
+      val result = js.Map.empty[K, V]
+      map.foreach { case (key, value) => result.set(key, value) }
+      result
+    }
+  }
+
+  implicit final class JSRichSet[T] private[JSConverters] (
+      private val set: Set[T])
+      extends AnyVal {
+
+    @inline final def toJSSet: js.Set[T] = {
+      val result = js.Set.empty[T]
+      set.foreach { value => result.add(value) }
+      result
+    }
+  }
+
   @inline
   implicit def iterableOnceConvertible2JSRichIterableOnce[T, C](coll: C)(
       implicit ev: C => IterableOnce[T]): JSRichIterableOnce[T] =

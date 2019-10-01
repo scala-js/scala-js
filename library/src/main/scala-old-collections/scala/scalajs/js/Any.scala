@@ -183,6 +183,10 @@ trait LowPrioAnyImplicits extends LowestPrioAnyImplicits {
     new WrappedArray(array)
   implicit def wrapDictionary[A](dict: Dictionary[A]): WrappedDictionary[A] =
     new WrappedDictionary(dict)
+  implicit def wrapSet[A](set: Set[A]): WrappedSet[A] =
+    new WrappedSet[A](set)
+  implicit def wrapMap[K, V](map: Map[K, V]): WrappedMap[K, V] =
+    new WrappedMap(map)
 }
 
 sealed trait LowestPrioAnyImplicits {
