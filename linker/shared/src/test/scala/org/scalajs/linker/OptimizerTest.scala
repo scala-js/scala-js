@@ -184,7 +184,7 @@ object OptimizerTest {
     val linker = StandardLinkerImpl(frontend, backend)
 
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
-    val output = LinkerOutput(LinkerOutput.newMemFile())
+    val output = LinkerOutput(MemOutputFile())
 
     TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
       linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
