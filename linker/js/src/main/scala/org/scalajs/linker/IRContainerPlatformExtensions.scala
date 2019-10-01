@@ -23,7 +23,7 @@ import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 
 import java.nio._
 
-import org.scalajs.linker.standard.{IRContainerImpl, IRFileImpl}
+import org.scalajs.linker.standard.{IRContainerImpl, MemIRFileImpl}
 
 abstract class IRContainerPlatformExtensions private[linker] () {
   import NodeFS._
@@ -104,7 +104,7 @@ private object IRContainerPlatformExtensions {
 
       Future.traverse(entries) { entry =>
         entry.async(JSZipInterop.arrayBuffer).toFuture.map { buf =>
-          IRFileImpl.fromMem(s"${this.path}:${entry.name}", version, new Int8Array(buf).toArray)
+          new MemIRFileImpl(s"${this.path}:${entry.name}", version, new Int8Array(buf).toArray)
         }
       }
     }

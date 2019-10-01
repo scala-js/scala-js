@@ -19,7 +19,7 @@ import java.nio.file._
 import java.nio.file.attribute._
 import java.util.EnumSet
 
-import org.scalajs.linker.standard.{IRContainerImpl, IRFileImpl}
+import org.scalajs.linker.standard.{IRContainerImpl, MemIRFileImpl}
 
 abstract class IRContainerPlatformExtensions private[linker] () {
   def fromPathClasspath(classpath: Seq[Path])(
@@ -64,7 +64,7 @@ abstract class IRContainerPlatformExtensions private[linker] () {
               // We copy the contents of the file, otherwise we'd have to keep
               // the zip file system open (and it's unclear if it would be
               // faster).
-              files += IRFileImpl.fromMem(
+              files += new MemIRFileImpl(
                   s"${path.toString}:${entry.toString}", version,
                   Files.readAllBytes(entry))
             }

@@ -15,7 +15,6 @@ package org.scalajs.linker.standard
 import scala.concurrent._
 
 import java.io.IOException
-import java.nio.ByteBuffer
 
 import org.scalajs.ir
 
@@ -54,9 +53,6 @@ abstract class IRFileImpl(
 object IRFileImpl {
   def fromIRFile(irFile: IRFile): IRFileImpl = irFile.impl
 
-  def fromMem(path: String, version: Option[String], content: Array[Byte]): IRFileImpl =
-    new MemIRFileImpl(path, version, content)
-
   def withPathExceptionContext[A](path: String, future: Future[A])(
       implicit ec: ExecutionContext): Future[A] = {
     future.recover {
@@ -67,26 +63,6 @@ object IRFileImpl {
 
       case e: IOException =>
         throw new IOException(s"Failed to deserialize $path", e)
-    }
-  }
-
-  /** A simple in-memory virtual serialized Scala.js IR file. */
-  private final class MemIRFileImpl(
-      path: String,
-      version: Option[String],
-      content: Array[Byte]
-  ) extends IRFileImpl(path, version) {
-    def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] =
-      withBuffer(ir.Serializers.deserializeEntryPointsInfo)
-
-    def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef] =
-      withBuffer(ir.Serializers.deserialize)
-
-    @inline
-    private def withBuffer[A](f: ByteBuffer => A)(
-        implicit ec: ExecutionContext): Future[A] = {
-      val result = Future(f(ByteBuffer.wrap(content)))
-      IRFileImpl.withPathExceptionContext(path, result)
     }
   }
 }
