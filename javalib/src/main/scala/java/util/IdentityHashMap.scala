@@ -18,7 +18,11 @@ import scala.annotation.tailrec
 
 import ScalaOps._
 
-class IdentityHashMap[K, V](inner: HashMap[IdentityHashMap.IdentityBox[K], V])
+/* The additional `internal` parameter works around
+ * https://github.com/scala/bug/issues/11755
+ */
+class IdentityHashMap[K, V] private (
+    inner: HashMap[IdentityHashMap.IdentityBox[K], V], internal: Boolean)
     extends AbstractMap[K, V] with Map[K, V] with Serializable with Cloneable {
   self =>
 
@@ -26,7 +30,7 @@ class IdentityHashMap[K, V](inner: HashMap[IdentityHashMap.IdentityBox[K], V])
 
   def this(expectedMaxSize: Int) = {
     this(new HashMap[IdentityHashMap.IdentityBox[K], V](
-        expectedMaxSize, HashMap.DEFAULT_LOAD_FACTOR))
+        expectedMaxSize, HashMap.DEFAULT_LOAD_FACTOR), internal = true)
   }
 
   def this() =
@@ -41,7 +45,7 @@ class IdentityHashMap[K, V](inner: HashMap[IdentityHashMap.IdentityBox[K], V])
 
   override def clone(): AnyRef = {
     new IdentityHashMap(
-        inner.clone().asInstanceOf[HashMap[IdentityBox[K], V]])
+        inner.clone().asInstanceOf[HashMap[IdentityBox[K], V]], internal = true)
   }
 
   override def containsKey(key: Any): Boolean =
