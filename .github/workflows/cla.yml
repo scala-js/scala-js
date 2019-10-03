@@ -1,0 +1,8 @@
+name: CLA
+on: [pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - run: ./ci/check-cla.sh
