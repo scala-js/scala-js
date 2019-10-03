@@ -57,13 +57,17 @@ object ScalaJSPlugin extends AutoPlugin {
 
     // All our public-facing keys
 
-    val scalaJSIRCache = SettingKey[IRFileCache.Cache](
-        "scalaJSIRCache",
-        "Scala.js internal: Task to access a cache.", KeyRanks.Invisible)
+    val scalaJSIRCacheBox = SettingKey[CacheBox[IRFileCache.Cache]](
+        "scalaJSIRCacheBox",
+        "Scala.js internal: CacheBox for a cache.", KeyRanks.Invisible)
 
-    /** Persisted instance of the Scala.js linker.
+    val scalaJSGlobalIRCacheBox = SettingKey[CacheBox[IRFileCache]](
+        "scalaJSGlobalIRCacheBox",
+        "Scala.js internal: CacheBox for the global cache.", KeyRanks.Invisible)
+
+    /** Instance of the Scala.js linker.
      *
-     *  This setting must be scoped per project, configuration, and stage task
+     *  This task must be scoped per project, configuration, and stage task
      *  (`fastOptJS` or `fullOptJS`).
      *
      *  If a task uses the `link` method of the `ClearableLinker`, it must be
@@ -82,9 +86,22 @@ object ScalaJSPlugin extends AutoPlugin {
      *    }.tag(usesLinkerTag)
      *  }.value,
      *  }}}
+     *
+     *  Do not set this value. Instead, set [[scalaJSLinkerImpl]]. This will
+     *  automatically set up the correct caching behavior.
      */
-    val scalaJSLinker = SettingKey[ClearableLinker]("scalaJSLinker",
-        "Persisted instance of the Scala.js linker", KeyRanks.Invisible)
+    val scalaJSLinker = TaskKey[ClearableLinker]("scalaJSLinker",
+        "Access task for a Scala.js linker. Use this if you want to use the linker.",
+        KeyRanks.Invisible)
+
+    val scalaJSLinkerImpl = TaskKey[LinkerImpl]("scalaJSLinkerImpl",
+        "Implementation of the Scala.js linker to use: By default, this is " +
+        "reflectively loading the standard linker implementation. Users may " +
+        "set this to provide custom linker implementations.",
+        KeyRanks.Invisible)
+
+    val scalaJSLinkerBox = SettingKey[CacheBox[ClearableLinker]]("scalaJSLinkerBox",
+        "Scala.js internal: CacheBox for a Scala.js linker", KeyRanks.Invisible)
 
     /** A tag to indicate that a task is using the value of [[scalaJSLinker]]
      *  and its `link` method.
@@ -177,19 +194,40 @@ object ScalaJSPlugin extends AutoPlugin {
 
         scalaJSLinkerConfig := StandardConfig(),
 
+        scalaJSLinkerImpl := {
+          val s = streams.value
+          val log = s.log
+          val retrieveDir = s.cacheDirectory / "scalajs-linker" / scalaJSVersion
+          val lm = {
+            import sbt.librarymanagement.ivy._
+            val ivyConfig = InlineIvyConfiguration()
+              .withResolvers(Vector(Resolver.defaultLocal, Resolver.mavenCentral))
+              .withLog(log)
+            IvyDependencyResolution(ivyConfig)
+          }
+          lm.retrieve(
+              "org.scala-js" % "scalajs-linker_2.12" % scalaJSVersion,
+              scalaModuleInfo = None, retrieveDir, log)
+            .fold(w => throw w.resolveException, LinkerImpl.default _)
+        },
+
+        scalaJSGlobalIRCacheBox := new CacheBox,
+
         jsEnv := new NodeJSEnv(),
 
         // Clear the IR cache stats every time a sequence of tasks ends
         onComplete := {
-          import ScalaJSPluginInternal.globalIRCache
-
           val prev = onComplete.value
+          val globalIRCacheBox = scalaJSGlobalIRCacheBox.value
 
           { () =>
             prev()
             ScalaJSPluginInternal.closeAllTestAdapters()
-            sLog.value.debug("Global IR cache stats: " + globalIRCache.stats.logLine)
-            globalIRCache.clearStats()
+
+            for (irCache <- globalIRCacheBox) {
+              sLog.value.debug("Global IR cache stats: " + irCache.stats.logLine)
+              irCache.clearStats()
+            }
           }
         },
 

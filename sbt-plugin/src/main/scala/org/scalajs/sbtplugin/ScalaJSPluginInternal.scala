@@ -28,7 +28,6 @@ import sbt.complete.DefaultParsers._
 
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
-import org.scalajs.linker.{StandardImpl, PathIRContainer, PathOutputFile}
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.IRFileImpl
 
@@ -49,9 +48,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
   import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 
-  /** The global Scala.js IR cache */
-  val globalIRCache: IRFileCache = StandardImpl.irFileCache()
-
   @tailrec
   final private def registerResource[T <: AnyRef](
       l: AtomicReference[List[T]], r: T): r.type = {
@@ -62,14 +58,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
   private val allocatedIRCaches =
     new AtomicReference[List[IRFileCache.Cache]](Nil)
-
-  /** Allocates a new IR cache linked to the [[globalIRCache]].
-   *
-   *  The allocated IR cache will automatically be freed when the build is
-   *  unloaded.
-   */
-  private def newIRCache: IRFileCache.Cache =
-    registerResource(allocatedIRCaches, globalIRCache.newCache)
 
   private[sbtplugin] def freeAllIRCaches(): Unit =
     allocatedIRCaches.getAndSet(Nil).foreach(_.free())
@@ -125,27 +113,32 @@ private[sbtplugin] object ScalaJSPluginInternal {
   private def scalaJSStageSettings(stage: Stage,
       key: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
 
+      scalaJSLinkerBox in key := new CacheBox,
+
       scalaJSLinker in key := {
         val config = (scalaJSLinkerConfig in key).value
+        val box = (scalaJSLinkerBox in key).value
+        val linkerImpl = (scalaJSLinkerImpl in key).value
+        val projectID = thisProject.value.id
+        val configName = configuration.value.name
+        val log = streams.value.log
 
         if (config.moduleKind != scalaJSLinkerConfig.value.moduleKind) {
-          val projectID = thisProject.value.id
-          val configName = configuration.value.name
           val keyName = key.key.label
-          sLog.value.warn(
+          log.warn(
               s"The module kind in `scalaJSLinkerConfig in ($projectID, " +
               s"$configName, $keyName)` is different than the one `in " +
               s"`($projectID, $configName)`. " +
               "Some things will go wrong.")
         }
 
-        StandardImpl.clearableLinker(config)
+        box.ensure(linkerImpl.clearableLinker(config))
       },
 
       // Have `clean` reset the state of the incremental linker
       clean in (This, Zero, This) := {
         val _ = (clean in (This, Zero, This)).value
-        (scalaJSLinker in key).value.clear()
+        (scalaJSLinkerBox in key).value.foreach(_.clear())
         ()
       },
 
@@ -178,6 +171,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val moduleInitializers = scalaJSModuleInitializers.value
         val output = (artifactPath in key).value
         val linker = (scalaJSLinker in key).value
+        val linkerImpl = (scalaJSLinkerImpl in key).value
         val usesLinkerTag = (usesScalaJSLinkerTag in key).value
         val sourceMapFile = new File(output.getPath + ".map")
 
@@ -200,8 +194,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
             def relURI(path: String) = new URI(null, null, path, null)
 
-            val out = LinkerOutput(PathOutputFile.atomic(output.toPath))
-              .withSourceMap(PathOutputFile.atomic(sourceMapFile.toPath))
+            val out = LinkerOutput(linkerImpl.outputFile(output.toPath))
+              .withSourceMap(linkerImpl.outputFile(sourceMapFile.toPath))
               .withSourceMapURI(relURI(sourceMapFile.getName))
               .withJSFileURI(relURI(output.getName))
 
@@ -240,10 +234,17 @@ private[sbtplugin] object ScalaJSPluginInternal {
       }
   ) ++ Seq(
       // Note: this cache is not cleared by the sbt's clean task.
-      scalaJSIRCache := newIRCache,
+      scalaJSIRCacheBox := new CacheBox,
 
       scalaJSIR := {
-        val cache = scalaJSIRCache.value
+        val linkerImpl = (scalaJSLinkerImpl in scalaJSIR).value
+
+        val globalIRCache = scalaJSGlobalIRCacheBox.value
+          .ensure(linkerImpl.irFileCache())
+
+        val cache = scalaJSIRCacheBox.value
+          .ensure(registerResource(allocatedIRCaches, globalIRCache.newCache))
+
         val classpath = Attributed.data(fullClasspath.value)
         val log = streams.value.log
         val tlog = sbtLogger2ToolsLogger(log)
@@ -253,7 +254,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
             await(log) { eci =>
               implicit val ec = eci
               for {
-                (irContainers, paths) <- PathIRContainer.fromClasspath(classpath.map(_.toPath))
+                (irContainers, paths) <- linkerImpl.irContainers(classpath.map(_.toPath))
                 irFiles <- cache.cached(irContainers)
               } yield (irFiles, paths)
             }

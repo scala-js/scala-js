@@ -105,6 +105,11 @@ object MyScalaJSPlugin extends AutoPlugin {
       jsEnv := new NodeJSEnv(
           NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)),
 
+      scalaJSLinkerImpl := {
+        val cp = (fullClasspath in (Build.linker.v2_12, Runtime)).value
+        LinkerImpl.default(Attributed.data(cp))
+      },
+
       // Link source maps to GitHub sources
       addScalaJSCompilerOption(Def.setting {
         "mapSourceURI:" +
@@ -858,7 +863,7 @@ object Build {
 
         sbtJars.map(_.data -> docUrl).toMap
       }
-  ).dependsOn(linker.v2_12, jsEnvs.v2_12, nodeJSEnv.v2_12, testAdapter.v2_12)
+  ).dependsOn(linkerInterface.v2_12, jsEnvs.v2_12, nodeJSEnv.v2_12, testAdapter.v2_12)
 
   lazy val delambdafySetting = {
     scalacOptions ++= (
