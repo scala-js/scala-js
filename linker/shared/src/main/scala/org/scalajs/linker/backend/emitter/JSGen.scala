@@ -231,26 +231,12 @@ private[emitter] final class JSGen(val semantics: Semantics,
     } else {
       tpe match {
         case ClassType(className) =>
-          className match {
-            case BoxedUnitClass      => genCallHelper("asUnit", expr)
-            case BoxedBooleanClass   => genCallHelper("asBoolean", expr)
-            case BoxedCharacterClass => genCallHelper("asChar", expr)
-            case BoxedByteClass      => genCallHelper("asByte", expr)
-            case BoxedShortClass     => genCallHelper("asShort", expr)
-            case BoxedIntegerClass   => genCallHelper("asInt", expr)
-            case BoxedLongClass      =>
-              if (useBigIntForLongs) genCallHelper("asLong", expr)
-              else Apply(envField("as", LongImpl.RuntimeLongClass), List(expr))
-            case BoxedFloatClass     => genCallHelper("asFloat", expr)
-            case BoxedDoubleClass    => genCallHelper("asDouble", expr)
-            case ObjectClass         => expr
-            case _                   => Apply(envField("as", className), List(expr))
-          }
+          Apply(envField("as", className), List(expr))
 
         case ArrayType(ArrayTypeRef(base, depth)) =>
           Apply(envField("asArrayOf", base), List(expr, IntLiteral(depth)))
 
-        case UndefType   => Block(genCallHelper("asUnit", expr), Undefined())
+        case UndefType   => genCallHelper("uV", expr)
         case BooleanType => genCallHelper("uZ", expr)
         case CharType    => genCallHelper("uC", expr)
         case ByteType    => genCallHelper("uB", expr)
@@ -259,18 +245,13 @@ private[emitter] final class JSGen(val semantics: Semantics,
         case LongType    => genCallHelper("uJ", expr)
         case FloatType   => genCallHelper("uF", expr)
         case DoubleType  => genCallHelper("uD", expr)
-        case StringType  => Apply(envField("as_T"), List(expr)) || StringLiteral("")
+        case StringType  => genCallHelper("uT", expr)
         case AnyType     => expr
 
         case NoType | NullType | NothingType | _:RecordType =>
           throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
       }
     }
-  }
-
-  def genAsInstanceOfHijackedClass(expr: Tree, className: String)(
-      implicit pos: Position): Tree = {
-    genAsInstanceOf(expr, ClassType(className))
   }
 
   def genCallHelper(helperName: String, args: Tree*)(

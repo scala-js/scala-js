@@ -737,8 +737,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     implicit val pos = tree.pos
 
-    if (tree.kind.isClass || tree.kind == ClassKind.Interface ||
-        tree.name.name == Definitions.BoxedStringClass) {
+    val isHijackedClass =
+      tree.kind == ClassKind.HijackedClass
+
+    if (tree.kind.isClass || tree.kind == ClassKind.Interface || isHijackedClass) {
       val className = tree.name.name
       val displayName = decodeClassName(className)
 
@@ -759,8 +761,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
           case Definitions.ObjectClass =>
             js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
 
-          case Definitions.BoxedStringClass =>
-            js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
+          case _ if isHijackedClass =>
+            genIsInstanceOfHijackedClass(obj, className)
 
           case _ =>
             var test = if (tree.kind.isClass) {
@@ -792,13 +794,13 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         }
       }
 
-      val needIsFunction = isExpression match {
+      val needIsFunction = !isHijackedClass && (isExpression match {
         case js.BinaryOp(JSBinaryOp.instanceof, _, _) =>
           // This is a simple `instanceof`. It will always be inlined at call site.
           false
         case _ =>
           true
-      }
+      })
 
       val createIsStat = if (needIsFunction) {
         envFunctionDef("is", className, List(objParam), js.Return(isExpression))
@@ -959,14 +961,13 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         tree.ancestors.map(ancestor => (js.Ident(ancestor), js.IntLiteral(1))))
 
     val isInstanceFunWithGlobals: WithGlobals[js.Tree] = {
-      if (isAncestorOfHijackedClass || className == BoxedStringClass) {
-        /* java.lang.String and ancestors of hijacked classes, including
-         * java.lang.Object, have a normal $is_pack_Class test but with a
-         * non-standard behavior.
+      if (isAncestorOfHijackedClass) {
+        /* Ancestors of hijacked classes, including java.lang.Object, have a
+         * normal $is_pack_Class test but with a non-standard behavior.
          */
         WithGlobals(envField("is", className))
       } else if (isHijackedClass) {
-        /* Other hijacked classes have a special isInstanceOf test. */
+        /* Hijacked classes have a special isInstanceOf test. */
         val xParam = js.ParamDef(js.Ident("x"), rest = false)
         WithGlobals(genArrowFunction(List(xParam), js.Return {
           genIsInstanceOfHijackedClass(xParam.ref, className)

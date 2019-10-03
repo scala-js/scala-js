@@ -76,8 +76,7 @@ private[emitter] object CoreJSLib {
       defineES2015LikeHelpers()
       defineModuleHelpers()
       defineIntrinsics()
-      defineIsHijackedBoxedClasses()
-      defineAsHijackedBoxedClasses()
+      defineIsPrimitiveFunctions()
       defineBoxFunctions()
       defineTypedArrayConversions()
       defineTypeDataClass()
@@ -930,7 +929,7 @@ private[emitter] object CoreJSLib {
       }
     }
 
-    private def defineIsHijackedBoxedClasses(): Unit = {
+    private def defineIsPrimitiveFunctions(): Unit = {
       val v = varRef("v")
 
       def defineIsIntLike(name: String, specificTest: Tree): Unit = {
@@ -959,37 +958,6 @@ private[emitter] object CoreJSLib {
       }
     }
 
-    private def defineAsHijackedBoxedClasses(): Unit = {
-      if (asInstanceOfs != CheckedBehavior.Unchecked) {
-        val list = List(
-            "asUnit" -> BoxedUnitClass,
-            "asBoolean" -> BoxedBooleanClass,
-            "asChar" -> BoxedCharacterClass,
-            "asByte" -> BoxedByteClass,
-            "asShort" -> BoxedShortClass,
-            "asInt" -> BoxedIntegerClass
-        ) ++ (
-            if (allowBigIntsForLongs) List("asLong" -> BoxedLongClass)
-            else Nil
-        ) ++ List(
-            "asFloat" -> BoxedFloatClass,
-            "asDouble" -> BoxedDoubleClass
-        )
-
-        for ((name, className) <- list) {
-          val fullName = decodeClassName(className)
-          val v = varRef("v")
-          buf += envFunctionDef(name, paramList(v), {
-            If(genIsInstanceOfHijackedClass(v, className) || (v === Null()), {
-              Return(v)
-            }, {
-              genCallHelper("throwClassCastException", v, str(fullName))
-            })
-          })
-        }
-      }
-    }
-
     private def defineBoxFunctions(): Unit = {
       // Boxes for Chars
       locally {
@@ -1004,34 +972,30 @@ private[emitter] object CoreJSLib {
 
       if (asInstanceOfs != CheckedBehavior.Unchecked) {
         // Unboxes for everything
-        buf += envFunctionDef("uZ", paramList(v), {
-          Return(!(!(genCallHelper("asBoolean", v))))
-        })
-        buf += envFunctionDef("uC", paramList(v), {
-          Return(If(v === Null(), 0, genCallHelper("asChar", v) DOT "c"))
-        })
-        buf += envFunctionDef("uB", paramList(v), {
-          Return(genCallHelper("asByte", v) | 0)
-        })
-        buf += envFunctionDef("uS", paramList(v), {
-          Return(genCallHelper("asShort", v) | 0)
-        })
-        buf += envFunctionDef("uI", paramList(v), {
-          Return(genCallHelper("asInt", v) | 0)
-        })
-        buf += envFunctionDef("uJ", paramList(v), {
-          Return(If(v === Null(), genLongZero(),
-              genAsInstanceOfHijackedClass(v, BoxedLongClass)))
-        })
-        buf += envFunctionDef("uF", paramList(v), {
-          /* Since asFloat(v) ensures that v is either null or a float, we can
-           * use + instead of fround.
-           */
-          Return(+genCallHelper("asFloat", v))
-        })
-        buf += envFunctionDef("uD", paramList(v), {
-          Return(+genCallHelper("asDouble", v))
-        })
+        def defineUnbox(name: String, boxedClassName: String, resultExpr: Tree): Unit = {
+          val fullName = decodeClassName(boxedClassName)
+          buf += envFunctionDef(name, paramList(v), Return {
+            If(genIsInstanceOfHijackedClass(v, boxedClassName) || (v === Null()),
+                resultExpr,
+                genCallHelper("throwClassCastException", v, str(fullName)))
+          })
+        }
+
+        defineUnbox("uV", BoxedUnitClass, Undefined())
+        defineUnbox("uZ", BoxedBooleanClass, !(!v))
+        defineUnbox("uC", BoxedCharacterClass, If(v === Null(), 0, v DOT "c"))
+        defineUnbox("uB", BoxedByteClass, v | 0)
+        defineUnbox("uS", BoxedShortClass, v | 0)
+        defineUnbox("uI", BoxedIntegerClass, v | 0)
+        defineUnbox("uJ", BoxedLongClass, If(v === Null(), genLongZero(), v))
+
+        /* Since the type test ensures that v is either null or a float, we can
+         * use + instead of fround.
+         */
+        defineUnbox("uF", BoxedFloatClass, +v)
+
+        defineUnbox("uD", BoxedDoubleClass, +v)
+        defineUnbox("uT", BoxedStringClass, If(v === Null(), StringLiteral(""), v))
       } else {
         // Unboxes for Chars and Longs
         buf += envFunctionDef("uC", paramList(v), {
