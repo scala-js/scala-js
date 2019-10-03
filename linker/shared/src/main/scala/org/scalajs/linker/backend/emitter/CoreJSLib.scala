@@ -464,10 +464,10 @@ private[emitter] object CoreJSLib {
             If(instance === Null(), {
               Return(Apply(instance DOT "getClass__jl_Class", Nil))
             }, {
-              If(genIsInstanceOfHijackedClass(instance, ClassRef(BoxedLongClass)), {
+              If(genIsInstanceOfHijackedClass(instance, BoxedLongClass), {
                 Return(genClassOf(BoxedLongClass))
               }, {
-                If(genIsInstanceOfHijackedClass(instance, ClassRef(BoxedCharacterClass)), {
+                If(genIsInstanceOfHijackedClass(instance, BoxedCharacterClass), {
                   Return(genClassOf(BoxedCharacterClass))
                 }, {
                   If(genIsScalaJSObject(instance), {
@@ -553,7 +553,7 @@ private[emitter] object CoreJSLib {
           val defaultCall: Tree = Return(implementationInObject.getOrElse(normalCall))
 
           val allButNormal = implementingHijackedClasses.foldRight(defaultCall) { (className, next) =>
-            If(genIsInstanceOfHijackedClass(instance, ClassRef(className)),
+            If(genIsInstanceOfHijackedClass(instance, className),
                 Return(genHijackedMethodApply(className)),
                 next)
           }
@@ -980,7 +980,7 @@ private[emitter] object CoreJSLib {
           val fullName = decodeClassName(className)
           val v = varRef("v")
           buf += envFunctionDef(name, paramList(v), {
-            If(genIsInstanceOfHijackedClass(v, ClassRef(className)) || (v === Null()), {
+            If(genIsInstanceOfHijackedClass(v, className) || (v === Null()), {
               Return(v)
             }, {
               genCallHelper("throwClassCastException", v, str(fullName))
@@ -1021,7 +1021,7 @@ private[emitter] object CoreJSLib {
         })
         buf += envFunctionDef("uJ", paramList(v), {
           Return(If(v === Null(), genLongZero(),
-              genAsInstanceOf(v, ClassRef(BoxedLongClass))))
+              genAsInstanceOfHijackedClass(v, BoxedLongClass)))
         })
         buf += envFunctionDef("uF", paramList(v), {
           /* Since asFloat(v) ensures that v is either null or a float, we can

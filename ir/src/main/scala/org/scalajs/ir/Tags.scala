@@ -57,8 +57,7 @@ private[ir] object Tags {
   final val TagRecordSelect = TagRecordValue + 1
   final val TagIsInstanceOf = TagRecordSelect + 1
   final val TagAsInstanceOf = TagIsInstanceOf + 1
-  final val TagUnbox = TagAsInstanceOf + 1
-  final val TagGetClass = TagUnbox + 1
+  final val TagGetClass = TagAsInstanceOf + 1
 
   final val TagJSNew = TagGetClass + 1
   final val TagJSPrivateSelect = TagJSNew + 1

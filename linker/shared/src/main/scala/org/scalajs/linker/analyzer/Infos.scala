@@ -294,8 +294,16 @@ object Infos {
       this
     }
 
-    def addUsedInstanceTest(tpe: TypeRef): this.type =
-      addUsedInstanceTest(baseNameOf(tpe))
+    def maybeAddUsedInstanceTest(tpe: Type): this.type = {
+      tpe match {
+        case ClassType(className) =>
+          addUsedInstanceTest(className)
+        case ArrayType(ArrayTypeRef(baseClassName, _)) =>
+          addUsedInstanceTest(baseClassName)
+        case _ =>
+      }
+      this
+    }
 
     def addUsedInstanceTest(cls: String): this.type = {
       usedInstanceTests += cls
@@ -520,10 +528,10 @@ object Infos {
             case LoadModule(ClassRef(cls)) =>
               builder.addAccessedModule(cls)
 
-            case IsInstanceOf(_, tpe) =>
-              builder.addUsedInstanceTest(tpe)
+            case IsInstanceOf(_, testType) =>
+              builder.maybeAddUsedInstanceTest(testType)
             case AsInstanceOf(_, tpe) =>
-              builder.addUsedInstanceTest(tpe)
+              builder.maybeAddUsedInstanceTest(tpe)
 
             case BinaryOp(op, _, rhs) =>
               import BinaryOp._

@@ -92,7 +92,7 @@ object JavaLangObject {
           Nil,
           AnyType,
           Some {
-            If(IsInstanceOf(This()(ThisType), ClassRef("jl_Cloneable")), {
+            If(IsInstanceOf(This()(ThisType), ClassType("jl_Cloneable")), {
               Apply(EAF, LoadModule(ClassRef("jl_ObjectClone$")),
                   Ident("clone__O__O", Some("clone")),
                   List(This()(ThisType)))(AnyType)

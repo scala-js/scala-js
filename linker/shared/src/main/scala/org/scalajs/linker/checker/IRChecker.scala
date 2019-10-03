@@ -923,16 +923,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             reportError(s"Array type expected but $arrayType found")
         }
 
-      case IsInstanceOf(expr, cls) =>
+      case IsInstanceOf(expr, testType) =>
         typecheckExpr(expr, env)
-        checkIsAsInstanceTargetType(cls)
+        checkIsAsInstanceTargetType(testType)
 
-      case AsInstanceOf(expr, cls) =>
+      case AsInstanceOf(expr, tpe) =>
         typecheckExpr(expr, env)
-        checkIsAsInstanceTargetType(cls)
-
-      case Unbox(expr, _) =>
-        typecheckExpr(expr, env)
+        checkIsAsInstanceTargetType(tpe)
 
       case GetClass(expr) =>
         typecheckExpr(expr, env)
@@ -1145,25 +1142,25 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       reportError(s"Duplicate label named ${label.name}.")
   }
 
-  private def checkIsAsInstanceTargetType(typeRef: TypeRef)(
+  private def checkIsAsInstanceTargetType(tpe: Type)(
       implicit ctx: ErrorContext): Unit = {
-    typeRef match {
-      case ClassRef(encodedName) =>
-        if (Definitions.PrimitiveClasses.contains(encodedName)) {
+    tpe match {
+      case ClassType(className) =>
+        val kind = lookupClass(className).kind
+        if (kind.isJSType) {
           reportError(
-              s"Primitive type $encodedName is not a valid target type for " +
+              s"JS type $className is not a valid target type for " +
               "Is/AsInstanceOf")
-        } else {
-          val kind = lookupClass(encodedName).kind
-          if (kind.isJSType) {
-            reportError(
-                s"JS type $encodedName is not a valid target type for " +
-                "Is/AsInstanceOf")
-          }
         }
 
-      case typeRef: ArrayTypeRef =>
-        checkArrayTypeRef(typeRef)
+      case NoType | NullType | NothingType | _:RecordType =>
+        reportError(s"$tpe is not a valid target type for Is/AsInstanceOf")
+
+      case tpe: ArrayType =>
+        checkArrayType(tpe)
+
+      case _ =>
+        // ok
     }
   }
 

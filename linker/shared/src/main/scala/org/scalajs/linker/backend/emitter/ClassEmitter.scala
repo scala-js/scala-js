@@ -969,7 +969,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         /* Other hijacked classes have a special isInstanceOf test. */
         val xParam = js.ParamDef(js.Ident("x"), rest = false)
         WithGlobals(genArrowFunction(List(xParam), js.Return {
-          genIsInstanceOf(xParam.ref, ClassRef(className))
+          genIsInstanceOfHijackedClass(xParam.ref, className)
         }))
       } else if (isJSType) {
         /* Native JS classes have an instanceof operator-based isInstanceOf

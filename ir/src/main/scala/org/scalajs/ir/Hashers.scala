@@ -303,20 +303,15 @@ object Hashers {
           mixIdent(field)
           mixType(tree.tpe)
 
-        case IsInstanceOf(expr, cls) =>
+        case IsInstanceOf(expr, testType) =>
           mixTag(TagIsInstanceOf)
           mixTree(expr)
-          mixTypeRef(cls)
+          mixType(testType)
 
-        case AsInstanceOf(expr, cls) =>
+        case AsInstanceOf(expr, tpe) =>
           mixTag(TagAsInstanceOf)
           mixTree(expr)
-          mixTypeRef(cls)
-
-        case Unbox(expr, charCode) =>
-          mixTag(TagUnbox)
-          mixTree(expr)
-          mixInt(charCode)
+          mixType(tpe)
 
         case GetClass(expr) =>
           mixTag(TagGetClass)

@@ -496,22 +496,16 @@ object Printers {
           print('.')
           print(field)
 
-        case IsInstanceOf(expr, typeRef) =>
+        case IsInstanceOf(expr, testType) =>
           print(expr)
           print(".isInstanceOf[")
-          print(typeRef)
+          print(testType)
           print(']')
 
-        case AsInstanceOf(expr, typeRef) =>
+        case AsInstanceOf(expr, tpe) =>
           print(expr)
           print(".asInstanceOf[")
-          print(typeRef)
-          print(']')
-
-        case Unbox(expr, charCode) =>
-          print(expr)
-          print(".asInstanceOf[")
-          print(charCode)
+          print(tpe)
           print(']')
 
         case GetClass(expr) =>

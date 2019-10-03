@@ -976,15 +976,12 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 JSBinaryOp(op, rec(lhs), newRhs)
               case JSUnaryOp(op, lhs) =>
                 JSUnaryOp(op, rec(lhs))
-              case IsInstanceOf(expr, tpe) =>
-                IsInstanceOf(rec(expr), tpe)
+              case IsInstanceOf(expr, testType) =>
+                IsInstanceOf(rec(expr), testType)
 
               case AsInstanceOf(expr, tpe)
                   if noExtractYet || semantics.asInstanceOfs == Unchecked =>
                 AsInstanceOf(rec(expr), tpe)
-              case Unbox(expr, tpe)
-                  if noExtractYet || semantics.asInstanceOfs == Unchecked =>
-                Unbox(rec(expr), tpe)
 
               case NewArray(tpe, lengths) =>
                 NewArray(tpe, recs(lengths))
@@ -1201,8 +1198,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         // Casts
         case AsInstanceOf(expr, _) =>
-          (allowSideEffects || semantics.asInstanceOfs == Unchecked) && test(expr)
-        case Unbox(expr, _) =>
           (allowSideEffects || semantics.asInstanceOfs == Unchecked) && test(expr)
 
         // JavaScript expressions that can always have side-effects
@@ -1606,23 +1601,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             redo(RecordSelect(newRecord, field)(rhs.tpe))(env)
           }
 
-        case IsInstanceOf(expr, cls) =>
+        case IsInstanceOf(expr, testType) =>
           unnest(expr) { (newExpr, env) =>
-            redo(IsInstanceOf(newExpr, cls))(env)
+            redo(IsInstanceOf(newExpr, testType))(env)
           }
 
-        case AsInstanceOf(expr, cls) =>
-          if (semantics.asInstanceOfs == Unchecked) {
-            redo(expr)
-          } else {
-            unnest(expr) { (newExpr, env) =>
-              redo(AsInstanceOf(newExpr, cls))(env)
-            }
-          }
-
-        case Unbox(expr, charCode) =>
+        case AsInstanceOf(expr, tpe) =>
           unnest(expr) { (newExpr, env) =>
-            redo(Unbox(newExpr, charCode))(env)
+            redo(AsInstanceOf(newExpr, tpe))(env)
           }
 
         case GetClass(expr) =>
@@ -2431,34 +2417,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           assert(env.isLocalVar(name), name.name)
           js.VarRef(transformLocalVarIdent(name))
 
-        case IsInstanceOf(expr, cls) =>
-          genIsInstanceOf(transformExprNoChar(expr), cls)
+        case IsInstanceOf(expr, testType) =>
+          genIsInstanceOf(transformExprNoChar(expr), testType)
 
-        case AsInstanceOf(expr, cls) =>
-          val newExpr = transformExprNoChar(expr)
-          if (semantics.asInstanceOfs == Unchecked) newExpr
-          else genAsInstanceOf(newExpr, cls)
-
-        case Unbox(expr, charCode) =>
-          val newExpr = transformExprNoChar(expr)
-
-          if (semantics.asInstanceOfs == Unchecked) {
-            (charCode: @switch) match {
-              case 'Z'             => !(!newExpr)
-              case 'C'             => genCallHelper("uC", newExpr)
-              case 'B' | 'S' | 'I' => or0(newExpr)
-              case 'J'             => genCallHelper("uJ", newExpr)
-              case 'D'             => js.UnaryOp(JSUnaryOp.+, newExpr)
-
-              case 'F' =>
-                if (semantics.strictFloats)
-                  genFround(newExpr)
-                else
-                  js.UnaryOp(JSUnaryOp.+, newExpr)
-            }
-          } else {
-            genCallHelper("u"+charCode, newExpr)
-          }
+        case AsInstanceOf(expr, tpe) =>
+          genAsInstanceOf(transformExprNoChar(expr), tpe)
 
         case GetClass(expr) =>
           genCallHelper("objectGetClass", transformExprNoChar(expr))

@@ -434,32 +434,14 @@ object Trees {
       implicit val pos: Position)
       extends Tree
 
-  case class IsInstanceOf(expr: Tree, typeRef: TypeRef)(
-      implicit val pos: Position) extends Tree {
+  case class IsInstanceOf(expr: Tree, testType: Type)(
+      implicit val pos: Position)
+      extends Tree {
     val tpe = BooleanType
   }
 
-  case class AsInstanceOf(expr: Tree, typeRef: TypeRef)(
-      implicit val pos: Position) extends Tree {
-    val tpe = typeRef match {
-      case ClassRef(className)   => ClassType(className)
-      case typeRef: ArrayTypeRef => ArrayType(typeRef)
-    }
-  }
-
-  case class Unbox(expr: Tree, charCode: Char)(
-      implicit val pos: Position) extends Tree {
-    val tpe = (charCode: @switch) match {
-      case 'Z' => BooleanType
-      case 'C' => CharType
-      case 'B' => ByteType
-      case 'S' => ShortType
-      case 'I' => IntType
-      case 'J' => LongType
-      case 'F' => FloatType
-      case 'D' => DoubleType
-    }
-  }
+  case class AsInstanceOf(expr: Tree, tpe: Type)(implicit val pos: Position)
+      extends Tree
 
   case class GetClass(expr: Tree)(implicit val pos: Position) extends Tree {
     val tpe = ClassType(Definitions.ClassClass)
