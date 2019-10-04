@@ -512,7 +512,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           assert(needsRestParam,
               "Trying to read rest param length but needsRestParam is false")
           js.Match(
-              js.Unbox(js.JSSelect(genRestArgRef(), js.StringLiteral("length")), 'I'),
+              js.AsInstanceOf(js.JSSelect(genRestArgRef(), js.StringLiteral("length")), jstpe.IntType),
               cases.toList, defaultCase)(jstpe.AnyType)
         }
       }
@@ -578,8 +578,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
             }
 
             val optCond = typeTest match {
-              case HijackedTypeTest(boxedClassName, _) =>
-                Some(js.IsInstanceOf(paramRef, jstpe.ClassRef(boxedClassName)))
+              case PrimitiveTypeTest(tpe, _) =>
+                Some(js.IsInstanceOf(paramRef, tpe))
 
               case InstanceOfTypeTest(tpe) =>
                 Some(genIsInstanceOf(paramRef, tpe))
@@ -980,8 +980,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
   private sealed abstract class RTTypeTest
 
-  private case class HijackedTypeTest(
-      boxedClassName: String, rank: Int) extends RTTypeTest
+  private case class PrimitiveTypeTest(tpe: jstpe.Type, rank: Int)
+      extends RTTypeTest
 
   // scalastyle:off equals.hash.code
   private case class InstanceOfTypeTest(tpe: Type) extends RTTypeTest {
@@ -1009,14 +1009,14 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           case (_, NoTypeTest) => true
           case (NoTypeTest, _) => false
 
-          case (HijackedTypeTest(_, rank1), HijackedTypeTest(_, rank2)) =>
+          case (PrimitiveTypeTest(_, rank1), PrimitiveTypeTest(_, rank2)) =>
             rank1 <= rank2
 
           case (InstanceOfTypeTest(t1), InstanceOfTypeTest(t2)) =>
             t1 <:< t2
 
-          case (_: HijackedTypeTest, _: InstanceOfTypeTest) => true
-          case (_: InstanceOfTypeTest, _: HijackedTypeTest) => false
+          case (_: PrimitiveTypeTest, _: InstanceOfTypeTest) => true
+          case (_: InstanceOfTypeTest, _: PrimitiveTypeTest) => false
         }
       }
 
@@ -1055,18 +1055,18 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         (toIRType(tpe): @unchecked) match {
           case jstpe.AnyType => NoTypeTest
 
-          case jstpe.NoType      => HijackedTypeTest(Defs.BoxedUnitClass, 0)
-          case jstpe.BooleanType => HijackedTypeTest(Defs.BoxedBooleanClass, 1)
-          case jstpe.CharType    => HijackedTypeTest(Defs.BoxedCharacterClass, 2)
-          case jstpe.ByteType    => HijackedTypeTest(Defs.BoxedByteClass, 3)
-          case jstpe.ShortType   => HijackedTypeTest(Defs.BoxedShortClass, 4)
-          case jstpe.IntType     => HijackedTypeTest(Defs.BoxedIntegerClass, 5)
-          case jstpe.LongType    => HijackedTypeTest(Defs.BoxedLongClass, 6)
-          case jstpe.FloatType   => HijackedTypeTest(Defs.BoxedFloatClass, 7)
-          case jstpe.DoubleType  => HijackedTypeTest(Defs.BoxedDoubleClass, 8)
+          case jstpe.NoType      => PrimitiveTypeTest(jstpe.UndefType, 0)
+          case jstpe.BooleanType => PrimitiveTypeTest(jstpe.BooleanType, 1)
+          case jstpe.CharType    => PrimitiveTypeTest(jstpe.CharType, 2)
+          case jstpe.ByteType    => PrimitiveTypeTest(jstpe.ByteType, 3)
+          case jstpe.ShortType   => PrimitiveTypeTest(jstpe.ShortType, 4)
+          case jstpe.IntType     => PrimitiveTypeTest(jstpe.IntType, 5)
+          case jstpe.LongType    => PrimitiveTypeTest(jstpe.LongType, 6)
+          case jstpe.FloatType   => PrimitiveTypeTest(jstpe.FloatType, 7)
+          case jstpe.DoubleType  => PrimitiveTypeTest(jstpe.DoubleType, 8)
 
-          case jstpe.ClassType(Defs.BoxedUnitClass)   => HijackedTypeTest(Defs.BoxedUnitClass, 0)
-          case jstpe.ClassType(Defs.BoxedStringClass) => HijackedTypeTest(Defs.BoxedStringClass, 9)
+          case jstpe.ClassType(Defs.BoxedUnitClass)   => PrimitiveTypeTest(jstpe.UndefType, 0)
+          case jstpe.ClassType(Defs.BoxedStringClass) => PrimitiveTypeTest(jstpe.StringType, 9)
           case jstpe.ClassType(_)                     => InstanceOfTypeTest(tpe)
 
           case jstpe.ArrayType(_) => InstanceOfTypeTest(tpe)

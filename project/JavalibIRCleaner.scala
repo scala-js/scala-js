@@ -283,10 +283,9 @@ object JavalibIRCleaner {
         case ArrayValue(typeRef, elems) =>
           ArrayValue(transformArrayTypeRef(typeRef), elems)
 
-        case IsInstanceOf(expr, typeRef) =>
-          IsInstanceOf(expr, transformTypeRef(typeRef))
-        case AsInstanceOf(expr, typeRef) =>
-          AsInstanceOf(expr, transformTypeRef(typeRef))
+        case t: IsInstanceOf =>
+          validateType(t.testType)
+          t
 
         case LoadJSConstructor(cls) =>
           genLoadFromLoadSpecOf(cls)

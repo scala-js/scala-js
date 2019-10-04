@@ -130,14 +130,11 @@ object Transformers {
         case RecordSelect(record, field) =>
           RecordSelect(transformExpr(record), field)(tree.tpe)
 
-        case IsInstanceOf(expr, cls) =>
-          IsInstanceOf(transformExpr(expr), cls)
+        case IsInstanceOf(expr, testType) =>
+          IsInstanceOf(transformExpr(expr), testType)
 
-        case AsInstanceOf(expr, cls) =>
-          AsInstanceOf(transformExpr(expr), cls)
-
-        case Unbox(expr, charCode) =>
-          Unbox(transformExpr(expr), charCode)
+        case AsInstanceOf(expr, tpe) =>
+          AsInstanceOf(transformExpr(expr), tpe)
 
         case GetClass(expr) =>
           GetClass(transformExpr(expr))

@@ -136,91 +136,121 @@ private[emitter] final class JSGen(val semantics: Semantics,
     Ident(cls + "__f_" + field.name, field.originalName)
   }
 
-  def genIsInstanceOf(expr: Tree, typeRef: TypeRef)(
+  def genIsInstanceOf(expr: Tree, tpe: Type)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
     import TreeDSL._
 
-    typeRef match {
-      case ClassRef(className) =>
-        if (!HijackedClassesAndTheirSuperClasses.contains(className) &&
+    tpe match {
+      case ClassType(className) =>
+        if (HijackedClasses.contains(className)) {
+          genIsInstanceOfHijackedClass(expr, className)
+        } else if (className == ObjectClass) {
+          expr === Null()
+        } else if (className != NumberClass && // the only non-object superclass of hijacked classes
             !globalKnowledge.isInterface(className)) {
           expr instanceof encodeClassVar(className)
-        } else if (className == BoxedLongClass && !useBigIntForLongs) {
-          expr instanceof encodeClassVar(LongImpl.RuntimeLongClass)
         } else {
-          genIsAsInstanceOf(expr, typeRef, test = true)
+          Apply(envField("is", className), List(expr))
         }
-      case ArrayTypeRef(_, _)  =>
-        genIsAsInstanceOf(expr, typeRef, test = true)
+
+      case ArrayType(ArrayTypeRef(base, depth)) =>
+        Apply(envField("isArrayOf", base), List(expr, IntLiteral(depth)))
+
+      case UndefType   => expr === Undefined()
+      case BooleanType => typeof(expr) === "boolean"
+      case CharType    => expr instanceof envField("Char")
+      case ByteType    => genCallHelper("isByte", expr)
+      case ShortType   => genCallHelper("isShort", expr)
+      case IntType     => genCallHelper("isInt", expr)
+      case LongType    => genIsLong(expr)
+      case FloatType   => genIsFloat(expr)
+      case DoubleType  => typeof(expr) === "number"
+      case StringType  => typeof(expr) === "string"
+      case AnyType     => expr !== Null()
+
+      case NoType | NullType | NothingType | _:RecordType =>
+        throw new AssertionError(s"Unexpected type $tpe in genIsInstanceOf")
     }
   }
 
-  def genIsInstanceOfHijackedClass(expr: Tree, classRef: ClassRef)(
+  def genIsInstanceOfHijackedClass(expr: Tree, className: String)(
       implicit pos: Position): Tree = {
     import TreeDSL._
 
-    if (classRef.className == BoxedLongClass && !useBigIntForLongs)
-      expr instanceof encodeClassVar(LongImpl.RuntimeLongClass)
-    else
-      genIsAsInstanceOf(expr, classRef, test = true)
+    className match {
+      case BoxedUnitClass      => expr === Undefined()
+      case BoxedBooleanClass   => typeof(expr) === "boolean"
+      case BoxedCharacterClass => expr instanceof envField("Char")
+      case BoxedByteClass      => genCallHelper("isByte", expr)
+      case BoxedShortClass     => genCallHelper("isShort", expr)
+      case BoxedIntegerClass   => genCallHelper("isInt", expr)
+      case BoxedLongClass      => genIsLong(expr)
+      case BoxedFloatClass     => genIsFloat(expr)
+      case BoxedDoubleClass    => typeof(expr) === "number"
+      case BoxedStringClass    => typeof(expr) === "string"
+    }
   }
 
-  def genAsInstanceOf(expr: Tree, typeRef: TypeRef)(
-      implicit pos: Position): Tree =
-    genIsAsInstanceOf(expr, typeRef, test = false)
-
-  private def genIsAsInstanceOf(expr: Tree, typeRef: TypeRef, test: Boolean)(
-      implicit pos: Position): Tree = {
+  private def genIsLong(expr: Tree)(implicit pos: Position): Tree = {
     import TreeDSL._
 
-    typeRef match {
-      case ClassRef(className0) =>
-        val className =
-          if (className0 == BoxedLongClass && !useBigIntForLongs) LongImpl.RuntimeLongClass
-          else className0
+    if (useBigIntForLongs) genCallHelper("isLong", expr)
+    else expr instanceof encodeClassVar(LongImpl.RuntimeLongClass)
+  }
 
-        if (HijackedClasses.contains(className)) {
-          def genIsFloat(): Tree =
-            if (semantics.strictFloats) genCallHelper("isFloat", expr)
-            else typeof(expr) === "number"
+  private def genIsFloat(expr: Tree)(implicit pos: Position): Tree = {
+    import TreeDSL._
 
-          if (test) {
-            className match {
-              case BoxedUnitClass      => expr === Undefined()
-              case BoxedBooleanClass   => typeof(expr) === "boolean"
-              case BoxedCharacterClass => expr instanceof envField("Char")
-              case BoxedByteClass      => genCallHelper("isByte", expr)
-              case BoxedShortClass     => genCallHelper("isShort", expr)
-              case BoxedIntegerClass   => genCallHelper("isInt", expr)
-              case BoxedLongClass      => genCallHelper("isLong", expr)
-              case BoxedFloatClass     => genIsFloat()
-              case BoxedDoubleClass    => typeof(expr) === "number"
-              case BoxedStringClass    => typeof(expr) === "string"
-            }
-          } else {
-            className match {
-              case BoxedUnitClass      => genCallHelper("asUnit", expr)
-              case BoxedBooleanClass   => genCallHelper("asBoolean", expr)
-              case BoxedCharacterClass => genCallHelper("asChar", expr)
-              case BoxedByteClass      => genCallHelper("asByte", expr)
-              case BoxedShortClass     => genCallHelper("asShort", expr)
-              case BoxedIntegerClass   => genCallHelper("asInt", expr)
-              case BoxedLongClass      => genCallHelper("asLong", expr)
-              case BoxedFloatClass     => genCallHelper("asFloat", expr)
-              case BoxedDoubleClass    => genCallHelper("asDouble", expr)
-              case BoxedStringClass    => Apply(envField("as_T"), List(expr))
-            }
-          }
-        } else {
-          Apply(
-              envField(if (test) "is" else "as", className),
-              List(expr))
-        }
+    if (semantics.strictFloats) genCallHelper("isFloat", expr)
+    else typeof(expr) === "number"
+  }
 
-      case ArrayTypeRef(base, depth) =>
-        Apply(
-            envField(if (test) "isArrayOf" else "asArrayOf", base),
-            List(expr, IntLiteral(depth)))
+  def genAsInstanceOf(expr: Tree, tpe: Type)(implicit pos: Position): Tree = {
+    import TreeDSL._
+
+    if (semantics.asInstanceOfs == CheckedBehavior.Unchecked) {
+      tpe match {
+        case _:ClassType | _:ArrayType | AnyType =>
+          expr
+
+        case UndefType                     => Block(expr, Undefined())
+        case BooleanType                   => !(!expr)
+        case CharType                      => genCallHelper("uC", expr)
+        case ByteType | ShortType| IntType => expr | 0
+        case LongType                      => genCallHelper("uJ", expr)
+        case DoubleType                    => UnaryOp(irt.JSUnaryOp.+, expr)
+        case StringType                    => expr || StringLiteral("")
+
+        case FloatType =>
+          if (semantics.strictFloats) genCallHelper("fround", expr)
+          else UnaryOp(irt.JSUnaryOp.+, expr)
+
+        case NoType | NullType | NothingType | _:RecordType =>
+          throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
+      }
+    } else {
+      tpe match {
+        case ClassType(className) =>
+          Apply(envField("as", className), List(expr))
+
+        case ArrayType(ArrayTypeRef(base, depth)) =>
+          Apply(envField("asArrayOf", base), List(expr, IntLiteral(depth)))
+
+        case UndefType   => genCallHelper("uV", expr)
+        case BooleanType => genCallHelper("uZ", expr)
+        case CharType    => genCallHelper("uC", expr)
+        case ByteType    => genCallHelper("uB", expr)
+        case ShortType   => genCallHelper("uS", expr)
+        case IntType     => genCallHelper("uI", expr)
+        case LongType    => genCallHelper("uJ", expr)
+        case FloatType   => genCallHelper("uF", expr)
+        case DoubleType  => genCallHelper("uD", expr)
+        case StringType  => genCallHelper("uT", expr)
+        case AnyType     => expr
+
+        case NoType | NullType | NothingType | _:RecordType =>
+          throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
+      }
     }
   }
 

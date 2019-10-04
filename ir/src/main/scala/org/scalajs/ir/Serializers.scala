@@ -294,17 +294,13 @@ object Serializers {
           writeTree(record); writeIdent(field)
           writeType(tree.tpe)
 
-        case IsInstanceOf(expr, typeRef) =>
+        case IsInstanceOf(expr, testType) =>
           writeByte(TagIsInstanceOf)
-          writeTree(expr); writeTypeRef(typeRef)
+          writeTree(expr); writeType(testType)
 
-        case AsInstanceOf(expr, typeRef) =>
+        case AsInstanceOf(expr, tpe) =>
           writeByte(TagAsInstanceOf)
-          writeTree(expr); writeTypeRef(typeRef)
-
-        case Unbox(expr, charCode) =>
-          writeByte(TagUnbox)
-          writeTree(expr); writeByte(charCode.toByte)
+          writeTree(expr); writeType(tpe)
 
         case GetClass(expr) =>
           writeByte(TagGetClass)
@@ -914,9 +910,8 @@ object Serializers {
         case TagArrayLength  => ArrayLength(readTree())
         case TagArraySelect  => ArraySelect(readTree(), readTree())(readType())
         case TagRecordValue  => RecordValue(readType().asInstanceOf[RecordType], readTrees())
-        case TagIsInstanceOf => IsInstanceOf(readTree(), readTypeRef())
-        case TagAsInstanceOf => AsInstanceOf(readTree(), readTypeRef())
-        case TagUnbox        => Unbox(readTree(), readByte().toChar)
+        case TagIsInstanceOf => IsInstanceOf(readTree(), readType())
+        case TagAsInstanceOf => AsInstanceOf(readTree(), readType())
         case TagGetClass     => GetClass(readTree())
 
         case TagJSNew                => JSNew(readTree(), readTreeOrJSSpreads())

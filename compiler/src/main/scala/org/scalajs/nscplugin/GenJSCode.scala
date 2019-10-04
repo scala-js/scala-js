@@ -1923,8 +1923,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           case js.AsInstanceOf(underlying, _) if underlying.tpe == tpe =>
             underlying
           case _ =>
-            val cls = tpe.asInstanceOf[jstpe.ClassType].className
-            js.AsInstanceOf(tree, jstpe.ClassRef(cls))(tree.pos)
+            js.AsInstanceOf(tree, tpe)(tree.pos)
         }
       }
     }
@@ -3028,14 +3027,15 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               s"isInstanceOf[${sym.fullName}] not supported because it is a JS trait")
           js.BooleanLiteral(true)
         } else {
-          js.Unbox(js.JSBinaryOp(
-              js.JSBinaryOp.instanceof, value, genPrimitiveJSClass(sym)), 'Z')
+          js.AsInstanceOf(
+              js.JSBinaryOp(js.JSBinaryOp.instanceof, value, genPrimitiveJSClass(sym)),
+              jstpe.BooleanType)
         }
       } else {
         // The Scala type system prevents x.isInstanceOf[Null] and ...[Nothing]
         assert(sym != NullClass && sym != NothingClass,
             s"Found a .isInstanceOf[$sym] at $pos")
-        js.IsInstanceOf(value, toTypeRef(to))
+        js.IsInstanceOf(value, toIRType(to))
       }
     }
 
@@ -3044,7 +3044,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         implicit pos: Position): js.Tree = {
 
       def default: js.Tree =
-        js.AsInstanceOf(value, toTypeRef(to))
+        js.AsInstanceOf(value, toIRType(to))
 
       val sym = to.typeSymbol
 
@@ -4406,18 +4406,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     def makePrimitiveUnbox(expr: js.Tree, tpe: Type)(
         implicit pos: Position): js.Tree = {
       toIRType(tpe) match {
-        case jstpe.NoType      => expr // for JS interop cases
-        case jstpe.BooleanType => js.Unbox(expr, 'Z')
-        case jstpe.CharType    => js.Unbox(expr, 'C')
-        case jstpe.ByteType    => js.Unbox(expr, 'B')
-        case jstpe.ShortType   => js.Unbox(expr, 'S')
-        case jstpe.IntType     => js.Unbox(expr, 'I')
-        case jstpe.LongType    => js.Unbox(expr, 'J')
-        case jstpe.FloatType   => js.Unbox(expr, 'F')
-        case jstpe.DoubleType  => js.Unbox(expr, 'D')
-
-        case _ =>
-          abort(s"makePrimitiveUnbox requires a primitive type, found $tpe at $pos")
+        case jstpe.NoType => expr // for JS interop cases
+        case irTpe        => js.AsInstanceOf(expr, irTpe)
       }
     }
 
@@ -4550,12 +4540,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case IN =>
           // js.special.in(arg1, arg2)
           val (arg1, arg2) = genArgs2
-          js.Unbox(js.JSBinaryOp(js.JSBinaryOp.in, arg1, arg2), 'Z')
+          js.AsInstanceOf(js.JSBinaryOp(js.JSBinaryOp.in, arg1, arg2),
+              jstpe.BooleanType)
 
         case INSTANCEOF =>
           // js.special.instanceof(arg1, arg2)
           val (arg1, arg2) = genArgs2
-          js.Unbox(js.JSBinaryOp(js.JSBinaryOp.instanceof, arg1, arg2), 'Z')
+          js.AsInstanceOf(js.JSBinaryOp(js.JSBinaryOp.instanceof, arg1, arg2),
+              jstpe.BooleanType)
 
         case DELETE =>
           // js.special.delete(arg1, arg2)

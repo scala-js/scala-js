@@ -124,13 +124,10 @@ object Traversers {
       case RecordSelect(record, field) =>
         traverse(record)
 
-      case IsInstanceOf(expr, cls) =>
+      case IsInstanceOf(expr, _) =>
         traverse(expr)
 
-      case AsInstanceOf(expr, cls) =>
-        traverse(expr)
-
-      case Unbox(expr, charCode) =>
+      case AsInstanceOf(expr, _) =>
         traverse(expr)
 
       case GetClass(expr) =>

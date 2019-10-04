@@ -501,16 +501,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case RecordValue(tpe, elems) =>
         RecordValue(tpe, elems map transformExpr)
 
-      case IsInstanceOf(expr, ClassRef(ObjectClass)) =>
-        transformExpr(JSBinaryOp(JSBinaryOp.!==, expr, Null()))
-
-      case IsInstanceOf(expr, typeRef) =>
+      case IsInstanceOf(expr, testType) =>
         trampoline {
           pretransformExpr(expr) { texpr =>
             val result = {
-              val typeRefTpe = isAsInstanceOfTypeRefToType(typeRef)
-
-              if (isSubtype(texpr.tpe.base, typeRefTpe)) {
+              if (isSubtype(texpr.tpe.base, testType)) {
                 if (texpr.tpe.isNullable)
                   JSBinaryOp(JSBinaryOp.!==, finishTransformExpr(texpr), Null())
                 else
@@ -519,25 +514,17 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                 if (texpr.tpe.isExact)
                   Block(finishTransformStat(texpr), BooleanLiteral(false))
                 else
-                  IsInstanceOf(finishTransformExpr(texpr), typeRef)
+                  IsInstanceOf(finishTransformExpr(texpr), testType)
               }
             }
             TailCalls.done(result)
           }
         }
 
-      case AsInstanceOf(expr, ClassRef(ObjectClass)) =>
-        transformExpr(expr)
-
-      case AsInstanceOf(_, _) =>
-        trampoline {
-          pretransformExpr(tree)(finishTransform(isStat))
-        }
-
-      case Unbox(arg, charCode) =>
+      case AsInstanceOf(arg, tpe) =>
         trampoline {
           pretransformExpr(arg) { targ =>
-            foldUnbox(targ, charCode)(finishTransform(isStat))
+            foldAsInstanceOf(targ, tpe)(finishTransform(isStat))
           }
         }
 
@@ -855,19 +842,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           }
         }
 
-      case AsInstanceOf(expr, typeRef) =>
+      case AsInstanceOf(expr, tpe) =>
         pretransformExpr(expr) { texpr =>
-          typeRef match {
-            case ClassRef(ObjectClass) =>
-              cont(texpr)
-            case _ =>
-              val typeRefTpe = isAsInstanceOfTypeRefToType(typeRef)
-              if (isSubtype(texpr.tpe.base, typeRefTpe)) {
-                cont(texpr)
-              } else {
-                cont(AsInstanceOf(finishTransformExpr(texpr), typeRef).toPreTransform)
-              }
-          }
+          foldAsInstanceOf(texpr, tpe)(cont)
         }
 
       case Closure(arrow, captureParams, params, body, captureValues) =>
@@ -2033,14 +2010,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             val index = finishTransformExpr(tindex)
             val elemType = cursoryArrayElemType(arrayTpe)
             val select = ArraySelect(array, index)(elemType)
-            val cont1: PreTransCont = { tunboxedValue =>
+            foldAsInstanceOf(tvalue, elemType) { tunboxedValue =>
               contTree(Assign(select, finishTransformExpr(tunboxedValue)))
-            }
-            base match {
-              case "Z" | "C" | "B" | "S" | "I" | "L" | "F" | "D" if depth == 1 =>
-                foldUnbox(tvalue, base.charAt(0))(cont1)
-              case _ =>
-                cont1(tvalue)
             }
           case _ =>
             defaultApply("array$undupdate__O__I__O__V", AnyType)
@@ -3945,20 +3916,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
   }
 
-  private def foldUnbox(arg: PreTransform, charCode: Char)(
+  private def foldAsInstanceOf(arg: PreTransform, tpe: Type)(
       cont: PreTransCont): TailRec[Tree] = {
-    (charCode: @switch) match {
-      case 'Z' if arg.tpe.base == BooleanType => cont(arg)
-      case 'C' if arg.tpe.base == CharType    => cont(arg)
-      case 'B' if arg.tpe.base == ByteType    => cont(arg)
-      case 'S' if arg.tpe.base == ShortType   => cont(arg)
-      case 'I' if arg.tpe.base == IntType     => cont(arg)
-      case 'F' if arg.tpe.base == FloatType   => cont(arg)
-      case 'J' if arg.tpe.base == LongType    => cont(arg)
-      case 'D' if arg.tpe.base == DoubleType  => cont(arg)
-      case _ =>
-        cont(Unbox(finishTransformExpr(arg), charCode)(arg.pos).toPreTransform)
-    }
+    if (isSubtype(arg.tpe.base, tpe))
+      cont(arg)
+    else
+      cont(AsInstanceOf(finishTransformExpr(arg), tpe)(arg.pos).toPreTransform)
   }
 
   private def foldJSSelect(qualifier: Tree, item: Tree)(
@@ -4394,24 +4357,6 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     else if (lhs == NothingType) rhs
     else if (rhs == NothingType) lhs
     else upperBound
-  }
-
-  /** Converts a `TypeRef` on the rhs of an `In/AsInstanceOf` to the
-   *  corresponding `Type`.
-   */
-  private def isAsInstanceOfTypeRefToType(typeRef: TypeRef): Type = {
-    /* Since ClassRefs of primitive types and JS types are not admissible
-     * in an Is- or AsInstanceOf node, we can translate all of them to
-     * their corresponding ClassType (with the exception of j.l.Object).
-     *
-     * TODO Investigate whether Null and Nothing should be handled specially
-     * here.
-     */
-    typeRef match {
-      case ClassRef(ObjectClass) => AnyType
-      case ClassRef(className)   => ClassType(className)
-      case typeRef: ArrayTypeRef => ArrayType(typeRef)
-    }
   }
 
   /** Trampolines a pretransform */
@@ -5286,8 +5231,6 @@ private[optimizer] object OptimizerCore {
     def unapply(tree: Tree): Some[(Tree, Any)] = tree match {
       case AsInstanceOf(arg, tpe) =>
         Some((arg, tpe))
-      case Unbox(arg, charCode) =>
-        Some((arg, charCode))
       case _ =>
         Some((tree, ()))
     }
@@ -5317,7 +5260,6 @@ private[optimizer] object OptimizerCore {
       case Block(List(inner, Undefined())) =>
         unapply(inner)
 
-      case Unbox(inner, _)        => unapply(inner)
       case AsInstanceOf(inner, _) => unapply(inner)
 
       case _ => isSimpleArg(body)
@@ -5336,7 +5278,6 @@ private[optimizer] object OptimizerCore {
       case ArrayLength(array)        => isTrivialArg(array)
       case ArraySelect(array, index) => isTrivialArg(array) && isTrivialArg(index)
 
-      case Unbox(inner, _)        => isSimpleArg(inner)
       case AsInstanceOf(inner, _) => isSimpleArg(inner)
       case UnaryOp(_, inner)      => isSimpleArg(inner)
 
