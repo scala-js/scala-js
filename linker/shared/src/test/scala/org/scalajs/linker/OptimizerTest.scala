@@ -48,7 +48,7 @@ class OptimizerTest {
       customMemberDefs: List[MemberDef]): Future[Unit] = {
 
     val thisFoo = This()(ClassType("LFoo"))
-    val intArrayTypeRef = ArrayTypeRef("I", 1)
+    val intArrayTypeRef = ArrayTypeRef(IntRef, 1)
     val intArrayType = ArrayType(intArrayTypeRef)
     val anArrayOfInts = ArrayValue(intArrayTypeRef, List(IntLiteral(1)))
     val newFoo = New(ClassRef("LFoo"), "init___", Nil)

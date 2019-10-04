@@ -12,39 +12,13 @@
 
 package org.scalajs.ir
 
+import scala.annotation.switch
+
 import Types._
 
 object Definitions {
   /** `java.lang.Object`, the root of the class hierarchy. */
   val ObjectClass = "O"
-
-  // Primitive "classes"
-  val VoidClass = "V"
-  val BooleanClass = "Z"
-  val CharClass = "C"
-  val ByteClass = "B"
-  val ShortClass = "S"
-  val IntClass = "I"
-  val LongClass = "J"
-  val FloatClass = "F"
-  val DoubleClass = "D"
-  val NullClass = "N"
-  val NothingClass = "E" // think "the Empty type", or "throws an Exception"
-
-  /** The set of all primitive classes. */
-  val PrimitiveClasses: Set[String] = Set(
-      VoidClass,
-      BooleanClass,
-      CharClass,
-      ByteClass,
-      ShortClass,
-      IntClass,
-      LongClass,
-      FloatClass,
-      DoubleClass,
-      NullClass,
-      NothingClass
-  )
 
   // Hijacked classes
   val BoxedUnitClass = "jl_Void"
@@ -189,10 +163,24 @@ object Definitions {
    */
   def encodeTypeRef(typeRef: TypeRef): String = {
     typeRef match {
+      case PrimRef(tpe) =>
+        tpe match {
+          case NoType      => "V"
+          case BooleanType => "Z"
+          case CharType    => "C"
+          case ByteType    => "B"
+          case ShortType   => "S"
+          case IntType     => "I"
+          case LongType    => "J"
+          case FloatType   => "F"
+          case DoubleType  => "D"
+          case NullType    => "N"
+          case NothingType => "E"
+        }
       case ClassRef(className) =>
         className
-      case ArrayTypeRef(baseClassName, dimensions) =>
-        "A" * dimensions + baseClassName
+      case ArrayTypeRef(base, dimensions) =>
+        "A" * dimensions + encodeTypeRef(base)
     }
   }
 
@@ -200,10 +188,30 @@ object Definitions {
    */
   def decodeTypeRef(encodedName: String): TypeRef = {
     val arrayDepth = encodedName.indexWhere(_ != 'A')
+    val base = {
+      if (arrayDepth == encodedName.length() - 1) {
+        (encodedName.charAt(arrayDepth): @switch) match {
+          case 'V' => VoidRef
+          case 'Z' => BooleanRef
+          case 'C' => CharRef
+          case 'B' => ByteRef
+          case 'S' => ShortRef
+          case 'I' => IntRef
+          case 'J' => LongRef
+          case 'F' => FloatRef
+          case 'D' => DoubleRef
+          case 'N' => NullRef
+          case 'E' => NothingRef
+          case _   => ClassRef(encodedName.substring(arrayDepth))
+        }
+      } else {
+        ClassRef(encodedName.substring(arrayDepth))
+      }
+    }
     if (arrayDepth == 0)
-      ClassRef(encodedName)
+      base
     else
-      ArrayTypeRef(encodedName.substring(arrayDepth), arrayDepth)
+      ArrayTypeRef(base, arrayDepth)
   }
 
   /* Common predicates on encoded names */

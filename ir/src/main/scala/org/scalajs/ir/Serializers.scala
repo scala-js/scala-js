@@ -673,6 +673,20 @@ object Serializers {
     }
 
     def writeTypeRef(typeRef: TypeRef): Unit = typeRef match {
+      case PrimRef(tpe) =>
+        tpe match {
+          case NoType      => buffer.writeByte(TagVoidRef)
+          case BooleanType => buffer.writeByte(TagBooleanRef)
+          case CharType    => buffer.writeByte(TagCharRef)
+          case ByteType    => buffer.writeByte(TagByteRef)
+          case ShortType   => buffer.writeByte(TagShortRef)
+          case IntType     => buffer.writeByte(TagIntRef)
+          case LongType    => buffer.writeByte(TagLongRef)
+          case FloatType   => buffer.writeByte(TagFloatRef)
+          case DoubleType  => buffer.writeByte(TagDoubleRef)
+          case NullType    => buffer.writeByte(TagNullRef)
+          case NothingType => buffer.writeByte(TagNothingRef)
+        }
       case typeRef: ClassRef =>
         buffer.writeByte(TagClassRef)
         writeClassRef(typeRef)
@@ -685,7 +699,7 @@ object Serializers {
       writeString(cls.className)
 
     def writeArrayTypeRef(typeRef: ArrayTypeRef): Unit = {
-      writeString(typeRef.baseClassName)
+      writeTypeRef(typeRef.base)
       buffer.writeInt(typeRef.dimensions)
     }
 
@@ -1109,10 +1123,19 @@ object Serializers {
 
     def readTypeRef(): TypeRef = {
       readByte() match {
-        case TagClassRef =>
-          readClassRef()
-        case TagArrayTypeRef =>
-          readArrayTypeRef()
+        case TagVoidRef      => VoidRef
+        case TagBooleanRef   => BooleanRef
+        case TagCharRef      => CharRef
+        case TagByteRef      => ByteRef
+        case TagShortRef     => ShortRef
+        case TagIntRef       => IntRef
+        case TagLongRef      => LongRef
+        case TagFloatRef     => FloatRef
+        case TagDoubleRef    => DoubleRef
+        case TagNullRef      => NullRef
+        case TagNothingRef   => NothingRef
+        case TagClassRef     => readClassRef()
+        case TagArrayTypeRef => readArrayTypeRef()
       }
     }
 
@@ -1120,7 +1143,7 @@ object Serializers {
       ClassRef(readString())
 
     def readArrayTypeRef(): ArrayTypeRef =
-      ArrayTypeRef(readString(), readInt())
+      ArrayTypeRef(readTypeRef().asInstanceOf[NonArrayTypeRef], readInt())
 
     def readApplyFlags(): ApplyFlags =
       ApplyFlags.fromBits(readInt())

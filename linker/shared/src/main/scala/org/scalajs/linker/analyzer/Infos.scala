@@ -164,9 +164,11 @@ object Infos {
 
     def maybeAddReferencedFieldClass(tpe: Type): this.type = {
       tpe match {
-        case ClassType(cls)                   => referencedFieldClasses += cls
-        case ArrayType(ArrayTypeRef(base, _)) => referencedFieldClasses += base
-        case _                                =>
+        case ClassType(cls) =>
+          referencedFieldClasses += cls
+        case ArrayType(ArrayTypeRef(ClassRef(cls), _)) =>
+          referencedFieldClasses += cls
+        case _ =>
       }
 
       this
@@ -298,7 +300,7 @@ object Infos {
       tpe match {
         case ClassType(className) =>
           addUsedInstanceTest(className)
-        case ArrayType(ArrayTypeRef(baseClassName, _)) =>
+        case ArrayType(ArrayTypeRef(ClassRef(baseClassName), _)) =>
           addUsedInstanceTest(baseClassName)
         case _ =>
       }
@@ -310,31 +312,47 @@ object Infos {
       this
     }
 
-    def addAccessedClassData(tpe: TypeRef): this.type =
-      addAccessedClassData(baseNameOf(tpe))
+    def maybeAddAccessedClassData(typeRef: TypeRef): this.type = {
+      typeRef match {
+        case ClassRef(cls) =>
+          addAccessedClassData(cls)
+        case ArrayTypeRef(ClassRef(cls), _) =>
+          addAccessedClassData(cls)
+        case _ =>
+      }
+      this
+    }
 
     def addAccessedClassData(cls: String): this.type = {
       accessedClassData += cls
       this
     }
 
-    def addReferencedClass(tpe: TypeRef): this.type =
-      addReferencedClass(baseNameOf(tpe))
+    def maybeAddReferencedClass(typeRef: TypeRef): this.type = {
+      typeRef match {
+        case ClassRef(cls) =>
+          addReferencedClass(cls)
+        case ArrayTypeRef(ClassRef(cls), _) =>
+          addReferencedClass(cls)
+        case _ =>
+      }
+      this
+    }
 
     def addReferencedClass(cls: String): this.type = {
       referencedClasses += cls
       this
     }
 
-    def maybeAddReferencedClass(tpe: Type): this.type = tpe match {
-      case ClassType(cls)     => addReferencedClass(cls)
-      case ArrayType(typeRef) => addReferencedClass(typeRef)
-      case _                  => this
-    }
-
-    private def baseNameOf(tpe: TypeRef): String = tpe match {
-      case ClassRef(name)        => name
-      case ArrayTypeRef(base, _) => base
+    def maybeAddReferencedClass(tpe: Type): this.type = {
+      tpe match {
+        case ClassType(cls) =>
+          addReferencedClass(cls)
+        case ArrayType(ArrayTypeRef(ClassRef(cls), _)) =>
+          addReferencedClass(cls)
+        case _ =>
+      }
+      this
     }
 
     def result(): ReachabilityInfo = {
@@ -442,8 +460,8 @@ object Infos {
 
     def generateMethodInfo(methodDef: MethodDef): MethodInfo = {
       val (_, params, result) = decodeMethodName(methodDef.encodedName)
-      params.foreach(builder.addReferencedClass)
-      result.foreach(builder.addReferencedClass)
+      params.foreach(builder.maybeAddReferencedClass)
+      result.foreach(builder.maybeAddReferencedClass)
 
       methodDef.body.foreach(traverse)
 
@@ -555,11 +573,11 @@ object Infos {
               }
 
             case NewArray(typeRef, _) =>
-              builder.addAccessedClassData(typeRef)
+              builder.maybeAddAccessedClassData(typeRef)
             case ArrayValue(typeRef, _) =>
-              builder.addAccessedClassData(typeRef)
+              builder.maybeAddAccessedClassData(typeRef)
             case ClassOf(cls) =>
-              builder.addAccessedClassData(cls)
+              builder.maybeAddAccessedClassData(cls)
 
             case JSPrivateSelect(qualifier, cls, field) =>
               builder.addPrivateJSFieldUsed(cls.className, field.name)

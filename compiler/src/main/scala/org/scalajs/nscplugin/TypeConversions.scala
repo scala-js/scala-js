@@ -40,19 +40,19 @@ trait TypeConversions[G <: Global with Singleton] extends SubComponent {
     )
   }
 
-  private lazy val primitiveClassRefNameMap: Map[Symbol, String] = {
+  private lazy val primitiveRefMap: Map[Symbol, Types.NonArrayTypeRef] = {
     Map(
-        UnitClass    -> Definitions.VoidClass,
-        BooleanClass -> Definitions.BooleanClass,
-        CharClass    -> Definitions.CharClass,
-        ByteClass    -> Definitions.ByteClass,
-        ShortClass   -> Definitions.ShortClass,
-        IntClass     -> Definitions.IntClass,
-        LongClass    -> Definitions.LongClass,
-        FloatClass   -> Definitions.FloatClass,
-        DoubleClass  -> Definitions.DoubleClass,
-        NothingClass -> encodeClassFullName(RuntimeNothingClass),
-        NullClass    -> encodeClassFullName(RuntimeNullClass)
+        UnitClass    -> Types.VoidRef,
+        BooleanClass -> Types.BooleanRef,
+        CharClass    -> Types.CharRef,
+        ByteClass    -> Types.ByteRef,
+        ShortClass   -> Types.ShortRef,
+        IntClass     -> Types.IntRef,
+        LongClass    -> Types.LongRef,
+        FloatClass   -> Types.FloatRef,
+        DoubleClass  -> Types.DoubleRef,
+        NothingClass -> Types.ClassRef(encodeClassFullName(RuntimeNothingClass)),
+        NullClass    -> Types.ClassRef(encodeClassFullName(RuntimeNullClass))
     )
   }
 
@@ -67,16 +67,16 @@ trait TypeConversions[G <: Global with Singleton] extends SubComponent {
   def toTypeRef(t: Type): Types.TypeRef = {
     val (base, arrayDepth) = convert(t)
     if (arrayDepth == 0)
-      Types.ClassRef(makeClassRefName(base))
+      makeNonArrayTypeRef(base)
     else
       makeArrayTypeRef(base, arrayDepth)
   }
 
-  private def makeClassRefName(sym: Symbol): String =
-    primitiveClassRefNameMap.getOrElse(sym, encodeClassFullName(sym))
+  private def makeNonArrayTypeRef(sym: Symbol): Types.NonArrayTypeRef =
+    primitiveRefMap.getOrElse(sym, Types.ClassRef(encodeClassFullName(sym)))
 
   private def makeArrayTypeRef(base: Symbol, depth: Int): Types.ArrayTypeRef =
-    Types.ArrayTypeRef(makeClassRefName(base), depth)
+    Types.ArrayTypeRef(makeNonArrayTypeRef(base), depth)
 
   // The following code was modeled after backend.icode.TypeKinds.toTypeKind
 

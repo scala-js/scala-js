@@ -245,17 +245,13 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   }
 
   /** Computes the internal name for a type. */
-  private def internalName(tpe: Type): String = toTypeRef(tpe) match {
-    case jstpe.ClassRef("sr_Nothing$") => ir.Definitions.NothingClass
-    case jstpe.ClassRef("sr_Null$")    => ir.Definitions.NullClass
-    case jstpe.ClassRef(cls)           => cls
-
-    case jstpe.ArrayTypeRef(cls, depth) =>
-      val builder = new java.lang.StringBuilder(cls.length + depth)
-      for (i <- 0 until depth)
-        builder.append('A')
-      builder.append(cls)
-      builder.toString()
+  private def internalName(tpe: Type): String = {
+    val patchedTypeRef = toTypeRef(tpe) match {
+      case jstpe.ClassRef("sr_Nothing$") => jstpe.NothingRef
+      case jstpe.ClassRef("sr_Null$")    => jstpe.NullRef
+      case typeRef                       => typeRef
+    }
+    ir.Definitions.encodeTypeRef(patchedTypeRef)
   }
 
   /** mangles names that are illegal in JavaScript by prepending a $

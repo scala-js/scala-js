@@ -137,7 +137,18 @@ private[ir] object Tags {
 
   // Tags for TypeRefs
 
-  final val TagClassRef = 1
+  final val TagVoidRef = 1
+  final val TagBooleanRef = TagVoidRef + 1
+  final val TagCharRef = TagBooleanRef + 1
+  final val TagByteRef = TagCharRef + 1
+  final val TagShortRef = TagByteRef + 1
+  final val TagIntRef = TagShortRef + 1
+  final val TagLongRef = TagIntRef + 1
+  final val TagFloatRef = TagLongRef + 1
+  final val TagDoubleRef = TagFloatRef + 1
+  final val TagNullRef = TagDoubleRef + 1
+  final val TagNothingRef = TagNullRef + 1
+  final val TagClassRef = TagNothingRef + 1
   final val TagArrayTypeRef = TagClassRef + 1
 
   // Tags for JS native loading specs

@@ -502,6 +502,20 @@ object Hashers {
     }
 
     def mixTypeRef(typeRef: TypeRef): Unit = typeRef match {
+      case PrimRef(tpe) =>
+        tpe match {
+          case NoType      => mixTag(TagVoidRef)
+          case BooleanType => mixTag(TagBooleanRef)
+          case CharType    => mixTag(TagCharRef)
+          case ByteType    => mixTag(TagByteRef)
+          case ShortType   => mixTag(TagShortRef)
+          case IntType     => mixTag(TagIntRef)
+          case LongType    => mixTag(TagLongRef)
+          case FloatType   => mixTag(TagFloatRef)
+          case DoubleType  => mixTag(TagDoubleRef)
+          case NullType    => mixTag(TagNullRef)
+          case NothingType => mixTag(TagNothingRef)
+        }
       case typeRef: ClassRef =>
         mixTag(TagClassRef)
         mixClassRef(typeRef)
@@ -514,7 +528,7 @@ object Hashers {
       mixString(classRef.className)
 
     def mixArrayTypeRef(arrayTypeRef: ArrayTypeRef): Unit = {
-      mixString(arrayTypeRef.baseClassName)
+      mixTypeRef(arrayTypeRef.base)
       mixInt(arrayTypeRef.dimensions)
     }
 
@@ -538,10 +552,9 @@ object Hashers {
         mixTag(TagClassType)
         mixString(className)
 
-      case ArrayType(ArrayTypeRef(baseClassName, dimensions)) =>
+      case ArrayType(arrayTypeRef) =>
         mixTag(TagArrayType)
-        mixString(baseClassName)
-        mixInt(dimensions)
+        mixArrayTypeRef(arrayTypeRef)
 
       case RecordType(fields) =>
         mixTag(TagRecordType)

@@ -154,7 +154,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
         }
 
       case ArrayType(ArrayTypeRef(base, depth)) =>
-        Apply(envField("isArrayOf", base), List(expr, IntLiteral(depth)))
+        Apply(envField("isArrayOf", arrayBaseFieldName(base)),
+            List(expr, IntLiteral(depth)))
 
       case UndefType   => expr === Undefined()
       case BooleanType => typeof(expr) === "boolean"
@@ -234,7 +235,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
           Apply(envField("as", className), List(expr))
 
         case ArrayType(ArrayTypeRef(base, depth)) =>
-          Apply(envField("asArrayOf", base), List(expr, IntLiteral(depth)))
+          Apply(envField("asArrayOf", arrayBaseFieldName(base)),
+              List(expr, IntLiteral(depth)))
 
         case UndefType   => genCallHelper("uV", expr)
         case BooleanType => genCallHelper("uZ", expr)
@@ -350,13 +352,35 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genClassDataOf(typeRef: TypeRef)(implicit pos: Position): Tree = {
     typeRef match {
+      case typeRef: PrimRef =>
+        genClassDataOf(fieldNameOfPrimRef(typeRef))
       case ClassRef(className) =>
         genClassDataOf(className)
       case ArrayTypeRef(base, dims) =>
-        (1 to dims).foldLeft[Tree](envField("d", base)) { (prev, _) =>
+        val baseData = envField("d", arrayBaseFieldName(base))
+        (1 to dims).foldLeft[Tree](baseData) { (prev, _) =>
           Apply(DotSelect(prev, Ident("getArrayOf")), Nil)
         }
     }
+  }
+
+  private def arrayBaseFieldName(base: NonArrayTypeRef): String = base match {
+    case base: PrimRef       => fieldNameOfPrimRef(base)
+    case ClassRef(className) => className
+  }
+
+  def fieldNameOfPrimRef(primRef: PrimRef): String = primRef.tpe match {
+    case NoType      => "V"
+    case BooleanType => "Z"
+    case CharType    => "C"
+    case ByteType    => "B"
+    case ShortType   => "S"
+    case IntType     => "I"
+    case LongType    => "J"
+    case FloatType   => "F"
+    case DoubleType  => "D"
+    case NullType    => "N"
+    case NothingType => "E"
   }
 
   def genClassOf(className: String)(implicit pos: Position): Tree =

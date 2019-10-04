@@ -1968,15 +1968,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     def cursoryArrayElemType(tpe: ArrayType): Type = {
       if (tpe.arrayTypeRef.dimensions != 1) AnyType
-      else (tpe.arrayTypeRef.baseClassName match {
-        case "Z" => BooleanType
-        case "C" => CharType
-        case "B" => ByteType
-        case "S" => ShortType
-        case "I" => IntType
-        case "F" => FloatType
-        case "D" => DoubleType
-        case _   => AnyType
+      else (tpe.arrayTypeRef.base match {
+        case PrimRef(elemType) => elemType
+        case ClassRef(_)       => AnyType
       })
     }
 
@@ -2071,25 +2065,18 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case ArrayBuilderZeroOf =>
         contTree(finishTransformExpr(targs.head) match {
-          case ClassOf(ClassRef(cls)) =>
-            /* Note that the 'C' case produces a literal int instead of char.
+          case ClassOf(PrimRef(tpe)) =>
+            /* Note that for CharType we produce a literal int instead of char.
              * This ensures that we fill up the JS array with numbers 0 rather
              * than boxed '\0'. We need to do this because the result() method
              * (see intrinsic right above) will directly feed that JS array to
              * `makeNativeArrayWrapper`, which expects an array of numbers when
              * builing an `Array[Char]`.
              */
-            cls match {
-              case "C" => IntLiteral(0)
-              case "B" => ByteLiteral(0)
-              case "S" => ShortLiteral(0)
-              case "I" => IntLiteral(0)
-              case "L" => LongLiteral(0L)
-              case "F" => FloatLiteral(0.0f)
-              case "D" => DoubleLiteral(0.0)
-              case "Z" => BooleanLiteral(false)
-              case "V" => Undefined()
-              case _   => Null()
+            tpe match {
+              case CharType => IntLiteral(0)
+              case NoType   => Undefined()
+              case _        => zeroOf(tpe)
             }
           case ClassOf(_) =>
             Null()
@@ -2103,7 +2090,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         newReceiver match {
           case ClassOf(ArrayTypeRef(base, depth)) =>
             contTree(ClassOf(
-                if (depth == 1) ClassRef(base)
+                if (depth == 1) base
                 else ArrayTypeRef(base, depth - 1)))
           case ClassOf(ClassRef(_)) =>
             contTree(Null())
