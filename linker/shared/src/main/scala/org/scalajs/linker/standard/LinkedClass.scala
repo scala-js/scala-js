@@ -15,10 +15,9 @@ package org.scalajs.linker.standard
 import scala.collection.mutable
 
 import org.scalajs.ir
-import ir.Trees._
-import ir.Position
-import ir.ClassKind
-import ir.Definitions
+import org.scalajs.ir.Trees._
+import org.scalajs.ir.{ClassKind, Definitions, Position}
+import org.scalajs.ir.Definitions.ClassName
 
 /** A ClassDef after linking.
  *
@@ -36,11 +35,11 @@ import ir.Definitions
  */
 final class LinkedClass(
     // Stuff from Tree
-    val name: Ident,
+    val name: ClassIdent,
     val kind: ClassKind,
     val jsClassCaptures: Option[List[ParamDef]],
-    val superClass: Option[Ident],
-    val interfaces: List[Ident],
+    val superClass: Option[ClassIdent],
+    val interfaces: List[ClassIdent],
     val jsSuperClass: Option[Tree],
     val jsNativeLoadSpec: Option[JSNativeLoadSpec],
     val fields: List[AnyFieldDef],
@@ -51,13 +50,13 @@ final class LinkedClass(
     val pos: Position,
 
     // Actual Linking info
-    val ancestors: List[String],
+    val ancestors: List[ClassName],
     val hasInstances: Boolean,
     val hasInstanceTests: Boolean,
     val hasRuntimeTypeInfo: Boolean,
     val version: Option[String]) {
 
-  def encodedName: String = name.name
+  def encodedName: ClassName = name.name
 
   val hasEntryPoint: Boolean = {
     topLevelExports.nonEmpty ||
@@ -91,11 +90,11 @@ final class LinkedClass(
   }
 
   private def copy(
-      name: Ident = this.name,
+      name: ClassIdent = this.name,
       kind: ClassKind = this.kind,
       jsClassCaptures: Option[List[ParamDef]] = this.jsClassCaptures,
-      superClass: Option[Ident] = this.superClass,
-      interfaces: List[Ident] = this.interfaces,
+      superClass: Option[ClassIdent] = this.superClass,
+      interfaces: List[ClassIdent] = this.interfaces,
       jsSuperClass: Option[Tree] = this.jsSuperClass,
       jsNativeLoadSpec: Option[JSNativeLoadSpec] = this.jsNativeLoadSpec,
       fields: List[AnyFieldDef] = this.fields,
@@ -104,7 +103,7 @@ final class LinkedClass(
       topLevelExports: List[Versioned[TopLevelExportDef]] = this.topLevelExports,
       optimizerHints: OptimizerHints = this.optimizerHints,
       pos: Position = this.pos,
-      ancestors: List[String] = this.ancestors,
+      ancestors: List[ClassName] = this.ancestors,
       hasInstances: Boolean = this.hasInstances,
       hasInstanceTests: Boolean = this.hasInstanceTests,
       hasRuntimeTypeInfo: Boolean = this.hasRuntimeTypeInfo,

@@ -17,11 +17,12 @@ import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 
 import org.scalajs.ir
-import ir._
-import ir.Position._
-import ir.Transformers._
-import ir.Trees._
-import ir.Types._
+import org.scalajs.ir._
+import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Position._
+import org.scalajs.ir.Transformers._
+import org.scalajs.ir.Trees._
+import org.scalajs.ir.Types._
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.CheckedBehavior._
@@ -29,6 +30,7 @@ import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import java.io.StringWriter
 
+import EmitterDefinitions._
 import Transients._
 
 /** Desugaring of the IR to JavaScript functions.
@@ -246,7 +248,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
   /** Desugars parameters and body to a JS function.
    */
-  def desugarToFunction(enclosingClassName: String, params: List[ParamDef],
+  def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       body: Tree, resultType: Type)(
       implicit globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Function] = {
@@ -258,7 +260,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
   /** Desugars parameters and body to a JS function where `this` is given as
    *  an explicit normal parameter.
    */
-  def desugarToFunctionWithExplicitThis(enclosingClassName: String,
+  def desugarToFunctionWithExplicitThis(enclosingClassName: ClassName,
       params: List[ParamDef], body: Tree, resultType: Type)(
       implicit globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Function] = {
@@ -321,7 +323,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     private val globalVarNames = mutable.Set.empty[String]
     private val localVarNames = mutable.Set.empty[String]
 
-    private lazy val localVarAllocs = mutable.Map.empty[String, String]
+    private lazy val localVarAllocs = mutable.Map.empty[LocalName, String]
 
     private def referenceGlobalName(name: String): Unit =
       globalVarNames += name
@@ -332,7 +334,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       withGlobals.value
     }
 
-    private def transformLocalName(name: String): String = {
+    private def transformLocalName(name: LocalName): String = {
       if (isOptimisticNamingRun) {
         localVarNames += name
         name
@@ -341,7 +343,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         def slowPath(): String = {
           localVarAllocs.getOrElseUpdate(name, {
             var suffix = 0
-            var result = name
+            var result: String = name
             while (globalVarNames.contains(result) ||
                 localVarNames.contains(result)) {
               suffix += 1
@@ -357,12 +359,12 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     var syntheticVarCounter: Int = 0
 
-    def newSyntheticVar()(implicit pos: Position): Ident = {
+    def newSyntheticVar()(implicit pos: Position): LocalIdent = {
       /* TODO Integrate this with proper name management.
        * This is filed as #2971.
        */
       syntheticVarCounter += 1
-      Ident("jsx$" + syntheticVarCounter, None)
+      LocalIdent(LocalName("jsx$" + syntheticVarCounter), None)
     }
 
     def resetSyntheticVarCounterIn[A](f: => A): A = {
@@ -400,7 +402,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       VarRef(makeRecordFieldIdent(tree)(tree.pos))(tree.tpe)(tree.pos)
 
     def makeRecordFieldIdent(tree: RecordSelect)(
-        implicit pos: Position): Ident = {
+        implicit pos: Position): LocalIdent = {
       val recIdent = (tree.record: @unchecked) match {
         case VarRef(ident)        => ident
         case record: RecordSelect => makeRecordFieldIdent(record)
@@ -408,29 +410,29 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       makeRecordFieldIdent(recIdent, tree.field)
     }
 
-    def makeRecordFieldIdent(recIdent: Ident, fieldIdent: Ident)(
-        implicit pos: Position): Ident =
+    def makeRecordFieldIdent(recIdent: LocalIdent, fieldIdent: FieldIdent)(
+        implicit pos: Position): LocalIdent =
       makeRecordFieldIdent(recIdent.name, recIdent.originalName,
           fieldIdent.name, fieldIdent.originalName)
 
-    def makeRecordFieldIdent(recIdent: Ident,
-        fieldName: String, fieldOrigiName: Option[String])(
-        implicit pos: Position): Ident =
+    def makeRecordFieldIdent(recIdent: LocalIdent,
+        fieldName: FieldName, fieldOrigiName: Option[String])(
+        implicit pos: Position): LocalIdent =
       makeRecordFieldIdent(recIdent.name, recIdent.originalName,
           fieldName, fieldOrigiName)
 
     def makeRecordFieldIdent(recName: String, recOrigName: Option[String],
-        fieldName: String, fieldOrigName: Option[String])(
-        implicit pos: Position): Ident = {
-      val name = recName + "_$_" + fieldName
+        fieldName: FieldName, fieldOrigName: Option[String])(
+        implicit pos: Position): LocalIdent = {
+      val name = LocalName(recName + "_$_" + fieldName)
       val originalName = Some(recOrigName.getOrElse(recName) + "." +
           fieldOrigName.getOrElse(fieldName))
-      Ident(name, originalName)
+      LocalIdent(name, originalName)
     }
 
     // LHS'es for labeled expressions
 
-    val usedLabels = mutable.Set.empty[String]
+    val usedLabels = mutable.Set.empty[LabelName]
 
     // Now the work
 
@@ -539,7 +541,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     }
 
     /** Desugar a statement of the IR into ES5 JS */
-    def transformStat(tree: Tree, tailPosLabels: Set[String])(
+    def transformStat(tree: Tree, tailPosLabels: Set[LabelName])(
         implicit env: Env): js.Tree = {
       import TreeDSL._
 
@@ -1253,7 +1255,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     def isPureExpression(tree: Tree)(implicit env: Env): Boolean =
       isExpressionInternal(tree, allowUnpure = false, allowSideEffects = false)
 
-    def doVarDef(ident: Ident, tpe: Type, mutable: Boolean, rhs: Tree)(
+    def doVarDef(ident: LocalIdent, tpe: Type, mutable: Boolean, rhs: Tree)(
         implicit env: Env): js.Tree = {
       implicit val pos = rhs.pos
       tpe match {
@@ -1279,7 +1281,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       }
     }
 
-    def doEmptyVarDef(ident: Ident, tpe: Type)(
+    def doEmptyVarDef(ident: LocalIdent, tpe: Type)(
         implicit pos: Position, env: Env): js.Tree = {
       tpe match {
         case RecordType(fields) =>
@@ -1315,7 +1317,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           val base = js.Assign(transformExpr(lhs, preserveChar = true),
               transformExpr(rhs, lhs.tpe))
           lhs match {
-            case SelectStatic(ClassRef(className), Ident(field, _))
+            case SelectStatic(ClassRef(className), FieldIdent(field, _))
                 if moduleKind == ModuleKind.NoModule =>
               val mirrors =
                 globalKnowledge.getStaticFieldMirrors(className, field)
@@ -1330,7 +1332,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     }
 
     /** Push an lhs into a (potentially complex) rhs */
-    def pushLhsInto(lhs: Lhs, rhs: Tree, tailPosLabels: Set[String])(
+    def pushLhsInto(lhs: Lhs, rhs: Tree, tailPosLabels: Set[LabelName])(
         implicit env: Env): js.Tree = {
       implicit val pos = rhs.pos
 
@@ -1359,7 +1361,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         }
       }
 
-      def doReturnToLabel(l: Ident): js.Tree = {
+      def doReturnToLabel(l: LabelIdent): js.Tree = {
         val newLhs = env.lhsForLabeledExpr(l)
         val body = pushLhsInto(newLhs, rhs, Set.empty)
         if (newLhs.hasNothingType) {
@@ -1902,7 +1904,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       transformExpr(tree, preserveChar = expectedType == CharType)
     }
 
-    def transformTypedArgs(methodName: String, args: List[Tree])(
+    def transformTypedArgs(methodName: MethodName, args: List[Tree])(
         implicit env: Env): List[js.Tree] = {
       if (args.forall(_.tpe != CharType)) {
         // Fast path
@@ -1990,12 +1992,12 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           val newArgs = transformTypedArgs(method.name, args)
 
           def genNormalApply(): js.Tree =
-            js.Apply(newReceiver DOT transformPropIdent(method), newArgs)
+            js.Apply(newReceiver DOT transformMethodIdent(method), newArgs)
 
           def genDispatchApply(): js.Tree =
             genCallHelper("dp_" + methodName, newReceiver :: newArgs: _*)
 
-          def genHijackedMethodApply(className: String): js.Tree = {
+          def genHijackedMethodApply(className: ClassName): js.Tree = {
             val fullName = className + "__" + methodName
             js.Apply(envField("f", fullName, method.originalName),
                 newReceiver :: newArgs)
@@ -2025,7 +2027,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                  */
                 genDispatchApply()
 
-              case ClassType("jl_CharSequence")
+              case ClassType(CharSequenceClass)
                   if !hijackedMethodsOfStringWithDispatcher.contains(methodName) =>
                 /* This case is required as a hack around a peculiar behavior
                  * of the optimizer. In theory, it should never happen, because
@@ -2079,7 +2081,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             genApplyStaticLike("f", className, method, transformedArgs)
           } else {
             val fun =
-              encodeClassVar(className).prototype DOT transformPropIdent(method)
+              encodeClassVar(className).prototype DOT transformMethodIdent(method)
             js.Apply(fun DOT "call", transformedArgs)
           }
 
@@ -2634,7 +2636,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         false
     }
 
-    def typeToBoxedHijackedClass(tpe: Type): String = (tpe: @unchecked) match {
+    def typeToBoxedHijackedClass(tpe: Type): ClassName = (tpe: @unchecked) match {
       case ClassType(cls) => cls
       case AnyType        => Definitions.ObjectClass
       case UndefType      => Definitions.BoxedUnitClass
@@ -2654,24 +2656,24 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
      * class: if not, it must be inherited. However, this would require
      * additional global knowledge for no practical reason.
      */
-    val hijackedMethodsInheritedFromObject: Set[String] = Set(
-        "getClass__jl_Class", "clone__O", "finalize__V", "notify__V",
-        "notifyAll__V"
+    val hijackedMethodsInheritedFromObject: Set[MethodName] = Set(
+        getClassMethodName, cloneMethodName, finalizeMethodName,
+        notifyMethodName, notifyAllMethodName
     )
 
-    val hijackedMethodsOfStringWithDispatcher: Set[String] = Set(
-        "getClass__jl_Class",
-        "clone__O",
-        "finalize__V",
-        "notify__V",
-        "notifyAll__V",
-        "toString__T",
-        "equals__O__Z",
-        "hashCode__I",
-        "compareTo__O__I",
-        "length__I",
-        "charAt__I__C",
-        "subSequence__I__I__jl_CharSequence"
+    val hijackedMethodsOfStringWithDispatcher: Set[MethodName] = Set(
+        getClassMethodName,
+        cloneMethodName,
+        finalizeMethodName,
+        notifyMethodName,
+        notifyAllMethodName,
+        toStringMethodName,
+        equalsMethodName,
+        hashCodeMethodName,
+        compareToMethodName,
+        lengthMethodName,
+        charAtMethodName,
+        subSequenceMethodName
     )
 
     private def transformParamDef(paramDef: ParamDef): js.ParamDef = {
@@ -2679,18 +2681,19 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           paramDef.pos)
     }
 
-    private def transformLabelIdent(ident: Ident): js.Ident =
+    private def transformLabelIdent(ident: LabelIdent): js.Ident =
+      js.Ident(ident.name)(ident.pos)
+
+    private def transformMethodIdent(ident: MethodIdent): js.Ident =
       js.Ident(ident.name, ident.originalName)(ident.pos)
 
-    private def transformPropIdent(ident: Ident): js.Ident =
-      js.Ident(ident.name, ident.originalName)(ident.pos)
-
-    private def transformLocalVarIdent(ident: Ident): js.Ident =
+    private def transformLocalVarIdent(ident: LocalIdent): js.Ident =
       js.Ident(transformLocalName(ident.name), ident.originalName)(ident.pos)
 
-    private def transformGlobalVarIdent(ident: Ident): js.Ident = {
-      referenceGlobalName(ident.name)
-      js.Ident(ident.name, ident.originalName)(ident.pos)
+    private def transformGlobalVarIdent(name: String)(
+        implicit pos: Position): js.Ident = {
+      referenceGlobalName(name)
+      js.Ident(name)
     }
 
     private def genGlobalVarRef(name: String)(
@@ -2702,14 +2705,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     /* In FunctionEmitter, we must always keep all global var names, not only
      * dangerous ones. This helper makes it less annoying.
      */
-    private def genJSClassConstructor(className: String)(
+    private def genJSClassConstructor(className: ClassName)(
         implicit pos: Position): WithGlobals[js.Tree] = {
       jsGen.genJSClassConstructor(className,
           keepOnlyDangerousVarNames = false)
     }
 
-    private def genApplyStaticLike(field: String, className: String,
-        method: Ident, args: List[js.Tree])(
+    private def genApplyStaticLike(field: String, className: ClassName,
+        method: MethodIdent, args: List[js.Tree])(
         implicit pos: Position): js.Tree = {
       js.Apply(envField(field, className + "__" + method.name,
           method.originalName), args)
@@ -2747,14 +2750,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     }
 
     private implicit class RecordAwareEnv(env: Env) {
-      def withDef(ident: Ident, tpe: Type, mutable: Boolean): Env = tpe match {
+      def withDef(ident: LocalIdent, tpe: Type, mutable: Boolean): Env = tpe match {
         case RecordType(fields) =>
           withRecordDefs(ident, fields, mutable)
         case _ =>
           env.withDef(ident, mutable)
       }
 
-      private def withRecordDefs(recIdent: Ident,
+      private def withRecordDefs(recIdent: LocalIdent,
           fields: List[RecordType.Field], recMutable: Boolean): Env = {
         fields.foldLeft(env) { (env, fld) =>
           val ident = makeRecordFieldIdent(recIdent, fld.name,
@@ -2779,13 +2782,13 @@ private object FunctionEmitter {
 
   object Lhs {
     case class Assign(lhs: Tree) extends Lhs
-    case class VarDef(name: Ident, tpe: Type, mutable: Boolean) extends Lhs
+    case class VarDef(name: LocalIdent, tpe: Type, mutable: Boolean) extends Lhs
 
     case object ReturnFromFunction extends Lhs {
       override def hasNothingType: Boolean = true
     }
 
-    case class Return(label: Ident) extends Lhs {
+    case class Return(label: LabelIdent) extends Lhs {
       override def hasNothingType: Boolean = true
     }
 
@@ -2798,34 +2801,34 @@ private object FunctionEmitter {
   final class Env private (
       val thisIdent: Option[js.Ident],
       val expectedReturnType: Type,
-      val enclosingClassName: Option[String],
-      vars: Map[String, Boolean],
-      labeledExprLHSes: Map[String, Lhs],
-      labelsTurnedIntoContinue: Set[String],
-      defaultBreakTargets: Set[String],
-      defaultContinueTargets: Set[String]
+      val enclosingClassName: Option[ClassName],
+      vars: Map[LocalName, Boolean],
+      labeledExprLHSes: Map[LabelName, Lhs],
+      labelsTurnedIntoContinue: Set[LabelName],
+      defaultBreakTargets: Set[LabelName],
+      defaultContinueTargets: Set[LabelName]
   ) {
-    def isLocalVar(ident: Ident): Boolean = vars.contains(ident.name)
+    def isLocalVar(ident: LocalIdent): Boolean = vars.contains(ident.name)
 
-    def isLocalMutable(ident: Ident): Boolean = {
+    def isLocalMutable(ident: LocalIdent): Boolean = {
       /* If we do not know the var, it must be a JS class capture, which must
        * be immutable.
        */
       vars.getOrElse(ident.name, false)
     }
 
-    def lhsForLabeledExpr(label: Ident): Lhs = labeledExprLHSes(label.name)
+    def lhsForLabeledExpr(label: LabelIdent): Lhs = labeledExprLHSes(label.name)
 
-    def isLabelTurnedIntoContinue(label: String): Boolean =
+    def isLabelTurnedIntoContinue(label: LabelName): Boolean =
       labelsTurnedIntoContinue.contains(label)
 
-    def isDefaultBreakTarget(label: String): Boolean =
+    def isDefaultBreakTarget(label: LabelName): Boolean =
       defaultBreakTargets.contains(label)
 
-    def isDefaultContinueTarget(label: String): Boolean =
+    def isDefaultContinueTarget(label: LabelName): Boolean =
       defaultContinueTargets.contains(label)
 
-    def withEnclosingClassName(enclosingClassName: Option[String]): Env =
+    def withEnclosingClassName(enclosingClassName: Option[ClassName]): Env =
       copy(enclosingClassName = enclosingClassName)
 
     def withThisIdent(thisIdent: Option[js.Ident]): Env =
@@ -2839,30 +2842,30 @@ private object FunctionEmitter {
       }
     }
 
-    def withDef(ident: Ident, mutable: Boolean): Env =
+    def withDef(ident: LocalIdent, mutable: Boolean): Env =
       copy(vars = vars + (ident.name -> mutable))
 
-    def withLabeledExprLHS(label: Ident, lhs: Lhs): Env =
+    def withLabeledExprLHS(label: LabelIdent, lhs: Lhs): Env =
       copy(labeledExprLHSes = labeledExprLHSes + (label.name -> lhs))
 
-    def withTurnLabelIntoContinue(label: String): Env =
+    def withTurnLabelIntoContinue(label: LabelName): Env =
       copy(labelsTurnedIntoContinue = labelsTurnedIntoContinue + label)
 
-    def withDefaultBreakTargets(targets: Set[String]): Env =
+    def withDefaultBreakTargets(targets: Set[LabelName]): Env =
       copy(defaultBreakTargets = targets)
 
-    def withDefaultContinueTargets(targets: Set[String]): Env =
+    def withDefaultContinueTargets(targets: Set[LabelName]): Env =
       copy(defaultContinueTargets = targets)
 
     private def copy(
         thisIdent: Option[js.Ident] = this.thisIdent,
         expectedReturnType: Type = this.expectedReturnType,
-        enclosingClassName: Option[String] = this.enclosingClassName,
-        vars: Map[String, Boolean] = this.vars,
-        labeledExprLHSes: Map[String, Lhs] = this.labeledExprLHSes,
-        labelsTurnedIntoContinue: Set[String] = this.labelsTurnedIntoContinue,
-        defaultBreakTargets: Set[String] = this.defaultBreakTargets,
-        defaultContinueTargets: Set[String] = this.defaultContinueTargets): Env = {
+        enclosingClassName: Option[ClassName] = this.enclosingClassName,
+        vars: Map[LocalName, Boolean] = this.vars,
+        labeledExprLHSes: Map[LabelName, Lhs] = this.labeledExprLHSes,
+        labelsTurnedIntoContinue: Set[LabelName] = this.labelsTurnedIntoContinue,
+        defaultBreakTargets: Set[LabelName] = this.defaultBreakTargets,
+        defaultContinueTargets: Set[LabelName] = this.defaultContinueTargets): Env = {
       new Env(thisIdent, expectedReturnType, enclosingClassName, vars,
           labeledExprLHSes, labelsTurnedIntoContinue, defaultBreakTargets,
           defaultContinueTargets)

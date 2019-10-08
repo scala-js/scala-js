@@ -13,7 +13,7 @@
 package org.scalajs.linker.interface
 
 import org.scalajs.ir.Definitions._
-import org.scalajs.ir.Types.ClassType
+import org.scalajs.ir.Types._
 
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 
@@ -37,6 +37,9 @@ abstract class ModuleInitializer private[interface] () {
 object ModuleInitializer {
   import ModuleInitializerImpl._
 
+  private val ArrayOfStringTypeRef =
+    ArrayTypeRef(ClassRef(BoxedStringClass), 1)
+
   /** Makes an [[ModuleInitializer]] that calls a zero-argument method returning
    *  `Unit` in a top-level `object`.
    *
@@ -49,7 +52,7 @@ object ModuleInitializer {
   def mainMethod(moduleClassName: String,
       mainMethodName: String): ModuleInitializer = {
     VoidMainMethod(encodeClassName(moduleClassName + "$"),
-        mainMethodName + "__V")
+        encodeMethodName(mainMethodName, Nil, Some(VoidRef)))
   }
 
   /** Makes an [[ModuleInitializer]] that calls a method of a top-level
@@ -84,6 +87,7 @@ object ModuleInitializer {
   def mainMethodWithArgs(moduleClassName: String, mainMethodName: String,
       args: List[String]): ModuleInitializer = {
     MainMethodWithArgs(encodeClassName(moduleClassName + "$"),
-        mainMethodName + "__AT__V", args)
+        encodeMethodName(mainMethodName, ArrayOfStringTypeRef :: Nil, Some(VoidRef)),
+        args)
   }
 }

@@ -35,6 +35,15 @@ import sbt.{Logger, MessageOnlyException}
  *  `scala.scalajs.runtime.UndefinedBehaviorError`.
  */
 object JavalibIRCleaner {
+  private val JavaIOSerializable = ClassName("Ljava_io_Serializable")
+  private val JavaLangSemanticsUtils = ClassName("jl_SemanticsUtils$")
+  private val ScalaJSRuntimePackage = ClassName("sjsr_package$")
+  private val ScalaJSUndefinedBehaviorError = ClassName("sjsr_UndefinedBehaviorError")
+  private val ScalaSerializable = ClassName("s_Serializable")
+
+  private val unwrapJSExceptionMethodName = MethodName("unwrapJavaScriptException__jl_Throwable__O")
+  private val writeReplaceMethodName = MethodName("writeReplace__O")
+
   def cleanIR(dependencyClasspath: Seq[File], javalibDir: File, outputDir: File,
       logger: Logger): Set[File] = {
 
@@ -180,7 +189,7 @@ object JavalibIRCleaner {
          * in the companion of serializable classes.
          */
         val newMemberDefs = memberDefs.filter {
-          case MethodDef(_, Ident("writeReplace__O", _), _, _, _) =>
+          case MethodDef(_, MethodIdent(`writeReplaceMethodName`, _), _, _, _) =>
             changed = true
             false
           case _ =>
@@ -209,23 +218,22 @@ object JavalibIRCleaner {
       transformedClassDef
     }
 
-    private def transformInterfaceList(interfaces: List[Ident]): List[Ident] = {
+    private def transformInterfaceList(
+        interfaces: List[ClassIdent]): List[ClassIdent] = {
+
       /* Replace references to scala.Serializable by java.io.Serializable.
        * This works around the fact that scalac adds scala.Serializable to the
        * companion object of any class that extends java.io.Serializable.
        */
 
-      val ScalaSerializable = "s_Serializable"
-      val JavaIOSerializable = "Ljava_io_Serializable"
-
       if (!interfaces.exists(_.name == ScalaSerializable)) {
         interfaces
       } else if (interfaces.exists(_.name == JavaIOSerializable)) {
-        interfaces.filter(_.name != "s_Serializable")
+        interfaces.filter(_.name != ScalaSerializable)
       } else {
         interfaces.map { ident =>
           if (ident.name == ScalaSerializable)
-            Ident(JavaIOSerializable, Some("java.io.Serializable"))(ident.pos)
+            ClassIdent(JavaIOSerializable, Some("java.io.Serializable"))(ident.pos)
           else
             ident
         }
@@ -253,9 +261,9 @@ object JavalibIRCleaner {
          * `sjs.runtime.unwrapJavaScriptExeption(arg)`. Here, we get rid of
          * that call and rewrite `tree` to `throw arg`.
          */
-        case Throw(Apply(_, LoadModule(ClassRef("sjsr_package$")),
-            Ident("unwrapJavaScriptException__jl_Throwable__O", _), arg :: Nil))
-            if enclosingClassName == "jl_SemanticsUtils$" =>
+        case Throw(Apply(_, LoadModule(ClassRef(ScalaJSRuntimePackage)),
+            MethodIdent(`unwrapJSExceptionMethodName`, _), arg :: Nil))
+            if enclosingClassName == JavaLangSemanticsUtils =>
           Throw(arg)
 
         case _ =>
@@ -316,11 +324,11 @@ object JavalibIRCleaner {
               reportError(
                   s"$cls does not have a load spec " +
                   "(this shouldn't have happened at all; bug in the compiler?)")
-              JSGlobalRef(Ident("Object"))
+              JSGlobalRef("Object")
           }
         case None =>
           reportError(s"$cls is not a JS type")
-          JSGlobalRef(Ident("Object"))
+          JSGlobalRef("Object")
       }
     }
 
@@ -328,16 +336,16 @@ object JavalibIRCleaner {
         implicit pos: Position): Tree = {
       loadSpec match {
         case JSNativeLoadSpec.Global(globalRef, Nil) =>
-          JSGlobalRef(Ident(globalRef))
+          JSGlobalRef(globalRef)
         case _ =>
           reportError(
               s"unsupported load spec $loadSpec; " +
               "only @JSGlobal without `.` is supported")
-          JSGlobalRef(Ident("Object"))
+          JSGlobalRef("Object")
       }
     }
 
-    private def transformMethodIdent(ident: Ident): Ident = {
+    private def transformMethodIdent(ident: MethodIdent): MethodIdent = {
       implicit val pos = ident.pos
       val encodedName = ident.name
       val sig = decodeMethodName(encodedName)
@@ -346,7 +354,7 @@ object JavalibIRCleaner {
       if (newParamTypes == sig._2 && newResultType == sig._3) {
         ident
       } else {
-        Ident(encodeMethodName(sig._1, newParamTypes, newResultType),
+        MethodIdent(encodeMethodName(sig._1, newParamTypes, newResultType),
             ident.originalName)(ident.pos)
       }
     }
@@ -410,7 +418,7 @@ object JavalibIRCleaner {
       }
     }
 
-    private def validateClassName(cls: String)(implicit pos: Position): Unit = {
+    private def validateClassName(cls: ClassName)(implicit pos: Position): Unit = {
       if (isScalaClassName(cls))
         reportError(s"Illegal reference to Scala class $cls")
     }
@@ -418,20 +426,20 @@ object JavalibIRCleaner {
     private def validateNonJSClassRef(cls: ClassRef)(implicit pos: Position): Unit =
       validateNonJSClassName(cls.className)
 
-    private def validateNonJSClassName(cls: String)(implicit pos: Position): Unit = {
+    private def validateNonJSClassName(cls: ClassName)(implicit pos: Position): Unit = {
       if (jsTypes.contains(cls))
         reportError(s"Invalid reference to JS class $cls")
       else
         validateClassName(cls)
     }
 
-    private def isScalaClassName(cls: String): Boolean = {
+    private def isScalaClassName(cls: ClassName): Boolean = {
       {
         cls.startsWith("s") ||
         cls.startsWith("Lscala_") ||
         (cls.length > 1 && (cls.charAt(0) == 'T' || cls.charAt(0) == 'F'))
       } && {
-        cls != "sjsr_UndefinedBehaviorError" // TODO We need to get rid of this
+        cls != ScalaJSUndefinedBehaviorError // TODO We need to get rid of this
       }
     }
 

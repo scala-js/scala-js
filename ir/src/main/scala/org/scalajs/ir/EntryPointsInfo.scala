@@ -12,10 +12,11 @@
 
 package org.scalajs.ir
 
+import Definitions.ClassName
 import Trees._
 
 final class EntryPointsInfo(
-    val encodedName: String,
+    val encodedName: ClassName,
     val hasEntryPoint: Boolean
 )
 

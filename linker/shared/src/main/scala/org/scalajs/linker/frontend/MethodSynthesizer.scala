@@ -19,8 +19,9 @@ import scala.concurrent._
 import org.scalajs.linker.analyzer._
 
 import org.scalajs.ir
-import ir.Trees._
-import ir.Types._
+import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Trees._
+import org.scalajs.ir.Types._
 
 import Analysis._
 
@@ -48,7 +49,7 @@ private[frontend] final class MethodSynthesizer(
 
   private def synthesizeReflectiveProxy(
       classInfo: ClassInfo, methodInfo: MethodInfo,
-      targetName: String, analysis: Analysis)(
+      targetName: MethodName, analysis: Analysis)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
     val encodedName = methodInfo.encodedName
 
@@ -57,8 +58,8 @@ private[frontend] final class MethodSynthesizer(
     } yield {
       implicit val pos = targetMDef.pos
 
-      val targetIdent = targetMDef.name.asInstanceOf[Ident].copy() // for the new pos
-      val proxyIdent = Ident(encodedName, None)
+      val targetIdent = targetMDef.name.copy() // for the new pos
+      val proxyIdent = MethodIdent(encodedName, None)
       val params = targetMDef.args.map(_.copy()) // for the new pos
       val currentClassType = ClassType(classInfo.encodedName)
 
@@ -79,7 +80,7 @@ private[frontend] final class MethodSynthesizer(
 
   private def synthesizeDefaultBridge(
       classInfo: ClassInfo, methodInfo: MethodInfo,
-      targetInterface: String, analysis: Analysis)(
+      targetInterface: ClassName, analysis: Analysis)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
     val encodedName = methodInfo.encodedName
 
@@ -90,7 +91,7 @@ private[frontend] final class MethodSynthesizer(
     } yield {
       implicit val pos = targetMDef.pos
 
-      val targetIdent = targetMDef.name.asInstanceOf[Ident].copy() // for the new pos
+      val targetIdent = targetMDef.name.copy() // for the new pos
       val bridgeIdent = targetIdent
       val params = targetMDef.args.map(_.copy()) // for the new pos
       val currentClassType = ClassType(classInfo.encodedName)
@@ -106,7 +107,7 @@ private[frontend] final class MethodSynthesizer(
   }
 
   private def findInheritedMethodDef(analysis: Analysis,
-      classInfo: ClassInfo, methodName: String,
+      classInfo: ClassInfo, methodName: MethodName,
       p: MethodInfo => Boolean = _ => true)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
     @tailrec
@@ -159,6 +160,7 @@ private[frontend] final class MethodSynthesizer(
 
 private[frontend] object MethodSynthesizer {
   trait InputProvider {
-    def loadClassDef(encodedName: String)(implicit ec: ExecutionContext): Future[ClassDef]
+    def loadClassDef(encodedName: ClassName)(
+        implicit ec: ExecutionContext): Future[ClassDef]
   }
 }

@@ -55,7 +55,7 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasExactly(2, "calls to Array.apply methods") {
-      case js.Apply(_, js.LoadModule(jstpe.ClassRef("s_Array$")), js.Ident(methodName, _), _)
+      case js.Apply(_, js.LoadModule(jstpe.ClassRef("s_Array$")), js.MethodIdent(methodName, _), _)
           if methodName.startsWith("apply__") =>
     }
   }

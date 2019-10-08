@@ -19,9 +19,9 @@ import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 
 import org.scalajs.ir._
-import Definitions.isConstructorName
-import Trees._
-import Types._
+import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Trees._
+import org.scalajs.ir.Types._
 
 import org.scalajs.logging._
 
@@ -51,7 +51,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     import factory._
 
     callMethods(LongImpl.RuntimeLongClass, LongImpl.AllIntrinsicMethods.toList) ++
-    instantiateClass("jl_NullPointerException", "init___")
+    instantiateClass(OptimizerCore.NullPointerExceptionClass, NoArgConstructorName)
   }
 
   private[optimizer] val CollOps: AbsCollOps
@@ -65,18 +65,18 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
   private var batchMode: Boolean = false
 
   private var objectClass: Class = _
-  private val classes = CollOps.emptyMap[String, Class]
+  private val classes = CollOps.emptyMap[ClassName, Class]
 
   private val staticLikes =
-    CollOps.emptyParMap[String, Array[StaticLikeNamespace]]
+    CollOps.emptyParMap[ClassName, Array[StaticLikeNamespace]]
 
-  private[optimizer] def getInterface(encodedName: String): InterfaceType
+  private[optimizer] def getInterface(encodedName: ClassName): InterfaceType
 
   /** Schedule a method for processing in the PROCESS PASS */
   private[optimizer] def scheduleMethod(method: MethodImpl): Unit
 
   private[optimizer] def newMethodImpl(owner: MethodContainer,
-      encodedName: String): MethodImpl
+      encodedName: MethodName): MethodImpl
 
   private def withLogger[A](logger: Logger)(body: => A): A = {
     assert(this.logger == null)
@@ -223,7 +223,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
      */
 
     // Group children by (immediate) parent
-    val newChildrenByParent = CollOps.emptyAccMap[String, LinkedClass]
+    val newChildrenByParent = CollOps.emptyAccMap[ClassName, LinkedClass]
 
     CollOps.valuesForeach(neededClasses) { linkedClass =>
       linkedClass.superClass.fold {
@@ -237,7 +237,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     }
 
     val getNewChildren =
-      (name: String) => CollOps.getAcc(newChildrenByParent, name)
+      (name: ClassName) => CollOps.getAcc(newChildrenByParent, name)
 
     // Walk the tree to add children
     if (batchMode) {
@@ -263,7 +263,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
   /** Base class for [[GenIncOptimizer.Class]] and
    *  [[GenIncOptimizer.StaticLikeNamespace]].
    */
-  private[optimizer] abstract class MethodContainer(val encodedName: String,
+  private[optimizer] abstract class MethodContainer(val encodedName: ClassName,
       val namespace: MemberNamespace) {
 
     def thisType: Type =
@@ -272,7 +272,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
     val myInterface = getInterface(encodedName)
 
-    val methods = mutable.Map.empty[String, MethodImpl]
+    val methods = mutable.Map.empty[MethodName, MethodImpl]
 
     def optimizedDefs: List[Versioned[MethodDef]] = {
       (for {
@@ -285,11 +285,11 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
     /** UPDATE PASS ONLY. Global concurrency safe but not on same instance */
     def updateWith(linkedClass: LinkedClass):
-        (Set[String], Set[String], Set[String]) = {
+        (Set[MethodName], Set[MethodName], Set[MethodName]) = {
 
-      val addedMethods = Set.newBuilder[String]
-      val changedMethods = Set.newBuilder[String]
-      val deletedMethods = Set.newBuilder[String]
+      val addedMethods = Set.newBuilder[MethodName]
+      val changedMethods = Set.newBuilder[MethodName]
+      val deletedMethods = Set.newBuilder[MethodName]
 
       val applicableNamespaceOrdinal = this match {
         case _: StaticLikeNamespace
@@ -348,7 +348,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       (addedMethods.result(), changedMethods.result(), deletedMethods.result())
     }
 
-    def lookupMethod(methodName: String): Option[MethodImpl]
+    def lookupMethod(methodName: MethodName): Option[MethodImpl]
 
     override def toString(): String =
       namespace.prefixString + encodedName
@@ -361,7 +361,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
    *  [[Class]] form a tree of the class hierarchy.
    */
   private[optimizer] class Class(val superClass: Option[Class],
-      _encodedName: String)
+      _encodedName: ClassName)
       extends MethodContainer(_encodedName, MemberNamespace.Public) {
 
     if (encodedName == Definitions.ObjectClass) {
@@ -449,7 +449,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
     /** UPDATE PASS ONLY. */
     def walkForChanges(getLinkedClass: String => LinkedClass,
-        parentMethodAttributeChanges: Set[String]): Unit = {
+        parentMethodAttributeChanges: Set[MethodName]): Unit = {
 
       val linkedClass = getLinkedClass(encodedName)
 
@@ -521,7 +521,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
     /** UPDATE PASS ONLY. */
     def walkForAdditions(
-        getNewChildren: String => CollOps.ParIterable[LinkedClass]): Unit = {
+        getNewChildren: ClassName => CollOps.ParIterable[LinkedClass]): Unit = {
 
       val subclassAcc = CollOps.prepAdd(subclasses)
 
@@ -542,7 +542,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         CollOps
           .forceGet(staticLikes, encodedName)(MemberNamespace.Constructor.ordinal)
           .methods
-          .get("init___")
+          .get(NoArgConstructorName)
       }
 
       hasElidableModuleAccessor =
@@ -567,7 +567,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
         if (allFields.forall(_._2.isInstanceOf[FieldDef])) {
           Some(new OptimizerCore.InlineableClassStructure(
-              allFields.asInstanceOf[List[(String, FieldDef)]]))
+              allFields.asInstanceOf[List[(ClassName, FieldDef)]]))
         } else {
           None
         }
@@ -677,8 +677,8 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
      *  It has () so we remember this is an expensive operation.
      *  UPDATE PASS ONLY.
      */
-    def allMethods(): scala.collection.Map[String, MethodImpl] = {
-      val result = mutable.Map.empty[String, MethodImpl]
+    def allMethods(): scala.collection.Map[MethodName, MethodImpl] = {
+      val result = mutable.Map.empty[MethodName, MethodImpl]
       for (parent <- reverseParentChain)
         result ++= parent.methods
       result
@@ -686,7 +686,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
     /** BOTH PASSES. */
     @tailrec
-    final def lookupMethod(methodName: String): Option[MethodImpl] = {
+    final def lookupMethod(methodName: MethodName): Option[MethodImpl] = {
       methods.get(methodName) match {
         case Some(impl) => Some(impl)
         case none =>
@@ -699,12 +699,12 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
   }
 
   /** Namespace for static members of a class. */
-  private[optimizer] class StaticLikeNamespace(encodedName: String,
+  private[optimizer] class StaticLikeNamespace(encodedName: ClassName,
       namespace: MemberNamespace)
       extends MethodContainer(encodedName, namespace) {
 
     /** BOTH PASSES. */
-    final def lookupMethod(methodName: String): Option[MethodImpl] =
+    final def lookupMethod(methodName: MethodName): Option[MethodImpl] =
       methods.get(methodName)
   }
 
@@ -721,7 +721,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
    *  Fully concurrency safe unless otherwise noted.
    */
   private[optimizer] abstract class InterfaceType(
-      val encodedName: String) extends Unregisterable {
+      val encodedName: ClassName) extends Unregisterable {
 
     override def toString(): String =
       s"intf $encodedName"
@@ -742,10 +742,10 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     def removeInstantiatedSubclass(x: Class): Unit
 
     /** PROCESS PASS ONLY. Concurrency safe except with [[ancestors_=]] */
-    def ancestors: List[String]
+    def ancestors: List[ClassName]
 
     /** UPDATE PASS ONLY. Not concurrency safe. */
-    def ancestors_=(v: List[String]): Unit
+    def ancestors_=(v: List[ClassName]): Unit
 
     /** PROCESS PASS ONLY. Concurrency safe except with [[ancestors_=]]. */
     def registerAskAncestors(asker: MethodImpl): Unit
@@ -753,23 +753,24 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     /** Register a dynamic-caller of an instance method.
      *  PROCESS PASS ONLY.
      */
-    def registerDynamicCaller(methodName: String, caller: MethodImpl): Unit
+    def registerDynamicCaller(methodName: MethodName, caller: MethodImpl): Unit
 
     /** Register a static-caller of an instance method.
      *  PROCESS PASS ONLY.
      */
-    def registerStaticCaller(namespace: MemberNamespace, methodName: String,
+    def registerStaticCaller(namespace: MemberNamespace, methodName: MethodName,
         caller: MethodImpl): Unit
 
     /** Tag the dynamic-callers of an instance method.
      *  UPDATE PASS ONLY.
      */
-    def tagDynamicCallersOf(methodName: String): Unit
+    def tagDynamicCallersOf(methodName: MethodName): Unit
 
     /** Tag the static-callers of an instance method.
      *  UPDATE PASS ONLY.
      */
-    def tagStaticCallersOf(namespace: MemberNamespace, methodName: String): Unit
+    def tagStaticCallersOf(namespace: MemberNamespace,
+        methodName: MethodName): Unit
   }
 
   /** A method implementation.
@@ -781,7 +782,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
    *  concurrency safe.
    */
   private[optimizer] abstract class MethodImpl(val owner: MethodContainer,
-      val encodedName: String)
+      val encodedName: MethodName)
       extends OptimizerCore.MethodImpl with OptimizerCore.AbstractMethodID
       with Unregisterable {
 
@@ -816,7 +817,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
      *  PROCESS PASS ONLY.
      */
     private def registerDynamicCall(intf: InterfaceType,
-        methodName: String): Unit = {
+        methodName: MethodName): Unit = {
       intf.registerDynamicCaller(methodName, this)
       registeredTo(intf)
     }
@@ -825,7 +826,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
      *  PROCESS PASS ONLY.
      */
     private def registerStaticCall(intf: InterfaceType,
-        namespace: MemberNamespace, methodName: String): Unit = {
+        namespace: MemberNamespace, methodName: MethodName): Unit = {
       intf.registerStaticCaller(namespace, methodName, this)
       registeredTo(intf)
     }
@@ -935,16 +936,16 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       }
 
       /** Look up the targets of a dynamic call to an instance method. */
-      protected def dynamicCall(intfName: String,
-          methodName: String): List[MethodID] = {
+      protected def dynamicCall(intfName: ClassName,
+          methodName: MethodName): List[MethodID] = {
         val intf = getInterface(intfName)
         MethodImpl.this.registerDynamicCall(intf, methodName)
         intf.instantiatedSubclasses.flatMap(_.lookupMethod(methodName)).toList
       }
 
       /** Look up the target of a static call to an instance method. */
-      protected def staticCall(className: String, namespace: MemberNamespace,
-          methodName: String): Option[MethodID] = {
+      protected def staticCall(className: ClassName, namespace: MemberNamespace,
+          methodName: MethodName): Option[MethodID] = {
 
         def inStaticsLike =
           CollOps.forceGet(staticLikes, className)(namespace.ordinal)
@@ -958,17 +959,17 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         container.lookupMethod(methodName)
       }
 
-      protected def getAncestorsOf(intfName: String): List[String] = {
+      protected def getAncestorsOf(intfName: ClassName): List[ClassName] = {
         val intf = getInterface(intfName)
         registerAskAncestors(intf)
         intf.ancestors
       }
 
-      protected def hasElidableModuleAccessor(moduleClassName: String): Boolean =
+      protected def hasElidableModuleAccessor(moduleClassName: ClassName): Boolean =
         classes(moduleClassName).hasElidableModuleAccessor
 
       protected def tryNewInlineableClass(
-          className: String): Option[OptimizerCore.InlineableClassStructure] = {
+          className: ClassName): Option[OptimizerCore.InlineableClassStructure] = {
         classes(className).tryNewInlineable
       }
     }
@@ -978,8 +979,8 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
 object GenIncOptimizer {
 
-  private val isAdHocElidableModuleAccessor =
-    Set("s_Predef$")
+  private val isAdHocElidableModuleAccessor: Set[ClassName] =
+    Set(ClassName("s_Predef$"))
 
   private[optimizer] trait AbsCollOps {
     type Map[K, V] <: mutable.Map[K, V]

@@ -101,22 +101,22 @@ private[emitter] final class JSGen(val semantics: Semantics,
       VarDef(name, rhs = None)
   }
 
-  def genSelect(receiver: Tree, cls: ClassRef, field: irt.Ident)(
+  def genSelect(receiver: Tree, cls: ClassRef, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
     genSelect(receiver, cls.className, field)
   }
 
-  def genSelect(receiver: Tree, cls: String, field: irt.Ident)(
+  def genSelect(receiver: Tree, cls: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
     DotSelect(receiver, genFieldIdent(cls, field)(field.pos))
   }
 
-  private def genFieldIdent(cls: String, field: irt.Ident)(
+  private def genFieldIdent(cls: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Ident = {
     Ident(cls + "__f_" + field.name, field.originalName)
   }
 
-  def genSelectStatic(className: String, item: irt.Ident)(
+  def genSelectStatic(className: String, item: irt.FieldIdent)(
       implicit pos: Position): VarRef = {
     envField("t", className + "__" + item.name)
   }
@@ -125,13 +125,13 @@ private[emitter] final class JSGen(val semantics: Semantics,
    * the future, to emit selections of symbols that are private to the
    * Scala.js-generated code.
    */
-  def genJSPrivateSelect(receiver: Tree, cls: ClassRef, field: irt.Ident)(
+  def genJSPrivateSelect(receiver: Tree, cls: ClassRef, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
     DotSelect(receiver, genJSPrivateFieldIdent(cls.className, field)(field.pos))
   }
 
   // The similarity with `genFieldIdent is accidental. See above.
-  def genJSPrivateFieldIdent(cls: String, field: irt.Ident)(
+  def genJSPrivateFieldIdent(cls: String, field: irt.FieldIdent)(
       implicit pos: Position): Ident = {
     Ident(cls + "__f_" + field.name, field.originalName)
   }
@@ -261,15 +261,15 @@ private[emitter] final class JSGen(val semantics: Semantics,
     Apply(envField(helperName), args.toList)
   }
 
-  def encodeClassVar(className: String)(implicit pos: Position): VarRef =
+  def encodeClassVar(className: ClassName)(implicit pos: Position): VarRef =
     envField("c", className)
 
-  def genLoadModule(moduleClass: String)(implicit pos: Position): Tree = {
+  def genLoadModule(moduleClass: ClassName)(implicit pos: Position): Tree = {
     import TreeDSL._
     Apply(envField("m", moduleClass), Nil)
   }
 
-  def genJSClassConstructor(className: String,
+  def genJSClassConstructor(className: ClassName,
       keepOnlyDangerousVarNames: Boolean)(
       implicit globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[Tree] = {
@@ -279,7 +279,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
         keepOnlyDangerousVarNames)
   }
 
-  def genJSClassConstructor(className: String,
+  def genJSClassConstructor(className: ClassName,
       spec: Option[irt.JSNativeLoadSpec],
       keepOnlyDangerousVarNames: Boolean)(
       implicit pos: Position): WithGlobals[Tree] = {
@@ -293,7 +293,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     }
   }
 
-  def genNonNativeJSClassConstructor(className: String)(
+  def genNonNativeJSClassConstructor(className: ClassName)(
       implicit pos: Position): Tree = {
     Apply(envField("a", className), Nil)
   }
@@ -503,7 +503,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genBracketSelect(qual: Tree, item: Tree)(implicit pos: Position): Tree = {
     item match {
       case StringLiteral(name) if internalOptions.optimizeBracketSelects &&
-          irt.isValidIdentifier(name) && name != "eval" =>
+          irt.isValidJSIdentifier(name) && name != "eval" =>
         /* We exclude "eval" because we do not want to rely too much on the
          * strict mode peculiarities of eval(), so that we can keep running
          * on VMs that do not support strict mode.

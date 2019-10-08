@@ -17,20 +17,12 @@ import scala.collection.mutable
 import scala.tools.nsc._
 
 import org.scalajs.ir
-import ir.{Trees => js, Types => jstpe}
+import org.scalajs.ir.{Definitions => defs, Trees => js, Types => jstpe}
 
 import org.scalajs.nscplugin.util.{ScopedVar, VarBox}
 import ScopedVar.withScopedVars
 
-/** Encoding of symbol names for JavaScript
- *
- *  Some issues that this encoding solves:
- *  * Overloading: encode the full signature in the JS name
- *  * Same scope for fields and methods of a class
- *  * Global access to classes and modules (by their full name)
- *
- *  @author Sébastien Doeraene
- */
+/** Encoding of symbol names for the IR. */
 trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   self: GenJSCode[G] =>
 
@@ -51,24 +43,28 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
    *  local name scope using [[reserveLocalName]]. Otherwise, this name can
    *  clash with another local identifier.
    */
-  final val JSSuperClassParamName = "$superClass"
+  final val JSSuperClassParamName = defs.LocalName("$superClass")
 
   // Fresh local name generator ----------------------------------------------
 
   private val usedLocalNames = new ScopedVar[mutable.Set[String]]
-  private val returnLabelName = new ScopedVar[VarBox[Option[String]]]
-  private val localSymbolNames = new ScopedVar[mutable.Map[Symbol, String]]
+  private val localSymbolNames = new ScopedVar[mutable.Map[Symbol, defs.LocalName]]
+  private val usedLabelNames = new ScopedVar[mutable.Set[String]]
+  private val labelSymbolNames = new ScopedVar[mutable.Map[Symbol, defs.LabelName]]
+  private val returnLabelName = new ScopedVar[VarBox[Option[defs.LabelName]]]
   private val isReserved = Set("arguments", "eval")
 
   def withNewLocalNameScope[A](body: => A): A = {
     withScopedVars(
         usedLocalNames := mutable.Set.empty,
-        returnLabelName := null,
-        localSymbolNames := mutable.Map.empty
+        localSymbolNames := mutable.Map.empty,
+        usedLabelNames := mutable.Set.empty,
+        labelSymbolNames := mutable.Map.empty,
+        returnLabelName := null
     )(body)
   }
 
-  def reserveLocalName(name: String): Unit = {
+  def reserveLocalName(name: defs.LocalName): Unit = {
     require(usedLocalNames.isEmpty,
         s"Trying to reserve the name '$name' but names have already been " +
         "allocated")
@@ -85,48 +81,61 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
         case None =>
           inner
         case Some(labelName) =>
-          js.Labeled(js.Ident(labelName), tpe, inner)
+          js.Labeled(js.LabelIdent(labelName), tpe, inner)
       }
     }
   }
 
-  private def freshName(base: String = "x"): String = {
+  private def freshNameGeneric[N <: String](base: String,
+      usedNamesSet: mutable.Set[String], createNameFun: String => N): N = {
     var suffix = 1
     var longName = base
-    while (usedLocalNames(longName) || isReserved(longName)) {
+    while (usedNamesSet(longName) || isReserved(longName)) {
       suffix += 1
-      longName = base+"$"+suffix
+      longName = base + "$" + suffix
     }
-    usedLocalNames += longName
-    mangleJSName(longName)
+    usedNamesSet += longName
+    createNameFun(mangleJSName(longName))
   }
 
-  def freshLocalIdent()(implicit pos: ir.Position): js.Ident =
-    js.Ident(freshName(), None)
+  private def freshName(base: String): defs.LocalName =
+    freshNameGeneric(base, usedLocalNames, defs.LocalName(_))
 
-  def freshLocalIdent(base: String)(implicit pos: ir.Position): js.Ident =
-    js.Ident(freshName(base), Some(base))
+  def freshLocalIdent()(implicit pos: ir.Position): js.LocalIdent =
+    js.LocalIdent(freshName("x"), None)
 
-  private def localSymbolName(sym: Symbol): String =
+  def freshLocalIdent(base: String)(implicit pos: ir.Position): js.LocalIdent =
+    js.LocalIdent(freshName(base), Some(base))
+
+  private def localSymbolName(sym: Symbol): defs.LocalName =
     localSymbolNames.getOrElseUpdate(sym, freshName(sym.name.toString))
 
-  def getEnclosingReturnLabel()(implicit pos: ir.Position): js.Ident = {
+  private def freshLabelName(base: String): defs.LabelName =
+    freshNameGeneric(base, usedLabelNames, defs.LabelName(_))
+
+  def freshLabelIdent(base: String)(implicit pos: ir.Position): js.LabelIdent =
+    js.LabelIdent(freshLabelName(base))
+
+  private def labelSymbolName(sym: Symbol): defs.LabelName =
+    labelSymbolNames.getOrElseUpdate(sym, freshLabelName(sym.name.toString))
+
+  def getEnclosingReturnLabel()(implicit pos: ir.Position): js.LabelIdent = {
     val box = returnLabelName.get
     if (box == null)
       throw new IllegalStateException(s"No enclosing returnable scope at $pos")
     if (box.value.isEmpty)
-      box.value = Some(freshName("_return"))
-    js.Ident(box.value.get)
+      box.value = Some(freshLabelName("_return"))
+    js.LabelIdent(box.value.get)
   }
 
   // Encoding methods ----------------------------------------------------------
 
-  def encodeLabelSym(sym: Symbol)(implicit pos: Position): js.Ident = {
+  def encodeLabelSym(sym: Symbol)(implicit pos: Position): js.LabelIdent = {
     require(sym.isLabel, "encodeLabelSym called with non-label symbol: " + sym)
-    js.Ident(localSymbolName(sym), Some(sym.unexpandedName.decoded))
+    js.LabelIdent(labelSymbolName(sym))
   }
 
-  def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.Ident = {
+  def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.FieldIdent = {
     require(sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
         "encodeFieldSym called with non-field symbol: " + sym)
 
@@ -135,11 +144,12 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
       if (name0.charAt(name0.length()-1) != ' ') name0
       else name0.substring(0, name0.length()-1)
 
-    js.Ident(mangleJSName(name), Some(sym.unexpandedName.decoded))
+    js.FieldIdent(defs.FieldName(mangleJSName(name)),
+        Some(sym.unexpandedName.decoded))
   }
 
   def encodeMethodSym(sym: Symbol, reflProxy: Boolean = false)(
-      implicit pos: Position): js.Ident = {
+      implicit pos: Position): js.MethodIdent = {
 
     require(sym.isMethod,
         "encodeMethodSym called with non-method symbol: " + sym)
@@ -150,19 +160,20 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
 
     val paramsString = makeParamsString(sym, reflProxy)
 
-    js.Ident(encodedName + paramsString,
+    js.MethodIdent(defs.MethodName(encodedName + paramsString),
         Some(sym.unexpandedName.decoded + paramsString))
   }
 
-  def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.Ident = {
+  def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.MethodIdent = {
     require(sym.isStaticMember,
         "encodeStaticMemberSym called with non-static symbol: " + sym)
-    js.Ident(
-        mangleJSName(encodeMemberNameInternal(sym)) + "__" + internalName(sym.tpe),
+    js.MethodIdent(
+        defs.MethodName(
+            mangleJSName(encodeMemberNameInternal(sym)) + "__" + internalName(sym.tpe)),
         Some(sym.unexpandedName.decoded))
   }
 
-  def encodeLocalSym(sym: Symbol)(implicit pos: Position): js.Ident = {
+  def encodeLocalSym(sym: Symbol)(implicit pos: Position): js.LocalIdent = {
     /* The isValueParameter case is necessary to work around an internal bug
      * of scalac: for some @varargs methods, the owner of some parameters is
      * the enclosing class rather the method, so !sym.owner.isClass fails.
@@ -172,7 +183,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     require(sym.isValueParameter ||
         (!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule),
         "encodeLocalSym called with non-local symbol: " + sym)
-    js.Ident(localSymbolName(sym), Some(sym.unexpandedName.decoded))
+    js.LocalIdent(localSymbolName(sym), Some(sym.unexpandedName.decoded))
   }
 
   def foreignIsImplClass(sym: Symbol): Boolean =
@@ -191,24 +202,26 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   def encodeClassRef(sym: Symbol): jstpe.ClassRef =
     jstpe.ClassRef(encodeClassFullName(sym))
 
-  def encodeClassFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
-    js.Ident(encodeClassFullName(sym), Some(sym.fullName))
-  }
+  def encodeClassFullNameIdent(sym: Symbol)(implicit pos: Position): js.ClassIdent =
+    js.ClassIdent(encodeClassFullName(sym), Some(sym.fullName))
 
-  def encodeClassFullName(sym: Symbol): String = {
+  private val BoxedStringModuleClassName = defs.ClassName("jl_String$")
+  private val BoxedVoidModuleClassName = defs.ClassName("jl_Void$")
+
+  def encodeClassFullName(sym: Symbol): defs.ClassName = {
     assert(!sym.isPrimitiveValueClass,
         s"Illegal encodeClassFullName(${sym.fullName}")
     if (sym == jsDefinitions.HackedStringClass) {
       ir.Definitions.BoxedStringClass
     } else if (sym == jsDefinitions.HackedStringModClass) {
-      "jl_String$"
+      BoxedStringModuleClassName
     } else if (sym == definitions.BoxedUnitClass) {
       // Rewire scala.runtime.BoxedUnit to java.lang.Void, as the IR expects
       // BoxedUnit$ is a JVM artifact
       ir.Definitions.BoxedUnitClass
     } else if (sym == jsDefinitions.BoxedUnitModClass) {
       // Same for its module class
-      "jl_Void$"
+      BoxedVoidModuleClassName
     } else {
       ir.Definitions.encodeClassName(
           sym.fullName + (if (needsModuleClassSuffix(sym)) "$" else ""))

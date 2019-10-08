@@ -29,7 +29,7 @@ object JavaLangObject {
     val EAF = ApplyFlags.empty
 
     val classDef = ClassDef(
-      Ident("O", Some("java.lang.Object")),
+      ClassIdent(ObjectClass, Some("java.lang.Object")),
       ClassKind.Class,
       None,
       None,
@@ -40,7 +40,7 @@ object JavaLangObject {
         /* def this() = () */
         MethodDef(
           MemberFlags.empty.withNamespace(MemberNamespace.Constructor),
-          Ident("init___", Some("<init>")),
+          MethodIdent(NoArgConstructorName, Some("<init>")),
           Nil,
           NoType,
           Some(Skip()))(OptimizerHints.empty, None),
@@ -48,7 +48,7 @@ object JavaLangObject {
         /* def getClass(): java.lang.Class[_] = <getclass>(this) */
         MethodDef(
           MemberFlags.empty,
-          Ident("getClass__jl_Class", Some("getClass__jl_Class")),
+          MethodIdent(MethodName("getClass__jl_Class"), Some("getClass__jl_Class")),
           Nil,
           ClassType(ClassClass),
           Some {
@@ -58,28 +58,28 @@ object JavaLangObject {
         /* def hashCode(): Int = System.identityHashCode(this) */
         MethodDef(
           MemberFlags.empty,
-          Ident("hashCode__I", Some("hashCode__I")),
+          MethodIdent(MethodName("hashCode__I"), Some("hashCode__I")),
           Nil,
           IntType,
           Some {
             Apply(
               EAF,
-              LoadModule(ClassRef("jl_System$")),
-              Ident("identityHashCode__O__I", Some("identityHashCode")),
+              LoadModule(ClassRef(ClassName("jl_System$"))),
+              MethodIdent(MethodName("identityHashCode__O__I"), Some("identityHashCode")),
               List(This()(ThisType)))(IntType)
           })(OptimizerHints.empty, None),
 
         /* def equals(that: Object): Boolean = this eq that */
         MethodDef(
           MemberFlags.empty,
-          Ident("equals__O__Z", Some("equals__O__Z")),
-          List(ParamDef(Ident("that", Some("that")), AnyType,
+          MethodIdent(MethodName("equals__O__Z"), Some("equals__O__Z")),
+          List(ParamDef(LocalIdent(LocalName("that"), Some("that")), AnyType,
             mutable = false, rest = false)),
           BooleanType,
           Some {
             BinaryOp(BinaryOp.===,
               This()(ThisType),
-              VarRef(Ident("that", Some("that")))(AnyType))
+              VarRef(LocalIdent(LocalName("that"), Some("that")))(AnyType))
           })(OptimizerHints.empty.withInline(true), None),
 
         /* protected def clone(): Object =
@@ -88,17 +88,17 @@ object JavaLangObject {
          */
         MethodDef(
           MemberFlags.empty,
-          Ident("clone__O", Some("clone__O")),
+          MethodIdent(MethodName("clone__O"), Some("clone__O")),
           Nil,
           AnyType,
           Some {
-            If(IsInstanceOf(This()(ThisType), ClassType("jl_Cloneable")), {
-              Apply(EAF, LoadModule(ClassRef("jl_ObjectClone$")),
-                  Ident("clone__O__O", Some("clone")),
+            If(IsInstanceOf(This()(ThisType), ClassType(ClassName("jl_Cloneable"))), {
+              Apply(EAF, LoadModule(ClassRef(ClassName("jl_ObjectClone$"))),
+                  MethodIdent(MethodName("clone__O__O"), Some("clone")),
                   List(This()(ThisType)))(AnyType)
             }, {
-              Throw(New(ClassRef("jl_CloneNotSupportedException"),
-                Ident("init___", Some("<init>")), Nil))
+              Throw(New(ClassRef(ClassName("jl_CloneNotSupportedException")),
+                MethodIdent(MethodName("init___"), Some("<init>")), Nil))
             })(AnyType)
           })(OptimizerHints.empty.withInline(true), None),
 
@@ -107,7 +107,7 @@ object JavaLangObject {
          */
         MethodDef(
           MemberFlags.empty,
-          Ident("toString__T", Some("toString__T")),
+          MethodIdent(MethodName("toString__T"), Some("toString__T")),
           Nil,
           ClassType(BoxedStringClass),
           Some {
@@ -115,17 +115,17 @@ object JavaLangObject {
               Apply(
                 EAF,
                 Apply(EAF, This()(ThisType),
-                  Ident("getClass__jl_Class", Some("getClass__jl_Class")), Nil)(
+                  MethodIdent(MethodName("getClass__jl_Class"), Some("getClass__jl_Class")), Nil)(
                   ClassType(ClassClass)),
-                Ident("getName__T"), Nil)(ClassType(BoxedStringClass)),
+                MethodIdent(MethodName("getName__T")), Nil)(ClassType(BoxedStringClass)),
               // +
               StringLiteral("@")),
               // +
               Apply(
                 EAF,
-                LoadModule(ClassRef("jl_Integer$")),
-                Ident("toHexString__I__T"),
-                List(Apply(EAF, This()(ThisType), Ident("hashCode__I"), Nil)(IntType)))(
+                LoadModule(ClassRef(ClassName("jl_Integer$"))),
+                MethodIdent(MethodName("toHexString__I__T")),
+                List(Apply(EAF, This()(ThisType), MethodIdent(MethodName("hashCode__I")), Nil)(IntType)))(
                 ClassType(BoxedStringClass)))
           })(OptimizerHints.empty, None),
 
@@ -136,7 +136,7 @@ object JavaLangObject {
         /* def notify(): Unit = () */
         MethodDef(
           MemberFlags.empty,
-          Ident("notify__V", Some("notify__V")),
+          MethodIdent(MethodName("notify__V"), Some("notify__V")),
           Nil,
           NoType,
           Some(Skip()))(OptimizerHints.empty, None),
@@ -144,7 +144,7 @@ object JavaLangObject {
         /* def notifyAll(): Unit = () */
         MethodDef(
           MemberFlags.empty,
-          Ident("notifyAll__V", Some("notifyAll__V")),
+          MethodIdent(MethodName("notifyAll__V"), Some("notifyAll__V")),
           Nil,
           NoType,
           Some(Skip()))(OptimizerHints.empty, None),
@@ -152,7 +152,7 @@ object JavaLangObject {
         /* def finalize(): Unit = () */
         MethodDef(
           MemberFlags.empty,
-          Ident("finalize__V", Some("finalize__V")),
+          MethodIdent(MethodName("finalize__V"), Some("finalize__V")),
           Nil,
           NoType,
           Some(Skip()))(OptimizerHints.empty, None),
@@ -166,7 +166,7 @@ object JavaLangObject {
           Nil,
           {
             Apply(EAF, This()(ThisType),
-                Ident("toString__T", Some("toString__T")),
+                MethodIdent(MethodName("toString__T"), Some("toString__T")),
                 Nil)(ClassType(BoxedStringClass))
           })(OptimizerHints.empty, None)
       ),

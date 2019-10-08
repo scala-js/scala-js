@@ -19,8 +19,6 @@ import ir.Position
 import ir.Position.NoPosition
 
 object Trees {
-  import ir.Trees.requireValidIdent
-
   /** AST node of JavaScript. */
   abstract sealed class Tree {
     val pos: Position
@@ -45,7 +43,8 @@ object Trees {
 
   case class Ident(name: String, originalName: Option[String])(
       implicit val pos: Position) extends PropertyName {
-    requireValidIdent(name)
+    require(ir.Trees.isValidJSIdentifier(name),
+        s"'$name' is not a valid JS identifier")
   }
 
   object Ident {

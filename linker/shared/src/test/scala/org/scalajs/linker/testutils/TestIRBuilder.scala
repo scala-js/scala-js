@@ -30,18 +30,18 @@ object TestIRBuilder {
   val EOH = OptimizerHints.empty
 
   def classDef(
-      encodedName: String,
+      encodedName: ClassName,
       kind: ClassKind = ClassKind.Class,
       jsClassCaptures: Option[List[ParamDef]] = None,
-      superClass: Option[String] = None,
-      interfaces: List[String] = Nil,
+      superClass: Option[ClassName] = None,
+      interfaces: List[ClassName] = Nil,
       jsSuperClass: Option[Tree] = None,
       jsNativeLoadSpec: Option[JSNativeLoadSpec] = None,
       memberDefs: List[MemberDef] = Nil,
       topLevelExportDefs: List[TopLevelExportDef] = Nil): ClassDef = {
-    ClassDef(Ident(encodedName), kind, jsClassCaptures,
-        superClass.map(Ident(_)), interfaces.map(Ident(_)), jsSuperClass,
-        jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
+    ClassDef(ClassIdent(encodedName), kind, jsClassCaptures,
+        superClass.map(ClassIdent(_)), interfaces.map(ClassIdent(_)),
+        jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
         EOH)
   }
 
@@ -61,28 +61,48 @@ object TestIRBuilder {
     )
   }
 
-  def trivialCtor(enclosingClassName: String): MethodDef = {
+  def trivialCtor(enclosingClassName: ClassName): MethodDef = {
     val flags = MemberFlags.empty.withNamespace(MemberNamespace.Constructor)
-    MethodDef(flags, Ident("init___"), Nil, NoType,
+    MethodDef(flags, MethodIdent(NoArgConstructorName), Nil, NoType,
         Some(ApplyStatically(EAF.withConstructor(true),
             This()(ClassType(enclosingClassName)),
-            ClassRef(ObjectClass), Ident("init___"), Nil)(NoType)))(
+            ClassRef(ObjectClass), MethodIdent(NoArgConstructorName),
+            Nil)(NoType)))(
         EOH, None)
   }
 
   def mainMethodDef(body: Tree): MethodDef = {
     val stringArrayType = ArrayType(ArrayTypeRef(ClassRef(BoxedStringClass), 1))
     val argsParamDef = paramDef("args", stringArrayType)
-    MethodDef(MemberFlags.empty, Ident("main__AT__V"), List(argsParamDef),
+    MethodDef(MemberFlags.empty, "main__AT__V", List(argsParamDef),
         NoType, Some(body))(EOH, None)
   }
 
-  def paramDef(name: String, ptpe: Type): ParamDef =
-    ParamDef(Ident(name, Some(name)), ptpe, mutable = false, rest = false)
+  def paramDef(name: LocalName, ptpe: Type): ParamDef =
+    ParamDef(LocalIdent(name), ptpe, mutable = false, rest = false)
 
   def mainModuleInitializers(moduleClassName: String): List[ModuleInitializer] =
     ModuleInitializer.mainMethodWithArgs(moduleClassName, "main") :: Nil
 
-  implicit def string2ident(name: String): Ident =
-    Ident(name)
+  implicit def string2LocalName(name: String): LocalName =
+    LocalName(name)
+  implicit def string2LabelName(name: String): LabelName =
+    LabelName(name)
+  implicit def string2FieldName(name: String): FieldName =
+    FieldName(name)
+  implicit def string2MethodName(name: String): MethodName =
+    MethodName(name)
+  implicit def string2ClassName(name: String): ClassName =
+    ClassName(name)
+
+  implicit def string2LocalIdent(name: String): LocalIdent =
+    LocalIdent(LocalName(name))
+  implicit def string2LabelIdent(name: String): LabelIdent =
+    LabelIdent(LabelName(name))
+  implicit def string2FieldIdent(name: String): FieldIdent =
+    FieldIdent(FieldName(name))
+  implicit def string2MethodIdent(name: String): MethodIdent =
+    MethodIdent(MethodName(name))
+  implicit def string2ClassIdent(name: String): ClassIdent =
+    ClassIdent(ClassName(name))
 }

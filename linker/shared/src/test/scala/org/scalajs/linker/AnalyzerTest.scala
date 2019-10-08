@@ -428,14 +428,14 @@ object AnalyzerTest {
   private val fromAnalyzer = FromCore("analyzer")
   private val fromUnitTest = FromCore("unit test")
 
-  private def validParentForKind(kind: ClassKind): Option[String] = {
+  private def validParentForKind(kind: ClassKind): Option[ClassName] = {
     import ClassKind._
     kind match {
       case Class | ModuleClass | HijackedClass | NativeJSClass |
           NativeJSModuleClass =>
         Some(ObjectClass)
       case JSClass | JSModuleClass =>
-        Some("sjs_js_Object")
+        Some(ClassName("sjs_js_Object"))
       case Interface | AbstractJSType =>
         None
     }
@@ -455,9 +455,10 @@ object AnalyzerTest {
       classDefs.map(c => c.name.name -> Infos.generateClassInfo(c)).toMap
 
     def inputProvider(loader: Option[TestIRRepo.InfoLoader]) = new Analyzer.InputProvider {
-      def classesWithEntryPoints(): Iterable[String] = classesWithEntryPoints0
+      def classesWithEntryPoints(): Iterable[ClassName] = classesWithEntryPoints0
 
-      def loadInfo(encodedName: String)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
+      def loadInfo(encodedName: ClassName)(
+          implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
         /* Note: We could use Future.successful here to complete the future
          * immediately. However, in order to exercise as much asynchronizity as
          * possible, we don't.

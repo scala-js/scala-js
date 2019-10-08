@@ -15,6 +15,7 @@ package org.scalajs.linker.frontend.optimizer
 import scala.collection.{GenTraversableOnce, GenIterable}
 import scala.collection.mutable
 
+import org.scalajs.ir.Definitions.{ClassName, MethodName}
 import org.scalajs.ir.Trees.MemberNamespace
 
 import org.scalajs.linker.standard._
@@ -69,8 +70,8 @@ final class IncOptimizer(config: CommonPhaseConfig)
       it.filter(f)
   }
 
-  private val _interfaces = mutable.Map.empty[String, InterfaceType]
-  private[optimizer] def getInterface(encodedName: String): InterfaceType =
+  private val _interfaces = mutable.Map.empty[ClassName, InterfaceType]
+  private[optimizer] def getInterface(encodedName: ClassName): InterfaceType =
     _interfaces.getOrElseUpdate(encodedName, new SeqInterfaceType(encodedName))
 
   private val methodsToProcess = mutable.ListBuffer.empty[MethodImpl]
@@ -78,7 +79,9 @@ final class IncOptimizer(config: CommonPhaseConfig)
     methodsToProcess += method
 
   private[optimizer] def newMethodImpl(owner: MethodContainer,
-      encodedName: String): MethodImpl = new SeqMethodImpl(owner, encodedName)
+      encodedName: MethodName): MethodImpl = {
+    new SeqMethodImpl(owner, encodedName)
+  }
 
   private[optimizer] def processAllTaggedMethods(): Unit = {
     logProcessingMethods(methodsToProcess.count(!_.deleted))
@@ -87,14 +90,16 @@ final class IncOptimizer(config: CommonPhaseConfig)
     methodsToProcess.clear()
   }
 
-  private class SeqInterfaceType(encName: String) extends InterfaceType(encName) {
+  private class SeqInterfaceType(encName: ClassName)
+      extends InterfaceType(encName) {
+
     private val ancestorsAskers = mutable.Set.empty[MethodImpl]
-    private val dynamicCallers = mutable.Map.empty[String, mutable.Set[MethodImpl]]
+    private val dynamicCallers = mutable.Map.empty[MethodName, mutable.Set[MethodImpl]]
 
     private val staticCallers =
-      Array.fill(MemberNamespace.Count)(mutable.Map.empty[String, mutable.Set[MethodImpl]])
+      Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, mutable.Set[MethodImpl]])
 
-    private var _ancestors: List[String] = encodedName :: Nil
+    private var _ancestors: List[ClassName] = encodedName :: Nil
 
     private var _instantiatedSubclasses: Set[Class] = Set.empty
 
@@ -106,9 +111,9 @@ final class IncOptimizer(config: CommonPhaseConfig)
     def removeInstantiatedSubclass(x: Class): Unit =
       _instantiatedSubclasses -= x
 
-    def ancestors: List[String] = _ancestors
+    def ancestors: List[ClassName] = _ancestors
 
-    def ancestors_=(v: List[String]): Unit = {
+    def ancestors_=(v: List[ClassName]): Unit = {
       if (v != _ancestors) {
         _ancestors = v
         ancestorsAskers.foreach(_.tag())
@@ -119,10 +124,10 @@ final class IncOptimizer(config: CommonPhaseConfig)
     def registerAskAncestors(asker: MethodImpl): Unit =
       ancestorsAskers += asker
 
-    def registerDynamicCaller(methodName: String, caller: MethodImpl): Unit =
+    def registerDynamicCaller(methodName: MethodName, caller: MethodImpl): Unit =
       dynamicCallers.getOrElseUpdate(methodName, mutable.Set.empty) += caller
 
-    def registerStaticCaller(namespace: MemberNamespace, methodName: String,
+    def registerStaticCaller(namespace: MemberNamespace, methodName: MethodName,
         caller: MethodImpl): Unit = {
       staticCallers(namespace.ordinal)
         .getOrElseUpdate(methodName, mutable.Set.empty) += caller
@@ -134,19 +139,19 @@ final class IncOptimizer(config: CommonPhaseConfig)
       staticCallers.foreach(_.values.foreach(_ -= dependee))
     }
 
-    def tagDynamicCallersOf(methodName: String): Unit =
+    def tagDynamicCallersOf(methodName: MethodName): Unit =
       dynamicCallers.remove(methodName).foreach(_.foreach(_.tag()))
 
     def tagStaticCallersOf(namespace: MemberNamespace,
-        methodName: String): Unit = {
+        methodName: MethodName): Unit = {
       staticCallers(namespace.ordinal)
         .remove(methodName)
         .foreach(_.foreach(_.tag()))
     }
   }
 
-  private class SeqMethodImpl(owner: MethodContainer,
-      encodedName: String) extends MethodImpl(owner, encodedName) {
+  private class SeqMethodImpl(owner: MethodContainer, encodedName: MethodName)
+      extends MethodImpl(owner, encodedName) {
 
     private val bodyAskers = mutable.Set.empty[MethodImpl]
 
