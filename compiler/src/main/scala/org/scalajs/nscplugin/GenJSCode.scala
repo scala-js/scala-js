@@ -2726,6 +2726,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             genNew(cls, ctor, genActualArgs(ctor, args))
           case arr: jstpe.ArrayTypeRef =>
             genNewArray(arr, args.map(genExpr))
+          case prim: jstpe.PrimRef =>
+            abort(s"unexpected primitive type $prim in New at $pos")
         }
       }
     }

@@ -1914,8 +1914,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
          */
         val (_, paramTypeRefs, _) = Definitions.decodeMethodName(methodName)
         args.zip(paramTypeRefs).map {
-          case (arg, ClassRef("C")) => transformExpr(arg, preserveChar = true)
-          case (arg, _)             => transformExpr(arg, preserveChar = false)
+          case (arg, CharRef) => transformExpr(arg, preserveChar = true)
+          case (arg, _)       => transformExpr(arg, preserveChar = false)
         }
       }
     }
@@ -2394,8 +2394,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               js.ArrayConstr(lengths.map(transformExprNoChar)))
 
         case ArrayValue(typeRef, elems) =>
-          val ArrayTypeRef(baseClassName, dimensions) = typeRef
-          val preserveChar = baseClassName == "C" && dimensions == 1
+          val preserveChar = typeRef match {
+            case ArrayTypeRef(CharRef, 1) => true
+            case _                        => false
+          }
           genArrayValue(typeRef, elems.map(transformExpr(_, preserveChar)))
 
         case ArrayLength(array) =>

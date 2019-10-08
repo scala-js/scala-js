@@ -71,7 +71,7 @@ object TestIRBuilder {
   }
 
   def mainMethodDef(body: Tree): MethodDef = {
-    val stringArrayType = ArrayType(ArrayTypeRef("T", 1))
+    val stringArrayType = ArrayType(ArrayTypeRef(ClassRef(BoxedStringClass), 1))
     val argsParamDef = paramDef("args", stringArrayType)
     MethodDef(MemberFlags.empty, Ident("main__AT__V"), List(argsParamDef),
         NoType, Some(body))(EOH, None)

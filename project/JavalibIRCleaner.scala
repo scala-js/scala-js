@@ -363,16 +363,22 @@ object JavalibIRCleaner {
 
     private def transformArrayTypeRef(typeRef: ArrayTypeRef)(
         implicit pos: Position): ArrayTypeRef = {
-      if (jsTypes.contains(typeRef.baseClassName)) {
-        ArrayTypeRef(ObjectClass, typeRef.dimensions)
-      } else {
-        validateClassName(typeRef.baseClassName)
-        typeRef
+      typeRef.base match {
+        case _: PrimRef =>
+          typeRef
+        case ClassRef(baseClassName) =>
+          if (jsTypes.contains(baseClassName)) {
+            ArrayTypeRef(ClassRef(ObjectClass), typeRef.dimensions)
+          } else {
+            validateClassName(baseClassName)
+            typeRef
+          }
       }
     }
 
     private def transformTypeRef(typeRef: TypeRef)(
         implicit pos: Position): TypeRef = typeRef match {
+      case typeRef: PrimRef      => typeRef
       case typeRef: ClassRef     => transformClassRef(typeRef)
       case typeRef: ArrayTypeRef => transformArrayTypeRef(typeRef)
     }
@@ -397,7 +403,7 @@ object JavalibIRCleaner {
       tpe match {
         case ClassType(cls) =>
           validateClassName(cls)
-        case ArrayType(ArrayTypeRef(cls, _)) =>
+        case ArrayType(ArrayTypeRef(ClassRef(cls), _)) =>
           validateClassName(cls)
         case _ =>
           // ok

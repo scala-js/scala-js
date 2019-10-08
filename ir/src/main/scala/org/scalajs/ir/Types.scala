@@ -40,6 +40,24 @@ object Types {
     }
   }
 
+  sealed abstract class PrimType extends Type
+
+  sealed abstract class PrimTypeWithRef extends PrimType {
+    def primRef: PrimRef = this match {
+      case NoType      => VoidRef
+      case BooleanType => BooleanRef
+      case CharType    => CharRef
+      case ByteType    => ByteRef
+      case ShortType   => ShortRef
+      case IntType     => IntRef
+      case LongType    => LongRef
+      case FloatType   => FloatRef
+      case DoubleType  => DoubleRef
+      case NullType    => NullRef
+      case NothingType => NothingRef
+    }
+  }
+
   /** Any type (the top type of this type system).
    *  A variable of this type can contain any value, including `undefined`
    *  and `null` and any JS value. This type supports a very limited set
@@ -57,61 +75,61 @@ object Types {
    *  Expressions from which one can never come back are typed as `Nothing`.
    *  For example, `throw` and `return`.
    */
-  case object NothingType extends Type
+  case object NothingType extends PrimTypeWithRef
 
   /** The type of `undefined`. */
-  case object UndefType extends Type
+  case object UndefType extends PrimType
 
   /** Boolean type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object BooleanType extends Type
+  case object BooleanType extends PrimTypeWithRef
 
   /** `Char` type, a 16-bit UTF-16 code unit.
    *  It does not accept `null` nor `undefined`.
    */
-  case object CharType extends Type
+  case object CharType extends PrimTypeWithRef
 
   /** 8-bit signed integer type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object ByteType extends Type
+  case object ByteType extends PrimTypeWithRef
 
   /** 16-bit signed integer type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object ShortType extends Type
+  case object ShortType extends PrimTypeWithRef
 
   /** 32-bit signed integer type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object IntType extends Type
+  case object IntType extends PrimTypeWithRef
 
   /** 64-bit signed integer type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object LongType extends Type
+  case object LongType extends PrimTypeWithRef
 
   /** Float type (32-bit).
    *  It does not accept `null` nor `undefined`.
    */
-  case object FloatType extends Type
+  case object FloatType extends PrimTypeWithRef
 
   /** Double type (64-bit).
    *  It does not accept `null` nor `undefined`.
    */
-  case object DoubleType extends Type
+  case object DoubleType extends PrimTypeWithRef
 
   /** String type.
    *  It does not accept `null` nor `undefined`.
    */
-  case object StringType extends Type
+  case object StringType extends PrimType
 
   /** The type of `null`.
    *  It does not accept `undefined`.
    *  The null type is a subtype of all class types and array types.
    */
-  case object NullType extends Type
+  case object NullType extends PrimTypeWithRef
 
   /** Class (or interface) type. */
   final case class ClassType(className: String) extends Type
@@ -137,7 +155,7 @@ object Types {
   }
 
   /** No type. */
-  case object NoType extends Type
+  case object NoType extends PrimTypeWithRef
 
   /** Type reference (allowed for classOf[], is/asInstanceOf[]).
    *
@@ -163,17 +181,35 @@ object Types {
     }
   }
 
+  sealed abstract class NonArrayTypeRef extends TypeRef
+
+  /** Primitive type reference. */
+  final case class PrimRef private[ir] (tpe: PrimTypeWithRef)
+      extends NonArrayTypeRef
+
+  final val VoidRef = PrimRef(NoType)
+  final val BooleanRef = PrimRef(BooleanType)
+  final val CharRef = PrimRef(CharType)
+  final val ByteRef = PrimRef(ByteType)
+  final val ShortRef = PrimRef(ShortType)
+  final val IntRef = PrimRef(IntType)
+  final val LongRef = PrimRef(LongType)
+  final val FloatRef = PrimRef(FloatType)
+  final val DoubleRef = PrimRef(DoubleType)
+  final val NullRef = PrimRef(NullType)
+  final val NothingRef = PrimRef(NothingType)
+
   /** Class (or interface) type. */
-  final case class ClassRef(className: String) extends TypeRef
+  final case class ClassRef(className: String) extends NonArrayTypeRef
 
   /** Array type. */
-  final case class ArrayTypeRef(baseClassName: String, dimensions: Int)
+  final case class ArrayTypeRef(base: NonArrayTypeRef, dimensions: Int)
       extends TypeRef
 
   object ArrayTypeRef {
     def of(innerType: TypeRef): ArrayTypeRef = innerType match {
-      case ClassRef(className)          => ArrayTypeRef(className, 1)
-      case ArrayTypeRef(className, dim) => ArrayTypeRef(className, dim + 1)
+      case innerType: NonArrayTypeRef => ArrayTypeRef(innerType, 1)
+      case ArrayTypeRef(base, dim)    => ArrayTypeRef(base, dim + 1)
     }
   }
 
@@ -240,17 +276,23 @@ object Types {
           if (lhsDims < rhsDims) {
             false // because Array[A] </: Array[Array[A]]
           } else if (lhsDims > rhsDims) {
-            rhsBase == ObjectClass // because Array[Array[A]] <: Array[Object]
+            rhsBase match {
+              case ClassRef(ObjectClass) =>
+                true // because Array[Array[A]] <: Array[Object]
+              case _ =>
+                false
+            }
           } else { // lhsDims == rhsDims
             // lhsBase must be <: rhsBase
-            if (PrimitiveClasses(lhsBase) || PrimitiveClasses(rhsBase)) {
-              lhsBase == rhsBase
-            } else {
-              /* All things must be considered subclasses of Object for this
-               * purpose, even JS types and interfaces, which do not have
-               * Object in their ancestors.
-               */
-              rhsBase == ObjectClass || isSubclass(lhsBase, rhsBase)
+            (lhsBase, rhsBase) match {
+              case (ClassRef(lhsBaseName), ClassRef(rhsBaseName)) =>
+                /* All things must be considered subclasses of Object for this
+                 * purpose, even JS types and interfaces, which do not have
+                 * Object in their ancestors.
+                 */
+                rhsBaseName == ObjectClass || isSubclass(lhsBaseName, rhsBaseName)
+              case _ =>
+                lhsBase eq rhsBase
             }
           }
 

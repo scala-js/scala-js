@@ -456,7 +456,7 @@ object Printers {
 
         case NewArray(typeRef, lengths) =>
           print("new ")
-          print(typeRef.baseClassName)
+          print(typeRef.base)
           for (length <- lengths) {
             print('[')
             print(length)
@@ -967,7 +967,9 @@ object Printers {
       }
     }
 
-    def print(tpe: TypeRef): Unit = tpe match {
+    def print(typeRef: TypeRef): Unit = typeRef match {
+      case PrimRef(tpe) =>
+        print(tpe)
       case ClassRef(className) =>
         print(className)
       case ArrayTypeRef(base, dims) =>

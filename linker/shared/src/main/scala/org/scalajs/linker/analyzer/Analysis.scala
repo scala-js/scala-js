@@ -19,9 +19,10 @@ import scala.collection.mutable
 import org.scalajs.logging._
 
 import org.scalajs.ir
-import ir.ClassKind
-import ir.Definitions.{decodeClassName, decodeMethodName}
-import ir.Trees.MemberNamespace
+import org.scalajs.ir.ClassKind
+import org.scalajs.ir.Definitions.{decodeClassName, decodeMethodName}
+import org.scalajs.ir.Trees.MemberNamespace
+import org.scalajs.ir.Types._
 
 /** Reachability graph produced by the [[Analyzer]].
  *
@@ -38,18 +39,18 @@ trait Analysis {
 
 object Analysis {
 
-  private val PrimitiveClassesDisplayNames: Map[String, String] = Map(
-      "V" -> "void",
-      "Z" -> "boolean",
-      "C" -> "char",
-      "B" -> "byte",
-      "S" -> "short",
-      "I" -> "int",
-      "J" -> "long",
-      "F" -> "float",
-      "D" -> "double",
-      "N" -> "null",
-      "E" -> "nothing"
+  private val PrimRefDisplayNames: Map[PrimRef, String] = Map(
+      VoidRef -> "void",
+      BooleanRef -> "boolean",
+      CharRef -> "char",
+      ByteRef -> "byte",
+      ShortRef -> "short",
+      IntRef -> "int",
+      LongRef -> "long",
+      FloatRef -> "float",
+      DoubleRef -> "double",
+      NullRef -> "null",
+      NothingRef -> "nothing"
   )
 
   /** Class node in a reachability graph produced by the [[Analyzer]].
@@ -103,21 +104,17 @@ object Analysis {
     def syntheticKind: MethodSyntheticKind
 
     def displayName: String = {
-      import ir.Types._
-
-      def classDisplayName(cls: String): String =
-        PrimitiveClassesDisplayNames.getOrElse(cls, decodeClassName(cls))
-
-      def typeDisplayName(tpe: TypeRef): String = tpe match {
-        case ClassRef(encodedName)          => classDisplayName(encodedName)
-        case ArrayTypeRef(base, dimensions) => "[" * dimensions + classDisplayName(base)
+      def typeRefDisplayName(tpe: TypeRef): String = tpe match {
+        case primRef: PrimRef               => PrimRefDisplayNames(primRef)
+        case ClassRef(encodedName)          => decodeClassName(encodedName)
+        case ArrayTypeRef(base, dimensions) => "[" * dimensions + typeRefDisplayName(base)
       }
 
       val (simpleName, paramTypes, resultType) =
         ir.Definitions.decodeMethodName(encodedName)
 
-      simpleName + "(" + paramTypes.map(typeDisplayName).mkString(",") + ")" +
-      resultType.fold("")(typeDisplayName)
+      simpleName + "(" + paramTypes.map(typeRefDisplayName).mkString(",") + ")" +
+      resultType.fold("")(typeRefDisplayName)
     }
 
     def fullDisplayName: String =

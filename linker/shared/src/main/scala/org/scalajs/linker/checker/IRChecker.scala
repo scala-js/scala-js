@@ -1033,8 +1033,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case ClassOf(typeRef) =>
         typeRef match {
-          case ClassRef(cls @ (NullClass | NothingClass)) =>
-            reportError(s"Invalid classOf[$cls]")
+          case NullRef | NothingRef =>
+            reportError(s"Invalid classOf[$typeRef]")
           case typeRef: ArrayTypeRef =>
             checkArrayTypeRef(typeRef)
           case _ =>
@@ -1171,8 +1171,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def checkArrayTypeRef(typeRef: ArrayTypeRef)(
       implicit ctx: ErrorContext): Unit = {
-    typeRef.baseClassName match {
-      case VoidClass | NullClass | NothingClass =>
+    typeRef.base match {
+      case VoidRef | NullRef | NothingRef =>
         reportError(s"Invalid array type $typeRef")
       case _ =>
         // ok
@@ -1199,29 +1199,16 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   private def typeRefToType(typeRef: TypeRef)(
       implicit ctx: ErrorContext): Type = {
     typeRef match {
-      case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef)
+      case PrimRef(tpe)               => tpe
       case ClassRef(encodedName)      => classNameToType(encodedName)
+      case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef)
     }
   }
 
   private def classNameToType(encodedName: String)(
       implicit ctx: ErrorContext): Type = {
-    if (encodedName.length == 1) {
-      (encodedName.charAt(0): @switch) match {
-        case 'V' => NoType
-        case 'Z' => BooleanType
-        case 'C' => CharType
-        case 'B' => ByteType
-        case 'S' => ShortType
-        case 'I' => IntType
-        case 'J' => LongType
-        case 'F' => FloatType
-        case 'D' => DoubleType
-        case 'N' => NullType
-        case 'E' => NothingType
-        case 'O' => AnyType
-        case 'T' => ClassType(BoxedStringClass) // NOT StringType
-      }
+    if (encodedName == ObjectClass) {
+      AnyType
     } else {
       val kind = lookupClass(encodedName).kind
       if (kind.isJSType) AnyType
@@ -1236,9 +1223,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def arrayElemType(arrayTypeRef: ArrayTypeRef)(
       implicit ctx: ErrorContext): Type = {
-    val ArrayTypeRef(baseClassName, dimensions) = arrayTypeRef
-    if (dimensions == 1) classNameToType(baseClassName)
-    else ArrayType(ArrayTypeRef(baseClassName, dimensions - 1))
+    val ArrayTypeRef(base, dimensions) = arrayTypeRef
+    if (dimensions == 1)
+      typeRefToType(base)
+    else
+      ArrayType(ArrayTypeRef(base, dimensions - 1))
   }
 
   private def reportError(msg: String)(implicit ctx: ErrorContext): Unit = {

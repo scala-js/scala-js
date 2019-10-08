@@ -742,11 +742,8 @@ private final class Analyzer(config: CommonPhaseConfig,
         implicit from: From): Future[Boolean] = {
       import ir.Types._
 
-      def isPrimitive(className: String) =
-        Definitions.PrimitiveClasses.contains(className)
-
       def classIsMoreSpecific(leftCls: String, rightCls: String): Future[Boolean] = {
-        if (leftCls == rightCls || isPrimitive(leftCls) || isPrimitive(rightCls)) {
+        if (leftCls == rightCls) {
           Future.successful(false)
         } else {
           val promise = Promise[Boolean]()
@@ -764,9 +761,10 @@ private final class Analyzer(config: CommonPhaseConfig,
       (left, right) match {
         case (ClassRef(leftCls), ClassRef(rightCls)) =>
           classIsMoreSpecific(leftCls, rightCls)
-        case (ArrayTypeRef(leftBase, leftDepth), ArrayTypeRef(rightBase, rightDepth)) =>
+        case (ArrayTypeRef(ClassRef(leftBaseCls), leftDepth),
+            ArrayTypeRef(ClassRef(rightBaseCls), rightDepth)) =>
           if (leftDepth != rightDepth) Future.successful(false)
-          else classIsMoreSpecific(leftBase, rightBase)
+          else classIsMoreSpecific(leftBaseCls, rightBaseCls)
         case (ArrayTypeRef(_, _), ClassRef(ObjectClass)) =>
           Future.successful(true)
         case _ =>
@@ -864,10 +862,8 @@ private final class Analyzer(config: CommonPhaseConfig,
          * implicitly by the call-sites that read or write the field: the
          * SelectStatic expression has the same type as the field.
          */
-        for (className <- data.referencedFieldClasses) {
-          if (!Definitions.PrimitiveClasses.contains(className))
-            lookupClass(className)(_ => ())
-        }
+        for (className <- data.referencedFieldClasses)
+          lookupClass(className)(_ => ())
 
         if (isScalaClass) {
           accessData()
@@ -1039,28 +1035,20 @@ private final class Analyzer(config: CommonPhaseConfig,
   private def followReachabilityInfo(data: ReachabilityInfo)(
       implicit from: From): Unit = {
 
-    for (moduleName <- data.accessedModules) {
+    for (moduleName <- data.accessedModules)
       lookupClass(moduleName)(_.accessModule())
-    }
 
-    for (className <- data.instantiatedClasses) {
+    for (className <- data.instantiatedClasses)
       lookupClass(className)(_.instantiated())
-    }
 
-    for (className <- data.usedInstanceTests) {
-      if (!Definitions.PrimitiveClasses.contains(className))
-        lookupClass(className)(_.useInstanceTests())
-    }
+    for (className <- data.usedInstanceTests)
+      lookupClass(className)(_.useInstanceTests())
 
-    for (className <- data.accessedClassData) {
-      if (!Definitions.PrimitiveClasses.contains(className))
-        lookupClass(className)(_.accessData())
-    }
+    for (className <- data.accessedClassData)
+      lookupClass(className)(_.accessData())
 
-    for (className <- data.referencedClasses) {
-      if (!Definitions.PrimitiveClasses.contains(className))
-        lookupClass(className)(_ => ())
-    }
+    for (className <- data.referencedClasses)
+      lookupClass(className)(_ => ())
 
     /* `for` loops on maps are written with `while` loops to help the JIT
      * compiler to inline and stack allocate tuples created by the iterators

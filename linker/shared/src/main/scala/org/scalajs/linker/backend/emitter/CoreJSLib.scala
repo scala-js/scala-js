@@ -18,7 +18,7 @@ import org.scalajs.ir.ScalaJSVersions
 import org.scalajs.ir.Position
 import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Trees.{JSUnaryOp, JSBinaryOp}
-import org.scalajs.ir.Types.{ClassRef, ArrayTypeRef}
+import org.scalajs.ir.Types._
 
 import org.scalajs.linker.{CheckedBehavior, ModuleKind}
 import org.scalajs.linker.backend.javascript.Trees._
@@ -59,9 +59,10 @@ private[emitter] object CoreJSLib {
 
     private val classData = Ident("$classData")
 
-    private val orderedPrimitiveClasses = {
-      List(VoidClass, BooleanClass, CharClass, ByteClass, ShortClass, IntClass,
-          LongClass, FloatClass, DoubleClass)
+    private val orderedPrimitiveCharCodeStrs = {
+      val primRefs = List(VoidRef, BooleanRef, CharRef, ByteRef, ShortRef,
+          IntRef, LongRef, FloatRef, DoubleRef)
+      primRefs.map(fieldNameOfPrimRef(_))
     }
 
     def build(): WithGlobals[Tree] = {
@@ -1009,17 +1010,17 @@ private[emitter] object CoreJSLib {
 
     private def defineTypedArrayConversions(): Unit = {
       val list = List(
-          (ByteClass, "byte", "Int8Array"),
-          (ShortClass, "short", "Int16Array"),
-          (CharClass, "char", "Uint16Array"),
-          (IntClass, "int", "Int32Array"),
-          (FloatClass, "float", "Float32Array"),
-          (DoubleClass, "double", "Float64Array")
+          (ByteRef, "byte", "Int8Array"),
+          (ShortRef, "short", "Int16Array"),
+          (CharRef, "char", "Uint16Array"),
+          (IntRef, "int", "Int32Array"),
+          (FloatRef, "float", "Float32Array"),
+          (DoubleRef, "double", "Float64Array")
       )
 
       val value = varRef("value")
 
-      for ((className, shortName, typedArrayName) <- list) {
+      for ((primRef, shortName, typedArrayName) <- list) {
         val typedArrayClass = globalRef(typedArrayName)
         val shortNameUpperCase = "" + shortName.head.toUpper + shortName.tail
 
@@ -1027,7 +1028,7 @@ private[emitter] object CoreJSLib {
           Return(New(typedArrayClass, (value DOT "u") :: Nil))
         })
         buf += envFunctionDef("typedArray2" + shortNameUpperCase + "Array", paramList(value), {
-          Return(New(genClassDataOf(ArrayTypeRef(className, 1)) DOT "constr",
+          Return(New(genClassDataOf(ArrayTypeRef(primRef, 1)) DOT "constr",
               New(typedArrayClass, value :: Nil) :: Nil))
         })
       }
@@ -1352,27 +1353,27 @@ private[emitter] object CoreJSLib {
     }
 
     private def defineIsArrayOfPrimitiveFunctions(): Unit = {
-      for (className <- orderedPrimitiveClasses) {
+      for (charCodeStr <- orderedPrimitiveCharCodeStrs) {
         val obj = varRef("obj")
         val depth = varRef("depth")
-        buf += FunctionDef(envFieldIdent("isArrayOf", className), paramList(obj, depth), {
+        buf += FunctionDef(envFieldIdent("isArrayOf", charCodeStr), paramList(obj, depth), {
           Return(!(!(obj && (obj DOT classData) &&
               ((obj DOT classData DOT "arrayDepth") === depth) &&
-              ((obj DOT classData DOT "arrayBase") === genClassDataOf(className)))))
+              ((obj DOT classData DOT "arrayBase") === genClassDataOf(charCodeStr)))))
         })
       }
     }
 
     private def defineAsArrayOfPrimitiveFunctions(): Unit = {
       if (asInstanceOfs != CheckedBehavior.Unchecked) {
-        for (className <- orderedPrimitiveClasses) {
+        for (charCodeStr <- orderedPrimitiveCharCodeStrs) {
           val obj = varRef("obj")
           val depth = varRef("depth")
-          buf += FunctionDef(envFieldIdent("asArrayOf", className), paramList(obj, depth), {
-            If(genCallHelper("isArrayOf_" + className, obj, depth) || (obj === Null()), {
+          buf += FunctionDef(envFieldIdent("asArrayOf", charCodeStr), paramList(obj, depth), {
+            If(genCallHelper("isArrayOf_" + charCodeStr, obj, depth) || (obj === Null()), {
               Return(obj)
             }, {
-              genCallHelper("throwArrayCastException", obj, str(className), depth)
+              genCallHelper("throwArrayCastException", obj, str(charCodeStr), depth)
             })
           })
         }
@@ -1381,21 +1382,22 @@ private[emitter] object CoreJSLib {
 
     private def definePrimitiveTypeDatas(): Unit = {
       for {
-        (className, zero, displayName) <- List(
-            (VoidClass, Undefined(), "void"),
-            (BooleanClass, bool(false), "boolean"),
-            (CharClass, int(0), "char"),
-            (ByteClass, int(0), "byte"),
-            (ShortClass, int(0), "short"),
-            (IntClass, int(0), "int"),
-            (LongClass, if (allowBigIntsForLongs) genLongZero() else str("longZero"), "long"),
-            (FloatClass, double(0), "float"),
-            (DoubleClass, double(0), "double")
+        (primRef, zero, displayName) <- List(
+            (VoidRef, Undefined(), "void"),
+            (BooleanRef, bool(false), "boolean"),
+            (CharRef, int(0), "char"),
+            (ByteRef, int(0), "byte"),
+            (ShortRef, int(0), "short"),
+            (IntRef, int(0), "int"),
+            (LongRef, if (allowBigIntsForLongs) genLongZero() else str("longZero"), "long"),
+            (FloatRef, double(0), "float"),
+            (DoubleRef, double(0), "double")
         )
       } {
-        buf += const(envField("d", className), {
+        val charCodeStr = fieldNameOfPrimRef(primRef)
+        buf += const(envField("d", charCodeStr), {
           Apply(New(envField("TypeData"), Nil) DOT "initPrim",
-              List(zero, str(className), str(displayName), envField("isArrayOf", className)))
+              List(zero, str(charCodeStr), str(displayName), envField("isArrayOf", charCodeStr)))
         })
       }
     }
