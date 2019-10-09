@@ -233,7 +233,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     override def run(): Unit = {
       scalaPrimitives.init()
-      initializeCoreBTypesCompat()
+      genBCode.bTypes.initializeCoreBTypes()
       jsPrimitives.init()
       super.run()
     }

@@ -206,8 +206,7 @@ object Build {
       version := scalaJSVersion,
 
       crossScalaVersions := Seq(
-          "2.11.0", "2.11.1", "2.11.2", "2.11.4", "2.11.5", "2.11.6", "2.11.7",
-          "2.11.8", "2.11.11", "2.11.12",
+          "2.11.12",
           "2.12.1", "2.12.2", "2.12.3", "2.12.4", "2.12.5", "2.12.6", "2.12.7",
           "2.12.8",
           "2.13.0",
@@ -409,15 +408,8 @@ object Build {
       pomIncludeRepository := { _ => false }
   )
 
-  val fatalWarningsSettings = Seq(
-      // The pattern matcher used to exceed its analysis budget before 2.11.5
-      scalacOptions ++= {
-        scalaVersion.value.split('.') match {
-          case Array("2", "11", x)
-              if x.takeWhile(_.isDigit).toInt <= 4 => Nil
-          case _                                   => Seq("-Xfatal-warnings")
-        }
-      },
+  val fatalWarningsSettings = Def.settings(
+      scalacOptions += "-Xfatal-warnings"
   )
 
   private def publishToBintraySettings = Def.settings(
@@ -976,9 +968,9 @@ object Build {
         // Calculates all prefixes of the current Scala version
         // (including the empty prefix) to construct override
         // directories like the following:
-        // - override-2.11.0-RC1
-        // - override-2.11.0
-        // - override-2.11
+        // - override-2.13.0-RC1
+        // - override-2.13.0
+        // - override-2.13
         // - override-2
         // - override
         val ver = scalaVersion.value
@@ -1345,12 +1337,7 @@ object Build {
          * scalac 2.12+ emits JVM 8 bytecode by default, of course, so it is not
          * needed for later versions.
          */
-        val PartialVersion = """(\d+)\.(\d+)\.(\d+)(?:-.+)?""".r
-        val needsTargetFlag = scalaVersion.value match {
-          case PartialVersion("2", "11", n) => n.toInt >= 12
-          case _                            => false
-        }
-        if (needsTargetFlag)
+        if (scalaVersion.value.startsWith("2.11."))
           Seq("-target:jvm-1.8")
         else
           Nil
@@ -1774,9 +1761,7 @@ object Build {
               "org.scala-sbt" % "test-interface" % "1.0",
               {
                 val v = scalaVersion.value
-                if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
-                  "org.scala-lang.modules" %% "scala-partest" % "1.0.13"
-                else if (v.startsWith("2.11."))
+                if (v.startsWith("2.11."))
                   "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
                 else
                   "org.scala-lang.modules" %% "scala-partest" % "1.1.4"
@@ -1785,15 +1770,6 @@ object Build {
         } else {
           Seq()
         }
-      },
-
-      unmanagedSourceDirectories in Compile += {
-        val sourceRoot = (sourceDirectory in Compile).value.getParentFile
-        val v = scalaVersion.value
-        if (v == "2.11.0" || v == "2.11.1" || v == "2.11.2")
-          sourceRoot / "main-partest-1.0.13"
-        else
-          sourceRoot / "main-partest-1.0.16"
       },
 
       sources in Compile := {
