@@ -25,17 +25,14 @@ import java.nio._
 
 import org.scalajs.ir
 
-abstract class IRFilePlatformExtensions private[linker] () {
+object NodeIRFile {
   import NodeFS._
 
-  def fromNodePath(path: String)(implicit ec: ExecutionContext): Future[IRFile] = {
+  def apply(path: String)(implicit ec: ExecutionContext): Future[IRFile] = {
     cbFuture[Stats](FS.stat(path, _)).map(stats =>
-        new IRFilePlatformExtensions.NodeIRFileImpl(path, stats.mtime.toOption))
+        new NodeIRFileImpl(path, stats.mtime.toOption))
   }
-}
 
-private object IRFilePlatformExtensions {
-  import NodeFS._
   private final class NodeIRFileImpl(path: String, version: Option[js.Date])
       extends IRFileImpl(path, version.map(_.getTime.toString)) {
 

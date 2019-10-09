@@ -23,14 +23,12 @@ import java.nio.file.attribute._
 import org.scalajs.ir
 import org.scalajs.linker.standard.IRFileImpl
 
-abstract class IRFilePlatformExtensions private[linker] () {
-  def fromPath(path: Path)(implicit ec: ExecutionContext): Future[IRFile] = {
+object PathIRFile {
+  def apply(path: Path)(implicit ec: ExecutionContext): Future[IRFile] = {
     Future(blocking(Files.getLastModifiedTime(path)))
-      .map(new IRFilePlatformExtensions.PathIRFileImpl(path, _))
+      .map(new PathIRFileImpl(path, _))
   }
-}
 
-private object IRFilePlatformExtensions {
   private[linker] final class PathIRFileImpl(path: Path, lastModified: FileTime)
       extends IRFileImpl(path.toString, Some(lastModified.toString)) {
     def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {

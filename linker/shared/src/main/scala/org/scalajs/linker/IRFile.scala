@@ -17,5 +17,3 @@ import org.scalajs.linker.standard.IRFileImpl
 abstract class IRFile private[linker] () {
   private[linker] def impl: IRFileImpl
 }
-
-object IRFile extends IRFilePlatformExtensions

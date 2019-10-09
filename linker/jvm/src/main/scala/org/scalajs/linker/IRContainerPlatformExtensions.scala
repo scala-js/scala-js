@@ -34,7 +34,7 @@ abstract class IRContainerPlatformExtensions private[linker] () {
         if (attrs.isDirectory()) {
           walkIR(entry) { (path, attrs) =>
             containers += IRContainer.fromIRFile(
-              new IRFilePlatformExtensions.PathIRFileImpl(path, attrs.lastModifiedTime()))
+                new PathIRFile.PathIRFileImpl(path, attrs.lastModifiedTime()))
             paths += path
           }
         } else if (entry.getFileName().toString().endsWith(".jar")) {
