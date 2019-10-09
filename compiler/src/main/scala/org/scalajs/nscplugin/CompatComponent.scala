@@ -97,38 +97,12 @@ trait CompatComponent {
   }
 
   /* global.genBCode.bTypes.initializeCoreBTypes()
-   *
-   * This one has a very particular history:
-   * - in 2.11.{0-1}, genBCode does not have a bTypes member
-   * - In 2.11.{2-5}, there is genBCode.bTypes, but it has no
-   *   initializeCoreBTypes (it was actually typo'ed as intializeCoreBTypes!)
-   * - In 2.11.6+, including 2.12, we finally have
-   *   genBCode.bTypes.initializeCoreBTypes
-   * - Since 2.12, it is mandatory to call that method from GenJSCode.run()
+   * Early 2.12.x versions require that this method be called from
+   * GenJSCode.run(), but it disappeared later in the 2.12.x series.
    */
 
-  object LowPrioGenBCodeCompat {
-    object genBCode {
-      object bTypes {
-        def initializeCoreBTypes(): Unit = ()
-      }
-    }
-  }
-
-  def initializeCoreBTypesCompat(): Unit = {
-    import LowPrioGenBCodeCompat.genBCode._
-
-    {
-      import genBCode._
-
-      import LowPrioGenBCodeCompat.genBCode.bTypes._
-
-      {
-        import bTypes._
-
-        initializeCoreBTypes()
-      }
-    }
+  implicit class BTypesCompat(bTypes: genBCode.bTypes.type) {
+    def initializeCoreBTypes(): Unit = ()
   }
 }
 

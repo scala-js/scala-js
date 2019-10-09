@@ -33,15 +33,11 @@ class RangesTest {
   }
 
   @Test def NumericRange_overflow_issue_2407(): Unit = {
-    assumeFalse("Assumed not on JVM for 2.11.{0-7}",
-        executingInJVM && (0 to 7).map("2.11." + _).contains(scalaVersion))
     val nr = NumericRange(Int.MinValue, Int.MaxValue, 1 << 23)
     assertEquals(Int.MinValue, nr.sum)
   }
 
   @Test def Range_foreach_issue_2409(): Unit = {
-    assumeFalse("Assumed not on JVM for 2.11.{0-7}",
-        executingInJVM && (0 to 7).map("2.11." + _).contains(scalaVersion))
     val r = Int.MinValue to Int.MaxValue by (1 << 23)
     var i = 0
     r.foreach(_ => i += 1)
@@ -81,10 +77,8 @@ class RangesTest {
 
   @Test def NumericRange_with_arbitrary_integral(): Unit = {
     // This is broken in Scala JVM up to (including) 2.11.8, 2.12.1 (SI-10086).
-    assumeFalse("Assumed not on JVM for 2.11.{0-8}",
-        executingInJVM && (0 to 8).map("2.11." + _).contains(scalaVersion))
-    assumeFalse("Assumed not on JVM for 2.12.{0-1}",
-        executingInJVM && (0 to 1).map("2.12." + _).contains(scalaVersion))
+    assumeFalse("Assumed not on JVM for 2.12.1",
+        executingInJVM && scalaVersion == "2.12.1")
 
     // Our custom integral type.
     case class A(v: Int)

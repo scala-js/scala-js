@@ -420,15 +420,6 @@ allJavaVersions << mainJavaVersion
 def mainScalaVersion = "2.12.8"
 def mainScalaVersions = ["2.11.12", "2.12.8", "2.13.0"]
 def otherScalaVersions = [
-  "2.11.0",
-  "2.11.1",
-  "2.11.2",
-  "2.11.4",
-  "2.11.5",
-  "2.11.6",
-  "2.11.7",
-  "2.11.8",
-  "2.11.11",
   "2.11.12",
   "2.12.1",
   "2.12.2",
@@ -457,7 +448,7 @@ allJavaVersions.each { javaVersion ->
   quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.8", java: javaVersion])
   quickMatrix.add([task: "tools", scala: "2.11.12", java: javaVersion])
 }
-quickMatrix.add([task: "partestc", scala: "2.11.0", java: mainJavaVersion])
+quickMatrix.add([task: "partestc", scala: "2.12.1", java: mainJavaVersion])
 quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.12.8", java: mainJavaVersion])
 
 // The 'full' matrix
@@ -474,10 +465,7 @@ mainScalaVersions.each { scalaVersion ->
   fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion])
 }
 otherScalaVersions.each { scalaVersion ->
-  // Partest does not compile on Scala 2.11.4 (see #1215).
-  if (scalaVersion != "2.11.4") {
-    fullMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion])
-  }
+  fullMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion])
 }
 
 def Matrices = [
