@@ -23,7 +23,9 @@ import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 
 import java.nio._
 
-import org.scalajs.linker.standard.{IRContainerImpl, MemIRFileImpl}
+import org.scalajs.linker.interface.{IRContainer, IRFile}
+import org.scalajs.linker.interface.unstable.IRContainerImpl
+import org.scalajs.linker.standard.MemIRFileImpl
 
 object NodeIRContainer {
   import NodeFS._

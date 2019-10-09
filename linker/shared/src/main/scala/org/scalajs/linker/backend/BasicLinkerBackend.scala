@@ -16,7 +16,8 @@ import scala.concurrent._
 
 import org.scalajs.logging.Logger
 
-import org.scalajs.linker.LinkerOutput
+import org.scalajs.linker.interface.LinkerOutput
+import org.scalajs.linker.interface.unstable.OutputFileImpl
 import org.scalajs.linker.standard._
 
 import org.scalajs.linker.backend.emitter.Emitter

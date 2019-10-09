@@ -22,7 +22,7 @@ import ir.Definitions._
 import ir.Types._
 import ir.{Trees => irt}
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
 import org.scalajs.linker.backend.javascript.Trees._
 
 import EmitterDefinitions._

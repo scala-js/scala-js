@@ -12,6 +12,7 @@ import java.net.URI
 import org.scalajs.logging._
 
 import org.scalajs.linker._
+import org.scalajs.linker.interface._
 
 @JSExportTopLevel("TestSuiteLinker")
 object QuickLinker {
@@ -23,7 +24,7 @@ object QuickLinker {
       .withCheckIR(true)
       .withBatchMode(true)
 
-    val linker = StandardLinker(config)
+    val linker = StandardImpl.linker(config)
 
     val moduleInitializers = {
       build.TestSuiteLinkerOptions.moduleInitializers :+
@@ -41,7 +42,7 @@ object QuickLinker {
       .withSourceMapURI(relURI(smPath))
       .withJSFileURI(relURI(outputPath))
 
-    val cache = IRFileCache().newCache
+    val cache = StandardImpl.irFileCache.newCache
 
     NodeIRContainer.fromClasspath(cp.toSeq)
       .map(_._1)

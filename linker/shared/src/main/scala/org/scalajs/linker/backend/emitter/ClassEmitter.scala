@@ -19,6 +19,8 @@ import org.scalajs.ir.Trees._
 import Types._
 
 import org.scalajs.linker._
+import org.scalajs.linker.interface._
+import org.scalajs.linker.interface.unstable._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.javascript.{Trees => js}
 

@@ -10,9 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.standard
+package org.scalajs.linker.interface.unstable
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
 
 /** IRFileCacheImpl opens [[IRFileCache]] for inheritance. */
 abstract class IRFileCacheImpl extends IRFileCache

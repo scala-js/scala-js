@@ -10,10 +10,10 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker
+package org.scalajs.linker.interface
 
-import org.scalajs.linker.standard.IRFileImpl
+import org.scalajs.linker.interface.unstable.IRFileImpl
 
-abstract class IRFile private[linker] () {
-  private[linker] def impl: IRFileImpl
+abstract class IRFile private[interface] () {
+  private[interface] def impl: IRFileImpl
 }

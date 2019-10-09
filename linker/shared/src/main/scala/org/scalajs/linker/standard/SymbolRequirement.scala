@@ -12,7 +12,8 @@
 
 package org.scalajs.linker.standard
 
-import org.scalajs.linker.ModuleInitializer
+import org.scalajs.linker.interface.ModuleInitializer
+import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 
 sealed trait SymbolRequirement {
   final def ++(that: SymbolRequirement): SymbolRequirement =

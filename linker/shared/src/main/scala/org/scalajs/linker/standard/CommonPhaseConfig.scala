@@ -12,7 +12,7 @@
 
 package org.scalajs.linker.standard
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
 
 /** Common configuration given to all phases of the linker. */
 final class CommonPhaseConfig private (

@@ -17,8 +17,8 @@ import scala.concurrent._
 import org.scalajs.ir.EntryPointsInfo
 import org.scalajs.ir.Trees.ClassDef
 
-import org.scalajs.linker.IRFile
-import org.scalajs.linker.standard.IRFileImpl
+import org.scalajs.linker.interface.IRFile
+import org.scalajs.linker.interface.unstable.IRFileImpl
 
 private final class MemClassDefIRFile(classDef: ClassDef)
     extends IRFileImpl("mem://" + classDef.name.name + ".sjsir", None) {

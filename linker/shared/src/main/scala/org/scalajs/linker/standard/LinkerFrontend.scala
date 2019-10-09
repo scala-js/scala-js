@@ -16,14 +16,14 @@ import scala.concurrent._
 
 import org.scalajs.logging._
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
 
 /** A frontend for a standard Scala.js linker.
  *
  *  Produces a [[LinkingUnit]].
  *
- *  You probably want to use an instance of [[Linker]], rather than this
- *  low-level class.
+ *  You probably want to use an instance of [[interface.Linker]], rather than
+ *  this low-level class.
  *
  *  Attention: a [[LinkerFrontend]] typically does not cache the IR input. It
  *  is advisable to do so, unless all IR is already in memory.

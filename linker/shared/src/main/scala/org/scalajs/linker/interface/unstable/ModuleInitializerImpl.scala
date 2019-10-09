@@ -10,9 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.standard
+package org.scalajs.linker.interface.unstable
 
-import org.scalajs.linker.ModuleInitializer
+import org.scalajs.linker.interface.ModuleInitializer
 
 /** A module initializer for a Scala.js application.
  *
@@ -27,7 +27,7 @@ import org.scalajs.linker.ModuleInitializer
  *  [[ModuleInitializer$ the ModuleInitializer companion object]].
  */
 sealed abstract class ModuleInitializerImpl extends ModuleInitializer {
-  private[linker] def impl: ModuleInitializerImpl = this
+  private[interface] def impl: ModuleInitializerImpl = this
 }
 
 object ModuleInitializerImpl {

@@ -23,8 +23,8 @@ import ir.Transformers._
 import ir.Trees._
 import ir.Types._
 
-import org.scalajs.linker._
-import org.scalajs.linker.CheckedBehavior._
+import org.scalajs.linker.interface._
+import org.scalajs.linker.interface.CheckedBehavior._
 import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import java.io.StringWriter

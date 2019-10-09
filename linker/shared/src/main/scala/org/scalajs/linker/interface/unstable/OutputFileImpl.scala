@@ -10,17 +10,16 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.standard
+package org.scalajs.linker.interface.unstable
 
 import scala.concurrent._
 
 import java.nio.ByteBuffer
 
-import org.scalajs.linker._
-import org.scalajs.linker.LinkerOutput
+import org.scalajs.linker.interface.LinkerOutput
 
 abstract class OutputFileImpl extends LinkerOutput.File {
-  final private[linker] def impl: OutputFileImpl = this
+  final private[interface] def impl: OutputFileImpl = this
 
   def newChannel()(implicit ec: ExecutionContext): Future[OutputFileImpl.Channel]
 
@@ -31,8 +30,20 @@ abstract class OutputFileImpl extends LinkerOutput.File {
         else Future.successful(())
       }
 
-      writeLoop().finallyWith(chan.close())
+      finallyWith(writeLoop(), chan.close())
     }
+  }
+
+  private def finallyWith(v: Future[Unit], f: => Future[Unit])(
+      implicit ec: ExecutionContext): Future[Unit] = {
+    v.map[Option[Throwable]](_ => None)
+      .recover { case t => Some(t) }
+      .flatMap {
+        case None => f
+
+        case Some(vt) =>
+          f.transform(_ => throw vt, ft => { ft.addSuppressed(vt); ft })
+      }
   }
 }
 

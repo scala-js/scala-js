@@ -28,8 +28,9 @@ import sbt.complete.DefaultParsers._
 
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
-import org.scalajs.linker._
-import org.scalajs.linker.standard.IRFileImpl
+import org.scalajs.linker.{StandardImpl, PathIRContainer, PathOutputFile}
+import org.scalajs.linker.interface._
+import org.scalajs.linker.interface.unstable.IRFileImpl
 
 import org.scalajs.jsenv._
 
@@ -50,7 +51,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
   import ScalaJSPlugin.logIRCacheStats
 
   /** The global Scala.js IR cache */
-  val globalIRCache: IRFileCache = IRFileCache()
+  val globalIRCache: IRFileCache = StandardImpl.irFileCache()
 
   @tailrec
   final private def registerResource[T <: AnyRef](
@@ -139,7 +140,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
               "Some things will go wrong.")
         }
 
-        StandardLinker.clearable(config)
+        StandardImpl.clearableLinker(config)
       },
 
       // Have `clean` reset the state of the incremental linker

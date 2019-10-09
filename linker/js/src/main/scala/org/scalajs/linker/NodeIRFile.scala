@@ -18,7 +18,8 @@ import scala.scalajs.js
 import scala.scalajs.js.typedarray._
 import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 
-import org.scalajs.linker.standard.IRFileImpl
+import org.scalajs.linker.interface.IRFile
+import org.scalajs.linker.interface.unstable.IRFileImpl
 
 import java.io.EOFException
 import java.nio._

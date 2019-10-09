@@ -19,7 +19,8 @@ import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 
 import java.nio.ByteBuffer
 
-import org.scalajs.linker.standard.OutputFileImpl
+import org.scalajs.linker.interface.LinkerOutput
+import org.scalajs.linker.interface.unstable.OutputFileImpl
 
 object NodeOutputFile {
   import NodeFS._

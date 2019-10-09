@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.standard
+package org.scalajs.linker.interface.unstable
 
 import scala.concurrent._
 
@@ -18,7 +18,7 @@ import java.io.IOException
 
 import org.scalajs.ir
 
-import org.scalajs.linker.IRFile
+import org.scalajs.linker.interface.IRFile
 
 /** A virtual Scala.js IR file.
  *  It contains the class info and the IR tree.
@@ -41,7 +41,7 @@ abstract class IRFileImpl(
    */
   val version: Option[String]
 ) extends IRFile {
-  private[linker] final def impl: IRFileImpl = this
+  private[interface] final def impl: IRFileImpl = this
 
   /** Entry points information for this file. */
   def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo]

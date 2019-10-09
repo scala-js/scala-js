@@ -16,7 +16,7 @@ import scala.concurrent._
 
 import org.scalajs.logging.Logger
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.frontend.optimizer.{GenIncOptimizer, IncOptimizer}
 
@@ -24,8 +24,8 @@ import org.scalajs.linker.frontend.optimizer.{GenIncOptimizer, IncOptimizer}
  *
  *  Produces a [[standard.LinkingUnit LinkingUnit]].
  *
- *  You probably want to use an instance of [[linker.Linker]], rather than this
- *  low-level class.
+ *  You probably want to use an instance of [[interface.Linker]], rather than
+ *  this low-level class.
  *
  *  Attention: [[LinkerFrontendImpl]] does not cache the IR input. It is
  *  advisable to do so, unless all IR is already in memory.

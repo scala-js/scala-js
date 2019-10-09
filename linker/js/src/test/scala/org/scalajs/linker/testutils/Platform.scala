@@ -14,7 +14,8 @@ package org.scalajs.linker.testutils
 
 import scala.concurrent._
 
-import org.scalajs.linker.{NodeIRContainer, IRContainer}
+import org.scalajs.linker.NodeIRContainer
+import org.scalajs.linker.interface.IRContainer
 
 object Platform {
   def loadJar(path: String)(implicit ec: ExecutionContext): Future[Seq[IRContainer]] =

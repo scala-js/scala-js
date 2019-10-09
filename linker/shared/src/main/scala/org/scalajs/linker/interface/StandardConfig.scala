@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker
+package org.scalajs.linker.interface
 
 import scala.language.implicitConversions
 

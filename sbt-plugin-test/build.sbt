@@ -1,7 +1,8 @@
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-import org.scalajs.linker._
+import org.scalajs.linker.MemOutputFile
+import org.scalajs.linker.interface._
 import org.scalajs.sbtplugin.Loggers.sbtLogger2ToolsLogger
 import org.scalajs.sbtplugin.ScalaJSCrossVersion
 

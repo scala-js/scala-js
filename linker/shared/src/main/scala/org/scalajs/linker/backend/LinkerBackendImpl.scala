@@ -25,8 +25,8 @@ import org.scalajs.linker.standard._
  *
  *  Produces a JavaScript file with an optional source map.
  *
- *  You probably want to use an instance of [[linker.Linker]], rather than this
- *  low-level class.
+ *  You probably want to use an instance of [[interface.Linker]], rather than
+ *  this low-level class.
  */
 abstract class LinkerBackendImpl(
     protected val config: LinkerBackendImpl.Config)

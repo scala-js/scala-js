@@ -28,7 +28,7 @@ import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
 
 /* Things that we want to expose in the sbt command line (and hence also in
  * `ci/matrix.xml`).
@@ -46,7 +46,7 @@ object ExposedValues extends AutoPlugin {
       }
     }
 
-    val CheckedBehavior = org.scalajs.linker.CheckedBehavior
+    val CheckedBehavior = org.scalajs.linker.interface.CheckedBehavior
 
     type NodeJSEnvForcePolyfills = build.NodeJSEnvForcePolyfills
   }

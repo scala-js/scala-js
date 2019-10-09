@@ -10,14 +10,14 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.standard
+package org.scalajs.linker.interface.unstable
 
 import scala.concurrent._
 
 import java.io.IOException
 
 import org.scalajs.ir
-import org.scalajs.linker._
+import org.scalajs.linker.interface.{IRContainer, IRFile}
 
 /** A virtual file containing Scala.js IR.
  *
@@ -44,7 +44,7 @@ abstract class IRContainerImpl(
    */
   val version: Option[String]
 ) extends IRContainer {
-  private[linker] final def impl: IRContainerImpl = this
+  private[interface] final def impl: IRContainerImpl = this
 
   /** All the `*.sjsir` files in this container.
    *

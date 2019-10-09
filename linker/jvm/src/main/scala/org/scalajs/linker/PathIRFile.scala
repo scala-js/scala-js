@@ -21,7 +21,8 @@ import java.nio.file._
 import java.nio.file.attribute._
 
 import org.scalajs.ir
-import org.scalajs.linker.standard.IRFileImpl
+import org.scalajs.linker.interface.IRFile
+import org.scalajs.linker.interface.unstable.IRFileImpl
 
 object PathIRFile {
   def apply(path: Path)(implicit ec: ExecutionContext): Future[IRFile] = {

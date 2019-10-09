@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker
+package org.scalajs.linker.interface
 
 import scala.concurrent._
 
@@ -19,14 +19,14 @@ import java.nio.ByteBuffer
 
 import java.net.URI
 
-import org.scalajs.linker.standard.OutputFileImpl
+import org.scalajs.linker.interface.unstable.OutputFileImpl
 
 /** Output specification for a linker run.
  *
  *  @param jsFile The JavaScript file a [[Linker]] writes to.
  *
  *  @param sourceMap The sourceMap file the linker writes to. A [[Linker]] may
- *      ignore this file. N.b. the [[StandardLinker]] will ignore it if
+ *      ignore this file. N.b. the standard linker will ignore it if
  *      [[StandardConfig.sourceMap]] is false. Further, a [[Linker]] must not
  *      fail if this is not set, but rather not write a source map (even if it
  *      is configured to write a source map).
@@ -70,7 +70,7 @@ final class LinkerOutput private (
 object LinkerOutput {
   def apply(jsFile: LinkerOutput.File): LinkerOutput = new LinkerOutput(jsFile)
 
-  abstract class File private[linker] () {
-    private[linker] def impl: OutputFileImpl
+  abstract class File private[interface] () {
+    private[interface] def impl: OutputFileImpl
   }
 }

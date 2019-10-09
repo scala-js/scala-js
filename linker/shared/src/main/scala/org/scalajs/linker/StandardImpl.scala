@@ -12,14 +12,17 @@
 
 package org.scalajs.linker
 
+import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 
-object StandardLinker {
-  def apply(config: StandardConfig): Linker = {
+object StandardImpl {
+  def irFileCache(): IRFileCache = new StandardIRFileCache()
+
+  def linker(config: StandardConfig): Linker = {
     StandardLinkerImpl(StandardLinkerFrontend(config),
         StandardLinkerBackend(config))
   }
 
-  def clearable(config: StandardConfig): ClearableLinker =
-    ClearableLinker(() => apply(config), config.batchMode)
+  def clearableLinker(config: StandardConfig): ClearableLinker =
+    ClearableLinker(() => linker(config), config.batchMode)
 }

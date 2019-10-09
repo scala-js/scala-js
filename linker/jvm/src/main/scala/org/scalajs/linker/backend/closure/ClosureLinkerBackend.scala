@@ -28,7 +28,8 @@ import com.google.javascript.jscomp.{
 
 import org.scalajs.logging.Logger
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
+import org.scalajs.linker.interface.unstable.{IRFileImpl, OutputFileImpl}
 import org.scalajs.linker.backend._
 import org.scalajs.linker.backend.emitter.Emitter
 import org.scalajs.linker.standard._

@@ -20,7 +20,8 @@ import java.nio.file._
 
 import java.io.IOException
 
-import org.scalajs.linker.standard.OutputFileImpl
+import org.scalajs.linker.interface.LinkerOutput
+import org.scalajs.linker.interface.unstable.OutputFileImpl
 
 object PathOutputFile {
   def apply(path: Path): LinkerOutput.File = new PathOutputFileImpl(path)

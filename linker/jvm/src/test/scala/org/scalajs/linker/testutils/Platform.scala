@@ -16,7 +16,8 @@ import scala.concurrent._
 
 import java.nio.file.Paths
 
-import org.scalajs.linker._
+import org.scalajs.linker.PathIRContainer
+import org.scalajs.linker.interface.IRContainer
 
 object Platform {
   def loadJar(path: String)(implicit ec: ExecutionContext): Future[Seq[IRContainer]] =

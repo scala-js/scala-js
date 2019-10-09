@@ -16,14 +16,14 @@ import scala.concurrent._
 
 import org.scalajs.logging._
 
-import org.scalajs.linker.LinkerOutput
+import org.scalajs.linker.interface.LinkerOutput
 
 /** A backend of a standard Scala.js linker.
  *
  *  Produces a JavaScript file with an optional source map.
  *
- *  You probably want to use an instance of [[Linker]], rather than this
- *  low-level class.
+ *  You probably want to use an instance of [[interface.Linker]], rather than
+ *  this low-level class.
  */
 abstract class LinkerBackend {
 

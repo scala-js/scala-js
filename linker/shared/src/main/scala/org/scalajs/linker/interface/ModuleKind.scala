@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker
+package org.scalajs.linker.interface
 
 /** Kind of module structure emitted for the Scala.js output. */
 abstract class ModuleKind private ()

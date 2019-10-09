@@ -19,7 +19,7 @@ import sbt.Keys._
 
 import org.scalajs.ir.ScalaJSVersions
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
 
 import org.scalajs.jsenv.{Input, JSEnv}
 import org.scalajs.jsenv.nodejs.NodeJSEnv
@@ -53,7 +53,7 @@ object ScalaJSPlugin extends AutoPlugin {
     val FullOptStage = Stage.FullOpt
 
     // ModuleKind
-    val ModuleKind = org.scalajs.linker.ModuleKind
+    val ModuleKind = org.scalajs.linker.interface.ModuleKind
 
     // All our public-facing keys
 

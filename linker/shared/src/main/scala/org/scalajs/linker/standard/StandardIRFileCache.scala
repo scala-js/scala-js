@@ -24,7 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import org.scalajs.ir.EntryPointsInfo
 import org.scalajs.ir.Trees.ClassDef
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
+import org.scalajs.linker.interface.unstable._
 
 final class StandardIRFileCache extends IRFileCacheImpl {
   /* General implementation comment: We always synchronize before doing I/O

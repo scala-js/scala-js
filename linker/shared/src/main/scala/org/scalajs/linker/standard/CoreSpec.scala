@@ -12,7 +12,7 @@
 
 package org.scalajs.linker.standard
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
 
 /** Core specification for the Scala.js code. */
 final class CoreSpec private (

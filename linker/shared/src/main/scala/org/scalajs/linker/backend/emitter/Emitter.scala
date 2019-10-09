@@ -22,7 +22,7 @@ import org.scalajs.ir.Definitions.{ObjectClass, decodeClassName, isConstructorNa
 
 import org.scalajs.logging._
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.javascript.{Trees => js, _}
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps

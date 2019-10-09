@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker
+package org.scalajs.linker.interface
 
 /** Thrown by the linker when linking cannot be performed. */
 class LinkingException(message: String, cause: Throwable)

@@ -10,14 +10,14 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker
+package org.scalajs.linker.interface
 
 import scala.concurrent._
 
-import org.scalajs.linker.standard._
+import org.scalajs.linker.interface.unstable.{IRContainerImpl, IRFileImpl}
 
-abstract class IRContainer private[linker] () {
-  private[linker] def impl: IRContainerImpl
+abstract class IRContainer private[interface] () {
+  private[interface] def impl: IRContainerImpl
 }
 
 object IRContainer {

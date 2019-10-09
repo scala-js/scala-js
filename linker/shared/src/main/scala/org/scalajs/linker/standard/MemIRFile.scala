@@ -18,6 +18,9 @@ import java.nio.ByteBuffer
 
 import org.scalajs.ir
 
+import org.scalajs.linker.interface.IRFile
+import org.scalajs.linker.interface.unstable.IRFileImpl
+
 /** A simple in-memory virtual serialized Scala.js IR file. */
 final class MemIRFileImpl(
     path: String,

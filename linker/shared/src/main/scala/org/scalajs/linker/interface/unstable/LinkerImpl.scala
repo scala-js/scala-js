@@ -10,9 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.standard
+package org.scalajs.linker.interface.unstable
 
-import org.scalajs.linker.Linker
+import org.scalajs.linker.interface.Linker
 
 /** LinkerImpl opens [[Linker]] for inheritance. */
 abstract class LinkerImpl extends Linker

@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker
+package org.scalajs.linker.interface
 
 import scala.concurrent._
 
@@ -22,7 +22,7 @@ import org.scalajs.logging.Logger
  *  module initializers, link them together, and write the output to a writable
  *  .js file.
  */
-abstract class Linker private[linker] () {
+abstract class Linker private[interface] () {
   def link(irFiles: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer],
       output: LinkerOutput, logger: Logger)(

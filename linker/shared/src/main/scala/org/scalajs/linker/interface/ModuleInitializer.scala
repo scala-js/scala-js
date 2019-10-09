@@ -10,12 +10,12 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker
+package org.scalajs.linker.interface
 
 import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Types.ClassType
 
-import org.scalajs.linker.standard.ModuleInitializerImpl
+import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 
 /** A module initializer for a Scala.js application.
  *
@@ -29,8 +29,8 @@ import org.scalajs.linker.standard.ModuleInitializerImpl
  *  Instances of `ModuleInitializer` can be created with methods of
  *  [[ModuleInitializer$ the ModuleInitializer companion object]].
  */
-abstract class ModuleInitializer private[linker] () {
-  private[linker] def impl: ModuleInitializerImpl
+abstract class ModuleInitializer private[interface] () {
+  private[interface] def impl: ModuleInitializerImpl
 }
 
 /** Factory for [[ModuleInitializer]]s. */

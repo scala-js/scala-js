@@ -19,7 +19,9 @@ import java.nio.file._
 import java.nio.file.attribute._
 import java.util.EnumSet
 
-import org.scalajs.linker.standard.{IRContainerImpl, MemIRFileImpl}
+import org.scalajs.linker.interface.{IRContainer, IRFile}
+import org.scalajs.linker.interface.unstable.IRContainerImpl
+import org.scalajs.linker.standard.MemIRFileImpl
 
 object PathIRContainer {
   def fromClasspath(classpath: Seq[Path])(

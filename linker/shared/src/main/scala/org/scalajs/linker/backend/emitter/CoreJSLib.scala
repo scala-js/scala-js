@@ -20,7 +20,7 @@ import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Trees.{JSUnaryOp, JSBinaryOp}
 import org.scalajs.ir.Types._
 
-import org.scalajs.linker.{CheckedBehavior, ModuleKind}
+import org.scalajs.linker.interface.{CheckedBehavior, ModuleKind}
 import org.scalajs.linker.backend.javascript.Trees._
 
 private[emitter] object CoreJSLib {

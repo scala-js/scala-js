@@ -17,7 +17,8 @@ import scala.concurrent._
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 
-import org.scalajs.linker.standard.OutputFileImpl
+import org.scalajs.linker.interface.LinkerOutput
+import org.scalajs.linker.interface.unstable.OutputFileImpl
 
 sealed trait MemOutputFile extends LinkerOutput.File {
   /** Content that has been written to this [[MemOutputFile]].
