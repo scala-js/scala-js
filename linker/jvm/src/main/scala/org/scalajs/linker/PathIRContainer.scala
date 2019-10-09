@@ -21,8 +21,8 @@ import java.util.EnumSet
 
 import org.scalajs.linker.standard.{IRContainerImpl, MemIRFileImpl}
 
-abstract class IRContainerPlatformExtensions private[linker] () {
-  def fromPathClasspath(classpath: Seq[Path])(
+object PathIRContainer {
+  def fromClasspath(classpath: Seq[Path])(
       implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])] = Future {
     val containers = Seq.newBuilder[IRContainer]
     val paths = Seq.newBuilder[Path]

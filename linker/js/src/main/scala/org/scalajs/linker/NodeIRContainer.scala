@@ -25,12 +25,11 @@ import java.nio._
 
 import org.scalajs.linker.standard.{IRContainerImpl, MemIRFileImpl}
 
-abstract class IRContainerPlatformExtensions private[linker] () {
+object NodeIRContainer {
   import NodeFS._
   import FS._
-  import IRContainerPlatformExtensions._
 
-  def fromNodeClasspath(classpath: Seq[String])(
+  def fromClasspath(classpath: Seq[String])(
       implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[String])] = {
     Future.traverse(classpath) { entry =>
       cbFuture[Stats](FS.stat(entry, _)).transformWith {
@@ -66,7 +65,7 @@ abstract class IRContainerPlatformExtensions private[linker] () {
       val irFileNames = files.map(_.name).filter(_.endsWith(".sjsir"))
       val directFiles = Future.traverse(irFileNames) { n =>
         val path = Path.join(dir, n)
-        IRFile.fromNodePath(path).map(f => (IRContainer.fromIRFile(f), path))
+        NodeIRFile(path).map(f => (IRContainer.fromIRFile(f), path))
       }
 
       for {
@@ -78,10 +77,6 @@ abstract class IRContainerPlatformExtensions private[linker] () {
 
   private def isNotFound(e: js.Error): Boolean =
     (e.asInstanceOf[js.Dynamic].code: Any) == "ENOENT"
-}
-
-private object IRContainerPlatformExtensions {
-  import NodeFS._
 
   private final class NodeJarIRContainer(path: String, version: Option[js.Date])
       extends IRContainerImpl(path, version.map(_.getTime.toString)) {

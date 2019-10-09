@@ -43,7 +43,7 @@ object QuickLinker {
 
     val cache = IRFileCache().newCache
 
-    IRContainer.fromNodeClasspath(cp.toSeq)
+    NodeIRContainer.fromClasspath(cp.toSeq)
       .map(_._1)
       .flatMap(cache.cached _)
       .flatMap(linker.link(_, moduleInitializers, out, new ScalaConsoleLogger))

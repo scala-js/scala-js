@@ -20,7 +20,7 @@ abstract class IRContainer private[linker] () {
   private[linker] def impl: IRContainerImpl
 }
 
-object IRContainer extends IRContainerPlatformExtensions {
+object IRContainer {
   def fromIRFile(irFile: IRFile): IRContainer = {
     val f = IRFileImpl.fromIRFile(irFile)
     new IRContainerImpl(f.path, f.version) {

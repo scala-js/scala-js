@@ -20,5 +20,5 @@ import org.scalajs.linker._
 
 object Platform {
   def loadJar(path: String)(implicit ec: ExecutionContext): Future[Seq[IRContainer]] =
-    IRContainer.fromPathClasspath(Seq(Paths.get(path))).map(_._1)
+    PathIRContainer.fromClasspath(Seq(Paths.get(path))).map(_._1)
 }

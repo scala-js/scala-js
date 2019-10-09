@@ -98,8 +98,8 @@ class MainGenericRunner {
       val file = Jimfs.newFileSystem().getPath("partest.js")
 
       val cache = IRFileCache().newCache
-      val result = IRContainer
-        .fromPathClasspath(command.settings.classpathURLs.map(urlToPath _))
+      val result = PathIRContainer
+        .fromClasspath(command.settings.classpathURLs.map(urlToPath _))
         .map(_._1)
         .flatMap(cache.cached _)
         .flatMap(linker.link(_, moduleInitializers, LinkerOutput(LinkerOutput.newPathFile(file)), logger))

@@ -255,7 +255,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
             await(log) { eci =>
               implicit val ec = eci
               for {
-                (irContainers, paths) <- IRContainer.fromPathClasspath(classpath.map(_.toPath))
+                (irContainers, paths) <- PathIRContainer.fromClasspath(classpath.map(_.toPath))
                 irFiles <- cache.cached(irContainers)
               } yield (irFiles, paths)
             }
