@@ -22,15 +22,11 @@ import java.io.IOException
 
 import org.scalajs.linker.standard.OutputFileImpl
 
-abstract class LinkerOutputPlatformExtensions private[linker] () {
-  def newPathFile(path: Path): LinkerOutput.File =
-    new LinkerOutputPlatformExtensions.PathOutputFileImpl(path)
+object PathOutputFile {
+  def apply(path: Path): LinkerOutput.File = new PathOutputFileImpl(path)
 
-  def newAtomicPathFile(path: Path): LinkerOutput.File =
-    new LinkerOutputPlatformExtensions.AtomicPathOutputFileImpl(path)
-}
+  def atomic(path: Path): LinkerOutput.File = new AtomicPathOutputFileImpl(path)
 
-private object LinkerOutputPlatformExtensions {
   import OutputFileImpl.Channel
 
   private final class PathOutputFileImpl(path: Path) extends OutputFileImpl {

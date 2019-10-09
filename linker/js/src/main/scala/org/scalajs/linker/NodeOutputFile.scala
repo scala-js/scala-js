@@ -21,13 +21,10 @@ import java.nio.ByteBuffer
 
 import org.scalajs.linker.standard.OutputFileImpl
 
-abstract class LinkerOutputPlatformExtensions private[linker] () {
-  def newNodeFile(path: String): LinkerOutput.File =
-    new LinkerOutputPlatformExtensions.NodeOutputFileImpl(path)
-}
-
-private object LinkerOutputPlatformExtensions {
+object NodeOutputFile {
   import NodeFS._
+
+  def apply(path: String): LinkerOutput.File = new NodeOutputFileImpl(path)
 
   private final class NodeOutputFileImpl(path: String) extends OutputFileImpl {
     def newChannel()(implicit ec: ExecutionContext): Future[OutputFileImpl.Channel] = {

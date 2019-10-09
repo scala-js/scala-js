@@ -67,7 +67,7 @@ final class LinkerOutput private (
   }
 }
 
-object LinkerOutput extends LinkerOutputPlatformExtensions {
+object LinkerOutput {
   def apply(jsFile: LinkerOutput.File): LinkerOutput = new LinkerOutput(jsFile)
 
   abstract class File private[linker] () {

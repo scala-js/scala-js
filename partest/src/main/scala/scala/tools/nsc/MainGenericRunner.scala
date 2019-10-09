@@ -102,7 +102,7 @@ class MainGenericRunner {
         .fromClasspath(command.settings.classpathURLs.map(urlToPath _))
         .map(_._1)
         .flatMap(cache.cached _)
-        .flatMap(linker.link(_, moduleInitializers, LinkerOutput(LinkerOutput.newPathFile(file)), logger))
+        .flatMap(linker.link(_, moduleInitializers, LinkerOutput(PathOutputFile(file)), logger))
 
       Await.result(result, Duration.Inf)
 
