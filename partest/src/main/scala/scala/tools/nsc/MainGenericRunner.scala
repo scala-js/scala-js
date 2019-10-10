@@ -19,6 +19,7 @@ import org.scalajs.ir
 import org.scalajs.logging._
 
 import org.scalajs.linker._
+import org.scalajs.linker.interface._
 
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.nodejs.NodeJSEnv
@@ -51,7 +52,7 @@ class MainGenericRunner {
   val optMode = OptMode.fromId(System.getProperty("scalajs.partest.optMode"))
 
   def readSemantics() = {
-    import org.scalajs.linker.CheckedBehavior.Compliant
+    import org.scalajs.linker.interface.CheckedBehavior.Compliant
 
     val opt = Option(System.getProperty("scalajs.partest.compliantSems"))
     val compliantSems =
@@ -84,7 +85,7 @@ class MainGenericRunner {
     val moduleInitializers = Seq(ModuleInitializer.mainMethodWithArgs(
         command.thingToRun, "main", command.arguments))
 
-    val linkerConfig = StandardLinker.Config()
+    val linkerConfig = StandardConfig()
       .withCheckIR(true)
       .withSemantics(semantics)
       .withSourceMap(false)
@@ -92,17 +93,17 @@ class MainGenericRunner {
       .withClosureCompiler(optMode == FullOpt)
       .withBatchMode(true)
 
-    val linker = StandardLinker(linkerConfig)
+    val linker = StandardImpl.linker(linkerConfig)
 
     val sjsCode = {
       val file = Jimfs.newFileSystem().getPath("partest.js")
 
-      val cache = IRFileCache().newCache
-      val result = IRContainer
-        .fromPathClasspath(command.settings.classpathURLs.map(urlToPath _))
+      val cache = StandardImpl.irFileCache().newCache
+      val result = PathIRContainer
+        .fromClasspath(command.settings.classpathURLs.map(urlToPath _))
         .map(_._1)
         .flatMap(cache.cached _)
-        .flatMap(linker.link(_, moduleInitializers, LinkerOutput(LinkerOutput.newPathFile(file)), logger))
+        .flatMap(linker.link(_, moduleInitializers, LinkerOutput(PathOutputFile(file)), logger))
 
       Await.result(result, Duration.Inf)
 

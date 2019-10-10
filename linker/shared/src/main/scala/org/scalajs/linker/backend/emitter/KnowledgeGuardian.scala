@@ -18,7 +18,7 @@ import org.scalajs.ir.{ClassKind, Definitions}
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types.Type
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.standard._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 

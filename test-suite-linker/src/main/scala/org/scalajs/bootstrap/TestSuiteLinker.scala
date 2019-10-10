@@ -12,18 +12,19 @@ import java.net.URI
 import org.scalajs.logging._
 
 import org.scalajs.linker._
+import org.scalajs.linker.interface._
 
 @JSExportTopLevel("TestSuiteLinker")
 object QuickLinker {
   /** Link the Scala.js test suite on Node.js */
   @JSExport
   def linkTestSuiteNode(cp: js.Array[String], outputPath: String): js.Promise[Unit] = {
-    val config = StandardLinker.Config()
+    val config = StandardConfig()
       .withSemantics(build.TestSuiteLinkerOptions.semantics _)
       .withCheckIR(true)
       .withBatchMode(true)
 
-    val linker = StandardLinker(config)
+    val linker = StandardImpl.linker(config)
 
     val moduleInitializers = {
       build.TestSuiteLinkerOptions.moduleInitializers :+
@@ -36,14 +37,14 @@ object QuickLinker {
     def relURI(path: String) =
       new URI(null, null, NodePath.basename(path), null)
 
-    val out = LinkerOutput(LinkerOutput.newNodeFile(outputPath))
-      .withSourceMap(LinkerOutput.newNodeFile(smPath))
+    val out = LinkerOutput(NodeOutputFile(outputPath))
+      .withSourceMap(NodeOutputFile(smPath))
       .withSourceMapURI(relURI(smPath))
       .withJSFileURI(relURI(outputPath))
 
-    val cache = IRFileCache().newCache
+    val cache = StandardImpl.irFileCache.newCache
 
-    IRContainer.fromNodeClasspath(cp.toSeq)
+    NodeIRContainer.fromClasspath(cp.toSeq)
       .map(_._1)
       .flatMap(cache.cached _)
       .flatMap(linker.link(_, moduleInitializers, out, new ScalaConsoleLogger))

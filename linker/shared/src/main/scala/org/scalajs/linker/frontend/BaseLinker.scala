@@ -18,7 +18,8 @@ import scala.util.Try
 
 import org.scalajs.logging._
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
+import org.scalajs.linker.interface.unstable._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.checker._
 import org.scalajs.linker.analyzer._
@@ -30,7 +31,7 @@ import ir.Hashers
 
 import Analysis._
 
-/** Links the information from [[IRFile]]s into
+/** Links the information from [[interface.IRFile IRFile]]s into
  *  [[standard.LinkedClass LinkedClass]]es. Does a dead code elimination pass.
  */
 final class BaseLinker(config: CommonPhaseConfig) {
@@ -46,7 +47,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
 
     val allSymbolRequirements = {
       symbolRequirements ++
-      ModuleInitializer.toSymbolRequirement(moduleInitializers)
+      SymbolRequirement.fromModuleInitializer(moduleInitializers)
     }
 
     val result = for {

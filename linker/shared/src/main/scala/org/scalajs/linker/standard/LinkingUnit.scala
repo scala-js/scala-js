@@ -12,7 +12,7 @@
 
 package org.scalajs.linker.standard
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface.ModuleInitializer
 
 final class LinkingUnit private[linker] (
     val coreSpec: CoreSpec,

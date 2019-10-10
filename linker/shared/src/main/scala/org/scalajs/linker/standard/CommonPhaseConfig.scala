@@ -12,7 +12,7 @@
 
 package org.scalajs.linker.standard
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
 
 /** Common configuration given to all phases of the linker. */
 final class CommonPhaseConfig private (
@@ -40,27 +40,13 @@ final class CommonPhaseConfig private (
         parallel = true,
         batchMode = false)
   }
-
-  private[linker] def withCoreSpec(coreSpec: CoreSpec): CommonPhaseConfig =
-    copy(coreSpec = coreSpec)
-
-  private[linker] def withParallel(parallel: Boolean): CommonPhaseConfig =
-    copy(parallel = parallel)
-
-  private[linker] def withBatchMode(batchMode: Boolean): CommonPhaseConfig =
-    copy(batchMode = batchMode)
-
-  private def copy(
-      coreSpec: CoreSpec = coreSpec,
-      parallel: Boolean = parallel,
-      batchMode: Boolean = batchMode): CommonPhaseConfig = {
-    new CommonPhaseConfig(
-        coreSpec = coreSpec,
-        parallel = parallel,
-        batchMode = batchMode)
-  }
 }
 
 private[linker] object CommonPhaseConfig {
   private[linker] def apply(): CommonPhaseConfig = new CommonPhaseConfig()
+
+  private[linker] def fromStandardConfig(config: StandardConfig): CommonPhaseConfig = {
+    val coreSpec = CoreSpec(config.semantics, config.moduleKind, config.esFeatures)
+    new CommonPhaseConfig(coreSpec, config.parallel, config.batchMode)
+  }
 }

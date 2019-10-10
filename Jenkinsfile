@@ -308,20 +308,22 @@ def Tasks = [
         'set scalaJSStage in testSuite := FastOptStage' \
         ++$scala testSuite/bootstrap:test &&
     sbt ++$scala irJS/mimaReportBinaryIssues \
-        loggingJS/mimaReportBinaryIssues linkerJS/mimaReportBinaryIssues
+        loggingJS/mimaReportBinaryIssues \
+        linkerInterfaceJS/mimaReportBinaryIssues linkerJS/mimaReportBinaryIssues
   ''',
 
   "tools": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala ir/test logging/compile linker/compile \
-        jsEnvs/test nodeJSEnv/test testAdapter/test \
-        ir/mimaReportBinaryIssues \
-        logging/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
+    sbt ++$scala ir/test logging/compile linkerInterface/compile \
+        linker/compile jsEnvs/test nodeJSEnv/test testAdapter/test \
+        ir/mimaReportBinaryIssues logging/mimaReportBinaryIssues \
+        linkerInterface/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         nodeJSEnv/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues &&
     sbt ++$scala ir/compile:doc logging/compile:doc \
+        linkerInterface/compile:doc \
         linker/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
         testAdapter/compile:doc
@@ -330,11 +332,11 @@ def Tasks = [
   "tools-sbtplugin": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala ir/test logging/compile linker/compile \
-        jsEnvs/test nodeJSEnv/test testAdapter/test \
+    sbt ++$scala ir/test logging/compile linkerInterface/compile \
+        linker/compile jsEnvs/test nodeJSEnv/test testAdapter/test \
         sbtPlugin/package \
-        ir/mimaReportBinaryIssues \
-        logging/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
+        ir/mimaReportBinaryIssues logging/mimaReportBinaryIssues \
+        linkerInterface/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
         nodeJSEnv/mimaReportBinaryIssues \
         testAdapter/mimaReportBinaryIssues \
@@ -343,6 +345,8 @@ def Tasks = [
         ir/scalastyle compiler/scalastyle \
         compiler/test:scalastyle \
         logging/scalastyle logging/test:scalastyle \
+        linkerInterface/scalastyle \
+        linkerInterface/scalastyle \
         linker/scalastyle linker/test:scalastyle \
         jsEnvs/scalastyle jsEnvsTestKit/scalastyle nodeJSEnv/scalastyle \
         jsEnvs/test:scalastyle nodeJSEnv/test:scalastyle testAdapter/scalastyle \
@@ -356,6 +360,7 @@ def Tasks = [
         jUnitTestOutputsJVM/scalastyle jUnitTestOutputsJVM/test:scalastyle \
         jUnitTestOutputsJS/scalastyle jUnitTestOutputsJS/test:scalastyle &&
     sbt ++$scala ir/compile:doc logging/compile:doc \
+        linkerInterface/compile:doc \
         linker/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
         testAdapter/compile:doc \
@@ -378,6 +383,7 @@ def Tasks = [
                   jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
     sbt ++$toolsscala \
         ir/publishLocal logging/publishLocal \
+        linkerInterface/publishLocal \
         linker/publishLocal jsEnvs/publishLocal \
         nodeJSEnv/publishLocal testAdapter/publishLocal \
         sbtPlugin/publishLocal &&

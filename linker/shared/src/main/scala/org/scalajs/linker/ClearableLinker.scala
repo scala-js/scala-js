@@ -14,39 +14,17 @@ package org.scalajs.linker
 
 import scala.concurrent._
 
+import org.scalajs.linker.interface._
+import org.scalajs.linker.interface.unstable.LinkerImpl
 import org.scalajs.logging.Logger
 
-/** A box around a [[Linker]] to support clearing.
- *
- *  Calling `clear()` completely resets the state of this `ClearableLinker`, so
- *  that it can be used again without being affected by previous calls to
- *  `link`, even of those would have corrupted the internal state.
- *
- *  In addition to the contract of [[Linker]], if [[Linker.link]] throws an
- *  exception, the `ClearableLinker` is automatically `clear()`'ed.
- *
- *  Implementations are allowed to automatically `clear()` in other cases, but
- *  never while a linking is in progress.
- *
- *  Unless otherwise specified, instances of this trait are not thread-safe.
- */
-trait ClearableLinker extends Linker {
-  /** Completely resets the state of this `ClearableLinker`.
-   *
-   *  After calling this method, this `ClearableLinker`, it can be used again
-   *  without being affected by previous calls to `link`, even of those would
-   *  have corrupted the internal state.
-   */
-  def clear(): Unit
-}
-
 object ClearableLinker {
-  /** Creates a [[ClearableLinker]] from a function creating a [[Linker]].
+  /** Creates a [[interface.ClearableLinker]] from a function creating a [[interface.Linker]].
    *
-   *  Every time `clear()` is called, a new [[Linker]] is obtained from the
-   *  `newLinker` function to ensure that all the previous state is discarded.
-   *  `newLinker` must returned a new, independent instance of [[Linker]] every
-   *  time it is called.
+   *  Every time `clear()` is called, a new [[interface.Linker]] is obtained from
+   *  the `newLinker` function to ensure that all the previous state is discarded.
+   *  `newLinker` must returned a new, independent instance of [[interface.Linker]]
+   *  every time it is called.
    *
    *  If `batchMode` is true, the returned `ClearableLinker` clears itself
    *  after every invocation of `link`.
@@ -56,7 +34,7 @@ object ClearableLinker {
 
   private final class ClearableLinkerImpl(
       newLinker: () => Linker, batchMode: Boolean)
-      extends ClearableLinker {
+      extends LinkerImpl with ClearableLinker {
 
     private[this] var _linker: Linker = _
 

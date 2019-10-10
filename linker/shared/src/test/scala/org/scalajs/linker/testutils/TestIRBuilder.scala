@@ -20,7 +20,7 @@ import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
-import org.scalajs.linker.ModuleInitializer
+import org.scalajs.linker.interface.ModuleInitializer
 
 object TestIRBuilder {
   implicit val noPosition: ir.Position = ir.Position.NoPosition

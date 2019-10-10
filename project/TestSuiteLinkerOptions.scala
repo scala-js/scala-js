@@ -1,6 +1,6 @@
 package build
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
 
 object TestSuiteLinkerOptions {
 

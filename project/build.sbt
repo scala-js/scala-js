@@ -18,6 +18,8 @@ unmanagedSourceDirectories in Compile ++= {
     root / "ir/src/main/scala",
     root / "logging/shared/src/main/scala",
     root / "logging/jvm/src/main/scala",
+    root / "linker-interface/shared/src/main/scala",
+    root / "linker-interface/jvm/src/main/scala",
     root / "linker/shared/src/main/scala",
     root / "linker/jvm/src/main/scala",
     root / "js-envs/src/main/scala",

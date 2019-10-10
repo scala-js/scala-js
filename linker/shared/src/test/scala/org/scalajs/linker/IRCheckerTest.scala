@@ -26,7 +26,7 @@ import org.scalajs.logging._
 
 import org.scalajs.junit.async._
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 
 import org.scalajs.linker.testutils._
@@ -88,7 +88,7 @@ object IRCheckerTest {
       moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[Unit] = {
 
-    val config = StandardLinker.Config()
+    val config = StandardConfig()
       .withCheckIR(true)
       .withOptimizer(false)
     val linkerFrontend = StandardLinkerFrontend(config)

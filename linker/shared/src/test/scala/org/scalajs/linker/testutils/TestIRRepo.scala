@@ -15,8 +15,9 @@ package org.scalajs.linker.testutils
 import scala.collection.mutable
 import scala.concurrent._
 
-import org.scalajs.linker._
-import org.scalajs.linker.standard._
+import org.scalajs.linker.StandardImpl
+import org.scalajs.linker.interface.IRFile
+import org.scalajs.linker.interface.unstable.IRFileImpl
 import org.scalajs.linker.analyzer.Infos._
 
 object TestIRRepo {
@@ -44,7 +45,7 @@ final class TestIRRepo(stdlibPath: String) {
   import scala.concurrent.ExecutionContext.Implicits.global
   import TestIRRepo.InfoLoader
 
-  private val globalIRCache = IRFileCache()
+  private val globalIRCache = StandardImpl.irFileCache()
 
   val stdlibIRFiles: Future[Seq[IRFile]] = {
     Platform.loadJar(stdlibPath)

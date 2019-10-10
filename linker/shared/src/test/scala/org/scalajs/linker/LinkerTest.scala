@@ -26,9 +26,7 @@ import org.scalajs.logging._
 
 import org.scalajs.junit.async._
 
-import org.scalajs.linker._
-import org.scalajs.linker.standard.IRFileImpl
-
+import org.scalajs.linker.interface._
 import org.scalajs.linker.testutils._
 import org.scalajs.linker.testutils.TestIRBuilder._
 
@@ -63,10 +61,10 @@ class LinkerTest {
       def length: Int = throw new DummyException()
     }
 
-    val linker = StandardLinker(StandardLinker.Config())
+    val linker = StandardImpl.linker(StandardConfig())
 
     def callLink(): Future[Unit] = {
-      val out = LinkerOutput(LinkerOutput.newMemFile())
+      val out = LinkerOutput(MemOutputFile())
       linker.link(badSeq, Nil, out, NullLogger)
     }
 
@@ -98,9 +96,9 @@ object LinkerTest {
       moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[Unit] = {
 
-    val linker = StandardLinker(StandardLinker.Config())
+    val linker = StandardImpl.linker(StandardConfig())
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
-    val output = LinkerOutput(LinkerOutput.newMemFile())
+    val output = LinkerOutput(MemOutputFile())
 
     TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
       linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,

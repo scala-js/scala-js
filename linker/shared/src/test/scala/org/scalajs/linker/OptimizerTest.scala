@@ -27,7 +27,7 @@ import org.scalajs.logging._
 
 import org.scalajs.junit.async._
 
-import org.scalajs.linker._
+import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 
 import org.scalajs.linker.testutils._
@@ -178,13 +178,13 @@ object OptimizerTest {
       moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
-    val config = StandardLinker.Config()
+    val config = StandardConfig()
     val frontend = StandardLinkerFrontend(config)
     val backend = new StoreLinkingUnitLinkerBackend(StandardLinkerBackend(config))
     val linker = StandardLinkerImpl(frontend, backend)
 
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
-    val output = LinkerOutput(LinkerOutput.newMemFile())
+    val output = LinkerOutput(MemOutputFile())
 
     TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
       linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
