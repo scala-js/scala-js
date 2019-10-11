@@ -14,8 +14,7 @@ package org.scalajs.nscplugin
 
 import scala.tools.nsc._
 
-import org.scalajs.ir
-import ir.{Definitions, Types}
+import org.scalajs.ir.Types
 
 /** Conversions from scalac `Type`s to the IR `Type`s and `TypeRef`s. */
 trait TypeConversions[G <: Global with Singleton] extends SubComponent {

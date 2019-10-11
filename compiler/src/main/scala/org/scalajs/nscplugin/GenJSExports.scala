@@ -20,8 +20,8 @@ import scala.reflect.{ClassTag, classTag}
 import scala.reflect.internal.Flags
 
 import org.scalajs.ir
-import ir.{Trees => js, Types => jstpe}
-import ir.Trees.OptimizerHints
+import org.scalajs.ir.{Definitions => defs, Trees => js, Types => jstpe}
+import org.scalajs.ir.Trees.OptimizerHints
 
 import org.scalajs.nscplugin.util.ScopedVar
 import ScopedVar.withScopedVars
@@ -667,7 +667,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       val superClass = {
         val superClassSym = currentClassSym.superClass
         if (isNestedJSClass(superClassSym)) {
-          js.VarRef(js.Ident(JSSuperClassParamName))(jstpe.AnyType)
+          js.VarRef(js.LocalIdent(JSSuperClassParamName))(jstpe.AnyType)
         } else {
           js.LoadJSConstructor(encodeClassRef(superClassSym))
         }
@@ -1105,19 +1105,19 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
   }
 
   private def genFormalArg(index: Int)(implicit pos: Position): js.ParamDef = {
-    js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType,
+    js.ParamDef(js.LocalIdent(defs.LocalName("arg$" + index)), jstpe.AnyType,
         mutable = false, rest = false)
   }
 
   private def genRestFormalArg()(implicit pos: Position): js.ParamDef = {
-    js.ParamDef(js.Ident("arg$rest"), jstpe.AnyType,
+    js.ParamDef(js.LocalIdent(defs.LocalName("arg$rest")), jstpe.AnyType,
         mutable = false, rest = true)
   }
 
   private def genFormalArgRef(index: Int, minArgc: Int)(
       implicit pos: Position): js.Tree = {
     if (index <= minArgc)
-      js.VarRef(js.Ident("arg$" + index))(jstpe.AnyType)
+      js.VarRef(js.LocalIdent(defs.LocalName("arg$" + index)))(jstpe.AnyType)
     else
       js.JSSelect(genRestArgRef(), js.IntLiteral(index - 1 - minArgc))
   }
@@ -1135,7 +1135,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
   }
 
   private def genRestArgRef()(implicit pos: Position): js.Tree =
-    js.VarRef(js.Ident("arg$rest"))(jstpe.AnyType)
+    js.VarRef(js.LocalIdent(defs.LocalName("arg$rest")))(jstpe.AnyType)
 
   private def hasRepeatedParam(sym: Symbol) = {
     enteringPhase(currentRun.uncurryPhase) {

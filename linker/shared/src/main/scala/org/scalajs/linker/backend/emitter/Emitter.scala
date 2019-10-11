@@ -17,8 +17,8 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 import org.scalajs.ir.{ClassKind, Position}
+import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Trees.{JSNativeLoadSpec, MemberNamespace}
-import org.scalajs.ir.Definitions.{ObjectClass, decodeClassName, isConstructorName}
 
 import org.scalajs.logging._
 
@@ -27,6 +27,7 @@ import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.javascript.{Trees => js, _}
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
+import EmitterDefinitions._
 import GlobalRefUtils._
 
 /** Emits a desugared JS tree to a builder */
@@ -147,21 +148,19 @@ final class Emitter private (config: CommonPhaseConfig,
       import org.scalajs.ir.Position.NoPosition
       import org.scalajs.ir.Trees.MethodDef
 
-      val equals = "equals__O__Z"
-      val hashCode = "hashCode__I"
-      val compareTo = "compareTo__O__I"
-
       val requiredDefaultMethodDecls = List(
-          BoxedBooleanClass -> List(hashCode, compareTo),
-          BoxedCharacterClass -> List(equals, hashCode, compareTo),
+          BoxedBooleanClass -> List(hashCodeMethodName, compareToMethodName),
+          BoxedCharacterClass -> List(
+              equalsMethodName, hashCodeMethodName, compareToMethodName),
           BoxedDoubleClass -> List(
-              equals, hashCode, compareTo, "byteValue__B", "shortValue__S",
-              "intValue__I", "longValue__J", "floatValue__F", "doubleValue__D"
+              equalsMethodName, hashCodeMethodName, compareToMethodName,
+              byteValueMethodName, shortValueMethodName, intValueMethodName,
+              longValueMethodName, floatValueMethodName, doubleValueMethodName
           ),
-          BoxedUnitClass -> List(hashCode),
+          BoxedUnitClass -> List(hashCodeMethodName),
           BoxedStringClass -> List(
-              hashCode, compareTo, "length__I", "charAt__I__C",
-              "subSequence__I__I__jl_CharSequence"
+              hashCodeMethodName, compareToMethodName, lengthMethodName,
+              charAtMethodName, subSequenceMethodName
           )
       )
 
@@ -184,8 +183,8 @@ final class Emitter private (config: CommonPhaseConfig,
 
       // CloneNotSupportedException's nullary constructor
       locally {
-        val className = "jl_CloneNotSupportedException"
-        val ctorName = "init___"
+        val className = CloneNotSupportedExceptionClass
+        val ctorName = NoArgConstructorName
         val ctorIsDefined = unit.classDefs
           .find(_.encodedName == className)
           .fold(false)(_.methods.exists { m =>
@@ -526,7 +525,7 @@ final class Emitter private (config: CommonPhaseConfig,
           val methodDef = m.value
           implicit val pos = methodDef.pos
 
-          val methodName = methodDef.name.asInstanceOf[Ident]
+          val methodName = methodDef.name
           val newBody = ApplyStatically(ApplyFlags.empty,
               This()(ClassType(className)),
               ClassRef(ObjectClass), methodName, methodDef.args.map(_.ref))(
@@ -820,28 +819,31 @@ private object Emitter {
     def assumingES6: Boolean = coreSpec.esFeatures.useECMAScript2015
 
     multiple(
-        instantiateClass("O", "init___"),
-        classData("O"),
+        instantiateClass(ObjectClass, NoArgConstructorName),
+        classData(ObjectClass),
 
-        instantiateClass("jl_CloneNotSupportedException", "init___"),
+        instantiateClass(CloneNotSupportedExceptionClass, NoArgConstructorName),
 
         cond(asInstanceOfs != Unchecked) {
-          instantiateClass("jl_ClassCastException", "init___T")
+          instantiateClass(ClassCastExceptionClass, StringArgConstructorName)
         },
 
         cond(arrayIndexOutOfBounds != Unchecked) {
-          instantiateClass("jl_ArrayIndexOutOfBoundsException", "init___T")
+          instantiateClass(ArrayIndexOutOfBoundsExceptionClass,
+              StringArgConstructorName)
         },
 
         cond(asInstanceOfs == Fatal || arrayIndexOutOfBounds == Fatal) {
-          instantiateClass("sjsr_UndefinedBehaviorError", "init___jl_Throwable")
+          instantiateClass(UndefinedBehaviorErrorClass,
+              ThrowableArgConsructorName)
         },
 
         cond(moduleInit == Fatal) {
-          instantiateClass("sjsr_UndefinedBehaviorError", "init___T")
+          instantiateClass(UndefinedBehaviorErrorClass,
+              StringArgConstructorName)
         },
 
-        instantiateClass("jl_Class", "init___O"),
+        instantiateClass(ClassClass, ObjectArgConstructorName),
 
         cond(!coreSpec.esFeatures.allowBigIntsForLongs) {
           multiple(

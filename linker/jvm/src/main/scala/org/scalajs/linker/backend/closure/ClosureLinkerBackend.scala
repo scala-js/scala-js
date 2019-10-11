@@ -136,7 +136,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       classDef <- linkingUnit.classDefs
       member <- classDef.exportedMembers
       name <- exportName(member.value)
-      if isValidIdentifier(name)
+      if isValidJSIdentifier(name)
     } yield {
       name
     }

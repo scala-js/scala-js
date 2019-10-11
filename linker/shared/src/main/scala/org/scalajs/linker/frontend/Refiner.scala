@@ -16,6 +16,7 @@ import scala.concurrent._
 
 import scala.collection.mutable
 
+import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Trees._
 
 import org.scalajs.logging._
@@ -120,14 +121,14 @@ final class Refiner(config: CommonPhaseConfig) {
 
 private object Refiner {
   private class InputProvider extends Analyzer.InputProvider {
-    private var linkedClassesByName: Map[String, LinkedClass] = _
-    private val cache = mutable.Map.empty[String, LinkedClassInfoCache]
+    private var linkedClassesByName: Map[ClassName, LinkedClass] = _
+    private val cache = mutable.Map.empty[ClassName, LinkedClassInfoCache]
 
-    def update(linkedClassesByName: Map[String, LinkedClass]): Unit = {
+    def update(linkedClassesByName: Map[ClassName, LinkedClass]): Unit = {
       this.linkedClassesByName = linkedClassesByName
     }
 
-    def classesWithEntryPoints(): Iterable[String] = {
+    def classesWithEntryPoints(): Iterable[ClassName] = {
       (for {
         linkedClass <- linkedClassesByName.valuesIterator
         if linkedClass.hasEntryPoint
@@ -136,10 +137,10 @@ private object Refiner {
       }).toList
     }
 
-    def loadInfo(encodedName: String)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
+    def loadInfo(encodedName: ClassName)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
       getCache(encodedName).map(_.loadInfo(linkedClassesByName(encodedName)))
 
-    private def getCache(encodedName: String): Option[LinkedClassInfoCache] = {
+    private def getCache(encodedName: ClassName): Option[LinkedClassInfoCache] = {
       cache.get(encodedName).orElse {
         if (linkedClassesByName.contains(encodedName)) {
           val fileCache = new LinkedClassInfoCache
@@ -172,8 +173,7 @@ private object Refiner {
       if (!cacheUsed) {
         cacheUsed = true
 
-        val builder = new Infos.ClassInfoBuilder()
-          .setEncodedName(linkedClass.encodedName)
+        val builder = new Infos.ClassInfoBuilder(linkedClass.encodedName)
           .setKind(linkedClass.kind)
           .setSuperClass(linkedClass.superClass.map(_.name))
           .addInterfaces(linkedClass.interfaces.map(_.name))

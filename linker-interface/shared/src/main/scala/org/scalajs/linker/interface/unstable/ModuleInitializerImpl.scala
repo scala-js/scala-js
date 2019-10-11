@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.interface.unstable
 
+import org.scalajs.ir.Definitions._
+
 import org.scalajs.linker.interface.ModuleInitializer
 
 /** A module initializer for a Scala.js application.
@@ -33,11 +35,11 @@ sealed abstract class ModuleInitializerImpl extends ModuleInitializer {
 object ModuleInitializerImpl {
   def fromModuleInitializer(mi: ModuleInitializer): ModuleInitializerImpl = mi.impl
 
-  final case class VoidMainMethod(moduleClassName: String,
-      encodedMainMethodName: String)
+  final case class VoidMainMethod(moduleClassName: ClassName,
+      encodedMainMethodName: MethodName)
       extends ModuleInitializerImpl
 
-  final case class MainMethodWithArgs(moduleClassName: String,
-      encodedMainMethodName: String, args: List[String])
+  final case class MainMethodWithArgs(moduleClassName: ClassName,
+      encodedMainMethodName: MethodName, args: List[String])
       extends ModuleInitializerImpl
 }

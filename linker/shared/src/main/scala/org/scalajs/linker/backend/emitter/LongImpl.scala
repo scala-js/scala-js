@@ -12,56 +12,59 @@
 
 package org.scalajs.linker.backend.emitter
 
-private[linker] object LongImpl {
-  final val RuntimeLongClass = "sjsr_RuntimeLong"
-  final val RuntimeLongModuleClass = "sjsr_RuntimeLong$"
+import org.scalajs.ir.Definitions._
 
-  final val lo = "lo__I"
-  final val hi = "hi__I"
+private[linker] object LongImpl {
+  final val RuntimeLongClass = ClassName("sjsr_RuntimeLong")
+  final val RuntimeLongModuleClass = ClassName("sjsr_RuntimeLong$")
+
+  final val lo = MethodName("lo__I")
+  final val hi = MethodName("hi__I")
 
   private final val SigUnary   = "__sjsr_RuntimeLong"
   private final val SigBinary  = "__sjsr_RuntimeLong__sjsr_RuntimeLong"
   private final val SigShift   = "__I__sjsr_RuntimeLong"
   private final val SigCompare = "__sjsr_RuntimeLong__Z"
 
-  final val UNARY_- = "unary$und$minus" + SigUnary
-  final val UNARY_~ = "unary$und$tilde" + SigUnary
+  final val UNARY_- = MethodName("unary$und$minus" + SigUnary)
+  final val UNARY_~ = MethodName("unary$und$tilde" + SigUnary)
 
-  final val + = "$$plus"    + SigBinary
-  final val - = "$$minus"   + SigBinary
-  final val * = "$$times"   + SigBinary
-  final val / = "$$div"     + SigBinary
-  final val % = "$$percent" + SigBinary
+  final val + = MethodName("$$plus"    + SigBinary)
+  final val - = MethodName("$$minus"   + SigBinary)
+  final val * = MethodName("$$times"   + SigBinary)
+  final val / = MethodName("$$div"     + SigBinary)
+  final val % = MethodName("$$percent" + SigBinary)
 
-  final val | = "$$bar" + SigBinary
-  final val & = "$$amp" + SigBinary
-  final val ^ = "$$up"  + SigBinary
+  final val | = MethodName("$$bar" + SigBinary)
+  final val & = MethodName("$$amp" + SigBinary)
+  final val ^ = MethodName("$$up"  + SigBinary)
 
-  final val <<  = "$$less$less"               + SigShift
-  final val >>> = "$$greater$greater$greater" + SigShift
-  final val >>  = "$$greater$greater"         + SigShift
+  final val <<  = MethodName("$$less$less"               + SigShift)
+  final val >>> = MethodName("$$greater$greater$greater" + SigShift)
+  final val >>  = MethodName("$$greater$greater"         + SigShift)
 
-  final val === = "equals"       + SigCompare
-  final val !== = "notEquals"    + SigCompare
-  final val <   = "$$less"       + SigCompare
-  final val <=  = "$$less$eq"    + SigCompare
-  final val >   = "$$greater"    + SigCompare
-  final val >=  = "$$greater$eq" + SigCompare
+  final val === = MethodName("equals"      + SigCompare)
+  final val !== = MethodName("notEquals"   + SigCompare)
+  final val <   = MethodName("$$less"       + SigCompare)
+  final val <=  = MethodName("$$less$eq"    + SigCompare)
+  final val >   = MethodName("$$greater"    + SigCompare)
+  final val >=  = MethodName("$$greater$eq" + SigCompare)
 
-  final val toInt    = "toInt"    + "__I"
-  final val toDouble = "toDouble" + "__D"
+  final val toInt    = MethodName("toInt"    + "__I")
+  final val toDouble = MethodName("toDouble" + "__D")
 
-  final val byteValue   = "byteValue__B"
-  final val shortValue  = "shortValue__S"
-  final val intValue    = "intValue__I"
-  final val longValue   = "longValue__J"
-  final val floatValue  = "floatValue__F"
-  final val doubleValue = "doubleValue__D"
+  final val byteValue   = MethodName("byteValue__B")
+  final val shortValue  = MethodName("shortValue__S")
+  final val intValue    = MethodName("intValue__I")
+  final val longValue   = MethodName("longValue__J")
+  final val floatValue  = MethodName("floatValue__F")
+  final val doubleValue = MethodName("doubleValue__D")
 
-  final val equals_    = "equals__O__Z"
-  final val hashCode_  = "hashCode__I"
-  final val compareTo  = "compareTo__jl_Long__I"
-  final val compareToO = "compareTo__O__I"
+  final val toString_  = MethodName("toString__T")
+  final val equals_    = MethodName("equals__O__Z")
+  final val hashCode_  = MethodName("hashCode__I")
+  final val compareTo  = MethodName("compareTo__jl_Long__I")
+  final val compareToO = MethodName("compareTo__O__I")
 
   private val OperatorMethods = Set(
       UNARY_-, UNARY_~, this.+, this.-, *, /, %, |, &, ^, <<, >>>, >>,
@@ -75,23 +78,24 @@ private[linker] object LongImpl {
 
   // Methods used for intrinsics
 
-  final val divideUnsigned    = "divideUnsigned__sjsr_RuntimeLong__sjsr_RuntimeLong"
-  final val remainderUnsigned = "remainderUnsigned__sjsr_RuntimeLong__sjsr_RuntimeLong"
+  final val compareToRTLong   = MethodName("compareTo__sjsr_RuntimeLong__I")
+  final val divideUnsigned    = MethodName("divideUnsigned__sjsr_RuntimeLong__sjsr_RuntimeLong")
+  final val remainderUnsigned = MethodName("remainderUnsigned__sjsr_RuntimeLong__sjsr_RuntimeLong")
 
   val AllIntrinsicMethods = Set(
-      divideUnsigned, remainderUnsigned)
+      compareToRTLong, divideUnsigned, remainderUnsigned)
 
   // Constructors
 
-  final val initFromParts = "init___I__I"
+  final val initFromParts = MethodName("init___I__I")
 
   val AllConstructors = Set(
       initFromParts)
 
   // Methods on the companion
 
-  final val fromInt    = "fromInt__I__sjsr_RuntimeLong"
-  final val fromDouble = "fromDouble__D__sjsr_RuntimeLong"
+  final val fromInt    = MethodName("fromInt__I__sjsr_RuntimeLong")
+  final val fromDouble = MethodName("fromDouble__D__sjsr_RuntimeLong")
 
   val AllModuleMethods = Set(
       fromInt, fromDouble)

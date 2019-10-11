@@ -19,6 +19,7 @@ import scala.collection.parallel._
 
 import java.util.concurrent.atomic._
 
+import org.scalajs.ir.Definitions.{ClassName, MethodName}
 import org.scalajs.ir.Trees.MemberNamespace
 
 import org.scalajs.linker.standard._
@@ -85,8 +86,8 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
       it.filter(f)
   }
 
-  private val _interfaces = TrieMap.empty[String, InterfaceType]
-  private[optimizer] def getInterface(encodedName: String): InterfaceType =
+  private val _interfaces = TrieMap.empty[ClassName, InterfaceType]
+  private[optimizer] def getInterface(encodedName: ClassName): InterfaceType =
     _interfaces.getOrPut(encodedName, new ParInterfaceType(encodedName))
 
   private val methodsToProcess: AtomicAcc[MethodImpl] = AtomicAcc.empty
@@ -94,7 +95,9 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
     methodsToProcess += method
 
   private[optimizer] def newMethodImpl(owner: MethodContainer,
-      encodedName: String): MethodImpl = new ParMethodImpl(owner, encodedName)
+      encodedName: MethodName): MethodImpl = {
+    new ParMethodImpl(owner, encodedName)
+  }
 
   private[optimizer] def processAllTaggedMethods(): Unit = {
     val methods = methodsToProcess.removeAll().toParArray
@@ -103,14 +106,16 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
       method.process()
   }
 
-  private class ParInterfaceType(encName: String) extends InterfaceType(encName) {
+  private class ParInterfaceType(encName: ClassName)
+      extends InterfaceType(encName) {
+
     private val ancestorsAskers = TrieSet.empty[MethodImpl]
-    private val dynamicCallers = TrieMap.empty[String, TrieSet[MethodImpl]]
+    private val dynamicCallers = TrieMap.empty[MethodName, TrieSet[MethodImpl]]
 
     private val staticCallers =
-      Array.fill(MemberNamespace.Count)(TrieMap.empty[String, TrieSet[MethodImpl]])
+      Array.fill(MemberNamespace.Count)(TrieMap.empty[MethodName, TrieSet[MethodImpl]])
 
-    private var _ancestors: List[String] = encodedName :: Nil
+    private var _ancestors: List[ClassName] = encodedName :: Nil
 
     private val _instantiatedSubclasses: TrieSet[Class] = TrieSet.empty
 
@@ -133,10 +138,10 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
       _instantiatedSubclasses -= x
 
     /** PROCESS PASS ONLY. Concurrency safe except with [[ancestors_=]] */
-    def ancestors: List[String] = _ancestors
+    def ancestors: List[ClassName] = _ancestors
 
     /** UPDATE PASS ONLY. Not concurrency safe. */
-    def ancestors_=(v: List[String]): Unit = {
+    def ancestors_=(v: List[ClassName]): Unit = {
       if (v != _ancestors) {
         _ancestors = v
         ancestorsAskers.keysIterator.foreach(_.tag())
@@ -149,11 +154,11 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
       ancestorsAskers += asker
 
     /** PROCESS PASS ONLY. */
-    def registerDynamicCaller(methodName: String, caller: MethodImpl): Unit =
+    def registerDynamicCaller(methodName: MethodName, caller: MethodImpl): Unit =
       dynamicCallers.getOrPut(methodName, TrieSet.empty) += caller
 
     /** PROCESS PASS ONLY. */
-    def registerStaticCaller(namespace: MemberNamespace, methodName: String,
+    def registerStaticCaller(namespace: MemberNamespace, methodName: MethodName,
         caller: MethodImpl): Unit = {
       staticCallers(namespace.ordinal)
         .getOrPut(methodName, TrieSet.empty) += caller
@@ -167,20 +172,20 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
     }
 
     /** UPDATE PASS ONLY. */
-    def tagDynamicCallersOf(methodName: String): Unit =
+    def tagDynamicCallersOf(methodName: MethodName): Unit =
       dynamicCallers.remove(methodName).foreach(_.keysIterator.foreach(_.tag()))
 
     /** UPDATE PASS ONLY. */
     def tagStaticCallersOf(namespace: MemberNamespace,
-        methodName: String): Unit = {
+        methodName: MethodName): Unit = {
       staticCallers(namespace.ordinal)
         .remove(methodName)
         .foreach(_.keysIterator.foreach(_.tag()))
     }
   }
 
-  private class ParMethodImpl(owner: MethodContainer,
-      encodedName: String) extends MethodImpl(owner, encodedName) {
+  private class ParMethodImpl(owner: MethodContainer, encodedName: MethodName)
+      extends MethodImpl(owner, encodedName) {
 
     private val bodyAskers = TrieSet.empty[MethodImpl]
 

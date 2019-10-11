@@ -14,6 +14,7 @@ package org.scalajs.ir
 
 import scala.annotation.tailrec
 
+import Definitions.{ClassName, FieldName}
 import Trees._
 
 object Types {
@@ -132,7 +133,7 @@ object Types {
   case object NullType extends PrimTypeWithRef
 
   /** Class (or interface) type. */
-  final case class ClassType(className: String) extends Type
+  final case class ClassType(className: ClassName) extends Type
 
   /** Array type. */
   final case class ArrayType(arrayTypeRef: ArrayTypeRef) extends Type
@@ -145,12 +146,12 @@ object Types {
    *  The compiler itself never generates record types.
    */
   final case class RecordType(fields: List[RecordType.Field]) extends Type {
-    def findField(name: String): RecordType.Field =
+    def findField(name: FieldName): RecordType.Field =
       fields.find(_.name == name).get
   }
 
   object RecordType {
-    final case class Field(name: String, originalName: Option[String],
+    final case class Field(name: FieldName, originalName: Option[String],
         tpe: Type, mutable: Boolean)
   }
 
@@ -200,7 +201,7 @@ object Types {
   final val NothingRef = PrimRef(NothingType)
 
   /** Class (or interface) type. */
-  final case class ClassRef(className: String) extends NonArrayTypeRef
+  final case class ClassRef(className: ClassName) extends NonArrayTypeRef
 
   /** Array type. */
   final case class ArrayTypeRef(base: NonArrayTypeRef, dimensions: Int)
@@ -235,7 +236,7 @@ object Types {
    *                    subclass of another class/interface.
    */
   def isSubtype(lhs: Type, rhs: Type)(
-      isSubclass: (String, String) => Boolean): Boolean = {
+      isSubclass: (ClassName, ClassName) => Boolean): Boolean = {
     import Definitions._
 
     (lhs != NoType && rhs != NoType) && {

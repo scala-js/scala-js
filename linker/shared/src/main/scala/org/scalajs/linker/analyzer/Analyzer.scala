@@ -43,7 +43,7 @@ private final class Analyzer(config: CommonPhaseConfig,
   import Analyzer._
 
   private var objectClassInfo: ClassInfo = _
-  private[this] val _classInfos = mutable.Map.empty[String, ClassLoadingState]
+  private[this] val _classInfos = mutable.Map.empty[ClassName, ClassLoadingState]
 
   private[this] val _errors = mutable.Buffer.empty[Error]
 
@@ -51,9 +51,10 @@ private final class Analyzer(config: CommonPhaseConfig,
 
   private val fromAnalyzer = FromCore("analyzer")
 
-  private[this] var _loadedClassInfos: scala.collection.Map[String, ClassInfo] = _
+  private[this] var _loadedClassInfos: scala.collection.Map[ClassName, ClassInfo] = _
 
-  def classInfos: scala.collection.Map[String, Analysis.ClassInfo] = _loadedClassInfos
+  def classInfos: scala.collection.Map[ClassName, Analysis.ClassInfo] =
+    _loadedClassInfos
 
   def errors: scala.collection.Seq[Error] = _errors
 
@@ -129,12 +130,12 @@ private final class Analyzer(config: CommonPhaseConfig,
   private def reachSymbolRequirement(requirement: SymbolRequirement,
       optional: Boolean = false): Unit = {
 
-    def withClass(className: String)(onSuccess: ClassInfo => Unit)(
+    def withClass(className: ClassName)(onSuccess: ClassInfo => Unit)(
         implicit from: From): Unit = {
       lookupClass(className, ignoreMissing = optional)(onSuccess)
     }
 
-    def withMethod(className: String, methodName: String)(
+    def withMethod(className: ClassName, methodName: MethodName)(
         onSuccess: ClassInfo => Unit)(
         implicit from: From): Unit = {
       withClass(className) { clazz =>
@@ -194,7 +195,9 @@ private final class Analyzer(config: CommonPhaseConfig,
   }
 
   /** Reach additional class data based on reflection methods being used. */
-  private def reachDataThroughReflection(classInfos: scala.collection.Map[String, ClassInfo]): Unit = {
+  private def reachDataThroughReflection(
+      classInfos: scala.collection.Map[ClassName, ClassInfo]): Unit = {
+
     val classClassInfo = classInfos.get(Definitions.ClassClass)
 
     /* If Class.getSuperclass() is reachable, we can reach the data of all
@@ -202,7 +205,7 @@ private final class Analyzer(config: CommonPhaseConfig,
      */
     for {
       getSuperclassMethodInfo <-
-        classClassInfo.flatMap(_.publicMethodInfos.get("getSuperclass__jl_Class"))
+        classClassInfo.flatMap(_.publicMethodInfos.get(getSuperclassMethodName))
       if getSuperclassMethodInfo.isReachable
     } {
       // calledFrom should always be nonEmpty if isReachable, but let's be robust
@@ -222,7 +225,8 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def checkConflictingExports(classInfos: scala.collection.Map[String, ClassInfo]): Unit = {
+  private def checkConflictingExports(
+      classInfos: scala.collection.Map[ClassName, ClassInfo]): Unit = {
     val namesAndInfos = for {
       info <- classInfos.values
       name <- info.topLevelExportNames
@@ -238,7 +242,8 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def lookupClass(encodedName: String, ignoreMissing: Boolean = false)(
+  private def lookupClass(encodedName: ClassName,
+      ignoreMissing: Boolean = false)(
       onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
     lookupClassForLinking(encodedName, Set.empty) {
       case info: ClassInfo =>
@@ -252,7 +257,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def lookupClassForLinking(encodedName: String,
+  private def lookupClassForLinking(encodedName: ClassName,
       knownDescendants: Set[LoadingClass] = Set.empty)(
       onSuccess: LoadingResult => Unit): Unit = {
 
@@ -273,9 +278,12 @@ private final class Analyzer(config: CommonPhaseConfig,
   private sealed trait LoadingResult
   private sealed trait ClassLoadingState
 
-  private case class CycleInfo(cycle: List[String], root: LoadingClass) extends LoadingResult
+  private case class CycleInfo(cycle: List[ClassName], root: LoadingClass)
+      extends LoadingResult
 
-  private final class LoadingClass(encodedName: String) extends ClassLoadingState {
+  private final class LoadingClass(encodedName: ClassName)
+      extends ClassLoadingState {
+
     private val promise = Promise[LoadingResult]()
     private var knownDescendants = Set[LoadingClass](this)
 
@@ -326,7 +334,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
-    private def lookupAncestors(encodedNames: List[String])(
+    private def lookupAncestors(encodedNames: List[ClassName])(
         loaded: List[ClassInfo] => Unit)(cycle: CycleInfo => Unit): Unit = {
       encodedNames match {
         case first :: rest =>
@@ -502,11 +510,11 @@ private final class Analyzer(config: CommonPhaseConfig,
      *  For JS types, this always remains empty.
      */
     var instantiatedSubclasses: List[ClassInfo] = Nil
-    var methodsCalledLog: List[(String, From)] = Nil
+    var methodsCalledLog: List[(MethodName, From)] = Nil
 
     private val nsMethodInfos = {
       val nsMethodInfos = Array.fill(MemberNamespace.Count) {
-        mutable.Map.empty[String, MethodInfo]
+        mutable.Map.empty[MethodName, MethodInfo]
       }
       for (methodData <- data.methods) {
         // TODO It would be good to report duplicates as errors at this point
@@ -517,20 +525,20 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     def methodInfos(
-        namespace: MemberNamespace): mutable.Map[String, MethodInfo] = {
+        namespace: MemberNamespace): mutable.Map[MethodName, MethodInfo] = {
       nsMethodInfos(namespace.ordinal)
     }
 
-    val publicMethodInfos: mutable.Map[String, MethodInfo] =
+    val publicMethodInfos: mutable.Map[MethodName, MethodInfo] =
       methodInfos(MemberNamespace.Public)
 
-    def lookupMethod(methodName: String): MethodInfo = {
+    def lookupMethod(methodName: MethodName): MethodInfo = {
       tryLookupMethod(methodName).getOrElse {
         createNonExistentMethod(methodName)
       }
     }
 
-    private def createNonExistentMethod(methodName: String): MethodInfo = {
+    private def createNonExistentMethod(methodName: MethodName): MethodInfo = {
       val syntheticData = makeSyntheticMethodInfo(methodName)
       val m = new MethodInfo(this, syntheticData)
       m.nonExistent = true
@@ -538,7 +546,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       m
     }
 
-    def tryLookupMethod(methodName: String): Option[MethodInfo] = {
+    def tryLookupMethod(methodName: MethodName): Option[MethodInfo] = {
       assert(isScalaClass || isInterface,
           s"Cannot call lookupMethod($methodName) on non Scala class $this")
 
@@ -593,7 +601,7 @@ private final class Analyzer(config: CommonPhaseConfig,
      *  version 8, Section 6.5:
      *  https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.5.invokespecial
      */
-    private def findDefaultTarget(methodName: String): Option[MethodInfo] = {
+    private def findDefaultTarget(methodName: MethodName): Option[MethodInfo] = {
       val candidates = for {
         intf <- ancestors if intf.isInterface
         m <- intf.publicMethodInfos.get(methodName)
@@ -641,7 +649,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       m
     }
 
-    def tryLookupReflProxyMethod(proxyName: String)(
+    def tryLookupReflProxyMethod(proxyName: MethodName)(
         onSuccess: MethodInfo => Unit)(implicit from: From): Unit = {
       if (!allowAddingSyntheticMethods) {
         tryLookupMethod(proxyName).foreach(onSuccess)
@@ -657,7 +665,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
-    private def findReflectiveTarget(proxyName: String)(
+    private def findReflectiveTarget(proxyName: MethodName)(
         implicit from: From): Future[Option[MethodInfo]] = {
       /* The lookup for a target method in this code implements the
        * algorithm defining `java.lang.Class.getMethod`. This mimics how
@@ -686,7 +694,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
-    private def findProxyMatch(proxyName: String)(
+    private def findProxyMatch(proxyName: MethodName)(
         implicit from: From): Future[Option[MethodInfo]] = {
       val candidates = publicMethodInfos.valuesIterator.filter { m =>
         // TODO In theory we should filter out protected methods
@@ -702,7 +710,8 @@ private final class Analyzer(config: CommonPhaseConfig,
        *   chosen arbitrarily.
        */
 
-      val resultTypes = candidates.map(c => methodResultType(c.encodedName))
+      val resultTypes =
+        candidates.map(c => methodResultType(c.encodedName))
 
       // We must not use Future.traverse since otherwise we might run things on
       // the non-main thread.
@@ -730,19 +739,20 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
-    private def reflProxyMatches(methodName: String, proxyName: String): Boolean = {
+    private def reflProxyMatches(methodName: MethodName,
+        proxyName: MethodName): Boolean = {
       val sepPos = methodName.lastIndexOf("__")
       sepPos >= 0 && methodName.substring(0, sepPos + 2) == proxyName
     }
 
-    private def methodResultType(methodName: String): ir.Types.TypeRef =
+    private def methodResultType(methodName: MethodName): ir.Types.TypeRef =
       decodeTypeRef(methodName.substring(methodName.lastIndexOf("__") + 2))
 
     private def isMoreSpecific(left: ir.Types.TypeRef, right: ir.Types.TypeRef)(
         implicit from: From): Future[Boolean] = {
       import ir.Types._
 
-      def classIsMoreSpecific(leftCls: String, rightCls: String): Future[Boolean] = {
+      def classIsMoreSpecific(leftCls: ClassName, rightCls: ClassName): Future[Boolean] = {
         if (leftCls == rightCls) {
           Future.successful(false)
         } else {
@@ -772,8 +782,8 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
-    private def createReflProxy(proxyName: String,
-        targetName: String): MethodInfo = {
+    private def createReflProxy(proxyName: MethodName,
+        targetName: MethodName): MethodInfo = {
       assert(this.isScalaClass,
           s"Cannot create reflective proxy in non-Scala class $this")
 
@@ -788,7 +798,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     def lookupStaticLikeMethod(namespace: MemberNamespace,
-        methodName: String): MethodInfo = {
+        methodName: MethodName): MethodInfo = {
       tryLookupStaticLikeMethod(namespace, methodName).getOrElse {
         val syntheticData = makeSyntheticMethodInfo(methodName, namespace)
         val m = new MethodInfo(this, syntheticData)
@@ -799,7 +809,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     def tryLookupStaticLikeMethod(namespace: MemberNamespace,
-        methodName: String): Option[MethodInfo] = {
+        methodName: MethodName): Option[MethodInfo] = {
       methodInfos(namespace).get(methodName)
     }
 
@@ -839,7 +849,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         if (kind != ClassKind.NativeJSModuleClass) {
           instantiated()
           if (isScalaClass)
-            callMethodStatically(MemberNamespace.Constructor, "init___")
+            callMethodStatically(MemberNamespace.Constructor, NoArgConstructorName)
         }
       }
     }
@@ -924,7 +934,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         isDataAccessed = true
     }
 
-    def callMethod(methodName: String)(implicit from: From): Unit = {
+    def callMethod(methodName: MethodName)(implicit from: From): Unit = {
       /* First add the call to the log, then fetch the instantiated subclasses,
        * then perform the resolved call. This order is important because,
        * during the resolved calls, new instantiated subclasses could be
@@ -937,7 +947,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         subclass.callMethodResolved(methodName)
     }
 
-    private def callMethodResolved(methodName: String)(
+    private def callMethodResolved(methodName: MethodName)(
         implicit from: From): Unit = {
       if (isReflProxyName(methodName)) {
         tryLookupReflProxyMethod(methodName)(_.reach(this))
@@ -951,7 +961,8 @@ private final class Analyzer(config: CommonPhaseConfig,
       callMethodStatically(methodName.namespace, methodName.encodedName)
     }
 
-    def callMethodStatically(namespace: MemberNamespace, encodedName: String)(
+    def callMethodStatically(namespace: MemberNamespace,
+        encodedName: MethodName)(
         implicit from: From): Unit = {
       assert(!isReflProxyName(encodedName),
           s"Trying to call statically refl proxy $this.$encodedName")
@@ -1094,15 +1105,15 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def createMissingClassInfo(encodedName: String): Infos.ClassInfo = {
+  private def createMissingClassInfo(encodedName: ClassName): Infos.ClassInfo = {
     Infos.ClassInfo(
         encodedName = encodedName,
         isExported = false,
         kind = ClassKind.Class,
-        superClass = Some("O"),
+        superClass = Some(ObjectClass),
         interfaces = Nil,
         referencedFieldClasses = Nil,
-        methods = List(makeSyntheticMethodInfo("init___")),
+        methods = List(makeSyntheticMethodInfo(NoArgConstructorName)),
         exportedMembers = Nil,
         topLevelExportedMembers = Nil,
         topLevelExportNames = Nil
@@ -1110,11 +1121,11 @@ private final class Analyzer(config: CommonPhaseConfig,
   }
 
   private def makeSyntheticMethodInfo(
-      encodedName: String,
+      encodedName: MethodName,
       namespace: MemberNamespace = MemberNamespace.Public,
-      methodsCalled: Map[String, List[String]] = Map.empty,
-      methodsCalledStatically: Map[String, List[NamespacedEncodedName]] = Map.empty,
-      instantiatedClasses: List[String] = Nil
+      methodsCalled: Map[ClassName, List[MethodName]] = Map.empty,
+      methodsCalledStatically: Map[ClassName, List[NamespacedEncodedName]] = Map.empty,
+      instantiatedClasses: List[ClassName] = Nil
   ): Infos.MethodInfo = {
     val reachabilityInfo = ReachabilityInfo(
         privateJSFieldsUsed = Map.empty,
@@ -1135,6 +1146,8 @@ private final class Analyzer(config: CommonPhaseConfig,
 }
 
 object Analyzer {
+  private val getSuperclassMethodName = MethodName("getSuperclass__jl_Class")
+
   def computeReachability(config: CommonPhaseConfig,
       symbolRequirements: SymbolRequirement,
       allowAddingSyntheticMethods: Boolean,
@@ -1145,9 +1158,10 @@ object Analyzer {
   }
 
   trait InputProvider {
-    def classesWithEntryPoints(): Iterable[String]
+    def classesWithEntryPoints(): Iterable[ClassName]
 
-    def loadInfo(encodedName: String)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]]
+    def loadInfo(encodedName: ClassName)(
+        implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]]
   }
 
   private class WorkQueue(ec: ExecutionContext) {

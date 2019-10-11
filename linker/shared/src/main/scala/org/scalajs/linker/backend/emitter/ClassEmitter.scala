@@ -13,10 +13,11 @@
 package org.scalajs.linker.backend.emitter
 
 import org.scalajs.ir._
-import Position._
-import Transformers._
+import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Position._
+import org.scalajs.ir.Transformers._
 import org.scalajs.ir.Trees._
-import Types._
+import org.scalajs.ir.Types._
 
 import org.scalajs.linker._
 import org.scalajs.linker.interface._
@@ -374,7 +375,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   /** Generates the creation of fields for a Scala class. */
-  private def genFieldDefsOfScalaClass(className: String,
+  private def genFieldDefsOfScalaClass(className: ClassName,
       fields: List[AnyFieldDef])(
       implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     for {
@@ -392,7 +393,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def genCreateStaticFieldsOfScalaClass(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     for {
-      field @ FieldDef(flags, Ident(name, origName), ftpe) <- tree.fields
+      field @ FieldDef(flags, FieldIdent(name, origName), ftpe) <- tree.fields
       if flags.namespace.isStatic
     } yield {
       implicit val pos = field.pos
@@ -417,7 +418,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       field match {
         case FieldDef(_, name, _) =>
           WithGlobals(
-              js.Assign(js.DotSelect(classVar, genMemberNameIdent(name)), zero))
+              js.Assign(js.DotSelect(classVar, genMemberFieldIdent(name)), zero))
         case JSFieldDef(_, name, _) =>
           for (propName <- genMemberNameTree(name))
             yield js.Assign(genPropSelect(classVar, propName), zero)
@@ -445,7 +446,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   /** Generates a method. */
-  def genMethod(className: String, method: MethodDef)(
+  def genMethod(className: ClassName, method: MethodDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     val methodBody = method.body.getOrElse(
         throw new AssertionError("Cannot generate an abstract method"))
@@ -489,18 +490,19 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         envFieldDef(field, className + "__" + methodName.name, methodFun,
             methodName.originalName)
       } else {
+        val jsMethodName = genMemberMethodIdent(methodName)
         if (useClasses) {
-          js.MethodDef(static = false, genMemberNameIdent(methodName),
+          js.MethodDef(static = false, jsMethodName,
               methodFun.args, methodFun.body)
         } else {
-          genAddToPrototype(className, methodName, methodFun)
+          genAddToPrototype(className, jsMethodName, methodFun)
         }
       }
     }
   }
 
   /** Generates a JS method. */
-  def genJSMethod(className: String, method: JSMethodDef)(
+  def genJSMethod(className: ClassName, method: JSMethodDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = method.pos
 
@@ -519,18 +521,16 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
               methodFun.body)
         }
       } else {
-        if (namespace.isStatic) {
-          genAddToObject(className, encodeClassVar(className), methodName,
-              methodFun)
-        } else {
+        if (namespace.isStatic)
+          genAddToObject(encodeClassVar(className), methodName, methodFun)
+        else
           genAddToPrototype(className, method.name, methodFun)
-        }
       }
     }
   }
 
   /** Generates a default method. */
-  def genDefaultMethod(className: String, method: MethodDef)(
+  def genDefaultMethod(className: ClassName, method: MethodDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = method.pos
 
@@ -538,20 +538,20 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         className, method.args, method.body.get, method.resultType)
 
     for (methodFun <- methodFunWithGlobals) yield {
-      val Ident(methodName, origName) = method.name
+      val MethodIdent(methodName, origName) = method.name
       envFieldDef("f", className + "__" + methodName, methodFun, origName)
     }
   }
 
   /** Generates an instance method of a hijacked class. */
-  def genHijackedMethod(className: String, method: MethodDef)(
+  def genHijackedMethod(className: ClassName, method: MethodDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     // We abuse `genDefaultMethod` as it does everything the way we want
     genDefaultMethod(className, method)
   }
 
   /** Generates a property. */
-  def genJSProperty(className: String, property: JSPropertyDef)(
+  def genJSProperty(className: ClassName, property: JSPropertyDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     if (useClasses)
       genJSPropertyES6(className, property)
@@ -559,7 +559,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       genJSPropertyES5(className, property)
   }
 
-  private def genJSPropertyES5(className: String, property: JSPropertyDef)(
+  private def genJSPropertyES5(className: ClassName, property: JSPropertyDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
     implicit val pos = property.pos
@@ -616,7 +616,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
   }
 
-  private def genJSPropertyES6(className: String, property: JSPropertyDef)(
+  private def genJSPropertyES6(className: ClassName, property: JSPropertyDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = property.pos
 
@@ -647,22 +647,16 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   /** Generate `classVar.prototype.name = value` */
-  def genAddToPrototype(className: String, name: js.PropertyName, value: js.Tree)(
+  def genAddToPrototype(className: ClassName, name: js.PropertyName,
+      value: js.Tree)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Tree = {
     import TreeDSL._
 
     genAddToObject(encodeClassVar(className).prototype, name, value)
   }
 
-  /** Generate `classVar.prototype.name = value` */
-  def genAddToPrototype(className: String, name: Ident, value: js.Tree)(
-      implicit globalKnowledge: GlobalKnowledge,
-      pos: Position): js.Tree = {
-    genAddToPrototype(className, genMemberNameIdent(name), value)
-  }
-
   /** Generate `classVar.prototype[name] = value` */
-  def genAddToPrototype(className: String, name: Tree, value: js.Tree)(
+  def genAddToPrototype(className: ClassName, name: Tree, value: js.Tree)(
       implicit globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Tree] = {
     for (propName <- genMemberNameTree(name))
@@ -676,16 +670,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   /** Generate `obj.name = value` */
-  def genAddToObject(className: String, obj: js.Tree, name: Ident,
-      value: js.Tree)(
-      implicit globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Tree] = {
-    WithGlobals(genAddToObject(obj, genMemberNameIdent(name), value))
-  }
-
-  /** Generate `obj.name = value` */
-  def genAddToObject(className: String, obj: js.Tree, name: Tree,
-      value: js.Tree)(
+  def genAddToObject(obj: js.Tree, name: Tree, value: js.Tree)(
       implicit globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Tree] = {
     for (propName <- genMemberNameTree(name))
@@ -704,7 +689,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
   }
 
-  private def genMemberNameIdent(ident: Ident): js.Ident =
+  private def genMemberFieldIdent(ident: FieldIdent): js.Ident =
+    js.Ident(ident.name, ident.originalName)(ident.pos)
+
+  private def genMemberMethodIdent(ident: MethodIdent): js.Ident =
     js.Ident(ident.name, ident.originalName)(ident.pos)
 
   def needInstanceTests(tree: LinkedClass): Boolean = {
@@ -1095,8 +1083,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             val decodedName = Definitions.decodeClassName(className).stripSuffix("$")
             val msg = s"Initializer of $decodedName called before completion " +
               "of its super constructor"
-            val obj = js.New(encodeClassVar("sjsr_UndefinedBehaviorError"), Nil)
-            val ctor = obj DOT js.Ident("init___T")
+            val obj = js.New(encodeClassVar(UndefinedBehaviorErrorClass), Nil)
+            val ctor = obj DOT js.Ident(StringArgConstructorName)
             js.Throw(js.Apply(ctor, js.StringLiteral(msg) :: Nil))
           }, js.Skip()))
       }

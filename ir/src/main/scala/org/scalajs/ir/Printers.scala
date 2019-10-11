@@ -105,7 +105,11 @@ object Printers {
 
     def printAnyNode(node: IRNode): Unit = {
       node match {
-        case node: Ident             => print(node)
+        case node: LocalIdent        => print(node)
+        case node: LabelIdent        => print(node)
+        case node: FieldIdent        => print(node)
+        case node: MethodIdent       => print(node)
+        case node: ClassIdent        => print(node)
         case node: ParamDef          => print(node)
         case node: Tree              => print(node)
         case node: JSSpread          => print(node)
@@ -1015,7 +1019,19 @@ object Printers {
         print(')')
     }
 
-    def print(ident: Ident): Unit =
+    def print(ident: LocalIdent): Unit =
+      printEscapeJS(ident.name, out)
+
+    def print(ident: LabelIdent): Unit =
+      printEscapeJS(ident.name, out)
+
+    def print(ident: FieldIdent): Unit =
+      printEscapeJS(ident.name, out)
+
+    def print(ident: MethodIdent): Unit =
+      printEscapeJS(ident.name, out)
+
+    def print(ident: ClassIdent): Unit =
       printEscapeJS(ident.name, out)
 
     def printJSMemberName(name: Tree): Unit = name match {

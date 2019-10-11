@@ -15,12 +15,15 @@ package org.scalajs.linker.backend.emitter
 import scala.collection.mutable
 
 import org.scalajs.ir.{ClassKind, Definitions}
+import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types.Type
 
 import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.standard._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
+
+import EmitterDefinitions._
 
 private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
   import KnowledgeGuardian._
@@ -29,7 +32,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
 
   private var isParentDataAccessed: Boolean = _
 
-  private val classes = mutable.Map.empty[String, Class]
+  private val classes = mutable.Map.empty[ClassName, Class]
 
   private def askIsParentDataAccessed(invalidatable: Invalidatable): Boolean =
     isParentDataAccessed
@@ -98,12 +101,12 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
      * constructor and is final, so even CoreJSLib can assume it always
      * has an inlineable init.
      */
-    val blackList = Set(
-        "jl_ArithmeticException",
-        "jl_ClassCastException",
-        "jl_ArrayIndexOutOfBoundsException",
-        "sjsr_UndefinedBehaviorError",
-        "jl_CloneNotSupportedException"
+    val blackList = Set[ClassName](
+        ArithmeticExceptionClass,
+        ArrayIndexOutOfBoundsExceptionClass,
+        ClassCastExceptionClass,
+        CloneNotSupportedExceptionClass,
+        UndefinedBehaviorErrorClass
     )
 
     val scalaClassDefs = linkingUnit.classDefs.filter(_.kind.isClass)
@@ -144,31 +147,31 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     def isParentDataAccessed: Boolean =
       askIsParentDataAccessed(this)
 
-    def isInterface(className: String): Boolean =
+    def isInterface(className: ClassName): Boolean =
       classes(className).askIsInterface(this)
 
-    def getAllScalaClassFieldDefs(className: String): List[(String, List[AnyFieldDef])] =
+    def getAllScalaClassFieldDefs(className: ClassName): List[(ClassName, List[AnyFieldDef])] =
       classes(className).askAllScalaClassFieldDefs(this)
 
-    def hasInlineableInit(className: String): Boolean =
+    def hasInlineableInit(className: ClassName): Boolean =
       classes(className).askHasInlineableInit(this)
 
-    def hasStoredSuperClass(className: String): Boolean =
+    def hasStoredSuperClass(className: ClassName): Boolean =
       classes(className).askHasStoredSuperClass(this)
 
-    def getJSClassCaptureTypes(className: String): Option[List[Type]] =
+    def getJSClassCaptureTypes(className: ClassName): Option[List[Type]] =
       classes(className).askJSClassCaptureTypes(this)
 
-    def getJSNativeLoadSpec(className: String): Option[JSNativeLoadSpec] =
+    def getJSNativeLoadSpec(className: ClassName): Option[JSNativeLoadSpec] =
       classes(className).askJSNativeLoadSpec(this)
 
-    def getSuperClassOfJSClass(className: String): String =
+    def getSuperClassOfJSClass(className: ClassName): ClassName =
       classes(className).askJSSuperClass(this)
 
-    def getJSClassFieldDefs(className: String): List[AnyFieldDef] =
+    def getJSClassFieldDefs(className: ClassName): List[AnyFieldDef] =
       classes(className).askJSClassFieldDefs(this)
 
-    def getStaticFieldMirrors(className: String, field: String): List[String] =
+    def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String] =
       classes(className).askStaticFieldMirrors(this, field)
   }
 
@@ -261,23 +264,23 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     private def computeJSNativeLoadSpec(linkedClass: LinkedClass): Option[JSNativeLoadSpec] =
       linkedClass.jsNativeLoadSpec
 
-    private def computeSuperClass(linkedClass: LinkedClass): String =
-      linkedClass.superClass.fold[String](null)(_.name)
+    private def computeSuperClass(linkedClass: LinkedClass): ClassName =
+      linkedClass.superClass.fold[ClassName](null.asInstanceOf[ClassName])(_.name)
 
     private def computeFieldDefs(linkedClass: LinkedClass): List[AnyFieldDef] =
       linkedClass.fields
 
     private def computeStaticFieldMirrors(
-        linkedClass: LinkedClass): Map[String, List[String]] = {
+        linkedClass: LinkedClass): Map[FieldName, List[String]] = {
       if (config.coreSpec.moduleKind != ModuleKind.NoModule ||
           linkedClass.topLevelExports.isEmpty) {
         // Fast path
         Map.empty
       } else {
-        val result = mutable.Map.empty[String, List[String]]
+        val result = mutable.Map.empty[FieldName, List[String]]
         for (export <- linkedClass.topLevelExports) {
           export.value match {
-            case TopLevelFieldExportDef(exportName, Ident(fieldName, _)) =>
+            case TopLevelFieldExportDef(exportName, FieldIdent(fieldName, _)) =>
               result(fieldName) = exportName :: result.getOrElse(fieldName, Nil)
             case _ =>
               ()
@@ -311,7 +314,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     }
 
     def askAllScalaClassFieldDefs(
-        invalidatable: Invalidatable): List[(String, List[AnyFieldDef])] = {
+        invalidatable: Invalidatable): List[(ClassName, List[AnyFieldDef])] = {
       invalidatable.registeredTo(this)
       superClassAskers += invalidatable
       fieldDefsAskers += invalidatable
@@ -345,7 +348,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       jsNativeLoadSpec
     }
 
-    def askJSSuperClass(invalidatable: Invalidatable): String = {
+    def askJSSuperClass(invalidatable: Invalidatable): ClassName = {
       invalidatable.registeredTo(this)
       superClassAskers += invalidatable
       superClass
@@ -358,7 +361,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     }
 
     def askStaticFieldMirrors(invalidatable: Invalidatable,
-        field: String): List[String] = {
+        field: FieldName): List[String] = {
       invalidatable.registeredTo(this)
       staticFieldMirrorsAskers += invalidatable
       staticFieldMirrors.getOrElse(field, Nil)

@@ -24,16 +24,20 @@ import org.scalajs.linker.backend.emitter.Transients._
 
 object Infos {
 
+  private val ArithmeticExceptionClass = ClassName("jl_ArithmeticException")
+
+  private val StringArgConstructorName = MethodName("init___T")
+
   final case class NamespacedEncodedName(
-      namespace: MemberNamespace, encodedName: String)
+      namespace: MemberNamespace, encodedName: MethodName)
 
   final class ClassInfo private (
-      val encodedName: String,
+      val encodedName: ClassName,
       val isExported: Boolean,
       val kind: ClassKind,
-      val superClass: Option[String], // always None for interfaces
-      val interfaces: List[String], // direct parent interfaces only
-      val referencedFieldClasses: List[String],
+      val superClass: Option[ClassName], // always None for interfaces
+      val interfaces: List[ClassName], // direct parent interfaces only
+      val referencedFieldClasses: List[ClassName],
       val methods: List[MethodInfo],
       val exportedMembers: List[ReachabilityInfo],
       val topLevelExportedMembers: List[ReachabilityInfo],
@@ -44,12 +48,12 @@ object Infos {
 
   object ClassInfo {
     def apply(
-        encodedName: String,
+        encodedName: ClassName,
         isExported: Boolean,
         kind: ClassKind,
-        superClass: Option[String],
-        interfaces: List[String],
-        referencedFieldClasses: List[String],
+        superClass: Option[ClassName],
+        interfaces: List[ClassName],
+        referencedFieldClasses: List[ClassName],
         methods: List[MethodInfo],
         exportedMembers: List[ReachabilityInfo],
         topLevelExportedMembers: List[ReachabilityInfo],
@@ -61,7 +65,7 @@ object Infos {
   }
 
   final class MethodInfo private (
-      val encodedName: String,
+      val encodedName: MethodName,
       val namespace: MemberNamespace,
       val isAbstract: Boolean,
       val reachabilityInfo: ReachabilityInfo
@@ -71,7 +75,7 @@ object Infos {
 
   object MethodInfo {
     def apply(
-        encodedName: String,
+        encodedName: MethodName,
         namespace: MemberNamespace,
         isAbstract: Boolean,
         reachabilityInfo: ReachabilityInfo): MethodInfo = {
@@ -80,19 +84,19 @@ object Infos {
   }
 
   final class ReachabilityInfo private (
-      val privateJSFieldsUsed: Map[String, List[String]],
-      val staticFieldsRead: Map[String, List[String]],
-      val staticFieldsWritten: Map[String, List[String]],
-      val methodsCalled: Map[String, List[String]],
-      val methodsCalledStatically: Map[String, List[NamespacedEncodedName]],
+      val privateJSFieldsUsed: Map[ClassName, List[FieldName]],
+      val staticFieldsRead: Map[ClassName, List[FieldName]],
+      val staticFieldsWritten: Map[ClassName, List[FieldName]],
+      val methodsCalled: Map[ClassName, List[MethodName]],
+      val methodsCalledStatically: Map[ClassName, List[NamespacedEncodedName]],
       /** For a Scala class, it is instantiated with a `New`; for a JS class,
        *  its constructor is accessed with a `JSLoadConstructor`.
        */
-      val instantiatedClasses: List[String],
-      val accessedModules: List[String],
-      val usedInstanceTests: List[String],
-      val accessedClassData: List[String],
-      val referencedClasses: List[String]
+      val instantiatedClasses: List[ClassName],
+      val accessedModules: List[ClassName],
+      val usedInstanceTests: List[ClassName],
+      val accessedClassData: List[ClassName],
+      val referencedClasses: List[ClassName]
   )
 
   object ReachabilityInfo {
@@ -103,16 +107,16 @@ object Infos {
     }
 
     def apply(
-        privateJSFieldsUsed: Map[String, List[String]],
-        staticFieldsRead: Map[String, List[String]],
-        staticFieldsWritten: Map[String, List[String]],
-        methodsCalled: Map[String, List[String]],
-        methodsCalledStatically: Map[String, List[NamespacedEncodedName]],
-        instantiatedClasses: List[String],
-        accessedModules: List[String],
-        usedInstanceTests: List[String],
-        accessedClassData: List[String],
-        referencedClasses: List[String]): ReachabilityInfo = {
+        privateJSFieldsUsed: Map[ClassName, List[FieldName]],
+        staticFieldsRead: Map[ClassName, List[FieldName]],
+        staticFieldsWritten: Map[ClassName, List[FieldName]],
+        methodsCalled: Map[ClassName, List[MethodName]],
+        methodsCalledStatically: Map[ClassName, List[NamespacedEncodedName]],
+        instantiatedClasses: List[ClassName],
+        accessedModules: List[ClassName],
+        usedInstanceTests: List[ClassName],
+        accessedClassData: List[ClassName],
+        referencedClasses: List[ClassName]): ReachabilityInfo = {
       new ReachabilityInfo(privateJSFieldsUsed, staticFieldsRead,
           staticFieldsWritten, methodsCalled, methodsCalledStatically,
           instantiatedClasses, accessedModules, usedInstanceTests,
@@ -120,22 +124,16 @@ object Infos {
     }
   }
 
-  final class ClassInfoBuilder {
-    private var encodedName: String = ""
+  final class ClassInfoBuilder(private val encodedName: ClassName) {
     private var kind: ClassKind = ClassKind.Class
     private var isExported: Boolean = false
-    private var superClass: Option[String] = None
-    private val interfaces = mutable.ListBuffer.empty[String]
-    private val referencedFieldClasses = mutable.Set.empty[String]
+    private var superClass: Option[ClassName] = None
+    private val interfaces = mutable.ListBuffer.empty[ClassName]
+    private val referencedFieldClasses = mutable.Set.empty[ClassName]
     private val methods = mutable.ListBuffer.empty[MethodInfo]
     private val exportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
     private val topLevelExportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
     private var topLevelExportNames: List[String] = Nil
-
-    def setEncodedName(encodedName: String): this.type = {
-      this.encodedName = encodedName
-      this
-    }
 
     def setKind(kind: ClassKind): this.type = {
       this.kind = kind
@@ -147,17 +145,17 @@ object Infos {
       this
     }
 
-    def setSuperClass(superClass: Option[String]): this.type = {
+    def setSuperClass(superClass: Option[ClassName]): this.type = {
       this.superClass = superClass
       this
     }
 
-    def addInterface(interface: String): this.type = {
+    def addInterface(interface: ClassName): this.type = {
       interfaces += interface
       this
     }
 
-    def addInterfaces(interfaces: List[String]): this.type = {
+    def addInterfaces(interfaces: List[ClassName]): this.type = {
       this.interfaces ++= interfaces
       this
     }
@@ -203,33 +201,33 @@ object Infos {
   }
 
   final class ReachabilityInfoBuilder {
-    private val privateJSFieldsUsed = mutable.Map.empty[String, mutable.Set[String]]
-    private val staticFieldsRead = mutable.Map.empty[String, mutable.Set[String]]
-    private val staticFieldsWritten = mutable.Map.empty[String, mutable.Set[String]]
-    private val methodsCalled = mutable.Map.empty[String, mutable.Set[String]]
-    private val methodsCalledStatically = mutable.Map.empty[String, mutable.Set[NamespacedEncodedName]]
-    private val instantiatedClasses = mutable.Set.empty[String]
-    private val accessedModules = mutable.Set.empty[String]
-    private val usedInstanceTests = mutable.Set.empty[String]
-    private val accessedClassData = mutable.Set.empty[String]
-    private val referencedClasses = mutable.Set.empty[String]
+    private val privateJSFieldsUsed = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
+    private val staticFieldsRead = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
+    private val staticFieldsWritten = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
+    private val methodsCalled = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
+    private val methodsCalledStatically = mutable.Map.empty[ClassName, mutable.Set[NamespacedEncodedName]]
+    private val instantiatedClasses = mutable.Set.empty[ClassName]
+    private val accessedModules = mutable.Set.empty[ClassName]
+    private val usedInstanceTests = mutable.Set.empty[ClassName]
+    private val accessedClassData = mutable.Set.empty[ClassName]
+    private val referencedClasses = mutable.Set.empty[ClassName]
 
-    def addPrivateJSFieldUsed(cls: String, field: String): this.type = {
+    def addPrivateJSFieldUsed(cls: ClassName, field: FieldName): this.type = {
       privateJSFieldsUsed.getOrElseUpdate(cls, mutable.Set.empty) += field
       this
     }
 
-    def addStaticFieldRead(cls: String, field: String): this.type = {
+    def addStaticFieldRead(cls: ClassName, field: FieldName): this.type = {
       staticFieldsRead.getOrElseUpdate(cls, mutable.Set.empty) += field
       this
     }
 
-    def addStaticFieldWritten(cls: String, field: String): this.type = {
+    def addStaticFieldWritten(cls: ClassName, field: FieldName): this.type = {
       staticFieldsWritten.getOrElseUpdate(cls, mutable.Set.empty) += field
       this
     }
 
-    def addMethodCalled(receiverTpe: Type, method: String): this.type = {
+    def addMethodCalled(receiverTpe: Type, method: MethodName): this.type = {
       receiverTpe match {
         case ClassType(cls) => addMethodCalled(cls, method)
         case AnyType        => addMethodCalled(ObjectClass, method)
@@ -270,28 +268,28 @@ object Infos {
       this
     }
 
-    def addMethodCalled(cls: String, method: String): this.type = {
+    def addMethodCalled(cls: ClassName, method: MethodName): this.type = {
       methodsCalled.getOrElseUpdate(cls, mutable.Set.empty) += method
       this
     }
 
-    def addMethodCalledStatically(cls: String,
+    def addMethodCalledStatically(cls: ClassName,
         method: NamespacedEncodedName): this.type = {
       methodsCalledStatically.getOrElseUpdate(cls, mutable.Set.empty) += method
       this
     }
 
-    def addInstantiatedClass(cls: String): this.type = {
+    def addInstantiatedClass(cls: ClassName): this.type = {
       instantiatedClasses += cls
       this
     }
 
-    def addInstantiatedClass(cls: String, ctor: String): this.type = {
+    def addInstantiatedClass(cls: ClassName, ctor: MethodName): this.type = {
       addInstantiatedClass(cls).addMethodCalledStatically(cls,
           NamespacedEncodedName(MemberNamespace.Constructor, ctor))
     }
 
-    def addAccessedModule(cls: String): this.type = {
+    def addAccessedModule(cls: ClassName): this.type = {
       accessedModules += cls
       this
     }
@@ -307,7 +305,7 @@ object Infos {
       this
     }
 
-    def addUsedInstanceTest(cls: String): this.type = {
+    def addUsedInstanceTest(cls: ClassName): this.type = {
       usedInstanceTests += cls
       this
     }
@@ -323,7 +321,7 @@ object Infos {
       this
     }
 
-    def addAccessedClassData(cls: String): this.type = {
+    def addAccessedClassData(cls: ClassName): this.type = {
       accessedClassData += cls
       this
     }
@@ -339,7 +337,7 @@ object Infos {
       this
     }
 
-    def addReferencedClass(cls: String): this.type = {
+    def addReferencedClass(cls: ClassName): this.type = {
       referencedClasses += cls
       this
     }
@@ -356,10 +354,8 @@ object Infos {
     }
 
     def result(): ReachabilityInfo = {
-      def toMapOfLists[A](
-          m: mutable.Map[String, mutable.Set[A]]): Map[String, List[A]] = {
+      def toMapOfLists[A, B](m: mutable.Map[A, mutable.Set[B]]): Map[A, List[B]] =
         m.map(kv => kv._1 -> kv._2.toList).toMap
-      }
 
       ReachabilityInfo(
           privateJSFieldsUsed = toMapOfLists(privateJSFieldsUsed),
@@ -380,8 +376,7 @@ object Infos {
    *  [[org.scalajs.ir.Trees.ClassDef Trees.ClassDef]].
    */
   def generateClassInfo(classDef: ClassDef): ClassInfo = {
-    val builder = new ClassInfoBuilder()
-      .setEncodedName(classDef.name.name)
+    val builder = new ClassInfoBuilder(classDef.name.name)
       .setKind(classDef.kind)
       .setSuperClass(classDef.superClass.map(_.name))
       .addInterfaces(classDef.interfaces.map(_.name))
@@ -433,7 +428,7 @@ object Infos {
     new GenInfoTraverser().generateJSPropertyInfo(propertyDef)
 
   /** Generates the [[MethodInfo]] for the top-level exports. */
-  def generateTopLevelExportsInfo(enclosingClass: String,
+  def generateTopLevelExportsInfo(enclosingClass: ClassName,
       topLevelExportDefs: List[TopLevelExportDef]): Option[ReachabilityInfo] = {
 
     var topLevelMethodExports: List[TopLevelMethodExportDef] = Nil
@@ -492,7 +487,7 @@ object Infos {
       builder.result()
     }
 
-    def generateTopLevelExportsInfo(enclosingClass: String,
+    def generateTopLevelExportsInfo(enclosingClass: ClassName,
         topLevelMethodExports: List[TopLevelMethodExportDef],
         topLevelFieldExports: List[TopLevelFieldExportDef]): ReachabilityInfo = {
 
@@ -517,8 +512,8 @@ object Infos {
         /* Do not call super.traverse() so that the field is not also marked as
          * read.
          */
-        case Assign(SelectStatic(ClassRef(cls), Ident(field, _)), rhs) =>
-          builder.addStaticFieldWritten(cls, field)
+        case Assign(SelectStatic(ClassRef(cls), field), rhs) =>
+          builder.addStaticFieldWritten(cls, field.name)
           traverse(rhs)
 
         // In all other cases, we'll have to call super.traverse()
@@ -529,11 +524,11 @@ object Infos {
 
             case Select(_, ClassRef(cls), _) =>
               builder.addReferencedClass(cls)
-            case SelectStatic(ClassRef(cls), Ident(field, _)) =>
-              builder.addStaticFieldRead(cls, field)
+            case SelectStatic(ClassRef(cls), field) =>
+              builder.addStaticFieldRead(cls, field.name)
 
-            case Apply(flags, receiver, Ident(method, _), _) =>
-              builder.addMethodCalled(receiver.tpe, method)
+            case Apply(flags, receiver, method, _) =>
+              builder.addMethodCalled(receiver.tpe, method.name)
             case ApplyStatically(flags, _, ClassRef(cls), method, _) =>
               val namespace = MemberNamespace.forNonStaticCall(flags)
               builder.addMethodCalledStatically(cls,
@@ -554,8 +549,10 @@ object Infos {
             case BinaryOp(op, _, rhs) =>
               import BinaryOp._
 
-              def addArithmeticException(): Unit =
-                builder.addInstantiatedClass("jl_ArithmeticException", "init___T")
+              def addArithmeticException(): Unit = {
+                builder.addInstantiatedClass(ArithmeticExceptionClass,
+                    StringArgConstructorName)
+              }
 
               op match {
                 case Int_/ | Int_% =>

@@ -49,9 +49,22 @@ class PrintersTest {
     assertEquals(expected.stripMargin.trim, sw.toString())
   }
 
-  private implicit def string2ident(name: String): Ident = Ident(name)
-  private implicit def string2classType(cls: String): ClassType = ClassType(cls)
-  private implicit def string2classRef(cls: String): ClassRef = ClassRef(cls)
+  private implicit def string2localIdent(name: String): LocalIdent =
+    LocalIdent(LocalName(name))
+  private implicit def string2labelIdent(name: String): LabelIdent =
+    LabelIdent(LabelName(name))
+  private implicit def string2fieldIdent(name: String): FieldIdent =
+    FieldIdent(FieldName(name))
+  private implicit def string2methodIdent(name: String): MethodIdent =
+    MethodIdent(MethodName(name))
+  private implicit def string2classIdent(name: String): ClassIdent =
+    ClassIdent(ClassName(name))
+  private implicit def string2classType(cls: String): ClassType =
+    ClassType(ClassName(cls))
+  private implicit def string2classRef(cls: String): ClassRef =
+    ClassRef(ClassName(cls))
+  private implicit def string2fieldName(name: String): FieldName =
+    FieldName(name)
 
   private def b(value: Boolean): BooleanLiteral = BooleanLiteral(value)
   private def i(value: Int): IntLiteral = IntLiteral(value)
@@ -59,7 +72,7 @@ class PrintersTest {
   private def f(value: Float): FloatLiteral = FloatLiteral(value)
   private def d(value: Double): DoubleLiteral = DoubleLiteral(value)
 
-  private def ref(ident: Ident, tpe: Type): VarRef = VarRef(ident)(tpe)
+  private def ref(ident: LocalIdent, tpe: Type): VarRef = VarRef(ident)(tpe)
 
   private def arrayType(baseClassName: String, dimensions: Int): ArrayType =
     ArrayType(ArrayTypeRef(baseClassName, dimensions))
@@ -949,8 +962,8 @@ class PrintersTest {
   }
 
   @Test def printClassDefParents(): Unit = {
-    def makeForParents(superClass: Option[Ident],
-        interfaces: List[Ident]): ClassDef = {
+    def makeForParents(superClass: Option[ClassIdent],
+        interfaces: List[ClassIdent]): ClassDef = {
       ClassDef("LTest", ClassKind.Class, None, superClass, interfaces, None,
           None, Nil, Nil)(
           NoOptHints)

@@ -14,26 +14,68 @@ package org.scalajs.ir
 
 import scala.annotation.switch
 
+import Trees.isValidJSIdentifier
 import Types._
 
 object Definitions {
+  type LocalName <: String
+
+  def LocalName(name: String): LocalName = {
+    require(isValidJSIdentifier(name), "Invalid local name: " + name)
+    name.asInstanceOf[LocalName]
+  }
+
+  type LabelName <: String
+
+  def LabelName(name: String): LabelName = {
+    require(isValidJSIdentifier(name), "Invalid label name: " + name)
+    name.asInstanceOf[LabelName]
+  }
+
+  type FieldName <: String
+
+  def FieldName(name: String): FieldName = {
+    require(isValidJSIdentifier(name), "Invalid field name: " + name)
+    name.asInstanceOf[FieldName]
+  }
+
+  type MethodName <: String
+
+  def MethodName(name: String): MethodName = {
+    require(isValidJSIdentifier(name), "Invalid method name: " + name)
+    name.asInstanceOf[MethodName]
+  }
+
+  type ClassName <: String
+
+  def ClassName(name: String): ClassName = {
+    /* Because of pos/t9392, which generates a class whose full name is
+     * `<local Client>$C`, we cannot actually validate class names. It has
+     * worked so far because that test does not go through the linker. It will
+     * properly work again once we delay mangling to the emitter, which is why
+     * we avoid the validation rather than disabling the test.
+     */
+    // require(isValidJSIdentifier(name), "Invalid class name: " + name)
+    name.asInstanceOf[ClassName]
+  }
+
   /** `java.lang.Object`, the root of the class hierarchy. */
-  val ObjectClass = "O"
+  val ObjectClass: ClassName = ClassName("O")
 
   // Hijacked classes
-  val BoxedUnitClass = "jl_Void"
-  val BoxedBooleanClass = "jl_Boolean"
-  val BoxedCharacterClass = "jl_Character"
-  val BoxedByteClass = "jl_Byte"
-  val BoxedShortClass = "jl_Short"
-  val BoxedIntegerClass = "jl_Integer"
-  val BoxedLongClass = "jl_Long"
-  val BoxedFloatClass = "jl_Float"
-  val BoxedDoubleClass = "jl_Double"
-  val BoxedStringClass = "T"
+  val BoxedUnitClass: ClassName = ClassName("jl_Void")
+  val BoxedBooleanClass: ClassName = ClassName("jl_Boolean")
+  val BoxedCharacterClass: ClassName = ClassName("jl_Character")
+  val BoxedByteClass: ClassName = ClassName("jl_Byte")
+  val BoxedShortClass: ClassName = ClassName("jl_Short")
+  val BoxedIntegerClass: ClassName = ClassName("jl_Integer")
+  val BoxedLongClass: ClassName = ClassName("jl_Long")
+  val BoxedFloatClass: ClassName = ClassName("jl_Float")
+  val BoxedDoubleClass: ClassName = ClassName("jl_Double")
+  val BoxedStringClass: ClassName = ClassName("T")
 
   /** The set of all hijacked classes. */
-  val HijackedClasses: Set[String] = Set(
+  val HijackedClasses: Set[ClassName] = Set(
       BoxedUnitClass,
       BoxedBooleanClass,
       BoxedCharacterClass,
@@ -47,20 +89,26 @@ object Definitions {
   )
 
   /** The class of things returned by `ClassOf` and `GetClass`. */
-  val ClassClass = "jl_Class"
+  val ClassClass: ClassName = ClassName("jl_Class")
+
+  /** Name of a constructor without argument.
+   *
+   *  This is notably the signature of constructors of module classes.
+   */
+  final val NoArgConstructorName: MethodName = MethodName("init___")
 
   /** Name of the static initializer method. */
-  final val StaticInitializerName = "clinit___"
+  final val StaticInitializerName: MethodName = MethodName("clinit___")
 
   /** Encodes a class name. */
-  def encodeClassName(fullName: String): String = {
+  def encodeClassName(fullName: String): ClassName = {
     val base = fullName.replace("_", "$und").replace(".", "_")
     compressedClasses.getOrElse(base, {
       compressedPrefixes.collectFirst {
         case (prefix, compressed) if base.startsWith(prefix) =>
-          compressed + base.substring(prefix.length)
-      } getOrElse {
-        "L" + base
+          ClassName(compressed + base.substring(prefix.length))
+      }.getOrElse {
+        ClassName("L" + base)
       }
     })
   }
@@ -68,7 +116,7 @@ object Definitions {
   // !!! Duplicate logic: this code must be in sync with runtime.StackTrace
 
   /** Decodes a class name encoded with [[encodeClassName]]. */
-  def decodeClassName(encodedName: String): String = {
+  def decodeClassName(encodedName: ClassName): String = {
     val base = decompressedClasses.getOrElse(encodedName, {
       decompressedPrefixes.collectFirst {
         case (prefix, decompressed) if encodedName.startsWith(prefix) =>
@@ -82,18 +130,18 @@ object Definitions {
     base.replace("_", ".").replace("$und", "_")
   }
 
-  private val compressedClasses: Map[String, String] = Map(
-      "java_lang_Object" -> "O",
-      "java_lang_String" -> "T"
+  private val compressedClasses: Map[String, ClassName] = Map(
+      "java_lang_Object" -> ObjectClass,
+      "java_lang_String" -> BoxedStringClass
   ) ++ (
       for (index <- 2 to 22)
-        yield s"scala_Tuple$index" -> ("T"+index)
+        yield s"scala_Tuple$index" -> ClassName("T" + index)
   ) ++ (
       for (index <- 0 to 22)
-        yield s"scala_Function$index" -> ("F"+index)
+        yield s"scala_Function$index" -> ClassName("F" + index)
   )
 
-  private val decompressedClasses: Map[String, String] =
+  private val decompressedClasses: Map[ClassName, String] =
     compressedClasses map { case (a, b) => (b, a) }
 
   private val compressedPrefixes = Seq(
@@ -114,7 +162,7 @@ object Definitions {
 
   /** Encodes a method name from its full signature. */
   def encodeMethodName(baseName: String, paramTypes: List[TypeRef],
-      resultType: Option[TypeRef]): String = {
+      resultType: Option[TypeRef]): MethodName = {
 
     val paramTypesString = paramTypes.map(encodeTypeRef).mkString("__")
 
@@ -124,16 +172,18 @@ object Definitions {
     } else if (baseName == "<init>") {
       assert(resultType.isEmpty)
       paramTypes.map(encodeTypeRef).mkString("init___", "__", "")
+        .asInstanceOf[MethodName]
     } else {
       val resultTypeString = resultType.fold("")(encodeTypeRef)
-      (paramTypes.map(encodeTypeRef) :+ resultTypeString).mkString(
-          baseName + "__", "__", "")
+      (paramTypes.map(encodeTypeRef) :+ resultTypeString)
+        .mkString(baseName + "__", "__", "")
+        .asInstanceOf[MethodName]
     }
   }
 
   /** Decodes a method name into its full signature. */
   def decodeMethodName(
-      encodedName: String): (String, List[TypeRef], Option[TypeRef]) = {
+      encodedName: MethodName): (String, List[TypeRef], Option[TypeRef]) = {
     val (simpleName, privateAndSigString) = if (isConstructorName(encodedName)) {
       val privateAndSigString =
         if (encodedName == "init___") ""
@@ -202,10 +252,10 @@ object Definitions {
           case 'D' => DoubleRef
           case 'N' => NullRef
           case 'E' => NothingRef
-          case _   => ClassRef(encodedName.substring(arrayDepth))
+          case _   => ClassRef(ClassName(encodedName.substring(arrayDepth)))
         }
       } else {
-        ClassRef(encodedName.substring(arrayDepth))
+        ClassRef(ClassName(encodedName.substring(arrayDepth)))
       }
     }
     if (arrayDepth == 0)
@@ -216,10 +266,10 @@ object Definitions {
 
   /* Common predicates on encoded names */
 
-  def isConstructorName(name: String): Boolean =
+  def isConstructorName(name: MethodName): Boolean =
     name.startsWith("init___")
 
-  def isReflProxyName(name: String): Boolean = {
+  def isReflProxyName(name: MethodName): Boolean = {
     name.endsWith("__") &&
     !isConstructorName(name) &&
     name != StaticInitializerName

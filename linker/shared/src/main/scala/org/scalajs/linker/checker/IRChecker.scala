@@ -41,8 +41,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   /* Per-method state (setup with withPerMethodState).
    * This state is reset per-Closure as well.
    */
-  private var declaredLocalVarNamesPerMethod: mutable.Set[String] = _
-  private var declaredLabelNamesPerMethod: mutable.Set[String] = _
+  private var declaredLocalVarNamesPerMethod: mutable.Set[LocalName] = _
+  private var declaredLabelNamesPerMethod: mutable.Set[LabelName] = _
 
   private def withPerMethodState[A](body: => A): A = {
     val savedDeclaredLocalVarNamesPerMethod = declaredLocalVarNamesPerMethod
@@ -57,7 +57,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  private val classes: mutable.Map[String, CheckedClass] = {
+  private val classes: mutable.Map[ClassName, CheckedClass] = {
     val tups = for (classDef <- unit.classDefs) yield {
       implicit val ctx = ErrorContext(classDef)
       val c = new CheckedClass(classDef)
@@ -115,7 +115,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             "cannot have class captures")
       }
 
-      classCaptures.foldLeft(Set.empty[String]) {
+      classCaptures.foldLeft(Set.empty[LocalName]) {
         case (alreadyDeclared, p @ ParamDef(ident, tpe, mutable, rest)) =>
           implicit val ctx = ErrorContext(p)
           val name = ident.name
@@ -276,9 +276,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       val tree = method.value
       implicit val ctx = ErrorContext(tree)
 
-      assert(tree.name.isInstanceOf[Ident],
-          "Normal method must have Ident as name")
-
       checkMethodDef(tree, classDef)
     }
   }
@@ -310,7 +307,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   private def checkMethodDef(methodDef: MethodDef,
       classDef: LinkedClass): Unit = withPerMethodState {
 
-    val MethodDef(flags, Ident(name, _), params, resultType, body) = methodDef
+    val MethodDef(flags, MethodIdent(name, _), params, resultType, body) =
+      methodDef
     implicit val ctx = ErrorContext(methodDef)
 
     val namespace = flags.namespace
@@ -547,10 +545,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case Assign(select, rhs) =>
         select match {
-          case Select(This(), ClassRef(cls), Ident(_, _))
+          case Select(This(), ClassRef(cls), FieldIdent(_, _))
               if env.inConstructor && env.thisTpe == ClassType(cls) =>
             // ok
-          case Select(receiver, ClassRef(cls), Ident(name, _)) =>
+          case Select(receiver, ClassRef(cls), FieldIdent(name, _)) =>
             val c = lookupClass(cls)
             for {
               f <- c.lookupField(name)
@@ -558,7 +556,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             } {
               reportError(s"Assignment to immutable field $name.")
             }
-          case SelectStatic(ClassRef(cls), Ident(name, _)) =>
+          case SelectStatic(ClassRef(cls), FieldIdent(name, _)) =>
             val c = lookupClass(cls)
             for {
               f <- c.lookupStaticField(name)
@@ -566,7 +564,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             } {
               reportError(s"Assignment to immutable static field $name.")
             }
-          case VarRef(Ident(name, _)) if !env.locals(name).mutable =>
+          case VarRef(LocalIdent(name, _)) if !env.locals(name).mutable =>
             reportError(s"Assignment to immutable variable $name.")
           case _ =>
         }
@@ -679,7 +677,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   private def typecheck(tree: Tree, env: Env): Type = {
     implicit val ctx = ErrorContext(tree)
 
-    def checkApplyGeneric(methodName: String, methodFullName: String,
+    def checkApplyGeneric(methodName: MethodName, methodFullName: String,
         args: List[Tree], tpe: Type, isStatic: Boolean): Unit = {
       val (methodParams, resultType) = inferMethodType(methodName, isStatic)
       if (args.size != methodParams.size)
@@ -760,7 +758,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         if (!cls.className.endsWith("$"))
           reportError("LoadModule of non-module class $cls")
 
-      case Select(qualifier, ClassRef(cls), Ident(item, _)) =>
+      case Select(qualifier, ClassRef(cls), FieldIdent(item, _)) =>
         val c = lookupClass(cls)
         val kind = c.kind
         if (!kind.isClass) {
@@ -791,7 +789,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           }
         }
 
-      case SelectStatic(ClassRef(cls), Ident(item, _)) =>
+      case SelectStatic(ClassRef(cls), FieldIdent(item, _)) =>
         val checkedClass = lookupClass(cls)
         if (checkedClass.kind.isJSType) {
           reportError(s"Cannot select static $item of JS type $cls")
@@ -805,7 +803,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           }
         }
 
-      case Apply(flags, receiver, Ident(method, _), args) =>
+      case Apply(flags, receiver, MethodIdent(method, _), args) =>
         if (flags.isPrivate)
           reportError(s"Illegal flag for Apply: Private")
         val receiverType = typecheckExpr(receiver, env)
@@ -836,12 +834,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             typecheckExpr(arg, env)
         }
 
-      case ApplyStatically(_, receiver, cls, Ident(method, _), args) =>
+      case ApplyStatically(_, receiver, cls, MethodIdent(method, _), args) =>
         typecheckExpect(receiver, env, ClassType(cls.className))
         checkApplyGeneric(method, s"$cls.$method", args, tree.tpe,
             isStatic = false)
 
-      case ApplyStatic(_, cls, Ident(method, _), args) =>
+      case ApplyStatic(_, cls, MethodIdent(method, _), args) =>
         val clazz = lookupClass(cls)
         checkApplyGeneric(method, s"$cls.$method", args, tree.tpe,
             isStatic = true)
@@ -1045,7 +1043,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       // Atomic expressions
 
-      case VarRef(Ident(name, _)) =>
+      case VarRef(LocalIdent(name, _)) =>
         env.locals.get(name).fold[Unit] {
           reportError(s"Cannot find variable $name in scope")
         } { localDef =>
@@ -1130,13 +1128,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  private def checkDeclareLocalVar(ident: Ident)(
+  private def checkDeclareLocalVar(ident: LocalIdent)(
       implicit ctx: ErrorContext): Unit = {
     if (!declaredLocalVarNamesPerMethod.add(ident.name))
       reportError(s"Duplicate local variable name ${ident.name}.")
   }
 
-  private def checkDeclareLabel(label: Ident)(
+  private def checkDeclareLabel(label: LabelIdent)(
       implicit ctx: ErrorContext): Unit = {
     if (!declaredLabelNamesPerMethod.add(label.name))
       reportError(s"Duplicate label named ${label.name}.")
@@ -1179,7 +1177,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  private def inferMethodType(encodedName: String, isStatic: Boolean)(
+  private def inferMethodType(encodedName: MethodName, isStatic: Boolean)(
       implicit ctx: ErrorContext): (List[Type], Type) = {
 
     val (_, paramTypeRefs, resultTypeRef) = decodeMethodName(encodedName)
@@ -1205,7 +1203,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  private def classNameToType(encodedName: String)(
+  private def classNameToType(encodedName: ClassName)(
       implicit ctx: ErrorContext): Type = {
     if (encodedName == ObjectClass) {
       AnyType
@@ -1235,7 +1233,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     errorCount += 1
   }
 
-  private def lookupClass(className: String)(
+  private def lookupClass(className: ClassName)(
       implicit ctx: ErrorContext): CheckedClass = {
     classes.getOrElseUpdate(className, {
       reportError(s"Cannot find class $className")
@@ -1254,7 +1252,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     lookupClass(classRef.className)
   }
 
-  private def isSubclass(lhs: String, rhs: String)(
+  private def isSubclass(lhs: ClassName, rhs: ClassName)(
       implicit ctx: ErrorContext): Boolean = {
     lookupClass(lhs).ancestors.contains(rhs)
   }
@@ -1268,9 +1266,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       /** Type of `this`. Can be NoType. */
       val thisTpe: Type,
       /** Local variables in scope (including through closures). */
-      val locals: Map[String, LocalDef],
+      val locals: Map[LocalName, LocalDef],
       /** Return types by label. */
-      val returnTypes: Map[String, Type],
+      val returnTypes: Map[LabelName, Type],
       /** Whether we're in a constructor of the class */
       val inConstructor: Boolean
   ) {
@@ -1284,7 +1282,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           this.inConstructor)
     }
 
-    def withLabeledReturnType(label: String, returnType: Type): Env =
+    def withLabeledReturnType(label: LabelName, returnType: Type): Env =
       new Env(this.thisTpe, this.locals,
           returnTypes + (label -> returnType), this.inConstructor)
 
@@ -1307,11 +1305,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private class CheckedClass(
-      val name: String,
+      val name: ClassName,
       val kind: ClassKind,
       val jsClassCaptures: Option[List[ParamDef]],
-      val superClassName: Option[String],
-      val ancestors: Set[String],
+      val superClassName: Option[ClassName],
+      val ancestors: Set[ClassName],
       val hasInstances: Boolean,
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
       _fields: List[CheckedField])(
@@ -1332,23 +1330,23 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           CheckedClass.checkedFieldsOf(classDef))
     }
 
-    def lookupField(name: String): Option[CheckedField] =
+    def lookupField(name: FieldName): Option[CheckedField] =
       fields.get(name)
 
-    def lookupStaticField(name: String): Option[CheckedField] =
+    def lookupStaticField(name: FieldName): Option[CheckedField] =
       staticFields.get(name)
   }
 
   private object CheckedClass {
     private def checkedFieldsOf(classDef: LinkedClass): List[CheckedField] = {
       classDef.fields.collect {
-        case FieldDef(flags, Ident(name, _), tpe) =>
+        case FieldDef(flags, FieldIdent(name, _), tpe) =>
           new CheckedField(flags, name, tpe)
       }
     }
   }
 
-  private class CheckedField(val flags: MemberFlags, val name: String,
+  private class CheckedField(val flags: MemberFlags, val name: FieldName,
       val tpe: Type)
 }
 
@@ -1403,6 +1401,6 @@ object IRChecker {
       new ErrorContext(linkedClass)
   }
 
-  private case class LocalDef(name: String, tpe: Type, mutable: Boolean)(
+  private case class LocalDef(name: LocalName, tpe: Type, mutable: Boolean)(
       val pos: Position)
 }

@@ -100,13 +100,15 @@ class OptimizerTest {
 
     for (linkingUnit <- linkToLinkingUnit(classDefs, MainTestModuleInitializers)) yield {
       val linkedClass = linkingUnit.classDefs.find(_.encodedName == MainTestClassDefEncodedName).get
+      val WitnessMethodName = MethodName("witness__O")
+      val CloneMethodName = MethodName("clone__O")
       linkedClass.hasNot("any call to Foo.witness()") {
-        case Apply(_, receiver, Ident("witness__O", _), _) =>
+        case Apply(_, receiver, MethodIdent(WitnessMethodName, _), _) =>
           receiver.tpe == ClassType("LFoo")
       }.hasNot("any reference to ObjectClone") {
         case LoadModule(ClassRef("jl_ObjectClone$")) => true
       }.hasExactly(3, "calls to clone()") {
-        case Apply(_, _, Ident("clone__O", _), _) => true
+        case Apply(_, _, MethodIdent(CloneMethodName, _), _) => true
       }
     }
   }

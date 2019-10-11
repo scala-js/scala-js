@@ -12,7 +12,8 @@
 
 package org.scalajs.linker.backend.emitter
 
-import org.scalajs.ir.Trees.{AnyFieldDef, Ident, JSNativeLoadSpec}
+import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Trees.{AnyFieldDef, JSNativeLoadSpec}
 import org.scalajs.ir.Types.Type
 
 private[emitter] trait GlobalKnowledge {
@@ -20,7 +21,7 @@ private[emitter] trait GlobalKnowledge {
   def isParentDataAccessed: Boolean
 
   /** Tests whether the specified class name refers to an `Interface`. */
-  def isInterface(className: String): Boolean
+  def isInterface(className: ClassName): Boolean
 
   /** All the `FieldDef`s, included inherited ones, of a Scala class.
    *
@@ -28,7 +29,7 @@ private[emitter] trait GlobalKnowledge {
    *  `ModuleClass`.
    */
   def getAllScalaClassFieldDefs(
-      className: String): List[(String, List[AnyFieldDef])]
+      className: ClassName): List[(ClassName, List[AnyFieldDef])]
 
   /** Tests whether the specified class uses an inlineable init.
    *
@@ -42,13 +43,13 @@ private[emitter] trait GlobalKnowledge {
    *  new \$c_Foo().init___XY(args)
    *  }}}
    */
-  def hasInlineableInit(className: String): Boolean
+  def hasInlineableInit(className: ClassName): Boolean
 
   /** Tests whether the specified class locally stores its super class. */
-  def hasStoredSuperClass(className: String): Boolean
+  def hasStoredSuperClass(className: ClassName): Boolean
 
   /** Gets the types of the `jsClassCaptures` of the given class. */
-  def getJSClassCaptureTypes(className: String): Option[List[Type]]
+  def getJSClassCaptureTypes(className: ClassName): Option[List[Type]]
 
   /** `None` for non-native JS classes/objects; `Some(spec)` for native JS
    *  classes/objects.
@@ -56,22 +57,22 @@ private[emitter] trait GlobalKnowledge {
    *  It is invalid to call this method with a class that is not a JS class
    *  or object (native or not), or one that has JS class captures.
    */
-  def getJSNativeLoadSpec(className: String): Option[JSNativeLoadSpec]
+  def getJSNativeLoadSpec(className: ClassName): Option[JSNativeLoadSpec]
 
   /** The `encodedName` of the superclass of a (non-native) JS class.
    *
    *  It is invalid to call this method with a class that is not a non-native
    *  JS class.
    */
-  def getSuperClassOfJSClass(className: String): String
+  def getSuperClassOfJSClass(className: ClassName): ClassName
 
   /** The `FieldDef`s of a non-native JS class.
    *
    *  It is invalid to call this method with a class that is not a non-native
    *  JS class.
    */
-  def getJSClassFieldDefs(className: String): List[AnyFieldDef]
+  def getJSClassFieldDefs(className: ClassName): List[AnyFieldDef]
 
   /** The global variables that mirror a given static field. */
-  def getStaticFieldMirrors(className: String, field: String): List[String]
+  def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String]
 }

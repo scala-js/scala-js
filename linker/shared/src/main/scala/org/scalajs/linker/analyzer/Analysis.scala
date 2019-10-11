@@ -20,7 +20,7 @@ import org.scalajs.logging._
 
 import org.scalajs.ir
 import org.scalajs.ir.ClassKind
-import org.scalajs.ir.Definitions.{decodeClassName, decodeMethodName}
+import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Trees.MemberNamespace
 import org.scalajs.ir.Types._
 
@@ -33,7 +33,7 @@ import org.scalajs.ir.Types._
 trait Analysis {
   import Analysis._
 
-  def classInfos: scala.collection.Map[String, ClassInfo]
+  def classInfos: scala.collection.Map[ClassName, ClassInfo]
   def errors: scala.collection.Seq[Error]
 }
 
@@ -60,7 +60,7 @@ object Analysis {
    *  versions, possibly causing `LinkageError`s if you extend it.
    */
   trait ClassInfo {
-    def encodedName: String
+    def encodedName: ClassName
     def kind: ClassKind
     def superClass: Option[ClassInfo]
     def interfaces: scala.collection.Seq[ClassInfo]
@@ -80,7 +80,7 @@ object Analysis {
     def linkedFrom: scala.collection.Seq[From]
     def instantiatedFrom: scala.collection.Seq[From]
     def methodInfos(
-        namespace: MemberNamespace): scala.collection.Map[String, MethodInfo]
+        namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
 
     def displayName: String = decodeClassName(encodedName)
   }
@@ -93,7 +93,7 @@ object Analysis {
    */
   trait MethodInfo {
     def owner: ClassInfo
-    def encodedName: String
+    def encodedName: MethodName
     def namespace: MemberNamespace
     def isAbstract: Boolean
     def isReflProxy: Boolean
@@ -145,7 +145,8 @@ object Analysis {
      *  }
      *  }}}
      */
-    final case class ReflectiveProxy(target: String) extends MethodSyntheticKind
+    final case class ReflectiveProxy(target: MethodName)
+        extends MethodSyntheticKind
 
     /** Bridge to a default method.
      *
@@ -161,7 +162,8 @@ object Analysis {
      *  }
      *  }}}
      */
-    final case class DefaultBridge(targetInterface: String) extends MethodSyntheticKind
+    final case class DefaultBridge(targetInterface: ClassName)
+        extends MethodSyntheticKind
   }
 
   sealed trait Error {
@@ -170,7 +172,7 @@ object Analysis {
 
   final case class MissingJavaLangObjectClass(from: From) extends Error
   final case class InvalidJavaLangObjectClass(from: From) extends Error
-  final case class CycleInInheritanceChain(encodedClassNames: List[String], from: From) extends Error
+  final case class CycleInInheritanceChain(encodedClassNames: List[ClassName], from: From) extends Error
   final case class MissingClass(info: ClassInfo, from: From) extends Error
 
   final case class MissingSuperClass(subClassInfo: ClassInfo, from: From)

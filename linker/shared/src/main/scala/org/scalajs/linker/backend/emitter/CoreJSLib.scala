@@ -23,6 +23,8 @@ import org.scalajs.ir.Types._
 import org.scalajs.linker.interface.{CheckedBehavior, ModuleKind}
 import org.scalajs.linker.backend.javascript.Trees._
 
+import EmitterDefinitions._
+
 private[emitter] object CoreJSLib {
 
   def build(jsGen: JSGen): WithGlobals[Tree] =
@@ -336,7 +338,7 @@ private[emitter] object CoreJSLib {
         val classFullName = varRef("classFullName")
         buf += envFunctionDef("throwClassCastException", paramList(instance, classFullName), {
           Throw(maybeWrapInUBE(asInstanceOfs, {
-            genScalaClassNew("jl_ClassCastException", "init___T",
+            genScalaClassNew(ClassCastExceptionClass, StringArgConstructorName,
                 instance + str(" is not an instance of ") + classFullName)
           }))
         })
@@ -361,7 +363,8 @@ private[emitter] object CoreJSLib {
         val msg = varRef("msg")
         buf += envFunctionDef("throwArrayIndexOutOfBoundsException", paramList(i), {
           Throw(maybeWrapInUBE(arrayIndexOutOfBounds, {
-            genScalaClassNew("jl_ArrayIndexOutOfBoundsException", "init___T",
+            genScalaClassNew(ArrayIndexOutOfBoundsExceptionClass,
+                StringArgConstructorName,
                 If(i === Null(), Null(), str("") + i))
           }))
         })
@@ -462,7 +465,7 @@ private[emitter] object CoreJSLib {
               }
           ), {
             If(instance === Null(), {
-              Return(Apply(instance DOT "getClass__jl_Class", Nil))
+              Return(Apply(instance DOT getClassMethodName, Nil))
             }, {
               If(genIsInstanceOfHijackedClass(instance, BoxedLongClass), {
                 Return(genClassOf(BoxedLongClass))
@@ -508,7 +511,8 @@ private[emitter] object CoreJSLib {
           If(genIsScalaJSObjectOrNull(instance), {
             Return(Apply(instance DOT "clone__O", Nil))
           }, {
-            Throw(genScalaClassNew("jl_CloneNotSupportedException", "init___"))
+            Throw(genScalaClassNew(CloneNotSupportedExceptionClass,
+                NoArgConstructorName))
           })
         })
       }
@@ -531,11 +535,11 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      def defineStandardDispatcher(methodName: String, args: List[VarRef],
+      def defineStandardDispatcher(methodName: MethodName, args: List[VarRef],
           implementationInObject: Option[Tree],
-          implementingHijackedClasses: List[String]): Unit = {
+          implementingHijackedClasses: List[ClassName]): Unit = {
 
-        def hijackedClassNameToTypeof(className: String): Option[String] = className match {
+        def hijackedClassNameToTypeof(className: ClassName): Option[String] = className match {
           case BoxedStringClass  => Some("string")
           case BoxedDoubleClass  => Some("number")
           case BoxedBooleanClass => Some("boolean")
@@ -543,12 +547,12 @@ private[emitter] object CoreJSLib {
           case _                 => None
         }
 
-        def genHijackedMethodApply(className: String): Tree = {
+        def genHijackedMethodApply(className: ClassName): Tree = {
           val fullName = className + "__" + methodName
           Apply(envField("f", fullName), (instance :: args): List[VarRef])
         }
 
-        def genBodyNoSwitch(implementingHijackedClasses: List[String]): Tree = {
+        def genBodyNoSwitch(implementingHijackedClasses: List[ClassName]): Tree = {
           val normalCall = Apply(instance DOT methodName, args)
           val defaultCall: Tree = Return(implementationInObject.getOrElse(normalCall))
 
@@ -593,33 +597,34 @@ private[emitter] object CoreJSLib {
 
       val rhs = varRef("rhs")
 
-      defineStandardDispatcher("equals__O__Z", varRef("rhs") :: Nil,
+      defineStandardDispatcher(equalsMethodName, varRef("rhs") :: Nil,
           Some(instance === rhs),
           List(BoxedDoubleClass, BoxedLongClass, BoxedCharacterClass))
 
-      defineStandardDispatcher("hashCode__I", Nil,
+      defineStandardDispatcher(hashCodeMethodName, Nil,
           Some(genCallHelper("systemIdentityHashCode", instance)),
           List(BoxedStringClass, BoxedDoubleClass, BoxedBooleanClass,
               BoxedUnitClass, BoxedLongClass, BoxedCharacterClass))
 
-      defineStandardDispatcher("compareTo__O__I", varRef("rhs") :: Nil,
+      defineStandardDispatcher(compareToMethodName, varRef("rhs") :: Nil,
           None,
           List(BoxedStringClass, BoxedDoubleClass, BoxedBooleanClass,
               BoxedLongClass, BoxedCharacterClass))
 
-      defineStandardDispatcher("length__I", Nil, None,
+      defineStandardDispatcher(lengthMethodName, Nil, None,
           List(BoxedStringClass))
 
-      defineStandardDispatcher("charAt__I__C", varRef("index") :: Nil, None,
+      defineStandardDispatcher(charAtMethodName, varRef("index") :: Nil, None,
           List(BoxedStringClass))
 
-      defineStandardDispatcher("subSequence__I__I__jl_CharSequence",
+      defineStandardDispatcher(subSequenceMethodName,
           varRef("start") :: varRef("end") :: Nil, None,
           List(BoxedStringClass))
 
       for {
-        methodName <- List("byteValue__B", "shortValue__S", "intValue__I",
-            "longValue__J", "floatValue__F", "doubleValue__D")
+        methodName <- List(byteValueMethodName, shortValueMethodName,
+            intValueMethodName, longValueMethodName, floatValueMethodName,
+            doubleValueMethodName)
       } {
         defineStandardDispatcher(methodName, Nil, None,
             List(BoxedDoubleClass, BoxedLongClass))
@@ -630,8 +635,10 @@ private[emitter] object CoreJSLib {
       val x = varRef("x")
       val y = varRef("y")
 
-      val throwDivByZero =
-        Throw(genScalaClassNew("jl_ArithmeticException", "init___T", str("/ by zero")))
+      val throwDivByZero = {
+        Throw(genScalaClassNew(ArithmeticExceptionClass,
+            StringArgConstructorName, str("/ by zero")))
+      }
 
       locally {
         buf += envFunctionDef("intDiv", paramList(x, y), {
@@ -973,7 +980,7 @@ private[emitter] object CoreJSLib {
 
       if (asInstanceOfs != CheckedBehavior.Unchecked) {
         // Unboxes for everything
-        def defineUnbox(name: String, boxedClassName: String, resultExpr: Tree): Unit = {
+        def defineUnbox(name: String, boxedClassName: ClassName, resultExpr: Tree): Unit = {
           val fullName = decodeClassName(boxedClassName)
           buf += envFunctionDef(name, paramList(v), Return {
             If(genIsInstanceOfHijackedClass(v, boxedClassName) || (v === Null()),
@@ -1222,8 +1229,8 @@ private[emitter] object CoreJSLib {
               privateFieldSet("parentData", genClassDataOf(ObjectClass)),
               privateFieldSet("ancestors", ObjectConstr(List(
                   Ident(ObjectClass) -> 1,
-                  Ident("jl_Cloneable") -> 1,
-                  Ident("Ljava_io_Serializable") -> 1
+                  Ident(CloneableClass) -> 1,
+                  Ident(SerializableClass) -> 1
               ))),
               privateFieldSet("componentData", componentData),
               privateFieldSet("arrayBase", componentBase),
@@ -1403,13 +1410,15 @@ private[emitter] object CoreJSLib {
     }
 
     private def maybeWrapInUBE(behavior: CheckedBehavior, exception: Tree): Tree = {
-      if (behavior == CheckedBehavior.Fatal)
-        genScalaClassNew("sjsr_UndefinedBehaviorError", "init___jl_Throwable", exception)
-      else
+      if (behavior == CheckedBehavior.Fatal) {
+        genScalaClassNew(UndefinedBehaviorErrorClass,
+            ThrowableArgConsructorName, exception)
+      } else {
         exception
+      }
     }
 
-    private def genScalaClassNew(className: String, ctorName: String,
+    private def genScalaClassNew(className: ClassName, ctorName: MethodName,
         args: Tree*): Tree = {
       Apply(envField("ct", className + "__" + ctorName),
           New(encodeClassVar(className), Nil) :: args.toList)
