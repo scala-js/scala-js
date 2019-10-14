@@ -26,13 +26,19 @@ final class Pattern private (jsRegExp: js.RegExp, _pattern: String, _flags: Int)
   def pattern(): String = _pattern
   def flags(): Int = _flags
 
-  private[regex] def jsPattern: String = jsRegExp.source
+  private def jsPattern: String = jsRegExp.source
 
-  private[regex] def jsFlags: String = {
+  private def jsFlags: String = {
     (if (jsRegExp.global) "g" else "") +
     (if (jsRegExp.ignoreCase) "i" else "") +
     (if (jsRegExp.multiline) "m" else "")
   }
+
+  private[regex] lazy val groupCount: Int =
+    new js.RegExp("|" + jsPattern).exec("").length - 1
+
+  private[regex] lazy val groupStartMapper: GroupStartMapper =
+    GroupStartMapper(jsPattern, jsFlags)
 
   override def toString(): String = pattern
 
