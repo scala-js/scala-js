@@ -53,21 +53,6 @@ if (selectedMatrix == 'auto') {
 }
 
 def CIScriptPrelude = '''
-LOCAL_HOME="/localhome/jenkins"
-LOC_SBT_BASE="$LOCAL_HOME/scala-js-sbt-homes"
-LOC_SBT_BOOT="$LOC_SBT_BASE/sbt-boot"
-LOC_SBT_HOME="$LOC_SBT_BASE/sbt-home"
-
-export SBT_OPTS="-J-Xmx5G -J-XX:MaxPermSize=512M -Dsbt.boot.directory=$LOC_SBT_BOOT -Dsbt.ivy.home=$LOC_SBT_HOME -Divy.home=$LOC_SBT_HOME -Dsbt.global.base=$LOC_SBT_BASE"
-
-export NODE_PATH="$HOME/node_modules/"
-
-# Define setJavaVersion
-
-setJavaVersion() {
-  export JAVA_HOME=$HOME/apps/java-$1
-  export PATH=$JAVA_HOME/bin:$PATH
-}
 
 # Define sbtretry
 
@@ -96,7 +81,6 @@ sbtretry() {
 
 def Tasks = [
   "main": '''
-    setJavaVersion $java
     npm install &&
     sbtretry ++$scala 'set scalaJSUseRhino in Global := true' helloworld/run &&
     sbtretry ++$scala helloworld/run &&
@@ -183,7 +167,6 @@ def Tasks = [
   ''',
 
   "test-suite-ecma-script5": '''
-    setJavaVersion $java
     npm install &&
     sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test \
         'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test &&
@@ -257,7 +240,6 @@ def Tasks = [
   ''',
 
   "test-suite-ecma-script6": '''
-    setJavaVersion $java
     npm install &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(true)))' \
         'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withSourceMap(false))' \
@@ -321,7 +303,6 @@ def Tasks = [
   ''',
 
   "bootstrap": '''
-    setJavaVersion $java
     npm install &&
     sbt ++$scala irJS/test toolsJS/test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
@@ -332,7 +313,6 @@ def Tasks = [
   ''',
 
   "tools-cli-stubs": '''
-    setJavaVersion $java
     npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
         stubs/package jsEnvsTestSuite/test testAdapter/test \
@@ -346,7 +326,6 @@ def Tasks = [
   ''',
 
   "tools-cli-stubs-sbtplugin": '''
-    setJavaVersion $java
     npm install &&
     sbt ++$scala tools/package ir/test tools/test cli/package cli/assembly \
         stubs/package jsEnvsTestSuite/test testAdapter/test \
@@ -377,13 +356,11 @@ def Tasks = [
   ''',
 
   "partestc": '''
-    setJavaVersion $java
     npm install &&
     sbt ++$scala partest/compile
   ''',
 
   "sbtplugin-test": '''
-    setJavaVersion 1.8
     SBT_VER_OVERRIDE=$sbt_version_override
     # Publish Scala.js artifacts locally
     # Then go into standalone project and test
@@ -395,7 +372,6 @@ def Tasks = [
         ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
         testAdapter/publishLocal sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&
-    setJavaVersion $java &&
     if [ -n "$SBT_VER_OVERRIDE" ]; then echo "sbt.version=$SBT_VER_OVERRIDE" > ./project/build.properties; fi &&
     sbt noDOM/run noDOM/testHtmlFastOpt noDOM/testHtmlFullOpt \
         withDOM/run withDOM/testHtmlFastOpt withDOM/testHtmlFullOpt \
@@ -410,19 +386,16 @@ def Tasks = [
   ''',
 
   "partest-noopt": '''
-    setJavaVersion $java
     npm install &&
     sbt ++$scala package "partestSuite/testOnly -- --showDiff"
   ''',
 
   "partest-fastopt": '''
-    setJavaVersion $java
     npm install &&
     sbt ++$scala package "partestSuite/testOnly -- --fastOpt --showDiff"
   ''',
 
   "partest-fullopt": '''
-    setJavaVersion $java
     npm install &&
     sbt ++$scala package "partestSuite/testOnly -- --fullOpt --showDiff"
   '''
@@ -542,6 +515,20 @@ matrix.each { taskDef ->
       checkout scm
       sh "git clean -fdx && rm -rf partest/fetchedSources/"
       writeFile file: 'ciscript.sh', text: ciScript, encoding: 'UTF-8'
+
+      def javaHome = "${env.HOME}/apps/java-${taskDef.java}"
+      def localHome = "/localhome/jenkins"
+      def sbtBase = "${localHome}/scala-js-sbt-homes"
+      def sbtBoot = "${sbtBase}/sbt-boot"
+      def sbtHome = "${sbtBase}/sbt-home"
+
+      environment {
+        JAVA_HOME = javaHome
+        PATH = "${javaHome}/bin:${env.PATH}"
+	SBT_OPTS = "-J-Xmx5G -J-XX:MaxPermSize=512M -Dsbt.boot.directory=${sbtBoot} -Dsbt.ivy.home=${sbtHome} -Divy.home=${sbtHome} -Dsbt.global.base=${sbtBase}"
+	NODE_PATH = "${env.HOME}/node_modules/"
+      }
+
       retry(2) {
         timeout(time: 3, unit: 'HOURS') {
           sh "echo '$fullTaskName' && cat ciscript.sh && sh ciscript.sh"
