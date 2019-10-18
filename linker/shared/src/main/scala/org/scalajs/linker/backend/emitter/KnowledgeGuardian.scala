@@ -62,16 +62,16 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
         existingCls.update(linkedClass, thisClassHasInlineableInit)
       }
 
-      def methodExists(encodedName: String): Boolean = {
+      def methodExists(methodName: MethodName): Boolean = {
         linkedClass.methods.exists { m =>
           m.value.flags.namespace == MemberNamespace.Public &&
-          m.value.encodedName == encodedName
+          m.value.encodedName == methodName
         }
       }
 
       linkedClass.encodedName match {
         case Definitions.ClassClass =>
-          newIsParentDataAccessed = methodExists("getSuperclass__jl_Class")
+          newIsParentDataAccessed = methodExists(getSuperclassMethodName)
         case _ =>
       }
     }
@@ -91,7 +91,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     invalidateAll
   }
 
-  private def computeHasInlineableInit(linkingUnit: LinkingUnit): Set[String] = {
+  private def computeHasInlineableInit(linkingUnit: LinkingUnit): Set[ClassName] = {
     /* Those classes are instantiated in CoreJSLib. Since they have
      * multiple constructors and/or are not final, CoreJSLib is written
      * with the assumption that they will not have an inlineable init. We

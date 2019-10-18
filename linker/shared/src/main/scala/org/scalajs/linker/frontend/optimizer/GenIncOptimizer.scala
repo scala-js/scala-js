@@ -136,8 +136,8 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
    *  UPDATE PASS ONLY. (This IS the update pass).
    */
   private def updateAndTagEverything(linkedClasses: List[LinkedClass]): Unit = {
-    val neededStaticLikes = CollOps.emptyParMap[String, LinkedClass]
-    val neededClasses = CollOps.emptyParMap[String, LinkedClass]
+    val neededStaticLikes = CollOps.emptyParMap[ClassName, LinkedClass]
+    val neededClasses = CollOps.emptyParMap[ClassName, LinkedClass]
     for (linkedClass <- linkedClasses) {
       // Update the list of ancestors for all linked classes
       getInterface(linkedClass.encodedName).ancestors = linkedClass.ancestors
@@ -398,7 +398,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
      *  UPDATE PASS ONLY. Not concurrency safe on same instance.
      */
     def walkClassesForDeletions(
-        getLinkedClassIfNeeded: String => Option[LinkedClass]): Boolean = {
+        getLinkedClassIfNeeded: ClassName => Option[LinkedClass]): Boolean = {
       def sameSuperClass(linkedClass: LinkedClass): Boolean =
         superClass.map(_.encodedName) == linkedClass.superClass.map(_.name)
 
@@ -448,7 +448,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     }
 
     /** UPDATE PASS ONLY. */
-    def walkForChanges(getLinkedClass: String => LinkedClass,
+    def walkForChanges(getLinkedClass: ClassName => LinkedClass,
         parentMethodAttributeChanges: Set[MethodName]): Unit = {
 
       val linkedClass = getLinkedClass(encodedName)

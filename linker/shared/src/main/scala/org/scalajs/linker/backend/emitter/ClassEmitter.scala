@@ -907,7 +907,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     obj && (obj DOT "$classData")
   }
 
-  private def genIsClassNameInAncestors(className: String, ancestors: js.Tree)(
+  private def genIsClassNameInAncestors(className: ClassName,
+      ancestors: js.Tree)(
       implicit pos: Position): js.Tree = {
     import TreeDSL._
     ancestors DOT className

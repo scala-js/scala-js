@@ -994,7 +994,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       syntheticKind.isInstanceOf[MethodSyntheticKind.DefaultBridge]
 
     /** Throws MatchError if `!isDefaultBridge`. */
-    def defaultBridgeTarget: String = (syntheticKind: @unchecked) match {
+    def defaultBridgeTarget: ClassName = (syntheticKind: @unchecked) match {
       case MethodSyntheticKind.DefaultBridge(target) => target
     }
 

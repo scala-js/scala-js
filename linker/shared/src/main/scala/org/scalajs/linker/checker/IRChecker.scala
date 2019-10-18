@@ -196,7 +196,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         val methods = classDef.methods
         if (methods.count(m => m.value.flags.namespace == MemberNamespace.Constructor) != 1)
           reportError(s"Module class must have exactly 1 constructor")
-        if (!methods.exists(_.value.encodedName == "init___"))
+        if (!methods.exists(_.value.encodedName == NoArgConstructorName))
           reportError(s"Module class must have a parameterless constructor")
       }
 

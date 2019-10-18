@@ -154,7 +154,7 @@ object JavalibIRCleaner {
     }
   }
 
-  private def getJSTypes(irFiles: Seq[IRFile]): Map[String, ClassDef] = {
+  private def getJSTypes(irFiles: Seq[IRFile]): Map[ClassName, ClassDef] = {
     (for {
       irFile <- irFiles
       if irFile.tree.kind.isJSType
@@ -164,14 +164,14 @@ object JavalibIRCleaner {
     }).toMap
   }
 
-  private def cleanTree(tree: ClassDef, jsTypes: Map[String, ClassDef],
+  private def cleanTree(tree: ClassDef, jsTypes: Map[ClassName, ClassDef],
       errorManager: ErrorManager): ClassDef = {
     new ClassDefCleaner(tree.encodedName, jsTypes, errorManager)
       .cleanClassDef(tree)
   }
 
-  private final class ClassDefCleaner(enclosingClassName: String,
-      jsTypes: Map[String, ClassDef], errorManager: ErrorManager)
+  private final class ClassDefCleaner(enclosingClassName: ClassName,
+      jsTypes: Map[ClassName, ClassDef], errorManager: ErrorManager)
       extends Transformers.ClassTransformer {
 
     def cleanClassDef(tree: ClassDef): ClassDef = {
@@ -393,7 +393,7 @@ object JavalibIRCleaner {
 
     private def postTransformChecks(classDef: ClassDef): Unit = {
       // Check that no two methods have been erased to the same name
-      val seenMethodNames = mutable.Set.empty[(MemberNamespace, String)]
+      val seenMethodNames = mutable.Set.empty[(MemberNamespace, MethodName)]
       for (m <- classDef.memberDefs) {
         m match {
           case MethodDef(flags, name, _, _, _) =>

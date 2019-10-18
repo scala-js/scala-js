@@ -87,5 +87,6 @@ private[emitter] object EmitterDefinitions {
   val longValueMethodName = MethodName("longValue__J")
   val floatValueMethodName = MethodName("floatValue__F")
   val doubleValueMethodName = MethodName("doubleValue__D")
+  val getSuperclassMethodName = MethodName("getSuperclass__jl_Class")
 
 }

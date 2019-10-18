@@ -45,7 +45,7 @@ object TestIRBuilder {
         EOH)
   }
 
-  final val MainTestClassDefEncodedName = "LTest$"
+  final val MainTestClassDefEncodedName = ClassName("LTest$")
 
   val MainTestModuleInitializers = mainModuleInitializers("Test")
 

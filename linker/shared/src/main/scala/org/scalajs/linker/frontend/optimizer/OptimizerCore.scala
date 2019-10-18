@@ -1803,7 +1803,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       "s_reflect_ManifestFactory$AnyValManifest$",
       "s_reflect_ManifestFactory$NullManifest$",
       "s_reflect_ManifestFactory$NothingManifest$"
-  )
+  ).map(ClassName(_))
 
   private def shouldInlineBecauseOfArgs(target: MethodID,
       receiverAndArgs: List[PreTransform]): Boolean = {
@@ -2130,7 +2130,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                   (elemLocalDef, idx) <- elemLocalDefs.toList.zipWithIndex
                 } yield {
                   elemLocalDef match {
-                    case LocalDef(RefinedType(ClassType("T2"), _, _), false,
+                    case LocalDef(RefinedType(ClassType(Tuple2Class), _, _), false,
                         InlineClassInstanceReplacement(structure, tupleFields, _)) =>
                       val List(key, value) = structure.fieldIDs.map(tupleFields)
                       (key.newReplacement, value.newReplacement)
@@ -2156,7 +2156,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
           case _ =>
             tprops.tpe match {
-              case RefinedType(ClassType("sci_Nil$"), _, false) =>
+              case RefinedType(ClassType(NilClass), _, false) =>
                 contTree(Block(finishTransformStat(tprops), JSObjectConstr(Nil)))
               case _ =>
                 default
@@ -3032,10 +3032,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     /* In theory, we could figure out the ancestors from the global knowledge,
      * but that would be overkill.
      */
-    import Definitions._
     Set(BoxedByteClass, BoxedShortClass, BoxedIntegerClass, BoxedFloatClass,
-        BoxedDoubleClass, ObjectClass, "jl_CharSequence",
-        "Ljava_io_Serializable", "jl_Comparable", "jl_Number")
+        BoxedDoubleClass, ObjectClass, ClassName("jl_CharSequence"),
+        ClassName("Ljava_io_Serializable"), ClassName("jl_Comparable"),
+        ClassName("jl_Number"))
   }
 
   private def foldBinaryOpNonConstant(op: BinaryOp.Code, lhs: PreTransform,
@@ -4409,6 +4409,7 @@ private[optimizer] object OptimizerCore {
 
   val NullPointerExceptionClass = ClassName("jl_NullPointerException")
   private val Tuple2Class = ClassName("T2")
+  private val NilClass = ClassName("sci_Nil$")
   private val JSWrappedArrayClass = ClassName("sjs_js_WrappedArray")
 
   private val ObjectCloneName = MethodName("clone__O")

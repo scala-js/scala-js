@@ -68,7 +68,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
       envField("L0")
   }
 
-  def genLongModuleApply(methodName: String, args: Tree*)(
+  def genLongModuleApply(methodName: MethodName, args: Tree*)(
       implicit pos: Position): Tree = {
     import TreeDSL._
     Apply(
@@ -116,7 +116,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     Ident(cls + "__f_" + field.name, field.originalName)
   }
 
-  def genSelectStatic(className: String, item: irt.FieldIdent)(
+  def genSelectStatic(className: ClassName, item: irt.FieldIdent)(
       implicit pos: Position): VarRef = {
     envField("t", className + "__" + item.name)
   }
@@ -131,7 +131,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
   }
 
   // The similarity with `genFieldIdent is accidental. See above.
-  def genJSPrivateFieldIdent(cls: String, field: irt.FieldIdent)(
+  def genJSPrivateFieldIdent(cls: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Ident = {
     Ident(cls + "__f_" + field.name, field.originalName)
   }
@@ -174,7 +174,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     }
   }
 
-  def genIsInstanceOfHijackedClass(expr: Tree, className: String)(
+  def genIsInstanceOfHijackedClass(expr: Tree, className: ClassName)(
       implicit pos: Position): Tree = {
     import TreeDSL._
 

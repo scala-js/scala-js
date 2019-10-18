@@ -140,7 +140,7 @@ private[frontend] final class MethodSynthesizer(
     loop(classInfo)
   }
 
-  private def findMethodDef(classInfo: ClassInfo, methodName: String)(
+  private def findMethodDef(classInfo: ClassInfo, methodName: MethodName)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
     for {
       classDef <- inputProvider.loadClassDef(classInfo.encodedName)

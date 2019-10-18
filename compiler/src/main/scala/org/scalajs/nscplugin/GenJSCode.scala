@@ -812,7 +812,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             val newTree = {
               val ident =
                 origJsClass.superClass.getOrElse(abort("No superclass"))
-              if (args.isEmpty && ident.name == "sjs_js_Object")
+              if (args.isEmpty && ident.name == JSObjectClassName)
                 js.JSObjectConstr(Nil)
               else
                 js.JSNew(jsSuperClassRef, args)
@@ -1225,7 +1225,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         if (subConstructors.isEmpty) (overrideNum, overrideNum)
         else (subConstructors.head.overrideNumBounds._1, overrideNum)
 
-      def get(methodName: String): Option[ConstructorTree] = {
+      def get(methodName: defs.MethodName): Option[ConstructorTree] = {
         if (methodName == this.method.encodedName) {
           Some(this)
         } else {
@@ -1253,10 +1253,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       def hasSubConstructors: Boolean = root.subConstructors.nonEmpty
 
-      def getOverrideNum(methodName: String): Int =
+      def getOverrideNum(methodName: defs.MethodName): Int =
         root.get(methodName).fold(-1)(_.overrideNum)
 
-      def getParamRefsFor(methodName: String)(implicit pos: Position): List[js.VarRef] =
+      def getParamRefsFor(methodName: defs.MethodName)(implicit pos: Position): List[js.VarRef] =
         root.get(methodName).fold(List.empty[js.VarRef])(_.getParamRefs)
 
       def getAllParamDefsAsVars(implicit pos: Position): List[js.VarDef] =
@@ -1429,7 +1429,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         overloadIdent: js.LocalIdent, dispatchResolution: js.Tree)(
         implicit pos: Position): List[js.Tree] = {
 
-      def deconstructApplyCtor(body: js.Tree): (List[js.Tree], String, List[js.Tree]) = {
+      def deconstructApplyCtor(body: js.Tree): (List[js.Tree], defs.MethodName, List[js.Tree]) = {
         val (prepStats, applyCtor) = body match {
           case applyCtor: js.ApplyStatic =>
             (Nil, applyCtor)
@@ -1503,7 +1503,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     private def mkJSConstructorBuilder(ctors: List[js.MethodDef])(
         implicit pos: Position): JSConstructorBuilder = {
-      def findCtorForwarderCall(tree: js.Tree): String = tree match {
+      def findCtorForwarderCall(tree: js.Tree): defs.MethodName = tree match {
         case js.ApplyStatic(_, _, method, js.This() :: _)
             if ir.Definitions.isConstructorName(method.name) =>
           method.name
@@ -5628,7 +5628,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       // Compute the set of method symbols that we need to implement
       val sams = {
         val samsBuilder = List.newBuilder[Symbol]
-        val seenEncodedNames = mutable.Set.empty[String]
+        val seenEncodedNames = mutable.Set.empty[defs.MethodName]
 
         /* scala/bug#10512: any methods which `samInfo.sam` overrides need
          * bridges made for them.
@@ -6152,5 +6152,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 }
 
 private object GenJSCode {
+  private val JSObjectClassName = defs.ClassName("sjs_js_Object")
+
   private val ObjectArgConstructorName = defs.MethodName("init___O")
 }

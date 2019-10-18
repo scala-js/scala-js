@@ -28,6 +28,8 @@ object Infos {
 
   private val StringArgConstructorName = MethodName("init___T")
 
+  private val cloneMethodName = MethodName("clone__O")
+
   final case class NamespacedEncodedName(
       namespace: MemberNamespace, encodedName: MethodName)
 
@@ -252,7 +254,7 @@ object Infos {
            * can model their reachability by calling them statically in the
            * Object class.
            */
-          if (method != "clone__O") {
+          if (method != cloneMethodName) {
             addMethodCalledStatically(ObjectClass,
                 NamespacedEncodedName(MemberNamespace.Public, method))
           }

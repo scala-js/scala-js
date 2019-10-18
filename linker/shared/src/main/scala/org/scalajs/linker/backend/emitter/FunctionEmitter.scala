@@ -2743,7 +2743,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           List(js.IntLiteral(n), tree))
     }
 
-    private def genLongMethodApply(receiver: js.Tree, methodName: String,
+    private def genLongMethodApply(receiver: js.Tree, methodName: MethodName,
         args: js.Tree*)(implicit pos: Position): js.Tree = {
       import TreeDSL._
       js.Apply(receiver DOT methodName, args.toList)

@@ -45,6 +45,9 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
    */
   final val JSSuperClassParamName = defs.LocalName("$superClass")
 
+  private val ScalaRuntimeNullClass = defs.ClassName("sr_Null$")
+  private val ScalaRuntimeNothingClass = defs.ClassName("sr_Nothing$")
+
   // Fresh local name generator ----------------------------------------------
 
   private val usedLocalNames = new ScopedVar[mutable.Set[String]]
@@ -260,9 +263,9 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   /** Computes the internal name for a type. */
   private def internalName(tpe: Type): String = {
     val patchedTypeRef = toTypeRef(tpe) match {
-      case jstpe.ClassRef("sr_Nothing$") => jstpe.NothingRef
-      case jstpe.ClassRef("sr_Null$")    => jstpe.NullRef
-      case typeRef                       => typeRef
+      case jstpe.ClassRef(ScalaRuntimeNothingClass) => jstpe.NothingRef
+      case jstpe.ClassRef(ScalaRuntimeNullClass)    => jstpe.NullRef
+      case typeRef                                  => typeRef
     }
     ir.Definitions.encodeTypeRef(patchedTypeRef)
   }

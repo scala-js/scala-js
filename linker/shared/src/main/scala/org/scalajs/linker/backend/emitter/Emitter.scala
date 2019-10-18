@@ -60,7 +60,7 @@ final class Emitter private (config: CommonPhaseConfig,
   private def classEmitter: ClassEmitter = state.classEmitter
   private def coreJSLib: WithGlobals[js.Tree] = state.coreJSLib
 
-  private val classCaches = mutable.Map.empty[List[String], ClassCache]
+  private val classCaches = mutable.Map.empty[List[ClassName], ClassCache]
 
   private[this] var statsClassesReused: Int = 0
   private[this] var statsClassesInvalidated: Int = 0
@@ -672,7 +672,7 @@ final class Emitter private (config: CommonPhaseConfig,
   private def getClassTreeCache(linkedClass: LinkedClass): DesugaredClassCache =
     getClassCache(linkedClass.ancestors).getCache(linkedClass.version)
 
-  private def getClassCache(ancestors: List[String]) =
+  private def getClassCache(ancestors: List[ClassName]) =
     classCaches.getOrElseUpdate(ancestors, new ClassCache)
 
   // Caching
@@ -683,7 +683,7 @@ final class Emitter private (config: CommonPhaseConfig,
     private[this] var _cacheUsed = false
 
     private[this] val _methodCaches =
-      Array.fill(MemberNamespace.Count)(mutable.Map.empty[String, MethodCache])
+      Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, MethodCache])
 
     private[this] var _constructorCache: Option[MethodCache] = None
 
@@ -716,7 +716,7 @@ final class Emitter private (config: CommonPhaseConfig,
     }
 
     def getMethodCache(namespace: MemberNamespace,
-        encodedName: String): MethodCache = {
+        encodedName: MethodName): MethodCache = {
       _methodCaches(namespace.ordinal)
         .getOrElseUpdate(encodedName, new MethodCache)
     }
