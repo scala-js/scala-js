@@ -171,12 +171,6 @@ object ScalaJSPlugin extends AutoPlugin {
 
   import autoImport._
 
-  /** Logs the current statistics about the global IR cache. */
-  def logIRCacheStats(logger: Logger): Unit = {
-    import ScalaJSPluginInternal.globalIRCache
-    logger.debug("Global IR cache stats: " + globalIRCache.stats.logLine)
-  }
-
   override def globalSettings: Seq[Setting[_]] = {
     Seq(
         scalaJSStage := Stage.FastOpt,
@@ -187,12 +181,15 @@ object ScalaJSPlugin extends AutoPlugin {
 
         // Clear the IR cache stats every time a sequence of tasks ends
         onComplete := {
+          import ScalaJSPluginInternal.globalIRCache
+
           val prev = onComplete.value
 
           { () =>
             prev()
             ScalaJSPluginInternal.closeAllTestAdapters()
-            ScalaJSPluginInternal.globalIRCache.clearStats()
+            sLog.value.debug("Global IR cache stats: " + globalIRCache.stats.logLine)
+            globalIRCache.clearStats()
           }
         },
 

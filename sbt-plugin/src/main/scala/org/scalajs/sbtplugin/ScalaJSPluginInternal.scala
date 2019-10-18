@@ -48,7 +48,6 @@ import sjsonnew.BasicJsonProtocol.seqFormat
 private[sbtplugin] object ScalaJSPluginInternal {
 
   import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
-  import ScalaJSPlugin.logIRCacheStats
 
   /** The global Scala.js IR cache */
   val globalIRCache: IRFileCache = StandardImpl.irFileCache()
@@ -216,8 +215,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
                 throw new MessageOnlyException(e.getMessage)
             }
 
-            logIRCacheStats(log)
-
             Set(output, sourceMapFile)
           } (realFiles.toSet)
 
@@ -310,8 +307,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
           new IRTreePrinter(stdout).print(tree)
           stdout.flush()
         }
-
-        logIRCacheStats(streams.value.log)
       },
 
       artifactPath in fastOptJS :=
