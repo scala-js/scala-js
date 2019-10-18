@@ -66,7 +66,7 @@ private[frontend] final class MethodSynthesizer(
       val call = Apply(ApplyFlags.empty, This()(currentClassType),
           targetIdent, params.map(_.ref))(targetMDef.resultType)
 
-      val body = if (targetName.endsWith("__V")) {
+      val body = if (targetName.resultTypeRef.exists(_ == VoidRef)) {
         // Materialize an `undefined` result for void methods
         Block(call, Undefined())
       } else {
@@ -152,7 +152,7 @@ private[frontend] final class MethodSynthesizer(
           mDef
       }.getOrElse {
         throw new AssertionError(
-            s"Cannot find $methodName in ${classInfo.encodedName}")
+            s"Cannot find ${methodName.nameString} in ${classInfo.encodedName.nameString}")
       }
     }
   }

@@ -82,7 +82,7 @@ object Analysis {
     def methodInfos(
         namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
 
-    def displayName: String = decodeClassName(encodedName)
+    def displayName: String = encodedName.nameString
   }
 
   /** Method node in a reachability graph produced by the [[Analyzer]].
@@ -96,7 +96,6 @@ object Analysis {
     def encodedName: MethodName
     def namespace: MemberNamespace
     def isAbstract: Boolean
-    def isReflProxy: Boolean
     def isReachable: Boolean
     def calledFrom: scala.collection.Seq[From]
     def instantiatedSubclasses: scala.collection.Seq[ClassInfo]
@@ -106,15 +105,13 @@ object Analysis {
     def displayName: String = {
       def typeRefDisplayName(tpe: TypeRef): String = tpe match {
         case primRef: PrimRef               => PrimRefDisplayNames(primRef)
-        case ClassRef(encodedName)          => decodeClassName(encodedName)
+        case ClassRef(encodedName)          => encodedName.nameString
         case ArrayTypeRef(base, dimensions) => "[" * dimensions + typeRefDisplayName(base)
       }
 
-      val (simpleName, paramTypes, resultType) =
-        ir.Definitions.decodeMethodName(encodedName)
-
-      simpleName + "(" + paramTypes.map(typeRefDisplayName).mkString(",") + ")" +
-      resultType.fold("")(typeRefDisplayName)
+      encodedName.simpleName.nameString + "(" +
+      encodedName.paramTypeRefs.map(typeRefDisplayName).mkString(",") + ")" +
+      encodedName.resultTypeRef.fold("")(typeRefDisplayName)
     }
 
     def fullDisplayName: String =
@@ -208,7 +205,7 @@ object Analysis {
         "without superclass nor any implemented interface)"
       case CycleInInheritanceChain(encodedClassNames, _) =>
         ("Fatal error: cycle in inheritance chain involving " +
-            encodedClassNames.map(decodeClassName).mkString(", "))
+            encodedClassNames.map(_.nameString).mkString(", "))
       case MissingClass(info, _) =>
         s"Referring to non-existent class ${info.displayName}"
       case MissingSuperClass(subClassInfo, _) =>

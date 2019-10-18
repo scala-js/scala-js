@@ -29,6 +29,14 @@ object TestIRBuilder {
   val EMF = MemberFlags.empty
   val EOH = OptimizerHints.empty
 
+  val V = VoidRef
+  val I = IntRef
+  val O = ClassRef(ObjectClass)
+  val T = ClassRef(BoxedStringClass)
+
+  def m(name: String, paramTypeRefs: List[TypeRef], resultTypeRef: TypeRef): MethodName =
+    MethodName(name, paramTypeRefs, resultTypeRef)
+
   def classDef(
       encodedName: ClassName,
       kind: ClassKind = ClassKind.Class,
@@ -45,7 +53,7 @@ object TestIRBuilder {
         EOH)
   }
 
-  final val MainTestClassDefEncodedName = ClassName("LTest$")
+  final val MainTestClassDefEncodedName = ClassName("Test$")
 
   val MainTestModuleInitializers = mainModuleInitializers("Test")
 
@@ -72,10 +80,12 @@ object TestIRBuilder {
   }
 
   def mainMethodDef(body: Tree): MethodDef = {
-    val stringArrayType = ArrayType(ArrayTypeRef(ClassRef(BoxedStringClass), 1))
+    val stringArrayTypeRef = ArrayTypeRef(ClassRef(BoxedStringClass), 1)
+    val stringArrayType = ArrayType(stringArrayTypeRef)
     val argsParamDef = paramDef("args", stringArrayType)
-    MethodDef(MemberFlags.empty, "main__AT__V", List(argsParamDef),
-        NoType, Some(body))(EOH, None)
+    MethodDef(MemberFlags.empty,
+        m("main", List(stringArrayTypeRef), VoidRef),
+        List(argsParamDef), NoType, Some(body))(EOH, None)
   }
 
   def paramDef(name: LocalName, ptpe: Type): ParamDef =
@@ -90,8 +100,6 @@ object TestIRBuilder {
     LabelName(name)
   implicit def string2FieldName(name: String): FieldName =
     FieldName(name)
-  implicit def string2MethodName(name: String): MethodName =
-    MethodName(name)
   implicit def string2ClassName(name: String): ClassName =
     ClassName(name)
 
@@ -101,8 +109,9 @@ object TestIRBuilder {
     LabelIdent(LabelName(name))
   implicit def string2FieldIdent(name: String): FieldIdent =
     FieldIdent(FieldName(name))
-  implicit def string2MethodIdent(name: String): MethodIdent =
-    MethodIdent(MethodName(name))
   implicit def string2ClassIdent(name: String): ClassIdent =
     ClassIdent(ClassName(name))
+
+  implicit def methodName2MethodIdent(name: MethodName): MethodIdent =
+    MethodIdent(name)
 }

@@ -26,6 +26,7 @@ import org.scalajs.ir
 import org.scalajs.ir.{ClassKind, Definitions}
 import org.scalajs.ir.Definitions._
 import org.scalajs.ir.Trees.MemberNamespace
+import org.scalajs.ir.Types.ClassRef
 
 import org.scalajs.linker._
 import org.scalajs.linker.standard._
@@ -698,7 +699,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         implicit from: From): Future[Option[MethodInfo]] = {
       val candidates = publicMethodInfos.valuesIterator.filter { m =>
         // TODO In theory we should filter out protected methods
-        !m.isReflProxy && !m.isDefaultBridge && !m.isAbstract &&
+        !m.isReflectiveProxy && !m.isDefaultBridge && !m.isAbstract &&
         reflProxyMatches(m.encodedName, proxyName)
       }.toSeq
 
@@ -710,8 +711,7 @@ private final class Analyzer(config: CommonPhaseConfig,
        *   chosen arbitrarily.
        */
 
-      val resultTypes =
-        candidates.map(c => methodResultType(c.encodedName))
+      val resultTypes = candidates.map(c => c.encodedName.resultTypeRef.get)
 
       // We must not use Future.traverse since otherwise we might run things on
       // the non-main thread.
@@ -741,12 +741,9 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     private def reflProxyMatches(methodName: MethodName,
         proxyName: MethodName): Boolean = {
-      val sepPos = methodName.lastIndexOf("__")
-      sepPos >= 0 && methodName.substring(0, sepPos + 2) == proxyName
+      methodName.simpleName == proxyName.simpleName &&
+      methodName.paramTypeRefs == proxyName.paramTypeRefs
     }
-
-    private def methodResultType(methodName: MethodName): ir.Types.TypeRef =
-      decodeTypeRef(methodName.substring(methodName.lastIndexOf("__") + 2))
 
     private def isMoreSpecific(left: ir.Types.TypeRef, right: ir.Types.TypeRef)(
         implicit from: From): Future[Boolean] = {
@@ -813,7 +810,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       methodInfos(namespace).get(methodName)
     }
 
-    override def toString(): String = encodedName
+    override def toString(): String = encodedName.nameString
 
     /** Start the reachability algorithm with the entry points of this class. */
     def reachEntryPoints(): Unit = {
@@ -949,7 +946,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     private def callMethodResolved(methodName: MethodName)(
         implicit from: From): Unit = {
-      if (isReflProxyName(methodName)) {
+      if (methodName.isReflectiveProxy) {
         tryLookupReflProxyMethod(methodName)(_.reach(this))
       } else {
         lookupMethod(methodName).reach(this)
@@ -964,7 +961,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     def callMethodStatically(namespace: MemberNamespace,
         encodedName: MethodName)(
         implicit from: From): Unit = {
-      assert(!isReflProxyName(encodedName),
+      assert(!encodedName.isReflectiveProxy,
           s"Trying to call statically refl proxy $this.$encodedName")
       if (namespace != MemberNamespace.Public)
         lookupStaticLikeMethod(namespace, encodedName).reachStatic()
@@ -979,7 +976,6 @@ private final class Analyzer(config: CommonPhaseConfig,
     val encodedName = data.encodedName
     val namespace = data.namespace
     val isAbstract = data.isAbstract
-    val isReflProxy = isReflProxyName(encodedName)
 
     var isReachable: Boolean = false
 
@@ -990,6 +986,9 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     var syntheticKind: MethodSyntheticKind = MethodSyntheticKind.None
 
+    def isReflectiveProxy: Boolean =
+      encodedName.isReflectiveProxy
+
     def isDefaultBridge: Boolean =
       syntheticKind.isInstanceOf[MethodSyntheticKind.DefaultBridge]
 
@@ -998,7 +997,8 @@ private final class Analyzer(config: CommonPhaseConfig,
       case MethodSyntheticKind.DefaultBridge(target) => target
     }
 
-    override def toString(): String = s"$owner.$encodedName"
+    override def toString(): String =
+      s"$owner.${encodedName.simpleName.nameString}"
 
     def reachStatic()(implicit from: From): Unit = {
       assert(!isAbstract,
@@ -1146,7 +1146,8 @@ private final class Analyzer(config: CommonPhaseConfig,
 }
 
 object Analyzer {
-  private val getSuperclassMethodName = MethodName("getSuperclass__jl_Class")
+  private val getSuperclassMethodName =
+    MethodName("getSuperclass", Nil, ClassRef(ClassClass))
 
   def computeReachability(config: CommonPhaseConfig,
       symbolRequirements: SymbolRequirement,

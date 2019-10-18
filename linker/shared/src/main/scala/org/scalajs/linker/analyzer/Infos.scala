@@ -24,11 +24,12 @@ import org.scalajs.linker.backend.emitter.Transients._
 
 object Infos {
 
-  private val ArithmeticExceptionClass = ClassName("jl_ArithmeticException")
+  private val ArithmeticExceptionClass = ClassName("java.lang.ArithmeticException")
 
-  private val StringArgConstructorName = MethodName("init___T")
+  private val StringArgConstructorName =
+    MethodName.constructor(List(ClassRef(BoxedStringClass)))
 
-  private val cloneMethodName = MethodName("clone__O")
+  private val cloneMethodName = MethodName("clone", Nil, ClassRef(ObjectClass))
 
   final case class NamespacedEncodedName(
       namespace: MemberNamespace, encodedName: MethodName)
@@ -45,7 +46,7 @@ object Infos {
       val topLevelExportedMembers: List[ReachabilityInfo],
       val topLevelExportNames: List[String]
   ) {
-    override def toString(): String = encodedName
+    override def toString(): String = encodedName.nameString
   }
 
   object ClassInfo {
@@ -72,7 +73,7 @@ object Infos {
       val isAbstract: Boolean,
       val reachabilityInfo: ReachabilityInfo
   ) {
-    override def toString(): String = encodedName
+    override def toString(): String = encodedName.nameString
   }
 
   object MethodInfo {
@@ -247,9 +248,9 @@ object Infos {
         case ArrayType(_) =>
           /* The pseudo Array class is not reified in our analyzer/analysis,
            * so we need to cheat here.
-           * In the Array[T] class family, only clone__O is defined and
-           * overrides j.l.Object.clone__O. Since this method is implemented
-           * in CoreJSLib and always kept, we can ignore it.
+           * In the Array[T] class family, only clone()Object is defined and
+           * overrides j.l.Object.clone()Object. Since this method is
+           * implemented in CoreJSLib and always kept, we can ignore it.
            * All other methods resolve to their definition in Object, so we
            * can model their reachability by calling them statically in the
            * Object class.
@@ -456,16 +457,16 @@ object Infos {
     private val builder = new ReachabilityInfoBuilder
 
     def generateMethodInfo(methodDef: MethodDef): MethodInfo = {
-      val (_, params, result) = decodeMethodName(methodDef.encodedName)
-      params.foreach(builder.maybeAddReferencedClass)
-      result.foreach(builder.maybeAddReferencedClass)
+      val methodName = methodDef.encodedName
+      methodName.paramTypeRefs.foreach(builder.maybeAddReferencedClass)
+      methodName.resultTypeRef.foreach(builder.maybeAddReferencedClass)
 
       methodDef.body.foreach(traverse)
 
       val reachabilityInfo = builder.result()
 
       MethodInfo(
-          methodDef.encodedName,
+          methodName,
           methodDef.flags.namespace,
           methodDef.body.isEmpty,
           reachabilityInfo

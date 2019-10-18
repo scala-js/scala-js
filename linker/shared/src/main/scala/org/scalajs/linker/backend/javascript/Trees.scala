@@ -43,13 +43,39 @@ object Trees {
 
   case class Ident(name: String, originalName: Option[String])(
       implicit val pos: Position) extends PropertyName {
-    require(ir.Trees.isValidJSIdentifier(name),
-        s"'$name' is not a valid JS identifier")
+    require(Ident.isValidJSIdentifierName(name),
+        s"'$name' is not a valid JS identifier name")
   }
 
   object Ident {
     def apply(name: String)(implicit pos: Position): Ident =
       new Ident(name, Some(name))
+
+    /** Tests whether the given string is a valid `IdentifierName` for the
+     *  ECMAScript language specification.
+     *
+     *  This does not exclude keywords, as they can be used as identifiers in
+     *  some productions, notably as property names.
+     */
+    def isValidJSIdentifierName(name: String): Boolean = {
+      // scalastyle:off return
+      // This method is called on every `Ident` creation; it should be fast.
+      val len = name.length()
+      if (len == 0)
+        return false
+      val c = name.charAt(0)
+      if (c != '$' && c != '_' && !Character.isUnicodeIdentifierStart(c))
+        return false
+      var i = 1
+      while (i != len) {
+        val c = name.charAt(i)
+        if (c != '$' && !Character.isUnicodeIdentifierPart(c))
+          return false
+        i += 1
+      }
+      true
+      // scalastyle:on return
+    }
   }
 
   case class ComputedName(tree: Tree) extends PropertyName {

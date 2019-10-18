@@ -19,6 +19,7 @@ import scala.Predef.{print => _, println => _, _}
 
 import java.io.Writer
 
+import Definitions._
 import Position._
 import Trees._
 import Types._
@@ -1020,19 +1021,25 @@ object Printers {
     }
 
     def print(ident: LocalIdent): Unit =
-      printEscapeJS(ident.name, out)
+      print(ident.name)
 
     def print(ident: LabelIdent): Unit =
-      printEscapeJS(ident.name, out)
+      print(ident.name)
 
     def print(ident: FieldIdent): Unit =
-      printEscapeJS(ident.name, out)
+      print(ident.name)
 
     def print(ident: MethodIdent): Unit =
-      printEscapeJS(ident.name, out)
+      print(ident.name)
 
     def print(ident: ClassIdent): Unit =
-      printEscapeJS(ident.name, out)
+      print(ident.name)
+
+    def print(name: Name): Unit =
+      printEscapeJS(name.nameString, out)
+
+    def print(name: MethodName): Unit =
+      printEscapeJS(name.nameString, out)
 
     def printJSMemberName(name: Tree): Unit = name match {
       case name: StringLiteral =>

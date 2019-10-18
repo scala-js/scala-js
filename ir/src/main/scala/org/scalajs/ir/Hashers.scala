@@ -16,6 +16,7 @@ import java.security.{MessageDigest, DigestOutputStream}
 import java.io.{OutputStream, DataOutputStream}
 import java.util.Arrays
 
+import Definitions._
 import Trees._
 import Types._
 import Tags._
@@ -525,7 +526,7 @@ object Hashers {
     }
 
     def mixClassRef(classRef: ClassRef): Unit =
-      mixString(classRef.className)
+      mixName(classRef.className)
 
     def mixArrayTypeRef(arrayTypeRef: ArrayTypeRef): Unit = {
       mixTypeRef(arrayTypeRef.base)
@@ -550,7 +551,7 @@ object Hashers {
 
       case ClassType(className) =>
         mixTag(TagClassType)
-        mixString(className)
+        mixName(className)
 
       case ArrayType(arrayTypeRef) =>
         mixTag(TagArrayType)
@@ -559,7 +560,7 @@ object Hashers {
       case RecordType(fields) =>
         mixTag(TagRecordType)
         for (RecordType.Field(name, originalName, tpe, mutable) <- fields) {
-          mixString(name)
+          mixName(name)
           originalName.foreach(mixString)
           mixType(tpe)
           mixBoolean(mutable)
@@ -568,31 +569,47 @@ object Hashers {
 
     def mixLocalIdent(ident: LocalIdent): Unit = {
       mixPos(ident.pos)
-      mixString(ident.name)
+      mixName(ident.name)
       ident.originalName.foreach(mixString)
     }
 
     def mixLabelIdent(ident: LabelIdent): Unit = {
       mixPos(ident.pos)
-      mixString(ident.name)
+      mixName(ident.name)
     }
 
     def mixFieldIdent(ident: FieldIdent): Unit = {
       mixPos(ident.pos)
-      mixString(ident.name)
+      mixName(ident.name)
       ident.originalName.foreach(mixString)
     }
 
     def mixMethodIdent(ident: MethodIdent): Unit = {
       mixPos(ident.pos)
-      mixString(ident.name)
+      mixMethodName(ident.name)
       ident.originalName.foreach(mixString)
     }
 
     def mixClassIdent(ident: ClassIdent): Unit = {
       mixPos(ident.pos)
-      mixString(ident.name)
+      mixName(ident.name)
       ident.originalName.foreach(mixString)
+    }
+
+    def mixName(name: Name): Unit = {
+      val encoded = name.unsafeEncoded
+      digestStream.writeInt(encoded.length)
+      digestStream.write(encoded)
+    }
+
+    def mixMethodName(name: MethodName): Unit = {
+      mixName(name.simpleName)
+      mixInt(name.paramTypeRefs.size)
+      for (typeRef <- name.paramTypeRefs)
+        mixTypeRef(typeRef)
+      mixBoolean(name.resultTypeRef.isDefined)
+      for (typeRef <- name.resultTypeRef)
+        mixTypeRef(typeRef)
     }
 
     def mixPos(pos: Position): Unit = {

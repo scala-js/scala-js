@@ -51,8 +51,8 @@ object ModuleInitializer {
    */
   def mainMethod(moduleClassName: String,
       mainMethodName: String): ModuleInitializer = {
-    VoidMainMethod(encodeClassName(moduleClassName + "$"),
-        encodeMethodName(mainMethodName, Nil, Some(VoidRef)))
+    VoidMainMethod(ClassName(moduleClassName + "$"),
+        MethodName(mainMethodName, Nil, VoidRef))
   }
 
   /** Makes an [[ModuleInitializer]] that calls a method of a top-level
@@ -86,8 +86,8 @@ object ModuleInitializer {
    */
   def mainMethodWithArgs(moduleClassName: String, mainMethodName: String,
       args: List[String]): ModuleInitializer = {
-    MainMethodWithArgs(encodeClassName(moduleClassName + "$"),
-        encodeMethodName(mainMethodName, ArrayOfStringTypeRef :: Nil, Some(VoidRef)),
+    MainMethodWithArgs(ClassName(moduleClassName + "$"),
+        MethodName(mainMethodName, ArrayOfStringTypeRef :: Nil, VoidRef),
         args)
   }
 }

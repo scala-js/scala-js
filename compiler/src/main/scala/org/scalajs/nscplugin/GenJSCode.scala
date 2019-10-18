@@ -778,7 +778,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val fieldsObjValue = {
           js.JSObjectConstr(privateFieldDefs.toList.map { fdef =>
             implicit val pos = fdef.pos
-            js.StringLiteral(fdef.name.name) -> jstpe.zeroOf(fdef.ftpe)
+            js.StringLiteral(fdef.name.name.nameString) -> jstpe.zeroOf(fdef.ftpe)
           })
         }
         val definePrivateFieldsObj = {
@@ -1334,14 +1334,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           constructorTree.method.body.get match {
             case js.Block(stats) =>
               val beforeSuperCall = stats.takeWhile {
-                case js.ApplyStatic(_, _, mtd, _) =>
-                  !ir.Definitions.isConstructorName(mtd.name)
-                case _ =>
-                  true
+                case js.ApplyStatic(_, _, mtd, _) => !mtd.name.isConstructor
+                case _                            => true
               }
               val superCallParams = stats.collectFirst {
                 case js.ApplyStatic(_, _, mtd, js.This() :: args)
-                    if ir.Definitions.isConstructorName(mtd.name) =>
+                    if mtd.name.isConstructor =>
                   val checkedArgs = checkForUndefinedParams(args)
                   zipMap(outputParams, checkedArgs)(js.Assign(_, _))
               }.getOrElse(Nil)
@@ -1349,7 +1347,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               beforeSuperCall ::: superCallParams
 
             case js.ApplyStatic(_, _, mtd, js.This() :: args)
-                if ir.Definitions.isConstructorName(mtd.name) =>
+                if mtd.name.isConstructor =>
               val checkedArgs = checkForUndefinedParams(args)
               zipMap(outputParams, checkedArgs)(js.Assign(_, _))
 
@@ -1381,10 +1379,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           constructorTree.method.body.get match {
             case js.Block(stats) =>
               stats.dropWhile {
-                case js.ApplyStatic(_, _, mtd, _) =>
-                  !ir.Definitions.isConstructorName(mtd.name)
-                case _ =>
-                  true
+                case js.ApplyStatic(_, _, mtd, _) => !mtd.name.isConstructor
+                case _                            => true
               }.tail
 
             case _ => Nil
@@ -1438,7 +1434,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
         val js.ApplyStatic(_, _, js.MethodIdent(ctorName, _), js.This() :: ctorArgs) =
           applyCtor
-        assert(ir.Definitions.isConstructorName(ctorName),
+        assert(ctorName.isConstructor,
             s"unexpected super constructor call to non-constructor $ctorName at ${applyCtor.pos}")
         (prepStats, ctorName, ctorArgs)
       }
@@ -1505,13 +1501,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         implicit pos: Position): JSConstructorBuilder = {
       def findCtorForwarderCall(tree: js.Tree): defs.MethodName = tree match {
         case js.ApplyStatic(_, _, method, js.This() :: _)
-            if ir.Definitions.isConstructorName(method.name) =>
+            if method.name.isConstructor =>
           method.name
 
         case js.Block(stats) =>
           stats.collectFirst {
             case js.ApplyStatic(_, _, method, js.This() :: _)
-                if ir.Definitions.isConstructorName(method.name) =>
+                if method.name.isConstructor =>
               method.name
           }.get
       }
@@ -2314,7 +2310,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         if (sym.owner.isAnonymousClass) {
           js.JSSelect(
               js.JSSelect(qual, genPrivateFieldsSymbol()),
-              js.StringLiteral(encodeFieldSym(sym).name))
+              encodeFieldSymAsStringLiteral(sym))
         } else {
           js.JSPrivateSelect(qual, encodeClassRef(sym.owner),
               encodeFieldSym(sym))
@@ -2892,7 +2888,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             case _ =>
               mutatedLocalVars += formalArgSym
               quadruplets += ((js.VarRef(formalArg)(tpe), tpe,
-                  freshLocalIdent("temp$" + formalArg.name),
+                  freshLocalIdent(formalArg.name.withPrefix("temp$")),
                   fixedActualArg))
           }
         }
@@ -3144,12 +3140,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val moduleClass = clazz.companionModule.moduleClass
 
       val js.MethodIdent(initName, origName) = encodeMethodSym(ctor)
-      val newName = initName match {
-        case defs.NoArgConstructorName =>
-          defs.MethodName("$new__" + encodedName)
-        case _ =>
-          defs.MethodName("$new" + initName.stripPrefix("init_") + "__" + encodedName)
-      }
+      val newName = defs.MethodName(newSimpleMethodName, initName.paramTypeRefs,
+          Some(jstpe.ClassRef(encodedName)))
       val newMethodIdent = js.MethodIdent(newName, origName)
 
       js.Apply(flags, genLoadModule(moduleClass), newMethodIdent, args)(
@@ -5593,7 +5585,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         "$$Lambda$" + generatedSAMWrapperCount.value
       }
       val generatedClassName =
-        defs.ClassName(encodeClassFullName(currentClassSym) + suffix)
+        encodeClassFullName(currentClassSym).withSuffix(suffix)
 
       val classType = jstpe.ClassType(generatedClassName)
       val classRef = jstpe.ClassRef(generatedClassName)
@@ -6152,7 +6144,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 }
 
 private object GenJSCode {
-  private val JSObjectClassName = defs.ClassName("sjs_js_Object")
+  private val JSObjectClassName = defs.ClassName("scala.scalajs.js.Object")
 
-  private val ObjectArgConstructorName = defs.MethodName("init___O")
+  private val newSimpleMethodName = defs.SimpleMethodName("new")
+
+  private val ObjectArgConstructorName =
+    defs.MethodName.constructor(List(jstpe.ClassRef(defs.ObjectClass)))
 }

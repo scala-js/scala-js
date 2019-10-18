@@ -13,58 +13,69 @@
 package org.scalajs.linker.backend.emitter
 
 import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Types._
 
 private[linker] object LongImpl {
-  final val RuntimeLongClass = ClassName("sjsr_RuntimeLong")
-  final val RuntimeLongModuleClass = ClassName("sjsr_RuntimeLong$")
+  final val RuntimeLongClass = ClassName("scala.scalajs.runtime.RuntimeLong")
+  final val RuntimeLongModuleClass = ClassName("scala.scalajs.runtime.RuntimeLong$")
 
-  final val lo = MethodName("lo__I")
-  final val hi = MethodName("hi__I")
+  final val lo = MethodName("lo", Nil, IntRef)
+  final val hi = MethodName("hi", Nil, IntRef)
 
-  private final val SigUnary   = "__sjsr_RuntimeLong"
-  private final val SigBinary  = "__sjsr_RuntimeLong__sjsr_RuntimeLong"
-  private final val SigShift   = "__I__sjsr_RuntimeLong"
-  private final val SigCompare = "__sjsr_RuntimeLong__Z"
+  private final val RTLongRef = ClassRef(RuntimeLongClass)
+  private final val OneRTLongRef = RTLongRef :: Nil
 
-  final val UNARY_- = MethodName("unary$und$minus" + SigUnary)
-  final val UNARY_~ = MethodName("unary$und$tilde" + SigUnary)
+  def unaryOp(name: String): MethodName =
+    MethodName(name, Nil, RTLongRef)
 
-  final val + = MethodName("$$plus"    + SigBinary)
-  final val - = MethodName("$$minus"   + SigBinary)
-  final val * = MethodName("$$times"   + SigBinary)
-  final val / = MethodName("$$div"     + SigBinary)
-  final val % = MethodName("$$percent" + SigBinary)
+  def binaryOp(name: String): MethodName =
+    MethodName(name, OneRTLongRef, RTLongRef)
 
-  final val | = MethodName("$$bar" + SigBinary)
-  final val & = MethodName("$$amp" + SigBinary)
-  final val ^ = MethodName("$$up"  + SigBinary)
+  def shiftOp(name: String): MethodName =
+    MethodName(name, List(IntRef), RTLongRef)
 
-  final val <<  = MethodName("$$less$less"               + SigShift)
-  final val >>> = MethodName("$$greater$greater$greater" + SigShift)
-  final val >>  = MethodName("$$greater$greater"         + SigShift)
+  def compareOp(name: String): MethodName =
+    MethodName(name, OneRTLongRef, BooleanRef)
 
-  final val === = MethodName("equals"      + SigCompare)
-  final val !== = MethodName("notEquals"   + SigCompare)
-  final val <   = MethodName("$$less"       + SigCompare)
-  final val <=  = MethodName("$$less$eq"    + SigCompare)
-  final val >   = MethodName("$$greater"    + SigCompare)
-  final val >=  = MethodName("$$greater$eq" + SigCompare)
+  final val UNARY_- = unaryOp("unary_$minus")
+  final val UNARY_~ = unaryOp("unary_$tilde")
 
-  final val toInt    = MethodName("toInt"    + "__I")
-  final val toDouble = MethodName("toDouble" + "__D")
+  final val + = binaryOp("$plus")
+  final val - = binaryOp("$minus")
+  final val * = binaryOp("$times")
+  final val / = binaryOp("$div")
+  final val % = binaryOp("$percent")
 
-  final val byteValue   = MethodName("byteValue__B")
-  final val shortValue  = MethodName("shortValue__S")
-  final val intValue    = MethodName("intValue__I")
-  final val longValue   = MethodName("longValue__J")
-  final val floatValue  = MethodName("floatValue__F")
-  final val doubleValue = MethodName("doubleValue__D")
+  final val | = binaryOp("$bar")
+  final val & = binaryOp("$amp")
+  final val ^ = binaryOp("$up")
 
-  final val toString_  = MethodName("toString__T")
-  final val equals_    = MethodName("equals__O__Z")
-  final val hashCode_  = MethodName("hashCode__I")
-  final val compareTo  = MethodName("compareTo__jl_Long__I")
-  final val compareToO = MethodName("compareTo__O__I")
+  final val <<  = shiftOp("$less$less")
+  final val >>> = shiftOp("$greater$greater$greater")
+  final val >>  = shiftOp("$greater$greater")
+
+  final val === = compareOp("equals")
+  final val !== = compareOp("notEquals")
+  final val <   = compareOp("$less")
+  final val <=  = compareOp("$less$eq")
+  final val >   = compareOp("$greater")
+  final val >=  = compareOp("$greater$eq")
+
+  final val toInt    = MethodName("toInt", Nil, IntRef)
+  final val toDouble = MethodName("toDouble", Nil, DoubleRef)
+
+  final val byteValue   = MethodName("byteValue", Nil, ByteRef)
+  final val shortValue  = MethodName("shortValue", Nil, ShortRef)
+  final val intValue    = MethodName("intValue", Nil, IntRef)
+  final val longValue   = MethodName("longValue", Nil, LongRef)
+  final val floatValue  = MethodName("floatValue", Nil, FloatRef)
+  final val doubleValue = MethodName("doubleValue", Nil, DoubleRef)
+
+  final val toString_  = MethodName("toString", Nil, ClassRef(BoxedStringClass))
+  final val equals_    = MethodName("equals", List(ClassRef(ObjectClass)), BooleanRef)
+  final val hashCode_  = MethodName("hashCode", Nil, IntRef)
+  final val compareTo  = MethodName("compareTo", List(ClassRef(BoxedLongClass)), IntRef)
+  final val compareToO = MethodName("compareTo", List(ClassRef(ObjectClass)), IntRef)
 
   private val OperatorMethods = Set(
       UNARY_-, UNARY_~, this.+, this.-, *, /, %, |, &, ^, <<, >>>, >>,
@@ -78,24 +89,24 @@ private[linker] object LongImpl {
 
   // Methods used for intrinsics
 
-  final val compareToRTLong   = MethodName("compareTo__sjsr_RuntimeLong__I")
-  final val divideUnsigned    = MethodName("divideUnsigned__sjsr_RuntimeLong__sjsr_RuntimeLong")
-  final val remainderUnsigned = MethodName("remainderUnsigned__sjsr_RuntimeLong__sjsr_RuntimeLong")
+  final val compareToRTLong   = MethodName("compareTo", List(RTLongRef), IntRef)
+  final val divideUnsigned    = binaryOp("divideUnsigned")
+  final val remainderUnsigned = binaryOp("remainderUnsigned")
 
   val AllIntrinsicMethods = Set(
       compareToRTLong, divideUnsigned, remainderUnsigned)
 
   // Constructors
 
-  final val initFromParts = MethodName("init___I__I")
+  final val initFromParts = MethodName.constructor(List(IntRef, IntRef))
 
   val AllConstructors = Set(
       initFromParts)
 
   // Methods on the companion
 
-  final val fromInt    = MethodName("fromInt__I__sjsr_RuntimeLong")
-  final val fromDouble = MethodName("fromDouble__D__sjsr_RuntimeLong")
+  final val fromInt    = MethodName("fromInt", List(IntRef), RTLongRef)
+  final val fromDouble = MethodName("fromDouble", List(DoubleRef), RTLongRef)
 
   val AllModuleMethods = Set(
       fromInt, fromDouble)

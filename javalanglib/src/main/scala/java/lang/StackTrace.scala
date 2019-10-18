@@ -188,7 +188,8 @@ private[lang] object StackTrace {
    */
   private def extractClassMethod(functionName: String): js.Array[String] = {
     val PatC = """^(?:Object\.|\[object Object\]\.)?\$c_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
-    val PatS = """^(?:Object\.|\[object Object\]\.)?\$(?:ct|ps?|s|f)_((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatS = """^(?:Object\.|\[object Object\]\.)?\$(?:ps?|s|f)_((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatCT = """^(?:Object\.|\[object Object\]\.)?\$ct_((?:_[^_]|[^_])+)__([^\.]*)$""".re
     val PatN = """^new (?:Object\.|\[object Object\]\.)?\$c_([^\.]+)$""".re
     val PatM = """^(?:Object\.|\[object Object\]\.)?\$m_([^\.]+)$""".re
 
@@ -198,9 +199,10 @@ private[lang] object StackTrace {
       js.Array[String](decodeClassName(undefOrForceGet(matchCOrS(1))),
           decodeMethodName(undefOrForceGet(matchCOrS(2))))
     } else {
-      val matchN = PatN.exec(functionName)
-      if (matchN ne null) {
-        js.Array[String](decodeClassName(undefOrForceGet(matchN(1))), "<init>")
+      val matchCT = PatCT.exec(functionName)
+      val matchCTOrN = if (matchCT ne null) matchCT else PatN.exec(functionName)
+      if (matchCTOrN ne null) {
+        js.Array[String](decodeClassName(undefOrForceGet(matchCTOrN(1))), "<init>")
       } else {
         val matchM = PatM.exec(functionName)
         if (matchM ne null) {
@@ -213,8 +215,6 @@ private[lang] object StackTrace {
   }
 
   // decodeClassName -----------------------------------------------------------
-
-  // !!! Duplicate logic: this code must be in sync with ir.Definitions
 
   private def decodeClassName(encodedName: String): String = {
     val base = if (dictContains(decompressedClasses, encodedName)) {
@@ -236,7 +236,7 @@ private[lang] object StackTrace {
       }
       loop(0)
     }
-    base.replace("_", ".").replace("$und", "_")
+    base.replace("_", ".").replace("\uff3f", "_")
   }
 
   private lazy val decompressedClasses: js.Dictionary[String] = {

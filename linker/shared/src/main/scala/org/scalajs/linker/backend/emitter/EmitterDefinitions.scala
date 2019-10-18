@@ -13,35 +13,36 @@
 package org.scalajs.linker.backend.emitter
 
 import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Types._
 
 private[emitter] object EmitterDefinitions {
   val ArithmeticExceptionClass =
-    ClassName("jl_ArithmeticException")
+    ClassName("java.lang.ArithmeticException")
 
   val ArrayIndexOutOfBoundsExceptionClass =
-    ClassName("jl_ArrayIndexOutOfBoundsException")
+    ClassName("java.lang.ArrayIndexOutOfBoundsException")
 
   val ClassCastExceptionClass =
-    ClassName("jl_ClassCastException")
+    ClassName("java.lang.ClassCastException")
 
   val CloneNotSupportedExceptionClass =
-    ClassName("jl_CloneNotSupportedException")
+    ClassName("java.lang.CloneNotSupportedException")
 
   val UndefinedBehaviorErrorClass =
-    ClassName("sjsr_UndefinedBehaviorError")
+    ClassName("scala.scalajs.runtime.UndefinedBehaviorError")
 
   /* In theory, some of the following could be computed from the Class
    * Hierarchy. However, that would be require dealing with incremental runs,
    * which would be overkill since these things are in fact known to be static.
    */
 
-  val CharSequenceClass = ClassName("jl_CharSequence")
-  val CloneableClass = ClassName("jl_Cloneable")
-  val SerializableClass = ClassName("Ljava_io_Serializable")
-  val ComparableClass = ClassName("jl_Comparable")
-  val NumberClass = ClassName("jl_Number")
+  val CharSequenceClass = ClassName("java.lang.CharSequence")
+  val CloneableClass = ClassName("java.lang.Cloneable")
+  val SerializableClass = ClassName("java.io.Serializable")
+  val ComparableClass = ClassName("java.lang.Comparable")
+  val NumberClass = ClassName("java.lang.Number")
 
-  val ThrowableClass = ClassName("jl_Throwable")
+  val ThrowableClass = ClassName("java.lang.Throwable")
 
   val NonObjectAncestorsOfStringClass =
     Set(CharSequenceClass, ComparableClass, SerializableClass)
@@ -65,28 +66,29 @@ private[emitter] object EmitterDefinitions {
 
   // Method names
 
-  val ObjectArgConstructorName = MethodName("init___O")
-  val StringArgConstructorName = MethodName("init___T")
-  val ThrowableArgConsructorName = MethodName("init___jl_Throwable")
+  val ObjectArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
+  val StringArgConstructorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
+  val ThrowableArgConsructorName = MethodName.constructor(List(ClassRef(ThrowableClass)))
 
-  val getClassMethodName = MethodName("getClass__jl_Class")
-  val cloneMethodName = MethodName("clone__O")
-  val finalizeMethodName = MethodName("finalize__V")
-  val notifyMethodName = MethodName("notify__V")
-  val notifyAllMethodName = MethodName("notifyAll__V")
-  val toStringMethodName = MethodName("toString__T")
-  val equalsMethodName = MethodName("equals__O__Z")
-  val hashCodeMethodName = MethodName("hashCode__I")
-  val compareToMethodName = MethodName("compareTo__O__I")
-  val lengthMethodName = MethodName("length__I")
-  val charAtMethodName = MethodName("charAt__I__C")
-  val subSequenceMethodName = MethodName("subSequence__I__I__jl_CharSequence")
-  val byteValueMethodName = MethodName("byteValue__B")
-  val shortValueMethodName = MethodName("shortValue__S")
-  val intValueMethodName = MethodName("intValue__I")
-  val longValueMethodName = MethodName("longValue__J")
-  val floatValueMethodName = MethodName("floatValue__F")
-  val doubleValueMethodName = MethodName("doubleValue__D")
-  val getSuperclassMethodName = MethodName("getSuperclass__jl_Class")
+  val getClassMethodName = MethodName("getClass", Nil, ClassRef(ClassClass))
+  val cloneMethodName = MethodName("clone", Nil, ClassRef(ObjectClass))
+  val finalizeMethodName = MethodName("finalize", Nil, VoidRef)
+  val notifyMethodName = MethodName("notify", Nil, VoidRef)
+  val notifyAllMethodName = MethodName("notifyAll", Nil, VoidRef)
+  val toStringMethodName = MethodName("toString", Nil, ClassRef(BoxedStringClass))
+  val equalsMethodName = MethodName("equals", List(ClassRef(ObjectClass)), BooleanRef)
+  val hashCodeMethodName = MethodName("hashCode", Nil, IntRef)
+  val compareToMethodName = MethodName("compareTo", List(ClassRef(ObjectClass)), IntRef)
+  val lengthMethodName = MethodName("length", Nil, IntRef)
+  val charAtMethodName = MethodName("charAt", List(IntRef), CharRef)
+  val subSequenceMethodName =
+    MethodName("subSequence", List(IntRef, IntRef), ClassRef(ClassName("java.lang.CharSequence")))
+  val byteValueMethodName = MethodName("byteValue", Nil, ByteRef)
+  val shortValueMethodName = MethodName("shortValue", Nil, ShortRef)
+  val intValueMethodName = MethodName("intValue", Nil, IntRef)
+  val longValueMethodName = MethodName("longValue", Nil, LongRef)
+  val floatValueMethodName = MethodName("floatValue", Nil, FloatRef)
+  val doubleValueMethodName = MethodName("doubleValue", Nil, DoubleRef)
+  val getSuperclassMethodName = MethodName("getSuperclass", Nil, ClassRef(ClassClass))
 
 }

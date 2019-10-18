@@ -464,7 +464,7 @@ private[emitter] object CoreJSLib {
               }
           ), {
             If(instance === Null(), {
-              Return(Apply(instance DOT getClassMethodName, Nil))
+              Return(Apply(instance DOT genName(getClassMethodName), Nil))
             }, {
               If(genIsInstanceOfHijackedClass(instance, BoxedLongClass), {
                 Return(genClassOf(BoxedLongClass))
@@ -490,7 +490,7 @@ private[emitter] object CoreJSLib {
 
       def defineDispatcher(methodName: MethodName, args: List[VarRef],
           body: Tree): Unit = {
-        buf += envFunctionDef("dp_" + methodName,
+        buf += envFunctionDef("dp_" + genName(methodName),
             paramList((instance :: args): _*), body)
       }
 
@@ -514,7 +514,7 @@ private[emitter] object CoreJSLib {
       locally {
         defineDispatcher(cloneMethodName, Nil, {
           If(genIsScalaJSObjectOrNull(instance), {
-            Return(Apply(instance DOT cloneMethodName, Nil))
+            Return(Apply(instance DOT genName(cloneMethodName), Nil))
           }, {
             Throw(genScalaClassNew(CloneNotSupportedExceptionClass,
                 NoArgConstructorName))
@@ -526,7 +526,7 @@ private[emitter] object CoreJSLib {
       locally {
         for (name <- List(notifyMethodName, notifyAllMethodName)) {
           defineDispatcher(name, Nil, {
-            If(instance === Null(), Apply(instance DOT name, Nil), Skip())
+            If(instance === Null(), Apply(instance DOT genName(name), Nil), Skip())
           })
         }
       }
@@ -535,7 +535,7 @@ private[emitter] object CoreJSLib {
       locally {
         defineDispatcher(finalizeMethodName, Nil, {
           If(genIsScalaJSObjectOrNull(instance),
-              Apply(instance DOT finalizeMethodName, Nil),
+              Apply(instance DOT genName(finalizeMethodName), Nil),
               Skip())
         })
       }
@@ -552,13 +552,11 @@ private[emitter] object CoreJSLib {
           case _                 => None
         }
 
-        def genHijackedMethodApply(className: ClassName): Tree = {
-          val fullName = className + "__" + methodName
-          Apply(envField("f", fullName), (instance :: args): List[VarRef])
-        }
+        def genHijackedMethodApply(className: ClassName): Tree =
+          Apply(envField("f", className, methodName, None), instance :: args)
 
         def genBodyNoSwitch(implementingHijackedClasses: List[ClassName]): Tree = {
-          val normalCall = Apply(instance DOT methodName, args)
+          val normalCall = Apply(instance DOT genName(methodName), args)
           val defaultCall: Tree = Return(implementationInObject.getOrElse(normalCall))
 
           val allButNormal = implementingHijackedClasses.foldRight(defaultCall) { (className, next) =>
@@ -879,7 +877,7 @@ private[emitter] object CoreJSLib {
           Function(arrow = false, paramList(obj), {
             Switch(typeof(obj),
                 List("string", "number", "bigint", "boolean").map(str(_) -> Skip()) :+
-                str("undefined") -> Return(genCallHelper("dp_" + hashCodeMethodName, obj)),
+                str("undefined") -> Return(genCallHelper("dp_" + genName(hashCodeMethodName), obj)),
                 defaultImpl)
           })
         }
@@ -986,7 +984,7 @@ private[emitter] object CoreJSLib {
       if (asInstanceOfs != CheckedBehavior.Unchecked) {
         // Unboxes for everything
         def defineUnbox(name: String, boxedClassName: ClassName, resultExpr: Tree): Unit = {
-          val fullName = decodeClassName(boxedClassName)
+          val fullName = boxedClassName.nameString
           buf += envFunctionDef(name, paramList(v), Return {
             If(genIsInstanceOfHijackedClass(v, boxedClassName) || (v === Null()),
                 resultExpr,
@@ -1203,7 +1201,7 @@ private[emitter] object CoreJSLib {
               Nil
             }
 
-            val clone = MethodDef(static = false, Ident(cloneMethodName), Nil, {
+            val clone = MethodDef(static = false, Ident(genName(cloneMethodName)), Nil, {
               Return(New(ArrayClass, {
                 If((This() DOT "u") instanceof ArrayRef, {
                   Apply(genIdentBracketSelect(This() DOT "u", "slice"), 0 :: Nil)
@@ -1233,9 +1231,9 @@ private[emitter] object CoreJSLib {
               privateFieldSet("constr", ArrayClass),
               privateFieldSet("parentData", genClassDataOf(ObjectClass)),
               privateFieldSet("ancestors", ObjectConstr(List(
-                  Ident(ObjectClass) -> 1,
-                  Ident(CloneableClass) -> 1,
-                  Ident(SerializableClass) -> 1
+                  Ident(genName(ObjectClass)) -> 1,
+                  Ident(genName(CloneableClass)) -> 1,
+                  Ident(genName(SerializableClass)) -> 1
               ))),
               privateFieldSet("componentData", componentData),
               privateFieldSet("arrayBase", componentBase),
@@ -1426,7 +1424,7 @@ private[emitter] object CoreJSLib {
 
     private def genScalaClassNew(className: ClassName, ctorName: MethodName,
         args: Tree*): Tree = {
-      Apply(envField("ct", className + "__" + ctorName),
+      Apply(envField("ct", className, ctorName, None),
           New(encodeClassVar(className), Nil) :: args.toList)
     }
 

@@ -336,18 +336,20 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     private def transformLocalName(name: LocalName): String = {
       if (isOptimisticNamingRun) {
-        localVarNames += name
-        name
+        val jsName = genName(name)
+        localVarNames += jsName
+        jsName
       } else {
         // Slow path in a different `def` to keep it out of the JIT's way
         def slowPath(): String = {
           localVarAllocs.getOrElseUpdate(name, {
             var suffix = 0
-            var result: String = name
+            val baseJSName = genName(name)
+            var result: String = baseJSName
             while (globalVarNames.contains(result) ||
                 localVarNames.contains(result)) {
               suffix += 1
-              result = name + "$" + suffix
+              result = baseJSName + "$" + suffix
             }
             localVarNames += result
             result
@@ -412,19 +414,19 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     def makeRecordFieldIdent(recIdent: LocalIdent, fieldIdent: FieldIdent)(
         implicit pos: Position): LocalIdent =
-      makeRecordFieldIdent(recIdent.name, recIdent.originalName,
+      makeRecordFieldIdent(genName(recIdent.name), recIdent.originalName,
           fieldIdent.name, fieldIdent.originalName)
 
     def makeRecordFieldIdent(recIdent: LocalIdent,
         fieldName: FieldName, fieldOrigiName: Option[String])(
         implicit pos: Position): LocalIdent =
-      makeRecordFieldIdent(recIdent.name, recIdent.originalName,
+      makeRecordFieldIdent(genName(recIdent.name), recIdent.originalName,
           fieldName, fieldOrigiName)
 
     def makeRecordFieldIdent(recName: String, recOrigName: Option[String],
         fieldName: FieldName, fieldOrigName: Option[String])(
         implicit pos: Position): LocalIdent = {
-      val name = LocalName(recName + "_$_" + fieldName)
+      val name = fieldName.toLocalName.withPrefix(recName + "_$_")
       val originalName = Some(recOrigName.getOrElse(recName) + "." +
           fieldOrigName.getOrElse(fieldName))
       LocalIdent(name, originalName)
@@ -444,10 +446,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         implicit pos: Position): WithGlobals[js.Function] = {
 
       performOptimisticThenPessimisticRuns {
-        /* TODO The identifier `$thiz` cannot be produced by 0.6.x compilers due
-         * to their name mangling, which guarantees that it is unique. We should
-         * find a better way to do this in the future, though.
-         * This is filed as #2972.
+        /* TODO The identifier `$thiz` can clash with a potential access to a
+         * JSGlobalRef named `$thiz`. This is filed as #2972.
          */
         val thisIdent = js.Ident("$thiz", Some("this"))
         val env = env0.withThisIdent(Some(thisIdent))
@@ -1910,12 +1910,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // Fast path
         args.map(transformExpr(_, preserveChar = true))
       } else {
-        /* TODO Optimize this. We don't really need to decode the full
-         * signature. We can simply walk the string and look for "__C__"'s,
-         * without allocating anything.
-         */
-        val (_, paramTypeRefs, _) = Definitions.decodeMethodName(methodName)
-        args.zip(paramTypeRefs).map {
+        args.zip(methodName.paramTypeRefs).map {
           case (arg, CharRef) => transformExpr(arg, preserveChar = true)
           case (arg, _)       => transformExpr(arg, preserveChar = false)
         }
@@ -1995,16 +1990,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             js.Apply(newReceiver DOT transformMethodIdent(method), newArgs)
 
           def genDispatchApply(): js.Tree =
-            genCallHelper("dp_" + methodName, newReceiver :: newArgs: _*)
+            genCallHelper("dp_" + genName(methodName), newReceiver :: newArgs: _*)
 
           def genHijackedMethodApply(className: ClassName): js.Tree = {
-            val fullName = className + "__" + methodName
-            js.Apply(envField("f", fullName, method.originalName),
+            js.Apply(envField("f", className, methodName, method.originalName),
                 newReceiver :: newArgs)
           }
 
           if (isMaybeHijackedClass(receiver.tpe) &&
-              !isReflProxyName(methodName)) {
+              !methodName.isReflectiveProxy) {
             receiver.tpe match {
               case AnyType =>
                 genDispatchApply()
@@ -2573,7 +2567,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           if (env.isLocalVar(name))
             js.VarRef(transformLocalVarIdent(name))
           else
-            envField("cc", name.name, name.originalName)
+            envField("cc", genName(name.name), name.originalName)
 
         case This() =>
           env.thisIdent.fold[js.Tree] {
@@ -2682,10 +2676,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     }
 
     private def transformLabelIdent(ident: LabelIdent): js.Ident =
-      js.Ident(ident.name)(ident.pos)
+      js.Ident(genName(ident.name))(ident.pos)
 
     private def transformMethodIdent(ident: MethodIdent): js.Ident =
-      js.Ident(ident.name, ident.originalName)(ident.pos)
+      js.Ident(genName(ident.name), ident.originalName)(ident.pos)
 
     private def transformLocalVarIdent(ident: LocalIdent): js.Ident =
       js.Ident(transformLocalName(ident.name), ident.originalName)(ident.pos)
@@ -2714,8 +2708,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     private def genApplyStaticLike(field: String, className: ClassName,
         method: MethodIdent, args: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      js.Apply(envField(field, className + "__" + method.name,
-          method.originalName), args)
+      js.Apply(envField(field, className, method.name, method.originalName),
+          args)
     }
 
     private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree = {
@@ -2746,7 +2740,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     private def genLongMethodApply(receiver: js.Tree, methodName: MethodName,
         args: js.Tree*)(implicit pos: Position): js.Tree = {
       import TreeDSL._
-      js.Apply(receiver DOT methodName, args.toList)
+      js.Apply(receiver DOT genName(methodName), args.toList)
     }
 
     private implicit class RecordAwareEnv(env: Env) {

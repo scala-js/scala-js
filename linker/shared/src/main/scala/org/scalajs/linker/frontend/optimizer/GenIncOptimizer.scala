@@ -390,7 +390,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     var tryNewInlineable: Option[OptimizerCore.InlineableClassStructure] = None
 
     override def toString(): String =
-      encodedName
+      encodedName.nameString
 
     /** Walk the class hierarchy tree for deletions.
      *  This includes "deleting" classes that were previously instantiated but
@@ -509,7 +509,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
       // Inlineable class
       if (updateTryNewInlineable(linkedClass)) {
-        for (method <- methods.values; if isConstructorName(method.encodedName))
+        for (method <- methods.values; if method.encodedName.isConstructor)
           myInterface.tagStaticCallersOf(namespace, method.encodedName)
       }
 
@@ -983,7 +983,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 object GenIncOptimizer {
 
   private val isAdHocElidableModuleAccessor: Set[ClassName] =
-    Set(ClassName("s_Predef$"))
+    Set(ClassName("scala.Predef$"))
 
   private[optimizer] trait AbsCollOps {
     type Map[K, V] <: mutable.Map[K, V]

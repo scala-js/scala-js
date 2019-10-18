@@ -20,8 +20,8 @@ import Trees._
 object Types {
 
   private val AncestorsOfPseudoArrayClass: Set[ClassName] = {
-    Set(Definitions.ObjectClass, ClassName("Ljava_io_Serializable"),
-        ClassName("jl_Cloneable"))
+    Set(Definitions.ObjectClass, ClassName("java.io.Serializable"),
+        ClassName("java.lang.Cloneable"))
   }
 
   /** Type of a term (expression or statement) in the IR.
