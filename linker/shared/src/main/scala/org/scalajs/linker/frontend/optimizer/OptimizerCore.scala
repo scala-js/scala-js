@@ -1847,7 +1847,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
 
     receiverAndArgs.exists(isLikelyOptimizable) || {
-      target.toString == "s_reflect_ClassTag$.apply__jl_Class__s_reflect_ClassTag" &&
+      target.is(ClassTagModuleClass, ClassTagApplyMethodName) &&
       (receiverAndArgs.tail.head match {
         case PreTransTree(ClassOf(_), _) => true
         case _                           => false
@@ -4411,10 +4411,12 @@ private[optimizer] object OptimizerCore {
   private val Tuple2Class = ClassName("T2")
   private val NilClass = ClassName("sci_Nil$")
   private val JSWrappedArrayClass = ClassName("sjs_js_WrappedArray")
+  private val ClassTagModuleClass = ClassName("s_reflect_ClassTag$")
 
   private val ObjectCloneName = MethodName("clone__O")
   private val TupleFirstMethodName = MethodName("$$und1__O")
   private val TupleSecondMethodName = MethodName("$$und2__O")
+  private val ClassTagApplyMethodName = MethodName("apply__jl_Class__s_reflect_ClassTag")
 
   final class InlineableClassStructure(
       /** `List[ownerClassName -> fieldDef]`. */
@@ -5026,10 +5028,15 @@ private[optimizer] object OptimizerCore {
   private def canNegateLong(x: Long): Boolean =
     x != Long.MinValue
 
-  private final class Intrinsics(intrinsicsMap: Map[String, Int]) {
-    def apply(flags: ApplyFlags, target: AbstractMethodID): Int =
-      if (flags.isPrivate || flags.isConstructor) -1
-      else intrinsicsMap.getOrElse(target.toString(), -1)
+  private final class Intrinsics(intrinsicsMap: Map[(ClassName, MethodName), Int]) {
+    def apply(flags: ApplyFlags, target: AbstractMethodID): Int = {
+      if (flags.isPrivate || flags.isConstructor) {
+        -1
+      } else {
+        val key = (target.enclosingClassName, target.methodName)
+        intrinsicsMap.getOrElse(key, -1)
+      }
+    }
   }
 
   private object Intrinsics {
@@ -5070,54 +5077,73 @@ private[optimizer] object OptimizerCore {
     final val Float32ArrayToFloatArray  = Int32ArrayToIntArray      + 1
     final val Float64ArrayToDoubleArray = Float32ArrayToFloatArray  + 1
 
+    private def m(name: String): MethodName = MethodName(name)
+
     // scalastyle:off line.size.limit
-    private val baseIntrinsics: Map[String, Int] = Map(
-      "jl_System$.arraycopy__O__I__O__I__I__V" -> ArrayCopy,
-      "jl_System$.identityHashCode__O__I"      -> IdentityHashCode,
+    private val baseIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
+        ClassName("jl_System$") -> List(
+            m("arraycopy__O__I__O__I__I__V") -> ArrayCopy,
+            m("identityHashCode__O__I") -> IdentityHashCode
+        ),
+        ClassName("sr_ScalaRunTime$") -> List(
+            m("array$undapply__O__I__O") -> ArrayApply,
+            m("array$undupdate__O__I__O__V") -> ArrayUpdate,
+            m("array$undlength__O__I") -> ArrayLength
+        ),
+        ClassName("jl_Integer$") -> List(
+            m("numberOfLeadingZeros__I__I") -> IntegerNLZ
+        ),
+        ClassName("scm_ArrayBuilder$") -> List(
+            m("scala$collection$mutable$ArrayBuilder$$zeroOf__jl_Class__O") -> ArrayBuilderZeroOf,
+            m("scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult__jl_Class__sjs_js_Array__O") -> GenericArrayBuilderResult
+        ),
+        ClassName("jl_Class") -> List(
+            m("getComponentType__jl_Class") -> ClassGetComponentType
+        ),
+        ClassName("jl_reflect_Array$") -> List(
+            m("newInstance__jl_Class__I__O") -> ArrayNewInstance
+        ),
+        ClassName("sjs_js_special_package$") -> List(
+            m("objectLiteral__sc_Seq__sjs_js_Object") -> ObjectLiteral
+        ),
+        ClassName("sjs_js_typedarray_package$") -> List(
+            m("byteArray2Int8Array__AB__sjs_js_typedarray_Int8Array") -> ByteArrayToInt8Array,
+            m("shortArray2Int16Array__AS__sjs_js_typedarray_Int16Array") -> ShortArrayToInt16Array,
+            m("charArray2Uint16Array__AC__sjs_js_typedarray_Uint16Array") -> CharArrayToUint16Array,
+            m("intArray2Int32Array__AI__sjs_js_typedarray_Int32Array") -> IntArrayToInt32Array,
+            m("floatArray2Float32Array__AF__sjs_js_typedarray_Float32Array") -> FloatArrayToFloat32Array,
+            m("doubleArray2Float64Array__AD__sjs_js_typedarray_Float64Array") -> DoubleArrayToFloat64Array,
 
-      "sr_ScalaRunTime$.array$undapply__O__I__O"     -> ArrayApply,
-      "sr_ScalaRunTime$.array$undupdate__O__I__O__V" -> ArrayUpdate,
-      "sr_ScalaRunTime$.array$undlength__O__I"       -> ArrayLength,
-
-      "jl_Integer$.numberOfLeadingZeros__I__I" -> IntegerNLZ,
-
-      "scm_ArrayBuilder$.scala$collection$mutable$ArrayBuilder$$zeroOf__jl_Class__O" -> ArrayBuilderZeroOf,
-      "scm_ArrayBuilder$.scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult__jl_Class__sjs_js_Array__O" -> GenericArrayBuilderResult,
-
-      "jl_Class.getComponentType__jl_Class" -> ClassGetComponentType,
-
-      "jl_reflect_Array$.newInstance__jl_Class__I__O" -> ArrayNewInstance,
-
-      "sjs_js_special_package$.objectLiteral__sc_Seq__sjs_js_Object" -> ObjectLiteral,
-
-      "sjs_js_typedarray_package$.byteArray2Int8Array__AB__sjs_js_typedarray_Int8Array"         -> ByteArrayToInt8Array,
-      "sjs_js_typedarray_package$.shortArray2Int16Array__AS__sjs_js_typedarray_Int16Array"      -> ShortArrayToInt16Array,
-      "sjs_js_typedarray_package$.charArray2Uint16Array__AC__sjs_js_typedarray_Uint16Array"     -> CharArrayToUint16Array,
-      "sjs_js_typedarray_package$.intArray2Int32Array__AI__sjs_js_typedarray_Int32Array"        -> IntArrayToInt32Array,
-      "sjs_js_typedarray_package$.floatArray2Float32Array__AF__sjs_js_typedarray_Float32Array"  -> FloatArrayToFloat32Array,
-      "sjs_js_typedarray_package$.doubleArray2Float64Array__AD__sjs_js_typedarray_Float64Array" -> DoubleArrayToFloat64Array,
-
-      "sjs_js_typedarray_package$.int8Array2ByteArray__sjs_js_typedarray_Int8Array__AB"         -> Int8ArrayToByteArray,
-      "sjs_js_typedarray_package$.int16Array2ShortArray__sjs_js_typedarray_Int16Array__AS"      -> Int16ArrayToShortArray,
-      "sjs_js_typedarray_package$.uint16Array2CharArray__sjs_js_typedarray_Uint16Array__AC"     -> Uint16ArrayToCharArray,
-      "sjs_js_typedarray_package$.int32Array2IntArray__sjs_js_typedarray_Int32Array__AI"        -> Int32ArrayToIntArray,
-      "sjs_js_typedarray_package$.float32Array2FloatArray__sjs_js_typedarray_Float32Array__AF"  -> Float32ArrayToFloatArray,
-      "sjs_js_typedarray_package$.float64Array2DoubleArray__sjs_js_typedarray_Float64Array__AD" -> Float64ArrayToDoubleArray
+            m("int8Array2ByteArray__sjs_js_typedarray_Int8Array__AB") -> Int8ArrayToByteArray,
+            m("int16Array2ShortArray__sjs_js_typedarray_Int16Array__AS") -> Int16ArrayToShortArray,
+            m("uint16Array2CharArray__sjs_js_typedarray_Uint16Array__AC") -> Uint16ArrayToCharArray,
+            m("int32Array2IntArray__sjs_js_typedarray_Int32Array__AI") -> Int32ArrayToIntArray,
+            m("float32Array2FloatArray__sjs_js_typedarray_Float32Array__AF") -> Float32ArrayToFloatArray,
+            m("float64Array2DoubleArray__sjs_js_typedarray_Float64Array__AD") -> Float64ArrayToDoubleArray
+        )
     )
 
-    private val runtimeLongIntrinsics: Map[String, Int] = Map(
-      "jl_Long$.toString__J__T"              -> LongToString,
-      "jl_Long$.compare__J__J__I"            -> LongCompare,
-      "jl_Long$.divideUnsigned__J__J__J"     -> LongDivideUnsigned,
-      "jl_Long$.remainderUnsigned__J__J__J"  -> LongRemainderUnsigned
+    private val runtimeLongIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
+        ClassName("jl_Long$") -> List(
+            m("toString__J__T") -> LongToString,
+            m("compare__J__J__I") -> LongCompare,
+            m("divideUnsigned__J__J__J") -> LongDivideUnsigned,
+            m("remainderUnsigned__J__J__J") -> LongRemainderUnsigned
+        )
     )
     // scalastyle:on line.size.limit
 
     def buildIntrinsics(esFeatures: ESFeatures): Intrinsics = {
-      val intrinsicsMap =
+      val allIntrinsics =
         if (esFeatures.allowBigIntsForLongs) baseIntrinsics
         else baseIntrinsics ++ runtimeLongIntrinsics
 
+      val intrinsicsMap = (for {
+        (className, methodsAndCodes) <- allIntrinsics
+        (methodName, code) <- methodsAndCodes
+      } yield {
+        (className, methodName) -> code
+      }).toMap
       new Intrinsics(intrinsicsMap)
     }
   }
@@ -5142,9 +5168,14 @@ private[optimizer] object OptimizerCore {
   }
 
   trait AbstractMethodID {
+    def enclosingClassName: ClassName
+    def methodName: MethodName
     def inlineable: Boolean
     def shouldInline: Boolean
     def isForwarder: Boolean
+
+    final def is(className: ClassName, methodName: MethodName): Boolean =
+      this.enclosingClassName == className && this.methodName == methodName
   }
 
   /** Parts of [[GenIncOptimizer#MethodImpl]] with decisions about optimizations. */

@@ -795,6 +795,9 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     var originalDef: MethodDef = _
     var optimizedMethodDef: Versioned[MethodDef] = _
 
+    def enclosingClassName: ClassName = owner.encodedName
+    def methodName: MethodName = encodedName
+
     def thisType: Type = owner.thisType
     def deleted: Boolean = _deleted
 
