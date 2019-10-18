@@ -489,27 +489,33 @@ private[emitter] object CoreJSLib {
     private def defineDispatchFunctions(): Unit = {
       val instance = varRef("instance")
 
-      // toString__T
+      def defineDispatcher(methodName: MethodName, args: List[VarRef],
+          body: Tree): Unit = {
+        buf += envFunctionDef("dp_" + methodName,
+            paramList((instance :: args): _*), body)
+      }
+
+      // toString()java.lang.String
       locally {
-        buf += envFunctionDef("dp_toString__T", paramList(instance), {
+        defineDispatcher(toStringMethodName, Nil, {
           Return(If(instance === Undefined(),
               str("undefined"),
               Apply(instance DOT "toString", Nil)))
         })
       }
 
-      // getClass__jl_Class
+      // getClass()java.lang.Class
       locally {
-        buf += envFunctionDef("dp_getClass__jl_Class", paramList(instance), {
+        defineDispatcher(getClassMethodName, Nil, {
           Return(genCallHelper("objectGetClass", instance))
         })
       }
 
-      // clone__O
+      // clone()java.lang.Object
       locally {
-        buf += envFunctionDef("dp_clone__O", paramList(instance), {
+        defineDispatcher(cloneMethodName, Nil, {
           If(genIsScalaJSObjectOrNull(instance), {
-            Return(Apply(instance DOT "clone__O", Nil))
+            Return(Apply(instance DOT cloneMethodName, Nil))
           }, {
             Throw(genScalaClassNew(CloneNotSupportedExceptionClass,
                 NoArgConstructorName))
@@ -517,20 +523,20 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      // notify__V and notifyAll__V (final and no-op in Object)
+      // notify()V and notifyAll()V (final and no-op in Object)
       locally {
-        for (name <- List("notify__V", "notifyAll__V")) {
-          buf += envFunctionDef("dp_" + name, paramList(instance), {
+        for (name <- List(notifyMethodName, notifyAllMethodName)) {
+          defineDispatcher(name, Nil, {
             If(instance === Null(), Apply(instance DOT name, Nil), Skip())
           })
         }
       }
 
-      // finalize__V
+      // finalize()V
       locally {
-        buf += envFunctionDef("dp_finalize__V", paramList(instance), {
+        defineDispatcher(finalizeMethodName, Nil, {
           If(genIsScalaJSObjectOrNull(instance),
-              Apply(instance DOT "finalize__V", Nil),
+              Apply(instance DOT finalizeMethodName, Nil),
               Skip())
         })
       }
@@ -590,7 +596,7 @@ private[emitter] object CoreJSLib {
           }
         }
 
-        buf += envFunctionDef("dp_" + methodName, paramList((instance :: args): _*), {
+        defineDispatcher(methodName, args, {
           genBodyMaybeSwitch()
         })
       }
@@ -874,7 +880,7 @@ private[emitter] object CoreJSLib {
           Function(arrow = false, paramList(obj), {
             Switch(typeof(obj),
                 List("string", "number", "bigint", "boolean").map(str(_) -> Skip()) :+
-                str("undefined") -> Return(genCallHelper("dp_hashCode__I", obj)),
+                str("undefined") -> Return(genCallHelper("dp_" + hashCodeMethodName, obj)),
                 defaultImpl)
           })
         }
@@ -1198,7 +1204,7 @@ private[emitter] object CoreJSLib {
               Nil
             }
 
-            val clone = MethodDef(static = false, Ident("clone__O"), Nil, {
+            val clone = MethodDef(static = false, Ident(cloneMethodName), Nil, {
               Return(New(ArrayClass, {
                 If((This() DOT "u") instanceof ArrayRef, {
                   Apply(genIdentBracketSelect(This() DOT "u", "slice"), 0 :: Nil)
