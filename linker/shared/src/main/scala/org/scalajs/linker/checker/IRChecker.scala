@@ -744,7 +744,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             isStatic = false)
 
       case LoadModule(cls) =>
-        if (!cls.className.endsWith("$"))
+        val clazz = lookupClass(cls)
+        if (clazz.kind != ClassKind.ModuleClass)
           reportError("LoadModule of non-module class $cls")
 
       case Select(qualifier, ClassRef(cls), FieldIdent(item, _)) =>
