@@ -61,10 +61,9 @@ private[emitter] object CoreJSLib {
 
     private val classData = Ident("$classData")
 
-    private val orderedPrimitiveCharCodeStrs = {
-      val primRefs = List(VoidRef, BooleanRef, CharRef, ByteRef, ShortRef,
-          IntRef, LongRef, FloatRef, DoubleRef)
-      primRefs.map(fieldNameOfPrimRef(_))
+    private val orderedPrimRefs = {
+      List(VoidRef, BooleanRef, CharRef, ByteRef, ShortRef, IntRef, LongRef,
+          FloatRef, DoubleRef)
     }
 
     def build(): WithGlobals[Tree] = {
@@ -1366,24 +1365,25 @@ private[emitter] object CoreJSLib {
     }
 
     private def defineIsArrayOfPrimitiveFunctions(): Unit = {
-      for (charCodeStr <- orderedPrimitiveCharCodeStrs) {
+      for (primRef <- orderedPrimRefs) {
         val obj = varRef("obj")
         val depth = varRef("depth")
-        buf += FunctionDef(envFieldIdent("isArrayOf", charCodeStr), paramList(obj, depth), {
+        buf += FunctionDef(envFieldIdent("isArrayOf", primRef), paramList(obj, depth), {
           Return(!(!(obj && (obj DOT classData) &&
               ((obj DOT classData DOT "arrayDepth") === depth) &&
-              ((obj DOT classData DOT "arrayBase") === genClassDataOf(charCodeStr)))))
+              ((obj DOT classData DOT "arrayBase") === genClassDataOf(primRef)))))
         })
       }
     }
 
     private def defineAsArrayOfPrimitiveFunctions(): Unit = {
       if (asInstanceOfs != CheckedBehavior.Unchecked) {
-        for (charCodeStr <- orderedPrimitiveCharCodeStrs) {
+        for (primRef <- orderedPrimRefs) {
+          val charCodeStr = charCodeOfPrimRef(primRef)
           val obj = varRef("obj")
           val depth = varRef("depth")
-          buf += FunctionDef(envFieldIdent("asArrayOf", charCodeStr), paramList(obj, depth), {
-            If(genCallHelper("isArrayOf_" + charCodeStr, obj, depth) || (obj === Null()), {
+          buf += FunctionDef(envFieldIdent("asArrayOf", primRef), paramList(obj, depth), {
+            If(Apply(envField("isArrayOf", primRef), obj :: depth :: Nil) || (obj === Null()), {
               Return(obj)
             }, {
               genCallHelper("throwArrayCastException", obj, str(charCodeStr), depth)
@@ -1407,10 +1407,10 @@ private[emitter] object CoreJSLib {
             (DoubleRef, double(0), "double")
         )
       } {
-        val charCodeStr = fieldNameOfPrimRef(primRef)
-        buf += const(envField("d", charCodeStr), {
+        val charCodeStr = charCodeOfPrimRef(primRef)
+        buf += const(envField("d", primRef), {
           Apply(New(envField("TypeData"), Nil) DOT "initPrim",
-              List(zero, str(charCodeStr), str(displayName), envField("isArrayOf", charCodeStr)))
+              List(zero, str(charCodeStr), str(displayName), envField("isArrayOf", primRef)))
         })
       }
     }
@@ -1435,6 +1435,32 @@ private[emitter] object CoreJSLib {
 
     private def genIsScalaJSObjectOrNull(obj: VarRef): Tree =
       genIsScalaJSObject(obj) || (obj === Null())
+
+    /** This mapping is by-spec of run-time behavior.
+     *
+     *  It can be observed in `classOf[Array[Prim]].getName()`, as well as in
+     *  the error messages of `x.asInstanceOf[Array[Prim]]`.
+     *
+     *  Even if we change the encoding of "envFields" for PrimRefs (which is an
+     *  implementation detail of the emitter), the mapping in
+     *  `charCodeOfPrimRef` must not change.
+     */
+    private def charCodeOfPrimRef(primRef: PrimRef): String = primRef.tpe match {
+      case NoType      => "V"
+      case BooleanType => "Z"
+      case CharType    => "C"
+      case ByteType    => "B"
+      case ShortType   => "S"
+      case IntType     => "I"
+      case LongType    => "J"
+      case FloatType   => "F"
+      case DoubleType  => "D"
+
+      case NullType | NothingType =>
+        throw new AssertionError(
+            s"Trying to call charCodeOfPrimRef() for $primRef which has no " +
+            "specified char code")
+    }
 
     private def envFunctionDef(name: String, args: List[ParamDef],
         body: Tree): FunctionDef = {

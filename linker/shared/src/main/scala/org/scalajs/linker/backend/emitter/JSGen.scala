@@ -154,8 +154,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
         }
 
       case ArrayType(ArrayTypeRef(base, depth)) =>
-        Apply(envField("isArrayOf", arrayBaseFieldName(base)),
-            List(expr, IntLiteral(depth)))
+        Apply(envField("isArrayOf", base), List(expr, IntLiteral(depth)))
 
       case UndefType   => expr === Undefined()
       case BooleanType => typeof(expr) === "boolean"
@@ -235,8 +234,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
           Apply(envField("as", className), List(expr))
 
         case ArrayType(ArrayTypeRef(base, depth)) =>
-          Apply(envField("asArrayOf", arrayBaseFieldName(base)),
-              List(expr, IntLiteral(depth)))
+          Apply(envField("asArrayOf", base), List(expr, IntLiteral(depth)))
 
         case UndefType   => genCallHelper("uV", expr)
         case BooleanType => genCallHelper("uZ", expr)
@@ -350,44 +348,23 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genClassOf(typeRef: TypeRef)(implicit pos: Position): Tree =
     Apply(DotSelect(genClassDataOf(typeRef), Ident("getClassOf")), Nil)
 
+  def genClassOf(className: ClassName)(implicit pos: Position): Tree =
+    genClassOf(ClassRef(className))
+
   def genClassDataOf(typeRef: TypeRef)(implicit pos: Position): Tree = {
     typeRef match {
-      case typeRef: PrimRef =>
-        genClassDataOf(fieldNameOfPrimRef(typeRef))
-      case ClassRef(className) =>
-        genClassDataOf(className)
+      case typeRef: NonArrayTypeRef =>
+        envField("d", typeRef)
       case ArrayTypeRef(base, dims) =>
-        val baseData = envField("d", arrayBaseFieldName(base))
+        val baseData = genClassDataOf(base)
         (1 to dims).foldLeft[Tree](baseData) { (prev, _) =>
           Apply(DotSelect(prev, Ident("getArrayOf")), Nil)
         }
     }
   }
 
-  private def arrayBaseFieldName(base: NonArrayTypeRef): String = base match {
-    case base: PrimRef       => fieldNameOfPrimRef(base)
-    case ClassRef(className) => className
-  }
-
-  def fieldNameOfPrimRef(primRef: PrimRef): String = primRef.tpe match {
-    case NoType      => "V"
-    case BooleanType => "Z"
-    case CharType    => "C"
-    case ByteType    => "B"
-    case ShortType   => "S"
-    case IntType     => "I"
-    case LongType    => "J"
-    case FloatType   => "F"
-    case DoubleType  => "D"
-    case NullType    => "N"
-    case NothingType => "E"
-  }
-
-  def genClassOf(className: String)(implicit pos: Position): Tree =
-    Apply(DotSelect(genClassDataOf(className), Ident("getClassOf")), Nil)
-
-  def genClassDataOf(className: String)(implicit pos: Position): Tree =
-    envField("d", className)
+  def genClassDataOf(className: ClassName)(implicit pos: Position): Tree =
+    genClassDataOf(ClassRef(className))
 
   def envModuleField(module: String)(implicit pos: Position): VarRef = {
     /* This is written so that the happy path, when `module` contains only
@@ -432,9 +409,38 @@ private[emitter] final class JSGen(val semantics: Semantics,
     VarRef(Ident(avoidClashWithGlobalRef(varName), Some(module)))
   }
 
+  def envField(field: String, typeRef: NonArrayTypeRef)(
+      implicit pos: Position): VarRef = {
+    VarRef(envFieldIdent(field, typeRef))
+  }
+
   def envField(field: String, subField: String, origName: Option[String] = None)(
       implicit pos: Position): VarRef = {
     VarRef(envFieldIdent(field, subField, origName))
+  }
+
+  def envFieldIdent(field: String, typeRef: NonArrayTypeRef)(
+      implicit pos: Position): Ident = {
+    // The mapping in this function is an implementation detail of the emitter
+    val subField = typeRef match {
+      case PrimRef(tpe) =>
+        tpe match {
+          case NoType      => "V"
+          case BooleanType => "Z"
+          case CharType    => "C"
+          case ByteType    => "B"
+          case ShortType   => "S"
+          case IntType     => "I"
+          case LongType    => "J"
+          case FloatType   => "F"
+          case DoubleType  => "D"
+          case NullType    => "N"
+          case NothingType => "E"
+        }
+      case ClassRef(className) =>
+        className
+    }
+    envFieldIdent(field, subField)
   }
 
   def envFieldIdent(field: String, subField: String,
