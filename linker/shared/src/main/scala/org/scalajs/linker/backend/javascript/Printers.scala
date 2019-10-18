@@ -709,7 +709,7 @@ object Printers {
 
     override protected def print(ident: Ident): Unit = {
       if (ident.pos.isDefined)
-        sourceMap.startNode(column, ident.pos, ident.originalName)
+        sourceMap.startIdentNode(column, ident.pos, ident.originalName)
       super.print(ident)
       if (ident.pos.isDefined)
         sourceMap.endNode(column)
