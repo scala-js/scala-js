@@ -9,6 +9,7 @@ import Keys._
 
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
 import de.heikoseeberger.sbtheader.HeaderPlugin.autoImport._
+import ScriptedPlugin.autoImport._
 
 import java.util.Arrays
 
@@ -784,7 +785,8 @@ object Build {
         baseDirectory.value.getParentFile / "test-common/src/test/scala"
   ).dependsOn(jsEnvs, jUnitAsyncJVM % "test")
 
-  lazy val plugin: Project = Project(id = "sbtPlugin", base = file("sbt-plugin")).settings(
+  lazy val plugin: Project = Project(id = "sbtPlugin", base = file("sbt-plugin"))
+      .enablePlugins(ScriptedPlugin).settings(
       commonSettings,
       publishIvySettings,
       fatalWarningsSettings,
@@ -800,6 +802,37 @@ object Build {
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
       addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.0"),
+
+      scriptedLaunchOpts += "-Dplugin.version=" + version.value,
+
+      scriptedLaunchOpts ++= {
+        // Forward Ivy home options.
+        for {
+          o <- Seq("sbt.boot.directory", "sbt.ivy.home", "ivy.home", "sbt.global.base")
+          v <- sys.props.get(o)
+        } yield {
+          s"-D$o=$v"
+        }
+      },
+
+      scriptedDependencies := {
+        scriptedDependencies.dependsOn(
+            publishLocal in compiler,
+            publishLocal in library,
+            publishLocal in testInterface,
+            publishLocal in testBridge,
+            publishLocal in jUnitPlugin,
+            publishLocal in jUnitRuntime,
+            publishLocal in irProject,
+            publishLocal in logging,
+            publishLocal in linkerInterface,
+            publishLocal in linker,
+            publishLocal in jsEnvs,
+            publishLocal in nodeJSEnv,
+            publishLocal in testAdapter,
+            publishLocal in jsEnvs,
+        ).value
+      },
 
       // Add API mappings for sbt (seems they don't export their API URL)
       apiMappings ++= {

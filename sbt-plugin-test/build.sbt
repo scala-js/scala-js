@@ -1,13 +1,5 @@
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-
-import org.scalajs.linker.MemOutputFile
-import org.scalajs.linker.interface._
-import org.scalajs.sbtplugin.Loggers.sbtLogger2ToolsLogger
+import org.scalajs.linker.interface.ModuleInitializer
 import org.scalajs.sbtplugin.ScalaJSCrossVersion
-
-lazy val concurrentFakeFullOptJS = taskKey[Any]("")
-lazy val concurrentUseOfLinkerTest = taskKey[Any]("")
 
 name := "Scala.js sbt test"
 
@@ -56,39 +48,7 @@ lazy val noDOM = project.settings(baseSettings: _*).
       assert((scalaJSModuleInitializers in Test).value.size == 3,
         "Bad number of scalaJSModuleInitializers in Test")
     }
-  ).
-  /* This hopefully exposes concurrent uses of the linker. If it fails/gets
-   * flaky, there is a bug somewhere - #2202
-   */
-  settings(inConfig(Compile)(Seq(
-      // A fake fullOptJS that we will run concurrently with the true fullOptJS
-      concurrentFakeFullOptJS := Def.taskDyn {
-        val s = (streams in fullOptJS).value
-        val log = s.log
-        val ir = (scalaJSIR in fullOptJS).value.data
-        val moduleInitializers = scalaJSModuleInitializers.value
-
-        Def.task {
-          import scala.concurrent.ExecutionContext.Implicits.global
-
-          log.info("Fake full optimizing")
-          val linker = (scalaJSLinker in fullOptJS).value
-          val output = LinkerOutput(MemOutputFile())
-          Await.result(
-              linker.link(ir, moduleInitializers, output, sbtLogger2ToolsLogger(log)),
-              Duration.Inf)
-        }.tag((usesScalaJSLinkerTag in fullOptJS).value)
-      }.value,
-
-      /* Depend on both fullOptJS and concurrentFakeFullOptJS, so that they
-       * are hopefully executed in parallel (potentially, but they should be
-       * blocked from actually doing so by the concurrent restrictions on
-       * usesScalaJSLinkerTag).
-       */
-      concurrentUseOfLinkerTest := {
-        (fullOptJS.value, concurrentFakeFullOptJS.value)
-      }
-  )))
+  )
 
 lazy val testFrameworkCommonSettings = Def.settings(
   versionSettings,
