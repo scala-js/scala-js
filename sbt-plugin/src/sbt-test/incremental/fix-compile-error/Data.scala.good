@@ -1,0 +1,3 @@
+package org.scalajs.sbtplugin.test
+
+case class Data(count: Int)

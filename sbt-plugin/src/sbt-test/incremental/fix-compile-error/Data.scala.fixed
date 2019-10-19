@@ -1,0 +1,4 @@
+package org.scalajs.sbtplugin.test
+
+/* this comment is to make the file different than Data.scala.good. */
+case class Data(count: Int)
