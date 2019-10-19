@@ -364,7 +364,8 @@ def Tasks = [
         linker/compile:doc jsEnvs/compile:doc \
         jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
         testAdapter/compile:doc \
-        sbtPlugin/compile:doc
+        sbtPlugin/compile:doc &&
+    sbt sbtPlugin/scripted
   ''',
 
   "partestc": '''
@@ -393,7 +394,7 @@ def Tasks = [
         noDOM/testHtml multiTestJS/testHtml \
         test \
         noDOM/testScalaJSModuleInitializers \
-        noDOM/clean noDOM/concurrentUseOfLinkerTest \
+        noDOM/clean \
         multiTestJS/test:testScalaJSSourceMapAttribute &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
         noDOM/testHtml multiTestJS/testHtml
