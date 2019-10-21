@@ -816,8 +816,6 @@ private object Emitter {
     def cond(p: Boolean)(v: => SymbolRequirement): SymbolRequirement =
       if (p) v else none()
 
-    def assumingES6: Boolean = coreSpec.esFeatures.useECMAScript2015
-
     multiple(
         instantiateClass(ObjectClass, NoArgConstructorName),
         classData(ObjectClass),
