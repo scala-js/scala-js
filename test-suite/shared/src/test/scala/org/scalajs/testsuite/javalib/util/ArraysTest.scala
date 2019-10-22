@@ -152,13 +152,11 @@ class ArraysTest {
 
     val array = Array(0, 1, 3, 4)
 
-    val e1 = expectThrows(classOf[ArrayIndexOutOfBoundsException],
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
         Arrays.sort(array, -1, 4))
-    assertEquals("Array index out of range: -1", e1.getMessage)
 
-    val e2 = expectThrows(classOf[ArrayIndexOutOfBoundsException],
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
         Arrays.sort(array, 0, 5))
-    assertEquals("Array index out of range: 5", e2.getMessage)
   }
 
   @Test def fill_Boolean(): Unit = {
@@ -531,13 +529,11 @@ class ArraysTest {
 
     val array = Array(0, 1, 3, 4)
 
-    val e1 = expectThrows(classOf[ArrayIndexOutOfBoundsException],
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
         Arrays.binarySearch(array, -1, 4, 2))
-    assertEquals("Array index out of range: -1", e1.getMessage)
 
-    val e2 = expectThrows(classOf[ArrayIndexOutOfBoundsException],
+    assertThrows(classOf[ArrayIndexOutOfBoundsException],
         Arrays.binarySearch(array, 0, 5, 2))
-    assertEquals("Array index out of range: 5", e2.getMessage)
   }
 
   @Test def copyOf_Int(): Unit = {
