@@ -24,6 +24,7 @@ private trait ScalaJSClassData[A] extends js.Object {
 
   def isInstance(obj: Object): scala.Boolean = js.native
   def isAssignableFrom(that: ScalaJSClassData[_]): scala.Boolean = js.native
+  def checkCast(obj: Object): scala.Unit = js.native
 
   def getSuperclass(): Class[_ >: A] = js.native
   def getComponentType(): Class[_] = js.native
@@ -32,8 +33,21 @@ private trait ScalaJSClassData[A] extends js.Object {
 }
 
 final class Class[A] private (data0: Object) extends Object {
-  private val data: ScalaJSClassData[A] =
+  private[this] val data: ScalaJSClassData[A] =
     data0.asInstanceOf[ScalaJSClassData[A]]
+
+  /** Acces to `data` for other instances or `@inline` methods.
+   *
+   *  Directly accessing the `data` field from `@inline` methods will cause
+   *  scalac to make the field public and mangle its name. Since the Emitter
+   *  relies on the field being called exactly `data` in some of its
+   *  optimizations, we must avoid that.
+   *
+   *  This non-`@noinline` method can be used to access the field without
+   *  triggering scalac's mangling. Since it is a trivial accessor, the
+   *  Scala.js optimizer will inline it anyway.
+   */
+  private def getData(): ScalaJSClassData[A] = data
 
   override def toString(): String = {
     (if (isInterface()) "interface " else
@@ -44,7 +58,7 @@ final class Class[A] private (data0: Object) extends Object {
     data.isInstance(obj)
 
   def isAssignableFrom(that: Class[_]): scala.Boolean =
-    this.data.isAssignableFrom(that.data)
+    this.data.isAssignableFrom(that.getData())
 
   def isInterface(): scala.Boolean =
     data.isInterface
@@ -82,13 +96,9 @@ final class Class[A] private (data0: Object) extends Object {
   def getComponentType(): Class[_] =
     data.getComponentType()
 
-  @inline // optimize for the Unchecked case, where this becomes identity()
+  @inline
   def cast(obj: Object): A = {
-    SemanticsUtils.asInstanceOfCheck({ () =>
-      (obj != null && !isJSType && !isInstance(obj))
-    }, { () =>
-      new ClassCastException("" + obj + " is not an instance of " + getName)
-    })
+    getData().checkCast(obj)
     obj.asInstanceOf[A]
   }
 

@@ -1369,6 +1369,20 @@ private[emitter] object CoreJSLib {
         })
       }
 
+      val checkCast = {
+        val obj = varRef("obj")
+        MethodDef(static = false, StringLiteral("checkCast"), paramList(obj),
+          if (asInstanceOfs != CheckedBehavior.Unchecked) {
+            If((obj !== Null()) && !genIdentBracketSelect(This(), "isJSType") &&
+                !Apply(genIdentBracketSelect(This(), "isInstance"), obj :: Nil),
+              genCallHelper("throwClassCastException", obj, genIdentBracketSelect(This(), "name")),
+              Skip())
+          } else {
+            Skip()
+          }
+        )
+      }
+
       val getSuperclass = {
         MethodDef(static = false, StringLiteral("getSuperclass"), Nil, {
           Return(If(This() DOT "parentData",
@@ -1409,6 +1423,7 @@ private[emitter] object CoreJSLib {
           getClassOf,
           getArrayOf,
           isAssignableFrom,
+          checkCast,
           getSuperclass,
           getComponentType,
           newArrayOfThisClass
