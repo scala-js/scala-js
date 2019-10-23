@@ -98,47 +98,47 @@ def Tasks = [
   "main": '''
     setJavaVersion $java
     npm install &&
-    sbtretry ++$scala helloworld/run &&
+    sbtretry ++$scala helloworld$v/run &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala helloworld/run \
-        helloworld/clean &&
-    sbtretry 'set scalaJSLinkerConfig in helloworld ~= (_.withOptimizer(false))' \
-        ++$scala helloworld/run \
-        helloworld/clean &&
-    sbtretry 'set scalaJSLinkerConfig in helloworld ~= (_.withSemantics(_.withAsInstanceOfs(CheckedBehavior.Unchecked)))' \
-        ++$scala helloworld/run \
-        helloworld/clean &&
+        ++$scala helloworld$v/run \
+        helloworld$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withOptimizer(false))' \
+        ++$scala helloworld$v/run \
+        helloworld$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withSemantics(_.withAsInstanceOfs(CheckedBehavior.Unchecked)))' \
+        ++$scala helloworld$v/run \
+        helloworld$v/clean &&
     sbtretry ++$scala \
-        'set scalaJSLinkerConfig in helloworld ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
-        helloworld/run \
-        helloworld/clean &&
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
+        helloworld$v/run \
+        helloworld$v/clean &&
     sbtretry ++$scala \
-        'set artifactPath in (helloworld, Compile, fastOptJS) := (crossTarget in helloworld).value / "helloworld-fastopt.mjs"' \
-        'set jsEnv in helloworld := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
-        'set scalaJSLinkerConfig in helloworld ~= (_.withModuleKind(ModuleKind.ESModule))' \
-        helloworld/run &&
+        'set artifactPath in (helloworld.v$v, Compile, fastOptJS) := (crossTarget in helloworld.v$v).value / "helloworld-fastopt.mjs"' \
+        'set jsEnv in helloworld.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        helloworld$v/run &&
     sbtretry ++$scala \
-        'set artifactPath in (helloworld, Compile, fullOptJS) := (crossTarget in helloworld).value / "helloworld-opt.mjs"' \
-        'set jsEnv in helloworld := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
-        'set scalaJSLinkerConfig in helloworld ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        'set artifactPath in (helloworld.v$v, Compile, fullOptJS) := (crossTarget in helloworld.v$v).value / "helloworld-opt.mjs"' \
+        'set jsEnv in helloworld.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
-        helloworld/run \
-        helloworld/clean &&
-    sbtretry ++$scala testingExample/testHtml &&
+        helloworld$v/run \
+        helloworld$v/clean &&
+    sbtretry ++$scala testingExample$v/testHtml &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testingExample/testHtml \
-        testingExample/clean &&
-    sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
-    sbtretry ++$scala testSuite/test &&
-    sbtretry ++$scala testSuiteEx/test &&
+        ++$scala testingExample$v/testHtml \
+        testingExample$v/clean &&
+    sbtretry ++$scala testSuiteJVM$v/test testSuiteJVM$v/clean &&
+    sbtretry ++$scala testSuite$v/test &&
+    sbtretry ++$scala testSuiteEx$v/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testSuiteEx/test &&
-    sbtretry ++$scala testSuite/test:doc library/test compiler/test reversi/fastOptJS reversi/fullOptJS &&
-    sbtretry ++$scala compiler/compile:doc library/compile:doc \
-        testInterface/compile:doc testBridge/compile:doc &&
+        ++$scala testSuiteEx$v/test &&
+    sbtretry ++$scala testSuite$v/test:doc library$v/test compiler$v/test reversi$v/fastOptJS reversi$v/fullOptJS &&
+    sbtretry ++$scala compiler$v/compile:doc library$v/compile:doc \
+        testInterface$v/compile:doc testBridge$v/compile:doc &&
     sbtretry ++$scala headerCheck &&
-    sbtretry ++$scala partest/fetchScalaSource &&
-    sbtretry ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
+    sbtretry ++$scala partest$v/fetchScalaSource &&
+    sbtretry ++$scala library$v/mimaReportBinaryIssues testInterface$v/mimaReportBinaryIssues &&
     sh ci/checksizes.sh $scala &&
     sh ci/check-partest-coverage.sh $scala
   ''',
@@ -146,149 +146,149 @@ def Tasks = [
   "test-suite-ecma-script2015": '''
     setJavaVersion $java
     npm install &&
-    sbtretry ++$scala jUnitTestOutputsJVM/test jUnitTestOutputsJS/test testBridge/test \
-        'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS/test testBridge/test &&
-    sbtretry ++$scala $testSuite/test &&
+    sbtretry ++$scala jUnitTestOutputsJVM$v/test jUnitTestOutputsJS$v/test testBridge$v/test \
+        'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS$v/test testBridge$v/test &&
+    sbtretry ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)).withOptimizer(false))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)))' \
+        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)).withOptimizer(false))' \
+        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalacOptions in $testSuite.v$v += "-Xexperimental"' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalacOptions in $testSuite.v$v += "-Xexperimental"' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set artifactPath in ($testSuite, Test, fastOptJS) := (crossTarget in $testSuite).value / "testsuite-fastopt.mjs"' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.ESModule))' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set artifactPath in ($testSuite, Test, fullOptJS) := (crossTarget in $testSuite).value / "testsuite-opt.mjs"' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set artifactPath in ($testSuite.v$v, Test, fastOptJS) := (crossTarget in $testSuite.v$v).value / "testsuite-fastopt.mjs"' \
+        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set artifactPath in ($testSuite.v$v, Test, fullOptJS) := (crossTarget in $testSuite.v$v).value / "testsuite-opt.mjs"' \
+        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test
+        ++$scala $testSuite$v/test
   ''',
 
   "test-suite-ecma-script5-force-polyfills": '''
     setJavaVersion $java
     npm install &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills()' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills()' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
-        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
-        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills()' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills()' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills()' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set jsEnv in $testSuite := new NodeJSEnvForcePolyfills()' \
-        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills()' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean
   ''',
 
   "test-suite-ecma-script5": '''
     setJavaVersion $java
     npm install &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set scalaJSLinkerConfig in $testSuite ~= makeCompliant' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false).withAllowBigIntsForLongs(true)))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false).withAllowBigIntsForLongs(true)).withOptimizer(false))' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false).withAllowBigIntsForLongs(true)))' \
+        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false).withAllowBigIntsForLongs(true)).withOptimizer(false))' \
+        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set artifactPath in ($testSuite, Test, fastOptJS) := (crossTarget in $testSuite).value / "testsuite-fastopt.mjs"' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.ESModule))' \
-        ++$scala $testSuite/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set artifactPath in ($testSuite, Test, fullOptJS) := (crossTarget in $testSuite).value / "testsuite-opt.mjs"' \
-        'set jsEnv in $testSuite := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
-        'set scalaJSLinkerConfig in $testSuite ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set artifactPath in ($testSuite.v$v, Test, fastOptJS) := (crossTarget in $testSuite.v$v).value / "testsuite-fastopt.mjs"' \
+        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
+        'set artifactPath in ($testSuite.v$v, Test, fullOptJS) := (crossTarget in $testSuite.v$v).value / "testsuite-opt.mjs"' \
+        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite/test
+        ++$scala $testSuite$v/test
   ''',
 
   /* For the bootstrap tests to be able to call
@@ -298,72 +298,72 @@ def Tasks = [
   "bootstrap": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala linker/test &&
-    sbt ++$scala irJS/test linkerJS/test &&
+    sbt ++$scala linker$v/test &&
+    sbt ++$scala irJS$v/test linkerJS$v/test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
-        'set scalaJSStage in testSuite := FastOptStage' \
-        ++$scala irJS/test linkerJS/test &&
-    sbt ++$scala testSuite/bootstrap:test &&
+        'set scalaJSStage in testSuite.v$v := FastOptStage' \
+        ++$scala irJS$v/test linkerJS$v/test &&
+    sbt ++$scala testSuite$v/bootstrap:test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
-        'set scalaJSStage in testSuite := FastOptStage' \
-        ++$scala testSuite/bootstrap:test &&
-    sbt ++$scala irJS/mimaReportBinaryIssues \
-        loggingJS/mimaReportBinaryIssues \
-        linkerInterfaceJS/mimaReportBinaryIssues linkerJS/mimaReportBinaryIssues
+        'set scalaJSStage in testSuite.v$v := FastOptStage' \
+        ++$scala testSuite$v/bootstrap:test &&
+    sbt ++$scala irJS$v/mimaReportBinaryIssues \
+        loggingJS$v/mimaReportBinaryIssues \
+        linkerInterfaceJS$v/mimaReportBinaryIssues linkerJS$v/mimaReportBinaryIssues
   ''',
 
   "tools": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala ir/test logging/compile linkerInterface/compile \
-        linker/compile jsEnvs/test nodeJSEnv/test testAdapter/test \
-        ir/mimaReportBinaryIssues logging/mimaReportBinaryIssues \
-        linkerInterface/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
-        jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
-        nodeJSEnv/mimaReportBinaryIssues \
-        testAdapter/mimaReportBinaryIssues &&
-    sbt ++$scala ir/compile:doc logging/compile:doc \
-        linkerInterface/compile:doc \
-        linker/compile:doc jsEnvs/compile:doc \
-        jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
-        testAdapter/compile:doc
+    sbt ++$scala ir$v/test logging$v/compile linkerInterface$v/compile \
+        linker$v/compile jsEnvs$v/test nodeJSEnv$v/test testAdapter$v/test \
+        ir$v/mimaReportBinaryIssues logging$v/mimaReportBinaryIssues \
+        linkerInterface$v/mimaReportBinaryIssues linker$v/mimaReportBinaryIssues \
+        jsEnvs$v/mimaReportBinaryIssues jsEnvsTestKit$v/mimaReportBinaryIssues \
+        nodeJSEnv$v/mimaReportBinaryIssues \
+        testAdapter$v/mimaReportBinaryIssues &&
+    sbt ++$scala ir$v/compile:doc logging$v/compile:doc \
+        linkerInterface$v/compile:doc \
+        linker$v/compile:doc jsEnvs$v/compile:doc \
+        jsEnvsTestKit$v/compile:doc nodeJSEnv$v/compile:doc \
+        testAdapter$v/compile:doc
   ''',
 
   "tools-sbtplugin": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala ir/test logging/compile linkerInterface/compile \
-        linker/compile jsEnvs/test nodeJSEnv/test testAdapter/test \
+    sbt ++$scala ir$v/test logging$v/compile linkerInterface$v/compile \
+        linker$v/compile jsEnvs$v/test nodeJSEnv$v/test testAdapter$v/test \
         sbtPlugin/package \
-        ir/mimaReportBinaryIssues logging/mimaReportBinaryIssues \
-        linkerInterface/mimaReportBinaryIssues linker/mimaReportBinaryIssues \
-        jsEnvs/mimaReportBinaryIssues jsEnvsTestKit/mimaReportBinaryIssues \
-        nodeJSEnv/mimaReportBinaryIssues \
-        testAdapter/mimaReportBinaryIssues \
+        ir$v/mimaReportBinaryIssues logging$v/mimaReportBinaryIssues \
+        linkerInterface$v/mimaReportBinaryIssues linker$v/mimaReportBinaryIssues \
+        jsEnvs$v/mimaReportBinaryIssues jsEnvsTestKit$v/mimaReportBinaryIssues \
+        nodeJSEnv$v/mimaReportBinaryIssues \
+        testAdapter$v/mimaReportBinaryIssues \
         sbtPlugin/mimaReportBinaryIssues &&
-    sbt ++$scala library/scalastyle javalanglib/scalastyle javalib/scalastyle \
-        ir/scalastyle compiler/scalastyle \
-        compiler/test:scalastyle \
-        logging/scalastyle logging/test:scalastyle \
-        linkerInterface/scalastyle \
-        linkerInterface/scalastyle \
-        linker/scalastyle linker/test:scalastyle \
-        jsEnvs/scalastyle jsEnvsTestKit/scalastyle nodeJSEnv/scalastyle \
-        jsEnvs/test:scalastyle nodeJSEnv/test:scalastyle testAdapter/scalastyle \
-        sbtPlugin/scalastyle testInterface/scalastyle testBridge/scalastyle \
-        testSuite/scalastyle testSuite/test:scalastyle \
-        testSuiteJVM/test:scalastyle \
-        testSuiteEx/test:scalastyle helloworld/scalastyle \
-        reversi/scalastyle testingExample/scalastyle \
-        testingExample/test:scalastyle \
-        jUnitPlugin/scalastyle jUnitRuntime/scalastyle \
-        jUnitTestOutputsJVM/scalastyle jUnitTestOutputsJVM/test:scalastyle \
-        jUnitTestOutputsJS/scalastyle jUnitTestOutputsJS/test:scalastyle &&
-    sbt ++$scala ir/compile:doc logging/compile:doc \
-        linkerInterface/compile:doc \
-        linker/compile:doc jsEnvs/compile:doc \
-        jsEnvsTestKit/compile:doc nodeJSEnv/compile:doc \
-        testAdapter/compile:doc \
+    sbt ++$scala library$v/scalastyle javalanglib$v/scalastyle javalib$v/scalastyle \
+        ir$v/scalastyle compiler$v/scalastyle \
+        compiler$v/test:scalastyle \
+        logging$v/scalastyle logging$v/test:scalastyle \
+        linkerInterface$v/scalastyle \
+        linkerInterface$v/scalastyle \
+        linker$v/scalastyle linker$v/test:scalastyle \
+        jsEnvs$v/scalastyle jsEnvsTestKit$v/scalastyle nodeJSEnv$v/scalastyle \
+        jsEnvs$v/test:scalastyle nodeJSEnv$v/test:scalastyle testAdapter$v/scalastyle \
+        sbtPlugin/scalastyle testInterface$v/scalastyle testBridge$v/scalastyle \
+        testSuite$v/scalastyle testSuite$v/test:scalastyle \
+        testSuiteJVM$v/test:scalastyle \
+        testSuiteEx$v/test:scalastyle helloworld$v/scalastyle \
+        reversi$v/scalastyle testingExample$v/scalastyle \
+        testingExample$v/test:scalastyle \
+        jUnitPlugin$v/scalastyle jUnitRuntime$v/scalastyle \
+        jUnitTestOutputsJVM$v/scalastyle jUnitTestOutputsJVM$v/test:scalastyle \
+        jUnitTestOutputsJS$v/scalastyle jUnitTestOutputsJS$v/test:scalastyle &&
+    sbt ++$scala ir$v/compile:doc logging$v/compile:doc \
+        linkerInterface$v/compile:doc \
+        linker$v/compile:doc jsEnvs$v/compile:doc \
+        jsEnvsTestKit$v/compile:doc nodeJSEnv$v/compile:doc \
+        testAdapter$v/compile:doc \
         sbtPlugin/compile:doc &&
     sbt sbtPlugin/scripted
   ''',
@@ -371,7 +371,7 @@ def Tasks = [
   "partestc": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala partest/compile
+    sbt ++$scala partest$v/compile
   ''',
 
   "sbtplugin-test": '''
@@ -379,14 +379,14 @@ def Tasks = [
     # Publish Scala.js artifacts locally
     # Then go into standalone project and test
     npm install &&
-    sbt ++2.11.12 compiler/publishLocal library/publishLocal \
-                  testInterface/publishLocal testBridge/publishLocal \
-                  jUnitPlugin/publishLocal jUnitRuntime/publishLocal &&
-    sbt ++$toolsscala \
-        ir/publishLocal logging/publishLocal \
-        linkerInterface/publishLocal \
-        linker/publishLocal jsEnvs/publishLocal \
-        nodeJSEnv/publishLocal testAdapter/publishLocal \
+    sbt ++2.11.12 compiler2_11/publishLocal library2_11/publishLocal \
+                  testInterface2_11/publishLocal testBridge2_11/publishLocal \
+                  jUnitPlugin2_11/publishLocal jUnitRuntime2_11/publishLocal &&
+    sbt ++$scala \
+        ir$v/publishLocal logging$v/publishLocal \
+        linkerInterface$v/publishLocal \
+        linker$v/publishLocal jsEnvs$v/publishLocal \
+        nodeJSEnv$v/publishLocal testAdapter$v/publishLocal \
         sbtPlugin/publishLocal &&
     cd sbt-plugin-test &&
     setJavaVersion $java &&
@@ -403,19 +403,19 @@ def Tasks = [
   "partest-noopt": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala package "partestSuite/testOnly -- --showDiff"
+    sbt ++$scala package "partestSuite$v/testOnly -- --showDiff"
   ''',
 
   "partest-fastopt": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala package "partestSuite/testOnly -- --fastOpt --showDiff"
+    sbt ++$scala package "partestSuite$v/testOnly -- --fastOpt --showDiff"
   ''',
 
   "partest-fullopt": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala package "partestSuite/testOnly -- --fullOpt --showDiff"
+    sbt ++$scala package "partestSuite$v/testOnly -- --fullOpt --showDiff"
   '''
 ]
 
@@ -456,7 +456,7 @@ allJavaVersions.each { javaVersion ->
   quickMatrix.add([task: "tools", scala: "2.11.12", java: javaVersion])
 }
 quickMatrix.add([task: "partestc", scala: "2.12.1", java: mainJavaVersion])
-quickMatrix.add([task: "sbtplugin-test", toolsscala: "2.12.8", java: mainJavaVersion])
+quickMatrix.add([task: "sbtplugin-test", scala: "2.12.8", java: mainJavaVersion])
 
 // The 'full' matrix
 def fullMatrix = quickMatrix.clone()
@@ -500,6 +500,9 @@ matrix.each { taskDef ->
       fullTaskName += " $name=$value"
     }
   }
+
+  def suffix = taskDef.scala.split('\\.')[0..1].join('_')
+  taskStr = taskStr.replace('$v', suffix)
 
   def ciScript = CIScriptPrelude + taskStr
 
