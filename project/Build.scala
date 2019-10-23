@@ -565,7 +565,6 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonIrProjectSettings,
-      crossVersion := ScalaJSCrossVersion.binary,
       unmanagedSourceDirectories in Compile +=
         (scalaSource in Compile in irProject).value,
       unmanagedSourceDirectories in Test +=
@@ -646,7 +645,6 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonLoggingSettings,
-      crossVersion := ScalaJSCrossVersion.binary
   ).withScalaJSCompiler.dependsOn(
       library
   )
