@@ -644,7 +644,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  @param pos Position of the original New tree
      */
     def genAnonJSClassNew(sym: Symbol, jsSuperClassValue: js.Tree,
-        args: List[js.TreeOrJSSpread], pos: Position): js.Tree = {
+        args: List[js.TreeOrJSSpread])(
+        implicit pos: Position): js.Tree = {
       assert(sym.isAnonymousClass && !isJSFunctionDef(sym),
           "Generating AnonJSClassNew of non anonymous JS class")
 
@@ -656,18 +657,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         nestedGenerateClass(sym)(genNonNativeJSClass(classDef))
 
       // Partition class members.
+      val privateFieldDefs = ListBuffer.empty[js.FieldDef]
       val classDefMembers = ListBuffer.empty[js.MemberDef]
       val instanceMembers = ListBuffer.empty[js.MemberDef]
       var constructor: Option[js.JSMethodDef] = None
 
       origJsClass.memberDefs.foreach {
         case fdef: js.FieldDef =>
-          /* Scala fields are both used when building the instance *and* kept
-           * as declarations in the abstract JS type, so that we can validate
-           * `JSPrivateSelect` nodes.
-           */
-          classDefMembers += fdef
-          instanceMembers += fdef
+          privateFieldDefs += fdef
 
         case fdef: js.JSFieldDef =>
           instanceMembers += fdef
@@ -696,7 +693,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       assert(origJsClass.topLevelExportDefs.isEmpty,
           "Found top-level exports in anonymous JS class at " + pos)
 
-      // Make new class def with static members and field definitions
+      // Make new class def with static members
       val newClassDef = {
         implicit val pos = origJsClass.pos
         val parent = js.ClassIdent(ir.Definitions.ObjectClass)
@@ -727,11 +724,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             captureValues = Nil)
       }
 
-      val memberDefinitions = instanceMembers.toList.map {
+      val memberDefinitions0 = instanceMembers.toList.map {
         case fdef: js.FieldDef =>
-          implicit val pos = fdef.pos
-          js.Assign(js.JSPrivateSelect(selfRef, encodeClassRef(sym), fdef.name),
-              jstpe.zeroOf(fdef.ftpe))
+          throw new AssertionError("unexpected FieldDef")
 
         case fdef: js.JSFieldDef =>
           implicit val pos = fdef.pos
@@ -761,6 +756,50 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           js.JSMethodApply(js.JSGlobalRef("Object"),
               js.StringLiteral("defineProperty"),
               List(selfRef, pdef.name, descriptor))
+      }
+
+      val memberDefinitions = if (privateFieldDefs.isEmpty) {
+        memberDefinitions0
+      } else {
+        /* Private fields, declared in FieldDefs, are stored in a separate
+         * object, itself stored as a non-enumerable field of the `selfRef`.
+         * The name of that field is retrieved at
+         * `scala.scalajs.runtime.privateFieldsSymbol()`, and is a Symbol if
+         * supported, or a randomly generated string that has the same enthropy
+         * as a UUID (i.e., 128 random bits).
+         *
+         * This encoding solves two issues:
+         *
+         * - Hide private fields in anonymous JS classes from `JSON.stringify`
+         *   and other cursory inspections in JS (#2748).
+         * - Get around the fact that abstract JS types cannot declare
+         *   FieldDefs (#3777).
+         */
+        val fieldsObjValue = {
+          js.JSObjectConstr(privateFieldDefs.toList.map { fdef =>
+            implicit val pos = fdef.pos
+            js.StringLiteral(fdef.name.name) -> jstpe.zeroOf(fdef.ftpe)
+          })
+        }
+        val definePrivateFieldsObj = {
+          /* Object.defineProperty(selfRef, privateFieldsSymbol, {
+           *   value: fieldsObjValue
+           * });
+           *
+           * `writable`, `configurable` and `enumerable` are false by default.
+           */
+          js.JSMethodApply(
+              js.JSGlobalRef("Object"),
+              js.StringLiteral("defineProperty"),
+              List(
+                  selfRef,
+                  genPrivateFieldsSymbol(),
+                  js.JSObjectConstr(List(
+                      js.StringLiteral("value") -> fieldsObjValue))
+              )
+          )
+        }
+        definePrivateFieldsObj :: memberDefinitions0
       }
 
       // Transform the constructor body.
@@ -796,8 +835,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }.transform(ctorBody, isStat = true)
 
       val invocation = {
-        implicit val invocationPosition = pos
-
         val closure = js.Closure(arrow = true, Nil,
             jsSuperClassParam :: ctorParams,
             js.Block(inlinedCtorStats, selfRef), Nil)
@@ -2109,12 +2146,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           } else if (paramAccessorLocals contains sym) {
             paramAccessorLocals(sym).ref
           } else if (isNonNativeJSClass(sym.owner)) {
-            val genQual = genExpr(qualifier)
-            val boxed = if (isExposed(sym))
-              js.JSSelect(genQual, genExpr(jsNameOf(sym)))
-            else
-              js.JSPrivateSelect(genQual, encodeClassRef(sym.owner), encodeFieldSym(sym))
-            unboxFieldValue(boxed)
+            unboxFieldValue(
+                genNonNativeJSClassSelectAsBoxed(genExpr(qualifier), sym))
           } else if (jsInterop.isFieldStatic(sym)) {
             unboxFieldValue(genSelectStaticFieldAsBoxed(sym))
           } else {
@@ -2210,11 +2243,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               }
 
               if (isNonNativeJSClass(sym.owner)) {
-                val genLhs = if (isExposed(sym))
-                  js.JSSelect(genQual, genExpr(jsNameOf(sym)))
-                else
-                  js.JSPrivateSelect(genQual, encodeClassRef(sym.owner), encodeFieldSym(sym))
-                js.Assign(genLhs, genBoxedRhs)
+                js.Assign(genNonNativeJSClassSelectAsBoxed(genQual, sym),
+                    genBoxedRhs)
               } else if (jsInterop.isFieldStatic(sym)) {
                 js.Assign(genSelectStaticFieldAsBoxed(sym), genBoxedRhs)
               } else {
@@ -2272,6 +2302,23 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             currentClassType
         }
         js.VarRef(thisLocalIdent.copy())(tpe)
+      }
+    }
+
+    private def genNonNativeJSClassSelectAsBoxed(qual: js.Tree, sym: Symbol)(
+        implicit pos: Position): js.Tree = {
+
+      if (isExposed(sym)) {
+        js.JSSelect(qual, genExpr(jsNameOf(sym)))
+      } else {
+        if (sym.owner.isAnonymousClass) {
+          js.JSSelect(
+              js.JSSelect(qual, genPrivateFieldsSymbol()),
+              js.StringLiteral(encodeFieldSym(sym).name))
+        } else {
+          js.JSPrivateSelect(qual, encodeClassRef(sym.owner),
+              encodeFieldSym(sym))
+        }
       }
     }
 
@@ -4842,7 +4889,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         else if (cls == JSArrayClass && args0.isEmpty)
           js.JSArrayConstr(Nil)
         else if (cls.isAnonymousClass)
-          genAnonJSClassNew(cls, jsClassValue.get, args, fun.pos)
+          genAnonJSClassNew(cls, jsClassValue.get, args)(fun.pos)
         else if (!nestedJSClass)
           js.JSNew(genPrimitiveJSClass(cls), args)
         else if (!cls.isModuleClass)
@@ -5731,6 +5778,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     // Utilities ---------------------------------------------------------------
+
+    /** Generates a call to `runtime.privateFieldsSymbol()` */
+    private def genPrivateFieldsSymbol()(implicit pos: Position): js.Tree = {
+      genApplyMethod(genLoadModule(RuntimePackageModule),
+          Runtime_privateFieldsSymbol, Nil)
+    }
 
     /** Generate loading of a module value.
      *
