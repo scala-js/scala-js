@@ -626,7 +626,12 @@ private[emitter] final class JSGen(val semantics: Semantics,
     VarRef(envFieldIdent(field))
 
   def envFieldIdent(field: String)(implicit pos: Position): Ident =
-    Ident(avoidClashWithGlobalRef("$" + field))
+    envFieldIdent(field, None)
+
+  def envFieldIdent(field: String, origName: Option[String])(
+      implicit pos: Position): Ident = {
+    Ident(avoidClashWithGlobalRef("$" + field), origName)
+  }
 
   def avoidClashWithGlobalRef(envFieldName: String): String = {
     /* This is not cached because it should virtually never happen.

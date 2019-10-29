@@ -445,10 +445,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         implicit pos: Position): WithGlobals[js.Function] = {
 
       performOptimisticThenPessimisticRuns {
-        /* TODO The identifier `$thiz` can clash with a potential access to a
-         * JSGlobalRef named `$thiz`. This is filed as #2972.
-         */
-        val thisIdent = js.Ident("$thiz", Some("this"))
+        val thisIdent = envFieldIdent("thiz", Some("this"))
         val env = env0.withThisIdent(Some(thisIdent))
         val js.Function(jsArrow, jsParams, jsBody) =
           desugarToFunctionInternal(arrow = false, params, body, isStat, env)

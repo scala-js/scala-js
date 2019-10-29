@@ -43,7 +43,7 @@ class InternalNameClashesTestEx {
       val x: Int = 5
     }
 
-    assertEquals(121, foo.test(6))
+    assertEquals(1021, foo.test(6))
   }
 
 }
@@ -57,8 +57,13 @@ object InternalNameClashesTestEx {
 
     @noinline
     def test(y: Int): Int = {
+      /* We test both $thiz and $$thiz because GlobalScopeTestEx references the
+       * global variable `$thiz`, causing env fields for `$thiz` to be renamed
+       * to `$$thiz`.
+       */
       val $thiz = x + y
-      $thiz * $thiz
+      val $$thiz = x * y
+      ($thiz * $thiz) + ($$thiz * $$thiz)
     }
   }
 }
