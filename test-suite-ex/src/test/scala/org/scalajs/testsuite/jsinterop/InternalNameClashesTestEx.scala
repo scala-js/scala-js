@@ -46,6 +46,23 @@ class InternalNameClashesTestEx {
     assertEquals(1021, foo.test(6))
   }
 
+  @Test def testLocalClashWithTempVar_issue2971(): Unit = {
+    @noinline def initValue: Int = 5
+
+    @noinline def sum(x: Int, y: Int): Int = x + y
+
+    val $x1 = initValue
+    val t = sum({
+      val y = sum($x1, 7)
+      sum(y, 3) // this will be assigned to a temporary var called `$x1`
+    }, {
+      val z = sum($x1, 12)
+      sum(z, 4)
+    })
+    assertEquals(36, t)
+    assertEquals(5, $x1)
+  }
+
 }
 
 object InternalNameClashesTestEx {

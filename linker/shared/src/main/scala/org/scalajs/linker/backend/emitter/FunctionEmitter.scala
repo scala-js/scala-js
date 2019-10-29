@@ -360,12 +360,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     var syntheticVarCounter: Int = 0
 
-    def newSyntheticVar()(implicit pos: Position): LocalIdent = {
-      /* TODO Integrate this with proper name management.
-       * This is filed as #2971.
-       */
+    def newSyntheticVar()(implicit pos: Position): js.Ident = {
       syntheticVarCounter += 1
-      LocalIdent(LocalName("jsx$" + syntheticVarCounter), None)
+      envFieldIdent("$x" + syntheticVarCounter)
     }
 
     def resetSyntheticVarCounterIn[A](f: => A): A = {
@@ -399,36 +396,26 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     // Record names
 
-    def makeRecordFieldVarRef(tree: RecordSelect): VarRef =
-      VarRef(makeRecordFieldIdent(tree)(tree.pos))(tree.tpe)(tree.pos)
-
     def makeRecordFieldIdent(tree: RecordSelect)(
-        implicit pos: Position): LocalIdent = {
+        implicit pos: Position): js.Ident = {
+
       val recIdent = (tree.record: @unchecked) match {
-        case VarRef(ident)        => ident
-        case record: RecordSelect => makeRecordFieldIdent(record)
+        case VarRef(ident)                 => transformLocalVarIdent(ident)
+        case Transient(JSVarRef(ident, _)) => ident
+        case record: RecordSelect          => makeRecordFieldIdent(record)
       }
-      makeRecordFieldIdent(recIdent, tree.field)
+      makeRecordFieldIdent(recIdent, tree.field.name, tree.field.originalName)
     }
 
-    def makeRecordFieldIdent(recIdent: LocalIdent, fieldIdent: FieldIdent)(
-        implicit pos: Position): LocalIdent =
-      makeRecordFieldIdent(genName(recIdent.name), recIdent.originalName,
-          fieldIdent.name, fieldIdent.originalName)
-
-    def makeRecordFieldIdent(recIdent: LocalIdent,
-        fieldName: FieldName, fieldOrigiName: Option[String])(
-        implicit pos: Position): LocalIdent =
-      makeRecordFieldIdent(genName(recIdent.name), recIdent.originalName,
-          fieldName, fieldOrigiName)
-
-    def makeRecordFieldIdent(recName: String, recOrigName: Option[String],
+    def makeRecordFieldIdent(recIdent: js.Ident,
         fieldName: FieldName, fieldOrigName: Option[String])(
-        implicit pos: Position): LocalIdent = {
-      val name = fieldName.toLocalName.withPrefix(recName + "_$_")
-      val originalName = Some(recOrigName.getOrElse(recName) + "." +
-          fieldOrigName.getOrElse(fieldName))
-      LocalIdent(name, originalName)
+        implicit pos: Position): js.Ident = {
+
+      val name = recIdent.name + "_$_" + genName(fieldName)
+      val originalName = Some(
+          recIdent.originalName.getOrElse(recIdent.name) + "." +
+          fieldOrigName.getOrElse(fieldName.nameString))
+      js.Ident(name, originalName)
     }
 
     // LHS'es for labeled expressions
@@ -501,10 +488,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       val offset = params.size - 1
       val restParamDef = params.last
 
-      val lenIdent = transformLocalVarIdent(newSyntheticVar())
+      val lenIdent = newSyntheticVar()
       val len = js.VarRef(lenIdent)
 
-      val counterIdent = transformLocalVarIdent(newSyntheticVar())
+      val counterIdent = newSyntheticVar()
       val counter = js.VarRef(counterIdent)
 
       val restParamIdent = transformLocalVarIdent(restParamDef.name)
@@ -584,7 +571,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           }
 
         case Assign(lhs: RecordSelect, rhs) =>
-          pushLhsInto(Lhs.Assign(makeRecordFieldVarRef(lhs)), rhs, tailPosLabels)
+          val newLhs =
+            Transient(JSVarRef(makeRecordFieldIdent(lhs), mutable = true))(lhs.tpe)
+          pushLhsInto(Lhs.Assign(newLhs), rhs, tailPosLabels)
 
         case Assign(select @ JSPrivateSelect(qualifier, className, field), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
@@ -614,7 +603,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   transformExprNoChar(rhs))
           }
 
-        case Assign(lhs @ (_:VarRef | _:SelectStatic | _:JSGlobalRef), rhs) =>
+        case Assign(lhs @ (_:VarRef | Transient(JSVarRef(_, _)) |
+            _:SelectStatic | _:JSGlobalRef), rhs) =>
           pushLhsInto(Lhs.Assign(lhs), rhs, tailPosLabels)
 
         case Assign(_, _) =>
@@ -854,8 +844,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       def transformLoop(trees: List[Tree], env: Env,
           acc: List[js.Tree]): (List[js.Tree], Env) = trees match {
         case VarDef(ident, tpe, mutable, rhs) :: ts =>
-          val newEnv = env.withDef(ident, tpe, mutable)
-          val lhs = Lhs.VarDef(ident, tpe, mutable)
+          val newEnv = env.withDef(ident, mutable)
+          val lhs = Lhs.VarDef(transformLocalVarIdent(ident), tpe, mutable)
           val newTree = pushLhsInto(lhs, rhs, Set.empty)(env)
           transformLoop(ts, newEnv, newTree :: acc)
 
@@ -942,7 +932,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 innerEnv = stats.foldLeft(innerEnv) { (prev, stat) =>
                   stat match {
                     case VarDef(name, tpe, mutable, _) =>
-                      prev.withDef(name, tpe, mutable)
+                      prev.withDef(name, mutable)
                     case _ =>
                       prev
                   }
@@ -1019,8 +1009,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                     Lhs.VarDef(temp, arg.tpe, mutable = false), arg,
                     Set.empty)
                 computeTemp +=: extractedStatements
-                innerEnv = innerEnv.withDef(temp, arg.tpe, false)
-                VarRef(temp)(arg.tpe)
+                Transient(JSVarRef(temp, mutable = false))(arg.tpe)
             }
           }
         }
@@ -1113,6 +1102,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // Vars (side-effect free, pure if immutable)
         case VarRef(name) =>
           allowUnpure || !env.isLocalMutable(name)
+        case Transient(JSVarRef(_, mutable)) =>
+          allowUnpure || !mutable
 
         // Fields may throw if qualifier is null
         case Select(qualifier, _, _) =>
@@ -1236,18 +1227,12 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     def isPureExpression(tree: Tree)(implicit env: Env): Boolean =
       isExpressionInternal(tree, allowUnpure = false, allowSideEffects = false)
 
-    def doVarDef(ident: LocalIdent, tpe: Type, mutable: Boolean, rhs: Tree)(
+    def doVarDef(ident: js.Ident, tpe: Type, mutable: Boolean, rhs: Tree)(
         implicit env: Env): js.Tree = {
       implicit val pos = rhs.pos
       tpe match {
         case RecordType(fields) =>
-          val elems = (rhs: @unchecked) match {
-            case RecordValue(_, elems) =>
-              elems
-            case VarRef(rhsIdent) =>
-              for (RecordType.Field(fName, fOrigName, fTpe, _) <- fields)
-                yield VarRef(makeRecordFieldIdent(rhsIdent, fName, fOrigName))(fTpe)
-          }
+          val elems = extractRecordElems(rhs)
           js.Block(for {
             (RecordType.Field(fName, fOrigName, fTpe, fMutable),
                 fRhs) <- fields zip elems
@@ -1257,12 +1242,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           })
 
         case _ =>
-          genLet(transformLocalVarIdent(ident), mutable,
-              transformExpr(rhs, tpe))
+          genLet(ident, mutable, transformExpr(rhs, tpe))
       }
     }
 
-    def doEmptyVarDef(ident: LocalIdent, tpe: Type)(
+    def doEmptyVarDef(ident: js.Ident, tpe: Type)(
         implicit pos: Position, env: Env): js.Tree = {
       tpe match {
         case RecordType(fields) =>
@@ -1273,7 +1257,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           })
 
         case _ =>
-          genEmptyMutableLet(transformLocalVarIdent(ident))
+          genEmptyMutableLet(ident)
       }
     }
 
@@ -1281,17 +1265,19 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       implicit val pos = rhs.pos
       lhs.tpe match {
         case RecordType(fields) =>
-          val VarRef(ident) = lhs
-          val elems = (rhs: @unchecked) match {
-            case VarRef(rhsIdent) =>
-              for (RecordType.Field(fName, fOrigName, fTpe, fMutable) <- fields)
-                yield VarRef(makeRecordFieldIdent(rhsIdent, fName, fOrigName))(fTpe)
+          val ident = (lhs: @unchecked) match {
+            case VarRef(ident)                 => transformLocalVarIdent(ident)
+            case Transient(JSVarRef(ident, _)) => ident
           }
+          val elems = extractRecordElems(rhs)
           js.Block(for {
             (RecordType.Field(fName, fOrigName, fTpe, fMutable),
                 fRhs) <- fields zip elems
           } yield {
-            doAssign(VarRef(makeRecordFieldIdent(ident, fName, fOrigName))(fTpe), fRhs)
+            doAssign(
+                Transient(JSVarRef(makeRecordFieldIdent(ident, fName, fOrigName),
+                    mutable = true))(fTpe),
+                fRhs)
           })
 
         case _ =>
@@ -1312,6 +1298,27 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       }
     }
 
+    private def extractRecordElems(recordTree: Tree)(
+        implicit pos: Position, env: Env): List[Tree] = {
+
+      val recordType = recordTree.tpe.asInstanceOf[RecordType]
+
+      (recordTree: @unchecked) match {
+        case RecordValue(_, elems) =>
+          elems
+
+        case VarRef(ident) =>
+          val jsIdent = transformLocalVarIdent(ident)
+          val mutable = env.isLocalMutable(ident)
+          for (RecordType.Field(fName, fOrigName, fTpe, _) <- recordType.fields)
+            yield Transient(JSVarRef(makeRecordFieldIdent(jsIdent, fName, fOrigName), mutable))(fTpe)
+
+        case Transient(JSVarRef(ident, mutable)) =>
+          for (RecordType.Field(fName, fOrigName, fTpe, _) <- recordType.fields)
+            yield Transient(JSVarRef(makeRecordFieldIdent(ident, fName, fOrigName), mutable))(fTpe)
+      }
+    }
+
     /** Push an lhs into a (potentially complex) rhs */
     def pushLhsInto(lhs: Lhs, rhs: Tree, tailPosLabels: Set[LabelName])(
         implicit env: Env): js.Tree = {
@@ -1325,20 +1332,19 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
        *  its scope.
        *  This only matters in ECMAScript 6, because we emit Lets.
        */
-      def extractLet(inner: (Lhs, Env) => js.Tree)(
+      def extractLet(inner: Lhs => js.Tree)(
           implicit env: Env): js.Tree = {
         if (esFeatures.useECMAScript2015) {
           lhs match {
             case Lhs.VarDef(name, tpe, mutable) =>
-              val innerEnv = env.withDef(name, tpe, true)
               js.Block(
                   doEmptyVarDef(name, tpe),
-                  inner(Lhs.Assign(VarRef(name)(tpe)), innerEnv))
+                  inner(Lhs.Assign(Transient(JSVarRef(name, mutable))(tpe))))
             case _ =>
-              inner(lhs, env)
+              inner(lhs)
           }
         } else {
-          inner(lhs, env)
+          inner(lhs)
         }
       }
 
@@ -1427,8 +1433,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 val temp = newSyntheticVar()
                 val varDef = doVarDef(temp, recTpe, mutable = false,
                     RecordValue(recTpe, newElems))
-                val assign = doAssign(lhs, VarRef(temp)(recTpe))(
-                    env.withDef(temp, recTpe, false))
+                val assign = doAssign(lhs,
+                    Transient(JSVarRef(temp, mutable = false))(recTpe))
                 js.Block(varDef, assign)
               }
 
@@ -1442,7 +1448,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // Control flow constructs
 
         case Labeled(label, tpe, body) =>
-          extractLet { (newLhs, env) =>
+          extractLet { newLhs =>
             val bodyEnv = env.withLabeledExprLHS(label, newLhs)
             val newBody =
               pushLhsInto(newLhs, body, tailPosLabels + label.name)(bodyEnv)
@@ -1458,15 +1464,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case If(cond, thenp, elsep) =>
           unnest(cond) { (newCond, env0) =>
             implicit val env = env0
-            extractLet { (newLhs, branchesEnv) =>
+            extractLet { newLhs =>
               js.If(transformExprNoChar(newCond),
-                  pushLhsInto(newLhs, thenp, tailPosLabels)(branchesEnv),
-                  pushLhsInto(newLhs, elsep, tailPosLabels)(branchesEnv))
+                  pushLhsInto(newLhs, thenp, tailPosLabels),
+                  pushLhsInto(newLhs, elsep, tailPosLabels))
             }
           }
 
         case TryCatch(block, errVar, handler) =>
-          extractLet { (newLhs, env) =>
+          extractLet { newLhs =>
             val newBlock = pushLhsInto(newLhs, block, tailPosLabels)(env)
             val newHandler = pushLhsInto(newLhs, handler, tailPosLabels)(
                 env.withDef(errVar, mutable = false))
@@ -1474,8 +1480,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           }
 
         case TryFinally(block, finalizer) =>
-          extractLet { (newLhs, blockEnv) =>
-            val newBlock = pushLhsInto(newLhs, block, tailPosLabels)(blockEnv)
+          extractLet { newLhs =>
+            val newBlock = pushLhsInto(newLhs, block, tailPosLabels)
             val newFinalizer = transformStat(finalizer, Set.empty)
             js.TryFinally(newBlock, newFinalizer)
           }
@@ -1500,14 +1506,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case Match(selector, cases, default) =>
           unnest(selector) { (newSelector, env0) =>
             implicit val env = env0.withDefaultBreakTargets(tailPosLabels)
-            extractLet { (newLhs, branchesEnv) =>
+            extractLet { newLhs =>
               val newCases = {
                 for {
                   (values, body) <- cases
                   newValues = values.map(v => js.IntLiteral(v.value)(v.pos))
                   // add the break statement
                   newBody = js.Block(
-                      pushLhsInto(newLhs, body, tailPosLabels)(branchesEnv),
+                      pushLhsInto(newLhs, body, tailPosLabels),
                       js.Break())
                   // desugar alternatives into several cases falling through
                   caze <- (newValues.init map (v => (v, js.Skip()))) :+ (newValues.last, newBody)
@@ -1515,8 +1521,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   caze
                 }
               }
-              val newDefault = pushLhsInto(newLhs, default, tailPosLabels)(
-                  branchesEnv)
+              val newDefault = pushLhsInto(newLhs, default, tailPosLabels)
               js.Switch(transformExpr(newSelector, preserveChar = true),
                   newCases, newDefault)
             }
@@ -1635,8 +1640,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case JSMethodApply(receiver, method, args) =>
           if (containsAnySpread(args)) {
-            withTempVar(receiver) { (newReceiver, env0) =>
-              implicit val env = env0
+            withTempVar(receiver) { newReceiver =>
               redo {
                 JSMethodApply(
                     JSSelect(newReceiver, method),
@@ -1723,8 +1727,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case rhs @ JSObjectConstr(fields) =>
           if (doesObjectConstrRequireDesugaring(rhs)) {
-            val objVarDef = VarDef(newSyntheticVar(), AnyType, mutable = false,
-                JSObjectConstr(Nil))
+            val objVarIdent = newSyntheticVar()
+
+            def objVarRef(implicit pos: Position): Tree =
+              Transient(JSVarRef(objVarIdent, mutable = false))(AnyType)
+
+            val objVarDef =
+              genLet(objVarIdent, mutable = false, js.ObjectConstr(Nil))
+
             val assignFields = fields.foldRight((Set.empty[String], List.empty[Tree])) {
               case ((key, value), (namesSeen, statsAcc)) =>
                 implicit val pos = value.pos
@@ -1738,13 +1748,17 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                    */
                   value
                 } else {
-                  Assign(JSSelect(objVarDef.ref, key), value)
+                  Assign(JSSelect(objVarRef, key), value)
                 }
                 (namesSeen ++ nameForDupes, stat :: statsAcc)
             }._2
-            redo {
-              Block(objVarDef :: assignFields ::: objVarDef.ref :: Nil)
-            }
+
+            js.Block(
+                objVarDef,
+                redo {
+                  Block(assignFields ::: objVarRef :: Nil)
+                }
+            )
           } else {
             unnestJSObjectConstrFields(fields) { (newFields, env) =>
               redo(JSObjectConstr(newFields))(env)
@@ -1852,19 +1866,20 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     /** Evaluates `expr` and stores the result in a temp, then evaluates the
      *  result of `makeTree(temp)`.
      */
-    private def withTempVar(expr: Tree)(makeTree: (Tree, Env) => js.Tree)(
+    private def withTempVar(expr: Tree)(makeTree: Tree => js.Tree)(
         implicit env: Env): js.Tree = {
       expr match {
         case VarRef(ident) if !env.isLocalMutable(ident) =>
-          makeTree(expr, env)
+          makeTree(expr)
+        case Transient(JSVarRef(_, false)) =>
+          makeTree(expr)
         case _ =>
           implicit val pos = expr.pos
           val temp = newSyntheticVar()
-          val newEnv = env.withDef(temp, expr.tpe, false)
           val computeTemp = pushLhsInto(
-              Lhs.VarDef(temp, expr.tpe, mutable = false), expr,
-              Set.empty)
-          js.Block(computeTemp, makeTree(VarRef(temp)(expr.tpe), newEnv))
+              Lhs.VarDef(temp, expr.tpe, mutable = false), expr, Set.empty)
+          js.Block(computeTemp,
+              makeTree(Transient(JSVarRef(temp, mutable = false))(expr.tpe)))
       }
     }
 
@@ -2389,9 +2404,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           }
 
         case tree: RecordSelect =>
-          val name = makeRecordFieldIdent(tree)
-          assert(env.isLocalVar(name), name.name)
-          js.VarRef(transformLocalVarIdent(name))
+          js.VarRef(makeRecordFieldIdent(tree))
 
         case IsInstanceOf(expr, testType) =>
           genIsInstanceOf(transformExprNoChar(expr), testType)
@@ -2557,6 +2570,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             js.VarRef(transformLocalVarIdent(name))
           else
             envField("cc", genName(name.name), name.originalName)
+
+        case Transient(JSVarRef(name, _)) =>
+          js.VarRef(name)
 
         case This() =>
           env.thisIdent.fold[js.Tree] {
@@ -2731,30 +2747,19 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       import TreeDSL._
       js.Apply(receiver DOT genName(methodName), args.toList)
     }
-
-    private implicit class RecordAwareEnv(env: Env) {
-      def withDef(ident: LocalIdent, tpe: Type, mutable: Boolean): Env = tpe match {
-        case RecordType(fields) =>
-          withRecordDefs(ident, fields, mutable)
-        case _ =>
-          env.withDef(ident, mutable)
-      }
-
-      private def withRecordDefs(recIdent: LocalIdent,
-          fields: List[RecordType.Field], recMutable: Boolean): Env = {
-        fields.foldLeft(env) { (env, fld) =>
-          val ident = makeRecordFieldIdent(recIdent, fld.name,
-              fld.originalName)(recIdent.pos)
-          env.withDef(ident, fld.tpe, recMutable || fld.mutable)
-        }
-      }
-    }
   }
 }
 
 private object FunctionEmitter {
   private val MaybeHijackedClasses =
     (HijackedClasses ++ EmitterNames.AncestorsOfHijackedClasses) - ObjectClass
+
+  private final case class JSVarRef(ident: js.Ident, mutable: Boolean)
+      extends Transient.Value {
+
+    def printIR(out: org.scalajs.ir.Printers.IRTreePrinter): Unit =
+      out.print(ident.name)
+  }
 
   /** A left hand side that can be pushed into a right hand side tree. */
   sealed abstract class Lhs {
@@ -2763,7 +2768,7 @@ private object FunctionEmitter {
 
   object Lhs {
     case class Assign(lhs: Tree) extends Lhs
-    case class VarDef(name: LocalIdent, tpe: Type, mutable: Boolean) extends Lhs
+    case class VarDef(name: js.Ident, tpe: Type, mutable: Boolean) extends Lhs
 
     case object ReturnFromFunction extends Lhs {
       override def hasNothingType: Boolean = true
