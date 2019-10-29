@@ -95,7 +95,11 @@ private[emitter] final class JSGen(val semantics: Semantics,
       result(0) = startByteToChar(encoded(0) & 0xff)
       var i = 1
       while (i != len) {
-        result(i) = partByteToChar(encoded(i) & 0xff)
+        val b = encoded(i) & 0xff
+        if (b == '_' && encoded(i - 1) == '_')
+          result(i) = FullwidthSpacingUnderscore
+        else
+          result(i) = partByteToChar(b)
         i += 1
       }
       new String(result)
@@ -110,7 +114,11 @@ private[emitter] final class JSGen(val semantics: Semantics,
       result(0) = localStartByteToChar(encoded(0) & 0xff)
       var i = 1
       while (i != len) {
-        result(i) = partByteToChar(encoded(i) & 0xff)
+        val b = encoded(i) & 0xff
+        if (b == '_' && encoded(i - 1) == '_')
+          result(i) = FullwidthSpacingUnderscore
+        else
+          result(i) = partByteToChar(b)
         i += 1
       }
       new String(result)
@@ -137,7 +145,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
           val b = encoded(i) & 0xff
           // Avoid '__' in the output as that must be the end of the simple name
           if (b == '_' && encoded(i - 1) == '_')
-            builder.append('\uff3f') // FULLWIDTH SPACING UNDERSCORE
+            builder.append(FullwidthSpacingUnderscore)
           else
             builder.append(partByteToChar(b))
           i += 1
@@ -715,6 +723,9 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
 private[emitter] object JSGen {
 
+  private final val FullwidthSpacingUnderscore = '\uff3f'
+  private final val GreekSmallLetterDelta = '\u03b4'
+
   private val startByteToChar: Array[Char] = {
     /* The code points 256 through (512 - 1) are all valid start characters for
      * JavaScript identifiers. We encode each invalid byte as one of those
@@ -749,7 +760,7 @@ private[emitter] object JSGen {
      * sound of delta).
      */
     val table = startByteToChar.clone()
-    table('$'.toInt) = '\u03b4'
+    table('$'.toInt) = GreekSmallLetterDelta
     table
   }
 
@@ -760,7 +771,7 @@ private[emitter] object JSGen {
      */
     val table = partByteToChar.clone()
     table('.'.toInt) = '_'
-    table('_'.toInt) = '\uff3f' // FULLWIDTH SPACING UNDERSCORE
+    table('_'.toInt) = FullwidthSpacingUnderscore
     table
   }
 

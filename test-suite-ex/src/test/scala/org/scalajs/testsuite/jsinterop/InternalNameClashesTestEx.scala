@@ -63,6 +63,21 @@ class InternalNameClashesTestEx {
     assertEquals(5, $x1)
   }
 
+  @Test def testLocalVariableClashWithRecordField(): Unit = {
+    @noinline def test(): Boolean = true
+
+    // The two record fields will be called `babar__foo` and `babar__bar`
+    val babar =
+      if (test()) new LocalVariableClashWithRecordField(5, "one")
+      else new LocalVariableClashWithRecordField(6, "two")
+
+    val babar__foo = test()
+
+    assertEquals(5, babar.foo)
+    assertEquals("one", babar.bar)
+    assertEquals(true, babar__foo)
+  }
+
 }
 
 object InternalNameClashesTestEx {
@@ -83,4 +98,7 @@ object InternalNameClashesTestEx {
       ($thiz * $thiz) + ($$thiz * $$thiz)
     }
   }
+
+  @inline
+  class LocalVariableClashWithRecordField(val foo: Int, val bar: String)
 }

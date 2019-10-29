@@ -411,7 +411,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         fieldName: FieldName, fieldOrigName: Option[String])(
         implicit pos: Position): js.Ident = {
 
-      val name = recIdent.name + "_$_" + genName(fieldName)
+      /* "__" is a safe separator for generated names because JSGen avoids it
+       * when generating `LocalName`s and `FieldName`s.
+       */
+      val name = recIdent.name + "__" + genName(fieldName)
       val originalName = Some(
           recIdent.originalName.getOrElse(recIdent.name) + "." +
           fieldOrigName.getOrElse(fieldName.nameString))
