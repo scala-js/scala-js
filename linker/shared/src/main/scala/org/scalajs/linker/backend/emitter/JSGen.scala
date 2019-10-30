@@ -691,7 +691,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genBracketSelect(qual: Tree, item: Tree)(implicit pos: Position): Tree = {
     item match {
       case StringLiteral(name) if internalOptions.optimizeBracketSelects &&
-          irt.isValidJSIdentifier(name) && name != "eval" =>
+          Ident.isValidJSIdentifierName(name) && name != "eval" =>
         /* We exclude "eval" because we do not want to rely too much on the
          * strict mode peculiarities of eval(), so that we can keep running
          * on VMs that do not support strict mode.

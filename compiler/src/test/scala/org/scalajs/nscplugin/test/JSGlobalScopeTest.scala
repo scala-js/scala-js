@@ -289,46 +289,67 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def rejectArguments: Unit = {
-    s"""
-    object Main {
-      def main(): Unit = {
-        val a = js.Dynamic.global.arguments
-        js.Dynamic.global.arguments = null
-        val b = js.Dynamic.global.arguments(5)
+  def rejectAllReservedIdentifiers: Unit = {
+    val reservedIdentifiers = List(
+        "arguments", "break", "case", "catch", "class", "const", "continue",
+        "debugger", "default", "delete", "do", "else", "enum", "export",
+        "extends", "false", "finally", "for", "function", "if", "implements",
+        "import", "in", "instanceof", "interface", "let", "new", "null",
+        "package", "private", "protected", "public", "return", "static",
+        "super", "switch", "this", "throw", "true", "try", "typeof", "var",
+        "void", "while", "with", "yield")
 
-        val c = SomeGlobalScope.arguments
-        SomeGlobalScope.arguments = null
-        val d = SomeGlobalScope.arguments2(5)
+    for (reservedIdentifier <- reservedIdentifiers) {
+      val spaces = " " * reservedIdentifier.length()
+
+      s"""
+      @js.native
+      @JSGlobalScope
+      object CustomGlobalScope extends js.Any {
+        var `$reservedIdentifier`: Int = js.native
+        @JSName("$reservedIdentifier")
+        def `${reservedIdentifier}2`(x: Int): Int = js.native
       }
+
+      object Main {
+        def main(): Unit = {
+          val a = js.Dynamic.global.`$reservedIdentifier`
+          js.Dynamic.global.`$reservedIdentifier` = 5
+          val b = js.Dynamic.global.`$reservedIdentifier`(5)
+
+          val c = CustomGlobalScope.`$reservedIdentifier`
+          CustomGlobalScope.`$reservedIdentifier` = 5
+          val d = CustomGlobalScope.`${reservedIdentifier}2`(5)
+        }
+      }
+      """ hasErrors
+      s"""
+        |newSource1.scala:49: error: Invalid selection in the global scope of the reserved identifier name `$reservedIdentifier`.
+        |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
+        |          val a = js.Dynamic.global.`$reservedIdentifier`
+        |                             ^
+        |newSource1.scala:50: error: Invalid selection in the global scope of the reserved identifier name `$reservedIdentifier`.
+        |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
+        |          js.Dynamic.global.`$reservedIdentifier` = 5
+        |                     ^
+        |newSource1.scala:51: error: Invalid call in the global scope of the reserved identifier name `$reservedIdentifier`.
+        |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
+        |          val b = js.Dynamic.global.`$reservedIdentifier`(5)
+        |                                      $spaces^
+        |newSource1.scala:53: error: Invalid selection in the global scope of the reserved identifier name `$reservedIdentifier`.
+        |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
+        |          val c = CustomGlobalScope.`$reservedIdentifier`
+        |                                    ^
+        |newSource1.scala:54: error: Invalid selection in the global scope of the reserved identifier name `$reservedIdentifier`.
+        |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
+        |          CustomGlobalScope.`$reservedIdentifier` = 5
+        |                               $spaces^
+        |newSource1.scala:55: error: Invalid call in the global scope of the reserved identifier name `$reservedIdentifier`.
+        |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
+        |          val d = CustomGlobalScope.`${reservedIdentifier}2`(5)
+        |                                       $spaces^
+      """
     }
-    """ hasErrors
-    s"""
-      |newSource1.scala:41: error: Selecting a field of the global scope whose name is `arguments` is not allowed.
-      |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
-      |        val a = js.Dynamic.global.arguments
-      |                           ^
-      |newSource1.scala:42: error: Selecting a field of the global scope whose name is `arguments` is not allowed.
-      |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
-      |        js.Dynamic.global.arguments = null
-      |                   ^
-      |newSource1.scala:43: error: Calling a method of the global scope whose name is `arguments` is not allowed.
-      |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
-      |        val b = js.Dynamic.global.arguments(5)
-      |                                           ^
-      |newSource1.scala:45: error: Selecting a field of the global scope whose name is `arguments` is not allowed.
-      |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
-      |        val c = SomeGlobalScope.arguments
-      |                                ^
-      |newSource1.scala:46: error: Selecting a field of the global scope whose name is `arguments` is not allowed.
-      |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
-      |        SomeGlobalScope.arguments = null
-      |                                  ^
-      |newSource1.scala:47: error: Calling a method of the global scope whose name is `arguments` is not allowed.
-      |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
-      |        val d = SomeGlobalScope.arguments2(5)
-      |                                          ^
-    """
   }
 
 }

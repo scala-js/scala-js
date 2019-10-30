@@ -18,7 +18,7 @@ import nsc._
 import scala.collection.immutable.ListMap
 import scala.collection.mutable
 
-import org.scalajs.ir.Trees.{isValidJSIdentifier, JSNativeLoadSpec}
+import org.scalajs.ir.Trees.{JSGlobalRef, JSNativeLoadSpec}
 
 /** Prepares classes extending js.Any for JavaScript interop
  *
@@ -725,12 +725,14 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
         def parseGlobalPath(pathName: String): Global = {
           val globalRef :: path = parsePath(pathName)
-          if (!isValidJSIdentifier(globalRef)) {
+          if (!JSGlobalRef.isValidJSGlobalRefName(globalRef)) {
             reporter.error(pos,
                 "The name of a JS global variable must be a valid JS " +
                 s"identifier (got '$globalRef')")
+            JSNativeLoadSpec.Global("erroneous", path)
+          } else {
+            JSNativeLoadSpec.Global(globalRef, path)
           }
-          JSNativeLoadSpec.Global(globalRef, path)
         }
 
         checkAndGetJSNativeLoadingSpecAnnotOf(pos, sym) match {

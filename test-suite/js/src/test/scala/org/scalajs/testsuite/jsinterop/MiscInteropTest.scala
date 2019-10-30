@@ -184,6 +184,12 @@ class MiscInteropTest {
     assertEquals(7, f.bar(5))
   }
 
+  // Global scope
+
+  @Test def canRead_undefined_inGlobalScope_issue3821(): Unit = {
+    assertEquals((), js.Dynamic.global.undefined)
+  }
+
   // Emitted classes
 
   @Test def should_have_a_meaningful_name_property(): Unit = {
