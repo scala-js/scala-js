@@ -76,7 +76,8 @@ private[ir] object Tags {
   final val TagJSArrayConstr = TagJSBinaryOp + 1
   final val TagJSObjectConstr = TagJSArrayConstr + 1
   final val TagJSGlobalRef = TagJSObjectConstr + 1
-  final val TagJSLinkingInfo = TagJSGlobalRef + 1
+  final val TagJSTypeOfGlobalRef = TagJSGlobalRef + 1
+  final val TagJSLinkingInfo = TagJSTypeOfGlobalRef + 1
 
   final val TagUndefined = TagJSLinkingInfo + 1
   final val TagNull = TagUndefined + 1

@@ -818,6 +818,11 @@ object Trees {
       isJSIdentifierName(name) && !ReservedJSIdentifierNames.contains(name)
   }
 
+  case class JSTypeOfGlobalRef(globalRef: JSGlobalRef)(
+      implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+  }
+
   case class JSLinkingInfo()(implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }

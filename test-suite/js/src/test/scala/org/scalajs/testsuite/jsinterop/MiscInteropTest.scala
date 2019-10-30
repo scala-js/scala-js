@@ -38,6 +38,26 @@ class MiscInteropTest {
     assertEquals("function", typeOf((() => 42): js.Function))
   }
 
+  @Test def testTypeofWithGlobalRefs_issue3822(): Unit = {
+    assumeFalse(
+        "GCC wrongly optimizes this code, " +
+        "see https://github.com/google/closure-compiler/issues/3498",
+        isInFullOpt)
+
+    @noinline def nonExistentGlobalVarNoInline(): Any =
+      js.Dynamic.global.thisGlobalVarDoesNotExist
+
+    @inline def nonExistentGlobalVarInline(): Any =
+      js.Dynamic.global.thisGlobalVarDoesNotExist
+
+    assertEquals("undefined",
+        js.typeOf(js.Dynamic.global.thisGlobalVarDoesNotExist))
+    expectThrows(classOf[js.JavaScriptException],
+        js.typeOf(nonExistentGlobalVarNoInline()))
+    expectThrows(classOf[js.JavaScriptException],
+        js.typeOf(nonExistentGlobalVarInline()))
+  }
+
   @Test def js_constructorOf_T_for_native_classes(): Unit = {
     assertSame(js.Dynamic.global.RegExp, js.constructorOf[js.RegExp])
     assertSame(js.Dynamic.global.Array, js.constructorOf[js.Array[_]])

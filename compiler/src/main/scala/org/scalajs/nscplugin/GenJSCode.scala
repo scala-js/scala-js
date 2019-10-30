@@ -4568,8 +4568,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case TYPEOF =>
           // js.typeOf(arg)
           val arg = genArgs1
-          genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg),
-              StringClass.tpe)
+          val typeofExpr = arg match {
+            case arg: js.JSGlobalRef => js.JSTypeOfGlobalRef(arg)
+            case _                   => js.JSUnaryOp(js.JSUnaryOp.typeof, arg)
+          }
+          genAsInstanceOf(typeofExpr, StringClass.tpe)
 
         case JS_IMPORT =>
           // js.import(arg)

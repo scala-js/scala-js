@@ -776,6 +776,10 @@ class PrintersTest {
     assertPrintEquals("global:Foo", JSGlobalRef("Foo"))
   }
 
+  @Test def printJSTypeOfGlobalRef(): Unit = {
+    assertPrintEquals("(typeof global:Foo)", JSTypeOfGlobalRef(JSGlobalRef("Foo")))
+  }
+
   @Test def printJSLinkingInfo(): Unit = {
     assertPrintEquals("<linkinginfo>", JSLinkingInfo())
   }

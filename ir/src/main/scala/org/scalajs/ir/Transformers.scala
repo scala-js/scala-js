@@ -188,6 +188,9 @@ object Transformers {
             (transformExpr(field._1), transformExpr(field._2))
           })
 
+        case JSTypeOfGlobalRef(globalRef) =>
+          JSTypeOfGlobalRef(transformExpr(globalRef).asInstanceOf[JSGlobalRef])
+
         // Atomic expressions
 
         case Closure(arrow, captureParams, params, body, captureValues) =>
